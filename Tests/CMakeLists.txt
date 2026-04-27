@@ -26,6 +26,8 @@ set(TEST_SOURCES
     StoreFake.c
     SenderFakeTest.cpp
     SenderFake.c
+    DatagramFake.c
+    DatagramFakeTest.cpp
     StringFakeTest.cpp
     StringFake.c
     FileFakeTest.cpp
