@@ -1,6 +1,7 @@
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogPosixDatagram.h"
+#include "SolidSyslogUdpPayload.h"
 #include "SocketFake.h"
 #include <arpa/inet.h>
 #include <cstdint>
@@ -135,17 +136,17 @@ TEST(SolidSyslogPosixDatagram, SendToPassesAddrlenOfSockaddrIn)
     LONGS_EQUAL(sizeof(struct sockaddr_in), SocketFake_LastAddrLen());
 }
 
-TEST(SolidSyslogPosixDatagram, SendToReturnsTrueOnSuccess)
+TEST(SolidSyslogPosixDatagram, SendToReturnsSentOnSuccess)
 {
     SolidSyslogDatagram_Open(datagram);
-    CHECK_TRUE(SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SENT, SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
 }
 
-TEST(SolidSyslogPosixDatagram, SendToReturnsFalseOnSendtoFailure)
+TEST(SolidSyslogPosixDatagram, SendToReturnsFailedOnSendtoFailure)
 {
     SolidSyslogDatagram_Open(datagram);
     SocketFake_SetSendtoFails(true);
-    CHECK_FALSE(SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_FAILED, SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
 }
 
 TEST(SolidSyslogPosixDatagram, CloseCallsCloseOnce)
@@ -160,4 +161,9 @@ TEST(SolidSyslogPosixDatagram, CloseCalledWithSocketFd)
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_Close(datagram);
     LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
+}
+
+TEST(SolidSyslogPosixDatagram, MaxPayloadFallsBackToIpv6SafePayload)
+{
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD, SolidSyslogDatagram_MaxPayload(datagram));
 }

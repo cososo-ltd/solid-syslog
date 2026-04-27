@@ -1,5 +1,6 @@
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogDatagram.h"
+#include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogWinsockDatagram.h"
 #include "SolidSyslogWinsockDatagramInternal.h"
 #include "WinsockFake.h"
@@ -137,17 +138,17 @@ TEST(SolidSyslogWinsockDatagram, SendToPassesAddrlenOfSockaddrIn)
     LONGS_EQUAL((int) sizeof(struct sockaddr_in), WinsockFake_LastAddrLen());
 }
 
-TEST(SolidSyslogWinsockDatagram, SendToReturnsTrueOnSuccess)
+TEST(SolidSyslogWinsockDatagram, SendToReturnsSentOnSuccess)
 {
     SolidSyslogDatagram_Open(datagram);
-    CHECK_TRUE(SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SENT, SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
 }
 
-TEST(SolidSyslogWinsockDatagram, SendToReturnsFalseOnSendtoFailure)
+TEST(SolidSyslogWinsockDatagram, SendToReturnsFailedOnSendtoFailure)
 {
     SolidSyslogDatagram_Open(datagram);
     WinsockFake_SetSendtoFails(true);
-    CHECK_FALSE(SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_FAILED, SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
 }
 
 TEST(SolidSyslogWinsockDatagram, CloseCallsCloseOnce)
@@ -162,4 +163,9 @@ TEST(SolidSyslogWinsockDatagram, CloseCalledWithSocketFd)
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_Close(datagram);
     CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd());
+}
+
+TEST(SolidSyslogWinsockDatagram, MaxPayloadFallsBackToIpv6SafePayload)
+{
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD, SolidSyslogDatagram_MaxPayload(datagram));
 }

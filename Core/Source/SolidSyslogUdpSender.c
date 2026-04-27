@@ -136,7 +136,7 @@ static inline void CloseSocket(struct SolidSyslogUdpSender* udp)
 
 static inline bool TransmitDatagram(struct SolidSyslogUdpSender* udp, const void* buffer, size_t size)
 {
-    return SolidSyslogDatagram_SendTo(udp->config.datagram, buffer, size, Address(udp));
+    return SolidSyslogDatagram_SendTo(udp->config.datagram, buffer, size, Address(udp)) == SOLIDSYSLOG_DATAGRAM_SENT;
 }
 
 static void NilEndpoint(struct SolidSyslogEndpoint* endpoint)

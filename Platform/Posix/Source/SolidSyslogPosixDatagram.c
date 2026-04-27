@@ -1,6 +1,7 @@
 #include "SolidSyslogPosixDatagram.h"
 #include "SolidSyslogAddressInternal.h"
 #include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogUdpPayload.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -12,10 +13,11 @@ enum
     INVALID_FD = -1
 };
 
-static bool        Open(struct SolidSyslogDatagram* self);
-static bool        SendTo(struct SolidSyslogDatagram* self, const void* buffer, size_t size, const struct SolidSyslogAddress* addr);
-static void        Close(struct SolidSyslogDatagram* self);
-static inline bool IsFileDescriptorValid(int fd);
+static bool                               Open(struct SolidSyslogDatagram* self);
+static enum SolidSyslogDatagramSendResult SendTo(struct SolidSyslogDatagram* self, const void* buffer, size_t size, const struct SolidSyslogAddress* addr);
+static size_t                             MaxPayload(struct SolidSyslogDatagram* self);
+static void                               Close(struct SolidSyslogDatagram* self);
+static inline bool                        IsFileDescriptorValid(int fd);
 
 struct SolidSyslogPosixDatagram
 {
@@ -27,17 +29,19 @@ static struct SolidSyslogPosixDatagram instance = {.fd = INVALID_FD};
 
 struct SolidSyslogDatagram* SolidSyslogPosixDatagram_Create(void)
 {
-    instance.base.Open   = Open;
-    instance.base.SendTo = SendTo;
-    instance.base.Close  = Close;
+    instance.base.Open       = Open;
+    instance.base.SendTo     = SendTo;
+    instance.base.MaxPayload = MaxPayload;
+    instance.base.Close      = Close;
     return &instance.base;
 }
 
 void SolidSyslogPosixDatagram_Destroy(void)
 {
-    instance.base.Open   = NULL;
-    instance.base.SendTo = NULL;
-    instance.base.Close  = NULL;
+    instance.base.Open       = NULL;
+    instance.base.SendTo     = NULL;
+    instance.base.MaxPayload = NULL;
+    instance.base.Close      = NULL;
 }
 
 static bool Open(struct SolidSyslogDatagram* self)
@@ -52,11 +56,18 @@ static inline bool IsFileDescriptorValid(int fd)
     return fd >= 0;
 }
 
-static bool SendTo(struct SolidSyslogDatagram* self, const void* buffer, size_t size, const struct SolidSyslogAddress* addr)
+static enum SolidSyslogDatagramSendResult SendTo(struct SolidSyslogDatagram* self, const void* buffer, size_t size, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogPosixDatagram* datagram = (struct SolidSyslogPosixDatagram*) self;
     const struct sockaddr_in*        sin      = SolidSyslogAddress_AsConstSockaddrIn(addr);
-    return sendto(datagram->fd, buffer, size, 0, (const struct sockaddr*) sin, sizeof(*sin)) >= 0;
+    ssize_t                          sent     = sendto(datagram->fd, buffer, size, 0, (const struct sockaddr*) sin, sizeof(*sin));
+    return (sent >= 0) ? SOLIDSYSLOG_DATAGRAM_SENT : SOLIDSYSLOG_DATAGRAM_FAILED;
+}
+
+static size_t MaxPayload(struct SolidSyslogDatagram* self)
+{
+    (void) self;
+    return SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD;
 }
 
 static void Close(struct SolidSyslogDatagram* self)
