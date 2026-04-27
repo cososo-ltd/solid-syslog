@@ -17,6 +17,7 @@ set(SOURCES
     SolidSyslogOriginSd.c
     SolidSyslogFile.c
     SolidSyslogFileStore.c
+    SolidSyslogUdpPayload.c
 )
 
 if(HAVE_ATOMIC_COUNTER)
