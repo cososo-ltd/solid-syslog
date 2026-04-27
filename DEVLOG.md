@@ -1,5 +1,84 @@
 # Dev Log
 
+## 2026-04-27 — S12.12 UDP path-MTU clipping (slices 1–5)
+
+### Decisions
+- **Slice the story before writing tests.** Six conceptual pieces in
+  the story body decompose cleanly into 7 slices (pure helpers ×2,
+  vtable widening, UdpSender retry, Posix wiring, Winsock wiring,
+  BDD). Slice ordering is bottom-up — each slice can be reviewed and
+  committed in isolation, the algorithm consumes the helpers, and the
+  retry loop is exercised against a `DatagramFake` before any real
+  socket plumbing lands.
+- **Datagram contract widened with a 3-state enum, not bool +
+  out-param.** `SOLIDSYSLOG_DATAGRAM_SENT / _OVERSIZE / _FAILED`
+  matches the project's vtable style (no out-params), is faketable
+  per-call, and keeps the dispatcher one-line. The `OVERSIZE` value
+  was added to the public enum in slice 3 even though no producer
+  emits it until slice 5 — that lets the retry algorithm in slice 4
+  read against the final contract rather than a stepping-stone.
+- **Lazy `connect()` in `PosixDatagram`, not address-on-Open.**
+  Original story wording suggested PMTUD setup "after `connect`",
+  which would have meant either changing `Datagram_Open` to take an
+  address (vtable churn, mirrors `Stream_Open`) or `connect`-ing
+  inside `SendTo`. Lazy connect on the first SendTo keeps the vtable
+  shape stable and matches `UdpSender`'s lifecycle — `UdpSender` does
+  Disconnect/Open on endpoint-version changes, so the connected
+  address never silently drifts. Documented assumption rather than
+  enforced address-equality check.
+- **Forward-scan rejected, backward-walk kept for `_TrimToCodepointBoundary`.**
+  Considered a forward scan that advances by codepoint length until
+  the next overshoots `length` — would have been single-return,
+  no early guards, and structurally simpler. Backward walk is O(1)
+  vs forward scan's O(n) over the buffer, and the EMSGSIZE retry
+  is the slow path so performance is irrelevant. Backward walk
+  decomposes into `FindLastCodepointStart` +
+  `LastCodepointExtendsPastCut` which read in plain English; that
+  beats the cleverer forward scan on clarity.
+- **DRY pass: extracted `SolidSyslogUtf8.h`.** UdpPayload was about
+  to duplicate the formatter's byte-level classifiers
+  (`IsTwoByteLead`, `IsThreeByteLead`, `IsFourByteLead`,
+  `IsUtf8Continuation`, `IsValidUtf8SingleByte`). Extracted as five
+  `static inline bool` classifiers in `Core/Source/SolidSyslogUtf8.h`,
+  formatter migrated to use them in the same slice. RFC 3629
+  validity guards (overlong, surrogate, above-Unicode) stay in the
+  formatter — they're rule-encoding, not byte-classification, and
+  only one consumer needs them.
+- **`char` parameter type kept for now.** Header uses `char` (signed
+  on most ABIs), matching the formatter's existing types. UdpPayload
+  uses `uint8_t` and casts at the boundary. MISRA Rule 10.1 on
+  bitwise ops on signed types is a flagged follow-up — flipping the
+  shared header to `uint8_t` is a separate cleanup.
+- **MISRA-leaning style applied throughout.** Single returns, fully
+  bracketed `if/else`, `if-else if` chains terminate with `else`,
+  `cppcoreguidelines-init-variables` honoured, uppercase `U`
+  literal suffixes. The trailing redundant-`else` (when result is
+  already initialised to the default) is acceptable to drop —
+  initialisation already proves "all paths considered".
+
+### Deferred
+- **Slice 6 — `WinsockDatagram` parallel.** Lazy `connect()`,
+  `IP_MTU_DISCOVER`, `WSAEMSGSIZE` → OVERSIZE, `getsockopt(IP_MTU)`
+  with fallback. Needs `WinsockFake` additions paralleling slice 5's
+  `SocketFake` work.
+- **Slice 7 — BDD scenarios.** Loopback-MTU constraint to actually
+  exercise the retry path; two scenarios per the story body
+  (full-delivery-at-safe-payload + clean-UTF-8-truncation).
+- **`SolidSyslogUtf8.h` to `uint8_t`.** Whole-codebase cleanup once
+  S12.12 lands; would also unlock dropping the `(char)` casts at
+  UdpPayload's call sites.
+- **`PosixDatagram` switch from `sendto` to `send` after connect.**
+  Slightly more idiomatic on a connected socket. Kept `sendto` to
+  minimise diff; Linux's connected-`sendto` semantics are
+  well-defined.
+- **Address-mismatch detection in `PosixDatagram`.** Currently
+  `connect`s once per Open lifetime regardless of subsequent
+  addresses. Safe in practice (UdpSender controls lifecycle) but
+  could be enforced if the contract were ever broadened.
+
+### Open questions
+- None.
+
 ## 2026-04-26 — S13.16 WindowsFile — file abstraction using `<io.h>`
 
 ### Decisions
