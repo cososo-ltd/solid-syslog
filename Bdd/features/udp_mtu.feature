@@ -11,7 +11,7 @@ Feature: UDP datagram path-MTU clipping
   SOLIDSYSLOG_MAX_MESSAGE_SIZE, and the OTel syslog receiver
   interprets BOM-less UTF-8 MSG bytes as Latin-1 — RFC 5424 §6.4
   requires a BOM that this library does not yet emit. The BOM gap
-  is tracked in S07.05 (#219); once that lands, the Latin-1
+  is tracked in S12.13 (#219); once that lands, the Latin-1
   mojibake clears and the windows_wip tag can be dropped on the
   full-delivery scenario. The oversize scenario remains POSIX-only
   by virtue of Windows loopback MTU.
