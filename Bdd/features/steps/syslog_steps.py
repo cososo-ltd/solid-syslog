@@ -35,6 +35,13 @@ SYSLOG_NG_CONF = "Bdd/syslog-ng/syslog-ng.conf"
 SYSLOG_NG_FULL_CONF = "Bdd/syslog-ng/syslog-ng-full.conf"
 SYSLOG_NG_UDP_ONLY_CONF = "Bdd/syslog-ng/syslog-ng-udp-only.conf"
 
+# Mirrors SOLIDSYSLOG_MAX_MESSAGE_SIZE from Core/Interface/SolidSyslog.h. Bump
+# the two together. The store_capacity scenarios depend on it because production
+# clamps max-file-size up to MAX + RECORD_OVERHEAD + integritySize at runtime,
+# so the file size used by the file store is MAX-coupled even when the feature
+# file specifies a smaller value.
+SOLIDSYSLOG_MAX_MESSAGE_SIZE = 2048
+
 
 def clean_store_files():
     """Remove all rotating store files matching the path prefix."""
@@ -482,22 +489,16 @@ def step_file_store_enabled_with_config(context, max_files, max_file_size, polic
     context.store_max_files = max_files
     context.store_max_file_size = max_file_size
     context.store_discard_policy = policy
+    # Size each MSG so ~4 records pack per (clamped) store file. The store
+    # capacity scenarios were designed around this packing — multi-record
+    # files give OLDEST and NEWEST symmetric retention (both keep 7 of 10
+    # sent), which the seqId assertions depend on. Production clamps file
+    # size up to MAX + 7 (MIN_MAX_FILE_SIZE), so per-record budget is
+    # ~MAX/4. With ~95-byte RFC 5424 header + 7-byte record overhead, a
+    # body of MAX/5 - 50 lands a comfortable mid-band: 4 records fit, 5
+    # don't. Update if SOLIDSYSLOG_MAX_MESSAGE_SIZE moves.
+    context.message_body = "X" * (SOLIDSYSLOG_MAX_MESSAGE_SIZE // 5 - 50)
     clean_store_files()
-
-
-@given("each message is large enough to fill one store file")
-def step_message_body_max_size(context):
-    """Pin each record to one-per-file so capacity-overflow scenarios stay
-    deterministic across SOLIDSYSLOG_MAX_MESSAGE_SIZE bumps. The example
-    formatter clips MSG at SOLIDSYSLOG_MAX_MESSAGE_SIZE, and the file
-    store's MIN_MAX_FILE_SIZE clamps each file to one max-record, so as
-    long as MSG ≥ the per-file capacity divided by 2, every message
-    consumes exactly one record-slot of store."""
-    # 1500 chars is well above the 940-byte threshold below which two
-    # records could squeeze into one min-sized file, and well below the
-    # 2048-byte SOLIDSYSLOG_MAX_MESSAGE_SIZE so we don't trip path-MTU
-    # trimming on the docker bridge.
-    context.message_body = "X" * 1500
 
 
 @given("the halt callback exits the process")
