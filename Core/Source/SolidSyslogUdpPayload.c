@@ -8,15 +8,15 @@ enum
     UDP_HEADER_BYTES  = 8
 };
 
+static inline size_t FindLastCodepointStart(const uint8_t* buffer, size_t length);
+static inline bool   LastCodepointExtendsPastCut(const uint8_t* buffer, size_t length, size_t lastCodepointStart);
+static inline size_t ExpectedSequenceLength(uint8_t startByte);
+
 size_t SolidSyslogUdpPayload_FromMtu(size_t mtu, bool isIpv6)
 {
     size_t overhead = (isIpv6 ? IPV6_HEADER_BYTES : IPV4_HEADER_BYTES) + UDP_HEADER_BYTES;
     return mtu > overhead ? mtu - overhead : 0;
 }
-
-static inline size_t FindLastCodepointStart(const uint8_t* buffer, size_t length);
-static inline bool   LastCodepointExtendsPastCut(const uint8_t* buffer, size_t length, size_t lastCodepointStart);
-static inline size_t ExpectedSequenceLength(uint8_t startByte);
 
 size_t SolidSyslogUdpPayload_TrimToCodepointBoundary(const uint8_t* buffer, size_t length)
 {
