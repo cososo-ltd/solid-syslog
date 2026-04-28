@@ -13,10 +13,16 @@ EXTERN_C_BEGIN
 
     typedef SOCKET(WSAAPI * WinsockSocketFn)(int, int, int);
     typedef int(WSAAPI * WinsockSendToFn)(SOCKET, const char*, int, int, const struct sockaddr*, int);
+    typedef int(WSAAPI * WinsockConnectFn)(SOCKET, const struct sockaddr*, int);
+    typedef int(WSAAPI * WinsockSetSockOptFn)(SOCKET, int, int, const char*, int);
+    typedef int(WSAAPI * WinsockGetSockOptFn)(SOCKET, int, int, char*, int*);
     typedef int(WSAAPI * WinsockCloseSocketFn)(SOCKET);
 
     extern WinsockSocketFn      Winsock_socket;
     extern WinsockSendToFn      Winsock_sendto;
+    extern WinsockConnectFn     Winsock_connect;
+    extern WinsockSetSockOptFn  Winsock_setsockopt;
+    extern WinsockGetSockOptFn  Winsock_getsockopt;
     extern WinsockCloseSocketFn Winsock_closesocket;
 
 EXTERN_C_END

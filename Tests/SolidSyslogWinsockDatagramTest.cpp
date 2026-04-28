@@ -28,6 +28,9 @@ TEST_GROUP(SolidSyslogWinsockDatagram)
         UT_PTR_SET(Winsock_socket, WinsockFake_socket);
         UT_PTR_SET(Winsock_sendto, WinsockFake_sendto);
         UT_PTR_SET(Winsock_closesocket, WinsockFake_closesocket);
+        UT_PTR_SET(Winsock_connect, WinsockFake_connect);
+        UT_PTR_SET(Winsock_setsockopt, WinsockFake_setsockopt);
+        UT_PTR_SET(Winsock_getsockopt, WinsockFake_getsockopt);
         // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
         datagram = SolidSyslogWinsockDatagram_Create();
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing, legal and necessary
@@ -167,5 +170,71 @@ TEST(SolidSyslogWinsockDatagram, CloseCalledWithSocketFd)
 
 TEST(SolidSyslogWinsockDatagram, MaxPayloadFallsBackToIpv6SafePayload)
 {
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogWinsockDatagram, OpenDoesNotConnect)
+{
+    SolidSyslogDatagram_Open(datagram);
+    LONGS_EQUAL(0, WinsockFake_ConnectCallCount());
+}
+
+TEST(SolidSyslogWinsockDatagram, SendToConnectsOnFirstCall)
+{
+    SolidSyslogDatagram_Open(datagram);
+    SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
+    LONGS_EQUAL(1, WinsockFake_ConnectCallCount());
+}
+
+TEST(SolidSyslogWinsockDatagram, SendToConnectsOnceAcrossMultipleCalls)
+{
+    SolidSyslogDatagram_Open(datagram);
+    SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
+    SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
+    LONGS_EQUAL(1, WinsockFake_ConnectCallCount());
+}
+
+TEST(SolidSyslogWinsockDatagram, FirstSendEnablesPmtuDiscovery)
+{
+    SolidSyslogDatagram_Open(datagram);
+    SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
+    CHECK_TRUE(WinsockFake_HasSetSockOpt(IPPROTO_IP, IP_MTU_DISCOVER));
+}
+
+TEST(SolidSyslogWinsockDatagram, SendToReturnsOversizeOnWsaemsgsize)
+{
+    SolidSyslogDatagram_Open(datagram);
+    WinsockFake_FailNextSendtoWithLastError(WSAEMSGSIZE);
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_OVERSIZE, SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
+}
+
+TEST(SolidSyslogWinsockDatagram, SendToReturnsFailedWhenConnectFails)
+{
+    SolidSyslogDatagram_Open(datagram);
+    WinsockFake_SetConnectFails(true);
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_FAILED, SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
+}
+
+TEST(SolidSyslogWinsockDatagram, MaxPayloadAfterConnectQueriesIpMtu)
+{
+    SolidSyslogDatagram_Open(datagram);
+    SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
+    SolidSyslogDatagram_MaxPayload(datagram);
+    LONGS_EQUAL(1, WinsockFake_GetSockOptCallCount());
+}
+
+TEST(SolidSyslogWinsockDatagram, MaxPayloadConvertsIpMtuViaFromMtu)
+{
+    SolidSyslogDatagram_Open(datagram);
+    SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
+    WinsockFake_SetIpMtu(1500);
+    LONGS_EQUAL(1472, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogWinsockDatagram, MaxPayloadFallsBackWhenIpMtuLookupFails)
+{
+    SolidSyslogDatagram_Open(datagram);
+    SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
+    WinsockFake_SetIpMtuLookupFails(true);
     LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD, SolidSyslogDatagram_MaxPayload(datagram));
 }
