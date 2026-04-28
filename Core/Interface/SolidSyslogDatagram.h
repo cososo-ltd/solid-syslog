@@ -20,10 +20,11 @@ EXTERN_C_BEGIN
         SOLIDSYSLOG_DATAGRAM_FAILED
     };
 
-    bool                               SolidSyslogDatagram_Open(struct SolidSyslogDatagram* datagram);
-    enum SolidSyslogDatagramSendResult SolidSyslogDatagram_SendTo(struct SolidSyslogDatagram* datagram, const void* buffer, size_t size, const struct SolidSyslogAddress* addr);
-    size_t                             SolidSyslogDatagram_MaxPayload(struct SolidSyslogDatagram* datagram);
-    void                               SolidSyslogDatagram_Close(struct SolidSyslogDatagram* datagram);
+    bool                               SolidSyslogDatagram_Open(struct SolidSyslogDatagram * datagram);
+    enum SolidSyslogDatagramSendResult SolidSyslogDatagram_SendTo(struct SolidSyslogDatagram * datagram, const void* buffer, size_t size,
+                                                                  const struct SolidSyslogAddress* addr);
+    size_t                             SolidSyslogDatagram_MaxPayload(struct SolidSyslogDatagram * datagram);
+    void                               SolidSyslogDatagram_Close(struct SolidSyslogDatagram * datagram);
 
 EXTERN_C_END
 
