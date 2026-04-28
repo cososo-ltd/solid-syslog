@@ -179,22 +179,46 @@ static std::string SyslogField(const char* buffer, int n)
     return s.substr(pos, end == std::string::npos ? std::string::npos : end - pos);
 }
 
-static std::string SyslogMsg(const char* buffer)
+static const char UTF8_BOM[]      = "\xEF\xBB\xBF";
+static const auto UTF8_BOM_LENGTH = sizeof(UTF8_BOM) - 1;
+
+static std::string::size_type SyslogMsgStart(const std::string& s)
 {
-    std::string            s(buffer);
     std::string::size_type pos = FindFieldStart(s, SYSLOG_FIELD_SDATA);
     if (pos == std::string::npos)
     {
-        return {};
+        return std::string::npos;
     }
     pos = SkipSdata(s, pos);
     if (pos == std::string::npos || pos >= s.size())
     {
-        return {};
+        return std::string::npos;
     }
     if (s[pos] == ' ')
     {
         pos++;
+    }
+    return pos;
+}
+
+static bool SyslogMsgHasBom(const char* buffer)
+{
+    std::string            s(buffer);
+    std::string::size_type pos = SyslogMsgStart(s);
+    return (pos != std::string::npos) && (s.compare(pos, UTF8_BOM_LENGTH, UTF8_BOM) == 0);
+}
+
+static std::string SyslogMsg(const char* buffer)
+{
+    std::string            s(buffer);
+    std::string::size_type pos = SyslogMsgStart(s);
+    if (pos == std::string::npos)
+    {
+        return {};
+    }
+    if (s.compare(pos, UTF8_BOM_LENGTH, UTF8_BOM) == 0)
+    {
+        pos += UTF8_BOM_LENGTH;
     }
     return s.substr(pos);
 }
@@ -604,6 +628,20 @@ TEST(SolidSyslog, MessageBodyAppearsInMessage)
     STRCMP_EQUAL("system started", SyslogMsg(lastMessage()).c_str());
 }
 
+TEST(SolidSyslog, MessageBodyIsPrecededByUtf8Bom)
+{
+    message.msg = "system started";
+    Log();
+    CHECK(SyslogMsgHasBom(lastMessage()));
+}
+
+TEST(SolidSyslog, CallerSuppliedBomIsStrippedSoOutputHasOnlyOne)
+{
+    message.msg = "\xEF\xBB\xBFsystem started";
+    Log();
+    STRCMP_EQUAL("system started", SyslogMsg(lastMessage()).c_str());
+}
+
 TEST(SolidSyslog, EmptyMessageOmitsMsgField)
 {
     message.msg = "";
@@ -627,7 +665,7 @@ TEST(SolidSyslog, MessageWithSpacesIsPreserved)
 
 TEST(SolidSyslog, MessageFillsRemainingBuffer)
 {
-    std::string header("<134>1 - - - - - - ");
+    std::string header("<134>1 - - - - - - " + std::string(UTF8_BOM));
     size_t      maxMsg = SOLIDSYSLOG_MAX_MESSAGE_SIZE - header.size() - 1;
     std::string longMsg(maxMsg, 'X');
     message.msg = longMsg.c_str();
@@ -637,7 +675,7 @@ TEST(SolidSyslog, MessageFillsRemainingBuffer)
 
 TEST(SolidSyslog, MessageTruncatedWhenExceedingBuffer)
 {
-    std::string header("<134>1 - - - - - - ");
+    std::string header("<134>1 - - - - - - " + std::string(UTF8_BOM));
     size_t      maxMsg = SOLIDSYSLOG_MAX_MESSAGE_SIZE - header.size() - 1;
     std::string longMsg(maxMsg + 100, 'X');
     message.msg = longMsg.c_str();
