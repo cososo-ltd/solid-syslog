@@ -435,6 +435,8 @@ def build_threaded_command(context, transport, no_sd=False):
         cmd.extend(["--max-file-size", str(context.store_max_file_size)])
     if getattr(context, "store_discard_policy", None):
         cmd.extend(["--discard-policy", context.store_discard_policy])
+    if getattr(context, "message_body", None):
+        cmd.extend(["--message", context.message_body])
     if no_sd:
         cmd.append("--no-sd")
     if getattr(context, "halt_exit", False):
@@ -481,6 +483,21 @@ def step_file_store_enabled_with_config(context, max_files, max_file_size, polic
     context.store_max_file_size = max_file_size
     context.store_discard_policy = policy
     clean_store_files()
+
+
+@given("each message is large enough to fill one store file")
+def step_message_body_max_size(context):
+    """Pin each record to one-per-file so capacity-overflow scenarios stay
+    deterministic across SOLIDSYSLOG_MAX_MESSAGE_SIZE bumps. The example
+    formatter clips MSG at SOLIDSYSLOG_MAX_MESSAGE_SIZE, and the file
+    store's MIN_MAX_FILE_SIZE clamps each file to one max-record, so as
+    long as MSG ≥ the per-file capacity divided by 2, every message
+    consumes exactly one record-slot of store."""
+    # 1500 chars is well above the 940-byte threshold below which two
+    # records could squeeze into one min-sized file, and well below the
+    # 2048-byte SOLIDSYSLOG_MAX_MESSAGE_SIZE so we don't trip path-MTU
+    # trimming on the docker bridge.
+    context.message_body = "X" * 1500
 
 
 @given("the halt callback exits the process")
