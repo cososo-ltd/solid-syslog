@@ -600,6 +600,11 @@ def step_example_sends_message(context):
     run_example(context)
 
 
+@when("the example program sends a syslog message with transport {transport}")
+def step_example_sends_with_transport(context, transport):
+    run_example(context, ["--transport", transport])
+
+
 @when("the threaded example sends a syslog message")
 def step_threaded_sends_message(context):
     run_threaded_example(context)
