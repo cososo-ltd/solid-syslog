@@ -61,7 +61,7 @@ Status key:
 | Section | Requirement | Status | Notes |
 |---|---|---|---|
 | 4.1 | TLS over TCP | Supported | `SolidSyslogTlsStream` wraps a TCP `Stream` (typically `SolidSyslogPosixTcpStream`) |
-| 4.2 | Default port 6514 | Partial | Caller-supplied via endpoint callback; no `SOLIDSYSLOG_TLS_DEFAULT_PORT` constant shipped. The Threaded example uses 6514 |
+| 4.2 | Default port 6514 | Supported | `SOLIDSYSLOG_TLS_DEFAULT_PORT` constant in `SolidSyslogTransport.h`, alongside the UDP and TCP defaults. Caller-supplied via the endpoint callback so multi-port deployments can override |
 | 5.1 | Server certificate validation | Supported | `SSL_VERIFY_PEER` + `SSL_CTX_load_verify_locations` + `SSL_set1_host` hostname check |
 | 5.2 | Mutual TLS (client certificate) | Supported | Optional `clientCertChainPath` / `clientKeyPath` on `SolidSyslogTlsStreamConfig`; `SSL_CTX_check_private_key` confirms pairing |
 | 5.3 | TLS 1.2+ cipher suites | Supported | `SSL_CTX_set_min_proto_version(TLS1_2_VERSION)` pinned; caller-supplied `cipherList` via `SSL_CTX_set_cipher_list` |

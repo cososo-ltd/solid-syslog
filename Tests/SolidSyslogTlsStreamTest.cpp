@@ -3,6 +3,7 @@
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogTlsStream.h"
+#include "SolidSyslogTransport.h"
 #include "StreamFake.h"
 #include <openssl/ssl.h>
 
@@ -819,4 +820,9 @@ TEST(SolidSyslogTlsStream, OpenPassesCtxFromNewToCheckPrivateKey)
     stream                     = SolidSyslogTlsStream_Create(&streamStorage, &config);
     SolidSyslogStream_Open(stream, addr);
     POINTERS_EQUAL(OpenSslFake_LastCtxReturned(), OpenSslFake_LastCheckPrivateKeyCtxArg());
+}
+
+TEST(SolidSyslogTlsStream, DefaultPortMatchesRfc5425)
+{
+    LONGS_EQUAL(6514, SOLIDSYSLOG_TLS_DEFAULT_PORT);
 }

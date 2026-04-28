@@ -1,12 +1,8 @@
 #include "ExampleTlsConfig.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogTransport.h"
 
 #include <stdint.h>
-
-enum
-{
-    EXAMPLE_TLS_PORT = 6514 /* RFC 5425 */
-};
 
 /* Test CA for BDD. Paths are relative to the working directory the example is
  * launched from (/workspaces/SolidSyslog in the BDD container). */
@@ -19,7 +15,7 @@ const char* ExampleTlsConfig_GetHost(void)
 
 uint16_t ExampleTlsConfig_GetPort(void)
 {
-    return (uint16_t) EXAMPLE_TLS_PORT;
+    return (uint16_t) SOLIDSYSLOG_TLS_DEFAULT_PORT;
 }
 
 const char* ExampleTlsConfig_GetCaBundlePath(void)
