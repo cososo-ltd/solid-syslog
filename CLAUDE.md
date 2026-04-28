@@ -312,7 +312,7 @@ live under `Core/Interface/`; platform-specific helpers (the `SolidSyslogPosix*`
 |---|---|---|
 | `SolidSyslog.h` | Application code that logs events | `SolidSyslogMessage`, `SolidSyslog_Log`, `SolidSyslog_Service` |
 | `SolidSyslogConfig.h` | System setup code | `SolidSyslogConfig`, `SolidSyslog_Create`, `SolidSyslog_Destroy`, `SolidSyslogStringFunction` |
-| `SolidSyslogFormatter.h` | Any code that formats into a bounded buffer | `SolidSyslogFormatter`, `SolidSyslogFormatterStorage`, `SOLIDSYSLOG_FORMATTER_STORAGE_SIZE`, `_Create`, `_FromStorage`, `_AsciiCharacter`, `_BoundedString`, `_Uint32`, `_TwoDigit`, `_FourDigit`, `_SixDigit`, `_AsFormattedBuffer`, `_Length` |
+| `SolidSyslogFormatter.h` | Any code that formats into a bounded buffer | `SolidSyslogFormatter`, `SolidSyslogFormatterStorage`, `SOLIDSYSLOG_FORMATTER_STORAGE_SIZE`, `_Create`, `_FromStorage`, `_AsciiCharacter`, `_Bom`, `_BoundedString`, `_EscapedString`, `_PrintUsAsciiString`, `_Uint32`, `_TwoDigit`, `_FourDigit`, `_SixDigit`, `_AsFormattedBuffer`, `_Length` |
 | `SolidSyslogPrival.h` | Any code that needs facility/severity enums | `SolidSyslog_Facility`, `SolidSyslog_Severity` |
 | `SolidSyslogTimestamp.h` | Any code that needs the timestamp struct | `SolidSyslogTimestamp`, `SolidSyslogClockFunction` |
 | `SolidSyslogEndpoint.h` | System setup code that supplies destination host/port (and version on changes) | `SolidSyslogEndpoint`, `SolidSyslogEndpointFunction`, `SolidSyslogEndpointVersionFunction`, `SOLIDSYSLOG_MAX_HOST_SIZE` |

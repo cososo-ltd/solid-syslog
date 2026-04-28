@@ -18,32 +18,33 @@ enum
     SOLIDSYSLOG_MAX_PROCESS_ID_SIZE = 129
 };
 
-static inline int16_t AbsoluteInt16(int16_t value);
-static inline bool    CaptureTimestamp(struct SolidSyslogTimestamp* ts, SolidSyslogClockFunction clock);
-static inline uint8_t CombineFacilityAndSeverity(uint8_t facility, uint8_t severity);
-static inline bool    FacilityIsValid(uint8_t facility);
-static inline bool    FetchFromStore(char* buf, size_t maxSize, size_t* len);
-static inline void    FormatCapturedTimestamp(struct SolidSyslogFormatter* f, const struct SolidSyslogTimestamp* ts);
-static inline void    FormatMessage(struct SolidSyslogFormatter* f, const struct SolidSyslogMessage* message);
-static inline void    FormatMsg(struct SolidSyslogFormatter* f, const char* msg);
-static inline void    FormatMsgId(struct SolidSyslogFormatter* f, const char* messageId);
-static inline void    FormatNilvalue(struct SolidSyslogFormatter* f);
-static inline void    FormatNonZeroUtcOffset(struct SolidSyslogFormatter* f, int16_t offsetMinutes);
-static inline void    FormatPrival(struct SolidSyslogFormatter* f, uint8_t prival);
-static inline void    FormatStringField(struct SolidSyslogFormatter* f, SolidSyslogStringFunction fn, size_t maxSize);
-static inline void    FormatStructuredData(struct SolidSyslogFormatter* f, struct SolidSyslogStructuredData** sd, size_t sdCount);
-static inline void    FormatTimestamp(struct SolidSyslogFormatter* f, SolidSyslogClockFunction clock);
-static inline void    FormatUtcOffset(struct SolidSyslogFormatter* f, int16_t offsetMinutes);
-static inline bool    IsServiceEnabled(void);
-static inline uint8_t MakePrival(const struct SolidSyslogMessage* message);
-static void           NilClock(struct SolidSyslogTimestamp* ts);
-static void           NilStringFunction(struct SolidSyslogFormatter* formatter);
-static inline bool    PrivalComponentsAreValid(uint8_t facility, uint8_t severity);
-static void           ProcessMessages(void);
-static inline bool    ReceiveFromBufferIntoStore(char* buf, size_t maxSize, size_t* len);
-static inline bool    SeverityIsValid(uint8_t severity);
-static inline bool    StringIsValid(const char* value);
-static inline bool    TimestampIsValid(const struct SolidSyslogTimestamp* ts);
+static inline int16_t     AbsoluteInt16(int16_t value);
+static inline bool        CaptureTimestamp(struct SolidSyslogTimestamp* ts, SolidSyslogClockFunction clock);
+static inline uint8_t     CombineFacilityAndSeverity(uint8_t facility, uint8_t severity);
+static inline bool        FacilityIsValid(uint8_t facility);
+static inline bool        FetchFromStore(char* buf, size_t maxSize, size_t* len);
+static inline void        FormatCapturedTimestamp(struct SolidSyslogFormatter* f, const struct SolidSyslogTimestamp* ts);
+static inline void        FormatMessage(struct SolidSyslogFormatter* f, const struct SolidSyslogMessage* message);
+static inline void        FormatMsg(struct SolidSyslogFormatter* f, const char* msg);
+static inline void        FormatMsgId(struct SolidSyslogFormatter* f, const char* messageId);
+static inline void        FormatNilvalue(struct SolidSyslogFormatter* f);
+static inline void        FormatNonZeroUtcOffset(struct SolidSyslogFormatter* f, int16_t offsetMinutes);
+static inline void        FormatPrival(struct SolidSyslogFormatter* f, uint8_t prival);
+static inline void        FormatStringField(struct SolidSyslogFormatter* f, SolidSyslogStringFunction fn, size_t maxSize);
+static inline void        FormatStructuredData(struct SolidSyslogFormatter* f, struct SolidSyslogStructuredData** sd, size_t sdCount);
+static inline void        FormatTimestamp(struct SolidSyslogFormatter* f, SolidSyslogClockFunction clock);
+static inline void        FormatUtcOffset(struct SolidSyslogFormatter* f, int16_t offsetMinutes);
+static inline bool        IsServiceEnabled(void);
+static inline uint8_t     MakePrival(const struct SolidSyslogMessage* message);
+static void               NilClock(struct SolidSyslogTimestamp* ts);
+static void               NilStringFunction(struct SolidSyslogFormatter* formatter);
+static inline bool        PrivalComponentsAreValid(uint8_t facility, uint8_t severity);
+static void               ProcessMessages(void);
+static inline bool        ReceiveFromBufferIntoStore(char* buf, size_t maxSize, size_t* len);
+static inline bool        SeverityIsValid(uint8_t severity);
+static inline const char* SkipLeadingBom(const char* msg);
+static inline bool        StringIsValid(const char* value);
+static inline bool        TimestampIsValid(const struct SolidSyslogTimestamp* ts);
 
 struct SolidSyslog
 {
@@ -371,8 +372,21 @@ static inline void FormatMsg(struct SolidSyslogFormatter* f, const char* msg)
     if (StringIsValid(msg))
     {
         SolidSyslogFormatter_AsciiCharacter(f, ' ');
-        SolidSyslogFormatter_BoundedString(f, msg, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
+        SolidSyslogFormatter_Bom(f);
+        SolidSyslogFormatter_BoundedString(f, SkipLeadingBom(msg), SOLIDSYSLOG_MAX_MESSAGE_SIZE);
     }
+}
+
+/* MSG body MUST start with the UTF-8 BOM per RFC 5424 §6.4. We always
+ * emit the BOM ourselves; if the caller already prefixed one, strip it
+ * so the wire frame contains exactly one. */
+static inline const char* SkipLeadingBom(const char* msg)
+{
+    if ((msg[0] == '\xEF') && (msg[1] == '\xBB') && (msg[2] == '\xBF'))
+    {
+        return msg + 3;
+    }
+    return msg;
 }
 
 static inline void FormatNilvalue(struct SolidSyslogFormatter* f)
