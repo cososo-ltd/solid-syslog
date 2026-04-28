@@ -501,32 +501,6 @@ jobs:
           echo "--- otelcol.err ---"
           cat Bdd/output/otelcol.err || true
 
-      - name: Hex dump received.jsonl on failure (S12.13 diag, drop after)
-        if: failure()
-        shell: pwsh
-        run: |
-          if (Test-Path Bdd/output/received.jsonl) {
-            Write-Host "--- received.jsonl size ---"
-            (Get-Item Bdd/output/received.jsonl).Length
-            Write-Host "--- received.jsonl head (utf-8 text) ---"
-            Get-Content Bdd/output/received.jsonl -Encoding utf8 -TotalCount 5
-            Write-Host "--- received.jsonl head (hex dump) ---"
-            $bytes = [System.IO.File]::ReadAllBytes("Bdd/output/received.jsonl")
-            $hex = [System.BitConverter]::ToString($bytes[0..([Math]::Min(2047,$bytes.Length-1))]) -replace '-',' '
-            Write-Host $hex
-          } else {
-            Write-Host "Bdd/output/received.jsonl not present"
-          }
-
-      - name: Upload received.jsonl on failure (S12.13 diag, drop after)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: received-jsonl-bdd-windows-otel
-          path: Bdd/output/received.jsonl
-          retention-days: 1
-          if-no-files-found: ignore
-
   bdd-linux-syslog-ng:
     needs: build-linux-gcc
     runs-on: ubuntu-latest
