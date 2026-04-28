@@ -684,6 +684,17 @@ TEST(SolidSyslog, MessageTruncatedWhenExceedingBuffer)
     STRCMP_EQUAL(expected.c_str(), SyslogMsg(lastMessage()).c_str());
 }
 
+TEST(SolidSyslog, BomIsPreservedWhenMessageBodyTruncates)
+{
+    /* When the body overflows the wire-frame budget, BoundedString clips
+     * the body but the BOM — written before the body — must remain
+     * present. Pins the FormatMsg ordering: BOM first, body second. */
+    std::string longMsg(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 'X');
+    message.msg = longMsg.c_str();
+    Log();
+    CHECK(SyslogMsgHasBom(lastMessage()));
+}
+
 TEST(SolidSyslog, HugeMessageDoesNotCorruptMemory)
 {
     std::string hugeMsg(10000, 'Z');
