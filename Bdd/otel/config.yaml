@@ -1,13 +1,19 @@
 # OpenTelemetry Collector Contrib config — Windows BDD oracle.
-# Receives RFC 5424 syslog over UDP on 127.0.0.1:5514 and writes each
-# parsed log record as a JSON line to Bdd/output/received.jsonl.
+# Receives RFC 5424 syslog over UDP and TCP on 127.0.0.1:5514 and writes
+# each parsed log record as a JSON line to Bdd/output/received.jsonl.
 #
 # Used by the bdd-windows runner as a Windows-native replacement for
 # syslog-ng (no WSL/Wine/Docker needed).
+#
+# UDP and TCP share port 5514 — they're separate sockets, so the
+# kernel keeps them apart. Mirrors the Linux syslog-ng setup which
+# listens on the same port via both transports.
 
 receivers:
   syslog:
     udp:
+      listen_address: "127.0.0.1:5514"
+    tcp:
       listen_address: "127.0.0.1:5514"
     protocol: rfc5424
 
