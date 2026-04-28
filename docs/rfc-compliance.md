@@ -50,10 +50,10 @@ Status key:
 | 3.2 | Sender initiates TCP connection | Supported | `SolidSyslogStreamSender` connects lazily on first send (S03.04) |
 | 3.2 | Default port 601 | Supported | `SOLIDSYSLOG_TCP_DEFAULT_PORT = 601` per IANA assignment (defined in `Core/Interface/SolidSyslogTransport.h`) |
 | 3.4.1 | Octet counting framing | Supported | `MSG-LEN SP MSG` prefix on every send |
-| 3.4.2 | Non-transparent framing (LF trailer) | Not supported | Octet counting is the recommended method |
-| 3.5 | Session closure handling | Supported | On send failure the stream is closed; the next Send transparently reconnects (S3.4) |
-| 3.5 | Handle receiver-initiated close | Supported | Detected via send failure path — same reconnect-on-next-Send mechanism (S3.4) |
-| 3.5 | Address rotation without app restart | Supported | App bumps `endpointVersion`; sender Disconnects and reconnects on next Send (S3.4) |
+| 3.4.2 | Non-transparent framing (LF trailer) | N/A | RFC 6587 octet counting (§3.4.1) is the recommended method and is what the library ships; non-transparent framing is the legacy alternative |
+| 3.5 | Session closure handling | Supported | On send failure the stream is closed; the next Send transparently reconnects (S03.04) |
+| 3.5 | Handle receiver-initiated close | Supported | Detected via send failure path — same reconnect-on-next-Send mechanism (S03.04) |
+| 3.5 | Address rotation without app restart | Supported | App bumps `endpointVersion`; sender Disconnects and reconnects on next Send (S03.04) |
 | — | Partial write handling (send returns short) | Supported | A short return from `send()` is treated as failure: `Send` returns false, the caller closes and reconnects on the next attempt, store-and-forward replays the message on the fresh socket. `SO_SNDTIMEO` is set at socket open (5 s, hard-coded — see `Platform/Posix/Source/SolidSyslogPosixTcpStream.c` and `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`) so a wedged peer can't make a single `SolidSyslog_Service` call hang indefinitely. On POSIX, `EINTR` is the only retried errno (portability shim for kernels without `SA_RESTART`); `EAGAIN`/`EWOULDBLOCK` (timeout) and any other error propagate as failure. Winsock has no signal-interruption semantics on `send()`, so the EINTR retry path is omitted; `WSAETIMEDOUT` (timeout) and any other error propagate as failure identically. |
 
 ## RFC 5425 — TLS Transport Mapping for Syslog
@@ -75,4 +75,4 @@ Status key:
 | RFC 5424 | 17 | 17 | 0 | 0 | 0 |
 | RFC 5426 | 6 | 4 | 0 | 0 | 2 |
 | RFC 6587 | 8 | 7 | 0 | 0 | 1 |
-| RFC 5425 | 7 | 6 | 1 | 0 | 0 |
+| RFC 5425 | 7 | 7 | 0 | 0 | 0 |
