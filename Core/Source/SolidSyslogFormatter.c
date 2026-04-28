@@ -1,5 +1,6 @@
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogMacros.h"
+#include "SolidSyslogUtf8.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -48,19 +49,14 @@ static inline bool   CodepointFits(size_t codepointLength, size_t remainingDecod
 static inline bool   Fits(const struct EscapedContext* context, size_t decodedAdvance);
 static inline bool   HasCapacity(const struct SolidSyslogFormatter* formatter);
 static inline bool   IsAboveUnicodeMaxEncoding(char lead, char continuation1);
-static inline bool   IsFourByteLead(char byte);
 static inline bool   IsOverlongFourByteEncoding(char lead, char continuation1);
 static inline bool   IsOverlongThreeByteEncoding(char lead, char continuation1);
 static inline bool   IsOverlongTwoByteLead(char byte);
 static inline bool   IsAsciiCharacter(char value);
 static inline bool   IsExhausted(const struct EscapedContext* context);
 static inline bool   IsPrintableUsAscii(char value);
-static inline bool   IsThreeByteLead(char byte);
-static inline bool   IsTwoByteLead(char byte);
 static inline bool   IsUtf16SurrogateEncoding(char lead, char continuation1);
-static inline bool   IsUtf8Continuation(char byte);
 static inline bool   IsValidUtf8FourByte(char lead, char continuation1, char continuation2, char continuation3);
-static inline bool   IsValidUtf8SingleByte(char byte);
 static inline bool   IsValidUtf8ThreeByte(char lead, char continuation1, char continuation2);
 static inline bool   IsValidUtf8TwoByte(char lead, char continuation1);
 static inline bool   NeedsEscape(char value);
@@ -174,7 +170,7 @@ static inline size_t Utf8CodepointLength(const char* source)
 {
     size_t length = 0;
 
-    if (IsValidUtf8SingleByte(source[0]))
+    if (SolidSyslogUtf8_IsAsciiByte(source[0]))
     {
         length = 1;
     }
@@ -194,19 +190,9 @@ static inline size_t Utf8CodepointLength(const char* source)
     return length;
 }
 
-static inline bool IsValidUtf8SingleByte(char byte)
-{
-    return (byte & 0x80) == 0;
-}
-
 static inline bool IsValidUtf8TwoByte(char lead, char continuation1)
 {
-    return IsTwoByteLead(lead) && !IsOverlongTwoByteLead(lead) && IsUtf8Continuation(continuation1);
-}
-
-static inline bool IsTwoByteLead(char byte)
-{
-    return (byte & 0xE0) == 0xC0;
+    return SolidSyslogUtf8_IsTwoByteLead(lead) && !IsOverlongTwoByteLead(lead) && SolidSyslogUtf8_IsContinuationByte(continuation1);
 }
 
 static inline bool IsOverlongTwoByteLead(char byte)
@@ -214,20 +200,10 @@ static inline bool IsOverlongTwoByteLead(char byte)
     return (byte & 0xFE) == 0xC0;
 }
 
-static inline bool IsUtf8Continuation(char byte)
-{
-    return (byte & 0xC0) == 0x80;
-}
-
 static inline bool IsValidUtf8ThreeByte(char lead, char continuation1, char continuation2)
 {
-    return IsThreeByteLead(lead) && IsUtf8Continuation(continuation1) && IsUtf8Continuation(continuation2) &&
+    return SolidSyslogUtf8_IsThreeByteLead(lead) && SolidSyslogUtf8_IsContinuationByte(continuation1) && SolidSyslogUtf8_IsContinuationByte(continuation2) &&
            !IsOverlongThreeByteEncoding(lead, continuation1) && !IsUtf16SurrogateEncoding(lead, continuation1);
-}
-
-static inline bool IsThreeByteLead(char byte)
-{
-    return (byte & 0xF0) == 0xE0;
 }
 
 static inline bool IsOverlongThreeByteEncoding(char lead, char continuation1)
@@ -242,13 +218,9 @@ static inline bool IsUtf16SurrogateEncoding(char lead, char continuation1)
 
 static inline bool IsValidUtf8FourByte(char lead, char continuation1, char continuation2, char continuation3)
 {
-    return IsFourByteLead(lead) && IsUtf8Continuation(continuation1) && IsUtf8Continuation(continuation2) && IsUtf8Continuation(continuation3) &&
-           !IsOverlongFourByteEncoding(lead, continuation1) && !IsAboveUnicodeMaxEncoding(lead, continuation1);
-}
-
-static inline bool IsFourByteLead(char byte)
-{
-    return (byte & 0xF8) == 0xF0;
+    return SolidSyslogUtf8_IsFourByteLead(lead) && SolidSyslogUtf8_IsContinuationByte(continuation1) && SolidSyslogUtf8_IsContinuationByte(continuation2) &&
+           SolidSyslogUtf8_IsContinuationByte(continuation3) && !IsOverlongFourByteEncoding(lead, continuation1) &&
+           !IsAboveUnicodeMaxEncoding(lead, continuation1);
 }
 
 static inline bool IsOverlongFourByteEncoding(char lead, char continuation1)
@@ -465,15 +437,16 @@ static inline void TrimTruncatedMultiByteTail(struct SolidSyslogFormatter* forma
     size_t p        = formatter->position;
     size_t trimFrom = p;
 
-    if ((p >= 1) && (IsTwoByteLead(buffer[p - 1]) || IsThreeByteLead(buffer[p - 1]) || IsFourByteLead(buffer[p - 1])))
+    if ((p >= 1) &&
+        (SolidSyslogUtf8_IsTwoByteLead(buffer[p - 1]) || SolidSyslogUtf8_IsThreeByteLead(buffer[p - 1]) || SolidSyslogUtf8_IsFourByteLead(buffer[p - 1])))
     {
         trimFrom = p - 1;
     }
-    else if ((p >= 2) && (IsThreeByteLead(buffer[p - 2]) || IsFourByteLead(buffer[p - 2])))
+    else if ((p >= 2) && (SolidSyslogUtf8_IsThreeByteLead(buffer[p - 2]) || SolidSyslogUtf8_IsFourByteLead(buffer[p - 2])))
     {
         trimFrom = p - 2;
     }
-    else if ((p >= 3) && IsFourByteLead(buffer[p - 3]))
+    else if ((p >= 3) && SolidSyslogUtf8_IsFourByteLead(buffer[p - 3]))
     {
         trimFrom = p - 3;
     }

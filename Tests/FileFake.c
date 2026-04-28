@@ -1,5 +1,6 @@
 #include "FileFake.h"
 #include "SafeString.h"
+#include "SolidSyslog.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogMacros.h"
 #include "TestAssert.h"
@@ -8,7 +9,13 @@
 
 enum
 {
-    FILEFAKE_MAX_SIZE  = 4096,
+    /* Per-file storage. Sized to comfortably hold the worst-case test
+     * scenario, which writes up to two SOLIDSYSLOG_MAX_MESSAGE_SIZE
+     * records per file plus record metadata and integrity bytes. The
+     * 4x multiplier provides headroom for tests that pre-seed file
+     * content before opening the store. Auto-adapts when
+     * SOLIDSYSLOG_MAX_MESSAGE_SIZE is tuned. */
+    FILEFAKE_MAX_SIZE  = 4 * SOLIDSYSLOG_MAX_MESSAGE_SIZE,
     FILEFAKE_MAX_FILES = 101,
     FILEFAKE_MAX_PATH  = 128
 };

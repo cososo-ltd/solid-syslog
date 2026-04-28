@@ -1,21 +1,17 @@
 #include "SenderFake.h"
+#include "SolidSyslog.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "TestUtils.h"
 
 #include <stdlib.h>
 #include <string.h>
 
-enum
-{
-    SENDERFAKE_MAX_BUFFER_SIZE = 1024
-};
-
 struct SenderFake
 {
     struct SolidSyslogSender base;
     int                      sendCount;
     int                      disconnectCount;
-    char                     lastBuffer[SENDERFAKE_MAX_BUFFER_SIZE];
+    char                     lastBuffer[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t                   lastSize;
     bool                     failNextSend;
 };

@@ -1,4 +1,5 @@
 #include "CppUTest/TestHarness.h"
+#include "DatagramFake.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogGetAddrInfoResolver.h"
@@ -7,6 +8,7 @@
 #include "SolidSyslogSender.h"
 #include "SocketFake.h"
 #include <array>
+#include <cstdint>
 #include <netinet/in.h>
 
 // clang-format off
@@ -556,4 +558,159 @@ TEST(SolidSyslogUdpSenderFailure, NoEndpointConfiguredSendsToPortZero)
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
     LONGS_EQUAL(1, SocketFake_SendtoCallCount());
     LONGS_EQUAL(0, SocketFake_LastPort());
+}
+
+// clang-format off
+TEST_GROUP(SolidSyslogUdpSenderRetry)
+{
+    struct SolidSyslogResolver* resolver = nullptr;
+    struct SolidSyslogDatagram* datagram = nullptr;
+    // cppcheck-suppress constVariablePointer -- Send requires non-const self; false positive from macro expansion
+    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
+    struct SolidSyslogSender* sender = nullptr;
+
+    void setup() override
+    {
+        SocketFake_Reset();
+        endpointGetHost = GetDefaultHost;
+        endpointVersion = 0;
+        endpointGetPort = GetDefaultPort;
+        resolver        = SolidSyslogGetAddrInfoResolver_Create();
+        datagram        = DatagramFake_Create();
+        struct SolidSyslogUdpSenderConfig config = {resolver, datagram, TestEndpoint, TestEndpointVersion};
+        // cppcheck-suppress unreadVariable -- read by tests; cppcheck does not model CppUTest lifecycle
+        sender = SolidSyslogUdpSender_Create(&config);
+    }
+
+    void teardown() override
+    {
+        SolidSyslogUdpSender_Destroy();
+        DatagramFake_Destroy(datagram);
+        SolidSyslogGetAddrInfoResolver_Destroy();
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogUdpSenderRetry, SuccessfulSendDoesNotQueryMaxPayload)
+{
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    LONGS_EQUAL(0, DatagramFake_MaxPayloadCallCount(datagram));
+}
+
+TEST(SolidSyslogUdpSenderRetry, OversizeQueriesMaxPayloadAndRetries)
+{
+    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_SENT);
+    DatagramFake_SetMaxPayload(datagram, 3);
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    LONGS_EQUAL(1, DatagramFake_MaxPayloadCallCount(datagram));
+    LONGS_EQUAL(2, DatagramFake_SendCallCount(datagram));
+}
+
+TEST(SolidSyslogUdpSenderRetry, OversizeRetryTrimsBufferToMaxPayload)
+{
+    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_SENT);
+    DatagramFake_SetMaxPayload(datagram, 3);
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    LONGS_EQUAL(3, DatagramFake_SendSize(datagram, 1));
+}
+
+TEST(SolidSyslogUdpSenderRetry, OversizeRetrySucceedsReturnsTrue)
+{
+    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_SENT);
+    DatagramFake_SetMaxPayload(datagram, 3);
+    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+}
+
+/* Buffer "ab" + é (0xC3 0xA9): MaxPayload=3 cuts mid-é at the start byte,
+ * walk-back drops the partial codepoint and trims to 2 bytes. */
+TEST(SolidSyslogUdpSenderRetry, OversizeRetryWalksBackToCodepointBoundary)
+{
+    const uint8_t payload[] = {0x61, 0x62, 0xC3, 0xA9};
+    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_SENT);
+    DatagramFake_SetMaxPayload(datagram, 3);
+    SolidSyslogSender_Send(sender, payload, sizeof(payload));
+    LONGS_EQUAL(2, DatagramFake_SendSize(datagram, 1));
+}
+
+/* Double-OVERSIZE means the kernel disagreed with its own reported
+ * MaxPayload — impossible-shouldn't-happen but if it did, returning
+ * false would loop the buffered algorithm forever on an undeliverable.
+ * Swallow: drop the message and return true so the caller moves on. */
+TEST(SolidSyslogUdpSenderRetry, DoubleOversizeReturnsTrueToAvoidPermanentLoop)
+{
+    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    DatagramFake_SetMaxPayload(datagram, 3);
+    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+}
+
+TEST(SolidSyslogUdpSenderRetry, DoubleOversizeDoesNotSendThird)
+{
+    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    DatagramFake_SetMaxPayload(datagram, 3);
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    LONGS_EQUAL(2, DatagramFake_SendCallCount(datagram));
+}
+
+TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadSkipsRetrySend)
+{
+    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    DatagramFake_SetMaxPayload(datagram, 0);
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    LONGS_EQUAL(1, DatagramFake_SendCallCount(datagram));
+}
+
+/* Trimmed length 0 means the message physically can't fit the path —
+ * looping won't help, so we swallow and report success. The Buffered/
+ * Service algorithm discards rather than retrying forever. */
+TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadReturnsTrueToAvoidPermanentLoop)
+{
+    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    DatagramFake_SetMaxPayload(datagram, 0);
+    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+}
+
+/* Retry sendto failing with non-OVERSIZE error (e.g. ECONNREFUSED on
+ * connected UDP) is a TRANSIENT condition — return false so the
+ * Buffered/Service algorithm keeps the message for retry. */
+TEST(SolidSyslogUdpSenderRetry, RetryFailedNonOversizeReturnsFalse)
+{
+    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_FAILED);
+    DatagramFake_SetMaxPayload(datagram, 3);
+    CHECK_FALSE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+}
+
+TEST(SolidSyslogUdpSenderRetry, MaxPayloadLargerThanMessageCapsTrimToMessageSize)
+{
+    /* MaxPayload > size can happen when the kernel reports EMSGSIZE for
+     * a transient reason but the path MTU it surfaces is larger than
+     * the original message. The trim must cap at the message size to
+     * avoid reading past the buffer. */
+    const uint8_t payload[] = {0x61, 0x62, 0x63};
+    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_SENT);
+    DatagramFake_SetMaxPayload(datagram, 9999);
+    SolidSyslogSender_Send(sender, payload, sizeof(payload));
+    LONGS_EQUAL(sizeof(payload), DatagramFake_SendSize(datagram, 1));
+}
+
+TEST(SolidSyslogUdpSenderRetry, NonOversizeFailureDoesNotRetry)
+{
+    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_FAILED);
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    LONGS_EQUAL(1, DatagramFake_SendCallCount(datagram));
+    LONGS_EQUAL(0, DatagramFake_MaxPayloadCallCount(datagram));
+}
+
+TEST(SolidSyslogUdpSenderRetry, NonOversizeFailureReturnsFalse)
+{
+    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_FAILED);
+    CHECK_FALSE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
 }

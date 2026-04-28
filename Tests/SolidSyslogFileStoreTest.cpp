@@ -13,9 +13,17 @@ static const size_t      TEST_DATA_LEN    = 5;
 
 enum
 {
-    TEST_BUF_SIZE      = 512,
-    SENTINEL           = 'Z',
-    TEST_MAX_FILE_SIZE = 4096,
+    TEST_BUF_SIZE = SOLIDSYSLOG_MAX_MESSAGE_SIZE,
+    SENTINEL      = 'Z',
+    /* Mirrors the private RECORD_OVERHEAD in SolidSyslogFileStore.c:
+     * MAGIC_SIZE(2) + RECORD_LENGTH_SIZE(2) + SENT_FLAG_SIZE(1). */
+    TEST_RECORD_OVERHEAD  = 5,
+    TEST_RECORDS_PER_FILE = 2,
+    /* Sized to fit TEST_RECORDS_PER_FILE worst-case records — the worst
+     * case being max-size data plus max-integrity bytes. Auto-adapts
+     * when SOLIDSYSLOG_MAX_MESSAGE_SIZE or the integrity policy bound
+     * are tuned. */
+    TEST_MAX_FILE_SIZE = TEST_RECORDS_PER_FILE * (SOLIDSYSLOG_MAX_MESSAGE_SIZE + TEST_RECORD_OVERHEAD + SOLIDSYSLOG_MAX_INTEGRITY_SIZE),
     TEST_MAX_FILES     = 2
 };
 

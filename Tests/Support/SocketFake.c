@@ -1,5 +1,6 @@
 #include "SocketFake.h"
 #include "SafeString.h"
+#include "SolidSyslog.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
@@ -9,10 +10,12 @@
 
 enum
 {
-    SOCKETFAKE_MAX_BUFFER_SIZE = 2048
+    SOCKETFAKE_MAX_BUFFER_SIZE = SOLIDSYSLOG_MAX_MESSAGE_SIZE
 };
 
 static bool               sendtoFails;
+static bool               nextSendtoShouldFailWithErrno;
+static int                nextSendtoErrno;
 static int                sendtoCallCount;
 static char               lastBufCopy[SOCKETFAKE_MAX_BUFFER_SIZE];
 static size_t             lastLen;
@@ -20,6 +23,10 @@ static int                lastFlags;
 static struct sockaddr_in lastAddr;
 static socklen_t          lastAddrLen;
 static int                lastSendtoFd;
+
+static int  ipMtuValue;
+static bool ipMtuLookupFails;
+static int  getSockOptCallCount;
 
 static bool socketFails;
 static int  socketCallCount;
@@ -85,22 +92,24 @@ void SocketFake_Reset(void)
 {
     /* Reset errno so a stale value from a prior test (notably EINTR set via
      * FailNextSendWithErrno) cannot leak into the next test's retry loop. */
-    errno                       = 0;
-    sendtoFails                 = false;
-    sendtoCallCount             = 0;
-    lastBufCopy[0]              = '\0';
-    lastLen                     = 0;
-    lastFlags                   = 0;
-    lastAddr                    = (struct sockaddr_in) {0};
-    lastAddrLen                 = 0;
-    lastSendtoFd                = -1;
-    sendFails                   = false;
-    sendFailOnCall              = -1;
-    sendCallCount               = 0;
-    sendReturnOverride          = false;
-    sendReturnValue             = 0;
-    nextSendShouldFailWithErrno = false;
-    nextSendErrno               = 0;
+    errno                         = 0;
+    sendtoFails                   = false;
+    nextSendtoShouldFailWithErrno = false;
+    nextSendtoErrno               = 0;
+    sendtoCallCount               = 0;
+    lastBufCopy[0]                = '\0';
+    lastLen                       = 0;
+    lastFlags                     = 0;
+    lastAddr                      = (struct sockaddr_in) {0};
+    lastAddrLen                   = 0;
+    lastSendtoFd                  = -1;
+    sendFails                     = false;
+    sendFailOnCall                = -1;
+    sendCallCount                 = 0;
+    sendReturnOverride            = false;
+    sendReturnValue               = 0;
+    nextSendShouldFailWithErrno   = false;
+    nextSendErrno                 = 0;
     for (int i = 0; i < SOCKETFAKE_MAX_SEND_CALLS; i++)
     {
         sendBufCopy[i][0] = '\0';
@@ -121,20 +130,23 @@ void SocketFake_Reset(void)
         setSockOptLevels[i]   = 0;
         setSockOptOptnames[i] = 0;
     }
-    socketFails       = false;
-    socketCallCount   = 0;
-    socketFd          = -1;
-    lastSocketDomain  = 0;
-    lastSocketType    = 0;
-    closeCallCount    = 0;
-    lastClosedFd      = -1;
-    recvCallCount     = 0;
-    recvReturn        = 0;
-    lastRecvFd        = -1;
-    lastRecvBuf       = NULL;
-    lastRecvLen       = 0;
-    lastRecvFlags     = 0;
-    lastAddrString[0] = '\0';
+    getSockOptCallCount = 0;
+    ipMtuValue          = 0;
+    ipMtuLookupFails    = false;
+    socketFails         = false;
+    socketCallCount     = 0;
+    socketFd            = -1;
+    lastSocketDomain    = 0;
+    lastSocketType      = 0;
+    closeCallCount      = 0;
+    lastClosedFd        = -1;
+    recvCallCount       = 0;
+    recvReturn          = 0;
+    lastRecvFd          = -1;
+    lastRecvBuf         = NULL;
+    lastRecvLen         = 0;
+    lastRecvFlags       = 0;
+    lastAddrString[0]   = '\0';
 
     getAddrInfoFails            = false;
     getAddrInfoCallCount        = 0;
@@ -152,6 +164,27 @@ void SocketFake_Reset(void)
 void SocketFake_SetSendtoFails(bool fails)
 {
     sendtoFails = fails;
+}
+
+void SocketFake_FailNextSendtoWithErrno(int errnoValue)
+{
+    nextSendtoShouldFailWithErrno = true;
+    nextSendtoErrno               = errnoValue;
+}
+
+void SocketFake_SetIpMtu(int mtu)
+{
+    ipMtuValue = mtu;
+}
+
+void SocketFake_SetIpMtuLookupFails(bool fails)
+{
+    ipMtuLookupFails = fails;
+}
+
+int SocketFake_GetSockOptCallCount(void)
+{
+    return getSockOptCallCount;
 }
 
 /* sendto accessors */
@@ -471,7 +504,44 @@ ssize_t sendto(int sockfd, const void* buf, size_t len, int flags, const struct 
     lastFlags             = flags;
     lastAddr              = *(const struct sockaddr_in*) dest_addr;
     lastAddrLen           = addrlen;
-    return sendtoFails ? (ssize_t) -1 : (ssize_t) len;
+    if (nextSendtoShouldFailWithErrno)
+    {
+        errno                         = nextSendtoErrno;
+        nextSendtoShouldFailWithErrno = false;
+        return (ssize_t) -1;
+    }
+    if (sendtoFails)
+    {
+        /* Set a deterministic errno so a stale value (notably EMSGSIZE
+         * left by a prior FailNextSendtoWithErrno call) cannot leak
+         * into the production code's error-classification logic. */
+        errno = EIO;
+        return (ssize_t) -1;
+    }
+    return (ssize_t) len;
+}
+
+// clang-format off
+// NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name,bugprone-easily-swappable-parameters) -- POSIX API; parameter names differ from glibc internal names
+int getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optlen)
+// clang-format on
+{
+    (void) sockfd;
+    getSockOptCallCount++;
+    if ((level == IPPROTO_IP) && (optname == IP_MTU))
+    {
+        if (ipMtuLookupFails)
+        {
+            return -1;
+        }
+        if ((optval != NULL) && (optlen != NULL) && (*optlen >= sizeof(int)))
+        {
+            *(int*) optval = ipMtuValue;
+            *optlen        = sizeof(int);
+        }
+        return 0;
+    }
+    return 0;
 }
 
 // clang-format off

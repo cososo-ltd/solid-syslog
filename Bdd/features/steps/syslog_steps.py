@@ -35,6 +35,13 @@ SYSLOG_NG_CONF = "Bdd/syslog-ng/syslog-ng.conf"
 SYSLOG_NG_FULL_CONF = "Bdd/syslog-ng/syslog-ng-full.conf"
 SYSLOG_NG_UDP_ONLY_CONF = "Bdd/syslog-ng/syslog-ng-udp-only.conf"
 
+# Mirrors SOLIDSYSLOG_MAX_MESSAGE_SIZE from Core/Interface/SolidSyslog.h. Bump
+# the two together. The store_capacity scenarios depend on it because production
+# clamps max-file-size up to MAX + RECORD_OVERHEAD + integritySize at runtime,
+# so the file size used by the file store is MAX-coupled even when the feature
+# file specifies a smaller value.
+SOLIDSYSLOG_MAX_MESSAGE_SIZE = 2048
+
 
 def clean_store_files():
     """Remove all rotating store files matching the path prefix."""
@@ -435,6 +442,8 @@ def build_threaded_command(context, transport, no_sd=False):
         cmd.extend(["--max-file-size", str(context.store_max_file_size)])
     if getattr(context, "store_discard_policy", None):
         cmd.extend(["--discard-policy", context.store_discard_policy])
+    if getattr(context, "message_body", None):
+        cmd.extend(["--message", context.message_body])
     if no_sd:
         cmd.append("--no-sd")
     if getattr(context, "halt_exit", False):
@@ -480,6 +489,15 @@ def step_file_store_enabled_with_config(context, max_files, max_file_size, polic
     context.store_max_files = max_files
     context.store_max_file_size = max_file_size
     context.store_discard_policy = policy
+    # Size each MSG so ~4 records pack per (clamped) store file. The store
+    # capacity scenarios were designed around this packing — multi-record
+    # files give OLDEST and NEWEST symmetric retention (both keep 7 of 10
+    # sent), which the seqId assertions depend on. Production clamps file
+    # size up to MAX + 7 (MIN_MAX_FILE_SIZE), so per-record budget is
+    # ~MAX/4. With ~95-byte RFC 5424 header + 7-byte record overhead, a
+    # body of MAX/5 - 50 lands a comfortable mid-band: 4 records fit, 5
+    # don't. Update if SOLIDSYSLOG_MAX_MESSAGE_SIZE moves.
+    context.message_body = "X" * (SOLIDSYSLOG_MAX_MESSAGE_SIZE // 5 - 50)
     clean_store_files()
 
 
@@ -607,6 +625,59 @@ def step_example_sends_with_msgid_and_body(context, msgid, body):
 @when("the example program sends {count:d} syslog messages")
 def step_example_sends_multiple(context, count):
     run_example(context, expected_messages=count)
+
+
+@when("the example program sends a UTF-8 message that fits the path MTU")
+def step_example_sends_utf8_within_mtu(context):
+    # Comfortably under the typical 1472-byte path payload, with multi-byte
+    # UTF-8 mixed in. Tests the no-trim path: the message goes out whole.
+    msg = "Hello, " + ("é" * 100) + " - mixed " + ("€" * 50) + " - end"
+    context.sent_msg = msg
+    run_example(context, ["--message", msg])
+
+
+@when("the example program sends an oversize UTF-8 message")
+def step_example_sends_oversize_utf8(context):
+    # Build a message that overflows the path MTU. The ASCII prefix keeps
+    # the prefix-equality assertion robust; the long run of '€' (3 bytes
+    # each) ensures the trim point almost certainly lands mid-codepoint,
+    # exercising the walk-back to a clean codepoint boundary.
+    # ~1600 MSG bytes + ~80 RFC 5424 header = ~1680 wire bytes,
+    # well above the docker-bridge path MTU's 1472-byte payload limit.
+    msg = ("X" * 100) + ("€" * 500)
+    context.sent_msg = msg
+    run_example(context, ["--message", msg])
+
+
+@then("the received message is byte-identical to the sent message")
+def step_check_msg_byte_identical(context):
+    received = context.fields.get("MSG", "")
+    assert received == context.sent_msg, (
+        f"Expected {len(context.sent_msg.encode('utf-8'))} bytes byte-identical, "
+        f"got {len(received.encode('utf-8'))} bytes that differ"
+    )
+
+
+@then("the received message is shorter than the sent message")
+def step_check_msg_shorter(context):
+    received = context.fields.get("MSG", "")
+    sent_bytes = len(context.sent_msg.encode("utf-8"))
+    received_bytes = len(received.encode("utf-8"))
+    assert received_bytes < sent_bytes, (
+        f"Expected trim — sent {sent_bytes} bytes, received {received_bytes}"
+    )
+
+
+@then("the received message is a clean prefix of the sent message")
+def step_check_msg_clean_prefix(context):
+    received = context.fields.get("MSG", "")
+    assert context.sent_msg.startswith(received), (
+        "Received is not a clean prefix of sent — trim left orphan bytes "
+        "or modified content. "
+        f"Sent starts: {context.sent_msg[:60]!r}; "
+        f"received starts: {received[:60]!r}; "
+        f"received ends: {received[-40:]!r}"
+    )
 
 
 @then('syslog-ng receives a message with priority "{priority}"')

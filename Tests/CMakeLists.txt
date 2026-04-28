@@ -19,12 +19,15 @@ set(TEST_SOURCES
     SolidSyslogCrc16PolicyTest.cpp
     SolidSyslogPrivalTest.cpp
     SolidSyslogFormatterTest.cpp
+    SolidSyslogUdpPayloadTest.cpp
     BufferFakeTest.cpp
     BufferFake.c
     StoreFakeTest.cpp
     StoreFake.c
     SenderFakeTest.cpp
     SenderFake.c
+    DatagramFake.c
+    DatagramFakeTest.cpp
     StringFakeTest.cpp
     StringFake.c
     FileFakeTest.cpp

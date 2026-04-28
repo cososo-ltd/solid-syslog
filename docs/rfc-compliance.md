@@ -28,8 +28,8 @@ Status key:
 | 6.3.4 | origin SD — software, swVersion | Supported | `SolidSyslogOriginSd`. `ip` and `enterpriseId` not implemented |
 | 6.3.5 | meta SD — sequenceId | Supported | `SolidSyslogMetaSd`. Starts at 1, increments per message. `sysUpTime` and `language` not implemented |
 | 6.3.5, 7.3.1 | meta SD — sequenceId wraps at 2147483647 to 1 | Supported | `SolidSyslogAtomicCounter` wraps via CAS-loop in [1, 2³¹ - 1]; never returns 0; never above max. AtomicOps seam pluggable per platform — `StdAtomicOps` (C11) on POSIX/clang/gcc/modern MSVC; `WindowsAtomicOps` (`InterlockedCompareExchange`) on legacy MSVC. sequenceId is assigned at the point of message raise (application-layer originator), preserving end-to-end loss-detection across the internal buffer / store-and-forward / transport pipeline. Trade-off: under concurrent raise from multiple threads, a small reorder window may occur in transmitted IDs (adjacent IDs may invert, since buffer/transport scheduling between raise and wire is not under library control). All IDs remain unique and non-zero — SIEMs performing gap detection identify message loss correctly; SIEMs requiring strict monotonic ordering should sort by timestamp |
-| 6.4 | MSG — UTF-8 preferred | Supported | RFC 3629 UTF-8 validated at the formatter primitives (`SolidSyslogFormatter_BoundedString`), with ill-formed input substituted per-byte with U+FFFD (Unicode §3.9). No BOM prefix. MSG body truncation at the wire-buffer limit is the SIEM's responsibility (out-of-scope per [S12.10](https://github.com/DavidCozens/solid-syslog/issues/121)) |
-| 8.1 | Message size — max 2048 recommended | Supported | Default `SOLIDSYSLOG_MAX_MESSAGE_SIZE` = 512. Configurable via CMake |
+| 6.4 | MSG — UTF-8 preferred | Supported | RFC 3629 UTF-8 validated at the formatter primitives (`SolidSyslogFormatter_BoundedString`), with ill-formed input substituted per-byte with U+FFFD (Unicode §3.9). No BOM prefix. Truncation preserves codepoint boundaries at both layers: the formatter clips at `SOLIDSYSLOG_MAX_MESSAGE_SIZE` without splitting a codepoint ([S12.10](https://github.com/DavidCozens/solid-syslog/issues/121)), and on UDP the sender walks back over any partial codepoint when the kernel reports `EMSGSIZE` for the path MTU ([S12.12](https://github.com/DavidCozens/solid-syslog/issues/210)). TCP/TLS streams fragment transparently at the transport layer and so do not need a path-MTU trim |
+| 8.1 | Message size — max 2048 recommended | Supported | Default `SOLIDSYSLOG_MAX_MESSAGE_SIZE` = 2048, matching the §8.1 SHOULD value. Per-target override via a CMake variable is planned in [E21 #217](https://github.com/DavidCozens/solid-syslog/issues/217) for memory-constrained MCUs |
 | 9 | PRINTUSASCII in header fields (codes 33-126) | Supported | Non-compliant bytes substituted with `?` at format time (HOSTNAME, APP-NAME, PROCID, MSGID) |
 
 ## RFC 5426 — Transmission of Syslog Messages over UDP
@@ -39,7 +39,7 @@ Status key:
 | 3.1 | One message per UDP datagram | Supported | `SolidSyslogUdpSender` sends one datagram per `Send` call |
 | 3.2 | Default port 514 | Supported | `SOLIDSYSLOG_UDP_DEFAULT_PORT` = 514 |
 | 3.2 | Message fits in single datagram | Supported | Bounded by `SOLIDSYSLOG_MAX_MESSAGE_SIZE` |
-| 3.2 | Avoid IP fragmentation (respect MTU) | Partial | Default 512 avoids fragmentation on most networks. No dynamic MTU discovery |
+| 3.2 | Avoid IP fragmentation (respect MTU) | Supported | `SolidSyslogUdpSender` lazily connects on first send, enables Linux `IP_MTU_DISCOVER` / Windows equivalent with `IP_PMTUDISC_DO` so the kernel returns `EMSGSIZE` (Winsock `WSAEMSGSIZE`) for path-MTU oversize, queries the path MTU via `getsockopt(IP_MTU)`, and resends a UTF-8-safe trimmed datagram via `SolidSyslogUdpPayload_TrimToCodepointBoundary`. Falls back to `SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD = 1232` (RFC 8200 §5) when the MTU lookup fails ([S12.12](https://github.com/DavidCozens/solid-syslog/issues/210)) |
 | 3.3 | Unreliable delivery — no confirmation | N/A | Inherent in UDP. Caller should be aware |
 | 4 | No authentication/integrity/confidentiality | N/A | Use TLS transport for security — [E3](https://github.com/DavidCozens/solid-syslog/issues/5) |
 
@@ -73,6 +73,6 @@ Status key:
 | RFC | Total requirements | Supported | Partial | Planned | N/A |
 |---|---|---|---|---|---|
 | RFC 5424 | 17 | 17 | 0 | 0 | 0 |
-| RFC 5426 | 6 | 3 | 1 | 0 | 2 |
+| RFC 5426 | 6 | 4 | 0 | 0 | 2 |
 | RFC 6587 | 8 | 7 | 0 | 0 | 1 |
 | RFC 5425 | 7 | 6 | 1 | 0 | 0 |

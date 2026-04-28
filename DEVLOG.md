@@ -1,5 +1,222 @@
 # Dev Log
 
+## 2026-04-28 — S12.12 PR #218 wrap-up: BOM follow-up, BDD diagnosis correction, CodeRabbit cleanup
+
+### Decisions
+- **Tagged `udp_mtu.feature` `@windows_wip` rather than chasing a Windows
+  fix in this PR.** The OTel collector's syslog receiver interprets
+  BOM-less UTF-8 as Latin-1 (RFC 5424 §6.4 requires a BOM the library
+  doesn't yet emit), and Windows loopback's ~65535-byte MTU never
+  triggers WSAEMSGSIZE for the message sizes we can produce inside
+  `SOLIDSYSLOG_MAX_MESSAGE_SIZE`. So the full-delivery scenario waits on
+  the BOM work; the oversize scenario is permanently POSIX-only by
+  virtue of loopback MTU. Both are documented in the feature header
+  with the BOM gap tracked as S12.13 (#219).
+- **The `store_capacity` BDD failures were a stale diagnosis, not a
+  fresh bug.** The first instinct (twice) was to edit the feature file
+  — bump `max-files 2 → 7 → 8` and add a "fills one file" step — on
+  the theory that PosixMessageQueueBuffer's `O_NONBLOCK` mq_send was
+  silently dropping a message under the post-bump 1500-byte payloads.
+  That theory walked the symptoms cleanly enough to be plausible, but
+  the actual cause was the MAX bump 512 → 2048 silently quadrupling the
+  production `MIN_MAX_FILE_SIZE` clamp. The feature file's
+  `max-file-size 520` clamps up to 2055 at runtime, so the same default
+  short messages now pack ~16 records per file instead of ~4 — total
+  capacity 32, no overflow with 10 sent, the discard policy never
+  engages.
+- **Compensate in the step layer, not the feature file.** Feature files
+  describe externally-visible behaviour and form the contract with the
+  PO; they shouldn't change as a side-effect of an internal constant
+  bump. Fix lives in `step_file_store_enabled_with_config`: size each
+  MSG to `SOLIDSYSLOG_MAX_MESSAGE_SIZE/5 - 50` bytes so ~4 records pack
+  per (clamped) file, restoring the original test design. The
+  `OLDEST`/`NEWEST` retention asymmetry that the prior session saw
+  (OLDEST keeps `maxFiles` records, NEWEST keeps `maxFiles − 1`) is
+  real but only visible when files hold one record each — at 4 records
+  per file the asymmetry collapses and both policies retain exactly 7
+  of 10 sent. The `1500-byte body + max-files=8` workaround was
+  swimming against that exact corner.
+- **`SOLIDSYSLOG_MAX_MESSAGE_SIZE` mirrored as a Python constant in
+  the steps module.** The store_capacity scenarios are now MAX-coupled
+  by design; mirroring the C constant at module scope makes the
+  dependency visible at the only place a future MAX bump needs to
+  update.
+- **README multi-instance limitation restored, narrowed to specific
+  senders.** CodeRabbit flagged the original wording as too narrow
+  (it had been worded as if only platform backends carried the
+  constraint). Restored a precise list — `SolidSyslogUdpSender`,
+  `SolidSyslogStreamSender`, `SolidSyslogSwitchingSender` — so
+  integrators get an actionable signal.
+- **`iec62443.md` SL1 row updated for connected-UDP error surfacing.**
+  S12.12 shifted UDP from blanket fire-and-forget to a connected-socket
+  model that surfaces local kernel failures (EMSGSIZE, ECONNREFUSED).
+  The "UDP is unreliable — messages may be lost silently" SL1
+  limitation is still accurate at the network-protocol level (mid-
+  transit drops remain silent), so the row keeps that caveat alongside
+  the new error-surface description.
+
+### Deferred
+
+- **`PosixMessageQueueBuffer` mq_send EAGAIN visibility** is still
+  worth doing as a follow-up — not because it caused the store_capacity
+  failures (it didn't), but because silent buffer drops are a real
+  observability gap for any future high-volume scenario. Tracked under
+  E12 #31.
+
+### Open questions
+- None.
+
+## 2026-04-28 — S12.12 UDP path-MTU clipping (slices 6–7, story complete)
+
+### Decisions
+- **Winsock parallel as a mechanical mirror of slice 5.** WinsockDatagram
+  gained the same lazy-connect, `IP_MTU_DISCOVER`, EMSGSIZE-detection,
+  and `IP_MTU` lookup as PosixDatagram. The seam was already
+  established as bare `Winsock_*` symbols — extending it with
+  `Winsock_connect`, `Winsock_setsockopt`, `Winsock_getsockopt`
+  matched the existing pattern. No `WinsockTcpStream_*` namespace
+  needed because those names weren't already in use by another
+  Windows module.
+- **`<ws2tcpip.h>` for the IP_MTU_DISCOVER family on Windows.**
+  Windows scatters `IP_MTU` / `IP_MTU_DISCOVER` / `IP_PMTUDISC_DO`
+  across `<ws2ipdef.h>`, which `<ws2tcpip.h>` pulls in. Without it
+  the constants are undeclared. Win10+ exposes the same numeric
+  values as Linux for the PMTUD policy enum, so the production code
+  reads identically across platforms.
+- **WSAGetLastError() instead of errno.** Winsock's per-thread last-
+  error API is the equivalent of POSIX `errno`. Test fake gained
+  `WinsockFake_FailNextSendtoWithLastError(int)` paralleling
+  `SocketFake_FailNextSendtoWithErrno(int)`.
+- **Bumped `SOLIDSYSLOG_MAX_MESSAGE_SIZE` 512 → 2048 in slice 7.**
+  RFC 5424 §6.1 says receivers SHOULD support 2048 over UDP, and
+  real-world syslog deployments routinely use 4–8 KB. The 512
+  default was conservative for the original embedded target. The
+  bump also unblocks the BDD path-MTU trim scenarios — at the new
+  default a max-size message produces ~2 KB of wire bytes, which
+  comfortably exceeds the docker-bridge MTU's 1472-byte payload
+  limit and triggers a real EMSGSIZE on the wire. A future CMake
+  override (E21 #217) lets memory-constrained MCUs reduce it, with
+  the BDD scenarios gated on the configured size.
+- **Test fakes derived from `SOLIDSYSLOG_MAX_MESSAGE_SIZE` rather
+  than hand-tuned constants.** SenderFake / SocketFake / WinsockFake
+  buffer caps and FileFake's per-file storage all auto-adapt now,
+  along with FileStoreTest's TEST_BUF_SIZE and TEST_MAX_FILE_SIZE.
+  TEST_MAX_FILE_SIZE includes `SOLIDSYSLOG_MAX_INTEGRITY_SIZE` so
+  the tests stay correct under any integrity policy. The bump
+  surfaced exactly the hand-tuning that the user had warned about
+  while writing the original FileStore tests.
+- **BDD trim scenarios use prefix-equality as the boundary check.**
+  The oversize scenario asserts (a) received bytes < sent bytes and
+  (b) `sent.startswith(received)` on the Python string form. The
+  prefix property fails iff the trim left orphan continuation
+  bytes — so a single, simple assertion catches "trim happened" and
+  "trim ended on a codepoint boundary" together. Robust regardless
+  of exactly which codepoint the trim landed on.
+- **Filed E21: Port-Time Configurability (#217).** Captures the
+  tunables (`SOLIDSYSLOG_MAX_MESSAGE_SIZE`, `SEND_TIMEOUT_*`),
+  documentation needs, and the gating dependency from S12.12's BDD
+  scenarios. Decomposition deferred until prioritised.
+
+### Deferred
+- **Switch `sendto` to `send` after connect** in PosixDatagram /
+  WinsockDatagram. Slightly more idiomatic on a connected socket;
+  kept the diff minimal because both kernels treat connected
+  `sendto` with addr arg correctly. Easy follow-up.
+- **`SolidSyslogUtf8.h` to `uint8_t`.** Whole-codebase cleanup once
+  S12.12 lands; would also unlock dropping the `(char)` casts at
+  UdpPayload's call sites. MISRA Rule 10.1 motivation.
+- **Address-mismatch detection in the Datagram impls.** Currently
+  `connect`s once per Open lifetime regardless of subsequent
+  addresses passed to SendTo. Safe in practice (UdpSender controls
+  lifecycle) but could be enforced if the contract were ever
+  broadened.
+- **CMake configurability of `SOLIDSYSLOG_MAX_MESSAGE_SIZE`** —
+  tracked in E21 (#217). When that lands, the BDD trim scenarios
+  need gating on the configured size being ≥ ~1500 to actually
+  trigger EMSGSIZE on the docker-bridge test path.
+
+### Open questions
+- None.
+
+## 2026-04-27 — S12.12 UDP path-MTU clipping (slices 1–5)
+
+### Decisions
+- **Slice the story before writing tests.** Six conceptual pieces in
+  the story body decompose cleanly into 7 slices (pure helpers ×2,
+  vtable widening, UdpSender retry, Posix wiring, Winsock wiring,
+  BDD). Slice ordering is bottom-up — each slice can be reviewed and
+  committed in isolation, the algorithm consumes the helpers, and the
+  retry loop is exercised against a `DatagramFake` before any real
+  socket plumbing lands.
+- **Datagram contract widened with a 3-state enum, not bool +
+  out-param.** `SOLIDSYSLOG_DATAGRAM_SENT / _OVERSIZE / _FAILED`
+  matches the project's vtable style (no out-params), is faketable
+  per-call, and keeps the dispatcher one-line. The `OVERSIZE` value
+  was added to the public enum in slice 3 even though no producer
+  emits it until slice 5 — that lets the retry algorithm in slice 4
+  read against the final contract rather than a stepping-stone.
+- **Lazy `connect()` in `PosixDatagram`, not address-on-Open.**
+  Original story wording suggested PMTUD setup "after `connect`",
+  which would have meant either changing `Datagram_Open` to take an
+  address (vtable churn, mirrors `Stream_Open`) or `connect`-ing
+  inside `SendTo`. Lazy connect on the first SendTo keeps the vtable
+  shape stable and matches `UdpSender`'s lifecycle — `UdpSender` does
+  Disconnect/Open on endpoint-version changes, so the connected
+  address never silently drifts. Documented assumption rather than
+  enforced address-equality check.
+- **Forward-scan rejected, backward-walk kept for `_TrimToCodepointBoundary`.**
+  Considered a forward scan that advances by codepoint length until
+  the next overshoots `length` — would have been single-return,
+  no early guards, and structurally simpler. Backward walk is O(1)
+  vs forward scan's O(n) over the buffer, and the EMSGSIZE retry
+  is the slow path so performance is irrelevant. Backward walk
+  decomposes into `FindLastCodepointStart` +
+  `LastCodepointExtendsPastCut` which read in plain English; that
+  beats the cleverer forward scan on clarity.
+- **DRY pass: extracted `SolidSyslogUtf8.h`.** UdpPayload was about
+  to duplicate the formatter's byte-level classifiers
+  (`IsTwoByteLead`, `IsThreeByteLead`, `IsFourByteLead`,
+  `IsUtf8Continuation`, `IsValidUtf8SingleByte`). Extracted as five
+  `static inline bool` classifiers in `Core/Source/SolidSyslogUtf8.h`,
+  formatter migrated to use them in the same slice. RFC 3629
+  validity guards (overlong, surrogate, above-Unicode) stay in the
+  formatter — they're rule-encoding, not byte-classification, and
+  only one consumer needs them.
+- **`char` parameter type kept for now.** Header uses `char` (signed
+  on most ABIs), matching the formatter's existing types. UdpPayload
+  uses `uint8_t` and casts at the boundary. MISRA Rule 10.1 on
+  bitwise ops on signed types is a flagged follow-up — flipping the
+  shared header to `uint8_t` is a separate cleanup.
+- **MISRA-leaning style applied throughout.** Single returns, fully
+  bracketed `if/else`, `if-else if` chains terminate with `else`,
+  `cppcoreguidelines-init-variables` honoured, uppercase `U`
+  literal suffixes. The trailing redundant-`else` (when result is
+  already initialised to the default) is acceptable to drop —
+  initialisation already proves "all paths considered".
+
+### Deferred
+- **Slice 6 — `WinsockDatagram` parallel.** Lazy `connect()`,
+  `IP_MTU_DISCOVER`, `WSAEMSGSIZE` → OVERSIZE, `getsockopt(IP_MTU)`
+  with fallback. Needs `WinsockFake` additions paralleling slice 5's
+  `SocketFake` work.
+- **Slice 7 — BDD scenarios.** Loopback-MTU constraint to actually
+  exercise the retry path; two scenarios per the story body
+  (full-delivery-at-safe-payload + clean-UTF-8-truncation).
+- **`SolidSyslogUtf8.h` to `uint8_t`.** Whole-codebase cleanup once
+  S12.12 lands; would also unlock dropping the `(char)` casts at
+  UdpPayload's call sites.
+- **`PosixDatagram` switch from `sendto` to `send` after connect.**
+  Slightly more idiomatic on a connected socket. Kept `sendto` to
+  minimise diff; Linux's connected-`sendto` semantics are
+  well-defined.
+- **Address-mismatch detection in `PosixDatagram`.** Currently
+  `connect`s once per Open lifetime regardless of subsequent
+  addresses. Safe in practice (UdpSender controls lifecycle) but
+  could be enforced if the contract were ever broadened.
+
+### Open questions
+- None.
+
 ## 2026-04-26 — S13.16 WindowsFile — file abstraction using `<io.h>`
 
 ### Decisions

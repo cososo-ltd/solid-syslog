@@ -22,6 +22,7 @@ EXTERN_C_BEGIN
 
     /* sendto configuration */
     void WinsockFake_SetSendtoFails(bool fails);
+    void WinsockFake_FailNextSendtoWithLastError(int wsaError);
 
     /* sendto accessors */
     int         WinsockFake_SendtoCallCount(void);
@@ -70,6 +71,13 @@ EXTERN_C_BEGIN
     int  WinsockFake_LastSetSockOptOptname(void);
     bool WinsockFake_HasSetSockOpt(int level, int optname);
 
+    /* getsockopt configuration (currently models IPPROTO_IP / IP_MTU only) */
+    void WinsockFake_SetIpMtu(int mtu);
+    void WinsockFake_SetIpMtuLookupFails(bool fails);
+
+    /* getsockopt accessors */
+    int WinsockFake_GetSockOptCallCount(void);
+
     /* closesocket accessors */
     int    WinsockFake_CloseCallCount(void);
     SOCKET WinsockFake_LastClosedFd(void);
@@ -92,6 +100,7 @@ EXTERN_C_BEGIN
     int WSAAPI    WinsockFake_send(SOCKET s, const char* buf, int len, int flags);
     int WSAAPI    WinsockFake_recv(SOCKET s, char* buf, int len, int flags);
     int WSAAPI    WinsockFake_setsockopt(SOCKET s, int level, int optname, const char* optval, int optlen);
+    int WSAAPI    WinsockFake_getsockopt(SOCKET s, int level, int optname, char* optval, int* optlen);
     int WSAAPI    WinsockFake_closesocket(SOCKET s);
     int WSAAPI    WinsockFake_getaddrinfo(const char* node, const char* service, const struct addrinfo* hints, struct addrinfo** res);
     void WSAAPI   WinsockFake_freeaddrinfo(struct addrinfo * res);

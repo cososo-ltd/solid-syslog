@@ -1,18 +1,21 @@
 #include "WinsockFake.h"
 #include "SafeString.h"
+#include "SolidSyslog.h"
 #include <string.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
 enum
 {
-    WINSOCKFAKE_MAX_BUFFER_SIZE      = 2048,
+    WINSOCKFAKE_MAX_BUFFER_SIZE      = SOLIDSYSLOG_MAX_MESSAGE_SIZE,
     WINSOCKFAKE_MAX_HOSTNAME_SIZE    = 256,
     WINSOCKFAKE_MAX_SEND_CALLS       = 8,
     WINSOCKFAKE_MAX_SETSOCKOPT_CALLS = 8
 };
 
 static bool               sendtoFails;
+static bool               nextSendtoShouldFailWithLastError;
+static int                nextSendtoLastError;
 static int                sendtoCallCount;
 static char               lastBufCopy[WINSOCKFAKE_MAX_BUFFER_SIZE];
 static size_t             lastLen;
@@ -20,6 +23,10 @@ static int                lastFlags;
 static struct sockaddr_in lastAddr;
 static int                lastAddrLen;
 static SOCKET             lastSendtoFd;
+
+static int  ipMtuValue;
+static bool ipMtuLookupFails;
+static int  getSockOptCallCount;
 
 static bool   socketFails;
 static int    socketCallCount;
@@ -70,14 +77,17 @@ static int                freeAddrInfoCallCount;
 
 void WinsockFake_Reset(void)
 {
-    sendtoFails     = false;
-    sendtoCallCount = 0;
-    lastBufCopy[0]  = '\0';
-    lastLen         = 0;
-    lastFlags       = 0;
-    lastAddr        = (struct sockaddr_in) {0};
-    lastAddrLen     = 0;
-    lastSendtoFd    = INVALID_SOCKET;
+    WSASetLastError(0);
+    sendtoFails                       = false;
+    nextSendtoShouldFailWithLastError = false;
+    nextSendtoLastError               = 0;
+    sendtoCallCount                   = 0;
+    lastBufCopy[0]                    = '\0';
+    lastLen                           = 0;
+    lastFlags                         = 0;
+    lastAddr                          = (struct sockaddr_in) {0};
+    lastAddrLen                       = 0;
+    lastSendtoFd                      = INVALID_SOCKET;
 
     socketFails      = false;
     socketCallCount  = 0;
@@ -118,6 +128,9 @@ void WinsockFake_Reset(void)
         setSockOptLevels[i]   = 0;
         setSockOptOptnames[i] = 0;
     }
+    getSockOptCallCount = 0;
+    ipMtuValue          = 0;
+    ipMtuLookupFails    = false;
 
     closeCallCount = 0;
     lastClosedFd   = INVALID_SOCKET;
@@ -171,6 +184,27 @@ int WinsockFake_SocketType(void)
 void WinsockFake_SetSendtoFails(bool fails)
 {
     sendtoFails = fails;
+}
+
+void WinsockFake_FailNextSendtoWithLastError(int wsaError)
+{
+    nextSendtoShouldFailWithLastError = true;
+    nextSendtoLastError               = wsaError;
+}
+
+void WinsockFake_SetIpMtu(int mtu)
+{
+    ipMtuValue = mtu;
+}
+
+void WinsockFake_SetIpMtuLookupFails(bool fails)
+{
+    ipMtuLookupFails = fails;
+}
+
+int WinsockFake_GetSockOptCallCount(void)
+{
+    return getSockOptCallCount;
 }
 
 /* sendto accessors */
@@ -451,6 +485,12 @@ int WSAAPI WinsockFake_sendto(SOCKET s, const char* buf, int len, int flags, con
     {
         lastAddr = *(const struct sockaddr_in*) to;
     }
+    if (nextSendtoShouldFailWithLastError)
+    {
+        WSASetLastError(nextSendtoLastError);
+        nextSendtoShouldFailWithLastError = false;
+        return SOCKET_ERROR;
+    }
     return sendtoFails ? SOCKET_ERROR : len;
 }
 
@@ -512,6 +552,26 @@ int WSAAPI WinsockFake_setsockopt(SOCKET s, int level, int optname, const char* 
     setSockOptCallCount++;
     lastSetSockOptLevel   = level;
     lastSetSockOptOptname = optname;
+    return 0;
+}
+
+int WSAAPI WinsockFake_getsockopt(SOCKET s, int level, int optname, char* optval, int* optlen)
+{
+    (void) s;
+    getSockOptCallCount++;
+    if ((level == IPPROTO_IP) && (optname == IP_MTU))
+    {
+        if (ipMtuLookupFails)
+        {
+            return SOCKET_ERROR;
+        }
+        if ((optval != NULL) && (optlen != NULL) && (*optlen >= (int) sizeof(int)))
+        {
+            *(int*) optval = ipMtuValue;
+            *optlen        = (int) sizeof(int);
+        }
+        return 0;
+    }
     return 0;
 }
 

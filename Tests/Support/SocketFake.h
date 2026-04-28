@@ -12,6 +12,7 @@ EXTERN_C_BEGIN
 
     /* sendto configuration */
     void SocketFake_SetSendtoFails(bool fails);
+    void SocketFake_FailNextSendtoWithErrno(int errnoValue);
 
     /* sendto accessors */
     int         SocketFake_SendtoCallCount(void);
@@ -61,6 +62,13 @@ EXTERN_C_BEGIN
     int  SocketFake_LastSetSockOptLevel(void);
     int  SocketFake_LastSetSockOptOptname(void);
     bool SocketFake_HasSetSockOpt(int level, int optname);
+
+    /* getsockopt configuration (currently models IPPROTO_IP / IP_MTU only) */
+    void SocketFake_SetIpMtu(int mtu);
+    void SocketFake_SetIpMtuLookupFails(bool fails);
+
+    /* getsockopt accessors */
+    int SocketFake_GetSockOptCallCount(void);
 
     /* close accessors */
     int SocketFake_CloseCallCount(void);
