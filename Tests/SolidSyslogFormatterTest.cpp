@@ -927,3 +927,10 @@ TEST(SolidSyslogFormatter, PrintUsAsciiStringTruncationBoundsSubstitution)
 
     CHECK_FORMATTED("abc");
 }
+
+TEST(SolidSyslogFormatter, BomWritesUtf8ByteOrderMark)
+{
+    SolidSyslogFormatter_Bom(formatter);
+
+    CHECK_FORMATTED("\xEF\xBB\xBF");
+}

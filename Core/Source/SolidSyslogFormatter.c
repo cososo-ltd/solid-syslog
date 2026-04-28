@@ -27,6 +27,10 @@ static const char NON_PRINTABLE_SUBSTITUTE   = '?';
  * byte per Unicode §3.9 best practice for per-byte maximal subpart. */
 static const char REPLACEMENT_CHARACTER[] = {'\xEF', '\xBF', '\xBD'};
 
+/* UTF-8 byte order mark U+FEFF, required at the start of a UTF-8 MSG
+ * by RFC 5424 §6.4. */
+static const char UTF8_BOM[] = {'\xEF', '\xBB', '\xBF'};
+
 /* An escape pair on the wire ('\' + char) decodes back to the single
  * character it was escaping — one byte in the reader's decoder buffer. */
 static const size_t ESCAPED_CHARACTER_DECODED_LENGTH = 1;
@@ -99,6 +103,12 @@ void SolidSyslogFormatter_AsciiCharacter(struct SolidSyslogFormatter* formatter,
         value = NON_PRINTABLE_SUBSTITUTE;
     }
     WriteChar(formatter, value);
+    NullTerminate(formatter);
+}
+
+void SolidSyslogFormatter_Bom(struct SolidSyslogFormatter* formatter)
+{
+    WriteBytes(formatter, UTF8_BOM, sizeof(UTF8_BOM));
     NullTerminate(formatter);
 }
 
