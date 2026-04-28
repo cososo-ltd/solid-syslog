@@ -53,13 +53,13 @@ def line_count(path):
     """Return the number of lines in a file, or 0 if it doesn't exist."""
     if not os.path.exists(path):
         return 0
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return sum(1 for _ in f)
 
 
 def read_new_lines(path, skip):
     """Return all lines after the first 'skip' lines."""
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         lines = f.readlines()
     return [line.strip() for line in lines[skip:] if line.strip()]
 
@@ -92,7 +92,7 @@ def oracle_record_count(path, oracle_format):
     if oracle_format != "otel-jsonl":
         return line_count(path)
     count = 0
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -107,7 +107,7 @@ def read_new_oracle_records(path, oracle_format, skip):
     if not os.path.exists(path):
         return []
     records = []
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -121,7 +121,7 @@ def read_new_oracle_records(path, oracle_format, skip):
 
 def read_last_line(path):
     """Return the last non-empty line from a file."""
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         lines = f.readlines()
     for line in reversed(lines):
         if line.strip():
@@ -130,20 +130,6 @@ def read_last_line(path):
 
 
 UTF8_BOM_CHAR = "\ufeff"
-
-
-def _repair_otel_latin1_msg(msg):
-    """The OpenTelemetry Collector's rfc5424 syslog receiver decodes MSG
-    bytes as Latin-1 even when the RFC 5424 \u00a76.4 UTF-8 BOM is present, so a
-    UTF-8 multi-byte sequence on the wire shows up in the JSONL as several
-    Latin-1 chars (each high byte becomes its own U+00xx). Roundtrip
-    Latin-1 \u2192 UTF-8 to recover the original codepoints; if the string
-    contains any char that isn't representable in Latin-1, OTel did
-    decode it correctly and the original is returned unchanged."""
-    try:
-        return msg.encode("latin-1").decode("utf-8")
-    except (UnicodeEncodeError, UnicodeDecodeError):
-        return msg
 
 
 def _strip_msg_bom(msg):
@@ -248,7 +234,7 @@ def parse_otel_jsonl_line(line):
         fields["MSGID"] = msg_id
     msg = _otel_attribute(attrs, "message")
     if msg is not None:
-        fields["MSG"] = _strip_msg_bom(_repair_otel_latin1_msg(msg))
+        fields["MSG"] = _strip_msg_bom(msg)
 
     sd = _otel_attribute(attrs, "structured_data")
     if isinstance(sd, dict):
