@@ -855,6 +855,37 @@ def step_check_sw_version(context, value):
     )
 
 
+@then('the structured data contains language "{value}"')
+def step_check_language(context, value):
+    sd = context.fields.get("STRUCTURED_DATA", "")
+    # SD-PARAM-VALUE escapes ", \ and ] with a backslash (RFC 5424 §6.3.3),
+    # so the matcher must accept escape sequences inside the value rather
+    # than terminating at the first inner quote.
+    match = re.search(r'language="((?:\\.|[^"])*)"', sd)
+    assert match, (
+        f"No language found in structured data: {sd}"
+    )
+    actual = re.sub(r"\\(.)", r"\1", match.group(1))
+    assert actual == value, (
+        f"Expected language {value}, got {actual}"
+    )
+
+
+@then("the structured data contains sysUpTime as a decimal integer")
+def step_check_sys_up_time_shape(context):
+    sd = context.fields.get("STRUCTURED_DATA", "")
+    match = re.search(r'sysUpTime="(\d+)"', sd)
+    assert match, (
+        f"No sysUpTime found in structured data: {sd}"
+    )
+    # Live boot clocks (CLOCK_BOOTTIME / GetTickCount64) always read > 0 by the
+    # time the example program runs. Pinning > 0 catches a regression where the
+    # implementation collapses to a constant zero.
+    assert int(match.group(1)) > 0, (
+        f"Expected positive sysUpTime, got {match.group(1)} in structured data: {sd}"
+    )
+
+
 @then("syslog-ng receives {count:d} messages with sequential sequenceId values")
 def step_check_sequential_ids(context, count):
     assert context.message_count == count, (

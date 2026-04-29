@@ -10,6 +10,7 @@ if(HAVE_WINDOWS_PLATFORM)
         Source/SolidSyslogWindowsFile.c
         Source/SolidSyslogWindowsHostname.c
         Source/SolidSyslogWindowsProcessId.c
+        Source/SolidSyslogWindowsSysUpTime.c
     )
 endif()
 

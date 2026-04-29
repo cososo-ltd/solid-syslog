@@ -2,6 +2,7 @@
 #include "ExampleAppName.h"
 #include "ExampleCommandLine.h"
 #include "ExampleInteractive.h"
+#include "ExampleLanguage.h"
 #include "ExampleTcpConfig.h"
 #include "ExampleUdpConfig.h"
 #include "SolidSyslog.h"
@@ -16,6 +17,7 @@
 #include "SolidSyslogPosixDatagram.h"
 #include "SolidSyslogPosixHostname.h"
 #include "SolidSyslogPosixProcessId.h"
+#include "SolidSyslogPosixSysUpTime.h"
 #include "SolidSyslogPosixTcpStream.h"
 #include "SolidSyslogStdAtomicOps.h"
 #include "SolidSyslogStreamSender.h"
@@ -72,10 +74,15 @@ int SolidSyslogExample_Run(int argc, char* argv[])
         };
         sender = SolidSyslogUdpSender_Create(&udpConfig);
     }
-    struct SolidSyslogBuffer*         buffer      = SolidSyslogNullBuffer_Create(sender);
-    struct SolidSyslogStore*          store       = SolidSyslogNullStore_Create();
-    struct SolidSyslogAtomicCounter*  counter     = SolidSyslogAtomicCounter_Create(SolidSyslogStdAtomicOps_Create());
-    struct SolidSyslogStructuredData* metaSd      = SolidSyslogMetaSd_Create(counter);
+    struct SolidSyslogBuffer*        buffer     = SolidSyslogNullBuffer_Create(sender);
+    struct SolidSyslogStore*         store      = SolidSyslogNullStore_Create();
+    struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create(SolidSyslogStdAtomicOps_Create());
+    struct SolidSyslogMetaSdConfig   metaConfig = {
+          .counter      = counter,
+          .getSysUpTime = SolidSyslogPosixSysUpTime_Get,
+          .getLanguage  = ExampleLanguage_Get,
+    };
+    struct SolidSyslogStructuredData* metaSd      = SolidSyslogMetaSd_Create(&metaConfig);
     struct SolidSyslogStructuredData* timeQuality = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
     struct SolidSyslogStructuredData* originSd    = SolidSyslogOriginSd_Create("SolidSyslogExample", "0.7.0");
 

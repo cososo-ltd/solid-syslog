@@ -1,11 +1,13 @@
 # Platform-agnostic tests always included.
 set(EXAMPLE_TEST_SOURCES
     ExampleAppNameTest.cpp
+    ExampleLanguageTest.cpp
     main.cpp
 )
 
 set(EXAMPLE_PRODUCTION_SOURCES
     ${CMAKE_SOURCE_DIR}/Example/Common/ExampleAppName.c
+    ${CMAKE_SOURCE_DIR}/Example/Common/ExampleLanguage.c
 )
 
 set(EXAMPLE_TEST_INCLUDE_DIRS

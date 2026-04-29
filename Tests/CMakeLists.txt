@@ -68,6 +68,7 @@ if(SOLIDSYSLOG_POSIX)
     list(APPEND TEST_SOURCES
         SolidSyslogPosixClockTest.cpp
         SolidSyslogPosixMessageQueueBufferTest.cpp
+        SolidSyslogPosixSysUpTimeTest.cpp
         ClockFakeTest.cpp
         SolidSyslogUdpSenderTest.cpp
         SolidSyslogStreamSenderTest.cpp
@@ -97,6 +98,7 @@ if(HAVE_WINDOWS_PLATFORM)
         SolidSyslogWindowsFileTest.cpp
         SolidSyslogWindowsHostnameTest.cpp
         SolidSyslogWindowsProcessIdTest.cpp
+        SolidSyslogWindowsSysUpTimeTest.cpp
     )
 endif()
 

@@ -1,5 +1,82 @@
 # Dev Log
 
+## 2026-04-29 — S07.06 meta SD: sysUpTime and language
+
+### Decisions
+
+- **Per-message callback for `language`, not static-at-Create.**
+  Hostname and processId are wired the same way and the user's real
+  deployments include cases that switch language at runtime — shipping
+  vessels with multilingual crews, instrumentation used across English
+  / Spanish shifts. Static-at-Create would have been one line shorter
+  and is ruled out by exactly those two examples.
+- **Reuse `SolidSyslogStringFunction` for `language`, not a new
+  `SolidSyslogLanguageFunction` typedef.** Same shape (callback writes
+  into a `SolidSyslogFormatter*`), same lifetime contract, same escape
+  responsibility — minting a parallel typedef would be cosmetic.
+  Extracted the typedef from `SolidSyslogConfig.h` into its own header
+  `SolidSyslogStringFunction.h` so `SolidSyslogMetaSd.h` can pull just
+  the typedef without dragging in the application-level config. Mirrors
+  the precedent of `SolidSyslogClockFunction` living in
+  `SolidSyslogTimestamp.h` rather than `SolidSyslogConfig.h`.
+- **Real `CLOCK_BOOTTIME` / `GetTickCount64` in the example, shape
+  assertion in BDD.** Considered the alternative (a fake returning a
+  known value plus a literal-equality assertion) — that would have been
+  tighter but the BDD wiring would no longer match what an integrator
+  would write. Unit tests already pin exact-value behaviour with the
+  fake; BDD's job is to prove "real source feeds through the pipeline
+  intact", and shape assertion (positive decimal integer) does that
+  honestly.
+- **Counter joins sysUpTime and language as optional.** RFC §7.3 marks
+  all three OPTIONAL; the production code now handles every subset
+  uniformly via `if (handle != NULL) { emit_prefix; emit_value;
+  emit_quote; }`. The previous `Increment(NULL)` UB hazard is gone.
+  The "all three NULL" empty-meta case is an RFC SHOULD violation we
+  don't enforce — integrator typo, not a library problem.
+- **uint32 wrap is the spec, not a workaround.** RFC 3418 `TimeTicks`
+  is a 32-bit counter wrapping at ~497 days. The cast `(uint32_t)
+  hundredths` at the end of the math pipeline gives that wrap for
+  free; no overflow handling needed. The boundary tests pin
+  `UINT32_MAX = 4294967295` and the wrap-to-4 case for proof.
+- **Mid-flow correction on test rigour.** First slice-2 commit had
+  one `FakeSysUpTime → 12345` test, which the user (correctly) flagged
+  as insufficient — a hardcoded `sysUpTime="12345"` in production
+  would have passed it. Reworked into a stateful fake plus four tests
+  (12345, 99999, 0, UINT32_MAX) before continuing. Second mid-flow
+  correction extracted `useSysUpTime(N)` as a TEST_GROUP helper after
+  the same setup repeated four times, then a third extracted
+  `CHECK_SYSUPTIME(expected)` as a `#define` macro mirroring the
+  `CHECK_PRIVAL` / `CHECK_TIMESTAMP_*` convention in
+  `SolidSyslogTest.cpp`. Both patterns now live in memory under
+  `feedback_test_helpers_for_repeated_setup.md`.
+
+### Deferred
+
+- **CLOCK_BOOTTIME portability beyond Linux.** `CLOCK_BOOTTIME` is a
+  Linux extension, not portable to macOS / BSD. The library currently
+  targets Linux + Windows and the devcontainer is Ubuntu. If we ever
+  add a non-Linux POSIX target, the natural fallback is
+  `CLOCK_MONOTONIC` (POSIX-portable, "since some unspecified epoch" —
+  RFC 3418-acceptable since "since management portion init" is
+  satisfiable by any monotonically-increasing reading).
+- **OTel BDD validation.** Slice 8 ran `behave` against the syslog-ng
+  oracle in the devcontainer (3 scenarios pass). The OTel oracle path
+  is exercised cross-platform in CI (`bdd-windows-otel`) — locally
+  the syslog-ng oracle is sufficient because
+  `_render_otel_structured_data` collapses both representations to
+  identical `[meta key="value"]` text before the regex steps run.
+
+### Open questions
+
+- **Should `language` ever sanitise its own input?** Today the library
+  trusts the caller's callback to produce a valid BCP 47 tag. The
+  formatter handles SD-PARAM-VALUE escaping (`"`, `\`, `]`) but not
+  BCP 47 tag-syntax validation. If a deployment supplies garbage we
+  emit it verbatim (escaped). The unit tests cover the escape side;
+  no test today covers "library produces garbage when callback gives
+  garbage" because that's defined-correct behaviour. Worth revisiting
+  if a future story adds typed-tag support.
+
 ## 2026-04-28 — S12.12 PR #218 wrap-up: BOM follow-up, BDD diagnosis correction, CodeRabbit cleanup
 
 ### Decisions

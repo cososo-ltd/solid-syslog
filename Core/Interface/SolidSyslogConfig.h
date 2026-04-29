@@ -2,6 +2,7 @@
 #define SOLIDSYSLOGCONFIG_H
 
 #include "SolidSyslog.h"
+#include "SolidSyslogStringFunction.h"
 #include "SolidSyslogTimestamp.h"
 
 #include <stddef.h>
@@ -13,8 +14,6 @@ EXTERN_C_BEGIN
     struct SolidSyslogSender;
     struct SolidSyslogStore;
     struct SolidSyslogStructuredData;
-
-    typedef void (*SolidSyslogStringFunction)(struct SolidSyslogFormatter* formatter);
 
     struct SolidSyslogConfig
     {

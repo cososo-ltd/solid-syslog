@@ -5,12 +5,35 @@
 #include "SolidSyslogStructuredData.h"
 #include "TestAtomicOps.h"
 
+#include <cstdint>
 #include <cstring>
 
 enum
 {
     TEST_BUFFER_SIZE = 256
 };
+
+static uint32_t fakeSysUpTimeValue;
+
+static uint32_t FakeSysUpTime_Get()
+{
+    return fakeSysUpTimeValue;
+}
+
+static const char* fakeLanguageContent;
+static size_t      fakeLanguageMaxLength;
+
+static void FakeLanguage_Get(struct SolidSyslogFormatter* formatter)
+{
+    SolidSyslogFormatter_EscapedString(formatter, fakeLanguageContent, fakeLanguageMaxLength);
+}
+
+// NOLINTBEGIN(cppcoreguidelines-macro-usage) -- macros preserve __FILE__/__LINE__ in test failure output
+#define CHECK_SEQUENCEID(expected) STRCMP_EQUAL("[meta sequenceId=\"" expected "\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter))
+#define CHECK_SYSUPTIME(expected) STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"" expected "\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter))
+#define CHECK_LANGUAGE(expected) STRCMP_EQUAL("[meta sequenceId=\"1\" language=\"" expected "\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter))
+
+// NOLINTEND(cppcoreguidelines-macro-usage)
 
 // clang-format off
 TEST_GROUP(SolidSyslogMetaSd)
@@ -19,6 +42,7 @@ TEST_GROUP(SolidSyslogMetaSd)
     SolidSyslogAtomicCounter* counter;
     // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogStructuredData* sd;
+    SolidSyslogMetaSdConfig config;
     SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(TEST_BUFFER_SIZE)];
     // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogFormatter* formatter;
@@ -27,7 +51,12 @@ TEST_GROUP(SolidSyslogMetaSd)
     {
         formatter = SolidSyslogFormatter_Create(storage, TEST_BUFFER_SIZE);
         counter = SolidSyslogAtomicCounter_Create(TestAtomicOps_Create());
-        sd = SolidSyslogMetaSd_Create(counter);
+        fakeSysUpTimeValue = 0;
+        fakeLanguageContent = nullptr;
+        fakeLanguageMaxLength = 0;
+        config = {};
+        config.counter = counter;
+        sd = SolidSyslogMetaSd_Create(&config);
     }
 
     void teardown() override
@@ -35,6 +64,27 @@ TEST_GROUP(SolidSyslogMetaSd)
         SolidSyslogMetaSd_Destroy();
         SolidSyslogAtomicCounter_Destroy();
         TestAtomicOps_Destroy();
+    }
+
+    void recreate()
+    {
+        SolidSyslogMetaSd_Destroy();
+        sd = SolidSyslogMetaSd_Create(&config);
+    }
+
+    void useSysUpTime(uint32_t value)
+    {
+        fakeSysUpTimeValue = value;
+        config.getSysUpTime = FakeSysUpTime_Get;
+        recreate();
+    }
+
+    void useLanguage(const char* tag)
+    {
+        fakeLanguageContent = tag;
+        fakeLanguageMaxLength = strlen(tag);
+        config.getLanguage = FakeLanguage_Get;
+        recreate();
     }
 
     void format() const
@@ -58,7 +108,7 @@ TEST(SolidSyslogMetaSd, CreateReturnsNonNull)
 TEST(SolidSyslogMetaSd, FirstFormatProducesSequenceId1)
 {
     format();
-    STRCMP_EQUAL("[meta sequenceId=\"1\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+    CHECK_SEQUENCEID("1");
 }
 
 TEST(SolidSyslogMetaSd, SecondFormatProducesSequenceId2)
@@ -66,7 +116,7 @@ TEST(SolidSyslogMetaSd, SecondFormatProducesSequenceId2)
     format();
     resetFormatter();
     format();
-    STRCMP_EQUAL("[meta sequenceId=\"2\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+    CHECK_SEQUENCEID("2");
 }
 
 TEST(SolidSyslogMetaSd, ThirdFormatProducesSequenceId3)
@@ -75,7 +125,7 @@ TEST(SolidSyslogMetaSd, ThirdFormatProducesSequenceId3)
     format();
     resetFormatter();
     format();
-    STRCMP_EQUAL("[meta sequenceId=\"3\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+    CHECK_SEQUENCEID("3");
 }
 
 TEST(SolidSyslogMetaSd, FormatAdvancesFormatterLength)
@@ -89,4 +139,92 @@ TEST(SolidSyslogMetaSd, FormatAdvancesFormatterLength)
 TEST(SolidSyslogMetaSd, DestroyDoesNotCrash)
 {
     // Covered by teardown — this test documents the intent
+}
+
+TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeFromCallback)
+{
+    useSysUpTime(12345);
+    format();
+    CHECK_SYSUPTIME("12345");
+}
+
+TEST(SolidSyslogMetaSd, FormatIncludesDifferentSysUpTimeFromCallback)
+{
+    useSysUpTime(99999);
+    format();
+    CHECK_SYSUPTIME("99999");
+}
+
+TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeAtZero)
+{
+    useSysUpTime(0);
+    format();
+    CHECK_SYSUPTIME("0");
+}
+
+TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeAtMaxUint32)
+{
+    useSysUpTime(UINT32_MAX);
+    format();
+    CHECK_SYSUPTIME("4294967295");
+}
+
+TEST(SolidSyslogMetaSd, FormatIncludesLanguageFromCallback)
+{
+    useLanguage("en-GB");
+    format();
+    CHECK_LANGUAGE("en-GB");
+}
+
+TEST(SolidSyslogMetaSd, FormatIncludesDifferentLanguageFromCallback)
+{
+    useLanguage("fr");
+    format();
+    CHECK_LANGUAGE("fr");
+}
+
+TEST(SolidSyslogMetaSd, FormatEscapesQuoteInLanguage)
+{
+    useLanguage("a\"b");
+    format();
+    CHECK_LANGUAGE("a\\\"b");
+}
+
+TEST(SolidSyslogMetaSd, FormatEscapesBackslashInLanguage)
+{
+    useLanguage("a\\b");
+    format();
+    CHECK_LANGUAGE("a\\\\b");
+}
+
+TEST(SolidSyslogMetaSd, FormatEscapesBracketInLanguage)
+{
+    useLanguage("a]b");
+    format();
+    CHECK_LANGUAGE("a\\]b");
+}
+
+TEST(SolidSyslogMetaSd, FormatWithAllThreeParamsEmitsAllThree)
+{
+    useSysUpTime(12345);
+    useLanguage("en-GB");
+    format();
+    STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"12345\" language=\"en-GB\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+}
+
+TEST(SolidSyslogMetaSd, FormatWithoutCounterOmitsSequenceId)
+{
+    config.counter = nullptr;
+    useSysUpTime(12345);
+    useLanguage("en-GB");
+    format();
+    STRCMP_EQUAL("[meta sysUpTime=\"12345\" language=\"en-GB\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+}
+
+TEST(SolidSyslogMetaSd, FormatWithNoConfiguredParamsEmitsBareMetaElement)
+{
+    config.counter = nullptr;
+    recreate();
+    format();
+    STRCMP_EQUAL("[meta]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }

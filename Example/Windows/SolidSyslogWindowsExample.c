@@ -1,6 +1,7 @@
 #include "SolidSyslogWindowsExample.h"
 #include "ExampleAppName.h"
 #include "ExampleInteractive.h"
+#include "ExampleLanguage.h"
 #include "ExampleWindowsCommandLine.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
@@ -19,6 +20,7 @@
 #include "SolidSyslogWindowsClock.h"
 #include "SolidSyslogWindowsHostname.h"
 #include "SolidSyslogWindowsProcessId.h"
+#include "SolidSyslogWindowsSysUpTime.h"
 #include "SolidSyslogWinsockDatagram.h"
 #include "SolidSyslogWinsockResolver.h"
 #include "SolidSyslogWinsockTcpStream.h"
@@ -98,10 +100,15 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
             .resolver = resolver, .datagram = datagram, .endpoint = GetEndpoint, .endpointVersion = GetEndpointVersion};
         sender = SolidSyslogUdpSender_Create(&udpConfig);
     }
-    struct SolidSyslogBuffer*         buffer      = SolidSyslogNullBuffer_Create(sender);
-    struct SolidSyslogStore*          store       = SolidSyslogNullStore_Create();
-    struct SolidSyslogAtomicCounter*  counter     = SolidSyslogAtomicCounter_Create(SolidSyslogWindowsAtomicOps_Create());
-    struct SolidSyslogStructuredData* metaSd      = SolidSyslogMetaSd_Create(counter);
+    struct SolidSyslogBuffer*        buffer     = SolidSyslogNullBuffer_Create(sender);
+    struct SolidSyslogStore*         store      = SolidSyslogNullStore_Create();
+    struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create(SolidSyslogWindowsAtomicOps_Create());
+    struct SolidSyslogMetaSdConfig   metaConfig = {
+          .counter      = counter,
+          .getSysUpTime = SolidSyslogWindowsSysUpTime_Get,
+          .getLanguage  = ExampleLanguage_Get,
+    };
+    struct SolidSyslogStructuredData* metaSd      = SolidSyslogMetaSd_Create(&metaConfig);
     struct SolidSyslogStructuredData* timeQuality = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
     struct SolidSyslogStructuredData* originSd    = SolidSyslogOriginSd_Create("SolidSyslogExample", "0.7.0");
 

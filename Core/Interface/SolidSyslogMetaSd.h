@@ -2,13 +2,25 @@
 #define SOLIDSYSLOGMETASD_H
 
 #include "ExternC.h"
+#include "SolidSyslogStringFunction.h"
+
+#include <stdint.h>
 
 EXTERN_C_BEGIN
 
     struct SolidSyslogAtomicCounter;
     struct SolidSyslogStructuredData;
 
-    struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(struct SolidSyslogAtomicCounter * counter);
+    typedef uint32_t (*SolidSyslogSysUpTimeFunction)(void); // NOLINT(modernize-redundant-void-arg) -- C idiom
+
+    struct SolidSyslogMetaSdConfig
+    {
+        struct SolidSyslogAtomicCounter* counter;
+        SolidSyslogSysUpTimeFunction     getSysUpTime;
+        SolidSyslogStringFunction        getLanguage;
+    };
+
+    struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSyslogMetaSdConfig* config);
     void                              SolidSyslogMetaSd_Destroy(void);
 
 EXTERN_C_END

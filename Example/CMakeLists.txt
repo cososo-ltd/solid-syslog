@@ -2,6 +2,7 @@ if(SOLIDSYSLOG_POSIX)
     set(COMMON_SOURCES
         Common/ExampleAppName.c
         Common/ExampleCommandLine.c
+        Common/ExampleLanguage.c
         Common/ExampleServiceThread.c
         Common/ExampleUdpConfig.c
         Common/ExampleTcpConfig.c
@@ -48,6 +49,7 @@ elseif(SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM)
         Windows/ExampleWindowsCommandLine.c
         Common/ExampleAppName.c
         Common/ExampleInteractive.c
+        Common/ExampleLanguage.c
     )
     set_target_properties(SolidSyslogWindowsExample PROPERTIES OUTPUT_NAME "SolidSyslogExample")
     target_link_libraries(SolidSyslogWindowsExample PRIVATE ${PROJECT_NAME})
