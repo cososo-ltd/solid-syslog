@@ -855,6 +855,27 @@ def step_check_sw_version(context, value):
     )
 
 
+@then('the structured data contains language "{value}"')
+def step_check_language(context, value):
+    sd = context.fields.get("STRUCTURED_DATA", "")
+    match = re.search(r'language="([^"]*)"', sd)
+    assert match, (
+        f"No language found in structured data: {sd}"
+    )
+    assert match.group(1) == value, (
+        f"Expected language {value}, got {match.group(1)}"
+    )
+
+
+@then("the structured data contains sysUpTime as a decimal integer")
+def step_check_sys_up_time_shape(context):
+    sd = context.fields.get("STRUCTURED_DATA", "")
+    match = re.search(r'sysUpTime="(\d+)"', sd)
+    assert match, (
+        f"No sysUpTime found in structured data: {sd}"
+    )
+
+
 @then("syslog-ng receives {count:d} messages with sequential sequenceId values")
 def step_check_sequential_ids(context, count):
     assert context.message_count == count, (
