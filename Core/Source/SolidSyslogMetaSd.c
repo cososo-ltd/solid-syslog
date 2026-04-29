@@ -15,10 +15,10 @@ static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFor
 
 static struct SolidSyslogMetaSd instance;
 
-struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(struct SolidSyslogAtomicCounter* counter)
+struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSyslogMetaSdConfig* config)
 {
     instance.base.Format = Format;
-    instance.counter     = counter;
+    instance.counter     = config->counter;
     return &instance.base;
 }
 

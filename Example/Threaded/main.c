@@ -183,9 +183,10 @@ int main(int argc, char* argv[])
     struct SolidSyslogSender* sender = CreateSender(&options);
     struct SolidSyslogStore*  store  = CreateStore(&options);
 
-    struct SolidSyslogBuffer*         buffer  = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
-    struct SolidSyslogAtomicCounter*  counter = SolidSyslogAtomicCounter_Create(SolidSyslogStdAtomicOps_Create());
-    struct SolidSyslogStructuredData* metaSd  = SolidSyslogMetaSd_Create(counter);
+    struct SolidSyslogBuffer*         buffer     = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+    struct SolidSyslogAtomicCounter*  counter    = SolidSyslogAtomicCounter_Create(SolidSyslogStdAtomicOps_Create());
+    struct SolidSyslogMetaSdConfig    metaConfig = {.counter = counter};
+    struct SolidSyslogStructuredData* metaSd     = SolidSyslogMetaSd_Create(&metaConfig);
 
     struct SolidSyslogStructuredData* timeQuality = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
     struct SolidSyslogStructuredData* originSd    = SolidSyslogOriginSd_Create("SolidSyslogExample", "0.7.0");

@@ -8,7 +8,12 @@ EXTERN_C_BEGIN
     struct SolidSyslogAtomicCounter;
     struct SolidSyslogStructuredData;
 
-    struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(struct SolidSyslogAtomicCounter * counter);
+    struct SolidSyslogMetaSdConfig
+    {
+        struct SolidSyslogAtomicCounter* counter;
+    };
+
+    struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSyslogMetaSdConfig* config);
     void                              SolidSyslogMetaSd_Destroy(void);
 
 EXTERN_C_END
