@@ -68,6 +68,7 @@ if(SOLIDSYSLOG_POSIX)
     list(APPEND TEST_SOURCES
         SolidSyslogPosixClockTest.cpp
         SolidSyslogPosixMessageQueueBufferTest.cpp
+        SolidSyslogPosixSysUpTimeTest.cpp
         ClockFakeTest.cpp
         SolidSyslogUdpSenderTest.cpp
         SolidSyslogStreamSenderTest.cpp
