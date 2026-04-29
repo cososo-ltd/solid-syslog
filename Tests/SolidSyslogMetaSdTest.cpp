@@ -20,6 +20,11 @@ static uint32_t FakeSysUpTime_Get()
     return fakeSysUpTimeValue;
 }
 
+// NOLINTBEGIN(cppcoreguidelines-macro-usage) -- macros preserve __FILE__/__LINE__ in test failure output
+#define CHECK_SYSUPTIME(expected) STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"" expected "\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter))
+
+// NOLINTEND(cppcoreguidelines-macro-usage)
+
 // clang-format off
 TEST_GROUP(SolidSyslogMetaSd)
 {
@@ -120,26 +125,26 @@ TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeFromCallback)
 {
     useSysUpTime(12345);
     format();
-    STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"12345\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+    CHECK_SYSUPTIME("12345");
 }
 
 TEST(SolidSyslogMetaSd, FormatIncludesDifferentSysUpTimeFromCallback)
 {
     useSysUpTime(99999);
     format();
-    STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"99999\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+    CHECK_SYSUPTIME("99999");
 }
 
 TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeAtZero)
 {
     useSysUpTime(0);
     format();
-    STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"0\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+    CHECK_SYSUPTIME("0");
 }
 
 TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeAtMaxUint32)
 {
     useSysUpTime(UINT32_MAX);
     format();
-    STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"4294967295\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+    CHECK_SYSUPTIME("4294967295");
 }
