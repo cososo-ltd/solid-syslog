@@ -55,6 +55,13 @@ TEST_GROUP(SolidSyslogMetaSd)
         sd = SolidSyslogMetaSd_Create(&config);
     }
 
+    void useSysUpTime(uint32_t value)
+    {
+        fakeSysUpTimeValue = value;
+        config.getSysUpTime = FakeSysUpTime_Get;
+        recreate();
+    }
+
     void format() const
     {
         SolidSyslogStructuredData_Format(sd, formatter);
@@ -111,36 +118,28 @@ TEST(SolidSyslogMetaSd, DestroyDoesNotCrash)
 
 TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeFromCallback)
 {
-    fakeSysUpTimeValue  = 12345;
-    config.getSysUpTime = FakeSysUpTime_Get;
-    recreate();
+    useSysUpTime(12345);
     format();
     STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"12345\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
 
 TEST(SolidSyslogMetaSd, FormatIncludesDifferentSysUpTimeFromCallback)
 {
-    fakeSysUpTimeValue  = 99999;
-    config.getSysUpTime = FakeSysUpTime_Get;
-    recreate();
+    useSysUpTime(99999);
     format();
     STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"99999\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
 
 TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeAtZero)
 {
-    fakeSysUpTimeValue  = 0;
-    config.getSysUpTime = FakeSysUpTime_Get;
-    recreate();
+    useSysUpTime(0);
     format();
     STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"0\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
 
 TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeAtMaxUint32)
 {
-    fakeSysUpTimeValue  = UINT32_MAX;
-    config.getSysUpTime = FakeSysUpTime_Get;
-    recreate();
+    useSysUpTime(UINT32_MAX);
     format();
     STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"4294967295\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
