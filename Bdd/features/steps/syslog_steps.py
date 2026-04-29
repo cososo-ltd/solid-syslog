@@ -874,6 +874,12 @@ def step_check_sys_up_time_shape(context):
     assert match, (
         f"No sysUpTime found in structured data: {sd}"
     )
+    # Live boot clocks (CLOCK_BOOTTIME / GetTickCount64) always read > 0 by the
+    # time the example program runs. Pinning > 0 catches a regression where the
+    # implementation collapses to a constant zero.
+    assert int(match.group(1)) > 0, (
+        f"Expected positive sysUpTime, got {match.group(1)} in structured data: {sd}"
+    )
 
 
 @then("syslog-ng receives {count:d} messages with sequential sequenceId values")
