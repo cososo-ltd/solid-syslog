@@ -10,6 +10,7 @@ struct SolidSyslogMetaSd
     struct SolidSyslogStructuredData base;
     struct SolidSyslogAtomicCounter* counter;
     SolidSyslogSysUpTimeFunction     getSysUpTime;
+    SolidSyslogStringFunction        getLanguage;
 };
 
 static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
@@ -21,6 +22,7 @@ struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSys
     instance.base.Format  = Format;
     instance.counter      = config->counter;
     instance.getSysUpTime = config->getSysUpTime;
+    instance.getLanguage  = config->getLanguage;
     return &instance.base;
 }
 
@@ -29,10 +31,12 @@ void SolidSyslogMetaSd_Destroy(void)
     instance.base.Format  = NULL;
     instance.counter      = NULL;
     instance.getSysUpTime = NULL;
+    instance.getLanguage  = NULL;
 }
 
 static const char SD_PREFIX[]      = "[meta sequenceId=\"";
 static const char SYS_UP_TIME_SD[] = " sysUpTime=\"";
+static const char LANGUAGE_SD[]    = " language=\"";
 
 static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter)
 {
@@ -46,6 +50,12 @@ static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFor
     {
         SolidSyslogFormatter_BoundedString(formatter, SYS_UP_TIME_SD, sizeof(SYS_UP_TIME_SD) - 1);
         SolidSyslogFormatter_Uint32(formatter, meta->getSysUpTime());
+        SolidSyslogFormatter_AsciiCharacter(formatter, '"');
+    }
+    if (meta->getLanguage != NULL)
+    {
+        SolidSyslogFormatter_BoundedString(formatter, LANGUAGE_SD, sizeof(LANGUAGE_SD) - 1);
+        meta->getLanguage(formatter);
         SolidSyslogFormatter_AsciiCharacter(formatter, '"');
     }
     SolidSyslogFormatter_AsciiCharacter(formatter, ']');

@@ -20,9 +20,18 @@ static uint32_t FakeSysUpTime_Get()
     return fakeSysUpTimeValue;
 }
 
+static const char* fakeLanguageContent;
+static size_t      fakeLanguageMaxLength;
+
+static void FakeLanguage_Get(struct SolidSyslogFormatter* formatter)
+{
+    SolidSyslogFormatter_EscapedString(formatter, fakeLanguageContent, fakeLanguageMaxLength);
+}
+
 // NOLINTBEGIN(cppcoreguidelines-macro-usage) -- macros preserve __FILE__/__LINE__ in test failure output
 #define CHECK_SEQUENCEID(expected) STRCMP_EQUAL("[meta sequenceId=\"" expected "\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter))
 #define CHECK_SYSUPTIME(expected) STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"" expected "\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter))
+#define CHECK_LANGUAGE(expected) STRCMP_EQUAL("[meta sequenceId=\"1\" language=\"" expected "\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter))
 
 // NOLINTEND(cppcoreguidelines-macro-usage)
 
@@ -43,6 +52,8 @@ TEST_GROUP(SolidSyslogMetaSd)
         formatter = SolidSyslogFormatter_Create(storage, TEST_BUFFER_SIZE);
         counter = SolidSyslogAtomicCounter_Create(TestAtomicOps_Create());
         fakeSysUpTimeValue = 0;
+        fakeLanguageContent = nullptr;
+        fakeLanguageMaxLength = 0;
         config = {};
         config.counter = counter;
         sd = SolidSyslogMetaSd_Create(&config);
@@ -65,6 +76,14 @@ TEST_GROUP(SolidSyslogMetaSd)
     {
         fakeSysUpTimeValue = value;
         config.getSysUpTime = FakeSysUpTime_Get;
+        recreate();
+    }
+
+    void useLanguage(const char* tag)
+    {
+        fakeLanguageContent = tag;
+        fakeLanguageMaxLength = strlen(tag);
+        config.getLanguage = FakeLanguage_Get;
         recreate();
     }
 
@@ -148,4 +167,39 @@ TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeAtMaxUint32)
     useSysUpTime(UINT32_MAX);
     format();
     CHECK_SYSUPTIME("4294967295");
+}
+
+TEST(SolidSyslogMetaSd, FormatIncludesLanguageFromCallback)
+{
+    useLanguage("en-GB");
+    format();
+    CHECK_LANGUAGE("en-GB");
+}
+
+TEST(SolidSyslogMetaSd, FormatIncludesDifferentLanguageFromCallback)
+{
+    useLanguage("fr");
+    format();
+    CHECK_LANGUAGE("fr");
+}
+
+TEST(SolidSyslogMetaSd, FormatEscapesQuoteInLanguage)
+{
+    useLanguage("a\"b");
+    format();
+    CHECK_LANGUAGE("a\\\"b");
+}
+
+TEST(SolidSyslogMetaSd, FormatEscapesBackslashInLanguage)
+{
+    useLanguage("a\\b");
+    format();
+    CHECK_LANGUAGE("a\\\\b");
+}
+
+TEST(SolidSyslogMetaSd, FormatEscapesBracketInLanguage)
+{
+    useLanguage("a]b");
+    format();
+    CHECK_LANGUAGE("a\\]b");
 }
