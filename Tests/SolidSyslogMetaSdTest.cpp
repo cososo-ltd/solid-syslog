@@ -5,6 +5,7 @@
 #include "SolidSyslogStructuredData.h"
 #include "TestAtomicOps.h"
 
+#include <cstdint>
 #include <cstring>
 
 enum
@@ -12,9 +13,11 @@ enum
     TEST_BUFFER_SIZE = 256
 };
 
-static uint32_t FakeSysUpTime()
+static uint32_t fakeSysUpTimeValue;
+
+static uint32_t FakeSysUpTime_Get()
 {
-    return 12345;
+    return fakeSysUpTimeValue;
 }
 
 // clang-format off
@@ -33,6 +36,7 @@ TEST_GROUP(SolidSyslogMetaSd)
     {
         formatter = SolidSyslogFormatter_Create(storage, TEST_BUFFER_SIZE);
         counter = SolidSyslogAtomicCounter_Create(TestAtomicOps_Create());
+        fakeSysUpTimeValue = 0;
         config = {};
         config.counter = counter;
         sd = SolidSyslogMetaSd_Create(&config);
@@ -105,10 +109,38 @@ TEST(SolidSyslogMetaSd, DestroyDoesNotCrash)
     // Covered by teardown — this test documents the intent
 }
 
-TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeWhenCallbackIsProvided)
+TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeFromCallback)
 {
-    config.getSysUpTime = FakeSysUpTime;
+    fakeSysUpTimeValue  = 12345;
+    config.getSysUpTime = FakeSysUpTime_Get;
     recreate();
     format();
     STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"12345\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+}
+
+TEST(SolidSyslogMetaSd, FormatIncludesDifferentSysUpTimeFromCallback)
+{
+    fakeSysUpTimeValue  = 99999;
+    config.getSysUpTime = FakeSysUpTime_Get;
+    recreate();
+    format();
+    STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"99999\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+}
+
+TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeAtZero)
+{
+    fakeSysUpTimeValue  = 0;
+    config.getSysUpTime = FakeSysUpTime_Get;
+    recreate();
+    format();
+    STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"0\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+}
+
+TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeAtMaxUint32)
+{
+    fakeSysUpTimeValue  = UINT32_MAX;
+    config.getSysUpTime = FakeSysUpTime_Get;
+    recreate();
+    format();
+    STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"4294967295\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
