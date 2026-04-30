@@ -70,14 +70,16 @@ Public headers are split by audience (Interface Segregation Principle):
 - **`SolidSyslogSecurityPolicyDefinition.h`** — extension point for record integrity policies
 - **`SolidSyslogCrc16Policy.h`** — CRC-16/CCITT-FALSE integrity policy
 - **`SolidSyslogStructuredDataDefinition.h`** — extension point for custom structured data
-- **`SolidSyslogMetaSd.h`** — sequenceId structured data (RFC 5424 §7.3)
-- **`SolidSyslogTimeQualitySd.h`** — timeQuality structured data (RFC 5424 §7.1)
-- **`SolidSyslogOriginSd.h`** — origin structured data (RFC 5424 §7.2)
-- **`SolidSyslogPosixClock.h`** / **`SolidSyslogPosixHostname.h`** / **`SolidSyslogPosixProcessId.h`** — POSIX helpers
+- **`SolidSyslogMetaSd.h`** — meta structured data (RFC 5424 §7.3): sequenceId, sysUpTime, language
+- **`SolidSyslogTimeQualitySd.h`** — timeQuality structured data (RFC 5424 §7.1): tzKnown, isSynced, syncAccuracy
+- **`SolidSyslogOriginSd.h`** — origin structured data (RFC 5424 §7.2): software, swVersion, enterpriseId, ip
+- **`SolidSyslogPosixClock.h`** / **`SolidSyslogPosixHostname.h`** / **`SolidSyslogPosixProcessId.h`** / **`SolidSyslogPosixSysUpTime.h`** — POSIX helpers
 
-Two example programs demonstrate usage:
-- **`Example/SingleTask/`** — NullBuffer, single-task bare-metal model
-- **`Example/Threaded/`** — PosixMessageQueueBuffer, two pthreads (logger + service), SwitchingSender over UDP + TCP + TLS + mTLS (TLS build required for the last two); `--transport` sets the initial transport, `switch <name>` flips it at runtime
+Three example programs demonstrate usage:
+
+- **`Example/SingleTask/`** — POSIX, NullBuffer, single-task bare-metal model
+- **`Example/Threaded/`** — POSIX, PosixMessageQueueBuffer, two pthreads (logger + service), SwitchingSender over UDP + TCP + TLS + mTLS (TLS build required for the last two); `--transport` sets the initial transport, `switch <name>` flips it at runtime
+- **`Example/Windows/`** — Windows, NullBuffer, Winsock UDP / TCP, single-task model with the Windows clock / hostname / process-id / sysUpTime helpers
 
 ## Compliance
 

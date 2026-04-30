@@ -362,7 +362,7 @@ live under `Core/Interface/`; platform-specific helpers (the `SolidSyslogPosix*`
 | `SolidSyslogWindowsAtomicOps.h` | System setup code on legacy MSVC without `<stdatomic.h>` | `SolidSyslogWindowsAtomicOps_Create`, `_Destroy` (uses `InterlockedCompareExchange`) |
 | `SolidSyslogTimeQuality.h` | Any code providing time quality data | `SolidSyslogTimeQuality`, `SolidSyslogTimeQualityFunction`, `SOLIDSYSLOG_SYNC_ACCURACY_OMIT` |
 | `SolidSyslogTimeQualitySd.h` | System setup code using timeQuality SD | `SolidSyslogTimeQualitySd_Create`, `_Destroy` |
-| `SolidSyslogOriginSd.h` | System setup code using origin SD | `SolidSyslogOriginSd_Create`, `_Destroy` |
+| `SolidSyslogOriginSd.h` | System setup code using origin SD (software, swVersion, enterpriseId, ip) | `SolidSyslogOriginSdConfig` (software, swVersion, enterpriseId, getIpCount, getIpAt — each independently optional via NULL), `SolidSyslogOriginIpCountFunction`, `SolidSyslogOriginIpAtFunction`, `SolidSyslogOriginSd_Create`, `_Destroy` |
 
 Most application code only needs `SolidSyslog.h` — it never sees allocators, senders, buffers, or config structs.
 
