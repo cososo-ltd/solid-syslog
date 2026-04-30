@@ -10,7 +10,10 @@
 
 enum
 {
-    TEST_BUFFER_SIZE = 256,
+    /* Worst-case fully-escaped output is 337 bytes — see
+       WorstCaseFullyEscapedInputFitsPreFormattedStorage. Pre-message dispatch
+       widens this further once IP params are spliced in. 512 leaves headroom. */
+    TEST_BUFFER_SIZE = 512,
     MAX_FAKE_IPS     = 8
 };
 
@@ -52,11 +55,6 @@ std::string escapeEach(const std::string& allSpecials)
         out += c;
     }
     return out;
-}
-
-std::string originSdWith(const std::string& software, const std::string& swVersion)
-{
-    return "[origin software=\"" + software + "\" swVersion=\"" + swVersion + "\"]";
 }
 } // namespace
 
@@ -308,13 +306,17 @@ TEST(SolidSyslogOriginSd, EnterpriseIdContainingSpecialsIsEscaped)
 
 TEST(SolidSyslogOriginSd, WorstCaseFullyEscapedInputFitsPreFormattedStorage)
 {
-    const std::string software  = repeated(']', 48); /* ORIGIN_SOFTWARE_MAX */
-    const std::string swVersion = repeated('"', 32); /* ORIGIN_SWVERSION_MAX */
+    const std::string software     = repeated(']', 48);  /* ORIGIN_SOFTWARE_MAX */
+    const std::string swVersion    = repeated('"', 32);  /* ORIGIN_SWVERSION_MAX */
+    const std::string enterpriseId = repeated('\\', 64); /* ORIGIN_ENTERPRISE_ID_MAX */
+    const std::string expected     = R"([origin software=")" + escapeEach(software) + R"(" swVersion=")" + escapeEach(swVersion) + R"(" enterpriseId=")" +
+                                 escapeEach(enterpriseId) + R"("])";
 
     recreate(software.c_str(), swVersion.c_str());
+    useEnterpriseId(enterpriseId.c_str());
     resetFormatter();
     format();
-    STRCMP_EQUAL(originSdWith(escapeEach(software), escapeEach(swVersion)).c_str(), SolidSyslogFormatter_AsFormattedBuffer(formatter));
+    STRCMP_EQUAL(expected.c_str(), SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
 
 TEST(SolidSyslogOriginSd, ZeroIpCountFromCallbackOmitsIpParams)
@@ -389,4 +391,45 @@ TEST(SolidSyslogOriginSd, GetIpAtSetButGetIpCountNullOmitsIpParams)
     resetFormatter();
     format();
     STRCMP_EQUAL("[origin software=\"TestSoftware\" swVersion=\"9.8.7\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+}
+
+TEST(SolidSyslogOriginSd, AllFourParamsTogether)
+{
+    useEnterpriseId("1.3.6.1.4.1.12345");
+    useIps({"192.0.2.1"});
+    resetFormatter();
+    format();
+    STRCMP_EQUAL("[origin software=\"TestSoftware\" swVersion=\"9.8.7\" enterpriseId=\"1.3.6.1.4.1.12345\" ip=\"192.0.2.1\"]",
+                 SolidSyslogFormatter_AsFormattedBuffer(formatter));
+}
+
+TEST(SolidSyslogOriginSd, EnterpriseIdOnlyNoStaticNoIps)
+{
+    config.software  = nullptr;
+    config.swVersion = nullptr;
+    useEnterpriseId("1.3.6.1.4.1.12345");
+    resetFormatter();
+    format();
+    STRCMP_EQUAL("[origin enterpriseId=\"1.3.6.1.4.1.12345\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+}
+
+TEST(SolidSyslogOriginSd, IpsOnlyNoStatic)
+{
+    config.software  = nullptr;
+    config.swVersion = nullptr;
+    useIps({"192.0.2.1"});
+    resetFormatter();
+    format();
+    STRCMP_EQUAL("[origin ip=\"192.0.2.1\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+}
+
+TEST(SolidSyslogOriginSd, EnterpriseIdAndIpsNoSoftwareSwVersion)
+{
+    config.software  = nullptr;
+    config.swVersion = nullptr;
+    useEnterpriseId("1.3.6.1.4.1.12345");
+    useIps({"192.0.2.1"});
+    resetFormatter();
+    format();
+    STRCMP_EQUAL("[origin enterpriseId=\"1.3.6.1.4.1.12345\" ip=\"192.0.2.1\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }

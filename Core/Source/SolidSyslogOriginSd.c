@@ -28,7 +28,7 @@ static const char SD_VERSION_SD[]       = " swVersion=\"";
 static const char SD_ENTERPRISE_ID_SD[] = " enterpriseId=\"";
 static const char SD_IP_SD[]            = " ip=\"";
 
-static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
+static void        Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
 static inline void PreFormatStaticPrefix(const struct SolidSyslogOriginSdConfig* config);
 static inline void EmitSoftware(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config);
 static inline void EmitSwVersion(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config);
