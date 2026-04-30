@@ -12,6 +12,16 @@ Feature: Structured data — origin
     When the example program sends a syslog message
     Then the structured data contains swVersion "0.7.0"
 
+  Scenario: Origin enterpriseId appears in structured data
+    Given syslog-ng is running
+    When the example program sends a syslog message
+    Then the structured data contains enterpriseId "1.3.6.1.4.1.99999"
+
+  Scenario: Origin ip parameter appears in structured data
+    Given syslog-ng is running
+    When the example program sends a syslog message
+    Then the structured data contains ip "192.0.2.1"
+
   Scenario: All standard structured data present
     Given syslog-ng is running
     When the example program sends a syslog message
@@ -19,3 +29,5 @@ Feature: Structured data — origin
     And the structured data contains tzKnown "1"
     And the structured data contains software "SolidSyslogExample"
     And the structured data contains swVersion "0.7.0"
+    And the structured data contains enterpriseId "1.3.6.1.4.1.99999"
+    And the structured data contains ip "192.0.2.1"

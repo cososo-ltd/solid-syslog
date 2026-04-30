@@ -1,6 +1,8 @@
 #include "ExampleAppName.h"
 #include "ExampleCommandLine.h"
+#include "ExampleEnterpriseId.h"
 #include "ExampleInteractive.h"
+#include "ExampleIps.h"
 #include "ExampleLanguage.h"
 #include "ExampleServiceThread.h"
 #include "ExampleSwitchConfig.h"
@@ -194,8 +196,15 @@ int main(int argc, char* argv[])
     };
     struct SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
 
-    struct SolidSyslogStructuredData* timeQuality = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
-    struct SolidSyslogStructuredData* originSd    = SolidSyslogOriginSd_Create("SolidSyslogExample", "0.7.0");
+    struct SolidSyslogStructuredData* timeQuality  = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
+    struct SolidSyslogOriginSdConfig  originConfig = {
+         .software     = "SolidSyslogExample",
+         .swVersion    = "0.7.0",
+         .enterpriseId = EXAMPLE_ENTERPRISE_ID,
+         .getIpCount   = ExampleIps_Count,
+         .getIpAt      = ExampleIps_At,
+    };
+    struct SolidSyslogStructuredData* originSd = SolidSyslogOriginSd_Create(&originConfig);
 
     struct SolidSyslogStructuredData* sdList[3] = {metaSd, timeQuality, originSd};
     size_t                            sdCount   = options.noSd ? 1 : 3;

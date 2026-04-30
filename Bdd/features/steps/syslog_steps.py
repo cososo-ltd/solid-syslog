@@ -855,6 +855,32 @@ def step_check_sw_version(context, value):
     )
 
 
+@then('the structured data contains enterpriseId "{value}"')
+def step_check_enterprise_id(context, value):
+    sd = context.fields.get("STRUCTURED_DATA", "")
+    # SD-PARAM-VALUE escapes ", \ and ] with a backslash (RFC 5424 §6.3.3),
+    # so the matcher must accept escape sequences inside the value rather
+    # than terminating at the first inner quote.
+    match = re.search(r'enterpriseId="((?:\\.|[^"])*)"', sd)
+    assert match, (
+        f"No enterpriseId found in structured data: {sd}"
+    )
+    actual = re.sub(r"\\(.)", r"\1", match.group(1))
+    assert actual == value, (
+        f"Expected enterpriseId {value}, got {actual}"
+    )
+
+
+@then('the structured data contains ip "{value}"')
+def step_check_ip(context, value):
+    sd = context.fields.get("STRUCTURED_DATA", "")
+    matches = re.findall(r'ip="((?:\\.|[^"])*)"', sd)
+    actuals = [re.sub(r"\\(.)", r"\1", m) for m in matches]
+    assert value in actuals, (
+        f"Expected ip {value} in structured data: {sd} (found ips: {actuals})"
+    )
+
+
 @then('the structured data contains language "{value}"')
 def step_check_language(context, value):
     sd = context.fields.get("STRUCTURED_DATA", "")

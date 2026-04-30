@@ -1,5 +1,102 @@
 # Dev Log
 
+## 2026-04-30 — S07.05 origin SD: enterpriseId and ip
+
+### Decisions
+
+- **`enterpriseId` static at Create.** Mirrors the existing
+  software/swVersion lifecycle. SMI Private Enterprise OIDs do not
+  change at runtime so a callback would have been needless ceremony.
+- **`ip` via two callbacks (count + at) instead of an iterator
+  object or stateful single-callback.** Three shapes were considered.
+  (A) "caller writes the entire ip-token list" pushes SD-PARAM syntax
+  knowledge into integrator code. (B) count + at lets the library own
+  the `ip="…"`-with-leading-space framing while the integrator returns
+  one escaped value per index. (C) a single index-returning-bool
+  callback would need a new `SolidSyslogFormatter_TruncateTo` primitive
+  to undo a speculative `ip="` prefix when the callback signals end-of-list,
+  which is scope creep when no other feature wants the truncate. (B)
+  is what shipped: two function pointers, no formatter primitive
+  changes, library owns the SD framing so integrators can't get it
+  wrong. Single-threaded Format dispatch removes the count/at race
+  concern.
+- **Hybrid pre-format + per-message dispatch.** OriginSd previously
+  pre-formatted the whole SD-ELEMENT at Create and Format() just
+  copied the bytes. With ip per-message-callback, that breaks. Two
+  options: (a) full per-message formatting like MetaSd (rebuild
+  software/swVersion/enterpriseId on every message), or (b) keep the
+  static prefix pre-formatted and splice ip in per-message. Picked
+  (b) — escaping software/swVersion/enterpriseId per-message is real
+  cost on embedded targets, while ip splicing is small additional
+  per-message work. Implementation: `PreFormatStaticPrefix` writes
+  everything except the closing `]`; Format emits prefix bytes, calls
+  EmitIps, then emits `]`.
+- **One example IP, multi-IP unit-tested.** The library emits
+  multiple `ip="…"` per RFC 5424 §7.2 and
+  SolidSyslogOriginSdTest::FormatIncludesMultipleIpsFromCallback pins
+  it. The example wires a single IP because syslog-ng's `${SDATA}`
+  macro renders the parsed-and-deduplicated view, so multi-IP
+  wouldn't roundtrip cleanly through the syslog-ng BDD oracle. The
+  step definition uses re.findall + membership so the BDD is forward-
+  compatible if a future scenario asserts a multi-IP wire output via
+  the OTel oracle.
+- **Bare `[origin]` is RFC-legal.** Initially second-guessed whether
+  zero IPs should drop the SD-ELEMENT entirely — checked RFC 5424:
+  §6.6 ABNF `*(SP SD-PARAM)` permits zero, §7.2 marks all params
+  OPTIONAL, no SHOULD requiring "at least one" (unlike meta in §7.1).
+  So `[origin]` is emitted when nothing is wired; integrator should
+  remove origin from their SD list if they don't want it.
+- **MISRA single-exit reaffirmed; `static inline` on extracted
+  helpers.** Two style concerns user corrected mid-story. Both are
+  CLAUDE.md / `feedback_misra_leanings.md` rules I had been applying
+  loosely. The OriginSd helpers (PreFormatStaticPrefix, EmitSoftware,
+  EmitSwVersion, EmitEnterpriseId, EmitIps, EmitIp) all have
+  body-wrapped-in-`if` (no early-return guards) and `static inline`
+  qualifier. Pre-existing TimeQualitySd / MetaSd violations recorded
+  in `project_misra_early_return_audit.md` for a sweep after this
+  story merges.
+- **Tidy caught two real issues that incremental builds would have
+  hidden.** (1) `bugprone-easily-swappable-parameters` on the test
+  fixture's `recreate(software, swVersion)` — NOLINTed with
+  justification mirroring `ClockFake_SetTime`. (2)
+  `cppcoreguidelines-pro-bounds-constant-array-index` on the `ip`
+  test fake's dynamic indexing — switched to
+  `std::array<const char*, 8>` with `.at()`.
+- **Test fake state stays file-scope.** ExampleIps_Count /
+  ExampleIps_At could have been factored into a Tests/Support fake;
+  instead they live as file-scope statics in
+  SolidSyslogOriginSdTest.cpp because only one test file uses them.
+  Same call-out as MetaSd's sysUpTime fake from S07.06 — extract to
+  Tests/Support if a second test file ever needs them.
+
+### Deferred
+
+- **Platform IP enumeration helpers (`SolidSyslogPosixIp` /
+  `SolidSyslogWindowsIp`).** Considered shipping `getifaddrs` and
+  `GetAdaptersAddresses` reference integrations; deferred because
+  enumeration policy is opinionated (which interfaces? IPv4 only?
+  link-local? scope-id formatting?) and varies per deployment. The
+  library ships the callback shape; integrators provide their own
+  enumeration. Example wires a static demo IP.
+- **Multi-IP BDD via OTel oracle.** The library emits multiple
+  `ip="…"` correctly but syslog-ng's `${SDATA}` deduplicates.
+  Cross-runner `bdd-windows-otel` should preserve repeated PARAM-
+  NAMEs through the kvlist-based collector format; explicitly testing
+  multi-IP through that oracle is a follow-up if the BDD wants
+  stronger validation.
+- **MISRA early-return + `static inline` sweep across
+  TimeQualitySd / MetaSd.** Tracked under
+  `project_misra_early_return_audit.md` — separate refactor PR after
+  this story merges.
+
+### Open questions
+
+- **When does an SD callback shape grow into an iterator object?**
+  count + at is fine for "small bounded list" cases; for thousands of
+  items the count-then-N-callbacks pattern is wasteful. None of the
+  RFC 5424 SD-IDs land in that regime, but if a future custom SD
+  needs streaming we'll want a proper iterator API.
+
 ## 2026-04-29 — S07.06 meta SD: sysUpTime and language
 
 ### Decisions
