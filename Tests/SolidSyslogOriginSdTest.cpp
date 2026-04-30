@@ -41,6 +41,7 @@ TEST_GROUP(SolidSyslogOriginSd)
 {
     // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogStructuredData* sd;
+    SolidSyslogOriginSdConfig config;
     SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(TEST_BUFFER_SIZE)];
     // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogFormatter* formatter;
@@ -48,12 +49,24 @@ TEST_GROUP(SolidSyslogOriginSd)
     void setup() override
     {
         formatter = SolidSyslogFormatter_Create(storage, TEST_BUFFER_SIZE);
-        sd = SolidSyslogOriginSd_Create("TestSoftware", "9.8.7");
+        config = {};
+        config.software = "TestSoftware";
+        config.swVersion = "9.8.7";
+        sd = SolidSyslogOriginSd_Create(&config);
     }
 
     void teardown() override
     {
         SolidSyslogOriginSd_Destroy();
+    }
+
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- positional shorthand for the two existing config fields; tests assert exact output so a mix-up shows immediately
+    void recreate(const char* software, const char* swVersion)
+    {
+        SolidSyslogOriginSd_Destroy();
+        config.software = software;
+        config.swVersion = swVersion;
+        sd = SolidSyslogOriginSd_Create(&config);
     }
 
     void format() const
@@ -102,9 +115,7 @@ TEST(SolidSyslogOriginSd, FormatAdvancesFormatterLength)
 
 TEST(SolidSyslogOriginSd, DifferentValuesProduceDifferentOutput)
 {
-    SolidSyslogOriginSd_Destroy();
-    sd = SolidSyslogOriginSd_Create("OtherSoft", "1.2.3");
-
+    recreate("OtherSoft", "1.2.3");
     resetFormatter();
     format();
     STRCMP_EQUAL("[origin software=\"OtherSoft\" swVersion=\"1.2.3\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
@@ -112,9 +123,7 @@ TEST(SolidSyslogOriginSd, DifferentValuesProduceDifferentOutput)
 
 TEST(SolidSyslogOriginSd, SoftwareAtMaxLength)
 {
-    SolidSyslogOriginSd_Destroy();
-    sd = SolidSyslogOriginSd_Create("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijkl", "1.0");
-
+    recreate("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijkl", "1.0");
     resetFormatter();
     format();
     CHECK(strstr(SolidSyslogFormatter_AsFormattedBuffer(formatter), "software=\"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijkl\"") != nullptr);
@@ -122,9 +131,7 @@ TEST(SolidSyslogOriginSd, SoftwareAtMaxLength)
 
 TEST(SolidSyslogOriginSd, SoftwareTruncatedBeyondMaxLength)
 {
-    SolidSyslogOriginSd_Destroy();
-    sd = SolidSyslogOriginSd_Create("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklX", "1.0");
-
+    recreate("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklX", "1.0");
     resetFormatter();
     format();
     STRCMP_EQUAL("[origin software=\"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijkl\" swVersion=\"1.0\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
@@ -132,9 +139,7 @@ TEST(SolidSyslogOriginSd, SoftwareTruncatedBeyondMaxLength)
 
 TEST(SolidSyslogOriginSd, SwVersionAtMaxLength)
 {
-    SolidSyslogOriginSd_Destroy();
-    sd = SolidSyslogOriginSd_Create("S", "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345");
-
+    recreate("S", "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345");
     resetFormatter();
     format();
     CHECK(strstr(SolidSyslogFormatter_AsFormattedBuffer(formatter), "swVersion=\"ABCDEFGHIJKLMNOPQRSTUVWXYZ012345\"") != nullptr);
@@ -142,9 +147,7 @@ TEST(SolidSyslogOriginSd, SwVersionAtMaxLength)
 
 TEST(SolidSyslogOriginSd, SwVersionTruncatedBeyondMaxLength)
 {
-    SolidSyslogOriginSd_Destroy();
-    sd = SolidSyslogOriginSd_Create("S", "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345X");
-
+    recreate("S", "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345X");
     resetFormatter();
     format();
     STRCMP_EQUAL("[origin software=\"S\" swVersion=\"ABCDEFGHIJKLMNOPQRSTUVWXYZ012345\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
@@ -152,9 +155,7 @@ TEST(SolidSyslogOriginSd, SwVersionTruncatedBeyondMaxLength)
 
 TEST(SolidSyslogOriginSd, EmptySoftwareString)
 {
-    SolidSyslogOriginSd_Destroy();
-    sd = SolidSyslogOriginSd_Create("", "1.0");
-
+    recreate("", "1.0");
     resetFormatter();
     format();
     STRCMP_EQUAL("[origin software=\"\" swVersion=\"1.0\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
@@ -162,9 +163,7 @@ TEST(SolidSyslogOriginSd, EmptySoftwareString)
 
 TEST(SolidSyslogOriginSd, EmptySwVersionString)
 {
-    SolidSyslogOriginSd_Destroy();
-    sd = SolidSyslogOriginSd_Create("S", "");
-
+    recreate("S", "");
     resetFormatter();
     format();
     STRCMP_EQUAL("[origin software=\"S\" swVersion=\"\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
@@ -172,17 +171,13 @@ TEST(SolidSyslogOriginSd, EmptySwVersionString)
 
 TEST(SolidSyslogOriginSd, NullSoftwareReturnsNull)
 {
-    SolidSyslogOriginSd_Destroy();
-    sd = SolidSyslogOriginSd_Create(nullptr, "1.0");
-
+    recreate(nullptr, "1.0");
     CHECK(sd == nullptr);
 }
 
 TEST(SolidSyslogOriginSd, NullSwVersionReturnsNull)
 {
-    SolidSyslogOriginSd_Destroy();
-    sd = SolidSyslogOriginSd_Create("S", nullptr);
-
+    recreate("S", nullptr);
     CHECK(sd == nullptr);
 }
 
@@ -193,9 +188,7 @@ TEST(SolidSyslogOriginSd, DestroyDoesNotCrash)
 
 TEST(SolidSyslogOriginSd, SoftwareContainingSpecialsIsEscaped)
 {
-    SolidSyslogOriginSd_Destroy();
-    sd = SolidSyslogOriginSd_Create("a\"b\\c]d", "1.0");
-
+    recreate("a\"b\\c]d", "1.0");
     resetFormatter();
     format();
     STRCMP_EQUAL("[origin software=\"a\\\"b\\\\c\\]d\" swVersion=\"1.0\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
@@ -203,9 +196,7 @@ TEST(SolidSyslogOriginSd, SoftwareContainingSpecialsIsEscaped)
 
 TEST(SolidSyslogOriginSd, SwVersionContainingSpecialsIsEscaped)
 {
-    SolidSyslogOriginSd_Destroy();
-    sd = SolidSyslogOriginSd_Create("S", "1\"2\\3]4");
-
+    recreate("S", "1\"2\\3]4");
     resetFormatter();
     format();
     STRCMP_EQUAL("[origin software=\"S\" swVersion=\"1\\\"2\\\\3\\]4\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
@@ -216,9 +207,7 @@ TEST(SolidSyslogOriginSd, WorstCaseFullyEscapedInputFitsPreFormattedStorage)
     const std::string software  = repeated(']', 48); /* ORIGIN_SOFTWARE_MAX */
     const std::string swVersion = repeated('"', 32); /* ORIGIN_SWVERSION_MAX */
 
-    SolidSyslogOriginSd_Destroy();
-    sd = SolidSyslogOriginSd_Create(software.c_str(), swVersion.c_str());
-
+    recreate(software.c_str(), swVersion.c_str());
     resetFormatter();
     format();
     STRCMP_EQUAL(originSdWith(escapeEach(software), escapeEach(swVersion)).c_str(), SolidSyslogFormatter_AsFormattedBuffer(formatter));

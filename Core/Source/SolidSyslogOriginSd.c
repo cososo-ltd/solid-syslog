@@ -25,9 +25,9 @@ static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFor
 
 static struct SolidSyslogOriginSd instance;
 
-struct SolidSyslogStructuredData* SolidSyslogOriginSd_Create(const char* software, const char* swVersion)
+struct SolidSyslogStructuredData* SolidSyslogOriginSd_Create(const struct SolidSyslogOriginSdConfig* config)
 {
-    if ((software == NULL) || (swVersion == NULL))
+    if ((config->software == NULL) || (config->swVersion == NULL))
     {
         return NULL;
     }
@@ -36,9 +36,9 @@ struct SolidSyslogStructuredData* SolidSyslogOriginSd_Create(const char* softwar
 
     instance.base.Format = Format;
     SolidSyslogFormatter_BoundedString(f, SD_SOFTWARE_PREFIX, sizeof(SD_SOFTWARE_PREFIX) - 1);
-    SolidSyslogFormatter_EscapedString(f, software, ORIGIN_SOFTWARE_MAX);
+    SolidSyslogFormatter_EscapedString(f, config->software, ORIGIN_SOFTWARE_MAX);
     SolidSyslogFormatter_BoundedString(f, SD_VERSION_PREFIX, sizeof(SD_VERSION_PREFIX) - 1);
-    SolidSyslogFormatter_EscapedString(f, swVersion, ORIGIN_SWVERSION_MAX);
+    SolidSyslogFormatter_EscapedString(f, config->swVersion, ORIGIN_SWVERSION_MAX);
     SolidSyslogFormatter_BoundedString(f, SD_SUFFIX, sizeof(SD_SUFFIX) - 1);
 
     return &instance.base;

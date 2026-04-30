@@ -82,9 +82,13 @@ int SolidSyslogExample_Run(int argc, char* argv[])
           .getSysUpTime = SolidSyslogPosixSysUpTime_Get,
           .getLanguage  = ExampleLanguage_Get,
     };
-    struct SolidSyslogStructuredData* metaSd      = SolidSyslogMetaSd_Create(&metaConfig);
-    struct SolidSyslogStructuredData* timeQuality = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
-    struct SolidSyslogStructuredData* originSd    = SolidSyslogOriginSd_Create("SolidSyslogExample", "0.7.0");
+    struct SolidSyslogStructuredData* metaSd       = SolidSyslogMetaSd_Create(&metaConfig);
+    struct SolidSyslogStructuredData* timeQuality  = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
+    struct SolidSyslogOriginSdConfig  originConfig = {
+         .software  = "SolidSyslogExample",
+         .swVersion = "0.7.0",
+    };
+    struct SolidSyslogStructuredData* originSd = SolidSyslogOriginSd_Create(&originConfig);
 
     struct SolidSyslogStructuredData* sdList[] = {metaSd, timeQuality, originSd};
 
