@@ -169,16 +169,28 @@ TEST(SolidSyslogOriginSd, EmptySwVersionString)
     STRCMP_EQUAL("[origin software=\"S\" swVersion=\"\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
 
-TEST(SolidSyslogOriginSd, NullSoftwareReturnsNull)
+TEST(SolidSyslogOriginSd, NullSoftwareOmitsTheParam)
 {
     recreate(nullptr, "1.0");
-    CHECK(sd == nullptr);
+    resetFormatter();
+    format();
+    STRCMP_EQUAL("[origin swVersion=\"1.0\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
 
-TEST(SolidSyslogOriginSd, NullSwVersionReturnsNull)
+TEST(SolidSyslogOriginSd, NullSwVersionOmitsTheParam)
 {
     recreate("S", nullptr);
-    CHECK(sd == nullptr);
+    resetFormatter();
+    format();
+    STRCMP_EQUAL("[origin software=\"S\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+}
+
+TEST(SolidSyslogOriginSd, BothNullProducesBareOriginElement)
+{
+    recreate(nullptr, nullptr);
+    resetFormatter();
+    format();
+    STRCMP_EQUAL("[origin]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
 
 TEST(SolidSyslogOriginSd, DestroyDoesNotCrash)

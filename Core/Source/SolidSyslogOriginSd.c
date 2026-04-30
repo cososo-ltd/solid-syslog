@@ -17,9 +17,9 @@ struct SolidSyslogOriginSd
     SolidSyslogFormatterStorage      formattedStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(ORIGIN_FORMATTED_MAX)];
 };
 
-static const char SD_SOFTWARE_PREFIX[] = "[origin software=\"";
-static const char SD_VERSION_PREFIX[]  = "\" swVersion=\"";
-static const char SD_SUFFIX[]          = "\"]";
+static const char SD_PREFIX[]      = "[origin";
+static const char SD_SOFTWARE_SD[] = " software=\"";
+static const char SD_VERSION_SD[]  = " swVersion=\"";
 
 static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
 
@@ -27,19 +27,23 @@ static struct SolidSyslogOriginSd instance;
 
 struct SolidSyslogStructuredData* SolidSyslogOriginSd_Create(const struct SolidSyslogOriginSdConfig* config)
 {
-    if ((config->software == NULL) || (config->swVersion == NULL))
-    {
-        return NULL;
-    }
-
     struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(instance.formattedStorage, ORIGIN_FORMATTED_MAX);
 
     instance.base.Format = Format;
-    SolidSyslogFormatter_BoundedString(f, SD_SOFTWARE_PREFIX, sizeof(SD_SOFTWARE_PREFIX) - 1);
-    SolidSyslogFormatter_EscapedString(f, config->software, ORIGIN_SOFTWARE_MAX);
-    SolidSyslogFormatter_BoundedString(f, SD_VERSION_PREFIX, sizeof(SD_VERSION_PREFIX) - 1);
-    SolidSyslogFormatter_EscapedString(f, config->swVersion, ORIGIN_SWVERSION_MAX);
-    SolidSyslogFormatter_BoundedString(f, SD_SUFFIX, sizeof(SD_SUFFIX) - 1);
+    SolidSyslogFormatter_BoundedString(f, SD_PREFIX, sizeof(SD_PREFIX) - 1);
+    if (config->software != NULL)
+    {
+        SolidSyslogFormatter_BoundedString(f, SD_SOFTWARE_SD, sizeof(SD_SOFTWARE_SD) - 1);
+        SolidSyslogFormatter_EscapedString(f, config->software, ORIGIN_SOFTWARE_MAX);
+        SolidSyslogFormatter_AsciiCharacter(f, '"');
+    }
+    if (config->swVersion != NULL)
+    {
+        SolidSyslogFormatter_BoundedString(f, SD_VERSION_SD, sizeof(SD_VERSION_SD) - 1);
+        SolidSyslogFormatter_EscapedString(f, config->swVersion, ORIGIN_SWVERSION_MAX);
+        SolidSyslogFormatter_AsciiCharacter(f, '"');
+    }
+    SolidSyslogFormatter_AsciiCharacter(f, ']');
 
     return &instance.base;
 }
