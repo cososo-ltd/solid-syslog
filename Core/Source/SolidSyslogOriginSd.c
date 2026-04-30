@@ -22,29 +22,16 @@ static const char SD_SOFTWARE_SD[] = " software=\"";
 static const char SD_VERSION_SD[]  = " swVersion=\"";
 
 static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
+static void PreFormatSdElement(const struct SolidSyslogOriginSdConfig* config);
+static void EmitSoftware(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config);
+static void EmitSwVersion(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config);
 
 static struct SolidSyslogOriginSd instance;
 
 struct SolidSyslogStructuredData* SolidSyslogOriginSd_Create(const struct SolidSyslogOriginSdConfig* config)
 {
-    struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(instance.formattedStorage, ORIGIN_FORMATTED_MAX);
-
     instance.base.Format = Format;
-    SolidSyslogFormatter_BoundedString(f, SD_PREFIX, sizeof(SD_PREFIX) - 1);
-    if (config->software != NULL)
-    {
-        SolidSyslogFormatter_BoundedString(f, SD_SOFTWARE_SD, sizeof(SD_SOFTWARE_SD) - 1);
-        SolidSyslogFormatter_EscapedString(f, config->software, ORIGIN_SOFTWARE_MAX);
-        SolidSyslogFormatter_AsciiCharacter(f, '"');
-    }
-    if (config->swVersion != NULL)
-    {
-        SolidSyslogFormatter_BoundedString(f, SD_VERSION_SD, sizeof(SD_VERSION_SD) - 1);
-        SolidSyslogFormatter_EscapedString(f, config->swVersion, ORIGIN_SWVERSION_MAX);
-        SolidSyslogFormatter_AsciiCharacter(f, '"');
-    }
-    SolidSyslogFormatter_AsciiCharacter(f, ']');
-
+    PreFormatSdElement(config);
     return &instance.base;
 }
 
@@ -59,4 +46,34 @@ static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFor
     struct SolidSyslogFormatter* preformat = SolidSyslogFormatter_FromStorage(origin->formattedStorage);
 
     SolidSyslogFormatter_BoundedString(formatter, SolidSyslogFormatter_AsFormattedBuffer(preformat), SolidSyslogFormatter_Length(preformat));
+}
+
+static void PreFormatSdElement(const struct SolidSyslogOriginSdConfig* config)
+{
+    struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(instance.formattedStorage, ORIGIN_FORMATTED_MAX);
+
+    SolidSyslogFormatter_BoundedString(f, SD_PREFIX, sizeof(SD_PREFIX) - 1);
+    EmitSoftware(f, config);
+    EmitSwVersion(f, config);
+    SolidSyslogFormatter_AsciiCharacter(f, ']');
+}
+
+static void EmitSoftware(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config)
+{
+    if (config->software != NULL)
+    {
+        SolidSyslogFormatter_BoundedString(f, SD_SOFTWARE_SD, sizeof(SD_SOFTWARE_SD) - 1);
+        SolidSyslogFormatter_EscapedString(f, config->software, ORIGIN_SOFTWARE_MAX);
+        SolidSyslogFormatter_AsciiCharacter(f, '"');
+    }
+}
+
+static void EmitSwVersion(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config)
+{
+    if (config->swVersion != NULL)
+    {
+        SolidSyslogFormatter_BoundedString(f, SD_VERSION_SD, sizeof(SD_VERSION_SD) - 1);
+        SolidSyslogFormatter_EscapedString(f, config->swVersion, ORIGIN_SWVERSION_MAX);
+        SolidSyslogFormatter_AsciiCharacter(f, '"');
+    }
 }
