@@ -1,7 +1,9 @@
 #include "SolidSyslogExample.h"
 #include "ExampleAppName.h"
 #include "ExampleCommandLine.h"
+#include "ExampleEnterpriseId.h"
 #include "ExampleInteractive.h"
+#include "ExampleIps.h"
 #include "ExampleLanguage.h"
 #include "ExampleTcpConfig.h"
 #include "ExampleUdpConfig.h"
@@ -85,8 +87,11 @@ int SolidSyslogExample_Run(int argc, char* argv[])
     struct SolidSyslogStructuredData* metaSd       = SolidSyslogMetaSd_Create(&metaConfig);
     struct SolidSyslogStructuredData* timeQuality  = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
     struct SolidSyslogOriginSdConfig  originConfig = {
-         .software  = "SolidSyslogExample",
-         .swVersion = "0.7.0",
+         .software     = "SolidSyslogExample",
+         .swVersion    = "0.7.0",
+         .enterpriseId = EXAMPLE_ENTERPRISE_ID,
+         .getIpCount   = ExampleIps_Count,
+         .getIpAt      = ExampleIps_At,
     };
     struct SolidSyslogStructuredData* originSd = SolidSyslogOriginSd_Create(&originConfig);
 
