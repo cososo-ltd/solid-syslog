@@ -8,9 +8,9 @@ struct SolidSyslogTimeQualitySd
     SolidSyslogTimeQualityFunction   getTimeQuality;
 };
 
-static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
-static void FormatBoolParam(struct SolidSyslogFormatter* formatter, const char* name, size_t nameLength, bool value);
-static void FormatSyncAccuracy(struct SolidSyslogFormatter* formatter, uint32_t value);
+static void        Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
+static inline void FormatBoolParam(struct SolidSyslogFormatter* formatter, const char* name, size_t nameLength, bool value);
+static inline void FormatSyncAccuracy(struct SolidSyslogFormatter* formatter, uint32_t value);
 
 static struct SolidSyslogTimeQualitySd instance;
 
@@ -46,7 +46,7 @@ static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFor
     SolidSyslogFormatter_AsciiCharacter(formatter, ']');
 }
 
-static void FormatBoolParam(struct SolidSyslogFormatter* formatter, const char* name, size_t nameLength, bool value)
+static inline void FormatBoolParam(struct SolidSyslogFormatter* formatter, const char* name, size_t nameLength, bool value)
 {
     SolidSyslogFormatter_BoundedString(formatter, name, nameLength);
     SolidSyslogFormatter_AsciiCharacter(formatter, '=');
@@ -55,14 +55,12 @@ static void FormatBoolParam(struct SolidSyslogFormatter* formatter, const char* 
     SolidSyslogFormatter_AsciiCharacter(formatter, '"');
 }
 
-static void FormatSyncAccuracy(struct SolidSyslogFormatter* formatter, uint32_t value)
+static inline void FormatSyncAccuracy(struct SolidSyslogFormatter* formatter, uint32_t value)
 {
-    if (value == SOLIDSYSLOG_SYNC_ACCURACY_OMIT)
+    if (value != SOLIDSYSLOG_SYNC_ACCURACY_OMIT)
     {
-        return;
+        SolidSyslogFormatter_BoundedString(formatter, PARAM_SYNC_ACCURACY, sizeof(PARAM_SYNC_ACCURACY) - 1);
+        SolidSyslogFormatter_Uint32(formatter, value);
+        SolidSyslogFormatter_AsciiCharacter(formatter, '"');
     }
-
-    SolidSyslogFormatter_BoundedString(formatter, PARAM_SYNC_ACCURACY, sizeof(PARAM_SYNC_ACCURACY) - 1);
-    SolidSyslogFormatter_Uint32(formatter, value);
-    SolidSyslogFormatter_AsciiCharacter(formatter, '"');
 }
