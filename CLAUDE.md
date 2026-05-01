@@ -396,6 +396,39 @@ Names should be self-documenting — prefer clarity over brevity.
 
 ---
 
+## Callback Conventions
+
+The library is migrating away from singleton instances toward integrator-injected storage and
+context-pointer callbacks. The migration is **opportunistic per-class** — not a sweep — so older
+context-less callbacks (`SolidSyslogClockFunction`, `SolidSyslogStringFunction`,
+`SolidSyslogStoreFullCallback`, etc.) keep their current shape until the class that owns them is
+next touched.
+
+**For new callbacks:**
+
+- The function pointer takes a `void* context` parameter.
+- The config struct exposes a paired context field. When several callbacks form a logical
+  feature, share one context field (e.g. `thresholdContext` shared between the threshold
+  function and the threshold-crossed callback).
+- Treat the context as opaque from the integrator's side — the library passes it through unchanged.
+
+**For existing callbacks:**
+
+- Migrate at the same time as a refactor or significant modification of the owning class. For
+  example, `SolidSyslogStoreFullCallback` migrates inside the FileStore split (S18.01), not in a
+  separate sweep PR.
+
+**Storage injection:**
+
+- Mirrors the `SolidSyslogFormatterStorage` pattern. The public header exposes an opaque storage
+  type and a `SOLIDSYSLOG_<TYPE>_STORAGE_SIZE` macro; `_Create` takes a pointer to caller-allocated
+  storage of that size. No `malloc` anywhere in the library.
+- Internal sub-components (e.g. RecordStore and BlockSequence inside FileStore) nest inside the
+  parent's storage blob. Their types stay in `Core/Source/` and never appear in public headers,
+  so integrator and example code physically cannot reach them.
+
+---
+
 ## Function Ordering
 
 Within a source file, functions are ordered top-down so the reader sees the lifecycle and public API
