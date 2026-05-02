@@ -284,14 +284,16 @@ void BlockSequence_NoteRecordWritten(struct BlockSequence* blockSequence, size_t
     NotifyThresholdCrossed(blockSequence);
 }
 
+static inline bool ThresholdEnabled(const struct BlockSequence* blockSequence);
+
 static inline void NotifyThresholdCrossed(struct BlockSequence* blockSequence)
 {
-    if (blockSequence->onThresholdCrossed != NULL)
+    if (ThresholdEnabled(blockSequence))
     {
         size_t threshold = blockSequence->getCapacityThreshold(blockSequence->thresholdContext);
         size_t used      = BlockSequence_UsedBytes(blockSequence);
 
-        if (used < threshold)
+        if ((threshold == 0) || (used < threshold))
         {
             blockSequence->thresholdCrossed = false;
         }
@@ -301,6 +303,11 @@ static inline void NotifyThresholdCrossed(struct BlockSequence* blockSequence)
             blockSequence->onThresholdCrossed(blockSequence->thresholdContext);
         }
     }
+}
+
+static inline bool ThresholdEnabled(const struct BlockSequence* blockSequence)
+{
+    return (blockSequence->onThresholdCrossed != NULL) && (blockSequence->getCapacityThreshold != NULL);
 }
 
 void BlockSequence_MarkWriteFileCorrupt(struct BlockSequence* blockSequence)

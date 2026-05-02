@@ -1835,3 +1835,29 @@ TEST(SolidSyslogFileStoreCapacityThreshold, ReArmsAfterFallingEdgeOnDiscardOldes
 
     LONGS_EQUAL(2, thresholdCallbackCount);
 }
+
+/* Given getCapacityThreshold returns 0,
+ * When usage rises arbitrarily,
+ * Then onThresholdCrossed never fires. */
+TEST(SolidSyslogFileStoreCapacityThreshold, DoesNotFireWhenThresholdIsZero)
+{
+    CreateWithThreshold(0);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    LONGS_EQUAL(0, thresholdCallbackCount);
+}
+
+/* Given getCapacityThreshold is NULL but onThresholdCrossed is configured,
+ * When usage rises arbitrarily,
+ * Then onThresholdCrossed never fires (and the library does not deref a NULL function). */
+TEST(SolidSyslogFileStoreCapacityThreshold, DoesNotFireWhenThresholdFunctionIsNull)
+{
+    struct SolidSyslogFileStoreConfig config = MakeConfig(file);
+    config.getCapacityThreshold              = nullptr;
+    config.onThresholdCrossed                = CountThresholdCrossings;
+    store                                    = SolidSyslogFileStore_Create(&storeStorage, &config);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    LONGS_EQUAL(0, thresholdCallbackCount);
+}
