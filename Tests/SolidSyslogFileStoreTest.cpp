@@ -1896,3 +1896,54 @@ TEST(SolidSyslogFileStoreCapacityThreshold, ContextIsPassedToBothCallbacks)
     POINTERS_EQUAL(&sentinel, capturedThresholdFunctionContext);
     POINTERS_EQUAL(&sentinel, capturedThresholdCallbackContext);
 }
+
+static int nextFireOrder;
+static int thresholdFireOrder;
+static int storeFullFireOrder;
+
+static void RecordThresholdFireOrder(void* context)
+{
+    (void) context;
+    thresholdFireOrder = ++nextFireOrder;
+}
+
+static void RecordStoreFullFireOrder(void* context)
+{
+    (void) context;
+    storeFullFireOrder = ++nextFireOrder;
+}
+
+/* Given threshold = 100% (total bytes) and SOLIDSYSLOG_HALT,
+ * When a Write fails for size and engages the sticky 100% bit,
+ * Then onThresholdCrossed fires before onStoreFull on that same Write. */
+TEST(SolidSyslogFileStoreCapacityThreshold, AtFullCapacityWithHaltThresholdFiresBeforeStoreFull)
+{
+    static const size_t MAX_MSG_RECORD = SOLIDSYSLOG_MAX_MESSAGE_SIZE + TEST_RECORD_OVERHEAD;
+    static const size_t SLACK          = 100;
+
+    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(maxMsg, 'A', sizeof(maxMsg));
+
+    nextFireOrder      = 0;
+    thresholdFireOrder = 0;
+    storeFullFireOrder = 0;
+
+    struct SolidSyslogFileStoreConfig config = MakeConfig(file);
+    config.maxFileSize                       = MAX_MSG_RECORD + SLACK;
+    config.maxFiles                          = 2;
+    config.discardPolicy                     = SOLIDSYSLOG_HALT;
+    config.onStoreFull                       = RecordStoreFullFireOrder;
+    config.getCapacityThreshold              = ReturnsConfiguredThreshold;
+    config.onThresholdCrossed                = RecordThresholdFireOrder;
+    /* Threshold = total: only the sticky-100% engagement on a failed Write reaches it. */
+    thresholdReturnValue = 2 * (MAX_MSG_RECORD + SLACK);
+    store                = SolidSyslogFileStore_Create(&storeStorage, &config);
+
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 0 partially full */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* rotate; block 1 partially full */
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* HALT: fails, sticky engages */
+
+    CHECK_TRUE(thresholdFireOrder > 0);
+    CHECK_TRUE(storeFullFireOrder > 0);
+    CHECK_TRUE(thresholdFireOrder < storeFullFireOrder);
+}

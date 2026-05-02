@@ -158,6 +158,7 @@ void BlockSequence_Close(struct BlockSequence* blockSequence)
 
 static inline bool FileIsFull(const struct BlockSequence* blockSequence, size_t recordSize);
 static inline bool StoreIsFull(const struct BlockSequence* blockSequence);
+static inline void NotifyThresholdCrossed(struct BlockSequence* blockSequence);
 static inline void NotifyStoreFull(struct BlockSequence* blockSequence);
 static bool        RotateToNextFile(struct BlockSequence* blockSequence);
 
@@ -168,6 +169,8 @@ bool BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t r
 
     if (FileIsFull(blockSequence, recordSize) && StoreIsFull(blockSequence))
     {
+        blockSequence->atCapacity = true;      /* sticky 100% — fixes UsedBytes at total */
+        NotifyThresholdCrossed(blockSequence); /* threshold first per S05.09 ordering */
         NotifyStoreFull(blockSequence);
         spaceAvailable = false;
     }
@@ -191,8 +194,6 @@ static inline bool StoreIsFull(const struct BlockSequence* blockSequence)
 
 static inline void NotifyStoreFull(struct BlockSequence* blockSequence)
 {
-    blockSequence->atCapacity = true;
-
     if (blockSequence->discardPolicy == SOLIDSYSLOG_HALT)
     {
         blockSequence->halted = true;
@@ -275,8 +276,6 @@ size_t BlockSequence_WritePosition(const struct BlockSequence* blockSequence)
 {
     return blockSequence->writePosition;
 }
-
-static inline void NotifyThresholdCrossed(struct BlockSequence* blockSequence);
 
 void BlockSequence_NoteRecordWritten(struct BlockSequence* blockSequence, size_t recordSize)
 {
