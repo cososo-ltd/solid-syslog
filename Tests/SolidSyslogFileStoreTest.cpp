@@ -926,6 +926,30 @@ TEST(SolidSyslogFileStoreRotation, DiscardNewestDoesNotInvokeCallback)
     CHECK_FALSE(storeFullCallbackInvoked);
 }
 
+static int storeFullCallbackCount;
+
+static void CountStoreFullInvocations(void* context)
+{
+    (void) context;
+    storeFullCallbackCount++;
+}
+
+TEST(SolidSyslogFileStoreRotation, HaltOnStoreFullFiresOncePerRisingEdge)
+{
+    storeFullCallbackCount = 0;
+    CreateWithMaxFileSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_HALT, 2, CountStoreFullInvocations);
+
+    WriteMaxMsg(); /* file 00 */
+    WriteMaxMsg(); /* file 01 — now at maxFiles=2 */
+
+    /* Three consecutive failed Writes — callback must fire on the first only. */
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+
+    LONGS_EQUAL(1, storeFullCallbackCount);
+}
+
 static void* storeFullCallbackContext;
 
 static void StoreFullCallbackCapturingContext(void* context)

@@ -195,7 +195,7 @@ static inline bool StoreIsFull(const struct BlockSequence* blockSequence)
 
 static inline void NotifyStoreFull(struct BlockSequence* blockSequence)
 {
-    if (blockSequence->discardPolicy == SOLIDSYSLOG_HALT)
+    if ((blockSequence->discardPolicy == SOLIDSYSLOG_HALT) && !blockSequence->halted)
     {
         blockSequence->halted = true;
 
