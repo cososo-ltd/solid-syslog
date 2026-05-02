@@ -28,7 +28,7 @@ enum
 };
 
 static const struct SolidSyslogFileStoreConfig DEFAULT_CONFIG = {
-    nullptr, nullptr, TEST_PATH_PREFIX, TEST_MAX_FILE_SIZE, TEST_MAX_FILES, SOLIDSYSLOG_DISCARD_OLDEST, nullptr, nullptr,
+    nullptr, nullptr, TEST_PATH_PREFIX, TEST_MAX_FILE_SIZE, TEST_MAX_FILES, SOLIDSYSLOG_DISCARD_OLDEST, nullptr, nullptr, nullptr,
 };
 
 /* Single backing slab reused across tests — tests run serially and Destroy
@@ -871,8 +871,9 @@ TEST(SolidSyslogFileStoreRotation, DiscardNewestReturnsFalseWhenAtMaxFiles)
 
 static bool storeFullCallbackInvoked;
 
-static void StoreFullCallback()
+static void StoreFullCallback(void* context)
 {
+    (void) context;
     storeFullCallbackInvoked = true;
 }
 
@@ -950,6 +951,39 @@ TEST(SolidSyslogFileStoreRotation, DiscardNewestDoesNotInvokeCallback)
 
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
     CHECK_FALSE(storeFullCallbackInvoked);
+}
+
+static void* storeFullCallbackContext;
+
+static void StoreFullCallbackCapturingContext(void* context)
+{
+    storeFullCallbackContext = context;
+}
+
+/* Given the integrator wires storeFullContext at config time,
+ * When onStoreFull fires,
+ * Then the callback receives the configured context pointer unchanged. */
+TEST(SolidSyslogFileStoreRotation, OnStoreFullReceivesConfiguredContext)
+{
+    int sentinel             = 0;
+    storeFullCallbackContext = nullptr;
+
+    struct SolidSyslogFileStoreConfig config = DEFAULT_CONFIG;
+    config.readFile                          = readFile;
+    config.writeFile                         = writeFile;
+    config.maxFileSize                       = ONE_MAX_MSG_RECORD;
+    config.maxFiles                          = 2;
+    config.discardPolicy                     = SOLIDSYSLOG_HALT;
+    config.onStoreFull                       = StoreFullCallbackCapturingContext;
+    config.storeFullContext                  = &sentinel;
+    store                                    = SolidSyslogFileStore_Create(&storeStorage, &config);
+
+    WriteMaxMsg(); /* file 00 */
+    WriteMaxMsg(); /* file 01 — at maxFiles */
+
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* triggers halt callback */
+
+    POINTERS_EQUAL(&sentinel, storeFullCallbackContext);
 }
 
 TEST(SolidSyslogFileStoreRotation, ResumeHasUnsentWhenMultipleFilesExist)

@@ -17,6 +17,7 @@ struct BlockSequenceConfig
     size_t                        maxFiles;
     enum SolidSyslogDiscardPolicy discardPolicy;
     SolidSyslogStoreFullCallback  onStoreFull;
+    void*                         storeFullContext;
 };
 
 struct BlockSequence
@@ -28,6 +29,7 @@ struct BlockSequence
     size_t                        maxFiles;
     enum SolidSyslogDiscardPolicy discardPolicy;
     SolidSyslogStoreFullCallback  onStoreFull;
+    void*                         storeFullContext;
     bool                          halted;
     bool                          atCapacity;
     uint8_t                       oldestSequence;

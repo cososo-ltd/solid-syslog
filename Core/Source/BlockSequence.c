@@ -67,6 +67,7 @@ void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockS
     blockSequence->maxFiles         = ClampToRange(config->maxFiles, MIN_MAX_FILES, MAX_MAX_FILES);
     blockSequence->discardPolicy    = config->discardPolicy;
     blockSequence->onStoreFull      = config->onStoreFull;
+    blockSequence->storeFullContext = config->storeFullContext;
     blockSequence->halted           = false;
     blockSequence->atCapacity       = false;
     blockSequence->oldestSequence   = 0;
@@ -194,7 +195,7 @@ static inline void NotifyStoreFull(struct BlockSequence* blockSequence)
 
         if (blockSequence->onStoreFull != NULL)
         {
-            blockSequence->onStoreFull();
+            blockSequence->onStoreFull(blockSequence->storeFullContext);
         }
     }
 }

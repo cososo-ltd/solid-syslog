@@ -18,7 +18,7 @@ EXTERN_C_BEGIN
         SOLIDSYSLOG_HALT
     };
 
-    typedef void (*SolidSyslogStoreFullCallback)(void); // NOLINT(modernize-redundant-void-arg) -- required in C
+    typedef void (*SolidSyslogStoreFullCallback)(void* context);
 
     struct SolidSyslogFileStoreConfig
     {
@@ -30,6 +30,7 @@ EXTERN_C_BEGIN
         enum SolidSyslogDiscardPolicy     discardPolicy;
         struct SolidSyslogSecurityPolicy* securityPolicy;
         SolidSyslogStoreFullCallback      onStoreFull;
+        void*                             storeFullContext;
     };
 
     enum

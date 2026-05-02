@@ -51,13 +51,14 @@ struct SolidSyslogStore* SolidSyslogFileStore_Create(SolidSyslogFileStoreStorage
 
     size_t                     minFileSize = RecordStore_RecordSize(&fileStore->recordStore, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
     struct BlockSequenceConfig blockConfig = {
-        .readFile      = config->readFile,
-        .writeFile     = config->writeFile,
-        .pathPrefix    = config->pathPrefix,
-        .maxFileSize   = (config->maxFileSize < minFileSize) ? minFileSize : config->maxFileSize,
-        .maxFiles      = config->maxFiles,
-        .discardPolicy = config->discardPolicy,
-        .onStoreFull   = config->onStoreFull,
+        .readFile         = config->readFile,
+        .writeFile        = config->writeFile,
+        .pathPrefix       = config->pathPrefix,
+        .maxFileSize      = (config->maxFileSize < minFileSize) ? minFileSize : config->maxFileSize,
+        .maxFiles         = config->maxFiles,
+        .discardPolicy    = config->discardPolicy,
+        .onStoreFull      = config->onStoreFull,
+        .storeFullContext = config->storeFullContext,
     };
     BlockSequence_Init(&fileStore->blockSequence, &blockConfig);
 

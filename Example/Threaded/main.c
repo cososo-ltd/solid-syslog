@@ -112,8 +112,9 @@ static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
 
 static volatile bool haltExit;
 
-static void OnStoreFull(void)
+static void OnStoreFull(void* context)
 {
+    (void) context;
     if (haltExit)
     {
         _exit(2);
