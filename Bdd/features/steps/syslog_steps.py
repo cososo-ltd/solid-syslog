@@ -17,6 +17,7 @@ from environment import (
     RECEIVED_UDP_LOG,
     STORE_FILE_PATH,
     STORE_PATH_PREFIX,
+    THRESHOLD_MARKER_PATH,
 )
 
 PER_TRANSPORT_LOG = {
@@ -455,6 +456,8 @@ def build_threaded_command(context, transport, no_sd=False):
         cmd.extend(["--max-file-size", str(context.store_max_file_size)])
     if getattr(context, "store_discard_policy", None):
         cmd.extend(["--discard-policy", context.store_discard_policy])
+    if getattr(context, "capacity_threshold", None):
+        cmd.extend(["--capacity-threshold", str(context.capacity_threshold)])
     if getattr(context, "message_body", None):
         cmd.extend(["--message", context.message_body])
     if no_sd:
@@ -517,6 +520,32 @@ def step_file_store_enabled_with_config(context, max_files, max_file_size, polic
 @given("the halt callback exits the process")
 def step_halt_callback_exits(context):
     context.halt_exit = True
+
+
+@given("the capacity threshold callback is enabled at {threshold:d} bytes")
+def step_capacity_threshold_enabled(context, threshold):
+    context.capacity_threshold = threshold
+    try:
+        os.remove(THRESHOLD_MARKER_PATH)
+    except FileNotFoundError:
+        pass
+
+
+@then("the capacity threshold callback was invoked")
+def step_threshold_callback_invoked(context):
+    assert os.path.exists(THRESHOLD_MARKER_PATH), (
+        f"Expected threshold marker at {THRESHOLD_MARKER_PATH}, found none"
+    )
+    assert os.path.getsize(THRESHOLD_MARKER_PATH) > 0, (
+        f"Threshold marker {THRESHOLD_MARKER_PATH} exists but is empty"
+    )
+
+
+@then("the capacity threshold callback was not invoked")
+def step_threshold_callback_not_invoked(context):
+    assert not os.path.exists(THRESHOLD_MARKER_PATH) or os.path.getsize(THRESHOLD_MARKER_PATH) == 0, (
+        f"Expected no threshold marker but found {THRESHOLD_MARKER_PATH} non-empty"
+    )
 
 
 @when("the client sends a message")

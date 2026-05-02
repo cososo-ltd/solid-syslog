@@ -10,34 +10,41 @@
 
 struct BlockSequenceConfig
 {
-    struct SolidSyslogFile*       readFile;
-    struct SolidSyslogFile*       writeFile;
-    const char*                   pathPrefix;
-    size_t                        maxFileSize;
-    size_t                        maxFiles;
-    enum SolidSyslogDiscardPolicy discardPolicy;
-    SolidSyslogStoreFullCallback  onStoreFull;
-    void*                         storeFullContext;
+    struct SolidSyslogFile*           readFile;
+    struct SolidSyslogFile*           writeFile;
+    const char*                       pathPrefix;
+    size_t                            maxFileSize;
+    size_t                            maxFiles;
+    enum SolidSyslogDiscardPolicy     discardPolicy;
+    SolidSyslogStoreFullCallback      onStoreFull;
+    void*                             storeFullContext;
+    SolidSyslogStoreThresholdFunction getCapacityThreshold;
+    SolidSyslogStoreThresholdCallback onThresholdCrossed;
+    void*                             thresholdContext;
 };
 
 struct BlockSequence
 {
-    struct SolidSyslogFile*       readFile;
-    struct SolidSyslogFile*       writeFile;
-    const char*                   pathPrefix;
-    size_t                        maxFileSize;
-    size_t                        maxFiles;
-    enum SolidSyslogDiscardPolicy discardPolicy;
-    SolidSyslogStoreFullCallback  onStoreFull;
-    void*                         storeFullContext;
-    bool                          halted;
-    bool                          atCapacity;
-    uint8_t                       oldestSequence;
-    uint8_t                       readSequence;
-    uint8_t                       writeSequence;
-    size_t                        readCursor;
-    size_t                        writePosition;
-    bool                          writeFileCorrupt;
+    struct SolidSyslogFile*           readFile;
+    struct SolidSyslogFile*           writeFile;
+    const char*                       pathPrefix;
+    size_t                            maxFileSize;
+    size_t                            maxFiles;
+    enum SolidSyslogDiscardPolicy     discardPolicy;
+    SolidSyslogStoreFullCallback      onStoreFull;
+    void*                             storeFullContext;
+    SolidSyslogStoreThresholdFunction getCapacityThreshold;
+    SolidSyslogStoreThresholdCallback onThresholdCrossed;
+    void*                             thresholdContext;
+    bool                              halted;
+    bool                              atCapacity;
+    bool                              thresholdCrossed;
+    uint8_t                           oldestSequence;
+    uint8_t                           readSequence;
+    uint8_t                           writeSequence;
+    size_t                            readCursor;
+    size_t                            writePosition;
+    bool                              writeFileCorrupt;
 };
 
 void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockSequenceConfig* config);

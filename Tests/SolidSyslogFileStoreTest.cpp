@@ -28,7 +28,7 @@ enum
 };
 
 static const struct SolidSyslogFileStoreConfig DEFAULT_CONFIG = {
-    nullptr, nullptr, TEST_PATH_PREFIX, TEST_MAX_FILE_SIZE, TEST_MAX_FILES, SOLIDSYSLOG_DISCARD_OLDEST, nullptr, nullptr, nullptr,
+    nullptr, nullptr, TEST_PATH_PREFIX, TEST_MAX_FILE_SIZE, TEST_MAX_FILES, SOLIDSYSLOG_DISCARD_OLDEST, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 
 /* Single backing slab reused across tests — tests run serially and Destroy
@@ -1729,4 +1729,286 @@ TEST(SolidSyslogFileStoreCapacity, GetUsedBytesIsStickyAtTotalAfterSizeFailure)
 
     /* Sticky: GetUsedBytes returns total even though the active blocks have slack. */
     LONGS_EQUAL(SolidSyslogStore_GetTotalBytes(store), SolidSyslogStore_GetUsedBytes(store));
+}
+
+/* ------------------------------------------------------------------
+ * Capacity threshold alert (S05.09)
+ * ----------------------------------------------------------------*/
+
+static int    thresholdCallbackCount;
+static size_t thresholdReturnValue;
+
+static size_t ReturnsConfiguredThreshold(void* context)
+{
+    (void) context;
+    return thresholdReturnValue;
+}
+
+static void CountThresholdCrossings(void* context)
+{
+    (void) context;
+    thresholdCallbackCount++;
+}
+
+// clang-format off
+TEST_GROUP(SolidSyslogFileStoreCapacityThreshold)
+{
+    struct FileFakeStorage storage = {};
+    struct SolidSyslogFile* file = nullptr;
+    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
+    struct SolidSyslogStore* store = nullptr;
+
+    void setup() override
+    {
+        file                   = FileFake_Create(&storage);
+        thresholdCallbackCount = 0;
+        thresholdReturnValue   = 0;
+    }
+
+    void teardown() override
+    {
+        if (store != nullptr) { SolidSyslogFileStore_Destroy(store); }
+        FileFake_Destroy();
+    }
+
+    void CreateWithThreshold(size_t threshold)
+    {
+        struct SolidSyslogFileStoreConfig config = MakeConfig(file);
+        config.getCapacityThreshold              = ReturnsConfiguredThreshold;
+        config.onThresholdCrossed                = CountThresholdCrossings;
+        thresholdReturnValue                     = threshold;
+        store                                    = SolidSyslogFileStore_Create(&storeStorage, &config);
+    }
+};
+
+// clang-format on
+
+/* Given a threshold below the size of a single record's overhead,
+ * When a write makes used-bytes cross the threshold,
+ * Then onThresholdCrossed fires. */
+TEST(SolidSyslogFileStoreCapacityThreshold, FiresOnRisingEdgeCrossing)
+{
+    CreateWithThreshold(TEST_DATA_LEN);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    LONGS_EQUAL(1, thresholdCallbackCount);
+}
+
+/* Given usage already above threshold,
+ * When subsequent writes keep usage above threshold,
+ * Then onThresholdCrossed fires only on the rising edge. */
+TEST(SolidSyslogFileStoreCapacityThreshold, FiresOnceWhileUsageStaysAbove)
+{
+    CreateWithThreshold(TEST_DATA_LEN);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN); /* crosses */
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN); /* still above */
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN); /* still above */
+    LONGS_EQUAL(1, thresholdCallbackCount);
+}
+
+/* Given DISCARD_OLDEST and a threshold sitting in the last block,
+ * When writes cross the threshold, a discard drops usage below it, then writes cross again,
+ * Then onThresholdCrossed fires twice. */
+TEST(SolidSyslogFileStoreCapacityThreshold, ReArmsAfterFallingEdgeOnDiscardOldest)
+{
+    static const size_t MAX_MSG_RECORD = SOLIDSYSLOG_MAX_MESSAGE_SIZE + TEST_RECORD_OVERHEAD;
+    static const size_t TWO_RECORDS    = 2 * MAX_MSG_RECORD;
+
+    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(maxMsg, 'A', sizeof(maxMsg));
+
+    struct SolidSyslogFileStoreConfig config = MakeConfig(file);
+    config.maxFileSize                       = TWO_RECORDS;
+    config.maxFiles                          = 2;
+    config.discardPolicy                     = SOLIDSYSLOG_DISCARD_OLDEST;
+    config.getCapacityThreshold              = ReturnsConfiguredThreshold;
+    config.onThresholdCrossed                = CountThresholdCrossings;
+    /* Threshold sits between 3 and 4 records: 4-records crosses, 3-records is below. */
+    thresholdReturnValue = (3 * MAX_MSG_RECORD) + 1;
+    store                = SolidSyslogFileStore_Create(&storeStorage, &config);
+
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 0: 1 record */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 0: 2 records (full) */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* rotate; block 1: 1 record (3 total) */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 1: 2 records (4 total) — fires */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* rotate+discard block 0 → 3 records (below) */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 2: 2 records (4 total) — fires again */
+
+    LONGS_EQUAL(2, thresholdCallbackCount);
+}
+
+/* Given getCapacityThreshold returns 0,
+ * When usage rises arbitrarily,
+ * Then onThresholdCrossed never fires. */
+TEST(SolidSyslogFileStoreCapacityThreshold, DoesNotFireWhenThresholdIsZero)
+{
+    CreateWithThreshold(0);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    LONGS_EQUAL(0, thresholdCallbackCount);
+}
+
+/* Given getCapacityThreshold is NULL but onThresholdCrossed is configured,
+ * When usage rises arbitrarily,
+ * Then onThresholdCrossed never fires (and the library does not deref a NULL function). */
+TEST(SolidSyslogFileStoreCapacityThreshold, DoesNotFireWhenThresholdFunctionIsNull)
+{
+    struct SolidSyslogFileStoreConfig config = MakeConfig(file);
+    config.getCapacityThreshold              = nullptr;
+    config.onThresholdCrossed                = CountThresholdCrossings;
+    store                                    = SolidSyslogFileStore_Create(&storeStorage, &config);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    LONGS_EQUAL(0, thresholdCallbackCount);
+}
+
+static void* capturedThresholdFunctionContext;
+static void* capturedThresholdCallbackContext;
+
+static size_t CaptureThresholdFunctionContext(void* context)
+{
+    capturedThresholdFunctionContext = context;
+    return thresholdReturnValue;
+}
+
+static void CaptureThresholdCallbackContext(void* context)
+{
+    capturedThresholdCallbackContext = context;
+}
+
+/* Given thresholdContext wired at config time,
+ * When getCapacityThreshold and onThresholdCrossed are invoked,
+ * Then both receive the configured context. */
+TEST(SolidSyslogFileStoreCapacityThreshold, ContextIsPassedToBothCallbacks)
+{
+    int sentinel                             = 0;
+    capturedThresholdFunctionContext         = nullptr;
+    capturedThresholdCallbackContext         = nullptr;
+    struct SolidSyslogFileStoreConfig config = MakeConfig(file);
+    config.getCapacityThreshold              = CaptureThresholdFunctionContext;
+    config.onThresholdCrossed                = CaptureThresholdCallbackContext;
+    config.thresholdContext                  = &sentinel;
+    thresholdReturnValue                     = TEST_DATA_LEN;
+    store                                    = SolidSyslogFileStore_Create(&storeStorage, &config);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    POINTERS_EQUAL(&sentinel, capturedThresholdFunctionContext);
+    POINTERS_EQUAL(&sentinel, capturedThresholdCallbackContext);
+}
+
+static int nextFireOrder;
+static int thresholdFireOrder;
+static int storeFullFireOrder;
+
+static void RecordThresholdFireOrder(void* context)
+{
+    (void) context;
+    thresholdFireOrder = ++nextFireOrder;
+}
+
+static void RecordStoreFullFireOrder(void* context)
+{
+    (void) context;
+    storeFullFireOrder = ++nextFireOrder;
+}
+
+/* Given threshold = 100% (total bytes) and SOLIDSYSLOG_HALT,
+ * When a Write fails for size and engages the sticky 100% bit,
+ * Then onThresholdCrossed fires before onStoreFull on that same Write. */
+TEST(SolidSyslogFileStoreCapacityThreshold, AtFullCapacityWithHaltThresholdFiresBeforeStoreFull)
+{
+    static const size_t MAX_MSG_RECORD = SOLIDSYSLOG_MAX_MESSAGE_SIZE + TEST_RECORD_OVERHEAD;
+    static const size_t SLACK          = 100;
+
+    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(maxMsg, 'A', sizeof(maxMsg));
+
+    nextFireOrder      = 0;
+    thresholdFireOrder = 0;
+    storeFullFireOrder = 0;
+
+    struct SolidSyslogFileStoreConfig config = MakeConfig(file);
+    config.maxFileSize                       = MAX_MSG_RECORD + SLACK;
+    config.maxFiles                          = 2;
+    config.discardPolicy                     = SOLIDSYSLOG_HALT;
+    config.onStoreFull                       = RecordStoreFullFireOrder;
+    config.getCapacityThreshold              = ReturnsConfiguredThreshold;
+    config.onThresholdCrossed                = RecordThresholdFireOrder;
+    /* Threshold = total: only the sticky-100% engagement on a failed Write reaches it. */
+    thresholdReturnValue = 2 * (MAX_MSG_RECORD + SLACK);
+    store                = SolidSyslogFileStore_Create(&storeStorage, &config);
+
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg));              /* block 0 partially full */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg));              /* rotate; block 1 partially full */
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* HALT: fails, sticky engages */
+
+    CHECK_TRUE(thresholdFireOrder > 0);
+    CHECK_TRUE(storeFullFireOrder > 0);
+    CHECK_TRUE(thresholdFireOrder < storeFullFireOrder);
+}
+
+/* Given a failed Write has already engaged the sticky 100% bit,
+ * When subsequent Writes also fail for size,
+ * Then onThresholdCrossed does not fire again. */
+TEST(SolidSyslogFileStoreCapacityThreshold, StickyHundredPercentDoesNotRefireThreshold)
+{
+    static const size_t MAX_MSG_RECORD = SOLIDSYSLOG_MAX_MESSAGE_SIZE + TEST_RECORD_OVERHEAD;
+    static const size_t SLACK          = 100;
+
+    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(maxMsg, 'A', sizeof(maxMsg));
+
+    struct SolidSyslogFileStoreConfig config = MakeConfig(file);
+    config.maxFileSize                       = MAX_MSG_RECORD + SLACK;
+    config.maxFiles                          = 2;
+    config.discardPolicy                     = SOLIDSYSLOG_HALT;
+    config.getCapacityThreshold              = ReturnsConfiguredThreshold;
+    config.onThresholdCrossed                = CountThresholdCrossings;
+    thresholdReturnValue                     = 2 * (MAX_MSG_RECORD + SLACK);
+    store                                    = SolidSyslogFileStore_Create(&storeStorage, &config);
+
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* fills block 0 partially */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* fills block 1 partially */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* fails, sticky engages — fires once */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* fails again — must not refire */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* fails again — must not refire */
+
+    LONGS_EQUAL(1, thresholdCallbackCount);
+}
+
+/* Given current usage well below threshold,
+ * When getCapacityThreshold starts returning a value the current usage already exceeds,
+ * Then onThresholdCrossed fires on the next Write. */
+TEST(SolidSyslogFileStoreCapacityThreshold, FiresWhenThresholdDropsBelowCurrentUsage)
+{
+    static const size_t HIGH_THRESHOLD = 1000000;
+    static const size_t LOW_THRESHOLD  = 1;
+
+    CreateWithThreshold(HIGH_THRESHOLD);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    LONGS_EQUAL(0, thresholdCallbackCount); /* still well below threshold */
+
+    thresholdReturnValue = LOW_THRESHOLD; /* threshold drops below current usage */
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    LONGS_EQUAL(1, thresholdCallbackCount);
+}
+
+/* Given persisted store contents already at-or-above threshold,
+ * When the integrator calls SolidSyslogFileStore_Create,
+ * Then onThresholdCrossed fires once during Create. */
+TEST(SolidSyslogFileStoreCapacityThreshold, FiresOnCreateWhenResumedUsageAboveThreshold)
+{
+    {
+        struct SolidSyslogFileStoreConfig preConfig = MakeConfig(file);
+        struct SolidSyslogStore*          preStore  = SolidSyslogFileStore_Create(&storeStorage, &preConfig);
+        SolidSyslogStore_Write(preStore, TEST_DATA, TEST_DATA_LEN);
+        SolidSyslogFileStore_Destroy(preStore);
+    }
+
+    /* setup() reset thresholdCallbackCount to 0 — any fire here is from this Create. */
+    CreateWithThreshold(TEST_DATA_LEN);
+
+    LONGS_EQUAL(1, thresholdCallbackCount);
 }

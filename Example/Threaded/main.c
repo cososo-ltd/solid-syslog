@@ -33,10 +33,12 @@
 #include "SolidSyslogUdpSender.h"
 
 #include <pthread.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
-static const char* const                STORE_PATH_PREFIX = "/tmp/STORE";
+static const char* const                STORE_PATH_PREFIX     = "/tmp/STORE";
+static const char* const                THRESHOLD_MARKER_PATH = "/tmp/solidsyslog_threshold_marker.log";
 static struct SolidSyslogFile*          storeReadFile;
 static struct SolidSyslogFile*          storeWriteFile;
 static SolidSyslogPosixTcpStreamStorage plainTcpStreamStorage;
@@ -121,6 +123,22 @@ static void OnStoreFull(void* context)
     }
 }
 
+static size_t GetCapacityThreshold(void* context)
+{
+    return *(const size_t*) context;
+}
+
+static void OnThresholdCrossed(void* context)
+{
+    (void) context;
+    FILE* fp = fopen(THRESHOLD_MARKER_PATH, "a");
+    if (fp != NULL)
+    {
+        fputs("crossed\n", fp);
+        fclose(fp);
+    }
+}
+
 static struct SolidSyslogStore* CreateStore(const struct ExampleOptions* options)
 {
     bool useFile = (strcmp(options->store, "file") == 0);
@@ -132,6 +150,8 @@ static struct SolidSyslogStore* CreateStore(const struct ExampleOptions* options
         storeReadFile  = SolidSyslogPosixFile_Create(&readStorage);
         storeWriteFile = SolidSyslogPosixFile_Create(&writeStorage);
 
+        static size_t capacityThreshold;
+        capacityThreshold                                    = options->capacityThreshold;
         static struct SolidSyslogFileStoreConfig storeConfig = {0};
         storeConfig.readFile                                 = storeReadFile;
         storeConfig.writeFile                                = storeWriteFile;
@@ -141,6 +161,9 @@ static struct SolidSyslogStore* CreateStore(const struct ExampleOptions* options
         storeConfig.discardPolicy                            = MapDiscardPolicy(options->discardPolicy);
         storeConfig.securityPolicy                           = SolidSyslogCrc16Policy_Create();
         storeConfig.onStoreFull                              = OnStoreFull;
+        storeConfig.getCapacityThreshold                     = GetCapacityThreshold;
+        storeConfig.onThresholdCrossed                       = OnThresholdCrossed;
+        storeConfig.thresholdContext                         = &capacityThreshold;
 
         static SolidSyslogFileStoreStorage storeStorage;
         return SolidSyslogFileStore_Create(&storeStorage, &storeConfig);

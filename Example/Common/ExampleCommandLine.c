@@ -6,13 +6,14 @@
 
 enum
 {
-    DEFAULT_MAX_FILES     = 10,
-    DEFAULT_MAX_FILE_SIZE = 65536,
-    OPT_MAX_FILES         = 256,
-    OPT_MAX_FILE_SIZE     = 257,
-    OPT_DISCARD_POLICY    = 258,
-    OPT_NO_SD             = 259,
-    OPT_HALT_EXIT         = 260
+    DEFAULT_MAX_FILES      = 10,
+    DEFAULT_MAX_FILE_SIZE  = 65536,
+    OPT_MAX_FILES          = 256,
+    OPT_MAX_FILE_SIZE      = 257,
+    OPT_DISCARD_POLICY     = 258,
+    OPT_NO_SD              = 259,
+    OPT_HALT_EXIT          = 260,
+    OPT_CAPACITY_THRESHOLD = 261
 };
 
 static bool ParsePositiveNumber(const char* str, size_t* result)
@@ -36,17 +37,18 @@ static bool IsValidDiscardPolicy(const char* policy)
 
 int ExampleCommandLine_Parse(int argc, char* argv[], struct ExampleOptions* options)
 {
-    options->facility      = SOLIDSYSLOG_FACILITY_LOCAL0;
-    options->severity      = SOLIDSYSLOG_SEVERITY_INFO;
-    options->messageId     = NULL;
-    options->msg           = NULL;
-    options->transport     = "udp";
-    options->store         = "null";
-    options->maxFiles      = DEFAULT_MAX_FILES;
-    options->maxFileSize   = DEFAULT_MAX_FILE_SIZE;
-    options->discardPolicy = "oldest";
-    options->noSd          = false;
-    options->haltExit      = false;
+    options->facility          = SOLIDSYSLOG_FACILITY_LOCAL0;
+    options->severity          = SOLIDSYSLOG_SEVERITY_INFO;
+    options->messageId         = NULL;
+    options->msg               = NULL;
+    options->transport         = "udp";
+    options->store             = "null";
+    options->maxFiles          = DEFAULT_MAX_FILES;
+    options->maxFileSize       = DEFAULT_MAX_FILE_SIZE;
+    options->discardPolicy     = "oldest";
+    options->capacityThreshold = 0;
+    options->noSd              = false;
+    options->haltExit          = false;
 
     static struct option longOptions[] = {
         {"facility", required_argument, NULL, 'f'},
@@ -58,6 +60,7 @@ int ExampleCommandLine_Parse(int argc, char* argv[], struct ExampleOptions* opti
         {"max-files", required_argument, NULL, OPT_MAX_FILES},
         {"max-file-size", required_argument, NULL, OPT_MAX_FILE_SIZE},
         {"discard-policy", required_argument, NULL, OPT_DISCARD_POLICY},
+        {"capacity-threshold", required_argument, NULL, OPT_CAPACITY_THRESHOLD},
         {"no-sd", no_argument, NULL, OPT_NO_SD},
         {"halt-exit", no_argument, NULL, OPT_HALT_EXIT},
         {NULL, 0, NULL, 0},
@@ -112,6 +115,12 @@ int ExampleCommandLine_Parse(int argc, char* argv[], struct ExampleOptions* opti
                     return 1;
                 }
                 options->discardPolicy = optarg;
+                break;
+            case OPT_CAPACITY_THRESHOLD:
+                if (!ParsePositiveNumber(optarg, &options->capacityThreshold))
+                {
+                    return 1;
+                }
                 break;
             case OPT_NO_SD:
                 options->noSd = true;

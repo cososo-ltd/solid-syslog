@@ -20,6 +20,7 @@ EXTERN_C_BEGIN
         size_t                    maxFiles;
         size_t                    maxFileSize;
         const char*               discardPolicy;
+        size_t                    capacityThreshold;
         bool                      noSd;
         bool                      haltExit;
     };
