@@ -2126,3 +2126,58 @@ S3.9 / S3.10 / S3.11 as placeholder issues under E3.
   a realistic future regression, it's load-bearing — TDD discipline is
   about "production code driven by tests", not "every test must have
   been red at some point."
+
+## 2026-05-02 — S05.09 capacity threshold alert
+
+Built the early-warning capacity threshold callback on top of the
+S18.01 prerequisites (capacity getters, sticky-100% bit, void* context
+on `SolidSyslogStoreFullCallback`). Sliced 11 ways, strict TDD with
+slice-by-slice review.
+
+### Decisions
+
+- **Threshold lives on `BlockSequence`, not `FileStore`.** The capacity
+  state and sticky bit already lived there; adding a single
+  `thresholdCrossed` bool plus the three new config fields kept the
+  layering clean and FileStore stays a thin pass-through.
+- **Threshold returned in bytes, not percentage.** Per-`Write` cost is
+  one indirect call (`getCapacityThreshold`), one already-cheap
+  `_UsedBytes`, and a `>=` compare. No division on the hot path. If
+  integrators want a percentage UI they compute it themselves.
+- **NullBuffer recursion: document, don't guard.** Header doc-comment
+  on the typedef explains the `SolidSyslog_Log` recursion footgun
+  under `SolidSyslogNullBuffer`. A re-entrancy guard would have added
+  state and a hot-path branch for a trivially avoidable mistake on the
+  integrator side. Pre-1.0, simpler is better.
+- **At 100% with HALT, threshold fires before `onStoreFull`.** Spec
+  ordering. Refactored `BlockSequence_PrepareForWrite`'s file-full +
+  store-full branch to set the sticky bit first, then call
+  `NotifyThresholdCrossed`, then `NotifyStoreFull`. Sticky-bit
+  assignment moved out of `NotifyStoreFull` into the call site to
+  make the sequencing explicit.
+- **Three "comes-free" tests.** Slices 5 (context plumbing), 7 (sticky
+  doesn't refire), and 9 (threshold drop below current usage) all
+  passed without production change. Kept as regression guards rather
+  than rejected — they protect realistic future regressions and pin
+  down spec contracts that the rest of the design implies.
+- **BDD marker file.** Threshold callback in the threaded example
+  appends to `/tmp/solidsyslog_threshold_marker.log`; environment.py
+  cleans the marker between scenarios. Simpler than stderr-polling and
+  scales to multiple scenarios. CI behave runs as root so chmod works;
+  locally needed `--user 0` to repro.
+
+### Deferred
+
+- **Repeated `onStoreFull` firing** under sustained HALT — every
+  failed `Write` re-fires the callback. Pre-existing behaviour, not in
+  S05.09's scope. Worth a separate story if integrators report it as
+  noisy.
+- **Per-file or per-block thresholds** — explicitly out of scope per
+  the AC; single store-level threshold only.
+
+### Open questions
+
+- **Does threshold = 0 belong in the API at all, or should `NULL`
+  function be the only "disabled" signal?** Spec mandates both work,
+  so I implemented both. Worth a future review pass — the dual-disable
+  surface is a small foot-gun.
