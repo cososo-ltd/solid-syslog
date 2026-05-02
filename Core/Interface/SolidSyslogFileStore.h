@@ -20,6 +20,15 @@ EXTERN_C_BEGIN
 
     typedef void (*SolidSyslogStoreFullCallback)(void* context);
 
+    /* Returns the capacity-threshold in bytes; 0 disables. Queried on every Write. */
+    typedef size_t (*SolidSyslogStoreThresholdFunction)(void* context);
+
+    /* Edge-triggered: fires once when used-bytes transitions from below threshold to at-or-above.
+     * NullBuffer note: SolidSyslog_Log is synchronous under SolidSyslogNullBuffer, so calling
+     * SolidSyslog_Log from this callback will recurse into Store_Write. Either gate the Log,
+     * or use SolidSyslogPosixMessageQueueBuffer (which returns immediately). */
+    typedef void (*SolidSyslogStoreThresholdCallback)(void* context);
+
     struct SolidSyslogFileStoreConfig
     {
         struct SolidSyslogFile*           readFile;
@@ -31,6 +40,9 @@ EXTERN_C_BEGIN
         struct SolidSyslogSecurityPolicy* securityPolicy;
         SolidSyslogStoreFullCallback      onStoreFull;
         void*                             storeFullContext;
+        SolidSyslogStoreThresholdFunction getCapacityThreshold;
+        SolidSyslogStoreThresholdCallback onThresholdCrossed;
+        void*                             thresholdContext;
     };
 
     enum

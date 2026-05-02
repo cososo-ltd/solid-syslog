@@ -86,14 +86,17 @@ static inline struct BlockSequenceConfig BuildBlockSequenceConfig(const struct S
     size_t maxFileSize = (config->maxFileSize < minFileSize) ? minFileSize : config->maxFileSize;
 
     struct BlockSequenceConfig blockConfig = {
-        .readFile         = config->readFile,
-        .writeFile        = config->writeFile,
-        .pathPrefix       = config->pathPrefix,
-        .maxFileSize      = maxFileSize,
-        .maxFiles         = config->maxFiles,
-        .discardPolicy    = config->discardPolicy,
-        .onStoreFull      = config->onStoreFull,
-        .storeFullContext = config->storeFullContext,
+        .readFile             = config->readFile,
+        .writeFile            = config->writeFile,
+        .pathPrefix           = config->pathPrefix,
+        .maxFileSize          = maxFileSize,
+        .maxFiles             = config->maxFiles,
+        .discardPolicy        = config->discardPolicy,
+        .onStoreFull          = config->onStoreFull,
+        .storeFullContext     = config->storeFullContext,
+        .getCapacityThreshold = config->getCapacityThreshold,
+        .onThresholdCrossed   = config->onThresholdCrossed,
+        .thresholdContext     = config->thresholdContext,
     };
     return blockConfig;
 }

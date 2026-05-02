@@ -60,22 +60,25 @@ static inline size_t ClampToRange(size_t value, size_t min, size_t max)
 
 void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockSequenceConfig* config)
 {
-    blockSequence->readFile         = config->readFile;
-    blockSequence->writeFile        = config->writeFile;
-    blockSequence->pathPrefix       = config->pathPrefix;
-    blockSequence->maxFileSize      = config->maxFileSize;
-    blockSequence->maxFiles         = ClampToRange(config->maxFiles, MIN_MAX_FILES, MAX_MAX_FILES);
-    blockSequence->discardPolicy    = config->discardPolicy;
-    blockSequence->onStoreFull      = config->onStoreFull;
-    blockSequence->storeFullContext = config->storeFullContext;
-    blockSequence->halted           = false;
-    blockSequence->atCapacity       = false;
-    blockSequence->oldestSequence   = 0;
-    blockSequence->readSequence     = 0;
-    blockSequence->writeSequence    = 0;
-    blockSequence->readCursor       = 0;
-    blockSequence->writePosition    = 0;
-    blockSequence->writeFileCorrupt = false;
+    blockSequence->readFile             = config->readFile;
+    blockSequence->writeFile            = config->writeFile;
+    blockSequence->pathPrefix           = config->pathPrefix;
+    blockSequence->maxFileSize          = config->maxFileSize;
+    blockSequence->maxFiles             = ClampToRange(config->maxFiles, MIN_MAX_FILES, MAX_MAX_FILES);
+    blockSequence->discardPolicy        = config->discardPolicy;
+    blockSequence->onStoreFull          = config->onStoreFull;
+    blockSequence->storeFullContext     = config->storeFullContext;
+    blockSequence->getCapacityThreshold = config->getCapacityThreshold;
+    blockSequence->onThresholdCrossed   = config->onThresholdCrossed;
+    blockSequence->thresholdContext     = config->thresholdContext;
+    blockSequence->halted               = false;
+    blockSequence->atCapacity           = false;
+    blockSequence->oldestSequence       = 0;
+    blockSequence->readSequence         = 0;
+    blockSequence->writeSequence        = 0;
+    blockSequence->readCursor           = 0;
+    blockSequence->writePosition        = 0;
+    blockSequence->writeFileCorrupt     = false;
 }
 
 static void ScanForExistingFiles(struct BlockSequence* blockSequence);
@@ -272,9 +275,20 @@ size_t BlockSequence_WritePosition(const struct BlockSequence* blockSequence)
     return blockSequence->writePosition;
 }
 
+static inline void NotifyThresholdCrossed(struct BlockSequence* blockSequence);
+
 void BlockSequence_NoteRecordWritten(struct BlockSequence* blockSequence, size_t recordSize)
 {
     blockSequence->writePosition += recordSize;
+    NotifyThresholdCrossed(blockSequence);
+}
+
+static inline void NotifyThresholdCrossed(struct BlockSequence* blockSequence)
+{
+    if (blockSequence->onThresholdCrossed != NULL)
+    {
+        blockSequence->onThresholdCrossed(blockSequence->thresholdContext);
+    }
 }
 
 void BlockSequence_MarkWriteFileCorrupt(struct BlockSequence* blockSequence)

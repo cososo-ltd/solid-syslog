@@ -28,7 +28,7 @@ enum
 };
 
 static const struct SolidSyslogFileStoreConfig DEFAULT_CONFIG = {
-    nullptr, nullptr, TEST_PATH_PREFIX, TEST_MAX_FILE_SIZE, TEST_MAX_FILES, SOLIDSYSLOG_DISCARD_OLDEST, nullptr, nullptr, nullptr,
+    nullptr, nullptr, TEST_PATH_PREFIX, TEST_MAX_FILE_SIZE, TEST_MAX_FILES, SOLIDSYSLOG_DISCARD_OLDEST, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 
 /* Single backing slab reused across tests — tests run serially and Destroy
@@ -1729,4 +1729,66 @@ TEST(SolidSyslogFileStoreCapacity, GetUsedBytesIsStickyAtTotalAfterSizeFailure)
 
     /* Sticky: GetUsedBytes returns total even though the active blocks have slack. */
     LONGS_EQUAL(SolidSyslogStore_GetTotalBytes(store), SolidSyslogStore_GetUsedBytes(store));
+}
+
+/* ------------------------------------------------------------------
+ * Capacity threshold alert (S05.09)
+ * ----------------------------------------------------------------*/
+
+static bool   thresholdCallbackFired;
+static size_t thresholdReturnValue;
+
+static size_t ReturnsConfiguredThreshold(void* context)
+{
+    (void) context;
+    return thresholdReturnValue;
+}
+
+static void RecordThresholdCrossed(void* context)
+{
+    (void) context;
+    thresholdCallbackFired = true;
+}
+
+// clang-format off
+TEST_GROUP(SolidSyslogFileStoreCapacityThreshold)
+{
+    struct FileFakeStorage storage = {};
+    struct SolidSyslogFile* file = nullptr;
+    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
+    struct SolidSyslogStore* store = nullptr;
+
+    void setup() override
+    {
+        file = FileFake_Create(&storage);
+        thresholdCallbackFired = false;
+        thresholdReturnValue   = 0;
+    }
+
+    void teardown() override
+    {
+        if (store != nullptr) { SolidSyslogFileStore_Destroy(store); }
+        FileFake_Destroy();
+    }
+
+    void CreateWithThreshold(size_t threshold)
+    {
+        struct SolidSyslogFileStoreConfig config = MakeConfig(file);
+        config.getCapacityThreshold = ReturnsConfiguredThreshold;
+        config.onThresholdCrossed   = RecordThresholdCrossed;
+        thresholdReturnValue        = threshold;
+        store                       = SolidSyslogFileStore_Create(&storeStorage, &config);
+    }
+};
+
+// clang-format on
+
+/* Given a threshold below the size of a single record's overhead,
+ * When a write makes used-bytes cross the threshold,
+ * Then onThresholdCrossed fires. */
+TEST(SolidSyslogFileStoreCapacityThreshold, FiresOnRisingEdgeCrossing)
+{
+    CreateWithThreshold(TEST_DATA_LEN);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    CHECK_TRUE(thresholdCallbackFired);
 }
