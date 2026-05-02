@@ -12,6 +12,8 @@ EXTERN_C_BEGIN
         void (*MarkSent)(struct SolidSyslogStore* self);
         bool (*HasUnsent)(struct SolidSyslogStore* self);
         bool (*IsHalted)(struct SolidSyslogStore* self);
+        size_t (*GetTotalBytes)(struct SolidSyslogStore* self);
+        size_t (*GetUsedBytes)(struct SolidSyslogStore* self);
     };
 
 EXTERN_C_END

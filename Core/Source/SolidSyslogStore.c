@@ -24,3 +24,13 @@ bool SolidSyslogStore_IsHalted(struct SolidSyslogStore* store)
 {
     return store->IsHalted(store);
 }
+
+size_t SolidSyslogStore_GetTotalBytes(struct SolidSyslogStore* store)
+{
+    return store->GetTotalBytes(store);
+}
+
+size_t SolidSyslogStore_GetUsedBytes(struct SolidSyslogStore* store)
+{
+    return store->GetUsedBytes(store);
+}

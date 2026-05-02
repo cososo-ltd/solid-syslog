@@ -9,6 +9,8 @@
 
 static const char* const TEST_PATH_PREFIX = "/tmp/test_posix_store";
 
+static SolidSyslogFileStoreStorage storeStorage = {};
+
 static void CleanStoreFiles()
 {
     glob_t      results = {};
@@ -51,7 +53,7 @@ TEST_GROUP(SolidSyslogFileStorePosix)
 
     void teardown() override
     {
-        SolidSyslogFileStore_Destroy();
+        SolidSyslogFileStore_Destroy(store);
         SolidSyslogPosixFile_Destroy(writeFile);
         SolidSyslogPosixFile_Destroy(readFile);
         CleanStoreFiles();
@@ -68,7 +70,7 @@ TEST_GROUP(SolidSyslogFileStorePosix)
         config.maxFiles      = maxFiles;
         config.discardPolicy = SOLIDSYSLOG_DISCARD_OLDEST;
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        store = SolidSyslogFileStore_Create(&config);
+        store = SolidSyslogFileStore_Create(&storeStorage, &config);
     }
 
     void WriteMaxMsg()

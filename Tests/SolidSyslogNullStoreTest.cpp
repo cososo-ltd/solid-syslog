@@ -41,3 +41,13 @@ TEST(SolidSyslogNullStore, MarkSentDoesNotCrash)
 {
     SolidSyslogStore_MarkSent(store);
 }
+
+TEST(SolidSyslogNullStore, GetTotalBytesReturnsZero)
+{
+    LONGS_EQUAL(0, SolidSyslogStore_GetTotalBytes(store));
+}
+
+TEST(SolidSyslogNullStore, GetUsedBytesReturnsZero)
+{
+    LONGS_EQUAL(0, SolidSyslogStore_GetUsedBytes(store));
+}

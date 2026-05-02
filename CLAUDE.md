@@ -333,12 +333,12 @@ live under `Core/Interface/`; platform-specific helpers (the `SolidSyslogPosix*`
 | `SolidSyslogBufferDefinition.h` | Buffer implementors (extension point) | `SolidSyslogBuffer` vtable struct |
 | `SolidSyslogNullBuffer.h` | System setup code (single-task, no buffering) | `SolidSyslogNullBuffer_Create`, `_Destroy` |
 | `SolidSyslogPosixMessageQueueBuffer.h` | System setup code using POSIX message queue buffer | `SolidSyslogPosixMessageQueueBuffer_Create`, `_Destroy` |
-| `SolidSyslogStore.h` | Library internals consuming a store (Service algorithm) | `SolidSyslogStore_Write`, `_ReadNextUnsent`, `_MarkSent`, `_HasUnsent`, `_IsHalted` |
-| `SolidSyslogStoreDefinition.h` | Store implementors (extension point) | `SolidSyslogStore` vtable struct |
+| `SolidSyslogStore.h` | Library internals consuming a store (Service algorithm) and integrator code querying capacity | `SolidSyslogStore_Write`, `_ReadNextUnsent`, `_MarkSent`, `_HasUnsent`, `_IsHalted`, `_GetTotalBytes`, `_GetUsedBytes` |
+| `SolidSyslogStoreDefinition.h` | Store implementors (extension point) | `SolidSyslogStore` vtable struct (`Write`, `ReadNextUnsent`, `MarkSent`, `HasUnsent`, `IsHalted`, `GetTotalBytes`, `GetUsedBytes`) |
 | `SolidSyslogNullStore.h` | System setup code (no store-and-forward) | `SolidSyslogNullStore_Create`, `_Destroy` |
 | `SolidSyslogFileDefinition.h` | File implementors (extension point) | `SolidSyslogFile` vtable struct |
 | `SolidSyslogFile.h` | Any code using the file abstraction | `SolidSyslogFile_Open`, `_Close`, `_IsOpen`, `_Read`, `_Write`, `_SeekTo`, `_Size`, `_Truncate` |
-| `SolidSyslogFileStore.h` | System setup code using file-based store | `SolidSyslogFileStore_Create`, `_Destroy`, `SOLIDSYSLOG_HALT`, `SolidSyslogStoreFullCallback` |
+| `SolidSyslogFileStore.h` | System setup code using file-based store | `SolidSyslogFileStoreStorage`, `SOLIDSYSLOG_FILESTORE_STORAGE_SIZE`, `SolidSyslogFileStoreConfig` (with `storeFullContext`), `SolidSyslogFileStore_Create(storage, config)`, `_Destroy(store)`, `SolidSyslogDiscardPolicy` (`SOLIDSYSLOG_DISCARD_OLDEST` / `_NEWEST` / `_HALT`), `SolidSyslogStoreFullCallback(void* context)` |
 | `SolidSyslogSecurityPolicyDefinition.h` | SecurityPolicy implementors (extension point) | `SolidSyslogSecurityPolicy` vtable struct, `SOLIDSYSLOG_MAX_INTEGRITY_SIZE` |
 | `SolidSyslogNullSecurityPolicy.h` | System setup code (no integrity checking) | `SolidSyslogNullSecurityPolicy_Create`, `_Destroy` |
 | `SolidSyslogCrc16Policy.h` | System setup code using CRC-16 integrity | `SolidSyslogCrc16Policy_Create`, `_Destroy` |

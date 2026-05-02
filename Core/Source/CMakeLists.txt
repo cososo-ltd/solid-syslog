@@ -17,6 +17,8 @@ set(SOURCES
     SolidSyslogOriginSd.c
     SolidSyslogFile.c
     SolidSyslogFileStore.c
+    RecordStore.c
+    BlockSequence.c
     SolidSyslogUdpPayload.c
 )
 
