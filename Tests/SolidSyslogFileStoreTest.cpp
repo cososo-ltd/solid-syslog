@@ -1804,3 +1804,34 @@ TEST(SolidSyslogFileStoreCapacityThreshold, FiresOnceWhileUsageStaysAbove)
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN); /* still above */
     LONGS_EQUAL(1, thresholdCallbackCount);
 }
+
+/* Given DISCARD_OLDEST and a threshold sitting in the last block,
+ * When writes cross the threshold, a discard drops usage below it, then writes cross again,
+ * Then onThresholdCrossed fires twice. */
+TEST(SolidSyslogFileStoreCapacityThreshold, ReArmsAfterFallingEdgeOnDiscardOldest)
+{
+    static const size_t MAX_MSG_RECORD = SOLIDSYSLOG_MAX_MESSAGE_SIZE + TEST_RECORD_OVERHEAD;
+    static const size_t TWO_RECORDS    = 2 * MAX_MSG_RECORD;
+
+    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(maxMsg, 'A', sizeof(maxMsg));
+
+    struct SolidSyslogFileStoreConfig config = MakeConfig(file);
+    config.maxFileSize                       = TWO_RECORDS;
+    config.maxFiles                          = 2;
+    config.discardPolicy                     = SOLIDSYSLOG_DISCARD_OLDEST;
+    config.getCapacityThreshold              = ReturnsConfiguredThreshold;
+    config.onThresholdCrossed                = CountThresholdCrossings;
+    /* Threshold sits between 3 and 4 records: 4-records crosses, 3-records is below. */
+    thresholdReturnValue = (3 * MAX_MSG_RECORD) + 1;
+    store                = SolidSyslogFileStore_Create(&storeStorage, &config);
+
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 0: 1 record */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 0: 2 records (full) */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* rotate; block 1: 1 record (3 total) */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 1: 2 records (4 total) — fires */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* rotate+discard block 0 → 3 records (below) */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 2: 2 records (4 total) — fires again */
+
+    LONGS_EQUAL(2, thresholdCallbackCount);
+}

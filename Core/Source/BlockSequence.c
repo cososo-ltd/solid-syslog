@@ -286,10 +286,20 @@ void BlockSequence_NoteRecordWritten(struct BlockSequence* blockSequence, size_t
 
 static inline void NotifyThresholdCrossed(struct BlockSequence* blockSequence)
 {
-    if ((blockSequence->onThresholdCrossed != NULL) && !blockSequence->thresholdCrossed)
+    if (blockSequence->onThresholdCrossed != NULL)
     {
-        blockSequence->thresholdCrossed = true;
-        blockSequence->onThresholdCrossed(blockSequence->thresholdContext);
+        size_t threshold = blockSequence->getCapacityThreshold(blockSequence->thresholdContext);
+        size_t used      = BlockSequence_UsedBytes(blockSequence);
+
+        if (used < threshold)
+        {
+            blockSequence->thresholdCrossed = false;
+        }
+        else if (!blockSequence->thresholdCrossed)
+        {
+            blockSequence->thresholdCrossed = true;
+            blockSequence->onThresholdCrossed(blockSequence->thresholdContext);
+        }
     }
 }
 
