@@ -1861,3 +1861,38 @@ TEST(SolidSyslogFileStoreCapacityThreshold, DoesNotFireWhenThresholdFunctionIsNu
 
     LONGS_EQUAL(0, thresholdCallbackCount);
 }
+
+static void* capturedThresholdFunctionContext;
+static void* capturedThresholdCallbackContext;
+
+static size_t CaptureThresholdFunctionContext(void* context)
+{
+    capturedThresholdFunctionContext = context;
+    return thresholdReturnValue;
+}
+
+static void CaptureThresholdCallbackContext(void* context)
+{
+    capturedThresholdCallbackContext = context;
+}
+
+/* Given thresholdContext wired at config time,
+ * When getCapacityThreshold and onThresholdCrossed are invoked,
+ * Then both receive the configured context. */
+TEST(SolidSyslogFileStoreCapacityThreshold, ContextIsPassedToBothCallbacks)
+{
+    int sentinel                             = 0;
+    capturedThresholdFunctionContext         = nullptr;
+    capturedThresholdCallbackContext         = nullptr;
+    struct SolidSyslogFileStoreConfig config = MakeConfig(file);
+    config.getCapacityThreshold              = CaptureThresholdFunctionContext;
+    config.onThresholdCrossed                = CaptureThresholdCallbackContext;
+    config.thresholdContext                  = &sentinel;
+    thresholdReturnValue                     = TEST_DATA_LEN;
+    store                                    = SolidSyslogFileStore_Create(&storeStorage, &config);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    POINTERS_EQUAL(&sentinel, capturedThresholdFunctionContext);
+    POINTERS_EQUAL(&sentinel, capturedThresholdCallbackContext);
+}
