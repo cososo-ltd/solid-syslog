@@ -1735,7 +1735,7 @@ TEST(SolidSyslogFileStoreCapacity, GetUsedBytesIsStickyAtTotalAfterSizeFailure)
  * Capacity threshold alert (S05.09)
  * ----------------------------------------------------------------*/
 
-static bool   thresholdCallbackFired;
+static int    thresholdCallbackCount;
 static size_t thresholdReturnValue;
 
 static size_t ReturnsConfiguredThreshold(void* context)
@@ -1744,10 +1744,10 @@ static size_t ReturnsConfiguredThreshold(void* context)
     return thresholdReturnValue;
 }
 
-static void RecordThresholdCrossed(void* context)
+static void CountThresholdCrossings(void* context)
 {
     (void) context;
-    thresholdCallbackFired = true;
+    thresholdCallbackCount++;
 }
 
 // clang-format off
@@ -1760,8 +1760,8 @@ TEST_GROUP(SolidSyslogFileStoreCapacityThreshold)
 
     void setup() override
     {
-        file = FileFake_Create(&storage);
-        thresholdCallbackFired = false;
+        file                   = FileFake_Create(&storage);
+        thresholdCallbackCount = 0;
         thresholdReturnValue   = 0;
     }
 
@@ -1774,10 +1774,10 @@ TEST_GROUP(SolidSyslogFileStoreCapacityThreshold)
     void CreateWithThreshold(size_t threshold)
     {
         struct SolidSyslogFileStoreConfig config = MakeConfig(file);
-        config.getCapacityThreshold = ReturnsConfiguredThreshold;
-        config.onThresholdCrossed   = RecordThresholdCrossed;
-        thresholdReturnValue        = threshold;
-        store                       = SolidSyslogFileStore_Create(&storeStorage, &config);
+        config.getCapacityThreshold              = ReturnsConfiguredThreshold;
+        config.onThresholdCrossed                = CountThresholdCrossings;
+        thresholdReturnValue                     = threshold;
+        store                                    = SolidSyslogFileStore_Create(&storeStorage, &config);
     }
 };
 
@@ -1790,5 +1790,17 @@ TEST(SolidSyslogFileStoreCapacityThreshold, FiresOnRisingEdgeCrossing)
 {
     CreateWithThreshold(TEST_DATA_LEN);
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
-    CHECK_TRUE(thresholdCallbackFired);
+    LONGS_EQUAL(1, thresholdCallbackCount);
+}
+
+/* Given usage already above threshold,
+ * When subsequent writes keep usage above threshold,
+ * Then onThresholdCrossed fires only on the rising edge. */
+TEST(SolidSyslogFileStoreCapacityThreshold, FiresOnceWhileUsageStaysAbove)
+{
+    CreateWithThreshold(TEST_DATA_LEN);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN); /* crosses */
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN); /* still above */
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN); /* still above */
+    LONGS_EQUAL(1, thresholdCallbackCount);
 }

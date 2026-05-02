@@ -73,6 +73,7 @@ void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockS
     blockSequence->thresholdContext     = config->thresholdContext;
     blockSequence->halted               = false;
     blockSequence->atCapacity           = false;
+    blockSequence->thresholdCrossed     = false;
     blockSequence->oldestSequence       = 0;
     blockSequence->readSequence         = 0;
     blockSequence->writeSequence        = 0;
@@ -285,8 +286,9 @@ void BlockSequence_NoteRecordWritten(struct BlockSequence* blockSequence, size_t
 
 static inline void NotifyThresholdCrossed(struct BlockSequence* blockSequence)
 {
-    if (blockSequence->onThresholdCrossed != NULL)
+    if ((blockSequence->onThresholdCrossed != NULL) && !blockSequence->thresholdCrossed)
     {
+        blockSequence->thresholdCrossed = true;
         blockSequence->onThresholdCrossed(blockSequence->thresholdContext);
     }
 }

@@ -38,6 +38,7 @@ struct BlockSequence
     void*                             thresholdContext;
     bool                              halted;
     bool                              atCapacity;
+    bool                              thresholdCrossed;
     uint8_t                           oldestSequence;
     uint8_t                           readSequence;
     uint8_t                           writeSequence;
