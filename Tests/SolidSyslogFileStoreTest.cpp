@@ -1976,3 +1976,21 @@ TEST(SolidSyslogFileStoreCapacityThreshold, StickyHundredPercentDoesNotRefireThr
 
     LONGS_EQUAL(1, thresholdCallbackCount);
 }
+
+/* Given persisted store contents already at-or-above threshold,
+ * When the integrator calls SolidSyslogFileStore_Create,
+ * Then onThresholdCrossed fires once during Create. */
+TEST(SolidSyslogFileStoreCapacityThreshold, FiresOnCreateWhenResumedUsageAboveThreshold)
+{
+    {
+        struct SolidSyslogFileStoreConfig preConfig = MakeConfig(file);
+        struct SolidSyslogStore*          preStore  = SolidSyslogFileStore_Create(&storeStorage, &preConfig);
+        SolidSyslogStore_Write(preStore, TEST_DATA, TEST_DATA_LEN);
+        SolidSyslogFileStore_Destroy(preStore);
+    }
+
+    /* setup() reset thresholdCallbackCount to 0 — any fire here is from this Create. */
+    CreateWithThreshold(TEST_DATA_LEN);
+
+    LONGS_EQUAL(1, thresholdCallbackCount);
+}

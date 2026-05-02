@@ -82,7 +82,8 @@ void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockS
     blockSequence->writeFileCorrupt     = false;
 }
 
-static void ScanForExistingFiles(struct BlockSequence* blockSequence);
+static void        ScanForExistingFiles(struct BlockSequence* blockSequence);
+static inline void NotifyThresholdCrossed(struct BlockSequence* blockSequence);
 
 bool BlockSequence_Open(struct BlockSequence* blockSequence)
 {
@@ -100,6 +101,7 @@ bool BlockSequence_Open(struct BlockSequence* blockSequence)
         SolidSyslogFile_Open(blockSequence->readFile, readName);
 
         blockSequence->writePosition = SolidSyslogFile_Size(blockSequence->writeFile);
+        NotifyThresholdCrossed(blockSequence); /* fire on resume if usage already at-or-above threshold */
     }
 
     return opened;
@@ -158,7 +160,6 @@ void BlockSequence_Close(struct BlockSequence* blockSequence)
 
 static inline bool FileIsFull(const struct BlockSequence* blockSequence, size_t recordSize);
 static inline bool StoreIsFull(const struct BlockSequence* blockSequence);
-static inline void NotifyThresholdCrossed(struct BlockSequence* blockSequence);
 static inline void NotifyStoreFull(struct BlockSequence* blockSequence);
 static bool        RotateToNextFile(struct BlockSequence* blockSequence);
 
