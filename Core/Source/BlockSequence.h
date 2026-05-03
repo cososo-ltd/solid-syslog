@@ -41,24 +41,24 @@ struct BlockSequence
     uint8_t                           writeSequence;
     size_t                            readCursor;
     size_t                            writePosition;
-    bool                              writeFileCorrupt;
+    bool                              writeBlockCorrupt;
 };
 
 void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockSequenceConfig* config);
 bool BlockSequence_Open(struct BlockSequence* blockSequence);
 
-bool                           BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t recordSize, bool* readFileChanged);
+bool                           BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t recordSize, bool* readBlockChanged);
 struct SolidSyslogBlockDevice* BlockSequence_BlockDevice(const struct BlockSequence* blockSequence);
 size_t                         BlockSequence_WriteSequence(const struct BlockSequence* blockSequence);
 size_t                         BlockSequence_WritePosition(const struct BlockSequence* blockSequence);
 void                           BlockSequence_NoteRecordWritten(struct BlockSequence* blockSequence, size_t recordSize);
-void                           BlockSequence_MarkWriteFileCorrupt(struct BlockSequence* blockSequence);
+void                           BlockSequence_MarkWriteBlockCorrupt(struct BlockSequence* blockSequence);
 
 size_t BlockSequence_ReadSequence(const struct BlockSequence* blockSequence);
 size_t BlockSequence_ReadCursor(const struct BlockSequence* blockSequence);
 void   BlockSequence_SetReadCursor(struct BlockSequence* blockSequence, size_t cursor);
-void   BlockSequence_AdvanceToNextReadFile(struct BlockSequence* blockSequence);
-bool   BlockSequence_IsReadingOlderFile(const struct BlockSequence* blockSequence);
+void   BlockSequence_AdvanceToNextReadBlock(struct BlockSequence* blockSequence);
+bool   BlockSequence_IsReadingOlderBlock(const struct BlockSequence* blockSequence);
 
 bool   BlockSequence_HasUnsent(const struct BlockSequence* blockSequence);
 bool   BlockSequence_IsHalted(const struct BlockSequence* blockSequence);

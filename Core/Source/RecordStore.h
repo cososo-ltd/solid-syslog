@@ -20,7 +20,7 @@ struct RecordStore
     struct SolidSyslogSecurityPolicy* securityPolicy;
     bool                              hasReadRecord;
     size_t                            lastReadBlockIndex;
-    size_t                            lastSentFlagFileOffset;
+    size_t                            lastSentFlagOffset;
     uint8_t                           buffer[RECORD_BUFFER_SIZE];
 };
 
@@ -37,7 +37,7 @@ bool RecordStore_MarkLastReadAsSent(struct RecordStore* recordStore, struct Soli
 
 void RecordStore_ForgetLastRead(struct RecordStore* recordStore);
 
-size_t RecordStore_FindFirstUnsent(struct RecordStore* recordStore, struct SolidSyslogBlockDevice* blockDevice, size_t blockIndex, size_t fileSize,
+size_t RecordStore_FindFirstUnsent(struct RecordStore* recordStore, struct SolidSyslogBlockDevice* blockDevice, size_t blockIndex, size_t blockSize,
                                    bool* corrupt);
 
 #endif /* SOLIDSYSLOG_RECORDSTORE_H */

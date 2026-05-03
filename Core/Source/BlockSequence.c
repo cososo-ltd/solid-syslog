@@ -14,7 +14,7 @@ static inline uint8_t NextSequence(uint8_t current)
     return (uint8_t) ((current + 1) % SEQUENCE_MODULUS);
 }
 
-static inline size_t FileCount(const struct BlockSequence* blockSequence)
+static inline size_t BlockCount(const struct BlockSequence* blockSequence)
 {
     return (size_t) ((blockSequence->writeSequence - blockSequence->oldestSequence + SEQUENCE_MODULUS) % SEQUENCE_MODULUS) + 1;
 }
@@ -56,7 +56,7 @@ void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockS
     blockSequence->writeSequence        = 0;
     blockSequence->readCursor           = 0;
     blockSequence->writePosition        = 0;
-    blockSequence->writeFileCorrupt     = false;
+    blockSequence->writeBlockCorrupt    = false;
 }
 
 static bool        ScanForExistingBlocks(struct BlockSequence* blockSequence);
@@ -164,39 +164,39 @@ static inline int CircularPrev(int index)
     return (index + MAX_SEQUENCE - 1) % MAX_SEQUENCE;
 }
 
-static inline bool FileIsFull(const struct BlockSequence* blockSequence, size_t recordSize);
+static inline bool BlockIsFull(const struct BlockSequence* blockSequence, size_t recordSize);
 static inline bool StoreIsFull(const struct BlockSequence* blockSequence);
 static inline void NotifyStoreFull(struct BlockSequence* blockSequence);
-static bool        RotateToNextFile(struct BlockSequence* blockSequence);
+static bool        RotateToNextBlock(struct BlockSequence* blockSequence);
 
-bool BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t recordSize, bool* readFileChanged)
+bool BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t recordSize, bool* readBlockChanged)
 {
     bool spaceAvailable = true;
-    *readFileChanged    = false;
+    *readBlockChanged   = false;
 
-    if (FileIsFull(blockSequence, recordSize) && StoreIsFull(blockSequence))
+    if (BlockIsFull(blockSequence, recordSize) && StoreIsFull(blockSequence))
     {
         blockSequence->atCapacity = true;      /* sticky 100% — fixes UsedBytes at total */
         NotifyThresholdCrossed(blockSequence); /* threshold first per S05.09 ordering */
         NotifyStoreFull(blockSequence);
         spaceAvailable = false;
     }
-    else if (FileIsFull(blockSequence, recordSize))
+    else if (BlockIsFull(blockSequence, recordSize))
     {
-        *readFileChanged = RotateToNextFile(blockSequence);
+        *readBlockChanged = RotateToNextBlock(blockSequence);
     }
 
     return spaceAvailable;
 }
 
-static inline bool FileIsFull(const struct BlockSequence* blockSequence, size_t recordSize)
+static inline bool BlockIsFull(const struct BlockSequence* blockSequence, size_t recordSize)
 {
-    return blockSequence->writeFileCorrupt || (blockSequence->writePosition + recordSize) > blockSequence->maxFileSize;
+    return blockSequence->writeBlockCorrupt || (blockSequence->writePosition + recordSize) > blockSequence->maxFileSize;
 }
 
 static inline bool StoreIsFull(const struct BlockSequence* blockSequence)
 {
-    return (FileCount(blockSequence) >= blockSequence->maxFiles) && (blockSequence->discardPolicy != SOLIDSYSLOG_DISCARD_OLDEST);
+    return (BlockCount(blockSequence) >= blockSequence->maxFiles) && (blockSequence->discardPolicy != SOLIDSYSLOG_DISCARD_OLDEST);
 }
 
 static inline void NotifyStoreFull(struct BlockSequence* blockSequence)
@@ -212,39 +212,39 @@ static inline void NotifyStoreFull(struct BlockSequence* blockSequence)
     }
 }
 
-static bool DiscardOldestFile(struct BlockSequence* blockSequence);
+static bool DiscardOldestBlock(struct BlockSequence* blockSequence);
 static void ResetReadToOldest(struct BlockSequence* blockSequence);
 
-static bool RotateToNextFile(struct BlockSequence* blockSequence)
+static bool RotateToNextBlock(struct BlockSequence* blockSequence)
 {
-    blockSequence->writeSequence    = NextSequence(blockSequence->writeSequence);
-    blockSequence->writePosition    = 0;
-    blockSequence->writeFileCorrupt = false;
+    blockSequence->writeSequence     = NextSequence(blockSequence->writeSequence);
+    blockSequence->writePosition     = 0;
+    blockSequence->writeBlockCorrupt = false;
     SolidSyslogBlockDevice_Acquire(blockSequence->blockDevice, blockSequence->writeSequence);
 
-    bool readFileChanged = false;
+    bool readBlockChanged = false;
 
-    if (FileCount(blockSequence) > blockSequence->maxFiles)
+    if (BlockCount(blockSequence) > blockSequence->maxFiles)
     {
-        readFileChanged = DiscardOldestFile(blockSequence);
+        readBlockChanged = DiscardOldestBlock(blockSequence);
     }
 
-    return readFileChanged;
+    return readBlockChanged;
 }
 
-static bool DiscardOldestFile(struct BlockSequence* blockSequence)
+static bool DiscardOldestBlock(struct BlockSequence* blockSequence)
 {
-    bool readingOldestFile = (blockSequence->readSequence == blockSequence->oldestSequence);
+    bool readingOldestBlock = (blockSequence->readSequence == blockSequence->oldestSequence);
 
     SolidSyslogBlockDevice_Dispose(blockSequence->blockDevice, blockSequence->oldestSequence);
     blockSequence->oldestSequence = NextSequence(blockSequence->oldestSequence);
 
-    if (readingOldestFile)
+    if (readingOldestBlock)
     {
         ResetReadToOldest(blockSequence);
     }
 
-    return readingOldestFile;
+    return readingOldestBlock;
 }
 
 static void ResetReadToOldest(struct BlockSequence* blockSequence)
@@ -300,9 +300,9 @@ static inline bool ThresholdEnabled(const struct BlockSequence* blockSequence)
     return (blockSequence->onThresholdCrossed != NULL) && (blockSequence->getCapacityThreshold != NULL);
 }
 
-void BlockSequence_MarkWriteFileCorrupt(struct BlockSequence* blockSequence)
+void BlockSequence_MarkWriteBlockCorrupt(struct BlockSequence* blockSequence)
 {
-    blockSequence->writeFileCorrupt = true;
+    blockSequence->writeBlockCorrupt = true;
 }
 
 size_t BlockSequence_ReadSequence(const struct BlockSequence* blockSequence)
@@ -320,20 +320,20 @@ void BlockSequence_SetReadCursor(struct BlockSequence* blockSequence, size_t cur
     blockSequence->readCursor = cursor;
 }
 
-void BlockSequence_AdvanceToNextReadFile(struct BlockSequence* blockSequence)
+void BlockSequence_AdvanceToNextReadBlock(struct BlockSequence* blockSequence)
 {
     blockSequence->readSequence = NextSequence(blockSequence->readSequence);
     blockSequence->readCursor   = 0;
 }
 
-bool BlockSequence_IsReadingOlderFile(const struct BlockSequence* blockSequence)
+bool BlockSequence_IsReadingOlderBlock(const struct BlockSequence* blockSequence)
 {
     return blockSequence->readSequence != blockSequence->writeSequence;
 }
 
 bool BlockSequence_HasUnsent(const struct BlockSequence* blockSequence)
 {
-    return BlockSequence_IsReadingOlderFile(blockSequence) || (blockSequence->readCursor < blockSequence->writePosition);
+    return BlockSequence_IsReadingOlderBlock(blockSequence) || (blockSequence->readCursor < blockSequence->writePosition);
 }
 
 bool BlockSequence_IsHalted(const struct BlockSequence* blockSequence)
@@ -353,6 +353,6 @@ size_t BlockSequence_UsedBytes(const struct BlockSequence* blockSequence)
         return BlockSequence_TotalBytes(blockSequence);
     }
 
-    size_t closedBlocks = FileCount(blockSequence) - 1;
+    size_t closedBlocks = BlockCount(blockSequence) - 1;
     return (closedBlocks * blockSequence->maxFileSize) + blockSequence->writePosition;
 }

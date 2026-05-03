@@ -36,7 +36,7 @@ static inline struct SolidSyslogFileStore*      AsFileStore(struct SolidSyslogSt
 static inline struct SolidSyslogSecurityPolicy* ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured);
 static inline struct BlockSequenceConfig BuildBlockSequenceConfig(const struct SolidSyslogFileStoreConfig* config, const struct RecordStore* recordStore);
 static inline void                       InitialiseVtable(struct SolidSyslogFileStore* fileStore);
-static void                              ResumeFromExistingFile(struct SolidSyslogFileStore* fileStore);
+static void                              ResumeFromExistingBlock(struct SolidSyslogFileStore* fileStore);
 
 /* ------------------------------------------------------------------
  * Create
@@ -57,7 +57,7 @@ struct SolidSyslogStore* SolidSyslogFileStore_Create(SolidSyslogFileStoreStorage
 
     if (BlockSequence_Open(&fileStore->blockSequence))
     {
-        ResumeFromExistingFile(fileStore);
+        ResumeFromExistingBlock(fileStore);
     }
 
     return &fileStore->base;
@@ -111,7 +111,7 @@ static inline void InitialiseVtable(struct SolidSyslogFileStore* fileStore)
     fileStore->base.GetUsedBytes   = GetUsedBytes;
 }
 
-static void ResumeFromExistingFile(struct SolidSyslogFileStore* fileStore)
+static void ResumeFromExistingBlock(struct SolidSyslogFileStore* fileStore)
 {
     bool   corrupt = false;
     size_t cursor =
@@ -122,7 +122,7 @@ static void ResumeFromExistingFile(struct SolidSyslogFileStore* fileStore)
 
     if (corrupt)
     {
-        BlockSequence_MarkWriteFileCorrupt(&fileStore->blockSequence);
+        BlockSequence_MarkWriteBlockCorrupt(&fileStore->blockSequence);
     }
 }
 
@@ -149,13 +149,13 @@ static bool Write(struct SolidSyslogStore* self, const void* data, size_t size)
 
 static bool StoreRecord(struct SolidSyslogFileStore* fileStore, const void* data, size_t size)
 {
-    size_t recordSize      = RecordStore_RecordSize(&fileStore->recordStore, (uint16_t) size);
-    bool   readFileChanged = false;
-    bool   written         = false;
+    size_t recordSize       = RecordStore_RecordSize(&fileStore->recordStore, (uint16_t) size);
+    bool   readBlockChanged = false;
+    bool   written          = false;
 
-    if (BlockSequence_PrepareForWrite(&fileStore->blockSequence, recordSize, &readFileChanged))
+    if (BlockSequence_PrepareForWrite(&fileStore->blockSequence, recordSize, &readBlockChanged))
     {
-        if (readFileChanged)
+        if (readBlockChanged)
         {
             RecordStore_ForgetLastRead(&fileStore->recordStore);
         }
@@ -211,9 +211,9 @@ static bool ReadNextUnsent(struct SolidSyslogStore* self, void* data, size_t max
     {
         read = ReadCurrent(fileStore, data, maxSize, bytesRead);
 
-        while (!read && BlockSequence_IsReadingOlderFile(&fileStore->blockSequence))
+        while (!read && BlockSequence_IsReadingOlderBlock(&fileStore->blockSequence))
         {
-            BlockSequence_AdvanceToNextReadFile(&fileStore->blockSequence);
+            BlockSequence_AdvanceToNextReadBlock(&fileStore->blockSequence);
             RecordStore_ForgetLastRead(&fileStore->recordStore);
             read = ReadCurrent(fileStore, data, maxSize, bytesRead);
         }
