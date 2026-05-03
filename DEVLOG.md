@@ -1,6 +1,37 @@
 # Dev Log
 
-## 2026-05-03 — S18.02 BlockDevice abstraction + file-backed driver
+## 2026-05-03 — Hoist SolidSyslogAddress.h to Core + CMake layer guard
+
+Small refactor: `Platform/Posix/Interface/SolidSyslogAddress.h` and
+`Platform/Windows/Interface/SolidSyslogAddress.h` were byte-identical
+(an opaque storage blob sized for `sockaddr_storage`). Collapsed into
+`Core/Interface/SolidSyslogAddress.h` and added `cmake/LayerGuard.cmake`
+to keep the dependency direction honest going forward. Merged as #257.
+
+### Decisions
+
+- **Hoist over keeping duplicates.** Both copies were identical and
+  the type is platform-agnostic (the Posix and Winsock `sockaddr_storage`
+  shapes both fit in 128 bytes). Two copies survived from earlier
+  story-by-story growth; no actual platform variance to preserve.
+- **Configure-time guard, not build-time.** `solidsyslog_enforce_layering()`
+  runs in `CMakeLists.txt` immediately after `project()`. CMake re-runs
+  configure on every build when inputs change, so PRs are always
+  checked. A failure produces a single `FATAL_ERROR` listing every
+  offending file/include, not a flood per translation unit.
+- **Header basename matching, not path matching.** Scan enumerates
+  `*.h` basenames owned by `Platform/` and `Example/`, then greps
+  `#include "..."` directives in the consuming layer for any match.
+  Cheaper than building a path graph, and robust to whatever relative
+  include form the source uses.
+- **Tests/ and Bdd/ out of scope.** Per CLAUDE.md tier table they are
+  not supported targets; test code is allowed to reach into anything
+  it needs. The guard scans `Core/` and `Platform/` only.
+- **Skipped most prechecks.** CLAUDE.md prescribes the full preset
+  battery before raising a PR. For a header rename + cmake addition
+  with no behavioural change, gcc-debug + full unit suite (1005 tests,
+  1406 checks, all pass) was judged sufficient. Flagged the omission
+  before pushing.
 
 ### Decisions
 
