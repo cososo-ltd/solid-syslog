@@ -14,8 +14,17 @@ enum
 {
     SEQUENCE_DIGITS   = 2,
     FILENAME_SUFFIX   = SEQUENCE_DIGITS + sizeof(FILE_EXTENSION) - 1,
-    MAX_PREFIX_LENGTH = MAX_PATH_SIZE - FILENAME_SUFFIX - 1
+    MAX_PREFIX_LENGTH = MAX_PATH_SIZE - FILENAME_SUFFIX - 1,
+    /* Two-digit on-disk sequence — indices > 99 cannot be represented
+     * uniquely. Without this guard, a wide blockIndex would be narrowed
+     * to uint8_t and alias an existing block (256 -> 00). */
+    MAX_BLOCK_INDEX = 99
 };
+
+static inline bool IsValidBlockIndex(size_t blockIndex)
+{
+    return blockIndex <= MAX_BLOCK_INDEX;
+}
 
 struct OpenHandle
 {
@@ -116,12 +125,17 @@ static inline const char* FormatBlockFilename(const struct SolidSyslogFileBlockD
 
 static bool Acquire(struct SolidSyslogBlockDevice* self, size_t blockIndex)
 {
-    struct SolidSyslogFileBlockDevice* device = AsFileBlockDevice(self);
-    bool                               ready  = EnsureHandleOpenOnBlock(&device->writeHandle, device, blockIndex);
+    bool ready = false;
 
-    if (ready)
+    if (IsValidBlockIndex(blockIndex))
     {
-        SolidSyslogFile_Truncate(device->writeHandle.file);
+        struct SolidSyslogFileBlockDevice* device = AsFileBlockDevice(self);
+        ready                                     = EnsureHandleOpenOnBlock(&device->writeHandle, device, blockIndex);
+
+        if (ready)
+        {
+            SolidSyslogFile_Truncate(device->writeHandle.file);
+        }
     }
 
     return ready;
@@ -173,14 +187,21 @@ static inline void CloseIfHoldingBlock(struct OpenHandle* handle, size_t blockIn
 
 static bool Dispose(struct SolidSyslogBlockDevice* self, size_t blockIndex)
 {
-    struct SolidSyslogFileBlockDevice* device = AsFileBlockDevice(self);
+    bool disposed = false;
 
-    CloseIfHoldingBlock(&device->readHandle, blockIndex);
-    CloseIfHoldingBlock(&device->writeHandle, blockIndex);
+    if (IsValidBlockIndex(blockIndex))
+    {
+        struct SolidSyslogFileBlockDevice* device = AsFileBlockDevice(self);
 
-    SolidSyslogFormatterStorage nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
-    const char*                 name = FormatBlockFilename(device, nameStorage, blockIndex);
-    return SolidSyslogFile_Delete(device->writeHandle.file, name);
+        CloseIfHoldingBlock(&device->readHandle, blockIndex);
+        CloseIfHoldingBlock(&device->writeHandle, blockIndex);
+
+        SolidSyslogFormatterStorage nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
+        const char*                 name = FormatBlockFilename(device, nameStorage, blockIndex);
+        disposed                         = SolidSyslogFile_Delete(device->writeHandle.file, name);
+    }
+
+    return disposed;
 }
 
 static inline void CloseIfHoldingBlock(struct OpenHandle* handle, size_t blockIndex)
@@ -198,10 +219,17 @@ static inline void CloseIfHoldingBlock(struct OpenHandle* handle, size_t blockIn
 
 static bool Exists(struct SolidSyslogBlockDevice* self, size_t blockIndex)
 {
-    struct SolidSyslogFileBlockDevice* device = AsFileBlockDevice(self);
-    SolidSyslogFormatterStorage        nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
-    const char*                        name = FormatBlockFilename(device, nameStorage, blockIndex);
-    return SolidSyslogFile_Exists(device->writeHandle.file, name);
+    bool exists = false;
+
+    if (IsValidBlockIndex(blockIndex))
+    {
+        struct SolidSyslogFileBlockDevice* device = AsFileBlockDevice(self);
+        SolidSyslogFormatterStorage        nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
+        const char*                        name = FormatBlockFilename(device, nameStorage, blockIndex);
+        exists                                  = SolidSyslogFile_Exists(device->writeHandle.file, name);
+    }
+
+    return exists;
 }
 
 /* ------------------------------------------------------------------
@@ -211,13 +239,16 @@ static bool Exists(struct SolidSyslogBlockDevice* self, size_t blockIndex)
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- vtable signature: blockIndex / offset are positional, distinct semantics
 static bool Read(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t offset, void* buf, size_t count)
 {
-    struct SolidSyslogFileBlockDevice* device = AsFileBlockDevice(self);
-    bool                               read   = false;
+    bool read = false;
 
-    if (EnsureHandleOpenOnBlock(&device->readHandle, device, blockIndex))
+    if (IsValidBlockIndex(blockIndex))
     {
-        SolidSyslogFile_SeekTo(device->readHandle.file, offset);
-        read = SolidSyslogFile_Read(device->readHandle.file, buf, count);
+        struct SolidSyslogFileBlockDevice* device = AsFileBlockDevice(self);
+        if (EnsureHandleOpenOnBlock(&device->readHandle, device, blockIndex))
+        {
+            SolidSyslogFile_SeekTo(device->readHandle.file, offset);
+            read = SolidSyslogFile_Read(device->readHandle.file, buf, count);
+        }
     }
 
     return read;
@@ -225,13 +256,16 @@ static bool Read(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t 
 
 static bool Append(struct SolidSyslogBlockDevice* self, size_t blockIndex, const void* buf, size_t count)
 {
-    struct SolidSyslogFileBlockDevice* device  = AsFileBlockDevice(self);
-    bool                               written = false;
+    bool written = false;
 
-    if (EnsureHandleOpenOnBlock(&device->writeHandle, device, blockIndex))
+    if (IsValidBlockIndex(blockIndex))
     {
-        SolidSyslogFile_SeekTo(device->writeHandle.file, SolidSyslogFile_Size(device->writeHandle.file));
-        written = SolidSyslogFile_Write(device->writeHandle.file, buf, count);
+        struct SolidSyslogFileBlockDevice* device = AsFileBlockDevice(self);
+        if (EnsureHandleOpenOnBlock(&device->writeHandle, device, blockIndex))
+        {
+            SolidSyslogFile_SeekTo(device->writeHandle.file, SolidSyslogFile_Size(device->writeHandle.file));
+            written = SolidSyslogFile_Write(device->writeHandle.file, buf, count);
+        }
     }
 
     return written;
@@ -240,13 +274,16 @@ static bool Append(struct SolidSyslogBlockDevice* self, size_t blockIndex, const
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- vtable signature: blockIndex / offset are positional, distinct semantics
 static bool WriteAt(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t offset, const void* buf, size_t count)
 {
-    struct SolidSyslogFileBlockDevice* device  = AsFileBlockDevice(self);
-    bool                               written = false;
+    bool written = false;
 
-    if (EnsureHandleOpenOnBlock(&device->writeHandle, device, blockIndex))
+    if (IsValidBlockIndex(blockIndex))
     {
-        SolidSyslogFile_SeekTo(device->writeHandle.file, offset);
-        written = SolidSyslogFile_Write(device->writeHandle.file, buf, count);
+        struct SolidSyslogFileBlockDevice* device = AsFileBlockDevice(self);
+        if (EnsureHandleOpenOnBlock(&device->writeHandle, device, blockIndex))
+        {
+            SolidSyslogFile_SeekTo(device->writeHandle.file, offset);
+            written = SolidSyslogFile_Write(device->writeHandle.file, buf, count);
+        }
     }
 
     return written;
@@ -254,12 +291,15 @@ static bool WriteAt(struct SolidSyslogBlockDevice* self, size_t blockIndex, size
 
 static size_t Size(struct SolidSyslogBlockDevice* self, size_t blockIndex)
 {
-    struct SolidSyslogFileBlockDevice* device = AsFileBlockDevice(self);
-    size_t                             size   = 0;
+    size_t size = 0;
 
-    if (EnsureHandleOpenOnBlock(&device->writeHandle, device, blockIndex))
+    if (IsValidBlockIndex(blockIndex))
     {
-        size = SolidSyslogFile_Size(device->writeHandle.file);
+        struct SolidSyslogFileBlockDevice* device = AsFileBlockDevice(self);
+        if (EnsureHandleOpenOnBlock(&device->writeHandle, device, blockIndex))
+        {
+            size = SolidSyslogFile_Size(device->writeHandle.file);
+        }
     }
 
     return size;

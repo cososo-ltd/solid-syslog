@@ -153,6 +153,60 @@ TEST(SolidSyslogFileBlockDevice, BlockFilenameWithTwoDigitIndex)
     CHECK_TRUE(SolidSyslogFile_Exists(writeFile, "/tmp/blockdev_42.log"));
 }
 
+/* The on-disk sequence is two decimal digits: indices > 99 cannot be
+ * represented uniquely. Without a guard, casting a wide blockIndex through
+ * uint8_t (256 → 0) would alias to an existing block and silently overwrite
+ * its content. */
+TEST(SolidSyslogFileBlockDevice, AcquireRejectsOverlargeBlockIndex)
+{
+    CHECK_FALSE(SolidSyslogBlockDevice_Acquire(device, 100));
+    CHECK_FALSE(SolidSyslogBlockDevice_Acquire(device, 256));
+}
+
+TEST(SolidSyslogFileBlockDevice, OverlargeBlockIndexLeavesValidBlockUntouched)
+{
+    SolidSyslogBlockDevice_Acquire(device, 0);
+    SolidSyslogBlockDevice_Append(device, 0, "real", 4);
+
+    SolidSyslogBlockDevice_Acquire(device, 256); /* would alias to block 0 if not guarded */
+
+    LONGS_EQUAL(4, SolidSyslogBlockDevice_Size(device, 0));
+    char buf[5] = {};
+    SolidSyslogBlockDevice_Read(device, 0, 0, buf, 4);
+    MEMCMP_EQUAL("real", buf, 4);
+}
+
+TEST(SolidSyslogFileBlockDevice, ExistsReturnsFalseForOverlargeBlockIndex)
+{
+    CHECK_FALSE(SolidSyslogBlockDevice_Exists(device, 256));
+}
+
+TEST(SolidSyslogFileBlockDevice, ReadReturnsFalseForOverlargeBlockIndex)
+{
+    char buf[1] = {};
+    CHECK_FALSE(SolidSyslogBlockDevice_Read(device, 256, 0, buf, 1));
+}
+
+TEST(SolidSyslogFileBlockDevice, AppendReturnsFalseForOverlargeBlockIndex)
+{
+    CHECK_FALSE(SolidSyslogBlockDevice_Append(device, 256, "x", 1));
+}
+
+TEST(SolidSyslogFileBlockDevice, WriteAtReturnsFalseForOverlargeBlockIndex)
+{
+    CHECK_FALSE(SolidSyslogBlockDevice_WriteAt(device, 256, 0, "x", 1));
+}
+
+TEST(SolidSyslogFileBlockDevice, DisposeReturnsFalseForOverlargeBlockIndex)
+{
+    CHECK_FALSE(SolidSyslogBlockDevice_Dispose(device, 256));
+}
+
+TEST(SolidSyslogFileBlockDevice, SizeReturnsZeroForOverlargeBlockIndex)
+{
+    LONGS_EQUAL(0, SolidSyslogBlockDevice_Size(device, 256));
+}
+
 TEST(SolidSyslogFileBlockDevice, DestroyClosesOpenFileHandles)
 {
     SolidSyslogBlockDevice_Acquire(device, 0);

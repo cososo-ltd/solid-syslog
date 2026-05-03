@@ -38,6 +38,7 @@ set(TEST_SOURCES
     SolidSyslogFileStoreTest.cpp
     SolidSyslogBlockDeviceTest.cpp
     SolidSyslogFileBlockDeviceTest.cpp
+    BlockSequenceTest.cpp
     main.cpp
 )
 

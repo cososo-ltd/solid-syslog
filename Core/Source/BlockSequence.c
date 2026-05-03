@@ -85,31 +85,83 @@ bool BlockSequence_Open(struct BlockSequence* blockSequence)
     return ready;
 }
 
+enum
+{
+    MAX_SEQUENCE = SEQUENCE_MODULUS
+};
+
+static inline int CircularPrev(int index);
+static inline int CircularNext(int index);
+
+/* The on-disk block set is a single contiguous run in the circular sequence
+ * space [0, MAX_SEQUENCE). After enough rotations the run straddles the
+ * 99 -> 00 boundary (e.g. {98, 99, 0, 1}). Naive lowest=oldest /
+ * highest=write mis-classifies wrapped runs, so locate the gap (the absent
+ * blocks) and read the run as the complement: oldest sits one past the gap
+ * end, write sits one before the gap start. */
 static bool ScanForExistingBlocks(struct BlockSequence* blockSequence)
 {
-    enum
-    {
-        MAX_SEQUENCE = 100
-    };
-
-    bool foundFirst = false;
+    bool presence[MAX_SEQUENCE];
+    bool foundAny    = false;
+    bool foundAbsent = false;
+    int  firstAbsent = 0;
 
     for (int seq = 0; seq < MAX_SEQUENCE; seq++)
     {
-        if (SolidSyslogBlockDevice_Exists(blockSequence->blockDevice, (size_t) seq))
-        {
-            if (!foundFirst)
-            {
-                blockSequence->oldestSequence = (uint8_t) seq;
-                blockSequence->readSequence   = (uint8_t) seq;
-                foundFirst                    = true;
-            }
+        presence[seq] = SolidSyslogBlockDevice_Exists(blockSequence->blockDevice, (size_t) seq);
 
-            blockSequence->writeSequence = (uint8_t) seq;
+        if (presence[seq])
+        {
+            foundAny = true;
+        }
+        else if (!foundAbsent)
+        {
+            firstAbsent = seq;
+            foundAbsent = true;
         }
     }
 
-    return foundFirst;
+    if (!foundAny)
+    {
+        return false;
+    }
+
+    int oldest = 0;
+    int newest = MAX_SEQUENCE - 1;
+
+    if (foundAbsent)
+    {
+        oldest = CircularNext(firstAbsent);
+        while (!presence[oldest])
+        {
+            oldest = CircularNext(oldest);
+        }
+
+        newest = CircularPrev(firstAbsent);
+        while (!presence[newest])
+        {
+            newest = CircularPrev(newest);
+        }
+    }
+    /* else: every block is present — maxFiles is clamped to MAX_SEQUENCE - 1
+     * so this cannot arise from the library's own rotation. Treat the run as
+     * [0, MAX_SEQUENCE - 1] (defaults above). */
+
+    blockSequence->oldestSequence = (uint8_t) oldest;
+    blockSequence->readSequence   = (uint8_t) oldest;
+    blockSequence->writeSequence  = (uint8_t) newest;
+
+    return true;
+}
+
+static inline int CircularNext(int index)
+{
+    return (index + 1) % MAX_SEQUENCE;
+}
+
+static inline int CircularPrev(int index)
+{
+    return (index + MAX_SEQUENCE - 1) % MAX_SEQUENCE;
 }
 
 static inline bool FileIsFull(const struct BlockSequence* blockSequence, size_t recordSize);

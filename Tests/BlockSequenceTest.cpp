@@ -1,0 +1,156 @@
+#include <set>
+
+#include "CppUTest/TestHarness.h"
+
+extern "C"
+{
+#include "BlockSequence.h"
+}
+#include "SolidSyslogBlockDevice.h"
+#include "SolidSyslogBlockDeviceDefinition.h"
+
+namespace
+{
+struct ScanFake
+{
+    struct SolidSyslogBlockDevice base;
+    std::set<size_t>*             existing;
+};
+
+inline ScanFake& ToFake(struct SolidSyslogBlockDevice* self)
+{
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- vtable downcast: base is the first member of ScanFake
+    return *reinterpret_cast<ScanFake*>(self);
+}
+
+bool FakeExists(struct SolidSyslogBlockDevice* self, size_t blockIndex)
+{
+    return ToFake(self).existing->count(blockIndex) > 0;
+}
+
+bool FakeAcquire(struct SolidSyslogBlockDevice* self, size_t blockIndex)
+{
+    (void) self;
+    (void) blockIndex;
+    return true;
+}
+
+bool FakeDispose(struct SolidSyslogBlockDevice* self, size_t blockIndex)
+{
+    (void) self;
+    (void) blockIndex;
+    return true;
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- vtable signature: blockIndex / offset are positional, distinct semantics
+bool FakeRead(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t offset, void* buf, size_t count)
+{
+    (void) self;
+    (void) blockIndex;
+    (void) offset;
+    (void) buf;
+    (void) count;
+    return false;
+}
+
+bool FakeAppend(struct SolidSyslogBlockDevice* self, size_t blockIndex, const void* buf, size_t count)
+{
+    (void) self;
+    (void) blockIndex;
+    (void) buf;
+    (void) count;
+    return true;
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- vtable signature: blockIndex / offset are positional, distinct semantics
+bool FakeWriteAt(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t offset, const void* buf, size_t count)
+{
+    (void) self;
+    (void) blockIndex;
+    (void) offset;
+    (void) buf;
+    (void) count;
+    return true;
+}
+
+size_t FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex)
+{
+    (void) self;
+    (void) blockIndex;
+    return 0;
+}
+} // namespace
+
+// clang-format off
+TEST_GROUP(BlockSequenceScan)
+{
+    ScanFake fakeDevice = {};
+    std::set<size_t> existing;
+    struct BlockSequence sequence = {};
+
+    void setup() override
+    {
+        fakeDevice.base.Acquire = FakeAcquire;
+        fakeDevice.base.Dispose = FakeDispose;
+        fakeDevice.base.Exists  = FakeExists;
+        fakeDevice.base.Read    = FakeRead;
+        fakeDevice.base.Append  = FakeAppend;
+        fakeDevice.base.WriteAt = FakeWriteAt;
+        fakeDevice.base.Size    = FakeSize;
+        // cppcheck-suppress unreadVariable -- read indirectly via FakeExists; cppcheck does not model the function-pointer indirection
+        fakeDevice.existing     = &existing;
+
+        struct BlockSequenceConfig config = {};
+        config.blockDevice                = &fakeDevice.base;
+        config.maxFileSize                = 1000;
+        config.maxFiles                   = 99;
+        config.discardPolicy              = SOLIDSYSLOG_DISCARD_OLDEST;
+        BlockSequence_Init(&sequence, &config);
+    }
+};
+
+// clang-format on
+
+TEST(BlockSequenceScan, ColdStartAcquiresBlockZero)
+{
+    BlockSequence_Open(&sequence);
+    LONGS_EQUAL(0, BlockSequence_ReadSequence(&sequence));
+    LONGS_EQUAL(0, BlockSequence_WriteSequence(&sequence));
+}
+
+TEST(BlockSequenceScan, ResumesContiguousLinearRange)
+{
+    existing = {2, 3, 4};
+    BlockSequence_Open(&sequence);
+    LONGS_EQUAL(2, BlockSequence_ReadSequence(&sequence));
+    LONGS_EQUAL(4, BlockSequence_WriteSequence(&sequence));
+}
+
+TEST(BlockSequenceScan, ResumesAtZeroWhenOnlyBlockZeroExists)
+{
+    existing = {0};
+    BlockSequence_Open(&sequence);
+    LONGS_EQUAL(0, BlockSequence_ReadSequence(&sequence));
+    LONGS_EQUAL(0, BlockSequence_WriteSequence(&sequence));
+}
+
+/* After enough rotations, the on-disk block range straddles the 99 -> 00
+ * sequence boundary. The naive "lowest = oldest, highest = write" heuristic
+ * would mis-identify {98, 99, 0, 1} as oldest=0/write=99, breaking read order
+ * and the discard target on the next rotation. Run must be detected as a
+ * single circular range. */
+TEST(BlockSequenceScan, ResumesWrappedSequenceRangeCorrectly)
+{
+    existing = {98, 99, 0, 1};
+    BlockSequence_Open(&sequence);
+    LONGS_EQUAL(98, BlockSequence_ReadSequence(&sequence));
+    LONGS_EQUAL(1, BlockSequence_WriteSequence(&sequence));
+}
+
+TEST(BlockSequenceScan, ResumesWrappedSingleBlockAtBoundary)
+{
+    existing = {99, 0};
+    BlockSequence_Open(&sequence);
+    LONGS_EQUAL(99, BlockSequence_ReadSequence(&sequence));
+    LONGS_EQUAL(0, BlockSequence_WriteSequence(&sequence));
+}
