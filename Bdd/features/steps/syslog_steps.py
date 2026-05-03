@@ -548,6 +548,17 @@ def step_threshold_callback_not_invoked(context):
     )
 
 
+@given("the set of existing block files is recorded")
+def step_record_block_files(context):
+    context.recorded_block_files = set(glob.glob(STORE_PATH_PREFIX + "*.log"))
+
+
+@then("no recorded block file has been disposed")
+def step_no_block_disposed(context):
+    missing = sorted(p for p in context.recorded_block_files if not os.path.exists(p))
+    assert not missing, f"Block files disposed unexpectedly: {missing}"
+
+
 @when("the client sends a message")
 def step_client_sends_message(context):
     send_command(context.interactive_process, "send")
