@@ -121,6 +121,7 @@ static inline void CloseIfOpen(struct OpenHandle* handle)
  * ----------------------------------------------------------------*/
 
 static bool               EnsureHandleOpenOnBlock(struct OpenHandle* handle, const struct SolidSyslogFileBlockDevice* device, size_t blockIndex);
+static bool               OpenHandleOnBlock(struct OpenHandle* handle, const struct SolidSyslogFileBlockDevice* device, size_t blockIndex);
 static inline const char* FormatBlockFilename(const struct SolidSyslogFileBlockDevice* device, SolidSyslogFormatterStorage* storage, size_t blockIndex);
 
 static bool Acquire(struct SolidSyslogBlockDevice* self, size_t blockIndex)
@@ -153,24 +154,32 @@ static bool EnsureHandleOpenOnBlock(struct OpenHandle* handle, const struct Soli
 
     if (!ready)
     {
-        if (underlyingFileIsOpen)
-        {
-            SolidSyslogFile_Close(handle->file);
-        }
-        handle->isOpen = false;
-
-        SolidSyslogFormatterStorage nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
-        const char*                 name = FormatBlockFilename(device, nameStorage, blockIndex);
-
-        if (SolidSyslogFile_Open(handle->file, name))
-        {
-            handle->blockIndex = blockIndex;
-            handle->isOpen     = true;
-            ready              = true;
-        }
+        ready = OpenHandleOnBlock(handle, device, blockIndex);
     }
 
     return ready;
+}
+
+static bool OpenHandleOnBlock(struct OpenHandle* handle, const struct SolidSyslogFileBlockDevice* device, size_t blockIndex)
+{
+    if (SolidSyslogFile_IsOpen(handle->file))
+    {
+        SolidSyslogFile_Close(handle->file);
+    }
+    handle->isOpen = false;
+
+    SolidSyslogFormatterStorage nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
+    const char*                 name = FormatBlockFilename(device, nameStorage, blockIndex);
+
+    bool opened = SolidSyslogFile_Open(handle->file, name);
+
+    if (opened)
+    {
+        handle->blockIndex = blockIndex;
+        handle->isOpen     = true;
+    }
+
+    return opened;
 }
 
 static inline const char* FormatBlockFilename(const struct SolidSyslogFileBlockDevice* device, SolidSyslogFormatterStorage* storage, size_t blockIndex)

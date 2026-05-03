@@ -90,8 +90,19 @@ enum
     MAX_SEQUENCE = SEQUENCE_MODULUS
 };
 
+struct BlockPresence
+{
+    bool present[MAX_SEQUENCE];
+    bool foundAny;
+    bool foundAbsent;
+    int  firstAbsent;
+};
+
 static inline int CircularPrev(int index);
 static inline int CircularNext(int index);
+static void       ScanForBlockPresence(struct BlockSequence* blockSequence, struct BlockPresence* presence);
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints; distinct semantics
+static void LocateRunBoundaries(const struct BlockPresence* presence, int* oldest, int* newest);
 
 /* The on-disk block set is a single contiguous run in the circular sequence
  * space [0, MAX_SEQUENCE). After enough rotations the run straddles the
@@ -101,55 +112,65 @@ static inline int CircularNext(int index);
  * end, write sits one before the gap start. */
 static bool ScanForExistingBlocks(struct BlockSequence* blockSequence)
 {
-    bool presence[MAX_SEQUENCE];
-    bool foundAny    = false;
-    bool foundAbsent = false;
-    int  firstAbsent = 0;
+    struct BlockPresence presence;
+    ScanForBlockPresence(blockSequence, &presence);
 
-    for (int seq = 0; seq < MAX_SEQUENCE; seq++)
-    {
-        presence[seq] = SolidSyslogBlockDevice_Exists(blockSequence->blockDevice, (size_t) seq);
-
-        if (presence[seq])
-        {
-            foundAny = true;
-        }
-        else if (!foundAbsent)
-        {
-            firstAbsent = seq;
-            foundAbsent = true;
-        }
-    }
-
-    if (foundAny)
+    if (presence.foundAny)
     {
         int oldest = 0;
         int newest = MAX_SEQUENCE - 1;
-
-        if (foundAbsent)
-        {
-            oldest = CircularNext(firstAbsent);
-            while (!presence[oldest])
-            {
-                oldest = CircularNext(oldest);
-            }
-
-            newest = CircularPrev(firstAbsent);
-            while (!presence[newest])
-            {
-                newest = CircularPrev(newest);
-            }
-        }
-        /* else: every block is present — maxBlocks is clamped to MAX_SEQUENCE - 1
-         * so this cannot arise from the library's own rotation. Treat the run as
-         * [0, MAX_SEQUENCE - 1] (defaults above). */
+        LocateRunBoundaries(&presence, &oldest, &newest);
 
         blockSequence->oldestSequence = (uint8_t) oldest;
         blockSequence->readSequence   = (uint8_t) oldest;
         blockSequence->writeSequence  = (uint8_t) newest;
     }
 
-    return foundAny;
+    return presence.foundAny;
+}
+
+static void ScanForBlockPresence(struct BlockSequence* blockSequence, struct BlockPresence* presence)
+{
+    presence->foundAny    = false;
+    presence->foundAbsent = false;
+    presence->firstAbsent = 0;
+
+    for (int seq = 0; seq < MAX_SEQUENCE; seq++)
+    {
+        presence->present[seq] = SolidSyslogBlockDevice_Exists(blockSequence->blockDevice, (size_t) seq);
+
+        if (presence->present[seq])
+        {
+            presence->foundAny = true;
+        }
+        else if (!presence->foundAbsent)
+        {
+            presence->firstAbsent = seq;
+            presence->foundAbsent = true;
+        }
+    }
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints; distinct semantics
+static void LocateRunBoundaries(const struct BlockPresence* presence, int* oldest, int* newest)
+{
+    if (presence->foundAbsent)
+    {
+        *oldest = CircularNext(presence->firstAbsent);
+        while (!presence->present[*oldest])
+        {
+            *oldest = CircularNext(*oldest);
+        }
+
+        *newest = CircularPrev(presence->firstAbsent);
+        while (!presence->present[*newest])
+        {
+            *newest = CircularPrev(*newest);
+        }
+    }
+    /* else: every block is present — maxBlocks is clamped to MAX_SEQUENCE - 1
+     * so this cannot arise from the library's own rotation. Caller's defaults
+     * for oldest=0, newest=MAX_SEQUENCE-1 stand. */
 }
 
 static inline int CircularNext(int index)
