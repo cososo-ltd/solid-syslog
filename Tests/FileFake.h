@@ -19,9 +19,9 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogFile* FileFake_Create(struct FileFakeStorage * storage);
     void                    FileFake_Destroy(void);
-    void                    FileFake_FailNextOpen(void);
-    void                    FileFake_FailNextWrite(void);
-    void                    FileFake_FailNextRead(void);
+    void                    FileFake_FailNextOpen(struct SolidSyslogFile * file);
+    void                    FileFake_FailNextWrite(struct SolidSyslogFile * file);
+    void                    FileFake_FailNextRead(struct SolidSyslogFile * file);
     const void*             FileFake_FileContent(void);
     size_t                  FileFake_FileSize(void);
 

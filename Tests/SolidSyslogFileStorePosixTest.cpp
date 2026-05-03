@@ -1,4 +1,6 @@
 #include "CppUTest/TestHarness.h"
+#include "SolidSyslogBlockDevice.h"
+#include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogFileStore.h"
 #include "SolidSyslogPosixFile.h"
 #include "SolidSyslog.h"
@@ -40,6 +42,8 @@ TEST_GROUP(SolidSyslogFileStorePosix)
     SolidSyslogPosixFileStorage writeStorage = {};
     struct SolidSyslogFile* readFile = nullptr;
     struct SolidSyslogFile* writeFile = nullptr;
+    SolidSyslogFileBlockDeviceStorage deviceStorage = {};
+    struct SolidSyslogBlockDevice* device = nullptr;
     struct SolidSyslogStore* store = nullptr;
     char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
 
@@ -48,12 +52,14 @@ TEST_GROUP(SolidSyslogFileStorePosix)
         CleanStoreFiles();
         readFile = SolidSyslogPosixFile_Create(&readStorage);
         writeFile = SolidSyslogPosixFile_Create(&writeStorage);
+        device = SolidSyslogFileBlockDevice_Create(&deviceStorage, readFile, writeFile, TEST_PATH_PREFIX);
         std::memset(maxMsg, 'A', sizeof(maxMsg));
     }
 
     void teardown() override
     {
         SolidSyslogFileStore_Destroy(store);
+        SolidSyslogFileBlockDevice_Destroy(device);
         SolidSyslogPosixFile_Destroy(writeFile);
         SolidSyslogPosixFile_Destroy(readFile);
         CleanStoreFiles();
@@ -63,9 +69,7 @@ TEST_GROUP(SolidSyslogFileStorePosix)
     void CreateStore(size_t maxFileSize = ONE_MAX_MSG_RECORD, size_t maxFiles = 2)
     {
         struct SolidSyslogFileStoreConfig config = {};
-        config.readFile      = readFile;
-        config.writeFile     = writeFile;
-        config.pathPrefix    = TEST_PATH_PREFIX;
+        config.blockDevice   = device;
         config.maxFileSize   = maxFileSize;
         config.maxFiles      = maxFiles;
         config.discardPolicy = SOLIDSYSLOG_DISCARD_OLDEST;

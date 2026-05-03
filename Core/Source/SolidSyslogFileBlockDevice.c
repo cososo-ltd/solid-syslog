@@ -129,15 +129,16 @@ static bool Acquire(struct SolidSyslogBlockDevice* self, size_t blockIndex)
 
 static bool EnsureHandleOpenOnBlock(struct OpenHandle* handle, const struct SolidSyslogFileBlockDevice* device, size_t blockIndex)
 {
-    bool ready = handle->isOpen && (handle->blockIndex == blockIndex);
+    bool underlyingFileIsOpen = SolidSyslogFile_IsOpen(handle->file);
+    bool ready                = handle->isOpen && underlyingFileIsOpen && (handle->blockIndex == blockIndex);
 
     if (!ready)
     {
-        if (handle->isOpen)
+        if (underlyingFileIsOpen)
         {
             SolidSyslogFile_Close(handle->file);
-            handle->isOpen = false;
         }
+        handle->isOpen = false;
 
         SolidSyslogFormatterStorage nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
         const char*                 name = FormatBlockFilename(device, nameStorage, blockIndex);

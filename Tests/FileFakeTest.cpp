@@ -108,14 +108,14 @@ TEST(FileFake, WriteAtPositionOverwritesContent)
 
 TEST(FileFake, FailNextOpenMakesOpenReturnFalse)
 {
-    FileFake_FailNextOpen();
+    FileFake_FailNextOpen(api);
     CHECK_FALSE(SolidSyslogFile_Open(api, "test.dat"));
     CHECK_FALSE(SolidSyslogFile_IsOpen(api));
 }
 
 TEST(FileFake, FailNextOpenOnlyAffectsOneCall)
 {
-    FileFake_FailNextOpen();
+    FileFake_FailNextOpen(api);
     CHECK_FALSE(SolidSyslogFile_Open(api, "test.dat"));
     CHECK_TRUE(SolidSyslogFile_Open(api, "test.dat"));
 }
@@ -123,14 +123,14 @@ TEST(FileFake, FailNextOpenOnlyAffectsOneCall)
 TEST(FileFake, FailNextWriteMakesWriteReturnFalse)
 {
     SolidSyslogFile_Open(api, "test.dat");
-    FileFake_FailNextWrite();
+    FileFake_FailNextWrite(api);
     CHECK_FALSE(SolidSyslogFile_Write(api, "hello", 5));
 }
 
 TEST(FileFake, FailNextWriteOnlyAffectsOneCall)
 {
     SolidSyslogFile_Open(api, "test.dat");
-    FileFake_FailNextWrite();
+    FileFake_FailNextWrite(api);
     CHECK_FALSE(SolidSyslogFile_Write(api, "hello", 5));
     CHECK_TRUE(SolidSyslogFile_Write(api, "world", 5));
 }
@@ -140,7 +140,7 @@ TEST(FileFake, FailNextReadMakesReadReturnFalse)
     SolidSyslogFile_Open(api, "test.dat");
     SolidSyslogFile_Write(api, "hello", 5);
     SolidSyslogFile_SeekTo(api, 0);
-    FileFake_FailNextRead();
+    FileFake_FailNextRead(api);
 
     char buf[16];
     CHECK_FALSE(SolidSyslogFile_Read(api, buf, 5));
@@ -151,7 +151,7 @@ TEST(FileFake, FailNextReadOnlyAffectsOneCall)
     SolidSyslogFile_Open(api, "test.dat");
     SolidSyslogFile_Write(api, "hello", 5);
     SolidSyslogFile_SeekTo(api, 0);
-    FileFake_FailNextRead();
+    FileFake_FailNextRead(api);
 
     char buf[16] = {};
     CHECK_FALSE(SolidSyslogFile_Read(api, buf, 5));

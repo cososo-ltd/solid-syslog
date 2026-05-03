@@ -1,34 +1,13 @@
 #include "BlockSequence.h"
 
-#include "SolidSyslogFormatter.h"
+#include "SolidSyslogBlockDevice.h"
 
 enum
 {
     MIN_MAX_FILES    = 2,
     MAX_MAX_FILES    = 99,
-    SEQUENCE_MODULUS = 100,
-    MAX_PATH_SIZE    = 128
+    SEQUENCE_MODULUS = 100
 };
-
-static const char FILE_EXTENSION[] = ".log";
-
-enum
-{
-    SEQUENCE_DIGITS   = 2,
-    FILENAME_SUFFIX   = SEQUENCE_DIGITS + sizeof(FILE_EXTENSION) - 1,
-    MAX_PREFIX_LENGTH = MAX_PATH_SIZE - FILENAME_SUFFIX - 1
-};
-
-static inline const char* FormatFilename(const struct BlockSequence* blockSequence, SolidSyslogFormatterStorage* storage, uint8_t sequence)
-{
-    struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(storage, MAX_PATH_SIZE);
-
-    SolidSyslogFormatter_BoundedString(f, blockSequence->pathPrefix, MAX_PREFIX_LENGTH);
-    SolidSyslogFormatter_TwoDigit(f, sequence);
-    SolidSyslogFormatter_BoundedString(f, FILE_EXTENSION, sizeof(FILE_EXTENSION) - 1);
-
-    return SolidSyslogFormatter_AsFormattedBuffer(f);
-}
 
 static inline uint8_t NextSequence(uint8_t current)
 {
@@ -60,9 +39,7 @@ static inline size_t ClampToRange(size_t value, size_t min, size_t max)
 
 void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockSequenceConfig* config)
 {
-    blockSequence->readFile             = config->readFile;
-    blockSequence->writeFile            = config->writeFile;
-    blockSequence->pathPrefix           = config->pathPrefix;
+    blockSequence->blockDevice          = config->blockDevice;
     blockSequence->maxFileSize          = config->maxFileSize;
     blockSequence->maxFiles             = ClampToRange(config->maxFiles, MIN_MAX_FILES, MAX_MAX_FILES);
     blockSequence->discardPolicy        = config->discardPolicy;
@@ -82,32 +59,33 @@ void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockS
     blockSequence->writeFileCorrupt     = false;
 }
 
-static void        ScanForExistingFiles(struct BlockSequence* blockSequence);
+static bool        ScanForExistingBlocks(struct BlockSequence* blockSequence);
 static inline void NotifyThresholdCrossed(struct BlockSequence* blockSequence);
 
 bool BlockSequence_Open(struct BlockSequence* blockSequence)
 {
-    ScanForExistingFiles(blockSequence);
+    bool foundExistingBlocks = ScanForExistingBlocks(blockSequence);
+    bool ready               = false;
 
-    SolidSyslogFormatterStorage writeNameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
-    const char*                 writeName = FormatFilename(blockSequence, writeNameStorage, blockSequence->writeSequence);
-
-    bool opened = SolidSyslogFile_Open(blockSequence->writeFile, writeName);
-
-    if (opened)
+    if (foundExistingBlocks)
     {
-        SolidSyslogFormatterStorage readNameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
-        const char*                 readName = FormatFilename(blockSequence, readNameStorage, blockSequence->readSequence);
-        SolidSyslogFile_Open(blockSequence->readFile, readName);
+        blockSequence->writePosition = SolidSyslogBlockDevice_Size(blockSequence->blockDevice, blockSequence->writeSequence);
+        ready                        = true;
+    }
+    else
+    {
+        ready = SolidSyslogBlockDevice_Acquire(blockSequence->blockDevice, 0);
+    }
 
-        blockSequence->writePosition = SolidSyslogFile_Size(blockSequence->writeFile);
+    if (ready)
+    {
         NotifyThresholdCrossed(blockSequence); /* fire on resume if usage already at-or-above threshold */
     }
 
-    return opened;
+    return ready;
 }
 
-static void ScanForExistingFiles(struct BlockSequence* blockSequence)
+static bool ScanForExistingBlocks(struct BlockSequence* blockSequence)
 {
     enum
     {
@@ -118,10 +96,7 @@ static void ScanForExistingFiles(struct BlockSequence* blockSequence)
 
     for (int seq = 0; seq < MAX_SEQUENCE; seq++)
     {
-        SolidSyslogFormatterStorage nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
-        const char*                 name = FormatFilename(blockSequence, nameStorage, (uint8_t) seq);
-
-        if (SolidSyslogFile_Exists(blockSequence->writeFile, name))
+        if (SolidSyslogBlockDevice_Exists(blockSequence->blockDevice, (size_t) seq))
         {
             if (!foundFirst)
             {
@@ -133,29 +108,8 @@ static void ScanForExistingFiles(struct BlockSequence* blockSequence)
             blockSequence->writeSequence = (uint8_t) seq;
         }
     }
-}
 
-static inline bool IsWriteFileOpen(const struct BlockSequence* blockSequence)
-{
-    return (blockSequence->writeFile != NULL) && SolidSyslogFile_IsOpen(blockSequence->writeFile);
-}
-
-static inline bool IsReadFileOpen(const struct BlockSequence* blockSequence)
-{
-    return (blockSequence->readFile != NULL) && SolidSyslogFile_IsOpen(blockSequence->readFile);
-}
-
-void BlockSequence_Close(struct BlockSequence* blockSequence)
-{
-    if (IsWriteFileOpen(blockSequence))
-    {
-        SolidSyslogFile_Close(blockSequence->writeFile);
-    }
-
-    if (IsReadFileOpen(blockSequence))
-    {
-        SolidSyslogFile_Close(blockSequence->readFile);
-    }
+    return foundFirst;
 }
 
 static inline bool FileIsFull(const struct BlockSequence* blockSequence, size_t recordSize);
@@ -206,20 +160,15 @@ static inline void NotifyStoreFull(struct BlockSequence* blockSequence)
     }
 }
 
-static bool        DiscardOldestFile(struct BlockSequence* blockSequence);
-static void        DeleteOldestFile(struct BlockSequence* blockSequence);
-static void        ResetReadToOldestFile(struct BlockSequence* blockSequence);
-static inline void SwitchReadFile(struct BlockSequence* blockSequence, uint8_t newSequence);
+static bool DiscardOldestFile(struct BlockSequence* blockSequence);
+static void ResetReadToOldest(struct BlockSequence* blockSequence);
 
 static bool RotateToNextFile(struct BlockSequence* blockSequence)
 {
-    SolidSyslogFile_Close(blockSequence->writeFile);
     blockSequence->writeSequence    = NextSequence(blockSequence->writeSequence);
     blockSequence->writePosition    = 0;
     blockSequence->writeFileCorrupt = false;
-    SolidSyslogFormatterStorage nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
-    const char*                 name = FormatFilename(blockSequence, nameStorage, blockSequence->writeSequence);
-    SolidSyslogFile_Open(blockSequence->writeFile, name);
+    SolidSyslogBlockDevice_Acquire(blockSequence->blockDevice, blockSequence->writeSequence);
 
     bool readFileChanged = false;
 
@@ -235,42 +184,31 @@ static bool DiscardOldestFile(struct BlockSequence* blockSequence)
 {
     bool readingOldestFile = (blockSequence->readSequence == blockSequence->oldestSequence);
 
-    DeleteOldestFile(blockSequence);
+    SolidSyslogBlockDevice_Dispose(blockSequence->blockDevice, blockSequence->oldestSequence);
+    blockSequence->oldestSequence = NextSequence(blockSequence->oldestSequence);
 
     if (readingOldestFile)
     {
-        ResetReadToOldestFile(blockSequence);
+        ResetReadToOldest(blockSequence);
     }
 
     return readingOldestFile;
 }
 
-static void DeleteOldestFile(struct BlockSequence* blockSequence)
+static void ResetReadToOldest(struct BlockSequence* blockSequence)
 {
-    SolidSyslogFormatterStorage nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
-    const char*                 name = FormatFilename(blockSequence, nameStorage, blockSequence->oldestSequence);
-    SolidSyslogFile_Delete(blockSequence->writeFile, name);
-    blockSequence->oldestSequence = NextSequence(blockSequence->oldestSequence);
-}
-
-static void ResetReadToOldestFile(struct BlockSequence* blockSequence)
-{
-    SwitchReadFile(blockSequence, blockSequence->oldestSequence);
-}
-
-static inline void SwitchReadFile(struct BlockSequence* blockSequence, uint8_t newSequence)
-{
-    SolidSyslogFile_Close(blockSequence->readFile);
-    blockSequence->readSequence = newSequence;
+    blockSequence->readSequence = blockSequence->oldestSequence;
     blockSequence->readCursor   = 0;
-    SolidSyslogFormatterStorage nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
-    const char*                 name = FormatFilename(blockSequence, nameStorage, blockSequence->readSequence);
-    SolidSyslogFile_Open(blockSequence->readFile, name);
 }
 
-struct SolidSyslogFile* BlockSequence_WriteFile(const struct BlockSequence* blockSequence)
+struct SolidSyslogBlockDevice* BlockSequence_BlockDevice(const struct BlockSequence* blockSequence)
 {
-    return blockSequence->writeFile;
+    return blockSequence->blockDevice;
+}
+
+size_t BlockSequence_WriteSequence(const struct BlockSequence* blockSequence)
+{
+    return blockSequence->writeSequence;
 }
 
 size_t BlockSequence_WritePosition(const struct BlockSequence* blockSequence)
@@ -315,9 +253,9 @@ void BlockSequence_MarkWriteFileCorrupt(struct BlockSequence* blockSequence)
     blockSequence->writeFileCorrupt = true;
 }
 
-struct SolidSyslogFile* BlockSequence_ReadFile(const struct BlockSequence* blockSequence)
+size_t BlockSequence_ReadSequence(const struct BlockSequence* blockSequence)
 {
-    return blockSequence->readFile;
+    return blockSequence->readSequence;
 }
 
 size_t BlockSequence_ReadCursor(const struct BlockSequence* blockSequence)
@@ -332,7 +270,8 @@ void BlockSequence_SetReadCursor(struct BlockSequence* blockSequence, size_t cur
 
 void BlockSequence_AdvanceToNextReadFile(struct BlockSequence* blockSequence)
 {
-    SwitchReadFile(blockSequence, NextSequence(blockSequence->readSequence));
+    blockSequence->readSequence = NextSequence(blockSequence->readSequence);
+    blockSequence->readCursor   = 0;
 }
 
 bool BlockSequence_IsReadingOlderFile(const struct BlockSequence* blockSequence)

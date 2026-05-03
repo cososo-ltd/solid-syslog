@@ -2,7 +2,6 @@
 #define SOLIDSYSLOGFILESTORE_H
 
 #include "SolidSyslog.h"
-#include "SolidSyslogFile.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogStore.h"
 
@@ -10,6 +9,8 @@
 #include <stdint.h>
 
 EXTERN_C_BEGIN
+
+    struct SolidSyslogBlockDevice;
 
     enum SolidSyslogDiscardPolicy
     {
@@ -31,9 +32,7 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogFileStoreConfig
     {
-        struct SolidSyslogFile*           readFile;
-        struct SolidSyslogFile*           writeFile;
-        const char*                       pathPrefix;
+        struct SolidSyslogBlockDevice*    blockDevice;
         size_t                            maxFileSize;
         size_t                            maxFiles;
         enum SolidSyslogDiscardPolicy     discardPolicy;

@@ -2,6 +2,7 @@
 #include "BlockSequence.h"
 #include "RecordStore.h"
 #include "SolidSyslog.h"
+#include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogMacros.h"
 #include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogStoreDefinition.h"
@@ -86,9 +87,7 @@ static inline struct BlockSequenceConfig BuildBlockSequenceConfig(const struct S
     size_t maxFileSize = (config->maxFileSize < minFileSize) ? minFileSize : config->maxFileSize;
 
     struct BlockSequenceConfig blockConfig = {
-        .readFile             = config->readFile,
-        .writeFile            = config->writeFile,
-        .pathPrefix           = config->pathPrefix,
+        .blockDevice          = config->blockDevice,
         .maxFileSize          = maxFileSize,
         .maxFiles             = config->maxFiles,
         .discardPolicy        = config->discardPolicy,
@@ -115,8 +114,9 @@ static inline void InitialiseVtable(struct SolidSyslogFileStore* fileStore)
 static void ResumeFromExistingFile(struct SolidSyslogFileStore* fileStore)
 {
     bool   corrupt = false;
-    size_t cursor  = RecordStore_FindFirstUnsent(&fileStore->recordStore, BlockSequence_ReadFile(&fileStore->blockSequence),
-                                                 BlockSequence_WritePosition(&fileStore->blockSequence), &corrupt);
+    size_t cursor =
+        RecordStore_FindFirstUnsent(&fileStore->recordStore, BlockSequence_BlockDevice(&fileStore->blockSequence),
+                                    BlockSequence_ReadSequence(&fileStore->blockSequence), BlockSequence_WritePosition(&fileStore->blockSequence), &corrupt);
 
     BlockSequence_SetReadCursor(&fileStore->blockSequence, cursor);
 
@@ -133,8 +133,7 @@ static void ResumeFromExistingFile(struct SolidSyslogFileStore* fileStore)
 void SolidSyslogFileStore_Destroy(struct SolidSyslogStore* store)
 {
     struct SolidSyslogFileStore* fileStore = AsFileStore(store);
-    BlockSequence_Close(&fileStore->blockSequence);
-    *fileStore = DEFAULT_INSTANCE;
+    *fileStore                             = DEFAULT_INSTANCE;
 }
 
 /* ------------------------------------------------------------------
@@ -145,15 +144,7 @@ static bool StoreRecord(struct SolidSyslogFileStore* fileStore, const void* data
 
 static bool Write(struct SolidSyslogStore* self, const void* data, size_t size)
 {
-    struct SolidSyslogFileStore* fileStore = AsFileStore(self);
-    bool                         written   = false;
-
-    if (SolidSyslogFile_IsOpen(BlockSequence_WriteFile(&fileStore->blockSequence)))
-    {
-        written = StoreRecord(fileStore, data, size);
-    }
-
-    return written;
+    return StoreRecord(AsFileStore(self), data, size);
 }
 
 static bool StoreRecord(struct SolidSyslogFileStore* fileStore, const void* data, size_t size)
@@ -169,8 +160,8 @@ static bool StoreRecord(struct SolidSyslogFileStore* fileStore, const void* data
             RecordStore_ForgetLastRead(&fileStore->recordStore);
         }
 
-        if (RecordStore_Append(&fileStore->recordStore, BlockSequence_WriteFile(&fileStore->blockSequence),
-                               BlockSequence_WritePosition(&fileStore->blockSequence), data, size))
+        if (RecordStore_Append(&fileStore->recordStore, BlockSequence_BlockDevice(&fileStore->blockSequence),
+                               BlockSequence_WriteSequence(&fileStore->blockSequence), data, size))
         {
             BlockSequence_NoteRecordWritten(&fileStore->blockSequence, recordSize);
             written = true;
@@ -181,7 +172,7 @@ static bool StoreRecord(struct SolidSyslogFileStore* fileStore, const void* data
 }
 
 /* ------------------------------------------------------------------
- * HasUnsent / IsHalted
+ * HasUnsent / IsHalted / GetTotalBytes / GetUsedBytes
  * ----------------------------------------------------------------*/
 
 static bool HasUnsent(struct SolidSyslogStore* self)
@@ -233,8 +224,9 @@ static bool ReadNextUnsent(struct SolidSyslogStore* self, void* data, size_t max
 
 static bool ReadCurrent(struct SolidSyslogFileStore* fileStore, void* data, size_t maxSize, size_t* bytesRead)
 {
-    return RecordStore_Read(&fileStore->recordStore, BlockSequence_ReadFile(&fileStore->blockSequence), BlockSequence_ReadCursor(&fileStore->blockSequence),
-                            data, maxSize, bytesRead);
+    return RecordStore_Read(&fileStore->recordStore, BlockSequence_BlockDevice(&fileStore->blockSequence),
+                            BlockSequence_ReadSequence(&fileStore->blockSequence), BlockSequence_ReadCursor(&fileStore->blockSequence), data, maxSize,
+                            bytesRead);
 }
 
 /* ------------------------------------------------------------------
@@ -246,7 +238,7 @@ static void MarkSent(struct SolidSyslogStore* self)
     struct SolidSyslogFileStore* fileStore  = AsFileStore(self);
     size_t                       nextCursor = 0;
 
-    if (RecordStore_MarkLastReadAsSent(&fileStore->recordStore, BlockSequence_ReadFile(&fileStore->blockSequence), &nextCursor))
+    if (RecordStore_MarkLastReadAsSent(&fileStore->recordStore, BlockSequence_BlockDevice(&fileStore->blockSequence), &nextCursor))
     {
         BlockSequence_SetReadCursor(&fileStore->blockSequence, nextCursor);
     }

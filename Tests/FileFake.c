@@ -135,19 +135,19 @@ void FileFake_Destroy(void)
  * Fail injection
  * ----------------------------------------------------------------*/
 
-void FileFake_FailNextOpen(void)
+void FileFake_FailNextOpen(struct SolidSyslogFile* file)
 {
-    lastCreated->failNextOpen = true;
+    AsFake(file)->failNextOpen = true;
 }
 
-void FileFake_FailNextWrite(void)
+void FileFake_FailNextWrite(struct SolidSyslogFile* file)
 {
-    lastCreated->failNextWrite = true;
+    AsFake(file)->failNextWrite = true;
 }
 
-void FileFake_FailNextRead(void)
+void FileFake_FailNextRead(struct SolidSyslogFile* file)
 {
-    lastCreated->failNextRead = true;
+    AsFake(file)->failNextRead = true;
 }
 
 /* ------------------------------------------------------------------
