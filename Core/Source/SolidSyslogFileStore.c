@@ -211,7 +211,7 @@ static bool ReadNextUnsent(struct SolidSyslogStore* self, void* data, size_t max
     {
         read = ReadCurrent(fileStore, data, maxSize, bytesRead);
 
-        while (!read && BlockSequence_IsReadingOlderBlock(&fileStore->blockSequence))
+        while (!read && BlockSequence_ReadIsBehindWrite(&fileStore->blockSequence))
         {
             BlockSequence_AdvanceToNextReadBlock(&fileStore->blockSequence);
             RecordStore_ForgetLastRead(&fileStore->recordStore);

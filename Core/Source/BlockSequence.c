@@ -330,14 +330,14 @@ void BlockSequence_AdvanceToNextReadBlock(struct BlockSequence* blockSequence)
     blockSequence->readCursor   = 0;
 }
 
-bool BlockSequence_IsReadingOlderBlock(const struct BlockSequence* blockSequence)
+bool BlockSequence_ReadIsBehindWrite(const struct BlockSequence* blockSequence)
 {
     return blockSequence->readSequence != blockSequence->writeSequence;
 }
 
 bool BlockSequence_HasUnsent(const struct BlockSequence* blockSequence)
 {
-    return BlockSequence_IsReadingOlderBlock(blockSequence) || (blockSequence->readCursor < blockSequence->writePosition);
+    return BlockSequence_ReadIsBehindWrite(blockSequence) || (blockSequence->readCursor < blockSequence->writePosition);
 }
 
 bool BlockSequence_IsHalted(const struct BlockSequence* blockSequence)
