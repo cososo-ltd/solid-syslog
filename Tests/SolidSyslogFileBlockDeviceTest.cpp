@@ -17,6 +17,7 @@ static const char* const TEST_PATH_PREFIX = "/tmp/blockdev_";
         CHECK_TRUE(SolidSyslogBlockDevice_Read(device, (blockIndex), (offset), checkBuf, (length))); \
         MEMCMP_EQUAL((expected), checkBuf, (length));                                                \
     } while (0)
+
 // NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 // clang-format off

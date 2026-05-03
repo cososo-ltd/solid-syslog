@@ -121,37 +121,35 @@ static bool ScanForExistingBlocks(struct BlockSequence* blockSequence)
         }
     }
 
-    if (!foundAny)
+    if (foundAny)
     {
-        return false;
+        int oldest = 0;
+        int newest = MAX_SEQUENCE - 1;
+
+        if (foundAbsent)
+        {
+            oldest = CircularNext(firstAbsent);
+            while (!presence[oldest])
+            {
+                oldest = CircularNext(oldest);
+            }
+
+            newest = CircularPrev(firstAbsent);
+            while (!presence[newest])
+            {
+                newest = CircularPrev(newest);
+            }
+        }
+        /* else: every block is present — maxFiles is clamped to MAX_SEQUENCE - 1
+         * so this cannot arise from the library's own rotation. Treat the run as
+         * [0, MAX_SEQUENCE - 1] (defaults above). */
+
+        blockSequence->oldestSequence = (uint8_t) oldest;
+        blockSequence->readSequence   = (uint8_t) oldest;
+        blockSequence->writeSequence  = (uint8_t) newest;
     }
 
-    int oldest = 0;
-    int newest = MAX_SEQUENCE - 1;
-
-    if (foundAbsent)
-    {
-        oldest = CircularNext(firstAbsent);
-        while (!presence[oldest])
-        {
-            oldest = CircularNext(oldest);
-        }
-
-        newest = CircularPrev(firstAbsent);
-        while (!presence[newest])
-        {
-            newest = CircularPrev(newest);
-        }
-    }
-    /* else: every block is present — maxFiles is clamped to MAX_SEQUENCE - 1
-     * so this cannot arise from the library's own rotation. Treat the run as
-     * [0, MAX_SEQUENCE - 1] (defaults above). */
-
-    blockSequence->oldestSequence = (uint8_t) oldest;
-    blockSequence->readSequence   = (uint8_t) oldest;
-    blockSequence->writeSequence  = (uint8_t) newest;
-
-    return true;
+    return foundAny;
 }
 
 static inline int CircularNext(int index)
@@ -192,7 +190,7 @@ bool BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t r
 
 static inline bool BlockIsFull(const struct BlockSequence* blockSequence, size_t recordSize)
 {
-    return blockSequence->writeBlockCorrupt || (blockSequence->writePosition + recordSize) > blockSequence->maxFileSize;
+    return (blockSequence->writeBlockCorrupt) || ((blockSequence->writePosition + recordSize) > blockSequence->maxFileSize);
 }
 
 static inline bool StoreIsFull(const struct BlockSequence* blockSequence)
@@ -354,11 +352,17 @@ size_t BlockSequence_TotalBytes(const struct BlockSequence* blockSequence)
 
 size_t BlockSequence_UsedBytes(const struct BlockSequence* blockSequence)
 {
+    size_t used = 0;
+
     if (blockSequence->atCapacity)
     {
-        return BlockSequence_TotalBytes(blockSequence);
+        used = BlockSequence_TotalBytes(blockSequence);
+    }
+    else
+    {
+        size_t closedBlocks = BlockCount(blockSequence) - 1;
+        used                = (closedBlocks * blockSequence->maxFileSize) + blockSequence->writePosition;
     }
 
-    size_t closedBlocks = BlockCount(blockSequence) - 1;
-    return (closedBlocks * blockSequence->maxFileSize) + blockSequence->writePosition;
+    return used;
 }
