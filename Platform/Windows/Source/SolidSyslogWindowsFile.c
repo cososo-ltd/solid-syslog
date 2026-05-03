@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 
 /* _O_BINARY disables the MSVC CRT's CR/LF translation on read/write so
- * arbitrary binary content (e.g. SolidSyslogFileStore frames) round-trips
+ * arbitrary binary content (e.g. SolidSyslogBlockStore frames) round-trips
  * unchanged. Without it the CRT substitutes 0x0D 0x0A for 0x0A on write
  * and the inverse on read, corrupting any byte that happens to fall on
  * those values. */

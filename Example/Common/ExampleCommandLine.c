@@ -6,10 +6,10 @@
 
 enum
 {
-    DEFAULT_MAX_FILES      = 10,
-    DEFAULT_MAX_FILE_SIZE  = 65536,
-    OPT_MAX_FILES          = 256,
-    OPT_MAX_FILE_SIZE      = 257,
+    DEFAULT_MAX_BLOCKS     = 10,
+    DEFAULT_MAX_BLOCK_SIZE = 65536,
+    OPT_MAX_BLOCKS         = 256,
+    OPT_MAX_BLOCK_SIZE     = 257,
     OPT_DISCARD_POLICY     = 258,
     OPT_NO_SD              = 259,
     OPT_HALT_EXIT          = 260,
@@ -43,8 +43,8 @@ int ExampleCommandLine_Parse(int argc, char* argv[], struct ExampleOptions* opti
     options->msg               = NULL;
     options->transport         = "udp";
     options->store             = "null";
-    options->maxFiles          = DEFAULT_MAX_FILES;
-    options->maxFileSize       = DEFAULT_MAX_FILE_SIZE;
+    options->maxBlocks         = DEFAULT_MAX_BLOCKS;
+    options->maxBlockSize      = DEFAULT_MAX_BLOCK_SIZE;
     options->discardPolicy     = "oldest";
     options->capacityThreshold = 0;
     options->noSd              = false;
@@ -57,8 +57,8 @@ int ExampleCommandLine_Parse(int argc, char* argv[], struct ExampleOptions* opti
         {"message", required_argument, NULL, 'm'},
         {"transport", required_argument, NULL, 't'},
         {"store", required_argument, NULL, 'o'},
-        {"max-files", required_argument, NULL, OPT_MAX_FILES},
-        {"max-file-size", required_argument, NULL, OPT_MAX_FILE_SIZE},
+        {"max-blocks", required_argument, NULL, OPT_MAX_BLOCKS},
+        {"max-block-size", required_argument, NULL, OPT_MAX_BLOCK_SIZE},
         {"discard-policy", required_argument, NULL, OPT_DISCARD_POLICY},
         {"capacity-threshold", required_argument, NULL, OPT_CAPACITY_THRESHOLD},
         {"no-sd", no_argument, NULL, OPT_NO_SD},
@@ -97,14 +97,14 @@ int ExampleCommandLine_Parse(int argc, char* argv[], struct ExampleOptions* opti
                 }
                 options->store = optarg;
                 break;
-            case OPT_MAX_FILES:
-                if (!ParsePositiveNumber(optarg, &options->maxFiles))
+            case OPT_MAX_BLOCKS:
+                if (!ParsePositiveNumber(optarg, &options->maxBlocks))
                 {
                     return 1;
                 }
                 break;
-            case OPT_MAX_FILE_SIZE:
-                if (!ParsePositiveNumber(optarg, &options->maxFileSize))
+            case OPT_MAX_BLOCK_SIZE:
+                if (!ParsePositiveNumber(optarg, &options->maxBlockSize))
                 {
                     return 1;
                 }

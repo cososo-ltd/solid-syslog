@@ -17,8 +17,8 @@ EXTERN_C_BEGIN
         const char*               msg;
         const char*               transport;
         const char*               store;
-        size_t                    maxFiles;
-        size_t                    maxFileSize;
+        size_t                    maxBlocks;
+        size_t                    maxBlockSize;
         const char*               discardPolicy;
         size_t                    capacityThreshold;
         bool                      noSd;

@@ -19,7 +19,7 @@ Designed for resource-constrained environments:
 
 Approaching feature-complete for POSIX and Windows: RFC 5424 structured
 formatting, UDP / TCP / TLS / mTLS transport, asynchronous buffering, rotating
-file store-and-forward with CRC-16 integrity, and the full
+block store-and-forward with CRC-16 integrity, and the full
 [IEC 62443 SL1–SL4 component set](docs/iec62443.md).
 
 **Not yet production-ready**, and no API stability guarantee yet. Known gaps:
@@ -66,7 +66,7 @@ Public headers are split by audience (Interface Segregation Principle):
 - **`SolidSyslogEndpoint.h`** — destination spec for senders. Application supplies `endpoint`
   (fills host/port on (re)connect) and `endpointVersion` (cheap polled fingerprint); senders
   Disconnect and lazily reopen when the version changes — supports runtime address rotation
-- **`SolidSyslogStoreDefinition.h`** / **`SolidSyslogFileStore.h`** — file-based store-and-forward with rotating files
+- **`SolidSyslogStoreDefinition.h`** / **`SolidSyslogBlockStore.h`** — BlockDevice-backed store-and-forward with rotating blocks
 - **`SolidSyslogSecurityPolicyDefinition.h`** — extension point for record integrity policies
 - **`SolidSyslogCrc16Policy.h`** — CRC-16/CCITT-FALSE integrity policy
 - **`SolidSyslogStructuredDataDefinition.h`** — extension point for custom structured data

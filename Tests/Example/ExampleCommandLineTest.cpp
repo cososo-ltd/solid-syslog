@@ -21,20 +21,20 @@ TEST_GROUP(ExampleCommandLine)
 
 // clang-format on
 
-TEST(ExampleCommandLine, DefaultMaxFiles)
+TEST(ExampleCommandLine, DefaultMaxBlocks)
 {
     char  arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    LONGS_EQUAL(10, options.maxFiles);
+    LONGS_EQUAL(10, options.maxBlocks);
 }
 
-TEST(ExampleCommandLine, DefaultMaxFileSize)
+TEST(ExampleCommandLine, DefaultMaxBlockSize)
 {
     char  arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    LONGS_EQUAL(65536, options.maxFileSize);
+    LONGS_EQUAL(65536, options.maxBlockSize);
 }
 
 TEST(ExampleCommandLine, DefaultDiscardPolicy)
@@ -53,24 +53,24 @@ TEST(ExampleCommandLine, DefaultNoSd)
     CHECK_FALSE(options.noSd);
 }
 
-TEST(ExampleCommandLine, MaxFilesFlag)
+TEST(ExampleCommandLine, MaxBlocksFlag)
 {
     char  arg0[] = "test";
-    char  arg1[] = "--max-files";
+    char  arg1[] = "--max-blocks";
     char  arg2[] = "5";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    LONGS_EQUAL(5, options.maxFiles);
+    LONGS_EQUAL(5, options.maxBlocks);
 }
 
-TEST(ExampleCommandLine, MaxFileSizeFlag)
+TEST(ExampleCommandLine, MaxBlockSizeFlag)
 {
     char  arg0[] = "test";
-    char  arg1[] = "--max-file-size";
+    char  arg1[] = "--max-block-size";
     char  arg2[] = "1024";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    LONGS_EQUAL(1024, options.maxFileSize);
+    LONGS_EQUAL(1024, options.maxBlockSize);
 }
 
 TEST(ExampleCommandLine, DiscardPolicyOldest)
@@ -112,55 +112,55 @@ TEST(ExampleCommandLine, InvalidDiscardPolicyReturnsOne)
     LONGS_EQUAL(1, Parse(3, argv));
 }
 
-TEST(ExampleCommandLine, NegativeMaxFilesReturnsOne)
+TEST(ExampleCommandLine, NegativeMaxBlocksReturnsOne)
 {
     char  arg0[] = "test";
-    char  arg1[] = "--max-files";
+    char  arg1[] = "--max-blocks";
     char  arg2[] = "-1";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(1, Parse(3, argv));
 }
 
-TEST(ExampleCommandLine, NonNumericMaxFilesReturnsOne)
+TEST(ExampleCommandLine, NonNumericMaxBlocksReturnsOne)
 {
     char  arg0[] = "test";
-    char  arg1[] = "--max-files";
+    char  arg1[] = "--max-blocks";
     char  arg2[] = "abc";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(1, Parse(3, argv));
 }
 
-TEST(ExampleCommandLine, TrailingTextMaxFilesReturnsOne)
+TEST(ExampleCommandLine, TrailingTextMaxBlocksReturnsOne)
 {
     char  arg0[] = "test";
-    char  arg1[] = "--max-files";
+    char  arg1[] = "--max-blocks";
     char  arg2[] = "5abc";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(1, Parse(3, argv));
 }
 
-TEST(ExampleCommandLine, NegativeMaxFileSizeReturnsOne)
+TEST(ExampleCommandLine, NegativeMaxBlockSizeReturnsOne)
 {
     char  arg0[] = "test";
-    char  arg1[] = "--max-file-size";
+    char  arg1[] = "--max-block-size";
     char  arg2[] = "-1";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(1, Parse(3, argv));
 }
 
-TEST(ExampleCommandLine, NonNumericMaxFileSizeReturnsOne)
+TEST(ExampleCommandLine, NonNumericMaxBlockSizeReturnsOne)
 {
     char  arg0[] = "test";
-    char  arg1[] = "--max-file-size";
+    char  arg1[] = "--max-block-size";
     char  arg2[] = "abc";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(1, Parse(3, argv));
 }
 
-TEST(ExampleCommandLine, TrailingTextMaxFileSizeReturnsOne)
+TEST(ExampleCommandLine, TrailingTextMaxBlockSizeReturnsOne)
 {
     char  arg0[] = "test";
-    char  arg1[] = "--max-file-size";
+    char  arg1[] = "--max-block-size";
     char  arg2[] = "1024abc";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(1, Parse(3, argv));

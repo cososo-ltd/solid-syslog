@@ -1,12 +1,12 @@
 @tcp @buffered
-Feature: Power cycle replay from file store
-  After a power cycle, unsent messages persisted in the file store
+Feature: Power cycle replay from block store
+  After a power cycle, unsent messages persisted in the block store
   are replayed before new messages. The collector sees old-session
   sequenceIds followed by a jump to 1 (restart signal).
 
   Scenario: Stored messages replayed after power cycle
     Given syslog-ng is running
-    And the file store is enabled
+    And the block store is enabled
     And the threaded example is running with transport tcp
     When the client sends a message
     Then syslog-ng receives 1 message

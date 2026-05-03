@@ -38,8 +38,8 @@ SYSLOG_NG_UDP_ONLY_CONF = "Bdd/syslog-ng/syslog-ng-udp-only.conf"
 
 # Mirrors SOLIDSYSLOG_MAX_MESSAGE_SIZE from Core/Interface/SolidSyslog.h. Bump
 # the two together. The store_capacity scenarios depend on it because production
-# clamps max-file-size up to MAX + RECORD_OVERHEAD + integritySize at runtime,
-# so the file size used by the file store is MAX-coupled even when the feature
+# clamps max-block-size up to MAX + RECORD_OVERHEAD + integritySize at runtime,
+# so the block size used by the block store is MAX-coupled even when the feature
 # file specifies a smaller value.
 SOLIDSYSLOG_MAX_MESSAGE_SIZE = 2048
 
@@ -450,10 +450,10 @@ def build_threaded_command(context, transport, no_sd=False):
     cmd = [os.path.join(".", binary), "--transport", transport]
     if getattr(context, "store_type", None):
         cmd.extend(["--store", context.store_type])
-    if getattr(context, "store_max_files", None):
-        cmd.extend(["--max-files", str(context.store_max_files)])
-    if getattr(context, "store_max_file_size", None):
-        cmd.extend(["--max-file-size", str(context.store_max_file_size)])
+    if getattr(context, "store_max_blocks", None):
+        cmd.extend(["--max-blocks", str(context.store_max_blocks)])
+    if getattr(context, "store_max_block_size", None):
+        cmd.extend(["--max-block-size", str(context.store_max_block_size)])
     if getattr(context, "store_discard_policy", None):
         cmd.extend(["--discard-policy", context.store_discard_policy])
     if getattr(context, "capacity_threshold", None):
@@ -492,24 +492,24 @@ def step_threaded_running_with_transport_no_sd(context, transport):
     start_threaded_example(context, cmd)
 
 
-@given("the file store is enabled")
-def step_file_store_enabled(context):
+@given("the block store is enabled")
+def step_block_store_enabled(context):
     context.store_type = "file"
     if os.path.exists(STORE_FILE_PATH):
         os.remove(STORE_FILE_PATH)
 
 
-@given("the file store is enabled with max-files {max_files:d} and max-file-size {max_file_size:d} and discard-policy {policy}")
-def step_file_store_enabled_with_config(context, max_files, max_file_size, policy):
+@given("the block store is enabled with max-blocks {max_blocks:d} and max-block-size {max_block_size:d} and discard-policy {policy}")
+def step_block_store_enabled_with_config(context, max_blocks, max_block_size, policy):
     context.store_type = "file"
-    context.store_max_files = max_files
-    context.store_max_file_size = max_file_size
+    context.store_max_blocks = max_blocks
+    context.store_max_block_size = max_block_size
     context.store_discard_policy = policy
-    # Size each MSG so ~4 records pack per (clamped) store file. The store
+    # Size each MSG so ~4 records pack per (clamped) block. The store
     # capacity scenarios were designed around this packing — multi-record
-    # files give OLDEST and NEWEST symmetric retention (both keep 7 of 10
-    # sent), which the seqId assertions depend on. Production clamps file
-    # size up to MAX + 7 (MIN_MAX_FILE_SIZE), so per-record budget is
+    # blocks give OLDEST and NEWEST symmetric retention (both keep 7 of 10
+    # sent), which the seqId assertions depend on. Production clamps block
+    # size up to MAX + 7 (MIN_MAX_BLOCK_SIZE), so per-record budget is
     # ~MAX/4. With ~95-byte RFC 5424 header + 7-byte record overhead, a
     # body of MAX/5 - 50 lands a comfortable mid-band: 4 records fit, 5
     # don't. Update if SOLIDSYSLOG_MAX_MESSAGE_SIZE moves.
@@ -546,6 +546,17 @@ def step_threshold_callback_not_invoked(context):
     assert not os.path.exists(THRESHOLD_MARKER_PATH) or os.path.getsize(THRESHOLD_MARKER_PATH) == 0, (
         f"Expected no threshold marker but found {THRESHOLD_MARKER_PATH} non-empty"
     )
+
+
+@given("the set of existing block files is recorded")
+def step_record_block_files(context):
+    context.recorded_block_files = set(glob.glob(STORE_PATH_PREFIX + "*.log"))
+
+
+@then("no recorded block file has been disposed")
+def step_no_block_disposed(context):
+    missing = sorted(p for p in context.recorded_block_files if not os.path.exists(p))
+    assert not missing, f"Block files disposed unexpectedly: {missing}"
 
 
 @when("the client sends a message")

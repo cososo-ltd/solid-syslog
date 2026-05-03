@@ -1,12 +1,12 @@
 @tcp @buffered
 Feature: Store capacity limit and discard policy
-  The file store uses rotating files with a configurable capacity.
+  The block store uses rotating files with a configurable capacity.
   When the store is full, the discard policy determines whether
   the oldest or newest messages are dropped.
 
   Scenario: Discard-oldest drops oldest messages when store overflows
     Given syslog-ng is running
-    And the file store is enabled with max-files 2 and max-file-size 520 and discard-policy oldest
+    And the block store is enabled with max-blocks 2 and max-block-size 520 and discard-policy oldest
     And the threaded example is running with transport tcp and no structured data
     When the client sends a message
     Then syslog-ng receives 1 message
@@ -18,7 +18,7 @@ Feature: Store capacity limit and discard policy
 
   Scenario: Discard-newest preserves oldest messages when store overflows
     Given syslog-ng is running
-    And the file store is enabled with max-files 2 and max-file-size 520 and discard-policy newest
+    And the block store is enabled with max-blocks 2 and max-block-size 520 and discard-policy newest
     And the threaded example is running with transport tcp and no structured data
     When the client sends a message
     Then syslog-ng receives 1 message
@@ -30,7 +30,7 @@ Feature: Store capacity limit and discard policy
 
   Scenario: Halt stops the application when store overflows
     Given syslog-ng is running
-    And the file store is enabled with max-files 2 and max-file-size 520 and discard-policy halt
+    And the block store is enabled with max-blocks 2 and max-block-size 520 and discard-policy halt
     And the halt callback exits the process
     And the threaded example is running with transport tcp and no structured data
     When the client sends a message
@@ -41,7 +41,7 @@ Feature: Store capacity limit and discard policy
 
   Scenario: Halt prevents further service after store overflows
     Given syslog-ng is running
-    And the file store is enabled with max-files 2 and max-file-size 520 and discard-policy halt
+    And the block store is enabled with max-blocks 2 and max-block-size 520 and discard-policy halt
     And the threaded example is running with transport tcp and no structured data
     When the client sends a message
     Then syslog-ng receives 1 message

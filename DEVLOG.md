@@ -1,5 +1,74 @@
 # Dev Log
 
+## 2026-05-03 — S18.02 BlockDevice abstraction + file-backed driver
+
+### Decisions
+
+- **Sliced 5, not 6.** Plan called for S3 (internal repoint) and S4
+  (public flip) as separate slices. The first hit on dual-handle
+  FileFake test setups proved that S3 alone forced every FileStore
+  TEST_GROUP to construct two FileFakes anyway — same churn as S4. So
+  combining them avoided a transitional FileBlockDevice-built-inside-
+  FileStore hack and the storage bloat that would have come with it.
+  Single commit, cleaner end state.
+- **Acquire-on-resume safety.** BlockDevice.Acquire's contract is
+  "ensure the block is empty after the call" (file-backed creates-or-
+  truncates). The resume path in BlockSequence.Open MUST NOT Acquire
+  the existing newest block — that block has unsent records. Resume
+  flow: scan Exists, find newest, Size it. Cold-start flow: Acquire(0)
+  to create the first block. The implicit O\_CREAT-via-Open the old
+  code relied on becomes an explicit Acquire for the cold case only.
+- **EnsureHandleOpenOnBlock consults SolidSyslogFile\_IsOpen.** Not
+  just the cached isOpen flag. Cost is one extra method call per
+  hot-path op, benefit is the BlockDevice tolerates external close
+  (test corruption helpers exploit this; a flash driver might also
+  benefit if the integrator does anything weird with the underlying
+  file). The cached flag stays as a fast-path "already on the right
+  block" check; the IsOpen call defends against staleness.
+- **Fast-fail-on-Open semantics dropped.** The pre-S18.02
+  FileStoreErrors group asserted that if Open failed during Create,
+  subsequent Writes also failed (the store knew it was degraded).
+  With BlockDevice's lazy reopen on every op, a transient open
+  failure heals. This is strictly better behaviour. The two tests that
+  encoded the fast-fail (`WriteReturnsFalseWhenNotOpen`,
+  `HasUnsentReturnsFalseWhenNotOpen`) are gone; one new test
+  (`TransientOpenFailureRecoversOnNextWrite`) asserts the recovery.
+- **FileFake\_FailNext\* now takes the target fake.** The old form
+  (no args, targets `lastCreated`) was ambiguous in the new dual-fake
+  test setup — FailNextRead always landed on the writeFile because it
+  was created last, but reads happen via the readFile. Per-target
+  args fix it cleanly. Single-fake callers (FileFakeTest itself)
+  updated trivially.
+- **One BDD scenario, deliberately small.** Issue #235 listed
+  "Dispose only on capacity pressure" as a baseline regression scenario.
+  S18.03 will overturn it (dispose-on-empty), so this is a short-life
+  pin. Kept the scenario per the issue spec; held off on a more
+  ambitious lifecycle suite that S18.03 will own.
+
+### Deferred
+
+- **Acquire vs Exists ordering in `BlockSequence_Open` cold start.**
+  Today: scan via Exists, then Acquire(0) if nothing found. Acquire's
+  contract assumes the block is empty post-call, so on a fresh
+  filesystem this is fine. After a partial-write crash before this
+  story shipped, block 00 might exist with bad content — current
+  resume path Sizes it. S18.03's Acquire-disposes-stale-content
+  behaviour will close that gap.
+- **`SolidSyslogFileStore_Destroy` no longer closes file handles.**
+  The integrator's responsibility now (via
+  `SolidSyslogFileBlockDevice_Destroy`). Two FileStore tests that
+  asserted the old behaviour are gone; the equivalent assertion lives
+  in `SolidSyslogFileBlockDeviceTest.DestroyClosesOpenFileHandles`.
+
+### Open questions
+
+- **Should BlockDevice grow an explicit Open-existing verb?** Today,
+  Size on an existing block opens the underlying file as a side
+  effect (via EnsureHandleOpenOnBlock). It works, but reads weirdly:
+  "Size opens the file" is not what the consumer API name suggests.
+  An explicit `OpenExisting` verb would be cleaner. Deferred — wait
+  to see what S18.04's example flash device wants.
+
 ## 2026-04-30 — S07.05 origin SD: enterpriseId and ip
 
 ### Decisions
