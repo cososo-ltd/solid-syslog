@@ -21,7 +21,7 @@ TEST_GROUP(ExampleCommandLine)
 
 // clang-format on
 
-TEST(ExampleCommandLine, DefaultMaxFiles)
+TEST(ExampleCommandLine, DefaultMaxBlocks)
 {
     char  arg0[] = "test";
     char* argv[] = {arg0, nullptr};

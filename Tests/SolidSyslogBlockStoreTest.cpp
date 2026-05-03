@@ -502,31 +502,31 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
 
 // clang-format on
 
-TEST(SolidSyslogBlockStoreConfig, MaxFilesZeroClampedToMinimum)
+TEST(SolidSyslogBlockStoreConfig, MaxBlocksZeroClampedToMinimum)
 {
     CreateWithMaxBlocks(0);
     VerifyWriteAndReadBack();
 }
 
-TEST(SolidSyslogBlockStoreConfig, MaxFilesOneClampedToMinimum)
+TEST(SolidSyslogBlockStoreConfig, MaxBlocksOneClampedToMinimum)
 {
     CreateWithMaxBlocks(1);
     VerifyWriteAndReadBack();
 }
 
-TEST(SolidSyslogBlockStoreConfig, MaxFilesHundredClampedToMaximum)
+TEST(SolidSyslogBlockStoreConfig, MaxBlocksHundredClampedToMaximum)
 {
     CreateWithMaxBlocks(100);
     VerifyWriteAndReadBack();
 }
 
-TEST(SolidSyslogBlockStoreConfig, MaxFileSizeZeroClampedToMinimum)
+TEST(SolidSyslogBlockStoreConfig, MaxBlockSizeZeroClampedToMinimum)
 {
     CreateWithMaxBlockSize(0);
     VerifyWriteAndReadBack();
 }
 
-TEST(SolidSyslogBlockStoreConfig, MaxFileSizeOneClampedToMinimum)
+TEST(SolidSyslogBlockStoreConfig, MaxBlockSizeOneClampedToMinimum)
 {
     CreateWithMaxBlockSize(1);
     VerifyWriteAndReadBack();

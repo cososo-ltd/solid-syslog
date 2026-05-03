@@ -72,6 +72,16 @@ TEST(SolidSyslogFileBlockDevice, AcquireFreshBlockHasZeroSize)
     LONGS_EQUAL(0, SolidSyslogBlockDevice_Size(device, 0));
 }
 
+TEST(SolidSyslogFileBlockDevice, ReacquireTruncatesExistingBlock)
+{
+    SolidSyslogBlockDevice_Acquire(device, 0);
+    SolidSyslogBlockDevice_Append(device, 0, "abc", 3);
+
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
+
+    LONGS_EQUAL(0, SolidSyslogBlockDevice_Size(device, 0));
+}
+
 TEST(SolidSyslogFileBlockDevice, AppendIncreasesBlockSize)
 {
     SolidSyslogBlockDevice_Acquire(device, 0);

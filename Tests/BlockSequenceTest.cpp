@@ -113,7 +113,7 @@ TEST_GROUP(BlockSequenceScan)
 
 TEST(BlockSequenceScan, ColdStartAcquiresBlockZero)
 {
-    BlockSequence_Open(&sequence);
+    CHECK_TRUE(BlockSequence_Open(&sequence));
     LONGS_EQUAL(0, BlockSequence_ReadSequence(&sequence));
     LONGS_EQUAL(0, BlockSequence_WriteSequence(&sequence));
 }
@@ -121,7 +121,7 @@ TEST(BlockSequenceScan, ColdStartAcquiresBlockZero)
 TEST(BlockSequenceScan, ResumesContiguousLinearRange)
 {
     existing = {2, 3, 4};
-    BlockSequence_Open(&sequence);
+    CHECK_TRUE(BlockSequence_Open(&sequence));
     LONGS_EQUAL(2, BlockSequence_ReadSequence(&sequence));
     LONGS_EQUAL(4, BlockSequence_WriteSequence(&sequence));
 }
@@ -129,7 +129,7 @@ TEST(BlockSequenceScan, ResumesContiguousLinearRange)
 TEST(BlockSequenceScan, ResumesAtZeroWhenOnlyBlockZeroExists)
 {
     existing = {0};
-    BlockSequence_Open(&sequence);
+    CHECK_TRUE(BlockSequence_Open(&sequence));
     LONGS_EQUAL(0, BlockSequence_ReadSequence(&sequence));
     LONGS_EQUAL(0, BlockSequence_WriteSequence(&sequence));
 }
@@ -142,7 +142,7 @@ TEST(BlockSequenceScan, ResumesAtZeroWhenOnlyBlockZeroExists)
 TEST(BlockSequenceScan, ResumesWrappedSequenceRangeCorrectly)
 {
     existing = {98, 99, 0, 1};
-    BlockSequence_Open(&sequence);
+    CHECK_TRUE(BlockSequence_Open(&sequence));
     LONGS_EQUAL(98, BlockSequence_ReadSequence(&sequence));
     LONGS_EQUAL(1, BlockSequence_WriteSequence(&sequence));
 }
@@ -150,7 +150,7 @@ TEST(BlockSequenceScan, ResumesWrappedSequenceRangeCorrectly)
 TEST(BlockSequenceScan, ResumesWrappedSingleBlockAtBoundary)
 {
     existing = {99, 0};
-    BlockSequence_Open(&sequence);
+    CHECK_TRUE(BlockSequence_Open(&sequence));
     LONGS_EQUAL(99, BlockSequence_ReadSequence(&sequence));
     LONGS_EQUAL(0, BlockSequence_WriteSequence(&sequence));
 }
