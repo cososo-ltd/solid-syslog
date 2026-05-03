@@ -1062,6 +1062,44 @@ TEST(SolidSyslogBlockStoreRotation, ResumeWriteAppendsToPartiallyFilledWriteFile
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store02.log"));
 }
 
+/* Regression: when the read block is closed/full and the write block is
+ * partially filled, the resume scan must bound by the read block's actual
+ * size, not by WritePosition (which is the size of the write block). Prior
+ * to the fix the scan stopped at WritePosition and a sent record in the
+ * read block could be re-emitted on resume. */
+TEST(SolidSyslogBlockStoreRotation, ResumeFindsUnsentInClosedReadBlockWhenWriteBlockPartial)
+{
+    /* Three max-msg records per block so the read block holds multiple sent
+     * records past WritePosition (== size of the partially-filled write block). */
+    static const size_t THREE_MAX_MSG_RECORDS = 3 * ONE_MAX_MSG_RECORD;
+
+    CreateWithMaxBlockSize(THREE_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_OLDEST, /* maxBlocks */ 3);
+
+    char msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    for (char i = 0; i < 4; i++)
+    {
+        memset(msg, 'A' + i, sizeof(msg));
+        SolidSyslogStore_Write(store, msg, sizeof(msg));
+    }
+    /* records 0..2 fill block 0; record 3 lands in block 1 (partially full) */
+
+    char   buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+    size_t bytesRead                         = 0;
+    for (int i = 0; i < 2; i++)
+    {
+        SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+        SolidSyslogStore_MarkSent(store);
+    }
+    /* records 0, 1 in block 0 marked sent; record 2 still unsent */
+
+    SolidSyslogBlockStore_Destroy(store);
+    CreateWithMaxBlockSize(THREE_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_OLDEST, 3);
+
+    memset(buf, 0, sizeof(buf));
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    BYTES_EQUAL('A' + 2, buf[0]); /* record 2, not a re-emit of record 1 */
+}
+
 TEST(SolidSyslogBlockStoreRotation, SequenceWrapsFrom99To00)
 {
     /* Pre-seed file 99 so the scan finds it as the write file */

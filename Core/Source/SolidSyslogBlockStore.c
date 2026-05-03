@@ -113,10 +113,15 @@ static inline void InitialiseVtable(struct SolidSyslogBlockStore* blockStore)
 
 static void ResumeFromExistingBlock(struct SolidSyslogBlockStore* blockStore)
 {
+    struct SolidSyslogBlockDevice* device       = BlockSequence_BlockDevice(&blockStore->blockSequence);
+    size_t                         readSequence = BlockSequence_ReadSequence(&blockStore->blockSequence);
+    /* Bound the scan by the read block's actual size, not WritePosition. On a
+     * multi-block resume the read block is a closed earlier block whose size
+     * is independent of the write block's fill level. */
+    size_t readBlockSize = SolidSyslogBlockDevice_Size(device, readSequence);
+
     bool   corrupt = false;
-    size_t cursor =
-        RecordStore_FindFirstUnsent(&blockStore->recordStore, BlockSequence_BlockDevice(&blockStore->blockSequence),
-                                    BlockSequence_ReadSequence(&blockStore->blockSequence), BlockSequence_WritePosition(&blockStore->blockSequence), &corrupt);
+    size_t cursor  = RecordStore_FindFirstUnsent(&blockStore->recordStore, device, readSequence, readBlockSize, &corrupt);
 
     BlockSequence_SetReadCursor(&blockStore->blockSequence, cursor);
 

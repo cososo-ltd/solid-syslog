@@ -283,11 +283,6 @@ size_t BlockSequence_WriteSequence(const struct BlockSequence* blockSequence)
     return blockSequence->writeSequence;
 }
 
-size_t BlockSequence_WritePosition(const struct BlockSequence* blockSequence)
-{
-    return blockSequence->writePosition;
-}
-
 void BlockSequence_NoteRecordWritten(struct BlockSequence* blockSequence, size_t recordSize)
 {
     blockSequence->writePosition += recordSize;

@@ -50,7 +50,6 @@ bool BlockSequence_Open(struct BlockSequence* blockSequence);
 bool                           BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t recordSize, bool* readBlockChanged);
 struct SolidSyslogBlockDevice* BlockSequence_BlockDevice(const struct BlockSequence* blockSequence);
 size_t                         BlockSequence_WriteSequence(const struct BlockSequence* blockSequence);
-size_t                         BlockSequence_WritePosition(const struct BlockSequence* blockSequence);
 void                           BlockSequence_NoteRecordWritten(struct BlockSequence* blockSequence, size_t recordSize);
 void                           BlockSequence_MarkWriteBlockCorrupt(struct BlockSequence* blockSequence);
 
