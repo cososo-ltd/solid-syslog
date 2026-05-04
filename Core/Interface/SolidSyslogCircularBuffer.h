@@ -20,9 +20,8 @@ EXTERN_C_BEGIN
     };
 
 /* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- cannot compute array size as a constexpr in C */
-#define SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE_BYTES(ringBytes)                                                                                              \
-    (SOLIDSYSLOG_CIRCULARBUFFER_OVERHEAD +                                                                                                                    \
-     (((ringBytes) + sizeof(SolidSyslogCircularBufferStorage) - 1) / sizeof(SolidSyslogCircularBufferStorage)))
+#define SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE_BYTES(ringBytes) \
+    (SOLIDSYSLOG_CIRCULARBUFFER_OVERHEAD + (((ringBytes) + sizeof(SolidSyslogCircularBufferStorage) - 1) / sizeof(SolidSyslogCircularBufferStorage)))
 
 /* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- cannot compute array size as a constexpr in C */
 #define SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE(maxMessages) \
