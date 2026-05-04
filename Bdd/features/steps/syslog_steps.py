@@ -22,12 +22,32 @@ from environment import (
     THRESHOLD_MARKER_PATH,
 )
 
-PER_TRANSPORT_LOG = {
+PER_TRANSPORT_LOG_SYSLOG_NG = {
     "udp": RECEIVED_UDP_LOG,
     "tcp": RECEIVED_TCP_LOG,
     "tls": RECEIVED_TLS_LOG,
     "mtls": RECEIVED_MTLS_LOG,
 }
+
+# OTel runner only writes per-transport files for TLS and mTLS — UDP and TCP
+# share received.jsonl. The cross-platform "syslog-ng receives N over X"
+# step routes through per_transport_log() which keeps these paths internal.
+PER_TRANSPORT_LOG_OTEL = {
+    "tls":  "Bdd/output/received_tls.jsonl",
+    "mtls": "Bdd/output/received_mtls.jsonl",
+}
+
+
+def per_transport_log(context, transport):
+    """Return the per-transport oracle file path for the active runner.
+
+    Linux (syslog-ng): per-transport `received_<X>.log` files.
+    Windows (otel-jsonl): per-transport `received_<X>.jsonl` files for tls
+    and mtls only.
+    """
+    if context.oracle_format == "otel-jsonl":
+        return PER_TRANSPORT_LOG_OTEL[transport]
+    return PER_TRANSPORT_LOG_SYSLOG_NG[transport]
 
 # POSIX-only paths used by the @buffered/threaded scenarios. The cross-platform
 # scenarios use context.example_binary / context.received_log instead, set in
@@ -465,12 +485,15 @@ def step_syslog_ng_is_running(context):
     # JSONL file line may carry several records.
     context.lines_before = oracle_record_count(context.received_log, context.oracle_format)
 
-    # Per-transport baselines for the SwitchingSender scenarios. Only the
-    # syslog-ng oracle emits these; other oracles leave the dict empty.
+    # Per-transport baselines for SwitchingSender / TLS / mTLS scenarios.
+    # Linux: all four transports. Windows OTel: tls + mtls only (udp/tcp
+    # share received.jsonl on Windows so the per-transport step would be
+    # ambiguous; SwitchingSender stays Linux-only via @buffered for now).
     context.lines_before_per_transport = {}
-    if context.oracle_format == "syslog-ng":
-        for transport, path in PER_TRANSPORT_LOG.items():
-            context.lines_before_per_transport[transport] = line_count(path)
+    table = (PER_TRANSPORT_LOG_OTEL if context.oracle_format == "otel-jsonl"
+             else PER_TRANSPORT_LOG_SYSLOG_NG)
+    for transport, path in table.items():
+        context.lines_before_per_transport[transport] = line_count(path)
 
 
 def build_threaded_command(context, transport, no_sd=False):
@@ -1153,7 +1176,7 @@ def step_client_switches_transport(context, transport):
 
 def wait_for_per_transport_messages(context, transport, expected):
     """Wait for `expected` new lines to appear in the per-transport oracle."""
-    path = PER_TRANSPORT_LOG[transport]
+    path = per_transport_log(context, transport)
     baseline = context.lines_before_per_transport.get(transport, 0)
     deadline = time.monotonic() + 5
     while line_count(path) - baseline < expected:
@@ -1169,7 +1192,7 @@ def wait_for_per_transport_messages(context, transport, expected):
 @then("syslog-ng receives {count:d} messages over {transport:w}")
 def step_check_per_transport_count(context, count, transport):
     wait_for_per_transport_messages(context, transport, count)
-    path = PER_TRANSPORT_LOG[transport]
+    path = per_transport_log(context, transport)
     baseline = context.lines_before_per_transport.get(transport, 0)
     actual = line_count(path) - baseline
     assert actual == count, (

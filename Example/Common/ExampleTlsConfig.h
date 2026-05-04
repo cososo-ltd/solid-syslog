@@ -16,6 +16,13 @@ EXTERN_C_BEGIN
     void        ExampleTlsConfig_GetEndpoint(struct SolidSyslogEndpoint * endpoint);
     uint32_t    ExampleTlsConfig_GetEndpointVersion(void);
 
+    /* Override the default TLS host ("syslog-ng" — Linux compose service
+       name). Caller owns the string lifetime. Used by the per-platform
+       main.c to inject SOLIDSYSLOG_BDD_TLS_HOST when set, so the same
+       example targets the Linux compose oracle or the Windows OTel oracle
+       on 127.0.0.1. */
+    void ExampleTlsConfig_SetHost(const char* host);
+
 EXTERN_C_END
 
 #endif /* EXAMPLETLSCONFIG_H */

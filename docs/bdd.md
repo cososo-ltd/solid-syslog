@@ -123,7 +123,7 @@ etc.) without rewriting feature tags.
 | `@tcp` | Needs TCP transport (RFC 6587 framing) |
 | `@tls` | Needs TLS transport (RFC 5425, server-auth) |
 | `@mtls` | Needs mutual TLS (client cert + key) |
-| `@buffered` | Needs a Linux-only buffered example capability beyond a basic ring buffer + service thread — file-backed block store, switching sender between transports, TLS / mTLS, or syslog-ng reload via the UNIX control socket. The cross-platform "single message via UDP/TCP through a real buffer" path is *not* `@buffered` post-S13.18 — `buffered.feature` and `tcp_transport.feature` exercise it on both runners. |
+| `@buffered` | Needs a Linux-only buffered example capability beyond a basic ring buffer + service thread — file-backed block store, switching sender between transports, or syslog-ng reload via the UNIX control socket. The cross-platform "single message via UDP/TCP through a real buffer" path is *not* `@buffered` post-S13.18; TLS and mTLS dropped `@buffered` in S13.19 once the OTel oracle gained TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
 
 Two rollout markers are also used (temporary; remove once the scenario passes):
 
@@ -175,7 +175,7 @@ powershell -ExecutionPolicy Bypass -File Bdd/otel/Install-OtelCollector.ps1
 cmake --preset msvc-debug
 cmake --build --preset msvc-debug --target SolidSyslogWindowsExample
 
-# 4. Start the OTel oracle (binds 127.0.0.1:5514)
+# 4. Start the OTel oracle (binds 127.0.0.1:5514 udp+tcp, 6514 tls, 6515 mtls)
 ./Bdd/otel/bin/otelcol-contrib.exe --config=Bdd/otel/config.yaml &
 
 # 5. Run the Windows-eligible scenarios

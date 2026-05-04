@@ -1,5 +1,82 @@
 # Dev Log
 
+## 2026-05-04 — S13.19 slice 3: cross-platform TLS+mTLS BDD via OTel TLS receivers
+
+### Decisions
+
+- **Windows BDD oracle gains TLS (6514) and mTLS (6515) syslog
+  receivers.** otelcol-contrib's syslog receiver supports a `tcp.tls`
+  block — the same `cert_file`/`key_file` (and `client_ca_file` for
+  mTLS) that syslog-ng uses on Linux is what otelcol consumes.
+  Reusing the existing `Bdd/syslog-ng/tls/{ca,server}.{pem,key}`
+  fixtures means a single set of test certs drives both runners and
+  there's no Docker-on-Windows or Linux-sidecar complication.
+- **Per-transport file exporters mirror the syslog-ng layout.** Linux
+  has `received.log` (catch-all) + `received_<transport>.log`
+  (per-transport pin). The OTel config now does the same with
+  `received.jsonl` + `received_<tls|mtls>.jsonl`. UDP and TCP stay
+  multiplexed on the catch-all `received.jsonl` because they share
+  port 5514 — the SwitchingSender scenarios that need separate
+  per-transport pins for udp/tcp are still `@buffered` Linux-only,
+  so no Windows-side per-transport split is needed for them today.
+- **`PER_TRANSPORT_LOG` replaced with `per_transport_log(context, t)`
+  function.** Returns `received_<X>.log` on Linux, `received_<X>.jsonl`
+  on Windows OTel — same semantic, oracle-format-aware path. Two
+  internal dicts (`PER_TRANSPORT_LOG_SYSLOG_NG`,
+  `PER_TRANSPORT_LOG_OTEL`) keep each runner's path table local.
+- **Env-var host override on `ExampleTlsConfig` and
+  `ExampleMtlsConfig`.** Defaults stay `"syslog-ng"` so Linux behaves
+  unchanged when env vars are absent. Windows BDD's `before_all` sets
+  `SOLIDSYSLOG_BDD_TLS_HOST=127.0.0.1` and `SOLIDSYSLOG_BDD_MTLS_HOST=127.0.0.1`
+  via `setdefault` so the Windows OTel oracle (bound to 127.0.0.1)
+  is reachable. Server cert SAN already includes 127.0.0.1 + localhost
+  so the handshake completes against either host name.
+- **`getenv_s` on MSVC, `getenv` on POSIX — split per platform main.c.**
+  MSVC's `getenv` triggers C4996 under `/W4 /WX` (the project
+  deliberately doesn't suppress that warning). The platform-specific
+  env-var read lives in each example's main.c
+  (`Example/Threaded/main.c` uses `getenv` directly,
+  `Example/Windows/SolidSyslogWindowsExample.c` wraps `getenv_s` in a
+  small static helper) and both call the same Common
+  `ExampleTlsConfig_SetHost(...)` / `_SetMtlsHost(...)` setters. Common
+  code stays clean of platform `#ifdef`s.
+- **`@buffered` dropped from `tls_transport.feature` AND
+  `mtls_transport.feature`.** Both reframed from "the threaded example"
+  to "the buffered example" — the same reframe S13.18 did for
+  `tcp_transport.feature` and `buffered.feature`. The Windows runner's
+  existing `not @buffered` filter automatically picks them up. mTLS
+  feature description updated to call out the cross-platform oracle
+  path (Linux syslog-ng vs Windows otelcol-contrib).
+- **CI port-wait extended to TCP 6514+6515.** The previous step polled
+  UDP 5514 only — sufficient when the only Windows-side receivers were
+  UDP+TCP on 5514. With TLS/mTLS on 6514/6515 added, the wait now
+  asserts all three are bound before BDD runs, avoiding a flaky race
+  where a TLS scenario could fire before the receiver is up.
+- **`docs/bdd.md` `@buffered` description updated.** The TLS/mTLS
+  capabilities are no longer Linux-only, so the tag's meaning narrows
+  to "file-backed block store, switching sender, or syslog-ng reload".
+
+### Deferred
+
+- **SwitchingSender across UDP/TCP/TLS/mTLS on the Windows example.**
+  The Windows example still picks one sender at startup. Slice 2
+  flagged this as out of scope, and slice 3 doesn't need it — the
+  cross-platform TLS/mTLS scenarios use a single fixed transport per
+  scenario. Remains a follow-up, tracked under the example-commonality
+  follow-up flagged in S13.18.
+- **Per-transport pin for udp/tcp on Windows.** OTel UDP and TCP
+  receivers both feed `received.jsonl`, so a Windows-side
+  "syslog-ng receives N over udp" wouldn't disambiguate. Not needed
+  for the in-scope features (which only use the per-transport step
+  for TLS/mTLS). The `switching_transport.feature` keeps `@buffered`
+  for now and stays Linux-only.
+
+### Open questions
+
+- None for slice 3. The end-to-end Windows TLS handshake is validated
+  by CI behave runs; local smoke tests confirmed the OTel collector
+  binds 5514/6514/6515 and accepts the agreed cert chain.
+
 ## 2026-05-04 — S13.19 slice 2: ExampleTlsSender hoisted, Windows TLS/mTLS arms
 
 ### Decisions

@@ -1,5 +1,6 @@
 #include "ExampleTlsConfig.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogFormatter.h"
@@ -10,9 +11,19 @@
  * launched from (/workspaces/SolidSyslog in the BDD container). */
 static const char* const EXAMPLE_TLS_CA_BUNDLE_PATH = "Bdd/syslog-ng/tls/ca.pem";
 
+static const char* tlsHost = "syslog-ng";
+
+void ExampleTlsConfig_SetHost(const char* host)
+{
+    if (host != NULL)
+    {
+        tlsHost = host;
+    }
+}
+
 const char* ExampleTlsConfig_GetHost(void)
 {
-    return "syslog-ng";
+    return tlsHost;
 }
 
 uint16_t ExampleTlsConfig_GetPort(void)

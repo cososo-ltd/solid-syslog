@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
@@ -10,9 +11,11 @@
 #include "ExampleInteractive.h"
 #include "ExampleIps.h"
 #include "ExampleLanguage.h"
+#include "ExampleMtlsConfig.h"
 #include "ExampleServiceThread.h"
 #include "ExampleSwitchConfig.h"
 #include "ExampleTcpConfig.h"
+#include "ExampleTlsConfig.h"
 #include "ExampleTlsSender.h"
 #include "ExampleUdpConfig.h"
 #include "SolidSyslog.h"
@@ -211,6 +214,12 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct ExampleOpt
 int main(int argc, char* argv[])
 {
     ExampleAppName_Set(argv[0]);
+
+    /* BDD harness can override the TLS/mTLS host (defaults to "syslog-ng",
+       the Linux compose service name). Same env-var contract as the Windows
+       example so behave can target either oracle. */
+    ExampleTlsConfig_SetHost(getenv("SOLIDSYSLOG_BDD_TLS_HOST"));
+    ExampleMtlsConfig_SetHost(getenv("SOLIDSYSLOG_BDD_MTLS_HOST"));
 
     struct ExampleOptions options;
     if (ExampleCommandLine_Parse(argc, argv, &options) != 0)

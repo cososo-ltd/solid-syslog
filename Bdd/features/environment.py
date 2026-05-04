@@ -45,6 +45,14 @@ def before_all(context):
     )
     context.oracle_format = os.environ.get("ORACLE_FORMAT", "syslog-ng")
 
+    # On the Windows runner the OTel oracle binds 127.0.0.1; on Linux the
+    # example reaches syslog-ng via the docker compose service name. The
+    # example reads SOLIDSYSLOG_BDD_TLS_HOST / _MTLS_HOST at startup and
+    # falls back to "syslog-ng" when unset.
+    if context.oracle_format == "otel-jsonl":
+        os.environ.setdefault("SOLIDSYSLOG_BDD_TLS_HOST", "127.0.0.1")
+        os.environ.setdefault("SOLIDSYSLOG_BDD_MTLS_HOST", "127.0.0.1")
+
 
 def after_scenario(context, scenario):
     # Clean up any long-lived interactive process

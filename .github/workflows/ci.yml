@@ -522,22 +522,27 @@ jobs:
             > Bdd/output/otelcol.out 2> Bdd/output/otelcol.err &
           echo "otelcol backgrounded with PID $!"
 
-      - name: Wait for oracle to bind UDP 5514
+      - name: Wait for oracle to bind UDP 5514 + TCP 6514/6515
         shell: pwsh
         run: |
           $deadline = (Get-Date).AddSeconds(30)
           while ((Get-Date) -lt $deadline) {
-              if (Get-NetUDPEndpoint -LocalPort 5514 -ErrorAction SilentlyContinue) {
-                  Write-Host "otelcol is listening on UDP 5514"
+              $udp5514  = Get-NetUDPEndpoint -LocalPort 5514 -ErrorAction SilentlyContinue
+              $tcp6514  = Get-NetTCPConnection -LocalPort 6514 -State Listen -ErrorAction SilentlyContinue
+              $tcp6515  = Get-NetTCPConnection -LocalPort 6515 -State Listen -ErrorAction SilentlyContinue
+              if ($udp5514 -and $tcp6514 -and $tcp6515) {
+                  Write-Host "otelcol is listening on UDP 5514 + TCP 6514 (TLS) + TCP 6515 (mTLS)"
                   exit 0
               }
               Start-Sleep -Milliseconds 500
           }
-          Write-Host "otelcol did not bind UDP 5514 within 30 seconds"
+          Write-Host "otelcol did not bind all expected ports within 30 seconds"
           Write-Host "--- tasklist otelcol-contrib ---"
           tasklist /FI "IMAGENAME eq otelcol-contrib.exe"
           Write-Host "--- UDP endpoints (top 20) ---"
           Get-NetUDPEndpoint | Select-Object -First 20 | Format-Table -AutoSize
+          Write-Host "--- TCP listeners (top 20) ---"
+          Get-NetTCPConnection -State Listen | Select-Object -First 20 | Format-Table -AutoSize
           Write-Host "--- Bdd/output contents ---"
           Get-ChildItem Bdd/output -ErrorAction SilentlyContinue | Format-Table
           Write-Host "--- otelcol.out ---"

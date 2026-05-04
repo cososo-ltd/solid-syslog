@@ -1,5 +1,6 @@
 #include "ExampleMtlsConfig.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogFormatter.h"
@@ -17,9 +18,19 @@ static const char* const EXAMPLE_MTLS_CA_BUNDLE_PATH         = "Bdd/syslog-ng/tl
 static const char* const EXAMPLE_MTLS_CLIENT_CERT_CHAIN_PATH = "Bdd/syslog-ng/tls/client.pem";
 static const char* const EXAMPLE_MTLS_CLIENT_KEY_PATH        = "Bdd/syslog-ng/tls/client.key";
 
+static const char* mtlsHost = "syslog-ng";
+
+void ExampleMtlsConfig_SetHost(const char* host)
+{
+    if (host != NULL)
+    {
+        mtlsHost = host;
+    }
+}
+
 const char* ExampleMtlsConfig_GetHost(void)
 {
-    return "syslog-ng";
+    return mtlsHost;
 }
 
 uint16_t ExampleMtlsConfig_GetPort(void)
