@@ -1,4 +1,5 @@
 #include "CppUTest/TestHarness.h"
+#include "SolidSyslogTimestamp.h"
 #include "SolidSyslogWindowsClock.h"
 #include "SolidSyslogWindowsClockInternal.h"
 

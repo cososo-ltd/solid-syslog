@@ -1,4 +1,5 @@
 #include "CppUTest/TestHarness.h"
+#include "SolidSyslogFile.h"
 #include "SolidSyslogWindowsFile.h"
 
 #include <cstdio>
