@@ -606,6 +606,14 @@ jobs:
         with:
           name: cppcheck-report
           path: quality-reports/
+
+      - name: Download iwyu report
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: iwyu-report
+          path: quality-reports/
+
       - name: Quality Monitor
         uses: uhafner/quality-monitor@v1
         with:
@@ -672,6 +680,16 @@ jobs:
                     {
                       "id": "cppcheck",
                       "pattern": "**/cppcheck-report.xml"
+                    }
+                  ]
+                },
+                {
+                  "name": "analyze-iwyu",
+                  "id": "analyze-iwyu",
+                  "tools": [
+                    {
+                      "id": "iwyu",
+                      "pattern": "**/iwyu-output.txt"
                     }
                   ]
                 }
