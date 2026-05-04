@@ -1,11 +1,13 @@
 import glob
 import json
 import os
+import queue
 import re
 import shutil
 import signal
 import socket
 import subprocess
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -257,11 +259,44 @@ def parse_oracle_line(line, oracle_format):
     return parse_syslog_ng_line(line)
 
 
-def wait_for_prompt(process, timeout=30):
-    """Read stdout until we see 'SolidSyslog> ', confirming the command completed."""
-    import select
+def _start_stdout_reader(process):
+    """Start a daemon thread that reads process.stdout byte-by-byte into a queue.
 
+    The select.select-based read pattern this replaces only worked on POSIX
+    pipe fds. The thread + queue pattern is portable across POSIX and Windows
+    so the prompt protocol can drive both the Linux Threaded example and the
+    Windows buffered example. Idempotent — only starts the thread once per
+    process.
+    """
+    if hasattr(process, "_solidsyslog_byte_queue"):
+        return
+
+    process._solidsyslog_byte_queue = queue.Queue()
     fd = process.stdout.fileno()
+
+    def _reader():
+        try:
+            while True:
+                data = os.read(fd, 1)
+                if not data:
+                    break
+                process._solidsyslog_byte_queue.put(data)
+        finally:
+            process._solidsyslog_byte_queue.put(None)
+
+    threading.Thread(target=_reader, daemon=True).start()
+
+
+def wait_for_prompt(process, timeout=30):
+    """Read stdout until we see 'SolidSyslog> ', confirming the command completed.
+
+    Portable across POSIX and Windows: a daemon thread (started lazily by
+    _start_stdout_reader) reads stdout byte-by-byte into a queue; this function
+    pulls bytes off the queue with a per-iteration timeout so the deadline is
+    honoured even on platforms where select.select can't monitor pipe fds.
+    """
+    _start_stdout_reader(process)
+
     output = b""
     deadline = time.monotonic() + timeout
     while True:
@@ -271,11 +306,11 @@ def wait_for_prompt(process, timeout=30):
                 f"Timed out waiting for prompt after {timeout}s. "
                 f"Output so far: {output.decode(errors='replace')}"
             )
-        ready, _, _ = select.select([fd], [], [], min(remaining, 0.5))
-        if not ready:
+        try:
+            data = process._solidsyslog_byte_queue.get(timeout=min(remaining, 0.5))
+        except queue.Empty:
             continue
-        data = os.read(fd, 1)
-        if not data:
+        if data is None:
             break
         output += data
         if output.endswith(b"SolidSyslog> "):
@@ -358,10 +393,6 @@ def run_example(context, extra_args=None, binary=None, expected_messages=1):
 def run_threaded_example(context, extra_args=None, expected_messages=1):
     """Run the threaded example using the prompt-based protocol so that the
     service thread has time to drain the buffer between "send N" and "quit".
-
-    POSIX-only — uses select.select on a pipe fd, which Windows does not
-    support. All threaded scenarios are tagged @buffered and excluded from
-    the Windows runner.
     """
     binary = THREADED_BINARY
     assert os.path.exists(binary), (
