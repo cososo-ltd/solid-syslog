@@ -255,17 +255,17 @@ TEST_GROUP(BlockSequenceRotation)
 
     [[nodiscard]] bool DisposePrecedesAcquire(size_t blockIndex) const
     {
-        ssize_t disposeAt = -1;
-        ssize_t acquireAt = -1;
+        std::ptrdiff_t disposeAt = -1;
+        std::ptrdiff_t acquireAt = -1;
         for (size_t i = 0; i < calls.size(); i++)
         {
             if ((calls[i].blockIndex == blockIndex) && (calls[i].type == CallType::Dispose))
             {
-                disposeAt = (ssize_t) i;
+                disposeAt = (std::ptrdiff_t) i;
             }
             if ((calls[i].blockIndex == blockIndex) && (calls[i].type == CallType::Acquire))
             {
-                acquireAt = (ssize_t) i;
+                acquireAt = (std::ptrdiff_t) i;
             }
         }
         return (disposeAt >= 0) && (acquireAt >= 0) && (disposeAt < acquireAt);
