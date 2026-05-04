@@ -304,3 +304,32 @@ TEST(SolidSyslogCircularBufferSmallRing, ReadIntoSmallerBufferReturnsFalseAndLea
     LONGS_EQUAL(5, readSize);
     MEMCMP_EQUAL("hello", readData, 5);
 }
+
+// Exercises the ConsumeWrapMarker branch of Read: write A, B, drain A, write
+// C, D (D forces a wrap), then drain in order. The fourth read must cross
+// the wrap point — head reaches wrapPoint and jumps to 0 to read D.
+TEST(SolidSyslogCircularBufferSmallRing, WrappedBufferReadsAllRecordsInOrder)
+{
+    char a[10];
+    char b[10];
+    char c[4];
+    char d[1];
+    memset(a, 'a', sizeof(a));
+    memset(b, 'b', sizeof(b));
+    memset(c, 'c', sizeof(c));
+    memset(d, 'd', sizeof(d));
+
+    SolidSyslogBuffer_Write(buffer, a, sizeof(a));
+    SolidSyslogBuffer_Write(buffer, b, sizeof(b));
+    Read();
+    SolidSyslogBuffer_Write(buffer, c, sizeof(c));
+    SolidSyslogBuffer_Write(buffer, d, sizeof(d));
+
+    CHECK_TRUE(Read());
+    MEMCMP_EQUAL(b, readData, sizeof(b));
+    CHECK_TRUE(Read());
+    MEMCMP_EQUAL(c, readData, sizeof(c));
+    CHECK_TRUE(Read());
+    MEMCMP_EQUAL(d, readData, sizeof(d));
+    CHECK_FALSE(Read());
+}
