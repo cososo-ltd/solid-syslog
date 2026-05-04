@@ -4,6 +4,7 @@ project(SolidSyslog C CXX)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(LayerGuard)
 solidsyslog_enforce_layering()
+include(Iwyu)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)

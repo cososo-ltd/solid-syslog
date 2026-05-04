@@ -72,6 +72,14 @@
             }
         },
         {
+            "name": "iwyu",
+            "displayName": "Include-What-You-Use",
+            "inherits": "clang-debug",
+            "cacheVariables": {
+                "ENABLE_IWYU": "ON"
+            }
+        },
+        {
             "name": "msvc-base",
             "hidden": true,
             "binaryDir": "${sourceDir}/build/${presetName}",
@@ -98,6 +106,7 @@
         { "name": "tidy",        "configurePreset": "tidy" },
         { "name": "cppcheck",    "configurePreset": "cppcheck" },
         { "name": "clang-debug", "configurePreset": "clang-debug" },
+        { "name": "iwyu",        "configurePreset": "iwyu" },
         { "name": "msvc-debug",  "configurePreset": "msvc-debug", "configuration": "Debug" }
     ],
     "testPresets": [

@@ -1,0 +1,21 @@
+[
+    { "include": ["<Utest.h>",                       "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<UtestMacros.h>",                 "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<SimpleString.h>",                "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<TestFailure.h>",                 "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<TestFilter.h>",                  "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<TestHarness_c.h>",               "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<TestOutput.h>",                  "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<TestPlugin.h>",                  "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<TestRegistry.h>",                "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<TestResult.h>",                  "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<TestTestingFixture.h>",          "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<MemoryLeakDetector.h>",          "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<MemoryLeakWarningPlugin.h>",     "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<PlatformSpecificFunctions.h>",   "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<PlatformSpecificFunctions_c.h>", "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<StandardCLibrary.h>",            "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<CppUTestConfig.h>",              "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<CppUTestGeneratedConfig.h>",     "private", "\"CppUTest/TestHarness.h\"", "public"] },
+    { "include": ["<SimpleMutex.h>",                 "private", "\"CppUTest/TestHarness.h\"", "public"] }
+]
