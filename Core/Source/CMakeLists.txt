@@ -5,6 +5,7 @@ set(SOURCES
     SolidSyslogFormatter.c
     SolidSyslogMetaSd.c
     SolidSyslogNullBuffer.c
+    SolidSyslogCircularBuffer.c
     SolidSyslogSender.c
     SolidSyslogStore.c
     SolidSyslogNullStore.c

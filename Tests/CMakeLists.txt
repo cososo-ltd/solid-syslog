@@ -13,6 +13,7 @@ set(TEST_SOURCES
     SolidSyslogTimeQualitySdTest.cpp
     SolidSyslogOriginSdTest.cpp
     SolidSyslogNullBufferTest.cpp
+    SolidSyslogCircularBufferTest.cpp
     SolidSyslogNullStoreTest.cpp
     SolidSyslogNullSecurityPolicyTest.cpp
     SolidSyslogCrc16Test.cpp
