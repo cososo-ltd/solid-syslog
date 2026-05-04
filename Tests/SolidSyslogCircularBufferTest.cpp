@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogCircularBuffer.h"
@@ -82,4 +84,54 @@ TEST(SolidSyslogCircularBuffer, ThreeWritesReadInOrder)
     MEMCMP_EQUAL("bravo", readData, 5);
     SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
     MEMCMP_EQUAL("charlie", readData, 7);
+}
+
+TEST(SolidSyslogCircularBuffer, WrapsAroundEndOfStorage)
+{
+    enum
+    {
+        CYCLES       = 200,
+        PAYLOAD_SIZE = 10
+    };
+    char payload[PAYLOAD_SIZE];
+    memset(payload, 'X', PAYLOAD_SIZE);
+
+    for (int i = 0; i < CYCLES; i++)
+    {
+        SolidSyslogBuffer_Write(buffer, payload, PAYLOAD_SIZE);
+        SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
+        LONGS_EQUAL(PAYLOAD_SIZE, readSize);
+        MEMCMP_EQUAL(payload, readData, PAYLOAD_SIZE);
+    }
+}
+
+TEST(SolidSyslogCircularBuffer, OverflowingWriteIsDropped)
+{
+    char filler[400];
+    memset(filler, 'A', 400);
+    char overflow[200];
+    memset(overflow, 'B', 200);
+
+    SolidSyslogBuffer_Write(buffer, filler, 400);
+    SolidSyslogBuffer_Write(buffer, overflow, 200);
+
+    SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
+    MEMCMP_EQUAL(filler, readData, 400);
+    CHECK_FALSE(SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize));
+}
+
+TEST(SolidSyslogCircularBuffer, WriteAfterDrainAcceptsRecordTooLargeForRemainingTailSpace)
+{
+    char first[200];
+    memset(first, 'A', 200);
+    SolidSyslogBuffer_Write(buffer, first, 200);
+    SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
+
+    char second[400];
+    memset(second, 'B', 400);
+    SolidSyslogBuffer_Write(buffer, second, 400);
+
+    CHECK_TRUE(SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize));
+    LONGS_EQUAL(400, readSize);
+    MEMCMP_EQUAL(second, readData, 400);
 }
