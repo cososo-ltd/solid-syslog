@@ -1,5 +1,7 @@
-#include "CppUTest/TestHarness.h"
+#include <time.h>
+
 #include "ClockFake.h"
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(ClockFake)

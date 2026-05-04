@@ -1,5 +1,6 @@
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogNullSecurityPolicy.h"
+#include "SolidSyslogSecurityPolicyDefinition.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogNullSecurityPolicy)

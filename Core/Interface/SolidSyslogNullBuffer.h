@@ -1,7 +1,7 @@
 #ifndef SOLIDSYSLOGNULLBUFFER_H
 #define SOLIDSYSLOGNULLBUFFER_H
 
-#include "SolidSyslogBuffer.h"
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

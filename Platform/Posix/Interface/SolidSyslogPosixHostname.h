@@ -1,7 +1,9 @@
 #ifndef SOLIDSYSLOGPOSIXHOSTNAME_H
 #define SOLIDSYSLOGPOSIXHOSTNAME_H
 
-#include "SolidSyslogConfig.h"
+#include "ExternC.h"
+
+struct SolidSyslogFormatter;
 
 EXTERN_C_BEGIN
 

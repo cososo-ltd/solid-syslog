@@ -1,4 +1,9 @@
 #include "SolidSyslog.h"
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <stddef.h>
+
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogStore.h"
@@ -6,9 +11,11 @@
 #include "SolidSyslogMacros.h"
 #include "SolidSyslogSender.h"
 #include "SolidSyslogStructuredData.h"
+#include "SolidSyslogStringFunction.h"
+#include "SolidSyslogTimestamp.h"
 
-#include <stdbool.h>
-#include <stdint.h>
+struct SolidSyslogFormatter;
+struct SolidSyslogStructuredData;
 
 enum
 {

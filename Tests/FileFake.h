@@ -1,9 +1,11 @@
 #ifndef FILEFAKE_H
 #define FILEFAKE_H
 
-#include "SolidSyslogFile.h"
+#include <stddef.h>
 
-#include <stdint.h>
+#include "ExternC.h"
+
+struct SolidSyslogFile;
 
 EXTERN_C_BEGIN
 

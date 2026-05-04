@@ -1,7 +1,10 @@
 #ifndef SOLIDSYSLOGFILEDEFINITION_H
 #define SOLIDSYSLOGFILEDEFINITION_H
 
-#include "SolidSyslogFile.h"
+#include <stdbool.h>
+#include <stddef.h>
+
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

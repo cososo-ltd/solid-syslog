@@ -1,11 +1,10 @@
 #ifndef SOLIDSYSLOG_STREAM_SENDER_H
 #define SOLIDSYSLOG_STREAM_SENDER_H
 
-#include "SolidSyslogEndpoint.h"
-#include "SolidSyslogResolver.h"
-#include "SolidSyslogStream.h"
-
 #include <stdint.h>
+
+#include "SolidSyslogEndpoint.h"
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

@@ -1,6 +1,6 @@
-#include "CppUTest/TestHarness.h"
 #include "ExampleIps.h"
 #include "SolidSyslogFormatter.h"
+#include "CppUTest/TestHarness.h"
 
 enum
 {

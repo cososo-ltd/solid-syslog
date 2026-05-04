@@ -1,7 +1,7 @@
-#include "CppUTest/TestHarness.h"
-#include "SocketFake.h"
-
 #include <sys/socket.h>
+
+#include "SocketFake.h"
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(SocketFake)

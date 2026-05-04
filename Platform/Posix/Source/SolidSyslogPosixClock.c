@@ -2,6 +2,12 @@
 
 #include <stdbool.h>
 #include <time.h>
+#include <stdint.h>
+
+#include "SolidSyslogTimestamp.h"
+
+struct timespec;
+struct tm;
 
 static inline bool GetBrokenDownTime(struct timespec* now, struct tm* breakdown);
 static inline void PopulateTimestamp(struct SolidSyslogTimestamp* timestamp, const struct timespec* now, const struct tm* breakdown);

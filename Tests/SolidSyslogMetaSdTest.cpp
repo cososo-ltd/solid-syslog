@@ -1,12 +1,28 @@
-#include "CppUTest/TestHarness.h"
+#include <cstdint>
+#include <cstring>
+
 #include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogStructuredData.h"
 #include "TestAtomicOps.h"
+#include "CppUTest/TestHarness.h"
 
-#include <cstdint>
-#include <cstring>
+class TEST_SolidSyslogMetaSd_FirstFormatProducesSequenceId1_Test;
+class TEST_SolidSyslogMetaSd_FormatEscapesBackslashInLanguage_Test;
+class TEST_SolidSyslogMetaSd_FormatEscapesBracketInLanguage_Test;
+class TEST_SolidSyslogMetaSd_FormatEscapesQuoteInLanguage_Test;
+class TEST_SolidSyslogMetaSd_FormatIncludesDifferentLanguageFromCallback_Test;
+class TEST_SolidSyslogMetaSd_FormatIncludesDifferentSysUpTimeFromCallback_Test;
+class TEST_SolidSyslogMetaSd_FormatIncludesLanguageFromCallback_Test;
+class TEST_SolidSyslogMetaSd_FormatIncludesSysUpTimeAtMaxUint32_Test;
+class TEST_SolidSyslogMetaSd_FormatIncludesSysUpTimeAtZero_Test;
+class TEST_SolidSyslogMetaSd_FormatIncludesSysUpTimeFromCallback_Test;
+class TEST_SolidSyslogMetaSd_SecondFormatProducesSequenceId2_Test;
+class TEST_SolidSyslogMetaSd_ThirdFormatProducesSequenceId3_Test;
+struct SolidSyslogAtomicCounter;
+struct SolidSyslogFormatter;
+struct SolidSyslogStructuredData;
 
 enum
 {

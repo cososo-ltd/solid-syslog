@@ -1,12 +1,14 @@
 #ifndef SOLIDSYSLOGBLOCKSTORE_H
 #define SOLIDSYSLOGBLOCKSTORE_H
 
-#include "SolidSyslog.h"
-#include "SolidSyslogSecurityPolicyDefinition.h"
-#include "SolidSyslogStore.h"
-
 #include <stddef.h>
 #include <stdint.h>
+
+#include "SolidSyslog.h"
+#include "SolidSyslogSecurityPolicyDefinition.h"
+#include "ExternC.h"
+
+struct SolidSyslogStore;
 
 EXTERN_C_BEGIN
 

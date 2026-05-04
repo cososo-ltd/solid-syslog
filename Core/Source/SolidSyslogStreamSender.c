@@ -1,12 +1,19 @@
 #include "SolidSyslogStreamSender.h"
-#include "SolidSyslogEndpoint.h"
-#include "SolidSyslogFormatter.h"
-#include "SolidSyslogMacros.h"
-#include "SolidSyslogSenderDefinition.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "SolidSyslogEndpoint.h"
+#include "SolidSyslogFormatter.h"
+#include "SolidSyslogMacros.h"
+#include "SolidSyslogSenderDefinition.h"
+#include "SolidSyslogAddress.h"
+#include "SolidSyslogResolver.h"
+#include "SolidSyslogStream.h"
+#include "SolidSyslogTransport.h"
+
+struct SolidSyslogAddress;
 
 struct SolidSyslogStreamSender
 {

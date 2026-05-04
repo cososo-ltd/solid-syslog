@@ -1,10 +1,11 @@
 #ifndef EXAMPLEUDPCONFIG_H
 #define EXAMPLEUDPCONFIG_H
 
-#include "ExternC.h"
-#include "SolidSyslogEndpoint.h"
-
 #include <stdint.h>
+
+#include "ExternC.h"
+
+struct SolidSyslogEndpoint;
 
 EXTERN_C_BEGIN
 

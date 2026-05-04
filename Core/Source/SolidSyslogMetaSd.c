@@ -1,9 +1,12 @@
 #include "SolidSyslogMetaSd.h"
+
+#include <stddef.h>
+
 #include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 
-#include <stdint.h>
+struct SolidSyslogFormatter;
 
 struct SolidSyslogMetaSd
 {

@@ -1,7 +1,7 @@
 #ifndef SOLIDSYSLOGNULLSECURITYPOLICY_H
 #define SOLIDSYSLOGNULLSECURITYPOLICY_H
 
-#include "SolidSyslogSecurityPolicyDefinition.h"
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

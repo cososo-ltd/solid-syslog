@@ -1,5 +1,10 @@
 #include "SolidSyslogCrc16Policy.h"
+
+#include <stdbool.h>
+#include <stdint.h>
+
 #include "SolidSyslogCrc16.h"
+#include "SolidSyslogSecurityPolicyDefinition.h"
 
 enum
 {

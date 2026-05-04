@@ -1,6 +1,6 @@
-#include "CppUTest/TestHarness.h"
 #include "DatagramFake.h"
 #include "SolidSyslogDatagram.h"
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(DatagramFake)

@@ -1,11 +1,13 @@
 #ifndef SOLIDSYSLOGRESOLVER_H
 #define SOLIDSYSLOGRESOLVER_H
 
-#include "ExternC.h"
-#include "SolidSyslogAddress.h"
-#include "SolidSyslogTransport.h"
 #include <stdbool.h>
 #include <stdint.h>
+
+#include "ExternC.h"
+#include "SolidSyslogTransport.h"
+
+struct SolidSyslogAddress;
 
 EXTERN_C_BEGIN
 

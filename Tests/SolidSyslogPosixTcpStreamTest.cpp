@@ -1,14 +1,17 @@
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#include <stddef.h>
+#include <cerrno>
+#include <cstdint>
+
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogPosixTcpStream.h"
 #include "SolidSyslogStream.h"
+#include "SolidSyslogTransport.h"
 #include "SocketFake.h"
-#include <arpa/inet.h>
-#include <cerrno>
-#include <cstdint>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/socket.h>
 
 // clang-format off
 static const char* const TEST_MESSAGE     = "hello";

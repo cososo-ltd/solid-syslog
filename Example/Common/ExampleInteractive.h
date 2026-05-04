@@ -1,10 +1,11 @@
 #ifndef EXAMPLEINTERACTIVE_H
 #define EXAMPLEINTERACTIVE_H
 
-#include "ExternC.h"
-#include "SolidSyslog.h"
-
 #include <stdio.h>
+
+#include "ExternC.h"
+
+struct SolidSyslogMessage;
 
 EXTERN_C_BEGIN
 

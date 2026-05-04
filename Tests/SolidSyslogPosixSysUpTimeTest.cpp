@@ -1,8 +1,8 @@
-#include "CppUTest/TestHarness.h"
+#include <cstdint>
+
 #include "ClockFake.h"
 #include "SolidSyslogPosixSysUpTime.h"
-
-#include <cstdint>
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogPosixSysUpTime)

@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "SolidSyslog.h"
+
 static const char* const PROMPT = "SolidSyslog> ";
 
 enum

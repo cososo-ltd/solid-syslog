@@ -1,11 +1,16 @@
-#include "CppUTest/TestHarness.h"
+#include <openssl/ssl.h>
+#include <openssl/bio.h>
+#include <openssl/prov_ssl.h>
+#include <openssl/types.h>
+#include <stddef.h>
+
 #include "OpenSslFake.h"
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogTlsStream.h"
 #include "SolidSyslogTransport.h"
 #include "StreamFake.h"
-#include <openssl/ssl.h>
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogTlsStream)

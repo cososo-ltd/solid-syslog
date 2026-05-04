@@ -1,5 +1,5 @@
-#include "CppUTest/TestHarness.h"
 #include "SolidSyslogPrival.h"
+#include "CppUTest/TestHarness.h"
 
 TEST_GROUP(SolidSyslogPrival){};
 

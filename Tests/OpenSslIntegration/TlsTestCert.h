@@ -1,10 +1,10 @@
 #ifndef TLSTESTCERT_H
 #define TLSTESTCERT_H
 
-#include "ExternC.h"
-#include <openssl/evp.h>
-#include <openssl/x509.h>
 #include <time.h>
+#include <openssl/types.h>
+
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

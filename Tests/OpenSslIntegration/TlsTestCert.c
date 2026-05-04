@@ -1,14 +1,15 @@
 #include "TlsTestCert.h"
 
 #include <openssl/asn1.h>
-#include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <time.h>
+#include <openssl/obj_mac.h>
+#include <openssl/rsa.h>
+#include <openssl/safestack.h>
 
 enum
 {

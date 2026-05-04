@@ -1,7 +1,13 @@
 #ifndef SOLIDSYSLOGSTREAMDEFINITION_H
 #define SOLIDSYSLOGSTREAMDEFINITION_H
 
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "SolidSyslogStream.h"
+#include "ExternC.h"
+
+struct SolidSyslogAddress;
 
 EXTERN_C_BEGIN
 

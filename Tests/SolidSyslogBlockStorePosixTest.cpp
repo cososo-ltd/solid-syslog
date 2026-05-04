@@ -1,13 +1,14 @@
+#include <glob.h>
+#include <cstdio>
+#include <cstring>
+#include <string>
+
 #include "CppUTest/TestHarness.h"
-#include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogPosixFile.h"
+#include "SolidSyslogStore.h"
 #include "SolidSyslog.h"
-
-#include <cstdio>
-#include <cstring>
-#include <glob.h>
 
 static const char* const TEST_PATH_PREFIX = "/tmp/test_posix_store";
 

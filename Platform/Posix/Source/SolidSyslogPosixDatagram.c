@@ -1,7 +1,4 @@
 #include "SolidSyslogPosixDatagram.h"
-#include "SolidSyslogAddressInternal.h"
-#include "SolidSyslogDatagramDefinition.h"
-#include "SolidSyslogUdpPayload.h"
 
 #include <errno.h>
 #include <netinet/in.h>
@@ -9,6 +6,14 @@
 #include <stddef.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <sys/types.h>
+
+#include "SolidSyslogAddressInternal.h"
+#include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogUdpPayload.h"
+#include "SolidSyslogDatagram.h"
+
+struct SolidSyslogAddress;
 
 enum
 {

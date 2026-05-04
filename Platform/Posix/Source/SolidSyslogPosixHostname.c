@@ -1,8 +1,10 @@
 #include "SolidSyslogPosixHostname.h"
+
+#include <unistd.h>
+
 #include "SolidSyslogFormatter.h"
 
-#include <string.h>
-#include <unistd.h>
+struct SolidSyslogFormatter;
 
 enum
 {

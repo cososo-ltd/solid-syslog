@@ -3,6 +3,8 @@
 #include <openssl/ssl.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <openssl/bio.h>
+#include <openssl/types.h>
 
 /* -------------------------------------------------------------------------
  * Captured state — one section per OpenSSL API call. Tests read these via

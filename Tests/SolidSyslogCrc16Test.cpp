@@ -1,8 +1,9 @@
-#include "CppUTest/TestHarness.h"
+#include <stdint.h>
+#include <cstring>
+
 #include "SolidSyslogCrc16.h"
 #include "SolidSyslog.h"
-
-#include <cstring>
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogCrc16)

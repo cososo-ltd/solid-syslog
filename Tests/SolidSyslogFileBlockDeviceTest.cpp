@@ -1,7 +1,15 @@
-#include "CppUTest/TestHarness.h"
 #include "FileFake.h"
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogFileBlockDevice.h"
+#include "SolidSyslogFile.h"
+#include "CppUTest/TestHarness.h"
+
+class TEST_SolidSyslogFileBlockDevice_AcquireSecondBlockPreservesFirstBlockContent_Test;
+class TEST_SolidSyslogFileBlockDevice_AppendsAccumulateAtEnd_Test;
+class TEST_SolidSyslogFileBlockDevice_OverlargeBlockIndexLeavesValidBlockUntouched_Test;
+class TEST_SolidSyslogFileBlockDevice_ReadAtOffsetReturnsBytesFromOffset_Test;
+class TEST_SolidSyslogFileBlockDevice_ReadReturnsAppendedBytes_Test;
+class TEST_SolidSyslogFileBlockDevice_WriteAtMutatesByteInPlace_Test;
 
 static const char* const TEST_PATH_PREFIX = "/tmp/blockdev_";
 

@@ -1,4 +1,8 @@
 #include "SolidSyslogNullBuffer.h"
+
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogSender.h"
 

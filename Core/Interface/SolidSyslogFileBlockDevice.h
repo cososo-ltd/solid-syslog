@@ -1,10 +1,12 @@
 #ifndef SOLIDSYSLOGFILEBLOCKDEVICE_H
 #define SOLIDSYSLOGFILEBLOCKDEVICE_H
 
-#include "SolidSyslogBlockDevice.h"
-#include "SolidSyslogFile.h"
-
 #include <stdint.h>
+
+#include "ExternC.h"
+
+struct SolidSyslogBlockDevice;
+struct SolidSyslogFile;
 
 EXTERN_C_BEGIN
 

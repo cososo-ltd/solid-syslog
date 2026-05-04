@@ -1,13 +1,16 @@
+#include <stdint.h>
+#include <stdio.h>
+#include <cstring>
+
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogBlockStore.h"
-#include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogCrc16Policy.h"
+#include "SolidSyslogFile.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
+#include "SolidSyslogStore.h"
 #include "SolidSyslog.h"
 #include "FileFake.h"
-
-#include <cstring>
 
 static const char* const TEST_PATH_PREFIX = "/tmp/test_store";
 static const char* const TEST_DATA        = "hello";

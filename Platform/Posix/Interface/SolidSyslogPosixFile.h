@@ -1,9 +1,11 @@
 #ifndef SOLIDSYSLOGPOSIXFILE_H
 #define SOLIDSYSLOGPOSIXFILE_H
 
-#include "SolidSyslogFile.h"
-
 #include <stdint.h>
+
+#include "ExternC.h"
+
+struct SolidSyslogFile;
 
 EXTERN_C_BEGIN
 

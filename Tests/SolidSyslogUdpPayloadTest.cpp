@@ -1,6 +1,7 @@
-#include "CppUTest/TestHarness.h"
-#include "SolidSyslogUdpPayload.h"
 #include <cstdint>
+
+#include "SolidSyslogUdpPayload.h"
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogUdpPayload)

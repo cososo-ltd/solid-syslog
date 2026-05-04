@@ -1,12 +1,14 @@
-#include "CppUTest/TestHarness.h"
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <cstdint>
+
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogGetAddrInfoResolver.h"
 #include "SolidSyslogResolver.h"
 #include "SocketFake.h"
-#include <arpa/inet.h>
-#include <cstdint>
-#include <netinet/in.h>
-#include <sys/socket.h>
+#include "SolidSyslogTransport.h"
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 static const char* const TEST_HOST           = "127.0.0.1";

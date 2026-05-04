@@ -1,4 +1,5 @@
-#include "CppUTest/TestHarness.h"
+#include <stdint.h>
+
 #include "ExampleServiceThread.h"
 #include "ExampleUdpConfig.h"
 #include "SolidSyslog.h"
@@ -12,6 +13,8 @@
 #include "SolidSyslogNullStore.h"
 #include "SocketFake.h"
 #include "ClockFake.h"
+#include "SolidSyslogPrival.h"
+#include "CppUTest/TestHarness.h"
 
 static void ExampleEndpoint(struct SolidSyslogEndpoint* endpoint)
 {

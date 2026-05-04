@@ -1,7 +1,9 @@
 #include "ExampleTcpConfig.h"
-#include "SolidSyslogFormatter.h"
 
 #include <stdint.h>
+
+#include "SolidSyslogFormatter.h"
+#include "SolidSyslogEndpoint.h"
 
 /* Unprivileged port used by the BDD syslog-ng container — library default is
    SOLIDSYSLOG_TCP_DEFAULT_PORT (601, RFC 6587 §3.2 / IANA) which requires root. */

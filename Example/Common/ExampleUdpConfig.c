@@ -1,7 +1,9 @@
 #include "ExampleUdpConfig.h"
-#include "SolidSyslogFormatter.h"
 
 #include <stdint.h>
+
+#include "SolidSyslogFormatter.h"
+#include "SolidSyslogEndpoint.h"
 
 /* Unprivileged mirror of SOLIDSYSLOG_UDP_DEFAULT_PORT (514) for BDD containers */
 enum

@@ -1,10 +1,13 @@
 #include "SolidSyslogPosixMessageQueueBuffer.h"
+
+#include <mqueue.h>
+#include <fcntl.h>
+#include <stdbool.h>
+#include <sys/types.h>
+
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogPosixProcessId.h"
-
-#include <mqueue.h>
-#include <time.h>
 
 enum
 {

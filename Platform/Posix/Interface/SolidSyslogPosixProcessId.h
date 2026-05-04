@@ -1,7 +1,9 @@
 #ifndef SOLIDSYSLOGPOSIXPROCESSID_H
 #define SOLIDSYSLOGPOSIXPROCESSID_H
 
-#include "SolidSyslogConfig.h"
+#include "ExternC.h"
+
+struct SolidSyslogFormatter;
 
 EXTERN_C_BEGIN
 

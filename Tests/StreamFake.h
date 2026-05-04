@@ -1,15 +1,16 @@
 #ifndef STREAMFAKE_H
 #define STREAMFAKE_H
 
+#include <stddef.h>
+#include <stdbool.h>
+
 #include "ExternC.h"
 #include "SolidSyslogStream.h"
-
-#include <stdbool.h>
-#include <stddef.h>
 
 EXTERN_C_BEGIN
 
     struct SolidSyslogStream;
+
     struct SolidSyslogAddress;
 
     struct SolidSyslogStream*        StreamFake_Create(void);

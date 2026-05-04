@@ -1,7 +1,14 @@
 #include "SolidSyslogFileBlockDevice.h"
+
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "SolidSyslogBlockDeviceDefinition.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogMacros.h"
+#include "SolidSyslogFile.h"
+
+struct SolidSyslogFile;
 
 enum
 {

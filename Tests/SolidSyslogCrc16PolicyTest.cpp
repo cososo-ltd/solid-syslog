@@ -1,7 +1,8 @@
+#include <stdint.h>
+
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogCrc16Policy.h"
-
-#include <cstring>
+#include "SolidSyslogSecurityPolicyDefinition.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogCrc16Policy)

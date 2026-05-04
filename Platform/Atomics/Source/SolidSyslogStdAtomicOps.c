@@ -1,9 +1,11 @@
 #include "SolidSyslogStdAtomicOps.h"
 
-#include "SolidSyslogAtomicOpsDefinition.h"
-
 #include <stdatomic.h>
 #include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "SolidSyslogAtomicOpsDefinition.h"
 
 struct SolidSyslogStdAtomicOps
 {

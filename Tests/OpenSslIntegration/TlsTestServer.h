@@ -1,9 +1,9 @@
 #ifndef TLSTESTSERVER_H
 #define TLSTESTSERVER_H
 
+#include <openssl/types.h>
+
 #include "ExternC.h"
-#include "TlsTestCert.h"
-#include <openssl/bio.h>
 
 EXTERN_C_BEGIN
 

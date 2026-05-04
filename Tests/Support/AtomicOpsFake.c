@@ -2,6 +2,8 @@
 
 #include <stdbool.h>
 
+#include "SolidSyslogAtomicOpsDefinition.h"
+
 static uint32_t loadValue;
 static bool     nextCompareAndSwapShouldFail;
 static uint32_t loadShiftValue;

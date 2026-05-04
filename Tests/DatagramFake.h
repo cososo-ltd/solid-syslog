@@ -1,11 +1,12 @@
 #ifndef DATAGRAMFAKE_H
 #define DATAGRAMFAKE_H
 
+#include <stddef.h>
+
 #include "ExternC.h"
 #include "SolidSyslogDatagram.h"
 
-#include <stdbool.h>
-#include <stddef.h>
+struct SolidSyslogDatagram;
 
 EXTERN_C_BEGIN
 

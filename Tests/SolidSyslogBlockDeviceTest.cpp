@@ -1,6 +1,8 @@
-#include "CppUTest/TestHarness.h"
+#include <stddef.h>
+
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockDeviceDefinition.h"
+#include "CppUTest/TestHarness.h"
 
 namespace
 {

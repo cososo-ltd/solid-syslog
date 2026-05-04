@@ -1,9 +1,13 @@
 #include "BioPairStream.h"
-#include "SolidSyslogStreamDefinition.h"
 
 #include <openssl/bio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+
+#include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogStream.h"
+
+struct SolidSyslogAddress;
 
 struct BioPairStream
 {

@@ -1,7 +1,7 @@
 #ifndef SOLIDSYSLOGCRC16POLICY_H
 #define SOLIDSYSLOGCRC16POLICY_H
 
-#include "SolidSyslogSecurityPolicyDefinition.h"
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

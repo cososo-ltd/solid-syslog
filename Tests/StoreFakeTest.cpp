@@ -1,5 +1,8 @@
-#include "CppUTest/TestHarness.h"
+#include <stddef.h>
+
 #include "StoreFake.h"
+#include "SolidSyslogStore.h"
+#include "CppUTest/TestHarness.h"
 
 static const char* const TEST_MESSAGE     = "hello";
 static const size_t      TEST_MESSAGE_LEN = 5;

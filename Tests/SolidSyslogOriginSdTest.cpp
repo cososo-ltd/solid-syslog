@@ -1,12 +1,21 @@
-#include "CppUTest/TestHarness.h"
-#include "SolidSyslogFormatter.h"
-#include "SolidSyslogOriginSd.h"
-#include "SolidSyslogStructuredData.h"
-
 #include <array>
 #include <cstring>
 #include <initializer_list>
 #include <string>
+
+#include "SolidSyslogFormatter.h"
+#include "SolidSyslogOriginSd.h"
+#include "SolidSyslogStructuredData.h"
+#include "CppUTest/TestHarness.h"
+
+class TEST_SolidSyslogOriginSd_EnterpriseIdContainingSpecialsIsEscaped_Test;
+class TEST_SolidSyslogOriginSd_FormatIncludesDifferentEnterpriseIdFromConfig_Test;
+class TEST_SolidSyslogOriginSd_FormatIncludesDifferentIpFromCallback_Test;
+class TEST_SolidSyslogOriginSd_FormatIncludesEnterpriseIdFromConfig_Test;
+class TEST_SolidSyslogOriginSd_FormatIncludesOneIpFromCallback_Test;
+class TEST_SolidSyslogOriginSd_IpContainingSpecialsIsEscaped_Test;
+struct SolidSyslogFormatter;
+struct SolidSyslogStructuredData;
 
 enum
 {

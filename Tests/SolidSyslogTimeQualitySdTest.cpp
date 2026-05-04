@@ -1,9 +1,14 @@
-#include "CppUTest/TestHarness.h"
+#include <stdint.h>
+#include <cstring>
+
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogStructuredData.h"
+#include "SolidSyslogTimeQuality.h"
+#include "CppUTest/TestHarness.h"
 
-#include <cstring>
+struct SolidSyslogFormatter;
+struct SolidSyslogStructuredData;
 
 enum
 {

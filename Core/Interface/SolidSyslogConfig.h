@@ -1,11 +1,11 @@
 #ifndef SOLIDSYSLOGCONFIG_H
 #define SOLIDSYSLOGCONFIG_H
 
-#include "SolidSyslog.h"
+#include <stddef.h>
+
 #include "SolidSyslogStringFunction.h"
 #include "SolidSyslogTimestamp.h"
-
-#include <stddef.h>
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

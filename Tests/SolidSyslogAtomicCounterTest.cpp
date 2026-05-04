@@ -1,7 +1,9 @@
 #include "AtomicOpsFake.h"
-#include "CppUTest/TestHarness.h"
 #include "SolidSyslogAtomicCounter.h"
 #include "TestAtomicOps.h"
+#include "CppUTest/TestHarness.h"
+
+struct SolidSyslogAtomicCounter;
 
 enum
 {

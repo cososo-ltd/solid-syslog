@@ -1,7 +1,10 @@
 #ifndef SOLIDSYSLOGBUFFERDEFINITION_H
 #define SOLIDSYSLOGBUFFERDEFINITION_H
 
-#include "SolidSyslogBuffer.h"
+#include <stdbool.h>
+#include <stddef.h>
+
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

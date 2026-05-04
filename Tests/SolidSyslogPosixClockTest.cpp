@@ -1,5 +1,8 @@
+#include <time.h>
+
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogPosixClock.h"
+#include "SolidSyslogTimestamp.h"
 #include "ClockFake.h"
 
 // 2025-04-02T00:00:00Z

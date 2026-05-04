@@ -1,10 +1,11 @@
 #ifndef EXAMPLETCPCONFIG_H
 #define EXAMPLETCPCONFIG_H
 
-#include "ExternC.h"
-#include "SolidSyslogEndpoint.h"
-
 #include <stdint.h>
+
+#include "ExternC.h"
+
+struct SolidSyslogEndpoint;
 
 EXTERN_C_BEGIN
 

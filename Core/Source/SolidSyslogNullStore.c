@@ -1,4 +1,8 @@
 #include "SolidSyslogNullStore.h"
+
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "SolidSyslogStoreDefinition.h"
 
 static bool   Write(struct SolidSyslogStore* self, const void* data, size_t size);

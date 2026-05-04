@@ -1,7 +1,7 @@
-#include "CppUTest/TestHarness.h"
-#include "ExampleCommandLine.h"
+#include <unistd.h>
 
-#include <getopt.h>
+#include "ExampleCommandLine.h"
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(ExampleCommandLine)

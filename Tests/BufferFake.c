@@ -1,8 +1,10 @@
 #include "BufferFake.h"
-#include "SolidSyslogBufferDefinition.h"
-#include "TestUtils.h"
 
 #include <string.h>
+#include <stdbool.h>
+
+#include "SolidSyslogBufferDefinition.h"
+#include "TestUtils.h"
 
 enum
 {

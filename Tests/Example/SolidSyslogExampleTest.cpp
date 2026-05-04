@@ -1,11 +1,12 @@
-#include "CppUTest/TestHarness.h"
+#include <sys/socket.h>
+#include <unistd.h>
+#include <cstdio>
+#include <cstring>
+
 #include "SolidSyslogExample.h"
 #include "ClockFake.h"
 #include "SocketFake.h"
-
-#include <cstdio>
-#include <cstring>
-#include <getopt.h>
+#include "CppUTest/TestHarness.h"
 
 static const char* const STDIN_SEND_ONE   = "/tmp/solidsyslog_test_send1.txt";
 static const char* const STDIN_SEND_THREE = "/tmp/solidsyslog_test_send3.txt";

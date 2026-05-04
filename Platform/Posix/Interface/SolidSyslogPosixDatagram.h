@@ -1,7 +1,7 @@
 #ifndef SOLIDSYSLOGPOSIXDATAGRAM_H
 #define SOLIDSYSLOGPOSIXDATAGRAM_H
 
-#include "SolidSyslogDatagram.h"
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

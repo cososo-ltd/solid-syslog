@@ -1,3 +1,9 @@
+#include <pthread.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdbool.h>
+
 #include "ExampleAppName.h"
 #include "ExampleCommandLine.h"
 #include "ExampleEnterpriseId.h"
@@ -11,7 +17,6 @@
 #include "ExampleUdpConfig.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
-#include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogCrc16Policy.h"
 #include "SolidSyslogFileBlockDevice.h"
@@ -33,11 +38,9 @@
 #include "SolidSyslogSwitchingSender.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogUdpSender.h"
+#include "SolidSyslogTimeQuality.h"
 
-#include <pthread.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
+struct SolidSyslogStore;
 
 static const char* const                STORE_PATH_PREFIX     = "/tmp/STORE";
 static const char* const                THRESHOLD_MARKER_PATH = "/tmp/solidsyslog_threshold_marker.log";

@@ -1,10 +1,15 @@
+#include <cstdlib>
+
 #include "CppUTest/TestHarness.h"
+#include "SolidSyslogBuffer.h"
 #include "SolidSyslogPosixMessageQueueBuffer.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogNullStore.h"
 #include "SenderFake.h"
-#include <cstdlib>
+#include "SolidSyslogPrival.h"
+
+struct SolidSyslogStore;
 
 static const char* const TEST_MESSAGE     = "hello";
 static const size_t      TEST_MESSAGE_LEN = 5;
@@ -106,6 +111,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
 }
 
 IGNORE_TEST(SolidSyslogPosixMessageQueueBuffer, HappyPathOnly)
+
 {
     // Error handling not yet implemented — see Epic #31
     //   Create with zero maxMessageSize or maxMessages

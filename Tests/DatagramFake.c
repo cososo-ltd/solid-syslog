@@ -1,7 +1,9 @@
 #include "DatagramFake.h"
-#include "SolidSyslogDatagramDefinition.h"
 
 #include <stdlib.h>
+#include <stdbool.h>
+
+#include "SolidSyslogDatagramDefinition.h"
 
 enum
 {

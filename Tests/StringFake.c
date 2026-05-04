@@ -1,7 +1,10 @@
 #include "StringFake.h"
-#include "SolidSyslogFormatter.h"
 
 #include <string.h>
+
+#include "SolidSyslogFormatter.h"
+
+struct SolidSyslogFormatter;
 
 static const char* fakeHostname;
 static const char* fakeAppName;

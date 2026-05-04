@@ -1,8 +1,11 @@
-#include "CppUTest/TestHarness.h"
+#include <stddef.h>
+#include <stdint.h>
+
 #include "SenderFake.h"
 #include "SolidSyslogSender.h"
 #include "SolidSyslogSwitchingSender.h"
 #include "TestUtils.h"
+#include "CppUTest/TestHarness.h"
 
 using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for CALLED_FUNCTION
 

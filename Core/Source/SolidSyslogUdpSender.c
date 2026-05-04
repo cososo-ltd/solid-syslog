@@ -1,12 +1,17 @@
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
+
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogMacros.h"
 #include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogSenderDefinition.h"
-
-#include <stddef.h>
-#include <stdint.h>
+#include "SolidSyslogAddress.h"
+#include "SolidSyslogDatagram.h"
+#include "SolidSyslogResolver.h"
+#include "SolidSyslogTransport.h"
 
 struct SolidSyslogUdpSender
 {

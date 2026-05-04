@@ -1,4 +1,9 @@
 #include "SolidSyslogExample.h"
+
+#include <string.h>
+#include <stdbool.h>
+#include <stdio.h>
+
 #include "ExampleAppName.h"
 #include "ExampleCommandLine.h"
 #include "ExampleEnterpriseId.h"
@@ -25,8 +30,7 @@
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
-
-#include <string.h>
+#include "SolidSyslogTimeQuality.h"
 
 static SolidSyslogPosixTcpStreamStorage tcpStreamStorage;
 static SolidSyslogStreamSenderStorage   tcpSenderStorage;

@@ -1,7 +1,13 @@
 #ifndef SOLIDSYSLOGDATAGRAMDEFINITION_H
 #define SOLIDSYSLOGDATAGRAMDEFINITION_H
 
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "SolidSyslogDatagram.h"
+#include "ExternC.h"
+
+struct SolidSyslogAddress;
 
 EXTERN_C_BEGIN
 

@@ -1,7 +1,10 @@
 #include "ClockFake.h"
 
-#include <stddef.h>
 #include <string.h>
+#include <sys/types.h>
+
+struct timespec;
+struct tm;
 
 static time_t fakeSeconds;
 static long   fakeNanoseconds;

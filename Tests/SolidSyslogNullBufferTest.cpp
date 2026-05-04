@@ -1,4 +1,7 @@
+#include <stddef.h>
+
 #include "CppUTest/TestHarness.h"
+#include "SolidSyslogBuffer.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SenderFake.h"
 
@@ -75,6 +78,7 @@ TEST(SolidSyslogNullBuffer, ReadReturnsNothingToSend)
 }
 
 IGNORE_TEST(SolidSyslogNullBuffer, HappyPathOnly)
+
 {
     // Error handling not yet implemented — see Epic #31
     //   Create with NULL sender returns NULL

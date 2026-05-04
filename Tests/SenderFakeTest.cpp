@@ -1,7 +1,6 @@
-#include "CppUTest/TestHarness.h"
 #include "SenderFake.h"
 #include "SolidSyslogSender.h"
-#include <cstring>
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(SenderFake)

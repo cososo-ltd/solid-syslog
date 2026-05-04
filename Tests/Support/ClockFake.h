@@ -1,9 +1,11 @@
 #ifndef CLOCKFAKE_H
 #define CLOCKFAKE_H
 
+#include <time.h>
+
 #include "ExternC.h"
 
-#include <time.h>
+struct tm;
 
 EXTERN_C_BEGIN
 

@@ -1,4 +1,8 @@
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "SolidSyslogBlockDeviceDefinition.h"
+#include "SolidSyslogBlockDevice.h"
 
 bool SolidSyslogBlockDevice_Acquire(struct SolidSyslogBlockDevice* device, size_t blockIndex)
 {

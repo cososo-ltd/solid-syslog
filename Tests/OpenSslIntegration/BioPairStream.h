@@ -1,9 +1,11 @@
 #ifndef BIOPAIRSTREAM_H
 #define BIOPAIRSTREAM_H
 
+#include <openssl/types.h>
+
 #include "ExternC.h"
-#include "SolidSyslogStream.h"
-#include <openssl/bio.h>
+
+struct SolidSyslogStream;
 
 EXTERN_C_BEGIN
 

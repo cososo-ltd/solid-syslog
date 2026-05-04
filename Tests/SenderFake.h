@@ -1,7 +1,11 @@
 #ifndef SENDERFAKE_H
 #define SENDERFAKE_H
 
-#include "SolidSyslogSender.h"
+#include <stddef.h>
+
+#include "ExternC.h"
+
+struct SolidSyslogSender;
 
 EXTERN_C_BEGIN
 

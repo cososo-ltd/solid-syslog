@@ -1,5 +1,10 @@
 #include "SolidSyslogNullSecurityPolicy.h"
 
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "SolidSyslogSecurityPolicyDefinition.h"
+
 // NOLINTNEXTLINE(readability-non-const-parameter) -- matches SecurityPolicy vtable signature
 static void NullComputeIntegrity(const uint8_t* data, uint16_t length, uint8_t* integrityOut)
 {

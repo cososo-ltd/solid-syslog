@@ -1,4 +1,5 @@
 #include "CppUTest/TestHarness.h"
+#include "SolidSyslogAddress.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogPosixDatagram.h"
 #include "SolidSyslogUdpPayload.h"

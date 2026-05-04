@@ -1,8 +1,16 @@
+#include <openssl/ssl.h>
+#include <openssl/bio.h>
+#include <openssl/prov_ssl.h>
+#include <openssl/types.h>
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "SolidSyslogMacros.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTlsStream.h"
+#include "SolidSyslogStream.h"
 
-#include <openssl/ssl.h>
+struct SolidSyslogAddress;
 
 struct SolidSyslogTlsStream
 {

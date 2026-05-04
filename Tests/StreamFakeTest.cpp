@@ -1,7 +1,7 @@
-#include "CppUTest/TestHarness.h"
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogStream.h"
 #include "StreamFake.h"
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(StreamFake)

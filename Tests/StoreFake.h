@@ -1,7 +1,7 @@
 #ifndef STOREFAKE_H
 #define STOREFAKE_H
 
-#include "SolidSyslogStore.h"
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

@@ -1,4 +1,10 @@
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogDatagram.h"
+
+struct SolidSyslogAddress;
 
 bool SolidSyslogDatagram_Open(struct SolidSyslogDatagram* datagram)
 {

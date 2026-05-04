@@ -1,7 +1,9 @@
 #ifndef STRINGFAKE_H
 #define STRINGFAKE_H
 
-#include "SolidSyslogConfig.h"
+#include "ExternC.h"
+
+struct SolidSyslogFormatter;
 
 EXTERN_C_BEGIN
 

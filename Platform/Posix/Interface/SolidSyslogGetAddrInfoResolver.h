@@ -1,7 +1,7 @@
 #ifndef SOLIDSYSLOGGETADDRINFORESOLVERH
 #define SOLIDSYSLOGGETADDRINFORESOLVERH
 
-#include "SolidSyslogResolver.h"
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

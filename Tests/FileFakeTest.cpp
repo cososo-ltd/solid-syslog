@@ -1,8 +1,8 @@
-#include "CppUTest/TestHarness.h"
-#include "FileFake.h"
-
-#include <cstring>
 #include <stdexcept>
+
+#include "FileFake.h"
+#include "SolidSyslogFile.h"
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(FileFake)

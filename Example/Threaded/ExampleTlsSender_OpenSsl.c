@@ -1,9 +1,13 @@
+#include <stdbool.h>
+
 #include "ExampleMtlsConfig.h"
 #include "ExampleTlsConfig.h"
 #include "ExampleTlsSender.h"
 #include "SolidSyslogPosixTcpStream.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogTlsStream.h"
+
+struct SolidSyslogResolver;
 
 static SolidSyslogPosixTcpStreamStorage underlyingStreamStorage;
 static struct SolidSyslogStream*        underlyingStream;

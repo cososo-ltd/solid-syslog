@@ -1,5 +1,10 @@
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogSwitchingSender.h"
+#include "SolidSyslogSender.h"
 
 struct SolidSyslogSwitchingSender
 {

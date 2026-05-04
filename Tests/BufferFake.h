@@ -1,7 +1,7 @@
 #ifndef BUFFERFAKE_H
 #define BUFFERFAKE_H
 
-#include "SolidSyslogBuffer.h"
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

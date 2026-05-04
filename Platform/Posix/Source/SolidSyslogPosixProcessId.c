@@ -1,7 +1,11 @@
 #include "SolidSyslogPosixProcessId.h"
-#include "SolidSyslogFormatter.h"
 
 #include <unistd.h>
+#include <stdint.h>
+
+#include "SolidSyslogFormatter.h"
+
+struct SolidSyslogFormatter;
 
 void SolidSyslogPosixProcessId_Get(struct SolidSyslogFormatter* formatter)
 {

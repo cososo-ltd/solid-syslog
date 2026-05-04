@@ -1,4 +1,8 @@
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "SolidSyslogBufferDefinition.h"
+#include "SolidSyslogBuffer.h"
 
 void SolidSyslogBuffer_Write(struct SolidSyslogBuffer* buffer, const void* data, size_t size)
 {

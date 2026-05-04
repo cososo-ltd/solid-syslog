@@ -1,9 +1,9 @@
 #ifndef SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFER_H
 #define SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFER_H
 
-#include "SolidSyslogBuffer.h"
-
 #include <stddef.h>
+
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

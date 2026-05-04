@@ -1,11 +1,10 @@
 #ifndef SOLIDSYSLOGSWITCHINGSENDER_H
 #define SOLIDSYSLOGSWITCHINGSENDER_H
 
-#include "ExternC.h"
-#include "SolidSyslogSender.h"
-
 #include <stddef.h>
 #include <stdint.h>
+
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

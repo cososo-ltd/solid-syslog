@@ -1,11 +1,18 @@
 #include "SolidSyslogGetAddrInfoResolver.h"
-#include "SolidSyslogAddressInternal.h"
-#include "SolidSyslogResolverDefinition.h"
 
 #include <netdb.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdint.h>
+
+#include "SolidSyslogAddressInternal.h"
+#include "SolidSyslogResolverDefinition.h"
+#include "SolidSyslogTransport.h"
+
+struct SolidSyslogAddress;
 
 enum
 {

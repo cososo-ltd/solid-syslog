@@ -1,4 +1,8 @@
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "SolidSyslogFileDefinition.h"
+#include "SolidSyslogFile.h"
 
 bool SolidSyslogFile_Open(struct SolidSyslogFile* file, const char* path)
 {

@@ -1,7 +1,9 @@
 #ifndef SOLIDSYSLOGPOSIXCLOCK_H
 #define SOLIDSYSLOGPOSIXCLOCK_H
 
-#include "SolidSyslogTimestamp.h"
+#include "ExternC.h"
+
+struct SolidSyslogTimestamp;
 
 EXTERN_C_BEGIN
 

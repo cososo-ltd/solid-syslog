@@ -1,10 +1,12 @@
 #ifndef SOCKETFAKE_H
 #define SOCKETFAKE_H
 
-#include "ExternC.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

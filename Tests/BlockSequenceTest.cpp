@@ -3,12 +3,12 @@
 #include <vector>
 
 #include "CppUTest/TestHarness.h"
+#include "SolidSyslogBlockStore.h"
 
 extern "C"
 {
 #include "BlockSequence.h"
 }
-#include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockDeviceDefinition.h"
 
 namespace

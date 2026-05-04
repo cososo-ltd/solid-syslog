@@ -1,7 +1,10 @@
 #ifndef SOLIDSYSLOGBLOCKDEVICEDEFINITION_H
 #define SOLIDSYSLOGBLOCKDEVICEDEFINITION_H
 
-#include "SolidSyslogBlockDevice.h"
+#include <stdbool.h>
+#include <stddef.h>
+
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

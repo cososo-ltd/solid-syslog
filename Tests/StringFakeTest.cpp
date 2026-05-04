@@ -1,6 +1,8 @@
-#include "CppUTest/TestHarness.h"
 #include "SolidSyslogFormatter.h"
 #include "StringFake.h"
+#include "CppUTest/TestHarness.h"
+
+struct SolidSyslogFormatter;
 
 enum
 {

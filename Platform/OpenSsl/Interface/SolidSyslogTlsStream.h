@@ -1,9 +1,11 @@
 #ifndef SOLIDSYSLOGTLSSTREAM_H
 #define SOLIDSYSLOGTLSSTREAM_H
 
-#include "SolidSyslogStream.h"
-
 #include <stdint.h>
+
+#include "ExternC.h"
+
+struct SolidSyslogStream;
 
 EXTERN_C_BEGIN
 

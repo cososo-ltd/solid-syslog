@@ -1,7 +1,7 @@
 #ifndef SOLIDSYSLOGNULLSTORE_H
 #define SOLIDSYSLOGNULLSTORE_H
 
-#include "SolidSyslogStore.h"
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

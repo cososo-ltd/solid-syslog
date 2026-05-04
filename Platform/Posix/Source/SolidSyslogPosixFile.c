@@ -1,10 +1,14 @@
 #include "SolidSyslogPosixFile.h"
-#include "SolidSyslogFileDefinition.h"
-#include "SolidSyslogMacros.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <sys/types.h>
+
+#include "SolidSyslogFileDefinition.h"
+#include "SolidSyslogMacros.h"
 
 #define OWNER_READ_WRITE (S_IRUSR | S_IWUSR)
 #define DEFAULT_FILE_PERMISSIONS OWNER_READ_WRITE

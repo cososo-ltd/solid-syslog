@@ -1,4 +1,7 @@
 #include "SolidSyslogBlockStore.h"
+
+#include <stdbool.h>
+
 #include "BlockSequence.h"
 #include "RecordStore.h"
 #include "SolidSyslog.h"

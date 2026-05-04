@@ -1,7 +1,4 @@
 #include "SolidSyslogPosixTcpStream.h"
-#include "SolidSyslogAddressInternal.h"
-#include "SolidSyslogMacros.h"
-#include "SolidSyslogStreamDefinition.h"
 
 #include <errno.h>
 #include <netinet/tcp.h>
@@ -9,6 +6,16 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <netinet/in.h>
+#include <stdbool.h>
+#include <sys/types.h>
+
+#include "SolidSyslogAddressInternal.h"
+#include "SolidSyslogMacros.h"
+#include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogStream.h"
+
+struct SolidSyslogAddress;
 
 enum
 {

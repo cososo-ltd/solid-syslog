@@ -1,8 +1,10 @@
 #include "StoreFake.h"
-#include "SolidSyslogStoreDefinition.h"
-#include "TestUtils.h"
 
 #include <string.h>
+#include <stdbool.h>
+
+#include "SolidSyslogStoreDefinition.h"
+#include "TestUtils.h"
 
 enum
 {

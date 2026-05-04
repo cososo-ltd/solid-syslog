@@ -1,17 +1,17 @@
+#include <openssl/err.h>
+#include <unistd.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+
 #include "BioPairStream.h"
-#include "CppUTest/TestHarness.h"
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogTlsStream.h"
 #include "TlsTestCert.h"
 #include "TlsTestServer.h"
-
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
-#include <openssl/err.h>
-#include <unistd.h>
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(TlsStreamIntegration)

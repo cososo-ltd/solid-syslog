@@ -1,10 +1,12 @@
 #include "SenderFake.h"
-#include "SolidSyslog.h"
-#include "SolidSyslogSenderDefinition.h"
-#include "TestUtils.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+
+#include "SolidSyslog.h"
+#include "SolidSyslogSenderDefinition.h"
+#include "TestUtils.h"
 
 struct SenderFake
 {

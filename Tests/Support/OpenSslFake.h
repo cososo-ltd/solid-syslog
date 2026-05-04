@@ -3,7 +3,7 @@
 
 #include "ExternC.h"
 
-#include <stdbool.h>
+#include <stdbool.h> // IWYU pragma: keep — dual-use header (C and C++ TUs); IWYU only sees the C++ side and would drop this.
 
 /* Forward-declared OpenSSL types — full definitions live in <openssl/ssl.h>. */
 struct ssl_ctx_st;

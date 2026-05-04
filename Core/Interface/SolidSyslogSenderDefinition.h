@@ -1,7 +1,10 @@
 #ifndef SOLIDSYSLOGSENDERDEFINITION_H
 #define SOLIDSYSLOGSENDERDEFINITION_H
 
-#include "SolidSyslogSender.h"
+#include <stdbool.h>
+#include <stddef.h>
+
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

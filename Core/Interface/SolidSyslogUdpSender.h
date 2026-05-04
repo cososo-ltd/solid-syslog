@@ -1,11 +1,8 @@
 #ifndef SOLIDSYSLOGUDPSENDER_H
 #define SOLIDSYSLOGUDPSENDER_H
 
-#include "SolidSyslogDatagram.h"
 #include "SolidSyslogEndpoint.h"
-#include "SolidSyslogResolver.h"
-#include "SolidSyslogSender.h"
-#include "SolidSyslogTransport.h"
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

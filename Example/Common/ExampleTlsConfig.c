@@ -1,8 +1,10 @@
 #include "ExampleTlsConfig.h"
-#include "SolidSyslogFormatter.h"
-#include "SolidSyslogTransport.h"
 
 #include <stdint.h>
+
+#include "SolidSyslogFormatter.h"
+#include "SolidSyslogTransport.h"
+#include "SolidSyslogEndpoint.h"
 
 /* Test CA for BDD. Paths are relative to the working directory the example is
  * launched from (/workspaces/SolidSyslog in the BDD container). */

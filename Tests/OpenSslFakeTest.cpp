@@ -1,6 +1,10 @@
-#include "CppUTest/TestHarness.h"
-#include "OpenSslFake.h"
 #include <openssl/ssl.h>
+#include <openssl/bio.h>
+#include <openssl/prov_ssl.h>
+#include <openssl/types.h>
+
+#include "OpenSslFake.h"
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(OpenSslFake)

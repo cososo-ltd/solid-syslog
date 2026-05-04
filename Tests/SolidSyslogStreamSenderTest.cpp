@@ -1,4 +1,9 @@
-#include "CppUTest/TestHarness.h"
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <sys/socket.h>
+
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogGetAddrInfoResolver.h"
@@ -6,8 +11,7 @@
 #include "SolidSyslogSender.h"
 #include "SolidSyslogStreamSender.h"
 #include "SocketFake.h"
-#include <netinet/in.h>
-#include <netinet/tcp.h>
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 static const char* const TEST_HOST           = "127.0.0.1";

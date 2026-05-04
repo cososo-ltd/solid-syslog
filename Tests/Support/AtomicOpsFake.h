@@ -1,10 +1,9 @@
 #ifndef ATOMICOPSFAKE_H
 #define ATOMICOPSFAKE_H
 
-#include "ExternC.h"
-#include "SolidSyslogAtomicOpsDefinition.h"
-
 #include <stdint.h>
+
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

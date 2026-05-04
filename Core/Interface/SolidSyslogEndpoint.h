@@ -1,10 +1,9 @@
 #ifndef SOLIDSYSLOGENDPOINT_H
 #define SOLIDSYSLOGENDPOINT_H
 
-#include "ExternC.h"
-#include "SolidSyslogFormatter.h"
-
 #include <stdint.h>
+
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

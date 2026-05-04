@@ -1,7 +1,9 @@
 #include "ExampleMtlsConfig.h"
-#include "SolidSyslogFormatter.h"
 
 #include <stdint.h>
+
+#include "SolidSyslogFormatter.h"
+#include "SolidSyslogEndpoint.h"
 
 enum
 {

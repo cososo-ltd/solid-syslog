@@ -1,5 +1,5 @@
-#include "CppUTest/TestHarness.h"
 #include "SolidSyslogAddress.h"
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogAddress)

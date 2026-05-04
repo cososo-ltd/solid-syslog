@@ -1,7 +1,7 @@
 #ifndef SOLIDSYSLOGSTRUCTUREDDATADEFINITION_H
 #define SOLIDSYSLOGSTRUCTUREDDATADEFINITION_H
 
-#include "SolidSyslogStructuredData.h"
+#include "ExternC.h"
 
 EXTERN_C_BEGIN
 

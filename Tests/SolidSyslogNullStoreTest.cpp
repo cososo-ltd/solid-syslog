@@ -1,5 +1,8 @@
+#include <stddef.h>
+
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogNullStore.h"
+#include "SolidSyslogStore.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogNullStore)

@@ -1,4 +1,9 @@
-#include "CppUTest/TestHarness.h"
+#include <netinet/in.h>
+#include <stddef.h>
+#include <sys/socket.h>
+#include <array>
+#include <cstdint>
+
 #include "DatagramFake.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogFormatter.h"
@@ -7,9 +12,8 @@
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogSender.h"
 #include "SocketFake.h"
-#include <array>
-#include <cstdint>
-#include <netinet/in.h>
+#include "SolidSyslogDatagram.h"
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 static const char* const TEST_MESSAGE          = "hello";
@@ -274,6 +278,7 @@ TEST(SolidSyslogUdpSender, EndpointVersionChangeUsesNewPortOnReconnect)
 }
 
 IGNORE_TEST(SolidSyslogUdpSender, HappyPathOnly)
+
 {
     // Error handling not yet implemented — see Epic #31
     //   Create with NULL config returns NULL

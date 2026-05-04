@@ -5,6 +5,9 @@
 #include <openssl/x509.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <openssl/prov_ssl.h>
+
+#include "TlsTestCert.h"
 
 struct TlsTestServer
 {

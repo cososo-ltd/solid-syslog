@@ -1,6 +1,6 @@
-#include "CppUTest/TestHarness.h"
 #include "ExampleAppName.h"
 #include "SolidSyslogFormatter.h"
+#include "CppUTest/TestHarness.h"
 
 enum
 {

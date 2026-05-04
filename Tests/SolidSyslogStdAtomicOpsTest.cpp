@@ -1,6 +1,6 @@
-#include "CppUTest/TestHarness.h"
 #include "SolidSyslogAtomicOpsDefinition.h"
 #include "SolidSyslogStdAtomicOps.h"
+#include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogStdAtomicOps)

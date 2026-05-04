@@ -1,4 +1,10 @@
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogStream.h"
+
+struct SolidSyslogAddress;
 
 bool SolidSyslogStream_Open(struct SolidSyslogStream* stream, const struct SolidSyslogAddress* addr)
 {

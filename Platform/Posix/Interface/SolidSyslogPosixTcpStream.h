@@ -1,9 +1,11 @@
 #ifndef SOLIDSYSLOGPOSIXTCPSTREAM_H
 #define SOLIDSYSLOGPOSIXTCPSTREAM_H
 
-#include "SolidSyslogStream.h"
-#include "SolidSyslogTransport.h"
 #include <stdint.h>
+
+#include "ExternC.h"
+
+struct SolidSyslogStream;
 
 EXTERN_C_BEGIN
 

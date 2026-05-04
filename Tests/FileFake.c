@@ -1,11 +1,13 @@
 #include "FileFake.h"
+
+#include <string.h>
+#include <stdbool.h>
+
 #include "SafeString.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogMacros.h"
 #include "TestAssert.h"
-
-#include <string.h>
 
 enum
 {
