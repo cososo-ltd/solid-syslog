@@ -1,5 +1,95 @@
 # Dev Log
 
+## 2026-05-04 — S18.03 Dispose-on-empty block lifecycle
+
+### Decisions
+
+- **Dispose trigger lives in MarkSent AND post-rotation.** Slice 1
+  hooked `BlockSequence_DisposeReadBlockIfDrained` into MarkSent only.
+  The unit tests passed (rotate-then-drain pattern: MarkSent fires
+  while writeSequence has already moved on). Then the new BDD scenario
+  failed: the threaded service-thread drain pattern is _interleaved_
+  (each Service iteration: receive 1 from buffer → write 1 to store →
+  read 1 from store → MarkSent). With this pattern, MarkSent fires
+  while the write block is still active — IsReadBlockActiveWrite is
+  true so dispose is suppressed. Then the next iteration's Write
+  triggers rotation, but no MarkSent follows for the just-sealed block.
+  The trigger needed a second call site after rotation seals the prior
+  write block. Now in `RotateToNextBlock`, post-AdvanceWriteToNewBlock.
+  Slice 1's MarkSent call still earns its keep for the rotate-then-drain
+  pattern (where the block is already non-active at MarkSent time).
+- **Dispose-on-empty guard: oldestSequence == readSequence.** The trigger
+  declines to dispose when readSequence has advanced past oldestSequence
+  (e.g. via AdvanceToNextReadBlock skipping a fully-sent block). Disposing
+  an interior block would punch a gap in the sequence run that
+  `ScanForExistingBlocks` can't represent (it assumes a single contiguous
+  run). The pre-existing capacity-pressure DiscardOldestBlock path still
+  reaps those interior holdovers eventually.
+- **Acquire empty-check in RotateToNextBlock, not Open's cold start.**
+  Story acceptance asked for "BlockSequence asserts the block is empty
+  before Acquire". Open's cold-start branch only fires when
+  `ScanForExistingBlocks` returned nothing — by construction Exists(0)
+  is false at that point, so an empty-check would always be a no-op.
+  Adding it would be defensive code for an impossible scenario per
+  CLAUDE.md. So `AcquireEmptyBlock` wraps `RotateToNextBlock`'s Acquire
+  only.
+- **Success-only state advancement: separate failure-injection paths
+  for Acquire and Dispose.** `RotateToNextBlock` now plumbs Acquire's
+  result through `PrepareForWrite`'s `spaceAvailable` return — a
+  transient device failure surfaces to the caller as `Write → false`
+  with `writeSequence`/`writePosition` unchanged, ready to retry.
+  `DiscardOldestBlock` wraps state mutation in `if (Dispose(...))` —
+  on failure `oldestSequence` stays put and the next discard cycle
+  re-attempts the same block. Without this, a failed Dispose would
+  orphan a still-on-disk block forever (oldest pointer skipped past).
+- **FileFake_FailNextDelete added (test infrastructure).** Mirrors the
+  existing FailNext{Open,Write,Read} shape so the dispose-failure path
+  could be exercised at the integration boundary, not just at the
+  BlockSequence unit level. The unit-level fake (ScanFake in
+  BlockSequenceTest) gained call-log + size-tracking knobs to model
+  call ordering and "block has data" semantics that previously the
+  no-op stubs couldn't represent. The pin test
+  `RotationSkipsDisposeWhenTargetBlockEmpty` regressed when the new
+  post-rotation dispose check shipped — fake's FakeSize returned 0,
+  so dispose-on-empty thought block 0 was always drained. Fix: track
+  sizes in the fake and seed `sizes[0]` after Open in the rotation
+  test setup.
+- **block_lifecycle.feature reframed.** The pre-S18.03 baseline
+  scenario said "block files are not disposed when capacity is not
+  exhausted" — now overturned. Reworded to pin the active-write-block
+  guard, plus added "Older block is disposed once all its records are
+  drained" as the positive case. The failure-injection scenarios from
+  the story acceptance (Acquire/Dispose failure) live at unit level —
+  exercising them at BDD level would need a fault-injection harness
+  in the threaded example which is scope creep.
+
+### Deferred
+
+- **AdvanceToNextReadBlock as a third dispose trigger.** When the read
+  cursor walks off the end of a block via this path (record corruption
+  or end-of-data hit), the block is technically "drained" but the
+  trigger doesn't fire — IsReadBlockOldest tests against the new
+  readSequence which has already moved on. Capacity-pressure
+  DiscardOldestBlock still reaps it. Worth revisiting once the example
+  flash driver lands and we see if the latency matters.
+- **Block-device-side empty-check verification.** Today the contract
+  is "BlockSequence Disposes-then-Acquires when the target block
+  exists". A more defensive contract would have the BlockDevice itself
+  assert empty in Acquire (returning false on stale content). Pushed
+  to S18.04 since the contract shape depends on what flash drivers
+  actually want.
+
+### Open questions
+
+- **Should `DisposeReadBlockIfDrained` propagate Dispose-success to
+  the caller?** Today it returns `readBlockChanged` only when Dispose
+  succeeded AND the read pointer advanced — but a failed Dispose is
+  silently swallowed (oldest stays put per the slice-4 contract,
+  no-op). An integrator-supplied error reporter could surface the
+  Dispose failure once that path lands. Not a blocker for S18.03;
+  noted alongside the "persistent media error" path mentioned in
+  RecordStore's IsRecordSent comment.
+
 ## 2026-05-03 — Hoist SolidSyslogAddress.h to Core + CMake layer guard
 
 Small refactor: `Platform/Posix/Interface/SolidSyslogAddress.h` and
@@ -32,6 +122,8 @@ to keep the dependency direction honest going forward. Merged as #257.
   with no behavioural change, gcc-debug + full unit suite (1005 tests,
   1406 checks, all pass) was judged sufficient. Flagged the omission
   before pushing.
+
+## 2026-05-03 — S18.02 BlockDevice abstraction + file-backed driver
 
 ### Decisions
 

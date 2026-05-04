@@ -58,6 +58,7 @@ size_t BlockSequence_ReadCursor(const struct BlockSequence* blockSequence);
 void   BlockSequence_SetReadCursor(struct BlockSequence* blockSequence, size_t cursor);
 void   BlockSequence_AdvanceToNextReadBlock(struct BlockSequence* blockSequence);
 bool   BlockSequence_ReadIsBehindWrite(const struct BlockSequence* blockSequence);
+void   BlockSequence_DisposeReadBlockIfDrained(struct BlockSequence* blockSequence, bool* readBlockChanged);
 
 bool   BlockSequence_HasUnsent(const struct BlockSequence* blockSequence);
 bool   BlockSequence_IsHalted(const struct BlockSequence* blockSequence);

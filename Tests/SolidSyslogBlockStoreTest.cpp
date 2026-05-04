@@ -1258,6 +1258,95 @@ TEST(SolidSyslogBlockStoreRotation, MultipleRecordsPerFileDrainAcrossRotation)
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
+TEST(SolidSyslogBlockStoreRotation, MarkSentDisposesOlderBlockWhenDrained)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* file 00 */
+    WriteMaxMsg(); /* rotates to file 01 */
+
+    char   buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+}
+
+TEST(SolidSyslogBlockStoreRotation, MarkSentDoesNotDisposeActiveWriteBlock)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* file 00 — also the active write block */
+
+    char   buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+}
+
+TEST(SolidSyslogBlockStoreRotation, RotationDisposesPriorBlockWhenAlreadyDrained)
+{
+    /* Interleaved drain pattern: MarkSent fires for the only record in block 00
+     * while it is still the active write block, so dispose-on-empty cannot fire
+     * yet. The trigger must re-evaluate after the next Write rotates writeSequence
+     * to 01 — otherwise the just-filled-and-drained block lingers until capacity
+     * pressure forces discard. This pattern is what the threaded service thread
+     * does in practice. */
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+
+    WriteMaxMsg();
+    char   buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+
+    WriteMaxMsg(); /* triggers rotation; block 00 becomes non-active */
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+}
+
+TEST(SolidSyslogBlockStoreRotation, WriteReturnsFalseWhenRotationAcquireFails)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* file 00 — fills block */
+
+    FileFake_FailNextOpen(file); /* next Acquire on rotation will fail */
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
+}
+
+TEST(SolidSyslogBlockStoreRotation, RotationRetriesAfterTransientAcquireFailure)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* file 00 */
+
+    FileFake_FailNextOpen(file);
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* fails — Acquire on file 01 rejected */
+
+    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* retry succeeds */
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
+}
+
+TEST(SolidSyslogBlockStoreRotation, DiscardRetriesAfterTransientDisposeFailure)
+{
+    /* Without this guarantee the oldest pointer would advance past a still-on-disk
+     * block, leaving it orphaned forever. Force a Dispose failure on the discard
+     * during file-02 rotation, then trigger another rotation: the next discard
+     * cycle must re-attempt block 00 — not skip past it to block 01. Both Writes
+     * succeed (rotation acquires the new block; only the discard silently fails). */
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* file 00 */
+    WriteMaxMsg(); /* file 01 */
+
+    FileFake_FailNextDelete(file);
+    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* file 02 — discard of 00 fails; oldest must stay at 0 */
+    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* file 03 — next discard cycle re-attempts and removes 00 */
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+}
+
 /* ------------------------------------------------------------------
  * Integrity (SecurityPolicy integration)
  * ----------------------------------------------------------------*/

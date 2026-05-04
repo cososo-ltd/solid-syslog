@@ -9,7 +9,9 @@ EXTERN_C_BEGIN
 
     enum
     {
-        FILEFAKE_STORAGE_SLOTS = 13
+        /* Sized to fit struct FileFake on both ILP32 and LP64 hosts.
+         * Bump if a new field grows the implementation past current capacity. */
+        FILEFAKE_STORAGE_SLOTS = 14
     };
 
     struct FileFakeStorage
@@ -22,6 +24,7 @@ EXTERN_C_BEGIN
     void                    FileFake_FailNextOpen(struct SolidSyslogFile * file);
     void                    FileFake_FailNextWrite(struct SolidSyslogFile * file);
     void                    FileFake_FailNextRead(struct SolidSyslogFile * file);
+    void                    FileFake_FailNextDelete(struct SolidSyslogFile * file);
     const void*             FileFake_FileContent(void);
     size_t                  FileFake_FileSize(void);
 

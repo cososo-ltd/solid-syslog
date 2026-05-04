@@ -559,6 +559,14 @@ def step_no_block_disposed(context):
     assert not missing, f"Block files disposed unexpectedly: {missing}"
 
 
+@then("block file {index} has been disposed")
+def step_block_file_disposed(context, index):
+    path = f"{STORE_PATH_PREFIX}{index}.log"
+    assert not os.path.exists(path), (
+        f"Expected block file {path} to have been disposed but it is still on disk"
+    )
+
+
 @when("the client sends a message")
 def step_client_sends_message(context):
     send_command(context.interactive_process, "send")

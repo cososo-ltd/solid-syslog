@@ -159,6 +159,24 @@ TEST(FileFake, FailNextReadOnlyAffectsOneCall)
     CHECK_TRUE(SolidSyslogFile_Read(api, buf, 5));
 }
 
+TEST(FileFake, FailNextDeleteMakesDeleteReturnFalse)
+{
+    SolidSyslogFile_Open(api, "test.dat");
+    SolidSyslogFile_Close(api);
+    FileFake_FailNextDelete(api);
+    CHECK_FALSE(SolidSyslogFile_Delete(api, "test.dat"));
+    CHECK_TRUE(SolidSyslogFile_Exists(api, "test.dat"));
+}
+
+TEST(FileFake, FailNextDeleteOnlyAffectsOneCall)
+{
+    SolidSyslogFile_Open(api, "test.dat");
+    SolidSyslogFile_Close(api);
+    FileFake_FailNextDelete(api);
+    CHECK_FALSE(SolidSyslogFile_Delete(api, "test.dat"));
+    CHECK_TRUE(SolidSyslogFile_Delete(api, "test.dat"));
+}
+
 TEST(FileFake, FileContentReturnsInternalBuffer)
 {
     SolidSyslogFile_Open(api, "test.dat");
