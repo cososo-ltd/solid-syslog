@@ -186,7 +186,7 @@ static inline int CircularPrev(int index)
 static inline bool BlockIsFull(const struct BlockSequence* blockSequence, size_t recordSize);
 static inline bool StoreIsFull(const struct BlockSequence* blockSequence);
 static inline void NotifyStoreFull(struct BlockSequence* blockSequence);
-static bool        RotateToNextBlock(struct BlockSequence* blockSequence);
+static bool        RotateToNextBlock(struct BlockSequence* blockSequence, bool* readBlockChanged);
 
 bool BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t recordSize, bool* readBlockChanged)
 {
@@ -203,7 +203,7 @@ bool BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t r
     }
     else if (blockFull)
     {
-        *readBlockChanged = RotateToNextBlock(blockSequence);
+        spaceAvailable = RotateToNextBlock(blockSequence, readBlockChanged);
     }
 
     return spaceAvailable;
@@ -235,21 +235,39 @@ static inline void NotifyStoreFull(struct BlockSequence* blockSequence)
 static bool DiscardOldestBlock(struct BlockSequence* blockSequence);
 static void ResetReadToOldest(struct BlockSequence* blockSequence);
 
-static bool RotateToNextBlock(struct BlockSequence* blockSequence)
+static inline void AdvanceWriteToNewBlock(struct BlockSequence* blockSequence, uint8_t nextSequence);
+static inline bool ExceedsMaxBlocks(const struct BlockSequence* blockSequence);
+
+static bool RotateToNextBlock(struct BlockSequence* blockSequence, bool* readBlockChanged)
 {
-    blockSequence->writeSequence     = NextSequence(blockSequence->writeSequence);
-    blockSequence->writePosition     = 0;
-    blockSequence->writeBlockCorrupt = false;
-    SolidSyslogBlockDevice_Acquire(blockSequence->blockDevice, blockSequence->writeSequence);
+    uint8_t nextSequence = NextSequence(blockSequence->writeSequence);
+    bool    acquired     = SolidSyslogBlockDevice_Acquire(blockSequence->blockDevice, nextSequence);
 
-    bool readBlockChanged = false;
+    *readBlockChanged = false;
 
-    if (BlockCount(blockSequence) > blockSequence->maxBlocks)
+    if (acquired)
     {
-        readBlockChanged = DiscardOldestBlock(blockSequence);
+        AdvanceWriteToNewBlock(blockSequence, nextSequence);
+
+        if (ExceedsMaxBlocks(blockSequence))
+        {
+            *readBlockChanged = DiscardOldestBlock(blockSequence);
+        }
     }
 
-    return readBlockChanged;
+    return acquired;
+}
+
+static inline void AdvanceWriteToNewBlock(struct BlockSequence* blockSequence, uint8_t nextSequence)
+{
+    blockSequence->writeSequence     = nextSequence;
+    blockSequence->writePosition     = 0;
+    blockSequence->writeBlockCorrupt = false;
+}
+
+static inline bool ExceedsMaxBlocks(const struct BlockSequence* blockSequence)
+{
+    return BlockCount(blockSequence) > blockSequence->maxBlocks;
 }
 
 static bool DiscardOldestBlock(struct BlockSequence* blockSequence)

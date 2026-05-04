@@ -1285,6 +1285,28 @@ TEST(SolidSyslogBlockStoreRotation, MarkSentDoesNotDisposeActiveWriteBlock)
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
 }
 
+TEST(SolidSyslogBlockStoreRotation, WriteReturnsFalseWhenRotationAcquireFails)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* file 00 — fills block */
+
+    FileFake_FailNextOpen(file); /* next Acquire on rotation will fail */
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
+}
+
+TEST(SolidSyslogBlockStoreRotation, RotationRetriesAfterTransientAcquireFailure)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* file 00 */
+
+    FileFake_FailNextOpen(file);
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* fails — Acquire on file 01 rejected */
+
+    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* retry succeeds */
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
+}
+
 /* ------------------------------------------------------------------
  * Integrity (SecurityPolicy integration)
  * ----------------------------------------------------------------*/
