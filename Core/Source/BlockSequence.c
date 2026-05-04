@@ -270,14 +270,27 @@ static bool RotateToNextBlock(struct BlockSequence* blockSequence, bool* readBlo
  * starts empty. Stale content can be left by a crash mid-Append on a previous
  * run, or by a Dispose that succeeded after our state had already advanced
  * past it. Flash drivers depend on this — Acquire = erase, and writing into
- * a non-erased block corrupts data on most flash families. */
+ * a non-erased block corrupts data on most flash families.
+ *
+ * If Dispose fails we surface the failure rather than letting Acquire mask it:
+ * a "verify-and-use" flash driver (S18.04 design notes) would Acquire-fail on
+ * the still-stale block anyway, and skipping the wasted Acquire keeps callers'
+ * retry path (slice 3) symmetric with the dispose-failure path. */
 static inline bool AcquireEmptyBlock(struct SolidSyslogBlockDevice* device, size_t blockIndex)
 {
+    bool ready = true;
+
     if (SolidSyslogBlockDevice_Exists(device, blockIndex))
     {
-        SolidSyslogBlockDevice_Dispose(device, blockIndex);
+        ready = SolidSyslogBlockDevice_Dispose(device, blockIndex);
     }
-    return SolidSyslogBlockDevice_Acquire(device, blockIndex);
+
+    if (ready)
+    {
+        ready = SolidSyslogBlockDevice_Acquire(device, blockIndex);
+    }
+
+    return ready;
 }
 
 static inline void AdvanceWriteToNewBlock(struct BlockSequence* blockSequence, uint8_t nextSequence)

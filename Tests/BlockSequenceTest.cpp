@@ -34,6 +34,7 @@ struct ScanFake
     std::set<size_t>*             existing;
     std::vector<DeviceCall>*      calls; /* optional — tests that don't care leave nullptr */
     std::map<size_t, size_t>*     sizes; /* optional — tests that need realistic Size readings populate */
+    bool                          failNextDispose;
 };
 
 inline ScanFake& ToFake(struct SolidSyslogBlockDevice* self)
@@ -73,6 +74,13 @@ bool FakeDispose(struct SolidSyslogBlockDevice* self, size_t blockIndex)
 {
     ScanFake& fake = ToFake(self);
     RecordCall(fake, CallType::Dispose, blockIndex);
+
+    if (fake.failNextDispose)
+    {
+        fake.failNextDispose = false;
+        return false;
+    }
+
     fake.existing->erase(blockIndex);
     if (fake.sizes != nullptr)
     {
@@ -261,11 +269,11 @@ TEST_GROUP(BlockSequenceRotation)
         {
             if ((calls[i].blockIndex == blockIndex) && (calls[i].type == CallType::Dispose))
             {
-                disposeAt = (std::ptrdiff_t) i;
+                disposeAt = static_cast<std::ptrdiff_t>(i);
             }
             if ((calls[i].blockIndex == blockIndex) && (calls[i].type == CallType::Acquire))
             {
-                acquireAt = (std::ptrdiff_t) i;
+                acquireAt = static_cast<std::ptrdiff_t>(i);
             }
         }
         return (disposeAt >= 0) && (acquireAt >= 0) && (disposeAt < acquireAt);
@@ -299,5 +307,26 @@ TEST(BlockSequenceRotation, RotationSkipsDisposeWhenTargetBlockEmpty)
     for (const auto& call : calls)
     {
         CHECK_FALSE(call.type == CallType::Dispose);
+    }
+}
+
+TEST(BlockSequenceRotation, RotationFailsWhenStaleBlockDisposeFails)
+{
+    /* If the stale block can't be Disposed, we must NOT proceed to Acquire —
+     * a flash "verify-and-use" driver would reject the stale block anyway,
+     * and surfacing the failure here matches the slice-3 retry contract. */
+    existing.insert(1);
+    fakeDevice.failNextDispose = true;
+
+    bool readBlockChanged = false;
+    bool acquired         = BlockSequence_PrepareForWrite(&sequence, ROTATION_BLOCK_SIZE + 1, &readBlockChanged);
+
+    CHECK_FALSE(acquired);
+    for (const auto& call : calls)
+    {
+        if ((call.type == CallType::Acquire) && (call.blockIndex == 1))
+        {
+            FAIL("Acquire(1) was called even though Dispose(1) failed");
+        }
     }
 }
