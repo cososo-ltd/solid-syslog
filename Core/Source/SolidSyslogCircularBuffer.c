@@ -19,8 +19,8 @@ struct SolidSyslogCircularBuffer
 {
     struct SolidSyslogBuffer base;
     uint8_t                  storage[STORAGE_BYTES];
-    bool                     hasRecord;
-    size_t                   recordSize;
+    size_t                   head;
+    size_t                   tail;
 };
 
 static struct SolidSyslogCircularBuffer instance;
@@ -29,8 +29,8 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(void)
 {
     instance.base.Read  = Read;
     instance.base.Write = Write;
-    instance.hasRecord  = false;
-    instance.recordSize = 0;
+    instance.head       = 0;
+    instance.tail       = 0;
     return &instance.base;
 }
 
@@ -38,19 +38,24 @@ void SolidSyslogCircularBuffer_Destroy(void)
 {
     instance.base.Read  = NULL;
     instance.base.Write = NULL;
-    instance.hasRecord  = false;
+    instance.head       = 0;
+    instance.tail       = 0;
 }
 
 static bool Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead)
 {
     struct SolidSyslogCircularBuffer* circular = (struct SolidSyslogCircularBuffer*) self;
     (void) maxSize;
-    *bytesRead          = circular->recordSize;
-    bool hadRecord      = circular->hasRecord;
-    circular->hasRecord = false;
+    bool hadRecord = circular->head != circular->tail;
+    *bytesRead     = 0;
     if (hadRecord)
     {
-        memcpy(data, circular->storage, circular->recordSize);
+        uint16_t header;
+        memcpy(&header, &circular->storage[circular->head], sizeof(header));
+        size_t recordSize = header;
+        memcpy(data, &circular->storage[circular->head + sizeof(header)], recordSize);
+        circular->head += sizeof(header) + recordSize;
+        *bytesRead = recordSize;
     }
     return hadRecord;
 }
@@ -58,7 +63,8 @@ static bool Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, siz
 static void Write(struct SolidSyslogBuffer* self, const void* data, size_t size)
 {
     struct SolidSyslogCircularBuffer* circular = (struct SolidSyslogCircularBuffer*) self;
-    memcpy(circular->storage, data, size);
-    circular->hasRecord  = true;
-    circular->recordSize = size;
+    uint16_t                          header   = (uint16_t) size;
+    memcpy(&circular->storage[circular->tail], &header, sizeof(header));
+    memcpy(&circular->storage[circular->tail + sizeof(header)], data, size);
+    circular->tail += sizeof(header) + size;
 }

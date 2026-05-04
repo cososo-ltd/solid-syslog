@@ -60,3 +60,26 @@ TEST(SolidSyslogCircularBuffer, SecondReadAfterSingleWriteReturnsFalse)
     SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
     CHECK_FALSE(SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize));
 }
+
+TEST(SolidSyslogCircularBuffer, TwoWritesReadInOrder)
+{
+    SolidSyslogBuffer_Write(buffer, "first", 5);
+    SolidSyslogBuffer_Write(buffer, "second", 6);
+    SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
+    MEMCMP_EQUAL("first", readData, 5);
+    SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
+    MEMCMP_EQUAL("second", readData, 6);
+}
+
+TEST(SolidSyslogCircularBuffer, ThreeWritesReadInOrder)
+{
+    SolidSyslogBuffer_Write(buffer, "alpha", 5);
+    SolidSyslogBuffer_Write(buffer, "bravo", 5);
+    SolidSyslogBuffer_Write(buffer, "charlie", 7);
+    SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
+    MEMCMP_EQUAL("alpha", readData, 5);
+    SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
+    MEMCMP_EQUAL("bravo", readData, 5);
+    SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
+    MEMCMP_EQUAL("charlie", readData, 7);
+}
