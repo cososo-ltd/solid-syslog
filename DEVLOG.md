@@ -2459,3 +2459,84 @@ the reality was 84 files with findings on the first run, dropping to
   headers; IWYU's strict purist rule is much narrower than human
   intuition. Lesson for future "small CI gate" stories: estimate by
   running the tool, not by reading the code.
+
+
+## 2026-05-04 — S04.05 Circular buffer with mutex injection
+
+### Decisions
+
+- **Drop-newest under back-pressure.** Originally the story body called
+  for drop-oldest plus a lost-message marker. Closing comment on S04.06
+  (#55) made that obsolete: gap detection on the receive side via
+  `origin sequenceId` covers loss visibility. Drop-newest is also what
+  `PosixMessageQueueBuffer` already does silently (`O_NONBLOCK` +
+  ignored `mq_send` return), so the two non-null buffer implementations
+  now share semantics. If a need for drop-oldest or halt at this layer
+  ever shows up, `SolidSyslogDiscardPolicy` from `BlockStore` is the
+  natural place to extend.
+
+- **No-split records on wrap.** When a record wouldn't fit between
+  `tail` and the storage end, the impl marks the unused tail with a
+  `wrapPoint` and writes the new record at index 0 — but only if the
+  pre-wrap unread region wouldn't be overwritten. Otherwise the write
+  is dropped. This keeps records contiguous, simplifies reasoning, and
+  bounded the wasted tail space at one record-worth. The trade-off
+  (a few bytes of waste at each wrap) is fine; if it ever matters we
+  can switch to modular indices without changing the public API.
+
+- **Drained-buffer reset.** When `head == tail` at a non-zero offset,
+  Write recycles to `head = tail = 0` before deciding whether to write.
+  This avoids dropping records that are smaller than `capacity` but
+  larger than the remaining tail space. Caught during ZOMBIES probing
+  before the test ever shipped — there was a state-space hole in the
+  initial overflow logic.
+
+- **`maxMessages` as the user-facing capacity unit.** The
+  `SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE` macro takes "max messages
+  at max size" rather than raw bytes. Friendlier than asking
+  integrators to multiply by `MAX_MESSAGE_SIZE + sizeof(uint16_t)`
+  themselves; matches the embedded "size for the worst case" mindset.
+
+- **Mutex vtable shape mirrors `SolidSyslogAtomicOps`** (`Lock(self)` /
+  `Unlock(self)` rather than the new `void* context` callback
+  convention) since a mutex naturally has state. `SolidSyslogNullMutex`
+  is the no-op default for single-task use; `SolidSyslogPosixMutex`
+  wraps `pthread_mutex_t`; `SolidSyslogWindowsMutex` wraps
+  `CRITICAL_SECTION`. Both platforms in scope so S13.18's BDD wiring
+  has both ready.
+
+- **Disable `clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling`
+  globally.** The rule recommends C11 Annex K (`memcpy_s` etc.) which
+  glibc doesn't ship. Every `memcpy`/`memset`/`strncpy` site in the
+  codebase already had a `NOLINTNEXTLINE` suppression — 21 in total.
+  When *every* hit is suppressed, the rule is doing zero discrimination.
+  Sanitizers and bounded-by-construction call sites are the real
+  defence. Added the rule to the negation list in `.clang-tidy` and
+  swept the 21 inline suppressions out.
+
+### Deferred
+
+- **Magic-numbers clang-tidy suppressions.** `.clang-tidy` also
+  disables `-readability-magic-numbers` and
+  `-cppcoreguidelines-avoid-magic-numbers`. The "no magic numbers"
+  preference David has been asking for in code reviews is the
+  opposite — re-enabling these rules might enforce that automatically.
+  Worth a separate discussion + cleanup PR after S04.05 lands.
+
+- **Atomics-based lock-free SPSC ring.** The original story body
+  mentioned "or atomics where available". A lock-free ring is a
+  substantially different design (writer doesn't wait, reader doesn't
+  wait, ABA hazards, etc.) and isn't needed by current targets.
+  Revisit under a future RTOS / lock-free epic if a real need emerges.
+
+- **Wiring the ring buffer through the BDD harness on Windows.** That
+  is S13.18 (#244), now unblocked.
+
+### Open questions
+
+- **Buffer sizing in the embedded use-case.** With `maxMessages = 1`
+  and `MAX_MESSAGE_SIZE = 2048`, the smallest buffer is ~2 KB plus
+  overhead. For very small targets that's significant. Could be
+  addressed later with a CMake cache variable for `MAX_MESSAGE_SIZE`
+  (already on the project memory backlog) or by relaxing the macro to
+  take an explicit byte count alongside the message count.

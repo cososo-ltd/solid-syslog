@@ -333,6 +333,12 @@ live under `Core/Interface/`; platform-specific helpers (the `SolidSyslogPosix*`
 | `SolidSyslogBufferDefinition.h` | Buffer implementors (extension point) | `SolidSyslogBuffer` vtable struct |
 | `SolidSyslogNullBuffer.h` | System setup code (single-task, no buffering) | `SolidSyslogNullBuffer_Create`, `_Destroy` |
 | `SolidSyslogPosixMessageQueueBuffer.h` | System setup code using POSIX message queue buffer | `SolidSyslogPosixMessageQueueBuffer_Create`, `_Destroy` |
+| `SolidSyslogCircularBuffer.h` | System setup code using an in-memory ring buffer (bare-metal / RTOS / Windows) | `SolidSyslogCircularBufferStorage`, `SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE(maxMessages)`, `SolidSyslogCircularBuffer_Create(storage, maxMessages, mutex)`, `_Destroy(buffer)` (length-prefixed records, drop-newest on overflow, no-split wrap) |
+| `SolidSyslogMutex.h` | Any code holding a mutex handle | `SolidSyslogMutex_Lock`, `_Unlock` |
+| `SolidSyslogMutexDefinition.h` | Mutex implementors (extension point) | `SolidSyslogMutex` vtable struct (`Lock`, `Unlock`) |
+| `SolidSyslogNullMutex.h` | System setup code (single-task, no synchronization) | `SolidSyslogNullMutex_Create`, `_Destroy` |
+| `SolidSyslogPosixMutex.h` | System setup code on POSIX targets needing thread-safe buffering | `SolidSyslogPosixMutexStorage`, `SOLIDSYSLOG_POSIXMUTEX_SIZE`, `SolidSyslogPosixMutex_Create(storage)`, `_Destroy(mutex)` (wraps `pthread_mutex_t`) |
+| `SolidSyslogWindowsMutex.h` | System setup code on Windows targets needing thread-safe buffering | `SolidSyslogWindowsMutexStorage`, `SOLIDSYSLOG_WINDOWSMUTEX_SIZE`, `SolidSyslogWindowsMutex_Create(storage)`, `_Destroy(mutex)` (wraps `CRITICAL_SECTION`) |
 | `SolidSyslogStore.h` | Library internals consuming a store (Service algorithm) and integrator code querying capacity | `SolidSyslogStore_Write`, `_ReadNextUnsent`, `_MarkSent`, `_HasUnsent`, `_IsHalted`, `_GetTotalBytes`, `_GetUsedBytes` |
 | `SolidSyslogStoreDefinition.h` | Store implementors (extension point) | `SolidSyslogStore` vtable struct (`Write`, `ReadNextUnsent`, `MarkSent`, `HasUnsent`, `IsHalted`, `GetTotalBytes`, `GetUsedBytes`) |
 | `SolidSyslogNullStore.h` | System setup code (no store-and-forward) | `SolidSyslogNullStore_Create`, `_Destroy` |
