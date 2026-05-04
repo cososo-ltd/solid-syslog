@@ -48,10 +48,14 @@ def before_all(context):
     # On the Windows runner the OTel oracle binds 127.0.0.1; on Linux the
     # example reaches syslog-ng via the docker compose service name. The
     # example reads SOLIDSYSLOG_BDD_TLS_HOST / _MTLS_HOST at startup and
-    # falls back to "syslog-ng" when unset.
+    # falls back to "syslog-ng" when unset. Use a truthiness check rather
+    # than setdefault so a pre-existing empty-string env var also gets
+    # the loopback default — empty would otherwise pass through and break
+    # name resolution.
     if context.oracle_format == "otel-jsonl":
-        os.environ.setdefault("SOLIDSYSLOG_BDD_TLS_HOST", "127.0.0.1")
-        os.environ.setdefault("SOLIDSYSLOG_BDD_MTLS_HOST", "127.0.0.1")
+        for key in ("SOLIDSYSLOG_BDD_TLS_HOST", "SOLIDSYSLOG_BDD_MTLS_HOST"):
+            if not os.environ.get(key):
+                os.environ[key] = "127.0.0.1"
 
 
 def after_scenario(context, scenario):

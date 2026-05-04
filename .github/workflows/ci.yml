@@ -120,6 +120,19 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
+      # Cache vcpkg's classic-mode installed tree across runs and branches.
+      # x-gha (above) is per-workflow scope and goes cold on a fresh branch;
+      # actions/cache survives across branches with a static key. Bump the
+      # `v1` suffix to force a rebuild (e.g. when adding a package).
+      # C:\vcpkg is the standard VCPKG_INSTALLATION_ROOT on github-hosted
+      # windows runners — hardcoded here so the cache step doesn't depend
+      # on a runner-image-set env var (the linter can't see those).
+      - name: Cache vcpkg installed tree
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: ${{ runner.os }}-vcpkg-cpputest-openssl-v1
+
       - name: Install CppUTest and OpenSSL
         run: |
           vcpkg install cpputest openssl
@@ -442,6 +455,14 @@ jobs:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      # Same cache as integration-windows-openssl — both jobs share one
+      # entry. See that job's comment for rationale and key-bump policy.
+      - name: Cache vcpkg installed tree
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: ${{ runner.os }}-vcpkg-cpputest-openssl-v1
 
       - name: Install CppUTest and OpenSSL
         run: |

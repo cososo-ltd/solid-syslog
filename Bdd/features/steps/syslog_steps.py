@@ -489,11 +489,16 @@ def step_syslog_ng_is_running(context):
     # Linux: all four transports. Windows OTel: tls + mtls only (udp/tcp
     # share received.jsonl on Windows so the per-transport step would be
     # ambiguous; SwitchingSender stays Linux-only via @buffered for now).
+    # Count logical records (not file lines) so the OTel file exporter's
+    # batched-into-one-line behaviour is handled correctly when several
+    # messages arrive close together.
     context.lines_before_per_transport = {}
     table = (PER_TRANSPORT_LOG_OTEL if context.oracle_format == "otel-jsonl"
              else PER_TRANSPORT_LOG_SYSLOG_NG)
     for transport, path in table.items():
-        context.lines_before_per_transport[transport] = line_count(path)
+        context.lines_before_per_transport[transport] = oracle_record_count(
+            path, context.oracle_format
+        )
 
 
 def build_threaded_command(context, transport, no_sd=False):
@@ -1175,13 +1180,13 @@ def step_client_switches_transport(context, transport):
 
 
 def wait_for_per_transport_messages(context, transport, expected):
-    """Wait for `expected` new lines to appear in the per-transport oracle."""
+    """Wait for `expected` new logical records in the per-transport oracle."""
     path = per_transport_log(context, transport)
     baseline = context.lines_before_per_transport.get(transport, 0)
     deadline = time.monotonic() + 5
-    while line_count(path) - baseline < expected:
+    while oracle_record_count(path, context.oracle_format) - baseline < expected:
         if time.monotonic() > deadline:
-            actual = line_count(path) - baseline
+            actual = oracle_record_count(path, context.oracle_format) - baseline
             raise AssertionError(
                 f"{path} received {actual} of {expected} messages within 5 seconds"
             )
@@ -1194,7 +1199,7 @@ def step_check_per_transport_count(context, count, transport):
     wait_for_per_transport_messages(context, transport, count)
     path = per_transport_log(context, transport)
     baseline = context.lines_before_per_transport.get(transport, 0)
-    actual = line_count(path) - baseline
+    actual = oracle_record_count(path, context.oracle_format) - baseline
     assert actual == count, (
         f"Expected {count} {transport} message(s), got {actual} in {path}"
     )
