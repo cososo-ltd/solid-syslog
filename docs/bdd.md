@@ -123,7 +123,7 @@ etc.) without rewriting feature tags.
 | `@tcp` | Needs TCP transport (RFC 6587 framing) |
 | `@tls` | Needs TLS transport (RFC 5425, server-auth) |
 | `@mtls` | Needs mutual TLS (client cert + key) |
-| `@buffered` | Drives the long-running threaded example (interactive process protocol — buffer + service thread; transitively covers store-and-forward, oracle reload, signal-kill scenarios) |
+| `@buffered` | Needs a Linux-only buffered example capability beyond a basic ring buffer + service thread — file-backed block store, switching sender between transports, TLS / mTLS, or syslog-ng reload via the UNIX control socket. The cross-platform "single message via UDP/TCP through a real buffer" path is *not* `@buffered` post-S13.18 — `buffered.feature` and `tcp_transport.feature` exercise it on both runners. |
 
 Two rollout markers are also used (temporary; remove once the scenario passes):
 

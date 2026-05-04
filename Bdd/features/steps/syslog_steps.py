@@ -1,11 +1,13 @@
 import glob
 import json
 import os
+import queue
 import re
 import shutil
 import signal
 import socket
 import subprocess
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -257,11 +259,44 @@ def parse_oracle_line(line, oracle_format):
     return parse_syslog_ng_line(line)
 
 
-def wait_for_prompt(process, timeout=30):
-    """Read stdout until we see 'SolidSyslog> ', confirming the command completed."""
-    import select
+def _start_stdout_reader(process):
+    """Start a daemon thread that reads process.stdout byte-by-byte into a queue.
 
+    The select.select-based read pattern this replaces only worked on POSIX
+    pipe fds. The thread + queue pattern is portable across POSIX and Windows
+    so the prompt protocol can drive both the Linux Threaded example and the
+    Windows buffered example. Idempotent — only starts the thread once per
+    process.
+    """
+    if hasattr(process, "_solidsyslog_byte_queue"):
+        return
+
+    process._solidsyslog_byte_queue = queue.Queue()
     fd = process.stdout.fileno()
+
+    def _reader():
+        try:
+            while True:
+                data = os.read(fd, 1)
+                if not data:
+                    break
+                process._solidsyslog_byte_queue.put(data)
+        finally:
+            process._solidsyslog_byte_queue.put(None)
+
+    threading.Thread(target=_reader, daemon=True).start()
+
+
+def wait_for_prompt(process, timeout=30):
+    """Read stdout until we see 'SolidSyslog> ', confirming the command completed.
+
+    Portable across POSIX and Windows: a daemon thread (started lazily by
+    _start_stdout_reader) reads stdout byte-by-byte into a queue; this function
+    pulls bytes off the queue with a per-iteration timeout so the deadline is
+    honoured even on platforms where select.select can't monitor pipe fds.
+    """
+    _start_stdout_reader(process)
+
     output = b""
     deadline = time.monotonic() + timeout
     while True:
@@ -271,11 +306,11 @@ def wait_for_prompt(process, timeout=30):
                 f"Timed out waiting for prompt after {timeout}s. "
                 f"Output so far: {output.decode(errors='replace')}"
             )
-        ready, _, _ = select.select([fd], [], [], min(remaining, 0.5))
-        if not ready:
+        try:
+            data = process._solidsyslog_byte_queue.get(timeout=min(remaining, 0.5))
+        except queue.Empty:
             continue
-        data = os.read(fd, 1)
-        if not data:
+        if data is None:
             break
         output += data
         if output.endswith(b"SolidSyslog> "):
@@ -313,62 +348,35 @@ def wait_for_messages(context, expected_messages):
 
 
 def run_example(context, extra_args=None, binary=None, expected_messages=1):
-    """Run the single-task example as a one-shot: write all stdin upfront,
-    wait for clean exit, then assert the oracle saw the messages.
+    """Run the example via the prompt protocol — works for both NullBuffer
+    (synchronous send, Linux SingleTask) and CircularBuffer + service thread
+    (asynchronous, Windows buffered example post-S13.18).
 
-    Portable across Linux and Windows — no select.select on a pipe fd (which
-    Windows doesn't support). Single-task example only: every Log call is
-    synchronous (NullBuffer + Datagram), so "quit" cannot arrive before the
-    UDP packets have left the socket.
+    The pre-S13.18 implementation wrote `send N\\nquit\\n` upfront via
+    process.communicate() and relied on NullBuffer's synchronous Send to
+    guarantee delivery before exit. That assumption broke on Windows once
+    SolidSyslogExample.exe became buffered — `quit` could land before the
+    service thread had drained, losing the UDP packet. The prompt protocol
+    coordinates around it: wait for the oracle to confirm receipt before
+    sending `quit`.
     """
     binary = binary or context.example_binary
-    assert os.path.exists(binary), (
-        f"Example binary not found at {binary} — build with cmake first"
-    )
-
-    # Windows CreateProcess needs an absolute path (or one resolvable via PATH);
-    # forward-slash relative paths from a bash-launched behave fail otherwise.
-    cmd = [os.path.abspath(binary)]
-    if extra_args:
-        cmd.extend(extra_args)
-
-    process = subprocess.Popen(
-        cmd,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    context.example_pid = process.pid
-
-    try:
-        process.communicate(input=f"send {expected_messages}\nquit\n", timeout=15)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait()
-        raise
-
-    assert process.returncode == 0, (
-        f"Example binary failed with exit code {process.returncode}"
-    )
-
-    wait_for_messages(context, expected_messages)
+    _run_with_prompt_protocol(context, binary, "Example", extra_args, expected_messages)
 
 
-def run_threaded_example(context, extra_args=None, expected_messages=1):
-    """Run the threaded example using the prompt-based protocol so that the
-    service thread has time to drain the buffer between "send N" and "quit".
+def _run_with_prompt_protocol(context, binary, label, extra_args, expected_messages):
+    """Run a binary that speaks the SolidSyslog> prompt protocol.
 
-    POSIX-only — uses select.select on a pipe fd, which Windows does not
-    support. All threaded scenarios are tagged @buffered and excluded from
-    the Windows runner.
+    Shared body for run_threaded_example (Linux pthread binary) and
+    run_buffered_example (cross-platform — Linux pthread or Windows Win32
+    threaded). The protocol is: wait initial prompt, send "send N", wait
+    next prompt, wait until oracle has confirmed N messages, then "quit".
     """
-    binary = THREADED_BINARY
     assert os.path.exists(binary), (
-        f"Threaded binary not found at {binary} — build with cmake first"
+        f"{label} binary not found at {binary} — build with cmake first"
     )
 
-    cmd = [os.path.join(".", binary)]
+    cmd = [os.path.abspath(binary)]
     if extra_args:
         cmd.extend(extra_args)
 
@@ -390,7 +398,7 @@ def run_threaded_example(context, extra_args=None, expected_messages=1):
         process.stdin.flush()
         process.wait(timeout=10)
         assert process.returncode == 0, (
-            f"Threaded example failed with exit code {process.returncode}"
+            f"{label} failed with exit code {process.returncode}"
         )
     finally:
         # Don't let an intermediate exception leak the helper into later
@@ -398,6 +406,31 @@ def run_threaded_example(context, extra_args=None, expected_messages=1):
         if process.poll() is None:
             process.kill()
             process.wait(timeout=5)
+
+
+def run_threaded_example(context, extra_args=None, expected_messages=1):
+    """Run the Linux pthread-driven Threaded example via the prompt protocol.
+    Used for features that are pthread-specific (file store, switching,
+    syslog-ng reload), which stay Linux-only and keep "the threaded example"
+    prose in their .feature files.
+    """
+    _run_with_prompt_protocol(
+        context, THREADED_BINARY, "Threaded example", extra_args, expected_messages
+    )
+
+
+def run_buffered_example(context, extra_args=None, expected_messages=1):
+    """Run the buffered example via the prompt protocol — cross-platform.
+
+    Linux runner (syslog-ng oracle): the pthread-driven Threaded example.
+    Windows runner (OTel oracle): the Win32-thread-driven example wired by
+    S13.18 — context.example_binary already points at it. Lets the same
+    .feature scenario exercise the buffering path on both runners.
+    """
+    binary = THREADED_BINARY if context.oracle_format == "syslog-ng" else context.example_binary
+    _run_with_prompt_protocol(
+        context, binary, "Buffered example", extra_args, expected_messages
+    )
 
 
 def syslog_ng_reload():
@@ -666,6 +699,21 @@ def step_threaded_sends_with_transport(context, transport):
 @when("the threaded example sends {count:d} syslog messages")
 def step_threaded_sends_multiple(context, count):
     run_threaded_example(context, expected_messages=count)
+
+
+@when("the buffered example sends a syslog message")
+def step_buffered_sends_message(context):
+    run_buffered_example(context)
+
+
+@when("the buffered example sends a syslog message with transport {transport}")
+def step_buffered_sends_with_transport(context, transport):
+    run_buffered_example(context, ["--transport", transport])
+
+
+@when("the buffered example sends {count:d} syslog messages")
+def step_buffered_sends_multiple(context, count):
+    run_buffered_example(context, expected_messages=count)
 
 
 @when("the example program sends a message with facility {facility:d} and severity {severity:d}")

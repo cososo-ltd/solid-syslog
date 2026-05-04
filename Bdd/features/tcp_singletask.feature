@@ -1,12 +1,11 @@
-@tcp
+@tcp @windows_wip
 Feature: TCP message delivery (single-task example)
-  The single-task example sends messages via TCP transport with RFC
-  6587 octet-counting framing. Companion to the @buffered
-  tcp_transport.feature (which exercises the threaded example) — this
-  one is the runner-agnostic version: it runs on bdd-linux-syslog-ng
-  via syslog-ng's TCP listener and on bdd-windows-otel via the OTel
-  Collector's TCP receiver. Together they validate Windows TCP
-  end-to-end (S13.10).
+  The Linux single-task example (NullBuffer, synchronous send) sends
+  messages via TCP transport with RFC 6587 octet-counting framing.
+  Linux-only post-S13.18 — Windows TCP coverage now comes from
+  tcp_transport.feature via the buffered example. The single-task
+  binary remains valuable as a bare-metal model on Linux: it pins
+  the synchronous-send path with no service thread.
 
   Scenario: Single-task message delivered over TCP
     Given syslog-ng is running

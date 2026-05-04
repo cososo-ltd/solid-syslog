@@ -42,8 +42,11 @@ if(SOLIDSYSLOG_POSIX)
         target_link_libraries(SolidSyslogThreadedExample PRIVATE OpenSSL::SSL OpenSSL::Crypto)
     endif()
 elseif(SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM)
-    # Windows example: NullBuffer + Winsock UDP + Windows clock/hostname/process-id.
-    # Output binary is named SolidSyslogExample.exe so BDD scenarios remain platform-agnostic.
+    # Windows example: CircularBuffer + WindowsMutex driven by a Win32 service
+    # thread, mirroring the Linux Threaded example so BDD scenarios that
+    # exercise the buffering path run on both runners. Winsock UDP/TCP +
+    # Windows clock/hostname/process-id. Output binary is named
+    # SolidSyslogExample.exe so BDD scenarios remain platform-agnostic.
     add_executable(SolidSyslogWindowsExample
         Windows/main.c
         Windows/SolidSyslogWindowsExample.c
@@ -52,6 +55,7 @@ elseif(SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM)
         Common/ExampleInteractive.c
         Common/ExampleIps.c
         Common/ExampleLanguage.c
+        Common/ExampleServiceThread.c
     )
     set_target_properties(SolidSyslogWindowsExample PROPERTIES OUTPUT_NAME "SolidSyslogExample")
     target_link_libraries(SolidSyslogWindowsExample PRIVATE ${PROJECT_NAME})

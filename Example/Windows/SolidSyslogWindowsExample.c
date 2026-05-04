@@ -4,14 +4,15 @@
 #include "ExampleInteractive.h"
 #include "ExampleIps.h"
 #include "ExampleLanguage.h"
+#include "ExampleServiceThread.h"
 #include "ExampleWindowsCommandLine.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
+#include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogMetaSd.h"
-#include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogTimeQualitySd.h"
@@ -21,26 +22,42 @@
 #include "SolidSyslogWindowsAtomicOps.h"
 #include "SolidSyslogWindowsClock.h"
 #include "SolidSyslogWindowsHostname.h"
+#include "SolidSyslogWindowsMutex.h"
 #include "SolidSyslogWindowsProcessId.h"
 #include "SolidSyslogWindowsSysUpTime.h"
 #include "SolidSyslogWinsockDatagram.h"
 #include "SolidSyslogWinsockResolver.h"
 #include "SolidSyslogWinsockTcpStream.h"
 
+#include <process.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <winsock2.h>
+// windows.h must follow winsock2.h to avoid winsock1/2 declaration conflicts
+#include <windows.h>
 
 enum
 {
     /* Unprivileged mirror of SOLIDSYSLOG_UDP_DEFAULT_PORT (514) /
        SOLIDSYSLOG_TCP_DEFAULT_PORT (601). The BDD oracle listens on both
        UDP and TCP at 5514. */
-    EXAMPLE_PORT = 5514
+    EXAMPLE_PORT            = 5514,
+    EXAMPLE_BUFFER_MESSAGES = 10
 };
 
 static SolidSyslogWinsockTcpStreamStorage tcpStreamStorage;
 static SolidSyslogStreamSenderStorage     tcpSenderStorage;
+static SolidSyslogCircularBufferStorage   bufferStorage[SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE(EXAMPLE_BUFFER_MESSAGES)];
+static SolidSyslogWindowsMutexStorage     mutexStorage;
+static volatile bool                      shutdownFlag;
+
+// NOLINTNEXTLINE(readability-non-const-parameter) -- _beginthreadex thread-entry signature requires void*
+static unsigned __stdcall ServiceThreadEntry(void* arg)
+{
+    ExampleServiceThread_Run((volatile bool*) arg);
+    return 0;
+}
 
 static const char* GetHost(void)
 {
@@ -102,7 +119,8 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
             .resolver = resolver, .datagram = datagram, .endpoint = GetEndpoint, .endpointVersion = GetEndpointVersion};
         sender = SolidSyslogUdpSender_Create(&udpConfig);
     }
-    struct SolidSyslogBuffer*        buffer     = SolidSyslogNullBuffer_Create(sender);
+    struct SolidSyslogMutex*         mutex      = SolidSyslogWindowsMutex_Create(&mutexStorage);
+    struct SolidSyslogBuffer*        buffer     = SolidSyslogCircularBuffer_Create(bufferStorage, sizeof(bufferStorage), mutex);
     struct SolidSyslogStore*         store      = SolidSyslogNullStore_Create();
     struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create(SolidSyslogWindowsAtomicOps_Create());
     struct SolidSyslogMetaSdConfig   metaConfig = {
@@ -125,7 +143,7 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
 
     struct SolidSyslogConfig config = {
         .buffer       = buffer,
-        .sender       = NULL,
+        .sender       = sender,
         .clock        = SolidSyslogWindowsClock_GetTimestamp,
         .getHostname  = SolidSyslogWindowsHostname_Get,
         .getAppName   = ExampleAppName_Get,
@@ -136,6 +154,9 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
     };
     SolidSyslog_Create(&config);
 
+    shutdownFlag         = false;
+    HANDLE serviceThread = (HANDLE) _beginthreadex(NULL, 0, ServiceThreadEntry, (void*) &shutdownFlag, 0, NULL);
+
     struct SolidSyslogMessage message = {
         .facility  = options.facility,
         .severity  = options.severity,
@@ -145,6 +166,10 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
 
     ExampleInteractive_Run(&message, stdin, NULL);
 
+    shutdownFlag = true;
+    WaitForSingleObject(serviceThread, INFINITE);
+    CloseHandle(serviceThread);
+
     SolidSyslog_Destroy();
     SolidSyslogOriginSd_Destroy();
     SolidSyslogTimeQualitySd_Destroy();
@@ -152,7 +177,8 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
     SolidSyslogAtomicCounter_Destroy();
     SolidSyslogWindowsAtomicOps_Destroy();
     SolidSyslogNullStore_Destroy();
-    SolidSyslogNullBuffer_Destroy();
+    SolidSyslogCircularBuffer_Destroy(buffer);
+    SolidSyslogWindowsMutex_Destroy(mutex);
     if (options.transport == SOLIDSYSLOG_TRANSPORT_TCP)
     {
         SolidSyslogStreamSender_Destroy(sender);
