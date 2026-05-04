@@ -272,17 +272,21 @@ static inline bool ExceedsMaxBlocks(const struct BlockSequence* blockSequence)
 
 static bool DiscardOldestBlock(struct BlockSequence* blockSequence)
 {
-    bool readingOldestBlock = (blockSequence->readSequence == blockSequence->oldestSequence);
+    bool readBlockChanged = false;
 
-    SolidSyslogBlockDevice_Dispose(blockSequence->blockDevice, blockSequence->oldestSequence);
-    blockSequence->oldestSequence = NextSequence(blockSequence->oldestSequence);
-
-    if (readingOldestBlock)
+    if (SolidSyslogBlockDevice_Dispose(blockSequence->blockDevice, blockSequence->oldestSequence))
     {
-        ResetReadToOldest(blockSequence);
+        bool readingOldestBlock       = (blockSequence->readSequence == blockSequence->oldestSequence);
+        blockSequence->oldestSequence = NextSequence(blockSequence->oldestSequence);
+
+        if (readingOldestBlock)
+        {
+            ResetReadToOldest(blockSequence);
+            readBlockChanged = true;
+        }
     }
 
-    return readingOldestBlock;
+    return readBlockChanged;
 }
 
 static void ResetReadToOldest(struct BlockSequence* blockSequence)

@@ -60,6 +60,7 @@ struct FileFake
     bool                   failNextOpen;
     bool                   failNextWrite;
     bool                   failNextRead;
+    bool                   failNextDelete;
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(sizeof(struct FileFake) == sizeof(struct FileFakeStorage), "FileFakeStorage size does not match struct FileFake");
@@ -163,6 +164,16 @@ void FileFake_FailNextRead(struct SolidSyslogFile* file)
         return;
     }
     AsFake(file)->failNextRead = true;
+}
+
+void FileFake_FailNextDelete(struct SolidSyslogFile* file)
+{
+    if (file == NULL)
+    {
+        TestAssert_Fail("FileFake_FailNextDelete called with null file");
+        return;
+    }
+    AsFake(file)->failNextDelete = true;
 }
 
 /* ------------------------------------------------------------------
@@ -456,7 +467,13 @@ static bool FileFake_Exists(struct SolidSyslogFile* self, const char* path)
 
 static bool FileFake_Delete(struct SolidSyslogFile* self, const char* path)
 {
-    (void) self;
+    struct FileFake* fake = AsFake(self);
+
+    if (ShouldFailOnThisCall(&fake->failNextDelete))
+    {
+        return false;
+    }
+
     struct FileEntry* entry = FindEntry(path);
     bool              found = FoundEntry(entry);
 
