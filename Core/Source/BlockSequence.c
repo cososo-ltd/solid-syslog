@@ -254,6 +254,13 @@ static bool RotateToNextBlock(struct BlockSequence* blockSequence, bool* readBlo
         {
             *readBlockChanged = DiscardOldestBlock(blockSequence);
         }
+
+        /* Sealing the prior write block can re-arm dispose-on-empty: drain that
+         * fully MarkSent the block before rotation could not fire here because
+         * IsReadBlockActiveWrite was true at MarkSent time. Re-evaluate now. */
+        bool disposedAfterRotate = false;
+        BlockSequence_DisposeReadBlockIfDrained(blockSequence, &disposedAfterRotate);
+        *readBlockChanged = *readBlockChanged || disposedAfterRotate;
     }
 
     return acquired;

@@ -1285,6 +1285,28 @@ TEST(SolidSyslogBlockStoreRotation, MarkSentDoesNotDisposeActiveWriteBlock)
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
 }
 
+TEST(SolidSyslogBlockStoreRotation, RotationDisposesPriorBlockWhenAlreadyDrained)
+{
+    /* Interleaved drain pattern: MarkSent fires for the only record in block 00
+     * while it is still the active write block, so dispose-on-empty cannot fire
+     * yet. The trigger must re-evaluate after the next Write rotates writeSequence
+     * to 01 — otherwise the just-filled-and-drained block lingers until capacity
+     * pressure forces discard. This pattern is what the threaded service thread
+     * does in practice. */
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+
+    WriteMaxMsg();
+    char   buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+
+    WriteMaxMsg(); /* triggers rotation; block 00 becomes non-active */
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+}
+
 TEST(SolidSyslogBlockStoreRotation, WriteReturnsFalseWhenRotationAcquireFails)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);

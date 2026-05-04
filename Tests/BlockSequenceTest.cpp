@@ -1,3 +1,4 @@
+#include <map>
 #include <set>
 #include <vector>
 
@@ -32,6 +33,7 @@ struct ScanFake
     struct SolidSyslogBlockDevice base;
     std::set<size_t>*             existing;
     std::vector<DeviceCall>*      calls; /* optional — tests that don't care leave nullptr */
+    std::map<size_t, size_t>*     sizes; /* optional — tests that need realistic Size readings populate */
 };
 
 inline ScanFake& ToFake(struct SolidSyslogBlockDevice* self)
@@ -60,6 +62,10 @@ bool FakeAcquire(struct SolidSyslogBlockDevice* self, size_t blockIndex)
     ScanFake& fake = ToFake(self);
     RecordCall(fake, CallType::Acquire, blockIndex);
     fake.existing->insert(blockIndex);
+    if (fake.sizes != nullptr)
+    {
+        (*fake.sizes)[blockIndex] = 0;
+    }
     return true;
 }
 
@@ -68,6 +74,10 @@ bool FakeDispose(struct SolidSyslogBlockDevice* self, size_t blockIndex)
     ScanFake& fake = ToFake(self);
     RecordCall(fake, CallType::Dispose, blockIndex);
     fake.existing->erase(blockIndex);
+    if (fake.sizes != nullptr)
+    {
+        fake.sizes->erase(blockIndex);
+    }
     return true;
 }
 
@@ -104,9 +114,19 @@ bool FakeWriteAt(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t 
 
 size_t FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex)
 {
-    (void) self;
-    (void) blockIndex;
-    return 0;
+    const ScanFake& fake = ToFake(self);
+    size_t          size = 0;
+
+    if (fake.sizes != nullptr)
+    {
+        auto it = fake.sizes->find(blockIndex);
+        if (it != fake.sizes->end())
+        {
+            size = it->second;
+        }
+    }
+
+    return size;
 }
 } // namespace
 
@@ -195,9 +215,12 @@ enum
 // clang-format off
 TEST_GROUP(BlockSequenceRotation)
 {
+    static const size_t SIMULATED_RECORD_SIZE = 50;
+
     ScanFake fakeDevice = {};
     std::set<size_t> existing;
     std::vector<DeviceCall> calls;
+    std::map<size_t, size_t> sizes;
     struct BlockSequence sequence = {};
 
     void setup() override
@@ -210,8 +233,9 @@ TEST_GROUP(BlockSequenceRotation)
         fakeDevice.base.WriteAt = FakeWriteAt;
         fakeDevice.base.Size    = FakeSize;
         fakeDevice.existing     = &existing;
-        // cppcheck-suppress unreadVariable -- read indirectly via Fake* functions; cppcheck does not model the function-pointer indirection
         fakeDevice.calls        = &calls;
+        // cppcheck-suppress unreadVariable -- read indirectly via FakeSize; cppcheck does not model the function-pointer indirection
+        fakeDevice.sizes        = &sizes;
 
         struct BlockSequenceConfig config = {};
         config.blockDevice                = &fakeDevice.base;
@@ -221,6 +245,11 @@ TEST_GROUP(BlockSequenceRotation)
         BlockSequence_Init(&sequence, &config);
 
         BlockSequence_Open(&sequence); /* cold start: Acquire(0) */
+        /* Simulate one record's worth of data in block 0 — production rotation
+         * never seals an empty block, and the dispose-on-empty trigger uses
+         * device.Size to decide drained-ness. */
+        BlockSequence_NoteRecordWritten(&sequence, SIMULATED_RECORD_SIZE);
+        sizes[BlockSequence_WriteSequence(&sequence)] = SIMULATED_RECORD_SIZE;
         calls.clear();
     }
 
