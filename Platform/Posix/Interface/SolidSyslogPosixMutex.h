@@ -3,7 +3,6 @@
 
 #include "ExternC.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
 EXTERN_C_BEGIN

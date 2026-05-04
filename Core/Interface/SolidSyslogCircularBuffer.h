@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "SolidSyslog.h"
+#include "SolidSyslog.h"  // IWYU pragma: keep -- macro expands to SOLIDSYSLOG_MAX_MESSAGE_SIZE at user call sites
 
 EXTERN_C_BEGIN
 
