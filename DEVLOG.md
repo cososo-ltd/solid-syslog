@@ -2373,3 +2373,89 @@ slice-by-slice review.
   function be the only "disabled" signal?** Spec mandates both work,
   so I implemented both. Worth a future review pass — the dual-disable
   surface is a small foot-gun.
+
+## 2026-05-04 — S24.01 IWYU CI gate
+
+Landed the include-what-you-use gate as a CI-friendly preset, then ran
+the apply over the whole tree as a discovery exercise. The story body
+predicted "single-digit pragmas needed" based on a pre-flight audit;
+the reality was 84 files with findings on the first run, dropping to
+77 after the project filter. That triggered a rethink mid-stream.
+
+### Decisions
+
+- **IWYU lives in the clang container, not the gcc container.** IWYU
+  is a Clang library tool — building it from source against clang-19
+  in `CppUTestDockerClang` was one extra apt line plus a small build
+  block. Putting it in the gcc image would have meant ~250 MB of LLVM
+  dev headers in a container whose identity is GCC. Compile commands
+  also line up cleanly when IWYU and the actual compiler are both
+  clang.
+- **Custom target driven by `iwyu_tool.py`, not the CMake launcher.**
+  CMake's `CMAKE_<LANG>_INCLUDE_WHAT_YOU_USE` launcher mechanism
+  intentionally ignores IWYU's exit code (a 3.11 design choice), so
+  `--error` doesn't fail the build through it. Driving via
+  `iwyu_tool.py` piped to a project filter keeps the non-zero-on-
+  finding contract intact and lets the filter be the authoritative
+  gate.
+- **Per-target scope (Core, Platform, Example, Tests) — but not Bdd.**
+  Story body said Tests/ was out of scope, but narrowing public
+  headers immediately exposed test code that was relying on transitive
+  includes; the same hygiene rule has to hold there or the gate keeps
+  tripping consumers. Bdd/ remains out of scope (it's not in
+  `compile_commands.json` anyway).
+- **Project filter drops three classes of finding IWYU gets wrong:**
+  redundant `struct Foo;` forward-decls (kept for MISRA/readability —
+  the in-struct auto-declaration trick is too obscure), `<stdbool.h>`
+  removals on dual-language C+C++ headers (IWYU only sees the C++
+  side), and `CppUTest/TestHarness.h` removals (IWYU doesn't model
+  `TEST(...)` macro expansion). Each rule is documented inline in
+  `scripts/iwyu_filter.py` with the rationale.
+- **Custom CppUTest mapping (`cmake/cpputest.imp`) directs IWYU to
+  suggest the public `TestHarness.h` umbrella over the internal
+  headers.** Without this, IWYU was asking tests to include
+  `<UtestMacros.h>` directly, which broke the project's CppUTest
+  convention.
+- **Disabled `modernize-deprecated-headers` in `.clang-tidy`.** IWYU
+  natively suggests `<stdint.h>` (the C-style names), which is right
+  for a C library; clang-tidy's modernize rule was demanding `<cstdint>`
+  in C++ test code. For an embedded-friendly C library these two
+  tools were fighting each other; resolving in IWYU's favour matches
+  the library's identity.
+- **Two pragmas added, both for genuinely dual-language headers.**
+  `Tests/Support/OpenSslFake.h` keeps `<stdbool.h>`; `Tests/TestUtils.h`
+  has the CppUTest include relocated inside `#ifdef __cplusplus`. Each
+  has an inline comment explaining why.
+- **`fix_includes.py` blank-line bug.** It inserted 1021 spurious
+  blank lines between `TEST(...)` macros and their `{` body across 46
+  test files. clang-format treated both forms as fixed points so
+  neither tool surfaced it. Stripped via a small Python script.
+- **Two-PR strategy for branch protection.** This PR lands the gate
+  and the cleanup but does **not** make `analyze-iwyu` a required
+  status check. Doing so would block any in-flight PR (no in-flight
+  PR has been through `iwyu-apply`). The follow-up PR flips it on
+  branch protection.
+
+### Deferred
+
+- **`analyze-iwyu` as a required status check** — separate small PR
+  after this one merges and any in-flight PRs land.
+- **Container image bump in this clone.** The active feature-work
+  clone is using `cpputest-clang:sha-0385cea` via docker-compose; not
+  bumping the SHA here keeps that stable. The CI workflow change to
+  add `analyze-iwyu` will pin the new clang-container SHA at the same
+  time.
+- **Whether to switch the default devcontainer from gcc to clang** —
+  raised in conversation, deferred. Modest lean toward keeping gcc as
+  default (target deployment compilers are gcc-derived for embedded);
+  the cleaner cleanup would be slimming each container to a single
+  identity (gcc + cppcheck + coverage; clang + LLVM tooling). Worth
+  a separate epic when ready.
+
+### Open questions
+
+- **Audit fidelity.** The story body's "single-digit pragmas" estimate
+  was wrong by an order of magnitude. The audit was done by reading
+  headers; IWYU's strict purist rule is much narrower than human
+  intuition. Lesson for future "small CI gate" stories: estimate by
+  running the tool, not by reading the code.
