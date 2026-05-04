@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "SolidSyslog.h"
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogMacros.h"
 #include "SolidSyslogMutex.h"
@@ -43,13 +42,13 @@ static inline void ConsumeWrapMarker(struct SolidSyslogCircularBuffer* circular)
 static inline void StoreRecord(struct SolidSyslogCircularBuffer* circular, const void* data, size_t size);
 static inline void LoadRecord(struct SolidSyslogCircularBuffer* circular, void* data, size_t* bytesRead);
 
-struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(SolidSyslogCircularBufferStorage* storage, size_t maxMessages, struct SolidSyslogMutex* mutex)
+struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(SolidSyslogCircularBufferStorage* storage, size_t storageBytes, struct SolidSyslogMutex* mutex)
 {
     struct SolidSyslogCircularBuffer* circular = (struct SolidSyslogCircularBuffer*) storage;
     circular->base.Read                        = Read;
     circular->base.Write                       = Write;
     circular->mutex                            = mutex;
-    circular->capacity                         = maxMessages * (SOLIDSYSLOG_MAX_MESSAGE_SIZE + HEADER_BYTES);
+    circular->capacity                         = storageBytes - sizeof(struct SolidSyslogCircularBuffer);
     ResetToStart(circular);
     return &circular->base;
 }

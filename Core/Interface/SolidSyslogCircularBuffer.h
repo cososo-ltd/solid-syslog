@@ -20,12 +20,15 @@ EXTERN_C_BEGIN
     };
 
 /* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- cannot compute array size as a constexpr in C */
-#define SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE(maxMessages)                                                                                               \
-    (SOLIDSYSLOG_CIRCULARBUFFER_OVERHEAD +                                                                                                                 \
-     (((size_t) (maxMessages) * (SOLIDSYSLOG_MAX_MESSAGE_SIZE + SOLIDSYSLOG_CIRCULARBUFFER_HEADER_BYTES) + sizeof(SolidSyslogCircularBufferStorage) - 1) / \
-      sizeof(SolidSyslogCircularBufferStorage)))
+#define SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE_BYTES(ringBytes)                                                                                              \
+    (SOLIDSYSLOG_CIRCULARBUFFER_OVERHEAD +                                                                                                                    \
+     (((ringBytes) + sizeof(SolidSyslogCircularBufferStorage) - 1) / sizeof(SolidSyslogCircularBufferStorage)))
 
-    struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(SolidSyslogCircularBufferStorage * storage, size_t maxMessages, struct SolidSyslogMutex* mutex);
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- cannot compute array size as a constexpr in C */
+#define SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE(maxMessages) \
+    SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE_BYTES((size_t) (maxMessages) * (SOLIDSYSLOG_MAX_MESSAGE_SIZE + SOLIDSYSLOG_CIRCULARBUFFER_HEADER_BYTES))
+
+    struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(SolidSyslogCircularBufferStorage * storage, size_t storageBytes, struct SolidSyslogMutex* mutex);
     void                      SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer * buffer);
 
 EXTERN_C_END
