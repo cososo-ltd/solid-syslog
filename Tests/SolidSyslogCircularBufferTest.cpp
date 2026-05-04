@@ -1,27 +1,34 @@
 #include <cstring>
 
 #include "CppUTest/TestHarness.h"
+#include "SolidSyslog.h"
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogCircularBuffer.h"
+
+enum
+{
+    TEST_MAX_MESSAGES = 1
+};
 
 // clang-format off
 TEST_GROUP(SolidSyslogCircularBuffer)
 {
+    SolidSyslogCircularBufferStorage storage[SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE(TEST_MAX_MESSAGES)];
     struct SolidSyslogBuffer* buffer = nullptr;
-    char                      readData[512];
+    char                      readData[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     size_t                    readSize;
 
     void setup() override
     {
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        buffer   = SolidSyslogCircularBuffer_Create();
+        buffer   = SolidSyslogCircularBuffer_Create(storage, TEST_MAX_MESSAGES);
         readSize = 0;
     }
 
     void teardown() override
     {
-        SolidSyslogCircularBuffer_Destroy();
+        SolidSyslogCircularBuffer_Destroy(buffer);
     }
 };
 
@@ -29,6 +36,11 @@ TEST_GROUP(SolidSyslogCircularBuffer)
 
 TEST(SolidSyslogCircularBuffer, CreateDestroyDoesNotCrash)
 {
+}
+
+TEST(SolidSyslogCircularBuffer, HandleEqualsStorageAddress)
+{
+    POINTERS_EQUAL(&storage, buffer);
 }
 
 TEST(SolidSyslogCircularBuffer, ReadFromEmptyReturnsFalse)
@@ -90,7 +102,7 @@ TEST(SolidSyslogCircularBuffer, WrapsAroundEndOfStorage)
 {
     enum
     {
-        CYCLES       = 200,
+        CYCLES       = 400,
         PAYLOAD_SIZE = 10
     };
     char payload[PAYLOAD_SIZE];
@@ -107,31 +119,30 @@ TEST(SolidSyslogCircularBuffer, WrapsAroundEndOfStorage)
 
 TEST(SolidSyslogCircularBuffer, OverflowingWriteIsDropped)
 {
-    char filler[400];
-    memset(filler, 'A', 400);
-    char overflow[200];
-    memset(overflow, 'B', 200);
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    char overflow[100];
+    memset(overflow, 'B', sizeof(overflow));
 
-    SolidSyslogBuffer_Write(buffer, filler, 400);
-    SolidSyslogBuffer_Write(buffer, overflow, 200);
+    SolidSyslogBuffer_Write(buffer, filler, sizeof(filler));
+    SolidSyslogBuffer_Write(buffer, overflow, sizeof(overflow));
 
     SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
-    MEMCMP_EQUAL(filler, readData, 400);
+    LONGS_EQUAL(sizeof(filler), readSize);
+    MEMCMP_EQUAL(filler, readData, sizeof(filler));
     CHECK_FALSE(SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize));
 }
 
 TEST(SolidSyslogCircularBuffer, WriteAfterDrainAcceptsRecordTooLargeForRemainingTailSpace)
 {
-    char first[200];
-    memset(first, 'A', 200);
-    SolidSyslogBuffer_Write(buffer, first, 200);
+    SolidSyslogBuffer_Write(buffer, "x", 1);
     SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
 
-    char second[400];
-    memset(second, 'B', 400);
-    SolidSyslogBuffer_Write(buffer, second, 400);
+    char big[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(big, 'B', sizeof(big));
+    SolidSyslogBuffer_Write(buffer, big, sizeof(big));
 
     CHECK_TRUE(SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize));
-    LONGS_EQUAL(400, readSize);
-    MEMCMP_EQUAL(second, readData, 400);
+    LONGS_EQUAL(sizeof(big), readSize);
+    MEMCMP_EQUAL(big, readData, sizeof(big));
 }
