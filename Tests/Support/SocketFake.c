@@ -497,7 +497,6 @@ ssize_t sendto(int sockfd, const void* buf, size_t len, int flags, const struct 
     sendtoCallCount++;
     lastSendtoFd    = sockfd;
     size_t copySize = len < sizeof(lastBufCopy) - 1 ? len : sizeof(lastBufCopy) - 1;
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded copySize; memcpy_s is not portable
     memcpy(lastBufCopy, buf, copySize);
     lastBufCopy[copySize] = '\0';
     lastLen               = len;
@@ -553,7 +552,6 @@ ssize_t send(int sockfd, const void* buf, size_t len, int flags)
     if (sendCallCount < SOCKETFAKE_MAX_SEND_CALLS)
     {
         size_t copySize = len < sizeof(sendBufCopy[0]) - 1 ? len : sizeof(sendBufCopy[0]) - 1;
-        // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded copySize
         memcpy(sendBufCopy[sendCallCount], buf, copySize);
         sendBufCopy[sendCallCount][copySize] = '\0';
         sendLenCopy[sendCallCount]           = len;

@@ -93,9 +93,7 @@ static inline void AssembleRecord(struct RecordStore* recordStore, const void* d
     MagicAddress(recordStore)[1] = MAGIC_BYTE_1;
 
     uint16_t length = (uint16_t) size;
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded size
     memcpy(LengthAddress(recordStore), &length, RECORD_LENGTH_SIZE);
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded size
     memcpy(MessageAddress(recordStore), data, size);
 
     recordStore->securityPolicy->ComputeIntegrity(IntegrityRegionAddress(recordStore), IntegrityRegionSize(size), IntegrityChecksumAddress(recordStore, size));
@@ -156,7 +154,6 @@ static inline bool IsMagicValid(struct RecordStore* recordStore)
 static inline uint16_t RecordLength(struct RecordStore* recordStore)
 {
     uint16_t length = 0;
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded size
     memcpy(&length, LengthAddress(recordStore), RECORD_LENGTH_SIZE);
     return length;
 }
@@ -207,7 +204,6 @@ static inline size_t BoundedSize(uint16_t length, size_t maxSize)
 static inline void CopyRecordData(struct RecordStore* recordStore, uint16_t length, void* dst, size_t maxSize, size_t* bytesRead)
 {
     size_t copySize = BoundedSize(length, maxSize);
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded size
     memcpy(dst, MessageAddress(recordStore), copySize);
     *bytesRead = copySize;
 }

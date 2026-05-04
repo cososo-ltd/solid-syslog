@@ -13,6 +13,8 @@ set(TEST_SOURCES
     SolidSyslogTimeQualitySdTest.cpp
     SolidSyslogOriginSdTest.cpp
     SolidSyslogNullBufferTest.cpp
+    SolidSyslogCircularBufferTest.cpp
+    SolidSyslogNullMutexTest.cpp
     SolidSyslogNullStoreTest.cpp
     SolidSyslogNullSecurityPolicyTest.cpp
     SolidSyslogCrc16Test.cpp
@@ -22,6 +24,7 @@ set(TEST_SOURCES
     SolidSyslogUdpPayloadTest.cpp
     BufferFakeTest.cpp
     BufferFake.c
+    MutexFake.c
     StoreFakeTest.cpp
     StoreFake.c
     SenderFakeTest.cpp
@@ -71,6 +74,7 @@ if(SOLIDSYSLOG_POSIX)
     list(APPEND TEST_SOURCES
         SolidSyslogPosixClockTest.cpp
         SolidSyslogPosixMessageQueueBufferTest.cpp
+        SolidSyslogPosixMutexTest.cpp
         SolidSyslogPosixSysUpTimeTest.cpp
         ClockFakeTest.cpp
         SolidSyslogUdpSenderTest.cpp
@@ -100,6 +104,7 @@ if(HAVE_WINDOWS_PLATFORM)
         SolidSyslogWindowsClockTest.cpp
         SolidSyslogWindowsFileTest.cpp
         SolidSyslogWindowsHostnameTest.cpp
+        SolidSyslogWindowsMutexTest.cpp
         SolidSyslogWindowsProcessIdTest.cpp
         SolidSyslogWindowsSysUpTimeTest.cpp
     )

@@ -2459,3 +2459,163 @@ the reality was 84 files with findings on the first run, dropping to
   headers; IWYU's strict purist rule is much narrower than human
   intuition. Lesson for future "small CI gate" stories: estimate by
   running the tool, not by reading the code.
+
+
+## 2026-05-04 — S04.05 Circular buffer with mutex injection
+
+### Decisions
+
+- **Drop-newest under back-pressure.** Originally the story body called
+  for drop-oldest plus a lost-message marker. Closing comment on S04.06
+  (#55) made that obsolete: gap detection on the receive side via
+  `origin sequenceId` covers loss visibility. Drop-newest is also what
+  `PosixMessageQueueBuffer` already does silently (`O_NONBLOCK` +
+  ignored `mq_send` return), so the two non-null buffer implementations
+  now share semantics. If a need for drop-oldest or halt at this layer
+  ever shows up, `SolidSyslogDiscardPolicy` from `BlockStore` is the
+  natural place to extend.
+
+- **No-split records on wrap.** When a record wouldn't fit between
+  `tail` and the storage end, the impl marks the unused tail with a
+  `wrapPoint` and writes the new record at index 0 — but only if the
+  pre-wrap unread region wouldn't be overwritten. Otherwise the write
+  is dropped. This keeps records contiguous, simplifies reasoning, and
+  bounded the wasted tail space at one record-worth. The trade-off
+  (a few bytes of waste at each wrap) is fine; if it ever matters we
+  can switch to modular indices without changing the public API.
+
+- **Drained-buffer reset.** When `head == tail` at a non-zero offset,
+  Write recycles to `head = tail = 0` before deciding whether to write.
+  This avoids dropping records that are smaller than `capacity` but
+  larger than the remaining tail space. Caught during ZOMBIES probing
+  before the test ever shipped — there was a state-space hole in the
+  initial overflow logic.
+
+- **`maxMessages` as the user-facing capacity unit.** The
+  `SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE` macro takes "max messages
+  at max size" rather than raw bytes. Friendlier than asking
+  integrators to multiply by `MAX_MESSAGE_SIZE + sizeof(uint16_t)`
+  themselves; matches the embedded "size for the worst case" mindset.
+
+- **Mutex vtable shape mirrors `SolidSyslogAtomicOps`** (`Lock(self)` /
+  `Unlock(self)` rather than the new `void* context` callback
+  convention) since a mutex naturally has state. `SolidSyslogNullMutex`
+  is the no-op default for single-task use; `SolidSyslogPosixMutex`
+  wraps `pthread_mutex_t`; `SolidSyslogWindowsMutex` wraps
+  `CRITICAL_SECTION`. Both platforms in scope so S13.18's BDD wiring
+  has both ready.
+
+- **Disable `clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling`
+  globally.** The rule recommends C11 Annex K (`memcpy_s` etc.) which
+  glibc doesn't ship. Every `memcpy`/`memset`/`strncpy` site in the
+  codebase already had a `NOLINTNEXTLINE` suppression — 21 in total.
+  When *every* hit is suppressed, the rule is doing zero discrimination.
+  Sanitizers and bounded-by-construction call sites are the real
+  defence. Added the rule to the negation list in `.clang-tidy` and
+  swept the 21 inline suppressions out.
+
+### Deferred
+
+- **Magic-numbers clang-tidy suppressions.** `.clang-tidy` also
+  disables `-readability-magic-numbers` and
+  `-cppcoreguidelines-avoid-magic-numbers`. The "no magic numbers"
+  preference David has been asking for in code reviews is the
+  opposite — re-enabling these rules might enforce that automatically.
+  Worth a separate discussion + cleanup PR after S04.05 lands.
+
+- **Atomics-based lock-free SPSC ring.** The original story body
+  mentioned "or atomics where available". A lock-free ring is a
+  substantially different design (writer doesn't wait, reader doesn't
+  wait, ABA hazards, etc.) and isn't needed by current targets.
+  Revisit under a future RTOS / lock-free epic if a real need emerges.
+
+- **Wiring the ring buffer through the BDD harness on Windows.** That
+  is S13.18 (#244), now unblocked.
+
+### Open questions
+
+- **Buffer sizing in the embedded use-case.** With `maxMessages = 1`
+  and `MAX_MESSAGE_SIZE = 2048`, the smallest buffer is ~2 KB plus
+  overhead. For very small targets that's significant. Could be
+  addressed later with a CMake cache variable for `MAX_MESSAGE_SIZE`
+  (already on the project memory backlog) or by relaxing the macro to
+  take an explicit byte count alongside the message count.
+
+## 2026-05-04 — S04.05 review-driven fixes
+
+CodeRabbit review on PR #263 surfaced four substantive findings beyond the
+IWYU/format hygiene noise. All addressed via strict TDD (Red test → Green fix)
+in commit `ebddeb4`:
+
+### Decisions
+
+- **`Read` discards `maxSize`** (Critical). `Read` now refuses if
+  `recordSize > maxSize`: returns `false`, leaves the record queued, sets
+  `bytesRead = 0`. Mirrors `mq_receive` `EMSGSIZE` semantics (fail loud, not
+  silent truncation). New TEST_GROUP `SolidSyslogCircularBufferSmallRing`
+  with a 32-byte ring keeps the boundary tests readable.
+
+- **`Write` truncates `size` to `uint16_t`** (Critical). `Write` now drops
+  payloads larger than `SOLIDSYSLOG_MAX_MESSAGE_SIZE` outright, before any
+  framing. `MAX_MESSAGE_SIZE = 2048` is far below `UINT16_MAX = 65535`, so
+  this single bound subsumes the 16-bit truncation concern and aligns with
+  the rest of the library's invariant.
+
+- **`<=` on the fit-helpers collapsed full onto empty** (Critical).
+  `RecordFitsAtTail` (wrapped branch) and `RecordFitsAfterWrap` now use `<`
+  instead of `<=`. The non-wrapped branch in `RecordFitsAtTail` keeps `<=`
+  because perfect-fit at end of storage (`tail + recordBytes == capacity`)
+  does not collapse onto `head == tail` while there is unread data. Two
+  distinct tests probe both helper paths.
+
+- **`pthread_mutex_init` return ignored** (Major). Deferred to E12 (error
+  handling). Default in-process mutex init is reliable in practice; the
+  project does not yet have an error-reporting infrastructure to surface
+  failures to callers, so adding the check inconsistently with the rest of
+  the library would be premature. Tracked in
+  [robustness backlog](memory). Same applies to
+  `InitializeCriticalSection`, which is `void` on Vista+ anyway.
+
+### Refactor
+
+- **`_Create` now takes `storageBytes` instead of `maxMessages`** (commit
+  `0b89e69`). Added `SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE_BYTES(ringBytes)`
+  alongside the friendly `_STORAGE_SIZE(maxMessages)`. Lets the small-ring
+  TEST_GROUP construct a 32-byte ring directly, decoupled from
+  `MAX_MESSAGE_SIZE`. Per-record byte counts in tests are now tractable
+  (10/12/19 byte payloads instead of 1000-byte ones).
+
+### IWYU pragma keep on `SolidSyslog.h`
+
+- IWYU's verdict on `SolidSyslogCircularBuffer.h` differs per TU: the .c
+  (which does not expand `SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE`) sees
+  `SolidSyslog.h` as unused and asks to remove it; the test (which does
+  expand the macro) sees the macro body's reference to
+  `SOLIDSYSLOG_MAX_MESSAGE_SIZE` and asks to add it. The two TUs cannot
+  agree — one or the other always complains. `// IWYU pragma: keep` on the
+  include is the canonical remediation for this exact case (commit
+  `c74f142` after format pass). Verified locally with
+  `cmake --build --preset iwyu --target iwyu` exiting `0`.
+
+- This is the only IWYU pragma added in this PR. The two existing pragmas
+  (`Tests/Support/OpenSslFake.h` keeping `<stdbool.h>`, `Tests/TestUtils.h`
+  keeping `CppUTest/TestHarness.h`) cover *load-bearing* includes that IWYU
+  cannot see through; this new one covers a *macro-deferred reference*.
+
+### Cleanup
+
+- **Disabled `clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling`
+  globally** (commit `fdf75f9`). Rule recommends C11 Annex K (`memcpy_s`
+  etc.) which glibc does not ship; every `memcpy`/`memset`/`strncpy` site
+  in the codebase had a `NOLINTNEXTLINE` suppression — 21 in total. When
+  every hit is suppressed, the rule is pure noise. ASan/UBSan and
+  bounded-by-construction call sites are the real defence.
+
+### Deferred — to revisit after S04.05 lands
+
+- `.clang-tidy` also disables `-readability-magic-numbers` and
+  `-cppcoreguidelines-avoid-magic-numbers`. David's reviewer-side
+  preference is "no magic numbers." Worth a separate discussion to decide
+  whether to re-enable those rules and accept the resulting cleanup sweep.
+  Tracked in
+  [project_clang_tidy_magic_numbers.md](memory).

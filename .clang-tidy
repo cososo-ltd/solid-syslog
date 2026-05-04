@@ -22,7 +22,8 @@ Checks: >
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -cppcoreguidelines-avoid-c-arrays,
   -modernize-avoid-c-arrays,
-  -modernize-deprecated-headers
+  -modernize-deprecated-headers,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
 # Treat all clang-tidy warnings as errors.
 WarningsAsErrors: '*'

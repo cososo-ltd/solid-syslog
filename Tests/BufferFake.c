@@ -45,7 +45,6 @@ static bool Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, siz
     if (success)
     {
         size_t copySize = MinSize(fake->storedSize, maxSize);
-        // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded copySize; memcpy_s is not portable
         memcpy(data, fake->stored, copySize);
         *bytesRead    = copySize;
         fake->pending = false;
@@ -59,7 +58,6 @@ static void Write(struct SolidSyslogBuffer* self, const void* data, size_t size)
     struct BufferFake* fake = (struct BufferFake*) self;
 
     size_t copySize = MinSize(size, sizeof(fake->stored));
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded copySize; memcpy_s is not portable
     memcpy(fake->stored, data, copySize);
     fake->storedSize = copySize;
     fake->pending    = true;

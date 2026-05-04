@@ -69,7 +69,6 @@ static bool Write(struct SolidSyslogStore* self, const void* data, size_t size)
     if (!fake->unsent)
     {
         size_t copySize = MinSize(size, sizeof(fake->stored));
-        // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded copySize; memcpy_s is not portable
         memcpy(fake->stored, data, copySize);
         fake->storedSize = copySize;
         fake->unsent     = true;
@@ -93,7 +92,6 @@ static bool ReadNextUnsent(struct SolidSyslogStore* self, void* data, size_t max
     if (success)
     {
         size_t copySize = MinSize(fake->storedSize, maxSize);
-        // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded copySize; memcpy_s is not portable
         memcpy(data, fake->stored, copySize);
         *bytesRead = copySize;
     }

@@ -22,7 +22,6 @@ static bool Send(struct SolidSyslogSender* self, const void* buffer, size_t size
 {
     struct SenderFake* fake     = (struct SenderFake*) self;
     size_t             copySize = MinSize(size, sizeof(fake->lastBuffer) - 1);
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded copySize; memcpy_s is not portable
     memcpy(fake->lastBuffer, buffer, copySize);
     fake->lastBuffer[copySize] = '\0';
     fake->lastSize             = size;

@@ -63,7 +63,6 @@ struct tm* gmtime_r(const time_t* timep, struct tm* result)
         return NULL;
     }
 
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with known fixed size
     memcpy(result, breakdown, sizeof(struct tm));
     return result;
 }

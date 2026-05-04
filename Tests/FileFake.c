@@ -113,7 +113,6 @@ static const struct SolidSyslogFile POISONED_VTABLE = {
 struct SolidSyslogFile* FileFake_Create(struct FileFakeStorage* storage)
 {
     struct FileFake* fake = (struct FileFake*) storage;
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memset with bounded size; memset_s is not portable
     memset(fake, 0, sizeof(*fake));
     fake->base  = LIVE_VTABLE;
     lastCreated = fake;
@@ -124,13 +123,11 @@ void FileFake_Destroy(void)
 {
     if (lastCreated != NULL)
     {
-        // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memset with bounded size; memset_s is not portable
         memset(lastCreated, 0, sizeof(*lastCreated));
         lastCreated->base = POISONED_VTABLE;
         lastCreated       = NULL;
     }
 
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memset with bounded size; memset_s is not portable
     memset(filesystem, 0, sizeof(filesystem));
 }
 
@@ -375,7 +372,6 @@ static inline bool HasBytesToRead(const struct FileFake* fake, size_t count)
 
 static inline void CopyFromFile(struct FileFake* fake, void* buf, size_t count)
 {
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded count; memcpy_s is not portable
     memcpy(buf, fake->active->content + fake->position, count);
     AdvancePosition(fake, count);
 }
@@ -416,7 +412,6 @@ static inline bool HasSpaceToWrite(const struct FileFake* fake, size_t count)
 
 static inline void CopyToFile(struct FileFake* fake, const void* buf, size_t count)
 {
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memcpy with bounded count; memcpy_s is not portable
     memcpy(fake->active->content + fake->position, buf, count);
     AdvancePosition(fake, count);
     ExtendFileSize(fake);
@@ -489,7 +484,6 @@ static bool FileFake_Delete(struct SolidSyslogFile* self, const char* path)
 
 static inline void ClearEntry(struct FileEntry* entry)
 {
-    // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) -- memset with bounded size; memset_s is not portable
     memset(entry->content, 0, sizeof(entry->content));
     entry->fileSize = 0;
     entry->path[0]  = '\0';
