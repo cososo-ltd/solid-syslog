@@ -6,6 +6,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslog.h"
+
 EXTERN_C_BEGIN
 
     struct SolidSyslogBuffer;
