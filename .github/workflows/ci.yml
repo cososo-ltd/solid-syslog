@@ -682,16 +682,6 @@ jobs:
                       "pattern": "**/cppcheck-report.xml"
                     }
                   ]
-                },
-                {
-                  "name": "analyze-iwyu",
-                  "id": "analyze-iwyu",
-                  "tools": [
-                    {
-                      "id": "iwyu",
-                      "pattern": "**/iwyu-output.txt"
-                    }
-                  ]
                 }
               ]
             }
