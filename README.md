@@ -10,7 +10,7 @@ is not a core dependency; Core has zero OpenSSL references.
 Designed for resource-constrained environments:
 - C99, no dynamic memory allocation required — allocator is caller-injected
 - Transport-agnostic — UDP, TCP, TLS, or bring your own
-- Buffer-agnostic — NullBuffer (direct send), POSIX message queue, or bring your own
+- Buffer-agnostic — NullBuffer (direct send), portable CircularBuffer (mutex-injected ring), POSIX message queue, or bring your own
 - No `#ifdef` feature flags — optional features composed at link time
 - MISRA C:2012 informed
 - Dependency injection throughout — fully testable without a network
@@ -52,6 +52,7 @@ Public headers are split by audience (Interface Segregation Principle):
 - **`SolidSyslogConfig.h`** — system setup code that creates and destroys loggers
 - **`SolidSyslogSenderDefinition.h`** / **`SolidSyslogBufferDefinition.h`** — extension points for custom senders and buffers
 - **`SolidSyslogNullBuffer.h`** — direct-send buffer for single-task systems
+- **`SolidSyslogCircularBuffer.h`** — portable ring buffer with caller-allocated storage and an injected `SolidSyslogMutex` (`SolidSyslogPosixMutex` / `SolidSyslogWindowsMutex` / `SolidSyslogNullMutex` / your own); the cross-platform threaded buffer
 - **`SolidSyslogPosixMessageQueueBuffer.h`** — thread-safe POSIX message queue buffer
 - **`SolidSyslogUdpSender.h`** — UDP transport (RFC 5426)
 - **`SolidSyslogStreamSender.h`** — octet-framed syslog (RFC 6587) over any Stream. Note: RFC 6587
@@ -79,7 +80,7 @@ Three example programs demonstrate usage:
 
 - **`Example/SingleTask/`** — POSIX, NullBuffer, single-task bare-metal model
 - **`Example/Threaded/`** — POSIX, PosixMessageQueueBuffer, two pthreads (logger + service), SwitchingSender over UDP + TCP + TLS + mTLS (TLS build required for the last two); `--transport` sets the initial transport, `switch <name>` flips it at runtime
-- **`Example/Windows/`** — Windows, NullBuffer, Winsock UDP / TCP, single-task model with the Windows clock / hostname / process-id / sysUpTime helpers
+- **`Example/Windows/`** — Windows, CircularBuffer + WindowsMutex, Win32 service thread (`_beginthreadex`) draining the buffer, Winsock UDP / TCP, with the Windows clock / hostname / process-id / sysUpTime helpers
 
 ## Compliance
 

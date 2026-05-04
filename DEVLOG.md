@@ -1,5 +1,121 @@
 # Dev Log
 
+## 2026-05-04 — S13.18 Windows BDD on the portable ring buffer
+
+### Decisions
+
+- **Test-side prompt-protocol portability over a production
+  drain-on-shutdown contract.** Two ways to make `wait_for_prompt`
+  work on Windows pipe fds: (A) replace `select.select` + `os.read`
+  with a thread-based stdout reader in the Python step layer, or (B)
+  add a "drain pending records before honouring shutdown" path to
+  `ExampleServiceThread` and ship a `SolidSyslogBuffer.HasPending`
+  probe to support it. (A) shipped: same Python signature, same
+  return shape, daemon thread + `queue.Queue`. The library and
+  example don't bake test convenience into shipped semantics, and
+  ungraceful shutdown stays a real testable scenario for later
+  stories. New feedback memory recorded for the
+  test-side-first principle.
+- **Windows example uses CircularBuffer + WindowsMutex driven by a
+  Win32 service thread, mirroring the Linux Threaded model.**
+  `SolidSyslogNullBuffer_Create(sender)` removed; replaced by
+  caller-allocated `bufferStorage` of
+  `SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE(EXAMPLE_BUFFER_MESSAGES)`
+  (10 messages, matching the Threaded example's `mq_open` capacity)
+  backed by `SolidSyslogWindowsMutex`. The thread is launched via
+  `_beginthreadex` calling a wrapper that invokes the existing
+  `ExampleServiceThread_Run` — same Common helper as Linux. Shutdown
+  is `shutdownFlag = true` + `WaitForSingleObject` + `CloseHandle`,
+  the Win32 analogue of `pthread_join`.
+- **`<windows.h>` after `<winsock2.h>` with an explicit comment.**
+  Reversing the order leaks the legacy winsock1 declarations from
+  windows.h and breaks the `winsock2.h` include. The MSVC build
+  failed on a wrong order during slice 2; pinned the order with a
+  one-line `// windows.h must follow winsock2.h to avoid winsock1/2
+  declaration conflicts` comment so a future cleanup can't
+  alphabetise it back.
+- **`@buffered` tag re-scoped, not retired.** The two cross-platform
+  scenarios (`buffered.feature`, `tcp_transport.feature`) drop
+  `@buffered` so they run on the Windows OTel runner. Step prose in
+  those two features changes from "the threaded example" to "the
+  buffered example"; the step layer routes the new prose to
+  `THREADED_BINARY` when `oracle_format == "syslog-ng"` and to
+  `context.example_binary` (the new Win32 example) otherwise. The
+  remaining `@buffered` features stay as-is — they really are
+  pthread / Linux-specific (file-backed `SolidSyslogBlockStore`,
+  `SolidSyslogSwitchingSender`, mTLS / TLS, `tcp_reconnect`'s
+  syslog-ng UNIX-socket reload) and keep the "the threaded example"
+  prose. `docs/bdd.md` `@buffered` tag description rewritten to
+  reflect this — it now means "needs a Linux-only buffered
+  capability beyond a basic ring buffer + service thread", not
+  "needs the threaded binary".
+- **`tcp_singletask.feature` tagged `@windows_wip` (Linux-only
+  now).** Pre-S13.18 it was the runner-agnostic Windows-TCP
+  validation companion to the Linux-only `tcp_transport.feature`. Now
+  that `tcp_transport.feature` is itself cross-platform via the
+  buffered example, `tcp_singletask` no longer earns its keep on
+  Windows — and the one-shot `process.communicate` pattern in
+  `run_example` would race with the new Windows service thread
+  (no prompt-wait, so "quit" can land before the buffer drains).
+  Kept on Linux as the bare-metal / NullBuffer / synchronous-send
+  pin.
+- **No CI workflow change required.** The Windows tag filter
+  `not @wip and not @windows_wip and not @buffered` already does
+  the right thing once the per-feature tag drops land — the
+  `not @buffered` part still excludes the genuinely Linux-only
+  features.
+- **`Common/ExampleServiceThread.c` added to the Windows binary's
+  CMake source list.** Pre-S13.18 only the Linux Threaded binary
+  used it. Now it's shared, which is a small but meaningful step
+  towards the user's stated goal of keeping the Windows and Linux
+  examples as common as possible. New feedback memory recorded
+  to keep watching for further hoisting opportunities.
+
+### Deferred
+
+- **`CreateSender` / `DestroySender`-shaped factories in the
+  per-platform `main.c` files.** These are obvious candidates to
+  hoist into `Common/` but the Threaded version composes a
+  SwitchingSender over UDP + TCP + TLS + mTLS, while the Windows
+  version still picks a single sender by transport flag. The
+  shapes are too different today to share without first widening
+  the Windows example (SwitchingSender wiring), which is well
+  outside S13.18 scope. Flagged for a follow-up refactor PR.
+- **`ExampleInteractive_Run`'s `\r\n` vs UTF-8-BOM stdin handling
+  not tightened.** A PowerShell-based local smoke test surfaced
+  that `.NET StreamWriter` writes a UTF-8 BOM at the start of
+  stdin, which `fgets` reads as the first three bytes of the first
+  command — `MatchCommand("send")` then fails. The BDD harness
+  uses Python `subprocess.Popen(text=True)` which doesn't emit a
+  BOM, so this isn't a CI hazard. Worth tightening if the example
+  ever grows a "paste me into PowerShell" docs path; not today.
+- **`PosixMessageQueueBuffer` retirement.** The user explicitly
+  scoped it out of S13.18 — the Linux Threaded example continues
+  to use it. Open question: is the long-term plan to retire it in
+  favour of `SolidSyslogCircularBuffer` + `SolidSyslogPosixMutex`
+  (one buffer for all threaded examples), or keep both shipped?
+  The header table calls out both in `Tests/Support/`-style
+  audience splits, suggesting both stay — but the duplication
+  becomes more visible now that CircularBuffer has parity.
+
+### Open questions
+
+- **Should the Windows example's stdin handling defend against a
+  leading UTF-8 BOM?** A two-byte one-line fix (skip BOM if the
+  first three bytes match) would make the binary friendlier for
+  `Get-Content | exe` style PowerShell pipelines without affecting
+  POSIX or the BDD harness. Not a regression — the pre-S13.18
+  Windows binary had the same behaviour because it used the same
+  `ExampleInteractive_Run`.
+- **Drain-on-shutdown semantics for `ExampleServiceThread_Run`.**
+  Today the loop is `while (!*shutdown) Service()` — once shutdown
+  is signalled the thread exits even if the buffer is non-empty.
+  The BDD prompt protocol coordinates around this (oracle confirms
+  receipt before "quit" is sent) but a real integrator may want
+  graceful drain. `SolidSyslogBuffer` doesn't currently expose a
+  "has unsent" probe; adding one is a deliberate API decision not
+  taken in this story.
+
 ## 2026-05-04 — S18.03 Dispose-on-empty block lifecycle
 
 ### Decisions
