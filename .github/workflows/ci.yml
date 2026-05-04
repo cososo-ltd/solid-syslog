@@ -108,7 +108,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/davidcozens/cpputest-clang:sha-0385cea
+      image: ghcr.io/davidcozens/cpputest-clang:sha-7eac3ab
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -287,6 +287,34 @@ jobs:
         with:
           name: clang-tidy-report
           path: build/tidy/clang-tidy-output.txt
+          retention-days: 1
+
+  analyze-iwyu:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/davidcozens/cpputest-clang:sha-7eac3ab
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Configure
+        run: cmake --preset iwyu
+
+      - name: Run include-what-you-use
+        shell: bash
+        run: set -o pipefail && cmake --build --preset iwyu --target iwyu 2>&1 | tee build/iwyu/iwyu-output.txt
+
+      - name: Upload iwyu output
+        if: success() || failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: iwyu-report
+          path: build/iwyu/iwyu-output.txt
           retention-days: 1
 
   analyze-format:
@@ -549,7 +577,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [build-linux-gcc, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl]
+    needs: [build-linux-gcc, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, analyze-iwyu, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -578,6 +606,14 @@ jobs:
         with:
           name: cppcheck-report
           path: quality-reports/
+
+      - name: Download iwyu report
+        continue-on-error: true
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: iwyu-report
+          path: quality-reports/
+
       - name: Quality Monitor
         uses: uhafner/quality-monitor@v1
         with:

@@ -5,7 +5,7 @@
 | Image | Tag | Used by |
 |---|---|---|
 | `ghcr.io/davidcozens/cpputest` | `sha-18f19e1` | devcontainer (`gcc` service), all CI jobs except clang |
-| `ghcr.io/davidcozens/cpputest-clang` | `sha-0385cea` | `clang` compose service, `build-linux-clang` CI job |
+| `ghcr.io/davidcozens/cpputest-clang` | `sha-7eac3ab` | `clang` compose service, `build-linux-clang` CI job, `analyze-iwyu` CI job |
 | `balabit/syslog-ng` | `latest` | `syslog-ng` service — BDD test oracle |
 | `ghcr.io/davidcozens/behave` | `sha-3faff14` | `behave` service — Debian trixie + Python 3.12 + Behave for BDD scenarios |
 
