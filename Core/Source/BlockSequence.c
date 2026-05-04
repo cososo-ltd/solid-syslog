@@ -340,6 +340,48 @@ void BlockSequence_SetReadCursor(struct BlockSequence* blockSequence, size_t cur
     blockSequence->readCursor = cursor;
 }
 
+static inline bool IsReadBlockActiveWrite(const struct BlockSequence* blockSequence);
+static inline bool IsReadBlockOldest(const struct BlockSequence* blockSequence);
+static inline bool IsReadBlockFullyDrained(const struct BlockSequence* blockSequence);
+static inline void AdvancePastDrainedReadBlock(struct BlockSequence* blockSequence);
+
+void BlockSequence_DisposeReadBlockIfDrained(struct BlockSequence* blockSequence, bool* readBlockChanged)
+{
+    *readBlockChanged = false;
+
+    if (!IsReadBlockActiveWrite(blockSequence) && IsReadBlockOldest(blockSequence) && IsReadBlockFullyDrained(blockSequence))
+    {
+        if (SolidSyslogBlockDevice_Dispose(blockSequence->blockDevice, blockSequence->readSequence))
+        {
+            AdvancePastDrainedReadBlock(blockSequence);
+            *readBlockChanged = true;
+        }
+    }
+}
+
+static inline bool IsReadBlockActiveWrite(const struct BlockSequence* blockSequence)
+{
+    return blockSequence->readSequence == blockSequence->writeSequence;
+}
+
+static inline bool IsReadBlockOldest(const struct BlockSequence* blockSequence)
+{
+    return blockSequence->readSequence == blockSequence->oldestSequence;
+}
+
+static inline bool IsReadBlockFullyDrained(const struct BlockSequence* blockSequence)
+{
+    return blockSequence->readCursor >= SolidSyslogBlockDevice_Size(blockSequence->blockDevice, blockSequence->readSequence);
+}
+
+static inline void AdvancePastDrainedReadBlock(struct BlockSequence* blockSequence)
+{
+    blockSequence->oldestSequence = NextSequence(blockSequence->oldestSequence);
+    blockSequence->readSequence   = blockSequence->oldestSequence;
+    blockSequence->readCursor     = 0;
+    NotifyThresholdCrossed(blockSequence);
+}
+
 void BlockSequence_AdvanceToNextReadBlock(struct BlockSequence* blockSequence)
 {
     blockSequence->readSequence = NextSequence(blockSequence->readSequence);

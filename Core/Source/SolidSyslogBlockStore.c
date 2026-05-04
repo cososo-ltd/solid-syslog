@@ -246,5 +246,13 @@ static void MarkSent(struct SolidSyslogStore* self)
     if (RecordStore_MarkLastReadAsSent(&blockStore->recordStore, BlockSequence_BlockDevice(&blockStore->blockSequence), &nextCursor))
     {
         BlockSequence_SetReadCursor(&blockStore->blockSequence, nextCursor);
+
+        bool readBlockChanged = false;
+        BlockSequence_DisposeReadBlockIfDrained(&blockStore->blockSequence, &readBlockChanged);
+
+        if (readBlockChanged)
+        {
+            RecordStore_ForgetLastRead(&blockStore->recordStore);
+        }
     }
 }

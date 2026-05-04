@@ -1258,6 +1258,20 @@ TEST(SolidSyslogBlockStoreRotation, MultipleRecordsPerFileDrainAcrossRotation)
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
+TEST(SolidSyslogBlockStoreRotation, MarkSentDisposesOlderBlockWhenDrained)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* file 00 */
+    WriteMaxMsg(); /* rotates to file 01 */
+
+    char   buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+}
+
 /* ------------------------------------------------------------------
  * Integrity (SecurityPolicy integration)
  * ----------------------------------------------------------------*/
