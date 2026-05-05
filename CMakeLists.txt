@@ -11,8 +11,10 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(CppUTest REQUIRED)
-find_package(Threads REQUIRED)
+if(NOT CMAKE_CROSSCOMPILING)
+    find_package(CppUTest REQUIRED)
+    find_package(Threads REQUIRED)
+endif()
 
 if(MSVC)
     # /wd4200: char buffer[] (C99 flexible array member) — valid C99, MSVC warns as nonstandard extension
@@ -124,5 +126,22 @@ if(SOLIDSYSLOG_POSIX OR (SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM))
     add_subdirectory(Example)
 endif()
 
-enable_testing()
-add_subdirectory(Tests)
+# FreeRTOS adapters ship as sources via an INTERFACE library — the integrator's
+# FreeRTOSConfig.h flows into each consumer's compile (see
+# project_header_configured_platforms memory). Gated on the upstream sources
+# being present in the build environment.
+if(DEFINED ENV{FREERTOS_KERNEL_PATH})
+    add_subdirectory(Platform/FreeRtos)
+endif()
+
+# The cross-compiled FreeRTOS hello-world example is selected by the
+# arm-none-eabi toolchain file (see Example/FreeRtos/cmake/arm-none-eabi.cmake);
+# it only enters the build when a freertos-cross preset is active.
+if(CMAKE_CROSSCOMPILING AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm")
+    add_subdirectory(Example/FreeRtos)
+endif()
+
+if(NOT CMAKE_CROSSCOMPILING)
+    enable_testing()
+    add_subdirectory(Tests)
+endif()

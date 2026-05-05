@@ -7,7 +7,7 @@
         {
             "label": "build and test",
             "type": "shell",
-            "command": "if [ -z \"$BUILD_PRESET\" ]; then behave Bdd/features/; else cmake --build --preset $BUILD_PRESET --target SolidSyslogTests && ctest --preset $BUILD_PRESET --verbose --tests-regex '^SolidSyslogTests$'; fi",
+            "command": "case \"$BUILD_PRESET\" in '') behave Bdd/features/ ;; freertos-cross) cmake --build --preset \"$BUILD_PRESET\" --target SolidSyslogFreeRtosHelloWorld ;; *) cmake --build --preset \"$BUILD_PRESET\" --target SolidSyslogTests && ctest --preset \"$BUILD_PRESET\" --verbose --tests-regex '^SolidSyslogTests$' ;; esac",
             "windows": {
                 "command": "cmake --preset msvc-debug; if ($?) { cmake --build --preset msvc-debug --target SolidSyslogTests }; if ($?) { ctest --preset msvc-debug --verbose --tests-regex '^SolidSyslogTests$' }"
             },
@@ -65,7 +65,24 @@
                 "reveal": "always",
                 "panel": "shared"
             }
+        },
+        {
+            "label": "run on QEMU (FreeRTOS)",
+            "detail": "One-shot run of the FreeRTOS hello-world ELF under QEMU. Use only in the freertos-target service.",
+            "type": "shell",
+            "command": "qemu-system-arm",
+            "args": [
+                "-M", "mps2-an385",
+                "-m", "16M",
+                "-nographic",
+                "-semihosting-config", "enable=on,target=native",
+                "-kernel", "build/freertos-cross/Example/FreeRtos/HelloWorld/SolidSyslogFreeRtosHelloWorld.elf"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
         }
     ]
 }
-

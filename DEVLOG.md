@@ -1,5 +1,118 @@
 # Dev Log
 
+## 2026-05-05 — S08.01 FreeRTOS hello-world bring-up
+
+### Decisions
+
+- **Header-configured platforms ship as sources, not precompiled libs.**
+  FreeRTOS, FreeRTOS-Plus-FAT, and Mbed TLS are configured by per-application
+  headers (`FreeRTOSConfig.h`, `ffconf.h`, `mbedtls_config.h`) that change
+  the size/layout of TCBs, semaphores, file handles, SSL contexts. A
+  precompiled adapter built against our config and linked into a downstream
+  app with a different config produces silent UB. So `Platform/FreeRtos/`
+  declares an `INTERFACE` library — each consumer (`Example/FreeRtos/*`,
+  `Tests/FreeRtos/*Test`, downstream integrator apps) recompiles the
+  adapter sources with its own config on the include path. Posix / Windows
+  / OpenSSL stay `PRIVATE`-into-`${PROJECT_NAME}` (their ABI is OS-level,
+  not header-configured). Captured as a project memory.
+- **Container architecture — three tiers in two new images, FROM-chained.**
+  `cpputest-freertos` (MIDDLE) layered on the existing `cpputest` base,
+  adding FreeRTOS-Kernel `V11.1.0` + Plus-TCP `V4.2.2` + Plus-FAT (Lab
+  project, no tags — pinned by commit SHA on `main`) + Mbed TLS `v3.6.2`
+  LTS sources at `/opt/...` with `FREERTOS_*_PATH` / `MBEDTLS_DIR` env
+  vars. `cpputest-freertos-cross` (TOP) layered on MIDDLE, adding
+  `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased
+  as `arm-none-eabi-gdb`), and `qemu-system-arm`. Both images live in a
+  new `CppUTestFreertosDocker` repo with one workflow that publishes both
+  on push to `main`; the cross job uses `--build-arg BASE_TAG=sha-<short>`
+  so the FROM line is pinned to MIDDLE's just-published tag in the same
+  workflow run. Avoids the chicken-and-egg manual edit when bumping the
+  host image.
+- **Output mechanism: semihosting via newlib rdimon.** Simpler than
+  retargeting a UART driver at S08.01 (no NIC and no UART setup needed).
+  `--specs=rdimon.specs` at link time pulls in newlib stubs that route
+  `printf` through `BKPT 0xAB`; QEMU intercepts when launched with
+  `-semihosting-config enable=on,target=native`. UART retargeting can come
+  later if needed.
+- **Tests/Support/FreeRtosFakes / Tests/FreeRtos use the spec's nested
+  layout, not the existing flat `Tests/Support/CMakeLists.txt`.** Each
+  `Tests/FreeRtos/*Test` exe must compile the adapter under test itself
+  with `$FREERTOS_KERNEL_PATH/include` and the test
+  `Tests/Support/FreeRtosFakes/Interface/FreeRTOSConfig.h` on the include
+  path; the flat static-lib pattern can't propagate per-consumer include
+  paths to the adapter compile. The PosixFakes / WinsockFakes / OpenSslFakes
+  blocks stay where they are.
+- **FREERTOS_PLUS_FAT pinned by commit SHA, not tag.** The repo
+  (`FreeRTOS/Lab-Project-FreeRTOS-FAT`) is a Lab project and ships untagged.
+  Currently pinned to `8d38036…` on `main` (2026-04-21). Switch to a
+  release tag if upstream ever publishes one.
+- **Cross-build skips CppUTest / Threads / `Tests`.** Wrapped in
+  `if(NOT CMAKE_CROSSCOMPILING)` — bare-metal arm-none-eabi has no
+  pthreads and no CppUTest in the cross image. `Platform/Atomics` still
+  gets added (newlib provides `<stdatomic.h>` for armv7-m); didn't
+  cause issues but worth watching.
+- **VS Code workflow uniform across services.** `Ctrl+Shift+B` builds and
+  `F5` debugs, in every service. The `build and test` task (`tasks.json`)
+  case-branches on `$BUILD_PRESET`: empty → `behave Bdd/features/`;
+  `freertos-cross` → build the ELF only (no CppUTest in cross image);
+  anything else → build `SolidSyslogTests` + run `ctest`. The host launch
+  config uses `${env:BUILD_PRESET}` so it resolves the right binary in
+  `gcc` / `clang` / `freertos-host`. A second cortex-debug launch config
+  drives qemu-system-arm + arm-none-eabi-gdb for `freertos-target`. Plus a
+  one-shot "run on QEMU (FreeRTOS)" task for sanity-checking the build
+  without firing the debugger.
+- **Devcontainer switching: one config + service edit, like clang/behave.**
+  The story spec proposed three separate `.devcontainer/<tier>/devcontainer.json`
+  files with VS Code's "Reopen in Container" picker. Tried that first;
+  in review David flagged the inconsistency vs. the existing
+  edit-`service`-and-rebuild pattern used for `clang` and `behave`, and
+  the docs ended up with two competing switch procedures. Collapsed back
+  to a single procedure: the BASE `.devcontainer/devcontainer.json` is
+  the only config, switching means changing its `service` field to
+  `freertos-host` or `freertos-target` (both already declared as compose
+  services). Cost: the cortex-debug VS Code extension lost its
+  per-tier auto-install — added it to the BASE devcontainer's
+  extensions list instead so it's available on switch.
+
+### Caught during verification
+
+- **`gcc-arm-none-eabi` does not include newlib on Debian bookworm** —
+  `libnewlib-arm-none-eabi` is a separate package. First cross build failed
+  on `<string.h>: No such file or directory`. Fix landed in CppUTestFreertosDocker
+  `44efeae` — re-pulled, rebuilt, hello-world ELF built clean and ran
+  under QEMU.
+
+### Verified
+
+- `cmake --preset debug` under BASE: configure clean, no FreeRTOS subdirs
+  added (gates evaluate false).
+- `cmake -S . -B …` under MIDDLE (`FREERTOS_KERNEL_PATH=/opt/freertos/kernel`):
+  configure clean, `Platform/FreeRtos` INTERFACE lib + `Tests/Support/FreeRtosFakes`
+  + `Tests/FreeRtos` placeholders all add cleanly, full test world still
+  builds.
+- `cmake --preset freertos-cross && cmake --build --preset freertos-cross`
+  under TOP: produces `SolidSyslogFreeRtosHelloWorld.elf` (226 KiB) at
+  `build/freertos-cross/Example/FreeRtos/HelloWorld/`.
+- `qemu-system-arm -M mps2-an385 -kernel <elf> -semihosting-config enable=on,target=native`:
+  prints `hello from FreeRTOS on QEMU mps2-an385`, scheduler keeps idling.
+- `arm-none-eabi-gdb` attaches to QEMU's `:1234` gdbstub; breakpoint at
+  `main` hits, backtrace resolves symbols.
+
+### Deferred
+
+- **GH branch protection update** — adding `build-freertos-host-tdd` and
+  `build-freertos-target` as required checks waits until the new jobs go
+  green on PR CI at least once.
+- **Adapter sources** — `Platform/FreeRtos/{Interface,Source}/` are
+  intentionally empty at S08.01; first content (`SolidSyslogFreeRtosMutex.c`)
+  lands at S08.04.
+
+### Open questions
+
+- Do we want a "FreeRTOS-Plus-FAT pinned to `main`" lint check that warns
+  when upstream gets a release tag? Tracked informally in the
+  CppUTestFreertosDocker README; revisit when the FAT story (S08.05)
+  starts.
 ## 2026-05-04 — S13.19 slice 3: cross-platform TLS+mTLS BDD via OTel TLS receivers
 
 ### Decisions

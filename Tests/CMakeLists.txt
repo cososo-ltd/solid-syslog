@@ -6,6 +6,11 @@ if(SOLIDSYSLOG_POSIX OR (SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM))
     add_subdirectory(Example)
 endif()
 
+if(DEFINED ENV{FREERTOS_KERNEL_PATH})
+    add_subdirectory(Support/FreeRtosFakes)
+    add_subdirectory(FreeRtos)
+endif()
+
 set(TEST_SOURCES
     SolidSyslogTest.cpp
     SolidSyslogSwitchingSenderTest.cpp
