@@ -29,10 +29,13 @@ PER_TRANSPORT_LOG_SYSLOG_NG = {
     "mtls": RECEIVED_MTLS_LOG,
 }
 
-# OTel runner only writes per-transport files for TLS and mTLS — UDP and TCP
-# share received.jsonl. The cross-platform "syslog-ng receives N over X"
-# step routes through per_transport_log() which keeps these paths internal.
+# OTel runner writes a per-transport file per receiver (Bdd/otel/config.yaml
+# pipeline `logs/<transport>` → exporter `file/<transport>`). Lets the
+# cross-platform "the syslog oracle receives N over X" step pin the transport
+# actually used end-to-end on either runner.
 PER_TRANSPORT_LOG_OTEL = {
+    "udp":  "Bdd/output/received_udp.jsonl",
+    "tcp":  "Bdd/output/received_tcp.jsonl",
     "tls":  "Bdd/output/received_tls.jsonl",
     "mtls": "Bdd/output/received_mtls.jsonl",
 }
@@ -42,8 +45,7 @@ def per_transport_log(context, transport):
     """Return the per-transport oracle file path for the active runner.
 
     Linux (syslog-ng): per-transport `received_<X>.log` files.
-    Windows (otel-jsonl): per-transport `received_<X>.jsonl` files for tls
-    and mtls only.
+    Windows (otel-jsonl): per-transport `received_<X>.jsonl` files.
     """
     if context.oracle_format == "otel-jsonl":
         return PER_TRANSPORT_LOG_OTEL[transport]
@@ -470,7 +472,7 @@ def syslog_ng_swap_config(config_path):
     syslog_ng_reload()
 
 
-@given("syslog-ng is running")
+@given("the syslog oracle is running")
 def step_syslog_ng_is_running(context):
     # Only assert the syslog-ng control socket when syslog-ng is actually the
     # active oracle. Other runners (e.g. the OTel Collector on Windows) reuse
@@ -502,8 +504,13 @@ def step_syslog_ng_is_running(context):
 
 
 def build_threaded_command(context, transport, no_sd=False):
-    """Build the command line for the threaded example with all options."""
-    binary = THREADED_BINARY
+    """Build the command line for the threaded example with all options.
+
+    Linux runner (syslog-ng oracle): the pthread-driven Threaded example.
+    Windows runner (OTel oracle): the unified SolidSyslogExample.exe — its
+    BlockStore + SwitchingSender wiring (S13.20) accepts the same flags.
+    """
+    binary = THREADED_BINARY if context.oracle_format == "syslog-ng" else context.example_binary
     assert os.path.exists(binary), (
         f"Threaded binary not found at {binary} — build with cmake first"
     )
@@ -683,25 +690,69 @@ def wait_for_connection_teardown(probe_socket, timeout=5):
     raise AssertionError(f"Probe connection still alive after {timeout}s")
 
 
-@when("the syslog server stops accepting TCP connections")
-def step_syslog_server_stops_tcp(context):
-    # Open a probe connection before the reload so we can detect teardown
-    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    probe.settimeout(1)
-    probe.connect(("syslog-ng", 5514))
-
-    syslog_ng_swap_config(SYSLOG_NG_UDP_ONLY_CONF)
-    wait_for_tcp_port_closed()
-    wait_for_connection_teardown(probe)
-    # Allow time for the sender's existing connection to receive RST
-    time.sleep(0.5)
-    context.syslog_ng_config_changed = True
+def otel_kill_oracle():
+    """Stop any running otelcol-contrib (Windows). Idempotent: returns
+    cleanly if no process is running.
+    """
+    subprocess.run(
+        ["taskkill", "/F", "/IM", "otelcol-contrib.exe"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
 
 
-@when("the syslog server resumes accepting TCP connections")
-def step_syslog_server_resumes_tcp(context):
-    syslog_ng_swap_config(SYSLOG_NG_FULL_CONF)
-    wait_for_tcp_port_open()
+def otel_start_oracle():
+    """Start a fresh otelcol-contrib (Windows) with the BDD config and wait
+    for the TCP/UDP listeners to bind. Mirrors what the CI workflow does
+    on first start (Bdd/otel/bin/otelcol-contrib.exe + Bdd/otel/config.yaml,
+    stdout/err appended to Bdd/output/otelcol.{out,err}).
+    """
+    out = open("Bdd/output/otelcol.out", "ab")
+    err = open("Bdd/output/otelcol.err", "ab")
+    subprocess.Popen(
+        ["Bdd/otel/bin/otelcol-contrib.exe", "--config=Bdd/otel/config.yaml"],
+        stdout=out,
+        stderr=err,
+    )
+    wait_for_tcp_port_open(host="127.0.0.1", port=5514, timeout=15)
+
+
+@when("the syslog oracle stops accepting TCP connections")
+def step_oracle_stops_tcp(context):
+    if context.oracle_format == "syslog-ng":
+        # Linux: swap to a UDP-only config and RELOAD via the control socket.
+        # Open a probe connection before the reload so we can detect teardown.
+        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        probe.settimeout(1)
+        probe.connect(("syslog-ng", 5514))
+
+        syslog_ng_swap_config(SYSLOG_NG_UDP_ONLY_CONF)
+        wait_for_tcp_port_closed()
+        wait_for_connection_teardown(probe)
+        # Allow time for the sender's existing connection to receive RST
+        time.sleep(0.5)
+        context.syslog_ng_config_changed = True
+    else:
+        # Windows OTel: kill the otelcol-contrib process. The TCP listener
+        # disappears as the process exits — the resume step will start a
+        # fresh one. Side-effect: UDP/TLS/mTLS listeners also stop, but the
+        # outage scenarios that drive this step only depend on TCP.
+        otel_kill_oracle()
+        wait_for_tcp_port_closed(host="127.0.0.1", port=5514, timeout=10)
+        # Allow time for the sender's existing connection to receive RST
+        time.sleep(0.5)
+        context.otel_oracle_paused = True
+
+
+@when("the syslog oracle resumes accepting TCP connections")
+def step_oracle_resumes_tcp(context):
+    if context.oracle_format == "syslog-ng":
+        syslog_ng_swap_config(SYSLOG_NG_FULL_CONF)
+        wait_for_tcp_port_open()
+    else:
+        otel_start_oracle()
+        context.otel_oracle_paused = False
 
 
 @when("the example program sends a syslog message")
@@ -822,7 +873,7 @@ def step_check_msg_clean_prefix(context):
     )
 
 
-@then('syslog-ng receives a message with priority "{priority}"')
+@then('the syslog oracle receives a message with priority "{priority}"')
 def step_check_priority(context, priority):
     assert context.fields["PRIORITY"] == priority, (
         f"Expected priority {priority}, got {context.fields.get('PRIORITY')}"
@@ -836,7 +887,7 @@ def step_check_timestamp(context, timestamp):
     )
 
 
-@then("syslog-ng receives a message with a timestamp within {seconds:d} seconds of now")
+@then("the syslog oracle receives a message with a timestamp within {seconds:d} seconds of now")
 def step_check_timestamp_within(context, seconds):
     raw = context.fields["TIMESTAMP"]
     received = datetime.fromisoformat(raw).astimezone(timezone.utc)
@@ -847,7 +898,7 @@ def step_check_timestamp_within(context, seconds):
     )
 
 
-@then("syslog-ng receives a message with the system hostname")
+@then("the syslog oracle receives a message with the system hostname")
 def step_check_system_hostname(context):
     expected = socket.gethostname()
     assert context.fields["HOSTNAME"] == expected, (
@@ -855,7 +906,7 @@ def step_check_system_hostname(context):
     )
 
 
-@then("syslog-ng receives a message with the process ID of the example program")
+@then("the syslog oracle receives a message with the process ID of the example program")
 def step_check_example_pid(context):
     expected = str(context.example_pid)
     assert context.fields["PROCID"] == expected, (
@@ -898,8 +949,8 @@ def step_check_msg(context, msg):
     )
 
 
-@then("syslog-ng receives {count:d} message")
-@then("syslog-ng receives {count:d} messages")
+@then("the syslog oracle receives {count:d} message")
+@then("the syslog oracle receives {count:d} messages")
 def step_check_message_count(context, count):
     # For interactive processes, refresh the line count
     if hasattr(context, "interactive_process"):
@@ -909,7 +960,7 @@ def step_check_message_count(context, count):
     )
 
 
-@then("syslog-ng receives no more messages")
+@then("the syslog oracle receives no more messages")
 def step_check_no_more_messages(context):
     before = oracle_record_count(context.received_log, context.oracle_format)
     time.sleep(5)
@@ -1036,7 +1087,7 @@ def step_check_sys_up_time_shape(context):
     )
 
 
-@then("syslog-ng receives {count:d} messages with sequential sequenceId values")
+@then("the syslog oracle receives {count:d} messages with sequential sequenceId values")
 def step_check_sequential_ids(context, count):
     assert context.message_count == count, (
         f"Expected {count} messages, got {context.message_count}"
@@ -1193,8 +1244,8 @@ def wait_for_per_transport_messages(context, transport, expected):
         time.sleep(0.1)
 
 
-@then("syslog-ng receives {count:d} message over {transport:w}")
-@then("syslog-ng receives {count:d} messages over {transport:w}")
+@then("the syslog oracle receives {count:d} message over {transport:w}")
+@then("the syslog oracle receives {count:d} messages over {transport:w}")
 def step_check_per_transport_count(context, count, transport):
     wait_for_per_transport_messages(context, transport, count)
     path = per_transport_log(context, transport)

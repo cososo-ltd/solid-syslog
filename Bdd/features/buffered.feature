@@ -8,12 +8,12 @@ Feature: Buffered message delivery
   pins both wirings.
 
   Scenario: Single buffered message arrives at the oracle
-    Given syslog-ng is running
+    Given the syslog oracle is running
     When the buffered example sends a syslog message
-    Then syslog-ng receives a message with priority "134"
-    And syslog-ng receives a message with a timestamp within 5 seconds of now
+    Then the syslog oracle receives a message with priority "134"
+    And the syslog oracle receives a message with a timestamp within 5 seconds of now
 
   Scenario: Multiple buffered messages arrive at the oracle
-    Given syslog-ng is running
+    Given the syslog oracle is running
     When the buffered example sends 3 syslog messages
-    Then syslog-ng receives 3 messages
+    Then the syslog oracle receives 3 messages

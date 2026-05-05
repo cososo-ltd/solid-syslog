@@ -4,6 +4,6 @@ Feature: Timestamp encoding
   and formats it as RFC 5424 FULL-DATE "T" FULL-TIME.
 
   Scenario: Timestamp is received by syslog-ng
-    Given syslog-ng is running
+    Given the syslog oracle is running
     When the example program sends a syslog message
-    Then syslog-ng receives a message with a timestamp within 5 seconds of now
+    Then the syslog oracle receives a message with a timestamp within 5 seconds of now

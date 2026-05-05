@@ -1,6 +1,7 @@
 import glob
 import logging
 import os
+import platform
 import shutil
 import socket
 import time
@@ -10,9 +11,21 @@ logger = logging.getLogger("behave.environment")
 SYSLOG_NG_CONF = "Bdd/syslog-ng/syslog-ng.conf"
 SYSLOG_NG_FULL_CONF = "Bdd/syslog-ng/syslog-ng-full.conf"
 SYSLOG_NG_CTL = "/var/lib/syslog-ng/syslog-ng.ctl"
-STORE_FILE_PATH = "/tmp/solidsyslog_store.dat"
-STORE_PATH_PREFIX = "/tmp/STORE"
-THRESHOLD_MARKER_PATH = "/tmp/solidsyslog_threshold_marker.log"
+
+# Store-and-forward backing files. POSIX uses /tmp (Linux Threaded example
+# hardcodes this); Windows uses Bdd/output/ relative to the working dir
+# (Windows Example hardcodes this). Both runners run behave from the project
+# root so the relative path resolves cleanly. Keep the Python side aligned
+# with whichever path the binary is using on each platform.
+if platform.system() == "Windows":
+    _STORE_DIR = os.path.join("Bdd", "output")
+    STORE_FILE_PATH = os.path.join(_STORE_DIR, "solidsyslog_store.dat")
+    STORE_PATH_PREFIX = os.path.join(_STORE_DIR, "STORE")
+    THRESHOLD_MARKER_PATH = os.path.join(_STORE_DIR, "solidsyslog_threshold_marker.log")
+else:
+    STORE_FILE_PATH = "/tmp/solidsyslog_store.dat"
+    STORE_PATH_PREFIX = "/tmp/STORE"
+    THRESHOLD_MARKER_PATH = "/tmp/solidsyslog_threshold_marker.log"
 RECEIVED_UDP_LOG = "Bdd/output/received_udp.log"
 RECEIVED_TCP_LOG = "Bdd/output/received_tcp.log"
 RECEIVED_TLS_LOG = "Bdd/output/received_tls.log"

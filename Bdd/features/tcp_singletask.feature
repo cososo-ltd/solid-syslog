@@ -8,6 +8,6 @@ Feature: TCP message delivery (single-task example)
   the synchronous-send path with no service thread.
 
   Scenario: Single-task message delivered over TCP
-    Given syslog-ng is running
+    Given the syslog oracle is running
     When the example program sends a syslog message with transport tcp
-    Then syslog-ng receives a message with priority "134"
+    Then the syslog oracle receives a message with priority "134"

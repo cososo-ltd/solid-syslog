@@ -1,14 +1,16 @@
 # OpenTelemetry Collector Contrib config — Windows BDD oracle.
 # Receives RFC 5424 syslog over UDP, TCP, TLS (6514), and mTLS (6515) on
-# 127.0.0.1 and writes each parsed log record as a JSON line to
-# Bdd/output/received{,_tls,_mtls}.jsonl.
+# 127.0.0.1 and writes each parsed log record as a JSON line to one combined
+# file (Bdd/output/received.jsonl) and one per-transport file
+# (Bdd/output/received_{udp,tcp,tls,mtls}.jsonl). Mirrors the Linux syslog-ng
+# setup so cross-platform BDD steps that read either the combined or
+# per-transport file work the same on both runners.
 #
 # Used by the bdd-windows runner as a Windows-native replacement for
 # syslog-ng (no WSL/Wine/Docker needed).
 #
-# UDP and TCP share port 5514 — they're separate sockets, so the
-# kernel keeps them apart. TLS and mTLS land on dedicated ports.
-# Mirrors the Linux syslog-ng setup (5514 udp+tcp, 6514 tls, 6515 mtls).
+# UDP and TCP share port 5514 — they're separate sockets, so the kernel keeps
+# them apart. TLS and mTLS land on dedicated ports.
 
 receivers:
   # Each syslog receiver instance accepts exactly one of udp: or tcp:, so we
@@ -45,8 +47,24 @@ receivers:
     enable_octet_counting: true
 
 exporters:
+  # Combined output — every received record lands here regardless of
+  # transport. The cross-platform "the syslog oracle receives N message" step
+  # reads from context.received_log which points here.
   file:
     path: "Bdd/output/received.jsonl"
+    rotation:
+      max_megabytes: 10
+      max_backups: 1
+  # Per-transport outputs — mirror the Linux syslog-ng received_<X>.log
+  # files. The "the syslog oracle receives N message over <X>" step reads
+  # from these to pin the transport actually used end-to-end.
+  file/udp:
+    path: "Bdd/output/received_udp.jsonl"
+    rotation:
+      max_megabytes: 10
+      max_backups: 1
+  file/tcp:
+    path: "Bdd/output/received_tcp.jsonl"
     rotation:
       max_megabytes: 10
       max_backups: 1
@@ -66,15 +84,15 @@ service:
     logs:
       level: warn
   pipelines:
-    # Every received message lands in received.jsonl regardless of transport
-    # — the cross-platform "syslog-ng receives N message" step reads from
-    # context.received_log which points here.
     logs:
       receivers: [syslog/udp, syslog/tcp, syslog/tls, syslog/mtls]
       exporters: [file]
-    # Per-transport pipelines mirror the Linux syslog-ng config's
-    # received_<transport>.log files. The "syslog-ng receives N message
-    # over X" step reads from these to pin the transport actually used.
+    logs/udp:
+      receivers: [syslog/udp]
+      exporters: [file/udp]
+    logs/tcp:
+      receivers: [syslog/tcp]
+      exporters: [file/tcp]
     logs/tls:
       receivers: [syslog/tls]
       exporters: [file/tls]

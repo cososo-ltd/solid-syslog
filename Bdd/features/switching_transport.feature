@@ -5,22 +5,22 @@ Feature: Switch transport at runtime
   value, and the interactive `switch` command updates it at runtime.
 
   Scenario: Switch from UDP to TCP mid-run delivers via both
-    Given syslog-ng is running
+    Given the syslog oracle is running
     And the switching example is running with default transport udp
     When the client sends a message
-    Then syslog-ng receives 1 message over udp
+    Then the syslog oracle receives 1 message over udp
     When the client switches to transport tcp
     And the client sends a message
-    Then syslog-ng receives 1 message over tcp
-    And syslog-ng receives 1 message over udp
+    Then the syslog oracle receives 1 message over tcp
+    And the syslog oracle receives 1 message over udp
 
   @tls
   Scenario: Switch from TCP to TLS mid-run delivers via both reliable transports
-    Given syslog-ng is running
+    Given the syslog oracle is running
     And the switching example is running with default transport tcp
     When the client sends a message
-    Then syslog-ng receives 1 message over tcp
+    Then the syslog oracle receives 1 message over tcp
     When the client switches to transport tls
     And the client sends a message
-    Then syslog-ng receives 1 message over tls
-    And syslog-ng receives 1 message over tcp
+    Then the syslog oracle receives 1 message over tls
+    And the syslog oracle receives 1 message over tcp

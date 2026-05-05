@@ -5,9 +5,9 @@ Feature: PRIVAL encoding
   defaulting to local0 (16) and info (6) when omitted.
 
   Scenario Outline: Valid facility and severity produce correct PRIVAL
-    Given syslog-ng is running
+    Given the syslog oracle is running
     When the example program sends a message with facility <facility> and severity <severity>
-    Then syslog-ng receives a message with priority "<prival>"
+    Then the syslog oracle receives a message with priority "<prival>"
 
     Examples:
       | facility | severity | prival |
@@ -17,11 +17,11 @@ Feature: PRIVAL encoding
       | 23       | 7        | 191    |
 
   Scenario: Out-of-range facility is reported as internal error
-    Given syslog-ng is running
+    Given the syslog oracle is running
     When the example program sends a message with facility 24 and severity 6
-    Then syslog-ng receives a message with priority "43"
+    Then the syslog oracle receives a message with priority "43"
 
   Scenario: Out-of-range severity is reported as internal error
-    Given syslog-ng is running
+    Given the syslog oracle is running
     When the example program sends a message with facility 16 and severity 8
-    Then syslog-ng receives a message with priority "43"
+    Then the syslog oracle receives a message with priority "43"
