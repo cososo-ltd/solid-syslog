@@ -4,8 +4,10 @@
 
 | Image | Tag | Used by |
 |---|---|---|
-| `ghcr.io/davidcozens/cpputest` | `sha-18f19e1` | devcontainer (`gcc` service), all CI jobs except clang |
+| `ghcr.io/davidcozens/cpputest` | `sha-18f19e1` | devcontainer (`gcc` service), most CI jobs |
 | `ghcr.io/davidcozens/cpputest-clang` | `sha-7eac3ab` | `clang` compose service, `build-linux-clang` CI job, `analyze-iwyu` CI job |
+| `ghcr.io/davidcozens/cpputest-freertos` | `sha-44efeae` | `freertos-host` compose service, `build-freertos-host-tdd` CI job — adds FreeRTOS-Kernel / Plus-TCP / Plus-FAT / Mbed TLS sources for host-TDD of FreeRTOS adapters against fakes |
+| `ghcr.io/davidcozens/cpputest-freertos-cross` | `sha-44efeae` | `freertos-target` compose service, `build-freertos-target` CI job — adds `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm` for cross builds and on-QEMU runs |
 | `balabit/syslog-ng` | `latest` | `syslog-ng` service — BDD test oracle |
 | `ghcr.io/davidcozens/behave` | `sha-3faff14` | `behave` service — Debian trixie + Python 3.12 + Behave for BDD scenarios |
 
@@ -47,27 +49,57 @@ When a new image tag is available:
 |---|---|
 | `cpputest` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml` |
 | `cpputest-clang` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml` |
+| `cpputest-freertos` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `docs/containers.md` |
+| `cpputest-freertos-cross` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `docs/containers.md` |
 | `behave` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml` |
+
+The `cpputest-freertos` and `cpputest-freertos-cross` images both come from
+[CppUTestFreertosDocker](https://github.com/DavidCozens/CppUTestFreertosDocker).
+A single push to that repo's `main` rebuilds and publishes both images at
+the same `sha-<short>` tag — always update both rows together.
 
 All references to a given image must use the same tag. Never update one without the others.
 
 ## Switching to a different container as the devcontainer
 
-Each service in `docker-compose.yml` sets a `BUILD_PRESET` environment variable that
-VS Code tasks pick up automatically. This means a single change — the `service` in
-`.devcontainer/devcontainer.json` — is all that is needed to switch environments.
-Ctrl+Shift+B and all other tasks will use the correct preset for that container.
-
-To work interactively in a different container:
-
-1. In `.devcontainer/devcontainer.json`, change `"service": "gcc"` to the target service name
-2. Rebuild the devcontainer (`Ctrl+Shift+P` → "Dev Containers: Rebuild Container")
-3. Work normally — tasks adapt automatically via `BUILD_PRESET`
-
-When done, revert `"service"` back to `"gcc"` and rebuild again.
+The available services and the build preset each one drives:
 
 | Service | Use case | `BUILD_PRESET` |
 |---|---|---|
 | `gcc` | Primary C/C++ development (default) | `debug` |
 | `clang` | Clang-specific debugging / portability | `clang-debug` |
+| `freertos-host` | TDD of FreeRTOS adapters against host-side fakes | `debug` |
+| `freertos-target` | Cross builds, on-QEMU runs, GDB attach (Cortex-M3, mps2-an385) | `freertos-cross` |
 | `behave` | BDD scenario development (Python + Behave) | (none — cmake skipped) |
+
+To switch:
+
+1. In `.devcontainer/devcontainer.json`, change `"service": "gcc"` to the target service name (e.g. `"freertos-target"`).
+2. `Ctrl+Shift+P` → "Dev Containers: Rebuild Container".
+3. Work normally — `Ctrl+Shift+B` and all other tasks pick up the right preset via `$BUILD_PRESET`.
+
+When done, revert `"service"` back to `"gcc"` and rebuild again.
+
+The same VS Code keys work across every service:
+
+- `Ctrl+Shift+B` runs the `build and test` task, which adapts to the
+  active `BUILD_PRESET`. Under `freertos-cross` it builds the hello-world
+  ELF; under `debug` / `clang-debug` it builds and runs `SolidSyslogTests`;
+  with `BUILD_PRESET` empty (the `behave` service) it runs `behave`.
+- `F5` debugs:
+  - `Debug SolidSyslogTests (host)` — works in `gcc`, `clang`, and
+    `freertos-host` (path resolves via `${env:BUILD_PRESET}`). Builds first
+    via the same `build and test` task and stops at `main`.
+  - `Debug FreeRTOS HelloWorld (QEMU)` — works in `freertos-target`
+    (cortex-debug + arm-none-eabi-gdb + qemu-system-arm). Stops at `main`
+    via `runToEntryPoint`.
+  - After switching the devcontainer service, pick the matching config from
+    the Run-and-Debug dropdown once. VS Code remembers the last-picked
+    config per workspace (not per container), so the previous choice
+    survives a container rebuild — a stale selection will fail with the
+    wrong debugger type.
+- `Ctrl+Shift+P` → "Tasks: Run Task" → `run on QEMU (FreeRTOS)` — one-shot
+  QEMU run for sanity-checking the build, output to the integrated
+  terminal. Use only in the `freertos-target` service.
+
+For the FreeRTOS examples, see [Example/FreeRtos/README.md](../Example/FreeRtos/README.md) for build / run / GDB-attach instructions.

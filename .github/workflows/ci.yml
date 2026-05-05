@@ -652,9 +652,79 @@ jobs:
         if: failure()
         run: docker compose -f ci/docker-compose.bdd.yml logs --no-color
 
+  build-freertos-host-tdd:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    container:
+      image: ghcr.io/davidcozens/cpputest-freertos:sha-44efeae
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      # Smoke check: configure + build the regular host preset under the
+      # cpputest-freertos image. FREERTOS_KERNEL_PATH is set, so
+      # Platform/FreeRtos and the FreeRtosFakes / Tests/FreeRtos placeholder
+      # directories are added — placeholders today, real fakes from S08.04.
+      - name: Configure
+        run: cmake --preset debug
+
+      - name: Build and test
+        run: cmake --build --preset debug --target junit ExampleTests SolidSyslogExample SolidSyslogThreadedExample
+
+  build-freertos-target:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-44efeae
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Configure (ARM cross)
+        run: cmake --preset freertos-cross
+
+      - name: Cross-build hello-world ELF
+        run: cmake --build --preset freertos-cross --target SolidSyslogFreeRtosHelloWorld
+
+      # QEMU smoke: run the ELF for a few seconds, capture stdout, assert the
+      # expected greeting. timeout returns 124 when it kills QEMU, which is
+      # the success path here — we want the scheduler to keep idling so GDB
+      # can attach in interactive use.
+      - name: Run ELF under QEMU mps2-an385
+        shell: bash
+        run: |
+          set -o pipefail
+          set +e
+          OUT=$(timeout 5 qemu-system-arm \
+              -M mps2-an385 -m 16M -nographic \
+              -semihosting-config enable=on,target=native \
+              -kernel build/freertos-cross/Example/FreeRtos/HelloWorld/SolidSyslogFreeRtosHelloWorld.elf \
+              2>&1)
+          RC=$?
+          set -e
+          echo "$OUT"
+          # timeout returns 124 when it kills QEMU; that's our success path —
+          # the scheduler keeps idling so an interactive GDB attach works.
+          # Anything else means QEMU exited early (crash or hard fault).
+          [ "$RC" -eq 124 ] || { echo "Expected timeout exit 124, got $RC"; exit 1; }
+          echo "$OUT" | grep -q "hello from FreeRTOS on QEMU mps2-an385"
+
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [build-linux-gcc, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, analyze-iwyu, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-windows-openssl]
+    needs: [build-linux-gcc, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, analyze-iwyu, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-windows-openssl, build-freertos-host-tdd, build-freertos-target]
     runs-on: ubuntu-latest
     permissions:
       contents: read

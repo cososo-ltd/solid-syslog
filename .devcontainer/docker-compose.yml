@@ -81,5 +81,41 @@ services:
     working_dir: /workspaces/SolidSyslog
     command: sleep infinity
 
+  freertos-host:
+    image: ghcr.io/davidcozens/cpputest-freertos:sha-44efeae
+    volumes:
+      - ..:/workspaces/SolidSyslog:cached
+      - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
+      - ${HOME:-/tmp}/.claude:/home/developer/.claude
+      - ${HOME:-/tmp}/.config/gh:/home/developer/.config/gh
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - SSH_AUTH_SOCK=/ssh-agent
+      - BUILD_PRESET=debug
+    user: developer
+    working_dir: /workspaces/SolidSyslog
+    command: sleep infinity
+
+  freertos-target:
+    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-44efeae
+    volumes:
+      - ..:/workspaces/SolidSyslog:cached
+      - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
+      - ${HOME:-/tmp}/.claude:/home/developer/.claude
+      - ${HOME:-/tmp}/.config/gh:/home/developer/.config/gh
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - SSH_AUTH_SOCK=/ssh-agent
+      - BUILD_PRESET=freertos-cross
+    user: developer
+    working_dir: /workspaces/SolidSyslog
+    command: sleep infinity
+
 volumes:
   syslog-ng-ctl:

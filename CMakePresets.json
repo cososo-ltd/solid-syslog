@@ -96,18 +96,29 @@
             "name": "msvc-debug",
             "displayName": "MSVC Debug",
             "inherits": "msvc-base"
+        },
+        {
+            "name": "freertos-cross",
+            "displayName": "FreeRTOS cross (ARM Cortex-M3, QEMU mps2-an385)",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "toolchainFile": "${sourceDir}/Example/FreeRtos/cmake/arm-none-eabi.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
         }
     ],
     "buildPresets": [
-        { "name": "debug",       "configurePreset": "debug" },
-        { "name": "release",     "configurePreset": "release" },
-        { "name": "sanitize",    "configurePreset": "sanitize" },
-        { "name": "coverage",    "configurePreset": "coverage" },
-        { "name": "tidy",        "configurePreset": "tidy" },
-        { "name": "cppcheck",    "configurePreset": "cppcheck" },
-        { "name": "clang-debug", "configurePreset": "clang-debug" },
-        { "name": "iwyu",        "configurePreset": "iwyu" },
-        { "name": "msvc-debug",  "configurePreset": "msvc-debug", "configuration": "Debug" }
+        { "name": "debug",          "configurePreset": "debug" },
+        { "name": "release",        "configurePreset": "release" },
+        { "name": "sanitize",       "configurePreset": "sanitize" },
+        { "name": "coverage",       "configurePreset": "coverage" },
+        { "name": "tidy",           "configurePreset": "tidy" },
+        { "name": "cppcheck",       "configurePreset": "cppcheck" },
+        { "name": "clang-debug",    "configurePreset": "clang-debug" },
+        { "name": "iwyu",           "configurePreset": "iwyu" },
+        { "name": "msvc-debug",     "configurePreset": "msvc-debug", "configuration": "Debug" },
+        { "name": "freertos-cross", "configurePreset": "freertos-cross" }
     ],
     "testPresets": [
         {

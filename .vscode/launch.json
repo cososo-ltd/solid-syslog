@@ -2,17 +2,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
+            "name": "Debug SolidSyslogTests (host)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/Tests/SolidSyslogTests",
+            "program": "${workspaceFolder}/build/${env:BUILD_PRESET}/Tests/SolidSyslogTests",
             "args": [],
-            "stopAtEntry": false,
+            "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
             "miDebuggerPath": "/usr/bin/gdb",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
+            "preLaunchTask": "build and test",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -25,6 +26,24 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "Debug FreeRTOS HelloWorld (QEMU)",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "qemu",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/freertos-cross/Example/FreeRtos/HelloWorld/SolidSyslogFreeRtosHelloWorld.elf",
+            "cpu": "cortex-m3",
+            "machine": "mps2-an385",
+            "armToolchainPath": "/usr/bin",
+            "serverpath": "qemu-system-arm",
+            "serverArgs": [
+                "-semihosting-config",
+                "enable=on,target=native"
+            ],
+            "preLaunchTask": "build and test",
+            "runToEntryPoint": "main"
         }
     ]
 }
