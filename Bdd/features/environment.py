@@ -67,13 +67,18 @@ OTELCOL_ERR    = os.path.join("Bdd", "output", "otelcol.err")
 
 def otel_start_oracle():
     """Start a fresh otelcol-contrib (Windows) with the BDD config and wait
-    for the TCP/UDP listeners to bind. Mirrors what the CI workflow does
-    on first start (otelcol-contrib.exe + Bdd/otel/config.yaml, stdout/err
-    appended to Bdd/output/otelcol.{out,err}). Closes the parent's
-    stdout/err handles after Popen so they don't leak — the child keeps
-    its own duplicated copies. Uses os.path.join so the executable path
-    has Windows-native backslashes — _winapi.CreateProcess does not
+    for the TCP/UDP/TLS/mTLS listeners to bind. Mirrors what the CI workflow
+    does on first start (otelcol-contrib.exe + Bdd/otel/config.yaml,
+    stdout/err appended to Bdd/output/otelcol.{out,err}). Closes the
+    parent's stdout/err handles after Popen so they don't leak — the child
+    keeps its own duplicated copies. Uses os.path.join so the executable
+    path has Windows-native backslashes — _winapi.CreateProcess does not
     resolve forward slashes the way bash does.
+
+    Wait on all three TCP-bound ports (5514 syslog/TCP, 6514 TLS, 6515 mTLS)
+    rather than just 5514. Otelcol binds them in series during startup, so
+    a kill+restart in a previous scenario followed immediately by an mTLS
+    scenario could race the TLS handshake against an unbound listener.
     """
     os.makedirs(os.path.dirname(OTELCOL_OUT), exist_ok=True)
     with open(OTELCOL_OUT, "ab") as out, open(OTELCOL_ERR, "ab") as err:
@@ -82,7 +87,8 @@ def otel_start_oracle():
             stdout=out,
             stderr=err,
         )
-    wait_for_tcp_port_open(host="127.0.0.1", port=5514, timeout=15)
+    for port in (5514, 6514, 6515):
+        wait_for_tcp_port_open(host="127.0.0.1", port=port, timeout=15)
 
 
 def before_all(context):
