@@ -154,9 +154,9 @@ def after_scenario(context, scenario):
             and getattr(context, "otel_oracle_paused", False)):
         try:
             otel_start_oracle()
+            context.otel_oracle_paused = False
         except Exception as exc:
             logger.warning("Failed to restart otelcol-contrib in teardown: %s", exc)
-        context.otel_oracle_paused = False
 
     # Clean up store files to prevent cross-scenario contamination
     try:
