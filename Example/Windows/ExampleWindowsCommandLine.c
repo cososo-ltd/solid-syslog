@@ -43,6 +43,7 @@ void ExampleWindowsCommandLine_Parse(int argc, char* argv[], struct WindowsExamp
     options->transport         = "udp";
     options->messageId         = NULL;
     options->msg               = NULL;
+    options->appName           = NULL;
     options->store             = "null";
     options->maxBlocks         = DEFAULT_MAX_BLOCKS;
     options->maxBlockSize      = DEFAULT_MAX_BLOCK_SIZE;
@@ -72,6 +73,10 @@ void ExampleWindowsCommandLine_Parse(int argc, char* argv[], struct WindowsExamp
         else if (((i + 1) < argc) && (strcmp(argv[i], "--transport") == 0))
         {
             options->transport = argv[++i];
+        }
+        else if (((i + 1) < argc) && (strcmp(argv[i], "--app-name") == 0))
+        {
+            options->appName = argv[++i];
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--store") == 0))
         {

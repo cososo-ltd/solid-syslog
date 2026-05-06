@@ -16,6 +16,7 @@ EXTERN_C_BEGIN
         const char*               transport; /* "udp" | "tcp" | "tls" | "mtls" — initial selector */
         const char*               messageId;
         const char*               msg;
+        const char*               appName;           /* --app-name (NULL: derive from argv[0]) */
         const char*               store;             /* "null" (default) | "file" — block-store backend */
         size_t                    maxBlocks;         /* --max-blocks */
         size_t                    maxBlockSize;      /* --max-block-size */
@@ -34,6 +35,7 @@ EXTERN_C_BEGIN
          --msgid X
          --message X
          --transport udp|tcp|tls|mtls    (default: udp)
+         --app-name X                    (default: derive from argv[0])
          --store null|file               (default: null)
          --max-blocks N                  (default set by example)
          --max-block-size N              (default set by example)

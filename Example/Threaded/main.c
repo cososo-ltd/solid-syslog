@@ -213,8 +213,6 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct ExampleOpt
 
 int main(int argc, char* argv[])
 {
-    ExampleAppName_Set(argv[0]);
-
     /* BDD harness can override the TLS/mTLS host (defaults to "syslog-ng",
        the Linux compose service name). Same env-var contract as the Windows
        example so behave can target either oracle. */
@@ -226,6 +224,10 @@ int main(int argc, char* argv[])
     {
         return 1;
     }
+
+    /* Honour --app-name when supplied (BDD scenarios pin it for record-size
+       parity across runners); otherwise derive from argv[0] as before. */
+    ExampleAppName_Set((options.appName != NULL) ? options.appName : argv[0]);
 
     struct SolidSyslogSender* sender = CreateSender(&options);
     struct SolidSyslogStore*  store  = CreateStore(&options);

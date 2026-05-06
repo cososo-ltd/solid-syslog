@@ -516,7 +516,18 @@ def build_threaded_command(context, transport, no_sd=False):
         f"Threaded binary not found at {binary} — build with cmake first"
     )
 
-    cmd = [os.path.join(".", binary), "--transport", transport]
+    # Pin app-name to a fixed value across runners so RFC 5424 record sizes
+    # match byte-for-byte. Without this, Linux records carry a 26-char app
+    # name (binary basename "SolidSyslogThreadedExample") while Windows
+    # records carry an 18-char one ("SolidSyslogExample"), shifting
+    # per-block packing on the BlockStore — capacity scenarios designed
+    # around 4 records/block on Linux fit 5 on Windows and the discard
+    # assertions drift.
+    cmd = [
+        os.path.join(".", binary),
+        "--transport", transport,
+        "--app-name", "SolidSyslogThreadedExample",
+    ]
     if getattr(context, "store_type", None):
         cmd.extend(["--store", context.store_type])
     if getattr(context, "store_max_blocks", None):

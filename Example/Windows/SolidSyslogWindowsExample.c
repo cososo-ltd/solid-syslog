@@ -282,8 +282,6 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
         return 1;
     }
 
-    ExampleAppName_Set(argv[0]);
-
     /* BDD harness can override the TLS/mTLS host (defaults to "syslog-ng",
        the Linux compose service name). Same env-var contract as the Threaded
        example so behave can target either oracle. */
@@ -294,6 +292,10 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
 
     struct WindowsExampleOptions options;
     ExampleWindowsCommandLine_Parse(argc, argv, &options);
+
+    /* Honour --app-name when supplied (BDD scenarios pin it for record-size
+       parity across runners); otherwise derive from argv[0] as before. */
+    ExampleAppName_Set((options.appName != NULL) ? options.appName : argv[0]);
 
     haltExit = options.haltExit;
 

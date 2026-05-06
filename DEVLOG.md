@@ -1,5 +1,63 @@
 # Dev Log
 
+## 2026-05-06 — S13.20 follow-up — Slice A: app-name parity for capacity scenarios
+
+### Decisions
+
+- **Root cause confirmed for `Expected 8, got 10` on Windows CI.** The
+  discard scenarios in `store_capacity.feature` size their message body at
+  `SOLIDSYSLOG_MAX_MESSAGE_SIZE / 5 - 50 ≈ 359 X's`, sized so ~4 records
+  fit per 2055-byte (clamped) block. The estimate baked in a 95-byte RFC
+  5424 header, true on Linux with the 26-char binary name
+  `SolidSyslogThreadedExample`. Windows' `SolidSyslogExample.exe` derives
+  an 18-char app name, shaving 8 bytes off every record — enough for 5 to
+  fit per block, so `2 blocks × 5 = 10` records survived where the test
+  expected `8`.
+
+- **Fix: pin app-name to a fixed-length value via `--app-name` CLI flag.**
+  Both `ExampleCommandLine.c` (Linux Threaded / SingleTask shared) and
+  `ExampleWindowsCommandLine.c` now accept `--app-name X`; `ExampleAppName_Set`
+  is invoked after parse with `(options.appName ? options.appName : argv[0])`,
+  so the implicit argv[0]-derived behaviour is preserved when the flag is
+  absent. The BDD step that starts the threaded example pins
+  `--app-name SolidSyslogThreadedExample` so both runners produce
+  byte-identical record headers regardless of binary name.
+
+- **`SingleTask/SolidSyslogExample.c` deliberately not touched.** The shared
+  parser already exposes `options.appName`, but no BDD scenario drives the
+  single-task example through capacity tests, so updating it would be
+  beyond what TDD needs.
+
+- **Pre-existing test bug fixed in passing.** `ExampleWindowsCommandLineTest.cpp`
+  asserted `LONGS_EQUAL(SOLIDSYSLOG_TRANSPORT_UDP, options.transport)` —
+  comparing an enum to a `const char*`. The symbol wasn't even visible
+  without including `SolidSyslogTransport.h`, so the file had been
+  uncompilable on MSVC since written. CI's `build-windows-msvc` job builds
+  `--target junit SolidSyslogWindowsExample`, and `junit` only depends on
+  `SolidSyslogTests` — not `ExampleTests` — so nobody noticed. Switched to
+  `STRCMP_EQUAL("udp", options.transport)` / `STRCMP_EQUAL("tcp", ...)`,
+  which actually matches what the production code returns.
+
+### Validation
+
+- **Linux gcc + clang + tidy + cppcheck + clang-format** all clean.
+- **Linux BDD:** 21 features / 46 scenarios / 0 failed via
+  `ci/docker-compose.bdd.yml`. Capacity scenarios pass — Linux records
+  unchanged (binary basename happens to be the value we now pin
+  explicitly).
+- **MSVC:** `ExampleTests.exe` 26/26 pass; `SolidSyslogTests.exe` 949
+  ran of 951 (2 ignored Linux-only).
+
+### Deferred — Slice B
+
+- **Halt stops the application — still erroring.** Per handoff, the halt
+  scenario times out instead of `_exit(2)`-ing; STORE00 has 1 record at
+  exit instead of the expected 4. Investigation plan (next session): re-add
+  the `SOLIDSYSLOG_BDD_DEBUG_KEEP_STORE` stderr instrumentation that was
+  reverted before the previous commit, reproduce locally on Windows,
+  observe when halt fires relative to writes. Report findings before
+  attempting a fix.
+
 ## 2026-05-06 — S13.20 follow-up — Windows BDD parity (slice 1+2+3 of 4)
 
 ### Decisions
