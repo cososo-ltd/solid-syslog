@@ -1,7 +1,7 @@
 @tcp @buffered
 Feature: Store and forward during sender outage
-  When the syslog server goes down, messages accumulate in the
-  file-based store. Once the server recovers, the service loop
+  When the syslog oracle goes down, messages accumulate in the
+  file-based store. Once the oracle recovers, the service loop
   drains the store and delivers the buffered messages.
 
   Scenario: Messages delivered after sender outage

@@ -4,6 +4,7 @@ import os
 import platform
 import shutil
 import socket
+import subprocess
 import time
 
 logger = logging.getLogger("behave.environment")
@@ -44,6 +45,44 @@ def wait_for_tcp_port_open(host="syslog-ng", port=5514, timeout=5):
         except (ConnectionRefusedError, OSError):
             time.sleep(0.1)
     raise AssertionError(f"TCP port {port} not open after {timeout}s")
+
+
+def otel_kill_oracle():
+    """Stop any running otelcol-contrib (Windows). Idempotent: returns
+    cleanly if no process is running.
+    """
+    subprocess.run(
+        ["taskkill", "/F", "/IM", "otelcol-contrib.exe"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+
+
+OTELCOL_BIN    = os.path.join("Bdd", "otel", "bin", "otelcol-contrib.exe")
+OTELCOL_CONFIG = os.path.join("Bdd", "otel", "config.yaml")
+OTELCOL_OUT    = os.path.join("Bdd", "output", "otelcol.out")
+OTELCOL_ERR    = os.path.join("Bdd", "output", "otelcol.err")
+
+
+def otel_start_oracle():
+    """Start a fresh otelcol-contrib (Windows) with the BDD config and wait
+    for the TCP/UDP listeners to bind. Mirrors what the CI workflow does
+    on first start (otelcol-contrib.exe + Bdd/otel/config.yaml, stdout/err
+    appended to Bdd/output/otelcol.{out,err}). Closes the parent's
+    stdout/err handles after Popen so they don't leak — the child keeps
+    its own duplicated copies. Uses os.path.join so the executable path
+    has Windows-native backslashes — _winapi.CreateProcess does not
+    resolve forward slashes the way bash does.
+    """
+    os.makedirs(os.path.dirname(OTELCOL_OUT), exist_ok=True)
+    with open(OTELCOL_OUT, "ab") as out, open(OTELCOL_ERR, "ab") as err:
+        subprocess.Popen(
+            [OTELCOL_BIN, "--config=" + OTELCOL_CONFIG],
+            stdout=out,
+            stderr=err,
+        )
+    wait_for_tcp_port_open(host="127.0.0.1", port=5514, timeout=15)
 
 
 def before_all(context):
@@ -100,6 +139,18 @@ def after_scenario(context, scenario):
         except Exception as exc:
             logger.warning("Failed to restore syslog-ng config in teardown: %s", exc)
         context.syslog_ng_config_changed = False
+
+    # Restart the OTel oracle if a "stops accepting TCP" step killed it during
+    # this scenario. taskkill takes down all four listeners (UDP/TCP/TLS/mTLS)
+    # and `Given the syslog oracle is running` only records counts — it does
+    # not start anything — so without this every subsequent scenario fails.
+    if (getattr(context, "oracle_format", None) == "otel-jsonl"
+            and getattr(context, "otel_oracle_paused", False)):
+        try:
+            otel_start_oracle()
+        except Exception as exc:
+            logger.warning("Failed to restart otelcol-contrib in teardown: %s", exc)
+        context.otel_oracle_paused = False
 
     # Clean up store files to prevent cross-scenario contamination
     try:

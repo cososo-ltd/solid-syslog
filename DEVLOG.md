@@ -1,5 +1,119 @@
 # Dev Log
 
+## 2026-05-06 — S13.20 follow-up — Windows BDD parity (slice 1+2+3 of 4)
+
+### Decisions
+
+- **Slice 1 — Windows BDD plumbing fixes (test-side).**
+  - `after_scenario` now restarts otelcol on Windows when a scenario killed
+    it. Symmetric with Linux's syslog-ng config-restore. Without this, every
+    scenario after the first kill hit `oracle received 0 of 1 messages`,
+    which was the dominant CI failure on the previous push.
+  - `otel_kill_oracle()` / `otel_start_oracle()` moved into `environment.py`
+    so the `after_scenario` hook can reach them. Path strings switched from
+    forward-slash relative paths to `os.path.join` — `_winapi.CreateProcess`
+    failed to resolve `Bdd/otel/bin/otelcol-contrib.exe` because Windows
+    requires backslashes in the executable position, even though forward
+    slashes work elsewhere via the bash wrapper.
+  - The four sequenceId step functions (`step_check_contiguous_sequence_ids`,
+    `_last_n`, `_replayed`, `_last`) still hard-coded `parse_syslog_ng_line`;
+    on the OTel runner each line of `received.jsonl` is a JSON batch, not a
+    syslog-ng template, so they misparsed. Dispatched through
+    `parse_oracle_line(line, context.oracle_format)` to match the converted
+    sibling step.
+  - File-handle leak fix in `otel_start_oracle`: stdout/err opened with `with`
+    so the parent's copies close after `Popen`; the child keeps duplicated
+    handles.
+- **Slice 2 — store_and_forward.feature narrative says "syslog oracle" not
+  "syslog server"** to match the renamed step text.
+- **Slice 3 — non-blocking connect with bounded timeout (production fix).**
+  Diagnosed a 6.95 s gap between seq=1 and seqs=2-11 in `received.jsonl` on
+  the Discard-oldest scenario: every record arrived in a single burst after
+  the oracle was restarted, meaning records were buffered somewhere in the
+  example for the entire outage rather than overflowing the BlockStore.
+  Direct `socket.connect()` timing measurement on Windows loopback to a
+  closed port: ~2 s per call (Linux: microseconds). Windows' default blocking
+  `connect()` retries internally before returning `WSAECONNREFUSED`, so the
+  service thread iterated at ~0.5 records/sec during outages and the
+  BlockStore's discard policy never had a chance to fire.
+  - `SolidSyslogWinsockTcpStream::Connect` rewritten as non-blocking connect
+    + `select` with `CONNECT_TIMEOUT_MILLISECONDS = 200` + `SO_ERROR` check.
+    Blocking mode is restored on success so subsequent `send()` honours
+    `SO_SNDTIMEO`; the change is scoped to the connect path.
+  - New seams in `SolidSyslogWinsockTcpStreamInternal.h`: `ioctlsocket`,
+    `select`, `getsockopt`, `WSAGetLastError`. WinsockFake gained matching
+    shims (`WinsockFake_ioctlsocket`, `_select`, `_WSAGetLastError`,
+    `SetSelectWritable/Error/Return`, `SetSoError`, `FionbioArgAt` etc).
+  - 13 new CppUTest cases in `Tests/SolidSyslogWinsockTcpStreamTest.cpp`
+    cover the path: FIONBIO on/off ordering, select timeout, deferred
+    SO_ERROR, immediate-WSAECONNREFUSED short-circuit, ioctlsocket failure.
+  - **POSIX is intentionally not touched.** Linux `connect()` to a refused
+    loopback port returns `ECONNREFUSED` instantly — no symmetric problem
+    to solve. Per CLAUDE.md "don't add features beyond what the task
+    requires."
+- **Pre-1.0 phase — no `!` / `BREAKING CHANGE:` trailer**, even though the
+  TCP stream's connect timing changed. Per memory entry on pre-release
+  versioning.
+
+### Empirical evidence captured during the dig
+
+- Windows native `connect()` to closed `127.0.0.1:25515`, 10 iterations,
+  Python: average **2038.70 ms** per call. Linux equivalent on the docker
+  container: ~microseconds.
+- Mid-scenario STORE files on Windows pre-fix: `STORE03.log = 1292 bytes`
+  (2 records of ~639 bytes). The block sequence had advanced to writeSeq=3
+  via dispose-on-empty post-resume, but discard never fired during the
+  outage because almost no records reached the store (service thread
+  blocked in connect retries).
+- Post-fix Discard-oldest scenario: receives 9 messages instead of the
+  test's expected 8 (was 11 before slice 3). The discard policy is now
+  firing — just dropping 2 records instead of 3 due to a 6-byte record-size
+  delta between Linux (`SolidSyslogThreadedExample` = 26-char app name) and
+  Windows (`SolidSyslogExample` = 18-char). Records pack 4-per-block on
+  Windows where Linux fits ~3-and-a-bit, so different overflow boundary.
+
+### Deferred — open for the next session
+
+- **store_capacity.feature × 4 scenarios still fail on Windows.** The
+  production fix is correct (slice 3 unit tests pass; discard policy now
+  fires); these are calibration / packing-math issues:
+  - **Discard-oldest, Discard-newest**: `expected 8, got 9` and the "last 7
+    starting from 5" assertion is off by 1 record because Windows packs 4
+    records per block where Linux packs 3-and-a-bit. The 6-byte difference
+    is dominated by the example binary name. Ideas: (a) match record sizes
+    by padding Windows messages or renaming the example, (b) make the test
+    expectations platform-aware (oracle_format branch), (c) redesign the
+    scenario to assert a tolerance rather than exact counts.
+  - **Halt stops the application**: with the new fast-iteration service
+    thread, post-mortem `STORE00.log` shows a single record (503 bytes)
+    instead of the 4-records expected at halt time. Suggests the halt is
+    firing earlier than expected or the discard-policy=halt path interacts
+    differently when iterations are millisecond-bounded. Needs
+    instrumentation in the next session.
+  - The first session's `--no-sd` Windows-side wiring (Tier-3 example)
+    landed alongside slice 3 to bring record packing closer to Linux, but
+    the residual byte difference is enough to keep the test's hardcoded
+    expectations off by 1. CodeRabbit didn't flag the missing flag because
+    it was beyond the diff base.
+- **Linux BDD locally confirmed clean** — 21 features / 46 scenarios pass
+  via `ci/docker-compose.bdd.yml`, both before and after slice 3. The
+  production change is windows-only; no Linux regression possible.
+- **Windows OS connect-retry behaviour caused a real production drain-rate
+  bug**, not just a test artefact. A Windows app whose syslog destination
+  goes offline for 5 s would, before this fix, drain its CircularBuffer at
+  ~0.5 records/sec while connect retries chewed through. After the fix,
+  drain rate is bounded by the 200 ms timeout instead.
+
+### Open questions
+
+- **Halt-fires-too-early on Windows** — STORE00 has 1 record at process
+  exit instead of the expected 4. Initial hypothesis: the initial-message
+  block lifecycle interacts with the new fast-iter service loop differently
+  than on Linux. Or the haltExit volatile bool is being read before main
+  thread has set it. Needs `_exit(2)` instrumentation or stderr trace.
+- **Should the example binary be renamed** to `SolidSyslogThreadedExample`
+  on both platforms for parity? Tier-3 cleanup but mostly cosmetic.
+
 ## 2026-05-05 — S08.01 FreeRTOS hello-world bring-up
 
 ### Decisions

@@ -22,6 +22,7 @@ EXTERN_C_BEGIN
         const char*               discardPolicy;     /* "oldest" (default) | "newest" | "halt" */
         size_t                    capacityThreshold; /* --capacity-threshold (bytes; 0 disables) */
         bool                      haltExit;          /* --halt-on-store-full */
+        bool                      noSd;              /* --no-sd (suppress structured data) */
     };
 
     /* Minimal CLI parser — recognises the flags below. Unknown flags and
@@ -39,6 +40,7 @@ EXTERN_C_BEGIN
          --discard-policy oldest|newest|halt   (default: oldest)
          --capacity-threshold N          (default: 0 — disabled)
          --halt-on-store-full            (flag; default: off)
+         --no-sd                         (flag; default: off — suppress structured data)
        getopt is not available on MSVC and pulling in a vcpkg getopt for a
        handful of flags would be overkill. */
     void ExampleWindowsCommandLine_Parse(int argc, char* argv[], struct WindowsExampleOptions* options);

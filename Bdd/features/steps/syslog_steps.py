@@ -20,6 +20,8 @@ from environment import (
     STORE_FILE_PATH,
     STORE_PATH_PREFIX,
     THRESHOLD_MARKER_PATH,
+    otel_kill_oracle,
+    otel_start_oracle,
 )
 
 PER_TRANSPORT_LOG_SYSLOG_NG = {
@@ -690,34 +692,6 @@ def wait_for_connection_teardown(probe_socket, timeout=5):
     raise AssertionError(f"Probe connection still alive after {timeout}s")
 
 
-def otel_kill_oracle():
-    """Stop any running otelcol-contrib (Windows). Idempotent: returns
-    cleanly if no process is running.
-    """
-    subprocess.run(
-        ["taskkill", "/F", "/IM", "otelcol-contrib.exe"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=False,
-    )
-
-
-def otel_start_oracle():
-    """Start a fresh otelcol-contrib (Windows) with the BDD config and wait
-    for the TCP/UDP listeners to bind. Mirrors what the CI workflow does
-    on first start (Bdd/otel/bin/otelcol-contrib.exe + Bdd/otel/config.yaml,
-    stdout/err appended to Bdd/output/otelcol.{out,err}).
-    """
-    out = open("Bdd/output/otelcol.out", "ab")
-    err = open("Bdd/output/otelcol.err", "ab")
-    subprocess.Popen(
-        ["Bdd/otel/bin/otelcol-contrib.exe", "--config=Bdd/otel/config.yaml"],
-        stdout=out,
-        stderr=err,
-    )
-    wait_for_tcp_port_open(host="127.0.0.1", port=5514, timeout=15)
-
-
 @when("the syslog oracle stops accepting TCP connections")
 def step_oracle_stops_tcp(context):
     if context.oracle_format == "syslog-ng":
@@ -1139,7 +1113,7 @@ def step_client_is_killed(context):
 def step_check_contiguous_sequence_ids(context):
     ids = []
     for line in context.all_lines:
-        fields = parse_syslog_ng_line(line)
+        fields = parse_oracle_line(line, context.oracle_format)
         sd = fields.get("STRUCTURED_DATA", "")
         match = re.search(r'sequenceId="(\d+)"', sd)
         assert match, (
@@ -1160,7 +1134,7 @@ def step_check_last_n_contiguous_ids(context, count, start):
     )
     last_n = context.all_lines[-count:]
     for i, line in enumerate(last_n):
-        fields = parse_syslog_ng_line(line)
+        fields = parse_oracle_line(line, context.oracle_format)
         sd = fields.get("STRUCTURED_DATA", "")
         match = re.search(r'sequenceId="(\d+)"', sd)
         assert match, (
@@ -1185,7 +1159,7 @@ def step_check_replayed_sequence_ids(context, id_list):
     # from the previous session (already verified)
     replayed = context.all_lines[-len(expected):]
     for i, line in enumerate(replayed):
-        fields = parse_syslog_ng_line(line)
+        fields = parse_oracle_line(line, context.oracle_format)
         sd = fields.get("STRUCTURED_DATA", "")
         match = re.search(r'sequenceId="(\d+)"', sd)
         assert match, (
@@ -1201,7 +1175,7 @@ def step_check_replayed_sequence_ids(context, id_list):
 @then("the last message has sequenceId {value:d}")
 def step_check_last_sequence_id(context, value):
     assert context.all_lines, "No messages received to check last sequenceId"
-    fields = parse_syslog_ng_line(context.all_lines[-1])
+    fields = parse_oracle_line(context.all_lines[-1], context.oracle_format)
     sd = fields.get("STRUCTURED_DATA", "")
     match = re.search(r'sequenceId="(\d+)"', sd)
     assert match, (

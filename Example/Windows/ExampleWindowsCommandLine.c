@@ -49,6 +49,7 @@ void ExampleWindowsCommandLine_Parse(int argc, char* argv[], struct WindowsExamp
     options->discardPolicy     = "oldest";
     options->capacityThreshold = 0;
     options->haltExit          = false;
+    options->noSd              = false;
 
     for (int i = 1; i < argc; i++)
     {
@@ -95,6 +96,10 @@ void ExampleWindowsCommandLine_Parse(int argc, char* argv[], struct WindowsExamp
         else if (strcmp(argv[i], "--halt-on-store-full") == 0)
         {
             options->haltExit = true;
+        }
+        else if (strcmp(argv[i], "--no-sd") == 0)
+        {
+            options->noSd = true;
         }
     }
 }

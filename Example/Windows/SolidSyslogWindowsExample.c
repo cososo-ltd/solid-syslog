@@ -319,7 +319,12 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
     };
     struct SolidSyslogStructuredData* originSd = SolidSyslogOriginSd_Create(&originConfig);
 
-    struct SolidSyslogStructuredData* sdList[] = {metaSd, timeQuality, originSd};
+    /* MetaSd is always present so seqId-based BDD scenarios work; the
+       --no-sd flag (matching the Linux Threaded example) suppresses the
+       optional timeQuality and origin SDs to keep records under the
+       BlockStore's per-block packing budget for store-capacity tests. */
+    struct SolidSyslogStructuredData* sdList[3] = {metaSd, timeQuality, originSd};
+    size_t                            sdCount   = options.noSd ? 1 : 3;
 
     struct SolidSyslogConfig config = {
         .buffer       = buffer,
@@ -330,7 +335,7 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
         .getProcessId = SolidSyslogWindowsProcessId_Get,
         .store        = store,
         .sd           = sdList,
-        .sdCount      = sizeof(sdList) / sizeof(sdList[0]),
+        .sdCount      = sdCount,
     };
     SolidSyslog_Create(&config);
 

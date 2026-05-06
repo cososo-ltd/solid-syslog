@@ -27,12 +27,16 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
     void setup() override
     {
         WinsockFake_Reset();
-        UT_PTR_SET(WinsockTcpStream_socket,      WinsockFake_socket);
-        UT_PTR_SET(WinsockTcpStream_connect,     WinsockFake_connect);
-        UT_PTR_SET(WinsockTcpStream_send,        WinsockFake_send);
-        UT_PTR_SET(WinsockTcpStream_recv,        WinsockFake_recv);
-        UT_PTR_SET(WinsockTcpStream_setsockopt,  WinsockFake_setsockopt);
-        UT_PTR_SET(WinsockTcpStream_closesocket, WinsockFake_closesocket);
+        UT_PTR_SET(WinsockTcpStream_socket,           WinsockFake_socket);
+        UT_PTR_SET(WinsockTcpStream_connect,          WinsockFake_connect);
+        UT_PTR_SET(WinsockTcpStream_send,             WinsockFake_send);
+        UT_PTR_SET(WinsockTcpStream_recv,             WinsockFake_recv);
+        UT_PTR_SET(WinsockTcpStream_setsockopt,       WinsockFake_setsockopt);
+        UT_PTR_SET(WinsockTcpStream_getsockopt,       WinsockFake_getsockopt);
+        UT_PTR_SET(WinsockTcpStream_closesocket,      WinsockFake_closesocket);
+        UT_PTR_SET(WinsockTcpStream_ioctlsocket,      WinsockFake_ioctlsocket);
+        UT_PTR_SET(WinsockTcpStream_select,           WinsockFake_select);
+        UT_PTR_SET(WinsockTcpStream_WSAGetLastError,  WinsockFake_WSAGetLastError);
         // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
         stream = SolidSyslogWinsockTcpStream_Create(&streamStorage);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing, legal and necessary
@@ -141,6 +145,123 @@ TEST(SolidSyslogWinsockTcpStream, OpenClosesSocketOnConnectFailure)
     SolidSyslogStream_Open(stream, addr);
     LONGS_EQUAL(1, WinsockFake_CloseCallCount());
     CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd());
+}
+
+/* ----------------------------------------------------------------------
+ * Non-blocking connect with bounded wait — the production path that
+ * keeps the BlockStore service thread's drain rate from being throttled
+ * by Windows' default ~2 s connect()-retry on a refused loopback port.
+ * -------------------------------------------------------------------- */
+
+TEST(SolidSyslogWinsockTcpStream, OpenSetsNonBlockingModeBeforeConnect)
+{
+    SolidSyslogStream_Open(stream, addr);
+    /* First FIONBIO call is non-blocking on (1) before the connect attempt. */
+    LONGS_EQUAL(1, WinsockFake_FionbioArgAt(0));
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenRestoresBlockingModeAfterSuccessfulConnect)
+{
+    SolidSyslogStream_Open(stream, addr);
+    /* Two FIONBIO calls total: non-blocking on (1) before connect, blocking
+       back on (0) after success — keeps SO_SNDTIMEO honoured for send(). */
+    LONGS_EQUAL(2, WinsockFake_FionbioCallCount());
+    LONGS_EQUAL(0, WinsockFake_FionbioArgAt(1));
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenSkipsSelectWhenConnectReturnsImmediately)
+{
+    /* Default fake connect returns 0 (immediate success); select must not be
+       reached because connect short-circuits the wait. */
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(0, WinsockFake_SelectCallCount());
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenInvokesSelectWhenConnectReturnsWouldBlock)
+{
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(1, WinsockFake_SelectCallCount());
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenPassesBoundedConnectTimeoutToSelect)
+{
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    SolidSyslogStream_Open(stream, addr);
+    /* CONNECT_TIMEOUT_MILLISECONDS = 200 → 0 s + 200 000 µs. Bounding the
+       wait is the whole point of the non-blocking-connect rewrite. */
+    LONGS_EQUAL(0,      WinsockFake_LastSelectTimeoutSec());
+    LONGS_EQUAL(200000, WinsockFake_LastSelectTimeoutUsec());
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenSucceedsWhenSelectReportsWritableAndZeroSO_ERROR)
+{
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    WinsockFake_SetSelectWritable(true);
+    WinsockFake_SetSoError(0);
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenFailsWhenSelectReportsTimeout)
+{
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    WinsockFake_SetSelectWritable(false);
+    WinsockFake_SetSelectReturn(0);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenClosesSocketOnSelectTimeout)
+{
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    WinsockFake_SetSelectWritable(false);
+    WinsockFake_SetSelectReturn(0);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(1, WinsockFake_CloseCallCount());
+    CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd());
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenFailsWhenSelectFlagsErrorOnFd)
+{
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    WinsockFake_SetSelectWritable(false);
+    WinsockFake_SetSelectError(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenFailsWhenDeferredSO_ERRORIsNonZero)
+{
+    /* select reports writable, but SO_ERROR on the socket reveals the
+       deferred connect failure (e.g. WSAECONNREFUSED). */
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    WinsockFake_SetSelectWritable(true);
+    WinsockFake_SetSoError(WSAECONNREFUSED);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReadsSO_ERRORAfterSelectWritable)
+{
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(SOL_SOCKET, WinsockFake_LastGetSockOptLevel());
+    LONGS_EQUAL(SO_ERROR,   WinsockFake_LastGetSockOptOptname());
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenFailsWhenIoctlsocketFails)
+{
+    /* If the kernel refuses to put the socket into non-blocking mode the
+       caller cannot bound the connect wait — fail fast rather than fall
+       back to blocking-connect's ~2 s retry behaviour. */
+    WinsockFake_SetIoctlSocketFails(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenFailsWhenConnectFailsImmediatelyWithRefused)
+{
+    /* Non-WSAEWOULDBLOCK errors (e.g. WSAECONNREFUSED) are immediate failures —
+       no select wait, no SO_ERROR check, just fail fast. */
+    WinsockFake_SetConnectFailsWithLastError(WSAECONNREFUSED);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    LONGS_EQUAL(0, WinsockFake_SelectCallCount());
 }
 
 TEST(SolidSyslogWinsockTcpStream, SendCallsSendOnce)

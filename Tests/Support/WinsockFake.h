@@ -37,6 +37,9 @@ EXTERN_C_BEGIN
 
     /* connect configuration */
     void WinsockFake_SetConnectFails(bool fails);
+    /* When set, connect returns SOCKET_ERROR with WSAGetLastError == wsaError
+       (e.g. WSAEWOULDBLOCK so the non-blocking-connect path can be exercised). */
+    void WinsockFake_SetConnectFailsWithLastError(int wsaError);
 
     /* connect accessors */
     int         WinsockFake_ConnectCallCount(void);
@@ -71,12 +74,18 @@ EXTERN_C_BEGIN
     int  WinsockFake_LastSetSockOptOptname(void);
     bool WinsockFake_HasSetSockOpt(int level, int optname);
 
-    /* getsockopt configuration (currently models IPPROTO_IP / IP_MTU only) */
+    /* getsockopt configuration */
     void WinsockFake_SetIpMtu(int mtu);
     void WinsockFake_SetIpMtuLookupFails(bool fails);
+    /* SOL_SOCKET / SO_ERROR — read by the non-blocking-connect completion
+       path. Defaults to 0 (success) until set. */
+    void WinsockFake_SetSoError(int err);
+    void WinsockFake_SetSoErrorLookupFails(bool fails);
 
     /* getsockopt accessors */
     int WinsockFake_GetSockOptCallCount(void);
+    int WinsockFake_LastGetSockOptLevel(void);
+    int WinsockFake_LastGetSockOptOptname(void);
 
     /* closesocket accessors */
     int    WinsockFake_CloseCallCount(void);
@@ -93,6 +102,39 @@ EXTERN_C_BEGIN
     /* freeaddrinfo accessors */
     int WinsockFake_FreeAddrInfoCallCount(void);
 
+    /* ioctlsocket configuration */
+    void WinsockFake_SetIoctlSocketFails(bool fails);
+
+    /* ioctlsocket accessors */
+    int    WinsockFake_IoctlSocketCallCount(void);
+    SOCKET WinsockFake_LastIoctlSocketFd(void);
+    long   WinsockFake_LastIoctlSocketCmd(void);
+    /* Last argp value written into ioctlsocket — for FIONBIO this is the
+       non-blocking flag (1 = non-blocking, 0 = blocking). */
+    u_long WinsockFake_LastIoctlSocketArg(void);
+    /* All recorded ioctlsocket FIONBIO arg values, in call order, so tests
+       can assert the producer flips non-blocking on then off again around
+       connect. */
+    int    WinsockFake_FionbioCallCount(void);
+    u_long WinsockFake_FionbioArgAt(int callIndex);
+
+    /* select configuration. ready=true makes select() report fd writable in
+       writefds; ready=false leaves writefds empty (timeout). hasError=true
+       additionally sets fd in exceptfds. returnValue overrides the int return:
+       1 for ready, 0 for timeout, SOCKET_ERROR for error. By default select
+       returns 1 (one fd ready: writable, no error). */
+    void WinsockFake_SetSelectWritable(bool ready);
+    void WinsockFake_SetSelectError(bool hasError);
+    void WinsockFake_SetSelectReturn(int value);
+
+    /* select accessors */
+    int  WinsockFake_SelectCallCount(void);
+    long WinsockFake_LastSelectTimeoutSec(void);
+    long WinsockFake_LastSelectTimeoutUsec(void);
+
+    /* WSAGetLastError shim — defaults to whatever WSASetLastError set. */
+    int WSAAPI WinsockFake_WSAGetLastError(void);
+
     /* Fake Winsock functions — injected into production via UT_PTR_SET. */
     SOCKET WSAAPI WinsockFake_socket(int af, int type, int protocol);
     int WSAAPI    WinsockFake_sendto(SOCKET s, const char* buf, int len, int flags, const struct sockaddr* to, int tolen);
@@ -102,6 +144,8 @@ EXTERN_C_BEGIN
     int WSAAPI    WinsockFake_setsockopt(SOCKET s, int level, int optname, const char* optval, int optlen);
     int WSAAPI    WinsockFake_getsockopt(SOCKET s, int level, int optname, char* optval, int* optlen);
     int WSAAPI    WinsockFake_closesocket(SOCKET s);
+    int WSAAPI    WinsockFake_ioctlsocket(SOCKET s, long cmd, u_long* argp);
+    int WSAAPI    WinsockFake_select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const struct timeval* timeout);
     int WSAAPI    WinsockFake_getaddrinfo(const char* node, const char* service, const struct addrinfo* hints, struct addrinfo** res);
     void WSAAPI   WinsockFake_freeaddrinfo(struct addrinfo * res);
 
