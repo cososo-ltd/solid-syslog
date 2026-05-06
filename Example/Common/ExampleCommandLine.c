@@ -14,7 +14,8 @@ enum
     OPT_DISCARD_POLICY     = 258,
     OPT_NO_SD              = 259,
     OPT_HALT_EXIT          = 260,
-    OPT_CAPACITY_THRESHOLD = 261
+    OPT_CAPACITY_THRESHOLD = 261,
+    OPT_APP_NAME           = 262
 };
 
 static bool ParsePositiveNumber(const char* str, size_t* result)
@@ -42,6 +43,7 @@ int ExampleCommandLine_Parse(int argc, char* argv[], struct ExampleOptions* opti
     options->severity          = SOLIDSYSLOG_SEVERITY_INFO;
     options->messageId         = NULL;
     options->msg               = NULL;
+    options->appName           = NULL;
     options->transport         = "udp";
     options->store             = "null";
     options->maxBlocks         = DEFAULT_MAX_BLOCKS;
@@ -64,6 +66,7 @@ int ExampleCommandLine_Parse(int argc, char* argv[], struct ExampleOptions* opti
         {"capacity-threshold", required_argument, NULL, OPT_CAPACITY_THRESHOLD},
         {"no-sd", no_argument, NULL, OPT_NO_SD},
         {"halt-exit", no_argument, NULL, OPT_HALT_EXIT},
+        {"app-name", required_argument, NULL, OPT_APP_NAME},
         {NULL, 0, NULL, 0},
     };
 
@@ -128,6 +131,9 @@ int ExampleCommandLine_Parse(int argc, char* argv[], struct ExampleOptions* opti
                 break;
             case OPT_HALT_EXIT:
                 options->haltExit = true;
+                break;
+            case OPT_APP_NAME:
+                options->appName = optarg;
                 break;
             default:
                 return 1;

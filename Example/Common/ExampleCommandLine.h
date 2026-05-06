@@ -15,6 +15,7 @@ EXTERN_C_BEGIN
         enum SolidSyslog_Severity severity;
         const char*               messageId;
         const char*               msg;
+        const char*               appName; /* --app-name (NULL: derive from argv[0]) */
         const char*               transport;
         const char*               store;
         size_t                    maxBlocks;

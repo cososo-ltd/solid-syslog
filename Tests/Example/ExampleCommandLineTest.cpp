@@ -184,3 +184,21 @@ TEST(ExampleCommandLine, NoSdFlag)
     LONGS_EQUAL(0, Parse(2, argv));
     CHECK_TRUE(options.noSd);
 }
+
+TEST(ExampleCommandLine, DefaultAppNameIsNull)
+{
+    char  arg0[] = "test";
+    char* argv[] = {arg0, nullptr};
+    LONGS_EQUAL(0, Parse(1, argv));
+    POINTERS_EQUAL(nullptr, options.appName);
+}
+
+TEST(ExampleCommandLine, AppNameFlagSetsAppName)
+{
+    char  arg0[] = "test";
+    char  arg1[] = "--app-name";
+    char  arg2[] = "SolidSyslogThreadedExample";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    LONGS_EQUAL(0, Parse(3, argv));
+    STRCMP_EQUAL("SolidSyslogThreadedExample", options.appName);
+}

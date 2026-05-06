@@ -6,23 +6,29 @@
 #include "ExampleLanguage.h"
 #include "ExampleMtlsConfig.h"
 #include "ExampleServiceThread.h"
+#include "ExampleSwitchConfig.h"
 #include "ExampleTlsConfig.h"
 #include "ExampleTlsSender.h"
 #include "ExampleWindowsCommandLine.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
+#include "SolidSyslogBlockStore.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
+#include "SolidSyslogCrc16Policy.h"
 #include "SolidSyslogEndpoint.h"
+#include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
-#include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogStreamSender.h"
+#include "SolidSyslogSwitchingSender.h"
+#include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogWindowsAtomicOps.h"
 #include "SolidSyslogWindowsClock.h"
+#include "SolidSyslogWindowsFile.h"
 #include "SolidSyslogWindowsHostname.h"
 #include "SolidSyslogWindowsMutex.h"
 #include "SolidSyslogWindowsProcessId.h"
@@ -50,11 +56,29 @@ enum
     EXAMPLE_BUFFER_MESSAGES = 10
 };
 
+/* Store-and-forward backing files. Relative to the working directory; the BDD
+   harness runs from the project root and Bdd/output is already a writable
+   shared dir on both runners. The matching POSIX paths in the Linux Threaded
+   example are /tmp/STORE and /tmp/solidsyslog_threshold_marker.log. */
+static const char* const STORE_PATH_PREFIX     = "Bdd/output/STORE";
+static const char* const THRESHOLD_MARKER_PATH = "Bdd/output/solidsyslog_threshold_marker.log";
+
 static SolidSyslogWinsockTcpStreamStorage tcpStreamStorage;
 static SolidSyslogStreamSenderStorage     tcpSenderStorage;
 static SolidSyslogCircularBufferStorage   bufferStorage[SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE(EXAMPLE_BUFFER_MESSAGES)];
 static SolidSyslogWindowsMutexStorage     mutexStorage;
 static volatile bool                      shutdownFlag;
+
+/* Created in CreateSender, destroyed in DestroySender — held in file scope so
+   teardown can reach them after the SwitchingSender wraps them all. */
+static struct SolidSyslogStream*   plainTcpStream;
+static struct SolidSyslogSender*   plainTcpSender;
+static struct SolidSyslogDatagram* udpDatagram;
+
+/* Block-store backing — created in CreateStore, released in DestroyStore. */
+static struct SolidSyslogFile*        storeReadFile;
+static struct SolidSyslogFile*        storeWriteFile;
+static struct SolidSyslogBlockDevice* storeBlockDevice;
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- _beginthreadex thread-entry signature requires void*
 static unsigned __stdcall ServiceThreadEntry(void* arg)
@@ -106,6 +130,150 @@ static const char* GetEnvVar(char* buffer, size_t bufferSize, const char* name)
     return buffer;
 }
 
+static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
+{
+    if (strcmp(policy, "newest") == 0)
+    {
+        return SOLIDSYSLOG_DISCARD_NEWEST;
+    }
+    if (strcmp(policy, "halt") == 0)
+    {
+        return SOLIDSYSLOG_HALT;
+    }
+    return SOLIDSYSLOG_DISCARD_OLDEST;
+}
+
+static volatile bool haltExit;
+
+static void OnStoreFull(void* context)
+{
+    (void) context;
+    if (haltExit)
+    {
+        _exit(2);
+    }
+}
+
+static size_t GetCapacityThreshold(void* context)
+{
+    return *(const size_t*) context;
+}
+
+static void OnThresholdCrossed(void* context)
+{
+    (void) context;
+    /* fopen_s avoids MSVC C4996; same append-and-flush behaviour as the
+       Linux example so the BDD harness sees the marker file appear. */
+    FILE*   fp  = NULL;
+    errno_t err = fopen_s(&fp, THRESHOLD_MARKER_PATH, "a");
+    if ((err == 0) && (fp != NULL))
+    {
+        fputs("crossed\n", fp);
+        (void) fclose(fp);
+    }
+}
+
+static struct SolidSyslogSender* CreateSender(const struct WindowsExampleOptions* options)
+{
+    bool mtlsModeActive = (strcmp(options->transport, "mtls") == 0);
+
+    struct SolidSyslogResolver* resolver = SolidSyslogWinsockResolver_Create();
+
+    udpDatagram                                        = SolidSyslogWinsockDatagram_Create();
+    static struct SolidSyslogUdpSenderConfig udpConfig = {0};
+    udpConfig.resolver                                 = resolver;
+    udpConfig.datagram                                 = udpDatagram;
+    udpConfig.endpoint                                 = GetEndpoint;
+    udpConfig.endpointVersion                          = GetEndpointVersion;
+    struct SolidSyslogSender* udpSender                = SolidSyslogUdpSender_Create(&udpConfig);
+
+    plainTcpStream                                        = SolidSyslogWinsockTcpStream_Create(&tcpStreamStorage);
+    static struct SolidSyslogStreamSenderConfig tcpConfig = {0};
+    tcpConfig.resolver                                    = resolver;
+    tcpConfig.stream                                      = plainTcpStream;
+    tcpConfig.endpoint                                    = GetEndpoint;
+    tcpConfig.endpointVersion                             = GetEndpointVersion;
+    plainTcpSender                                        = SolidSyslogStreamSender_Create(&tcpSenderStorage, &tcpConfig);
+
+    struct SolidSyslogSender* tlsSender = ExampleTlsSender_Create(resolver, mtlsModeActive);
+
+    static struct SolidSyslogSender* inners[EXAMPLE_SWITCH_COUNT];
+    inners[EXAMPLE_SWITCH_UDP] = udpSender;
+    inners[EXAMPLE_SWITCH_TCP] = plainTcpSender;
+    inners[EXAMPLE_SWITCH_TLS] = tlsSender;
+
+    static struct SolidSyslogSwitchingSenderConfig switchConfig = {0};
+    switchConfig.senders                                        = inners;
+    switchConfig.senderCount                                    = EXAMPLE_SWITCH_COUNT;
+    switchConfig.selector                                       = ExampleSwitchConfig_Selector;
+
+    ExampleSwitchConfig_SetByName(options->transport);
+    return SolidSyslogSwitchingSender_Create(&switchConfig);
+}
+
+static void DestroySender(void)
+{
+    SolidSyslogSwitchingSender_Destroy();
+    ExampleTlsSender_Destroy();
+    SolidSyslogStreamSender_Destroy(plainTcpSender);
+    SolidSyslogWinsockTcpStream_Destroy(plainTcpStream);
+    SolidSyslogUdpSender_Destroy();
+    SolidSyslogWinsockDatagram_Destroy();
+    SolidSyslogWinsockResolver_Destroy();
+}
+
+static struct SolidSyslogStore* CreateStore(const struct WindowsExampleOptions* options)
+{
+    bool useFile = (strcmp(options->store, "file") == 0);
+
+    if (useFile)
+    {
+        static SolidSyslogWindowsFileStorage readStorage;
+        static SolidSyslogWindowsFileStorage writeStorage;
+        storeReadFile  = SolidSyslogWindowsFile_Create(&readStorage);
+        storeWriteFile = SolidSyslogWindowsFile_Create(&writeStorage);
+
+        static SolidSyslogFileBlockDeviceStorage blockDeviceStorage;
+        storeBlockDevice = SolidSyslogFileBlockDevice_Create(&blockDeviceStorage, storeReadFile, storeWriteFile, STORE_PATH_PREFIX);
+
+        static size_t capacityThreshold;
+        capacityThreshold                                     = options->capacityThreshold;
+        static struct SolidSyslogBlockStoreConfig storeConfig = {0};
+        storeConfig.blockDevice                               = storeBlockDevice;
+        storeConfig.maxBlockSize                              = options->maxBlockSize;
+        storeConfig.maxBlocks                                 = options->maxBlocks;
+        storeConfig.discardPolicy                             = MapDiscardPolicy(options->discardPolicy);
+        storeConfig.securityPolicy                            = SolidSyslogCrc16Policy_Create();
+        storeConfig.onStoreFull                               = OnStoreFull;
+        storeConfig.getCapacityThreshold                      = GetCapacityThreshold;
+        storeConfig.onThresholdCrossed                        = OnThresholdCrossed;
+        storeConfig.thresholdContext                          = &capacityThreshold;
+
+        static SolidSyslogBlockStoreStorage storeStorage;
+        return SolidSyslogBlockStore_Create(&storeStorage, &storeConfig);
+    }
+
+    return SolidSyslogNullStore_Create();
+}
+
+static void DestroyStore(struct SolidSyslogStore* store, const struct WindowsExampleOptions* options)
+{
+    bool useFile = (strcmp(options->store, "file") == 0);
+
+    if (useFile)
+    {
+        SolidSyslogBlockStore_Destroy(store);
+        SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
+        SolidSyslogCrc16Policy_Destroy();
+        SolidSyslogWindowsFile_Destroy(storeWriteFile);
+        SolidSyslogWindowsFile_Destroy(storeReadFile);
+    }
+    else
+    {
+        SolidSyslogNullStore_Destroy();
+    }
+}
+
 int SolidSyslogWindowsExample_Run(int argc, char* argv[])
 {
     WSADATA wsaData;
@@ -113,8 +281,6 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
     {
         return 1;
     }
-
-    ExampleAppName_Set(argv[0]);
 
     /* BDD harness can override the TLS/mTLS host (defaults to "syslog-ng",
        the Linux compose service name). Same env-var contract as the Threaded
@@ -127,36 +293,17 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
     struct WindowsExampleOptions options;
     ExampleWindowsCommandLine_Parse(argc, argv, &options);
 
-    struct SolidSyslogResolver* resolver = SolidSyslogWinsockResolver_Create();
-    struct SolidSyslogDatagram* datagram = NULL;
-    struct SolidSyslogStream*   stream   = NULL;
-    struct SolidSyslogSender*   sender   = NULL;
+    /* Honour --app-name when supplied (BDD scenarios pin it for record-size
+       parity across runners); otherwise derive from argv[0] as before. */
+    ExampleAppName_Set((options.appName != NULL) ? options.appName : argv[0]);
 
-    bool useTcp  = (strcmp(options.transport, "tcp") == 0);
-    bool useTls  = (strcmp(options.transport, "tls") == 0);
-    bool useMtls = (strcmp(options.transport, "mtls") == 0);
+    haltExit = options.haltExit;
 
-    if (useTls || useMtls)
-    {
-        sender = ExampleTlsSender_Create(resolver, useMtls);
-    }
-    else if (useTcp)
-    {
-        stream                                         = SolidSyslogWinsockTcpStream_Create(&tcpStreamStorage);
-        struct SolidSyslogStreamSenderConfig tcpConfig = {
-            .resolver = resolver, .stream = stream, .endpoint = GetEndpoint, .endpointVersion = GetEndpointVersion};
-        sender = SolidSyslogStreamSender_Create(&tcpSenderStorage, &tcpConfig);
-    }
-    else
-    {
-        datagram                                    = SolidSyslogWinsockDatagram_Create();
-        struct SolidSyslogUdpSenderConfig udpConfig = {
-            .resolver = resolver, .datagram = datagram, .endpoint = GetEndpoint, .endpointVersion = GetEndpointVersion};
-        sender = SolidSyslogUdpSender_Create(&udpConfig);
-    }
+    struct SolidSyslogSender* sender = CreateSender(&options);
+    struct SolidSyslogStore*  store  = CreateStore(&options);
+
     struct SolidSyslogMutex*         mutex      = SolidSyslogWindowsMutex_Create(&mutexStorage);
     struct SolidSyslogBuffer*        buffer     = SolidSyslogCircularBuffer_Create(bufferStorage, sizeof(bufferStorage), mutex);
-    struct SolidSyslogStore*         store      = SolidSyslogNullStore_Create();
     struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create(SolidSyslogWindowsAtomicOps_Create());
     struct SolidSyslogMetaSdConfig   metaConfig = {
           .counter      = counter,
@@ -174,7 +321,12 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
     };
     struct SolidSyslogStructuredData* originSd = SolidSyslogOriginSd_Create(&originConfig);
 
-    struct SolidSyslogStructuredData* sdList[] = {metaSd, timeQuality, originSd};
+    /* MetaSd is always present so seqId-based BDD scenarios work; the
+       --no-sd flag (matching the Linux Threaded example) suppresses the
+       optional timeQuality and origin SDs to keep records under the
+       BlockStore's per-block packing budget for store-capacity tests. */
+    struct SolidSyslogStructuredData* sdList[3] = {metaSd, timeQuality, originSd};
+    size_t                            sdCount   = options.noSd ? 1 : 3;
 
     struct SolidSyslogConfig config = {
         .buffer       = buffer,
@@ -185,7 +337,7 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
         .getProcessId = SolidSyslogWindowsProcessId_Get,
         .store        = store,
         .sd           = sdList,
-        .sdCount      = sizeof(sdList) / sizeof(sdList[0]),
+        .sdCount      = sdCount,
     };
     SolidSyslog_Create(&config);
 
@@ -199,7 +351,7 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
         .msg       = options.msg,
     };
 
-    ExampleInteractive_Run(&message, stdin, NULL);
+    ExampleInteractive_Run(&message, stdin, ExampleSwitchConfig_SetByName);
 
     shutdownFlag = true;
     WaitForSingleObject(serviceThread, INFINITE);
@@ -211,24 +363,10 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
     SolidSyslogMetaSd_Destroy();
     SolidSyslogAtomicCounter_Destroy();
     SolidSyslogWindowsAtomicOps_Destroy();
-    SolidSyslogNullStore_Destroy();
+    DestroyStore(store, &options);
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogWindowsMutex_Destroy(mutex);
-    if (useTls || useMtls)
-    {
-        ExampleTlsSender_Destroy();
-    }
-    else if (useTcp)
-    {
-        SolidSyslogStreamSender_Destroy(sender);
-        SolidSyslogWinsockTcpStream_Destroy(stream);
-    }
-    else
-    {
-        SolidSyslogUdpSender_Destroy();
-        SolidSyslogWinsockDatagram_Destroy();
-    }
-    SolidSyslogWinsockResolver_Destroy();
+    DestroySender();
 
     WSACleanup();
 

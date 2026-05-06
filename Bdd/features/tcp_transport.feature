@@ -7,6 +7,6 @@ Feature: TCP message delivery
   wirings against their respective oracle (syslog-ng / OTel collector).
 
   Scenario: Message delivered over TCP
-    Given syslog-ng is running
+    Given the syslog oracle is running
     When the buffered example sends a syslog message with transport tcp
-    Then syslog-ng receives a message with priority "134"
+    Then the syslog oracle receives a message with priority "134"

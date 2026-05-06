@@ -5,18 +5,18 @@ Feature: Power cycle replay from block store
   sequenceIds followed by a jump to 1 (restart signal).
 
   Scenario: Stored messages replayed after power cycle
-    Given syslog-ng is running
+    Given the syslog oracle is running
     And the block store is enabled
     And the threaded example is running with transport tcp
     When the client sends a message
-    Then syslog-ng receives 1 message
-    When the syslog server stops accepting TCP connections
+    Then the syslog oracle receives 1 message
+    When the syslog oracle stops accepting TCP connections
     And the client sends 3 messages
     And the client is killed
-    And the syslog server resumes accepting TCP connections
+    And the syslog oracle resumes accepting TCP connections
     Given the threaded example is running with transport tcp
-    Then syslog-ng receives 4 messages
+    Then the syslog oracle receives 4 messages
     And the replayed messages have sequenceIds 2, 3, 4
     When the client sends a message
-    Then syslog-ng receives 5 messages
+    Then the syslog oracle receives 5 messages
     And the last message has sequenceId 1

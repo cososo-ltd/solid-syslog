@@ -4,7 +4,6 @@ import os
 import queue
 import re
 import shutil
-import signal
 import socket
 import subprocess
 import threading
@@ -20,6 +19,8 @@ from environment import (
     STORE_FILE_PATH,
     STORE_PATH_PREFIX,
     THRESHOLD_MARKER_PATH,
+    otel_kill_oracle,
+    otel_start_oracle,
 )
 
 PER_TRANSPORT_LOG_SYSLOG_NG = {
@@ -29,10 +30,13 @@ PER_TRANSPORT_LOG_SYSLOG_NG = {
     "mtls": RECEIVED_MTLS_LOG,
 }
 
-# OTel runner only writes per-transport files for TLS and mTLS — UDP and TCP
-# share received.jsonl. The cross-platform "syslog-ng receives N over X"
-# step routes through per_transport_log() which keeps these paths internal.
+# OTel runner writes a per-transport file per receiver (Bdd/otel/config.yaml
+# pipeline `logs/<transport>` → exporter `file/<transport>`). Lets the
+# cross-platform "the syslog oracle receives N over X" step pin the transport
+# actually used end-to-end on either runner.
 PER_TRANSPORT_LOG_OTEL = {
+    "udp":  "Bdd/output/received_udp.jsonl",
+    "tcp":  "Bdd/output/received_tcp.jsonl",
     "tls":  "Bdd/output/received_tls.jsonl",
     "mtls": "Bdd/output/received_mtls.jsonl",
 }
@@ -42,8 +46,7 @@ def per_transport_log(context, transport):
     """Return the per-transport oracle file path for the active runner.
 
     Linux (syslog-ng): per-transport `received_<X>.log` files.
-    Windows (otel-jsonl): per-transport `received_<X>.jsonl` files for tls
-    and mtls only.
+    Windows (otel-jsonl): per-transport `received_<X>.jsonl` files.
     """
     if context.oracle_format == "otel-jsonl":
         return PER_TRANSPORT_LOG_OTEL[transport]
@@ -470,7 +473,7 @@ def syslog_ng_swap_config(config_path):
     syslog_ng_reload()
 
 
-@given("syslog-ng is running")
+@given("the syslog oracle is running")
 def step_syslog_ng_is_running(context):
     # Only assert the syslog-ng control socket when syslog-ng is actually the
     # active oracle. Other runners (e.g. the OTel Collector on Windows) reuse
@@ -502,13 +505,29 @@ def step_syslog_ng_is_running(context):
 
 
 def build_threaded_command(context, transport, no_sd=False):
-    """Build the command line for the threaded example with all options."""
-    binary = THREADED_BINARY
+    """Build the command line for the threaded example with all options.
+
+    Linux runner (syslog-ng oracle): the pthread-driven Threaded example.
+    Windows runner (OTel oracle): the unified SolidSyslogExample.exe — its
+    BlockStore + SwitchingSender wiring (S13.20) accepts the same flags.
+    """
+    binary = THREADED_BINARY if context.oracle_format == "syslog-ng" else context.example_binary
     assert os.path.exists(binary), (
         f"Threaded binary not found at {binary} — build with cmake first"
     )
 
-    cmd = [os.path.join(".", binary), "--transport", transport]
+    # Pin app-name to a fixed value across runners so RFC 5424 record sizes
+    # match byte-for-byte. Without this, Linux records carry a 26-char app
+    # name (binary basename "SolidSyslogThreadedExample") while Windows
+    # records carry an 18-char one ("SolidSyslogExample"), shifting
+    # per-block packing on the BlockStore — capacity scenarios designed
+    # around 4 records/block on Linux fit 5 on Windows and the discard
+    # assertions drift.
+    cmd = [
+        os.path.join(".", binary),
+        "--transport", transport,
+        "--app-name", "SolidSyslogThreadedExample",
+    ]
     if getattr(context, "store_type", None):
         cmd.extend(["--store", context.store_type])
     if getattr(context, "store_max_blocks", None):
@@ -566,14 +585,16 @@ def step_block_store_enabled_with_config(context, max_blocks, max_block_size, po
     context.store_max_blocks = max_blocks
     context.store_max_block_size = max_block_size
     context.store_discard_policy = policy
-    # Size each MSG so ~4 records pack per (clamped) block. The store
-    # capacity scenarios were designed around this packing — multi-record
-    # blocks give OLDEST and NEWEST symmetric retention (both keep 7 of 10
-    # sent), which the seqId assertions depend on. Production clamps block
-    # size up to MAX + 7 (MIN_MAX_BLOCK_SIZE), so per-record budget is
-    # ~MAX/4. With ~95-byte RFC 5424 header + 7-byte record overhead, a
-    # body of MAX/5 - 50 lands a comfortable mid-band: 4 records fit, 5
-    # don't. Update if SOLIDSYSLOG_MAX_MESSAGE_SIZE moves.
+    # Size each MSG so several records pack per (clamped) block, ensuring at
+    # least one discard event for the 10-message outage. The store_capacity
+    # scenarios assert structural properties of the surviving seqIds (gap
+    # at start for discard-oldest, contiguous head for discard-newest) — the
+    # exact records-per-block count is platform-dependent (hostname / procid
+    # widths differ between the Linux compose container and the Windows OTel
+    # runner) but irrelevant to the policy under test. Production clamps
+    # block size to MAX + 7 (MIN_MAX_BLOCK_SIZE = 2055), so per-record budget
+    # is ~MAX/4. With ~95-byte RFC 5424 header + 7-byte record overhead,
+    # MAX/5 - 50 yields ~3-5 records per block on the runners we ship.
     context.message_body = "X" * (SOLIDSYSLOG_MAX_MESSAGE_SIZE // 5 - 50)
     clean_store_files()
 
@@ -683,25 +704,41 @@ def wait_for_connection_teardown(probe_socket, timeout=5):
     raise AssertionError(f"Probe connection still alive after {timeout}s")
 
 
-@when("the syslog server stops accepting TCP connections")
-def step_syslog_server_stops_tcp(context):
-    # Open a probe connection before the reload so we can detect teardown
-    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    probe.settimeout(1)
-    probe.connect(("syslog-ng", 5514))
+@when("the syslog oracle stops accepting TCP connections")
+def step_oracle_stops_tcp(context):
+    if context.oracle_format == "syslog-ng":
+        # Linux: swap to a UDP-only config and RELOAD via the control socket.
+        # Open a probe connection before the reload so we can detect teardown.
+        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        probe.settimeout(1)
+        probe.connect(("syslog-ng", 5514))
 
-    syslog_ng_swap_config(SYSLOG_NG_UDP_ONLY_CONF)
-    wait_for_tcp_port_closed()
-    wait_for_connection_teardown(probe)
-    # Allow time for the sender's existing connection to receive RST
-    time.sleep(0.5)
-    context.syslog_ng_config_changed = True
+        syslog_ng_swap_config(SYSLOG_NG_UDP_ONLY_CONF)
+        wait_for_tcp_port_closed()
+        wait_for_connection_teardown(probe)
+        # Allow time for the sender's existing connection to receive RST
+        time.sleep(0.5)
+        context.syslog_ng_config_changed = True
+    else:
+        # Windows OTel: kill the otelcol-contrib process. The TCP listener
+        # disappears as the process exits — the resume step will start a
+        # fresh one. Side-effect: UDP/TLS/mTLS listeners also stop, but the
+        # outage scenarios that drive this step only depend on TCP.
+        otel_kill_oracle()
+        wait_for_tcp_port_closed(host="127.0.0.1", port=5514, timeout=10)
+        # Allow time for the sender's existing connection to receive RST
+        time.sleep(0.5)
+        context.otel_oracle_paused = True
 
 
-@when("the syslog server resumes accepting TCP connections")
-def step_syslog_server_resumes_tcp(context):
-    syslog_ng_swap_config(SYSLOG_NG_FULL_CONF)
-    wait_for_tcp_port_open()
+@when("the syslog oracle resumes accepting TCP connections")
+def step_oracle_resumes_tcp(context):
+    if context.oracle_format == "syslog-ng":
+        syslog_ng_swap_config(SYSLOG_NG_FULL_CONF)
+        wait_for_tcp_port_open()
+    else:
+        otel_start_oracle()
+        context.otel_oracle_paused = False
 
 
 @when("the example program sends a syslog message")
@@ -822,7 +859,7 @@ def step_check_msg_clean_prefix(context):
     )
 
 
-@then('syslog-ng receives a message with priority "{priority}"')
+@then('the syslog oracle receives a message with priority "{priority}"')
 def step_check_priority(context, priority):
     assert context.fields["PRIORITY"] == priority, (
         f"Expected priority {priority}, got {context.fields.get('PRIORITY')}"
@@ -836,7 +873,7 @@ def step_check_timestamp(context, timestamp):
     )
 
 
-@then("syslog-ng receives a message with a timestamp within {seconds:d} seconds of now")
+@then("the syslog oracle receives a message with a timestamp within {seconds:d} seconds of now")
 def step_check_timestamp_within(context, seconds):
     raw = context.fields["TIMESTAMP"]
     received = datetime.fromisoformat(raw).astimezone(timezone.utc)
@@ -847,7 +884,7 @@ def step_check_timestamp_within(context, seconds):
     )
 
 
-@then("syslog-ng receives a message with the system hostname")
+@then("the syslog oracle receives a message with the system hostname")
 def step_check_system_hostname(context):
     expected = socket.gethostname()
     assert context.fields["HOSTNAME"] == expected, (
@@ -855,7 +892,7 @@ def step_check_system_hostname(context):
     )
 
 
-@then("syslog-ng receives a message with the process ID of the example program")
+@then("the syslog oracle receives a message with the process ID of the example program")
 def step_check_example_pid(context):
     expected = str(context.example_pid)
     assert context.fields["PROCID"] == expected, (
@@ -898,8 +935,8 @@ def step_check_msg(context, msg):
     )
 
 
-@then("syslog-ng receives {count:d} message")
-@then("syslog-ng receives {count:d} messages")
+@then("the syslog oracle receives {count:d} message")
+@then("the syslog oracle receives {count:d} messages")
 def step_check_message_count(context, count):
     # For interactive processes, refresh the line count
     if hasattr(context, "interactive_process"):
@@ -909,7 +946,7 @@ def step_check_message_count(context, count):
     )
 
 
-@then("syslog-ng receives no more messages")
+@then("the syslog oracle receives no more messages")
 def step_check_no_more_messages(context):
     before = oracle_record_count(context.received_log, context.oracle_format)
     time.sleep(5)
@@ -1036,7 +1073,7 @@ def step_check_sys_up_time_shape(context):
     )
 
 
-@then("syslog-ng receives {count:d} messages with sequential sequenceId values")
+@then("the syslog oracle receives {count:d} messages with sequential sequenceId values")
 def step_check_sequential_ids(context, count):
     assert context.message_count == count, (
         f"Expected {count} messages, got {context.message_count}"
@@ -1079,7 +1116,9 @@ def step_client_attempts_send_exits(context, code):
 
 @when("the client is killed")
 def step_client_is_killed(context):
-    context.interactive_process.send_signal(signal.SIGKILL)
+    # process.kill() is portable: TerminateProcess on Windows, SIGKILL on POSIX.
+    # signal.SIGKILL is not defined on Windows.
+    context.interactive_process.kill()
     context.interactive_process.wait(timeout=5)
     del context.interactive_process
 
@@ -1088,7 +1127,7 @@ def step_client_is_killed(context):
 def step_check_contiguous_sequence_ids(context):
     ids = []
     for line in context.all_lines:
-        fields = parse_syslog_ng_line(line)
+        fields = parse_oracle_line(line, context.oracle_format)
         sd = fields.get("STRUCTURED_DATA", "")
         match = re.search(r'sequenceId="(\d+)"', sd)
         assert match, (
@@ -1109,7 +1148,7 @@ def step_check_last_n_contiguous_ids(context, count, start):
     )
     last_n = context.all_lines[-count:]
     for i, line in enumerate(last_n):
-        fields = parse_syslog_ng_line(line)
+        fields = parse_oracle_line(line, context.oracle_format)
         sd = fields.get("STRUCTURED_DATA", "")
         match = re.search(r'sequenceId="(\d+)"', sd)
         assert match, (
@@ -1134,7 +1173,7 @@ def step_check_replayed_sequence_ids(context, id_list):
     # from the previous session (already verified)
     replayed = context.all_lines[-len(expected):]
     for i, line in enumerate(replayed):
-        fields = parse_syslog_ng_line(line)
+        fields = parse_oracle_line(line, context.oracle_format)
         sd = fields.get("STRUCTURED_DATA", "")
         match = re.search(r'sequenceId="(\d+)"', sd)
         assert match, (
@@ -1147,10 +1186,90 @@ def step_check_replayed_sequence_ids(context, id_list):
         )
 
 
+def _outage_seq_ids(context):
+    """Collected sequenceIds in oracle log, excluding the pre-outage seqId 1.
+    Used by the discard-policy structural assertions."""
+    ids = []
+    for line in context.all_lines:
+        fields = parse_oracle_line(line, context.oracle_format)
+        sd = fields.get("STRUCTURED_DATA", "")
+        match = re.search(r'sequenceId="(\d+)"', sd)
+        if match:
+            value = int(match.group(1))
+            if value != 1:
+                ids.append(value)
+    return ids
+
+
+@then("the syslog oracle finishes draining")
+def step_oracle_finishes_draining(context):
+    """Wait for the oracle's record count to stabilise — used by discard-policy
+    scenarios where we don't know in advance how many records will survive
+    the store. Considered done when no new records arrive for 750 ms (half
+    the service-thread iteration budget) or after 5 s wall-clock."""
+    deadline = time.monotonic() + 5
+    last_count = -1
+    last_change = time.monotonic()
+    while time.monotonic() < deadline:
+        cur = oracle_record_count(context.received_log, context.oracle_format)
+        if cur != last_count:
+            last_count = cur
+            last_change = time.monotonic()
+        elif time.monotonic() - last_change > 0.75:
+            break
+        time.sleep(0.1)
+    context.all_lines = read_new_oracle_records(
+        context.received_log, context.oracle_format, context.lines_before
+    )
+    context.message_count = len(context.all_lines)
+
+
+@then("the syslog oracle received sequenceId {value:d}")
+def step_oracle_received_seqid(context, value):
+    ids = []
+    for line in context.all_lines:
+        fields = parse_oracle_line(line, context.oracle_format)
+        sd = fields.get("STRUCTURED_DATA", "")
+        match = re.search(r'sequenceId="(\d+)"', sd)
+        if match:
+            ids.append(int(match.group(1)))
+    assert value in ids, (
+        f"Expected sequenceId {value} in oracle log; got {ids}"
+    )
+
+
+@then("the syslog oracle did not receive sequenceId {value:d}")
+def step_oracle_did_not_receive_seqid(context, value):
+    ids = []
+    for line in context.all_lines:
+        fields = parse_oracle_line(line, context.oracle_format)
+        sd = fields.get("STRUCTURED_DATA", "")
+        match = re.search(r'sequenceId="(\d+)"', sd)
+        if match:
+            ids.append(int(match.group(1)))
+    assert value not in ids, (
+        f"Did not expect sequenceId {value} in oracle log; got {ids}"
+    )
+
+
+@then("the outage messages have contiguous sequenceIds")
+def step_outage_messages_contiguous(context):
+    """Validate that the seqIds received from the outage period (everything
+    except the pre-outage seqId 1) form a contiguous ascending run. Doesn't
+    constrain the endpoints — that's what the per-policy 'received'/'did
+    not receive' assertions are for."""
+    ids = sorted(_outage_seq_ids(context))
+    assert ids, "Expected at least one outage sequenceId; got none"
+    expected = list(range(ids[0], ids[-1] + 1))
+    assert ids == expected, (
+        f"Expected contiguous outage sequenceIds {expected}, got {ids}"
+    )
+
+
 @then("the last message has sequenceId {value:d}")
 def step_check_last_sequence_id(context, value):
     assert context.all_lines, "No messages received to check last sequenceId"
-    fields = parse_syslog_ng_line(context.all_lines[-1])
+    fields = parse_oracle_line(context.all_lines[-1], context.oracle_format)
     sd = fields.get("STRUCTURED_DATA", "")
     match = re.search(r'sequenceId="(\d+)"', sd)
     assert match, (
@@ -1193,8 +1312,8 @@ def wait_for_per_transport_messages(context, transport, expected):
         time.sleep(0.1)
 
 
-@then("syslog-ng receives {count:d} message over {transport:w}")
-@then("syslog-ng receives {count:d} messages over {transport:w}")
+@then("the syslog oracle receives {count:d} message over {transport:w}")
+@then("the syslog oracle receives {count:d} messages over {transport:w}")
 def step_check_per_transport_count(context, count, transport):
     wait_for_per_transport_messages(context, transport, count)
     path = per_transport_log(context, transport)

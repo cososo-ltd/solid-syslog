@@ -7,7 +7,7 @@ Feature: Mutual TLS message delivery
   Windows runner uses otelcol-contrib with client_ca_file.
 
   Scenario: Message delivered over mutual TLS
-    Given syslog-ng is running
+    Given the syslog oracle is running
     When the buffered example sends a syslog message with transport mtls
-    Then syslog-ng receives 1 message over mtls
-    And syslog-ng receives a message with priority "134"
+    Then the syslog oracle receives 1 message over mtls
+    And the syslog oracle receives a message with priority "134"

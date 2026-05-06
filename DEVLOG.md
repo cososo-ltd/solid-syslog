@@ -1,5 +1,269 @@
 # Dev Log
 
+## 2026-05-06 — S13.20 follow-up — Slice C: structural assertions for discard-policy scenarios
+
+### Decision
+
+The `store_capacity.feature` discard scenarios were failing on Windows CI
+because exact-count assertions ("receives 8 messages", "last 7 starting
+from 5") implicitly tied the test to Linux's per-block packing arithmetic
+— records pack 3-4 per (clamped 2055-byte) block on Linux, but ~4-5 on
+the Windows OTel runner because hostname / procid / timestamp widths
+differ.
+
+The user's insight: **the test is about the discard policy, not the
+exact byte arithmetic**. Replace the count-based assertions with
+structural ones that test the policy's character directly:
+
+- **Discard-oldest**: oracle receives seqId 1, oracle receives seqId 11
+  (newest preserved), oracle does *not* receive seqId 2 (some old
+  dropped), surviving outage seqIds form a contiguous tail.
+- **Discard-newest**: oracle receives seqId 1, oracle receives seqId 2
+  (oldest preserved), oracle does *not* receive seqId 11 (newest
+  dropped), surviving outage seqIds form a contiguous head.
+
+Both pass on any platform where at least one record gets dropped — and
+with `body = MAX/5 - 50 ≈ 359 X`s, even a minimal-header runner produces
+records at ~486 wire bytes, capping per-block packing at 4 records and
+guaranteeing at least 2 of 10 outage records get dropped. The per-policy
+shape of the survivors is what we're really testing.
+
+### What landed
+
+- New step defs in `Bdd/features/steps/syslog_steps.py`:
+  - `Then the syslog oracle finishes draining` — polls oracle log until
+    record count is stable for 750 ms (or 5 s wall-clock), bypassing the
+    per-count `wait_for_messages` wait.
+  - `Then the syslog oracle received sequenceId N`
+  - `Then the syslog oracle did not receive sequenceId N`
+  - `Then the outage messages have contiguous sequenceIds` — surviving
+    seqIds (excluding pre-outage seqId 1) form a contiguous ascending
+    run, no random gaps.
+- `Bdd/features/store_capacity.feature` rewritten to use these for the two
+  discard scenarios. The Halt scenarios are untouched — their assertions
+  ("exits with code 2", "receives no more messages") are already
+  policy-shape based.
+
+### Considered, rejected: probe-based body padding
+
+Earlier in this session I implemented an `--probe-record-size <path>`
+mode in both example mains plus an `ExampleProbeSender` that captured
+the wire bytes of one formatted record, with the BDD step computing
+exact body padding to land on a fixed target wire size. That worked on
+local MSVC (504 wire bytes confirmed against an independent TCP-intercept
+capture) but added ~150 lines of production code (sender + probe-mode
+branches in two mains + CLI flag plumbing through both parsers + BDD
+probe helper) — all just to keep an over-specified count assertion alive.
+Reverted in favour of weakening the assertion to its actual intent.
+
+## 2026-05-06 — S13.20 follow-up — Slice B: --halt-exit flag-name parity
+
+### Findings (investigated before fixing)
+
+The handoff note suspected halt fired "too early" on Windows because
+post-mortem `STORE00.log` had only 1 record. The actual root cause was
+simpler — and "too early" was a misread.
+
+- The BDD step at `syslog_steps.py::build_threaded_command` passes
+  `--halt-exit` when `context.halt_exit` is set.
+- The shared parser (`ExampleCommandLine.c`, used by Linux Threaded)
+  recognises `--halt-exit`.
+- The Windows parser (`ExampleWindowsCommandLine.c`) recognised
+  `--halt-on-store-full` instead and silently dropped unknown flags.
+  Result: `options.haltExit` stayed `false`, so the `if (haltExit) _exit(2)`
+  guard in `OnStoreFull` was a no-op on Windows. **Halt never fired —
+  not too early, not at all.**
+- The "client attempts to send → exit code 2" step waits 10 s for the
+  process to exit; with no exit, the test reports as errored.
+- "STORE00 has 1 record at exit" is incidental: behave kills the still-
+  running example at the 10 s timeout; whatever is in the store at that
+  moment depends on TCP retry timing and bears no special meaning.
+- The sibling scenario "Halt prevents further service after store
+  overflows" passed because it doesn't enable the halt-exit step and
+  doesn't depend on `_exit(2)` — it only asserts no new messages arrive,
+  which the BlockStore-level halt policy delivers regardless of the flag
+  mismatch.
+
+### Fix
+
+Renamed Windows's `--halt-on-store-full` to `--halt-exit` to match the
+shared parser. Pure mechanical rename; semantic behaviour unchanged. The
+example is Tier 3, pre-1.0 — no external users to migrate. TDD red→green
+via a new `HaltExitFlagSetsHaltExit` test (red against the old name,
+green after rename); 28/28 MSVC ExampleTests now pass.
+
+## 2026-05-06 — S13.20 follow-up — Slice A: app-name parity for capacity scenarios
+
+### Decisions
+
+- **Root cause confirmed for `Expected 8, got 10` on Windows CI.** The
+  discard scenarios in `store_capacity.feature` size their message body at
+  `SOLIDSYSLOG_MAX_MESSAGE_SIZE / 5 - 50 ≈ 359 X's`, sized so ~4 records
+  fit per 2055-byte (clamped) block. The estimate baked in a 95-byte RFC
+  5424 header, true on Linux with the 26-char binary name
+  `SolidSyslogThreadedExample`. Windows' `SolidSyslogExample.exe` derives
+  an 18-char app name, shaving 8 bytes off every record — enough for 5 to
+  fit per block, so `2 blocks × 5 = 10` records survived where the test
+  expected `8`.
+
+- **Fix: pin app-name to a fixed-length value via `--app-name` CLI flag.**
+  Both `ExampleCommandLine.c` (Linux Threaded / SingleTask shared) and
+  `ExampleWindowsCommandLine.c` now accept `--app-name X`; `ExampleAppName_Set`
+  is invoked after parse with `(options.appName ? options.appName : argv[0])`,
+  so the implicit argv[0]-derived behaviour is preserved when the flag is
+  absent. The BDD step that starts the threaded example pins
+  `--app-name SolidSyslogThreadedExample` so both runners produce
+  byte-identical record headers regardless of binary name.
+
+- **`SingleTask/SolidSyslogExample.c` deliberately not touched.** The shared
+  parser already exposes `options.appName`, but no BDD scenario drives the
+  single-task example through capacity tests, so updating it would be
+  beyond what TDD needs.
+
+- **Pre-existing test bug fixed in passing.** `ExampleWindowsCommandLineTest.cpp`
+  asserted `LONGS_EQUAL(SOLIDSYSLOG_TRANSPORT_UDP, options.transport)` —
+  comparing an enum to a `const char*`. The symbol wasn't even visible
+  without including `SolidSyslogTransport.h`, so the file had been
+  uncompilable on MSVC since written. CI's `build-windows-msvc` job builds
+  `--target junit SolidSyslogWindowsExample`, and `junit` only depends on
+  `SolidSyslogTests` — not `ExampleTests` — so nobody noticed. Switched to
+  `STRCMP_EQUAL("udp", options.transport)` / `STRCMP_EQUAL("tcp", ...)`,
+  which actually matches what the production code returns.
+
+### Validation
+
+- **Linux gcc + clang + tidy + cppcheck + clang-format** all clean.
+- **Linux BDD:** 21 features / 46 scenarios / 0 failed via
+  `ci/docker-compose.bdd.yml`. Capacity scenarios pass — Linux records
+  unchanged (binary basename happens to be the value we now pin
+  explicitly).
+- **MSVC:** `ExampleTests.exe` 26/26 pass; `SolidSyslogTests.exe` 949
+  ran of 951 (2 ignored Linux-only).
+
+### Deferred — Slice B
+
+- **Halt stops the application — still erroring.** Per handoff, the halt
+  scenario times out instead of `_exit(2)`-ing; STORE00 has 1 record at
+  exit instead of the expected 4. Investigation plan (next session): re-add
+  the `SOLIDSYSLOG_BDD_DEBUG_KEEP_STORE` stderr instrumentation that was
+  reverted before the previous commit, reproduce locally on Windows,
+  observe when halt fires relative to writes. Report findings before
+  attempting a fix.
+
+## 2026-05-06 — S13.20 follow-up — Windows BDD parity (slice 1+2+3 of 4)
+
+### Decisions
+
+- **Slice 1 — Windows BDD plumbing fixes (test-side).**
+  - `after_scenario` now restarts otelcol on Windows when a scenario killed
+    it. Symmetric with Linux's syslog-ng config-restore. Without this, every
+    scenario after the first kill hit `oracle received 0 of 1 messages`,
+    which was the dominant CI failure on the previous push.
+  - `otel_kill_oracle()` / `otel_start_oracle()` moved into `environment.py`
+    so the `after_scenario` hook can reach them. Path strings switched from
+    forward-slash relative paths to `os.path.join` — `_winapi.CreateProcess`
+    failed to resolve `Bdd/otel/bin/otelcol-contrib.exe` because Windows
+    requires backslashes in the executable position, even though forward
+    slashes work elsewhere via the bash wrapper.
+  - The four sequenceId step functions (`step_check_contiguous_sequence_ids`,
+    `_last_n`, `_replayed`, `_last`) still hard-coded `parse_syslog_ng_line`;
+    on the OTel runner each line of `received.jsonl` is a JSON batch, not a
+    syslog-ng template, so they misparsed. Dispatched through
+    `parse_oracle_line(line, context.oracle_format)` to match the converted
+    sibling step.
+  - File-handle leak fix in `otel_start_oracle`: stdout/err opened with `with`
+    so the parent's copies close after `Popen`; the child keeps duplicated
+    handles.
+- **Slice 2 — store_and_forward.feature narrative says "syslog oracle" not
+  "syslog server"** to match the renamed step text.
+- **Slice 3 — non-blocking connect with bounded timeout (production fix).**
+  Diagnosed a 6.95 s gap between seq=1 and seqs=2-11 in `received.jsonl` on
+  the Discard-oldest scenario: every record arrived in a single burst after
+  the oracle was restarted, meaning records were buffered somewhere in the
+  example for the entire outage rather than overflowing the BlockStore.
+  Direct `socket.connect()` timing measurement on Windows loopback to a
+  closed port: ~2 s per call (Linux: microseconds). Windows' default blocking
+  `connect()` retries internally before returning `WSAECONNREFUSED`, so the
+  service thread iterated at ~0.5 records/sec during outages and the
+  BlockStore's discard policy never had a chance to fire.
+  - `SolidSyslogWinsockTcpStream::Connect` rewritten as non-blocking connect
+    + `select` with `CONNECT_TIMEOUT_MILLISECONDS = 200` + `SO_ERROR` check.
+    Blocking mode is restored on success so subsequent `send()` honours
+    `SO_SNDTIMEO`; the change is scoped to the connect path.
+  - New seams in `SolidSyslogWinsockTcpStreamInternal.h`: `ioctlsocket`,
+    `select`, `getsockopt`, `WSAGetLastError`. WinsockFake gained matching
+    shims (`WinsockFake_ioctlsocket`, `_select`, `_WSAGetLastError`,
+    `SetSelectWritable/Error/Return`, `SetSoError`, `FionbioArgAt` etc).
+  - 13 new CppUTest cases in `Tests/SolidSyslogWinsockTcpStreamTest.cpp`
+    cover the path: FIONBIO on/off ordering, select timeout, deferred
+    SO_ERROR, immediate-WSAECONNREFUSED short-circuit, ioctlsocket failure.
+  - **POSIX is intentionally not touched.** Linux `connect()` to a refused
+    loopback port returns `ECONNREFUSED` instantly — no symmetric problem
+    to solve. Per CLAUDE.md "don't add features beyond what the task
+    requires."
+- **Pre-1.0 phase — no `!` / `BREAKING CHANGE:` trailer**, even though the
+  TCP stream's connect timing changed. Per memory entry on pre-release
+  versioning.
+
+### Empirical evidence captured during the dig
+
+- Windows native `connect()` to closed `127.0.0.1:25515`, 10 iterations,
+  Python: average **2038.70 ms** per call. Linux equivalent on the docker
+  container: ~microseconds.
+- Mid-scenario STORE files on Windows pre-fix: `STORE03.log = 1292 bytes`
+  (2 records of ~639 bytes). The block sequence had advanced to writeSeq=3
+  via dispose-on-empty post-resume, but discard never fired during the
+  outage because almost no records reached the store (service thread
+  blocked in connect retries).
+- Post-fix Discard-oldest scenario: receives 9 messages instead of the
+  test's expected 8 (was 11 before slice 3). The discard policy is now
+  firing — just dropping 2 records instead of 3 due to a 6-byte record-size
+  delta between Linux (`SolidSyslogThreadedExample` = 26-char app name) and
+  Windows (`SolidSyslogExample` = 18-char). Records pack 4-per-block on
+  Windows where Linux fits ~3-and-a-bit, so different overflow boundary.
+
+### Deferred — open for the next session
+
+- **store_capacity.feature × 4 scenarios still fail on Windows.** The
+  production fix is correct (slice 3 unit tests pass; discard policy now
+  fires); these are calibration / packing-math issues:
+  - **Discard-oldest, Discard-newest**: `expected 8, got 9` and the "last 7
+    starting from 5" assertion is off by 1 record because Windows packs 4
+    records per block where Linux packs 3-and-a-bit. The 6-byte difference
+    is dominated by the example binary name. Ideas: (a) match record sizes
+    by padding Windows messages or renaming the example, (b) make the test
+    expectations platform-aware (oracle_format branch), (c) redesign the
+    scenario to assert a tolerance rather than exact counts.
+  - **Halt stops the application**: with the new fast-iteration service
+    thread, post-mortem `STORE00.log` shows a single record (503 bytes)
+    instead of the 4-records expected at halt time. Suggests the halt is
+    firing earlier than expected or the discard-policy=halt path interacts
+    differently when iterations are millisecond-bounded. Needs
+    instrumentation in the next session.
+  - The first session's `--no-sd` Windows-side wiring (Tier-3 example)
+    landed alongside slice 3 to bring record packing closer to Linux, but
+    the residual byte difference is enough to keep the test's hardcoded
+    expectations off by 1. CodeRabbit didn't flag the missing flag because
+    it was beyond the diff base.
+- **Linux BDD locally confirmed clean** — 21 features / 46 scenarios pass
+  via `ci/docker-compose.bdd.yml`, both before and after slice 3. The
+  production change is windows-only; no Linux regression possible.
+- **Windows OS connect-retry behaviour caused a real production drain-rate
+  bug**, not just a test artefact. A Windows app whose syslog destination
+  goes offline for 5 s would, before this fix, drain its CircularBuffer at
+  ~0.5 records/sec while connect retries chewed through. After the fix,
+  drain rate is bounded by the 200 ms timeout instead.
+
+### Open questions
+
+- **Halt-fires-too-early on Windows** — STORE00 has 1 record at process
+  exit instead of the expected 4. Initial hypothesis: the initial-message
+  block lifecycle interacts with the new fast-iter service loop differently
+  than on Linux. Or the haltExit volatile bool is being read before main
+  thread has set it. Needs `_exit(2)` instrumentation or stderr trace.
+- **Should the example binary be renamed** to `SolidSyslogThreadedExample`
+  on both platforms for parity? Tier-3 cleanup but mostly cosmetic.
+
 ## 2026-05-05 — S08.01 FreeRTOS hello-world bring-up
 
 ### Decisions

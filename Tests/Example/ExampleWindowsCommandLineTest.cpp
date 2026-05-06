@@ -91,7 +91,7 @@ TEST(ExampleWindowsCommandLine, DefaultTransportIsUdp)
     char  arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    LONGS_EQUAL(SOLIDSYSLOG_TRANSPORT_UDP, options.transport);
+    STRCMP_EQUAL("udp", options.transport);
 }
 
 TEST(ExampleWindowsCommandLine, TransportFlagSetsTcp)
@@ -101,7 +101,7 @@ TEST(ExampleWindowsCommandLine, TransportFlagSetsTcp)
     char  arg2[] = "tcp";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     Parse(3, argv);
-    LONGS_EQUAL(SOLIDSYSLOG_TRANSPORT_TCP, options.transport);
+    STRCMP_EQUAL("tcp", options.transport);
 }
 
 TEST(ExampleWindowsCommandLine, AllFlagsTogether)
@@ -141,4 +141,39 @@ TEST(ExampleWindowsCommandLine, FacilityFlagWithoutValueIsIgnored)
     char* argv[] = {arg0, arg1, nullptr};
     Parse(2, argv);
     LONGS_EQUAL(SOLIDSYSLOG_FACILITY_LOCAL0, options.facility);
+}
+
+TEST(ExampleWindowsCommandLine, DefaultAppNameIsNull)
+{
+    char  arg0[] = "test";
+    char* argv[] = {arg0, nullptr};
+    Parse(1, argv);
+    POINTERS_EQUAL(nullptr, options.appName);
+}
+
+TEST(ExampleWindowsCommandLine, AppNameFlagSetsAppName)
+{
+    char  arg0[] = "test";
+    char  arg1[] = "--app-name";
+    char  arg2[] = "SolidSyslogThreadedExample";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    Parse(3, argv);
+    STRCMP_EQUAL("SolidSyslogThreadedExample", options.appName);
+}
+
+TEST(ExampleWindowsCommandLine, DefaultHaltExitIsFalse)
+{
+    char  arg0[] = "test";
+    char* argv[] = {arg0, nullptr};
+    Parse(1, argv);
+    CHECK_FALSE(options.haltExit);
+}
+
+TEST(ExampleWindowsCommandLine, HaltExitFlagSetsHaltExit)
+{
+    char  arg0[] = "test";
+    char  arg1[] = "--halt-exit";
+    char* argv[] = {arg0, arg1, nullptr};
+    Parse(2, argv);
+    CHECK_TRUE(options.haltExit);
 }

@@ -10,7 +10,8 @@ enum
     WINSOCKFAKE_MAX_BUFFER_SIZE      = SOLIDSYSLOG_MAX_MESSAGE_SIZE,
     WINSOCKFAKE_MAX_HOSTNAME_SIZE    = 256,
     WINSOCKFAKE_MAX_SEND_CALLS       = 8,
-    WINSOCKFAKE_MAX_SETSOCKOPT_CALLS = 8
+    WINSOCKFAKE_MAX_SETSOCKOPT_CALLS = 8,
+    WINSOCKFAKE_MAX_FIONBIO_CALLS    = 8
 };
 
 static bool               sendtoFails;
@@ -55,6 +56,30 @@ static SOCKET      lastRecvFd;
 static const void* lastRecvBuf;
 static size_t      lastRecvLen;
 static int         lastRecvFlags;
+
+static bool connectFailWithLastError;
+static int  connectLastErrorOnFail;
+
+static int  soError;
+static bool soErrorLookupFails;
+static int  lastGetSockOptLevel;
+static int  lastGetSockOptOptname;
+
+static bool   ioctlSocketFails;
+static int    ioctlSocketCallCount;
+static SOCKET lastIoctlSocketFd;
+static long   lastIoctlSocketCmd;
+static u_long lastIoctlSocketArg;
+static u_long fionbioArgs[WINSOCKFAKE_MAX_FIONBIO_CALLS];
+static int    fionbioCallCount;
+
+static bool selectWritable;
+static bool selectError;
+static bool selectReturnOverride;
+static int  selectReturnValue;
+static int  selectCallCount;
+static long lastSelectTimeoutSec;
+static long lastSelectTimeoutUsec;
 
 static int setSockOptCallCount;
 static int lastSetSockOptLevel;
@@ -119,6 +144,33 @@ void WinsockFake_Reset(void)
     lastRecvBuf   = NULL;
     lastRecvLen   = 0;
     lastRecvFlags = 0;
+
+    connectFailWithLastError = false;
+    connectLastErrorOnFail   = 0;
+
+    soError               = 0;
+    soErrorLookupFails    = false;
+    lastGetSockOptLevel   = 0;
+    lastGetSockOptOptname = 0;
+
+    ioctlSocketFails     = false;
+    ioctlSocketCallCount = 0;
+    lastIoctlSocketFd    = INVALID_SOCKET;
+    lastIoctlSocketCmd   = 0;
+    lastIoctlSocketArg   = 0;
+    fionbioCallCount     = 0;
+    for (int i = 0; i < WINSOCKFAKE_MAX_FIONBIO_CALLS; i++)
+    {
+        fionbioArgs[i] = 0;
+    }
+
+    selectWritable        = true;
+    selectError           = false;
+    selectReturnOverride  = false;
+    selectReturnValue     = 0;
+    selectCallCount       = 0;
+    lastSelectTimeoutSec  = 0;
+    lastSelectTimeoutUsec = 0;
 
     setSockOptCallCount   = 0;
     lastSetSockOptLevel   = 0;
@@ -207,6 +259,100 @@ int WinsockFake_GetSockOptCallCount(void)
     return getSockOptCallCount;
 }
 
+int WinsockFake_LastGetSockOptLevel(void)
+{
+    return lastGetSockOptLevel;
+}
+
+int WinsockFake_LastGetSockOptOptname(void)
+{
+    return lastGetSockOptOptname;
+}
+
+void WinsockFake_SetSoError(int err)
+{
+    soError = err;
+}
+
+void WinsockFake_SetSoErrorLookupFails(bool fails)
+{
+    soErrorLookupFails = fails;
+}
+
+/* ioctlsocket configuration / accessors */
+
+void WinsockFake_SetIoctlSocketFails(bool fails)
+{
+    ioctlSocketFails = fails;
+}
+
+int WinsockFake_IoctlSocketCallCount(void)
+{
+    return ioctlSocketCallCount;
+}
+
+SOCKET WinsockFake_LastIoctlSocketFd(void)
+{
+    return lastIoctlSocketFd;
+}
+
+long WinsockFake_LastIoctlSocketCmd(void)
+{
+    return lastIoctlSocketCmd;
+}
+
+u_long WinsockFake_LastIoctlSocketArg(void)
+{
+    return lastIoctlSocketArg;
+}
+
+int WinsockFake_FionbioCallCount(void)
+{
+    return fionbioCallCount;
+}
+
+u_long WinsockFake_FionbioArgAt(int callIndex)
+{
+    if (callIndex < 0 || callIndex >= WINSOCKFAKE_MAX_FIONBIO_CALLS)
+    {
+        return 0;
+    }
+    return fionbioArgs[callIndex];
+}
+
+/* select configuration / accessors */
+
+void WinsockFake_SetSelectWritable(bool ready)
+{
+    selectWritable = ready;
+}
+
+void WinsockFake_SetSelectError(bool hasError)
+{
+    selectError = hasError;
+}
+
+void WinsockFake_SetSelectReturn(int value)
+{
+    selectReturnOverride = true;
+    selectReturnValue    = value;
+}
+
+int WinsockFake_SelectCallCount(void)
+{
+    return selectCallCount;
+}
+
+long WinsockFake_LastSelectTimeoutSec(void)
+{
+    return lastSelectTimeoutSec;
+}
+
+long WinsockFake_LastSelectTimeoutUsec(void)
+{
+    return lastSelectTimeoutUsec;
+}
+
 /* sendto accessors */
 
 int WinsockFake_SendtoCallCount(void)
@@ -260,6 +406,12 @@ SOCKET WinsockFake_LastSendtoFd(void)
 void WinsockFake_SetConnectFails(bool fails)
 {
     connectFails = fails;
+}
+
+void WinsockFake_SetConnectFailsWithLastError(int wsaError)
+{
+    connectFailWithLastError = true;
+    connectLastErrorOnFail   = wsaError;
 }
 
 /* connect accessors */
@@ -503,6 +655,11 @@ int WSAAPI WinsockFake_connect(SOCKET s, const struct sockaddr* name, int namele
     {
         lastConnectAddr = *(const struct sockaddr_in*) name;
     }
+    if (connectFailWithLastError)
+    {
+        WSASetLastError(connectLastErrorOnFail);
+        return SOCKET_ERROR;
+    }
     return connectFails ? SOCKET_ERROR : 0;
 }
 
@@ -559,6 +716,8 @@ int WSAAPI WinsockFake_getsockopt(SOCKET s, int level, int optname, char* optval
 {
     (void) s;
     getSockOptCallCount++;
+    lastGetSockOptLevel   = level;
+    lastGetSockOptOptname = optname;
     if ((level == IPPROTO_IP) && (optname == IP_MTU))
     {
         if (ipMtuLookupFails)
@@ -568,6 +727,19 @@ int WSAAPI WinsockFake_getsockopt(SOCKET s, int level, int optname, char* optval
         if ((optval != NULL) && (optlen != NULL) && (*optlen >= (int) sizeof(int)))
         {
             *(int*) optval = ipMtuValue;
+            *optlen        = (int) sizeof(int);
+        }
+        return 0;
+    }
+    if ((level == SOL_SOCKET) && (optname == SO_ERROR))
+    {
+        if (soErrorLookupFails)
+        {
+            return SOCKET_ERROR;
+        }
+        if ((optval != NULL) && (optlen != NULL) && (*optlen >= (int) sizeof(int)))
+        {
+            *(int*) optval = soError;
             *optlen        = (int) sizeof(int);
         }
         return 0;
@@ -608,4 +780,64 @@ void WSAAPI WinsockFake_freeaddrinfo(struct addrinfo* res)
 {
     (void) res;
     freeAddrInfoCallCount++;
+}
+
+int WSAAPI WinsockFake_ioctlsocket(SOCKET s, long cmd, u_long* argp)
+{
+    ioctlSocketCallCount++;
+    lastIoctlSocketFd  = s;
+    lastIoctlSocketCmd = cmd;
+    if (argp != NULL)
+    {
+        lastIoctlSocketArg = *argp;
+        if ((cmd == (long) FIONBIO) && (fionbioCallCount < WINSOCKFAKE_MAX_FIONBIO_CALLS))
+        {
+            fionbioArgs[fionbioCallCount] = *argp;
+        }
+    }
+    if (cmd == (long) FIONBIO)
+    {
+        fionbioCallCount++;
+    }
+    return ioctlSocketFails ? SOCKET_ERROR : 0;
+}
+
+int WSAAPI WinsockFake_select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const struct timeval* timeout)
+{
+    (void) nfds;
+    (void) readfds;
+    selectCallCount++;
+    if (timeout != NULL)
+    {
+        lastSelectTimeoutSec  = (long) timeout->tv_sec;
+        lastSelectTimeoutUsec = (long) timeout->tv_usec;
+    }
+    if (writefds != NULL && !selectWritable)
+    {
+        FD_ZERO(writefds);
+    }
+    if (exceptfds != NULL && !selectError)
+    {
+        FD_ZERO(exceptfds);
+    }
+    if (selectReturnOverride)
+    {
+        return selectReturnValue;
+    }
+    if (selectError)
+    {
+        /* one fd flagged in exceptfds */
+        return 1;
+    }
+    if (selectWritable)
+    {
+        /* one fd flagged in writefds */
+        return 1;
+    }
+    return 0;
+}
+
+int WSAAPI WinsockFake_WSAGetLastError(void)
+{
+    return WSAGetLastError();
 }

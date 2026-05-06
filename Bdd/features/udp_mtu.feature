@@ -13,13 +13,13 @@ Feature: UDP datagram path-MTU clipping
   SolidSyslogExample.exe so multi-byte argv survives the MSVC CRT.
 
   Scenario: Full delivery of a UTF-8 message within the path MTU
-    Given syslog-ng is running
+    Given the syslog oracle is running
     When the example program sends a UTF-8 message that fits the path MTU
     Then the received message is byte-identical to the sent message
 
   @windows_wip
   Scenario: Oversize UTF-8 message is clipped at a codepoint boundary
-    Given syslog-ng is running
+    Given the syslog oracle is running
     When the example program sends an oversize UTF-8 message
     Then the received message is shorter than the sent message
     And the received message is a clean prefix of the sent message
