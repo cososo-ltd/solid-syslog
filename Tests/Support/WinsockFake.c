@@ -57,13 +57,13 @@ static const void* lastRecvBuf;
 static size_t      lastRecvLen;
 static int         lastRecvFlags;
 
-static bool   connectFailWithLastError;
-static int    connectLastErrorOnFail;
+static bool connectFailWithLastError;
+static int  connectLastErrorOnFail;
 
-static int    soError;
-static bool   soErrorLookupFails;
-static int    lastGetSockOptLevel;
-static int    lastGetSockOptOptname;
+static int  soError;
+static bool soErrorLookupFails;
+static int  lastGetSockOptLevel;
+static int  lastGetSockOptOptname;
 
 static bool   ioctlSocketFails;
 static int    ioctlSocketCallCount;
@@ -73,13 +73,13 @@ static u_long lastIoctlSocketArg;
 static u_long fionbioArgs[WINSOCKFAKE_MAX_FIONBIO_CALLS];
 static int    fionbioCallCount;
 
-static bool   selectWritable;
-static bool   selectError;
-static bool   selectReturnOverride;
-static int    selectReturnValue;
-static int    selectCallCount;
-static long   lastSelectTimeoutSec;
-static long   lastSelectTimeoutUsec;
+static bool selectWritable;
+static bool selectError;
+static bool selectReturnOverride;
+static int  selectReturnValue;
+static int  selectCallCount;
+static long lastSelectTimeoutSec;
+static long lastSelectTimeoutUsec;
 
 static int setSockOptCallCount;
 static int lastSetSockOptLevel;
@@ -153,12 +153,12 @@ void WinsockFake_Reset(void)
     lastGetSockOptLevel   = 0;
     lastGetSockOptOptname = 0;
 
-    ioctlSocketFails      = false;
-    ioctlSocketCallCount  = 0;
-    lastIoctlSocketFd     = INVALID_SOCKET;
-    lastIoctlSocketCmd    = 0;
-    lastIoctlSocketArg    = 0;
-    fionbioCallCount      = 0;
+    ioctlSocketFails     = false;
+    ioctlSocketCallCount = 0;
+    lastIoctlSocketFd    = INVALID_SOCKET;
+    lastIoctlSocketCmd   = 0;
+    lastIoctlSocketArg   = 0;
+    fionbioCallCount     = 0;
     for (int i = 0; i < WINSOCKFAKE_MAX_FIONBIO_CALLS; i++)
     {
         fionbioArgs[i] = 0;

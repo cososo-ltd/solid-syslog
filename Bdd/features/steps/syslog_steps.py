@@ -4,7 +4,6 @@ import os
 import queue
 import re
 import shutil
-import signal
 import socket
 import subprocess
 import threading
@@ -1104,7 +1103,9 @@ def step_client_attempts_send_exits(context, code):
 
 @when("the client is killed")
 def step_client_is_killed(context):
-    context.interactive_process.send_signal(signal.SIGKILL)
+    # process.kill() is portable: TerminateProcess on Windows, SIGKILL on POSIX.
+    # signal.SIGKILL is not defined on Windows.
+    context.interactive_process.kill()
     context.interactive_process.wait(timeout=5)
     del context.interactive_process
 

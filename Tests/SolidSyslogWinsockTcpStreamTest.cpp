@@ -190,7 +190,7 @@ TEST(SolidSyslogWinsockTcpStream, OpenPassesBoundedConnectTimeoutToSelect)
     SolidSyslogStream_Open(stream, addr);
     /* CONNECT_TIMEOUT_MILLISECONDS = 200 → 0 s + 200 000 µs. Bounding the
        wait is the whole point of the non-blocking-connect rewrite. */
-    LONGS_EQUAL(0,      WinsockFake_LastSelectTimeoutSec());
+    LONGS_EQUAL(0, WinsockFake_LastSelectTimeoutSec());
     LONGS_EQUAL(200000, WinsockFake_LastSelectTimeoutUsec());
 }
 
@@ -243,7 +243,7 @@ TEST(SolidSyslogWinsockTcpStream, OpenReadsSO_ERRORAfterSelectWritable)
     WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
     SolidSyslogStream_Open(stream, addr);
     LONGS_EQUAL(SOL_SOCKET, WinsockFake_LastGetSockOptLevel());
-    LONGS_EQUAL(SO_ERROR,   WinsockFake_LastGetSockOptOptname());
+    LONGS_EQUAL(SO_ERROR, WinsockFake_LastGetSockOptOptname());
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenFailsWhenIoctlsocketFails)
