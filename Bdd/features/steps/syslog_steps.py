@@ -724,19 +724,8 @@ def step_oracle_stops_tcp(context):
         # disappears as the process exits — the resume step will start a
         # fresh one. Side-effect: UDP/TLS/mTLS listeners also stop, but the
         # outage scenarios that drive this step only depend on TCP.
-        # Open a probe connection BEFORE the kill so we can detect when
-        # the kernel has actually torn down established connections.
-        # Without this, otelcol's brief shutdown window lets a few in-flight
-        # records get flushed to received.jsonl before the process fully
-        # dies — the example never sees a TCP error, the records never go
-        # to the BlockStore, and the discard policy never engages.
-        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        probe.settimeout(1)
-        probe.connect(("127.0.0.1", 5514))
-
         otel_kill_oracle()
         wait_for_tcp_port_closed(host="127.0.0.1", port=5514, timeout=10)
-        wait_for_connection_teardown(probe)
         # Allow time for the sender's existing connection to receive RST
         time.sleep(0.5)
         context.otel_oracle_paused = True
