@@ -10,7 +10,7 @@ enum
     WINSOCKFAKE_MAX_BUFFER_SIZE      = SOLIDSYSLOG_MAX_MESSAGE_SIZE,
     WINSOCKFAKE_MAX_HOSTNAME_SIZE    = 256,
     WINSOCKFAKE_MAX_SEND_CALLS       = 8,
-    WINSOCKFAKE_MAX_SETSOCKOPT_CALLS = 8,
+    WINSOCKFAKE_MAX_SETSOCKOPT_CALLS = 16,
     WINSOCKFAKE_MAX_FIONBIO_CALLS    = 8
 };
 
@@ -88,6 +88,7 @@ static int lastSetSockOptLevel;
 static int lastSetSockOptOptname;
 static int setSockOptLevels[WINSOCKFAKE_MAX_SETSOCKOPT_CALLS];
 static int setSockOptOptnames[WINSOCKFAKE_MAX_SETSOCKOPT_CALLS];
+static int setSockOptValues[WINSOCKFAKE_MAX_SETSOCKOPT_CALLS];
 
 static int    closeCallCount;
 static SOCKET lastClosedFd;
@@ -183,6 +184,7 @@ void WinsockFake_Reset(void)
     {
         setSockOptLevels[i]   = 0;
         setSockOptOptnames[i] = 0;
+        setSockOptValues[i]   = 0;
     }
     getSockOptCallCount = 0;
     ipMtuValue          = 0;
@@ -563,6 +565,20 @@ bool WinsockFake_HasSetSockOpt(int level, int optname)
     return false;
 }
 
+int WinsockFake_LastSetSockOptValue(int level, int optname)
+{
+    int recorded = setSockOptCallCount < WINSOCKFAKE_MAX_SETSOCKOPT_CALLS ? setSockOptCallCount : WINSOCKFAKE_MAX_SETSOCKOPT_CALLS;
+    int value    = 0;
+    for (int i = 0; i < recorded; i++)
+    {
+        if (setSockOptLevels[i] == level && setSockOptOptnames[i] == optname)
+        {
+            value = setSockOptValues[i];
+        }
+    }
+    return value;
+}
+
 /* closesocket accessors */
 
 int WinsockFake_CloseCallCount(void)
@@ -715,12 +731,16 @@ int WSAAPI WinsockFake_recv(SOCKET s, char* buf, int len, int flags)
 int WSAAPI WinsockFake_setsockopt(SOCKET s, int level, int optname, const char* optval, int optlen)
 {
     (void) s;
-    (void) optval;
-    (void) optlen;
     if (setSockOptCallCount < WINSOCKFAKE_MAX_SETSOCKOPT_CALLS)
     {
         setSockOptLevels[setSockOptCallCount]   = level;
         setSockOptOptnames[setSockOptCallCount] = optname;
+        if ((optval != NULL) && (optlen == (int) sizeof(int)))
+        {
+            int captured = 0;
+            memcpy(&captured, optval, sizeof(int));
+            setSockOptValues[setSockOptCallCount] = captured;
+        }
     }
     setSockOptCallCount++;
     lastSetSockOptLevel   = level;

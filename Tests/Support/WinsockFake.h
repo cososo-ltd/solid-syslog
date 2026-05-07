@@ -76,6 +76,10 @@ EXTERN_C_BEGIN
     int  WinsockFake_LastSetSockOptLevel(void);
     int  WinsockFake_LastSetSockOptOptname(void);
     bool WinsockFake_HasSetSockOpt(int level, int optname);
+    /* Returns the int optval recorded for the most recent setsockopt call
+       matching (level, optname). Captures only int-sized options (optlen ==
+       sizeof(int)); other shapes are ignored. Returns 0 if no match. */
+    int WinsockFake_LastSetSockOptValue(int level, int optname);
 
     /* getsockopt configuration */
     void WinsockFake_SetIpMtu(int mtu);

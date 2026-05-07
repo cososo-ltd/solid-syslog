@@ -212,6 +212,18 @@ TEST(WinsockFake, HasSetSockOptReturnsFalseForUnseenPair)
     CHECK_FALSE(WinsockFake_HasSetSockOpt(IPPROTO_TCP, TCP_NODELAY));
 }
 
+TEST(WinsockFake, LastSetSockOptValueReturnsCapturedIntForRecordedPair)
+{
+    int idleSeconds = 45;
+    WinsockFake_setsockopt(INVALID_SOCKET, IPPROTO_TCP, TCP_KEEPIDLE, (const char*) &idleSeconds, sizeof(idleSeconds));
+    LONGS_EQUAL(45, WinsockFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPIDLE));
+}
+
+TEST(WinsockFake, LastSetSockOptValueReturnsZeroForUnseenPair)
+{
+    LONGS_EQUAL(0, WinsockFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPIDLE));
+}
+
 TEST(WinsockFake, ResetClearsCounters)
 {
     WinsockFake_socket(AF_INET, SOCK_DGRAM, 0);

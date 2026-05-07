@@ -539,8 +539,10 @@ TEST(SolidSyslogStreamSenderFailure, ReconnectSetsTcpNoDelay)
     Send();
     SocketFake_SetSendFails(false);
     Send();
-    /* Two opens (initial + reconnect); both must set TCP_NODELAY. */
-    LONGS_EQUAL(2, SocketFake_SetSockOptCallCount());
+    /* Two opens (initial + reconnect); each runs the full ConfigureSocket
+       sequence: TCP_NODELAY + SO_KEEPALIVE + TCP_KEEPIDLE + TCP_KEEPINTVL +
+       TCP_KEEPCNT + TCP_USER_TIMEOUT = 6 setsockopt calls per Open. */
+    LONGS_EQUAL(12, SocketFake_SetSockOptCallCount());
     CHECK_TRUE(SocketFake_HasSetSockOpt(IPPROTO_TCP, TCP_NODELAY));
 }
 

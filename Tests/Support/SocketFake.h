@@ -67,6 +67,10 @@ EXTERN_C_BEGIN
     int  SocketFake_LastSetSockOptLevel(void);
     int  SocketFake_LastSetSockOptOptname(void);
     bool SocketFake_HasSetSockOpt(int level, int optname);
+    /* Returns the int optval recorded for the most recent setsockopt call
+       matching (level, optname). Captures only int-sized options (optlen ==
+       sizeof(int)); other shapes are ignored. Returns 0 if no match. */
+    int SocketFake_LastSetSockOptValue(int level, int optname);
 
     /* getsockopt configuration (models IPPROTO_IP / IP_MTU and SOL_SOCKET / SO_ERROR) */
     void SocketFake_SetIpMtu(int mtu);

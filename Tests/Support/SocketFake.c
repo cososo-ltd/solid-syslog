@@ -89,7 +89,7 @@ static char               lastConnectAddrString[INET_ADDRSTRLEN];
 
 enum
 {
-    SOCKETFAKE_MAX_SETSOCKOPT_CALLS = 8
+    SOCKETFAKE_MAX_SETSOCKOPT_CALLS = 16
 };
 
 static int setSockOptCallCount;
@@ -97,6 +97,7 @@ static int lastSetSockOptLevel;
 static int lastSetSockOptOptname;
 static int setSockOptLevels[SOCKETFAKE_MAX_SETSOCKOPT_CALLS];
 static int setSockOptOptnames[SOCKETFAKE_MAX_SETSOCKOPT_CALLS];
+static int setSockOptValues[SOCKETFAKE_MAX_SETSOCKOPT_CALLS];
 
 static int closeCallCount;
 static int lastClosedFd;
@@ -159,6 +160,7 @@ void SocketFake_Reset(void)
     {
         setSockOptLevels[i]   = 0;
         setSockOptOptnames[i] = 0;
+        setSockOptValues[i]   = 0;
     }
     getSockOptCallCount   = 0;
     lastGetSockOptLevel   = 0;
@@ -539,6 +541,20 @@ bool SocketFake_HasSetSockOpt(int level, int optname)
     return false;
 }
 
+int SocketFake_LastSetSockOptValue(int level, int optname)
+{
+    int recorded = setSockOptCallCount < SOCKETFAKE_MAX_SETSOCKOPT_CALLS ? setSockOptCallCount : SOCKETFAKE_MAX_SETSOCKOPT_CALLS;
+    int value    = 0;
+    for (int i = 0; i < recorded; i++)
+    {
+        if (setSockOptLevels[i] == level && setSockOptOptnames[i] == optname)
+        {
+            value = setSockOptValues[i];
+        }
+    }
+    return value;
+}
+
 /* close accessors */
 
 int SocketFake_CloseCallCount(void)
@@ -763,12 +779,16 @@ int setsockopt(int sockfd, int level, int optname, const void* optval, socklen_t
 // clang-format on
 {
     (void) sockfd;
-    (void) optval;
-    (void) optlen;
     if (setSockOptCallCount < SOCKETFAKE_MAX_SETSOCKOPT_CALLS)
     {
         setSockOptLevels[setSockOptCallCount]   = level;
         setSockOptOptnames[setSockOptCallCount] = optname;
+        if ((optval != NULL) && (optlen == sizeof(int)))
+        {
+            int captured = 0;
+            memcpy(&captured, optval, sizeof(int));
+            setSockOptValues[setSockOptCallCount] = captured;
+        }
     }
     setSockOptCallCount++;
     lastSetSockOptLevel   = level;

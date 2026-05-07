@@ -1,5 +1,65 @@
 # Dev Log
 
+## 2026-05-07 — S12.16 — TCP keepalive + TCP_USER_TIMEOUT
+
+### Decision
+
+Closes the dead-peer-while-idle gap left by S12.14's fail-fast Send/Read.
+With keepalive enabled, the kernel surfaces a dropped peer as ETIMEDOUT
+within ~85 s of going idle (45 s before first probe + 4 × 10 s retries),
+without the application having to attempt a Send to discover it. On Linux,
+TCP_USER_TIMEOUT additionally caps how long unacked data can sit in the
+send queue when there *is* pending traffic — keepalive only fires on a
+fully idle socket, so the two options are complementary.
+
+The story flagged a PO decision between unit-only (Option A) and unit +
+2-min BDD scenario (Option B). User chose A: assert exact setsockopt
+values via the fakes, defer observable kernel-level coverage until a real
+incident proves we need it.
+
+The story also proposed `SIO_KEEPALIVE_VALS` for Windows, but on Win10+
+with `<mstcpip.h>` the same TCP_KEEPIDLE / TCP_KEEPINTVL / TCP_KEEPCNT
+options are available via plain `setsockopt`. Switching to those keeps
+the Windows path symmetric with POSIX (no new fake seam, identical
+parameter surface, explicit retry-count control instead of the OS-fixed
+10-retry default that SIO_KEEPALIVE_VALS implies).
+
+### What landed
+
+- **POSIX** ([`Platform/Posix/Source/SolidSyslogPosixTcpStream.c`](Platform/Posix/Source/SolidSyslogPosixTcpStream.c)):
+  new `EnableKeepalive(fd)` issues SO_KEEPALIVE + TCP_KEEPIDLE +
+  TCP_KEEPINTVL + TCP_KEEPCNT + TCP_USER_TIMEOUT (the last under
+  `#ifdef TCP_USER_TIMEOUT` for non-Linux POSIX targets that lack it).
+- **Windows** ([`Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`](Platform/Windows/Source/SolidSyslogWinsockTcpStream.c)):
+  matching `EnableKeepalive(fd)` via per-option setsockopt, four calls
+  (no Windows analogue for TCP_USER_TIMEOUT). Pulls in `<mstcpip.h>`.
+- **Values**: idle = 45 s, interval = 10 s, count = 4, user-timeout =
+  30 s. Worst-case detection ≈ 85 s idle, 30 s with pending data. Stored
+  as named constants in each file's `enum` block.
+- **Fake extension**: `SocketFake_LastSetSockOptValue(level, optname)`
+  and `WinsockFake_LastSetSockOptValue(level, optname)` capture the int
+  optval per recorded entry. `SOCKETFAKE_MAX_SETSOCKOPT_CALLS` and
+  `WINSOCKFAKE_MAX_SETSOCKOPT_CALLS` bumped from 8 to 16 so two Opens
+  (initial + reconnect) fit. Hungarian-prefix-free per CLAUDE.md.
+- **Tests**: 5 new POSIX tests + 4 new Windows tests asserting the exact
+  setsockopt values; 2 new WinsockFake self-tests for the value
+  accessor. `SolidSyslogStreamSenderFailure.ReconnectSetsTcpNoDelay`
+  count assertion bumped from 2 to 12 (6 setsockopts × 2 Opens, Linux
+  with TCP_USER_TIMEOUT).
+
+### Local validation
+
+Linux gcc / clang / sanitize / coverage (100% line / 100% function:
+2034/2034 lines, 429/429 functions) / clang-tidy / cppcheck / clang-format
+— all green via the devcontainer. MSVC built clean and ran 979/979
+SolidSyslogTests + 28/28 ExampleTests on the Windows host.
+
+### Out of scope
+
+- Configurable values via `SolidSyslogStreamSenderConfig` — folded into
+  S12.17 along with connect / handshake timeouts.
+- mbedTLS / future stream backends — separate story when those land.
+
 ## 2026-05-07 — S12.15 — Service thread idle yield
 
 ### Decision

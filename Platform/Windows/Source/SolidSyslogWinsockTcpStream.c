@@ -4,6 +4,7 @@
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogWinsockTcpStreamInternal.h"
 
+#include <mstcpip.h>
 #include <stddef.h>
 
 /* File-local forwarders. Taking the address of a __declspec(dllimport)
@@ -101,7 +102,14 @@ enum
     /* Winsock ignores nfds (its fd_set is a literal array, not a bitmask),
        but POSIX-portable callers must pass the highest fd + 1. Pass any
        positive value to keep the call well-formed against either ABI. */
-    WINSOCK_NFDS_IGNORED = 1
+    WINSOCK_NFDS_IGNORED = 1,
+    /* Keepalive parameters mirror the POSIX TCP stream so the dead-peer
+       detection window is the same on both platforms: idle 45 + 4 * 10 = 85 s
+       worst case. Windows has no TCP_USER_TIMEOUT analogue, so the pending-
+       write case relies on the OS-default retransmit timeout. */
+    KEEPALIVE_IDLE_SECONDS     = 45,
+    KEEPALIVE_INTERVAL_SECONDS = 10,
+    KEEPALIVE_PROBE_COUNT      = 4
 };
 
 struct SolidSyslogWinsockTcpStream
@@ -118,6 +126,7 @@ static void             Close(struct SolidSyslogStream* self);
 static SOCKET      OpenAndConfigureSocket(void);
 static bool        ConfigureSocket(SOCKET fd);
 static void        EnableTcpNoDelay(SOCKET fd);
+static void        EnableKeepalive(SOCKET fd);
 static inline bool IsSocketValid(SOCKET fd);
 static bool        ConnectOrCloseOnFailure(struct SolidSyslogWinsockTcpStream* stream, const struct sockaddr_in* sin);
 static bool        Connect(SOCKET fd, const struct sockaddr_in* sin);
@@ -185,6 +194,7 @@ static SOCKET OpenAndConfigureSocket(void)
 static bool ConfigureSocket(SOCKET fd)
 {
     EnableTcpNoDelay(fd);
+    EnableKeepalive(fd);
     return SetNonBlocking(fd);
 }
 
@@ -192,6 +202,22 @@ static void EnableTcpNoDelay(SOCKET fd)
 {
     int enable = 1;
     WinsockTcpStream_setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (const char*) &enable, (int) sizeof(enable));
+}
+
+/* Mirrors the POSIX EnableKeepalive — Windows 10 1709+ exposes TCP_KEEPIDLE /
+ * TCP_KEEPINTVL / TCP_KEEPCNT via setsockopt (declared in <mstcpip.h>), so the
+ * shape matches the POSIX path one-for-one. No TCP_USER_TIMEOUT analogue. */
+static void EnableKeepalive(SOCKET fd)
+{
+    int enable   = 1;
+    int idle     = KEEPALIVE_IDLE_SECONDS;
+    int interval = KEEPALIVE_INTERVAL_SECONDS;
+    int count    = KEEPALIVE_PROBE_COUNT;
+
+    WinsockTcpStream_setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (const char*) &enable, (int) sizeof(enable));
+    WinsockTcpStream_setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, (const char*) &idle, (int) sizeof(idle));
+    WinsockTcpStream_setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, (const char*) &interval, (int) sizeof(interval));
+    WinsockTcpStream_setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, (const char*) &count, (int) sizeof(count));
 }
 
 static inline bool IsSocketValid(SOCKET fd)

@@ -25,7 +25,15 @@ enum
     /* Caps the time a single connect() attempt can stall the service thread.
        Mirrors the Winsock value: 200 ms is comfortable for loopback/LAN and
        short enough that 10 failing attempts cost 2 s instead of 20+ s. */
-    CONNECT_TIMEOUT_MICROSECONDS = 200000
+    CONNECT_TIMEOUT_MICROSECONDS = 200000,
+    /* Keepalive parameters — bound the dead-peer detection window when the
+       socket is idle. Worst case: 45 + 4 * 10 = 85 s before ETIMEDOUT.
+       TCP_USER_TIMEOUT covers the pending-write case (where keepalive does
+       not fire) by capping how long unacked data can sit in the send queue. */
+    KEEPALIVE_IDLE_SECONDS     = 45,
+    KEEPALIVE_INTERVAL_SECONDS = 10,
+    KEEPALIVE_PROBE_COUNT      = 4,
+    USER_TIMEOUT_MILLISECONDS  = 30000
 };
 
 struct SolidSyslogPosixTcpStream
@@ -42,6 +50,7 @@ static void             Close(struct SolidSyslogStream* self);
 static int         OpenAndConfigureSocket(void);
 static bool        ConfigureSocket(int fd);
 static void        EnableTcpNoDelay(int fd);
+static void        EnableKeepalive(int fd);
 static bool        SetNonBlocking(int fd);
 static inline bool IsFileDescriptorValid(int fd);
 static bool        ConnectOrCloseOnFailure(struct SolidSyslogPosixTcpStream* stream, const struct sockaddr_in* sin);
@@ -109,6 +118,7 @@ static int OpenAndConfigureSocket(void)
 static bool ConfigureSocket(int fd)
 {
     EnableTcpNoDelay(fd);
+    EnableKeepalive(fd);
     return SetNonBlocking(fd);
 }
 
@@ -116,6 +126,26 @@ static void EnableTcpNoDelay(int fd)
 {
     int enable = 1;
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
+}
+
+/* Enable kernel TCP keepalive so a dead peer is surfaced as ETIMEDOUT during
+ * idle periods, not on the next Send. TCP_USER_TIMEOUT covers the orthogonal
+ * pending-write case (keepalive only fires on a fully idle socket). Linux is
+ * the POSIX target — TCP_KEEP* and TCP_USER_TIMEOUT are all available there;
+ * other POSIX targets are out of scope until we actually port to one. */
+static void EnableKeepalive(int fd)
+{
+    int enable      = 1;
+    int idle        = KEEPALIVE_IDLE_SECONDS;
+    int interval    = KEEPALIVE_INTERVAL_SECONDS;
+    int count       = KEEPALIVE_PROBE_COUNT;
+    int userTimeout = USER_TIMEOUT_MILLISECONDS;
+
+    setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable));
+    setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
+    setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(interval));
+    setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &count, sizeof(count));
+    setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &userTimeout, sizeof(userTimeout));
 }
 
 static bool SetNonBlocking(int fd)
