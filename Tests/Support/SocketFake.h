@@ -52,6 +52,9 @@ EXTERN_C_BEGIN
 
     /* connect configuration */
     void SocketFake_SetConnectFails(bool fails);
+    /* When set, connect returns -1 with errno == errnoValue (e.g. EINPROGRESS so
+       the non-blocking-connect path can be exercised). One-shot. */
+    void SocketFake_SetConnectFailsWithErrno(int errnoValue);
 
     /* connect accessors */
     int         SocketFake_ConnectCallCount(void);
@@ -65,12 +68,41 @@ EXTERN_C_BEGIN
     int  SocketFake_LastSetSockOptOptname(void);
     bool SocketFake_HasSetSockOpt(int level, int optname);
 
-    /* getsockopt configuration (currently models IPPROTO_IP / IP_MTU only) */
+    /* getsockopt configuration (models IPPROTO_IP / IP_MTU and SOL_SOCKET / SO_ERROR) */
     void SocketFake_SetIpMtu(int mtu);
     void SocketFake_SetIpMtuLookupFails(bool fails);
+    /* SOL_SOCKET / SO_ERROR — read by the non-blocking-connect completion path.
+       Defaults to 0 (success) until set. */
+    void SocketFake_SetSoError(int err);
+    void SocketFake_SetSoErrorLookupFails(bool fails);
 
     /* getsockopt accessors */
     int SocketFake_GetSockOptCallCount(void);
+    int SocketFake_LastGetSockOptLevel(void);
+    int SocketFake_LastGetSockOptOptname(void);
+
+    /* fcntl configuration */
+    void SocketFake_SetFcntlSetFlFails(bool fails);
+    void SocketFake_SetFcntlGetFlReturn(int flags);
+
+    /* fcntl accessors */
+    int  SocketFake_FcntlCallCount(void);
+    int  SocketFake_LastFcntlCmd(void);
+    int  SocketFake_LastFcntlSetFlags(void);
+    bool SocketFake_FcntlSetFlSetNonBlocking(void);
+
+    /* select configuration. ready=true makes select report fd writable in writefds;
+       ready=false leaves writefds empty (timeout). hasError=true sets fd in
+       exceptfds. returnValue overrides the int return (1 ready, 0 timeout, -1 error).
+       Default: returns 1 (one fd ready: writable, no error). */
+    void SocketFake_SetSelectWritable(bool ready);
+    void SocketFake_SetSelectError(bool hasError);
+    void SocketFake_SetSelectReturn(int value);
+
+    /* select accessors */
+    int  SocketFake_SelectCallCount(void);
+    long SocketFake_LastSelectTimeoutSec(void);
+    long SocketFake_LastSelectTimeoutUsec(void);
 
     /* close accessors */
     int SocketFake_CloseCallCount(void);
@@ -78,6 +110,7 @@ EXTERN_C_BEGIN
 
     /* recv configuration */
     void SocketFake_SetRecvReturn(ssize_t value);
+    void SocketFake_FailNextRecvWithErrno(int errnoValue);
 
     /* recv accessors */
     int         SocketFake_RecvCallCount(void);

@@ -88,10 +88,21 @@ TEST(SolidSyslogPosixTcpStream, OpenEnablesTcpNoDelay)
     CHECK_TRUE(SocketFake_HasSetSockOpt(IPPROTO_TCP, TCP_NODELAY));
 }
 
-TEST(SolidSyslogPosixTcpStream, OpenSetsSendTimeout)
+TEST(SolidSyslogPosixTcpStream, OpenSetsNonBlockingFlagBeforeConnect)
 {
     SolidSyslogStream_Open(stream, addr);
-    CHECK_TRUE(SocketFake_HasSetSockOpt(SOL_SOCKET, SO_SNDTIMEO));
+    /* Non-blocking is set via fcntl(F_SETFL, ... | O_NONBLOCK) so connect()
+       returns EINPROGRESS immediately and the caller can bound the wait. */
+    CHECK_TRUE(SocketFake_FcntlSetFlSetNonBlocking());
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenFailsWhenFcntlSetFlFails)
+{
+    /* If the kernel refuses to put the socket into non-blocking mode the
+       caller cannot bound the connect wait — fail fast. */
+    SocketFake_SetFcntlSetFlFails(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    LONGS_EQUAL(1, SocketFake_CloseCallCount());
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenCallsConnectWithSocketFd)
@@ -148,18 +159,30 @@ TEST(SolidSyslogPosixTcpStream, SendDoesNotRetryAfterShortWrite)
     LONGS_EQUAL(1, SocketFake_SendCallCount());
 }
 
-TEST(SolidSyslogPosixTcpStream, SendRetriesOnEintrAndSucceeds)
+TEST(SolidSyslogPosixTcpStream, SendReturnsFalseOnEintr)
 {
+    /* Non-blocking + fail-fast: any failure from a single send() call closes
+       the socket and surfaces failure. EINTR is no longer retried. */
     SolidSyslogStream_Open(stream, addr);
     SocketFake_FailNextSendWithErrno(EINTR);
-    CHECK_TRUE(SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN));
 }
 
-TEST(SolidSyslogPosixTcpStream, SendReturnsFalseOnEagainTimeout)
+TEST(SolidSyslogPosixTcpStream, SendReturnsFalseOnEagain)
 {
     SolidSyslogStream_Open(stream, addr);
     SocketFake_FailNextSendWithErrno(EAGAIN);
     CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN));
+}
+
+TEST(SolidSyslogPosixTcpStream, SendClosesSocketOnFailure)
+{
+    SolidSyslogStream_Open(stream, addr);
+    int openFd = SocketFake_SocketFd();
+    SocketFake_SetSendFails(true);
+    SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    LONGS_EQUAL(openFd, SocketFake_LastClosedFd());
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenClosesSocketOnConnectFailure)
@@ -304,4 +327,149 @@ TEST(SolidSyslogPosixTcpStream, DestroyClosesWithSocketFd)
 TEST(SolidSyslogPosixTcpStream, DefaultPortMatchesRfc6587)
 {
     LONGS_EQUAL(601, SOLIDSYSLOG_TCP_DEFAULT_PORT);
+}
+
+/* ----------------------------------------------------------------------
+ * Non-blocking connect with bounded wait — keeps the service-thread drain
+ * rate insensitive to a slow or refused peer.
+ * -------------------------------------------------------------------- */
+
+TEST(SolidSyslogPosixTcpStream, OpenSkipsSelectWhenConnectReturnsImmediately)
+{
+    /* Default fake connect returns 0 (immediate success); select must not be
+       reached because connect short-circuits the wait. */
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(0, SocketFake_SelectCallCount());
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenInvokesSelectWhenConnectReturnsEinprogress)
+{
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(1, SocketFake_SelectCallCount());
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenPassesBoundedConnectTimeoutToSelect)
+{
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SolidSyslogStream_Open(stream, addr);
+    /* CONNECT_TIMEOUT_MICROSECONDS = 200 000 → 0 s + 200 000 µs. */
+    LONGS_EQUAL(0, SocketFake_LastSelectTimeoutSec());
+    LONGS_EQUAL(200000, SocketFake_LastSelectTimeoutUsec());
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenSucceedsWhenSelectReportsWritableAndZeroSO_ERROR)
+{
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SocketFake_SetSelectWritable(true);
+    SocketFake_SetSoError(0);
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenFailsWhenSelectReportsTimeout)
+{
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SocketFake_SetSelectWritable(false);
+    SocketFake_SetSelectReturn(0);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenClosesSocketOnSelectTimeout)
+{
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SocketFake_SetSelectWritable(false);
+    SocketFake_SetSelectReturn(0);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenFailsWhenSelectFlagsErrorOnFd)
+{
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SocketFake_SetSelectWritable(false);
+    SocketFake_SetSelectError(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenFailsWhenDeferredSO_ERRORIsNonZero)
+{
+    /* select reports writable, but SO_ERROR on the socket reveals the
+       deferred connect failure (e.g. ECONNREFUSED). */
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SocketFake_SetSelectWritable(true);
+    SocketFake_SetSoError(ECONNREFUSED);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReadsSO_ERRORAfterSelectWritable)
+{
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(SOL_SOCKET, SocketFake_LastGetSockOptLevel());
+    LONGS_EQUAL(SO_ERROR, SocketFake_LastGetSockOptOptname());
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenFailsWhenConnectFailsImmediatelyWithRefused)
+{
+    /* Non-EINPROGRESS errors are immediate failures — no select wait, no
+       SO_ERROR check, just fail fast. */
+    SocketFake_SetConnectFailsWithErrno(ECONNREFUSED);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    LONGS_EQUAL(0, SocketFake_SelectCallCount());
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenFailsWhenSO_ERRORLookupFails)
+{
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SocketFake_SetSelectWritable(true);
+    SocketFake_SetSoErrorLookupFails(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+}
+
+/* ----------------------------------------------------------------------
+ * Non-blocking Read contract: bytes → return them; nothing → 0;
+ * EOF/error → close internally and return -1.
+ * -------------------------------------------------------------------- */
+
+TEST(SolidSyslogPosixTcpStream, ReadReturnsZeroOnEagain)
+{
+    SolidSyslogStream_Open(stream, addr);
+    SocketFake_FailNextRecvWithErrno(EAGAIN);
+    char             buf[16];
+    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
+    LONGS_EQUAL(0, n);
+}
+
+TEST(SolidSyslogPosixTcpStream, ReadReturnsZeroOnWouldBlock)
+{
+    SolidSyslogStream_Open(stream, addr);
+    SocketFake_FailNextRecvWithErrno(EWOULDBLOCK);
+    char             buf[16];
+    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
+    LONGS_EQUAL(0, n);
+}
+
+TEST(SolidSyslogPosixTcpStream, ReadReturnsNegativeOneOnEofAndClosesSocket)
+{
+    SolidSyslogStream_Open(stream, addr);
+    int openFd = SocketFake_SocketFd();
+    SocketFake_SetRecvReturn(0); /* EOF */
+    char             buf[16];
+    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
+    LONGS_EQUAL(-1, n);
+    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    LONGS_EQUAL(openFd, SocketFake_LastClosedFd());
+}
+
+TEST(SolidSyslogPosixTcpStream, ReadReturnsNegativeOneOnErrorAndClosesSocket)
+{
+    SolidSyslogStream_Open(stream, addr);
+    int openFd = SocketFake_SocketFd();
+    SocketFake_FailNextRecvWithErrno(ECONNRESET);
+    char             buf[16];
+    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
+    LONGS_EQUAL(-1, n);
+    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    LONGS_EQUAL(openFd, SocketFake_LastClosedFd());
 }

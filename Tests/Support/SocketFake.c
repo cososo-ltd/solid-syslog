@@ -3,10 +3,16 @@
 #include "SolidSyslog.h"
 #include <arpa/inet.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <stdarg.h>
 #include <string.h>
+#include <sys/select.h>
 #include <sys/socket.h>
+#include <sys/time.h>
+
+struct timeval;
 
 enum
 {
@@ -27,6 +33,30 @@ static int                lastSendtoFd;
 static int  ipMtuValue;
 static bool ipMtuLookupFails;
 static int  getSockOptCallCount;
+static int  lastGetSockOptLevel;
+static int  lastGetSockOptOptname;
+static int  soErrorValue;
+static bool soErrorLookupFails;
+
+static int  fcntlCallCount;
+static int  lastFcntlCmd;
+static int  lastFcntlSetFlags;
+static int  fcntlGetFlReturn;
+static bool fcntlSetFlFails;
+
+static int  selectCallCount;
+static bool selectReady;
+static bool selectError;
+static bool selectReturnOverride;
+static int  selectReturnValue;
+static long lastSelectTimeoutSec;
+static long lastSelectTimeoutUsec;
+
+static bool nextConnectShouldFailWithErrno;
+static int  nextConnectErrno;
+
+static bool nextRecvShouldFailWithErrno;
+static int  nextRecvErrno;
 
 static bool socketFails;
 static int  socketCallCount;
@@ -130,23 +160,47 @@ void SocketFake_Reset(void)
         setSockOptLevels[i]   = 0;
         setSockOptOptnames[i] = 0;
     }
-    getSockOptCallCount = 0;
-    ipMtuValue          = 0;
-    ipMtuLookupFails    = false;
-    socketFails         = false;
-    socketCallCount     = 0;
-    socketFd            = -1;
-    lastSocketDomain    = 0;
-    lastSocketType      = 0;
-    closeCallCount      = 0;
-    lastClosedFd        = -1;
-    recvCallCount       = 0;
-    recvReturn          = 0;
-    lastRecvFd          = -1;
-    lastRecvBuf         = NULL;
-    lastRecvLen         = 0;
-    lastRecvFlags       = 0;
-    lastAddrString[0]   = '\0';
+    getSockOptCallCount   = 0;
+    lastGetSockOptLevel   = 0;
+    lastGetSockOptOptname = 0;
+    ipMtuValue            = 0;
+    ipMtuLookupFails      = false;
+    soErrorValue          = 0;
+    soErrorLookupFails    = false;
+
+    fcntlCallCount    = 0;
+    lastFcntlCmd      = 0;
+    lastFcntlSetFlags = 0;
+    fcntlGetFlReturn  = 0;
+    fcntlSetFlFails   = false;
+
+    selectCallCount       = 0;
+    selectReady           = true;
+    selectError           = false;
+    selectReturnOverride  = false;
+    selectReturnValue     = 0;
+    lastSelectTimeoutSec  = 0;
+    lastSelectTimeoutUsec = 0;
+
+    nextConnectShouldFailWithErrno = false;
+    nextConnectErrno               = 0;
+
+    nextRecvShouldFailWithErrno = false;
+    nextRecvErrno               = 0;
+    socketFails                 = false;
+    socketCallCount             = 0;
+    socketFd                    = -1;
+    lastSocketDomain            = 0;
+    lastSocketType              = 0;
+    closeCallCount              = 0;
+    lastClosedFd                = -1;
+    recvCallCount               = 0;
+    recvReturn                  = 0;
+    lastRecvFd                  = -1;
+    lastRecvBuf                 = NULL;
+    lastRecvLen                 = 0;
+    lastRecvFlags               = 0;
+    lastAddrString[0]           = '\0';
 
     getAddrInfoFails            = false;
     getAddrInfoCallCount        = 0;
@@ -175,6 +229,99 @@ void SocketFake_FailNextSendtoWithErrno(int errnoValue)
 void SocketFake_SetIpMtu(int mtu)
 {
     ipMtuValue = mtu;
+}
+
+void SocketFake_SetSoError(int err)
+{
+    soErrorValue = err;
+}
+
+void SocketFake_SetSoErrorLookupFails(bool fails)
+{
+    soErrorLookupFails = fails;
+}
+
+int SocketFake_LastGetSockOptLevel(void)
+{
+    return lastGetSockOptLevel;
+}
+
+int SocketFake_LastGetSockOptOptname(void)
+{
+    return lastGetSockOptOptname;
+}
+
+void SocketFake_SetConnectFailsWithErrno(int errnoValue)
+{
+    nextConnectShouldFailWithErrno = true;
+    nextConnectErrno               = errnoValue;
+}
+
+void SocketFake_SetFcntlSetFlFails(bool fails)
+{
+    fcntlSetFlFails = fails;
+}
+
+void SocketFake_SetFcntlGetFlReturn(int flags)
+{
+    fcntlGetFlReturn = flags;
+}
+
+int SocketFake_FcntlCallCount(void)
+{
+    return fcntlCallCount;
+}
+
+int SocketFake_LastFcntlCmd(void)
+{
+    return lastFcntlCmd;
+}
+
+int SocketFake_LastFcntlSetFlags(void)
+{
+    return lastFcntlSetFlags;
+}
+
+bool SocketFake_FcntlSetFlSetNonBlocking(void)
+{
+    return (lastFcntlSetFlags & O_NONBLOCK) != 0;
+}
+
+void SocketFake_SetSelectWritable(bool ready)
+{
+    selectReady = ready;
+}
+
+void SocketFake_SetSelectError(bool hasError)
+{
+    selectError = hasError;
+}
+
+void SocketFake_SetSelectReturn(int value)
+{
+    selectReturnOverride = true;
+    selectReturnValue    = value;
+}
+
+int SocketFake_SelectCallCount(void)
+{
+    return selectCallCount;
+}
+
+long SocketFake_LastSelectTimeoutSec(void)
+{
+    return lastSelectTimeoutSec;
+}
+
+long SocketFake_LastSelectTimeoutUsec(void)
+{
+    return lastSelectTimeoutUsec;
+}
+
+void SocketFake_FailNextRecvWithErrno(int errnoValue)
+{
+    nextRecvShouldFailWithErrno = true;
+    nextRecvErrno               = errnoValue;
 }
 
 void SocketFake_SetIpMtuLookupFails(bool fails)
@@ -527,6 +674,8 @@ int getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optl
 {
     (void) sockfd;
     getSockOptCallCount++;
+    lastGetSockOptLevel   = level;
+    lastGetSockOptOptname = optname;
     if ((level == IPPROTO_IP) && (optname == IP_MTU))
     {
         if (ipMtuLookupFails)
@@ -536,6 +685,19 @@ int getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optl
         if ((optval != NULL) && (optlen != NULL) && (*optlen >= sizeof(int)))
         {
             *(int*) optval = ipMtuValue;
+            *optlen        = sizeof(int);
+        }
+        return 0;
+    }
+    if ((level == SOL_SOCKET) && (optname == SO_ERROR))
+    {
+        if (soErrorLookupFails)
+        {
+            return -1;
+        }
+        if ((optval != NULL) && (optlen != NULL) && (*optlen >= sizeof(int)))
+        {
+            *(int*) optval = soErrorValue;
             *optlen        = sizeof(int);
         }
         return 0;
@@ -586,6 +748,12 @@ int connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
     connectCallCount++;
     lastConnectFd   = sockfd;
     lastConnectAddr = *(const struct sockaddr_in*) addr;
+    if (nextConnectShouldFailWithErrno)
+    {
+        errno                          = nextConnectErrno;
+        nextConnectShouldFailWithErrno = false;
+        return -1;
+    }
     return connectFails ? -1 : 0;
 }
 
@@ -625,7 +793,78 @@ ssize_t recv(int sockfd, void* buf, size_t len, int flags)
     lastRecvBuf   = buf;
     lastRecvLen   = len;
     lastRecvFlags = flags;
+    if (nextRecvShouldFailWithErrno)
+    {
+        errno                       = nextRecvErrno;
+        nextRecvShouldFailWithErrno = false;
+        return (ssize_t) -1;
+    }
     return recvReturn;
+}
+
+/* fcntl is variadic in glibc; its third argument is an int when cmd is F_GETFL/
+ * F_SETFL (the only commands the production code uses). */
+// NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name) -- POSIX API
+int fcntl(int fd, int cmd, ...)
+{
+    (void) fd;
+    fcntlCallCount++;
+    lastFcntlCmd = cmd;
+    if (cmd == F_GETFL)
+    {
+        return fcntlGetFlReturn;
+    }
+    if (cmd == F_SETFL)
+    {
+        va_list ap;
+        va_start(ap, cmd);
+        lastFcntlSetFlags = va_arg(ap, int);
+        va_end(ap);
+        return fcntlSetFlFails ? -1 : 0;
+    }
+    return 0;
+}
+
+// clang-format off
+// NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name,bugprone-easily-swappable-parameters) -- POSIX API
+int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout)
+// clang-format on
+{
+    (void) nfds;
+    (void) readfds;
+    selectCallCount++;
+    if (timeout != NULL)
+    {
+        lastSelectTimeoutSec  = timeout->tv_sec;
+        lastSelectTimeoutUsec = timeout->tv_usec;
+    }
+    if (writefds != NULL)
+    {
+        if (selectReady)
+        {
+            FD_SET(nfds - 1, writefds);
+        }
+        else
+        {
+            FD_ZERO(writefds);
+        }
+    }
+    if (exceptfds != NULL)
+    {
+        if (selectError)
+        {
+            FD_SET(nfds - 1, exceptfds);
+        }
+        else
+        {
+            FD_ZERO(exceptfds);
+        }
+    }
+    if (selectReturnOverride)
+    {
+        return selectReturnValue;
+    }
+    return selectReady ? 1 : 0;
 }
 
 // clang-format off

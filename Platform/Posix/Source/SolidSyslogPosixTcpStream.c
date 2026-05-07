@@ -1,26 +1,31 @@
 #include "SolidSyslogPosixTcpStream.h"
 
 #include <errno.h>
+#include <fcntl.h>
+#include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <stdbool.h>
 #include <stddef.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/time.h>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <stdbool.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "SolidSyslogAddressInternal.h"
 #include "SolidSyslogMacros.h"
-#include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogStream.h"
+#include "SolidSyslogStreamDefinition.h"
 
 struct SolidSyslogAddress;
 
 enum
 {
-    INVALID_FD           = -1,
-    SEND_TIMEOUT_SECONDS = 5
+    INVALID_FD = -1,
+    /* Caps the time a single connect() attempt can stall the service thread.
+       Mirrors the Winsock value: 200 ms is comfortable for loopback/LAN and
+       short enough that 10 failing attempts cost 2 s instead of 20+ s. */
+    CONNECT_TIMEOUT_MICROSECONDS = 200000
 };
 
 struct SolidSyslogPosixTcpStream
@@ -35,14 +40,16 @@ static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_
 static void             Close(struct SolidSyslogStream* self);
 
 static int         OpenAndConfigureSocket(void);
+static bool        ConfigureSocket(int fd);
 static void        EnableTcpNoDelay(int fd);
-static void        SetSendTimeout(int fd);
+static bool        SetNonBlocking(int fd);
 static inline bool IsFileDescriptorValid(int fd);
 static bool        ConnectOrCloseOnFailure(struct SolidSyslogPosixTcpStream* stream, const struct sockaddr_in* sin);
 static bool        Connect(int fd, const struct sockaddr_in* sin);
-static ssize_t     SendRetryingOnSignal(int fd, const void* buffer, size_t size);
-static bool        WasInterruptedBySignal(void);
+static bool        WaitForConnectCompletion(int fd);
+static bool        ReadDeferredConnectError(int fd);
 static bool        WroteAllBytes(ssize_t sent, size_t expected);
+static inline bool WouldBlock(void);
 
 SOLIDSYSLOG_STATIC_ASSERT(sizeof(struct SolidSyslogPosixTcpStream) <= SOLIDSYSLOG_POSIX_TCP_STREAM_SIZE,
                           "SOLIDSYSLOG_POSIX_TCP_STREAM_SIZE is too small for struct SolidSyslogPosixTcpStream");
@@ -85,15 +92,24 @@ static bool Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress
     return connected;
 }
 
+/* Non-blocking from the start: connect() reports EINPROGRESS, the wait is
+ * bounded by select(), and Send/Read never block the service thread on a
+ * wedged peer or a full kernel send buffer. */
 static int OpenAndConfigureSocket(void)
 {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (IsFileDescriptorValid(fd))
+    if (IsFileDescriptorValid(fd) && !ConfigureSocket(fd))
     {
-        EnableTcpNoDelay(fd);
-        SetSendTimeout(fd);
+        close(fd);
+        fd = INVALID_FD;
     }
     return fd;
+}
+
+static bool ConfigureSocket(int fd)
+{
+    EnableTcpNoDelay(fd);
+    return SetNonBlocking(fd);
 }
 
 static void EnableTcpNoDelay(int fd)
@@ -102,16 +118,10 @@ static void EnableTcpNoDelay(int fd)
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
 }
 
-/* Caps blocking time of send() so a wedged peer can't make a single
- * SolidSyslog_Service() call hang. On expiry, send() returns -1 with
- * EAGAIN/EWOULDBLOCK, the Send vtable returns false, and the Service
- * loop closes and reconnects on the next attempt; store-and-forward
- * replays the message on the fresh socket. Hard-coded for now;
- * port-time CMake override is a future option. */
-static void SetSendTimeout(int fd)
+static bool SetNonBlocking(int fd)
 {
-    struct timeval timeout = {.tv_sec = SEND_TIMEOUT_SECONDS, .tv_usec = 0};
-    setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    int flags = fcntl(fd, F_GETFL, 0);
+    return (flags >= 0) && (fcntl(fd, F_SETFL, flags | O_NONBLOCK) != -1);
 }
 
 static inline bool IsFileDescriptorValid(int fd)
@@ -130,37 +140,67 @@ static bool ConnectOrCloseOnFailure(struct SolidSyslogPosixTcpStream* stream, co
     return connected;
 }
 
+/* Non-blocking connect with bounded wait. connect() returns immediately:
+ *   0           — connected (loopback success path).
+ *   -1 EINPROGRESS — connect started; wait via select() up to
+ *                    CONNECT_TIMEOUT_MICROSECONDS, then read SO_ERROR to
+ *                    distinguish completed-success from deferred-failure.
+ *   -1 other    — immediate fail-fast (refused, unreachable, etc.). */
 static bool Connect(int fd, const struct sockaddr_in* sin)
 {
-    return (connect(fd, (const struct sockaddr*) sin, sizeof(*sin)) == 0);
+    bool connected = false;
+    int  rc        = connect(fd, (const struct sockaddr*) sin, sizeof(*sin));
+
+    if (rc == 0)
+    {
+        connected = true;
+    }
+    else if (errno == EINPROGRESS)
+    {
+        connected = WaitForConnectCompletion(fd) && ReadDeferredConnectError(fd);
+    }
+    return connected;
+}
+
+static bool WaitForConnectCompletion(int fd)
+{
+    fd_set writeSet;
+    FD_ZERO(&writeSet);
+    FD_SET(fd, &writeSet);
+
+    fd_set errorSet;
+    FD_ZERO(&errorSet);
+    FD_SET(fd, &errorSet);
+
+    struct timeval timeout = {.tv_sec = 0, .tv_usec = CONNECT_TIMEOUT_MICROSECONDS};
+
+    int rc = select(fd + 1, NULL, &writeSet, &errorSet, &timeout);
+    return (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
+}
+
+static bool ReadDeferredConnectError(int fd)
+{
+    int       err    = 0;
+    socklen_t errlen = (socklen_t) sizeof(err);
+    int       rc     = getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
+    return (rc == 0) && (err == 0);
 }
 
 static bool Send(struct SolidSyslogStream* self, const void* buffer, size_t size)
 {
     struct SolidSyslogPosixTcpStream* stream = (struct SolidSyslogPosixTcpStream*) self;
-    ssize_t                           sent   = SendRetryingOnSignal(stream->fd, buffer, size);
-    return WroteAllBytes(sent, size);
-}
+    ssize_t                           sent   = send(stream->fd, buffer, size, MSG_NOSIGNAL);
+    bool                              ok     = WroteAllBytes(sent, size);
 
-/* Retry only on EINTR — portability shim for kernels without SA_RESTART.
- * Any other failure (including EAGAIN/EWOULDBLOCK from SO_SNDTIMEO) and
- * any short return propagate via WroteAllBytes; the caller closes and
- * reconnects, store-and-forward replays the message on the fresh socket. */
-static ssize_t SendRetryingOnSignal(int fd, const void* buffer, size_t size)
-{
-    ssize_t sent = 0;
-    do
+    if (!ok)
     {
-        sent = send(fd, buffer, size, MSG_NOSIGNAL);
-    } while ((sent < 0) && WasInterruptedBySignal());
-    return sent;
+        Close(self);
+    }
+    return ok;
 }
 
-static bool WasInterruptedBySignal(void)
-{
-    return (errno == EINTR);
-}
-
+/* Non-blocking single-call contract: short write or any error means the
+ * connection is gone; the caller closes and reconnects on the next attempt. */
 static bool WroteAllBytes(ssize_t sent, size_t expected)
 {
     return (sent >= 0) && ((size_t) sent == expected);
@@ -169,7 +209,27 @@ static bool WroteAllBytes(ssize_t sent, size_t expected)
 static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_t size)
 {
     struct SolidSyslogPosixTcpStream* stream = (struct SolidSyslogPosixTcpStream*) self;
-    return (SolidSyslogSsize) recv(stream->fd, buffer, size, 0);
+    ssize_t                           n      = recv(stream->fd, buffer, size, 0);
+    SolidSyslogSsize                  result = -1;
+
+    if (n > 0)
+    {
+        result = (SolidSyslogSsize) n;
+    }
+    else if ((n < 0) && WouldBlock())
+    {
+        result = 0;
+    }
+    else
+    {
+        Close(self);
+    }
+    return result;
+}
+
+static inline bool WouldBlock(void)
+{
+    return (errno == EAGAIN) || (errno == EWOULDBLOCK);
 }
 
 static void Close(struct SolidSyslogStream* self)
