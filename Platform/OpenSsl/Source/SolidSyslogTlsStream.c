@@ -5,17 +5,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <time.h>
-#endif
-
 #include "SolidSyslogMacros.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTlsStream.h"
-#include "SolidSyslogTlsStreamInternal.h"
 
 enum
 {
@@ -26,20 +19,6 @@ enum
     HANDSHAKE_TIMEOUT_MILLISECONDS       = 5000,
     HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1
 };
-
-static void DefaultSleep(int milliseconds);
-
-TlsStreamSleepFn TlsStream_sleep = DefaultSleep;
-
-static void DefaultSleep(int milliseconds)
-{
-#ifdef _WIN32
-    Sleep((DWORD) milliseconds);
-#else
-    struct timespec ts = {.tv_sec = milliseconds / 1000, .tv_nsec = (long) (milliseconds % 1000) * 1000000L};
-    (void) nanosleep(&ts, NULL);
-#endif
-}
 
 struct SolidSyslogAddress;
 
@@ -82,11 +61,11 @@ static inline int              TlsStream_TransportBioRead(BIO* bio, char* buffer
 static inline int              TlsStream_TransportBioWrite(BIO* bio, const char* buffer, int size);
 
 static const struct SolidSyslogTlsStream DEFAULT_INSTANCE = {
-    {TlsStream_Open, TlsStream_Send, TlsStream_Read, TlsStream_Close}, {NULL, NULL, NULL, NULL, NULL, NULL}, NULL, NULL, NULL,
+    {TlsStream_Open, TlsStream_Send, TlsStream_Read, TlsStream_Close}, {NULL, NULL, NULL, NULL, NULL, NULL, NULL}, NULL, NULL, NULL,
 };
 
 static const struct SolidSyslogTlsStream DESTROYED_INSTANCE = {
-    {NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL, NULL, NULL}, NULL, NULL, NULL,
+    {NULL, NULL, NULL, NULL}, {NULL, NULL, NULL, NULL, NULL, NULL, NULL}, NULL, NULL, NULL,
 };
 
 struct SolidSyslogStream* SolidSyslogTlsStream_Create(SolidSyslogTlsStreamStorage* storage, const struct SolidSyslogTlsStreamConfig* config)
@@ -381,7 +360,7 @@ static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* strea
             }
             else
             {
-                TlsStream_sleep(HANDSHAKE_POLL_INTERVAL_MILLISECONDS);
+                stream->config.sleep(HANDSHAKE_POLL_INTERVAL_MILLISECONDS);
                 totalSleptMs += HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
             }
         }

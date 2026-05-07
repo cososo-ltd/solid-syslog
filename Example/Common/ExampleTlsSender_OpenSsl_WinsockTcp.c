@@ -5,6 +5,7 @@
 #include "ExampleTlsSender.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogTlsStream.h"
+#include "SolidSyslogWindowsSleep.h"
 #include "SolidSyslogWinsockTcpStream.h"
 
 struct SolidSyslogResolver;
@@ -23,6 +24,7 @@ struct SolidSyslogSender* ExampleTlsSender_Create(struct SolidSyslogResolver* re
     static struct SolidSyslogTlsStreamConfig tlsStreamConfig;
     tlsStreamConfig           = (struct SolidSyslogTlsStreamConfig) {0};
     tlsStreamConfig.transport = underlyingStream;
+    tlsStreamConfig.sleep     = SolidSyslogWindowsSleep;
     if (mtls)
     {
         tlsStreamConfig.caBundlePath        = ExampleMtlsConfig_GetCaBundlePath();

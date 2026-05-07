@@ -80,6 +80,7 @@ if(SOLIDSYSLOG_POSIX)
         SolidSyslogPosixClockTest.cpp
         SolidSyslogPosixMessageQueueBufferTest.cpp
         SolidSyslogPosixMutexTest.cpp
+        SolidSyslogPosixSleepTest.cpp
         SolidSyslogPosixSysUpTimeTest.cpp
         ClockFakeTest.cpp
         SolidSyslogUdpSenderTest.cpp
@@ -111,6 +112,7 @@ if(HAVE_WINDOWS_PLATFORM)
         SolidSyslogWindowsHostnameTest.cpp
         SolidSyslogWindowsMutexTest.cpp
         SolidSyslogWindowsProcessIdTest.cpp
+        SolidSyslogWindowsSleepTest.cpp
         SolidSyslogWindowsSysUpTimeTest.cpp
     )
 endif()
@@ -141,7 +143,6 @@ endif()
 
 if(SOLIDSYSLOG_OPENSSL)
     target_link_libraries(${PROJECT_NAME}Tests PRIVATE OpenSslFakes)
-    target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Platform/OpenSsl/Source)
 endif()
 
 if(HAVE_WINDOWS_PLATFORM OR SOLIDSYSLOG_WINSOCK)

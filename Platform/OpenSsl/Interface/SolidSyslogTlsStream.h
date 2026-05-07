@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "ExternC.h"
+#include "SolidSyslogSleep.h"
 
 struct SolidSyslogStream;
 
@@ -11,7 +12,7 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_TLS_STREAM_SIZE = sizeof(intptr_t) * 13
+        SOLIDSYSLOG_TLS_STREAM_SIZE = sizeof(intptr_t) * 14
     };
 
     typedef struct
@@ -22,6 +23,7 @@ EXTERN_C_BEGIN
     struct SolidSyslogTlsStreamConfig
     {
         struct SolidSyslogStream* transport;           /* underlying byte stream — caller owns */
+        SolidSyslogSleepFunction  sleep;               /* drives bounded handshake retry between WANT_READ/WANT_WRITE polls — required */
         const char*               caBundlePath;        /* PEM file of trust anchors */
         const char*               serverName;          /* SNI + cert hostname check; NULL to skip */
         const char*               cipherList;          /* TLS 1.2 cipher list; NULL = OpenSSL default */

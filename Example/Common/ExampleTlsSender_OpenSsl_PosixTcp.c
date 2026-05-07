@@ -3,6 +3,7 @@
 #include "ExampleMtlsConfig.h"
 #include "ExampleTlsConfig.h"
 #include "ExampleTlsSender.h"
+#include "SolidSyslogPosixSleep.h"
 #include "SolidSyslogPosixTcpStream.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogTlsStream.h"
@@ -23,6 +24,7 @@ struct SolidSyslogSender* ExampleTlsSender_Create(struct SolidSyslogResolver* re
     static struct SolidSyslogTlsStreamConfig tlsStreamConfig;
     tlsStreamConfig           = (struct SolidSyslogTlsStreamConfig) {0};
     tlsStreamConfig.transport = underlyingStream;
+    tlsStreamConfig.sleep     = SolidSyslogPosixSleep;
     if (mtls)
     {
         tlsStreamConfig.caBundlePath        = ExampleMtlsConfig_GetCaBundlePath();

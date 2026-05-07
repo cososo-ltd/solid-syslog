@@ -5,6 +5,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     Source/SolidSyslogPosixMutex.c
     Source/SolidSyslogPosixProcessId.c
     Source/SolidSyslogPosixSysUpTime.c
+    Source/SolidSyslogPosixSleep.c
     Source/SolidSyslogAddress.c
     Source/SolidSyslogGetAddrInfoResolver.c
     Source/SolidSyslogPosixDatagram.c

@@ -11,6 +11,7 @@ if(HAVE_WINDOWS_PLATFORM)
         Source/SolidSyslogWindowsHostname.c
         Source/SolidSyslogWindowsMutex.c
         Source/SolidSyslogWindowsProcessId.c
+        Source/SolidSyslogWindowsSleep.c
         Source/SolidSyslogWindowsSysUpTime.c
     )
 endif()

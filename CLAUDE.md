@@ -358,10 +358,13 @@ live under `Core/Interface/`; platform-specific helpers (the `SolidSyslogPosix*`
 | `SolidSyslogPosixHostname.h` | String callback implementor using POSIX hostname | `SolidSyslogPosixHostname_Get` (writes into `SolidSyslogFormatter*`) |
 | `SolidSyslogPosixProcessId.h` | String callback implementor using POSIX process ID | `SolidSyslogPosixProcessId_Get` (writes into `SolidSyslogFormatter*`) |
 | `SolidSyslogPosixSysUpTime.h` | SysUpTime callback implementor using POSIX `CLOCK_BOOTTIME` | `SolidSyslogPosixSysUpTime_Get` (returns `uint32_t` hundredths since boot, wraps per RFC 3418 `TimeTicks`) |
+| `SolidSyslogPosixSleep.h` | System setup code wiring a `SolidSyslogSleepFunction` on POSIX targets | `SolidSyslogPosixSleep` (wraps `nanosleep`) |
 | `SolidSyslogWindowsClock.h` | System setup code using Windows clock | `SolidSyslogWindowsClock_GetTimestamp` |
 | `SolidSyslogWindowsHostname.h` | String callback implementor using Windows hostname | `SolidSyslogWindowsHostname_Get` (writes into `SolidSyslogFormatter*`) |
 | `SolidSyslogWindowsProcessId.h` | String callback implementor using Windows process ID | `SolidSyslogWindowsProcessId_Get` (writes into `SolidSyslogFormatter*`) |
 | `SolidSyslogWindowsSysUpTime.h` | SysUpTime callback implementor using `GetTickCount64` | `SolidSyslogWindowsSysUpTime_Get` (returns `uint32_t` hundredths since boot), `WindowsSysUpTime_GetTickCount64` (function-pointer seam for unit tests) |
+| `SolidSyslogWindowsSleep.h` | System setup code wiring a `SolidSyslogSleepFunction` on Windows targets | `SolidSyslogWindowsSleep` (wraps `Sleep`) |
+| `SolidSyslogSleep.h` | Any code passing or implementing a sleep callback | `SolidSyslogSleepFunction` typedef (used by `SolidSyslogTlsStreamConfig.sleep` for the bounded handshake retry) |
 | `SolidSyslogStructuredData.h` | Library internals (SD dispatch) | `SolidSyslogStructuredData_Format` (writes into `SolidSyslogFormatter*`) |
 | `SolidSyslogStructuredDataDefinition.h` | SD implementors (extension point) | `SolidSyslogStructuredData` vtable struct (Format takes `SolidSyslogFormatter*`) |
 | `SolidSyslogMetaSd.h` | System setup code using meta SD (sequenceId, sysUpTime, language) | `SolidSyslogMetaSdConfig` (counter, getSysUpTime, getLanguage — each independently optional via NULL), `SolidSyslogSysUpTimeFunction`, `SolidSyslogMetaSd_Create`, `_Destroy` |

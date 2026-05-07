@@ -8,7 +8,6 @@
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogTlsStream.h"
-#include "SolidSyslogTlsStreamInternal.h"
 #include "SolidSyslogTransport.h"
 #include "StreamFake.h"
 #include "CppUTest/TestHarness.h"
@@ -37,9 +36,9 @@ TEST_GROUP(SolidSyslogTlsStream)
         OpenSslFake_Reset();
         g_sleepCallCount = 0;
         g_lastSleepMs    = 0;
-        UT_PTR_SET(TlsStream_sleep, NoOpSleep);
         transport        = StreamFake_Create();
         config.transport = transport;
+        config.sleep     = NoOpSleep;
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         stream = SolidSyslogTlsStream_Create(&streamStorage, &config);
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
@@ -843,23 +842,6 @@ TEST(SolidSyslogTlsStream, OpenPassesCtxFromNewToCheckPrivateKey)
 TEST(SolidSyslogTlsStream, DefaultPortMatchesRfc5425)
 {
     LONGS_EQUAL(6514, SOLIDSYSLOG_TLS_DEFAULT_PORT);
-}
-
-/* -------------------------------------------------------------------------
- * Default platform sleep — exercised without the no-op override so the
- * production sleep helper is reached at least once for coverage. Calls with
- * 0 ms keep the test fast.
- * ------------------------------------------------------------------------- */
-
-// clang-format off
-TEST_GROUP(SolidSyslogTlsStreamDefaultSleep)
-{
-};
-// clang-format on
-
-TEST(SolidSyslogTlsStreamDefaultSleep, DefaultSleepReturnsImmediatelyForZero)
-{
-    TlsStream_sleep(0);
 }
 
 /* -------------------------------------------------------------------------

@@ -15,6 +15,15 @@
 #include "TlsTestServer.h"
 #include "CppUTest/TestHarness.h"
 
+/* BioPairStream pumps synchronously — SSL_connect completes in one call so
+ * the handshake retry loop never sleeps. Provide a NoOp to satisfy the
+ * required config field without taking a platform dependency on the
+ * integration tests (these run on both POSIX and Windows). */
+static void NoOpSleep(int milliseconds)
+{
+    (void) milliseconds;
+}
+
 // clang-format off
 TEST_GROUP(TlsStreamIntegration)
 {
@@ -80,6 +89,7 @@ TEST_GROUP(TlsStreamIntegration)
         BioPairStream_SetPump(transport, TlsTestServer_Pump, server);
 
         tlsConfig.transport    = transport;
+        tlsConfig.sleep        = NoOpSleep;
         tlsConfig.caBundlePath = caPath;
         tlsConfig.serverName   = clientServerName;
         tlsStream              = SolidSyslogTlsStream_Create(&tlsStreamStorage, &tlsConfig);
