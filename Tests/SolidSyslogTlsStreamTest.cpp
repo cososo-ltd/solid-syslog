@@ -50,9 +50,90 @@ TEST_GROUP(SolidSyslogTlsStream)
         SolidSyslogTlsStream_Destroy(stream);
         StreamFake_Destroy(transport);
     }
+
+    /* Drive the registered BIO read callback with the given transport return —
+       collapses the open + set-return + grab-callback + invoke boilerplate. */
+    [[nodiscard]] int InvokeBioReadWithTransportReturn(SolidSyslogSsize transportReturn) const
+    {
+        SolidSyslogStream_Open(stream, addr);
+        StreamFake_SetReadReturn(transport, transportReturn);
+        int (*readFn)(BIO*, char*, int) = OpenSslFake_LastBioReadCallback();
+        char buf[16];
+        return readFn(OpenSslFake_LastBioReturned(), buf, sizeof(buf));
+    }
+
+    /* Drive the registered BIO write callback while the underlying transport
+       Send is configured to fail. */
+    [[nodiscard]] int InvokeBioWriteWithFailingTransport() const
+    {
+        SolidSyslogStream_Open(stream, addr);
+        StreamFake_SetSendFails(transport, true);
+        int (*writeFn)(BIO*, const char*, int) = OpenSslFake_LastBioWriteCallback();
+        const char msg[]                       = "hi";
+        return writeFn(OpenSslFake_LastBioReturned(), msg, (int) sizeof(msg));
+    }
+
+    /* Arrange SSL_connect to first emit `wantError`, then succeed on the next
+       call — exercises the bounded handshake retry loop's progress path. */
+    static void ArrangeHandshakeRetryThenSucceed(int wantError)
+    {
+        int seq[] = {-1, 1};
+        OpenSslFake_SetConnectReturnSequence(seq, 2);
+        OpenSslFake_SetGetErrorReturn(wantError);
+    }
+
+    /* Arrange SSL_connect to fail with `errorCode` on every call — used both
+       for the persistent-WANT (budget-exhausted) and hard-error paths. */
+    static void ArrangePersistentHandshakeError(int errorCode)
+    {
+        int seq[] = {-1};
+        OpenSslFake_SetConnectReturnSequence(seq, 1);
+        OpenSslFake_SetGetErrorReturn(errorCode);
+    }
+
+    /* Open then arrange the next SSL_write to fail — exercises the Send fail-fast
+       teardown path that closes the SSL session and the underlying transport. */
+    void OpenThenCauseSslWriteFailure() const
+    {
+        SolidSyslogStream_Open(stream, addr);
+        OpenSslFake_SetWriteFails(true);
+    }
+
+    void SendShortMessage() const
+    {
+        const char msg[] = "hi";
+        SolidSyslogStream_Send(stream, msg, sizeof(msg));
+    }
+
+    /* Open then arrange SSL_read to return the configured value while
+       SSL_get_error reports the configured SSL-level status — together they
+       exercise each branch of the Read non-blocking contract. */
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- both ints, but name + comment make role distinct
+    [[nodiscard]] SolidSyslogSsize OpenThenReadWithSslReturnAndError(int sslReadReturn, int sslErrorCode) const
+    {
+        SolidSyslogStream_Open(stream, addr);
+        OpenSslFake_SetReadReturn(sslReadReturn);
+        OpenSslFake_SetGetErrorReturn(sslErrorCode);
+        char buf[16];
+        return SolidSyslogStream_Read(stream, buf, sizeof(buf));
+    }
 };
 
 // clang-format on
+
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+#define CHECK_BIO_READ_RETRY_SIGNALLED() LONGS_EQUAL(1, OpenSslFake_BioSetFlagsCallCount())
+#define CHECK_BIO_READ_RETRY_NOT_SIGNALLED() LONGS_EQUAL(0, OpenSslFake_BioSetFlagsCallCount())
+#define CHECK_BIO_RETRY_FLAGS_CLEARED() LONGS_EQUAL(1, OpenSslFake_BioClearFlagsCallCount())
+#define CHECK_SSL_SESSION_CLOSED()                       \
+    do                                                   \
+    {                                                    \
+        LONGS_EQUAL(1, OpenSslFake_ShutdownCallCount()); \
+        LONGS_EQUAL(1, OpenSslFake_FreeCallCount());     \
+    } while (0)
+#define CHECK_TRANSPORT_CLOSED_ONCE() LONGS_EQUAL(1, StreamFake_CloseCallCount(transport))
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 TEST(SolidSyslogTlsStream, CreateSucceeds)
 {
@@ -852,36 +933,21 @@ TEST(SolidSyslogTlsStream, DefaultPortMatchesRfc5425)
 
 TEST(SolidSyslogTlsStream, BioReadCallbackSignalsRetryWhenTransportWouldBlock)
 {
-    SolidSyslogStream_Open(stream, addr);
-    StreamFake_SetReadReturn(transport, 0);
-    int (*readFn)(BIO*, char*, int) = OpenSslFake_LastBioReadCallback();
-    char buf[16];
-    int  rc = readFn(OpenSslFake_LastBioReturned(), buf, sizeof(buf));
-    LONGS_EQUAL(-1, rc);
-    LONGS_EQUAL(1, OpenSslFake_BioSetFlagsCallCount());
+    LONGS_EQUAL(-1, InvokeBioReadWithTransportReturn(0));
+    CHECK_BIO_READ_RETRY_SIGNALLED();
 }
 
 TEST(SolidSyslogTlsStream, BioReadCallbackClearsRetryOnHardError)
 {
-    SolidSyslogStream_Open(stream, addr);
-    StreamFake_SetReadReturn(transport, -1);
-    int (*readFn)(BIO*, char*, int) = OpenSslFake_LastBioReadCallback();
-    char buf[16];
-    int  rc = readFn(OpenSslFake_LastBioReturned(), buf, sizeof(buf));
-    LONGS_EQUAL(-1, rc);
-    LONGS_EQUAL(1, OpenSslFake_BioClearFlagsCallCount());
+    LONGS_EQUAL(-1, InvokeBioReadWithTransportReturn(-1));
+    CHECK_BIO_RETRY_FLAGS_CLEARED();
 }
 
 TEST(SolidSyslogTlsStream, BioReadCallbackReturnsBytesWhenTransportHasData)
 {
-    SolidSyslogStream_Open(stream, addr);
-    StreamFake_SetReadReturn(transport, 7);
-    int (*readFn)(BIO*, char*, int) = OpenSslFake_LastBioReadCallback();
-    char buf[16];
-    int  rc = readFn(OpenSslFake_LastBioReturned(), buf, sizeof(buf));
-    LONGS_EQUAL(7, rc);
+    LONGS_EQUAL(7, InvokeBioReadWithTransportReturn(7));
     /* No retry signal needed: positive return is the success path. */
-    LONGS_EQUAL(0, OpenSslFake_BioSetFlagsCallCount());
+    CHECK_BIO_READ_RETRY_NOT_SIGNALLED();
 }
 
 TEST(SolidSyslogTlsStream, BioWriteCallbackClearsRetryOnTransportFailure)
@@ -889,13 +955,8 @@ TEST(SolidSyslogTlsStream, BioWriteCallbackClearsRetryOnTransportFailure)
     /* When the transport's fail-fast Send returns false the BIO must clear
        any stale retry flag and return -1 so OpenSSL surfaces SSL_ERROR_SYSCALL
        rather than spinning on a closed transport. */
-    SolidSyslogStream_Open(stream, addr);
-    StreamFake_SetSendFails(transport, true);
-    int (*writeFn)(BIO*, const char*, int) = OpenSslFake_LastBioWriteCallback();
-    const char msg[]                       = "hi";
-    int        rc                          = writeFn(OpenSslFake_LastBioReturned(), msg, (int) sizeof(msg));
-    LONGS_EQUAL(-1, rc);
-    LONGS_EQUAL(1, OpenSslFake_BioClearFlagsCallCount());
+    LONGS_EQUAL(-1, InvokeBioWriteWithFailingTransport());
+    CHECK_BIO_RETRY_FLAGS_CLEARED();
 }
 
 /* -------------------------------------------------------------------------
@@ -906,19 +967,14 @@ TEST(SolidSyslogTlsStream, BioWriteCallbackClearsRetryOnTransportFailure)
 
 TEST(SolidSyslogTlsStream, OpenRetriesHandshakeOnWantRead)
 {
-    /* First call: WANT_READ; second call: success. */
-    int seq[] = {-1, 1};
-    OpenSslFake_SetConnectReturnSequence(seq, 2);
-    OpenSslFake_SetGetErrorReturn(SSL_ERROR_WANT_READ);
+    ArrangeHandshakeRetryThenSucceed(SSL_ERROR_WANT_READ);
     CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
     LONGS_EQUAL(2, OpenSslFake_ConnectCallCount());
 }
 
 TEST(SolidSyslogTlsStream, OpenSleepsBetweenHandshakeRetries)
 {
-    int seq[] = {-1, 1};
-    OpenSslFake_SetConnectReturnSequence(seq, 2);
-    OpenSslFake_SetGetErrorReturn(SSL_ERROR_WANT_READ);
+    ArrangeHandshakeRetryThenSucceed(SSL_ERROR_WANT_READ);
     SolidSyslogStream_Open(stream, addr);
     LONGS_EQUAL(1, g_sleepCallCount);
 }
@@ -928,9 +984,7 @@ TEST(SolidSyslogTlsStream, OpenRetriesHandshakeOnWantWrite)
     /* WANT_WRITE arises when SSL needs to send (e.g. during the handshake
        finished message under non-blocking transport with a temporarily-full
        send buffer). Same retry treatment as WANT_READ. */
-    int seq[] = {-1, 1};
-    OpenSslFake_SetConnectReturnSequence(seq, 2);
-    OpenSslFake_SetGetErrorReturn(SSL_ERROR_WANT_WRITE);
+    ArrangeHandshakeRetryThenSucceed(SSL_ERROR_WANT_WRITE);
     CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
     LONGS_EQUAL(2, OpenSslFake_ConnectCallCount());
 }
@@ -939,18 +993,14 @@ TEST(SolidSyslogTlsStream, OpenFailsWhenHandshakeNeverCompletes)
 {
     /* SSL_connect always returns -1 with WANT_READ — handshake never makes
        progress, so the bounded budget should expire and Open returns false. */
-    int seq[] = {-1};
-    OpenSslFake_SetConnectReturnSequence(seq, 1);
-    OpenSslFake_SetGetErrorReturn(SSL_ERROR_WANT_READ);
+    ArrangePersistentHandshakeError(SSL_ERROR_WANT_READ);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
 }
 
 TEST(SolidSyslogTlsStream, OpenFailsImmediatelyOnHardSslError)
 {
     /* Non-WANT error (e.g. SSL_ERROR_SSL) is fail-fast — no retry budget burn. */
-    int seq[] = {-1};
-    OpenSslFake_SetConnectReturnSequence(seq, 1);
-    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
+    ArrangePersistentHandshakeError(SSL_ERROR_SSL);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     LONGS_EQUAL(1, OpenSslFake_ConnectCallCount());
     LONGS_EQUAL(0, g_sleepCallCount);
@@ -963,21 +1013,16 @@ TEST(SolidSyslogTlsStream, OpenFailsImmediatelyOnHardSslError)
 
 TEST(SolidSyslogTlsStream, SendClosesSslOnWriteFailure)
 {
-    SolidSyslogStream_Open(stream, addr);
-    OpenSslFake_SetWriteFails(true);
-    const char msg[] = "hi";
-    SolidSyslogStream_Send(stream, msg, sizeof(msg));
-    LONGS_EQUAL(1, OpenSslFake_ShutdownCallCount());
-    LONGS_EQUAL(1, OpenSslFake_FreeCallCount());
+    OpenThenCauseSslWriteFailure();
+    SendShortMessage();
+    CHECK_SSL_SESSION_CLOSED();
 }
 
 TEST(SolidSyslogTlsStream, SendClosesTransportOnWriteFailure)
 {
-    SolidSyslogStream_Open(stream, addr);
-    OpenSslFake_SetWriteFails(true);
-    const char msg[] = "hi";
-    SolidSyslogStream_Send(stream, msg, sizeof(msg));
-    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+    OpenThenCauseSslWriteFailure();
+    SendShortMessage();
+    CHECK_TRANSPORT_CLOSED_ONCE();
 }
 
 TEST(SolidSyslogTlsStream, SendReturnsFalseOnShortWrite)
@@ -994,36 +1039,21 @@ TEST(SolidSyslogTlsStream, SendReturnsFalseOnShortWrite)
 
 TEST(SolidSyslogTlsStream, ReadReturnsZeroOnWantRead)
 {
-    SolidSyslogStream_Open(stream, addr);
-    OpenSslFake_SetReadReturn(-1);
-    OpenSslFake_SetGetErrorReturn(SSL_ERROR_WANT_READ);
-    char             buf[16];
-    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(0, n);
+    LONGS_EQUAL(0, OpenThenReadWithSslReturnAndError(-1, SSL_ERROR_WANT_READ));
 }
 
 TEST(SolidSyslogTlsStream, ReadReturnsNegativeOneOnHardErrorAndClosesSsl)
 {
-    SolidSyslogStream_Open(stream, addr);
-    OpenSslFake_SetReadReturn(-1);
-    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
-    char             buf[16];
-    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(-1, n);
-    LONGS_EQUAL(1, OpenSslFake_ShutdownCallCount());
-    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+    LONGS_EQUAL(-1, OpenThenReadWithSslReturnAndError(-1, SSL_ERROR_SSL));
+    CHECK_SSL_SESSION_CLOSED();
+    CHECK_TRANSPORT_CLOSED_ONCE();
 }
 
 TEST(SolidSyslogTlsStream, ReadReturnsNegativeOneOnZeroReturnAndClosesSsl)
 {
     /* SSL_read returns 0 → SSL_ERROR_ZERO_RETURN (clean shutdown by peer). */
-    SolidSyslogStream_Open(stream, addr);
-    OpenSslFake_SetReadReturn(0);
-    OpenSslFake_SetGetErrorReturn(SSL_ERROR_ZERO_RETURN);
-    char             buf[16];
-    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(-1, n);
-    LONGS_EQUAL(1, OpenSslFake_ShutdownCallCount());
+    LONGS_EQUAL(-1, OpenThenReadWithSslReturnAndError(0, SSL_ERROR_ZERO_RETURN));
+    CHECK_SSL_SESSION_CLOSED();
 }
 
 /* -------------------------------------------------------------------------
@@ -1034,11 +1064,8 @@ TEST(SolidSyslogTlsStream, ReadReturnsNegativeOneOnZeroReturnAndClosesSsl)
 
 TEST(SolidSyslogTlsStream, CloseAfterInternalCloseFromSendFailureDoesNotDoubleFree)
 {
-    SolidSyslogStream_Open(stream, addr);
-    OpenSslFake_SetWriteFails(true);
-    const char msg[] = "hi";
-    SolidSyslogStream_Send(stream, msg, sizeof(msg)); /* internal close */
-    SolidSyslogStream_Close(stream);                  /* second close — must be safe */
-    LONGS_EQUAL(1, OpenSslFake_ShutdownCallCount());
-    LONGS_EQUAL(1, OpenSslFake_FreeCallCount());
+    OpenThenCauseSslWriteFailure();
+    SendShortMessage();              /* internal close */
+    SolidSyslogStream_Close(stream); /* second close — must be safe */
+    CHECK_SSL_SESSION_CLOSED();
 }
