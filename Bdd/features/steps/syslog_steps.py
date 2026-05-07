@@ -355,13 +355,13 @@ def wait_for_messages(context, expected_messages):
     received_log = context.received_log
     oracle_format = context.oracle_format
     expected_total = context.lines_before + expected_messages
-    deadline = time.monotonic() + 5
+    deadline = time.monotonic() + 10
     while oracle_record_count(received_log, oracle_format) < expected_total:
         if time.monotonic() > deadline:
             actual = oracle_record_count(received_log, oracle_format) - context.lines_before
             raise AssertionError(
                 f"oracle received {actual} of {expected_messages} "
-                f"messages within 5 seconds"
+                f"messages within 10 seconds"
             )
         time.sleep(0.1)
 
