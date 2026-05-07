@@ -804,7 +804,7 @@ ssize_t recv(int sockfd, void* buf, size_t len, int flags)
 
 /* fcntl is variadic in glibc; its third argument is an int when cmd is F_GETFL/
  * F_SETFL (the only commands the production code uses). */
-// NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name) -- POSIX API
+// NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name,bugprone-easily-swappable-parameters) -- POSIX API; signature fixed by libc
 int fcntl(int fd, int cmd, ...)
 {
     (void) fd;
