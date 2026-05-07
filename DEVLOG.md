@@ -1,5 +1,49 @@
 # Dev Log
 
+## 2026-05-07 — S08.02 — QEMU determinism groundwork + analyze-iwyu pin
+
+### Context
+
+S08.01 already wired the `build-freertos-target` and `build-freertos-host-tdd`
+CI jobs and (out-of-band) someone added them to branch protection. So the
+substantive plumbing the story asks for is already in place. Two things were
+left to tidy:
+
+### What landed
+
+- **`-icount shift=auto,sleep=off,align=off`** added to the `qemu-system-arm`
+  invocation in `build-freertos-target`. Decouples FreeRTOS scheduler timing
+  from CI runner load. No behavioural change for the current hello-world
+  smoke (it still races to print the greeting and gets killed by `timeout 5`),
+  but it is the determinism mode the timing-sensitive BDD scenarios coming in
+  S08.03+ will need, and it costs nothing to enable now.
+- **`analyze-iwyu` added to required status checks on `main`.** S24.01 added
+  the job but the branch-protection update was missed. `build-freertos-target`
+  / `build-freertos-host-tdd` were also already pinned but undocumented in
+  CLAUDE.md.
+- **CLAUDE.md required-checks list** now reflects the actual GitHub state:
+  `analyze-iwyu`, `integration-windows-openssl`, `build-freertos-host-tdd`,
+  `build-freertos-target` added to the documented list.
+
+### Deliberately not done
+
+- **No 10×-loop determinism harness.** The story's "ten consecutive runs
+  without flake" criterion was aimed at the binary that BDD will eventually
+  drive against. The current hello-world is a stepping stone; subsequent
+  E08 stories replace or evolve it. Real flake hardening belongs with S08.03
+  where the BDD scenarios become the determinism evidence.
+- **Streaming-greeting detection rewrite.** Same reason. The existing
+  `timeout 5` / `grep` shape is fine for a stepping-stone smoke.
+- **No changes to `Example/FreeRtos/HelloWorld/`.** Keeping the CI ELF
+  identical to the dev-tested ELF stays load-bearing.
+
+### Verified
+
+- `gh api repos/.../branches/main/protection/required_status_checks` now lists
+  `analyze-iwyu` alongside the existing contexts.
+- CI workflow change is a one-line addition to a single QEMU invocation;
+  no other jobs touched.
+
 ## 2026-05-07 — S12.16 — TCP keepalive + TCP_USER_TIMEOUT
 
 ### Decision

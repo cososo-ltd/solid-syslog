@@ -703,6 +703,11 @@ jobs:
       # expected greeting. timeout returns 124 when it kills QEMU, which is
       # the success path here — we want the scheduler to keep idling so GDB
       # can attach in interactive use.
+      #
+      # -icount shift=auto,sleep=off,align=off advances the virtual clock by
+      # retired guest instructions rather than wall-clock, decoupling guest
+      # timing from host load. Forward-compatibility groundwork for the BDD
+      # timing scenarios in S08.03+; no behavioural change at this story.
       - name: Run ELF under QEMU mps2-an385
         shell: bash
         run: |
@@ -711,6 +716,7 @@ jobs:
           OUT=$(timeout 5 qemu-system-arm \
               -M mps2-an385 -m 16M -nographic \
               -semihosting-config enable=on,target=native \
+              -icount shift=auto,sleep=off,align=off \
               -kernel build/freertos-cross/Example/FreeRtos/HelloWorld/SolidSyslogFreeRtosHelloWorld.elf \
               2>&1)
           RC=$?
