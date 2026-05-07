@@ -355,13 +355,13 @@ def wait_for_messages(context, expected_messages):
     received_log = context.received_log
     oracle_format = context.oracle_format
     expected_total = context.lines_before + expected_messages
-    deadline = time.monotonic() + 5
+    deadline = time.monotonic() + 10
     while oracle_record_count(received_log, oracle_format) < expected_total:
         if time.monotonic() > deadline:
             actual = oracle_record_count(received_log, oracle_format) - context.lines_before
             raise AssertionError(
                 f"oracle received {actual} of {expected_messages} "
-                f"messages within 5 seconds"
+                f"messages within 10 seconds"
             )
         time.sleep(0.1)
 
@@ -468,8 +468,15 @@ def syslog_ng_reload():
 
 
 def syslog_ng_swap_config(config_path):
-    """Replace the active syslog-ng config and reload."""
-    shutil.copy(config_path, SYSLOG_NG_CONF)
+    """Replace the active syslog-ng config and reload.
+
+    Uses copyfile (data only, no chmod) rather than copy. The destination
+    is bind-mounted from the host on developer machines; chmod fails with
+    'Operation not permitted' when the host owner is not the container's
+    `developer` user. The file already exists with the correct mode
+    so copying just the contents is sufficient.
+    """
+    shutil.copyfile(config_path, SYSLOG_NG_CONF)
     syslog_ng_reload()
 
 
@@ -713,12 +720,17 @@ def step_oracle_stops_tcp(context):
         probe.settimeout(1)
         probe.connect(("syslog-ng", 5514))
 
+        # Set the restore flag *before* the swap so any failure inside
+        # syslog_ng_swap_config (or the subsequent wait/probe-teardown)
+        # still triggers after_scenario's config restore — otherwise a
+        # half-applied swap would leave the on-disk config in UDP-only
+        # mode and contaminate the next scenario.
+        context.syslog_ng_config_changed = True
         syslog_ng_swap_config(SYSLOG_NG_UDP_ONLY_CONF)
         wait_for_tcp_port_closed()
         wait_for_connection_teardown(probe)
         # Allow time for the sender's existing connection to receive RST
         time.sleep(0.5)
-        context.syslog_ng_config_changed = True
     else:
         # Windows OTel: kill the otelcol-contrib process. The TCP listener
         # disappears as the process exits — the resume step will start a

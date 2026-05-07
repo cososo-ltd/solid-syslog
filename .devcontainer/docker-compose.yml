@@ -43,8 +43,14 @@ services:
           [ "$$SECONDS" -ge "$$deadline" ] && { echo "Timed out waiting for syslog-ng control socket"; kill "$$pid" 2>/dev/null; exit 1; }
           sleep 0.1
         done
-        chmod 0777 /var/lib/syslog-ng/syslog-ng.ctl
-        wait
+        # Watchdog: syslog-ng RELOAD recreates the ctl socket with default 755 perms;
+        # the BDD behave container connects as a non-root user, so keep the socket
+        # world-writable across reloads.
+        ( while kill -0 "$$pid" 2>/dev/null; do
+            chmod 0777 /var/lib/syslog-ng/syslog-ng.ctl 2>/dev/null
+            sleep 0.1
+          done ) &
+        wait $$pid
 
   behave:
     image: ghcr.io/davidcozens/behave:sha-3faff14
