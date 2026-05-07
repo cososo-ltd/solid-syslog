@@ -132,14 +132,12 @@ TEST(SolidSyslogPosixTcpStream, OpenSetsTcpKeepCntTo4)
     LONGS_EQUAL(4, SocketFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPCNT));
 }
 
-#ifdef TCP_USER_TIMEOUT
 TEST(SolidSyslogPosixTcpStream, OpenSetsTcpUserTimeoutTo30000Milliseconds)
 {
     SolidSyslogStream_Open(stream, addr);
     CHECK_TRUE(SocketFake_HasSetSockOpt(IPPROTO_TCP, TCP_USER_TIMEOUT));
     LONGS_EQUAL(30000, SocketFake_LastSetSockOptValue(IPPROTO_TCP, TCP_USER_TIMEOUT));
 }
-#endif
 
 TEST(SolidSyslogPosixTcpStream, OpenSetsNonBlockingFlagBeforeConnect)
 {
