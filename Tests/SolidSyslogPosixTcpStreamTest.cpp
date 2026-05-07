@@ -48,9 +48,25 @@ TEST_GROUP(SolidSyslogPosixTcpStream)
     {
         SolidSyslogPosixTcpStream_Destroy(stream);
     }
+
+    [[nodiscard]] SolidSyslogSsize Read16ByteBuffer() const
+    {
+        char buf[16];
+        return SolidSyslogStream_Read(stream, buf, sizeof(buf));
+    }
 };
 
 // clang-format on
+
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+#define CHECK_SOCKET_CLOSED_ONCE()                                     \
+    do                                                                 \
+    {                                                                  \
+        LONGS_EQUAL(1, SocketFake_CloseCallCount());                   \
+        LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd()); \
+    } while (0)
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 TEST(SolidSyslogPosixTcpStream, CreateDestroyWorksWithoutCrashing)
 {
@@ -178,11 +194,9 @@ TEST(SolidSyslogPosixTcpStream, SendReturnsFalseOnEagain)
 TEST(SolidSyslogPosixTcpStream, SendClosesSocketOnFailure)
 {
     SolidSyslogStream_Open(stream, addr);
-    int openFd = SocketFake_SocketFd();
     SocketFake_SetSendFails(true);
     SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
-    LONGS_EQUAL(openFd, SocketFake_LastClosedFd());
+    CHECK_SOCKET_CLOSED_ONCE();
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenClosesSocketOnConnectFailure)
@@ -380,8 +394,7 @@ TEST(SolidSyslogPosixTcpStream, OpenClosesSocketOnSelectTimeout)
     SocketFake_SetSelectWritable(false);
     SocketFake_SetSelectReturn(0);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
-    LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
+    CHECK_SOCKET_CLOSED_ONCE();
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenFailsWhenSelectFlagsErrorOnFd)
@@ -436,40 +449,28 @@ TEST(SolidSyslogPosixTcpStream, ReadReturnsZeroOnEagain)
 {
     SolidSyslogStream_Open(stream, addr);
     SocketFake_FailNextRecvWithErrno(EAGAIN);
-    char             buf[16];
-    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(0, n);
+    LONGS_EQUAL(0, Read16ByteBuffer());
 }
 
 TEST(SolidSyslogPosixTcpStream, ReadReturnsZeroOnWouldBlock)
 {
     SolidSyslogStream_Open(stream, addr);
     SocketFake_FailNextRecvWithErrno(EWOULDBLOCK);
-    char             buf[16];
-    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(0, n);
+    LONGS_EQUAL(0, Read16ByteBuffer());
 }
 
 TEST(SolidSyslogPosixTcpStream, ReadReturnsNegativeOneOnEofAndClosesSocket)
 {
     SolidSyslogStream_Open(stream, addr);
-    int openFd = SocketFake_SocketFd();
     SocketFake_SetRecvReturn(0); /* EOF */
-    char             buf[16];
-    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(-1, n);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
-    LONGS_EQUAL(openFd, SocketFake_LastClosedFd());
+    LONGS_EQUAL(-1, Read16ByteBuffer());
+    CHECK_SOCKET_CLOSED_ONCE();
 }
 
 TEST(SolidSyslogPosixTcpStream, ReadReturnsNegativeOneOnErrorAndClosesSocket)
 {
     SolidSyslogStream_Open(stream, addr);
-    int openFd = SocketFake_SocketFd();
     SocketFake_FailNextRecvWithErrno(ECONNRESET);
-    char             buf[16];
-    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(-1, n);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
-    LONGS_EQUAL(openFd, SocketFake_LastClosedFd());
+    LONGS_EQUAL(-1, Read16ByteBuffer());
+    CHECK_SOCKET_CLOSED_ONCE();
 }

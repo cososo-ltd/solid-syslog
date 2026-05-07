@@ -54,9 +54,25 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
     {
         SolidSyslogWinsockTcpStream_Destroy(stream);
     }
+
+    [[nodiscard]] SolidSyslogSsize Read16ByteBuffer() const
+    {
+        char buf[16];
+        return SolidSyslogStream_Read(stream, buf, sizeof(buf));
+    }
 };
 
 // clang-format on
+
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+#define CHECK_SOCKET_CLOSED_ONCE()                                   \
+    do                                                               \
+    {                                                                \
+        LONGS_EQUAL(1, WinsockFake_CloseCallCount());                \
+        CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd()); \
+    } while (0)
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 TEST(SolidSyslogWinsockTcpStream, CreateDestroyWorksWithoutCrashing)
 {
@@ -317,11 +333,9 @@ TEST(SolidSyslogWinsockTcpStream, SendDoesNotRetryAfterShortWrite)
 TEST(SolidSyslogWinsockTcpStream, SendClosesSocketOnFailure)
 {
     SolidSyslogStream_Open(stream, addr);
-    SOCKET openFd = WinsockFake_SocketFd();
     WinsockFake_SetSendFails(true);
     SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(1, WinsockFake_CloseCallCount());
-    CHECK(openFd == WinsockFake_LastClosedFd());
+    CHECK_SOCKET_CLOSED_ONCE();
 }
 
 TEST(SolidSyslogWinsockTcpStream, CloseCallsCloseOnce)
@@ -397,33 +411,23 @@ TEST(SolidSyslogWinsockTcpStream, ReadReturnsZeroOnWouldBlock)
 {
     SolidSyslogStream_Open(stream, addr);
     WinsockFake_FailNextRecvWithLastError(WSAEWOULDBLOCK);
-    char             buf[16];
-    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(0, n);
+    LONGS_EQUAL(0, Read16ByteBuffer());
 }
 
 TEST(SolidSyslogWinsockTcpStream, ReadReturnsNegativeOneOnEofAndClosesSocket)
 {
     SolidSyslogStream_Open(stream, addr);
-    SOCKET openFd = WinsockFake_SocketFd();
     WinsockFake_SetRecvReturn(0); /* EOF */
-    char             buf[16];
-    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(-1, n);
-    LONGS_EQUAL(1, WinsockFake_CloseCallCount());
-    CHECK(openFd == WinsockFake_LastClosedFd());
+    LONGS_EQUAL(-1, Read16ByteBuffer());
+    CHECK_SOCKET_CLOSED_ONCE();
 }
 
 TEST(SolidSyslogWinsockTcpStream, ReadReturnsNegativeOneOnErrorAndClosesSocket)
 {
     SolidSyslogStream_Open(stream, addr);
-    SOCKET openFd = WinsockFake_SocketFd();
     WinsockFake_FailNextRecvWithLastError(WSAECONNRESET);
-    char             buf[16];
-    SolidSyslogSsize n = SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(-1, n);
-    LONGS_EQUAL(1, WinsockFake_CloseCallCount());
-    CHECK(openFd == WinsockFake_LastClosedFd());
+    LONGS_EQUAL(-1, Read16ByteBuffer());
+    CHECK_SOCKET_CLOSED_ONCE();
 }
 
 TEST(SolidSyslogWinsockTcpStream, DestroyClosesOpenSocket)
