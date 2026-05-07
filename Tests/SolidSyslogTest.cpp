@@ -1497,8 +1497,10 @@ TEST_GROUP(SolidSyslogServiceEagerDrain)
             bufferStorage, sizeof(bufferStorage), SolidSyslogNullMutex_Create());
         fakeStore      = StoreFake_Create();
 
-        SolidSyslogConfig serviceConfig = {circularBuffer, fakeSender, nullptr, nullptr,
-                                           nullptr, nullptr, fakeStore, nullptr, 0};
+        SolidSyslogConfig serviceConfig = {};
+        serviceConfig.buffer            = circularBuffer;
+        serviceConfig.sender            = fakeSender;
+        serviceConfig.store             = fakeStore;
         SolidSyslog_Create(&serviceConfig);
     }
 
