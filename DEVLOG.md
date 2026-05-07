@@ -3314,3 +3314,98 @@ in commit `ebddeb4`:
   whether to re-enable those rules and accept the resulting cleanup sweep.
   Tracked in
   [project_clang_tidy_magic_numbers.md](memory).
+
+## 2026-05-07 — S12.14: decouple buffer drain from sender state
+
+### Decisions
+
+- **Eager-drain ProcessMessages** (slice 1). Replaced one-at-a-time pump
+  with a loop that drains buffer → store until empty, then attempts one
+  send from the store. Preserved the existing "send directly when store
+  doesn't retain" bypass via a unified rule (`!HasUnsent` after Write
+  → best-effort direct send) so the Threaded example's `--store=null`
+  path keeps working. Refactored `StoreFake` into a small FIFO with a
+  write counter; left `BufferFake` single-slot and used the production
+  `SolidSyslogCircularBuffer` + `NullMutex` in the new burst-drain test.
+
+- **PosixTcpStream non-blocking + fail-fast** (slice 2). `O_NONBLOCK`
+  via `fcntl` from socket creation; bounded `select()` connect wait
+  (200 ms, mirrors the Winsock value); `getsockopt(SO_ERROR)` reads the
+  deferred connect failure. `Send` is single-call, fail-fast — short
+  write / `EAGAIN` / any error closes the fd internally. `Read` returns
+  0 on `EAGAIN`/`EWOULDBLOCK`, -1 + close on EOF/error. Dropped
+  `SO_SNDTIMEO` (no-op on non-blocking) and the `EINTR` retry loop.
+  `SocketFake` gained `fcntl`, `select`, connect/recv `errno`-injection,
+  and `getsockopt(SO_ERROR)` seams.
+
+- **WinsockTcpStream Send/Read non-blocking + fail-fast** (slice 3).
+  Stopped restoring blocking mode after a successful connect; dropped
+  `SO_SNDTIMEO`. `Send` and `Read` mirror the Posix contract.
+  `WinsockFake_FailNextRecvWithLastError` added to drive the
+  would-block / error / EOF Read paths. Validated on MSVC.
+
+- **TlsStream non-blocking + fail-fast** (slice 4). BIO read translates
+  the transport's would-block (0) into `BIO_set_retry_read` + return -1
+  so OpenSSL retries instead of treating it as EOF; BIO write clears
+  retry on transport-Send failure. `PerformHandshake` drives
+  `SSL_connect` in a bounded retry loop with a 5 s budget and 1 ms poll
+  interval — sleeps on `WANT_READ`/`WANT_WRITE`, fails fast on hard
+  SSL errors. `Send` and `Read` follow the same rule as TCP, with
+  `Read`'s comment explicitly distinguishing handshake-vs-steady-state
+  WANT semantics. `TlsStream_Close` is idempotent. `TlsStream_sleep`
+  is a function-pointer seam (Windows `Sleep` / POSIX `nanosleep` by
+  default, UT_PTR_SET to no-op in tests). `OpenSslFake` gained
+  `SSL_connect` return-sequence injection, `SSL_get_error`,
+  `SSL_write`/`read` return overrides, and `BIO_set_flags`/`clear_flags`
+  spies.
+
+### Disagreements held
+
+- **Pushed back on the 5–10 s connect timeout** that came up during
+  socket-options review (Claude.ai). 200 ms is by design — Windows'
+  default `connect()` to a refused loopback retries internally for
+  ~2 s, throttling the BlockStore service-thread drain rate enough
+  that the discard policy never fires in the @windows_wip scenarios.
+  Kept 200 ms; flagged "tunable connect/handshake timeouts for WAN
+  deployments" as a follow-up story so far-cloud SIEMs aren't stuck
+  with the loopback-tuned default.
+
+- **Accepted 5 s for the TLS handshake budget**. Different concern
+  from the bare TCP connect — handshake takes 2–3 RTTs naturally;
+  my initial 200 ms plan was too tight for WAN. 5 s is the right
+  bound.
+
+### Deferred — three follow-up issues drafted in a parallel session
+
+- TCP keepalive + `SIO_KEEPALIVE_VALS` + `TCP_USER_TIMEOUT` for
+  dead-peer idle detection. Test-coverage decision (BDD with a
+  ~120 s scenario vs unit-only setsockopt assertions) explicitly
+  flagged in the issue body.
+- TLS session resumption (`SSL_CTX_set_session_cache_mode` +
+  tickets) so frequent fail-fast reconnects don't pay the full
+  handshake cost.
+- Tunable connect/handshake timeouts via CMake or
+  `SolidSyslogStreamSenderConfig`/`SolidSyslogTlsStreamConfig`,
+  for WAN deployments.
+
+### Local validation
+
+- All Linux gates green: gcc + clang builds, sanitize, tidy, cppcheck,
+  format, IWYU, coverage 100% (2024/2024 lines, 429/429 functions).
+- MSVC: 973 unit tests pass, including the 50 Winsock TCP stream tests
+  that exercise the new non-blocking Send/Read contract.
+- The four `@windows_wip` scenarios in `store_capacity.feature` were
+  spot-checked locally on the Windows MSVC build with otelcol-contrib
+  as the oracle. Scenario 1 reaches step 5 ("the syslog oracle
+  receives 1 message") successfully — confirming the architectural
+  decoupling unblocks the path. Step 6 ("stops accepting TCP
+  connections") fails locally because Docker Desktop's `wslrelay` /
+  `com.docker.backend` keep `5514` bound on `::` and `taskkill` only
+  affects `otelcol-contrib.exe`. Not a regression of S12.14; the
+  `@windows_wip` tag removal stays in PR #275's finale on the clean
+  windows-2025 CI runner.
+
+### Open questions
+
+- None for this PR; the three deferred stories cover the residue
+  surfaced during socket-options review.
