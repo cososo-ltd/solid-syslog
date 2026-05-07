@@ -97,7 +97,11 @@ enum
        10 failing attempts cost 2 s instead of 20 s. */
     CONNECT_TIMEOUT_MILLISECONDS = 200,
     MILLISECONDS_PER_SECOND      = 1000,
-    MICROSECONDS_PER_MILLISECOND = 1000
+    MICROSECONDS_PER_MILLISECOND = 1000,
+    /* Winsock ignores nfds (its fd_set is a literal array, not a bitmask),
+       but POSIX-portable callers must pass the highest fd + 1. Pass any
+       positive value to keep the call well-formed against either ABI. */
+    WINSOCK_NFDS_IGNORED = 1
 };
 
 struct SolidSyslogWinsockTcpStream
@@ -248,10 +252,7 @@ static bool WaitForConnectCompletion(SOCKET fd)
     struct timeval timeout = {.tv_sec  = CONNECT_TIMEOUT_MILLISECONDS / MILLISECONDS_PER_SECOND,
                               .tv_usec = (CONNECT_TIMEOUT_MILLISECONDS % MILLISECONDS_PER_SECOND) * MICROSECONDS_PER_MILLISECOND};
 
-    /* nfds is ignored on Winsock (Windows uses fd_set as a literal array, not
-       a bitmask), but POSIX-portable callers must pass the highest fd + 1.
-       Pass a positive value to keep the call well-formed against either ABI. */
-    int rc = WinsockTcpStream_select(1, NULL, &writeSet, &errorSet, &timeout);
+    int rc = WinsockTcpStream_select(WINSOCK_NFDS_IGNORED, NULL, &writeSet, &errorSet, &timeout);
 
     return (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
 }
