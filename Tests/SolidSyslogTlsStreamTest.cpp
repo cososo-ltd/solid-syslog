@@ -125,16 +125,32 @@ TEST_GROUP(SolidSyslogTlsStream)
 // clang-format on
 
 // NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-#define CHECK_BIO_READ_RETRY_SIGNALLED() LONGS_EQUAL(1, OpenSslFake_BioSetFlagsCallCount())
-#define CHECK_BIO_READ_RETRY_NOT_SIGNALLED() LONGS_EQUAL(0, OpenSslFake_BioSetFlagsCallCount())
-#define CHECK_BIO_RETRY_FLAGS_CLEARED() LONGS_EQUAL(1, OpenSslFake_BioClearFlagsCallCount())
+#define CHECK_BIO_READ_RETRY_SIGNALLED()                    \
+    do                                                      \
+    {                                                       \
+        LONGS_EQUAL(1, OpenSslFake_BioSetFlagsCallCount()); \
+    } while (0)
+#define CHECK_BIO_READ_RETRY_NOT_SIGNALLED()                \
+    do                                                      \
+    {                                                       \
+        LONGS_EQUAL(0, OpenSslFake_BioSetFlagsCallCount()); \
+    } while (0)
+#define CHECK_BIO_RETRY_FLAGS_CLEARED()                       \
+    do                                                        \
+    {                                                         \
+        LONGS_EQUAL(1, OpenSslFake_BioClearFlagsCallCount()); \
+    } while (0)
 #define CHECK_SSL_SESSION_CLOSED()                       \
     do                                                   \
     {                                                    \
         LONGS_EQUAL(1, OpenSslFake_ShutdownCallCount()); \
         LONGS_EQUAL(1, OpenSslFake_FreeCallCount());     \
     } while (0)
-#define CHECK_TRANSPORT_CLOSED_ONCE() LONGS_EQUAL(1, StreamFake_CloseCallCount(transport))
+#define CHECK_TRANSPORT_CLOSED_ONCE()                         \
+    do                                                        \
+    {                                                         \
+        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport)); \
+    } while (0)
 
 // NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
@@ -1057,6 +1073,7 @@ TEST(SolidSyslogTlsStream, ReadReturnsNegativeOneOnZeroReturnAndClosesSsl)
     /* SSL_read returns 0 → SSL_ERROR_ZERO_RETURN (clean shutdown by peer). */
     LONGS_EQUAL(-1, OpenThenReadWithSslReturnAndError(0, SSL_ERROR_ZERO_RETURN));
     CHECK_SSL_SESSION_CLOSED();
+    CHECK_TRANSPORT_CLOSED_ONCE();
 }
 
 /* -------------------------------------------------------------------------
