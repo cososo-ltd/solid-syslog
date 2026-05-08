@@ -324,6 +324,7 @@ live under `Core/Interface/`; platform-specific helpers (the `SolidSyslogPosix*`
 | `SolidSyslogResolverDefinition.h` | Resolver implementors (extension point) | `SolidSyslogResolver` vtable struct (`Resolve`) |
 | `SolidSyslogDatagram.h` | Sender implementors using datagram transport | `SolidSyslogDatagram_Open`, `_SendTo`, `_Close` |
 | `SolidSyslogDatagramDefinition.h` | Datagram implementors (extension point) | `SolidSyslogDatagram` vtable struct (`Open`, `SendTo`, `Close`) |
+| `SolidSyslogFreeRtosDatagram.h` | System setup code on FreeRTOS targets using FreeRTOS-Plus-TCP for UDP | `SolidSyslogFreeRtosDatagramStorage`, `SOLIDSYSLOG_FREERTOSDATAGRAM_SIZE`, `SolidSyslogFreeRtosDatagram_Create(storage)`, `_Destroy(datagram)` (wraps `FreeRTOS_socket` / `FreeRTOS_sendto` / `FreeRTOS_closesocket`) |
 | `SolidSyslogStream.h` | Sender implementors using stream transport | `SolidSyslogStream_Open`, `_Send`, `_Read`, `_Close`, `SolidSyslogSsize` |
 | `SolidSyslogStreamDefinition.h` | Stream implementors (extension point) | `SolidSyslogStream` vtable struct (`Open`, `Send`, `Read`, `Close`) |
 | `SolidSyslogUdpSender.h` | System setup code using UDP transport | `SolidSyslogUdpSenderConfig` (resolver, datagram, endpoint, endpointVersion), `SolidSyslogUdpSender_Create`, `_Destroy` |
