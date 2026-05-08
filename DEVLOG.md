@@ -1,5 +1,31 @@
 # Dev Log
 
+## 2026-05-08 — refactor — Common/ hoist for FreeRTOS examples
+
+Moved the shared infrastructure that slice 2 introduced
+(`CmsdkUart.{c,h}`, `CMSDK_UART.md`, `Syscalls.c`, `startup.c`,
+`mps2-an385.ld`) out of `Example/FreeRtos/HelloWorld/` and into a sibling
+`Example/FreeRtos/Common/`. Per-application files (`FreeRTOSConfig.h`,
+`main.c`, `CMakeLists.txt`) stay under `HelloWorld/`. Pure relocation —
+no behaviour change, no logic change, no new code.
+
+`Example/FreeRtos/CMakeLists.txt` now publishes
+`SOLID_SYSLOG_FREERTOS_EXAMPLE_COMMON_DIR`; per-application `CMakeLists.txt`
+files reference the shared sources, headers, and linker script via that
+variable. `Common/` is a source pool, not its own CMake target — there is
+no `Common/CMakeLists.txt`.
+
+The driver is the imminent `SingleTask` example (slice 3b/3c equivalent
+under the revised plan). It needs the same UART driver, the same newlib
+retargeting, the same startup, and the same linker script as HelloWorld;
+duplicating six files across two examples would be the wrong shape from
+the moment SingleTask lands. Hoisting now keeps the slice-3+ PRs focused
+on the FreeRTOS-Plus-TCP integration and the example logic itself.
+
+QEMU smoke check: HelloWorld still builds clean under the
+`freertos-cross` preset and prints its banner over `-serial stdio`. No
+new tests — the relocation is invisible at runtime.
+
 ## 2026-05-08 — S08.03 slice 2 — CMSDK UART + newlib retargeting (#290)
 
 ### Decision

@@ -96,9 +96,9 @@ arm-none-eabi-gdb \
 
 ## How it works
 
-mps2-an385 boots from `0x00000000`. The linker script ([mps2-an385.ld](HelloWorld/mps2-an385.ld))
+mps2-an385 boots from `0x00000000`. The linker script ([mps2-an385.ld](Common/mps2-an385.ld))
 places the Cortex-M3 vector table at the start of the ELF, which QEMU loads
-at that address. `Reset_Handler` (in [startup.c](HelloWorld/startup.c))
+at that address. `Reset_Handler` (in [startup.c](Common/startup.c))
 initialises `.data` and `.bss`, calls `__libc_init_array`, then calls
 `main()`.
 

@@ -14,9 +14,9 @@ set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3")
 
 add_executable(SolidSyslogFreeRtosHelloWorld
     main.c
-    startup.c
-    CmsdkUart.c
-    Syscalls.c
+    ${SOLID_SYSLOG_FREERTOS_EXAMPLE_COMMON_DIR}/startup.c
+    ${SOLID_SYSLOG_FREERTOS_EXAMPLE_COMMON_DIR}/CmsdkUart.c
+    ${SOLID_SYSLOG_FREERTOS_EXAMPLE_COMMON_DIR}/Syscalls.c
     ${FREERTOS_KERNEL_PATH}/tasks.c
     ${FREERTOS_KERNEL_PATH}/queue.c
     ${FREERTOS_KERNEL_PATH}/list.c
@@ -39,15 +39,16 @@ target_compile_options(SolidSyslogFreeRtosHelloWorld PRIVATE
 )
 
 target_include_directories(SolidSyslogFreeRtosHelloWorld PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}            # FreeRTOSConfig.h
+    ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h
+    ${SOLID_SYSLOG_FREERTOS_EXAMPLE_COMMON_DIR}       # CmsdkUart.h
     ${FREERTOS_KERNEL_PATH}/include
-    ${FREERTOS_PORT_DIR}                   # portmacro.h
+    ${FREERTOS_PORT_DIR}                              # portmacro.h
 )
 
 target_link_options(SolidSyslogFreeRtosHelloWorld PRIVATE
     -mcpu=cortex-m3
     -mthumb
-    -T${CMAKE_CURRENT_SOURCE_DIR}/mps2-an385.ld
+    -T${SOLID_SYSLOG_FREERTOS_EXAMPLE_COMMON_DIR}/mps2-an385.ld
     # nano: size-optimised newlib variant.
     # nosys: empty syscall stubs for symbols Syscalls.c does not override
     #        (open, unlink, etc.); our _write/_read/_sbrk wins as a strong
@@ -60,4 +61,4 @@ target_link_options(SolidSyslogFreeRtosHelloWorld PRIVATE
 
 # Ensure CMake re-links when the linker script changes.
 set_target_properties(SolidSyslogFreeRtosHelloWorld PROPERTIES
-    LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/mps2-an385.ld)
+    LINK_DEPENDS ${SOLID_SYSLOG_FREERTOS_EXAMPLE_COMMON_DIR}/mps2-an385.ld)
