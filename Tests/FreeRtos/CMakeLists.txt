@@ -3,37 +3,38 @@
 # source under test with the FreeRtosFakes config and links against the
 # fakes — see project_header_configured_platforms memory.
 
-# Top-level CMakeLists.txt only checks FREERTOS_KERNEL_PATH before adding this
-# subdirectory. Adapter tests transitively include FreeRTOS-Plus-TCP headers,
-# so guard FREERTOS_PLUS_TCP_PATH here too — fail loud rather than expand to
-# a stray "/source/include" suffix on an empty path.
+# SolidSyslogFreeRtosDatagramTest transitively includes FreeRTOS-Plus-TCP
+# headers, so it requires FREERTOS_PLUS_TCP_PATH. CmsdkUartTest does not —
+# it tests UART board glue and never touches the IP stack. Scope the guard
+# to the datagram test so a minimal FREERTOS_KERNEL_PATH-only environment
+# can still build the UART test.
 if("$ENV{FREERTOS_PLUS_TCP_PATH}" STREQUAL "")
-    message(FATAL_ERROR "FREERTOS_PLUS_TCP_PATH must be set to build Tests/FreeRtos.")
+    message(STATUS "Skipping SolidSyslogFreeRtosDatagramTest: FREERTOS_PLUS_TCP_PATH not set.")
+else()
+    add_executable(SolidSyslogFreeRtosDatagramTest
+        SolidSyslogFreeRtosDatagramTest.cpp
+        main.cpp
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c
+        ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosSocketsFake.c
+    )
+
+    target_link_libraries(SolidSyslogFreeRtosDatagramTest PRIVATE
+        ${PROJECT_NAME}
+        CppUTest
+        CppUTestExt
+    )
+
+    target_include_directories(SolidSyslogFreeRtosDatagramTest PRIVATE
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
+        ${CMAKE_SOURCE_DIR}/Core/Interface
+        ${CMAKE_SOURCE_DIR}/Core/Source
+        ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
+        $ENV{FREERTOS_KERNEL_PATH}/include
+        $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
+    )
+
+    add_test(NAME SolidSyslogFreeRtosDatagramTest COMMAND SolidSyslogFreeRtosDatagramTest)
 endif()
-
-add_executable(SolidSyslogFreeRtosDatagramTest
-    SolidSyslogFreeRtosDatagramTest.cpp
-    main.cpp
-    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c
-    ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosSocketsFake.c
-)
-
-target_link_libraries(SolidSyslogFreeRtosDatagramTest PRIVATE
-    ${PROJECT_NAME}
-    CppUTest
-    CppUTestExt
-)
-
-target_include_directories(SolidSyslogFreeRtosDatagramTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
-    ${CMAKE_SOURCE_DIR}/Core/Interface
-    ${CMAKE_SOURCE_DIR}/Core/Source
-    ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
-    $ENV{FREERTOS_KERNEL_PATH}/include
-    $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
-)
-
-add_test(NAME SolidSyslogFreeRtosDatagramTest COMMAND SolidSyslogFreeRtosDatagramTest)
 
 # CMSDK UART driver host tests — recompiles the driver source from the
 # Example/FreeRtos/HelloWorld board glue against an in-memory fake register
