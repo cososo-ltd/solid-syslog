@@ -34,6 +34,29 @@ else()
     )
 
     add_test(NAME SolidSyslogFreeRtosDatagramTest COMMAND SolidSyslogFreeRtosDatagramTest)
+
+    add_executable(SolidSyslogFreeRtosStaticResolverTest
+        SolidSyslogFreeRtosStaticResolverTest.cpp
+        main.cpp
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosStaticResolver.c
+    )
+
+    target_link_libraries(SolidSyslogFreeRtosStaticResolverTest PRIVATE
+        ${PROJECT_NAME}
+        CppUTest
+        CppUTestExt
+    )
+
+    target_include_directories(SolidSyslogFreeRtosStaticResolverTest PRIVATE
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
+        ${CMAKE_SOURCE_DIR}/Core/Interface
+        ${CMAKE_SOURCE_DIR}/Core/Source
+        ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
+        $ENV{FREERTOS_KERNEL_PATH}/include
+        $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
+    )
+
+    add_test(NAME SolidSyslogFreeRtosStaticResolverTest COMMAND SolidSyslogFreeRtosStaticResolverTest)
 endif()
 
 # CMSDK UART driver host tests — recompiles the driver source from the

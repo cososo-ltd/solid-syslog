@@ -15,4 +15,10 @@ static inline const struct freertos_sockaddr* SolidSyslogAddress_AsConstFreertos
     return (const struct freertos_sockaddr*) bytes;
 }
 
+static inline struct freertos_sockaddr* SolidSyslogAddress_AsFreertosSockaddr(struct SolidSyslogAddress* address)
+{
+    uint8_t* bytes = (uint8_t*) address;
+    return (struct freertos_sockaddr*) bytes;
+}
+
 #endif /* SOLIDSYSLOGADDRESSINTERNAL_H */
