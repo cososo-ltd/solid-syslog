@@ -34,3 +34,25 @@ target_include_directories(SolidSyslogFreeRtosDatagramTest PRIVATE
 )
 
 add_test(NAME SolidSyslogFreeRtosDatagramTest COMMAND SolidSyslogFreeRtosDatagramTest)
+
+# CMSDK UART driver host tests — recompiles the driver source from the
+# Example/FreeRtos/HelloWorld board glue against an in-memory fake register
+# block. No FreeRTOS-Plus-TCP involvement, so the include path is intentionally
+# narrower than the datagram test.
+add_executable(CmsdkUartTest
+    CmsdkUartTest.cpp
+    CmsdkUartFake.c
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Example/FreeRtos/HelloWorld/CmsdkUart.c
+)
+
+target_link_libraries(CmsdkUartTest PRIVATE
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(CmsdkUartTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Example/FreeRtos/HelloWorld
+)
+
+add_test(NAME CmsdkUartTest COMMAND CmsdkUartTest)

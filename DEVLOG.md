@@ -1,5 +1,180 @@
 # Dev Log
 
+## 2026-05-08 — S08.03 slice 2 — CMSDK UART + newlib retargeting (#290)
+
+### Decision
+
+Replaced the QEMU mps2-an385 HelloWorld's semihosting transport with a
+silicon-correct polled CMSDK UART0 driver and newlib syscalls. `printf`
+now routes through `_write` → `CmsdkUart_Write` → `CmsdkUart_PutChar` →
+MMIO at `0x40004000`, which QEMU surfaces over `-serial stdio`.
+
+The motivation is forward compatibility with slice 3+, where
+FreeRTOS-Plus-TCP runs concurrently with the example task. Semihosting
+`BKPT` traps pause the entire VM during every host-serviced read/write —
+on a blocking `_read` with no Behave input ready, the IP stack and the
+`Service` task would also stall. CMSDK UART is plain MMIO: the IP stack and
+console run independently, and Behave drives the QEMU image over
+stdin/stdout exactly as it drives the Linux/Windows examples today.
+
+### Driver shape — injected memory access for testability
+
+Initial v1 of the driver had `CmsdkUart_PutChar` writing the `DATA`
+register unconditionally, with no `STATE.TXFULL` poll. Code review caught
+this: it works in QEMU because the chardev backend always drains
+synchronously inside the DATA-write path, but on real silicon (or any
+backpressuring backend) it would drop bytes. The Zephyr / mbed-OS
+reference drivers and the CMSDK TRM (DDI 0479C/D §4.3) all specify the
+poll-then-write protocol; we'd skipped it on the (then-rationalised) basis
+that the spin loop wasn't host-TDD-able.
+
+The v2 driver lands silicon-correct via a memory-access seam:
+
+```c
+typedef uint32_t (*CmsdkUartRead32Function)(uintptr_t address);
+typedef void     (*CmsdkUartWrite32Function)(uintptr_t address, uint32_t);
+typedef struct {
+    CmsdkUartRead32Function  read32;
+    CmsdkUartWrite32Function write32;
+} CmsdkUartMemoryAccess;
+
+void CmsdkUart_Init(const CmsdkUartMemoryAccess* access, uintptr_t base);
+void CmsdkUart_PutChar(char c);
+void CmsdkUart_Write(const char* buffer, size_t length);
+```
+
+Production wires `MmioRead32` / `MmioWrite32` (in `main.c`) which cast
+`address` to `volatile uint32_t*` and dereference. Tests wire a stateful
+fake (`Tests/FreeRtos/CmsdkUartFake.{h,c}`) whose `Read32`/`Write32`
+intercept every register access against an in-memory model, and where
+the fake's behaviour can be tuned per-test via
+`CmsdkUartFake_SetReadsBeforeTxReady(N)`. The fake clears `TX_FULL` on
+the Nth STATE read after a DATA write (default `N=2`, modelling
+silicon's per-character drain delay).
+
+This pins the spin contract: `CmsdkUartFake_TxOverrunOccurred()` flips
+`true` if the driver writes DATA while `TX_FULL=1`. A test that does two
+consecutive `PutChar` calls and asserts no overrun forces the spin loop
+into existence — a naive driver fails the assertion immediately.
+
+Configuration (baud, parity, flow control) is hardcoded inside the
+driver: BAUD_DIVISOR=16, TX_EN=1, no RX, no interrupts. There is no
+caller-facing way to misconfigure those — kills an entire class of
+silicon-traps the contract document called out (BAUDDIV<16 silently
+broken on silicon, DATA-before-TX_EN implementation-defined, etc.).
+
+### What landed
+
+- **`Example/FreeRtos/HelloWorld/CmsdkUart.{h,c}`** — driver: `Init`
+  writes `BAUDDIV=16` then `CTRL=TX_EN`, `PutChar` polls `STATE.TX_FULL`
+  before writing `DATA`, `Write` loops `PutChar` over a buffer. Module-
+  static `memoryAccess` + `base` (the syscall layer needs a singleton —
+  no context to thread).
+- **`Example/FreeRtos/HelloWorld/Syscalls.c`** — `_write`/`_read`/`_sbrk`
+  + minimal nosys-overriding stubs. `_sbrk` is a 4 KiB bump allocator
+  for newlib re-entrancy buffers (FreeRTOS heap_4 still owns the
+  kernel/task heap). `_read` returns 0 (EOF) for now; slice 3 wires it
+  to a UART RX helper so `Example/Common/ExampleInteractive.c` can
+  drive `send N` / `quit`. Cross-only file, untested at the host layer
+  — covered by the QEMU banner smoke.
+- **`Example/FreeRtos/HelloWorld/main.c`** — drops
+  `initialise_monitor_handles`, defines `MmioRead32` / `MmioWrite32`
+  for the production memory-access seam, and initialises `CmsdkUart`
+  with `&MMIO_ACCESS` + `0x40004000`. Banner string unchanged.
+- **`Example/FreeRtos/HelloWorld/CMakeLists.txt`** —
+  `--specs=rdimon.specs` replaced with `--specs=nano.specs
+  --specs=nosys.specs`. CmsdkUart.c + Syscalls.c added to the ELF
+  source list.
+- **`Tests/FreeRtos/CmsdkUartFake.{h,c}`** — stateful in-memory fake
+  for the CMSDK UART register block. Models `STATE.TX_FULL` set on
+  DATA writes and cleared after N STATE reads (default 2, knob via
+  `SetReadsBeforeTxReady`); records `TX_OVRE` and a sticky
+  `txOverrunOccurred` flag when DATA is written while `TX_FULL=1`.
+  W1C semantics on STATE/INTSTATUS modelled per QEMU
+  `hw/char/cmsdk-apb-uart.c`.
+- **`Tests/FreeRtos/CmsdkUartTest.cpp`** — 8 host tests against the
+  fake, driven from failing assertions one at a time.
+- **`.github/workflows/ci.yml`** — `build-freertos-target` swaps
+  `-nographic -semihosting-config enable=on,target=native` for
+  `-display none -serial stdio`. Banner-grep unchanged.
+
+### Slice 2 ZOMBIES progression
+
+Each test landed against a failing assertion before the matching
+production line:
+
+1. `InitWritesBaudDivisor` → forces `write32(base+0x10, 16)`.
+2. `InitEnablesTransmitter` → forces `write32(base+0x08, TX_EN)`.
+3. `PutCharWritesByteToDataRegister` → forces a DATA write.
+4. `PutCharWritesTheGivenByte` → forces parameter use (also satisfies
+   `-Werror=unused-parameter`).
+5. `PutCharSpinsForTxFullToClearBeforeWritingNextByte` → two
+   consecutive `PutChar` calls, asserts no overrun. Forces the
+   `while (state & TX_FULL_BIT)` poll.
+6. `PutCharWritesImmediatelyWhenTransmitterIsAlwaysReady` —
+   `SetReadsBeforeTxReady(0)`, two `PutChar` calls, no overrun. Proves
+   the spin path also works under always-ready (the QEMU model's
+   actual behaviour) without spurious overrun.
+7. `WriteOfSingleByteEmitsThatByte` → forces `Write` to call `PutChar`.
+8. `WriteOfMultipleBytesEmitsAllByteWithoutOverrun` → forces the loop.
+
+### Deferred to later slices
+
+- **`quit` / round-trip stdin handling** — slice 3 brings in
+  `Example/Common/ExampleInteractive.c`, where `_read` will route to a
+  UART RX helper. Slice 2's banner-only smoke is sufficient evidence
+  that the TX path works.
+- **RX path** (`CmsdkUart_GetChar`, `STATE.RX_FULL` polling, `RX_OVRE`
+  semantics) — slice 3 alongside the IP stack bring-up.
+- **Mutex injection** — single-task HelloWorld, single-producer.
+  Slice 3's `Example/Common/` brings a Service thread + interactive
+  task, both of which can `printf`; mutex slot will be added then.
+- **Tidy / cppcheck on `Tests/FreeRtos/`** — pre-existing gap (slice 1
+  inherits the same — those files only enter the build when
+  `FREERTOS_KERNEL_PATH` is set, which the analyze-* CI jobs don't
+  set). Defer to a later infrastructure pass.
+
+### Verified locally
+
+- `cpputest-freertos:sha-44efeae` host TDD — `SolidSyslogTests`,
+  `SolidSyslogFreeRtosDatagramTest`, `CmsdkUartTest`: 3/3 green.
+- `cpputest-freertos-cross:sha-44efeae` cross build + QEMU mps2-an385
+  with `-display none -serial stdio` — banner emitted, `rc=124`
+  (timeout success path, scheduler still idling for GDB attach).
+- `clang-format --dry-run --Werror` over `Core/Interface Core/Source
+  Tests Example` — clean. (`TEST_GROUP` with no data members trips
+  clang-format's class-detection heuristic — added a localised
+  `// clang-format off`/`on` pair around the fixture.)
+
+### Pre-flight for slice 3 — verified now to avoid late surprises
+
+- `/opt/freertos/plus-tcp/source/portable/NetworkInterface/MPS2_AN385/`
+  exists in the cross image (`NetworkInterface.c` + `ether_lan9118/`).
+  The LAN9118 NIC driver is in place — slice 3's IP-stack bring-up
+  isn't blocked on missing portable code.
+
+### References
+
+- Arm DDI 0479C/D, *Cortex-M System Design Kit TRM*, §4.3 APB UART —
+  register layout and bit semantics.
+- Arm DAI 0385D, *AN385: Cortex-M3 SMM on V2M-MPS2*, §3.7 — UART base
+  addresses on `mps2-an385`.
+- QEMU `hw/char/cmsdk-apb-uart.c` — modelled semantics (W1C handling,
+  TXFULL set inside DATA write, `uart_can_receive` chardev
+  backpressure that hides `RX_OVRE` under stdio).
+- Zephyr `drivers/serial/uart_cmsdk_apb.c` — canonical poll-out idiom.
+- mbed-OS `targets/TARGET_ARM_FM/TARGET_FVP_MPS2/serial_api.c` — Arm's
+  own HAL; corroborates `BAUDDIV ≥ 16` minimum.
+
+A full contract document covering the polled-mode TX/RX register
+sequences, QEMU-vs-silicon traps, and concurrency considerations was
+written up by claude.ai during slice-2 review and informed the v2
+rewrite. The document lives in conversation history (PR #291 review
+trail); worth promoting into `docs/` if we hit similar peripheral
+work in future epics.
+
+---
+
 ## 2026-05-08 — S08.03 slice 1 — `SolidSyslogFreeRtosDatagram` adapter
 
 ### Decision

@@ -15,6 +15,8 @@ set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3")
 add_executable(SolidSyslogFreeRtosHelloWorld
     main.c
     startup.c
+    CmsdkUart.c
+    Syscalls.c
     ${FREERTOS_KERNEL_PATH}/tasks.c
     ${FREERTOS_KERNEL_PATH}/queue.c
     ${FREERTOS_KERNEL_PATH}/list.c
@@ -46,7 +48,12 @@ target_link_options(SolidSyslogFreeRtosHelloWorld PRIVATE
     -mcpu=cortex-m3
     -mthumb
     -T${CMAKE_CURRENT_SOURCE_DIR}/mps2-an385.ld
-    --specs=rdimon.specs                   # newlib semihosting stubs
+    # nano: size-optimised newlib variant.
+    # nosys: empty syscall stubs for symbols Syscalls.c does not override
+    #        (open, unlink, etc.); our _write/_read/_sbrk wins as a strong
+    #        symbol, so printf routes to CmsdkUart over QEMU `-serial stdio`.
+    --specs=nano.specs
+    --specs=nosys.specs
     -Wl,--gc-sections
     -Wl,-Map=$<TARGET_FILE:SolidSyslogFreeRtosHelloWorld>.map
 )
