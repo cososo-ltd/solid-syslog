@@ -108,3 +108,13 @@ TEST(CmsdkUart, GetCharReturnsImmediatelyWhenReceiverHasByte)
     LONGS_EQUAL('X', CmsdkUart_GetChar());
     LONGS_EQUAL(0, CmsdkUartFake_SleepCallCount());
 }
+
+TEST(CmsdkUart, GetCharSpinsAfterReArmFromImmediateReadyToDelayedReady)
+{
+    CmsdkUartFake_SetReadsBeforeRxReady(0);
+    CmsdkUartFake_SetReceivedByte('A');
+    CmsdkUartFake_SetReadsBeforeRxReady(2);
+    CmsdkUartFake_SetReceivedByte('B');
+    LONGS_EQUAL('B', CmsdkUart_GetChar());
+    CHECK(CmsdkUartFake_SleepCallCount() > 0);
+}

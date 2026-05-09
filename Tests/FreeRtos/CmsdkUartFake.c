@@ -172,7 +172,11 @@ int CmsdkUartFake_SleepCallCount(void)
 
 void CmsdkUartFake_SetReceivedByte(char byte)
 {
+    /* Clear leftover RX-ready state from a prior arm so back-to-back calls
+     * don't carry RX_FULL_BIT or a stale countdown into the new mode. */
     fake.receivedByte = (uint32_t) (unsigned char) byte;
+    fake.state &= ~RX_FULL_BIT;
+    fake.readsRemainingBeforeRxReady = 0;
     if (fake.readsBeforeRxReadyDefault == 0)
     {
         fake.state |= RX_FULL_BIT;

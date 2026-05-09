@@ -87,6 +87,19 @@ static const char TEST_PROCESS_ID[] = "1";
 static const char TEST_MESSAGE_ID[] = "example";
 static const char TEST_MESSAGE[]    = "Hello from FreeRTOS";
 
+/* RFC 5424 publication date — placeholder until S08.03 slice 4+ injects a
+ * real RTC-backed clock callback. */
+static const struct SolidSyslogTimestamp TEST_TIMESTAMP = {
+    .year             = 2009U,
+    .month            = 3U,
+    .day              = 23U,
+    .hour             = 0U,
+    .minute           = 0U,
+    .second           = 0U,
+    .microsecond      = 0U,
+    .utcOffsetMinutes = 0,
+};
+
 /* Plus-TCP requires the network interface descriptor and its endpoint(s)
  * to outlive the IP stack. */
 static NetworkInterface_t networkInterface;
@@ -115,7 +128,16 @@ static void MmioWrite32(uintptr_t address, uint32_t value)
 
 static void RtosSleep(int milliseconds)
 {
-    vTaskDelay(pdMS_TO_TICKS((TickType_t) milliseconds));
+    /* Round any non-zero millisecond request up to at least one tick so a
+     * sub-tick sleep (e.g. CmsdkUart's 1 ms yield against a 100 Hz tick,
+     * where pdMS_TO_TICKS(1) == 0) still blocks the task instead of falling
+     * through vTaskDelay(0) and busy-spinning the spin-and-yield loops. */
+    TickType_t ticks = pdMS_TO_TICKS((TickType_t) milliseconds);
+    if ((milliseconds > 0) && (ticks == 0U))
+    {
+        ticks = 1U;
+    }
+    vTaskDelay(ticks);
 }
 
 static const CmsdkUartMemoryAccess MMIO_ACCESS = {MmioRead32, MmioWrite32, RtosSleep};
@@ -142,18 +164,9 @@ static void GetProcessId(struct SolidSyslogFormatter* formatter)
     SolidSyslogFormatter_BoundedString(formatter, TEST_PROCESS_ID, sizeof(TEST_PROCESS_ID) - 1U);
 }
 
-/* RFC 5424 publication date — walking-skeleton placeholder until S08.03
- * slice 4+ injects a real RTC-backed clock callback. */
 static void GetTimestamp(struct SolidSyslogTimestamp* timestamp)
 {
-    timestamp->year             = 2009U;
-    timestamp->month            = 3U;
-    timestamp->day              = 23U;
-    timestamp->hour             = 0U;
-    timestamp->minute           = 0U;
-    timestamp->second           = 0U;
-    timestamp->microsecond      = 0U;
-    timestamp->utcOffsetMinutes = 0;
+    *timestamp = TEST_TIMESTAMP;
 }
 
 static void GetEndpoint(struct SolidSyslogEndpoint* endpoint)
