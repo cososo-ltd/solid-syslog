@@ -95,7 +95,7 @@ instead of the cached resolver result.
 
 ### QEMU smoke
 
-```
+```text
 PORT=5514 BYTES=<134>… FreeRtosExample …          (default)
 set hostname QemuFoo  →  set hostname=QemuFoo
 PORT=5514 BYTES=<134>… QemuFoo …                  (mutated)

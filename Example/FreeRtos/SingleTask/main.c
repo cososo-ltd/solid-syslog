@@ -288,13 +288,16 @@ static bool TryParseUInt(const char* value, unsigned long* out)
     {
         return false;
     }
-    char* end    = NULL;
-    long  parsed = strtol(value, &end, 10);
-    if ((*end != '\0') || (parsed < 0))
+    char*         end    = NULL;
+    unsigned long parsed = strtoul(value, &end, 10);
+    /* strtoul accepts a leading '-' and wraps to a huge unsigned, but each
+     * call site range-checks (port <= UINT16_MAX, facility <= 23,
+     * severity <= 7) so wrapped values are still rejected upstream. */
+    if (*end != '\0')
     {
         return false;
     }
-    *out = (unsigned long) parsed;
+    *out = parsed;
     return true;
 }
 
