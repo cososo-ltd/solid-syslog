@@ -1,18 +1,22 @@
-# FreeRTOS-Plus-TCP single-task UDP smoke ELF for QEMU mps2-an385 (Cortex-M3).
+# FreeRTOS-Plus-TCP single-task SolidSyslog example ELF for QEMU mps2-an385
+# (Cortex-M3).
 #
 # Compiled cross-only — gated by the top-level CMakeLists.txt on
 # CMAKE_CROSSCOMPILING + CMAKE_SYSTEM_PROCESSOR == "arm".
 #
-# Slice 3b.1 of S08.03 stands the IP stack up and emits a single UDP
-# datagram on link-up. Slice 3b.2 swaps main.c's body for SolidSyslog wiring;
-# the directory + CMakeLists stay.
+# Slice 3b.2 of S08.03 wires SolidSyslogUdpSender behind the slice-1
+# SolidSyslogFreeRtosDatagram adapter and the slice-3a static resolver, with
+# Example/Common/ExampleInteractive driving `send N` / `quit` over the
+# QEMU -serial stdio UART (CmsdkUart RX path landed alongside in this
+# slice).
 #
 # Source layout: upstream FreeRTOS-Kernel + Plus-TCP sources are compiled
 # into a separate OBJECT library (`solid_syslog_freertos_upstream`) that
 # accepts the relaxed warning set those headers / sources require. Local
-# project code (main.c, Startup.c, Common/CmsdkUart.c, Common/Syscalls.c)
-# stays in the executable target under the strict project warning bar so
-# regressions in our own code can't slip through.
+# project code (main.c, Startup.c, Common/CmsdkUart.c, Common/Syscalls.c,
+# the Platform/FreeRtos/Source adapters, and Example/Common/
+# ExampleInteractive.c) stays in the executable target under the strict
+# project warning bar so regressions in our own code can't slip through.
 
 set(FREERTOS_KERNEL_PATH "$ENV{FREERTOS_KERNEL_PATH}")
 if(NOT FREERTOS_KERNEL_PATH)
@@ -139,6 +143,10 @@ add_executable(SolidSyslogFreeRtosSingleTask
     Startup.c
     ${SOLID_SYSLOG_FREERTOS_EXAMPLE_COMMON_DIR}/CmsdkUart.c
     ${SOLID_SYSLOG_FREERTOS_EXAMPLE_COMMON_DIR}/Syscalls.c
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogAddress.c
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosStaticResolver.c
+    ${CMAKE_SOURCE_DIR}/Example/Common/ExampleInteractive.c
     $<TARGET_OBJECTS:solid_syslog_freertos_upstream>
 )
 
@@ -155,10 +163,19 @@ target_compile_options(SolidSyslogFreeRtosSingleTask PRIVATE
 target_include_directories(SolidSyslogFreeRtosSingleTask PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, FreeRTOSIPConfig.h
     ${SOLID_SYSLOG_FREERTOS_EXAMPLE_COMMON_DIR}       # CmsdkUart.h
+    ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
+    ${CMAKE_SOURCE_DIR}/Core/Source                   # SolidSyslogAddress.h (consumed by adapters)
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface   # SolidSyslogFreeRtos*.h
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source      # SolidSyslogAddressInternal.h
+    ${CMAKE_SOURCE_DIR}/Example/Common                # ExampleInteractive.h
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${PLUS_TCP_SRC_DIR}/include
     ${PLUS_TCP_PORT_GCC_DIR}                          # pack_struct_*.h
+)
+
+target_link_libraries(SolidSyslogFreeRtosSingleTask PRIVATE
+    ${PROJECT_NAME}                                   # libSolidSyslog.a (cross-compiled)
 )
 
 target_link_options(SolidSyslogFreeRtosSingleTask PRIVATE

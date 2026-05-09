@@ -26,6 +26,11 @@ TEST(CmsdkUart, InitEnablesTransmitter)
     LONGS_EQUAL(0x01, CmsdkUartFake_GetCtrl() & 0x01);
 }
 
+TEST(CmsdkUart, InitEnablesReceiver)
+{
+    LONGS_EQUAL(0x02, CmsdkUartFake_GetCtrl() & 0x02);
+}
+
 TEST(CmsdkUart, PutCharWritesByteToDataRegister)
 {
     CmsdkUart_PutChar('A');
@@ -73,4 +78,33 @@ TEST(CmsdkUart, WriteOfMultipleBytesEmitsAllByteWithoutOverrun)
     CmsdkUart_Write("AB", 2);
     LONGS_EQUAL('B', CmsdkUartFake_GetData());
     CHECK_FALSE(CmsdkUartFake_TxOverrunOccurred());
+}
+
+TEST(CmsdkUart, GetCharReturnsByteFromDataRegister)
+{
+    CmsdkUartFake_SetReceivedByte('Q');
+    LONGS_EQUAL('Q', CmsdkUart_GetChar());
+}
+
+TEST(CmsdkUart, GetCharSpinsForRxFullToBecomeSetBeforeReadingDataRegister)
+{
+    CmsdkUartFake_SetReadsBeforeRxReady(2);
+    CmsdkUartFake_SetReceivedByte('Z');
+    LONGS_EQUAL('Z', CmsdkUart_GetChar());
+}
+
+TEST(CmsdkUart, GetCharCallsSleepWhileSpinningForRxFull)
+{
+    CmsdkUartFake_SetReadsBeforeRxReady(2);
+    CmsdkUartFake_SetReceivedByte('Z');
+    (void) CmsdkUart_GetChar();
+    CHECK(CmsdkUartFake_SleepCallCount() > 0);
+}
+
+TEST(CmsdkUart, GetCharReturnsImmediatelyWhenReceiverHasByte)
+{
+    CmsdkUartFake_SetReadsBeforeRxReady(0);
+    CmsdkUartFake_SetReceivedByte('X');
+    LONGS_EQUAL('X', CmsdkUart_GetChar());
+    LONGS_EQUAL(0, CmsdkUartFake_SleepCallCount());
 }

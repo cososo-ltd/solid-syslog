@@ -10,7 +10,9 @@
 
 #define BAUD_DIVISOR 16U
 #define TX_ENABLE 0x01U
+#define RX_ENABLE 0x02U
 #define TX_FULL_BIT 0x01U
+#define RX_FULL_BIT 0x02U
 
 #define YIELD_MILLISECONDS 1
 
@@ -18,17 +20,19 @@ static const CmsdkUartMemoryAccess* memoryAccess = NULL;
 static uintptr_t                    base         = 0U;
 
 static inline void SetBaudDivisor(void);
-static inline void EnableTransmitter(void);
+static inline void EnableTxAndRx(void);
 static inline bool TransmitterIsBusy(void);
 static inline void Yield(void);
 static inline void WriteDataRegister(char c);
+static inline bool ReceiverHasByte(void);
+static inline char ReadDataRegister(void);
 
 void CmsdkUart_Init(const CmsdkUartMemoryAccess* access, uintptr_t baseAddress)
 {
     memoryAccess = access;
     base         = baseAddress;
     SetBaudDivisor();
-    EnableTransmitter();
+    EnableTxAndRx();
 }
 
 static inline void SetBaudDivisor(void)
@@ -36,9 +40,9 @@ static inline void SetBaudDivisor(void)
     memoryAccess->write32(base + BAUDDIV_OFFSET, BAUD_DIVISOR);
 }
 
-static inline void EnableTransmitter(void)
+static inline void EnableTxAndRx(void)
 {
-    memoryAccess->write32(base + CTRL_OFFSET, TX_ENABLE);
+    memoryAccess->write32(base + CTRL_OFFSET, TX_ENABLE | RX_ENABLE);
 }
 
 void CmsdkUart_PutChar(char c)
@@ -71,4 +75,23 @@ void CmsdkUart_Write(const char* buffer, size_t length)
     {
         CmsdkUart_PutChar(buffer[i]);
     }
+}
+
+char CmsdkUart_GetChar(void)
+{
+    while (!ReceiverHasByte())
+    {
+        Yield();
+    }
+    return ReadDataRegister();
+}
+
+static inline bool ReceiverHasByte(void)
+{
+    return (memoryAccess->read32(base + STATE_OFFSET) & RX_FULL_BIT) != 0U;
+}
+
+static inline char ReadDataRegister(void)
+{
+    return (char) (memoryAccess->read32(base + DATA_OFFSET) & 0xFFU);
 }

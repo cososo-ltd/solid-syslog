@@ -9,6 +9,7 @@
 #define BAUDDIV_OFFSET 0x010U
 
 #define TX_FULL_BIT 0x01U
+#define RX_FULL_BIT 0x02U
 #define TX_OVRE_BIT 0x04U
 
 static struct
@@ -23,6 +24,9 @@ static struct
     int       readsRemainingBeforeTxReady;
     bool      txOverrunOccurred;
     int       sleepCallCount;
+    uint32_t  receivedByte;
+    int       readsBeforeRxReadyDefault;
+    int       readsRemainingBeforeRxReady;
 } fake;
 
 static uint32_t Fake_Read32(uintptr_t address)
@@ -39,11 +43,23 @@ static uint32_t Fake_Read32(uintptr_t address)
         {
             fake.state &= ~TX_FULL_BIT;
         }
+        if (fake.readsRemainingBeforeRxReady > 0)
+        {
+            fake.readsRemainingBeforeRxReady--;
+            if (fake.readsRemainingBeforeRxReady == 0)
+            {
+                fake.state |= RX_FULL_BIT;
+            }
+        }
         result = fake.state;
     }
     else if (offset == DATA_OFFSET)
     {
-        result = fake.data;
+        if ((fake.state & RX_FULL_BIT) != 0U)
+        {
+            result = fake.receivedByte;
+            fake.state &= ~RX_FULL_BIT;
+        }
     }
     else if (offset == CTRL_OFFSET)
     {
@@ -114,6 +130,9 @@ void CmsdkUartFake_Reset(uintptr_t baseAddress)
     fake.readsRemainingBeforeTxReady = 0;
     fake.txOverrunOccurred           = false;
     fake.sleepCallCount              = 0;
+    fake.receivedByte                = 0U;
+    fake.readsBeforeRxReadyDefault   = 0;
+    fake.readsRemainingBeforeRxReady = 0;
 }
 
 const CmsdkUartMemoryAccess* CmsdkUartFake_Access(void)
@@ -149,4 +168,22 @@ bool CmsdkUartFake_TxOverrunOccurred(void)
 int CmsdkUartFake_SleepCallCount(void)
 {
     return fake.sleepCallCount;
+}
+
+void CmsdkUartFake_SetReceivedByte(char byte)
+{
+    fake.receivedByte = (uint32_t) (unsigned char) byte;
+    if (fake.readsBeforeRxReadyDefault == 0)
+    {
+        fake.state |= RX_FULL_BIT;
+    }
+    else
+    {
+        fake.readsRemainingBeforeRxReady = fake.readsBeforeRxReadyDefault;
+    }
+}
+
+void CmsdkUartFake_SetReadsBeforeRxReady(int reads)
+{
+    fake.readsBeforeRxReadyDefault = reads;
 }

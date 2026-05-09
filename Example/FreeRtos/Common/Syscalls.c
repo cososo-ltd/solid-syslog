@@ -2,13 +2,16 @@
  *
  * Replaces the rdimon (semihosting) syscalls. printf and friends route
  * through _write -> CmsdkUart_Write -> the CMSDK UART0 data register, which
- * QEMU surfaces over `-serial stdio`. Reads return EOF for now; slice 3
- * wires _read to the UART receive path so Example/Common/ExampleInteractive
- * can drive `send N` / `quit` over the same serial channel.
+ * QEMU surfaces over `-serial stdio`. _read pulls one byte at a time from
+ * CmsdkUart_GetChar (blocking poll on STATE.RXFULL) so fgets in
+ * Example/Common/ExampleInteractive can drive `send N` / `quit` over the
+ * same serial channel. CR (0x0D) is translated to LF (0x0A) so terminals
+ * that send carriage-return on Enter still terminate fgets, and each
+ * received byte is echoed back over TX so the user sees what they type.
  *
  * Not host-TDD'd — this file exists only in the cross build (gated by
  * CMAKE_CROSSCOMPILING + arm in the top-level CMakeLists.txt). The QEMU
- * banner smoke is the integration check that proves the path end-to-end. */
+ * smoke is the integration check that proves the path end-to-end. */
 
 #include "CmsdkUart.h"
 
@@ -61,9 +64,27 @@ int _write(int file, char* buffer, int length)
 int _read(int file, char* buffer, int length)
 {
     (void) file;
-    (void) buffer;
-    (void) length;
-    return 0;
+    int bytesRead = 0;
+    if (length > 0)
+    {
+        char byte = CmsdkUart_GetChar();
+        if (byte == '\r')
+        {
+            byte = '\n';
+        }
+        if (byte == '\n')
+        {
+            CmsdkUart_PutChar('\r');
+            CmsdkUart_PutChar('\n');
+        }
+        else
+        {
+            CmsdkUart_PutChar(byte);
+        }
+        buffer[0] = byte;
+        bytesRead = 1;
+    }
+    return bytesRead;
 }
 
 int _close(int file)

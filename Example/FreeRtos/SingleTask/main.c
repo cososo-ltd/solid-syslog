@@ -1,32 +1,38 @@
-/* FreeRTOS-Plus-TCP bring-up smoke test on QEMU mps2-an385 (Cortex-M3).
+/* FreeRTOS-Plus-TCP single-task SolidSyslog example for QEMU mps2-an385.
  *
- * Slice 3b.1 of S08.03: prove the IP stack initialises and a UDP datagram
- * escapes the guest via slirp. Static IPv4 (10.0.2.15), default gateway
- * (10.0.2.2 — the slirp gateway, routed to the host), no DHCP / DNS.
- *
- * On link-up the network event hook spawns a one-shot smoke task that
- *   - prints "network up\n" over the CMSDK UART (QEMU -serial stdio)
- *   - opens a UDP socket
- *   - sends "ping" to {10.0.2.2, 5514}
- *   - closes the socket and self-deletes.
- *
- * Slice 3b.2 replaces this scaffold with a SolidSyslogConfig + UdpSender
- * wiring that drives the slice-1 SolidSyslogFreeRtosDatagram adapter via
- * the slice-3a SolidSyslogFreeRtosStaticResolver. */
+ * Slice 3b.2 of S08.03 — replaces 3b.1's hardcoded "ping" smoke task with
+ * a real SolidSyslog wiring. Static IPv4 (10.0.2.15) on the QEMU slirp
+ * network with the host reachable at the slirp gateway 10.0.2.2; a single
+ * FreeRTOS task runs Example/Common/ExampleInteractive over qemu -serial
+ * stdio (CmsdkUart RX wired into newlib's _read in Example/FreeRtos/
+ * Common/Syscalls.c). On link-up the IP-task event hook spawns the
+ * interactive task once; SolidSyslog is configured with a NullBuffer +
+ * UdpSender driving the slice-1 SolidSyslogFreeRtosDatagram via the
+ * slice-3a static resolver, so each `send N` line over the UART emits N
+ * RFC 5424 datagrams to {10.0.2.2, 5514}. */
 
 #include "CmsdkUart.h"
+#include "ExampleInteractive.h"
+#include "SolidSyslog.h"
+#include "SolidSyslogConfig.h"
+#include "SolidSyslogEndpoint.h"
+#include "SolidSyslogFormatter.h"
+#include "SolidSyslogFreeRtosDatagram.h"
+#include "SolidSyslogFreeRtosStaticResolver.h"
+#include "SolidSyslogNullBuffer.h"
+#include "SolidSyslogNullStore.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogTimestamp.h"
+#include "SolidSyslogUdpSender.h"
 
 #include <FreeRTOS.h>
 #include <task.h>
 
-#include <FreeRTOS_ARP.h>
 #include <FreeRTOS_IP.h>
 #include <FreeRTOS_Routing.h>
-#include <FreeRTOS_Sockets.h>
 
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 
 #define CMSDK_UART0_BASE_ADDRESS UINT32_C(0x40004000)
 
@@ -48,28 +54,50 @@
  * IRQ 13 at a higher-than-syscall-safe priority. */
 #define ETHERNET_IRQ_PRIORITY ((uint8_t) (configLIBRARY_LOWEST_INTERRUPT_PRIORITY << (8U - configPRIO_BITS)))
 
+/* Unprivileged mirror of SOLIDSYSLOG_UDP_DEFAULT_PORT (514) for BDD listeners. */
+#define EXAMPLE_UDP_PORT 5514U
+
+/* SolidSyslog_Log allocates two char[SOLIDSYSLOG_MAX_MESSAGE_SIZE] frames
+ * (~4 KB) plus formatter storage on its formatter path; ExampleInteractive
+ * adds a 256-byte fgets line and newlib printf (~1 KB). Empirically the
+ * task hard-faults at *16 (8 KB) once the SolidSyslog setup runs — newlib
+ * printf and the formatter path together exceed that budget. *32 (16 KB)
+ * keeps the smoke run stable; a follow-up will introduce CMake-driven
+ * memory scaling once the budget is properly characterised. The task only
+ * exists in this single-task example, so heap_4 (96 KB) absorbs it. */
+#define INTERACTIVE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 32U)
+
 /* Static IPv4 wiring matching the QEMU slirp default. 10.0.2.15 is the
  * standard slirp DHCP-allocated guest address; we hardcode it here so no
- * DHCP server is required. */
-static const uint8_t TEST_IP_ADDRESS[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 15U};
-static const uint8_t TEST_NETMASK[ipIP_ADDRESS_LENGTH_BYTES]    = {255U, 255U, 255U, 0U};
-static const uint8_t TEST_GATEWAY[ipIP_ADDRESS_LENGTH_BYTES]    = {10U, 0U, 2U, 2U};
-static const uint8_t TEST_DNS[ipIP_ADDRESS_LENGTH_BYTES]        = {10U, 0U, 2U, 3U};
+ * DHCP server is required. The destination address — 10.0.2.2, the slirp
+ * gateway routed to the QEMU host — is the listener target driven into
+ * the static resolver. */
+static const uint8_t TEST_IP_ADDRESS[ipIP_ADDRESS_LENGTH_BYTES]       = {10U, 0U, 2U, 15U};
+static const uint8_t TEST_NETMASK[ipIP_ADDRESS_LENGTH_BYTES]          = {255U, 255U, 255U, 0U};
+static const uint8_t TEST_GATEWAY[ipIP_ADDRESS_LENGTH_BYTES]          = {10U, 0U, 2U, 2U};
+static const uint8_t TEST_DNS[ipIP_ADDRESS_LENGTH_BYTES]              = {10U, 0U, 2U, 3U};
+static const uint8_t TEST_MAC[ipMAC_ADDRESS_LENGTH_BYTES]             = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};
+static const uint8_t TEST_DESTINATION_IPV4[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 2U};
 
-/* Locally-administered MAC (U/L bit set, multicast bit clear). */
-static const uint8_t TEST_MAC[ipMAC_ADDRESS_LENGTH_BYTES] = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};
+/* Walking-skeleton TEST_* values — slice-4 will replace these with config
+ * injected over the interactive command grammar. */
+static const char TEST_HOSTNAME[]   = "FreeRtosExample";
+static const char TEST_APP_NAME[]   = "SolidSyslogExample";
+static const char TEST_PROCESS_ID[] = "1";
+static const char TEST_MESSAGE_ID[] = "example";
+static const char TEST_MESSAGE[]    = "Hello from FreeRTOS";
 
-#define TEST_TARGET_PORT 5514U
-static const uint8_t TEST_PAYLOAD[] = {'p', 'i', 'n', 'g'};
-
-/* Static storage for the network interface and its single endpoint. The
- * Plus-TCP API requires these to outlive the IP stack. */
+/* Plus-TCP requires the network interface descriptor and its endpoint(s)
+ * to outlive the IP stack. */
 static NetworkInterface_t networkInterface;
 static NetworkEndPoint_t  networkEndPoint;
 
-/* Ensures the smoke task is created exactly once even if the network goes
- * down and back up. */
-static BaseType_t smokeTaskCreated = pdFALSE;
+static SolidSyslogFreeRtosStaticResolverStorage resolverStorage;
+static SolidSyslogFreeRtosDatagramStorage       datagramStorage;
+
+/* Ensures the interactive task is created exactly once even if the network
+ * goes down and back up. */
+static BaseType_t interactiveTaskCreated = pdFALSE;
 
 extern NetworkInterface_t* pxMPS2_FillInterfaceDescriptor(BaseType_t xEMACIndex, NetworkInterface_t* pxInterface);
 
@@ -99,33 +127,93 @@ static void SetEthernetIrqPriority(void)
     *ipr                  = ETHERNET_IRQ_PRIORITY;
 }
 
-static void SmokeTask(void* argument)
+static void GetHostname(struct SolidSyslogFormatter* formatter)
+{
+    SolidSyslogFormatter_BoundedString(formatter, TEST_HOSTNAME, sizeof(TEST_HOSTNAME) - 1U);
+}
+
+static void GetAppName(struct SolidSyslogFormatter* formatter)
+{
+    SolidSyslogFormatter_BoundedString(formatter, TEST_APP_NAME, sizeof(TEST_APP_NAME) - 1U);
+}
+
+static void GetProcessId(struct SolidSyslogFormatter* formatter)
+{
+    SolidSyslogFormatter_BoundedString(formatter, TEST_PROCESS_ID, sizeof(TEST_PROCESS_ID) - 1U);
+}
+
+/* RFC 5424 publication date — walking-skeleton placeholder until S08.03
+ * slice 4+ injects a real RTC-backed clock callback. */
+static void GetTimestamp(struct SolidSyslogTimestamp* timestamp)
+{
+    timestamp->year             = 2009U;
+    timestamp->month            = 3U;
+    timestamp->day              = 23U;
+    timestamp->hour             = 0U;
+    timestamp->minute           = 0U;
+    timestamp->second           = 0U;
+    timestamp->microsecond      = 0U;
+    timestamp->utcOffsetMinutes = 0;
+}
+
+static void GetEndpoint(struct SolidSyslogEndpoint* endpoint)
+{
+    /* SolidSyslogFreeRtosStaticResolver ignores the host string, so we
+     * leave it empty; the port still needs to be populated for sendto. */
+    SolidSyslogFormatter_BoundedString(endpoint->host, "", 0U);
+    endpoint->port = (uint16_t) EXAMPLE_UDP_PORT;
+}
+
+static uint32_t GetEndpointVersion(void)
+{
+    return 0U;
+}
+
+static void InteractiveTask(void* argument)
 {
     (void) argument;
 
-    printf("network up\n");
-    fflush(stdout);
+    struct SolidSyslogResolver* resolver = SolidSyslogFreeRtosStaticResolver_Create(&resolverStorage, TEST_DESTINATION_IPV4);
+    struct SolidSyslogDatagram* datagram = SolidSyslogFreeRtosDatagram_Create(&datagramStorage);
 
-    Socket_t socket = FreeRTOS_socket(FREERTOS_AF_INET, FREERTOS_SOCK_DGRAM, FREERTOS_IPPROTO_UDP);
-    if (socket != FREERTOS_INVALID_SOCKET)
-    {
-        struct freertos_sockaddr destination;
-        memset(&destination, 0, sizeof(destination));
-        destination.sin_len               = (uint8_t) sizeof(destination);
-        destination.sin_family            = FREERTOS_AF_INET;
-        destination.sin_port              = FreeRTOS_htons(TEST_TARGET_PORT);
-        destination.sin_address.ulIP_IPv4 = FreeRTOS_inet_addr_quick(TEST_GATEWAY[0], TEST_GATEWAY[1], TEST_GATEWAY[2], TEST_GATEWAY[3]);
+    struct SolidSyslogUdpSenderConfig udpConfig = {
+        .resolver        = resolver,
+        .datagram        = datagram,
+        .endpoint        = GetEndpoint,
+        .endpointVersion = GetEndpointVersion,
+    };
+    struct SolidSyslogSender* sender = SolidSyslogUdpSender_Create(&udpConfig);
+    struct SolidSyslogBuffer* buffer = SolidSyslogNullBuffer_Create(sender);
+    struct SolidSyslogStore*  store  = SolidSyslogNullStore_Create();
 
-        /* Pre-resolve ARP for the gateway. Without this the first sendto
-         * triggers ARP and the datagram is dropped while resolution is in
-         * flight; under slirp ARP completes in well under 200 ms. */
-        FreeRTOS_OutputARPRequest(destination.sin_address.ulIP_IPv4);
-        vTaskDelay(pdMS_TO_TICKS(200));
+    struct SolidSyslogConfig config = {
+        .buffer       = buffer,
+        .sender       = NULL,
+        .clock        = GetTimestamp,
+        .getHostname  = GetHostname,
+        .getAppName   = GetAppName,
+        .getProcessId = GetProcessId,
+        .store        = store,
+        .sd           = NULL,
+        .sdCount      = 0U,
+    };
+    SolidSyslog_Create(&config);
 
-        (void) FreeRTOS_sendto(socket, TEST_PAYLOAD, sizeof(TEST_PAYLOAD), 0, &destination, sizeof(destination));
+    struct SolidSyslogMessage message = {
+        .facility  = SOLIDSYSLOG_FACILITY_LOCAL0,
+        .severity  = SOLIDSYSLOG_SEVERITY_INFO,
+        .messageId = TEST_MESSAGE_ID,
+        .msg       = TEST_MESSAGE,
+    };
 
-        (void) FreeRTOS_closesocket(socket);
-    }
+    ExampleInteractive_Run(&message, stdin, NULL);
+
+    SolidSyslog_Destroy();
+    SolidSyslogNullStore_Destroy();
+    SolidSyslogNullBuffer_Destroy();
+    SolidSyslogUdpSender_Destroy();
+    SolidSyslogFreeRtosDatagram_Destroy(datagram);
+    SolidSyslogFreeRtosStaticResolver_Destroy(resolver);
 
     vTaskDelete(NULL);
 }
@@ -133,11 +221,11 @@ static void SmokeTask(void* argument)
 void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, struct xNetworkEndPoint* pxEndPoint)
 {
     (void) pxEndPoint;
-    if ((eNetworkEvent == eNetworkUp) && (smokeTaskCreated == pdFALSE))
+    if ((eNetworkEvent == eNetworkUp) && (interactiveTaskCreated == pdFALSE))
     {
-        if (xTaskCreate(SmokeTask, "smoke", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 1, NULL) == pdPASS)
+        if (xTaskCreate(InteractiveTask, "interactive", INTERACTIVE_TASK_STACK_DEPTH, NULL, tskIDLE_PRIORITY + 1, NULL) == pdPASS)
         {
-            smokeTaskCreated = pdTRUE;
+            interactiveTaskCreated = pdTRUE;
         }
     }
 }
@@ -184,8 +272,8 @@ void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
 
 /* Plus-TCP requires the application to provide a per-endpoint random seed
  * source for ARP / IP-ID generation. The QEMU mps2-an385 has no RNG; for a
- * deterministic smoke test we return the run-time tick mixed with the
- * endpoint pointer. */
+ * deterministic smoke test we return the run-time tick mixed with a fixed
+ * constant. */
 BaseType_t xApplicationGetRandomNumber(uint32_t* pulValue)
 {
     *pulValue = (uint32_t) xTaskGetTickCount() ^ 0xA5A5A5A5U;

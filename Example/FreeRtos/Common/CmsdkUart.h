@@ -23,6 +23,7 @@ extern "C"
     void CmsdkUart_Init(const CmsdkUartMemoryAccess* access, uintptr_t baseAddress);
     void CmsdkUart_PutChar(char c);
     void CmsdkUart_Write(const char* buffer, size_t length);
+    char CmsdkUart_GetChar(void);
 
 #ifdef __cplusplus
 }

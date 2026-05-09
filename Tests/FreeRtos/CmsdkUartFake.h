@@ -36,6 +36,16 @@ extern "C"
      * Lets tests assert the spin loop yielded the CPU between status reads. */
     int CmsdkUartFake_SleepCallCount(void);
 
+    /* Pre-arm a received byte: the next DATA read returns this value, with
+     * STATE.RXFULL=1 reported on the preceding STATE read so the driver's
+     * RX-ready check sees data available. */
+    void CmsdkUartFake_SetReceivedByte(char byte);
+
+    /* Number of STATE reads after SetReceivedByte before the fake asserts
+     * STATE.RXFULL. Default is 0 — RXFULL set immediately. Use a positive
+     * value to force the driver to spin on STATE before reading DATA. */
+    void CmsdkUartFake_SetReadsBeforeRxReady(int reads);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,5 +1,139 @@
 # Dev Log
 
+## 2026-05-09 — S08.03 slice 3b.2 — SingleTask example with SolidSyslogUdpSender + interactive command channel (#296)
+
+Slice 3b.1's "send a hardcoded ping on link-up" smoke is replaced with a
+real SolidSyslog wiring: `SolidSyslogConfig` driven by a `NullBuffer` +
+`SolidSyslogUdpSender`, sat on the slice-1 `SolidSyslogFreeRtosDatagram`
+and the slice-3a `SolidSyslogFreeRtosStaticResolver`, exposed via
+`Example/Common/ExampleInteractive` running over `qemu -serial stdio`.
+Typing `send N` over the UART emits N RFC 5424 datagrams to the slirp
+gateway (10.0.2.2:5514); `quit` cleanly shuts the example down. Slice
+3b.1.5's ARP priming inside the datagram adapter means the first send
+after cold start is delivered — no warm-up message needed.
+
+### CmsdkUart evolves rather than splits
+
+Issue #296 originally proposed a sibling `Example/FreeRtos/SingleTask/
+UartRx.{c,h}`. Decided against it: the issue body was a hint, not a
+constraint, and we don't want two CMSDK UART drivers. Instead `Example/
+FreeRtos/Common/CmsdkUart.{h,c}` grew `CmsdkUart_GetChar` (blocking poll
+on `STATE.RXFULL` with the same `sleep(1)` yield idiom as `PutChar`), and
+`CmsdkUart_Init` now writes `CTRL ← TX_EN | RX_EN` so the receiver is
+enabled in one shot. `--gc-sections` strips `GetChar` from the HelloWorld
+ELF, so HelloWorld pays nothing for the new code path.
+
+### TDD progression — 5 ZOMBIES cycles against CmsdkUartFake
+
+Strict red→green→refactor in `Tests/FreeRtos/CmsdkUartTest.cpp`. The fake
+gained an RX side: `SetReceivedByte(byte)` arms the next DATA read,
+`SetReadsBeforeRxReady(N)` delays `RXFULL` becoming set until N STATE
+reads have happened (mirror of the existing TX `SetReadsBeforeTxReady`),
+and DATA reads return the byte only when `RXFULL=1`, clearing it on
+read — matching the silicon contract documented in `CMSDK_UART.md`.
+
+1. `InitEnablesReceiver` — drove `CTRL_OFFSET ← TX_EN | RX_EN` (existing
+   `InitEnablesTransmitter` stays green; cycle 1 only checks bit 1 was
+   set, doesn't disturb bit 0).
+2. `GetCharReturnsByteFromDataRegister` — drove the public `GetChar`
+   API; minimum impl is just `read32(DATA)`.
+3. `GetCharSpinsForRxFullToBecomeSetBeforeReadingDataRegister` — forced
+   the spin loop on `STATE.RXFULL` (without it, DATA returns 0 on
+   cache-miss because the fake gates DATA on `RXFULL`).
+4. `GetCharCallsSleepWhileSpinningForRxFull` — forced the `Yield()` call
+   inside the spin so the IP task can run while RX is empty.
+5. `GetCharReturnsImmediatelyWhenReceiverHasByte` — boundary: with
+   `SetReadsBeforeRxReady(0)` the fake asserts `RXFULL` immediately;
+   verifies no spurious sleep when data is already available. Locked in
+   by passing without production change.
+
+Refactor pass extracted `static inline ReceiverHasByte()` and
+`ReadDataRegister()` helpers so `GetChar` reads one-line top-down,
+matching the existing `PutChar` / `TransmitterIsBusy` / `WriteDataRegister`
+shape.
+
+### Newlib `_read` line discipline lives in Syscalls.c, not the driver
+
+`Example/FreeRtos/Common/Syscalls.c::_read` was extended to call
+`CmsdkUart_GetChar()` once per call, translate CR (0x0D) to LF (0x0A) so
+fgets terminates regardless of which newline the host terminal sends, and
+echo each byte back via `CmsdkUart_PutChar` so the user sees what they
+type over `qemu -serial stdio`. Driver stays a minimal byte-in/byte-out;
+TTY/cooked-mode policy lives next to the newlib seam.
+
+### Two surprises that ate most of the slice — captured here so the next reader doesn't repeat them
+
+**1. The cross toolchain wasn't setting `-mthumb`, so libSolidSyslog.a
+came back in ARM mode.** First QEMU run hard-faulted at PC=0x5d8 inside
+`SolidSyslogUdpSender_Create`. Disassembly showed 32-bit ARM-mode
+encodings (`e92d4800 push {fp, lr}`) at the function entry — Cortex-M3
+only decodes Thumb-2, so the first instruction in the first cross-library
+call faulted. Cause: `Example/FreeRtos/cmake/arm-none-eabi.cmake` set the
+compiler driver but didn't set `CMAKE_C_FLAGS_INIT`. The HelloWorld and
+SingleTask executables added `-mcpu=cortex-m3 -mthumb` via
+`target_compile_options(... PRIVATE ...)`, but those don't propagate to
+dependencies, and `Core/Source/CMakeLists.txt` doesn't add per-target
+flags — it inherits whatever's global. Slice 3b.1 didn't surface this
+because its smoke task body never called any Core library function. Fix:
+moved `-mcpu=cortex-m3 -mthumb -ffunction-sections -fdata-sections
+-fno-common` to `CMAKE_C_FLAGS_INIT` (and CXX/ASM equivalents) in the
+toolchain file. The per-target additions in HelloWorld / SingleTask are
+now redundant but harmless; left in place so each example reads
+self-contained.
+
+**2. Stack budget guesswork mid-debug.** While chasing the ARM-mode bug
+above, the symptom looked plausibly like stack overflow (hard-fault deep
+into the InteractiveTask, all caller-saved registers pinned at the
+FreeRTOS canary 0xa5a5a5a5). Bumped `INTERACTIVE_TASK_STACK_DEPTH` from
+`configMINIMAL_STACK_SIZE * 8` (4 KB) to `* 16` (8 KB) — same crash, then
+to `* 32` (16 KB) — same crash. None of those bumps made the symptom
+move because the root cause was the Thumb-mode bug, not stack. Once the
+toolchain was fixed the boot completed at `* 32` and a `send 3` + `quit`
+smoke runs to completion. The true minimum with the toolchain fixed has
+not been re-bisected — `* 32` was kept as a safe ceiling. The realistic
+peak shape is `SolidSyslog_Log` allocating two
+`char[SOLIDSYSLOG_MAX_MESSAGE_SIZE]` frames (~4 KB) + a
+`SolidSyslogFormatterStorage` for ~2 KB on its formatter path, plus
+`ExampleInteractive`'s 256-byte fgets line, plus newlib printf (~1 KB) —
+roughly 7–8 KB peak — so `* 16` (8 KB) is probably enough but unverified.
+A follow-up will introduce CMake-driven memory scaling and a measured
+budget; tracked separately.
+
+### What this leaves for slice 4+
+
+- Configuration injection over the interactive command grammar
+  (replacing the `TEST_*` walking-skeleton hostname / appName / processId
+  / clock with values driven by `set` commands).
+- BDD harness pointed at the FreeRTOS target.
+- Service-thread + non-NullBuffer FreeRTOS-side wiring (CircularBuffer +
+  FreeRTOS mutex) — slice 5+.
+- Real RTC-backed clock callback to replace the hardcoded RFC 5424
+  publication-date timestamp.
+- CMake-driven stack-budget scaling so the `* 32` magic number can come
+  back down once formatter / printf footprints are pinned numerically.
+
+### Pre-PR checks
+
+- `clang-format --dry-run --Werror` on every changed file — clean.
+- `Tests/FreeRtos/CmsdkUartTest` (14 / 14, 18 checks),
+  `SolidSyslogFreeRtosDatagramTest` (21 / 21, 42 checks),
+  `SolidSyslogFreeRtosStaticResolverTest` (10 / 10, 9 checks) — all
+  green. Full host ctest (5 exe) — green.
+- `cmake --build --preset freertos-cross` — clean (HelloWorld + SingleTask
+  ELFs both link).
+- HelloWorld QEMU smoke — banner prints, no regression from the toolchain
+  change.
+- SingleTask QEMU smoke (`send 1`, `send 3`, `quit`) — the host Python
+  UDP listener at 5514 receives 1 and 3 RFC 5424 datagrams respectively,
+  format `<134>1 2009-03-23T00:00:00.000000Z FreeRtosExample
+  SolidSyslogExample 1 example - <BOM>Hello from FreeRTOS`, `quit` cleanly
+  exits the task.
+- Not run locally (CI's responsibility): `build-linux-gcc`,
+  `build-linux-clang`, `sanitize-linux-gcc`, `coverage-linux-gcc`,
+  `analyze-tidy`, `analyze-cppcheck`, `analyze-iwyu`,
+  `build-windows-msvc`, BDD, OpenSSL integration. The freertos-cross
+  devcontainer doesn't ship clang or the analyze tooling.
+
 ## 2026-05-09 — S08.03 slice 3b.1.5 — FreeRtosDatagram ARP priming on cache miss (#298)
 
 `SolidSyslogFreeRtosDatagram::SendTo` now probes ARP transparently when the

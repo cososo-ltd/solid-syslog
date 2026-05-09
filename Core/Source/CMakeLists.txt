@@ -31,7 +31,7 @@ if(HAVE_ATOMIC_COUNTER)
     list(APPEND SOURCES SolidSyslogAtomicCounter.c)
 endif()
 
-if(SOLIDSYSLOG_POSIX OR SOLIDSYSLOG_WINSOCK)
+if(SOLIDSYSLOG_POSIX OR SOLIDSYSLOG_WINSOCK OR DEFINED ENV{FREERTOS_KERNEL_PATH})
     list(APPEND SOURCES
         SolidSyslogResolver.c
         SolidSyslogDatagram.c
