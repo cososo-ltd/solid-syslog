@@ -104,9 +104,9 @@ static char     g_appName[49]                       = "SolidSyslogExample";
 static char     g_processId[129]                    = "1";
 static char     g_messageId[33]                     = "example";
 static char     g_msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = "Hello from FreeRTOS";
-static char     g_host[16]        = "10.0.2.2";
-static uint16_t g_port            = (uint16_t) EXAMPLE_UDP_PORT;
-static uint32_t g_endpointVersion = 0U;
+static char     g_host[16]                          = "10.0.2.2";
+static uint16_t g_port                              = (uint16_t) EXAMPLE_UDP_PORT;
+static uint32_t g_endpointVersion                   = 0U;
 
 static struct SolidSyslogMessage g_message = {
     .facility  = SOLIDSYSLOG_FACILITY_LOCAL0,
