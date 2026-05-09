@@ -86,11 +86,8 @@ services:
       retries: 10
 
   behave-freertos:
-    # Cross image carries qemu-system-arm + python3 + behave (post-image
-    # bump in CppUTestFreertosDocker). Until that bump lands, behave is
-    # pip-installed at runtime; remove the inline install once the image
-    # tag advances.
-    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-44efeae
+    # Cross image carries qemu-system-arm + python3 + behave.
+    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-10a14ae
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -104,15 +101,7 @@ services:
     environment:
       - BDD_TARGET=freertos
       - EXAMPLE_BINARY=build/freertos-cross/Example/FreeRtos/SingleTask/SolidSyslogFreeRtosSingleTask.elf
-    entrypoint: ["bash", "-c"]
-    command:
-      - |
-        # Temporary install — once the cpputest-freertos-cross image
-        # gains python3-pip + behave (CppUTestFreertosDocker bump), drop
-        # this line and the `apt-get install` block below.
-        apt-get update >/dev/null && apt-get install -y --no-install-recommends python3-pip >/dev/null
-        pip install --no-cache-dir --break-system-packages -r Bdd/requirements.txt
-        behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and @udp' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and @udp' Bdd/features/
 
 volumes:
   bdd-output-linux:
