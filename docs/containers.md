@@ -7,7 +7,7 @@
 | `ghcr.io/davidcozens/cpputest` | `sha-18f19e1` | devcontainer (`gcc` service), most CI jobs |
 | `ghcr.io/davidcozens/cpputest-clang` | `sha-7eac3ab` | `clang` compose service, `build-linux-clang` CI job, `analyze-iwyu` CI job |
 | `ghcr.io/davidcozens/cpputest-freertos` | `sha-44efeae` | `freertos-host` compose service, `build-freertos-host-tdd` CI job — adds FreeRTOS-Kernel / Plus-TCP / Plus-FAT / Mbed TLS sources for host-TDD of FreeRTOS adapters against fakes |
-| `ghcr.io/davidcozens/cpputest-freertos-cross` | `sha-44efeae` | `freertos-target` compose service, `build-freertos-target` CI job — adds `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm` for cross builds and on-QEMU runs |
+| `ghcr.io/davidcozens/cpputest-freertos-cross` | `sha-44efeae` | `freertos-target` compose service, `build-freertos-target` CI job, `behave-freertos` BDD service, `bdd-freertos-qemu` CI job — adds `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm`, `python3` + `behave` for cross builds, on-QEMU runs, and BDD scenarios driving a QEMU target |
 | `balabit/syslog-ng` | `latest` | `syslog-ng` service — BDD test oracle |
 | `ghcr.io/davidcozens/behave` | `sha-3faff14` | `behave` service — Debian trixie + Python 3.12 + Behave for BDD scenarios |
 
@@ -17,12 +17,25 @@ The devcontainer uses Docker Compose (`.devcontainer/docker-compose.yml`).
 VS Code connects to the `gcc` service (GCC). The `clang` service is on-demand only —
 it starts when you explicitly run a command against it and stops when done.
 
-The `syslog-ng` and `behave` services support BDD testing. The `gcc` service depends on
-`syslog-ng`, so it starts automatically with the devcontainer. The `behave` service is
-on-demand — it runs when BDD scenarios are executed. See [BDD testing](bdd.md) for details.
+BDD testing pairs each target with its own `syslog-ng` oracle so jobs running
+in parallel (or developers switching containers) never interfere:
 
-As cross-compilation targets are added, each gets its own service in the compose file,
-following the same pattern.
+| Target | Behave runner | Oracle |
+|---|---|---|
+| Linux | `behave-linux` | `syslog-ng-linux` |
+| FreeRTOS | inside `freertos-target` (image carries both QEMU and Behave) | `syslog-ng-freertos` |
+
+The `gcc` service depends on `syslog-ng-linux` so it starts automatically with the
+devcontainer; the `freertos-target` service depends on `syslog-ng-freertos` and shares
+its network namespace via `network_mode: service:syslog-ng-freertos`, so QEMU's
+slirp gateway `10.0.2.2` NATs to the pair's loopback where `syslog-ng-freertos` is
+listening on `0.0.0.0:5514`. Both oracles also alias as the bare hostname `syslog-ng`
+on their network so the existing example wiring (`Example/Common/Example*Config.c`,
+the BDD step helpers) keeps resolving without per-target host overrides. The
+pairs never run together, so the alias collision is academic.
+
+As more cross-compilation targets are added, each gets its own oracle pair in the
+same shape (`syslog-ng-<target>` + a runner service or in-container Behave).
 
 ## Running the clang build locally
 
@@ -69,8 +82,8 @@ The available services and the build preset each one drives:
 | `gcc` | Primary C/C++ development (default) | `debug` |
 | `clang` | Clang-specific debugging / portability | `clang-debug` |
 | `freertos-host` | TDD of FreeRTOS adapters against host-side fakes | `debug` |
-| `freertos-target` | Cross builds, on-QEMU runs, GDB attach (Cortex-M3, mps2-an385) | `freertos-cross` |
-| `behave` | BDD scenario development (Python + Behave) | (none — cmake skipped) |
+| `freertos-target` | Cross builds, on-QEMU runs, GDB attach (Cortex-M3, mps2-an385), BDD against the QEMU target | `freertos-cross` |
+| `behave-linux` | Linux BDD scenario development (Python + Behave) | (none — cmake skipped) |
 
 To switch:
 

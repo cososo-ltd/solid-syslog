@@ -1,5 +1,137 @@
 # Dev Log
 
+## 2026-05-09 — S08.03 slice 5 — BDD harness pointed at FreeRTOS-on-QEMU target (#304)
+
+Slice 4 made the FreeRTOS example's identity, transport endpoint, and PRIVAL
+fields mutable in-RAM via `set NAME VALUE` over the existing UART command
+channel. The slice-4 smoke run was a hand-rolled Behave-equivalent (Python
+listener + QEMU subprocess + UART heredoc); slice 5 promotes that flow into
+real Behave + the existing syslog-ng oracle, and adds the CI matrix entry.
+
+### Decisions
+
+- **Behave runs alongside QEMU in `cpputest-freertos-cross`.** Spawning QEMU
+  as a subprocess and piping stdin/stdout to its UART (via `-serial stdio`)
+  is only natural inside the QEMU process's parent — putting Behave in a
+  different container would mean cross-container PTY plumbing. The cross
+  image was the cheapest place to add Python + Behave (one image bump, no
+  new image, no apt-installs in CI). Bump prepared in CppUTestFreertosDocker
+  (`dockerfile.cross` adds `python3 + python3-pip + behave==1.3.3`); a
+  follow-up PR pushes it and bumps SolidSyslog's SHA refs. Until then the
+  compose service does an inline `apt-get install python3-pip; pip install`
+  which is documented to be removed once the bump lands.
+- **Per-target oracle pairs.** `ci/docker-compose.bdd.yml` and
+  `.devcontainer/docker-compose.yml` rename `syslog-ng` → `syslog-ng-linux`
+  / `behave` → `behave-linux` and add `syslog-ng-freertos` + the
+  `behave-freertos` runner. Each pair gets its own `syslog-ng` instance
+  with its own ctl socket and output volume; pairs never run together
+  (CI scopes services per job; devcontainer's `depends_on` only starts
+  the active pair). Adding a future target is one more block in the same
+  shape.
+- **Shared netns over slirp NAT.** `behave-freertos` uses
+  `network_mode: service:syslog-ng-freertos`, so QEMU's slirp gateway
+  `10.0.2.2` NATs to the pair's loopback where syslog-ng listens on
+  `0.0.0.0:5514`. No port forwarding to the runner / host, no cross-
+  container DNS for the data path.
+- **DNS alias for backwards compat.** Both `syslog-ng-<target>` services
+  alias as the bare `syslog-ng` on their network. The Linux example wiring
+  (`Example/Common/Example*Config.c::host = "syslog-ng"`) and the BDD step
+  helpers (`wait_for_tcp_port_open(host="syslog-ng")`) keep resolving
+  unchanged. Pairs never co-exist, so the "two services aliasing the same
+  name" pattern is benign.
+- **`target_driver.py` (a single Python module) abstracts the spawn.**
+  Same prompt protocol (`SolidSyslog>` over stdin/stdout — already printed
+  by `Example/Common/ExampleInteractive.c` on every target) means
+  `wait_for_prompt` / `send_command` work unchanged; only the spawn and
+  the teardown differ. `spawn_example_process(context, extra_args, binary)`
+  branches on `context.target` (set from `BDD_TARGET` in `before_all`);
+  `stop_example_process` returns `None` on FreeRTOS (kills QEMU after
+  `quit` because the scheduler keeps idling) and the example's exit code
+  on Linux/Windows.
+- **`extra_args` is unsupported on FreeRTOS today.** The FreeRTOS example
+  has no getopt port; cmdline flags are meaningless to it. Calling
+  `spawn_example_process` with `extra_args` while `BDD_TARGET=freertos`
+  raises `NotImplementedError` so a misconfigured scenario fails loudly
+  rather than silently hitting QEMU's argv-parsing path. Translating
+  cmdline → `set NAME VALUE` is a follow-up; for slice 5, scenarios that
+  use cmdline args are tagged `@freertoswip`.
+- **`@freertoswip` tags scenarios that don't pass on FreeRTOS yet.**
+  Behaves as a target-specific `@wip`. The `bdd-freertos-qemu` CI job runs
+  `--tags='not @wip and not @freertoswip and @udp'`; Linux runs
+  `--tags='not @wip'` so existing Linux behaviour is unchanged. Tagged
+  features today and the reason each one is tagged:
+  | Feature | Why |
+  |---|---|
+  | `syslog.feature` (single scenario) | Composite assertion includes "system hostname", "current timestamp", and "PID of example program" — FreeRTOS uses the literal `FreeRtosExample` hostname, the RFC 5424 publication-date placeholder, and PROCID `1`. |
+  | `header_fields.feature` (hostname, PID scenarios) | Same hardcoded values. App-name scenario passes (untagged) because the FreeRTOS example sets app name to `SolidSyslogExample`, matching. |
+  | `timestamp.feature` | Hardcoded TEST timestamp (RFC 5424 publication date 2009-03-23). |
+  | `structured_data.feature` | FreeRTOS example wires no `meta` SD (no sequenceId, sysUpTime, language). |
+  | `origin.feature` | FreeRTOS example wires no origin SD. |
+  | `time_quality.feature` | FreeRTOS example wires no timeQuality SD. |
+  | `prival.feature` | Uses `--facility` / `--severity` cmdline args. |
+  | `message_fields.feature` | Uses `--message-id` / `--message` cmdline args. |
+  | `udp_mtu.feature` | Uses `--message` cmdline args with very long bodies. |
+  | `buffered.feature` | Drives the Linux Threaded binary (no FreeRTOS equivalent yet). |
+- **Walking-skeleton acceptance is "the harness lands, with at least one
+  scenario passing."** That scenario is `header_fields.feature::App name
+  matches the example program`. Every other current `@udp` scenario is
+  tagged `@freertoswip`. Untagging them is the work of follow-up slices —
+  some will come for free as soon as `Example/FreeRtos/SingleTask/main.c`
+  wires SD or accepts a real clock callback; others need the
+  cmdline-flag → `set` translation in the FreeRTOS driver.
+- **CI structurally mirrors `bdd-linux-syslog-ng`.** `build-freertos-target`
+  gains an artifact upload step for `SolidSyslogFreeRtosSingleTask.elf`;
+  the new `bdd-freertos-qemu` job downloads it and runs the freertos
+  compose pair. The summary quality monitor surfaces FreeRTOS BDD JUnit
+  alongside the existing two BDD jobs. Branch protection list updated in
+  CLAUDE.md.
+
+### Local verification
+
+- `behave-linux` against `syslog-ng-linux`: 21 features, 46 scenarios
+  passing, 0 failed, 0 skipped — pre-rename behaviour preserved.
+- `behave-freertos` against `syslog-ng-freertos`: 1 feature, 1 scenario
+  passing, 0 failed, 45 `@freertoswip` skipped.
+
+### Deferred
+
+- **Image bump in CppUTestFreertosDocker.** Prepared locally; David to
+  push when convinced. Once the new SHA is published, bump the SHA refs
+  in `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`,
+  `ci/docker-compose.bdd.yml`, `docs/containers.md` (single follow-up
+  PR, `chore: bump container image`-style), and drop the inline
+  `apt-get / pip install` from the `behave-freertos` compose command.
+- **Removing `@freertoswip` tags.** Each tagged feature/scenario is a
+  follow-up slice. Likely order: structured-data wiring (origin,
+  time_quality, sequenceId — needs a small example-side change to wire
+  the SDs), then real RTC callback (timestamp), then cmdline-flag → `set`
+  translation in the driver (covers prival, message_fields, udp_mtu),
+  then a FreeRTOS Threaded example for `buffered.feature`.
+- **Behave runs both pairs simultaneously locally.** Today only one
+  devcontainer service is active at a time, so only one pair starts. If
+  a future workflow needs both pairs concurrently in the same compose
+  project, the `syslog-ng` DNS alias collides — switch to per-target
+  hostname overrides via env var (the `SOLIDSYSLOG_BDD_*_HOST` pattern
+  is already in place for Windows) and remove the alias.
+- **Refactoring `bdd-windows-otel` to use the new `target_driver`
+  abstraction.** Windows still works through the older
+  `oracle_format`-branched code path. The two patterns subsume each
+  other; rolling Windows in is cosmetic and a follow-up cleanup.
+
+### Open questions
+
+- Should we surface the `@freertoswip` count somewhere visible (a
+  tag-count line in the summary job, a comment on PRs)? Today it's only
+  visible to a developer running `behave -v`; a CI-side surface would
+  make the "we're tagging slowly being removed" story legible at a
+  glance. Probably yes, separate small PR.
+- Is shared-netns the right primitive vs. host networking long-term?
+  Shared netns isolates the BDD pair from the runner, which is nicer,
+  but it depends on a docker-compose feature that doesn't exist on
+  Windows hosts. If a future target needs to run on a Windows runner,
+  we'll revisit; for now Linux runners host both Linux and FreeRTOS BDD
+  jobs and the feature works.
+
 ## 2026-05-09 — S08.03 slice 4 — `set` command for in-RAM configuration injection (#302)
 
 Slice 3b.2 hardcoded the FreeRTOS example's identity, message body, and

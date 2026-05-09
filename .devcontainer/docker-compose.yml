@@ -17,15 +17,19 @@ services:
     working_dir: /workspaces/SolidSyslog
     command: sleep infinity
     depends_on:
-      - syslog-ng
+      - syslog-ng-linux
 
-  syslog-ng:
+  # Linux pair — syslog-ng oracle + behave runner, used by gcc/clang dev
+  # work and the bdd-linux-syslog-ng CI job. Each BDD target gets its
+  # own oracle + runner pair so they don't interfere; see
+  # ci/docker-compose.bdd.yml for the rationale.
+  syslog-ng-linux:
     image: balabit/syslog-ng:latest
     volumes:
       - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
       - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
       - ../Bdd/output:/var/log/syslog-ng
-      - syslog-ng-ctl:/var/lib/syslog-ng
+      - syslog-ng-ctl-linux:/var/lib/syslog-ng
     ports:
       - "5514:5514/udp"
       - "5514:5514/tcp"
@@ -51,22 +55,27 @@ services:
             sleep 0.1
           done ) &
         wait $$pid
+    networks:
+      default:
+        aliases:
+          - syslog-ng
 
-  behave:
+  behave-linux:
     image: ghcr.io/davidcozens/behave:sha-3faff14
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ../Bdd/output:/workspaces/SolidSyslog/Bdd/output
-      - syslog-ng-ctl:/var/lib/syslog-ng
+      - syslog-ng-ctl-linux:/var/lib/syslog-ng
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
       - ${HOME:-/tmp}/.claude:/home/developer/.claude
       - ${HOME:-/tmp}/.config/gh:/home/developer/.config/gh
     environment:
       - SSH_AUTH_SOCK=/ssh-agent
+      - BDD_TARGET=linux
     user: developer
     working_dir: /workspaces/SolidSyslog
     depends_on:
-      - syslog-ng
+      - syslog-ng-linux
     command: sleep infinity
 
   clang:
@@ -105,10 +114,44 @@ services:
     working_dir: /workspaces/SolidSyslog
     command: sleep infinity
 
+  # FreeRTOS pair — syslog-ng oracle + the cross devcontainer that hosts
+  # both QEMU and Behave. freertos-target shares syslog-ng-freertos's
+  # network namespace so QEMU's slirp gateway 10.0.2.2 NATs to the pair's
+  # loopback, where syslog-ng-freertos is listening on 0.0.0.0:5514.
+  syslog-ng-freertos:
+    image: balabit/syslog-ng:latest
+    volumes:
+      - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
+      - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
+      - ../Bdd/output:/var/log/syslog-ng
+      - syslog-ng-ctl-freertos:/var/lib/syslog-ng
+    working_dir: /workspaces/SolidSyslog
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        syslog-ng -F &
+        pid=$$!
+        deadline=$$((SECONDS + 30))
+        while [ ! -S /var/lib/syslog-ng/syslog-ng.ctl ]; do
+          kill -0 "$$pid" 2>/dev/null || { echo "syslog-ng exited unexpectedly"; exit 1; }
+          [ "$$SECONDS" -ge "$$deadline" ] && { echo "Timed out waiting for syslog-ng control socket"; kill "$$pid" 2>/dev/null; exit 1; }
+          sleep 0.1
+        done
+        ( while kill -0 "$$pid" 2>/dev/null; do
+            chmod 0777 /var/lib/syslog-ng/syslog-ng.ctl 2>/dev/null
+            sleep 0.1
+          done ) &
+        wait $$pid
+    networks:
+      default:
+        aliases:
+          - syslog-ng
+
   freertos-target:
     image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-44efeae
     volumes:
       - ..:/workspaces/SolidSyslog:cached
+      - syslog-ng-ctl-freertos:/var/lib/syslog-ng
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
       - ${HOME:-/tmp}/.claude:/home/developer/.claude
       - ${HOME:-/tmp}/.config/gh:/home/developer/.config/gh
@@ -116,12 +159,18 @@ services:
       - SYS_PTRACE
     security_opt:
       - seccomp:unconfined
+    network_mode: service:syslog-ng-freertos
     environment:
       - SSH_AUTH_SOCK=/ssh-agent
       - BUILD_PRESET=freertos-cross
+      - BDD_TARGET=freertos
+      - EXAMPLE_BINARY=build/freertos-cross/Example/FreeRtos/SingleTask/SolidSyslogFreeRtosSingleTask.elf
     user: developer
     working_dir: /workspaces/SolidSyslog
+    depends_on:
+      - syslog-ng-freertos
     command: sleep infinity
 
 volumes:
-  syslog-ng-ctl:
+  syslog-ng-ctl-linux:
+  syslog-ng-ctl-freertos:

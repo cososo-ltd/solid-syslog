@@ -630,7 +630,8 @@ jobs:
       - name: Run BDD tests
         run: >
           docker compose -f ci/docker-compose.bdd.yml
-          up --build --abort-on-container-exit --exit-code-from behave
+          up --abort-on-container-exit --exit-code-from behave-linux
+          behave-linux syslog-ng-linux
 
       - name: BDD Test Report
         uses: dorny/test-reporter@v3
@@ -696,8 +697,8 @@ jobs:
       - name: Configure (ARM cross)
         run: cmake --preset freertos-cross
 
-      - name: Cross-build hello-world ELF
-        run: cmake --build --preset freertos-cross --target SolidSyslogFreeRtosHelloWorld
+      - name: Cross-build ELFs
+        run: cmake --build --preset freertos-cross --target SolidSyslogFreeRtosHelloWorld SolidSyslogFreeRtosSingleTask
 
       # QEMU smoke: run the ELF for a few seconds, capture stdout, assert the
       # expected greeting. timeout returns 124 when it kills QEMU, which is
@@ -734,9 +735,64 @@ jobs:
           [ "$RC" -eq 124 ] || { echo "Expected timeout exit 124, got $RC"; exit 1; }
           echo "$OUT" | grep -q "hello from FreeRTOS on QEMU mps2-an385"
 
+      - name: Upload SingleTask ELF
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: solid-syslog-freertos-singletask
+          path: build/freertos-cross/Example/FreeRtos/SingleTask/SolidSyslogFreeRtosSingleTask.elf
+          retention-days: 1
+          compression-level: 0
+
+  bdd-freertos-qemu:
+    needs: build-freertos-target
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: solid-syslog-freertos-singletask
+          path: build/freertos-cross/Example/FreeRtos/SingleTask/
+
+      - name: Make ELF readable
+        run: chmod +r build/freertos-cross/Example/FreeRtos/SingleTask/SolidSyslogFreeRtosSingleTask.elf
+
+      - name: Prepare BDD output directory
+        run: mkdir -p Bdd/junit && chmod 777 Bdd/junit
+
+      - name: Run BDD tests
+        run: >
+          docker compose -f ci/docker-compose.bdd.yml
+          up --abort-on-container-exit --exit-code-from behave-freertos
+          behave-freertos syslog-ng-freertos
+
+      - name: BDD Test Report (FreeRTOS)
+        uses: dorny/test-reporter@v3
+        if: success() || failure()
+        with:
+          name: Test Results (BDD FreeRTOS)
+          path: Bdd/junit/TESTS-*.xml
+          reporter: java-junit
+
+      - name: Upload JUnit XML
+        if: success() || failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: junit-bdd-freertos-qemu
+          path: Bdd/junit/TESTS-*.xml
+          retention-days: 1
+
+      - name: Compose logs on failure
+        if: failure()
+        run: docker compose -f ci/docker-compose.bdd.yml logs --no-color
+
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [build-linux-gcc, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, analyze-iwyu, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-windows-openssl, build-freertos-host-tdd, build-freertos-target]
+    needs: [build-linux-gcc, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, analyze-iwyu, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-windows-openssl, build-freertos-host-tdd, build-freertos-target, bdd-freertos-qemu]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -818,6 +874,11 @@ jobs:
                     "id": "junit",
                     "name": "bdd-windows-otel",
                     "pattern": "**/junit-bdd-windows-otel/TESTS-*.xml"
+                  },
+                  {
+                    "id": "junit",
+                    "name": "bdd-freertos-qemu",
+                    "pattern": "**/junit-bdd-freertos-qemu/TESTS-*.xml"
                   },
                   {
                     "id": "junit",

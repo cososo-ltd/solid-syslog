@@ -1,4 +1,5 @@
 @udp
+@freertoswip
 Feature: Structured data — time quality
   The library includes time quality metadata in structured data.
 

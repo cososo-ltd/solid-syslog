@@ -1,4 +1,5 @@
 @udp
+@freertoswip
 Feature: Buffered message delivery
   An example wired with a real (non-Null) buffer drives messages
   through a service thread that drains the buffer and sends to the

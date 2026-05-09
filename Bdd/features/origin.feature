@@ -1,4 +1,5 @@
 @udp
+@freertoswip
 Feature: Structured data — origin
   The library includes origin metadata identifying the software component.
 

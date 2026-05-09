@@ -25,7 +25,7 @@ becomes the single commit message — so the PR title must follow Conventional C
 
 **Branch protection rules (configured on GitHub):**
 - Direct pushes to `main` are blocked
-- PRs require all status checks to pass before merging: build-linux-gcc, build-linux-clang, build-windows-msvc, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, analyze-iwyu, integration-linux-openssl, integration-windows-openssl, bdd-linux-syslog-ng, bdd-windows-otel, build-freertos-host-tdd, build-freertos-target, summary
+- PRs require all status checks to pass before merging: build-linux-gcc, build-linux-clang, build-windows-msvc, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, analyze-iwyu, integration-linux-openssl, integration-windows-openssl, bdd-linux-syslog-ng, bdd-windows-otel, bdd-freertos-qemu, build-freertos-host-tdd, build-freertos-target, summary
 - Squash merge only — other merge strategies are disabled
 - Branches are deleted automatically after merge
 

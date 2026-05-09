@@ -22,6 +22,7 @@ from environment import (
     otel_kill_oracle,
     otel_start_oracle,
 )
+from target_driver import spawn_example_process, stop_example_process
 
 PER_TRANSPORT_LOG_SYSLOG_NG = {
     "udp": RECEIVED_UDP_LOG,
@@ -399,17 +400,7 @@ def _run_with_prompt_protocol(context, binary, label, extra_args, expected_messa
         f"{label} binary not found at {binary} — build with cmake first"
     )
 
-    cmd = [os.path.abspath(binary)]
-    if extra_args:
-        cmd.extend(extra_args)
-
-    process = subprocess.Popen(
-        cmd,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
+    process = spawn_example_process(context, extra_args=extra_args, binary=binary)
     context.example_pid = process.pid
 
     try:
@@ -417,11 +408,14 @@ def _run_with_prompt_protocol(context, binary, label, extra_args, expected_messa
         send_command(process, f"send {expected_messages}")
         wait_for_messages(context, expected_messages)
 
-        process.stdin.write("quit\n")
-        process.stdin.flush()
-        process.wait(timeout=10)
-        assert process.returncode == 0, (
-            f"{label} failed with exit code {process.returncode}"
+        returncode = stop_example_process(process, context.target)
+        # FreeRTOS keeps the QEMU VM alive after `quit` (the scheduler
+        # idles so a GDB attach works), so stop_example_process kills
+        # QEMU and returns None — no exit code to assert. Linux/Windows
+        # binaries exit cleanly on `quit` and their return code is
+        # meaningful.
+        assert returncode in (0, None), (
+            f"{label} failed with exit code {returncode}"
         )
     finally:
         # Don't let an intermediate exception leak the helper into later

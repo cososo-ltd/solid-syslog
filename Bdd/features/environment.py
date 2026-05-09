@@ -92,12 +92,21 @@ def otel_start_oracle():
 
 
 def before_all(context):
-    # Configurable via env so the same step code drives Linux (syslog-ng) and
-    # Windows (OTel Collector) runners with different binary paths and oracle
-    # output formats.
-    context.example_binary = os.environ.get(
-        "EXAMPLE_BINARY", "build/debug/Example/SolidSyslogExample"
-    )
+    # Configurable via env so the same step code drives Linux (syslog-ng),
+    # Windows (OTel Collector), and FreeRTOS-on-QEMU runners with
+    # different binary paths and oracle output formats. BDD_TARGET picks
+    # how the example is spawned (native subprocess vs qemu-system-arm)
+    # — see Bdd/features/steps/target_driver.py.
+    context.target = os.environ.get("BDD_TARGET", "linux")
+
+    if context.target == "freertos":
+        default_binary = (
+            "build/freertos-cross/Example/FreeRtos/SingleTask/"
+            "SolidSyslogFreeRtosSingleTask.elf"
+        )
+    else:
+        default_binary = "build/debug/Example/SolidSyslogExample"
+    context.example_binary = os.environ.get("EXAMPLE_BINARY", default_binary)
     context.received_log = os.environ.get(
         "RECEIVED_LOG", "Bdd/output/received.log"
     )

@@ -1,11 +1,11 @@
 services:
-  syslog-ng:
+  syslog-ng-linux:
     image: balabit/syslog-ng:latest
     volumes:
       - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
       - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
-      - bdd-output:/var/log/syslog-ng
-      - syslog-ng-ctl:/var/lib/syslog-ng
+      - bdd-output-linux:/var/log/syslog-ng
+      - syslog-ng-ctl-linux:/var/lib/syslog-ng
     entrypoint: ["bash", "-c"]
     command:
       - |
@@ -19,25 +19,98 @@ services:
         done
         chmod 0777 /var/lib/syslog-ng/syslog-ng.ctl
         wait
+    networks:
+      default:
+        aliases:
+          - syslog-ng
     healthcheck:
       test: ["CMD-SHELL", "test -S /var/lib/syslog-ng/syslog-ng.ctl"]
       interval: 2s
       timeout: 5s
       retries: 10
 
-  behave:
+  behave-linux:
     image: ghcr.io/davidcozens/behave:sha-3faff14
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
-      - bdd-output:/workspaces/SolidSyslog/Bdd/output
-      - syslog-ng-ctl:/var/lib/syslog-ng
+      - bdd-output-linux:/workspaces/SolidSyslog/Bdd/output
+      - syslog-ng-ctl-linux:/var/lib/syslog-ng
     working_dir: /workspaces/SolidSyslog
     depends_on:
-      syslog-ng:
+      syslog-ng-linux:
         condition: service_healthy
+    environment:
+      - BDD_TARGET=linux
     command: behave --junit --junit-directory Bdd/junit --tags='not @wip' Bdd/features/
 
+  # Each BDD target pairs with its own syslog-ng instance so jobs don't
+  # interfere. The behave-<target> service shares the syslog-ng-<target>
+  # network namespace via network_mode so QEMU's slirp gateway 10.0.2.2
+  # NATs to the pair's loopback, where syslog-ng-<target> is listening on
+  # 0.0.0.0:5514. Adding more targets is then just another paired service
+  # block.
+  syslog-ng-freertos:
+    image: balabit/syslog-ng:latest
+    volumes:
+      - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
+      - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
+      - bdd-output-freertos:/var/log/syslog-ng
+      - syslog-ng-ctl-freertos:/var/lib/syslog-ng
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        syslog-ng -F &
+        pid=$$!
+        deadline=$$((SECONDS + 30))
+        while [ ! -S /var/lib/syslog-ng/syslog-ng.ctl ]; do
+          kill -0 "$$pid" 2>/dev/null || { echo "syslog-ng exited unexpectedly"; exit 1; }
+          [ "$$SECONDS" -ge "$$deadline" ] && { echo "Timed out waiting for syslog-ng control socket"; kill "$$pid" 2>/dev/null; exit 1; }
+          sleep 0.1
+        done
+        chmod 0777 /var/lib/syslog-ng/syslog-ng.ctl
+        wait
+    networks:
+      default:
+        aliases:
+          - syslog-ng
+    healthcheck:
+      test: ["CMD-SHELL", "test -S /var/lib/syslog-ng/syslog-ng.ctl"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  behave-freertos:
+    # Cross image carries qemu-system-arm + python3 + behave (post-image
+    # bump in CppUTestFreertosDocker). Until that bump lands, behave is
+    # pip-installed at runtime; remove the inline install once the image
+    # tag advances.
+    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-44efeae
+    user: "0"
+    volumes:
+      - ..:/workspaces/SolidSyslog
+      - bdd-output-freertos:/workspaces/SolidSyslog/Bdd/output
+      - syslog-ng-ctl-freertos:/var/lib/syslog-ng
+    working_dir: /workspaces/SolidSyslog
+    network_mode: service:syslog-ng-freertos
+    depends_on:
+      syslog-ng-freertos:
+        condition: service_healthy
+    environment:
+      - BDD_TARGET=freertos
+      - EXAMPLE_BINARY=build/freertos-cross/Example/FreeRtos/SingleTask/SolidSyslogFreeRtosSingleTask.elf
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        # Temporary install — once the cpputest-freertos-cross image
+        # gains python3-pip + behave (CppUTestFreertosDocker bump), drop
+        # this line and the `apt-get install` block below.
+        apt-get update >/dev/null && apt-get install -y --no-install-recommends python3-pip >/dev/null
+        pip install --no-cache-dir --break-system-packages -r Bdd/requirements.txt
+        behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and @udp' Bdd/features/
+
 volumes:
-  bdd-output:
-  syslog-ng-ctl:
+  bdd-output-linux:
+  bdd-output-freertos:
+  syslog-ng-ctl-linux:
+  syslog-ng-ctl-freertos:
