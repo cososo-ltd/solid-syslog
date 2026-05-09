@@ -1,5 +1,117 @@
 # Dev Log
 
+## 2026-05-09 — S08.03 slice 3b.1.5 — FreeRtosDatagram ARP priming on cache miss (#298)
+
+`SolidSyslogFreeRtosDatagram::SendTo` now probes ARP transparently when the
+destination IP isn't in the cache. SendTo delegates to a `static inline`
+helper so the function reads at one level of abstraction:
+
+```c
+PrimeArpIfMissing(dest->sin_address.ulIP_IPv4);
+FreeRTOS_sendto(datagram->socket, buffer, size, 0, dest, sizeof(*dest));
+
+static inline void PrimeArpIfMissing(uint32_t ip)
+{
+    if (xIsIPInARPCache(ip) == pdFALSE)
+    {
+        FreeRTOS_OutputARPRequest(ip);
+        vTaskDelay(ARP_RESOLUTION_WAIT_TICKS);   // 50 ms
+    }
+}
+```
+
+Slice 3b.1 (#295) confirmed FreeRTOS-Plus-TCP doesn't queue datagrams while
+ARP resolves: a sendto to an unresolved peer drops at the IP layer.
+Linux/Windows kernels mask this with internal ARP queuing; Plus-TCP doesn't.
+Without this slice, the very first message after every cold start (and after
+any endpoint-version transition that changes the destination IP) would
+silently disappear — every consumer of the FreeRTOS UDP path would have had
+to send a throwaway first message or accept a missed one. Slice 3b.2's QEMU
+smoke and the eventual S08.06 BDD job were both blocked on this.
+
+### Design calls
+
+**Fire-and-forget over retry.** UDP is best-effort at every layer and the
+library already has store-and-forward as a separate concern (Buffer / Store).
+Imposing TCP-like reliability inside the datagram adapter would have meant
+retry budgets, exponential backoff, and a state machine — none of which
+belongs at this layer. If `vTaskDelay(50ms)` isn't long enough for ARP to
+resolve, the sendto is allowed to fail or drop. The S&F layer above retries.
+
+**Transparent on every call, not one-shot at Create.** Every SendTo runs the
+same probe-yield-send sequence on a cache miss, so cold start, endpoint
+reconfiguration (S04), ARP cache eviction during long idle, and sender
+restart all benefit without state in the adapter.
+
+**`xIsIPInARPCache` over `eARPGetCacheEntry`.** Plus-TCP exposes both;
+`xIsIPInARPCache` returns a single `BaseType_t` boolean while
+`eARPGetCacheEntry` returns a tri-state with two out-params (MAC + endpoint)
+we'd discard. The age-refresh side effect of `eARPGetCacheEntry` is harmless
+to skip — the IP layer's internal lookup inside `FreeRTOS_sendto` does the
+refresh anyway.
+
+**`FreeRTOS_OutputARPRequest` over `_Multi`.** Single-arg variant fans out
+internally; the `_Multi` variant needs a `NetworkEndPoint*` the adapter
+doesn't have (resolver returns a sockaddr, not an endpoint). Keeps the
+adapter ignorant of endpoint topology.
+
+**`vTaskDelay` direct, not via injected sleep callback.** The adapter is
+already FreeRTOS-specific by definition (calls `FreeRTOS_socket` etc. at
+several points). Adding a `SolidSyslogSleepFunction` config field would
+widen the public Create signature and force every integrator to wire a
+companion `SolidSyslogFreeRtosSleep` for one internal yield. Direct call
+matches the existing pattern in `SolidSyslogFreeRtosStaticResolver` and the
+rest of the file.
+
+**ARP fakes split from sockets fakes.** `Tests/Support/FreeRtosFakes/` grew
+two new files: `FreeRtosArpFake.{c,h}` for `xIsIPInARPCache` /
+`FreeRTOS_OutputARPRequest` (Plus-TCP ARP subsystem) and
+`FreeRtosTaskFake.{c,h}` for `vTaskDelay` (Kernel scheduler primitive).
+Splits along the natural seam (Plus-TCP vs Kernel) — a single combined
+"FreeRtosFake" file would have mixed unrelated upstream subsystems.
+
+### TDD progression
+
+Five red→green→refactor cycles in ZOMBIES order, against the existing
+`SolidSyslogFreeRtosDatagramTest` exe:
+
+1. `SendToChecksIfIpIsInArpCache` — drives the `xIsIPInARPCache` call and
+   IP-arg correctness.
+2. `SendToFiresArpProbeOnCacheMiss` — drives the `FreeRTOS_OutputARPRequest`
+   call and IP-arg correctness on miss; introduces the cache-miss branch.
+3. `SendToYieldsAfterArpProbeOnCacheMiss` — drives the `vTaskDelay` call.
+   Refactor: extract `static const TickType_t ARP_RESOLUTION_WAIT_TICKS = pdMS_TO_TICKS(50);`
+   with comment justifying the value.
+4. `SendToSkipsArpProbeAndYieldOnCacheHit` — drives the new
+   `FreeRtosArpFake_SetCacheHit(bool)` API; locks in that the if-branch
+   correctly excludes hit cases (no probe, no delay, sendto still called).
+5. `SendToReChecksArpCacheOnEachCall` — three SendTo calls alternating
+   hit/miss/hit; locks in "no stale state" — would fail if anyone added a
+   "remember we already probed" optimization that bypassed
+   `xIsIPInARPCache`.
+
+Final hygiene pass extracted the `static inline PrimeArpIfMissing(uint32_t ip)`
+helper so SendTo reads top-down at one level of abstraction (open-check, get
+destination, prime ARP, send-and-map). The Plus-TCP behaviour comment moved
+to the helper definition where the code it explains lives. A
+`openAndSendOnce()` method on the TEST_GROUP collapsed the repeated
+`Open() + SendTo("x", 1, addr)` boilerplate in the three tests where it
+appears unconditionally (tests 1, 2, 3); tests 4 and 5 keep their inline
+shape because they interleave fake-state changes between the two calls.
+
+`SolidSyslogFreeRtosDatagramTest` exe: 16 → 21 tests, 32 → 42 checks.
+Existing tests untouched (default fake state is cache-miss, so existing
+miss-path tests like `SendToSendsBufferToDestinationAfterOpen` continue to
+exercise the same end-to-end path).
+
+### What this leaves for slice 3b.2
+
+Now that the ARP-cold case is handled inside the adapter, slice 3b.2's
+QEMU smoke can `SolidSyslog_Log` once and expect the host listener to
+receive it — no warm-up message, no tolerance for first-message loss. The
+S08.06 BDD job (when it points at the FreeRTOS target) inherits the same
+guarantee.
+
 ## 2026-05-08 — refactor — Common/ hoist for FreeRTOS examples
 
 Moved the shared infrastructure that slice 2 introduced

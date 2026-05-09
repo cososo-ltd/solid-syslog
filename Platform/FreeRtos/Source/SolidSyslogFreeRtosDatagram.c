@@ -4,7 +4,9 @@
 #include "SolidSyslogFreeRtosDatagram.h"
 
 #include "FreeRTOS.h"
+#include "FreeRTOS_ARP.h"
 #include "FreeRTOS_Sockets.h"
+#include "task.h"
 
 #include "SolidSyslogAddressInternal.h"
 #include "SolidSyslogDatagramDefinition.h"
@@ -22,6 +24,13 @@ struct SolidSyslogFreeRtosDatagram
 SOLIDSYSLOG_STATIC_ASSERT(sizeof(FreeRtosDatagram) <= SOLIDSYSLOG_FREERTOSDATAGRAM_SIZE,
                           "SOLIDSYSLOG_FREERTOSDATAGRAM_SIZE is too small for SolidSyslogFreeRtosDatagram layout");
 
+/* Time the calling task yields after issuing an ARP probe so the IP task can
+ * receive the reply and populate the cache before we attempt FreeRTOS_sendto.
+ * 50 ms is generous against typical sub-millisecond LAN ARP RTT but short
+ * enough that the first send latency stays tolerable. If the reply hasn't
+ * arrived in time the sendto is allowed to fail or be dropped — UDP semantics. */
+static const TickType_t ARP_RESOLUTION_WAIT_TICKS = pdMS_TO_TICKS(50);
+
 static bool                               FreeRtosDatagram_Open(struct SolidSyslogDatagram* self);
 static enum SolidSyslogDatagramSendResult FreeRtosDatagram_SendTo(struct SolidSyslogDatagram* self, const void* buffer, size_t size,
                                                                   const struct SolidSyslogAddress* addr);
@@ -29,6 +38,7 @@ static size_t                             FreeRtosDatagram_MaxPayload(struct Sol
 static void                               FreeRtosDatagram_Close(struct SolidSyslogDatagram* self);
 static inline FreeRtosDatagram*           FreeRtosDatagram_From(struct SolidSyslogDatagram* self);
 static inline bool                        FreeRtosDatagram_IsOpen(const FreeRtosDatagram* datagram);
+static inline void                        PrimeArpIfMissing(uint32_t ip);
 
 static const FreeRtosDatagram DEFAULT_INSTANCE = {
     {FreeRtosDatagram_Open, FreeRtosDatagram_SendTo, FreeRtosDatagram_MaxPayload, FreeRtosDatagram_Close},
@@ -77,13 +87,29 @@ static enum SolidSyslogDatagramSendResult FreeRtosDatagram_SendTo(struct SolidSy
     if (FreeRtosDatagram_IsOpen(datagram))
     {
         const struct freertos_sockaddr* dest = SolidSyslogAddress_AsConstFreertosSockaddr(addr);
-        int32_t                         sent = FreeRTOS_sendto(datagram->socket, buffer, size, 0, dest, sizeof(*dest));
+        PrimeArpIfMissing(dest->sin_address.ulIP_IPv4);
+        int32_t sent = FreeRTOS_sendto(datagram->socket, buffer, size, 0, dest, sizeof(*dest));
         if (sent > 0)
         {
             result = SOLIDSYSLOG_DATAGRAM_SENT;
         }
     }
     return result;
+}
+
+/* FreeRTOS-Plus-TCP does not queue datagrams while ARP resolves: a sendto to
+ * an unresolved peer drops at the IP layer. Linux/Windows kernels mask this
+ * with internal ARP queuing; FreeRTOS does not. So on cache miss we issue a
+ * probe and yield once for the reply to land. If the reply hasn't arrived in
+ * time the sendto is allowed to fail or be dropped — UDP is best-effort and
+ * retry belongs in the store-and-forward layer above, not here. */
+static inline void PrimeArpIfMissing(uint32_t ip)
+{
+    if (xIsIPInARPCache(ip) == pdFALSE)
+    {
+        FreeRTOS_OutputARPRequest(ip);
+        vTaskDelay(ARP_RESOLUTION_WAIT_TICKS);
+    }
 }
 
 static inline bool FreeRtosDatagram_IsOpen(const FreeRtosDatagram* datagram)
