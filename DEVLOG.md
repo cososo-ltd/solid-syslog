@@ -26,6 +26,278 @@ QEMU smoke check: HelloWorld still builds clean under the
 `freertos-cross` preset and prints its banner over `-serial stdio`. No
 new tests — the relocation is invisible at runtime.
 
+## 2026-05-09 — S08.03 slice 3b.1 — FreeRTOS-Plus-TCP bring-up + UDP smoke (#295)
+
+### Decision
+
+Stand FreeRTOS-Plus-TCP up on the QEMU `mps2-an385` (Cortex-M3) target and
+prove that a UDP datagram from the guest reaches a host listener via slirp.
+No SolidSyslog adapter is involved at this stage — the goal is to isolate
+"the IP stack initialises and packets escape the guest" from "the slice-1
+datagram adapter wiring works". Slice 3b.2 will swap the smoke task's body
+for a `SolidSyslogConfig` + `SolidSyslogUdpSender` wiring that drives the
+slice-1 `SolidSyslogFreeRtosDatagram` adapter through the slice-3a
+`SolidSyslogFreeRtosStaticResolver`. The directory and CMake wiring stay.
+
+### No host TDD for this slice — explicitly
+
+Functional smoke is the test. The only logic this slice authors is the
+single `eNetworkUp && !smokeTaskCreated` guard inside the network event
+hook — everything else is config, build wiring, or call-into-Plus-TCP-API.
+Growing `Tests/Support/FreeRtosFakes/` with `xTaskCreate` /
+`FreeRTOS_socket` / `FreeRTOS_sendto` / `FreeRTOS_closesocket` /
+`FreeRTOS_OutputARPRequest` shims to cover one boolean would have cost ~80
+lines of fake plumbing for one assertion, and the fakes have no second
+customer (slice 3b.2 calls into the slice-1-host-TDD'd
+`SolidSyslogFreeRtosDatagram` via `SolidSyslogUdpSender`, not the raw API).
+The persistent abstractions on the FreeRTOS path
+(`SolidSyslogFreeRtosDatagram`, `SolidSyslogFreeRtosStaticResolver`) are
+already host-TDD'd. The smoke task in this slice is throwaway scaffolding
+that 3b.2 deletes. TDD discipline reasserts at slice 3b.2 if any new logic
+appears beyond glue.
+
+### NVIC priority gap in upstream NetworkInterface.c — real issue
+
+Upstream `Plus-TCP/source/portable/NetworkInterface/MPS2_AN385/NetworkInterface.c`
+enables IRQ 13 (the SMSC9220/LAN9118) via `nwNVIC_ISER` but never writes
+the corresponding IPR byte. The Cortex-M3 NVIC reset-default is priority 0,
+which is numerically *more urgent* than `configMAX_SYSCALL_INTERRUPT_PRIORITY`
+(5 << 5). The ISR's first FreeRTOS API call from
+`vTaskNotifyGiveFromISR` would trip the
+`portASSERT_IF_INTERRUPT_PRIORITY_INVALID` check on a debug build (or
+silently corrupt internal kernel state on a release build). We set the
+IPR byte to 0xE0 (priority 7) ourselves in `main()` before
+`FreeRTOS_IPInit_Multi` triggers the interface init that flips ISER. This
+is upstream's bug, not ours; worth filing if not already known.
+
+### Slirp address decisions
+
+Static IPv4 wiring (`10.0.2.15` / `255.255.255.0` / gateway `10.0.2.2` /
+DNS `10.0.2.3`) chosen to match QEMU slirp's defaults so DHCP can stay
+disabled and the smoke can run without a DHCP server. The smoke task
+sends to `10.0.2.2:5514` — the slirp gateway IP — because slirp routes
+guest→gateway UDP traffic to the host's loopback. Confirmed by pcap
+(`-object filter-dump,id=f1,netdev=net0,...`): the host listener received
+`b'ping'` from `('127.0.0.1', <ephemeral>)`, with the corresponding guest
+emission visible as `IP proto=17 10.0.2.15 -> 10.0.2.2 len=46`.
+
+`-netdev user,id=net0 -net nic,netdev=net0,model=lan9118` is the canonical
+form that lights up the LAN9118 in QEMU's `mps2-an385` machine — the board
+exposes the SMSC9220 IP unconditionally, so no extra hostfwd or board
+options are required for the guest→host direction.
+
+### ARP-resolves-late dropped the first packet
+
+First QEMU smoke run: UART printed "network up", pcap showed only the ARP
+exchange (guest broadcast for 10.0.2.2, slirp reply with `52:55:0a:00:02:02`),
+no UDP. Plus-TCP's `FreeRTOS_sendto` on an unresolved destination triggers
+ARP and **drops the original payload** while resolution is in flight. Two
+fixes considered:
+
+1. Retry sendto N times with delays between attempts. Conflates "ARP not
+   warm yet" with "actually exercising the TX path" — and David flagged
+   it as the wrong fix.
+2. Pre-resolve via `FreeRTOS_OutputARPRequest`, short delay, single
+   sendto. Cleaner — exactly one user-visible datagram.
+
+Took option 2. Saved a project memory
+(`project_freertos_arp_first_packet.md`) so the same gotcha is surfaced
+when slice 3b.2 wires `SolidSyslogUdpSender` and again at the
+reconfiguration story (S04 equivalent for FreeRTOS) — any reconfig path
+on FreeRTOS will silently lose the first user log line under the same
+mechanism unless the sender path either pre-resolves on endpoint-version
+transitions, buffers-and-retries on `pdFAIL`, or primes ARP via
+`SolidSyslogEndpointVersionFunction`.
+
+### Heap and config sizing — one round of empirical iteration
+
+`configTOTAL_HEAP_SIZE` raised from HelloWorld's 32 KiB to 96 KiB
+(empirical — fits the IP task stack, the EMAC RX task stack, the timer
+task stack, ARP cache, 8 network-buffer descriptors, and the smoke task
+with margin). `configMAX_PRIORITIES` raised from 5 to 7 to satisfy
+`ipconfigIP_TASK_PRIORITY = configMAX_PRIORITIES - 2` and the EMAC RX
+task's `configMAX_PRIORITIES - 3`. `configUSE_TIMERS = 1` because the IP
+stack relies on FreeRTOS software timers for ARP age-out / DHCP retries
+(disabled in the IP config but the kernel-side timer task is still
+referenced by stack initialisation). `configUSE_RECURSIVE_MUTEXES = 1`
+because Plus-TCP uses `xSemaphoreCreateRecursiveMutex`.
+
+### What landed
+
+- **`Example/FreeRtos/SingleTask/CMakeLists.txt`** — Plus-TCP source list
+  (UDP-only — TCP files compile but are dead-code-eliminated by
+  `--gc-sections` since `ipconfigUSE_TCP=0`), `BufferAllocation_2.c`, the
+  MPS2_AN385 `NetworkInterface.c` + `smsc9220_eth_drv.c`, plus the
+  kernel sources HelloWorld already pulls in extended with `timers.c`
+  and `event_groups.c`. The strict-conversion / strict-shadow warnings
+  are silenced for this example only — the upstream sources don't meet
+  the host bar and we don't want to lower it everywhere.
+- **`Example/FreeRtos/SingleTask/Startup.c`** — Cortex-M3 startup with
+  the vector table extended through IRQ 31. IRQ 13 routes to
+  `EthernetISR` (declared `weak alias("Default_Handler")` so the strong
+  symbol from upstream `NetworkInterface.c` wins at link). Common's
+  `startup.c` is intentionally NOT included — having two `vector_table`
+  in the link would clash. The extra IRQ entries cost 64 bytes of FLASH
+  and aren't worth backporting to Common until a second consumer needs
+  them.
+- **`Example/FreeRtos/SingleTask/FreeRTOSConfig.h`** — kernel config
+  delta documented above.
+- **`Example/FreeRtos/SingleTask/FreeRTOSIPConfig.h`** — UDP-only IPv4-only
+  Plus-TCP config: `ipconfigUSE_TCP=0`, `ipconfigUSE_DHCP=0`,
+  `ipconfigUSE_DNS=0`, `ipconfigUSE_RA=0`, `ipconfigUSE_IPv6=0`,
+  `ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS=8`,
+  `ipconfigUSE_NETWORK_EVENT_HOOK=1`.
+- **`Example/FreeRtos/SingleTask/main.c`** — `pxMPS2_FillInterfaceDescriptor`
+  + `FreeRTOS_FillEndPoint` + `FreeRTOS_IPInit_Multi`. The
+  `vApplicationIPNetworkEventHook_Multi` spawns the one-shot smoke task
+  on first link-up; the smoke task pre-resolves ARP, sends `"ping"` to
+  `10.0.2.2:5514`, closes the socket, and self-deletes.
+  `xApplicationGetRandomNumber` and `ulApplicationGetNextSequenceNumber`
+  return tick-derived values — adequate for a smoke test, not adequate
+  for production (no entropy on QEMU mps2-an385). Slice 3b.2 keeps the
+  same shims; a real RNG arrives with the integration story.
+- **`Example/FreeRtos/CMakeLists.txt`** — `add_subdirectory(SingleTask)`.
+
+Common/ stays untouched.
+
+### Smoke validation
+
+Inside the devcontainer:
+
+```text
+$ qemu-system-arm -M mps2-an385 -m 16M -display none -serial stdio \
+    -netdev user,id=net0 -net nic,netdev=net0,model=lan9118 \
+    -object filter-dump,id=f1,netdev=net0,file=/tmp/qemu.pcap \
+    -kernel build/freertos-cross/Example/FreeRtos/SingleTask/SolidSyslogFreeRtosSingleTask.elf
+network up
+
+$ python3 -c "<bind 0.0.0.0:5514, recvfrom>"
+GOT b'ping' FROM ('127.0.0.1', 51998)
+
+$ <pcap parse>
+ARP len=42                                        # guest -> broadcast for 10.0.2.2
+ARP len=64                                        # slirp reply, MAC 52:55:0a:00:02:02
+IP proto=17 10.0.2.15 -> 10.0.2.2 len=46          # the UDP datagram
+```
+
+`nc -ul 5514` would have been the expected verifier per the issue but
+this devcontainer ships no `nc` / `ncat` / `socat`; a 7-line Python UDP
+listener was substituted (followup: add netcat to the
+cpputest-freertos-cross image). Pre-PR checks not run locally:
+`build-windows-msvc`, BDD, OpenSSL integration, `analyze-tidy` etc. — CI
+will run them.
+
+---
+
+## 2026-05-08 — S08.03 slice 3a — FreeRTOS static address resolver (#292/#293)
+
+### Decision
+
+Sliced the static resolver out of S08.03 slice 3 ahead of the FreeRTOS-Plus-TCP
+bring-up. Slice 3b's review surface was already large (Plus-TCP CMake wiring,
+LAN9118 driver + NVIC priority, slirp visibility, FreeRTOSIPConfig.h delta);
+the resolver is independently host-TDD'able with no FreeRTOS runtime
+dependencies, so it lands first to shrink slice 3b's PR footprint.
+
+### Resolver shape — per-platform only, no cross-platform abstraction
+
+Considered Option B (extend the public `SolidSyslogAddress` API with a
+`SetIpv4` fill function so a single Core resolver could populate any platform's
+sockaddr layout). Rejected in favour of Option A: a FreeRTOS-only resolver
+under `Platform/FreeRtos/`, no Posix/Windows variants, no `Address` extension.
+Reasoning: SolidSyslog adopters on FreeRTOS are predominantly integrating into
+existing projects that already have a resolver pattern they want to keep;
+shipping a cross-platform static resolver would push library scope where
+adopters don't need it. Posix/Windows already have working `GetAddrInfo`
+resolvers; Core stays minimal.
+
+### API
+
+```c
+struct SolidSyslogResolver* SolidSyslogFreeRtosStaticResolver_Create(
+    SolidSyslogFreeRtosStaticResolverStorage* storage,
+    const uint8_t                             ipv4Octets[4]);
+void SolidSyslogFreeRtosStaticResolver_Destroy(struct SolidSyslogResolver*);
+```
+
+Octets at Create — no string parsing, no banned-API surface, no allocator. Port
+arrives per-call via the existing `SolidSyslogResolver_Resolve(transport, host,
+port, result)` vtable (same shape as `SolidSyslogGetAddrInfoResolver`). Resolve
+ignores `transport` and `host` and returns true unconditionally — no failure
+mode without DNS. Storage-injection mirrors slice 1's `SolidSyslogFreeRtosDatagram`
+exactly: `intptr_t slots[…]`, `_SIZE` enum, `DEFAULT_INSTANCE`/`DESTROYED_INSTANCE`
+constants. Destroy clears the vtable to NULL — defensive against post-destroy
+use-after-free.
+
+Slice 3b's main.c will configure with `{10, 0, 2, 2}` to target QEMU slirp's
+host gateway. DNS resolver for FreeRTOS deferred to S08.08 (#288).
+
+### Test sequence — strict TDD, ZOMBIES coverage
+
+10 tests, each driven Red→Green→Refactor:
+
+1. `CreateReturnsNonNullResolver`
+2. `ResolveReturnsTrue` — drives vtable wiring (Red 2 was a clean SIGSEGV from
+   NULL vtable dispatch through `SolidSyslogResolver_Resolve`)
+3. `ResolveSetsSinFamilyToFreeRtosAfInet` — drives the non-const
+   `SolidSyslogAddress_AsFreertosSockaddr` accessor (slice 1 only had the const
+   variant; we needed write access)
+4. `ResolveWritesIpv4FromCreateOctets` — drives octet storage at Create + write
+   via `FreeRTOS_inet_addr_quick`
+5. `ResolveWritesPortFromArgInNetworkOrder` — uses `TEST_ALTERNATE_PORT = 9999`
+   to prevent a hardcoded `htons(514)` passing the test trivially (per
+   `feedback_drive_arg_values_in_same_test.md`)
+6. `ResolveProducesSameIpv4ForAnyHostString` — regression lock
+7. `ResolveProducesSameIpv4ForUdpAndTcpTransport` — regression lock
+8. `ResolveWritesAllZeroOctets` — boundary
+9. `ResolveWritesAllOnesOctets` — boundary
+10. `DestroyIsIdempotent`
+
+Refactor pass under green introduced `DEFAULT_INSTANCE`/`DESTROYED_INSTANCE`
+per project convention; David later flagged a `memcpy(self->octets,
+ipv4Octets, sizeof(self->octets))` for 4 fixed bytes — replaced with four
+explicit assignments. memcpy in production stays scoped to genuine variable-length
+record copies (`SolidSyslogCircularBuffer`, `RecordStore`).
+
+### What landed
+
+- **`Platform/FreeRtos/Interface/SolidSyslogFreeRtosStaticResolver.h`** —
+  public header, opaque storage typedef, `_SIZE` enum.
+- **`Platform/FreeRtos/Source/SolidSyslogFreeRtosStaticResolver.c`** —
+  implementation: vtable wiring in Create, defensive null-vtable in Destroy,
+  Resolve writes `sin_family`, `sin_port` (via `FreeRTOS_htons`), and
+  `sin_address.ulIP_IPv4` (via `FreeRTOS_inet_addr_quick`).
+- **`Platform/FreeRtos/Source/SolidSyslogAddressInternal.h`** — added
+  `_AsFreertosSockaddr` (non-const) helper.
+- **`Tests/FreeRtos/SolidSyslogFreeRtosStaticResolverTest.cpp`** — 10 tests
+  via `FreeRtosFakes`, gated on `FREERTOS_PLUS_TCP_PATH` like the slice-1
+  datagram test.
+- **`Tests/FreeRtos/CMakeLists.txt`** — new test executable + include dirs.
+- **`CLAUDE.md`** — public-header table row.
+
+### Branch hygiene lesson
+
+I created the slice-3a branch from the local
+`feat/s08-03-slice2-cmsdk-uart` tip rather than from `origin/main`, so the
+branch carried 5 stale pre-squash slice-2 WIP commits that conflicted with
+slice 2's squash-merged form on main. Caught at PR-time when CI couldn't
+build; resolved by `git rebase --onto origin/main 17a2332` to drop the stale
+commits, then `git push --force-with-lease`. Going forward: always
+`git checkout main && git pull --ff-only` before `git checkout -b <new-slice>`.
+
+### Validation
+
+`debug` preset full ctest (5 executables) green; `sanitize` preset (ASan +
+UBSan) clean; `clang-format --dry-run --Werror` clean on changed files;
+`clang-debug` preset green for unchanged code in the clang container.
+Coverage / tidy / cppcheck / IWYU skipped locally — all changes scoped to
+`Platform/FreeRtos/` and `Tests/FreeRtos/`, those presets check unchanged
+code (per David's correction during the session). CI's iwyu container has
+no `FREERTOS_PLUS_TCP_PATH` either, so slice 3a's source is silently outside
+its scope; manual include audit was the substitute.
+
+---
+
 ## 2026-05-08 — S08.03 slice 2 — CMSDK UART + newlib retargeting (#290)
 
 ### Decision
