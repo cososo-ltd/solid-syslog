@@ -5,7 +5,9 @@
 #include "SolidSyslogFreeRtosDatagram.h"
 #include "SolidSyslogUdpPayload.h"
 
+#include "FreeRtosArpFake.h"
 #include "FreeRtosSocketsFake.h"
+#include "FreeRtosTaskFake.h"
 
 #include "FreeRTOS.h"
 #include "FreeRTOS_IP.h"
@@ -23,6 +25,8 @@ TEST_GROUP(SolidSyslogFreeRtosDatagram)
     void setup() override
     {
         FreeRtosSocketsFake_Reset();
+        FreeRtosArpFake_Reset();
+        FreeRtosTaskFake_Reset();
         datagram = SolidSyslogFreeRtosDatagram_Create(&storage);
 
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing into platform layout, storage is intptr_t-aligned
@@ -32,6 +36,12 @@ TEST_GROUP(SolidSyslogFreeRtosDatagram)
         sin->sin_address.ulIP_IPv4 = FreeRTOS_inet_addr_quick(127, 0, 0, 1);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- platform-layout cast, see above
         addr = reinterpret_cast<struct SolidSyslogAddress*>(&addrStorage);
+    }
+
+    void openAndSendOnce()
+    {
+        SolidSyslogDatagram_Open(datagram);
+        SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
     }
 };
 
@@ -149,6 +159,58 @@ TEST(SolidSyslogFreeRtosDatagram, SendToSendsBufferToDestinationAfterOpen)
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- platform-layout cast, see setup
     POINTERS_EQUAL(reinterpret_cast<const struct freertos_sockaddr*>(addr), FreeRtosSocketsFake_LastSendtoDestination());
     LONGS_EQUAL(sizeof(struct freertos_sockaddr), FreeRtosSocketsFake_LastSendtoDestinationLength());
+}
+
+TEST(SolidSyslogFreeRtosDatagram, SendToChecksIfIpIsInArpCache)
+{
+    openAndSendOnce();
+
+    LONGS_EQUAL(1, FreeRtosArpFake_IsIpInArpCacheCallCount());
+    LONGS_EQUAL(FreeRTOS_inet_addr_quick(127, 0, 0, 1), FreeRtosArpFake_LastIsIpInArpCacheArg());
+}
+
+TEST(SolidSyslogFreeRtosDatagram, SendToFiresArpProbeOnCacheMiss)
+{
+    openAndSendOnce();
+
+    LONGS_EQUAL(1, FreeRtosArpFake_OutputArpRequestCallCount());
+    LONGS_EQUAL(FreeRTOS_inet_addr_quick(127, 0, 0, 1), FreeRtosArpFake_LastOutputArpRequestArg());
+}
+
+TEST(SolidSyslogFreeRtosDatagram, SendToYieldsAfterArpProbeOnCacheMiss)
+{
+    openAndSendOnce();
+
+    LONGS_EQUAL(1, FreeRtosTaskFake_VTaskDelayCallCount());
+}
+
+TEST(SolidSyslogFreeRtosDatagram, SendToSkipsArpProbeAndYieldOnCacheHit)
+{
+    SolidSyslogDatagram_Open(datagram);
+    FreeRtosArpFake_SetCacheHit(true);
+
+    SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
+
+    LONGS_EQUAL(0, FreeRtosArpFake_OutputArpRequestCallCount());
+    LONGS_EQUAL(0, FreeRtosTaskFake_VTaskDelayCallCount());
+    LONGS_EQUAL(1, FreeRtosSocketsFake_SendtoCallCount());
+}
+
+TEST(SolidSyslogFreeRtosDatagram, SendToReChecksArpCacheOnEachCall)
+{
+    SolidSyslogDatagram_Open(datagram);
+
+    FreeRtosArpFake_SetCacheHit(true);
+    SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
+    LONGS_EQUAL(0, FreeRtosArpFake_OutputArpRequestCallCount());
+
+    FreeRtosArpFake_SetCacheHit(false);
+    SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
+    LONGS_EQUAL(1, FreeRtosArpFake_OutputArpRequestCallCount());
+
+    FreeRtosArpFake_SetCacheHit(true);
+    SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
+    LONGS_EQUAL(1, FreeRtosArpFake_OutputArpRequestCallCount());
 }
 
 TEST(SolidSyslogFreeRtosDatagram, SendToForwardsLengthVerbatim)
