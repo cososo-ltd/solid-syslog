@@ -89,18 +89,14 @@ def stop_example_process(process, target, timeout=10):
     """Tear down the example process for the active target.
 
     Linux/Windows: the example exits cleanly on `quit`, so wait for the
-    return code. FreeRTOS: `quit` deletes the interactive task but the
-    QEMU VM keeps idling (the scheduler stays alive so a GDB attach
-    works), so kill QEMU after a short grace period — the BDD scenario
-    has already verified the oracle received the frame, the QEMU exit
-    code carries no useful signal.
+    return code. FreeRTOS: `quit` only deletes the interactive task —
+    the QEMU VM keeps idling (the FreeRTOS scheduler stays alive so a
+    GDB attach works), so the only way to terminate is to kill QEMU
+    directly. The BDD scenario has already verified the oracle
+    received the frame, so the QEMU exit code carries no useful
+    signal — return None for that path so callers don't assert on it.
     """
     if target == "freertos":
-        try:
-            process.stdin.write("quit\n")
-            process.stdin.flush()
-        except (BrokenPipeError, OSError):
-            pass
         process.kill()
         process.wait(timeout=timeout)
         return None

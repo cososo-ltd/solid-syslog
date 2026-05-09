@@ -82,6 +82,11 @@ oracle on the shared loopback.
   inside the freertos pair gives the parsed frame in
   `key=value` form (the syslog-ng template in
   `Bdd/syslog-ng/syslog-ng.conf`).
+- **`nc localhost 5514` from the host won't reach `syslog-ng-freertos`.**
+  Unlike `syslog-ng-linux`, the freertos oracle exposes no host ports
+  — `freertos-target` reaches it via the shared netns on the pair's
+  loopback. To send a probe frame manually, run inside the container:
+  `docker compose exec freertos-target nc -u 127.0.0.1 5514`.
 
 ## Running in CI
 

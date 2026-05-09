@@ -60,6 +60,7 @@ real Behave + the existing syslog-ng oracle, and adds the CI matrix entry.
   `--tags='not @wip and not @freertoswip and @udp'`; Linux runs
   `--tags='not @wip'` so existing Linux behaviour is unchanged. Tagged
   features today and the reason each one is tagged:
+
   | Feature | Why |
   |---|---|
   | `syslog.feature` (single scenario) | Composite assertion includes "system hostname", "current timestamp", and "PID of example program" — FreeRTOS uses the literal `FreeRtosExample` hostname, the RFC 5424 publication-date placeholder, and PROCID `1`. |
@@ -72,6 +73,7 @@ real Behave + the existing syslog-ng oracle, and adds the CI matrix entry.
   | `message_fields.feature` | Uses `--message-id` / `--message` cmdline args. |
   | `udp_mtu.feature` | Uses `--message` cmdline args with very long bodies. |
   | `buffered.feature` | Drives the Linux Threaded binary (no FreeRTOS equivalent yet). |
+
 - **Walking-skeleton acceptance is "the harness lands, with at least one
   scenario passing."** That scenario is `header_fields.feature::App name
   matches the example program`. Every other current `@udp` scenario is
