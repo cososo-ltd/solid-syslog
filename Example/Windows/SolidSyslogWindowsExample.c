@@ -352,7 +352,7 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
         .msg       = options.msg,
     };
 
-    ExampleInteractive_Run(&message, stdin, ExampleSwitchConfig_SetByName);
+    ExampleInteractive_Run(&message, stdin, ExampleSwitchConfig_SetByName, NULL);
 
     shutdownFlag = true;
     WaitForSingleObject(serviceThread, INFINITE);

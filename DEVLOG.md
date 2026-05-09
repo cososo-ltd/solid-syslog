@@ -1,5 +1,145 @@
 # Dev Log
 
+## 2026-05-09 — S08.03 slice 4 — `set` command for in-RAM configuration injection (#302)
+
+Slice 3b.2 hardcoded the FreeRTOS example's identity, message body, and
+endpoint into `Example/FreeRtos/SingleTask/main.c` because the FreeRTOS
+port deliberately skips `Example/Common/ExampleCommandLine.c` (no
+`getopt`). Slice 4 makes those configurable in-RAM via a `set NAME VALUE`
+command on the existing interactive UART grammar — same channel as
+`send` and `quit`. Field set: `hostname`, `appname`, `procid`, `msgid`,
+`msg`, `host`, `port`, `facility`, `severity`. Successful mutations echo
+`set name=value`; rejections print `set: invalid` (catchall) and leave
+the prior value untouched. `quit` still cleanly tears down the example.
+
+### Library-side dispatcher — host-TDD'd in 9 cycles
+
+`Example/Common/ExampleInteractive` grew an `onSet` callback parallel to
+the existing `onSwitch`. The runner splits args at first whitespace and
+calls `bool onSet(name, value)`; the library doesn't know what fields
+are settable. Echo / catchall live in the runner, driven by the
+handler's bool return.
+
+Strict ZOMBIES walk in `Tests/Example/ExampleInteractiveTest.cpp`,
+`fmemopen`-backed `FILE*` for input, `dup`/`freopen`/`dup2` dance for
+stdout capture:
+
+1. `SetHandlerNotCalledWithQuitOnly` — drove the new parameter onto the
+   signature; all four `ExampleInteractive_Run` call sites pass `NULL`
+   for the new arg (POSIX, Threaded, Windows, FreeRTOS).
+2. `SetCommandCallsHandlerOnce` — drove the dispatch branch.
+3. `SetCommandPassesNameToHandler` — drove first-token extraction
+   (`memcpy` into a local name buffer + null-terminate).
+4. `SetCommandPassesValueToHandler` — drove the rest-of-line as value.
+5. `SetCommandWithoutValueGivesEmptyValue` — boundary, locked in by
+   passing without production change (the `space != NULL` ternary
+   already handled it).
+6. `SetCommandWithEmbeddedSpacesPreservesValueAfterFirst` — boundary,
+   locked in: `strchr(args, ' ')` is by definition first-occurrence.
+7. `NullSetHandlerSilentlyIgnoresSetLine` — exception, locked in by
+   the `onSet != NULL` guard already in the dispatcher.
+8. `SetCommandPrintsEchoOnHandlerSuccess` — drove the
+   `if (onSet(...)) printf("set %s=%s\n", name, value);` echo.
+9. `SetCommandPrintsInvalidOnHandlerFailure` — drove the
+   `else printf("set: invalid\n");` catchall.
+
+Refactor pass extracted `RunWithInput` and `RunCapturingStdout` test
+helpers so each test body reads as one or two lines. The
+`SOLIDSYSLOG_POSIX`-gated `Tests/Example/CMakeLists.txt` block picks
+up the new file alongside the existing `ExampleInteractive.c`
+production source — same compile target, no separate test binary.
+
+### FreeRTOS-side `OnSet` handler — integrator glue
+
+`Example/FreeRtos/SingleTask/main.c` carries the field-name dispatch.
+The walking-skeleton `TEST_*` strings became mutable static arrays
+(`g_hostname[256]`, `g_appName[49]`, `g_processId[129]`,
+`g_messageId[33]`, `g_msg[256]`, `g_host[16]`) sized to RFC 5424
+maxima where applicable. A file-static `g_message` holds
+`facility`/`severity` (mutated in place) plus `messageId`/`msg`
+pointers targeting the mutable storage so each `SolidSyslog_Log`
+sees current contents. `g_port` and `g_endpointVersion` back the
+endpoint callbacks.
+
+Validation per field:
+- Identity / `msgid` / `msg` / `host`: non-empty, length within storage cap.
+- `facility`: integer 0–23 (RFC 5424 facility range).
+- `severity`: integer 0–7 (RFC 5424 severity range).
+- `port`: integer 1–65535.
+
+Two small file-local helpers do the heavy lifting: `TryUpdateString`
+(bounds-check + `memcpy` + null-terminate) and `TryParseUInt`
+(full-string `strtol` with end-pointer + non-negative check). The
+`OnSet` handler is a chain of `strcmp` lookups; unknown field names
+fall through to `return false` and the runner prints `set: invalid`.
+
+### `host` is plumbed but currently a no-op on the wire
+
+`SolidSyslogFreeRtosStaticResolver` ignores the host string and routes
+via the `Create`-time IPv4 octets. Slice 4 still wires `g_host` through
+`GetEndpoint` (and accepts `set host …` into the storage) so the
+follow-up slice that teaches the resolver to parse dotted-quads is a
+contained, mechanical change in one file. For now `set host 1.2.3.4`
+echoes confirmation but doesn't change the destination IP — the issue
+body documents this caveat.
+
+### Endpoint version bump — integrator-owned
+
+`GetEndpointVersion` reads from `g_endpointVersion`; `OnSet` increments
+it when `port` mutates successfully. The library has zero coupling to
+endpoint-mutation semantics — other integrators can choose not to bump
+at all if their resolver doesn't care. `SolidSyslogUdpSender` re-pulls
+`endpoint()` on the next Send when the version differs from its cached
+value, which is what makes `set port 5515; send 1` actually hit 5515
+instead of the cached resolver result.
+
+### QEMU smoke
+
+```
+PORT=5514 BYTES=<134>… FreeRtosExample …          (default)
+set hostname QemuFoo  →  set hostname=QemuFoo
+PORT=5514 BYTES=<134>… QemuFoo …                  (mutated)
+set port 5515         →  set port=5515
+PORT=5515 BYTES=<134>… QemuFoo …                  (new port)
+set facility 99       →  set: invalid
+set port 99999        →  set: invalid
+set hostname          →  set: invalid             (empty value)
+set bogus value       →  set: invalid             (unknown field)
+quit                                              (clean exit)
+```
+
+Both ports listened simultaneously via a Python `select()` listener.
+Slice 3b.1.5's transparent ARP priming means the very first `send 1`
+after cold start lands without a warm-up message; the port mutation
+takes effect on the first send after the version bump.
+
+### Pre-PR checks
+
+- `clang-format --dry-run --Werror` on every changed file — clean.
+- `ctest --preset debug` — 5/5 (`SolidSyslogTests`, `ExampleTests` 63/63
+  with 9 new `ExampleInteractive` tests, `SolidSyslogFreeRtosDatagramTest`,
+  `SolidSyslogFreeRtosStaticResolverTest`, `CmsdkUartTest`,
+  `OpenSslIntegrationTests`).
+- `cmake --build --preset freertos-cross` — both ELFs link clean.
+- QEMU smoke — see scenario above.
+- Not run locally (CI's responsibility): `analyze-tidy`,
+  `analyze-cppcheck`, `analyze-iwyu`, `analyze-format`,
+  `build-windows-msvc`, BDD, OpenSSL integration.
+
+### What this leaves for later slices
+
+- `SolidSyslogFreeRtosStaticResolver` dotted-quad parsing so `set host`
+  takes effect on the wire.
+- BDD harness pointed at the FreeRTOS target — slice 4 produces
+  deterministic confirmation lines (`set name=value`, `set: invalid`)
+  that a future Behave step can grep for.
+- Service-thread + non-NullBuffer FreeRTOS-side wiring (CircularBuffer
+  + FreeRTOS mutex).
+- Real RTC-backed clock callback (still hardcoded `TEST_TIMESTAMP`).
+- Flash-persistent config so settings survive reboot.
+- CMake-driven stack-budget scaling so the `*32` magic number can come
+  back down to a measured value.
+
 ## 2026-05-09 — S08.03 slice 3b.2 — SingleTask example with SolidSyslogUdpSender + interactive command channel (#296)
 
 Slice 3b.1's "send a hardcoded ping on link-up" smoke is replaced with a

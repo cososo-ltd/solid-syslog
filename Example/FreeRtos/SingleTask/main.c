@@ -1,15 +1,18 @@
 /* FreeRTOS-Plus-TCP single-task SolidSyslog example for QEMU mps2-an385.
  *
- * Slice 3b.2 of S08.03 — replaces 3b.1's hardcoded "ping" smoke task with
- * a real SolidSyslog wiring. Static IPv4 (10.0.2.15) on the QEMU slirp
- * network with the host reachable at the slirp gateway 10.0.2.2; a single
- * FreeRTOS task runs Example/Common/ExampleInteractive over qemu -serial
- * stdio (CmsdkUart RX wired into newlib's _read in Example/FreeRtos/
- * Common/Syscalls.c). On link-up the IP-task event hook spawns the
- * interactive task once; SolidSyslog is configured with a NullBuffer +
- * UdpSender driving the slice-1 SolidSyslogFreeRtosDatagram via the
- * slice-3a static resolver, so each `send N` line over the UART emits N
- * RFC 5424 datagrams to {10.0.2.2, 5514}. */
+ * Slice 3b.2 of S08.03 wired SolidSyslog over a hardcoded TEST_*
+ * configuration; slice 4 makes the configurable fields mutable via the
+ * interactive `set <name> <value>` command — hostname, appname, procid,
+ * msgid, msg, host (stored only — see g_host below), port, facility,
+ * severity. Static IPv4 (10.0.2.15) on the QEMU slirp network with the
+ * host reachable at the slirp gateway 10.0.2.2; a single FreeRTOS task
+ * runs Example/Common/ExampleInteractive over qemu -serial stdio
+ * (CmsdkUart RX wired into newlib's _read in Example/FreeRtos/Common/
+ * Syscalls.c). On link-up the IP-task event hook spawns the interactive
+ * task once; SolidSyslog is configured with a NullBuffer + UdpSender
+ * driving the slice-1 SolidSyslogFreeRtosDatagram via the slice-3a
+ * static resolver, so each `send N` line over the UART emits N RFC 5424
+ * datagrams to {10.0.2.2, port=g_port}. */
 
 #include "CmsdkUart.h"
 #include "ExampleInteractive.h"
@@ -31,8 +34,11 @@
 #include <FreeRTOS_IP.h>
 #include <FreeRTOS_Routing.h>
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define CMSDK_UART0_BASE_ADDRESS UINT32_C(0x40004000)
 
@@ -79,13 +85,29 @@ static const uint8_t TEST_DNS[ipIP_ADDRESS_LENGTH_BYTES]              = {10U, 0U
 static const uint8_t TEST_MAC[ipMAC_ADDRESS_LENGTH_BYTES]             = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};
 static const uint8_t TEST_DESTINATION_IPV4[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 2U};
 
-/* Walking-skeleton TEST_* values — slice-4 will replace these with config
- * injected over the interactive command grammar. */
-static const char TEST_HOSTNAME[]   = "FreeRtosExample";
-static const char TEST_APP_NAME[]   = "SolidSyslogExample";
-static const char TEST_PROCESS_ID[] = "1";
-static const char TEST_MESSAGE_ID[] = "example";
-static const char TEST_MESSAGE[]    = "Hello from FreeRTOS";
+/* Mutable walking-skeleton state. Defaults populated at boot; the
+ * interactive `set <name> <value>` command rewrites these in-place via
+ * OnSet below. Storage sizes match RFC 5424 maxima where applicable
+ * (HOSTNAME 255, APP-NAME 48, PROCID 128, MSGID 32) plus null
+ * terminator; MSG is bounded by storage rather than the protocol;
+ * g_host fits an IPv4 dotted-quad. g_message holds facility/severity
+ * (mutated in place) and the messageId/msg pointers (which target the
+ * mutable storage so contents are seen on each Log). */
+static char     g_hostname[256]   = "FreeRtosExample";
+static char     g_appName[49]     = "SolidSyslogExample";
+static char     g_processId[129]  = "1";
+static char     g_messageId[33]   = "example";
+static char     g_msg[256]        = "Hello from FreeRTOS";
+static char     g_host[16]        = "10.0.2.2";
+static uint16_t g_port            = (uint16_t) EXAMPLE_UDP_PORT;
+static uint32_t g_endpointVersion = 0U;
+
+static struct SolidSyslogMessage g_message = {
+    .facility  = SOLIDSYSLOG_FACILITY_LOCAL0,
+    .severity  = SOLIDSYSLOG_SEVERITY_INFO,
+    .messageId = g_messageId,
+    .msg       = g_msg,
+};
 
 /* RFC 5424 publication date — placeholder until S08.03 slice 4+ injects a
  * real RTC-backed clock callback. */
@@ -113,6 +135,9 @@ static SolidSyslogFreeRtosDatagramStorage       datagramStorage;
 static BaseType_t interactiveTaskCreated = pdFALSE;
 
 extern NetworkInterface_t* pxMPS2_FillInterfaceDescriptor(BaseType_t xEMACIndex, NetworkInterface_t* pxInterface);
+
+static bool TryUpdateString(char* storage, size_t storageSize, const char* value);
+static bool TryParseUInt(const char* value, unsigned long* out);
 
 static uint32_t MmioRead32(uintptr_t address)
 {
@@ -151,17 +176,17 @@ static void SetEthernetIrqPriority(void)
 
 static void GetHostname(struct SolidSyslogFormatter* formatter)
 {
-    SolidSyslogFormatter_BoundedString(formatter, TEST_HOSTNAME, sizeof(TEST_HOSTNAME) - 1U);
+    SolidSyslogFormatter_BoundedString(formatter, g_hostname, strlen(g_hostname));
 }
 
 static void GetAppName(struct SolidSyslogFormatter* formatter)
 {
-    SolidSyslogFormatter_BoundedString(formatter, TEST_APP_NAME, sizeof(TEST_APP_NAME) - 1U);
+    SolidSyslogFormatter_BoundedString(formatter, g_appName, strlen(g_appName));
 }
 
 static void GetProcessId(struct SolidSyslogFormatter* formatter)
 {
-    SolidSyslogFormatter_BoundedString(formatter, TEST_PROCESS_ID, sizeof(TEST_PROCESS_ID) - 1U);
+    SolidSyslogFormatter_BoundedString(formatter, g_processId, strlen(g_processId));
 }
 
 static void GetTimestamp(struct SolidSyslogTimestamp* timestamp)
@@ -171,15 +196,106 @@ static void GetTimestamp(struct SolidSyslogTimestamp* timestamp)
 
 static void GetEndpoint(struct SolidSyslogEndpoint* endpoint)
 {
-    /* SolidSyslogFreeRtosStaticResolver ignores the host string, so we
-     * leave it empty; the port still needs to be populated for sendto. */
-    SolidSyslogFormatter_BoundedString(endpoint->host, "", 0U);
-    endpoint->port = (uint16_t) EXAMPLE_UDP_PORT;
+    /* SolidSyslogFreeRtosStaticResolver currently ignores the host
+     * string and routes via TEST_DESTINATION_IPV4, so g_host is plumbed
+     * here for forward-compatibility with the follow-up slice that will
+     * teach the resolver to parse dotted-quads. The port reaches the
+     * wire via sendto unchanged. */
+    SolidSyslogFormatter_BoundedString(endpoint->host, g_host, strlen(g_host));
+    endpoint->port = g_port;
 }
 
 static uint32_t GetEndpointVersion(void)
 {
-    return 0U;
+    return g_endpointVersion;
+}
+
+static bool OnSet(const char* name, const char* value)
+{
+    if (strcmp(name, "hostname") == 0)
+    {
+        return TryUpdateString(g_hostname, sizeof(g_hostname), value);
+    }
+    if (strcmp(name, "appname") == 0)
+    {
+        return TryUpdateString(g_appName, sizeof(g_appName), value);
+    }
+    if (strcmp(name, "procid") == 0)
+    {
+        return TryUpdateString(g_processId, sizeof(g_processId), value);
+    }
+    if (strcmp(name, "msgid") == 0)
+    {
+        return TryUpdateString(g_messageId, sizeof(g_messageId), value);
+    }
+    if (strcmp(name, "msg") == 0)
+    {
+        return TryUpdateString(g_msg, sizeof(g_msg), value);
+    }
+    if (strcmp(name, "host") == 0)
+    {
+        return TryUpdateString(g_host, sizeof(g_host), value);
+    }
+    if (strcmp(name, "port") == 0)
+    {
+        unsigned long parsed = 0U;
+        if (!TryParseUInt(value, &parsed) || parsed == 0U || parsed > UINT16_MAX)
+        {
+            return false;
+        }
+        g_port = (uint16_t) parsed;
+        g_endpointVersion++;
+        return true;
+    }
+    if (strcmp(name, "facility") == 0)
+    {
+        unsigned long parsed = 0U;
+        if (!TryParseUInt(value, &parsed) || parsed > 23U)
+        {
+            return false;
+        }
+        g_message.facility = (enum SolidSyslog_Facility) parsed;
+        return true;
+    }
+    if (strcmp(name, "severity") == 0)
+    {
+        unsigned long parsed = 0U;
+        if (!TryParseUInt(value, &parsed) || parsed > 7U)
+        {
+            return false;
+        }
+        g_message.severity = (enum SolidSyslog_Severity) parsed;
+        return true;
+    }
+    return false;
+}
+
+static bool TryUpdateString(char* storage, size_t storageSize, const char* value)
+{
+    size_t length = strlen(value);
+    if ((length == 0U) || (length >= storageSize))
+    {
+        return false;
+    }
+    memcpy(storage, value, length);
+    storage[length] = '\0';
+    return true;
+}
+
+static bool TryParseUInt(const char* value, unsigned long* out)
+{
+    if (*value == '\0')
+    {
+        return false;
+    }
+    char* end    = NULL;
+    long  parsed = strtol(value, &end, 10);
+    if ((*end != '\0') || (parsed < 0))
+    {
+        return false;
+    }
+    *out = (unsigned long) parsed;
+    return true;
 }
 
 static void InteractiveTask(void* argument)
@@ -212,14 +328,7 @@ static void InteractiveTask(void* argument)
     };
     SolidSyslog_Create(&config);
 
-    struct SolidSyslogMessage message = {
-        .facility  = SOLIDSYSLOG_FACILITY_LOCAL0,
-        .severity  = SOLIDSYSLOG_SEVERITY_INFO,
-        .messageId = TEST_MESSAGE_ID,
-        .msg       = TEST_MESSAGE,
-    };
-
-    ExampleInteractive_Run(&message, stdin, NULL);
+    ExampleInteractive_Run(&g_message, stdin, NULL, OnSet);
 
     SolidSyslog_Destroy();
     SolidSyslogNullStore_Destroy();
