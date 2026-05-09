@@ -97,16 +97,24 @@ def before_all(context):
     # different binary paths and oracle output formats. BDD_TARGET picks
     # how the example is spawned (native subprocess vs qemu-system-arm)
     # — see Bdd/features/steps/target_driver.py.
-    context.target = os.environ.get("BDD_TARGET", "linux")
+    context.target = os.environ.get("BDD_TARGET", "linux").lower()
 
-    if context.target == "freertos":
-        default_binary = (
+    default_binaries = {
+        "linux": "build/debug/Example/SolidSyslogExample",
+        "windows": "build/msvc-debug/Example/Debug/SolidSyslogExample.exe",
+        "freertos": (
             "build/freertos-cross/Example/FreeRtos/SingleTask/"
             "SolidSyslogFreeRtosSingleTask.elf"
+        ),
+    }
+    if context.target not in default_binaries:
+        raise ValueError(
+            f"Unsupported BDD_TARGET={context.target!r}. "
+            f"Expected one of: {sorted(default_binaries)}."
         )
-    else:
-        default_binary = "build/debug/Example/SolidSyslogExample"
-    context.example_binary = os.environ.get("EXAMPLE_BINARY", default_binary)
+    context.example_binary = os.environ.get(
+        "EXAMPLE_BINARY", default_binaries[context.target]
+    )
     context.received_log = os.environ.get(
         "RECEIVED_LOG", "Bdd/output/received.log"
     )

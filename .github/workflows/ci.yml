@@ -574,6 +574,7 @@ jobs:
 
       - name: Run BDD tests
         env:
+          BDD_TARGET: windows
           EXAMPLE_BINARY: build/msvc-debug/Example/Debug/SolidSyslogExample.exe
           RECEIVED_LOG: Bdd/output/received.jsonl
           ORACLE_FORMAT: otel-jsonl
