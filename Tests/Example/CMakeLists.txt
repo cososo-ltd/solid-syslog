@@ -19,6 +19,7 @@ set(EXAMPLE_TEST_INCLUDE_DIRS
 if(SOLIDSYSLOG_POSIX)
     list(APPEND EXAMPLE_TEST_SOURCES
         ExampleCommandLineTest.cpp
+        ExampleInteractiveTest.cpp
         SolidSyslogExampleTest.cpp
         ExampleServiceThreadTest.cpp
         ExampleSwitchConfigTest.cpp

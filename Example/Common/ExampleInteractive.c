@@ -67,7 +67,27 @@ static void HandleSend(const char* args, const struct SolidSyslogMessage* messag
     printf("Sent %d message%s\n", count, (count == 1) ? "" : "s");
 }
 
-void ExampleInteractive_Run(const struct SolidSyslogMessage* message, FILE* input, ExampleInteractiveSwitchHandler onSwitch)
+static void HandleSet(const char* args, ExampleInteractiveSetHandler onSet)
+{
+    char        name[MAX_LINE_LENGTH];
+    const char* space   = strchr(args, ' ');
+    size_t      nameLen = (space != NULL) ? (size_t) (space - args) : strlen(args);
+    const char* value   = (space != NULL) ? (space + 1) : "";
+
+    memcpy(name, args, nameLen);
+    name[nameLen] = '\0';
+
+    if (onSet(name, value))
+    {
+        printf("set %s=%s\n", name, value);
+    }
+    else
+    {
+        printf("set: invalid\n");
+    }
+}
+
+void ExampleInteractive_Run(const struct SolidSyslogMessage* message, FILE* input, ExampleInteractiveSwitchHandler onSwitch, ExampleInteractiveSetHandler onSet)
 {
     char line[MAX_LINE_LENGTH];
 
@@ -94,6 +114,10 @@ void ExampleInteractive_Run(const struct SolidSyslogMessage* message, FILE* inpu
         else if (onSwitch != NULL && MatchCommand(line, "switch", &args))
         {
             onSwitch(args);
+        }
+        else if (onSet != NULL && MatchCommand(line, "set", &args))
+        {
+            HandleSet(args, onSet);
         }
 
         PrintPrompt();
