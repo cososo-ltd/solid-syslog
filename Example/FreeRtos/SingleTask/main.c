@@ -42,6 +42,7 @@
 
 #include <FreeRTOS_IP.h>
 #include <FreeRTOS_Routing.h>
+#include <FreeRTOS_Sockets.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -102,15 +103,13 @@ static const uint8_t TEST_DESTINATION_IPV4[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U
 /* Mutable walking-skeleton state. Defaults populated at boot; the
  * interactive `set <name> <value>` command rewrites these in-place via
  * OnSet below. Storage sizes match RFC 5424 maxima where applicable
- * (HOSTNAME 255, APP-NAME 48, PROCID 128, MSGID 32) plus null
- * terminator; MSG matches SOLIDSYSLOG_MAX_MESSAGE_SIZE so a single
- * `set msg <body>` can carry a full path-MTU-class body; g_host fits
- * an IPv4 dotted-quad. g_message holds facility/severity (mutated in
- * place) and the messageId/msg pointers (which target the mutable
- * storage so contents are seen on each Log). */
-static char     g_hostname[256]                     = "FreeRtosExample";
+ * (APP-NAME 48, MSGID 32) plus null terminator; MSG matches
+ * SOLIDSYSLOG_MAX_MESSAGE_SIZE so a single `set msg <body>` can carry a
+ * full path-MTU-class body; g_host fits an IPv4 dotted-quad. g_message
+ * holds facility/severity (mutated in place) and the messageId/msg
+ * pointers (which target the mutable storage so contents are seen on
+ * each Log). */
 static char     g_appName[49]                       = "SolidSyslogExample";
-static char     g_processId[129]                    = "1";
 static char     g_messageId[33]                     = "example";
 static char     g_msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = "Hello from FreeRTOS";
 static char     g_host[16]                          = "10.0.2.2";
@@ -178,17 +177,28 @@ static void SetEthernetIrqPriority(void)
 
 static void GetHostname(struct SolidSyslogFormatter* formatter)
 {
-    SolidSyslogFormatter_BoundedString(formatter, g_hostname, strlen(g_hostname));
+    /* RFC 5424 §6.2.4 walk for this reference target:
+     *   1. FQDN              — n/a (no DNS resolver on the FreeRTOS reference)
+     *   2. Static IP address — present (queried from the IP-stack below)  ← emit this
+     *   3. hostname          — n/a (no integrator-supplied hostname)
+     *   4. Dynamic IP        — n/a (no DHCP)
+     *   5. NILVALUE          — fallthrough if none of the above are available
+     *
+     * Source of truth is TEST_IP_ADDRESS, which flows to FreeRTOS-Plus-TCP
+     * via FreeRTOS_FillEndPoint at boot. Read it back via the IP-stack so
+     * any future slice that swaps the static configuration for DHCP (rung
+     * 4) or supplies a hostname (rung 3) doesn't have to re-touch this
+     * function — same callback, different rung satisfied by the stack. */
+    uint32_t ipAddress = 0U;
+    char     ipBuffer[16];
+    FreeRTOS_GetEndPointConfiguration(&ipAddress, NULL, NULL, NULL, &networkEndPoint);
+    FreeRTOS_inet_ntoa(ipAddress, ipBuffer);
+    SolidSyslogFormatter_BoundedString(formatter, ipBuffer, strlen(ipBuffer));
 }
 
 static void GetAppName(struct SolidSyslogFormatter* formatter)
 {
     SolidSyslogFormatter_BoundedString(formatter, g_appName, strlen(g_appName));
-}
-
-static void GetProcessId(struct SolidSyslogFormatter* formatter)
-{
-    SolidSyslogFormatter_BoundedString(formatter, g_processId, strlen(g_processId));
 }
 
 /* No RTC and no time-sync on this reference target — the example models an
@@ -222,17 +232,9 @@ static uint32_t GetEndpointVersion(void)
 
 static bool OnSet(const char* name, const char* value)
 {
-    if (strcmp(name, "hostname") == 0)
-    {
-        return TryUpdateString(g_hostname, sizeof(g_hostname), value);
-    }
     if (strcmp(name, "appname") == 0)
     {
         return TryUpdateString(g_appName, sizeof(g_appName), value);
-    }
-    if (strcmp(name, "procid") == 0)
-    {
-        return TryUpdateString(g_processId, sizeof(g_processId), value);
     }
     if (strcmp(name, "msgid") == 0)
     {
@@ -354,12 +356,16 @@ static void InteractiveTask(void* argument)
     struct SolidSyslogStructuredData* sdList[] = {metaSd, timeQualitySd, originSd};
 
     struct SolidSyslogConfig config = {
-        .buffer       = buffer,
-        .sender       = NULL,
-        .clock        = NULL,
-        .getHostname  = GetHostname,
-        .getAppName   = GetAppName,
-        .getProcessId = GetProcessId,
+        .buffer      = buffer,
+        .sender      = NULL,
+        .clock       = NULL,
+        .getHostname = GetHostname,
+        .getAppName  = GetAppName,
+        /* PROCID — RFC 5424 §6.2.6 NILVALUE: FreeRTOS QEMU has no
+         * process model. NULL drops through to the library's
+         * NilStringFunction which yields an empty field; FormatStringField
+         * (Core/Source/SolidSyslog.c) then emits "-" on the wire. */
+        .getProcessId = NULL,
         .store        = store,
         .sd           = sdList,
         .sdCount      = sizeof(sdList) / sizeof(sdList[0]),

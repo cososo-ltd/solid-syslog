@@ -69,6 +69,12 @@ SYSLOG_NG_UDP_ONLY_CONF = "Bdd/syslog-ng/syslog-ng-udp-only.conf"
 # file specifies a smaller value.
 SOLIDSYSLOG_MAX_MESSAGE_SIZE = 2048
 
+# RFC 5424 §6.2.4 IP fallback for the FreeRTOS reference example. With no
+# FQDN (no DNS resolver), no integrator-supplied hostname, and no DHCP, the
+# highest-preference value the device can supply is its static IP. Mirrors
+# TEST_IP_ADDRESS in Example/FreeRtos/SingleTask/main.c — keep them in sync.
+EXAMPLE_FREERTOS_STATIC_IP = "10.0.2.15"
+
 
 def clean_store_files():
     """Remove all rotating store files matching the path prefix."""
@@ -174,6 +180,15 @@ def parse_syslog_ng_line(line):
     fields = {}
     for match in re.finditer(r"(\w+)=(\S+)", line):
         fields[match.group(1)] = match.group(2)
+
+    # PROCID may be empty (= sign with no value) when the wire was the RFC 5424
+    # §6.2.6 NILVALUE: syslog-ng's ${PID} macro substitutes an empty string,
+    # which the general (\w+)=(\S+) regex above silently drops. Re-capture
+    # explicitly with \S* so "field absent" and "field empty" stay distinct
+    # downstream — NILVALUE assertions need the empty-string in fields.
+    procid_match = re.search(r"PROCID=(\S*)", line)
+    if procid_match:
+        fields["PROCID"] = procid_match.group(1)
 
     # STRUCTURED_DATA may contain spaces and special chars — capture between
     # "STRUCTURED_DATA=" and " MSG="
@@ -893,7 +908,16 @@ def step_check_timestamp_within(context, seconds):
 
 @then("the syslog oracle receives a message with the system hostname")
 def step_check_system_hostname(context):
-    expected = socket.gethostname()
+    """Asserts the wire HOSTNAME is what RFC 5424 §6.2.4 says it should be
+    for this target. The §6.2.4 preference order is FQDN → static IP →
+    hostname → dynamic IP → NILVALUE; each runner emits the highest-
+    preference value it can supply. Linux/Windows: gethostname() (rung 3,
+    "hostname"). FreeRTOS reference: the configured static IPv4 (rung 2)
+    because no FQDN, no integrator hostname, no DHCP."""
+    if context.target == "freertos":
+        expected = EXAMPLE_FREERTOS_STATIC_IP
+    else:
+        expected = socket.gethostname()
     assert context.fields["HOSTNAME"] == expected, (
         f"Expected hostname {expected}, got {context.fields.get('HOSTNAME')}"
     )
@@ -901,10 +925,31 @@ def step_check_system_hostname(context):
 
 @then("the syslog oracle receives a message with the process ID of the example program")
 def step_check_example_pid(context):
-    expected = str(context.example_pid)
-    assert context.fields["PROCID"] == expected, (
-        f"Expected PID {expected}, got {context.fields.get('PROCID')}"
-    )
+    """Asserts the wire PROCID matches what the originator can supply per
+    RFC 5424 §6.2.6 (NILVALUE permitted "when no value is provided"). Each
+    runner emits the most honest value it has: Linux/Windows the spawned
+    example's PID; FreeRTOS NILVALUE because there is no process model on
+    QEMU. The library emits NILVALUE when getProcessId is NULL — falls
+    through NilStringFunction → empty field → FormatStringField writes "-"
+    (Core/Source/SolidSyslog.c)."""
+    if context.target == "freertos":
+        # Explicit presence-then-value check: parse_syslog_ng_line's
+        # PROCID=(\S*) captures wire NILVALUE as "" while leaving the key
+        # absent if syslog-ng never emitted PROCID at all (template gap /
+        # malformed message). Collapsing "absent" into "empty" via .get()
+        # would let template breakage register as a NILVALUE pass.
+        assert "PROCID" in context.fields, (
+            "Expected PROCID field present in oracle output (NILVALUE captured as empty)"
+        )
+        actual = context.fields["PROCID"]
+        assert actual == "", (
+            f"Expected NILVALUE PROCID (empty), got {actual!r}"
+        )
+    else:
+        expected = str(context.example_pid)
+        assert context.fields["PROCID"] == expected, (
+            f"Expected PID {expected}, got {context.fields.get('PROCID')}"
+        )
 
 
 @then('the hostname is "{hostname}"')
