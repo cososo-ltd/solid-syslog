@@ -5117,3 +5117,108 @@ sitting untouched on `getHostname` / `getProcessId`. The
 `@freertoswip` skips were dismissed as "out of scope" without
 checking whether the same RFC-honest pattern applied — it does, for
 two of the four.
+
+## 2026-05-10 — S08.03 slice 10 honest hostname + NILVALUE PROCID (epic close-out, take 2)
+
+PR #316 closes slice 10 (#315) and re-closes epic #268 — this time
+with the audit-caught hostname / PROCID fields actually wired to
+their RFC 5424 fallbacks instead of left dishonest. FreeRTOS BDD:
+20 → 24 scenarios green. No library code changed; the
+NULL-callback / IP-stack-introspection paths were already in place.
+
+### Decisions
+
+- **Hostname queried from the IP-stack, not duplicated as a literal.**
+  First draft of the slice added `EXAMPLE_STATIC_IPV4_STR = "10.0.2.15"`
+  alongside the existing `TEST_IP_ADDRESS` byte array — two sources
+  of truth in one file. David caught the DRY miss before merge.
+  `FreeRTOS_GetEndPointConfiguration` + `FreeRTOS_inet_ntoa` reads
+  the IP back from the same endpoint that `FreeRTOS_FillEndPoint`
+  populated at boot, so `TEST_IP_ADDRESS` is the only authoritative
+  source in C. Reference pattern from Plus-TCP's MSP432
+  `NetworkMiddleware.c` confirmed direct passthrough — no
+  byte-order swap needed. Future slice replacing static config with
+  DHCP needs zero changes to `GetHostname`; the same callback walks
+  to a different §6.2.4 rung whichever the stack reports.
+
+- **Smart steps over `@hostname` / `@no_hostname` tag taxonomy.** First
+  cut of the slice plan proposed `@system_hostname` / `@no_system_hostname`
+  / `@procid` / `@no_procid` mirror tags. David pushed back: the
+  wire HOSTNAME is the *same* RFC 5424 §6.2.4 question on every
+  runner ("what does this device emit?"); only the answer differs by
+  capability. `step_check_system_hostname` / `step_check_example_pid`
+  branch on `context.target` and assert the RFC-correct value per
+  runner. No new tags, no behave filter changes, four scenarios
+  untagged (not duplicated). Cleaner BDD landscape — and it
+  reflects how RFC 5424 actually frames the field semantics.
+
+- **The Python-side spec mirror is the irreducible duplication.**
+  C-side has one source of truth (the byte array). The Python BDD
+  step needs a literal value to compare against — the test *is* the
+  spec. `EXAMPLE_FREERTOS_STATIC_IP = "10.0.2.15"` lives in
+  `syslog_steps.py` with a comment linking it to `TEST_IP_ADDRESS`.
+  Same shape as the existing `SOLIDSYSLOG_MAX_MESSAGE_SIZE = 2048`
+  Python mirror of the C `#define`.
+
+- **Bundled scenarios' timestamp step passes vacuously on FreeRTOS.**
+  `syslog.feature` and `message_fields.feature` each include `the
+  syslog oracle receives a message with a timestamp within 5 seconds
+  of now`. On RTC runners, `${ISODATE}` reflects the message-supplied
+  timestamp (the assertion tests producer-clock correctness). On
+  FreeRTOS the wire is NILVALUE per slice 9, and syslog-ng
+  substitutes receipt time for `${ISODATE}` — the assertion passes
+  tautologically (receipt time is "within 5s of now"). Acceptable:
+  timestamp.feature is feature-level `@rtc` for the dedicated
+  timestamp gate, and the bundled scenarios exist to prove RFC 5424
+  end-to-end round-trip, not to gate timestamp correctness on a
+  device that can't supply one.
+
+- **Explicit PROCID presence-then-value check, not `.get(default)`.**
+  `parse_syslog_ng_line` distinguishes "field absent" (key not in
+  dict) from "field empty" (key maps to `""`) via an explicit
+  `PROCID=(\S*)` capture. The step needs to honour that distinction:
+  `assert "PROCID" in context.fields` first, then assert the value
+  is empty. Using `.get("PROCID", "")` would collapse template-gap
+  bugs into NILVALUE passes. CodeRabbit caught the slip in the
+  first push.
+
+- **Drop the dishonest `set hostname` / `set procid` interactive
+  commands.** The reference shouldn't permit overriding fields it
+  cannot honestly supply. `g_hostname`, `g_processId`, the two
+  `OnSet` branches, and the `GetProcessId` callback all gone —
+  smaller surface, less flapping if a future slice adds a real
+  hostname source (it'll plug in via the callback shape, not
+  through a global an interactive command can clobber).
+
+### Deferred
+
+- **Real-IP enumeration via `FreeRTOS_GetEndPoints` for origin SD's
+  `ip` field.** Today's example wires a single hardcoded
+  documentation IP (`192.0.2.1`) into the origin SD via
+  `ExampleIps`. The HOSTNAME field now reads the actual configured
+  IP from the stack, so the inconsistency stands out. Tracked in
+  `project_origin_sd_real_ip_enumeration` (memory).
+
+### Open questions
+
+- None for this slice. Epic #268 closes for real this time;
+  remaining `@freertoswip` tags (`buffered.feature`,
+  `udp_mtu.feature:21`'s oversize clipping) are genuinely out of
+  scope for S08.03 — separate stories.
+
+### Process misses worth flagging (not memory-worthy on their own)
+
+- I broke the dev container's network namespace by `docker
+  restart`-ing only `syslog-ng-freertos` after a config edit;
+  `freertos-target` uses `network_mode:
+  service:syslog-ng-freertos`, so namespace recreation needs both
+  containers up via `docker compose up -d --force-recreate`. Five
+  minutes of confusion before I diagnosed it.
+
+- I ran `clang-format -i` on a list that included `syslog_steps.py`.
+  clang-format silently mangles Python — saved as memory
+  `feedback_clang_format_python_destroys_files.md`. The repo's CI
+  invocation uses an explicit `find ... -name '*.c' -o -name '*.cpp'
+  -o -name '*.h'` which is the canonical safe form; restrict the
+  glob explicitly when batch-formatting, never trust extension
+  filtering inside the tool.

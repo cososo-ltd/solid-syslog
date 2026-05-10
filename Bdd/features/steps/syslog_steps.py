@@ -933,7 +933,15 @@ def step_check_example_pid(context):
     through NilStringFunction → empty field → FormatStringField writes "-"
     (Core/Source/SolidSyslog.c)."""
     if context.target == "freertos":
-        actual = context.fields.get("PROCID", "")
+        # Explicit presence-then-value check: parse_syslog_ng_line's
+        # PROCID=(\S*) captures wire NILVALUE as "" while leaving the key
+        # absent if syslog-ng never emitted PROCID at all (template gap /
+        # malformed message). Collapsing "absent" into "empty" via .get()
+        # would let template breakage register as a NILVALUE pass.
+        assert "PROCID" in context.fields, (
+            "Expected PROCID field present in oracle output (NILVALUE captured as empty)"
+        )
+        actual = context.fields["PROCID"]
         assert actual == "", (
             f"Expected NILVALUE PROCID (empty), got {actual!r}"
         )
