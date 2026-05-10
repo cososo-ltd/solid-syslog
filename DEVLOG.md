@@ -4981,3 +4981,102 @@ in commit `ebddeb4`:
 
 - None for this PR; the three deferred stories cover the residue
   surfaced during socket-options review.
+
+## 2026-05-10 — S08.03 close-out + syslog-ng pin (slice 9)
+
+PR #313 closes epic #268 (S08.03 — UDP syslog from FreeRTOS reaches the
+oracle). Last slice wired timeQuality SD into the FreeRTOS SingleTask
+example and committed the example to a no-RTC product stance per
+RFC 5424 §6.2.3.1; bundled with a syslog-ng container pin that was
+forced by a third-party regression making the dev container unusable.
+
+### Decisions
+
+- **No-RTC reference example, not a placeholder RTC.** Originally the
+  plan was to plug a generic RTC into the FreeRTOS example to behave
+  like Linux/Windows. FreeRTOS has no standard RTC abstraction —
+  every integrator brings their own — so the honest reference is a
+  device with no RTC at all. RFC 5424 §6.2.3.1 already mandates
+  NILVALUE TIMESTAMP in that case, and the library's NilClock path
+  emits exactly that when `config.clock = NULL`. Net change in
+  `Example/FreeRtos/SingleTask/main.c`: drop `TEST_TIMESTAMP` /
+  `GetTimestamp`; set `clock = NULL`; add `GetTimeQuality` returning
+  `tzKnown=0, isSynced=0, syncAccuracyMicroseconds=
+  SOLIDSYSLOG_SYNC_ACCURACY_OMIT`; wire `SolidSyslogTimeQualitySd`
+  into `sdList[]`. No library-side change needed.
+
+- **`@rtc` / `@no_rtc` BDD tags replace `@freertoswip` on
+  time-related scenarios.** `@freertoswip` keeps its meaning for
+  genuinely-not-yet-implemented gaps; the new pair captures the
+  product distinction (RTC-equipped vs no-RTC), which is orthogonal
+  to "FreeRTOS limitations." `time_quality.feature` and
+  `origin.feature` gained `@no_rtc` siblings asserting the no-RTC
+  field values; `timestamp.feature` became feature-level `@rtc`.
+
+- **Skipped the planned BDD assertion for NILVALUE TIMESTAMP.** The
+  issue body listed it; dropped it because syslog-ng silently
+  substitutes receipt time for both `${ISODATE}` and `${S_ISODATE}`
+  when the wire TIMESTAMP is NILVALUE — neither macro can
+  distinguish "wire empty" from "wire valid", so a BDD assertion
+  against the oracle would re-test what
+  `Tests/SolidSyslogTest.cpp::NullClockProducesNilvalue` plus ten
+  sibling boundary tests already cover end-to-end through the
+  formatter. `flags(store-raw-message)` + `${RAWMSG}` could have
+  worked, but the gain over the existing unit coverage is zero.
+
+- **Pinned `balabit/syslog-ng` from `latest` to `4.8.2` across
+  `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`,
+  and `docs/containers.md`.** `latest` had drifted to 4.11.0
+  (pushed 2026-02-24), which has a regression in
+  `lib/stats/stats-control.c:84` that aborts the daemon (signal 6
+  / exit 134) when *anything* sends `STATS\n` over the control
+  socket. Reproduced standalone with a one-line python client.
+  Catastrophic for the dev workflow because
+  `freertos-target` uses `network_mode: service:syslog-ng-freertos`
+  — when the oracle aborts, the dev container loses its network
+  namespace and VS Code can't reach the API; the only recovery is
+  restarting Docker. 4.8.2 (LTS, ships syslog-ng 4.9.0 internally)
+  handles `STATS\n` correctly. The CI compose already had a safer
+  socket-existence healthcheck override; the dev compose did not,
+  but with 4.8.2 the image's own healthcheck no longer triggers
+  the bug, so no further override was added.
+
+- **Windows BDD failure post-merge was not a timeout.** The first
+  PR push got a UnicodeEncodeError on `bdd-windows-otel`: behave
+  prints the feature description before scenarios run, and
+  Windows's default cp1252 stdout codec can't encode `→` (U+2192).
+  Replaced with ASCII `->`. `§` (U+00A7), `—` (U+2014), `–`
+  (U+2013) all survive cp1252 and remain in other features. Worth
+  knowing for future feature-file edits.
+
+- **CodeRabbit nitpick honoured.** The "coexist" scenarios
+  (sequenceId + tzKnown) gained an `isSynced` assertion to match
+  the dedicated time-quality scenarios — both `@rtc` and `@no_rtc`
+  forms.
+
+### Deferred
+
+- **Real-IP enumeration via `FreeRTOS_GetEndPoints` for origin SD.**
+  Carried forward from slice 7; the FreeRTOS example still emits a
+  hardcoded `192.0.2.1`. Tracked in
+  `project_origin_sd_real_ip_enumeration` (memory) and the slice 7
+  DEVLOG entry.
+- **CMake-driven memory scaling for the interactive-task stack.**
+  Today `configMINIMAL_STACK_SIZE * 32U`; characterisation is a
+  follow-up under S08.04+.
+- **DNS resolver for FreeRTOS.** Tracked as S08.08 (#288); the
+  current static resolver is hardcoded to `{10, 0, 2, 2}` (QEMU
+  slirp gateway).
+- **A `@rtc`-aware integrator-supplied RTC for the FreeRTOS
+  example.** Future story; the no-RTC reference stays as the
+  default.
+- **Integration-coverage rollup for the BDD path.** Tracked in
+  `project_coverage_integration` memory.
+
+### Open questions
+
+- None for this slice. Epic #268 closed; FreeRTOS BDD coverage now
+  stands at 7 features / 20 scenarios, 0 failed, 29 skipped (the
+  skipped scenarios are the remaining `@freertoswip`-tagged ones
+  in `buffered.feature`, `header_fields.feature` PROCID, and a few
+  others — out of scope for S08.03).
