@@ -365,6 +365,7 @@ live under `Core/Interface/`; platform-specific helpers (the `SolidSyslogPosix*`
 | `SolidSyslogWindowsHostname.h` | String callback implementor using Windows hostname | `SolidSyslogWindowsHostname_Get` (writes into `SolidSyslogFormatter*`) |
 | `SolidSyslogWindowsProcessId.h` | String callback implementor using Windows process ID | `SolidSyslogWindowsProcessId_Get` (writes into `SolidSyslogFormatter*`) |
 | `SolidSyslogWindowsSysUpTime.h` | SysUpTime callback implementor using `GetTickCount64` | `SolidSyslogWindowsSysUpTime_Get` (returns `uint32_t` hundredths since boot), `WindowsSysUpTime_GetTickCount64` (function-pointer seam for unit tests) |
+| `SolidSyslogFreeRtosSysUpTime.h` | SysUpTime callback implementor using `xTaskGetTickCount` on FreeRTOS targets | `SolidSyslogFreeRtosSysUpTime_Get` (returns `uint32_t` hundredths since boot, wraps per RFC 3418 `TimeTicks`; uint64 intermediate so the result is correct at any `configTICK_RATE_HZ`) |
 | `SolidSyslogWindowsSleep.h` | System setup code wiring a `SolidSyslogSleepFunction` on Windows targets | `SolidSyslogWindowsSleep` (wraps `Sleep`) |
 | `SolidSyslogSleep.h` | Any code passing or implementing a sleep callback | `SolidSyslogSleepFunction` typedef (used by `SolidSyslogTlsStreamConfig.sleep` for the bounded handshake retry) |
 | `SolidSyslogStructuredData.h` | Library internals (SD dispatch) | `SolidSyslogStructuredData_Format` (writes into `SolidSyslogFormatter*`) |

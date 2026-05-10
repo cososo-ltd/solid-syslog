@@ -1,5 +1,96 @@
 # Dev Log
 
+## 2026-05-10 — S08.03 slice 8 — Meta SD wiring + FreeRtosSysUpTime adapter (#310)
+
+Slice 7 wired the first SD-ELEMENT (Origin) and brought the FreeRTOS
+BDD runner to 5 features / 14 scenarios green. Slice 8 adds the meta
+SD-ELEMENT — sequenceId, sysUpTime, language — to
+`Example/FreeRtos/SingleTask/main.c`, introduces a new
+`SolidSyslogFreeRtosSysUpTime` platform adapter, and untags
+`structured_data.feature`. The runner is now at **6 features / 17
+scenarios green** (slice-7 baseline 5 / 14; +1 feature, +3 scenarios).
+
+### Decisions
+
+- **StdAtomicOps on Cortex-M3, no new platform adapter.** Cross-toolchain
+  compiled `Platform/Atomics/Source/SolidSyslogStdAtomicOps.c` for
+  Cortex-M3 already (`build/freertos-cross/.../*.obj` was present),
+  so the question was whether linkage would succeed. It does — the
+  cross build links the new ELF cleanly. On Cortex-M3 + Thumb-2 GCC
+  inlines `_Atomic uint32_t` operations to LDREX/STREX with no
+  libatomic runtime, and the SolidSyslog counter is incremented only
+  inside `SolidSyslog_Log` (task context only on this single-task
+  example, never from an ISR), so the ARM exclusive monitor is
+  sufficient. No `SolidSyslogFreeRtosAtomicOps` adapter was needed;
+  if a future MultiTask example needs ISR-vs-task atomicity that
+  adapter is the natural extension.
+- **Tick width stayed 32-bit.** The original handoff floated
+  `configTICK_TYPE_WIDTH_IN_BITS = TICK_TYPE_WIDTH_64_BITS` to keep
+  the SysUpTime arithmetic trivially overflow-safe, but the upstream
+  `ARM_CM3` portmacro hard-errors on 64-bit ticks (`portmacro.h:73`,
+  `#error configTICK_TYPE_WIDTH_IN_BITS set to unsupported tick type
+  width.`). Patching the vendor port wasn't worth it; instead the
+  adapter does `(uint64_t)xTaskGetTickCount() * 100 / configTICK_RATE_HZ`
+  with a uint64 intermediate so the formula stays correct at any
+  HZ, then casts to `uint32_t` for RFC 3418 `TimeTicks` wrap
+  semantics. Mirrors `SolidSyslogPosixSysUpTime` which already uses
+  the same uint64-inside / uint32-out shape.
+- **Language string reuses `Example/Common/ExampleLanguage`.** The
+  Linux/Windows examples already use `ExampleLanguage_Get` returning
+  `en-GB`; reusing the same source on FreeRTOS keeps the BDD
+  assertion target-agnostic. One-line CMakeLists addition. No
+  divergent local getter.
+- **Untagged `structured_data.feature` at feature level.** All three
+  scenarios pass (sequenceId 1, sequential sequenceId values,
+  sysUpTime + language). `time_quality.feature` stays tagged because
+  both its scenarios assert `tzKnown` (timeQuality SD — slice 9), and
+  `origin.feature::All standard structured data present` stays
+  tagged because it asserts sequenceId AND tzKnown together.
+- **Kept SysUpTimeTest outside the Plus-TCP guard** in
+  `Tests/FreeRtos/CMakeLists.txt`. The adapter only needs FreeRTOS
+  kernel headers (`FreeRTOS.h`, `task.h` for `TickType_t`); the
+  existing comment in that file explicitly flags this scope split
+  ("a minimal `FREERTOS_KERNEL_PATH`-only environment can still
+  build the UART test"). The SysUpTime test now sits with
+  `CmsdkUartTest` in that same kernel-only scope. `FreeRtosTaskFake`
+  picked up a stubbable `xTaskGetTickCount` + `_SetTickCount`
+  accessor alongside the existing `vTaskDelay` stub.
+
+### Local verification
+
+- `cmake --build --preset debug` — full host build clean. All 6 host
+  test executables pass (1 + 4 FreeRTOS + 1 OpenSSL integration),
+  including the new `SolidSyslogFreeRtosSysUpTimeTest` (4 tests:
+  zero, one, mid-range, `UINT32_MAX` boundary).
+- `cmake --build --preset freertos-cross --target
+  SolidSyslogFreeRtosSingleTask` — clean. **StdAtomicOps linked into
+  the Cortex-M3 ELF** without needing a FreeRTOS-specific adapter.
+- `behave --tags='not @wip and not @freertoswip and @udp'
+  Bdd/features/structured_data.feature` against `syslog-ng-freertos`:
+  3 of 3 scenarios pass.
+- Full FreeRTOS BDD sweep: 6 features / 17 scenarios pass / 29
+  skipped (slice 7 baseline 5 / 14 / 32; +1 feature, +3 scenarios,
+  -3 skipped).
+- `clang-format --dry-run --Werror` on touched C / C++ files: clean.
+- cppcheck / tidy / iwyu / sanitize / coverage / Windows: not run
+  locally (cross-only devcontainer); CI's responsibility.
+
+### Deferred
+
+- timeQuality SD wiring on FreeRTOS — slice 9. Will untag
+  `time_quality.feature` and the remaining
+  `origin.feature::All standard structured data present` scenario.
+- The `udp_mtu.feature::Oversize` scenario — UDP path-MTU EMSGSIZE
+  on FreeRTOS-Plus-TCP, its own slice.
+- `SolidSyslogFreeRtosAtomicOps` adapter wrapping
+  `taskENTER_CRITICAL` / `taskEXIT_CRITICAL` — not needed for the
+  single-task example (StdAtomicOps suffices); will be the right
+  primitive when a MultiTask example arrives in S08.04.
+
+### Open questions
+
+- None for this slice.
+
 ## 2026-05-10 — S08.03 slice 7 — Origin SD wiring in FreeRTOS example (#308)
 
 Slice 6 closed the cmdline→`set` translation gap so the FreeRTOS BDD

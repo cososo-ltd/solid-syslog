@@ -1,5 +1,4 @@
 @udp
-@freertoswip
 Feature: Structured data — meta SD-ELEMENT
   The library populates the IANA-registered "meta" SD-ELEMENT with
   sequenceId, sysUpTime, and language per RFC 5424 §7.3.
