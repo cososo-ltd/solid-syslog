@@ -11,6 +11,9 @@
 #include "SolidSyslogStore.h"
 #include "SolidSyslog.h"
 #include "FileFake.h"
+#include "TestUtils.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
 
 static const char* const TEST_PATH_PREFIX = "/tmp/test_store";
 static const char* const TEST_DATA        = "hello";
@@ -876,24 +879,24 @@ TEST(SolidSyslogBlockStoreRotation, DiscardNewestReturnsFalseWhenAtMaxFiles)
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 }
 
-static bool storeFullCallbackInvoked;
+static int     StoreFullCallbackCallCount;
 
 static void StoreFullCallback(void* context)
 {
     (void) context;
-    storeFullCallbackInvoked = true;
+    StoreFullCallbackCallCount++;
 }
 
 TEST(SolidSyslogBlockStoreRotation, HaltInvokesCallbackWhenStoreFull)
 {
-    storeFullCallbackInvoked = false;
+    StoreFullCallbackCallCount = 0;
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_HALT, 2, StoreFullCallback);
 
     WriteMaxMsg(); /* file 00 */
     WriteMaxMsg(); /* file 01 — now at maxBlocks=2 */
 
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
-    CHECK_TRUE(storeFullCallbackInvoked);
+    CALLED_FUNCTION(StoreFullCallback, ONCE);
 }
 
 TEST(SolidSyslogBlockStoreRotation, HaltWithNullCallbackDoesNotCrash)
@@ -920,27 +923,27 @@ TEST(SolidSyslogBlockStoreRotation, HaltSetsIsHaltedTrue)
 
 TEST(SolidSyslogBlockStoreRotation, DiscardNewestDoesNotInvokeCallback)
 {
-    storeFullCallbackInvoked = false;
+    StoreFullCallbackCallCount = 0;
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_NEWEST, 2, StoreFullCallback);
 
     WriteMaxMsg(); /* file 00 */
     WriteMaxMsg(); /* file 01 — now at maxBlocks=2 */
 
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
-    CHECK_FALSE(storeFullCallbackInvoked);
+    CALLED_FUNCTION(StoreFullCallback, NEVER);
 }
 
-static int storeFullCallbackCount;
+static int CountStoreFullInvocationsCallCount;
 
 static void CountStoreFullInvocations(void* context)
 {
     (void) context;
-    storeFullCallbackCount++;
+    CountStoreFullInvocationsCallCount++;
 }
 
 TEST(SolidSyslogBlockStoreRotation, HaltOnStoreFullFiresOncePerRisingEdge)
 {
-    storeFullCallbackCount = 0;
+    CountStoreFullInvocationsCallCount = 0;
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_HALT, 2, CountStoreFullInvocations);
 
     WriteMaxMsg(); /* file 00 */
@@ -951,7 +954,7 @@ TEST(SolidSyslogBlockStoreRotation, HaltOnStoreFullFiresOncePerRisingEdge)
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 
-    LONGS_EQUAL(1, storeFullCallbackCount);
+    CALLED_FUNCTION(CountStoreFullInvocations, ONCE);
 }
 
 static void* storeFullCallbackContext;
@@ -1359,7 +1362,7 @@ enum
     INTEGRITY_REGION_MAX = 2 + 2 + SOLIDSYSLOG_MAX_MESSAGE_SIZE /* magic + length + body */
 };
 
-static bool     computeIntegrityCalled;
+static int     SpyComputeIntegrityCallCount;
 static uint8_t  computeIntegrityData[INTEGRITY_REGION_MAX];
 static uint16_t computeIntegrityLength;
 
@@ -1367,19 +1370,19 @@ static uint16_t computeIntegrityLength;
 static void SpyComputeIntegrity(const uint8_t* data, uint16_t length, uint8_t* integrityOut)
 {
     (void) integrityOut;
-    computeIntegrityCalled = true;
+    SpyComputeIntegrityCallCount++;
     computeIntegrityLength = length;
     memcpy(computeIntegrityData, data, length);
 }
 
-static bool     verifyIntegrityCalled;
+static int     SpyVerifyIntegrityCallCount;
 static uint8_t  verifyIntegrityData[INTEGRITY_REGION_MAX];
 static uint16_t verifyIntegrityLength;
 
 static bool SpyVerifyIntegrity(const uint8_t* data, uint16_t length, const uint8_t* integrityIn)
 {
     (void) integrityIn;
-    verifyIntegrityCalled = true;
+    SpyVerifyIntegrityCallCount++;
     verifyIntegrityLength = length;
     memcpy(verifyIntegrityData, data, length);
     return true;
@@ -1399,10 +1402,10 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
     void setup() override
     {
         setupBlockDeviceFakes();
-        computeIntegrityCalled  = false;
+        SpyComputeIntegrityCallCount  = 0;
         computeIntegrityLength  = 0;
         memset(computeIntegrityData, 0, sizeof(computeIntegrityData));
-        verifyIntegrityCalled   = false;
+        SpyVerifyIntegrityCallCount   = 0;
         verifyIntegrityLength   = 0;
         memset(verifyIntegrityData, 0, sizeof(verifyIntegrityData));
 
@@ -1425,7 +1428,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
 TEST(SolidSyslogBlockStoreIntegrity, WriteCallsComputeIntegrity)
 {
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
-    CHECK_TRUE(computeIntegrityCalled);
+    CALLED_FUNCTION(SpyComputeIntegrity, ONCE);
 }
 
 TEST(SolidSyslogBlockStoreIntegrity, ComputeIntegrityReceivesIntegrityRegion)
@@ -1454,7 +1457,7 @@ TEST(SolidSyslogBlockStoreIntegrity, ReadCallsVerifyIntegrity)
     char   buf[TEST_BUF_SIZE];
     size_t bytesRead = 0;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
-    CHECK_TRUE(verifyIntegrityCalled);
+    CALLED_FUNCTION(SpyVerifyIntegrity, ONCE);
 }
 
 TEST(SolidSyslogBlockStoreIntegrity, VerifyIntegrityReceivesIntegrityRegion)
@@ -1866,7 +1869,7 @@ TEST(SolidSyslogBlockStoreCapacity, GetUsedBytesIsStickyAtTotalAfterSizeFailure)
  * Capacity threshold alert (S05.09)
  * ----------------------------------------------------------------*/
 
-static int    thresholdCallbackCount;
+static int    CountThresholdCrossingsCallCount;
 static size_t thresholdReturnValue;
 
 static size_t ReturnsConfiguredThreshold(void* context)
@@ -1878,7 +1881,7 @@ static size_t ReturnsConfiguredThreshold(void* context)
 static void CountThresholdCrossings(void* context)
 {
     (void) context;
-    thresholdCallbackCount++;
+    CountThresholdCrossingsCallCount++;
 }
 
 // clang-format off
@@ -1890,7 +1893,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCapacityThreshold, BlockDeviceTestBase)
     void setup() override
     {
         setupBlockDeviceFakes();
-        thresholdCallbackCount = 0;
+        CountThresholdCrossingsCallCount = 0;
         thresholdReturnValue   = 0;
     }
 
@@ -1919,7 +1922,7 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, FiresOnRisingEdgeCrossing)
 {
     CreateWithThreshold(TEST_DATA_LEN);
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
-    LONGS_EQUAL(1, thresholdCallbackCount);
+    CALLED_FUNCTION(CountThresholdCrossings, ONCE);
 }
 
 /* Given usage already above threshold,
@@ -1931,7 +1934,7 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, FiresOnceWhileUsageStaysAbove)
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN); /* crosses */
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN); /* still above */
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN); /* still above */
-    LONGS_EQUAL(1, thresholdCallbackCount);
+    CALLED_FUNCTION(CountThresholdCrossings, ONCE);
 }
 
 /* Given DISCARD_OLDEST and a threshold sitting in the last block,
@@ -1962,7 +1965,7 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, ReArmsAfterFallingEdgeOnDiscardOlde
     SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* rotate+discard block 0 → 3 records (below) */
     SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 2: 2 records (4 total) — fires again */
 
-    LONGS_EQUAL(2, thresholdCallbackCount);
+    CALLED_FUNCTION(CountThresholdCrossings, TWICE);
 }
 
 /* Given getCapacityThreshold returns 0,
@@ -1973,7 +1976,7 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, DoesNotFireWhenThresholdIsZero)
     CreateWithThreshold(0);
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
-    LONGS_EQUAL(0, thresholdCallbackCount);
+    CALLED_FUNCTION(CountThresholdCrossings, NEVER);
 }
 
 /* Given getCapacityThreshold is NULL but onThresholdCrossed is configured,
@@ -1988,7 +1991,7 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, DoesNotFireWhenThresholdFunctionIsN
 
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
 
-    LONGS_EQUAL(0, thresholdCallbackCount);
+    CALLED_FUNCTION(CountThresholdCrossings, NEVER);
 }
 
 static void* capturedThresholdFunctionContext;
@@ -2103,7 +2106,7 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, StickyHundredPercentDoesNotRefireTh
     SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* fails again — must not refire */
     SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* fails again — must not refire */
 
-    LONGS_EQUAL(1, thresholdCallbackCount);
+    CALLED_FUNCTION(CountThresholdCrossings, ONCE);
 }
 
 /* Given current usage well below threshold,
@@ -2116,12 +2119,12 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, FiresWhenThresholdDropsBelowCurrent
 
     CreateWithThreshold(HIGH_THRESHOLD);
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
-    LONGS_EQUAL(0, thresholdCallbackCount); /* still well below threshold */
+    CALLED_FUNCTION(CountThresholdCrossings, NEVER); /* still well below threshold */
 
     thresholdReturnValue = LOW_THRESHOLD; /* threshold drops below current usage */
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
 
-    LONGS_EQUAL(1, thresholdCallbackCount);
+    CALLED_FUNCTION(CountThresholdCrossings, ONCE);
 }
 
 /* Given persisted store contents already at-or-above threshold,
@@ -2136,8 +2139,8 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, FiresOnCreateWhenResumedUsageAboveT
         SolidSyslogBlockStore_Destroy(preStore);
     }
 
-    /* setup() reset thresholdCallbackCount to 0 — any fire here is from this Create. */
+    /* setup() reset CountThresholdCrossingsCallCount to 0 — any fire here is from this Create. */
     CreateWithThreshold(TEST_DATA_LEN);
 
-    LONGS_EQUAL(1, thresholdCallbackCount);
+    CALLED_FUNCTION(CountThresholdCrossings, ONCE);
 }
