@@ -61,6 +61,31 @@ else()
     add_test(NAME SolidSyslogFreeRtosStaticResolverTest COMMAND SolidSyslogFreeRtosStaticResolverTest)
 endif()
 
+# SolidSyslogFreeRtosSysUpTime — kernel-only adapter; needs FREERTOS_KERNEL_PATH
+# but not Plus-TCP. Sits outside the Plus-TCP guard for the same reason the
+# UART test does: a minimal kernel-only environment must still build it.
+add_executable(SolidSyslogFreeRtosSysUpTimeTest
+    SolidSyslogFreeRtosSysUpTimeTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosTaskFake.c
+)
+
+target_link_libraries(SolidSyslogFreeRtosSysUpTimeTest PRIVATE
+    ${PROJECT_NAME}
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogFreeRtosSysUpTimeTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
+    $ENV{FREERTOS_KERNEL_PATH}/include
+)
+
+add_test(NAME SolidSyslogFreeRtosSysUpTimeTest COMMAND SolidSyslogFreeRtosSysUpTimeTest)
+
 # CMSDK UART driver host tests — recompiles the driver source from the
 # Example/FreeRtos/Common board glue against an in-memory fake register
 # block. No FreeRTOS-Plus-TCP involvement, so the include path is intentionally

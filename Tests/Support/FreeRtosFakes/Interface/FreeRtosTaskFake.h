@@ -14,6 +14,9 @@ EXTERN_C_BEGIN
     unsigned   FreeRtosTaskFake_VTaskDelayCallCount(void);
     TickType_t FreeRtosTaskFake_LastVTaskDelayTicks(void);
 
+    /* xTaskGetTickCount stub */
+    void FreeRtosTaskFake_SetTickCount(TickType_t ticks);
+
 EXTERN_C_END
 
 #endif /* FREERTOSTASKFAKE_H */

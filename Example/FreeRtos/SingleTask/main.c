@@ -18,16 +18,21 @@
 #include "ExampleEnterpriseId.h"
 #include "ExampleInteractive.h"
 #include "ExampleIps.h"
+#include "ExampleLanguage.h"
 #include "SolidSyslog.h"
+#include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogFreeRtosDatagram.h"
 #include "SolidSyslogFreeRtosStaticResolver.h"
+#include "SolidSyslogFreeRtosSysUpTime.h"
+#include "SolidSyslogMetaSd.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogStdAtomicOps.h"
 #include "SolidSyslogTimestamp.h"
 #include "SolidSyslogUdpSender.h"
 
@@ -334,15 +339,22 @@ static void InteractiveTask(void* argument)
     struct SolidSyslogBuffer* buffer = SolidSyslogNullBuffer_Create(sender);
     struct SolidSyslogStore*  store  = SolidSyslogNullStore_Create();
 
-    struct SolidSyslogOriginSdConfig originConfig = {
-        .software     = "SolidSyslogExample",
-        .swVersion    = "0.7.0",
-        .enterpriseId = EXAMPLE_ENTERPRISE_ID,
-        .getIpCount   = ExampleIps_Count,
-        .getIpAt      = ExampleIps_At,
+    struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create(SolidSyslogStdAtomicOps_Create());
+    struct SolidSyslogMetaSdConfig   metaConfig = {
+          .counter      = counter,
+          .getSysUpTime = SolidSyslogFreeRtosSysUpTime_Get,
+          .getLanguage  = ExampleLanguage_Get,
+    };
+    struct SolidSyslogStructuredData* metaSd       = SolidSyslogMetaSd_Create(&metaConfig);
+    struct SolidSyslogOriginSdConfig  originConfig = {
+         .software     = "SolidSyslogExample",
+         .swVersion    = "0.7.0",
+         .enterpriseId = EXAMPLE_ENTERPRISE_ID,
+         .getIpCount   = ExampleIps_Count,
+         .getIpAt      = ExampleIps_At,
     };
     struct SolidSyslogStructuredData* originSd = SolidSyslogOriginSd_Create(&originConfig);
-    struct SolidSyslogStructuredData* sdList[] = {originSd};
+    struct SolidSyslogStructuredData* sdList[] = {metaSd, originSd};
 
     struct SolidSyslogConfig config = {
         .buffer       = buffer,
@@ -361,6 +373,9 @@ static void InteractiveTask(void* argument)
 
     SolidSyslog_Destroy();
     SolidSyslogOriginSd_Destroy();
+    SolidSyslogMetaSd_Destroy();
+    SolidSyslogAtomicCounter_Destroy();
+    SolidSyslogStdAtomicOps_Destroy();
     SolidSyslogNullStore_Destroy();
     SolidSyslogNullBuffer_Destroy();
     SolidSyslogUdpSender_Destroy();
