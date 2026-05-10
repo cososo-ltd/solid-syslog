@@ -1,16 +1,7 @@
 #ifndef TESTUTILS_H
 #define TESTUTILS_H
 
-#include <stddef.h>
-
-static inline size_t MinSize(size_t a, size_t b)
-{
-    return (a < b) ? a : b;
-}
-
-#ifdef __cplusplus
-
-#include "CppUTest/TestHarness.h" // IWYU pragma: keep — only used by the C++ macros below; placed inside the __cplusplus guard so C consumers don't pull in C++ headers.
+#include "CppUTest/TestHarness.h" // IWYU pragma: keep -- needed by the CALLED_* macros below
 
 namespace CososoTesting
 {
@@ -46,7 +37,5 @@ enum
 #define CALLED_FAKE(getter, count) LONGS_EQUAL((count), getter##CallCount())
 #define CALLED_FAKE_ON(getter, instance, count) LONGS_EQUAL((count), getter##CallCount(instance))
 // NOLINTEND(cppcoreguidelines-macro-usage)
-
-#endif /* __cplusplus */
 
 #endif /* TESTUTILS_H */

@@ -5447,3 +5447,53 @@ unchanged.
 - Rebased onto main after the S12.18 DEVLOG (#320) squash-merged, and
   pruned five `[gone]`-tracking local branches that survived earlier
   squash merges.
+
+## 2026-05-10 — Split MinSize out of TestUtils.h
+
+### Summary
+
+S24.02 review caught an `#ifdef __cplusplus` block at the top of
+`Tests/Support/TestUtils.h`. The whole codebase is supposed to be
+free of preprocessor conditionals outside header guards and the
+single authorised C/C++ interop case in `Core/Interface/ExternC.h`,
+so the deviation was worth fixing rather than carrying.
+
+The guard existed because `TestUtils.h` mixed two audiences: a tiny C
+helper (`MinSize`) needed by three test fakes (`StoreFake.c`,
+`SenderFake.c`, `BufferFake.c`), and the C++-only `CososoTesting`
+namespace + `CALLED_*` macros used by the test bodies. Splitting them
+removes the conditional cleanly:
+
+- New `Tests/Support/MinSize.h` — just the `MinSize` inline.
+  C-compatible, no guard needed.
+- `Tests/Support/TestUtils.h` — now pure C++ from line 1. No
+  `#ifdef __cplusplus`, no comment explaining why C consumers needed
+  to be shielded.
+- The three fake `.c` files swap their include from `TestUtils.h` to
+  `MinSize.h`.
+
+Four files modified, one added. 1088 tests still pass; format / tidy
+/ cppcheck all clean.
+
+### Decisions
+
+- **One header, one audience.** The `#ifdef __cplusplus` was load-
+  bearing only because two unrelated helpers shared a file. Splitting
+  is cheaper than carrying an exception, and it leaves the
+  no-conditional-compilation rule strict (now exactly one authorised
+  case: `extern "C"` in `Core/Interface/ExternC.h`).
+- **No story, one-off chore PR.** The change is mechanical and tiny
+  (4 files, ~15 lines net); CLAUDE.md's E24 charter explicitly carves
+  out "one-off chore PRs that don't need a tracked story" from epic
+  scope. Going through the issue / sub-issue / project-board recipe
+  for a 15-line diff would be ceremony for ceremony's sake.
+
+### Deferred
+
+- **`Tests/Support/TestAtomicOps.h:8`** — the genuine
+  `#if defined(SOLIDSYSLOG_TEST_USE_WINDOWS_ATOMIC_OPS)` build-time
+  selection between `SolidSyslogWindowsAtomicOps` and
+  `SolidSyslogStdAtomicOps`. Same review caught it; the clean fix is
+  a CMake-selected `TestAtomicOpsWindows.c` / `TestAtomicOpsStd.c`
+  shim mirroring the `SafeString*.c` pattern. Left to a follow-up so
+  this PR stays focused on the one deviation Code Review surfaced.

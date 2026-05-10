@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #include "SolidSyslogBufferDefinition.h"
-#include "TestUtils.h"
+#include "MinSize.h"
 
 enum
 {
