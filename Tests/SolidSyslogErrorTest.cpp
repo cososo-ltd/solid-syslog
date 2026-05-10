@@ -4,6 +4,9 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogPrival.h"
+#include "TestUtils.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
 
 static int                       handlerCallCount;
 static enum SolidSyslog_Severity capturedSeverity;
@@ -19,8 +22,6 @@ static void TestErrorHandler(void* context, enum SolidSyslog_Severity severity, 
 }
 
 // NOLINTBEGIN(cppcoreguidelines-macro-usage) -- macros preserve __FILE__/__LINE__ in test failure output
-#define CHECK_HANDLER_INVOKED_ONCE() LONGS_EQUAL(1, handlerCallCount)
-#define CHECK_HANDLER_NOT_INVOKED() LONGS_EQUAL(0, handlerCallCount)
 #define CHECK_EXPECTED_SEVERITY(expected) LONGS_EQUAL((expected), capturedSeverity)
 #define CHECK_EXPECTED_MESSAGE(expected) STRCMP_EQUAL((expected), capturedMessage)
 #define CHECK_EXPECTED_CONTEXT(expected) POINTERS_EQUAL((expected), capturedContext)
@@ -63,7 +64,7 @@ TEST(SolidSyslogError, InstalledHandlerReceivesSeverityMessageAndContext)
     installHandler();
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, "warning message");
 
-    CHECK_HANDLER_INVOKED_ONCE();
+    CALLED_FUNCTION(handler, ONCE);
     CHECK_EXPECTED_SEVERITY(SOLIDSYSLOG_SEVERITY_WARNING);
     CHECK_EXPECTED_MESSAGE("warning message");
     CHECK_EXPECTED_CONTEXT(&sentinel);
@@ -76,7 +77,7 @@ TEST(SolidSyslogError, SetErrorHandlerWithNullHandlerRestoresDefault)
     SolidSyslog_SetErrorHandler(nullptr, &sentinel);
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, "should not be observed");
 
-    CHECK_HANDLER_NOT_INVOKED();
+    CALLED_FUNCTION(handler, NEVER);
 }
 
 TEST(SolidSyslogError, SolidSyslogCreateWithNullConfigReportsError)
@@ -85,7 +86,7 @@ TEST(SolidSyslogError, SolidSyslogCreateWithNullConfigReportsError)
 
     SolidSyslog_Create(nullptr);
 
-    CHECK_HANDLER_INVOKED_ONCE();
+    CALLED_FUNCTION(handler, ONCE);
     CHECK_EXPECTED_SEVERITY(SOLIDSYSLOG_SEVERITY_ERR);
     CHECK_EXPECTED_MESSAGE(SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_CONFIG);
 }

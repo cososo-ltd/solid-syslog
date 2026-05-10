@@ -7,7 +7,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for CALLED_FUNCTION
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
 
 /* Selector return values — named for the inner sender they select, so tests
  * read as `selectorReturn = INNER_B`. */
@@ -86,30 +86,30 @@ TEST(SolidSyslogSwitchingSender, CreateDestroyWorksWithoutCrashing)
 TEST(SolidSyslogSwitchingSender, DestroyDoesNotSendToInnerSenders)
 {
     SolidSyslogSwitchingSender_Destroy();
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerA), NEVER);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerB), NEVER);
+    CALLED_FAKE_ON(SenderFake_Send, innerA, NEVER);
+    CALLED_FAKE_ON(SenderFake_Send, innerB, NEVER);
 }
 
 TEST(SolidSyslogSwitchingSender, DestroyDoesNotDisconnectInnerSenders)
 {
     SolidSyslogSwitchingSender_Destroy();
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerA), NEVER);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerB), NEVER);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerA, NEVER);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
 }
 
 TEST(SolidSyslogSwitchingSender, SendDelegatesToSenderAtSelectedIndex)
 {
     Send("x", 1);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerA), ONCE);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerB), NEVER);
+    CALLED_FAKE_ON(SenderFake_Send, innerA, ONCE);
+    CALLED_FAKE_ON(SenderFake_Send, innerB, NEVER);
 }
 
 TEST(SolidSyslogSwitchingSender, SecondSendAtSameIndexDoesNotDisconnect)
 {
     Send("x", 1);
     Send("y", 1);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerA), TWICE);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerA), NEVER);
+    CALLED_FAKE_ON(SenderFake_Send, innerA, TWICE);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerA, NEVER);
 }
 
 TEST(SolidSyslogSwitchingSender, SelectorChangeDisconnectsOutgoingAndSendsOnIncoming)
@@ -117,10 +117,10 @@ TEST(SolidSyslogSwitchingSender, SelectorChangeDisconnectsOutgoingAndSendsOnInco
     Send("x", 1);
     selectorReturn = INNER_B;
     Send("y", 1);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerA), ONCE);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerA), ONCE);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerB), ONCE);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerB), NEVER);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerA, ONCE);
+    CALLED_FAKE_ON(SenderFake_Send, innerA, ONCE);
+    CALLED_FAKE_ON(SenderFake_Send, innerB, ONCE);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
 }
 
 TEST(SolidSyslogSwitchingSender, SteadyStateAfterSwitchDoesNotDisconnectAgain)
@@ -129,24 +129,24 @@ TEST(SolidSyslogSwitchingSender, SteadyStateAfterSwitchDoesNotDisconnectAgain)
     selectorReturn = INNER_B;
     Send("y", 1);
     Send("z", 1);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerA), ONCE);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerB), NEVER);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerB), TWICE);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerA, ONCE);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
+    CALLED_FAKE_ON(SenderFake_Send, innerB, TWICE);
 }
 
 TEST(SolidSyslogSwitchingSender, DisconnectBeforeAnySendDoesNotTouchInnerSenders)
 {
     SolidSyslogSender_Disconnect(sender);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerA), NEVER);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerB), NEVER);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerA, NEVER);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
 }
 
 TEST(SolidSyslogSwitchingSender, DisconnectForwardsToCurrentSender)
 {
     Send("x", 1);
     SolidSyslogSender_Disconnect(sender);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerA), ONCE);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerB), NEVER);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerA, ONCE);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
 }
 
 TEST(SolidSyslogSwitchingSender, DisconnectAfterSwitchForwardsToNewActive)
@@ -155,8 +155,8 @@ TEST(SolidSyslogSwitchingSender, DisconnectAfterSwitchForwardsToNewActive)
     selectorReturn = INNER_B;
     Send("y", 1);
     SolidSyslogSender_Disconnect(sender);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerA), ONCE);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerB), ONCE);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerA, ONCE);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerB, ONCE);
 }
 
 TEST(SolidSyslogSwitchingSender, DisconnectAfterSelectorChangeWithoutSendForwardsToPreviouslyActive)
@@ -166,16 +166,16 @@ TEST(SolidSyslogSwitchingSender, DisconnectAfterSelectorChangeWithoutSendForward
     SolidSyslogSender_Disconnect(sender);
     // Disconnect does not re-consult the selector — it forwards to the
     // currently-held sender, so innerA receives the Disconnect.
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerA), ONCE);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerB), NEVER);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerA, ONCE);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
 }
 
 TEST(SolidSyslogSwitchingSender, SelectorReturningNonZeroOnFirstSendLandsOnThatIndex)
 {
     selectorReturn = INNER_B;
     Send("x", 1);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerA), NEVER);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerB), ONCE);
+    CALLED_FAKE_ON(SenderFake_Send, innerA, NEVER);
+    CALLED_FAKE_ON(SenderFake_Send, innerB, ONCE);
 }
 
 TEST(SolidSyslogSwitchingSender, SendForwardsBufferVerbatimToActive)
@@ -197,9 +197,9 @@ TEST(SolidSyslogSwitchingSender, SelectorAtLastValidIndexDelegatesToThatSender)
     CreateSwitchingSender(3);
     selectorReturn = INNER_C;
     Send("x", 1);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerA), NEVER);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerB), NEVER);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerC), ONCE);
+    CALLED_FAKE_ON(SenderFake_Send, innerA, NEVER);
+    CALLED_FAKE_ON(SenderFake_Send, innerB, NEVER);
+    CALLED_FAKE_ON(SenderFake_Send, innerC, ONCE);
 }
 
 TEST(SolidSyslogSwitchingSender, ZeroSenderCountSendReturnsFalse)
@@ -218,8 +218,8 @@ TEST(SolidSyslogSwitchingSender, SelectorBeyondEndSendReturnsFalseAndDoesNotTouc
 {
     selectorReturn = BEYOND_END;
     CHECK_FALSE(SolidSyslogSender_Send(sender, "x", 1));
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerA), NEVER);
-    CALLED_FUNCTION(SenderFake_SendCallCount(innerB), NEVER);
+    CALLED_FAKE_ON(SenderFake_Send, innerA, NEVER);
+    CALLED_FAKE_ON(SenderFake_Send, innerB, NEVER);
 }
 
 TEST(SolidSyslogSwitchingSender, DisconnectAfterSwitchingBeyondEndIsNilSafe)
@@ -228,18 +228,18 @@ TEST(SolidSyslogSwitchingSender, DisconnectAfterSwitchingBeyondEndIsNilSafe)
     selectorReturn = BEYOND_END;
     Send("y", 1);
     // innerA was active, switched away — one Disconnect from the switch
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerA), ONCE);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerB), NEVER);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerA, ONCE);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
     // explicit Disconnect now resolves to nil — no inner sender touched
     SolidSyslogSender_Disconnect(sender);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerA), ONCE);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerB), NEVER);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerA, ONCE);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
 }
 
 TEST(SolidSyslogSwitchingSender, SelectorBeyondEndDisconnectBeforeSendDoesNotTouchInnerSenders)
 {
     selectorReturn = BEYOND_END;
     SolidSyslogSender_Disconnect(sender);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerA), NEVER);
-    CALLED_FUNCTION(SenderFake_DisconnectCallCount(innerB), NEVER);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerA, NEVER);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
 }
