@@ -364,13 +364,13 @@ TEST(SolidSyslog, CreateDestroyWorksWithoutCrashing)
 
 TEST(SolidSyslog, NoMessagesAreSentWhenLogIsNotCalled)
 {
-    LONGS_EQUAL(0, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(0, SenderFake_SendCallCount(fakeSender));
 }
 
 TEST(SolidSyslog, SingleLogCallResultsInOneSend)
 {
     Log();
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(1, SenderFake_SendCallCount(fakeSender));
 }
 
 TEST(SolidSyslog, PriValIs134)
@@ -1264,7 +1264,7 @@ TEST(SolidSyslog, ServiceSendsMessageReadFromBuffer)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(1, SenderFake_SendCallCount(fakeSender));
     STRCMP_EQUAL("test", SenderFake_LastBufferAsString(fakeSender));
 
     SolidSyslog_Destroy();
@@ -1285,7 +1285,7 @@ TEST(SolidSyslog, ServiceSendsBufferedMessageWithNullStore)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(1, SenderFake_SendCallCount(fakeSender));
     STRCMP_EQUAL("test", SenderFake_LastBufferAsString(fakeSender));
 
     SolidSyslog_Destroy();
@@ -1307,7 +1307,7 @@ TEST(SolidSyslog, ServiceSendsFromStoreWhenHasUnsent)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(1, SenderFake_SendCallCount(fakeSender));
     STRCMP_EQUAL("stored", SenderFake_LastBufferAsString(fakeSender));
 
     SolidSyslog_Destroy();
@@ -1418,7 +1418,7 @@ TEST(SolidSyslog, ServiceSendsDirectlyWhenStoreWriteFails)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(1, SenderFake_SendCallCount(fakeSender));
     STRCMP_EQUAL("direct", SenderFake_LastBufferAsString(fakeSender));
 
     SolidSyslog_Destroy();
@@ -1441,7 +1441,7 @@ TEST(SolidSyslog, ServiceDoesNotSendWhenStoreReadFails)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(0, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(0, SenderFake_SendCallCount(fakeSender));
 
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
@@ -1464,7 +1464,7 @@ TEST(SolidSyslog, ServiceDoesNotMarkSentWhenSendingFromBuffer)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(1, SenderFake_SendCallCount(fakeSender));
     STRCMP_EQUAL("from-buffer", SenderFake_LastBufferAsString(fakeSender));
 
     SolidSyslog_Destroy();
@@ -1539,7 +1539,7 @@ TEST(SolidSyslogServiceEagerDrain, StoredMessagesDrainInFifoOrderAcrossTicks)
     STRCMP_EQUAL("m2", SenderFake_LastBufferAsString(fakeSender));
     SolidSyslog_Service();
     STRCMP_EQUAL("m3", SenderFake_LastBufferAsString(fakeSender));
-    LONGS_EQUAL(3, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(3, SenderFake_SendCallCount(fakeSender));
 }
 
 TEST(SolidSyslog, ServiceDoesNothingWhenStoreIsHalted)
@@ -1556,7 +1556,7 @@ TEST(SolidSyslog, ServiceDoesNothingWhenStoreIsHalted)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(0, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(0, SenderFake_SendCallCount(fakeSender));
 
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);

@@ -27,7 +27,7 @@ enum
 } // namespace CososoTesting
 
 /* Assert that a call-count expression equals an expected count.
- * Reads as: CALLED_FUNCTION(SenderFake_SendCount(inner), ONCE);
+ * Reads as: CALLED_FUNCTION(SenderFake_SendCallCount(inner), ONCE);
  * (with `using namespace CososoTesting;` in scope). */
 /* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- CppUTest assertions are macro-based */
 #define CALLED_FUNCTION(f, n) LONGS_EQUAL((n), (f))

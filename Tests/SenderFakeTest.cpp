@@ -23,38 +23,38 @@ TEST_GROUP(SenderFake)
 
 TEST(SenderFake, SendCountIsZeroAfterCreate)
 {
-    LONGS_EQUAL(0, SenderFake_SendCount(sender));
+    LONGS_EQUAL(0, SenderFake_SendCallCount(sender));
 }
 
 TEST(SenderFake, DisconnectCountIsZeroAfterCreate)
 {
-    LONGS_EQUAL(0, SenderFake_DisconnectCount(sender));
+    LONGS_EQUAL(0, SenderFake_DisconnectCallCount(sender));
 }
 
 TEST(SenderFake, SendCountIncrementsOnSend)
 {
     SolidSyslogSender_Send(sender, "a", 1);
-    LONGS_EQUAL(1, SenderFake_SendCount(sender));
+    LONGS_EQUAL(1, SenderFake_SendCallCount(sender));
 }
 
 TEST(SenderFake, SendCountIncrementsTwiceOnTwoSends)
 {
     SolidSyslogSender_Send(sender, "a", 1);
     SolidSyslogSender_Send(sender, "b", 1);
-    LONGS_EQUAL(2, SenderFake_SendCount(sender));
+    LONGS_EQUAL(2, SenderFake_SendCallCount(sender));
 }
 
 TEST(SenderFake, DisconnectCountIncrementsOnDisconnect)
 {
     SolidSyslogSender_Disconnect(sender);
-    LONGS_EQUAL(1, SenderFake_DisconnectCount(sender));
+    LONGS_EQUAL(1, SenderFake_DisconnectCallCount(sender));
 }
 
 TEST(SenderFake, DisconnectCountIncrementsTwiceOnTwoDisconnects)
 {
     SolidSyslogSender_Disconnect(sender);
     SolidSyslogSender_Disconnect(sender);
-    LONGS_EQUAL(2, SenderFake_DisconnectCount(sender));
+    LONGS_EQUAL(2, SenderFake_DisconnectCallCount(sender));
 }
 
 TEST(SenderFake, LastBufferCapturesMessage)
@@ -92,14 +92,14 @@ TEST(SenderFake, ResetClearsSendCount)
 {
     SolidSyslogSender_Send(sender, "a", 1);
     SenderFake_Reset(sender);
-    LONGS_EQUAL(0, SenderFake_SendCount(sender));
+    LONGS_EQUAL(0, SenderFake_SendCallCount(sender));
 }
 
 TEST(SenderFake, ResetClearsDisconnectCount)
 {
     SolidSyslogSender_Disconnect(sender);
     SenderFake_Reset(sender);
-    LONGS_EQUAL(0, SenderFake_DisconnectCount(sender));
+    LONGS_EQUAL(0, SenderFake_DisconnectCallCount(sender));
 }
 
 TEST(SenderFake, FailNextSendReturnsFalse)
@@ -153,15 +153,15 @@ TEST(SenderFakeInstances, TwoInstancesHaveDistinctHandles)
 TEST(SenderFakeInstances, SendCountsAreIndependent)
 {
     SolidSyslogSender_Send(a, "x", 1);
-    LONGS_EQUAL(1, SenderFake_SendCount(a));
-    LONGS_EQUAL(0, SenderFake_SendCount(b));
+    LONGS_EQUAL(1, SenderFake_SendCallCount(a));
+    LONGS_EQUAL(0, SenderFake_SendCallCount(b));
 }
 
 TEST(SenderFakeInstances, DisconnectCountsAreIndependent)
 {
     SolidSyslogSender_Disconnect(a);
-    LONGS_EQUAL(1, SenderFake_DisconnectCount(a));
-    LONGS_EQUAL(0, SenderFake_DisconnectCount(b));
+    LONGS_EQUAL(1, SenderFake_DisconnectCallCount(a));
+    LONGS_EQUAL(0, SenderFake_DisconnectCallCount(b));
 }
 
 TEST(SenderFakeInstances, LastBuffersAreIndependent)

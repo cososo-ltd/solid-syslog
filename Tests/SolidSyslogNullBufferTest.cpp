@@ -54,19 +54,19 @@ TEST(SolidSyslogNullBuffer, WriteForwardsSizeToSender)
 TEST(SolidSyslogNullBuffer, WriteResultsInOneSend)
 {
     Write();
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(1, SenderFake_SendCallCount(fakeSender));
 }
 
 TEST(SolidSyslogNullBuffer, TwoWritesResultInTwoSends)
 {
     Write();
     Write();
-    LONGS_EQUAL(2, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(2, SenderFake_SendCallCount(fakeSender));
 }
 
 TEST(SolidSyslogNullBuffer, NoWritesResultInNoSends)
 {
-    LONGS_EQUAL(0, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(0, SenderFake_SendCallCount(fakeSender));
 }
 
 TEST(SolidSyslogNullBuffer, ReadReturnsNothingToSend)

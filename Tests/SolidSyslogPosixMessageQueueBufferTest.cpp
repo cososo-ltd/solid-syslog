@@ -103,7 +103,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
     SolidSyslogMessage message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFO, nullptr, nullptr};
     SolidSyslog_Log(&message);
     SolidSyslog_Service();
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    LONGS_EQUAL(1, SenderFake_SendCallCount(fakeSender));
 
     SolidSyslog_Destroy();
     SolidSyslogNullStore_Destroy();
