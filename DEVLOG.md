@@ -5080,3 +5080,40 @@ forced by a third-party regression making the dev container unusable.
   skipped scenarios are the remaining `@freertoswip`-tagged ones
   in `buffered.feature`, `header_fields.feature` PROCID, and a few
   others — out of scope for S08.03).
+
+### Update — audit caught hostname/PROCID gap (epic reopened)
+
+Same-day post-merge audit of the remaining `@freertoswip` tags
+revealed that the closure was premature. Two more fields fall under
+the same RFC-honest reference-example pattern slice 9 introduced for
+TIMESTAMP, and the library already supports them with no code change:
+
+- **HOSTNAME** — RFC 5424 §6.2.4 specifies a 5-rung preference order
+  (FQDN → static IP → hostname → dynamic IP → NILVALUE). The FreeRTOS
+  reference example has no FQDN, no integrator-supplied hostname, and
+  no DHCP, so the highest-preference value it can honestly emit is
+  the **static IP** (`192.0.2.1`, already in origin SD). Currently it
+  bakes `"FreeRtosExample"` as a TEST value — non-compliant.
+
+- **PROCID** — RFC 5424 §6.2.6 explicitly permits NILVALUE when no
+  process concept exists. FreeRTOS QEMU has none; the example
+  currently bakes `"1"`. NILVALUE is the right answer; setting
+  `config.getProcessId = NULL` falls through `NilStringFunction` →
+  empty field → `FormatStringField` emits `-`
+  ([Core/Source/SolidSyslog.c:320-336](Core/Source/SolidSyslog.c#L320-L336)).
+
+Epic #268 reopened. Slice 10 (#315) is in flight to apply both
+fallbacks and untag the four affected `@freertoswip` scenarios in
+`header_fields.feature`, `syslog.feature`, and
+`message_fields.feature`. Library code remains untouched; the same
+NULL-callback path that drives slice 9's NILVALUE TIMESTAMP also
+drives NILVALUE PROCID and HOSTNAME-IP-fallback.
+
+**Lesson:** when introducing a "this product shape uses the RFC's
+explicit fallback rather than a placeholder TEST value" pattern,
+audit *all* fields of similar shape before declaring the epic done.
+Slice 9 fixed TIMESTAMP via `clock = NULL`; the same pattern was
+sitting untouched on `getHostname` / `getProcessId`. The
+`@freertoswip` skips were dismissed as "out of scope" without
+checking whether the same RFC-honest pattern applied — it does, for
+two of the four.
