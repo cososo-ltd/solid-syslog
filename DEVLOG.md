@@ -56,10 +56,10 @@ scenario): `prival.feature` (all 6 scenarios), `message_fields.feature`
   scenario (~1600 bytes) stays tagged because UDP path-MTU
   EMSGSIZE semantics on FreeRTOS-Plus-TCP are unverified — that is
   its own slice.
-- **Bump `INTERACTIVE_TASK_STACK_DEPTH` *32 → *40.** The larger
+- **Bump `INTERACTIVE_TASK_STACK_DEPTH` `*32` → `*40`.** The larger
   line buffer and same-size `name[]` in `HandleSet` add ~4 KB peak
-  to the interactive-task stack frame; *32 (16 KB) was the empirical
-  ceiling at the previous buffer size. *40 (20 KB) gives ~4 KB
+  to the interactive-task stack frame; `*32` (16 KB) was the empirical
+  ceiling at the previous buffer size. `*40` (20 KB) gives ~4 KB
   headroom. Bigger picture is captured by the existing memory note
   on the CMake-driven memory-scaling follow-up (the `*32` magic
   number was already deferred to that work).
