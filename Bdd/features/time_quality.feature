@@ -18,6 +18,7 @@ Feature: Structured data — time quality
     When the example program sends a syslog message
     Then the structured data contains sequenceId "1"
     And the structured data contains tzKnown "1"
+    And the structured data contains isSynced "1"
 
   @no_rtc
   Scenario: Time quality reflects no RTC
@@ -32,3 +33,4 @@ Feature: Structured data — time quality
     When the example program sends a syslog message
     Then the structured data contains sequenceId "1"
     And the structured data contains tzKnown "0"
+    And the structured data contains isSynced "0"
