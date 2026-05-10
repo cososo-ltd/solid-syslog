@@ -33,7 +33,8 @@
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStdAtomicOps.h"
-#include "SolidSyslogTimestamp.h"
+#include "SolidSyslogTimeQuality.h"
+#include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
 
 #include <FreeRTOS.h>
@@ -123,19 +124,6 @@ static struct SolidSyslogMessage g_message = {
     .msg       = g_msg,
 };
 
-/* RFC 5424 publication date — placeholder until S08.03 slice 4+ injects a
- * real RTC-backed clock callback. */
-static const struct SolidSyslogTimestamp TEST_TIMESTAMP = {
-    .year             = 2009U,
-    .month            = 3U,
-    .day              = 23U,
-    .hour             = 0U,
-    .minute           = 0U,
-    .second           = 0U,
-    .microsecond      = 0U,
-    .utcOffsetMinutes = 0,
-};
-
 /* Plus-TCP requires the network interface descriptor and its endpoint(s)
  * to outlive the IP stack. */
 static NetworkInterface_t networkInterface;
@@ -203,9 +191,17 @@ static void GetProcessId(struct SolidSyslogFormatter* formatter)
     SolidSyslogFormatter_BoundedString(formatter, g_processId, strlen(g_processId));
 }
 
-static void GetTimestamp(struct SolidSyslogTimestamp* timestamp)
+/* No RTC and no time-sync on this reference target — the example models an
+ * embedded device that has no concept of wall-clock time. RFC 5424 §6.2.3.1
+ * mandates NILVALUE TIMESTAMP in that case, and the timeQuality SD reports
+ * tzKnown=0, isSynced=0. SolidSyslogConfig.clock=NULL drops through to the
+ * library's NilClock; the resulting all-zero SolidSyslogTimestamp fails
+ * TimestampIsValid in Core/Source/SolidSyslog.c and emits "-" on the wire. */
+static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
-    *timestamp = TEST_TIMESTAMP;
+    timeQuality->tzKnown                  = false;
+    timeQuality->isSynced                 = false;
+    timeQuality->syncAccuracyMicroseconds = SOLIDSYSLOG_SYNC_ACCURACY_OMIT;
 }
 
 static void GetEndpoint(struct SolidSyslogEndpoint* endpoint)
@@ -345,21 +341,22 @@ static void InteractiveTask(void* argument)
           .getSysUpTime = SolidSyslogFreeRtosSysUpTime_Get,
           .getLanguage  = ExampleLanguage_Get,
     };
-    struct SolidSyslogStructuredData* metaSd       = SolidSyslogMetaSd_Create(&metaConfig);
-    struct SolidSyslogOriginSdConfig  originConfig = {
-         .software     = "SolidSyslogExample",
-         .swVersion    = "0.7.0",
-         .enterpriseId = EXAMPLE_ENTERPRISE_ID,
-         .getIpCount   = ExampleIps_Count,
-         .getIpAt      = ExampleIps_At,
+    struct SolidSyslogStructuredData* metaSd        = SolidSyslogMetaSd_Create(&metaConfig);
+    struct SolidSyslogStructuredData* timeQualitySd = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
+    struct SolidSyslogOriginSdConfig  originConfig  = {
+          .software     = "SolidSyslogExample",
+          .swVersion    = "0.7.0",
+          .enterpriseId = EXAMPLE_ENTERPRISE_ID,
+          .getIpCount   = ExampleIps_Count,
+          .getIpAt      = ExampleIps_At,
     };
     struct SolidSyslogStructuredData* originSd = SolidSyslogOriginSd_Create(&originConfig);
-    struct SolidSyslogStructuredData* sdList[] = {metaSd, originSd};
+    struct SolidSyslogStructuredData* sdList[] = {metaSd, timeQualitySd, originSd};
 
     struct SolidSyslogConfig config = {
         .buffer       = buffer,
         .sender       = NULL,
-        .clock        = GetTimestamp,
+        .clock        = NULL,
         .getHostname  = GetHostname,
         .getAppName   = GetAppName,
         .getProcessId = GetProcessId,
@@ -373,6 +370,7 @@ static void InteractiveTask(void* argument)
 
     SolidSyslog_Destroy();
     SolidSyslogOriginSd_Destroy();
+    SolidSyslogTimeQualitySd_Destroy();
     SolidSyslogMetaSd_Destroy();
     SolidSyslogAtomicCounter_Destroy();
     SolidSyslogStdAtomicOps_Destroy();

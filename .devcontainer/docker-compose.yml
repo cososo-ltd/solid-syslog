@@ -27,7 +27,7 @@ services:
   # if a future workflow runs both pairs simultaneously; see
   # ci/docker-compose.bdd.yml for the rationale.
   syslog-ng-linux:
-    image: balabit/syslog-ng:latest
+    image: balabit/syslog-ng:4.8.2
     volumes:
       - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
       - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
@@ -124,7 +124,7 @@ services:
   # network namespace so QEMU's slirp gateway 10.0.2.2 NATs to the pair's
   # loopback, where syslog-ng-freertos is listening on 0.0.0.0:5514.
   syslog-ng-freertos:
-    image: balabit/syslog-ng:latest
+    image: balabit/syslog-ng:4.8.2
     volumes:
       - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
       - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
