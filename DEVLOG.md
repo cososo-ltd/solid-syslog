@@ -5334,3 +5334,116 @@ NULL-callback / IP-stack-introspection paths were already in place.
   -o -name '*.h'` which is the canonical safe form; restrict the
   glob explicitly when batch-formatting, never trust extension
   filtering inside the tool.
+
+## 2026-05-10 — S24.02 CALLED_* test macro sweep + E24 rename
+
+### Summary
+
+Test-hygiene chore deferred from S12.18: every call-count assertion
+across the test base now uses one of three intent-named macros backed
+by a `<name>CallCount` token-paste rule. `Tests/Support/TestUtils.h`
+hosts the macros; the enum stays in `CososoTesting` to ringfence the
+NEVER/ONCE/TWICE/THRICE identifiers.
+
+```c
+CALLED_FUNCTION(handler, ONCE)            // local static int counter
+CALLED_FAKE(SocketFake_Send, TWICE)       // global-state fake getter
+CALLED_FAKE_ON(SenderFake_Send, inner, ONCE)  // instance-parameter getter
+```
+
+Three pre-existing implementations folded into the new design:
+
+- `CHECK_HANDLER_INVOKED_ONCE` / `CHECK_HANDLER_NOT_INVOKED` in
+  `SolidSyslogErrorTest.cpp` (tiny, hard-coded to one variable).
+- The single expression-form `CALLED_FUNCTION(f, n)` already in
+  `Tests/TestUtils.h` and used by `SolidSyslogSwitchingSenderTest.cpp`
+  (every call site there was structurally a `CALLED_FAKE_ON` after the
+  SenderFake `*Count` → `*CallCount` rename).
+- The bool flags `storeFullCallbackInvoked` /
+  `computeIntegrityCalled` / `verifyIntegrityCalled` in
+  `SolidSyslogBlockStoreTest.cpp` converted to int counters, so tests
+  now also catch unexpected double-fires.
+
+Final per-file shape: every test executable (`SolidSyslogTests`,
+`ExampleTests`, `SolidSyslogFreeRtosDatagramTest`, `CmsdkUartTest`,
+`SolidSyslogFreeRtosSysUpTimeTest`, `SolidSyslogFreeRtosStaticResolverTest`,
+plus the Winsock variants compiled in CI only) opts in via
+`#include "TestUtils.h"` + `using namespace CososoTesting;`. 1088 host
+tests + 50 FreeRtos host tests green; coverage 100% lines/functions
+unchanged.
+
+### Decisions
+
+- **E24 renamed from "Hardening" to "Code Hygiene".** The epic body
+  was already written for cross-cutting non-functional sweeps; only
+  the title was wrong. Robustness-style "hardening" work lives in
+  E12 / E25 / E26 and didn't need its own home. S24.01 (IWYU) and
+  S24.02 (this story) both fit the renamed scope cleanly.
+- **Reuse `TestUtils.h`, don't add a separate `CallCount.h`.** The
+  `CososoTesting` namespace + NEVER/ONCE/TWICE/THRICE enum already
+  lived there to ringfence common identifiers; introducing a parallel
+  header would have duplicated the enum or risked ODR drift. Moved
+  `TestUtils.h` from `Tests/` to `Tests/Support/` so non-`Tests/`-root
+  executables (Example, FreeRtos) inherit it through the established
+  Support include path rather than via implicit-source-dir lookup.
+- **Three macros, not one.** A single macro can't both token-paste a
+  bare name (`fooCallCount`) and accept an arbitrary expression
+  (`fake.callCount()`) — the existing flexible expression form was
+  effectively `CALLED_FAKE_ON` with the rename done. Splitting into
+  CALLED_FUNCTION / CALLED_FAKE / CALLED_FAKE_ON keeps each call-site
+  declarative about whether it's a local counter, global getter, or
+  instance getter, and the token paste enforces the naming rule at
+  compile time.
+- **Counter rename rule: `<functionName>CallCount`.** Functions keep
+  their existing names; counters are derived. This preferred renaming
+  the variable (`getPortCallCount` → `SpyGetPortCallCount`,
+  `storeFullCallbackCount` → `CountStoreFullInvocationsCallCount`)
+  over renaming the function. Verbose in a couple of places but
+  consistent — and `CALLED_FUNCTION(<funcName>, ONCE)` reads the same
+  way regardless of how long the function name is.
+- **Bool → int even where the test only cared "was it called".**
+  Cheap upgrade in test power: a future double-fire bug now fails the
+  existing assertion rather than slipping through.
+- **Skipped a `CountStoreFull/CountThresholdCrossings` rename.** The
+  function names already encode the intent ("count store-full
+  invocations"); the variable suffix mirroring is enough. Renaming
+  the function would have widened the diff for no reader benefit.
+
+### Deferred
+
+- **`spy.callCount` struct member in `ExampleInteractiveTest.cpp`.**
+  Different shape (member of a struct), low payoff to convert. Left
+  as raw `LONGS_EQUAL`; not a counter source the macro family is
+  designed to address. Out of scope per the story body.
+- **`firstSocketCallCount` snapshot variable in
+  `SolidSyslogStreamSenderTest.cpp`.** It's a *snapshot* of a fake
+  getter's value at one point in time, not a counter that increments.
+  Name happens to end in `CallCount` but it doesn't fit the macro's
+  contract; left alone (and the assertion that uses it now passes the
+  expression as `count` to `CALLED_FAKE`, which works because the
+  macro accepts any integral expression).
+
+### Open questions
+
+- None. CI on the PR will exercise the Windows / OpenSSL integration
+  / BDD jobs that aren't run locally; if the Winsock variants need a
+  follow-up tweak we'll see it on the PR check run.
+
+### Process notes
+
+- Per-file conversion was mechanical sed: literal counts 0/1/2/3
+  mapped to NEVER/ONCE/TWICE/THRICE, anything higher (e.g. the
+  12-setsockopt-calls site in `SolidSyslogStreamSenderTest`) passed
+  through as a numeric literal. Order matters in the sed cascade —
+  function-call-form patterns must run before bare-variable-form
+  patterns, otherwise the bare-variable regex eats the `CallCount\)`
+  inside `CallCount()\)`.
+- Discovered partway through that `Tests/TestUtils.h` already had a
+  `CALLED_FUNCTION` macro (different signature) and a `CososoTesting`
+  namespace. The audit had missed it because the search was for
+  `*CallCount` patterns and the existing implementation took an
+  arbitrary expression. Surfaced and re-planned mid-stream rather
+  than blowing past it.
+- Rebased onto main after the S12.18 DEVLOG (#320) squash-merged, and
+  pruned five `[gone]`-tracking local branches that survived earlier
+  squash merges.
