@@ -1,7 +1,11 @@
 #include <sys/socket.h>
 
 #include "SocketFake.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 // clang-format off
 TEST_GROUP(SocketFake)
@@ -14,7 +18,7 @@ TEST(SocketFake, RecvIncrementsCount)
 {
     char buf[16];
     recv(3, buf, sizeof(buf), 0);
-    LONGS_EQUAL(1, SocketFake_RecvCallCount());
+    CALLED_FAKE(SocketFake_Recv, ONCE);
 }
 
 TEST(SocketFake, RecvCapturesFd)

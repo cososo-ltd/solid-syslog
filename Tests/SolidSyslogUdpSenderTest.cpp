@@ -13,7 +13,11 @@
 #include "SolidSyslogSender.h"
 #include "SocketFake.h"
 #include "SolidSyslogDatagram.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 // clang-format off
 static const char* const TEST_MESSAGE          = "hello";
@@ -39,19 +43,19 @@ static const char* GetDefaultHost()
     return TEST_DEFAULT_HOST;
 }
 
-static int getHostCallCount;
+static int SpyGetHostCallCount;
 
 static const char* SpyGetHost()
 {
-    getHostCallCount++;
+    SpyGetHostCallCount++;
     return TEST_DEFAULT_HOST;
 }
 
-static int getPortCallCount;
+static int SpyGetPortCallCount;
 
 static int SpyGetPort()
 {
-    getPortCallCount++;
+    SpyGetPortCallCount++;
     return TEST_DEFAULT_PORT;
 }
 
@@ -124,7 +128,7 @@ TEST(SolidSyslogUdpSender, CreateDestroyWorksWithoutCrashing)
 
 TEST(SolidSyslogUdpSender, CreateDoesNotOpenSocket)
 {
-    LONGS_EQUAL(0, SocketFake_SocketCallCount());
+    CALLED_FAKE(SocketFake_Socket, NEVER);
 }
 
 TEST(SolidSyslogUdpSender, SendReturnsTrueOnSuccess)
@@ -141,7 +145,7 @@ TEST(SolidSyslogUdpSender, SendReturnsFalseOnSendtoFailure)
 TEST(SolidSyslogUdpSender, SingleSendResultsInOneSendtoCall)
 {
     Send();
-    LONGS_EQUAL(1, SocketFake_SendtoCallCount());
+    CALLED_FAKE(SocketFake_Sendto, ONCE);
 }
 
 TEST(SolidSyslogUdpSender, SendtoReceivesBuffer)
@@ -192,7 +196,7 @@ TEST(SolidSyslogUdpSender, SendtoCalledWithAddrlenOfSockaddrIn)
 TEST(SolidSyslogUdpSender, FirstSendOpensDatagramSocket)
 {
     Send();
-    LONGS_EQUAL(1, SocketFake_SocketCallCount());
+    CALLED_FAKE(SocketFake_Socket, ONCE);
     LONGS_EQUAL(AF_INET, SocketFake_SocketDomain());
     LONGS_EQUAL(SOCK_DGRAM, SocketFake_SocketType());
 }
@@ -200,21 +204,21 @@ TEST(SolidSyslogUdpSender, FirstSendOpensDatagramSocket)
 TEST(SolidSyslogUdpSender, FirstSendResolves)
 {
     Send();
-    LONGS_EQUAL(1, SocketFake_GetAddrInfoCallCount());
+    CALLED_FAKE(SocketFake_GetAddrInfo, ONCE);
 }
 
 TEST(SolidSyslogUdpSender, SecondSendDoesNotReopenSocket)
 {
     Send();
     Send();
-    LONGS_EQUAL(1, SocketFake_SocketCallCount());
+    CALLED_FAKE(SocketFake_Socket, ONCE);
 }
 
 TEST(SolidSyslogUdpSender, SecondSendDoesNotResolve)
 {
     Send();
     Send();
-    LONGS_EQUAL(1, SocketFake_GetAddrInfoCallCount());
+    CALLED_FAKE(SocketFake_GetAddrInfo, ONCE);
 }
 
 TEST(SolidSyslogUdpSender, SendtoCalledWithSocketFd)
@@ -227,7 +231,7 @@ TEST(SolidSyslogUdpSender, DisconnectAfterSendClosesSocket)
 {
     Send();
     SolidSyslogSender_Disconnect(sender);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogUdpSender, DisconnectIsIdempotent)
@@ -235,7 +239,7 @@ TEST(SolidSyslogUdpSender, DisconnectIsIdempotent)
     Send();
     SolidSyslogSender_Disconnect(sender);
     SolidSyslogSender_Disconnect(sender);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogUdpSender, SendAfterDisconnectReopensSocket)
@@ -243,7 +247,7 @@ TEST(SolidSyslogUdpSender, SendAfterDisconnectReopensSocket)
     Send();
     SolidSyslogSender_Disconnect(sender);
     Send();
-    LONGS_EQUAL(2, SocketFake_SocketCallCount());
+    CALLED_FAKE(SocketFake_Socket, TWICE);
 }
 
 TEST(SolidSyslogUdpSender, SendAfterDisconnectResolves)
@@ -251,13 +255,13 @@ TEST(SolidSyslogUdpSender, SendAfterDisconnectResolves)
     Send();
     SolidSyslogSender_Disconnect(sender);
     Send();
-    LONGS_EQUAL(2, SocketFake_GetAddrInfoCallCount());
+    CALLED_FAKE(SocketFake_GetAddrInfo, TWICE);
 }
 
 TEST(SolidSyslogUdpSender, DisconnectWithoutSendDoesNotClose)
 {
     SolidSyslogSender_Disconnect(sender);
-    LONGS_EQUAL(0, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, NEVER);
 }
 
 TEST(SolidSyslogUdpSender, EndpointVersionChangeBetweenSendsTriggersReconnect)
@@ -265,7 +269,7 @@ TEST(SolidSyslogUdpSender, EndpointVersionChangeBetweenSendsTriggersReconnect)
     Send();
     endpointVersion = 1;
     Send();
-    LONGS_EQUAL(2, SocketFake_SocketCallCount());
+    CALLED_FAKE(SocketFake_Socket, TWICE);
 }
 
 TEST(SolidSyslogUdpSender, EndpointVersionChangeUsesNewPortOnReconnect)
@@ -330,7 +334,7 @@ TEST_GROUP(SolidSyslogUdpSenderDestroy)
 TEST(SolidSyslogUdpSenderDestroy, DestroyWithoutSendDoesNotClose)
 {
     CreateAndDestroy();
-    LONGS_EQUAL(0, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, NEVER);
 }
 
 TEST(SolidSyslogUdpSenderDestroy, DestroyAfterSendClosesSocket)
@@ -338,7 +342,7 @@ TEST(SolidSyslogUdpSenderDestroy, DestroyAfterSendClosesSocket)
     struct SolidSyslogSender* sender = SolidSyslogUdpSender_Create(&config);
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
     SolidSyslogUdpSender_Destroy();
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
     LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
 }
 
@@ -348,7 +352,7 @@ TEST(SolidSyslogUdpSenderDestroy, DestroyAfterDisconnectDoesNotDoubleClose)
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
     SolidSyslogSender_Disconnect(sender);
     SolidSyslogUdpSender_Destroy();
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogUdpSenderDestroy, SimpleScenario)
@@ -357,13 +361,13 @@ TEST(SolidSyslogUdpSenderDestroy, SimpleScenario)
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
     SolidSyslogUdpSender_Destroy();
 
-    LONGS_EQUAL(1, SocketFake_SocketCallCount());
+    CALLED_FAKE(SocketFake_Socket, ONCE);
     LONGS_EQUAL(AF_INET, SocketFake_SocketDomain());
     LONGS_EQUAL(SOCK_DGRAM, SocketFake_SocketType());
-    LONGS_EQUAL(1, SocketFake_SendtoCallCount());
+    CALLED_FAKE(SocketFake_Sendto, ONCE);
     LONGS_EQUAL(AF_INET, SocketFake_LastAddrFamily());
     LONGS_EQUAL(TEST_DEFAULT_PORT, SocketFake_LastPort());
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 // clang-format off
@@ -380,8 +384,8 @@ TEST_GROUP(SolidSyslogUdpSenderConfig)
     void setup() override
     {
         SocketFake_Reset();
-        getPortCallCount = 0;
-        getHostCallCount = 0;
+        SpyGetPortCallCount = 0;
+        SpyGetHostCallCount = 0;
         endpointGetHost  = GetDefaultHost;
         endpointVersion  = 0;
         endpointGetPort  = GetDefaultPort;
@@ -416,9 +420,9 @@ TEST(SolidSyslogUdpSenderConfig, GetPortCalledOnFirstSend)
 {
     getPortFn = SpyGetPort;
     CreateSender();
-    LONGS_EQUAL(0, getPortCallCount);
+    CALLED_FUNCTION(SpyGetPort, NEVER);
     Send();
-    LONGS_EQUAL(1, getPortCallCount);
+    CALLED_FUNCTION(SpyGetPort, ONCE);
 }
 
 TEST(SolidSyslogUdpSenderConfig, GetPortNotCalledOnSecondSend)
@@ -427,7 +431,7 @@ TEST(SolidSyslogUdpSenderConfig, GetPortNotCalledOnSecondSend)
     CreateSender();
     Send();
     Send();
-    LONGS_EQUAL(1, getPortCallCount);
+    CALLED_FUNCTION(SpyGetPort, ONCE);
 }
 
 TEST(SolidSyslogUdpSenderConfig, SendtoCalledWithConfiguredPort)
@@ -442,9 +446,9 @@ TEST(SolidSyslogUdpSenderConfig, GetHostCalledOnFirstSend)
 {
     getHostFn = SpyGetHost;
     CreateSender();
-    LONGS_EQUAL(0, getHostCallCount);
+    CALLED_FUNCTION(SpyGetHost, NEVER);
     Send();
-    LONGS_EQUAL(1, getHostCallCount);
+    CALLED_FUNCTION(SpyGetHost, ONCE);
 }
 
 TEST(SolidSyslogUdpSenderConfig, GetHostNotCalledOnSecondSend)
@@ -453,7 +457,7 @@ TEST(SolidSyslogUdpSenderConfig, GetHostNotCalledOnSecondSend)
     CreateSender();
     Send();
     Send();
-    LONGS_EQUAL(1, getHostCallCount);
+    CALLED_FUNCTION(SpyGetHost, ONCE);
 }
 
 TEST(SolidSyslogUdpSenderConfig, GetAddrInfoCalledWithHostnameFromGetHost)
@@ -461,7 +465,7 @@ TEST(SolidSyslogUdpSenderConfig, GetAddrInfoCalledWithHostnameFromGetHost)
     getHostFn = SpyGetHost;
     CreateSender();
     Send();
-    LONGS_EQUAL(1, SocketFake_GetAddrInfoCallCount());
+    CALLED_FAKE(SocketFake_GetAddrInfo, ONCE);
     STRCMP_EQUAL(TEST_DEFAULT_HOST, SocketFake_LastGetAddrInfoHostname());
 }
 
@@ -528,7 +532,7 @@ TEST(SolidSyslogUdpSenderFailure, DoesNotResolveWhenSocketFails)
     SocketFake_SetSocketFails(true);
     CreateSender();
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(0, SocketFake_GetAddrInfoCallCount());
+    CALLED_FAKE(SocketFake_GetAddrInfo, NEVER);
 }
 
 TEST(SolidSyslogUdpSenderFailure, SendDoesNotCallSendtoWhenResolverFailed)
@@ -536,7 +540,7 @@ TEST(SolidSyslogUdpSenderFailure, SendDoesNotCallSendtoWhenResolverFailed)
     SocketFake_SetGetAddrInfoFails(true);
     CreateSender();
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(0, SocketFake_SendtoCallCount());
+    CALLED_FAKE(SocketFake_Sendto, NEVER);
 }
 
 TEST(SolidSyslogUdpSenderFailure, SendReturnsTrueWhenResolverAndSocketSucceed)
@@ -561,7 +565,7 @@ TEST(SolidSyslogUdpSenderFailure, NoEndpointConfiguredSendsToPortZero)
     struct SolidSyslogUdpSenderConfig configNoEndpoint = {resolver, datagram, nullptr, nullptr};
     sender                                             = SolidSyslogUdpSender_Create(&configNoEndpoint);
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(1, SocketFake_SendtoCallCount());
+    CALLED_FAKE(SocketFake_Sendto, ONCE);
     LONGS_EQUAL(0, SocketFake_LastPort());
 }
 
@@ -600,7 +604,7 @@ TEST_GROUP(SolidSyslogUdpSenderRetry)
 TEST(SolidSyslogUdpSenderRetry, SuccessfulSendDoesNotQueryMaxPayload)
 {
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(0, DatagramFake_MaxPayloadCallCount(datagram));
+    CALLED_FAKE_ON(DatagramFake_MaxPayload, datagram, NEVER);
 }
 
 TEST(SolidSyslogUdpSenderRetry, OversizeQueriesMaxPayloadAndRetries)
@@ -609,8 +613,8 @@ TEST(SolidSyslogUdpSenderRetry, OversizeQueriesMaxPayloadAndRetries)
     DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_SENT);
     DatagramFake_SetMaxPayload(datagram, 3);
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(1, DatagramFake_MaxPayloadCallCount(datagram));
-    LONGS_EQUAL(2, DatagramFake_SendCallCount(datagram));
+    CALLED_FAKE_ON(DatagramFake_MaxPayload, datagram, ONCE);
+    CALLED_FAKE_ON(DatagramFake_Send, datagram, TWICE);
 }
 
 TEST(SolidSyslogUdpSenderRetry, OversizeRetryTrimsBufferToMaxPayload)
@@ -660,7 +664,7 @@ TEST(SolidSyslogUdpSenderRetry, DoubleOversizeDoesNotSendThird)
     DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
     DatagramFake_SetMaxPayload(datagram, 3);
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(2, DatagramFake_SendCallCount(datagram));
+    CALLED_FAKE_ON(DatagramFake_Send, datagram, TWICE);
 }
 
 TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadSkipsRetrySend)
@@ -668,7 +672,7 @@ TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadSkipsRetrySend)
     DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
     DatagramFake_SetMaxPayload(datagram, 0);
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(1, DatagramFake_SendCallCount(datagram));
+    CALLED_FAKE_ON(DatagramFake_Send, datagram, ONCE);
 }
 
 /* Trimmed length 0 means the message physically can't fit the path —
@@ -710,8 +714,8 @@ TEST(SolidSyslogUdpSenderRetry, NonOversizeFailureDoesNotRetry)
 {
     DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_FAILED);
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(1, DatagramFake_SendCallCount(datagram));
-    LONGS_EQUAL(0, DatagramFake_MaxPayloadCallCount(datagram));
+    CALLED_FAKE_ON(DatagramFake_Send, datagram, ONCE);
+    CALLED_FAKE_ON(DatagramFake_MaxPayload, datagram, NEVER);
 }
 
 TEST(SolidSyslogUdpSenderRetry, NonOversizeFailureReturnsFalse)

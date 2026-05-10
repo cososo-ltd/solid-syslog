@@ -1,6 +1,10 @@
 #include "DatagramFake.h"
 #include "SolidSyslogDatagram.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 // clang-format off
 TEST_GROUP(DatagramFake)
@@ -23,7 +27,7 @@ TEST(DatagramFake, CreateSucceeds)
 TEST(DatagramFake, OpenIncrementsCount)
 {
     SolidSyslogDatagram_Open(datagram);
-    LONGS_EQUAL(1, DatagramFake_OpenCallCount(datagram));
+    CALLED_FAKE_ON(DatagramFake_Open, datagram, ONCE);
 }
 
 TEST(DatagramFake, OpenReturnsTrue)
@@ -35,7 +39,7 @@ TEST(DatagramFake, SendIncrementsCount)
 {
     const char payload[] = "hi";
     SolidSyslogDatagram_SendTo(datagram, payload, sizeof(payload), nullptr);
-    LONGS_EQUAL(1, DatagramFake_SendCallCount(datagram));
+    CALLED_FAKE_ON(DatagramFake_Send, datagram, ONCE);
 }
 
 TEST(DatagramFake, SendDefaultsToSent)
@@ -64,7 +68,7 @@ TEST(DatagramFake, SendCapturesBufferAndSize)
 TEST(DatagramFake, MaxPayloadIncrementsCount)
 {
     SolidSyslogDatagram_MaxPayload(datagram);
-    LONGS_EQUAL(1, DatagramFake_MaxPayloadCallCount(datagram));
+    CALLED_FAKE_ON(DatagramFake_MaxPayload, datagram, ONCE);
 }
 
 TEST(DatagramFake, MaxPayloadReturnsConfiguredValue)
@@ -76,5 +80,5 @@ TEST(DatagramFake, MaxPayloadReturnsConfiguredValue)
 TEST(DatagramFake, CloseIncrementsCount)
 {
     SolidSyslogDatagram_Close(datagram);
-    LONGS_EQUAL(1, DatagramFake_CloseCallCount(datagram));
+    CALLED_FAKE_ON(DatagramFake_Close, datagram, ONCE);
 }

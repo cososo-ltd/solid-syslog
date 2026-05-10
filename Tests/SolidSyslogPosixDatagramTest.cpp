@@ -1,4 +1,8 @@
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogPosixDatagram.h"
@@ -56,7 +60,7 @@ TEST(SolidSyslogPosixDatagram, CreateDestroyWorksWithoutCrashing)
 TEST(SolidSyslogPosixDatagram, OpenCallsSocketOnce)
 {
     SolidSyslogDatagram_Open(datagram);
-    LONGS_EQUAL(1, SocketFake_SocketCallCount());
+    CALLED_FAKE(SocketFake_Socket, ONCE);
 }
 
 TEST(SolidSyslogPosixDatagram, OpenCallsSocketWithAF_INET)
@@ -86,7 +90,7 @@ TEST(SolidSyslogPosixDatagram, SendToCallsSendtoOnce)
 {
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
-    LONGS_EQUAL(1, SocketFake_SendtoCallCount());
+    CALLED_FAKE(SocketFake_Sendto, ONCE);
 }
 
 TEST(SolidSyslogPosixDatagram, SendToPassesBuffer)
@@ -155,7 +159,7 @@ TEST(SolidSyslogPosixDatagram, CloseCallsCloseOnce)
 {
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_Close(datagram);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogPosixDatagram, CloseCalledWithSocketFd)
@@ -173,14 +177,14 @@ TEST(SolidSyslogPosixDatagram, MaxPayloadFallsBackToIpv6SafePayload)
 TEST(SolidSyslogPosixDatagram, OpenDoesNotConnect)
 {
     SolidSyslogDatagram_Open(datagram);
-    LONGS_EQUAL(0, SocketFake_ConnectCallCount());
+    CALLED_FAKE(SocketFake_Connect, NEVER);
 }
 
 TEST(SolidSyslogPosixDatagram, SendToConnectsOnFirstCall)
 {
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
-    LONGS_EQUAL(1, SocketFake_ConnectCallCount());
+    CALLED_FAKE(SocketFake_Connect, ONCE);
 }
 
 TEST(SolidSyslogPosixDatagram, SendToConnectsOnceAcrossMultipleCalls)
@@ -188,7 +192,7 @@ TEST(SolidSyslogPosixDatagram, SendToConnectsOnceAcrossMultipleCalls)
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
     SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
-    LONGS_EQUAL(1, SocketFake_ConnectCallCount());
+    CALLED_FAKE(SocketFake_Connect, ONCE);
 }
 
 TEST(SolidSyslogPosixDatagram, FirstSendEnablesPmtuDiscovery)
@@ -210,7 +214,7 @@ TEST(SolidSyslogPosixDatagram, MaxPayloadAfterConnectQueriesIpMtu)
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
     SolidSyslogDatagram_MaxPayload(datagram);
-    LONGS_EQUAL(1, SocketFake_GetSockOptCallCount());
+    CALLED_FAKE(SocketFake_GetSockOpt, ONCE);
 }
 
 TEST(SolidSyslogPosixDatagram, MaxPayloadConvertsIpMtuViaFromMtu)

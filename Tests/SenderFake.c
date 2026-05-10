@@ -64,12 +64,12 @@ void SenderFake_Reset(struct SolidSyslogSender* sender)
     fake->failNextSend      = false;
 }
 
-int SenderFake_SendCount(struct SolidSyslogSender* sender)
+int SenderFake_SendCallCount(struct SolidSyslogSender* sender)
 {
     return ((struct SenderFake*) sender)->sendCount;
 }
 
-int SenderFake_DisconnectCount(struct SolidSyslogSender* sender)
+int SenderFake_DisconnectCallCount(struct SolidSyslogSender* sender)
 {
     return ((struct SenderFake*) sender)->disconnectCount;
 }

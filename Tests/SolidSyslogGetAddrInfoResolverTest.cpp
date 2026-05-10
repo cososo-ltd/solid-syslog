@@ -8,7 +8,11 @@
 #include "SolidSyslogResolver.h"
 #include "SocketFake.h"
 #include "SolidSyslogTransport.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 // clang-format off
 static const char* const TEST_HOST           = "127.0.0.1";
@@ -84,7 +88,7 @@ TEST(SolidSyslogGetAddrInfoResolver, PopulatesPortFromPortArgument)
 TEST(SolidSyslogGetAddrInfoResolver, GetAddrInfoCalledWithHostArgument)
 {
     Resolve(TEST_ALTERNATE_HOST, TEST_PORT);
-    LONGS_EQUAL(1, SocketFake_GetAddrInfoCallCount());
+    CALLED_FAKE(SocketFake_GetAddrInfo, ONCE);
     STRCMP_EQUAL(TEST_ALTERNATE_HOST, SocketFake_LastGetAddrInfoHostname());
 }
 
@@ -110,11 +114,11 @@ TEST(SolidSyslogGetAddrInfoResolver, DoesNotFreeAddrInfoWhenGetAddrInfoFails)
 {
     SocketFake_SetGetAddrInfoFails(true);
     Resolve(TEST_HOST, TEST_PORT);
-    LONGS_EQUAL(0, SocketFake_FreeAddrInfoCallCount());
+    CALLED_FAKE(SocketFake_FreeAddrInfo, NEVER);
 }
 
 TEST(SolidSyslogGetAddrInfoResolver, FreesAddrInfoOnSuccess)
 {
     Resolve(TEST_HOST, TEST_PORT);
-    LONGS_EQUAL(1, SocketFake_FreeAddrInfoCallCount());
+    CALLED_FAKE(SocketFake_FreeAddrInfo, ONCE);
 }

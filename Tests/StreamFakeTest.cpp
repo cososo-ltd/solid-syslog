@@ -1,7 +1,11 @@
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogStream.h"
 #include "StreamFake.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 // clang-format off
 TEST_GROUP(StreamFake)
@@ -26,7 +30,7 @@ TEST(StreamFake, OpenIncrementsCount)
     SolidSyslogAddressStorage  storage = {0};
     struct SolidSyslogAddress* addr    = SolidSyslogAddress_FromStorage(&storage);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, StreamFake_OpenCallCount(stream));
+    CALLED_FAKE_ON(StreamFake_Open, stream, ONCE);
 }
 
 TEST(StreamFake, OpenCapturesAddr)
@@ -41,7 +45,7 @@ TEST(StreamFake, SendIncrementsCount)
 {
     const char payload[] = "hi";
     SolidSyslogStream_Send(stream, payload, sizeof(payload));
-    LONGS_EQUAL(1, StreamFake_SendCallCount(stream));
+    CALLED_FAKE_ON(StreamFake_Send, stream, ONCE);
 }
 
 TEST(StreamFake, SendCapturesBuffer)
@@ -62,7 +66,7 @@ TEST(StreamFake, ReadIncrementsCount)
 {
     char buf[16];
     SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(1, StreamFake_ReadCallCount(stream));
+    CALLED_FAKE_ON(StreamFake_Read, stream, ONCE);
 }
 
 TEST(StreamFake, ReadCapturesBuffer)
@@ -90,7 +94,7 @@ TEST(StreamFake, ReadReturnsConfiguredValue)
 TEST(StreamFake, CloseIncrementsCount)
 {
     SolidSyslogStream_Close(stream);
-    LONGS_EQUAL(1, StreamFake_CloseCallCount(stream));
+    CALLED_FAKE_ON(StreamFake_Close, stream, ONCE);
 }
 
 TEST(StreamFake, OpenDefaultsToSuccess)

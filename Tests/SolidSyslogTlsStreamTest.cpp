@@ -10,18 +10,22 @@
 #include "SolidSyslogTlsStream.h"
 #include "SolidSyslogTransport.h"
 #include "StreamFake.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 class TEST_SolidSyslogTlsStream_ReadReturnsNegativeOneOnHardErrorAndClosesSsl_Test;
 class TEST_SolidSyslogTlsStream_ReadReturnsNegativeOneOnZeroReturnAndClosesSsl_Test;
 class TEST_SolidSyslogTlsStream_SendClosesTransportOnWriteFailure_Test;
 
-static int g_sleepCallCount;
+static int NoOpSleepCallCount;
 static int g_lastSleepMs;
 
 static void NoOpSleep(int milliseconds)
 {
-    g_sleepCallCount++;
+    NoOpSleepCallCount++;
     g_lastSleepMs = milliseconds;
 }
 
@@ -38,7 +42,7 @@ TEST_GROUP(SolidSyslogTlsStream)
     void setup() override
     {
         OpenSslFake_Reset();
-        g_sleepCallCount = 0;
+        NoOpSleepCallCount = 0;
         g_lastSleepMs    = 0;
         transport        = StreamFake_Create();
         config.transport = transport;
@@ -126,31 +130,31 @@ TEST_GROUP(SolidSyslogTlsStream)
 // clang-format on
 
 // NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-#define CHECK_BIO_READ_RETRY_SIGNALLED()                    \
-    do                                                      \
-    {                                                       \
-        LONGS_EQUAL(1, OpenSslFake_BioSetFlagsCallCount()); \
+#define CHECK_BIO_READ_RETRY_SIGNALLED()            \
+    do                                              \
+    {                                               \
+        CALLED_FAKE(OpenSslFake_BioSetFlags, ONCE); \
     } while (0)
-#define CHECK_BIO_READ_RETRY_NOT_SIGNALLED()                \
-    do                                                      \
-    {                                                       \
-        LONGS_EQUAL(0, OpenSslFake_BioSetFlagsCallCount()); \
+#define CHECK_BIO_READ_RETRY_NOT_SIGNALLED()         \
+    do                                               \
+    {                                                \
+        CALLED_FAKE(OpenSslFake_BioSetFlags, NEVER); \
     } while (0)
-#define CHECK_BIO_RETRY_FLAGS_CLEARED()                       \
-    do                                                        \
-    {                                                         \
-        LONGS_EQUAL(1, OpenSslFake_BioClearFlagsCallCount()); \
+#define CHECK_BIO_RETRY_FLAGS_CLEARED()               \
+    do                                                \
+    {                                                 \
+        CALLED_FAKE(OpenSslFake_BioClearFlags, ONCE); \
     } while (0)
-#define CHECK_SSL_SESSION_CLOSED()                       \
-    do                                                   \
-    {                                                    \
-        LONGS_EQUAL(1, OpenSslFake_ShutdownCallCount()); \
-        LONGS_EQUAL(1, OpenSslFake_FreeCallCount());     \
+#define CHECK_SSL_SESSION_CLOSED()               \
+    do                                           \
+    {                                            \
+        CALLED_FAKE(OpenSslFake_Shutdown, ONCE); \
+        CALLED_FAKE(OpenSslFake_Free, ONCE);     \
     } while (0)
-#define CHECK_TRANSPORT_CLOSED_ONCE()                         \
-    do                                                        \
-    {                                                         \
-        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport)); \
+#define CHECK_TRANSPORT_CLOSED_ONCE()                      \
+    do                                                     \
+    {                                                      \
+        CALLED_FAKE_ON(StreamFake_Close, transport, ONCE); \
     } while (0)
 
 // NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
@@ -173,7 +177,7 @@ TEST(SolidSyslogTlsStream, CreateReturnsHandleInsideCallerSuppliedStorage)
 TEST(SolidSyslogTlsStream, OpenOpensTransport)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, StreamFake_OpenCallCount(transport));
+    CALLED_FAKE_ON(StreamFake_Open, transport, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenPassesAddressToTransport)
@@ -185,7 +189,7 @@ TEST(SolidSyslogTlsStream, OpenPassesAddressToTransport)
 TEST(SolidSyslogTlsStream, OpenCreatesSslContext)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_CtxNewCallCount());
+    CALLED_FAKE(OpenSslFake_CtxNew, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenLoadsCaBundleFromConfig)
@@ -221,7 +225,7 @@ TEST(SolidSyslogTlsStream, OpenPassesCipherListToSslCtx)
 TEST(SolidSyslogTlsStream, OpenSkipsCipherListSetupWhenNotConfigured)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(0, OpenSslFake_SetCipherListCallCount());
+    CALLED_FAKE(OpenSslFake_SetCipherList, NEVER);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenCipherListRejected)
@@ -240,13 +244,13 @@ TEST(SolidSyslogTlsStream, CipherListFailureFreesCtx)
     stream            = SolidSyslogTlsStream_Create(&streamStorage, &config);
     OpenSslFake_SetCipherListFails(true);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_CtxFreeCallCount());
+    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenCreatesSslSession)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_SslNewCallCount());
+    CALLED_FAKE(OpenSslFake_SslNew, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenPassesCtxFromCtxNewToSslNew)
@@ -258,13 +262,13 @@ TEST(SolidSyslogTlsStream, OpenPassesCtxFromCtxNewToSslNew)
 TEST(SolidSyslogTlsStream, OpenCreatesBio)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_BioNewCallCount());
+    CALLED_FAKE(OpenSslFake_BioNew, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenSetsBioOnSsl)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_SetBioCallCount());
+    CALLED_FAKE(OpenSslFake_SetBio, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenPassesSslFromNewToSetBio)
@@ -282,7 +286,7 @@ TEST(SolidSyslogTlsStream, OpenPassesBioFromNewToSetBio)
 TEST(SolidSyslogTlsStream, OpenPerformsHandshake)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_ConnectCallCount());
+    CALLED_FAKE(OpenSslFake_Connect, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenPassesSslToConnect)
@@ -333,7 +337,7 @@ TEST(SolidSyslogTlsStream, BioReadCallbackDelegatesToTransportRead)
     }
     char buf[16];
     readFn(OpenSslFake_LastBioReturned(), buf, sizeof(buf));
-    LONGS_EQUAL(1, StreamFake_ReadCallCount(transport));
+    CALLED_FAKE_ON(StreamFake_Read, transport, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, BioWriteCallbackDelegatesToTransportSend)
@@ -347,7 +351,7 @@ TEST(SolidSyslogTlsStream, BioWriteCallbackDelegatesToTransportSend)
     }
     const char msg[] = "hi";
     writeFn(OpenSslFake_LastBioReturned(), msg, (int) sizeof(msg));
-    LONGS_EQUAL(1, StreamFake_SendCallCount(transport));
+    CALLED_FAKE_ON(StreamFake_Send, transport, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, SendWritesToSsl)
@@ -355,7 +359,7 @@ TEST(SolidSyslogTlsStream, SendWritesToSsl)
     SolidSyslogStream_Open(stream, addr);
     const char msg[] = "hello";
     SolidSyslogStream_Send(stream, msg, sizeof(msg));
-    LONGS_EQUAL(1, OpenSslFake_WriteCallCount());
+    CALLED_FAKE(OpenSslFake_Write, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, SendPassesBufferToSslWrite)
@@ -387,7 +391,7 @@ TEST(SolidSyslogTlsStream, ReadReadsFromSsl)
     SolidSyslogStream_Open(stream, addr);
     char buf[16];
     SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(1, OpenSslFake_SslReadCallCount());
+    CALLED_FAKE(OpenSslFake_SslRead, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, ReadPassesSslFromNewToSslRead)
@@ -418,35 +422,35 @@ TEST(SolidSyslogTlsStream, CloseShutsDownSsl)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogStream_Close(stream);
-    LONGS_EQUAL(1, OpenSslFake_ShutdownCallCount());
+    CALLED_FAKE(OpenSslFake_Shutdown, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, CloseFreesSsl)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogStream_Close(stream);
-    LONGS_EQUAL(1, OpenSslFake_FreeCallCount());
+    CALLED_FAKE(OpenSslFake_Free, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, CloseClosesTransport)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogStream_Close(stream);
-    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+    CALLED_FAKE_ON(StreamFake_Close, transport, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, CloseFreesBioMethod)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogStream_Close(stream);
-    LONGS_EQUAL(1, OpenSslFake_BioMethFreeCallCount());
+    CALLED_FAKE(OpenSslFake_BioMethFree, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, DestroyFreesSslContext)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogTlsStream_Destroy(stream);
-    LONGS_EQUAL(1, OpenSslFake_CtxFreeCallCount());
+    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
     /* teardown re-Destroys safely */
 }
 
@@ -454,7 +458,7 @@ TEST(SolidSyslogTlsStream, DestroyFreesBioMethodWhenCloseNotCalled)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogTlsStream_Destroy(stream);
-    LONGS_EQUAL(1, OpenSslFake_BioMethFreeCallCount());
+    CALLED_FAKE(OpenSslFake_BioMethFree, ONCE);
     /* teardown re-Destroys safely */
 }
 
@@ -463,14 +467,14 @@ TEST(SolidSyslogTlsStream, DestroyAfterCloseDoesNotDoubleFreeBioMethod)
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogStream_Close(stream);
     SolidSyslogTlsStream_Destroy(stream);
-    LONGS_EQUAL(1, OpenSslFake_BioMethFreeCallCount());
+    CALLED_FAKE(OpenSslFake_BioMethFree, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, DestroyFreesSslWhenCloseNotCalled)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogTlsStream_Destroy(stream);
-    LONGS_EQUAL(1, OpenSslFake_FreeCallCount());
+    CALLED_FAKE(OpenSslFake_Free, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, DestroyAfterCloseDoesNotDoubleFreeSsl)
@@ -478,7 +482,7 @@ TEST(SolidSyslogTlsStream, DestroyAfterCloseDoesNotDoubleFreeSsl)
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogStream_Close(stream);
     SolidSyslogTlsStream_Destroy(stream);
-    LONGS_EQUAL(1, OpenSslFake_FreeCallCount());
+    CALLED_FAKE(OpenSslFake_Free, ONCE);
 }
 
 /* -------------------------------------------------------------------------
@@ -643,7 +647,7 @@ TEST(SolidSyslogTlsStream, LoadVerifyLocationsFailureFreesCtx)
 {
     OpenSslFake_SetLoadVerifyLocationsFails(true);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_CtxFreeCallCount());
+    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenMinProtoVersionFails)
@@ -656,7 +660,7 @@ TEST(SolidSyslogTlsStream, MinProtoVersionFailureFreesCtx)
 {
     OpenSslFake_SetMinProtoVersionFails(true);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_CtxFreeCallCount());
+    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenBioMethNewFails)
@@ -675,7 +679,7 @@ TEST(SolidSyslogTlsStream, BioNewFailureFreesBioMethodInline)
 {
     OpenSslFake_SetBioNewFails(true);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_BioMethFreeCallCount());
+    CALLED_FAKE(OpenSslFake_BioMethFree, ONCE);
     /* teardown re-Destroys safely — bioMethod already cleared */
 }
 
@@ -704,7 +708,7 @@ TEST(SolidSyslogTlsStream, OpenSkipsSslSetupWhenTransportOpenFails)
 {
     StreamFake_SetOpenFails(transport, true);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(0, OpenSslFake_CtxNewCallCount());
+    CALLED_FAKE(OpenSslFake_CtxNew, NEVER);
 }
 
 TEST(SolidSyslogTlsStream, OpenWiresBioCtrlCallback)
@@ -759,9 +763,9 @@ TEST(SolidSyslogTlsStream, OpenSkipsClientIdentityWhenBothPathsAreNull)
 {
     /* Default config: clientCertChainPath and clientKeyPath both NULL. */
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(0, OpenSslFake_UseCertChainFileCallCount());
-    LONGS_EQUAL(0, OpenSslFake_UsePrivateKeyFileCallCount());
-    LONGS_EQUAL(0, OpenSslFake_CheckPrivateKeyCallCount());
+    CALLED_FAKE(OpenSslFake_UseCertChainFile, NEVER);
+    CALLED_FAKE(OpenSslFake_UsePrivateKeyFile, NEVER);
+    CALLED_FAKE(OpenSslFake_CheckPrivateKey, NEVER);
 }
 
 TEST(SolidSyslogTlsStream, OpenLoadsClientCertChainFromConfig)
@@ -792,7 +796,7 @@ TEST(SolidSyslogTlsStream, OpenChecksClientKeyMatchesCert)
     config.clientKeyPath       = "/some/path/client.key";
     stream                     = SolidSyslogTlsStream_Create(&streamStorage, &config);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_CheckPrivateKeyCallCount());
+    CALLED_FAKE(OpenSslFake_CheckPrivateKey, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenFailsWhenOnlyClientCertIsSet)
@@ -811,9 +815,9 @@ TEST(SolidSyslogTlsStream, OpenMakesNoClientIdentityCallsWhenOnlyClientCertIsSet
     config.clientKeyPath       = nullptr;
     stream                     = SolidSyslogTlsStream_Create(&streamStorage, &config);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(0, OpenSslFake_UseCertChainFileCallCount());
-    LONGS_EQUAL(0, OpenSslFake_UsePrivateKeyFileCallCount());
-    LONGS_EQUAL(0, OpenSslFake_CheckPrivateKeyCallCount());
+    CALLED_FAKE(OpenSslFake_UseCertChainFile, NEVER);
+    CALLED_FAKE(OpenSslFake_UsePrivateKeyFile, NEVER);
+    CALLED_FAKE(OpenSslFake_CheckPrivateKey, NEVER);
 }
 
 TEST(SolidSyslogTlsStream, OpenFailsWhenOnlyClientKeyIsSet)
@@ -832,9 +836,9 @@ TEST(SolidSyslogTlsStream, OpenMakesNoClientIdentityCallsWhenOnlyClientKeyIsSet)
     config.clientKeyPath       = "/some/path/client.key";
     stream                     = SolidSyslogTlsStream_Create(&streamStorage, &config);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(0, OpenSslFake_UseCertChainFileCallCount());
-    LONGS_EQUAL(0, OpenSslFake_UsePrivateKeyFileCallCount());
-    LONGS_EQUAL(0, OpenSslFake_CheckPrivateKeyCallCount());
+    CALLED_FAKE(OpenSslFake_UseCertChainFile, NEVER);
+    CALLED_FAKE(OpenSslFake_UsePrivateKeyFile, NEVER);
+    CALLED_FAKE(OpenSslFake_CheckPrivateKey, NEVER);
 }
 
 TEST(SolidSyslogTlsStream, PartialClientIdentityConfigFreesCtx)
@@ -844,7 +848,7 @@ TEST(SolidSyslogTlsStream, PartialClientIdentityConfigFreesCtx)
     config.clientKeyPath       = nullptr;
     stream                     = SolidSyslogTlsStream_Create(&streamStorage, &config);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_CtxFreeCallCount());
+    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenUseCertChainFileFails)
@@ -865,7 +869,7 @@ TEST(SolidSyslogTlsStream, UseCertChainFileFailureFreesCtx)
     stream                     = SolidSyslogTlsStream_Create(&streamStorage, &config);
     OpenSslFake_SetUseCertChainFileFails(true);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_CtxFreeCallCount());
+    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenUsePrivateKeyFileFails)
@@ -886,7 +890,7 @@ TEST(SolidSyslogTlsStream, UsePrivateKeyFileFailureFreesCtx)
     stream                     = SolidSyslogTlsStream_Create(&streamStorage, &config);
     OpenSslFake_SetUsePrivateKeyFileFails(true);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_CtxFreeCallCount());
+    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenCheckPrivateKeyFails)
@@ -907,7 +911,7 @@ TEST(SolidSyslogTlsStream, CheckPrivateKeyFailureFreesCtx)
     stream                     = SolidSyslogTlsStream_Create(&streamStorage, &config);
     OpenSslFake_SetCheckPrivateKeyFails(true);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, OpenSslFake_CtxFreeCallCount());
+    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenPassesCtxFromNewToUseCertChainFile)
@@ -989,14 +993,14 @@ TEST(SolidSyslogTlsStream, OpenRetriesHandshakeOnWantRead)
 {
     ArrangeHandshakeRetryThenSucceed(SSL_ERROR_WANT_READ);
     CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
-    LONGS_EQUAL(2, OpenSslFake_ConnectCallCount());
+    CALLED_FAKE(OpenSslFake_Connect, TWICE);
 }
 
 TEST(SolidSyslogTlsStream, OpenSleepsBetweenHandshakeRetries)
 {
     ArrangeHandshakeRetryThenSucceed(SSL_ERROR_WANT_READ);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, g_sleepCallCount);
+    CALLED_FUNCTION(NoOpSleep, ONCE);
 }
 
 TEST(SolidSyslogTlsStream, OpenRetriesHandshakeOnWantWrite)
@@ -1006,7 +1010,7 @@ TEST(SolidSyslogTlsStream, OpenRetriesHandshakeOnWantWrite)
        send buffer). Same retry treatment as WANT_READ. */
     ArrangeHandshakeRetryThenSucceed(SSL_ERROR_WANT_WRITE);
     CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
-    LONGS_EQUAL(2, OpenSslFake_ConnectCallCount());
+    CALLED_FAKE(OpenSslFake_Connect, TWICE);
 }
 
 TEST(SolidSyslogTlsStream, OpenFailsWhenHandshakeNeverCompletes)
@@ -1022,8 +1026,8 @@ TEST(SolidSyslogTlsStream, OpenFailsImmediatelyOnHardSslError)
     /* Non-WANT error (e.g. SSL_ERROR_SSL) is fail-fast — no retry budget burn. */
     ArrangePersistentHandshakeError(SSL_ERROR_SSL);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    LONGS_EQUAL(1, OpenSslFake_ConnectCallCount());
-    LONGS_EQUAL(0, g_sleepCallCount);
+    CALLED_FAKE(OpenSslFake_Connect, ONCE);
+    CALLED_FUNCTION(NoOpSleep, NEVER);
 }
 
 /* -------------------------------------------------------------------------

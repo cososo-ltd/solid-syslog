@@ -1,4 +1,8 @@
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogDatagram.h"
@@ -53,7 +57,7 @@ TEST(SolidSyslogFreeRtosDatagram, CreateReturnsNonNullDatagram)
 TEST(SolidSyslogFreeRtosDatagram, OpenCreatesUdpSocket)
 {
     SolidSyslogDatagram_Open(datagram);
-    LONGS_EQUAL(1, FreeRtosSocketsFake_SocketCallCount());
+    CALLED_FAKE(FreeRtosSocketsFake_Socket, ONCE);
     LONGS_EQUAL(FREERTOS_AF_INET, FreeRtosSocketsFake_LastSocketDomain());
     LONGS_EQUAL(FREERTOS_SOCK_DGRAM, FreeRtosSocketsFake_LastSocketType());
     LONGS_EQUAL(FREERTOS_IPPROTO_UDP, FreeRtosSocketsFake_LastSocketProtocol());
@@ -74,7 +78,7 @@ TEST(SolidSyslogFreeRtosDatagram, OpenIsIdempotent)
 {
     SolidSyslogDatagram_Open(datagram);
     CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
-    LONGS_EQUAL(1, FreeRtosSocketsFake_SocketCallCount());
+    CALLED_FAKE(FreeRtosSocketsFake_Socket, ONCE);
 }
 
 TEST(SolidSyslogFreeRtosDatagram, MaxPayloadReturnsIpv6SafeDefault)
@@ -86,7 +90,7 @@ TEST(SolidSyslogFreeRtosDatagram, SendToFailsBeforeOpen)
 {
     enum SolidSyslogDatagramSendResult result = SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_FAILED, result);
-    LONGS_EQUAL(0, FreeRtosSocketsFake_SendtoCallCount());
+    CALLED_FAKE(FreeRtosSocketsFake_Sendto, NEVER);
 }
 
 TEST(SolidSyslogFreeRtosDatagram, SendToFailsWhenSendtoErrors)
@@ -100,7 +104,7 @@ TEST(SolidSyslogFreeRtosDatagram, CloseClosesSocket)
 {
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_Close(datagram);
-    LONGS_EQUAL(1, FreeRtosSocketsFake_ClosesocketCallCount());
+    CALLED_FAKE(FreeRtosSocketsFake_Closesocket, ONCE);
     POINTERS_EQUAL(FreeRtosSocketsFake_LastSocketReturned(), FreeRtosSocketsFake_LastClosesocketSocket());
 }
 
@@ -110,14 +114,14 @@ TEST(SolidSyslogFreeRtosDatagram, SendToFailsAfterClose)
     SolidSyslogDatagram_Close(datagram);
     enum SolidSyslogDatagramSendResult result = SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_FAILED, result);
-    LONGS_EQUAL(0, FreeRtosSocketsFake_SendtoCallCount());
+    CALLED_FAKE(FreeRtosSocketsFake_Sendto, NEVER);
 }
 
 TEST(SolidSyslogFreeRtosDatagram, DestroyClosesOpenSocket)
 {
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogFreeRtosDatagram_Destroy(datagram);
-    LONGS_EQUAL(1, FreeRtosSocketsFake_ClosesocketCallCount());
+    CALLED_FAKE(FreeRtosSocketsFake_Closesocket, ONCE);
 }
 
 TEST(SolidSyslogFreeRtosDatagram, CloseIsIdempotent)
@@ -125,13 +129,13 @@ TEST(SolidSyslogFreeRtosDatagram, CloseIsIdempotent)
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_Close(datagram);
     SolidSyslogDatagram_Close(datagram);
-    LONGS_EQUAL(1, FreeRtosSocketsFake_ClosesocketCallCount());
+    CALLED_FAKE(FreeRtosSocketsFake_Closesocket, ONCE);
 }
 
 TEST(SolidSyslogFreeRtosDatagram, CloseWithoutOpenIsNoOp)
 {
     SolidSyslogDatagram_Close(datagram);
-    LONGS_EQUAL(0, FreeRtosSocketsFake_ClosesocketCallCount());
+    CALLED_FAKE(FreeRtosSocketsFake_Closesocket, NEVER);
 }
 
 TEST(SolidSyslogFreeRtosDatagram, DestroyAfterCloseDoesNotCloseAgain)
@@ -139,7 +143,7 @@ TEST(SolidSyslogFreeRtosDatagram, DestroyAfterCloseDoesNotCloseAgain)
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_Close(datagram);
     SolidSyslogFreeRtosDatagram_Destroy(datagram);
-    LONGS_EQUAL(1, FreeRtosSocketsFake_ClosesocketCallCount());
+    CALLED_FAKE(FreeRtosSocketsFake_Closesocket, ONCE);
 }
 
 TEST(SolidSyslogFreeRtosDatagram, SendToSendsBufferToDestinationAfterOpen)
@@ -151,7 +155,7 @@ TEST(SolidSyslogFreeRtosDatagram, SendToSendsBufferToDestinationAfterOpen)
     enum SolidSyslogDatagramSendResult result = SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
 
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SENT, result);
-    LONGS_EQUAL(1, FreeRtosSocketsFake_SendtoCallCount());
+    CALLED_FAKE(FreeRtosSocketsFake_Sendto, ONCE);
     POINTERS_EQUAL(FreeRtosSocketsFake_LastSocketReturned(), FreeRtosSocketsFake_LastSendtoSocket());
     POINTERS_EQUAL(TEST_MESSAGE, FreeRtosSocketsFake_LastSendtoBuffer());
     LONGS_EQUAL(TEST_MESSAGE_LEN, FreeRtosSocketsFake_LastSendtoLength());
@@ -165,7 +169,7 @@ TEST(SolidSyslogFreeRtosDatagram, SendToChecksIfIpIsInArpCache)
 {
     openAndSendOnce();
 
-    LONGS_EQUAL(1, FreeRtosArpFake_IsIpInArpCacheCallCount());
+    CALLED_FAKE(FreeRtosArpFake_IsIpInArpCache, ONCE);
     LONGS_EQUAL(FreeRTOS_inet_addr_quick(127, 0, 0, 1), FreeRtosArpFake_LastIsIpInArpCacheArg());
 }
 
@@ -173,7 +177,7 @@ TEST(SolidSyslogFreeRtosDatagram, SendToFiresArpProbeOnCacheMiss)
 {
     openAndSendOnce();
 
-    LONGS_EQUAL(1, FreeRtosArpFake_OutputArpRequestCallCount());
+    CALLED_FAKE(FreeRtosArpFake_OutputArpRequest, ONCE);
     LONGS_EQUAL(FreeRTOS_inet_addr_quick(127, 0, 0, 1), FreeRtosArpFake_LastOutputArpRequestArg());
 }
 
@@ -181,7 +185,7 @@ TEST(SolidSyslogFreeRtosDatagram, SendToYieldsAfterArpProbeOnCacheMiss)
 {
     openAndSendOnce();
 
-    LONGS_EQUAL(1, FreeRtosTaskFake_VTaskDelayCallCount());
+    CALLED_FAKE(FreeRtosTaskFake_VTaskDelay, ONCE);
 }
 
 TEST(SolidSyslogFreeRtosDatagram, SendToSkipsArpProbeAndYieldOnCacheHit)
@@ -191,9 +195,9 @@ TEST(SolidSyslogFreeRtosDatagram, SendToSkipsArpProbeAndYieldOnCacheHit)
 
     SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
 
-    LONGS_EQUAL(0, FreeRtosArpFake_OutputArpRequestCallCount());
-    LONGS_EQUAL(0, FreeRtosTaskFake_VTaskDelayCallCount());
-    LONGS_EQUAL(1, FreeRtosSocketsFake_SendtoCallCount());
+    CALLED_FAKE(FreeRtosArpFake_OutputArpRequest, NEVER);
+    CALLED_FAKE(FreeRtosTaskFake_VTaskDelay, NEVER);
+    CALLED_FAKE(FreeRtosSocketsFake_Sendto, ONCE);
 }
 
 TEST(SolidSyslogFreeRtosDatagram, SendToReChecksArpCacheOnEachCall)
@@ -202,15 +206,15 @@ TEST(SolidSyslogFreeRtosDatagram, SendToReChecksArpCacheOnEachCall)
 
     FreeRtosArpFake_SetCacheHit(true);
     SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
-    LONGS_EQUAL(0, FreeRtosArpFake_OutputArpRequestCallCount());
+    CALLED_FAKE(FreeRtosArpFake_OutputArpRequest, NEVER);
 
     FreeRtosArpFake_SetCacheHit(false);
     SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
-    LONGS_EQUAL(1, FreeRtosArpFake_OutputArpRequestCallCount());
+    CALLED_FAKE(FreeRtosArpFake_OutputArpRequest, ONCE);
 
     FreeRtosArpFake_SetCacheHit(true);
     SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
-    LONGS_EQUAL(1, FreeRtosArpFake_OutputArpRequestCallCount());
+    CALLED_FAKE(FreeRtosArpFake_OutputArpRequest, ONCE);
 }
 
 TEST(SolidSyslogFreeRtosDatagram, SendToForwardsLengthVerbatim)

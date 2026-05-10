@@ -30,6 +30,7 @@ else()
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
         ${CMAKE_SOURCE_DIR}/Core/Interface
         ${CMAKE_SOURCE_DIR}/Core/Source
+        ${CMAKE_SOURCE_DIR}/Tests/Support
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
         $ENV{FREERTOS_KERNEL_PATH}/include
         $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
@@ -53,6 +54,7 @@ else()
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
         ${CMAKE_SOURCE_DIR}/Core/Interface
         ${CMAKE_SOURCE_DIR}/Core/Source
+        ${CMAKE_SOURCE_DIR}/Tests/Support
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
         $ENV{FREERTOS_KERNEL_PATH}/include
         $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
@@ -104,6 +106,7 @@ target_link_libraries(CmsdkUartTest PRIVATE
 
 target_include_directories(CmsdkUartTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Example/FreeRtos/Common
+    ${CMAKE_SOURCE_DIR}/Tests/Support
 )
 
 add_test(NAME CmsdkUartTest COMMAND CmsdkUartTest)

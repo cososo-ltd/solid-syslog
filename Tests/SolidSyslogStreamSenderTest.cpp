@@ -11,7 +11,11 @@
 #include "SolidSyslogSender.h"
 #include "SolidSyslogStreamSender.h"
 #include "SocketFake.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 // clang-format off
 static const char* const TEST_HOST           = "127.0.0.1";
@@ -42,19 +46,19 @@ static const char* GetAlternateHost()
     return TEST_ALTERNATE_HOST;
 }
 
-static int getPortCallCount;
+static int SpyGetPortCallCount;
 
 static int SpyGetPort()
 {
-    getPortCallCount++;
+    SpyGetPortCallCount++;
     return TEST_PORT;
 }
 
-static int getHostCallCount;
+static int SpyGetHostCallCount;
 
 static const char* SpyGetHost()
 {
-    getHostCallCount++;
+    SpyGetHostCallCount++;
     return TEST_HOST;
 }
 
@@ -134,13 +138,13 @@ TEST(SolidSyslogStreamSender, CreateReturnsHandleInsideCallerSuppliedStorage)
 
 TEST(SolidSyslogStreamSender, CreateDoesNotOpenSocket)
 {
-    LONGS_EQUAL(0, SocketFake_SocketCallCount());
+    CALLED_FAKE(SocketFake_Socket, NEVER);
 }
 
 TEST(SolidSyslogStreamSender, FirstSendOpensStreamSocket)
 {
     Send();
-    LONGS_EQUAL(1, SocketFake_SocketCallCount());
+    CALLED_FAKE(SocketFake_Socket, ONCE);
     LONGS_EQUAL(AF_INET, SocketFake_SocketDomain());
     LONGS_EQUAL(SOCK_STREAM, SocketFake_SocketType());
 }
@@ -190,7 +194,7 @@ TEST_GROUP(SolidSyslogStreamSenderDestroy)
 TEST(SolidSyslogStreamSenderDestroy, DestroyWithoutSendDoesNotClose)
 {
     CreateAndDestroy();
-    LONGS_EQUAL(0, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, NEVER);
 }
 
 TEST(SolidSyslogStreamSenderDestroy, DestroyAfterSendClosesSocket)
@@ -198,7 +202,7 @@ TEST(SolidSyslogStreamSenderDestroy, DestroyAfterSendClosesSocket)
     struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&senderStorage, &config);
     SolidSyslogSender_Send(sender, "x", 1);
     SolidSyslogStreamSender_Destroy(sender);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
     LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
 }
 
@@ -208,13 +212,13 @@ TEST(SolidSyslogStreamSenderDestroy, DestroyAfterDisconnectDoesNotDoubleClose)
     SolidSyslogSender_Send(sender, "x", 1);
     SolidSyslogSender_Disconnect(sender);
     SolidSyslogStreamSender_Destroy(sender);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogStreamSender, SendConnectsOnFirstCall)
 {
     Send();
-    LONGS_EQUAL(1, SocketFake_ConnectCallCount());
+    CALLED_FAKE(SocketFake_Connect, ONCE);
 }
 
 TEST(SolidSyslogStreamSender, SendConnectsWithCorrectPort)
@@ -239,7 +243,7 @@ TEST(SolidSyslogStreamSender, SecondSendDoesNotReconnect)
 {
     Send();
     Send();
-    LONGS_EQUAL(1, SocketFake_ConnectCallCount());
+    CALLED_FAKE(SocketFake_Connect, ONCE);
 }
 
 TEST(SolidSyslogStreamSender, SendTransmitsOctetCountingPrefix)
@@ -257,7 +261,7 @@ TEST(SolidSyslogStreamSender, SendTransmitsMessageBody)
 TEST(SolidSyslogStreamSender, SendMakesTwoSendCalls)
 {
     Send();
-    LONGS_EQUAL(2, SocketFake_SendCallCount());
+    CALLED_FAKE(SocketFake_Send, TWICE);
 }
 
 TEST(SolidSyslogStreamSender, SendUsesSocketFd)
@@ -275,7 +279,7 @@ TEST(SolidSyslogStreamSender, DisconnectAfterSendClosesSocket)
 {
     Send();
     SolidSyslogSender_Disconnect(sender);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogStreamSender, DisconnectIsIdempotent)
@@ -283,7 +287,7 @@ TEST(SolidSyslogStreamSender, DisconnectIsIdempotent)
     Send();
     SolidSyslogSender_Disconnect(sender);
     SolidSyslogSender_Disconnect(sender);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogStreamSender, SendAfterDisconnectReopensSocket)
@@ -291,7 +295,7 @@ TEST(SolidSyslogStreamSender, SendAfterDisconnectReopensSocket)
     Send();
     SolidSyslogSender_Disconnect(sender);
     Send();
-    LONGS_EQUAL(2, SocketFake_SocketCallCount());
+    CALLED_FAKE(SocketFake_Socket, TWICE);
 }
 
 TEST(SolidSyslogStreamSender, SendAfterDisconnectResolves)
@@ -299,13 +303,13 @@ TEST(SolidSyslogStreamSender, SendAfterDisconnectResolves)
     Send();
     SolidSyslogSender_Disconnect(sender);
     Send();
-    LONGS_EQUAL(2, SocketFake_GetAddrInfoCallCount());
+    CALLED_FAKE(SocketFake_GetAddrInfo, TWICE);
 }
 
 TEST(SolidSyslogStreamSender, DisconnectWithoutSendDoesNotClose)
 {
     SolidSyslogSender_Disconnect(sender);
-    LONGS_EQUAL(0, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, NEVER);
 }
 
 TEST(SolidSyslogStreamSender, EndpointVersionChangeBetweenSendsTriggersReconnect)
@@ -313,7 +317,7 @@ TEST(SolidSyslogStreamSender, EndpointVersionChangeBetweenSendsTriggersReconnect
     Send();
     endpointVersion = 1;
     Send();
-    LONGS_EQUAL(2, SocketFake_ConnectCallCount());
+    CALLED_FAKE(SocketFake_Connect, TWICE);
 }
 
 TEST(SolidSyslogStreamSender, EndpointVersionChangeUsesNewPortOnReconnect)
@@ -342,8 +346,8 @@ TEST_GROUP(SolidSyslogStreamSenderConfig)
     void setup() override
     {
         SocketFake_Reset();
-        getPortCallCount = 0;
-        getHostCallCount = 0;
+        SpyGetPortCallCount = 0;
+        SpyGetHostCallCount = 0;
         endpointGetHost  = GetHost;
         endpointVersion  = 0;
         endpointGetPort  = GetPort;
@@ -379,9 +383,9 @@ TEST(SolidSyslogStreamSenderConfig, GetPortCalledOnFirstSend)
 {
     getPortFn = SpyGetPort;
     CreateSender();
-    LONGS_EQUAL(0, getPortCallCount);
+    CALLED_FUNCTION(SpyGetPort, NEVER);
     Send();
-    LONGS_EQUAL(1, getPortCallCount);
+    CALLED_FUNCTION(SpyGetPort, ONCE);
 }
 
 TEST(SolidSyslogStreamSenderConfig, GetPortNotCalledOnSecondSend)
@@ -390,7 +394,7 @@ TEST(SolidSyslogStreamSenderConfig, GetPortNotCalledOnSecondSend)
     CreateSender();
     Send();
     Send();
-    LONGS_EQUAL(1, getPortCallCount);
+    CALLED_FUNCTION(SpyGetPort, ONCE);
 }
 
 TEST(SolidSyslogStreamSenderConfig, ConnectsWithAlternatePort)
@@ -405,9 +409,9 @@ TEST(SolidSyslogStreamSenderConfig, GetHostCalledOnFirstSend)
 {
     getHostFn = SpyGetHost;
     CreateSender();
-    LONGS_EQUAL(0, getHostCallCount);
+    CALLED_FUNCTION(SpyGetHost, NEVER);
     Send();
-    LONGS_EQUAL(1, getHostCallCount);
+    CALLED_FUNCTION(SpyGetHost, ONCE);
 }
 
 TEST(SolidSyslogStreamSenderConfig, GetHostNotCalledOnSecondSend)
@@ -416,7 +420,7 @@ TEST(SolidSyslogStreamSenderConfig, GetHostNotCalledOnSecondSend)
     CreateSender();
     Send();
     Send();
-    LONGS_EQUAL(1, getHostCallCount);
+    CALLED_FUNCTION(SpyGetHost, ONCE);
 }
 
 TEST(SolidSyslogStreamSenderConfig, ConnectsWithAlternateHost)
@@ -486,7 +490,7 @@ TEST(SolidSyslogStreamSenderFailure, ConnectFailureClosesSocket)
 {
     SocketFake_SetConnectFails(true);
     Send();
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogStreamSenderFailure, SendReturnsFalseWhenSendFails)
@@ -499,7 +503,7 @@ TEST(SolidSyslogStreamSenderFailure, SendFailureClosesSocket)
 {
     SocketFake_SetSendFails(true);
     Send();
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogStreamSenderFailure, DestroyAfterSendFailureDoesNotDoubleClose)
@@ -507,18 +511,18 @@ TEST(SolidSyslogStreamSenderFailure, DestroyAfterSendFailureDoesNotDoubleClose)
     SocketFake_SetSendFails(true);
     Send();
     SolidSyslogStreamSender_Destroy(sender);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogStreamSenderFailure, SendFailureMarksDisconnected)
 {
     Send();
-    LONGS_EQUAL(1, SocketFake_ConnectCallCount());
+    CALLED_FAKE(SocketFake_Connect, ONCE);
     SocketFake_SetSendFails(true);
     Send();
     SocketFake_SetSendFails(false);
     Send();
-    LONGS_EQUAL(2, SocketFake_ConnectCallCount());
+    CALLED_FAKE(SocketFake_Connect, TWICE);
 }
 
 TEST(SolidSyslogStreamSenderFailure, ReconnectCreatesNewSocket)
@@ -529,7 +533,7 @@ TEST(SolidSyslogStreamSenderFailure, ReconnectCreatesNewSocket)
     Send();
     SocketFake_SetSendFails(false);
     Send();
-    LONGS_EQUAL(firstSocketCallCount + 1, SocketFake_SocketCallCount());
+    CALLED_FAKE(SocketFake_Socket, firstSocketCallCount + 1);
 }
 
 TEST(SolidSyslogStreamSenderFailure, ReconnectSetsTcpNoDelay)
@@ -542,7 +546,7 @@ TEST(SolidSyslogStreamSenderFailure, ReconnectSetsTcpNoDelay)
     /* Two opens (initial + reconnect); each runs the full ConfigureSocket
        sequence: TCP_NODELAY + SO_KEEPALIVE + TCP_KEEPIDLE + TCP_KEEPINTVL +
        TCP_KEEPCNT + TCP_USER_TIMEOUT = 6 setsockopt calls per Open. */
-    LONGS_EQUAL(12, SocketFake_SetSockOptCallCount());
+    CALLED_FAKE(SocketFake_SetSockOpt, 12);
     CHECK_TRUE(SocketFake_HasSetSockOpt(IPPROTO_TCP, TCP_NODELAY));
 }
 
@@ -553,7 +557,7 @@ TEST(SolidSyslogStreamSenderFailure, ReconnectResolvesDns)
     Send();
     SocketFake_SetSendFails(false);
     Send();
-    LONGS_EQUAL(2, SocketFake_GetAddrInfoCallCount());
+    CALLED_FAKE(SocketFake_GetAddrInfo, TWICE);
 }
 
 TEST(SolidSyslogStreamSenderFailure, ReconnectConnectsWithNewFd)
@@ -592,7 +596,7 @@ TEST(SolidSyslogStreamSenderFailure, BodySendFailureClosesSocket)
 {
     SocketFake_FailSendOnCall(1);
     Send();
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogStreamSenderFailure, SendReturnsFalseWhenResolverFails)
@@ -605,8 +609,8 @@ TEST(SolidSyslogStreamSenderFailure, SendDoesNotOpenStreamWhenResolverFails)
 {
     SocketFake_SetGetAddrInfoFails(true);
     Send();
-    LONGS_EQUAL(0, SocketFake_SocketCallCount());
-    LONGS_EQUAL(0, SocketFake_ConnectCallCount());
+    CALLED_FAKE(SocketFake_Socket, NEVER);
+    CALLED_FAKE(SocketFake_Connect, NEVER);
 }
 
 TEST(SolidSyslogStreamSenderFailure, SendReturnsTrueWhenResolverSucceeds)
@@ -628,6 +632,6 @@ TEST(SolidSyslogStreamSenderFailure, NoEndpointConfiguredConnectsToPortZero)
     struct SolidSyslogStreamSenderConfig configNoEndpoint = {resolver, stream, nullptr, nullptr};
     struct SolidSyslogSender*            senderNoEndpoint = SolidSyslogStreamSender_Create(&senderStorage, &configNoEndpoint);
     SolidSyslogSender_Send(senderNoEndpoint, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(1, SocketFake_ConnectCallCount());
+    CALLED_FAKE(SocketFake_Connect, ONCE);
     LONGS_EQUAL(0, SocketFake_LastConnectPort());
 }

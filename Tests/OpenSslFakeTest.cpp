@@ -4,7 +4,11 @@
 #include <openssl/types.h>
 
 #include "OpenSslFake.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 // clang-format off
 TEST_GROUP(OpenSslFake)
@@ -15,13 +19,13 @@ TEST_GROUP(OpenSslFake)
 
 TEST(OpenSslFake, CtxNewCountIsZeroAfterReset)
 {
-    LONGS_EQUAL(0, OpenSslFake_CtxNewCallCount());
+    CALLED_FAKE(OpenSslFake_CtxNew, NEVER);
 }
 
 TEST(OpenSslFake, CtxNewIncrementsCount)
 {
     SSL_CTX_new(TLS_client_method());
-    LONGS_EQUAL(1, OpenSslFake_CtxNewCallCount());
+    CALLED_FAKE(OpenSslFake_CtxNew, ONCE);
 }
 
 TEST(OpenSslFake, CtxNewReturnsNonNull)
@@ -60,7 +64,7 @@ TEST(OpenSslFake, SslNewIncrementsCount)
 {
     SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
     SSL_new(ctx);
-    LONGS_EQUAL(1, OpenSslFake_SslNewCallCount());
+    CALLED_FAKE(OpenSslFake_SslNew, ONCE);
 }
 
 TEST(OpenSslFake, SslNewReturnsNonNull)
@@ -80,7 +84,7 @@ TEST(OpenSslFake, BioNewIncrementsCount)
 {
     BIO_METHOD* method = BIO_meth_new(0, "fake");
     BIO_new(method);
-    LONGS_EQUAL(1, OpenSslFake_BioNewCallCount());
+    CALLED_FAKE(OpenSslFake_BioNew, ONCE);
 }
 
 TEST(OpenSslFake, BioNewReturnsNonNull)
@@ -103,7 +107,7 @@ TEST(OpenSslFake, SetBioIncrementsCount)
     BIO_METHOD* method = BIO_meth_new(0, "fake");
     BIO*        bio    = BIO_new(method);
     SSL_set_bio(ssl, bio, bio);
-    LONGS_EQUAL(1, OpenSslFake_SetBioCallCount());
+    CALLED_FAKE(OpenSslFake_SetBio, ONCE);
 }
 
 TEST(OpenSslFake, SetBioCapturesSslArg)
@@ -131,7 +135,7 @@ TEST(OpenSslFake, ConnectIncrementsCount)
     SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
     SSL*     ssl = SSL_new(ctx);
     SSL_connect(ssl);
-    LONGS_EQUAL(1, OpenSslFake_ConnectCallCount());
+    CALLED_FAKE(OpenSslFake_Connect, ONCE);
 }
 
 TEST(OpenSslFake, ConnectCapturesSslArg)
@@ -262,7 +266,7 @@ TEST(OpenSslFake, WriteIncrementsCount)
     SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
     SSL*     ssl = SSL_new(ctx);
     SSL_write(ssl, "x", 1);
-    LONGS_EQUAL(1, OpenSslFake_WriteCallCount());
+    CALLED_FAKE(OpenSslFake_Write, ONCE);
 }
 
 TEST(OpenSslFake, WriteCapturesSslArg)
@@ -302,7 +306,7 @@ TEST(OpenSslFake, ShutdownIncrementsCount)
     SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
     SSL*     ssl = SSL_new(ctx);
     SSL_shutdown(ssl);
-    LONGS_EQUAL(1, OpenSslFake_ShutdownCallCount());
+    CALLED_FAKE(OpenSslFake_Shutdown, ONCE);
 }
 
 TEST(OpenSslFake, FreeIncrementsCount)
@@ -310,14 +314,14 @@ TEST(OpenSslFake, FreeIncrementsCount)
     SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
     SSL*     ssl = SSL_new(ctx);
     SSL_free(ssl);
-    LONGS_EQUAL(1, OpenSslFake_FreeCallCount());
+    CALLED_FAKE(OpenSslFake_Free, ONCE);
 }
 
 TEST(OpenSslFake, CtxFreeIncrementsCount)
 {
     SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
     SSL_CTX_free(ctx);
-    LONGS_EQUAL(1, OpenSslFake_CtxFreeCallCount());
+    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
 }
 
 /* -------------------------------------------------------------------------

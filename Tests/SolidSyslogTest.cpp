@@ -23,7 +23,11 @@
 #include "SolidSyslogStore.h"
 #include "SolidSyslogTimeQuality.h"
 #include "SolidSyslogTimestamp.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 class TEST_SolidSyslogTimestamp_Day0ProducesNilvalue_Test;
 class TEST_SolidSyslogTimestamp_Day1FormatsAs01_Test;
@@ -364,13 +368,13 @@ TEST(SolidSyslog, CreateDestroyWorksWithoutCrashing)
 
 TEST(SolidSyslog, NoMessagesAreSentWhenLogIsNotCalled)
 {
-    LONGS_EQUAL(0, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
 }
 
 TEST(SolidSyslog, SingleLogCallResultsInOneSend)
 {
     Log();
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
 }
 
 TEST(SolidSyslog, PriValIs134)
@@ -1264,7 +1268,7 @@ TEST(SolidSyslog, ServiceSendsMessageReadFromBuffer)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
     STRCMP_EQUAL("test", SenderFake_LastBufferAsString(fakeSender));
 
     SolidSyslog_Destroy();
@@ -1285,7 +1289,7 @@ TEST(SolidSyslog, ServiceSendsBufferedMessageWithNullStore)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
     STRCMP_EQUAL("test", SenderFake_LastBufferAsString(fakeSender));
 
     SolidSyslog_Destroy();
@@ -1307,7 +1311,7 @@ TEST(SolidSyslog, ServiceSendsFromStoreWhenHasUnsent)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
     STRCMP_EQUAL("stored", SenderFake_LastBufferAsString(fakeSender));
 
     SolidSyslog_Destroy();
@@ -1418,7 +1422,7 @@ TEST(SolidSyslog, ServiceSendsDirectlyWhenStoreWriteFails)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
     STRCMP_EQUAL("direct", SenderFake_LastBufferAsString(fakeSender));
 
     SolidSyslog_Destroy();
@@ -1441,7 +1445,7 @@ TEST(SolidSyslog, ServiceDoesNotSendWhenStoreReadFails)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(0, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
 
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
@@ -1464,7 +1468,7 @@ TEST(SolidSyslog, ServiceDoesNotMarkSentWhenSendingFromBuffer)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
     STRCMP_EQUAL("from-buffer", SenderFake_LastBufferAsString(fakeSender));
 
     SolidSyslog_Destroy();
@@ -1524,7 +1528,7 @@ TEST(SolidSyslogServiceEagerDrain, AllBufferedMessagesReachStoreInOneTickWhenSen
     SenderFake_FailNextSend(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(3, StoreFake_WriteCount(fakeStore));
+    CALLED_FAKE_ON(StoreFake_Write, fakeStore, THRICE);
 }
 
 TEST(SolidSyslogServiceEagerDrain, StoredMessagesDrainInFifoOrderAcrossTicks)
@@ -1539,7 +1543,7 @@ TEST(SolidSyslogServiceEagerDrain, StoredMessagesDrainInFifoOrderAcrossTicks)
     STRCMP_EQUAL("m2", SenderFake_LastBufferAsString(fakeSender));
     SolidSyslog_Service();
     STRCMP_EQUAL("m3", SenderFake_LastBufferAsString(fakeSender));
-    LONGS_EQUAL(3, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, THRICE);
 }
 
 TEST(SolidSyslog, ServiceDoesNothingWhenStoreIsHalted)
@@ -1556,7 +1560,7 @@ TEST(SolidSyslog, ServiceDoesNothingWhenStoreIsHalted)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(0, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
 
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);

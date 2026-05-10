@@ -1,4 +1,8 @@
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogTransport.h"
@@ -68,7 +72,7 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
 #define CHECK_SOCKET_CLOSED_ONCE()                                   \
     do                                                               \
     {                                                                \
-        LONGS_EQUAL(1, WinsockFake_CloseCallCount());                \
+        CALLED_FAKE(WinsockFake_Close, ONCE);                        \
         CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd()); \
     } while (0)
 
@@ -89,7 +93,7 @@ TEST(SolidSyslogWinsockTcpStream, CreateReturnsHandleInsideCallerSuppliedStorage
 TEST(SolidSyslogWinsockTcpStream, OpenCallsSocketOnce)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, WinsockFake_SocketCallCount());
+    CALLED_FAKE(WinsockFake_Socket, ONCE);
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenCallsSocketWithAF_INET)
@@ -141,7 +145,7 @@ TEST(SolidSyslogWinsockTcpStream, OpenSetsTcpKeepCntTo4)
 TEST(SolidSyslogWinsockTcpStream, OpenCallsConnectWithSocketFd)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, WinsockFake_ConnectCallCount());
+    CALLED_FAKE(WinsockFake_Connect, ONCE);
     CHECK(WinsockFake_SocketFd() == WinsockFake_LastConnectFd());
 }
 
@@ -173,15 +177,15 @@ TEST(SolidSyslogWinsockTcpStream, OpenSkipsConnectAndSetsockoptWhenSocketFails)
 {
     WinsockFake_SetSocketFails(true);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(0, WinsockFake_ConnectCallCount());
-    LONGS_EQUAL(0, WinsockFake_SetSockOptCallCount());
+    CALLED_FAKE(WinsockFake_Connect, NEVER);
+    CALLED_FAKE(WinsockFake_SetSockOpt, NEVER);
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenClosesSocketOnConnectFailure)
 {
     WinsockFake_SetConnectFails(true);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, WinsockFake_CloseCallCount());
+    CALLED_FAKE(WinsockFake_Close, ONCE);
     CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd());
 }
 
@@ -196,7 +200,7 @@ TEST(SolidSyslogWinsockTcpStream, OpenSetsNonBlockingMode)
     SolidSyslogStream_Open(stream, addr);
     /* Single FIONBIO call: non-blocking on (1). The socket stays non-blocking
        so Send/Read are also fail-fast — no SO_SNDTIMEO needed. */
-    LONGS_EQUAL(1, WinsockFake_FionbioCallCount());
+    CALLED_FAKE(WinsockFake_Fionbio, ONCE);
     LONGS_EQUAL(1, WinsockFake_FionbioArgAt(0));
 }
 
@@ -205,14 +209,14 @@ TEST(SolidSyslogWinsockTcpStream, OpenSkipsSelectWhenConnectReturnsImmediately)
     /* Default fake connect returns 0 (immediate success); select must not be
        reached because connect short-circuits the wait. */
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(0, WinsockFake_SelectCallCount());
+    CALLED_FAKE(WinsockFake_Select, NEVER);
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenInvokesSelectWhenConnectReturnsWouldBlock)
 {
     WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, WinsockFake_SelectCallCount());
+    CALLED_FAKE(WinsockFake_Select, ONCE);
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenPassesBoundedConnectTimeoutToSelect)
@@ -247,7 +251,7 @@ TEST(SolidSyslogWinsockTcpStream, OpenClosesSocketOnSelectTimeout)
     WinsockFake_SetSelectWritable(false);
     WinsockFake_SetSelectReturn(0);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, WinsockFake_CloseCallCount());
+    CALLED_FAKE(WinsockFake_Close, ONCE);
     CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd());
 }
 
@@ -292,14 +296,14 @@ TEST(SolidSyslogWinsockTcpStream, OpenFailsWhenConnectFailsImmediatelyWithRefuse
        no select wait, no SO_ERROR check, just fail fast. */
     WinsockFake_SetConnectFailsWithLastError(WSAECONNREFUSED);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    LONGS_EQUAL(0, WinsockFake_SelectCallCount());
+    CALLED_FAKE(WinsockFake_Select, NEVER);
 }
 
 TEST(SolidSyslogWinsockTcpStream, SendCallsSendOnce)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(1, WinsockFake_SendCallCount());
+    CALLED_FAKE(WinsockFake_Send, ONCE);
 }
 
 TEST(SolidSyslogWinsockTcpStream, SendPassesBuffer)
@@ -355,7 +359,7 @@ TEST(SolidSyslogWinsockTcpStream, SendDoesNotRetryAfterShortWrite)
     SolidSyslogStream_Open(stream, addr);
     WinsockFake_SetSendReturn(3);
     SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(1, WinsockFake_SendCallCount());
+    CALLED_FAKE(WinsockFake_Send, ONCE);
 }
 
 TEST(SolidSyslogWinsockTcpStream, SendClosesSocketOnFailure)
@@ -370,7 +374,7 @@ TEST(SolidSyslogWinsockTcpStream, CloseCallsCloseOnce)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogStream_Close(stream);
-    LONGS_EQUAL(1, WinsockFake_CloseCallCount());
+    CALLED_FAKE(WinsockFake_Close, ONCE);
 }
 
 TEST(SolidSyslogWinsockTcpStream, CloseCalledWithSocketFd)
@@ -383,7 +387,7 @@ TEST(SolidSyslogWinsockTcpStream, CloseCalledWithSocketFd)
 TEST(SolidSyslogWinsockTcpStream, CloseIsNoOpWhenNotOpen)
 {
     SolidSyslogStream_Close(stream);
-    LONGS_EQUAL(0, WinsockFake_CloseCallCount());
+    CALLED_FAKE(WinsockFake_Close, NEVER);
 }
 
 TEST(SolidSyslogWinsockTcpStream, ReadCallsRecvOnce)
@@ -391,7 +395,7 @@ TEST(SolidSyslogWinsockTcpStream, ReadCallsRecvOnce)
     SolidSyslogStream_Open(stream, addr);
     char buf[16];
     SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(1, WinsockFake_RecvCallCount());
+    CALLED_FAKE(WinsockFake_Recv, ONCE);
 }
 
 TEST(SolidSyslogWinsockTcpStream, ReadPassesSocketFdToRecv)
@@ -462,7 +466,7 @@ TEST(SolidSyslogWinsockTcpStream, DestroyClosesOpenSocket)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogWinsockTcpStream_Destroy(stream);
-    LONGS_EQUAL(1, WinsockFake_CloseCallCount());
+    CALLED_FAKE(WinsockFake_Close, ONCE);
 }
 
 TEST(SolidSyslogWinsockTcpStream, DestroyClosesWithSocketFd)

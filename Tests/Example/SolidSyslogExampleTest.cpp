@@ -6,7 +6,11 @@
 #include "SolidSyslogExample.h"
 #include "ClockFake.h"
 #include "SocketFake.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 static const char* const STDIN_SEND_ONE   = "/tmp/solidsyslog_test_send1.txt";
 static const char* const STDIN_SEND_THREE = "/tmp/solidsyslog_test_send3.txt";
@@ -84,7 +88,7 @@ TEST(SolidSyslogExample, RunWithNoArgsReturnsZero)
 TEST(SolidSyslogExample, RunSendsOneMessage)
 {
     RunWithNoArgs();
-    LONGS_EQUAL(1, SocketFake_SendtoCallCount());
+    CALLED_FAKE(SocketFake_Sendto, ONCE);
 }
 
 TEST(SolidSyslogExample, DefaultMessageContainsLocal0InfoPrival)
@@ -147,7 +151,7 @@ TEST(SolidSyslogExample, SocketCreatedWithUdpDgram)
 TEST(SolidSyslogExample, SocketClosedAfterRun)
 {
     RunWithNoArgs();
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogExample, MsgIdFlagAppearsInMessage)
@@ -167,7 +171,7 @@ TEST(SolidSyslogExample, SendCommandSendsMultipleMessages)
     char  arg0[] = "SolidSyslogExample";
     char* argv[] = {arg0, nullptr};
     Run(1, argv);
-    LONGS_EQUAL(3, SocketFake_SendtoCallCount());
+    CALLED_FAKE(SocketFake_Sendto, THRICE);
 }
 
 TEST(SolidSyslogExample, MessageFlagAppearsInMessage)

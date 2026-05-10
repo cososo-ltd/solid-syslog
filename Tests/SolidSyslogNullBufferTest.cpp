@@ -1,6 +1,10 @@
 #include <stddef.h>
 
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SenderFake.h"
@@ -54,19 +58,19 @@ TEST(SolidSyslogNullBuffer, WriteForwardsSizeToSender)
 TEST(SolidSyslogNullBuffer, WriteResultsInOneSend)
 {
     Write();
-    LONGS_EQUAL(1, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
 }
 
 TEST(SolidSyslogNullBuffer, TwoWritesResultInTwoSends)
 {
     Write();
     Write();
-    LONGS_EQUAL(2, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, TWICE);
 }
 
 TEST(SolidSyslogNullBuffer, NoWritesResultInNoSends)
 {
-    LONGS_EQUAL(0, SenderFake_SendCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
 }
 
 TEST(SolidSyslogNullBuffer, ReadReturnsNothingToSend)

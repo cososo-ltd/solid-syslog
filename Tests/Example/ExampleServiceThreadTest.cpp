@@ -14,15 +14,19 @@
 #include "SocketFake.h"
 #include "ClockFake.h"
 #include "SolidSyslogPrival.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-static int            sleepCallCount;
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
+
+static int            SleepFakeCallCount;
 static int            lastSleepMs;
 static volatile bool* sleepShutdownFlag;
 
 static void SleepFake(int milliseconds)
 {
-    sleepCallCount++;
+    SleepFakeCallCount++;
     lastSleepMs = milliseconds;
     if (sleepShutdownFlag != nullptr)
     {
@@ -56,7 +60,7 @@ TEST_GROUP(ExampleServiceThread)
         ClockFake_Reset();
         ClockFake_SetTime(1743768600, 0);
         shutdown          = true;
-        sleepCallCount    = 0;
+        SleepFakeCallCount    = 0;
         lastSleepMs       = 0;
         sleepShutdownFlag = nullptr;
 
@@ -91,7 +95,7 @@ TEST_GROUP(ExampleServiceThread)
 TEST(ExampleServiceThread, DoesNotSendWhenBufferEmpty)
 {
     ExampleServiceThread_Run(&shutdown, SleepFake);
-    LONGS_EQUAL(0, SocketFake_SendtoCallCount());
+    CALLED_FAKE(SocketFake_Sendto, NEVER);
 }
 
 TEST(ExampleServiceThread, YieldsOneMillisecondAfterEachServiceTick)
@@ -101,6 +105,6 @@ TEST(ExampleServiceThread, YieldsOneMillisecondAfterEachServiceTick)
 
     ExampleServiceThread_Run(&shutdown, SleepFake);
 
-    LONGS_EQUAL(1, sleepCallCount);
+    CALLED_FUNCTION(SleepFake, ONCE);
     LONGS_EQUAL(1, lastSleepMs);
 }
