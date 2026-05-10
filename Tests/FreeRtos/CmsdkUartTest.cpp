@@ -1,4 +1,7 @@
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
 
 #include "CmsdkUart.h"
 #include "CmsdkUartFake.h"
@@ -106,7 +109,7 @@ TEST(CmsdkUart, GetCharReturnsImmediatelyWhenReceiverHasByte)
     CmsdkUartFake_SetReadsBeforeRxReady(0);
     CmsdkUartFake_SetReceivedByte('X');
     LONGS_EQUAL('X', CmsdkUart_GetChar());
-    LONGS_EQUAL(0, CmsdkUartFake_SleepCallCount());
+    CALLED_FAKE(CmsdkUartFake_Sleep, NEVER);
 }
 
 TEST(CmsdkUart, GetCharSpinsAfterReArmFromImmediateReadyToDelayedReady)

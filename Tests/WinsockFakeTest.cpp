@@ -1,4 +1,7 @@
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
 #include "WinsockFake.h"
 #include <cstring>
 #include <winsock2.h>
@@ -28,7 +31,7 @@ TEST_GROUP(WinsockFake)
 TEST(WinsockFake, SocketRecordsCall)
 {
     WinsockFake_socket(AF_INET, SOCK_DGRAM, 0);
-    LONGS_EQUAL(1, WinsockFake_SocketCallCount());
+    CALLED_FAKE(WinsockFake_Socket, ONCE);
     LONGS_EQUAL(AF_INET, WinsockFake_SocketDomain());
     LONGS_EQUAL(SOCK_DGRAM, WinsockFake_SocketType());
 }
@@ -50,7 +53,7 @@ TEST(WinsockFake, SendtoRecordsBufferAndAddress)
 {
     SOCKET fd = WinsockFake_socket(AF_INET, SOCK_DGRAM, 0);
     WinsockFake_sendto(fd, TEST_MESSAGE, TEST_MESSAGE_LEN, 0, (const struct sockaddr*) &destination, sizeof(destination));
-    LONGS_EQUAL(1, WinsockFake_SendtoCallCount());
+    CALLED_FAKE(WinsockFake_Sendto, ONCE);
     STRCMP_EQUAL(TEST_MESSAGE, WinsockFake_LastBufAsString());
     LONGS_EQUAL(TEST_MESSAGE_LEN, (int) WinsockFake_LastLen());
     LONGS_EQUAL(TEST_PORT, WinsockFake_LastPort());
@@ -75,7 +78,7 @@ TEST(WinsockFake, ClosesocketRecordsCall)
 {
     SOCKET fd = WinsockFake_socket(AF_INET, SOCK_DGRAM, 0);
     WinsockFake_closesocket(fd);
-    LONGS_EQUAL(1, WinsockFake_CloseCallCount());
+    CALLED_FAKE(WinsockFake_Close, ONCE);
     CHECK(WinsockFake_LastClosedFd() == fd);
 }
 
@@ -85,7 +88,7 @@ TEST(WinsockFake, GetAddrInfoRecordsHostnameAndSocktype)
     hints.ai_socktype     = SOCK_DGRAM;
     struct addrinfo* res  = nullptr;
     WinsockFake_getaddrinfo(TEST_HOST, nullptr, &hints, &res);
-    LONGS_EQUAL(1, WinsockFake_GetAddrInfoCallCount());
+    CALLED_FAKE(WinsockFake_GetAddrInfo, ONCE);
     STRCMP_EQUAL(TEST_HOST, WinsockFake_LastGetAddrInfoHostname());
     LONGS_EQUAL(SOCK_DGRAM, WinsockFake_LastGetAddrInfoSocktype());
     CHECK(res != nullptr);
@@ -104,14 +107,14 @@ TEST(WinsockFake, FreeAddrInfoRecordsCall)
     struct addrinfo* res = nullptr;
     WinsockFake_getaddrinfo(TEST_HOST, nullptr, nullptr, &res);
     WinsockFake_freeaddrinfo(res);
-    LONGS_EQUAL(1, WinsockFake_FreeAddrInfoCallCount());
+    CALLED_FAKE(WinsockFake_FreeAddrInfo, ONCE);
 }
 
 TEST(WinsockFake, ConnectRecordsCallAndAddress)
 {
     SOCKET fd = WinsockFake_socket(AF_INET, SOCK_STREAM, 0);
     WinsockFake_connect(fd, (const struct sockaddr*) &destination, sizeof(destination));
-    LONGS_EQUAL(1, WinsockFake_ConnectCallCount());
+    CALLED_FAKE(WinsockFake_Connect, ONCE);
     CHECK(WinsockFake_LastConnectFd() == fd);
     LONGS_EQUAL(TEST_PORT, WinsockFake_LastConnectPort());
     STRCMP_EQUAL(TEST_HOST, WinsockFake_LastConnectAddrAsString());
@@ -134,7 +137,7 @@ TEST(WinsockFake, SendRecordsBufferAndFlags)
 {
     SOCKET fd = WinsockFake_socket(AF_INET, SOCK_STREAM, 0);
     WinsockFake_send(fd, TEST_MESSAGE, TEST_MESSAGE_LEN, 0);
-    LONGS_EQUAL(1, WinsockFake_SendCallCount());
+    CALLED_FAKE(WinsockFake_Send, ONCE);
     STRCMP_EQUAL(TEST_MESSAGE, WinsockFake_SendBufAsString(0));
     LONGS_EQUAL(TEST_MESSAGE_LEN, (int) WinsockFake_SendLen(0));
     LONGS_EQUAL(0, WinsockFake_SendFlags(0));
@@ -176,7 +179,7 @@ TEST(WinsockFake, RecvRecordsCall)
     char   buf[16];
     SOCKET fd = WinsockFake_socket(AF_INET, SOCK_STREAM, 0);
     WinsockFake_recv(fd, buf, sizeof(buf), 0);
-    LONGS_EQUAL(1, WinsockFake_RecvCallCount());
+    CALLED_FAKE(WinsockFake_Recv, ONCE);
     CHECK(WinsockFake_LastRecvFd() == fd);
     POINTERS_EQUAL(buf, WinsockFake_LastRecvBuf());
     LONGS_EQUAL(sizeof(buf), WinsockFake_LastRecvLen());
@@ -195,7 +198,7 @@ TEST(WinsockFake, SetSockOptRecordsLevelAndOptname)
 {
     int enable = 1;
     WinsockFake_setsockopt(INVALID_SOCKET, IPPROTO_TCP, TCP_NODELAY, (const char*) &enable, sizeof(enable));
-    LONGS_EQUAL(1, WinsockFake_SetSockOptCallCount());
+    CALLED_FAKE(WinsockFake_SetSockOpt, ONCE);
     LONGS_EQUAL(IPPROTO_TCP, WinsockFake_LastSetSockOptLevel());
     LONGS_EQUAL(TCP_NODELAY, WinsockFake_LastSetSockOptOptname());
 }
@@ -228,13 +231,13 @@ TEST(WinsockFake, ResetClearsCounters)
 {
     WinsockFake_socket(AF_INET, SOCK_DGRAM, 0);
     WinsockFake_Reset();
-    LONGS_EQUAL(0, WinsockFake_SocketCallCount());
-    LONGS_EQUAL(0, WinsockFake_SendtoCallCount());
-    LONGS_EQUAL(0, WinsockFake_ConnectCallCount());
-    LONGS_EQUAL(0, WinsockFake_SendCallCount());
-    LONGS_EQUAL(0, WinsockFake_RecvCallCount());
-    LONGS_EQUAL(0, WinsockFake_SetSockOptCallCount());
-    LONGS_EQUAL(0, WinsockFake_CloseCallCount());
-    LONGS_EQUAL(0, WinsockFake_GetAddrInfoCallCount());
-    LONGS_EQUAL(0, WinsockFake_FreeAddrInfoCallCount());
+    CALLED_FAKE(WinsockFake_Socket, NEVER);
+    CALLED_FAKE(WinsockFake_Sendto, NEVER);
+    CALLED_FAKE(WinsockFake_Connect, NEVER);
+    CALLED_FAKE(WinsockFake_Send, NEVER);
+    CALLED_FAKE(WinsockFake_Recv, NEVER);
+    CALLED_FAKE(WinsockFake_SetSockOpt, NEVER);
+    CALLED_FAKE(WinsockFake_Close, NEVER);
+    CALLED_FAKE(WinsockFake_GetAddrInfo, NEVER);
+    CALLED_FAKE(WinsockFake_FreeAddrInfo, NEVER);
 }

@@ -1,6 +1,9 @@
 #include "SenderFake.h"
 #include "SolidSyslogSender.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
 
 // clang-format off
 TEST_GROUP(SenderFake)
@@ -23,38 +26,38 @@ TEST_GROUP(SenderFake)
 
 TEST(SenderFake, SendCountIsZeroAfterCreate)
 {
-    LONGS_EQUAL(0, SenderFake_SendCallCount(sender));
+    CALLED_FAKE_ON(SenderFake_Send, sender, NEVER);
 }
 
 TEST(SenderFake, DisconnectCountIsZeroAfterCreate)
 {
-    LONGS_EQUAL(0, SenderFake_DisconnectCallCount(sender));
+    CALLED_FAKE_ON(SenderFake_Disconnect, sender, NEVER);
 }
 
 TEST(SenderFake, SendCountIncrementsOnSend)
 {
     SolidSyslogSender_Send(sender, "a", 1);
-    LONGS_EQUAL(1, SenderFake_SendCallCount(sender));
+    CALLED_FAKE_ON(SenderFake_Send, sender, ONCE);
 }
 
 TEST(SenderFake, SendCountIncrementsTwiceOnTwoSends)
 {
     SolidSyslogSender_Send(sender, "a", 1);
     SolidSyslogSender_Send(sender, "b", 1);
-    LONGS_EQUAL(2, SenderFake_SendCallCount(sender));
+    CALLED_FAKE_ON(SenderFake_Send, sender, TWICE);
 }
 
 TEST(SenderFake, DisconnectCountIncrementsOnDisconnect)
 {
     SolidSyslogSender_Disconnect(sender);
-    LONGS_EQUAL(1, SenderFake_DisconnectCallCount(sender));
+    CALLED_FAKE_ON(SenderFake_Disconnect, sender, ONCE);
 }
 
 TEST(SenderFake, DisconnectCountIncrementsTwiceOnTwoDisconnects)
 {
     SolidSyslogSender_Disconnect(sender);
     SolidSyslogSender_Disconnect(sender);
-    LONGS_EQUAL(2, SenderFake_DisconnectCallCount(sender));
+    CALLED_FAKE_ON(SenderFake_Disconnect, sender, TWICE);
 }
 
 TEST(SenderFake, LastBufferCapturesMessage)
@@ -92,14 +95,14 @@ TEST(SenderFake, ResetClearsSendCount)
 {
     SolidSyslogSender_Send(sender, "a", 1);
     SenderFake_Reset(sender);
-    LONGS_EQUAL(0, SenderFake_SendCallCount(sender));
+    CALLED_FAKE_ON(SenderFake_Send, sender, NEVER);
 }
 
 TEST(SenderFake, ResetClearsDisconnectCount)
 {
     SolidSyslogSender_Disconnect(sender);
     SenderFake_Reset(sender);
-    LONGS_EQUAL(0, SenderFake_DisconnectCallCount(sender));
+    CALLED_FAKE_ON(SenderFake_Disconnect, sender, NEVER);
 }
 
 TEST(SenderFake, FailNextSendReturnsFalse)
@@ -153,15 +156,15 @@ TEST(SenderFakeInstances, TwoInstancesHaveDistinctHandles)
 TEST(SenderFakeInstances, SendCountsAreIndependent)
 {
     SolidSyslogSender_Send(a, "x", 1);
-    LONGS_EQUAL(1, SenderFake_SendCallCount(a));
-    LONGS_EQUAL(0, SenderFake_SendCallCount(b));
+    CALLED_FAKE_ON(SenderFake_Send, a, ONCE);
+    CALLED_FAKE_ON(SenderFake_Send, b, NEVER);
 }
 
 TEST(SenderFakeInstances, DisconnectCountsAreIndependent)
 {
     SolidSyslogSender_Disconnect(a);
-    LONGS_EQUAL(1, SenderFake_DisconnectCallCount(a));
-    LONGS_EQUAL(0, SenderFake_DisconnectCallCount(b));
+    CALLED_FAKE_ON(SenderFake_Disconnect, a, ONCE);
+    CALLED_FAKE_ON(SenderFake_Disconnect, b, NEVER);
 }
 
 TEST(SenderFakeInstances, LastBuffersAreIndependent)

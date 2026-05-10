@@ -1,6 +1,9 @@
 #include <cstdlib>
 
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogPosixMessageQueueBuffer.h"
 #include "SolidSyslog.h"
@@ -103,7 +106,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
     SolidSyslogMessage message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFO, nullptr, nullptr};
     SolidSyslog_Log(&message);
     SolidSyslog_Service();
-    LONGS_EQUAL(1, SenderFake_SendCallCount(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
 
     SolidSyslog_Destroy();
     SolidSyslogNullStore_Destroy();

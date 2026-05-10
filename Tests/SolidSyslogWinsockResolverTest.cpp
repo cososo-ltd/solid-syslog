@@ -1,4 +1,7 @@
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogResolver.h"
 #include "SolidSyslogWinsockResolver.h"
@@ -84,7 +87,7 @@ TEST(SolidSyslogWinsockResolver, PopulatesPortFromPortArgument)
 TEST(SolidSyslogWinsockResolver, GetAddrInfoCalledWithHostArgument)
 {
     Resolve(TEST_ALTERNATE_HOST, TEST_PORT);
-    LONGS_EQUAL(1, WinsockFake_GetAddrInfoCallCount());
+    CALLED_FAKE(WinsockFake_GetAddrInfo, ONCE);
     STRCMP_EQUAL(TEST_ALTERNATE_HOST, WinsockFake_LastGetAddrInfoHostname());
 }
 
@@ -110,11 +113,11 @@ TEST(SolidSyslogWinsockResolver, DoesNotFreeAddrInfoWhenGetAddrInfoFails)
 {
     WinsockFake_SetGetAddrInfoFails(true);
     Resolve(TEST_HOST, TEST_PORT);
-    LONGS_EQUAL(0, WinsockFake_FreeAddrInfoCallCount());
+    CALLED_FAKE(WinsockFake_FreeAddrInfo, NEVER);
 }
 
 TEST(SolidSyslogWinsockResolver, FreesAddrInfoOnSuccess)
 {
     Resolve(TEST_HOST, TEST_PORT);
-    LONGS_EQUAL(1, WinsockFake_FreeAddrInfoCallCount());
+    CALLED_FAKE(WinsockFake_FreeAddrInfo, ONCE);
 }

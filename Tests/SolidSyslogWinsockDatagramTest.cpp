@@ -1,4 +1,7 @@
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogUdpPayload.h"
@@ -60,7 +63,7 @@ TEST(SolidSyslogWinsockDatagram, CreateDestroyWorksWithoutCrashing)
 TEST(SolidSyslogWinsockDatagram, OpenCallsSocketOnce)
 {
     SolidSyslogDatagram_Open(datagram);
-    LONGS_EQUAL(1, WinsockFake_SocketCallCount());
+    CALLED_FAKE(WinsockFake_Socket, ONCE);
 }
 
 TEST(SolidSyslogWinsockDatagram, OpenCallsSocketWithAF_INET)
@@ -90,7 +93,7 @@ TEST(SolidSyslogWinsockDatagram, SendToCallsSendtoOnce)
 {
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
-    LONGS_EQUAL(1, WinsockFake_SendtoCallCount());
+    CALLED_FAKE(WinsockFake_Sendto, ONCE);
 }
 
 TEST(SolidSyslogWinsockDatagram, SendToPassesBuffer)
@@ -159,7 +162,7 @@ TEST(SolidSyslogWinsockDatagram, CloseCallsCloseOnce)
 {
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_Close(datagram);
-    LONGS_EQUAL(1, WinsockFake_CloseCallCount());
+    CALLED_FAKE(WinsockFake_Close, ONCE);
 }
 
 TEST(SolidSyslogWinsockDatagram, CloseCalledWithSocketFd)
@@ -177,14 +180,14 @@ TEST(SolidSyslogWinsockDatagram, MaxPayloadFallsBackToIpv6SafePayload)
 TEST(SolidSyslogWinsockDatagram, OpenDoesNotConnect)
 {
     SolidSyslogDatagram_Open(datagram);
-    LONGS_EQUAL(0, WinsockFake_ConnectCallCount());
+    CALLED_FAKE(WinsockFake_Connect, NEVER);
 }
 
 TEST(SolidSyslogWinsockDatagram, SendToConnectsOnFirstCall)
 {
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
-    LONGS_EQUAL(1, WinsockFake_ConnectCallCount());
+    CALLED_FAKE(WinsockFake_Connect, ONCE);
 }
 
 TEST(SolidSyslogWinsockDatagram, SendToConnectsOnceAcrossMultipleCalls)
@@ -192,7 +195,7 @@ TEST(SolidSyslogWinsockDatagram, SendToConnectsOnceAcrossMultipleCalls)
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
     SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
-    LONGS_EQUAL(1, WinsockFake_ConnectCallCount());
+    CALLED_FAKE(WinsockFake_Connect, ONCE);
 }
 
 TEST(SolidSyslogWinsockDatagram, FirstSendEnablesPmtuDiscovery)
@@ -221,7 +224,7 @@ TEST(SolidSyslogWinsockDatagram, MaxPayloadAfterConnectQueriesIpMtu)
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
     SolidSyslogDatagram_MaxPayload(datagram);
-    LONGS_EQUAL(1, WinsockFake_GetSockOptCallCount());
+    CALLED_FAKE(WinsockFake_GetSockOpt, ONCE);
 }
 
 TEST(SolidSyslogWinsockDatagram, MaxPayloadConvertsIpMtuViaFromMtu)

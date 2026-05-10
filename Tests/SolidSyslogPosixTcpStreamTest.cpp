@@ -6,7 +6,10 @@
 #include <cerrno>
 #include <cstdint>
 
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogPosixTcpStream.h"
 #include "SolidSyslogStream.h"
@@ -62,7 +65,7 @@ TEST_GROUP(SolidSyslogPosixTcpStream)
 #define CHECK_SOCKET_CLOSED_ONCE()                                     \
     do                                                                 \
     {                                                                  \
-        LONGS_EQUAL(1, SocketFake_CloseCallCount());                   \
+        CALLED_FAKE(SocketFake_Close, ONCE);                   \
         LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd()); \
     } while (0)
 
@@ -83,7 +86,7 @@ TEST(SolidSyslogPosixTcpStream, CreateReturnsHandleInsideCallerSuppliedStorage)
 TEST(SolidSyslogPosixTcpStream, OpenCallsSocketOnce)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, SocketFake_SocketCallCount());
+    CALLED_FAKE(SocketFake_Socket, ONCE);
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenCallsSocketWithAF_INET)
@@ -153,13 +156,13 @@ TEST(SolidSyslogPosixTcpStream, OpenFailsWhenFcntlSetFlFails)
        caller cannot bound the connect wait — fail fast. */
     SocketFake_SetFcntlSetFlFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenCallsConnectWithSocketFd)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, SocketFake_ConnectCallCount());
+    CALLED_FAKE(SocketFake_Connect, ONCE);
     LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastConnectFd());
 }
 
@@ -191,8 +194,8 @@ TEST(SolidSyslogPosixTcpStream, OpenSkipsConnectAndSetsockoptWhenSocketFails)
 {
     SocketFake_SetSocketFails(true);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(0, SocketFake_ConnectCallCount());
-    LONGS_EQUAL(0, SocketFake_SetSockOptCallCount());
+    CALLED_FAKE(SocketFake_Connect, NEVER);
+    CALLED_FAKE(SocketFake_SetSockOpt, NEVER);
 }
 
 TEST(SolidSyslogPosixTcpStream, SendReturnsFalseOnShortWrite)
@@ -207,7 +210,7 @@ TEST(SolidSyslogPosixTcpStream, SendDoesNotRetryAfterShortWrite)
     SolidSyslogStream_Open(stream, addr);
     SocketFake_SetSendReturn(3);
     SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(1, SocketFake_SendCallCount());
+    CALLED_FAKE(SocketFake_Send, ONCE);
 }
 
 TEST(SolidSyslogPosixTcpStream, SendReturnsFalseOnEintr)
@@ -238,7 +241,7 @@ TEST(SolidSyslogPosixTcpStream, OpenClosesSocketOnConnectFailure)
 {
     SocketFake_SetConnectFails(true);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
     LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
 }
 
@@ -246,7 +249,7 @@ TEST(SolidSyslogPosixTcpStream, SendCallsSendOnce)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(1, SocketFake_SendCallCount());
+    CALLED_FAKE(SocketFake_Send, ONCE);
 }
 
 TEST(SolidSyslogPosixTcpStream, SendPassesBuffer)
@@ -294,7 +297,7 @@ TEST(SolidSyslogPosixTcpStream, CloseCallsCloseOnce)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogStream_Close(stream);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogPosixTcpStream, CloseCalledWithSocketFd)
@@ -307,7 +310,7 @@ TEST(SolidSyslogPosixTcpStream, CloseCalledWithSocketFd)
 TEST(SolidSyslogPosixTcpStream, CloseIsNoOpWhenNotOpen)
 {
     SolidSyslogStream_Close(stream);
-    LONGS_EQUAL(0, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, NEVER);
 }
 
 TEST(SolidSyslogPosixTcpStream, ReadCallsRecvOnce)
@@ -315,7 +318,7 @@ TEST(SolidSyslogPosixTcpStream, ReadCallsRecvOnce)
     SolidSyslogStream_Open(stream, addr);
     char buf[16];
     SolidSyslogStream_Read(stream, buf, sizeof(buf));
-    LONGS_EQUAL(1, SocketFake_RecvCallCount());
+    CALLED_FAKE(SocketFake_Recv, ONCE);
 }
 
 TEST(SolidSyslogPosixTcpStream, ReadPassesSocketFdToRecv)
@@ -363,7 +366,7 @@ TEST(SolidSyslogPosixTcpStream, DestroyClosesOpenSocket)
 {
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogPosixTcpStream_Destroy(stream);
-    LONGS_EQUAL(1, SocketFake_CloseCallCount());
+    CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
 TEST(SolidSyslogPosixTcpStream, DestroyClosesWithSocketFd)
@@ -388,14 +391,14 @@ TEST(SolidSyslogPosixTcpStream, OpenSkipsSelectWhenConnectReturnsImmediately)
     /* Default fake connect returns 0 (immediate success); select must not be
        reached because connect short-circuits the wait. */
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(0, SocketFake_SelectCallCount());
+    CALLED_FAKE(SocketFake_Select, NEVER);
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenInvokesSelectWhenConnectReturnsEinprogress)
 {
     SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(1, SocketFake_SelectCallCount());
+    CALLED_FAKE(SocketFake_Select, ONCE);
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenPassesBoundedConnectTimeoutToSelect)
@@ -464,7 +467,7 @@ TEST(SolidSyslogPosixTcpStream, OpenFailsWhenConnectFailsImmediatelyWithRefused)
        SO_ERROR check, just fail fast. */
     SocketFake_SetConnectFailsWithErrno(ECONNREFUSED);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    LONGS_EQUAL(0, SocketFake_SelectCallCount());
+    CALLED_FAKE(SocketFake_Select, NEVER);
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenFailsWhenSO_ERRORLookupFails)
