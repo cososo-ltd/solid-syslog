@@ -58,7 +58,7 @@ void StoreFake_FailNextRead(void)
     instance.failNextRead = true;
 }
 
-int StoreFake_WriteCount(struct SolidSyslogStore* store)
+int StoreFake_WriteCallCount(struct SolidSyslogStore* store)
 {
     return ((struct StoreFake*) store)->writeCount;
 }

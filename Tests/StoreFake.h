@@ -10,7 +10,7 @@ EXTERN_C_BEGIN
     void                     StoreFake_FailNextWrite(void);
     void                     StoreFake_FailNextRead(void);
     void                     StoreFake_SetHalted(void);
-    int                      StoreFake_WriteCount(struct SolidSyslogStore * store);
+    int                      StoreFake_WriteCallCount(struct SolidSyslogStore * store);
 
 EXTERN_C_END
 

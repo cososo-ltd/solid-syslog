@@ -115,7 +115,7 @@ TEST(StoreFake, WriteCountReportsSuccessfulWrites)
 {
     SolidSyslogStore_Write(store, "a", 1);
     SolidSyslogStore_Write(store, "b", 1);
-    LONGS_EQUAL(2, StoreFake_WriteCount(store));
+    LONGS_EQUAL(2, StoreFake_WriteCallCount(store));
 }
 
 TEST(StoreFake, WriteCountIgnoresFailedWrite)
@@ -123,5 +123,5 @@ TEST(StoreFake, WriteCountIgnoresFailedWrite)
     SolidSyslogStore_Write(store, "a", 1);
     StoreFake_FailNextWrite();
     SolidSyslogStore_Write(store, "b", 1);
-    LONGS_EQUAL(1, StoreFake_WriteCount(store));
+    LONGS_EQUAL(1, StoreFake_WriteCallCount(store));
 }

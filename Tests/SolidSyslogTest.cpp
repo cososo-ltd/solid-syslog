@@ -1524,7 +1524,7 @@ TEST(SolidSyslogServiceEagerDrain, AllBufferedMessagesReachStoreInOneTickWhenSen
     SenderFake_FailNextSend(fakeSender);
     SolidSyslog_Service();
 
-    LONGS_EQUAL(3, StoreFake_WriteCount(fakeStore));
+    LONGS_EQUAL(3, StoreFake_WriteCallCount(fakeStore));
 }
 
 TEST(SolidSyslogServiceEagerDrain, StoredMessagesDrainInFifoOrderAcrossTicks)
