@@ -6,7 +6,7 @@
 
 #include "SolidSyslog.h"
 #include "SolidSyslogSenderDefinition.h"
-#include "TestUtils.h"
+#include "MinSize.h"
 
 struct SenderFake
 {
