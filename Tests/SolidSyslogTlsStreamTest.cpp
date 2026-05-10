@@ -13,7 +13,8 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 class TEST_SolidSyslogTlsStream_ReadReturnsNegativeOneOnHardErrorAndClosesSsl_Test;
 class TEST_SolidSyslogTlsStream_ReadReturnsNegativeOneOnZeroReturnAndClosesSsl_Test;
@@ -129,30 +130,30 @@ TEST_GROUP(SolidSyslogTlsStream)
 // clang-format on
 
 // NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-#define CHECK_BIO_READ_RETRY_SIGNALLED()                    \
-    do                                                      \
-    {                                                       \
+#define CHECK_BIO_READ_RETRY_SIGNALLED()            \
+    do                                              \
+    {                                               \
         CALLED_FAKE(OpenSslFake_BioSetFlags, ONCE); \
     } while (0)
-#define CHECK_BIO_READ_RETRY_NOT_SIGNALLED()                \
-    do                                                      \
-    {                                                       \
+#define CHECK_BIO_READ_RETRY_NOT_SIGNALLED()         \
+    do                                               \
+    {                                                \
         CALLED_FAKE(OpenSslFake_BioSetFlags, NEVER); \
     } while (0)
-#define CHECK_BIO_RETRY_FLAGS_CLEARED()                       \
-    do                                                        \
-    {                                                         \
+#define CHECK_BIO_RETRY_FLAGS_CLEARED()               \
+    do                                                \
+    {                                                 \
         CALLED_FAKE(OpenSslFake_BioClearFlags, ONCE); \
     } while (0)
-#define CHECK_SSL_SESSION_CLOSED()                       \
-    do                                                   \
-    {                                                    \
+#define CHECK_SSL_SESSION_CLOSED()               \
+    do                                           \
+    {                                            \
         CALLED_FAKE(OpenSslFake_Shutdown, ONCE); \
         CALLED_FAKE(OpenSslFake_Free, ONCE);     \
     } while (0)
-#define CHECK_TRANSPORT_CLOSED_ONCE()                         \
-    do                                                        \
-    {                                                         \
+#define CHECK_TRANSPORT_CLOSED_ONCE()                      \
+    do                                                     \
+    {                                                      \
         CALLED_FAKE_ON(StreamFake_Close, transport, ONCE); \
     } while (0)
 

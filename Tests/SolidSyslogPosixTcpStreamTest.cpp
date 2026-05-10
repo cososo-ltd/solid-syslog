@@ -9,7 +9,8 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogPosixTcpStream.h"
 #include "SolidSyslogStream.h"
@@ -65,7 +66,7 @@ TEST_GROUP(SolidSyslogPosixTcpStream)
 #define CHECK_SOCKET_CLOSED_ONCE()                                     \
     do                                                                 \
     {                                                                  \
-        CALLED_FAKE(SocketFake_Close, ONCE);                   \
+        CALLED_FAKE(SocketFake_Close, ONCE);                           \
         LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd()); \
     } while (0)
 

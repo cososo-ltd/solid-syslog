@@ -9,7 +9,8 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 static const char* const STDIN_SEND_ONE   = "/tmp/solidsyslog_test_send1.txt";
 static const char* const STDIN_SEND_THREE = "/tmp/solidsyslog_test_send3.txt";

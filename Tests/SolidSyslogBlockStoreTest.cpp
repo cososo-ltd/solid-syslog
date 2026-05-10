@@ -13,7 +13,8 @@
 #include "FileFake.h"
 #include "TestUtils.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_* macros
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+                               // macros
 
 static const char* const TEST_PATH_PREFIX = "/tmp/test_store";
 static const char* const TEST_DATA        = "hello";
@@ -879,7 +880,7 @@ TEST(SolidSyslogBlockStoreRotation, DiscardNewestReturnsFalseWhenAtMaxFiles)
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 }
 
-static int     StoreFullCallbackCallCount;
+static int StoreFullCallbackCallCount;
 
 static void StoreFullCallback(void* context)
 {
@@ -1362,7 +1363,7 @@ enum
     INTEGRITY_REGION_MAX = 2 + 2 + SOLIDSYSLOG_MAX_MESSAGE_SIZE /* magic + length + body */
 };
 
-static int     SpyComputeIntegrityCallCount;
+static int      SpyComputeIntegrityCallCount;
 static uint8_t  computeIntegrityData[INTEGRITY_REGION_MAX];
 static uint16_t computeIntegrityLength;
 
@@ -1375,7 +1376,7 @@ static void SpyComputeIntegrity(const uint8_t* data, uint16_t length, uint8_t* i
     memcpy(computeIntegrityData, data, length);
 }
 
-static int     SpyVerifyIntegrityCallCount;
+static int      SpyVerifyIntegrityCallCount;
 static uint8_t  verifyIntegrityData[INTEGRITY_REGION_MAX];
 static uint16_t verifyIntegrityLength;
 
