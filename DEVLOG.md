@@ -1,5 +1,117 @@
 # Dev Log
 
+## 2026-05-10 — S12.18 library-wide error reporting API + example handlers (#319)
+
+Foundation for the rest of E12. Up to now every NULL guard the epic
+contemplates would have had to assert "didn't crash" — there was no
+channel to report *what* went wrong. This story lands the channel as
+a thin slice; self-emit (origin tagging, RFC 5424 facility-5
+emission, rate limiting) is deferred to S12.19 (#318).
+
+### Decisions
+
+- **Two-effects-one-dispatch over two installable handlers.** The
+  design discussion floated David's "user handler that always fires +
+  internal SIEM-emit handler that wraps it" framing. Resolved as a
+  single library-internal dispatcher that conditionally self-emits
+  *and* unconditionally invokes the user handler. The user installs
+  one handler via `SolidSyslog_SetErrorHandler`; the self-emit layer
+  is a fixed library-internal behaviour that's added in S12.19, not a
+  second installable hook.
+- **Default handler is a nil-object no-op, not a self-emit.** Two
+  reasons: (1) S12.18 deliberately ships without self-emit, so silence
+  is the only consistent default; (2) it matches the existing
+  `NilClock` / `NilStringFunction` pattern in `SolidSyslog.c`, which
+  CLAUDE.md codifies as "no NULL guard at the call site where a nil
+  object exists". `SetErrorHandler(NULL, ...)` clamps the slot back
+  to the nil-object — non-NULL handler-slot is a hard invariant, not
+  a runtime check.
+- **`origin` parameter is YAGNI for S12.18.** The eventual signature
+  has `(context, severity, origin, message)` so the self-emit layer
+  in S12.19 can filter on `CONSTRUCTION` / `RUNTIME` / `LOG_PATH`.
+  Adding it now without a consumer would be premature generalisation
+  — David has flagged that pattern repeatedly. S12.19 will rebreak
+  the public handler signature when it's actually needed; mechanical
+  one-line updates per call site at that point.
+- **Atomicity not protected.** `SetErrorHandler` writes two file-scope
+  statics (`currentHandler`, `currentContext`) without
+  synchronisation. Race window exists in theory: thread A mid-update,
+  thread B observing torn `(new handler, old context)`. Documented in
+  CLAUDE.md's audience-table row as "intended for setup-time
+  configuration, not synchronised with concurrent `Error` calls".
+  Reordering writes doesn't help (compiler may reorder; reader can
+  observe either direction). Real fixes require atomics (C11, which
+  the project deliberately avoids in core) or mutex injection (heavy,
+  and `Error` is meant to be cheap on the hot path). When dynamic
+  reconfiguration becomes a real requirement, mutex injection is the
+  natural answer — same pattern the buffer/store already uses.
+- **Examples install handlers by default.** David's call: control
+  products are wired up at design-and-test time, not on-site, so
+  out-of-the-box visibility wins over predictable defaults. POSIX
+  SingleTask + POSIX Threaded + Windows share
+  `Example/Common/ExampleStderrErrorHandler.{h,c}` (fprintf to
+  stderr); FreeRTOS SingleTask uses an inline newlib-printf handler
+  routed through the same CMSDK UART that `printf` already uses.
+- **Test-side and production-side share the message literal.**
+  Private header `Core/Source/SolidSyslogErrorMessages.h` defines
+  `SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_CONFIG`; both the call site in
+  `SolidSyslog.c` and the test assertion in `SolidSyslogErrorTest.cpp`
+  reference the same symbol. Tests can include from `Core/Source/`
+  per the existing CMake target_include_directories, so no public
+  exposure of the message strings.
+- **Test helpers as `CHECK_*` macros.** `CHECK_HANDLER_INVOKED_ONCE`
+  / `CHECK_HANDLER_NOT_INVOKED` / `CHECK_EXPECTED_SEVERITY` /
+  `CHECK_EXPECTED_MESSAGE` / `CHECK_EXPECTED_CONTEXT` mirror
+  `CHECK_PRIVAL` / `CHECK_BLOCK_CONTAINS` patterns. Wrapped in
+  `NOLINTBEGIN(cppcoreguidelines-macro-usage)` per the codebase
+  convention. The `CALLED_FUNCTION(handler, ONCE)` token-paste
+  pattern David proposed during review is a separate housekeeping
+  pass to be applied test-base-wide; saved as a memory note for
+  later.
+- **Sentinel as TEST_GROUP member, not per-test local.** Three
+  identical `int sentinel = 0; SolidSyslog_SetErrorHandler(handler,
+  &sentinel);` preambles collapsed to a single `installHandler()`
+  helper that uses a TEST_GROUP-member sentinel. CppUTest constructs
+  a fresh fixture per test, so per-test address uniqueness is
+  preserved.
+
+### Local verification
+
+- All seven CLAUDE.md pre-PR gates clean: build-linux-gcc,
+  build-linux-clang, sanitize-linux-gcc (ASan + UBSan),
+  coverage-linux-gcc (100% lines / 100% functions on Core/Platform),
+  analyze-tidy, analyze-cppcheck, analyze-format.
+- Bonus: build-freertos-target cross-compile to ARM Cortex-M3 since
+  `Example/FreeRtos/SingleTask/main.c` was edited. Both
+  `SolidSyslogFreeRtosSingleTask.elf` and `SolidSyslogFreeRtosHelloWorld.elf`
+  link clean.
+- 1088 library tests + 63 example tests pass on both gcc and clang.
+- Tidy initially flagged `NULL` → `nullptr` in the .cpp test file (4
+  occurrences); format flagged my hand-aligned macro spacing. Both
+  auto-fixed.
+
+### Deferred
+
+- **S12.19** (#318) — origin parameter, self-emit layer,
+  construction-complete gate, RFC 5424 facility-5 emission. Story
+  body sketched but flagged "refinement needed before pulled".
+- **Rate limiter** for the SD-fault flooding scenario — likely splits
+  to its own follow-on story (S12.20 if that's the route). Designs
+  considered: dedup-by-message-pointer ring (4–8 slots,
+  suppression-deadline) vs token bucket. Decided to wait until the
+  flooding shape is observable before committing to a design.
+- **NULL-guard sweep** — S12.04 (#115) / S12.05 (#116) / S12.06
+  (#117) now have a channel to report through; tests can assert *what
+  was reported*, not just "didn't crash".
+- **`CALLED_FUNCTION(handler, ONCE)` pattern** — token-paste enum +
+  macro for call-count assertions, applied test-base-wide as a
+  housekeeping pass. Memory note saved.
+
+### Open questions
+
+- None for this slice. S12.19's open questions live in its issue
+  body for refinement-time settling.
+
 ## 2026-05-10 — S08.03 slice 8 — Meta SD wiring + FreeRtosSysUpTime adapter (#310)
 
 Slice 7 wired the first SD-ELEMENT (Origin) and brought the FreeRTOS
