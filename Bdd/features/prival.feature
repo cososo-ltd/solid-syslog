@@ -1,5 +1,4 @@
 @udp
-@freertoswip
 Feature: PRIVAL encoding
   The library calculates RFC 5424 PRIVAL from facility and severity.
   The example program accepts --facility and --severity flags,

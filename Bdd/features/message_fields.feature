@@ -1,5 +1,4 @@
 @udp
-@freertoswip
 Feature: Message ID and message body
   The library includes message ID and message body in the RFC 5424 message.
 
@@ -13,6 +12,7 @@ Feature: Message ID and message body
     When the example program sends a message with body "system started"
     Then the message is "system started"
 
+  @freertoswip
   Scenario: Complete RFC 5424 message with all fields
     Given the syslog oracle is running
     When the example program sends a complete message with message ID "CONN" and body "session opened"

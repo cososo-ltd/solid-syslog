@@ -65,13 +65,18 @@
 
 /* SolidSyslog_Log allocates two char[SOLIDSYSLOG_MAX_MESSAGE_SIZE] frames
  * (~4 KB) plus formatter storage on its formatter path; ExampleInteractive
- * adds a 256-byte fgets line and newlib printf (~1 KB). Empirically the
- * task hard-faults at *16 (8 KB) once the SolidSyslog setup runs — newlib
- * printf and the formatter path together exceed that budget. *32 (16 KB)
- * keeps the smoke run stable; a follow-up will introduce CMake-driven
- * memory scaling once the budget is properly characterised. The task only
- * exists in this single-task example, so heap_4 (96 KB) absorbs it. */
-#define INTERACTIVE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 32U)
+ * adds a SOLIDSYSLOG_MAX_MESSAGE_SIZE fgets line buffer (so a `set msg
+ * <body>` line carrying a full path-MTU-class message body lands in one
+ * read) plus a same-size HandleSet name buffer and newlib printf (~1 KB).
+ * Empirically the task hard-faults at *16 (8 KB) once the SolidSyslog
+ * setup runs — newlib printf and the formatter path together exceed that
+ * budget. *32 (16 KB) was stable while the line buffer was 256 B; the
+ * MAX_LINE_LENGTH bump to 2048 B in slice 6 adds ~4 KB peak (line + name
+ * frames) so *40 (20 KB) gives ~4 KB headroom. A follow-up will introduce
+ * CMake-driven memory scaling once the budget is properly characterised.
+ * The task only exists in this single-task example, so heap_4 (96 KB)
+ * absorbs it. */
+#define INTERACTIVE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 40U)
 
 /* Static IPv4 wiring matching the QEMU slirp default. 10.0.2.15 is the
  * standard slirp DHCP-allocated guest address; we hardcode it here so no
@@ -89,18 +94,19 @@ static const uint8_t TEST_DESTINATION_IPV4[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U
  * interactive `set <name> <value>` command rewrites these in-place via
  * OnSet below. Storage sizes match RFC 5424 maxima where applicable
  * (HOSTNAME 255, APP-NAME 48, PROCID 128, MSGID 32) plus null
- * terminator; MSG is bounded by storage rather than the protocol;
- * g_host fits an IPv4 dotted-quad. g_message holds facility/severity
- * (mutated in place) and the messageId/msg pointers (which target the
- * mutable storage so contents are seen on each Log). */
-static char     g_hostname[256]   = "FreeRtosExample";
-static char     g_appName[49]     = "SolidSyslogExample";
-static char     g_processId[129]  = "1";
-static char     g_messageId[33]   = "example";
-static char     g_msg[256]        = "Hello from FreeRTOS";
-static char     g_host[16]        = "10.0.2.2";
-static uint16_t g_port            = (uint16_t) EXAMPLE_UDP_PORT;
-static uint32_t g_endpointVersion = 0U;
+ * terminator; MSG matches SOLIDSYSLOG_MAX_MESSAGE_SIZE so a single
+ * `set msg <body>` can carry a full path-MTU-class body; g_host fits
+ * an IPv4 dotted-quad. g_message holds facility/severity (mutated in
+ * place) and the messageId/msg pointers (which target the mutable
+ * storage so contents are seen on each Log). */
+static char     g_hostname[256]                     = "FreeRtosExample";
+static char     g_appName[49]                       = "SolidSyslogExample";
+static char     g_processId[129]                    = "1";
+static char     g_messageId[33]                     = "example";
+static char     g_msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = "Hello from FreeRTOS";
+static char     g_host[16]                          = "10.0.2.2";
+static uint16_t g_port                              = (uint16_t) EXAMPLE_UDP_PORT;
+static uint32_t g_endpointVersion                   = 0U;
 
 static struct SolidSyslogMessage g_message = {
     .facility  = SOLIDSYSLOG_FACILITY_LOCAL0,
@@ -249,8 +255,13 @@ static bool OnSet(const char* name, const char* value)
     }
     if (strcmp(name, "facility") == 0)
     {
+        /* Mirrors the Linux example's atoi-and-cast (Example/Common/
+         * ExampleCommandLine.c): the example forwards the parsed value
+         * unchanged so the library is the single authority on what's
+         * valid (out-of-range facility/severity encodes as the
+         * internal-error PRIVAL 43). */
         unsigned long parsed = 0U;
-        if (!TryParseUInt(value, &parsed) || parsed > 23U)
+        if (!TryParseUInt(value, &parsed))
         {
             return false;
         }
@@ -260,7 +271,7 @@ static bool OnSet(const char* name, const char* value)
     if (strcmp(name, "severity") == 0)
     {
         unsigned long parsed = 0U;
-        if (!TryParseUInt(value, &parsed) || parsed > 7U)
+        if (!TryParseUInt(value, &parsed))
         {
             return false;
         }
@@ -290,9 +301,11 @@ static bool TryParseUInt(const char* value, unsigned long* out)
     }
     char*         end    = NULL;
     unsigned long parsed = strtoul(value, &end, 10);
-    /* strtoul accepts a leading '-' and wraps to a huge unsigned, but each
-     * call site range-checks (port <= UINT16_MAX, facility <= 23,
-     * severity <= 7) so wrapped values are still rejected upstream. */
+    /* strtoul accepts a leading '-' and wraps to a huge unsigned. The port
+     * call site bounds-checks against UINT16_MAX upstream; facility and
+     * severity intentionally don't, mirroring the Linux example's
+     * atoi-and-cast so wrapped values reach the library and encode as
+     * the internal-error PRIVAL. */
     if (*end != '\0')
     {
         return false;

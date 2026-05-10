@@ -1,5 +1,135 @@
 # Dev Log
 
+## 2026-05-09 — S08.03 slice 6 — cmdline → `set` translation in BDD target driver (#306)
+
+Slice 5 left eight `@udp` features tagged `@freertoswip` because the
+FreeRTOS BDD driver couldn't translate Linux-side cmdline flags into
+the FreeRTOS example's `set NAME VALUE` UART command channel. Slice 6
+closes that gap for the four flags `@udp` features actually pass to
+`run_example` (`--facility`, `--severity`, `--msgid`, `--message`),
+loosens the FreeRTOS example's facility/severity input validation to
+mirror Linux's permissive `atoi`-and-cast, and grows the UART line
+buffer + `g_msg` storage to `SOLIDSYSLOG_MAX_MESSAGE_SIZE` so a single
+`set msg <body>` can carry a full path-MTU-class UTF-8 message.
+
+After this slice the FreeRTOS BDD sweep is **4 features / 10 scenarios
+passing** (up from the slice-5 walking-skeleton baseline of 1
+scenario): `prival.feature` (all 6 scenarios), `message_fields.feature`
+(2 of 3), `udp_mtu.feature` (`Full delivery within path MTU` —
+`Oversize` stays tagged), and `header_fields.feature::App name`.
+
+### Decisions
+
+- **Translation table is exactly four entries; unknown flags raise.**
+  The FreeRTOS branch of `target_driver.spawn_example_process` no
+  longer raises on `extra_args`; instead a new helper
+  `apply_extra_args` (called from `_run_with_prompt_protocol` after
+  `wait_for_prompt`) walks `--flag value` pairs, looks each flag up
+  in `_FREERTOS_SET_TRANSLATION`, and writes `set NAME VALUE\n` lines
+  to the UART. An unknown flag, or an odd-length args list, raises
+  `ValueError` so a misconfigured scenario fails loudly with a
+  Python traceback rather than silently no-op'ing or hitting a
+  confusing `set: invalid` reply on the UART. No premature
+  generalisation — adding a new scenario flag is a one-line table
+  append.
+- **`--message` ↔ `set msg` naming gap stays in the table.** The
+  FreeRTOS example's global is `g_msg` (`Example/FreeRtos/SingleTask/
+  main.c`); renaming the `set` name would churn the example for
+  cosmetic gain. The translation lives in one Python dict.
+- **Loosen `OnSet` for facility/severity to match Linux's
+  atoi-and-cast.** The two `prival.feature::Out-of-range` scenarios
+  assert that the library encodes invalid facility/severity as the
+  internal-error PRIVAL 43 — which only happens if the example
+  forwards the bad value unchanged. The FreeRTOS `OnSet` previously
+  rejected `parsed > 23U` / `parsed > 7U`; slice 6 drops both
+  bounds so the example becomes permissive about the value and the
+  library is the single authority on what's valid. Mirrors the
+  Linux example's `(enum SolidSyslog_Facility) atoi(optarg)` flow
+  in `Example/Common/ExampleCommandLine.c`.
+- **Expand `MAX_LINE_LENGTH` and `g_msg` to
+  `SOLIDSYSLOG_MAX_MESSAGE_SIZE` (2048).** The walking-skeleton
+  values (256 each) couldn't carry `udp_mtu.feature::Full
+  delivery`'s 372-byte UTF-8 body — fgets would split the `set msg
+  <body>` line across reads and the `HandleSet name[]` buffer was
+  same-size. Bumping both to 2048 unblocks Full delivery and
+  future-proofs the storage to the library's bound. The `Oversize`
+  scenario (~1600 bytes) stays tagged because UDP path-MTU
+  EMSGSIZE semantics on FreeRTOS-Plus-TCP are unverified — that is
+  its own slice.
+- **Bump `INTERACTIVE_TASK_STACK_DEPTH` `*32` → `*40`.** The larger
+  line buffer and same-size `name[]` in `HandleSet` add ~4 KB peak
+  to the interactive-task stack frame; `*32` (16 KB) was the empirical
+  ceiling at the previous buffer size. `*40` (20 KB) gives ~4 KB
+  headroom. Bigger picture is captured by the existing memory note
+  on the CMake-driven memory-scaling follow-up (the `*32` magic
+  number was already deferred to that work).
+- **Per-scenario `@freertoswip` tagging where features are mixed.**
+  `message_fields.feature` keeps `@freertoswip` only on the
+  `Complete RFC 5424 message` scenario (it asserts system
+  hostname / current timestamp / process PID — orthogonal to slice
+  6). `udp_mtu.feature` keeps it only on the `Oversize` scenario
+  (UDP-stack semantics — orthogonal). The other features are
+  untagged at feature level.
+
+### Two-commit shape
+
+Strict TDD at the BDD level:
+1. **Commit A** untag prival, watch behave fail with
+   `NotImplementedError`, write the helper + facility/severity
+   table entries, loosen `OnSet`, watch all 6 prival scenarios go
+   green.
+2. **Commit B** add `--msgid`/`--message` table entries, expand
+   `MAX_LINE_LENGTH` + `g_msg` + stack depth, untag message_fields
+   (scenario-level on `Complete RFC 5424`) and `udp_mtu`
+   (scenario-level on `Oversize`).
+
+A trailing format-only commit picked up clang-format's column
+realignment after `g_msg`'s longer bracket expression shifted the
+`g_*` static block alignment column. The PR squash collapses all
+three into one commit on `main`.
+
+### Local verification
+
+- `cmake --build --preset freertos-cross --target
+  SolidSyslogFreeRtosSingleTask` clean.
+- `behave --tags='not @wip and not @freertoswip and @udp' Bdd/
+  features/` against `syslog-ng-freertos`: 4 features pass, 10
+  scenarios pass, 36 skipped (still `@freertoswip`).
+- `clang-format --dry-run --Werror` on every changed C file: clean.
+- Linux unit tests / cppcheck / tidy / iwyu / sanitize / coverage:
+  not run locally — the `freertos-target` devcontainer carries the
+  cross toolchain only. CI's responsibility.
+
+### Deferred
+
+- **Removing the remaining `@freertoswip` tags.** What's still
+  tagged after slice 6: `syslog.feature` (single scenario,
+  composite system-hostname/timestamp/PID assertion);
+  `header_fields.feature::Hostname` and `::Process ID` (same
+  reason); `message_fields.feature::Complete RFC 5424` (same
+  reason); `timestamp.feature` (hardcoded RFC 5424 publication
+  date); `structured_data.feature`, `origin.feature`,
+  `time_quality.feature` (no SD wired in the FreeRTOS example);
+  `udp_mtu.feature::Oversize` (UDP path-MTU EMSGSIZE on FreeRTOS-
+  Plus-TCP); `buffered.feature` (no FreeRTOS Threaded example).
+- **Real RTC-backed clock callback for the FreeRTOS example.**
+  Until then `TEST_TIMESTAMP` (RFC 5424 publication date)
+  prevents the timestamp scenarios passing.
+- **CMake-driven memory scaling.** The bump to *40 is empirical;
+  the real lower bound is unverified. Same as the existing slice-3b.2
+  follow-up note.
+
+### Open questions
+
+- Is the BDD step layer the right place for the `--message` ↔ `msg`
+  naming gap, or should the example rename the `set` name? Slice 6
+  picked the BDD-side mapping; a future cleanup could push it
+  either way.
+- The translation table currently lives as a module-private dict
+  in `target_driver.py`. If a fifth flag arrives, no churn — but
+  if a target needs *different* flag→set mappings, the dict goes
+  context-aware. Keep an eye on it.
+
 ## 2026-05-09 — S08.03 slice 5 — BDD harness pointed at FreeRTOS-on-QEMU target (#304)
 
 Slice 4 made the FreeRTOS example's identity, transport endpoint, and PRIVAL

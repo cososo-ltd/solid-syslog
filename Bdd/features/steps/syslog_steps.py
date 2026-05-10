@@ -22,7 +22,7 @@ from environment import (
     otel_kill_oracle,
     otel_start_oracle,
 )
-from target_driver import spawn_example_process, stop_example_process
+from target_driver import apply_extra_args, spawn_example_process, stop_example_process
 
 PER_TRANSPORT_LOG_SYSLOG_NG = {
     "udp": RECEIVED_UDP_LOG,
@@ -405,6 +405,7 @@ def _run_with_prompt_protocol(context, binary, label, extra_args, expected_messa
 
     try:
         wait_for_prompt(process)
+        apply_extra_args(context, process, extra_args)
         send_command(process, f"send {expected_messages}")
         wait_for_messages(context, expected_messages)
 

@@ -1,5 +1,4 @@
 @udp
-@freertoswip
 Feature: UDP datagram path-MTU clipping
   When a UDP message exceeds the path MTU the sender clips it to the
   path-MTU's safe payload, walking back over any partial UTF-8
@@ -19,6 +18,7 @@ Feature: UDP datagram path-MTU clipping
     Then the received message is byte-identical to the sent message
 
   @windows_wip
+  @freertoswip
   Scenario: Oversize UTF-8 message is clipped at a codepoint boundary
     Given the syslog oracle is running
     When the example program sends an oversize UTF-8 message

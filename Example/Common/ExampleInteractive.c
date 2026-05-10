@@ -11,7 +11,13 @@ static const char* const PROMPT = "SolidSyslog> ";
 
 enum
 {
-    MAX_LINE_LENGTH = 256
+    /* Sized to SOLIDSYSLOG_MAX_MESSAGE_SIZE so a single `set msg <body>`
+     * can carry a full path-MTU-class message body without fgets
+     * splitting it across reads. The HandleSet name[] mirrors this size
+     * because the parser splits at the first whitespace; future work
+     * may decouple the name buffer (always short — RFC 5424 maxima are
+     * ≤ 255 chars) from the line buffer. */
+    MAX_LINE_LENGTH = SOLIDSYSLOG_MAX_MESSAGE_SIZE
 };
 
 static void PrintPrompt(void)

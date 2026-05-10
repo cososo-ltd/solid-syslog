@@ -13,11 +13,31 @@ object.
 The active target is selected by the BDD_TARGET environment variable,
 read in environment.before_all and stashed on context.target. Steps
 call spawn_example_process(context, extra_args=...) instead of
-subprocess.Popen directly.
+subprocess.Popen directly. After wait_for_prompt, callers also invoke
+apply_extra_args so any `--flag value` pairs are delivered to the
+target — appended to argv on Linux/Windows (a no-op there because
+spawn already did it), or translated into `set NAME VALUE` lines over
+the UART on FreeRTOS.
 """
 
 import os
 import subprocess
+
+
+# Mapping from cmdline flag to FreeRTOS interactive `set` name. Only the
+# flags features currently pass to run_example are mapped — adding a new
+# scenario that needs a new flag should fail loudly via the
+# `_FREERTOS_SET_TRANSLATION` lookup so the gap is visible, rather than
+# silently no-op'ing or printing a confusing "set: invalid" on the UART.
+# `--message` -> `msg` is intentional: the FreeRTOS example global is
+# g_msg (Example/FreeRtos/SingleTask/main.c) and renaming the set name
+# would churn the example for cosmetic gain.
+_FREERTOS_SET_TRANSLATION = {
+    "--facility": "facility",
+    "--severity": "severity",
+    "--msgid": "msgid",
+    "--message": "msg",
+}
 
 
 # QEMU machine + UART config matches build-freertos-target's smoke run
@@ -47,10 +67,8 @@ def spawn_example_process(context, extra_args=None, binary=None):
     extra_args are appended to the binary's command line on Linux and
     Windows (where the example-runner parses argv via getopt). FreeRTOS
     has no getopt port and consumes its config via interactive `set`
-    commands instead; passing extra_args on FreeRTOS therefore raises —
-    such scenarios should be tagged @freertoswip until a follow-up
-    slice teaches the FreeRTOS driver to translate cmdline flags into
-    the equivalent set commands.
+    commands instead — they are delivered via apply_extra_args after
+    the prompt is up.
 
     binary defaults to context.example_binary (the standard SingleTask
     binary or its FreeRTOS .elf equivalent); callers that drive a
@@ -64,12 +82,6 @@ def spawn_example_process(context, extra_args=None, binary=None):
         binary = context.example_binary
 
     if target == "freertos":
-        if extra_args:
-            raise NotImplementedError(
-                "FreeRTOS target does not accept argv; tag the scenario "
-                "@freertoswip until the driver translates flags into "
-                "interactive `set` commands. Got: " + repr(extra_args)
-            )
         cmd = list(_QEMU_BASE_ARGS) + ["-kernel", os.path.abspath(binary)]
     else:
         cmd = [os.path.abspath(binary)]
@@ -83,6 +95,43 @@ def spawn_example_process(context, extra_args=None, binary=None):
         stderr=subprocess.PIPE,
         text=True,
     )
+
+
+def apply_extra_args(context, process, extra_args):
+    """Deliver `--flag value` pairs to the example after the prompt is up.
+
+    Linux and Windows are no-ops here — spawn already placed the flags
+    in argv. FreeRTOS translates each pair via _FREERTOS_SET_TRANSLATION
+    and writes one newline-terminated `set NAME VALUE` line to the UART
+    per pair.
+
+    Raises ValueError if extra_args is odd-length or contains a flag
+    not in the translation table; the BDD scenario surfaces the gap
+    immediately rather than silently no-op'ing or hitting a confusing
+    UART-side `set: invalid` reply.
+    """
+    if not extra_args:
+        return
+    target = getattr(context, "target", "linux")
+    if target != "freertos":
+        return
+    if len(extra_args) % 2 != 0:
+        raise ValueError(
+            "FreeRTOS extra_args must be flag/value pairs; got odd length: "
+            + repr(extra_args)
+        )
+    for flag, value in zip(extra_args[0::2], extra_args[1::2]):
+        try:
+            name = _FREERTOS_SET_TRANSLATION[flag]
+        except KeyError as exc:
+            raise ValueError(
+                f"Unknown cmdline flag for FreeRTOS target: {flag!r}. "
+                "Add it to _FREERTOS_SET_TRANSLATION in target_driver.py "
+                "if a corresponding `set` name exists in the FreeRTOS "
+                "example's OnSet handler."
+            ) from exc
+        process.stdin.write(f"set {name} {value}\n")
+    process.stdin.flush()
 
 
 def stop_example_process(process, target, timeout=10):
