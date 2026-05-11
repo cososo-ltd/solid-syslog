@@ -372,10 +372,7 @@ live under `Core/Interface/`; platform-specific helpers (the `SolidSyslogPosix*`
 | `SolidSyslogStructuredData.h` | Library internals (SD dispatch) | `SolidSyslogStructuredData_Format` (writes into `SolidSyslogFormatter*`) |
 | `SolidSyslogStructuredDataDefinition.h` | SD implementors (extension point) | `SolidSyslogStructuredData` vtable struct (Format takes `SolidSyslogFormatter*`) |
 | `SolidSyslogMetaSd.h` | System setup code using meta SD (sequenceId, sysUpTime, language) | `SolidSyslogMetaSdConfig` (counter, getSysUpTime, getLanguage — each independently optional via NULL), `SolidSyslogSysUpTimeFunction`, `SolidSyslogMetaSd_Create`, `_Destroy` |
-| `SolidSyslogAtomicCounter.h` | System setup code wiring a sequenceId source | `SolidSyslogAtomicCounter_Create(ops)`, `_Destroy`, `_Increment` — wrap-aware in [1, 2³¹ - 1] per RFC 5424 §7.3.1, never returns 0 |
-| `SolidSyslogAtomicOpsDefinition.h` | AtomicOps implementors (extension point) | `SolidSyslogAtomicOps` vtable struct (`Load`, `CompareAndSwap`) |
-| `SolidSyslogStdAtomicOps.h` | System setup code on hosts with C11 `<stdatomic.h>` | `SolidSyslogStdAtomicOps_Create`, `_Destroy` |
-| `SolidSyslogWindowsAtomicOps.h` | System setup code on legacy MSVC without `<stdatomic.h>` | `SolidSyslogWindowsAtomicOps_Create`, `_Destroy` (uses `InterlockedCompareExchange`) |
+| `SolidSyslogAtomicCounter.h` | System setup code wiring a sequenceId source | `SolidSyslogAtomicCounter_Create(void)`, `_Destroy`, `_Increment` — wrap-aware in [1, 2³¹ - 1] per RFC 5424 §7.3.1, never returns 0. The atomic primitive is selected at link time via CMake's `HAVE_STDATOMIC_H` / `HAVE_WINDOWS_INTERLOCKED` (no runtime vtable, no public AtomicOps header). |
 | `SolidSyslogTimeQuality.h` | Any code providing time quality data | `SolidSyslogTimeQuality`, `SolidSyslogTimeQualityFunction`, `SOLIDSYSLOG_SYNC_ACCURACY_OMIT` |
 | `SolidSyslogTimeQualitySd.h` | System setup code using timeQuality SD | `SolidSyslogTimeQualitySd_Create`, `_Destroy` |
 | `SolidSyslogOriginSd.h` | System setup code using origin SD (software, swVersion, enterpriseId, ip) | `SolidSyslogOriginSdConfig` (software, swVersion, enterpriseId, getIpCount, getIpAt — each independently optional via NULL), `SolidSyslogOriginIpCountFunction`, `SolidSyslogOriginIpAtFunction`, `SolidSyslogOriginSd_Create`, `_Destroy` |
