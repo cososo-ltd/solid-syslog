@@ -729,19 +729,32 @@ TEST(SolidSyslogUdpSenderRetry, NonOversizeFailureReturnsFalse)
 // clang-format off
 TEST_GROUP(SolidSyslogUdpSenderLifecycle)
 {
+    SolidSyslogResolver* resolver = nullptr;
+    SolidSyslogDatagram* datagram = nullptr;
+
     void setup() override
     {
         SocketFake_Reset();
         endpointGetHost = GetDefaultHost;
         endpointGetPort = GetDefaultPort;
         endpointVersion = 0;
-        ErrorHandlerFake_Install(nullptr);
+        // cppcheck-suppress unreadVariable -- read via validConfig() in tests; cppcheck does not model CppUTest macros
+        resolver = SolidSyslogGetAddrInfoResolver_Create();
+        // cppcheck-suppress unreadVariable -- read via validConfig() in tests; cppcheck does not model CppUTest macros
+        datagram = SolidSyslogPosixDatagram_Create();
     }
 
     void teardown() override
     {
         SolidSyslogUdpSender_Destroy();
+        SolidSyslogPosixDatagram_Destroy();
+        SolidSyslogGetAddrInfoResolver_Destroy();
         ErrorHandlerFake_Uninstall();
+    }
+
+    [[nodiscard]] SolidSyslogUdpSenderConfig validConfig() const
+    {
+        return {resolver, datagram, TestEndpoint, TestEndpointVersion};
     }
 };
 
@@ -749,7 +762,102 @@ TEST_GROUP(SolidSyslogUdpSenderLifecycle)
 
 TEST(SolidSyslogUdpSenderLifecycle, CreateWithNullConfigReportsError)
 {
+    ErrorHandlerFake_Install(nullptr);
+
     SolidSyslogUdpSender_Create(nullptr);
 
     CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_NULL_CONFIG);
+}
+
+TEST(SolidSyslogUdpSenderLifecycle, CreateWithNullResolverReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogUdpSenderConfig config = validConfig();
+    config.resolver                   = nullptr;
+
+    SolidSyslogUdpSender_Create(&config);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_NULL_RESOLVER);
+}
+
+TEST(SolidSyslogUdpSenderLifecycle, CreateWithNullDatagramReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogUdpSenderConfig config = validConfig();
+    config.datagram                   = nullptr;
+
+    SolidSyslogUdpSender_Create(&config);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_NULL_DATAGRAM);
+}
+
+TEST(SolidSyslogUdpSenderLifecycle, SendAfterCreateWithNullResolverReportsNilResolverUsed)
+{
+    SolidSyslogUdpSenderConfig config = validConfig();
+    config.resolver                   = nullptr;
+    SolidSyslogSender* sender         = SolidSyslogUdpSender_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_UDP_NIL_RESOLVER_USED);
+}
+
+TEST(SolidSyslogUdpSenderLifecycle, SendAfterCreateWithNullDatagramReportsNilDatagramUsed)
+{
+    SolidSyslogUdpSenderConfig config = validConfig();
+    config.datagram                   = nullptr;
+    SolidSyslogSender* sender         = SolidSyslogUdpSender_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_UDP_NIL_DATAGRAM_USED);
+}
+
+TEST(SolidSyslogUdpSenderLifecycle, RepeatedSendAfterCreateWithNullDatagramReportsOnce)
+{
+    SolidSyslogUdpSenderConfig config = validConfig();
+    config.datagram                   = nullptr;
+    SolidSyslogSender* sender         = SolidSyslogUdpSender_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_UDP_NIL_DATAGRAM_USED);
+}
+
+TEST(SolidSyslogUdpSenderLifecycle, DestroyReArmsNilDatagramReporter)
+{
+    SolidSyslogUdpSenderConfig config = validConfig();
+    config.datagram                   = nullptr;
+    SolidSyslogSender* sender         = SolidSyslogUdpSender_Create(&config);
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+
+    SolidSyslogUdpSender_Destroy();
+    sender = SolidSyslogUdpSender_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_UDP_NIL_DATAGRAM_USED);
+}
+
+TEST(SolidSyslogUdpSenderLifecycle, SendAfterCreateWithNullDatagramReturnsFalse)
+{
+    SolidSyslogUdpSenderConfig config = validConfig();
+    config.datagram                   = nullptr;
+    SolidSyslogSender* sender         = SolidSyslogUdpSender_Create(&config);
+
+    CHECK_FALSE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+}
+
+TEST(SolidSyslogUdpSenderLifecycle, SendAfterCreateWithNullResolverReturnsFalse)
+{
+    SolidSyslogUdpSenderConfig config = validConfig();
+    config.resolver                   = nullptr;
+    SolidSyslogSender* sender         = SolidSyslogUdpSender_Create(&config);
+
+    CHECK_FALSE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
 }

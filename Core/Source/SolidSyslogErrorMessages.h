@@ -11,5 +11,9 @@
 #define SOLIDSYSLOG_ERROR_MSG_NIL_SENDER_USED "SolidSyslog_Service tried to send with no sender configured"
 
 #define SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_NULL_CONFIG "SolidSyslogUdpSender_Create called with NULL config"
+#define SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_NULL_RESOLVER "SolidSyslogUdpSender_Create config.resolver is NULL"
+#define SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_NULL_DATAGRAM "SolidSyslogUdpSender_Create config.datagram is NULL"
+#define SOLIDSYSLOG_ERROR_MSG_UDP_NIL_RESOLVER_USED "SolidSyslogUdpSender_Send tried to resolve with no resolver configured"
+#define SOLIDSYSLOG_ERROR_MSG_UDP_NIL_DATAGRAM_USED "SolidSyslogUdpSender_Send tried to open with no datagram configured"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */

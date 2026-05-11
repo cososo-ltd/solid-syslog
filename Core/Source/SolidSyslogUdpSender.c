@@ -2,18 +2,20 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "SolidSyslogAddress.h"
+#include "SolidSyslogDatagram.h"
+#include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogFormatter.h"
-#include "SolidSyslogUdpPayload.h"
-#include "SolidSyslogUdpSender.h"
-#include "SolidSyslogSenderDefinition.h"
-#include "SolidSyslogAddress.h"
-#include "SolidSyslogDatagram.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogResolver.h"
+#include "SolidSyslogResolverDefinition.h"
+#include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogTransport.h"
+#include "SolidSyslogUdpPayload.h"
+#include "SolidSyslogUdpSender.h"
 
 struct SolidSyslogUdpSender
 {
@@ -24,7 +26,21 @@ struct SolidSyslogUdpSender
     uint32_t                          lastEndpointVersion;
 };
 
+/* Forward declarations for the Nil "class" defined at the bottom of the file.
+ * The Nil objects act as default collaborators that make the singleton
+ * crash-safe pre-Create and after a Create that left required slots NULL;
+ * the file-static instance below and the NilInstance template both reference
+ * these by address. */
+static struct SolidSyslogResolver NilResolver;
+static struct SolidSyslogDatagram NilDatagram;
+static void                       NilEndpoint(struct SolidSyslogEndpoint* endpoint);
+static uint32_t                   NilEndpointVersion(void);
+
 static struct SolidSyslogSender*                 InstallConfig(const struct SolidSyslogUdpSenderConfig* config);
+static void                                      InstallResolver(struct SolidSyslogResolver* configured);
+static void                                      InstallDatagram(struct SolidSyslogDatagram* configured);
+static void                                      InstallEndpoint(SolidSyslogEndpointFunction configured);
+static void                                      InstallEndpointVersion(SolidSyslogEndpointVersionFunction configured);
 static bool                                      Send(struct SolidSyslogSender* self, const void* buffer, size_t size);
 static inline bool                               Reconcile(struct SolidSyslogUdpSender* udp);
 static inline void                               DisconnectIfStale(struct SolidSyslogUdpSender* udp);
@@ -38,11 +54,24 @@ static inline struct SolidSyslogAddress*         Address(struct SolidSyslogUdpSe
 static inline void                               CloseSocket(struct SolidSyslogUdpSender* udp);
 static inline bool                               TransmitDatagram(struct SolidSyslogUdpSender* udp, const void* buffer, size_t size);
 static inline enum SolidSyslogDatagramSendResult RetryAfterOversize(struct SolidSyslogUdpSender* udp, const void* buffer, size_t size);
-static void                                      NilEndpoint(struct SolidSyslogEndpoint* endpoint);
-static uint32_t                                  NilEndpointVersion(void);
 
-static const struct SolidSyslogUdpSender DEFAULT_INSTANCE = {.config = {.endpoint = NilEndpoint, .endpointVersion = NilEndpointVersion}};
-static struct SolidSyslogUdpSender       instance;
+/* Template used by _Create and _Destroy to reset every slot to its nil.
+ * C99 forbids initialising one file-static from another, so the same
+ * literal appears once below for the live instance and once here; both
+ * sites stay in sync trivially because the values are nil-object
+ * addresses and well-known no-op function pointers. */
+static const struct SolidSyslogUdpSender NilInstance = {
+    .base   = {.Send = Send, .Disconnect = Disconnect},
+    .config = {.resolver = &NilResolver, .datagram = &NilDatagram, .endpoint = NilEndpoint, .endpointVersion = NilEndpointVersion},
+};
+
+static struct SolidSyslogUdpSender instance = {
+    .base   = {.Send = Send, .Disconnect = Disconnect},
+    .config = {.resolver = &NilResolver, .datagram = &NilDatagram, .endpoint = NilEndpoint, .endpointVersion = NilEndpointVersion},
+};
+
+static bool nilResolverReportArmed = true;
+static bool nilDatagramReportArmed = true;
 
 struct SolidSyslogSender* SolidSyslogUdpSender_Create(const struct SolidSyslogUdpSenderConfig* config)
 {
@@ -62,26 +91,60 @@ struct SolidSyslogSender* SolidSyslogUdpSender_Create(const struct SolidSyslogUd
 
 static struct SolidSyslogSender* InstallConfig(const struct SolidSyslogUdpSenderConfig* config)
 {
-    instance                 = DEFAULT_INSTANCE;
-    instance.config.resolver = config->resolver;
-    instance.config.datagram = config->datagram;
-    if (config->endpoint != NULL)
-    {
-        instance.config.endpoint = config->endpoint;
-    }
-    if (config->endpointVersion != NULL)
-    {
-        instance.config.endpointVersion = config->endpointVersion;
-    }
-    instance.base.Send       = Send;
-    instance.base.Disconnect = Disconnect;
+    instance = NilInstance;
+    InstallResolver(config->resolver);
+    InstallDatagram(config->datagram);
+    InstallEndpoint(config->endpoint);
+    InstallEndpointVersion(config->endpointVersion);
     return &instance.base;
+}
+
+static void InstallResolver(struct SolidSyslogResolver* configured)
+{
+    if (configured == NULL)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_NULL_RESOLVER);
+    }
+    else
+    {
+        instance.config.resolver = configured;
+    }
+}
+
+static void InstallDatagram(struct SolidSyslogDatagram* configured)
+{
+    if (configured == NULL)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_NULL_DATAGRAM);
+    }
+    else
+    {
+        instance.config.datagram = configured;
+    }
+}
+
+static void InstallEndpoint(SolidSyslogEndpointFunction configured)
+{
+    if (configured != NULL)
+    {
+        instance.config.endpoint = configured;
+    }
+}
+
+static void InstallEndpointVersion(SolidSyslogEndpointVersionFunction configured)
+{
+    if (configured != NULL)
+    {
+        instance.config.endpointVersion = configured;
+    }
 }
 
 void SolidSyslogUdpSender_Destroy(void)
 {
     Disconnect(&instance.base);
-    instance = DEFAULT_INSTANCE;
+    instance               = NilInstance;
+    nilResolverReportArmed = true;
+    nilDatagramReportArmed = true;
 }
 
 static bool Send(struct SolidSyslogSender* self, const void* buffer, size_t size)
@@ -204,6 +267,78 @@ static inline enum SolidSyslogDatagramSendResult RetryAfterOversize(struct Solid
     }
     return result;
 }
+
+/* ============================================================================
+ * Nil collaborators
+ *
+ * Private no-op vtables and function-pointer defaults occupying every config
+ * slot at file load and after _Destroy, plus any required slot the integrator
+ * left NULL in their config. Vtable dispatch from Send never NULL-checks —
+ * the nils make every collaborator pointer safe to call.
+ *
+ * NilResolver and NilDatagram each report one error via SolidSyslog_Error on
+ * first dispatch, then silently consume; _Destroy re-arms the flags so a
+ * Destroy/Create cycle produces a fresh warning. The endpoint and endpoint-
+ * version nils are silent — supplying neither is a valid integrator choice
+ * (matches NoEndpointConfiguredSendsToPortZero coverage).
+ * ============================================================================ */
+
+static bool NilResolverResolve(struct SolidSyslogResolver* self, enum SolidSyslogTransport transport, const char* host, uint16_t port,
+                               struct SolidSyslogAddress* address)
+{
+    (void) self;
+    (void) transport;
+    (void) host;
+    (void) port;
+    (void) address;
+    if (nilResolverReportArmed)
+    {
+        nilResolverReportArmed = false;
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_UDP_NIL_RESOLVER_USED);
+    }
+    return false;
+}
+
+static struct SolidSyslogResolver NilResolver = {.Resolve = NilResolverResolve};
+
+static bool NilDatagramOpen(struct SolidSyslogDatagram* self)
+{
+    (void) self;
+    if (nilDatagramReportArmed)
+    {
+        nilDatagramReportArmed = false;
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_UDP_NIL_DATAGRAM_USED);
+    }
+    return false;
+}
+
+static enum SolidSyslogDatagramSendResult NilDatagramSendTo(struct SolidSyslogDatagram* self, const void* buffer, size_t size,
+                                                            const struct SolidSyslogAddress* address)
+{
+    (void) self;
+    (void) buffer;
+    (void) size;
+    (void) address;
+    return SOLIDSYSLOG_DATAGRAM_FAILED;
+}
+
+static size_t NilDatagramMaxPayload(struct SolidSyslogDatagram* self)
+{
+    (void) self;
+    return 0;
+}
+
+static void NilDatagramClose(struct SolidSyslogDatagram* self)
+{
+    (void) self;
+}
+
+static struct SolidSyslogDatagram NilDatagram = {
+    .Open       = NilDatagramOpen,
+    .SendTo     = NilDatagramSendTo,
+    .MaxPayload = NilDatagramMaxPayload,
+    .Close      = NilDatagramClose,
+};
 
 static void NilEndpoint(struct SolidSyslogEndpoint* endpoint)
 {
