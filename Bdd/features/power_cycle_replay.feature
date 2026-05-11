@@ -1,4 +1,4 @@
-@tcp @buffered
+@tcp @buffered @store
 Feature: Power cycle replay from block store
   After a power cycle, unsent messages persisted in the block store
   are replayed before new messages. The collector sees old-session

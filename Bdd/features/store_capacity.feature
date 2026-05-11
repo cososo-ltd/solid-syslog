@@ -1,4 +1,4 @@
-@tcp @buffered
+@tcp @buffered @store
 Feature: Store capacity limit and discard policy
   The block store uses rotating files with a configurable capacity.
   When the store is full, the discard policy determines whether

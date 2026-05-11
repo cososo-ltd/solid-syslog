@@ -1,5 +1,82 @@
 # Dev Log
 
+## 2026-05-11 — S08.10 tcp_reconnect BDD scenario on QEMU (#339)
+
+Second slice of S08.06. The reconnect-on-the-wire is already a property
+of `SolidSyslogStreamSender` plus the close-on-Send-failure contract
+the FreeRTOS adapter inherited in S08.09 (test
+`SendClosesSocketOnError` pins it). So this story is the verification
+slice: re-tag the BDD features so the FreeRTOS runner can pick up
+`tcp_reconnect.feature` without dragging in the file-store-dependent
+ones, and unify the interactive-process spawn through `target_driver`
+so the buffered scenarios run on QEMU.
+
+### Decisions
+
+- **Split `@buffered` into `@buffered` + `@store`.** The earlier tag
+  was overloaded: it meant *both* "uses the long-lived interactive
+  process" *and* "needs a file-backed store". The freertos compose
+  filter `not @buffered` then excluded scenarios that need only the
+  interactive process (tcp_reconnect, switching_transport) alongside
+  the genuinely file-store-dependent ones (store_and_forward,
+  capacity_threshold, store_capacity, block_lifecycle,
+  power_cycle_replay). New convention: `@buffered` keeps the
+  interactive-process meaning, `@store` marks the file-store
+  dependency. FreeRTOS filter now excludes `@store` only;
+  `tcp_reconnect.feature` (`@tcp @buffered`, no `@store`) is admitted.
+  `switching_transport.feature` would also be admitted but lacks
+  `@udp`/`@tcp` at the feature level, so the existing
+  `(@udp or @tcp)` clause keeps it out until S08.11 lights it up.
+- **Route `start_bdd_target_process` through `target_driver`, not
+  `subprocess.Popen` directly.** The one-shot path
+  (`run_example` → `spawn_example_process` → `apply_extra_args`)
+  already abstracted native-vs-QEMU spawn and argv-vs-UART
+  translation; the interactive path bypassed it. Unifying both
+  through `spawn_example_process` + `apply_extra_args` removes the
+  duplicated Popen shape and means future embedded platforms
+  (semihosting, OpenOCD/picocom against real hardware, …) extend
+  one branch point in `target_driver` instead of two parallel
+  orchestration helpers. Linux/Windows behaviour is byte-for-byte
+  unchanged: flags still arrive as argv. FreeRTOS gets QEMU plus
+  `set transport tcp` over the UART after `wait_for_prompt`.
+- **`SendClosesSocketOnFailure` already covered.** The story's
+  optional unit-test deliverable was satisfied by S08.09's
+  `SendClosesSocketOnError` (and the matching
+  `SendClosesSocketOnShortWrite` /
+  `ReadReturnsNegativeOneOnErrorAndClosesSocket`) — the close-on-
+  failure contract is the *only* thing that makes reconnect possible
+  and it's already pinned by three tests using
+  `CHECK_SOCKET_CLOSED_ONCE`. No additional test added here.
+- **`SO_SNDTIMEO=200ms` Service-starvation question deferred to the
+  CI scenario.** Local docker isn't available in the freertos-target
+  devcontainer and the BDD step that swaps the syslog-ng config to
+  trigger the outage can break docker networking if run outside the
+  compose environment — `bdd-freertos-qemu` is the safe arbiter.
+  QEMU smoke proved the interactive task survives `set transport tcp`
+  plus repeated `send` cycles, so the producer side is unblocked;
+  the Service-task drain behaviour during the actual outage is what
+  CI will surface.
+
+### Deferred
+
+- **`switching_transport.feature` on FreeRTOS** → S08.11 (#340). The
+  tagging cleanup now leaves the door open (no `@store`), but the
+  feature is tagged `@buffered` only — adding `@udp`/`@tcp` is part
+  of S08.11.
+- **CMake-driven memory scaling** still open from S08.09 — captured
+  in memory `project_freertos_stack_budget`. Not touched here.
+- **End-to-end BDD verification locally.** Docker still unavailable
+  in the freertos-target devcontainer; CI remains the real arbiter
+  for outage scenarios.
+
+### Open questions
+
+- Whether the 200ms blocking-connect cap during the outage window
+  starves the Service task enough to delay the post-resume delivery
+  past `wait_for_messages`' 10s deadline. CI will tell us; if it
+  flakes, the fix is to bump the timeout (per the
+  `feedback_no_flaky_ci` rule) rather than chase a real bug.
+
 ## 2026-05-11 — S08.09 SolidSyslogFreeRtosTcpStream + tcp_transport BDD on QEMU (#341)
 
 First slice of S08.06 (TCP transport on FreeRTOS-Plus-TCP). Lands the

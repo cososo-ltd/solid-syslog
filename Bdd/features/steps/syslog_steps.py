@@ -5,7 +5,6 @@ import queue
 import re
 import shutil
 import socket
-import subprocess
 import threading
 import time
 from datetime import datetime, timezone
@@ -489,65 +488,72 @@ def step_syslog_ng_is_running(context):
         )
 
 
-def build_buffered_command(context, transport, no_sd=False):
-    """Build the command line for the buffered BDD target with all options.
+def build_buffered_extra_args(context, transport, no_sd=False):
+    """Build the extra-args list for the buffered BDD target.
+
+    Returned list excludes the binary itself — start_bdd_target_process
+    routes the spawn through target_driver.spawn_example_process, which
+    appends the args to argv on Linux/Windows and translates them to
+    interactive `set NAME VALUE` lines after the prompt on FreeRTOS.
 
     Linux runner (syslog-ng oracle) and Windows runner (OTel oracle) both
     ship SolidSyslogBddTarget — same basename, same flags, same wire-record
     sizes byte-for-byte (S24.05 unified the basename so capacity-feature
     block packing is identical across runners).
     """
+    args = ["--transport", transport]
+    if getattr(context, "store_type", None):
+        args.extend(["--store", context.store_type])
+    if getattr(context, "store_max_blocks", None):
+        args.extend(["--max-blocks", str(context.store_max_blocks)])
+    if getattr(context, "store_max_block_size", None):
+        args.extend(["--max-block-size", str(context.store_max_block_size)])
+    if getattr(context, "store_discard_policy", None):
+        args.extend(["--discard-policy", context.store_discard_policy])
+    if getattr(context, "capacity_threshold", None):
+        args.extend(["--capacity-threshold", str(context.capacity_threshold)])
+    if getattr(context, "message_body", None):
+        args.extend(["--message", context.message_body])
+    if no_sd:
+        args.append("--no-sd")
+    if getattr(context, "halt_exit", False):
+        args.append("--halt-exit")
+    return args
+
+
+def start_bdd_target_process(context, extra_args):
+    """Start the buffered BDD target and wait for the initial prompt.
+
+    Single Popen path across native and QEMU backends — target_driver
+    picks the spawn (subprocess on Linux/Windows, qemu-system-arm with
+    -kernel on FreeRTOS) and apply_extra_args delivers the same
+    --flag value pairs either as argv (native) or `set NAME VALUE` over
+    the UART (FreeRTOS) after the prompt is up. Adding a new embedded
+    platform reuses both helpers without touching this function.
+    """
     binary = context.example_binary
     assert os.path.exists(binary), (
         f"BDD target binary not found at {binary} — build with cmake first"
     )
 
-    cmd = [
-        os.path.join(".", binary),
-        "--transport", transport,
-    ]
-    if getattr(context, "store_type", None):
-        cmd.extend(["--store", context.store_type])
-    if getattr(context, "store_max_blocks", None):
-        cmd.extend(["--max-blocks", str(context.store_max_blocks)])
-    if getattr(context, "store_max_block_size", None):
-        cmd.extend(["--max-block-size", str(context.store_max_block_size)])
-    if getattr(context, "store_discard_policy", None):
-        cmd.extend(["--discard-policy", context.store_discard_policy])
-    if getattr(context, "capacity_threshold", None):
-        cmd.extend(["--capacity-threshold", str(context.capacity_threshold)])
-    if getattr(context, "message_body", None):
-        cmd.extend(["--message", context.message_body])
-    if no_sd:
-        cmd.append("--no-sd")
-    if getattr(context, "halt_exit", False):
-        cmd.append("--halt-exit")
-    return cmd
-
-
-def start_bdd_target_process(context, cmd):
-    """Start the BDD target process and wait for the initial prompt."""
-    context.interactive_process = subprocess.Popen(
-        cmd,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
+    context.interactive_process = spawn_example_process(
+        context, extra_args=extra_args
     )
     context.example_pid = context.interactive_process.pid
     wait_for_prompt(context.interactive_process)
+    apply_extra_args(context, context.interactive_process, extra_args)
 
 
 @given("the BDD target is running with transport {transport:w}")
 def step_bdd_target_running_with_transport(context, transport):
-    cmd = build_buffered_command(context, transport)
-    start_bdd_target_process(context, cmd)
+    start_bdd_target_process(context, build_buffered_extra_args(context, transport))
 
 
 @given("the BDD target is running with transport {transport:w} and no structured data")
 def step_bdd_target_running_with_transport_no_sd(context, transport):
-    cmd = build_buffered_command(context, transport, no_sd=True)
-    start_bdd_target_process(context, cmd)
+    start_bdd_target_process(
+        context, build_buffered_extra_args(context, transport, no_sd=True)
+    )
 
 
 @given("the block store is enabled")
@@ -1269,8 +1275,7 @@ def step_check_last_sequence_id(context, value):
 
 @given("the BDD target is running with default transport {transport:w}")
 def step_bdd_target_running_with_default_transport(context, transport):
-    cmd = build_buffered_command(context, transport)
-    start_bdd_target_process(context, cmd)
+    start_bdd_target_process(context, build_buffered_extra_args(context, transport))
 
 
 @when("the client switches to transport {transport:w}")

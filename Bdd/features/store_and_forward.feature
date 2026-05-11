@@ -1,4 +1,4 @@
-@tcp @buffered
+@tcp @buffered @store
 Feature: Store and forward during sender outage
   When the syslog oracle goes down, messages accumulate in the
   file-based store. Once the oracle recovers, the service loop

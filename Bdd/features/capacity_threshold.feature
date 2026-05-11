@@ -1,4 +1,4 @@
-@tcp @buffered
+@tcp @buffered @store
 Feature: Capacity threshold alert
   an early-warning callback fires when the block store crosses a configured
   capacity threshold, before the terminal full-store callback engages.

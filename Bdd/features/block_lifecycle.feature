@@ -1,4 +1,4 @@
-@tcp @buffered
+@tcp @buffered @store
 Feature: Block lifecycle
   The block store rotates blocks across files of fixed size. Once every record
   in a non-active block is sent and acknowledged, that block is disposed
