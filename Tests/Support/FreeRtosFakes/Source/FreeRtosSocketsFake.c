@@ -18,6 +18,35 @@ static const struct freertos_sockaddr* lastSendtoDestination       = NULL;
 static socklen_t                       lastSendtoDestinationLength = 0;
 static bool                            sendtoFails                 = false;
 
+static unsigned                        connectCallCount         = 0;
+static Socket_t                        lastConnectSocket        = NULL;
+static const struct freertos_sockaddr* lastConnectAddress       = NULL;
+static socklen_t                       lastConnectAddressLength = 0;
+static bool                            connectFails             = false;
+
+static unsigned    sendCallCount   = 0;
+static Socket_t    lastSendSocket  = NULL;
+static const void* lastSendBuffer  = NULL;
+static size_t      lastSendLength  = 0;
+static BaseType_t  lastSendFlags   = 0;
+static bool        sendFails       = false;
+static bool        sendReturnSet   = false;
+static BaseType_t  sendReturnValue = 0;
+
+static unsigned   recvCallCount   = 0;
+static Socket_t   lastRecvSocket  = NULL;
+static void*      lastRecvBuffer  = NULL;
+static size_t     lastRecvLength  = 0;
+static BaseType_t lastRecvFlags   = 0;
+static bool       recvFails       = false;
+static bool       recvReturnSet   = false;
+static BaseType_t recvReturnValue = 0;
+
+static TickType_t lastSndTimeoSet      = 0;
+static TickType_t lastRcvTimeoSet      = 0;
+static unsigned   rcvTimeoSetCallCount = 0;
+static TickType_t sndTimeoAtConnect    = 0;
+
 static unsigned closesocketCallCount  = 0;
 static Socket_t lastClosesocketSocket = NULL;
 
@@ -45,6 +74,35 @@ void FreeRtosSocketsFake_Reset(void)
     lastSendtoDestinationLength = 0;
     sendtoFails                 = false;
 
+    connectCallCount         = 0;
+    lastConnectSocket        = NULL;
+    lastConnectAddress       = NULL;
+    lastConnectAddressLength = 0;
+    connectFails             = false;
+
+    sendCallCount   = 0;
+    lastSendSocket  = NULL;
+    lastSendBuffer  = NULL;
+    lastSendLength  = 0;
+    lastSendFlags   = 0;
+    sendFails       = false;
+    sendReturnSet   = false;
+    sendReturnValue = 0;
+
+    recvCallCount   = 0;
+    lastRecvSocket  = NULL;
+    lastRecvBuffer  = NULL;
+    lastRecvLength  = 0;
+    lastRecvFlags   = 0;
+    recvFails       = false;
+    recvReturnSet   = false;
+    recvReturnValue = 0;
+
+    lastSndTimeoSet      = 0;
+    lastRcvTimeoSet      = 0;
+    rcvTimeoSetCallCount = 0;
+    sndTimeoAtConnect    = 0;
+
     closesocketCallCount  = 0;
     lastClosesocketSocket = NULL;
 }
@@ -57,6 +115,33 @@ void FreeRtosSocketsFake_SetSocketFails(bool fails)
 void FreeRtosSocketsFake_SetSendtoFails(bool fails)
 {
     sendtoFails = fails;
+}
+
+void FreeRtosSocketsFake_SetConnectFails(bool fails)
+{
+    connectFails = fails;
+}
+
+void FreeRtosSocketsFake_SetSendFails(bool fails)
+{
+    sendFails = fails;
+}
+
+void FreeRtosSocketsFake_SetSendReturn(BaseType_t value)
+{
+    sendReturnSet   = true;
+    sendReturnValue = value;
+}
+
+void FreeRtosSocketsFake_SetRecvFails(bool fails)
+{
+    recvFails = fails;
+}
+
+void FreeRtosSocketsFake_SetRecvReturn(BaseType_t value)
+{
+    recvReturnSet   = true;
+    recvReturnValue = value;
 }
 
 unsigned FreeRtosSocketsFake_SocketCallCount(void)
@@ -140,6 +225,159 @@ int32_t FreeRTOS_sendto(Socket_t xSocket, const void* pvBuffer, size_t uxTotalDa
     lastSendtoDestination       = pxDestinationAddress;
     lastSendtoDestinationLength = xDestinationAddressLength;
     return sendtoFails ? -pdFREERTOS_ERRNO_ENOBUFS : (int32_t) uxTotalDataLength;
+}
+
+TickType_t FreeRtosSocketsFake_SndTimeoAtConnect(void)
+{
+    return sndTimeoAtConnect;
+}
+
+TickType_t FreeRtosSocketsFake_LastSndTimeoSet(void)
+{
+    return lastSndTimeoSet;
+}
+
+TickType_t FreeRtosSocketsFake_LastRcvTimeoSet(void)
+{
+    return lastRcvTimeoSet;
+}
+
+unsigned FreeRtosSocketsFake_RcvTimeoSetCallCount(void)
+{
+    return rcvTimeoSetCallCount;
+}
+
+BaseType_t FreeRTOS_setsockopt(Socket_t xSocket, int32_t lLevel, int32_t lOptionName, const void* pvOptionValue, size_t uxOptionLength)
+{
+    (void) xSocket;
+    (void) lLevel;
+    (void) uxOptionLength;
+    if (lOptionName == FREERTOS_SO_SNDTIMEO)
+    {
+        lastSndTimeoSet = *(const TickType_t*) pvOptionValue;
+    }
+    else if (lOptionName == FREERTOS_SO_RCVTIMEO)
+    {
+        lastRcvTimeoSet = *(const TickType_t*) pvOptionValue;
+        ++rcvTimeoSetCallCount;
+    }
+    return 0;
+}
+
+BaseType_t FreeRTOS_connect(Socket_t xClientSocket, const struct freertos_sockaddr* pxAddress, socklen_t xAddressLength)
+{
+    ++connectCallCount;
+    lastConnectSocket        = xClientSocket;
+    lastConnectAddress       = pxAddress;
+    lastConnectAddressLength = xAddressLength;
+    sndTimeoAtConnect        = lastSndTimeoSet;
+    return connectFails ? -pdFREERTOS_ERRNO_ENOTCONN : 0;
+}
+
+unsigned FreeRtosSocketsFake_ConnectCallCount(void)
+{
+    return connectCallCount;
+}
+
+Socket_t FreeRtosSocketsFake_LastConnectSocket(void)
+{
+    return lastConnectSocket;
+}
+
+const struct freertos_sockaddr* FreeRtosSocketsFake_LastConnectAddress(void)
+{
+    return lastConnectAddress;
+}
+
+socklen_t FreeRtosSocketsFake_LastConnectAddressLength(void)
+{
+    return lastConnectAddressLength;
+}
+
+BaseType_t FreeRTOS_send(Socket_t xSocket, const void* pvBuffer, size_t uxDataLength, BaseType_t xFlags)
+{
+    ++sendCallCount;
+    lastSendSocket = xSocket;
+    lastSendBuffer = pvBuffer;
+    lastSendLength = uxDataLength;
+    lastSendFlags  = xFlags;
+    if (sendFails)
+    {
+        return -pdFREERTOS_ERRNO_ENOTCONN;
+    }
+    if (sendReturnSet)
+    {
+        return sendReturnValue;
+    }
+    return (BaseType_t) uxDataLength;
+}
+
+unsigned FreeRtosSocketsFake_SendCallCount(void)
+{
+    return sendCallCount;
+}
+
+Socket_t FreeRtosSocketsFake_LastSendSocket(void)
+{
+    return lastSendSocket;
+}
+
+const void* FreeRtosSocketsFake_LastSendBuffer(void)
+{
+    return lastSendBuffer;
+}
+
+size_t FreeRtosSocketsFake_LastSendLength(void)
+{
+    return lastSendLength;
+}
+
+BaseType_t FreeRtosSocketsFake_LastSendFlags(void)
+{
+    return lastSendFlags;
+}
+
+BaseType_t FreeRTOS_recv(Socket_t xSocket, void* pvBuffer, size_t uxBufferLength, BaseType_t xFlags)
+{
+    ++recvCallCount;
+    lastRecvSocket = xSocket;
+    lastRecvBuffer = pvBuffer;
+    lastRecvLength = uxBufferLength;
+    lastRecvFlags  = xFlags;
+    if (recvFails)
+    {
+        return -pdFREERTOS_ERRNO_ENOTCONN;
+    }
+    if (recvReturnSet)
+    {
+        return recvReturnValue;
+    }
+    return 0;
+}
+
+unsigned FreeRtosSocketsFake_RecvCallCount(void)
+{
+    return recvCallCount;
+}
+
+Socket_t FreeRtosSocketsFake_LastRecvSocket(void)
+{
+    return lastRecvSocket;
+}
+
+void* FreeRtosSocketsFake_LastRecvBuffer(void)
+{
+    return lastRecvBuffer;
+}
+
+size_t FreeRtosSocketsFake_LastRecvLength(void)
+{
+    return lastRecvLength;
+}
+
+BaseType_t FreeRtosSocketsFake_LastRecvFlags(void)
+{
+    return lastRecvFlags;
 }
 
 unsigned FreeRtosSocketsFake_ClosesocketCallCount(void)

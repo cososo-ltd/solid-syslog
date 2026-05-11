@@ -38,6 +38,32 @@ else()
 
     add_test(NAME SolidSyslogFreeRtosDatagramTest COMMAND SolidSyslogFreeRtosDatagramTest)
 
+    add_executable(SolidSyslogFreeRtosTcpStreamTest
+        SolidSyslogFreeRtosTcpStreamTest.cpp
+        main.cpp
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStream.c
+        ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosSocketsFake.c
+    )
+
+    target_link_libraries(SolidSyslogFreeRtosTcpStreamTest PRIVATE
+        ${PROJECT_NAME}
+        CppUTest
+        CppUTestExt
+    )
+
+    target_include_directories(SolidSyslogFreeRtosTcpStreamTest PRIVATE
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source
+        ${CMAKE_SOURCE_DIR}/Core/Interface
+        ${CMAKE_SOURCE_DIR}/Core/Source
+        ${CMAKE_SOURCE_DIR}/Tests/Support
+        ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
+        $ENV{FREERTOS_KERNEL_PATH}/include
+        $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
+    )
+
+    add_test(NAME SolidSyslogFreeRtosTcpStreamTest COMMAND SolidSyslogFreeRtosTcpStreamTest)
+
     add_executable(SolidSyslogFreeRtosStaticResolverTest
         SolidSyslogFreeRtosStaticResolverTest.cpp
         main.cpp
