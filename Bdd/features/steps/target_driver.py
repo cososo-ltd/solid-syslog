@@ -73,9 +73,10 @@ def spawn_example_process(context, extra_args=None, binary=None):
     binary defaults to context.example_binary (the standard SingleTask
     binary or its FreeRTOS .elf equivalent); callers that drive a
     different example (e.g. the Linux Threaded binary) pass it
-    explicitly. The FreeRTOS path only ever sees the SingleTask .elf
-    today — threaded scenarios are tagged @freertoswip until a
-    FreeRTOS threaded example exists.
+    explicitly. On FreeRTOS, the SingleTask .elf is itself buffered
+    (CircularBuffer + FreeRtosMutex + Service task, S08.04) so it
+    serves both the @buffered scenarios and the plain single-message
+    path — there is no separate FreeRTOS threaded binary.
     """
     target = getattr(context, "target", "linux")
     if binary is None:

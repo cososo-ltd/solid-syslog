@@ -22,7 +22,7 @@ for the compose layout.
 |---|---|
 | `@udp` / `@tcp` / `@tls` / `@mtls` | Transport-specific scenario; CI jobs filter by these. |
 | `@windows_wip` | Skipped on the Windows runner (typically OS-specific behaviour the OTel oracle doesn't model). |
-| `@freertoswip` | Skipped on the FreeRTOS-on-QEMU runner. The FreeRTOS SingleTask example bakes hard-coded `TEST_*` values for hostname and PROCID and consumes config via the interactive `set NAME VALUE` command rather than getopt. Scenarios that depend on any of these are tagged today and the tag is removed slice-by-slice as each gap is closed. |
+| `@freertoswip` | Skipped on the FreeRTOS-on-QEMU runner. Per-scenario follow-up tag for capability gaps; removed scenario-by-scenario as each gap closes. The early bring-up reasons (hardcoded `TEST_*` values, missing SD wiring, getopt-only args) have all been closed out by S08.03 + S08.04 slices. |
 | `@rtc` | Scenario assumes the device has an RTC and synchronised wall-clock time. Run on Linux/Windows (which have both). Skipped on FreeRTOS, which models a no-RTC product per RFC 5424 §6.2.3.1. |
 | `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on FreeRTOS. Skipped on Linux/Windows. The NILVALUE TIMESTAMP itself is not asserted via the oracle — syslog-ng silently substitutes receipt time for `${ISODATE}` / `${S_ISODATE}` when the wire timestamp is NILVALUE — so that case is covered by formatter unit tests. |
 | `@wip` | Globally skipped on every runner. |

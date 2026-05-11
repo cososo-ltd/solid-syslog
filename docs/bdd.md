@@ -140,7 +140,7 @@ Three rollout markers are also used (temporary; remove once the scenario passes)
 | --- | --- |
 | `@wip` | Skip everywhere — work in progress |
 | `@windows_wip` | Skip on Windows only — should work but not yet verified |
-| `@freertoswip` | Skip on FreeRTOS only — currently fails or errors on the FreeRTOS-on-QEMU target. Each tagged scenario is a follow-up: usually because the FreeRTOS SingleTask example bakes hardcoded `TEST_*` values (hostname, PROCID, timestamp), wires no `meta` / `origin` / `timeQuality` SD yet, or because the scenario uses cmdline args that the FreeRTOS driver doesn't translate to `set NAME VALUE` |
+| `@freertoswip` | Skip on FreeRTOS only — scenario currently fails or errors on the FreeRTOS-on-QEMU target and is gated until the relevant capability lands. Each tagged scenario is a follow-up tied to a specific gap; the tag is removed scenario-by-scenario as the gap closes. The early bring-up reasons (hardcoded `TEST_*` values, missing SD elements, cmdline-only args) have all been closed out by S08.03 + S08.04 slices. |
 
 Runner tag filters:
 

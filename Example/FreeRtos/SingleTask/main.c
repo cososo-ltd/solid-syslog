@@ -1,18 +1,21 @@
 /* FreeRTOS-Plus-TCP single-task SolidSyslog example for QEMU mps2-an385.
  *
- * Slice 3b.2 of S08.03 wired SolidSyslog over a hardcoded TEST_*
- * configuration; slice 4 makes the configurable fields mutable via the
- * interactive `set <name> <value>` command — hostname, appname, procid,
- * msgid, msg, host (stored only — see g_host below), port, facility,
- * severity. Static IPv4 (10.0.2.15) on the QEMU slirp network with the
- * host reachable at the slirp gateway 10.0.2.2; a single FreeRTOS task
- * runs Example/Common/ExampleInteractive over qemu -serial stdio
- * (CmsdkUart RX wired into newlib's _read in Example/FreeRtos/Common/
- * Syscalls.c). On link-up the IP-task event hook spawns the interactive
- * task once; SolidSyslog is configured with a NullBuffer + UdpSender
- * driving the slice-1 SolidSyslogFreeRtosDatagram via the slice-3a
- * static resolver, so each `send N` line over the UART emits N RFC 5424
- * datagrams to {10.0.2.2, port=g_port}. */
+ * S08.03 wired SolidSyslog over a hardcoded TEST_* configuration and
+ * exposed the configurable fields as `set <name> <value>` commands over
+ * the interactive UART channel (hostname, appname, procid, msgid, msg,
+ * host, port, facility, severity). S08.04 swaps the original NullBuffer
+ * for the portable SolidSyslogCircularBuffer + SolidSyslogFreeRtosMutex
+ * and adds a dedicated FreeRTOS Service task that drains the ring —
+ * Log() is now non-blocking, the Service task does the UDP I/O.
+ *
+ * Static IPv4 (10.0.2.15) on the QEMU slirp network with the host
+ * reachable at the slirp gateway 10.0.2.2; Example/Common/ExampleInteractive
+ * runs over qemu -serial stdio (CmsdkUart RX wired into newlib's _read
+ * in Example/FreeRtos/Common/Syscalls.c). On link-up the IP-task event
+ * hook spawns the interactive task and the service task once; UdpSender
+ * drives the SolidSyslogFreeRtosDatagram via the static resolver, so
+ * each `send N` line over the UART emits N RFC 5424 datagrams to
+ * {10.0.2.2, port=g_port}. */
 
 #include "CmsdkUart.h"
 #include "ExampleEnterpriseId.h"

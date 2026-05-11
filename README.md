@@ -24,8 +24,9 @@ block store-and-forward with CRC-16 integrity, and the full
 
 FreeRTOS support is in active development on Cortex-M3 (mps2-an385 under QEMU):
 UDP transport via FreeRTOS-Plus-TCP, host-TDD'd adapters, an interactive
-SingleTask example, and BDD scenarios driven through QEMU's UART
-([epic E08 #268](https://github.com/DavidCozens/solid-syslog/issues/268)).
+SingleTask example wired with the portable CircularBuffer + FreeRtosMutex
+behind a Service task, and BDD scenarios driven through QEMU's UART
+([epic E08 #10](https://github.com/DavidCozens/solid-syslog/issues/10)).
 
 **Not yet production-ready**, and no API stability guarantee yet. Known gaps:
 
@@ -58,7 +59,7 @@ Public headers are split by audience (Interface Segregation Principle):
 - **`SolidSyslogError.h`** — install a handler to react to library-internal errors (NULL guards, send failures); default is silent. See `Example/Common/ExampleStderrErrorHandler.c` for a reference implementation
 - **`SolidSyslogSenderDefinition.h`** / **`SolidSyslogBufferDefinition.h`** — extension points for custom senders and buffers
 - **`SolidSyslogNullBuffer.h`** — direct-send buffer for single-task systems
-- **`SolidSyslogCircularBuffer.h`** — portable ring buffer with caller-allocated storage and an injected `SolidSyslogMutex` (`SolidSyslogPosixMutex` / `SolidSyslogWindowsMutex` / `SolidSyslogNullMutex` / your own); the cross-platform threaded buffer
+- **`SolidSyslogCircularBuffer.h`** — portable ring buffer with caller-allocated storage and an injected `SolidSyslogMutex` (`SolidSyslogPosixMutex` / `SolidSyslogWindowsMutex` / `SolidSyslogFreeRtosMutex` / `SolidSyslogNullMutex` / your own); the cross-platform threaded buffer
 - **`SolidSyslogPosixMessageQueueBuffer.h`** — thread-safe POSIX message queue buffer
 - **`SolidSyslogUdpSender.h`** — UDP transport (RFC 5426)
 - **`SolidSyslogStreamSender.h`** — octet-framed syslog (RFC 6587) over any Stream. Note: RFC 6587
@@ -81,14 +82,14 @@ Public headers are split by audience (Interface Segregation Principle):
 - **`SolidSyslogTimeQualitySd.h`** — timeQuality structured data (RFC 5424 §7.1): tzKnown, isSynced, syncAccuracy
 - **`SolidSyslogOriginSd.h`** — origin structured data (RFC 5424 §7.2): software, swVersion, enterpriseId, ip
 - **`SolidSyslogPosixClock.h`** / **`SolidSyslogPosixHostname.h`** / **`SolidSyslogPosixProcessId.h`** / **`SolidSyslogPosixSysUpTime.h`** — POSIX helpers
-- **`SolidSyslogFreeRtosDatagram.h`** / **`SolidSyslogFreeRtosStaticResolver.h`** — FreeRTOS-Plus-TCP UDP datagram adapter and a hardcoded-IPv4 resolver for FreeRTOS targets
+- **`SolidSyslogFreeRtosDatagram.h`** / **`SolidSyslogFreeRtosStaticResolver.h`** / **`SolidSyslogFreeRtosMutex.h`** / **`SolidSyslogFreeRtosSysUpTime.h`** — FreeRTOS adapters: FreeRTOS-Plus-TCP UDP datagram, hardcoded-IPv4 resolver, `xSemaphoreCreateMutexStatic`-backed mutex for CircularBuffer, and a kernel-tick sysUpTime source
 
 Four example programs demonstrate usage:
 
 - **`Example/SingleTask/`** — POSIX, NullBuffer, single-task bare-metal model
 - **`Example/Threaded/`** — POSIX, PosixMessageQueueBuffer, two pthreads (logger + service), SwitchingSender over UDP + TCP + TLS + mTLS (TLS build required for the last two); `--transport` sets the initial transport, `switch <name>` flips it at runtime
 - **`Example/Windows/`** — Windows, CircularBuffer + WindowsMutex, Win32 service thread (`_beginthreadex`) draining the buffer, Winsock UDP / TCP, with the Windows clock / hostname / process-id / sysUpTime helpers
-- **`Example/FreeRtos/SingleTask/`** — FreeRTOS-on-QEMU (Cortex-M3, mps2-an385), NullBuffer, UDP via FreeRTOS-Plus-TCP, interactive `set NAME VALUE` / `send N` / `quit` command channel over the CMSDK UART; BDD-driven against syslog-ng. See [`Example/FreeRtos/README.md`](Example/FreeRtos/README.md)
+- **`Example/FreeRtos/SingleTask/`** — FreeRTOS-on-QEMU (Cortex-M3, mps2-an385), CircularBuffer + FreeRtosMutex drained by a dedicated Service task, UDP via FreeRTOS-Plus-TCP, interactive `set NAME VALUE` / `send N` / `quit` command channel over the CMSDK UART; BDD-driven against syslog-ng. See [`Example/FreeRtos/README.md`](Example/FreeRtos/README.md)
 
 ## Compliance
 
