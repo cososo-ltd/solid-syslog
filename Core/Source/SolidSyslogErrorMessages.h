@@ -15,5 +15,6 @@
 #define SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_NULL_DATAGRAM "SolidSyslogUdpSender_Create config.datagram is NULL"
 #define SOLIDSYSLOG_ERROR_MSG_UDP_NIL_RESOLVER_USED "SolidSyslogUdpSender_Send tried to resolve with no resolver configured"
 #define SOLIDSYSLOG_ERROR_MSG_UDP_NIL_DATAGRAM_USED "SolidSyslogUdpSender_Send tried to open with no datagram configured"
+#define SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_ALREADY_INITIALISED "SolidSyslogUdpSender_Create called while already initialised - call _Destroy first"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */

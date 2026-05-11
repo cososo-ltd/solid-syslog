@@ -861,3 +861,52 @@ TEST(SolidSyslogUdpSenderLifecycle, SendAfterCreateWithNullResolverReturnsFalse)
 
     CHECK_FALSE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
 }
+
+TEST(SolidSyslogUdpSenderLifecycle, SecondCreateWithoutDestroyReportsAlreadyInitialised)
+{
+    SolidSyslogUdpSenderConfig config = validConfig();
+    SolidSyslogUdpSender_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogUdpSender_Create(&config);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_ALREADY_INITIALISED);
+}
+
+TEST(SolidSyslogUdpSenderLifecycle, SecondCreateLeavesFirstConfigInstalled)
+{
+    SolidSyslogUdpSenderConfig firstConfig = validConfig();
+    SolidSyslogSender*         sender      = SolidSyslogUdpSender_Create(&firstConfig);
+    SolidSyslogUdpSenderConfig secondConfig{nullptr, nullptr, TestEndpoint, TestEndpointVersion};
+
+    SolidSyslogUdpSender_Create(&secondConfig);
+    bool sent = SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+
+    CHECK_TRUE(sent);
+    CALLED_FAKE(SocketFake_Sendto, ONCE);
+}
+
+TEST(SolidSyslogUdpSenderLifecycle, CreateWithNullConfigDoesNotBlockSubsequentCreate)
+{
+    SolidSyslogUdpSender_Create(nullptr);
+    SolidSyslogUdpSenderConfig config = validConfig();
+
+    SolidSyslogSender* sender = SolidSyslogUdpSender_Create(&config);
+    bool               sent   = SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+
+    CHECK_TRUE(sent);
+}
+
+TEST(SolidSyslogUdpSenderLifecycle, DestroyClearsInitialisedFlagSoCreateSucceedsAgain)
+{
+    SolidSyslogUdpSenderConfig config = validConfig();
+    SolidSyslogUdpSender_Create(&config);
+    SolidSyslogUdpSender_Destroy();
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogSender* sender = SolidSyslogUdpSender_Create(&config);
+    bool               sent   = SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+
+    CHECK_NOTHING_REPORTED();
+    CHECK_TRUE(sent);
+}

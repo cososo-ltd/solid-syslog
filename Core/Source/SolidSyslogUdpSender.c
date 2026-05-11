@@ -72,18 +72,25 @@ static struct SolidSyslogUdpSender instance = {
 
 static bool nilResolverReportArmed = true;
 static bool nilDatagramReportArmed = true;
+static bool instanceInitialised;
 
 struct SolidSyslogSender* SolidSyslogUdpSender_Create(const struct SolidSyslogUdpSenderConfig* config)
 {
     struct SolidSyslogSender* result = NULL;
 
-    if (config == NULL)
+    if (instanceInitialised)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_ALREADY_INITIALISED);
+        result = &instance.base;
+    }
+    else if (config == NULL)
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_UDP_CREATE_NULL_CONFIG);
     }
     else
     {
-        result = InstallConfig(config);
+        result              = InstallConfig(config);
+        instanceInitialised = true;
     }
 
     return result;
@@ -145,6 +152,7 @@ void SolidSyslogUdpSender_Destroy(void)
     instance               = NilInstance;
     nilResolverReportArmed = true;
     nilDatagramReportArmed = true;
+    instanceInitialised    = false;
 }
 
 static bool Send(struct SolidSyslogSender* self, const void* buffer, size_t size)
