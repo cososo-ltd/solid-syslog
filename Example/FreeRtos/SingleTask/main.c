@@ -33,7 +33,6 @@
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
-#include "SolidSyslogStdAtomicOps.h"
 #include "SolidSyslogTimeQuality.h"
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
@@ -344,7 +343,7 @@ static void InteractiveTask(void* argument)
     struct SolidSyslogBuffer* buffer = SolidSyslogNullBuffer_Create(sender);
     struct SolidSyslogStore*  store  = SolidSyslogNullStore_Create();
 
-    struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create(SolidSyslogStdAtomicOps_Create());
+    struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig   metaConfig = {
           .counter      = counter,
           .getSysUpTime = SolidSyslogFreeRtosSysUpTime_Get,
@@ -387,7 +386,6 @@ static void InteractiveTask(void* argument)
     SolidSyslogTimeQualitySd_Destroy();
     SolidSyslogMetaSd_Destroy();
     SolidSyslogAtomicCounter_Destroy();
-    SolidSyslogStdAtomicOps_Destroy();
     SolidSyslogNullStore_Destroy();
     SolidSyslogNullBuffer_Destroy();
     SolidSyslogUdpSender_Destroy();

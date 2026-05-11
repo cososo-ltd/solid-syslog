@@ -27,7 +27,6 @@
 #include "SolidSyslogPosixProcessId.h"
 #include "SolidSyslogPosixSysUpTime.h"
 #include "SolidSyslogPosixTcpStream.h"
-#include "SolidSyslogStdAtomicOps.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
@@ -84,7 +83,7 @@ int SolidSyslogExample_Run(int argc, char* argv[])
     }
     struct SolidSyslogBuffer*        buffer     = SolidSyslogNullBuffer_Create(sender);
     struct SolidSyslogStore*         store      = SolidSyslogNullStore_Create();
-    struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create(SolidSyslogStdAtomicOps_Create());
+    struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig   metaConfig = {
           .counter      = counter,
           .getSysUpTime = SolidSyslogPosixSysUpTime_Get,
@@ -130,7 +129,6 @@ int SolidSyslogExample_Run(int argc, char* argv[])
     SolidSyslogTimeQualitySd_Destroy();
     SolidSyslogMetaSd_Destroy();
     SolidSyslogAtomicCounter_Destroy();
-    SolidSyslogStdAtomicOps_Destroy();
     SolidSyslogNullStore_Destroy();
     SolidSyslogNullBuffer_Destroy();
     if (useTcp)

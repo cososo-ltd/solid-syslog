@@ -27,7 +27,6 @@
 #include "SolidSyslogSwitchingSender.h"
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
-#include "SolidSyslogWindowsAtomicOps.h"
 #include "SolidSyslogWindowsClock.h"
 #include "SolidSyslogWindowsFile.h"
 #include "SolidSyslogWindowsHostname.h"
@@ -308,7 +307,7 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
 
     struct SolidSyslogMutex*         mutex      = SolidSyslogWindowsMutex_Create(&mutexStorage);
     struct SolidSyslogBuffer*        buffer     = SolidSyslogCircularBuffer_Create(bufferStorage, sizeof(bufferStorage), mutex);
-    struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create(SolidSyslogWindowsAtomicOps_Create());
+    struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig   metaConfig = {
           .counter      = counter,
           .getSysUpTime = SolidSyslogWindowsSysUpTime_Get,
@@ -366,7 +365,6 @@ int SolidSyslogWindowsExample_Run(int argc, char* argv[])
     SolidSyslogTimeQualitySd_Destroy();
     SolidSyslogMetaSd_Destroy();
     SolidSyslogAtomicCounter_Destroy();
-    SolidSyslogWindowsAtomicOps_Destroy();
     DestroyStore(store, &options);
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogWindowsMutex_Destroy(mutex);

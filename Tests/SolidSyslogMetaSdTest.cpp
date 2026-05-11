@@ -5,7 +5,6 @@
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogStructuredData.h"
-#include "TestAtomicOps.h"
 #include "CppUTest/TestHarness.h"
 
 class TEST_SolidSyslogMetaSd_FirstFormatProducesSequenceId1_Test;
@@ -66,7 +65,7 @@ TEST_GROUP(SolidSyslogMetaSd)
     void setup() override
     {
         formatter = SolidSyslogFormatter_Create(storage, TEST_BUFFER_SIZE);
-        counter = SolidSyslogAtomicCounter_Create(TestAtomicOps_Create());
+        counter = SolidSyslogAtomicCounter_Create();
         fakeSysUpTimeValue = 0;
         fakeLanguageContent = nullptr;
         fakeLanguageMaxLength = 0;
@@ -79,7 +78,6 @@ TEST_GROUP(SolidSyslogMetaSd)
     {
         SolidSyslogMetaSd_Destroy();
         SolidSyslogAtomicCounter_Destroy();
-        TestAtomicOps_Destroy();
     }
 
     void recreate()

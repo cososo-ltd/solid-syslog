@@ -1,14 +1,16 @@
-#include "AtomicOpsFake.h"
-#include "SolidSyslogAtomicCounter.h"
-#include "TestAtomicOps.h"
-#include "CppUTest/TestHarness.h"
+/* Whitebox include: SolidSyslogAtomicCounter.c is compiled into this test
+   translation unit so the static helpers NextSequenceId and TryAdvance are
+   directly reachable. The library's own SolidSyslogAtomicCounter.o is then
+   not pulled in by the linker (static-archive object-on-demand resolution),
+   so there is no duplicate-symbol conflict. */
+#include "SolidSyslogAtomicCounter.c"
 
-struct SolidSyslogAtomicCounter;
+#include "CppUTest/TestHarness.h"
 
 enum
 {
-    SEQUENCE_ID_MAX            = 2147483647,
-    SEQUENCE_ID_JUST_BELOW_MAX = 2147483646,
+    TEST_SEQUENCE_ID_MAX            = 2147483647,
+    TEST_SEQUENCE_ID_JUST_BELOW_MAX = 2147483646,
 };
 
 // clang-format off
@@ -20,26 +22,7 @@ TEST_GROUP(SolidSyslogAtomicCounter)
     void setup() override
     {
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        counter = SolidSyslogAtomicCounter_Create(TestAtomicOps_Create());
-    }
-
-    void teardown() override
-    {
-        SolidSyslogAtomicCounter_Destroy();
-        TestAtomicOps_Destroy();
-    }
-};
-
-TEST_GROUP(SolidSyslogAtomicCounterWithOps)
-{
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
-    SolidSyslogAtomicCounter* counter;
-
-    void setup() override
-    {
-        AtomicOpsFake_Reset();
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        counter = SolidSyslogAtomicCounter_Create(AtomicOpsFake_Get());
+        counter = SolidSyslogAtomicCounter_Create();
     }
 
     void teardown() override
@@ -73,34 +56,33 @@ TEST(SolidSyslogAtomicCounter, ThirdIncrementReturns3)
     LONGS_EQUAL(3, SolidSyslogAtomicCounter_Increment(counter));
 }
 
-TEST(SolidSyslogAtomicCounterWithOps, IncrementReturnsLoadPlus1)
+TEST(SolidSyslogAtomicCounter, NextSequenceIdAfterZeroReturns1)
 {
-    AtomicOpsFake_SetLoadValue(41);
-    LONGS_EQUAL(42, SolidSyslogAtomicCounter_Increment(counter));
+    LONGS_EQUAL(1, AtomicCounter_NextSequenceId(0));
 }
 
-TEST(SolidSyslogAtomicCounterWithOps, IncrementJustBelowMaxReturnsMax)
+TEST(SolidSyslogAtomicCounter, NextSequenceIdJustBelowMaxReturnsMax)
 {
-    AtomicOpsFake_SetLoadValue(SEQUENCE_ID_JUST_BELOW_MAX);
-    LONGS_EQUAL(SEQUENCE_ID_MAX, SolidSyslogAtomicCounter_Increment(counter));
+    LONGS_EQUAL(TEST_SEQUENCE_ID_MAX, AtomicCounter_NextSequenceId(TEST_SEQUENCE_ID_JUST_BELOW_MAX));
 }
 
-TEST(SolidSyslogAtomicCounterWithOps, IncrementWrapsFromRfcMaximumTo1)
+TEST(SolidSyslogAtomicCounter, NextSequenceIdAtMaxWrapsTo1)
 {
-    AtomicOpsFake_SetLoadValue(SEQUENCE_ID_MAX);
-    LONGS_EQUAL(1, SolidSyslogAtomicCounter_Increment(counter));
+    LONGS_EQUAL(1, AtomicCounter_NextSequenceId(TEST_SEQUENCE_ID_MAX));
 }
 
-TEST(SolidSyslogAtomicCounterWithOps, SecondIncrementSeesCommittedValue)
+TEST(SolidSyslogAtomicCounter, TryAdvanceRereadsSlotAfterExternalMutation)
 {
-    AtomicOpsFake_SetLoadValue(7);
-    SolidSyslogAtomicCounter_Increment(counter);
-    LONGS_EQUAL(9, SolidSyslogAtomicCounter_Increment(counter));
-}
+    uint32_t firstNext = 0;
+    CHECK_TRUE(AtomicCounter_TryAdvance(counter->slot, &firstNext));
+    LONGS_EQUAL(1, firstNext);
 
-TEST(SolidSyslogAtomicCounterWithOps, IncrementRetriesWhenCompareAndSwapFails)
-{
-    AtomicOpsFake_SetLoadValue(5);
-    AtomicOpsFake_FailNextCompareAndSwapAndShiftLoadTo(6);
-    LONGS_EQUAL(7, SolidSyslogAtomicCounter_Increment(counter));
+    /* Simulate "another writer committed first" — TryAdvance must re-Load
+       (rather than reuse a stale current) on its next call, so the returned
+       value is one above the slot's actual current value. */
+    SolidSyslogAtomicU32_Init(counter->slot, 5);
+
+    uint32_t secondNext = 0;
+    CHECK_TRUE(AtomicCounter_TryAdvance(counter->slot, &secondNext));
+    LONGS_EQUAL(6, secondNext);
 }
