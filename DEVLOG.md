@@ -5834,3 +5834,108 @@ reconfigure.
   collaborators' implementation at the bottom. Reads like two
   cooperating "classes" sharing a translation unit. Allowed by C99
   (tentative definitions of file-scope objects).
+
+## 2026-05-11 — S08.04 slice 1: SolidSyslogFreeRtosMutex adapter
+
+First slice of S08.04 (#269) — the FreeRTOS mutex backend that lets
+the existing portable `SolidSyslogCircularBuffer` (S04.05) run safely
+under concurrent task emission. Mirrors `SolidSyslogPosixMutex` /
+`SolidSyslogWindowsMutex` in shape; no example wiring yet (slice 2)
+and no multi-task driver (slice 3).
+
+### Slicing decision
+
+Story acceptance is buffered.feature + structured_data.feature on
+QEMU with concurrent emission. Discussed slicing with David upfront
+and landed on three slices: (1) host-TDD'd mutex adapter, (2)
+swap NullBuffer for CircularBuffer + FreeRtosMutex in the example
+(still single-task), (3) multi-task emission + UART mutex deferred
+from S08.03. This PR is slice 1.
+
+### TDD cycles
+
+Five red→green→refactor cycles against new `FreeRtosSemaphoreFake`:
+
+1. `HandleEqualsStorageAddress` — confirms caller-supplied
+   `SolidSyslogFreeRtosMutexStorage` is the handle (Posix/Windows
+   precedent).
+2. `CreateCallsCreateMutexStaticOnce` — drives the fake's
+   `xQueueCreateMutexStatic` intercept (semphr.h expands the public
+   `xSemaphoreCreateMutexStatic` macro down to this).
+3. `LockCallsSemaphoreTakeOnce` — fake intercepts
+   `xQueueSemaphoreTake`.
+4. `UnlockCallsSemaphoreGiveOnce` — fake intercepts
+   `xQueueGenericSend`.
+5. `DestroyCallsSemaphoreDeleteOnce` — fake intercepts
+   `vQueueDelete` (vSemaphoreDelete macro target).
+
+Refactor pass introduced the `FreeRtosMutex_From` accessor and the
+module-prefixed statics (`FreeRtosMutex_Lock` / `_Unlock`); tried
+the `DEFAULT_INSTANCE` / `DESTROYED_INSTANCE` pattern but
+`StaticSemaphore_t` contains a union and `-Werror=missing-field-
+initializers` rejects partial positional or designated
+initialization. Fell back to the explicit `mutex->base.Lock = ...`
+shape that Posix / Windows already use — same pattern, same file,
+nothing surprising.
+
+### Storage decision
+
+`xSemaphoreCreateMutexStatic` over `xSemaphoreCreateMutex`. The
+storage-injection pattern is consistent across the library
+(no malloc on the library side; integrator owns the bytes), and
+FreeRTOS happens to expose exactly the right API. Trade-off: the
+example FreeRTOSConfig.h must set `configSUPPORT_STATIC_ALLOCATION
+= 1` in slice 2 and provide `vApplicationGetIdleTaskMemory` /
+`GetTimerTaskMemory` — a one-time tax we're paying anyway as the
+RTOS demo matures toward heap-free.
+
+### FreeRtosFakes additions
+
+- `FreeRtosSemaphoreFake.{h,c}` — call-count fakes for the four
+  queue functions the semaphore macros expand to. Same shape as
+  `FreeRtosSocketsFake` / `FreeRtosArpFake` / `FreeRtosTaskFake`.
+- `Tests/Support/FreeRtosFakes/Interface/FreeRTOSConfig.h` now sets
+  `configSUPPORT_STATIC_ALLOCATION = 1` (and explicitly
+  `configSUPPORT_DYNAMIC_ALLOCATION = 1` to mirror what the example
+  will need). The doc comment about "first content lands with
+  S08.04" comes true.
+
+### Verified
+
+- `debug`, `tidy`, `cppcheck` presets pass on the new target
+  (`SolidSyslogFreeRtosMutexTest` — 5 tests).
+- `freertos-host-1` container's full `ctest --preset debug` is
+  green on all 7 suites; no regressions in Datagram / Resolver /
+  SysUpTime / CmsdkUart / OpenSslIntegration / SolidSyslogTests.
+- `freertos-cross` preset still builds `SolidSyslogFreeRtosSingleTask.elf`
+  unchanged (the adapter source isn't wired into the example
+  yet — that's slice 2).
+- cppcheck needed the standard `unreadVariable` suppression on the
+  `mutex` field consumed across TEST_GROUP methods; matches the
+  Posix mutex test.
+
+### Decisions
+
+- **Adapter-then-wiring slicing.** Land the FreeRtosMutex adapter
+  ahead of the example switch so the next slice can focus on the
+  CircularBuffer wiring and Service driver task without the mutex
+  refactor confounding any failure.
+- **Match Posix/Windows mutex shape over DEFAULT_INSTANCE pattern.**
+  The `feedback_storage_pattern` memory points at DEFAULT_INSTANCE,
+  but `StaticSemaphore_t`'s internal union forces back to explicit
+  field assignment. Existing Posix/Windows mutex use the same
+  explicit shape, so consistency wins here.
+
+### Deferred to later slices
+
+- Example wiring (NullBuffer → CircularBuffer + FreeRtosMutex,
+  Service driver task, `configSUPPORT_STATIC_ALLOCATION` flip + the
+  idle/timer-task memory hooks) — slice 2.
+- Multi-task emission to make `buffered.feature` and
+  `structured_data.feature` exercise concurrent producers; UART
+  mutex deferred from S08.03 — slice 3.
+
+### Open questions
+
+- HelloWorld retirement watching brief surfaced at session start as
+  per memory — left open; David decides.

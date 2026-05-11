@@ -36,6 +36,14 @@
 #define configCHECK_FOR_STACK_OVERFLOW 0
 #define configUSE_MALLOC_FAILED_HOOK 0
 
+/* Static allocation is required for SolidSyslogFreeRtosMutex
+ * (xSemaphoreCreateMutexStatic) — caller injects the StaticSemaphore_t-sized
+ * storage rather than the kernel mallocing it. Dynamic stays on so the
+ * test config matches the example, which also uses dynamic allocation for
+ * task / FreeRTOS-Plus-TCP buffers. */
+#define configSUPPORT_STATIC_ALLOCATION 1
+#define configSUPPORT_DYNAMIC_ALLOCATION 1
+
 /* Co-routines and software timers are off in tests; saves headers from
  * pulling in extra symbols that fakes would have to satisfy. */
 #define configUSE_CO_ROUTINES 0

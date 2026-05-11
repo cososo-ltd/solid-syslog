@@ -63,6 +63,33 @@ else()
     add_test(NAME SolidSyslogFreeRtosStaticResolverTest COMMAND SolidSyslogFreeRtosStaticResolverTest)
 endif()
 
+# SolidSyslogFreeRtosMutex — kernel-only adapter wrapping a FreeRTOS static
+# mutex semaphore; needs FREERTOS_KERNEL_PATH but not Plus-TCP. Sits outside
+# the Plus-TCP guard for the same reason the SysUpTime / UART tests do.
+add_executable(SolidSyslogFreeRtosMutexTest
+    SolidSyslogFreeRtosMutexTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosSemaphoreFake.c
+)
+
+target_link_libraries(SolidSyslogFreeRtosMutexTest PRIVATE
+    ${PROJECT_NAME}
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogFreeRtosMutexTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests/Support
+    ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
+    $ENV{FREERTOS_KERNEL_PATH}/include
+)
+
+add_test(NAME SolidSyslogFreeRtosMutexTest COMMAND SolidSyslogFreeRtosMutexTest)
+
 # SolidSyslogFreeRtosSysUpTime — kernel-only adapter; needs FREERTOS_KERNEL_PATH
 # but not Plus-TCP. Sits outside the Plus-TCP guard for the same reason the
 # UART test does: a minimal kernel-only environment must still build it.
