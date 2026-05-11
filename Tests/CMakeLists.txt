@@ -60,6 +60,7 @@ endif()
 if(HAVE_ATOMIC_COUNTER)
     list(APPEND TEST_SOURCES
         SolidSyslogAtomicCounterTest.cpp
+        SolidSyslogAtomicU32Test.cpp
         Support/AtomicOpsFake.c
     )
 endif()
