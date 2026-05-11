@@ -1,5 +1,61 @@
 # Dev Log
 
+## 2026-05-11 — S08.11 switching_transport BDD scenario (UDP↔TCP) on QEMU (#340)
+
+Third and final slice of S08.06. With the TCP stream (S08.09) and TCP
+reconnect verification (S08.10) in place, this slice lights up the
+runtime `switch` command in the FreeRTOS BDD target and admits the
+non-`@tls` `switching_transport.feature` scenario to the QEMU runner.
+
+### Decisions
+
+- **Wire `BddTargetSwitchConfig_SetByName` as the `onSwitch` callback,
+  not just `set transport`.** S08.09 already routed `set transport
+  <udp|tcp>` through `BddTargetSwitchConfig`, so the harness could
+  flip the initial transport via `--transport tcp` translated to a
+  `set transport tcp` UART line. The runtime `switch tcp` command
+  path is a separate dispatch in `BddTargetInteractive.c` — guarded
+  on `onSwitch != NULL`, so leaving `onSwitch = NULL` meant `switch
+  tcp` from the BDD step `the client switches to transport tcp`
+  silently no-op'd. Passing `BddTargetSwitchConfig_SetByName` lines
+  the FreeRTOS target up with Linux (`Bdd/Targets/Linux/main.c:286`)
+  and Windows (`Bdd/Targets/Windows/BddTargetWindows.c:357`), which
+  already pass it.
+- **Tag the non-`@tls` scenario `@udp @tcp` at the scenario level,
+  not the feature level.** The feature is feature-level `@buffered`
+  only — invisible to the FreeRTOS `(@udp or @tcp)` admission clause.
+  The `@tls` sibling must stay excluded until S08.07 lands TLS on
+  FreeRTOS, so feature-level `@tcp` would over-admit. Scenario-level
+  `@udp @tcp` on the first scenario keeps the second one out without
+  restructuring the docker-compose filter.
+- **No new unit tests.** Pure wiring: the only code change is the
+  callback argument at the `BddTargetInteractive_Run` call site, and
+  `BddTargetSwitchConfig_SetByName` is the same function the existing
+  `set transport` path in `OnSet` already calls. The end-to-end
+  `switching_transport.feature` scenario is the test for the dispatch.
+
+### Deferred
+
+- **TLS switching scenario (`@tls`-tagged second scenario of
+  `switching_transport.feature`)** — S08.07 (#272).
+- **Unit test for the `BddTargetInteractive` `switch` dispatch.** The
+  `onSwitch` slot was added in the S20.x SwitchingSender stories
+  without a paired unit test in `BddTargetInteractiveTest`; the
+  existing tests cover the `set` path only. Out of scope here (pure
+  wiring story) but worth a hygiene follow-up — every other dispatch
+  in this file is pinned, so `switch`'s absence is the odd one out.
+- **CMake-driven memory scaling** still open from S08.09 — memory
+  `project_freertos_stack_budget`. The S08.09 `INTERACTIVE_TASK_
+  STACK_DEPTH = configMINIMAL_STACK_SIZE * 48U` already carries the
+  SwitchingSender + TCP path overhead, so no further bump here.
+
+### Open questions
+
+- None new. The S08.10 question about the 200ms SO_SNDTIMEO cap
+  potentially starving the Service task during outage is unrelated
+  to switching; CI is the arbiter and the answer is "raise the
+  deadline if it flakes" per `feedback_no_flaky_ci`.
+
 ## 2026-05-11 — S08.10 tcp_reconnect BDD scenario on QEMU (#339)
 
 Second slice of S08.06. The reconnect-on-the-wire is already a property

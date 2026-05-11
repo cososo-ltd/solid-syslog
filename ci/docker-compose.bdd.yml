@@ -106,6 +106,9 @@ services:
     # marks features that need a file-backed store (no FreeRTOS file
     # abstraction yet), while plain @buffered just means "uses the long-lived
     # interactive process" and is supported on FreeRTOS via QEMU's UART.
+    # S08.11 tags the non-@tls switching_transport scenario @udp @tcp so the
+    # existing (@udp or @tcp) clause admits it; the @tls sibling stays
+    # excluded until S08.07 lights up TLS on FreeRTOS.
     # @windows_wip excludes the Windows-only TCP singletask variant.
     command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @store and not @windows_wip and (@udp or @tcp)' Bdd/features/
 

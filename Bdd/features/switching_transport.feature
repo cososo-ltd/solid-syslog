@@ -4,6 +4,7 @@ Feature: Switch transport at runtime
   SwitchingSender. The --transport CLI flag sets the initial selector
   value, and the interactive `switch` command updates it at runtime.
 
+  @udp @tcp
   Scenario: Switch from UDP to TCP mid-run delivers via both
     Given the syslog oracle is running
     And the BDD target is running with default transport udp

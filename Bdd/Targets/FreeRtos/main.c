@@ -451,7 +451,7 @@ static void InteractiveTask(void* argument)
     SolidSyslog_SetErrorHandler(ErrorHandler, NULL);
     SolidSyslog_Create(&config);
 
-    BddTargetInteractive_Run(&g_message, stdin, NULL, OnSet);
+    BddTargetInteractive_Run(&g_message, stdin, BddTargetSwitchConfig_SetByName, OnSet);
 
     SolidSyslog_Destroy();
     SolidSyslogOriginSd_Destroy();
