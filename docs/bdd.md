@@ -65,7 +65,7 @@ through the QEMU UART (`-serial stdio`).
 | `ghcr.io/davidcozens/behave` | GHCR image — Debian trixie + Python + Behave ([source](https://github.com/DavidCozens/BehaveDocker)) |
 | `Bdd/output/` | Shared directory — syslog-ng writes here, Behave reads |
 | `Bdd/features/` | Gherkin feature files and step definitions |
-| `Example/SolidSyslogExample.c` | Minimal C program that creates a logger and sends one message. Accepts `--facility` and `--severity` CLI flags (defaults to local0/info) |
+| `Example/Threaded/main.c` | Buffered example: PosixMessageQueueBuffer + service pthread + SwitchingSender. Accepts `--facility`, `--severity`, `--transport`, `--app-name`, store-config flags |
 | `Example/CMakeLists.txt` | Builds the example binary, linked against the SolidSyslog library |
 
 ## syslog-ng configuration

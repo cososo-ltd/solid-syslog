@@ -100,7 +100,7 @@ def before_all(context):
     context.target = os.environ.get("BDD_TARGET", "linux").lower()
 
     default_binaries = {
-        "linux": "build/debug/Example/SolidSyslogExample",
+        "linux": "build/debug/Example/SolidSyslogThreadedExample",
         "windows": "build/msvc-debug/Example/Debug/SolidSyslogExample.exe",
         "freertos": (
             "build/freertos-cross/Example/FreeRtos/SingleTask/"

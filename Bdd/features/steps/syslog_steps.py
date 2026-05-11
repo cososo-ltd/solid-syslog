@@ -53,10 +53,11 @@ def per_transport_log(context, transport):
         return PER_TRANSPORT_LOG_OTEL[transport]
     return PER_TRANSPORT_LOG_SYSLOG_NG[transport]
 
-# POSIX-only paths used by the @buffered/threaded scenarios. The cross-platform
-# scenarios use context.example_binary / context.received_log instead, set in
-# environment.before_all from EXAMPLE_BINARY / RECEIVED_LOG / ORACLE_FORMAT.
-THREADED_BINARY = "build/debug/Example/SolidSyslogThreadedExample"
+# Paths used by the threaded/buffered scenarios. context.example_binary
+# (set in environment.before_all from EXAMPLE_BINARY / per-target default) is
+# the single binary path on every runner now — S24.04 collapsed Linux onto the
+# Threaded binary, matching Windows (single buffered example since S13.20) and
+# FreeRTOS (single buffered example since S08.04).
 SYSLOG_NG_CTL = "/var/lib/syslog-ng/syslog-ng.ctl"
 SYSLOG_NG_CONF = "Bdd/syslog-ng/syslog-ng.conf"
 SYSLOG_NG_FULL_CONF = "Bdd/syslog-ng/syslog-ng-full.conf"
@@ -386,34 +387,41 @@ def wait_for_messages(context, expected_messages):
     context.message_count = len(context.all_lines)
 
 
-def run_example(context, extra_args=None, binary=None, expected_messages=1):
-    """Run the example via the prompt protocol — works for both NullBuffer
-    (synchronous send, Linux SingleTask) and CircularBuffer + service thread
-    (asynchronous, Windows buffered example post-S13.18).
+def run_example(context, extra_args=None, expected_messages=1):
+    """Run the example via the prompt protocol.
+
+    Every supported runner ships a single buffered example binary now —
+    Linux (pthread + PosixMessageQueueBuffer, S24.04), Windows (Win32 +
+    CircularBuffer, S13.20), FreeRTOS-on-QEMU (Service task +
+    CircularBuffer, S08.04) — so context.example_binary is the only
+    binary path on any target.
+
+    Pin --app-name "SolidSyslogExample" on Linux/Windows so the RFC 5424
+    APP-NAME field stays runner-independent. Without it, Linux records
+    would carry the binary basename "SolidSyslogThreadedExample" and
+    Windows would carry "SolidSyslogExample", breaking the
+    `the app name is "SolidSyslogExample"` assertions in the
+    platform-agnostic features. FreeRTOS hardcodes the same string in
+    Example/FreeRtos/SingleTask/main.c and doesn't accept --app-name, so
+    skip the flag on that runner.
 
     The pre-S13.18 implementation wrote `send N\\nquit\\n` upfront via
     process.communicate() and relied on NullBuffer's synchronous Send to
-    guarantee delivery before exit. That assumption broke on Windows once
-    SolidSyslogExample.exe became buffered — `quit` could land before the
-    service thread had drained, losing the UDP packet. The prompt protocol
+    guarantee delivery before exit. That assumption broke once the
+    example became buffered — `quit` could land before the service
+    thread had drained, losing the UDP packet. The prompt protocol
     coordinates around it: wait for the oracle to confirm receipt before
     sending `quit`.
     """
-    binary = binary or context.example_binary
-    _run_with_prompt_protocol(context, binary, "Example", extra_args, expected_messages)
-
-
-def _run_with_prompt_protocol(context, binary, label, extra_args, expected_messages):
-    """Run a binary that speaks the SolidSyslog> prompt protocol.
-
-    Shared body for run_threaded_example (Linux pthread binary) and
-    run_buffered_example (cross-platform — Linux pthread or Windows Win32
-    threaded). The protocol is: wait initial prompt, send "send N", wait
-    next prompt, wait until oracle has confirmed N messages, then "quit".
-    """
+    binary = context.example_binary
     assert os.path.exists(binary), (
-        f"{label} binary not found at {binary} — build with cmake first"
+        f"Example binary not found at {binary} — build with cmake first"
     )
+
+    if context.target != "freertos":
+        extra_args = list(extra_args or [])
+        if "--app-name" not in extra_args:
+            extra_args += ["--app-name", "SolidSyslogExample"]
 
     process = spawn_example_process(context, extra_args=extra_args, binary=binary)
     context.example_pid = process.pid
@@ -431,7 +439,7 @@ def _run_with_prompt_protocol(context, binary, label, extra_args, expected_messa
         # binaries exit cleanly on `quit` and their return code is
         # meaningful.
         assert returncode in (0, None), (
-            f"{label} failed with exit code {returncode}"
+            f"Example failed with exit code {returncode}"
         )
     finally:
         # Don't let an intermediate exception leak the helper into later
@@ -439,34 +447,6 @@ def _run_with_prompt_protocol(context, binary, label, extra_args, expected_messa
         if process.poll() is None:
             process.kill()
             process.wait(timeout=5)
-
-
-def run_threaded_example(context, extra_args=None, expected_messages=1):
-    """Run the Linux pthread-driven Threaded example via the prompt protocol.
-    Used for features that are pthread-specific (file store, switching,
-    syslog-ng reload), which stay Linux-only and keep "the threaded example"
-    prose in their .feature files.
-    """
-    _run_with_prompt_protocol(
-        context, THREADED_BINARY, "Threaded example", extra_args, expected_messages
-    )
-
-
-def run_buffered_example(context, extra_args=None, expected_messages=1):
-    """Run the buffered example via the prompt protocol — cross-platform.
-
-    Linux runner (syslog-ng oracle): the pthread-driven Threaded example.
-    Windows runner (OTel oracle): the Win32-thread-driven example wired by
-    S13.18 — context.example_binary already points at it.
-    FreeRTOS-on-QEMU runner (syslog-ng oracle): the SingleTask example is
-    itself buffered (CircularBuffer + FreeRtosMutex + Service task, S08.04)
-    — context.example_binary already points at the .elf. Lets the same
-    .feature scenario exercise the buffering path on all three runners.
-    """
-    binary = THREADED_BINARY if context.target == "linux" else context.example_binary
-    _run_with_prompt_protocol(
-        context, binary, "Buffered example", extra_args, expected_messages
-    )
 
 
 def syslog_ng_reload():
@@ -530,8 +510,10 @@ def build_threaded_command(context, transport, no_sd=False):
     Linux runner (syslog-ng oracle): the pthread-driven Threaded example.
     Windows runner (OTel oracle): the unified SolidSyslogExample.exe — its
     BlockStore + SwitchingSender wiring (S13.20) accepts the same flags.
+    Both resolve through context.example_binary now that S24.04 retired the
+    Linux SingleTask binary.
     """
-    binary = THREADED_BINARY if context.oracle_format == "syslog-ng" else context.example_binary
+    binary = context.example_binary
     assert os.path.exists(binary), (
         f"Threaded binary not found at {binary} — build with cmake first"
     )
@@ -778,32 +760,32 @@ def step_example_sends_with_transport(context, transport):
 
 @when("the threaded example sends a syslog message")
 def step_threaded_sends_message(context):
-    run_threaded_example(context)
+    run_example(context)
 
 
 @when("the threaded example sends a syslog message with transport {transport}")
 def step_threaded_sends_with_transport(context, transport):
-    run_threaded_example(context, ["--transport", transport])
+    run_example(context, ["--transport", transport])
 
 
 @when("the threaded example sends {count:d} syslog messages")
 def step_threaded_sends_multiple(context, count):
-    run_threaded_example(context, expected_messages=count)
+    run_example(context, expected_messages=count)
 
 
 @when("the buffered example sends a syslog message")
 def step_buffered_sends_message(context):
-    run_buffered_example(context)
+    run_example(context)
 
 
 @when("the buffered example sends a syslog message with transport {transport}")
 def step_buffered_sends_with_transport(context, transport):
-    run_buffered_example(context, ["--transport", transport])
+    run_example(context, ["--transport", transport])
 
 
 @when("the buffered example sends {count:d} syslog messages")
 def step_buffered_sends_multiple(context, count):
-    run_buffered_example(context, expected_messages=count)
+    run_example(context, expected_messages=count)
 
 
 @when("the example program sends a message with facility {facility:d} and severity {severity:d}")

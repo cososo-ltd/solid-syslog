@@ -12,17 +12,12 @@ if(SOLIDSYSLOG_POSIX)
         Common/ExampleSwitchConfig.c
     )
 
-    # Single-task example: NullBuffer, direct send, bare-metal model
-    add_executable(SolidSyslogExample SingleTask/main.c SingleTask/SolidSyslogExample.c ${COMMON_SOURCES})
-    target_link_libraries(SolidSyslogExample PRIVATE ${PROJECT_NAME})
-    target_include_directories(SolidSyslogExample PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/SingleTask
-        ${CMAKE_CURRENT_SOURCE_DIR}/Common
-    )
-
     # Threaded example: PosixMessageQueueBuffer, two pthreads (requires POSIX threads and mqueue).
     # TLS transport is selected at link time via Common/ExampleTlsSender_<backend>.c
     # — OpenSSL+PosixTcp when SOLIDSYSLOG_OPENSSL, nil-object stub otherwise.
+    # This is the only Linux example binary since S24.04 retired the
+    # SingleTask + NullBuffer variant — its SwitchingSender + BlockStore
+    # wiring is a strict superset of what SingleTask used to provide.
     set(THREADED_SOURCES Threaded/main.c ${COMMON_SOURCES})
     if(SOLIDSYSLOG_OPENSSL)
         list(APPEND THREADED_SOURCES

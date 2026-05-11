@@ -278,7 +278,7 @@ Coverage report: `cmake --preset coverage && cmake --build --preset coverage --t
 Core/Interface/     — Public headers of the core library. No implementation. This is the API boundary.
 Core/Source/        — Core library implementation. Compiled into a static library.
 Platform/           — Platform-specific code (Posix, Windows, OpenSsl) — each a subfolder with its own Interface/ and Source/.
-Example/            — Example applications (Common, SingleTask, Threaded).
+Example/            — Example applications (Common, Threaded, Windows, FreeRtos).
 Tests/              — CppUTest unit tests. Never link production code directly; always via the library.
 Tests/Support/      — PosixFakes static lib (SocketFake, ClockFake) — shared across test executables.
 Tests/Example/      — Example code unit tests (ExampleTests executable).

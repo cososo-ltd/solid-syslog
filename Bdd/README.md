@@ -8,7 +8,7 @@ same feature files run on every target — the active runner is selected by the
 
 | `BDD_TARGET` | Example-under-test | Oracle |
 |---|---|---|
-| `linux` (default) | `build/debug/Example/SolidSyslogExample` (native subprocess) | `syslog-ng-linux` |
+| `linux` (default) | `build/debug/Example/SolidSyslogThreadedExample` (native subprocess) | `syslog-ng-linux` |
 | `windows` | `build/msvc-debug/Example/Debug/SolidSyslogExample.exe` (native subprocess) | `otelcol-contrib` |
 | `freertos` | `build/freertos-cross/Example/FreeRtos/SingleTask/SolidSyslogFreeRtosSingleTask.elf` driven through `qemu-system-arm` | `syslog-ng-freertos` |
 
