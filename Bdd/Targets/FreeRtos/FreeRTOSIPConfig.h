@@ -1,17 +1,20 @@
 #ifndef FREERTOS_IP_CONFIG_H
 #define FREERTOS_IP_CONFIG_H
 
-/* FreeRTOS-Plus-TCP configuration for the QEMU mps2-an385 bring-up smoke
- * test (slice 3b.1 of S08.03). UDP-only, IPv4 static address, no DHCP / DNS /
- * LLMNR / NBNS / TCP / IPv6. The smoke task creates a UDP socket and sends a
- * single datagram to the slirp gateway (10.0.2.2:5514). */
+/* FreeRTOS-Plus-TCP configuration for the QEMU mps2-an385 BDD target. UDP +
+ * TCP, IPv4 static address, no DHCP / DNS / LLMNR / NBNS / IPv6. UDP was
+ * brought up in S08.03; S08.09 enables TCP for the SolidSyslogFreeRtosTcpStream
+ * adapter so the SwitchingSender's TCP branch can land its frames on the
+ * syslog-ng oracle alongside the existing UDP scenarios. */
 
 #define ipconfigBYTE_ORDER pdFREERTOS_LITTLE_ENDIAN
 
 #define ipconfigUSE_IPv4 1
 #define ipconfigUSE_IPv6 0
 #define ipconfigUSE_RA 0
-#define ipconfigUSE_TCP 0
+#define ipconfigUSE_TCP 1
+#define ipconfigTCP_KEEP_ALIVE 1
+#define ipconfigTCP_KEEP_ALIVE_INTERVAL 10
 #define ipconfigUSE_DHCP 0
 #define ipconfigUSE_DHCPv6 0
 #define ipconfigUSE_DHCP_HOOK 0
@@ -30,7 +33,10 @@
 #define ipconfigSUPPORT_SELECT_FUNCTION 0
 #define ipconfigFILTER_OUT_NON_ETHERNET_II_FRAMES 1
 
-#define ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS 8
+/* Doubled from 8 — TCP needs descriptors for its retransmit window in
+ * addition to the in-flight UDP frames, and 8 is already tight on the BDD
+ * scenarios. The extra ~3 KB of .bss is trivial against mps2-an385 SRAM. */
+#define ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS 16
 #define ipconfigEVENT_QUEUE_LENGTH (ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS + 5)
 #define ipconfigNETWORK_MTU 1500
 

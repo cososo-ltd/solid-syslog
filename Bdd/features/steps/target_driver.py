@@ -37,6 +37,11 @@ _FREERTOS_SET_TRANSLATION = {
     "--severity": "severity",
     "--msgid": "msgid",
     "--message": "msg",
+    # `--transport <udp|tcp>` lands as `set transport <value>` on the UART;
+    # OnSet routes it through BddTargetSwitchConfig_SetByName to flip the
+    # SolidSyslogSwitchingSender's active inner sender. Added in S08.09 with
+    # the FreeRTOS TCP stream adapter.
+    "--transport": "transport",
 }
 
 

@@ -22,6 +22,7 @@
 #include "BddTargetInteractive.h"
 #include "BddTargetIps.h"
 #include "BddTargetLanguage.h"
+#include "BddTargetSwitchConfig.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogCircularBuffer.h"
@@ -33,10 +34,13 @@
 #include "SolidSyslogFreeRtosMutex.h"
 #include "SolidSyslogFreeRtosStaticResolver.h"
 #include "SolidSyslogFreeRtosSysUpTime.h"
+#include "SolidSyslogFreeRtosTcpStream.h"
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogStreamSender.h"
+#include "SolidSyslogSwitchingSender.h"
 #include "SolidSyslogTimeQuality.h"
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
@@ -85,12 +89,17 @@
  * Empirically the task hard-faults at *16 (8 KB) once the SolidSyslog
  * setup runs — newlib printf and the formatter path together exceed that
  * budget. *32 (16 KB) was stable while the line buffer was 256 B; the
- * MAX_LINE_LENGTH bump to 2048 B in slice 6 adds ~4 KB peak (line + name
- * frames) so *40 (20 KB) gives ~4 KB headroom. A follow-up will introduce
+ * MAX_LINE_LENGTH bump to 2048 B in slice 6 added ~4 KB peak (line + name
+ * frames) so *40 (20 KB) gave ~4 KB headroom. S08.09 adds a TCP path —
+ * StreamSender.Connect's address+host-formatter storage and
+ * TransmitFramed's prefix formatter consume an extra ~512 B of stack on
+ * top of the UDP-only chain — empirically tipping a *40 budget over the
+ * edge when the SwitchingSender flips transports under repeated sends.
+ * *48 (24 KB) restores ~4 KB headroom. A follow-up will introduce
  * CMake-driven memory scaling once the budget is properly characterised.
  * The task only exists in this single-task example, so heap_4 (96 KB)
  * absorbs it. */
-#define INTERACTIVE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 40U)
+#define INTERACTIVE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 48U)
 
 /* Static IPv4 wiring matching the QEMU slirp default. 10.0.2.15 is the
  * standard slirp DHCP-allocated guest address; we hardcode it here so no
@@ -134,6 +143,8 @@ static NetworkEndPoint_t  networkEndPoint;
 
 static SolidSyslogFreeRtosStaticResolverStorage resolverStorage;
 static SolidSyslogFreeRtosDatagramStorage       datagramStorage;
+static SolidSyslogFreeRtosTcpStreamStorage      tcpStreamStorage;
+static SolidSyslogStreamSenderStorage           tcpSenderStorage;
 
 /* CircularBuffer + FreeRtosMutex composition for cross-task emission.
  * 8 max-sized messages is comfortably above the 3-message BDD scenarios
@@ -306,6 +317,16 @@ static bool OnSet(const char* name, const char* value)
         g_message.severity = (enum SolidSyslog_Severity) parsed;
         return true;
     }
+    if (strcmp(name, "transport") == 0)
+    {
+        /* Switching sender selector — "udp" / "tcp" / "tls" / "mtls" route
+         * through BddTargetSwitchConfig (Bdd/Targets/Common). The FreeRTOS
+         * target only wires UDP and TCP inner senders today; selecting tls
+         * falls through to the SwitchingSender's nil sender, surfacing the
+         * gap as a send failure rather than a crash. */
+        BddTargetSwitchConfig_SetByName(value);
+        return true;
+    }
     return false;
 }
 
@@ -355,7 +376,35 @@ static void InteractiveTask(void* argument)
         .endpoint        = GetEndpoint,
         .endpointVersion = GetEndpointVersion,
     };
-    struct SolidSyslogSender* sender = SolidSyslogUdpSender_Create(&udpConfig);
+    struct SolidSyslogSender* udpSender = SolidSyslogUdpSender_Create(&udpConfig);
+
+    /* Plain TCP path via the new FreeRTOS Plus-TCP stream adapter. Shares the
+     * UDP endpoint callbacks because the BDD oracle (syslog-ng) listens on the
+     * same host:port for both transports — the syslog-ng config in
+     * Bdd/syslog-ng/syslog-ng.conf has a TCP listener on 5514 alongside UDP. */
+    struct SolidSyslogStream*            stream    = SolidSyslogFreeRtosTcpStream_Create(&tcpStreamStorage);
+    struct SolidSyslogStreamSenderConfig tcpConfig = {
+        .resolver        = resolver,
+        .stream          = stream,
+        .endpoint        = GetEndpoint,
+        .endpointVersion = GetEndpointVersion,
+    };
+    struct SolidSyslogSender* tcpSender = SolidSyslogStreamSender_Create(&tcpSenderStorage, &tcpConfig);
+
+    /* SwitchingSender lets `set transport <udp|tcp>` flip the active transport
+     * at runtime. Default to UDP so existing UDP-tagged scenarios stay green;
+     * `--transport tcp` flowing through the behave harness lands here as
+     * `set transport tcp` over the UART and switches before the first send. */
+    static struct SolidSyslogSender* inners[2];
+    inners[BDD_TARGET_SWITCH_UDP]                        = udpSender;
+    inners[BDD_TARGET_SWITCH_TCP]                        = tcpSender;
+    struct SolidSyslogSwitchingSenderConfig switchConfig = {
+        .senders     = inners,
+        .senderCount = sizeof(inners) / sizeof(inners[0]),
+        .selector    = BddTargetSwitchConfig_Selector,
+    };
+    BddTargetSwitchConfig_SetByName("udp");
+    struct SolidSyslogSender* sender = SolidSyslogSwitchingSender_Create(&switchConfig);
 
     /* CircularBuffer drained by ServiceTask below, with a FreeRtosMutex
      * gating concurrent producers (interactive task today; multi-task
@@ -412,6 +461,9 @@ static void InteractiveTask(void* argument)
     SolidSyslogNullStore_Destroy();
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogFreeRtosMutex_Destroy(mutex);
+    SolidSyslogSwitchingSender_Destroy();
+    SolidSyslogStreamSender_Destroy(tcpSender);
+    SolidSyslogFreeRtosTcpStream_Destroy(stream);
     SolidSyslogUdpSender_Destroy();
     SolidSyslogFreeRtosDatagram_Destroy(datagram);
     SolidSyslogFreeRtosStaticResolver_Destroy(resolver);

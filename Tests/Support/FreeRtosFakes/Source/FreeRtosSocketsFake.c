@@ -42,10 +42,14 @@ static bool       recvFails       = false;
 static bool       recvReturnSet   = false;
 static BaseType_t recvReturnValue = 0;
 
-static TickType_t lastSndTimeoSet      = 0;
-static TickType_t lastRcvTimeoSet      = 0;
-static unsigned   rcvTimeoSetCallCount = 0;
-static TickType_t sndTimeoAtConnect    = 0;
+static TickType_t lastSndTimeoSet            = 0;
+static TickType_t lastRcvTimeoSet            = 0;
+static unsigned   rcvTimeoSetCallCount       = 0;
+static Socket_t   lastSetsockoptSocket       = NULL;
+static int32_t    lastSetsockoptLevel        = 0;
+static int32_t    lastSetsockoptOptionName   = 0;
+static size_t     lastSetsockoptOptionLength = 0;
+static TickType_t sndTimeoAtConnect          = 0;
 
 static unsigned closesocketCallCount  = 0;
 static Socket_t lastClosesocketSocket = NULL;
@@ -98,10 +102,14 @@ void FreeRtosSocketsFake_Reset(void)
     recvReturnSet   = false;
     recvReturnValue = 0;
 
-    lastSndTimeoSet      = 0;
-    lastRcvTimeoSet      = 0;
-    rcvTimeoSetCallCount = 0;
-    sndTimeoAtConnect    = 0;
+    lastSndTimeoSet            = 0;
+    lastRcvTimeoSet            = 0;
+    rcvTimeoSetCallCount       = 0;
+    lastSetsockoptSocket       = NULL;
+    lastSetsockoptLevel        = 0;
+    lastSetsockoptOptionName   = 0;
+    lastSetsockoptOptionLength = 0;
+    sndTimeoAtConnect          = 0;
 
     closesocketCallCount  = 0;
     lastClosesocketSocket = NULL;
@@ -247,11 +255,32 @@ unsigned FreeRtosSocketsFake_RcvTimeoSetCallCount(void)
     return rcvTimeoSetCallCount;
 }
 
+Socket_t FreeRtosSocketsFake_LastSetsockoptSocket(void)
+{
+    return lastSetsockoptSocket;
+}
+
+int32_t FreeRtosSocketsFake_LastSetsockoptLevel(void)
+{
+    return lastSetsockoptLevel;
+}
+
+int32_t FreeRtosSocketsFake_LastSetsockoptOptionName(void)
+{
+    return lastSetsockoptOptionName;
+}
+
+size_t FreeRtosSocketsFake_LastSetsockoptOptionLength(void)
+{
+    return lastSetsockoptOptionLength;
+}
+
 BaseType_t FreeRTOS_setsockopt(Socket_t xSocket, int32_t lLevel, int32_t lOptionName, const void* pvOptionValue, size_t uxOptionLength)
 {
-    (void) xSocket;
-    (void) lLevel;
-    (void) uxOptionLength;
+    lastSetsockoptSocket       = xSocket;
+    lastSetsockoptLevel        = lLevel;
+    lastSetsockoptOptionName   = lOptionName;
+    lastSetsockoptOptionLength = uxOptionLength;
     if (lOptionName == FREERTOS_SO_SNDTIMEO)
     {
         lastSndTimeoSet = *(const TickType_t*) pvOptionValue;

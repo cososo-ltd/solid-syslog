@@ -74,6 +74,10 @@ EXTERN_C_BEGIN
     TickType_t FreeRtosSocketsFake_LastSndTimeoSet(void);
     TickType_t FreeRtosSocketsFake_LastRcvTimeoSet(void);
     unsigned   FreeRtosSocketsFake_RcvTimeoSetCallCount(void);
+    Socket_t   FreeRtosSocketsFake_LastSetsockoptSocket(void);
+    int32_t    FreeRtosSocketsFake_LastSetsockoptLevel(void);
+    int32_t    FreeRtosSocketsFake_LastSetsockoptOptionName(void);
+    size_t     FreeRtosSocketsFake_LastSetsockoptOptionLength(void);
 
     /* closesocket accessors */
     unsigned FreeRtosSocketsFake_ClosesocketCallCount(void);

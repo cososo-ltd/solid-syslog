@@ -98,6 +98,19 @@ TEST(SolidSyslogFreeRtosTcpStream, OpenClearsRecvTimeoutAfterConnect)
     LONGS_EQUAL(1, FreeRtosSocketsFake_RcvTimeoSetCallCount());
 }
 
+TEST(SolidSyslogFreeRtosTcpStream, OpenCallsSetsockoptWithReturnedSocketAndLevelZero)
+{
+    SolidSyslogStream_Open(stream, addr);
+    POINTERS_EQUAL(FreeRtosSocketsFake_LastSocketReturned(), FreeRtosSocketsFake_LastSetsockoptSocket());
+    LONGS_EQUAL(0, FreeRtosSocketsFake_LastSetsockoptLevel());
+}
+
+TEST(SolidSyslogFreeRtosTcpStream, OpenPassesTickTypeSizedOptionLengthToSetsockopt)
+{
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(sizeof(TickType_t), FreeRtosSocketsFake_LastSetsockoptOptionLength());
+}
+
 TEST(SolidSyslogFreeRtosTcpStream, OpenReturnsFalseOnConnectFailure)
 {
     FreeRtosSocketsFake_SetConnectFails(true);

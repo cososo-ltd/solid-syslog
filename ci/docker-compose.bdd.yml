@@ -101,7 +101,11 @@ services:
     environment:
       - BDD_TARGET=freertos
       - EXAMPLE_BINARY=build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and @udp' Bdd/features/
+    # S08.09 admits @tcp scenarios so tcp_transport.feature runs alongside the
+    # existing @udp ones; @buffered excludes store-and-forward features that
+    # need a file-backed store (no FreeRTOS file abstraction yet), and
+    # @windows_wip excludes the Windows-only TCP singletask variant.
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @buffered and not @windows_wip and (@udp or @tcp)' Bdd/features/
 
 volumes:
   bdd-output-linux:
