@@ -4,10 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+#include "ExternC.h"
+
+EXTERN_C_BEGIN
 
     typedef uint32_t (*CmsdkUartRead32Function)(uintptr_t address);
     typedef void (*CmsdkUartWrite32Function)(uintptr_t address, uint32_t value);
@@ -25,8 +24,6 @@ extern "C"
     void CmsdkUart_Write(const char* buffer, size_t length);
     char CmsdkUart_GetChar(void);
 
-#ifdef __cplusplus
-}
-#endif
+EXTERN_C_END
 
 #endif

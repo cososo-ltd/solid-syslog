@@ -41,6 +41,7 @@ target_compile_options(SolidSyslogFreeRtosHelloWorld PRIVATE
 target_include_directories(SolidSyslogFreeRtosHelloWorld PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h
     ${SOLID_SYSLOG_FREERTOS_EXAMPLE_COMMON_DIR}       # CmsdkUart.h
+    ${CMAKE_SOURCE_DIR}/Core/Interface                # ExternC.h (via CmsdkUart.h)
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                              # portmacro.h
 )

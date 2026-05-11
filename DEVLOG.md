@@ -5497,3 +5497,56 @@ Four files modified, one added. 1088 tests still pass; format / tidy
   a CMake-selected `TestAtomicOpsWindows.c` / `TestAtomicOpsStd.c`
   shim mirroring the `SafeString*.c` pattern. Left to a follow-up so
   this PR stays focused on the one deviation Code Review surfaced.
+
+## 2026-05-11 — CmsdkUart extern "C" idiom via EXTERN_C macros
+
+### Summary
+
+Two CMSDK UART headers (`Example/FreeRtos/Common/CmsdkUart.h` and its
+fake `Tests/FreeRtos/CmsdkUartFake.h`) carried inline
+`#ifdef __cplusplus extern "C" {` / `#endif` blocks for the same C/C++
+interop reason as `Core/Interface/ExternC.h`, but written out by hand
+rather than reusing the `EXTERN_C_BEGIN` / `EXTERN_C_END` macros. The
+intent was identical; this PR just routes both headers through the
+canonical macro pair so the test base's preprocessor-conditional
+inventory is "ExternC.h, and one TestAtomicOps deviation, and nothing
+else".
+
+Include-path additions needed:
+
+- `Example/FreeRtos/HelloWorld/CMakeLists.txt` — adds
+  `${CMAKE_SOURCE_DIR}/Core/Interface` to pick up `ExternC.h` via
+  `CmsdkUart.h`.
+- `Tests/FreeRtos/CMakeLists.txt` (CmsdkUartTest target) — same.
+- `Example/FreeRtos/SingleTask` already had `Core/Interface` on its
+  include path; no change.
+
+### Decisions
+
+- **Reuse the macro rather than copy the idiom.** A canonical
+  `EXTERN_C_BEGIN` / `EXTERN_C_END` exists; carrying a second
+  copy-paste version of the same `#ifdef __cplusplus` pattern in two
+  more headers was drift in disguise. One macro, one place,
+  consistent across the project.
+- **Kept HelloWorld working rather than retiring it now.** Memory
+  flagged HelloWorld as a retirement candidate; the one-line include
+  bump is much smaller than a retirement, and retiring HelloWorld is
+  a separate decision with its own blast radius (top-level CMake
+  gate, docs references, example wiring). Surface the question
+  again next time HelloWorld is touched.
+
+### Verified
+
+- gcc host preset: 1088 tests pass.
+- freertos-host preset: CmsdkUartTest (15 tests) green.
+- freertos-cross ARM build: both `SolidSyslogFreeRtosHelloWorld` and
+  `SolidSyslogFreeRtosSingleTask` link clean. (Couldn't run the QEMU
+  smoke locally; relying on CI's `bdd-freertos-qemu` job for that.)
+- clang-format / tidy / cppcheck: clean.
+
+### Deferred
+
+- `Tests/Support/TestAtomicOps.h:8` — still the one remaining
+  non-authorised preprocessor conditional in the codebase. Same fix
+  outlined in the previous entry; not done in this PR to keep scope
+  tight.

@@ -2,14 +2,12 @@
 #define CMSDK_UART_FAKE_H
 
 #include "CmsdkUart.h"
+#include "ExternC.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+EXTERN_C_BEGIN
 
     /* Reset the fake's internal state. baseAddress must match the value passed
      * to CmsdkUart_Init so the fake can decode register offsets. */
@@ -46,8 +44,6 @@ extern "C"
      * value to force the driver to spin on STATE before reading DATA. */
     void CmsdkUartFake_SetReadsBeforeRxReady(int reads);
 
-#ifdef __cplusplus
-}
-#endif
+EXTERN_C_END
 
 #endif
