@@ -6036,3 +6036,68 @@ tag in the same pass.
   `SOLIDSYSLOG_MAX_MESSAGE_SIZE` / SD-count knobs in the resource-sizing
   backlog? Trivial to change later, but worth flagging for the resource-
   sizing epic when it lands.
+
+## 2026-05-11 — S24.04 retire Linux SingleTask binary
+
+### Decisions
+
+- **Linux BDD now drives the Threaded binary by default.**
+  `environment.before_all`'s `BDD_TARGET=linux` default flipped from
+  `build/debug/Example/SolidSyslogExample` to
+  `build/debug/Example/SolidSyslogThreadedExample`. The Threaded
+  binary's SwitchingSender + BlockStore wiring is a strict superset of
+  what the SingleTask NullBuffer binary covered after S15, so the
+  cross-platform `the example program sends ...` scenarios run
+  unchanged. Windows BDD already collapsed to one binary in S13.20,
+  FreeRTOS in S08.04 slice 2 — Linux was the last platform carrying
+  two.
+- **Pin `--app-name "SolidSyslogExample"` in `run_example` for
+  non-FreeRTOS targets.** Without it Linux records would carry the
+  basename `SolidSyslogThreadedExample` and Windows would carry
+  `SolidSyslogExample`, breaking the platform-agnostic
+  `the app name is "SolidSyslogExample"` assertions. FreeRTOS
+  hardcodes the same string in its example main and has no `getopt`
+  port, so skip the injection on that runner. Lighter touch than
+  rewriting the feature lines and keeps `SolidSyslogExample` as the
+  user-visible APP-NAME until S24.05 finishes the rename pass.
+- **Collapsed `run_example` / `run_threaded_example` /
+  `run_buffered_example` into a single helper.** The three feature
+  phrasings — *the example program*, *the threaded example*, *the
+  buffered example* — stay distinct in `.feature` prose so the
+  scenario intent is still readable, but all three Python decorators
+  now dispatch to `run_example`. Same for `build_threaded_command`,
+  which dropped its `oracle_format` branch. `THREADED_BINARY`
+  constant gone.
+- **Pre-flip audit confirmed no implicit-synchronous-send fragility
+  in `run_example` callers.** Every caller already routes through
+  `_run_with_prompt_protocol` → `wait_for_messages`, which polls
+  oracle-receipt before issuing `quit`. NullBuffer's synchronous-send
+  semantics were never load-bearing on the assertions; the prompt
+  protocol coordinates the buffered drain. Confirmed locally by
+  re-running the Linux BDD suite (`not @wip and not @windows_wip and
+  not @freertoswip and not @no_rtc`): 44 scenarios pass.
+- **Deleted `Example/SingleTask/` and
+  `Tests/Example/SolidSyslogExampleTest.cpp`** plus the matching
+  CMake entries and CI workflow references (`SolidSyslogExample`
+  target name, artifact path, `chmod +x` step). Existing
+  `analyze-format` / `analyze-tidy` / `analyze-cppcheck` / `sanitize`
+  / `coverage` (99.5% lines, 98.9% functions) presets all green
+  locally.
+
+### Deferred
+
+- Renaming or moving the Threaded binary out of `Example/` — that's
+  S24.05 (issue #333), which depends on this story landing first.
+- DEVLOG and historical blog references to the SingleTask binary
+  remain untouched per *Never rewrite history*. Live docs
+  (`README.md`, `Bdd/README.md`, `docs/bdd.md`, `CLAUDE.md`) updated
+  to reflect the post-S24.04 layout.
+
+### Open questions
+
+- None — the residual `SolidSyslogExample` string mentions in the
+  repo are all either the Windows binary's `OUTPUT_NAME`, the
+  hardcoded `OriginSdConfig.software` value, the FreeRTOS app-name
+  global, or the `--app-name` pin in `run_example`. They are not
+  references to the (now-deleted) SingleTask binary and S24.05's
+  rename pass will revisit them.

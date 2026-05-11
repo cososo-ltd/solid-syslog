@@ -70,13 +70,11 @@ def spawn_example_process(context, extra_args=None, binary=None):
     commands instead — they are delivered via apply_extra_args after
     the prompt is up.
 
-    binary defaults to context.example_binary (the standard SingleTask
-    binary or its FreeRTOS .elf equivalent); callers that drive a
-    different example (e.g. the Linux Threaded binary) pass it
-    explicitly. On FreeRTOS, the SingleTask .elf is itself buffered
-    (CircularBuffer + FreeRtosMutex + Service task, S08.04) so it
-    serves both the @buffered scenarios and the plain single-message
-    path — there is no separate FreeRTOS threaded binary.
+    binary defaults to context.example_binary. Each supported runner
+    ships a single buffered example binary now — Linux's pthread
+    Threaded example (S24.04), Windows's Win32 buffered example
+    (S13.20), and the FreeRTOS CircularBuffer + Service-task .elf
+    (S08.04) — so callers don't override the default in normal use.
     """
     target = getattr(context, "target", "linux")
     if binary is None:

@@ -30,7 +30,7 @@ jobs:
         run: cmake --preset debug
 
       - name: Build and test
-        run: cmake --build --preset debug --target junit ExampleTests SolidSyslogExample SolidSyslogThreadedExample
+        run: cmake --build --preset debug --target junit ExampleTests SolidSyslogThreadedExample
 
       - name: Run example tests
         run: cd build/debug && ./Tests/Example/ExampleTests -ojunit -k ExampleTests
@@ -56,7 +56,6 @@ jobs:
         with:
           name: solid-syslog-examples
           path: |
-            build/debug/Example/SolidSyslogExample
             build/debug/Example/SolidSyslogThreadedExample
           retention-days: 1
           compression-level: 0
@@ -622,8 +621,8 @@ jobs:
           name: solid-syslog-examples
           path: build/debug/Example/
 
-      - name: Make example binaries executable
-        run: chmod +x build/debug/Example/SolidSyslogExample build/debug/Example/SolidSyslogThreadedExample
+      - name: Make example binary executable
+        run: chmod +x build/debug/Example/SolidSyslogThreadedExample
 
       - name: Prepare BDD output directory
         run: mkdir -p Bdd/junit && chmod 777 Bdd/junit
@@ -678,7 +677,7 @@ jobs:
         run: cmake --preset debug
 
       - name: Build and test
-        run: cmake --build --preset debug --target junit ExampleTests SolidSyslogExample SolidSyslogThreadedExample
+        run: cmake --build --preset debug --target junit ExampleTests SolidSyslogThreadedExample
 
   build-freertos-target:
     runs-on: ubuntu-latest
