@@ -7,7 +7,7 @@
         {
             "label": "build and test",
             "type": "shell",
-            "command": "case \"$BUILD_PRESET\" in '') behave Bdd/features/ ;; freertos-cross) cmake --build --preset \"$BUILD_PRESET\" --target SolidSyslogFreeRtosHelloWorld ;; *) cmake --build --preset \"$BUILD_PRESET\" --target SolidSyslogTests && ctest --preset \"$BUILD_PRESET\" --verbose --tests-regex '^SolidSyslogTests$' ;; esac",
+            "command": "case \"$BUILD_PRESET\" in '') behave Bdd/features/ ;; freertos-cross) cmake --build --preset \"$BUILD_PRESET\" --target SolidSyslogFreeRtosSingleTask ;; *) cmake --build --preset \"$BUILD_PRESET\" --target SolidSyslogTests && ctest --preset \"$BUILD_PRESET\" --verbose --tests-regex '^SolidSyslogTests$' ;; esac",
             "windows": {
                 "command": "cmake --preset msvc-debug; if ($?) { cmake --build --preset msvc-debug --target SolidSyslogTests }; if ($?) { ctest --preset msvc-debug --verbose --tests-regex '^SolidSyslogTests$' }"
             },
@@ -68,15 +68,18 @@
         },
         {
             "label": "run on QEMU (FreeRTOS)",
-            "detail": "One-shot run of the FreeRTOS hello-world ELF under QEMU. Use only in the freertos-target service.",
+            "detail": "One-shot interactive run of the FreeRTOS SingleTask ELF under QEMU. Drives UART0 to stdio so you can type `send 1` / `quit` at the SolidSyslog> prompt. Use only in the freertos-target service.",
             "type": "shell",
             "command": "qemu-system-arm",
             "args": [
                 "-M", "mps2-an385",
                 "-m", "16M",
-                "-nographic",
-                "-semihosting-config", "enable=on,target=native",
-                "-kernel", "build/freertos-cross/Example/FreeRtos/HelloWorld/SolidSyslogFreeRtosHelloWorld.elf"
+                "-display", "none",
+                "-serial", "stdio",
+                "-icount", "shift=auto,sleep=off,align=off",
+                "-netdev", "user,id=net0",
+                "-net", "nic,netdev=net0,model=lan9118",
+                "-kernel", "build/freertos-cross/Example/FreeRtos/SingleTask/SolidSyslogFreeRtosSingleTask.elf"
             ],
             "presentation": {
                 "reveal": "always",

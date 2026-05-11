@@ -8,5 +8,4 @@
 # files via this variable; nothing in Common/ is its own build target.
 set(SOLID_SYSLOG_FREERTOS_EXAMPLE_COMMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Common)
 
-add_subdirectory(HelloWorld)
 add_subdirectory(SingleTask)

@@ -28,7 +28,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 # the Cortex-M3 can decode. arm-none-eabi-gcc otherwise defaults to ARM mode
 # for armv7+, which links cleanly but hard-faults on the first call from
 # Thumb code (slice 3b.2 hit this on SolidSyslogUdpSender_Create). Per-target
-# additions in HelloWorld / SingleTask remain idempotent on top of this.
+# additions in SingleTask remain idempotent on top of this.
 set(CMAKE_C_FLAGS_INIT   "-mcpu=cortex-m3 -mthumb -ffunction-sections -fdata-sections -fno-common")
 set(CMAKE_CXX_FLAGS_INIT "-mcpu=cortex-m3 -mthumb -ffunction-sections -fdata-sections -fno-common")
 set(CMAKE_ASM_FLAGS_INIT "-mcpu=cortex-m3 -mthumb")

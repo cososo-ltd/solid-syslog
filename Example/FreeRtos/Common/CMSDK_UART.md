@@ -1,7 +1,7 @@
 # CMSDK APB UART — driver contract
 
 Reference document for `CmsdkUart.{h,c}` — the polled UART0 driver used by
-the FreeRTOS HelloWorld example to route `printf` over QEMU `-serial stdio`.
+the FreeRTOS SingleTask example to route `printf` over QEMU `-serial stdio`.
 Written during S08.03 slice 2 (#290) review after a code-review pass found
 the v1 driver was missing `STATE.TX_FULL` polling.
 
@@ -332,8 +332,8 @@ TX critical section is `spin while STATE.TXFULL; write DATA`. If two
 tasks share the UART without a mutex, lines from the two tasks become
 garbled at byte granularity, and TXOVERRUN can occur.
 
-**For slice 2** (HelloWorld, single task) no mutex is needed — there's
-only one producer.
+**During S08 bring-up** (slice 2, single producer task printing one
+greeting) no mutex was needed.
 
 **For slice 3+** (`Example/Common/` brings a Service thread + interactive
 task) a FreeRTOS mutex (not a binary semaphore — we want priority

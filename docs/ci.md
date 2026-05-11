@@ -24,7 +24,7 @@ without renaming what's already there.
 | `bdd-linux-syslog-ng` | — | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
 | `bdd-windows-otel` | — | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
 | `build-freertos-host-tdd` | `debug` | Host-TDD of FreeRTOS adapters against fakes; runs inside `cpputest-freertos` (FreeRTOS upstream sources at fixed paths) |
-| `build-freertos-target` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385); QEMU bring-up smoke for HelloWorld; uploads the SingleTask ELF as an artifact for `bdd-freertos-qemu` |
+| `build-freertos-target` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the SingleTask ELF; uploads it as an artifact for `bdd-freertos-qemu` |
 | `bdd-freertos-qemu` | — | Pulls the SingleTask ELF artifact, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the example through `qemu-system-arm`'s UART |
 
 ## Branch protection

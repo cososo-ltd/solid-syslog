@@ -103,7 +103,7 @@ The same VS Code keys work across every service:
   - `Debug SolidSyslogTests (host)` — works in `gcc`, `clang`, and
     `freertos-host` (path resolves via `${env:BUILD_PRESET}`). Builds first
     via the same `build and test` task and stops at `main`.
-  - `Debug FreeRTOS HelloWorld (QEMU)` — works in `freertos-target`
+  - `Debug FreeRTOS SingleTask (QEMU)` — works in `freertos-target`
     (cortex-debug + arm-none-eabi-gdb + qemu-system-arm). Stops at `main`
     via `runToEntryPoint`.
   - After switching the devcontainer service, pick the matching config from

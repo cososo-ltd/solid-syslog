@@ -697,43 +697,8 @@ jobs:
       - name: Configure (ARM cross)
         run: cmake --preset freertos-cross
 
-      - name: Cross-build ELFs
-        run: cmake --build --preset freertos-cross --target SolidSyslogFreeRtosHelloWorld SolidSyslogFreeRtosSingleTask
-
-      # QEMU smoke: run the ELF for a few seconds, capture stdout, assert the
-      # expected greeting. timeout returns 124 when it kills QEMU, which is
-      # the success path here — we want the scheduler to keep idling so GDB
-      # can attach in interactive use.
-      #
-      # -display none + -serial stdio routes UART0 (CMSDK_UART0 @ 0x40004000)
-      # to the host's stdin/stdout. Slice 2 (#290) replaced semihosting with
-      # a polled CMSDK UART driver + newlib retargeting so the IP stack and
-      # console can run independently in slice 3+ — semihosting BKPT traps
-      # would otherwise stall the entire VM during every read/write.
-      #
-      # -icount shift=auto,sleep=off,align=off advances the virtual clock by
-      # retired guest instructions rather than wall-clock, decoupling guest
-      # timing from host load. Forward-compatibility groundwork for the BDD
-      # timing scenarios in S08.03+; no behavioural change at this story.
-      - name: Run ELF under QEMU mps2-an385
-        shell: bash
-        run: |
-          set -o pipefail
-          set +e
-          OUT=$(timeout 5 qemu-system-arm \
-              -M mps2-an385 -m 16M \
-              -display none -serial stdio \
-              -icount shift=auto,sleep=off,align=off \
-              -kernel build/freertos-cross/Example/FreeRtos/HelloWorld/SolidSyslogFreeRtosHelloWorld.elf \
-              2>&1)
-          RC=$?
-          set -e
-          echo "$OUT"
-          # timeout returns 124 when it kills QEMU; that's our success path —
-          # the scheduler keeps idling so an interactive GDB attach works.
-          # Anything else means QEMU exited early (crash or hard fault).
-          [ "$RC" -eq 124 ] || { echo "Expected timeout exit 124, got $RC"; exit 1; }
-          echo "$OUT" | grep -q "hello from FreeRTOS on QEMU mps2-an385"
+      - name: Cross-build SingleTask ELF
+        run: cmake --build --preset freertos-cross --target SolidSyslogFreeRtosSingleTask
 
       - name: Upload SingleTask ELF
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0

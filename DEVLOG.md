@@ -6101,3 +6101,68 @@ tag in the same pass.
   global, or the `--app-name` pin in `run_example`. They are not
   references to the (now-deleted) SingleTask binary and S24.05's
   rename pass will revisit them.
+
+## 2026-05-11 — S24.06 retire Example/FreeRtos/HelloWorld
+
+### Decisions
+
+- **HelloWorld retired ahead of S24.05's BDD-target move.** Watching
+  brief had been live since S08.04 slice 2 (decision flagged for
+  slice 3 gate); SingleTask now exercises every layer HelloWorld
+  did — cross-compile, scheduler, CMSDK UART, newlib retargeting,
+  vector table, FreeRTOS port — plus the IP stack and the library.
+  Diagnostic separation is no longer load-bearing: if SingleTask
+  fails before the `SolidSyslog>` prompt the boot chain is suspect,
+  same signal HelloWorld gave. Retiring first lets #333 relocate a
+  clean single-child FreeRTOS tree.
+- **Repointed the VS Code FreeRTOS dev surface at SingleTask.**
+  `tasks.json`'s `build and test` task under `freertos-cross`
+  switches target from `SolidSyslogFreeRtosHelloWorld` to
+  `SolidSyslogFreeRtosSingleTask`. The `run on QEMU (FreeRTOS)`
+  task rewires its QEMU args to match the BDD harness
+  (`-display none -serial stdio -icount … -netdev user … -net
+  nic,…model=lan9118`) so the interactive `SolidSyslog>` prompt
+  reaches the terminal and the IP stack can come up — drops the
+  HelloWorld-specific `-nographic` + `-semihosting-config`.
+  `launch.json`'s cortex-debug entry renames to
+  `Debug FreeRTOS SingleTask (QEMU)`, drops `-semihosting-config`
+  from `serverArgs`, and adds the netdev pair.
+- **Dropped the `build-freertos-target` QEMU smoke step.** The job
+  now cross-builds the SingleTask ELF and uploads it as an
+  artefact for `bdd-freertos-qemu`; no separate
+  `-kernel HelloWorld.elf` execute step. The artefact pipeline is
+  the smoke — `bdd-freertos-qemu` immediately drives the ELF under
+  QEMU and asserts on RFC 5424 receipt at the oracle, so any boot
+  regression surfaces in the same job. Saves ~10 s and one moving
+  part.
+- **Live-doc rewrites only; DEVLOG history untouched.**
+  `Example/FreeRtos/README.md` is now a single-example doc focused
+  on SingleTask (table replaced with prose; "How it works" rewritten
+  around CMSDK UART + FreeRTOS-Plus-TCP + Service task instead of
+  newlib rdimon). `docs/ci.md`, `docs/containers.md` updated to
+  match. `CMSDK_UART.md` lost its HelloWorld-by-name framing in the
+  mutex requirement section — kept the "during S08 bring-up vs.
+  slice 3+" timeline rationale, which is the load-bearing history.
+  `arm-none-eabi.cmake` comment dropped HelloWorld from the
+  per-target additions list.
+
+### Test evidence
+
+- `freertos-cross` clean build of `SolidSyslogFreeRtosSingleTask` —
+  green after wiping `build/freertos-cross`.
+- `bdd-freertos-qemu` end-to-end equivalent locally: behave with
+  `not @wip and not @freertoswip and not @rtc and @udp` inside the
+  freertos-target devcontainer — 9 features / 26 scenarios pass,
+  matches the CI tag filter.
+- `debug` preset (`junit` target): 1108 / 1105 ran, 2393 checks,
+  0 fails — no Linux collateral.
+- `clang-format --dry-run --Werror` over Core/Tests/Example —
+  clean.
+
+### Deferred
+
+- Nothing — the in-scope punch list from #335 is complete.
+
+### Open questions
+
+- None.

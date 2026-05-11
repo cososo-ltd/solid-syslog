@@ -28,19 +28,19 @@
             ]
         },
         {
-            "name": "Debug FreeRTOS HelloWorld (QEMU)",
+            "name": "Debug FreeRTOS SingleTask (QEMU)",
             "type": "cortex-debug",
             "request": "launch",
             "servertype": "qemu",
             "cwd": "${workspaceFolder}",
-            "executable": "${workspaceFolder}/build/freertos-cross/Example/FreeRtos/HelloWorld/SolidSyslogFreeRtosHelloWorld.elf",
+            "executable": "${workspaceFolder}/build/freertos-cross/Example/FreeRtos/SingleTask/SolidSyslogFreeRtosSingleTask.elf",
             "cpu": "cortex-m3",
             "machine": "mps2-an385",
             "armToolchainPath": "/usr/bin",
             "serverpath": "qemu-system-arm",
             "serverArgs": [
-                "-semihosting-config",
-                "enable=on,target=native"
+                "-netdev", "user,id=net0",
+                "-net", "nic,netdev=net0,model=lan9118"
             ],
             "preLaunchTask": "build and test",
             "runToEntryPoint": "main"
