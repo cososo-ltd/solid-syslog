@@ -1,5 +1,78 @@
 # Dev Log
 
+## 2026-05-11 — S24.03 drop AtomicOps vtable; select atomics at link time (#325)
+
+E24 close-out story. The vtable through which AtomicCounter reached
+its atomic primitive was the only DI seam in the library where the
+variance was purely compile-time (which header the toolchain ships)
+rather than runtime (what the integrator wants). Removing the vtable
+removes the matching test-build leak: `Tests/Support/TestAtomicOps.h`
+selected which Create function to call via
+`#if defined(SOLIDSYSLOG_TEST_USE_WINDOWS_ATOMIC_OPS)`, the last
+non-`ExternC.h` preprocessor conditional anywhere in Core/, Platform/,
+Tests/, or Example/.
+
+### Decisions
+
+- **Three primitives, plus FromStorage, not just three.** The story
+  body sketched Init/Load/CAS with `slot*` parameters and a vague
+  "embed a SolidSyslogAtomicU32 member" wording. Embedding a struct
+  value requires a complete type; defining the struct in a shared
+  header forces a single inner type (either `_Atomic uint32_t` or
+  `volatile LONG`), and accessing one through the other is strict-
+  aliasing UB. Settled on the Address/Formatter storage pattern: a
+  public `SolidSyslogAtomicU32Storage` byte-buffer typedef +
+  forward-declared opaque `struct SolidSyslogAtomicU32`. Each
+  platform `.c` defines its own complete struct, with the inner type
+  that its API actually needs, and `SolidSyslogAtomicU32_FromStorage`
+  casts the storage to that. Callers (AtomicCounter only) embed the
+  storage and obtain the typed slot at Create time. The story's
+  out-of-scope note about a future `SOLIDSYSLOG_ATOMICU32_SIZE`
+  macro for multi-counter caller-supplied storage drops out for
+  free with this shape.
+- **Drop the CAS-contention assertion; add a TryAdvance
+  recomputation assertion in its place.** Existing
+  `IncrementRetriesWhenCompareAndSwapFails` was a fake-driven test:
+  AtomicOpsFake forced one CAS to fail then shifted Load to a new
+  value. With real atomics single-threaded, CAS cannot be forced to
+  fail. Three options were considered: (a) re-introduce a fake one
+  layer deeper (AtomicU32Fake), (b) a real multi-threaded race test,
+  (c) drop. We chose a fourth path: extract the loop body as a
+  `static inline bool AtomicCounter_TryAdvance(slot*, nextOut*)`
+  helper and test that two sequential calls compose correctly across
+  an interposed `AtomicU32_Init(slot, 5)`. The interposed init plays
+  the role of "another writer committed first", so the second
+  TryAdvance must Re-Load and return 6 — proving the recomputation
+  semantic that the old contention test was really verifying. No
+  fake, no threads, deterministic. The actual `while (!TryAdvance)`
+  loop is then short enough to trust on inspection.
+- **Whitebox include in the AtomicCounter test.**
+  `#include "SolidSyslogAtomicCounter.c"` directly, with a comment
+  and a `// NOLINTNEXTLINE(bugprone-suspicious-include)` suppression.
+  This makes `NextSequenceId` and `TryAdvance` (both `static
+  inline`) reachable for direct test. The library's own
+  `SolidSyslogAtomicCounter.o` is not pulled in by the linker
+  because the test object already resolves the three public
+  symbols (static-archive object-on-demand resolution). Considered
+  `-Dstatic=` on the test build and a `_SetForTesting` API seam;
+  rejected the former for the two-build-of-the-same-code surface,
+  rejected the latter as a production-side scaffolding leak.
+
+### Deferred
+
+- A real CAS-contention test (thread race) for direct coverage of
+  the retry branch. The recomputation test covers the meaningful
+  semantic; the `while` itself is one line.
+- A `SOLIDSYSLOG_ATOMICU32_SIZE` macro exposed in a public header
+  for caller-allocated multi-counter storage. The future-allocation
+  epic (per memory `project_allocation_epic`) will pick this up
+  when multi-instance lands.
+
+### Open questions
+
+- None. E24 (Code Hygiene) is now 3/3 stories Done once this PR
+  merges; can be closed.
+
 ## 2026-05-10 — S12.18 library-wide error reporting API + example handlers (#319)
 
 Foundation for the rest of E12. Up to now every NULL guard the epic
