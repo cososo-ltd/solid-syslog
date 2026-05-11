@@ -457,10 +457,13 @@ def run_buffered_example(context, extra_args=None, expected_messages=1):
 
     Linux runner (syslog-ng oracle): the pthread-driven Threaded example.
     Windows runner (OTel oracle): the Win32-thread-driven example wired by
-    S13.18 — context.example_binary already points at it. Lets the same
-    .feature scenario exercise the buffering path on both runners.
+    S13.18 — context.example_binary already points at it.
+    FreeRTOS-on-QEMU runner (syslog-ng oracle): the SingleTask example is
+    itself buffered (CircularBuffer + FreeRtosMutex + Service task, S08.04)
+    — context.example_binary already points at the .elf. Lets the same
+    .feature scenario exercise the buffering path on all three runners.
     """
-    binary = THREADED_BINARY if context.oracle_format == "syslog-ng" else context.example_binary
+    binary = THREADED_BINARY if context.target == "linux" else context.example_binary
     _run_with_prompt_protocol(
         context, binary, "Buffered example", extra_args, expected_messages
     )

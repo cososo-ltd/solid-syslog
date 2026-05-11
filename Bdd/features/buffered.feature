@@ -1,12 +1,13 @@
 @udp
-@freertoswip
 Feature: Buffered message delivery
   An example wired with a real (non-Null) buffer drives messages
   through a service thread that drains the buffer and sends to the
   oracle. Linux runner uses the pthread-driven Threaded example with
   PosixMessageQueueBuffer; Windows runner uses the Win32-thread-driven
-  example with the portable CircularBuffer (S13.18). The same scenario
-  pins both wirings.
+  example with the portable CircularBuffer (S13.18); FreeRTOS-on-QEMU
+  runner uses the SingleTask example, itself buffered with
+  CircularBuffer + FreeRtosMutex + a FreeRTOS Service task (S08.04).
+  The same scenario pins all three wirings.
 
   Scenario: Single buffered message arrives at the oracle
     Given the syslog oracle is running

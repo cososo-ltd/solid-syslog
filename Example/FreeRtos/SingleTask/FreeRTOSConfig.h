@@ -29,8 +29,17 @@
 #define configTIMER_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 2)
 #define configCHECK_FOR_STACK_OVERFLOW 2
 #define configUSE_MALLOC_FAILED_HOOK 1
-#define configSUPPORT_STATIC_ALLOCATION 0
+/* Static allocation is required by SolidSyslogFreeRtosMutex
+ * (xSemaphoreCreateMutexStatic places the StaticSemaphore_t inside the
+ * caller-supplied storage). The idle / timer task memory hooks that
+ * static allocation also pulls in are satisfied by the kernel's own
+ * defaults (configKERNEL_PROVIDED_STATIC_MEMORY = 1) — no boilerplate
+ * in main.c, no MPU port. Dynamic allocation stays on for Plus-TCP's
+ * network buffer descriptors and the interactive / service tasks
+ * created via xTaskCreate. */
+#define configSUPPORT_STATIC_ALLOCATION 1
 #define configSUPPORT_DYNAMIC_ALLOCATION 1
+#define configKERNEL_PROVIDED_STATIC_MEMORY 1
 
 #define configUSE_CO_ROUTINES 0
 #define configMAX_CO_ROUTINE_PRIORITIES 1

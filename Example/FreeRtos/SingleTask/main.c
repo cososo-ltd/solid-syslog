@@ -21,15 +21,16 @@
 #include "ExampleLanguage.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
+#include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogFreeRtosDatagram.h"
+#include "SolidSyslogFreeRtosMutex.h"
 #include "SolidSyslogFreeRtosStaticResolver.h"
 #include "SolidSyslogFreeRtosSysUpTime.h"
 #include "SolidSyslogMetaSd.h"
-#include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
@@ -130,6 +131,18 @@ static NetworkEndPoint_t  networkEndPoint;
 
 static SolidSyslogFreeRtosStaticResolverStorage resolverStorage;
 static SolidSyslogFreeRtosDatagramStorage       datagramStorage;
+
+/* CircularBuffer + FreeRtosMutex composition for cross-task emission.
+ * 8 max-sized messages is comfortably above the 3-message BDD scenarios
+ * with headroom for a brief Service drain stall, and ~16 KB of .bss is
+ * trivial against the mps2-an385's 16 MB SRAM. */
+enum
+{
+    EXAMPLE_BUFFER_MESSAGES = 8
+};
+
+static SolidSyslogCircularBufferStorage bufferStorage[SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE(EXAMPLE_BUFFER_MESSAGES)];
+static SolidSyslogFreeRtosMutexStorage  mutexStorage;
 
 /* Ensures the interactive task is created exactly once even if the network
  * goes down and back up. */
@@ -340,7 +353,14 @@ static void InteractiveTask(void* argument)
         .endpointVersion = GetEndpointVersion,
     };
     struct SolidSyslogSender* sender = SolidSyslogUdpSender_Create(&udpConfig);
-    struct SolidSyslogBuffer* buffer = SolidSyslogNullBuffer_Create(sender);
+
+    /* CircularBuffer drained by ServiceTask below, with a FreeRtosMutex
+     * gating concurrent producers (interactive task today; multi-task
+     * emission in S08.04 slice 3 will add more). The buffer's Read side
+     * is the Service task; its Write side is whichever task calls
+     * SolidSyslog_Log. */
+    struct SolidSyslogMutex*  mutex  = SolidSyslogFreeRtosMutex_Create(&mutexStorage);
+    struct SolidSyslogBuffer* buffer = SolidSyslogCircularBuffer_Create(bufferStorage, sizeof(bufferStorage), mutex);
     struct SolidSyslogStore*  store  = SolidSyslogNullStore_Create();
 
     struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create();
@@ -363,7 +383,7 @@ static void InteractiveTask(void* argument)
 
     struct SolidSyslogConfig config = {
         .buffer      = buffer,
-        .sender      = NULL,
+        .sender      = sender,
         .clock       = NULL,
         .getHostname = GetHostname,
         .getAppName  = GetAppName,
@@ -387,12 +407,30 @@ static void InteractiveTask(void* argument)
     SolidSyslogMetaSd_Destroy();
     SolidSyslogAtomicCounter_Destroy();
     SolidSyslogNullStore_Destroy();
-    SolidSyslogNullBuffer_Destroy();
+    SolidSyslogCircularBuffer_Destroy(buffer);
+    SolidSyslogFreeRtosMutex_Destroy(mutex);
     SolidSyslogUdpSender_Destroy();
     SolidSyslogFreeRtosDatagram_Destroy(datagram);
     SolidSyslogFreeRtosStaticResolver_Destroy(resolver);
 
     vTaskDelete(NULL);
+}
+
+/* Drains the CircularBuffer in the background while the interactive task
+ * (and, in S08.04 slice 3, additional worker tasks) call SolidSyslog_Log.
+ * Equal priority to the producers — FreeRTOS round-robins time slices
+ * between same-priority ready tasks so the buffer is drained without the
+ * Service task starving slower producers. */
+#define SERVICE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 16U)
+
+static void ServiceTask(void* argument)
+{
+    (void) argument;
+    for (;;)
+    {
+        SolidSyslog_Service();
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
 }
 
 void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, struct xNetworkEndPoint* pxEndPoint)
@@ -402,6 +440,7 @@ void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, stru
     {
         if (xTaskCreate(InteractiveTask, "interactive", INTERACTIVE_TASK_STACK_DEPTH, NULL, tskIDLE_PRIORITY + 1, NULL) == pdPASS)
         {
+            (void) xTaskCreate(ServiceTask, "service", SERVICE_TASK_STACK_DEPTH, NULL, tskIDLE_PRIORITY + 1, NULL);
             interactiveTaskCreated = pdTRUE;
         }
     }
