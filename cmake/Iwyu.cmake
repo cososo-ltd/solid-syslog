@@ -2,7 +2,7 @@
 #
 # When ENABLE_IWYU is ON, two custom targets are defined:
 #
-#   iwyu       — runs IWYU over Core/, Platform/, Example/. Pipes IWYU's
+#   iwyu       — runs IWYU over Core/, Platform/, Bdd/Targets/. Pipes IWYU's
 #                output through scripts/iwyu_filter.py, which drops
 #                redundant-forward-declaration findings (see filter docstring
 #                for the MISRA rationale). Exits non-zero if any actionable
@@ -20,7 +20,7 @@
 # because CMake (since 3.11) intentionally ignores the launcher's exit code,
 # so `--error` would not fail the build.
 
-option(ENABLE_IWYU "Define iwyu/iwyu-apply targets that run include-what-you-use over Core/Platform/Example" OFF)
+option(ENABLE_IWYU "Define iwyu/iwyu-apply targets that run include-what-you-use over Core/Platform/Bdd/Targets" OFF)
 
 if(ENABLE_IWYU)
     find_program(IWYU_EXECUTABLE NAMES include-what-you-use REQUIRED)
@@ -44,7 +44,7 @@ if(ENABLE_IWYU)
     set(_iwyu_invocation
         "${IWYU_TOOL} -p ${CMAKE_BINARY_DIR} -- \
 -Xiwyu --check_also=*Interface/*.h \
--Xiwyu --check_also=*Example/*/*.h \
+-Xiwyu --check_also=*Bdd/Targets/*/*.h \
 -Xiwyu --check_also=*Tests/*.h \
 -Xiwyu --mapping_file=${_iwyu_mapping_dir}/gcc.libc.imp \
 -Xiwyu --mapping_file=${_iwyu_mapping_dir}/stl.c.headers.imp \
@@ -56,7 +56,7 @@ if(ENABLE_IWYU)
         COMMAND "${BASH_EXECUTABLE}" -c
             "set -o pipefail; ${_iwyu_invocation} | python3 ${_iwyu_filter}"
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        COMMENT "Running include-what-you-use (filtered) over Core/, Platform/, Example/"
+        COMMENT "Running include-what-you-use (filtered) over Core/, Platform/, Bdd/Targets/"
         VERBATIM
         USES_TERMINAL
     )

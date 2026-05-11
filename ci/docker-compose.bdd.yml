@@ -100,7 +100,7 @@ services:
         condition: service_healthy
     environment:
       - BDD_TARGET=freertos
-      - EXAMPLE_BINARY=build/freertos-cross/Example/FreeRtos/SingleTask/SolidSyslogFreeRtosSingleTask.elf
+      - EXAMPLE_BINARY=build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf
     command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and @udp' Bdd/features/
 
 volumes:

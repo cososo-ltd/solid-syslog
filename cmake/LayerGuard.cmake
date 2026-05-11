@@ -1,15 +1,17 @@
 # Layer guard — fails configure if the source tree violates layering rules:
 #
-#   - Core/      must not include headers owned by Platform/* or Example/*.
-#   - Platform/* must not include headers owned by Example/*.
+#   - Core/      must not include headers owned by Platform/* or Bdd/Targets/*.
+#   - Platform/* must not include headers owned by Bdd/Targets/*.
 #
 # The check operates on header basenames: it enumerates every *.h owned by a
 # disallowed layer, then scans local-form `#include "..."` directives in the
 # consuming layer for any match. Core can freely include Core/Interface
 # headers (e.g. SolidSyslogAddress.h) because those live in Core, not Platform.
 #
-# Tests/ and Bdd/ are out of scope (per CLAUDE.md tier table) and are not
-# scanned — test code may include anything it needs.
+# Tests/ and the rest of Bdd/ are out of scope (per CLAUDE.md tier table) and
+# are not scanned — test code may include anything it needs. Bdd/Targets/ is
+# scanned only as a forbidden-include source for Core/Platform; nothing
+# restricts what Bdd/Targets/ itself may include.
 #
 # CI re-runs configure on every build, so PRs are always checked. Locally,
 # violations are caught on the next reconfigure (typically when CMakeLists.txt
@@ -51,12 +53,12 @@ function(solidsyslog_enforce_layering)
     _solidsyslog_collect_header_names(_platform_names
         "${CMAKE_SOURCE_DIR}/Platform"
     )
-    _solidsyslog_collect_header_names(_example_names
-        "${CMAKE_SOURCE_DIR}/Example"
+    _solidsyslog_collect_header_names(_bdd_target_names
+        "${CMAKE_SOURCE_DIR}/Bdd/Targets"
     )
 
     set(_forbidden_in_core "${_platform_names}")
-    list(APPEND _forbidden_in_core ${_example_names})
+    list(APPEND _forbidden_in_core ${_bdd_target_names})
     list(REMOVE_DUPLICATES _forbidden_in_core)
 
     set(_violations "")
@@ -64,7 +66,7 @@ function(solidsyslog_enforce_layering)
     _solidsyslog_scan_layer("Core" "${_forbidden_in_core}" _violations
         "${CMAKE_SOURCE_DIR}/Core"
     )
-    _solidsyslog_scan_layer("Platform" "${_example_names}" _violations
+    _solidsyslog_scan_layer("Platform" "${_bdd_target_names}" _violations
         "${CMAKE_SOURCE_DIR}/Platform"
     )
 
@@ -72,7 +74,7 @@ function(solidsyslog_enforce_layering)
         list(JOIN _violations "\n" _msg)
         message(FATAL_ERROR
             "Layering rule violation(s):\n${_msg}\n"
-            "Core must not include from Platform/ or Example/. "
-            "Platform must not include from Example/.")
+            "Core must not include from Platform/ or Bdd/Targets/. "
+            "Platform must not include from Bdd/Targets/.")
     endif()
 endfunction()

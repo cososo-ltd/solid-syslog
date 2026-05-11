@@ -29,9 +29,9 @@ import subprocess
 # scenario that needs a new flag should fail loudly via the
 # `_FREERTOS_SET_TRANSLATION` lookup so the gap is visible, rather than
 # silently no-op'ing or printing a confusing "set: invalid" on the UART.
-# `--message` -> `msg` is intentional: the FreeRTOS example global is
-# g_msg (Example/FreeRtos/SingleTask/main.c) and renaming the set name
-# would churn the example for cosmetic gain.
+# `--message` -> `msg` is intentional: the FreeRTOS BDD target's global is
+# g_msg (Bdd/Targets/FreeRtos/main.c) and renaming the set name
+# would churn the target for cosmetic gain.
 _FREERTOS_SET_TRANSLATION = {
     "--facility": "facility",
     "--severity": "severity",
