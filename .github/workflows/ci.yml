@@ -679,6 +679,25 @@ jobs:
       - name: Build and test
         run: cmake --build --preset debug --target junit BddTargetTests SolidSyslogBddTarget
 
+      - name: Run BDD target tests
+        run: cd build/debug && ./Tests/Bdd/Targets/BddTargetTests -ojunit -k BddTargetTests
+
+      - name: Test Report
+        uses: dorny/test-reporter@v3
+        if: success() || failure()
+        with:
+          name: Test Results (FreeRTOS host)
+          path: build/debug/cpputest_*.xml
+          reporter: java-junit
+
+      - name: Upload JUnit XML
+        if: success() || failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: junit-build-freertos-host-tdd
+          path: build/debug/cpputest_*.xml
+          retention-days: 1
+
   build-freertos-target:
     runs-on: ubuntu-latest
     permissions:
@@ -809,6 +828,11 @@ jobs:
                     "id": "junit",
                     "name": "build-linux-gcc",
                     "pattern": "**/junit-build-linux-gcc/cpputest_*.xml"
+                  },
+                  {
+                    "id": "junit",
+                    "name": "build-freertos-host-tdd",
+                    "pattern": "**/junit-build-freertos-host-tdd/cpputest_*.xml"
                   },
                   {
                     "id": "junit",

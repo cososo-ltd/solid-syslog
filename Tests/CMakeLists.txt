@@ -154,6 +154,40 @@ add_custom_target(junit
     COMMENT "Running tests with JUnit XML output"
 )
 
+# Each registered executable runs through run_junit.cmake as a POST_BUILD step
+# on the `junit` custom target, so its cpputest_<group>.xml lands in the build
+# dir alongside SolidSyslogTests' output. CI's junit-* upload-artifact then
+# picks them all up for the Quality Summary panel. The `if(TARGET ...)` guard
+# keeps the list authoritative without duplicating the FREERTOS_KERNEL_PATH /
+# FREERTOS_PLUS_TCP_PATH env-var guards that already gate the test
+# executables' definition in Tests/FreeRtos/CMakeLists.txt — a missing target
+# is silently skipped, so jobs running outside a FreeRTOS-aware container
+# just run SolidSyslogTests as before.
+function(register_junit_test test_target)
+    add_custom_command(TARGET junit POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+            -DEXECUTABLE=$<TARGET_FILE:${test_target}>
+            -DDIR=${CMAKE_BINARY_DIR}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/run_junit.cmake
+        COMMENT "Running ${test_target} with JUnit XML output"
+        VERBATIM
+    )
+    add_dependencies(junit ${test_target})
+endfunction()
+
+foreach(freertos_test_target IN ITEMS
+    SolidSyslogFreeRtosMutexTest
+    SolidSyslogFreeRtosSysUpTimeTest
+    CmsdkUartTest
+    SolidSyslogFreeRtosDatagramTest
+    SolidSyslogFreeRtosTcpStreamTest
+    SolidSyslogFreeRtosStaticResolverTest
+)
+    if(TARGET ${freertos_test_target})
+        register_junit_test(${freertos_test_target})
+    endif()
+endforeach()
+
 # Code coverage report using lcov/genhtml.
 # Requires the coverage preset: cmake --preset coverage && cmake --build --preset coverage --target coverage
 # lcov and genhtml must be installed (available in both container images).
