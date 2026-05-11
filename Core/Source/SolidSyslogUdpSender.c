@@ -4,7 +4,6 @@
 
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogFormatter.h"
-#include "SolidSyslogMacros.h"
 #include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogSenderDefinition.h"
@@ -46,8 +45,14 @@ struct SolidSyslogSender* SolidSyslogUdpSender_Create(const struct SolidSyslogUd
     instance                 = DEFAULT_INSTANCE;
     instance.config.resolver = config->resolver;
     instance.config.datagram = config->datagram;
-    ASSIGN_IF_NON_NULL(instance.config.endpoint, config->endpoint);
-    ASSIGN_IF_NON_NULL(instance.config.endpointVersion, config->endpointVersion);
+    if (config->endpoint != NULL)
+    {
+        instance.config.endpoint = config->endpoint;
+    }
+    if (config->endpointVersion != NULL)
+    {
+        instance.config.endpointVersion = config->endpointVersion;
+    }
     instance.base.Send       = Send;
     instance.base.Disconnect = Disconnect;
     return &instance.base;

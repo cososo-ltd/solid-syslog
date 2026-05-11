@@ -69,8 +69,14 @@ struct SolidSyslogSender* SolidSyslogStreamSender_Create(SolidSyslogStreamSender
     *sender                                = DEFAULT_INSTANCE;
     sender->config.resolver                = config->resolver;
     sender->config.stream                  = config->stream;
-    ASSIGN_IF_NON_NULL(sender->config.endpoint, config->endpoint);
-    ASSIGN_IF_NON_NULL(sender->config.endpointVersion, config->endpointVersion);
+    if (config->endpoint != NULL)
+    {
+        sender->config.endpoint = config->endpoint;
+    }
+    if (config->endpointVersion != NULL)
+    {
+        sender->config.endpointVersion = config->endpointVersion;
+    }
     return &sender->base;
 }
 

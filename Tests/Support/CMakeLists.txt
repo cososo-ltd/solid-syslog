@@ -1,3 +1,7 @@
+add_library(ErrorHandlerFake STATIC ErrorHandlerFake.c)
+target_include_directories(ErrorHandlerFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(ErrorHandlerFake PUBLIC ${PROJECT_NAME})
+
 if(SOLIDSYSLOG_POSIX)
     add_library(PosixFakes STATIC
         ClockFake.c

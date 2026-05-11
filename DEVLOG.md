@@ -5623,3 +5623,214 @@ Include-path additions needed:
   non-authorised preprocessor conditional in the codebase. Same fix
   outlined in the previous entry; not done in this PR to keep scope
   tight.
+
+## 2026-05-11 — S12.04 nil-object defaults for SolidSyslog singleton
+
+Re-scoped #115 from "two NULL guards" into the exemplar nil-object
+pattern that the rest of E12 (UdpSender, MetaSd, OriginSd,
+AtomicCounter NULL-guard stories) will copy. Original story body
+described two crash sites (`Create(NULL config)`, `Log(NULL message)`)
+but the audit also caught pre-Create and post-Destroy: the static
+`instance` had buffer/sender/store as NULL, so `Service()` and `Log()`
+crashed at vtable dispatch in both states. S12.18 had already
+shipped the `Create(NULL config)` case via the new error-reporting
+channel; this story does the rest.
+
+### Pattern
+
+For every singleton-or-handle class with vtable collaborators:
+
+1. Private nils as file-static structs inside the class's `.c` —
+   fully-populated vtables of file-static no-op functions. Not in
+   any public header; the public `SolidSyslogNull*` family is for
+   integrator-chosen no-ops with different semantics. These private
+   nils are crash-safe defaults only.
+2. Static instance points at the nils at file load.
+3. `_Create(config)`:
+   - `config == NULL` → `Error(MSG_CREATE_NULL_CONFIG)`, return.
+   - Required field NULL → `Error(MSG_CREATE_NULL_<FIELD>)`, leave
+     the nil in place.
+   - Optional field NULL → `ASSIGN_IF_NON_NULL` (nil stays).
+4. `_Destroy()` resets every slot to its nil. Idempotent. Re-arms
+   audible-once flags.
+5. Public entry points other than `_Create` dispatch through
+   `instance.*` unconditionally — no NULL checks on collaborators.
+6. Parameter NULL guards on entry points that take pointers
+   (e.g. `_Log(message)`).
+7. Audible-once nils for collaborators where absence leaves no
+   visible trace — `NilBuffer.Write` and `NilSender.Send` each
+   report one `SolidSyslog_Error` on first use, then silently
+   consume. `NilStore`, `NilClock`, `NilStringFunction` are silent
+   (their absence shows up elsewhere — fallthrough, `-` in the wire
+   output).
+
+### Decisions
+
+- **Private nils inside the .c, not a separate module.** Considered
+  extracting `Core/Source/SolidSyslogNilBuffer.{c,h}` etc. so each
+  nil could get its own white-box test file and hit 100% line
+  coverage on every vtable method (matching how the public
+  `SolidSyslogNullStore` is tested). Held off — the story scope is
+  "set the pattern", and extracting is a bigger restructure best
+  done if a second class reuses the same nil. Current line coverage
+  on `SolidSyslog.c` is 95.3% (filtered-overall 99.5%, well above
+  the 90% gate); the uncovered slots are vtable-contract padding
+  (NilStore HasUnsent / GetTotalBytes / GetUsedBytes / MarkSent,
+  NilSender Disconnect) which `SolidSyslog.c` never calls and
+  integrators can't reach because the nils are file-static.
+- **`NilSender.Send` returns `true` (consumed).** If it returned
+  `false`, the store would keep replaying the message forever for
+  an integrator who had already been told once "no sender
+  configured". Returning `true` settles the system into a steady
+  state after the audible warning.
+- **`NilStore.IsHalted` returns `false`.** Matches public
+  `SolidSyslogNullStore` semantics — drain proceeds, `Store.Write`
+  returns `false`, fallthrough to direct `Sender.Send`. Lets the
+  integrator wire only buffer+sender (no S&F) and still get
+  messages through. Tried `true` for the literal minimum on the
+  first red-green-refactor but flipped to `false` once the next
+  test required drain to run.
+- **Audible-once flags reset on `_Destroy` (not on `_Create`).**
+  Contract is "one warning per Destroy cycle". Tests cover
+  re-arming after Destroy. Resetting on Create as well would be a
+  no-op for the typical Create-once-Destroy-once lifecycle; the
+  shape stays simple.
+- **Per-field NULL-config diagnostics.** New
+  `MSG_CREATE_NULL_BUFFER` / `_SENDER` / `_STORE` constants and a
+  new `ASSIGN_OR_REPORT(field, value, errorMsg)` macro in
+  `SolidSyslogMacros.h`, parallel to `ASSIGN_IF_NON_NULL`. Macro is
+  MISRA Dir-4.9-deviated for the same reason as
+  `ASSIGN_IF_NON_NULL`. `_Create` body now reads as a table of
+  required-vs-optional installs.
+- **Cognitive-complexity fix via `InstallConfig` helper.** Inlining
+  three `ASSIGN_OR_REPORT` + four `ASSIGN_IF_NON_NULL` macros into
+  `_Create` pushed it past the clang-tidy threshold (40 > 25);
+  extracting the per-field work to `static void InstallConfig`
+  brings `_Create` back to the simple `if(config) install; else
+  error;` shape.
+
+### Verified
+
+- `debug`, `clang-debug`, `sanitize` presets: 1101 tests pass.
+- `coverage` preset: 99.5% line coverage filtered to
+  Core+Platform/*/Source. `SolidSyslog.c` itself at 95.3%, with the
+  gap entirely on never-called vtable padding inside the private
+  Nils (documented above).
+- `tidy`, `cppcheck`, `format` (clang-format `--Werror`): clean.
+
+### Deferred
+
+- **Extract Nils to dedicated modules** for 100% vtable coverage —
+  open if a second class adopts the same pattern and the
+  duplication starts to bite. For now SolidSyslog's private nils
+  stay in `SolidSyslog.c` as file-static.
+- **SD per-element NULL guards** — `FormatStructuredData` still
+  derefs each `sd[i]` unconditionally. Belongs in S12.06 (SD
+  NULL-guard story) since it touches the SD vtable, not the
+  Solidsyslog singleton.
+- **Apply the same pattern** to UdpSender (S12.05), MetaSd / OriginSd
+  (S12.06), AtomicCounter. Each gets its own private nil(s), per-
+  field Create diagnostics, and audible-once on the unwireable
+  outputs.
+
+## 2026-05-11 — S12.04 corrections (review pass)
+
+Review of the initial S12.04 commit (#115 work) caught four things to
+fix before the PR opens. Force-pushing onto the same feature branch
+because none of the existing review comments live on the old commit
+yet and the squash-merge workflow makes mid-branch history
+disposable — but pausing before push to confirm.
+
+### Corrections
+
+1. **Test location.** The new NULL-guard / lifecycle tests
+   originally sat in `SolidSyslogErrorTest.cpp` because that file
+   already had the captured-handler fixture. Wrong target-of-test
+   axis — those are `SolidSyslog` tests that *use* the error
+   channel as their observation mechanism, not Error-API tests.
+   Moved them into a new `TEST_GROUP(SolidSyslogLifecycle)` in
+   `SolidSyslogTest.cpp`, alongside the existing `TEST_GROUP(SolidSyslog)`
+   and `TEST_GROUP(SolidSyslogServiceEagerDrain)`. The earlier
+   `SolidSyslogCreateWithNullConfigReportsError` (from S12.18) moved
+   too for consistency. `SolidSyslogErrorTest.cpp` is now three
+   tests of the Error-API surface itself.
+
+2. **Stale IGNORE_TEST.** The `IGNORE_TEST(SolidSyslog, HappyPathOnly)`
+   block tracked "Create with NULL config" (now implemented) and
+   "MSG preceded by UTF-8 BOM" (S12.13 implemented this). Tests
+   aren't a backlog. Block deleted; a separate watching-brief
+   memory captures a related defect (BOM emitted on empty MSG
+   body) for follow-up at S12.04 close-out.
+
+3. **Macros out of production.** Both `ASSIGN_OR_REPORT` (added by
+   the first pass of this story) and the grandfathered
+   `ASSIGN_IF_NON_NULL` are gone. Replaced by:
+   - A `const struct SolidSyslog NilInstance` template + struct
+     copy: every Create commit and every Destroy now does
+     `instance = NilInstance;` first, so the optional-field
+     branches are just `if (config->x != NULL) instance.x = config->x;`.
+   - Per-type `Install{Buffer,Sender,Store}` helpers: each is
+     procedural ("if NULL, report; else assign") — the "fall back
+     to nil" arm dissolves because the struct copy already placed
+     the nil there.
+   - `SolidSyslogUdpSender.c` and `SolidSyslogStreamSender.c`
+     swept too — they were the only other in-tree users of
+     `ASSIGN_IF_NON_NULL`. Macro deleted from
+     `SolidSyslogMacros.h` (only `SOLIDSYSLOG_STATIC_ASSERT`
+     remains).
+
+4. **Reusable ErrorHandlerFake.** New `Tests/Support/ErrorHandlerFake.{c,h}`
+   wired through `Tests/Support/CMakeLists.txt` and linked into
+   `SolidSyslogTests`. Matches the existing `SenderFake` /
+   `BufferFake` shape — `Install(context)`, `Uninstall()`,
+   `HandleCallCount()`, `LastSeverity/Message/Context()`. Tests
+   now use `CALLED_FAKE(ErrorHandlerFake_Handle, ONCE)` instead of
+   the bare `CALLED_FUNCTION(handler, ONCE)` macro that depended on
+   a file-static `handlerCallCount` variable. Same fake will serve
+   every future class under E12 that reports through `SolidSyslog_Error`.
+
+### New behaviour: re-Create rejection
+
+Took the opportunity to settle the overwrite-vs-preserve question
+on Create-then-Create-without-Destroy. **Reject the second Create
+as its own failure mode**: integrator must `_Destroy` first to
+reconfigure.
+
+- New `instanceInitialised` flag, set on the commit path of
+  `_Create`, cleared by `_Destroy`.
+- New `SOLIDSYSLOG_ERROR_MSG_CREATE_ALREADY_INITIALISED`.
+- Detection is commit-based: `_Create(NULL)` is a *hard rejection*
+  (state unchanged, flag stays false, integrator may retry).
+  `_Create(valid)` and `_Create(partially-NULL)` are *commits*
+  (flag set, second Create rejected, state preserved).
+- Drove four TDD tests: rejection reports the new message;
+  rejection leaves first config intact (verified via separate
+  sender capturing the post-rejection Log); `Create(NULL) +
+  Create(valid)` lets the second succeed; `Create + Destroy +
+  Create` likewise.
+
+### Verified
+
+- `debug`, `clang-debug`, `sanitize` presets: 1105 tests pass.
+- `coverage`: 99.5% line filtered to Core+Platform/*/Source.
+  `SolidSyslog.c` up to 95.7% (was 95.3%). The remaining gap is
+  the same vtable-padding methods on `NilStore` / `NilSender`
+  that the library never calls internally.
+- `tidy`, `cppcheck`, `format`: clean. cppcheck needed a couple of
+  `unreadVariable` suppressions on TEST_GROUP fixture members
+  consumed via CppUTest macros — same pattern as the existing
+  `TEST_GROUP(SolidSyslog)`.
+
+### Decisions
+
+- **Reject second Create rather than overwrite** (semantic
+  question David flagged): cleaner mental model than the
+  optionals-preserve question. Each Create runs against a fresh
+  nil baseline; reconfiguration is an explicit Destroy-then-Create
+  cycle.
+- **Two-classes-one-file layout** for `SolidSyslog.c`: forward-
+  declare the Nil objects as tentative definitions near the top,
+  then put SolidSyslog's full implementation, then the Nil
+  collaborators' implementation at the bottom. Reads like two
+  cooperating "classes" sharing a translation unit. Allowed by C99
+  (tentative definitions of file-scope objects).

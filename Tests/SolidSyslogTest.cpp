@@ -14,6 +14,8 @@
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 #include "BufferFake.h"
+#include "ErrorHandlerFake.h"
+#include "SolidSyslogErrorMessages.h"
 #include "StoreFake.h"
 #include "SenderFake.h"
 #include "StringFake.h"
@@ -107,6 +109,7 @@ class TEST_SolidSyslog_ProcessIdNonPrintableByteIsSubstitutedWithQuestionMark_Te
 class TEST_SolidSyslog_SeverityAppearsInPrival_Test;
 struct SolidSyslogAtomicCounter;
 struct SolidSyslogBuffer;
+struct SolidSyslogSender;
 struct SolidSyslogStore;
 
 // clang-format off
@@ -1575,12 +1578,247 @@ TEST(SolidSyslog, LogAfterDestroyAndRecreateWithNullFunctionsProducesNilvalues)
     CHECK_PROCID("-");
 }
 
-IGNORE_TEST(SolidSyslog, HappyPathOnly)
-
+// clang-format off
+TEST_GROUP(SolidSyslogLifecycle)
 {
-    // Error handling not yet implemented — see Epic #31
-    //   SolidSyslog_Create with a NULL config does not crash
-    //
-    // Optional header fields not yet driven in — see Epic #8
-    //   MSG is preceded by UTF-8 BOM
+    SolidSyslogMessage message{};
+    SolidSyslogBuffer* buffer = nullptr;
+    SolidSyslogSender* sender = nullptr;
+    SolidSyslogStore*  store  = nullptr;
+
+    void setup() override
+    {
+        SolidSyslog_Destroy();
+        // cppcheck-suppress unreadVariable -- read via Log() in tests; cppcheck does not model CppUTest macros
+        message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFO, nullptr, nullptr};
+        // cppcheck-suppress unreadVariable -- read via validConfig() in tests; cppcheck does not model CppUTest macros
+        sender = SenderFake_Create();
+        // cppcheck-suppress unreadVariable -- read via validConfig() in tests; cppcheck does not model CppUTest macros
+        buffer = BufferFake_Create();
+        // cppcheck-suppress unreadVariable -- read via validConfig() in tests; cppcheck does not model CppUTest macros
+        store = SolidSyslogNullStore_Create();
+    }
+
+    void teardown() override
+    {
+        SolidSyslog_Destroy();
+        ErrorHandlerFake_Uninstall();
+        SolidSyslogNullStore_Destroy();
+        BufferFake_Destroy();
+        SenderFake_Destroy(sender);
+    }
+
+    [[nodiscard]] SolidSyslogConfig validConfig() const
+    {
+        return {buffer, sender, nullptr, nullptr, nullptr, nullptr, store, nullptr, 0};
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogLifecycle, ServiceBeforeCreateDoesNotCrash)
+{
+    SolidSyslog_Service();
+}
+
+TEST(SolidSyslogLifecycle, LogBeforeCreateDoesNotCrash)
+{
+    SolidSyslog_Log(&message);
+}
+
+TEST(SolidSyslogLifecycle, LogBeforeCreateReportsNilBufferUsedOnce)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Log(&message);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_NIL_BUFFER_USED);
+}
+
+TEST(SolidSyslogLifecycle, RepeatedLogBeforeCreateReportsNilBufferUsedOnlyOnce)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Log(&message);
+    SolidSyslog_Log(&message);
+    SolidSyslog_Log(&message);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_NIL_BUFFER_USED);
+}
+
+TEST(SolidSyslogLifecycle, DestroyReArmsNilBufferReporter)
+{
+    SolidSyslog_Log(&message);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Destroy();
+    SolidSyslog_Log(&message);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_NIL_BUFFER_USED);
+}
+
+TEST(SolidSyslogLifecycle, LogWithNullMessageReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Log(nullptr);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_LOG_NULL_MESSAGE);
+}
+
+TEST(SolidSyslogLifecycle, CreateWithNullConfigReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Create(nullptr);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_CONFIG);
+}
+
+TEST(SolidSyslogLifecycle, CreateWithNullBufferReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogConfig config = validConfig();
+    config.buffer            = nullptr;
+
+    SolidSyslog_Create(&config);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_BUFFER);
+}
+
+TEST(SolidSyslogLifecycle, CreateWithNullSenderReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogConfig config = validConfig();
+    config.sender            = nullptr;
+
+    SolidSyslog_Create(&config);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_SENDER);
+}
+
+TEST(SolidSyslogLifecycle, CreateWithNullStoreReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogConfig config = validConfig();
+    config.store             = nullptr;
+
+    SolidSyslog_Create(&config);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_STORE);
+}
+
+TEST(SolidSyslogLifecycle, ServiceWithNilStoreDrainsThroughToRealSender)
+{
+    SolidSyslogConfig config = validConfig();
+    config.store             = nullptr;
+    SolidSyslog_Create(&config);
+    SolidSyslog_Log(&message);
+
+    SolidSyslog_Service();
+
+    CALLED_FAKE_ON(SenderFake_Send, sender, ONCE);
+}
+
+TEST(SolidSyslogLifecycle, ServiceWithNilSenderReportsNilSenderUsed)
+{
+    SolidSyslogConfig config = validConfig();
+    config.sender            = nullptr;
+    SolidSyslog_Create(&config);
+    SolidSyslog_Log(&message);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Service();
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_NIL_SENDER_USED);
+}
+
+TEST(SolidSyslogLifecycle, RepeatedServiceWithNilSenderReportsNilSenderUsedOnlyOnce)
+{
+    SolidSyslogConfig config = validConfig();
+    config.sender            = nullptr;
+    SolidSyslog_Create(&config);
+    SolidSyslog_Log(&message);
+    SolidSyslog_Service();
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Log(&message);
+    SolidSyslog_Service();
+    SolidSyslog_Log(&message);
+    SolidSyslog_Service();
+
+    CHECK_NOTHING_REPORTED();
+}
+
+TEST(SolidSyslogLifecycle, SecondCreateWithoutDestroyReportsAlreadyInitialised)
+{
+    SolidSyslogConfig config = validConfig();
+    SolidSyslog_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Create(&config);
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_CREATE_ALREADY_INITIALISED);
+}
+
+TEST(SolidSyslogLifecycle, SecondCreateLeavesFirstConfigInstalled)
+{
+    SolidSyslogConfig firstConfig = validConfig();
+    SolidSyslog_Create(&firstConfig);
+    SolidSyslogSender* otherSender  = SenderFake_Create();
+    SolidSyslogConfig  secondConfig = validConfig();
+    secondConfig.sender             = otherSender;
+
+    SolidSyslog_Create(&secondConfig);
+    SolidSyslog_Log(&message);
+    SolidSyslog_Service();
+
+    CALLED_FAKE_ON(SenderFake_Send, sender, ONCE);
+    CALLED_FAKE_ON(SenderFake_Send, otherSender, NEVER);
+
+    SenderFake_Destroy(otherSender);
+}
+
+TEST(SolidSyslogLifecycle, CreateWithNullConfigDoesNotBlockSubsequentCreate)
+{
+    SolidSyslog_Create(nullptr);
+    SolidSyslogConfig config = validConfig();
+
+    SolidSyslog_Create(&config);
+    SolidSyslog_Log(&message);
+    SolidSyslog_Service();
+
+    CALLED_FAKE_ON(SenderFake_Send, sender, ONCE);
+}
+
+TEST(SolidSyslogLifecycle, DestroyClearsInitialisedFlagSoCreateSucceedsAgain)
+{
+    SolidSyslogConfig config = validConfig();
+    SolidSyslog_Create(&config);
+    SolidSyslog_Destroy();
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Create(&config);
+    SolidSyslog_Log(&message);
+    SolidSyslog_Service();
+
+    CHECK_NOTHING_REPORTED();
+    CALLED_FAKE_ON(SenderFake_Send, sender, ONCE);
+}
+
+TEST(SolidSyslogLifecycle, DestroyReArmsNilSenderReporter)
+{
+    SolidSyslogConfig config = validConfig();
+    config.sender            = nullptr;
+    SolidSyslog_Create(&config);
+    SolidSyslog_Log(&message);
+    SolidSyslog_Service();
+
+    SolidSyslog_Destroy();
+    SolidSyslog_Create(&config);
+    SolidSyslog_Log(&message);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslog_Service();
+
+    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_NIL_SENDER_USED);
 }
