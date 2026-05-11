@@ -61,19 +61,6 @@ if(HAVE_ATOMIC_COUNTER)
     list(APPEND TEST_SOURCES
         SolidSyslogAtomicCounterTest.cpp
         SolidSyslogAtomicU32Test.cpp
-        Support/AtomicOpsFake.c
-    )
-endif()
-
-if(HAVE_STDATOMIC_H)
-    list(APPEND TEST_SOURCES
-        SolidSyslogStdAtomicOpsTest.cpp
-    )
-endif()
-
-if(HAVE_WINDOWS_INTERLOCKED)
-    list(APPEND TEST_SOURCES
-        SolidSyslogWindowsAtomicOpsTest.cpp
     )
 endif()
 
@@ -132,12 +119,6 @@ add_executable(${PROJECT_NAME}Tests ${TEST_SOURCES})
 
 target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} CppUTest CppUTestExt Threads::Threads)
 target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Core/Source ${CMAKE_CURRENT_SOURCE_DIR}/Support)
-
-# TestAtomicOps.h prefers WindowsAtomicOps when present (architecture default
-# on MSVC/legacy Windows), and falls back to StdAtomicOps otherwise.
-if(HAVE_WINDOWS_INTERLOCKED)
-    target_compile_definitions(${PROJECT_NAME}Tests PRIVATE SOLIDSYSLOG_TEST_USE_WINDOWS_ATOMIC_OPS)
-endif()
 
 if(SOLIDSYSLOG_POSIX)
     target_link_libraries(${PROJECT_NAME}Tests PRIVATE PosixFakes)

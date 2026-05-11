@@ -1,6 +1,5 @@
 if(HAVE_WINDOWS_INTERLOCKED)
     target_sources(${PROJECT_NAME} PRIVATE
-        Source/SolidSyslogWindowsAtomicOps.c
         Source/SolidSyslogWindowsAtomicU32.c
     )
 endif()
