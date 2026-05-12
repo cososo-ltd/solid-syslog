@@ -950,6 +950,11 @@ jobs:
                     "id": "junit",
                     "name": "build-windows-msvc",
                     "pattern": "**/junit-build-windows-msvc/cpputest_*.xml"
+                  },
+                  {
+                    "id": "junit",
+                    "name": "build-linux-tunable-override",
+                    "pattern": "**/junit-build-linux-tunable-override/cpputest_*.xml"
                   }
                 ]
               },
