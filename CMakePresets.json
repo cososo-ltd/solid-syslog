@@ -113,7 +113,8 @@
             "toolchainFile": "${sourceDir}/Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "SOLIDSYSLOG_USER_TUNABLES_FILE": "${sourceDir}/Bdd/Targets/FreeRtos/solidsyslog_user_tunables.h"
             }
         }
     ],

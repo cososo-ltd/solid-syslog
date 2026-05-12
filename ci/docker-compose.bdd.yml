@@ -110,6 +110,10 @@ services:
     # existing (@udp or @tcp) clause admits it; the @tls sibling stays
     # excluded until S08.07 lights up TLS on FreeRTOS.
     # @windows_wip excludes the Windows-only TCP singletask variant.
+    # Tunable-driven gates like @requires_message_size_1500 are not listed
+    # here — Bdd/features/environment.py skips them at runtime based on the
+    # build's SOLIDSYSLOG_MAX_MESSAGE_SIZE so the exclusion auto-tracks
+    # solidsyslog_user_tunables.h changes.
     command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @store and not @windows_wip and (@udp or @tcp)' Bdd/features/
 
 volumes:

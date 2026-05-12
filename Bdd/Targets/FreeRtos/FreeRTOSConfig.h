@@ -53,6 +53,7 @@
 #define INCLUDE_vTaskDelay 1
 #define INCLUDE_xTaskGetSchedulerState 1
 #define INCLUDE_xTimerPendFunctionCall 1
+#define INCLUDE_uxTaskGetStackHighWaterMark 1
 
 /* Cortex-M3 NVIC: top 3 priority bits implemented. */
 #define configPRIO_BITS 3

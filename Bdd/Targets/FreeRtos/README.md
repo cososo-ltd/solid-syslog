@@ -25,6 +25,22 @@ and the `freertos-target` devcontainer service
 ([`docs/containers.md`](../../docs/containers.md)) carry everything
 needed to build and run.
 
+## Tuning for your MCU
+
+[solidsyslog_user_tunables.h](solidsyslog_user_tunables.h) is the worked
+example of the E21 port-time configurability mechanism — the
+`freertos-cross` preset points `SOLIDSYSLOG_USER_TUNABLES_FILE` at it so
+the library compiles with `SOLIDSYSLOG_MAX_MESSAGE_SIZE 512` instead of
+the default 2048. That reclaims ~4.5KB of stack frame per `SolidSyslog_Log`
+call on Cortex-M3, where 4KB task stacks are normal.
+
+For your own port, copy the pattern: drop a `solidsyslog_user_tunables.h`
+into your build tree, override whichever
+[`SolidSyslogTunablesDefaults.h`](../../../Core/Interface/SolidSyslogTunablesDefaults.h)
+macros suit the target, and set `-DSOLIDSYSLOG_USER_TUNABLES_FILE=<path>`
+in your CMake config (preset, cache file, or `-D` on the command line —
+all equivalent).
+
 ## In VS Code
 
 The simplest path. Switch into the FreeRTOS target devcontainer and use

@@ -1,5 +1,87 @@
 # Dev Log
 
+## 2026-05-12 — S21.02 first use of the tunables override on the FreeRTOS BDD preset (#349)
+
+First *use* of the S21.01 mechanism. The `freertos-cross` CMake preset
+now points `SOLIDSYSLOG_USER_TUNABLES_FILE` at
+`Bdd/Targets/FreeRtos/solidsyslog_user_tunables.h`, which redefines
+`SOLIDSYSLOG_MAX_MESSAGE_SIZE` from the library default 2048 down to 512
+— the pre-S12.12 baseline that's appropriate for a 4KB-task-stack
+Cortex-M3. Linux and Windows presets keep 2048 (RFC 5424 §6.1 SHOULD
+value) and so still exercise the path-MTU clipping scenarios.
+
+### Decisions
+
+- **Pick 512 over 1024 or 768.** 512 is the library's pre-S12.12 default
+  — a known-good baseline for small targets — and is the smallest of the
+  candidates that doesn't change BDD coupling (path-MTU clipping needs
+  >1472 bytes either way). RFC 5424 §6.1 still mandates receivers accept
+  ≥480 bytes; we're comfortably above. Reclaims ~4.5KB of per-call stack
+  frame, confirmed empirically (see below).
+- **Bake the stack high-water-mark print into the FreeRTOS BDD target,
+  permanently.** Originally scoped as a one-shot measurement on
+  implementation, but we promoted it: `InteractiveTask` now prints
+  `[stack-hwm] interactive=N words service=M words` on `quit`, so every
+  BDD run leaves an empirical trail in the `bdd-freertos-qemu` log.
+  Future E21 stories tuning other things get regression detection for
+  free. Requires `INCLUDE_uxTaskGetStackHighWaterMark = 1` in
+  `FreeRTOSConfig.h`. The Service task handle is captured at
+  `xTaskCreate` so the interactive task can sample its peer.
+- **Tunable-driven BDD tag gating, not a static docker-compose filter.**
+  Initial slice excluded `udp_mtu.feature` from FreeRTOS by adding `not
+  @requires_message_size_1500` to the `behave-freertos` tag filter. That
+  was a second source of truth: bumping the FreeRTOS MAX back to ≥1500
+  wouldn't re-enable the test without a corresponding compose edit.
+  Replaced with a runtime `before_feature` / `before_scenario` hook in
+  `Bdd/features/environment.py` that parses any `@requires_<tunable>_N`
+  tag, compares N to the actual build value imported from
+  `solidsyslog_tunables.py`, and calls `node.skip(...)` when the gate
+  isn't met. The compose filter no longer mentions the tag. Generic
+  shape: future tunable gates (`@requires_block_size_N`,
+  `@requires_buffer_capacity_N`, …) plug in by adding one entry to
+  `_TUNABLE_TAG_GATES`.
+- **Tag name `@requires_message_size_1500`, not `@mtu_overflow`.** Names
+  the constraint (matches `@requires_message_size_<N>` parametric shape)
+  rather than the intent (which would be opaque the moment a second
+  feature wanted the same gate).
+
+### Empirical stack savings
+
+Captured via the new `[stack-hwm]` print, single `send 1; quit` cycle
+under `qemu-system-arm -M mps2-an385`:
+
+| Build | Interactive HWM free | Service HWM free |
+|---|---|---|
+| MAX=2048 (default) | 4929 words | 1359 words |
+| MAX=512 (this story) | 5697 words | 1743 words |
+| **Reclaimed** | **+768 words = 3.0 KB** | **+384 words = 1.5 KB** |
+
+Total reclaimed: 4.5 KB across the two tasks per `Log`/`Service` cycle —
+matches the analytical estimate (two `char[MAX]` frames in the library's
+`SolidSyslog_Log` + `DrainBufferIntoStore` + `SendOneFromStore` paths
+plus the `MAX_LINE_LENGTH`-sized line buffer and `HandleSet` name buffer
+in `BddTargetInteractive`). `INTERACTIVE_TASK_STACK_DEPTH =
+configMINIMAL_STACK_SIZE * 48U` is now much more conservative than it
+needs to be; the deferred stack-shrink optimisation can use this
+baseline.
+
+### Deferred
+
+- **Shrink the FreeRTOS task stack depths to reclaim the new headroom.**
+  Worth doing once we've seen a few BDD runs at the lower MAX so the
+  worst-case bump (TLS path on FreeRTOS, S21.05+ store paths) is
+  visible. Don't pre-tune; let the `[stack-hwm]` numbers in CI guide it.
+- **Tune other tunables for FreeRTOS** (`SEND_TIMEOUT_*`, buffer
+  capacities, SD limits) — S21.03+.
+
+### Open questions
+
+- Does the `[stack-hwm]` line's word-count format want bytes too, or is
+  words clear enough given Cortex-M3's 4-byte `StackType_t`? Leaving it
+  in words for now — matches `uxTaskGetStackHighWaterMark`'s native
+  unit, future ports on architectures with different `StackType_t` will
+  Just Work.
+
 ## 2026-05-12 — S21.01 SOLIDSYSLOG_MAX_MESSAGE_SIZE as the first build-time tunable (#347)
 
 First slice of E21 (Port-Time Configurability). Introduces the mechanism
