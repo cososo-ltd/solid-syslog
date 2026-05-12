@@ -1,8 +1,8 @@
 #ifndef SOLIDSYSLOG_RECORDSTORE_H
 #define SOLIDSYSLOG_RECORDSTORE_H
 
-#include "SolidSyslog.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
+#include "SolidSyslogTunables.h"
 
 #include <stdbool.h>
 #include <stddef.h>

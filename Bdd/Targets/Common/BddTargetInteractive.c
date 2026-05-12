@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "SolidSyslog.h"
+#include "SolidSyslogTunables.h"
 
 static const char* const PROMPT = "SolidSyslog> ";
 

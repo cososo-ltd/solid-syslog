@@ -6,6 +6,7 @@
 
 #include "SolidSyslog.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
+#include "SolidSyslogTunables.h"
 #include "ExternC.h"
 
 struct SolidSyslogStore;

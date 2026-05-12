@@ -11,6 +11,7 @@
 #include "SolidSyslogPosixDatagram.h"
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogNullStore.h"
+#include "SolidSyslogTunables.h"
 #include "SocketFake.h"
 #include "ClockFake.h"
 #include "SolidSyslogPrival.h"

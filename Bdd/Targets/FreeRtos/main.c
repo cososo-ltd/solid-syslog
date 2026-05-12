@@ -25,6 +25,7 @@
 #include "BddTargetSwitchConfig.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogEndpoint.h"

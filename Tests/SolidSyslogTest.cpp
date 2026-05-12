@@ -13,6 +13,7 @@
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogStructuredDataDefinition.h"
+#include "SolidSyslogTunables.h"
 #include "BufferFake.h"
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogErrorMessages.h"

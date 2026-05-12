@@ -9,6 +9,7 @@
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogGetAddrInfoResolver.h"
 #include "SolidSyslogPosixDatagram.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogSender.h"
 #include "SocketFake.h"
@@ -25,7 +26,7 @@ static const size_t      TEST_MESSAGE_LEN      = 5;
 static const char* const TEST_DEFAULT_HOST     = "127.0.0.1";
 static const int         TEST_DEFAULT_PORT     = 514;
 static const int         TEST_ALTERNATE_PORT   = 9999;
-static const size_t      TEST_MAX_MESSAGE_SIZE = 1024;
+static const size_t      TEST_MAX_MESSAGE_SIZE = SOLIDSYSLOG_MAX_MESSAGE_SIZE;
 // clang-format on
 
 static int GetDefaultPort()

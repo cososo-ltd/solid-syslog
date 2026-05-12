@@ -21,6 +21,7 @@
 #include "BddTargetUdpConfig.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogCrc16Policy.h"
 #include "SolidSyslogFileBlockDevice.h"

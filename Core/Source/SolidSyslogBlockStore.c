@@ -4,7 +4,7 @@
 
 #include "BlockSequence.h"
 #include "RecordStore.h"
-#include "SolidSyslog.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogMacros.h"
 #include "SolidSyslogNullSecurityPolicy.h"

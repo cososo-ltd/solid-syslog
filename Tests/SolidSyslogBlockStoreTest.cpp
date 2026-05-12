@@ -9,7 +9,7 @@
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogStore.h"
-#include "SolidSyslog.h"
+#include "SolidSyslogTunables.h"
 #include "FileFake.h"
 #include "TestUtils.h"
 

@@ -2,10 +2,10 @@
 
 #include "CppUTest/TestHarness.h"
 #include "MutexFake.h"
-#include "SolidSyslog.h"
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogNullMutex.h"
+#include "SolidSyslogTunables.h"
 
 enum
 {

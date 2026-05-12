@@ -5,10 +5,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "SolidSyslog.h"
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogMacros.h"
 #include "SolidSyslogMutex.h"
+#include "SolidSyslogTunables.h"
 
 enum
 {

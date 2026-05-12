@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "SolidSyslog.h"
 #include "SolidSyslogSenderDefinition.h"
+#include "SolidSyslogTunables.h"
 #include "MinSize.h"
 
 struct SenderFake

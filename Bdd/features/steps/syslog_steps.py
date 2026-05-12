@@ -61,12 +61,15 @@ SYSLOG_NG_CONF = "Bdd/syslog-ng/syslog-ng.conf"
 SYSLOG_NG_FULL_CONF = "Bdd/syslog-ng/syslog-ng-full.conf"
 SYSLOG_NG_UDP_ONLY_CONF = "Bdd/syslog-ng/syslog-ng-udp-only.conf"
 
-# Mirrors SOLIDSYSLOG_MAX_MESSAGE_SIZE from Core/Interface/SolidSyslog.h. Bump
-# the two together. The store_capacity scenarios depend on it because production
-# clamps max-block-size up to MAX + RECORD_OVERHEAD + integritySize at runtime,
-# so the block size used by the block store is MAX-coupled even when the feature
-# file specifies a smaller value.
-SOLIDSYSLOG_MAX_MESSAGE_SIZE = 2048
+# Sourced from the build's configured tunables via the CMake-generated
+# solidsyslog_tunables module (configure_file in top-level CMakeLists.txt
+# parses Core/Interface/SolidSyslogTunablesDefaults.h, or the user override
+# if SOLIDSYSLOG_USER_TUNABLES_FILE is set). The store_capacity scenarios
+# depend on this value because production clamps max-block-size up to
+# MAX + RECORD_OVERHEAD + integritySize at runtime, so the block size used
+# by the block store is MAX-coupled even when the feature file specifies a
+# smaller value.
+from solidsyslog_tunables import SOLIDSYSLOG_MAX_MESSAGE_SIZE
 
 # RFC 5424 §6.2.4 IP fallback for the FreeRTOS reference example. With no
 # FQDN (no DNS resolver), no integrator-supplied hostname, and no DHCP, the

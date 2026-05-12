@@ -1,6 +1,6 @@
 #include "WinsockFake.h"
 #include "SafeString.h"
-#include "SolidSyslog.h"
+#include "SolidSyslogTunables.h"
 #include <string.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>

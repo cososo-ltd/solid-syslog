@@ -4,9 +4,9 @@
 #include <stdbool.h>
 
 #include "SafeString.h"
-#include "SolidSyslog.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogMacros.h"
+#include "SolidSyslogTunables.h"
 #include "TestAssert.h"
 
 enum

@@ -1,5 +1,111 @@
 # Dev Log
 
+## 2026-05-12 — S21.01 SOLIDSYSLOG_MAX_MESSAGE_SIZE as the first build-time tunable (#347)
+
+First slice of E21 (Port-Time Configurability). Introduces the mechanism
+for integrators to override library defaults at build time; no
+behavioural change on `main` because the default value of
+`SOLIDSYSLOG_MAX_MESSAGE_SIZE` is unchanged at 2048.
+
+### Decisions
+
+- **mbedTLS-style C-side single source of truth.** Defaults live in
+  `Core/Interface/SolidSyslogTunablesDefaults.h`. The central header
+  `Core/Interface/SolidSyslogTunables.h` optionally `#include`s a
+  user-supplied override file (controlled by the
+  `SOLIDSYSLOG_USER_TUNABLES_FILE` macro), then falls through to the
+  defaults. Each tunable is `#ifndef`-guarded so the user's value wins.
+  Familiar pattern to embedded developers coming from mbedTLS,
+  FreeRTOS-Kernel, lwIP.
+- **CMake INTERFACE target carries the override.** Top-level
+  `CMakeLists.txt` declares `SolidSyslogTunables` (INTERFACE) and adds
+  `SOLIDSYSLOG_USER_TUNABLES_FILE="${SOLIDSYSLOG_USER_TUNABLES_FILE}"`
+  as a compile definition when the cache variable is set. The library
+  links it `PUBLIC` so the macro propagates to consumers. Per Ben
+  Boeckel's CMake-Discourse guidance — usages that morph the library
+  itself break CMake's identity model; an INTERFACE target the
+  consumer can link against does not.
+- **Compile-time floor guard, not runtime test.** The defaults header
+  enforces `SOLIDSYSLOG_MAX_MESSAGE_SIZE >= 64` via `#if`/`#error`
+  outside the `#ifndef` block, so the check evaluates whatever value
+  is in effect (user override or default). Floor rationale: a legal
+  all-NILVALUE RFC 5424 message is 16 bytes; 64 leaves room for a
+  real PRI, hostname, MSGID, short payload. One-off manual
+  verification — directive is self-evidently correct, no need to
+  automate the negative-build case.
+- **BDD-Python bridge via `configure_file`.** Replaces the hardcoded
+  `SOLIDSYSLOG_MAX_MESSAGE_SIZE = 2048` mirror in
+  `Bdd/features/steps/syslog_steps.py` (the "remember to bump this"
+  comment was a known maintenance burden). CMake parses the defaults
+  header at configure time, optionally overrides from the user-config
+  file, and writes
+  `Bdd/features/steps/solidsyslog_tunables.py` (gitignored). BDD
+  steps import the value. Single source of truth — both sides come
+  from the same CMake variable in the same configure run, so drift
+  is structurally impossible.
+- **`tunable-override-debug` preset proves the path end-to-end.** New
+  CMake preset inherits `debug` and sets
+  `SOLIDSYSLOG_USER_TUNABLES_FILE` to a test fixture
+  (`Tests/Fixtures/SmallMessageSizeTunables.h`, MAX = 512) plus
+  `SOLIDSYSLOG_TEST_EXPECTED_MAX_MESSAGE_SIZE=512`. A `static_assert`
+  in `Tests/SolidSyslogTunablesTest.cpp` confirms the override
+  actually reached the compiler — the build fails if it didn't, no
+  runtime ceremony. New CI job `build-linux-tunable-override` runs
+  this preset; added to the `summary` gate's `needs:` list. Required
+  branch-protection check is a separate GitHub-side step.
+- **Two latent bugs surfaced and fixed during the unit-test audit.**
+  (a) `Tests/SolidSyslogUdpSenderTest.cpp` hardcoded
+  `TEST_MAX_MESSAGE_SIZE = 1024` — the test name claims "max size
+  transmitted without truncation" but the constant was a static
+  literal. Now tracks `SOLIDSYSLOG_MAX_MESSAGE_SIZE` so the assertion
+  holds at any configured size. (b) `Tests/Support/SocketFake.c`
+  reserved one byte for a null terminator inside a buffer sized to
+  the configured MAX, silently clipping the last byte when a true
+  max-size message was sent. Buffer is now MAX + 1.
+- **IWYU-clean include migration.** Files that previously included
+  `SolidSyslog.h` *only* for `SOLIDSYSLOG_MAX_MESSAGE_SIZE` (verified
+  by grep for `SolidSyslogMessage`/`SolidSyslog_Log`/`SolidSyslog_Service`
+  symbols) now include `SolidSyslogTunables.h` directly and drop
+  `SolidSyslog.h`. Files that genuinely use both keep both. The IWYU
+  pragma-keep on `SolidSyslogCircularBuffer.h` is gone — no longer
+  needed.
+
+### Deferred
+
+- **Actual FreeRTOS tuning down** — S21.02. This slice ships the
+  mechanism with the default unchanged. S21.02 will set
+  `SOLIDSYSLOG_USER_TUNABLES_FILE` on the `freertos-cross` preset and
+  audit BDD scenarios for hardcoded message-size assumptions
+  (`udp_mtu.feature` and `store_capacity` scenarios are the obvious
+  candidates).
+- **Further tunables** (`SEND_TIMEOUT_*`, buffer capacities, SD
+  limits) — S21.03+. The mechanism extends to each by adding a
+  `#ifndef`-guarded `#define` to the defaults header.
+- **`--dump-config` audit-evidence check.** Belt-and-braces idea from
+  the research brief: have the BDD target binary print its compiled
+  tunables, a behave step at session start cross-checks against the
+  generated Python module. With `configure_file` as a single source,
+  there's no drift surface, so this is purely audit-paperwork
+  value — natural fit under #155 (E19 CRA-Ready Cybersecurity
+  Reporting).
+- **Porting guide.** Header comments are the docs for now. A
+  dedicated porting page (platform components, compilers, locations,
+  tuning) will land later and point at the header rather than
+  duplicate.
+- **Strict-alphabetic sort of `#include` blocks.** Project doesn't
+  set `SortIncludes: true`; the new `SolidSyslogTunables.h` lands
+  next to its sibling `SolidSyslog.h` in each file, which is
+  semantically grouped but not strictly alphabetic. Cleanup pass
+  optional.
+
+### Open questions
+
+- **Branch-protection update for the new CI job.** The
+  `build-linux-tunable-override` job is added to the `summary` gate's
+  `needs:` list, so the aggregate signal stays correct. Adding it as
+  a *required* check on `main` is a separate GitHub-side
+  configuration step David owns.
+
 ## 2026-05-11 — S08.11 switching_transport BDD scenario (UDP↔TCP) on QEMU (#340)
 
 Third and final slice of S08.06. With the TCP stream (S08.09) and TCP

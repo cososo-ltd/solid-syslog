@@ -1,6 +1,6 @@
 #include "SocketFake.h"
 #include "SafeString.h"
-#include "SolidSyslog.h"
+#include "SolidSyslogTunables.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -16,7 +16,9 @@ struct timeval;
 
 enum
 {
-    SOCKETFAKE_MAX_BUFFER_SIZE = SOLIDSYSLOG_MAX_MESSAGE_SIZE
+    /* +1 reserves a null terminator slot so LastBufAsString stays valid
+     * even when a full SOLIDSYSLOG_MAX_MESSAGE_SIZE-byte message is sent. */
+    SOCKETFAKE_MAX_BUFFER_SIZE = SOLIDSYSLOG_MAX_MESSAGE_SIZE + 1
 };
 
 static bool               sendtoFails;

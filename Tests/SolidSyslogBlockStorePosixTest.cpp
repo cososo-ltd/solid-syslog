@@ -8,7 +8,7 @@
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogPosixFile.h"
 #include "SolidSyslogStore.h"
-#include "SolidSyslog.h"
+#include "SolidSyslogTunables.h"
 
 static const char* const TEST_PATH_PREFIX = "/tmp/test_posix_store";
 

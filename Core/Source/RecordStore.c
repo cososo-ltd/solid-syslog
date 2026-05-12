@@ -1,6 +1,7 @@
 #include "RecordStore.h"
 
 #include "SolidSyslogBlockDevice.h"
+#include "SolidSyslogTunables.h"
 
 #include <string.h>
 

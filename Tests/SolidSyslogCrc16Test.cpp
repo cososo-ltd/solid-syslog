@@ -2,7 +2,7 @@
 #include <cstring>
 
 #include "SolidSyslogCrc16.h"
-#include "SolidSyslog.h"
+#include "SolidSyslogTunables.h"
 #include "CppUTest/TestHarness.h"
 
 // clang-format off

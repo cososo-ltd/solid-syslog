@@ -13,6 +13,7 @@ endif()
 
 set(TEST_SOURCES
     SolidSyslogTest.cpp
+    SolidSyslogTunablesTest.cpp
     SolidSyslogSwitchingSenderTest.cpp
     SolidSyslogMetaSdTest.cpp
     SolidSyslogTimeQualitySdTest.cpp
@@ -119,6 +120,13 @@ add_executable(${PROJECT_NAME}Tests ${TEST_SOURCES})
 
 target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake CppUTest CppUTestExt Threads::Threads)
 target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Core/Source ${CMAKE_CURRENT_SOURCE_DIR}/Support)
+
+# Drives the static_assert in SolidSyslogTunablesTest.cpp when a tunable-override
+# preset is active. Default builds leave it undefined; the assertion compiles out.
+if(DEFINED SOLIDSYSLOG_TEST_EXPECTED_MAX_MESSAGE_SIZE)
+    target_compile_definitions(${PROJECT_NAME}Tests PRIVATE
+        SOLIDSYSLOG_TEST_EXPECTED_MAX_MESSAGE_SIZE=${SOLIDSYSLOG_TEST_EXPECTED_MAX_MESSAGE_SIZE})
+endif()
 
 if(SOLIDSYSLOG_POSIX)
     target_link_libraries(${PROJECT_NAME}Tests PRIVATE PosixFakes)

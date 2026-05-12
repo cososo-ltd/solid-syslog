@@ -104,6 +104,40 @@ if(SOLIDSYSLOG_OPENSSL)
     endif()
 endif()
 
+# Build-time tunables (E21: Port-Time Configurability). Integrators override
+# library defaults by setting SOLIDSYSLOG_USER_TUNABLES_FILE to the absolute
+# path of their own header containing #define lines for whichever tunables
+# they want to change. Defaults live in Core/Interface/SolidSyslogTunablesDefaults.h.
+add_library(SolidSyslogTunables INTERFACE)
+target_include_directories(SolidSyslogTunables INTERFACE
+    ${CMAKE_SOURCE_DIR}/Core/Interface)
+if(SOLIDSYSLOG_USER_TUNABLES_FILE)
+    target_compile_definitions(SolidSyslogTunables INTERFACE
+        SOLIDSYSLOG_USER_TUNABLES_FILE="${SOLIDSYSLOG_USER_TUNABLES_FILE}")
+endif()
+
+# BDD-side mirror of the configured tunables — eliminates the hardcoded
+# "remember to bump this" mirror that used to live in syslog_steps.py.
+# Parse the default from SolidSyslogTunablesDefaults.h; if a user override
+# is in effect and defines the macro, use its value instead. The generated
+# file is written to the source tree because behave's import discovery
+# expects modules under Bdd/features/steps/; it is gitignored.
+file(READ "${CMAKE_SOURCE_DIR}/Core/Interface/SolidSyslogTunablesDefaults.h" _solidsyslog_defaults)
+string(REGEX MATCH "#define[ \t]+SOLIDSYSLOG_MAX_MESSAGE_SIZE[ \t]+([0-9]+)" _ "${_solidsyslog_defaults}")
+set(SOLIDSYSLOG_BDD_MAX_MESSAGE_SIZE "${CMAKE_MATCH_1}")
+if(SOLIDSYSLOG_USER_TUNABLES_FILE AND EXISTS "${SOLIDSYSLOG_USER_TUNABLES_FILE}")
+    file(READ "${SOLIDSYSLOG_USER_TUNABLES_FILE}" _solidsyslog_user_tunables)
+    string(REGEX MATCH "#define[ \t]+SOLIDSYSLOG_MAX_MESSAGE_SIZE[ \t]+([0-9]+)" _ "${_solidsyslog_user_tunables}")
+    if(CMAKE_MATCH_1)
+        set(SOLIDSYSLOG_BDD_MAX_MESSAGE_SIZE "${CMAKE_MATCH_1}")
+    endif()
+endif()
+configure_file(
+    "${CMAKE_SOURCE_DIR}/Bdd/features/steps/solidsyslog_tunables.py.in"
+    "${CMAKE_SOURCE_DIR}/Bdd/features/steps/solidsyslog_tunables.py"
+    @ONLY
+)
+
 add_subdirectory(Core/Source)
 
 if(HAVE_STDATOMIC_H)

@@ -37,6 +37,15 @@
             }
         },
         {
+            "name": "tunable-override-debug",
+            "displayName": "Tunable Override (mechanism end-to-end)",
+            "inherits": "debug",
+            "cacheVariables": {
+                "SOLIDSYSLOG_USER_TUNABLES_FILE": "${sourceDir}/Tests/Fixtures/SmallMessageSizeTunables.h",
+                "SOLIDSYSLOG_TEST_EXPECTED_MAX_MESSAGE_SIZE": "512"
+            }
+        },
+        {
             "name": "coverage",
             "displayName": "Coverage",
             "inherits": "debug",
@@ -112,6 +121,7 @@
         { "name": "debug",          "configurePreset": "debug" },
         { "name": "release",        "configurePreset": "release" },
         { "name": "sanitize",       "configurePreset": "sanitize" },
+        { "name": "tunable-override-debug", "configurePreset": "tunable-override-debug" },
         { "name": "coverage",       "configurePreset": "coverage" },
         { "name": "tidy",           "configurePreset": "tidy" },
         { "name": "cppcheck",       "configurePreset": "cppcheck" },

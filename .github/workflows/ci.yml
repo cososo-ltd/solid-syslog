@@ -165,6 +165,44 @@ jobs:
           path: build/msvc-debug/Tests/OpenSslIntegration/Debug/cpputest_*.xml
           retention-days: 1
 
+  build-linux-tunable-override:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    container:
+      image: ghcr.io/davidcozens/cpputest:sha-18f19e1
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Configure with tunable override
+        run: cmake --preset tunable-override-debug
+
+      - name: Build and test
+        run: cmake --build --preset tunable-override-debug --target junit
+
+      - name: Test Report
+        uses: dorny/test-reporter@v3
+        if: success() || failure()
+        with:
+          name: Test Results (Tunable Override)
+          path: build/tunable-override-debug/cpputest_*.xml
+          reporter: java-junit
+
+      - name: Upload JUnit XML
+        if: success() || failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: junit-build-linux-tunable-override
+          path: build/tunable-override-debug/cpputest_*.xml
+          retention-days: 1
+
   build-linux-clang:
     runs-on: ubuntu-latest
     permissions:
@@ -776,7 +814,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [build-linux-gcc, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, analyze-iwyu, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-windows-openssl, build-freertos-host-tdd, build-freertos-target, bdd-freertos-qemu]
+    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, analyze-iwyu, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-windows-openssl, build-freertos-host-tdd, build-freertos-target, bdd-freertos-qemu]
     runs-on: ubuntu-latest
     permissions:
       contents: read
