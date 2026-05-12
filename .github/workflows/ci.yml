@@ -724,7 +724,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/davidcozens/cpputest-freertos:sha-10a14ae
+      image: ghcr.io/davidcozens/cpputest-freertos:sha-bbc958b
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -768,7 +768,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-10a14ae
+      image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-bbc958b
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1

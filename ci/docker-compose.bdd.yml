@@ -87,7 +87,7 @@ services:
 
   behave-freertos:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-10a14ae
+    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-bbc958b
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog

@@ -1,10 +1,10 @@
 # FreeRTOS adapter pack — shipped as sources, not a precompiled library.
 #
-# FreeRTOS, FreeRTOS-Plus-FAT, and Mbed TLS are header-configured: the
-# integrator's FreeRTOSConfig.h / ffconf.h / mbedtls_config.h flows through
-# upstream headers and changes the size/layout of TCBs, semaphores, file
-# handles, and SSL contexts. Compiling our adapters once into libSolidSyslog.a
-# would silently break consumers that use a different config.
+# FreeRTOS and Mbed TLS are header-configured: the integrator's
+# FreeRTOSConfig.h / mbedtls_config.h flows through upstream headers and
+# changes the size/layout of TCBs, semaphores, and SSL contexts. Compiling
+# our adapters once into libSolidSyslog.a would silently break consumers
+# that use a different config.
 #
 # Instead, this is an INTERFACE library — each consumer (Example/FreeRtos/*,
 # Tests/FreeRtos/*Test, downstream integrator apps) recompiles the adapter
