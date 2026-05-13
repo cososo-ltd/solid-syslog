@@ -179,6 +179,13 @@ static SolidSyslogFreeRtosMutexStorage  mutexStorage;
 static SolidSyslogFreeRtosMutexStorage lifecycleMutexStorage;
 static struct SolidSyslogMutex*        g_lifecycleMutex = NULL;
 static volatile bool                   g_solidSyslogReady;
+/* Signals Service to self-delete BEFORE Teardown destroys the lifecycle
+ * mutex. Without this, Service races against InteractiveTask: Teardown
+ * destroys g_lifecycleMutex and NULLs it, but Service's next iteration
+ * unconditionally locks g_lifecycleMutex — NULL deref or use-after-free.
+ * Set inside the lifecycle-mutex critical section so Service observes it
+ * atomically with the SolidSyslog destroy. */
+static volatile bool g_solidSyslogTeardown = false;
 
 /* File-backed store storage. Lives in .bss so it persists across the
  * `set store file` rebuild; only populated when that command fires.
@@ -247,6 +254,7 @@ static bool                          TryUpdateString(char* storage, size_t stora
 static bool                          TryParseUInt(const char* value, unsigned long* out);
 static bool                          RebuildWithFileStore(void);
 static bool                          EnsureFatFsMounted(void);
+static void                          RunFatFsSelfTest(void);
 static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy);
 static void                          OnStoreFull(void* context);
 static size_t                        GetCapacityThreshold(void* context);
@@ -473,12 +481,14 @@ static bool OnSet(const char* name, const char* value)
     }
     if (strcmp(name, "store") == 0)
     {
-        /* "null" is the default state — accept it as a no-op so the harness
-         * can pass --store null without us needing to special-case it on
-         * the harness side. "file" triggers the rebuild. */
+        /* "null" is the default state — accept it as an unconditional
+         * no-op so the harness can pass --store null without us needing
+         * to special-case it on the harness side. "file" triggers the
+         * rebuild (which is one-way for the lifetime of this QEMU
+         * instance — see RebuildWithFileStore). */
         if (strcmp(value, "null") == 0)
         {
-            return !g_currentStoreIsFile; /* succeed only if we're still on the default */
+            return true;
         }
         if (strcmp(value, "file") == 0)
         {
@@ -625,7 +635,62 @@ static bool EnsureFatFsMounted(void)
     }
     g_fatfsMounted = true;
     (void) printf("[fatfs] mount complete\n");
+    RunFatFsSelfTest();
     return true;
+}
+
+/* Exercise every FatFs operation that BlockStore + FileBlockDevice will use:
+ * open(write), write, close, stat-exists, open(read), read, close, unlink,
+ * stat-not-exists. If any step fails, we know the FatFs layer is the
+ * regression source. Runs once per mount (after f_mkfs), inside the
+ * lifecycle-mutex critical section, so it can't race the Service task. */
+static void RunFatFsSelfTest(void)
+{
+    static const char TEST_PATH[] = "TEST.TMP";
+    static const char TEST_DATA[] = "hello";
+
+    enum
+    {
+        TEST_DATA_LEN = sizeof(TEST_DATA) - 1U
+    };
+
+    FIL     fp;
+    FILINFO fno                         = {0};
+    UINT    bw                          = 0U;
+    UINT    br                          = 0U;
+    char    readBuf[TEST_DATA_LEN + 1U] = {0};
+
+    FRESULT res = f_open(&fp, TEST_PATH, FA_CREATE_ALWAYS | FA_WRITE);
+    (void) printf("[fatfs-test] f_open(W) -> %d\n", (int) res);
+    if (res != FR_OK)
+    {
+        return;
+    }
+
+    res = f_write(&fp, TEST_DATA, (UINT) TEST_DATA_LEN, &bw);
+    (void) printf("[fatfs-test] f_write %u bytes -> %d (bw=%u)\n", (unsigned) TEST_DATA_LEN, (int) res, (unsigned) bw);
+
+    res = f_close(&fp);
+    (void) printf("[fatfs-test] f_close(W) -> %d\n", (int) res);
+
+    res = f_stat(TEST_PATH, &fno);
+    (void) printf("[fatfs-test] f_stat exists -> %d (size=%u)\n", (int) res, (unsigned) fno.fsize);
+
+    res = f_open(&fp, TEST_PATH, FA_READ);
+    (void) printf("[fatfs-test] f_open(R) -> %d\n", (int) res);
+    if (res == FR_OK)
+    {
+        res = f_read(&fp, readBuf, sizeof(readBuf) - 1U, &br);
+        (void) printf("[fatfs-test] f_read -> %d (br=%u, data='%s')\n", (int) res, (unsigned) br, readBuf);
+        res = f_close(&fp);
+        (void) printf("[fatfs-test] f_close(R) -> %d\n", (int) res);
+    }
+
+    res = f_unlink(TEST_PATH);
+    (void) printf("[fatfs-test] f_unlink -> %d\n", (int) res);
+
+    res = f_stat(TEST_PATH, &fno);
+    (void) printf("[fatfs-test] f_stat after-unlink -> %d (expect FR_NO_FILE=4)\n", (int) res);
 }
 
 static void SemihostingExit(int status)
@@ -803,9 +868,12 @@ static void InteractiveTask(void* argument)
     (void) printf("[stack-hwm] interactive=%lu words service=%lu words\n", (unsigned long) interactiveHwm, (unsigned long) serviceHwm);
 
     /* Quiesce Service before tearing down — same lifecycle-mutex protocol
-     * as the rebuild path uses for `set store file`. */
+     * as the rebuild path uses for `set store file`. Setting
+     * g_solidSyslogTeardown inside the lock guarantees Service observes it
+     * atomically with the SolidSyslog destroy. */
     SolidSyslogMutex_Lock(g_lifecycleMutex);
-    g_solidSyslogReady = false;
+    g_solidSyslogTeardown = true;
+    g_solidSyslogReady    = false;
     SolidSyslog_Destroy();
     SolidSyslogOriginSd_Destroy();
     SolidSyslogTimeQualitySd_Destroy();
@@ -824,6 +892,13 @@ static void InteractiveTask(void* argument)
         SolidSyslogNullStore_Destroy();
     }
     SolidSyslogMutex_Unlock(g_lifecycleMutex);
+
+    /* Give Service one full iteration (vTaskDelay 1ms + lock-check) to
+     * observe the teardown flag and vTaskDelete itself before we destroy
+     * the lifecycle mutex out from under it. 20ms is generous against
+     * Service's worst-case iteration time. */
+    vTaskDelay(pdMS_TO_TICKS(20));
+    serviceTaskHandle = NULL;
 
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogFreeRtosMutex_Destroy(mutex);
@@ -861,6 +936,14 @@ static void ServiceTask(void* argument)
     for (;;)
     {
         SolidSyslogMutex_Lock(g_lifecycleMutex);
+        if (g_solidSyslogTeardown)
+        {
+            /* Teardown set this flag inside the lifecycle critical section,
+             * then is sleeping briefly waiting for us to exit. Release and
+             * self-delete before Teardown destroys the mutex. */
+            SolidSyslogMutex_Unlock(g_lifecycleMutex);
+            vTaskDelete(NULL);
+        }
         if (g_solidSyslogReady)
         {
             SolidSyslog_Service();

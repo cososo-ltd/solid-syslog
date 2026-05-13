@@ -191,6 +191,14 @@ def apply_extra_args(context, process, extra_args):
                     f"FreeRTOS extra_args flag {flag!r} expects a value but "
                     "extra_args ended."
                 ) from exc
+            # Guard against the next-token-is-another-flag mistake:
+            # `--facility --severity 6` would silently use `--severity` as
+            # facility's value. Fail fast so the scenario builder fixes it.
+            if value.startswith("-"):
+                raise ValueError(
+                    f"FreeRTOS extra_args flag {flag!r} expects a value but "
+                    f"got another flag {value!r}."
+                )
         pairs.append((flag, value))
 
     pairs.sort(key=lambda fv: _freertos_set_order_key(fv[0]))

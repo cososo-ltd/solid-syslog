@@ -199,7 +199,6 @@ def after_step(context, step):
     if not log:
         return
     text = bytes(log).decode("utf-8", errors="replace")
-    import sys
     print(f"--- last {len(log)} bytes of BDD target stdout ---", file=sys.stderr, flush=True)
     for line in text.splitlines():
         print(f"  GUEST: {line}", file=sys.stderr, flush=True)
