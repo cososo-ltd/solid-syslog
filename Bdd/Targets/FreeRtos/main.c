@@ -599,18 +599,23 @@ static bool EnsureFatFsMounted(void)
     {
         return true;
     }
+    (void) printf("[fatfs] mounting volume 0\n");
     FRESULT res = f_mount(&g_fatfs, "", 1); /* opt=1 → mount immediately, surface FR_NO_FILESYSTEM here rather than at first f_open */
+    (void) printf("[fatfs] f_mount initial -> %d\n", (int) res);
     if (res == FR_NO_FILESYSTEM)
     {
         /* Fresh disk image — lay down a FAT and re-mount. FAT12 is the
          * natural choice for a 1 MiB volume (small enough that FAT32's
          * cluster overhead would dominate). */
+        (void) printf("[fatfs] no filesystem, formatting\n");
         static BYTE     workBuffer[FF_MAX_SS];
         const MKFS_PARM opts = {.fmt = FM_FAT | FM_SFD, .n_fat = 1, .align = 1, .n_root = 0, .au_size = 0};
         res                  = f_mkfs("", &opts, workBuffer, sizeof(workBuffer));
+        (void) printf("[fatfs] f_mkfs -> %d\n", (int) res);
         if (res == FR_OK)
         {
             res = f_mount(&g_fatfs, "", 1);
+            (void) printf("[fatfs] f_mount post-mkfs -> %d\n", (int) res);
         }
     }
     if (res != FR_OK)
@@ -619,6 +624,7 @@ static bool EnsureFatFsMounted(void)
         return false;
     }
     g_fatfsMounted = true;
+    (void) printf("[fatfs] mount complete\n");
     return true;
 }
 

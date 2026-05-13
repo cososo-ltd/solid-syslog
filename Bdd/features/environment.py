@@ -183,6 +183,29 @@ def before_scenario(context, scenario):
     _skip_if_tunable_too_small(scenario)
 
 
+def after_step(context, step):
+    """On step failure, dump the recent BDD-target stdout (FreeRTOS guest
+    UART output for the QEMU target) so [solidsyslog] error lines and
+    printf diagnostics are visible in the behave log. _solidsyslog_stdout_log
+    is the 16 KB sliding buffer the reader thread maintains; if the target
+    didn't go through _start_stdout_reader (Linux/Windows path), this is a
+    no-op."""
+    if step.status != "failed":
+        return
+    if not hasattr(context, "interactive_process"):
+        return
+    process = context.interactive_process
+    log = getattr(process, "_solidsyslog_stdout_log", None)
+    if not log:
+        return
+    text = bytes(log).decode("utf-8", errors="replace")
+    import sys
+    print(f"--- last {len(log)} bytes of BDD target stdout ---", file=sys.stderr, flush=True)
+    for line in text.splitlines():
+        print(f"  GUEST: {line}", file=sys.stderr, flush=True)
+    print("--- end ---", file=sys.stderr, flush=True)
+
+
 def after_scenario(context, scenario):
     # Clean up any long-lived interactive process
     if hasattr(context, "interactive_process"):

@@ -65,23 +65,30 @@ static bool DiskImageIsReady(void);
 
 DSTATUS disk_initialize(BYTE pdrv)
 {
+    extern int printf(const char* fmt, ...);
+    (void) printf("[diskio] disk_initialize pdrv=%u\n", (unsigned) pdrv);
     if (pdrv != 0)
     {
         return STA_NOINIT;
     }
-    return DiskImageIsReady() ? 0 : STA_NOINIT;
+    bool ok = DiskImageIsReady();
+    (void) printf("[diskio] disk_initialize ready=%u\n", (unsigned) ok);
+    return ok ? 0 : STA_NOINIT;
 }
 
 static bool DiskImageIsReady(void)
 {
+    extern int printf(const char* fmt, ...);
     if (g_diskHandle >= 0)
     {
         return true;
     }
     g_diskHandle = SemihostingOpen(DISK_IMAGE_PATH, SEMIHOSTING_MODE_READ_PLUS_BINARY);
+    (void) printf("[diskio] open(r+b) -> handle=%d\n", g_diskHandle);
     if (g_diskHandle >= 0)
     {
         int length = SemihostingFlen(g_diskHandle);
+        (void) printf("[diskio] flen=%d\n", length);
         if (length >= (int) DISK_TOTAL_BYTES)
         {
             return true;
@@ -94,6 +101,7 @@ static bool DiskImageIsReady(void)
      * back-fill the hole with zeros on read, which is what FatFs needs
      * to see FR_NO_FILESYSTEM and fall through to f_mkfs. */
     g_diskHandle = SemihostingOpen(DISK_IMAGE_PATH, SEMIHOSTING_MODE_WRITE_PLUS_BINARY);
+    (void) printf("[diskio] open(w+b) -> handle=%d\n", g_diskHandle);
     if (g_diskHandle < 0)
     {
         return false;

@@ -312,6 +312,10 @@ def _start_stdout_reader(process):
         return
 
     process._solidsyslog_byte_queue = queue.Queue()
+    # Sliding-window record of everything the FreeRTOS guest has printed,
+    # used by after_step diagnostics when a scenario fails. Stays in-process
+    # (no disk I/O) and capped so a long run doesn't grow unbounded.
+    process._solidsyslog_stdout_log = bytearray()
     fd = process.stdout.fileno()
 
     def _reader():
@@ -321,6 +325,11 @@ def _start_stdout_reader(process):
                 if not data:
                     break
                 process._solidsyslog_byte_queue.put(data)
+                log = process._solidsyslog_stdout_log
+                log += data
+                # Cap at 16 KB — recent context only.
+                if len(log) > 16384:
+                    del log[: len(log) - 16384]
         finally:
             process._solidsyslog_byte_queue.put(None)
 
