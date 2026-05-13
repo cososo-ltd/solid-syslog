@@ -230,6 +230,12 @@ FRESULT f_write(FIL* fp, const void* buff, UINT btw, UINT* bw)
     return writeResult;
 }
 
+FRESULT f_sync(FIL* fp)
+{
+    (void) fp;
+    return FR_OK;
+}
+
 void FatFsFake_SetStatResult(FRESULT result)
 {
     statResult = result;

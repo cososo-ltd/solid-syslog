@@ -59,10 +59,11 @@
 #define FF_NORTC_YEAR 2026
 #define FF_FS_CRTIME 0
 #define FF_FS_NOFSINFO 0
-#define FF_FS_LOCK 4 /* FileBlockDevice keeps two FILs open concurrently on the same path
-                      * (readHandle + writeHandle) — with FF_FS_LOCK=0 FatFs would treat
-                      * that as "illegal open" and silently corrupt the volume. 4 gives
-                      * headroom over the 2 we use, in case rename/delete opens a third
-                      * FIL transiently. ~12 B/slot bookkeeping (48 B total). */
+/* FileBlockDevice keeps two FILs open concurrently on the same path
+ * (readHandle + writeHandle) — with FF_FS_LOCK=0 FatFs would treat
+ * that as "illegal open" and silently corrupt the volume. 4 gives
+ * headroom over the 2 we use, in case rename/delete opens a third
+ * FIL transiently. ~12 B/slot bookkeeping (48 B total). */
+#define FF_FS_LOCK 4
 #define FF_FS_REENTRANT 1 /* Forward-looking — exercise the lock path before stress tests need it. */
 #define FF_FS_TIMEOUT 1000
