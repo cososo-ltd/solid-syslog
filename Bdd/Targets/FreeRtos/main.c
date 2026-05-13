@@ -238,6 +238,19 @@ static struct SolidSyslogStructuredData* metaSd        = NULL;
 static struct SolidSyslogStructuredData* timeQualitySd = NULL;
 static struct SolidSyslogStructuredData* originSd      = NULL;
 
+/* Resources allocated in InteractiveTask's Setup phase and released by
+ * TeardownAll. File-scope static so the two exit paths can reach the
+ * destroy chain: the interactive `quit` command (which returns from
+ * BddTargetInteractive_Run and falls through to TeardownAll in the same
+ * task), and `set shutdown 1` from the OnSet handler (which calls
+ * TeardownAll then SemihostingExit). */
+static struct SolidSyslogResolver* resolver    = NULL;
+static struct SolidSyslogDatagram* datagram    = NULL;
+static struct SolidSyslogStream*   tcpStream   = NULL;
+static struct SolidSyslogSender*   tcpSender   = NULL;
+static struct SolidSyslogBuffer*   buffer      = NULL;
+static struct SolidSyslogMutex*    bufferMutex = NULL;
+
 /* Ensures the interactive task is created exactly once even if the network
  * goes down and back up. */
 static BaseType_t interactiveTaskCreated = pdFALSE;
@@ -252,7 +265,7 @@ static bool                          TryUpdateString(char* storage, size_t stora
 static bool                          TryParseUInt(const char* value, unsigned long* out);
 static bool                          RebuildWithFileStore(void);
 static void                          DestroyCurrentStore(void);
-static void                          ShutdownGracefully(void);
+static void                          TeardownAll(void);
 static bool                          EnsureFatFsMounted(void);
 static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy);
 static void                          OnStoreFull(void* context);
@@ -497,9 +510,10 @@ static bool OnSet(const char* name, const char* value)
     }
     if (strcmp(name, "shutdown") == 0)
     {
-        /* Any non-zero value triggers graceful shutdown — the BDD
-         * `the client is killed` step on freertos sends `set shutdown 1`
-         * so FatFs flushes and unmounts before QEMU exits. Never returns. */
+        /* Any non-zero value triggers a full teardown then exits QEMU.
+         * Same destroy chain as the `quit` path; only the final action
+         * differs (SemihostingExit here, vTaskDelete on `quit`). The BDD
+         * `the client is killed` step on freertos sends `set shutdown 1`. */
         unsigned long parsed = 0U;
         if (!TryParseUInt(value, &parsed))
         {
@@ -507,7 +521,8 @@ static bool OnSet(const char* name, const char* value)
         }
         if (parsed != 0U)
         {
-            ShutdownGracefully();
+            TeardownAll();
+            SemihostingExit(0);
         }
         return true;
     }
@@ -619,25 +634,49 @@ static void DestroyCurrentStore(void)
     }
 }
 
-/* Tear down our objects, unmount FatFs, and exit QEMU cleanly. Triggered
- * by `set shutdown 1` over the UART. The BDD power_cycle_replay scenario
- * uses this in place of SIGKILL so the next session's f_mount finds the
- * STORE*.log files with their directory entries up-to-date — testing our
- * recovery path on startup, not FatFs's mid-write crash semantics
- * (those are covered by the FatFsFile unit tests). Holds the lifecycle
- * mutex across the destroy chain to block the Service task. */
-static void ShutdownGracefully(void)
+/* Full teardown of every resource InteractiveTask allocated during Setup.
+ * Two entry points — `quit` (falls through after BddTargetInteractive_Run
+ * returns) and `set shutdown 1` (OnSet handler) — both route through here
+ * so the destroy chain is single-source-of-truth, not duplicated. f_unmount
+ * fires regardless of how we got here; the BDD power_cycle_replay scenario
+ * relies on this so the next session's f_mount finds STORE*.log directory
+ * entries up-to-date. The lifecycle mutex held across the SolidSyslog +
+ * store destroy keeps Service from racing the teardown. */
+static void TeardownAll(void)
 {
     SolidSyslogMutex_Lock(lifecycleMutex);
-    solidSyslogReady = false;
+    solidSyslogTeardown = true;
+    solidSyslogReady    = false;
     SolidSyslog_Destroy();
+    SolidSyslogOriginSd_Destroy();
+    SolidSyslogTimeQualitySd_Destroy();
+    SolidSyslogMetaSd_Destroy();
+    SolidSyslogAtomicCounter_Destroy();
     DestroyCurrentStore();
     if (fatfsMounted)
     {
         (void) f_unmount("");
         fatfsMounted = false;
     }
-    SemihostingExit(0);
+    SolidSyslogMutex_Unlock(lifecycleMutex);
+
+    /* Give Service one full iteration (vTaskDelay 1ms + lock-check) to
+     * observe the teardown flag and vTaskDelete itself before we destroy
+     * the lifecycle mutex out from under it. 20ms is generous against
+     * Service's worst-case iteration time. */
+    vTaskDelay(pdMS_TO_TICKS(20));
+    serviceTaskHandle = NULL;
+
+    SolidSyslogCircularBuffer_Destroy(buffer);
+    SolidSyslogFreeRtosMutex_Destroy(bufferMutex);
+    SolidSyslogFreeRtosMutex_Destroy(lifecycleMutex);
+    lifecycleMutex = NULL;
+    SolidSyslogSwitchingSender_Destroy();
+    SolidSyslogStreamSender_Destroy(tcpSender);
+    SolidSyslogFreeRtosTcpStream_Destroy(tcpStream);
+    SolidSyslogUdpSender_Destroy();
+    SolidSyslogFreeRtosDatagram_Destroy(datagram);
+    SolidSyslogFreeRtosStaticResolver_Destroy(resolver);
 }
 
 /* Mount volume 0; format-on-first-use if the disk image has no FAT yet.
@@ -730,8 +769,8 @@ static void InteractiveTask(void* argument)
 {
     (void) argument;
 
-    struct SolidSyslogResolver* resolver = SolidSyslogFreeRtosStaticResolver_Create(&resolverStorage, TEST_DESTINATION_IPV4);
-    struct SolidSyslogDatagram* datagram = SolidSyslogFreeRtosDatagram_Create(&datagramStorage);
+    resolver = SolidSyslogFreeRtosStaticResolver_Create(&resolverStorage, TEST_DESTINATION_IPV4);
+    datagram = SolidSyslogFreeRtosDatagram_Create(&datagramStorage);
 
     struct SolidSyslogUdpSenderConfig udpConfig = {
         .resolver        = resolver,
@@ -745,14 +784,14 @@ static void InteractiveTask(void* argument)
      * UDP endpoint callbacks because the BDD oracle (syslog-ng) listens on the
      * same host:port for both transports — the syslog-ng config in
      * Bdd/syslog-ng/syslog-ng.conf has a TCP listener on 5514 alongside UDP. */
-    struct SolidSyslogStream*            stream    = SolidSyslogFreeRtosTcpStream_Create(&tcpStreamStorage);
+    tcpStream                                      = SolidSyslogFreeRtosTcpStream_Create(&tcpStreamStorage);
     struct SolidSyslogStreamSenderConfig tcpConfig = {
         .resolver        = resolver,
-        .stream          = stream,
+        .stream          = tcpStream,
         .endpoint        = GetEndpoint,
         .endpointVersion = GetEndpointVersion,
     };
-    struct SolidSyslogSender* tcpSender = SolidSyslogStreamSender_Create(&tcpSenderStorage, &tcpConfig);
+    tcpSender = SolidSyslogStreamSender_Create(&tcpSenderStorage, &tcpConfig);
 
     /* SwitchingSender lets `set transport <udp|tcp>` flip the active transport
      * at runtime. Default to UDP so existing UDP-tagged scenarios stay green;
@@ -774,8 +813,8 @@ static void InteractiveTask(void* argument)
      * emission in S08.04 slice 3 will add more). The buffer's Read side
      * is the Service task; its Write side is whichever task calls
      * SolidSyslog_Log. */
-    struct SolidSyslogMutex*  mutex  = SolidSyslogFreeRtosMutex_Create(&mutexStorage);
-    struct SolidSyslogBuffer* buffer = SolidSyslogCircularBuffer_Create(bufferStorage, sizeof(bufferStorage), mutex);
+    bufferMutex = SolidSyslogFreeRtosMutex_Create(&mutexStorage);
+    buffer      = SolidSyslogCircularBuffer_Create(bufferStorage, sizeof(bufferStorage), bufferMutex);
 
     /* Lifecycle mutex created up front so the Service task can take it
      * from its very first iteration without a NULL check. */
@@ -847,49 +886,7 @@ static void InteractiveTask(void* argument)
     const UBaseType_t serviceHwm     = (serviceTaskHandle != NULL) ? uxTaskGetStackHighWaterMark(serviceTaskHandle) : 0U;
     (void) printf("[stack-hwm] interactive=%lu words service=%lu words\n", (unsigned long) interactiveHwm, (unsigned long) serviceHwm);
 
-    /* Quiesce Service before tearing down — same lifecycle-mutex protocol
-     * as the rebuild path uses for `set store file`. Setting
-     * solidSyslogTeardown inside the lock guarantees Service observes it
-     * atomically with the SolidSyslog destroy. */
-    SolidSyslogMutex_Lock(lifecycleMutex);
-    solidSyslogTeardown = true;
-    solidSyslogReady    = false;
-    SolidSyslog_Destroy();
-    SolidSyslogOriginSd_Destroy();
-    SolidSyslogTimeQualitySd_Destroy();
-    SolidSyslogMetaSd_Destroy();
-    SolidSyslogAtomicCounter_Destroy();
-    if (currentStoreIsFile)
-    {
-        SolidSyslogBlockStore_Destroy(currentStore);
-        SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
-        SolidSyslogCrc16Policy_Destroy();
-        SolidSyslogFatFsFile_Destroy(storeFile);
-    }
-    else
-    {
-        SolidSyslogNullStore_Destroy();
-    }
-    SolidSyslogMutex_Unlock(lifecycleMutex);
-
-    /* Give Service one full iteration (vTaskDelay 1ms + lock-check) to
-     * observe the teardown flag and vTaskDelete itself before we destroy
-     * the lifecycle mutex out from under it. 20ms is generous against
-     * Service's worst-case iteration time. */
-    vTaskDelay(pdMS_TO_TICKS(20));
-    serviceTaskHandle = NULL;
-
-    SolidSyslogCircularBuffer_Destroy(buffer);
-    SolidSyslogFreeRtosMutex_Destroy(mutex);
-    SolidSyslogFreeRtosMutex_Destroy(lifecycleMutex);
-    lifecycleMutex = NULL;
-    SolidSyslogSwitchingSender_Destroy();
-    SolidSyslogStreamSender_Destroy(tcpSender);
-    SolidSyslogFreeRtosTcpStream_Destroy(stream);
-    SolidSyslogUdpSender_Destroy();
-    SolidSyslogFreeRtosDatagram_Destroy(datagram);
-    SolidSyslogFreeRtosStaticResolver_Destroy(resolver);
-
+    TeardownAll();
     vTaskDelete(NULL);
 }
 
