@@ -51,6 +51,7 @@ set(TEST_SOURCES
     StreamFake.c
     TestAssert.cpp
     SolidSyslogBlockStoreTest.cpp
+    SolidSyslogBlockStoreDrainOrderingTest.cpp
     SolidSyslogBlockDeviceTest.cpp
     SolidSyslogFileBlockDeviceTest.cpp
     BlockSequenceTest.cpp
