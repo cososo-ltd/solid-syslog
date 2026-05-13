@@ -5,6 +5,7 @@ import queue
 import re
 import shutil
 import socket
+import subprocess
 import threading
 import time
 from datetime import datetime, timezone
@@ -1120,10 +1121,31 @@ def step_client_attempts_send_exits(context, code):
 
 @when("the client is killed")
 def step_client_is_killed(context):
-    # process.kill() is portable: TerminateProcess on Windows, SIGKILL on POSIX.
-    # signal.SIGKILL is not defined on Windows.
-    context.interactive_process.kill()
-    context.interactive_process.wait(timeout=5)
+    process = context.interactive_process
+    if getattr(context, "target", "linux") == "freertos":
+        # FreeRTOS QEMU runs entirely in RAM; FatFs caches FAT and directory
+        # entries in-RAM until f_sync / f_close / f_unmount touches them.
+        # SIGKILL on QEMU drops those caches mid-flight and the next session's
+        # f_mount sees stale or absent dir entries for STORE*.log. The
+        # graceful path (Bdd/Targets/FreeRtos/main.c::ShutdownGracefully)
+        # destroys our objects (which f_close the FILs) and f_unmounts before
+        # SemihostingExit. Linux/Windows targets keep SIGKILL — the kernel
+        # flushes page cache and file descriptors on process exit.
+        try:
+            process.stdin.write("set shutdown 1\n")
+            process.stdin.flush()
+        except (BrokenPipeError, OSError):
+            pass
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+    else:
+        # process.kill() is portable: TerminateProcess on Windows, SIGKILL on POSIX.
+        # signal.SIGKILL is not defined on Windows.
+        process.kill()
+        process.wait(timeout=5)
     del context.interactive_process
 
 

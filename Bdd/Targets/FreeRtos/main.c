@@ -251,6 +251,8 @@ extern NetworkInterface_t* pxMPS2_FillInterfaceDescriptor(BaseType_t xEMACIndex,
 static bool                          TryUpdateString(char* storage, size_t storageSize, const char* value);
 static bool                          TryParseUInt(const char* value, unsigned long* out);
 static bool                          RebuildWithFileStore(void);
+static void                          DestroyCurrentStore(void);
+static void                          ShutdownGracefully(void);
 static bool                          EnsureFatFsMounted(void);
 static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy);
 static void                          OnStoreFull(void* context);
@@ -493,6 +495,22 @@ static bool OnSet(const char* name, const char* value)
         }
         return false;
     }
+    if (strcmp(name, "shutdown") == 0)
+    {
+        /* Any non-zero value triggers graceful shutdown — the BDD
+         * `the client is killed` step on freertos sends `set shutdown 1`
+         * so FatFs flushes and unmounts before QEMU exits. Never returns. */
+        unsigned long parsed = 0U;
+        if (!TryParseUInt(value, &parsed))
+        {
+            return false;
+        }
+        if (parsed != 0U)
+        {
+            ShutdownGracefully();
+        }
+        return true;
+    }
     return false;
 }
 
@@ -547,19 +565,7 @@ static bool RebuildWithFileStore(void)
 
     g_solidSyslogReady = false;
     SolidSyslog_Destroy();
-
-    /* Tear down whichever store is currently installed. */
-    if (g_currentStoreIsFile)
-    {
-        SolidSyslogBlockStore_Destroy(g_currentStore);
-        SolidSyslogFileBlockDevice_Destroy(g_storeBlockDevice);
-        SolidSyslogCrc16Policy_Destroy();
-        SolidSyslogFatFsFile_Destroy(g_storeFile);
-    }
-    else
-    {
-        SolidSyslogNullStore_Destroy();
-    }
+    DestroyCurrentStore();
 
     /* Build a fresh FatFs-backed BlockStore. With the volume mounted above,
      * BlockSequence_Open's f_stat / f_open calls now hit a live filesystem
@@ -592,6 +598,46 @@ static bool RebuildWithFileStore(void)
     g_solidSyslogReady = true;
     SolidSyslogMutex_Unlock(g_lifecycleMutex);
     return true;
+}
+
+/* Tears down whichever store is currently installed (file-backed or null).
+ * Shared by RebuildWithFileStore (which then re-creates) and
+ * ShutdownGracefully (which then exits). FatFsFile_Destroy → Close →
+ * f_close flushes the underlying FIL's dir entry. */
+static void DestroyCurrentStore(void)
+{
+    if (g_currentStoreIsFile)
+    {
+        SolidSyslogBlockStore_Destroy(g_currentStore);
+        SolidSyslogFileBlockDevice_Destroy(g_storeBlockDevice);
+        SolidSyslogCrc16Policy_Destroy();
+        SolidSyslogFatFsFile_Destroy(g_storeFile);
+    }
+    else
+    {
+        SolidSyslogNullStore_Destroy();
+    }
+}
+
+/* Tear down our objects, unmount FatFs, and exit QEMU cleanly. Triggered
+ * by `set shutdown 1` over the UART. The BDD power_cycle_replay scenario
+ * uses this in place of SIGKILL so the next session's f_mount finds the
+ * STORE*.log files with their directory entries up-to-date — testing our
+ * recovery path on startup, not FatFs's mid-write crash semantics
+ * (those are covered by the FatFsFile unit tests). Holds the lifecycle
+ * mutex across the destroy chain to block the Service task. */
+static void ShutdownGracefully(void)
+{
+    SolidSyslogMutex_Lock(g_lifecycleMutex);
+    g_solidSyslogReady = false;
+    SolidSyslog_Destroy();
+    DestroyCurrentStore();
+    if (g_fatfsMounted)
+    {
+        (void) f_unmount("");
+        g_fatfsMounted = false;
+    }
+    SemihostingExit(0);
 }
 
 /* Mount volume 0; format-on-first-use if the disk image has no FAT yet.
