@@ -42,7 +42,36 @@ _FREERTOS_SET_TRANSLATION = {
     # SolidSyslogSwitchingSender's active inner sender. Added in S08.09 with
     # the FreeRTOS TCP stream adapter.
     "--transport": "transport",
+    # S08.05 store-and-forward keys. `--store file` is the rebuild trigger
+    # — it must be emitted AFTER the four configuration keys so the rebuild
+    # sees the final pending values (see apply_extra_args sorting below).
+    # `--max-blocks`, `--max-block-size`, `--discard-policy`, and
+    # `--halt-exit` update pending globals; `--store file` consumes them.
+    "--max-blocks": "max-blocks",
+    "--max-block-size": "max-block-size",
+    "--discard-policy": "discard-policy",
+    "--halt-exit": "halt-exit",
+    "--store": "store",
 }
+
+# Flags emitted as `set NAME 1` (with no separate value in the harness's
+# original flag pair). Mirrors Linux's bare `no_argument` flags — the
+# scenario passes the flag alone on Linux/Windows; on FreeRTOS the
+# translation injects a synthetic "1" value so the UART set protocol
+# (always NAME VALUE) is honoured.
+_FREERTOS_BARE_FLAG_VALUE = {
+    "--halt-exit": "1",
+}
+
+# Emit order for the FreeRTOS `set` translations. `--store` must be last
+# because `set store file` is the rebuild trigger that consumes the
+# preceding pending values (max-blocks, max-block-size, discard-policy,
+# halt-exit). Other flags are order-independent — sorted by name for
+# deterministic output.
+def _freertos_set_order_key(flag):
+    if flag == "--store":
+        return (1, flag)
+    return (0, flag)
 
 
 # QEMU machine + UART config matches build-freertos-target's smoke run
@@ -59,6 +88,10 @@ _QEMU_BASE_ARGS = [
     "-icount", "shift=auto,sleep=off,align=off",
     "-netdev", "user,id=net0",
     "-net", "nic,netdev=net0,model=lan9118",
+    # Semihosting opens the FatFs disk image and (when --halt-exit fires)
+    # terminates QEMU. diskio.c issues BKPT 0xAB traps for SYS_OPEN /
+    # SYS_SEEK / SYS_READ / SYS_WRITE / SYS_FLEN / SYS_CLOSE / SYS_EXIT.
+    "-semihosting-config", "enable=on,target=native",
 ]
 
 
@@ -102,38 +135,62 @@ def spawn_example_process(context, extra_args=None, binary=None):
 
 
 def apply_extra_args(context, process, extra_args):
-    """Deliver `--flag value` pairs to the example after the prompt is up.
+    """Deliver `--flag [value]` pairs to the example after the prompt is up.
 
     Linux and Windows are no-ops here — spawn already placed the flags
     in argv. FreeRTOS translates each pair via _FREERTOS_SET_TRANSLATION
     and writes one newline-terminated `set NAME VALUE` line to the UART
     per pair.
 
-    Raises ValueError if extra_args is odd-length or contains a flag
-    not in the translation table; the BDD scenario surfaces the gap
-    immediately rather than silently no-op'ing or hitting a confusing
-    UART-side `set: invalid` reply.
+    Bare flags (no value, e.g. `--halt-exit`) are accepted on Linux because
+    they map to getopt's `no_argument`; on FreeRTOS the UART protocol is
+    always `NAME VALUE`, so _FREERTOS_BARE_FLAG_VALUE supplies a synthetic
+    "1". Mixed bare-flag and key/value forms are tolerated.
+
+    Pairs are emitted in deterministic order — `--store` last so the
+    `set store file` rebuild trigger sees final values for the four
+    pending globals (max-blocks, max-block-size, discard-policy,
+    halt-exit). Other flags are sorted by name for stability.
+
+    Raises ValueError if a flag is not in the translation table; the BDD
+    scenario surfaces the gap immediately rather than silently no-op'ing
+    or hitting a confusing UART-side `set: invalid` reply.
     """
     if not extra_args:
         return
     target = getattr(context, "target", "linux")
     if target != "freertos":
         return
-    if len(extra_args) % 2 != 0:
-        raise ValueError(
-            "FreeRTOS extra_args must be flag/value pairs; got odd length: "
-            + repr(extra_args)
-        )
-    for flag, value in zip(extra_args[0::2], extra_args[1::2]):
-        try:
-            name = _FREERTOS_SET_TRANSLATION[flag]
-        except KeyError as exc:
+
+    # Walk extra_args sequentially; bare flags from _FREERTOS_BARE_FLAG_VALUE
+    # don't consume the next arg, key/value flags do. Collect into a list
+    # of (flag, value) pairs so we can sort before emission.
+    pairs = []
+    iterator = iter(extra_args)
+    for flag in iterator:
+        if flag not in _FREERTOS_SET_TRANSLATION:
             raise ValueError(
                 f"Unknown cmdline flag for FreeRTOS target: {flag!r}. "
                 "Add it to _FREERTOS_SET_TRANSLATION in target_driver.py "
                 "if a corresponding `set` name exists in the FreeRTOS "
                 "example's OnSet handler."
-            ) from exc
+            )
+        if flag in _FREERTOS_BARE_FLAG_VALUE:
+            value = _FREERTOS_BARE_FLAG_VALUE[flag]
+        else:
+            try:
+                value = next(iterator)
+            except StopIteration as exc:
+                raise ValueError(
+                    f"FreeRTOS extra_args flag {flag!r} expects a value but "
+                    "extra_args ended."
+                ) from exc
+        pairs.append((flag, value))
+
+    pairs.sort(key=lambda fv: _freertos_set_order_key(fv[0]))
+
+    for flag, value in pairs:
+        name = _FREERTOS_SET_TRANSLATION[flag]
         process.stdin.write(f"set {name} {value}\n")
     process.stdin.flush()
 

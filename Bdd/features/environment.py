@@ -45,6 +45,13 @@ else:
     STORE_FILE_PATH = "/tmp/solidsyslog_store.dat"
     STORE_PATH_PREFIX = "/tmp/STORE"
     THRESHOLD_MARKER_PATH = "/tmp/solidsyslog_threshold_marker.log"
+
+# FreeRTOS BDD target's semihosting disk image. QEMU resolves the
+# filename relative to its working directory (= behave's cwd = project
+# root). after_scenario removes it so each scenario starts with no
+# filesystem; disk_initialize then creates a fresh sparse image and
+# falls through to f_mkfs on the first mount.
+FREERTOS_DISK_IMAGE_PATH = "solidsyslog-disk.img"
 RECEIVED_UDP_LOG = "Bdd/output/received_udp.log"
 RECEIVED_TCP_LOG = "Bdd/output/received_tcp.log"
 RECEIVED_TLS_LOG = "Bdd/output/received_tls.log"
@@ -228,5 +235,12 @@ def after_scenario(context, scenario):
         os.remove(path)
     try:
         os.remove(THRESHOLD_MARKER_PATH)
+    except FileNotFoundError:
+        pass
+    # FreeRTOS target's semihosting-backed FAT image. Removing it forces
+    # the next scenario's disk_initialize to create a fresh sparse image,
+    # which then triggers f_mkfs via the FR_NO_FILESYSTEM fallback.
+    try:
+        os.remove(FREERTOS_DISK_IMAGE_PATH)
     except FileNotFoundError:
         pass

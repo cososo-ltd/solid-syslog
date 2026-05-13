@@ -9,9 +9,16 @@ struct SolidSyslogFile;
 
 EXTERN_C_BEGIN
 
+    /* Sized for real FatFs with FF_MAX_SS=512 (99% case — SD/MMC, USB, HDD,
+     * semihosting flat files) and FF_FS_TINY=0: 10-ptr base (~40 B) + FIL
+     * (header ~56 B + 512 B sector buffer) + isOpen flag + alignment =
+     * ~620 B. 180 intptrs gives ~100 B headroom on 32-bit. Integrators
+     * who pick FF_MAX_SS > 512 hit the SOLIDSYSLOG_STATIC_ASSERT in
+     * SolidSyslogFatFsFile.c at compile time; the planned S21.03 follow-up
+     * makes this overridable via the tunables mechanism. */
     enum
     {
-        SOLIDSYSLOG_FATFS_FILE_SIZE = sizeof(intptr_t) * 90
+        SOLIDSYSLOG_FATFS_FILE_SIZE = sizeof(intptr_t) * 180
     };
 
     typedef struct

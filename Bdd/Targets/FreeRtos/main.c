@@ -6,7 +6,12 @@
  * host, port, facility, severity). S08.04 swaps the original NullBuffer
  * for the portable SolidSyslogCircularBuffer + SolidSyslogFreeRtosMutex
  * and adds a dedicated FreeRTOS Service task that drains the ring —
- * Log() is now non-blocking, the Service task does the UDP I/O.
+ * Log() is now non-blocking, the Service task does the UDP I/O. S08.05
+ * adds the file-backed store: `set store file` tears down NullStore and
+ * rebuilds SolidSyslog with FatFsFile + FileBlockDevice + BlockStore on
+ * top of QEMU semihosting (see diskio.c). The four `max-blocks`,
+ * `max-block-size`, `discard-policy`, `halt-exit` keys update pending
+ * globals that the `set store file` trigger picks up.
  *
  * Static IPv4 (10.0.2.15) on the QEMU slirp network with the host
  * reachable at the slirp gateway 10.0.2.2; Bdd/Targets/Common/BddTargetInteractive
@@ -25,11 +30,15 @@
 #include "BddTargetSwitchConfig.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
+#include "SolidSyslogBlockStore.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
+#include "SolidSyslogCrc16Policy.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogFatFsFile.h"
+#include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogFreeRtosDatagram.h"
 #include "SolidSyslogFreeRtosMutex.h"
@@ -37,6 +46,7 @@
 #include "SolidSyslogFreeRtosSysUpTime.h"
 #include "SolidSyslogFreeRtosTcpStream.h"
 #include "SolidSyslogMetaSd.h"
+#include "SolidSyslogMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
@@ -159,6 +169,58 @@ enum
 static SolidSyslogCircularBufferStorage bufferStorage[SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE(BDD_TARGET_BUFFER_MESSAGES)];
 static SolidSyslogFreeRtosMutexStorage  mutexStorage;
 
+/* Lifecycle mutex serialises SolidSyslog_Service against the rebuild path
+ * (`set store file` swaps NullStore for the file-backed BlockStore by
+ * destroying and re-creating SolidSyslog mid-run). Service holds the lock
+ * for one Service() call per iteration; the rebuild path holds it across
+ * Destroy → BlockStore_Create → Create. */
+static SolidSyslogFreeRtosMutexStorage lifecycleMutexStorage;
+static struct SolidSyslogMutex*        g_lifecycleMutex = NULL;
+static volatile bool                   g_solidSyslogReady;
+
+/* File-backed store storage. Lives in .bss so it persists across the
+ * `set store file` rebuild; only populated when that command fires.
+ * STORE_PATH_PREFIX is "STORE" — sequence-numbered FAT filenames land as
+ * STORE00.log, STORE01.log, … which fit 8.3 short-filename mode (LFN=0
+ * in our ffconf.h). */
+static const char STORE_PATH_PREFIX[] = "STORE";
+
+static SolidSyslogFatFsFileStorage       g_storeReadFileStorage;
+static SolidSyslogFatFsFileStorage       g_storeWriteFileStorage;
+static SolidSyslogFileBlockDeviceStorage g_blockDeviceStorage;
+static SolidSyslogBlockStoreStorage      g_blockStoreStorage;
+
+static struct SolidSyslogFile*        g_storeReadFile      = NULL;
+static struct SolidSyslogFile*        g_storeWriteFile     = NULL;
+static struct SolidSyslogBlockDevice* g_storeBlockDevice   = NULL;
+static struct SolidSyslogStore*       g_currentStore       = NULL;
+static bool                           g_currentStoreIsFile = false;
+
+/* Pending values populated by the four `set max-blocks` / `max-block-size`
+ * / `discard-policy` / `halt-exit` commands and consumed by `set store
+ * file`. Defaults mirror Linux's BddTargetCommandLine (DEFAULT_MAX_BLOCKS=10,
+ * DEFAULT_MAX_BLOCK_SIZE=65536, discardPolicy="oldest", halt-exit=false). */
+enum
+{
+    DEFAULT_PENDING_MAX_BLOCKS     = 10,
+    DEFAULT_PENDING_MAX_BLOCK_SIZE = 65536,
+};
+
+static size_t        g_pendingMaxBlocks         = DEFAULT_PENDING_MAX_BLOCKS;
+static size_t        g_pendingMaxBlockSize      = DEFAULT_PENDING_MAX_BLOCK_SIZE;
+static const char*   g_pendingDiscardPolicy     = "oldest";
+static volatile bool g_pendingHaltExit          = false;
+static size_t        g_pendingCapacityThreshold = 0;
+
+/* Holds the final SolidSyslog config so the rebuild path can rewrite
+ * .store and pass the same struct back into SolidSyslog_Create. */
+static struct SolidSyslogConfig          g_solidSyslogConfig;
+static struct SolidSyslogStructuredData* g_sdList[3];
+static struct SolidSyslogAtomicCounter*  g_atomicCounter = NULL;
+static struct SolidSyslogStructuredData* g_metaSd        = NULL;
+static struct SolidSyslogStructuredData* g_timeQualitySd = NULL;
+static struct SolidSyslogStructuredData* g_originSd      = NULL;
+
 /* Ensures the interactive task is created exactly once even if the network
  * goes down and back up. */
 static BaseType_t interactiveTaskCreated = pdFALSE;
@@ -169,8 +231,13 @@ static TaskHandle_t serviceTaskHandle = NULL;
 
 extern NetworkInterface_t* pxMPS2_FillInterfaceDescriptor(BaseType_t xEMACIndex, NetworkInterface_t* pxInterface);
 
-static bool TryUpdateString(char* storage, size_t storageSize, const char* value);
-static bool TryParseUInt(const char* value, unsigned long* out);
+static bool                          TryUpdateString(char* storage, size_t storageSize, const char* value);
+static bool                          TryParseUInt(const char* value, unsigned long* out);
+static bool                          RebuildWithFileStore(void);
+static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy);
+static void                          OnStoreFull(void* context);
+static size_t                        GetCapacityThreshold(void* context);
+static void                          SemihostingExit(int status);
 
 static uint32_t MmioRead32(uintptr_t address)
 {
@@ -332,7 +399,172 @@ static bool OnSet(const char* name, const char* value)
         BddTargetSwitchConfig_SetByName(value);
         return true;
     }
+    if (strcmp(name, "max-blocks") == 0)
+    {
+        unsigned long parsed = 0U;
+        if (!TryParseUInt(value, &parsed))
+        {
+            return false;
+        }
+        g_pendingMaxBlocks = (size_t) parsed;
+        return true;
+    }
+    if (strcmp(name, "max-block-size") == 0)
+    {
+        unsigned long parsed = 0U;
+        if (!TryParseUInt(value, &parsed))
+        {
+            return false;
+        }
+        g_pendingMaxBlockSize = (size_t) parsed;
+        return true;
+    }
+    if (strcmp(name, "discard-policy") == 0)
+    {
+        if ((strcmp(value, "oldest") != 0) && (strcmp(value, "newest") != 0) && (strcmp(value, "halt") != 0))
+        {
+            return false;
+        }
+        /* String literal storage — target_driver.py emits one of the three
+         * literals above so the pointer stays valid (no copy needed). */
+        g_pendingDiscardPolicy = (strcmp(value, "newest") == 0) ? "newest" : ((strcmp(value, "halt") == 0) ? "halt" : "oldest");
+        return true;
+    }
+    if (strcmp(name, "halt-exit") == 0)
+    {
+        /* Harness emits `set halt-exit 1` (or `0`) because the FreeRTOS
+         * `set` protocol always carries a value; on Linux the equivalent
+         * is a bare --halt-exit flag (no_argument). Anything non-zero
+         * trips the halt path. */
+        unsigned long parsed = 0U;
+        if (!TryParseUInt(value, &parsed))
+        {
+            return false;
+        }
+        g_pendingHaltExit = (parsed != 0U);
+        return true;
+    }
+    if (strcmp(name, "store") == 0)
+    {
+        /* "null" is the default state — accept it as a no-op so the harness
+         * can pass --store null without us needing to special-case it on
+         * the harness side. "file" triggers the rebuild. */
+        if (strcmp(value, "null") == 0)
+        {
+            return !g_currentStoreIsFile; /* succeed only if we're still on the default */
+        }
+        if (strcmp(value, "file") == 0)
+        {
+            return RebuildWithFileStore();
+        }
+        return false;
+    }
     return false;
+}
+
+static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
+{
+    if (strcmp(policy, "newest") == 0)
+    {
+        return SOLIDSYSLOG_DISCARD_NEWEST;
+    }
+    if (strcmp(policy, "halt") == 0)
+    {
+        return SOLIDSYSLOG_HALT;
+    }
+    return SOLIDSYSLOG_DISCARD_OLDEST;
+}
+
+static void OnStoreFull(void* context)
+{
+    (void) context;
+    if (g_pendingHaltExit)
+    {
+        /* Semihosting SYS_EXIT — terminates QEMU with the given status so
+         * the BDD harness sees the run end deterministically. Mirrors the
+         * Linux example's _exit(2) (Bdd/Targets/Linux/main.c::OnStoreFull). */
+        SemihostingExit(2);
+    }
+}
+
+static size_t GetCapacityThreshold(void* context)
+{
+    return *(const size_t*) context;
+}
+
+static bool RebuildWithFileStore(void)
+{
+    /* Lifecycle mutex blocks the Service task from running SolidSyslog_Service
+     * across the Destroy → re-Create transition. Service waits on the next
+     * iteration's lock; rebuild releases when done. */
+    SolidSyslogMutex_Lock(g_lifecycleMutex);
+    g_solidSyslogReady = false;
+
+    SolidSyslog_Destroy();
+
+    /* Tear down whichever store is currently installed. */
+    if (g_currentStoreIsFile)
+    {
+        SolidSyslogBlockStore_Destroy(g_currentStore);
+        SolidSyslogFileBlockDevice_Destroy(g_storeBlockDevice);
+        SolidSyslogCrc16Policy_Destroy();
+        SolidSyslogFatFsFile_Destroy(g_storeWriteFile);
+        SolidSyslogFatFsFile_Destroy(g_storeReadFile);
+    }
+    else
+    {
+        SolidSyslogNullStore_Destroy();
+    }
+
+    /* Build a fresh FatFs-backed BlockStore. f_mount + f_mkfs run lazily on
+     * the first BlockStore operation via FileBlockDevice — disk_initialize
+     * (diskio.c) opens/creates solidsyslog-disk.img through QEMU
+     * semihosting. */
+    g_storeReadFile    = SolidSyslogFatFsFile_Create(&g_storeReadFileStorage);
+    g_storeWriteFile   = SolidSyslogFatFsFile_Create(&g_storeWriteFileStorage);
+    g_storeBlockDevice = SolidSyslogFileBlockDevice_Create(&g_blockDeviceStorage, g_storeReadFile, g_storeWriteFile, STORE_PATH_PREFIX);
+
+    struct SolidSyslogSecurityPolicy*  policy      = SolidSyslogCrc16Policy_Create();
+    struct SolidSyslogBlockStoreConfig storeConfig = {
+        .blockDevice          = g_storeBlockDevice,
+        .maxBlockSize         = g_pendingMaxBlockSize,
+        .maxBlocks            = g_pendingMaxBlocks,
+        .discardPolicy        = MapDiscardPolicy(g_pendingDiscardPolicy),
+        .securityPolicy       = policy,
+        .onStoreFull          = OnStoreFull,
+        .storeFullContext     = NULL,
+        .getCapacityThreshold = GetCapacityThreshold,
+        .onThresholdCrossed   = NULL,
+        .thresholdContext     = &g_pendingCapacityThreshold,
+    };
+    g_currentStore       = SolidSyslogBlockStore_Create(&g_blockStoreStorage, &storeConfig);
+    g_currentStoreIsFile = true;
+
+    g_solidSyslogConfig.store = g_currentStore;
+    SolidSyslog_Create(&g_solidSyslogConfig);
+    g_solidSyslogReady = true;
+    SolidSyslogMutex_Unlock(g_lifecycleMutex);
+    return true;
+}
+
+static void SemihostingExit(int status)
+{
+    /* SYS_EXIT (0x18) — QEMU recognises the ARM Semihosting
+     * ADP_Stopped_ApplicationExit (0x20026) form as a parameter block
+     * { reason, status }. Marked unreachable after the trap because
+     * QEMU terminates the VM; the for(;;) is defensive. */
+    const struct
+    {
+        uint32_t reason;
+        uint32_t status;
+    } args = {0x20026U, (uint32_t) status};
+
+    register int         r0 __asm("r0") = 0x18;
+    register const void* r1 __asm("r1") = &args;
+    __asm volatile("bkpt 0xAB" : "+r"(r0) : "r"(r1) : "memory");
+    for (;;)
+    {
+    }
 }
 
 static bool TryUpdateString(char* storage, size_t storageSize, const char* value)
@@ -418,27 +650,37 @@ static void InteractiveTask(void* argument)
      * SolidSyslog_Log. */
     struct SolidSyslogMutex*  mutex  = SolidSyslogFreeRtosMutex_Create(&mutexStorage);
     struct SolidSyslogBuffer* buffer = SolidSyslogCircularBuffer_Create(bufferStorage, sizeof(bufferStorage), mutex);
-    struct SolidSyslogStore*  store  = SolidSyslogNullStore_Create();
 
-    struct SolidSyslogAtomicCounter* counter    = SolidSyslogAtomicCounter_Create();
-    struct SolidSyslogMetaSdConfig   metaConfig = {
-          .counter      = counter,
-          .getSysUpTime = SolidSyslogFreeRtosSysUpTime_Get,
-          .getLanguage  = BddTargetLanguage_Get,
-    };
-    struct SolidSyslogStructuredData* metaSd        = SolidSyslogMetaSd_Create(&metaConfig);
-    struct SolidSyslogStructuredData* timeQualitySd = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
-    struct SolidSyslogOriginSdConfig  originConfig  = {
-          .software     = "SolidSyslogBddTarget",
-          .swVersion    = "0.7.0",
-          .enterpriseId = BDD_TARGET_ENTERPRISE_ID,
-          .getIpCount   = BddTargetIps_Count,
-          .getIpAt      = BddTargetIps_At,
-    };
-    struct SolidSyslogStructuredData* originSd = SolidSyslogOriginSd_Create(&originConfig);
-    struct SolidSyslogStructuredData* sdList[] = {metaSd, timeQualitySd, originSd};
+    /* Lifecycle mutex created up front so the Service task can take it
+     * from its very first iteration without a NULL check. */
+    g_lifecycleMutex = SolidSyslogFreeRtosMutex_Create(&lifecycleMutexStorage);
 
-    struct SolidSyslogConfig config = {
+    /* Default store is NullStore — flipped to FatFs/BlockStore by
+     * `set store file` via RebuildWithFileStore(). */
+    g_currentStore       = SolidSyslogNullStore_Create();
+    g_currentStoreIsFile = false;
+
+    g_atomicCounter                           = SolidSyslogAtomicCounter_Create();
+    struct SolidSyslogMetaSdConfig metaConfig = {
+        .counter      = g_atomicCounter,
+        .getSysUpTime = SolidSyslogFreeRtosSysUpTime_Get,
+        .getLanguage  = BddTargetLanguage_Get,
+    };
+    g_metaSd                                      = SolidSyslogMetaSd_Create(&metaConfig);
+    g_timeQualitySd                               = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
+    struct SolidSyslogOriginSdConfig originConfig = {
+        .software     = "SolidSyslogBddTarget",
+        .swVersion    = "0.7.0",
+        .enterpriseId = BDD_TARGET_ENTERPRISE_ID,
+        .getIpCount   = BddTargetIps_Count,
+        .getIpAt      = BddTargetIps_At,
+    };
+    g_originSd  = SolidSyslogOriginSd_Create(&originConfig);
+    g_sdList[0] = g_metaSd;
+    g_sdList[1] = g_timeQualitySd;
+    g_sdList[2] = g_originSd;
+
+    g_solidSyslogConfig = (struct SolidSyslogConfig) {
         .buffer      = buffer,
         .sender      = sender,
         .clock       = NULL,
@@ -449,12 +691,13 @@ static void InteractiveTask(void* argument)
          * NilStringFunction which yields an empty field; FormatStringField
          * (Core/Source/SolidSyslog.c) then emits "-" on the wire. */
         .getProcessId = NULL,
-        .store        = store,
-        .sd           = sdList,
-        .sdCount      = sizeof(sdList) / sizeof(sdList[0]),
+        .store        = g_currentStore,
+        .sd           = g_sdList,
+        .sdCount      = sizeof(g_sdList) / sizeof(g_sdList[0]),
     };
     SolidSyslog_SetErrorHandler(ErrorHandler, NULL);
-    SolidSyslog_Create(&config);
+    SolidSyslog_Create(&g_solidSyslogConfig);
+    g_solidSyslogReady = true;
 
     BddTargetInteractive_Run(&g_message, stdin, BddTargetSwitchConfig_SetByName, OnSet);
 
@@ -471,14 +714,33 @@ static void InteractiveTask(void* argument)
     const UBaseType_t serviceHwm     = (serviceTaskHandle != NULL) ? uxTaskGetStackHighWaterMark(serviceTaskHandle) : 0U;
     (void) printf("[stack-hwm] interactive=%lu words service=%lu words\n", (unsigned long) interactiveHwm, (unsigned long) serviceHwm);
 
+    /* Quiesce Service before tearing down — same lifecycle-mutex protocol
+     * as the rebuild path uses for `set store file`. */
+    SolidSyslogMutex_Lock(g_lifecycleMutex);
+    g_solidSyslogReady = false;
     SolidSyslog_Destroy();
     SolidSyslogOriginSd_Destroy();
     SolidSyslogTimeQualitySd_Destroy();
     SolidSyslogMetaSd_Destroy();
     SolidSyslogAtomicCounter_Destroy();
-    SolidSyslogNullStore_Destroy();
+    if (g_currentStoreIsFile)
+    {
+        SolidSyslogBlockStore_Destroy(g_currentStore);
+        SolidSyslogFileBlockDevice_Destroy(g_storeBlockDevice);
+        SolidSyslogCrc16Policy_Destroy();
+        SolidSyslogFatFsFile_Destroy(g_storeWriteFile);
+        SolidSyslogFatFsFile_Destroy(g_storeReadFile);
+    }
+    else
+    {
+        SolidSyslogNullStore_Destroy();
+    }
+    SolidSyslogMutex_Unlock(g_lifecycleMutex);
+
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogFreeRtosMutex_Destroy(mutex);
+    SolidSyslogFreeRtosMutex_Destroy(g_lifecycleMutex);
+    g_lifecycleMutex = NULL;
     SolidSyslogSwitchingSender_Destroy();
     SolidSyslogStreamSender_Destroy(tcpSender);
     SolidSyslogFreeRtosTcpStream_Destroy(stream);
@@ -499,9 +761,23 @@ static void InteractiveTask(void* argument)
 static void ServiceTask(void* argument)
 {
     (void) argument;
+    /* Wait until the interactive task has finished initial Setup and
+     * created the lifecycle mutex / SolidSyslog. After that, the mutex is
+     * the source of truth — Setup, RebuildWithFileStore, and Teardown all
+     * hold it across their Destroy/Create transitions, so the ready flag
+     * is only checked after we win the lock. */
+    while ((g_lifecycleMutex == NULL) || !g_solidSyslogReady)
+    {
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
     for (;;)
     {
-        SolidSyslog_Service();
+        SolidSyslogMutex_Lock(g_lifecycleMutex);
+        if (g_solidSyslogReady)
+        {
+            SolidSyslog_Service();
+        }
+        SolidSyslogMutex_Unlock(g_lifecycleMutex);
         vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
