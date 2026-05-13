@@ -18,10 +18,30 @@ emit N RFC 5424 messages with `send N`, exit cleanly with `quit`. See
 [`Bdd/README.md`](../../Bdd/README.md) for how Behave pipes these
 commands through `qemu-system-arm`'s stdio UART.
 
+**Persistent store-and-forward** is wired via the ChaN FatFs adapter
+(`SolidSyslogFatFsFile`) over a semihosting-backed `diskio.c` —
+QEMU's BKPT 0xAB traps route FatFs's block I/O to a host-resident
+`solidsyslog-disk.img` (cleared by Behave's `before_scenario` and
+`after_scenario`), so writes survive a QEMU restart for the
+`power_cycle_replay` scenario. `set store file` flips the live store
+from `SolidSyslogNullStore` to a `SolidSyslogBlockStore` over the
+FatFs file backend; `set max-blocks` / `set max-block-size` /
+`set discard-policy` / `set halt-exit` parameterise the BlockStore
+config before that rebuild. `set shutdown 1` performs a graceful
+teardown — destroys our objects (which close the FatFs files),
+`f_unmount`s, then `SemihostingExit`s — and is what the BDD
+`the client is killed` step uses on FreeRTOS so the next session's
+`f_mount` finds the directory entries up-to-date.
+
+Production integrators ship their own `diskio.c` (flash / SD / eMMC)
+plus, if `FF_FS_REENTRANT=1`, their own `ffsystem.c`. The semihosting
+shape used here is BDD-target glue, not a reference port.
+
 `Common/` carries the shared infrastructure (CMSDK UART driver, newlib
 syscalls, mps2-an385 linker script, startup) and `cmake/` the
-`arm-none-eabi.cmake` toolchain file. The `freertos-cross` CMake preset
-and the `freertos-target` devcontainer service
+`arm-none-eabi.cmake` toolchain file. `diskio.c` and `ffsystem.c` are
+the FatFs ports specific to this BDD target. The `freertos-cross`
+CMake preset and the `freertos-target` devcontainer service
 ([`docs/containers.md`](../../docs/containers.md)) carry everything
 needed to build and run.
 

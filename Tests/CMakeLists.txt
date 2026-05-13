@@ -11,6 +11,11 @@ if(DEFINED ENV{FREERTOS_KERNEL_PATH})
     add_subdirectory(FreeRtos)
 endif()
 
+if(DEFINED ENV{FATFS_PATH})
+    add_subdirectory(Support/FatFsFakes)
+    add_subdirectory(FatFs)
+endif()
+
 set(TEST_SOURCES
     SolidSyslogTest.cpp
     SolidSyslogTunablesTest.cpp
@@ -46,6 +51,7 @@ set(TEST_SOURCES
     StreamFake.c
     TestAssert.cpp
     SolidSyslogBlockStoreTest.cpp
+    SolidSyslogBlockStoreDrainOrderingTest.cpp
     SolidSyslogBlockDeviceTest.cpp
     SolidSyslogFileBlockDeviceTest.cpp
     BlockSequenceTest.cpp
@@ -193,6 +199,14 @@ foreach(freertos_test_target IN ITEMS
 )
     if(TARGET ${freertos_test_target})
         register_junit_test(${freertos_test_target})
+    endif()
+endforeach()
+
+foreach(fatfs_test_target IN ITEMS
+    SolidSyslogFatFsFileTest
+)
+    if(TARGET ${fatfs_test_target})
+        register_junit_test(${fatfs_test_target})
     endif()
 endforeach()
 

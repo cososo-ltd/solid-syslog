@@ -18,6 +18,7 @@ static bool   HasUnsent(struct SolidSyslogStore* self);
 static bool   IsHalted(struct SolidSyslogStore* self);
 static size_t GetTotalBytes(struct SolidSyslogStore* self);
 static size_t GetUsedBytes(struct SolidSyslogStore* self);
+static bool   IsTransient(struct SolidSyslogStore* self);
 
 /* ------------------------------------------------------------------
  * Instance
@@ -112,6 +113,7 @@ static inline void InitialiseVtable(struct SolidSyslogBlockStore* blockStore)
     blockStore->base.IsHalted       = IsHalted;
     blockStore->base.GetTotalBytes  = GetTotalBytes;
     blockStore->base.GetUsedBytes   = GetUsedBytes;
+    blockStore->base.IsTransient    = IsTransient;
 }
 
 static void ResumeFromExistingBlock(struct SolidSyslogBlockStore* blockStore)
@@ -201,6 +203,15 @@ static size_t GetTotalBytes(struct SolidSyslogStore* self)
 static size_t GetUsedBytes(struct SolidSyslogStore* self)
 {
     return BlockSequence_UsedBytes(&AsBlockStore(self)->blockSequence);
+}
+
+/* BlockStore retains records — a Write rejection here is the discard
+ * policy speaking (DISCARD_NEWEST or HALT), and the message must NOT
+ * bypass older stored records via a Service direct-send fallback. */
+static bool IsTransient(struct SolidSyslogStore* self)
+{
+    (void) self;
+    return false;
 }
 
 /* ------------------------------------------------------------------

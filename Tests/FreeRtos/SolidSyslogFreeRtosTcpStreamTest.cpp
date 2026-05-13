@@ -8,7 +8,9 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include "SolidSyslogFreeRtosTcpStream.h"
 #include "SolidSyslogStream.h"
 
+#include "FreeRtosArpFake.h"
 #include "FreeRtosSocketsFake.h"
+#include "FreeRtosTaskFake.h"
 
 #include "FreeRTOS.h"
 #include "FreeRTOS_IP.h"
@@ -32,6 +34,8 @@ TEST_GROUP(SolidSyslogFreeRtosTcpStream)
     void setup() override
     {
         FreeRtosSocketsFake_Reset();
+        FreeRtosArpFake_Reset();
+        FreeRtosTaskFake_Reset();
         stream = SolidSyslogFreeRtosTcpStream_Create(&storage);
 
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing into platform layout, storage is intptr_t-aligned
@@ -96,10 +100,44 @@ TEST(SolidSyslogFreeRtosTcpStream, OpenReturnsFalseWhenSocketFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
 }
 
+TEST(SolidSyslogFreeRtosTcpStream, OpenChecksIfDestinationIsInArpCache)
+{
+    openStream();
+    CALLED_FAKE(FreeRtosArpFake_IsIpInArpCache, ONCE);
+    LONGS_EQUAL(FreeRTOS_inet_addr_quick(10, 0, 2, 2), FreeRtosArpFake_LastIsIpInArpCacheArg());
+}
+
+TEST(SolidSyslogFreeRtosTcpStream, OpenFiresArpProbeOnCacheMiss)
+{
+    openStream();
+    CALLED_FAKE(FreeRtosArpFake_OutputArpRequest, ONCE);
+    LONGS_EQUAL(FreeRTOS_inet_addr_quick(10, 0, 2, 2), FreeRtosArpFake_LastOutputArpRequestArg());
+}
+
+TEST(SolidSyslogFreeRtosTcpStream, OpenYieldsAfterArpProbeOnCacheMiss)
+{
+    openStream();
+    CALLED_FAKE(FreeRtosTaskFake_VTaskDelay, ONCE);
+}
+
+TEST(SolidSyslogFreeRtosTcpStream, OpenSkipsArpProbeAndYieldOnCacheHit)
+{
+    FreeRtosArpFake_SetCacheHit(true);
+    openStream();
+    CALLED_FAKE(FreeRtosArpFake_OutputArpRequest, NEVER);
+    CALLED_FAKE(FreeRtosTaskFake_VTaskDelay, NEVER);
+}
+
 TEST(SolidSyslogFreeRtosTcpStream, OpenSetsConnectTimeoutBeforeConnect)
 {
     openStream();
     LONGS_EQUAL(pdMS_TO_TICKS(200), FreeRtosSocketsFake_SndTimeoAtConnect());
+}
+
+TEST(SolidSyslogFreeRtosTcpStream, OpenSetsRecvTimeoutBeforeConnect)
+{
+    openStream();
+    LONGS_EQUAL(pdMS_TO_TICKS(200), FreeRtosSocketsFake_RcvTimeoAtConnect());
 }
 
 TEST(SolidSyslogFreeRtosTcpStream, OpenCallsConnectWithSocketAndAddress)
@@ -122,7 +160,7 @@ TEST(SolidSyslogFreeRtosTcpStream, OpenClearsRecvTimeoutAfterConnect)
 {
     openStream();
     LONGS_EQUAL(0, FreeRtosSocketsFake_LastRcvTimeoSet());
-    LONGS_EQUAL(1, FreeRtosSocketsFake_RcvTimeoSetCallCount());
+    LONGS_EQUAL(2, FreeRtosSocketsFake_RcvTimeoSetCallCount());
 }
 
 TEST(SolidSyslogFreeRtosTcpStream, OpenCallsSetsockoptWithReturnedSocketAndLevelZero)

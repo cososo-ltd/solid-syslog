@@ -253,12 +253,13 @@ static void ProcessMessages(void)
 
 /* Eagerly drain the buffer so the producer-side shock absorber stays small while
  * the sender is slow or down — overflow then engages the store's discard policy
- * rather than silently dropping at the buffer. When the store does not retain
- * the message (NullStore configuration, or a store-write rejection — e.g. a
- * full BlockStore under the HALT discard policy), the drain falls through to
- * a best-effort direct send. The Store_Write contract is therefore: true =
- * retained for later replay via ReadNextUnsent; false = not held by this
- * store, the caller is on its own. */
+ * rather than silently dropping at the buffer. The fall-through to a direct
+ * Sender_Send on Store_Write rejection is *only* taken when the store is
+ * transient (NullStore): a NullStore Write rejection means "I never retain
+ * anything, please try the sender." For a real BlockStore, rejection is the
+ * discard policy speaking — letting that message escape via direct send would
+ * break the discard-newest contract (a newer message would bypass older stored
+ * ones once the sender recovered). */
 static inline void DrainBufferIntoStore(void)
 {
     char   buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
@@ -266,7 +267,7 @@ static inline void DrainBufferIntoStore(void)
 
     while (SolidSyslogBuffer_Read(instance.buffer, buf, sizeof(buf), &len))
     {
-        if (!SolidSyslogStore_Write(instance.store, buf, len))
+        if (!SolidSyslogStore_Write(instance.store, buf, len) && SolidSyslogStore_IsTransient(instance.store))
         {
             SolidSyslogSender_Send(instance.sender, buf, len);
         }
@@ -660,6 +661,15 @@ static size_t NilStoreGetUsedBytes(struct SolidSyslogStore* self)
     return 0;
 }
 
+/* NilStore stands in when the integrator passes config.store = NULL —
+ * "no store, just try to send." Same transient semantics as NullStore:
+ * Service falls through to the sender on Write rejection. */
+static bool NilStoreIsTransient(struct SolidSyslogStore* self)
+{
+    (void) self;
+    return true;
+}
+
 static struct SolidSyslogStore NilStore = {
     .Write          = NilStoreWrite,
     .ReadNextUnsent = NilStoreReadNextUnsent,
@@ -668,4 +678,5 @@ static struct SolidSyslogStore NilStore = {
     .IsHalted       = NilStoreIsHalted,
     .GetTotalBytes  = NilStoreGetTotalBytes,
     .GetUsedBytes   = NilStoreGetUsedBytes,
+    .IsTransient    = NilStoreIsTransient,
 };

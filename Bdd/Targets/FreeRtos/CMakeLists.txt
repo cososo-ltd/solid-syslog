@@ -30,6 +30,25 @@ if(NOT FREERTOS_PLUS_TCP_PATH)
         "container, which sets this to /opt/freertos/plus-tcp.")
 endif()
 
+set(FATFS_PATH "$ENV{FATFS_PATH}")
+if(NOT FATFS_PATH)
+    message(FATAL_ERROR
+        "FATFS_PATH not set. Use the cpputest-freertos-cross container, "
+        "which sets this to /opt/fatfs.")
+endif()
+
+# Stage the upstream FatFs source pack alongside our integrator ffconf.h in
+# the build dir. FatFs's ff.h does `#include "ffconf.h"` and GCC's `""`
+# include lookup checks the source file's own directory first, so the only
+# way our integrator config wins over upstream's is to colocate them.
+# configure_file(COPYONLY) sets up the CMake dependency so reconfigure
+# triggers on changes to either side.
+set(FATFS_STAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/fatfs")
+configure_file(${FATFS_PATH}/source/ff.c       ${FATFS_STAGE_DIR}/ff.c       COPYONLY)
+configure_file(${FATFS_PATH}/source/ff.h       ${FATFS_STAGE_DIR}/ff.h       COPYONLY)
+configure_file(${FATFS_PATH}/source/diskio.h   ${FATFS_STAGE_DIR}/diskio.h   COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ffconf.h ${FATFS_STAGE_DIR}/ffconf.h COPYONLY)
+
 set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3")
 
 set(PLUS_TCP_SRC_DIR "${FREERTOS_PLUS_TCP_PATH}/source")
@@ -98,6 +117,17 @@ add_library(solid_syslog_freertos_upstream OBJECT
     # MPS2_AN385 LAN9118 NetworkInterface + driver.
     ${PLUS_TCP_NIF_DIR}/NetworkInterface.c
     ${PLUS_TCP_NIF_DIR}/ether_lan9118/smsc9220_eth_drv.c
+    # FatFs upstream (R0.16, FFCONF_DEF 80386). ff.c trips the same
+    # sign-conversion / shadow / type-narrowing warnings the FreeRTOS
+    # kernel sources do, so it lives in the upstream OBJECT lib under the
+    # relaxed warning set. ffsystem.c is our integrator copy
+    # (Bdd/Targets/FreeRtos/) with OS_TYPE 3 (FreeRTOS) selected — it sits
+    # under the same relaxations because it includes ff.h and inherits
+    # FatFs's typedef-via-BYTE/UINT patterns. ff.c is staged into the
+    # build dir so its `#include "ff.h"` (and ff.h's "ffconf.h") resolve
+    # to our integrator config — see the configure_file calls above.
+    ${FATFS_STAGE_DIR}/ff.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ffsystem.c
 )
 
 target_compile_options(solid_syslog_freertos_upstream PRIVATE
@@ -128,6 +158,7 @@ target_include_directories(solid_syslog_freertos_upstream PRIVATE
     ${PLUS_TCP_PORT_GCC_DIR}                          # pack_struct_*.h
     ${PLUS_TCP_NIF_DIR}                               # NetworkInterface.h consumed locally
     ${PLUS_TCP_NIF_DIR}/ether_lan9118                 # SMM_MPS2.h, smsc9220_*.h
+    ${FATFS_STAGE_DIR}                                # ff.h, diskio.h, our ffconf.h colocated
 )
 
 # --- Executable ---------------------------------------------------------------
@@ -139,8 +170,10 @@ target_include_directories(solid_syslog_freertos_upstream PRIVATE
 add_executable(SolidSyslogBddTarget
     main.c
     Startup.c
+    diskio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Common/CmsdkUart.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Common/Syscalls.c
+    ${CMAKE_SOURCE_DIR}/Platform/FatFs/Source/SolidSyslogFatFsFile.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogAddress.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c
@@ -169,6 +202,7 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Common                # CmsdkUart.h
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # SolidSyslogAddress.h (consumed by adapters)
+    ${CMAKE_SOURCE_DIR}/Platform/FatFs/Interface      # SolidSyslogFatFsFile.h
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface   # SolidSyslogFreeRtos*.h
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source      # SolidSyslogAddressInternal.h
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h
@@ -176,6 +210,13 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${PLUS_TCP_SRC_DIR}/include
     ${PLUS_TCP_PORT_GCC_DIR}                          # pack_struct_*.h
+    ${FATFS_STAGE_DIR}                                # ff.h, diskio.h + integrator ffconf.h colocated — must match
+                                                      # the OBJECT lib (above) so ff.c, main.c, diskio.c, and
+                                                      # SolidSyslogFatFsFile.c all see the SAME ffconf.h. Pointing
+                                                      # the executable at FATFS_PATH/source would resolve ff.h's
+                                                      # `#include "ffconf.h"` to upstream's sample (same directory
+                                                      # rule) and diverge FATFS / config-conditional layout between
+                                                      # translation units.
 )
 
 target_link_libraries(SolidSyslogBddTarget PRIVATE

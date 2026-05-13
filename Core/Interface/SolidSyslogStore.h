@@ -16,6 +16,7 @@ EXTERN_C_BEGIN
     bool   SolidSyslogStore_IsHalted(struct SolidSyslogStore * store);
     size_t SolidSyslogStore_GetTotalBytes(struct SolidSyslogStore * store);
     size_t SolidSyslogStore_GetUsedBytes(struct SolidSyslogStore * store);
+    bool   SolidSyslogStore_IsTransient(struct SolidSyslogStore * store);
 
 EXTERN_C_END
 

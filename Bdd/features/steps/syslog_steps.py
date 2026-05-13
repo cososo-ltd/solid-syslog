@@ -5,6 +5,7 @@ import queue
 import re
 import shutil
 import socket
+import subprocess
 import threading
 import time
 from datetime import datetime, timezone
@@ -312,6 +313,10 @@ def _start_stdout_reader(process):
         return
 
     process._solidsyslog_byte_queue = queue.Queue()
+    # Sliding-window record of everything the FreeRTOS guest has printed,
+    # used by after_step diagnostics when a scenario fails. Stays in-process
+    # (no disk I/O) and capped so a long run doesn't grow unbounded.
+    process._solidsyslog_stdout_log = bytearray()
     fd = process.stdout.fileno()
 
     def _reader():
@@ -321,6 +326,11 @@ def _start_stdout_reader(process):
                 if not data:
                     break
                 process._solidsyslog_byte_queue.put(data)
+                log = process._solidsyslog_stdout_log
+                log += data
+                # Cap at 16 KB — recent context only.
+                if len(log) > 16384:
+                    del log[: len(log) - 16384]
         finally:
             process._solidsyslog_byte_queue.put(None)
 
@@ -1111,10 +1121,37 @@ def step_client_attempts_send_exits(context, code):
 
 @when("the client is killed")
 def step_client_is_killed(context):
-    # process.kill() is portable: TerminateProcess on Windows, SIGKILL on POSIX.
-    # signal.SIGKILL is not defined on Windows.
-    context.interactive_process.kill()
-    context.interactive_process.wait(timeout=5)
+    process = context.interactive_process
+    if getattr(context, "target", "linux") == "freertos":
+        # FreeRTOS QEMU runs entirely in RAM; FatFs caches FAT and directory
+        # entries in-RAM until f_sync / f_close / f_unmount touches them.
+        # SIGKILL on QEMU drops those caches mid-flight and the next session's
+        # f_mount sees stale or absent dir entries for STORE*.log. The
+        # graceful path (Bdd/Targets/FreeRtos/main.c::ShutdownGracefully)
+        # destroys our objects (which f_close the FILs) and f_unmounts before
+        # SemihostingExit. Linux/Windows targets keep SIGKILL — the kernel
+        # flushes page cache and file descriptors on process exit.
+        try:
+            process.stdin.write("set shutdown 1\n")
+            process.stdin.flush()
+        except (BrokenPipeError, OSError):
+            pass
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                # SIGKILL should be immediate; if we still time out the OS
+                # is in trouble — proceed so `del context.interactive_process`
+                # still runs.
+                pass
+    else:
+        # process.kill() is portable: TerminateProcess on Windows, SIGKILL on POSIX.
+        # signal.SIGKILL is not defined on Windows.
+        process.kill()
+        process.wait(timeout=5)
     del context.interactive_process
 
 

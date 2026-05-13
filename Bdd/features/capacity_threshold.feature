@@ -1,5 +1,10 @@
-@tcp @buffered @store
+@tcp @buffered @store @freertoswip
 Feature: Capacity threshold alert
+  # @freertoswip excludes this from the FreeRTOS BDD run (S08.05+).
+  # Threshold-callback support on FreeRTOS is a follow-up — the wiring
+  # in main.c plumbs g_pendingCapacityThreshold through to BlockStore
+  # but the .feature relies on the harness inspecting a marker file
+  # which has no semihosting equivalent today.
   an early-warning callback fires when the block store crosses a configured
   capacity threshold, before the terminal full-store callback engages.
 

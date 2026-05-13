@@ -51,7 +51,7 @@ once and run Behave from inside the container:
 ```bash
 cmake --preset freertos-cross
 cmake --build --preset freertos-cross --target SolidSyslogBddTarget
-behave --tags='not @wip and not @freertoswip and not @rtc and @udp' Bdd/features/
+behave --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp)' Bdd/features/
 ```
 
 `BDD_TARGET=freertos` and `EXAMPLE_BINARY=build/freertos-cross/...` are

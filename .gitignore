@@ -53,6 +53,12 @@ Bdd/output/*
 Bdd/junit/*
 !Bdd/junit/.gitkeep
 
+# FatFs semihosting disk image — QEMU creates this at its cwd
+# (the project root) per Bdd/Targets/FreeRtos/diskio.c::DISK_IMAGE_PATH.
+# after_scenario removes it between scenarios, but an aborted run can
+# leave the file behind; never commit it.
+solidsyslog-disk.img
+
 # OTel Collector binary downloaded by Bdd/otel/Install-OtelCollector.ps1
 Bdd/otel/bin/
 

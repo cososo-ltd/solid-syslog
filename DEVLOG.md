@@ -1,5 +1,130 @@
 # Dev Log
 
+## 2026-05-13 — S08.05 store-and-forward on FreeRTOS-Plus-FAT (#270)
+
+The store-and-forward stack now runs unchanged on the QEMU mps2-an385
+FreeRTOS BDD target: a new `Platform/FatFs/` platform pack provides a
+`SolidSyslogFatFsFile` adapter against ChaN FatFs, a semihosting-backed
+`diskio.c` in the BDD target maps FatFs's block I/O to a host-resident
+disk image (`solidsyslog-disk.img`), and the existing `BlockStore` +
+`FileBlockDevice` ecosystem composes on top. Three BDD feature files
+land green: `store_and_forward.feature` (messages delivered after
+sender outage), `power_cycle_replay.feature` (stored messages replayed
+across a kill+restart), and all four `store_capacity.feature` scenarios
+(discard-oldest, discard-newest, halt-stops, halt-prevents-service).
+
+### Decisions
+
+- **FatFs (ChaN), not FreeRTOS-Plus-FAT.** FatFs is the de-facto
+  embedded FS — Zephyr, NuttX, MicroPython, STM32 HAL, ESP-IDF, the
+  Arduino SD ecosystem — and the 4-function `diskio.c` port is much
+  simpler than Plus-FAT's media-driver vtable. AWS Labs' Plus-FAT was
+  rejected as the integration-surface bet.
+- **`Platform/FatFs/`, peer to `Platform/Posix/` / `Windows/` /
+  `FreeRtos/` / `OpenSsl/`.** FatFs is RTOS-agnostic: bare-metal,
+  FreeRTOS, Zephyr, NuttX. Keeping the pack out of `Platform/FreeRtos/`
+  matches that — and lets a future `Platform/Zephyr/` integrator use
+  the same adapter unchanged.
+- **`f_sync` after every successful `f_write`.** Durability over
+  throughput. The BlockStore's contract is "Write true ⇒ retained for
+  replay"; without sync, a power loss between the f_write and the next
+  graceful close drops directory-entry state and the BDD oracle would
+  see the wrong sequenceIds after restart. The Service drain pipeline
+  is already store-rate-limited so the per-write sync cost is absorbed.
+- **Graceful FatFs shutdown for `power_cycle_replay`, not SIGKILL.**
+  We're testing our re-discovery-on-mount path, not FatFs's mid-write
+  crash semantics (which are unit-tested separately via the f_sync
+  contract + CRC16 policy). The BDD `the client is killed` step is
+  target-aware: on FreeRTOS it sends `set shutdown 1` over the UART,
+  which tears down our objects (their destructors close the FatFs
+  files), `f_unmount`s, then `SemihostingExit`s — Linux/Windows keep
+  SIGKILL because the kernel flushes their FDs on process exit.
+- **One shutdown function, two entry points** (`quit` from
+  `BddTargetInteractive_Run` and `set shutdown 1` from `OnSet`).
+  `TeardownAll()` is the single destroy chain — Setup-allocated
+  resources promoted from locals to file-scope `static`s (without
+  Hungarian `g_*` prefixes per CLAUDE.md) so both paths reach them.
+  Replaces the partial `ShutdownGracefully` that was leaking
+  `Sender`/`Stream` state on the `set shutdown` path.
+- **ARP-prime the TCP stream before connect.** Slice 6's
+  `SO_RCVTIMEO=200ms` fix bounded `FreeRTOS_connect` correctly, but
+  cold-start TCP scenarios then started failing — the first SYN was
+  dropped at the IP layer while ARP resolved, and the 200ms timer
+  expired before the resend cycle. Mirrors the Datagram pattern
+  (`xIsIPInARPCache` + `FreeRTOS_OutputARPRequest` + `vTaskDelay(50ms)`)
+  added in S08.03 slice 3b.1.5.
+- **AArch32 SemihostingExit needs `SYS_EXIT_EXTENDED` (0x20), not
+  `SYS_EXIT` (0x18).** On AArch32 the simple form treats R1 as a
+  *literal* reason code, so passing a `{reason, status}` struct pointer
+  yields "unrecognised reason" → QEMU exit 1 regardless of subcode.
+  The Extended form accepts the parameter block and propagates subcode.
+- **Discard-newest means discard. `Store_IsTransient` vtable
+  method gates the Service fallback.** The `DrainBufferIntoStore`
+  fallthrough-to-`Sender_Send`-on-rejection is correct for `NullStore`
+  ("I never retained, please try the sender") but on a full BlockStore
+  in discard-newest mode it let the *newest* buffered message escape
+  via direct send the instant the sender recovered — bypassing older
+  retained records. Oracle saw `[1, 11, 2, 3, 4, 5, 6]` instead of
+  `[1, 2, 3, 4, 5, 6]`. Fix: a new `bool IsTransient(Store*)` vtable
+  method; NullStore + NilStore answer true, BlockStore + StoreFake
+  answer false; Service consults it before falling through. A real
+  store's rejection is its discard policy speaking, full stop.
+
+### Investigative tooling
+
+- **Host-side BlockStore drain-ordering harness**
+  (`Tests/SolidSyslogBlockStoreDrainOrderingTest.cpp`). Wires the real
+  `BlockStore` + `BlockSequence` + `RecordStore` + `FileBlockDevice`
+  over `FileFake` and exposes a parameterised
+  `DrainTestConfig{maxBlocks, maxBlockSize, payloadSize, discardPolicy}`
+  for sweeping the size knobs without round-tripping QEMU. Two TEST_GROUPs:
+  one drives `BlockStore` directly to prove drain order is correct
+  there (passes); one wires the SolidSyslog facade with a real
+  CircularBuffer + a sticky-outage SenderSpy to drive Service through
+  the BDD scenario shape at unit-test speed — that's the one that
+  reproduced the `[1, 11, 2, ...]` interleave before the IsTransient
+  fix landed. Permanent regression bank for future store algorithm
+  changes.
+
+### Licensing note
+
+ChaN's FatFs is distributed under a BSD-style two-clause license. The
+SolidSyslog parent license is PolyForm Noncommercial 1.0.0 — a
+more-restrictive copyleft for derivative works. The only obligation
+flowing from FatFs's license into this project is preserving ChaN's
+notice in `ff.c`, which is vendored untouched at the integrator level
+(`/opt/fatfs/source/ff.c` in CI; integrators supply their own copy via
+`FATFS_PATH`). PolyForm Noncommercial is a permitted downstream license
+for FatFs's BSD-style upstream.
+
+### Deferred
+
+- **`SOLIDSYSLOG_FATFS_FILE_SIZE` as a CMake-tunable** for integrators
+  whose `FF_MAX_SS` differs from the 512 the BDD target uses. Tracked
+  under E21 (#217). Slice 5 hardcoded 720 B for `FF_MAX_SS=512`;
+  integrators with larger sectors currently need to manually re-size.
+- **FreeRTOS task stack budget tuning.** S21.02's `[stack-hwm]` numbers
+  bumped headroom; the store path's stack peak is now visible in CI's
+  bdd-freertos-qemu log. Wait for a few merges' worth of empirical data
+  before shrinking `INTERACTIVE_TASK_STACK_DEPTH` /
+  `SERVICE_TASK_STACK_DEPTH`.
+- **The `[1, 11, 2, ...]` drain-ordering bug is the first realised
+  benefit of the integration harness.** Worth extending with a
+  parameterised sweep (discard-oldest, varied sizes, varied policies)
+  as a permanent regression bank. Captured as a follow-up rather than
+  inflating this story further.
+
+### Open questions
+
+- Should real-flash integrator examples mirror the BDD's
+  semihosting-backed `diskio.c` shape, or do we need a separate
+  `Example/FreeRtos/Sd/` demonstrating an actual flash port? The
+  former covers the SolidSyslog-side wiring fully; the latter answers
+  "what does an integrator's diskio.c look like" but introduces a
+  hardware dependency. Leaning toward documenting the diskio.c contract
+  in `docs/` and pointing readers at ChaN's reference port — but happy
+  to revisit if integrators ask.
+
 ## 2026-05-12 — S21.02 first use of the tunables override on the FreeRTOS BDD preset (#349)
 
 First *use* of the S21.01 mechanism. The `freertos-cross` CMake preset

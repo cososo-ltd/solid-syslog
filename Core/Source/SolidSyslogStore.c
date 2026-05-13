@@ -38,3 +38,8 @@ size_t SolidSyslogStore_GetUsedBytes(struct SolidSyslogStore* store)
 {
     return store->GetUsedBytes(store);
 }
+
+bool SolidSyslogStore_IsTransient(struct SolidSyslogStore* store)
+{
+    return store->IsTransient(store);
+}

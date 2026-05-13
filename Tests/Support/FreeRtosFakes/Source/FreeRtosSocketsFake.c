@@ -50,6 +50,7 @@ static int32_t    lastSetsockoptLevel        = 0;
 static int32_t    lastSetsockoptOptionName   = 0;
 static size_t     lastSetsockoptOptionLength = 0;
 static TickType_t sndTimeoAtConnect          = 0;
+static TickType_t rcvTimeoAtConnect          = 0;
 
 static unsigned closesocketCallCount  = 0;
 static Socket_t lastClosesocketSocket = NULL;
@@ -110,6 +111,7 @@ void FreeRtosSocketsFake_Reset(void)
     lastSetsockoptOptionName   = 0;
     lastSetsockoptOptionLength = 0;
     sndTimeoAtConnect          = 0;
+    rcvTimeoAtConnect          = 0;
 
     closesocketCallCount  = 0;
     lastClosesocketSocket = NULL;
@@ -240,6 +242,11 @@ TickType_t FreeRtosSocketsFake_SndTimeoAtConnect(void)
     return sndTimeoAtConnect;
 }
 
+TickType_t FreeRtosSocketsFake_RcvTimeoAtConnect(void)
+{
+    return rcvTimeoAtConnect;
+}
+
 TickType_t FreeRtosSocketsFake_LastSndTimeoSet(void)
 {
     return lastSndTimeoSet;
@@ -300,6 +307,7 @@ BaseType_t FreeRTOS_connect(Socket_t xClientSocket, const struct freertos_sockad
     lastConnectAddress       = pxAddress;
     lastConnectAddressLength = xAddressLength;
     sndTimeoAtConnect        = lastSndTimeoSet;
+    rcvTimeoAtConnect        = lastRcvTimeoSet;
     return connectFails ? -pdFREERTOS_ERRNO_ENOTCONN : 0;
 }
 

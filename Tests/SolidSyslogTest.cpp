@@ -1407,7 +1407,11 @@ TEST(SolidSyslog, ServiceSendsStoreMessageNotBufferMessage)
     BufferFake_Destroy();
 }
 
-TEST(SolidSyslog, ServiceSendsDirectlyWhenStoreWriteFails)
+/* A non-transient store's Write rejection is its discard policy speaking;
+ * Service must not bypass to the sender, or a newer message would jump
+ * ahead of older retained ones once the sender recovered. (NullStore-side
+ * fallthrough is covered by ServiceSendsBufferedMessageWithNullStore.) */
+TEST(SolidSyslog, ServiceDoesNotBypassToSenderWhenNonTransientStoreRejectsWrite)
 {
     SolidSyslogBuffer* fakeBuffer    = BufferFake_Create();
     SolidSyslogStore*  fakeStore     = StoreFake_Create();
@@ -1421,8 +1425,7 @@ TEST(SolidSyslog, ServiceSendsDirectlyWhenStoreWriteFails)
     SenderFake_Reset(fakeSender);
     SolidSyslog_Service();
 
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
-    STRCMP_EQUAL("direct", SenderFake_LastBufferAsString(fakeSender));
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
 
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);

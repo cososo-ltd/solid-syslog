@@ -168,6 +168,13 @@ if(DEFINED ENV{FREERTOS_KERNEL_PATH})
     add_subdirectory(Platform/FreeRtos)
 endif()
 
+# FatFs adapters likewise ship as sources via an INTERFACE library — the
+# integrator's ffconf.h flows into each consumer's compile. Gated on the
+# upstream FatFs sources being present in the build environment.
+if(DEFINED ENV{FATFS_PATH})
+    add_subdirectory(Platform/FatFs)
+endif()
+
 # The cross-compiled FreeRTOS BDD target is selected by the arm-none-eabi
 # toolchain file (see Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake); it
 # only enters the build when a freertos-cross preset is active.

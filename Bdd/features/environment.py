@@ -45,6 +45,13 @@ else:
     STORE_FILE_PATH = "/tmp/solidsyslog_store.dat"
     STORE_PATH_PREFIX = "/tmp/STORE"
     THRESHOLD_MARKER_PATH = "/tmp/solidsyslog_threshold_marker.log"
+
+# FreeRTOS BDD target's semihosting disk image. QEMU resolves the
+# filename relative to its working directory (= behave's cwd = project
+# root). after_scenario removes it so each scenario starts with no
+# filesystem; disk_initialize then creates a fresh sparse image and
+# falls through to f_mkfs on the first mount.
+FREERTOS_DISK_IMAGE_PATH = "solidsyslog-disk.img"
 RECEIVED_UDP_LOG = "Bdd/output/received_udp.log"
 RECEIVED_TCP_LOG = "Bdd/output/received_tcp.log"
 RECEIVED_TLS_LOG = "Bdd/output/received_tls.log"
@@ -174,6 +181,38 @@ def before_feature(context, feature):
 
 def before_scenario(context, scenario):
     _skip_if_tunable_too_small(scenario)
+    # Defence against an aborted prior run leaving a stale FatFs disk
+    # image at the project root — diskio.c::DiskImageIsReady keeps any
+    # existing image of full size, so STORE*.log content from a crashed
+    # prior session would silently carry into this scenario's f_mount.
+    # after_scenario removes it on the happy path; this is the belt to
+    # that brace.
+    try:
+        os.remove(FREERTOS_DISK_IMAGE_PATH)
+    except FileNotFoundError:
+        pass
+
+
+def after_step(context, step):
+    """On step failure, dump the recent BDD-target stdout (FreeRTOS guest
+    UART output for the QEMU target) so [solidsyslog] error lines and
+    printf diagnostics are visible in the behave log. _solidsyslog_stdout_log
+    is the 16 KB sliding buffer the reader thread maintains; if the target
+    didn't go through _start_stdout_reader (Linux/Windows path), this is a
+    no-op."""
+    if step.status != "failed":
+        return
+    if not hasattr(context, "interactive_process"):
+        return
+    process = context.interactive_process
+    log = getattr(process, "_solidsyslog_stdout_log", None)
+    if not log:
+        return
+    text = bytes(log).decode("utf-8", errors="replace")
+    print(f"--- last {len(log)} bytes of BDD target stdout ---", file=sys.stderr, flush=True)
+    for line in text.splitlines():
+        print(f"  GUEST: {line}", file=sys.stderr, flush=True)
+    print("--- end ---", file=sys.stderr, flush=True)
 
 
 def after_scenario(context, scenario):
@@ -228,5 +267,12 @@ def after_scenario(context, scenario):
         os.remove(path)
     try:
         os.remove(THRESHOLD_MARKER_PATH)
+    except FileNotFoundError:
+        pass
+    # FreeRTOS target's semihosting-backed FAT image. Removing it forces
+    # the next scenario's disk_initialize to create a fresh sparse image,
+    # which then triggers f_mkfs via the FR_NO_FILESYSTEM fallback.
+    try:
+        os.remove(FREERTOS_DISK_IMAGE_PATH)
     except FileNotFoundError:
         pass

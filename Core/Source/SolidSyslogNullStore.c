@@ -12,6 +12,7 @@ static bool   HasUnsent(struct SolidSyslogStore* self);
 static bool   IsHalted(struct SolidSyslogStore* self);
 static size_t GetTotalBytes(struct SolidSyslogStore* self);
 static size_t GetUsedBytes(struct SolidSyslogStore* self);
+static bool   IsTransient(struct SolidSyslogStore* self);
 
 struct SolidSyslogNullStore
 {
@@ -29,6 +30,7 @@ struct SolidSyslogStore* SolidSyslogNullStore_Create(void)
     instance.base.IsHalted       = IsHalted;
     instance.base.GetTotalBytes  = GetTotalBytes;
     instance.base.GetUsedBytes   = GetUsedBytes;
+    instance.base.IsTransient    = IsTransient;
     return &instance.base;
 }
 
@@ -41,6 +43,7 @@ void SolidSyslogNullStore_Destroy(void)
     instance.base.IsHalted       = NULL;
     instance.base.GetTotalBytes  = NULL;
     instance.base.GetUsedBytes   = NULL;
+    instance.base.IsTransient    = NULL;
 }
 
 /* NullStore never retains. Returns false to signal "not held by this store"
@@ -91,4 +94,13 @@ static size_t GetUsedBytes(struct SolidSyslogStore* self)
 {
     (void) self;
     return 0;
+}
+
+/* NullStore retains nothing — a Write rejection means "I never had it,
+ * please try the sender." Service's DrainBufferIntoStore consults this
+ * to know it's safe to fall through to direct-send. */
+static bool IsTransient(struct SolidSyslogStore* self)
+{
+    (void) self;
+    return true;
 }

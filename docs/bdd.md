@@ -147,7 +147,7 @@ Runner tag filters:
 | Runner | Filter |
 | --- | --- |
 | Linux (syslog-ng) | `not @wip` |
-| FreeRTOS (syslog-ng-freertos via QEMU) | `not @wip and not @freertoswip and @udp` |
+| FreeRTOS (syslog-ng-freertos via QEMU) | `not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp)` |
 | Windows (OTel Collector) | `not @wip and not @windows_wip and not @buffered` |
 
 ## Two oracles, one step file

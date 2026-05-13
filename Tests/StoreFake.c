@@ -17,6 +17,7 @@ static bool ReadNextUnsent(struct SolidSyslogStore* self, void* data, size_t max
 static void MarkSent(struct SolidSyslogStore* self);
 static bool HasUnsent(struct SolidSyslogStore* self);
 static bool IsHalted(struct SolidSyslogStore* self);
+static bool IsTransient(struct SolidSyslogStore* self);
 
 struct StoreFake
 {
@@ -40,6 +41,7 @@ struct SolidSyslogStore* StoreFake_Create(void)
     instance.base.MarkSent       = MarkSent;
     instance.base.HasUnsent      = HasUnsent;
     instance.base.IsHalted       = IsHalted;
+    instance.base.IsTransient    = IsTransient;
     return &instance.base;
 }
 
@@ -138,6 +140,15 @@ static bool IsHalted(struct SolidSyslogStore* self)
 {
     struct StoreFake* fake = (struct StoreFake*) self;
     return fake->halted;
+}
+
+/* StoreFake models a real store — a Write rejection is a policy decision,
+ * not a "please try elsewhere" signal. Service must not bypass to the
+ * sender on rejection. */
+static bool IsTransient(struct SolidSyslogStore* self)
+{
+    (void) self;
+    return false;
 }
 
 void StoreFake_SetHalted(void)

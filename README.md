@@ -23,9 +23,11 @@ block store-and-forward with CRC-16 integrity, and the full
 [IEC 62443 SL1–SL4 component set](docs/iec62443.md).
 
 FreeRTOS support is in active development on Cortex-M3 (mps2-an385 under QEMU):
-UDP transport via FreeRTOS-Plus-TCP, host-TDD'd adapters, an interactive
-BDD target wired with the portable CircularBuffer + FreeRtosMutex
-behind a Service task, and BDD scenarios driven through QEMU's UART
+UDP and TCP transports via FreeRTOS-Plus-TCP, persistent store-and-forward via
+ChaN FatFs (semihosting-backed disk image in BDD; integrator-supplied
+`diskio.c` in production), host-TDD'd adapters, an interactive BDD target
+wired with the portable CircularBuffer + FreeRtosMutex behind a Service
+task, and BDD scenarios driven through QEMU's UART
 ([epic E08 #10](https://github.com/DavidCozens/solid-syslog/issues/10)).
 
 **Not yet production-ready**, and no API stability guarantee yet. Known gaps:
@@ -82,7 +84,8 @@ Public headers are split by audience (Interface Segregation Principle):
 - **`SolidSyslogTimeQualitySd.h`** — timeQuality structured data (RFC 5424 §7.1): tzKnown, isSynced, syncAccuracy
 - **`SolidSyslogOriginSd.h`** — origin structured data (RFC 5424 §7.2): software, swVersion, enterpriseId, ip
 - **`SolidSyslogPosixClock.h`** / **`SolidSyslogPosixHostname.h`** / **`SolidSyslogPosixProcessId.h`** / **`SolidSyslogPosixSysUpTime.h`** — POSIX helpers
-- **`SolidSyslogFreeRtosDatagram.h`** / **`SolidSyslogFreeRtosStaticResolver.h`** / **`SolidSyslogFreeRtosMutex.h`** / **`SolidSyslogFreeRtosSysUpTime.h`** — FreeRTOS adapters: FreeRTOS-Plus-TCP UDP datagram, hardcoded-IPv4 resolver, `xSemaphoreCreateMutexStatic`-backed mutex for CircularBuffer, and a kernel-tick sysUpTime source
+- **`SolidSyslogFreeRtosDatagram.h`** / **`SolidSyslogFreeRtosTcpStream.h`** / **`SolidSyslogFreeRtosStaticResolver.h`** / **`SolidSyslogFreeRtosMutex.h`** / **`SolidSyslogFreeRtosSysUpTime.h`** — FreeRTOS adapters: FreeRTOS-Plus-TCP UDP datagram and TCP stream (with ARP-prime on cold connect and bounded `SO_RCVTIMEO` connect), hardcoded-IPv4 resolver, `xSemaphoreCreateMutexStatic`-backed mutex for CircularBuffer, and a kernel-tick sysUpTime source
+- **`SolidSyslogFatFsFile.h`** — ChaN FatFs file adapter for the `SolidSyslogFile` extension point; `f_sync` per write for crash-safe store-and-forward. RTOS-agnostic; runs on bare-metal, FreeRTOS, Zephyr, NuttX
 
 Three BDD-driven target binaries exercise the library on each supported
 platform. They live under [`Bdd/Targets/`](Bdd/Targets/) — one binary
@@ -90,7 +93,7 @@ per platform, all named `SolidSyslogBddTarget`:
 
 - **`Bdd/Targets/Linux/`** — POSIX, PosixMessageQueueBuffer, two pthreads (logger + service), SwitchingSender over UDP + TCP + TLS + mTLS (TLS build required for the last two); `--transport` sets the initial transport, `switch <name>` flips it at runtime
 - **`Bdd/Targets/Windows/`** — Windows, CircularBuffer + WindowsMutex, Win32 service thread (`_beginthreadex`) draining the buffer, Winsock UDP / TCP, with the Windows clock / hostname / process-id / sysUpTime helpers
-- **`Bdd/Targets/FreeRtos/`** — FreeRTOS-on-QEMU (Cortex-M3, mps2-an385), CircularBuffer + FreeRtosMutex drained by a dedicated Service task, UDP via FreeRTOS-Plus-TCP, interactive `set NAME VALUE` / `send N` / `quit` command channel over the CMSDK UART; BDD-driven against syslog-ng. See [`Bdd/Targets/FreeRtos/README.md`](Bdd/Targets/FreeRtos/README.md)
+- **`Bdd/Targets/FreeRtos/`** — FreeRTOS-on-QEMU (Cortex-M3, mps2-an385), CircularBuffer + FreeRtosMutex drained by a dedicated Service task, UDP + TCP via FreeRTOS-Plus-TCP, persistent store-and-forward via ChaN FatFs over a semihosting-backed disk image, interactive `set NAME VALUE` / `send N` / `set store file` / `set shutdown 1` / `quit` command channel over the CMSDK UART; BDD-driven against syslog-ng including `store_and_forward`, `power_cycle_replay`, and `store_capacity` scenarios. See [`Bdd/Targets/FreeRtos/README.md`](Bdd/Targets/FreeRtos/README.md)
 
 ## Compliance
 
