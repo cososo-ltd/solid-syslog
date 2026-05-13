@@ -198,7 +198,7 @@ target_compile_options(SolidSyslogBddTarget PRIVATE
 )
 
 target_include_directories(SolidSyslogBddTarget PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, FreeRTOSIPConfig.h, ffconf.h
+    ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, FreeRTOSIPConfig.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Common                # CmsdkUart.h
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # SolidSyslogAddress.h (consumed by adapters)
@@ -210,7 +210,13 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${PLUS_TCP_SRC_DIR}/include
     ${PLUS_TCP_PORT_GCC_DIR}                          # pack_struct_*.h
-    ${FATFS_PATH}/source                              # ff.h, diskio.h
+    ${FATFS_STAGE_DIR}                                # ff.h, diskio.h + integrator ffconf.h colocated — must match
+                                                      # the OBJECT lib (above) so ff.c, main.c, diskio.c, and
+                                                      # SolidSyslogFatFsFile.c all see the SAME ffconf.h. Pointing
+                                                      # the executable at FATFS_PATH/source would resolve ff.h's
+                                                      # `#include "ffconf.h"` to upstream's sample (same directory
+                                                      # rule) and diverge FATFS / config-conditional layout between
+                                                      # translation units.
 )
 
 target_link_libraries(SolidSyslogBddTarget PRIVATE
