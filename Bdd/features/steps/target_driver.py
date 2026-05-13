@@ -22,7 +22,6 @@ the UART on FreeRTOS.
 
 import os
 import subprocess
-import sys
 
 
 # Mapping from cmdline flag to FreeRTOS interactive `set` name. Only the
@@ -129,20 +128,16 @@ def spawn_example_process(context, extra_args=None, binary=None):
         if extra_args:
             cmd.extend(extra_args)
 
-    # Route QEMU stderr to the parent stderr on FreeRTOS so semihosting /
-    # QEMU runtime errors surface in the behave/docker log alongside the
-    # behave output. Stdout still goes through PIPE because the prompt
-    # protocol reads it byte-by-byte; _start_stdout_reader tees a copy
-    # into a sliding 16 KB buffer that after_step dumps on failure.
-    stderr_dest = sys.stderr if target == "freertos" else subprocess.PIPE
-    process = subprocess.Popen(
+    # Stdout goes through PIPE because the prompt protocol reads it
+    # byte-by-byte; _start_stdout_reader tees a copy into a sliding 16 KB
+    # buffer that after_step dumps on failure.
+    return subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
-        stderr=stderr_dest,
+        stderr=subprocess.PIPE,
         text=True,
     )
-    return process
 
 
 def apply_extra_args(context, process, extra_args):
