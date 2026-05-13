@@ -20,8 +20,13 @@ EXTERN_C_BEGIN
         intptr_t slots[(SOLIDSYSLOG_FILEBLOCKDEVICE_STORAGE_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
     } SolidSyslogFileBlockDeviceStorage;
 
-    struct SolidSyslogBlockDevice* SolidSyslogFileBlockDevice_Create(SolidSyslogFileBlockDeviceStorage * storage, struct SolidSyslogFile * readFile,
-                                                                     struct SolidSyslogFile * writeFile, const char* pathPrefix);
+    /* The driver caches at most one open SolidSyslogFile handle, re-pointed only when the
+     * targeted blockIndex changes — same-block runs of Read and Append (and Append-then-WriteAt
+     * during MarkSent) share the handle. The single-handle-per-path invariant the storage layer
+     * depends on (E27 #345 / S27.01) is enforced by construction here: the driver physically
+     * holds one file. */
+    struct SolidSyslogBlockDevice* SolidSyslogFileBlockDevice_Create(SolidSyslogFileBlockDeviceStorage * storage, struct SolidSyslogFile * file,
+                                                                     const char* pathPrefix);
     void                           SolidSyslogFileBlockDevice_Destroy(struct SolidSyslogBlockDevice * device);
 
 EXTERN_C_END

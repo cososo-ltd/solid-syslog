@@ -51,26 +51,23 @@ static struct SolidSyslogBlockStoreConfig MakeConfig(struct SolidSyslogBlockDevi
     return config;
 }
 
-/* Shared fixture — every BlockStore test group needs two FileFakes (read + write
- * sides of the BlockDevice), the BlockDevice itself, and a teardown that closes
- * them in the right order. TEST_BASE / TEST_GROUP_BASE lifts that boilerplate
- * out of every group. Test bodies still reference `file`, `readFile`, `device`
- * directly because they are inherited members. */
+/* Shared fixture — every BlockStore test group needs one FileFake backing the
+ * BlockDevice, the BlockDevice itself, and a teardown that closes them in the
+ * right order. TEST_BASE / TEST_GROUP_BASE lifts that boilerplate out of every
+ * group. Test bodies still reference `file`, `device` directly because they
+ * are inherited members. */
 // clang-format off
 TEST_BASE(BlockDeviceTestBase)
 {
-    struct FileFakeStorage readStorage = {};
     struct FileFakeStorage storage = {};
-    struct SolidSyslogFile* readFile = nullptr;
     struct SolidSyslogFile* file = nullptr;
     SolidSyslogFileBlockDeviceStorage deviceStorage = {};
     struct SolidSyslogBlockDevice* device = nullptr;
 
     void setupBlockDeviceFakes()
     {
-        readFile = FileFake_Create(&readStorage);
-        file     = FileFake_Create(&storage);
-        device   = SolidSyslogFileBlockDevice_Create(&deviceStorage, readFile, file, TEST_PATH_PREFIX);
+        file   = FileFake_Create(&storage);
+        device = SolidSyslogFileBlockDevice_Create(&deviceStorage, file, TEST_PATH_PREFIX);
     }
 
     void teardownBlockDeviceFakes() const
@@ -491,7 +488,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
     {
         SolidSyslogFileBlockDevice_Destroy(device);
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        device = SolidSyslogFileBlockDevice_Create(&deviceStorage, readFile, file, prefix);
+        device = SolidSyslogFileBlockDevice_Create(&deviceStorage, file, prefix);
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&storeStorage, &config);
@@ -653,7 +650,7 @@ TEST(SolidSyslogBlockStoreErrors, ReadReturnsFalseOnReadFailure)
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     store                                     = SolidSyslogBlockStore_Create(&storeStorage, &config);
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
-    FileFake_FailNextRead(readFile);
+    FileFake_FailNextRead(file);
 
     char   buf[TEST_BUF_SIZE];
     size_t bytesRead = 0;

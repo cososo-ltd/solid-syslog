@@ -77,8 +77,7 @@ static struct SolidSyslogSender*   plainTcpSender;
 static struct SolidSyslogDatagram* udpDatagram;
 
 /* Block-store backing — created in CreateStore, released in DestroyStore. */
-static struct SolidSyslogFile*        storeReadFile;
-static struct SolidSyslogFile*        storeWriteFile;
+static struct SolidSyslogFile*        storeFile;
 static struct SolidSyslogBlockDevice* storeBlockDevice;
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- _beginthreadex thread-entry signature requires void*
@@ -229,13 +228,11 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
 
     if (useFile)
     {
-        static SolidSyslogWindowsFileStorage readStorage;
-        static SolidSyslogWindowsFileStorage writeStorage;
-        storeReadFile  = SolidSyslogWindowsFile_Create(&readStorage);
-        storeWriteFile = SolidSyslogWindowsFile_Create(&writeStorage);
+        static SolidSyslogWindowsFileStorage fileStorage;
+        storeFile = SolidSyslogWindowsFile_Create(&fileStorage);
 
         static SolidSyslogFileBlockDeviceStorage blockDeviceStorage;
-        storeBlockDevice = SolidSyslogFileBlockDevice_Create(&blockDeviceStorage, storeReadFile, storeWriteFile, STORE_PATH_PREFIX);
+        storeBlockDevice = SolidSyslogFileBlockDevice_Create(&blockDeviceStorage, storeFile, STORE_PATH_PREFIX);
 
         static size_t capacityThreshold;
         capacityThreshold                                     = options->capacityThreshold;
@@ -266,8 +263,7 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetW
         SolidSyslogBlockStore_Destroy(store);
         SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
         SolidSyslogCrc16Policy_Destroy();
-        SolidSyslogWindowsFile_Destroy(storeWriteFile);
-        SolidSyslogWindowsFile_Destroy(storeReadFile);
+        SolidSyslogWindowsFile_Destroy(storeFile);
     }
     else
     {

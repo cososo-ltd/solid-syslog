@@ -39,10 +39,8 @@ TEST_GROUP(SolidSyslogBlockStorePosix)
     static const size_t RECORD_OVERHEAD    = 5; /* 2 (magic) + 2 (length) + 1 (sent flag) */
     static const size_t ONE_MAX_MSG_RECORD = SOLIDSYSLOG_MAX_MESSAGE_SIZE + RECORD_OVERHEAD;
 
-    SolidSyslogPosixFileStorage readStorage = {};
-    SolidSyslogPosixFileStorage writeStorage = {};
-    struct SolidSyslogFile* readFile = nullptr;
-    struct SolidSyslogFile* writeFile = nullptr;
+    SolidSyslogPosixFileStorage fileStorage = {};
+    struct SolidSyslogFile* file = nullptr;
     SolidSyslogFileBlockDeviceStorage deviceStorage = {};
     struct SolidSyslogBlockDevice* device = nullptr;
     struct SolidSyslogStore* store = nullptr;
@@ -51,9 +49,8 @@ TEST_GROUP(SolidSyslogBlockStorePosix)
     void setup() override
     {
         CleanStoreFiles();
-        readFile = SolidSyslogPosixFile_Create(&readStorage);
-        writeFile = SolidSyslogPosixFile_Create(&writeStorage);
-        device = SolidSyslogFileBlockDevice_Create(&deviceStorage, readFile, writeFile, TEST_PATH_PREFIX);
+        file   = SolidSyslogPosixFile_Create(&fileStorage);
+        device = SolidSyslogFileBlockDevice_Create(&deviceStorage, file, TEST_PATH_PREFIX);
         std::memset(maxMsg, 'A', sizeof(maxMsg));
     }
 
@@ -61,8 +58,7 @@ TEST_GROUP(SolidSyslogBlockStorePosix)
     {
         SolidSyslogBlockStore_Destroy(store);
         SolidSyslogFileBlockDevice_Destroy(device);
-        SolidSyslogPosixFile_Destroy(writeFile);
-        SolidSyslogPosixFile_Destroy(readFile);
+        SolidSyslogPosixFile_Destroy(file);
         CleanStoreFiles();
     }
 

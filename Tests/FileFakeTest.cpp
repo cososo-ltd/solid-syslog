@@ -272,6 +272,10 @@ TEST(FileFake, TwoInstancesShareFilesystem)
 {
     SolidSyslogFile_Open(api, "shared.dat");
     SolidSyslogFile_Write(api, "hello", 5);
+    /* Close before the second instance opens the same path — the S27.01
+     * single-handle-per-path invariant forbids overlap. The point of this
+     * test is the shared in-memory filesystem, not concurrent opens. */
+    SolidSyslogFile_Close(api);
 
     struct FileFakeStorage  storage2 = {};
     struct SolidSyslogFile* reader   = FileFake_Create(&storage2);
@@ -280,8 +284,23 @@ TEST(FileFake, TwoInstancesShareFilesystem)
     char buf[16] = {};
     SolidSyslogFile_Read(reader, buf, 5);
     MEMCMP_EQUAL("hello", buf, 5);
+    SolidSyslogFile_Close(reader);
 
     /* Restore lastCreated to group-owned storage so teardown doesn't use dangling pointer */
+    // cppcheck-suppress unreadVariable -- restores lastCreated for teardown; cppcheck does not model CppUTest macros
+    api = FileFake_Create(&storage);
+}
+
+TEST(FileFake, OpenWhileAnotherInstanceHoldsPathOpenAsserts)
+{
+    SolidSyslogFile_Open(api, "shared.dat");
+
+    struct FileFakeStorage  storage2 = {};
+    struct SolidSyslogFile* second   = FileFake_Create(&storage2);
+
+    CHECK_THROWS(std::runtime_error, SolidSyslogFile_Open(second, "shared.dat"));
+
+    SolidSyslogFile_Close(api);
     // cppcheck-suppress unreadVariable -- restores lastCreated for teardown; cppcheck does not model CppUTest macros
     api = FileFake_Create(&storage);
 }

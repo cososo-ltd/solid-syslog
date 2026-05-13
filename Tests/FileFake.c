@@ -45,12 +45,21 @@ static void   FileFake_DestroyedTruncate(struct SolidSyslogFile* self);
 static bool   FileFake_DestroyedExists(struct SolidSyslogFile* self, const char* path);
 static bool   FileFake_DestroyedDelete(struct SolidSyslogFile* self, const char* path);
 
+struct FileFake;
+
+/* openOwner pins the FileFake instance that currently has the entry open. NULL
+ * when no instance holds it. A second Open by any other instance trips
+ * TestAssert_Fail — that is the single-handle-per-path invariant the store
+ * layer relies on (see S27.01 / E27 #345). Ownership clears on the owner's
+ * Close; Delete leaves it intact because the original holder is still the
+ * only one who can legitimately Close its (now-zombie) handle. */
 struct FileEntry
 {
-    char   path[FILEFAKE_MAX_PATH];
-    char   content[FILEFAKE_MAX_SIZE];
-    size_t fileSize;
-    bool   inUse;
+    char             path[FILEFAKE_MAX_PATH];
+    char             content[FILEFAKE_MAX_SIZE];
+    size_t           fileSize;
+    bool             inUse;
+    struct FileFake* openOwner;
 };
 
 struct FileFake
@@ -80,6 +89,7 @@ static inline bool             IsFileClosed(const struct FileFake* fake);
 static inline bool             HasActiveFile(const struct FileFake* fake);
 static inline bool             ShouldFailOnThisCall(bool* flag);
 static inline bool             FoundEntry(const struct FileEntry* entry);
+static inline bool             IsOwnedByAnotherInstance(const struct FileEntry* entry, const struct FileFake* fake);
 static inline void             ActivateEntry(struct FileFake* fake, struct FileEntry* entry);
 static inline bool             HasBytesToRead(const struct FileFake* fake, size_t count);
 static inline void             CopyFromFile(struct FileFake* fake, void* buf, size_t count);
@@ -128,6 +138,10 @@ void FileFake_Destroy(void)
         lastCreated       = NULL;
     }
 
+    /* filesystem is zeroed wholesale on Destroy, which also clears each
+     * entry's openOwner. Tests creating multiple FileFakes in one group
+     * must Close before relying on Destroy to tear down — the assertion
+     * in Open detects ownership leaks across instances. */
     memset(filesystem, 0, sizeof(filesystem));
 }
 
@@ -209,12 +223,23 @@ static bool FileFake_Open(struct SolidSyslogFile* self, const char* path)
 
     struct FileEntry* entry = FindOrCreateEntry(path);
 
+    if (FoundEntry(entry) && IsOwnedByAnotherInstance(entry, fake))
+    {
+        TestAssert_Fail("FileFake: path opened by another instance while already open (S27.01 invariant)");
+        return false;
+    }
+
     if (FoundEntry(entry))
     {
         ActivateEntry(fake, entry);
     }
 
     return FoundEntry(entry);
+}
+
+static inline bool IsOwnedByAnotherInstance(const struct FileEntry* entry, const struct FileFake* fake)
+{
+    return (entry->openOwner != NULL) && (entry->openOwner != fake);
 }
 
 static inline struct FileFake* AsFake(struct SolidSyslogFile* self)
@@ -236,9 +261,10 @@ static inline bool FoundEntry(const struct FileEntry* entry)
 
 static inline void ActivateEntry(struct FileFake* fake, struct FileEntry* entry)
 {
-    fake->active   = entry;
-    fake->open     = true;
-    fake->position = 0;
+    fake->active     = entry;
+    fake->open       = true;
+    fake->position   = 0;
+    entry->openOwner = fake;
 }
 
 static struct FileEntry* FindOrCreateEntry(const char* path)
@@ -314,6 +340,10 @@ static void FileFake_Close(struct SolidSyslogFile* self)
 {
     struct FileFake* fake = AsFake(self);
     RequireOpenFile(fake, "Close called with no file open");
+    if (fake->active->openOwner == fake)
+    {
+        fake->active->openOwner = NULL;
+    }
     fake->open     = false;
     fake->position = 0;
 }

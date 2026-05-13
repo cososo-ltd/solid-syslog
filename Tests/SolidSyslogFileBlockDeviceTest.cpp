@@ -31,19 +31,16 @@ static const char* const TEST_PATH_PREFIX = "/tmp/blockdev_";
 // clang-format off
 TEST_GROUP(SolidSyslogFileBlockDevice)
 {
-    struct FileFakeStorage              readStorage  = {};
-    struct FileFakeStorage              writeStorage = {};
-    struct SolidSyslogFile*             readFile     = nullptr;
-    struct SolidSyslogFile*             writeFile    = nullptr;
+    struct FileFakeStorage              fileStorage  = {};
+    struct SolidSyslogFile*             file         = nullptr;
     SolidSyslogFileBlockDeviceStorage   deviceStorage = {};
     struct SolidSyslogBlockDevice*      device       = nullptr;
 
     void setup() override
     {
-        readFile  = FileFake_Create(&readStorage);
-        writeFile = FileFake_Create(&writeStorage);
+        file = FileFake_Create(&fileStorage);
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        device = SolidSyslogFileBlockDevice_Create(&deviceStorage, readFile, writeFile, TEST_PATH_PREFIX);
+        device = SolidSyslogFileBlockDevice_Create(&deviceStorage, file, TEST_PATH_PREFIX);
     }
 
     void teardown() override
@@ -167,13 +164,13 @@ TEST(SolidSyslogFileBlockDevice, DisposeLeavesOtherBlocksUntouched)
 TEST(SolidSyslogFileBlockDevice, BlockFilenameZeroPadsSequenceToTwoDigits)
 {
     SolidSyslogBlockDevice_Acquire(device, 7);
-    CHECK_TRUE(SolidSyslogFile_Exists(writeFile, "/tmp/blockdev_07.log"));
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/blockdev_07.log"));
 }
 
 TEST(SolidSyslogFileBlockDevice, BlockFilenameWithTwoDigitIndex)
 {
     SolidSyslogBlockDevice_Acquire(device, 42);
-    CHECK_TRUE(SolidSyslogFile_Exists(writeFile, "/tmp/blockdev_42.log"));
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/blockdev_42.log"));
 }
 
 /* The on-disk sequence is two decimal digits: indices > 99 cannot be
@@ -236,6 +233,25 @@ TEST(SolidSyslogFileBlockDevice, DestroyClosesOpenFileHandles)
     SolidSyslogFileBlockDevice_Destroy(device);
     device = nullptr;
 
-    CHECK_FALSE(SolidSyslogFile_IsOpen(readFile));
-    CHECK_FALSE(SolidSyslogFile_IsOpen(writeFile));
+    CHECK_FALSE(SolidSyslogFile_IsOpen(file));
+}
+
+/* S27.01 invariant: at most one SolidSyslogFile is open on any given block
+ * file path at a time. The dual-handle precursor would Open the read handle
+ * on the same path the write handle still held, tripping the FileFake
+ * single-handle-per-path assertion at the second Open. This test mirrors the
+ * BlockStore steady-state pattern (write record -> read record -> write
+ * sent-flag in place) on a single block so a future regression to the
+ * two-handle shape would fault here on the Read step. */
+TEST(SolidSyslogFileBlockDevice, ReadFollowedByWriteOnSameBlockDoesNotOpenTwoHandles)
+{
+    SolidSyslogBlockDevice_Acquire(device, 0);
+    SolidSyslogBlockDevice_Append(device, 0, "rec", 3);
+
+    char buf[3] = {};
+    CHECK_TRUE(SolidSyslogBlockDevice_Read(device, 0, 0, buf, 3));
+    MEMCMP_EQUAL("rec", buf, 3);
+
+    CHECK_TRUE(SolidSyslogBlockDevice_WriteAt(device, 0, 1, "X", 1));
+    CHECK_BLOCK_CONTAINS(0, 0, "rXc", 3);
 }

@@ -49,8 +49,7 @@ struct SolidSyslogStore;
 
 static const char* const                STORE_PATH_PREFIX     = "/tmp/STORE";
 static const char* const                THRESHOLD_MARKER_PATH = "/tmp/solidsyslog_threshold_marker.log";
-static struct SolidSyslogFile*          storeReadFile;
-static struct SolidSyslogFile*          storeWriteFile;
+static struct SolidSyslogFile*          storeFile;
 static struct SolidSyslogBlockDevice*   storeBlockDevice;
 static SolidSyslogPosixTcpStreamStorage plainTcpStreamStorage;
 static struct SolidSyslogStream*        plainTcpStream;
@@ -156,13 +155,11 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* optio
 
     if (useFile)
     {
-        static SolidSyslogPosixFileStorage readStorage;
-        static SolidSyslogPosixFileStorage writeStorage;
-        storeReadFile  = SolidSyslogPosixFile_Create(&readStorage);
-        storeWriteFile = SolidSyslogPosixFile_Create(&writeStorage);
+        static SolidSyslogPosixFileStorage fileStorage;
+        storeFile = SolidSyslogPosixFile_Create(&fileStorage);
 
         static SolidSyslogFileBlockDeviceStorage blockDeviceStorage;
-        storeBlockDevice = SolidSyslogFileBlockDevice_Create(&blockDeviceStorage, storeReadFile, storeWriteFile, STORE_PATH_PREFIX);
+        storeBlockDevice = SolidSyslogFileBlockDevice_Create(&blockDeviceStorage, storeFile, STORE_PATH_PREFIX);
 
         static size_t capacityThreshold;
         capacityThreshold                                     = options->capacityThreshold;
@@ -204,8 +201,7 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetO
         SolidSyslogBlockStore_Destroy(store);
         SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
         SolidSyslogCrc16Policy_Destroy();
-        SolidSyslogPosixFile_Destroy(storeWriteFile);
-        SolidSyslogPosixFile_Destroy(storeReadFile);
+        SolidSyslogPosixFile_Destroy(storeFile);
     }
     else
     {
