@@ -714,17 +714,20 @@ static bool EnsureFatFsMounted(void)
 
 static void SemihostingExit(int status)
 {
-    /* SYS_EXIT (0x18) — QEMU recognises the ARM Semihosting
-     * ADP_Stopped_ApplicationExit (0x20026) form as a parameter block
-     * { reason, status }. Marked unreachable after the trap because
-     * QEMU terminates the VM; the for(;;) is defensive. */
+    /* SYS_EXIT_EXTENDED (0x20) — the only ARM Semihosting exit form on
+     * AArch32 that propagates a non-zero status: R1 points to a
+     * { reason, subcode } parameter block. The simpler SYS_EXIT (0x18)
+     * on AArch32 takes R1 as a *literal* reason code (ADP_Stopped_*),
+     * so passing a struct pointer there resolved to "unrecognised reason"
+     * → QEMU exit 1 regardless of subcode. Marked unreachable after the
+     * trap because QEMU terminates the VM; the for(;;) is defensive. */
     const struct
     {
         uint32_t reason;
-        uint32_t status;
+        uint32_t subcode;
     } args = {0x20026U, (uint32_t) status};
 
-    register int         r0 __asm("r0") = 0x18;
+    register int         r0 __asm("r0") = 0x20;
     register const void* r1 __asm("r1") = &args;
     __asm volatile("bkpt 0xAB" : "+r"(r0) : "r"(r1) : "memory");
     for (;;)
