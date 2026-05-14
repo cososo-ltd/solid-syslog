@@ -86,13 +86,11 @@ static bool IsValidConfig(const struct SolidSyslogUdpSenderConfig* config)
 
 static void InstallConfig(const struct SolidSyslogUdpSenderConfig* config)
 {
-    instance                 = DEFAULT_INSTANCE;
-    instance.config.resolver = config->resolver;
-    instance.config.datagram = config->datagram;
-    instance.config.endpoint = config->endpoint;
-    if (config->endpointVersion != NULL)
+    instance        = DEFAULT_INSTANCE;
+    instance.config = *config;
+    if (instance.config.endpointVersion == NULL)
     {
-        instance.config.endpointVersion = config->endpointVersion;
+        instance.config.endpointVersion = NilEndpointVersion;
     }
     instance.base.Send       = Send;
     instance.base.Disconnect = Disconnect;
