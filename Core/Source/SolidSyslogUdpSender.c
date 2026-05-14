@@ -104,8 +104,17 @@ void SolidSyslogUdpSender_Destroy(void)
 
 static bool Send(struct SolidSyslogSender* self, const void* buffer, size_t size)
 {
-    struct SolidSyslogUdpSender* udp = (struct SolidSyslogUdpSender*) self;
-    return Reconcile(udp) && TransmitDatagram(udp, buffer, size);
+    bool result = false;
+    if (buffer == NULL)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_UDPSENDER_SEND_NULL_BUFFER);
+    }
+    else
+    {
+        struct SolidSyslogUdpSender* udp = (struct SolidSyslogUdpSender*) self;
+        result                           = Reconcile(udp) && TransmitDatagram(udp, buffer, size);
+    }
+    return result;
 }
 
 static void Disconnect(struct SolidSyslogSender* self)

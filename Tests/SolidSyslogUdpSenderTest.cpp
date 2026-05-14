@@ -323,12 +323,11 @@ TEST(SolidSyslogUdpSender, EndpointVersionChangeUsesNewPortOnReconnect)
     LONGS_EQUAL(TEST_ALTERNATE_PORT, SocketFake_LastPort());
 }
 
-IGNORE_TEST(SolidSyslogUdpSender, HappyPathOnly)
-
+TEST(SolidSyslogUdpSender, ZeroLengthSendPassesThrough)
 {
-    // Error handling not yet implemented — see Epic #31
-    //   Send called with NULL buffer does nothing, does not crash
-    //   Send called with zero length does nothing, does not crash
+    Send(TEST_MESSAGE, 0);
+    CALLED_FAKE(SocketFake_Sendto, ONCE);
+    LONGS_EQUAL(0, SocketFake_LastLen());
 }
 
 // Destroy tests manage their own sender lifetime — base teardown does
@@ -767,4 +766,12 @@ TEST(SolidSyslogUdpSenderBadSetup, NullEndpointVersionIsOptional)
     sender                 = SolidSyslogUdpSender_Create(&config);
     CHECK_NOTHING_REPORTED();
     CHECK_TRUE(Send());
+}
+
+TEST(SolidSyslogUdpSenderBadSetup, SendWithNullBufferReportsErrorAndDoesNotSend)
+{
+    sender = SolidSyslogUdpSender_Create(&config);
+    CHECK_FALSE(Send(nullptr, 5));
+    CHECK_REPORTED_ERROR("SolidSyslogUdpSender_Send called with NULL buffer");
+    CALLED_FAKE(SocketFake_Sendto, NEVER);
 }
