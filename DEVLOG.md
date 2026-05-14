@@ -7411,3 +7411,82 @@ tag in the same pass.
 ### Open questions
 
 - None.
+
+## 2026-05-14 — S10.06 MISRA rule subset curation
+
+### Decisions
+
+- **Five new deviations originally planned (D.002–D.006), four
+  more raised during curation (D.007 / D.008 / D.009 / D.010),
+  three audit verdicts revised.** The S10.05 audit had assigned
+  rules 11.8 (11 findings) as "Mixed" and 21.10 / 21.6 (4 findings
+  combined) as "Investigate"; per-site review against the actual
+  source confirmed all 15 are structural — captured as D.007 (11.8
+  cppcheck-misra false-positives on `const struct*` member access
+  plus the documented Winsock `select()` const-strip), D.008
+  (transitive `<wchar.h>` via `<time.h>` on glibc), D.009
+  (`<stdio.h>` solely for `SEEK_SET` / `SEEK_END` used by
+  `_lseeki64`). Adding D.010 was forced: the re-run of
+  cppcheck-misra with D.002–D.009 suppressions applied revealed
+  5 additional rule 2.4 findings that had been masked behind 5.7
+  (D.003) in the audit — all 6 sites are the project's anonymous
+  `enum { … };` named-constant idiom (≈31 such blocks tree-wide).
+  Verdict for 2.4 flipped from Fix (audit) to Deviate.
+
+- **Rule 5.1 63-character window — no cppcheck-misra configuration
+  change required.** S10.03 had deferred the wiring decision to
+  this story (three options: rule-text override, blanket suppress,
+  custom addon configuration). cppcheck-misra applies its default
+  31-character window and currently reports zero 5.1 findings; the
+  31-char enforcement is strictly stricter than the 63-char
+  deviation allows, so the existing setup is the safe direction.
+  The deviation only becomes load-bearing if a real collision ever
+  resolves at 63 chars but not at 31 — at which point that single
+  finding gets suppressed with rationale tying back to D.001.
+  Recorded in D.001's Risk-and-mitigation section.
+
+- **Rule 11.3 dual-rule sites.** The same opaque-impl cast at
+  `Address.c:5` and `Formatter.h:30` triggers both 11.2 (incomplete
+  type → pointer) and 11.3 (different object types). The original
+  audit recorded only one rule per site; in practice cppcheck-misra
+  reports both once one of them is suppressed. D.002 covers all
+  three rules; the suppressions file lists 11.2 and 11.3 entries
+  at the four dual-rule sites.
+
+- **Audit numerical reconciliation.** Headline count was 575
+  findings → 187 suppressed via D.002–D.010 + 388 remaining Fix
+  targets. The 575 vs 187 + 388 = 575 reconciles cleanly when the
+  five dual-rule sites (`Address.c:5` × 3 platforms + `Formatter.h:30`
+  + one previous overlap) are treated as single MISRA findings
+  reported under two rule IDs. The Fix-target backlog handed to
+  S10.07+ is 388 findings, not the 389 the audit projected; the
+  -1 is rule 2.4 graduating to Deviate.
+
+- **Suppressions file format.** cppcheck rejects suppression files
+  containing bare `#` lines (single-character comment markers with
+  no text). All comment dividers in `misra_suppressions.txt` use
+  `# ` (hash + space) — silent constraint discovered during the
+  first verification run that fired
+  `cppcheck: error: Failed to add suppression. No id.` Worth
+  remembering for any future suppression-file generator.
+
+### Deferred
+
+- **Rule 5.6 SOLIDSYSLOG_STATIC_ASSERT polyfill fix** (5 findings).
+  All five sites are the same polyfill macro expanding to a
+  duplicate `typedef char solidsyslog_static_assert_[…]`. Fixing
+  it is a one-line edit to `Core/Source/SolidSyslogMacros.h`
+  (append `__LINE__` via two-step concat). Out of S10.06's docs-only
+  scope; carried into the mechanical sweep story whose number is
+  assigned when raised.
+
+- **Two sibling stories slotted into E10's cross-cutting sweeps
+  section** but not raised yet (epic body updated by the issue
+  author when the audit landed): data-member PascalCase rename
+  (≈186 sites) and the tree-wide mechanical MISRA sweep (now ≈125
+  fixes across 9 rules — 2.4 graduated to Deviate, so the count
+  dropped by 1). Numbers assigned when raised.
+
+### Open questions
+
+- None.

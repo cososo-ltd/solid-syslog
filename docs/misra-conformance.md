@@ -102,7 +102,7 @@ Each row carries the cppcheck addon's count. The verdict reflects how the rule s
 | **10.4** | 92 | Both operands of operator shall be in same essential type category | `SolidSyslogFormatter.c` (15), `SolidSyslog.c` (6), `SolidSyslogFileBlockDevice.c` (6) | **Fix** | Mostly `size_t + 1` where `1` is `int`. Add `U` suffix to literals; occasional explicit cast for mixed cases. Mechanical sweep. | **New sweep story** (no existing slot in epic — propose S10.09a essential-type cleanups, or roll into S10.09 abbreviation purge / a new dedicated story) |
 | **8.9** (advisory) | 56 | Object referenced in one function should have block scope | `SolidSyslogFormatter.c` (8), `SolidSyslogMetaSd.c` (5), `SolidSyslogOriginSd.c` (5) | **Fix** | File-scope statics that should be locals or `static const` block-scope. Per-site review. | **S10.09** (if "abbreviation purge" widens to "code-shape hygiene") or **new sweep story** |
 | **5.7** | 54 | Tag names unique | `BlockSequence.c` (2), `SolidSyslogFileBlockDevice.c` (2), `SolidSyslogBlockStore.h` (1), and so on across many forward-decl + definition pairs | **Deviate** | NAMING.md's no-typedef-struct convention deliberately repeats the same `struct SolidSyslogX` tag wherever it's used (forward-decl in headers, definition in source). 5.7 fires on every repetition. Document as deviation. | **S10.06** (deviation D.003) |
-| **11.8** | 11 | Cast shall not remove const/volatile qualification | `SolidSyslog.c` (8), `BlockSequence.c` (1), `SolidSyslogBlockStore.c` (1), `SolidSyslogWinsockTcpStream.c` (1) | **Mostly Deviate** | The Winsock `select()` site is a documented platform-API forced const-strip (already in code as a comment); some Core sites are real const-correctness drift and **Fix**. Split per-site in S10.06 review. | **S10.06** (some deviate, some fix) |
+| **11.8** | 11 | Cast shall not remove const/volatile qualification | `SolidSyslog.c` (8), `BlockSequence.c` (1), `SolidSyslogBlockStore.c` (1), `SolidSyslogWinsockTcpStream.c` (1) | **Deviate** *(resolved in S10.06: all 11 sites)* | All 10 Core sites are field-access "false positives" — accessing a non-const-pointer field through a `const struct*` parameter; C standard §6.5.2.3 ¶3 says the member-access yields an unqualified pointer rvalue, so this is not a real const-strip. The Winsock `select()` site is the documented platform-API const-strip already commented in source. Captured as **D.007**. | landed in **S10.06** |
 | **17.7** | 11 | Value returned by non-void function shall be used | `RecordStore.c` (5), `SolidSyslogCircularBuffer.c` (4), `SolidSyslog.c` (1) | **Fix** | Use the return value or cast to `(void)` with comment. | **New sweep story** or **S10.10** (Buffer pilot) where most concentrate |
 | **10.1** | 11 | Operands shall not be of inappropriate essential type | `SolidSyslogUtf8.h` (5), `SolidSyslogFormatter.c` (5), `SolidSyslogCrc16.c` (1) | **Fix** | Bool/char/int essential-type mixing — typically a one-line cast or refactor. | **S10.17** (core message pipeline) for Formatter; mixed for the rest |
 | **15.7** | 10 | All if/else-if shall be terminated with `else` | `BlockSequence.c` (3), `SolidSyslogFormatter.c` (2), `SolidSyslogTlsStream.c` (1) | **Fix** | Add trailing `else { /* exhaustive */ }`. Mechanical. | **New sweep story** |
@@ -114,7 +114,7 @@ Each row carries the cppcheck addon's count. The verdict reflects how the rule s
 | **18.4** (advisory) | 4 | `+`, `-`, `+=`, `-=` shall not be applied to pointer types | `RecordStore.c` (4) | **Deviate** | RecordStore manipulates record buffers using pointer arithmetic by design (magic byte offset → length offset → message offset, etc.). This is the natural C expression for the algorithm. Document as deviation. | **S10.06** (D.004) |
 | **15.5** (advisory) | 4 | Function should have single exit point | `SolidSyslogFormatter.c` (3), `SolidSyslog.c` (1) | **Fix** | Already a documented project preference ("Production code (Tier 1, Core/Source/) — Single return per function" in CLAUDE.md). Real drift. | **S10.17** (core message pipeline) |
 | **11.5** | 4 | Conversion from pointer to void to pointer to object | `SolidSyslogWinsockTcpStream.c` (2), `SolidSyslogUdpSender.c` (1), `SolidSyslogWinsockDatagram.c` (1) | **Deviate** | Same opaque-type / vtable pattern as 11.3. | **S10.06** (with D.002) |
-| **21.10** | 3 | `wchar.h` shall not be used | `SolidSyslogPosixClock.c` (1), `SolidSyslogPosixSleep.c` (1), `SolidSyslogPosixSysUpTime.c` (1) | **Investigate** | We don't include `wchar.h` directly. The addon may be misfiring on something transitively pulled in via `time.h` on this glibc version. If it's a transitive include we can't help, **Deviate**; otherwise **Fix**. | **S10.06** (investigate during rule curation) |
+| **21.10** | 3 | `wchar.h` shall not be used | `SolidSyslogPosixClock.c` (1), `SolidSyslogPosixSleep.c` (1), `SolidSyslogPosixSysUpTime.c` (1) | **Deviate** *(resolved in S10.06)* | All three sites are `#include <time.h>` — glibc transitively pulls in `<wchar.h>` via `bits/types/struct_tm.h`. No direct `<wchar.h>` use anywhere in the project. Captured as **D.008**. | landed in **S10.06** |
 | **22.10** | 3 | The value of `errno` shall be checked only after a function that may set it | `SolidSyslogPosixTcpStream.c` (2), `SolidSyslogPosixDatagram.c` (1) | **Fix** | We currently read `errno` in some places where the preceding function isn't documented to set it (or we check before re-calling). Per-site review. | **S10.15** (sender platform impls) |
 | **8.6** | 3 | Identifier with external linkage shall have exactly one external definition | `SolidSyslogAddress.c` (1 each across Posix/Windows/FreeRtos) | **Fix** | Either missing definition or duplicate declaration of `Address` helpers — needs per-site investigation. | **S10.15** |
 | **10.8** | 2 | Composite-expression cast to wider essential type | `SolidSyslog.c` (2) | **Fix** | One-site fixes. | **S10.17** |
@@ -123,21 +123,24 @@ Each row carries the cppcheck addon's count. The verdict reflects how the rule s
 | **2.5** (advisory) | 2 | Unused macro | `SolidSyslogCircularBuffer.h` (2) | **Fix** | Two declared macros that are never used. Delete them. | **S10.11** (sync primitives — CircularBuffer lives here) |
 | **3.1** | 1 | `/* */` shall not contain comment-start sequence | `SolidSyslogCrc16.c` (1) | **Fix** | A single nested-comment-like sequence. One-line fix. | **S10.11** |
 | **7.1** | 1 | Octal constants shall not be used | `SolidSyslogPosixMessageQueueBuffer.c` (1) | **Fix** | Probably `0644` or similar file-mode literal — change to hex or named constant. | **S10.10** (Buffers pilot) |
-| **21.6** | 1 | The Standard Library `stdio.h` shall not be used | `SolidSyslogWindowsFile.c` (1) | **Investigate** | We do not use `stdio.h` in production. Likely a Windows-API header transitively includes it. If transitive, **Deviate**; if direct, **Fix**. | **S10.06** |
+| **21.6** | 1 | The Standard Library `stdio.h` shall not be used | `SolidSyslogWindowsFile.c` (1) | **Deviate** *(resolved in S10.06)* | `WindowsFile.c` includes `<stdio.h>` solely for `SEEK_SET` / `SEEK_END` constants used by `_lseeki64` from `<io.h>`; no stdio function or type is referenced. Captured as **D.009**. | landed in **S10.06** |
 | **14.4** | 1 | Controlling expression shall have essentially Boolean type | `SolidSyslogWindowsHostname.c` (1) | **Fix** | Replace `if (some_int)` with `if (some_int != 0)`. | **S10.12** (config + platform helpers) |
-| **2.4** (advisory) | 1 | A project should not contain unused tag declarations | `SolidSyslogStreamSender.c` (1) | **Fix** | Remove the unused tag. | **S10.15** |
+| **2.4** (advisory) | 1 → 6 *(resolved in S10.06)* | A project should not contain unused tag declarations | Re-run with D.002–D.009 suppressions surfaced 5 more anonymous-`enum { … };` sites previously hidden behind 5.7 — the audit's original count understated the rule. All 6 sites are the project's anonymous-`enum` named-constant idiom (≈31 such blocks tree-wide). | **Deviate** | Captured as **D.010**. The anonymous-`enum` idiom is project-wide and intentional (type-safe constants without `#define`). | landed in **S10.06** |
 
 ### MISRA totals by verdict
 
 | Verdict | Count | Rules |
 |---------|------:|-------|
 | **Fix** — rule 5.9 (named sweep target S10.08) | 168 | 5.9 |
-| **Fix** — other rules (mechanical or per-component sweeps S10.07+) | 221 | 10.4, 8.9, 17.7, 10.1, 15.7, 8.4, 12.1, 17.8, 5.6, 15.5, 10.8, 22.10, 8.6, 2.5, 3.1, 7.1, 14.4, 2.4 |
-| **Deviate** — landed in S10.06 (D.002–D.006) | 171 | 11.3, 5.7, 11.2, 18.4, 11.5, 18.7, 1.4 |
-| **Mixed** — per-site split in S10.06 | 11 | 11.8 |
-| **Investigate** during S10.06 | 4 | 21.10, 21.6 |
+| **Fix** — other rules (mechanical or per-component sweeps S10.07+) | 220 | 10.4, 8.9, 17.7, 10.1, 15.7, 8.4, 12.1, 17.8, 5.6, 15.5, 10.8, 22.10, 8.6, 2.5, 3.1, 7.1, 14.4 |
+| **Deviate** — landed in S10.06 (D.002–D.010) | 187 | 11.3, 11.2, 11.5 *(D.002)*; 5.7 *(D.003)*; 18.4 *(D.004)*; 18.7 *(D.005)*; 1.4 *(D.006)*; 11.8 *(D.007)*; 21.10 *(D.008)*; 21.6 *(D.009)*; 2.4 *(D.010)* |
 | **Disable** | 0 | — |
-| **Total** | **575** | (matches the raw count) |
+| **Total reconciled** | **387 Fix + 187 Deviate = 574** + 5 dual-rule (same code site reported under two rules, e.g. 11.2 + 11.3 cast in `Address.c`) = 575 (matches the raw count, the 575 figure double-counts 5 dual-rule sites) |
+
+The verdict surface increased from the audit's headline by two rows
+(D.008 / D.009 resolving the Investigate items; D.010 added during
+S10.06 re-run when D.003 suppression revealed 5 more 2.4 findings
+previously hidden behind 5.7).
 
 ---
 
