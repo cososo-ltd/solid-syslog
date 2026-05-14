@@ -1,103 +1,133 @@
 # Dev Log
 
-## 2026-05-14 — S10.05 conformance audit + categorised backlog (#365)
+## 2026-05-14 — S10.05 conformance audit + Tier policy lock-ins (#365)
 
 First story of E10's audit/decide phase. Generates fresh snapshots
-of the naming + MISRA findings on `main` HEAD and commits
-`docs/misra-conformance.md` — a concise per-rule backlog with a
-proposed verdict (Fix / Deviate / Disable / Re-categorise),
-rationale, and owner story for every rule with non-zero findings.
+of the naming + MISRA findings on `main` HEAD, commits
+`docs/misra-conformance.md` (the per-rule backlog with verdicts),
+and — after a per-question walk-through with the project owner —
+locks in four structural policy decisions that the original story
+plan had deferred to S10.06. The decisions update `docs/NAMING.md`
+and `.clang-tidy` directly so subsequent sweeps inherit them.
 
 ### Headline data
 
-- **404** clang-tidy `readability-identifier-naming` warnings across
-  5 identifier kinds.
-- **575** cppcheck-misra findings across 29 MISRA C:2012 rules.
+- **404** clang-tidy naming warnings on the input snapshot.
+- After the four S10.05 policy lock-ins applied:
+  **446 naming warnings** — net of −128 vtable + −12
+  library-top-level + −4 file-scope tag findings disabled, plus
+  +186 data-member findings newly surfaced by the Tier 4 PascalCase
+  re-statement.
+- **575** cppcheck-misra findings (unchanged in S10.05; MISRA
+  decisions are verdicts assigned, not rule changes).
 
-### Verdict breakdown — naming
+### Decisions locked in S10.05
+
+Six judgement questions answered with the project owner. Each
+applies directly to `docs/NAMING.md` and/or `.clang-tidy`:
+
+1. **Tier 4 (struct members) → all PascalCase, no member-kind
+   exception.** The previous lowerCamelCase rule with implicit
+   PascalCase tolerance for vtable function-pointer members
+   encoded the member's kind into its case — exactly the
+   implicit-semantic-encoding Clean Code argues against. Tier 4
+   now reads: "all struct members are PascalCase," full stop.
+   Vtable function-pointer access (`store->Write(...)`) and data
+   access (`config->BlockDevice`) read with the same shape.
+   - Knock-on: 186 lowerCamelCase data members across the tree
+     need renaming. New S10.07-sibling story planned (slotting in
+     S10.06).
+2. **Tier 1 (public API) → two stated shapes.**
+   `SolidSyslog<Class>_<Function>` for class-scoped operations
+   remains the primary shape. A second shape `SolidSyslog_<Function>`
+   (no `<Class>`) is recognised for whole-library API entry points
+   (`Create`, `Destroy`, `Log`, `Service`, `SetErrorHandler`,
+   `Error`). Both are first-class Tier 1; the second is not an
+   exception.
+3. **Tier 2 (file-scope statics) → tags use bare PascalCase.**
+   Tier 2 was previously silent on struct tags. It now states that
+   file-scope helper struct tags (`EscapedContext`, `BlockPresence`,
+   `OpenHandle`) use bare PascalCase, no `SolidSyslog` prefix —
+   same "no namespace at file scope" rule that applies to Tier 2
+   functions and variables. The opaque-impl case (`struct
+   SolidSyslog` shared between `SolidSyslog.h` opaque declaration
+   and `SolidSyslog.c` definition) is documented as the one place
+   where a Tier 2 tag site is bound by a Tier 1 public name.
+4. **Mechanical MISRA fixes split → hybrid.** The 221 Fix-target
+   MISRA findings across 16 rules split into ~126 tree-wide
+   mechanical fixes (rules 10.4 / 12.1 / 2.5 / 15.7 / 10.8 / 10.1 /
+   2.4 / 3.1 / 7.1 / 14.4) and ~95 per-site-judgement fixes (rules
+   8.9 / 17.7 / 17.8 / 15.5 / 5.6 / 8.4 / 22.10 / 8.6). The
+   mechanical sweep becomes a new dedicated story; the per-site
+   fixes distribute into S10.10–S10.17 with their owning
+   components.
+5. **Mechanical-sweep story slotting → deferred to S10.06.** The
+   new story exists in principle; S10.06 picks the number, slots
+   it in the cadence, and writes the issue.
+6. **Rule 11.8 (Mixed) + 21.10 / 21.6 (Investigate) per-site
+   review → deferred to S10.06.** The eleven 11.8 const-strip
+   sites need per-site Fix vs Deviate judgement; the four 21.10 /
+   21.6 banned-header findings need transitive-vs-direct
+   investigation. Both blocks of decisions land in S10.06.
+
+### `.clang-tidy` changes from the lock-ins
+
+- `MemberCase: camelBack` → `MemberCase: CamelCase` (decision 1).
+- New `GlobalFunctionIgnoredRegexp: '^SolidSyslog_[A-Z][A-Za-z0-9]*$'`
+  to accept the whole-library second shape (decision 2).
+- New `StructIgnoredRegexp:
+  '^(SolidSyslog|EscapedContext|BlockPresence|OpenHandle)$'`
+  whitelist for the opaque-impl tag and the three known Tier 2
+  helper tags (decision 3). clang-tidy uses POSIX extended regex
+  (no lookahead), so the whitelist is the simplest POSIX-clean
+  alternative. New Tier 2 helper structs join this list as they
+  are introduced — Tier 1 tags remain subject to the
+  `StructPrefix: SolidSyslog` rule.
+
+### `docs/NAMING.md` changes from the lock-ins
+
+- Tier 1 rewritten to state two shapes (decision 2).
+- Tier 2 extended to cover file-scope struct tags + the
+  opaque-impl exception (decision 3).
+- Tier 4 rewritten to PascalCase for all members (decision 1).
+- Worked example struct (`SolidSyslogBuffer`) updated to use
+  PascalCase data members.
+- Quick reference table updated.
+
+### MISRA verdict breakdown (unchanged in S10.05)
 
 | Verdict | Count |
 |---------|------:|
-| **Fix** (S10.07 sweep target) | 260 |
-| **Re-categorise** (NAMING.md amendments + `.clang-tidy` carve-outs in S10.06) | 144 |
-
-The biggest unit of naming work is the S10.07 enum-constant rename
-(SCREAMING_SNAKE → `Class_PascalCase`, plus the matching enum tag
-renames `SolidSyslog_Facility` → `SolidSyslogFacility`).
-
-The 144 re-categorisations are three distinct policy adjustments
-NAMING.md needs to make at S10.06:
-
-1. **Vtable function-pointer members** (128 of 144) — PascalCase
-   members like `buffer->Send(...)` are intentional; the convention
-   needs to be acknowledged.
-2. **Library-top-level functions** (12 — `SolidSyslog_Log`,
-   `SolidSyslog_Create`, etc.) — these don't fit `SolidSyslogClass_Function`
-   because the library itself is the class. NAMING.md needs to
-   describe the pattern.
-3. **File-scope (Tier 2) struct tags** (4 — `EscapedContext`,
-   `OpenHandle`, etc.) — NAMING.md Tier 2 does not require the
-   `SolidSyslog` prefix, but clang-tidy can't see linkage on
-   struct tags. `.clang-tidy` needs an IgnoredRegexp carve-out.
-
-### Verdict breakdown — MISRA
-
-| Verdict | Count |
-|---------|------:|
-| **Fix** — 5.9 (named target S10.08) | 168 |
+| **Fix** — rule 5.9 (named target S10.08) | 168 |
 | **Fix** — other rules (sweeps S10.07+) | 221 |
-| **Deviate** — six structural deviations (D.002–D.006 + a single 5.9 residual deviation if needed) | 171 |
-| **Mixed** (per-site split during S10.06) | 11 |
-| **Investigate** (transitive header questions) | 4 |
+| **Deviate** — six structural deviations (D.002–D.006 land in S10.06) | 171 |
+| **Mixed** — rule 11.8 (per-site split in S10.06) | 11 |
+| **Investigate** — rules 21.10 / 21.6 (transitive-vs-direct in S10.06) | 4 |
+| **Total** | **575** |
 
-Six concentrated buckets account for **339 of 575 findings
-(59%)** — one named sweep (S10.08 on rule 5.9) and five
-structural deviations:
+Six concentrated buckets account for **339 of 575 findings (59%)**
+— the named S10.08 sweep on rule 5.9 (168), plus the five
+structural deviations D.002–D.006 (109 + 54 + 4 + 2 + 2 = 171). The
+remainder (236 findings across 23 rules) is per-site cleanup split
+per the hybrid decision above.
 
-- 5.9 sweep — Tier 2 statics rename to `Class_Function` form (168 findings, S10.08)
-- D.002 — opaque-impl + caller-supplied-storage pattern (rules 11.3 + 11.2 + 11.5 = 109)
-- D.003 — no-typedef-struct convention (rule 5.7 = 54)
-- D.004 — pointer arithmetic on record buffers (rule 18.4 = 4)
-- D.005 — flexible array members (rule 18.7 = 2)
-- D.006 — C11 `<stdatomic.h>` use (rule 1.4 = 2)
+### Decisions deferred to S10.06
 
-The remaining **236 findings across 23 rules** are per-site
-cleanup, decomposed as **221 Fix** (mostly diffuse mechanical:
-add `U` suffix to literals, use return values, trailing `else`,
-explicit precedence parens) + **11 Mixed** (rule 11.8 needs
-per-site split in S10.06) + **4 Investigate** (rules 21.10 /
-21.6 likely transitive system-header includes). The 221 Fix
-findings span 16 rules and many files — candidate for a
-dedicated "mechanical MISRA sweep" story in S10.06 planning, or
-folded into the per-component sweeps S10.10–S10.17.
+- Writing D.002–D.006 deviation entries in
+  `docs/misra-deviations.md` with rationale and scope.
+- Naming and slotting the new "mechanical MISRA sweep" story.
+- Naming and slotting the new S10.07-sibling for the data-member
+  rename.
+- Per-site Fix-vs-Deviate split for rule 11.8 (11 findings).
+- Transitive-vs-direct investigation for rules 21.10 (3 findings)
+  and 21.6 (1 finding).
+- Owner-story refinement — the current per-rule owner-story
+  assignments are best-guesses; S10.06 reviews and revises.
 
-### Decisions
+### Decisions deferred to S10.07 onwards
 
-- **The biggest piece of audit work isn't deciding fix-vs-deviate
-  on the headline rules**, which were predictable from project
-  conventions. It's the **144 naming re-categorisations** — three
-  places where NAMING.md is silent on patterns the code actually
-  uses (vtable members, library-top-level functions, private
-  Tier 2 structs). S10.06 has to amend NAMING.md before any sweep
-  can land cleanly.
-- **No raw-data commits.** Per the design discussion, snapshots
-  regenerate on demand. The doc is the human-audit view; the CI
-  artifacts (`cppcheck-misra-report.xml`) are the machine view.
-- **Top 2–3 noisiest sites per rule, not every file.** Keeps the
-  doc readable in a single sitting (~300 lines) vs an unsurveyable
-  per-file dump (~1000+).
-- **Sweep volume estimates are upper bounds.** Real fix counts will
-  shrink as S10.06 narrows Fix → Deviate during per-site review on
-  the mixed rules (11.8).
-
-### Deferred
-
-- All configuration changes (`.clang-tidy` carve-outs, deviations
-  in `docs/misra-deviations.md`, `misra_suppressions.txt` entries)
-  — land in S10.06.
-- All source-code changes — land in S10.07 onwards.
-- **NAMING.md amendments for the three re-categorisation
-  patterns** — land in S10.06 as a precondition for the sweeps.
+- All 446 naming sweep targets and the 168 + 126 + 95 MISRA sweep
+  targets land in the per-component and per-pattern sweep stories.
 
 ## 2026-05-14 — S10.04 .clang-format tuning + tree-wide reformat (#363)
 

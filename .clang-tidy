@@ -52,13 +52,33 @@ FormatStyle: file
 # must-match regex for identifier shape, and the inverted-polarity
 # IgnoredRegexp hack was rejected for misleading diagnostics.
 CheckOptions:
-  # Tier 1 — public (external-linkage) functions: SolidSyslogClass_Function
-  - { key: readability-identifier-naming.GlobalFunctionCase,    value: aNy_CasE    }
-  - { key: readability-identifier-naming.GlobalFunctionPrefix,  value: SolidSyslog }
+  # Tier 1 — public (external-linkage) functions. Two stated shapes:
+  #   SolidSyslog<Class>_<Function>   (class-scoped operations)
+  #   SolidSyslog_<Function>          (whole-library API entry points —
+  #                                    Create, Destroy, Log, Service,
+  #                                    SetErrorHandler, Error)
+  # See docs/NAMING.md Tier 1.
+  - { key: readability-identifier-naming.GlobalFunctionCase,           value: aNy_CasE    }
+  - { key: readability-identifier-naming.GlobalFunctionPrefix,         value: SolidSyslog }
+  - { key: readability-identifier-naming.GlobalFunctionIgnoredRegexp,  value: '^SolidSyslog_[A-Z][A-Za-z0-9]*$' }
 
-  # Tier 1 — public struct tags: SolidSyslogClass
-  - { key: readability-identifier-naming.StructCase,            value: CamelCase   }
-  - { key: readability-identifier-naming.StructPrefix,          value: SolidSyslog }
+  # Tier 1 — public struct tags: SolidSyslog<Class>
+  # Tier 2 — file-scope struct tags: bare PascalCase (no SolidSyslog prefix).
+  # clang-tidy can't see linkage on struct tags, so we accept either shape
+  # via an IgnoredRegexp matching tags that don't follow the StructPrefix
+  # rule but are otherwise valid PascalCase. Also covers the opaque-impl
+  # case where the prefix equals the whole tag (`struct SolidSyslog` itself).
+  # See docs/NAMING.md Tier 2 "file-scope struct tags" subsection.
+  - { key: readability-identifier-naming.StructCase,           value: CamelCase   }
+  - { key: readability-identifier-naming.StructPrefix,         value: SolidSyslog }
+  # Whitelist of Tier 2 file-scope helper tags + the opaque-impl
+  # 'SolidSyslog' tag itself. clang-tidy uses POSIX extended regex (no
+  # lookahead), so we can't express "PascalCase tags not starting with
+  # SolidSyslog" inline; the whitelist is the simplest POSIX-clean
+  # alternative. New Tier 2 helper structs join this list; Tier 1
+  # public tags continue to be subject to StructPrefix above.
+  # See docs/NAMING.md Tier 2 "file-scope struct tags".
+  - { key: readability-identifier-naming.StructIgnoredRegexp,  value: '^(SolidSyslog|EscapedContext|BlockPresence|OpenHandle)$' }
 
   # Tier 1 — public enum tags: SolidSyslogClass
   - { key: readability-identifier-naming.EnumCase,              value: CamelCase   }
@@ -94,5 +114,7 @@ CheckOptions:
   - { key: readability-identifier-naming.LocalVariableCase,     value: camelBack   }
   - { key: readability-identifier-naming.LocalConstantCase,     value: camelBack   }
 
-  # Tier 4 — struct members: lowerCamelCase
-  - { key: readability-identifier-naming.MemberCase,            value: camelBack   }
+  # Tier 4 — struct members: PascalCase (per docs/NAMING.md as of S10.05).
+  # Single rule for both data members and function-pointer (vtable) members —
+  # no member-kind exception, no implicit semantic encoding via case style.
+  - { key: readability-identifier-naming.MemberCase,            value: CamelCase   }

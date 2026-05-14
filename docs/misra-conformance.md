@@ -58,11 +58,11 @@ following verdicts:
 
 ## Headline counts
 
-| Source | Total findings | Distinct rules / kinds |
-|--------|---------------:|----------------------:|
-| `clang-tidy readability-identifier-naming` | **404** | 5 identifier kinds |
-| `cppcheck-misra` | **575** | 29 rules |
-| **Grand total** | **979** | — |
+| Source | Snapshot (pre-S10.05 decisions) | Post-S10.05 decisions | Distinct rules / kinds |
+|--------|--------------------------------:|----------------------:|----------------------:|
+| `clang-tidy readability-identifier-naming` | 404 | **446** *(Tier 4 PascalCase re-statement: +186 data-member findings, -128 vtable findings; Tier 1 second-shape addition: -12 library-top-level findings; Tier 2 tag-rule clarification: -4 file-scope tag findings)* | 5 identifier kinds |
+| `cppcheck-misra` | 575 | 575 *(no MISRA rule changes in S10.05; verdict assignments only)* | 29 rules |
+| **Grand total** | 979 | **1021** | — |
 
 ---
 
@@ -71,22 +71,23 @@ following verdicts:
 | Kind | Count | Top sites | Verdict | Rationale | Owner |
 |------|------:|-----------|---------|-----------|-------|
 | **enum constant** | 252 | `SolidSyslogPrival.h` (128 — `SOLIDSYSLOG_FACILITY_*`, `SOLIDSYSLOG_SEVERITY_*`), `SolidSyslogTransport.h` (24), `SolidSyslogBlockStore.h` (12) | **Fix** | `docs/NAMING.md` already specifies `SolidSyslogClass_Constant` form (e.g. `SolidSyslogSeverity_Emergency`). Current SCREAMING_SNAKE is the older convention. Rename sweep. | **S10.07** (already named in epic body) |
-| **member** | 128 | `SolidSyslogStoreDefinition.h` (32), `SolidSyslogFileDefinition.h`, `SolidSyslogBlockDeviceDefinition.h`, `SolidSyslogBufferDefinition.h`, `SolidSyslogSenderDefinition.h` etc. | **Re-categorise** | All flagged members are **vtable function-pointer** struct members (`Write`, `Read`, `Send`, `Close`, etc.). PascalCase deliberately mirrors the function name so call sites read like method invocations: `buffer->Send(...)`. NAMING.md must acknowledge this exception; `.clang-tidy` then carves it out via `MemberIgnoredRegexp` matching PascalCase tokens in `*Definition.h` files (or, simpler, just exempt PascalCase members globally). | **S10.06** (NAMING.md amendment + `.clang-tidy` carve-out) |
-| **global function** | 12 | `SolidSyslogError.h` (8 — `SolidSyslog_SetErrorHandler`, `SolidSyslog_Error`), `SolidSyslog.h` (2 — `SolidSyslog_Log`, `SolidSyslog_Service`), `SolidSyslogConfig.h` (2 — `SolidSyslog_Create`, `SolidSyslog_Destroy`) | **Re-categorise** | All six unique function names follow the form `SolidSyslog_<verb>` — the library-level API, not a `Class_Function` underneath. NAMING.md Tier 1 says `SolidSyslogClass_Function`, but here the *library itself* is the class. The check fires because `aNy_CasE` after the `SolidSyslog` prefix doesn't accept a leading underscore. NAMING.md should acknowledge the library-top-level pattern; `.clang-tidy` then accepts `^SolidSyslog(_[A-Z]|[A-Z])` via `GlobalFunctionIgnoredRegexp` or a refined Prefix. | **S10.06** |
+| **member** | 128 → 186 *(post Tier 4 re-statement)* | Pre-change: `SolidSyslog*Definition.h` headers (vtable function-pointer members in PascalCase). Post-change: ~186 data members in lowerCamelCase across `SolidSyslog*Config`, impl structs, helper structs, and test fakes. | **Disable original + Fix new** *(decided in S10.05)* | The original 128 findings were all vtable function-pointer members in PascalCase, flagged because Tier 4 was previously `lowerCamelCase`. **Tier 4 was re-stated in this story to `PascalCase` for all members** — a single rule with no member-kind exception. `.clang-tidy` flipped to `MemberCase: CamelCase`. The 128 vtable warnings disappeared; **186 lowerCamelCase data-member warnings now surface** and must be cleared by a rename sweep. | NAMING.md + `.clang-tidy` landed here; data-member rename sweep → **new sibling story to S10.07** (call it S10.07a or similar) |
+| **global function** | 12 → 0 *(post Tier 1 second-shape addition)* | `SolidSyslogError.h` (8 — `SolidSyslog_SetErrorHandler`, `SolidSyslog_Error`), `SolidSyslog.h` (2 — `SolidSyslog_Log`, `SolidSyslog_Service`), `SolidSyslogConfig.h` (2 — `SolidSyslog_Create`, `SolidSyslog_Destroy`) | **Disable + landed in S10.05** | All six unique function names follow the form `SolidSyslog_<Function>` — the library-level API entry points. **NAMING.md Tier 1 was re-stated in this story** to recognise `SolidSyslog_<Function>` as a first-class shape for whole-library operations (alongside `SolidSyslog<Class>_<Function>` for class-scoped ones). `.clang-tidy` gained a `GlobalFunctionIgnoredRegexp` of `^SolidSyslog_[A-Z][A-Za-z0-9]*$` to accept the shape. The 12 warnings vanished in this commit. | NAMING.md + `.clang-tidy` landed here |
 | **enum** | 8 | `SolidSyslogPrival.h` (8 — `SolidSyslog_Facility`, `SolidSyslog_Severity`) | **Fix** | Enum tag names should be `SolidSyslogFacility` and `SolidSyslogSeverity` (no underscore) per NAMING.md Tier 1 struct/enum rule. The underscore is residue. | **S10.07** (alongside the enum constant rename, same files) |
-| **struct** | 4 | `SolidSyslog.c` (`SolidSyslog`), `SolidSyslogFormatter.c` (`EscapedContext`), `BlockSequence.c` (`BlockPresence`), `SolidSyslogFileBlockDevice.c` (`OpenHandle`) | **Re-categorise** | All four are **file-scope (Tier 2) private** structs in `.c` files, not Tier 1 public tags. NAMING.md Tier 2 does **not** require the `SolidSyslog` prefix — the class part is the file basename. The check fires because clang-tidy can't distinguish file-scope from external linkage on struct tags. `.clang-tidy` should add `StructIgnoredRegexp` allowing PascalCase tags without prefix when the tag is file-scope (or, since clang-tidy can't see linkage on tags, just relax `StructPrefix` to a regex that allows either `SolidSyslog<X>` or `<X>` and accept the false-negative risk on missing prefixes). | **S10.06** |
+| **struct** | 4 → 0 *(post Tier 2 tag-rule clarification)* | `SolidSyslog.c` (`SolidSyslog` — opaque-impl), `SolidSyslogFormatter.c` (`EscapedContext`), `BlockSequence.c` (`BlockPresence`), `SolidSyslogFileBlockDevice.c` (`OpenHandle`) | **Disable + landed in S10.05** | Three are Tier 2 file-scope helper tags (`EscapedContext`, `BlockPresence`, `OpenHandle`) and one is the opaque-impl case (`struct SolidSyslog` matches the public opaque tag verbatim). **NAMING.md Tier 2 was extended in this story** to state that file-scope struct tags use bare PascalCase (no `SolidSyslog` prefix), and the opaque-impl exception was documented. `.clang-tidy` gained a `StructIgnoredRegexp` with negative lookahead — accepts `SolidSyslog` exactly, accepts any PascalCase tag that does NOT start with `SolidSyslog`, keeps Tier 1 `SolidSyslog<X>` tags subject to the StructPrefix rule. The 4 warnings vanished in this commit. | NAMING.md + `.clang-tidy` landed here |
 
-### Naming totals by verdict
+### Naming totals by verdict (post-S10.05 decisions)
 
-| Verdict | Count |
-|---------|------:|
-| **Fix** (sweep target — S10.07+) | 260 (252 + 8) |
-| **Re-categorise** (NAMING.md + `.clang-tidy` tweaks — S10.06) | 144 (128 + 12 + 4) |
-| **Deviate** | 0 |
-| **Disable** | 0 |
-| **Total** | 404 |
+| Verdict | Count | What's covered |
+|---------|------:|----------------|
+| **Fix** — S10.07 enum-constant + enum-tag rename | 260 | SCREAMING_SNAKE enum constants (252) + `SolidSyslog_<X>` enum tags (8) |
+| **Fix** — new S10.07-sibling: data-member PascalCase rename | 186 | All lowerCamelCase struct data members |
+| **Disable + landed in S10.05** — vtable function-pointer members | 128 → 0 | Tier 4 re-stated to PascalCase for all members; `MemberCase: CamelCase` |
+| **Disable + landed in S10.05** — library-top-level functions | 12 → 0 | Tier 1 re-stated to two shapes (`SolidSyslog<Class>_<Function>` and `SolidSyslog_<Function>`); `GlobalFunctionIgnoredRegexp` accepts the second |
+| **Disable + landed in S10.05** — file-scope Tier 2 struct tags | 4 → 0 | Tier 2 extended to cover struct tags (bare PascalCase, no prefix); `StructIgnoredRegexp` whitelists the 4 known sites |
+| **Total post-S10.05 snapshot** | **446** | All 446 are Fix targets; no remaining Re-categorise items on the naming side |
 
-The single biggest unit of work is the **enum-constant SCREAMING_SNAKE → PascalCase sweep (260 findings)** — already scheduled as S10.07.
+The single biggest unit of work is now the **enum-constant + data-member rename: 446 sites combined**, scheduled under S10.07 (existing — 260 sites) and its new S10.07-sibling (186 sites).
 
 ---
 
@@ -167,15 +168,68 @@ Rough order-of-magnitude for sweep planning. These are **upper bounds** (some Fi
 | Story | Scope | Expected fix count |
 |-------|-------|--------------------|
 | S10.07 | Enum constants → `Class_PascalCase` + enum tags | 260 |
-| S10.08 | Static functions → `Class_Function` | 168 (MISRA 5.9) + zero additional naming sites |
+| S10.07-sibling *(new — slotted in S10.06)* | Data members lowerCamelCase → PascalCase per Tier 4 re-statement | 186 |
+| S10.08 | Static functions → `Class_Function` (MISRA 5.9) | 168 |
 | S10.09 | Abbreviation purge | (out of scope here — different lens) |
-| S10.10 | Buffers pilot | small (~5–10) |
-| S10.11 | SecurityPolicies + CRC + Sync | ~10 |
-| S10.12 | Config + platform helpers | small (~5) |
-| S10.13 | Structured data | small (~5) |
-| S10.14 | Stores + BlockDevice + File | (rule 8.9 captures these — ~20) |
-| S10.15 | Senders + transport extension points | ~15 |
-| S10.16 | Stream platform impls | small (~5) |
-| S10.17 | Core message pipeline (`SolidSyslog.c`, formatter) | rule 15.5 + 10.1 + 17.8 + 10.8 — ~20 |
+| **Mechanical MISRA sweep** *(new — slotted in S10.06)* | Tree-wide hybrid mechanical fixes (10.4 / 12.1 / 2.5 / 15.7 / 10.8 / 10.1 / 2.4 / 3.1 / 7.1 / 14.4) | 126 |
+| S10.10 | Buffers pilot — receives 8.9 + 17.7 + 17.8 fragments | small (~5–10) |
+| S10.11 | SecurityPolicies + CRC + Sync — receives 8.4 + 2.5 fragments | ~10 |
+| S10.12 | Config + platform helpers — receives 14.4 fragment | small (~5) |
+| S10.13 | Structured data — receives 8.9 + 17.8 fragments | small (~5) |
+| S10.14 | Stores + BlockDevice + File — receives 8.9 + 17.7 + 17.8 + 5.6 + 8.6 fragments | ~20 |
+| S10.15 | Senders + transport extension points — receives 22.10 + 8.6 + 17.7 + 2.4 fragments | ~15 |
+| S10.16 | Stream platform impls — receives 17.7 + 8.4 + 11.8 (decided in S10.06) fragments | small (~5) |
+| S10.17 | Core message pipeline — receives 15.5 + 10.1 + 17.8 + 10.8 fragments | ~20 |
 
-A new generic "mechanical MISRA sweep" story may be useful for rules with diffuse findings (10.4 add-U-suffix at 92 sites, 17.7 use-return at 11 sites, 15.7 trailing-else at 10 sites, 12.1 explicit-precedence at 5 sites). Otherwise they'd be re-tackled in every per-component story. Worth surfacing during S10.06 planning.
+### Mechanical MISRA sweep — hybrid split *(decided in S10.05)*
+
+The 221 Fix-target MISRA findings across 16 rules split into two
+categories by whether the fix needs local code context:
+
+**Mechanical tree-wide sweep** *(new story — see "Story naming" below)* —
+truly uniform fixes that benefit from being applied once across
+the whole tree under a single review:
+
+| Rule | Count | Fix shape |
+|------|------:|-----------|
+| 10.4 | 92 | Add `U` suffix to integer literals; occasional cast |
+| 12.1 | 5 | Add explicit precedence parentheses |
+| 2.5 | 2 | Delete unused macros |
+| 15.7 | 10 | Add trailing `else { /* exhaustive */ }` |
+| 10.8 | 2 | Cast composite expression to wider essential type |
+| 10.1 | 11 | Bool/char essential-type mismatch — one-line cast |
+| 2.4 | 1 | Remove unused tag |
+| 3.1 | 1 | Disambiguate nested comment-start |
+| 7.1 | 1 | Replace octal with hex / named constant |
+| 14.4 | 1 | Make controlling expression essentially Boolean |
+| **Mechanical total** | **126** | |
+
+**Per-component sweep targets** *(absorbed into S10.10–S10.17)* —
+fixes that need local file context to apply correctly:
+
+| Rule | Count | Fix shape |
+|------|------:|-----------|
+| 8.9 | 56 | Move file-scope statics to block scope — needs context |
+| 17.7 | 11 | Use return value — depends on what the caller wants |
+| 17.8 | 5 | Don't modify parameter — refactor needs context |
+| 15.5 | 4 | Single exit point — refactor function shape |
+| 5.6 | 5 | Typedef name collision — per-site review |
+| 8.4 | 8 | Compatible declaration visible — needs header or include change |
+| 22.10 | 3 | `errno` check after function-that-may-set-it — per-site review |
+| 8.6 | 3 | Identifier with external linkage one definition — per-site review |
+| **Per-component total** | **95** | |
+
+The 221 = 126 + 95 reconciles. The 168 findings of rule 5.9 stay
+in the named S10.08 sweep (Tier 2 `Class_` prefix rename), as
+already scheduled. The 171 Deviate findings still land in S10.06
+via D.002–D.006 in `docs/misra-deviations.md`. The 11 Mixed (rule
+11.8) and 4 Investigate (rules 21.10 / 21.6) findings are still
+held for per-site review in S10.06.
+
+#### Story naming for the mechanical sweep
+
+Decided in S10.05: **decide-in-principle, slot in S10.06**. S10.05's
+audit records the work as "a new mechanical sweep story exists,
+carries the 126 fixes listed above, hybrid scope per Q4 decision."
+S10.06 picks the actual story number, writes the issue, and slots
+it relative to the other E10 audit/decide work.

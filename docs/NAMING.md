@@ -74,13 +74,27 @@ in MISRA but treated as required here.
 
 ## Tier 1 — External linkage (public API)
 
-**Form:** `SolidSyslogClass_Function` for functions, `SolidSyslogClass` for
-exported types and tag names.
+**Form:** `SolidSyslog<Class>_<Function>` for class-scoped operations,
+or `SolidSyslog_<Function>` for whole-library operations where the
+library *itself* is the class. `SolidSyslog<Class>` for exported types
+and tag names.
 
 ```c
-/* Functions */
+/* Class-scoped functions — operate on a specific module. */
 void SolidSyslogBuffer_Read(struct SolidSyslogBuffer* buffer, ...);
 int  SolidSyslogTransport_Send(struct SolidSyslogTransport* transport, ...);
+
+/* Whole-library functions — operate on the library instance. The
+   library is the class; there's nothing more specific to insert.
+   Restricted to the small set of API entry points an integrator
+   actually calls at the top level: Create / Destroy / Log / Service /
+   SetErrorHandler / Error. */
+struct SolidSyslog* SolidSyslog_Create(struct SolidSyslogConfig* config);
+void                SolidSyslog_Destroy(struct SolidSyslog* solidSyslog);
+void                SolidSyslog_Log(struct SolidSyslog* solidSyslog, ...);
+void                SolidSyslog_Service(struct SolidSyslog* solidSyslog);
+void                SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context);
+void                SolidSyslog_Error(SolidSyslog_Severity severity, const char* message);
 
 /* Tag names — note: tag, not typedef. See "No struct typedefs" below. */
 struct SolidSyslogBuffer
@@ -106,8 +120,12 @@ enum SolidSyslogSeverity
 };
 ```
 
-The `SolidSyslog` prefix is the library's namespace. The `Class_` portion
-identifies the module. The function name follows in PascalCase.
+The `SolidSyslog` prefix is the library's namespace. The `<Class>_`
+portion (when present) identifies the module. The function name
+follows in PascalCase. The "whole-library" form is **not** an
+exception — both shapes are first-class Tier 1; the difference is
+whether the operation lives on a specific class or on the library
+itself.
 
 **Applies to:** any identifier declared in a header under `Core/Interface/`
 or `Platform/*/Interface/`, plus any identifier with external linkage
@@ -118,8 +136,10 @@ declared in a `.c` file.
 ## Tier 2 — Internal linkage (file-scope `static`)
 
 **Form:** `Class_Function` for static functions, `Class_Variable` for
-file-scope static variables and constants. PascalCase on both sides of the
-underscore. No `SolidSyslog` prefix.
+file-scope static variables and constants, **bare `PascalCase` for
+file-scope struct tags that are never exported**. PascalCase
+throughout. No `SolidSyslog` prefix at any Tier 2 site — the file
+itself is the namespace.
 
 ```c
 /* Inside Buffer.c */
@@ -128,19 +148,54 @@ static void Buffer_ResetCursor(struct SolidSyslogBuffer* buffer);
 
 static const struct SolidSyslogSecurityPolicy Buffer_DefaultPolicy = { /* ... */ };
 static size_t                                 Buffer_ActiveInstanceCount;
+
+/* File-scope helper structs that exist only to give a small group of
+   fields a name within this .c file. Not visible to other TUs; not
+   declared in any header. The tag is local to the file, so it does
+   not carry the SolidSyslog namespace prefix. */
+struct EscapedContext
+{
+    struct SolidSyslogFormatter* Formatter;
+    const char*                  Source;
+    size_t                       SourcePos;
+    /* ... */
+};
+
+struct OpenHandle
+{
+    struct SolidSyslogFile* File;
+    size_t                  BlockIndex;
+    bool                    Open;
+};
 ```
 
 Rationale:
 
-- Uniqueness across the library is achieved by the `Class_` prefix —
-  `Buffer_AppendRecord` cannot collide with `Transport_AppendRecord` —
-  which satisfies advisory rule 5.9.
-- The visible difference from Tier 1 is the missing `SolidSyslog` prefix,
-  which signals "internal" at the call site without comment. Both tiers
-  use PascalCase on both sides of the underscore, so static helpers and
-  public functions read consistently.
+- Uniqueness across the library is achieved by the `Class_` prefix on
+  Tier 2 functions and variables — `Buffer_AppendRecord` cannot
+  collide with `Transport_AppendRecord` — which satisfies advisory
+  rule 5.9. File-scope struct tags rely on internal-linkage scoping
+  to the file (`static` storage classes for any objects of the type),
+  which gives them the same uniqueness guarantee without needing a
+  prefix.
+- The visible difference from Tier 1 is the missing `SolidSyslog`
+  prefix, which signals "internal" at the call site without comment.
+  Both tiers use PascalCase on both sides of the underscore (or, for
+  Tier 2 tags, bare PascalCase), so static helpers and public
+  functions read consistently.
 - One class per translation unit is the norm; if a `.c` file contains
   helpers for two classes, use both prefixes accordingly.
+
+### When a Tier 2 tag DOES carry the `SolidSyslog` prefix
+
+The implementation struct that corresponds to a Tier 1 opaque type
+shares the public tag name verbatim. For example, `struct SolidSyslog`
+is declared opaquely in `SolidSyslog.h` (Tier 1) and defined
+concretely in `SolidSyslog.c`. The .c-side definition is technically
+Tier 2 by linkage (it's where the struct's layout lives), but the
+tag name is fixed by the Tier 1 public declaration. This is the
+opaque-impl pattern; the .c-side use of the tag is not free to
+choose its own name.
 
 ---
 
@@ -186,22 +241,71 @@ Constraints:
 
 ## Tier 4 — Struct members
 
-**Form:** lowerCamelCase, no prefix, no class qualifier. Same boolean and
-no-Hungarian conventions as Tier 3.
+**Form:** PascalCase, no prefix, no class qualifier. No member-kind
+exceptions — data members and function-pointer (vtable) members both use
+the same shape. The boolean and no-Hungarian conventions from Tier 3
+do **not** apply at this tier — PascalCase carries the visual signal that
+"this is a named, persistent piece of state" without needing an `is`/`has`
+prefix to convey "this is a boolean."
 
 ```c
 struct SolidSyslogSecurityPolicy
 {
-    SolidSyslogIntegrityCheck integrityCheck;
-    SolidSyslogEncryption     encryption;
-    uint32_t                  maximumRecordLength;
-    bool                      isEnabled;
+    SolidSyslogIntegrityCheck IntegrityCheck;
+    SolidSyslogEncryption     Encryption;
+    uint32_t                  MaximumRecordLength;
+    bool                      Enabled;
+};
+
+/* Vtable function-pointer members follow the same rule — and have done
+   so already in practice. The Tier 4 PascalCase convention is the
+   project-wide policy that consolidates them. */
+struct SolidSyslogStore
+{
+    bool (*Write)(struct SolidSyslogStore* self, const void* data, size_t size);
+    bool (*ReadNextUnsent)(struct SolidSyslogStore* self, ...);
+    void (*MarkSent)(struct SolidSyslogStore* self);
+    bool (*HasUnsent)(struct SolidSyslogStore* self);
 };
 ```
 
+### Why PascalCase, and why not member-kind-dependent
+
+PascalCase at the member access site gives a strong visual signal that
+something named-and-persistent is being touched, distinct from the
+lowerCamelCase of parameters and locals. `buffer->Position += count` reads
+clearly as "field write"; `position += count` is a transient local. The
+case shape encodes lifetime, not the member's kind.
+
+The previous scheme used lowerCamelCase for data members and tolerated
+PascalCase only for vtable function-pointer members "to mirror the
+function name." That is the kind of implicit semantic encoding Clean Code
+argues against — case meaning shifted based on what *kind* of thing the
+member held. Tier 4 now states a single rule.
+
+### The `struct X X;` shape
+
+Because struct tags are also PascalCase (Tier 1), this convention
+produces legal declarations like:
+
+```c
+struct SolidSyslogBlockStore
+{
+    struct RecordStore   RecordStore;
+    struct BlockSequence BlockSequence;
+};
+```
+
+The struct tag and the member identifier live in separate C namespaces,
+so this is unambiguous to the compiler and to MISRA. To a reader it parses
+naturally after one or two exposures — the `struct ` keyword introduces
+the type, the trailing identifier is the member.
+
+### Uniqueness within a struct
+
 Struct members live in their own name space, so MISRA does not require
-uniqueness across structs. Access at the call site is already qualified by
-the struct instance: `policy->integrityCheck` is self-documenting.
+uniqueness across structs. Access at the call site is already qualified
+by the struct instance: `policy->IntegrityCheck` is self-documenting.
 
 ---
 
@@ -383,11 +487,11 @@ bool SolidSyslogBuffer_IsEmpty(const struct SolidSyslogBuffer* buffer);
 
 struct SolidSyslogBuffer
 {
-    uint8_t* storage;
-    size_t   capacity;
-    size_t   writeCursor;
-    size_t   readCursor;
-    const struct SolidSyslogSecurityPolicy* policy;
+    uint8_t* Storage;
+    size_t   Capacity;
+    size_t   WriteCursor;
+    size_t   ReadCursor;
+    const struct SolidSyslogSecurityPolicy* Policy;
 };
 
 static int Buffer_WriteMagic(struct SolidSyslogBuffer* buffer);
@@ -402,7 +506,7 @@ int SolidSyslogBuffer_Append(struct SolidSyslogBuffer* buffer,
                              size_t                    recordLength)
 {
     size_t bytesRequired  = recordLength + Buffer_RecordOverhead;
-    size_t bytesAvailable = buffer->capacity - buffer->writeCursor;
+    size_t bytesAvailable = buffer->Capacity - buffer->WriteCursor;
     int    result;
 
     if (bytesRequired > bytesAvailable)
@@ -474,7 +578,7 @@ TEST(SolidSyslogBufferTest, RejectsRecordWhenFull)
 | Out-parameter                         | `outX` prefix                              | `outBuffer`                                |
 | Boolean / predicate                   | `isX` / `hasX` / `canX`                    | `isValid`, `hasUnsent`                     |
 | Loop variable                         | short domain word, lowerCamelCase          | `index`, `count`, `cursor`                 |
-| Struct member                         | `lowerCamelCase`                           | `writeCursor`, `integrityCheck`            |
+| Struct member                         | `PascalCase`                               | `WriteCursor`, `IntegrityCheck`, `Write` (function-pointer member) |
 | Test group (class)                    | `SolidSyslogClassTest`                     | `SolidSyslogBufferTest`                    |
 | Test group (function)                 | `SolidSyslogClass_FunctionTest`            | `SolidSyslogBuffer_AppendTest`             |
 | Test group (integration)              | `SolidSyslogIntegrationDescription`        | `SolidSyslogIntegrationTlsStoreAndForward` |
