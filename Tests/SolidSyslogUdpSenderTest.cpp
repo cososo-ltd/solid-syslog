@@ -61,11 +61,10 @@ static int SpyGetPort()
     return TEST_DEFAULT_PORT;
 }
 
-// Endpoint stubs — delegate to per-test function pointers so existing
-// callback-spy tests in TEST_GROUP(SolidSyslogUdpSenderConfig) keep counting
-// callback invocations through the new endpoint path. endpointVersion is the
-// per-test version reported by TestEndpointVersion; bump it between Sends to
-// drive fingerprint-reconnection tests.
+// Endpoint stubs — file-scope because TestEndpoint is a free function that
+// the sender invokes via udp->config.endpoint(). Tests mutate these globals
+// between Sends to drive endpoint-changed and callback-spy scenarios; the
+// TEST_BASE resets them in setup so groups don't leak state between tests.
 static const char* (*endpointGetHost)() = GetDefaultHost;
 static int (*endpointGetPort)()         = GetDefaultPort;
 static uint32_t endpointVersion         = 0;
@@ -81,44 +80,85 @@ static uint32_t TestEndpointVersion() // NOLINT(modernize-use-trailing-return-ty
     return endpointVersion;
 }
 
+/* Shared fixture for every UdpSender test group. Lifts the SocketFake reset,
+ * endpoint-stub reset, resolver/datagram create+destroy, and the Send helpers
+ * out of every group. Derived groups choose between PosixDatagram (real) and
+ * DatagramFake (Retry-only) and add any group-specific state. */
 // clang-format off
-TEST_GROUP(SolidSyslogUdpSender)
+TEST_BASE(UdpSenderTestBase)
 {
     struct SolidSyslogResolver* resolver = nullptr;
     struct SolidSyslogDatagram* datagram = nullptr;
-    struct SolidSyslogUdpSenderConfig config;
-    // cppcheck-suppress constVariablePointer -- Send requires non-const self; false positive from macro expansion
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-    struct SolidSyslogSender* sender = nullptr;
+    SolidSyslogUdpSenderConfig  config{};
+    struct SolidSyslogSender*   sender = nullptr;
 
-    void setup() override
+    static void resetEndpointStubs()
+    {
+        endpointGetHost     = GetDefaultHost;
+        endpointGetPort     = GetDefaultPort;
+        endpointVersion     = 0;
+        SpyGetHostCallCount = 0;
+        SpyGetPortCallCount = 0;
+    }
+
+    void setupFakesWithPosixDatagram()
     {
         SocketFake_Reset();
-        endpointGetHost = GetDefaultHost;
-        endpointVersion = 0;
-        endpointGetPort = GetDefaultPort;
+        resetEndpointStubs();
         resolver = SolidSyslogGetAddrInfoResolver_Create();
         datagram = SolidSyslogPosixDatagram_Create();
-        config = {resolver, datagram, TestEndpoint, TestEndpointVersion};
-        // cppcheck-suppress unreadVariable -- read by teardown and tests; cppcheck does not model CppUTest lifecycle
+        config   = {resolver, datagram, TestEndpoint, TestEndpointVersion};
+    }
+
+    void setupFakesWithDatagramFake()
+    {
+        SocketFake_Reset();
+        resetEndpointStubs();
+        resolver = SolidSyslogGetAddrInfoResolver_Create();
+        datagram = DatagramFake_Create();
+        config   = {resolver, datagram, TestEndpoint, TestEndpointVersion};
+    }
+
+    static void teardownFakesWithPosixDatagram()
+    {
+        SolidSyslogPosixDatagram_Destroy();
+        SolidSyslogGetAddrInfoResolver_Destroy();
+    }
+
+    void teardownFakesWithDatagramFake() const
+    {
+        DatagramFake_Destroy(datagram);
+        SolidSyslogGetAddrInfoResolver_Destroy();
+    }
+
+    // NOLINTNEXTLINE(modernize-use-nodiscard) -- many test bodies intentionally discard the return
+    bool Send() const
+    {
+        return Send(TEST_MESSAGE, TEST_MESSAGE_LEN);
+    }
+
+    // NOLINTNEXTLINE(modernize-use-nodiscard) -- many test bodies intentionally discard the return
+    bool Send(const void* buffer, size_t size) const
+    {
+        return SolidSyslogSender_Send(sender, buffer, size);
+    }
+};
+
+// clang-format on
+
+// clang-format off
+TEST_GROUP_BASE(SolidSyslogUdpSender, UdpSenderTestBase)
+{
+    void setup() override
+    {
+        setupFakesWithPosixDatagram();
         sender = SolidSyslogUdpSender_Create(&config);
     }
 
     void teardown() override
     {
         SolidSyslogUdpSender_Destroy();
-        SolidSyslogPosixDatagram_Destroy();
-        SolidSyslogGetAddrInfoResolver_Destroy();
-    }
-
-    void Send() const
-    {
-        SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    }
-
-    void Send(const void* buffer, size_t size) const
-    {
-        SolidSyslogSender_Send(sender, buffer, size);
+        teardownFakesWithPosixDatagram();
     }
 };
 
@@ -135,13 +175,13 @@ TEST(SolidSyslogUdpSender, CreateDoesNotOpenSocket)
 
 TEST(SolidSyslogUdpSender, SendReturnsTrueOnSuccess)
 {
-    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    CHECK_TRUE(Send());
 }
 
 TEST(SolidSyslogUdpSender, SendReturnsFalseOnSendtoFailure)
 {
     SocketFake_SetSendtoFails(true);
-    CHECK_FALSE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    CHECK_FALSE(Send());
 }
 
 TEST(SolidSyslogUdpSender, SingleSendResultsInOneSendtoCall)
@@ -287,41 +327,23 @@ IGNORE_TEST(SolidSyslogUdpSender, HappyPathOnly)
 
 {
     // Error handling not yet implemented — see Epic #31
-    //   Create with NULL config returns NULL
-    //   Create with valid config returns non-NULL sender
-    //   Destroy with NULL sender does nothing, does not crash
     //   Send called with NULL buffer does nothing, does not crash
     //   Send called with zero length does nothing, does not crash
-    //   socket() returning -1 handled gracefully — Create returns NULL or Send is a no-op
-    //   Unreachable host does not crash
-    //
-    // Address resolution strategy (getaddrinfo vs inet_pton, malloc policy, ADR) — see Story #34
 }
 
-// Destroy tests manage their own sender lifetime — no teardown Destroy needed.
+// Destroy tests manage their own sender lifetime — base teardown does
+// not call _Destroy because tests already did.
 // clang-format off
-TEST_GROUP(SolidSyslogUdpSenderDestroy)
+TEST_GROUP_BASE(SolidSyslogUdpSenderDestroy, UdpSenderTestBase)
 {
-    struct SolidSyslogResolver* resolver = nullptr;
-    struct SolidSyslogDatagram* datagram = nullptr;
-    struct SolidSyslogUdpSenderConfig config;
-
     void setup() override
     {
-        SocketFake_Reset();
-        endpointGetHost = GetDefaultHost;
-        endpointVersion = 0;
-        endpointGetPort = GetDefaultPort;
-        resolver        = SolidSyslogGetAddrInfoResolver_Create();
-        datagram        = SolidSyslogPosixDatagram_Create();
-        // cppcheck-suppress unreadVariable -- used in test bodies; cppcheck does not model CppUTest macros
-        config = {resolver, datagram, TestEndpoint, TestEndpointVersion};
+        setupFakesWithPosixDatagram();
     }
 
     void teardown() override
     {
-        SolidSyslogPosixDatagram_Destroy();
-        SolidSyslogGetAddrInfoResolver_Destroy();
+        teardownFakesWithPosixDatagram();
     }
 
     void CreateAndDestroy() const
@@ -341,8 +363,8 @@ TEST(SolidSyslogUdpSenderDestroy, DestroyWithoutSendDoesNotClose)
 
 TEST(SolidSyslogUdpSenderDestroy, DestroyAfterSendClosesSocket)
 {
-    struct SolidSyslogSender* sender = SolidSyslogUdpSender_Create(&config);
-    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    sender = SolidSyslogUdpSender_Create(&config);
+    Send();
     SolidSyslogUdpSender_Destroy();
     CALLED_FAKE(SocketFake_Close, ONCE);
     LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
@@ -350,8 +372,8 @@ TEST(SolidSyslogUdpSenderDestroy, DestroyAfterSendClosesSocket)
 
 TEST(SolidSyslogUdpSenderDestroy, DestroyAfterDisconnectDoesNotDoubleClose)
 {
-    struct SolidSyslogSender* sender = SolidSyslogUdpSender_Create(&config);
-    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    sender = SolidSyslogUdpSender_Create(&config);
+    Send();
     SolidSyslogSender_Disconnect(sender);
     SolidSyslogUdpSender_Destroy();
     CALLED_FAKE(SocketFake_Close, ONCE);
@@ -359,8 +381,8 @@ TEST(SolidSyslogUdpSenderDestroy, DestroyAfterDisconnectDoesNotDoubleClose)
 
 TEST(SolidSyslogUdpSenderDestroy, SimpleScenario)
 {
-    struct SolidSyslogSender* sender = SolidSyslogUdpSender_Create(&config);
-    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    sender = SolidSyslogUdpSender_Create(&config);
+    Send();
     SolidSyslogUdpSender_Destroy();
 
     CALLED_FAKE(SocketFake_Socket, ONCE);
@@ -373,46 +395,18 @@ TEST(SolidSyslogUdpSenderDestroy, SimpleScenario)
 }
 
 // clang-format off
-TEST_GROUP(SolidSyslogUdpSenderConfig)
+TEST_GROUP_BASE(SolidSyslogUdpSenderConfig, UdpSenderTestBase)
 {
-    // cppcheck-suppress unreadVariable -- assigned in CreateSender; cppcheck does not model CppUTest macros
-    const char* (*getHostFn)(void) = GetDefaultHost; // NOLINT(modernize-redundant-void-arg) -- C idiom
-    // cppcheck-suppress unreadVariable -- assigned in CreateSender; cppcheck does not model CppUTest macros
-    int (*getPortFn)(void) = GetDefaultPort; // NOLINT(modernize-redundant-void-arg) -- C idiom
-    // cppcheck-suppress constVariablePointer -- Send requires non-const self; false positive from macro expansion
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-    struct SolidSyslogSender* sender = nullptr;
-
     void setup() override
     {
-        SocketFake_Reset();
-        SpyGetPortCallCount = 0;
-        SpyGetHostCallCount = 0;
-        endpointGetHost  = GetDefaultHost;
-        endpointVersion  = 0;
-        endpointGetPort  = GetDefaultPort;
+        setupFakesWithPosixDatagram();
+        sender = SolidSyslogUdpSender_Create(&config);
     }
 
     void teardown() override
     {
         SolidSyslogUdpSender_Destroy();
-        SolidSyslogPosixDatagram_Destroy();
-        SolidSyslogGetAddrInfoResolver_Destroy();
-    }
-
-    void CreateSender()
-    {
-        endpointGetHost = getHostFn;
-        endpointGetPort = getPortFn;
-        struct SolidSyslogResolver*       resolver = SolidSyslogGetAddrInfoResolver_Create();
-        struct SolidSyslogDatagram*       datagram = SolidSyslogPosixDatagram_Create();
-        struct SolidSyslogUdpSenderConfig config   = {resolver, datagram, TestEndpoint, TestEndpointVersion};
-        sender                                     = SolidSyslogUdpSender_Create(&config);
-    }
-
-    void Send() const
-    {
-        SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+        teardownFakesWithPosixDatagram();
     }
 };
 
@@ -420,8 +414,7 @@ TEST_GROUP(SolidSyslogUdpSenderConfig)
 
 TEST(SolidSyslogUdpSenderConfig, GetPortCalledOnFirstSend)
 {
-    getPortFn = SpyGetPort;
-    CreateSender();
+    endpointGetPort = SpyGetPort;
     CALLED_FUNCTION(SpyGetPort, NEVER);
     Send();
     CALLED_FUNCTION(SpyGetPort, ONCE);
@@ -429,8 +422,7 @@ TEST(SolidSyslogUdpSenderConfig, GetPortCalledOnFirstSend)
 
 TEST(SolidSyslogUdpSenderConfig, GetPortNotCalledOnSecondSend)
 {
-    getPortFn = SpyGetPort;
-    CreateSender();
+    endpointGetPort = SpyGetPort;
     Send();
     Send();
     CALLED_FUNCTION(SpyGetPort, ONCE);
@@ -438,16 +430,14 @@ TEST(SolidSyslogUdpSenderConfig, GetPortNotCalledOnSecondSend)
 
 TEST(SolidSyslogUdpSenderConfig, SendtoCalledWithConfiguredPort)
 {
-    getPortFn = GetAlternatePort;
-    CreateSender();
+    endpointGetPort = GetAlternatePort;
     Send();
     LONGS_EQUAL(TEST_ALTERNATE_PORT, SocketFake_LastPort());
 }
 
 TEST(SolidSyslogUdpSenderConfig, GetHostCalledOnFirstSend)
 {
-    getHostFn = SpyGetHost;
-    CreateSender();
+    endpointGetHost = SpyGetHost;
     CALLED_FUNCTION(SpyGetHost, NEVER);
     Send();
     CALLED_FUNCTION(SpyGetHost, ONCE);
@@ -455,8 +445,7 @@ TEST(SolidSyslogUdpSenderConfig, GetHostCalledOnFirstSend)
 
 TEST(SolidSyslogUdpSenderConfig, GetHostNotCalledOnSecondSend)
 {
-    getHostFn = SpyGetHost;
-    CreateSender();
+    endpointGetHost = SpyGetHost;
     Send();
     Send();
     CALLED_FUNCTION(SpyGetHost, ONCE);
@@ -464,8 +453,7 @@ TEST(SolidSyslogUdpSenderConfig, GetHostNotCalledOnSecondSend)
 
 TEST(SolidSyslogUdpSenderConfig, GetAddrInfoCalledWithHostnameFromGetHost)
 {
-    getHostFn = SpyGetHost;
-    CreateSender();
+    endpointGetHost = SpyGetHost;
     Send();
     CALLED_FAKE(SocketFake_GetAddrInfo, ONCE);
     STRCMP_EQUAL(TEST_DEFAULT_HOST, SocketFake_LastGetAddrInfoHostname());
@@ -473,43 +461,30 @@ TEST(SolidSyslogUdpSenderConfig, GetAddrInfoCalledWithHostnameFromGetHost)
 
 TEST(SolidSyslogUdpSenderConfig, SendtoCalledWithResolvedAddress)
 {
-    CreateSender();
     Send();
     STRCMP_EQUAL(TEST_DEFAULT_HOST, SocketFake_LastAddrAsString());
 }
 
+// Failure tests defer sender creation so fault flags can be set first
+// (resolver/datagram allocation doesn't trigger fakes; sockets are hit
+// at Send time).
 // clang-format off
-TEST_GROUP(SolidSyslogUdpSenderFailure)
+TEST_GROUP_BASE(SolidSyslogUdpSenderFailure, UdpSenderTestBase)
 {
-    struct SolidSyslogResolver*       resolver = nullptr;
-    struct SolidSyslogDatagram*       datagram = nullptr;
-    struct SolidSyslogUdpSenderConfig config;
-    // cppcheck-suppress constVariablePointer -- Send requires non-const self; false positive from macro expansion
-    // cppcheck-suppress unreadVariable -- assigned in CreateSender; cppcheck does not model CppUTest macros
-    struct SolidSyslogSender*         sender = nullptr;
-
     void setup() override
     {
-        SocketFake_Reset();
-        endpointGetHost = GetDefaultHost;
-        endpointVersion = 0;
-        endpointGetPort = GetDefaultPort;
+        setupFakesWithPosixDatagram();
     }
 
     void teardown() override
     {
         SolidSyslogUdpSender_Destroy();
-        SolidSyslogPosixDatagram_Destroy();
-        SolidSyslogGetAddrInfoResolver_Destroy();
+        teardownFakesWithPosixDatagram();
     }
 
     void CreateSender()
     {
-        resolver = SolidSyslogGetAddrInfoResolver_Create();
-        datagram = SolidSyslogPosixDatagram_Create();
-        config   = {resolver, datagram, TestEndpoint, TestEndpointVersion};
-        // cppcheck-suppress unreadVariable -- read by tests; cppcheck does not model CppUTest macros
-        sender   = SolidSyslogUdpSender_Create(&config);
+        sender = SolidSyslogUdpSender_Create(&config);
     }
 };
 
@@ -519,21 +494,21 @@ TEST(SolidSyslogUdpSenderFailure, SendReturnsFalseWhenResolverFails)
 {
     SocketFake_SetGetAddrInfoFails(true);
     CreateSender();
-    CHECK_FALSE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    CHECK_FALSE(Send());
 }
 
 TEST(SolidSyslogUdpSenderFailure, SendReturnsFalseWhenSocketFails)
 {
     SocketFake_SetSocketFails(true);
     CreateSender();
-    CHECK_FALSE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    CHECK_FALSE(Send());
 }
 
 TEST(SolidSyslogUdpSenderFailure, DoesNotResolveWhenSocketFails)
 {
     SocketFake_SetSocketFails(true);
     CreateSender();
-    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    Send();
     CALLED_FAKE(SocketFake_GetAddrInfo, NEVER);
 }
 
@@ -541,52 +516,63 @@ TEST(SolidSyslogUdpSenderFailure, SendDoesNotCallSendtoWhenResolverFailed)
 {
     SocketFake_SetGetAddrInfoFails(true);
     CreateSender();
-    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    Send();
     CALLED_FAKE(SocketFake_Sendto, NEVER);
 }
 
 TEST(SolidSyslogUdpSenderFailure, SendReturnsTrueWhenResolverAndSocketSucceed)
 {
     CreateSender();
-    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    CHECK_TRUE(Send());
 }
 
 TEST(SolidSyslogUdpSenderFailure, SendRecoversAfterTransientResolveFailure)
 {
     SocketFake_SetGetAddrInfoFails(true);
     CreateSender();
-    CHECK_FALSE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    CHECK_FALSE(Send());
     SocketFake_SetGetAddrInfoFails(false);
-    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    CHECK_TRUE(Send());
 }
 
-// clang-format off
-TEST_GROUP(SolidSyslogUdpSenderRetry)
-{
-    struct SolidSyslogResolver* resolver = nullptr;
-    struct SolidSyslogDatagram* datagram = nullptr;
-    // cppcheck-suppress constVariablePointer -- Send requires non-const self; false positive from macro expansion
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-    struct SolidSyslogSender* sender = nullptr;
+// NOLINTBEGIN(cppcoreguidelines-macro-usage) -- macros preserve __FILE__/__LINE__ in test failure output
+#define CALLED_DATAGRAM_SEND(times) CALLED_FAKE_ON(DatagramFake_Send, datagram, times)
+#define CALLED_DATAGRAM_MAX_PAYLOAD(times) CALLED_FAKE_ON(DatagramFake_MaxPayload, datagram, times)
+// NOLINTEND(cppcoreguidelines-macro-usage)
 
+// clang-format off
+TEST_GROUP_BASE(SolidSyslogUdpSenderRetry, UdpSenderTestBase)
+{
     void setup() override
     {
-        SocketFake_Reset();
-        endpointGetHost = GetDefaultHost;
-        endpointVersion = 0;
-        endpointGetPort = GetDefaultPort;
-        resolver        = SolidSyslogGetAddrInfoResolver_Create();
-        datagram        = DatagramFake_Create();
-        struct SolidSyslogUdpSenderConfig config = {resolver, datagram, TestEndpoint, TestEndpointVersion};
-        // cppcheck-suppress unreadVariable -- read by tests; cppcheck does not model CppUTest lifecycle
+        setupFakesWithDatagramFake();
         sender = SolidSyslogUdpSender_Create(&config);
     }
 
     void teardown() override
     {
         SolidSyslogUdpSender_Destroy();
-        DatagramFake_Destroy(datagram);
-        SolidSyslogGetAddrInfoResolver_Destroy();
+        teardownFakesWithDatagramFake();
+    }
+
+    void firstSendReturns(enum SolidSyslogDatagramSendResult result) const
+    {
+        DatagramFake_SetSendResult(datagram, 0, result);
+    }
+
+    void retrySendReturns(enum SolidSyslogDatagramSendResult result) const
+    {
+        DatagramFake_SetSendResult(datagram, 1, result);
+    }
+
+    void maxPayload(size_t bytes) const
+    {
+        DatagramFake_SetMaxPayload(datagram, bytes);
+    }
+
+    [[nodiscard]] size_t retrySendSize() const
+    {
+        return DatagramFake_SendSize(datagram, 1);
     }
 };
 
@@ -594,35 +580,35 @@ TEST_GROUP(SolidSyslogUdpSenderRetry)
 
 TEST(SolidSyslogUdpSenderRetry, SuccessfulSendDoesNotQueryMaxPayload)
 {
-    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    CALLED_FAKE_ON(DatagramFake_MaxPayload, datagram, NEVER);
+    Send();
+    CALLED_DATAGRAM_MAX_PAYLOAD(NEVER);
 }
 
 TEST(SolidSyslogUdpSenderRetry, OversizeQueriesMaxPayloadAndRetries)
 {
-    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
-    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_SENT);
-    DatagramFake_SetMaxPayload(datagram, 3);
-    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    CALLED_FAKE_ON(DatagramFake_MaxPayload, datagram, ONCE);
-    CALLED_FAKE_ON(DatagramFake_Send, datagram, TWICE);
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_SENT);
+    maxPayload(3);
+    Send();
+    CALLED_DATAGRAM_MAX_PAYLOAD(ONCE);
+    CALLED_DATAGRAM_SEND(TWICE);
 }
 
 TEST(SolidSyslogUdpSenderRetry, OversizeRetryTrimsBufferToMaxPayload)
 {
-    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
-    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_SENT);
-    DatagramFake_SetMaxPayload(datagram, 3);
-    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    LONGS_EQUAL(3, DatagramFake_SendSize(datagram, 1));
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_SENT);
+    maxPayload(3);
+    Send();
+    LONGS_EQUAL(3, retrySendSize());
 }
 
 TEST(SolidSyslogUdpSenderRetry, OversizeRetrySucceedsReturnsTrue)
 {
-    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
-    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_SENT);
-    DatagramFake_SetMaxPayload(datagram, 3);
-    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_SENT);
+    maxPayload(3);
+    CHECK_TRUE(Send());
 }
 
 /* Buffer "ab" + é (0xC3 0xA9): MaxPayload=3 cuts mid-é at the start byte,
@@ -630,11 +616,11 @@ TEST(SolidSyslogUdpSenderRetry, OversizeRetrySucceedsReturnsTrue)
 TEST(SolidSyslogUdpSenderRetry, OversizeRetryWalksBackToCodepointBoundary)
 {
     const uint8_t payload[] = {0x61, 0x62, 0xC3, 0xA9};
-    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
-    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_SENT);
-    DatagramFake_SetMaxPayload(datagram, 3);
-    SolidSyslogSender_Send(sender, payload, sizeof(payload));
-    LONGS_EQUAL(2, DatagramFake_SendSize(datagram, 1));
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_SENT);
+    maxPayload(3);
+    Send(payload, sizeof(payload));
+    LONGS_EQUAL(2, retrySendSize());
 }
 
 /* Double-OVERSIZE means the kernel disagreed with its own reported
@@ -643,27 +629,27 @@ TEST(SolidSyslogUdpSenderRetry, OversizeRetryWalksBackToCodepointBoundary)
  * Swallow: drop the message and return true so the caller moves on. */
 TEST(SolidSyslogUdpSenderRetry, DoubleOversizeReturnsTrueToAvoidPermanentLoop)
 {
-    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
-    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
-    DatagramFake_SetMaxPayload(datagram, 3);
-    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    maxPayload(3);
+    CHECK_TRUE(Send());
 }
 
 TEST(SolidSyslogUdpSenderRetry, DoubleOversizeDoesNotSendThird)
 {
-    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
-    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
-    DatagramFake_SetMaxPayload(datagram, 3);
-    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    CALLED_FAKE_ON(DatagramFake_Send, datagram, TWICE);
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    maxPayload(3);
+    Send();
+    CALLED_DATAGRAM_SEND(TWICE);
 }
 
 TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadSkipsRetrySend)
 {
-    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
-    DatagramFake_SetMaxPayload(datagram, 0);
-    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    CALLED_FAKE_ON(DatagramFake_Send, datagram, ONCE);
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    maxPayload(0);
+    Send();
+    CALLED_DATAGRAM_SEND(ONCE);
 }
 
 /* Trimmed length 0 means the message physically can't fit the path —
@@ -671,9 +657,9 @@ TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadSkipsRetrySend)
  * Service algorithm discards rather than retrying forever. */
 TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadReturnsTrueToAvoidPermanentLoop)
 {
-    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
-    DatagramFake_SetMaxPayload(datagram, 0);
-    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    maxPayload(0);
+    CHECK_TRUE(Send());
 }
 
 /* Retry sendto failing with non-OVERSIZE error (e.g. ECONNREFUSED on
@@ -681,10 +667,10 @@ TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadReturnsTrueToAvoidPermanentLoop)
  * Buffered/Service algorithm keeps the message for retry. */
 TEST(SolidSyslogUdpSenderRetry, RetryFailedNonOversizeReturnsFalse)
 {
-    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
-    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_FAILED);
-    DatagramFake_SetMaxPayload(datagram, 3);
-    CHECK_FALSE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_FAILED);
+    maxPayload(3);
+    CHECK_FALSE(Send());
 }
 
 TEST(SolidSyslogUdpSenderRetry, MaxPayloadLargerThanMessageCapsTrimToMessageSize)
@@ -694,51 +680,42 @@ TEST(SolidSyslogUdpSenderRetry, MaxPayloadLargerThanMessageCapsTrimToMessageSize
      * the original message. The trim must cap at the message size to
      * avoid reading past the buffer. */
     const uint8_t payload[] = {0x61, 0x62, 0x63};
-    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_OVERSIZE);
-    DatagramFake_SetSendResult(datagram, 1, SOLIDSYSLOG_DATAGRAM_SENT);
-    DatagramFake_SetMaxPayload(datagram, 9999);
-    SolidSyslogSender_Send(sender, payload, sizeof(payload));
-    LONGS_EQUAL(sizeof(payload), DatagramFake_SendSize(datagram, 1));
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_OVERSIZE);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_SENT);
+    maxPayload(9999);
+    Send(payload, sizeof(payload));
+    LONGS_EQUAL(sizeof(payload), retrySendSize());
 }
 
 TEST(SolidSyslogUdpSenderRetry, NonOversizeFailureDoesNotRetry)
 {
-    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_FAILED);
-    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
-    CALLED_FAKE_ON(DatagramFake_Send, datagram, ONCE);
-    CALLED_FAKE_ON(DatagramFake_MaxPayload, datagram, NEVER);
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_FAILED);
+    Send();
+    CALLED_DATAGRAM_SEND(ONCE);
+    CALLED_DATAGRAM_MAX_PAYLOAD(NEVER);
 }
 
 TEST(SolidSyslogUdpSenderRetry, NonOversizeFailureReturnsFalse)
 {
-    DatagramFake_SetSendResult(datagram, 0, SOLIDSYSLOG_DATAGRAM_FAILED);
-    CHECK_FALSE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_FAILED);
+    CHECK_FALSE(Send());
 }
 
 // clang-format off
-TEST_GROUP(SolidSyslogUdpSenderBadSetup)
+TEST_GROUP_BASE(SolidSyslogUdpSenderBadSetup, UdpSenderTestBase)
 {
-    struct SolidSyslogResolver* resolver = nullptr;
-    struct SolidSyslogDatagram* datagram = nullptr;
-    SolidSyslogUdpSenderConfig config{};
-    // cppcheck-suppress unreadVariable -- read via context-propagation through ErrorHandlerFake_Install
     int sentinel = 0;
 
     void setup() override
     {
-        SocketFake_Reset();
+        setupFakesWithPosixDatagram();
         ErrorHandlerFake_Install(&sentinel);
-        resolver = SolidSyslogGetAddrInfoResolver_Create();
-        datagram = SolidSyslogPosixDatagram_Create();
-        // cppcheck-suppress unreadVariable -- read by tests via TEST_GROUP fixture; cppcheck does not model CppUTest macros
-        config   = {resolver, datagram, TestEndpoint, TestEndpointVersion};
     }
 
     void teardown() override
     {
         SolidSyslogUdpSender_Destroy();
-        SolidSyslogPosixDatagram_Destroy();
-        SolidSyslogGetAddrInfoResolver_Destroy();
+        teardownFakesWithPosixDatagram();
         ErrorHandlerFake_Uninstall();
     }
 };
@@ -753,13 +730,13 @@ TEST(SolidSyslogUdpSenderBadSetup, CreateWithNullConfigReportsError)
 
 TEST(SolidSyslogUdpSenderBadSetup, SendOnBadSetupSenderReturnsTrue)
 {
-    struct SolidSyslogSender* sender = SolidSyslogUdpSender_Create(nullptr);
-    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    sender = SolidSyslogUdpSender_Create(nullptr);
+    CHECK_TRUE(Send());
 }
 
 TEST(SolidSyslogUdpSenderBadSetup, DisconnectOnBadSetupSenderDoesNotCrash)
 {
-    struct SolidSyslogSender* sender = SolidSyslogUdpSender_Create(nullptr);
+    sender = SolidSyslogUdpSender_Create(nullptr);
     SolidSyslogSender_Disconnect(sender);
 }
 
@@ -786,8 +763,8 @@ TEST(SolidSyslogUdpSenderBadSetup, CreateWithNullEndpointReportsError)
 
 TEST(SolidSyslogUdpSenderBadSetup, NullEndpointVersionIsOptional)
 {
-    config.endpointVersion           = nullptr;
-    struct SolidSyslogSender* sender = SolidSyslogUdpSender_Create(&config);
+    config.endpointVersion = nullptr;
+    sender                 = SolidSyslogUdpSender_Create(&config);
     CHECK_NOTHING_REPORTED();
-    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    CHECK_TRUE(Send());
 }
