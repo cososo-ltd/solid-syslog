@@ -1,0 +1,16 @@
+---
+# Pragmatic tier per docs/NAMING.md.
+#
+# Inherits the root .clang-tidy. Local names that mirror third-party
+# ChaN FatFs identifiers (FIL file, FATFS, FRESULT, f_* wrappers) and
+# parameters in adapter wrappers are exempt from the lowerCamelCase
+# rule when the upstream name would force a different shape.
+#
+# Note: Platform/FatFs/ is shipped as an INTERFACE library — sources
+# are recompiled by each consumer (tests, BDD targets, integrator apps)
+# with that consumer's ffconf.h. clang-tidy analyses these files
+# whenever they are compiled in a tidy-enabled target.
+#
+# Add IgnoredRegexp entries here as real exemptions surface; the file
+# exists from S10.02 to mark the tier boundary even when empty of overrides.
+InheritParentConfig: true

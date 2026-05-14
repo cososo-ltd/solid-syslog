@@ -1,5 +1,96 @@
 # Dev Log
 
+## 2026-05-14 — S10.02 tier-model .clang-tidy files (warning mode) (#359)
+
+Stands up the per-tier `.clang-tidy` configuration described in
+`docs/NAMING.md` and turns the `readability-identifier-naming` check
+on in warning mode, ready for the rest of E10 to audit and sweep
+against.
+
+### Changes
+
+- **Root `.clang-tidy`** — adds a `CheckOptions` block configuring
+  `readability-identifier-naming` per the Tier 1–4 scheme: public
+  functions / structs / enums / typedefs / enum constants get the
+  `SolidSyslog` prefix; macros enforce `UPPER_CASE`; static functions
+  / variables / constants use `aNy_CasE` (no prefix); parameters /
+  locals / struct members use `camelBack`. `WarningsAsErrors` is
+  changed from `'*'` to `'*,-readability-identifier-naming'` so the
+  new check surfaces as warning only.
+- **`Platform/{Atomics,Posix,Windows,OpenSsl,FreeRtos,FatFs}/Source/.clang-tidy`**
+  — six Pragmatic-tier placeholders, each inheriting the parent. Real
+  third-party-API exemptions land here as discovered. Files exist
+  from S10.02 to mark the tier boundary even when empty of overrides.
+- **`Tests/.clang-tidy`** — Consistency-only; inherits parent and
+  disables `readability-identifier-naming` outright. Other safety
+  checks (bugprone, clang-analyzer, cppcoreguidelines) stay on.
+- **`Bdd/.clang-tidy`** — out-of-scope-for-naming; same shape as
+  Tests/, also keeps safety checks. We deliberately do **not** fully
+  disable clang-tidy on BDD targets — those binaries ship to CI
+  hardware and we rely on bugprone/cppcoreguidelines on them.
+- **`docs/NAMING.md`** — appended a note that
+  `readability-identifier-naming` enforces prefix + case but not
+  positive shape regex; `SolidSyslogClass_Function` past the prefix
+  is left to review and cppcheck-misra 5.1 (S10.03).
+
+### Decisions
+
+- **Option A enforcement.** clang-tidy gets `GlobalFunctionPrefix:
+  SolidSyslog` + `GlobalFunctionCase: aNy_CasE`. The `Class_Function`
+  shape past the prefix is uncovered by tidy — picked up by
+  cppcheck-misra 5.1 distinctness in S10.03. The inverted-polarity
+  `IgnoredRegexp` hack discussed in the design review was rejected
+  for misleading diagnostics ("invalid case style; should be
+  lower_case" when the actual rule is "missing underscore").
+- **Six Pragmatic placeholders, not three.** The S10.02 issue only
+  named Posix/Windows/OpenSsl, but `docs/NAMING.md` puts every
+  `Platform/*/Source/` in the Pragmatic tier and that includes
+  Atomics, FreeRtos, FatFs as well. Added all six for symmetry. The
+  three INTERFACE platforms (FreeRtos, FatFs and parts of Atomics)
+  only get analysed transitively when consumers compile them, but
+  the file location on disk is what clang-tidy walks up from, so the
+  placement is correct regardless.
+- **`Bdd/.clang-tidy` disables only the naming check.** Memory of
+  the design discussion: BDD targets ship to CI hardware and the
+  existing bugprone/cppcoreguidelines coverage matters. NAMING.md's
+  "Out of scope — Not enforced" stance applies to naming + MISRA,
+  not all of clang-tidy.
+- **Macro prefix not enforced.** clang-tidy cannot syntactically
+  distinguish public (`SOLIDSYSLOG_*`) from file-scope (`CLASS_*`)
+  macros, so the `MacroDefinitionCase` rule is `UPPER_CASE` only;
+  prefix is left to review + cppcheck-misra 5.4.
+
+### Verification
+
+`cmake --preset tidy && cmake --build --preset tidy` succeeds. The
+new check surfaces **404 naming warnings**, all under Strict tier
+(`Core/*`, 383) and Pragmatic tier (`Platform/Posix/*`, 18;
+`Platform/OpenSsl/*`, 3). **Zero** naming warnings on `Tests/*` —
+the Consistency-only exemption works. **Zero** naming warnings on
+`Bdd/*` — the out-of-scope exemption works. Zero errors. The
+existing error-mode checks (bugprone, cppcoreguidelines, etc.) still
+pass cleanly.
+
+The 404 warnings are real drift — vtable members like
+`SolidSyslogStreamDefinition::Open` / `Send` / `Close` are PascalCase
+not lowerCamelCase; `SOLIDSYSLOG_*_SIZE` enum constants don't carry
+the `SolidSyslog` prefix the EnumConstant rule wants; etc. These are
+exactly what the S10.05 audit will catalogue and S10.07+ will sweep.
+
+### Deferred
+
+- The Pragmatic placeholder files contain no real `IgnoredRegexp`
+  exemptions yet — they're stubs. Real exemptions land as they
+  surface during the sweeps in S10.07+.
+- Re-enabling `magic-numbers` (currently disabled in the root
+  Checks): tracked in the rule-subset curation story S10.06, not
+  here.
+- Flip back to error mode: S10.18.
+- A CI grep step over `Core/Interface/*.h` and
+  `Platform/*/Interface/*.h` to enforce the `SolidSyslogClass_Function`
+  shape positively (Option C from the design discussion): deferred,
+  to be raised only if drift surfaces post-S10.03 cppcheck-misra.
+
 ## 2026-05-14 — S10.01 NAMING.md + initial MISRA deviations doc (#357)
 
 First story of E10. Commits `docs/NAMING.md` (the already-drafted

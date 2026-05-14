@@ -22,6 +22,11 @@ split between the two tools so they cannot disagree on the same name:
   `readability-identifier-naming` check understands linkage, scope, and
   the distinction between macros, typedefs, tags and ordinary identifiers.
   Per-directory `.clang-tidy` files implement the tier model below.
+  Note: `readability-identifier-naming` enforces case style + prefix +
+  suffix per identifier kind, but does **not** support a positive
+  must-match regex. The `SolidSyslogClass_Function` shape past the
+  `SolidSyslog` prefix is therefore enforced by review and by
+  cppcheck-misra rule 5.1 distinctness, not by clang-tidy directly.
 - **cppcheck-misra** is the sole authority on naming *uniqueness*. The
   MISRA addon surfaces rules 5.1, 5.2, 5.4, 5.6, 5.7, 5.8 and 5.9
   violations — pattern matching alone cannot detect these.
