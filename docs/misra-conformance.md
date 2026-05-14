@@ -135,7 +135,7 @@ Each row carries the cppcheck addon's count. The verdict reflects how the rule s
 | **Fix** — other rules (mechanical or per-component sweeps S10.07+) | 220 | 10.4, 8.9, 17.7, 10.1, 15.7, 8.4, 12.1, 17.8, 5.6, 15.5, 10.8, 22.10, 8.6, 2.5, 3.1, 7.1, 14.4 |
 | **Deviate** — landed in S10.06 (D.002–D.010) | 187 | 11.3, 11.2, 11.5 *(D.002)*; 5.7 *(D.003)*; 18.4 *(D.004)*; 18.7 *(D.005)*; 1.4 *(D.006)*; 11.8 *(D.007)*; 21.10 *(D.008)*; 21.6 *(D.009)*; 2.4 *(D.010)* |
 | **Disable** | 0 | — |
-| **Total reconciled** | **387 Fix + 187 Deviate = 574** + 5 dual-rule (same code site reported under two rules, e.g. 11.2 + 11.3 cast in `Address.c`) = 575 (matches the raw count, the 575 figure double-counts 5 dual-rule sites) |
+| **Total reconciled** | **388 Fix + 187 Deviate = 575** | Raw count includes 5 dual-rule overlaps (same code site reported under two rules, e.g. 11.2 + 11.3 cast in `Address.c`). |
 
 The verdict surface increased from the audit's headline by two rows
 (D.008 / D.009 resolving the Investigate items; D.010 added during

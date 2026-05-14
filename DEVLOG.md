@@ -7465,7 +7465,7 @@ tag in the same pass.
 - **Suppressions file format.** cppcheck rejects suppression files
   containing bare `#` lines (single-character comment markers with
   no text). All comment dividers in `misra_suppressions.txt` use
-  `# ` (hash + space) — silent constraint discovered during the
+  `#` followed by a space — silent constraint discovered during the
   first verification run that fired
   `cppcheck: error: Failed to add suppression. No id.` Worth
   remembering for any future suppression-file generator.
