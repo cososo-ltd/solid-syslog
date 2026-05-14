@@ -3,7 +3,10 @@
 #include <stddef.h>
 
 #include "SolidSyslogAtomicCounter.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 
 struct SolidSyslogFormatter;
@@ -17,19 +20,34 @@ struct SolidSyslogMetaSd
 };
 
 static void        Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
+static void        NilMetaSdFormat(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
 static inline void EmitSequenceId(struct SolidSyslogMetaSd* meta, struct SolidSyslogFormatter* formatter);
 static inline void EmitSysUpTime(struct SolidSyslogMetaSd* meta, struct SolidSyslogFormatter* formatter);
 static inline void EmitLanguage(struct SolidSyslogMetaSd* meta, struct SolidSyslogFormatter* formatter);
 
-static struct SolidSyslogMetaSd instance;
+static struct SolidSyslogMetaSd         instance;
+static struct SolidSyslogStructuredData NilMetaSd = {.Format = NilMetaSdFormat};
 
 struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSyslogMetaSdConfig* config)
 {
-    instance.base.Format  = Format;
-    instance.counter      = config->counter;
-    instance.getSysUpTime = config->getSysUpTime;
-    instance.getLanguage  = config->getLanguage;
-    return &instance.base;
+    struct SolidSyslogStructuredData* result = &NilMetaSd;
+    if (config == NULL)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_METASD_CREATE_NULL_CONFIG);
+    }
+    else if (config->counter == NULL)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_METASD_CREATE_NULL_COUNTER);
+    }
+    else
+    {
+        instance.base.Format  = Format;
+        instance.counter      = config->counter;
+        instance.getSysUpTime = config->getSysUpTime;
+        instance.getLanguage  = config->getLanguage;
+        result                = &instance.base;
+    }
+    return result;
 }
 
 void SolidSyslogMetaSd_Destroy(void)
@@ -38,6 +56,12 @@ void SolidSyslogMetaSd_Destroy(void)
     instance.counter      = NULL;
     instance.getSysUpTime = NULL;
     instance.getLanguage  = NULL;
+}
+
+static void NilMetaSdFormat(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter)
+{
+    (void) self;
+    (void) formatter;
 }
 
 static const char SD_PREFIX[]      = "[meta";
@@ -58,12 +82,9 @@ static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFor
 
 static inline void EmitSequenceId(struct SolidSyslogMetaSd* meta, struct SolidSyslogFormatter* formatter)
 {
-    if (meta->counter != NULL)
-    {
-        SolidSyslogFormatter_BoundedString(formatter, SEQUENCE_ID_SD, sizeof(SEQUENCE_ID_SD) - 1);
-        SolidSyslogFormatter_Uint32(formatter, SolidSyslogAtomicCounter_Increment(meta->counter));
-        SolidSyslogFormatter_AsciiCharacter(formatter, '"');
-    }
+    SolidSyslogFormatter_BoundedString(formatter, SEQUENCE_ID_SD, sizeof(SEQUENCE_ID_SD) - 1);
+    SolidSyslogFormatter_Uint32(formatter, SolidSyslogAtomicCounter_Increment(meta->counter));
+    SolidSyslogFormatter_AsciiCharacter(formatter, '"');
 }
 
 static inline void EmitSysUpTime(struct SolidSyslogMetaSd* meta, struct SolidSyslogFormatter* formatter)

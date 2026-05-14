@@ -1,5 +1,64 @@
 # Dev Log
 
+## 2026-05-14 — S12.06 MetaSd NULL guards (#117)
+
+First story under the new "skip the SD on bad setup, report once at
+detection time" contract for `meta@...` structured data. `MetaSd_Create`
+no longer dereferences `config->counter` when `config` is NULL, and no
+longer dereferences `NULL` at format time when `config->counter` is
+NULL: both detect-and-misconfigure paths now return a static
+`NilMetaSd` whose `Format` is a no-op, so the wire message is still
+emitted without the `[meta ...]` element. Both detection points report
+once via `SolidSyslog_Error` at `_Create` time, with a new severity
+convention to distinguish "delivered in degraded form" from "could not
+deliver at all".
+
+### Decisions
+
+- **Severity ladder starts here.** Every prior `SolidSyslog_Error` call
+  site uses `SOLIDSYSLOG_SEVERITY_ERR` (3) — and they all describe
+  situations where the library cannot deliver as configured (null
+  buffer, null sender, null store, null message, nil-collaborator-used).
+  This story introduces `SOLIDSYSLOG_SEVERITY_WARNING` (4) for the new
+  "library delivers, but in degraded form" class. The ladder going
+  forward: ERR = can't send; WARNING = sending with something dropped.
+- **Nil-object vtable, not internal null checks.** Bad-config detection
+  in `_Create` swaps the returned handle to a static
+  `NilMetaSd = {.Format = NilMetaSdFormat}`. No `broken` flag at
+  format time, no per-call null checks — Format dispatch goes to the
+  no-op. Matches the `NilBuffer`/`NilSender`/`NilInstance` pattern in
+  `SolidSyslog.c`. (Lesson from #116 / PR #331: avoid singleton-shaped
+  reporter state for per-instance SDs.)
+- **`sequenceId` is mandatory; `sysUpTime` / `language` are not.**
+  RFC 5424 §7.3.1 names `sequenceId` as the parameter that makes a
+  `meta@...` SD meaningful — without it, the SD has no semantic value.
+  Configuring MetaSd with `config->counter == NULL` is therefore a
+  setup error (whole SD skipped + warning). `getSysUpTime` /
+  `getLanguage` staying NULL remains valid (existing format-time
+  guards skip those params individually) — partial configuration is
+  legitimate, missing the mandatory field is not.
+- **Per-class hardening cadence.** E12's audit (2026-05-10) listed
+  `MetaSd`, `OriginSd`, `UdpSender`, and `AtomicCounter` as needing
+  guards. We're working through them one class at a time rather than
+  sweeping — each class can pick the right behaviour shape for its
+  own role. UdpSender (#116) needs the multi-instance story sorted
+  first; OriginSd and AtomicCounter remain in the E12 backlog.
+
+### Deferred
+
+- **OriginSd, AtomicCounter, UdpSender NULL guards** — out of scope
+  for this story; tracked under E12 (#31) for separate stories as the
+  hardening cadence reaches each class.
+- **`CHECK_REPORTED_ERROR` macro extension for non-ERR severities** —
+  considered while wiring slice 2 / 4 tests. Today the macro hard-codes
+  `SOLIDSYSLOG_SEVERITY_ERR`. Tests inline three assertions (call count,
+  severity, message) instead. Worth extending the macro when a third
+  WARNING-emitting class lands — refactor under green.
+
+### Open questions
+
+- *(none)*
+
 ## 2026-05-13 — S08.05 store-and-forward on FreeRTOS-Plus-FAT (#270)
 
 The store-and-forward stack now runs unchanged on the QEMU mps2-an385

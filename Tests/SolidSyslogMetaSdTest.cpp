@@ -1,11 +1,16 @@
 #include <cstdint>
 #include <cstring>
 
+#include "ErrorHandlerFake.h"
 #include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogMetaSd.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStructuredData.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER into scope for the CALLED_FAKE macro
 
 class TEST_SolidSyslogMetaSd_FirstFormatProducesSequenceId1_Test;
 class TEST_SolidSyslogMetaSd_FormatEscapesBackslashInLanguage_Test;
@@ -61,9 +66,12 @@ TEST_GROUP(SolidSyslogMetaSd)
     SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(TEST_BUFFER_SIZE)];
     // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogFormatter* formatter;
+    // cppcheck-suppress unreadVariable -- read via context-propagation through ErrorHandlerFake_Install
+    int sentinel = 0;
 
     void setup() override
     {
+        ErrorHandlerFake_Install(&sentinel);
         formatter = SolidSyslogFormatter_Create(storage, TEST_BUFFER_SIZE);
         counter = SolidSyslogAtomicCounter_Create();
         fakeSysUpTimeValue = 0;
@@ -78,12 +86,18 @@ TEST_GROUP(SolidSyslogMetaSd)
     {
         SolidSyslogMetaSd_Destroy();
         SolidSyslogAtomicCounter_Destroy();
+        ErrorHandlerFake_Uninstall();
+    }
+
+    void recreateWith(const SolidSyslogMetaSdConfig* configPtr)
+    {
+        SolidSyslogMetaSd_Destroy();
+        sd = SolidSyslogMetaSd_Create(configPtr);
     }
 
     void recreate()
     {
-        SolidSyslogMetaSd_Destroy();
-        sd = SolidSyslogMetaSd_Create(&config);
+        recreateWith(&config);
     }
 
     void useSysUpTime(uint32_t value)
@@ -226,19 +240,37 @@ TEST(SolidSyslogMetaSd, FormatWithAllThreeParamsEmitsAllThree)
     STRCMP_EQUAL("[meta sequenceId=\"1\" sysUpTime=\"12345\" language=\"en-GB\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
 
-TEST(SolidSyslogMetaSd, FormatWithoutCounterOmitsSequenceId)
+TEST(SolidSyslogMetaSd, FormatEmitsNothingWhenConfigCounterIsNullEvenIfOtherFieldsPresent)
 {
     config.counter = nullptr;
     useSysUpTime(12345);
     useLanguage("en-GB");
     format();
-    STRCMP_EQUAL("[meta sysUpTime=\"12345\" language=\"en-GB\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+    STRCMP_EQUAL("", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
 
-TEST(SolidSyslogMetaSd, FormatWithNoConfiguredParamsEmitsBareMetaElement)
+TEST(SolidSyslogMetaSd, FormatEmitsNothingWhenCreatedWithNullConfig)
+{
+    recreateWith(nullptr);
+    format();
+    STRCMP_EQUAL("", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+}
+
+TEST(SolidSyslogMetaSd, CreateWithNullConfigReportsWarning)
+{
+    recreateWith(nullptr);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL("SolidSyslogMetaSd_Create called with NULL config", ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsWarning)
 {
     config.counter = nullptr;
     recreate();
-    format();
-    STRCMP_EQUAL("[meta]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL("SolidSyslogMetaSd_Create config.counter is NULL", ErrorHandlerFake_LastMessage());
 }
