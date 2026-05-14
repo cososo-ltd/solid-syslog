@@ -150,9 +150,13 @@ static bool Connect(struct SolidSyslogUdpSender* udp)
     SolidSyslogFormatterStorage  hostStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(SOLIDSYSLOG_MAX_HOST_SIZE)];
     struct SolidSyslogFormatter* hostFormatter = SolidSyslogFormatter_Create(hostStorage, SOLIDSYSLOG_MAX_HOST_SIZE);
     uint16_t                     port          = QueryEndpointPort(udp, hostFormatter);
+    const char*                  host          = SolidSyslogFormatter_AsFormattedBuffer(hostFormatter);
 
-    udp->connected = OpenSocket(udp) && ResolveDestination(udp, SolidSyslogFormatter_AsFormattedBuffer(hostFormatter), port);
-    if (!Connected(udp))
+    if (OpenSocket(udp) && ResolveDestination(udp, host, port))
+    {
+        udp->connected = true;
+    }
+    else
     {
         CloseSocket(udp);
     }
