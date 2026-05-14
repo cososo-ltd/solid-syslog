@@ -412,6 +412,24 @@ Deliberate deviations from the MISRA rule set are recorded in
 - cppcheck runs with `--error-exitcode=1`. Inline suppressions (`// cppcheck-suppress`) must include
   a comment explaining why.
 
+### MISRA-load-bearing `.clang-format` settings
+
+Two settings in `.clang-format` are not merely stylistic — they enforce MISRA C:2012 rules at
+format-on-save:
+
+- **`InsertBraces: true`** combined with `AllowShortIfStatementsOnASingleLine: Never`,
+  `AllowShortLoopsOnASingleLine: false`, `AllowShortFunctionsOnASingleLine: None`, and
+  `AllowShortBlocksOnASingleLine: Never` — formatter-side enforcement of **MISRA 15.6**
+  (the body of an iteration- or selection-statement shall be a compound-statement). clang-format
+  rewrites your code to add the braces if they are missing, and the `AllowShort*` settings
+  stop them being collapsed back onto a single line.
+- **`RemoveParentheses: Leave`** — keeps the project **MISRA 12.1 safe**. The advisory rule
+  prefers explicit precedence parentheses; flipping this to `MultipleParentheses` would let
+  clang-format strip them.
+
+Do not change either group of settings without understanding the MISRA consequence.
+See `docs/misra-deviations.md` for the project's stance on MISRA conformance.
+
 ---
 
 ## Design Patterns

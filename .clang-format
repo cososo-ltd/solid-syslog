@@ -4,7 +4,7 @@ BreakBeforeBraces: Allman
 IndentWidth: 4
 UseTab: Never
 TabWidth: 4
-ColumnLimit: 160
+ColumnLimit: 120
 LineEnding: LF
 
 # Spacing
@@ -21,17 +21,42 @@ SpaceBeforeCaseColon: false
 PointerAlignment: Left
 QualifierAlignment: Left
 
-# Alignment
-AlignConsecutiveAssignments: Consecutive
-AlignConsecutiveDeclarations: Consecutive
-AlignTrailingComments: true
+# Alignment — Clean Code: no consecutive-line alignment (pretty but weakens
+# LHS↔RHS association across whitespace, and adds diff churn when a longer
+# variable name re-pads its neighbours).
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignTrailingComments: false
 AlignEscapedNewlines: Left
 
-# Braces and parentheses
+# Open-bracket alignment: BlockIndent uses a constant 4-space continuation
+# rather than aligning to the open-paren column. Long function names no
+# longer push args deep right and shift the indent column.
+AlignAfterOpenBracket: BlockIndent
+
+# Argument / parameter packing — one-per-line for every multi-line signature
+# or call. AllowAll*OnNextLine: false suppresses the "all-on-the-next-line"
+# continuation row so the wrap shape is consistent regardless of arg count.
+BinPackArguments: false
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+
+# Without this, clang-format will split the return type onto its own line to
+# keep args packed on one continuation line. Higher penalty keeps return type
+# with function name and forces the wrap inside the parens.
+PenaltyReturnTypeOnItsOwnLine: 1000
+
+# Braces and parentheses — MISRA-load-bearing:
+#   InsertBraces: true        enforces MISRA 15.6 (compound-statement body)
+#   RemoveParentheses: Leave  keeps MISRA 12.1 safe (don't strip explicit
+#                             precedence parens)
+# Do not flip either without understanding the MISRA consequence.
 InsertBraces: true
 RemoveParentheses: Leave
 
-# Short constructs - never collapse
+# Short constructs — never collapse. Combined with InsertBraces: true, this is
+# the formatter-side enforcement of MISRA 15.6.
 AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
@@ -44,6 +69,11 @@ IndentCaseLabels: true
 # Blank lines
 MaxEmptyLinesToKeep: 1
 SeparateDefinitionBlocks: Always
+
+# Comments — do not reflow. Protects // NOLINTNEXTLINE(...) directives and
+# long context comments from being mangled by automatic wrapping at the
+# 120-column limit.
+ReflowComments: false
 
 # Includes
 SortIncludes: false
