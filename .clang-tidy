@@ -1,6 +1,11 @@
 ---
 # Enable via CMake: cmake --preset tidy
 # Requires clang-tidy in the base image (see .devcontainer/Dockerfile).
+#
+# Root config — Strict tier per docs/NAMING.md, applies to Core/* and
+# Platform/*/Interface/. Pragmatic / Consistency-only / out-of-scope tiers
+# layer per-directory overrides on top (see Platform/*/Source/.clang-tidy,
+# Tests/.clang-tidy, Bdd/.clang-tidy).
 Checks: >
   bugprone-*,
   clang-analyzer-*,
@@ -25,11 +30,68 @@ Checks: >
   -modernize-deprecated-headers,
   -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
-# Treat all clang-tidy warnings as errors.
-WarningsAsErrors: '*'
+# Treat all clang-tidy warnings as errors EXCEPT the new naming check,
+# which lands in warning mode for the duration of E10's soft-freeze
+# (S10.02 through S10.18). S10.18 will flip it back to error mode once
+# the sweeps in S10.07 onwards have cleared the backlog.
+WarningsAsErrors: '*,-readability-identifier-naming'
 
 # Only apply to project headers, not third-party or system headers.
 HeaderFilterRegex: '.*Interface/.*'
 
 # Use the project .clang-format style for suggested fixes.
 FormatStyle: file
+
+# readability-identifier-naming — Tier 1–4 scheme per docs/NAMING.md.
+#
+# Option A from the S10.02 design discussion: clang-tidy enforces the
+# SolidSyslog prefix and the case style; the Class_Function shape past
+# the prefix is left to review + cppcheck-misra 5.1 distinctness
+# (landing in S10.03). clang-tidy does not natively support a positive
+# must-match regex for identifier shape, and the inverted-polarity
+# IgnoredRegexp hack was rejected for misleading diagnostics.
+CheckOptions:
+  # Tier 1 — public (external-linkage) functions: SolidSyslogClass_Function
+  - { key: readability-identifier-naming.GlobalFunctionCase,    value: aNy_CasE    }
+  - { key: readability-identifier-naming.GlobalFunctionPrefix,  value: SolidSyslog }
+
+  # Tier 1 — public struct tags: SolidSyslogClass
+  - { key: readability-identifier-naming.StructCase,            value: CamelCase   }
+  - { key: readability-identifier-naming.StructPrefix,          value: SolidSyslog }
+
+  # Tier 1 — public enum tags: SolidSyslogClass
+  - { key: readability-identifier-naming.EnumCase,              value: CamelCase   }
+  - { key: readability-identifier-naming.EnumPrefix,            value: SolidSyslog }
+
+  # Tier 1 — public enum constants: SolidSyslogClass_Constant
+  - { key: readability-identifier-naming.EnumConstantCase,      value: aNy_CasE    }
+  - { key: readability-identifier-naming.EnumConstantPrefix,    value: SolidSyslog }
+
+  # Tier 1 — public typedefs (enum / function-pointer only per NAMING.md):
+  # SolidSyslogClass or SolidSyslogClass_Fn
+  - { key: readability-identifier-naming.TypedefCase,           value: aNy_CasE    }
+  - { key: readability-identifier-naming.TypedefPrefix,         value: SolidSyslog }
+
+  # Macros — UPPER_CASE shape only. clang-tidy cannot distinguish public
+  # (SOLIDSYSLOG_*) from file-scope (CLASS_*) macros syntactically, so
+  # the SOLIDSYSLOG_ prefix on public macros is not enforced by tidy.
+  # Review + cppcheck-misra 5.4 distinctness cover the rest.
+  - { key: readability-identifier-naming.MacroDefinitionCase,   value: UPPER_CASE  }
+
+  # Tier 2 — file-scope static functions: Class_Function (no SolidSyslog
+  # prefix; class part is the source-file basename and varies per file).
+  - { key: readability-identifier-naming.StaticFunctionCase,    value: aNy_CasE    }
+
+  # Tier 2 — file-scope static variables / constants: Class_Variable
+  - { key: readability-identifier-naming.StaticVariableCase,    value: aNy_CasE    }
+  - { key: readability-identifier-naming.StaticConstantCase,    value: aNy_CasE    }
+
+  # Tier 3 — function parameters: lowerCamelCase
+  - { key: readability-identifier-naming.ParameterCase,         value: camelBack   }
+
+  # Tier 3 — local variables / constants: lowerCamelCase
+  - { key: readability-identifier-naming.LocalVariableCase,     value: camelBack   }
+  - { key: readability-identifier-naming.LocalConstantCase,     value: camelBack   }
+
+  # Tier 4 — struct members: lowerCamelCase
+  - { key: readability-identifier-naming.MemberCase,            value: camelBack   }

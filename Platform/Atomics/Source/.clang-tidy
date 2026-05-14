@@ -1,0 +1,10 @@
+---
+# Pragmatic tier per docs/NAMING.md.
+#
+# Inherits the root .clang-tidy. Local names that mirror third-party
+# atomic-primitive APIs (stdatomic.h, Windows Interlocked) and parameters
+# in adapter wrappers are exempt from the lowerCamelCase rule when the
+# upstream name would force a different shape. Add IgnoredRegexp entries
+# here as real exemptions surface; the file exists from S10.02 to mark
+# the tier boundary even when empty of overrides.
+InheritParentConfig: true
