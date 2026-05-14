@@ -27,8 +27,7 @@ EXTERN_C_BEGIN
 
     static inline struct SolidSyslogFormatter* SolidSyslogFormatter_FromStorage(SolidSyslogFormatterStorage * storage)
     {
-        return (struct SolidSyslogFormatter*)
-            storage; // NOLINT(cppcoreguidelines-pro-type-cstyle-cast) -- C header; C++ cast not available
+        return (struct SolidSyslogFormatter*) storage;
     }
 
     struct SolidSyslogFormatter* SolidSyslogFormatter_Create(SolidSyslogFormatterStorage * storage, size_t bufferSize);

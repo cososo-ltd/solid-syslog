@@ -132,13 +132,15 @@ static inline void CopyRecordData(
     size_t maxSize,
     size_t* bytesRead
 );
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- blockIndex / offset are positional fields of the just-read record; distinct semantics
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- blockIndex / offset are positional fields of the just-read record; distinct semantics
 static inline void RememberCurrentRecord(
     struct RecordStore* recordStore,
     size_t blockIndex,
     size_t offset,
     uint16_t length
 );
+
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 bool RecordStore_Read(
     struct RecordStore* recordStore,
@@ -248,7 +250,7 @@ static inline bool ValidateHeader(struct RecordStore* recordStore, uint16_t* len
     return valid;
 }
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- offset is a block position, length is a data size; distinct semantics
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- offset is a block position, length is a data size; distinct semantics
 static inline bool ReadRecordBody(
     struct RecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
@@ -265,6 +267,8 @@ static inline bool ReadRecordBody(
         length
     );
 }
+
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 static inline bool ReadIntegrityChecksum(
     struct RecordStore* recordStore,
@@ -310,7 +314,7 @@ static inline void CopyRecordData(
     *bytesRead = copySize;
 }
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- blockIndex / offset are positional fields of the just-read record; distinct semantics
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- blockIndex / offset are positional fields of the just-read record; distinct semantics
 static inline void RememberCurrentRecord(
     struct RecordStore* recordStore,
     size_t blockIndex,
@@ -322,6 +326,8 @@ static inline void RememberCurrentRecord(
     recordStore->lastSentFlagOffset = SentFlagOffset(recordStore, offset, length);
     recordStore->hasReadRecord = true;
 }
+
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 static inline bool WriteSentFlag(struct RecordStore* recordStore, struct SolidSyslogBlockDevice* blockDevice);
 

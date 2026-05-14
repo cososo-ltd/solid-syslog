@@ -56,7 +56,6 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(
     const struct SolidSyslogBlockStoreConfig* config
 )
 {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast) -- C header; integrator-supplied storage blob recast to impl
     struct SolidSyslogBlockStore* blockStore = (struct SolidSyslogBlockStore*) storage;
     *blockStore = DEFAULT_INSTANCE;
 
@@ -77,7 +76,6 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(
 
 static inline struct SolidSyslogBlockStore* AsBlockStore(struct SolidSyslogStore* store)
 {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast) -- C; base is the first member of struct SolidSyslogBlockStore
     return (struct SolidSyslogBlockStore*) store;
 }
 

@@ -1,5 +1,113 @@
 # Dev Log
 
+## 2026-05-14 — S10.04 .clang-format tuning + tree-wide reformat (#363)
+
+Fourth foundation story of E10. Tunes `.clang-format` per the
+S10.04 design discussion (Clean Code de-alignment + MISRA-helpful
+settings + 120-column limit), runs a tree-wide reformat as a
+separate commit, and cleans up a small NOLINT-suppression surface
+that the reformat exposed.
+
+### Changes
+
+- **`.clang-format`** — eleven settings changed:
+  - `ColumnLimit` 160 → 120
+  - `AlignConsecutiveAssignments` / `AlignConsecutiveDeclarations`
+    Consecutive → None (Clean Code: pretty alignment but pads
+    whitespace between LHS and RHS, weakening association)
+  - `AlignTrailingComments` true → false (same family)
+  - `AlignAfterOpenBracket` → BlockIndent (constant 4-space continuation
+    rather than column-aligning to a long function name)
+  - `BinPackArguments` / `BinPackParameters` → false (one-per-line
+    for multi-line calls and signatures)
+  - `AllowAllParametersOfDeclarationOnNextLine` /
+    `AllowAllArgumentsOnNextLine` → false (Layout B: any wrap is full
+    one-per-line)
+  - `PenaltyReturnTypeOnItsOwnLine` 60 → 1000 (keep return type with
+    function name; force the wrap inside the parens)
+  - `ReflowComments` → false (protect NOLINT directives and long
+    context comments from automatic wrapping at the narrower limit)
+- **`CLAUDE.md`** — new subsection in Code Style explaining that
+  `InsertBraces: true` + the `AllowShort*` family is the
+  formatter-side enforcement of MISRA 15.6, and `RemoveParentheses:
+  Leave` keeps the project MISRA 12.1 safe.
+- **Tree-wide reformat** — 231 files touched by `clang-format -i`.
+  Kept as its own commit so `git blame --ignore-rev` can skip past.
+- **`.clang-tidy`** — added `-cppcoreguidelines-pro-type-cstyle-cast`
+  to the disable list. The check is C++-only (advises
+  `static_cast<>` / `reinterpret_cast<>`) and runs inappropriately
+  on the C production code under Core/ and Platform/.
+- **NOLINT cleanup driven by the rule disable and the reformat**:
+  - **Removed** 6 NOLINT(cppcoreguidelines-pro-type-cstyle-cast)
+    suppressions in production code now made unnecessary by the
+    rule disable (SolidSyslogFileBlockDevice.c ×2,
+    SolidSyslogBlockStore.c ×2, SolidSyslogWinsockTcpStream.c ×1,
+    SolidSyslogFormatter.h ×1). Net: 6 fewer NOLINTs in the tree.
+  - **Converted** 5 NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+    suppressions to NOLINTBEGIN/END pairs (SolidSyslogFormatter.c
+    forward decl + definition, SolidSyslogFileBlockDevice.c
+    WriteAt forward decl + definition, RecordStore.c ×3). The
+    reformat puts each parameter on its own line, so the previous
+    NOLINTNEXTLINE only covered the first parameter row; BEGIN/END
+    wraps the whole multi-line declaration. Functionally identical
+    suppressions, mechanism-shifted.
+  - **Consolidated** 2 trailing
+    NOLINT(cppcoreguidelines-pro-bounds-constant-array-index) in
+    `Tests/SolidSyslogBlockStoreTest.cpp` into a single
+    NOLINTBEGIN/END pair around the bounded loop. Same coverage,
+    cleaner shape.
+
+### Decisions
+
+- **MISRA conflicts: none found.** The S10.04 design audit checked
+  every MISRA C:2012 rule that touches formatting against our
+  `.clang-format`. `InsertBraces: true` + `AllowShort*OnASingleLine:
+  Never/None/false` already enforces MISRA 15.6 at format-on-save.
+  `RemoveParentheses: Leave` keeps us MISRA 12.1 safe. So the story
+  shifted from "fix MISRA conflicts" (none) to "tune for readability
+  and consistency" — Clean Code de-alignment + 120-col + one-per-line
+  wraps.
+- **120 columns is the sweet spot.** Data: 98.7% of the existing
+  tree fit in 120 with no reformat needed. 80 would have touched
+  7.7% (~2,500 lines); 160 was unusually wide. 120 catches the
+  hand-aligned outliers without forcing ugly breaks on natural code.
+- **`cppcoreguidelines-pro-type-cstyle-cast` is the wrong check for
+  a C codebase.** Tagged in the design as the user's specific
+  concern: the rule recommends C++ casts that don't exist in C.
+  Disabling at root removes 6 NOLINT suppressions in one move and
+  surfaces a broader principle: prefer rule-disable over per-site
+  suppression where the rule is structurally inappropriate.
+- **Layout B (`AllowAll*OnNextLine: false`) over Layout A.** With
+  Layout A, two-arg signatures stayed on the continuation line
+  while three-arg ones broke to one-per-line — visually inconsistent.
+  Layout B's "if it wraps at all, every parameter is on its own
+  line" gives a consistent signal regardless of arg count.
+
+### Verification
+
+- `cmake --preset tidy && cmake --build --preset tidy` — clean
+  (0 errors, 404 naming warnings unchanged from the S10.02 baseline).
+- `cmake --build --preset debug --target junit` — 1120 tests pass,
+  2451 checks, 0 failures.
+- `find ... -name '*.[ch]' -o -name '*.[ch]pp' | xargs clang-format
+  --dry-run -Werror` — clean.
+
+### Deferred
+
+- **NOLINT-as-a-habit** is a known anti-pattern in this codebase;
+  some pre-existing suppressions (cppcoreguidelines-macro-usage on
+  storage-size macros, bugprone-easily-swappable-parameters on
+  multi-size_t functions, etc.) accreted without per-site
+  justification. Picking through them belongs in S10.05 (audit /
+  triage) — out of scope here. Going forward, new suppressions
+  should be discussed before landing.
+- **Long-arg-list functions** that the reformat made visually
+  noisier (RecordStore_Read with 7 params, etc.) are real code-shape
+  issues — candidate for a config-struct refactor in S10.07+ sweeps.
+- **`cppcoreguidelines-pro-bounds-constant-array-index`** still
+  fires in tests; current suppression covers it. Re-evaluate during
+  S10.06 rule curation.
+
 ## 2026-05-14 — S10.03 cppcheck-misra wired into CI (warning mode) (#361)
 
 Third foundation story of E10. Layers a cppcheck MISRA-addon pass on

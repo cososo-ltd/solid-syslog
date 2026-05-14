@@ -63,7 +63,7 @@ static bool Exists(struct SolidSyslogBlockDevice* self, size_t blockIndex);
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- vtable signature: blockIndex / offset are positional, distinct semantics
 static bool Read(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t offset, void* buf, size_t count);
 static bool Append(struct SolidSyslogBlockDevice* self, size_t blockIndex, const void* buf, size_t count);
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- vtable signature: blockIndex / offset are positional, distinct semantics
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- vtable signature: blockIndex / offset are positional, distinct semantics
 static bool WriteAt(
     struct SolidSyslogBlockDevice* self,
     size_t blockIndex,
@@ -71,6 +71,7 @@ static bool WriteAt(
     const void* buf,
     size_t count
 );
+// NOLINTEND(bugprone-easily-swappable-parameters)
 static size_t Size(struct SolidSyslogBlockDevice* self, size_t blockIndex);
 
 static inline struct SolidSyslogFileBlockDevice* AsFileBlockDevice(struct SolidSyslogBlockDevice* device);
@@ -86,7 +87,6 @@ struct SolidSyslogBlockDevice* SolidSyslogFileBlockDevice_Create(
     const char* pathPrefix
 )
 {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast) -- C header; integrator-supplied storage blob recast to impl
     struct SolidSyslogFileBlockDevice* device = (struct SolidSyslogFileBlockDevice*) storage;
 
     InitialiseVtable(device);
@@ -98,7 +98,6 @@ struct SolidSyslogBlockDevice* SolidSyslogFileBlockDevice_Create(
 
 static inline struct SolidSyslogFileBlockDevice* AsFileBlockDevice(struct SolidSyslogBlockDevice* device)
 {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast) -- C; base is the first member of struct SolidSyslogFileBlockDevice
     return (struct SolidSyslogFileBlockDevice*) device;
 }
 
@@ -330,7 +329,7 @@ static bool Append(struct SolidSyslogBlockDevice* self, size_t blockIndex, const
     return written;
 }
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- vtable signature: blockIndex / offset are positional, distinct semantics
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- vtable signature: blockIndex / offset are positional, distinct semantics
 static bool WriteAt(
     struct SolidSyslogBlockDevice* self,
     size_t blockIndex,
@@ -353,6 +352,8 @@ static bool WriteAt(
 
     return written;
 }
+
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 static size_t Size(struct SolidSyslogBlockDevice* self, size_t blockIndex)
 {

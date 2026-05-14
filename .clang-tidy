@@ -20,6 +20,7 @@ Checks: >
   -readability-magic-numbers,
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-type-cstyle-cast,
   -readability-identifier-length,
   -modernize-use-using,
   -cppcoreguidelines-avoid-non-const-global-variables,

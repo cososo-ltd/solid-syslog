@@ -75,7 +75,7 @@ static inline void TrimTruncatedMultiByteTail(struct SolidSyslogFormatter* forma
 static inline void WriteBytes(struct SolidSyslogFormatter* formatter, const char* bytes, size_t count);
 static inline void WriteChar(struct SolidSyslogFormatter* formatter, char value);
 static inline void WriteCodepoint(struct EscapedContext* context);
-/* NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- 3 callers in this file pass compile-time constants or codepointLength; param names disambiguate */
+/* NOLINTBEGIN(bugprone-easily-swappable-parameters) -- 3 callers in this file pass compile-time constants or codepointLength; param names disambiguate */
 static inline void WriteContext(
     struct EscapedContext* context,
     const char* bytes,
@@ -83,6 +83,7 @@ static inline void WriteContext(
     size_t sourceAdvance,
     size_t decodedAdvance
 );
+/* NOLINTEND(bugprone-easily-swappable-parameters) */
 static inline void WriteEscaped(struct EscapedContext* context);
 static inline void WritePrintableUsAsciiChar(struct SolidSyslogFormatter* formatter, char value);
 static inline void WriteReplacement(struct EscapedContext* context);
@@ -319,7 +320,7 @@ static inline bool Fits(const struct EscapedContext* context, size_t decodedAdva
     return (decodedAdvance > 0) && (decodedAdvance <= context->maxDecodedLength - context->decodedLength);
 }
 
-/* NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- see forward declaration */
+/* NOLINTBEGIN(bugprone-easily-swappable-parameters) -- see forward declaration */
 static inline void WriteContext(
     struct EscapedContext* context,
     const char* bytes,
@@ -332,6 +333,8 @@ static inline void WriteContext(
     context->sourcePos += sourceAdvance;
     context->decodedLength += decodedAdvance;
 }
+
+/* NOLINTEND(bugprone-easily-swappable-parameters) */
 
 static inline void Exhaust(struct EscapedContext* context)
 {

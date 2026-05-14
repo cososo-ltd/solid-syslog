@@ -79,7 +79,6 @@ CallSelect(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const
 {
     /* Winsock select() takes a non-const timeval*; const-cast keeps our seam
        signature const-correct for callers without forcing them to drop const. */
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast) -- C; mirrors the platform signature
     return select(nfds, readfds, writefds, exceptfds, (struct timeval*) timeout);
 }
 

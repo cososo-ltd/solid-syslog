@@ -1180,15 +1180,13 @@ TEST(SolidSyslogBlockStoreRotation, ContinuousDiscardWithoutReadingSurvivorsCorr
 
     /* Write 5 messages across 5 files — maxBlocks=2 means 3 are discarded */
     char msgs[5][SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    // NOLINTBEGIN(cppcoreguidelines-pro-bounds-constant-array-index) -- loop index is bounded by literal 5
     for (int i = 0; i < 5; i++)
     {
-        memset(msgs[i], 'A' + i, sizeof(msgs[i])); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
-        SolidSyslogStore_Write(
-            store,
-            msgs[i],
-            sizeof(msgs[i])
-        ); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+        memset(msgs[i], 'A' + i, sizeof(msgs[i]));
+        SolidSyslogStore_Write(store, msgs[i], sizeof(msgs[i]));
     }
+    // NOLINTEND(cppcoreguidelines-pro-bounds-constant-array-index)
 
     /* Only files 03 and 04 should survive */
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
