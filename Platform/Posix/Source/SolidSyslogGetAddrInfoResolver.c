@@ -19,14 +19,14 @@ enum
     GETADDRINFO_SUCCESS = 0
 };
 
-static bool Resolve(
+static bool GetAddrInfoResolver_Resolve(
     struct SolidSyslogResolver* self,
     enum SolidSyslogTransport transport,
     const char* host,
     uint16_t port,
     struct SolidSyslogAddress* result
 );
-static int MapTransport(enum SolidSyslogTransport transport);
+static int GetAddrInfoResolver_MapTransport(enum SolidSyslogTransport transport);
 
 struct SolidSyslogGetAddrInfoResolver
 {
@@ -37,7 +37,7 @@ static struct SolidSyslogGetAddrInfoResolver instance;
 
 struct SolidSyslogResolver* SolidSyslogGetAddrInfoResolver_Create(void)
 {
-    instance.base.Resolve = Resolve;
+    instance.base.Resolve = GetAddrInfoResolver_Resolve;
     return &instance.base;
 }
 
@@ -46,7 +46,7 @@ void SolidSyslogGetAddrInfoResolver_Destroy(void)
     instance.base.Resolve = NULL;
 }
 
-static bool Resolve(
+static bool GetAddrInfoResolver_Resolve(
     struct SolidSyslogResolver* self,
     enum SolidSyslogTransport transport,
     const char* host,
@@ -58,7 +58,7 @@ static bool Resolve(
 
     struct addrinfo hints = {0};
     hints.ai_family = AF_INET;
-    hints.ai_socktype = MapTransport(transport);
+    hints.ai_socktype = GetAddrInfoResolver_MapTransport(transport);
 
     struct addrinfo* info = NULL;
     bool resolved = false;
@@ -75,7 +75,7 @@ static bool Resolve(
     return resolved;
 }
 
-static int MapTransport(enum SolidSyslogTransport transport)
+static int GetAddrInfoResolver_MapTransport(enum SolidSyslogTransport transport)
 {
     int socktype = SOCK_DGRAM;
 
