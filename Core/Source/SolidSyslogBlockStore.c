@@ -10,15 +10,15 @@
 #include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogStoreDefinition.h"
 
-/* vtable — forward-declared because InitialiseVtable references them before their definitions */
-static bool Write(struct SolidSyslogStore* self, const void* data, size_t size);
-static bool ReadNextUnsent(struct SolidSyslogStore* self, void* data, size_t maxSize, size_t* bytesRead);
-static void MarkSent(struct SolidSyslogStore* self);
-static bool HasUnsent(struct SolidSyslogStore* self);
-static bool IsHalted(struct SolidSyslogStore* self);
-static size_t GetTotalBytes(struct SolidSyslogStore* self);
-static size_t GetUsedBytes(struct SolidSyslogStore* self);
-static bool IsTransient(struct SolidSyslogStore* self);
+/* vtable — forward-declared because BlockStore_InitialiseVtable references them before their definitions */
+static bool BlockStore_Write(struct SolidSyslogStore* self, const void* data, size_t size);
+static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* self, void* data, size_t maxSize, size_t* bytesRead);
+static void BlockStore_MarkSent(struct SolidSyslogStore* self);
+static bool BlockStore_HasUnsent(struct SolidSyslogStore* self);
+static bool BlockStore_IsHalted(struct SolidSyslogStore* self);
+static size_t BlockStore_GetTotalBytes(struct SolidSyslogStore* self);
+static size_t BlockStore_GetUsedBytes(struct SolidSyslogStore* self);
+static bool BlockStore_IsTransient(struct SolidSyslogStore* self);
 
 /* ------------------------------------------------------------------
  * Instance
@@ -38,14 +38,16 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 static const struct SolidSyslogBlockStore DEFAULT_INSTANCE = {0};
 
-static inline struct SolidSyslogBlockStore* AsBlockStore(struct SolidSyslogStore* store);
-static inline struct SolidSyslogSecurityPolicy* ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured);
-static inline struct BlockSequenceConfig BuildBlockSequenceConfig(
+static inline struct SolidSyslogBlockStore* BlockStore_AsBlockStore(struct SolidSyslogStore* store);
+static inline struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(
+    struct SolidSyslogSecurityPolicy* configured
+);
+static inline struct BlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
     const struct SolidSyslogBlockStoreConfig* config,
     const struct RecordStore* recordStore
 );
-static inline void InitialiseVtable(struct SolidSyslogBlockStore* blockStore);
-static void ResumeFromExistingBlock(struct SolidSyslogBlockStore* blockStore);
+static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* blockStore);
+static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* blockStore);
 
 /* ------------------------------------------------------------------
  * Create
@@ -59,27 +61,29 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(
     struct SolidSyslogBlockStore* blockStore = (struct SolidSyslogBlockStore*) storage;
     *blockStore = DEFAULT_INSTANCE;
 
-    RecordStore_Init(&blockStore->recordStore, ResolveSecurityPolicy(config->securityPolicy));
+    RecordStore_Init(&blockStore->recordStore, BlockStore_ResolveSecurityPolicy(config->securityPolicy));
 
-    struct BlockSequenceConfig blockConfig = BuildBlockSequenceConfig(config, &blockStore->recordStore);
+    struct BlockSequenceConfig blockConfig = BlockStore_BuildBlockSequenceConfig(config, &blockStore->recordStore);
     BlockSequence_Init(&blockStore->blockSequence, &blockConfig);
 
-    InitialiseVtable(blockStore);
+    BlockStore_InitialiseVtable(blockStore);
 
     if (BlockSequence_Open(&blockStore->blockSequence))
     {
-        ResumeFromExistingBlock(blockStore);
+        BlockStore_ResumeFromExistingBlock(blockStore);
     }
 
     return &blockStore->base;
 }
 
-static inline struct SolidSyslogBlockStore* AsBlockStore(struct SolidSyslogStore* store)
+static inline struct SolidSyslogBlockStore* BlockStore_AsBlockStore(struct SolidSyslogStore* store)
 {
     return (struct SolidSyslogBlockStore*) store;
 }
 
-static inline struct SolidSyslogSecurityPolicy* ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured)
+static inline struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(
+    struct SolidSyslogSecurityPolicy* configured
+)
 {
     struct SolidSyslogSecurityPolicy* resolved = configured;
 
@@ -91,7 +95,7 @@ static inline struct SolidSyslogSecurityPolicy* ResolveSecurityPolicy(struct Sol
     return resolved;
 }
 
-static inline struct BlockSequenceConfig BuildBlockSequenceConfig(
+static inline struct BlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
     const struct SolidSyslogBlockStoreConfig* config,
     const struct RecordStore* recordStore
 )
@@ -113,19 +117,19 @@ static inline struct BlockSequenceConfig BuildBlockSequenceConfig(
     return blockConfig;
 }
 
-static inline void InitialiseVtable(struct SolidSyslogBlockStore* blockStore)
+static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* blockStore)
 {
-    blockStore->base.Write = Write;
-    blockStore->base.ReadNextUnsent = ReadNextUnsent;
-    blockStore->base.MarkSent = MarkSent;
-    blockStore->base.HasUnsent = HasUnsent;
-    blockStore->base.IsHalted = IsHalted;
-    blockStore->base.GetTotalBytes = GetTotalBytes;
-    blockStore->base.GetUsedBytes = GetUsedBytes;
-    blockStore->base.IsTransient = IsTransient;
+    blockStore->base.Write = BlockStore_Write;
+    blockStore->base.ReadNextUnsent = BlockStore_ReadNextUnsent;
+    blockStore->base.MarkSent = BlockStore_MarkSent;
+    blockStore->base.HasUnsent = BlockStore_HasUnsent;
+    blockStore->base.IsHalted = BlockStore_IsHalted;
+    blockStore->base.GetTotalBytes = BlockStore_GetTotalBytes;
+    blockStore->base.GetUsedBytes = BlockStore_GetUsedBytes;
+    blockStore->base.IsTransient = BlockStore_IsTransient;
 }
 
-static void ResumeFromExistingBlock(struct SolidSyslogBlockStore* blockStore)
+static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* blockStore)
 {
     struct SolidSyslogBlockDevice* device = BlockSequence_BlockDevice(&blockStore->blockSequence);
     size_t readSequence = BlockSequence_ReadSequence(&blockStore->blockSequence);
@@ -152,22 +156,22 @@ static void ResumeFromExistingBlock(struct SolidSyslogBlockStore* blockStore)
 
 void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore* store)
 {
-    struct SolidSyslogBlockStore* blockStore = AsBlockStore(store);
+    struct SolidSyslogBlockStore* blockStore = BlockStore_AsBlockStore(store);
     *blockStore = DEFAULT_INSTANCE;
 }
 
 /* ------------------------------------------------------------------
- * Write
+ * BlockStore_Write
  * ----------------------------------------------------------------*/
 
-static bool StoreRecord(struct SolidSyslogBlockStore* blockStore, const void* data, size_t size);
+static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* blockStore, const void* data, size_t size);
 
-static bool Write(struct SolidSyslogStore* self, const void* data, size_t size)
+static bool BlockStore_Write(struct SolidSyslogStore* self, const void* data, size_t size)
 {
-    return StoreRecord(AsBlockStore(self), data, size);
+    return BlockStore_StoreRecord(BlockStore_AsBlockStore(self), data, size);
 }
 
-static bool StoreRecord(struct SolidSyslogBlockStore* blockStore, const void* data, size_t size)
+static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* blockStore, const void* data, size_t size)
 {
     size_t recordSize = RecordStore_RecordSize(&blockStore->recordStore, (uint16_t) size);
     bool readBlockChanged = false;
@@ -197,66 +201,76 @@ static bool StoreRecord(struct SolidSyslogBlockStore* blockStore, const void* da
 }
 
 /* ------------------------------------------------------------------
- * HasUnsent / IsHalted / GetTotalBytes / GetUsedBytes
+ * BlockStore_HasUnsent / BlockStore_IsHalted / BlockStore_GetTotalBytes / BlockStore_GetUsedBytes
  * ----------------------------------------------------------------*/
 
-static bool HasUnsent(struct SolidSyslogStore* self)
+static bool BlockStore_HasUnsent(struct SolidSyslogStore* self)
 {
-    return BlockSequence_HasUnsent(&AsBlockStore(self)->blockSequence);
+    return BlockSequence_HasUnsent(&BlockStore_AsBlockStore(self)->blockSequence);
 }
 
-static bool IsHalted(struct SolidSyslogStore* self)
+static bool BlockStore_IsHalted(struct SolidSyslogStore* self)
 {
-    return BlockSequence_IsHalted(&AsBlockStore(self)->blockSequence);
+    return BlockSequence_IsHalted(&BlockStore_AsBlockStore(self)->blockSequence);
 }
 
-static size_t GetTotalBytes(struct SolidSyslogStore* self)
+static size_t BlockStore_GetTotalBytes(struct SolidSyslogStore* self)
 {
-    return BlockSequence_TotalBytes(&AsBlockStore(self)->blockSequence);
+    return BlockSequence_TotalBytes(&BlockStore_AsBlockStore(self)->blockSequence);
 }
 
-static size_t GetUsedBytes(struct SolidSyslogStore* self)
+static size_t BlockStore_GetUsedBytes(struct SolidSyslogStore* self)
 {
-    return BlockSequence_UsedBytes(&AsBlockStore(self)->blockSequence);
+    return BlockSequence_UsedBytes(&BlockStore_AsBlockStore(self)->blockSequence);
 }
 
-/* BlockStore retains records — a Write rejection here is the discard
+/* BlockStore retains records — a BlockStore_Write rejection here is the discard
  * policy speaking (DISCARD_NEWEST or HALT), and the message must NOT
  * bypass older stored records via a Service direct-send fallback. */
-static bool IsTransient(struct SolidSyslogStore* self)
+static bool BlockStore_IsTransient(struct SolidSyslogStore* self)
 {
     (void) self;
     return false;
 }
 
 /* ------------------------------------------------------------------
- * ReadNextUnsent
+ * BlockStore_ReadNextUnsent
  * ----------------------------------------------------------------*/
 
-static bool ReadCurrent(struct SolidSyslogBlockStore* blockStore, void* data, size_t maxSize, size_t* bytesRead);
+static bool BlockStore_ReadCurrent(
+    struct SolidSyslogBlockStore* blockStore,
+    void* data,
+    size_t maxSize,
+    size_t* bytesRead
+);
 
-static bool ReadNextUnsent(struct SolidSyslogStore* self, void* data, size_t maxSize, size_t* bytesRead)
+static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* self, void* data, size_t maxSize, size_t* bytesRead)
 {
-    struct SolidSyslogBlockStore* blockStore = AsBlockStore(self);
+    struct SolidSyslogBlockStore* blockStore = BlockStore_AsBlockStore(self);
     bool read = false;
     *bytesRead = 0;
 
     if (BlockSequence_HasUnsent(&blockStore->blockSequence))
     {
-        read = ReadCurrent(blockStore, data, maxSize, bytesRead);
+        read = BlockStore_ReadCurrent(blockStore, data, maxSize, bytesRead);
 
         while (!read && BlockSequence_ReadIsBehindWrite(&blockStore->blockSequence))
         {
             BlockSequence_AdvanceToNextReadBlock(&blockStore->blockSequence);
             RecordStore_ForgetLastRead(&blockStore->recordStore);
-            read = ReadCurrent(blockStore, data, maxSize, bytesRead);
+            read = BlockStore_ReadCurrent(blockStore, data, maxSize, bytesRead);
         }
     }
 
     return read;
 }
 
-static bool ReadCurrent(struct SolidSyslogBlockStore* blockStore, void* data, size_t maxSize, size_t* bytesRead)
+static bool BlockStore_ReadCurrent(
+    struct SolidSyslogBlockStore* blockStore,
+    void* data,
+    size_t maxSize,
+    size_t* bytesRead
+)
 {
     return RecordStore_Read(
         &blockStore->recordStore,
@@ -270,12 +284,12 @@ static bool ReadCurrent(struct SolidSyslogBlockStore* blockStore, void* data, si
 }
 
 /* ------------------------------------------------------------------
- * MarkSent
+ * BlockStore_MarkSent
  * ----------------------------------------------------------------*/
 
-static void MarkSent(struct SolidSyslogStore* self)
+static void BlockStore_MarkSent(struct SolidSyslogStore* self)
 {
-    struct SolidSyslogBlockStore* blockStore = AsBlockStore(self);
+    struct SolidSyslogBlockStore* blockStore = BlockStore_AsBlockStore(self);
     size_t nextCursor = 0;
 
     if (RecordStore_MarkLastReadAsSent(

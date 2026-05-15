@@ -9,7 +9,7 @@ enum
     ORIGIN_ENTERPRISE_ID_MAX = 64,
     ORIGIN_IP_MAX = 64,
     ORIGIN_LITERAL_BYTES =
-        48, /* [origin software="" swVersion="" enterpriseId="" — closing ']' deferred to per-message Format */
+        48, /* [origin software="" swVersion="" enterpriseId="" — closing ']' deferred to per-message OriginSd_Format */
     ORIGIN_CONTENT_MAX = ORIGIN_LITERAL_BYTES + SOLIDSYSLOG_ESCAPED_MAX_SIZE(ORIGIN_SOFTWARE_MAX) +
                          SOLIDSYSLOG_ESCAPED_MAX_SIZE(ORIGIN_SWVERSION_MAX) +
                          SOLIDSYSLOG_ESCAPED_MAX_SIZE(ORIGIN_ENTERPRISE_ID_MAX),
@@ -30,13 +30,22 @@ static const char SD_VERSION_SD[] = " swVersion=\"";
 static const char SD_ENTERPRISE_ID_SD[] = " enterpriseId=\"";
 static const char SD_IP_SD[] = " ip=\"";
 
-static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
-static inline void PreFormatStaticPrefix(const struct SolidSyslogOriginSdConfig* config);
-static inline void EmitSoftware(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config);
-static inline void EmitSwVersion(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config);
-static inline void EmitEnterpriseId(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config);
-static inline void EmitIps(struct SolidSyslogFormatter* formatter, const struct SolidSyslogOriginSd* origin);
-static inline void EmitIp(
+static void OriginSd_Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
+static inline void OriginSd_PreFormatStaticPrefix(const struct SolidSyslogOriginSdConfig* config);
+static inline void OriginSd_EmitSoftware(
+    struct SolidSyslogFormatter* f,
+    const struct SolidSyslogOriginSdConfig* config
+);
+static inline void OriginSd_EmitSwVersion(
+    struct SolidSyslogFormatter* f,
+    const struct SolidSyslogOriginSdConfig* config
+);
+static inline void OriginSd_EmitEnterpriseId(
+    struct SolidSyslogFormatter* f,
+    const struct SolidSyslogOriginSdConfig* config
+);
+static inline void OriginSd_EmitIps(struct SolidSyslogFormatter* formatter, const struct SolidSyslogOriginSd* origin);
+static inline void OriginSd_EmitIp(
     struct SolidSyslogFormatter* formatter,
     const struct SolidSyslogOriginSd* origin,
     size_t index
@@ -46,10 +55,10 @@ static struct SolidSyslogOriginSd instance;
 
 struct SolidSyslogStructuredData* SolidSyslogOriginSd_Create(const struct SolidSyslogOriginSdConfig* config)
 {
-    instance.base.Format = Format;
+    instance.base.Format = OriginSd_Format;
     instance.getIpCount = config->getIpCount;
     instance.getIpAt = config->getIpAt;
-    PreFormatStaticPrefix(config);
+    OriginSd_PreFormatStaticPrefix(config);
     return &instance.base;
 }
 
@@ -60,7 +69,7 @@ void SolidSyslogOriginSd_Destroy(void)
     instance.getIpAt = NULL;
 }
 
-static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter)
+static void OriginSd_Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter)
 {
     struct SolidSyslogOriginSd* origin = (struct SolidSyslogOriginSd*) self;
     struct SolidSyslogFormatter* preformat = SolidSyslogFormatter_FromStorage(origin->formattedStorage);
@@ -70,22 +79,22 @@ static void Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFor
         SolidSyslogFormatter_AsFormattedBuffer(preformat),
         SolidSyslogFormatter_Length(preformat)
     );
-    EmitIps(formatter, origin);
+    OriginSd_EmitIps(formatter, origin);
     SolidSyslogFormatter_AsciiCharacter(formatter, ']');
 }
 
-static inline void PreFormatStaticPrefix(const struct SolidSyslogOriginSdConfig* config)
+static inline void OriginSd_PreFormatStaticPrefix(const struct SolidSyslogOriginSdConfig* config)
 {
     struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(instance.formattedStorage, ORIGIN_FORMATTED_MAX);
 
     SolidSyslogFormatter_BoundedString(f, SD_PREFIX, sizeof(SD_PREFIX) - 1);
-    EmitSoftware(f, config);
-    EmitSwVersion(f, config);
-    EmitEnterpriseId(f, config);
-    /* closing ']' deferred to Format() so per-message ip params can be spliced in */
+    OriginSd_EmitSoftware(f, config);
+    OriginSd_EmitSwVersion(f, config);
+    OriginSd_EmitEnterpriseId(f, config);
+    /* closing ']' deferred to OriginSd_Format() so per-message ip params can be spliced in */
 }
 
-static inline void EmitSoftware(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config)
+static inline void OriginSd_EmitSoftware(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config)
 {
     if (config->software != NULL)
     {
@@ -95,7 +104,10 @@ static inline void EmitSoftware(struct SolidSyslogFormatter* f, const struct Sol
     }
 }
 
-static inline void EmitSwVersion(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config)
+static inline void OriginSd_EmitSwVersion(
+    struct SolidSyslogFormatter* f,
+    const struct SolidSyslogOriginSdConfig* config
+)
 {
     if (config->swVersion != NULL)
     {
@@ -105,7 +117,10 @@ static inline void EmitSwVersion(struct SolidSyslogFormatter* f, const struct So
     }
 }
 
-static inline void EmitEnterpriseId(struct SolidSyslogFormatter* f, const struct SolidSyslogOriginSdConfig* config)
+static inline void OriginSd_EmitEnterpriseId(
+    struct SolidSyslogFormatter* f,
+    const struct SolidSyslogOriginSdConfig* config
+)
 {
     if (config->enterpriseId != NULL)
     {
@@ -115,19 +130,19 @@ static inline void EmitEnterpriseId(struct SolidSyslogFormatter* f, const struct
     }
 }
 
-static inline void EmitIps(struct SolidSyslogFormatter* formatter, const struct SolidSyslogOriginSd* origin)
+static inline void OriginSd_EmitIps(struct SolidSyslogFormatter* formatter, const struct SolidSyslogOriginSd* origin)
 {
     if ((origin->getIpCount != NULL) && (origin->getIpAt != NULL))
     {
         size_t count = origin->getIpCount();
         for (size_t i = 0; i < count; i++)
         {
-            EmitIp(formatter, origin, i);
+            OriginSd_EmitIp(formatter, origin, i);
         }
     }
 }
 
-static inline void EmitIp(
+static inline void OriginSd_EmitIp(
     struct SolidSyslogFormatter* formatter,
     const struct SolidSyslogOriginSd* origin,
     size_t index

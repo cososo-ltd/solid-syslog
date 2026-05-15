@@ -8,11 +8,11 @@
    for static initialisation may trigger MSVC C4232 in some configurations;
    forwarding through a static function whose address IS a compile-time
    constant avoids the warning without a suppression. */
-static void WINAPI CallGetSystemTimeAsFileTime(LPFILETIME fileTime);
+static void WINAPI WindowsClock_CallGetSystemTimeAsFileTime(LPFILETIME fileTime);
 
-WindowsGetSystemTimeAsFileTimeFn WindowsClock_GetSystemTimeAsFileTime = CallGetSystemTimeAsFileTime;
+WindowsGetSystemTimeAsFileTimeFn WindowsClock_GetSystemTimeAsFileTime = WindowsClock_CallGetSystemTimeAsFileTime;
 
-static void WINAPI CallGetSystemTimeAsFileTime(LPFILETIME fileTime)
+static void WINAPI WindowsClock_CallGetSystemTimeAsFileTime(LPFILETIME fileTime)
 {
     GetSystemTimeAsFileTime(fileTime);
 }
@@ -23,9 +23,9 @@ enum
     HUNDRED_NS_PER_SECOND = 10000000
 };
 
-static inline bool BreakDownFileTime(const FILETIME* fileTime, SYSTEMTIME* breakdown);
-static inline uint32_t MicrosecondsFromFileTime(const FILETIME* fileTime);
-static inline void PopulateTimestamp(
+static inline bool WindowsClock_BreakDownFileTime(const FILETIME* fileTime, SYSTEMTIME* breakdown);
+static inline uint32_t WindowsClock_MicrosecondsFromFileTime(const FILETIME* fileTime);
+static inline void WindowsClock_PopulateTimestamp(
     struct SolidSyslogTimestamp* timestamp,
     const SYSTEMTIME* breakdown,
     uint32_t microseconds
@@ -40,24 +40,24 @@ void SolidSyslogWindowsClock_GetTimestamp(struct SolidSyslogTimestamp* timestamp
 
     WindowsClock_GetSystemTimeAsFileTime(&fileTime);
 
-    if (BreakDownFileTime(&fileTime, &breakdown))
+    if (WindowsClock_BreakDownFileTime(&fileTime, &breakdown))
     {
-        PopulateTimestamp(timestamp, &breakdown, MicrosecondsFromFileTime(&fileTime));
+        WindowsClock_PopulateTimestamp(timestamp, &breakdown, WindowsClock_MicrosecondsFromFileTime(&fileTime));
     }
 }
 
-static inline bool BreakDownFileTime(const FILETIME* fileTime, SYSTEMTIME* breakdown)
+static inline bool WindowsClock_BreakDownFileTime(const FILETIME* fileTime, SYSTEMTIME* breakdown)
 {
     return FileTimeToSystemTime(fileTime, breakdown) != 0;
 }
 
-static inline uint32_t MicrosecondsFromFileTime(const FILETIME* fileTime)
+static inline uint32_t WindowsClock_MicrosecondsFromFileTime(const FILETIME* fileTime)
 {
     uint64_t hundredNs = ((uint64_t) fileTime->dwHighDateTime << 32) | (uint64_t) fileTime->dwLowDateTime;
     return (uint32_t) ((hundredNs % HUNDRED_NS_PER_SECOND) / HUNDRED_NS_PER_MICROSECOND);
 }
 
-static inline void PopulateTimestamp(
+static inline void WindowsClock_PopulateTimestamp(
     struct SolidSyslogTimestamp* timestamp,
     const SYSTEMTIME* breakdown,
     uint32_t microseconds

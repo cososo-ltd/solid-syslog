@@ -32,20 +32,30 @@ SOLIDSYSLOG_STATIC_ASSERT(
     "SOLIDSYSLOG_CIRCULARBUFFER_OVERHEAD does not match struct layout"
 );
 
-static bool Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead);
-static void Write(struct SolidSyslogBuffer* self, const void* data, size_t size);
+static bool CircularBuffer_Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead);
+static void CircularBuffer_Write(struct SolidSyslogBuffer* self, const void* data, size_t size);
 
-static inline bool IsEmpty(const struct SolidSyslogCircularBuffer* circular);
-static inline bool IsWrapped(const struct SolidSyslogCircularBuffer* circular);
-static inline bool HeadAtWrapPoint(const struct SolidSyslogCircularBuffer* circular);
-static inline bool RecordFitsAtTail(const struct SolidSyslogCircularBuffer* circular, size_t recordBytes);
-static inline bool RecordFitsAfterWrap(const struct SolidSyslogCircularBuffer* circular, size_t recordBytes);
-static inline void ResetToStart(struct SolidSyslogCircularBuffer* circular);
-static inline void WrapTail(struct SolidSyslogCircularBuffer* circular);
-static inline void ConsumeWrapMarker(struct SolidSyslogCircularBuffer* circular);
-static inline void StoreRecord(struct SolidSyslogCircularBuffer* circular, const void* data, size_t size);
-static inline void LoadRecord(struct SolidSyslogCircularBuffer* circular, void* data, size_t* bytesRead);
-static inline size_t PeekRecordSize(const struct SolidSyslogCircularBuffer* circular);
+static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer* circular);
+static inline bool CircularBuffer_IsWrapped(const struct SolidSyslogCircularBuffer* circular);
+static inline bool CircularBuffer_HeadAtWrapPoint(const struct SolidSyslogCircularBuffer* circular);
+static inline bool CircularBuffer_RecordFitsAtTail(
+    const struct SolidSyslogCircularBuffer* circular,
+    size_t recordBytes
+);
+static inline bool CircularBuffer_RecordFitsAfterWrap(
+    const struct SolidSyslogCircularBuffer* circular,
+    size_t recordBytes
+);
+static inline void CircularBuffer_ResetToStart(struct SolidSyslogCircularBuffer* circular);
+static inline void CircularBuffer_WrapTail(struct SolidSyslogCircularBuffer* circular);
+static inline void CircularBuffer_ConsumeWrapMarker(struct SolidSyslogCircularBuffer* circular);
+static inline void CircularBuffer_StoreRecord(
+    struct SolidSyslogCircularBuffer* circular,
+    const void* data,
+    size_t size
+);
+static inline void CircularBuffer_LoadRecord(struct SolidSyslogCircularBuffer* circular, void* data, size_t* bytesRead);
+static inline size_t CircularBuffer_PeekRecordSize(const struct SolidSyslogCircularBuffer* circular);
 
 struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     SolidSyslogCircularBufferStorage* storage,
@@ -54,11 +64,11 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
 )
 {
     struct SolidSyslogCircularBuffer* circular = (struct SolidSyslogCircularBuffer*) storage;
-    circular->base.Read = Read;
-    circular->base.Write = Write;
+    circular->base.Read = CircularBuffer_Read;
+    circular->base.Write = CircularBuffer_Write;
     circular->mutex = mutex;
     circular->capacity = storageBytes - sizeof(struct SolidSyslogCircularBuffer);
-    ResetToStart(circular);
+    CircularBuffer_ResetToStart(circular);
     return &circular->base;
 }
 
@@ -74,21 +84,21 @@ void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* buffer)
     circular->wrapPoint = 0;
 }
 
-static bool Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead)
+static bool CircularBuffer_Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead)
 {
     struct SolidSyslogCircularBuffer* circular = (struct SolidSyslogCircularBuffer*) self;
     SolidSyslogMutex_Lock(circular->mutex);
     *bytesRead = 0;
-    bool delivered = !IsEmpty(circular);
+    bool delivered = !CircularBuffer_IsEmpty(circular);
     if (delivered)
     {
-        if (HeadAtWrapPoint(circular))
+        if (CircularBuffer_HeadAtWrapPoint(circular))
         {
-            ConsumeWrapMarker(circular);
+            CircularBuffer_ConsumeWrapMarker(circular);
         }
-        if (PeekRecordSize(circular) <= maxSize)
+        if (CircularBuffer_PeekRecordSize(circular) <= maxSize)
         {
-            LoadRecord(circular, data, bytesRead);
+            CircularBuffer_LoadRecord(circular, data, bytesRead);
         }
         else
         {
@@ -99,95 +109,98 @@ static bool Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, siz
     return delivered;
 }
 
-static inline bool IsEmpty(const struct SolidSyslogCircularBuffer* circular)
+static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer* circular)
 {
     return circular->head == circular->tail;
 }
 
-static inline bool HeadAtWrapPoint(const struct SolidSyslogCircularBuffer* circular)
+static inline bool CircularBuffer_HeadAtWrapPoint(const struct SolidSyslogCircularBuffer* circular)
 {
     return circular->head >= circular->wrapPoint;
 }
 
-static inline void ConsumeWrapMarker(struct SolidSyslogCircularBuffer* circular)
+static inline void CircularBuffer_ConsumeWrapMarker(struct SolidSyslogCircularBuffer* circular)
 {
     circular->head = 0;
     circular->wrapPoint = circular->capacity;
 }
 
-static inline size_t PeekRecordSize(const struct SolidSyslogCircularBuffer* circular)
+static inline size_t CircularBuffer_PeekRecordSize(const struct SolidSyslogCircularBuffer* circular)
 {
     uint16_t header = 0;
     memcpy(&header, &circular->storage[circular->head], HEADER_BYTES);
     return header;
 }
 
-static inline void LoadRecord(struct SolidSyslogCircularBuffer* circular, void* data, size_t* bytesRead)
+static inline void CircularBuffer_LoadRecord(struct SolidSyslogCircularBuffer* circular, void* data, size_t* bytesRead)
 {
-    size_t recordSize = PeekRecordSize(circular);
+    size_t recordSize = CircularBuffer_PeekRecordSize(circular);
     memcpy(data, &circular->storage[circular->head + HEADER_BYTES], recordSize);
     circular->head += HEADER_BYTES + recordSize;
     *bytesRead = recordSize;
 }
 
-static void Write(struct SolidSyslogBuffer* self, const void* data, size_t size)
+static void CircularBuffer_Write(struct SolidSyslogBuffer* self, const void* data, size_t size)
 {
     struct SolidSyslogCircularBuffer* circular = (struct SolidSyslogCircularBuffer*) self;
     if (size <= SOLIDSYSLOG_MAX_MESSAGE_SIZE)
     {
         SolidSyslogMutex_Lock(circular->mutex);
-        if (IsEmpty(circular))
+        if (CircularBuffer_IsEmpty(circular))
         {
-            ResetToStart(circular);
+            CircularBuffer_ResetToStart(circular);
         }
         size_t recordBytes = HEADER_BYTES + size;
-        bool fitsAtTail = RecordFitsAtTail(circular, recordBytes);
-        bool shouldWrite = fitsAtTail || RecordFitsAfterWrap(circular, recordBytes);
+        bool fitsAtTail = CircularBuffer_RecordFitsAtTail(circular, recordBytes);
+        bool shouldWrite = fitsAtTail || CircularBuffer_RecordFitsAfterWrap(circular, recordBytes);
         if (shouldWrite)
         {
             if (!fitsAtTail)
             {
-                WrapTail(circular);
+                CircularBuffer_WrapTail(circular);
             }
-            StoreRecord(circular, data, size);
+            CircularBuffer_StoreRecord(circular, data, size);
         }
         SolidSyslogMutex_Unlock(circular->mutex);
     }
 }
 
-static inline bool IsWrapped(const struct SolidSyslogCircularBuffer* circular)
+static inline bool CircularBuffer_IsWrapped(const struct SolidSyslogCircularBuffer* circular)
 {
     return circular->head > circular->tail;
 }
 
-static inline bool RecordFitsAtTail(const struct SolidSyslogCircularBuffer* circular, size_t recordBytes)
+static inline bool CircularBuffer_RecordFitsAtTail(const struct SolidSyslogCircularBuffer* circular, size_t recordBytes)
 {
-    if (IsWrapped(circular))
+    if (CircularBuffer_IsWrapped(circular))
     {
         return circular->tail + recordBytes < circular->head;
     }
     return circular->tail + recordBytes <= circular->capacity;
 }
 
-static inline bool RecordFitsAfterWrap(const struct SolidSyslogCircularBuffer* circular, size_t recordBytes)
+static inline bool CircularBuffer_RecordFitsAfterWrap(
+    const struct SolidSyslogCircularBuffer* circular,
+    size_t recordBytes
+)
 {
-    return (!IsWrapped(circular)) && recordBytes < circular->head;
+    return (!CircularBuffer_IsWrapped(circular)) && recordBytes < circular->head;
 }
 
-static inline void ResetToStart(struct SolidSyslogCircularBuffer* circular)
+static inline void CircularBuffer_ResetToStart(struct SolidSyslogCircularBuffer* circular)
 {
     circular->head = 0;
     circular->tail = 0;
     circular->wrapPoint = circular->capacity;
 }
 
-static inline void WrapTail(struct SolidSyslogCircularBuffer* circular)
+static inline void CircularBuffer_WrapTail(struct SolidSyslogCircularBuffer* circular)
 {
     circular->wrapPoint = circular->tail;
     circular->tail = 0;
 }
 
-static inline void StoreRecord(struct SolidSyslogCircularBuffer* circular, const void* data, size_t size)
+static inline void CircularBuffer_StoreRecord(struct SolidSyslogCircularBuffer* circular, const void* data, size_t size)
 {
     uint16_t header = (uint16_t) size;
     memcpy(&circular->storage[circular->tail], &header, HEADER_BYTES);

@@ -8,11 +8,11 @@
    for static initialisation may trigger MSVC C4232 in some configurations;
    forwarding through a static function whose address IS a compile-time
    constant avoids the warning without a suppression. */
-static DWORD WINAPI CallGetCurrentProcessId(void);
+static DWORD WINAPI WindowsProcessId_CallGetCurrentProcessId(void);
 
-WindowsGetCurrentProcessIdFn WindowsProcessId_GetCurrentProcessId = CallGetCurrentProcessId;
+WindowsGetCurrentProcessIdFn WindowsProcessId_GetCurrentProcessId = WindowsProcessId_CallGetCurrentProcessId;
 
-static DWORD WINAPI CallGetCurrentProcessId(void)
+static DWORD WINAPI WindowsProcessId_CallGetCurrentProcessId(void)
 {
     return GetCurrentProcessId();
 }

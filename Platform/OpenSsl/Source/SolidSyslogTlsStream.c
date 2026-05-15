@@ -339,12 +339,12 @@ static inline bool TlsStream_ConfigureExpectedHostname(struct SolidSyslogTlsStre
     return ok;
 }
 
-static inline bool IsRetryableSslError(int err)
+static inline bool TlsStream_IsRetryableSslError(int err)
 {
     return (err == SSL_ERROR_WANT_READ) || (err == SSL_ERROR_WANT_WRITE);
 }
 
-static inline bool IsHandshakeBudgetExhausted(int totalSleptMs)
+static inline bool TlsStream_IsHandshakeBudgetExhausted(int totalSleptMs)
 {
     return totalSleptMs >= HANDSHAKE_TIMEOUT_MILLISECONDS;
 }
@@ -371,7 +371,7 @@ static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* strea
         else
         {
             int err = SSL_get_error(stream->ssl, rc);
-            if (!IsRetryableSslError(err) || IsHandshakeBudgetExhausted(totalSleptMs))
+            if (!TlsStream_IsRetryableSslError(err) || TlsStream_IsHandshakeBudgetExhausted(totalSleptMs))
             {
                 done = true;
             }

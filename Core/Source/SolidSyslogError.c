@@ -2,21 +2,21 @@
 
 #include <stddef.h>
 
-static void NoOpErrorHandler(void* context, enum SolidSyslogSeverity severity, const char* message)
+static void Error_NoOpErrorHandler(void* context, enum SolidSyslogSeverity severity, const char* message)
 {
     (void) context;
     (void) severity;
     (void) message;
 }
 
-static SolidSyslogErrorHandler currentHandler = NoOpErrorHandler;
+static SolidSyslogErrorHandler currentHandler = Error_NoOpErrorHandler;
 static void* currentContext = NULL;
 
 void SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context)
 {
     if (handler == NULL)
     {
-        handler = NoOpErrorHandler;
+        handler = Error_NoOpErrorHandler;
     }
     currentHandler = handler;
     currentContext = context;

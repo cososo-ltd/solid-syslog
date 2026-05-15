@@ -5,11 +5,11 @@
    for static initialisation may trigger MSVC C4232 in some configurations;
    forwarding through a static function whose address IS a compile-time
    constant avoids the warning without a suppression. */
-static ULONGLONG WINAPI CallGetTickCount64(void);
+static ULONGLONG WINAPI WindowsSysUpTime_CallGetTickCount64(void);
 
-WindowsGetTickCount64Fn WindowsSysUpTime_GetTickCount64 = CallGetTickCount64;
+WindowsGetTickCount64Fn WindowsSysUpTime_GetTickCount64 = WindowsSysUpTime_CallGetTickCount64;
 
-static ULONGLONG WINAPI CallGetTickCount64(void)
+static ULONGLONG WINAPI WindowsSysUpTime_CallGetTickCount64(void)
 {
     return GetTickCount64();
 }

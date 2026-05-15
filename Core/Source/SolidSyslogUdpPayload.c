@@ -8,9 +8,13 @@ enum
     UDP_HEADER_BYTES = 8
 };
 
-static inline size_t FindLastCodepointStart(const uint8_t* buffer, size_t length);
-static inline bool LastCodepointExtendsPastCut(const uint8_t* buffer, size_t length, size_t lastCodepointStart);
-static inline size_t ExpectedSequenceLength(uint8_t startByte);
+static inline size_t UdpPayload_FindLastCodepointStart(const uint8_t* buffer, size_t length);
+static inline bool UdpPayload_LastCodepointExtendsPastCut(
+    const uint8_t* buffer,
+    size_t length,
+    size_t lastCodepointStart
+);
+static inline size_t UdpPayload_ExpectedSequenceLength(uint8_t startByte);
 
 size_t SolidSyslogUdpPayload_FromMtu(size_t mtu, bool isIpv6)
 {
@@ -22,8 +26,8 @@ size_t SolidSyslogUdpPayload_TrimToCodepointBoundary(const uint8_t* buffer, size
 {
     if (length > 0)
     {
-        size_t lastCodepointStart = FindLastCodepointStart(buffer, length);
-        if (LastCodepointExtendsPastCut(buffer, length, lastCodepointStart))
+        size_t lastCodepointStart = UdpPayload_FindLastCodepointStart(buffer, length);
+        if (UdpPayload_LastCodepointExtendsPastCut(buffer, length, lastCodepointStart))
         {
             length = lastCodepointStart;
         }
@@ -31,7 +35,7 @@ size_t SolidSyslogUdpPayload_TrimToCodepointBoundary(const uint8_t* buffer, size
     return length;
 }
 
-static inline size_t FindLastCodepointStart(const uint8_t* buffer, size_t length)
+static inline size_t UdpPayload_FindLastCodepointStart(const uint8_t* buffer, size_t length)
 {
     size_t startIndex = length - 1;
     while (startIndex > 0 && SolidSyslogUtf8_IsContinuationByte((char) buffer[startIndex]))
@@ -41,14 +45,18 @@ static inline size_t FindLastCodepointStart(const uint8_t* buffer, size_t length
     return startIndex;
 }
 
-static inline bool LastCodepointExtendsPastCut(const uint8_t* buffer, size_t length, size_t lastCodepointStart)
+static inline bool UdpPayload_LastCodepointExtendsPastCut(
+    const uint8_t* buffer,
+    size_t length,
+    size_t lastCodepointStart
+)
 {
-    return (lastCodepointStart + ExpectedSequenceLength(buffer[lastCodepointStart])) > length;
+    return (lastCodepointStart + UdpPayload_ExpectedSequenceLength(buffer[lastCodepointStart])) > length;
 }
 
 /* 11110xxx is the only remaining pattern — invalid bytes never reach here
  * because the formatter (S12.10) guarantees valid UTF-8 upstream. */
-static inline size_t ExpectedSequenceLength(uint8_t startByte)
+static inline size_t UdpPayload_ExpectedSequenceLength(uint8_t startByte)
 {
     char b = (char) startByte;
     size_t length = 0;

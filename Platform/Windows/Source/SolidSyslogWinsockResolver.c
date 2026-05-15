@@ -13,10 +13,10 @@
    address IS a compile-time constant avoids the warning without a suppression. */
 static int WSAAPI
 CallGetAddrInfo(const char* node, const char* service, const struct addrinfo* hints, struct addrinfo** res);
-static void WSAAPI CallFreeAddrInfo(struct addrinfo* res);
+static void WSAAPI WinsockResolver_CallFreeAddrInfo(struct addrinfo* res);
 
 WinsockGetAddrInfoFn Winsock_getaddrinfo = CallGetAddrInfo;
-WinsockFreeAddrInfoFn Winsock_freeaddrinfo = CallFreeAddrInfo;
+WinsockFreeAddrInfoFn Winsock_freeaddrinfo = WinsockResolver_CallFreeAddrInfo;
 
 static int WSAAPI
 CallGetAddrInfo(const char* node, const char* service, const struct addrinfo* hints, struct addrinfo** res)
@@ -24,7 +24,7 @@ CallGetAddrInfo(const char* node, const char* service, const struct addrinfo* hi
     return getaddrinfo(node, service, hints, res);
 }
 
-static void WSAAPI CallFreeAddrInfo(struct addrinfo* res)
+static void WSAAPI WinsockResolver_CallFreeAddrInfo(struct addrinfo* res)
 {
     freeaddrinfo(res);
 }
@@ -34,14 +34,14 @@ enum
     GETADDRINFO_SUCCESS = 0
 };
 
-static bool Resolve(
+static bool WinsockResolver_Resolve(
     struct SolidSyslogResolver* self,
     enum SolidSyslogTransport transport,
     const char* host,
     uint16_t port,
     struct SolidSyslogAddress* result
 );
-static int MapTransport(enum SolidSyslogTransport transport);
+static int WinsockResolver_MapTransport(enum SolidSyslogTransport transport);
 
 struct SolidSyslogWinsockResolver
 {
@@ -52,7 +52,7 @@ static struct SolidSyslogWinsockResolver instance;
 
 struct SolidSyslogResolver* SolidSyslogWinsockResolver_Create(void)
 {
-    instance.base.Resolve = Resolve;
+    instance.base.Resolve = WinsockResolver_Resolve;
     return &instance.base;
 }
 
@@ -61,7 +61,7 @@ void SolidSyslogWinsockResolver_Destroy(void)
     instance.base.Resolve = NULL;
 }
 
-static bool Resolve(
+static bool WinsockResolver_Resolve(
     struct SolidSyslogResolver* self,
     enum SolidSyslogTransport transport,
     const char* host,
@@ -73,7 +73,7 @@ static bool Resolve(
 
     struct addrinfo hints = {0};
     hints.ai_family = AF_INET;
-    hints.ai_socktype = MapTransport(transport);
+    hints.ai_socktype = WinsockResolver_MapTransport(transport);
 
     struct addrinfo* info = NULL;
     bool resolved = false;
@@ -90,7 +90,7 @@ static bool Resolve(
     return resolved;
 }
 
-static int MapTransport(enum SolidSyslogTransport transport)
+static int WinsockResolver_MapTransport(enum SolidSyslogTransport transport)
 {
     int socktype = SOCK_DGRAM;
 

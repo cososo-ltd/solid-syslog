@@ -44,7 +44,7 @@ static size_t FreeRtosDatagram_MaxPayload(struct SolidSyslogDatagram* self);
 static void FreeRtosDatagram_Close(struct SolidSyslogDatagram* self);
 static inline FreeRtosDatagram* FreeRtosDatagram_From(struct SolidSyslogDatagram* self);
 static inline bool FreeRtosDatagram_IsOpen(const FreeRtosDatagram* datagram);
-static inline void PrimeArpIfMissing(uint32_t ip);
+static inline void FreeRtosDatagram_PrimeArpIfMissing(uint32_t ip);
 
 static const FreeRtosDatagram DEFAULT_INSTANCE = {
     {FreeRtosDatagram_Open, FreeRtosDatagram_SendTo, FreeRtosDatagram_MaxPayload, FreeRtosDatagram_Close},
@@ -97,7 +97,7 @@ static enum SolidSyslogDatagramSendResult FreeRtosDatagram_SendTo(
     if (FreeRtosDatagram_IsOpen(datagram))
     {
         const struct freertos_sockaddr* dest = SolidSyslogAddress_AsConstFreertosSockaddr(addr);
-        PrimeArpIfMissing(dest->sin_address.ulIP_IPv4);
+        FreeRtosDatagram_PrimeArpIfMissing(dest->sin_address.ulIP_IPv4);
         int32_t sent = FreeRTOS_sendto(datagram->socket, buffer, size, 0, dest, sizeof(*dest));
         if (sent > 0)
         {
@@ -113,7 +113,7 @@ static enum SolidSyslogDatagramSendResult FreeRtosDatagram_SendTo(
  * probe and yield once for the reply to land. If the reply hasn't arrived in
  * time the sendto is allowed to fail or be dropped — UDP is best-effort and
  * retry belongs in the store-and-forward layer above, not here. */
-static inline void PrimeArpIfMissing(uint32_t ip)
+static inline void FreeRtosDatagram_PrimeArpIfMissing(uint32_t ip)
 {
     if (xIsIPInARPCache(ip) == pdFALSE)
     {

@@ -6,14 +6,14 @@
 #include "SolidSyslogSecurityPolicyDefinition.h"
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- matches SecurityPolicy vtable signature
-static void NullComputeIntegrity(const uint8_t* data, uint16_t length, uint8_t* integrityOut)
+static void NullSecurityPolicy_NullComputeIntegrity(const uint8_t* data, uint16_t length, uint8_t* integrityOut)
 {
     (void) data;
     (void) length;
     (void) integrityOut;
 }
 
-static bool NullVerifyIntegrity(const uint8_t* data, uint16_t length, const uint8_t* integrityIn)
+static bool NullSecurityPolicy_NullVerifyIntegrity(const uint8_t* data, uint16_t length, const uint8_t* integrityIn)
 {
     (void) data;
     (void) length;
@@ -23,8 +23,8 @@ static bool NullVerifyIntegrity(const uint8_t* data, uint16_t length, const uint
 
 static struct SolidSyslogSecurityPolicy instance = {
     0,
-    NullComputeIntegrity,
-    NullVerifyIntegrity,
+    NullSecurityPolicy_NullComputeIntegrity,
+    NullSecurityPolicy_NullVerifyIntegrity,
 };
 
 struct SolidSyslogSecurityPolicy* SolidSyslogNullSecurityPolicy_Create(void)

@@ -42,23 +42,26 @@ struct SolidSyslogPosixTcpStream
     int fd;
 };
 
-static bool Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr);
-static bool Send(struct SolidSyslogStream* self, const void* buffer, size_t size);
-static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_t size);
-static void Close(struct SolidSyslogStream* self);
+static bool PosixTcpStream_Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr);
+static bool PosixTcpStream_Send(struct SolidSyslogStream* self, const void* buffer, size_t size);
+static SolidSyslogSsize PosixTcpStream_Read(struct SolidSyslogStream* self, void* buffer, size_t size);
+static void PosixTcpStream_Close(struct SolidSyslogStream* self);
 
-static int OpenAndConfigureSocket(void);
-static bool ConfigureSocket(int fd);
-static void EnableTcpNoDelay(int fd);
-static void EnableKeepalive(int fd);
-static bool SetNonBlocking(int fd);
-static inline bool IsFileDescriptorValid(int fd);
-static bool ConnectOrCloseOnFailure(struct SolidSyslogPosixTcpStream* stream, const struct sockaddr_in* sin);
-static bool Connect(int fd, const struct sockaddr_in* sin);
-static bool WaitForConnectCompletion(int fd);
-static bool ReadDeferredConnectError(int fd);
-static bool WroteAllBytes(ssize_t sent, size_t expected);
-static inline bool WouldBlock(void);
+static int PosixTcpStream_OpenAndConfigureSocket(void);
+static bool PosixTcpStream_ConfigureSocket(int fd);
+static void PosixTcpStream_EnableTcpNoDelay(int fd);
+static void PosixTcpStream_EnableKeepalive(int fd);
+static bool PosixTcpStream_SetNonBlocking(int fd);
+static inline bool PosixTcpStream_IsFileDescriptorValid(int fd);
+static bool PosixTcpStream_ConnectOrCloseOnFailure(
+    struct SolidSyslogPosixTcpStream* stream,
+    const struct sockaddr_in* sin
+);
+static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin);
+static bool PosixTcpStream_WaitForConnectCompletion(int fd);
+static bool PosixTcpStream_ReadDeferredConnectError(int fd);
+static bool PosixTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
+static inline bool PosixTcpStream_WouldBlock(void);
 
 SOLIDSYSLOG_STATIC_ASSERT(
     sizeof(struct SolidSyslogPosixTcpStream) <= SOLIDSYSLOG_POSIX_TCP_STREAM_SIZE,
@@ -66,7 +69,7 @@ SOLIDSYSLOG_STATIC_ASSERT(
 );
 
 static const struct SolidSyslogPosixTcpStream DEFAULT_INSTANCE = {
-    {Open, Send, Read, Close},
+    {PosixTcpStream_Open, PosixTcpStream_Send, PosixTcpStream_Read, PosixTcpStream_Close},
     INVALID_FD,
 };
 
@@ -85,31 +88,31 @@ struct SolidSyslogStream* SolidSyslogPosixTcpStream_Create(SolidSyslogPosixTcpSt
 void SolidSyslogPosixTcpStream_Destroy(struct SolidSyslogStream* stream)
 {
     struct SolidSyslogPosixTcpStream* self = (struct SolidSyslogPosixTcpStream*) stream;
-    Close(stream);
+    PosixTcpStream_Close(stream);
     *self = DESTROYED_INSTANCE;
 }
 
-static bool Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr)
+static bool PosixTcpStream_Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogPosixTcpStream* stream = (struct SolidSyslogPosixTcpStream*) self;
     const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
     bool connected = false;
 
-    stream->fd = OpenAndConfigureSocket();
-    if (IsFileDescriptorValid(stream->fd))
+    stream->fd = PosixTcpStream_OpenAndConfigureSocket();
+    if (PosixTcpStream_IsFileDescriptorValid(stream->fd))
     {
-        connected = ConnectOrCloseOnFailure(stream, sin);
+        connected = PosixTcpStream_ConnectOrCloseOnFailure(stream, sin);
     }
     return connected;
 }
 
 /* Non-blocking from the start: connect() reports EINPROGRESS, the wait is
- * bounded by select(), and Send/Read never block the service thread on a
+ * bounded by select(), and PosixTcpStream_Send/PosixTcpStream_Read never block the service thread on a
  * wedged peer or a full kernel send buffer. */
-static int OpenAndConfigureSocket(void)
+static int PosixTcpStream_OpenAndConfigureSocket(void)
 {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (IsFileDescriptorValid(fd) && !ConfigureSocket(fd))
+    if (PosixTcpStream_IsFileDescriptorValid(fd) && !PosixTcpStream_ConfigureSocket(fd))
     {
         close(fd);
         fd = INVALID_FD;
@@ -117,25 +120,25 @@ static int OpenAndConfigureSocket(void)
     return fd;
 }
 
-static bool ConfigureSocket(int fd)
+static bool PosixTcpStream_ConfigureSocket(int fd)
 {
-    EnableTcpNoDelay(fd);
-    EnableKeepalive(fd);
-    return SetNonBlocking(fd);
+    PosixTcpStream_EnableTcpNoDelay(fd);
+    PosixTcpStream_EnableKeepalive(fd);
+    return PosixTcpStream_SetNonBlocking(fd);
 }
 
-static void EnableTcpNoDelay(int fd)
+static void PosixTcpStream_EnableTcpNoDelay(int fd)
 {
     int enable = 1;
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
 }
 
 /* Enable kernel TCP keepalive so a dead peer is surfaced as ETIMEDOUT during
- * idle periods, not on the next Send. TCP_USER_TIMEOUT covers the orthogonal
+ * idle periods, not on the next PosixTcpStream_Send. TCP_USER_TIMEOUT covers the orthogonal
  * pending-write case (keepalive only fires on a fully idle socket). Linux is
  * the POSIX target — TCP_KEEP* and TCP_USER_TIMEOUT are all available there;
  * other POSIX targets are out of scope until we actually port to one. */
-static void EnableKeepalive(int fd)
+static void PosixTcpStream_EnableKeepalive(int fd)
 {
     int enable = 1;
     int idle = KEEPALIVE_IDLE_SECONDS;
@@ -150,20 +153,23 @@ static void EnableKeepalive(int fd)
     setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &userTimeout, sizeof(userTimeout));
 }
 
-static bool SetNonBlocking(int fd)
+static bool PosixTcpStream_SetNonBlocking(int fd)
 {
     int flags = fcntl(fd, F_GETFL, 0);
     return (flags >= 0) && (fcntl(fd, F_SETFL, flags | O_NONBLOCK) != -1);
 }
 
-static inline bool IsFileDescriptorValid(int fd)
+static inline bool PosixTcpStream_IsFileDescriptorValid(int fd)
 {
     return (fd >= 0);
 }
 
-static bool ConnectOrCloseOnFailure(struct SolidSyslogPosixTcpStream* stream, const struct sockaddr_in* sin)
+static bool PosixTcpStream_ConnectOrCloseOnFailure(
+    struct SolidSyslogPosixTcpStream* stream,
+    const struct sockaddr_in* sin
+)
 {
-    bool connected = Connect(stream->fd, sin);
+    bool connected = PosixTcpStream_Connect(stream->fd, sin);
     if (!connected)
     {
         close(stream->fd);
@@ -178,7 +184,7 @@ static bool ConnectOrCloseOnFailure(struct SolidSyslogPosixTcpStream* stream, co
  *                    CONNECT_TIMEOUT_MICROSECONDS, then read SO_ERROR to
  *                    distinguish completed-success from deferred-failure.
  *   -1 other    — immediate fail-fast (refused, unreachable, etc.). */
-static bool Connect(int fd, const struct sockaddr_in* sin)
+static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin)
 {
     bool connected = false;
     int rc = connect(fd, (const struct sockaddr*) sin, sizeof(*sin));
@@ -189,12 +195,12 @@ static bool Connect(int fd, const struct sockaddr_in* sin)
     }
     else if (errno == EINPROGRESS)
     {
-        connected = WaitForConnectCompletion(fd) && ReadDeferredConnectError(fd);
+        connected = PosixTcpStream_WaitForConnectCompletion(fd) && PosixTcpStream_ReadDeferredConnectError(fd);
     }
     return connected;
 }
 
-static bool WaitForConnectCompletion(int fd)
+static bool PosixTcpStream_WaitForConnectCompletion(int fd)
 {
     fd_set writeSet;
     FD_ZERO(&writeSet);
@@ -210,7 +216,7 @@ static bool WaitForConnectCompletion(int fd)
     return (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
 }
 
-static bool ReadDeferredConnectError(int fd)
+static bool PosixTcpStream_ReadDeferredConnectError(int fd)
 {
     int err = 0;
     socklen_t errlen = (socklen_t) sizeof(err);
@@ -218,27 +224,27 @@ static bool ReadDeferredConnectError(int fd)
     return (rc == 0) && (err == 0);
 }
 
-static bool Send(struct SolidSyslogStream* self, const void* buffer, size_t size)
+static bool PosixTcpStream_Send(struct SolidSyslogStream* self, const void* buffer, size_t size)
 {
     struct SolidSyslogPosixTcpStream* stream = (struct SolidSyslogPosixTcpStream*) self;
     ssize_t sent = send(stream->fd, buffer, size, MSG_NOSIGNAL);
-    bool ok = WroteAllBytes(sent, size);
+    bool ok = PosixTcpStream_WroteAllBytes(sent, size);
 
     if (!ok)
     {
-        Close(self);
+        PosixTcpStream_Close(self);
     }
     return ok;
 }
 
 /* Non-blocking single-call contract: short write or any error means the
  * connection is gone; the caller closes and reconnects on the next attempt. */
-static bool WroteAllBytes(ssize_t sent, size_t expected)
+static bool PosixTcpStream_WroteAllBytes(ssize_t sent, size_t expected)
 {
     return (sent >= 0) && ((size_t) sent == expected);
 }
 
-static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_t size)
+static SolidSyslogSsize PosixTcpStream_Read(struct SolidSyslogStream* self, void* buffer, size_t size)
 {
     struct SolidSyslogPosixTcpStream* stream = (struct SolidSyslogPosixTcpStream*) self;
     ssize_t n = recv(stream->fd, buffer, size, 0);
@@ -248,26 +254,26 @@ static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_
     {
         result = (SolidSyslogSsize) n;
     }
-    else if ((n < 0) && WouldBlock())
+    else if ((n < 0) && PosixTcpStream_WouldBlock())
     {
         result = 0;
     }
     else
     {
-        Close(self);
+        PosixTcpStream_Close(self);
     }
     return result;
 }
 
-static inline bool WouldBlock(void)
+static inline bool PosixTcpStream_WouldBlock(void)
 {
     return (errno == EAGAIN) || (errno == EWOULDBLOCK);
 }
 
-static void Close(struct SolidSyslogStream* self)
+static void PosixTcpStream_Close(struct SolidSyslogStream* self)
 {
     struct SolidSyslogPosixTcpStream* stream = (struct SolidSyslogPosixTcpStream*) self;
-    if (IsFileDescriptorValid(stream->fd))
+    if (PosixTcpStream_IsFileDescriptorValid(stream->fd))
     {
         close(stream->fd);
         stream->fd = INVALID_FD;

@@ -17,14 +17,14 @@ SOLIDSYSLOG_STATIC_ASSERT(
     "SOLIDSYSLOG_POSIXMUTEX_SIZE is too small for SolidSyslogPosixMutex layout"
 );
 
-static void Lock(struct SolidSyslogMutex* self);
-static void Unlock(struct SolidSyslogMutex* self);
+static void PosixMutex_Lock(struct SolidSyslogMutex* self);
+static void PosixMutex_Unlock(struct SolidSyslogMutex* self);
 
 struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(SolidSyslogPosixMutexStorage* storage)
 {
     struct SolidSyslogPosixMutex* posix = (struct SolidSyslogPosixMutex*) storage;
-    posix->base.Lock = Lock;
-    posix->base.Unlock = Unlock;
+    posix->base.Lock = PosixMutex_Lock;
+    posix->base.Unlock = PosixMutex_Unlock;
     pthread_mutex_init(&posix->mutex, NULL);
     return &posix->base;
 }
@@ -37,13 +37,13 @@ void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex* mutex)
     posix->base.Unlock = NULL;
 }
 
-static void Lock(struct SolidSyslogMutex* self)
+static void PosixMutex_Lock(struct SolidSyslogMutex* self)
 {
     struct SolidSyslogPosixMutex* posix = (struct SolidSyslogPosixMutex*) self;
     pthread_mutex_lock(&posix->mutex);
 }
 
-static void Unlock(struct SolidSyslogMutex* self)
+static void PosixMutex_Unlock(struct SolidSyslogMutex* self)
 {
     struct SolidSyslogPosixMutex* posix = (struct SolidSyslogPosixMutex*) self;
     pthread_mutex_unlock(&posix->mutex);

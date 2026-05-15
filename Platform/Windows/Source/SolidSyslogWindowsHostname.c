@@ -6,11 +6,11 @@
    for static initialisation may trigger MSVC C4232 in some configurations;
    forwarding through a static function whose address IS a compile-time
    constant avoids the warning without a suppression. */
-static BOOL WINAPI CallGetComputerNameExA(COMPUTER_NAME_FORMAT nameType, LPSTR buffer, LPDWORD size);
+static BOOL WINAPI WindowsHostname_CallGetComputerNameExA(COMPUTER_NAME_FORMAT nameType, LPSTR buffer, LPDWORD size);
 
-WindowsGetComputerNameExAFn WindowsHostname_GetComputerNameExA = CallGetComputerNameExA;
+WindowsGetComputerNameExAFn WindowsHostname_GetComputerNameExA = WindowsHostname_CallGetComputerNameExA;
 
-static BOOL WINAPI CallGetComputerNameExA(COMPUTER_NAME_FORMAT nameType, LPSTR buffer, LPDWORD size)
+static BOOL WINAPI WindowsHostname_CallGetComputerNameExA(COMPUTER_NAME_FORMAT nameType, LPSTR buffer, LPDWORD size)
 {
     return GetComputerNameExA(nameType, buffer, size);
 }

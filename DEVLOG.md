@@ -1,5 +1,91 @@
 # Dev Log
 
+## 2026-05-15 — S10.08 static-function `Class_` prefix sweep (#371)
+
+Resolved the static-function-prefix question that had been deferred
+since S08.03 (`feedback_static_name_prefix.md` /
+`project_naming_sweep_deferred.md`). Wide sweep — applied
+NAMING.md Tier 2 `Class_Function` form to all ~811 static functions
+across `Core/Source/` + `Platform/*/Source/`. Cleared all 168 MISRA
+5.9 collisions as a structural consequence.
+
+### Decisions
+
+- **Wide scope over narrow.** The audit's 168 figure counts only
+  the MISRA-5.9 colliders, but applying the prefix uniformly is
+  what NAMING.md Tier 2 actually says. Renaming only the
+  colliders would leave the rest of the tree as "MISRA-clean by
+  accident, prefix-inconsistent on purpose" — invites drift as
+  new files are added. Wide sweep is the only end state where
+  the rule is also the convention.
+
+- **Strip-only-`SolidSyslog` prefix-form rule.** `SolidSyslog<X>.c`
+  → `<X>_*`. So `SolidSyslogWinsockTcpStream.c` →
+  `WinsockTcpStream_*`, `SolidSyslogFreeRtosTcpStream.c` →
+  `FreeRtosTcpStream_*` (long, but unambiguous and mechanical).
+  Files whose basename already drops the library prefix
+  (`BlockSequence.c`, `RecordStore.c`) use the basename as-is.
+  Short-shorthand alternatives (`Tls_`, `FrTcp_`, `WinTcp_`)
+  rejected — every file would need a hand-picked prefix and the
+  choice would be unpredictable at the call site.
+
+- **`SolidSyslog.c` exception.** Strip rule yields an empty
+  prefix for the library-namespace file. Uses
+  `SolidSyslog_<Function>` for statics — same shape as Tier 1
+  whole-library API entry points (`SolidSyslog_Log`, etc.),
+  distinguished by `static` linkage. Zero collision risk since
+  only one file can have this name. Pre-rename audit verified
+  none of the 48 static names in `SolidSyslog.c` collide with
+  the 6 Tier 1 names (`Create`/`Destroy`/`Log`/`Service`/`Error`/
+  `SetErrorHandler`).
+
+- **Files already conformant left untouched as-is.** `TlsStream`
+  (50/52 already prefixed — fixed 2 stragglers
+  `IsRetryableSslError` + `IsHandshakeBudgetExhausted`),
+  `FreeRtosTcpStream` (38/38), `FatFsFile` (24/24),
+  `AtomicCounter` (2/2). Already-prefixed names not re-renamed.
+
+- **Two-pass sed methodology.**
+  - Pass 1: per-file extract static-function names, then
+    `s/\b<name>\b/<Prefix>_<name>/g` for each.
+  - Pass 2: un-mangle vtable-member accesses that Pass 1 also
+    renamed — `s/\.<X>_<Y>\b/.<Y>/g` and `s/-><X>_<Y>\b/-><Y>/g`.
+  - Designated-initialiser pattern `.Open = Open` lands correctly:
+    Pass 1 renames both sides; Pass 2 un-renames the left.
+  - Positional vtable init `{Open, Send, Read, Close}` also lands
+    correctly: Pass 1 renames every token (all are static-fn
+    names → prefixed RHS); Pass 2 doesn't match (no leading
+    `.`/`->`).
+
+- **Slice ordering.** Phase A (collision-heavy files) first — five
+  slices covering TcpStream / Datagram / Sender / Buffer / Store
+  layers — then Phase B (convention sweep over the rest). After
+  Phase A, MISRA 5.9 was already at 0; Phase B is pure Tier 2
+  conformance with no MISRA delta. The PR splits into 11 commits
+  for review tractability; collapses to one on squash.
+
+### Deferred
+
+- **Type-name consistency** (`SolidSyslog_FreeRtosDatagram` vs
+  `SolidSyslogFreeRtosDatagram` etc.) — still deferred per
+  `project_naming_sweep_deferred.md`. S10.08 only resolved the
+  static-function piece of that memory.
+
+- **File-scope `static` variables and constants.** Tier 2 says
+  `Class_Variable` / `CLASS_SCREAMING_SNAKE` for these; S10.08
+  scoped to functions only. The handful of file-scope statics
+  (`DEFAULT_INSTANCE`, `DESTROYED_INSTANCE`, `INSTANCE`, etc.)
+  in the renamed files were left as-is because they're already
+  SCREAMING_SNAKE constants — consistent with the `CLASS_` macro
+  convention applied at file scope. If a future sweep wants
+  `Class_DefaultInstance` instead, it slots in cleanly.
+
+### Open questions
+
+- None. The static-prefix piece of the deferred naming-sweep
+  question is resolved; memory `feedback_static_name_prefix.md`
+  + `project_naming_sweep_deferred.md` both updated to reflect.
+
 ## 2026-05-15 — S10.07 enum constants SCREAMING_SNAKE → Class_PascalCase (#369)
 
 First cross-cutting sweep of E10's S10.07+ block. Executes the **enum

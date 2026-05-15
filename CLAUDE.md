@@ -445,8 +445,9 @@ code should follow them; reviewers should call out drift.
 - **Intent-naming static-inline predicates.** When a composite condition is
   inlined into an `if` or a `return`, extract a `static inline bool IsXxx(...)`
   helper. The helper's *name* is the documentation. Examples:
-  `IsAboveThreshold`, `IsHandleAlreadyOpenOnBlock`, `IsValidBlockIndex`,
-  `BlockIsFull`, `StoreIsFull`. The cost (one extra named function) is the
+  `BlockSequence_IsAboveThreshold`, `FileBlockDevice_IsHandleAlreadyOpenOnBlock`,
+  `FileBlockDevice_IsValidBlockIndex`, `BlockSequence_BlockIsFull`,
+  `BlockSequence_StoreIsFull`. The cost (one extra named function) is the
   benefit (the reader doesn't have to decode the boolean).
 - **One thing at one level of abstraction.** Functions read top-down.
   `_Create` first, `_Destroy` second, public functions in API order, helpers
