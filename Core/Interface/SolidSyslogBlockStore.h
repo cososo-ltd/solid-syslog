@@ -16,9 +16,9 @@ EXTERN_C_BEGIN
 
     enum SolidSyslogDiscardPolicy
     {
-        SOLIDSYSLOG_DISCARD_OLDEST,
-        SOLIDSYSLOG_DISCARD_NEWEST,
-        SOLIDSYSLOG_HALT
+        SolidSyslogDiscardPolicy_Oldest,
+        SolidSyslogDiscardPolicy_Newest,
+        SolidSyslogDiscardPolicy_Halt
     };
 
     typedef void (*SolidSyslogStoreFullCallback)(void* context);
