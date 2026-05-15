@@ -32,20 +32,20 @@ enum
         UINT32_MAX_DECIMAL_DIGITS + OCTET_COUNTING_SEPARATOR + OCTET_COUNTING_NULL_TERMINATOR
 };
 
-static bool Send(struct SolidSyslogSender* self, const void* buffer, size_t size);
-static inline bool Reconcile(struct SolidSyslogStreamSender* sender);
-static inline void DisconnectIfStale(struct SolidSyslogStreamSender* sender);
-static inline bool EnsureConnected(struct SolidSyslogStreamSender* sender);
-static inline bool Connected(struct SolidSyslogStreamSender* sender);
-static bool Connect(struct SolidSyslogStreamSender* sender);
-static bool ResolveDestination(struct SolidSyslogStreamSender* sender, struct SolidSyslogAddress* addr);
-static void Disconnect(struct SolidSyslogSender* self);
-static inline void CloseStream(struct SolidSyslogStreamSender* sender);
-static bool TransmitFramed(struct SolidSyslogStreamSender* sender, const void* buffer, size_t size);
-static struct SolidSyslogFormatter* FormatOctetCountingPrefix(SolidSyslogFormatterStorage* storage, size_t messageSize);
-static bool SendBytes(struct SolidSyslogStreamSender* sender, const void* data, size_t len);
-static void NilEndpoint(struct SolidSyslogEndpoint* endpoint);
-static uint32_t NilEndpointVersion(void);
+static bool StreamSender_Send(struct SolidSyslogSender* self, const void* buffer, size_t size);
+static inline bool StreamSender_Reconcile(struct SolidSyslogStreamSender* sender);
+static inline void StreamSender_DisconnectIfStale(struct SolidSyslogStreamSender* sender);
+static inline bool StreamSender_EnsureConnected(struct SolidSyslogStreamSender* sender);
+static inline bool StreamSender_Connected(struct SolidSyslogStreamSender* sender);
+static bool StreamSender_Connect(struct SolidSyslogStreamSender* sender);
+static bool StreamSender_ResolveDestination(struct SolidSyslogStreamSender* sender, struct SolidSyslogAddress* addr);
+static void StreamSender_Disconnect(struct SolidSyslogSender* self);
+static inline void StreamSender_CloseStream(struct SolidSyslogStreamSender* sender);
+static bool StreamSender_TransmitFramed(struct SolidSyslogStreamSender* sender, const void* buffer, size_t size);
+static struct SolidSyslogFormatter* StreamSender_FormatOctetCountingPrefix(SolidSyslogFormatterStorage* storage, size_t messageSize);
+static bool StreamSender_SendBytes(struct SolidSyslogStreamSender* sender, const void* data, size_t len);
+static void StreamSender_NilEndpoint(struct SolidSyslogEndpoint* endpoint);
+static uint32_t StreamSender_NilEndpointVersion(void);
 
 SOLIDSYSLOG_STATIC_ASSERT(
     sizeof(struct SolidSyslogStreamSender) <= sizeof(SolidSyslogStreamSenderStorage),
@@ -53,15 +53,15 @@ SOLIDSYSLOG_STATIC_ASSERT(
 );
 
 static const struct SolidSyslogStreamSender DEFAULT_INSTANCE = {
-    {Send, Disconnect},
-    {NULL, NULL, NilEndpoint, NilEndpointVersion},
+    {StreamSender_Send, StreamSender_Disconnect},
+    {NULL, NULL, StreamSender_NilEndpoint, StreamSender_NilEndpointVersion},
     false,
     0,
 };
 
 static const struct SolidSyslogStreamSender DESTROYED_INSTANCE = {
     {NULL, NULL},
-    {NULL, NULL, NilEndpoint, NilEndpointVersion},
+    {NULL, NULL, StreamSender_NilEndpoint, StreamSender_NilEndpointVersion},
     false,
     0,
 };
@@ -89,57 +89,57 @@ struct SolidSyslogSender* SolidSyslogStreamSender_Create(
 void SolidSyslogStreamSender_Destroy(struct SolidSyslogSender* sender)
 {
     struct SolidSyslogStreamSender* self = (struct SolidSyslogStreamSender*) sender;
-    Disconnect(sender);
+    StreamSender_Disconnect(sender);
     *self = DESTROYED_INSTANCE;
 }
 
-static bool Send(struct SolidSyslogSender* self, const void* buffer, size_t size)
+static bool StreamSender_Send(struct SolidSyslogSender* self, const void* buffer, size_t size)
 {
     struct SolidSyslogStreamSender* sender = (struct SolidSyslogStreamSender*) self;
-    return Reconcile(sender) && TransmitFramed(sender, buffer, size);
+    return StreamSender_Reconcile(sender) && StreamSender_TransmitFramed(sender, buffer, size);
 }
 
-static inline bool Reconcile(struct SolidSyslogStreamSender* sender)
+static inline bool StreamSender_Reconcile(struct SolidSyslogStreamSender* sender)
 {
-    DisconnectIfStale(sender);
-    return EnsureConnected(sender);
+    StreamSender_DisconnectIfStale(sender);
+    return StreamSender_EnsureConnected(sender);
 }
 
-static inline void DisconnectIfStale(struct SolidSyslogStreamSender* sender)
+static inline void StreamSender_DisconnectIfStale(struct SolidSyslogStreamSender* sender)
 {
     uint32_t version = sender->config.endpointVersion();
 
     if (version != sender->lastEndpointVersion)
     {
-        Disconnect(&sender->base);
+        StreamSender_Disconnect(&sender->base);
         sender->lastEndpointVersion = version;
     }
 }
 
-static inline bool EnsureConnected(struct SolidSyslogStreamSender* sender)
+static inline bool StreamSender_EnsureConnected(struct SolidSyslogStreamSender* sender)
 {
-    return Connected(sender) || Connect(sender);
+    return StreamSender_Connected(sender) || StreamSender_Connect(sender);
 }
 
-static inline bool Connected(struct SolidSyslogStreamSender* sender)
+static inline bool StreamSender_Connected(struct SolidSyslogStreamSender* sender)
 {
     return sender->connected;
 }
 
-static bool Connect(struct SolidSyslogStreamSender* sender)
+static bool StreamSender_Connect(struct SolidSyslogStreamSender* sender)
 {
     SolidSyslogAddressStorage addrStorage = {0};
     struct SolidSyslogAddress* addr = SolidSyslogAddress_FromStorage(&addrStorage);
 
-    if (ResolveDestination(sender, addr))
+    if (StreamSender_ResolveDestination(sender, addr))
     {
         sender->connected = SolidSyslogStream_Open(sender->config.stream, addr);
     }
 
-    return Connected(sender);
+    return StreamSender_Connected(sender);
 }
 
-static bool ResolveDestination(struct SolidSyslogStreamSender* sender, struct SolidSyslogAddress* addr)
+static bool StreamSender_ResolveDestination(struct SolidSyslogStreamSender* sender, struct SolidSyslogAddress* addr)
 {
     SolidSyslogFormatterStorage hostStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(SOLIDSYSLOG_MAX_HOST_SIZE)];
     struct SolidSyslogFormatter* hostFormatter = SolidSyslogFormatter_Create(hostStorage, SOLIDSYSLOG_MAX_HOST_SIZE);
@@ -156,32 +156,32 @@ static bool ResolveDestination(struct SolidSyslogStreamSender* sender, struct So
     );
 }
 
-static void Disconnect(struct SolidSyslogSender* self)
+static void StreamSender_Disconnect(struct SolidSyslogSender* self)
 {
     struct SolidSyslogStreamSender* sender = (struct SolidSyslogStreamSender*) self;
 
-    if (Connected(sender))
+    if (StreamSender_Connected(sender))
     {
-        CloseStream(sender);
+        StreamSender_CloseStream(sender);
     }
 }
 
-static inline void CloseStream(struct SolidSyslogStreamSender* sender)
+static inline void StreamSender_CloseStream(struct SolidSyslogStreamSender* sender)
 {
     SolidSyslogStream_Close(sender->config.stream);
     sender->connected = false;
 }
 
-static bool TransmitFramed(struct SolidSyslogStreamSender* sender, const void* buffer, size_t size)
+static bool StreamSender_TransmitFramed(struct SolidSyslogStreamSender* sender, const void* buffer, size_t size)
 {
     SolidSyslogFormatterStorage prefixStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(OCTET_COUNTING_PREFIX_CAPACITY)];
-    struct SolidSyslogFormatter* prefix = FormatOctetCountingPrefix(prefixStorage, size);
+    struct SolidSyslogFormatter* prefix = StreamSender_FormatOctetCountingPrefix(prefixStorage, size);
 
-    return SendBytes(sender, SolidSyslogFormatter_AsFormattedBuffer(prefix), SolidSyslogFormatter_Length(prefix)) &&
-           SendBytes(sender, buffer, size);
+    return StreamSender_SendBytes(sender, SolidSyslogFormatter_AsFormattedBuffer(prefix), SolidSyslogFormatter_Length(prefix)) &&
+           StreamSender_SendBytes(sender, buffer, size);
 }
 
-static struct SolidSyslogFormatter* FormatOctetCountingPrefix(SolidSyslogFormatterStorage* storage, size_t messageSize)
+static struct SolidSyslogFormatter* StreamSender_FormatOctetCountingPrefix(SolidSyslogFormatterStorage* storage, size_t messageSize)
 {
     struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(storage, OCTET_COUNTING_PREFIX_CAPACITY);
     SolidSyslogFormatter_Uint32(f, (uint32_t) messageSize);
@@ -189,25 +189,25 @@ static struct SolidSyslogFormatter* FormatOctetCountingPrefix(SolidSyslogFormatt
     return f;
 }
 
-static bool SendBytes(struct SolidSyslogStreamSender* sender, const void* data, size_t len)
+static bool StreamSender_SendBytes(struct SolidSyslogStreamSender* sender, const void* data, size_t len)
 {
     bool sent = SolidSyslogStream_Send(sender->config.stream, data, len);
 
     if (!sent)
     {
-        CloseStream(sender);
+        StreamSender_CloseStream(sender);
     }
 
     return sent;
 }
 
-static void NilEndpoint(struct SolidSyslogEndpoint* endpoint)
+static void StreamSender_NilEndpoint(struct SolidSyslogEndpoint* endpoint)
 {
     SolidSyslogFormatter_BoundedString(endpoint->host, "", 0);
     endpoint->port = 0;
 }
 
-static uint32_t NilEndpointVersion(void)
+static uint32_t StreamSender_NilEndpointVersion(void)
 {
     return 0;
 }
