@@ -75,8 +75,20 @@ conformance.
 - **Anonymous-`enum` named constants** continue to use
   `SOLIDSYSLOG_*` SCREAMING_SNAKE — they're constants, not enum
   values, and the macro-style convention reads naturally for
-  things like `SOLIDSYSLOG_FORMATTER_STORAGE_SIZE`. Covered by
-  D.010 in `docs/misra-deviations.md`; nothing to do here.
+  things like `SOLIDSYSLOG_FORMATTER_STORAGE_SIZE`. D.010 covers
+  the MISRA-side 2.4 implications. The *clang-tidy* side of the
+  story still has 101 warnings on these idiomatic constants — the
+  prefix/case rules don't yet recognise the anonymous-enum idiom
+  as macro-equivalent. Recognised during S10.07 verification when
+  the tidy log went from "naming-clean for the 5 named enums" to
+  "still 101 warnings on the anonymous-enum idiom". `S10.05`'s
+  audit recorded the row as 252 with a single Fix verdict; the
+  honest after-state is 252 → 101 (named) + (anonymous unchanged).
+  `docs/misra-conformance.md` updated to reflect this. Needs its
+  own verdict — either tighten `.clang-tidy`'s enum-constant rule
+  to permit the anonymous-enum idiom, or rename them to a
+  class-prefixed PascalCase. Carried into the S10.07-sibling
+  ticket queue.
 
 ### Open questions
 

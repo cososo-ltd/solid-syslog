@@ -145,7 +145,10 @@ TEST(SolidSyslogPosixDatagram, SendToPassesAddrlenOfSockaddrIn)
 TEST(SolidSyslogPosixDatagram, SendToReturnsSentOnSuccess)
 {
     SolidSyslogDatagram_Open(datagram);
-    LONGS_EQUAL(SolidSyslogDatagramSendResult_Sent, SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
+    LONGS_EQUAL(
+        SolidSyslogDatagramSendResult_Sent,
+        SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr)
+    );
 }
 
 TEST(SolidSyslogPosixDatagram, SendToReturnsFailedOnSendtoFailure)

@@ -980,7 +980,13 @@ TEST(SolidSyslogBlockStoreRotation, OnStoreFullReceivesConfiguredContext)
     int sentinel = 0;
     storeFullCallbackContext = nullptr;
 
-    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SolidSyslogDiscardPolicy_Halt, 2, StoreFullCallbackCapturingContext, &sentinel);
+    CreateWithMaxBlockSize(
+        ONE_MAX_MSG_RECORD,
+        SolidSyslogDiscardPolicy_Halt,
+        2,
+        StoreFullCallbackCapturingContext,
+        &sentinel
+    );
 
     WriteMaxMsg(); /* file 00 */
     WriteMaxMsg(); /* file 01 — at maxBlocks */

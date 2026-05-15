@@ -23,12 +23,12 @@ EXTERN_C_END
  * Callers must bring CALLED_FAKE / ONCE / NEVER into scope with
  * `using namespace CososoTesting;` (existing convention in this codebase). */
 // NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ in test failure output
-#define CHECK_REPORTED_ERROR(expectedMessage)                                   \
-    do                                                                          \
-    {                                                                           \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                             \
+#define CHECK_REPORTED_ERROR(expectedMessage)                                    \
+    do                                                                           \
+    {                                                                            \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                              \
         LONGS_EQUAL(SolidSyslogSeverity_Error, ErrorHandlerFake_LastSeverity()); \
-        STRCMP_EQUAL((expectedMessage), ErrorHandlerFake_LastMessage());        \
+        STRCMP_EQUAL((expectedMessage), ErrorHandlerFake_LastMessage());         \
     } while (0)
 
 #define CHECK_NOTHING_REPORTED() CALLED_FAKE(ErrorHandlerFake_Handle, NEVER)
