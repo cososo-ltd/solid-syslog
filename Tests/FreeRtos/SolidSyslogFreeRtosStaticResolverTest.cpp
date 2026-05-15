@@ -28,7 +28,7 @@ TEST_GROUP(SolidSyslogFreeRtosStaticResolver)
         addr     = SolidSyslogAddress_FromStorage(&addrStorage);
     }
 
-    bool Resolve(const char* host = IGNORED_HOST, uint16_t port = TEST_PORT, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP)
+    bool Resolve(const char* host = IGNORED_HOST, uint16_t port = TEST_PORT, enum SolidSyslogTransport transport = SolidSyslogTransport_Udp)
     {
         return SolidSyslogResolver_Resolve(resolver, transport, host, port, addr);
     }
@@ -89,11 +89,11 @@ TEST(SolidSyslogFreeRtosStaticResolver, ResolveProducesSameIpv4ForAnyHostString)
 
 TEST(SolidSyslogFreeRtosStaticResolver, ResolveProducesSameIpv4ForUdpAndTcpTransport)
 {
-    Resolve(IGNORED_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_UDP);
+    Resolve(IGNORED_HOST, TEST_PORT, SolidSyslogTransport_Udp);
     uint32_t udpIpv4 = Result()->sin_address.ulIP_IPv4;
 
     addrStorage = {};
-    Resolve(IGNORED_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_TCP);
+    Resolve(IGNORED_HOST, TEST_PORT, SolidSyslogTransport_Tcp);
 
     LONGS_EQUAL(udpIpv4, Result()->sin_address.ulIP_IPv4);
 }

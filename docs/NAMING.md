@@ -94,7 +94,7 @@ void                SolidSyslog_Destroy(struct SolidSyslog* solidSyslog);
 void                SolidSyslog_Log(struct SolidSyslog* solidSyslog, ...);
 void                SolidSyslog_Service(struct SolidSyslog* solidSyslog);
 void                SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context);
-void                SolidSyslog_Error(SolidSyslog_Severity severity, const char* message);
+void                SolidSyslog_Error(SolidSyslogSeverity severity, const char* message);
 
 /* Tag names — note: tag, not typedef. See "No struct typedefs" below. */
 struct SolidSyslogBuffer
@@ -107,10 +107,8 @@ struct SolidSyslogSecurityPolicy
     /* ... */
 };
 
-/* Public enum constants follow the same prefix rule.
- * Note: this is a deliberate departure from the previous
- * SCREAMING_SNAKE convention. Constants now share the PascalCase
- * shape of the rest of Tier 1, which also disambiguates them from
+/* Public enum constants follow the same prefix rule. PascalCase
+ * (rather than SCREAMING_SNAKE) is what disambiguates them from
  * macros (rule 5.5). */
 enum SolidSyslogSeverity
 {

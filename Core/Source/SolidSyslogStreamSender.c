@@ -149,7 +149,7 @@ static bool ResolveDestination(struct SolidSyslogStreamSender* sender, struct So
 
     return SolidSyslogResolver_Resolve(
         sender->config.resolver,
-        SOLIDSYSLOG_TRANSPORT_TCP,
+        SolidSyslogTransport_Tcp,
         SolidSyslogFormatter_AsFormattedBuffer(hostFormatter),
         endpoint.port,
         addr

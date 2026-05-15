@@ -12,14 +12,14 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogDatagram;
 
-    /* Distinct outcomes of SendTo. OVERSIZE is reserved for the EMSGSIZE
+    /* Distinct outcomes of SendTo. Oversize is reserved for the EMSGSIZE
      * recovery path (S12.12) — implementations that cannot detect oversize
-     * collapse it into FAILED. */
+     * collapse it into Failed. */
     enum SolidSyslogDatagramSendResult
     {
-        SOLIDSYSLOG_DATAGRAM_SENT,
-        SOLIDSYSLOG_DATAGRAM_OVERSIZE,
-        SOLIDSYSLOG_DATAGRAM_FAILED
+        SolidSyslogDatagramSendResult_Sent,
+        SolidSyslogDatagramSendResult_Oversize,
+        SolidSyslogDatagramSendResult_Failed
     };
 
     bool SolidSyslogDatagram_Open(struct SolidSyslogDatagram * datagram);

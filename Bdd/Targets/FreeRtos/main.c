@@ -143,8 +143,8 @@ static uint16_t port = (uint16_t) BDD_TARGET_UDP_PORT;
 static uint32_t endpointVersion = 0U;
 
 static struct SolidSyslogMessage testMessage = {
-    .facility = SOLIDSYSLOG_FACILITY_LOCAL0,
-    .severity = SOLIDSYSLOG_SEVERITY_INFO,
+    .facility = SolidSyslogFacility_Local0,
+    .severity = SolidSyslogSeverity_Informational,
     .messageId = messageId,
     .msg = msg,
 };
@@ -340,7 +340,7 @@ static void GetAppName(struct SolidSyslogFormatter* formatter)
  * tzKnown=0, isSynced=0. SolidSyslogConfig.clock=NULL drops through to the
  * library's NilClock; the resulting all-zero SolidSyslogTimestamp fails
  * TimestampIsValid in Core/Source/SolidSyslog.c and emits "-" on the wire. */
-static void ErrorHandler(void* context, enum SolidSyslog_Severity severity, const char* message)
+static void ErrorHandler(void* context, enum SolidSyslogSeverity severity, const char* message)
 {
     (void) context;
     (void) printf("[solidsyslog] severity=%d %s\n", (int) severity, message);
@@ -410,7 +410,7 @@ static bool OnSet(const char* name, const char* value)
         {
             return false;
         }
-        testMessage.facility = (enum SolidSyslog_Facility) parsed;
+        testMessage.facility = (enum SolidSyslogFacility) parsed;
         return true;
     }
     if (strcmp(name, "severity") == 0)
@@ -420,7 +420,7 @@ static bool OnSet(const char* name, const char* value)
         {
             return false;
         }
-        testMessage.severity = (enum SolidSyslog_Severity) parsed;
+        testMessage.severity = (enum SolidSyslogSeverity) parsed;
         return true;
     }
     if (strcmp(name, "transport") == 0)
@@ -535,13 +535,13 @@ static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
 {
     if (strcmp(policy, "newest") == 0)
     {
-        return SOLIDSYSLOG_DISCARD_NEWEST;
+        return SolidSyslogDiscardPolicy_Newest;
     }
     if (strcmp(policy, "halt") == 0)
     {
-        return SOLIDSYSLOG_HALT;
+        return SolidSyslogDiscardPolicy_Halt;
     }
-    return SOLIDSYSLOG_DISCARD_OLDEST;
+    return SolidSyslogDiscardPolicy_Oldest;
 }
 
 static void OnStoreFull(void* context)

@@ -5,11 +5,11 @@
 #include "SolidSyslogError.h"
 
 static int handleCallCount;
-static enum SolidSyslog_Severity lastSeverity;
+static enum SolidSyslogSeverity lastSeverity;
 static const char* lastMessage;
 static const void* lastContext;
 
-static void Handle(void* context, enum SolidSyslog_Severity severity, const char* message)
+static void Handle(void* context, enum SolidSyslogSeverity severity, const char* message)
 {
     handleCallCount++;
     lastSeverity = severity;
@@ -20,7 +20,7 @@ static void Handle(void* context, enum SolidSyslog_Severity severity, const char
 void ErrorHandlerFake_Install(void* context)
 {
     handleCallCount = 0;
-    lastSeverity = SOLIDSYSLOG_SEVERITY_DEBUG;
+    lastSeverity = SolidSyslogSeverity_Debug;
     lastMessage = NULL;
     lastContext = NULL;
     SolidSyslog_SetErrorHandler(Handle, context);
@@ -36,7 +36,7 @@ int ErrorHandlerFake_HandleCallCount(void)
     return handleCallCount;
 }
 
-enum SolidSyslog_Severity ErrorHandlerFake_LastSeverity(void)
+enum SolidSyslogSeverity ErrorHandlerFake_LastSeverity(void)
 {
     return lastSeverity;
 }

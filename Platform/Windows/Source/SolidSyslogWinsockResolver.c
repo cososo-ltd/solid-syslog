@@ -94,7 +94,7 @@ static int MapTransport(enum SolidSyslogTransport transport)
 {
     int socktype = SOCK_DGRAM;
 
-    if (transport == SOLIDSYSLOG_TRANSPORT_TCP)
+    if (transport == SolidSyslogTransport_Tcp)
     {
         socktype = SOCK_STREAM;
     }

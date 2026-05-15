@@ -8,8 +8,8 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogMessage
     {
-        enum SolidSyslog_Facility facility;
-        enum SolidSyslog_Severity severity;
+        enum SolidSyslogFacility facility;
+        enum SolidSyslogSeverity severity;
         const char* messageId;
         const char* msg;
     };

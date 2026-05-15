@@ -306,7 +306,7 @@ TEST(ServiceDrainInterleave, DiscardNewestDoesNotLetNewestBypassOldestOnRecovery
         /*maxBlocks=*/2,
         /*maxBlockSize=*/200 /*will clamp up*/,
         /*payloadSize=*/SOLIDSYSLOG_MAX_MESSAGE_SIZE - 100U,
-        SOLIDSYSLOG_DISCARD_NEWEST
+        SolidSyslogDiscardPolicy_Newest
     };
     Setup(cfg);
 
@@ -377,7 +377,7 @@ TEST(ServiceDrainInterleave, DiscardNewestDoesNotLetNewestBypassOldestOnRecovery
  * we have the bug in our hands. */
 TEST(BlockStoreDrainOrdering, OutageDrainProducesAscendingSequenceIds)
 {
-    DrainTestConfig cfg = {/*maxBlocks=*/2, /*maxBlockSize=*/200, /*payloadSize=*/64, SOLIDSYSLOG_DISCARD_NEWEST};
+    DrainTestConfig cfg = {/*maxBlocks=*/2, /*maxBlockSize=*/200, /*payloadSize=*/64, SolidSyslogDiscardPolicy_Newest};
     CreateStore(cfg);
 
     /* Pre-outage send + drain — mirrors `When the client sends a message`

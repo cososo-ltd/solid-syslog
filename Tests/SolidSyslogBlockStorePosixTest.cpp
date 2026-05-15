@@ -69,7 +69,7 @@ TEST_GROUP(SolidSyslogBlockStorePosix)
         config.blockDevice   = device;
         config.maxBlockSize  = maxBlockSize;
         config.maxBlocks     = maxBlocks;
-        config.discardPolicy = SOLIDSYSLOG_DISCARD_OLDEST;
+        config.discardPolicy = SolidSyslogDiscardPolicy_Oldest;
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&storeStorage, &config);
     }

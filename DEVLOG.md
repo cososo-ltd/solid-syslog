@@ -1,5 +1,99 @@
 # Dev Log
 
+## 2026-05-15 — S10.07 enum constants SCREAMING_SNAKE → Class_PascalCase (#369)
+
+First cross-cutting sweep of E10's S10.07+ block. Executes the **enum
+constant** + **enum** rows from `docs/misra-conformance.md` (260
+sites). All five public named enums brought into NAMING.md Tier 1
+conformance.
+
+### Decisions
+
+- **"Class" in NAMING.md Tier 1 = the enum tag, not the owning
+  module.** When the user noticed that the rule produces verbose
+  names like `SolidSyslogDatagramSendResult_Sent` rather than
+  `SolidSyslogDatagram_Sent`, we paused before sweeping and weighed
+  the two readings:
+  - *Enum-tag form* (NAMING.md as written): every constant prefixed
+    with the enum's full tag. Uniform rule, MISRA 5.1 / 5.9
+    distinctness automatic, no per-enum judgment.
+  - *Owning-module form* (more terse): constants prefixed with the
+    file/module name. Reads shorter at call sites but invites
+    silent collisions with future module functions or sibling
+    enums on the same module.
+  Picked the enum-tag form. NAMING.md needs no rule change; the
+  worked example already uses `SolidSyslogSeverity_Emergency`.
+  Recorded for future contributors as the load-bearing
+  interpretation.
+
+- **Severity spelled in full words; Facility kept as RFC 5424
+  keyword codes.** Severity is short domain vocabulary that benefits
+  from being spelled out (matches NAMING.md's worked example —
+  `Emergency`, `Critical`, `Informational`). Facility values are
+  long-standing RFC keywords (`Lpr`, `Uucp`, `AuthPriv`,
+  `Cron`) — expanding them to full English words loses recognition
+  without buying clarity. The Tier 3 list of preserved domain
+  abbreviations in NAMING.md (FTP, NTP, …) supports keeping
+  facility codes as-is.
+
+- **Slice strategy.** Five separate commits — one per enum class,
+  smallest first (Transport → DatagramSendResult → DiscardPolicy →
+  Severity → Facility) — to keep blast radius bounded and reduce
+  sed-collision risk. After each slice: `git grep` residue check,
+  then `cmake --build --preset debug --target junit -j` (all 1122
+  tests, 2451 checks ran green at every slice). One PR squash-
+  merges to a single Conventional Commit.
+
+- **CLAUDE.md row updates inlined per slice rather than batched
+  to slice 6.** The library-headers table in CLAUDE.md mentions
+  both enum tags (`SolidSyslog_Facility`, `SolidSyslog_Severity`)
+  and the discard-policy constant names. Updating the row when its
+  enum was the active slice kept the diff cohesive and the residue
+  check honest. Slice 6 was reduced to NAMING.md de-historicising
+  + misra-conformance.md status flips + this DEVLOG entry.
+
+- **NAMING.md "deliberate departure from the previous SCREAMING_SNAKE
+  convention" comment trimmed.** That note was a transition hint
+  written before the sweep landed; now that the rename is in tree,
+  the note becomes historical residue. The worked-example block
+  itself (`SolidSyslogSeverity_Emergency`, etc.) stays — that's the
+  authoritative reference.
+
+### Deferred
+
+- **`.clang-tidy` tightening from `EnumConstantCase: aNy_CasE` →
+  `CamelCase`.** Currently the rule only enforces the `SolidSyslog`
+  prefix; the post-prefix shape is left to review + cppcheck-misra
+  5.1 distinctness. After the sweep we *could* tighten — every
+  constant is now CamelCase post-prefix — but doing so risks
+  diagnosing legitimately-named constants that happen to have a
+  trailing digit (`Local0`, `Local7`) under whatever interpretation
+  CamelCase uses for digit boundaries. Worth revisiting alongside
+  the S10.07-sibling data-member rename or as a small ticket
+  ahead of S10.18.
+
+- **Anonymous-`enum` named constants** continue to use
+  `SOLIDSYSLOG_*` SCREAMING_SNAKE — they're constants, not enum
+  values, and the macro-style convention reads naturally for
+  things like `SOLIDSYSLOG_FORMATTER_STORAGE_SIZE`. D.010 covers
+  the MISRA-side 2.4 implications. The *clang-tidy* side of the
+  story still has 101 warnings on these idiomatic constants — the
+  prefix/case rules don't yet recognise the anonymous-enum idiom
+  as macro-equivalent. Recognised during S10.07 verification when
+  the tidy log went from "naming-clean for the 5 named enums" to
+  "still 101 warnings on the anonymous-enum idiom". `S10.05`'s
+  audit recorded the row as 252 with a single Fix verdict; the
+  honest after-state is 252 → 101 (named) + (anonymous unchanged).
+  `docs/misra-conformance.md` updated to reflect this. Needs its
+  own verdict — either tighten `.clang-tidy`'s enum-constant rule
+  to permit the anonymous-enum idiom, or rename them to a
+  class-prefixed PascalCase. Carried into the S10.07-sibling
+  ticket queue.
+
+### Open questions
+
+- None.
+
 ## 2026-05-14 — S10.05 conformance audit + Tier policy lock-ins (#365)
 
 First story of E10's audit/decide phase. Generates fresh snapshots

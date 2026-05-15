@@ -33,11 +33,11 @@ struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSys
     struct SolidSyslogStructuredData* result = &NilMetaSd;
     if (config == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_METASD_CREATE_NULL_CONFIG);
+        SolidSyslog_Error(SolidSyslogSeverity_Warning, SOLIDSYSLOG_ERROR_MSG_METASD_CREATE_NULL_CONFIG);
     }
     else if (config->counter == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_METASD_CREATE_NULL_COUNTER);
+        SolidSyslog_Error(SolidSyslogSeverity_Warning, SOLIDSYSLOG_ERROR_MSG_METASD_CREATE_NULL_COUNTER);
     }
     else
     {

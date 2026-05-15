@@ -115,7 +115,7 @@ static enum SolidSyslogDatagramSendResult SendTo(
 )
 {
     struct SolidSyslogWinsockDatagram* datagram = (struct SolidSyslogWinsockDatagram*) self;
-    enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_FAILED;
+    enum SolidSyslogDatagramSendResult result = SolidSyslogDatagramSendResult_Failed;
     if (ConnectIfNeeded(datagram, addr))
     {
         const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
@@ -129,11 +129,11 @@ static enum SolidSyslogDatagramSendResult SendTo(
         );
         if (sent != SOCKET_ERROR)
         {
-            result = SOLIDSYSLOG_DATAGRAM_SENT;
+            result = SolidSyslogDatagramSendResult_Sent;
         }
         else if (WSAGetLastError() == WSAEMSGSIZE)
         {
-            result = SOLIDSYSLOG_DATAGRAM_OVERSIZE;
+            result = SolidSyslogDatagramSendResult_Oversize;
         }
     }
     return result;

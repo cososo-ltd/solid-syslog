@@ -11,8 +11,8 @@ EXTERN_C_BEGIN
 
     struct BddTargetOptions
     {
-        enum SolidSyslog_Facility facility;
-        enum SolidSyslog_Severity severity;
+        enum SolidSyslogFacility facility;
+        enum SolidSyslogSeverity severity;
         const char* messageId;
         const char* msg;
         const char* appName; /* --app-name (NULL: derive from argv[0]) */

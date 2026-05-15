@@ -39,8 +39,8 @@ static bool IsValidDiscardPolicy(const char* policy)
 
 int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* options)
 {
-    options->facility = SOLIDSYSLOG_FACILITY_LOCAL0;
-    options->severity = SOLIDSYSLOG_SEVERITY_INFO;
+    options->facility = SolidSyslogFacility_Local0;
+    options->severity = SolidSyslogSeverity_Informational;
     options->messageId = NULL;
     options->msg = NULL;
     options->appName = NULL;
@@ -76,10 +76,10 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
         switch (opt)
         {
             case 'f':
-                options->facility = (enum SolidSyslog_Facility) atoi(optarg);
+                options->facility = (enum SolidSyslogFacility) atoi(optarg);
                 break;
             case 's':
-                options->severity = (enum SolidSyslog_Severity) atoi(optarg);
+                options->severity = (enum SolidSyslogSeverity) atoi(optarg);
                 break;
             case 'i':
                 options->messageId = optarg;

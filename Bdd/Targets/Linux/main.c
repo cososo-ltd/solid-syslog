@@ -113,13 +113,13 @@ static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
 {
     if (strcmp(policy, "newest") == 0)
     {
-        return SOLIDSYSLOG_DISCARD_NEWEST;
+        return SolidSyslogDiscardPolicy_Newest;
     }
     if (strcmp(policy, "halt") == 0)
     {
-        return SOLIDSYSLOG_HALT;
+        return SolidSyslogDiscardPolicy_Halt;
     }
-    return SOLIDSYSLOG_DISCARD_OLDEST;
+    return SolidSyslogDiscardPolicy_Oldest;
 }
 
 static volatile bool haltExit;
