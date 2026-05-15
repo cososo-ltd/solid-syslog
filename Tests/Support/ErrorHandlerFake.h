@@ -9,7 +9,7 @@ EXTERN_C_BEGIN
     void ErrorHandlerFake_Install(void* context);
     void ErrorHandlerFake_Uninstall(void);
     int ErrorHandlerFake_HandleCallCount(void);
-    enum SolidSyslog_Severity ErrorHandlerFake_LastSeverity(void);
+    enum SolidSyslogSeverity ErrorHandlerFake_LastSeverity(void);
     const char* ErrorHandlerFake_LastMessage(void);
     const void* ErrorHandlerFake_LastContext(void);
 
@@ -27,7 +27,7 @@ EXTERN_C_END
     do                                                                          \
     {                                                                           \
         CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                             \
-        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERR, ErrorHandlerFake_LastSeverity()); \
+        LONGS_EQUAL(SolidSyslogSeverity_Error, ErrorHandlerFake_LastSeverity()); \
         STRCMP_EQUAL((expectedMessage), ErrorHandlerFake_LastMessage());        \
     } while (0)
 

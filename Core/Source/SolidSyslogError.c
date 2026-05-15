@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-static void NoOpErrorHandler(void* context, enum SolidSyslog_Severity severity, const char* message)
+static void NoOpErrorHandler(void* context, enum SolidSyslogSeverity severity, const char* message)
 {
     (void) context;
     (void) severity;
@@ -22,7 +22,7 @@ void SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context)
     currentContext = context;
 }
 
-void SolidSyslog_Error(enum SolidSyslog_Severity severity, const char* message)
+void SolidSyslog_Error(enum SolidSyslogSeverity severity, const char* message)
 {
     currentHandler(currentContext, severity, message);
 }

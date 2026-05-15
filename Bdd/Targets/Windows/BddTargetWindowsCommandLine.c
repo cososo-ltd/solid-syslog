@@ -39,7 +39,7 @@ static bool ParsePositiveSize(const char* text, size_t* out)
 void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetWindowsOptions* options)
 {
     options->facility = SOLIDSYSLOG_FACILITY_LOCAL0;
-    options->severity = SOLIDSYSLOG_SEVERITY_INFO;
+    options->severity = SolidSyslogSeverity_Informational;
     options->transport = "udp";
     options->messageId = NULL;
     options->msg = NULL;
@@ -60,7 +60,7 @@ void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetW
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--severity") == 0))
         {
-            options->severity = (enum SolidSyslog_Severity) atoi(argv[++i]);
+            options->severity = (enum SolidSyslogSeverity) atoi(argv[++i]);
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--msgid") == 0))
         {

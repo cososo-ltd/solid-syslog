@@ -33,16 +33,16 @@ EXTERN_C_BEGIN
         SOLIDSYSLOG_FACILITY_LOCAL7 = 23
     };
 
-    enum SolidSyslog_Severity
+    enum SolidSyslogSeverity
     {
-        SOLIDSYSLOG_SEVERITY_EMERG = 0,
-        SOLIDSYSLOG_SEVERITY_ALERT = 1,
-        SOLIDSYSLOG_SEVERITY_CRIT = 2,
-        SOLIDSYSLOG_SEVERITY_ERR = 3,
-        SOLIDSYSLOG_SEVERITY_WARNING = 4,
-        SOLIDSYSLOG_SEVERITY_NOTICE = 5,
-        SOLIDSYSLOG_SEVERITY_INFO = 6,
-        SOLIDSYSLOG_SEVERITY_DEBUG = 7
+        SolidSyslogSeverity_Emergency = 0,
+        SolidSyslogSeverity_Alert = 1,
+        SolidSyslogSeverity_Critical = 2,
+        SolidSyslogSeverity_Error = 3,
+        SolidSyslogSeverity_Warning = 4,
+        SolidSyslogSeverity_Notice = 5,
+        SolidSyslogSeverity_Informational = 6,
+        SolidSyslogSeverity_Debug = 7
     };
 
 EXTERN_C_END

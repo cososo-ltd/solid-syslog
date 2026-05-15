@@ -371,7 +371,7 @@ TEST_GROUP(SolidSyslog)
         config = {buffer, nullptr, nullptr, StringFake_GetHostname, StringFake_GetAppName, StringFake_GetProcessId, store, nullptr, 0};
         SolidSyslog_Create(&config);
         // cppcheck-suppress unreadVariable -- read via Log() through &message; cppcheck does not model CppUTest macros
-        message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFO, nullptr, nullptr};
+        message = {SOLIDSYSLOG_FACILITY_LOCAL0, SolidSyslogSeverity_Informational, nullptr, nullptr};
     }
 
     void teardown() override
@@ -425,7 +425,7 @@ TEST(SolidSyslog, FacilityAppearsInPrival)
 
 TEST(SolidSyslog, SeverityAppearsInPrival)
 {
-    message.severity = SOLIDSYSLOG_SEVERITY_CRIT;
+    message.severity = SolidSyslogSeverity_Critical;
     Log();
     CHECK_PRIVAL("<130>");
 }
@@ -446,14 +446,14 @@ TEST(SolidSyslog, HighestFacilityProducesCorrectPrival)
 
 TEST(SolidSyslog, LowestSeverityProducesCorrectPrival)
 {
-    message.severity = SOLIDSYSLOG_SEVERITY_EMERG;
+    message.severity = SolidSyslogSeverity_Emergency;
     Log();
     CHECK_PRIVAL("<128>");
 }
 
 TEST(SolidSyslog, HighestSeverityProducesCorrectPrival)
 {
-    message.severity = SOLIDSYSLOG_SEVERITY_DEBUG;
+    message.severity = SolidSyslogSeverity_Debug;
     Log();
     CHECK_PRIVAL("<135>");
 }
@@ -468,9 +468,9 @@ TEST(SolidSyslog, OutOfRangeFacilityProducesErrorPrival)
 
 TEST(SolidSyslog, OutOfRangeSeverityProducesErrorPrival)
 {
-    enum SolidSyslog_Severity invalid = SOLIDSYSLOG_SEVERITY_DEBUG;
+    enum SolidSyslogSeverity invalid = SolidSyslogSeverity_Debug;
     // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- intentionally testing out-of-range input
-    invalid = static_cast<enum SolidSyslog_Severity>(static_cast<int>(invalid) + 1);
+    invalid = static_cast<enum SolidSyslogSeverity>(static_cast<int>(invalid) + 1);
     message.severity = invalid;
     Log();
     CHECK_PRIVAL("<43>");
@@ -1258,7 +1258,7 @@ TEST(SolidSyslog, AllFieldsAtMaxLengthProducesValidMessage)
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     message.facility = SOLIDSYSLOG_FACILITY_LOCAL7;
-    message.severity = SOLIDSYSLOG_SEVERITY_DEBUG;
+    message.severity = SolidSyslogSeverity_Debug;
     Log();
     CHECK_PRIVAL("<191>");
     CHECK_TIMESTAMP("9999-12-31T23:59:59.999999+14:00");
@@ -1637,7 +1637,7 @@ TEST_GROUP(SolidSyslogLifecycle)
     {
         SolidSyslog_Destroy();
         // cppcheck-suppress unreadVariable -- read via Log() in tests; cppcheck does not model CppUTest macros
-        message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFO, nullptr, nullptr};
+        message = {SOLIDSYSLOG_FACILITY_LOCAL0, SolidSyslogSeverity_Informational, nullptr, nullptr};
         // cppcheck-suppress unreadVariable -- read via validConfig() in tests; cppcheck does not model CppUTest macros
         sender = SenderFake_Create();
         // cppcheck-suppress unreadVariable -- read via validConfig() in tests; cppcheck does not model CppUTest macros

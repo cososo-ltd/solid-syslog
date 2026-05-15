@@ -105,7 +105,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
     SolidSyslogConfig config = {buffer, fakeSender, nullptr, nullptr, nullptr, nullptr, nullStore, nullptr, 0};
     SolidSyslog_Create(&config);
 
-    SolidSyslogMessage message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFO, nullptr, nullptr};
+    SolidSyslogMessage message = {SOLIDSYSLOG_FACILITY_LOCAL0, SolidSyslogSeverity_Informational, nullptr, nullptr};
     SolidSyslog_Log(&message);
     SolidSyslog_Service();
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);

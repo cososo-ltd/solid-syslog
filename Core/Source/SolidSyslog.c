@@ -128,11 +128,11 @@ void SolidSyslog_Create(const struct SolidSyslogConfig* config)
 {
     if (instanceInitialised)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_CREATE_ALREADY_INITIALISED);
+        SolidSyslog_Error(SolidSyslogSeverity_Error, SOLIDSYSLOG_ERROR_MSG_CREATE_ALREADY_INITIALISED);
     }
     else if (config == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_CONFIG);
+        SolidSyslog_Error(SolidSyslogSeverity_Error, SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_CONFIG);
     }
     else
     {
@@ -158,7 +158,7 @@ static void InstallBuffer(struct SolidSyslogBuffer* configured)
 {
     if (configured == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_BUFFER);
+        SolidSyslog_Error(SolidSyslogSeverity_Error, SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_BUFFER);
     }
     else
     {
@@ -170,7 +170,7 @@ static void InstallSender(struct SolidSyslogSender* configured)
 {
     if (configured == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_SENDER);
+        SolidSyslog_Error(SolidSyslogSeverity_Error, SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_SENDER);
     }
     else
     {
@@ -182,7 +182,7 @@ static void InstallStore(struct SolidSyslogStore* configured)
 {
     if (configured == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_STORE);
+        SolidSyslog_Error(SolidSyslogSeverity_Error, SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_STORE);
     }
     else
     {
@@ -294,7 +294,7 @@ void SolidSyslog_Log(const struct SolidSyslogMessage* message)
 {
     if (message == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_LOG_NULL_MESSAGE);
+        SolidSyslog_Error(SolidSyslogSeverity_Error, SOLIDSYSLOG_ERROR_MSG_LOG_NULL_MESSAGE);
     }
     else
     {
@@ -340,7 +340,7 @@ static inline uint8_t MakePrival(const struct SolidSyslogMessage* message)
 {
     uint8_t f = (uint8_t) message->facility;
     uint8_t s = (uint8_t) message->severity;
-    uint8_t prival = CombineFacilityAndSeverity(SOLIDSYSLOG_FACILITY_SYSLOG, SOLIDSYSLOG_SEVERITY_ERR);
+    uint8_t prival = CombineFacilityAndSeverity(SOLIDSYSLOG_FACILITY_SYSLOG, SolidSyslogSeverity_Error);
 
     if (PrivalComponentsAreValid(f, s))
     {
@@ -367,7 +367,7 @@ static inline bool FacilityIsValid(uint8_t facility)
 
 static inline bool SeverityIsValid(uint8_t severity)
 {
-    return severity <= SOLIDSYSLOG_SEVERITY_DEBUG;
+    return severity <= SolidSyslogSeverity_Debug;
 }
 
 static inline void FormatTimestamp(struct SolidSyslogFormatter* f, SolidSyslogClockFunction clock)
@@ -583,7 +583,7 @@ static void NilBufferWrite(struct SolidSyslogBuffer* self, const void* data, siz
     if (nilBufferReportArmed)
     {
         nilBufferReportArmed = false;
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_NIL_BUFFER_USED);
+        SolidSyslog_Error(SolidSyslogSeverity_Error, SOLIDSYSLOG_ERROR_MSG_NIL_BUFFER_USED);
     }
 }
 
@@ -611,7 +611,7 @@ static bool NilSenderSend(struct SolidSyslogSender* self, const void* buffer, si
     if (nilSenderReportArmed)
     {
         nilSenderReportArmed = false;
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERR, SOLIDSYSLOG_ERROR_MSG_NIL_SENDER_USED);
+        SolidSyslog_Error(SolidSyslogSeverity_Error, SOLIDSYSLOG_ERROR_MSG_NIL_SENDER_USED);
     }
     return true;
 }

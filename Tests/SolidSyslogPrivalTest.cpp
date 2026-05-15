@@ -33,12 +33,12 @@ TEST(SolidSyslogPrival, FacilityEnumValuesMatchRfc5424)
 
 TEST(SolidSyslogPrival, SeverityEnumValuesMatchRfc5424)
 {
-    LONGS_EQUAL(0, SOLIDSYSLOG_SEVERITY_EMERG);
-    LONGS_EQUAL(1, SOLIDSYSLOG_SEVERITY_ALERT);
-    LONGS_EQUAL(2, SOLIDSYSLOG_SEVERITY_CRIT);
-    LONGS_EQUAL(3, SOLIDSYSLOG_SEVERITY_ERR);
-    LONGS_EQUAL(4, SOLIDSYSLOG_SEVERITY_WARNING);
-    LONGS_EQUAL(5, SOLIDSYSLOG_SEVERITY_NOTICE);
-    LONGS_EQUAL(6, SOLIDSYSLOG_SEVERITY_INFO);
-    LONGS_EQUAL(7, SOLIDSYSLOG_SEVERITY_DEBUG);
+    LONGS_EQUAL(0, SolidSyslogSeverity_Emergency);
+    LONGS_EQUAL(1, SolidSyslogSeverity_Alert);
+    LONGS_EQUAL(2, SolidSyslogSeverity_Critical);
+    LONGS_EQUAL(3, SolidSyslogSeverity_Error);
+    LONGS_EQUAL(4, SolidSyslogSeverity_Warning);
+    LONGS_EQUAL(5, SolidSyslogSeverity_Notice);
+    LONGS_EQUAL(6, SolidSyslogSeverity_Informational);
+    LONGS_EQUAL(7, SolidSyslogSeverity_Debug);
 }
