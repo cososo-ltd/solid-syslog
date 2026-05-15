@@ -6,8 +6,8 @@
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogSender.h"
 
-static bool Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead);
-static void Write(struct SolidSyslogBuffer* self, const void* data, size_t size);
+static bool NullBuffer_Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead);
+static void NullBuffer_Write(struct SolidSyslogBuffer* self, const void* data, size_t size);
 
 struct SolidSyslogNullBuffer
 {
@@ -19,8 +19,8 @@ static struct SolidSyslogNullBuffer instance;
 
 struct SolidSyslogBuffer* SolidSyslogNullBuffer_Create(struct SolidSyslogSender* sender)
 {
-    instance.base.Write = Write;
-    instance.base.Read = Read;
+    instance.base.Write = NullBuffer_Write;
+    instance.base.Read = NullBuffer_Read;
     instance.sender = sender;
     return &instance.base;
 }
@@ -32,7 +32,7 @@ void SolidSyslogNullBuffer_Destroy(void)
     instance.sender = NULL;
 }
 
-static bool Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead)
+static bool NullBuffer_Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead)
 {
     (void) self;
     (void) data;
@@ -41,7 +41,7 @@ static bool Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, siz
     return false;
 }
 
-static void Write(struct SolidSyslogBuffer* self, const void* data, size_t size)
+static void NullBuffer_Write(struct SolidSyslogBuffer* self, const void* data, size_t size)
 {
     struct SolidSyslogNullBuffer* nullBuffer = (struct SolidSyslogNullBuffer*) self;
     SolidSyslogSender_Send(nullBuffer->sender, data, size);
