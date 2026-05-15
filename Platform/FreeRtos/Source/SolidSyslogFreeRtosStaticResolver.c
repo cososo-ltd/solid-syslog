@@ -12,8 +12,8 @@ typedef struct SolidSyslogFreeRtosStaticResolver FreeRtosStaticResolver;
 
 struct SolidSyslogFreeRtosStaticResolver
 {
-    struct SolidSyslogResolver base;
-    uint8_t octets[4];
+    struct SolidSyslogResolver Base;
+    uint8_t Octets[4];
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
@@ -47,11 +47,11 @@ struct SolidSyslogResolver* SolidSyslogFreeRtosStaticResolver_Create(
 {
     FreeRtosStaticResolver* self = (FreeRtosStaticResolver*) storage;
     *self = DEFAULT_INSTANCE;
-    self->octets[0] = ipv4Octets[0];
-    self->octets[1] = ipv4Octets[1];
-    self->octets[2] = ipv4Octets[2];
-    self->octets[3] = ipv4Octets[3];
-    return &self->base;
+    self->Octets[0] = ipv4Octets[0];
+    self->Octets[1] = ipv4Octets[1];
+    self->Octets[2] = ipv4Octets[2];
+    self->Octets[3] = ipv4Octets[3];
+    return &self->Base;
 }
 
 void SolidSyslogFreeRtosStaticResolver_Destroy(struct SolidSyslogResolver* resolver)
@@ -80,6 +80,6 @@ static bool FreeRtosStaticResolver_Resolve(
     sockaddr->sin_family = FREERTOS_AF_INET;
     sockaddr->sin_port = (uint16_t) FreeRTOS_htons(port);
     sockaddr->sin_address.ulIP_IPv4 =
-        FreeRTOS_inet_addr_quick(me->octets[0], me->octets[1], me->octets[2], me->octets[3]);
+        FreeRTOS_inet_addr_quick(me->Octets[0], me->Octets[1], me->Octets[2], me->Octets[3]);
     return true;
 }

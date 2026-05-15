@@ -30,20 +30,20 @@ static int GetAddrInfoResolver_MapTransport(enum SolidSyslogTransport transport)
 
 struct SolidSyslogGetAddrInfoResolver
 {
-    struct SolidSyslogResolver base;
+    struct SolidSyslogResolver Base;
 };
 
 static struct SolidSyslogGetAddrInfoResolver instance;
 
 struct SolidSyslogResolver* SolidSyslogGetAddrInfoResolver_Create(void)
 {
-    instance.base.Resolve = GetAddrInfoResolver_Resolve;
-    return &instance.base;
+    instance.Base.Resolve = GetAddrInfoResolver_Resolve;
+    return &instance.Base;
 }
 
 void SolidSyslogGetAddrInfoResolver_Destroy(void)
 {
-    instance.base.Resolve = NULL;
+    instance.Base.Resolve = NULL;
 }
 
 static bool GetAddrInfoResolver_Resolve(

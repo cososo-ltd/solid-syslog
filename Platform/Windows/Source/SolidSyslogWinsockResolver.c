@@ -45,20 +45,20 @@ static int WinsockResolver_MapTransport(enum SolidSyslogTransport transport);
 
 struct SolidSyslogWinsockResolver
 {
-    struct SolidSyslogResolver base;
+    struct SolidSyslogResolver Base;
 };
 
 static struct SolidSyslogWinsockResolver instance;
 
 struct SolidSyslogResolver* SolidSyslogWinsockResolver_Create(void)
 {
-    instance.base.Resolve = WinsockResolver_Resolve;
-    return &instance.base;
+    instance.Base.Resolve = WinsockResolver_Resolve;
+    return &instance.Base;
 }
 
 void SolidSyslogWinsockResolver_Destroy(void)
 {
-    instance.base.Resolve = NULL;
+    instance.Base.Resolve = NULL;
 }
 
 static bool WinsockResolver_Resolve(

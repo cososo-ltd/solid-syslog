@@ -115,8 +115,8 @@ enum
 
 struct SolidSyslogWinsockTcpStream
 {
-    struct SolidSyslogStream base;
-    SOCKET fd;
+    struct SolidSyslogStream Base;
+    SOCKET Fd;
 };
 
 static bool WinsockTcpStream_Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr);
@@ -159,7 +159,7 @@ struct SolidSyslogStream* SolidSyslogWinsockTcpStream_Create(SolidSyslogWinsockT
 {
     struct SolidSyslogWinsockTcpStream* stream = (struct SolidSyslogWinsockTcpStream*) storage;
     *stream = DEFAULT_INSTANCE;
-    return &stream->base;
+    return &stream->Base;
 }
 
 void SolidSyslogWinsockTcpStream_Destroy(struct SolidSyslogStream* stream)
@@ -175,8 +175,8 @@ static bool WinsockTcpStream_Open(struct SolidSyslogStream* self, const struct S
     const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
     bool connected = false;
 
-    stream->fd = WinsockTcpStream_OpenAndConfigureSocket();
-    if (WinsockTcpStream_IsSocketValid(stream->fd))
+    stream->Fd = WinsockTcpStream_OpenAndConfigureSocket();
+    if (WinsockTcpStream_IsSocketValid(stream->Fd))
     {
         connected = WinsockTcpStream_ConnectOrCloseOnFailure(stream, sin);
     }
@@ -236,11 +236,11 @@ static bool WinsockTcpStream_ConnectOrCloseOnFailure(
     const struct sockaddr_in* sin
 )
 {
-    bool connected = WinsockTcpStream_Connect(stream->fd, sin);
+    bool connected = WinsockTcpStream_Connect(stream->Fd, sin);
     if (!connected)
     {
-        WinsockTcpStream_closesocket(stream->fd);
-        stream->fd = INVALID_SOCKET;
+        WinsockTcpStream_closesocket(stream->Fd);
+        stream->Fd = INVALID_SOCKET;
     }
     return connected;
 }
@@ -306,7 +306,7 @@ static bool WinsockTcpStream_ReadDeferredConnectError(SOCKET fd)
 static bool WinsockTcpStream_Send(struct SolidSyslogStream* self, const void* buffer, size_t size)
 {
     struct SolidSyslogWinsockTcpStream* stream = (struct SolidSyslogWinsockTcpStream*) self;
-    int sent = WinsockTcpStream_send(stream->fd, (const char*) buffer, (int) size, 0);
+    int sent = WinsockTcpStream_send(stream->Fd, (const char*) buffer, (int) size, 0);
     bool ok = WinsockTcpStream_WroteAllBytes(sent, size);
 
     if (!ok)
@@ -326,7 +326,7 @@ static bool WinsockTcpStream_WroteAllBytes(int sent, size_t expected)
 static SolidSyslogSsize WinsockTcpStream_Read(struct SolidSyslogStream* self, void* buffer, size_t size)
 {
     struct SolidSyslogWinsockTcpStream* stream = (struct SolidSyslogWinsockTcpStream*) self;
-    int n = WinsockTcpStream_recv(stream->fd, (char*) buffer, (int) size, 0);
+    int n = WinsockTcpStream_recv(stream->Fd, (char*) buffer, (int) size, 0);
     SolidSyslogSsize result = -1;
 
     if (n > 0)
@@ -352,9 +352,9 @@ static inline bool WinsockTcpStream_WouldBlock(int wsaError)
 static void WinsockTcpStream_Close(struct SolidSyslogStream* self)
 {
     struct SolidSyslogWinsockTcpStream* stream = (struct SolidSyslogWinsockTcpStream*) self;
-    if (WinsockTcpStream_IsSocketValid(stream->fd))
+    if (WinsockTcpStream_IsSocketValid(stream->Fd))
     {
-        WinsockTcpStream_closesocket(stream->fd);
-        stream->fd = INVALID_SOCKET;
+        WinsockTcpStream_closesocket(stream->Fd);
+        stream->Fd = INVALID_SOCKET;
     }
 }

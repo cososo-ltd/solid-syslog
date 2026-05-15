@@ -17,8 +17,8 @@ typedef struct SolidSyslogFreeRtosDatagram FreeRtosDatagram;
 
 struct SolidSyslogFreeRtosDatagram
 {
-    struct SolidSyslogDatagram base;
-    Socket_t socket;
+    struct SolidSyslogDatagram Base;
+    Socket_t Socket;
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
@@ -60,7 +60,7 @@ struct SolidSyslogDatagram* SolidSyslogFreeRtosDatagram_Create(SolidSyslogFreeRt
 {
     FreeRtosDatagram* datagram = (FreeRtosDatagram*) storage;
     *datagram = DEFAULT_INSTANCE;
-    return &datagram->base;
+    return &datagram->Base;
 }
 
 void SolidSyslogFreeRtosDatagram_Destroy(struct SolidSyslogDatagram* datagram)
@@ -80,7 +80,7 @@ static bool FreeRtosDatagram_Open(struct SolidSyslogDatagram* self)
     FreeRtosDatagram* datagram = FreeRtosDatagram_From(self);
     if (!FreeRtosDatagram_IsOpen(datagram))
     {
-        datagram->socket = FreeRTOS_socket(FREERTOS_AF_INET, FREERTOS_SOCK_DGRAM, FREERTOS_IPPROTO_UDP);
+        datagram->Socket = FreeRTOS_socket(FREERTOS_AF_INET, FREERTOS_SOCK_DGRAM, FREERTOS_IPPROTO_UDP);
     }
     return FreeRtosDatagram_IsOpen(datagram);
 }
@@ -98,7 +98,7 @@ static enum SolidSyslogDatagramSendResult FreeRtosDatagram_SendTo(
     {
         const struct freertos_sockaddr* dest = SolidSyslogAddress_AsConstFreertosSockaddr(addr);
         FreeRtosDatagram_PrimeArpIfMissing(dest->sin_address.ulIP_IPv4);
-        int32_t sent = FreeRTOS_sendto(datagram->socket, buffer, size, 0, dest, sizeof(*dest));
+        int32_t sent = FreeRTOS_sendto(datagram->Socket, buffer, size, 0, dest, sizeof(*dest));
         if (sent > 0)
         {
             result = SolidSyslogDatagramSendResult_Sent;
@@ -124,7 +124,7 @@ static inline void FreeRtosDatagram_PrimeArpIfMissing(uint32_t ip)
 
 static inline bool FreeRtosDatagram_IsOpen(const FreeRtosDatagram* datagram)
 {
-    return datagram->socket != FREERTOS_INVALID_SOCKET;
+    return datagram->Socket != FREERTOS_INVALID_SOCKET;
 }
 
 static size_t FreeRtosDatagram_MaxPayload(struct SolidSyslogDatagram* self)
@@ -138,8 +138,8 @@ static void FreeRtosDatagram_Close(struct SolidSyslogDatagram* self)
     FreeRtosDatagram* datagram = FreeRtosDatagram_From(self);
     if (FreeRtosDatagram_IsOpen(datagram))
     {
-        (void) FreeRTOS_closesocket(datagram->socket);
-        datagram->socket = FREERTOS_INVALID_SOCKET;
+        (void) FreeRTOS_closesocket(datagram->Socket);
+        datagram->Socket = FREERTOS_INVALID_SOCKET;
     }
 }
 
