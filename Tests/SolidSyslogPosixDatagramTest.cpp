@@ -145,7 +145,7 @@ TEST(SolidSyslogPosixDatagram, SendToPassesAddrlenOfSockaddrIn)
 TEST(SolidSyslogPosixDatagram, SendToReturnsSentOnSuccess)
 {
     SolidSyslogDatagram_Open(datagram);
-    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SENT, SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
+    LONGS_EQUAL(SolidSyslogDatagramSendResult_Sent, SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr));
 }
 
 TEST(SolidSyslogPosixDatagram, SendToReturnsFailedOnSendtoFailure)
@@ -153,7 +153,7 @@ TEST(SolidSyslogPosixDatagram, SendToReturnsFailedOnSendtoFailure)
     SolidSyslogDatagram_Open(datagram);
     SocketFake_SetSendtoFails(true);
     LONGS_EQUAL(
-        SOLIDSYSLOG_DATAGRAM_FAILED,
+        SolidSyslogDatagramSendResult_Failed,
         SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr)
     );
 }
@@ -210,7 +210,7 @@ TEST(SolidSyslogPosixDatagram, SendToReturnsOversizeOnEmsgsize)
     SolidSyslogDatagram_Open(datagram);
     SocketFake_FailNextSendtoWithErrno(EMSGSIZE);
     LONGS_EQUAL(
-        SOLIDSYSLOG_DATAGRAM_OVERSIZE,
+        SolidSyslogDatagramSendResult_Oversize,
         SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr)
     );
 }
@@ -244,7 +244,7 @@ TEST(SolidSyslogPosixDatagram, SendToReturnsFailedWhenConnectFails)
     SolidSyslogDatagram_Open(datagram);
     SocketFake_SetConnectFails(true);
     LONGS_EQUAL(
-        SOLIDSYSLOG_DATAGRAM_FAILED,
+        SolidSyslogDatagramSendResult_Failed,
         SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr)
     );
 }

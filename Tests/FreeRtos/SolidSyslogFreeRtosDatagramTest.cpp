@@ -89,7 +89,7 @@ TEST(SolidSyslogFreeRtosDatagram, MaxPayloadReturnsIpv6SafeDefault)
 TEST(SolidSyslogFreeRtosDatagram, SendToFailsBeforeOpen)
 {
     enum SolidSyslogDatagramSendResult result = SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
-    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_FAILED, result);
+    LONGS_EQUAL(SolidSyslogDatagramSendResult_Failed, result);
     CALLED_FAKE(FreeRtosSocketsFake_Sendto, NEVER);
 }
 
@@ -97,7 +97,7 @@ TEST(SolidSyslogFreeRtosDatagram, SendToFailsWhenSendtoErrors)
 {
     SolidSyslogDatagram_Open(datagram);
     FreeRtosSocketsFake_SetSendtoFails(true);
-    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_FAILED, SolidSyslogDatagram_SendTo(datagram, "x", 1, addr));
+    LONGS_EQUAL(SolidSyslogDatagramSendResult_Failed, SolidSyslogDatagram_SendTo(datagram, "x", 1, addr));
 }
 
 TEST(SolidSyslogFreeRtosDatagram, CloseClosesSocket)
@@ -113,7 +113,7 @@ TEST(SolidSyslogFreeRtosDatagram, SendToFailsAfterClose)
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_Close(datagram);
     enum SolidSyslogDatagramSendResult result = SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
-    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_FAILED, result);
+    LONGS_EQUAL(SolidSyslogDatagramSendResult_Failed, result);
     CALLED_FAKE(FreeRtosSocketsFake_Sendto, NEVER);
 }
 
@@ -155,7 +155,7 @@ TEST(SolidSyslogFreeRtosDatagram, SendToSendsBufferToDestinationAfterOpen)
     enum SolidSyslogDatagramSendResult result =
         SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
 
-    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SENT, result);
+    LONGS_EQUAL(SolidSyslogDatagramSendResult_Sent, result);
     CALLED_FAKE(FreeRtosSocketsFake_Sendto, ONCE);
     POINTERS_EQUAL(FreeRtosSocketsFake_LastSocketReturned(), FreeRtosSocketsFake_LastSendtoSocket());
     POINTERS_EQUAL(TEST_MESSAGE, FreeRtosSocketsFake_LastSendtoBuffer());

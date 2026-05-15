@@ -93,7 +93,7 @@ static enum SolidSyslogDatagramSendResult FreeRtosDatagram_SendTo(
 )
 {
     FreeRtosDatagram* datagram = FreeRtosDatagram_From(self);
-    enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_FAILED;
+    enum SolidSyslogDatagramSendResult result = SolidSyslogDatagramSendResult_Failed;
     if (FreeRtosDatagram_IsOpen(datagram))
     {
         const struct freertos_sockaddr* dest = SolidSyslogAddress_AsConstFreertosSockaddr(addr);
@@ -101,7 +101,7 @@ static enum SolidSyslogDatagramSendResult FreeRtosDatagram_SendTo(
         int32_t sent = FreeRTOS_sendto(datagram->socket, buffer, size, 0, dest, sizeof(*dest));
         if (sent > 0)
         {
-            result = SOLIDSYSLOG_DATAGRAM_SENT;
+            result = SolidSyslogDatagramSendResult_Sent;
         }
     }
     return result;

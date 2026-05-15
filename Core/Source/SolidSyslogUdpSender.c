@@ -211,11 +211,11 @@ static inline bool TransmitDatagram(struct SolidSyslogUdpSender* udp, const void
 {
     enum SolidSyslogDatagramSendResult result =
         SolidSyslogDatagram_SendTo(udp->config.datagram, buffer, size, Address(udp));
-    if (result == SOLIDSYSLOG_DATAGRAM_OVERSIZE)
+    if (result == SolidSyslogDatagramSendResult_Oversize)
     {
         result = RetryAfterOversize(udp, buffer, size);
     }
-    return result == SOLIDSYSLOG_DATAGRAM_SENT;
+    return result == SolidSyslogDatagramSendResult_Sent;
 }
 
 static inline enum SolidSyslogDatagramSendResult RetryAfterOversize(
@@ -229,15 +229,15 @@ static inline enum SolidSyslogDatagramSendResult RetryAfterOversize(
     size_t trimmed = SolidSyslogUdpPayload_TrimToCodepointBoundary((const uint8_t*) buffer, clipLimit);
     /* Default SENT swallows trimmed == 0 (path can't carry the message) so the
      * Service algorithm doesn't loop on an undeliverable. */
-    enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SENT;
+    enum SolidSyslogDatagramSendResult result = SolidSyslogDatagramSendResult_Sent;
     if (trimmed > 0)
     {
         result = SolidSyslogDatagram_SendTo(udp->config.datagram, buffer, trimmed, Address(udp));
-        if (result == SOLIDSYSLOG_DATAGRAM_OVERSIZE)
+        if (result == SolidSyslogDatagramSendResult_Oversize)
         {
             /* Retry still OVERSIZE means the kernel disagrees with its own
              * MaxPayload — swallow for the same reason. */
-            result = SOLIDSYSLOG_DATAGRAM_SENT;
+            result = SolidSyslogDatagramSendResult_Sent;
         }
     }
     return result;

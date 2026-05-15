@@ -16,7 +16,7 @@ EXTERN_C_BEGIN
     void DatagramFake_Destroy(struct SolidSyslogDatagram * datagram);
 
     /* Per-call SendTo result (0-based). Calls beyond the configured slots
-     * return SOLIDSYSLOG_DATAGRAM_SENT by default. */
+     * return SolidSyslogDatagramSendResult_Sent by default. */
     void DatagramFake_SetSendResult(
         struct SolidSyslogDatagram * datagram,
         int callIndex,
