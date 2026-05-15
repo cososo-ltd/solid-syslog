@@ -87,8 +87,8 @@ TEST_GROUP(SolidSyslogOriginSd)
     {
         formatter = SolidSyslogFormatter_Create(storage, TEST_BUFFER_SIZE);
         config = {};
-        config.software = "TestSoftware";
-        config.swVersion = "9.8.7";
+        config.Software = "TestSoftware";
+        config.SwVersion = "9.8.7";
         fakeIpCount = 0;
         sd = SolidSyslogOriginSd_Create(&config);
     }
@@ -102,15 +102,15 @@ TEST_GROUP(SolidSyslogOriginSd)
     void recreate(const char* software, const char* swVersion)
     {
         SolidSyslogOriginSd_Destroy();
-        config.software = software;
-        config.swVersion = swVersion;
+        config.Software = software;
+        config.SwVersion = swVersion;
         sd = SolidSyslogOriginSd_Create(&config);
     }
 
     void useEnterpriseId(const char* enterpriseId)
     {
         SolidSyslogOriginSd_Destroy();
-        config.enterpriseId = enterpriseId;
+        config.EnterpriseId = enterpriseId;
         sd = SolidSyslogOriginSd_Create(&config);
     }
 
@@ -123,8 +123,8 @@ TEST_GROUP(SolidSyslogOriginSd)
         {
             fakeIps.at(i++) = ip;
         }
-        config.getIpCount = FakeIpCount;
-        config.getIpAt = FakeIpAt;
+        config.GetIpCount = FakeIpCount;
+        config.GetIpAt = FakeIpAt;
         sd = SolidSyslogOriginSd_Create(&config);
     }
 
@@ -422,8 +422,8 @@ TEST(SolidSyslogOriginSd, IpContainingSpecialsIsEscaped)
 TEST(SolidSyslogOriginSd, GetIpCountSetButGetIpAtNullOmitsIpParams)
 {
     SolidSyslogOriginSd_Destroy();
-    config.getIpCount = FakeIpCount;
-    config.getIpAt = nullptr;
+    config.GetIpCount = FakeIpCount;
+    config.GetIpAt = nullptr;
     sd = SolidSyslogOriginSd_Create(&config);
     resetFormatter();
     format();
@@ -436,8 +436,8 @@ TEST(SolidSyslogOriginSd, GetIpCountSetButGetIpAtNullOmitsIpParams)
 TEST(SolidSyslogOriginSd, GetIpAtSetButGetIpCountNullOmitsIpParams)
 {
     SolidSyslogOriginSd_Destroy();
-    config.getIpCount = nullptr;
-    config.getIpAt = FakeIpAt;
+    config.GetIpCount = nullptr;
+    config.GetIpAt = FakeIpAt;
     sd = SolidSyslogOriginSd_Create(&config);
     resetFormatter();
     format();
@@ -461,8 +461,8 @@ TEST(SolidSyslogOriginSd, AllFourParamsTogether)
 
 TEST(SolidSyslogOriginSd, EnterpriseIdOnlyNoStaticNoIps)
 {
-    config.software = nullptr;
-    config.swVersion = nullptr;
+    config.Software = nullptr;
+    config.SwVersion = nullptr;
     useEnterpriseId("1.3.6.1.4.1.12345");
     resetFormatter();
     format();
@@ -471,8 +471,8 @@ TEST(SolidSyslogOriginSd, EnterpriseIdOnlyNoStaticNoIps)
 
 TEST(SolidSyslogOriginSd, IpsOnlyNoStatic)
 {
-    config.software = nullptr;
-    config.swVersion = nullptr;
+    config.Software = nullptr;
+    config.SwVersion = nullptr;
     useIps({"192.0.2.1"});
     resetFormatter();
     format();
@@ -481,8 +481,8 @@ TEST(SolidSyslogOriginSd, IpsOnlyNoStatic)
 
 TEST(SolidSyslogOriginSd, EnterpriseIdAndIpsNoSoftwareSwVersion)
 {
-    config.software = nullptr;
-    config.swVersion = nullptr;
+    config.Software = nullptr;
+    config.SwVersion = nullptr;
     useEnterpriseId("1.3.6.1.4.1.12345");
     useIps({"192.0.2.1"});
     resetFormatter();

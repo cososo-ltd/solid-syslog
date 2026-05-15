@@ -306,18 +306,18 @@ int BddTargetWindows_Run(int argc, char* argv[])
     struct SolidSyslogBuffer* buffer = SolidSyslogCircularBuffer_Create(bufferStorage, sizeof(bufferStorage), mutex);
     struct SolidSyslogAtomicCounter* counter = SolidSyslogAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
-        .counter = counter,
-        .getSysUpTime = SolidSyslogWindowsSysUpTime_Get,
-        .getLanguage = BddTargetLanguage_Get,
+        .Counter = counter,
+        .GetSysUpTime = SolidSyslogWindowsSysUpTime_Get,
+        .GetLanguage = BddTargetLanguage_Get,
     };
     struct SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     struct SolidSyslogStructuredData* timeQuality = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
     struct SolidSyslogOriginSdConfig originConfig = {
-        .software = "SolidSyslogBddTarget",
-        .swVersion = "0.7.0",
-        .enterpriseId = BDD_TARGET_ENTERPRISE_ID,
-        .getIpCount = BddTargetIps_Count,
-        .getIpAt = BddTargetIps_At,
+        .Software = "SolidSyslogBddTarget",
+        .SwVersion = "0.7.0",
+        .EnterpriseId = BDD_TARGET_ENTERPRISE_ID,
+        .GetIpCount = BddTargetIps_Count,
+        .GetIpAt = BddTargetIps_At,
     };
     struct SolidSyslogStructuredData* originSd = SolidSyslogOriginSd_Create(&originConfig);
 

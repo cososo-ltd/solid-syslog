@@ -634,7 +634,7 @@ TEST(SolidSyslog, MetaSdProducesSequenceIdInStructuredData)
 {
     SolidSyslogAtomicCounter* counter = SolidSyslogAtomicCounter_Create();
     SolidSyslogMetaSdConfig metaConfig{};
-    metaConfig.counter = counter;
+    metaConfig.Counter = counter;
     SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     SolidSyslogStructuredData* sdList[] = {metaSd};
     config.sd = sdList;
@@ -651,7 +651,7 @@ TEST(SolidSyslog, MetaSdSequenceIdIncrementsAcrossLogCalls)
 {
     SolidSyslogAtomicCounter* counter = SolidSyslogAtomicCounter_Create();
     SolidSyslogMetaSdConfig metaConfig{};
-    metaConfig.counter = counter;
+    metaConfig.Counter = counter;
     SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     SolidSyslogStructuredData* sdList[] = {metaSd};
     config.sd = sdList;
@@ -669,7 +669,7 @@ TEST(SolidSyslog, MsgFieldPreservedWithMetaSd)
 {
     SolidSyslogAtomicCounter* counter = SolidSyslogAtomicCounter_Create();
     SolidSyslogMetaSdConfig metaConfig{};
-    metaConfig.counter = counter;
+    metaConfig.Counter = counter;
     SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     SolidSyslogStructuredData* sdList[] = {metaSd};
     config.sd = sdList;
@@ -731,7 +731,7 @@ TEST(SolidSyslog, MetaSdAndTimeQualitySdCoexistInSdArray)
 {
     SolidSyslogAtomicCounter* counter = SolidSyslogAtomicCounter_Create();
     SolidSyslogMetaSdConfig metaConfig{};
-    metaConfig.counter = counter;
+    metaConfig.Counter = counter;
     SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     SolidSyslogStructuredData* timeQuality = SolidSyslogTimeQualitySd_Create(IntegrationGetTimeQuality);
     SolidSyslogStructuredData* sdList[] = {metaSd, timeQuality};

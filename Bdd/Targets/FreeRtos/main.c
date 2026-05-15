@@ -836,18 +836,18 @@ static void InteractiveTask(void* argument)
 
     atomicCounter = SolidSyslogAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
-        .counter = atomicCounter,
-        .getSysUpTime = SolidSyslogFreeRtosSysUpTime_Get,
-        .getLanguage = BddTargetLanguage_Get,
+        .Counter = atomicCounter,
+        .GetSysUpTime = SolidSyslogFreeRtosSysUpTime_Get,
+        .GetLanguage = BddTargetLanguage_Get,
     };
     metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     timeQualitySd = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
     struct SolidSyslogOriginSdConfig originConfig = {
-        .software = "SolidSyslogBddTarget",
-        .swVersion = "0.7.0",
-        .enterpriseId = BDD_TARGET_ENTERPRISE_ID,
-        .getIpCount = BddTargetIps_Count,
-        .getIpAt = BddTargetIps_At,
+        .Software = "SolidSyslogBddTarget",
+        .SwVersion = "0.7.0",
+        .EnterpriseId = BDD_TARGET_ENTERPRISE_ID,
+        .GetIpCount = BddTargetIps_Count,
+        .GetIpAt = BddTargetIps_At,
     };
     originSd = SolidSyslogOriginSd_Create(&originConfig);
     sdList[0] = metaSd;
