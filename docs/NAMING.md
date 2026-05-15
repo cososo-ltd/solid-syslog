@@ -184,6 +184,33 @@ Rationale:
 - One class per translation unit is the norm; if a `.c` file contains
   helpers for two classes, use both prefixes accordingly.
 
+### Picking the `Class_` prefix from the filename
+
+For source files matching `SolidSyslog<X>.c`, the Tier 2 class prefix
+is `<X>_` — the filename with the `SolidSyslog` library namespace
+stripped. So `SolidSyslogTlsStream.c` → `TlsStream_*`,
+`SolidSyslogFreeRtosTcpStream.c` → `FreeRtosTcpStream_*`,
+`SolidSyslogWinsockTcpStream.c` → `WinsockTcpStream_*`. Files whose
+basename already drops the library prefix (e.g. `BlockSequence.c`,
+`RecordStore.c`) use the basename as the class verbatim →
+`BlockSequence_*`, `RecordStore_*`.
+
+The strip-only rule is mechanical and predictable; short-shorthand
+prefixes (e.g. `Tls_`, `FrTcp_`, `WinTcp_`) were considered and
+rejected — every file would need a hand-picked prefix, the choice
+would be hard to predict at a call site, and the convention would
+be harder to enforce going forward.
+
+#### The `SolidSyslog.c` exception
+
+`Core/Source/SolidSyslog.c` is the one file where the strip rule
+yields an empty prefix (the file *is* the library namespace).
+Statics in this file use **`SolidSyslog_<Function>`** — the same
+shape as Tier 1 whole-library API entry points (`SolidSyslog_Log`,
+`SolidSyslog_Service`, etc.). Linkage (`static`) distinguishes them
+at definition; collision risk is zero because only one file can
+ever be named `SolidSyslog.c`.
+
 ### When a Tier 2 tag DOES carry the `SolidSyslog` prefix
 
 The implementation struct that corresponds to a Tier 1 opaque type

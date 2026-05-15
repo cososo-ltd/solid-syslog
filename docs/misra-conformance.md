@@ -97,7 +97,7 @@ Each row carries the cppcheck addon's count. The verdict reflects how the rule s
 
 | Rule | Count | What it asks | Top sites | Verdict | Rationale | Owner |
 |------|------:|--------------|-----------|---------|-----------|-------|
-| **5.9** (advisory) | 168 | Identifiers with internal linkage shall be unique | `SolidSyslogWinsockTcpStream.c` (21), `SolidSyslogPosixTcpStream.c` (16), `SolidSyslogUdpSender.c` (12) | **Fix** | These are `static` helpers reusing common names (`Write`, `Read`, `Open`, etc.) across TUs. Sweep target — rename to `Class_Function` per NAMING.md Tier 2 (Stream_Write, TcpStream_Write, etc.). | **S10.08** (already named: "Static-function `Class_` prefix sweep") |
+| **5.9** (advisory) | 168 → 0 *(landed in S10.08)* | Identifiers with internal linkage shall be unique | `SolidSyslogWinsockTcpStream.c` (21), `SolidSyslogPosixTcpStream.c` (16), `SolidSyslogUdpSender.c` (12) | **Fix — landed in S10.08** | `static` helpers reusing common names (`Write`, `Read`, `Open`, etc.) across TUs were renamed `Class_Function` per NAMING.md Tier 2 using a strip-only-`SolidSyslog` rule (`SolidSyslogWinsockTcpStream.c` → `WinsockTcpStream_*` etc.). `Core/Source/SolidSyslog.c` got `SolidSyslog_<Function>` per the documented exception. Sweep was wide — applied to all ~811 statics across Core/Source + Platform/\*/Source, not just the 168 collisions; 5.9 cleared as a structural consequence. | **S10.08** |
 | **11.3** | 95 | Cast between pointer to object types of different kinds | `SolidSyslogPosixFile.c` (10), `SolidSyslogWindowsFile.c` (10), `SolidSyslogTlsStream.c` (6) | **Deviate** | Vtable + caller-supplied-storage is the project's foundational OO-in-C mechanism: `(struct Impl*) storage` is unavoidable at every `_Create`. Replacing it would require dynamic allocation or copy-by-value, both rejected. Document as project-wide deviation. | **S10.06** (deviation D.002 in `docs/misra-deviations.md`) |
 | **10.4** | 92 | Both operands of operator shall be in same essential type category | `SolidSyslogFormatter.c` (15), `SolidSyslog.c` (6), `SolidSyslogFileBlockDevice.c` (6) | **Fix** | Mostly `size_t + 1` where `1` is `int`. Add `U` suffix to literals; occasional explicit cast for mixed cases. Mechanical sweep. | **New sweep story** (no existing slot in epic — propose S10.09a essential-type cleanups, or roll into S10.09 abbreviation purge / a new dedicated story) |
 | **8.9** (advisory) | 56 | Object referenced in one function should have block scope | `SolidSyslogFormatter.c` (8), `SolidSyslogMetaSd.c` (5), `SolidSyslogOriginSd.c` (5) | **Fix** | File-scope statics that should be locals or `static const` block-scope. Per-site review. | **S10.09** (if "abbreviation purge" widens to "code-shape hygiene") or **new sweep story** |
@@ -131,7 +131,7 @@ Each row carries the cppcheck addon's count. The verdict reflects how the rule s
 
 | Verdict | Count | Rules |
 |---------|------:|-------|
-| **Fix** — rule 5.9 (named sweep target S10.08) | 168 | 5.9 |
+| **Fix — landed in S10.08** — rule 5.9 (static-function `Class_` prefix sweep) | 168 → 0 | 5.9 |
 | **Fix** — other rules (mechanical or per-component sweeps S10.07+) | 220 | 10.4, 8.9, 17.7, 10.1, 15.7, 8.4, 12.1, 17.8, 5.6, 15.5, 10.8, 22.10, 8.6, 2.5, 3.1, 7.1, 14.4 |
 | **Deviate** — landed in S10.06 (D.002–D.010) | 187 | 11.3, 11.2, 11.5 *(D.002)*; 5.7 *(D.003)*; 18.4 *(D.004)*; 18.7 *(D.005)*; 1.4 *(D.006)*; 11.8 *(D.007)*; 21.10 *(D.008)*; 21.6 *(D.009)*; 2.4 *(D.010)* |
 | **Disable** | 0 | — |
