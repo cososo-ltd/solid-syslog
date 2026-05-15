@@ -32,15 +32,15 @@ enum
 
 struct SolidSyslog
 {
-    struct SolidSyslogBuffer* buffer;
-    struct SolidSyslogSender* sender;
-    SolidSyslogClockFunction clock;
-    SolidSyslogStringFunction getHostname;
-    SolidSyslogStringFunction getAppName;
-    SolidSyslogStringFunction getProcessId;
-    struct SolidSyslogStore* store;
-    struct SolidSyslogStructuredData** sd;
-    size_t sdCount;
+    struct SolidSyslogBuffer* Buffer;
+    struct SolidSyslogSender* Sender;
+    SolidSyslogClockFunction Clock;
+    SolidSyslogStringFunction GetHostname;
+    SolidSyslogStringFunction GetAppName;
+    SolidSyslogStringFunction GetProcessId;
+    struct SolidSyslogStore* Store;
+    struct SolidSyslogStructuredData** Sd;
+    size_t SdCount;
 };
 
 /* Forward declarations for the Nil "class" defined at the bottom of the file.
@@ -59,13 +59,13 @@ static bool nilSenderReportArmed;
 static bool instanceInitialised;
 
 static struct SolidSyslog instance = {
-    .buffer = &NilBuffer,
-    .sender = &NilSender,
-    .clock = SolidSyslog_NilClock,
-    .getHostname = SolidSyslog_NilStringFunction,
-    .getAppName = SolidSyslog_NilStringFunction,
-    .getProcessId = SolidSyslog_NilStringFunction,
-    .store = &NilStore,
+    .Buffer = &NilBuffer,
+    .Sender = &NilSender,
+    .Clock = SolidSyslog_NilClock,
+    .GetHostname = SolidSyslog_NilStringFunction,
+    .GetAppName = SolidSyslog_NilStringFunction,
+    .GetProcessId = SolidSyslog_NilStringFunction,
+    .Store = &NilStore,
 };
 
 /* Template used by _Create and _Destroy to reset every slot to its nil. C99
@@ -73,13 +73,13 @@ static struct SolidSyslog instance = {
  * appears once above and once here; both sites stay in sync trivially because
  * the values are nil-object addresses. */
 static const struct SolidSyslog NilInstance = {
-    .buffer = &NilBuffer,
-    .sender = &NilSender,
-    .clock = SolidSyslog_NilClock,
-    .getHostname = SolidSyslog_NilStringFunction,
-    .getAppName = SolidSyslog_NilStringFunction,
-    .getProcessId = SolidSyslog_NilStringFunction,
-    .store = &NilStore,
+    .Buffer = &NilBuffer,
+    .Sender = &NilSender,
+    .Clock = SolidSyslog_NilClock,
+    .GetHostname = SolidSyslog_NilStringFunction,
+    .GetAppName = SolidSyslog_NilStringFunction,
+    .GetProcessId = SolidSyslog_NilStringFunction,
+    .Store = &NilStore,
 };
 
 /* SolidSyslog helpers forward-declared so the public functions and
@@ -151,14 +151,14 @@ void SolidSyslog_Create(const struct SolidSyslogConfig* config)
 static void SolidSyslog_InstallConfig(const struct SolidSyslogConfig* config)
 {
     instance = NilInstance;
-    SolidSyslog_InstallBuffer(config->buffer);
-    SolidSyslog_InstallSender(config->sender);
-    SolidSyslog_InstallStore(config->store);
-    SolidSyslog_InstallClock(config->clock);
-    SolidSyslog_InstallHostname(config->getHostname);
-    SolidSyslog_InstallAppName(config->getAppName);
-    SolidSyslog_InstallProcessId(config->getProcessId);
-    SolidSyslog_InstallStructuredData(config->sd, config->sdCount);
+    SolidSyslog_InstallBuffer(config->Buffer);
+    SolidSyslog_InstallSender(config->Sender);
+    SolidSyslog_InstallStore(config->Store);
+    SolidSyslog_InstallClock(config->Clock);
+    SolidSyslog_InstallHostname(config->GetHostname);
+    SolidSyslog_InstallAppName(config->GetAppName);
+    SolidSyslog_InstallProcessId(config->GetProcessId);
+    SolidSyslog_InstallStructuredData(config->Sd, config->SdCount);
 }
 
 static void SolidSyslog_InstallBuffer(struct SolidSyslogBuffer* configured)
@@ -169,7 +169,7 @@ static void SolidSyslog_InstallBuffer(struct SolidSyslogBuffer* configured)
     }
     else
     {
-        instance.buffer = configured;
+        instance.Buffer = configured;
     }
 }
 
@@ -181,7 +181,7 @@ static void SolidSyslog_InstallSender(struct SolidSyslogSender* configured)
     }
     else
     {
-        instance.sender = configured;
+        instance.Sender = configured;
     }
 }
 
@@ -193,7 +193,7 @@ static void SolidSyslog_InstallStore(struct SolidSyslogStore* configured)
     }
     else
     {
-        instance.store = configured;
+        instance.Store = configured;
     }
 }
 
@@ -201,7 +201,7 @@ static void SolidSyslog_InstallClock(SolidSyslogClockFunction configured)
 {
     if (configured != NULL)
     {
-        instance.clock = configured;
+        instance.Clock = configured;
     }
 }
 
@@ -209,7 +209,7 @@ static void SolidSyslog_InstallHostname(SolidSyslogStringFunction configured)
 {
     if (configured != NULL)
     {
-        instance.getHostname = configured;
+        instance.GetHostname = configured;
     }
 }
 
@@ -217,7 +217,7 @@ static void SolidSyslog_InstallAppName(SolidSyslogStringFunction configured)
 {
     if (configured != NULL)
     {
-        instance.getAppName = configured;
+        instance.GetAppName = configured;
     }
 }
 
@@ -225,14 +225,14 @@ static void SolidSyslog_InstallProcessId(SolidSyslogStringFunction configured)
 {
     if (configured != NULL)
     {
-        instance.getProcessId = configured;
+        instance.GetProcessId = configured;
     }
 }
 
 static void SolidSyslog_InstallStructuredData(struct SolidSyslogStructuredData** configured, size_t count)
 {
-    instance.sd = configured;
-    instance.sdCount = count;
+    instance.Sd = configured;
+    instance.SdCount = count;
 }
 
 void SolidSyslog_Destroy(void)
@@ -253,7 +253,7 @@ void SolidSyslog_Service(void)
 
 static inline bool SolidSyslog_IsServiceEnabled(void)
 {
-    return !SolidSyslogStore_IsHalted(instance.store);
+    return !SolidSyslogStore_IsHalted(instance.Store);
 }
 
 static void SolidSyslog_ProcessMessages(void)
@@ -276,11 +276,11 @@ static inline void SolidSyslog_DrainBufferIntoStore(void)
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t len = 0;
 
-    while (SolidSyslogBuffer_Read(instance.buffer, buf, sizeof(buf), &len))
+    while (SolidSyslogBuffer_Read(instance.Buffer, buf, sizeof(buf), &len))
     {
-        if (!SolidSyslogStore_Write(instance.store, buf, len) && SolidSyslogStore_IsTransient(instance.store))
+        if (!SolidSyslogStore_Write(instance.Store, buf, len) && SolidSyslogStore_IsTransient(instance.Store))
         {
-            SolidSyslogSender_Send(instance.sender, buf, len);
+            SolidSyslogSender_Send(instance.Sender, buf, len);
         }
     }
 }
@@ -290,10 +290,10 @@ static inline void SolidSyslog_SendOneFromStore(void)
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t len = 0;
 
-    if (SolidSyslogStore_ReadNextUnsent(instance.store, buf, sizeof(buf), &len) &&
-        SolidSyslogSender_Send(instance.sender, buf, len))
+    if (SolidSyslogStore_ReadNextUnsent(instance.Store, buf, sizeof(buf), &len) &&
+        SolidSyslogSender_Send(instance.Sender, buf, len))
     {
-        SolidSyslogStore_MarkSent(instance.store);
+        SolidSyslogStore_MarkSent(instance.Store);
     }
 }
 
@@ -310,7 +310,7 @@ void SolidSyslog_Log(const struct SolidSyslogMessage* message)
 
         SolidSyslog_FormatMessage(f, message);
         SolidSyslogBuffer_Write(
-            instance.buffer,
+            instance.Buffer,
             SolidSyslogFormatter_AsFormattedBuffer(f),
             SolidSyslogFormatter_Length(f)
         );
@@ -322,18 +322,18 @@ static inline void SolidSyslog_FormatMessage(struct SolidSyslogFormatter* f, con
     SolidSyslog_FormatPrival(f, SolidSyslog_MakePrival(message));
     SolidSyslogFormatter_AsciiCharacter(f, '1');
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    SolidSyslog_FormatTimestamp(f, instance.clock);
+    SolidSyslog_FormatTimestamp(f, instance.Clock);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    SolidSyslog_FormatStringField(f, instance.getHostname, SOLIDSYSLOG_MAX_HOSTNAME_SIZE);
+    SolidSyslog_FormatStringField(f, instance.GetHostname, SOLIDSYSLOG_MAX_HOSTNAME_SIZE);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    SolidSyslog_FormatStringField(f, instance.getAppName, SOLIDSYSLOG_MAX_APP_NAME_SIZE);
+    SolidSyslog_FormatStringField(f, instance.GetAppName, SOLIDSYSLOG_MAX_APP_NAME_SIZE);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    SolidSyslog_FormatStringField(f, instance.getProcessId, SOLIDSYSLOG_MAX_PROCESS_ID_SIZE);
+    SolidSyslog_FormatStringField(f, instance.GetProcessId, SOLIDSYSLOG_MAX_PROCESS_ID_SIZE);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    SolidSyslog_FormatMsgId(f, message->messageId);
+    SolidSyslog_FormatMsgId(f, message->MessageId);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    SolidSyslog_FormatStructuredData(f, instance.sd, instance.sdCount);
-    SolidSyslog_FormatMsg(f, message->msg);
+    SolidSyslog_FormatStructuredData(f, instance.Sd, instance.SdCount);
+    SolidSyslog_FormatMsg(f, message->Msg);
 }
 
 static inline void SolidSyslog_FormatPrival(struct SolidSyslogFormatter* f, uint8_t prival)
@@ -345,8 +345,8 @@ static inline void SolidSyslog_FormatPrival(struct SolidSyslogFormatter* f, uint
 
 static inline uint8_t SolidSyslog_MakePrival(const struct SolidSyslogMessage* message)
 {
-    uint8_t f = (uint8_t) message->facility;
-    uint8_t s = (uint8_t) message->severity;
+    uint8_t f = (uint8_t) message->Facility;
+    uint8_t s = (uint8_t) message->Severity;
     uint8_t prival = SolidSyslog_CombineFacilityAndSeverity(SolidSyslogFacility_Syslog, SolidSyslogSeverity_Error);
 
     if (SolidSyslog_PrivalComponentsAreValid(f, s))
@@ -401,13 +401,13 @@ static inline bool SolidSyslog_TimestampIsValid(const struct SolidSyslogTimestam
 {
     bool valid = true;
 
-    valid = valid && (ts->month >= 1U) && (ts->month <= 12U);
-    valid = valid && (ts->day >= 1U) && (ts->day <= 31U);
-    valid = valid && (ts->hour <= 23U);
-    valid = valid && (ts->minute <= 59U);
-    valid = valid && (ts->second <= 59U);
-    valid = valid && (ts->microsecond <= 999999U);
-    valid = valid && (ts->utcOffsetMinutes >= -720) && (ts->utcOffsetMinutes <= 840);
+    valid = valid && (ts->Month >= 1U) && (ts->Month <= 12U);
+    valid = valid && (ts->Day >= 1U) && (ts->Day <= 31U);
+    valid = valid && (ts->Hour <= 23U);
+    valid = valid && (ts->Minute <= 59U);
+    valid = valid && (ts->Second <= 59U);
+    valid = valid && (ts->Microsecond <= 999999U);
+    valid = valid && (ts->UtcOffsetMinutes >= -720) && (ts->UtcOffsetMinutes <= 840);
 
     return valid;
 }
@@ -417,20 +417,20 @@ static inline void SolidSyslog_FormatCapturedTimestamp(
     const struct SolidSyslogTimestamp* ts
 )
 {
-    SolidSyslogFormatter_FourDigit(f, ts->year);
+    SolidSyslogFormatter_FourDigit(f, ts->Year);
     SolidSyslogFormatter_AsciiCharacter(f, '-');
-    SolidSyslogFormatter_TwoDigit(f, ts->month);
+    SolidSyslogFormatter_TwoDigit(f, ts->Month);
     SolidSyslogFormatter_AsciiCharacter(f, '-');
-    SolidSyslogFormatter_TwoDigit(f, ts->day);
+    SolidSyslogFormatter_TwoDigit(f, ts->Day);
     SolidSyslogFormatter_AsciiCharacter(f, 'T');
-    SolidSyslogFormatter_TwoDigit(f, ts->hour);
+    SolidSyslogFormatter_TwoDigit(f, ts->Hour);
     SolidSyslogFormatter_AsciiCharacter(f, ':');
-    SolidSyslogFormatter_TwoDigit(f, ts->minute);
+    SolidSyslogFormatter_TwoDigit(f, ts->Minute);
     SolidSyslogFormatter_AsciiCharacter(f, ':');
-    SolidSyslogFormatter_TwoDigit(f, ts->second);
+    SolidSyslogFormatter_TwoDigit(f, ts->Second);
     SolidSyslogFormatter_AsciiCharacter(f, '.');
-    SolidSyslogFormatter_SixDigit(f, ts->microsecond);
-    SolidSyslog_FormatUtcOffset(f, ts->utcOffsetMinutes);
+    SolidSyslogFormatter_SixDigit(f, ts->Microsecond);
+    SolidSyslog_FormatUtcOffset(f, ts->UtcOffsetMinutes);
 }
 
 static inline void SolidSyslog_FormatUtcOffset(struct SolidSyslogFormatter* f, int16_t offsetMinutes)
@@ -693,7 +693,7 @@ static size_t SolidSyslog_NilStoreGetUsedBytes(struct SolidSyslogStore* self)
     return 0;
 }
 
-/* NilStore stands in when the integrator passes config.store = NULL —
+/* NilStore stands in when the integrator passes config.Store = NULL —
  * "no store, just try to send." Same transient semantics as NullStore:
  * Service falls through to the sender on Write rejection. */
 static bool SolidSyslog_NilStoreIsTransient(struct SolidSyslogStore* self)

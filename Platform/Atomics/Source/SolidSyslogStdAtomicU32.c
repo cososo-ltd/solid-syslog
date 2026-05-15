@@ -8,7 +8,7 @@
 
 struct SolidSyslogAtomicU32
 {
-    _Atomic uint32_t value;
+    _Atomic uint32_t Value;
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
@@ -28,12 +28,12 @@ struct SolidSyslogAtomicU32* SolidSyslogAtomicU32_FromStorage(SolidSyslogAtomicU
 
 void SolidSyslogAtomicU32_Init(struct SolidSyslogAtomicU32* slot, uint32_t value)
 {
-    atomic_init(&slot->value, value);
+    atomic_init(&slot->Value, value);
 }
 
 uint32_t SolidSyslogAtomicU32_Load(struct SolidSyslogAtomicU32* slot)
 {
-    return atomic_load_explicit(&slot->value, memory_order_relaxed);
+    return atomic_load_explicit(&slot->Value, memory_order_relaxed);
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) — CAS shape is universal (compare_exchange convention)
@@ -41,7 +41,7 @@ bool SolidSyslogAtomicU32_CompareAndSwap(struct SolidSyslogAtomicU32* slot, uint
 {
     uint32_t expectedLocal = expected;
     return atomic_compare_exchange_strong_explicit(
-        &slot->value,
+        &slot->Value,
         &expectedLocal,
         desired,
         memory_order_relaxed,

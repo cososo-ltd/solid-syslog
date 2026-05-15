@@ -63,11 +63,11 @@ static inline void WindowsClock_PopulateTimestamp(
     uint32_t microseconds
 )
 {
-    timestamp->year = breakdown->wYear;
-    timestamp->month = (uint8_t) breakdown->wMonth;
-    timestamp->day = (uint8_t) breakdown->wDay;
-    timestamp->hour = (uint8_t) breakdown->wHour;
-    timestamp->minute = (uint8_t) breakdown->wMinute;
-    timestamp->second = (uint8_t) breakdown->wSecond;
-    timestamp->microsecond = microseconds;
+    timestamp->Year = breakdown->wYear;
+    timestamp->Month = (uint8_t) breakdown->wMonth;
+    timestamp->Day = (uint8_t) breakdown->wDay;
+    timestamp->Hour = (uint8_t) breakdown->wHour;
+    timestamp->Minute = (uint8_t) breakdown->wMinute;
+    timestamp->Second = (uint8_t) breakdown->wSecond;
+    timestamp->Microsecond = microseconds;
 }

@@ -23,28 +23,28 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
 
     static struct SolidSyslogTlsStreamConfig tlsStreamConfig;
     tlsStreamConfig = (struct SolidSyslogTlsStreamConfig) {0};
-    tlsStreamConfig.transport = underlyingStream;
-    tlsStreamConfig.sleep = SolidSyslogWindowsSleep;
+    tlsStreamConfig.Transport = underlyingStream;
+    tlsStreamConfig.Sleep = SolidSyslogWindowsSleep;
     if (mtls)
     {
-        tlsStreamConfig.caBundlePath = BddTargetMtlsConfig_GetCaBundlePath();
-        tlsStreamConfig.serverName = BddTargetMtlsConfig_GetServerName();
-        tlsStreamConfig.clientCertChainPath = BddTargetMtlsConfig_GetClientCertChainPath();
-        tlsStreamConfig.clientKeyPath = BddTargetMtlsConfig_GetClientKeyPath();
+        tlsStreamConfig.CaBundlePath = BddTargetMtlsConfig_GetCaBundlePath();
+        tlsStreamConfig.ServerName = BddTargetMtlsConfig_GetServerName();
+        tlsStreamConfig.ClientCertChainPath = BddTargetMtlsConfig_GetClientCertChainPath();
+        tlsStreamConfig.ClientKeyPath = BddTargetMtlsConfig_GetClientKeyPath();
     }
     else
     {
-        tlsStreamConfig.caBundlePath = BddTargetTlsConfig_GetCaBundlePath();
-        tlsStreamConfig.serverName = BddTargetTlsConfig_GetServerName();
+        tlsStreamConfig.CaBundlePath = BddTargetTlsConfig_GetCaBundlePath();
+        tlsStreamConfig.ServerName = BddTargetTlsConfig_GetServerName();
     }
     tlsStream = SolidSyslogTlsStream_Create(&tlsStreamStorage, &tlsStreamConfig);
 
     static struct SolidSyslogStreamSenderConfig senderConfig;
     senderConfig = (struct SolidSyslogStreamSenderConfig) {0};
-    senderConfig.resolver = resolver;
-    senderConfig.stream = tlsStream;
-    senderConfig.endpoint = mtls ? BddTargetMtlsConfig_GetEndpoint : BddTargetTlsConfig_GetEndpoint;
-    senderConfig.endpointVersion =
+    senderConfig.Resolver = resolver;
+    senderConfig.Stream = tlsStream;
+    senderConfig.Endpoint = mtls ? BddTargetMtlsConfig_GetEndpoint : BddTargetTlsConfig_GetEndpoint;
+    senderConfig.EndpointVersion =
         mtls ? BddTargetMtlsConfig_GetEndpointVersion : BddTargetTlsConfig_GetEndpointVersion;
     sender = SolidSyslogStreamSender_Create(&senderStorage, &senderConfig);
 

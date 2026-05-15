@@ -143,10 +143,10 @@ static uint16_t port = (uint16_t) BDD_TARGET_UDP_PORT;
 static uint32_t endpointVersion = 0U;
 
 static struct SolidSyslogMessage testMessage = {
-    .facility = SolidSyslogFacility_Local0,
-    .severity = SolidSyslogSeverity_Informational,
-    .messageId = messageId,
-    .msg = msg,
+    .Facility = SolidSyslogFacility_Local0,
+    .Severity = SolidSyslogSeverity_Informational,
+    .MessageId = messageId,
+    .Msg = msg,
 };
 
 /* Plus-TCP requires the network interface descriptor and its endpoint(s)
@@ -231,7 +231,7 @@ static size_t pendingCapacityThreshold = 0;
 static volatile bool pendingNoSd = false;
 
 /* Holds the final SolidSyslog config so the rebuild path can rewrite
- * .store and pass the same struct back into SolidSyslog_Create. */
+ * .Store and pass the same struct back into SolidSyslog_Create. */
 static struct SolidSyslogConfig solidSyslogConfig;
 static struct SolidSyslogStructuredData* sdList[3];
 static struct SolidSyslogAtomicCounter* atomicCounter = NULL;
@@ -337,7 +337,7 @@ static void GetAppName(struct SolidSyslogFormatter* formatter)
 /* No RTC and no time-sync on this reference target — the example models an
  * embedded device that has no concept of wall-clock time. RFC 5424 §6.2.3.1
  * mandates NILVALUE TIMESTAMP in that case, and the timeQuality SD reports
- * tzKnown=0, isSynced=0. SolidSyslogConfig.clock=NULL drops through to the
+ * tzKnown=0, isSynced=0. SolidSyslogConfig.Clock=NULL drops through to the
  * library's NilClock; the resulting all-zero SolidSyslogTimestamp fails
  * TimestampIsValid in Core/Source/SolidSyslog.c and emits "-" on the wire. */
 static void ErrorHandler(void* context, enum SolidSyslogSeverity severity, const char* message)
@@ -348,9 +348,9 @@ static void ErrorHandler(void* context, enum SolidSyslogSeverity severity, const
 
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
-    timeQuality->tzKnown = false;
-    timeQuality->isSynced = false;
-    timeQuality->syncAccuracyMicroseconds = SOLIDSYSLOG_SYNC_ACCURACY_OMIT;
+    timeQuality->TzKnown = false;
+    timeQuality->IsSynced = false;
+    timeQuality->SyncAccuracyMicroseconds = SOLIDSYSLOG_SYNC_ACCURACY_OMIT;
 }
 
 static void GetEndpoint(struct SolidSyslogEndpoint* endpoint)
@@ -360,8 +360,8 @@ static void GetEndpoint(struct SolidSyslogEndpoint* endpoint)
      * here for forward-compatibility with the follow-up slice that will
      * teach the resolver to parse dotted-quads. The port reaches the
      * wire via sendto unchanged. */
-    SolidSyslogFormatter_BoundedString(endpoint->host, host, strlen(host));
-    endpoint->port = port;
+    SolidSyslogFormatter_BoundedString(endpoint->Host, host, strlen(host));
+    endpoint->Port = port;
 }
 
 static uint32_t GetEndpointVersion(void)
@@ -410,7 +410,7 @@ static bool OnSet(const char* name, const char* value)
         {
             return false;
         }
-        testMessage.facility = (enum SolidSyslogFacility) parsed;
+        testMessage.Facility = (enum SolidSyslogFacility) parsed;
         return true;
     }
     if (strcmp(name, "severity") == 0)
@@ -420,7 +420,7 @@ static bool OnSet(const char* name, const char* value)
         {
             return false;
         }
-        testMessage.severity = (enum SolidSyslogSeverity) parsed;
+        testMessage.Severity = (enum SolidSyslogSeverity) parsed;
         return true;
     }
     if (strcmp(name, "transport") == 0)
@@ -592,25 +592,25 @@ static bool RebuildWithFileStore(void)
 
     struct SolidSyslogSecurityPolicy* policy = SolidSyslogCrc16Policy_Create();
     struct SolidSyslogBlockStoreConfig storeConfig = {
-        .blockDevice = storeBlockDevice,
-        .maxBlockSize = pendingMaxBlockSize,
-        .maxBlocks = pendingMaxBlocks,
-        .discardPolicy = MapDiscardPolicy(pendingDiscardPolicy),
-        .securityPolicy = policy,
-        .onStoreFull = OnStoreFull,
-        .storeFullContext = NULL,
-        .getCapacityThreshold = GetCapacityThreshold,
-        .onThresholdCrossed = NULL,
-        .thresholdContext = &pendingCapacityThreshold,
+        .BlockDevice = storeBlockDevice,
+        .MaxBlockSize = pendingMaxBlockSize,
+        .MaxBlocks = pendingMaxBlocks,
+        .DiscardPolicy = MapDiscardPolicy(pendingDiscardPolicy),
+        .SecurityPolicy = policy,
+        .OnStoreFull = OnStoreFull,
+        .StoreFullContext = NULL,
+        .GetCapacityThreshold = GetCapacityThreshold,
+        .OnThresholdCrossed = NULL,
+        .ThresholdContext = &pendingCapacityThreshold,
     };
     currentStore = SolidSyslogBlockStore_Create(&blockStoreStorage, &storeConfig);
     currentStoreIsFile = true;
 
-    solidSyslogConfig.store = currentStore;
+    solidSyslogConfig.Store = currentStore;
     /* Re-honour `set no-sd 1` if it arrived before this rebuild — the
      * sort order in target_driver.py guarantees `set no-sd` comes before
      * `set store file` so the value is final by the time we get here. */
-    solidSyslogConfig.sdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0]));
+    solidSyslogConfig.SdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0]));
     SolidSyslog_Create(&solidSyslogConfig);
     solidSyslogReady = true;
     SolidSyslogMutex_Unlock(lifecycleMutex);
@@ -782,10 +782,10 @@ static void InteractiveTask(void* argument)
     datagram = SolidSyslogFreeRtosDatagram_Create(&datagramStorage);
 
     struct SolidSyslogUdpSenderConfig udpConfig = {
-        .resolver = resolver,
-        .datagram = datagram,
-        .endpoint = GetEndpoint,
-        .endpointVersion = GetEndpointVersion,
+        .Resolver = resolver,
+        .Datagram = datagram,
+        .Endpoint = GetEndpoint,
+        .EndpointVersion = GetEndpointVersion,
     };
     struct SolidSyslogSender* udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
@@ -795,10 +795,10 @@ static void InteractiveTask(void* argument)
      * Bdd/syslog-ng/syslog-ng.conf has a TCP listener on 5514 alongside UDP. */
     tcpStream = SolidSyslogFreeRtosTcpStream_Create(&tcpStreamStorage);
     struct SolidSyslogStreamSenderConfig tcpConfig = {
-        .resolver = resolver,
-        .stream = tcpStream,
-        .endpoint = GetEndpoint,
-        .endpointVersion = GetEndpointVersion,
+        .Resolver = resolver,
+        .Stream = tcpStream,
+        .Endpoint = GetEndpoint,
+        .EndpointVersion = GetEndpointVersion,
     };
     tcpSender = SolidSyslogStreamSender_Create(&tcpSenderStorage, &tcpConfig);
 
@@ -810,9 +810,9 @@ static void InteractiveTask(void* argument)
     inners[BDD_TARGET_SWITCH_UDP] = udpSender;
     inners[BDD_TARGET_SWITCH_TCP] = tcpSender;
     struct SolidSyslogSwitchingSenderConfig switchConfig = {
-        .senders = inners,
-        .senderCount = sizeof(inners) / sizeof(inners[0]),
-        .selector = BddTargetSwitchConfig_Selector,
+        .Senders = inners,
+        .SenderCount = sizeof(inners) / sizeof(inners[0]),
+        .Selector = BddTargetSwitchConfig_Selector,
     };
     BddTargetSwitchConfig_SetByName("udp");
     struct SolidSyslogSender* sender = SolidSyslogSwitchingSender_Create(&switchConfig);
@@ -836,18 +836,18 @@ static void InteractiveTask(void* argument)
 
     atomicCounter = SolidSyslogAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
-        .counter = atomicCounter,
-        .getSysUpTime = SolidSyslogFreeRtosSysUpTime_Get,
-        .getLanguage = BddTargetLanguage_Get,
+        .Counter = atomicCounter,
+        .GetSysUpTime = SolidSyslogFreeRtosSysUpTime_Get,
+        .GetLanguage = BddTargetLanguage_Get,
     };
     metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     timeQualitySd = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
     struct SolidSyslogOriginSdConfig originConfig = {
-        .software = "SolidSyslogBddTarget",
-        .swVersion = "0.7.0",
-        .enterpriseId = BDD_TARGET_ENTERPRISE_ID,
-        .getIpCount = BddTargetIps_Count,
-        .getIpAt = BddTargetIps_At,
+        .Software = "SolidSyslogBddTarget",
+        .SwVersion = "0.7.0",
+        .EnterpriseId = BDD_TARGET_ENTERPRISE_ID,
+        .GetIpCount = BddTargetIps_Count,
+        .GetIpAt = BddTargetIps_At,
     };
     originSd = SolidSyslogOriginSd_Create(&originConfig);
     sdList[0] = metaSd;
@@ -855,26 +855,26 @@ static void InteractiveTask(void* argument)
     sdList[2] = originSd;
 
     solidSyslogConfig = (struct SolidSyslogConfig) {
-        .buffer = buffer,
-        .sender = sender,
-        .clock = NULL,
-        .getHostname = GetHostname,
-        .getAppName = GetAppName,
+        .Buffer = buffer,
+        .Sender = sender,
+        .Clock = NULL,
+        .GetHostname = GetHostname,
+        .GetAppName = GetAppName,
         /* PROCID — RFC 5424 §6.2.6 NILVALUE: FreeRTOS QEMU has no
          * process model. NULL drops through to the library's
          * NilStringFunction which yields an empty field; FormatStringField
          * (Core/Source/SolidSyslog.c) then emits "-" on the wire. */
-        .getProcessId = NULL,
-        .store = currentStore,
-        .sd = sdList,
+        .GetProcessId = NULL,
+        .Store = currentStore,
+        .Sd = sdList,
         /* pendingNoSd is normally false at this initial Setup call —
          * the `set no-sd 1` translation runs over the UART AFTER the
          * prompt is up. Slice 6's @store scenarios on FreeRTOS always
          * couple --no-sd with --store file, so the rebuild path rewrites
-         * .sdCount with the up-to-date value. This initial value is
+         * .SdCount with the up-to-date value. This initial value is
          * defensive in case a future scenario sends `set no-sd 1` before
          * any rebuild. */
-        .sdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0])),
+        .SdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0])),
     };
     SolidSyslog_SetErrorHandler(ErrorHandler, NULL);
     SolidSyslog_Create(&solidSyslogConfig);

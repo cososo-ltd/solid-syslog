@@ -27,12 +27,12 @@ struct DeviceCall
     // cppcheck-suppress unusedStructMember -- read by DisposePrecedesAcquire / loop assertions; cppcheck does not model std::vector element access
     CallType type;
     // cppcheck-suppress unusedStructMember -- read by DisposePrecedesAcquire; cppcheck does not model std::vector element access
-    size_t blockIndex;
+    size_t BlockIndex;
 };
 
 struct ScanFake
 {
-    struct SolidSyslogBlockDevice base;
+    struct SolidSyslogBlockDevice Base;
     std::set<size_t>* existing;
     std::vector<DeviceCall>* calls; /* optional — tests that don't care leave nullptr */
     std::map<size_t, size_t>* sizes; /* optional — tests that need realistic Size readings populate */
@@ -149,21 +149,21 @@ TEST_GROUP(BlockSequenceScan)
 
     void setup() override
     {
-        fakeDevice.base.Acquire = FakeAcquire;
-        fakeDevice.base.Dispose = FakeDispose;
-        fakeDevice.base.Exists  = FakeExists;
-        fakeDevice.base.Read    = FakeRead;
-        fakeDevice.base.Append  = FakeAppend;
-        fakeDevice.base.WriteAt = FakeWriteAt;
-        fakeDevice.base.Size    = FakeSize;
+        fakeDevice.Base.Acquire = FakeAcquire;
+        fakeDevice.Base.Dispose = FakeDispose;
+        fakeDevice.Base.Exists  = FakeExists;
+        fakeDevice.Base.Read    = FakeRead;
+        fakeDevice.Base.Append  = FakeAppend;
+        fakeDevice.Base.WriteAt = FakeWriteAt;
+        fakeDevice.Base.Size    = FakeSize;
         // cppcheck-suppress unreadVariable -- read indirectly via FakeExists; cppcheck does not model the function-pointer indirection
         fakeDevice.existing     = &existing;
 
         struct BlockSequenceConfig config = {};
-        config.blockDevice                = &fakeDevice.base;
-        config.maxBlockSize                = 1000;
-        config.maxBlocks                   = 99;
-        config.discardPolicy              = SolidSyslogDiscardPolicy_Oldest;
+        config.BlockDevice                = &fakeDevice.Base;
+        config.MaxBlockSize                = 1000;
+        config.MaxBlocks                   = 99;
+        config.DiscardPolicy              = SolidSyslogDiscardPolicy_Oldest;
         BlockSequence_Init(&sequence, &config);
     }
 };
@@ -235,23 +235,23 @@ TEST_GROUP(BlockSequenceRotation)
 
     void setup() override
     {
-        fakeDevice.base.Acquire = FakeAcquire;
-        fakeDevice.base.Dispose = FakeDispose;
-        fakeDevice.base.Exists  = FakeExists;
-        fakeDevice.base.Read    = FakeRead;
-        fakeDevice.base.Append  = FakeAppend;
-        fakeDevice.base.WriteAt = FakeWriteAt;
-        fakeDevice.base.Size    = FakeSize;
+        fakeDevice.Base.Acquire = FakeAcquire;
+        fakeDevice.Base.Dispose = FakeDispose;
+        fakeDevice.Base.Exists  = FakeExists;
+        fakeDevice.Base.Read    = FakeRead;
+        fakeDevice.Base.Append  = FakeAppend;
+        fakeDevice.Base.WriteAt = FakeWriteAt;
+        fakeDevice.Base.Size    = FakeSize;
         fakeDevice.existing     = &existing;
         fakeDevice.calls        = &calls;
         // cppcheck-suppress unreadVariable -- read indirectly via FakeSize; cppcheck does not model the function-pointer indirection
         fakeDevice.sizes        = &sizes;
 
         struct BlockSequenceConfig config = {};
-        config.blockDevice                = &fakeDevice.base;
-        config.maxBlockSize               = ROTATION_BLOCK_SIZE;
-        config.maxBlocks                  = 99;
-        config.discardPolicy              = SolidSyslogDiscardPolicy_Oldest;
+        config.BlockDevice                = &fakeDevice.Base;
+        config.MaxBlockSize               = ROTATION_BLOCK_SIZE;
+        config.MaxBlocks                  = 99;
+        config.DiscardPolicy              = SolidSyslogDiscardPolicy_Oldest;
         BlockSequence_Init(&sequence, &config);
 
         BlockSequence_Open(&sequence); /* cold start: Acquire(0) */
@@ -269,11 +269,11 @@ TEST_GROUP(BlockSequenceRotation)
         std::ptrdiff_t acquireAt = -1;
         for (size_t i = 0; i < calls.size(); i++)
         {
-            if ((calls[i].blockIndex == blockIndex) && (calls[i].type == CallType::Dispose))
+            if ((calls[i].BlockIndex == blockIndex) && (calls[i].type == CallType::Dispose))
             {
                 disposeAt = static_cast<std::ptrdiff_t>(i);
             }
-            if ((calls[i].blockIndex == blockIndex) && (calls[i].type == CallType::Acquire))
+            if ((calls[i].BlockIndex == blockIndex) && (calls[i].type == CallType::Acquire))
             {
                 acquireAt = static_cast<std::ptrdiff_t>(i);
             }
@@ -326,7 +326,7 @@ TEST(BlockSequenceRotation, RotationFailsWhenStaleBlockDisposeFails)
     CHECK_FALSE(acquired);
     for (const auto& call : calls)
     {
-        if ((call.type == CallType::Acquire) && (call.blockIndex == 1))
+        if ((call.type == CallType::Acquire) && (call.BlockIndex == 1))
         {
             FAIL("Acquire(1) was called even though Dispose(1) failed");
         }

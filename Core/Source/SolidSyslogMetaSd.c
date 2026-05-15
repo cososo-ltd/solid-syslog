@@ -13,10 +13,10 @@ struct SolidSyslogFormatter;
 
 struct SolidSyslogMetaSd
 {
-    struct SolidSyslogStructuredData base;
-    struct SolidSyslogAtomicCounter* counter;
-    SolidSyslogSysUpTimeFunction getSysUpTime;
-    SolidSyslogStringFunction getLanguage;
+    struct SolidSyslogStructuredData Base;
+    struct SolidSyslogAtomicCounter* Counter;
+    SolidSyslogSysUpTimeFunction GetSysUpTime;
+    SolidSyslogStringFunction GetLanguage;
 };
 
 static void MetaSd_Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
@@ -35,27 +35,27 @@ struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSys
     {
         SolidSyslog_Error(SolidSyslogSeverity_Warning, SOLIDSYSLOG_ERROR_MSG_METASD_CREATE_NULL_CONFIG);
     }
-    else if (config->counter == NULL)
+    else if (config->Counter == NULL)
     {
         SolidSyslog_Error(SolidSyslogSeverity_Warning, SOLIDSYSLOG_ERROR_MSG_METASD_CREATE_NULL_COUNTER);
     }
     else
     {
-        instance.base.Format = MetaSd_Format;
-        instance.counter = config->counter;
-        instance.getSysUpTime = config->getSysUpTime;
-        instance.getLanguage = config->getLanguage;
-        result = &instance.base;
+        instance.Base.Format = MetaSd_Format;
+        instance.Counter = config->Counter;
+        instance.GetSysUpTime = config->GetSysUpTime;
+        instance.GetLanguage = config->GetLanguage;
+        result = &instance.Base;
     }
     return result;
 }
 
 void SolidSyslogMetaSd_Destroy(void)
 {
-    instance.base.Format = NULL;
-    instance.counter = NULL;
-    instance.getSysUpTime = NULL;
-    instance.getLanguage = NULL;
+    instance.Base.Format = NULL;
+    instance.Counter = NULL;
+    instance.GetSysUpTime = NULL;
+    instance.GetLanguage = NULL;
 }
 
 static void MetaSd_NilMetaSdFormat(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter)
@@ -83,26 +83,26 @@ static void MetaSd_Format(struct SolidSyslogStructuredData* self, struct SolidSy
 static inline void MetaSd_EmitSequenceId(struct SolidSyslogMetaSd* meta, struct SolidSyslogFormatter* formatter)
 {
     SolidSyslogFormatter_BoundedString(formatter, SEQUENCE_ID_SD, sizeof(SEQUENCE_ID_SD) - 1);
-    SolidSyslogFormatter_Uint32(formatter, SolidSyslogAtomicCounter_Increment(meta->counter));
+    SolidSyslogFormatter_Uint32(formatter, SolidSyslogAtomicCounter_Increment(meta->Counter));
     SolidSyslogFormatter_AsciiCharacter(formatter, '"');
 }
 
 static inline void MetaSd_EmitSysUpTime(struct SolidSyslogMetaSd* meta, struct SolidSyslogFormatter* formatter)
 {
-    if (meta->getSysUpTime != NULL)
+    if (meta->GetSysUpTime != NULL)
     {
         SolidSyslogFormatter_BoundedString(formatter, SYS_UP_TIME_SD, sizeof(SYS_UP_TIME_SD) - 1);
-        SolidSyslogFormatter_Uint32(formatter, meta->getSysUpTime());
+        SolidSyslogFormatter_Uint32(formatter, meta->GetSysUpTime());
         SolidSyslogFormatter_AsciiCharacter(formatter, '"');
     }
 }
 
 static inline void MetaSd_EmitLanguage(struct SolidSyslogMetaSd* meta, struct SolidSyslogFormatter* formatter)
 {
-    if (meta->getLanguage != NULL)
+    if (meta->GetLanguage != NULL)
     {
         SolidSyslogFormatter_BoundedString(formatter, LANGUAGE_SD, sizeof(LANGUAGE_SD) - 1);
-        meta->getLanguage(formatter);
+        meta->GetLanguage(formatter);
         SolidSyslogFormatter_AsciiCharacter(formatter, '"');
     }
 }

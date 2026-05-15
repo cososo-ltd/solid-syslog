@@ -66,10 +66,10 @@ TEST_GROUP(SolidSyslogBlockStorePosix)
     void CreateStore(size_t maxBlockSize = ONE_MAX_MSG_RECORD, size_t maxBlocks = 2)
     {
         struct SolidSyslogBlockStoreConfig config = {};
-        config.blockDevice   = device;
-        config.maxBlockSize  = maxBlockSize;
-        config.maxBlocks     = maxBlocks;
-        config.discardPolicy = SolidSyslogDiscardPolicy_Oldest;
+        config.BlockDevice   = device;
+        config.MaxBlockSize  = maxBlockSize;
+        config.MaxBlocks     = maxBlocks;
+        config.DiscardPolicy = SolidSyslogDiscardPolicy_Oldest;
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&storeStorage, &config);
     }

@@ -60,8 +60,8 @@ const char* BddTargetMtlsConfig_GetClientKeyPath(void)
 
 void BddTargetMtlsConfig_GetEndpoint(struct SolidSyslogEndpoint* endpoint)
 {
-    SolidSyslogFormatter_BoundedString(endpoint->host, BddTargetMtlsConfig_GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
-    endpoint->port = BddTargetMtlsConfig_GetPort();
+    SolidSyslogFormatter_BoundedString(endpoint->Host, BddTargetMtlsConfig_GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
+    endpoint->Port = BddTargetMtlsConfig_GetPort();
 }
 
 /* Static config — host/port never change, so version stays 0 forever and the

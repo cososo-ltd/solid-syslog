@@ -15,9 +15,9 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogTimeQuality
     {
-        bool tzKnown;
-        bool isSynced;
-        uint32_t syncAccuracyMicroseconds; /* SOLIDSYSLOG_SYNC_ACCURACY_OMIT to omit from output */
+        bool TzKnown;
+        bool IsSynced;
+        uint32_t SyncAccuracyMicroseconds; /* SOLIDSYSLOG_SYNC_ACCURACY_OMIT to omit from output */
     };
 
     typedef void (*SolidSyslogTimeQualityFunction)(struct SolidSyslogTimeQuality* timeQuality);

@@ -12,8 +12,8 @@ static const uint32_t SEQUENCE_ID_MAX = 2147483647U;
 
 struct SolidSyslogAtomicCounter
 {
-    SolidSyslogAtomicU32Storage storage;
-    struct SolidSyslogAtomicU32* slot;
+    SolidSyslogAtomicU32Storage Storage;
+    struct SolidSyslogAtomicU32* Slot;
 };
 
 static struct SolidSyslogAtomicCounter instance;
@@ -32,20 +32,20 @@ static inline bool AtomicCounter_TryAdvance(struct SolidSyslogAtomicU32* slot, u
 
 struct SolidSyslogAtomicCounter* SolidSyslogAtomicCounter_Create(void)
 {
-    instance.slot = SolidSyslogAtomicU32_FromStorage(&instance.storage);
-    SolidSyslogAtomicU32_Init(instance.slot, 0);
+    instance.Slot = SolidSyslogAtomicU32_FromStorage(&instance.Storage);
+    SolidSyslogAtomicU32_Init(instance.Slot, 0);
     return &instance;
 }
 
 void SolidSyslogAtomicCounter_Destroy(void)
 {
-    instance.slot = NULL;
+    instance.Slot = NULL;
 }
 
 uint32_t SolidSyslogAtomicCounter_Increment(struct SolidSyslogAtomicCounter* counter)
 {
     uint32_t next = 0;
-    while (!AtomicCounter_TryAdvance(counter->slot, &next))
+    while (!AtomicCounter_TryAdvance(counter->Slot, &next))
     {
     }
     return next;

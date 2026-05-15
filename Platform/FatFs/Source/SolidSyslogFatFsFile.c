@@ -24,9 +24,9 @@ static inline FIL* FatFsFile_Handle(struct SolidSyslogFile* self);
 
 struct SolidSyslogFatFsFile
 {
-    struct SolidSyslogFile base;
-    FIL fp;
-    bool isOpen;
+    struct SolidSyslogFile Base;
+    FIL Fp;
+    bool IsOpen;
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
@@ -35,7 +35,7 @@ SOLIDSYSLOG_STATIC_ASSERT(
 );
 
 static const struct SolidSyslogFatFsFile DEFAULT_INSTANCE = {
-    .base =
+    .Base =
         {FatFsFile_Open,
          FatFsFile_Close,
          FatFsFile_IsOpen,
@@ -46,14 +46,14 @@ static const struct SolidSyslogFatFsFile DEFAULT_INSTANCE = {
          FatFsFile_Truncate,
          FatFsFile_Exists,
          FatFsFile_Delete},
-    .isOpen = false,
+    .IsOpen = false,
 };
 
 struct SolidSyslogFile* SolidSyslogFatFsFile_Create(SolidSyslogFatFsFileStorage* storage)
 {
     struct SolidSyslogFatFsFile* fatfs = (struct SolidSyslogFatFsFile*) storage;
     *fatfs = DEFAULT_INSTANCE;
-    return &fatfs->base;
+    return &fatfs->Base;
 }
 
 void SolidSyslogFatFsFile_Destroy(struct SolidSyslogFile* file)
@@ -64,9 +64,9 @@ void SolidSyslogFatFsFile_Destroy(struct SolidSyslogFile* file)
 static bool FatFsFile_Open(struct SolidSyslogFile* self, const char* path)
 {
     struct SolidSyslogFatFsFile* fatfs = FatFsFile_Self(self);
-    FRESULT result = f_open(&fatfs->fp, path, READ_WRITE_OR_CREATE);
-    fatfs->isOpen = (result == FR_OK);
-    return fatfs->isOpen;
+    FRESULT result = f_open(&fatfs->Fp, path, READ_WRITE_OR_CREATE);
+    fatfs->IsOpen = (result == FR_OK);
+    return fatfs->IsOpen;
 }
 
 static inline struct SolidSyslogFatFsFile* FatFsFile_Self(struct SolidSyslogFile* self)
@@ -77,16 +77,16 @@ static inline struct SolidSyslogFatFsFile* FatFsFile_Self(struct SolidSyslogFile
 static void FatFsFile_Close(struct SolidSyslogFile* self)
 {
     struct SolidSyslogFatFsFile* fatfs = FatFsFile_Self(self);
-    if (fatfs->isOpen)
+    if (fatfs->IsOpen)
     {
-        f_close(&fatfs->fp);
-        fatfs->isOpen = false;
+        f_close(&fatfs->Fp);
+        fatfs->IsOpen = false;
     }
 }
 
 static bool FatFsFile_IsOpen(struct SolidSyslogFile* self)
 {
-    return FatFsFile_Self(self)->isOpen;
+    return FatFsFile_Self(self)->IsOpen;
 }
 
 static bool FatFsFile_Read(struct SolidSyslogFile* self, void* buf, size_t count)
@@ -98,7 +98,7 @@ static bool FatFsFile_Read(struct SolidSyslogFile* self, void* buf, size_t count
 
 static inline FIL* FatFsFile_Handle(struct SolidSyslogFile* self)
 {
-    return &FatFsFile_Self(self)->fp;
+    return &FatFsFile_Self(self)->Fp;
 }
 
 static bool FatFsFile_Write(struct SolidSyslogFile* self, const void* buf, size_t count)

@@ -81,17 +81,17 @@ TEST_GROUP(TlsStreamIntegration)
         TlsTestCert_WritePemToFile(&cert, caPath);
 
         struct TlsTestServerConfig serverConfig = {};
-        serverConfig.serverCert   = &cert;
-        serverConfig.clientCaCert = serverClientCa;
+        serverConfig.ServerCert   = &cert;
+        serverConfig.ClientCaCert = serverClientCa;
         server                    = TlsTestServer_Create(&serverConfig);
 
         transport = BioPairStream_Create(TlsTestServer_ClientSideBio(server));
         BioPairStream_SetPump(transport, TlsTestServer_Pump, server);
 
-        tlsConfig.transport    = transport;
-        tlsConfig.sleep        = NoOpSleep;
-        tlsConfig.caBundlePath = caPath;
-        tlsConfig.serverName   = clientServerName;
+        tlsConfig.Transport    = transport;
+        tlsConfig.Sleep        = NoOpSleep;
+        tlsConfig.CaBundlePath = caPath;
+        tlsConfig.ServerName   = clientServerName;
         tlsStream              = SolidSyslogTlsStream_Create(&tlsStreamStorage, &tlsConfig);
     }
 
@@ -111,8 +111,8 @@ TEST_GROUP(TlsStreamIntegration)
         TlsTestCert_WritePemToFile(&clientCert, clientCertPath);
         TlsTestCert_WritePrivateKeyPemToFile(&clientCert, clientKeyPath);
 
-        tlsConfig.clientCertChainPath = clientCertPath;
-        tlsConfig.clientKeyPath       = clientKeyPath;
+        tlsConfig.ClientCertChainPath = clientCertPath;
+        tlsConfig.ClientKeyPath       = clientKeyPath;
     }
 
     void createClientCa()
@@ -155,7 +155,7 @@ TEST(TlsStreamIntegration, HandshakeRejectedWhenServerCertHostnameDoesNotMatch)
     struct TlsTestCertConfig certConfig = {};
     certConfig.commonName = "someone-else.example";
     certConfig.subjectAltDnsNames = otherSans;
-    buildScenario(certConfig); /* client.serverName defaults to "localhost" */
+    buildScenario(certConfig); /* client.ServerName defaults to "localhost" */
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
 }
@@ -187,7 +187,7 @@ TEST(TlsStreamIntegration, HandshakeRejectedWhenCipherListIsUnsupported)
     struct TlsTestCertConfig certConfig = {};
     certConfig.commonName = "localhost";
     certConfig.subjectAltDnsNames = LOCALHOST_SANS;
-    tlsConfig.cipherList = "NOT-A-REAL-CIPHER";
+    tlsConfig.CipherList = "NOT-A-REAL-CIPHER";
     buildScenario(certConfig);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));

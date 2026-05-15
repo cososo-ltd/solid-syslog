@@ -39,16 +39,16 @@ static inline bool FileBlockDevice_IsValidBlockIndex(size_t blockIndex)
  * invariant — by construction the device has exactly one underlying file. */
 struct OpenHandle
 {
-    struct SolidSyslogFile* file;
-    size_t blockIndex;
-    bool isOpen;
+    struct SolidSyslogFile* File;
+    size_t BlockIndex;
+    bool IsOpen;
 };
 
 struct SolidSyslogFileBlockDevice
 {
-    struct SolidSyslogBlockDevice base;
-    struct OpenHandle handle;
-    const char* pathPrefix;
+    struct SolidSyslogBlockDevice Base;
+    struct OpenHandle Handle;
+    const char* PathPrefix;
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
@@ -103,10 +103,10 @@ struct SolidSyslogBlockDevice* SolidSyslogFileBlockDevice_Create(
     struct SolidSyslogFileBlockDevice* device = (struct SolidSyslogFileBlockDevice*) storage;
 
     FileBlockDevice_InitialiseVtable(device);
-    device->handle = (struct OpenHandle) {.file = file, .blockIndex = 0, .isOpen = false};
-    device->pathPrefix = pathPrefix;
+    device->Handle = (struct OpenHandle) {.File = file, .BlockIndex = 0, .IsOpen = false};
+    device->PathPrefix = pathPrefix;
 
-    return &device->base;
+    return &device->Base;
 }
 
 static inline struct SolidSyslogFileBlockDevice* FileBlockDevice_AsFileBlockDevice(struct SolidSyslogBlockDevice* device
@@ -117,13 +117,13 @@ static inline struct SolidSyslogFileBlockDevice* FileBlockDevice_AsFileBlockDevi
 
 static inline void FileBlockDevice_InitialiseVtable(struct SolidSyslogFileBlockDevice* device)
 {
-    device->base.Acquire = FileBlockDevice_Acquire;
-    device->base.Dispose = FileBlockDevice_Dispose;
-    device->base.Exists = FileBlockDevice_Exists;
-    device->base.Read = FileBlockDevice_Read;
-    device->base.Append = FileBlockDevice_Append;
-    device->base.WriteAt = FileBlockDevice_WriteAt;
-    device->base.Size = FileBlockDevice_Size;
+    device->Base.Acquire = FileBlockDevice_Acquire;
+    device->Base.Dispose = FileBlockDevice_Dispose;
+    device->Base.Exists = FileBlockDevice_Exists;
+    device->Base.Read = FileBlockDevice_Read;
+    device->Base.Append = FileBlockDevice_Append;
+    device->Base.WriteAt = FileBlockDevice_WriteAt;
+    device->Base.Size = FileBlockDevice_Size;
 }
 
 /* ------------------------------------------------------------------
@@ -135,15 +135,15 @@ static inline void FileBlockDevice_CloseIfOpen(struct OpenHandle* handle);
 void SolidSyslogFileBlockDevice_Destroy(struct SolidSyslogBlockDevice* device)
 {
     struct SolidSyslogFileBlockDevice* fileDevice = FileBlockDevice_AsFileBlockDevice(device);
-    FileBlockDevice_CloseIfOpen(&fileDevice->handle);
+    FileBlockDevice_CloseIfOpen(&fileDevice->Handle);
 }
 
 static inline void FileBlockDevice_CloseIfOpen(struct OpenHandle* handle)
 {
-    if (handle->isOpen)
+    if (handle->IsOpen)
     {
-        SolidSyslogFile_Close(handle->file);
-        handle->isOpen = false;
+        SolidSyslogFile_Close(handle->File);
+        handle->IsOpen = false;
     }
 }
 
@@ -174,11 +174,11 @@ static bool FileBlockDevice_Acquire(struct SolidSyslogBlockDevice* self, size_t 
     if (FileBlockDevice_IsValidBlockIndex(blockIndex))
     {
         struct SolidSyslogFileBlockDevice* device = FileBlockDevice_AsFileBlockDevice(self);
-        ready = FileBlockDevice_EnsureHandleOpenOnBlock(&device->handle, device, blockIndex);
+        ready = FileBlockDevice_EnsureHandleOpenOnBlock(&device->Handle, device, blockIndex);
 
         if (ready)
         {
-            SolidSyslogFile_Truncate(device->handle.file);
+            SolidSyslogFile_Truncate(device->Handle.File);
         }
     }
 
@@ -191,7 +191,7 @@ static inline bool FileBlockDevice_IsHandleAlreadyOpenOnBlock(
     size_t blockIndex
 )
 {
-    return handle->isOpen && underlyingFileIsOpen && (handle->blockIndex == blockIndex);
+    return handle->IsOpen && underlyingFileIsOpen && (handle->BlockIndex == blockIndex);
 }
 
 static bool FileBlockDevice_EnsureHandleOpenOnBlock(
@@ -200,7 +200,7 @@ static bool FileBlockDevice_EnsureHandleOpenOnBlock(
     size_t blockIndex
 )
 {
-    bool underlyingFileIsOpen = SolidSyslogFile_IsOpen(handle->file);
+    bool underlyingFileIsOpen = SolidSyslogFile_IsOpen(handle->File);
     bool ready = FileBlockDevice_IsHandleAlreadyOpenOnBlock(handle, underlyingFileIsOpen, blockIndex);
 
     if (!ready)
@@ -217,21 +217,21 @@ static bool FileBlockDevice_OpenHandleOnBlock(
     size_t blockIndex
 )
 {
-    if (SolidSyslogFile_IsOpen(handle->file))
+    if (SolidSyslogFile_IsOpen(handle->File))
     {
-        SolidSyslogFile_Close(handle->file);
+        SolidSyslogFile_Close(handle->File);
     }
-    handle->isOpen = false;
+    handle->IsOpen = false;
 
     SolidSyslogFormatterStorage nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
     const char* name = FileBlockDevice_FormatBlockFilename(device, nameStorage, blockIndex);
 
-    bool opened = SolidSyslogFile_Open(handle->file, name);
+    bool opened = SolidSyslogFile_Open(handle->File, name);
 
     if (opened)
     {
-        handle->blockIndex = blockIndex;
-        handle->isOpen = true;
+        handle->BlockIndex = blockIndex;
+        handle->IsOpen = true;
     }
 
     return opened;
@@ -245,7 +245,7 @@ static inline const char* FileBlockDevice_FormatBlockFilename(
 {
     struct SolidSyslogFormatter* formatter = SolidSyslogFormatter_Create(storage, MAX_PATH_SIZE);
 
-    SolidSyslogFormatter_BoundedString(formatter, device->pathPrefix, MAX_PREFIX_LENGTH);
+    SolidSyslogFormatter_BoundedString(formatter, device->PathPrefix, MAX_PREFIX_LENGTH);
     SolidSyslogFormatter_TwoDigit(formatter, (uint8_t) blockIndex);
     SolidSyslogFormatter_BoundedString(formatter, FILE_EXTENSION, sizeof(FILE_EXTENSION) - 1);
 
@@ -266,11 +266,11 @@ static bool FileBlockDevice_Dispose(struct SolidSyslogBlockDevice* self, size_t 
     {
         struct SolidSyslogFileBlockDevice* device = FileBlockDevice_AsFileBlockDevice(self);
 
-        FileBlockDevice_CloseIfHoldingBlock(&device->handle, blockIndex);
+        FileBlockDevice_CloseIfHoldingBlock(&device->Handle, blockIndex);
 
         SolidSyslogFormatterStorage nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
         const char* name = FileBlockDevice_FormatBlockFilename(device, nameStorage, blockIndex);
-        disposed = SolidSyslogFile_Delete(device->handle.file, name);
+        disposed = SolidSyslogFile_Delete(device->Handle.File, name);
     }
 
     return disposed;
@@ -278,10 +278,10 @@ static bool FileBlockDevice_Dispose(struct SolidSyslogBlockDevice* self, size_t 
 
 static inline void FileBlockDevice_CloseIfHoldingBlock(struct OpenHandle* handle, size_t blockIndex)
 {
-    if (handle->isOpen && (handle->blockIndex == blockIndex))
+    if (handle->IsOpen && (handle->BlockIndex == blockIndex))
     {
-        SolidSyslogFile_Close(handle->file);
-        handle->isOpen = false;
+        SolidSyslogFile_Close(handle->File);
+        handle->IsOpen = false;
     }
 }
 
@@ -298,7 +298,7 @@ static bool FileBlockDevice_Exists(struct SolidSyslogBlockDevice* self, size_t b
         struct SolidSyslogFileBlockDevice* device = FileBlockDevice_AsFileBlockDevice(self);
         SolidSyslogFormatterStorage nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(MAX_PATH_SIZE)];
         const char* name = FileBlockDevice_FormatBlockFilename(device, nameStorage, blockIndex);
-        exists = SolidSyslogFile_Exists(device->handle.file, name);
+        exists = SolidSyslogFile_Exists(device->Handle.File, name);
     }
 
     return exists;
@@ -322,10 +322,10 @@ static bool FileBlockDevice_Read(
     if (FileBlockDevice_IsValidBlockIndex(blockIndex))
     {
         struct SolidSyslogFileBlockDevice* device = FileBlockDevice_AsFileBlockDevice(self);
-        if (FileBlockDevice_EnsureHandleOpenOnBlock(&device->handle, device, blockIndex))
+        if (FileBlockDevice_EnsureHandleOpenOnBlock(&device->Handle, device, blockIndex))
         {
-            SolidSyslogFile_SeekTo(device->handle.file, offset);
-            read = SolidSyslogFile_Read(device->handle.file, buf, count);
+            SolidSyslogFile_SeekTo(device->Handle.File, offset);
+            read = SolidSyslogFile_Read(device->Handle.File, buf, count);
         }
     }
 
@@ -346,10 +346,10 @@ static bool FileBlockDevice_Append(
     if (FileBlockDevice_IsValidBlockIndex(blockIndex))
     {
         struct SolidSyslogFileBlockDevice* device = FileBlockDevice_AsFileBlockDevice(self);
-        if (FileBlockDevice_EnsureHandleOpenOnBlock(&device->handle, device, blockIndex))
+        if (FileBlockDevice_EnsureHandleOpenOnBlock(&device->Handle, device, blockIndex))
         {
-            SolidSyslogFile_SeekTo(device->handle.file, SolidSyslogFile_Size(device->handle.file));
-            written = SolidSyslogFile_Write(device->handle.file, buf, count);
+            SolidSyslogFile_SeekTo(device->Handle.File, SolidSyslogFile_Size(device->Handle.File));
+            written = SolidSyslogFile_Write(device->Handle.File, buf, count);
         }
     }
 
@@ -370,10 +370,10 @@ static bool FileBlockDevice_WriteAt(
     if (FileBlockDevice_IsValidBlockIndex(blockIndex))
     {
         struct SolidSyslogFileBlockDevice* device = FileBlockDevice_AsFileBlockDevice(self);
-        if (FileBlockDevice_EnsureHandleOpenOnBlock(&device->handle, device, blockIndex))
+        if (FileBlockDevice_EnsureHandleOpenOnBlock(&device->Handle, device, blockIndex))
         {
-            SolidSyslogFile_SeekTo(device->handle.file, offset);
-            written = SolidSyslogFile_Write(device->handle.file, buf, count);
+            SolidSyslogFile_SeekTo(device->Handle.File, offset);
+            written = SolidSyslogFile_Write(device->Handle.File, buf, count);
         }
     }
 
@@ -389,9 +389,9 @@ static size_t FileBlockDevice_Size(struct SolidSyslogBlockDevice* self, size_t b
     if (FileBlockDevice_IsValidBlockIndex(blockIndex))
     {
         struct SolidSyslogFileBlockDevice* device = FileBlockDevice_AsFileBlockDevice(self);
-        if (FileBlockDevice_EnsureHandleOpenOnBlock(&device->handle, device, blockIndex))
+        if (FileBlockDevice_EnsureHandleOpenOnBlock(&device->Handle, device, blockIndex))
         {
-            size = SolidSyslogFile_Size(device->handle.file);
+            size = SolidSyslogFile_Size(device->Handle.File);
         }
     }
 

@@ -11,9 +11,9 @@ EXTERN_C_BEGIN
 
     struct TlsTestServerConfig
     {
-        const struct TlsTestCert* serverCert; /* includes matching private key */
-        const char* cipherList; /* NULL = server default */
-        const struct TlsTestCert* clientCaCert; /* NULL = no mTLS; set to require & verify client cert */
+        const struct TlsTestCert* ServerCert; /* includes matching private key */
+        const char* CipherList; /* NULL = server default */
+        const struct TlsTestCert* ClientCaCert; /* NULL = no mTLS; set to require & verify client cert */
     };
 
     struct TlsTestServer* TlsTestServer_Create(const struct TlsTestServerConfig* config);

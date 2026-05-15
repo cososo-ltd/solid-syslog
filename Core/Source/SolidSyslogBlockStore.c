@@ -26,9 +26,9 @@ static bool BlockStore_IsTransient(struct SolidSyslogStore* self);
 
 struct SolidSyslogBlockStore
 {
-    struct SolidSyslogStore base;
-    struct RecordStore recordStore;
-    struct BlockSequence blockSequence;
+    struct SolidSyslogStore Base;
+    struct RecordStore RecordStore;
+    struct BlockSequence BlockSequence;
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
@@ -61,19 +61,19 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(
     struct SolidSyslogBlockStore* blockStore = (struct SolidSyslogBlockStore*) storage;
     *blockStore = DEFAULT_INSTANCE;
 
-    RecordStore_Init(&blockStore->recordStore, BlockStore_ResolveSecurityPolicy(config->securityPolicy));
+    RecordStore_Init(&blockStore->RecordStore, BlockStore_ResolveSecurityPolicy(config->SecurityPolicy));
 
-    struct BlockSequenceConfig blockConfig = BlockStore_BuildBlockSequenceConfig(config, &blockStore->recordStore);
-    BlockSequence_Init(&blockStore->blockSequence, &blockConfig);
+    struct BlockSequenceConfig blockConfig = BlockStore_BuildBlockSequenceConfig(config, &blockStore->RecordStore);
+    BlockSequence_Init(&blockStore->BlockSequence, &blockConfig);
 
     BlockStore_InitialiseVtable(blockStore);
 
-    if (BlockSequence_Open(&blockStore->blockSequence))
+    if (BlockSequence_Open(&blockStore->BlockSequence))
     {
         BlockStore_ResumeFromExistingBlock(blockStore);
     }
 
-    return &blockStore->base;
+    return &blockStore->Base;
 }
 
 static inline struct SolidSyslogBlockStore* BlockStore_AsBlockStore(struct SolidSyslogStore* store)
@@ -87,7 +87,7 @@ static inline struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy
 {
     struct SolidSyslogSecurityPolicy* resolved = configured;
 
-    if ((resolved == NULL) || (resolved->integritySize > SOLIDSYSLOG_MAX_INTEGRITY_SIZE))
+    if ((resolved == NULL) || (resolved->IntegritySize > SOLIDSYSLOG_MAX_INTEGRITY_SIZE))
     {
         resolved = SolidSyslogNullSecurityPolicy_Create();
     }
@@ -101,38 +101,38 @@ static inline struct BlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
 )
 {
     size_t minBlockSize = RecordStore_RecordSize(recordStore, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
-    size_t maxBlockSize = (config->maxBlockSize < minBlockSize) ? minBlockSize : config->maxBlockSize;
+    size_t maxBlockSize = (config->MaxBlockSize < minBlockSize) ? minBlockSize : config->MaxBlockSize;
 
     struct BlockSequenceConfig blockConfig = {
-        .blockDevice = config->blockDevice,
-        .maxBlockSize = maxBlockSize,
-        .maxBlocks = config->maxBlocks,
-        .discardPolicy = config->discardPolicy,
-        .onStoreFull = config->onStoreFull,
-        .storeFullContext = config->storeFullContext,
-        .getCapacityThreshold = config->getCapacityThreshold,
-        .onThresholdCrossed = config->onThresholdCrossed,
-        .thresholdContext = config->thresholdContext,
+        .BlockDevice = config->BlockDevice,
+        .MaxBlockSize = maxBlockSize,
+        .MaxBlocks = config->MaxBlocks,
+        .DiscardPolicy = config->DiscardPolicy,
+        .OnStoreFull = config->OnStoreFull,
+        .StoreFullContext = config->StoreFullContext,
+        .GetCapacityThreshold = config->GetCapacityThreshold,
+        .OnThresholdCrossed = config->OnThresholdCrossed,
+        .ThresholdContext = config->ThresholdContext,
     };
     return blockConfig;
 }
 
 static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* blockStore)
 {
-    blockStore->base.Write = BlockStore_Write;
-    blockStore->base.ReadNextUnsent = BlockStore_ReadNextUnsent;
-    blockStore->base.MarkSent = BlockStore_MarkSent;
-    blockStore->base.HasUnsent = BlockStore_HasUnsent;
-    blockStore->base.IsHalted = BlockStore_IsHalted;
-    blockStore->base.GetTotalBytes = BlockStore_GetTotalBytes;
-    blockStore->base.GetUsedBytes = BlockStore_GetUsedBytes;
-    blockStore->base.IsTransient = BlockStore_IsTransient;
+    blockStore->Base.Write = BlockStore_Write;
+    blockStore->Base.ReadNextUnsent = BlockStore_ReadNextUnsent;
+    blockStore->Base.MarkSent = BlockStore_MarkSent;
+    blockStore->Base.HasUnsent = BlockStore_HasUnsent;
+    blockStore->Base.IsHalted = BlockStore_IsHalted;
+    blockStore->Base.GetTotalBytes = BlockStore_GetTotalBytes;
+    blockStore->Base.GetUsedBytes = BlockStore_GetUsedBytes;
+    blockStore->Base.IsTransient = BlockStore_IsTransient;
 }
 
 static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* blockStore)
 {
-    struct SolidSyslogBlockDevice* device = BlockSequence_BlockDevice(&blockStore->blockSequence);
-    size_t readSequence = BlockSequence_ReadSequence(&blockStore->blockSequence);
+    struct SolidSyslogBlockDevice* device = BlockSequence_BlockDevice(&blockStore->BlockSequence);
+    size_t readSequence = BlockSequence_ReadSequence(&blockStore->BlockSequence);
     /* Bound the scan by the read block's actual size, not WritePosition. On a
      * multi-block resume the read block is a closed earlier block whose size
      * is independent of the write block's fill level. */
@@ -140,13 +140,13 @@ static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* blo
 
     bool corrupt = false;
     size_t cursor =
-        RecordStore_FindFirstUnsent(&blockStore->recordStore, device, readSequence, readBlockSize, &corrupt);
+        RecordStore_FindFirstUnsent(&blockStore->RecordStore, device, readSequence, readBlockSize, &corrupt);
 
-    BlockSequence_SetReadCursor(&blockStore->blockSequence, cursor);
+    BlockSequence_SetReadCursor(&blockStore->BlockSequence, cursor);
 
     if (corrupt)
     {
-        BlockSequence_MarkWriteBlockCorrupt(&blockStore->blockSequence);
+        BlockSequence_MarkWriteBlockCorrupt(&blockStore->BlockSequence);
     }
 }
 
@@ -173,26 +173,26 @@ static bool BlockStore_Write(struct SolidSyslogStore* self, const void* data, si
 
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* blockStore, const void* data, size_t size)
 {
-    size_t recordSize = RecordStore_RecordSize(&blockStore->recordStore, (uint16_t) size);
+    size_t recordSize = RecordStore_RecordSize(&blockStore->RecordStore, (uint16_t) size);
     bool readBlockChanged = false;
     bool written = false;
 
-    if (BlockSequence_PrepareForWrite(&blockStore->blockSequence, recordSize, &readBlockChanged))
+    if (BlockSequence_PrepareForWrite(&blockStore->BlockSequence, recordSize, &readBlockChanged))
     {
         if (readBlockChanged)
         {
-            RecordStore_ForgetLastRead(&blockStore->recordStore);
+            RecordStore_ForgetLastRead(&blockStore->RecordStore);
         }
 
         if (RecordStore_Append(
-                &blockStore->recordStore,
-                BlockSequence_BlockDevice(&blockStore->blockSequence),
-                BlockSequence_WriteSequence(&blockStore->blockSequence),
+                &blockStore->RecordStore,
+                BlockSequence_BlockDevice(&blockStore->BlockSequence),
+                BlockSequence_WriteSequence(&blockStore->BlockSequence),
                 data,
                 size
             ))
         {
-            BlockSequence_NoteRecordWritten(&blockStore->blockSequence, recordSize);
+            BlockSequence_NoteRecordWritten(&blockStore->BlockSequence, recordSize);
             written = true;
         }
     }
@@ -206,22 +206,22 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* blockStore, con
 
 static bool BlockStore_HasUnsent(struct SolidSyslogStore* self)
 {
-    return BlockSequence_HasUnsent(&BlockStore_AsBlockStore(self)->blockSequence);
+    return BlockSequence_HasUnsent(&BlockStore_AsBlockStore(self)->BlockSequence);
 }
 
 static bool BlockStore_IsHalted(struct SolidSyslogStore* self)
 {
-    return BlockSequence_IsHalted(&BlockStore_AsBlockStore(self)->blockSequence);
+    return BlockSequence_IsHalted(&BlockStore_AsBlockStore(self)->BlockSequence);
 }
 
 static size_t BlockStore_GetTotalBytes(struct SolidSyslogStore* self)
 {
-    return BlockSequence_TotalBytes(&BlockStore_AsBlockStore(self)->blockSequence);
+    return BlockSequence_TotalBytes(&BlockStore_AsBlockStore(self)->BlockSequence);
 }
 
 static size_t BlockStore_GetUsedBytes(struct SolidSyslogStore* self)
 {
-    return BlockSequence_UsedBytes(&BlockStore_AsBlockStore(self)->blockSequence);
+    return BlockSequence_UsedBytes(&BlockStore_AsBlockStore(self)->BlockSequence);
 }
 
 /* BlockStore retains records — a BlockStore_Write rejection here is the discard
@@ -250,14 +250,14 @@ static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* self, void* data,
     bool read = false;
     *bytesRead = 0;
 
-    if (BlockSequence_HasUnsent(&blockStore->blockSequence))
+    if (BlockSequence_HasUnsent(&blockStore->BlockSequence))
     {
         read = BlockStore_ReadCurrent(blockStore, data, maxSize, bytesRead);
 
-        while (!read && BlockSequence_ReadIsBehindWrite(&blockStore->blockSequence))
+        while (!read && BlockSequence_ReadIsBehindWrite(&blockStore->BlockSequence))
         {
-            BlockSequence_AdvanceToNextReadBlock(&blockStore->blockSequence);
-            RecordStore_ForgetLastRead(&blockStore->recordStore);
+            BlockSequence_AdvanceToNextReadBlock(&blockStore->BlockSequence);
+            RecordStore_ForgetLastRead(&blockStore->RecordStore);
             read = BlockStore_ReadCurrent(blockStore, data, maxSize, bytesRead);
         }
     }
@@ -273,10 +273,10 @@ static bool BlockStore_ReadCurrent(
 )
 {
     return RecordStore_Read(
-        &blockStore->recordStore,
-        BlockSequence_BlockDevice(&blockStore->blockSequence),
-        BlockSequence_ReadSequence(&blockStore->blockSequence),
-        BlockSequence_ReadCursor(&blockStore->blockSequence),
+        &blockStore->RecordStore,
+        BlockSequence_BlockDevice(&blockStore->BlockSequence),
+        BlockSequence_ReadSequence(&blockStore->BlockSequence),
+        BlockSequence_ReadCursor(&blockStore->BlockSequence),
         data,
         maxSize,
         bytesRead
@@ -293,19 +293,19 @@ static void BlockStore_MarkSent(struct SolidSyslogStore* self)
     size_t nextCursor = 0;
 
     if (RecordStore_MarkLastReadAsSent(
-            &blockStore->recordStore,
-            BlockSequence_BlockDevice(&blockStore->blockSequence),
+            &blockStore->RecordStore,
+            BlockSequence_BlockDevice(&blockStore->BlockSequence),
             &nextCursor
         ))
     {
-        BlockSequence_SetReadCursor(&blockStore->blockSequence, nextCursor);
+        BlockSequence_SetReadCursor(&blockStore->BlockSequence, nextCursor);
 
         bool readBlockChanged = false;
-        BlockSequence_DisposeReadBlockIfDrained(&blockStore->blockSequence, &readBlockChanged);
+        BlockSequence_DisposeReadBlockIfDrained(&blockStore->BlockSequence, &readBlockChanged);
 
         if (readBlockChanged)
         {
-            RecordStore_ForgetLastRead(&blockStore->recordStore);
+            RecordStore_ForgetLastRead(&blockStore->RecordStore);
         }
     }
 }

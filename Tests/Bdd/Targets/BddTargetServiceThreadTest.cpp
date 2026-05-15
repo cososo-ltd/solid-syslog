@@ -37,8 +37,8 @@ static void SleepFake(int milliseconds)
 
 static void BddTargetEndpoint(struct SolidSyslogEndpoint* endpoint)
 {
-    SolidSyslogFormatter_BoundedString(endpoint->host, BddTargetUdpConfig_GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
-    endpoint->port = BddTargetUdpConfig_GetPort();
+    SolidSyslogFormatter_BoundedString(endpoint->Host, BddTargetUdpConfig_GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
+    endpoint->Port = BddTargetUdpConfig_GetPort();
 }
 
 static uint32_t BddTargetEndpointVersion() // NOLINT(modernize-use-trailing-return-type)

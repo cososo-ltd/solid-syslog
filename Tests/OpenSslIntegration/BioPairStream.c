@@ -11,10 +11,10 @@ struct SolidSyslogAddress;
 
 struct BioPairStream
 {
-    struct SolidSyslogStream base;
-    BIO* bio;
-    BioPairStreamPumpFunction pump;
-    void* pumpContext;
+    struct SolidSyslogStream Base;
+    BIO* Bio;
+    BioPairStreamPumpFunction Pump;
+    void* PumpContext;
 };
 
 static bool Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr);
@@ -25,12 +25,12 @@ static void Close(struct SolidSyslogStream* self);
 struct SolidSyslogStream* BioPairStream_Create(BIO* bio)
 {
     struct BioPairStream* stream = (struct BioPairStream*) calloc(1, sizeof(struct BioPairStream));
-    stream->base.Open = Open;
-    stream->base.Send = Send;
-    stream->base.Read = Read;
-    stream->base.Close = Close;
-    stream->bio = bio;
-    return &stream->base;
+    stream->Base.Open = Open;
+    stream->Base.Send = Send;
+    stream->Base.Read = Read;
+    stream->Base.Close = Close;
+    stream->Bio = bio;
+    return &stream->Base;
 }
 
 void BioPairStream_Destroy(struct SolidSyslogStream* self)
@@ -41,8 +41,8 @@ void BioPairStream_Destroy(struct SolidSyslogStream* self)
 void BioPairStream_SetPump(struct SolidSyslogStream* self, BioPairStreamPumpFunction pump, void* context)
 {
     struct BioPairStream* stream = (struct BioPairStream*) self;
-    stream->pump = pump;
-    stream->pumpContext = context;
+    stream->Pump = pump;
+    stream->PumpContext = context;
 }
 
 static bool Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr)
@@ -55,7 +55,7 @@ static bool Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress
 static bool Send(struct SolidSyslogStream* self, const void* buffer, size_t size)
 {
     struct BioPairStream* stream = (struct BioPairStream*) self;
-    int written = BIO_write(stream->bio, buffer, (int) size);
+    int written = BIO_write(stream->Bio, buffer, (int) size);
     return written == (int) size;
 }
 
@@ -70,19 +70,19 @@ static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_
     bool done = false;
     while (!done)
     {
-        int bytesRead = BIO_read(stream->bio, buffer, (int) size);
+        int bytesRead = BIO_read(stream->Bio, buffer, (int) size);
         if (bytesRead > 0)
         {
             result = (SolidSyslogSsize) bytesRead;
             done = true;
         }
-        else if (!BIO_should_retry(stream->bio) || stream->pump == NULL)
+        else if (!BIO_should_retry(stream->Bio) || stream->Pump == NULL)
         {
             done = true;
         }
         else
         {
-            stream->pump(stream->pumpContext);
+            stream->Pump(stream->PumpContext);
         }
     }
     return result;

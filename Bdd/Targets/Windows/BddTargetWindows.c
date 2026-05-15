@@ -100,8 +100,8 @@ static int GetPort(void)
 
 static void GetEndpoint(struct SolidSyslogEndpoint* endpoint)
 {
-    SolidSyslogFormatter_BoundedString(endpoint->host, GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
-    endpoint->port = (uint16_t) GetPort();
+    SolidSyslogFormatter_BoundedString(endpoint->Host, GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
+    endpoint->Port = (uint16_t) GetPort();
 }
 
 static uint32_t GetEndpointVersion(void)
@@ -111,9 +111,9 @@ static uint32_t GetEndpointVersion(void)
 
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
-    timeQuality->tzKnown = true;
-    timeQuality->isSynced = true;
-    timeQuality->syncAccuracyMicroseconds = SOLIDSYSLOG_SYNC_ACCURACY_OMIT;
+    timeQuality->TzKnown = true;
+    timeQuality->IsSynced = true;
+    timeQuality->SyncAccuracyMicroseconds = SOLIDSYSLOG_SYNC_ACCURACY_OMIT;
 }
 
 /* MSVC's getenv triggers C4996; getenv_s is the strict-mode equivalent.
@@ -176,24 +176,24 @@ static void OnThresholdCrossed(void* context)
 
 static struct SolidSyslogSender* CreateSender(const struct BddTargetWindowsOptions* options)
 {
-    bool mtlsModeActive = (strcmp(options->transport, "mtls") == 0);
+    bool mtlsModeActive = (strcmp(options->Transport, "mtls") == 0);
 
     struct SolidSyslogResolver* resolver = SolidSyslogWinsockResolver_Create();
 
     udpDatagram = SolidSyslogWinsockDatagram_Create();
     static struct SolidSyslogUdpSenderConfig udpConfig = {0};
-    udpConfig.resolver = resolver;
-    udpConfig.datagram = udpDatagram;
-    udpConfig.endpoint = GetEndpoint;
-    udpConfig.endpointVersion = GetEndpointVersion;
+    udpConfig.Resolver = resolver;
+    udpConfig.Datagram = udpDatagram;
+    udpConfig.Endpoint = GetEndpoint;
+    udpConfig.EndpointVersion = GetEndpointVersion;
     struct SolidSyslogSender* udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
     plainTcpStream = SolidSyslogWinsockTcpStream_Create(&tcpStreamStorage);
     static struct SolidSyslogStreamSenderConfig tcpConfig = {0};
-    tcpConfig.resolver = resolver;
-    tcpConfig.stream = plainTcpStream;
-    tcpConfig.endpoint = GetEndpoint;
-    tcpConfig.endpointVersion = GetEndpointVersion;
+    tcpConfig.Resolver = resolver;
+    tcpConfig.Stream = plainTcpStream;
+    tcpConfig.Endpoint = GetEndpoint;
+    tcpConfig.EndpointVersion = GetEndpointVersion;
     plainTcpSender = SolidSyslogStreamSender_Create(&tcpSenderStorage, &tcpConfig);
 
     struct SolidSyslogSender* tlsSender = BddTargetTlsSender_Create(resolver, mtlsModeActive);
@@ -204,11 +204,11 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetWindowsOptio
     inners[BDD_TARGET_SWITCH_TLS] = tlsSender;
 
     static struct SolidSyslogSwitchingSenderConfig switchConfig = {0};
-    switchConfig.senders = inners;
-    switchConfig.senderCount = BDD_TARGET_SWITCH_COUNT;
-    switchConfig.selector = BddTargetSwitchConfig_Selector;
+    switchConfig.Senders = inners;
+    switchConfig.SenderCount = BDD_TARGET_SWITCH_COUNT;
+    switchConfig.Selector = BddTargetSwitchConfig_Selector;
 
-    BddTargetSwitchConfig_SetByName(options->transport);
+    BddTargetSwitchConfig_SetByName(options->Transport);
     return SolidSyslogSwitchingSender_Create(&switchConfig);
 }
 
@@ -225,7 +225,7 @@ static void DestroySender(void)
 
 static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions* options)
 {
-    bool useFile = (strcmp(options->store, "file") == 0);
+    bool useFile = (strcmp(options->Store, "file") == 0);
 
     if (useFile)
     {
@@ -236,17 +236,17 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
         storeBlockDevice = SolidSyslogFileBlockDevice_Create(&blockDeviceStorage, storeFile, STORE_PATH_PREFIX);
 
         static size_t capacityThreshold;
-        capacityThreshold = options->capacityThreshold;
+        capacityThreshold = options->CapacityThreshold;
         static struct SolidSyslogBlockStoreConfig storeConfig = {0};
-        storeConfig.blockDevice = storeBlockDevice;
-        storeConfig.maxBlockSize = options->maxBlockSize;
-        storeConfig.maxBlocks = options->maxBlocks;
-        storeConfig.discardPolicy = MapDiscardPolicy(options->discardPolicy);
-        storeConfig.securityPolicy = SolidSyslogCrc16Policy_Create();
-        storeConfig.onStoreFull = OnStoreFull;
-        storeConfig.getCapacityThreshold = GetCapacityThreshold;
-        storeConfig.onThresholdCrossed = OnThresholdCrossed;
-        storeConfig.thresholdContext = &capacityThreshold;
+        storeConfig.BlockDevice = storeBlockDevice;
+        storeConfig.MaxBlockSize = options->MaxBlockSize;
+        storeConfig.MaxBlocks = options->MaxBlocks;
+        storeConfig.DiscardPolicy = MapDiscardPolicy(options->DiscardPolicy);
+        storeConfig.SecurityPolicy = SolidSyslogCrc16Policy_Create();
+        storeConfig.OnStoreFull = OnStoreFull;
+        storeConfig.GetCapacityThreshold = GetCapacityThreshold;
+        storeConfig.OnThresholdCrossed = OnThresholdCrossed;
+        storeConfig.ThresholdContext = &capacityThreshold;
 
         static SolidSyslogBlockStoreStorage storeStorage;
         return SolidSyslogBlockStore_Create(&storeStorage, &storeConfig);
@@ -257,7 +257,7 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
 
 static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetWindowsOptions* options)
 {
-    bool useFile = (strcmp(options->store, "file") == 0);
+    bool useFile = (strcmp(options->Store, "file") == 0);
 
     if (useFile)
     {
@@ -295,9 +295,9 @@ int BddTargetWindows_Run(int argc, char* argv[])
 
     /* Honour --app-name when supplied (BDD scenarios pin it for record-size
        parity across runners); otherwise derive from argv[0] as before. */
-    BddTargetAppName_Set((options.appName != NULL) ? options.appName : argv[0]);
+    BddTargetAppName_Set((options.AppName != NULL) ? options.AppName : argv[0]);
 
-    haltExit = options.haltExit;
+    haltExit = options.HaltExit;
 
     struct SolidSyslogSender* sender = CreateSender(&options);
     struct SolidSyslogStore* store = CreateStore(&options);
@@ -306,18 +306,18 @@ int BddTargetWindows_Run(int argc, char* argv[])
     struct SolidSyslogBuffer* buffer = SolidSyslogCircularBuffer_Create(bufferStorage, sizeof(bufferStorage), mutex);
     struct SolidSyslogAtomicCounter* counter = SolidSyslogAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
-        .counter = counter,
-        .getSysUpTime = SolidSyslogWindowsSysUpTime_Get,
-        .getLanguage = BddTargetLanguage_Get,
+        .Counter = counter,
+        .GetSysUpTime = SolidSyslogWindowsSysUpTime_Get,
+        .GetLanguage = BddTargetLanguage_Get,
     };
     struct SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     struct SolidSyslogStructuredData* timeQuality = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
     struct SolidSyslogOriginSdConfig originConfig = {
-        .software = "SolidSyslogBddTarget",
-        .swVersion = "0.7.0",
-        .enterpriseId = BDD_TARGET_ENTERPRISE_ID,
-        .getIpCount = BddTargetIps_Count,
-        .getIpAt = BddTargetIps_At,
+        .Software = "SolidSyslogBddTarget",
+        .SwVersion = "0.7.0",
+        .EnterpriseId = BDD_TARGET_ENTERPRISE_ID,
+        .GetIpCount = BddTargetIps_Count,
+        .GetIpAt = BddTargetIps_At,
     };
     struct SolidSyslogStructuredData* originSd = SolidSyslogOriginSd_Create(&originConfig);
 
@@ -326,18 +326,18 @@ int BddTargetWindows_Run(int argc, char* argv[])
        optional timeQuality and origin SDs to keep records under the
        BlockStore's per-block packing budget for store-capacity tests. */
     struct SolidSyslogStructuredData* sdList[3] = {metaSd, timeQuality, originSd};
-    size_t sdCount = options.noSd ? 1 : 3;
+    size_t sdCount = options.NoSd ? 1 : 3;
 
     struct SolidSyslogConfig config = {
-        .buffer = buffer,
-        .sender = sender,
-        .clock = SolidSyslogWindowsClock_GetTimestamp,
-        .getHostname = SolidSyslogWindowsHostname_Get,
-        .getAppName = BddTargetAppName_Get,
-        .getProcessId = SolidSyslogWindowsProcessId_Get,
-        .store = store,
-        .sd = sdList,
-        .sdCount = sdCount,
+        .Buffer = buffer,
+        .Sender = sender,
+        .Clock = SolidSyslogWindowsClock_GetTimestamp,
+        .GetHostname = SolidSyslogWindowsHostname_Get,
+        .GetAppName = BddTargetAppName_Get,
+        .GetProcessId = SolidSyslogWindowsProcessId_Get,
+        .Store = store,
+        .Sd = sdList,
+        .SdCount = sdCount,
     };
     SolidSyslog_Create(&config);
 
@@ -345,10 +345,10 @@ int BddTargetWindows_Run(int argc, char* argv[])
     HANDLE serviceThread = (HANDLE) _beginthreadex(NULL, 0, ServiceThreadEntry, (void*) &shutdownFlag, 0, NULL);
 
     struct SolidSyslogMessage message = {
-        .facility = options.facility,
-        .severity = options.severity,
-        .messageId = options.messageId,
-        .msg = options.msg,
+        .Facility = options.Facility,
+        .Severity = options.Severity,
+        .MessageId = options.MessageId,
+        .Msg = options.Msg,
     };
 
     BddTargetInteractive_Run(&message, stdin, BddTargetSwitchConfig_SetByName, NULL);

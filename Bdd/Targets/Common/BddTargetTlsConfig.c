@@ -43,8 +43,8 @@ const char* BddTargetTlsConfig_GetServerName(void)
 
 void BddTargetTlsConfig_GetEndpoint(struct SolidSyslogEndpoint* endpoint)
 {
-    SolidSyslogFormatter_BoundedString(endpoint->host, BddTargetTlsConfig_GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
-    endpoint->port = BddTargetTlsConfig_GetPort();
+    SolidSyslogFormatter_BoundedString(endpoint->Host, BddTargetTlsConfig_GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
+    endpoint->Port = BddTargetTlsConfig_GetPort();
 }
 
 /* Static config — host/port never change, so version stays 0 forever and the

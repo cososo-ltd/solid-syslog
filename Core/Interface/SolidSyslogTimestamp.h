@@ -19,15 +19,15 @@ EXTERN_C_BEGIN
     struct SolidSyslogTimestamp
     {
         uint16_t
-            year; /* Gregorian year, e.g. 2026. Not independently validated — clocks are trusted to produce a sensible value. */
-        uint8_t month; /* 1-12. */
-        uint8_t day; /* 1-31. */
-        uint8_t hour; /* 0-23. */
-        uint8_t minute; /* 0-59. */
-        uint8_t second; /* 0-59. Leap seconds are not represented. */
-        uint32_t microsecond; /* 0-999999. */
+            Year; /* Gregorian year, e.g. 2026. Not independently validated — clocks are trusted to produce a sensible value. */
+        uint8_t Month; /* 1-12. */
+        uint8_t Day; /* 1-31. */
+        uint8_t Hour; /* 0-23. */
+        uint8_t Minute; /* 0-59. */
+        uint8_t Second; /* 0-59. Leap seconds are not represented. */
+        uint32_t Microsecond; /* 0-999999. */
         int16_t
-            utcOffsetMinutes; /* Offset from UTC in minutes; 0 for UTC. Must be -720..840 (UTC-12:00 to UTC+14:00). */
+            UtcOffsetMinutes; /* Offset from UTC in minutes; 0 for UTC. Must be -720..840 (UTC-12:00 to UTC+14:00). */
     };
 
     typedef void (*SolidSyslogClockFunction)(struct SolidSyslogTimestamp* timestamp);

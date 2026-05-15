@@ -5,61 +5,61 @@
 
 struct StreamFake
 {
-    struct SolidSyslogStream base;
-    int openCallCount;
-    const struct SolidSyslogAddress* lastOpenAddr;
-    bool openFails;
-    int sendCallCount;
-    const void* lastSendBuf;
-    size_t lastSendSize;
-    bool sendFails;
-    int readCallCount;
-    void* lastReadBuf;
-    size_t lastReadSize;
-    SolidSyslogSsize readReturn;
-    int closeCallCount;
+    struct SolidSyslogStream Base;
+    int OpenCallCount;
+    const struct SolidSyslogAddress* LastOpenAddr;
+    bool OpenFails;
+    int SendCallCount;
+    const void* LastSendBuf;
+    size_t LastSendSize;
+    bool SendFails;
+    int ReadCallCount;
+    void* LastReadBuf;
+    size_t LastReadSize;
+    SolidSyslogSsize ReadReturn;
+    int CloseCallCount;
 };
 
 static bool Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr)
 {
     struct StreamFake* fake = (struct StreamFake*) self;
-    fake->openCallCount++;
-    fake->lastOpenAddr = addr;
-    return !fake->openFails;
+    fake->OpenCallCount++;
+    fake->LastOpenAddr = addr;
+    return !fake->OpenFails;
 }
 
 static bool Send(struct SolidSyslogStream* self, const void* buffer, size_t size)
 {
     struct StreamFake* fake = (struct StreamFake*) self;
-    fake->sendCallCount++;
-    fake->lastSendBuf = buffer;
-    fake->lastSendSize = size;
-    return !fake->sendFails;
+    fake->SendCallCount++;
+    fake->LastSendBuf = buffer;
+    fake->LastSendSize = size;
+    return !fake->SendFails;
 }
 
 static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_t size)
 {
     struct StreamFake* fake = (struct StreamFake*) self;
-    fake->readCallCount++;
-    fake->lastReadBuf = buffer;
-    fake->lastReadSize = size;
-    return fake->readReturn;
+    fake->ReadCallCount++;
+    fake->LastReadBuf = buffer;
+    fake->LastReadSize = size;
+    return fake->ReadReturn;
 }
 
 static void Close(struct SolidSyslogStream* self)
 {
     struct StreamFake* fake = (struct StreamFake*) self;
-    fake->closeCallCount++;
+    fake->CloseCallCount++;
 }
 
 struct SolidSyslogStream* StreamFake_Create(void)
 {
     struct StreamFake* fake = (struct StreamFake*) calloc(1, sizeof(struct StreamFake));
-    fake->base.Open = Open;
-    fake->base.Send = Send;
-    fake->base.Read = Read;
-    fake->base.Close = Close;
-    return &fake->base;
+    fake->Base.Open = Open;
+    fake->Base.Send = Send;
+    fake->Base.Read = Read;
+    fake->Base.Close = Close;
+    return &fake->Base;
 }
 
 void StreamFake_Destroy(struct SolidSyslogStream* stream)
@@ -69,60 +69,60 @@ void StreamFake_Destroy(struct SolidSyslogStream* stream)
 
 int StreamFake_OpenCallCount(struct SolidSyslogStream* stream)
 {
-    return ((struct StreamFake*) stream)->openCallCount;
+    return ((struct StreamFake*) stream)->OpenCallCount;
 }
 
 const struct SolidSyslogAddress* StreamFake_LastOpenAddr(struct SolidSyslogStream* stream)
 {
-    return ((struct StreamFake*) stream)->lastOpenAddr;
+    return ((struct StreamFake*) stream)->LastOpenAddr;
 }
 
 int StreamFake_SendCallCount(struct SolidSyslogStream* stream)
 {
-    return ((struct StreamFake*) stream)->sendCallCount;
+    return ((struct StreamFake*) stream)->SendCallCount;
 }
 
 const void* StreamFake_LastSendBuf(struct SolidSyslogStream* stream)
 {
-    return ((struct StreamFake*) stream)->lastSendBuf;
+    return ((struct StreamFake*) stream)->LastSendBuf;
 }
 
 size_t StreamFake_LastSendSize(struct SolidSyslogStream* stream)
 {
-    return ((struct StreamFake*) stream)->lastSendSize;
+    return ((struct StreamFake*) stream)->LastSendSize;
 }
 
 int StreamFake_ReadCallCount(struct SolidSyslogStream* stream)
 {
-    return ((struct StreamFake*) stream)->readCallCount;
+    return ((struct StreamFake*) stream)->ReadCallCount;
 }
 
 void* StreamFake_LastReadBuf(struct SolidSyslogStream* stream)
 {
-    return ((struct StreamFake*) stream)->lastReadBuf;
+    return ((struct StreamFake*) stream)->LastReadBuf;
 }
 
 size_t StreamFake_LastReadSize(struct SolidSyslogStream* stream)
 {
-    return ((struct StreamFake*) stream)->lastReadSize;
+    return ((struct StreamFake*) stream)->LastReadSize;
 }
 
 void StreamFake_SetReadReturn(struct SolidSyslogStream* stream, SolidSyslogSsize value)
 {
-    ((struct StreamFake*) stream)->readReturn = value;
+    ((struct StreamFake*) stream)->ReadReturn = value;
 }
 
 void StreamFake_SetOpenFails(struct SolidSyslogStream* stream, bool fails)
 {
-    ((struct StreamFake*) stream)->openFails = fails;
+    ((struct StreamFake*) stream)->OpenFails = fails;
 }
 
 void StreamFake_SetSendFails(struct SolidSyslogStream* stream, bool fails)
 {
-    ((struct StreamFake*) stream)->sendFails = fails;
+    ((struct StreamFake*) stream)->SendFails = fails;
 }
 
 int StreamFake_CloseCallCount(struct SolidSyslogStream* stream)
 {
-    return ((struct StreamFake*) stream)->closeCallCount;
+    return ((struct StreamFake*) stream)->CloseCallCount;
 }

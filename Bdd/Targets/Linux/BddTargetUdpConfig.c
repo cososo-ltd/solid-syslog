@@ -23,8 +23,8 @@ uint16_t BddTargetUdpConfig_GetPort(void)
 
 void BddTargetUdpConfig_GetEndpoint(struct SolidSyslogEndpoint* endpoint)
 {
-    SolidSyslogFormatter_BoundedString(endpoint->host, BddTargetUdpConfig_GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
-    endpoint->port = BddTargetUdpConfig_GetPort();
+    SolidSyslogFormatter_BoundedString(endpoint->Host, BddTargetUdpConfig_GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
+    endpoint->Port = BddTargetUdpConfig_GetPort();
 }
 
 /* Static config — host/port never change, so version stays 0 forever and the

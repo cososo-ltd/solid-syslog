@@ -78,7 +78,7 @@ TEST(SolidSyslogFreeRtosStaticResolver, ResolveWritesPortFromArgInNetworkOrder)
 
 TEST(SolidSyslogFreeRtosStaticResolver, ResolveProducesSameIpv4ForAnyHostString)
 {
-    Resolve("first.host");
+    Resolve("first.Host");
     uint32_t firstIpv4 = Result()->sin_address.ulIP_IPv4;
 
     addrStorage = {};

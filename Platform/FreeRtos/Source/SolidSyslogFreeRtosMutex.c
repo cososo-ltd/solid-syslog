@@ -14,8 +14,8 @@ typedef struct SolidSyslogFreeRtosMutex FreeRtosMutex;
  * the Posix (pthread_mutex_t) and Windows (CRITICAL_SECTION) adapters. */
 struct SolidSyslogFreeRtosMutex
 {
-    struct SolidSyslogMutex base;
-    StaticSemaphore_t buffer;
+    struct SolidSyslogMutex Base;
+    StaticSemaphore_t Buffer;
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
@@ -31,18 +31,18 @@ static inline SemaphoreHandle_t FreeRtosMutex_AsHandle(FreeRtosMutex* self);
 struct SolidSyslogMutex* SolidSyslogFreeRtosMutex_Create(SolidSyslogFreeRtosMutexStorage* storage)
 {
     FreeRtosMutex* mutex = (FreeRtosMutex*) storage;
-    mutex->base.Lock = FreeRtosMutex_Lock;
-    mutex->base.Unlock = FreeRtosMutex_Unlock;
-    (void) xSemaphoreCreateMutexStatic(&mutex->buffer);
-    return &mutex->base;
+    mutex->Base.Lock = FreeRtosMutex_Lock;
+    mutex->Base.Unlock = FreeRtosMutex_Unlock;
+    (void) xSemaphoreCreateMutexStatic(&mutex->Buffer);
+    return &mutex->Base;
 }
 
 void SolidSyslogFreeRtosMutex_Destroy(struct SolidSyslogMutex* mutex)
 {
     FreeRtosMutex* self = FreeRtosMutex_From(mutex);
     vSemaphoreDelete(FreeRtosMutex_AsHandle(self));
-    self->base.Lock = NULL;
-    self->base.Unlock = NULL;
+    self->Base.Lock = NULL;
+    self->Base.Unlock = NULL;
 }
 
 static inline FreeRtosMutex* FreeRtosMutex_From(struct SolidSyslogMutex* self)
@@ -52,7 +52,7 @@ static inline FreeRtosMutex* FreeRtosMutex_From(struct SolidSyslogMutex* self)
 
 static inline SemaphoreHandle_t FreeRtosMutex_AsHandle(FreeRtosMutex* self)
 {
-    return (SemaphoreHandle_t) &self->buffer;
+    return (SemaphoreHandle_t) &self->Buffer;
 }
 
 static void FreeRtosMutex_Lock(struct SolidSyslogMutex* self)

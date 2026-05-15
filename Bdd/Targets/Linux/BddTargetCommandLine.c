@@ -39,19 +39,19 @@ static bool IsValidDiscardPolicy(const char* policy)
 
 int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* options)
 {
-    options->facility = SolidSyslogFacility_Local0;
-    options->severity = SolidSyslogSeverity_Informational;
-    options->messageId = NULL;
-    options->msg = NULL;
-    options->appName = NULL;
-    options->transport = "udp";
-    options->store = "null";
-    options->maxBlocks = DEFAULT_MAX_BLOCKS;
-    options->maxBlockSize = DEFAULT_MAX_BLOCK_SIZE;
-    options->discardPolicy = "oldest";
-    options->capacityThreshold = 0;
-    options->noSd = false;
-    options->haltExit = false;
+    options->Facility = SolidSyslogFacility_Local0;
+    options->Severity = SolidSyslogSeverity_Informational;
+    options->MessageId = NULL;
+    options->Msg = NULL;
+    options->AppName = NULL;
+    options->Transport = "udp";
+    options->Store = "null";
+    options->MaxBlocks = DEFAULT_MAX_BLOCKS;
+    options->MaxBlockSize = DEFAULT_MAX_BLOCK_SIZE;
+    options->DiscardPolicy = "oldest";
+    options->CapacityThreshold = 0;
+    options->NoSd = false;
+    options->HaltExit = false;
 
     static struct option longOptions[] = {
         {"facility", required_argument, NULL, 'f'},
@@ -76,16 +76,16 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
         switch (opt)
         {
             case 'f':
-                options->facility = (enum SolidSyslogFacility) atoi(optarg);
+                options->Facility = (enum SolidSyslogFacility) atoi(optarg);
                 break;
             case 's':
-                options->severity = (enum SolidSyslogSeverity) atoi(optarg);
+                options->Severity = (enum SolidSyslogSeverity) atoi(optarg);
                 break;
             case 'i':
-                options->messageId = optarg;
+                options->MessageId = optarg;
                 break;
             case 'm':
-                options->msg = optarg;
+                options->Msg = optarg;
                 break;
             case 't':
                 if ((strcmp(optarg, "udp") != 0) && (strcmp(optarg, "tcp") != 0) && (strcmp(optarg, "tls") != 0) &&
@@ -93,23 +93,23 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
                 {
                     return 1;
                 }
-                options->transport = optarg;
+                options->Transport = optarg;
                 break;
             case 'o':
                 if ((strcmp(optarg, "null") != 0) && (strcmp(optarg, "file") != 0))
                 {
                     return 1;
                 }
-                options->store = optarg;
+                options->Store = optarg;
                 break;
             case OPT_MAX_BLOCKS:
-                if (!ParsePositiveNumber(optarg, &options->maxBlocks))
+                if (!ParsePositiveNumber(optarg, &options->MaxBlocks))
                 {
                     return 1;
                 }
                 break;
             case OPT_MAX_BLOCK_SIZE:
-                if (!ParsePositiveNumber(optarg, &options->maxBlockSize))
+                if (!ParsePositiveNumber(optarg, &options->MaxBlockSize))
                 {
                     return 1;
                 }
@@ -119,22 +119,22 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
                 {
                     return 1;
                 }
-                options->discardPolicy = optarg;
+                options->DiscardPolicy = optarg;
                 break;
             case OPT_CAPACITY_THRESHOLD:
-                if (!ParsePositiveNumber(optarg, &options->capacityThreshold))
+                if (!ParsePositiveNumber(optarg, &options->CapacityThreshold))
                 {
                     return 1;
                 }
                 break;
             case OPT_NO_SD:
-                options->noSd = true;
+                options->NoSd = true;
                 break;
             case OPT_HALT_EXIT:
-                options->haltExit = true;
+                options->HaltExit = true;
                 break;
             case OPT_APP_NAME:
-                options->appName = optarg;
+                options->AppName = optarg;
                 break;
             default:
                 return 1;

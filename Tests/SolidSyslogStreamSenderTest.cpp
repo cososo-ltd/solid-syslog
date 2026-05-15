@@ -73,8 +73,8 @@ static uint32_t endpointVersion = 0;
 
 static void TestEndpoint(struct SolidSyslogEndpoint* endpoint)
 {
-    SolidSyslogFormatter_BoundedString(endpoint->host, endpointGetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
-    endpoint->port = (uint16_t) endpointGetPort();
+    SolidSyslogFormatter_BoundedString(endpoint->Host, endpointGetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
+    endpoint->Port = (uint16_t) endpointGetPort();
 }
 
 static uint32_t TestEndpointVersion() // NOLINT(modernize-use-trailing-return-type)

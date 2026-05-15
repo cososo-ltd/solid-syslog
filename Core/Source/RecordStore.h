@@ -17,11 +17,11 @@ enum
 
 struct RecordStore
 {
-    struct SolidSyslogSecurityPolicy* securityPolicy;
-    bool hasReadRecord;
-    size_t lastReadBlockIndex;
-    size_t lastSentFlagOffset;
-    uint8_t buffer[RECORD_BUFFER_SIZE];
+    struct SolidSyslogSecurityPolicy* SecurityPolicy;
+    bool HasReadRecord;
+    size_t LastReadBlockIndex;
+    size_t LastSentFlagOffset;
+    uint8_t Buffer[RECORD_BUFFER_SIZE];
 };
 
 void RecordStore_Init(struct RecordStore* recordStore, struct SolidSyslogSecurityPolicy* securityPolicy);

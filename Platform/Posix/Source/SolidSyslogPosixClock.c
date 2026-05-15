@@ -40,11 +40,11 @@ static inline void PosixClock_PopulateTimestamp(
     const struct tm* breakdown
 )
 {
-    timestamp->year = (uint16_t) (breakdown->tm_year + 1900);
-    timestamp->month = (uint8_t) (breakdown->tm_mon + 1);
-    timestamp->day = (uint8_t) breakdown->tm_mday;
-    timestamp->hour = (uint8_t) breakdown->tm_hour;
-    timestamp->minute = (uint8_t) breakdown->tm_min;
-    timestamp->second = (uint8_t) breakdown->tm_sec;
-    timestamp->microsecond = (uint32_t) (now->tv_nsec / 1000);
+    timestamp->Year = (uint16_t) (breakdown->tm_year + 1900);
+    timestamp->Month = (uint8_t) (breakdown->tm_mon + 1);
+    timestamp->Day = (uint8_t) breakdown->tm_mday;
+    timestamp->Hour = (uint8_t) breakdown->tm_hour;
+    timestamp->Minute = (uint8_t) breakdown->tm_min;
+    timestamp->Second = (uint8_t) breakdown->tm_sec;
+    timestamp->Microsecond = (uint32_t) (now->tv_nsec / 1000);
 }

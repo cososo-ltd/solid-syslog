@@ -12,10 +12,10 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogStreamSenderConfig
     {
-        struct SolidSyslogResolver* resolver;
-        struct SolidSyslogStream* stream;
-        SolidSyslogEndpointFunction endpoint; /* fills host/port; called only on (re)connect */
-        SolidSyslogEndpointVersionFunction endpointVersion; /* polled cheaply on every Send for stale check */
+        struct SolidSyslogResolver* Resolver;
+        struct SolidSyslogStream* Stream;
+        SolidSyslogEndpointFunction Endpoint; /* fills host/port; called only on (re)connect */
+        SolidSyslogEndpointVersionFunction EndpointVersion; /* polled cheaply on every Send for stale check */
     };
 
     enum

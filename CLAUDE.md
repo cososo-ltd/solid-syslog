@@ -394,7 +394,8 @@ public identifier.
 One-line summary: public C functions `SolidSyslogClass_Function`, public
 types `SolidSyslogClass`, public macros `SOLIDSYSLOG_SCREAMING_SNAKE`,
 file-scope statics `Class_Function` / `CLASS_SCREAMING_SNAKE`,
-locals/parameters/members `lowerCamelCase`, files `PascalCase.c`. No
+struct members `PascalCase` (data + vtable function-pointer alike),
+locals/parameters `lowerCamelCase`, files `PascalCase.c`. No
 Hungarian notation. No member-variable prefixes. No `typedef struct`
 for project-owned struct types.
 

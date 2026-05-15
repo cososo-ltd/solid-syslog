@@ -84,7 +84,7 @@ TEST_GROUP(SolidSyslogMetaSd)
         fakeLanguageContent = nullptr;
         fakeLanguageMaxLength = 0;
         config = {};
-        config.counter = counter;
+        config.Counter = counter;
         sd = SolidSyslogMetaSd_Create(&config);
     }
 
@@ -109,7 +109,7 @@ TEST_GROUP(SolidSyslogMetaSd)
     void useSysUpTime(uint32_t value)
     {
         fakeSysUpTimeValue = value;
-        config.getSysUpTime = FakeSysUpTime_Get;
+        config.GetSysUpTime = FakeSysUpTime_Get;
         recreate();
     }
 
@@ -117,7 +117,7 @@ TEST_GROUP(SolidSyslogMetaSd)
     {
         fakeLanguageContent = tag;
         fakeLanguageMaxLength = strlen(tag);
-        config.getLanguage = FakeLanguage_Get;
+        config.GetLanguage = FakeLanguage_Get;
         recreate();
     }
 
@@ -251,7 +251,7 @@ TEST(SolidSyslogMetaSd, FormatWithAllThreeParamsEmitsAllThree)
 
 TEST(SolidSyslogMetaSd, FormatEmitsNothingWhenConfigCounterIsNullEvenIfOtherFieldsPresent)
 {
-    config.counter = nullptr;
+    config.Counter = nullptr;
     useSysUpTime(12345);
     useLanguage("en-GB");
     format();
@@ -276,10 +276,10 @@ TEST(SolidSyslogMetaSd, CreateWithNullConfigReportsWarning)
 
 TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsWarning)
 {
-    config.counter = nullptr;
+    config.Counter = nullptr;
     recreate();
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SolidSyslogSeverity_Warning, ErrorHandlerFake_LastSeverity());
-    STRCMP_EQUAL("SolidSyslogMetaSd_Create config.counter is NULL", ErrorHandlerFake_LastMessage());
+    STRCMP_EQUAL("SolidSyslogMetaSd_Create config.Counter is NULL", ErrorHandlerFake_LastMessage());
 }

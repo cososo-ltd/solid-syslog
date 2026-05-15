@@ -15,11 +15,11 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogOriginSdConfig
     {
-        const char* software;
-        const char* swVersion;
-        const char* enterpriseId;
-        SolidSyslogOriginIpCountFunction getIpCount;
-        SolidSyslogOriginIpAtFunction getIpAt;
+        const char* Software;
+        const char* SwVersion;
+        const char* EnterpriseId;
+        SolidSyslogOriginIpCountFunction GetIpCount;
+        SolidSyslogOriginIpAtFunction GetIpAt;
     };
 
     struct SolidSyslogStructuredData* SolidSyslogOriginSd_Create(const struct SolidSyslogOriginSdConfig* config);

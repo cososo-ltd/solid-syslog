@@ -26,7 +26,7 @@ TEST(BddTargetCommandLine, DefaultMaxBlocks)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    LONGS_EQUAL(10, options.maxBlocks);
+    LONGS_EQUAL(10, options.MaxBlocks);
 }
 
 TEST(BddTargetCommandLine, DefaultMaxBlockSize)
@@ -34,7 +34,7 @@ TEST(BddTargetCommandLine, DefaultMaxBlockSize)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    LONGS_EQUAL(65536, options.maxBlockSize);
+    LONGS_EQUAL(65536, options.MaxBlockSize);
 }
 
 TEST(BddTargetCommandLine, DefaultDiscardPolicy)
@@ -42,7 +42,7 @@ TEST(BddTargetCommandLine, DefaultDiscardPolicy)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    STRCMP_EQUAL("oldest", options.discardPolicy);
+    STRCMP_EQUAL("oldest", options.DiscardPolicy);
 }
 
 TEST(BddTargetCommandLine, DefaultNoSd)
@@ -50,7 +50,7 @@ TEST(BddTargetCommandLine, DefaultNoSd)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    CHECK_FALSE(options.noSd);
+    CHECK_FALSE(options.NoSd);
 }
 
 TEST(BddTargetCommandLine, MaxBlocksFlag)
@@ -60,7 +60,7 @@ TEST(BddTargetCommandLine, MaxBlocksFlag)
     char arg2[] = "5";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    LONGS_EQUAL(5, options.maxBlocks);
+    LONGS_EQUAL(5, options.MaxBlocks);
 }
 
 TEST(BddTargetCommandLine, MaxBlockSizeFlag)
@@ -70,7 +70,7 @@ TEST(BddTargetCommandLine, MaxBlockSizeFlag)
     char arg2[] = "1024";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    LONGS_EQUAL(1024, options.maxBlockSize);
+    LONGS_EQUAL(1024, options.MaxBlockSize);
 }
 
 TEST(BddTargetCommandLine, DiscardPolicyOldest)
@@ -80,7 +80,7 @@ TEST(BddTargetCommandLine, DiscardPolicyOldest)
     char arg2[] = "oldest";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    STRCMP_EQUAL("oldest", options.discardPolicy);
+    STRCMP_EQUAL("oldest", options.DiscardPolicy);
 }
 
 TEST(BddTargetCommandLine, DiscardPolicyNewest)
@@ -90,7 +90,7 @@ TEST(BddTargetCommandLine, DiscardPolicyNewest)
     char arg2[] = "newest";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    STRCMP_EQUAL("newest", options.discardPolicy);
+    STRCMP_EQUAL("newest", options.DiscardPolicy);
 }
 
 TEST(BddTargetCommandLine, DiscardPolicyHalt)
@@ -100,7 +100,7 @@ TEST(BddTargetCommandLine, DiscardPolicyHalt)
     char arg2[] = "halt";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    STRCMP_EQUAL("halt", options.discardPolicy);
+    STRCMP_EQUAL("halt", options.DiscardPolicy);
 }
 
 TEST(BddTargetCommandLine, InvalidDiscardPolicyReturnsOne)
@@ -173,7 +173,7 @@ TEST(BddTargetCommandLine, TransportTlsAccepted)
     char argVal[] = "tls";
     char* argv[] = {arg0, argFlag, argVal, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    STRCMP_EQUAL("tls", options.transport);
+    STRCMP_EQUAL("tls", options.Transport);
 }
 
 TEST(BddTargetCommandLine, NoSdFlag)
@@ -182,7 +182,7 @@ TEST(BddTargetCommandLine, NoSdFlag)
     char arg1[] = "--no-sd";
     char* argv[] = {arg0, arg1, nullptr};
     LONGS_EQUAL(0, Parse(2, argv));
-    CHECK_TRUE(options.noSd);
+    CHECK_TRUE(options.NoSd);
 }
 
 TEST(BddTargetCommandLine, DefaultAppNameIsNull)
@@ -190,7 +190,7 @@ TEST(BddTargetCommandLine, DefaultAppNameIsNull)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     LONGS_EQUAL(0, Parse(1, argv));
-    POINTERS_EQUAL(nullptr, options.appName);
+    POINTERS_EQUAL(nullptr, options.AppName);
 }
 
 TEST(BddTargetCommandLine, AppNameFlagSetsAppName)
@@ -200,5 +200,5 @@ TEST(BddTargetCommandLine, AppNameFlagSetsAppName)
     char arg2[] = "SolidSyslogThreadedExample";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    STRCMP_EQUAL("SolidSyslogThreadedExample", options.appName);
+    STRCMP_EQUAL("SolidSyslogThreadedExample", options.AppName);
 }

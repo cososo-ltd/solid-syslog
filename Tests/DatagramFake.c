@@ -12,15 +12,15 @@ enum
 
 struct DatagramFake
 {
-    struct SolidSyslogDatagram base;
-    int openCallCount;
-    int sendCallCount;
-    int maxPayloadCallCount;
-    int closeCallCount;
-    enum SolidSyslogDatagramSendResult sendResults[DATAGRAMFAKE_MAX_SEND_CALLS];
-    size_t maxPayload;
-    const void* sendBuffers[DATAGRAMFAKE_MAX_SEND_CALLS];
-    size_t sendSizes[DATAGRAMFAKE_MAX_SEND_CALLS];
+    struct SolidSyslogDatagram Base;
+    int OpenCallCount;
+    int SendCallCount;
+    int MaxPayloadCallCount;
+    int CloseCallCount;
+    enum SolidSyslogDatagramSendResult SendResults[DATAGRAMFAKE_MAX_SEND_CALLS];
+    size_t MaxPayload;
+    const void* SendBuffers[DATAGRAMFAKE_MAX_SEND_CALLS];
+    size_t SendSizes[DATAGRAMFAKE_MAX_SEND_CALLS];
 };
 
 static bool Open(struct SolidSyslogDatagram* self);
@@ -36,15 +36,15 @@ static void Close(struct SolidSyslogDatagram* self);
 struct SolidSyslogDatagram* DatagramFake_Create(void)
 {
     struct DatagramFake* fake = (struct DatagramFake*) calloc(1, sizeof(struct DatagramFake));
-    fake->base.Open = Open;
-    fake->base.SendTo = SendTo;
-    fake->base.MaxPayload = MaxPayload;
-    fake->base.Close = Close;
+    fake->Base.Open = Open;
+    fake->Base.SendTo = SendTo;
+    fake->Base.MaxPayload = MaxPayload;
+    fake->Base.Close = Close;
     for (int i = 0; i < DATAGRAMFAKE_MAX_SEND_CALLS; i++)
     {
-        fake->sendResults[i] = SolidSyslogDatagramSendResult_Sent;
+        fake->SendResults[i] = SolidSyslogDatagramSendResult_Sent;
     }
-    return &fake->base;
+    return &fake->Base;
 }
 
 void DatagramFake_Destroy(struct SolidSyslogDatagram* datagram)
@@ -60,33 +60,33 @@ void DatagramFake_SetSendResult(
 {
     if ((callIndex >= 0) && (callIndex < DATAGRAMFAKE_MAX_SEND_CALLS))
     {
-        ((struct DatagramFake*) datagram)->sendResults[callIndex] = result;
+        ((struct DatagramFake*) datagram)->SendResults[callIndex] = result;
     }
 }
 
 void DatagramFake_SetMaxPayload(struct SolidSyslogDatagram* datagram, size_t maxPayload)
 {
-    ((struct DatagramFake*) datagram)->maxPayload = maxPayload;
+    ((struct DatagramFake*) datagram)->MaxPayload = maxPayload;
 }
 
 int DatagramFake_OpenCallCount(struct SolidSyslogDatagram* datagram)
 {
-    return ((struct DatagramFake*) datagram)->openCallCount;
+    return ((struct DatagramFake*) datagram)->OpenCallCount;
 }
 
 int DatagramFake_SendCallCount(struct SolidSyslogDatagram* datagram)
 {
-    return ((struct DatagramFake*) datagram)->sendCallCount;
+    return ((struct DatagramFake*) datagram)->SendCallCount;
 }
 
 int DatagramFake_MaxPayloadCallCount(struct SolidSyslogDatagram* datagram)
 {
-    return ((struct DatagramFake*) datagram)->maxPayloadCallCount;
+    return ((struct DatagramFake*) datagram)->MaxPayloadCallCount;
 }
 
 int DatagramFake_CloseCallCount(struct SolidSyslogDatagram* datagram)
 {
-    return ((struct DatagramFake*) datagram)->closeCallCount;
+    return ((struct DatagramFake*) datagram)->CloseCallCount;
 }
 
 const void* DatagramFake_SendBuffer(struct SolidSyslogDatagram* datagram, int callIndex)
@@ -95,7 +95,7 @@ const void* DatagramFake_SendBuffer(struct SolidSyslogDatagram* datagram, int ca
     {
         return NULL;
     }
-    return ((struct DatagramFake*) datagram)->sendBuffers[callIndex];
+    return ((struct DatagramFake*) datagram)->SendBuffers[callIndex];
 }
 
 size_t DatagramFake_SendSize(struct SolidSyslogDatagram* datagram, int callIndex)
@@ -104,13 +104,13 @@ size_t DatagramFake_SendSize(struct SolidSyslogDatagram* datagram, int callIndex
     {
         return 0;
     }
-    return ((struct DatagramFake*) datagram)->sendSizes[callIndex];
+    return ((struct DatagramFake*) datagram)->SendSizes[callIndex];
 }
 
 static bool Open(struct SolidSyslogDatagram* self)
 {
     struct DatagramFake* fake = (struct DatagramFake*) self;
-    fake->openCallCount++;
+    fake->OpenCallCount++;
     return true;
 }
 
@@ -122,27 +122,27 @@ static enum SolidSyslogDatagramSendResult SendTo(
 )
 {
     struct DatagramFake* fake = (struct DatagramFake*) self;
-    int idx = fake->sendCallCount;
+    int idx = fake->SendCallCount;
     enum SolidSyslogDatagramSendResult result = SolidSyslogDatagramSendResult_Failed;
     (void) addr;
     if (idx < DATAGRAMFAKE_MAX_SEND_CALLS)
     {
-        fake->sendBuffers[idx] = buffer;
-        fake->sendSizes[idx] = size;
-        result = fake->sendResults[idx];
+        fake->SendBuffers[idx] = buffer;
+        fake->SendSizes[idx] = size;
+        result = fake->SendResults[idx];
     }
-    fake->sendCallCount++;
+    fake->SendCallCount++;
     return result;
 }
 
 static size_t MaxPayload(struct SolidSyslogDatagram* self)
 {
     struct DatagramFake* fake = (struct DatagramFake*) self;
-    fake->maxPayloadCallCount++;
-    return fake->maxPayload;
+    fake->MaxPayloadCallCount++;
+    return fake->MaxPayload;
 }
 
 static void Close(struct SolidSyslogDatagram* self)
 {
-    ((struct DatagramFake*) self)->closeCallCount++;
+    ((struct DatagramFake*) self)->CloseCallCount++;
 }

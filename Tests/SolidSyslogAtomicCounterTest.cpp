@@ -78,15 +78,15 @@ TEST(SolidSyslogAtomicCounter, NextSequenceIdAtMaxWrapsTo1)
 TEST(SolidSyslogAtomicCounter, TryAdvanceRereadsSlotAfterExternalMutation)
 {
     uint32_t firstNext = 0;
-    CHECK_TRUE(AtomicCounter_TryAdvance(counter->slot, &firstNext));
+    CHECK_TRUE(AtomicCounter_TryAdvance(counter->Slot, &firstNext));
     LONGS_EQUAL(1, firstNext);
 
     /* Simulate "another writer committed first" — TryAdvance must re-Load
        (rather than reuse a stale current) on its next call, so the returned
        value is one above the slot's actual current value. */
-    SolidSyslogAtomicU32_Init(counter->slot, 5);
+    SolidSyslogAtomicU32_Init(counter->Slot, 5);
 
     uint32_t secondNext = 0;
-    CHECK_TRUE(AtomicCounter_TryAdvance(counter->slot, &secondNext));
+    CHECK_TRUE(AtomicCounter_TryAdvance(counter->Slot, &secondNext));
     LONGS_EQUAL(6, secondNext);
 }

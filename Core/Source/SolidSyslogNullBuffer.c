@@ -11,25 +11,25 @@ static void NullBuffer_Write(struct SolidSyslogBuffer* self, const void* data, s
 
 struct SolidSyslogNullBuffer
 {
-    struct SolidSyslogBuffer base;
-    struct SolidSyslogSender* sender;
+    struct SolidSyslogBuffer Base;
+    struct SolidSyslogSender* Sender;
 };
 
 static struct SolidSyslogNullBuffer instance;
 
 struct SolidSyslogBuffer* SolidSyslogNullBuffer_Create(struct SolidSyslogSender* sender)
 {
-    instance.base.Write = NullBuffer_Write;
-    instance.base.Read = NullBuffer_Read;
-    instance.sender = sender;
-    return &instance.base;
+    instance.Base.Write = NullBuffer_Write;
+    instance.Base.Read = NullBuffer_Read;
+    instance.Sender = sender;
+    return &instance.Base;
 }
 
 void SolidSyslogNullBuffer_Destroy(void)
 {
-    instance.base.Write = NULL;
-    instance.base.Read = NULL;
-    instance.sender = NULL;
+    instance.Base.Write = NULL;
+    instance.Base.Read = NULL;
+    instance.Sender = NULL;
 }
 
 static bool NullBuffer_Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead)
@@ -44,5 +44,5 @@ static bool NullBuffer_Read(struct SolidSyslogBuffer* self, void* data, size_t m
 static void NullBuffer_Write(struct SolidSyslogBuffer* self, const void* data, size_t size)
 {
     struct SolidSyslogNullBuffer* nullBuffer = (struct SolidSyslogNullBuffer*) self;
-    SolidSyslogSender_Send(nullBuffer->sender, data, size);
+    SolidSyslogSender_Send(nullBuffer->Sender, data, size);
 }

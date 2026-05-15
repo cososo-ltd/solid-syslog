@@ -11,19 +11,19 @@ EXTERN_C_BEGIN
 
     struct BddTargetWindowsOptions
     {
-        enum SolidSyslogFacility facility;
-        enum SolidSyslogSeverity severity;
-        const char* transport; /* "udp" | "tcp" | "tls" | "mtls" — initial selector */
-        const char* messageId;
-        const char* msg;
-        const char* appName; /* --app-name (NULL: derive from argv[0]) */
-        const char* store; /* "null" (default) | "file" — block-store backend */
-        size_t maxBlocks; /* --max-blocks */
-        size_t maxBlockSize; /* --max-block-size */
-        const char* discardPolicy; /* "oldest" (default) | "newest" | "halt" */
-        size_t capacityThreshold; /* --capacity-threshold (bytes; 0 disables) */
-        bool haltExit; /* --halt-exit */
-        bool noSd; /* --no-sd (suppress structured data) */
+        enum SolidSyslogFacility Facility;
+        enum SolidSyslogSeverity Severity;
+        const char* Transport; /* "udp" | "tcp" | "tls" | "mtls" — initial selector */
+        const char* MessageId;
+        const char* Msg;
+        const char* AppName; /* --app-name (NULL: derive from argv[0]) */
+        const char* Store; /* "null" (default) | "file" — block-store backend */
+        size_t MaxBlocks; /* --max-blocks */
+        size_t MaxBlockSize; /* --max-block-size */
+        const char* DiscardPolicy; /* "oldest" (default) | "newest" | "halt" */
+        size_t CapacityThreshold; /* --capacity-threshold (bytes; 0 disables) */
+        bool HaltExit; /* --halt-exit */
+        bool NoSd; /* --no-sd (suppress structured data) */
     };
 
     /* Minimal CLI parser — recognises the flags below. Unknown flags and

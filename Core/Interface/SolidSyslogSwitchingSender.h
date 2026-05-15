@@ -12,9 +12,9 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogSwitchingSenderConfig
     {
-        struct SolidSyslogSender** senders;
-        size_t senderCount;
-        SolidSyslogSwitchingSenderSelector selector;
+        struct SolidSyslogSender** Senders;
+        size_t SenderCount;
+        SolidSyslogSwitchingSenderSelector Selector;
     };
 
     struct SolidSyslogSender* SolidSyslogSwitchingSender_Create(const struct SolidSyslogSwitchingSenderConfig* config);

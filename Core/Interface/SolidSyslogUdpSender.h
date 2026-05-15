@@ -8,10 +8,10 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogUdpSenderConfig
     {
-        struct SolidSyslogResolver* resolver;
-        struct SolidSyslogDatagram* datagram;
-        SolidSyslogEndpointFunction endpoint; /* fills host/port; called only on (re)connect */
-        SolidSyslogEndpointVersionFunction endpointVersion; /* polled cheaply on every Send for stale check */
+        struct SolidSyslogResolver* Resolver;
+        struct SolidSyslogDatagram* Datagram;
+        SolidSyslogEndpointFunction Endpoint; /* fills host/port; called only on (re)connect */
+        SolidSyslogEndpointVersionFunction EndpointVersion; /* polled cheaply on every Send for stale check */
     };
 
     struct SolidSyslogSender* SolidSyslogUdpSender_Create(const struct SolidSyslogUdpSenderConfig* config);

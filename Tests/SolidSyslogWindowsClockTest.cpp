@@ -24,15 +24,15 @@ static void WINAPI FakeGetSystemTimeAsFileTime(LPFILETIME fileTime)
 // clang-format off
 // NOLINTBEGIN(cppcoreguidelines-macro-usage) -- macros preserve __FILE__/__LINE__ in test failure output
 #define GET_TIMESTAMP()              getTimestamp()
-#define CHECK_YEAR(expected)         LONGS_EQUAL(expected, GET_TIMESTAMP().year)
-#define CHECK_MONTH(expected)        LONGS_EQUAL(expected, GET_TIMESTAMP().month)
-#define CHECK_DAY(expected)          LONGS_EQUAL(expected, GET_TIMESTAMP().day)
-#define CHECK_HOUR(expected)         LONGS_EQUAL(expected, GET_TIMESTAMP().hour)
-#define CHECK_MINUTE(expected)       LONGS_EQUAL(expected, GET_TIMESTAMP().minute)
-#define CHECK_SECOND(expected)       LONGS_EQUAL(expected, GET_TIMESTAMP().second)
-#define CHECK_MICROSECOND(expected)  LONGS_EQUAL(expected, GET_TIMESTAMP().microsecond)
-#define CHECK_UTC_OFFSET(expected)   LONGS_EQUAL(expected, GET_TIMESTAMP().utcOffsetMinutes)
-#define CHECK_MONTH_IS_INVALID()     LONGS_EQUAL(0, GET_TIMESTAMP().month)
+#define CHECK_YEAR(expected)         LONGS_EQUAL(expected, GET_TIMESTAMP().Year)
+#define CHECK_MONTH(expected)        LONGS_EQUAL(expected, GET_TIMESTAMP().Month)
+#define CHECK_DAY(expected)          LONGS_EQUAL(expected, GET_TIMESTAMP().Day)
+#define CHECK_HOUR(expected)         LONGS_EQUAL(expected, GET_TIMESTAMP().Hour)
+#define CHECK_MINUTE(expected)       LONGS_EQUAL(expected, GET_TIMESTAMP().Minute)
+#define CHECK_SECOND(expected)       LONGS_EQUAL(expected, GET_TIMESTAMP().Second)
+#define CHECK_MICROSECOND(expected)  LONGS_EQUAL(expected, GET_TIMESTAMP().Microsecond)
+#define CHECK_UTC_OFFSET(expected)   LONGS_EQUAL(expected, GET_TIMESTAMP().UtcOffsetMinutes)
+#define CHECK_MONTH_IS_INVALID()     LONGS_EQUAL(0, GET_TIMESTAMP().Month)
 // NOLINTEND(cppcoreguidelines-macro-usage)
 // clang-format on
 
@@ -176,12 +176,12 @@ TEST(SolidSyslogWindowsClock, ZeroFileTimeProduces1601)
 TEST(SolidSyslogWindowsClock, AllFieldsInValidRanges)
 {
     struct SolidSyslogTimestamp ts = getTimestamp();
-    CHECK(ts.year > 0);
-    CHECK((ts.month >= 1) && (ts.month <= 12));
-    CHECK((ts.day >= 1) && (ts.day <= 31));
-    CHECK(ts.hour <= 23);
-    CHECK(ts.minute <= 59);
-    CHECK(ts.second <= 59);
-    CHECK(ts.microsecond <= 999999);
-    LONGS_EQUAL(0, ts.utcOffsetMinutes);
+    CHECK(ts.Year > 0);
+    CHECK((ts.Month >= 1) && (ts.Month <= 12));
+    CHECK((ts.Day >= 1) && (ts.Day <= 31));
+    CHECK(ts.Hour <= 23);
+    CHECK(ts.Minute <= 59);
+    CHECK(ts.Second <= 59);
+    CHECK(ts.Microsecond <= 999999);
+    LONGS_EQUAL(0, ts.UtcOffsetMinutes);
 }

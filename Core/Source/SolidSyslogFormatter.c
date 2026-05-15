@@ -7,9 +7,9 @@
 
 struct SolidSyslogFormatter
 {
-    size_t size;
-    size_t position;
-    char buffer[];
+    size_t Size;
+    size_t Position;
+    char Buffer[];
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
@@ -43,12 +43,12 @@ static const size_t ESCAPED_CHARACTER_DECODED_LENGTH = 1;
  * fit and the loop must terminate. */
 struct EscapedContext
 {
-    struct SolidSyslogFormatter* formatter;
-    const char* source;
-    size_t sourcePos;
-    size_t decodedLength;
-    size_t maxDecodedLength;
-    bool exhausted;
+    struct SolidSyslogFormatter* Formatter;
+    const char* Source;
+    size_t SourcePos;
+    size_t DecodedLength;
+    size_t MaxDecodedLength;
+    bool Exhausted;
 };
 
 static inline bool Formatter_CodepointFits(size_t codepointLength, size_t remainingDecodedLength);
@@ -91,17 +91,17 @@ static inline void Formatter_WriteReplacement(struct EscapedContext* context);
 struct SolidSyslogFormatter* SolidSyslogFormatter_Create(SolidSyslogFormatterStorage* storage, size_t bufferSize)
 {
     struct SolidSyslogFormatter* formatter = (struct SolidSyslogFormatter*) storage;
-    formatter->size = bufferSize;
-    formatter->position = 0;
+    formatter->Size = bufferSize;
+    formatter->Position = 0;
     Formatter_NullTerminate(formatter);
     return formatter;
 }
 
 static inline void Formatter_NullTerminate(struct SolidSyslogFormatter* formatter)
 {
-    if (formatter->size > 0)
+    if (formatter->Size > 0)
     {
-        formatter->buffer[formatter->position] = '\0';
+        formatter->Buffer[formatter->Position] = '\0';
     }
 }
 
@@ -130,14 +130,14 @@ static inline void Formatter_WriteChar(struct SolidSyslogFormatter* formatter, c
 {
     if (Formatter_HasCapacity(formatter))
     {
-        formatter->buffer[formatter->position] = value;
-        formatter->position++;
+        formatter->Buffer[formatter->Position] = value;
+        formatter->Position++;
     }
 }
 
 static inline bool Formatter_HasCapacity(const struct SolidSyslogFormatter* formatter)
 {
-    return (formatter->size > 0) && (formatter->position < formatter->size - 1);
+    return (formatter->Size > 0) && (formatter->Position < formatter->Size - 1);
 }
 
 /*
@@ -275,17 +275,17 @@ void SolidSyslogFormatter_EscapedString(
 )
 {
     struct EscapedContext context = {
-        .formatter = formatter,
-        .source = source,
-        .sourcePos = 0,
-        .decodedLength = 0,
-        .maxDecodedLength = maxDecodedLength,
-        .exhausted = false,
+        .Formatter = formatter,
+        .Source = source,
+        .SourcePos = 0,
+        .DecodedLength = 0,
+        .MaxDecodedLength = maxDecodedLength,
+        .Exhausted = false,
     };
 
     while (!Formatter_IsExhausted(&context))
     {
-        if (Formatter_NeedsEscape(source[context.sourcePos]))
+        if (Formatter_NeedsEscape(source[context.SourcePos]))
         {
             Formatter_WriteEscaped(&context);
         }
@@ -304,14 +304,14 @@ static inline bool Formatter_NeedsEscape(char value)
 
 static inline bool Formatter_IsExhausted(const struct EscapedContext* context)
 {
-    return context->exhausted || (context->source[context->sourcePos] == '\0');
+    return context->Exhausted || (context->Source[context->SourcePos] == '\0');
 }
 
 static inline void Formatter_WriteEscaped(struct EscapedContext* context)
 {
     if (Formatter_Fits(context, ESCAPED_CHARACTER_DECODED_LENGTH))
     {
-        char escaped[] = {ESCAPE_PREFIX, context->source[context->sourcePos]};
+        char escaped[] = {ESCAPE_PREFIX, context->Source[context->SourcePos]};
         Formatter_WriteContext(context, escaped, sizeof(escaped), 1, ESCAPED_CHARACTER_DECODED_LENGTH);
         return;
     }
@@ -320,7 +320,7 @@ static inline void Formatter_WriteEscaped(struct EscapedContext* context)
 
 static inline bool Formatter_Fits(const struct EscapedContext* context, size_t decodedAdvance)
 {
-    return (decodedAdvance > 0) && (decodedAdvance <= context->maxDecodedLength - context->decodedLength);
+    return (decodedAdvance > 0) && (decodedAdvance <= context->MaxDecodedLength - context->DecodedLength);
 }
 
 /* NOLINTBEGIN(bugprone-easily-swappable-parameters) -- see forward declaration */
@@ -332,16 +332,16 @@ static inline void Formatter_WriteContext(
     size_t decodedAdvance
 )
 {
-    Formatter_WriteBytes(context->formatter, bytes, byteCount);
-    context->sourcePos += sourceAdvance;
-    context->decodedLength += decodedAdvance;
+    Formatter_WriteBytes(context->Formatter, bytes, byteCount);
+    context->SourcePos += sourceAdvance;
+    context->DecodedLength += decodedAdvance;
 }
 
 /* NOLINTEND(bugprone-easily-swappable-parameters) */
 
 static inline void Formatter_Exhaust(struct EscapedContext* context)
 {
-    context->exhausted = true;
+    context->Exhausted = true;
 }
 
 /* Writes the source codepoint at sourcePos if it fits the decoded budget;
@@ -350,12 +350,12 @@ static inline void Formatter_Exhaust(struct EscapedContext* context)
  * Formatter_Utf8CodepointLength returns 0 for ill-formed sequences. */
 static inline void Formatter_WriteCodepoint(struct EscapedContext* context)
 {
-    size_t codepointLength = Formatter_Utf8CodepointLength(&context->source[context->sourcePos]);
+    size_t codepointLength = Formatter_Utf8CodepointLength(&context->Source[context->SourcePos]);
     if (Formatter_Fits(context, codepointLength))
     {
         Formatter_WriteContext(
             context,
-            &context->source[context->sourcePos],
+            &context->Source[context->SourcePos],
             codepointLength,
             codepointLength,
             codepointLength
@@ -481,13 +481,13 @@ void SolidSyslogFormatter_SixDigit(struct SolidSyslogFormatter* formatter, uint3
 const char* SolidSyslogFormatter_AsFormattedBuffer(struct SolidSyslogFormatter* formatter)
 {
     Formatter_TrimTruncatedMultiByteTail(formatter);
-    return formatter->buffer;
+    return formatter->Buffer;
 }
 
 static inline void Formatter_TrimTruncatedMultiByteTail(struct SolidSyslogFormatter* formatter)
 {
-    char* buffer = formatter->buffer;
-    size_t p = formatter->position;
+    char* buffer = formatter->Buffer;
+    size_t p = formatter->Position;
     size_t trimFrom = p;
 
     if ((p >= 1) && (SolidSyslogUtf8_IsTwoByteLead(buffer[p - 1]) || SolidSyslogUtf8_IsThreeByteLead(buffer[p - 1]) ||
@@ -512,5 +512,5 @@ static inline void Formatter_TrimTruncatedMultiByteTail(struct SolidSyslogFormat
 
 size_t SolidSyslogFormatter_Length(const struct SolidSyslogFormatter* formatter)
 {
-    return formatter->position;
+    return formatter->Position;
 }

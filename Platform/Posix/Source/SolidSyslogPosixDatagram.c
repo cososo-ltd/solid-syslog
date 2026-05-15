@@ -22,9 +22,9 @@ enum
 
 struct SolidSyslogPosixDatagram
 {
-    struct SolidSyslogDatagram base;
-    int fd;
-    bool connected;
+    struct SolidSyslogDatagram Base;
+    int Fd;
+    bool Connected;
 };
 
 static bool PosixDatagram_Open(struct SolidSyslogDatagram* self);
@@ -42,31 +42,31 @@ static inline bool PosixDatagram_ConnectIfNeeded(
 );
 static inline bool PosixDatagram_IsFileDescriptorValid(int fd);
 
-static struct SolidSyslogPosixDatagram instance = {.fd = INVALID_FD};
+static struct SolidSyslogPosixDatagram instance = {.Fd = INVALID_FD};
 
 struct SolidSyslogDatagram* SolidSyslogPosixDatagram_Create(void)
 {
-    instance.base.Open = PosixDatagram_Open;
-    instance.base.SendTo = PosixDatagram_SendTo;
-    instance.base.MaxPayload = PosixDatagram_MaxPayload;
-    instance.base.Close = PosixDatagram_Close;
-    return &instance.base;
+    instance.Base.Open = PosixDatagram_Open;
+    instance.Base.SendTo = PosixDatagram_SendTo;
+    instance.Base.MaxPayload = PosixDatagram_MaxPayload;
+    instance.Base.Close = PosixDatagram_Close;
+    return &instance.Base;
 }
 
 void SolidSyslogPosixDatagram_Destroy(void)
 {
-    instance.base.Open = NULL;
-    instance.base.SendTo = NULL;
-    instance.base.MaxPayload = NULL;
-    instance.base.Close = NULL;
+    instance.Base.Open = NULL;
+    instance.Base.SendTo = NULL;
+    instance.Base.MaxPayload = NULL;
+    instance.Base.Close = NULL;
 }
 
 static bool PosixDatagram_Open(struct SolidSyslogDatagram* self)
 {
     struct SolidSyslogPosixDatagram* datagram = (struct SolidSyslogPosixDatagram*) self;
-    datagram->fd = socket(AF_INET, SOCK_DGRAM, 0);
-    datagram->connected = false;
-    return PosixDatagram_IsFileDescriptorValid(datagram->fd);
+    datagram->Fd = socket(AF_INET, SOCK_DGRAM, 0);
+    datagram->Connected = false;
+    return PosixDatagram_IsFileDescriptorValid(datagram->Fd);
 }
 
 static inline bool PosixDatagram_IsFileDescriptorValid(int fd)
@@ -86,7 +86,7 @@ static enum SolidSyslogDatagramSendResult PosixDatagram_SendTo(
     if (PosixDatagram_ConnectIfNeeded(datagram, addr))
     {
         const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
-        ssize_t sent = sendto(datagram->fd, buffer, size, 0, (const struct sockaddr*) sin, sizeof(*sin));
+        ssize_t sent = sendto(datagram->Fd, buffer, size, 0, (const struct sockaddr*) sin, sizeof(*sin));
         if (sent >= 0)
         {
             result = SolidSyslogDatagramSendResult_Sent;
@@ -104,28 +104,28 @@ static inline bool PosixDatagram_ConnectIfNeeded(
     const struct SolidSyslogAddress* addr
 )
 {
-    if (!datagram->connected)
+    if (!datagram->Connected)
     {
         const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
-        if (connect(datagram->fd, (const struct sockaddr*) sin, sizeof(*sin)) == 0)
+        if (connect(datagram->Fd, (const struct sockaddr*) sin, sizeof(*sin)) == 0)
         {
             const int pmtu = IP_PMTUDISC_DO;
-            (void) setsockopt(datagram->fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu));
-            datagram->connected = true;
+            (void) setsockopt(datagram->Fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu));
+            datagram->Connected = true;
         }
     }
-    return datagram->connected;
+    return datagram->Connected;
 }
 
 static size_t PosixDatagram_MaxPayload(struct SolidSyslogDatagram* self)
 {
     struct SolidSyslogPosixDatagram* datagram = (struct SolidSyslogPosixDatagram*) self;
     size_t result = SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD;
-    if (datagram->connected)
+    if (datagram->Connected)
     {
         int mtu = 0;
         socklen_t optlen = sizeof(mtu);
-        if ((getsockopt(datagram->fd, IPPROTO_IP, IP_MTU, &mtu, &optlen) == 0) && (mtu > 0))
+        if ((getsockopt(datagram->Fd, IPPROTO_IP, IP_MTU, &mtu, &optlen) == 0) && (mtu > 0))
         {
             result = SolidSyslogUdpPayload_FromMtu((size_t) mtu, false);
         }
@@ -136,10 +136,10 @@ static size_t PosixDatagram_MaxPayload(struct SolidSyslogDatagram* self)
 static void PosixDatagram_Close(struct SolidSyslogDatagram* self)
 {
     struct SolidSyslogPosixDatagram* datagram = (struct SolidSyslogPosixDatagram*) self;
-    if (PosixDatagram_IsFileDescriptorValid(datagram->fd))
+    if (PosixDatagram_IsFileDescriptorValid(datagram->Fd))
     {
-        close(datagram->fd);
-        datagram->fd = INVALID_FD;
-        datagram->connected = false;
+        close(datagram->Fd);
+        datagram->Fd = INVALID_FD;
+        datagram->Connected = false;
     }
 }

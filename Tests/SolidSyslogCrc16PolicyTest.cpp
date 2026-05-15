@@ -30,7 +30,7 @@ TEST(SolidSyslogCrc16Policy, CreateReturnsNonNull)
 
 TEST(SolidSyslogCrc16Policy, IntegritySizeIsTwo)
 {
-    LONGS_EQUAL(2, policy->integritySize);
+    LONGS_EQUAL(2, policy->IntegritySize);
 }
 
 TEST(SolidSyslogCrc16Policy, ComputeIntegrityReturnsCrc16)

@@ -11,8 +11,8 @@ struct SolidSyslogFormatter;
 
 struct SolidSyslogTimeQualitySd
 {
-    struct SolidSyslogStructuredData base;
-    SolidSyslogTimeQualityFunction getTimeQuality;
+    struct SolidSyslogStructuredData Base;
+    SolidSyslogTimeQualityFunction GetTimeQuality;
 };
 
 static void TimeQualitySd_Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
@@ -28,15 +28,15 @@ static struct SolidSyslogTimeQualitySd instance;
 
 struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTimeQualityFunction getTimeQuality)
 {
-    instance.base.Format = TimeQualitySd_Format;
-    instance.getTimeQuality = getTimeQuality;
-    return &instance.base;
+    instance.Base.Format = TimeQualitySd_Format;
+    instance.GetTimeQuality = getTimeQuality;
+    return &instance.Base;
 }
 
 void SolidSyslogTimeQualitySd_Destroy(void)
 {
-    instance.base.Format = NULL;
-    instance.getTimeQuality = NULL;
+    instance.Base.Format = NULL;
+    instance.GetTimeQuality = NULL;
 }
 
 static const char SD_PREFIX[] = "[timeQuality";
@@ -49,12 +49,12 @@ static void TimeQualitySd_Format(struct SolidSyslogStructuredData* self, struct 
     struct SolidSyslogTimeQualitySd* tq = (struct SolidSyslogTimeQualitySd*) self;
     struct SolidSyslogTimeQuality q = {0};
 
-    tq->getTimeQuality(&q);
+    tq->GetTimeQuality(&q);
 
     SolidSyslogFormatter_BoundedString(formatter, SD_PREFIX, sizeof(SD_PREFIX) - 1);
-    TimeQualitySd_FormatBoolParam(formatter, PARAM_TZ_KNOWN, sizeof(PARAM_TZ_KNOWN) - 1, q.tzKnown);
-    TimeQualitySd_FormatBoolParam(formatter, PARAM_IS_SYNCED, sizeof(PARAM_IS_SYNCED) - 1, q.isSynced);
-    TimeQualitySd_FormatSyncAccuracy(formatter, q.syncAccuracyMicroseconds);
+    TimeQualitySd_FormatBoolParam(formatter, PARAM_TZ_KNOWN, sizeof(PARAM_TZ_KNOWN) - 1, q.TzKnown);
+    TimeQualitySd_FormatBoolParam(formatter, PARAM_IS_SYNCED, sizeof(PARAM_IS_SYNCED) - 1, q.IsSynced);
+    TimeQualitySd_FormatSyncAccuracy(formatter, q.SyncAccuracyMicroseconds);
     SolidSyslogFormatter_AsciiCharacter(formatter, ']');
 }
 

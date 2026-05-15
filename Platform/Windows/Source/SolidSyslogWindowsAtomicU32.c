@@ -8,7 +8,7 @@
 
 struct SolidSyslogAtomicU32
 {
-    volatile LONG value;
+    volatile LONG Value;
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
@@ -28,17 +28,17 @@ struct SolidSyslogAtomicU32* SolidSyslogAtomicU32_FromStorage(SolidSyslogAtomicU
 
 void SolidSyslogAtomicU32_Init(struct SolidSyslogAtomicU32* slot, uint32_t value)
 {
-    slot->value = (LONG) value;
+    slot->Value = (LONG) value;
 }
 
 uint32_t SolidSyslogAtomicU32_Load(struct SolidSyslogAtomicU32* slot)
 {
-    return (uint32_t) InterlockedCompareExchange(&slot->value, 0, 0);
+    return (uint32_t) InterlockedCompareExchange(&slot->Value, 0, 0);
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) — CAS shape is universal (compare_exchange convention)
 bool SolidSyslogAtomicU32_CompareAndSwap(struct SolidSyslogAtomicU32* slot, uint32_t expected, uint32_t desired)
 {
-    LONG actual = InterlockedCompareExchange(&slot->value, (LONG) desired, (LONG) expected);
+    LONG actual = InterlockedCompareExchange(&slot->Value, (LONG) desired, (LONG) expected);
     return (LONG) expected == actual;
 }

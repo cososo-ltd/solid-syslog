@@ -38,73 +38,73 @@ static bool ParsePositiveSize(const char* text, size_t* out)
 
 void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetWindowsOptions* options)
 {
-    options->facility = SolidSyslogFacility_Local0;
-    options->severity = SolidSyslogSeverity_Informational;
-    options->transport = "udp";
-    options->messageId = NULL;
-    options->msg = NULL;
-    options->appName = NULL;
-    options->store = "null";
-    options->maxBlocks = DEFAULT_MAX_BLOCKS;
-    options->maxBlockSize = DEFAULT_MAX_BLOCK_SIZE;
-    options->discardPolicy = "oldest";
-    options->capacityThreshold = 0;
-    options->haltExit = false;
-    options->noSd = false;
+    options->Facility = SolidSyslogFacility_Local0;
+    options->Severity = SolidSyslogSeverity_Informational;
+    options->Transport = "udp";
+    options->MessageId = NULL;
+    options->Msg = NULL;
+    options->AppName = NULL;
+    options->Store = "null";
+    options->MaxBlocks = DEFAULT_MAX_BLOCKS;
+    options->MaxBlockSize = DEFAULT_MAX_BLOCK_SIZE;
+    options->DiscardPolicy = "oldest";
+    options->CapacityThreshold = 0;
+    options->HaltExit = false;
+    options->NoSd = false;
 
     for (int i = 1; i < argc; i++)
     {
         if (((i + 1) < argc) && (strcmp(argv[i], "--facility") == 0))
         {
-            options->facility = (enum SolidSyslogFacility) atoi(argv[++i]);
+            options->Facility = (enum SolidSyslogFacility) atoi(argv[++i]);
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--severity") == 0))
         {
-            options->severity = (enum SolidSyslogSeverity) atoi(argv[++i]);
+            options->Severity = (enum SolidSyslogSeverity) atoi(argv[++i]);
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--msgid") == 0))
         {
-            options->messageId = argv[++i];
+            options->MessageId = argv[++i];
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--message") == 0))
         {
-            options->msg = argv[++i];
+            options->Msg = argv[++i];
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--transport") == 0))
         {
-            options->transport = argv[++i];
+            options->Transport = argv[++i];
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--app-name") == 0))
         {
-            options->appName = argv[++i];
+            options->AppName = argv[++i];
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--store") == 0))
         {
-            options->store = argv[++i];
+            options->Store = argv[++i];
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--max-blocks") == 0))
         {
-            (void) ParsePositiveSize(argv[++i], &options->maxBlocks);
+            (void) ParsePositiveSize(argv[++i], &options->MaxBlocks);
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--max-block-size") == 0))
         {
-            (void) ParsePositiveSize(argv[++i], &options->maxBlockSize);
+            (void) ParsePositiveSize(argv[++i], &options->MaxBlockSize);
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--discard-policy") == 0))
         {
-            options->discardPolicy = argv[++i];
+            options->DiscardPolicy = argv[++i];
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--capacity-threshold") == 0))
         {
-            (void) ParsePositiveSize(argv[++i], &options->capacityThreshold);
+            (void) ParsePositiveSize(argv[++i], &options->CapacityThreshold);
         }
         else if (strcmp(argv[i], "--halt-exit") == 0)
         {
-            options->haltExit = true;
+            options->HaltExit = true;
         }
         else if (strcmp(argv[i], "--no-sd") == 0)
         {
-            options->noSd = true;
+            options->NoSd = true;
         }
     }
 }

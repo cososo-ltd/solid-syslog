@@ -7670,3 +7670,76 @@ tag in the same pass.
 ### Open questions
 
 - None.
+
+## 2026-05-15 — S10.09 PascalCase data-member sweep (Tier 4)
+
+### Decisions
+
+- Took the cross-cutting Tier 4 data-member rename next (the
+  S10.07-sibling slot, numbered S10.09 when raised — story numbers
+  are identifiers, not sequencing). Issue #373, parent epic #12.
+- Sliced into **eight cluster commits + one docs commit** on a
+  single feature branch (`feat/s10-09-data-member-pascalcase`),
+  pushed once at the end. The user's preference for many commits
+  over one wide sweep won out — cluster-by-cluster keeps each
+  commit small enough for CodeRabbit to digest, even though it
+  meant more wall-clock effort fighting test-fixture collisions.
+- Eight commits, in order:
+  1. **Formatter + EscapedContext** (file-local; 36+/36-)
+  2. **Storage cluster** — BlockStore + Configs + RecordStore +
+     BlockSequence + BlockPresence + FileBlockDevice + OpenHandle +
+     NullStore + Posix/Windows/FatFs File impls (462+/462- across
+     19 files; **API break** — `BlockStoreConfig` field names)
+  3. **Buffer cluster** — NullBuffer + CircularBuffer +
+     PosixMessageQueueBuffer + `BufferFake` test fixture (81+/81-)
+  4. **Sender impl bodies** — Udp/Stream/Switching senders,
+     TlsStream, Posix/Winsock/FreeRtos Datagram/TcpStream/Resolver
+     impls (221+/221- across 13 files; no API touch yet)
+  5. **Sender Config public headers + test fakes + BDD** —
+     `UdpSenderConfig`, `StreamSenderConfig`, `SwitchingSenderConfig`,
+     `TlsStreamConfig` + SenderFake/DatagramFake/StreamFake +
+     OpenSslIntegration TlsTestServer/BioPairStream (336+/336-
+     across 23 files; **API break**)
+  6. **SD cluster** — MetaSd, OriginSd, TimeQualitySd + Configs
+     (109+/109-; **API break** for `MetaSdConfig` and
+     `OriginSdConfig`)
+  7. **Sync + atomics** — Posix/Windows/FreeRtosMutex,
+     AtomicCounter, StdAtomicU32, WindowsAtomicU32 (48+/48-, no
+     API break — impl bodies only)
+  8. **Top-level public structs + impl `struct SolidSyslog`** —
+     `SolidSyslogConfig` (full slate), `Message`, `Timestamp`,
+     `Endpoint`, `TimeQuality`, `SecurityPolicy.IntegritySize` +
+     `BddTargetOptions` / `BddTargetWindowsOptions` to follow
+     (484+/484- across 39 files; **biggest API break**)
+- Slice 5 carved `transport` out of the broad sed because it
+  collides with `BddTargetOptions.transport`. Slice 8 finished
+  the Tier-3 BDD-options rename so all three of `Transport`,
+  `Store`, `MaxBlocks` etc. line up on both sides of the
+  `storeConfig.X = options->X` assignment.
+- Error messages in `SolidSyslogErrorMessages.h` that quote Config
+  field names follow the rename in the same slice as the Config
+  itself (slice 2 BlockStore — none renamed; slice 5 — UDP sender
+  3 messages; slice 6 — MetaSd 1 message; slice 8 — top-level
+  3 messages). The corresponding BadSetup tests assert on these
+  literal strings, so they had to move together.
+- Updated `CLAUDE.md` one-line summary (members move to PascalCase),
+  `docs/misra-conformance.md` rows for the member kind and the
+  sweep volume table, and appended this DEVLOG entry. NAMING.md
+  was already authoritative — no change there.
+
+### Deferred
+
+- `analyze-tidy` reports zero `readability-identifier-naming`
+  member findings after slice 8. Other naming kinds remain in
+  their existing state; no shift in those numbers attributable
+  to this story.
+- A handful of test-fixture structs deliberately kept *some*
+  members lowerCamelCase when only one field collided with a
+  production name (e.g. `SenderSpy.successfulSends` in slice 2 —
+  only `base` became `Base`). Tier 5 test code is "consistency-
+  only", so half-and-half there is acceptable; a future test-code
+  hygiene story can revisit if desired.
+
+### Open questions
+
+- None. The sweep cleared its named target; tidy is green.

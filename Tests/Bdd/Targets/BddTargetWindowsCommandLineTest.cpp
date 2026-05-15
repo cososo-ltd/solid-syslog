@@ -19,7 +19,7 @@ TEST(BddTargetWindowsCommandLine, DefaultFacilityIsLocal0)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    LONGS_EQUAL(SolidSyslogFacility_Local0, options.facility);
+    LONGS_EQUAL(SolidSyslogFacility_Local0, options.Facility);
 }
 
 TEST(BddTargetWindowsCommandLine, DefaultSeverityIsInfo)
@@ -27,7 +27,7 @@ TEST(BddTargetWindowsCommandLine, DefaultSeverityIsInfo)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    LONGS_EQUAL(SolidSyslogSeverity_Informational, options.severity);
+    LONGS_EQUAL(SolidSyslogSeverity_Informational, options.Severity);
 }
 
 TEST(BddTargetWindowsCommandLine, DefaultMessageIdIsNull)
@@ -35,7 +35,7 @@ TEST(BddTargetWindowsCommandLine, DefaultMessageIdIsNull)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    POINTERS_EQUAL(nullptr, options.messageId);
+    POINTERS_EQUAL(nullptr, options.MessageId);
 }
 
 TEST(BddTargetWindowsCommandLine, DefaultMsgIsNull)
@@ -43,7 +43,7 @@ TEST(BddTargetWindowsCommandLine, DefaultMsgIsNull)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    POINTERS_EQUAL(nullptr, options.msg);
+    POINTERS_EQUAL(nullptr, options.Msg);
 }
 
 TEST(BddTargetWindowsCommandLine, FacilityFlagSetsFacility)
@@ -53,7 +53,7 @@ TEST(BddTargetWindowsCommandLine, FacilityFlagSetsFacility)
     char arg2[] = "23";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     Parse(3, argv);
-    LONGS_EQUAL(23, options.facility);
+    LONGS_EQUAL(23, options.Facility);
 }
 
 TEST(BddTargetWindowsCommandLine, SeverityFlagSetsSeverity)
@@ -63,7 +63,7 @@ TEST(BddTargetWindowsCommandLine, SeverityFlagSetsSeverity)
     char arg2[] = "7";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     Parse(3, argv);
-    LONGS_EQUAL(7, options.severity);
+    LONGS_EQUAL(7, options.Severity);
 }
 
 TEST(BddTargetWindowsCommandLine, MsgidFlagSetsMessageId)
@@ -73,7 +73,7 @@ TEST(BddTargetWindowsCommandLine, MsgidFlagSetsMessageId)
     char arg2[] = "ID47";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     Parse(3, argv);
-    STRCMP_EQUAL("ID47", options.messageId);
+    STRCMP_EQUAL("ID47", options.MessageId);
 }
 
 TEST(BddTargetWindowsCommandLine, MessageFlagSetsMsg)
@@ -83,7 +83,7 @@ TEST(BddTargetWindowsCommandLine, MessageFlagSetsMsg)
     char arg2[] = "system started";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     Parse(3, argv);
-    STRCMP_EQUAL("system started", options.msg);
+    STRCMP_EQUAL("system started", options.Msg);
 }
 
 TEST(BddTargetWindowsCommandLine, DefaultTransportIsUdp)
@@ -91,7 +91,7 @@ TEST(BddTargetWindowsCommandLine, DefaultTransportIsUdp)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    STRCMP_EQUAL("udp", options.transport);
+    STRCMP_EQUAL("udp", options.Transport);
 }
 
 TEST(BddTargetWindowsCommandLine, TransportFlagSetsTcp)
@@ -101,7 +101,7 @@ TEST(BddTargetWindowsCommandLine, TransportFlagSetsTcp)
     char arg2[] = "tcp";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     Parse(3, argv);
-    STRCMP_EQUAL("tcp", options.transport);
+    STRCMP_EQUAL("tcp", options.Transport);
 }
 
 TEST(BddTargetWindowsCommandLine, AllFlagsTogether)
@@ -117,10 +117,10 @@ TEST(BddTargetWindowsCommandLine, AllFlagsTogether)
     char arg8[] = "session opened";
     char* argv[] = {arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, nullptr};
     Parse(9, argv);
-    LONGS_EQUAL(16, options.facility);
-    LONGS_EQUAL(6, options.severity);
-    STRCMP_EQUAL("CONN", options.messageId);
-    STRCMP_EQUAL("session opened", options.msg);
+    LONGS_EQUAL(16, options.Facility);
+    LONGS_EQUAL(6, options.Severity);
+    STRCMP_EQUAL("CONN", options.MessageId);
+    STRCMP_EQUAL("session opened", options.Msg);
 }
 
 TEST(BddTargetWindowsCommandLine, UnknownFlagIsIgnored)
@@ -130,8 +130,8 @@ TEST(BddTargetWindowsCommandLine, UnknownFlagIsIgnored)
     char arg2[] = "value";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     Parse(3, argv);
-    LONGS_EQUAL(SolidSyslogFacility_Local0, options.facility);
-    POINTERS_EQUAL(nullptr, options.messageId);
+    LONGS_EQUAL(SolidSyslogFacility_Local0, options.Facility);
+    POINTERS_EQUAL(nullptr, options.MessageId);
 }
 
 TEST(BddTargetWindowsCommandLine, FacilityFlagWithoutValueIsIgnored)
@@ -140,7 +140,7 @@ TEST(BddTargetWindowsCommandLine, FacilityFlagWithoutValueIsIgnored)
     char arg1[] = "--facility";
     char* argv[] = {arg0, arg1, nullptr};
     Parse(2, argv);
-    LONGS_EQUAL(SolidSyslogFacility_Local0, options.facility);
+    LONGS_EQUAL(SolidSyslogFacility_Local0, options.Facility);
 }
 
 TEST(BddTargetWindowsCommandLine, DefaultAppNameIsNull)
@@ -148,7 +148,7 @@ TEST(BddTargetWindowsCommandLine, DefaultAppNameIsNull)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    POINTERS_EQUAL(nullptr, options.appName);
+    POINTERS_EQUAL(nullptr, options.AppName);
 }
 
 TEST(BddTargetWindowsCommandLine, AppNameFlagSetsAppName)
@@ -158,7 +158,7 @@ TEST(BddTargetWindowsCommandLine, AppNameFlagSetsAppName)
     char arg2[] = "SolidSyslogThreadedExample";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     Parse(3, argv);
-    STRCMP_EQUAL("SolidSyslogThreadedExample", options.appName);
+    STRCMP_EQUAL("SolidSyslogThreadedExample", options.AppName);
 }
 
 TEST(BddTargetWindowsCommandLine, DefaultHaltExitIsFalse)
@@ -166,7 +166,7 @@ TEST(BddTargetWindowsCommandLine, DefaultHaltExitIsFalse)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    CHECK_FALSE(options.haltExit);
+    CHECK_FALSE(options.HaltExit);
 }
 
 TEST(BddTargetWindowsCommandLine, HaltExitFlagSetsHaltExit)
@@ -175,5 +175,5 @@ TEST(BddTargetWindowsCommandLine, HaltExitFlagSetsHaltExit)
     char arg1[] = "--halt-exit";
     char* argv[] = {arg0, arg1, nullptr};
     Parse(2, argv);
-    CHECK_TRUE(options.haltExit);
+    CHECK_TRUE(options.HaltExit);
 }

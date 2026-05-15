@@ -57,7 +57,7 @@ static SolidSyslogBlockStoreStorage storeStorage = {};
 static struct SolidSyslogBlockStoreConfig MakeConfig(struct SolidSyslogBlockDevice* device)
 {
     struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
-    config.blockDevice = device;
+    config.BlockDevice = device;
     return config;
 }
 
@@ -481,7 +481,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
     void CreateWithMaxBlocks(size_t maxBlocks)
     {
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-        config.maxBlocks = maxBlocks;
+        config.MaxBlocks = maxBlocks;
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&storeStorage, &config);
     }
@@ -489,7 +489,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
     void CreateWithMaxBlockSize(size_t maxBlockSize)
     {
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-        config.maxBlockSize = maxBlockSize;
+        config.MaxBlockSize = maxBlockSize;
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&storeStorage, &config);
     }
@@ -579,7 +579,7 @@ TEST(SolidSyslogBlockStoreConfig, FilenameTruncatedWhenPrefixTooLong)
 TEST(SolidSyslogBlockStoreConfig, NullSecurityPolicyDefaultsToNoOp)
 {
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.securityPolicy = nullptr;
+    config.SecurityPolicy = nullptr;
     store = SolidSyslogBlockStore_Create(&storeStorage, &config);
     VerifyWriteAndReadBack();
 }
@@ -592,7 +592,7 @@ TEST(SolidSyslogBlockStoreConfig, OversizedSecurityPolicyLeavesNoIntegrityGap)
         nullptr,
     };
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.securityPolicy = &oversizedPolicy;
+    config.SecurityPolicy = &oversizedPolicy;
     store = SolidSyslogBlockStore_Create(&storeStorage, &config);
 
     const char body[] = "HELLO WORLD";
@@ -714,12 +714,12 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreRotation, BlockDeviceTestBase)
                                SolidSyslogStoreFullCallback onStoreFull = nullptr, void* storeFullContext = nullptr)
     {
         struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
-        config.blockDevice       = device;
-        config.maxBlockSize       = maxBlockSize;
-        config.maxBlocks          = maxBlocks;
-        config.discardPolicy     = policy;
-        config.onStoreFull       = onStoreFull;
-        config.storeFullContext  = storeFullContext;
+        config.BlockDevice       = device;
+        config.MaxBlockSize       = maxBlockSize;
+        config.MaxBlocks          = maxBlocks;
+        config.DiscardPolicy     = policy;
+        config.OnStoreFull       = onStoreFull;
+        config.StoreFullContext  = storeFullContext;
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&storeStorage, &config);
     }
@@ -1428,8 +1428,8 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
         memset(verifyIntegrityData, 0, sizeof(verifyIntegrityData));
 
         struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
-        config.blockDevice    = device;
-        config.securityPolicy = &spyPolicy;
+        config.BlockDevice    = device;
+        config.SecurityPolicy = &spyPolicy;
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&storeStorage, &config);
     }
@@ -1574,7 +1574,7 @@ TEST(SolidSyslogBlockStoreCorruption, TruncatedBodyHasNoUnsent)
 TEST(SolidSyslogBlockStoreCorruption, ValidRecordBeforeCorruptionIsReadable)
 {
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.securityPolicy = SolidSyslogCrc16Policy_Create();
+    config.SecurityPolicy = SolidSyslogCrc16Policy_Create();
     store = SolidSyslogBlockStore_Create(&storeStorage, &config);
     SolidSyslogStore_Write(store, "first", 5);
     SolidSyslogStore_Write(store, "second", 6);
@@ -1610,7 +1610,7 @@ TEST(SolidSyslogBlockStoreCorruption, ValidRecordBeforeCorruptionIsReadable)
 TEST(SolidSyslogBlockStoreCorruption, IntegrityFailureReadReturnsFalse)
 {
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.securityPolicy = SolidSyslogCrc16Policy_Create();
+    config.SecurityPolicy = SolidSyslogCrc16Policy_Create();
     store = SolidSyslogBlockStore_Create(&storeStorage, &config);
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     SolidSyslogBlockStore_Destroy(store);
@@ -1685,10 +1685,10 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
     void CreateWithMaxBlockSize(size_t maxBlockSize, size_t maxBlocks = 2)
     {
         struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
-        config.blockDevice     = device;
-        config.maxBlockSize     = maxBlockSize;
-        config.maxBlocks        = maxBlocks;
-        config.securityPolicy  = policy;
+        config.BlockDevice     = device;
+        config.MaxBlockSize     = maxBlockSize;
+        config.MaxBlocks        = maxBlocks;
+        config.SecurityPolicy  = policy;
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&storeStorage, &config);
     }
@@ -1789,9 +1789,9 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCapacity, BlockDeviceTestBase)
                             enum SolidSyslogDiscardPolicy policy = SolidSyslogDiscardPolicy_Oldest)
     {
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-        config.maxBlockSize   = maxBlockSize;
-        config.maxBlocks      = maxBlocks;
-        config.discardPolicy = policy;
+        config.MaxBlockSize   = maxBlockSize;
+        config.MaxBlocks      = maxBlocks;
+        config.DiscardPolicy = policy;
         store                = SolidSyslogBlockStore_Create(&storeStorage, &config);
     }
 
@@ -1924,8 +1924,8 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCapacityThreshold, BlockDeviceTestBase)
     void CreateWithThreshold(size_t threshold)
     {
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-        config.getCapacityThreshold              = ReturnsConfiguredThreshold;
-        config.onThresholdCrossed                = CountThresholdCrossings;
+        config.GetCapacityThreshold              = ReturnsConfiguredThreshold;
+        config.OnThresholdCrossed                = CountThresholdCrossings;
         thresholdReturnValue                     = threshold;
         store                                    = SolidSyslogBlockStore_Create(&storeStorage, &config);
     }
@@ -1967,11 +1967,11 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, ReArmsAfterFallingEdgeOnDiscardOlde
     memset(maxMsg, 'A', sizeof(maxMsg));
 
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.maxBlockSize = TWO_RECORDS;
-    config.maxBlocks = 2;
-    config.discardPolicy = SolidSyslogDiscardPolicy_Oldest;
-    config.getCapacityThreshold = ReturnsConfiguredThreshold;
-    config.onThresholdCrossed = CountThresholdCrossings;
+    config.MaxBlockSize = TWO_RECORDS;
+    config.MaxBlocks = 2;
+    config.DiscardPolicy = SolidSyslogDiscardPolicy_Oldest;
+    config.GetCapacityThreshold = ReturnsConfiguredThreshold;
+    config.OnThresholdCrossed = CountThresholdCrossings;
     /* Threshold sits between 3 and 4 records: 4-records crosses, 3-records is below. */
     thresholdReturnValue = (3 * MAX_MSG_RECORD) + 1;
     store = SolidSyslogBlockStore_Create(&storeStorage, &config);
@@ -2003,8 +2003,8 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, DoesNotFireWhenThresholdIsZero)
 TEST(SolidSyslogBlockStoreCapacityThreshold, DoesNotFireWhenThresholdFunctionIsNull)
 {
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.getCapacityThreshold = nullptr;
-    config.onThresholdCrossed = CountThresholdCrossings;
+    config.GetCapacityThreshold = nullptr;
+    config.OnThresholdCrossed = CountThresholdCrossings;
     store = SolidSyslogBlockStore_Create(&storeStorage, &config);
 
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
@@ -2035,9 +2035,9 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, ContextIsPassedToBothCallbacks)
     capturedThresholdFunctionContext = nullptr;
     capturedThresholdCallbackContext = nullptr;
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.getCapacityThreshold = CaptureThresholdFunctionContext;
-    config.onThresholdCrossed = CaptureThresholdCallbackContext;
-    config.thresholdContext = &sentinel;
+    config.GetCapacityThreshold = CaptureThresholdFunctionContext;
+    config.OnThresholdCrossed = CaptureThresholdCallbackContext;
+    config.ThresholdContext = &sentinel;
     thresholdReturnValue = TEST_DATA_LEN;
     store = SolidSyslogBlockStore_Create(&storeStorage, &config);
 
@@ -2079,12 +2079,12 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, AtFullCapacityWithHaltThresholdFire
     storeFullFireOrder = 0;
 
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.maxBlockSize = MAX_MSG_RECORD + SLACK;
-    config.maxBlocks = 2;
-    config.discardPolicy = SolidSyslogDiscardPolicy_Halt;
-    config.onStoreFull = RecordStoreFullFireOrder;
-    config.getCapacityThreshold = ReturnsConfiguredThreshold;
-    config.onThresholdCrossed = RecordThresholdFireOrder;
+    config.MaxBlockSize = MAX_MSG_RECORD + SLACK;
+    config.MaxBlocks = 2;
+    config.DiscardPolicy = SolidSyslogDiscardPolicy_Halt;
+    config.OnStoreFull = RecordStoreFullFireOrder;
+    config.GetCapacityThreshold = ReturnsConfiguredThreshold;
+    config.OnThresholdCrossed = RecordThresholdFireOrder;
     /* Threshold = total: only the sticky-100% engagement on a failed Write reaches it. */
     thresholdReturnValue = 2 * (MAX_MSG_RECORD + SLACK);
     store = SolidSyslogBlockStore_Create(&storeStorage, &config);
@@ -2110,11 +2110,11 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, StickyHundredPercentDoesNotRefireTh
     memset(maxMsg, 'A', sizeof(maxMsg));
 
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.maxBlockSize = MAX_MSG_RECORD + SLACK;
-    config.maxBlocks = 2;
-    config.discardPolicy = SolidSyslogDiscardPolicy_Halt;
-    config.getCapacityThreshold = ReturnsConfiguredThreshold;
-    config.onThresholdCrossed = CountThresholdCrossings;
+    config.MaxBlockSize = MAX_MSG_RECORD + SLACK;
+    config.MaxBlocks = 2;
+    config.DiscardPolicy = SolidSyslogDiscardPolicy_Halt;
+    config.GetCapacityThreshold = ReturnsConfiguredThreshold;
+    config.OnThresholdCrossed = CountThresholdCrossings;
     thresholdReturnValue = 2 * (MAX_MSG_RECORD + SLACK);
     store = SolidSyslogBlockStore_Create(&storeStorage, &config);
 

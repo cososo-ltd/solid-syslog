@@ -418,42 +418,42 @@ TEST(SolidSyslog, PriValIs134)
 
 TEST(SolidSyslog, FacilityAppearsInPrival)
 {
-    message.facility = SolidSyslogFacility_News;
+    message.Facility = SolidSyslogFacility_News;
     Log();
     CHECK_PRIVAL("<62>");
 }
 
 TEST(SolidSyslog, SeverityAppearsInPrival)
 {
-    message.severity = SolidSyslogSeverity_Critical;
+    message.Severity = SolidSyslogSeverity_Critical;
     Log();
     CHECK_PRIVAL("<130>");
 }
 
 TEST(SolidSyslog, LowestFacilityProducesCorrectPrival)
 {
-    message.facility = SolidSyslogFacility_Kern;
+    message.Facility = SolidSyslogFacility_Kern;
     Log();
     CHECK_PRIVAL("<6>");
 }
 
 TEST(SolidSyslog, HighestFacilityProducesCorrectPrival)
 {
-    message.facility = SolidSyslogFacility_Local7;
+    message.Facility = SolidSyslogFacility_Local7;
     Log();
     CHECK_PRIVAL("<190>");
 }
 
 TEST(SolidSyslog, LowestSeverityProducesCorrectPrival)
 {
-    message.severity = SolidSyslogSeverity_Emergency;
+    message.Severity = SolidSyslogSeverity_Emergency;
     Log();
     CHECK_PRIVAL("<128>");
 }
 
 TEST(SolidSyslog, HighestSeverityProducesCorrectPrival)
 {
-    message.severity = SolidSyslogSeverity_Debug;
+    message.Severity = SolidSyslogSeverity_Debug;
     Log();
     CHECK_PRIVAL("<135>");
 }
@@ -461,7 +461,7 @@ TEST(SolidSyslog, HighestSeverityProducesCorrectPrival)
 TEST(SolidSyslog, OutOfRangeFacilityProducesErrorPrival)
 {
     // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- intentionally testing out-of-range input
-    message.facility = (enum SolidSyslogFacility) 24;
+    message.Facility = (enum SolidSyslogFacility) 24;
     Log();
     CHECK_PRIVAL("<43>");
 }
@@ -471,7 +471,7 @@ TEST(SolidSyslog, OutOfRangeSeverityProducesErrorPrival)
     enum SolidSyslogSeverity invalid = SolidSyslogSeverity_Debug;
     // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- intentionally testing out-of-range input
     invalid = static_cast<enum SolidSyslogSeverity>(static_cast<int>(invalid) + 1);
-    message.severity = invalid;
+    message.Severity = invalid;
     Log();
     CHECK_PRIVAL("<43>");
 }
@@ -486,7 +486,7 @@ TEST(SolidSyslog, VersionIs1)
 
 TEST(SolidSyslog, NullGetHostnameProducesNilvalue)
 {
-    config.getHostname = nullptr;
+    config.GetHostname = nullptr;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     Log();
@@ -512,7 +512,7 @@ TEST(SolidSyslog, HostnameCallbackIsInvokedPerLogCall)
 
 TEST(SolidSyslog, NullGetAppNameProducesNilvalue)
 {
-    config.getAppName = nullptr;
+    config.GetAppName = nullptr;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     Log();
@@ -538,7 +538,7 @@ TEST(SolidSyslog, AppNameCallbackIsInvokedPerLogCall)
 
 TEST(SolidSyslog, NullGetProcessIdProducesNilvalue)
 {
-    config.getProcessId = nullptr;
+    config.GetProcessId = nullptr;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     Log();
@@ -570,21 +570,21 @@ TEST(SolidSyslog, NullMessageIdProducesNilvalue)
 
 TEST(SolidSyslog, MessageIdAppearsInMessage)
 {
-    message.messageId = "ID47";
+    message.MessageId = "ID47";
     Log();
     CHECK_MSGID("ID47");
 }
 
 TEST(SolidSyslog, MessageIdIsNotHardCoded)
 {
-    message.messageId = TEST_MSGID;
+    message.MessageId = TEST_MSGID;
     Log();
     CHECK_MSGID(TEST_MSGID);
 }
 
 TEST(SolidSyslog, EmptyMessageIdProducesNilvalue)
 {
-    message.messageId = "";
+    message.MessageId = "";
     Log();
     CHECK_MSGID("-");
 }
@@ -592,7 +592,7 @@ TEST(SolidSyslog, EmptyMessageIdProducesNilvalue)
 TEST(SolidSyslog, MessageIdAt32CharsIsAccepted)
 {
     std::string maxMsgId(32, 'M');
-    message.messageId = maxMsgId.c_str();
+    message.MessageId = maxMsgId.c_str();
     Log();
     CHECK_MSGID(maxMsgId.c_str());
 }
@@ -600,7 +600,7 @@ TEST(SolidSyslog, MessageIdAt32CharsIsAccepted)
 TEST(SolidSyslog, MessageIdAt33CharsIsTruncatedTo32)
 {
     std::string longMsgId(33, 'M');
-    message.messageId = longMsgId.c_str();
+    message.MessageId = longMsgId.c_str();
     Log();
     std::string expected(32, 'M');
     CHECK_MSGID(expected.c_str());
@@ -608,7 +608,7 @@ TEST(SolidSyslog, MessageIdAt33CharsIsTruncatedTo32)
 
 TEST(SolidSyslog, MessageIdNonPrintableByteIsSubstitutedWithQuestionMark)
 {
-    message.messageId = "a b";
+    message.MessageId = "a b";
     Log();
     CHECK_MSGID("a?b");
 }
@@ -622,8 +622,8 @@ TEST(SolidSyslog, StructuredDataIsNilValue)
 TEST(SolidSyslog, InjectedSdObjectFormatIsCalledDuringLog)
 {
     SolidSyslogStructuredData* sdList[] = {&sdSpy};
-    config.sd = sdList;
-    config.sdCount = 1;
+    config.Sd = sdList;
+    config.SdCount = 1;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     Log();
@@ -634,11 +634,11 @@ TEST(SolidSyslog, MetaSdProducesSequenceIdInStructuredData)
 {
     SolidSyslogAtomicCounter* counter = SolidSyslogAtomicCounter_Create();
     SolidSyslogMetaSdConfig metaConfig{};
-    metaConfig.counter = counter;
+    metaConfig.Counter = counter;
     SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     SolidSyslogStructuredData* sdList[] = {metaSd};
-    config.sd = sdList;
-    config.sdCount = 1;
+    config.Sd = sdList;
+    config.SdCount = 1;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     Log();
@@ -651,11 +651,11 @@ TEST(SolidSyslog, MetaSdSequenceIdIncrementsAcrossLogCalls)
 {
     SolidSyslogAtomicCounter* counter = SolidSyslogAtomicCounter_Create();
     SolidSyslogMetaSdConfig metaConfig{};
-    metaConfig.counter = counter;
+    metaConfig.Counter = counter;
     SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     SolidSyslogStructuredData* sdList[] = {metaSd};
-    config.sd = sdList;
-    config.sdCount = 1;
+    config.Sd = sdList;
+    config.SdCount = 1;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     Log();
@@ -669,14 +669,14 @@ TEST(SolidSyslog, MsgFieldPreservedWithMetaSd)
 {
     SolidSyslogAtomicCounter* counter = SolidSyslogAtomicCounter_Create();
     SolidSyslogMetaSdConfig metaConfig{};
-    metaConfig.counter = counter;
+    metaConfig.Counter = counter;
     SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     SolidSyslogStructuredData* sdList[] = {metaSd};
-    config.sd = sdList;
-    config.sdCount = 1;
+    config.Sd = sdList;
+    config.SdCount = 1;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
-    message.msg = "hello world";
+    message.Msg = "hello world";
     Log();
     STRCMP_EQUAL("hello world", SyslogMsg(lastMessage()).c_str());
     SolidSyslogMetaSd_Destroy();
@@ -686,8 +686,8 @@ TEST(SolidSyslog, MsgFieldPreservedWithMetaSd)
 TEST(SolidSyslog, MultipleSdItemsAreConcatenated)
 {
     SolidSyslogStructuredData* sdList[] = {&sdSpy, &sdSpy2};
-    config.sd = sdList;
-    config.sdCount = 2;
+    config.Sd = sdList;
+    config.SdCount = 2;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     Log();
@@ -697,8 +697,8 @@ TEST(SolidSyslog, MultipleSdItemsAreConcatenated)
 TEST(SolidSyslog, SingleSdReturningZeroBytesProducesNilvalue)
 {
     SolidSyslogStructuredData* sdList[] = {&sdFail};
-    config.sd = sdList;
-    config.sdCount = 1;
+    config.Sd = sdList;
+    config.SdCount = 1;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     Log();
@@ -708,8 +708,8 @@ TEST(SolidSyslog, SingleSdReturningZeroBytesProducesNilvalue)
 TEST(SolidSyslog, FailingSdIsSkippedWhenOtherSdSucceeds)
 {
     SolidSyslogStructuredData* sdList[] = {&sdFail, &sdSpy};
-    config.sd = sdList;
-    config.sdCount = 2;
+    config.Sd = sdList;
+    config.SdCount = 2;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     Log();
@@ -719,8 +719,8 @@ TEST(SolidSyslog, FailingSdIsSkippedWhenOtherSdSucceeds)
 TEST(SolidSyslog, AllSdFailingProducesNilvalue)
 {
     SolidSyslogStructuredData* sdList[] = {&sdFail, &sdFail};
-    config.sd = sdList;
-    config.sdCount = 2;
+    config.Sd = sdList;
+    config.SdCount = 2;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     Log();
@@ -731,12 +731,12 @@ TEST(SolidSyslog, MetaSdAndTimeQualitySdCoexistInSdArray)
 {
     SolidSyslogAtomicCounter* counter = SolidSyslogAtomicCounter_Create();
     SolidSyslogMetaSdConfig metaConfig{};
-    metaConfig.counter = counter;
+    metaConfig.Counter = counter;
     SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     SolidSyslogStructuredData* timeQuality = SolidSyslogTimeQualitySd_Create(IntegrationGetTimeQuality);
     SolidSyslogStructuredData* sdList[] = {metaSd, timeQuality};
-    config.sd = sdList;
-    config.sdCount = 2;
+    config.Sd = sdList;
+    config.SdCount = 2;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     Log();
@@ -758,28 +758,28 @@ TEST(SolidSyslog, NullMessageOmitsMsgField)
 
 TEST(SolidSyslog, MessageBodyAppearsInMessage)
 {
-    message.msg = "system started";
+    message.Msg = "system started";
     Log();
     STRCMP_EQUAL("system started", SyslogMsg(lastMessage()).c_str());
 }
 
 TEST(SolidSyslog, MessageBodyIsPrecededByUtf8Bom)
 {
-    message.msg = "system started";
+    message.Msg = "system started";
     Log();
     CHECK(SyslogMsgHasBom(lastMessage()));
 }
 
 TEST(SolidSyslog, CallerSuppliedBomIsStrippedSoOutputHasOnlyOne)
 {
-    message.msg = "\xEF\xBB\xBFsystem started";
+    message.Msg = "\xEF\xBB\xBFsystem started";
     Log();
     STRCMP_EQUAL("system started", SyslogMsg(lastMessage()).c_str());
 }
 
 TEST(SolidSyslog, EmptyMessageOmitsMsgField)
 {
-    message.msg = "";
+    message.Msg = "";
     Log();
     CHECK_FALSE(SyslogMsgHasBom(lastMessage()));
     STRCMP_EQUAL("", SyslogMsg(lastMessage()).c_str());
@@ -787,14 +787,14 @@ TEST(SolidSyslog, EmptyMessageOmitsMsgField)
 
 TEST(SolidSyslog, MessageBodyIsNotHardCoded)
 {
-    message.msg = TEST_MSG;
+    message.Msg = TEST_MSG;
     Log();
     STRCMP_EQUAL(TEST_MSG, SyslogMsg(lastMessage()).c_str());
 }
 
 TEST(SolidSyslog, MessageWithSpacesIsPreserved)
 {
-    message.msg = "hello world with spaces";
+    message.Msg = "hello world with spaces";
     Log();
     STRCMP_EQUAL("hello world with spaces", SyslogMsg(lastMessage()).c_str());
 }
@@ -804,7 +804,7 @@ TEST(SolidSyslog, MessageFillsRemainingBuffer)
     std::string header("<134>1 - - - - - - " + std::string(UTF8_BOM));
     size_t maxMsg = SOLIDSYSLOG_MAX_MESSAGE_SIZE - header.size() - 1;
     std::string longMsg(maxMsg, 'X');
-    message.msg = longMsg.c_str();
+    message.Msg = longMsg.c_str();
     Log();
     STRCMP_EQUAL(longMsg.c_str(), SyslogMsg(lastMessage()).c_str());
 }
@@ -814,7 +814,7 @@ TEST(SolidSyslog, MessageTruncatedWhenExceedingBuffer)
     std::string header("<134>1 - - - - - - " + std::string(UTF8_BOM));
     size_t maxMsg = SOLIDSYSLOG_MAX_MESSAGE_SIZE - header.size() - 1;
     std::string longMsg(maxMsg + 100, 'X');
-    message.msg = longMsg.c_str();
+    message.Msg = longMsg.c_str();
     Log();
     std::string expected(maxMsg, 'X');
     STRCMP_EQUAL(expected.c_str(), SyslogMsg(lastMessage()).c_str());
@@ -826,7 +826,7 @@ TEST(SolidSyslog, BomIsPreservedWhenMessageBodyTruncates)
      * the body but the BOM — written before the body — must remain
      * present. Pins the FormatMsg ordering: BOM first, body second. */
     std::string longMsg(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 'X');
-    message.msg = longMsg.c_str();
+    message.Msg = longMsg.c_str();
     Log();
     CHECK(SyslogMsgHasBom(lastMessage()));
 }
@@ -834,7 +834,7 @@ TEST(SolidSyslog, BomIsPreservedWhenMessageBodyTruncates)
 TEST(SolidSyslog, HugeMessageDoesNotCorruptMemory)
 {
     std::string hugeMsg(10000, 'Z');
-    message.msg = hugeMsg.c_str();
+    message.Msg = hugeMsg.c_str();
     Log();
     std::string result = SyslogMsg(lastMessage());
     CHECK(result.size() <= SOLIDSYSLOG_MAX_MESSAGE_SIZE);
@@ -865,7 +865,7 @@ TEST_GROUP_BASE(SolidSyslogTimestamp, TEST_GROUP_CppUTestGroupSolidSyslog)
     {
         TEST_GROUP_CppUTestGroupSolidSyslog::setup();
         stubTimestamp = {TEST_YEAR, TEST_MONTH, TEST_DAY, TEST_HOUR, TEST_MINUTE, TEST_SECOND, TEST_MICROSECOND, TEST_UTC_OFFSET};
-        config.clock = StubClock;
+        config.Clock = StubClock;
         SolidSyslog_Destroy();
         SolidSyslog_Create(&config);
     }
@@ -875,7 +875,7 @@ TEST_GROUP_BASE(SolidSyslogTimestamp, TEST_GROUP_CppUTestGroupSolidSyslog)
 
 TEST(SolidSyslogTimestamp, NullClockProducesNilvalue)
 {
-    config.clock = nullptr;
+    config.Clock = nullptr;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
     Log();
@@ -884,49 +884,49 @@ TEST(SolidSyslogTimestamp, NullClockProducesNilvalue)
 
 TEST(SolidSyslogTimestamp, YearFormatsAsFourDigitZeroPadded)
 {
-    stubTimestamp.year = 2026;
+    stubTimestamp.Year = 2026;
     Log();
     CHECK_TIMESTAMP_YEAR("2026");
 }
 
 TEST(SolidSyslogTimestamp, MonthFormatsAsTwoDigitZeroPadded)
 {
-    stubTimestamp.month = 4;
+    stubTimestamp.Month = 4;
     Log();
     CHECK_TIMESTAMP_MONTH("04");
 }
 
 TEST(SolidSyslogTimestamp, DayFormatsAsTwoDigitZeroPadded)
 {
-    stubTimestamp.day = 2;
+    stubTimestamp.Day = 2;
     Log();
     CHECK_TIMESTAMP_DAY("02");
 }
 
 TEST(SolidSyslogTimestamp, HourFormatsAsTwoDigitZeroPadded)
 {
-    stubTimestamp.hour = 14;
+    stubTimestamp.Hour = 14;
     Log();
     CHECK_TIMESTAMP_HOUR("14");
 }
 
 TEST(SolidSyslogTimestamp, MinuteFormatsAsTwoDigitZeroPadded)
 {
-    stubTimestamp.minute = 30;
+    stubTimestamp.Minute = 30;
     Log();
     CHECK_TIMESTAMP_MINUTE("30");
 }
 
 TEST(SolidSyslogTimestamp, SecondFormatsAsTwoDigitZeroPadded)
 {
-    stubTimestamp.second = 7;
+    stubTimestamp.Second = 7;
     Log();
     CHECK_TIMESTAMP_SECOND("07");
 }
 
 TEST(SolidSyslogTimestamp, MicrosecondFormatsAsSixDigitZeroPadded)
 {
-    stubTimestamp.microsecond = 42;
+    stubTimestamp.Microsecond = 42;
     Log();
     CHECK_TIMESTAMP_MICROSECOND(".000042");
 }
@@ -969,203 +969,203 @@ TEST(SolidSyslogTimestamp, TimestampAppearsInCorrectMessageFieldPosition)
 
 TEST(SolidSyslogTimestamp, ZeroOffsetFormatsAsZ)
 {
-    stubTimestamp.utcOffsetMinutes = 0;
+    stubTimestamp.UtcOffsetMinutes = 0;
     Log();
     CHECK_TIMESTAMP_OFFSET("Z");
 }
 
 TEST(SolidSyslogTimestamp, PositiveOffsetFormatsAsPlusHHMM)
 {
-    stubTimestamp.utcOffsetMinutes = 330;
+    stubTimestamp.UtcOffsetMinutes = 330;
     Log();
     CHECK_TIMESTAMP_OFFSET("+05:30");
 }
 
 TEST(SolidSyslogTimestamp, NegativeOffsetFormatsAsMinusHHMM)
 {
-    stubTimestamp.utcOffsetMinutes = -300;
+    stubTimestamp.UtcOffsetMinutes = -300;
     Log();
     CHECK_TIMESTAMP_OFFSET("-05:00");
 }
 
 TEST(SolidSyslogTimestamp, YearZeroFormatsAs0000)
 {
-    stubTimestamp.year = 0;
+    stubTimestamp.Year = 0;
     Log();
     CHECK_TIMESTAMP_YEAR("0000");
 }
 
 TEST(SolidSyslogTimestamp, Year9999FormatsAs9999)
 {
-    stubTimestamp.year = 9999;
+    stubTimestamp.Year = 9999;
     Log();
     CHECK_TIMESTAMP_YEAR("9999");
 }
 
 TEST(SolidSyslogTimestamp, Month1FormatsAs01)
 {
-    stubTimestamp.month = 1;
+    stubTimestamp.Month = 1;
     Log();
     CHECK_TIMESTAMP_MONTH("01");
 }
 
 TEST(SolidSyslogTimestamp, Month12FormatsAs12)
 {
-    stubTimestamp.month = 12;
+    stubTimestamp.Month = 12;
     Log();
     CHECK_TIMESTAMP_MONTH("12");
 }
 
 TEST(SolidSyslogTimestamp, Day1FormatsAs01)
 {
-    stubTimestamp.day = 1;
+    stubTimestamp.Day = 1;
     Log();
     CHECK_TIMESTAMP_DAY("01");
 }
 
 TEST(SolidSyslogTimestamp, Day31FormatsAs31)
 {
-    stubTimestamp.day = 31;
+    stubTimestamp.Day = 31;
     Log();
     CHECK_TIMESTAMP_DAY("31");
 }
 
 TEST(SolidSyslogTimestamp, Hour0FormatsAs00)
 {
-    stubTimestamp.hour = 0;
+    stubTimestamp.Hour = 0;
     Log();
     CHECK_TIMESTAMP_HOUR("00");
 }
 
 TEST(SolidSyslogTimestamp, Hour23FormatsAs23)
 {
-    stubTimestamp.hour = 23;
+    stubTimestamp.Hour = 23;
     Log();
     CHECK_TIMESTAMP_HOUR("23");
 }
 
 TEST(SolidSyslogTimestamp, Minute0FormatsAs00)
 {
-    stubTimestamp.minute = 0;
+    stubTimestamp.Minute = 0;
     Log();
     CHECK_TIMESTAMP_MINUTE("00");
 }
 
 TEST(SolidSyslogTimestamp, Minute59FormatsAs59)
 {
-    stubTimestamp.minute = 59;
+    stubTimestamp.Minute = 59;
     Log();
     CHECK_TIMESTAMP_MINUTE("59");
 }
 
 TEST(SolidSyslogTimestamp, Second0FormatsAs00)
 {
-    stubTimestamp.second = 0;
+    stubTimestamp.Second = 0;
     Log();
     CHECK_TIMESTAMP_SECOND("00");
 }
 
 TEST(SolidSyslogTimestamp, Second59FormatsAs59)
 {
-    stubTimestamp.second = 59;
+    stubTimestamp.Second = 59;
     Log();
     CHECK_TIMESTAMP_SECOND("59");
 }
 
 TEST(SolidSyslogTimestamp, Microsecond0FormatsAs000000)
 {
-    stubTimestamp.microsecond = 0;
+    stubTimestamp.Microsecond = 0;
     Log();
     CHECK_TIMESTAMP_MICROSECOND(".000000");
 }
 
 TEST(SolidSyslogTimestamp, Microsecond999999FormatsAs999999)
 {
-    stubTimestamp.microsecond = 999999;
+    stubTimestamp.Microsecond = 999999;
     Log();
     CHECK_TIMESTAMP_MICROSECOND(".999999");
 }
 
 TEST(SolidSyslogTimestamp, UtcOffsetPlus840FormatsAsPlus1400)
 {
-    stubTimestamp.utcOffsetMinutes = 840;
+    stubTimestamp.UtcOffsetMinutes = 840;
     Log();
     CHECK_TIMESTAMP_OFFSET("+14:00");
 }
 
 TEST(SolidSyslogTimestamp, UtcOffsetMinus720FormatsAsMinus1200)
 {
-    stubTimestamp.utcOffsetMinutes = -720;
+    stubTimestamp.UtcOffsetMinutes = -720;
     Log();
     CHECK_TIMESTAMP_OFFSET("-12:00");
 }
 
 TEST(SolidSyslogTimestamp, Month0ProducesNilvalue)
 {
-    stubTimestamp.month = 0;
+    stubTimestamp.Month = 0;
     Log();
     CHECK_TIMESTAMP_IS_NILVALUE();
 }
 
 TEST(SolidSyslogTimestamp, Month13ProducesNilvalue)
 {
-    stubTimestamp.month = 13;
+    stubTimestamp.Month = 13;
     Log();
     CHECK_TIMESTAMP_IS_NILVALUE();
 }
 
 TEST(SolidSyslogTimestamp, Day0ProducesNilvalue)
 {
-    stubTimestamp.day = 0;
+    stubTimestamp.Day = 0;
     Log();
     CHECK_TIMESTAMP_IS_NILVALUE();
 }
 
 TEST(SolidSyslogTimestamp, Day32ProducesNilvalue)
 {
-    stubTimestamp.day = 32;
+    stubTimestamp.Day = 32;
     Log();
     CHECK_TIMESTAMP_IS_NILVALUE();
 }
 
 TEST(SolidSyslogTimestamp, Hour24ProducesNilvalue)
 {
-    stubTimestamp.hour = 24;
+    stubTimestamp.Hour = 24;
     Log();
     CHECK_TIMESTAMP_IS_NILVALUE();
 }
 
 TEST(SolidSyslogTimestamp, Minute60ProducesNilvalue)
 {
-    stubTimestamp.minute = 60;
+    stubTimestamp.Minute = 60;
     Log();
     CHECK_TIMESTAMP_IS_NILVALUE();
 }
 
 TEST(SolidSyslogTimestamp, Second60ProducesNilvalue)
 {
-    stubTimestamp.second = 60;
+    stubTimestamp.Second = 60;
     Log();
     CHECK_TIMESTAMP_IS_NILVALUE();
 }
 
 TEST(SolidSyslogTimestamp, Microsecond1000000ProducesNilvalue)
 {
-    stubTimestamp.microsecond = 1000000;
+    stubTimestamp.Microsecond = 1000000;
     Log();
     CHECK_TIMESTAMP_IS_NILVALUE();
 }
 
 TEST(SolidSyslogTimestamp, UtcOffsetPlus841ProducesNilvalue)
 {
-    stubTimestamp.utcOffsetMinutes = 841;
+    stubTimestamp.UtcOffsetMinutes = 841;
     Log();
     CHECK_TIMESTAMP_IS_NILVALUE();
 }
 
 TEST(SolidSyslogTimestamp, UtcOffsetMinus721ProducesNilvalue)
 {
-    stubTimestamp.utcOffsetMinutes = -721;
+    stubTimestamp.UtcOffsetMinutes = -721;
     Log();
     CHECK_TIMESTAMP_IS_NILVALUE();
 }
@@ -1254,11 +1254,11 @@ TEST(SolidSyslog, AllFieldsAtMaxLengthProducesValidMessage)
     StringFake_SetAppName(maxAppName.c_str());
     StringFake_SetProcessId(maxProcessId.c_str());
     stubTimestamp = {9999, 12, 31, 23, 59, 59, 999999, 840};
-    config.clock = StubClock;
+    config.Clock = StubClock;
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
-    message.facility = SolidSyslogFacility_Local7;
-    message.severity = SolidSyslogSeverity_Debug;
+    message.Facility = SolidSyslogFacility_Local7;
+    message.Severity = SolidSyslogSeverity_Debug;
     Log();
     CHECK_PRIVAL("<191>");
     CHECK_TIMESTAMP("9999-12-31T23:59:59.999999+14:00");
@@ -1546,9 +1546,9 @@ TEST_GROUP(SolidSyslogServiceEagerDrain)
         fakeStore      = StoreFake_Create();
 
         SolidSyslogConfig serviceConfig = {};
-        serviceConfig.buffer            = circularBuffer;
-        serviceConfig.sender            = fakeSender;
-        serviceConfig.store             = fakeStore;
+        serviceConfig.Buffer            = circularBuffer;
+        serviceConfig.Sender            = fakeSender;
+        serviceConfig.Store             = fakeStore;
         SolidSyslog_Create(&serviceConfig);
     }
 
@@ -1726,7 +1726,7 @@ TEST(SolidSyslogLifecycle, CreateWithNullBufferReportsError)
 {
     ErrorHandlerFake_Install(nullptr);
     SolidSyslogConfig config = validConfig();
-    config.buffer = nullptr;
+    config.Buffer = nullptr;
 
     SolidSyslog_Create(&config);
 
@@ -1737,7 +1737,7 @@ TEST(SolidSyslogLifecycle, CreateWithNullSenderReportsError)
 {
     ErrorHandlerFake_Install(nullptr);
     SolidSyslogConfig config = validConfig();
-    config.sender = nullptr;
+    config.Sender = nullptr;
 
     SolidSyslog_Create(&config);
 
@@ -1748,7 +1748,7 @@ TEST(SolidSyslogLifecycle, CreateWithNullStoreReportsError)
 {
     ErrorHandlerFake_Install(nullptr);
     SolidSyslogConfig config = validConfig();
-    config.store = nullptr;
+    config.Store = nullptr;
 
     SolidSyslog_Create(&config);
 
@@ -1758,7 +1758,7 @@ TEST(SolidSyslogLifecycle, CreateWithNullStoreReportsError)
 TEST(SolidSyslogLifecycle, ServiceWithNilStoreDrainsThroughToRealSender)
 {
     SolidSyslogConfig config = validConfig();
-    config.store = nullptr;
+    config.Store = nullptr;
     SolidSyslog_Create(&config);
     SolidSyslog_Log(&message);
 
@@ -1770,7 +1770,7 @@ TEST(SolidSyslogLifecycle, ServiceWithNilStoreDrainsThroughToRealSender)
 TEST(SolidSyslogLifecycle, ServiceWithNilSenderReportsNilSenderUsed)
 {
     SolidSyslogConfig config = validConfig();
-    config.sender = nullptr;
+    config.Sender = nullptr;
     SolidSyslog_Create(&config);
     SolidSyslog_Log(&message);
     ErrorHandlerFake_Install(nullptr);
@@ -1783,7 +1783,7 @@ TEST(SolidSyslogLifecycle, ServiceWithNilSenderReportsNilSenderUsed)
 TEST(SolidSyslogLifecycle, RepeatedServiceWithNilSenderReportsNilSenderUsedOnlyOnce)
 {
     SolidSyslogConfig config = validConfig();
-    config.sender = nullptr;
+    config.Sender = nullptr;
     SolidSyslog_Create(&config);
     SolidSyslog_Log(&message);
     SolidSyslog_Service();
@@ -1814,7 +1814,7 @@ TEST(SolidSyslogLifecycle, SecondCreateLeavesFirstConfigInstalled)
     SolidSyslog_Create(&firstConfig);
     SolidSyslogSender* otherSender = SenderFake_Create();
     SolidSyslogConfig secondConfig = validConfig();
-    secondConfig.sender = otherSender;
+    secondConfig.Sender = otherSender;
 
     SolidSyslog_Create(&secondConfig);
     SolidSyslog_Log(&message);
@@ -1856,7 +1856,7 @@ TEST(SolidSyslogLifecycle, DestroyClearsInitialisedFlagSoCreateSucceedsAgain)
 TEST(SolidSyslogLifecycle, DestroyReArmsNilSenderReporter)
 {
     SolidSyslogConfig config = validConfig();
-    config.sender = nullptr;
+    config.Sender = nullptr;
     SolidSyslog_Create(&config);
     SolidSyslog_Log(&message);
     SolidSyslog_Service();

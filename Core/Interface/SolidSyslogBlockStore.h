@@ -36,16 +36,16 @@ EXTERN_C_BEGIN
     {
         /* Required. Caller-owned: must outlive the BlockStore. SolidSyslogBlockStore_Destroy
          * does NOT destroy the block device — that is the integrator's responsibility. */
-        struct SolidSyslogBlockDevice* blockDevice;
-        size_t maxBlockSize;
-        size_t maxBlocks;
-        enum SolidSyslogDiscardPolicy discardPolicy;
-        struct SolidSyslogSecurityPolicy* securityPolicy;
-        SolidSyslogStoreFullCallback onStoreFull;
-        void* storeFullContext;
-        SolidSyslogStoreThresholdFunction getCapacityThreshold;
-        SolidSyslogStoreThresholdCallback onThresholdCrossed;
-        void* thresholdContext;
+        struct SolidSyslogBlockDevice* BlockDevice;
+        size_t MaxBlockSize;
+        size_t MaxBlocks;
+        enum SolidSyslogDiscardPolicy DiscardPolicy;
+        struct SolidSyslogSecurityPolicy* SecurityPolicy;
+        SolidSyslogStoreFullCallback OnStoreFull;
+        void* StoreFullContext;
+        SolidSyslogStoreThresholdFunction GetCapacityThreshold;
+        SolidSyslogStoreThresholdCallback OnThresholdCrossed;
+        void* ThresholdContext;
     };
 
     enum

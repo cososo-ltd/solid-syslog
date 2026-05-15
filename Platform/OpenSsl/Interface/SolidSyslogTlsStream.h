@@ -22,14 +22,14 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogTlsStreamConfig
     {
-        struct SolidSyslogStream* transport; /* underlying byte stream — caller owns */
+        struct SolidSyslogStream* Transport; /* underlying byte stream — caller owns */
         SolidSyslogSleepFunction
-            sleep; /* drives bounded handshake retry between WANT_READ/WANT_WRITE polls — required */
-        const char* caBundlePath; /* PEM file of trust anchors */
-        const char* serverName; /* SNI + cert hostname check; NULL to skip */
-        const char* cipherList; /* TLS 1.2 cipher list; NULL = OpenSSL default */
-        const char* clientCertChainPath; /* PEM: leaf cert (+ intermediates); NULL = no mTLS */
-        const char* clientKeyPath; /* PEM: matching private key; NULL = no mTLS */
+            Sleep; /* drives bounded handshake retry between WANT_READ/WANT_WRITE polls — required */
+        const char* CaBundlePath; /* PEM file of trust anchors */
+        const char* ServerName; /* SNI + cert hostname check; NULL to skip */
+        const char* CipherList; /* TLS 1.2 cipher list; NULL = OpenSSL default */
+        const char* ClientCertChainPath; /* PEM: leaf cert (+ intermediates); NULL = no mTLS */
+        const char* ClientKeyPath; /* PEM: matching private key; NULL = no mTLS */
     };
 
     struct SolidSyslogStream* SolidSyslogTlsStream_Create(

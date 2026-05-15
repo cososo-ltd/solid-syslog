@@ -11,19 +11,19 @@ EXTERN_C_BEGIN
 
     struct BddTargetOptions
     {
-        enum SolidSyslogFacility facility;
-        enum SolidSyslogSeverity severity;
-        const char* messageId;
-        const char* msg;
-        const char* appName; /* --app-name (NULL: derive from argv[0]) */
-        const char* transport;
-        const char* store;
-        size_t maxBlocks;
-        size_t maxBlockSize;
-        const char* discardPolicy;
-        size_t capacityThreshold;
-        bool noSd;
-        bool haltExit;
+        enum SolidSyslogFacility Facility;
+        enum SolidSyslogSeverity Severity;
+        const char* MessageId;
+        const char* Msg;
+        const char* AppName; /* --app-name (NULL: derive from argv[0]) */
+        const char* Transport;
+        const char* Store;
+        size_t MaxBlocks;
+        size_t MaxBlockSize;
+        const char* DiscardPolicy;
+        size_t CapacityThreshold;
+        bool NoSd;
+        bool HaltExit;
     };
 
     int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* options);
