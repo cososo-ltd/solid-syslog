@@ -238,15 +238,15 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
         static size_t capacityThreshold;
         capacityThreshold = options->capacityThreshold;
         static struct SolidSyslogBlockStoreConfig storeConfig = {0};
-        storeConfig.blockDevice = storeBlockDevice;
-        storeConfig.maxBlockSize = options->maxBlockSize;
-        storeConfig.maxBlocks = options->maxBlocks;
-        storeConfig.discardPolicy = MapDiscardPolicy(options->discardPolicy);
-        storeConfig.securityPolicy = SolidSyslogCrc16Policy_Create();
-        storeConfig.onStoreFull = OnStoreFull;
-        storeConfig.getCapacityThreshold = GetCapacityThreshold;
-        storeConfig.onThresholdCrossed = OnThresholdCrossed;
-        storeConfig.thresholdContext = &capacityThreshold;
+        storeConfig.BlockDevice = storeBlockDevice;
+        storeConfig.MaxBlockSize = options->maxBlockSize;
+        storeConfig.MaxBlocks = options->maxBlocks;
+        storeConfig.DiscardPolicy = MapDiscardPolicy(options->discardPolicy);
+        storeConfig.SecurityPolicy = SolidSyslogCrc16Policy_Create();
+        storeConfig.OnStoreFull = OnStoreFull;
+        storeConfig.GetCapacityThreshold = GetCapacityThreshold;
+        storeConfig.OnThresholdCrossed = OnThresholdCrossed;
+        storeConfig.ThresholdContext = &capacityThreshold;
 
         static SolidSyslogBlockStoreStorage storeStorage;
         return SolidSyslogBlockStore_Create(&storeStorage, &storeConfig);

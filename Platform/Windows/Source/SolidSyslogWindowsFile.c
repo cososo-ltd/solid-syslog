@@ -35,8 +35,8 @@ static bool WindowsFile_Delete(struct SolidSyslogFile* self, const char* path);
 
 struct SolidSyslogWindowsFile
 {
-    struct SolidSyslogFile base;
-    int fd;
+    struct SolidSyslogFile Base;
+    int Fd;
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
@@ -67,16 +67,16 @@ struct SolidSyslogFile* SolidSyslogWindowsFile_Create(SolidSyslogWindowsFileStor
 {
     struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) storage;
     *windows = DEFAULT_INSTANCE;
-    return &windows->base;
+    return &windows->Base;
 }
 
 void SolidSyslogWindowsFile_Destroy(struct SolidSyslogFile* file)
 {
     struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) file;
 
-    if (windows->fd != INVALID_FD)
+    if (windows->Fd != INVALID_FD)
     {
-        _close(windows->fd);
+        _close(windows->Fd);
     }
 
     *windows = DESTROYED_INSTANCE;
@@ -89,60 +89,60 @@ static bool WindowsFile_Open(struct SolidSyslogFile* self, const char* path)
      * _CRT_SECURE_NO_WARNINGS is forbidden by the project's banned-API
      * policy. _SH_DENYNO matches POSIX open()'s default of no share mode. */
     struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    errno_t err = _sopen_s(&windows->fd, path, DEFAULT_OPEN_FLAGS, _SH_DENYNO, DEFAULT_FILE_PERMISSIONS);
+    errno_t err = _sopen_s(&windows->Fd, path, DEFAULT_OPEN_FLAGS, _SH_DENYNO, DEFAULT_FILE_PERMISSIONS);
     if (err != 0)
     {
-        windows->fd = INVALID_FD;
+        windows->Fd = INVALID_FD;
     }
-    return windows->fd != INVALID_FD;
+    return windows->Fd != INVALID_FD;
 }
 
 static void WindowsFile_Close(struct SolidSyslogFile* self)
 {
     struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
 
-    if (windows->fd != INVALID_FD)
+    if (windows->Fd != INVALID_FD)
     {
-        _close(windows->fd);
-        windows->fd = INVALID_FD;
+        _close(windows->Fd);
+        windows->Fd = INVALID_FD;
     }
 }
 
 static bool WindowsFile_IsOpen(struct SolidSyslogFile* self)
 {
     struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    return windows->fd != INVALID_FD;
+    return windows->Fd != INVALID_FD;
 }
 
 static bool WindowsFile_Read(struct SolidSyslogFile* self, void* buf, size_t count)
 {
     struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    return _read(windows->fd, buf, (unsigned int) count) == (int) count;
+    return _read(windows->Fd, buf, (unsigned int) count) == (int) count;
 }
 
 static bool WindowsFile_Write(struct SolidSyslogFile* self, const void* buf, size_t count)
 {
     struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    return _write(windows->fd, buf, (unsigned int) count) == (int) count;
+    return _write(windows->Fd, buf, (unsigned int) count) == (int) count;
 }
 
 static void WindowsFile_SeekTo(struct SolidSyslogFile* self, size_t offset)
 {
     struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    _lseeki64(windows->fd, (__int64) offset, SEEK_SET);
+    _lseeki64(windows->Fd, (__int64) offset, SEEK_SET);
 }
 
 static size_t WindowsFile_Size(struct SolidSyslogFile* self)
 {
     struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    __int64 size = _lseeki64(windows->fd, 0, SEEK_END);
+    __int64 size = _lseeki64(windows->Fd, 0, SEEK_END);
     return (size >= 0) ? (size_t) size : 0;
 }
 
 static void WindowsFile_Truncate(struct SolidSyslogFile* self)
 {
     struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    _chsize_s(windows->fd, 0);
+    _chsize_s(windows->Fd, 0);
 }
 
 static bool WindowsFile_Exists(struct SolidSyslogFile* self, const char* path)

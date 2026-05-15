@@ -11,37 +11,37 @@ struct SolidSyslogBlockDevice;
 
 struct BlockSequenceConfig
 {
-    struct SolidSyslogBlockDevice* blockDevice;
-    size_t maxBlockSize;
-    size_t maxBlocks;
-    enum SolidSyslogDiscardPolicy discardPolicy;
-    SolidSyslogStoreFullCallback onStoreFull;
-    void* storeFullContext;
-    SolidSyslogStoreThresholdFunction getCapacityThreshold;
-    SolidSyslogStoreThresholdCallback onThresholdCrossed;
-    void* thresholdContext;
+    struct SolidSyslogBlockDevice* BlockDevice;
+    size_t MaxBlockSize;
+    size_t MaxBlocks;
+    enum SolidSyslogDiscardPolicy DiscardPolicy;
+    SolidSyslogStoreFullCallback OnStoreFull;
+    void* StoreFullContext;
+    SolidSyslogStoreThresholdFunction GetCapacityThreshold;
+    SolidSyslogStoreThresholdCallback OnThresholdCrossed;
+    void* ThresholdContext;
 };
 
 struct BlockSequence
 {
-    struct SolidSyslogBlockDevice* blockDevice;
-    size_t maxBlockSize;
-    size_t maxBlocks;
-    enum SolidSyslogDiscardPolicy discardPolicy;
-    SolidSyslogStoreFullCallback onStoreFull;
-    void* storeFullContext;
-    SolidSyslogStoreThresholdFunction getCapacityThreshold;
-    SolidSyslogStoreThresholdCallback onThresholdCrossed;
-    void* thresholdContext;
-    bool halted;
-    bool atCapacity;
-    bool thresholdCrossed;
-    uint8_t oldestSequence;
-    uint8_t readSequence;
-    uint8_t writeSequence;
-    size_t readCursor;
-    size_t writePosition;
-    bool writeBlockCorrupt;
+    struct SolidSyslogBlockDevice* BlockDevice;
+    size_t MaxBlockSize;
+    size_t MaxBlocks;
+    enum SolidSyslogDiscardPolicy DiscardPolicy;
+    SolidSyslogStoreFullCallback OnStoreFull;
+    void* StoreFullContext;
+    SolidSyslogStoreThresholdFunction GetCapacityThreshold;
+    SolidSyslogStoreThresholdCallback OnThresholdCrossed;
+    void* ThresholdContext;
+    bool Halted;
+    bool AtCapacity;
+    bool ThresholdCrossed;
+    uint8_t OldestSequence;
+    uint8_t ReadSequence;
+    uint8_t WriteSequence;
+    size_t ReadCursor;
+    size_t WritePosition;
+    bool WriteBlockCorrupt;
 };
 
 void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockSequenceConfig* config);

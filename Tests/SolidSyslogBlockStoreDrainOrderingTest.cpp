@@ -47,7 +47,7 @@ static const char* const TEST_PATH_PREFIX = "/tmp/draintest_";
  * interleave. */
 struct SenderSpy
 {
-    struct SolidSyslogSender base;
+    struct SolidSyslogSender Base;
     std::vector<std::vector<uint8_t>> successfulSends;
     bool outage;
 };
@@ -71,8 +71,8 @@ static void SenderSpy_Disconnect(struct SolidSyslogSender* self)
 
 static void SenderSpy_Init(SenderSpy& spy)
 {
-    spy.base.Send = SenderSpy_Send;
-    spy.base.Disconnect = SenderSpy_Disconnect;
+    spy.Base.Send = SenderSpy_Send;
+    spy.Base.Disconnect = SenderSpy_Disconnect;
     spy.outage = false;
     spy.successfulSends.clear();
 }
@@ -96,12 +96,12 @@ struct DrainTestConfig
     /* cppcheck cannot follow CreateStore's reads through TEST_GROUP-
      * generated test classes; these fields ARE consumed there. */
     // cppcheck-suppress unusedStructMember
-    size_t maxBlocks;
+    size_t MaxBlocks;
     // cppcheck-suppress unusedStructMember
-    size_t maxBlockSize;
-    size_t payloadSize;
+    size_t MaxBlockSize;
+    size_t PayloadSize;
     // cppcheck-suppress unusedStructMember
-    enum SolidSyslogDiscardPolicy discardPolicy;
+    enum SolidSyslogDiscardPolicy DiscardPolicy;
 };
 
 /* Shared file / block-device / null-security-policy fixture. Lifted out of
@@ -159,11 +159,11 @@ TEST_GROUP_BASE(BlockStoreDrainOrdering, DrainTestFixtureBase)
     void CreateStore(const DrainTestConfig& cfg)
     {
         struct SolidSyslogBlockStoreConfig config = {};
-        config.blockDevice                        = device;
-        config.maxBlockSize                       = cfg.maxBlockSize;
-        config.maxBlocks                          = cfg.maxBlocks;
-        config.discardPolicy                      = cfg.discardPolicy;
-        config.securityPolicy                     = policy;
+        config.BlockDevice                        = device;
+        config.MaxBlockSize                       = cfg.MaxBlockSize;
+        config.MaxBlocks                          = cfg.MaxBlocks;
+        config.DiscardPolicy                      = cfg.DiscardPolicy;
+        config.SecurityPolicy                     = policy;
         store                                     = SolidSyslogBlockStore_Create(&storeStorage, &config);
     }
 
@@ -255,16 +255,16 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
     void Setup(const DrainTestConfig& cfg)
     {
         struct SolidSyslogBlockStoreConfig storeCfg = {};
-        storeCfg.blockDevice                        = device;
-        storeCfg.maxBlockSize                       = cfg.maxBlockSize;
-        storeCfg.maxBlocks                          = cfg.maxBlocks;
-        storeCfg.discardPolicy                      = cfg.discardPolicy;
-        storeCfg.securityPolicy                     = policy;
+        storeCfg.BlockDevice                        = device;
+        storeCfg.MaxBlockSize                       = cfg.MaxBlockSize;
+        storeCfg.MaxBlocks                          = cfg.MaxBlocks;
+        storeCfg.DiscardPolicy                      = cfg.DiscardPolicy;
+        storeCfg.SecurityPolicy                     = policy;
         store                                       = SolidSyslogBlockStore_Create(&storeStorage, &storeCfg);
 
         struct SolidSyslogConfig sysCfg = {};
         sysCfg.buffer                   = buffer;
-        sysCfg.sender                   = &spy.base;
+        sysCfg.sender                   = &spy.Base;
         sysCfg.store                    = store;
         SolidSyslog_Create(&sysCfg);
     }
@@ -311,7 +311,7 @@ TEST(ServiceDrainInterleave, DiscardNewestDoesNotLetNewestBypassOldestOnRecovery
     Setup(cfg);
 
     /* Pre-outage send: msg 1 flows buffer -> store -> sender successfully. */
-    Enqueue(1, cfg.payloadSize);
+    Enqueue(1, cfg.PayloadSize);
     SolidSyslog_Service();
     LONGS_EQUAL(1U, spy.successfulSends.size());
 
@@ -319,13 +319,13 @@ TEST(ServiceDrainInterleave, DiscardNewestDoesNotLetNewestBypassOldestOnRecovery
     spy.outage = true;
 
     /* Two messages fit into the 2-block store. */
-    Enqueue(2, cfg.payloadSize);
-    Enqueue(3, cfg.payloadSize);
+    Enqueue(2, cfg.PayloadSize);
+    Enqueue(3, cfg.PayloadSize);
     SolidSyslog_Service();
 
     /* Message 11 arrives still in outage — it lands in the buffer but
      * hasn't been pulled by Service yet at the moment the oracle resumes. */
-    Enqueue(11, cfg.payloadSize);
+    Enqueue(11, cfg.PayloadSize);
 
     /* Oracle resumes. Drain by ticking Service repeatedly. */
     spy.outage = false;
@@ -382,13 +382,13 @@ TEST(BlockStoreDrainOrdering, OutageDrainProducesAscendingSequenceIds)
 
     /* Pre-outage send + drain — mirrors `When the client sends a message`
      * + `Then the syslog oracle receives 1 message` in the BDD scenario. */
-    CHECK_TRUE(WriteMessage(1, cfg.payloadSize));
+    CHECK_TRUE(WriteMessage(1, cfg.PayloadSize));
     LONGS_EQUAL(1U, DrainOne());
 
     /* Outage period: 10 messages queued without intermediate drains. */
     for (uint32_t id = 2; id <= 11U; ++id)
     {
-        (void) WriteMessage(id, cfg.payloadSize);
+        (void) WriteMessage(id, cfg.PayloadSize);
     }
 
     /* Drain everything that's still there. */

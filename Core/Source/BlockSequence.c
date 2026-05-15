@@ -16,7 +16,7 @@ static inline uint8_t BlockSequence_NextSequence(uint8_t current)
 
 static inline size_t BlockSequence_BlockCount(const struct BlockSequence* blockSequence)
 {
-    return (size_t) ((blockSequence->writeSequence - blockSequence->oldestSequence + SEQUENCE_MODULUS) %
+    return (size_t) ((blockSequence->WriteSequence - blockSequence->OldestSequence + SEQUENCE_MODULUS) %
                      SEQUENCE_MODULUS) +
            1;
 }
@@ -41,24 +41,24 @@ static inline size_t BlockSequence_ClampToRange(size_t value, size_t min, size_t
 
 void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockSequenceConfig* config)
 {
-    blockSequence->blockDevice = config->blockDevice;
-    blockSequence->maxBlockSize = config->maxBlockSize;
-    blockSequence->maxBlocks = BlockSequence_ClampToRange(config->maxBlocks, MIN_MAX_BLOCKS, MAX_MAX_BLOCKS);
-    blockSequence->discardPolicy = config->discardPolicy;
-    blockSequence->onStoreFull = config->onStoreFull;
-    blockSequence->storeFullContext = config->storeFullContext;
-    blockSequence->getCapacityThreshold = config->getCapacityThreshold;
-    blockSequence->onThresholdCrossed = config->onThresholdCrossed;
-    blockSequence->thresholdContext = config->thresholdContext;
-    blockSequence->halted = false;
-    blockSequence->atCapacity = false;
-    blockSequence->thresholdCrossed = false;
-    blockSequence->oldestSequence = 0;
-    blockSequence->readSequence = 0;
-    blockSequence->writeSequence = 0;
-    blockSequence->readCursor = 0;
-    blockSequence->writePosition = 0;
-    blockSequence->writeBlockCorrupt = false;
+    blockSequence->BlockDevice = config->BlockDevice;
+    blockSequence->MaxBlockSize = config->MaxBlockSize;
+    blockSequence->MaxBlocks = BlockSequence_ClampToRange(config->MaxBlocks, MIN_MAX_BLOCKS, MAX_MAX_BLOCKS);
+    blockSequence->DiscardPolicy = config->DiscardPolicy;
+    blockSequence->OnStoreFull = config->OnStoreFull;
+    blockSequence->StoreFullContext = config->StoreFullContext;
+    blockSequence->GetCapacityThreshold = config->GetCapacityThreshold;
+    blockSequence->OnThresholdCrossed = config->OnThresholdCrossed;
+    blockSequence->ThresholdContext = config->ThresholdContext;
+    blockSequence->Halted = false;
+    blockSequence->AtCapacity = false;
+    blockSequence->ThresholdCrossed = false;
+    blockSequence->OldestSequence = 0;
+    blockSequence->ReadSequence = 0;
+    blockSequence->WriteSequence = 0;
+    blockSequence->ReadCursor = 0;
+    blockSequence->WritePosition = 0;
+    blockSequence->WriteBlockCorrupt = false;
 }
 
 static bool BlockSequence_ScanForExistingBlocks(struct BlockSequence* blockSequence);
@@ -71,13 +71,13 @@ bool BlockSequence_Open(struct BlockSequence* blockSequence)
 
     if (foundExistingBlocks)
     {
-        blockSequence->writePosition =
-            SolidSyslogBlockDevice_Size(blockSequence->blockDevice, blockSequence->writeSequence);
+        blockSequence->WritePosition =
+            SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->WriteSequence);
         ready = true;
     }
     else
     {
-        ready = SolidSyslogBlockDevice_Acquire(blockSequence->blockDevice, 0);
+        ready = SolidSyslogBlockDevice_Acquire(blockSequence->BlockDevice, 0);
     }
 
     if (ready)
@@ -95,10 +95,10 @@ enum
 
 struct BlockPresence
 {
-    bool present[MAX_SEQUENCE];
-    bool foundAny;
-    bool foundAbsent;
-    int firstAbsent;
+    bool Present[MAX_SEQUENCE];
+    bool FoundAny;
+    bool FoundAbsent;
+    int FirstAbsent;
 };
 
 static inline int BlockSequence_CircularPrev(int index);
@@ -118,38 +118,38 @@ static bool BlockSequence_ScanForExistingBlocks(struct BlockSequence* blockSeque
     struct BlockPresence presence;
     BlockSequence_ScanForBlockPresence(blockSequence, &presence);
 
-    if (presence.foundAny)
+    if (presence.FoundAny)
     {
         int oldest = 0;
         int newest = MAX_SEQUENCE - 1;
         BlockSequence_LocateRunBoundaries(&presence, &oldest, &newest);
 
-        blockSequence->oldestSequence = (uint8_t) oldest;
-        blockSequence->readSequence = (uint8_t) oldest;
-        blockSequence->writeSequence = (uint8_t) newest;
+        blockSequence->OldestSequence = (uint8_t) oldest;
+        blockSequence->ReadSequence = (uint8_t) oldest;
+        blockSequence->WriteSequence = (uint8_t) newest;
     }
 
-    return presence.foundAny;
+    return presence.FoundAny;
 }
 
 static void BlockSequence_ScanForBlockPresence(struct BlockSequence* blockSequence, struct BlockPresence* presence)
 {
-    presence->foundAny = false;
-    presence->foundAbsent = false;
-    presence->firstAbsent = 0;
+    presence->FoundAny = false;
+    presence->FoundAbsent = false;
+    presence->FirstAbsent = 0;
 
     for (int seq = 0; seq < MAX_SEQUENCE; seq++)
     {
-        presence->present[seq] = SolidSyslogBlockDevice_Exists(blockSequence->blockDevice, (size_t) seq);
+        presence->Present[seq] = SolidSyslogBlockDevice_Exists(blockSequence->BlockDevice, (size_t) seq);
 
-        if (presence->present[seq])
+        if (presence->Present[seq])
         {
-            presence->foundAny = true;
+            presence->FoundAny = true;
         }
-        else if (!presence->foundAbsent)
+        else if (!presence->FoundAbsent)
         {
-            presence->firstAbsent = seq;
-            presence->foundAbsent = true;
+            presence->FirstAbsent = seq;
+            presence->FoundAbsent = true;
         }
     }
 }
@@ -157,16 +157,16 @@ static void BlockSequence_ScanForBlockPresence(struct BlockSequence* blockSequen
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints; distinct semantics
 static void BlockSequence_LocateRunBoundaries(const struct BlockPresence* presence, int* oldest, int* newest)
 {
-    if (presence->foundAbsent)
+    if (presence->FoundAbsent)
     {
-        *oldest = BlockSequence_CircularNext(presence->firstAbsent);
-        while (!presence->present[*oldest])
+        *oldest = BlockSequence_CircularNext(presence->FirstAbsent);
+        while (!presence->Present[*oldest])
         {
             *oldest = BlockSequence_CircularNext(*oldest);
         }
 
-        *newest = BlockSequence_CircularPrev(presence->firstAbsent);
-        while (!presence->present[*newest])
+        *newest = BlockSequence_CircularPrev(presence->FirstAbsent);
+        while (!presence->Present[*newest])
         {
             *newest = BlockSequence_CircularPrev(*newest);
         }
@@ -199,7 +199,7 @@ bool BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t r
 
     if (blockFull && BlockSequence_StoreIsFull(blockSequence))
     {
-        blockSequence->atCapacity = true; /* sticky 100% — fixes UsedBytes at total */
+        blockSequence->AtCapacity = true; /* sticky 100% — fixes UsedBytes at total */
         BlockSequence_NotifyThresholdCrossed(blockSequence); /* threshold first per S05.09 ordering */
         BlockSequence_NotifyStoreFull(blockSequence);
         spaceAvailable = false;
@@ -214,25 +214,25 @@ bool BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t r
 
 static inline bool BlockSequence_BlockIsFull(const struct BlockSequence* blockSequence, size_t recordSize)
 {
-    return (blockSequence->writeBlockCorrupt) ||
-           ((blockSequence->writePosition + recordSize) > blockSequence->maxBlockSize);
+    return (blockSequence->WriteBlockCorrupt) ||
+           ((blockSequence->WritePosition + recordSize) > blockSequence->MaxBlockSize);
 }
 
 static inline bool BlockSequence_StoreIsFull(const struct BlockSequence* blockSequence)
 {
-    return (BlockSequence_BlockCount(blockSequence) >= blockSequence->maxBlocks) &&
-           (blockSequence->discardPolicy != SolidSyslogDiscardPolicy_Oldest);
+    return (BlockSequence_BlockCount(blockSequence) >= blockSequence->MaxBlocks) &&
+           (blockSequence->DiscardPolicy != SolidSyslogDiscardPolicy_Oldest);
 }
 
 static inline void BlockSequence_NotifyStoreFull(struct BlockSequence* blockSequence)
 {
-    if ((blockSequence->discardPolicy == SolidSyslogDiscardPolicy_Halt) && !blockSequence->halted)
+    if ((blockSequence->DiscardPolicy == SolidSyslogDiscardPolicy_Halt) && !blockSequence->Halted)
     {
-        blockSequence->halted = true;
+        blockSequence->Halted = true;
 
-        if (blockSequence->onStoreFull != NULL)
+        if (blockSequence->OnStoreFull != NULL)
         {
-            blockSequence->onStoreFull(blockSequence->storeFullContext);
+            blockSequence->OnStoreFull(blockSequence->StoreFullContext);
         }
     }
 }
@@ -246,8 +246,8 @@ static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockDevice
 
 static bool BlockSequence_RotateToNextBlock(struct BlockSequence* blockSequence, bool* readBlockChanged)
 {
-    uint8_t nextSequence = BlockSequence_NextSequence(blockSequence->writeSequence);
-    bool acquired = BlockSequence_AcquireEmptyBlock(blockSequence->blockDevice, nextSequence);
+    uint8_t nextSequence = BlockSequence_NextSequence(blockSequence->WriteSequence);
+    bool acquired = BlockSequence_AcquireEmptyBlock(blockSequence->BlockDevice, nextSequence);
 
     *readBlockChanged = false;
 
@@ -300,24 +300,24 @@ static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockDevice
 
 static inline void BlockSequence_AdvanceWriteToNewBlock(struct BlockSequence* blockSequence, uint8_t nextSequence)
 {
-    blockSequence->writeSequence = nextSequence;
-    blockSequence->writePosition = 0;
-    blockSequence->writeBlockCorrupt = false;
+    blockSequence->WriteSequence = nextSequence;
+    blockSequence->WritePosition = 0;
+    blockSequence->WriteBlockCorrupt = false;
 }
 
 static inline bool BlockSequence_ExceedsMaxBlocks(const struct BlockSequence* blockSequence)
 {
-    return BlockSequence_BlockCount(blockSequence) > blockSequence->maxBlocks;
+    return BlockSequence_BlockCount(blockSequence) > blockSequence->MaxBlocks;
 }
 
 static bool BlockSequence_DiscardOldestBlock(struct BlockSequence* blockSequence)
 {
     bool readBlockChanged = false;
 
-    if (SolidSyslogBlockDevice_Dispose(blockSequence->blockDevice, blockSequence->oldestSequence))
+    if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->OldestSequence))
     {
-        bool readingOldestBlock = (blockSequence->readSequence == blockSequence->oldestSequence);
-        blockSequence->oldestSequence = BlockSequence_NextSequence(blockSequence->oldestSequence);
+        bool readingOldestBlock = (blockSequence->ReadSequence == blockSequence->OldestSequence);
+        blockSequence->OldestSequence = BlockSequence_NextSequence(blockSequence->OldestSequence);
 
         if (readingOldestBlock)
         {
@@ -331,23 +331,23 @@ static bool BlockSequence_DiscardOldestBlock(struct BlockSequence* blockSequence
 
 static void BlockSequence_ResetReadToOldest(struct BlockSequence* blockSequence)
 {
-    blockSequence->readSequence = blockSequence->oldestSequence;
-    blockSequence->readCursor = 0;
+    blockSequence->ReadSequence = blockSequence->OldestSequence;
+    blockSequence->ReadCursor = 0;
 }
 
 struct SolidSyslogBlockDevice* BlockSequence_BlockDevice(const struct BlockSequence* blockSequence)
 {
-    return blockSequence->blockDevice;
+    return blockSequence->BlockDevice;
 }
 
 size_t BlockSequence_WriteSequence(const struct BlockSequence* blockSequence)
 {
-    return blockSequence->writeSequence;
+    return blockSequence->WriteSequence;
 }
 
 void BlockSequence_NoteRecordWritten(struct BlockSequence* blockSequence, size_t recordSize)
 {
-    blockSequence->writePosition += recordSize;
+    blockSequence->WritePosition += recordSize;
     BlockSequence_NotifyThresholdCrossed(blockSequence);
 }
 
@@ -358,23 +358,23 @@ static inline void BlockSequence_NotifyThresholdCrossed(struct BlockSequence* bl
 {
     if (BlockSequence_ThresholdEnabled(blockSequence))
     {
-        size_t threshold = blockSequence->getCapacityThreshold(blockSequence->thresholdContext);
+        size_t threshold = blockSequence->GetCapacityThreshold(blockSequence->ThresholdContext);
 
         if (!BlockSequence_IsAboveThreshold(blockSequence, threshold))
         {
-            blockSequence->thresholdCrossed = false;
+            blockSequence->ThresholdCrossed = false;
         }
-        else if (!blockSequence->thresholdCrossed)
+        else if (!blockSequence->ThresholdCrossed)
         {
-            blockSequence->thresholdCrossed = true;
-            blockSequence->onThresholdCrossed(blockSequence->thresholdContext);
+            blockSequence->ThresholdCrossed = true;
+            blockSequence->OnThresholdCrossed(blockSequence->ThresholdContext);
         }
     }
 }
 
 static inline bool BlockSequence_ThresholdEnabled(const struct BlockSequence* blockSequence)
 {
-    return (blockSequence->onThresholdCrossed != NULL) && (blockSequence->getCapacityThreshold != NULL);
+    return (blockSequence->OnThresholdCrossed != NULL) && (blockSequence->GetCapacityThreshold != NULL);
 }
 
 static inline bool BlockSequence_IsAboveThreshold(const struct BlockSequence* blockSequence, size_t threshold)
@@ -384,22 +384,22 @@ static inline bool BlockSequence_IsAboveThreshold(const struct BlockSequence* bl
 
 void BlockSequence_MarkWriteBlockCorrupt(struct BlockSequence* blockSequence)
 {
-    blockSequence->writeBlockCorrupt = true;
+    blockSequence->WriteBlockCorrupt = true;
 }
 
 size_t BlockSequence_ReadSequence(const struct BlockSequence* blockSequence)
 {
-    return blockSequence->readSequence;
+    return blockSequence->ReadSequence;
 }
 
 size_t BlockSequence_ReadCursor(const struct BlockSequence* blockSequence)
 {
-    return blockSequence->readCursor;
+    return blockSequence->ReadCursor;
 }
 
 void BlockSequence_SetReadCursor(struct BlockSequence* blockSequence, size_t cursor)
 {
-    blockSequence->readCursor = cursor;
+    blockSequence->ReadCursor = cursor;
 }
 
 static inline bool BlockSequence_IsReadBlockActiveWrite(const struct BlockSequence* blockSequence);
@@ -414,7 +414,7 @@ void BlockSequence_DisposeReadBlockIfDrained(struct BlockSequence* blockSequence
     if (!BlockSequence_IsReadBlockActiveWrite(blockSequence) && BlockSequence_IsReadBlockOldest(blockSequence) &&
         BlockSequence_IsReadBlockFullyDrained(blockSequence))
     {
-        if (SolidSyslogBlockDevice_Dispose(blockSequence->blockDevice, blockSequence->readSequence))
+        if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->ReadSequence))
         {
             BlockSequence_AdvancePastDrainedReadBlock(blockSequence);
             *readBlockChanged = true;
@@ -424,66 +424,66 @@ void BlockSequence_DisposeReadBlockIfDrained(struct BlockSequence* blockSequence
 
 static inline bool BlockSequence_IsReadBlockActiveWrite(const struct BlockSequence* blockSequence)
 {
-    return blockSequence->readSequence == blockSequence->writeSequence;
+    return blockSequence->ReadSequence == blockSequence->WriteSequence;
 }
 
 static inline bool BlockSequence_IsReadBlockOldest(const struct BlockSequence* blockSequence)
 {
-    return blockSequence->readSequence == blockSequence->oldestSequence;
+    return blockSequence->ReadSequence == blockSequence->OldestSequence;
 }
 
 static inline bool BlockSequence_IsReadBlockFullyDrained(const struct BlockSequence* blockSequence)
 {
-    return blockSequence->readCursor >=
-           SolidSyslogBlockDevice_Size(blockSequence->blockDevice, blockSequence->readSequence);
+    return blockSequence->ReadCursor >=
+           SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->ReadSequence);
 }
 
 static inline void BlockSequence_AdvancePastDrainedReadBlock(struct BlockSequence* blockSequence)
 {
-    blockSequence->oldestSequence = BlockSequence_NextSequence(blockSequence->oldestSequence);
-    blockSequence->readSequence = blockSequence->oldestSequence;
-    blockSequence->readCursor = 0;
+    blockSequence->OldestSequence = BlockSequence_NextSequence(blockSequence->OldestSequence);
+    blockSequence->ReadSequence = blockSequence->OldestSequence;
+    blockSequence->ReadCursor = 0;
     BlockSequence_NotifyThresholdCrossed(blockSequence);
 }
 
 void BlockSequence_AdvanceToNextReadBlock(struct BlockSequence* blockSequence)
 {
-    blockSequence->readSequence = BlockSequence_NextSequence(blockSequence->readSequence);
-    blockSequence->readCursor = 0;
+    blockSequence->ReadSequence = BlockSequence_NextSequence(blockSequence->ReadSequence);
+    blockSequence->ReadCursor = 0;
 }
 
 bool BlockSequence_ReadIsBehindWrite(const struct BlockSequence* blockSequence)
 {
-    return blockSequence->readSequence != blockSequence->writeSequence;
+    return blockSequence->ReadSequence != blockSequence->WriteSequence;
 }
 
 bool BlockSequence_HasUnsent(const struct BlockSequence* blockSequence)
 {
-    return BlockSequence_ReadIsBehindWrite(blockSequence) || (blockSequence->readCursor < blockSequence->writePosition);
+    return BlockSequence_ReadIsBehindWrite(blockSequence) || (blockSequence->ReadCursor < blockSequence->WritePosition);
 }
 
 bool BlockSequence_IsHalted(const struct BlockSequence* blockSequence)
 {
-    return blockSequence->halted;
+    return blockSequence->Halted;
 }
 
 size_t BlockSequence_TotalBytes(const struct BlockSequence* blockSequence)
 {
-    return blockSequence->maxBlocks * blockSequence->maxBlockSize;
+    return blockSequence->MaxBlocks * blockSequence->MaxBlockSize;
 }
 
 size_t BlockSequence_UsedBytes(const struct BlockSequence* blockSequence)
 {
     size_t used = 0;
 
-    if (blockSequence->atCapacity)
+    if (blockSequence->AtCapacity)
     {
         used = BlockSequence_TotalBytes(blockSequence);
     }
     else
     {
         size_t closedBlocks = BlockSequence_BlockCount(blockSequence) - 1;
-        used = (closedBlocks * blockSequence->maxBlockSize) + blockSequence->writePosition;
+        used = (closedBlocks * blockSequence->MaxBlockSize) + blockSequence->WritePosition;
     }
 
     return used;

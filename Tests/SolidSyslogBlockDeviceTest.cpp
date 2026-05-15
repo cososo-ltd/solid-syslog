@@ -8,7 +8,7 @@ namespace
 {
 struct FakeBlockDevice
 {
-    struct SolidSyslogBlockDevice base;
+    struct SolidSyslogBlockDevice Base;
     size_t lastBlockIndex = 0;
     size_t lastOffset = 0;
     size_t lastCount = 0;
@@ -97,15 +97,15 @@ TEST_GROUP(SolidSyslogBlockDevice)
 
     void setup() override
     {
-        fake.base.Acquire = FakeAcquire;
-        fake.base.Dispose = FakeDispose;
-        fake.base.Exists  = FakeExists;
-        fake.base.Read    = FakeRead;
-        fake.base.Append  = FakeAppend;
-        fake.base.WriteAt = FakeWriteAt;
-        fake.base.Size    = FakeSize;
+        fake.Base.Acquire = FakeAcquire;
+        fake.Base.Dispose = FakeDispose;
+        fake.Base.Exists  = FakeExists;
+        fake.Base.Read    = FakeRead;
+        fake.Base.Append  = FakeAppend;
+        fake.Base.WriteAt = FakeWriteAt;
+        fake.Base.Size    = FakeSize;
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        device = &fake.base;
+        device = &fake.Base;
     }
 };
 

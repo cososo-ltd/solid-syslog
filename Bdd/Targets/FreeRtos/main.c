@@ -592,16 +592,16 @@ static bool RebuildWithFileStore(void)
 
     struct SolidSyslogSecurityPolicy* policy = SolidSyslogCrc16Policy_Create();
     struct SolidSyslogBlockStoreConfig storeConfig = {
-        .blockDevice = storeBlockDevice,
-        .maxBlockSize = pendingMaxBlockSize,
-        .maxBlocks = pendingMaxBlocks,
-        .discardPolicy = MapDiscardPolicy(pendingDiscardPolicy),
-        .securityPolicy = policy,
-        .onStoreFull = OnStoreFull,
-        .storeFullContext = NULL,
-        .getCapacityThreshold = GetCapacityThreshold,
-        .onThresholdCrossed = NULL,
-        .thresholdContext = &pendingCapacityThreshold,
+        .BlockDevice = storeBlockDevice,
+        .MaxBlockSize = pendingMaxBlockSize,
+        .MaxBlocks = pendingMaxBlocks,
+        .DiscardPolicy = MapDiscardPolicy(pendingDiscardPolicy),
+        .SecurityPolicy = policy,
+        .OnStoreFull = OnStoreFull,
+        .StoreFullContext = NULL,
+        .GetCapacityThreshold = GetCapacityThreshold,
+        .OnThresholdCrossed = NULL,
+        .ThresholdContext = &pendingCapacityThreshold,
     };
     currentStore = SolidSyslogBlockStore_Create(&blockStoreStorage, &storeConfig);
     currentStoreIsFile = true;

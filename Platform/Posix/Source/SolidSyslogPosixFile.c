@@ -31,8 +31,8 @@ static bool PosixFile_Delete(struct SolidSyslogFile* self, const char* path);
 
 struct SolidSyslogPosixFile
 {
-    struct SolidSyslogFile base;
-    int fd;
+    struct SolidSyslogFile Base;
+    int Fd;
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
@@ -63,16 +63,16 @@ struct SolidSyslogFile* SolidSyslogPosixFile_Create(SolidSyslogPosixFileStorage*
 {
     struct SolidSyslogPosixFile* posix = (struct SolidSyslogPosixFile*) storage;
     *posix = DEFAULT_INSTANCE;
-    return &posix->base;
+    return &posix->Base;
 }
 
 void SolidSyslogPosixFile_Destroy(struct SolidSyslogFile* file)
 {
     struct SolidSyslogPosixFile* posix = (struct SolidSyslogPosixFile*) file;
 
-    if (posix->fd != INVALID_FD)
+    if (posix->Fd != INVALID_FD)
     {
-        close(posix->fd);
+        close(posix->Fd);
     }
 
     *posix = DESTROYED_INSTANCE;
@@ -81,56 +81,56 @@ void SolidSyslogPosixFile_Destroy(struct SolidSyslogFile* file)
 static bool PosixFile_Open(struct SolidSyslogFile* self, const char* path)
 {
     struct SolidSyslogPosixFile* posix = (struct SolidSyslogPosixFile*) self;
-    posix->fd = open(path, O_RDWR | O_CREAT, DEFAULT_FILE_PERMISSIONS);
-    return posix->fd != INVALID_FD;
+    posix->Fd = open(path, O_RDWR | O_CREAT, DEFAULT_FILE_PERMISSIONS);
+    return posix->Fd != INVALID_FD;
 }
 
 static void PosixFile_Close(struct SolidSyslogFile* self)
 {
     struct SolidSyslogPosixFile* posix = (struct SolidSyslogPosixFile*) self;
 
-    if (posix->fd != INVALID_FD)
+    if (posix->Fd != INVALID_FD)
     {
-        close(posix->fd);
-        posix->fd = INVALID_FD;
+        close(posix->Fd);
+        posix->Fd = INVALID_FD;
     }
 }
 
 static bool PosixFile_IsOpen(struct SolidSyslogFile* self)
 {
     struct SolidSyslogPosixFile* posix = (struct SolidSyslogPosixFile*) self;
-    return posix->fd != INVALID_FD;
+    return posix->Fd != INVALID_FD;
 }
 
 static bool PosixFile_Read(struct SolidSyslogFile* self, void* buf, size_t count)
 {
     struct SolidSyslogPosixFile* posix = (struct SolidSyslogPosixFile*) self;
-    return read(posix->fd, buf, count) == (ssize_t) count;
+    return read(posix->Fd, buf, count) == (ssize_t) count;
 }
 
 static bool PosixFile_Write(struct SolidSyslogFile* self, const void* buf, size_t count)
 {
     struct SolidSyslogPosixFile* posix = (struct SolidSyslogPosixFile*) self;
-    return write(posix->fd, buf, count) == (ssize_t) count;
+    return write(posix->Fd, buf, count) == (ssize_t) count;
 }
 
 static void PosixFile_SeekTo(struct SolidSyslogFile* self, size_t offset)
 {
     struct SolidSyslogPosixFile* posix = (struct SolidSyslogPosixFile*) self;
-    lseek(posix->fd, (off_t) offset, SEEK_SET);
+    lseek(posix->Fd, (off_t) offset, SEEK_SET);
 }
 
 static size_t PosixFile_Size(struct SolidSyslogFile* self)
 {
     struct SolidSyslogPosixFile* posix = (struct SolidSyslogPosixFile*) self;
-    off_t size = lseek(posix->fd, 0, SEEK_END);
+    off_t size = lseek(posix->Fd, 0, SEEK_END);
     return (size >= 0) ? (size_t) size : 0;
 }
 
 static void PosixFile_Truncate(struct SolidSyslogFile* self)
 {
     struct SolidSyslogPosixFile* posix = (struct SolidSyslogPosixFile*) self;
-    ftruncate(posix->fd, 0);
+    ftruncate(posix->Fd, 0);
 }
 
 static bool PosixFile_Exists(struct SolidSyslogFile* self, const char* path)
