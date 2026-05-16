@@ -84,9 +84,14 @@ CheckOptions:
   - { key: readability-identifier-naming.EnumCase,              value: CamelCase   }
   - { key: readability-identifier-naming.EnumPrefix,            value: SolidSyslog }
 
-  # Tier 1 — public enum constants: SolidSyslogClass_Constant
-  - { key: readability-identifier-naming.EnumConstantCase,      value: aNy_CasE    }
-  - { key: readability-identifier-naming.EnumConstantPrefix,    value: SolidSyslog }
+  # Tier 1 — public enum constants on named (tagged) enums: SolidSyslogClass_Constant.
+  # Anonymous enums (Tier 1 public macro-equivalents and Tier 2 file-scope
+  # named-constant idiom) use SCREAMING_SNAKE — that is the project's macro
+  # shape and is accepted via the IgnoredRegexp below. Decided in S10.12; see
+  # docs/NAMING.md "Anonymous-enum named-constant idiom".
+  - { key: readability-identifier-naming.EnumConstantCase,           value: aNy_CasE          }
+  - { key: readability-identifier-naming.EnumConstantPrefix,         value: SolidSyslog       }
+  - { key: readability-identifier-naming.EnumConstantIgnoredRegexp,  value: '^[A-Z][A-Z0-9_]*$' }
 
   # Tier 1 — public typedefs (enum / function-pointer only per NAMING.md):
   # SolidSyslogClass or SolidSyslogClass_Fn

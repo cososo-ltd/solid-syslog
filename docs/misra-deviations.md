@@ -668,9 +668,12 @@ enum
 
 There are approximately 31 such declarations across `Core/` and
 `Platform/*/Source/`. cppcheck-misra surfaces a subset (currently
-6) under rule 2.4 once the rule 5.7 suppressions (D.003) take
+8) under rule 2.4 once the rule 5.7 suppressions (D.003) take
 effect; before then, the 5.7 check absorbs the same sites and
-masks the 2.4 finding.
+masks the 2.4 finding. Adding inline-suppress comments at every
+site would add visual noise next to a project-wide intentional
+idiom — listing them in `misra_suppressions.txt` under this
+deviation keeps the source clean.
 
 ### Scope
 
