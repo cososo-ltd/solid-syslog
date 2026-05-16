@@ -25,7 +25,7 @@ void SolidSyslogWindowsHostname_Get(struct SolidSyslogFormatter* formatter)
     char hostname[MAX_HOSTNAME_SIZE];
     DWORD size = sizeof(hostname);
 
-    if (WindowsHostname_GetComputerNameExA(ComputerNamePhysicalDnsHostname, hostname, &size))
+    if (WindowsHostname_GetComputerNameExA(ComputerNamePhysicalDnsHostname, hostname, &size) != FALSE)
     {
         hostname[sizeof(hostname) - 1U] = '\0';
         SolidSyslogFormatter_PrintUsAsciiString(formatter, hostname, sizeof(hostname));
