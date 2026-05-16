@@ -36,7 +36,7 @@ EXTERN_C_BEGIN
         SolidSyslogTlsStreamStorage * storage,
         const struct SolidSyslogTlsStreamConfig* config
     );
-    void SolidSyslogTlsStream_Destroy(struct SolidSyslogStream * stream);
+    void SolidSyslogTlsStream_Destroy(struct SolidSyslogStream * base);
 
 EXTERN_C_END
 

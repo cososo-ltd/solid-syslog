@@ -23,7 +23,7 @@ EXTERN_C_BEGIN
         SolidSyslogFreeRtosStaticResolverStorage * storage,
         const uint8_t ipv4Octets[4]
     );
-    void SolidSyslogFreeRtosStaticResolver_Destroy(struct SolidSyslogResolver * resolver);
+    void SolidSyslogFreeRtosStaticResolver_Destroy(struct SolidSyslogResolver * base);
 
 EXTERN_C_END
 

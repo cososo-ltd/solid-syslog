@@ -14,7 +14,7 @@ EXTERN_C_BEGIN
     struct SolidSyslogResolver
     {
         bool (*Resolve)(
-            struct SolidSyslogResolver* self,
+            struct SolidSyslogResolver* base,
             enum SolidSyslogTransport transport,
             const char* host,
             uint16_t port,

@@ -13,15 +13,15 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogDatagram
     {
-        bool (*Open)(struct SolidSyslogDatagram* self);
+        bool (*Open)(struct SolidSyslogDatagram* base);
         enum SolidSyslogDatagramSendResult (*SendTo)(
-            struct SolidSyslogDatagram* self,
+            struct SolidSyslogDatagram* base,
             const void* buffer,
             size_t size,
             const struct SolidSyslogAddress* addr
         );
-        size_t (*MaxPayload)(struct SolidSyslogDatagram* self);
-        void (*Close)(struct SolidSyslogDatagram* self);
+        size_t (*MaxPayload)(struct SolidSyslogDatagram* base);
+        void (*Close)(struct SolidSyslogDatagram* base);
     };
 
 EXTERN_C_END

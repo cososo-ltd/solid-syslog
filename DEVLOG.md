@@ -1,5 +1,110 @@
 # Dev Log
 
+## 2026-05-16 — S10.11 this-pointer convention (`self`/`base`) + `SelfFromBase`/`SelfFromStorage` helpers (#377)
+
+E10 cross-cutting sweep. Standardises the this-pointer parameter
+convention across every vtable-implementing class in `Core/` and
+`Platform/*/`. Centralises the two downcasts (base → concrete, opaque
+storage → concrete) into one named `static inline` helper per class.
+
+Touched: 28 wire-class `.c` files + 16 concrete-class public headers +
+9 `*Definition.h` vtable typedefs + `SolidSyslog.c` nil-vtable
+functions + `docs/NAMING.md` (Tier 3 amendment, worked example rewrite,
+quick reference row).
+
+### Decisions
+
+- **Universal rule for the parameter name.** *Name follows the
+  declared type, full stop.* If the declared parameter type is the
+  abstract base struct (one that exposes vtable function-pointer
+  members), the parameter is `base`. Otherwise `self`. The function's
+  *role* doesn't enter the decision. Picked over a narrower
+  "derived-class sites only" reading because it makes the rule one
+  sentence and removes the "what counts as a derived-class site"
+  judgement — base-class internal helpers (e.g. `Buffer_AppendRecord`
+  inside a hypothetical `Buffer.c`) cleanly come out as `base` too.
+
+- **Helper visibility and shape.** `static inline`, file-local. No
+  `const` overload — none of the current vtable methods take a
+  `const`-qualified base, so adding the const variant now would be
+  speculative. Add it if/when a const vtable method appears.
+
+- **Two helpers per class, named and placed predictably.**
+  `<Class>_SelfFromBase` for the vtable downcast (base → concrete);
+  `<Class>_SelfFromStorage` for the `_Create` cast (opaque
+  caller-supplied storage → concrete). Both follow Tier 2
+  `Class_Function` naming, both forward-declared with the other
+  helpers at the top of the file, both defined immediately beneath
+  their first caller per the project's function-ordering rule —
+  typically `_Create` for `SelfFromStorage` and `_Destroy` for
+  `SelfFromBase`. Classes whose `_Create` doesn't take storage
+  (singletons like `NullBuffer`, `PosixDatagram`) skip
+  `SelfFromStorage`; classes whose vtable methods never downcast
+  (because the concrete struct has no derived state — `NullMutex`,
+  `NullStore`) skip `SelfFromBase`.
+
+- **Header function-pointer member parameter names also renamed.**
+  C ignores parameter names in function-pointer member declarations,
+  so this is documentation-only — but matching the implementations
+  reduces the cognitive load on a reader who flips between the
+  Definition.h header and the implementing `.c` file. 9 headers
+  affected (`SolidSyslog{Buffer,Store,File,StructuredData,Mutex,BlockDevice,Stream,Datagram,Resolver}Definition.h`).
+
+- **Concrete-class public `_Destroy` declarations also renamed.**
+  Not optional: clang-tidy's `readability-inconsistent-declaration-parameter-name`
+  fires as an *error* when the implementation renames the
+  `_Destroy(struct SolidSyslog<Base>* xxx)` parameter and the public
+  header still uses the old shorthand. 16 concrete-class headers
+  affected. NAMING.md was already silent on header param names
+  matching implementations, but this is the load-bearing rule for
+  CI cleanliness.
+
+- **Wide scope for `SelfFromStorage`.** Applied to every class with
+  caller-supplied storage, not just vtable-implementing ones. David
+  noted that the narrow/wide distinction is "tiny in this case" —
+  reinforces the rule that all downcasts in this codebase are named,
+  never inline.
+
+- **clang-format quirk on long `SelfFromStorage` signatures.** For
+  classes whose helper name plus storage typedef name exceeds 120
+  columns (e.g.
+  `static inline struct SolidSyslogPosixTcpStream* PosixTcpStream_SelfFromStorage(SolidSyslogPosixTcpStreamStorage* storage)`),
+  clang-format wraps `)` to its own line. Tried the
+  return-type-on-own-line shape and clang-format actively undoes it.
+  Accepted: the awkward wrap is what clang-format produces for these
+  signatures, alternative would be shortening the helper name and
+  breaking the `SelfFrom*` consistency that motivated the centralisation.
+
+### Pre-existing findings out of scope
+
+A separate scan during suppression refresh surfaced ~127 MISRA-warning
+findings on touched files (5.9 internal-linkage uniqueness on `instance`
+file-statics; 17.7 ignored returns; 8.9 single-use globals; 11.8
+const-strip false-positives whose line numbers had drifted on `main`
+since their suppressions were written). All pre-existing in CI's
+warning-mode output. Not addressed in S10.11 — would expand the
+sweep into rule-curation territory that belongs in S10.18 (flip to
+error mode). Suppression updates here are confined to:
+
+- 11.3 / 11.5 entries that the cast-centralisation moved (4 sites →
+  1–2 sites per touched file; net suppression count drops from ~50
+  to ~30 in this PR).
+- One 11.8 entry on `SolidSyslogBlockStore.c` whose line shifted
+  because the `_Create` rewrite added forward declarations.
+
+### Deferred
+
+- The abbreviation purge remains TBD under E10 (deferred from the
+  original S10.09 slot during S10.05 reshuffle; epic body re-parks
+  it with a placeholder number).
+- Stale 11.8 suppressions in `SolidSyslog.c` (lines 147–154 →
+  155–161) — those line shifts predate this PR; rolling them into
+  S10.11 would mix unrelated cleanup with the convention sweep.
+
+### Open questions
+
+- None.
+
 ## 2026-05-15 — S10.08 static-function `Class_` prefix sweep (#371)
 
 Resolved the static-function-prefix question that had been deferred

@@ -7,8 +7,8 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogMutex
     {
-        void (*Lock)(struct SolidSyslogMutex* self);
-        void (*Unlock)(struct SolidSyslogMutex* self);
+        void (*Lock)(struct SolidSyslogMutex* base);
+        void (*Unlock)(struct SolidSyslogMutex* base);
     };
 
 EXTERN_C_END

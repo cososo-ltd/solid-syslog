@@ -20,7 +20,7 @@ EXTERN_C_BEGIN
     } SolidSyslogPosixFileStorage;
 
     struct SolidSyslogFile* SolidSyslogPosixFile_Create(SolidSyslogPosixFileStorage * storage);
-    void SolidSyslogPosixFile_Destroy(struct SolidSyslogFile * file);
+    void SolidSyslogPosixFile_Destroy(struct SolidSyslogFile * base);
 
 EXTERN_C_END
 

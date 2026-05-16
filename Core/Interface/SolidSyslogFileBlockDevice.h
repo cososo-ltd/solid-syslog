@@ -30,7 +30,7 @@ EXTERN_C_BEGIN
         struct SolidSyslogFile * file,
         const char* pathPrefix
     );
-    void SolidSyslogFileBlockDevice_Destroy(struct SolidSyslogBlockDevice * device);
+    void SolidSyslogFileBlockDevice_Destroy(struct SolidSyslogBlockDevice * base);
 
 EXTERN_C_END
 

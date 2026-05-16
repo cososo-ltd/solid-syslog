@@ -27,7 +27,7 @@ EXTERN_C_BEGIN
     } SolidSyslogFatFsFileStorage;
 
     struct SolidSyslogFile* SolidSyslogFatFsFile_Create(SolidSyslogFatFsFileStorage * storage);
-    void SolidSyslogFatFsFile_Destroy(struct SolidSyslogFile * file);
+    void SolidSyslogFatFsFile_Destroy(struct SolidSyslogFile * base);
 
 EXTERN_C_END
 

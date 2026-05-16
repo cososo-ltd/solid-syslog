@@ -10,19 +10,19 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogBlockDevice
     {
-        bool (*Acquire)(struct SolidSyslogBlockDevice* self, size_t blockIndex);
-        bool (*Dispose)(struct SolidSyslogBlockDevice* self, size_t blockIndex);
-        bool (*Exists)(struct SolidSyslogBlockDevice* self, size_t blockIndex);
-        bool (*Read)(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t offset, void* buf, size_t count);
-        bool (*Append)(struct SolidSyslogBlockDevice* self, size_t blockIndex, const void* buf, size_t count);
+        bool (*Acquire)(struct SolidSyslogBlockDevice* base, size_t blockIndex);
+        bool (*Dispose)(struct SolidSyslogBlockDevice* base, size_t blockIndex);
+        bool (*Exists)(struct SolidSyslogBlockDevice* base, size_t blockIndex);
+        bool (*Read)(struct SolidSyslogBlockDevice* base, size_t blockIndex, size_t offset, void* buf, size_t count);
+        bool (*Append)(struct SolidSyslogBlockDevice* base, size_t blockIndex, const void* buf, size_t count);
         bool (*WriteAt)(
-            struct SolidSyslogBlockDevice* self,
+            struct SolidSyslogBlockDevice* base,
             size_t blockIndex,
             size_t offset,
             const void* buf,
             size_t count
         );
-        size_t (*Size)(struct SolidSyslogBlockDevice* self, size_t blockIndex);
+        size_t (*Size)(struct SolidSyslogBlockDevice* base, size_t blockIndex);
     };
 
 EXTERN_C_END

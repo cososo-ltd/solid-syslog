@@ -20,7 +20,7 @@ EXTERN_C_BEGIN
     } SolidSyslogFreeRtosMutexStorage;
 
     struct SolidSyslogMutex* SolidSyslogFreeRtosMutex_Create(SolidSyslogFreeRtosMutexStorage * storage);
-    void SolidSyslogFreeRtosMutex_Destroy(struct SolidSyslogMutex * mutex);
+    void SolidSyslogFreeRtosMutex_Destroy(struct SolidSyslogMutex * base);
 
 EXTERN_C_END
 

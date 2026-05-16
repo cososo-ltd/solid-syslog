@@ -63,7 +63,7 @@ EXTERN_C_BEGIN
         SolidSyslogBlockStoreStorage * storage,
         const struct SolidSyslogBlockStoreConfig* config
     );
-    void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore * store);
+    void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore * base);
 
 EXTERN_C_END
 

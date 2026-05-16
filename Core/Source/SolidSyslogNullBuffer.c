@@ -6,8 +6,10 @@
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogSender.h"
 
-static bool NullBuffer_Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead);
-static void NullBuffer_Write(struct SolidSyslogBuffer* self, const void* data, size_t size);
+static bool NullBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
+static void NullBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
+
+static inline struct SolidSyslogNullBuffer* NullBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
 
 struct SolidSyslogNullBuffer
 {
@@ -32,17 +34,22 @@ void SolidSyslogNullBuffer_Destroy(void)
     instance.Sender = NULL;
 }
 
-static bool NullBuffer_Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead)
+static bool NullBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)
 {
-    (void) self;
+    (void) base;
     (void) data;
     (void) maxSize;
     *bytesRead = 0;
     return false;
 }
 
-static void NullBuffer_Write(struct SolidSyslogBuffer* self, const void* data, size_t size)
+static void NullBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size)
 {
-    struct SolidSyslogNullBuffer* nullBuffer = (struct SolidSyslogNullBuffer*) self;
-    SolidSyslogSender_Send(nullBuffer->Sender, data, size);
+    struct SolidSyslogNullBuffer* self = NullBuffer_SelfFromBase(base);
+    SolidSyslogSender_Send(self->Sender, data, size);
+}
+
+static inline struct SolidSyslogNullBuffer* NullBuffer_SelfFromBase(struct SolidSyslogBuffer* base)
+{
+    return (struct SolidSyslogNullBuffer*) base;
 }

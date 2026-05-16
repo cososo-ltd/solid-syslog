@@ -80,9 +80,11 @@ library *itself* is the class. `SolidSyslog<Class>` for exported types
 and tag names.
 
 ```c
-/* Class-scoped functions — operate on a specific module. */
-void SolidSyslogBuffer_Read(struct SolidSyslogBuffer* buffer, ...);
-int  SolidSyslogTransport_Send(struct SolidSyslogTransport* transport, ...);
+/* Class-scoped functions — operate on a specific module.
+ * Parameter naming follows the this-pointer rule (Tier 3): `base` when
+ * the declared type is the abstract base struct, `self` otherwise. */
+void SolidSyslogBuffer_Read(struct SolidSyslogBuffer* base, ...);
+int  SolidSyslogTransport_Send(struct SolidSyslogTransport* base, ...);
 
 /* Whole-library functions — operate on the library instance. The
    library is the class; there's nothing more specific to insert.
@@ -90,9 +92,9 @@ int  SolidSyslogTransport_Send(struct SolidSyslogTransport* transport, ...);
    actually calls at the top level: Create / Destroy / Log / Service /
    SetErrorHandler / Error. */
 struct SolidSyslog* SolidSyslog_Create(struct SolidSyslogConfig* config);
-void                SolidSyslog_Destroy(struct SolidSyslog* solidSyslog);
-void                SolidSyslog_Log(struct SolidSyslog* solidSyslog, ...);
-void                SolidSyslog_Service(struct SolidSyslog* solidSyslog);
+void                SolidSyslog_Destroy(struct SolidSyslog* self);
+void                SolidSyslog_Log(struct SolidSyslog* self, ...);
+void                SolidSyslog_Service(struct SolidSyslog* self);
 void                SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context);
 void                SolidSyslog_Error(SolidSyslogSeverity severity, const char* message);
 
@@ -141,8 +143,8 @@ itself is the namespace.
 
 ```c
 /* Inside Buffer.c */
-static int  Buffer_AppendRecord(struct SolidSyslogBuffer* buffer, ...);
-static void Buffer_ResetCursor(struct SolidSyslogBuffer* buffer);
+static int  Buffer_AppendRecord(struct SolidSyslogBuffer* base, ...);
+static void Buffer_ResetCursor(struct SolidSyslogBuffer* base);
 
 static const struct SolidSyslogSecurityPolicy Buffer_DefaultPolicy = { /* ... */ };
 static size_t                                 Buffer_ActiveInstanceCount;
@@ -230,7 +232,7 @@ choose its own name.
 abbreviations (TLS, UDP, TCP, CRC, RFC, MQ, FAT) are permitted as words.
 
 ```c
-int Buffer_AppendRecord(struct SolidSyslogBuffer* buffer,
+int Buffer_AppendRecord(struct SolidSyslogBuffer* base,
                         const uint8_t*            record,
                         size_t                    recordLength)
 {
@@ -262,6 +264,104 @@ Constraints:
 - **Out-parameters.** Output parameters use the `outX` prefix
   (`SolidSyslogBuffer_Initialise(..., struct SolidSyslogBuffer** outBuffer)`).
 
+### This-pointer parameters
+
+The first parameter of a method-shaped function — the "this-pointer" — uses
+one of two names, chosen by **the declared parameter type**, not by the
+function's purpose:
+
+- **`self`** — the declared parameter type is the function's own class
+  (the concrete derived type, or for non-vtable classes simply the class).
+  Applies to: every helper (`static`/`static inline`); every local
+  introduced by a downcast; every public function whose first parameter is
+  declared as the concrete class.
+
+- **`base`** — the declared parameter type is the abstract base struct
+  (one that exposes vtable function-pointer members — `SolidSyslogBuffer`,
+  `SolidSyslogStore`, `SolidSyslogFile`, etc.). Applies to: every vtable
+  entry-point implementation; every concrete-class `_Destroy` whose
+  declared first parameter is the abstract base; every base-class
+  helper or free utility operating polymorphically on the base.
+
+The rule is mechanical: if the declared type is the abstract base, the
+name is `base`; otherwise it is `self`. The function's role does not
+enter the decision.
+
+#### The downcast: `<Class>_SelfFromBase`
+
+When a vtable entry point or a concrete-class `_Destroy` receives a
+`base` and needs to operate on its concrete type, the downcast is named
+and centralised — one `static inline` helper per derived class:
+
+```c
+static inline struct SolidSyslogCircularBuffer*
+CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base)
+{
+    return (struct SolidSyslogCircularBuffer*) base;
+}
+```
+
+Every entry point then reads:
+
+```c
+static bool CircularBuffer_Read(struct SolidSyslogBuffer* base,
+                                void* data, size_t maxSize, size_t* bytesRead)
+{
+    struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
+    ...
+}
+```
+
+#### The storage cast: `<Class>_SelfFromStorage`
+
+`_Create` functions take caller-supplied opaque storage and re-interpret
+it as the concrete struct. The same convention applies — one named
+`static inline` helper per class:
+
+```c
+static inline struct SolidSyslogCircularBuffer*
+CircularBuffer_SelfFromStorage(SolidSyslogCircularBufferStorage* storage)
+{
+    return (struct SolidSyslogCircularBuffer*) storage;
+}
+```
+
+`_Create` becomes:
+
+```c
+struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
+    SolidSyslogCircularBufferStorage* storage, ...
+)
+{
+    struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromStorage(storage);
+    ...
+    return &self->Base;
+}
+```
+
+Helpers are named per Tier 2 (`Class_Function`, `static inline`, no
+`SolidSyslog` prefix). Placement follows the function-ordering rule:
+forward-declared with the other helpers at the top of the file,
+defined immediately beneath the first caller.
+
+#### Headers
+
+Function-pointer member parameter names inside the public
+`SolidSyslog<X>Definition.h` structs follow the same `base` rule —
+because the declared type at those member declarations is the abstract
+base. C ignores function-pointer parameter names at struct-member
+declarations (only the type matters for ABI and callers), so this is a
+documentation choice: matching the implementations reduces the
+cognitive load on a reader who flips between header and implementation.
+
+#### Shadowing
+
+`self` and `base` are reserved at Tier 3 for the this-pointer role.
+Files must not use either name for any other parameter or block-scope
+local (avoids MISRA 5.3 shadowing the moment a nested helper is added).
+They are also reserved at Tier 2 — no file-scope static should be named
+`self` or `base`.
+
 ---
 
 ## Tier 4 — Struct members
@@ -284,13 +384,15 @@ struct SolidSyslogSecurityPolicy
 
 /* Vtable function-pointer members follow the same rule — and have done
    so already in practice. The Tier 4 PascalCase convention is the
-   project-wide policy that consolidates them. */
+   project-wide policy that consolidates them. Parameter naming for the
+   function-pointer members follows the Tier 3 this-pointer rule: the
+   declared type is the abstract base struct, so the parameter is `base`. */
 struct SolidSyslogStore
 {
-    bool (*Write)(struct SolidSyslogStore* self, const void* data, size_t size);
-    bool (*ReadNextUnsent)(struct SolidSyslogStore* self, ...);
-    void (*MarkSent)(struct SolidSyslogStore* self);
-    bool (*HasUnsent)(struct SolidSyslogStore* self);
+    bool (*Write)(struct SolidSyslogStore* base, const void* data, size_t size);
+    bool (*ReadNextUnsent)(struct SolidSyslogStore* base, ...);
+    void (*MarkSent)(struct SolidSyslogStore* base);
+    bool (*HasUnsent)(struct SolidSyslogStore* base);
 };
 ```
 
@@ -475,110 +577,108 @@ relaxations organically as it is touched, not via a sweep.
 
 ## Worked example
 
-A small slice showing every tier in one place:
+A small slice showing every tier in one place, including the derived-class
+vtable shape with `SelfFromBase` / `SelfFromStorage` helpers.
 
 ```c
-/* Core/Interface/SolidSyslogBuffer.h ------------------------------------ */
+/* Core/Interface/SolidSyslogBufferDefinition.h -------------------------- */
 
-#define SOLIDSYSLOG_BUFFER_MINIMUM_CAPACITY 64U
-
-/* Opaque forward declaration — the layout lives in SolidSyslogBuffer.c */
-struct SolidSyslogBuffer;
-
-/* Forward declaration of a value-typed companion struct.
-   SolidSyslogTransport.h would only need this much to take a pointer,
-   even though the layout is defined elsewhere. */
-struct SolidSyslogSecurityPolicy;
-
-/* Caller supplies storage for the buffer object itself */
-size_t SolidSyslogBuffer_RequiredStorageBytes(void);
-
-int SolidSyslogBuffer_Initialise(void*                                    storage,
-                                 size_t                                   storageLength,
-                                 const struct SolidSyslogSecurityPolicy*  policy,
-                                 struct SolidSyslogBuffer**               outBuffer);
-
-int  SolidSyslogBuffer_Append(struct SolidSyslogBuffer* buffer,
-                              const uint8_t*            record,
-                              size_t                    recordLength);
-
-bool SolidSyslogBuffer_IsEmpty(const struct SolidSyslogBuffer* buffer);
-
-/* Core/Source/SolidSyslogBuffer.c --------------------------------------- */
-
-#include "SolidSyslogBuffer.h"
-
-#define BUFFER_RECORD_MAGIC 0xA53CU
-
+/* Tier 1 — abstract base struct with vtable function-pointer members.
+   Function-pointer parameter names are `base` (Tier 3 this-pointer rule:
+   declared type is the abstract base). */
 struct SolidSyslogBuffer
 {
-    uint8_t* Storage;
-    size_t   Capacity;
-    size_t   WriteCursor;
-    size_t   ReadCursor;
-    const struct SolidSyslogSecurityPolicy* Policy;
+    void (*Write)(struct SolidSyslogBuffer* base, const void* data, size_t size);
+    bool (*Read)(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 };
 
-static int Buffer_WriteMagic(struct SolidSyslogBuffer* buffer);
-static int Buffer_WriteRecord(struct SolidSyslogBuffer* buffer,
-                              const uint8_t*            record,
-                              size_t                    recordLength);
+/* Core/Interface/SolidSyslogCircularBuffer.h ---------------------------- */
 
-static const uint16_t Buffer_RecordOverhead = 6U; /* magic + length */
+#define SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE_BYTES(bytes) /* ... */
 
-int SolidSyslogBuffer_Append(struct SolidSyslogBuffer* buffer,
-                             const uint8_t*            record,
-                             size_t                    recordLength)
+typedef size_t SolidSyslogCircularBufferStorage;
+
+/* Tier 1 — public Create returns the base-class view.
+   _Destroy takes the base type (matches the abstract Buffer contract),
+   so its parameter is `base`. */
+struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
+    SolidSyslogCircularBufferStorage* storage, size_t storageBytes, struct SolidSyslogMutex* mutex
+);
+void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base);
+
+/* Core/Source/SolidSyslogCircularBuffer.c ------------------------------- */
+
+#include "SolidSyslogCircularBuffer.h"
+#include "SolidSyslogBufferDefinition.h"
+
+/* Tier 2 — concrete struct definition (uses the public tag verbatim per
+   the opaque-impl pattern). */
+struct SolidSyslogCircularBuffer
 {
-    size_t bytesRequired  = recordLength + Buffer_RecordOverhead;
-    size_t bytesAvailable = buffer->Capacity - buffer->WriteCursor;
-    int    result;
+    struct SolidSyslogBuffer Base;
+    /* ... per-instance state ... */
+};
 
-    if (bytesRequired > bytesAvailable)
-    {
-        result = SolidSyslogResult_BufferFull;
-    }
-    else
-    {
-        int status = Buffer_WriteMagic(buffer);
-        if (status != SolidSyslogResult_Ok)
-        {
-            result = status;
-        }
-        else
-        {
-            result = Buffer_WriteRecord(buffer, record, recordLength);
-        }
-    }
-    return result;
+/* Tier 2 — vtable entry points: declared type is the abstract base, so
+   parameters are `base`. */
+static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
+static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
+
+/* Tier 2 — named downcast helpers, one per cast type. */
+static inline struct SolidSyslogCircularBuffer*
+CircularBuffer_SelfFromStorage(SolidSyslogCircularBufferStorage* storage);
+static inline struct SolidSyslogCircularBuffer*
+CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
+
+/* Tier 2 — internal helpers: declared type is the concrete class, so
+   parameters are `self`. */
+static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer* self);
+
+struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
+    SolidSyslogCircularBufferStorage* storage, size_t storageBytes, struct SolidSyslogMutex* mutex
+)
+{
+    /* Tier 3 — `self` is the concrete-class this-pointer obtained from the
+       caller-supplied storage. */
+    struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromStorage(storage);
+    self->Base.Read  = CircularBuffer_Read;
+    self->Base.Write = CircularBuffer_Write;
+    /* ... */
+    return &self->Base;
 }
 
-/* Tests/SolidSyslogBufferTest.cpp --------------------------------------- */
-
-TEST_GROUP(SolidSyslogBufferTest)
+static inline struct SolidSyslogCircularBuffer*
+CircularBuffer_SelfFromStorage(SolidSyslogCircularBufferStorage* storage)
 {
-    struct SolidSyslogBuffer* buffer;
-    uint8_t                   storage[256];
+    return (struct SolidSyslogCircularBuffer*) storage;
+}
 
-    void setup() override
-    {
-        struct SolidSyslogSecurityPolicy policy = { /* ... */ };
-        (void) SolidSyslogBuffer_Initialise(storage, sizeof storage,
-                                            &policy, &buffer);
-    }
-
-    void teardown() override
-    {
-        /* ... */
-    }
-};
-
-TEST(SolidSyslogBufferTest, AppendsRecordWhenSpaceAvailable)
+void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
 {
+    struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
+    self->Base.Read  = NULL;
+    self->Base.Write = NULL;
     /* ... */
 }
 
-TEST(SolidSyslogBufferTest, RejectsRecordWhenFull)
+static inline struct SolidSyslogCircularBuffer*
+CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base)
+{
+    return (struct SolidSyslogCircularBuffer*) base;
+}
+
+static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)
+{
+    /* Tier 3 — `base` is the abstract-base this-pointer the vtable hands us;
+       downcast names the concrete view as `self`. */
+    struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
+
+    bool delivered = !CircularBuffer_IsEmpty(self);
+    /* ... */
+    return delivered;
+}
+
+static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer* self)
 {
     /* ... */
 }
@@ -600,6 +700,8 @@ TEST(SolidSyslogBufferTest, RejectsRecordWhenFull)
 | Static variable / constant            | `Class_Variable`                           | `Buffer_DefaultPolicy`                     |
 | File-scope macro                      | `CLASS_SCREAMING_SNAKE`                    | `BUFFER_RECORD_MAGIC`                      |
 | Function parameter / local            | `lowerCamelCase`                           | `recordLength`, `bytesAvailable`           |
+| This-pointer parameter                | `self` (own type) / `base` (abstract base) | `* self` in helpers; `* base` in vtable impls |
+| Downcast helper                       | `Class_SelfFromBase` / `Class_SelfFromStorage` | `CircularBuffer_SelfFromBase`         |
 | Out-parameter                         | `outX` prefix                              | `outBuffer`                                |
 | Boolean / predicate                   | `isX` / `hasX` / `canX`                    | `isValid`, `hasUnsent`                     |
 | Loop variable                         | short domain word, lowerCamelCase          | `index`, `count`, `cursor`                 |

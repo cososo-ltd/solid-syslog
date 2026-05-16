@@ -20,7 +20,7 @@ enum
 };
 
 static bool GetAddrInfoResolver_Resolve(
-    struct SolidSyslogResolver* self,
+    struct SolidSyslogResolver* base,
     enum SolidSyslogTransport transport,
     const char* host,
     uint16_t port,
@@ -47,14 +47,14 @@ void SolidSyslogGetAddrInfoResolver_Destroy(void)
 }
 
 static bool GetAddrInfoResolver_Resolve(
-    struct SolidSyslogResolver* self,
+    struct SolidSyslogResolver* base,
     enum SolidSyslogTransport transport,
     const char* host,
     uint16_t port,
     struct SolidSyslogAddress* result
 )
 {
-    (void) self;
+    (void) base;
 
     struct addrinfo hints = {0};
     hints.ai_family = AF_INET;

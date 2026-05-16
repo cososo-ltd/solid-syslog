@@ -18,7 +18,7 @@ EXTERN_C_BEGIN
     } SolidSyslogWindowsFileStorage;
 
     struct SolidSyslogFile* SolidSyslogWindowsFile_Create(SolidSyslogWindowsFileStorage * storage);
-    void SolidSyslogWindowsFile_Destroy(struct SolidSyslogFile * file);
+    void SolidSyslogWindowsFile_Destroy(struct SolidSyslogFile * base);
 
 EXTERN_C_END
 

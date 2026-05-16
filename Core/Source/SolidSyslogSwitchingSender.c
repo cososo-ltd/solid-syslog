@@ -13,8 +13,10 @@ struct SolidSyslogSwitchingSender
     struct SolidSyslogSender* CurrentSender;
 };
 
-static bool SwitchingSender_Send(struct SolidSyslogSender* sender, const void* buffer, size_t size);
-static void SwitchingSender_Disconnect(struct SolidSyslogSender* sender);
+static bool SwitchingSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size);
+static void SwitchingSender_Disconnect(struct SolidSyslogSender* base);
+
+static inline struct SolidSyslogSwitchingSender* SwitchingSender_SelfFromBase(struct SolidSyslogSender* base);
 static inline void SwitchingSender_SelectSender(struct SolidSyslogSwitchingSender* self);
 static inline bool SwitchingSender_SenderChanged(
     const struct SolidSyslogSwitchingSender* self,
@@ -25,8 +27,8 @@ static inline void SwitchingSender_SwitchTo(
     struct SolidSyslogSender* newCurrent
 );
 static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(const struct SolidSyslogSwitchingSender* self);
-static bool SwitchingSender_NilSend(struct SolidSyslogSender* sender, const void* buffer, size_t size);
-static void SwitchingSender_NilDisconnect(struct SolidSyslogSender* sender);
+static bool SwitchingSender_NilSend(struct SolidSyslogSender* base, const void* buffer, size_t size);
+static void SwitchingSender_NilDisconnect(struct SolidSyslogSender* base);
 
 static struct SolidSyslogSender NIL_SENDER = {SwitchingSender_NilSend, SwitchingSender_NilDisconnect};
 static const struct SolidSyslogSwitchingSender DEFAULT_INSTANCE = {.CurrentSender = &NIL_SENDER};
@@ -46,17 +48,22 @@ void SolidSyslogSwitchingSender_Destroy(void)
     instance = DEFAULT_INSTANCE;
 }
 
-static bool SwitchingSender_Send(struct SolidSyslogSender* sender, const void* buffer, size_t size)
+static bool SwitchingSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size)
 {
-    struct SolidSyslogSwitchingSender* self = (struct SolidSyslogSwitchingSender*) sender;
+    struct SolidSyslogSwitchingSender* self = SwitchingSender_SelfFromBase(base);
     SwitchingSender_SelectSender(self);
     return SolidSyslogSender_Send(self->CurrentSender, buffer, size);
 }
 
-static void SwitchingSender_Disconnect(struct SolidSyslogSender* sender)
+static void SwitchingSender_Disconnect(struct SolidSyslogSender* base)
 {
-    struct SolidSyslogSwitchingSender* self = (struct SolidSyslogSwitchingSender*) sender;
+    struct SolidSyslogSwitchingSender* self = SwitchingSender_SelfFromBase(base);
     SolidSyslogSender_Disconnect(self->CurrentSender);
+}
+
+static inline struct SolidSyslogSwitchingSender* SwitchingSender_SelfFromBase(struct SolidSyslogSender* base)
+{
+    return (struct SolidSyslogSwitchingSender*) base;
 }
 
 static inline void SwitchingSender_SelectSender(struct SolidSyslogSwitchingSender* self)
@@ -102,15 +109,15 @@ static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(const st
     return result;
 }
 
-static bool SwitchingSender_NilSend(struct SolidSyslogSender* sender, const void* buffer, size_t size)
+static bool SwitchingSender_NilSend(struct SolidSyslogSender* base, const void* buffer, size_t size)
 {
-    (void) sender;
+    (void) base;
     (void) buffer;
     (void) size;
     return false;
 }
 
-static void SwitchingSender_NilDisconnect(struct SolidSyslogSender* sender)
+static void SwitchingSender_NilDisconnect(struct SolidSyslogSender* base)
 {
-    (void) sender;
+    (void) base;
 }

@@ -65,17 +65,19 @@ struct SolidSyslogWinsockDatagram
     bool Connected;
 };
 
-static bool WinsockDatagram_Open(struct SolidSyslogDatagram* self);
+static bool WinsockDatagram_Open(struct SolidSyslogDatagram* base);
 static enum SolidSyslogDatagramSendResult WinsockDatagram_SendTo(
-    struct SolidSyslogDatagram* self,
+    struct SolidSyslogDatagram* base,
     const void* buffer,
     size_t size,
     const struct SolidSyslogAddress* addr
 );
-static size_t WinsockDatagram_MaxPayload(struct SolidSyslogDatagram* self);
-static void WinsockDatagram_Close(struct SolidSyslogDatagram* self);
+static size_t WinsockDatagram_MaxPayload(struct SolidSyslogDatagram* base);
+static void WinsockDatagram_Close(struct SolidSyslogDatagram* base);
+
+static inline struct SolidSyslogWinsockDatagram* WinsockDatagram_SelfFromBase(struct SolidSyslogDatagram* base);
 static inline bool WinsockDatagram_ConnectIfNeeded(
-    struct SolidSyslogWinsockDatagram* datagram,
+    struct SolidSyslogWinsockDatagram* self,
     const struct SolidSyslogAddress* addr
 );
 static inline bool WinsockDatagram_IsSocketValid(SOCKET fd);
@@ -99,12 +101,17 @@ void SolidSyslogWinsockDatagram_Destroy(void)
     instance.Base.Close = NULL;
 }
 
-static bool WinsockDatagram_Open(struct SolidSyslogDatagram* self)
+static bool WinsockDatagram_Open(struct SolidSyslogDatagram* base)
 {
-    struct SolidSyslogWinsockDatagram* datagram = (struct SolidSyslogWinsockDatagram*) self;
-    datagram->Fd = Winsock_socket(AF_INET, SOCK_DGRAM, 0);
-    datagram->Connected = false;
-    return WinsockDatagram_IsSocketValid(datagram->Fd);
+    struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
+    self->Fd = Winsock_socket(AF_INET, SOCK_DGRAM, 0);
+    self->Connected = false;
+    return WinsockDatagram_IsSocketValid(self->Fd);
+}
+
+static inline struct SolidSyslogWinsockDatagram* WinsockDatagram_SelfFromBase(struct SolidSyslogDatagram* base)
+{
+    return (struct SolidSyslogWinsockDatagram*) base;
 }
 
 static inline bool WinsockDatagram_IsSocketValid(SOCKET fd)
@@ -113,19 +120,19 @@ static inline bool WinsockDatagram_IsSocketValid(SOCKET fd)
 }
 
 static enum SolidSyslogDatagramSendResult WinsockDatagram_SendTo(
-    struct SolidSyslogDatagram* self,
+    struct SolidSyslogDatagram* base,
     const void* buffer,
     size_t size,
     const struct SolidSyslogAddress* addr
 )
 {
-    struct SolidSyslogWinsockDatagram* datagram = (struct SolidSyslogWinsockDatagram*) self;
+    struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
     enum SolidSyslogDatagramSendResult result = SolidSyslogDatagramSendResult_Failed;
-    if (WinsockDatagram_ConnectIfNeeded(datagram, addr))
+    if (WinsockDatagram_ConnectIfNeeded(self, addr))
     {
         const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
         int sent = Winsock_sendto(
-            datagram->Fd,
+            self->Fd,
             (const char*) buffer,
             (int) size,
             0,
@@ -149,33 +156,32 @@ static enum SolidSyslogDatagramSendResult WinsockDatagram_SendTo(
 }
 
 static inline bool WinsockDatagram_ConnectIfNeeded(
-    struct SolidSyslogWinsockDatagram* datagram,
+    struct SolidSyslogWinsockDatagram* self,
     const struct SolidSyslogAddress* addr
 )
 {
-    if (!datagram->Connected)
+    if (!self->Connected)
     {
         const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
-        if (Winsock_connect(datagram->Fd, (const struct sockaddr*) sin, (int) sizeof(*sin)) != SOCKET_ERROR)
+        if (Winsock_connect(self->Fd, (const struct sockaddr*) sin, (int) sizeof(*sin)) != SOCKET_ERROR)
         {
             const int pmtu = IP_PMTUDISC_DO;
-            (void
-            ) Winsock_setsockopt(datagram->Fd, IPPROTO_IP, IP_MTU_DISCOVER, (const char*) &pmtu, (int) sizeof(pmtu));
-            datagram->Connected = true;
+            (void) Winsock_setsockopt(self->Fd, IPPROTO_IP, IP_MTU_DISCOVER, (const char*) &pmtu, (int) sizeof(pmtu));
+            self->Connected = true;
         }
     }
-    return datagram->Connected;
+    return self->Connected;
 }
 
-static size_t WinsockDatagram_MaxPayload(struct SolidSyslogDatagram* self)
+static size_t WinsockDatagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
-    struct SolidSyslogWinsockDatagram* datagram = (struct SolidSyslogWinsockDatagram*) self;
+    struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
     size_t result = SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD;
-    if (datagram->Connected)
+    if (self->Connected)
     {
         int mtu = 0;
         int optlen = (int) sizeof(mtu);
-        if ((Winsock_getsockopt(datagram->Fd, IPPROTO_IP, IP_MTU, (char*) &mtu, &optlen) != SOCKET_ERROR) && (mtu > 0))
+        if ((Winsock_getsockopt(self->Fd, IPPROTO_IP, IP_MTU, (char*) &mtu, &optlen) != SOCKET_ERROR) && (mtu > 0))
         {
             result = SolidSyslogUdpPayload_FromMtu((size_t) mtu, false);
         }
@@ -183,13 +189,13 @@ static size_t WinsockDatagram_MaxPayload(struct SolidSyslogDatagram* self)
     return result;
 }
 
-static void WinsockDatagram_Close(struct SolidSyslogDatagram* self)
+static void WinsockDatagram_Close(struct SolidSyslogDatagram* base)
 {
-    struct SolidSyslogWinsockDatagram* datagram = (struct SolidSyslogWinsockDatagram*) self;
-    if (WinsockDatagram_IsSocketValid(datagram->Fd))
+    struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
+    if (WinsockDatagram_IsSocketValid(self->Fd))
     {
-        Winsock_closesocket(datagram->Fd);
-        datagram->Fd = INVALID_SOCKET;
-        datagram->Connected = false;
+        Winsock_closesocket(self->Fd);
+        self->Fd = INVALID_SOCKET;
+        self->Connected = false;
     }
 }

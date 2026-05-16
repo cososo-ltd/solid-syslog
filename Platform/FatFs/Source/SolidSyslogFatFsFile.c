@@ -9,18 +9,20 @@
 
 #define READ_WRITE_OR_CREATE (FA_READ | FA_WRITE | FA_OPEN_ALWAYS)
 
-static bool FatFsFile_Open(struct SolidSyslogFile* self, const char* path);
-static void FatFsFile_Close(struct SolidSyslogFile* self);
-static bool FatFsFile_IsOpen(struct SolidSyslogFile* self);
-static bool FatFsFile_Read(struct SolidSyslogFile* self, void* buf, size_t count);
-static bool FatFsFile_Write(struct SolidSyslogFile* self, const void* buf, size_t count);
-static void FatFsFile_SeekTo(struct SolidSyslogFile* self, size_t offset);
-static size_t FatFsFile_Size(struct SolidSyslogFile* self);
-static void FatFsFile_Truncate(struct SolidSyslogFile* self);
-static bool FatFsFile_Exists(struct SolidSyslogFile* self, const char* path);
-static bool FatFsFile_Delete(struct SolidSyslogFile* self, const char* path);
-static inline struct SolidSyslogFatFsFile* FatFsFile_Self(struct SolidSyslogFile* self);
-static inline FIL* FatFsFile_Handle(struct SolidSyslogFile* self);
+static bool FatFsFile_Open(struct SolidSyslogFile* base, const char* path);
+static void FatFsFile_Close(struct SolidSyslogFile* base);
+static bool FatFsFile_IsOpen(struct SolidSyslogFile* base);
+static bool FatFsFile_Read(struct SolidSyslogFile* base, void* buf, size_t count);
+static bool FatFsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
+static void FatFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset);
+static size_t FatFsFile_Size(struct SolidSyslogFile* base);
+static void FatFsFile_Truncate(struct SolidSyslogFile* base);
+static bool FatFsFile_Exists(struct SolidSyslogFile* base, const char* path);
+static bool FatFsFile_Delete(struct SolidSyslogFile* base, const char* path);
+
+static inline struct SolidSyslogFatFsFile* FatFsFile_SelfFromStorage(SolidSyslogFatFsFileStorage* storage);
+static inline struct SolidSyslogFatFsFile* FatFsFile_SelfFromBase(struct SolidSyslogFile* base);
+static inline FIL* FatFsFile_Handle(struct SolidSyslogFile* base);
 
 struct SolidSyslogFatFsFile
 {
@@ -51,88 +53,93 @@ static const struct SolidSyslogFatFsFile DEFAULT_INSTANCE = {
 
 struct SolidSyslogFile* SolidSyslogFatFsFile_Create(SolidSyslogFatFsFileStorage* storage)
 {
-    struct SolidSyslogFatFsFile* fatfs = (struct SolidSyslogFatFsFile*) storage;
-    *fatfs = DEFAULT_INSTANCE;
-    return &fatfs->Base;
+    struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromStorage(storage);
+    *self = DEFAULT_INSTANCE;
+    return &self->Base;
 }
 
-void SolidSyslogFatFsFile_Destroy(struct SolidSyslogFile* file)
+static inline struct SolidSyslogFatFsFile* FatFsFile_SelfFromStorage(SolidSyslogFatFsFileStorage* storage)
 {
-    FatFsFile_Close(file);
+    return (struct SolidSyslogFatFsFile*) storage;
 }
 
-static bool FatFsFile_Open(struct SolidSyslogFile* self, const char* path)
+void SolidSyslogFatFsFile_Destroy(struct SolidSyslogFile* base)
 {
-    struct SolidSyslogFatFsFile* fatfs = FatFsFile_Self(self);
-    FRESULT result = f_open(&fatfs->Fp, path, READ_WRITE_OR_CREATE);
-    fatfs->IsOpen = (result == FR_OK);
-    return fatfs->IsOpen;
+    FatFsFile_Close(base);
 }
 
-static inline struct SolidSyslogFatFsFile* FatFsFile_Self(struct SolidSyslogFile* self)
+static bool FatFsFile_Open(struct SolidSyslogFile* base, const char* path)
 {
-    return (struct SolidSyslogFatFsFile*) self;
+    struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromBase(base);
+    FRESULT result = f_open(&self->Fp, path, READ_WRITE_OR_CREATE);
+    self->IsOpen = (result == FR_OK);
+    return self->IsOpen;
 }
 
-static void FatFsFile_Close(struct SolidSyslogFile* self)
+static inline struct SolidSyslogFatFsFile* FatFsFile_SelfFromBase(struct SolidSyslogFile* base)
 {
-    struct SolidSyslogFatFsFile* fatfs = FatFsFile_Self(self);
-    if (fatfs->IsOpen)
+    return (struct SolidSyslogFatFsFile*) base;
+}
+
+static void FatFsFile_Close(struct SolidSyslogFile* base)
+{
+    struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromBase(base);
+    if (self->IsOpen)
     {
-        f_close(&fatfs->Fp);
-        fatfs->IsOpen = false;
+        f_close(&self->Fp);
+        self->IsOpen = false;
     }
 }
 
-static bool FatFsFile_IsOpen(struct SolidSyslogFile* self)
+static bool FatFsFile_IsOpen(struct SolidSyslogFile* base)
 {
-    return FatFsFile_Self(self)->IsOpen;
+    return FatFsFile_SelfFromBase(base)->IsOpen;
 }
 
-static bool FatFsFile_Read(struct SolidSyslogFile* self, void* buf, size_t count)
+static bool FatFsFile_Read(struct SolidSyslogFile* base, void* buf, size_t count)
 {
     UINT bytesRead = 0;
-    FRESULT result = f_read(FatFsFile_Handle(self), buf, (UINT) count, &bytesRead);
+    FRESULT result = f_read(FatFsFile_Handle(base), buf, (UINT) count, &bytesRead);
     return (result == FR_OK) && (bytesRead == count);
 }
 
-static inline FIL* FatFsFile_Handle(struct SolidSyslogFile* self)
+static inline FIL* FatFsFile_Handle(struct SolidSyslogFile* base)
 {
-    return &FatFsFile_Self(self)->Fp;
+    return &FatFsFile_SelfFromBase(base)->Fp;
 }
 
-static bool FatFsFile_Write(struct SolidSyslogFile* self, const void* buf, size_t count)
+static bool FatFsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count)
 {
     UINT bytesWritten = 0;
-    FRESULT result = f_write(FatFsFile_Handle(self), buf, (UINT) count, &bytesWritten);
+    FRESULT result = f_write(FatFsFile_Handle(base), buf, (UINT) count, &bytesWritten);
     bool wroteAllData = (result == FR_OK) && (bytesWritten == count);
-    return wroteAllData && (f_sync(FatFsFile_Handle(self)) == FR_OK);
+    return wroteAllData && (f_sync(FatFsFile_Handle(base)) == FR_OK);
 }
 
-static void FatFsFile_SeekTo(struct SolidSyslogFile* self, size_t offset)
+static void FatFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
 {
-    f_lseek(FatFsFile_Handle(self), (FSIZE_t) offset);
+    f_lseek(FatFsFile_Handle(base), (FSIZE_t) offset);
 }
 
-static size_t FatFsFile_Size(struct SolidSyslogFile* self)
+static size_t FatFsFile_Size(struct SolidSyslogFile* base)
 {
-    return (size_t) f_size(FatFsFile_Handle(self));
+    return (size_t) f_size(FatFsFile_Handle(base));
 }
 
-static void FatFsFile_Truncate(struct SolidSyslogFile* self)
+static void FatFsFile_Truncate(struct SolidSyslogFile* base)
 {
-    f_lseek(FatFsFile_Handle(self), 0);
-    f_truncate(FatFsFile_Handle(self));
+    f_lseek(FatFsFile_Handle(base), 0);
+    f_truncate(FatFsFile_Handle(base));
 }
 
-static bool FatFsFile_Exists(struct SolidSyslogFile* self, const char* path)
+static bool FatFsFile_Exists(struct SolidSyslogFile* base, const char* path)
 {
-    (void) self;
+    (void) base;
     return f_stat(path, NULL) == FR_OK;
 }
 
-static bool FatFsFile_Delete(struct SolidSyslogFile* self, const char* path)
+static bool FatFsFile_Delete(struct SolidSyslogFile* base, const char* path)
 {
-    (void) self;
+    (void) base;
     return f_unlink(path) == FR_OK;
 }

@@ -32,7 +32,7 @@ EXTERN_C_BEGIN
         SolidSyslogStreamSenderStorage * storage,
         const struct SolidSyslogStreamSenderConfig* config
     );
-    void SolidSyslogStreamSender_Destroy(struct SolidSyslogSender * sender);
+    void SolidSyslogStreamSender_Destroy(struct SolidSyslogSender * base);
 
 EXTERN_C_END
 

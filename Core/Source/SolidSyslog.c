@@ -590,9 +590,9 @@ static void SolidSyslog_NilStringFunction(struct SolidSyslogFormatter* formatter
 
 /* NilBuffer */
 
-static void SolidSyslog_NilBufferWrite(struct SolidSyslogBuffer* self, const void* data, size_t size)
+static void SolidSyslog_NilBufferWrite(struct SolidSyslogBuffer* base, const void* data, size_t size)
 {
-    (void) self;
+    (void) base;
     (void) data;
     (void) size;
     if (nilBufferReportArmed)
@@ -602,9 +602,9 @@ static void SolidSyslog_NilBufferWrite(struct SolidSyslogBuffer* self, const voi
     }
 }
 
-static bool SolidSyslog_NilBufferRead(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead)
+static bool SolidSyslog_NilBufferRead(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)
 {
-    (void) self;
+    (void) base;
     (void) data;
     (void) maxSize;
     *bytesRead = 0;
@@ -618,9 +618,9 @@ static struct SolidSyslogBuffer NilBuffer = {
 
 /* NilSender */
 
-static bool SolidSyslog_NilSenderSend(struct SolidSyslogSender* self, const void* buffer, size_t size)
+static bool SolidSyslog_NilSenderSend(struct SolidSyslogSender* base, const void* buffer, size_t size)
 {
-    (void) self;
+    (void) base;
     (void) buffer;
     (void) size;
     if (nilSenderReportArmed)
@@ -631,9 +631,9 @@ static bool SolidSyslog_NilSenderSend(struct SolidSyslogSender* self, const void
     return true;
 }
 
-static void SolidSyslog_NilSenderDisconnect(struct SolidSyslogSender* self)
+static void SolidSyslog_NilSenderDisconnect(struct SolidSyslogSender* base)
 {
-    (void) self;
+    (void) base;
 }
 
 static struct SolidSyslogSender NilSender = {
@@ -643,63 +643,63 @@ static struct SolidSyslogSender NilSender = {
 
 /* NilStore */
 
-static bool SolidSyslog_NilStoreWrite(struct SolidSyslogStore* self, const void* data, size_t size)
+static bool SolidSyslog_NilStoreWrite(struct SolidSyslogStore* base, const void* data, size_t size)
 {
-    (void) self;
+    (void) base;
     (void) data;
     (void) size;
     return false;
 }
 
 static bool SolidSyslog_NilStoreReadNextUnsent(
-    struct SolidSyslogStore* self,
+    struct SolidSyslogStore* base,
     void* data,
     size_t maxSize,
     size_t* bytesRead
 )
 {
-    (void) self;
+    (void) base;
     (void) data;
     (void) maxSize;
     *bytesRead = 0;
     return false;
 }
 
-static void SolidSyslog_NilStoreMarkSent(struct SolidSyslogStore* self)
+static void SolidSyslog_NilStoreMarkSent(struct SolidSyslogStore* base)
 {
-    (void) self;
+    (void) base;
 }
 
-static bool SolidSyslog_NilStoreHasUnsent(struct SolidSyslogStore* self)
+static bool SolidSyslog_NilStoreHasUnsent(struct SolidSyslogStore* base)
 {
-    (void) self;
+    (void) base;
     return false;
 }
 
-static bool SolidSyslog_NilStoreIsHalted(struct SolidSyslogStore* self)
+static bool SolidSyslog_NilStoreIsHalted(struct SolidSyslogStore* base)
 {
-    (void) self;
+    (void) base;
     return false;
 }
 
-static size_t SolidSyslog_NilStoreGetTotalBytes(struct SolidSyslogStore* self)
+static size_t SolidSyslog_NilStoreGetTotalBytes(struct SolidSyslogStore* base)
 {
-    (void) self;
+    (void) base;
     return 0;
 }
 
-static size_t SolidSyslog_NilStoreGetUsedBytes(struct SolidSyslogStore* self)
+static size_t SolidSyslog_NilStoreGetUsedBytes(struct SolidSyslogStore* base)
 {
-    (void) self;
+    (void) base;
     return 0;
 }
 
 /* NilStore stands in when the integrator passes config.Store = NULL —
  * "no store, just try to send." Same transient semantics as NullStore:
  * Service falls through to the sender on Write rejection. */
-static bool SolidSyslog_NilStoreIsTransient(struct SolidSyslogStore* self)
+static bool SolidSyslog_NilStoreIsTransient(struct SolidSyslogStore* base)
 {
-    (void) self;
+    (void) base;
     return true;
 }
 

@@ -28,30 +28,32 @@ struct SolidSyslogUdpSender
 
 static bool UdpSender_IsValidConfig(const struct SolidSyslogUdpSenderConfig* config);
 static void UdpSender_InstallConfig(const struct SolidSyslogUdpSenderConfig* config);
-static bool UdpSender_Send(struct SolidSyslogSender* self, const void* buffer, size_t size);
-static void UdpSender_Disconnect(struct SolidSyslogSender* self);
-static inline bool UdpSender_Reconcile(struct SolidSyslogUdpSender* udp);
-static inline void UdpSender_DisconnectIfStale(struct SolidSyslogUdpSender* udp);
-static inline bool UdpSender_EnsureConnected(struct SolidSyslogUdpSender* udp);
-static inline bool UdpSender_Connected(struct SolidSyslogUdpSender* udp);
-static bool UdpSender_Connect(struct SolidSyslogUdpSender* udp);
+static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size);
+static void UdpSender_Disconnect(struct SolidSyslogSender* base);
+
+static inline struct SolidSyslogUdpSender* UdpSender_SelfFromBase(struct SolidSyslogSender* base);
+static inline bool UdpSender_Reconcile(struct SolidSyslogUdpSender* self);
+static inline void UdpSender_DisconnectIfStale(struct SolidSyslogUdpSender* self);
+static inline bool UdpSender_EnsureConnected(struct SolidSyslogUdpSender* self);
+static inline bool UdpSender_Connected(struct SolidSyslogUdpSender* self);
+static bool UdpSender_Connect(struct SolidSyslogUdpSender* self);
 static inline uint16_t UdpSender_QueryEndpointPort(
-    struct SolidSyslogUdpSender* udp,
+    struct SolidSyslogUdpSender* self,
     struct SolidSyslogFormatter* hostFormatter
 );
-static inline bool UdpSender_OpenSocket(struct SolidSyslogUdpSender* udp);
-static bool UdpSender_ResolveDestination(struct SolidSyslogUdpSender* udp, const char* host, uint16_t port);
-static inline struct SolidSyslogAddress* UdpSender_Address(struct SolidSyslogUdpSender* udp);
-static inline void UdpSender_CloseSocket(struct SolidSyslogUdpSender* udp);
-static inline bool UdpSender_TransmitDatagram(struct SolidSyslogUdpSender* udp, const void* buffer, size_t size);
+static inline bool UdpSender_OpenSocket(struct SolidSyslogUdpSender* self);
+static bool UdpSender_ResolveDestination(struct SolidSyslogUdpSender* self, const char* host, uint16_t port);
+static inline struct SolidSyslogAddress* UdpSender_Address(struct SolidSyslogUdpSender* self);
+static inline void UdpSender_CloseSocket(struct SolidSyslogUdpSender* self);
+static inline bool UdpSender_TransmitDatagram(struct SolidSyslogUdpSender* self, const void* buffer, size_t size);
 static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
-    struct SolidSyslogUdpSender* udp,
+    struct SolidSyslogUdpSender* self,
     const void* buffer,
     size_t size
 );
 static uint32_t UdpSender_NilEndpointVersion(void);
-static bool UdpSender_NilUdpSenderSend(struct SolidSyslogSender* self, const void* buffer, size_t size);
-static void UdpSender_NilUdpSenderDisconnect(struct SolidSyslogSender* self);
+static bool UdpSender_NilUdpSenderSend(struct SolidSyslogSender* base, const void* buffer, size_t size);
+static void UdpSender_NilUdpSenderDisconnect(struct SolidSyslogSender* base);
 
 static const struct SolidSyslogUdpSender DEFAULT_INSTANCE = {
     .Config = {.EndpointVersion = UdpSender_NilEndpointVersion}
@@ -117,7 +119,7 @@ void SolidSyslogUdpSender_Destroy(void)
     instance = DEFAULT_INSTANCE;
 }
 
-static bool UdpSender_Send(struct SolidSyslogSender* self, const void* buffer, size_t size)
+static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size)
 {
     bool result = false;
     if (buffer == NULL)
@@ -126,122 +128,127 @@ static bool UdpSender_Send(struct SolidSyslogSender* self, const void* buffer, s
     }
     else
     {
-        struct SolidSyslogUdpSender* udp = (struct SolidSyslogUdpSender*) self;
-        result = UdpSender_Reconcile(udp) && UdpSender_TransmitDatagram(udp, buffer, size);
+        struct SolidSyslogUdpSender* self = UdpSender_SelfFromBase(base);
+        result = UdpSender_Reconcile(self) && UdpSender_TransmitDatagram(self, buffer, size);
     }
     return result;
 }
 
-static void UdpSender_Disconnect(struct SolidSyslogSender* self)
+static void UdpSender_Disconnect(struct SolidSyslogSender* base)
 {
-    struct SolidSyslogUdpSender* udp = (struct SolidSyslogUdpSender*) self;
+    struct SolidSyslogUdpSender* self = UdpSender_SelfFromBase(base);
 
-    if (UdpSender_Connected(udp))
+    if (UdpSender_Connected(self))
     {
-        UdpSender_CloseSocket(udp);
+        UdpSender_CloseSocket(self);
     }
 }
 
-static inline bool UdpSender_Reconcile(struct SolidSyslogUdpSender* udp)
+static inline struct SolidSyslogUdpSender* UdpSender_SelfFromBase(struct SolidSyslogSender* base)
 {
-    UdpSender_DisconnectIfStale(udp);
-    return UdpSender_EnsureConnected(udp);
+    return (struct SolidSyslogUdpSender*) base;
 }
 
-static inline void UdpSender_DisconnectIfStale(struct SolidSyslogUdpSender* udp)
+static inline bool UdpSender_Reconcile(struct SolidSyslogUdpSender* self)
 {
-    uint32_t version = udp->Config.EndpointVersion();
+    UdpSender_DisconnectIfStale(self);
+    return UdpSender_EnsureConnected(self);
+}
 
-    if (version != udp->LastEndpointVersion)
+static inline void UdpSender_DisconnectIfStale(struct SolidSyslogUdpSender* self)
+{
+    uint32_t version = self->Config.EndpointVersion();
+
+    if (version != self->LastEndpointVersion)
     {
-        UdpSender_Disconnect(&udp->Base);
-        udp->LastEndpointVersion = version;
+        UdpSender_Disconnect(&self->Base);
+        self->LastEndpointVersion = version;
     }
 }
 
-static inline bool UdpSender_EnsureConnected(struct SolidSyslogUdpSender* udp)
+static inline bool UdpSender_EnsureConnected(struct SolidSyslogUdpSender* self)
 {
-    return UdpSender_Connected(udp) || UdpSender_Connect(udp);
+    return UdpSender_Connected(self) || UdpSender_Connect(self);
 }
 
-static inline bool UdpSender_Connected(struct SolidSyslogUdpSender* udp)
+static inline bool UdpSender_Connected(struct SolidSyslogUdpSender* self)
 {
-    return udp->Connected;
+    return self->Connected;
 }
 
-static bool UdpSender_Connect(struct SolidSyslogUdpSender* udp)
+static bool UdpSender_Connect(struct SolidSyslogUdpSender* self)
 {
     SolidSyslogFormatterStorage hostStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(SOLIDSYSLOG_MAX_HOST_SIZE)];
     struct SolidSyslogFormatter* hostFormatter = SolidSyslogFormatter_Create(hostStorage, SOLIDSYSLOG_MAX_HOST_SIZE);
-    uint16_t port = UdpSender_QueryEndpointPort(udp, hostFormatter);
+    uint16_t port = UdpSender_QueryEndpointPort(self, hostFormatter);
     const char* host = SolidSyslogFormatter_AsFormattedBuffer(hostFormatter);
 
-    if (UdpSender_OpenSocket(udp) && UdpSender_ResolveDestination(udp, host, port))
+    if (UdpSender_OpenSocket(self) && UdpSender_ResolveDestination(self, host, port))
     {
-        udp->Connected = true;
+        self->Connected = true;
     }
     else
     {
-        UdpSender_CloseSocket(udp);
+        UdpSender_CloseSocket(self);
     }
-    return UdpSender_Connected(udp);
+    return UdpSender_Connected(self);
 }
 
 static inline uint16_t UdpSender_QueryEndpointPort(
-    struct SolidSyslogUdpSender* udp,
+    struct SolidSyslogUdpSender* self,
     struct SolidSyslogFormatter* hostFormatter
 )
 {
     struct SolidSyslogEndpoint endpoint = {.Host = hostFormatter, .Port = 0};
-    udp->Config.Endpoint(&endpoint);
+    self->Config.Endpoint(&endpoint);
     return endpoint.Port;
 }
 
-static inline bool UdpSender_OpenSocket(struct SolidSyslogUdpSender* udp)
+static inline bool UdpSender_OpenSocket(struct SolidSyslogUdpSender* self)
 {
-    return SolidSyslogDatagram_Open(udp->Config.Datagram);
+    return SolidSyslogDatagram_Open(self->Config.Datagram);
 }
 
-static bool UdpSender_ResolveDestination(struct SolidSyslogUdpSender* udp, const char* host, uint16_t port)
+static bool UdpSender_ResolveDestination(struct SolidSyslogUdpSender* self, const char* host, uint16_t port)
 {
     return SolidSyslogResolver_Resolve(
-        udp->Config.Resolver,
+        self->Config.Resolver,
         SolidSyslogTransport_Udp,
         host,
         port,
-        UdpSender_Address(udp)
+        UdpSender_Address(self)
     );
 }
 
-static inline struct SolidSyslogAddress* UdpSender_Address(struct SolidSyslogUdpSender* udp)
+static inline struct SolidSyslogAddress* UdpSender_Address(struct SolidSyslogUdpSender* self)
 {
-    return SolidSyslogAddress_FromStorage(&udp->AddrStorage);
+    return SolidSyslogAddress_FromStorage(&self->AddrStorage);
 }
 
-static inline void UdpSender_CloseSocket(struct SolidSyslogUdpSender* udp)
+static inline void UdpSender_CloseSocket(struct SolidSyslogUdpSender* self)
 {
-    SolidSyslogDatagram_Close(udp->Config.Datagram);
-    udp->Connected = false;
+    SolidSyslogDatagram_Close(self->Config.Datagram);
+    self->Connected = false;
 }
 
-static inline bool UdpSender_TransmitDatagram(struct SolidSyslogUdpSender* udp, const void* buffer, size_t size)
+static inline bool UdpSender_TransmitDatagram(struct SolidSyslogUdpSender* self, const void* buffer, size_t size)
 {
     enum SolidSyslogDatagramSendResult result =
-        SolidSyslogDatagram_SendTo(udp->Config.Datagram, buffer, size, UdpSender_Address(udp));
+        SolidSyslogDatagram_SendTo(self->Config.Datagram, buffer, size, UdpSender_Address(self));
     if (result == SolidSyslogDatagramSendResult_Oversize)
     {
-        result = UdpSender_RetryAfterOversize(udp, buffer, size);
+        result = UdpSender_RetryAfterOversize(self, buffer, size);
     }
     return result == SolidSyslogDatagramSendResult_Sent;
 }
 
 static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
-    struct SolidSyslogUdpSender* udp,
+    struct SolidSyslogUdpSender* self,
     const void* buffer,
     size_t size
 )
 {
-    size_t maxPayload = SolidSyslogDatagram_MaxPayload(udp->Config.Datagram);
+    size_t maxPayload = SolidSyslogDatagram_MaxPayload(self->Config.Datagram);
     size_t clipLimit = (size < maxPayload) ? size : maxPayload;
     size_t trimmed = SolidSyslogUdpPayload_TrimToCodepointBoundary((const uint8_t*) buffer, clipLimit);
     /* Default SENT swallows trimmed == 0 (path can't carry the message) so the
@@ -249,7 +256,7 @@ static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
     enum SolidSyslogDatagramSendResult result = SolidSyslogDatagramSendResult_Sent;
     if (trimmed > 0U)
     {
-        result = SolidSyslogDatagram_SendTo(udp->Config.Datagram, buffer, trimmed, UdpSender_Address(udp));
+        result = SolidSyslogDatagram_SendTo(self->Config.Datagram, buffer, trimmed, UdpSender_Address(self));
         if (result == SolidSyslogDatagramSendResult_Oversize)
         {
             /* Retry still OVERSIZE means the kernel disagrees with its own
@@ -265,15 +272,15 @@ static uint32_t UdpSender_NilEndpointVersion(void)
     return 0;
 }
 
-static bool UdpSender_NilUdpSenderSend(struct SolidSyslogSender* self, const void* buffer, size_t size)
+static bool UdpSender_NilUdpSenderSend(struct SolidSyslogSender* base, const void* buffer, size_t size)
 {
-    (void) self;
+    (void) base;
     (void) buffer;
     (void) size;
     return true;
 }
 
-static void UdpSender_NilUdpSenderDisconnect(struct SolidSyslogSender* self)
+static void UdpSender_NilUdpSenderDisconnect(struct SolidSyslogSender* base)
 {
-    (void) self;
+    (void) base;
 }

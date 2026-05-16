@@ -36,27 +36,30 @@ SOLIDSYSLOG_STATIC_ASSERT(
     "SOLIDSYSLOG_TLS_STREAM_SIZE is too small for struct SolidSyslogTlsStream"
 );
 
-static inline bool TlsStream_AttachTransportBio(struct SolidSyslogTlsStream* stream);
-static inline void TlsStream_Close(struct SolidSyslogStream* self);
+static inline struct SolidSyslogTlsStream* TlsStream_SelfFromStorage(SolidSyslogTlsStreamStorage* storage);
+static inline struct SolidSyslogTlsStream* TlsStream_SelfFromBase(struct SolidSyslogStream* base);
+
+static inline bool TlsStream_AttachTransportBio(struct SolidSyslogTlsStream* self);
+static inline void TlsStream_Close(struct SolidSyslogStream* base);
 static inline bool TlsStream_ConfigureCipherList(SSL_CTX* ctx, const char* cipherList);
 static inline bool TlsStream_ConfigureClientIdentity(SSL_CTX* ctx, const struct SolidSyslogTlsStreamConfig* config);
-static inline bool TlsStream_ConfigureExpectedHostname(struct SolidSyslogTlsStream* stream);
+static inline bool TlsStream_ConfigureExpectedHostname(struct SolidSyslogTlsStream* self);
 static inline bool TlsStream_ConfigureProtocolFloor(SSL_CTX* ctx);
 static inline bool TlsStream_ConfigureSslContext(SSL_CTX* ctx, const struct SolidSyslogTlsStreamConfig* config);
 static inline bool TlsStream_ConfigureTrustAnchors(SSL_CTX* ctx, const char* caBundlePath);
 static inline SSL_CTX* TlsStream_CreateSslContext(const struct SolidSyslogTlsStreamConfig* config);
-static inline BIO* TlsStream_CreateTransportBio(struct SolidSyslogTlsStream* stream);
+static inline BIO* TlsStream_CreateTransportBio(struct SolidSyslogTlsStream* self);
 static inline BIO_METHOD* TlsStream_CreateTransportBioMethod(void);
-static inline bool TlsStream_InitSslContext(struct SolidSyslogTlsStream* stream);
-static inline bool TlsStream_InitSslSession(struct SolidSyslogTlsStream* stream);
-static inline bool TlsStream_Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr);
-static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* stream);
-static inline SolidSyslogSsize TlsStream_Read(struct SolidSyslogStream* self, void* buffer, size_t size);
-static inline void TlsStream_ReleaseBioMethod(struct SolidSyslogTlsStream* stream);
-static inline void TlsStream_ReleaseHandshakeState(struct SolidSyslogTlsStream* stream);
-static inline void TlsStream_ReleaseSsl(struct SolidSyslogTlsStream* stream);
-static inline void TlsStream_ReleaseSslContext(struct SolidSyslogTlsStream* stream);
-static inline bool TlsStream_Send(struct SolidSyslogStream* self, const void* buffer, size_t size);
+static inline bool TlsStream_InitSslContext(struct SolidSyslogTlsStream* self);
+static inline bool TlsStream_InitSslSession(struct SolidSyslogTlsStream* self);
+static inline bool TlsStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* self);
+static inline SolidSyslogSsize TlsStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
+static inline void TlsStream_ReleaseBioMethod(struct SolidSyslogTlsStream* self);
+static inline void TlsStream_ReleaseHandshakeState(struct SolidSyslogTlsStream* self);
+static inline void TlsStream_ReleaseSsl(struct SolidSyslogTlsStream* self);
+static inline void TlsStream_ReleaseSslContext(struct SolidSyslogTlsStream* self);
+static inline bool TlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static inline int TlsStream_TransportBioCreate(BIO* bio);
 static inline long TlsStream_TransportBioCtrl(BIO* bio, int cmd, long larg, void* parg);
 static inline int TlsStream_TransportBioRead(BIO* bio, char* buffer, int size);
@@ -83,65 +86,75 @@ struct SolidSyslogStream* SolidSyslogTlsStream_Create(
     const struct SolidSyslogTlsStreamConfig* config
 )
 {
-    struct SolidSyslogTlsStream* stream = (struct SolidSyslogTlsStream*) storage;
-    *stream = DEFAULT_INSTANCE;
-    stream->Config = *config;
-    return &stream->Base;
+    struct SolidSyslogTlsStream* self = TlsStream_SelfFromStorage(storage);
+    *self = DEFAULT_INSTANCE;
+    self->Config = *config;
+    return &self->Base;
 }
 
-void SolidSyslogTlsStream_Destroy(struct SolidSyslogStream* stream)
+static inline struct SolidSyslogTlsStream* TlsStream_SelfFromStorage(SolidSyslogTlsStreamStorage* storage)
 {
-    struct SolidSyslogTlsStream* self = (struct SolidSyslogTlsStream*) stream;
+    return (struct SolidSyslogTlsStream*) storage;
+}
+
+void SolidSyslogTlsStream_Destroy(struct SolidSyslogStream* base)
+{
+    struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
     TlsStream_ReleaseHandshakeState(self);
     TlsStream_ReleaseSslContext(self);
     *self = DESTROYED_INSTANCE;
 }
 
-static inline void TlsStream_ReleaseHandshakeState(struct SolidSyslogTlsStream* stream)
+static inline struct SolidSyslogTlsStream* TlsStream_SelfFromBase(struct SolidSyslogStream* base)
 {
-    TlsStream_ReleaseSsl(stream);
-    TlsStream_ReleaseBioMethod(stream);
+    return (struct SolidSyslogTlsStream*) base;
 }
 
-static inline void TlsStream_ReleaseSsl(struct SolidSyslogTlsStream* stream)
+static inline void TlsStream_ReleaseHandshakeState(struct SolidSyslogTlsStream* self)
 {
-    if (stream->Ssl != NULL)
+    TlsStream_ReleaseSsl(self);
+    TlsStream_ReleaseBioMethod(self);
+}
+
+static inline void TlsStream_ReleaseSsl(struct SolidSyslogTlsStream* self)
+{
+    if (self->Ssl != NULL)
     {
-        SSL_free(stream->Ssl);
-        stream->Ssl = NULL;
+        SSL_free(self->Ssl);
+        self->Ssl = NULL;
     }
 }
 
-static inline void TlsStream_ReleaseBioMethod(struct SolidSyslogTlsStream* stream)
+static inline void TlsStream_ReleaseBioMethod(struct SolidSyslogTlsStream* self)
 {
-    if (stream->BioMethod != NULL)
+    if (self->BioMethod != NULL)
     {
-        BIO_meth_free(stream->BioMethod);
-        stream->BioMethod = NULL;
+        BIO_meth_free(self->BioMethod);
+        self->BioMethod = NULL;
     }
 }
 
-static inline void TlsStream_ReleaseSslContext(struct SolidSyslogTlsStream* stream)
+static inline void TlsStream_ReleaseSslContext(struct SolidSyslogTlsStream* self)
 {
-    if (stream->Ctx != NULL)
+    if (self->Ctx != NULL)
     {
-        SSL_CTX_free(stream->Ctx);
-        stream->Ctx = NULL;
+        SSL_CTX_free(self->Ctx);
+        self->Ctx = NULL;
     }
 }
 
-static inline bool TlsStream_Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr)
+static inline bool TlsStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
-    struct SolidSyslogTlsStream* stream = (struct SolidSyslogTlsStream*) self;
-    return SolidSyslogStream_Open(stream->Config.Transport, addr) && TlsStream_InitSslContext(stream) &&
-           TlsStream_InitSslSession(stream) && TlsStream_AttachTransportBio(stream) &&
-           TlsStream_ConfigureExpectedHostname(stream) && TlsStream_PerformHandshake(stream);
+    struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
+    return SolidSyslogStream_Open(self->Config.Transport, addr) && TlsStream_InitSslContext(self) &&
+           TlsStream_InitSslSession(self) && TlsStream_AttachTransportBio(self) &&
+           TlsStream_ConfigureExpectedHostname(self) && TlsStream_PerformHandshake(self);
 }
 
-static inline bool TlsStream_InitSslContext(struct SolidSyslogTlsStream* stream)
+static inline bool TlsStream_InitSslContext(struct SolidSyslogTlsStream* self)
 {
-    stream->Ctx = TlsStream_CreateSslContext(&stream->Config);
-    return stream->Ctx != NULL;
+    self->Ctx = TlsStream_CreateSslContext(&self->Config);
+    return self->Ctx != NULL;
 }
 
 static inline SSL_CTX* TlsStream_CreateSslContext(const struct SolidSyslogTlsStreamConfig* config)
@@ -209,34 +222,34 @@ static inline bool TlsStream_ConfigureCipherList(SSL_CTX* ctx, const char* ciphe
     return ok;
 }
 
-static inline bool TlsStream_InitSslSession(struct SolidSyslogTlsStream* stream)
+static inline bool TlsStream_InitSslSession(struct SolidSyslogTlsStream* self)
 {
-    stream->Ssl = SSL_new(stream->Ctx);
-    return stream->Ssl != NULL;
+    self->Ssl = SSL_new(self->Ctx);
+    return self->Ssl != NULL;
 }
 
-static inline bool TlsStream_AttachTransportBio(struct SolidSyslogTlsStream* stream)
+static inline bool TlsStream_AttachTransportBio(struct SolidSyslogTlsStream* self)
 {
-    BIO* bio = TlsStream_CreateTransportBio(stream);
+    BIO* bio = TlsStream_CreateTransportBio(self);
     bool ok = bio != NULL;
     if (ok)
     {
-        BIO_set_data(bio, stream->Config.Transport);
-        SSL_set_bio(stream->Ssl, bio, bio);
+        BIO_set_data(bio, self->Config.Transport);
+        SSL_set_bio(self->Ssl, bio, bio);
     }
     return ok;
 }
 
-static inline BIO* TlsStream_CreateTransportBio(struct SolidSyslogTlsStream* stream)
+static inline BIO* TlsStream_CreateTransportBio(struct SolidSyslogTlsStream* self)
 {
-    stream->BioMethod = TlsStream_CreateTransportBioMethod();
+    self->BioMethod = TlsStream_CreateTransportBioMethod();
     BIO* bio = NULL;
-    if (stream->BioMethod != NULL)
+    if (self->BioMethod != NULL)
     {
-        bio = BIO_new(stream->BioMethod);
+        bio = BIO_new(self->BioMethod);
         if (bio == NULL)
         {
-            TlsStream_ReleaseBioMethod(stream);
+            TlsStream_ReleaseBioMethod(self);
         }
     }
     return bio;
@@ -332,13 +345,13 @@ static inline long TlsStream_TransportBioCtrl(BIO* bio, int cmd, long larg, void
     return result;
 }
 
-static inline bool TlsStream_ConfigureExpectedHostname(struct SolidSyslogTlsStream* stream)
+static inline bool TlsStream_ConfigureExpectedHostname(struct SolidSyslogTlsStream* self)
 {
     bool ok = true;
-    if (stream->Config.ServerName != NULL)
+    if (self->Config.ServerName != NULL)
     {
-        ok = (SSL_set_tlsext_host_name(stream->Ssl, stream->Config.ServerName) == 1) &&
-             (SSL_set1_host(stream->Ssl, stream->Config.ServerName) == 1);
+        ok = (SSL_set_tlsext_host_name(self->Ssl, self->Config.ServerName) == 1) &&
+             (SSL_set1_host(self->Ssl, self->Config.ServerName) == 1);
     }
     return ok;
 }
@@ -358,7 +371,7 @@ static inline bool TlsStream_IsHandshakeBudgetExhausted(int totalSleptMs)
  * progress; we sleep briefly between attempts (avoiding a busy spin) until
  * either the handshake completes, hits a hard error, or the bounded budget
  * expires. */
-static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* stream)
+static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* self)
 {
     int totalSleptMs = 0;
     bool result = false;
@@ -366,7 +379,7 @@ static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* strea
 
     while (!done)
     {
-        int rc = SSL_connect(stream->Ssl);
+        int rc = SSL_connect(self->Ssl);
         if (rc > 0)
         {
             result = true;
@@ -374,14 +387,14 @@ static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* strea
         }
         else
         {
-            int err = SSL_get_error(stream->Ssl, rc);
+            int err = SSL_get_error(self->Ssl, rc);
             if (!TlsStream_IsRetryableSslError(err) || TlsStream_IsHandshakeBudgetExhausted(totalSleptMs))
             {
                 done = true;
             }
             else
             {
-                stream->Config.Sleep(HANDSHAKE_POLL_INTERVAL_MILLISECONDS);
+                self->Config.Sleep(HANDSHAKE_POLL_INTERVAL_MILLISECONDS);
                 totalSleptMs += HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
             }
         }
@@ -389,15 +402,15 @@ static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* strea
     return result;
 }
 
-static inline bool TlsStream_Send(struct SolidSyslogStream* self, const void* buffer, size_t size)
+static inline bool TlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
 {
-    struct SolidSyslogTlsStream* stream = (struct SolidSyslogTlsStream*) self;
-    int rc = SSL_write(stream->Ssl, buffer, (int) size);
+    struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
+    int rc = SSL_write(self->Ssl, buffer, (int) size);
     bool ok = (rc > 0) && ((size_t) rc == size);
 
     if (!ok)
     {
-        TlsStream_Close(self);
+        TlsStream_Close(base);
     }
     return ok;
 }
@@ -411,23 +424,23 @@ static inline bool TlsStream_Send(struct SolidSyslogStream* self, const void* bu
  *      semantics this is a transport failure — close internally; the caller
  *      reopens, store-and-forward replays. Same rule for any other SSL error.
  * Anything below the WANT_READ branch therefore takes the Close path. */
-static inline SolidSyslogSsize TlsStream_Read(struct SolidSyslogStream* self, void* buffer, size_t size)
+static inline SolidSyslogSsize TlsStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size)
 {
-    struct SolidSyslogTlsStream* stream = (struct SolidSyslogTlsStream*) self;
-    int rc = SSL_read(stream->Ssl, buffer, (int) size);
+    struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
+    int rc = SSL_read(self->Ssl, buffer, (int) size);
     SolidSyslogSsize result = -1;
 
     if (rc > 0)
     {
         result = (SolidSyslogSsize) rc;
     }
-    else if (SSL_get_error(stream->Ssl, rc) == SSL_ERROR_WANT_READ)
+    else if (SSL_get_error(self->Ssl, rc) == SSL_ERROR_WANT_READ)
     {
         result = 0;
     }
     else
     {
-        TlsStream_Close(self);
+        TlsStream_Close(base);
     }
     return result;
 }
@@ -435,13 +448,13 @@ static inline SolidSyslogSsize TlsStream_Read(struct SolidSyslogStream* self, vo
 /* Idempotent: Send/Read may close internally on failure, after which the
  * StreamSender's reconnect path or the caller's Destroy may call Close
  * again. Skipping when ssl is already NULL keeps that safe. */
-static inline void TlsStream_Close(struct SolidSyslogStream* self)
+static inline void TlsStream_Close(struct SolidSyslogStream* base)
 {
-    struct SolidSyslogTlsStream* stream = (struct SolidSyslogTlsStream*) self;
-    if (stream->Ssl != NULL)
+    struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
+    if (self->Ssl != NULL)
     {
-        SSL_shutdown(stream->Ssl);
-        TlsStream_ReleaseHandshakeState(stream);
+        SSL_shutdown(self->Ssl);
+        TlsStream_ReleaseHandshakeState(self);
     }
-    SolidSyslogStream_Close(stream->Config.Transport);
+    SolidSyslogStream_Close(self->Config.Transport);
 }

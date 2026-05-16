@@ -20,7 +20,7 @@ EXTERN_C_BEGIN
     } SolidSyslogFreeRtosDatagramStorage;
 
     struct SolidSyslogDatagram* SolidSyslogFreeRtosDatagram_Create(SolidSyslogFreeRtosDatagramStorage * storage);
-    void SolidSyslogFreeRtosDatagram_Destroy(struct SolidSyslogDatagram * datagram);
+    void SolidSyslogFreeRtosDatagram_Destroy(struct SolidSyslogDatagram * base);
 
 EXTERN_C_END
 

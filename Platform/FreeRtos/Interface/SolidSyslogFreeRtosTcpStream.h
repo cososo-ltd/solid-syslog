@@ -20,7 +20,7 @@ EXTERN_C_BEGIN
     } SolidSyslogFreeRtosTcpStreamStorage;
 
     struct SolidSyslogStream* SolidSyslogFreeRtosTcpStream_Create(SolidSyslogFreeRtosTcpStreamStorage * storage);
-    void SolidSyslogFreeRtosTcpStream_Destroy(struct SolidSyslogStream * stream);
+    void SolidSyslogFreeRtosTcpStream_Destroy(struct SolidSyslogStream * base);
 
 EXTERN_C_END
 

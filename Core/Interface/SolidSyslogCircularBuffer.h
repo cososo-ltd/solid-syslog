@@ -37,7 +37,7 @@ EXTERN_C_BEGIN
         size_t storageBytes,
         struct SolidSyslogMutex* mutex
     );
-    void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer * buffer);
+    void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer * base);
 
 EXTERN_C_END
 

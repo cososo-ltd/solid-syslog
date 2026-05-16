@@ -22,16 +22,19 @@ enum
     ACCESS_EXISTENCE_CHECK = 0 /* equivalent to POSIX F_OK; <io.h> does not define an alias */
 };
 
-static bool WindowsFile_Open(struct SolidSyslogFile* self, const char* path);
-static void WindowsFile_Close(struct SolidSyslogFile* self);
-static bool WindowsFile_IsOpen(struct SolidSyslogFile* self);
-static bool WindowsFile_Read(struct SolidSyslogFile* self, void* buf, size_t count);
-static bool WindowsFile_Write(struct SolidSyslogFile* self, const void* buf, size_t count);
-static void WindowsFile_SeekTo(struct SolidSyslogFile* self, size_t offset);
-static size_t WindowsFile_Size(struct SolidSyslogFile* self);
-static void WindowsFile_Truncate(struct SolidSyslogFile* self);
-static bool WindowsFile_Exists(struct SolidSyslogFile* self, const char* path);
-static bool WindowsFile_Delete(struct SolidSyslogFile* self, const char* path);
+static bool WindowsFile_Open(struct SolidSyslogFile* base, const char* path);
+static void WindowsFile_Close(struct SolidSyslogFile* base);
+static bool WindowsFile_IsOpen(struct SolidSyslogFile* base);
+static bool WindowsFile_Read(struct SolidSyslogFile* base, void* buf, size_t count);
+static bool WindowsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
+static void WindowsFile_SeekTo(struct SolidSyslogFile* base, size_t offset);
+static size_t WindowsFile_Size(struct SolidSyslogFile* base);
+static void WindowsFile_Truncate(struct SolidSyslogFile* base);
+static bool WindowsFile_Exists(struct SolidSyslogFile* base, const char* path);
+static bool WindowsFile_Delete(struct SolidSyslogFile* base, const char* path);
+
+static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromStorage(SolidSyslogWindowsFileStorage* storage);
+static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromBase(struct SolidSyslogFile* base);
 
 struct SolidSyslogWindowsFile
 {
@@ -65,94 +68,104 @@ static const struct SolidSyslogWindowsFile DESTROYED_INSTANCE = {
 
 struct SolidSyslogFile* SolidSyslogWindowsFile_Create(SolidSyslogWindowsFileStorage* storage)
 {
-    struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) storage;
-    *windows = DEFAULT_INSTANCE;
-    return &windows->Base;
+    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromStorage(storage);
+    *self = DEFAULT_INSTANCE;
+    return &self->Base;
 }
 
-void SolidSyslogWindowsFile_Destroy(struct SolidSyslogFile* file)
+static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromStorage(SolidSyslogWindowsFileStorage* storage)
 {
-    struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) file;
+    return (struct SolidSyslogWindowsFile*) storage;
+}
 
-    if (windows->Fd != INVALID_FD)
+void SolidSyslogWindowsFile_Destroy(struct SolidSyslogFile* base)
+{
+    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
+
+    if (self->Fd != INVALID_FD)
     {
-        _close(windows->Fd);
+        _close(self->Fd);
     }
 
-    *windows = DESTROYED_INSTANCE;
+    *self = DESTROYED_INSTANCE;
 }
 
-static bool WindowsFile_Open(struct SolidSyslogFile* self, const char* path)
+static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromBase(struct SolidSyslogFile* base)
+{
+    return (struct SolidSyslogWindowsFile*) base;
+}
+
+static bool WindowsFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     /* _sopen_s is the non-deprecated MSVC equivalent of POSIX open(): the
      * plain _open triggers C4996 (Microsoft's safe-CRT preference) and
      * _CRT_SECURE_NO_WARNINGS is forbidden by the project's banned-API
      * policy. _SH_DENYNO matches POSIX open()'s default of no share mode. */
-    struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    errno_t err = _sopen_s(&windows->Fd, path, DEFAULT_OPEN_FLAGS, _SH_DENYNO, DEFAULT_FILE_PERMISSIONS);
+    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
+    errno_t err = _sopen_s(&self->Fd, path, DEFAULT_OPEN_FLAGS, _SH_DENYNO, DEFAULT_FILE_PERMISSIONS);
     if (err != 0)
     {
-        windows->Fd = INVALID_FD;
+        self->Fd = INVALID_FD;
     }
-    return windows->Fd != INVALID_FD;
+    return self->Fd != INVALID_FD;
 }
 
-static void WindowsFile_Close(struct SolidSyslogFile* self)
+static void WindowsFile_Close(struct SolidSyslogFile* base)
 {
-    struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
+    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
 
-    if (windows->Fd != INVALID_FD)
+    if (self->Fd != INVALID_FD)
     {
-        _close(windows->Fd);
-        windows->Fd = INVALID_FD;
+        _close(self->Fd);
+        self->Fd = INVALID_FD;
     }
 }
 
-static bool WindowsFile_IsOpen(struct SolidSyslogFile* self)
+static bool WindowsFile_IsOpen(struct SolidSyslogFile* base)
 {
-    struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    return windows->Fd != INVALID_FD;
+    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
+    return self->Fd != INVALID_FD;
 }
 
-static bool WindowsFile_Read(struct SolidSyslogFile* self, void* buf, size_t count)
+static bool WindowsFile_Read(struct SolidSyslogFile* base, void* buf, size_t count)
 {
-    struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    return _read(windows->Fd, buf, (unsigned int) count) == (int) count;
+    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
+    return _read(self->Fd, buf, (unsigned int) count) == (int) count;
 }
 
-static bool WindowsFile_Write(struct SolidSyslogFile* self, const void* buf, size_t count)
+static bool WindowsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count)
 {
-    struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    return _write(windows->Fd, buf, (unsigned int) count) == (int) count;
+    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
+    return _write(self->Fd, buf, (unsigned int) count) == (int) count;
 }
 
-static void WindowsFile_SeekTo(struct SolidSyslogFile* self, size_t offset)
+static void WindowsFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
 {
-    struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    _lseeki64(windows->Fd, (__int64) offset, SEEK_SET);
+    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
+    _lseeki64(self->Fd, (__int64) offset, SEEK_SET);
 }
 
-static size_t WindowsFile_Size(struct SolidSyslogFile* self)
+static size_t WindowsFile_Size(struct SolidSyslogFile* base)
 {
-    struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    __int64 size = _lseeki64(windows->Fd, 0, SEEK_END);
+    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
+    __int64 size = _lseeki64(self->Fd, 0, SEEK_END);
     return (size >= 0) ? (size_t) size : 0U;
 }
 
-static void WindowsFile_Truncate(struct SolidSyslogFile* self)
+static void WindowsFile_Truncate(struct SolidSyslogFile* base)
 {
-    struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
-    _chsize_s(windows->Fd, 0);
+    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
+    _chsize_s(self->Fd, 0);
 }
 
-static bool WindowsFile_Exists(struct SolidSyslogFile* self, const char* path)
+static bool WindowsFile_Exists(struct SolidSyslogFile* base, const char* path)
 {
-    (void) self;
+    (void) base;
     return _access(path, ACCESS_EXISTENCE_CHECK) == 0;
 }
 
-static bool WindowsFile_Delete(struct SolidSyslogFile* self, const char* path)
+static bool WindowsFile_Delete(struct SolidSyslogFile* base, const char* path)
 {
-    (void) self;
+    (void) base;
     return _unlink(path) == 0;
 }

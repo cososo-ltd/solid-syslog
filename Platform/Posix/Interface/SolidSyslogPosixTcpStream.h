@@ -20,7 +20,7 @@ EXTERN_C_BEGIN
     } SolidSyslogPosixTcpStreamStorage;
 
     struct SolidSyslogStream* SolidSyslogPosixTcpStream_Create(SolidSyslogPosixTcpStreamStorage * storage);
-    void SolidSyslogPosixTcpStream_Destroy(struct SolidSyslogStream * stream);
+    void SolidSyslogPosixTcpStream_Destroy(struct SolidSyslogStream * base);
 
 EXTERN_C_END
 

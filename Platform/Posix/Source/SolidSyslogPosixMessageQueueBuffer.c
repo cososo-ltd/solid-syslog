@@ -18,8 +18,12 @@ enum
 
 static const char QUEUE_NAME_PREFIX[] = "/solidsyslog_";
 
-static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead);
-static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* self, const void* data, size_t size);
+static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
+static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
+
+static inline struct SolidSyslogPosixMessageQueueBuffer* PosixMessageQueueBuffer_SelfFromBase(
+    struct SolidSyslogBuffer* base
+);
 
 struct SolidSyslogPosixMessageQueueBuffer
 {
@@ -64,10 +68,10 @@ void SolidSyslogPosixMessageQueueBuffer_Destroy(void)
     instance = (struct SolidSyslogPosixMessageQueueBuffer) {0};
 }
 
-static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead)
+static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)
 {
-    struct SolidSyslogPosixMessageQueueBuffer* mqBuffer = (struct SolidSyslogPosixMessageQueueBuffer*) self;
-    ssize_t received = mq_receive(mqBuffer->Mq, data, maxSize, NULL);
+    struct SolidSyslogPosixMessageQueueBuffer* self = PosixMessageQueueBuffer_SelfFromBase(base);
+    ssize_t received = mq_receive(self->Mq, data, maxSize, NULL);
     bool success = received >= 0;
 
     *bytesRead = success ? (size_t) received : 0U;
@@ -75,8 +79,15 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* self, void* d
     return success;
 }
 
-static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* self, const void* data, size_t size)
+static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size)
 {
-    struct SolidSyslogPosixMessageQueueBuffer* mqBuffer = (struct SolidSyslogPosixMessageQueueBuffer*) self;
-    mq_send(mqBuffer->Mq, data, size, 0);
+    struct SolidSyslogPosixMessageQueueBuffer* self = PosixMessageQueueBuffer_SelfFromBase(base);
+    mq_send(self->Mq, data, size, 0);
+}
+
+static inline struct SolidSyslogPosixMessageQueueBuffer* PosixMessageQueueBuffer_SelfFromBase(
+    struct SolidSyslogBuffer* base
+)
+{
+    return (struct SolidSyslogPosixMessageQueueBuffer*) base;
 }

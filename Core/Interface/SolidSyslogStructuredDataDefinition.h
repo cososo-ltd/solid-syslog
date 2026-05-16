@@ -9,7 +9,7 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogStructuredData
     {
-        void (*Format)(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
+        void (*Format)(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter);
     };
 
 EXTERN_C_END

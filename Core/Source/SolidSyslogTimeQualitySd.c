@@ -15,7 +15,9 @@ struct SolidSyslogTimeQualitySd
     SolidSyslogTimeQualityFunction GetTimeQuality;
 };
 
-static void TimeQualitySd_Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter);
+static void TimeQualitySd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter);
+
+static inline struct SolidSyslogTimeQualitySd* TimeQualitySd_SelfFromBase(struct SolidSyslogStructuredData* base);
 static inline void TimeQualitySd_FormatBoolParam(
     struct SolidSyslogFormatter* formatter,
     const char* name,
@@ -44,18 +46,23 @@ static const char PARAM_TZ_KNOWN[] = " tzKnown";
 static const char PARAM_IS_SYNCED[] = " isSynced";
 static const char PARAM_SYNC_ACCURACY[] = " syncAccuracy=\"";
 
-static void TimeQualitySd_Format(struct SolidSyslogStructuredData* self, struct SolidSyslogFormatter* formatter)
+static void TimeQualitySd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter)
 {
-    struct SolidSyslogTimeQualitySd* tq = (struct SolidSyslogTimeQualitySd*) self;
+    struct SolidSyslogTimeQualitySd* self = TimeQualitySd_SelfFromBase(base);
     struct SolidSyslogTimeQuality q = {0};
 
-    tq->GetTimeQuality(&q);
+    self->GetTimeQuality(&q);
 
     SolidSyslogFormatter_BoundedString(formatter, SD_PREFIX, sizeof(SD_PREFIX) - 1U);
     TimeQualitySd_FormatBoolParam(formatter, PARAM_TZ_KNOWN, sizeof(PARAM_TZ_KNOWN) - 1U, q.TzKnown);
     TimeQualitySd_FormatBoolParam(formatter, PARAM_IS_SYNCED, sizeof(PARAM_IS_SYNCED) - 1U, q.IsSynced);
     TimeQualitySd_FormatSyncAccuracy(formatter, q.SyncAccuracyMicroseconds);
     SolidSyslogFormatter_AsciiCharacter(formatter, ']');
+}
+
+static inline struct SolidSyslogTimeQualitySd* TimeQualitySd_SelfFromBase(struct SolidSyslogStructuredData* base)
+{
+    return (struct SolidSyslogTimeQualitySd*) base;
 }
 
 static inline void TimeQualitySd_FormatBoolParam(

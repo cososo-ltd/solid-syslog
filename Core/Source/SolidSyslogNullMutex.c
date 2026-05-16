@@ -4,8 +4,8 @@
 
 #include "SolidSyslogMutexDefinition.h"
 
-static void NullMutex_Lock(struct SolidSyslogMutex* self);
-static void NullMutex_Unlock(struct SolidSyslogMutex* self);
+static void NullMutex_Lock(struct SolidSyslogMutex* base);
+static void NullMutex_Unlock(struct SolidSyslogMutex* base);
 
 static struct SolidSyslogMutex instance;
 
@@ -22,12 +22,12 @@ void SolidSyslogNullMutex_Destroy(void)
     instance.Unlock = NULL;
 }
 
-static void NullMutex_Lock(struct SolidSyslogMutex* self)
+static void NullMutex_Lock(struct SolidSyslogMutex* base)
 {
-    (void) self;
+    (void) base;
 }
 
-static void NullMutex_Unlock(struct SolidSyslogMutex* self)
+static void NullMutex_Unlock(struct SolidSyslogMutex* base)
 {
-    (void) self;
+    (void) base;
 }

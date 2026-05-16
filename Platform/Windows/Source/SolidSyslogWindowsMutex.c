@@ -17,34 +17,47 @@ SOLIDSYSLOG_STATIC_ASSERT(
     "SOLIDSYSLOG_WINDOWSMUTEX_SIZE is too small for SolidSyslogWindowsMutex layout"
 );
 
-static void WindowsMutex_Lock(struct SolidSyslogMutex* self);
-static void WindowsMutex_Unlock(struct SolidSyslogMutex* self);
+static void WindowsMutex_Lock(struct SolidSyslogMutex* base);
+static void WindowsMutex_Unlock(struct SolidSyslogMutex* base);
+
+static inline struct SolidSyslogWindowsMutex* WindowsMutex_SelfFromStorage(SolidSyslogWindowsMutexStorage* storage);
+static inline struct SolidSyslogWindowsMutex* WindowsMutex_SelfFromBase(struct SolidSyslogMutex* base);
 
 struct SolidSyslogMutex* SolidSyslogWindowsMutex_Create(SolidSyslogWindowsMutexStorage* storage)
 {
-    struct SolidSyslogWindowsMutex* windows = (struct SolidSyslogWindowsMutex*) storage;
-    windows->Base.Lock = WindowsMutex_Lock;
-    windows->Base.Unlock = WindowsMutex_Unlock;
-    InitializeCriticalSection(&windows->Section);
-    return &windows->Base;
+    struct SolidSyslogWindowsMutex* self = WindowsMutex_SelfFromStorage(storage);
+    self->Base.Lock = WindowsMutex_Lock;
+    self->Base.Unlock = WindowsMutex_Unlock;
+    InitializeCriticalSection(&self->Section);
+    return &self->Base;
 }
 
-void SolidSyslogWindowsMutex_Destroy(struct SolidSyslogMutex* mutex)
+static inline struct SolidSyslogWindowsMutex* WindowsMutex_SelfFromStorage(SolidSyslogWindowsMutexStorage* storage)
 {
-    struct SolidSyslogWindowsMutex* windows = (struct SolidSyslogWindowsMutex*) mutex;
-    DeleteCriticalSection(&windows->Section);
-    windows->Base.Lock = NULL;
-    windows->Base.Unlock = NULL;
+    return (struct SolidSyslogWindowsMutex*) storage;
 }
 
-static void WindowsMutex_Lock(struct SolidSyslogMutex* self)
+void SolidSyslogWindowsMutex_Destroy(struct SolidSyslogMutex* base)
 {
-    struct SolidSyslogWindowsMutex* windows = (struct SolidSyslogWindowsMutex*) self;
-    EnterCriticalSection(&windows->Section);
+    struct SolidSyslogWindowsMutex* self = WindowsMutex_SelfFromBase(base);
+    DeleteCriticalSection(&self->Section);
+    self->Base.Lock = NULL;
+    self->Base.Unlock = NULL;
 }
 
-static void WindowsMutex_Unlock(struct SolidSyslogMutex* self)
+static inline struct SolidSyslogWindowsMutex* WindowsMutex_SelfFromBase(struct SolidSyslogMutex* base)
 {
-    struct SolidSyslogWindowsMutex* windows = (struct SolidSyslogWindowsMutex*) self;
-    LeaveCriticalSection(&windows->Section);
+    return (struct SolidSyslogWindowsMutex*) base;
+}
+
+static void WindowsMutex_Lock(struct SolidSyslogMutex* base)
+{
+    struct SolidSyslogWindowsMutex* self = WindowsMutex_SelfFromBase(base);
+    EnterCriticalSection(&self->Section);
+}
+
+static void WindowsMutex_Unlock(struct SolidSyslogMutex* base)
+{
+    struct SolidSyslogWindowsMutex* self = WindowsMutex_SelfFromBase(base);
+    LeaveCriticalSection(&self->Section);
 }

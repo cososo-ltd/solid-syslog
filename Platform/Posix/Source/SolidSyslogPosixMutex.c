@@ -17,34 +17,47 @@ SOLIDSYSLOG_STATIC_ASSERT(
     "SOLIDSYSLOG_POSIXMUTEX_SIZE is too small for SolidSyslogPosixMutex layout"
 );
 
-static void PosixMutex_Lock(struct SolidSyslogMutex* self);
-static void PosixMutex_Unlock(struct SolidSyslogMutex* self);
+static void PosixMutex_Lock(struct SolidSyslogMutex* base);
+static void PosixMutex_Unlock(struct SolidSyslogMutex* base);
+
+static inline struct SolidSyslogPosixMutex* PosixMutex_SelfFromStorage(SolidSyslogPosixMutexStorage* storage);
+static inline struct SolidSyslogPosixMutex* PosixMutex_SelfFromBase(struct SolidSyslogMutex* base);
 
 struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(SolidSyslogPosixMutexStorage* storage)
 {
-    struct SolidSyslogPosixMutex* posix = (struct SolidSyslogPosixMutex*) storage;
-    posix->Base.Lock = PosixMutex_Lock;
-    posix->Base.Unlock = PosixMutex_Unlock;
-    pthread_mutex_init(&posix->Mutex, NULL);
-    return &posix->Base;
+    struct SolidSyslogPosixMutex* self = PosixMutex_SelfFromStorage(storage);
+    self->Base.Lock = PosixMutex_Lock;
+    self->Base.Unlock = PosixMutex_Unlock;
+    pthread_mutex_init(&self->Mutex, NULL);
+    return &self->Base;
 }
 
-void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex* mutex)
+static inline struct SolidSyslogPosixMutex* PosixMutex_SelfFromStorage(SolidSyslogPosixMutexStorage* storage)
 {
-    struct SolidSyslogPosixMutex* posix = (struct SolidSyslogPosixMutex*) mutex;
-    pthread_mutex_destroy(&posix->Mutex);
-    posix->Base.Lock = NULL;
-    posix->Base.Unlock = NULL;
+    return (struct SolidSyslogPosixMutex*) storage;
 }
 
-static void PosixMutex_Lock(struct SolidSyslogMutex* self)
+void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex* base)
 {
-    struct SolidSyslogPosixMutex* posix = (struct SolidSyslogPosixMutex*) self;
-    pthread_mutex_lock(&posix->Mutex);
+    struct SolidSyslogPosixMutex* self = PosixMutex_SelfFromBase(base);
+    pthread_mutex_destroy(&self->Mutex);
+    self->Base.Lock = NULL;
+    self->Base.Unlock = NULL;
 }
 
-static void PosixMutex_Unlock(struct SolidSyslogMutex* self)
+static inline struct SolidSyslogPosixMutex* PosixMutex_SelfFromBase(struct SolidSyslogMutex* base)
 {
-    struct SolidSyslogPosixMutex* posix = (struct SolidSyslogPosixMutex*) self;
-    pthread_mutex_unlock(&posix->Mutex);
+    return (struct SolidSyslogPosixMutex*) base;
+}
+
+static void PosixMutex_Lock(struct SolidSyslogMutex* base)
+{
+    struct SolidSyslogPosixMutex* self = PosixMutex_SelfFromBase(base);
+    pthread_mutex_lock(&self->Mutex);
+}
+
+static void PosixMutex_Unlock(struct SolidSyslogMutex* base)
+{
+    struct SolidSyslogPosixMutex* self = PosixMutex_SelfFromBase(base);
+    pthread_mutex_unlock(&self->Mutex);
 }

@@ -20,7 +20,7 @@ EXTERN_C_BEGIN
     } SolidSyslogPosixMutexStorage;
 
     struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(SolidSyslogPosixMutexStorage * storage);
-    void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex * mutex);
+    void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex * base);
 
 EXTERN_C_END
 
