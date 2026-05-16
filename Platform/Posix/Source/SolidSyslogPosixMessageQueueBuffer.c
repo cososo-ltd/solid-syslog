@@ -47,7 +47,12 @@ struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMe
     attr.mq_maxmsg = maxMessages;
     attr.mq_msgsize = (long) maxMessageSize;
 
-    instance.Mq = mq_open(PosixMessageQueueBuffer_QueueName(), O_CREAT | O_RDWR | O_NONBLOCK, 0600, &attr);
+    /* 0600 in octal — owner read/write, equivalent to S_IRUSR | S_IWUSR. Hex form avoids MISRA 7.1. */
+    enum
+    {
+        OWNER_READ_WRITE = 0x180U
+    };
+    instance.Mq = mq_open(PosixMessageQueueBuffer_QueueName(), O_CREAT | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);
     instance.MaxMessageSize = maxMessageSize;
     instance.Base.Write = PosixMessageQueueBuffer_Write;
     instance.Base.Read = PosixMessageQueueBuffer_Read;
