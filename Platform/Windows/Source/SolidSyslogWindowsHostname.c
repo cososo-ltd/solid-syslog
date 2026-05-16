@@ -17,7 +17,7 @@ static BOOL WINAPI WindowsHostname_CallGetComputerNameExA(COMPUTER_NAME_FORMAT n
 
 enum
 {
-    MAX_HOSTNAME_SIZE = 256
+    MAX_HOSTNAME_SIZE = 256U
 };
 
 void SolidSyslogWindowsHostname_Get(struct SolidSyslogFormatter* formatter)
@@ -27,7 +27,7 @@ void SolidSyslogWindowsHostname_Get(struct SolidSyslogFormatter* formatter)
 
     if (WindowsHostname_GetComputerNameExA(ComputerNamePhysicalDnsHostname, hostname, &size))
     {
-        hostname[sizeof(hostname) - 1] = '\0';
+        hostname[sizeof(hostname) - 1U] = '\0';
         SolidSyslogFormatter_PrintUsAsciiString(formatter, hostname, sizeof(hostname));
     }
 }

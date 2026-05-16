@@ -124,7 +124,7 @@ static size_t PosixFile_Size(struct SolidSyslogFile* self)
 {
     struct SolidSyslogPosixFile* posix = (struct SolidSyslogPosixFile*) self;
     off_t size = lseek(posix->Fd, 0, SEEK_END);
-    return (size >= 0) ? (size_t) size : 0;
+    return (size >= 0) ? (size_t) size : 0U;
 }
 
 static void PosixFile_Truncate(struct SolidSyslogFile* self)

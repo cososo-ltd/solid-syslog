@@ -247,7 +247,7 @@ static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
     /* Default SENT swallows trimmed == 0 (path can't carry the message) so the
      * Service algorithm doesn't loop on an undeliverable. */
     enum SolidSyslogDatagramSendResult result = SolidSyslogDatagramSendResult_Sent;
-    if (trimmed > 0)
+    if (trimmed > 0U)
     {
         result = SolidSyslogDatagram_SendTo(udp->Config.Datagram, buffer, trimmed, UdpSender_Address(udp));
         if (result == SolidSyslogDatagramSendResult_Oversize)

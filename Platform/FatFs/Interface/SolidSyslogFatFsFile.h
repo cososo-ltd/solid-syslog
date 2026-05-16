@@ -18,12 +18,12 @@ EXTERN_C_BEGIN
      * makes this overridable via the tunables mechanism. */
     enum
     {
-        SOLIDSYSLOG_FATFS_FILE_SIZE = sizeof(intptr_t) * 180
+        SOLIDSYSLOG_FATFS_FILE_SIZE = sizeof(intptr_t) * 180U
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_FATFS_FILE_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_FATFS_FILE_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogFatFsFileStorage;
 
     struct SolidSyslogFile* SolidSyslogFatFsFile_Create(SolidSyslogFatFsFileStorage * storage);

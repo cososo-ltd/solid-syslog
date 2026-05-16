@@ -11,12 +11,12 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_FREERTOSTCPSTREAM_SIZE = sizeof(intptr_t) * 8
+        SOLIDSYSLOG_FREERTOSTCPSTREAM_SIZE = sizeof(intptr_t) * 8U
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_FREERTOSTCPSTREAM_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_FREERTOSTCPSTREAM_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogFreeRtosTcpStreamStorage;
 
     struct SolidSyslogStream* SolidSyslogFreeRtosTcpStream_Create(SolidSyslogFreeRtosTcpStreamStorage * storage);

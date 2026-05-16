@@ -8,7 +8,7 @@ struct SolidSyslogFormatter;
 
 enum
 {
-    MAX_HOSTNAME_SIZE = 256
+    MAX_HOSTNAME_SIZE = 256U
 };
 
 void SolidSyslogPosixHostname_Get(struct SolidSyslogFormatter* formatter)
@@ -17,7 +17,7 @@ void SolidSyslogPosixHostname_Get(struct SolidSyslogFormatter* formatter)
 
     if (gethostname(hostname, sizeof(hostname)) == 0)
     {
-        hostname[sizeof(hostname) - 1] = '\0';
+        hostname[sizeof(hostname) - 1U] = '\0';
         SolidSyslogFormatter_PrintUsAsciiString(formatter, hostname, sizeof(hostname));
     }
 }

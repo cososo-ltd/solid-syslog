@@ -73,7 +73,7 @@ static void MetaSd_Format(struct SolidSyslogStructuredData* self, struct SolidSy
 {
     struct SolidSyslogMetaSd* meta = (struct SolidSyslogMetaSd*) self;
 
-    SolidSyslogFormatter_BoundedString(formatter, SD_PREFIX, sizeof(SD_PREFIX) - 1);
+    SolidSyslogFormatter_BoundedString(formatter, SD_PREFIX, sizeof(SD_PREFIX) - 1U);
     MetaSd_EmitSequenceId(meta, formatter);
     MetaSd_EmitSysUpTime(meta, formatter);
     MetaSd_EmitLanguage(meta, formatter);
@@ -82,7 +82,7 @@ static void MetaSd_Format(struct SolidSyslogStructuredData* self, struct SolidSy
 
 static inline void MetaSd_EmitSequenceId(struct SolidSyslogMetaSd* meta, struct SolidSyslogFormatter* formatter)
 {
-    SolidSyslogFormatter_BoundedString(formatter, SEQUENCE_ID_SD, sizeof(SEQUENCE_ID_SD) - 1);
+    SolidSyslogFormatter_BoundedString(formatter, SEQUENCE_ID_SD, sizeof(SEQUENCE_ID_SD) - 1U);
     SolidSyslogFormatter_Uint32(formatter, SolidSyslogAtomicCounter_Increment(meta->Counter));
     SolidSyslogFormatter_AsciiCharacter(formatter, '"');
 }
@@ -91,7 +91,7 @@ static inline void MetaSd_EmitSysUpTime(struct SolidSyslogMetaSd* meta, struct S
 {
     if (meta->GetSysUpTime != NULL)
     {
-        SolidSyslogFormatter_BoundedString(formatter, SYS_UP_TIME_SD, sizeof(SYS_UP_TIME_SD) - 1);
+        SolidSyslogFormatter_BoundedString(formatter, SYS_UP_TIME_SD, sizeof(SYS_UP_TIME_SD) - 1U);
         SolidSyslogFormatter_Uint32(formatter, meta->GetSysUpTime());
         SolidSyslogFormatter_AsciiCharacter(formatter, '"');
     }
@@ -101,7 +101,7 @@ static inline void MetaSd_EmitLanguage(struct SolidSyslogMetaSd* meta, struct So
 {
     if (meta->GetLanguage != NULL)
     {
-        SolidSyslogFormatter_BoundedString(formatter, LANGUAGE_SD, sizeof(LANGUAGE_SD) - 1);
+        SolidSyslogFormatter_BoundedString(formatter, LANGUAGE_SD, sizeof(LANGUAGE_SD) - 1U);
         meta->GetLanguage(formatter);
         SolidSyslogFormatter_AsciiCharacter(formatter, '"');
     }

@@ -40,7 +40,7 @@ struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMe
     instance = (struct SolidSyslogPosixMessageQueueBuffer) {0};
 
     struct SolidSyslogFormatter* name = SolidSyslogFormatter_Create(instance.NameStorage, MAX_NAME_SIZE);
-    SolidSyslogFormatter_BoundedString(name, QUEUE_NAME_PREFIX, sizeof(QUEUE_NAME_PREFIX) - 1);
+    SolidSyslogFormatter_BoundedString(name, QUEUE_NAME_PREFIX, sizeof(QUEUE_NAME_PREFIX) - 1U);
     SolidSyslogPosixProcessId_Get(name);
 
     struct mq_attr attr = {0};
@@ -68,7 +68,7 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* self, void* d
     ssize_t received = mq_receive(mqBuffer->Mq, data, maxSize, NULL);
     bool success = received >= 0;
 
-    *bytesRead = success ? (size_t) received : 0;
+    *bytesRead = success ? (size_t) received : 0U;
 
     return success;
 }

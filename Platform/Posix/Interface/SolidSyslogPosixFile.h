@@ -11,12 +11,12 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_POSIX_FILE_SIZE = sizeof(intptr_t) * 11
+        SOLIDSYSLOG_POSIX_FILE_SIZE = sizeof(intptr_t) * 11U
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_POSIX_FILE_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_POSIX_FILE_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogPosixFileStorage;
 
     struct SolidSyslogFile* SolidSyslogPosixFile_Create(SolidSyslogPosixFileStorage * storage);

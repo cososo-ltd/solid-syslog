@@ -3,9 +3,9 @@
 
 enum
 {
-    IPV4_HEADER_BYTES = 20,
-    IPV6_HEADER_BYTES = 40,
-    UDP_HEADER_BYTES = 8
+    IPV4_HEADER_BYTES = 20U,
+    IPV6_HEADER_BYTES = 40U,
+    UDP_HEADER_BYTES = 8U
 };
 
 static inline size_t UdpPayload_FindLastCodepointStart(const uint8_t* buffer, size_t length);
@@ -19,12 +19,12 @@ static inline size_t UdpPayload_ExpectedSequenceLength(uint8_t startByte);
 size_t SolidSyslogUdpPayload_FromMtu(size_t mtu, bool isIpv6)
 {
     size_t overhead = (isIpv6 ? IPV6_HEADER_BYTES : IPV4_HEADER_BYTES) + UDP_HEADER_BYTES;
-    return mtu > overhead ? mtu - overhead : 0;
+    return mtu > overhead ? mtu - overhead : 0U;
 }
 
 size_t SolidSyslogUdpPayload_TrimToCodepointBoundary(const uint8_t* buffer, size_t length)
 {
-    if (length > 0)
+    if (length > 0U)
     {
         size_t lastCodepointStart = UdpPayload_FindLastCodepointStart(buffer, length);
         if (UdpPayload_LastCodepointExtendsPastCut(buffer, length, lastCodepointStart))
@@ -37,8 +37,8 @@ size_t SolidSyslogUdpPayload_TrimToCodepointBoundary(const uint8_t* buffer, size
 
 static inline size_t UdpPayload_FindLastCodepointStart(const uint8_t* buffer, size_t length)
 {
-    size_t startIndex = length - 1;
-    while (startIndex > 0 && SolidSyslogUtf8_IsContinuationByte((char) buffer[startIndex]))
+    size_t startIndex = length - 1U;
+    while ((startIndex > 0U) && SolidSyslogUtf8_IsContinuationByte((char) buffer[startIndex]))
     {
         startIndex--;
     }
@@ -59,22 +59,22 @@ static inline bool UdpPayload_LastCodepointExtendsPastCut(
 static inline size_t UdpPayload_ExpectedSequenceLength(uint8_t startByte)
 {
     char b = (char) startByte;
-    size_t length = 0;
+    size_t length = 0U;
     if (SolidSyslogUtf8_IsAsciiByte(b))
     {
-        length = 1;
+        length = 1U;
     }
     else if (SolidSyslogUtf8_IsTwoByteLead(b))
     {
-        length = 2;
+        length = 2U;
     }
     else if (SolidSyslogUtf8_IsThreeByteLead(b))
     {
-        length = 3;
+        length = 3U;
     }
     else
     {
-        length = 4;
+        length = 4U;
     }
     return length;
 }

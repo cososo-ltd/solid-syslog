@@ -12,12 +12,12 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_FILEBLOCKDEVICE_STORAGE_SIZE = sizeof(intptr_t) * 16
+        SOLIDSYSLOG_FILEBLOCKDEVICE_STORAGE_SIZE = sizeof(intptr_t) * 16U
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_FILEBLOCKDEVICE_STORAGE_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_FILEBLOCKDEVICE_STORAGE_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogFileBlockDeviceStorage;
 
     /* The driver caches at most one open SolidSyslogFile handle, re-pointed only when the

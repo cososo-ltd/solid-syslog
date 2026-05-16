@@ -136,7 +136,7 @@ static size_t WindowsFile_Size(struct SolidSyslogFile* self)
 {
     struct SolidSyslogWindowsFile* windows = (struct SolidSyslogWindowsFile*) self;
     __int64 size = _lseeki64(windows->Fd, 0, SEEK_END);
-    return (size >= 0) ? (size_t) size : 0;
+    return (size >= 0) ? (size_t) size : 0U;
 }
 
 static void WindowsFile_Truncate(struct SolidSyslogFile* self)

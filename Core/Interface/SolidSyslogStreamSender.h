@@ -20,12 +20,12 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_STREAM_SENDER_SIZE = (sizeof(intptr_t) * 7) + sizeof(uint32_t)
+        SOLIDSYSLOG_STREAM_SENDER_SIZE = (sizeof(intptr_t) * 7U) + sizeof(uint32_t)
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_STREAM_SENDER_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_STREAM_SENDER_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogStreamSenderStorage;
 
     struct SolidSyslogSender* SolidSyslogStreamSender_Create(

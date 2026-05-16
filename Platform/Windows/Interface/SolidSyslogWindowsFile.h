@@ -9,12 +9,12 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_WINDOWS_FILE_SIZE = sizeof(intptr_t) * 11
+        SOLIDSYSLOG_WINDOWS_FILE_SIZE = sizeof(intptr_t) * 11U
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_WINDOWS_FILE_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_WINDOWS_FILE_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogWindowsFileStorage;
 
     struct SolidSyslogFile* SolidSyslogWindowsFile_Create(SolidSyslogWindowsFileStorage * storage);

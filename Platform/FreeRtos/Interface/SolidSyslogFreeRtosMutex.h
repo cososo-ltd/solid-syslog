@@ -11,12 +11,12 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_FREERTOSMUTEX_SIZE = sizeof(intptr_t) * 20
+        SOLIDSYSLOG_FREERTOSMUTEX_SIZE = sizeof(intptr_t) * 20U
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_FREERTOSMUTEX_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_FREERTOSMUTEX_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogFreeRtosMutexStorage;
 
     struct SolidSyslogMutex* SolidSyslogFreeRtosMutex_Create(SolidSyslogFreeRtosMutexStorage * storage);

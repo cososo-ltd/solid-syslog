@@ -9,12 +9,12 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_WINSOCK_TCP_STREAM_SIZE = sizeof(intptr_t) * 5
+        SOLIDSYSLOG_WINSOCK_TCP_STREAM_SIZE = sizeof(intptr_t) * 5U
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_WINSOCK_TCP_STREAM_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_WINSOCK_TCP_STREAM_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogWinsockTcpStreamStorage;
 
     /* Precondition: caller has invoked WSAStartup() before using the stream,

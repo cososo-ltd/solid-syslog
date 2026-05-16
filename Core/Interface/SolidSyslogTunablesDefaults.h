@@ -21,7 +21,7 @@
  */
 #ifndef SOLIDSYSLOG_MAX_MESSAGE_SIZE
 /* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
-#define SOLIDSYSLOG_MAX_MESSAGE_SIZE 2048 /* RFC 5424 section 6.1 SHOULD value */
+#define SOLIDSYSLOG_MAX_MESSAGE_SIZE 2048U /* RFC 5424 section 6.1 SHOULD value */
 #endif
 
 #if SOLIDSYSLOG_MAX_MESSAGE_SIZE < 64

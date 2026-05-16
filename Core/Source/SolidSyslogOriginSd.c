@@ -87,7 +87,7 @@ static inline void OriginSd_PreFormatStaticPrefix(const struct SolidSyslogOrigin
 {
     struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(instance.FormattedStorage, ORIGIN_FORMATTED_MAX);
 
-    SolidSyslogFormatter_BoundedString(f, SD_PREFIX, sizeof(SD_PREFIX) - 1);
+    SolidSyslogFormatter_BoundedString(f, SD_PREFIX, sizeof(SD_PREFIX) - 1U);
     OriginSd_EmitSoftware(f, config);
     OriginSd_EmitSwVersion(f, config);
     OriginSd_EmitEnterpriseId(f, config);
@@ -98,7 +98,7 @@ static inline void OriginSd_EmitSoftware(struct SolidSyslogFormatter* f, const s
 {
     if (config->Software != NULL)
     {
-        SolidSyslogFormatter_BoundedString(f, SD_SOFTWARE_SD, sizeof(SD_SOFTWARE_SD) - 1);
+        SolidSyslogFormatter_BoundedString(f, SD_SOFTWARE_SD, sizeof(SD_SOFTWARE_SD) - 1U);
         SolidSyslogFormatter_EscapedString(f, config->Software, ORIGIN_SOFTWARE_MAX);
         SolidSyslogFormatter_AsciiCharacter(f, '"');
     }
@@ -111,7 +111,7 @@ static inline void OriginSd_EmitSwVersion(
 {
     if (config->SwVersion != NULL)
     {
-        SolidSyslogFormatter_BoundedString(f, SD_VERSION_SD, sizeof(SD_VERSION_SD) - 1);
+        SolidSyslogFormatter_BoundedString(f, SD_VERSION_SD, sizeof(SD_VERSION_SD) - 1U);
         SolidSyslogFormatter_EscapedString(f, config->SwVersion, ORIGIN_SWVERSION_MAX);
         SolidSyslogFormatter_AsciiCharacter(f, '"');
     }
@@ -124,7 +124,7 @@ static inline void OriginSd_EmitEnterpriseId(
 {
     if (config->EnterpriseId != NULL)
     {
-        SolidSyslogFormatter_BoundedString(f, SD_ENTERPRISE_ID_SD, sizeof(SD_ENTERPRISE_ID_SD) - 1);
+        SolidSyslogFormatter_BoundedString(f, SD_ENTERPRISE_ID_SD, sizeof(SD_ENTERPRISE_ID_SD) - 1U);
         SolidSyslogFormatter_EscapedString(f, config->EnterpriseId, ORIGIN_ENTERPRISE_ID_MAX);
         SolidSyslogFormatter_AsciiCharacter(f, '"');
     }
@@ -148,7 +148,7 @@ static inline void OriginSd_EmitIp(
     size_t index
 )
 {
-    SolidSyslogFormatter_BoundedString(formatter, SD_IP_SD, sizeof(SD_IP_SD) - 1);
+    SolidSyslogFormatter_BoundedString(formatter, SD_IP_SD, sizeof(SD_IP_SD) - 1U);
     origin->GetIpAt(formatter, index);
     SolidSyslogFormatter_AsciiCharacter(formatter, '"');
 }

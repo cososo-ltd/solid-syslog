@@ -12,16 +12,16 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_FORMATTER_OVERHEAD = 2
+        SOLIDSYSLOG_FORMATTER_OVERHEAD = 2U
     };
 
 /* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- cannot compute array size as a constexpr in C */
 #define SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(bufferSize) \
     (SOLIDSYSLOG_FORMATTER_OVERHEAD +                  \
-     (((bufferSize) + sizeof(SolidSyslogFormatterStorage) - 1) / sizeof(SolidSyslogFormatterStorage)))
+     (((bufferSize) + sizeof(SolidSyslogFormatterStorage) - 1U) / sizeof(SolidSyslogFormatterStorage)))
 
 /* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- compile-time worst-case size for EscapedString output */
-#define SOLIDSYSLOG_ESCAPED_MAX_SIZE(maxDecodedLength) (2 * (maxDecodedLength))
+#define SOLIDSYSLOG_ESCAPED_MAX_SIZE(maxDecodedLength) (2U * (maxDecodedLength))
 
     struct SolidSyslogFormatter;
 

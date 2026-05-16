@@ -12,20 +12,20 @@ struct SolidSyslogFile;
 
 enum
 {
-    MAX_PATH_SIZE = 128
+    MAX_PATH_SIZE = 128U
 };
 
 static const char FILE_EXTENSION[] = ".log";
 
 enum
 {
-    SEQUENCE_DIGITS = 2,
-    FILENAME_SUFFIX = SEQUENCE_DIGITS + sizeof(FILE_EXTENSION) - 1,
-    MAX_PREFIX_LENGTH = MAX_PATH_SIZE - FILENAME_SUFFIX - 1,
+    SEQUENCE_DIGITS = 2U,
+    FILENAME_SUFFIX = SEQUENCE_DIGITS + sizeof(FILE_EXTENSION) - 1U,
+    MAX_PREFIX_LENGTH = (size_t) MAX_PATH_SIZE - (size_t) FILENAME_SUFFIX - 1U,
     /* Two-digit on-disk sequence — indices > 99 cannot be represented
      * uniquely. Without this guard, a wide blockIndex would be narrowed
      * to uint8_t and alias an existing block (256 -> 00). */
-    MAX_BLOCK_INDEX = 99
+    MAX_BLOCK_INDEX = 99U
 };
 
 static inline bool FileBlockDevice_IsValidBlockIndex(size_t blockIndex)
@@ -247,7 +247,7 @@ static inline const char* FileBlockDevice_FormatBlockFilename(
 
     SolidSyslogFormatter_BoundedString(formatter, device->PathPrefix, MAX_PREFIX_LENGTH);
     SolidSyslogFormatter_TwoDigit(formatter, (uint8_t) blockIndex);
-    SolidSyslogFormatter_BoundedString(formatter, FILE_EXTENSION, sizeof(FILE_EXTENSION) - 1);
+    SolidSyslogFormatter_BoundedString(formatter, FILE_EXTENSION, sizeof(FILE_EXTENSION) - 1U);
 
     return SolidSyslogFormatter_AsFormattedBuffer(formatter);
 }

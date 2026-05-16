@@ -11,12 +11,12 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_POSIX_TCP_STREAM_SIZE = sizeof(intptr_t) * 5
+        SOLIDSYSLOG_POSIX_TCP_STREAM_SIZE = sizeof(intptr_t) * 5U
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_POSIX_TCP_STREAM_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_POSIX_TCP_STREAM_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogPosixTcpStreamStorage;
 
     struct SolidSyslogStream* SolidSyslogPosixTcpStream_Create(SolidSyslogPosixTcpStreamStorage * storage);

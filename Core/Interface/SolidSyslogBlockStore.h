@@ -51,12 +51,12 @@ EXTERN_C_BEGIN
     enum
     {
         SOLIDSYSLOG_BLOCKSTORE_STORAGE_SIZE =
-            (sizeof(intptr_t) * 32) + SOLIDSYSLOG_MAX_MESSAGE_SIZE + SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 16
+            (sizeof(intptr_t) * 32U) + SOLIDSYSLOG_MAX_MESSAGE_SIZE + SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 16U
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_BLOCKSTORE_STORAGE_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_BLOCKSTORE_STORAGE_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogBlockStoreStorage;
 
     struct SolidSyslogStore* SolidSyslogBlockStore_Create(

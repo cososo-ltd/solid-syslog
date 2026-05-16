@@ -4,21 +4,21 @@
 
 enum
 {
-    MIN_MAX_BLOCKS = 2,
-    MAX_MAX_BLOCKS = 99,
-    SEQUENCE_MODULUS = 100
+    MIN_MAX_BLOCKS = 2U,
+    MAX_MAX_BLOCKS = 99U,
+    SEQUENCE_MODULUS = 100U
 };
 
 static inline uint8_t BlockSequence_NextSequence(uint8_t current)
 {
-    return (uint8_t) ((current + 1) % SEQUENCE_MODULUS);
+    return (uint8_t) ((current + 1U) % SEQUENCE_MODULUS);
 }
 
 static inline size_t BlockSequence_BlockCount(const struct BlockSequence* blockSequence)
 {
     return (size_t) ((blockSequence->WriteSequence - blockSequence->OldestSequence + SEQUENCE_MODULUS) %
                      SEQUENCE_MODULUS) +
-           1;
+           1U;
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- value, min, max have distinct semantics
@@ -379,7 +379,7 @@ static inline bool BlockSequence_ThresholdEnabled(const struct BlockSequence* bl
 
 static inline bool BlockSequence_IsAboveThreshold(const struct BlockSequence* blockSequence, size_t threshold)
 {
-    return (threshold != 0) && (BlockSequence_UsedBytes(blockSequence) >= threshold);
+    return (threshold != 0U) && (BlockSequence_UsedBytes(blockSequence) >= threshold);
 }
 
 void BlockSequence_MarkWriteBlockCorrupt(struct BlockSequence* blockSequence)
@@ -482,7 +482,7 @@ size_t BlockSequence_UsedBytes(const struct BlockSequence* blockSequence)
     }
     else
     {
-        size_t closedBlocks = BlockSequence_BlockCount(blockSequence) - 1;
+        size_t closedBlocks = BlockSequence_BlockCount(blockSequence) - 1U;
         used = (closedBlocks * blockSequence->MaxBlockSize) + blockSequence->WritePosition;
     }
 

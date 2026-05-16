@@ -11,12 +11,12 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_WINDOWSMUTEX_SIZE = sizeof(intptr_t) * 10
+        SOLIDSYSLOG_WINDOWSMUTEX_SIZE = sizeof(intptr_t) * 10U
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_WINDOWSMUTEX_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_WINDOWSMUTEX_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogWindowsMutexStorage;
 
     struct SolidSyslogMutex* SolidSyslogWindowsMutex_Create(SolidSyslogWindowsMutexStorage * storage);

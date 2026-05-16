@@ -11,12 +11,12 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_FREERTOSDATAGRAM_SIZE = sizeof(intptr_t) * 8
+        SOLIDSYSLOG_FREERTOSDATAGRAM_SIZE = sizeof(intptr_t) * 8U
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_FREERTOSDATAGRAM_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_FREERTOSDATAGRAM_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogFreeRtosDatagramStorage;
 
     struct SolidSyslogDatagram* SolidSyslogFreeRtosDatagram_Create(SolidSyslogFreeRtosDatagramStorage * storage);

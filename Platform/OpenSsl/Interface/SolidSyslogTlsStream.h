@@ -12,12 +12,12 @@ EXTERN_C_BEGIN
 
     enum
     {
-        SOLIDSYSLOG_TLS_STREAM_SIZE = sizeof(intptr_t) * 14
+        SOLIDSYSLOG_TLS_STREAM_SIZE = sizeof(intptr_t) * 14U
     };
 
     typedef struct
     {
-        intptr_t slots[(SOLIDSYSLOG_TLS_STREAM_SIZE + sizeof(intptr_t) - 1) / sizeof(intptr_t)];
+        intptr_t slots[(SOLIDSYSLOG_TLS_STREAM_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogTlsStreamStorage;
 
     struct SolidSyslogTlsStreamConfig

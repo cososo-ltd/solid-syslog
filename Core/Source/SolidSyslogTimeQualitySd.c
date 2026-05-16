@@ -51,9 +51,9 @@ static void TimeQualitySd_Format(struct SolidSyslogStructuredData* self, struct 
 
     tq->GetTimeQuality(&q);
 
-    SolidSyslogFormatter_BoundedString(formatter, SD_PREFIX, sizeof(SD_PREFIX) - 1);
-    TimeQualitySd_FormatBoolParam(formatter, PARAM_TZ_KNOWN, sizeof(PARAM_TZ_KNOWN) - 1, q.TzKnown);
-    TimeQualitySd_FormatBoolParam(formatter, PARAM_IS_SYNCED, sizeof(PARAM_IS_SYNCED) - 1, q.IsSynced);
+    SolidSyslogFormatter_BoundedString(formatter, SD_PREFIX, sizeof(SD_PREFIX) - 1U);
+    TimeQualitySd_FormatBoolParam(formatter, PARAM_TZ_KNOWN, sizeof(PARAM_TZ_KNOWN) - 1U, q.TzKnown);
+    TimeQualitySd_FormatBoolParam(formatter, PARAM_IS_SYNCED, sizeof(PARAM_IS_SYNCED) - 1U, q.IsSynced);
     TimeQualitySd_FormatSyncAccuracy(formatter, q.SyncAccuracyMicroseconds);
     SolidSyslogFormatter_AsciiCharacter(formatter, ']');
 }
@@ -76,7 +76,7 @@ static inline void TimeQualitySd_FormatSyncAccuracy(struct SolidSyslogFormatter*
 {
     if (value != SOLIDSYSLOG_SYNC_ACCURACY_OMIT)
     {
-        SolidSyslogFormatter_BoundedString(formatter, PARAM_SYNC_ACCURACY, sizeof(PARAM_SYNC_ACCURACY) - 1);
+        SolidSyslogFormatter_BoundedString(formatter, PARAM_SYNC_ACCURACY, sizeof(PARAM_SYNC_ACCURACY) - 1U);
         SolidSyslogFormatter_Uint32(formatter, value);
         SolidSyslogFormatter_AsciiCharacter(formatter, '"');
     }
