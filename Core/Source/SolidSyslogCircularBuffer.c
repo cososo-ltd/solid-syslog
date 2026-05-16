@@ -28,7 +28,7 @@ struct SolidSyslogCircularBuffer
 
 SOLIDSYSLOG_STATIC_ASSERT(
     sizeof(struct SolidSyslogCircularBuffer) ==
-        SOLIDSYSLOG_CIRCULARBUFFER_OVERHEAD * sizeof(SolidSyslogCircularBufferStorage),
+        (SOLIDSYSLOG_CIRCULARBUFFER_OVERHEAD * sizeof(SolidSyslogCircularBufferStorage)),
     "SOLIDSYSLOG_CIRCULARBUFFER_OVERHEAD does not match struct layout"
 );
 

@@ -231,3 +231,12 @@ misra-c2012-2.4:Core/Interface/SolidSyslogTransport.h:5
 misra-c2012-2.4:Core/Source/BlockSequence.c:6
 misra-c2012-2.4:Core/Source/BlockSequence.c:92
 misra-c2012-2.4:Core/Source/SolidSyslogStreamSender.c:27
+
+# D.011 — Rule 20.10: `#` stringification in _Static_assert polyfill
+# See docs/misra-deviations.md#d011
+misra-c2012-20.10:Core/Source/SolidSyslogMacros.h:9
+
+# D.012 — Rule 2.5: public API macros consumed outside cppcheck-misra scope
+# See docs/misra-deviations.md#d012
+misra-c2012-2.5:Core/Interface/SolidSyslogCircularBuffer.h:25
+misra-c2012-2.5:Core/Interface/SolidSyslogCircularBuffer.h:30

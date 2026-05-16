@@ -716,3 +716,138 @@ would not be substitutable for any other type.
 
 Project owner — David Cozens. Recorded under
 [S10.06](https://github.com/DavidCozens/solid-syslog/issues/367).
+
+---
+
+## D.011 — Rule 20.10: `#` stringification in `_Static_assert` polyfill
+
+### Rule
+
+> **Rule 20.10 (Advisory)** — The `#` and `##` preprocessor operators
+> should not be used.
+
+### Deviation
+
+`Core/Source/SolidSyslogMacros.h` defines the `SOLIDSYSLOG_STATIC_ASSERT`
+macro on top of C11 `_Static_assert`. `_Static_assert`'s second argument
+must be a string literal; the project's macro accepts the message as an
+identifier or any token sequence at the call site and stringifies it via
+the standard two-step `#`-operator idiom:
+
+```c
+#define SOLIDSYSLOG_STATIC_ASSERT_STRING_INNER(s) #s
+#define SOLIDSYSLOG_STATIC_ASSERT_STRING(s)       SOLIDSYSLOG_STATIC_ASSERT_STRING_INNER(s)
+#define SOLIDSYSLOG_STATIC_ASSERT(cond, msg)      _Static_assert((cond), SOLIDSYSLOG_STATIC_ASSERT_STRING(msg))
+```
+
+The inner `#s` operator is the deviation.
+
+### Scope
+
+`Core/Source/SolidSyslogMacros.h` only. One line — the
+`SOLIDSYSLOG_STATIC_ASSERT_STRING_INNER` definition.
+
+### Rationale
+
+`_Static_assert` is C11's standard compile-time assertion primitive and
+the project compiles at `--std=c11`. Its second argument is a string
+literal — there is no way to convert an arbitrary identifier-shaped
+message at the call site into that string literal without the `#`
+operator. The alternatives all regress:
+
+| Alternative | Why rejected |
+|-------------|--------------|
+| Hard-coded literal message in the macro | Loses per-site context — every assertion would report the same generic string. |
+| Force every caller to pass a string literal | Spreads strings across ~16 call sites and gives up the per-site identifier form some files already use. |
+| Drop the message argument entirely | Loses readability at the assertion site. |
+| Hand-rolled negative-array-size trick (pre-C11 idiom) | The previous form. It collided with MISRA 5.6 (typedef name uniqueness) across translation units; resolving that required a `##` deviation anyway, which is worse than the current `#` one. |
+
+The advisory rule's intent is to discourage opaque token games. The
+two-step stringify idiom here is the standard, documented C
+preprocessor pattern and has been since C89; it is neither opaque nor
+novel.
+
+### Risk and mitigation
+
+- **Single-site exposure.** The deviation is the macro definition
+  itself, line-specific. Any future `#`/`##` use elsewhere would
+  surface as a fresh 20.10 finding, not absorbed by this suppression.
+- **Elimination path.** If the project ever drops the `msg` parameter
+  (or moves entirely to inline `_Static_assert((cond), "literal")` at
+  call sites), the deviation can be retired.
+
+### Approval
+
+Project owner — David Cozens. Recorded under
+[S10.10](https://github.com/DavidCozens/solid-syslog/issues/375).
+
+---
+
+## D.012 — Rule 2.5: public API macros consumed outside the cppcheck-misra scope
+
+### Rule
+
+> **Rule 2.5 (Advisory)** — A project should not contain unused macro
+> definitions.
+
+### Deviation
+
+`Core/Interface/SolidSyslogCircularBuffer.h` declares two function-like
+macros — `SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE_BYTES` and
+`SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE` — that integrator code uses
+to size caller-supplied storage. cppcheck-misra runs only over the
+Strict tier (`Core/Source/`) and Pragmatic tier (`Platform/*/Source/`);
+the actual consumers live under `Tests/` (Consistency-only tier) and
+`Bdd/Targets/` (Out of scope) and are therefore invisible to the
+checker.
+
+### Scope
+
+`Core/Interface/SolidSyslogCircularBuffer.h` — two macro definitions.
+
+A future per-component sweep may surface similar findings on other
+public API macros (per the tier model, MISRA enforcement does not cross
+into `Tests/` or `Bdd/`). When that happens, the deviation extends to
+those files; the rule still catches genuinely-unused macros inside the
+scanned scope.
+
+### Rationale
+
+The macros *are* used — by integrators in `Tests/` and `Bdd/Targets/`.
+Verified by `grep` over the tree:
+
+```
+Tests/SolidSyslogCircularBufferTest.cpp         — both macros
+Tests/SolidSyslogTest.cpp                        — _BYTES form
+Tests/SolidSyslogBlockStoreDrainOrderingTest.cpp — _SIZE form
+Bdd/Targets/Windows/BddTargetWindows.c           — _SIZE form
+Bdd/Targets/FreeRtos/main.c                      — _SIZE form
+```
+
+The S10.05 audit's verdict ("Two declared macros that are never used.
+Delete them.") was incorrect — the macros are part of the public API;
+deleting them would force every integrator to compute storage size by
+hand.
+
+The alternatives all regress:
+
+| Alternative | Why rejected |
+|-------------|--------------|
+| Inline `cppcheck-suppress misra-c2012-2.5` at each macro | Inline suppressions are weaker by MISRA Compliance:2020 §4.2 (rationale scattered, not centrally auditable). Project preference is structural deviations in this document. |
+| Widen the cppcheck-misra scan to include `Tests/` | Tests are the Consistency-only tier per E10's tier model; running MISRA there is out of scope by design. |
+| Move the macros into `Core/Source/` | Public API by definition lives under `Core/Interface/`. Moving them would break the audience-segregated header layout. |
+
+### Risk and mitigation
+
+- **Genuinely unused public macros.** A future public-API macro that
+  is *truly* unused (no integrator consumer either) would still be a
+  defect; this deviation is line-specific, so a new unused macro
+  surfaces as a fresh 2.5 finding rather than being silently absorbed.
+- **Elimination path.** If the cppcheck-misra scan is ever widened to
+  include `Tests/` and `Bdd/Targets/` (unlikely under the current tier
+  model), the suppressions become unnecessary and can be removed.
+
+### Approval
+
+Project owner — David Cozens. Recorded under
+[S10.10](https://github.com/DavidCozens/solid-syslog/issues/375).

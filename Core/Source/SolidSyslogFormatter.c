@@ -13,7 +13,7 @@ struct SolidSyslogFormatter
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
-    sizeof(struct SolidSyslogFormatter) == SOLIDSYSLOG_FORMATTER_OVERHEAD * sizeof(SolidSyslogFormatterStorage),
+    sizeof(struct SolidSyslogFormatter) == (SOLIDSYSLOG_FORMATTER_OVERHEAD * sizeof(SolidSyslogFormatterStorage)),
     "SOLIDSYSLOG_FORMATTER_OVERHEAD does not match struct layout"
 );
 
@@ -257,6 +257,7 @@ static inline bool Formatter_IsOverlongFourByteEncoding(char lead, char continua
     return ((unsigned char) lead == 0xF0U) && (((unsigned char) continuation1 & 0xF0U) == 0x80U);
 }
 
+/* NOLINTBEGIN(bugprone-easily-swappable-parameters) -- lead and continuation1 are byte values with distinct semantic roles, swap would not even compile a different result given the lead's value constraint */
 static inline bool Formatter_IsAboveUnicodeMaxEncoding(char lead, char continuation1)
 {
     unsigned char uLead = (unsigned char) lead;
@@ -264,6 +265,8 @@ static inline bool Formatter_IsAboveUnicodeMaxEncoding(char lead, char continuat
     bool f5OrHigherLead = (uLead >= 0xF5U) && (uLead <= 0xF7U);
     return f4WithCont1Above8F || f5OrHigherLead;
 }
+
+/* NOLINTEND(bugprone-easily-swappable-parameters) */
 
 static inline void Formatter_WriteBytes(struct SolidSyslogFormatter* formatter, const char* bytes, size_t count)
 {
@@ -495,8 +498,9 @@ static inline void Formatter_TrimTruncatedMultiByteTail(struct SolidSyslogFormat
     size_t p = formatter->Position;
     size_t trimFrom = p;
 
-    if ((p >= 1U) && (SolidSyslogUtf8_IsTwoByteLead(buffer[p - 1U]) || SolidSyslogUtf8_IsThreeByteLead(buffer[p - 1U]) ||
-                      SolidSyslogUtf8_IsFourByteLead(buffer[p - 1U])))
+    if ((p >= 1U) &&
+        (SolidSyslogUtf8_IsTwoByteLead(buffer[p - 1U]) || SolidSyslogUtf8_IsThreeByteLead(buffer[p - 1U]) ||
+         SolidSyslogUtf8_IsFourByteLead(buffer[p - 1U])))
     {
         trimFrom = p - 1U;
     }

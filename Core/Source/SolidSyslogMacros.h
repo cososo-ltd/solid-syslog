@@ -1,16 +1,14 @@
 #ifndef SOLIDSYSLOGMACROS_H
 #define SOLIDSYSLOGMACROS_H
 
-/* Portable compile-time assertion. Uses the negative-array-size trick
-   which works from C89 through C23 and all C++ versions — no C11 required.
-   The two-step concat with __LINE__ makes each typedef name unique within a
-   translation unit, satisfying MISRA C:2012 Rule 5.6 (typedef name shall be
-   a unique identifier). */
+/* Compile-time assertion. The library compiles at --std=c11 so we use the
+   standard C11 _Static_assert primitive directly; the msg parameter is named
+   at the call site for human readability and stringified by the caller via
+   the SOLIDSYSLOG_STATIC_ASSERT_STRING wrapper. */
 /* NOLINTBEGIN(cppcoreguidelines-macro-usage) */
-#define SOLIDSYSLOG_STATIC_ASSERT_CONCAT_INNER(a, b) a##b
-#define SOLIDSYSLOG_STATIC_ASSERT_CONCAT(a, b)       SOLIDSYSLOG_STATIC_ASSERT_CONCAT_INNER(a, b)
-#define SOLIDSYSLOG_STATIC_ASSERT(cond, msg)                                                            \
-    typedef char SOLIDSYSLOG_STATIC_ASSERT_CONCAT(solidsyslog_static_assert_, __LINE__)[(cond) ? 1 : -1]
+#define SOLIDSYSLOG_STATIC_ASSERT_STRING_INNER(s) #s
+#define SOLIDSYSLOG_STATIC_ASSERT_STRING(s) SOLIDSYSLOG_STATIC_ASSERT_STRING_INNER(s)
+#define SOLIDSYSLOG_STATIC_ASSERT(cond, msg) _Static_assert((cond), SOLIDSYSLOG_STATIC_ASSERT_STRING(msg))
 /* NOLINTEND(cppcoreguidelines-macro-usage) */
 
 #endif /* SOLIDSYSLOGMACROS_H */
