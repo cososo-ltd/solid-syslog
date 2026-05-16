@@ -197,6 +197,10 @@ static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin)
     {
         connected = PosixTcpStream_WaitForConnectCompletion(fd) && PosixTcpStream_ReadDeferredConnectError(fd);
     }
+    else
+    {
+        /* immediate fail-fast (refused, unreachable, etc.) — connected stays false */
+    }
     return connected;
 }
 

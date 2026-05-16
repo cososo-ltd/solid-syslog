@@ -95,6 +95,10 @@ static enum SolidSyslogDatagramSendResult PosixDatagram_SendTo(
         {
             result = SolidSyslogDatagramSendResult_Oversize;
         }
+        else
+        {
+            /* generic send failure — result stays Failed */
+        }
     }
     return result;
 }

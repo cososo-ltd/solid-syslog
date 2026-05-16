@@ -207,6 +207,10 @@ static inline size_t Formatter_Utf8CodepointLength(const char* source)
     {
         length = 4;
     }
+    else
+    {
+        /* lead does not start a valid 1-/2-/3-/4-byte UTF-8 sequence — length stays 0 */
+    }
 
     return length;
 }
@@ -504,6 +508,10 @@ static inline void Formatter_TrimTruncatedMultiByteTail(struct SolidSyslogFormat
     else if ((p >= 3U) && SolidSyslogUtf8_IsFourByteLead(buffer[p - 3U]))
     {
         trimFrom = p - 3U;
+    }
+    else
+    {
+        /* tail does not look like a truncated multi-byte sequence — trim nothing */
     }
     for (size_t i = trimFrom; i < p; i++)
     {

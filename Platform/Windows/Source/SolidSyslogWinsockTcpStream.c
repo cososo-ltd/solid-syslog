@@ -265,6 +265,10 @@ static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin)
     {
         connected = WinsockTcpStream_WaitForConnectCompletion(fd) && WinsockTcpStream_ReadDeferredConnectError(fd);
     }
+    else
+    {
+        /* immediate fail-fast (refused, unreachable, etc.) — connected stays false */
+    }
     return connected;
 }
 

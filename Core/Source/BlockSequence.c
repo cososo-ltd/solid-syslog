@@ -151,6 +151,10 @@ static void BlockSequence_ScanForBlockPresence(struct BlockSequence* blockSequen
             presence->FirstAbsent = seq;
             presence->FoundAbsent = true;
         }
+        else
+        {
+            /* present run already closed — nothing to record */
+        }
     }
 }
 
@@ -207,6 +211,10 @@ bool BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t r
     else if (blockFull)
     {
         spaceAvailable = BlockSequence_RotateToNextBlock(blockSequence, readBlockChanged);
+    }
+    else
+    {
+        /* current block has room — leave spaceAvailable=true */
     }
 
     return spaceAvailable;
@@ -368,6 +376,10 @@ static inline void BlockSequence_NotifyThresholdCrossed(struct BlockSequence* bl
         {
             blockSequence->ThresholdCrossed = true;
             blockSequence->OnThresholdCrossed(blockSequence->ThresholdContext);
+        }
+        else
+        {
+            /* still above threshold and already notified — no edge to report */
         }
     }
 }

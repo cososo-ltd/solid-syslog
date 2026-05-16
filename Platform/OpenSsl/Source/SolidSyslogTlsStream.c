@@ -177,6 +177,10 @@ static inline bool TlsStream_ConfigureClientIdentity(SSL_CTX* ctx, const struct 
              (SSL_CTX_use_PrivateKey_file(ctx, config->ClientKeyPath, SSL_FILETYPE_PEM) == 1) &&
              (SSL_CTX_check_private_key(ctx) == 1);
     }
+    else
+    {
+        /* neither cert nor key supplied — server-auth-only TLS, ok stays true */
+    }
     return ok;
 }
 
