@@ -447,12 +447,12 @@ static inline void SolidSyslog_FormatUtcOffset(struct SolidSyslogFormatter* f, i
 
 static inline void SolidSyslog_FormatNonZeroUtcOffset(struct SolidSyslogFormatter* f, int16_t offsetMinutes)
 {
-    int16_t absoluteMinutes = SolidSyslog_AbsoluteInt16(offsetMinutes);
+    uint32_t absoluteMinutes = (uint32_t) SolidSyslog_AbsoluteInt16(offsetMinutes);
 
     SolidSyslogFormatter_AsciiCharacter(f, (offsetMinutes > 0) ? '+' : '-');
-    SolidSyslogFormatter_TwoDigit(f, (uint32_t) (absoluteMinutes / 60));
+    SolidSyslogFormatter_TwoDigit(f, absoluteMinutes / 60U);
     SolidSyslogFormatter_AsciiCharacter(f, ':');
-    SolidSyslogFormatter_TwoDigit(f, (uint32_t) (absoluteMinutes % 60));
+    SolidSyslogFormatter_TwoDigit(f, absoluteMinutes % 60U);
 }
 
 static inline int16_t SolidSyslog_AbsoluteInt16(int16_t value)
