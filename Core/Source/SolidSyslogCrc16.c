@@ -2,8 +2,8 @@
  * CRC-16/CCITT-FALSE (ITU-T V.41)
  *   Polynomial: 0x1021  Init: 0xFFFF  RefIn: false  RefOut: false  XorOut: 0x0000
  *
- * Check value 0x29B1 from Greg Cook's CRC catalogue:
- * https://reveng.sourceforge.io/crc-catalogue/16.htm#crc.cat.crc-16-ibm-3740
+ * Check value 0x29B1 from Greg Cook's CRC catalogue
+ *   (reveng.sourceforge.io/crc-catalogue/16.htm, entry crc-16-ibm-3740).
  */
 
 #include "SolidSyslogCrc16.h"
