@@ -1,5 +1,125 @@
 # Dev Log
 
+## 2026-05-16 — S10.12 Pilot — Buffer group conformance + anonymous-enum policy (#381)
+
+First per-group conformance story in E10. Cleared all warning-mode
+findings raised by `analyze-tidy` and `analyze-cppcheck` against
+`SolidSyslogBuffer.{c,h}`, `SolidSyslogBufferDefinition.h`,
+`SolidSyslogNullBuffer.{c,h}`, `SolidSyslogCircularBuffer.{c,h}` and
+`SolidSyslogPosixMessageQueueBuffer.{c,h}`, and resolved the
+anonymous-enum named-constant idiom question that had been a loose
+thread since S10.07.
+
+### MISRA fixes — every site reviewed per the "no blind suppressions" bar
+
+- 4× rule 17.7 (`memcpy` return discarded) in
+  `SolidSyslogCircularBuffer.c` — `(void)` cast.
+- 1× rule 17.7 in `SolidSyslogNullBuffer.c` —
+  `SolidSyslogSender_Send()` returns `bool`; NullBuffer is the
+  deliver-and-forget path, `Buffer_Write` itself returns `void`,
+  so the result has no propagation route. `(void)` cast.
+- 1× rule 15.5 single-exit in
+  `CircularBuffer_RecordFitsAtTail` — restructured to one local + an
+  if/else, matching the project's documented "Production code
+  (Tier 1) — Single return per function" rule.
+- 2× rule 5.9 TU-local-static name uniqueness — bare `instance`
+  collided across TUs. Renamed to `NullBuffer_Instance` and
+  `PosixMessageQueueBuffer_Instance` per the `Class_` Tier 2
+  convention from S10.08.
+- 1× rule 8.9 (advisory) — `static const char QUEUE_NAME_PREFIX[]`
+  in `SolidSyslogPosixMessageQueueBuffer.c` was referenced only
+  inside `_Create`. Moved to a block-scope `static const`
+  (Tier 3 `queueNamePrefix`), preserving read-only allocation.
+- 2× rule 21.15 (new — fixing 17.7 unmasked it) — `memcpy(&header,
+  uint8_t*)` / `memcpy(uint8_t*, &header)` failed pointer-type
+  compatibility. Refactored the 16-bit length header to explicit
+  little-endian byte reads/writes — no `memcpy` between
+  mismatched types, no deviation needed.
+
+### Anonymous-enum policy — tree-wide decision
+
+The `enum { NAME = value };` idiom (no tag) is the project's
+type-safe `#define` replacement. 101 sites tree-wide were flagged
+by clang-tidy `readability-identifier-naming.EnumConstantPrefix`
+because SCREAMING_SNAKE doesn't start with the `SolidSyslog`
+Tier 1 prefix. The named-tag-enum sweep in S10.07 left this
+question open.
+
+- **Decision:** the anonymous-enum form is *macro-equivalent*,
+  not Tier 1 / Tier 2 enum-constant-shaped. Casing follows the
+  macro convention: `SOLIDSYSLOG_*` for public sites, bare
+  `SCREAMING_SNAKE` for file-scope sites. clang-tidy's tagged-enum
+  rule (`SolidSyslog<Class>_Constant`) stays tight.
+- **Implementation:** added `EnumConstantIgnoredRegexp:
+  ^[A-Z][A-Z0-9_]*$` in `.clang-tidy`. One regex change clears
+  all 101 sites without renaming any code.
+- **MISRA 2.4 already deviated:** D.010 covers the cppcheck-misra
+  "unused tag" 2.4 finding that the anonymous-enum idiom triggers.
+  The buffer-file sites are new instances of the same documented
+  pattern — added to the D.010 suppressions list (count 6 → 8).
+  Not a new deviation; same rationale.
+- **Docs:** `docs/NAMING.md` Macros section gained an
+  "Anonymous-enum named-constant idiom" subsection making the
+  policy explicit. `docs/misra-deviations.md` D.010 picked up a
+  clarifying line on why the project uses the suppressions list
+  rather than inline `cppcheck-suppress`.
+
+### Audit doc freeze
+
+`docs/misra-conformance.md` was the S10.05 audit working
+document. With the cross-cutting sweeps complete (S10.07–S10.11
+and S10.21) and the per-group phase open, the audit is finished.
+Added a frozen-header note pointing readers at the two live
+sources of truth (`misra-deviations.md` for rationale,
+`misra_suppressions.txt` for per-site state) and flagging the
+file for deletion at S10.20 when the gates flip from warning to
+error.
+
+### Decisions
+
+- **Bit-shifting over a memcpy deviation for 21.15.** David's
+  no-blind-suppressions bar pushed the question to: real fix or
+  documented deviation? Bit-shifting is ~6 lines, explicit
+  endianness, no rule firing, no rule pretence — strictly better
+  than `(void*)`-casting around the rule.
+- **`(void) SolidSyslogSender_Send(...)` over propagating the bool.**
+  The NullBuffer is the synchronous "buffer = pass-through to
+  sender" path; `Buffer_Write` is the only caller and returns
+  `void`. Nowhere for the `bool` to go. Added a one-line comment
+  recording the rationale at the call site.
+- **D.010 suppression count bumped 6 → 8, not a new deviation.**
+  Extending an existing well-documented deviation to new instances
+  of the same pattern is *not* a blind suppression — the rationale
+  in the doc already covers exactly this shape (the buffer
+  anonymous enums declare `SOLIDSYSLOG_CIRCULARBUFFER_OVERHEAD`
+  and `HEADER_BYTES`, structurally identical to the existing
+  `SOLIDSYSLOG_UDP_DEFAULT_PORT` example in the deviation doc).
+- **Pilot validates the workflow.** "Run gates → review each
+  finding → fix or deviate (with rationale) → re-run → DEVLOG"
+  is the recipe S10.13–S10.19 will follow. No per-group status
+  table introduced — the gate output is binary, doesn't need
+  bookkeeping.
+
+### Pre-existing findings out of scope
+
+- 1× rule 2.5 on `Core/Interface/SolidSyslogFormatter.h:24`
+  (`SOLIDSYSLOG_ESCAPED_MAX_SIZE` macro) — only fires when
+  cppcheck sees the header without `Formatter.c` in scope.
+  Full-tree CI run does not report it. Will be picked up under
+  the Formatter group story.
+
+### Deferred
+
+- The remaining 99 SCREAMING_SNAKE anonymous-enum sites tree-wide
+  do not need any change — the .clang-tidy regex change clears
+  them automatically. The corresponding 6 existing 2.4 D.010
+  sites are unaffected; the 2 new buffer sites are added to the
+  suppressions list.
+
+### Open questions
+
+- None.
+
 ## 2026-05-16 — S10.11 this-pointer convention (`self`/`base`) + `SelfFromBase`/`SelfFromStorage` helpers (#377)
 
 E10 cross-cutting sweep. Standardises the this-pointer parameter

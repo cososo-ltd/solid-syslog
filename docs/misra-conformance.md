@@ -1,5 +1,19 @@
 # Conformance audit and backlog
 
+> **Frozen — audit complete (S10.05–S10.11 + S10.21 landed, per-group
+> phase began with S10.12).** This document is the working record of
+> the E10 audit. With the cross-cutting sweeps done and per-group
+> conformance underway, the audit phase is closed. The live truth is
+> CI plus the two source-of-truth documents:
+>
+> - `docs/misra-deviations.md` — the deviation rationales and
+>   approvals. New per-site suppressions land here, not in this doc.
+> - `misra_suppressions.txt` — the cppcheck-misra suppressions list.
+>
+> No further per-rule updates are expected here. Expect to delete
+> this file at S10.20 when the gates flip from warning to error and
+> the suppressions list becomes the single live record.
+
 Working document tracking the naming and MISRA C:2012 violations
 currently surfaced by clang-tidy and cppcheck-misra against the
 SolidSyslog tree, with a per-rule proposed verdict that feeds the

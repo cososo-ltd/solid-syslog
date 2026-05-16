@@ -16,8 +16,6 @@ enum
     OWNER_READ_WRITE = 0x180U
 };
 
-static const char QUEUE_NAME_PREFIX[] = "/solidsyslog_";
-
 static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
 
@@ -33,39 +31,45 @@ struct SolidSyslogPosixMessageQueueBuffer
     size_t MaxMessageSize;
 };
 
-static struct SolidSyslogPosixMessageQueueBuffer instance;
+static struct SolidSyslogPosixMessageQueueBuffer PosixMessageQueueBuffer_Instance;
 
 static inline const char* PosixMessageQueueBuffer_QueueName(void)
 {
-    return SolidSyslogFormatter_AsFormattedBuffer(SolidSyslogFormatter_FromStorage(instance.NameStorage));
+    return SolidSyslogFormatter_AsFormattedBuffer(
+        SolidSyslogFormatter_FromStorage(PosixMessageQueueBuffer_Instance.NameStorage)
+    );
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- distinct semantic meaning; struct wrapper would over-engineer
 struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMessageSize, long maxMessages)
 {
-    instance = (struct SolidSyslogPosixMessageQueueBuffer) {0};
+    static const char queueNamePrefix[] = "/solidsyslog_";
 
-    struct SolidSyslogFormatter* name = SolidSyslogFormatter_Create(instance.NameStorage, MAX_NAME_SIZE);
-    SolidSyslogFormatter_BoundedString(name, QUEUE_NAME_PREFIX, sizeof(QUEUE_NAME_PREFIX) - 1U);
+    PosixMessageQueueBuffer_Instance = (struct SolidSyslogPosixMessageQueueBuffer) {0};
+
+    struct SolidSyslogFormatter* name =
+        SolidSyslogFormatter_Create(PosixMessageQueueBuffer_Instance.NameStorage, MAX_NAME_SIZE);
+    SolidSyslogFormatter_BoundedString(name, queueNamePrefix, sizeof(queueNamePrefix) - 1U);
     SolidSyslogPosixProcessId_Get(name);
 
     struct mq_attr attr = {0};
     attr.mq_maxmsg = maxMessages;
     attr.mq_msgsize = (long) maxMessageSize;
 
-    instance.Mq = mq_open(PosixMessageQueueBuffer_QueueName(), O_CREAT | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);
-    instance.MaxMessageSize = maxMessageSize;
-    instance.Base.Write = PosixMessageQueueBuffer_Write;
-    instance.Base.Read = PosixMessageQueueBuffer_Read;
+    PosixMessageQueueBuffer_Instance.Mq =
+        mq_open(PosixMessageQueueBuffer_QueueName(), O_CREAT | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);
+    PosixMessageQueueBuffer_Instance.MaxMessageSize = maxMessageSize;
+    PosixMessageQueueBuffer_Instance.Base.Write = PosixMessageQueueBuffer_Write;
+    PosixMessageQueueBuffer_Instance.Base.Read = PosixMessageQueueBuffer_Read;
 
-    return &instance.Base;
+    return &PosixMessageQueueBuffer_Instance.Base;
 }
 
 void SolidSyslogPosixMessageQueueBuffer_Destroy(void)
 {
-    mq_close(instance.Mq);
+    mq_close(PosixMessageQueueBuffer_Instance.Mq);
     mq_unlink(PosixMessageQueueBuffer_QueueName());
-    instance = (struct SolidSyslogPosixMessageQueueBuffer) {0};
+    PosixMessageQueueBuffer_Instance = (struct SolidSyslogPosixMessageQueueBuffer) {0};
 }
 
 static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)

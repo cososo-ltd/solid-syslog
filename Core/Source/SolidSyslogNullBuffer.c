@@ -17,21 +17,21 @@ struct SolidSyslogNullBuffer
     struct SolidSyslogSender* Sender;
 };
 
-static struct SolidSyslogNullBuffer instance;
+static struct SolidSyslogNullBuffer NullBuffer_Instance;
 
 struct SolidSyslogBuffer* SolidSyslogNullBuffer_Create(struct SolidSyslogSender* sender)
 {
-    instance.Base.Write = NullBuffer_Write;
-    instance.Base.Read = NullBuffer_Read;
-    instance.Sender = sender;
-    return &instance.Base;
+    NullBuffer_Instance.Base.Write = NullBuffer_Write;
+    NullBuffer_Instance.Base.Read = NullBuffer_Read;
+    NullBuffer_Instance.Sender = sender;
+    return &NullBuffer_Instance.Base;
 }
 
 void SolidSyslogNullBuffer_Destroy(void)
 {
-    instance.Base.Write = NULL;
-    instance.Base.Read = NULL;
-    instance.Sender = NULL;
+    NullBuffer_Instance.Base.Write = NULL;
+    NullBuffer_Instance.Base.Read = NULL;
+    NullBuffer_Instance.Sender = NULL;
 }
 
 static bool NullBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)
@@ -46,7 +46,7 @@ static bool NullBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t m
 static void NullBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size)
 {
     struct SolidSyslogNullBuffer* self = NullBuffer_SelfFromBase(base);
-    SolidSyslogSender_Send(self->Sender, data, size);
+    (void) SolidSyslogSender_Send(self->Sender, data, size);
 }
 
 static inline struct SolidSyslogNullBuffer* NullBuffer_SelfFromBase(struct SolidSyslogBuffer* base)

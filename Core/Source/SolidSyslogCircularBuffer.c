@@ -132,15 +132,14 @@ static inline void CircularBuffer_ConsumeWrapMarker(struct SolidSyslogCircularBu
 
 static inline size_t CircularBuffer_PeekRecordSize(const struct SolidSyslogCircularBuffer* self)
 {
-    uint16_t header = 0;
-    memcpy(&header, &self->Storage[self->Head], HEADER_BYTES);
-    return header;
+    /* Little-endian read of the 2-byte length header out of the uint8_t ring. */
+    return ((size_t) self->Storage[self->Head]) | (((size_t) self->Storage[self->Head + 1U]) << 8U);
 }
 
 static inline void CircularBuffer_LoadRecord(struct SolidSyslogCircularBuffer* self, void* data, size_t* bytesRead)
 {
     size_t recordSize = CircularBuffer_PeekRecordSize(self);
-    memcpy(data, &self->Storage[self->Head + HEADER_BYTES], recordSize);
+    (void) memcpy(data, &self->Storage[self->Head + HEADER_BYTES], recordSize);
     self->Head += HEADER_BYTES + recordSize;
     *bytesRead = recordSize;
 }
@@ -177,11 +176,16 @@ static inline bool CircularBuffer_IsWrapped(const struct SolidSyslogCircularBuff
 
 static inline bool CircularBuffer_RecordFitsAtTail(const struct SolidSyslogCircularBuffer* self, size_t recordBytes)
 {
+    bool fits = false;
     if (CircularBuffer_IsWrapped(self))
     {
-        return (self->Tail + recordBytes) < self->Head;
+        fits = (self->Tail + recordBytes) < self->Head;
     }
-    return (self->Tail + recordBytes) <= self->Capacity;
+    else
+    {
+        fits = (self->Tail + recordBytes) <= self->Capacity;
+    }
+    return fits;
 }
 
 static inline bool CircularBuffer_RecordFitsAfterWrap(const struct SolidSyslogCircularBuffer* self, size_t recordBytes)
@@ -204,8 +208,9 @@ static inline void CircularBuffer_WrapTail(struct SolidSyslogCircularBuffer* sel
 
 static inline void CircularBuffer_StoreRecord(struct SolidSyslogCircularBuffer* self, const void* data, size_t size)
 {
-    uint16_t header = (uint16_t) size;
-    memcpy(&self->Storage[self->Tail], &header, HEADER_BYTES);
-    memcpy(&self->Storage[self->Tail + HEADER_BYTES], data, size);
+    /* Little-endian write of the 2-byte length header into the uint8_t ring. */
+    self->Storage[self->Tail] = (uint8_t) (size & 0xFFU);
+    self->Storage[self->Tail + 1U] = (uint8_t) ((size >> 8U) & 0xFFU);
+    (void) memcpy(&self->Storage[self->Tail + HEADER_BYTES], data, size);
     self->Tail += HEADER_BYTES + size;
 }

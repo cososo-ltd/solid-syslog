@@ -541,6 +541,40 @@ pressure from rule 5.4.)
 **Exceptions:** CppUTest's `TEST`, `TEST_GROUP`, `CHECK_*`, `LONGS_EQUAL`,
 etc. are used unmodified — see Tests below.
 
+### Anonymous-enum named-constant idiom
+
+`enum { NAME = value };` (an enum with no tag) is the project's
+type-safe alternative to `#define` for integer constants. The form is
+distinct from tagged enums (Tier 1 `SolidSyslog<Class>` tags with
+`SolidSyslog<Class>_Constant` members) in both shape and purpose — an
+anonymous enum is a macro replacement, not a public type.
+
+```c
+/* Public, in a header — Tier 1 macro-equivalent */
+enum
+{
+    SOLIDSYSLOG_CIRCULARBUFFER_OVERHEAD = 7,
+    SOLIDSYSLOG_CIRCULARBUFFER_HEADER_BYTES = sizeof(uint16_t)
+};
+
+/* File-scope, in a .c — Tier 2 macro-equivalent */
+enum
+{
+    HEADER_BYTES = SOLIDSYSLOG_CIRCULARBUFFER_HEADER_BYTES
+};
+```
+
+Casing follows the **macro** convention, not the enum-constant
+convention: `SOLIDSYSLOG_*` for public sites, bare `SCREAMING_SNAKE`
+for file-scope sites. clang-tidy's `EnumConstantIgnoredRegexp` accepts
+this shape so the rule for tagged-enum constants
+(`SolidSyslog<Class>_Constant`) stays tight without forcing rename of
+the macro-replacement form.
+
+MISRA rule 2.4 (unused tag declarations) cppcheck-fires on anonymous
+enums even though they have no tag. The project-wide deviation **D.010**
+covers all such sites — see `docs/misra-deviations.md#d010`.
+
 ---
 
 ## Tests

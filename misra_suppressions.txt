@@ -59,7 +59,7 @@ misra-c2012-11.3:Platform/Posix/Source/SolidSyslogAddressInternal.h:24
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixDatagram.c:76
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixFile.c:74
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixFile.c:91
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:92
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:96
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMutex.c:37
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMutex.c:50
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:95
@@ -181,10 +181,12 @@ misra-c2012-21.6:Platform/Windows/Source/SolidSyslogWindowsFile.c:8
 # D.010 — Rule 2.4: anonymous enum used as named-constant container
 # See docs/misra-deviations.md#d010
 misra-c2012-2.4:Core/Interface/SolidSyslogBlockStore.h:52
+misra-c2012-2.4:Core/Interface/SolidSyslogCircularBuffer.h:19
 misra-c2012-2.4:Core/Interface/SolidSyslogSecurityPolicyDefinition.h:13
 misra-c2012-2.4:Core/Interface/SolidSyslogTransport.h:5
 misra-c2012-2.4:Core/Source/BlockSequence.c:6
 misra-c2012-2.4:Core/Source/BlockSequence.c:92
+misra-c2012-2.4:Core/Source/SolidSyslogCircularBuffer.c:14
 misra-c2012-2.4:Core/Source/SolidSyslogStreamSender.c:27
 
 # D.011 — Rule 20.10: `#` stringification in _Static_assert polyfill
