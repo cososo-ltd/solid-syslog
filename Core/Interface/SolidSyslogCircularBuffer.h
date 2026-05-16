@@ -22,11 +22,13 @@ EXTERN_C_BEGIN
     };
 
 /* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- cannot compute array size as a constexpr in C */
+/* cppcheck-suppress misra-c2012-2.5 -- public API macro consumed by integrator code (Tests, Bdd/Targets) outside the cppcheck-misra scope. */
 #define SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE_BYTES(ringBytes) \
     (SOLIDSYSLOG_CIRCULARBUFFER_OVERHEAD +                       \
-     (((ringBytes) + sizeof(SolidSyslogCircularBufferStorage) - 1) / sizeof(SolidSyslogCircularBufferStorage)))
+     (((ringBytes) + sizeof(SolidSyslogCircularBufferStorage) - 1U) / sizeof(SolidSyslogCircularBufferStorage)))
 
 /* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- cannot compute array size as a constexpr in C */
+/* cppcheck-suppress misra-c2012-2.5 -- public API macro consumed by integrator code (Tests, Bdd/Targets) outside the cppcheck-misra scope. */
 #define SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE(maxMessages)                                              \
     SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE_BYTES(                                                        \
         (size_t) (maxMessages) * (SOLIDSYSLOG_MAX_MESSAGE_SIZE + SOLIDSYSLOG_CIRCULARBUFFER_HEADER_BYTES) \
