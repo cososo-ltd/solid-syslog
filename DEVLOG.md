@@ -7743,3 +7743,126 @@ tag in the same pass.
 ### Open questions
 
 - None. The sweep cleared its named target; tidy is green.
+
+## 2026-05-16 — S10.10 mechanical MISRA sweep
+
+### Decisions
+
+- Picked the **mechanical MISRA sweep** (issue #375) as the next E10
+  story — first cross-cutting sweep after the S10.07–S10.09 naming
+  trio, ahead of the not-yet-raised abbreviation purge. Rationale:
+  the audit had pre-decided this work (S10.05 + S10.06), the rules
+  involved are documented as mechanical (uniform fix shape, no
+  judgement calls), and clearing them shrinks the per-component
+  sweep load for S10.11+.
+- Took the next free story number — **S10.10** — rather than
+  back-fitting into the audit's S10.10..S10.17 per-component
+  numbering. Reasoning matches S10.09's: story numbers are
+  identifiers, not sequencing. The per-component numbering shifts
+  by one (S10.11..S10.18) when those stories are raised.
+- Sliced **one commit per rule on a single feature branch**, push
+  once at the end as a single PR — same shape as S10.09. The
+  per-rule commits were proposed before work began so each commit
+  has a clear "what + why + count went to 0" message.
+- Counts were re-verified against current `main` (commit `f96064d`)
+  before fixes started — all matched the S10.05 audit numbers (92,
+  10, 11, 5, 2, 1, 1, 1, 2, 5) exactly.
+- For each rule, ran `cppcheck-misra` in the gcc container after
+  the fix and confirmed the per-rule count went to 0. After every
+  rule landing, ran `cmake --build --preset debug` + `ctest` to
+  confirm no behaviour regressions. Final sweep ran the full local
+  CI battery (debug, sanitize, coverage, tidy, format, clang-debug).
+
+### Verdict re-categorisations
+
+Three audit verdicts were wrong or incomplete; the sweep
+corrected them:
+
+- **Rule 2.5** was tagged "Fix — delete unused macros". The two
+  `SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE[_BYTES]` macros are
+  *not* unused — they are public API consumed by `Tests/` and
+  `Bdd/Targets/`, both outside the cppcheck-misra scope. Re-cast
+  as a structural Deviate, captured as **D.012**.
+- **Rule 5.6** was tagged "Fix — per-site review". All five sites
+  were the same `SOLIDSYSLOG_STATIC_ASSERT` polyfill emitting the
+  same `typedef char solidsyslog_static_assert_[…]` in every TU.
+  Tried first to add `__LINE__`-concatenation (`##` operator);
+  that fixed 5.6 but introduced 1 × Rule 20.10 + 5 × Rule 2.3
+  findings — net regression. Switched the polyfill to a thin C11
+  `_Static_assert` wrapper that stringifies the msg argument; the
+  unavoidable `#` is documented as **D.011**.
+- **Rule 12.1** count grew from 5 (audit) → 8 (after the 10.4
+  sweep widened the cppcheck visibility into bracketed
+  sub-expressions) → 10 (after the polyfill switch made
+  cppcheck-misra analyse inside `_Static_assert` conditions). All
+  resolved by adding parens, but the audit's headline understated
+  the rule.
+
+### Quirks and gotchas
+
+- **Anonymous-enum constants stay essentially-signed.** Even when
+  the initialiser carries `U` (e.g. `BITS_PER_BYTE = 8U`),
+  cppcheck-misra tracks the enum constant as essentially-signed.
+  Forced a literal `8U` inline at the one site that needed it
+  (rule 10.1 in `SolidSyslogCrc16.c`). U-suffixed initialisers on
+  other enum constants kept for visual consistency but are not
+  load-bearing.
+- **`(char) '\xF5'` does not satisfy 10.4.** Casting to plain char
+  did not change cppcheck-misra's verdict at byte-comparison sites
+  (BOM strip in `SolidSyslog.c`, UTF-8 lead range in
+  `SolidSyslogFormatter.c`). Refactored to compare as
+  `unsigned char` against `0xXXU` hex literals; that worked. The
+  same pattern applied to Rule 10.1's bitwise operations.
+- **Return-of-ternary trips 12.1 even with bracketed arms.**
+  `SolidSyslogUdpPayload_FromMtu` originally was
+  `return (mtu > overhead) ? (mtu - overhead) : 0U;`. cppcheck-misra
+  kept flagging it; refactored to an explicit if/return.
+- **clang-tidy `bugprone-easily-swappable-parameters` is sensitive
+  to body shape.** Refactoring `Formatter_IsAboveUnicodeMaxEncoding`
+  for Rule 10.1 (extracted `unsigned char uLead`) reduced direct
+  uses of `lead` and `continuation1` to one each — clang-tidy then
+  decided the two params were "easily swappable". Added a
+  function-level `NOLINTBEGIN(bugprone-easily-swappable-parameters)`
+  matching the existing pattern on `Formatter_WriteContext`.
+- **clang-format wants the suppression comments compact.** After
+  adding the inline `cppcheck-suppress` lines (later removed in
+  favour of txt-file suppressions), clang-format re-flowed several
+  multi-line macro definitions. Ran `clang-format -i` over the
+  tree and verified the dry-run is clean before committing.
+
+### Auditor view — txt-file suppressions vs inline
+
+Discussed before placing the two new suppressions (20.10 and 2.5).
+Decision: structural deviations live in `misra_suppressions.txt` +
+`docs/misra-deviations.md` (the project's existing D.001–D.010
+pattern). Reasoning mapped to MISRA Compliance:2020 §4.2:
+
+- Inline `cppcheck-suppress` comments scatter rationale across the
+  tree and don't carry the full deviation-record fields
+  (Rule / Scope / Justification / Risk and mitigation / Approval).
+- Centralised deviation documents are listable, auditable, and
+  carry a sunset / elimination path per deviation.
+- The user is also driving to **eliminate** suppressions where
+  possible; the deviation document makes that drive concrete
+  (each D.XXX has a "Risk and mitigation" section that can carry
+  a path to elimination).
+
+The one existing inline suppression (`preprocessorErrorDirective`
+in `SolidSyslogTunables.h`) is a cppcheck primary rule, not a
+MISRA rule — different category, doesn't set precedent.
+
+### Deferred
+
+- The **abbreviation purge** cross-cutting story is still
+  unraised. After S10.10 closes, only the per-component sweeps
+  (S10.11..S10.18) and the enforcement story (S10.19? — renumbered
+  to reflect actual numbering) remain in E10.
+- The note in
+  `memory/project_e10_accumulated_scope.md` about widening the
+  non-MISRA cppcheck scope to `Platform/*/Source/` still belongs in
+  the final enforcement story.
+
+### Open questions
+
+- None. Sweep landed, all sweep-target rules at 0, full local CI
+  battery green.
