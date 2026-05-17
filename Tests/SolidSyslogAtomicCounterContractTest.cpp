@@ -4,7 +4,6 @@
 
 extern "C"
 {
-#include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogAtomicCounterTestHelper.h"
 }
 

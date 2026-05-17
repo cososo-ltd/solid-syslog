@@ -12,7 +12,7 @@
 #include "BddTargetTlsSender.h"
 #include "BddTargetWindowsCommandLine.h"
 #include "SolidSyslog.h"
-#include "SolidSyslogAtomicCounter.h"
+#include "SolidSyslogWindowsAtomicCounter.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
@@ -69,6 +69,7 @@ static SolidSyslogStreamSenderStorage tcpSenderStorage;
 static SolidSyslogCircularBufferStorage
     bufferStorage[SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE(BDD_TARGET_BUFFER_MESSAGES)];
 static SolidSyslogWindowsMutexStorage mutexStorage;
+static SolidSyslogWindowsAtomicCounterStorage counterStorage;
 static volatile bool shutdownFlag;
 
 /* Created in CreateSender, destroyed in DestroySender — held in file scope so
@@ -304,7 +305,7 @@ int BddTargetWindows_Run(int argc, char* argv[])
 
     struct SolidSyslogMutex* mutex = SolidSyslogWindowsMutex_Create(&mutexStorage);
     struct SolidSyslogBuffer* buffer = SolidSyslogCircularBuffer_Create(bufferStorage, sizeof(bufferStorage), mutex);
-    struct SolidSyslogAtomicCounter* counter = SolidSyslogAtomicCounter_Create();
+    struct SolidSyslogAtomicCounter* counter = SolidSyslogWindowsAtomicCounter_Create(&counterStorage);
     struct SolidSyslogMetaSdConfig metaConfig = {
         .Counter = counter,
         .GetSysUpTime = SolidSyslogWindowsSysUpTime_Get,
@@ -361,7 +362,7 @@ int BddTargetWindows_Run(int argc, char* argv[])
     SolidSyslogOriginSd_Destroy();
     SolidSyslogTimeQualitySd_Destroy();
     SolidSyslogMetaSd_Destroy();
-    SolidSyslogAtomicCounter_Destroy();
+    SolidSyslogWindowsAtomicCounter_Destroy(counter);
     DestroyStore(store, &options);
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogWindowsMutex_Destroy(mutex);

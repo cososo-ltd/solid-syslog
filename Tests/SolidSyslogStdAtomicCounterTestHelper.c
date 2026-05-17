@@ -1,6 +1,12 @@
 #include "SolidSyslogAtomicCounterTestHelper.h"
 
+#include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogMacros.h"
+#include "SolidSyslogStdAtomicCounter.h"
+
+#include <stdint.h>
+
+struct SolidSyslogAtomicCounter;
 
 /* Whitebox include: SolidSyslogStdAtomicCounter.c is compiled into this test
    translation unit so the static StdAtomicCounter_Init helper is directly
