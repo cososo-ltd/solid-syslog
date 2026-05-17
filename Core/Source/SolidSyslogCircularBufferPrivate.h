@@ -20,7 +20,7 @@ struct SolidSyslogCircularBuffer
 };
 
 void CircularBuffer_Initialise(
-    struct SolidSyslogCircularBuffer* self,
+    struct SolidSyslogBuffer* base,
     struct SolidSyslogMutex* mutex,
     uint8_t* ring,
     size_t ringBytes

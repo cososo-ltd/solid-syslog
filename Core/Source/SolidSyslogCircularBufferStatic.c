@@ -32,24 +32,24 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     size_t ringBytes
 )
 {
-    size_t claimedIndex = SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE;
-    for (size_t i = 0;
-         (i < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE) && (claimedIndex == SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE);
-         i++)
+    struct SolidSyslogBuffer* claimed = &Fallback;
+    for (size_t i = 0; i < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE; i++)
     {
         SolidSyslog_LockConfig();
         if (!Pool[i].InUse)
         {
             Pool[i].InUse = true;
-            claimedIndex = i;
+            claimed = &Pool[i].Object.Base;
         }
         SolidSyslog_UnlockConfig();
+        if (claimed != &Fallback)
+        {
+            break;
+        }
     }
-    struct SolidSyslogBuffer* claimed = &Fallback;
-    if (claimedIndex < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE)
+    if (claimed != &Fallback)
     {
-        CircularBuffer_Initialise(&Pool[claimedIndex].Object, mutex, ring, ringBytes);
-        claimed = &Pool[claimedIndex].Object.Base;
+        CircularBuffer_Initialise(claimed, mutex, ring, ringBytes);
     }
     else
     {

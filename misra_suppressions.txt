@@ -24,7 +24,7 @@ misra-c2012-11.2:Platform/Windows/Source/SolidSyslogAddressInternal.h:23
 misra-c2012-11.3:Core/Interface/SolidSyslogFormatter.h:30
 misra-c2012-11.3:Core/Source/SolidSyslogBlockStore.c:82
 misra-c2012-11.3:Core/Source/SolidSyslogBlockStore.c:165
-misra-c2012-11.3:Core/Source/SolidSyslogCircularBuffer.c:90
+misra-c2012-11.3:Core/Source/SolidSyslogCircularBuffer.c:91
 misra-c2012-11.3:Core/Source/SolidSyslogFileBlockDevice.c:118
 misra-c2012-11.3:Core/Source/SolidSyslogFileBlockDevice.c:146
 misra-c2012-11.3:Core/Source/SolidSyslogFormatter.c:93

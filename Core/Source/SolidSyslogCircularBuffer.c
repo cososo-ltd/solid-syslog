@@ -33,12 +33,13 @@ static inline void CircularBuffer_LoadRecord(struct SolidSyslogCircularBuffer* s
 static inline size_t CircularBuffer_PeekRecordSize(const struct SolidSyslogCircularBuffer* self);
 
 void CircularBuffer_Initialise(
-    struct SolidSyslogCircularBuffer* self,
+    struct SolidSyslogBuffer* base,
     struct SolidSyslogMutex* mutex,
     uint8_t* ring,
     size_t ringBytes
 )
 {
+    struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
     self->Base.Read = CircularBuffer_Read;
     self->Base.Write = CircularBuffer_Write;
     self->Mutex = mutex;
