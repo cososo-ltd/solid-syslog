@@ -30,6 +30,7 @@ static inline void CircularBuffer_MarkInUse(size_t poolIndex);
 static inline struct SolidSyslogBuffer* CircularBuffer_HandleFromIndex(size_t poolIndex);
 static inline bool CircularBuffer_HandleIsValid(const struct SolidSyslogBuffer* handle);
 static size_t CircularBuffer_IndexFromHandle(const struct SolidSyslogBuffer* base);
+static inline bool CircularBuffer_PoolIndexIsValid(size_t poolIndex);
 static inline void CircularBuffer_MarkFree(size_t poolIndex);
 
 static struct Slot Pool[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE];
@@ -109,7 +110,7 @@ void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
 {
     size_t poolIndex = CircularBuffer_IndexFromHandle(base);
     bool released = false;
-    if (poolIndex < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE)
+    if (CircularBuffer_PoolIndexIsValid(poolIndex))
     {
         SolidSyslog_LockConfig();
         if (Pool[poolIndex].InUse)
@@ -138,6 +139,11 @@ static size_t CircularBuffer_IndexFromHandle(const struct SolidSyslogBuffer* bas
         }
     }
     return poolIndex;
+}
+
+static inline bool CircularBuffer_PoolIndexIsValid(size_t poolIndex)
+{
+    return poolIndex < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE;
 }
 
 static inline void CircularBuffer_MarkFree(size_t poolIndex)
