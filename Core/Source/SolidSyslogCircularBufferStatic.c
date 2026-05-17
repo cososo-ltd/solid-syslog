@@ -40,9 +40,7 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     size_t ringBytes
 )
 {
-    SolidSyslog_LockConfig();
     struct SolidSyslogBuffer* claimed = CircularBuffer_TryClaim(mutex, ring, ringBytes);
-    SolidSyslog_UnlockConfig();
     if (claimed == NULL)
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_POOL_EXHAUSTED);
@@ -57,15 +55,24 @@ static inline struct SolidSyslogBuffer* CircularBuffer_TryClaim(
     size_t ringBytes
 )
 {
-    struct SolidSyslogBuffer* claimed = NULL;
-    for (size_t i = 0; (i < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE) && (claimed == NULL); i++)
+    size_t claimedIndex = SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE;
+    for (size_t i = 0;
+         (i < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE) && (claimedIndex == SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE);
+         i++)
     {
+        SolidSyslog_LockConfig();
         if (!Pool[i].InUse)
         {
             Pool[i].InUse = true;
-            CircularBuffer_Initialise(&Pool[i].Object, mutex, ring, ringBytes);
-            claimed = &Pool[i].Object.Base;
+            claimedIndex = i;
         }
+        SolidSyslog_UnlockConfig();
+    }
+    struct SolidSyslogBuffer* claimed = NULL;
+    if (claimedIndex < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE)
+    {
+        CircularBuffer_Initialise(&Pool[claimedIndex].Object, mutex, ring, ringBytes);
+        claimed = &Pool[claimedIndex].Object.Base;
     }
     return claimed;
 }
@@ -74,9 +81,7 @@ void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
 {
     if (base != &Fallback)
     {
-        SolidSyslog_LockConfig();
         bool released = CircularBuffer_Release(base);
-        SolidSyslog_UnlockConfig();
         if (!released)
         {
             SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_UNKNOWN_DESTROY);
@@ -89,12 +94,14 @@ static inline bool CircularBuffer_Release(struct SolidSyslogBuffer* base)
     bool released = false;
     for (size_t i = 0; (i < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE) && !released; i++)
     {
+        SolidSyslog_LockConfig();
         if (Pool[i].InUse && CircularBuffer_SlotOwnsBase(&Pool[i], base))
         {
             CircularBuffer_Cleanup(base);
             Pool[i].InUse = false;
             released = true;
         }
+        SolidSyslog_UnlockConfig();
     }
     return released;
 }
