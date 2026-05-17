@@ -23,33 +23,10 @@ struct Slot
 static bool Fallback_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void Fallback_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
 
-static inline struct SolidSyslogBuffer* CircularBuffer_TryClaim(
-    struct SolidSyslogMutex* mutex,
-    uint8_t* ring,
-    size_t ringBytes
-);
-static inline bool CircularBuffer_Release(struct SolidSyslogBuffer* base);
-static inline bool CircularBuffer_SlotOwnsBase(const struct Slot* slot, const struct SolidSyslogBuffer* base);
-
 static struct Slot Pool[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE];
 static struct SolidSyslogBuffer Fallback = {Fallback_Write, Fallback_Read};
 
 struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
-    struct SolidSyslogMutex* mutex,
-    uint8_t* ring,
-    size_t ringBytes
-)
-{
-    struct SolidSyslogBuffer* claimed = CircularBuffer_TryClaim(mutex, ring, ringBytes);
-    if (claimed == NULL)
-    {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_POOL_EXHAUSTED);
-        claimed = &Fallback;
-    }
-    return claimed;
-}
-
-static inline struct SolidSyslogBuffer* CircularBuffer_TryClaim(
     struct SolidSyslogMutex* mutex,
     uint8_t* ring,
     size_t ringBytes
@@ -68,11 +45,15 @@ static inline struct SolidSyslogBuffer* CircularBuffer_TryClaim(
         }
         SolidSyslog_UnlockConfig();
     }
-    struct SolidSyslogBuffer* claimed = NULL;
+    struct SolidSyslogBuffer* claimed = &Fallback;
     if (claimedIndex < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE)
     {
         CircularBuffer_Initialise(&Pool[claimedIndex].Object, mutex, ring, ringBytes);
         claimed = &Pool[claimedIndex].Object.Base;
+    }
+    else
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_POOL_EXHAUSTED);
     }
     return claimed;
 }
@@ -81,34 +62,23 @@ void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
 {
     if (base != &Fallback)
     {
-        bool released = CircularBuffer_Release(base);
+        bool released = false;
+        for (size_t i = 0; (i < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE) && !released; i++)
+        {
+            SolidSyslog_LockConfig();
+            if (Pool[i].InUse && (base == &Pool[i].Object.Base))
+            {
+                CircularBuffer_Cleanup(base);
+                Pool[i].InUse = false;
+                released = true;
+            }
+            SolidSyslog_UnlockConfig();
+        }
         if (!released)
         {
             SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_UNKNOWN_DESTROY);
         }
     }
-}
-
-static inline bool CircularBuffer_Release(struct SolidSyslogBuffer* base)
-{
-    bool released = false;
-    for (size_t i = 0; (i < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE) && !released; i++)
-    {
-        SolidSyslog_LockConfig();
-        if (Pool[i].InUse && CircularBuffer_SlotOwnsBase(&Pool[i], base))
-        {
-            CircularBuffer_Cleanup(base);
-            Pool[i].InUse = false;
-            released = true;
-        }
-        SolidSyslog_UnlockConfig();
-    }
-    return released;
-}
-
-static inline bool CircularBuffer_SlotOwnsBase(const struct Slot* slot, const struct SolidSyslogBuffer* base)
-{
-    return base == &slot->Object.Base;
 }
 
 static bool Fallback_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)
