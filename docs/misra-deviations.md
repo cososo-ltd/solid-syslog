@@ -854,3 +854,93 @@ The alternatives all regress:
 
 Project owner — David Cozens. Recorded under
 [S10.10](https://github.com/DavidCozens/solid-syslog/issues/375).
+
+---
+
+## D.013 — Rule 8.4: declaration not visible to cppcheck for AtomicU32 platform impls
+
+### Rule
+
+> **Rule 8.4 (Required)** — A compatible declaration shall be visible
+> when an object or function with external linkage is defined.
+
+### Deviation
+
+cppcheck-misra reports rule 8.4 against the four
+`SolidSyslogAtomicU32_*` functions in each of the two AtomicU32 platform
+implementations:
+
+- `Platform/Atomics/Source/SolidSyslogStdAtomicU32.c` — `_FromStorage`,
+  `_Init`, `_Load`, `_CompareAndSwap`.
+- `Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c` — same four.
+
+The declarations *do* exist — they live at
+`Core/Source/SolidSyslogAtomicU32.h`. The build sees them via CMake's
+`PRIVATE` include on the `SolidSyslog` static-library target (every
+`Platform/*/Source/*.c` is compiled into that target, so the
+target-private `Core/Source/` include path is visible at compile time).
+cppcheck-misra, run as a standalone command, does not model CMake
+target boundaries — its include path is the union of the explicit
+`-I` flags on the command line, which excludes `Core/Source/` to keep
+that directory private. The `#include "SolidSyslogAtomicU32.h"` in
+each impl therefore fails to resolve under cppcheck, the
+`--suppress=missingIncludeSystem` flag swallows the failure, and the
+downstream "no prior declaration" finding (8.4) surfaces.
+
+### Scope
+
+Two files, four sites each (eight total):
+
+- `Platform/Atomics/Source/SolidSyslogStdAtomicU32.c:23, 29, 34, 40`
+- `Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c:23, 29, 34, 40`
+
+### Rationale
+
+The header location is correct architecturally:
+
+- `Core/Source/SolidSyslogAtomicU32.h` is the contract between
+  `SolidSyslogAtomicCounter` (Core/Source consumer) and the
+  link-time-selected platform impls. The dependency direction is
+  Platform→Core — Platform implements a contract Core declares — which
+  is the allowed direction under the project's layering (enforced by
+  `cmake/LayerGuard.cmake`).
+- Moving the header into `Core/Interface/` would publicly expose an
+  internal contract; moving it into `Platform/Atomics/Interface/`
+  would reverse the layering (Core depending on Platform) and trip
+  LayerGuard.
+
+The alternatives considered:
+
+| Alternative | Why rejected |
+|--|--|
+| Add `-ICore/Source` to the standalone cppcheck command | Silences 8.4 but unmasks 8.6 on the same eight sites (both impls define the same external-linkage symbols; cppcheck does not model link-time selection). Same suppression count, plus weakens the "Core/Source is private" intent on cppcheck's side. |
+| Move `SolidSyslogAtomicU32.h` into `Core/Interface/` | Publicly exposes an internal contract the project deliberately keeps private (see the `SolidSyslogAtomicCounter` row in `CLAUDE.md` — "no public AtomicOps header"). |
+| Move into `Platform/Atomics/Interface/` | Would put a header that `Core/Source/SolidSyslogAtomicCounter.c` includes under Platform — a layering inversion that LayerGuard catches. |
+| Inline `cppcheck-suppress` on each site | Inline suppressions scatter the rationale across eight separate sites. Project convention (see D.002 etc.) prefers a single structural deviation. |
+
+A line-anchored suppression block targeting only the eight specific
+declarations is the surgical fix: it documents the tool-level cause
+once, makes the suppressions break the moment any of these function
+signatures shift, and leaves the source code unchanged.
+
+### Risk and mitigation
+
+- **Genuine missing-declaration drift.** A new external-linkage
+  function defined in either impl without a header declaration would
+  surface as a fresh 8.4 finding — the eight suppressions are
+  line-specific and won't absorb it.
+- **Header relocation.** If `Core/Source/SolidSyslogAtomicU32.h` is
+  ever moved to a location cppcheck *can* reach, the suppressions
+  should be removed — the deviation only documents this specific
+  tool-vs-build-system gap.
+- **Build system parity.** The real compiler does see the
+  declaration through the `PRIVATE` include path — there is no
+  actual 8.4 violation in the code, only in cppcheck's view of it.
+  CMake's `compile_commands.json` would give cppcheck the matching
+  view; adopting that integration is a possible future cppcheck
+  invocation change at the S10.20 flip.
+
+### Approval
+
+Project owner — David Cozens. Recorded under
+[S10.15](https://github.com/DavidCozens/solid-syslog/issues/387).
