@@ -1,5 +1,94 @@
 # Dev Log
 
+## 2026-05-17 — S10.22 Enum naming convention restoration (#390)
+
+Convention-restoration story raised after the S10.16 review surfaced
+drift in the enum-constant naming rule. S10.07 introduced
+`SolidSyslog<Class>_<Member>` (project-prefix-PascalCase) for
+tagged-enum constants. S10.12 then carved out SCREAMING_SNAKE for the
+anonymous-enum named-constant idiom because mechanical PascalCase'ing
+101 anonymous-enum constants would be cosmetic churn against a
+type-safe macro replacement. The carve-out was pragmatic at the time
+but introduced a two-class system that's not mechanically enforceable
+— only per-site judgement separates "tagged enum constant
+(PascalCase)" from "macro-replacement enum constant (SCREAMING)". By
+S10.16 the boundary was drifting; the review surfaced a third hybrid
+form (`Class_DEFAULT_INSTANCE` for static-template names) that nobody
+had decided on.
+
+S10.22 collapses to **one rule**: all enum constants are
+SCREAMING_SNAKE, with the project prefix on public sites. The split
+is removed.
+
+### Decisions locked in
+
+- All enum constants → `SCREAMING_SNAKE`. Tagged or anonymous, public
+  or TU-local.
+- Word boundaries: snake-separate at every CamelCase boundary in the
+  source identifier. `DatagramSendResult` → `DATAGRAM_SEND_RESULT`,
+  `AuthPriv` → `AUTH_PRIV`. Trailing digits stay glued
+  (`Local0` → `LOCAL0`, matching POSIX `LOG_LOCAL0`).
+- Project prefix: `SOLIDSYSLOG_` on public sites; bare SCREAMING on
+  TU-local anonymous-enum constants (`IPV4_HEADER_BYTES` etc.).
+- `.clang-tidy` `EnumConstantCase` → `UPPER_CASE` only. Dropped both
+  `EnumConstantPrefix` and the `EnumConstantIgnoredRegexp` escape.
+  One rule, no exceptions.
+- `NAMING.md` "Enum constants" section replaces the old "Public enum
+  constants" + "Anonymous-enum named-constant idiom" pair. Quick-ref
+  table updated. Historical S10.07/S10.12 split documented as
+  superseded.
+
+### Sweep — 8 commits, all gates green between
+
+1. `SolidSyslogFacility_*` → `SOLIDSYSLOG_FACILITY_*` (24 constants, 10 files)
+2. `SolidSyslogSeverity_*` → `SOLIDSYSLOG_SEVERITY_*` (8, 18 files)
+3. `SolidSyslogDiscardPolicy_*` → `SOLIDSYSLOG_DISCARD_POLICY_*` (3, 9 files)
+4. `SolidSyslogDatagramSendResult_*` → `SOLIDSYSLOG_DATAGRAM_SEND_RESULT_*` (3, 12 files)
+5. `SolidSyslogTransport_*` → `SOLIDSYSLOG_TRANSPORT_*` (2, 9 files)
+6. Glued storage-SIZE constants → snake (11 renames, 28 files):
+   `CIRCULARBUFFER` → `CIRCULAR_BUFFER`, `STDATOMICCOUNTER` →
+   `STD_ATOMIC_COUNTER`, etc. This second pass was the price of
+   committing to "snake at every CamelCase boundary" — pre-existing
+   class-segment-glued macros (`SOLIDSYSLOG_CIRCULARBUFFER_STORAGE_SIZE`)
+   were inconsistent with the rule we were adopting.
+7. `.clang-tidy` + `NAMING.md` single-rule update.
+8. clang-format follow-up — 2 files needed reformat after the rename
+   (a CHECK_REPORTED_ERROR macro's `\` continuation column shifted,
+   and one initializer line went over 120 cols and reflowed).
+
+### Verification
+
+- 1115 tests pass under debug + clang-debug + sanitize.
+- Coverage 99.6% lines / 99.0% functions — no change.
+- `analyze-tidy` clean — zero enum-case warnings under the new
+  `UPPER_CASE` rule.
+- `analyze-cppcheck` + cppcheck-misra histograms match `main` exactly
+  (87 unsuppressed findings across 8 rules, identical counts) — zero
+  regression introduced by the sweep.
+
+### Why now, not later
+
+The alternative was to land S10.16–S10.19 per-group stories with the
+mixed convention then sweep once at the end. That would have meant
+re-litigating the enum-naming question in every per-group review and
+churning every touched file twice. Doing S10.22 first costs one large
+mechanical PR; deferring it would have cost four small re-decisions
+plus the final sweep.
+
+### Deferred / out of scope
+
+- **Static *variable* naming** (the `instance` / `DEFAULT_INSTANCE` /
+  `NIL_SENDER` family). Those are objects, not enum constants; the
+  convention question is real but separate. Per-group stories
+  (S10.16 onwards) will hit them on touch.
+- The S10.16 senders conformance work resumes once this lands.
+
+### Open questions
+
+- None — S10.22 was self-contained.
+
+---
+
 ## 2026-05-17 — S10.15 Structured Data conformance (#387)
 
 Fourth per-group conformance story in E10. Cleared all warning-mode
