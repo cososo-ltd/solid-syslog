@@ -26,17 +26,17 @@ static void Fallback_Write(struct SolidSyslogBuffer* base, const void* data, siz
 static struct Slot Pool[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE];
 static struct SolidSyslogBuffer Fallback = {Fallback_Write, Fallback_Read};
 
-static struct SolidSyslogBuffer* CircularBuffer_TryClaimSlot(size_t i)
+static struct SolidSyslogBuffer* CircularBuffer_AcquireIfFree(size_t i)
 {
-    struct SolidSyslogBuffer* claimed = &Fallback;
+    struct SolidSyslogBuffer* handle = &Fallback;
     SolidSyslog_LockConfig();
     if (!Pool[i].InUse)
     {
         Pool[i].InUse = true;
-        claimed = &Pool[i].Object.Base;
+        handle = &Pool[i].Object.Base;
     }
     SolidSyslog_UnlockConfig();
-    return claimed;
+    return handle;
 }
 
 struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
@@ -45,24 +45,24 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     size_t ringBytes
 )
 {
-    struct SolidSyslogBuffer* claimed = &Fallback;
+    struct SolidSyslogBuffer* handle = &Fallback;
     for (size_t i = 0; i < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE; i++)
     {
-        claimed = CircularBuffer_TryClaimSlot(i);
-        if (claimed != &Fallback)
+        handle = CircularBuffer_AcquireIfFree(i);
+        if (handle != &Fallback)
         {
             break;
         }
     }
-    if (claimed != &Fallback)
+    if (handle != &Fallback)
     {
-        CircularBuffer_Initialise(claimed, mutex, ring, ringBytes);
+        CircularBuffer_Initialise(handle, mutex, ring, ringBytes);
     }
     else
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_POOL_EXHAUSTED);
     }
-    return claimed;
+    return handle;
 }
 
 void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
