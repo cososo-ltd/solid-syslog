@@ -25,6 +25,6 @@ void CircularBuffer_Initialise(
     uint8_t* ring,
     size_t ringBytes
 );
-void CircularBuffer_Cleanup(struct SolidSyslogCircularBuffer* self);
+void CircularBuffer_Cleanup(struct SolidSyslogBuffer* base);
 
 #endif /* SOLIDSYSLOGCIRCULARBUFFERPRIVATE_H */

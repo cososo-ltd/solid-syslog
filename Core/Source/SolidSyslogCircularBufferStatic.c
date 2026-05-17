@@ -52,7 +52,6 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     return result;
 }
 
-/* cppcheck-suppress constParameter -- public API is non-const for symmetry with every other SolidSyslog*_Destroy(struct SolidSyslogX* base); this TU's pool walk only compares the pointer, but callers pass the handle they own (and may free elsewhere). */
 void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
 {
     if (base == &Fallback)
@@ -65,7 +64,7 @@ void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
     {
         if (Pool[i].InUse && (base == &Pool[i].Object.Base))
         {
-            CircularBuffer_Cleanup(&Pool[i].Object);
+            CircularBuffer_Cleanup(base);
             Pool[i].InUse = false;
             released = true;
             break;

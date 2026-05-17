@@ -47,8 +47,9 @@ void CircularBuffer_Initialise(
     CircularBuffer_ResetToStart(self);
 }
 
-void CircularBuffer_Cleanup(struct SolidSyslogCircularBuffer* self)
+void CircularBuffer_Cleanup(struct SolidSyslogBuffer* base)
 {
+    struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
     self->Base.Read = NULL;
     self->Base.Write = NULL;
     self->Mutex = NULL;
