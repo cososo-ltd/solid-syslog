@@ -16,7 +16,7 @@ struct SolidSyslogAtomicCounter
     struct SolidSyslogAtomicU32* Slot;
 };
 
-static struct SolidSyslogAtomicCounter instance;
+static struct SolidSyslogAtomicCounter AtomicCounter_Instance;
 
 static inline uint32_t AtomicCounter_NextSequenceId(uint32_t current)
 {
@@ -32,14 +32,14 @@ static inline bool AtomicCounter_TryAdvance(struct SolidSyslogAtomicU32* slot, u
 
 struct SolidSyslogAtomicCounter* SolidSyslogAtomicCounter_Create(void)
 {
-    instance.Slot = SolidSyslogAtomicU32_FromStorage(&instance.Storage);
-    SolidSyslogAtomicU32_Init(instance.Slot, 0);
-    return &instance;
+    AtomicCounter_Instance.Slot = SolidSyslogAtomicU32_FromStorage(&AtomicCounter_Instance.Storage);
+    SolidSyslogAtomicU32_Init(AtomicCounter_Instance.Slot, 0);
+    return &AtomicCounter_Instance;
 }
 
 void SolidSyslogAtomicCounter_Destroy(void)
 {
-    instance.Slot = NULL;
+    AtomicCounter_Instance.Slot = NULL;
 }
 
 uint32_t SolidSyslogAtomicCounter_Increment(struct SolidSyslogAtomicCounter* counter)

@@ -26,19 +26,19 @@ static inline void TimeQualitySd_FormatBoolParam(
 );
 static inline void TimeQualitySd_FormatSyncAccuracy(struct SolidSyslogFormatter* formatter, uint32_t value);
 
-static struct SolidSyslogTimeQualitySd instance;
+static struct SolidSyslogTimeQualitySd TimeQualitySd_Instance;
 
 struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTimeQualityFunction getTimeQuality)
 {
-    instance.Base.Format = TimeQualitySd_Format;
-    instance.GetTimeQuality = getTimeQuality;
-    return &instance.Base;
+    TimeQualitySd_Instance.Base.Format = TimeQualitySd_Format;
+    TimeQualitySd_Instance.GetTimeQuality = getTimeQuality;
+    return &TimeQualitySd_Instance.Base;
 }
 
 void SolidSyslogTimeQualitySd_Destroy(void)
 {
-    instance.Base.Format = NULL;
-    instance.GetTimeQuality = NULL;
+    TimeQualitySd_Instance.Base.Format = NULL;
+    TimeQualitySd_Instance.GetTimeQuality = NULL;
 }
 
 static const char SD_PREFIX[] = "[timeQuality";

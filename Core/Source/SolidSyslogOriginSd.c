@@ -53,22 +53,22 @@ static inline void OriginSd_EmitIp(
     size_t index
 );
 
-static struct SolidSyslogOriginSd instance;
+static struct SolidSyslogOriginSd OriginSd_Instance;
 
 struct SolidSyslogStructuredData* SolidSyslogOriginSd_Create(const struct SolidSyslogOriginSdConfig* config)
 {
-    instance.Base.Format = OriginSd_Format;
-    instance.GetIpCount = config->GetIpCount;
-    instance.GetIpAt = config->GetIpAt;
+    OriginSd_Instance.Base.Format = OriginSd_Format;
+    OriginSd_Instance.GetIpCount = config->GetIpCount;
+    OriginSd_Instance.GetIpAt = config->GetIpAt;
     OriginSd_PreFormatStaticPrefix(config);
-    return &instance.Base;
+    return &OriginSd_Instance.Base;
 }
 
 void SolidSyslogOriginSd_Destroy(void)
 {
-    instance.Base.Format = NULL;
-    instance.GetIpCount = NULL;
-    instance.GetIpAt = NULL;
+    OriginSd_Instance.Base.Format = NULL;
+    OriginSd_Instance.GetIpCount = NULL;
+    OriginSd_Instance.GetIpAt = NULL;
 }
 
 static void OriginSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter)
@@ -92,7 +92,7 @@ static inline struct SolidSyslogOriginSd* OriginSd_SelfFromBase(struct SolidSysl
 
 static inline void OriginSd_PreFormatStaticPrefix(const struct SolidSyslogOriginSdConfig* config)
 {
-    struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(instance.FormattedStorage, ORIGIN_FORMATTED_MAX);
+    struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(OriginSd_Instance.FormattedStorage, ORIGIN_FORMATTED_MAX);
 
     SolidSyslogFormatter_BoundedString(f, SD_PREFIX, sizeof(SD_PREFIX) - 1U);
     OriginSd_EmitSoftware(f, config);

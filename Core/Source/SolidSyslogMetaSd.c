@@ -27,7 +27,7 @@ static inline void MetaSd_EmitSequenceId(struct SolidSyslogMetaSd* self, struct 
 static inline void MetaSd_EmitSysUpTime(struct SolidSyslogMetaSd* self, struct SolidSyslogFormatter* formatter);
 static inline void MetaSd_EmitLanguage(struct SolidSyslogMetaSd* self, struct SolidSyslogFormatter* formatter);
 
-static struct SolidSyslogMetaSd instance;
+static struct SolidSyslogMetaSd MetaSd_Instance;
 static struct SolidSyslogStructuredData NilMetaSd = {.Format = MetaSd_NilMetaSdFormat};
 
 struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSyslogMetaSdConfig* config)
@@ -43,21 +43,21 @@ struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSys
     }
     else
     {
-        instance.Base.Format = MetaSd_Format;
-        instance.Counter = config->Counter;
-        instance.GetSysUpTime = config->GetSysUpTime;
-        instance.GetLanguage = config->GetLanguage;
-        result = &instance.Base;
+        MetaSd_Instance.Base.Format = MetaSd_Format;
+        MetaSd_Instance.Counter = config->Counter;
+        MetaSd_Instance.GetSysUpTime = config->GetSysUpTime;
+        MetaSd_Instance.GetLanguage = config->GetLanguage;
+        result = &MetaSd_Instance.Base;
     }
     return result;
 }
 
 void SolidSyslogMetaSd_Destroy(void)
 {
-    instance.Base.Format = NULL;
-    instance.Counter = NULL;
-    instance.GetSysUpTime = NULL;
-    instance.GetLanguage = NULL;
+    MetaSd_Instance.Base.Format = NULL;
+    MetaSd_Instance.Counter = NULL;
+    MetaSd_Instance.GetSysUpTime = NULL;
+    MetaSd_Instance.GetLanguage = NULL;
 }
 
 static void MetaSd_NilMetaSdFormat(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter)
