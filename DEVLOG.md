@@ -1,5 +1,109 @@
 # Dev Log
 
+## 2026-05-17 — S10.15 Structured Data conformance (#387)
+
+Fourth per-group conformance story in E10. Cleared all warning-mode
+findings raised by `analyze-tidy` and `analyze-cppcheck` (with the
+cppcheck-misra addon) against the Structured Data group:
+
+- Core: `SolidSyslogStructuredData.{c,h}`, `SolidSyslogStructuredDataDefinition.h`,
+  `SolidSyslogMetaSd.{c,h}`, `SolidSyslogOriginSd.{c,h}`,
+  `SolidSyslogTimeQualitySd.{c,h}`, `SolidSyslogAtomicCounter.{c,h}`.
+- Platform: `SolidSyslogStdAtomicU32.c`, `SolidSyslogWindowsAtomicU32.c`.
+
+### MISRA fixes — 5.9 renames + 8.9 scope moves
+
+- 4× rule 5.9 (multiple internal-linkage identifiers with same name) —
+  bare `instance` collided across TUs. Renamed:
+  `AtomicCounter_Instance`, `MetaSd_Instance`, `OriginSd_Instance`,
+  `TimeQualitySd_Instance` per the S10.08 `<Class>_Instance` convention.
+  Each is read in >1 function so couldn't move into `_Create`.
+- 14× rule 8.9 (advisory: define at block scope if used in only one
+  function) — file-scope `static` objects whose identifier appears in
+  exactly one function. Moved into the function as block-scope statics,
+  matching the S10.12 `QUEUE_NAME_PREFIX` recipe. Names converted to
+  lowerCamelCase per Tier 3.
+  - `AtomicCounter.c`: `SEQUENCE_ID_MAX` → `sequenceIdMax` inside
+    `_NextSequenceId`.
+  - `MetaSd.c`: nil-object + 4 SD-field labels.
+  - `OriginSd.c`: 5 SD-field labels.
+  - `TimeQualitySd.c`: 4 SD-field labels.
+
+The 5.9 rename of `OriginSd_Instance` pushed one line in
+`OriginSd_PreFormatStaticPrefix` over the column limit; clang-format
+wrapped it (a separate style commit so the rename diff stays clean).
+
+### New deviation: D.013 (Rules 8.4 / 8.6)
+
+cppcheck-misra reports 8.4 against the four `SolidSyslogAtomicU32_*`
+functions in each AtomicU32 impl — twice, once per impl. The
+declarations exist at `Core/Source/SolidSyslogAtomicU32.h`, but the
+standalone cppcheck invocation doesn't see them: `Core/Source/` is
+intentionally `PRIVATE` on the CMake target (visible only to files
+compiled into the `SolidSyslog` library), and cppcheck doesn't model
+CMake target boundaries. The `#include` fails to resolve under cppcheck,
+`--suppress=missingIncludeSystem` swallows the failure, and the
+downstream 8.4 surfaces.
+
+Adding the 8.4 suppressions revealed that **8.6** also fires on the
+same eight sites (external linkage shall have exactly one external
+definition) — cppcheck-misra sees both impls in a single invocation
+and reports them as duplicate definitions. The real build never links
+both (CMake's `HAVE_STDATOMIC_H` / `HAVE_WINDOWS_INTERLOCKED` select
+exactly one at configure time). Like 8.4, this is cppcheck not
+modelling link-time selection.
+
+D.013 (in `docs/misra-deviations.md`) covers both rules under one
+rationale; `misra_suppressions.txt` lists 8 × 8.4 + 8 × 8.6 = 16
+line-anchored suppressions.
+
+### Decisions
+
+- **AtomicU32.h stays in `Core/Source/`.** Attempted moving it to
+  `Platform/Atomics/Interface/` to fix the cppcheck include-path
+  problem mechanically — LayerGuard rejected it correctly:
+  `Core/Source/SolidSyslogAtomicCounter.c` would then have to include
+  from `Platform/`, reversing the layering. The header location is
+  architecturally correct (Platform→Core dependency direction) and the
+  tool-vs-build-system gap is what the deviation documents.
+- **Out-of-scope side effects accepted.** The D.013 suppressions
+  unmasked three 8.6 findings on `Platform/*/Source/SolidSyslogAddress.c`
+  (FreeRtos / Posix / Windows — same link-time-selected pattern as
+  AtomicU32). Address.c belongs to S10.17 scope (Senders + transport
+  extension points includes Address); leaving for that story per the
+  S10.12 scope rule. Also surfaced is `Core/Source/SolidSyslog.c:161`
+  11.8 (Install pattern) — pre-existing baseline noise, S10.19 territory.
+  Neither blocks S10.15's bar.
+
+### Line-shift housekeeping
+
+Moving the 8.9 sites into the SD `Format` helpers shifted line numbers
+for the existing 11.3 `SelfFromBase` cast suppressions:
+`SolidSyslogMetaSd.c:87 → 83`, `SolidSyslogOriginSd.c:90 → 84`,
+`SolidSyslogTimeQualitySd.c:65 → 63`. Updated in `misra_suppressions.txt`
+as part of the 8.9 commit.
+
+### Gates
+
+- `cmake --preset tidy && cmake --build --preset tidy` — clean (0 findings
+  tree-wide).
+- `cmake --preset debug && cmake --build --preset debug --target junit`
+  — 1122 tests, 0 failures.
+- `cmake --preset clang-debug && cmake --build --preset clang-debug --target junit`
+  — 1122 tests, 0 failures.
+- `cmake --preset sanitize && cmake --build --preset sanitize --target junit`
+  — 1122 tests, 0 failures.
+- `cmake --preset coverage && cmake --build --preset coverage --target coverage`
+  — 100% line coverage on every Linux-buildable production file in scope.
+  Tree overall: 99.6% lines / 99.0% functions, well above the 90% gate.
+- Standalone non-MISRA `cppcheck Core/Source/` — clean (0 findings).
+- Full-tree `cppcheck --addon=misra` — zero findings on S10.15 scope
+  files after the D.013 suppressions land.
+- `clang-format --dry-run --Werror` on edited files — clean.
+
+Windows / BDD / OpenSSL integration are CI's responsibility per the
+CLAUDE.md workflow note.
+
 ## 2026-05-17 — S10.14 Configuration types + Platform helpers conformance (#385)
 
 Third per-group conformance story in E10, applying the S10.12 pilot recipe
