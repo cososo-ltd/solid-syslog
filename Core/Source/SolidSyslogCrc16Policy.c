@@ -14,14 +14,13 @@ enum
 static void Crc16Policy_Crc16ComputeIntegrity(const uint8_t* data, uint16_t length, uint8_t* integrityOut);
 static bool Crc16Policy_Crc16VerifyIntegrity(const uint8_t* data, uint16_t length, const uint8_t* integrityIn);
 
-static struct SolidSyslogSecurityPolicy instance = {
-    CRC16_SIZE,
-    Crc16Policy_Crc16ComputeIntegrity,
-    Crc16Policy_Crc16VerifyIntegrity,
-};
-
 struct SolidSyslogSecurityPolicy* SolidSyslogCrc16Policy_Create(void)
 {
+    static struct SolidSyslogSecurityPolicy instance = {
+        CRC16_SIZE,
+        Crc16Policy_Crc16ComputeIntegrity,
+        Crc16Policy_Crc16VerifyIntegrity,
+    };
     return &instance;
 }
 

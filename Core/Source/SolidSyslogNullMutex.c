@@ -7,19 +7,19 @@
 static void NullMutex_Lock(struct SolidSyslogMutex* base);
 static void NullMutex_Unlock(struct SolidSyslogMutex* base);
 
-static struct SolidSyslogMutex instance;
+static struct SolidSyslogMutex NullMutex_Instance;
 
 struct SolidSyslogMutex* SolidSyslogNullMutex_Create(void)
 {
-    instance.Lock = NullMutex_Lock;
-    instance.Unlock = NullMutex_Unlock;
-    return &instance;
+    NullMutex_Instance.Lock = NullMutex_Lock;
+    NullMutex_Instance.Unlock = NullMutex_Unlock;
+    return &NullMutex_Instance;
 }
 
 void SolidSyslogNullMutex_Destroy(void)
 {
-    instance.Lock = NULL;
-    instance.Unlock = NULL;
+    NullMutex_Instance.Lock = NULL;
+    NullMutex_Instance.Unlock = NULL;
 }
 
 static void NullMutex_Lock(struct SolidSyslogMutex* base)
