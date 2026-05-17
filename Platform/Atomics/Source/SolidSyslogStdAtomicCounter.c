@@ -6,11 +6,6 @@
 #include <stdatomic.h>
 #include <stddef.h>
 
-enum
-{
-    SEQUENCE_ID_MAX = 2147483647U /* RFC 5424 §7.3.1: values in [1, 2^31 - 1], wraps to 1 on overflow. */
-};
-
 struct SolidSyslogStdAtomicCounter
 {
     struct SolidSyslogAtomicCounter Base;
@@ -25,7 +20,9 @@ SOLIDSYSLOG_STATIC_ASSERT(
 static uint32_t StdAtomicCounter_Increment(struct SolidSyslogAtomicCounter* base);
 static void StdAtomicCounter_Init(struct SolidSyslogStdAtomicCounter* self, uint32_t value);
 static inline struct SolidSyslogStdAtomicCounter* StdAtomicCounter_SelfFromBase(struct SolidSyslogAtomicCounter* base);
-static inline struct SolidSyslogStdAtomicCounter* StdAtomicCounter_SelfFromStorage(SolidSyslogStdAtomicCounterStorage* storage);
+static inline struct SolidSyslogStdAtomicCounter* StdAtomicCounter_SelfFromStorage(
+    SolidSyslogStdAtomicCounterStorage* storage
+);
 
 struct SolidSyslogAtomicCounter* SolidSyslogStdAtomicCounter_Create(SolidSyslogStdAtomicCounterStorage* storage)
 {
@@ -48,9 +45,13 @@ static uint32_t StdAtomicCounter_Increment(struct SolidSyslogAtomicCounter* base
     uint32_t next = 0U;
     do
     {
-        next = (current >= SEQUENCE_ID_MAX) ? 1U : (current + 1U);
+        next = (current >= SOLIDSYSLOG_SEQUENCE_ID_MAX) ? 1U : (current + 1U);
     } while (!atomic_compare_exchange_strong_explicit(
-        &self->Value, &current, next, memory_order_relaxed, memory_order_relaxed
+        &self->Value,
+        &current,
+        next,
+        memory_order_relaxed,
+        memory_order_relaxed
     ));
     return next;
 }
@@ -65,7 +66,9 @@ static inline struct SolidSyslogStdAtomicCounter* StdAtomicCounter_SelfFromBase(
     return (struct SolidSyslogStdAtomicCounter*) base;
 }
 
-static inline struct SolidSyslogStdAtomicCounter* StdAtomicCounter_SelfFromStorage(SolidSyslogStdAtomicCounterStorage* storage)
+static inline struct SolidSyslogStdAtomicCounter* StdAtomicCounter_SelfFromStorage(
+    SolidSyslogStdAtomicCounterStorage* storage
+)
 {
     return (struct SolidSyslogStdAtomicCounter*) storage;
 }

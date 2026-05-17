@@ -18,7 +18,9 @@ EXTERN_C_BEGIN
         intptr_t slots[(SOLIDSYSLOG_WINDOWSATOMICCOUNTER_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
     } SolidSyslogWindowsAtomicCounterStorage;
 
-    struct SolidSyslogAtomicCounter * SolidSyslogWindowsAtomicCounter_Create(SolidSyslogWindowsAtomicCounterStorage * storage);
+    struct SolidSyslogAtomicCounter* SolidSyslogWindowsAtomicCounter_Create(
+        SolidSyslogWindowsAtomicCounterStorage * storage
+    );
     void SolidSyslogWindowsAtomicCounter_Destroy(struct SolidSyslogAtomicCounter * base);
 
 EXTERN_C_END

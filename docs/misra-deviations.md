@@ -387,29 +387,26 @@ Project owner — David Cozens. Recorded under
 
 cppcheck-misra's interpretation of "emergent" includes C11 features in
 projects that otherwise target C99. SolidSyslog's `--std=c11` build flag
-is set because two source files need `<stdatomic.h>`; the rest of the
+is set because one source file needs `<stdatomic.h>`; the rest of the
 codebase is C99.
 
 ### Deviation
 
-`Platform/Atomics/Source/SolidSyslogStdAtomicU32.c` includes
+`Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c` includes
 `<stdatomic.h>` and uses `_Atomic uint32_t` plus
-`atomic_compare_exchange_strong_explicit`.
-`Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c` is the
-non-C11 sibling that the Atomics CMake selector switches in on
-toolchains without `<stdatomic.h>`.
+`atomic_compare_exchange_strong_explicit`. Its sibling
+`Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c` does not
+use C11 atomics — it uses `volatile LONG` + `InterlockedCompareExchange`,
+selected at link time on toolchains without `<stdatomic.h>`.
 
 ### Scope
 
-Two source files:
+One source file:
 
-- `Platform/Atomics/Source/SolidSyslogStdAtomicU32.c`
-- `Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c`
+- `Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c`
 
-(The Windows file does not itself use C11 features — it triggers the
-1.4 finding because the project compiles at `--std=c11` so cppcheck-misra
-treats every TU as a "C11 project" candidate. The deviation is recorded
-for both files to keep the suppression list complete.)
+The Windows AtomicCounter sibling uses only Win32 APIs and stays
+C99-compatible — no 1.4 suppression needed for it.
 
 ### Rationale
 

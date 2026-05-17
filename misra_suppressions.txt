@@ -37,8 +37,8 @@ misra-c2012-11.3:Core/Source/SolidSyslogStreamSender.c:110
 misra-c2012-11.3:Core/Source/SolidSyslogSwitchingSender.c:66
 misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:63
 misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:149
-misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:65
-misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:70
+misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:66
+misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:73
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:63
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:81
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogAddress.c:5
@@ -68,8 +68,8 @@ misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:107
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogAddress.c:5
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogAddressInternal.h:18
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogAddressInternal.h:24
-misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c:70
-misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c:75
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c:71
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c:78
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsFile.c:78
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsFile.c:95
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsMutex.c:37
@@ -107,8 +107,8 @@ misra-c2012-5.7:Core/Source/SolidSyslogFileBlockDevice.c:14
 misra-c2012-5.7:Core/Source/SolidSyslogFileBlockDevice.c:21
 misra-c2012-5.7:Core/Source/SolidSyslogOriginSd.c:6
 misra-c2012-5.7:Core/Source/SolidSyslogUdpPayload.c:5
+misra-c2012-5.7:Core/Interface/SolidSyslogAtomicCounter.h:11
 misra-c2012-5.7:Platform/Atomics/Interface/SolidSyslogStdAtomicCounter.h:12
-misra-c2012-5.7:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:10
 misra-c2012-5.7:Platform/FatFs/Interface/SolidSyslogFatFsFile.h:20
 misra-c2012-5.7:Platform/FreeRtos/Interface/SolidSyslogFreeRtosDatagram.h:13
 misra-c2012-5.7:Platform/FreeRtos/Interface/SolidSyslogFreeRtosMutex.h:13
@@ -133,7 +133,6 @@ misra-c2012-5.7:Platform/Windows/Interface/SolidSyslogWindowsFile.h:11
 misra-c2012-5.7:Platform/Windows/Interface/SolidSyslogWindowsMutex.h:13
 misra-c2012-5.7:Platform/Windows/Interface/SolidSyslogWinsockTcpStream.h:11
 misra-c2012-5.7:Platform/Windows/Interface/SolidSyslogWindowsAtomicCounter.h:12
-misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c:10
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsClock.c:21
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsFile.c:20
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsHostname.c:19

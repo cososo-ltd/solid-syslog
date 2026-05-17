@@ -6,11 +6,6 @@
 #include <stddef.h>
 #include <windows.h>
 
-enum
-{
-    SEQUENCE_ID_MAX = 2147483647 /* RFC 5424 §7.3.1: values in [1, 2^31 - 1], wraps to 1 on overflow. */
-};
-
 struct SolidSyslogWindowsAtomicCounter
 {
     struct SolidSyslogAtomicCounter Base;
@@ -24,8 +19,12 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 static uint32_t WindowsAtomicCounter_Increment(struct SolidSyslogAtomicCounter* base);
 static void WindowsAtomicCounter_Init(struct SolidSyslogWindowsAtomicCounter* self, uint32_t value);
-static inline struct SolidSyslogWindowsAtomicCounter* WindowsAtomicCounter_SelfFromBase(struct SolidSyslogAtomicCounter* base);
-static inline struct SolidSyslogWindowsAtomicCounter* WindowsAtomicCounter_SelfFromStorage(SolidSyslogWindowsAtomicCounterStorage* storage);
+static inline struct SolidSyslogWindowsAtomicCounter* WindowsAtomicCounter_SelfFromBase(
+    struct SolidSyslogAtomicCounter* base
+);
+static inline struct SolidSyslogWindowsAtomicCounter* WindowsAtomicCounter_SelfFromStorage(
+    SolidSyslogWindowsAtomicCounterStorage* storage
+);
 
 struct SolidSyslogAtomicCounter* SolidSyslogWindowsAtomicCounter_Create(SolidSyslogWindowsAtomicCounterStorage* storage)
 {
@@ -49,7 +48,7 @@ static uint32_t WindowsAtomicCounter_Increment(struct SolidSyslogAtomicCounter* 
     LONG previous = 0;
     do
     {
-        next = (current >= SEQUENCE_ID_MAX) ? 1 : (current + 1);
+        next = ((uint32_t) current >= SOLIDSYSLOG_SEQUENCE_ID_MAX) ? 1 : (current + 1);
         previous = InterlockedCompareExchange(&self->Value, next, current);
         if (previous == current)
         {
@@ -65,12 +64,16 @@ static void WindowsAtomicCounter_Init(struct SolidSyslogWindowsAtomicCounter* se
     self->Value = (LONG) value;
 }
 
-static inline struct SolidSyslogWindowsAtomicCounter* WindowsAtomicCounter_SelfFromBase(struct SolidSyslogAtomicCounter* base)
+static inline struct SolidSyslogWindowsAtomicCounter* WindowsAtomicCounter_SelfFromBase(
+    struct SolidSyslogAtomicCounter* base
+)
 {
     return (struct SolidSyslogWindowsAtomicCounter*) base;
 }
 
-static inline struct SolidSyslogWindowsAtomicCounter* WindowsAtomicCounter_SelfFromStorage(SolidSyslogWindowsAtomicCounterStorage* storage)
+static inline struct SolidSyslogWindowsAtomicCounter* WindowsAtomicCounter_SelfFromStorage(
+    SolidSyslogWindowsAtomicCounterStorage* storage
+)
 {
     return (struct SolidSyslogWindowsAtomicCounter*) storage;
 }
