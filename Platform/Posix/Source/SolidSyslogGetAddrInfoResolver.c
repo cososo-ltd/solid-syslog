@@ -79,7 +79,7 @@ static int GetAddrInfoResolver_MapTransport(enum SolidSyslogTransport transport)
 {
     int socktype = SOCK_DGRAM;
 
-    if (transport == SolidSyslogTransport_Tcp)
+    if (transport == SOLIDSYSLOG_TRANSPORT_TCP)
     {
         socktype = SOCK_STREAM;
     }

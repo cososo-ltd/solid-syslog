@@ -10,8 +10,8 @@ enum
 
 enum SolidSyslogTransport
 {
-    SolidSyslogTransport_Udp,
-    SolidSyslogTransport_Tcp
+    SOLIDSYSLOG_TRANSPORT_UDP,
+    SOLIDSYSLOG_TRANSPORT_TCP
 };
 
 #endif /* SOLIDSYSLOGTRANSPORT_H */

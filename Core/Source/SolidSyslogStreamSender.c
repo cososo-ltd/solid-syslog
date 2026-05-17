@@ -166,7 +166,7 @@ static bool StreamSender_ResolveDestination(struct SolidSyslogStreamSender* self
 
     return SolidSyslogResolver_Resolve(
         self->Config.Resolver,
-        SolidSyslogTransport_Tcp,
+        SOLIDSYSLOG_TRANSPORT_TCP,
         SolidSyslogFormatter_AsFormattedBuffer(hostFormatter),
         endpoint.Port,
         addr

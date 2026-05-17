@@ -38,7 +38,7 @@ TEST_GROUP(SolidSyslogWinsockResolver)
         SolidSyslogWinsockResolver_Destroy();
     }
 
-    bool Resolve(const char* host, uint16_t port, enum SolidSyslogTransport transport = SolidSyslogTransport_Udp)
+    bool Resolve(const char* host, uint16_t port, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP)
     {
         struct SolidSyslogAddress* address = SolidSyslogAddress_FromStorage(&resultStorage);
         return SolidSyslogResolver_Resolve(resolver, transport, host, port, address);
@@ -94,13 +94,13 @@ TEST(SolidSyslogWinsockResolver, GetAddrInfoCalledWithHostArgument)
 
 TEST(SolidSyslogWinsockResolver, UdpTransportPassesDatagramSocktype)
 {
-    Resolve(TEST_HOST, TEST_PORT, SolidSyslogTransport_Udp);
+    Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_UDP);
     LONGS_EQUAL(SOCK_DGRAM, WinsockFake_LastGetAddrInfoSocktype());
 }
 
 TEST(SolidSyslogWinsockResolver, TcpTransportPassesStreamSocktype)
 {
-    Resolve(TEST_HOST, TEST_PORT, SolidSyslogTransport_Tcp);
+    Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_TCP);
     LONGS_EQUAL(SOCK_STREAM, WinsockFake_LastGetAddrInfoSocktype());
 }
 

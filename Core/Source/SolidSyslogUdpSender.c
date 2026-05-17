@@ -213,7 +213,7 @@ static bool UdpSender_ResolveDestination(struct SolidSyslogUdpSender* self, cons
 {
     return SolidSyslogResolver_Resolve(
         self->Config.Resolver,
-        SolidSyslogTransport_Udp,
+        SOLIDSYSLOG_TRANSPORT_UDP,
         host,
         port,
         UdpSender_Address(self)
