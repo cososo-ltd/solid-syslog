@@ -16,9 +16,12 @@ void SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context)
 {
     if (handler == NULL)
     {
-        handler = Error_NoOpErrorHandler;
+        currentHandler = Error_NoOpErrorHandler;
     }
-    currentHandler = handler;
+    else
+    {
+        currentHandler = handler;
+    }
     currentContext = context;
 }
 
