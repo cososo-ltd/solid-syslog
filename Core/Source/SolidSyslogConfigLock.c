@@ -6,36 +6,36 @@ static void ConfigLock_NoOp(void)
 {
 }
 
-static SolidSyslogConfigLockFunction currentLock = ConfigLock_NoOp;
-static SolidSyslogConfigLockFunction currentUnlock = ConfigLock_NoOp;
+static SolidSyslogConfigLockFunction ConfigLock_Lock = ConfigLock_NoOp;
+static SolidSyslogConfigLockFunction ConfigLock_Unlock = ConfigLock_NoOp;
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- deliberate pair API: lock and unlock are installed together and conceptually inseparable; matches SolidSyslog_SetErrorHandler's pair shape
 void SolidSyslog_SetConfigLock(SolidSyslogConfigLockFunction lockFn, SolidSyslogConfigLockFunction unlockFn)
 {
     if (lockFn == NULL)
     {
-        currentLock = ConfigLock_NoOp;
+        ConfigLock_Lock = ConfigLock_NoOp;
     }
     else
     {
-        currentLock = lockFn;
+        ConfigLock_Lock = lockFn;
     }
     if (unlockFn == NULL)
     {
-        currentUnlock = ConfigLock_NoOp;
+        ConfigLock_Unlock = ConfigLock_NoOp;
     }
     else
     {
-        currentUnlock = unlockFn;
+        ConfigLock_Unlock = unlockFn;
     }
 }
 
 void SolidSyslog_LockConfig(void)
 {
-    currentLock();
+    ConfigLock_Lock();
 }
 
 void SolidSyslog_UnlockConfig(void)
 {
-    currentUnlock();
+    ConfigLock_Unlock();
 }
