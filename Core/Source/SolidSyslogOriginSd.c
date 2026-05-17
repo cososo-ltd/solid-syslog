@@ -24,12 +24,6 @@ struct SolidSyslogOriginSd
     SolidSyslogFormatterStorage FormattedStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(ORIGIN_FORMATTED_MAX)];
 };
 
-static const char SD_PREFIX[] = "[origin";
-static const char SD_SOFTWARE_SD[] = " software=\"";
-static const char SD_VERSION_SD[] = " swVersion=\"";
-static const char SD_ENTERPRISE_ID_SD[] = " enterpriseId=\"";
-static const char SD_IP_SD[] = " ip=\"";
-
 static void OriginSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter);
 
 static inline struct SolidSyslogOriginSd* OriginSd_SelfFromBase(struct SolidSyslogStructuredData* base);
@@ -92,9 +86,10 @@ static inline struct SolidSyslogOriginSd* OriginSd_SelfFromBase(struct SolidSysl
 
 static inline void OriginSd_PreFormatStaticPrefix(const struct SolidSyslogOriginSdConfig* config)
 {
+    static const char sdPrefix[] = "[origin";
     struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(OriginSd_Instance.FormattedStorage, ORIGIN_FORMATTED_MAX);
 
-    SolidSyslogFormatter_BoundedString(f, SD_PREFIX, sizeof(SD_PREFIX) - 1U);
+    SolidSyslogFormatter_BoundedString(f, sdPrefix, sizeof(sdPrefix) - 1U);
     OriginSd_EmitSoftware(f, config);
     OriginSd_EmitSwVersion(f, config);
     OriginSd_EmitEnterpriseId(f, config);
@@ -105,7 +100,8 @@ static inline void OriginSd_EmitSoftware(struct SolidSyslogFormatter* f, const s
 {
     if (config->Software != NULL)
     {
-        SolidSyslogFormatter_BoundedString(f, SD_SOFTWARE_SD, sizeof(SD_SOFTWARE_SD) - 1U);
+        static const char softwareSd[] = " software=\"";
+        SolidSyslogFormatter_BoundedString(f, softwareSd, sizeof(softwareSd) - 1U);
         SolidSyslogFormatter_EscapedString(f, config->Software, ORIGIN_SOFTWARE_MAX);
         SolidSyslogFormatter_AsciiCharacter(f, '"');
     }
@@ -118,7 +114,8 @@ static inline void OriginSd_EmitSwVersion(
 {
     if (config->SwVersion != NULL)
     {
-        SolidSyslogFormatter_BoundedString(f, SD_VERSION_SD, sizeof(SD_VERSION_SD) - 1U);
+        static const char swVersionSd[] = " swVersion=\"";
+        SolidSyslogFormatter_BoundedString(f, swVersionSd, sizeof(swVersionSd) - 1U);
         SolidSyslogFormatter_EscapedString(f, config->SwVersion, ORIGIN_SWVERSION_MAX);
         SolidSyslogFormatter_AsciiCharacter(f, '"');
     }
@@ -131,7 +128,8 @@ static inline void OriginSd_EmitEnterpriseId(
 {
     if (config->EnterpriseId != NULL)
     {
-        SolidSyslogFormatter_BoundedString(f, SD_ENTERPRISE_ID_SD, sizeof(SD_ENTERPRISE_ID_SD) - 1U);
+        static const char enterpriseIdSd[] = " enterpriseId=\"";
+        SolidSyslogFormatter_BoundedString(f, enterpriseIdSd, sizeof(enterpriseIdSd) - 1U);
         SolidSyslogFormatter_EscapedString(f, config->EnterpriseId, ORIGIN_ENTERPRISE_ID_MAX);
         SolidSyslogFormatter_AsciiCharacter(f, '"');
     }
@@ -155,7 +153,8 @@ static inline void OriginSd_EmitIp(
     size_t index
 )
 {
-    SolidSyslogFormatter_BoundedString(formatter, SD_IP_SD, sizeof(SD_IP_SD) - 1U);
+    static const char ipSd[] = " ip=\"";
+    SolidSyslogFormatter_BoundedString(formatter, ipSd, sizeof(ipSd) - 1U);
     self->GetIpAt(formatter, index);
     SolidSyslogFormatter_AsciiCharacter(formatter, '"');
 }

@@ -7,9 +7,6 @@
 
 struct SolidSyslogAtomicU32;
 
-/* RFC 5424 §7.3.1: sequenceId MUST take values in [1, 2^31 - 1] and wrap to 1 (not 0) on overflow. */
-static const uint32_t SEQUENCE_ID_MAX = 2147483647U;
-
 struct SolidSyslogAtomicCounter
 {
     SolidSyslogAtomicU32Storage Storage;
@@ -20,7 +17,9 @@ static struct SolidSyslogAtomicCounter AtomicCounter_Instance;
 
 static inline uint32_t AtomicCounter_NextSequenceId(uint32_t current)
 {
-    return (current >= SEQUENCE_ID_MAX) ? 1U : (current + 1U);
+    /* RFC 5424 §7.3.1: sequenceId MUST take values in [1, 2^31 - 1] and wrap to 1 (not 0) on overflow. */
+    static const uint32_t sequenceIdMax = 2147483647U;
+    return (current >= sequenceIdMax) ? 1U : (current + 1U);
 }
 
 static inline bool AtomicCounter_TryAdvance(struct SolidSyslogAtomicU32* slot, uint32_t* nextOut)
