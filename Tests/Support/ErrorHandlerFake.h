@@ -27,7 +27,7 @@ EXTERN_C_END
     do                                                                           \
     {                                                                            \
         CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                              \
-        LONGS_EQUAL(SolidSyslogSeverity_Error, ErrorHandlerFake_LastSeverity()); \
+        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity()); \
         STRCMP_EQUAL((expectedMessage), ErrorHandlerFake_LastMessage());         \
     } while (0)
 

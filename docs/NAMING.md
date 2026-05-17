@@ -114,8 +114,8 @@ struct SolidSyslogSecurityPolicy
  * macros (rule 5.5). */
 enum SolidSyslogSeverity
 {
-    SolidSyslogSeverity_Emergency = 0,
-    SolidSyslogSeverity_Alert     = 1,
+    SOLIDSYSLOG_SEVERITY_EMERGENCY = 0,
+    SOLIDSYSLOG_SEVERITY_ALERT     = 1,
     /* ... */
 };
 ```
@@ -742,7 +742,7 @@ static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer
 | Public function                       | `SolidSyslogClass_Function`                | `SolidSyslogBuffer_Append`                 |
 | Public struct tag                     | `SolidSyslogClass`                         | `struct SolidSyslogBuffer`                 |
 | Public enum type                      | `SolidSyslogClass`                         | `enum SolidSyslogSeverity`                 |
-| Public enum constant                  | `SolidSyslogClass_Constant`                | `SolidSyslogSeverity_Emergency`            |
+| Public enum constant                  | `SolidSyslogClass_Constant`                | `SOLIDSYSLOG_SEVERITY_EMERGENCY`            |
 | Public macro                          | `SOLIDSYSLOG_SCREAMING_SNAKE`              | `SOLIDSYSLOG_MAXIMUM_RECORD_LENGTH`        |
 | Public typedef (enum/fn-pointer only) | `SolidSyslogClass` / `SolidSyslogClass_Fn` | `SolidSyslogTransport_SendFn`              |
 | Static function                       | `Class_Function`                           | `Buffer_WriteMagic`                        |

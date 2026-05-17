@@ -86,7 +86,7 @@ TEST_GROUP(BddTargetServiceThread)
 
     static void Log()
     {
-        SolidSyslogMessage message = {SOLIDSYSLOG_FACILITY_LOCAL0, SolidSyslogSeverity_Informational, nullptr, nullptr};
+        SolidSyslogMessage message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFORMATIONAL, nullptr, nullptr};
         SolidSyslog_Log(&message);
     }
 };

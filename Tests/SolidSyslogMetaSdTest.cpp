@@ -272,7 +272,7 @@ TEST(SolidSyslogMetaSd, CreateWithNullConfigReportsWarning)
     recreateWith(nullptr);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SolidSyslogSeverity_Warning, ErrorHandlerFake_LastSeverity());
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     STRCMP_EQUAL("SolidSyslogMetaSd_Create called with NULL config", ErrorHandlerFake_LastMessage());
 }
 
@@ -282,6 +282,6 @@ TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsWarning)
     recreate();
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SolidSyslogSeverity_Warning, ErrorHandlerFake_LastSeverity());
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     STRCMP_EQUAL("SolidSyslogMetaSd_Create config.Counter is NULL", ErrorHandlerFake_LastMessage());
 }

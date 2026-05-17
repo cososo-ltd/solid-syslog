@@ -24,17 +24,17 @@ TEST_GROUP(SolidSyslogError)
 
 TEST(SolidSyslogError, ErrorWithDefaultHandlerDoesNotCrash)
 {
-    SolidSyslog_Error(SolidSyslogSeverity_Error, "test message");
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, "test message");
 }
 
 TEST(SolidSyslogError, InstalledHandlerReceivesSeverityMessageAndContext)
 {
     ErrorHandlerFake_Install(&sentinel);
 
-    SolidSyslog_Error(SolidSyslogSeverity_Warning, "warning message");
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, "warning message");
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SolidSyslogSeverity_Warning, ErrorHandlerFake_LastSeverity());
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     STRCMP_EQUAL("warning message", ErrorHandlerFake_LastMessage());
     POINTERS_EQUAL(&sentinel, ErrorHandlerFake_LastContext());
 }
@@ -44,7 +44,7 @@ TEST(SolidSyslogError, SetErrorHandlerWithNullHandlerRestoresDefault)
     ErrorHandlerFake_Install(&sentinel);
 
     SolidSyslog_SetErrorHandler(nullptr, &sentinel);
-    SolidSyslog_Error(SolidSyslogSeverity_Error, "should not be observed");
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, "should not be observed");
 
     CHECK_NOTHING_REPORTED();
 }

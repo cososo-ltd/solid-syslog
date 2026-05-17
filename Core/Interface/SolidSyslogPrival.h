@@ -35,14 +35,14 @@ EXTERN_C_BEGIN
 
     enum SolidSyslogSeverity
     {
-        SolidSyslogSeverity_Emergency = 0,
-        SolidSyslogSeverity_Alert = 1,
-        SolidSyslogSeverity_Critical = 2,
-        SolidSyslogSeverity_Error = 3,
-        SolidSyslogSeverity_Warning = 4,
-        SolidSyslogSeverity_Notice = 5,
-        SolidSyslogSeverity_Informational = 6,
-        SolidSyslogSeverity_Debug = 7
+        SOLIDSYSLOG_SEVERITY_EMERGENCY = 0,
+        SOLIDSYSLOG_SEVERITY_ALERT = 1,
+        SOLIDSYSLOG_SEVERITY_CRITICAL = 2,
+        SOLIDSYSLOG_SEVERITY_ERROR = 3,
+        SOLIDSYSLOG_SEVERITY_WARNING = 4,
+        SOLIDSYSLOG_SEVERITY_NOTICE = 5,
+        SOLIDSYSLOG_SEVERITY_INFORMATIONAL = 6,
+        SOLIDSYSLOG_SEVERITY_DEBUG = 7
     };
 
 EXTERN_C_END

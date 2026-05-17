@@ -20,7 +20,7 @@ static void Handle(void* context, enum SolidSyslogSeverity severity, const char*
 void ErrorHandlerFake_Install(void* context)
 {
     handleCallCount = 0;
-    lastSeverity = SolidSyslogSeverity_Debug;
+    lastSeverity = SOLIDSYSLOG_SEVERITY_DEBUG;
     lastMessage = NULL;
     lastContext = NULL;
     SolidSyslog_SetErrorHandler(Handle, context);

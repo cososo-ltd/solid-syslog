@@ -145,7 +145,7 @@ static uint32_t endpointVersion = 0U;
 
 static struct SolidSyslogMessage testMessage = {
     .Facility = SOLIDSYSLOG_FACILITY_LOCAL0,
-    .Severity = SolidSyslogSeverity_Informational,
+    .Severity = SOLIDSYSLOG_SEVERITY_INFORMATIONAL,
     .MessageId = messageId,
     .Msg = msg,
 };

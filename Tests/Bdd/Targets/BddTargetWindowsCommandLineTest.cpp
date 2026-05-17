@@ -27,7 +27,7 @@ TEST(BddTargetWindowsCommandLine, DefaultSeverityIsInfo)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    LONGS_EQUAL(SolidSyslogSeverity_Informational, options.Severity);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_INFORMATIONAL, options.Severity);
 }
 
 TEST(BddTargetWindowsCommandLine, DefaultMessageIdIsNull)
