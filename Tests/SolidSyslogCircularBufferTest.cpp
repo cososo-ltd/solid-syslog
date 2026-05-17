@@ -6,8 +6,11 @@
 #include "ErrorHandlerFake.h"
 #include "MutexFake.h"
 #include "SolidSyslogBuffer.h"
+#include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogCircularBuffer.h"
+#include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogNullMutex.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 #include "TestUtils.h"
 
@@ -403,8 +406,8 @@ TEST(SolidSyslogCircularBufferPool, FallbackWriteAndReadAreNoOps)
 
     SolidSyslogBuffer_Write(overflow, "hello", 5);
 
-    char   readBuffer[16] = {};
-    size_t bytesRead      = 99;
+    char readBuffer[16] = {};
+    size_t bytesRead = 99;
     CHECK_FALSE(SolidSyslogBuffer_Read(overflow, readBuffer, sizeof(readBuffer), &bytesRead));
     LONGS_EQUAL(0, bytesRead);
 }
@@ -428,4 +431,28 @@ TEST(SolidSyslogCircularBufferPool, DestroyAcquiresAndReleasesConfigLock)
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogCircularBufferPool, DestroyOfUnknownHandleReportsWarning)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogBuffer stranger = {};
+
+    SolidSyslogCircularBuffer_Destroy(&stranger);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogCircularBufferPool, DestroyOfFallbackHandleIsSilent)
+{
+    FillPool();
+    overflow = SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogCircularBuffer_Destroy(overflow);
+    overflow = nullptr;
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }

@@ -17,19 +17,19 @@ struct SolidSyslogMutex;
 struct Slot
 {
     struct SolidSyslogCircularBuffer Object;
-    bool                             InUse;
+    bool InUse;
 };
 
 static bool Fallback_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void Fallback_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
 
-static struct Slot              Pool[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE];
-static struct SolidSyslogBuffer Fallback = { Fallback_Write, Fallback_Read };
+static struct Slot Pool[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE];
+static struct SolidSyslogBuffer Fallback = {Fallback_Write, Fallback_Read};
 
 struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     struct SolidSyslogMutex* mutex,
-    uint8_t*                 ring,
-    size_t                   ringBytes
+    uint8_t* ring,
+    size_t ringBytes
 )
 {
     struct SolidSyslogBuffer* result = &Fallback;
@@ -55,6 +55,11 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
 /* cppcheck-suppress constParameter -- public API is non-const for symmetry with every other SolidSyslog*_Destroy(struct SolidSyslogX* base); this TU's pool walk only compares the pointer, but callers pass the handle they own (and may free elsewhere). */
 void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
 {
+    if (base == &Fallback)
+    {
+        return;
+    }
+    bool released = false;
     SolidSyslog_LockConfig();
     for (size_t i = 0; i < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE; i++)
     {
@@ -62,10 +67,15 @@ void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
         {
             CircularBuffer_Cleanup(&Pool[i].Object);
             Pool[i].InUse = false;
+            released = true;
             break;
         }
     }
     SolidSyslog_UnlockConfig();
+    if (!released)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_UNKNOWN_DESTROY);
+    }
 }
 
 static bool Fallback_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)
