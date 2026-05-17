@@ -16,6 +16,23 @@
 
 using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER into scope for CALLED_FAKE
 
+// Asserts buf is a non-null handle that is not one of the slots in pool.
+// Used to pin the pool-exhaustion Fallback contract: every legitimate
+// _Create returns either a pool slot or the Fallback singleton, never NULL.
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
+#define CHECK_IS_FALLBACK(buf, pool)                                                 \
+    do                                                                               \
+    {                                                                                \
+        CHECK_TEXT((buf) != nullptr, "Fallback handle was nullptr");                 \
+        for (auto* slot : (pool))                                                    \
+        {                                                                            \
+            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)"); \
+            CHECK_TEXT((buf) != slot, "Fallback handle collided with a pool slot");  \
+        }                                                                            \
+    } while (0)
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+
 enum
 {
     TEST_MAX_MESSAGES = 1
@@ -364,11 +381,16 @@ TEST_GROUP(SolidSyslogCircularBufferPool)
         ErrorHandlerFake_Uninstall();
     }
 
+    struct SolidSyslogBuffer* MakeBuffer()
+    {
+        return SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
+    }
+
     void FillPool()
     {
         for (auto*& slot : pooled)
         {
-            slot = SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
+            slot = MakeBuffer();
         }
     }
 };
@@ -378,14 +400,9 @@ TEST_GROUP(SolidSyslogCircularBufferPool)
 TEST(SolidSyslogCircularBufferPool, FillingPoolThenOverflowReturnsDistinctFallback)
 {
     FillPool();
-    overflow = SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
+    overflow = MakeBuffer();
 
-    CHECK(overflow != nullptr);
-    for (auto* slot : pooled)
-    {
-        CHECK(slot != nullptr);
-        CHECK(overflow != slot);
-    }
+    CHECK_IS_FALLBACK(overflow, pooled);
 }
 
 TEST(SolidSyslogCircularBufferPool, ExhaustedCreateReportsError)
@@ -393,7 +410,7 @@ TEST(SolidSyslogCircularBufferPool, ExhaustedCreateReportsError)
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
+    overflow = MakeBuffer();
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
@@ -402,7 +419,7 @@ TEST(SolidSyslogCircularBufferPool, ExhaustedCreateReportsError)
 TEST(SolidSyslogCircularBufferPool, FallbackWriteAndReadAreNoOps)
 {
     FillPool();
-    overflow = SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
+    overflow = MakeBuffer();
 
     SolidSyslogBuffer_Write(overflow, "hello", 5);
 
@@ -412,25 +429,50 @@ TEST(SolidSyslogCircularBufferPool, FallbackWriteAndReadAreNoOps)
     LONGS_EQUAL(0, bytesRead);
 }
 
-TEST(SolidSyslogCircularBufferPool, CreateAcquiresAndReleasesConfigLock)
+TEST(SolidSyslogCircularBufferPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
 {
     ConfigLockFake_Install();
 
-    pooled[0] = SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
+    pooled[0] = MakeBuffer();
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
 }
 
-TEST(SolidSyslogCircularBufferPool, DestroyAcquiresAndReleasesConfigLock)
+TEST(SolidSyslogCircularBufferPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 {
-    pooled[0] = SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
+    FillPool();
+    ConfigLockFake_Install();
+
+    overflow = MakeBuffer();
+
+    LONGS_EQUAL(SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+}
+
+TEST(SolidSyslogCircularBufferPool, DestroyAcquiresAndReleasesConfigLockOnFirstSlotMatch)
+{
+    pooled[0] = MakeBuffer();
     ConfigLockFake_Install();
 
     SolidSyslogCircularBuffer_Destroy(pooled[0]);
+    pooled[0] = nullptr;
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogCircularBufferPool, DestroyLocksOncePerSlotProbedUntilMatch)
+{
+    FillPool();
+    struct SolidSyslogBuffer* lastIssued = pooled[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE - 1U];
+    ConfigLockFake_Install();
+
+    SolidSyslogCircularBuffer_Destroy(lastIssued);
+    pooled[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE - 1U] = nullptr;
+
+    LONGS_EQUAL(SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogCircularBufferPool, DestroyOfUnknownHandleReportsWarning)
@@ -448,7 +490,7 @@ TEST(SolidSyslogCircularBufferPool, DestroyOfUnknownHandleReportsWarning)
 TEST(SolidSyslogCircularBufferPool, DestroyOfFallbackHandleIsSilent)
 {
     FillPool();
-    overflow = SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
+    overflow = MakeBuffer();
     ErrorHandlerFake_Install(nullptr);
 
     SolidSyslogCircularBuffer_Destroy(overflow);
