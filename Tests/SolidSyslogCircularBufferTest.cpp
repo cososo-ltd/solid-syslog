@@ -450,7 +450,7 @@ TEST(SolidSyslogCircularBufferPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
     LONGS_EQUAL(SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
-TEST(SolidSyslogCircularBufferPool, DestroyAcquiresAndReleasesConfigLockOnFirstSlotMatch)
+TEST(SolidSyslogCircularBufferPool, DestroyOfPooledHandleLocksOnce)
 {
     pooled[0] = MakeBuffer();
     ConfigLockFake_Install();
@@ -462,17 +462,15 @@ TEST(SolidSyslogCircularBufferPool, DestroyAcquiresAndReleasesConfigLockOnFirstS
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
 }
 
-TEST(SolidSyslogCircularBufferPool, DestroyLocksOncePerSlotProbedUntilMatch)
+TEST(SolidSyslogCircularBufferPool, DestroyOfUnknownHandleDoesNotLock)
 {
-    FillPool();
-    struct SolidSyslogBuffer* lastIssued = pooled[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE - 1U];
     ConfigLockFake_Install();
+    struct SolidSyslogBuffer stranger = {};
 
-    SolidSyslogCircularBuffer_Destroy(lastIssued);
-    pooled[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE - 1U] = nullptr;
+    SolidSyslogCircularBuffer_Destroy(&stranger);
 
-    LONGS_EQUAL(SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    CALLED_FAKE(ConfigLockFake_Lock, NEVER);
+    CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
 }
 
 TEST(SolidSyslogCircularBufferPool, DestroyOfUnknownHandleReportsWarning)
