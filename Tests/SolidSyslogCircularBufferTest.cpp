@@ -15,7 +15,7 @@ enum
 // clang-format off
 TEST_GROUP(SolidSyslogCircularBuffer)
 {
-    SolidSyslogCircularBufferStorage storage[SOLIDSYSLOG_CIRCULAR_BUFFER_STORAGE_SIZE(TEST_MAX_MESSAGES)];
+    uint8_t                   ring[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(TEST_MAX_MESSAGES)];
     struct SolidSyslogBuffer* buffer = nullptr;
     char                      readData[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
@@ -24,7 +24,7 @@ TEST_GROUP(SolidSyslogCircularBuffer)
     void setup() override
     {
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        buffer   = SolidSyslogCircularBuffer_Create(storage, sizeof(storage), SolidSyslogNullMutex_Create());
+        buffer   = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Create(), ring, sizeof(ring));
         readSize = 0;
     }
 
@@ -44,11 +44,6 @@ TEST_GROUP(SolidSyslogCircularBuffer)
 
 TEST(SolidSyslogCircularBuffer, CreateDestroyDoesNotCrash)
 {
-}
-
-TEST(SolidSyslogCircularBuffer, HandleEqualsStorageAddress)
-{
-    POINTERS_EQUAL(&storage, buffer);
 }
 
 TEST(SolidSyslogCircularBuffer, ReadFromEmptyReturnsFalse)
@@ -170,7 +165,7 @@ TEST(SolidSyslogCircularBuffer, WriteExceedingMaxMessageSizeIsDropped)
 // clang-format off
 TEST_GROUP(SolidSyslogCircularBufferMutex)
 {
-    SolidSyslogCircularBufferStorage storage[SOLIDSYSLOG_CIRCULAR_BUFFER_STORAGE_SIZE(TEST_MAX_MESSAGES)];
+    uint8_t                   ring[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(TEST_MAX_MESSAGES)];
     struct SolidSyslogBuffer* buffer = nullptr;
     char                      readData[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
@@ -179,7 +174,7 @@ TEST_GROUP(SolidSyslogCircularBufferMutex)
     void setup() override
     {
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        buffer   = SolidSyslogCircularBuffer_Create(storage, sizeof(storage), MutexFake_Create());
+        buffer   = SolidSyslogCircularBuffer_Create(MutexFake_Create(), ring, sizeof(ring));
         readSize = 0;
     }
 
@@ -217,7 +212,7 @@ enum
 // clang-format off
 TEST_GROUP(SolidSyslogCircularBufferSmallRing)
 {
-    SolidSyslogCircularBufferStorage storage[SOLIDSYSLOG_CIRCULAR_BUFFER_STORAGE_SIZE_BYTES(SMALL_RING_BYTES)];
+    uint8_t                          ring[SMALL_RING_BYTES];
     struct SolidSyslogBuffer*        buffer = nullptr;
     char                             readData[SMALL_RING_BYTES];
     // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
@@ -226,7 +221,7 @@ TEST_GROUP(SolidSyslogCircularBufferSmallRing)
     void setup() override
     {
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        buffer   = SolidSyslogCircularBuffer_Create(storage, sizeof(storage), SolidSyslogNullMutex_Create());
+        buffer   = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Create(), ring, sizeof(ring));
         readSize = 0;
     }
 

@@ -70,7 +70,7 @@ Test progression follows ZOMBIES order.
 - Dependency injection for transport, buffering, clock, hostname, allocator
 - Buffer abstraction decouples formatting from sending: `SolidSyslog_Log` writes to buffer,
   `SolidSyslog_Service` reads from buffer and sends. Implementations: NullBuffer (direct send,
-  single-task), CircularBuffer (portable ring with caller-allocated storage and an injected
+  single-task), CircularBuffer (portable ring with caller-allocated ring memory and an injected
   `SolidSyslogMutex` — Posix/Windows/Null mutex shipped, integrators can plug their own RTOS
   primitive), PosixMessageQueueBuffer (POSIX message queue, used by the Linux Threaded example)
 - Null object pattern throughout (NullBuffer is the buffer null object)

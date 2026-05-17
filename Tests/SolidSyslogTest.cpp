@@ -1541,12 +1541,11 @@ TEST_GROUP(SolidSyslogServiceEagerDrain)
 
     void setup() override
     {
-        static SolidSyslogCircularBufferStorage bufferStorage[
-            SOLIDSYSLOG_CIRCULAR_BUFFER_STORAGE_SIZE_BYTES(BUFFER_BYTES)];
+        static uint8_t bufferRing[BUFFER_BYTES];
 
         fakeSender     = SenderFake_Create();
         circularBuffer = SolidSyslogCircularBuffer_Create(
-            bufferStorage, sizeof(bufferStorage), SolidSyslogNullMutex_Create());
+            SolidSyslogNullMutex_Create(), bufferRing, sizeof(bufferRing));
         fakeStore      = StoreFake_Create();
 
         SolidSyslogConfig serviceConfig = {};
