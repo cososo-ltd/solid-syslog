@@ -198,7 +198,7 @@ misra-c2012-20.10:Core/Source/SolidSyslogMacros.h:9
 misra-c2012-2.5:Core/Interface/SolidSyslogCircularBuffer.h:25
 misra-c2012-2.5:Core/Interface/SolidSyslogCircularBuffer.h:30
 
-# D.013 — Rule 8.4: declaration not visible to cppcheck for AtomicU32 impls
+# D.013 — Rules 8.4 / 8.6: cppcheck mis-modelling of link-time-selected AtomicU32 impls
 # See docs/misra-deviations.md#d013
 misra-c2012-8.4:Platform/Atomics/Source/SolidSyslogStdAtomicU32.c:23
 misra-c2012-8.4:Platform/Atomics/Source/SolidSyslogStdAtomicU32.c:29
@@ -208,3 +208,11 @@ misra-c2012-8.4:Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c:23
 misra-c2012-8.4:Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c:29
 misra-c2012-8.4:Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c:34
 misra-c2012-8.4:Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c:40
+misra-c2012-8.6:Platform/Atomics/Source/SolidSyslogStdAtomicU32.c:23
+misra-c2012-8.6:Platform/Atomics/Source/SolidSyslogStdAtomicU32.c:29
+misra-c2012-8.6:Platform/Atomics/Source/SolidSyslogStdAtomicU32.c:34
+misra-c2012-8.6:Platform/Atomics/Source/SolidSyslogStdAtomicU32.c:40
+misra-c2012-8.6:Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c:23
+misra-c2012-8.6:Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c:29
+misra-c2012-8.6:Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c:34
+misra-c2012-8.6:Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c:40

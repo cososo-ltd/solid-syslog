@@ -857,16 +857,19 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.013 — Rule 8.4: declaration not visible to cppcheck for AtomicU32 platform impls
+## D.013 — Rules 8.4 / 8.6: cppcheck mis-modelling of link-time-selected platform impls
 
 ### Rule
 
 > **Rule 8.4 (Required)** — A compatible declaration shall be visible
 > when an object or function with external linkage is defined.
+>
+> **Rule 8.6 (Required)** — An identifier with external linkage shall
+> have exactly one external definition.
 
 ### Deviation
 
-cppcheck-misra reports rule 8.4 against the four
+cppcheck-misra reports rules 8.4 *and* 8.6 against the four
 `SolidSyslogAtomicU32_*` functions in each of the two AtomicU32 platform
 implementations:
 
@@ -874,9 +877,10 @@ implementations:
   `_Init`, `_Load`, `_CompareAndSwap`.
 - `Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c` — same four.
 
-The declarations *do* exist — they live at
-`Core/Source/SolidSyslogAtomicU32.h`. The build sees them via CMake's
-`PRIVATE` include on the `SolidSyslog` static-library target (every
+8.4 fires because the declarations *do* exist — they live at
+`Core/Source/SolidSyslogAtomicU32.h` — but cppcheck-misra's standalone
+command doesn't see them. The build sees them via CMake's `PRIVATE`
+include on the `SolidSyslog` static-library target (every
 `Platform/*/Source/*.c` is compiled into that target, so the
 target-private `Core/Source/` include path is visible at compile time).
 cppcheck-misra, run as a standalone command, does not model CMake
@@ -887,9 +891,23 @@ each impl therefore fails to resolve under cppcheck, the
 `--suppress=missingIncludeSystem` flag swallows the failure, and the
 downstream "no prior declaration" finding (8.4) surfaces.
 
+8.6 fires because cppcheck-misra sees both impls in a single
+invocation, with both defining the same external-linkage symbols
+(`SolidSyslogAtomicU32_FromStorage` etc.), and reports them as
+duplicate definitions. The real build never links both — CMake's
+`HAVE_STDATOMIC_H` and `HAVE_WINDOWS_INTERLOCKED` switches select
+exactly one impl at configure time — but cppcheck-misra has no
+mechanism to model link-time selection.
+
+The two findings collapse to the same root cause: cppcheck-misra
+analyses the source tree without the build system's knowledge of
+which TUs end up in the same link unit, or which header declarations
+are reachable from which TUs.
+
 ### Scope
 
-Two files, four sites each (eight total):
+Two files, four sites each per rule (eight 8.4 + eight 8.6 = sixteen
+total suppressions on the same eight function definitions):
 
 - `Platform/Atomics/Source/SolidSyslogStdAtomicU32.c:23, 29, 34, 40`
 - `Platform/Windows/Source/SolidSyslogWindowsAtomicU32.c:23, 29, 34, 40`
@@ -913,10 +931,11 @@ The alternatives considered:
 
 | Alternative | Why rejected |
 |--|--|
-| Add `-ICore/Source` to the standalone cppcheck command | Silences 8.4 but unmasks 8.6 on the same eight sites (both impls define the same external-linkage symbols; cppcheck does not model link-time selection). Same suppression count, plus weakens the "Core/Source is private" intent on cppcheck's side. |
-| Move `SolidSyslogAtomicU32.h` into `Core/Interface/` | Publicly exposes an internal contract the project deliberately keeps private (see the `SolidSyslogAtomicCounter` row in `CLAUDE.md` — "no public AtomicOps header"). |
-| Move into `Platform/Atomics/Interface/` | Would put a header that `Core/Source/SolidSyslogAtomicCounter.c` includes under Platform — a layering inversion that LayerGuard catches. |
-| Inline `cppcheck-suppress` on each site | Inline suppressions scatter the rationale across eight separate sites. Project convention (see D.002 etc.) prefers a single structural deviation. |
+| Add `-ICore/Source` to the standalone cppcheck command | Silences 8.4 directly (cppcheck would see the declaration) but does not affect 8.6 — both impls would still define the same external-linkage symbols within the same cppcheck invocation. Reduces this deviation by one rule, not two. Plus it weakens the "Core/Source is private" intent on cppcheck's side. |
+| Move `SolidSyslogAtomicU32.h` into `Core/Interface/` | Publicly exposes an internal contract the project deliberately keeps private (see the `SolidSyslogAtomicCounter` row in `CLAUDE.md` — "no public AtomicOps header"). Doesn't help 8.6. |
+| Move into `Platform/Atomics/Interface/` | Would put a header that `Core/Source/SolidSyslogAtomicCounter.c` includes under Platform — a layering inversion that LayerGuard catches. Doesn't help 8.6. |
+| Process each impl in a separate cppcheck invocation gated on the same CMake switches the build uses | Closer to what the compiler sees, but the standalone cppcheck command does not have a clean way to do per-file conditional compilation. Same answer eventually surfaces if `compile_commands.json` integration is adopted. |
+| Inline `cppcheck-suppress` on each site | Inline suppressions scatter the rationale across eight (or sixteen) separate sites. Project convention (see D.002 etc.) prefers a single structural deviation. |
 
 A line-anchored suppression block targeting only the eight specific
 declarations is the surgical fix: it documents the tool-level cause
