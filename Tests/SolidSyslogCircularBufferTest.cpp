@@ -484,3 +484,17 @@ TEST(SolidSyslogCircularBufferPool, DestroyOfUnknownHandleReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
 }
+
+TEST(SolidSyslogCircularBufferPool, DestroyOfStaleHandleReportsWarning)
+{
+    pooled[0] = MakeBuffer();
+    SolidSyslogCircularBuffer_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogCircularBuffer_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+}
