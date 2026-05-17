@@ -1,5 +1,82 @@
 # Dev Log
 
+## 2026-05-17 — S11.01 commit 1: `SolidSyslog_SetConfigLock` injection point (#392)
+
+First commit of S11.01 (the E11 pilot). Lands the global lock/unlock
+injection point that every later `*Static.c` pool TU will wrap its
+slot walks in. Zero in-library callers at this commit — the API is
+reviewable in isolation before the pool work consumes it. Commits 2–6
+of S11.01 will build on it.
+
+### Why a global injectable rather than pre-shipped synchronisation
+
+The Mutex and AtomicCounter classes both get pool-migrated in E11.
+Their own primitives can't synchronise their own pool walks
+(chicken-and-egg: you need a Mutex to claim a Mutex slot). A single
+global injectable seam — same shape as `SolidSyslog_SetErrorHandler` —
+is the only answer that scales across every class in the sweep.
+Shipping it at the pilot means every subsequent sweep TU inherits the
+same shape rather than retro-fitting 20+ files later.
+
+### Decisions locked in
+
+- API name and shape: `SolidSyslog_SetConfigLock(lockFn, unlockFn)`
+  with paired zero-arg `void(void)` typedef
+  `SolidSyslogConfigLockFunction`. Mirrors `Set ErrorHandler` exactly
+  except: pair-handler (lock + unlock), no `void* context` (every
+  realistic target — `taskENTER_CRITICAL`/spinlock/static-`CRITICAL_SECTION`/
+  static-`pthread_mutex_t` — captures state in its own static).
+- Pair API rather than two separate setters: lock and unlock are
+  conceptually inseparable; you never want one without the other.
+  `bugprone-easily-swappable-parameters` flagged at the function
+  signature; the API is deliberate so the suppression matches existing
+  patterns (`SocketFake`, `FreeRtosSocketsFake`) with an explanatory
+  comment.
+- NULL on either argument restores that side's no-op default (same
+  shape as `Set ErrorHandler(NULL, NULL)`).
+- Defaults are file-scope no-op statics. Single-task setup sees no
+  difference and needs no wiring.
+- Concurrency contract is documented, not enforced. Same shape as
+  the existing `Set ErrorHandler` contract — setup-time only, not
+  guarded against concurrent installs. E27 (#345) owns any future
+  tightening across all setup-time APIs.
+- `ConfigLockFake` lives in `Tests/Support/` as a separate static lib
+  alongside `ErrorHandlerFake`. Tests 5+6 keep in-file fakes because
+  they need explicit function-pointer args to exercise the
+  NULL-restore contract.
+
+### Cycle 4 caught a real test-pollution bug mid-flight
+
+Cycle 3's `SolidSyslog_SetConfigLock(TestLock, nullptr)` planted a
+NULL `currentUnlock` slot; once cycle 4 wired up `UnlockConfig`
+dispatch, the subsequent default-handler tests segfaulted on NULL
+deref. Fixed under red by passing valid pointers on both sides of the
+pair in tests 3+4 — NULL is exercised explicitly only by tests 5+6,
+which is what they're for. The strict TDD discipline ("happy path
+first, M is happy-only") would have led us there directly; the
+pollution was a side effect of cycle 3 being slightly over-clever.
+
+### Deferred to later S11.01 commits
+
+- Tunables `SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE` /
+  `_CAPACITY_MESSAGES` and the `SOLIDSYSLOG_ALLOCATION_STRATEGY` CMake
+  gate — commit 2.
+- Three-TU split for `SolidSyslogCircularBuffer` — commits 3–4.
+- Fallback object + pool exhaustion ERROR + slot-walks wrapping
+  `LockConfig` / `UnlockConfig` — commit 5.
+- Unknown-Destroy WARNING + MISRA storage-cast suppression cleanup —
+  commit 6.
+
+### Open questions
+
+- Whether `Set ErrorHandler` should also call `LockConfig` /
+  `UnlockConfig` to inherit the same setup-time synchronisation seam.
+  **Deferred to E27** — the answer needs a unified view across all
+  setup-time APIs, not just one.
+- Whether a future RTOS target will need a `void* context` form of
+  the lock function pointer. Not seen yet — adding it later is
+  purely additive.
+
 ## 2026-05-17 — S10.22 Enum naming convention restoration (#390)
 
 Convention-restoration story raised after the S10.16 review surfaced

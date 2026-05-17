@@ -1,6 +1,7 @@
 set(SOURCES
     SolidSyslog.c
     SolidSyslogError.c
+    SolidSyslogConfigLock.c
     SolidSyslogSwitchingSender.c
     SolidSyslogBuffer.c
     SolidSyslogFormatter.c

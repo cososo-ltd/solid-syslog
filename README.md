@@ -59,6 +59,7 @@ Public headers are split by audience (Interface Segregation Principle):
 - **`SolidSyslog.h`** — application code that logs events (`Log`, `Service`)
 - **`SolidSyslogConfig.h`** — system setup code that creates and destroys loggers
 - **`SolidSyslogError.h`** — install a handler to react to library-internal errors (NULL guards, send failures); default is silent. See `Bdd/Targets/Common/BddTargetStderrErrorHandler.c` for a reference implementation
+- **`SolidSyslogConfigLock.h`** — optional setup-time lock injection (`SolidSyslog_SetConfigLock(lockFn, unlockFn)`); wraps library-internal pool slot walks so multi-task setup is safe. Defaults are no-ops, so single-task systems can ignore it. Integrators on RTOS / multi-core wire `taskENTER_CRITICAL`, a static `pthread_mutex_t`, `EnterCriticalSection`, or a spinlock pair
 - **`SolidSyslogSenderDefinition.h`** / **`SolidSyslogBufferDefinition.h`** — extension points for custom senders and buffers
 - **`SolidSyslogNullBuffer.h`** — direct-send buffer for single-task systems
 - **`SolidSyslogCircularBuffer.h`** — portable ring buffer with caller-allocated storage and an injected `SolidSyslogMutex` (`SolidSyslogPosixMutex` / `SolidSyslogWindowsMutex` / `SolidSyslogFreeRtosMutex` / `SolidSyslogNullMutex` / your own); the cross-platform threaded buffer
