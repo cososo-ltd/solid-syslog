@@ -287,7 +287,7 @@ int main(int argc, char* argv[])
     pthread_join(serviceThread, NULL);
 
     SolidSyslog_Destroy();
-    SolidSyslogOriginSd_Destroy();
+    SolidSyslogOriginSd_Destroy(originSd);
     SolidSyslogTimeQualitySd_Destroy(timeQuality);
     SolidSyslogMetaSd_Destroy(metaSd);
     SolidSyslogStdAtomicCounter_Destroy(counter);

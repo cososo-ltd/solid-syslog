@@ -28,6 +28,7 @@ set(SOURCES
     SolidSyslogTimeQualitySd.c
     SolidSyslogTimeQualitySdStatic.c
     SolidSyslogOriginSd.c
+    SolidSyslogOriginSdStatic.c
     SolidSyslogFile.c
     SolidSyslogBlockStore.c
     RecordStore.c

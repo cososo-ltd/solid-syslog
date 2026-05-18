@@ -650,7 +650,7 @@ static void TeardownAll(void)
     solidSyslogTeardown = true;
     solidSyslogReady = false;
     SolidSyslog_Destroy();
-    SolidSyslogOriginSd_Destroy();
+    SolidSyslogOriginSd_Destroy(originSd);
     SolidSyslogTimeQualitySd_Destroy(timeQualitySd);
     SolidSyslogMetaSd_Destroy(metaSd);
     SolidSyslogStdAtomicCounter_Destroy(atomicCounter);
