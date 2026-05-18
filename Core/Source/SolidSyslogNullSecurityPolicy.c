@@ -21,16 +21,13 @@ static bool NullSecurityPolicy_NullVerifyIntegrity(const uint8_t* data, uint16_t
     return true;
 }
 
-struct SolidSyslogSecurityPolicy* SolidSyslogNullSecurityPolicy_Create(void)
-{
-    static struct SolidSyslogSecurityPolicy instance = {
-        0,
-        NullSecurityPolicy_NullComputeIntegrity,
-        NullSecurityPolicy_NullVerifyIntegrity,
-    };
-    return &instance;
-}
+static struct SolidSyslogSecurityPolicy instance = {
+    0,
+    NullSecurityPolicy_NullComputeIntegrity,
+    NullSecurityPolicy_NullVerifyIntegrity,
+};
 
-void SolidSyslogNullSecurityPolicy_Destroy(void)
+struct SolidSyslogSecurityPolicy* SolidSyslogNullSecurityPolicy_Get(void)
 {
+    return &instance;
 }
