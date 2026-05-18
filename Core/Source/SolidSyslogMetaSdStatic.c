@@ -17,20 +17,20 @@ static bool MetaSd_IsValidConfig(const struct SolidSyslogMetaSdConfig* config);
 static size_t MetaSd_IndexFromHandle(const struct SolidSyslogStructuredData* base);
 static void MetaSd_CleanupAtIndex(size_t index, void* context);
 
-static bool InUse[SOLIDSYSLOG_META_SD_POOL_SIZE];
-static struct SolidSyslogMetaSd Pool[SOLIDSYSLOG_META_SD_POOL_SIZE];
-static struct SolidSyslogPoolAllocator Allocator = {InUse, SOLIDSYSLOG_META_SD_POOL_SIZE};
+static bool MetaSd_InUse[SOLIDSYSLOG_META_SD_POOL_SIZE];
+static struct SolidSyslogMetaSd MetaSd_Pool[SOLIDSYSLOG_META_SD_POOL_SIZE];
+static struct SolidSyslogPoolAllocator MetaSd_Allocator = {MetaSd_InUse, SOLIDSYSLOG_META_SD_POOL_SIZE};
 
 struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSyslogMetaSdConfig* config)
 {
     struct SolidSyslogStructuredData* result = SolidSyslogNullSd_Get();
     if (MetaSd_IsValidConfig(config))
     {
-        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&Allocator);
-        if (SolidSyslogPoolAllocator_IndexIsValid(&Allocator, index))
+        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&MetaSd_Allocator);
+        if (SolidSyslogPoolAllocator_IndexIsValid(&MetaSd_Allocator, index))
         {
-            MetaSd_Initialise(&Pool[index].Base, config);
-            result = &Pool[index].Base;
+            MetaSd_Initialise(&MetaSd_Pool[index].Base, config);
+            result = &MetaSd_Pool[index].Base;
         }
         else
         {
@@ -43,8 +43,8 @@ struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSys
 void SolidSyslogMetaSd_Destroy(struct SolidSyslogStructuredData* base)
 {
     size_t index = MetaSd_IndexFromHandle(base);
-    bool released = SolidSyslogPoolAllocator_IndexIsValid(&Allocator, index) &&
-                    SolidSyslogPoolAllocator_FreeIfInUse(&Allocator, index, MetaSd_CleanupAtIndex, NULL);
+    bool released = SolidSyslogPoolAllocator_IndexIsValid(&MetaSd_Allocator, index) &&
+                    SolidSyslogPoolAllocator_FreeIfInUse(&MetaSd_Allocator, index, MetaSd_CleanupAtIndex, NULL);
     if (!released)
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_METASD_UNKNOWN_DESTROY);
@@ -74,7 +74,7 @@ static size_t MetaSd_IndexFromHandle(const struct SolidSyslogStructuredData* bas
     size_t result = SOLIDSYSLOG_META_SD_POOL_SIZE;
     for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_META_SD_POOL_SIZE; poolIndex++)
     {
-        if (base == &Pool[poolIndex].Base)
+        if (base == &MetaSd_Pool[poolIndex].Base)
         {
             result = poolIndex;
             break;
@@ -86,5 +86,5 @@ static size_t MetaSd_IndexFromHandle(const struct SolidSyslogStructuredData* bas
 static void MetaSd_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    MetaSd_Cleanup(&Pool[index].Base);
+    MetaSd_Cleanup(&MetaSd_Pool[index].Base);
 }

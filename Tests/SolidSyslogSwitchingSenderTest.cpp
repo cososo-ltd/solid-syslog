@@ -344,12 +344,13 @@ TEST_GROUP(SolidSyslogSwitchingSenderBadSetup)
     struct SolidSyslogSender*               innerA = nullptr;
     struct SolidSyslogSender*               inners[1] = {nullptr};
     int                                     sentinel = 0;
-    SolidSyslogSwitchingSenderConfig        config{};
+    SolidSyslogSwitchingSenderConfig        config;
 
     void setup() override
     {
         innerA   = SenderFake_Create();
         inners[0] = innerA;
+        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         config   = {inners, 1, TestSelector};
         ErrorHandlerFake_Install(&sentinel);
     }

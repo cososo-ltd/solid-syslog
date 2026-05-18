@@ -17,20 +17,23 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
 static size_t SwitchingSender_IndexFromHandle(const struct SolidSyslogSender* base);
 static void SwitchingSender_CleanupAtIndex(size_t index, void* context);
 
-static bool InUse[SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE];
-static struct SolidSyslogSwitchingSender Pool[SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE];
-static struct SolidSyslogPoolAllocator Allocator = {InUse, SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE};
+static bool SwitchingSender_InUse[SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE];
+static struct SolidSyslogSwitchingSender SwitchingSender_Pool[SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE];
+static struct SolidSyslogPoolAllocator SwitchingSender_Allocator = {
+    SwitchingSender_InUse,
+    SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE
+};
 
 struct SolidSyslogSender* SolidSyslogSwitchingSender_Create(const struct SolidSyslogSwitchingSenderConfig* config)
 {
     struct SolidSyslogSender* handle = SolidSyslogNullSender_Get();
     if (SwitchingSender_IsValidConfig(config))
     {
-        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&Allocator);
-        if (SolidSyslogPoolAllocator_IndexIsValid(&Allocator, index))
+        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&SwitchingSender_Allocator);
+        if (SolidSyslogPoolAllocator_IndexIsValid(&SwitchingSender_Allocator, index))
         {
-            SwitchingSender_Initialise(&Pool[index].Base, config);
-            handle = &Pool[index].Base;
+            SwitchingSender_Initialise(&SwitchingSender_Pool[index].Base, config);
+            handle = &SwitchingSender_Pool[index].Base;
         }
         else
         {
@@ -65,8 +68,9 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
 void SolidSyslogSwitchingSender_Destroy(struct SolidSyslogSender* base)
 {
     size_t index = SwitchingSender_IndexFromHandle(base);
-    bool released = SolidSyslogPoolAllocator_IndexIsValid(&Allocator, index) &&
-                    SolidSyslogPoolAllocator_FreeIfInUse(&Allocator, index, SwitchingSender_CleanupAtIndex, NULL);
+    bool released =
+        SolidSyslogPoolAllocator_IndexIsValid(&SwitchingSender_Allocator, index) &&
+        SolidSyslogPoolAllocator_FreeIfInUse(&SwitchingSender_Allocator, index, SwitchingSender_CleanupAtIndex, NULL);
     if (!released)
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_SWITCHINGSENDER_UNKNOWN_DESTROY);
@@ -78,7 +82,7 @@ static size_t SwitchingSender_IndexFromHandle(const struct SolidSyslogSender* ba
     size_t result = SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE;
     for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE; poolIndex++)
     {
-        if (base == &Pool[poolIndex].Base)
+        if (base == &SwitchingSender_Pool[poolIndex].Base)
         {
             result = poolIndex;
             break;
@@ -90,5 +94,5 @@ static size_t SwitchingSender_IndexFromHandle(const struct SolidSyslogSender* ba
 static void SwitchingSender_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    SwitchingSender_Cleanup(&Pool[index].Base);
+    SwitchingSender_Cleanup(&SwitchingSender_Pool[index].Base);
 }

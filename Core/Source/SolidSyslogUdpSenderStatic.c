@@ -17,20 +17,20 @@ static bool UdpSender_IsValidConfig(const struct SolidSyslogUdpSenderConfig* con
 static size_t UdpSender_IndexFromHandle(const struct SolidSyslogSender* base);
 static void UdpSender_CleanupAtIndex(size_t index, void* context);
 
-static bool InUse[SOLIDSYSLOG_UDP_SENDER_POOL_SIZE];
-static struct SolidSyslogUdpSender Pool[SOLIDSYSLOG_UDP_SENDER_POOL_SIZE];
-static struct SolidSyslogPoolAllocator Allocator = {InUse, SOLIDSYSLOG_UDP_SENDER_POOL_SIZE};
+static bool UdpSender_InUse[SOLIDSYSLOG_UDP_SENDER_POOL_SIZE];
+static struct SolidSyslogUdpSender UdpSender_Pool[SOLIDSYSLOG_UDP_SENDER_POOL_SIZE];
+static struct SolidSyslogPoolAllocator UdpSender_Allocator = {UdpSender_InUse, SOLIDSYSLOG_UDP_SENDER_POOL_SIZE};
 
 struct SolidSyslogSender* SolidSyslogUdpSender_Create(const struct SolidSyslogUdpSenderConfig* config)
 {
     struct SolidSyslogSender* result = SolidSyslogNullSender_Get();
     if (UdpSender_IsValidConfig(config))
     {
-        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&Allocator);
-        if (SolidSyslogPoolAllocator_IndexIsValid(&Allocator, index))
+        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&UdpSender_Allocator);
+        if (SolidSyslogPoolAllocator_IndexIsValid(&UdpSender_Allocator, index))
         {
-            UdpSender_Initialise(&Pool[index].Base, config);
-            result = &Pool[index].Base;
+            UdpSender_Initialise(&UdpSender_Pool[index].Base, config);
+            result = &UdpSender_Pool[index].Base;
         }
         else
         {
@@ -43,8 +43,8 @@ struct SolidSyslogSender* SolidSyslogUdpSender_Create(const struct SolidSyslogUd
 void SolidSyslogUdpSender_Destroy(struct SolidSyslogSender* base)
 {
     size_t index = UdpSender_IndexFromHandle(base);
-    bool released = SolidSyslogPoolAllocator_IndexIsValid(&Allocator, index) &&
-                    SolidSyslogPoolAllocator_FreeIfInUse(&Allocator, index, UdpSender_CleanupAtIndex, NULL);
+    bool released = SolidSyslogPoolAllocator_IndexIsValid(&UdpSender_Allocator, index) &&
+                    SolidSyslogPoolAllocator_FreeIfInUse(&UdpSender_Allocator, index, UdpSender_CleanupAtIndex, NULL);
     if (!released)
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_UDPSENDER_UNKNOWN_DESTROY);
@@ -82,7 +82,7 @@ static size_t UdpSender_IndexFromHandle(const struct SolidSyslogSender* base)
     size_t result = SOLIDSYSLOG_UDP_SENDER_POOL_SIZE;
     for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_UDP_SENDER_POOL_SIZE; poolIndex++)
     {
-        if (base == &Pool[poolIndex].Base)
+        if (base == &UdpSender_Pool[poolIndex].Base)
         {
             result = poolIndex;
             break;
@@ -94,5 +94,5 @@ static size_t UdpSender_IndexFromHandle(const struct SolidSyslogSender* base)
 static void UdpSender_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    UdpSender_Cleanup(&Pool[index].Base);
+    UdpSender_Cleanup(&UdpSender_Pool[index].Base);
 }

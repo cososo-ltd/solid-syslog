@@ -17,9 +17,12 @@ struct SolidSyslogStructuredData;
 static size_t TimeQualitySd_IndexFromHandle(const struct SolidSyslogStructuredData* base);
 static void TimeQualitySd_CleanupAtIndex(size_t index, void* context);
 
-static bool InUse[SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE];
-static struct SolidSyslogTimeQualitySd Pool[SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE];
-static struct SolidSyslogPoolAllocator Allocator = {InUse, SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE};
+static bool TimeQualitySd_InUse[SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE];
+static struct SolidSyslogTimeQualitySd TimeQualitySd_Pool[SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE];
+static struct SolidSyslogPoolAllocator TimeQualitySd_Allocator = {
+    TimeQualitySd_InUse,
+    SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE
+};
 
 struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTimeQualityFunction getTimeQuality)
 {
@@ -30,11 +33,11 @@ struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTim
     }
     else
     {
-        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&Allocator);
-        if (SolidSyslogPoolAllocator_IndexIsValid(&Allocator, index))
+        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&TimeQualitySd_Allocator);
+        if (SolidSyslogPoolAllocator_IndexIsValid(&TimeQualitySd_Allocator, index))
         {
-            TimeQualitySd_Initialise(&Pool[index].Base, getTimeQuality);
-            handle = &Pool[index].Base;
+            TimeQualitySd_Initialise(&TimeQualitySd_Pool[index].Base, getTimeQuality);
+            handle = &TimeQualitySd_Pool[index].Base;
         }
         else
         {
@@ -47,8 +50,9 @@ struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTim
 void SolidSyslogTimeQualitySd_Destroy(struct SolidSyslogStructuredData* base)
 {
     size_t index = TimeQualitySd_IndexFromHandle(base);
-    bool released = SolidSyslogPoolAllocator_IndexIsValid(&Allocator, index) &&
-                    SolidSyslogPoolAllocator_FreeIfInUse(&Allocator, index, TimeQualitySd_CleanupAtIndex, NULL);
+    bool released =
+        SolidSyslogPoolAllocator_IndexIsValid(&TimeQualitySd_Allocator, index) &&
+        SolidSyslogPoolAllocator_FreeIfInUse(&TimeQualitySd_Allocator, index, TimeQualitySd_CleanupAtIndex, NULL);
     if (!released)
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_TIMEQUALITYSD_UNKNOWN_DESTROY);
@@ -60,7 +64,7 @@ static size_t TimeQualitySd_IndexFromHandle(const struct SolidSyslogStructuredDa
     size_t result = SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE;
     for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE; poolIndex++)
     {
-        if (base == &Pool[poolIndex].Base)
+        if (base == &TimeQualitySd_Pool[poolIndex].Base)
         {
             result = poolIndex;
             break;
@@ -72,5 +76,5 @@ static size_t TimeQualitySd_IndexFromHandle(const struct SolidSyslogStructuredDa
 static void TimeQualitySd_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    TimeQualitySd_Cleanup(&Pool[index].Base);
+    TimeQualitySd_Cleanup(&TimeQualitySd_Pool[index].Base);
 }
