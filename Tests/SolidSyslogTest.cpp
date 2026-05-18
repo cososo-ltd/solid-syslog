@@ -377,7 +377,7 @@ TEST_GROUP(SolidSyslog)
     void teardown() override
     {
         SolidSyslog_Destroy();
-        SolidSyslogPassthroughBuffer_Destroy();
+        SolidSyslogPassthroughBuffer_Destroy(buffer);
         SenderFake_Destroy(fakeSender);
     }
 
