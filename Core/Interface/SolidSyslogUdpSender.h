@@ -6,6 +6,8 @@
 
 EXTERN_C_BEGIN
 
+    struct SolidSyslogSender;
+
     struct SolidSyslogUdpSenderConfig
     {
         struct SolidSyslogResolver* Resolver;

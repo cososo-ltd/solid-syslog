@@ -8,9 +8,10 @@
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
-#include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogSwitchingSenderPrivate.h"
 #include "SolidSyslogTunables.h"
+
+struct SolidSyslogSender;
 
 static size_t SwitchingSender_IndexFromHandle(const struct SolidSyslogSender* base);
 static void SwitchingSender_CleanupAtIndex(size_t index, void* context);

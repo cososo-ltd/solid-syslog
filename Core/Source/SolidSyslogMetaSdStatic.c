@@ -9,8 +9,9 @@
 #include "SolidSyslogNullSd.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
-#include "SolidSyslogStructuredDataDefinition.h"
 #include "SolidSyslogTunables.h"
+
+struct SolidSyslogStructuredData;
 
 static bool MetaSd_IsValidConfig(const struct SolidSyslogMetaSdConfig* config);
 static size_t MetaSd_IndexFromHandle(const struct SolidSyslogStructuredData* base);

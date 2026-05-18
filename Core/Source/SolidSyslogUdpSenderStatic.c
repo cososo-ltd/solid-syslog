@@ -8,9 +8,10 @@
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
-#include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpSenderPrivate.h"
+
+struct SolidSyslogSender;
 
 static bool UdpSender_IsValidConfig(const struct SolidSyslogUdpSenderConfig* config);
 static size_t UdpSender_IndexFromHandle(const struct SolidSyslogSender* base);

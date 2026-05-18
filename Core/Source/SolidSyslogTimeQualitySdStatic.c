@@ -8,9 +8,11 @@
 #include "SolidSyslogNullSd.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
-#include "SolidSyslogStructuredDataDefinition.h"
+#include "SolidSyslogTimeQuality.h"
 #include "SolidSyslogTimeQualitySdPrivate.h"
 #include "SolidSyslogTunables.h"
+
+struct SolidSyslogStructuredData;
 
 static size_t TimeQualitySd_IndexFromHandle(const struct SolidSyslogStructuredData* base);
 static void TimeQualitySd_CleanupAtIndex(size_t index, void* context);

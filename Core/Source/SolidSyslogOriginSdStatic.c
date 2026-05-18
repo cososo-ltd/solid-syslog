@@ -9,8 +9,9 @@
 #include "SolidSyslogOriginSdPrivate.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
-#include "SolidSyslogStructuredDataDefinition.h"
 #include "SolidSyslogTunables.h"
+
+struct SolidSyslogStructuredData;
 
 static size_t OriginSd_IndexFromHandle(const struct SolidSyslogStructuredData* base);
 static void OriginSd_CleanupAtIndex(size_t index, void* context);
