@@ -2,9 +2,11 @@
 """Filter IWYU output to drop categories that don't apply to this project.
 
 IWYU's analysis is enabled in CI as a ratchet against include-hygiene drift.
-Three classes of 'should remove' finding are filtered out before the gate
-evaluates, because each represents IWYU producing the wrong answer for this
-codebase rather than a real drift:
+Several classes of finding are filtered out before the gate evaluates,
+because each represents IWYU producing the wrong answer for this codebase
+rather than a real drift:
+
+REMOVALS that we keep as-is:
 
 1. '- struct <Name>;' — explicit forward declarations.
    In C, 'struct Foo* member;' inside another struct definition itself
@@ -25,10 +27,18 @@ codebase rather than a real drift:
    It thinks the include is unused because the symbols it provides are
    only invoked via macros. Removing it would break every test file.
 
+ADDITIONS that IWYU asks for but we never write by hand:
+
+4. 'class TEST_<Group>_<Test>_Test;' — CppUTest macro-generated classes.
+   TEST() / TEST_GROUP() / TEST_GROUP_BASE() expand to class declarations
+   that IWYU sees but can't trace back to the macros that produce them,
+   so it asks for forward declarations no test file ever writes. Same
+   shape of false positive as (3) — IWYU not modelling CppUTest macros.
+
 Reads IWYU output (typically the stdout of iwyu_tool.py) on stdin, emits
 filtered output on stdout. File blocks whose only findings are filtered
-removals are suppressed entirely, so the report shows only actionable
-findings.
+findings are suppressed entirely, so the report shows only actionable
+ones.
 
 Exit code:
   0 — no actionable findings remain after filtering
@@ -44,9 +54,17 @@ FILTERED_REMOVALS = (
     re.compile(r"^- #include \"CppUTest/TestHarness\.h\"\s*//"),
 )
 
+FILTERED_ADDITIONS = (
+    re.compile(r"^class TEST_\w+_Test;\s*$"),
+)
+
 
 def _is_filtered_removal(line):
     return any(pat.match(line) for pat in FILTERED_REMOVALS)
+
+
+def _is_filtered_addition(line):
+    return any(pat.match(line) for pat in FILTERED_ADDITIONS)
 
 
 def filter_iwyu(stream_in, stream_out):
@@ -107,7 +125,10 @@ def _filter_block(block):
         elif section == "tail":
             tail_lines.append(line)
 
-    add_real = [l for l in add_lines if l.strip()]
+    add_real = [
+        l for l in add_lines
+        if l.strip() and not _is_filtered_addition(l)
+    ]
     remove_real = [
         l for l in remove_lines
         if l.strip() and not _is_filtered_removal(l)
@@ -117,7 +138,8 @@ def _filter_block(block):
         return [], False
 
     out = [header]
-    out.extend(add_lines)
+    if add_real:
+        out.extend(add_real)
     out.append("\n")
     out.append(header.replace(" should add these lines:", " should remove these lines:"))
     if remove_real:

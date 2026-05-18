@@ -172,6 +172,17 @@ plain `uint8_t* ring, size_t ringBytes`. No `void*` storage cast on
 the instance; the ring pointer is held untyped inside the impl
 struct.
 
+The 11.3 suppression listed against `Core/Source/SolidSyslogCircularBuffer.c`
+post-E11 is therefore narrower than the rest of the entries above: it
+covers only the **vtable downcast** inside `CircularBuffer_SelfFromBase`
+(`struct SolidSyslogBuffer*` → `struct SolidSyslogCircularBuffer*`), the
+standard OO-in-C "interface pointer back to derived implementation" cast
+that every vtable method needs. The same downcast survives in every
+caller-storage class listed above as a separate concern from the
+caller-storage void* cast; this deviation covers both shapes under one
+heading because both are MISRA 11.3 firings driven by the same
+"interface decoupled from concrete type" design.
+
 ### Risk and mitigation
 
 - **Type safety** — Each `_Create` is the only place in the library
@@ -832,7 +843,10 @@ Bdd/Targets/FreeRtos/main.c                      — RING_BYTES
 ```
 
 The macro is part of the public API; integrators use it to size
-caller-supplied ring memory in messages.
+the caller-supplied ring buffer in bytes, derived from a maximum
+message count (e.g. `uint8_t ring[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4)]`
+allocates enough bytes for four full-size messages plus their
+length headers).
 
 The alternatives all regress:
 
