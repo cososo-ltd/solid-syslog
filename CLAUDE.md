@@ -375,6 +375,7 @@ live under `Core/Interface/`; platform-specific helpers (the `SolidSyslogPosix*`
 | `SolidSyslogSleep.h` | Any code passing or implementing a sleep callback | `SolidSyslogSleepFunction` typedef (used by `SolidSyslogTlsStreamConfig.sleep` for the bounded handshake retry) |
 | `SolidSyslogStructuredData.h` | Library internals (SD dispatch) | `SolidSyslogStructuredData_Format` (writes into `SolidSyslogFormatter*`) |
 | `SolidSyslogStructuredDataDefinition.h` | SD implementors (extension point) | `SolidSyslogStructuredData` vtable struct (Format takes `SolidSyslogFormatter*`) |
+| `SolidSyslogNullSd.h` | Any code installing a no-op Structured Data slot in `SolidSyslogConfig.Sd[]` | `SolidSyslogNullSd_Get` |
 | `SolidSyslogMetaSd.h` | System setup code using meta SD (sequenceId, sysUpTime, language) | `SolidSyslogMetaSdConfig` (counter, getSysUpTime, getLanguage — each independently optional via NULL), `SolidSyslogSysUpTimeFunction`, `SolidSyslogMetaSd_Create`, `_Destroy` |
 | `SolidSyslogAtomicCounter.h` | Any code holding a counter handle | `SolidSyslogAtomicCounter_Increment(base)` — public vtable-dispatched call. Wrap-aware in [1, 2³¹ - 1] per RFC 5424 §7.3.1, never returns 0. |
 | `SolidSyslogAtomicCounterDefinition.h` | AtomicCounter implementors (extension point) | `SolidSyslogAtomicCounter` vtable struct (`Increment` function pointer) |
