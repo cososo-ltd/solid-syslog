@@ -9001,3 +9001,89 @@ MISRA rule — different category, doesn't set precedent.
 ### Open questions
 
 - None.
+
+## 2026-05-18 — S11.04 Core singleton stateful classes onto PoolAllocator
+
+### Decisions
+
+- **Bundled scope, single PR.** The story body listed nine
+  commits (two new GoF nulls, six migrations, DEVLOG). The
+  session added two unplanned commits: flipping
+  `SolidSyslogNullStore` and `SolidSyslogNullSecurityPolicy`
+  from `_Create`/`_Destroy` to `_Get` so the four
+  null-object types now share one shape, and a naming
+  cleanup that put the public `_Destroy` parameter at `base`
+  per `docs/NAMING.md`. The signature change `_Destroy(void)
+  → _Destroy(base*)` is bundled into each per-class
+  migration commit; landed defaults from the three open
+  questions in the story body were confirmed by the
+  developer up front.
+- **New GoF nulls keep state immutable.** `SolidSyslogNullSd`
+  and `SolidSyslogNullSender` ship as `_Get`-only — a single
+  static instance with the vtable wired at file-scope
+  initialisation. No wrapper struct, no `_Create`/`_Destroy`
+  pair. The retro-flip of the older two nulls follows the
+  same shape so any future Null* type slots in next to
+  these without inventing a new convention.
+- **NullSender.Send returns true (drop on the floor).** The
+  story body said `false` ("didn't send"). That semantic
+  fills a real Store with undeliverables when the integrator
+  misconfigures the Sender. The old UdpSender NIL returned
+  true precisely to avoid that; the new shared NullSender
+  inherits it. `SwitchingSender`'s existing
+  out-of-range-selector behaviour (which returned false)
+  flips to match — same null-object boundary, same semantic.
+  Two SwitchingSender tests retitled accordingly.
+- **UdpSender_Send NULL-buffer guard stays in UdpSender.c.**
+  The E11 three-TU split memo says `ClassStatic.c` is the
+  only TU that calls `SolidSyslog_Error` for the class —
+  intended for pool / bad-config errors. The Send NULL-buffer
+  guard is a runtime contract guard, not a pool error; it
+  belongs next to the check, in the vtable method. This is a
+  scoped exception, captured in the UdpSender commit message.
+- **Pool-issue test pattern adopted everywhere.** Each per-class
+  migration adds one Pool `TEST_GROUP` with one test
+  (`FillingPoolThenOverflowReturnsDistinctFallback`) that
+  proves max-configured allocations succeed and one-more
+  returns a handle distinct from every pool slot. Generic
+  pool mechanics — lock counts, per-probe locking, stale-
+  handle warning — are covered by
+  `SolidSyslogPoolAllocatorTest.cpp` once, not duplicated
+  per class. PassthroughBuffer adds a second test for its
+  class-private fallback Write/Read no-ops because no shared
+  Null* class exercises those branches.
+- **SwitchingSender test fixture defended against
+  double-Create.** Three SwitchingSender tests call
+  `CreateSwitchingSender(count)` to override the setup's
+  call. With singleton semantics the second call silently
+  overwrote the slot; with pooling the second call exhausts
+  the pool and returns the Fallback, leaving the first slot
+  orphaned. The helper now destroys any previously-allocated
+  sender before re-creating. Documented inline.
+- **Validation per class.** Each migration was validated at
+  `SOLIDSYSLOG_<CLASS>_POOL_SIZE=3` via the user-tunables
+  override mechanism. 100% line coverage on every new TU
+  pair (Class.c + ClassStatic.c) and on each new Null type.
+- **Verified in `cpputest-freertos`.** Per
+  `feedback_verify_in_freertos_host_image.md`. With
+  `FREERTOS_KERNEL_PATH=/opt/freertos/kernel` set, the full
+  Core suite (1150 tests) plus seven FreeRTOS-specific
+  suites all green; no LayerGuard skip.
+
+### Deferred
+
+- **clang-tidy magic-numbers suppression revisit** —
+  `project_clang_tidy_magic_numbers.md` notes David's
+  preference to remove the per-rule disables under
+  `.clang-tidy`. The S11.04 migrations didn't introduce any
+  new magic-number suppressions; the cleanup is still its
+  own pass.
+- **Pool-allocator unit test rename** — when the next sweep
+  story lands, consider renaming the macros in
+  `SolidSyslogCircularBufferTest.cpp` (the `CHECK_IS_FALLBACK`
+  reference) to be reusable across the per-class pool tests.
+  Currently inlined per-class to keep the macro file-local.
+
+### Open questions
+
+- None.
