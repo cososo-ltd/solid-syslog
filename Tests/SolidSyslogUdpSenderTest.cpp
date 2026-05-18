@@ -163,7 +163,7 @@ TEST_GROUP_BASE(SolidSyslogUdpSender, UdpSenderTestBase)
 
     void teardown() override
     {
-        SolidSyslogUdpSender_Destroy();
+        SolidSyslogUdpSender_Destroy(sender);
         teardownFakesWithPosixDatagram();
     }
 };
@@ -353,8 +353,8 @@ TEST_GROUP_BASE(SolidSyslogUdpSenderDestroy, UdpSenderTestBase)
 
     void CreateAndDestroy() const
     {
-        SolidSyslogUdpSender_Create(&config);
-        SolidSyslogUdpSender_Destroy();
+        struct SolidSyslogSender* localSender = SolidSyslogUdpSender_Create(&config);
+        SolidSyslogUdpSender_Destroy(localSender);
     }
 };
 
@@ -370,7 +370,7 @@ TEST(SolidSyslogUdpSenderDestroy, DestroyAfterSendClosesSocket)
 {
     sender = SolidSyslogUdpSender_Create(&config);
     Send();
-    SolidSyslogUdpSender_Destroy();
+    SolidSyslogUdpSender_Destroy(sender);
     CALLED_FAKE(SocketFake_Close, ONCE);
     LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
 }
@@ -380,7 +380,7 @@ TEST(SolidSyslogUdpSenderDestroy, DestroyAfterDisconnectDoesNotDoubleClose)
     sender = SolidSyslogUdpSender_Create(&config);
     Send();
     SolidSyslogSender_Disconnect(sender);
-    SolidSyslogUdpSender_Destroy();
+    SolidSyslogUdpSender_Destroy(sender);
     CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
@@ -388,7 +388,7 @@ TEST(SolidSyslogUdpSenderDestroy, SimpleScenario)
 {
     sender = SolidSyslogUdpSender_Create(&config);
     Send();
-    SolidSyslogUdpSender_Destroy();
+    SolidSyslogUdpSender_Destroy(sender);
 
     CALLED_FAKE(SocketFake_Socket, ONCE);
     LONGS_EQUAL(AF_INET, SocketFake_SocketDomain());
@@ -410,7 +410,7 @@ TEST_GROUP_BASE(SolidSyslogUdpSenderConfig, UdpSenderTestBase)
 
     void teardown() override
     {
-        SolidSyslogUdpSender_Destroy();
+        SolidSyslogUdpSender_Destroy(sender);
         teardownFakesWithPosixDatagram();
     }
 };
@@ -483,7 +483,7 @@ TEST_GROUP_BASE(SolidSyslogUdpSenderFailure, UdpSenderTestBase)
 
     void teardown() override
     {
-        SolidSyslogUdpSender_Destroy();
+        SolidSyslogUdpSender_Destroy(sender);
         teardownFakesWithPosixDatagram();
     }
 
@@ -556,7 +556,7 @@ TEST_GROUP_BASE(SolidSyslogUdpSenderRetry, UdpSenderTestBase)
 
     void teardown() override
     {
-        SolidSyslogUdpSender_Destroy();
+        SolidSyslogUdpSender_Destroy(sender);
         teardownFakesWithDatagramFake();
     }
 
@@ -719,7 +719,7 @@ TEST_GROUP_BASE(SolidSyslogUdpSenderBadSetup, UdpSenderTestBase)
 
     void teardown() override
     {
-        SolidSyslogUdpSender_Destroy();
+        SolidSyslogUdpSender_Destroy(sender);
         teardownFakesWithPosixDatagram();
         ErrorHandlerFake_Uninstall();
     }
@@ -780,4 +780,66 @@ TEST(SolidSyslogUdpSenderBadSetup, SendWithNullBufferReportsErrorAndDoesNotSend)
     CHECK_FALSE(Send(nullptr, 5));
     CHECK_REPORTED_ERROR("SolidSyslogUdpSender_Send called with NULL buffer");
     CALLED_FAKE(SocketFake_Sendto, NEVER);
+}
+
+// Pool tests — prove SOLIDSYSLOG_UDP_SENDER_POOL_SIZE caps live instances
+// and overflow falls back to the shared SolidSyslogNullSender. Generic
+// pool mechanics (lock counts, per-probe locking, stale-handle warning)
+// are covered by SolidSyslogPoolAllocatorTest.cpp.
+
+// clang-format off
+TEST_GROUP_BASE(SolidSyslogUdpSenderPool, UdpSenderTestBase)
+{
+    struct SolidSyslogSender* pooled[SOLIDSYSLOG_UDP_SENDER_POOL_SIZE] = {};
+    struct SolidSyslogSender* overflow                                  = nullptr;
+
+    void setup() override
+    {
+        setupFakesWithPosixDatagram();
+    }
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogUdpSender_Destroy(handle);
+            }
+        }
+        if (overflow != nullptr)
+        {
+            SolidSyslogUdpSender_Destroy(overflow);
+        }
+        teardownFakesWithPosixDatagram();
+    }
+
+    struct SolidSyslogSender* MakeSender()
+    {
+        return SolidSyslogUdpSender_Create(&config);
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = MakeSender();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogUdpSenderPool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = MakeSender();
+
+    CHECK_TEXT(overflow != nullptr, "Fallback handle was nullptr");
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
+        CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
+    }
 }

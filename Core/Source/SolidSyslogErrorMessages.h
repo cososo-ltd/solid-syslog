@@ -17,9 +17,39 @@
 #define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_CREATE_NULL_DATAGRAM "SolidSyslogUdpSender_Create config.Datagram is NULL"
 #define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_CREATE_NULL_ENDPOINT "SolidSyslogUdpSender_Create config.Endpoint is NULL"
 #define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_SEND_NULL_BUFFER "SolidSyslogUdpSender_Send called with NULL buffer"
+#define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_POOL_EXHAUSTED \
+    "SolidSyslogUdpSender_Create pool exhausted; returning fallback sender"
+#define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_UNKNOWN_DESTROY \
+    "SolidSyslogUdpSender_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_SWITCHINGSENDER_CREATE_NULL_CONFIG \
+    "SolidSyslogSwitchingSender_Create called with NULL config"
+#define SOLIDSYSLOG_ERROR_MSG_SWITCHINGSENDER_CREATE_NULL_SENDERS \
+    "SolidSyslogSwitchingSender_Create config.Senders is NULL"
+#define SOLIDSYSLOG_ERROR_MSG_SWITCHINGSENDER_CREATE_NULL_SELECTOR \
+    "SolidSyslogSwitchingSender_Create config.Selector is NULL"
+#define SOLIDSYSLOG_ERROR_MSG_SWITCHINGSENDER_POOL_EXHAUSTED \
+    "SolidSyslogSwitchingSender_Create pool exhausted; returning fallback sender"
+#define SOLIDSYSLOG_ERROR_MSG_SWITCHINGSENDER_UNKNOWN_DESTROY \
+    "SolidSyslogSwitchingSender_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_METASD_POOL_EXHAUSTED "SolidSyslogMetaSd_Create pool exhausted; returning fallback SD"
+#define SOLIDSYSLOG_ERROR_MSG_METASD_UNKNOWN_DESTROY \
+    "SolidSyslogMetaSd_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_TIMEQUALITYSD_CREATE_NULL_CALLBACK \
+    "SolidSyslogTimeQualitySd_Create called with NULL getTimeQuality"
+#define SOLIDSYSLOG_ERROR_MSG_TIMEQUALITYSD_POOL_EXHAUSTED \
+    "SolidSyslogTimeQualitySd_Create pool exhausted; returning fallback SD"
+#define SOLIDSYSLOG_ERROR_MSG_TIMEQUALITYSD_UNKNOWN_DESTROY \
+    "SolidSyslogTimeQualitySd_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_ORIGINSD_POOL_EXHAUSTED "SolidSyslogOriginSd_Create pool exhausted; returning fallback SD"
+#define SOLIDSYSLOG_ERROR_MSG_ORIGINSD_UNKNOWN_DESTROY \
+    "SolidSyslogOriginSd_Destroy called with a handle not issued by this pool"
 #define SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_POOL_EXHAUSTED \
     "SolidSyslogCircularBuffer_Create pool exhausted; returning fallback buffer"
 #define SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_UNKNOWN_DESTROY \
     "SolidSyslogCircularBuffer_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_PASSTHROUGHBUFFER_POOL_EXHAUSTED \
+    "SolidSyslogPassthroughBuffer_Create pool exhausted; returning fallback buffer"
+#define SOLIDSYSLOG_ERROR_MSG_PASSTHROUGHBUFFER_UNKNOWN_DESTROY \
+    "SolidSyslogPassthroughBuffer_Destroy called with a handle not issued by this pool"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */

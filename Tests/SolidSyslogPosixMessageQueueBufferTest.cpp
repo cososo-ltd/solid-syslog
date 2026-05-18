@@ -101,7 +101,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, SecondReadAfterSingleWriteReturnsFalse)
 TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
 {
     struct SolidSyslogSender* fakeSender = SenderFake_Create();
-    SolidSyslogStore* nullStore = SolidSyslogNullStore_Create();
+    SolidSyslogStore* nullStore = SolidSyslogNullStore_Get();
     SolidSyslogConfig config = {buffer, fakeSender, nullptr, nullptr, nullptr, nullptr, nullStore, nullptr, 0};
     SolidSyslog_Create(&config);
 
@@ -111,7 +111,6 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
 
     SolidSyslog_Destroy();
-    SolidSyslogNullStore_Destroy();
     SenderFake_Destroy(fakeSender);
 }
 

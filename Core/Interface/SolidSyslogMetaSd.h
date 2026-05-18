@@ -21,7 +21,7 @@ EXTERN_C_BEGIN
     };
 
     struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSyslogMetaSdConfig* config);
-    void SolidSyslogMetaSd_Destroy(void);
+    void SolidSyslogMetaSd_Destroy(struct SolidSyslogStructuredData * base);
 
 EXTERN_C_END
 

@@ -23,7 +23,7 @@ EXTERN_C_BEGIN
     };
 
     struct SolidSyslogStructuredData* SolidSyslogOriginSd_Create(const struct SolidSyslogOriginSdConfig* config);
-    void SolidSyslogOriginSd_Destroy(void);
+    void SolidSyslogOriginSd_Destroy(struct SolidSyslogStructuredData * base);
 
 EXTERN_C_END
 

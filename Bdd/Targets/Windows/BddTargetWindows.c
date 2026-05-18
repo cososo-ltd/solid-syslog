@@ -76,6 +76,8 @@ static volatile bool shutdownFlag;
 static struct SolidSyslogStream* plainTcpStream;
 static struct SolidSyslogSender* plainTcpSender;
 static struct SolidSyslogDatagram* udpDatagram;
+static struct SolidSyslogSender* udpSender;
+static struct SolidSyslogSender* switchingSender;
 
 /* Block-store backing — created in CreateStore, released in DestroyStore. */
 static struct SolidSyslogFile* storeFile;
@@ -186,7 +188,7 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetWindowsOptio
     udpConfig.Datagram = udpDatagram;
     udpConfig.Endpoint = GetEndpoint;
     udpConfig.EndpointVersion = GetEndpointVersion;
-    struct SolidSyslogSender* udpSender = SolidSyslogUdpSender_Create(&udpConfig);
+    udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
     plainTcpStream = SolidSyslogWinsockTcpStream_Create(&tcpStreamStorage);
     static struct SolidSyslogStreamSenderConfig tcpConfig = {0};
@@ -209,16 +211,17 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetWindowsOptio
     switchConfig.Selector = BddTargetSwitchConfig_Selector;
 
     BddTargetSwitchConfig_SetByName(options->Transport);
-    return SolidSyslogSwitchingSender_Create(&switchConfig);
+    switchingSender = SolidSyslogSwitchingSender_Create(&switchConfig);
+    return switchingSender;
 }
 
 static void DestroySender(void)
 {
-    SolidSyslogSwitchingSender_Destroy();
+    SolidSyslogSwitchingSender_Destroy(switchingSender);
     BddTargetTlsSender_Destroy();
     SolidSyslogStreamSender_Destroy(plainTcpSender);
     SolidSyslogWinsockTcpStream_Destroy(plainTcpStream);
-    SolidSyslogUdpSender_Destroy();
+    SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogWinsockDatagram_Destroy();
     SolidSyslogWinsockResolver_Destroy();
 }
@@ -252,7 +255,7 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
         return SolidSyslogBlockStore_Create(&storeStorage, &storeConfig);
     }
 
-    return SolidSyslogNullStore_Create();
+    return SolidSyslogNullStore_Get();
 }
 
 static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetWindowsOptions* options)
@@ -266,10 +269,7 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetW
         SolidSyslogCrc16Policy_Destroy();
         SolidSyslogWindowsFile_Destroy(storeFile);
     }
-    else
-    {
-        SolidSyslogNullStore_Destroy();
-    }
+    /* else: NullStore is shared and immutable — nothing to destroy. */
 }
 
 int BddTargetWindows_Run(int argc, char* argv[])
@@ -358,9 +358,9 @@ int BddTargetWindows_Run(int argc, char* argv[])
     CloseHandle(serviceThread);
 
     SolidSyslog_Destroy();
-    SolidSyslogOriginSd_Destroy();
-    SolidSyslogTimeQualitySd_Destroy();
-    SolidSyslogMetaSd_Destroy();
+    SolidSyslogOriginSd_Destroy(originSd);
+    SolidSyslogTimeQualitySd_Destroy(timeQuality);
+    SolidSyslogMetaSd_Destroy(metaSd);
     SolidSyslogWindowsAtomicCounter_Destroy(counter);
     DestroyStore(store, &options);
     SolidSyslogCircularBuffer_Destroy(buffer);

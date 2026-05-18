@@ -2,16 +2,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogNullSender.h"
+#include "SolidSyslogSender.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogSwitchingSender.h"
-#include "SolidSyslogSender.h"
-
-struct SolidSyslogSwitchingSender
-{
-    struct SolidSyslogSender Base;
-    struct SolidSyslogSwitchingSenderConfig Config;
-    struct SolidSyslogSender* CurrentSender;
-};
+#include "SolidSyslogSwitchingSenderPrivate.h"
 
 static bool SwitchingSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size);
 static void SwitchingSender_Disconnect(struct SolidSyslogSender* base);
@@ -27,25 +22,25 @@ static inline void SwitchingSender_SwitchTo(
     struct SolidSyslogSender* newCurrent
 );
 static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(const struct SolidSyslogSwitchingSender* self);
-static bool SwitchingSender_NilSend(struct SolidSyslogSender* base, const void* buffer, size_t size);
-static void SwitchingSender_NilDisconnect(struct SolidSyslogSender* base);
 
-static struct SolidSyslogSender NIL_SENDER = {SwitchingSender_NilSend, SwitchingSender_NilDisconnect};
-static const struct SolidSyslogSwitchingSender DEFAULT_INSTANCE = {.CurrentSender = &NIL_SENDER};
-static struct SolidSyslogSwitchingSender instance;
-
-struct SolidSyslogSender* SolidSyslogSwitchingSender_Create(const struct SolidSyslogSwitchingSenderConfig* config)
+void SwitchingSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogSwitchingSenderConfig* config)
 {
-    instance = DEFAULT_INSTANCE;
-    instance.Config = *config;
-    instance.Base.Send = SwitchingSender_Send;
-    instance.Base.Disconnect = SwitchingSender_Disconnect;
-    return &instance.Base;
+    struct SolidSyslogSwitchingSender* self = SwitchingSender_SelfFromBase(base);
+    self->Base.Send = SwitchingSender_Send;
+    self->Base.Disconnect = SwitchingSender_Disconnect;
+    self->Config = *config;
+    self->CurrentSender = SolidSyslogNullSender_Get();
 }
 
-void SolidSyslogSwitchingSender_Destroy(void)
+void SwitchingSender_Cleanup(struct SolidSyslogSender* base)
 {
-    instance = DEFAULT_INSTANCE;
+    struct SolidSyslogSwitchingSender* self = SwitchingSender_SelfFromBase(base);
+    self->Base.Send = NULL;
+    self->Base.Disconnect = NULL;
+    self->Config.Senders = NULL;
+    self->Config.SenderCount = 0;
+    self->Config.Selector = NULL;
+    self->CurrentSender = NULL;
 }
 
 static bool SwitchingSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size)
@@ -93,13 +88,14 @@ static inline void SwitchingSender_SwitchTo(
     self->CurrentSender = newCurrent;
 }
 
-/* Falls back to the nil sender when the selector returns an out-of-range
- * index (including the empty-array case). Contains the application contract
- * violation of an invalid selector without corrupting memory or crashing. */
+/* Out-of-range selector index (including empty-array case) resolves to the
+ * shared NullSender. NullSender.Send returns true so the Service algorithm
+ * drops the message — a misconfigured selector must not retain messages in
+ * the Store. */
 static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(const struct SolidSyslogSwitchingSender* self)
 {
+    struct SolidSyslogSender* result = SolidSyslogNullSender_Get();
     uint8_t index = self->Config.Selector();
-    struct SolidSyslogSender* result = &NIL_SENDER;
 
     if (index < self->Config.SenderCount)
     {
@@ -107,17 +103,4 @@ static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(const st
     }
 
     return result;
-}
-
-static bool SwitchingSender_NilSend(struct SolidSyslogSender* base, const void* buffer, size_t size)
-{
-    (void) base;
-    (void) buffer;
-    (void) size;
-    return false;
-}
-
-static void SwitchingSender_NilDisconnect(struct SolidSyslogSender* base)
-{
-    (void) base;
 }

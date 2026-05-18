@@ -14,36 +14,20 @@ static size_t NullStore_GetTotalBytes(struct SolidSyslogStore* base);
 static size_t NullStore_GetUsedBytes(struct SolidSyslogStore* base);
 static bool NullStore_IsTransient(struct SolidSyslogStore* base);
 
-struct SolidSyslogNullStore
-{
-    struct SolidSyslogStore Base;
+static struct SolidSyslogStore instance = {
+    .Write = NullStore_Write,
+    .ReadNextUnsent = NullStore_ReadNextUnsent,
+    .MarkSent = NullStore_MarkSent,
+    .HasUnsent = NullStore_HasUnsent,
+    .IsHalted = NullStore_IsHalted,
+    .GetTotalBytes = NullStore_GetTotalBytes,
+    .GetUsedBytes = NullStore_GetUsedBytes,
+    .IsTransient = NullStore_IsTransient
 };
 
-static struct SolidSyslogNullStore instance;
-
-struct SolidSyslogStore* SolidSyslogNullStore_Create(void)
+struct SolidSyslogStore* SolidSyslogNullStore_Get(void)
 {
-    instance.Base.Write = NullStore_Write;
-    instance.Base.ReadNextUnsent = NullStore_ReadNextUnsent;
-    instance.Base.MarkSent = NullStore_MarkSent;
-    instance.Base.HasUnsent = NullStore_HasUnsent;
-    instance.Base.IsHalted = NullStore_IsHalted;
-    instance.Base.GetTotalBytes = NullStore_GetTotalBytes;
-    instance.Base.GetUsedBytes = NullStore_GetUsedBytes;
-    instance.Base.IsTransient = NullStore_IsTransient;
-    return &instance.Base;
-}
-
-void SolidSyslogNullStore_Destroy(void)
-{
-    instance.Base.Write = NULL;
-    instance.Base.ReadNextUnsent = NULL;
-    instance.Base.MarkSent = NULL;
-    instance.Base.HasUnsent = NULL;
-    instance.Base.IsHalted = NULL;
-    instance.Base.GetTotalBytes = NULL;
-    instance.Base.GetUsedBytes = NULL;
-    instance.Base.IsTransient = NULL;
+    return &instance;
 }
 
 /* NullStore never retains. Returns false to signal "not held by this store"

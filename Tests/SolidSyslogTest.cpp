@@ -367,7 +367,7 @@ TEST_GROUP(SolidSyslog)
         fakeSender = SenderFake_Create();
         StringFake_Reset();
         buffer = SolidSyslogPassthroughBuffer_Create(fakeSender);
-        store  = SolidSyslogNullStore_Create();
+        store  = SolidSyslogNullStore_Get();
         config = {buffer, nullptr, nullptr, StringFake_GetHostname, StringFake_GetAppName, StringFake_GetProcessId, store, nullptr, 0};
         SolidSyslog_Create(&config);
         // cppcheck-suppress unreadVariable -- read via Log() through &message; cppcheck does not model CppUTest macros
@@ -377,8 +377,7 @@ TEST_GROUP(SolidSyslog)
     void teardown() override
     {
         SolidSyslog_Destroy();
-        SolidSyslogNullStore_Destroy();
-        SolidSyslogPassthroughBuffer_Destroy();
+        SolidSyslogPassthroughBuffer_Destroy(buffer);
         SenderFake_Destroy(fakeSender);
     }
 
@@ -644,7 +643,7 @@ TEST(SolidSyslog, MetaSdProducesSequenceIdInStructuredData)
     SolidSyslog_Create(&config);
     Log();
     STRCMP_EQUAL("[meta sequenceId=\"1\"]", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
-    SolidSyslogMetaSd_Destroy();
+    SolidSyslogMetaSd_Destroy(metaSd);
     TestAtomicCounter_Destroy(counter);
 }
 
@@ -663,7 +662,7 @@ TEST(SolidSyslog, MetaSdSequenceIdIncrementsAcrossLogCalls)
     Log();
     Log();
     STRCMP_EQUAL("[meta sequenceId=\"2\"]", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
-    SolidSyslogMetaSd_Destroy();
+    SolidSyslogMetaSd_Destroy(metaSd);
     TestAtomicCounter_Destroy(counter);
 }
 
@@ -682,7 +681,7 @@ TEST(SolidSyslog, MsgFieldPreservedWithMetaSd)
     message.Msg = "hello world";
     Log();
     STRCMP_EQUAL("hello world", SyslogMsg(lastMessage()).c_str());
-    SolidSyslogMetaSd_Destroy();
+    SolidSyslogMetaSd_Destroy(metaSd);
     TestAtomicCounter_Destroy(counter);
 }
 
@@ -748,8 +747,8 @@ TEST(SolidSyslog, MetaSdAndTimeQualitySdCoexistInSdArray)
         "[meta sequenceId=\"1\"][timeQuality tzKnown=\"1\" isSynced=\"1\"]",
         SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str()
     );
-    SolidSyslogTimeQualitySd_Destroy();
-    SolidSyslogMetaSd_Destroy();
+    SolidSyslogTimeQualitySd_Destroy(timeQuality);
+    SolidSyslogMetaSd_Destroy(metaSd);
     TestAtomicCounter_Destroy(counter);
 }
 
@@ -1315,7 +1314,7 @@ TEST(SolidSyslog, ServiceSendsMessageReadFromBuffer)
 TEST(SolidSyslog, ServiceSendsBufferedMessageWithNullStore)
 {
     SolidSyslogBuffer* fakeBuffer = BufferFake_Create();
-    SolidSyslogStore* nullStore = SolidSyslogNullStore_Create();
+    SolidSyslogStore* nullStore = SolidSyslogNullStore_Get();
     SolidSyslogConfig serviceConfig =
         {fakeBuffer, fakeSender, nullptr, nullptr, nullptr, nullptr, nullStore, nullptr, 0};
 
@@ -1331,7 +1330,6 @@ TEST(SolidSyslog, ServiceSendsBufferedMessageWithNullStore)
 
     SolidSyslog_Destroy();
     SolidSyslog_Create(&config);
-    SolidSyslogNullStore_Destroy();
     BufferFake_Destroy();
 }
 
@@ -1646,14 +1644,13 @@ TEST_GROUP(SolidSyslogLifecycle)
         // cppcheck-suppress unreadVariable -- read via validConfig() in tests; cppcheck does not model CppUTest macros
         buffer = BufferFake_Create();
         // cppcheck-suppress unreadVariable -- read via validConfig() in tests; cppcheck does not model CppUTest macros
-        store = SolidSyslogNullStore_Create();
+        store = SolidSyslogNullStore_Get();
     }
 
     void teardown() override
     {
         SolidSyslog_Destroy();
         ErrorHandlerFake_Uninstall();
-        SolidSyslogNullStore_Destroy();
         BufferFake_Destroy();
         SenderFake_Destroy(sender);
     }

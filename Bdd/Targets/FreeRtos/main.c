@@ -250,6 +250,8 @@ static struct SolidSyslogResolver* resolver = NULL;
 static struct SolidSyslogDatagram* datagram = NULL;
 static struct SolidSyslogStream* tcpStream = NULL;
 static struct SolidSyslogSender* tcpSender = NULL;
+static struct SolidSyslogSender* udpSender = NULL;
+static struct SolidSyslogSender* switchingSender = NULL;
 static struct SolidSyslogBuffer* buffer = NULL;
 static struct SolidSyslogMutex* bufferMutex = NULL;
 
@@ -631,10 +633,7 @@ static void DestroyCurrentStore(void)
         SolidSyslogCrc16Policy_Destroy();
         SolidSyslogFatFsFile_Destroy(storeFile);
     }
-    else
-    {
-        SolidSyslogNullStore_Destroy();
-    }
+    /* else: NullStore is shared and immutable — nothing to destroy. */
 }
 
 /* Full teardown of every resource InteractiveTask allocated during Setup.
@@ -651,9 +650,9 @@ static void TeardownAll(void)
     solidSyslogTeardown = true;
     solidSyslogReady = false;
     SolidSyslog_Destroy();
-    SolidSyslogOriginSd_Destroy();
-    SolidSyslogTimeQualitySd_Destroy();
-    SolidSyslogMetaSd_Destroy();
+    SolidSyslogOriginSd_Destroy(originSd);
+    SolidSyslogTimeQualitySd_Destroy(timeQualitySd);
+    SolidSyslogMetaSd_Destroy(metaSd);
     SolidSyslogStdAtomicCounter_Destroy(atomicCounter);
     DestroyCurrentStore();
     if (fatfsMounted)
@@ -674,10 +673,10 @@ static void TeardownAll(void)
     SolidSyslogFreeRtosMutex_Destroy(bufferMutex);
     SolidSyslogFreeRtosMutex_Destroy(lifecycleMutex);
     lifecycleMutex = NULL;
-    SolidSyslogSwitchingSender_Destroy();
+    SolidSyslogSwitchingSender_Destroy(switchingSender);
     SolidSyslogStreamSender_Destroy(tcpSender);
     SolidSyslogFreeRtosTcpStream_Destroy(tcpStream);
-    SolidSyslogUdpSender_Destroy();
+    SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogFreeRtosDatagram_Destroy(datagram);
     SolidSyslogFreeRtosStaticResolver_Destroy(resolver);
 }
@@ -788,7 +787,7 @@ static void InteractiveTask(void* argument)
         .Endpoint = GetEndpoint,
         .EndpointVersion = GetEndpointVersion,
     };
-    struct SolidSyslogSender* udpSender = SolidSyslogUdpSender_Create(&udpConfig);
+    udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
     /* Plain TCP path via the new FreeRTOS Plus-TCP stream adapter. Shares the
      * UDP endpoint callbacks because the BDD oracle (syslog-ng) listens on the
@@ -816,7 +815,8 @@ static void InteractiveTask(void* argument)
         .Selector = BddTargetSwitchConfig_Selector,
     };
     BddTargetSwitchConfig_SetByName("udp");
-    struct SolidSyslogSender* sender = SolidSyslogSwitchingSender_Create(&switchConfig);
+    switchingSender = SolidSyslogSwitchingSender_Create(&switchConfig);
+    struct SolidSyslogSender* sender = switchingSender;
 
     /* CircularBuffer drained by ServiceTask below, with a FreeRtosMutex
      * gating concurrent producers (interactive task today; multi-task
@@ -832,7 +832,7 @@ static void InteractiveTask(void* argument)
 
     /* Default store is NullStore — flipped to FatFs/BlockStore by
      * `set store file` via RebuildWithFileStore(). */
-    currentStore = SolidSyslogNullStore_Create();
+    currentStore = SolidSyslogNullStore_Get();
     currentStoreIsFile = false;
 
     atomicCounter = SolidSyslogStdAtomicCounter_Create(&atomicCounterStorage);

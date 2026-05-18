@@ -50,4 +50,117 @@
 #error "SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE must be >= 1"
 #endif
 
+/*
+ * Number of SolidSyslogPassthroughBuffer instances the library's
+ * internal static pool can simultaneously hold. Each instance is
+ * tiny (vtable + a Sender pointer).
+ *
+ * PassthroughBuffer is the single-task "direct-send, no buffering"
+ * configuration — every integrator typically creates one. Default 1.
+ * Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one process or
+ * task needs its own passthrough Buffer instance.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE < 1
+#error "SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE must be >= 1"
+#endif
+
+/*
+ * Number of SolidSyslogUdpSender instances the library's internal
+ * static pool can simultaneously hold. Each instance carries its
+ * config (resolver/datagram/endpoint pointers), the resolved address
+ * storage, and connection state.
+ *
+ * Default 1 — almost all integrators wire a single UDP sender into
+ * either SolidSyslogConfig directly or as one branch of a
+ * SwitchingSender. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more
+ * than one is genuinely needed.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_UDP_SENDER_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_UDP_SENDER_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_UDP_SENDER_POOL_SIZE < 1
+#error "SOLIDSYSLOG_UDP_SENDER_POOL_SIZE must be >= 1"
+#endif
+
+/*
+ * Number of SolidSyslogSwitchingSender instances the library's
+ * internal static pool can simultaneously hold.
+ *
+ * Default 1 — a SwitchingSender wraps several inner senders, so one
+ * per process is the typical pattern. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE
+ * if more than one is genuinely needed.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE < 1
+#error "SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE must be >= 1"
+#endif
+
+/*
+ * Number of SolidSyslogMetaSd instances the library's internal
+ * static pool can simultaneously hold. Default 1 — meta SD is typically
+ * wired into SolidSyslogConfig.Sd[] once per process.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_META_SD_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_META_SD_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_META_SD_POOL_SIZE < 1
+#error "SOLIDSYSLOG_META_SD_POOL_SIZE must be >= 1"
+#endif
+
+/*
+ * Number of SolidSyslogTimeQualitySd instances the library's internal
+ * static pool can simultaneously hold. Default 1.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE < 1
+#error "SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE must be >= 1"
+#endif
+
+/*
+ * Number of SolidSyslogOriginSd instances the library's internal
+ * static pool can simultaneously hold. Each instance carries the
+ * pre-formatted static-prefix Formatter storage (software, swVersion,
+ * enterpriseId) so the per-message Format only splices in the IP
+ * params. Larger per-slot footprint than the other SDs.
+ *
+ * Default 1.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE < 1
+#error "SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE must be >= 1"
+#endif
+
 #endif /* SOLIDSYSLOG_TUNABLES_DEFAULTS_H */

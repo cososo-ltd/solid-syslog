@@ -12,12 +12,7 @@ TEST_GROUP(SolidSyslogNullStore)
     void setup() override
     {
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        store = SolidSyslogNullStore_Create();
-    }
-
-    void teardown() override
-    {
-        SolidSyslogNullStore_Destroy();
+        store = SolidSyslogNullStore_Get();
     }
 };
 

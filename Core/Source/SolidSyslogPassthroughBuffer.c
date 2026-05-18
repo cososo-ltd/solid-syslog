@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #include "SolidSyslogBufferDefinition.h"
+#include "SolidSyslogPassthroughBufferPrivate.h"
 #include "SolidSyslogSender.h"
 
 static bool PassthroughBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
@@ -11,27 +12,20 @@ static void PassthroughBuffer_Write(struct SolidSyslogBuffer* base, const void* 
 
 static inline struct SolidSyslogPassthroughBuffer* PassthroughBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
 
-struct SolidSyslogPassthroughBuffer
+void PassthroughBuffer_Initialise(struct SolidSyslogBuffer* base, struct SolidSyslogSender* sender)
 {
-    struct SolidSyslogBuffer Base;
-    struct SolidSyslogSender* Sender;
-};
-
-static struct SolidSyslogPassthroughBuffer PassthroughBuffer_Instance;
-
-struct SolidSyslogBuffer* SolidSyslogPassthroughBuffer_Create(struct SolidSyslogSender* sender)
-{
-    PassthroughBuffer_Instance.Base.Write = PassthroughBuffer_Write;
-    PassthroughBuffer_Instance.Base.Read = PassthroughBuffer_Read;
-    PassthroughBuffer_Instance.Sender = sender;
-    return &PassthroughBuffer_Instance.Base;
+    struct SolidSyslogPassthroughBuffer* self = PassthroughBuffer_SelfFromBase(base);
+    self->Base.Write = PassthroughBuffer_Write;
+    self->Base.Read = PassthroughBuffer_Read;
+    self->Sender = sender;
 }
 
-void SolidSyslogPassthroughBuffer_Destroy(void)
+void PassthroughBuffer_Cleanup(struct SolidSyslogBuffer* base)
 {
-    PassthroughBuffer_Instance.Base.Write = NULL;
-    PassthroughBuffer_Instance.Base.Read = NULL;
-    PassthroughBuffer_Instance.Sender = NULL;
+    struct SolidSyslogPassthroughBuffer* self = PassthroughBuffer_SelfFromBase(base);
+    self->Base.Write = NULL;
+    self->Base.Read = NULL;
+    self->Sender = NULL;
 }
 
 static bool PassthroughBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)

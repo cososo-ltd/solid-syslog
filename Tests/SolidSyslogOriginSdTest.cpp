@@ -6,6 +6,7 @@
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogStructuredData.h"
+#include "SolidSyslogTunables.h"
 #include "CppUTest/TestHarness.h"
 
 class TEST_SolidSyslogOriginSd_EnterpriseIdContainingSpecialsIsEscaped_Test;
@@ -95,13 +96,13 @@ TEST_GROUP(SolidSyslogOriginSd)
 
     void teardown() override
     {
-        SolidSyslogOriginSd_Destroy();
+        SolidSyslogOriginSd_Destroy(sd);
     }
 
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- positional shorthand for the two existing config fields; tests assert exact output so a mix-up shows immediately
     void recreate(const char* software, const char* swVersion)
     {
-        SolidSyslogOriginSd_Destroy();
+        SolidSyslogOriginSd_Destroy(sd);
         config.Software = software;
         config.SwVersion = swVersion;
         sd = SolidSyslogOriginSd_Create(&config);
@@ -109,14 +110,14 @@ TEST_GROUP(SolidSyslogOriginSd)
 
     void useEnterpriseId(const char* enterpriseId)
     {
-        SolidSyslogOriginSd_Destroy();
+        SolidSyslogOriginSd_Destroy(sd);
         config.EnterpriseId = enterpriseId;
         sd = SolidSyslogOriginSd_Create(&config);
     }
 
     void useIps(std::initializer_list<const char*> ips)
     {
-        SolidSyslogOriginSd_Destroy();
+        SolidSyslogOriginSd_Destroy(sd);
         fakeIpCount = ips.size();
         size_t i = 0;
         for (const char* ip : ips)
@@ -421,7 +422,7 @@ TEST(SolidSyslogOriginSd, IpContainingSpecialsIsEscaped)
 
 TEST(SolidSyslogOriginSd, GetIpCountSetButGetIpAtNullOmitsIpParams)
 {
-    SolidSyslogOriginSd_Destroy();
+    SolidSyslogOriginSd_Destroy(sd);
     config.GetIpCount = FakeIpCount;
     config.GetIpAt = nullptr;
     sd = SolidSyslogOriginSd_Create(&config);
@@ -435,7 +436,7 @@ TEST(SolidSyslogOriginSd, GetIpCountSetButGetIpAtNullOmitsIpParams)
 
 TEST(SolidSyslogOriginSd, GetIpAtSetButGetIpCountNullOmitsIpParams)
 {
-    SolidSyslogOriginSd_Destroy();
+    SolidSyslogOriginSd_Destroy(sd);
     config.GetIpCount = nullptr;
     config.GetIpAt = FakeIpAt;
     sd = SolidSyslogOriginSd_Create(&config);
@@ -491,4 +492,65 @@ TEST(SolidSyslogOriginSd, EnterpriseIdAndIpsNoSoftwareSwVersion)
         "[origin enterpriseId=\"1.3.6.1.4.1.12345\" ip=\"192.0.2.1\"]",
         SolidSyslogFormatter_AsFormattedBuffer(formatter)
     );
+}
+
+// Pool tests — prove SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE caps live instances
+// and overflow falls back to the shared SolidSyslogNullSd.
+
+// clang-format off
+TEST_GROUP(SolidSyslogOriginSdPool)
+{
+    SolidSyslogOriginSdConfig config{};
+    struct SolidSyslogStructuredData* pooled[SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE] = {};
+    struct SolidSyslogStructuredData* overflow                                  = nullptr;
+
+    void setup() override
+    {
+        config.Software = "TestSoftware";
+        config.SwVersion = "1.0.0";
+    }
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogOriginSd_Destroy(handle);
+            }
+        }
+        if (overflow != nullptr)
+        {
+            SolidSyslogOriginSd_Destroy(overflow);
+        }
+    }
+
+    struct SolidSyslogStructuredData* MakeSd()
+    {
+        return SolidSyslogOriginSd_Create(&config);
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = MakeSd();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogOriginSdPool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = MakeSd();
+
+    CHECK_TEXT(overflow != nullptr, "Fallback handle was nullptr");
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
+        CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
+    }
 }

@@ -1,33 +1,23 @@
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
+#include "SolidSyslogAddress.h"
+#include "SolidSyslogDatagram.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogResolver.h"
+#include "SolidSyslogSenderDefinition.h"
+#include "SolidSyslogTransport.h"
 #include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogUdpSender.h"
-#include "SolidSyslogSenderDefinition.h"
-#include "SolidSyslogAddress.h"
-#include "SolidSyslogDatagram.h"
-#include "SolidSyslogResolver.h"
-#include "SolidSyslogTransport.h"
+#include "SolidSyslogUdpSenderPrivate.h"
 
 struct SolidSyslogFormatter;
 
-struct SolidSyslogUdpSender
-{
-    struct SolidSyslogSender Base;
-    struct SolidSyslogUdpSenderConfig Config;
-    SolidSyslogAddressStorage AddrStorage;
-    bool Connected;
-    uint32_t LastEndpointVersion;
-};
-
-static bool UdpSender_IsValidConfig(const struct SolidSyslogUdpSenderConfig* config);
-static void UdpSender_InstallConfig(const struct SolidSyslogUdpSenderConfig* config);
 static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size);
 static void UdpSender_Disconnect(struct SolidSyslogSender* base);
 
@@ -52,71 +42,33 @@ static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
     size_t size
 );
 static uint32_t UdpSender_NilEndpointVersion(void);
-static bool UdpSender_NilUdpSenderSend(struct SolidSyslogSender* base, const void* buffer, size_t size);
-static void UdpSender_NilUdpSenderDisconnect(struct SolidSyslogSender* base);
 
-static const struct SolidSyslogUdpSender DEFAULT_INSTANCE = {
-    .Config = {.EndpointVersion = UdpSender_NilEndpointVersion}
-};
-static struct SolidSyslogUdpSender instance;
-static struct SolidSyslogSender NilUdpSender = {
-    .Send = UdpSender_NilUdpSenderSend,
-    .Disconnect = UdpSender_NilUdpSenderDisconnect
-};
-
-struct SolidSyslogSender* SolidSyslogUdpSender_Create(const struct SolidSyslogUdpSenderConfig* config)
+void UdpSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogUdpSenderConfig* config)
 {
-    struct SolidSyslogSender* result = &NilUdpSender;
-    if (UdpSender_IsValidConfig(config))
+    struct SolidSyslogUdpSender* self = UdpSender_SelfFromBase(base);
+    self->Base.Send = UdpSender_Send;
+    self->Base.Disconnect = UdpSender_Disconnect;
+    self->Config = *config;
+    if (self->Config.EndpointVersion == NULL)
     {
-        UdpSender_InstallConfig(config);
-        result = &instance.Base;
+        self->Config.EndpointVersion = UdpSender_NilEndpointVersion;
     }
-    return result;
+    self->Connected = false;
+    self->LastEndpointVersion = 0;
 }
 
-static bool UdpSender_IsValidConfig(const struct SolidSyslogUdpSenderConfig* config)
+void UdpSender_Cleanup(struct SolidSyslogSender* base)
 {
-    bool valid = false;
-    if (config == NULL)
-    {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_UDPSENDER_CREATE_NULL_CONFIG);
-    }
-    else if (config->Resolver == NULL)
-    {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_UDPSENDER_CREATE_NULL_RESOLVER);
-    }
-    else if (config->Datagram == NULL)
-    {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_UDPSENDER_CREATE_NULL_DATAGRAM);
-    }
-    else if (config->Endpoint == NULL)
-    {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_UDPSENDER_CREATE_NULL_ENDPOINT);
-    }
-    else
-    {
-        valid = true;
-    }
-    return valid;
-}
-
-static void UdpSender_InstallConfig(const struct SolidSyslogUdpSenderConfig* config)
-{
-    instance = DEFAULT_INSTANCE;
-    instance.Config = *config;
-    if (instance.Config.EndpointVersion == NULL)
-    {
-        instance.Config.EndpointVersion = UdpSender_NilEndpointVersion;
-    }
-    instance.Base.Send = UdpSender_Send;
-    instance.Base.Disconnect = UdpSender_Disconnect;
-}
-
-void SolidSyslogUdpSender_Destroy(void)
-{
-    UdpSender_Disconnect(&instance.Base);
-    instance = DEFAULT_INSTANCE;
+    struct SolidSyslogUdpSender* self = UdpSender_SelfFromBase(base);
+    UdpSender_Disconnect(base);
+    self->Base.Send = NULL;
+    self->Base.Disconnect = NULL;
+    self->Config.Resolver = NULL;
+    self->Config.Datagram = NULL;
+    self->Config.Endpoint = NULL;
+    self->Config.EndpointVersion = NULL;
+    self->Connected = false;
+    self->LastEndpointVersion = 0;
 }
 
 static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size)
@@ -270,17 +222,4 @@ static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
 static uint32_t UdpSender_NilEndpointVersion(void)
 {
     return 0;
-}
-
-static bool UdpSender_NilUdpSenderSend(struct SolidSyslogSender* base, const void* buffer, size_t size)
-{
-    (void) base;
-    (void) buffer;
-    (void) size;
-    return true;
-}
-
-static void UdpSender_NilUdpSenderDisconnect(struct SolidSyslogSender* base)
-{
-    (void) base;
 }

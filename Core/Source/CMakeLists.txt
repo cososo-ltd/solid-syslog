@@ -3,17 +3,22 @@ set(SOURCES
     SolidSyslogError.c
     SolidSyslogConfigLock.c
     SolidSyslogSwitchingSender.c
+    SolidSyslogSwitchingSenderStatic.c
     SolidSyslogBuffer.c
     SolidSyslogFormatter.c
     SolidSyslogMetaSd.c
+    SolidSyslogMetaSdStatic.c
     SolidSyslogPassthroughBuffer.c
+    SolidSyslogPassthroughBufferStatic.c
     SolidSyslogCircularBuffer.c
     SolidSyslogCircularBufferStatic.c
     SolidSyslogPoolAllocator.c
     SolidSyslogMutex.c
     SolidSyslogNullMutex.c
     SolidSyslogSender.c
+    SolidSyslogNullSender.c
     SolidSyslogStore.c
+    SolidSyslogNullSd.c
     SolidSyslogNullStore.c
     SolidSyslogNullSecurityPolicy.c
     SolidSyslogCrc16.c
@@ -21,7 +26,9 @@ set(SOURCES
     SolidSyslogStream.c
     SolidSyslogStructuredData.c
     SolidSyslogTimeQualitySd.c
+    SolidSyslogTimeQualitySdStatic.c
     SolidSyslogOriginSd.c
+    SolidSyslogOriginSdStatic.c
     SolidSyslogFile.c
     SolidSyslogBlockStore.c
     RecordStore.c
@@ -45,6 +52,7 @@ if(SOLIDSYSLOG_POSIX OR SOLIDSYSLOG_WINSOCK OR DEFINED ENV{FREERTOS_KERNEL_PATH}
         SolidSyslogResolver.c
         SolidSyslogDatagram.c
         SolidSyslogUdpSender.c
+        SolidSyslogUdpSenderStatic.c
         SolidSyslogStreamSender.c
     )
 endif()

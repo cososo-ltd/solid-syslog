@@ -1,11 +1,16 @@
 #include <stdint.h>
 #include <cstring>
 
+#include "CppUTest/TestHarness.h"
+#include "ErrorHandlerFake.h"
 #include "SolidSyslogFormatter.h"
-#include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTimeQuality.h"
-#include "CppUTest/TestHarness.h"
+#include "SolidSyslogTimeQualitySd.h"
+#include "SolidSyslogTunables.h"
+#include "TestUtils.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER into scope for CALLED_FAKE
 
 struct SolidSyslogFormatter;
 struct SolidSyslogStructuredData;
@@ -40,7 +45,7 @@ TEST_GROUP(SolidSyslogTimeQualitySd)
 
     void teardown() override
     {
-        SolidSyslogTimeQualitySd_Destroy();
+        SolidSyslogTimeQualitySd_Destroy(sd);
     }
 
     void format() const
@@ -141,4 +146,86 @@ TEST(SolidSyslogTimeQualitySd, FormatAdvancesLengthWithSyncAccuracy)
 TEST(SolidSyslogTimeQualitySd, DestroyDoesNotCrash)
 {
     // Covered by teardown — this test documents the intent
+}
+
+// Pool tests — prove SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE caps live
+// instances and overflow falls back to the shared SolidSyslogNullSd.
+
+// clang-format off
+TEST_GROUP(SolidSyslogTimeQualitySdPool)
+{
+    // cppcheck-suppress constVariable -- assigned in TEST() bodies; cppcheck does not model CppUTest macros
+    struct SolidSyslogStructuredData* pooled[SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE] = {};
+    struct SolidSyslogStructuredData* overflow                                       = nullptr;
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogTimeQualitySd_Destroy(handle);
+            }
+        }
+        // cppcheck-suppress knownConditionTrueFalse -- assigned in TEST() bodies; cppcheck does not model CppUTest macros
+        if (overflow != nullptr)
+        {
+            SolidSyslogTimeQualitySd_Destroy(overflow);
+        }
+    }
+
+    static struct SolidSyslogStructuredData* MakeSd()
+    {
+        return SolidSyslogTimeQualitySd_Create(StubGetTimeQuality);
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = MakeSd();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogTimeQualitySdPool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = MakeSd();
+
+    CHECK_TEXT(overflow != nullptr, "Fallback handle was nullptr");
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
+        CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
+    }
+}
+
+// Bad-setup test — _Create rejects NULL callback and routes to NullSd.
+
+// clang-format off
+TEST_GROUP(SolidSyslogTimeQualitySdBadSetup)
+{
+    int sentinel = 0;
+
+    void setup() override
+    {
+        ErrorHandlerFake_Install(&sentinel);
+    }
+
+    void teardown() override
+    {
+        ErrorHandlerFake_Uninstall();
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogTimeQualitySdBadSetup, CreateWithNullCallbackReportsError)
+{
+    SolidSyslogTimeQualitySd_Create(nullptr);
+    CHECK_REPORTED_ERROR("SolidSyslogTimeQualitySd_Create called with NULL getTimeQuality");
 }

@@ -9,7 +9,7 @@ EXTERN_C_BEGIN
     struct SolidSyslogStructuredData;
 
     struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTimeQualityFunction getTimeQuality);
-    void SolidSyslogTimeQualitySd_Destroy(void);
+    void SolidSyslogTimeQualitySd_Destroy(struct SolidSyslogStructuredData * base);
 
 EXTERN_C_END
 

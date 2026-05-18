@@ -10,18 +10,13 @@ TEST_GROUP(SolidSyslogNullSecurityPolicy)
     void setup() override
     {
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        policy = SolidSyslogNullSecurityPolicy_Create();
-    }
-
-    void teardown() override
-    {
-        SolidSyslogNullSecurityPolicy_Destroy();
+        policy = SolidSyslogNullSecurityPolicy_Get();
     }
 };
 
 // clang-format on
 
-TEST(SolidSyslogNullSecurityPolicy, CreateReturnsNonNull)
+TEST(SolidSyslogNullSecurityPolicy, GetReturnsNonNull)
 {
     CHECK_TRUE(policy != nullptr);
 }
@@ -34,9 +29,4 @@ TEST(SolidSyslogNullSecurityPolicy, IntegritySizeIsZero)
 TEST(SolidSyslogNullSecurityPolicy, VerifyIntegrityReturnsTrue)
 {
     CHECK_TRUE(policy->VerifyIntegrity(nullptr, 0, nullptr));
-}
-
-TEST(SolidSyslogNullSecurityPolicy, DestroyDoesNotCrash)
-{
-    SolidSyslogNullSecurityPolicy_Destroy();
 }

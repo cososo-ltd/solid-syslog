@@ -19,10 +19,13 @@ static void Fallback_Write(struct SolidSyslogBuffer* base, const void* data, siz
 static size_t CircularBuffer_IndexFromHandle(const struct SolidSyslogBuffer* base);
 static void CircularBuffer_CleanupAtIndex(size_t index, void* context);
 
-static bool InUse[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE];
-static struct SolidSyslogCircularBuffer Pool[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE];
+static bool CircularBuffer_InUse[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE];
+static struct SolidSyslogCircularBuffer CircularBuffer_Pool[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE];
 static struct SolidSyslogBuffer Fallback = {Fallback_Write, Fallback_Read};
-static struct SolidSyslogPoolAllocator Allocator = {InUse, SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE};
+static struct SolidSyslogPoolAllocator CircularBuffer_Allocator = {
+    CircularBuffer_InUse,
+    SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE
+};
 
 struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     struct SolidSyslogMutex* mutex,
@@ -30,12 +33,12 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     size_t ringBytes
 )
 {
-    size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&Allocator);
+    size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&CircularBuffer_Allocator);
     struct SolidSyslogBuffer* handle = &Fallback;
-    if (SolidSyslogPoolAllocator_IndexIsValid(&Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&CircularBuffer_Allocator, index))
     {
-        CircularBuffer_Initialise(&Pool[index].Base, mutex, ring, ringBytes);
-        handle = &Pool[index].Base;
+        CircularBuffer_Initialise(&CircularBuffer_Pool[index].Base, mutex, ring, ringBytes);
+        handle = &CircularBuffer_Pool[index].Base;
     }
     else
     {
@@ -47,8 +50,9 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
 void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
 {
     size_t index = CircularBuffer_IndexFromHandle(base);
-    bool released = SolidSyslogPoolAllocator_IndexIsValid(&Allocator, index) &&
-                    SolidSyslogPoolAllocator_FreeIfInUse(&Allocator, index, CircularBuffer_CleanupAtIndex, NULL);
+    bool released =
+        SolidSyslogPoolAllocator_IndexIsValid(&CircularBuffer_Allocator, index) &&
+        SolidSyslogPoolAllocator_FreeIfInUse(&CircularBuffer_Allocator, index, CircularBuffer_CleanupAtIndex, NULL);
     if (!released)
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_UNKNOWN_DESTROY);
@@ -60,7 +64,7 @@ static size_t CircularBuffer_IndexFromHandle(const struct SolidSyslogBuffer* bas
     size_t result = SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE;
     for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE; poolIndex++)
     {
-        if (base == &Pool[poolIndex].Base)
+        if (base == &CircularBuffer_Pool[poolIndex].Base)
         {
             result = poolIndex;
             break;
@@ -72,7 +76,7 @@ static size_t CircularBuffer_IndexFromHandle(const struct SolidSyslogBuffer* bas
 static void CircularBuffer_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    CircularBuffer_Cleanup(&Pool[index].Base);
+    CircularBuffer_Cleanup(&CircularBuffer_Pool[index].Base);
 }
 
 static bool Fallback_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)

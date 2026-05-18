@@ -123,12 +123,11 @@ TEST_BASE(DrainTestFixtureBase)
     {
         file   = FileFake_Create(&fileStorage);
         device = SolidSyslogFileBlockDevice_Create(&deviceStorage, file, TEST_PATH_PREFIX);
-        policy = SolidSyslogNullSecurityPolicy_Create();
+        policy = SolidSyslogNullSecurityPolicy_Get();
     }
 
     void teardownBlockDeviceAndPolicy() const
     {
-        SolidSyslogNullSecurityPolicy_Destroy();
         SolidSyslogFileBlockDevice_Destroy(device);
         FileFake_Destroy();
     }

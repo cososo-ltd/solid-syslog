@@ -7,6 +7,7 @@
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStructuredData.h"
+#include "SolidSyslogTunables.h"
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
@@ -92,14 +93,14 @@ TEST_GROUP(SolidSyslogMetaSd)
 
     void teardown() override
     {
-        SolidSyslogMetaSd_Destroy();
+        SolidSyslogMetaSd_Destroy(sd);
         TestAtomicCounter_Destroy(counter);
         ErrorHandlerFake_Uninstall();
     }
 
     void recreateWith(const SolidSyslogMetaSdConfig* configPtr)
     {
-        SolidSyslogMetaSd_Destroy();
+        SolidSyslogMetaSd_Destroy(sd);
         sd = SolidSyslogMetaSd_Create(configPtr);
     }
 
@@ -284,4 +285,68 @@ TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     STRCMP_EQUAL("SolidSyslogMetaSd_Create config.Counter is NULL", ErrorHandlerFake_LastMessage());
+}
+
+// Pool tests — prove SOLIDSYSLOG_META_SD_POOL_SIZE caps live instances
+// and overflow falls back to the shared SolidSyslogNullSd.
+
+// clang-format off
+TEST_GROUP(SolidSyslogMetaSdPool)
+{
+    TestAtomicCounterStorage counterStorage;
+    SolidSyslogAtomicCounter* counter                                   = nullptr;
+    SolidSyslogMetaSdConfig config{};
+    struct SolidSyslogStructuredData* pooled[SOLIDSYSLOG_META_SD_POOL_SIZE] = {};
+    struct SolidSyslogStructuredData* overflow                          = nullptr;
+
+    void setup() override
+    {
+        counter = TestAtomicCounter_Create(&counterStorage);
+        config.Counter = counter;
+    }
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogMetaSd_Destroy(handle);
+            }
+        }
+        if (overflow != nullptr)
+        {
+            SolidSyslogMetaSd_Destroy(overflow);
+        }
+        TestAtomicCounter_Destroy(counter);
+    }
+
+    struct SolidSyslogStructuredData* MakeSd()
+    {
+        return SolidSyslogMetaSd_Create(&config);
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = MakeSd();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogMetaSdPool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = MakeSd();
+
+    CHECK_TEXT(overflow != nullptr, "Fallback handle was nullptr");
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
+        CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
+    }
 }

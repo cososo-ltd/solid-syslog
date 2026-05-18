@@ -6,14 +6,9 @@
 
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogStructuredDataDefinition.h"
+#include "SolidSyslogTimeQualitySdPrivate.h"
 
 struct SolidSyslogFormatter;
-
-struct SolidSyslogTimeQualitySd
-{
-    struct SolidSyslogStructuredData Base;
-    SolidSyslogTimeQualityFunction GetTimeQuality;
-};
 
 static void TimeQualitySd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter);
 
@@ -26,19 +21,18 @@ static inline void TimeQualitySd_FormatBoolParam(
 );
 static inline void TimeQualitySd_FormatSyncAccuracy(struct SolidSyslogFormatter* formatter, uint32_t value);
 
-static struct SolidSyslogTimeQualitySd TimeQualitySd_Instance;
-
-struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTimeQualityFunction getTimeQuality)
+void TimeQualitySd_Initialise(struct SolidSyslogStructuredData* base, SolidSyslogTimeQualityFunction getTimeQuality)
 {
-    TimeQualitySd_Instance.Base.Format = TimeQualitySd_Format;
-    TimeQualitySd_Instance.GetTimeQuality = getTimeQuality;
-    return &TimeQualitySd_Instance.Base;
+    struct SolidSyslogTimeQualitySd* self = TimeQualitySd_SelfFromBase(base);
+    self->Base.Format = TimeQualitySd_Format;
+    self->GetTimeQuality = getTimeQuality;
 }
 
-void SolidSyslogTimeQualitySd_Destroy(void)
+void TimeQualitySd_Cleanup(struct SolidSyslogStructuredData* base)
 {
-    TimeQualitySd_Instance.Base.Format = NULL;
-    TimeQualitySd_Instance.GetTimeQuality = NULL;
+    struct SolidSyslogTimeQualitySd* self = TimeQualitySd_SelfFromBase(base);
+    self->Base.Format = NULL;
+    self->GetTimeQuality = NULL;
 }
 
 static void TimeQualitySd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter)

@@ -55,6 +55,8 @@ static SolidSyslogPosixTcpStreamStorage plainTcpStreamStorage;
 static struct SolidSyslogStream* plainTcpStream;
 static SolidSyslogStreamSenderStorage plainTcpSenderStorage;
 static struct SolidSyslogSender* plainTcpSender;
+static struct SolidSyslogSender* udpSender;
+static struct SolidSyslogSender* switchingSender;
 
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
@@ -83,7 +85,7 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetOptions* opt
     udpConfig.Datagram = SolidSyslogPosixDatagram_Create();
     udpConfig.Endpoint = BddTargetUdpConfig_GetEndpoint;
     udpConfig.EndpointVersion = BddTargetUdpConfig_GetEndpointVersion;
-    struct SolidSyslogSender* udpSender = SolidSyslogUdpSender_Create(&udpConfig);
+    udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
     plainTcpStream = SolidSyslogPosixTcpStream_Create(&plainTcpStreamStorage);
     static struct SolidSyslogStreamSenderConfig tcpConfig = {0};
@@ -106,7 +108,8 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetOptions* opt
     switchConfig.Selector = BddTargetSwitchConfig_Selector;
 
     BddTargetSwitchConfig_SetByName(options->Transport);
-    return SolidSyslogSwitchingSender_Create(&switchConfig);
+    switchingSender = SolidSyslogSwitchingSender_Create(&switchConfig);
+    return switchingSender;
 }
 
 static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
@@ -178,16 +181,16 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* optio
         return SolidSyslogBlockStore_Create(&storeStorage, &storeConfig);
     }
 
-    return SolidSyslogNullStore_Create();
+    return SolidSyslogNullStore_Get();
 }
 
 static void DestroySender(void)
 {
-    SolidSyslogSwitchingSender_Destroy();
+    SolidSyslogSwitchingSender_Destroy(switchingSender);
     BddTargetTlsSender_Destroy();
     SolidSyslogStreamSender_Destroy(plainTcpSender);
     SolidSyslogPosixTcpStream_Destroy(plainTcpStream);
-    SolidSyslogUdpSender_Destroy();
+    SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogPosixDatagram_Destroy();
     SolidSyslogGetAddrInfoResolver_Destroy();
 }
@@ -203,10 +206,7 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetO
         SolidSyslogCrc16Policy_Destroy();
         SolidSyslogPosixFile_Destroy(storeFile);
     }
-    else
-    {
-        SolidSyslogNullStore_Destroy();
-    }
+    /* else: NullStore is shared and immutable — nothing to destroy. */
 }
 
 int main(int argc, char* argv[])
@@ -287,9 +287,9 @@ int main(int argc, char* argv[])
     pthread_join(serviceThread, NULL);
 
     SolidSyslog_Destroy();
-    SolidSyslogOriginSd_Destroy();
-    SolidSyslogTimeQualitySd_Destroy();
-    SolidSyslogMetaSd_Destroy();
+    SolidSyslogOriginSd_Destroy(originSd);
+    SolidSyslogTimeQualitySd_Destroy(timeQuality);
+    SolidSyslogMetaSd_Destroy(metaSd);
     SolidSyslogStdAtomicCounter_Destroy(counter);
     DestroyStore(store, &options);
     SolidSyslogPosixMessageQueueBuffer_Destroy();

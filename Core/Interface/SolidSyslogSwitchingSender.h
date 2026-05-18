@@ -8,6 +8,8 @@
 
 EXTERN_C_BEGIN
 
+    struct SolidSyslogSender;
+
     typedef uint8_t (*SolidSyslogSwitchingSenderSelector)(void); // NOLINT(modernize-redundant-void-arg) -- C idiom
 
     struct SolidSyslogSwitchingSenderConfig
@@ -18,7 +20,7 @@ EXTERN_C_BEGIN
     };
 
     struct SolidSyslogSender* SolidSyslogSwitchingSender_Create(const struct SolidSyslogSwitchingSenderConfig* config);
-    void SolidSyslogSwitchingSender_Destroy(void);
+    void SolidSyslogSwitchingSender_Destroy(struct SolidSyslogSender * base);
 
 EXTERN_C_END
 

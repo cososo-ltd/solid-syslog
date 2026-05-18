@@ -5,8 +5,7 @@
 
 EXTERN_C_BEGIN
 
-    struct SolidSyslogSecurityPolicy* SolidSyslogNullSecurityPolicy_Create(void);
-    void SolidSyslogNullSecurityPolicy_Destroy(void);
+    struct SolidSyslogSecurityPolicy* SolidSyslogNullSecurityPolicy_Get(void);
 
 EXTERN_C_END
 
