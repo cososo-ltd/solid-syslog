@@ -160,10 +160,28 @@ project constraints:
 | Pass-by-value structs | Doubles the parameter footprint of every `_Create`; breaks the vtable indirection that decouples Core from Platform. |
 
 `Address.h` (Strict tier, opaque `SolidSyslogAddress`) and every
-caller-storage class (BlockStore, CircularBuffer, Formatter, the
+caller-storage class (BlockStore, Formatter, the
 FreeRTOS/Posix/Windows mutexes and streams, …) hit the same three
 rules for the same structural reason — one deviation document
 covers all of them.
+
+Note that `SolidSyslogCircularBuffer` moved off this pattern under
+E11 (S11.01): the instance struct now lives in a library-internal
+static pool, and the caller supplies only the ring memory as
+plain `uint8_t* ring, size_t ringBytes`. No `void*` storage cast on
+the instance; the ring pointer is held untyped inside the impl
+struct.
+
+The 11.3 suppression listed against `Core/Source/SolidSyslogCircularBuffer.c`
+post-E11 is therefore narrower than the rest of the entries above: it
+covers only the **vtable downcast** inside `CircularBuffer_SelfFromBase`
+(`struct SolidSyslogBuffer*` → `struct SolidSyslogCircularBuffer*`), the
+standard OO-in-C "interface pointer back to derived implementation" cast
+that every vtable method needs. The same downcast survives in every
+caller-storage class listed above as a separate concern from the
+caller-storage void* cast; this deviation covers both shapes under one
+heading because both are MISRA 11.3 firings driven by the same
+"interface decoupled from concrete type" design.
 
 ### Risk and mitigation
 
@@ -325,9 +343,8 @@ Project owner — David Cozens. Recorded under
 
 ### Deviation
 
-`struct SolidSyslogFormatter` and `struct SolidSyslogCircularBuffer`
-each end with a flexible array member that holds the caller-supplied
-backing storage:
+`struct SolidSyslogFormatter` ends with a flexible array member that
+holds the caller-supplied backing storage:
 
 ```c
 struct SolidSyslogFormatter
@@ -339,14 +356,17 @@ struct SolidSyslogFormatter
 
 ### Scope
 
-Two classes only:
+One class only:
 
 - `Core/Source/SolidSyslogFormatter.c`
-- `Core/Source/SolidSyslogCircularBuffer.c`
+
+`SolidSyslogCircularBuffer` used to share this shape but moved off
+it under E11 (S11.01) — its instance struct now holds an external
+ring pointer rather than a trailing FAM.
 
 ### Rationale
 
-These two classes implement the variable-size variant of the
+The Formatter implements the variable-size variant of the
 caller-supplied-storage pattern (D.002). The integrator declares a
 storage buffer of arbitrary size (with a minimum enforced by
 `_Static_assert`), and the class lives inside that storage —
@@ -792,18 +812,17 @@ Project owner — David Cozens. Recorded under
 
 ### Deviation
 
-`Core/Interface/SolidSyslogCircularBuffer.h` declares two function-like
-macros — `SOLIDSYSLOG_CIRCULAR_BUFFER_STORAGE_SIZE_BYTES` and
-`SOLIDSYSLOG_CIRCULAR_BUFFER_STORAGE_SIZE` — that integrator code uses
-to size caller-supplied storage. cppcheck-misra runs only over the
-Strict tier (`Core/Source/`) and Pragmatic tier (`Platform/*/Source/`);
+`Core/Interface/SolidSyslogCircularBuffer.h` declares one function-like
+macro — `SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES` — that integrator code
+uses to size caller-supplied ring memory. cppcheck-misra runs only over
+the Strict tier (`Core/Source/`) and Pragmatic tier (`Platform/*/Source/`);
 the actual consumers live under `Tests/` (Consistency-only tier) and
 `Bdd/Targets/` (Out of scope) and are therefore invisible to the
 checker.
 
 ### Scope
 
-`Core/Interface/SolidSyslogCircularBuffer.h` — two macro definitions.
+`Core/Interface/SolidSyslogCircularBuffer.h` — one macro definition.
 
 A future per-component sweep may surface similar findings on other
 public API macros (per the tier model, MISRA enforcement does not cross
@@ -817,17 +836,17 @@ The macros *are* used — by integrators in `Tests/` and `Bdd/Targets/`.
 Verified by `grep` over the tree:
 
 ```
-Tests/SolidSyslogCircularBufferTest.cpp         — both macros
-Tests/SolidSyslogTest.cpp                        — _BYTES form
-Tests/SolidSyslogBlockStoreDrainOrderingTest.cpp — _SIZE form
-Bdd/Targets/Windows/BddTargetWindows.c           — _SIZE form
-Bdd/Targets/FreeRtos/main.c                      — _SIZE form
+Tests/SolidSyslogCircularBufferTest.cpp         — RING_BYTES
+Tests/SolidSyslogBlockStoreDrainOrderingTest.cpp — RING_BYTES
+Bdd/Targets/Windows/BddTargetWindows.c           — RING_BYTES
+Bdd/Targets/FreeRtos/main.c                      — RING_BYTES
 ```
 
-The S10.05 audit's verdict ("Two declared macros that are never used.
-Delete them.") was incorrect — the macros are part of the public API;
-deleting them would force every integrator to compute storage size by
-hand.
+The macro is part of the public API; integrators use it to size
+the caller-supplied ring buffer in bytes, derived from a maximum
+message count (e.g. `uint8_t ring[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4)]`
+allocates enough bytes for four full-size messages plus their
+length headers).
 
 The alternatives all regress:
 

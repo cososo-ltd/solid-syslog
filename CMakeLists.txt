@@ -61,6 +61,7 @@ if(ENABLE_CPPCHECK)
             "--enable=warning,style,performance,portability"
             "--error-exitcode=1"
             "--suppress=missingIncludeSystem"
+            "--suppress=useStlAlgorithm"
             "--inline-suppr"
             "--std=c++17"
         )
@@ -102,6 +103,23 @@ if(SOLIDSYSLOG_OPENSSL)
     if(OPENSSL_VERSION VERSION_LESS 3.0)
         message(FATAL_ERROR "SOLIDSYSLOG_OPENSSL requires OpenSSL 3.0 or later; found ${OPENSSL_VERSION}. The integration harness uses EVP_RSA_gen (3.0+).")
     endif()
+endif()
+
+# Allocation strategy (E11). Currently only "static" ships — internal static
+# pools allocate instance bookkeeping for stateful classes. A future epic
+# may add "dynamic" (heap-backed). Selecting "dynamic" now errors hard so
+# downstream builds fail fast rather than silently linking against missing
+# TUs.
+set(SOLIDSYSLOG_ALLOCATION_STRATEGY "static" CACHE STRING
+    "Allocation strategy for instance bookkeeping: static (internal pools) or dynamic (heap, not yet shipped)")
+set_property(CACHE SOLIDSYSLOG_ALLOCATION_STRATEGY PROPERTY STRINGS static dynamic)
+if(SOLIDSYSLOG_ALLOCATION_STRATEGY STREQUAL "dynamic")
+    message(FATAL_ERROR
+        "SOLIDSYSLOG_ALLOCATION_STRATEGY=dynamic is reserved for a future epic; "
+        "no dynamic TUs ship yet. Set SOLIDSYSLOG_ALLOCATION_STRATEGY=static (the default).")
+elseif(NOT SOLIDSYSLOG_ALLOCATION_STRATEGY STREQUAL "static")
+    message(FATAL_ERROR
+        "SOLIDSYSLOG_ALLOCATION_STRATEGY must be 'static' (got: '${SOLIDSYSLOG_ALLOCATION_STRATEGY}').")
 endif()
 
 # Build-time tunables (E21: Port-Time Configurability). Integrators override

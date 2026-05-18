@@ -169,8 +169,7 @@ enum
     BDD_TARGET_BUFFER_MESSAGES = 8
 };
 
-static SolidSyslogCircularBufferStorage
-    bufferStorage[SOLIDSYSLOG_CIRCULAR_BUFFER_STORAGE_SIZE(BDD_TARGET_BUFFER_MESSAGES)];
+static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(BDD_TARGET_BUFFER_MESSAGES)];
 static SolidSyslogFreeRtosMutexStorage mutexStorage;
 
 /* Lifecycle mutex serialises SolidSyslog_Service against the rebuild path
@@ -825,7 +824,7 @@ static void InteractiveTask(void* argument)
      * is the Service task; its Write side is whichever task calls
      * SolidSyslog_Log. */
     bufferMutex = SolidSyslogFreeRtosMutex_Create(&mutexStorage);
-    buffer = SolidSyslogCircularBuffer_Create(bufferStorage, sizeof(bufferStorage), bufferMutex);
+    buffer = SolidSyslogCircularBuffer_Create(bufferMutex, bufferRing, sizeof(bufferRing));
 
     /* Lifecycle mutex created up front so the Service task can take it
      * from its very first iteration without a NULL check. */

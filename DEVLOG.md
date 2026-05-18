@@ -1,5 +1,155 @@
 # Dev Log
 
+## 2026-05-17 — S11.01 commits 2–N: CircularBuffer pool migration (E11 pilot, #392)
+
+The body of S11.01 — every commit after the `SolidSyslog_SetConfigLock`
+seam landed in #393. Split across 28 commits on
+`feat/s11-01-circular-buffer-pool` so each step can be reviewed
+independently; the PR ships them squashed.
+
+### Locked-in shape (this is the reference for every other E11 class)
+
+- **Three-TU split per class.** `SolidSyslogCircularBuffer.c` holds the
+  vtable + ring logic + private `_Initialise` / `_Cleanup`.
+  `SolidSyslogCircularBufferPrivate.h` (TU-internal) declares the
+  struct + private signatures. `SolidSyslogCircularBufferStatic.c`
+  owns the pool, the public `_Create` / `_Destroy`, the
+  fallback-handle plumbing, and all slot-walk synchronisation.
+- **Tunable** `SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE` (default 1U)
+  in `SolidSyslogTunablesDefaults.h` with `#ifndef` override and a
+  floor `#error`.
+- **LockConfig pair injection** wraps every slot probe (in both
+  Acquire and Free walks). `Initialise` runs *outside* the lock so a
+  future expensive `_Initialise` (FatFs open, mbedTLS setup) doesn't
+  block interrupts when the integrator maps `SetConfigLock` to
+  `taskENTER_CRITICAL`. `Cleanup` stays *inside* its per-iteration
+  lock — releasing the lock around it would let a concurrent Create
+  grab the slot and race Initialise vs Cleanup.
+- **Fallback singleton** of type `struct SolidSyslogBuffer` with a
+  no-op vtable. Pool exhaustion returns `&Fallback` (the integrator's
+  Log/Service calls become no-ops, never NULL deref). `_Create`
+  reports `SOLIDSYSLOG_SEVERITY_ERROR` once on the transition; the
+  integrator hooks `SolidSyslog_SetErrorHandler` to see it.
+- **`_Destroy` is uniform**: any handle not currently issued by
+  Create — unknown stranger, pool-issued but already destroyed,
+  Fallback — reports `SOLIDSYSLOG_SEVERITY_WARNING`. The earlier
+  attempt to special-case Fallback as silent collapsed; the simpler
+  rule survives.
+- **Symmetric `Initialise` / `Cleanup` API.** Both take
+  `struct SolidSyslogBuffer* base` and recover the concrete type via
+  `SelfFromBase` internally. The 11.3 cast lives in exactly one TU
+  (already deviated). `_Static.c` never casts.
+- **Scan-then-release in `_Destroy`.** The address-match walk is
+  lock-free (pool addresses are file-scope statics, never change),
+  and the lock only wraps the InUse-check + Cleanup + MarkFree.
+  Lock-count drops to **0** on unknown handles, **1** on matched
+  handles, regardless of pool size.
+
+### Reference shape of `*Static.c`
+
+`_Create` and `_Destroy` each read as four lines of pure intent
+against named helpers. The helper tree splits cleanly:
+
+- **Composition**: `AcquireFirstFree`, `AcquireIfFree`,
+  `IndexFromHandle`, `FreeIfInUse`, `Acquire`
+- **Predicates** (subject-IS-adjective form):
+  `PoolItemIsFree` (chains through `PoolItemIsInUse`),
+  `PoolItemIsInUse`, `HandleIsValid`, `PoolIndexIsValid`
+- **Atomic field ops**: `MarkInUse`, `MarkFree`,
+  `HandleFromIndex`, `PoolItemIsInUse`
+
+The `.InUse` flag is read in exactly one place (`PoolItemIsInUse`),
+set-true in one place (`MarkInUse`), set-false in one place
+(`MarkFree`). `&Fallback` is referenced in two places (the static
+initialiser and `HandleIsValid`). `&Pool[poolIndex].Object.Base` is
+computed in exactly one place (`HandleFromIndex`).
+
+### Tests
+
+The Pool TEST_GROUP pins:
+- pool-exhaustion returns a distinct Fallback handle
+  (`FillingPoolThenOverflowReturnsDistinctFallback`)
+- pool-exhaustion reports ERROR exactly once
+- the Fallback vtable methods are no-ops
+- `_Create` locks the right number of times under empty / full pool
+- `_Destroy` locks exactly once on a pool-issued handle, zero times
+  on an unknown handle
+- unknown and stale handles report WARNING with the right message
+
+100% line / 100% function / 100% branch coverage on
+`SolidSyslogCircularBufferStatic.c` (68/68, 16/16, 18/18).
+
+The basic CircularBuffer TEST_GROUPs were also restructured: a shared
+`CircularBufferFixture` TEST_BASE holds `buffer`, `readData`,
+`readSize`, and the `Write(...)` / `Read()` helpers; a
+`CHECK_LAST_READ_RECORD` macro replaces the
+`LONGS_EQUAL + MEMCMP_EQUAL` pair at 8+ sites. Test bodies now read
+top-to-bottom as setup → act → check with no `SolidSyslogBuffer_Write
+(buffer, ..., sizeof(...), &readSize)` boilerplate.
+
+### Notable course-correction mid-flight
+
+Mid-pass I had extracted three static-inline helpers
+(`TryClaim` / `Release` / `SlotOwnsBase`) into `*Static.c`. David
+flagged that the file got harder to read, not easier, and asked for
+the extractions to be reverted to a flat-inline shape. We then
+re-extracted from a clean baseline, one named helper at a time,
+each commit prompted and reviewed. The resulting file is shorter
+and reads top-down at one level of abstraction per function. The
+pattern memory `project_e11_three_tu_split.md` already records the
+three-TU split; the helper-extraction lesson is preserved in
+`feedback_no_premature_generalisation.md`.
+
+### Gate posture
+
+- cppcheck-misra: **87** (baseline 88 on main, improved by 1 via
+  `_Destroy` becoming single-exit and then by the scan-then-release
+  split removing the locked walk's compound condition).
+- No new `cppcheck-suppress` / `NOLINT` additions on the branch.
+  The line-pinned 11.3 suppression for `CircularBuffer.c`'s
+  `SelfFromBase` moved twice (cast shifted 1 line each time
+  Initialise / Cleanup signature changed); both shifts updated the
+  existing entry in `misra_suppressions.txt`, never added new ones.
+- All other gates green: debug, clang-debug, sanitize, tidy,
+  cppcheck, coverage, clang-format, integration-linux-openssl
+  (host tests only — CI covers Windows / BDD / FreeRTOS).
+
+### Decisions locked in for E11
+
+- `CircularBuffer_AcquireIfFree` shape (single `poolIndex` argument,
+  returns handle-or-Fallback) is the reference for per-slot probes
+  in every E11 class.
+- `IndexFromHandle` + `FreeIfInUse` shape in `_Destroy` is the
+  reference for any class whose handles can be released by the
+  integrator.
+- "Initialise outside lock, Cleanup inside lock" asymmetry is
+  intentional and applies to every E11 class.
+- Pool size 1 by default; integrators bump via
+  `SOLIDSYSLOG_USER_TUNABLES_FILE`.
+
+### Deferred
+
+- Branch-coverage gate is *not* turned on at CI level — the local
+  run had to re-capture with `--rc lcov_branch_coverage=1` to
+  surface the 18/18 figure. Switching the coverage preset to capture
+  branches by default is a separate housekeeping story.
+- A `tunable-override-debug` preset that bumps pool size > 1 — would
+  pin the per-iteration locking observably in Create's
+  `CreateLocksOncePerSlotProbedWhenPoolIsFull` test. Useful but not
+  blocking; tests assert in terms of `SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE`
+  so they still hold at any pool size.
+
+### Open questions
+
+- Whether `PoolItemIsInUse` should be exposed in `*Private.h` for
+  any future test that wants to probe state from outside `*Static.c`.
+  Not needed yet; the file-scope visibility is correct as is.
+- Whether the symmetric `HandleIsInvalid` / `PoolItemIsInUse` /
+  `MarkFree` helpers should be lifted into a shared header for
+  reuse across E11 classes, or whether each class re-implements them
+  privately. Defer until the second E11 class lands and we see what
+  actually duplicates.
+
 ## 2026-05-17 — S11.01 commit 1: `SolidSyslog_SetConfigLock` injection point (#392)
 
 First commit of S11.01 (the E11 pilot). Lands the global lock/unlock

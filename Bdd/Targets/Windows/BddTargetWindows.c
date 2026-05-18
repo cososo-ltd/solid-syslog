@@ -66,8 +66,7 @@ static const char* const THRESHOLD_MARKER_PATH = "Bdd/output/solidsyslog_thresho
 
 static SolidSyslogWinsockTcpStreamStorage tcpStreamStorage;
 static SolidSyslogStreamSenderStorage tcpSenderStorage;
-static SolidSyslogCircularBufferStorage
-    bufferStorage[SOLIDSYSLOG_CIRCULAR_BUFFER_STORAGE_SIZE(BDD_TARGET_BUFFER_MESSAGES)];
+static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(BDD_TARGET_BUFFER_MESSAGES)];
 static SolidSyslogWindowsMutexStorage mutexStorage;
 static SolidSyslogWindowsAtomicCounterStorage counterStorage;
 static volatile bool shutdownFlag;
@@ -304,7 +303,7 @@ int BddTargetWindows_Run(int argc, char* argv[])
     struct SolidSyslogStore* store = CreateStore(&options);
 
     struct SolidSyslogMutex* mutex = SolidSyslogWindowsMutex_Create(&mutexStorage);
-    struct SolidSyslogBuffer* buffer = SolidSyslogCircularBuffer_Create(bufferStorage, sizeof(bufferStorage), mutex);
+    struct SolidSyslogBuffer* buffer = SolidSyslogCircularBuffer_Create(mutex, bufferRing, sizeof(bufferRing));
     struct SolidSyslogAtomicCounter* counter = SolidSyslogWindowsAtomicCounter_Create(&counterStorage);
     struct SolidSyslogMetaSdConfig metaConfig = {
         .Counter = counter,

@@ -28,4 +28,26 @@
 #error "SOLIDSYSLOG_MAX_MESSAGE_SIZE must be >= 64"
 #endif
 
+/*
+ * Number of SolidSyslogCircularBuffer instances the library's internal
+ * static pool can simultaneously hold. Each instance is a small
+ * bookkeeping struct (vtable, mutex pointer, ring pointer, head/tail/wrap)
+ * — roughly 64 bytes on a 64-bit target, 32 on a 32-bit target. The
+ * caller's ring memory is separate (passed to _Create).
+ *
+ * Most integrators only ever create one CircularBuffer per process;
+ * default 1. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if the integrator
+ * needs multiple concurrent buffer instances.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE < 1
+#error "SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE must be >= 1"
+#endif
+
 #endif /* SOLIDSYSLOG_TUNABLES_DEFAULTS_H */
