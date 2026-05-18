@@ -4,6 +4,7 @@
 #include "SenderFake.h"
 #include "SolidSyslogSender.h"
 #include "SolidSyslogSwitchingSender.h"
+#include "SolidSyslogTunables.h"
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
@@ -60,7 +61,7 @@ TEST_GROUP(SolidSyslogSwitchingSender)
 
     void teardown() override
     {
-        SolidSyslogSwitchingSender_Destroy();
+        SolidSyslogSwitchingSender_Destroy(sender);
         SenderFake_Destroy(innerC);
         SenderFake_Destroy(innerB);
         SenderFake_Destroy(innerA);
@@ -68,6 +69,13 @@ TEST_GROUP(SolidSyslogSwitchingSender)
 
     void CreateSwitchingSender(size_t count)
     {
+        /* Pool semantics: if setup already created one (slot-allocated), destroy
+         * it before creating again so this call reuses the same slot rather than
+         * exhausting the pool and getting the Fallback. */
+        if (sender != nullptr)
+        {
+            SolidSyslogSwitchingSender_Destroy(sender);
+        }
         struct SolidSyslogSwitchingSenderConfig config = {inners, count, TestSelector};
         sender                                         = SolidSyslogSwitchingSender_Create(&config);
     }
@@ -86,14 +94,14 @@ TEST(SolidSyslogSwitchingSender, CreateDestroyWorksWithoutCrashing)
 
 TEST(SolidSyslogSwitchingSender, DestroyDoesNotSendToInnerSenders)
 {
-    SolidSyslogSwitchingSender_Destroy();
+    SolidSyslogSwitchingSender_Destroy(sender);
     CALLED_FAKE_ON(SenderFake_Send, innerA, NEVER);
     CALLED_FAKE_ON(SenderFake_Send, innerB, NEVER);
 }
 
 TEST(SolidSyslogSwitchingSender, DestroyDoesNotDisconnectInnerSenders)
 {
-    SolidSyslogSwitchingSender_Destroy();
+    SolidSyslogSwitchingSender_Destroy(sender);
     CALLED_FAKE_ON(SenderFake_Disconnect, innerA, NEVER);
     CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
 }
@@ -203,10 +211,13 @@ TEST(SolidSyslogSwitchingSender, SelectorAtLastValidIndexDelegatesToThatSender)
     CALLED_FAKE_ON(SenderFake_Send, innerC, ONCE);
 }
 
-TEST(SolidSyslogSwitchingSender, ZeroSenderCountSendReturnsFalse)
+TEST(SolidSyslogSwitchingSender, ZeroSenderCountSendReturnsTrueToDropOnTheFloor)
 {
+    /* Out-of-range selector (or zero-count) resolves to the shared
+     * NullSender, whose Send returns true so messages drop rather than
+     * accumulate in the Store. */
     CreateSwitchingSender(0);
-    CHECK_FALSE(SolidSyslogSender_Send(sender, "x", 1));
+    CHECK_TRUE(SolidSyslogSender_Send(sender, "x", 1));
 }
 
 TEST(SolidSyslogSwitchingSender, ZeroSenderCountDisconnectDoesNotCrash)
@@ -215,10 +226,12 @@ TEST(SolidSyslogSwitchingSender, ZeroSenderCountDisconnectDoesNotCrash)
     SolidSyslogSender_Disconnect(sender);
 }
 
-TEST(SolidSyslogSwitchingSender, SelectorBeyondEndSendReturnsFalseAndDoesNotTouchInnerSenders)
+TEST(SolidSyslogSwitchingSender, SelectorBeyondEndSendReturnsTrueAndDoesNotTouchInnerSenders)
 {
+    /* Out-of-range selector resolves to the shared NullSender, whose
+     * Send returns true so messages drop rather than accumulate. */
     selectorReturn = BEYOND_END;
-    CHECK_FALSE(SolidSyslogSender_Send(sender, "x", 1));
+    CHECK_TRUE(SolidSyslogSender_Send(sender, "x", 1));
     CALLED_FAKE_ON(SenderFake_Send, innerA, NEVER);
     CALLED_FAKE_ON(SenderFake_Send, innerB, NEVER);
 }
@@ -243,4 +256,69 @@ TEST(SolidSyslogSwitchingSender, SelectorBeyondEndDisconnectBeforeSendDoesNotTou
     SolidSyslogSender_Disconnect(sender);
     CALLED_FAKE_ON(SenderFake_Disconnect, innerA, NEVER);
     CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
+}
+
+// Pool tests — prove SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE caps live
+// instances and overflow falls back to the shared SolidSyslogNullSender.
+
+// clang-format off
+TEST_GROUP(SolidSyslogSwitchingSenderPool)
+{
+    struct SolidSyslogSender* innerA                                          = nullptr;
+    struct SolidSyslogSender* inners[1]                                       = {nullptr};
+    struct SolidSyslogSender* pooled[SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE]  = {};
+    struct SolidSyslogSender* overflow                                        = nullptr;
+    SolidSyslogSwitchingSenderConfig config                                   = {};
+
+    void setup() override
+    {
+        innerA   = SenderFake_Create();
+        inners[0] = innerA;
+        config   = {inners, 1, TestSelector};
+    }
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogSwitchingSender_Destroy(handle);
+            }
+        }
+        if (overflow != nullptr)
+        {
+            SolidSyslogSwitchingSender_Destroy(overflow);
+        }
+        SenderFake_Destroy(innerA);
+    }
+
+    struct SolidSyslogSender* MakeSender()
+    {
+        return SolidSyslogSwitchingSender_Create(&config);
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = MakeSender();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogSwitchingSenderPool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = MakeSender();
+
+    CHECK_TEXT(overflow != nullptr, "Fallback handle was nullptr");
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
+        CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
+    }
 }

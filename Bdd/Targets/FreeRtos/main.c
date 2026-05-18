@@ -251,6 +251,7 @@ static struct SolidSyslogDatagram* datagram = NULL;
 static struct SolidSyslogStream* tcpStream = NULL;
 static struct SolidSyslogSender* tcpSender = NULL;
 static struct SolidSyslogSender* udpSender = NULL;
+static struct SolidSyslogSender* switchingSender = NULL;
 static struct SolidSyslogBuffer* buffer = NULL;
 static struct SolidSyslogMutex* bufferMutex = NULL;
 
@@ -672,7 +673,7 @@ static void TeardownAll(void)
     SolidSyslogFreeRtosMutex_Destroy(bufferMutex);
     SolidSyslogFreeRtosMutex_Destroy(lifecycleMutex);
     lifecycleMutex = NULL;
-    SolidSyslogSwitchingSender_Destroy();
+    SolidSyslogSwitchingSender_Destroy(switchingSender);
     SolidSyslogStreamSender_Destroy(tcpSender);
     SolidSyslogFreeRtosTcpStream_Destroy(tcpStream);
     SolidSyslogUdpSender_Destroy(udpSender);
@@ -814,7 +815,8 @@ static void InteractiveTask(void* argument)
         .Selector = BddTargetSwitchConfig_Selector,
     };
     BddTargetSwitchConfig_SetByName("udp");
-    struct SolidSyslogSender* sender = SolidSyslogSwitchingSender_Create(&switchConfig);
+    switchingSender = SolidSyslogSwitchingSender_Create(&switchConfig);
+    struct SolidSyslogSender* sender = switchingSender;
 
     /* CircularBuffer drained by ServiceTask below, with a FreeRtosMutex
      * gating concurrent producers (interactive task today; multi-task

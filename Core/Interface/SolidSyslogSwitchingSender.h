@@ -18,7 +18,7 @@ EXTERN_C_BEGIN
     };
 
     struct SolidSyslogSender* SolidSyslogSwitchingSender_Create(const struct SolidSyslogSwitchingSenderConfig* config);
-    void SolidSyslogSwitchingSender_Destroy(void);
+    void SolidSyslogSwitchingSender_Destroy(struct SolidSyslogSender * sender);
 
 EXTERN_C_END
 

@@ -77,6 +77,7 @@ static struct SolidSyslogStream* plainTcpStream;
 static struct SolidSyslogSender* plainTcpSender;
 static struct SolidSyslogDatagram* udpDatagram;
 static struct SolidSyslogSender* udpSender;
+static struct SolidSyslogSender* switchingSender;
 
 /* Block-store backing — created in CreateStore, released in DestroyStore. */
 static struct SolidSyslogFile* storeFile;
@@ -210,12 +211,13 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetWindowsOptio
     switchConfig.Selector = BddTargetSwitchConfig_Selector;
 
     BddTargetSwitchConfig_SetByName(options->Transport);
-    return SolidSyslogSwitchingSender_Create(&switchConfig);
+    switchingSender = SolidSyslogSwitchingSender_Create(&switchConfig);
+    return switchingSender;
 }
 
 static void DestroySender(void)
 {
-    SolidSyslogSwitchingSender_Destroy();
+    SolidSyslogSwitchingSender_Destroy(switchingSender);
     BddTargetTlsSender_Destroy();
     SolidSyslogStreamSender_Destroy(plainTcpSender);
     SolidSyslogWinsockTcpStream_Destroy(plainTcpStream);

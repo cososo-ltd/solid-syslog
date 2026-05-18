@@ -21,6 +21,10 @@
     "SolidSyslogUdpSender_Create pool exhausted; returning fallback sender"
 #define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_UNKNOWN_DESTROY \
     "SolidSyslogUdpSender_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_SWITCHINGSENDER_POOL_EXHAUSTED \
+    "SolidSyslogSwitchingSender_Create pool exhausted; returning fallback sender"
+#define SOLIDSYSLOG_ERROR_MSG_SWITCHINGSENDER_UNKNOWN_DESTROY \
+    "SolidSyslogSwitchingSender_Destroy called with a handle not issued by this pool"
 #define SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_POOL_EXHAUSTED \
     "SolidSyslogCircularBuffer_Create pool exhausted; returning fallback buffer"
 #define SOLIDSYSLOG_ERROR_MSG_CIRCULARBUFFER_UNKNOWN_DESTROY \

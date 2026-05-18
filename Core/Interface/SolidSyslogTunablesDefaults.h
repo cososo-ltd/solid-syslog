@@ -93,4 +93,23 @@
 #error "SOLIDSYSLOG_UDP_SENDER_POOL_SIZE must be >= 1"
 #endif
 
+/*
+ * Number of SolidSyslogSwitchingSender instances the library's
+ * internal static pool can simultaneously hold.
+ *
+ * Default 1 — a SwitchingSender wraps several inner senders, so one
+ * per process is the typical pattern. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE
+ * if more than one is genuinely needed.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE < 1
+#error "SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE must be >= 1"
+#endif
+
 #endif /* SOLIDSYSLOG_TUNABLES_DEFAULTS_H */

@@ -56,6 +56,7 @@ static struct SolidSyslogStream* plainTcpStream;
 static SolidSyslogStreamSenderStorage plainTcpSenderStorage;
 static struct SolidSyslogSender* plainTcpSender;
 static struct SolidSyslogSender* udpSender;
+static struct SolidSyslogSender* switchingSender;
 
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
@@ -107,7 +108,8 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetOptions* opt
     switchConfig.Selector = BddTargetSwitchConfig_Selector;
 
     BddTargetSwitchConfig_SetByName(options->Transport);
-    return SolidSyslogSwitchingSender_Create(&switchConfig);
+    switchingSender = SolidSyslogSwitchingSender_Create(&switchConfig);
+    return switchingSender;
 }
 
 static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
@@ -184,7 +186,7 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* optio
 
 static void DestroySender(void)
 {
-    SolidSyslogSwitchingSender_Destroy();
+    SolidSyslogSwitchingSender_Destroy(switchingSender);
     BddTargetTlsSender_Destroy();
     SolidSyslogStreamSender_Destroy(plainTcpSender);
     SolidSyslogPosixTcpStream_Destroy(plainTcpStream);
