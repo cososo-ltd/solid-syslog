@@ -252,7 +252,7 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
         return SolidSyslogBlockStore_Create(&storeStorage, &storeConfig);
     }
 
-    return SolidSyslogNullStore_Create();
+    return SolidSyslogNullStore_Get();
 }
 
 static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetWindowsOptions* options)
@@ -266,10 +266,7 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetW
         SolidSyslogCrc16Policy_Destroy();
         SolidSyslogWindowsFile_Destroy(storeFile);
     }
-    else
-    {
-        SolidSyslogNullStore_Destroy();
-    }
+    /* else: NullStore is shared and immutable — nothing to destroy. */
 }
 
 int BddTargetWindows_Run(int argc, char* argv[])

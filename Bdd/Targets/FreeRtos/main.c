@@ -631,10 +631,7 @@ static void DestroyCurrentStore(void)
         SolidSyslogCrc16Policy_Destroy();
         SolidSyslogFatFsFile_Destroy(storeFile);
     }
-    else
-    {
-        SolidSyslogNullStore_Destroy();
-    }
+    /* else: NullStore is shared and immutable — nothing to destroy. */
 }
 
 /* Full teardown of every resource InteractiveTask allocated during Setup.
@@ -832,7 +829,7 @@ static void InteractiveTask(void* argument)
 
     /* Default store is NullStore — flipped to FatFs/BlockStore by
      * `set store file` via RebuildWithFileStore(). */
-    currentStore = SolidSyslogNullStore_Create();
+    currentStore = SolidSyslogNullStore_Get();
     currentStoreIsFile = false;
 
     atomicCounter = SolidSyslogStdAtomicCounter_Create(&atomicCounterStorage);

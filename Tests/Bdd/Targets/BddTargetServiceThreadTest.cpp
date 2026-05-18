@@ -68,7 +68,7 @@ TEST_GROUP(BddTargetServiceThread)
         SolidSyslogUdpSenderConfig udpConfig = {SolidSyslogGetAddrInfoResolver_Create(), SolidSyslogPosixDatagram_Create(), BddTargetEndpoint, BddTargetEndpointVersion};
         sender = SolidSyslogUdpSender_Create(&udpConfig);
         buffer = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
-        store  = SolidSyslogNullStore_Create();
+        store  = SolidSyslogNullStore_Get();
 
         SolidSyslogConfig config = {buffer, sender, nullptr, nullptr, nullptr, nullptr, store, nullptr, 0};
         SolidSyslog_Create(&config);
@@ -77,7 +77,6 @@ TEST_GROUP(BddTargetServiceThread)
     void teardown() override
     {
         SolidSyslog_Destroy();
-        SolidSyslogNullStore_Destroy();
         SolidSyslogPosixMessageQueueBuffer_Destroy();
         SolidSyslogUdpSender_Destroy();
         SolidSyslogPosixDatagram_Destroy();

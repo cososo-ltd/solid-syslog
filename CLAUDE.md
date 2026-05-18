@@ -348,7 +348,7 @@ live under `Core/Interface/`; platform-specific helpers (the `SolidSyslogPosix*`
 | `SolidSyslogFreeRtosMutex.h` | System setup code on FreeRTOS targets needing thread-safe buffering | `SolidSyslogFreeRtosMutexStorage`, `SOLIDSYSLOG_FREERTOSMUTEX_SIZE`, `SolidSyslogFreeRtosMutex_Create(storage)`, `_Destroy(mutex)` (wraps `xSemaphoreCreateMutexStatic` — caller's `StaticSemaphore_t` lives inside the injected storage; requires `configSUPPORT_STATIC_ALLOCATION=1`) |
 | `SolidSyslogStore.h` | Library internals consuming a store (Service algorithm) and integrator code querying capacity | `SolidSyslogStore_Write`, `_ReadNextUnsent`, `_MarkSent`, `_HasUnsent`, `_IsHalted`, `_GetTotalBytes`, `_GetUsedBytes` |
 | `SolidSyslogStoreDefinition.h` | Store implementors (extension point) | `SolidSyslogStore` vtable struct (`Write`, `ReadNextUnsent`, `MarkSent`, `HasUnsent`, `IsHalted`, `GetTotalBytes`, `GetUsedBytes`) |
-| `SolidSyslogNullStore.h` | System setup code (no store-and-forward) | `SolidSyslogNullStore_Create`, `_Destroy` |
+| `SolidSyslogNullStore.h` | System setup code (no store-and-forward) | `SolidSyslogNullStore_Get` |
 | `SolidSyslogFileDefinition.h` | File implementors (extension point) | `SolidSyslogFile` vtable struct |
 | `SolidSyslogFile.h` | Any code using the file abstraction | `SolidSyslogFile_Open`, `_Close`, `_IsOpen`, `_Read`, `_Write`, `_SeekTo`, `_Size`, `_Truncate` |
 | `SolidSyslogBlockDevice.h` | Library internals consuming a block device (BlockSequence inside BlockStore) and integrator code addressing blocks directly | `SolidSyslogBlockDevice_Acquire`, `_Dispose`, `_Exists`, `_Read`, `_Append`, `_WriteAt`, `_Size` (block-indexed I/O; Acquire makes a block ready for fresh writes, Dispose releases it) |
