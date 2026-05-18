@@ -1,12 +1,16 @@
 #include <stdint.h>
 #include <cstring>
 
+#include "CppUTest/TestHarness.h"
+#include "ErrorHandlerFake.h"
 #include "SolidSyslogFormatter.h"
-#include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTimeQuality.h"
+#include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogTunables.h"
-#include "CppUTest/TestHarness.h"
+#include "TestUtils.h"
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER into scope for CALLED_FAKE
 
 struct SolidSyslogFormatter;
 struct SolidSyslogStructuredData;
@@ -198,4 +202,30 @@ TEST(SolidSyslogTimeQualitySdPool, FillingPoolThenOverflowReturnsDistinctFallbac
         CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
         CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
     }
+}
+
+// Bad-setup test — _Create rejects NULL callback and routes to NullSd.
+
+// clang-format off
+TEST_GROUP(SolidSyslogTimeQualitySdBadSetup)
+{
+    int sentinel = 0;
+
+    void setup() override
+    {
+        ErrorHandlerFake_Install(&sentinel);
+    }
+
+    void teardown() override
+    {
+        ErrorHandlerFake_Uninstall();
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogTimeQualitySdBadSetup, CreateWithNullCallbackReportsError)
+{
+    SolidSyslogTimeQualitySd_Create(nullptr);
+    CHECK_REPORTED_ERROR("SolidSyslogTimeQualitySd_Create called with NULL getTimeQuality");
 }

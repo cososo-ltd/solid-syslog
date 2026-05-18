@@ -23,16 +23,23 @@ static struct SolidSyslogPoolAllocator Allocator = {InUse, SOLIDSYSLOG_TIME_QUAL
 
 struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTimeQualityFunction getTimeQuality)
 {
-    size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&Allocator);
     struct SolidSyslogStructuredData* handle = SolidSyslogNullSd_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&Allocator, index))
+    if (getTimeQuality == NULL)
     {
-        TimeQualitySd_Initialise(&Pool[index].Base, getTimeQuality);
-        handle = &Pool[index].Base;
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_TIMEQUALITYSD_CREATE_NULL_CALLBACK);
     }
     else
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_TIMEQUALITYSD_POOL_EXHAUSTED);
+        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&Allocator);
+        if (SolidSyslogPoolAllocator_IndexIsValid(&Allocator, index))
+        {
+            TimeQualitySd_Initialise(&Pool[index].Base, getTimeQuality);
+            handle = &Pool[index].Base;
+        }
+        else
+        {
+            SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_TIMEQUALITYSD_POOL_EXHAUSTED);
+        }
     }
     return handle;
 }
