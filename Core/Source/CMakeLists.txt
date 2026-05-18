@@ -9,6 +9,7 @@ set(SOURCES
     SolidSyslogNullBuffer.c
     SolidSyslogCircularBuffer.c
     SolidSyslogCircularBufferStatic.c
+    SolidSyslogPoolAllocator.c
     SolidSyslogMutex.c
     SolidSyslogNullMutex.c
     SolidSyslogSender.c

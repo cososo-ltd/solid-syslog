@@ -25,6 +25,7 @@ set(TEST_SOURCES
     SolidSyslogOriginSdTest.cpp
     SolidSyslogNullBufferTest.cpp
     SolidSyslogCircularBufferTest.cpp
+    SolidSyslogPoolAllocatorTest.cpp
     SolidSyslogNullMutexTest.cpp
     SolidSyslogNullStoreTest.cpp
     SolidSyslogNullSecurityPolicyTest.cpp
