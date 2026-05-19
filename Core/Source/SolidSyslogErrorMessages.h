@@ -83,5 +83,9 @@
     "SolidSyslogPosixTcpStream_Create pool exhausted; returning fallback stream"
 #define SOLIDSYSLOG_ERROR_MSG_POSIXTCPSTREAM_UNKNOWN_DESTROY \
     "SolidSyslogPosixTcpStream_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_POSIXMESSAGEQUEUEBUFFER_POOL_EXHAUSTED \
+    "SolidSyslogPosixMessageQueueBuffer_Create pool exhausted; returning fallback buffer"
+#define SOLIDSYSLOG_ERROR_MSG_POSIXMESSAGEQUEUEBUFFER_UNKNOWN_DESTROY \
+    "SolidSyslogPosixMessageQueueBuffer_Destroy called with a handle not issued by this pool"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */

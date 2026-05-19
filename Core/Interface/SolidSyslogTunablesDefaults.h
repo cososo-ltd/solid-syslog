@@ -156,6 +156,28 @@
 #endif
 
 /*
+ * Number of SolidSyslogPosixMessageQueueBuffer instances the library's
+ * internal static pool can simultaneously hold. Each instance carries
+ * an mqd_t plus the per-process queue name (Formatter storage).
+ *
+ * Default 1 — almost all integrators wire a single MQ-backed buffer.
+ * The queue name derives from the process ID, so bumping above 1 in
+ * the same process would race multiple slots onto the same
+ * `/solidsyslog_<pid>` name; an integrator needing N > 1 must
+ * additionally distinguish the names (out of scope today).
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE < 1
+#error "SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE must be >= 1"
+#endif
+
+/*
  * Number of SolidSyslogPassthroughBuffer instances the library's
  * internal static pool can simultaneously hold. Each instance is
  * tiny (vtable + a Sender pointer).

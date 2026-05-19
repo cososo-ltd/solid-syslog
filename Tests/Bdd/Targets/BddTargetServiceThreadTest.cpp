@@ -81,7 +81,7 @@ TEST_GROUP(BddTargetServiceThread)
     void teardown() override
     {
         SolidSyslog_Destroy();
-        SolidSyslogPosixMessageQueueBuffer_Destroy();
+        SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
         SolidSyslogUdpSender_Destroy(sender);
         SolidSyslogPosixDatagram_Destroy(datagram);
         SolidSyslogGetAddrInfoResolver_Destroy(resolver);

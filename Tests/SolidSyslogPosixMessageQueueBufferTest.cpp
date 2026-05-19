@@ -5,7 +5,11 @@
 
 using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
     // macros
+#include "ConfigLockFake.h"
+#include "ErrorHandlerFake.h"
 #include "SolidSyslogBuffer.h"
+#include "SolidSyslogBufferDefinition.h"
+#include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogPosixMessageQueueBuffer.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogConfig.h"
@@ -36,7 +40,7 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
 
     void teardown() override
     {
-        SolidSyslogPosixMessageQueueBuffer_Destroy();
+        SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
     }
 
     void Write() const
@@ -130,4 +134,156 @@ IGNORE_TEST(SolidSyslogPosixMessageQueueBuffer, HappyPathOnly)
     //
     // Blocking mode not yet implemented — see S4.5 or later
     //   Read blocks waiting for a message (O_NONBLOCK removed)
+}
+
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+#define CHECK_IS_FALLBACK(handle, pool)                                                \
+    do                                                                                 \
+    {                                                                                  \
+        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
+        for (auto* slot : (pool))                                                      \
+        {                                                                              \
+            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
+            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
+        }                                                                              \
+    } while (0)
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+
+// clang-format off
+TEST_GROUP(SolidSyslogPosixMessageQueueBufferPool)
+{
+    struct SolidSyslogBuffer* pooled[SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE] = {};
+    struct SolidSyslogBuffer* overflow                                                 = nullptr;
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogPosixMessageQueueBuffer_Destroy(handle);
+            }
+        }
+        if (overflow != nullptr)
+        {
+            SolidSyslogPosixMessageQueueBuffer_Destroy(overflow);
+        }
+        ConfigLockFake_Uninstall();
+        ErrorHandlerFake_Uninstall();
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, ExhaustedCreateReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FillPool();
+
+    overflow = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_POSIXMESSAGEQUEUEBUFFER_POOL_EXHAUSTED, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, FallbackReadAndWriteAreNoOps)
+{
+    FillPool();
+    overflow = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+
+    SolidSyslogBuffer_Write(overflow, "hello", 5);
+
+    char readBuffer[16] = {};
+    size_t bytesRead = 99;
+    CHECK_FALSE(SolidSyslogBuffer_Read(overflow, readBuffer, sizeof(readBuffer), &bytesRead));
+    LONGS_EQUAL(0, bytesRead);
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
+{
+    ConfigLockFake_Install();
+
+    pooled[0] = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
+{
+    FillPool();
+    ConfigLockFake_Install();
+
+    overflow = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+
+    LONGS_EQUAL(SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfPooledHandleLocksOnce)
+{
+    pooled[0] = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+    ConfigLockFake_Install();
+
+    SolidSyslogPosixMessageQueueBuffer_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfUnknownHandleDoesNotLock)
+{
+    ConfigLockFake_Install();
+    struct SolidSyslogBuffer stranger = {};
+
+    SolidSyslogPosixMessageQueueBuffer_Destroy(&stranger);
+
+    CALLED_FAKE(ConfigLockFake_Lock, NEVER);
+    CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfUnknownHandleReportsWarning)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogBuffer stranger = {};
+
+    SolidSyslogPosixMessageQueueBuffer_Destroy(&stranger);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_POSIXMESSAGEQUEUEBUFFER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfStaleHandleReportsWarning)
+{
+    pooled[0] = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+    SolidSyslogPosixMessageQueueBuffer_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogPosixMessageQueueBuffer_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_POSIXMESSAGEQUEUEBUFFER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
 }
