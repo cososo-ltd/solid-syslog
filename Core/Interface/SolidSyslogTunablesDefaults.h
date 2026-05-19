@@ -92,6 +92,27 @@
 #endif
 
 /*
+ * Number of SolidSyslogGetAddrInfoResolver instances the library's
+ * internal static pool can simultaneously hold. The class is
+ * effectively stateless today — the pool slot carries the vtable
+ * holder.
+ *
+ * Default 1 — almost all integrators wire a single resolver into
+ * one or more Senders. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if
+ * more than one is genuinely needed.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE < 1
+#error "SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE must be >= 1"
+#endif
+
+/*
  * Number of SolidSyslogPassthroughBuffer instances the library's
  * internal static pool can simultaneously hold. Each instance is
  * tiny (vtable + a Sender pointer).

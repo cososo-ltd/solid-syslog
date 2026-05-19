@@ -1,14 +1,16 @@
 #include "SolidSyslogGetAddrInfoResolver.h"
 
+#include <arpa/inet.h>
 #include <netdb.h>
+#include <netinet/in.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
 #include <stdint.h>
+#include <sys/socket.h>
 
 #include "SolidSyslogAddressInternal.h"
+#include "SolidSyslogGetAddrInfoResolverPrivate.h"
+#include "SolidSyslogNullResolver.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 
@@ -28,22 +30,16 @@ static bool GetAddrInfoResolver_Resolve(
 );
 static int GetAddrInfoResolver_MapTransport(enum SolidSyslogTransport transport);
 
-struct SolidSyslogGetAddrInfoResolver
+void GetAddrInfoResolver_Initialise(struct SolidSyslogResolver* base)
 {
-    struct SolidSyslogResolver Base;
-};
-
-static struct SolidSyslogGetAddrInfoResolver instance;
-
-struct SolidSyslogResolver* SolidSyslogGetAddrInfoResolver_Create(void)
-{
-    instance.Base.Resolve = GetAddrInfoResolver_Resolve;
-    return &instance.Base;
+    base->Resolve = GetAddrInfoResolver_Resolve;
 }
 
-void SolidSyslogGetAddrInfoResolver_Destroy(void)
+void GetAddrInfoResolver_Cleanup(struct SolidSyslogResolver* base)
 {
-    instance.Base.Resolve = NULL;
+    /* Overwrite the abstract base with the shared NullResolver vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullResolver_Get();
 }
 
 static bool GetAddrInfoResolver_Resolve(

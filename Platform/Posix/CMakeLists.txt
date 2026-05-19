@@ -9,6 +9,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     Source/SolidSyslogPosixSleep.c
     Source/SolidSyslogAddress.c
     Source/SolidSyslogGetAddrInfoResolver.c
+    Source/SolidSyslogGetAddrInfoResolverStatic.c
     Source/SolidSyslogPosixDatagram.c
     Source/SolidSyslogPosixDatagramStatic.c
     Source/SolidSyslogPosixTcpStream.c

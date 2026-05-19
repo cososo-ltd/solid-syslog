@@ -53,6 +53,7 @@ TEST_GROUP(BddTargetServiceThread)
     struct SolidSyslogBuffer*   buffer   = nullptr;
     struct SolidSyslogStore*    store    = nullptr;
     struct SolidSyslogDatagram* datagram = nullptr;
+    struct SolidSyslogResolver* resolver = nullptr;
     // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     volatile bool               shutdown;
 
@@ -66,8 +67,9 @@ TEST_GROUP(BddTargetServiceThread)
         lastSleepMs       = 0;
         sleepShutdownFlag = nullptr;
 
+        resolver = SolidSyslogGetAddrInfoResolver_Create();
         datagram = SolidSyslogPosixDatagram_Create();
-        SolidSyslogUdpSenderConfig udpConfig = {SolidSyslogGetAddrInfoResolver_Create(), datagram, BddTargetEndpoint, BddTargetEndpointVersion};
+        SolidSyslogUdpSenderConfig udpConfig = {resolver, datagram, BddTargetEndpoint, BddTargetEndpointVersion};
         sender = SolidSyslogUdpSender_Create(&udpConfig);
         buffer = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
         store  = SolidSyslogNullStore_Get();
@@ -82,7 +84,7 @@ TEST_GROUP(BddTargetServiceThread)
         SolidSyslogPosixMessageQueueBuffer_Destroy();
         SolidSyslogUdpSender_Destroy(sender);
         SolidSyslogPosixDatagram_Destroy(datagram);
-        SolidSyslogGetAddrInfoResolver_Destroy();
+        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
     }
 
     static void Log()

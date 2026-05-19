@@ -71,5 +71,9 @@
     "SolidSyslogPosixDatagram_Create pool exhausted; returning fallback datagram"
 #define SOLIDSYSLOG_ERROR_MSG_POSIXDATAGRAM_UNKNOWN_DESTROY \
     "SolidSyslogPosixDatagram_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_GETADDRINFORESOLVER_POOL_EXHAUSTED \
+    "SolidSyslogGetAddrInfoResolver_Create pool exhausted; returning fallback resolver"
+#define SOLIDSYSLOG_ERROR_MSG_GETADDRINFORESOLVER_UNKNOWN_DESTROY \
+    "SolidSyslogGetAddrInfoResolver_Destroy called with a handle not issued by this pool"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */

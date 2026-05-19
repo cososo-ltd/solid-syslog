@@ -5,8 +5,10 @@
 
 EXTERN_C_BEGIN
 
+    struct SolidSyslogResolver;
+
     struct SolidSyslogResolver* SolidSyslogGetAddrInfoResolver_Create(void);
-    void SolidSyslogGetAddrInfoResolver_Destroy(void);
+    void SolidSyslogGetAddrInfoResolver_Destroy(struct SolidSyslogResolver * base);
 
 EXTERN_C_END
 

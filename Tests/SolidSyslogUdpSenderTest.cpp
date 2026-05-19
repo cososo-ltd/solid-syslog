@@ -128,13 +128,13 @@ TEST_BASE(UdpSenderTestBase)
     void teardownFakesWithPosixDatagram() const
     {
         SolidSyslogPosixDatagram_Destroy(datagram);
-        SolidSyslogGetAddrInfoResolver_Destroy();
+        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
     }
 
     void teardownFakesWithDatagramFake() const
     {
         DatagramFake_Destroy(datagram);
-        SolidSyslogGetAddrInfoResolver_Destroy();
+        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
     }
 
     // NOLINTNEXTLINE(modernize-use-nodiscard) -- many test bodies intentionally discard the return

@@ -57,6 +57,7 @@ static struct SolidSyslogSender* plainTcpSender;
 static struct SolidSyslogSender* udpSender;
 static struct SolidSyslogSender* switchingSender;
 static struct SolidSyslogDatagram* udpDatagram;
+static struct SolidSyslogResolver* sharedResolver;
 
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
@@ -78,7 +79,8 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetOptions* opt
 {
     bool mtlsModeActive = (strcmp(options->Transport, "mtls") == 0);
 
-    struct SolidSyslogResolver* resolver = SolidSyslogGetAddrInfoResolver_Create();
+    sharedResolver = SolidSyslogGetAddrInfoResolver_Create();
+    struct SolidSyslogResolver* resolver = sharedResolver;
 
     udpDatagram = SolidSyslogPosixDatagram_Create();
     static struct SolidSyslogUdpSenderConfig udpConfig = {0};
@@ -191,7 +193,7 @@ static void DestroySender(void)
     SolidSyslogPosixTcpStream_Destroy(plainTcpStream);
     SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogPosixDatagram_Destroy(udpDatagram);
-    SolidSyslogGetAddrInfoResolver_Destroy();
+    SolidSyslogGetAddrInfoResolver_Destroy(sharedResolver);
 }
 
 static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetOptions* options)

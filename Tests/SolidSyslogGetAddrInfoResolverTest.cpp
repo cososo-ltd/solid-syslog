@@ -3,11 +3,17 @@
 #include <sys/socket.h>
 #include <cstdint>
 
+#include "ConfigLockFake.h"
+#include "ErrorHandlerFake.h"
 #include "SolidSyslogAddress.h"
+#include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogGetAddrInfoResolver.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogResolver.h"
+#include "SolidSyslogResolverDefinition.h"
 #include "SocketFake.h"
 #include "SolidSyslogTransport.h"
+#include "SolidSyslogTunables.h"
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
@@ -35,7 +41,7 @@ TEST_GROUP(SolidSyslogGetAddrInfoResolver)
 
     void teardown() override
     {
-        SolidSyslogGetAddrInfoResolver_Destroy();
+        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
     }
 
     bool Resolve(const char* host, uint16_t port, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP)
@@ -121,4 +127,158 @@ TEST(SolidSyslogGetAddrInfoResolver, FreesAddrInfoOnSuccess)
 {
     Resolve(TEST_HOST, TEST_PORT);
     CALLED_FAKE(SocketFake_FreeAddrInfo, ONCE);
+}
+
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
+#define CHECK_IS_FALLBACK(handle, pool)                                                \
+    do                                                                                 \
+    {                                                                                  \
+        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
+        for (auto* slot : (pool))                                                      \
+        {                                                                              \
+            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
+            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
+        }                                                                              \
+    } while (0)
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+
+// clang-format off
+TEST_GROUP(SolidSyslogGetAddrInfoResolverPool)
+{
+    struct SolidSyslogResolver* pooled[SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE] = {};
+    struct SolidSyslogResolver* overflow                                            = nullptr;
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogGetAddrInfoResolver_Destroy(handle);
+            }
+        }
+        if (overflow != nullptr)
+        {
+            SolidSyslogGetAddrInfoResolver_Destroy(overflow);
+        }
+        ConfigLockFake_Uninstall();
+        ErrorHandlerFake_Uninstall();
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = SolidSyslogGetAddrInfoResolver_Create();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogGetAddrInfoResolverPool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = SolidSyslogGetAddrInfoResolver_Create();
+
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
+TEST(SolidSyslogGetAddrInfoResolverPool, ExhaustedCreateReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FillPool();
+
+    overflow = SolidSyslogGetAddrInfoResolver_Create();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_GETADDRINFORESOLVER_POOL_EXHAUSTED, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogGetAddrInfoResolverPool, FallbackResolveReturnsFalse)
+{
+    FillPool();
+    overflow = SolidSyslogGetAddrInfoResolver_Create();
+
+    SolidSyslogAddressStorage resultStorage{};
+    CHECK_FALSE(SolidSyslogResolver_Resolve(
+        overflow,
+        SOLIDSYSLOG_TRANSPORT_UDP,
+        TEST_HOST,
+        TEST_PORT,
+        SolidSyslogAddress_FromStorage(&resultStorage)
+    ));
+}
+
+TEST(SolidSyslogGetAddrInfoResolverPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
+{
+    ConfigLockFake_Install();
+
+    pooled[0] = SolidSyslogGetAddrInfoResolver_Create();
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogGetAddrInfoResolverPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
+{
+    FillPool();
+    ConfigLockFake_Install();
+
+    overflow = SolidSyslogGetAddrInfoResolver_Create();
+
+    LONGS_EQUAL(SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+}
+
+TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfPooledHandleLocksOnce)
+{
+    pooled[0] = SolidSyslogGetAddrInfoResolver_Create();
+    ConfigLockFake_Install();
+
+    SolidSyslogGetAddrInfoResolver_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfUnknownHandleDoesNotLock)
+{
+    ConfigLockFake_Install();
+    struct SolidSyslogResolver stranger = {};
+
+    SolidSyslogGetAddrInfoResolver_Destroy(&stranger);
+
+    CALLED_FAKE(ConfigLockFake_Lock, NEVER);
+    CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
+}
+
+TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfUnknownHandleReportsWarning)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogResolver stranger = {};
+
+    SolidSyslogGetAddrInfoResolver_Destroy(&stranger);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_GETADDRINFORESOLVER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfStaleHandleReportsWarning)
+{
+    pooled[0] = SolidSyslogGetAddrInfoResolver_Create();
+    SolidSyslogGetAddrInfoResolver_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogGetAddrInfoResolver_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_GETADDRINFORESOLVER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
 }
