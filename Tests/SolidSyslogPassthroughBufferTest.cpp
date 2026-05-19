@@ -82,6 +82,24 @@ TEST(SolidSyslogPassthroughBuffer, ReadReturnsNothingToSend)
     CHECK_FALSE(sent);
 }
 
+TEST(SolidSyslogPassthroughBuffer, UseAfterDestroyIsCrashSafeViaFallbackVtable)
+{
+    /* After Destroy the slot's abstract-base vtable is the class-private Fallback's,
+     * so Write/Read through the stale handle is a safe no-op rather than a NULL-fn-
+     * pointer crash. Fallback.Write swallows; Fallback.Read returns false with
+     * bytesRead=0. */
+    SolidSyslogPassthroughBuffer_Destroy(buffer);
+
+    SolidSyslogBuffer_Write(buffer, "x", 1);
+    char data[16] = {};
+    size_t bytesRead = 99;
+    CHECK_FALSE(SolidSyslogBuffer_Read(buffer, data, sizeof(data), &bytesRead));
+    LONGS_EQUAL(0, bytesRead);
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
+
+    buffer = SolidSyslogPassthroughBuffer_Create(fakeSender); // for teardown
+}
+
 IGNORE_TEST(SolidSyslogPassthroughBuffer, HappyPathOnly)
 
 {

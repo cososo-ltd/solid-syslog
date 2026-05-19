@@ -27,4 +27,10 @@ void CircularBuffer_Initialise(
 );
 void CircularBuffer_Cleanup(struct SolidSyslogBuffer* base);
 
+/* Class-private GoF null Buffer. Defined in SolidSyslogCircularBufferStatic.c;
+ * used both as the pool-exhausted fallback handle returned by _Create, and as the
+ * vtable swapped into a slot's Base by _Cleanup so use-after-destroy is a safe
+ * no-op. No shared SolidSyslogNullBuffer exists for E11. */
+extern struct SolidSyslogBuffer CircularBuffer_Fallback;
+
 #endif /* SOLIDSYSLOGCIRCULARBUFFERPRIVATE_H */

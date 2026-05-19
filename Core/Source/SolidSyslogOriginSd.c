@@ -3,6 +3,7 @@
 #include <stddef.h>
 
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogNullSd.h"
 #include "SolidSyslogOriginSdPrivate.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 
@@ -43,10 +44,10 @@ void OriginSd_Initialise(struct SolidSyslogStructuredData* base, const struct So
 
 void OriginSd_Cleanup(struct SolidSyslogStructuredData* base)
 {
-    struct SolidSyslogOriginSd* self = OriginSd_SelfFromBase(base);
-    self->Base.Format = NULL;
-    self->GetIpCount = NULL;
-    self->GetIpAt = NULL;
+    /* Overwrite the abstract base with the shared NullSd vtable so use-after-destroy
+     * is a safe no-op. Derived fields (incl. the pre-formatted static-prefix Formatter
+     * storage) are private to this TU; the next _Initialise rebuilds them. */
+    *base = *SolidSyslogNullSd_Get();
 }
 
 static void OriginSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter)

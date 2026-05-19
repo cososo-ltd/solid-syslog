@@ -50,15 +50,10 @@ void CircularBuffer_Initialise(
 
 void CircularBuffer_Cleanup(struct SolidSyslogBuffer* base)
 {
-    struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
-    self->Base.Read = NULL;
-    self->Base.Write = NULL;
-    self->Mutex = NULL;
-    self->Ring = NULL;
-    self->Capacity = 0;
-    self->Head = 0;
-    self->Tail = 0;
-    self->WrapPoint = 0;
+    /* Overwrite the abstract base with the class-private Fallback vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. Derived
+     * fields are private to this TU; the next _Initialise overwrites them. */
+    *base = CircularBuffer_Fallback;
 }
 
 static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)

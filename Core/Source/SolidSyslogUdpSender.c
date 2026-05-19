@@ -8,6 +8,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogNullSender.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogResolver.h"
 #include "SolidSyslogSenderDefinition.h"
@@ -59,16 +60,12 @@ void UdpSender_Initialise(struct SolidSyslogSender* base, const struct SolidSysl
 
 void UdpSender_Cleanup(struct SolidSyslogSender* base)
 {
-    struct SolidSyslogUdpSender* self = UdpSender_SelfFromBase(base);
+    /* Disconnect first so the live Config.Datagram is still reachable; then overwrite the
+     * abstract base with the shared NullSender vtable so use-after-destroy is a safe
+     * no-op rather than a NULL-fn-pointer crash. Derived fields are private to this TU
+     * so the next _Initialise overwrites them; no need to wipe here. */
     UdpSender_Disconnect(base);
-    self->Base.Send = NULL;
-    self->Base.Disconnect = NULL;
-    self->Config.Resolver = NULL;
-    self->Config.Datagram = NULL;
-    self->Config.Endpoint = NULL;
-    self->Config.EndpointVersion = NULL;
-    self->Connected = false;
-    self->LastEndpointVersion = 0;
+    *base = *SolidSyslogNullSender_Get();
 }
 
 static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size)

@@ -20,7 +20,7 @@ static void PassthroughBuffer_CleanupAtIndex(size_t index, void* context);
 
 static bool PassthroughBuffer_InUse[SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE];
 static struct SolidSyslogPassthroughBuffer PassthroughBuffer_Pool[SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE];
-static struct SolidSyslogBuffer Fallback = {Fallback_Write, Fallback_Read};
+struct SolidSyslogBuffer PassthroughBuffer_Fallback = {Fallback_Write, Fallback_Read};
 static struct SolidSyslogPoolAllocator PassthroughBuffer_Allocator = {
     PassthroughBuffer_InUse,
     SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE
@@ -29,7 +29,7 @@ static struct SolidSyslogPoolAllocator PassthroughBuffer_Allocator = {
 struct SolidSyslogBuffer* SolidSyslogPassthroughBuffer_Create(struct SolidSyslogSender* sender)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PassthroughBuffer_Allocator);
-    struct SolidSyslogBuffer* handle = &Fallback;
+    struct SolidSyslogBuffer* handle = &PassthroughBuffer_Fallback;
     if (SolidSyslogPoolAllocator_IndexIsValid(&PassthroughBuffer_Allocator, index))
     {
         PassthroughBuffer_Initialise(&PassthroughBuffer_Pool[index].Base, sender);

@@ -34,13 +34,11 @@ void SwitchingSender_Initialise(struct SolidSyslogSender* base, const struct Sol
 
 void SwitchingSender_Cleanup(struct SolidSyslogSender* base)
 {
-    struct SolidSyslogSwitchingSender* self = SwitchingSender_SelfFromBase(base);
-    self->Base.Send = NULL;
-    self->Base.Disconnect = NULL;
-    self->Config.Senders = NULL;
-    self->Config.SenderCount = 0;
-    self->Config.Selector = NULL;
-    self->CurrentSender = NULL;
+    /* Overwrite the abstract base with the shared NullSender vtable so use-after-destroy
+     * is a safe no-op. SwitchingSender does not own its inner senders' connections, so
+     * unlike UdpSender/StreamSender there is nothing to disconnect first. Derived fields
+     * are private to this TU; the next _Initialise overwrites them. */
+    *base = *SolidSyslogNullSender_Get();
 }
 
 static bool SwitchingSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size)

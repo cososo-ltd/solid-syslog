@@ -128,6 +128,17 @@ TEST(SolidSyslogTimeQualitySd, CallbackIsInvokedOnEachFormat)
     STRCMP_EQUAL("[timeQuality tzKnown=\"1\" isSynced=\"0\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
 
+TEST(SolidSyslogTimeQualitySd, UseAfterDestroyIsCrashSafeViaNullSdVtable)
+{
+    /* After Destroy the slot's abstract-base vtable is the shared NullSd's, so
+     * Format through the stale handle is a safe no-op rather than a NULL-fn-pointer
+     * crash. NullSd.Format writes nothing into the Formatter. */
+    SolidSyslogTimeQualitySd_Destroy(sd);
+    SolidSyslogStructuredData_Format(sd, formatter);
+    LONGS_EQUAL(0, SolidSyslogFormatter_Length(formatter));
+    sd = SolidSyslogTimeQualitySd_Create(StubGetTimeQuality); // for teardown
+}
+
 TEST(SolidSyslogTimeQualitySd, FormatAdvancesFormatterLength)
 {
     LONGS_EQUAL(0, SolidSyslogFormatter_Length(formatter));

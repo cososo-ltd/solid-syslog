@@ -5,6 +5,7 @@
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogNullSender.h"
 #include "SolidSyslogResolver.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogStream.h"
@@ -60,16 +61,12 @@ void StreamSender_Initialise(struct SolidSyslogSender* base, const struct SolidS
 
 void StreamSender_Cleanup(struct SolidSyslogSender* base)
 {
-    struct SolidSyslogStreamSender* self = StreamSender_SelfFromBase(base);
+    /* Disconnect first so the live Config.Stream is still reachable; then overwrite the
+     * abstract base with the shared NullSender vtable so use-after-destroy is a safe
+     * no-op rather than a NULL-fn-pointer crash. Derived fields are private to this TU
+     * so the next _Initialise overwrites them; no need to wipe here. */
     StreamSender_Disconnect(base);
-    self->Base.Send = NULL;
-    self->Base.Disconnect = NULL;
-    self->Config.Resolver = NULL;
-    self->Config.Stream = NULL;
-    self->Config.Endpoint = NULL;
-    self->Config.EndpointVersion = NULL;
-    self->Connected = false;
-    self->LastEndpointVersion = 0;
+    *base = *SolidSyslogNullSender_Get();
 }
 
 static bool StreamSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size)

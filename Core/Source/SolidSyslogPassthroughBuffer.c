@@ -22,10 +22,10 @@ void PassthroughBuffer_Initialise(struct SolidSyslogBuffer* base, struct SolidSy
 
 void PassthroughBuffer_Cleanup(struct SolidSyslogBuffer* base)
 {
-    struct SolidSyslogPassthroughBuffer* self = PassthroughBuffer_SelfFromBase(base);
-    self->Base.Write = NULL;
-    self->Base.Read = NULL;
-    self->Sender = NULL;
+    /* Overwrite the abstract base with the class-private Fallback vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. The
+     * Sender pointer is private to this TU; the next _Initialise overwrites it. */
+    *base = PassthroughBuffer_Fallback;
 }
 
 static bool PassthroughBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)

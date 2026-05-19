@@ -21,7 +21,7 @@ static void CircularBuffer_CleanupAtIndex(size_t index, void* context);
 
 static bool CircularBuffer_InUse[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE];
 static struct SolidSyslogCircularBuffer CircularBuffer_Pool[SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE];
-static struct SolidSyslogBuffer Fallback = {Fallback_Write, Fallback_Read};
+struct SolidSyslogBuffer CircularBuffer_Fallback = {Fallback_Write, Fallback_Read};
 static struct SolidSyslogPoolAllocator CircularBuffer_Allocator = {
     CircularBuffer_InUse,
     SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE
@@ -34,7 +34,7 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
 )
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&CircularBuffer_Allocator);
-    struct SolidSyslogBuffer* handle = &Fallback;
+    struct SolidSyslogBuffer* handle = &CircularBuffer_Fallback;
     if (SolidSyslogPoolAllocator_IndexIsValid(&CircularBuffer_Allocator, index))
     {
         CircularBuffer_Initialise(&CircularBuffer_Pool[index].Base, mutex, ring, ringBytes);

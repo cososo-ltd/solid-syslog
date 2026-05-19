@@ -384,6 +384,17 @@ TEST(SolidSyslogUdpSenderDestroy, DestroyAfterDisconnectDoesNotDoubleClose)
     CALLED_FAKE(SocketFake_Close, ONCE);
 }
 
+TEST(SolidSyslogUdpSenderDestroy, UseAfterDestroyIsCrashSafeViaNullSenderVtable)
+{
+    /* After Destroy the slot's abstract-base vtable is the shared NullSender's, so
+     * calling Send/Disconnect through the stale handle is a safe no-op rather than a
+     * NULL-fn-pointer crash. NullSender.Send returns true (drop-on-floor). */
+    struct SolidSyslogSender* destroyed = SolidSyslogUdpSender_Create(&config);
+    SolidSyslogUdpSender_Destroy(destroyed);
+    CHECK_TRUE(SolidSyslogSender_Send(destroyed, "x", 1));
+    SolidSyslogSender_Disconnect(destroyed);
+}
+
 TEST(SolidSyslogUdpSenderDestroy, SimpleScenario)
 {
     sender = SolidSyslogUdpSender_Create(&config);

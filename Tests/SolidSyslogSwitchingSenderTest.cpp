@@ -119,6 +119,24 @@ TEST(SolidSyslogSwitchingSender, DestroyDoesNotDisconnectInnerSenders)
     CreateSwitchingSender(2);
 }
 
+TEST(SolidSyslogSwitchingSender, UseAfterDestroyIsCrashSafeViaNullSenderVtable)
+{
+    /* After Destroy the slot's abstract-base vtable is the shared NullSender's, so
+     * calling Send/Disconnect through the stale handle is a safe no-op rather than a
+     * NULL-fn-pointer crash. NullSender.Send returns true (drop-on-floor). */
+    struct SolidSyslogSender* destroyed = sender;
+    SolidSyslogSwitchingSender_Destroy(destroyed);
+    sender = nullptr;
+
+    CHECK_TRUE(SolidSyslogSender_Send(destroyed, "x", 1));
+    SolidSyslogSender_Disconnect(destroyed);
+    CALLED_FAKE_ON(SenderFake_Send, innerA, NEVER);
+    CALLED_FAKE_ON(SenderFake_Disconnect, innerA, NEVER);
+
+    // Re-create so teardown's Destroy(sender) targets a live handle.
+    CreateSwitchingSender(2);
+}
+
 TEST(SolidSyslogSwitchingSender, SendDelegatesToSenderAtSelectedIndex)
 {
     Send("x", 1);

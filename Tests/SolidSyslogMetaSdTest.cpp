@@ -178,6 +178,17 @@ TEST(SolidSyslogMetaSd, DestroyDoesNotCrash)
     // Covered by teardown — this test documents the intent
 }
 
+TEST(SolidSyslogMetaSd, UseAfterDestroyIsCrashSafeViaNullSdVtable)
+{
+    /* After Destroy the slot's abstract-base vtable is the shared NullSd's, so
+     * Format through the stale handle is a safe no-op rather than a NULL-fn-pointer
+     * crash. NullSd.Format writes nothing into the Formatter. */
+    SolidSyslogMetaSd_Destroy(sd);
+    SolidSyslogStructuredData_Format(sd, formatter);
+    LONGS_EQUAL(0, SolidSyslogFormatter_Length(formatter));
+    sd = SolidSyslogMetaSd_Create(&config); // for teardown
+}
+
 TEST(SolidSyslogMetaSd, FormatIncludesSysUpTimeFromCallback)
 {
     useSysUpTime(12345);
