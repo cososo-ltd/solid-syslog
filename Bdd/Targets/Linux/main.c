@@ -161,8 +161,7 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* optio
 
     if (useFile)
     {
-        static SolidSyslogPosixFileStorage fileStorage;
-        storeFile = SolidSyslogPosixFile_Create(&fileStorage);
+        storeFile = SolidSyslogPosixFile_Create();
 
         storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX);
 

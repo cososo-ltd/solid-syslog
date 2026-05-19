@@ -1,14 +1,15 @@
 #include "SolidSyslogPosixFile.h"
 
 #include <fcntl.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "SolidSyslogFileDefinition.h"
-#include "SolidSyslogMacros.h"
+#include "SolidSyslogNullFile.h"
+#include "SolidSyslogPosixFilePrivate.h"
 
 #define OWNER_READ_WRITE (S_IRUSR | S_IWUSR)
 #define DEFAULT_FILE_PERMISSIONS OWNER_READ_WRITE
@@ -29,61 +30,35 @@ static void PosixFile_Truncate(struct SolidSyslogFile* base);
 static bool PosixFile_Exists(struct SolidSyslogFile* base, const char* path);
 static bool PosixFile_Delete(struct SolidSyslogFile* base, const char* path);
 
-static inline struct SolidSyslogPosixFile* PosixFile_SelfFromStorage(SolidSyslogPosixFileStorage* storage);
 static inline struct SolidSyslogPosixFile* PosixFile_SelfFromBase(struct SolidSyslogFile* base);
 
-struct SolidSyslogPosixFile
-{
-    struct SolidSyslogFile Base;
-    int Fd;
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    sizeof(struct SolidSyslogPosixFile) <= sizeof(SolidSyslogPosixFileStorage),
-    "SOLIDSYSLOG_POSIX_FILE_SIZE is too small for struct SolidSyslogPosixFile"
-);
-
-static const struct SolidSyslogPosixFile DEFAULT_INSTANCE = {
-    {PosixFile_Open,
-     PosixFile_Close,
-     PosixFile_IsOpen,
-     PosixFile_Read,
-     PosixFile_Write,
-     PosixFile_SeekTo,
-     PosixFile_Size,
-     PosixFile_Truncate,
-     PosixFile_Exists,
-     PosixFile_Delete},
-    INVALID_FD,
-};
-
-static const struct SolidSyslogPosixFile DESTROYED_INSTANCE = {
-    {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
-    INVALID_FD,
-};
-
-struct SolidSyslogFile* SolidSyslogPosixFile_Create(SolidSyslogPosixFileStorage* storage)
-{
-    struct SolidSyslogPosixFile* self = PosixFile_SelfFromStorage(storage);
-    *self = DEFAULT_INSTANCE;
-    return &self->Base;
-}
-
-static inline struct SolidSyslogPosixFile* PosixFile_SelfFromStorage(SolidSyslogPosixFileStorage* storage)
-{
-    return (struct SolidSyslogPosixFile*) storage;
-}
-
-void SolidSyslogPosixFile_Destroy(struct SolidSyslogFile* base)
+void PosixFile_Initialise(struct SolidSyslogFile* base)
 {
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
+    self->Base.Open = PosixFile_Open;
+    self->Base.Close = PosixFile_Close;
+    self->Base.IsOpen = PosixFile_IsOpen;
+    self->Base.Read = PosixFile_Read;
+    self->Base.Write = PosixFile_Write;
+    self->Base.SeekTo = PosixFile_SeekTo;
+    self->Base.Size = PosixFile_Size;
+    self->Base.Truncate = PosixFile_Truncate;
+    self->Base.Exists = PosixFile_Exists;
+    self->Base.Delete = PosixFile_Delete;
+    self->Fd = INVALID_FD;
+}
 
+void PosixFile_Cleanup(struct SolidSyslogFile* base)
+{
+    struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
     if (self->Fd != INVALID_FD)
     {
         close(self->Fd);
+        self->Fd = INVALID_FD;
     }
-
-    *self = DESTROYED_INSTANCE;
+    /* Overwrite the abstract base with the shared NullFile vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullFile_Get();
 }
 
 static inline struct SolidSyslogPosixFile* PosixFile_SelfFromBase(struct SolidSyslogFile* base)
@@ -101,7 +76,6 @@ static bool PosixFile_Open(struct SolidSyslogFile* base, const char* path)
 static void PosixFile_Close(struct SolidSyslogFile* base)
 {
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
-
     if (self->Fd != INVALID_FD)
     {
         close(self->Fd);

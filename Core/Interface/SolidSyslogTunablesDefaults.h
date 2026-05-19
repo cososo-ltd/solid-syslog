@@ -113,6 +113,26 @@
 #endif
 
 /*
+ * Number of SolidSyslogPosixFile instances the library's internal
+ * static pool can simultaneously hold. Each instance carries an
+ * int file descriptor.
+ *
+ * Default 1 — almost all integrators wire a single PosixFile into a
+ * FileBlockDevice. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more
+ * than one is genuinely needed.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_POSIX_FILE_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_POSIX_FILE_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_POSIX_FILE_POOL_SIZE < 1
+#error "SOLIDSYSLOG_POSIX_FILE_POOL_SIZE must be >= 1"
+#endif
+
+/*
  * Number of SolidSyslogPassthroughBuffer instances the library's
  * internal static pool can simultaneously hold. Each instance is
  * tiny (vtable + a Sender pointer).

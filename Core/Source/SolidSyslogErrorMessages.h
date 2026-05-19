@@ -75,5 +75,9 @@
     "SolidSyslogGetAddrInfoResolver_Create pool exhausted; returning fallback resolver"
 #define SOLIDSYSLOG_ERROR_MSG_GETADDRINFORESOLVER_UNKNOWN_DESTROY \
     "SolidSyslogGetAddrInfoResolver_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_POSIXFILE_POOL_EXHAUSTED \
+    "SolidSyslogPosixFile_Create pool exhausted; returning fallback file"
+#define SOLIDSYSLOG_ERROR_MSG_POSIXFILE_UNKNOWN_DESTROY \
+    "SolidSyslogPosixFile_Destroy called with a handle not issued by this pool"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */

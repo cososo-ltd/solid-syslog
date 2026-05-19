@@ -14,6 +14,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     Source/SolidSyslogPosixDatagramStatic.c
     Source/SolidSyslogPosixTcpStream.c
     Source/SolidSyslogPosixFile.c
+    Source/SolidSyslogPosixFileStatic.c
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Interface)

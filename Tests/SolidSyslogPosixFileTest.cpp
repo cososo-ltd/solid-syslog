@@ -1,16 +1,39 @@
+#include "ConfigLockFake.h"
 #include "CppUTest/TestHarness.h"
-#include "SolidSyslogFile.h"
-#include "SolidSyslogPosixFile.h"
+#include "ErrorHandlerFake.h"
 #include "SocketFake.h"
+#include "SolidSyslogErrorMessages.h"
+#include "SolidSyslogFile.h"
+#include "SolidSyslogFileDefinition.h"
+#include "SolidSyslogPosixFile.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogTunables.h"
+#include "TestUtils.h"
 
 #include <cstdio>
 
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
+    // macros
+
 static const char* const TEST_PATH = "/tmp/test_posix_file.dat";
+
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
+#define CHECK_IS_FALLBACK(handle, pool)                                                \
+    do                                                                                 \
+    {                                                                                  \
+        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
+        for (auto* slot : (pool))                                                      \
+        {                                                                              \
+            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
+            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
+        }                                                                              \
+    } while (0)
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 // clang-format off
 TEST_GROUP(SolidSyslogPosixFile)
 {
-    SolidSyslogPosixFileStorage storage = {};
     struct SolidSyslogFile* file = nullptr;
 
     void setup() override
@@ -18,7 +41,7 @@ TEST_GROUP(SolidSyslogPosixFile)
         SocketFake_Reset();
         remove(TEST_PATH);
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        file = SolidSyslogPosixFile_Create(&storage);
+        file = SolidSyslogPosixFile_Create();
     }
 
     void teardown() override
@@ -38,14 +61,6 @@ TEST_GROUP(SolidSyslogPosixFile)
 TEST(SolidSyslogPosixFile, CreateReturnsNonNull)
 {
     CHECK_TRUE(file != nullptr);
-}
-
-TEST(SolidSyslogPosixFile, CreateReturnsHandleInsideCallerSuppliedStorage)
-{
-    SolidSyslogPosixFileStorage localStorage{};
-    struct SolidSyslogFile* localFile = SolidSyslogPosixFile_Create(&localStorage);
-    POINTERS_EQUAL(&localStorage, localFile);
-    SolidSyslogPosixFile_Destroy(localFile);
 }
 
 TEST(SolidSyslogPosixFile, IsOpenReturnsFalseBeforeOpen)
@@ -114,4 +129,137 @@ TEST(SolidSyslogPosixFile, DeleteRemovesFile)
 TEST(SolidSyslogPosixFile, DeleteReturnsFalseForNonexistentFile)
 {
     CHECK_FALSE(SolidSyslogFile_Delete(file, "/tmp/nonexistent_posix_file.dat"));
+}
+
+// clang-format off
+TEST_GROUP(SolidSyslogPosixFilePool)
+{
+    struct SolidSyslogFile* pooled[SOLIDSYSLOG_POSIX_FILE_POOL_SIZE] = {};
+    struct SolidSyslogFile* overflow                                 = nullptr;
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogPosixFile_Destroy(handle);
+            }
+        }
+        if (overflow != nullptr)
+        {
+            SolidSyslogPosixFile_Destroy(overflow);
+        }
+        ConfigLockFake_Uninstall();
+        ErrorHandlerFake_Uninstall();
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = SolidSyslogPosixFile_Create();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogPosixFilePool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = SolidSyslogPosixFile_Create();
+
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
+TEST(SolidSyslogPosixFilePool, ExhaustedCreateReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FillPool();
+
+    overflow = SolidSyslogPosixFile_Create();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_POSIXFILE_POOL_EXHAUSTED, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogPosixFilePool, FallbackOpenReturnsFalse)
+{
+    FillPool();
+    overflow = SolidSyslogPosixFile_Create();
+
+    CHECK_FALSE(SolidSyslogFile_Open(overflow, TEST_PATH));
+}
+
+TEST(SolidSyslogPosixFilePool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
+{
+    ConfigLockFake_Install();
+
+    pooled[0] = SolidSyslogPosixFile_Create();
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogPosixFilePool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
+{
+    FillPool();
+    ConfigLockFake_Install();
+
+    overflow = SolidSyslogPosixFile_Create();
+
+    LONGS_EQUAL(SOLIDSYSLOG_POSIX_FILE_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_POSIX_FILE_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+}
+
+TEST(SolidSyslogPosixFilePool, DestroyOfPooledHandleLocksOnce)
+{
+    pooled[0] = SolidSyslogPosixFile_Create();
+    ConfigLockFake_Install();
+
+    SolidSyslogPosixFile_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogPosixFilePool, DestroyOfUnknownHandleDoesNotLock)
+{
+    ConfigLockFake_Install();
+    struct SolidSyslogFile stranger = {};
+
+    SolidSyslogPosixFile_Destroy(&stranger);
+
+    CALLED_FAKE(ConfigLockFake_Lock, NEVER);
+    CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
+}
+
+TEST(SolidSyslogPosixFilePool, DestroyOfUnknownHandleReportsWarning)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogFile stranger = {};
+
+    SolidSyslogPosixFile_Destroy(&stranger);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_POSIXFILE_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogPosixFilePool, DestroyOfStaleHandleReportsWarning)
+{
+    pooled[0] = SolidSyslogPosixFile_Create();
+    SolidSyslogPosixFile_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogPosixFile_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_POSIXFILE_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
 }

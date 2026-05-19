@@ -365,7 +365,7 @@ live under `Core/Interface/`; platform-specific helpers (the `SolidSyslogPosix*`
 | `SolidSyslogNullSecurityPolicy.h` | System setup code (no integrity checking) | `SolidSyslogNullSecurityPolicy_Get` |
 | `SolidSyslogCrc16Policy.h` | System setup code using CRC-16 integrity | `SolidSyslogCrc16Policy_Create`, `_Destroy` |
 | `SolidSyslogCrc16.h` | Any code needing CRC-16 computation | `SolidSyslogCrc16_Compute` |
-| `SolidSyslogPosixFile.h` | System setup code using POSIX file I/O | `SolidSyslogPosixFile_Create`, `_Destroy` |
+| `SolidSyslogPosixFile.h` | System setup code using POSIX file I/O | `SolidSyslogPosixFile_Create(void)`, `_Destroy(base)`. Instance struct lives in a library-internal static pool (E11). Pool-exhaustion fallback is the shared `SolidSyslogNullFile`. |
 | `SolidSyslogWindowsFile.h` | System setup code using Windows file I/O (MSVC `<io.h>`) | `SolidSyslogWindowsFile_Create`, `_Destroy` |
 | `SolidSyslogFatFsFile.h` | System setup code on targets using ChaN FatFs as the file layer (bare-metal flash / SD / eMMC, FreeRTOS, Zephyr, NuttX, …) | `SolidSyslogFatFsFileStorage`, `SOLIDSYSLOG_FATFS_FILE_SIZE`, `SolidSyslogFatFsFile_Create(storage)`, `_Destroy(file)` (wraps `f_open` / `f_close` / `f_read` / `f_write` with `f_sync` after every successful write so a power loss never loses a record the BlockStore claimed it stored; integrator supplies `diskio.c` and — if `FF_FS_REENTRANT=1` — `ffsystem.c`) |
 | `SolidSyslogPosixClock.h` | System setup code using POSIX clock | `SolidSyslogPosixClock_GetTimestamp` |

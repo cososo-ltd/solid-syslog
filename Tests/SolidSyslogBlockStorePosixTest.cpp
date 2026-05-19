@@ -37,7 +37,6 @@ TEST_GROUP(SolidSyslogBlockStorePosix)
     static const size_t RECORD_OVERHEAD    = 5; /* 2 (magic) + 2 (length) + 1 (sent flag) */
     static const size_t ONE_MAX_MSG_RECORD = SOLIDSYSLOG_MAX_MESSAGE_SIZE + RECORD_OVERHEAD;
 
-    SolidSyslogPosixFileStorage fileStorage = {};
     struct SolidSyslogFile* file = nullptr;
     struct SolidSyslogBlockDevice* device = nullptr;
     struct SolidSyslogStore* store = nullptr;
@@ -46,7 +45,7 @@ TEST_GROUP(SolidSyslogBlockStorePosix)
     void setup() override
     {
         CleanStoreFiles();
-        file   = SolidSyslogPosixFile_Create(&fileStorage);
+        file   = SolidSyslogPosixFile_Create();
         device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX);
         std::memset(maxMsg, 'A', sizeof(maxMsg));
     }

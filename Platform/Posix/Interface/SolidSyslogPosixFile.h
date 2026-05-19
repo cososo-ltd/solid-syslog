@@ -1,25 +1,13 @@
 #ifndef SOLIDSYSLOGPOSIXFILE_H
 #define SOLIDSYSLOGPOSIXFILE_H
 
-#include <stdint.h>
-
 #include "ExternC.h"
 
 struct SolidSyslogFile;
 
 EXTERN_C_BEGIN
 
-    enum
-    {
-        SOLIDSYSLOG_POSIX_FILE_SIZE = sizeof(intptr_t) * 11U
-    };
-
-    typedef struct
-    {
-        intptr_t slots[(SOLIDSYSLOG_POSIX_FILE_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
-    } SolidSyslogPosixFileStorage;
-
-    struct SolidSyslogFile* SolidSyslogPosixFile_Create(SolidSyslogPosixFileStorage * storage);
+    struct SolidSyslogFile* SolidSyslogPosixFile_Create(void);
     void SolidSyslogPosixFile_Destroy(struct SolidSyslogFile * base);
 
 EXTERN_C_END
