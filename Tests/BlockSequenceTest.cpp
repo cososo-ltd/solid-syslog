@@ -9,7 +9,7 @@
 
 extern "C"
 {
-#include "BlockSequence.h"
+#include "BlockSequencePrivate.h"
 }
 #include "SolidSyslogBlockDeviceDefinition.h"
 
@@ -145,7 +145,7 @@ TEST_GROUP(BlockSequenceScan)
 {
     ScanFake fakeDevice = {};
     std::set<size_t> existing;
-    struct BlockSequence sequence = {};
+    struct BlockSequence* sequence = nullptr;
 
     void setup() override
     {
@@ -164,7 +164,12 @@ TEST_GROUP(BlockSequenceScan)
         config.MaxBlockSize                = 1000;
         config.MaxBlocks                   = 99;
         config.DiscardPolicy              = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
-        BlockSequence_Init(&sequence, &config);
+        sequence = BlockSequence_Create(&config);
+    }
+
+    void teardown() override
+    {
+        BlockSequence_Destroy(sequence);
     }
 };
 
@@ -172,25 +177,25 @@ TEST_GROUP(BlockSequenceScan)
 
 TEST(BlockSequenceScan, ColdStartAcquiresBlockZero)
 {
-    CHECK_TRUE(BlockSequence_Open(&sequence));
-    LONGS_EQUAL(0, BlockSequence_ReadSequence(&sequence));
-    LONGS_EQUAL(0, BlockSequence_WriteSequence(&sequence));
+    CHECK_TRUE(BlockSequence_Open(sequence));
+    LONGS_EQUAL(0, BlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(0, BlockSequence_WriteSequence(sequence));
 }
 
 TEST(BlockSequenceScan, ResumesContiguousLinearRange)
 {
     existing = {2, 3, 4};
-    CHECK_TRUE(BlockSequence_Open(&sequence));
-    LONGS_EQUAL(2, BlockSequence_ReadSequence(&sequence));
-    LONGS_EQUAL(4, BlockSequence_WriteSequence(&sequence));
+    CHECK_TRUE(BlockSequence_Open(sequence));
+    LONGS_EQUAL(2, BlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(4, BlockSequence_WriteSequence(sequence));
 }
 
 TEST(BlockSequenceScan, ResumesAtZeroWhenOnlyBlockZeroExists)
 {
     existing = {0};
-    CHECK_TRUE(BlockSequence_Open(&sequence));
-    LONGS_EQUAL(0, BlockSequence_ReadSequence(&sequence));
-    LONGS_EQUAL(0, BlockSequence_WriteSequence(&sequence));
+    CHECK_TRUE(BlockSequence_Open(sequence));
+    LONGS_EQUAL(0, BlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(0, BlockSequence_WriteSequence(sequence));
 }
 
 /* After enough rotations, the on-disk block range straddles the 99 -> 00
@@ -201,17 +206,17 @@ TEST(BlockSequenceScan, ResumesAtZeroWhenOnlyBlockZeroExists)
 TEST(BlockSequenceScan, ResumesWrappedSequenceRangeCorrectly)
 {
     existing = {98, 99, 0, 1};
-    CHECK_TRUE(BlockSequence_Open(&sequence));
-    LONGS_EQUAL(98, BlockSequence_ReadSequence(&sequence));
-    LONGS_EQUAL(1, BlockSequence_WriteSequence(&sequence));
+    CHECK_TRUE(BlockSequence_Open(sequence));
+    LONGS_EQUAL(98, BlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(1, BlockSequence_WriteSequence(sequence));
 }
 
 TEST(BlockSequenceScan, ResumesWrappedSingleBlockAtBoundary)
 {
     existing = {99, 0};
-    CHECK_TRUE(BlockSequence_Open(&sequence));
-    LONGS_EQUAL(99, BlockSequence_ReadSequence(&sequence));
-    LONGS_EQUAL(0, BlockSequence_WriteSequence(&sequence));
+    CHECK_TRUE(BlockSequence_Open(sequence));
+    LONGS_EQUAL(99, BlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(0, BlockSequence_WriteSequence(sequence));
 }
 
 namespace
@@ -231,7 +236,7 @@ TEST_GROUP(BlockSequenceRotation)
     std::set<size_t> existing;
     std::vector<DeviceCall> calls;
     std::map<size_t, size_t> sizes;
-    struct BlockSequence sequence = {};
+    struct BlockSequence* sequence = nullptr;
 
     void setup() override
     {
@@ -252,15 +257,20 @@ TEST_GROUP(BlockSequenceRotation)
         config.MaxBlockSize               = ROTATION_BLOCK_SIZE;
         config.MaxBlocks                  = 99;
         config.DiscardPolicy              = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
-        BlockSequence_Init(&sequence, &config);
+        sequence = BlockSequence_Create(&config);
 
-        BlockSequence_Open(&sequence); /* cold start: Acquire(0) */
+        BlockSequence_Open(sequence); /* cold start: Acquire(0) */
         /* Simulate one record's worth of data in block 0 — production rotation
          * never seals an empty block, and the dispose-on-empty trigger uses
          * device.Size to decide drained-ness. */
-        BlockSequence_NoteRecordWritten(&sequence, SIMULATED_RECORD_SIZE);
-        sizes[BlockSequence_WriteSequence(&sequence)] = SIMULATED_RECORD_SIZE;
+        BlockSequence_NoteRecordWritten(sequence, SIMULATED_RECORD_SIZE);
+        sizes[BlockSequence_WriteSequence(sequence)] = SIMULATED_RECORD_SIZE;
         calls.clear();
+    }
+
+    void teardown() override
+    {
+        BlockSequence_Destroy(sequence);
     }
 
     [[nodiscard]] bool DisposePrecedesAcquire(size_t blockIndex) const
@@ -284,7 +294,7 @@ TEST_GROUP(BlockSequenceRotation)
     void ForceRotation()
     {
         bool readBlockChanged = false;
-        BlockSequence_PrepareForWrite(&sequence, ROTATION_BLOCK_SIZE + 1, &readBlockChanged);
+        BlockSequence_PrepareForWrite(sequence, ROTATION_BLOCK_SIZE + 1, &readBlockChanged);
     }
 };
 
@@ -321,7 +331,7 @@ TEST(BlockSequenceRotation, RotationFailsWhenStaleBlockDisposeFails)
     fakeDevice.failNextDispose = true;
 
     bool readBlockChanged = false;
-    bool acquired = BlockSequence_PrepareForWrite(&sequence, ROTATION_BLOCK_SIZE + 1, &readBlockChanged);
+    bool acquired = BlockSequence_PrepareForWrite(sequence, ROTATION_BLOCK_SIZE + 1, &readBlockChanged);
 
     CHECK_FALSE(acquired);
     for (const auto& call : calls)

@@ -1,4 +1,4 @@
-#include "BlockSequence.h"
+#include "BlockSequencePrivate.h"
 
 #include "SolidSyslogBlockDevice.h"
 
@@ -39,7 +39,7 @@ static inline size_t BlockSequence_ClampToRange(size_t value, size_t min, size_t
     return result;
 }
 
-void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockSequenceConfig* config)
+void BlockSequence_Initialise(struct BlockSequence* blockSequence, const struct BlockSequenceConfig* config)
 {
     blockSequence->BlockDevice = config->BlockDevice;
     blockSequence->MaxBlockSize = config->MaxBlockSize;
@@ -59,6 +59,14 @@ void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockS
     blockSequence->ReadCursor = 0;
     blockSequence->WritePosition = 0;
     blockSequence->WriteBlockCorrupt = false;
+}
+
+void BlockSequence_Cleanup(struct BlockSequence* blockSequence)
+{
+    /* No owned resources to release. The BlockDevice pointer is caller-owned
+     * (integrator-supplied via BlockSequenceConfig.BlockDevice); the next
+     * _Initialise overwrites every field, so clearing here would be churn. */
+    (void) blockSequence;
 }
 
 static bool BlockSequence_ScanForExistingBlocks(struct BlockSequence* blockSequence);

@@ -1,5 +1,5 @@
-#ifndef SOLIDSYSLOG_BLOCKSEQUENCE_H
-#define SOLIDSYSLOG_BLOCKSEQUENCE_H
+#ifndef SOLIDSYSLOG_BLOCKSEQUENCEPRIVATE_H
+#define SOLIDSYSLOG_BLOCKSEQUENCEPRIVATE_H
 
 #include "SolidSyslogBlockStore.h"
 
@@ -44,7 +44,12 @@ struct BlockSequence
     bool WriteBlockCorrupt;
 };
 
-void BlockSequence_Init(struct BlockSequence* blockSequence, const struct BlockSequenceConfig* config);
+void BlockSequence_Initialise(struct BlockSequence* blockSequence, const struct BlockSequenceConfig* config);
+void BlockSequence_Cleanup(struct BlockSequence* blockSequence);
+
+struct BlockSequence* BlockSequence_Create(const struct BlockSequenceConfig* config);
+void BlockSequence_Destroy(struct BlockSequence* blockSequence);
+
 bool BlockSequence_Open(struct BlockSequence* blockSequence);
 
 bool BlockSequence_PrepareForWrite(struct BlockSequence* blockSequence, size_t recordSize, bool* readBlockChanged);
@@ -65,4 +70,4 @@ bool BlockSequence_IsHalted(const struct BlockSequence* blockSequence);
 size_t BlockSequence_TotalBytes(const struct BlockSequence* blockSequence);
 size_t BlockSequence_UsedBytes(const struct BlockSequence* blockSequence);
 
-#endif /* SOLIDSYSLOG_BLOCKSEQUENCE_H */
+#endif /* SOLIDSYSLOG_BLOCKSEQUENCEPRIVATE_H */

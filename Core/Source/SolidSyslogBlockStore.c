@@ -2,7 +2,7 @@
 
 #include <stdbool.h>
 
-#include "BlockSequence.h"
+#include "BlockSequencePrivate.h"
 #include "RecordStorePrivate.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogBlockDevice.h"
@@ -65,7 +65,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(
     RecordStore_Initialise(&self->RecordStore, BlockStore_ResolveSecurityPolicy(config->SecurityPolicy));
 
     struct BlockSequenceConfig blockConfig = BlockStore_BuildBlockSequenceConfig(config, &self->RecordStore);
-    BlockSequence_Init(&self->BlockSequence, &blockConfig);
+    BlockSequence_Initialise(&self->BlockSequence, &blockConfig);
 
     BlockStore_InitialiseVtable(self);
 
