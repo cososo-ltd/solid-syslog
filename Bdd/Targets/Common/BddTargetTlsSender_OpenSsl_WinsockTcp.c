@@ -14,7 +14,6 @@ static SolidSyslogWinsockTcpStreamStorage underlyingStreamStorage;
 static struct SolidSyslogStream* underlyingStream;
 static SolidSyslogTlsStreamStorage tlsStreamStorage;
 static struct SolidSyslogStream* tlsStream;
-static SolidSyslogStreamSenderStorage senderStorage;
 static struct SolidSyslogSender* sender;
 
 struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* resolver, bool mtls)
@@ -46,7 +45,7 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     senderConfig.Endpoint = mtls ? BddTargetMtlsConfig_GetEndpoint : BddTargetTlsConfig_GetEndpoint;
     senderConfig.EndpointVersion =
         mtls ? BddTargetMtlsConfig_GetEndpointVersion : BddTargetTlsConfig_GetEndpointVersion;
-    sender = SolidSyslogStreamSender_Create(&senderStorage, &senderConfig);
+    sender = SolidSyslogStreamSender_Create(&senderConfig);
 
     return sender;
 }

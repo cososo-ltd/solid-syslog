@@ -65,7 +65,6 @@ static const char* const STORE_PATH_PREFIX = "Bdd/output/STORE";
 static const char* const THRESHOLD_MARKER_PATH = "Bdd/output/solidsyslog_threshold_marker.log";
 
 static SolidSyslogWinsockTcpStreamStorage tcpStreamStorage;
-static SolidSyslogStreamSenderStorage tcpSenderStorage;
 static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(BDD_TARGET_BUFFER_MESSAGES)];
 static SolidSyslogWindowsMutexStorage mutexStorage;
 static SolidSyslogWindowsAtomicCounterStorage counterStorage;
@@ -196,7 +195,7 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetWindowsOptio
     tcpConfig.Stream = plainTcpStream;
     tcpConfig.Endpoint = GetEndpoint;
     tcpConfig.EndpointVersion = GetEndpointVersion;
-    plainTcpSender = SolidSyslogStreamSender_Create(&tcpSenderStorage, &tcpConfig);
+    plainTcpSender = SolidSyslogStreamSender_Create(&tcpConfig);
 
     struct SolidSyslogSender* tlsSender = BddTargetTlsSender_Create(resolver, mtlsModeActive);
 

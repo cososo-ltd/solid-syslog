@@ -113,6 +113,27 @@
 #endif
 
 /*
+ * Number of SolidSyslogStreamSender instances the library's internal
+ * static pool can simultaneously hold. Each instance carries its
+ * config (resolver/stream/endpoint pointers) and connection state.
+ *
+ * Default 1 — almost all integrators wire a single stream-framed
+ * sender (TCP, TLS) into either SolidSyslogConfig directly or as one
+ * branch of a SwitchingSender. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE
+ * if more than one is genuinely needed.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE < 1
+#error "SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE must be >= 1"
+#endif
+
+/*
  * Number of SolidSyslogMetaSd instances the library's internal
  * static pool can simultaneously hold. Default 1 — meta SD is typically
  * wired into SolidSyslogConfig.Sd[] once per process.

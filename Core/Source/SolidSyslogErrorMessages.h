@@ -51,5 +51,9 @@
     "SolidSyslogPassthroughBuffer_Create pool exhausted; returning fallback buffer"
 #define SOLIDSYSLOG_ERROR_MSG_PASSTHROUGHBUFFER_UNKNOWN_DESTROY \
     "SolidSyslogPassthroughBuffer_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_STREAMSENDER_POOL_EXHAUSTED \
+    "SolidSyslogStreamSender_Create pool exhausted; returning fallback sender"
+#define SOLIDSYSLOG_ERROR_MSG_STREAMSENDER_UNKNOWN_DESTROY \
+    "SolidSyslogStreamSender_Destroy called with a handle not issued by this pool"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */

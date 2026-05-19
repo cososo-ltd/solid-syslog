@@ -10,6 +10,7 @@
 #include "SolidSyslogPosixTcpStream.h"
 #include "SolidSyslogSender.h"
 #include "SolidSyslogStreamSender.h"
+#include "SolidSyslogTunables.h"
 #include "SocketFake.h"
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
@@ -89,7 +90,6 @@ TEST_GROUP(SolidSyslogStreamSender)
     SolidSyslogPosixTcpStreamStorage streamStorage{};
     struct SolidSyslogStream*        stream = nullptr;
     struct SolidSyslogStreamSenderConfig config;
-    SolidSyslogStreamSenderStorage senderStorage{};
     // cppcheck-suppress constVariablePointer -- Send requires non-const self; false positive from macro expansion
     // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogSender* sender = nullptr;
@@ -104,7 +104,7 @@ TEST_GROUP(SolidSyslogStreamSender)
         stream          = SolidSyslogPosixTcpStream_Create(&streamStorage);
         config          = {resolver, stream, TestEndpoint, TestEndpointVersion};
         // cppcheck-suppress unreadVariable -- read by teardown and tests; cppcheck does not model CppUTest lifecycle
-        sender = SolidSyslogStreamSender_Create(&senderStorage, &config);
+        sender = SolidSyslogStreamSender_Create(&config);
     }
 
     void teardown() override
@@ -125,15 +125,6 @@ TEST_GROUP(SolidSyslogStreamSender)
 TEST(SolidSyslogStreamSender, CreateReturnsNonNull)
 {
     CHECK_TRUE(sender != nullptr);
-}
-
-TEST(SolidSyslogStreamSender, CreateReturnsHandleInsideCallerSuppliedStorage)
-{
-    SolidSyslogStreamSenderStorage localStorage{};
-    struct SolidSyslogStreamSenderConfig localConfig = {resolver, stream, TestEndpoint, TestEndpointVersion};
-    struct SolidSyslogSender* localSender = SolidSyslogStreamSender_Create(&localStorage, &localConfig);
-    POINTERS_EQUAL(&localStorage, localSender);
-    SolidSyslogStreamSender_Destroy(localSender);
 }
 
 TEST(SolidSyslogStreamSender, CreateDoesNotOpenSocket)
@@ -162,7 +153,6 @@ TEST_GROUP(SolidSyslogStreamSenderDestroy)
     SolidSyslogPosixTcpStreamStorage streamStorage{};
     struct SolidSyslogStream*        stream = nullptr;
     struct SolidSyslogStreamSenderConfig config;
-    SolidSyslogStreamSenderStorage senderStorage{};
 
     void setup() override
     {
@@ -184,7 +174,7 @@ TEST_GROUP(SolidSyslogStreamSenderDestroy)
 
     void CreateAndDestroy()
     {
-        struct SolidSyslogSender* localSender = SolidSyslogStreamSender_Create(&senderStorage, &config);
+        struct SolidSyslogSender* localSender = SolidSyslogStreamSender_Create(&config);
         SolidSyslogStreamSender_Destroy(localSender);
     }
 };
@@ -199,7 +189,7 @@ TEST(SolidSyslogStreamSenderDestroy, DestroyWithoutSendDoesNotClose)
 
 TEST(SolidSyslogStreamSenderDestroy, DestroyAfterSendClosesSocket)
 {
-    struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&senderStorage, &config);
+    struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&config);
     SolidSyslogSender_Send(sender, "x", 1);
     SolidSyslogStreamSender_Destroy(sender);
     CALLED_FAKE(SocketFake_Close, ONCE);
@@ -208,7 +198,7 @@ TEST(SolidSyslogStreamSenderDestroy, DestroyAfterSendClosesSocket)
 
 TEST(SolidSyslogStreamSenderDestroy, DestroyAfterDisconnectDoesNotDoubleClose)
 {
-    struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&senderStorage, &config);
+    struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&config);
     SolidSyslogSender_Send(sender, "x", 1);
     SolidSyslogSender_Disconnect(sender);
     SolidSyslogStreamSender_Destroy(sender);
@@ -338,7 +328,6 @@ TEST_GROUP(SolidSyslogStreamSenderConfig)
     int (*getPortFn)(void) = GetPort; // NOLINT(modernize-redundant-void-arg) -- C idiom
     SolidSyslogPosixTcpStreamStorage streamStorage{};
     struct SolidSyslogStream*        stream = nullptr;
-    SolidSyslogStreamSenderStorage senderStorage{};
     // cppcheck-suppress constVariablePointer -- Send requires non-const self; false positive from macro expansion
     // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogSender* sender = nullptr;
@@ -368,7 +357,7 @@ TEST_GROUP(SolidSyslogStreamSenderConfig)
         stream                               = SolidSyslogPosixTcpStream_Create(&streamStorage);
         struct SolidSyslogStreamSenderConfig config = {resolver, stream, TestEndpoint, TestEndpointVersion};
         // cppcheck-suppress unreadVariable -- read by teardown and tests; cppcheck does not model CppUTest lifecycle
-        sender = SolidSyslogStreamSender_Create(&senderStorage, &config);
+        sender = SolidSyslogStreamSender_Create(&config);
     }
 
     void Send() const
@@ -446,7 +435,6 @@ TEST_GROUP(SolidSyslogStreamSenderFailure)
     SolidSyslogPosixTcpStreamStorage streamStorage{};
     struct SolidSyslogStream*        stream = nullptr;
     struct SolidSyslogStreamSenderConfig config;
-    SolidSyslogStreamSenderStorage senderStorage{};
     // cppcheck-suppress constVariablePointer -- Send requires non-const self; false positive from macro expansion
     // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogSender* sender = nullptr;
@@ -461,7 +449,7 @@ TEST_GROUP(SolidSyslogStreamSenderFailure)
         stream          = SolidSyslogPosixTcpStream_Create(&streamStorage);
         config          = {resolver, stream, TestEndpoint, TestEndpointVersion};
         // cppcheck-suppress unreadVariable -- read by teardown and tests; cppcheck does not model CppUTest lifecycle
-        sender = SolidSyslogStreamSender_Create(&senderStorage, &config);
+        sender = SolidSyslogStreamSender_Create(&config);
     }
 
     void teardown() override
@@ -628,10 +616,87 @@ TEST(SolidSyslogStreamSenderFailure, SendRecoversAfterTransientResolveFailure)
 
 TEST(SolidSyslogStreamSenderFailure, NoEndpointConfiguredConnectsToPortZero)
 {
+    /* Drop the setup-built sender so the pool slot is free for the no-endpoint variant —
+     * with pool semantics a second live Create on a SIZE=1 pool would otherwise overflow
+     * to NullSender. Reassigning to `sender` lets teardown release the no-endpoint sender. */
     SolidSyslogStreamSender_Destroy(sender);
     struct SolidSyslogStreamSenderConfig configNoEndpoint = {resolver, stream, nullptr, nullptr};
-    struct SolidSyslogSender* senderNoEndpoint = SolidSyslogStreamSender_Create(&senderStorage, &configNoEndpoint);
-    SolidSyslogSender_Send(senderNoEndpoint, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    sender = SolidSyslogStreamSender_Create(&configNoEndpoint);
+    SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
     CALLED_FAKE(SocketFake_Connect, ONCE);
     LONGS_EQUAL(0, SocketFake_LastConnectPort());
+}
+
+// Pool tests — prove SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE caps live instances
+// and overflow falls back to the shared SolidSyslogNullSender. Generic
+// pool mechanics (lock counts, per-probe locking, stale-handle warning)
+// are covered by SolidSyslogPoolAllocatorTest.cpp.
+
+// clang-format off
+TEST_GROUP(SolidSyslogStreamSenderPool)
+{
+    struct SolidSyslogResolver*      resolver = nullptr;
+    SolidSyslogPosixTcpStreamStorage streamStorage{};
+    struct SolidSyslogStream*        stream = nullptr;
+    struct SolidSyslogStreamSenderConfig config;
+    struct SolidSyslogSender* pooled[SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE] = {};
+    struct SolidSyslogSender* overflow                                     = nullptr;
+
+    void setup() override
+    {
+        SocketFake_Reset();
+        endpointGetHost = GetHost;
+        endpointVersion = 0;
+        endpointGetPort = GetPort;
+        resolver        = SolidSyslogGetAddrInfoResolver_Create();
+        stream          = SolidSyslogPosixTcpStream_Create(&streamStorage);
+        // cppcheck-suppress unreadVariable -- read by MakeSender; cppcheck does not model CppUTest macros
+        config = {resolver, stream, TestEndpoint, TestEndpointVersion};
+    }
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogStreamSender_Destroy(handle);
+            }
+        }
+        if (overflow != nullptr)
+        {
+            SolidSyslogStreamSender_Destroy(overflow);
+        }
+        SolidSyslogPosixTcpStream_Destroy(stream);
+        SolidSyslogGetAddrInfoResolver_Destroy();
+    }
+
+    struct SolidSyslogSender* MakeSender()
+    {
+        return SolidSyslogStreamSender_Create(&config);
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = MakeSender();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogStreamSenderPool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = MakeSender();
+
+    CHECK_TEXT(overflow != nullptr, "Fallback handle was nullptr");
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
+        CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
+    }
 }

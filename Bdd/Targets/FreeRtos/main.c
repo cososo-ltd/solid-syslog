@@ -158,7 +158,6 @@ static NetworkEndPoint_t networkEndPoint;
 static SolidSyslogFreeRtosStaticResolverStorage resolverStorage;
 static SolidSyslogFreeRtosDatagramStorage datagramStorage;
 static SolidSyslogFreeRtosTcpStreamStorage tcpStreamStorage;
-static SolidSyslogStreamSenderStorage tcpSenderStorage;
 
 /* CircularBuffer + FreeRtosMutex composition for cross-task emission.
  * 8 max-sized messages is comfortably above the 3-message BDD scenarios
@@ -800,7 +799,7 @@ static void InteractiveTask(void* argument)
         .Endpoint = GetEndpoint,
         .EndpointVersion = GetEndpointVersion,
     };
-    tcpSender = SolidSyslogStreamSender_Create(&tcpSenderStorage, &tcpConfig);
+    tcpSender = SolidSyslogStreamSender_Create(&tcpConfig);
 
     /* SwitchingSender lets `set transport <udp|tcp>` flip the active transport
      * at runtime. Default to UDP so existing UDP-tagged scenarios stay green;
