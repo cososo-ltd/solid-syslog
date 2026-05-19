@@ -3,46 +3,30 @@
 #include <pthread.h>
 #include <stddef.h>
 
-#include "SolidSyslogMacros.h"
 #include "SolidSyslogMutexDefinition.h"
-
-struct SolidSyslogPosixMutex
-{
-    struct SolidSyslogMutex Base;
-    pthread_mutex_t Mutex;
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    sizeof(struct SolidSyslogPosixMutex) <= SOLIDSYSLOG_POSIX_MUTEX_SIZE,
-    "SOLIDSYSLOG_POSIX_MUTEX_SIZE is too small for SolidSyslogPosixMutex layout"
-);
+#include "SolidSyslogNullMutex.h"
+#include "SolidSyslogPosixMutexPrivate.h"
 
 static void PosixMutex_Lock(struct SolidSyslogMutex* base);
 static void PosixMutex_Unlock(struct SolidSyslogMutex* base);
 
-static inline struct SolidSyslogPosixMutex* PosixMutex_SelfFromStorage(SolidSyslogPosixMutexStorage* storage);
 static inline struct SolidSyslogPosixMutex* PosixMutex_SelfFromBase(struct SolidSyslogMutex* base);
 
-struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(SolidSyslogPosixMutexStorage* storage)
+void PosixMutex_Initialise(struct SolidSyslogMutex* base)
 {
-    struct SolidSyslogPosixMutex* self = PosixMutex_SelfFromStorage(storage);
+    struct SolidSyslogPosixMutex* self = PosixMutex_SelfFromBase(base);
     self->Base.Lock = PosixMutex_Lock;
     self->Base.Unlock = PosixMutex_Unlock;
     pthread_mutex_init(&self->Mutex, NULL);
-    return &self->Base;
 }
 
-static inline struct SolidSyslogPosixMutex* PosixMutex_SelfFromStorage(SolidSyslogPosixMutexStorage* storage)
-{
-    return (struct SolidSyslogPosixMutex*) storage;
-}
-
-void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex* base)
+void PosixMutex_Cleanup(struct SolidSyslogMutex* base)
 {
     struct SolidSyslogPosixMutex* self = PosixMutex_SelfFromBase(base);
     pthread_mutex_destroy(&self->Mutex);
-    self->Base.Lock = NULL;
-    self->Base.Unlock = NULL;
+    /* Overwrite the abstract base with the shared NullMutex vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullMutex_Get();
 }
 
 static inline struct SolidSyslogPosixMutex* PosixMutex_SelfFromBase(struct SolidSyslogMutex* base)

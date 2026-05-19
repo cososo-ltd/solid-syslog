@@ -3,6 +3,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     Source/SolidSyslogPosixHostname.c
     Source/SolidSyslogPosixMessageQueueBuffer.c
     Source/SolidSyslogPosixMutex.c
+    Source/SolidSyslogPosixMutexStatic.c
     Source/SolidSyslogPosixProcessId.c
     Source/SolidSyslogPosixSysUpTime.c
     Source/SolidSyslogPosixSleep.c

@@ -63,5 +63,9 @@
     "SolidSyslogBlockStore_Create pool exhausted; returning fallback store"
 #define SOLIDSYSLOG_ERROR_MSG_BLOCKSTORE_UNKNOWN_DESTROY \
     "SolidSyslogBlockStore_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_POSIXMUTEX_POOL_EXHAUSTED \
+    "SolidSyslogPosixMutex_Create pool exhausted; returning fallback mutex"
+#define SOLIDSYSLOG_ERROR_MSG_POSIXMUTEX_UNKNOWN_DESTROY \
+    "SolidSyslogPosixMutex_Destroy called with a handle not issued by this pool"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */

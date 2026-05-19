@@ -51,6 +51,27 @@
 #endif
 
 /*
+ * Number of SolidSyslogPosixMutex instances the library's internal
+ * static pool can simultaneously hold. Each instance carries a
+ * pthread_mutex_t.
+ *
+ * Default 1 — almost all integrators wire a single PosixMutex into
+ * a CircularBuffer or other thread-safe primitive. Bump via
+ * SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is genuinely
+ * needed.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE < 1
+#error "SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE must be >= 1"
+#endif
+
+/*
  * Number of SolidSyslogPassthroughBuffer instances the library's
  * internal static pool can simultaneously hold. Each instance is
  * tiny (vtable + a Sender pointer).
