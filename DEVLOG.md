@@ -1,5 +1,61 @@
 # Dev Log
 
+## 2026-05-19 — BDD target stderr handler: fatal exit on ERROR severity
+
+Follow-up from S11.05 part B post-merge. The PR's final CI run took 23m
+instead of the usual 4–5m. Per-step timing showed both
+`build-linux-tunable-override` and `build-freertos-target` spent 16+ minutes
+in the "Initialize containers" step (image pull from ghcr.io) while other
+jobs on the same run using the same image pulled in seconds — runner
+cold-cache, not a project regression.
+
+The genuine concern surfaced by that diagnosis: pool exhaustion in a BDD
+wiring scenario would currently fail silently. `_Create` returns the shared
+null object, the BDD target keeps running on it, the oracle receives
+nothing, the scenario times out — and the captured failure mode is "oracle
+received 0 of 1" rather than "BDD target died on POOL_EXHAUSTED". Same
+failure class as part A's STREAM_SENDER default-1 bust.
+
+This PR hardens `BddTargetStderrErrorHandler` so any severity at or below
+`SOLIDSYSLOG_SEVERITY_ERROR` (EMERGENCY/ALERT/CRITICAL/ERROR) writes
+`BDD-TARGET: FATAL: <message>\n` to stderr, flushes, and `_Exit(3)`.
+WARNING stays as the existing print-only line (UNKNOWN_DESTROY noise).
+
+### Decisions
+
+- **`_Exit` not `_exit`.** C99 `<stdlib.h>`, portable to POSIX/MSVC/
+  FreeRTOS-Posix; POSIX-only `_exit` would break the Windows BDD target.
+  Same no-atexit / no-stdio-flush semantics for our purpose — we
+  `fflush(stderr)` ourselves first so the FATAL marker reaches the wire
+  before the process disappears.
+
+- **`severity <= SOLIDSYSLOG_SEVERITY_ERROR`** rather than `==`. Catches
+  EMERGENCY/ALERT/CRITICAL too. The library only emits ERROR and WARNING
+  in practice today, so the two forms are equivalent now, but `<=` is the
+  defensible semantics — any future EMERGENCY would still mean "BDD target
+  is hosed".
+
+- **No unit test for the handler.** The handler is six production lines; a
+  `_Exit` seam (function-pointer indirection + paired interceptor test) is
+  more abstraction than the change justifies. Validation is the local gate
+  sweep (debug / sanitize / clang-debug / tidy / cppcheck / coverage / iwyu /
+  clang-format — all green) plus future BDD scenarios that deliberately
+  starve a pool, which don't yet exist.
+
+### Deferred
+
+- A pool-starvation BDD scenario that actually fires the new fatal path.
+  Today's scenarios all use healthy wiring, so the new branch is exercised
+  only by static analysis, not at runtime. Worth raising once an E11 sweep
+  story touches BDD wiring.
+
+### Open questions
+
+- The CI slowdown root cause (ghcr.io cold-cache image pull) is left as
+  watch-and-see. If it recurs, ticket the mitigation (slimmer base image,
+  GHCR retention/replication tier, or a small image-pull warm-up job that
+  other jobs gate on).
+
 ## 2026-05-19 — S11.05 part B: BlockStore composition onto PoolAllocator
 
 Closes S11.05. The composition migration that part A deferred — RecordStore
