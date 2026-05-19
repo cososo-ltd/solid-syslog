@@ -1,5 +1,111 @@
 # Dev Log
 
+## 2026-05-19 — S11.05 part B: BlockStore composition onto PoolAllocator
+
+Closes S11.05. The composition migration that part A deferred — RecordStore
+and BlockSequence are TU-internal sub-components BlockStore composes by
+value today, so part A couldn't touch them without rewriting BlockStore's
+slot layout. This PR does the three steps in sequence on the same branch:
+
+- `0602362` — RecordStore onto PoolAllocator. Rename `RecordStore.h` ->
+  `RecordStorePrivate.h`; `_Init` -> `_Initialise`; new no-op `_Cleanup`;
+  new `RecordStoreStatic.c` with the pool + public `_Create` / `_Destroy`.
+  Pool sized by a new `SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE` tunable
+  (default 1, floor 1). TU-internal classes return NULL on exhaustion —
+  no shared null-object — because the only consumer is BlockStore_Create
+  which handles the NULL.
+- `9b9e957` — BlockSequence onto PoolAllocator. Same shape as RecordStore.
+  Pool sized 1:1 off the same tunable — no separate symbol. Tests update:
+  `BlockSequenceTest.cpp` switches from stack-allocated `struct
+  BlockSequence sequence = {}` to a pointer obtained via `BlockSequence_Create`
+  with paired `_Destroy` in teardown.
+- `d5f0399` — BlockStore composition rewrite. Slot stops embedding
+  RecordStore + BlockSequence by value, holds pointers into their pools
+  instead. Public header drops `SolidSyslogBlockStoreStorage` typedef +
+  the `SOLIDSYSLOG_BLOCK_STORE_STORAGE_SIZE` enum; `_Create` loses its
+  storage parameter. Cleanup is a pure NullStore vtable swap; Static.c
+  destroys the inner pool slots after the outer FreeIfInUse releases
+  the ConfigLock to keep each pool's lock acquisition sequential rather
+  than nested.
+
+### Decisions
+
+- **TU-internal Private.h is test-visible.** The existing memory
+  `project_e11_three_tu_split` said "tests must not include Private.h"
+  but that rule was written for classes with a public `Interface/`
+  header. RecordStore and BlockSequence have no public header — their
+  accessor signatures live nowhere else, so tests must include their
+  Private.h. Clarified the memory inline on this branch: the rule
+  applies only to classes that *have* a public header. TU-internal
+  classes' Private.h stays test-visible; what changes after migration
+  is that the test no longer stack-allocates the struct, it goes
+  through `Class_Create`/`_Destroy`.
+
+- **TU-internal `_Create` returns NULL on exhaustion; `_Destroy(NULL)`
+  is silent.** No shared null-object pattern. The only legitimate way
+  for a caller to hold a NULL handle is a failed Create, and the
+  consumer's own error reporting (BlockStore_Create's
+  `BLOCKSTORE_POOL_EXHAUSTED` error) covers that. A second
+  Destroy-time warning would be redundant noise on the same bad-setup.
+
+- **BlockStore_Cleanup is pure (vtable swap only); Static.c destroys
+  the inner pool slots outside the outer lock.** The briefing
+  originally described "BlockStore_Cleanup calls their _Destroy in
+  reverse." That works for the embedding-by-value shape but here the
+  outer FreeIfInUse holds the shared `SolidSyslog_LockConfig` mutex
+  while calling Cleanup, and re-entering it via the inner pools'
+  FreeIfInUse would deadlock on a non-recursive integrator lock
+  (POSIX pthread_mutex default, for example). Static.c pulls the
+  inner pointers out of the slot before calling FreeIfInUse on the
+  outer pool, then destroys them after the outer lock is released.
+  Each pool's lock acquisition is sequential rather than nested, and
+  the "BlockSequence first then RecordStore" reverse-order intent
+  from the briefing is preserved at the Static.c orchestration layer.
+
+- **Static.c orchestrates the security-policy resolution and
+  block-config build.** `BlockStore_ResolveSecurityPolicy` and
+  `BlockStore_BuildBlockSequenceConfig` move out of the algorithm TU
+  into Static.c, because Static.c is now the orchestrator that calls
+  `RecordStore_Create(policy)` then `BlockSequence_Create(&blockConfig)`.
+  Keeps the "Static.c is the only TU that talks to PoolAllocator and
+  emits Error" rule intact.
+
+- **Existing `DoubleDestroyDoesNotCrash` test now exercises the
+  UNKNOWN_DESTROY warning path.** Under the old singleton shape, the
+  second Destroy was a no-op (`*self = DEFAULT_INSTANCE;` on
+  already-zeroed memory). Under the pool shape, the second Destroy
+  finds the slot's index but FreeIfInUse returns false (not in use)
+  and emits the BLOCKSTORE_UNKNOWN_DESTROY warning at WARNING
+  severity. The test's assertion is unchanged ("does not crash") —
+  the behaviour shift is documented here so the noisy warning isn't
+  surprising on review.
+
+- **Pool-size override validated at 3.** Full suite green at
+  `SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE=3` via the
+  `SOLIDSYSLOG_USER_TUNABLES_FILE` override mechanism. Bumping the
+  single symbol grew all three pools (BlockStore, RecordStore,
+  BlockSequence) — the 1:1 invariant the briefing called out as the
+  thing to prove holds. 1188 tests total (+6 from part A: 4
+  pool-contract tests in `RecordStorePoolTest.cpp` and
+  `BlockSequencePoolTest.cpp`, 2 in the new
+  `SolidSyslogBlockStorePool` group inside `SolidSyslogBlockStoreTest.cpp`).
+
+### Deferred
+
+- **DEVLOG cadence on multi-commit branches.** Part A's DEVLOG was
+  added as a separate `docs:` commit before opening the PR. Part B
+  adopts the same shape — this entry is the only thing this commit
+  changes. Keeping it that way means each functional commit on the
+  branch stays narrowly scoped to its migration and reviewers can
+  read the rationale here without trawling individual commit bodies.
+
+- **E11 epic status.** With BlockStore migrated, every class in the
+  E11 sweep is on PoolAllocator. The follow-up dynamic-allocation
+  epic (per `project_allocation_epic` memory) is the natural next
+  one to schedule — adds a heap-allocated `ClassDynamic.c` TU per
+  class behind a CMake strategy flag, public Create/Destroy names
+  unchanged.
+
 ## 2026-05-19 — S11.05 part A: public storage-cast classes onto PoolAllocator + shared null objects
 
 This is the first half of S11.05. The story body opened by listing
