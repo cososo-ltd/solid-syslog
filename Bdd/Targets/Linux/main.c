@@ -175,8 +175,7 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* optio
         storeConfig.OnThresholdCrossed = OnThresholdCrossed;
         storeConfig.ThresholdContext = &capacityThreshold;
 
-        static SolidSyslogBlockStoreStorage storeStorage;
-        return SolidSyslogBlockStore_Create(&storeStorage, &storeConfig);
+        return SolidSyslogBlockStore_Create(&storeConfig);
     }
 
     return SolidSyslogNullStore_Get();

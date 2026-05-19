@@ -12,8 +12,6 @@
 
 static const char* const TEST_PATH_PREFIX = "/tmp/test_posix_store";
 
-static SolidSyslogBlockStoreStorage storeStorage = {};
-
 static void CleanStoreFiles()
 {
     glob_t results = {};
@@ -70,7 +68,7 @@ TEST_GROUP(SolidSyslogBlockStorePosix)
         config.MaxBlocks     = maxBlocks;
         config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        store = SolidSyslogBlockStore_Create(&storeStorage, &config);
+        store = SolidSyslogBlockStore_Create(&config);
     }
 
     void WriteMaxMsg()

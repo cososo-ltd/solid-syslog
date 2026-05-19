@@ -59,5 +59,9 @@
     "SolidSyslogFileBlockDevice_Create pool exhausted; returning fallback block device"
 #define SOLIDSYSLOG_ERROR_MSG_FILEBLOCKDEVICE_UNKNOWN_DESTROY \
     "SolidSyslogFileBlockDevice_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_BLOCKSTORE_POOL_EXHAUSTED \
+    "SolidSyslogBlockStore_Create pool exhausted; returning fallback store"
+#define SOLIDSYSLOG_ERROR_MSG_BLOCKSTORE_UNKNOWN_DESTROY \
+    "SolidSyslogBlockStore_Destroy called with a handle not issued by this pool"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */

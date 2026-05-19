@@ -2,10 +2,8 @@
 #define SOLIDSYSLOGBLOCKSTORE_H
 
 #include <stddef.h>
-#include <stdint.h>
 
 #include "SolidSyslogSecurityPolicyDefinition.h"
-#include "SolidSyslogTunables.h"
 #include "ExternC.h"
 
 struct SolidSyslogStore;
@@ -48,21 +46,7 @@ EXTERN_C_BEGIN
         void* ThresholdContext;
     };
 
-    enum
-    {
-        SOLIDSYSLOG_BLOCK_STORE_STORAGE_SIZE =
-            (sizeof(intptr_t) * 32U) + SOLIDSYSLOG_MAX_MESSAGE_SIZE + SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 16U
-    };
-
-    typedef struct
-    {
-        intptr_t slots[(SOLIDSYSLOG_BLOCK_STORE_STORAGE_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
-    } SolidSyslogBlockStoreStorage;
-
-    struct SolidSyslogStore* SolidSyslogBlockStore_Create(
-        SolidSyslogBlockStoreStorage * storage,
-        const struct SolidSyslogBlockStoreConfig* config
-    );
+    struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBlockStoreConfig* config);
     void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore * base);
 
 EXTERN_C_END

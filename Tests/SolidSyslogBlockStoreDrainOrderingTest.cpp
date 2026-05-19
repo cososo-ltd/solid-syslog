@@ -137,7 +137,6 @@ TEST_BASE(DrainTestFixtureBase)
 // clang-format off
 TEST_GROUP_BASE(BlockStoreDrainOrdering, DrainTestFixtureBase)
 {
-    SolidSyslogBlockStoreStorage      storeStorage   = {};
     struct SolidSyslogStore*          store          = nullptr;
 
     void setup() override
@@ -162,7 +161,7 @@ TEST_GROUP_BASE(BlockStoreDrainOrdering, DrainTestFixtureBase)
         config.MaxBlocks                          = cfg.MaxBlocks;
         config.DiscardPolicy                      = cfg.DiscardPolicy;
         config.SecurityPolicy                     = policy;
-        store                                     = SolidSyslogBlockStore_Create(&storeStorage, &config);
+        store                                     = SolidSyslogBlockStore_Create(&config);
     }
 
     // Writes one record whose payload encodes sequenceId in the first 4
@@ -222,7 +221,6 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
      * until Service drains them (unlike BufferFake which only keeps
      * the last one). */
     uint8_t                          bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(16)] = {};
-    SolidSyslogBlockStoreStorage     storeStorage                                              = {};
     struct SolidSyslogStore*         store                                                     = nullptr;
     struct SolidSyslogMutex*         mutex                                                     = nullptr;
     struct SolidSyslogBuffer*        buffer                                                    = nullptr;
@@ -258,7 +256,7 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
         storeCfg.MaxBlocks                          = cfg.MaxBlocks;
         storeCfg.DiscardPolicy                      = cfg.DiscardPolicy;
         storeCfg.SecurityPolicy                     = policy;
-        store                                       = SolidSyslogBlockStore_Create(&storeStorage, &storeCfg);
+        store                                       = SolidSyslogBlockStore_Create(&storeCfg);
 
         struct SolidSyslogConfig sysCfg = {};
         sysCfg.Buffer                   = buffer;

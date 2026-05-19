@@ -195,7 +195,6 @@ static volatile bool solidSyslogTeardown = false;
 static const char STORE_PATH_PREFIX[] = "STORE";
 
 static SolidSyslogFatFsFileStorage storeFileStorage;
-static SolidSyslogBlockStoreStorage blockStoreStorage;
 
 /* FATFS object lives in .bss because f_mount stores its address inside the
  * FatFs volume registry — the object must outlive every f_open / f_stat /
@@ -604,7 +603,7 @@ static bool RebuildWithFileStore(void)
         .OnThresholdCrossed = NULL,
         .ThresholdContext = &pendingCapacityThreshold,
     };
-    currentStore = SolidSyslogBlockStore_Create(&blockStoreStorage, &storeConfig);
+    currentStore = SolidSyslogBlockStore_Create(&storeConfig);
     currentStoreIsFile = true;
 
     solidSyslogConfig.Store = currentStore;

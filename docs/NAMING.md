@@ -322,36 +322,23 @@ static bool CircularBuffer_Read(struct SolidSyslogBuffer* base,
 
 #### The storage cast: `<Class>_SelfFromStorage`
 
-For classes still on the caller-supplied-storage pattern (BlockStore,
-the Posix/Windows/FreeRTOS mutexes and streams, …), `_Create` takes
-opaque storage and re-interprets it as the concrete struct. The same
-convention applies — one named `static inline` helper per class:
+For classes still on the caller-supplied-storage pattern (the
+Posix/Windows/FreeRTOS mutexes and streams, FatFs/TLS adapters, …),
+`_Create` takes opaque storage and re-interprets it as the concrete
+struct. The same convention applies — one named `static inline` helper
+per class:
 
 ```c
-static inline struct SolidSyslogBlockStore*
-BlockStore_SelfFromStorage(SolidSyslogBlockStoreStorage* storage)
+static inline struct SolidSyslogPosixMutex*
+PosixMutex_SelfFromStorage(SolidSyslogPosixMutexStorage* storage)
 {
-    return (struct SolidSyslogBlockStore*) storage;
+    return (struct SolidSyslogPosixMutex*) storage;
 }
 ```
 
-`_Create` becomes:
-
-```c
-struct SolidSyslogStore* SolidSyslogBlockStore_Create(
-    SolidSyslogBlockStoreStorage* storage, ...
-)
-{
-    struct SolidSyslogBlockStore* self = BlockStore_SelfFromStorage(storage);
-    ...
-    return &self->Base;
-}
-```
-
-Classes migrated under E11 (currently only `SolidSyslogCircularBuffer`)
-no longer use this cast — their instance struct lives in a
-library-internal static pool, and `_Create` returns a slot pointer
-without any storage cast.
+Classes migrated under E11 no longer use this cast — their instance
+struct lives in a library-internal static pool, and `_Create` returns
+a slot pointer without any storage cast.
 
 Helpers are named per Tier 2 (`Class_Function`, `static inline`, no
 `SolidSyslog` prefix). Placement follows the function-ordering rule:
