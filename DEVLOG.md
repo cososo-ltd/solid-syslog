@@ -1,5 +1,153 @@
 # Dev Log
 
+## 2026-05-19 — S11.05 part A: public storage-cast classes onto PoolAllocator + shared null objects
+
+This is the first half of S11.05. The story body opened by listing
+"bundle vs split" as a deferred question; mid-session it became clear
+that the public storage-cast migrations (StreamSender, FileBlockDevice)
+plus the use-after-destroy crash-safety retrofit form a coherent unit
+that's worth its own review surface, separate from the BlockStore
+composition rewrite (RecordStore + BlockSequence + BlockStore — a
+second PR follows in the next session).
+
+Three commits on the branch:
+
+- `e15a138` — StreamSender migration to the canonical E11 3-TU split.
+  Public `SolidSyslogStreamSenderStorage` typedef + `SOLIDSYSLOG_STREAM_SENDER_SIZE`
+  enum deleted; `_Create` loses the storage parameter. Pool tunable +
+  error messages + pool test added.
+- `fb86ca7` — install null-object vtable on `_Cleanup` for crash-safety,
+  applied across eight classes (CircularBuffer + PassthroughBuffer +
+  UdpSender + SwitchingSender + StreamSender + MetaSd + TimeQualitySd
+  + OriginSd). Replaces the previous NULL-out-the-vtable shape that
+  would have crashed on use-after-destroy via NULL-fn-pointer deref.
+- `0a18e3a` — FileBlockDevice migration to the 3-TU split + ship
+  `SolidSyslogNullBlockDevice` and `SolidSyslogNullBuffer` as two new
+  shared GoF nulls + retrofit PassthroughBuffer / CircularBuffer to
+  use the new shared `NullBuffer` instead of their class-private
+  Fallback. FileBlockDevice arrives fresh with no class-private
+  Fallback — it uses `NullBlockDevice_Get()` from day one.
+
+### Decisions
+
+- **The user-after-destroy crash-safety gap was caught after commit 1
+  landed.** David's question: "I think we have been overwriting self
+  with a null-object so crash safe if used after destroy" — surfaced
+  that my StreamSender Cleanup (and every S11.04-migrated class on
+  main, and the S11.01 pilot too) NULL'd the vtable in `_Cleanup`
+  rather than copying a safe vtable into the slot. Use-after-destroy
+  would dereference a NULL function pointer. The pre-E11
+  `*self = DESTROYED_INSTANCE` pattern had the same hazard. Fix
+  uniformly across all eight migrated classes.
+
+- **Overwriting only the abstract base is sufficient.** David's
+  refinement: external callers only ever dispatch through `Base.<fn>`,
+  so `*base = *SolidSyslogNullSender_Get();` (or `NullSd_Get()`,
+  `NullBuffer_Get()`, `NullBlockDevice_Get()`) is the entire body of
+  Cleanup. Derived fields (Config, Connected, Sender, Ring, …) are
+  TU-private and the next `_Initialise` overwrites them; no need to
+  wipe them on Cleanup. UdpSender and StreamSender call their own
+  `Disconnect` first so the live config is still reachable; the rest
+  is a one-liner.
+
+- **PassthroughBuffer / CircularBuffer keep class-private Fallback
+  ... initially.** Commit 1b shipped them with a class-private
+  `Fallback` static (declared in `Private.h`, defined in `Static.c`)
+  because S11.04 had explicitly decided against a shared `NullBuffer`.
+  That decision was made before crash-safety was a requirement; once
+  every Cleanup needs a null-object vtable, the class-private pattern
+  is copy-paste pressure that would only get worse as more Buffer-like
+  classes ship.
+
+- **FileBlockDevice landing fresh forced the issue.** Bare-prefixed
+  `Fallback_Read` / `Fallback_Write` in PassthroughBufferStatic.c and
+  CircularBufferStatic.c already collide on MISRA 5.9 (advisory:
+  internal-linkage uniqueness across TUs); adding a third file with
+  `Fallback_Acquire`, `Fallback_Dispose`, … would make it three
+  collisions instead of two. David's question — "is this the same
+  issue we just fixed by using the base null object" — pointed at the
+  cleaner architecture: ship `SolidSyslogNullBlockDevice` and
+  `SolidSyslogNullBuffer` as two new shared GoF nulls, retrofit the
+  three classes to use them. Commit 2 lands all of this together.
+
+- **NullSender.Send still returns true (drop on the floor); NullBuffer
+  / NullBlockDevice methods return false.** S11.04 set the precedent
+  for NullSender: returning true keeps Store from filling with
+  undeliverables when an integrator misconfigures the Sender. The
+  Buffer / BlockDevice semantics don't have the same retain-vs-drop
+  asymmetry — false is the natural "couldn't do it" signal at the
+  null-object boundary.
+
+- **Use-after-destroy tests are first-class assertions of the new
+  contract.** One `UseAfterDestroyIsCrashSafeVia…Vtable` test per
+  migrated class proves that calling the vtable through a stale
+  handle is a safe no-op. For test-group fixtures whose teardown
+  auto-destroys the slot (the SD tests, the buffer tests), the test
+  re-creates after the destroy-then-use so teardown still releases
+  a live slot. The pattern is mechanical; one test per class.
+
+- **NullSender / NullSd / NullStore — and now NullBlockDevice /
+  NullBuffer — all share the same shape.** Public Get-only API,
+  file-scope `static struct …Definition instance` initialised at
+  declaration, no Create/Destroy lifecycle. The recent flip of
+  NullStore / NullSecurityPolicy from `_Create`/`_Destroy` to `_Get`
+  in S11.04 put the four older classes onto this shape; the two new
+  ones inherit it. NullMutex stays on the legacy `_Create`/`_Destroy`
+  shape because the Buffer tests still depend on the Destroy-then-
+  re-Create dance for mutex setup — a follow-up could flip it but
+  it's not in scope here.
+
+- **MISRA invariant honoured at the (file, rule) granularity.**
+  Branch's cppcheck-misra count: 92 (was 98 on main). Five evaporated
+  — `CircularBufferStatic` 5.9 + 8.9 and `PassthroughBufferStatic`
+  5.9 + 8.9 (the bare Fallback_* statics are gone) and `StreamSender`
+  8.9 (DEFAULT_INSTANCE / DESTROYED_INSTANCE deleted by the migration).
+  Two new — `NullBlockDevice` 8.9 + `NullBuffer` 8.9, same shape as
+  the existing 8.9 findings on NullSender / NullSd / NullStore. Zero
+  truly-new architectural findings.
+
+- **Verified in `cpputest-freertos`** per
+  `feedback_verify_in_freertos_host_image`. All eight test binaries
+  green with `FREERTOS_KERNEL_PATH=/opt/freertos/kernel` set: Core
+  (1178 tests), FatFs (28), Cmsdk (15), FreeRtosDatagram (21),
+  FreeRtosMutex (5), FreeRtosStaticResolver (10), FreeRtosSysUpTime
+  (4), FreeRtosTcpStream (37). 1298 tests total.
+
+- **Pool-size override validated** per AC #9. Full suite green at
+  `SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE=3` and
+  `SOLIDSYSLOG_FILE_BLOCK_DEVICE_POOL_SIZE=3` via the
+  `SOLIDSYSLOG_USER_TUNABLES_FILE` override mechanism.
+
+### Deferred to part B (next session)
+
+- **BlockStore composition migration.** The most architecturally
+  interesting part of S11.05. RecordStore and BlockSequence are
+  TU-internal sub-components today, embedded by value inside
+  `struct SolidSyslogBlockStore`. After the migration they each get
+  their own 3-TU split, pool, and Create/Destroy lifecycle (sized
+  1:1 with the BlockStore pool — no separate tunable). BlockStore
+  switches its slot struct from embedded structs to pointer-into-
+  pool-slot — the "embedded → pointer" rewrite is the substantive
+  algorithmic change in S11.05.
+
+- **NullMutex flip to `_Get`-only.** Currently still on the
+  legacy `_Create`/`_Destroy` shape. Flip mirrors the S11.04 flips
+  of NullStore / NullSecurityPolicy. Test-side teardown patterns
+  need a careful read before flipping — the buffer tests' Mutex
+  lifecycle is the tricky bit.
+
+- **MetaSd / OriginSd validation symmetry.** TimeQualitySd grew
+  NULL-callback validation in S11.04 from a CodeRabbit nudge.
+  MetaSd already validates; OriginSd doesn't. Belongs in E12 not
+  in any sweep PR. Surfaced explicitly so it's not forgotten.
+
+### Open questions
+
+- None for part A. Pushing to CI; will revisit if CodeRabbit or the
+  Windows/BDD/integration jobs surface anything.
+
+---
+
 ## 2026-05-18 — S11.03: Rename NullBuffer to PassthroughBuffer (#397)
 
 Pure mechanical rename — the type is a passthrough that forwards
