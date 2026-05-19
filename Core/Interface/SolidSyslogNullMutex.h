@@ -5,10 +5,7 @@
 
 EXTERN_C_BEGIN
 
-    struct SolidSyslogMutex;
-
-    struct SolidSyslogMutex* SolidSyslogNullMutex_Create(void);
-    void SolidSyslogNullMutex_Destroy(void);
+    struct SolidSyslogMutex* SolidSyslogNullMutex_Get(void);
 
 EXTERN_C_END
 

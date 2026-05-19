@@ -1543,7 +1543,7 @@ TEST_GROUP(SolidSyslogServiceEagerDrain)
 
         fakeSender     = SenderFake_Create();
         circularBuffer = SolidSyslogCircularBuffer_Create(
-            SolidSyslogNullMutex_Create(), bufferRing, sizeof(bufferRing));
+            SolidSyslogNullMutex_Get(), bufferRing, sizeof(bufferRing));
         fakeStore      = StoreFake_Create();
 
         SolidSyslogConfig serviceConfig = {};
@@ -1558,7 +1558,6 @@ TEST_GROUP(SolidSyslogServiceEagerDrain)
         SolidSyslog_Destroy();
         StoreFake_Destroy();
         SolidSyslogCircularBuffer_Destroy(circularBuffer);
-        SolidSyslogNullMutex_Destroy();
         SenderFake_Destroy(fakeSender);
     }
 };

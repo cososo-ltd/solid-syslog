@@ -10,19 +10,15 @@ TEST_GROUP(SolidSyslogNullMutex)
     void setup() override
     {
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        mutex = SolidSyslogNullMutex_Create();
-    }
-
-    void teardown() override
-    {
-        SolidSyslogNullMutex_Destroy();
+        mutex = SolidSyslogNullMutex_Get();
     }
 };
 
 // clang-format on
 
-TEST(SolidSyslogNullMutex, CreateDestroyDoesNotCrash)
+TEST(SolidSyslogNullMutex, GetReturnsSameInstance)
 {
+    POINTERS_EQUAL(mutex, SolidSyslogNullMutex_Get());
 }
 
 TEST(SolidSyslogNullMutex, LockUnlockDoesNotCrash)

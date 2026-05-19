@@ -92,13 +92,12 @@ TEST_GROUP_BASE(SolidSyslogCircularBuffer, CircularBufferFixture)
     void setup() override
     {
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Create(), ring, sizeof(ring));
+        buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring));
     }
 
     void teardown() override
     {
         SolidSyslogCircularBuffer_Destroy(buffer);
-        SolidSyslogNullMutex_Destroy();
     }
 };
 
@@ -119,7 +118,7 @@ TEST(SolidSyslogCircularBuffer, UseAfterDestroyIsCrashSafeViaNullBufferVtable)
     CHECK_FALSE(Read());
     LONGS_EQUAL(0, readSize);
 
-    buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Create(), ring, sizeof(ring)); // for teardown
+    buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring)); // for teardown
 }
 
 TEST(SolidSyslogCircularBuffer, ReadFromEmptyReturnsFalse)
@@ -279,13 +278,12 @@ TEST_GROUP_BASE(SolidSyslogCircularBufferSmallRing, CircularBufferFixture)
     void setup() override
     {
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Create(), ring, sizeof(ring));
+        buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring));
     }
 
     void teardown() override
     {
         SolidSyslogCircularBuffer_Destroy(buffer);
-        SolidSyslogNullMutex_Destroy();
     }
 };
 
@@ -390,7 +388,7 @@ TEST_GROUP(SolidSyslogCircularBufferPool)
     void setup() override
     {
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        mutex = SolidSyslogNullMutex_Create();
+        mutex = SolidSyslogNullMutex_Get();
     }
 
     void teardown() override
@@ -406,7 +404,6 @@ TEST_GROUP(SolidSyslogCircularBufferPool)
         {
             SolidSyslogCircularBuffer_Destroy(overflow);
         }
-        SolidSyslogNullMutex_Destroy();
         ConfigLockFake_Uninstall();
         ErrorHandlerFake_Uninstall();
     }
