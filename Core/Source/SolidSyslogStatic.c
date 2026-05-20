@@ -57,13 +57,9 @@ struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config)
 void SolidSyslog_Destroy(struct SolidSyslog* handle)
 {
     size_t index = SolidSyslog_IndexFromHandle(handle);
-    bool released = SolidSyslogPoolAllocator_IndexIsValid(&SolidSyslog_Allocator, index) &&
-                    SolidSyslogPoolAllocator_FreeIfInUse(
-                        &SolidSyslog_Allocator,
-                        index,
-                        SolidSyslog_CleanupAtIndex,
-                        NULL
-                    );
+    bool released =
+        SolidSyslogPoolAllocator_IndexIsValid(&SolidSyslog_Allocator, index) &&
+        SolidSyslogPoolAllocator_FreeIfInUse(&SolidSyslog_Allocator, index, SolidSyslog_CleanupAtIndex, NULL);
     if (!released)
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_SOLIDSYSLOG_UNKNOWN_DESTROY);
