@@ -103,5 +103,9 @@
     "SolidSyslogWindowsFile_Create pool exhausted; returning fallback file"
 #define SOLIDSYSLOG_ERROR_MSG_WINDOWSFILE_UNKNOWN_DESTROY \
     "SolidSyslogWindowsFile_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_WINSOCKTCPSTREAM_POOL_EXHAUSTED \
+    "SolidSyslogWinsockTcpStream_Create pool exhausted; returning fallback stream"
+#define SOLIDSYSLOG_ERROR_MSG_WINSOCKTCPSTREAM_UNKNOWN_DESTROY \
+    "SolidSyslogWinsockTcpStream_Destroy called with a handle not issued by this pool"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */

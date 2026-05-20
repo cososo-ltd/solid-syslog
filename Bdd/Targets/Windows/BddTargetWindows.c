@@ -64,7 +64,6 @@ enum
 static const char* const STORE_PATH_PREFIX = "Bdd/output/STORE";
 static const char* const THRESHOLD_MARKER_PATH = "Bdd/output/solidsyslog_threshold_marker.log";
 
-static SolidSyslogWinsockTcpStreamStorage tcpStreamStorage;
 static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(BDD_TARGET_BUFFER_MESSAGES)];
 static SolidSyslogWindowsAtomicCounterStorage counterStorage;
 static volatile bool shutdownFlag;
@@ -188,7 +187,7 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetWindowsOptio
     udpConfig.EndpointVersion = GetEndpointVersion;
     udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
-    plainTcpStream = SolidSyslogWinsockTcpStream_Create(&tcpStreamStorage);
+    plainTcpStream = SolidSyslogWinsockTcpStream_Create();
     static struct SolidSyslogStreamSenderConfig tcpConfig = {0};
     tcpConfig.Resolver = resolver;
     tcpConfig.Stream = plainTcpStream;

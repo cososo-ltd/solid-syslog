@@ -437,4 +437,23 @@
 #error "SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE must be >= 1"
 #endif
 
+/*
+ * Number of SolidSyslogWinsockTcpStream instances the library's internal
+ * static pool can simultaneously hold. Each instance carries the SOCKET
+ * for the non-blocking TCP connection.
+ *
+ * Default 2 — the BDD target needs a plain-TCP stream and a
+ * TLS-underlying-TCP stream concurrently, matching the POSIX pool size.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE 2U
+#endif
+
+#if SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE < 1
+#error "SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE must be >= 1"
+#endif
+
 #endif /* SOLIDSYSLOG_TUNABLES_DEFAULTS_H */

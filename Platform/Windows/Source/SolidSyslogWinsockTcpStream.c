@@ -1,11 +1,20 @@
 #include "SolidSyslogWinsockTcpStream.h"
+
+/* winsock2.h must precede mstcpip.h: mstcpip.h's TCP_KEEPIDLE / TCP_KEEPINTVL /
+   TCP_KEEPCNT constants use SOCKET-derived types declared in winsock2.h. */
+#include <winsock2.h>
+/* clang-format off */
+#include <mstcpip.h>
+/* clang-format on */
+
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "SolidSyslogAddressInternal.h"
-#include "SolidSyslogMacros.h"
+#include "SolidSyslogNullStream.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogWinsockTcpStreamInternal.h"
-
-#include <mstcpip.h>
-#include <stddef.h>
+#include "SolidSyslogWinsockTcpStreamPrivate.h"
 
 /* File-local forwarders. Taking the address of a __declspec(dllimport)
    Winsock function for static initialisation triggers MSVC C4232 (the address
@@ -113,20 +122,11 @@ enum
     KEEPALIVE_PROBE_COUNT = 4
 };
 
-struct SolidSyslogWinsockTcpStream
-{
-    struct SolidSyslogStream Base;
-    SOCKET Fd;
-};
-
 static bool WinsockTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static bool WinsockTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static SolidSyslogSsize WinsockTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void WinsockTcpStream_Close(struct SolidSyslogStream* base);
 
-static inline struct SolidSyslogWinsockTcpStream* WinsockTcpStream_SelfFromStorage(
-    SolidSyslogWinsockTcpStreamStorage* storage
-);
 static inline struct SolidSyslogWinsockTcpStream* WinsockTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 
 static SOCKET WinsockTcpStream_OpenAndConfigureSocket(void);
@@ -145,40 +145,22 @@ static bool WinsockTcpStream_ReadDeferredConnectError(SOCKET fd);
 static bool WinsockTcpStream_WroteAllBytes(int sent, size_t expected);
 static inline bool WinsockTcpStream_WouldBlock(int wsaError);
 
-SOLIDSYSLOG_STATIC_ASSERT(
-    sizeof(struct SolidSyslogWinsockTcpStream) <= SOLIDSYSLOG_WINSOCK_TCP_STREAM_SIZE,
-    "SOLIDSYSLOG_WINSOCK_TCP_STREAM_SIZE is too small for struct SolidSyslogWinsockTcpStream"
-);
-
-static const struct SolidSyslogWinsockTcpStream DEFAULT_INSTANCE = {
-    {WinsockTcpStream_Open, WinsockTcpStream_Send, WinsockTcpStream_Read, WinsockTcpStream_Close},
-    INVALID_SOCKET,
-};
-
-static const struct SolidSyslogWinsockTcpStream DESTROYED_INSTANCE = {
-    {NULL, NULL, NULL, NULL},
-    INVALID_SOCKET,
-};
-
-struct SolidSyslogStream* SolidSyslogWinsockTcpStream_Create(SolidSyslogWinsockTcpStreamStorage* storage)
-{
-    struct SolidSyslogWinsockTcpStream* self = WinsockTcpStream_SelfFromStorage(storage);
-    *self = DEFAULT_INSTANCE;
-    return &self->Base;
-}
-
-static inline struct SolidSyslogWinsockTcpStream* WinsockTcpStream_SelfFromStorage(
-    SolidSyslogWinsockTcpStreamStorage* storage
-)
-{
-    return (struct SolidSyslogWinsockTcpStream*) storage;
-}
-
-void SolidSyslogWinsockTcpStream_Destroy(struct SolidSyslogStream* base)
+void WinsockTcpStream_Initialise(struct SolidSyslogStream* base)
 {
     struct SolidSyslogWinsockTcpStream* self = WinsockTcpStream_SelfFromBase(base);
+    self->Base.Open = WinsockTcpStream_Open;
+    self->Base.Send = WinsockTcpStream_Send;
+    self->Base.Read = WinsockTcpStream_Read;
+    self->Base.Close = WinsockTcpStream_Close;
+    self->Fd = INVALID_SOCKET;
+}
+
+void WinsockTcpStream_Cleanup(struct SolidSyslogStream* base)
+{
     WinsockTcpStream_Close(base);
-    *self = DESTROYED_INSTANCE;
+    /* Overwrite the abstract base with the shared NullStream vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullStream_Get();
 }
 
 static inline struct SolidSyslogWinsockTcpStream* WinsockTcpStream_SelfFromBase(struct SolidSyslogStream* base)
