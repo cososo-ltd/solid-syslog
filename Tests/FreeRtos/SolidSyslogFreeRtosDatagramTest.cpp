@@ -4,9 +4,15 @@
 using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
     // macros
 
+#include "ConfigLockFake.h"
+#include "ErrorHandlerFake.h"
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogDatagram.h"
+#include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogFreeRtosDatagram.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
 
 #include "FreeRtosArpFake.h"
@@ -17,11 +23,26 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
+
+// Asserts handle is non-null and not one of the slots in pool.
+#define CHECK_IS_FALLBACK(handle, pool)                                                \
+    do                                                                                 \
+    {                                                                                  \
+        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
+        for (auto* slot : (pool))                                                      \
+        {                                                                              \
+            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
+            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
+        }                                                                              \
+    } while (0)
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+
 static const uint16_t TEST_PORT = 514;
 
 TEST_GROUP(SolidSyslogFreeRtosDatagram)
 {
-    SolidSyslogFreeRtosDatagramStorage storage{};
     struct SolidSyslogDatagram* datagram = nullptr;
     SolidSyslogAddressStorage addrStorage{};
     struct SolidSyslogAddress* addr = nullptr;
@@ -31,7 +52,7 @@ TEST_GROUP(SolidSyslogFreeRtosDatagram)
         FreeRtosSocketsFake_Reset();
         FreeRtosArpFake_Reset();
         FreeRtosTaskFake_Reset();
-        datagram = SolidSyslogFreeRtosDatagram_Create(&storage);
+        datagram = SolidSyslogFreeRtosDatagram_Create();
 
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing into platform layout, storage is intptr_t-aligned
         auto* sin = reinterpret_cast<struct freertos_sockaddr*>(&addrStorage);
@@ -42,7 +63,12 @@ TEST_GROUP(SolidSyslogFreeRtosDatagram)
         addr = reinterpret_cast<struct SolidSyslogAddress*>(&addrStorage);
     }
 
-    void openAndSendOnce()
+    void teardown() override
+    {
+        SolidSyslogFreeRtosDatagram_Destroy(datagram);
+    }
+
+    void openAndSendOnce() const
     {
         SolidSyslogDatagram_Open(datagram);
         SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
@@ -121,6 +147,7 @@ TEST(SolidSyslogFreeRtosDatagram, DestroyClosesOpenSocket)
 {
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogFreeRtosDatagram_Destroy(datagram);
+    datagram = nullptr;
     CALLED_FAKE(FreeRtosSocketsFake_Closesocket, ONCE);
 }
 
@@ -143,6 +170,7 @@ TEST(SolidSyslogFreeRtosDatagram, DestroyAfterCloseDoesNotCloseAgain)
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_Close(datagram);
     SolidSyslogFreeRtosDatagram_Destroy(datagram);
+    datagram = nullptr;
     CALLED_FAKE(FreeRtosSocketsFake_Closesocket, ONCE);
 }
 
@@ -231,4 +259,148 @@ TEST(SolidSyslogFreeRtosDatagram, SendToForwardsLengthVerbatim)
 
     SolidSyslogDatagram_SendTo(datagram, TEST_BUFFER, 1232, addr);
     LONGS_EQUAL(1232, FreeRtosSocketsFake_LastSendtoLength());
+}
+
+// clang-format off
+TEST_GROUP(SolidSyslogFreeRtosDatagramPool)
+{
+    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
+    struct SolidSyslogDatagram* pooled[SOLIDSYSLOG_FREE_RTOS_DATAGRAM_POOL_SIZE] = {};
+    struct SolidSyslogDatagram* overflow                                         = nullptr;
+
+    void setup() override
+    {
+        FreeRtosSocketsFake_Reset();
+    }
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogFreeRtosDatagram_Destroy(handle);
+            }
+        }
+        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
+        if (overflow != nullptr)
+        {
+            SolidSyslogFreeRtosDatagram_Destroy(overflow);
+        }
+        ConfigLockFake_Uninstall();
+        ErrorHandlerFake_Uninstall();
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = SolidSyslogFreeRtosDatagram_Create();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogFreeRtosDatagramPool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = SolidSyslogFreeRtosDatagram_Create();
+
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
+TEST(SolidSyslogFreeRtosDatagramPool, ExhaustedCreateReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FillPool();
+
+    overflow = SolidSyslogFreeRtosDatagram_Create();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_FREERTOSDATAGRAM_POOL_EXHAUSTED, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogFreeRtosDatagramPool, FallbackVtableMethodsAreNoOps)
+{
+    FillPool();
+    overflow = SolidSyslogFreeRtosDatagram_Create();
+
+    /* NullDatagram's Open returns true so caller success paths are not
+     * tripped; no underlying FreeRTOS_socket is created. */
+    CHECK_TRUE(SolidSyslogDatagram_Open(overflow));
+    CALLED_FAKE(FreeRtosSocketsFake_Socket, NEVER);
+    SolidSyslogDatagram_Close(overflow);
+}
+
+TEST(SolidSyslogFreeRtosDatagramPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
+{
+    ConfigLockFake_Install();
+
+    pooled[0] = SolidSyslogFreeRtosDatagram_Create();
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogFreeRtosDatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
+{
+    FillPool();
+    ConfigLockFake_Install();
+
+    overflow = SolidSyslogFreeRtosDatagram_Create();
+
+    LONGS_EQUAL(SOLIDSYSLOG_FREE_RTOS_DATAGRAM_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_FREE_RTOS_DATAGRAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+}
+
+TEST(SolidSyslogFreeRtosDatagramPool, DestroyOfPooledHandleLocksOnce)
+{
+    pooled[0] = SolidSyslogFreeRtosDatagram_Create();
+    ConfigLockFake_Install();
+
+    SolidSyslogFreeRtosDatagram_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogFreeRtosDatagramPool, DestroyOfUnknownHandleDoesNotLock)
+{
+    ConfigLockFake_Install();
+    struct SolidSyslogDatagram stranger = {};
+
+    SolidSyslogFreeRtosDatagram_Destroy(&stranger);
+
+    CALLED_FAKE(ConfigLockFake_Lock, NEVER);
+    CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
+}
+
+TEST(SolidSyslogFreeRtosDatagramPool, DestroyOfUnknownHandleReportsWarning)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogDatagram stranger = {};
+
+    SolidSyslogFreeRtosDatagram_Destroy(&stranger);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_FREERTOSDATAGRAM_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogFreeRtosDatagramPool, DestroyOfStaleHandleReportsWarning)
+{
+    pooled[0] = SolidSyslogFreeRtosDatagram_Create();
+    SolidSyslogFreeRtosDatagram_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogFreeRtosDatagram_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_FREERTOSDATAGRAM_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
 }

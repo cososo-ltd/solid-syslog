@@ -176,6 +176,7 @@ add_executable(SolidSyslogBddTarget
     ${CMAKE_SOURCE_DIR}/Platform/FatFs/Source/SolidSyslogFatFsFile.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogAddress.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagramStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutexStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosStaticResolver.c

@@ -15,6 +15,7 @@ else()
         SolidSyslogFreeRtosDatagramTest.cpp
         main.cpp
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagramStatic.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosSocketsFake.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosArpFake.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosTaskFake.c
@@ -22,6 +23,8 @@ else()
 
     target_link_libraries(SolidSyslogFreeRtosDatagramTest PRIVATE
         ${PROJECT_NAME}
+        ConfigLockFake
+        ErrorHandlerFake
         CppUTest
         CppUTestExt
     )
