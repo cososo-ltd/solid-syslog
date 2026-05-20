@@ -79,6 +79,7 @@ endif()
 if(HAVE_ATOMIC_COUNTER)
     list(APPEND TEST_SOURCES
         SolidSyslogAtomicCounterContractTest.cpp
+        SolidSyslogNullAtomicCounterTest.cpp
     )
 endif()
 
