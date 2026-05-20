@@ -501,11 +501,10 @@ code should follow them; reviewers should call out drift.
 
 ## Callback Conventions
 
-The library is migrating away from singleton instances toward integrator-injected storage and
-context-pointer callbacks. The migration is **opportunistic per-class** — not a sweep — so older
-context-less callbacks (`SolidSyslogClockFunction`, `SolidSyslogStringFunction`,
-`SolidSyslogStoreFullCallback`, etc.) keep their current shape until the class that owns them is
-next touched.
+The library is migrating callbacks toward a `void* context` parameter. The migration is
+**opportunistic per-class** — not a sweep — so older context-less callbacks
+(`SolidSyslogClockFunction`, `SolidSyslogStringFunction`, `SolidSyslogStoreFullCallback`, etc.)
+keep their current shape until the class that owns them is next touched.
 
 **For new callbacks:**
 
@@ -521,14 +520,37 @@ next touched.
   example, `SolidSyslogStoreFullCallback` migrates inside the FileStore split (S18.01), not in a
   separate sweep PR.
 
-**Storage injection:**
+## Pool Allocation (E11)
 
-- Mirrors the `SolidSyslogFormatterStorage` pattern. The public header exposes an opaque storage
-  type and a `SOLIDSYSLOG_<TYPE>_STORAGE_SIZE` macro; `_Create` takes a pointer to caller-allocated
-  storage of that size. No `malloc` anywhere in the library.
-- Internal sub-components (e.g. RecordStore and BlockSequence inside BlockStore) nest inside the
-  parent's storage blob. Their types stay in `Core/Source/` and never appear in public headers,
-  so integrator and example code physically cannot reach them.
+Every stateful Created class lives in a library-internal static pool of N slots, sized by a
+`SOLIDSYSLOG_<CLASS>_POOL_SIZE` tunable in `Core/Interface/SolidSyslogTunablesDefaults.h`. The
+public `_Create` accepts a config struct and returns an opaque handle (a pointer into the
+pool); `_Destroy` takes the handle and releases the slot. Pool semantics:
+
+- **No `malloc`.** Pools are file-scope `static` arrays. Integrators on bare-metal /
+  FreeRTOS-static-allocation / DO-178C-style targets get the same code path as hosted targets.
+- **Pool exhaustion** falls back to a shared null sibling — `SolidSyslogNullSender`,
+  `SolidSyslogNullBuffer`, `SolidSyslogNullStore`, etc. — whose vtable methods are safe no-ops.
+  Caller code keeps running; the integrator sees `SolidSyslog_Error(ERR, ...)` at the
+  exhaustion site if a handler is installed.
+- **Slot-walk synchronisation.** Every pool's Create / Destroy wraps its slot probe in the
+  `SolidSyslog_LockConfig` / `_UnlockConfig` injection pair. Single-task targets get the
+  no-op default; multi-task targets wire `taskENTER_CRITICAL` (FreeRTOS), `pthread_mutex_lock`
+  (POSIX), `EnterCriticalSection` (Windows), etc.
+- **Shared helper.** `Core/Source/SolidSyslogPoolAllocator.{h,c}` (TU-internal) owns the
+  three-operation contract (`AcquireFirstFree`, `FreeIfInUse`, `IndexIsValid`) every
+  pool class reuses. No class re-implements the slot walk.
+
+**Caller-supplied storage** survives in two places only — both intentionally outside the
+pool pattern. `SolidSyslogFormatter` is a transient stack-built builder whose payload size
+is per-call (`SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(n)`); `SolidSyslogAddress` is a value type
+(`SolidSyslogAddressStorage` + `SOLIDSYSLOG_ADDRESS_SIZE`) with no `_Create`/`_Destroy`
+lifecycle. Both are documented under deviation D.002 in `docs/misra-deviations.md`.
+
+**Internal sub-components** of pool-allocated classes (e.g. `RecordStore` and
+`BlockSequence` inside `BlockStore`) live in sibling pools sized off the parent's
+tunable. Their types stay in `Core/Source/` and never appear in public headers, so
+integrator and example code physically cannot reach them.
 
 ---
 

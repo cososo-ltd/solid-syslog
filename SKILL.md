@@ -61,13 +61,13 @@ Test progression follows ZOMBIES order.
   macros. Read it before adding any new public identifier.
 - MISRA C:2012 rule deviations are recorded in `docs/misra-deviations.md`.
 - Follows James Grenning's style (*TDD for Embedded C*) where consistent with clang-format
-- No dynamic memory allocation required — allocator is caller-injected. No unions, no anonymous structs, no `#ifdef` feature flags
+- No dynamic memory allocation — every stateful Created class lives in a library-internal static pool, sized by a per-class `SOLIDSYSLOG_<CLASS>_POOL_SIZE` tunable. No unions, no anonymous structs, no `#ifdef` feature flags
 - C99 baseline
 
 ## Architecture principles
 
 - OO-in-C: structs with function pointers (vtable pattern)
-- Dependency injection for transport, buffering, clock, hostname, allocator
+- Dependency injection for transport, buffering, clock, hostname, mutex, file, block device
 - Buffer abstraction decouples formatting from sending: `SolidSyslog_Log` writes to buffer,
   `SolidSyslog_Service` reads from buffer and sends. Implementations: PassthroughBuffer (direct send,
   single-task), CircularBuffer (portable ring with caller-allocated ring memory and an injected
