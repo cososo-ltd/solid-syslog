@@ -110,7 +110,7 @@ document under [S10.01](https://github.com/DavidCozens/solid-syslog/issues/357).
 
 ---
 
-## D.002 — Rules 11.2 / 11.3 / 11.5: opaque-impl + caller-supplied-storage
+## D.002 — Rules 11.2 / 11.3 / 11.5: vtable downcasts + Address + Formatter
 
 ### Rule
 
@@ -125,70 +125,75 @@ document under [S10.01](https://github.com/DavidCozens/solid-syslog/issues/357).
 
 ### Deviation
 
-SolidSyslog accepts pointer conversions between caller-supplied storage
-buffers and the implementation struct that owns the storage. The
-conversion takes one of three shapes:
+SolidSyslog accepts three structural pointer conversions that are
+identified in code as `SelfFromBase` (vtable) or `(struct X*) storage`
+(Address / Formatter). All three are reviewed once here, not per call
+site.
+
+#### (a) Vtable downcasts — every pool-allocated class
+
+Every implementation class that participates in a vtable interface
+(`SolidSyslogBuffer`, `SolidSyslogSender`, `SolidSyslogStream`,
+`SolidSyslogDatagram`, `SolidSyslogStore`, `SolidSyslogMutex`,
+`SolidSyslogFile`, `SolidSyslogBlockDevice`, `SolidSyslogAtomicCounter`,
+`SolidSyslogResolver`, `SolidSyslogStructuredData`,
+`SolidSyslogSecurityPolicy`) carries a `static inline ... *SelfFromBase(...)`
+helper that downcasts the public base pointer back to the concrete
+implementation struct so vtable methods can reach their own state:
 
 ```c
-struct SolidSyslogXImpl* impl = (struct SolidSyslogXImpl*) storage;
+static inline struct SolidSyslogCircularBuffer*
+CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base)
+{
+    return (struct SolidSyslogCircularBuffer*) base;
+}
 ```
 
-where `storage` is a `SolidSyslogXStorage*` (an opaque public type whose
-size is exposed via `SOLIDSYSLOG_X_STORAGE_SIZE`), or where the
-conversion goes via `void*` at vtable boundaries.
+Rule 11.3 fires on every such cast. This is the standard OO-in-C
+"interface pointer back to derived implementation" cast that every
+vtable method needs.
 
-### Scope
+#### (b) `SolidSyslogAddress` — strict-tier opaque value type
 
-- **Strict tier** — every `_Create` function in `Core/Source/` that
-  uses the caller-supplied-storage pattern (≈30 classes).
-- **Pragmatic tier** — every platform-specific `_Create` and `Address`
-  helper under `Platform/*/Source/`.
+`Address.h` exposes an opaque public type with a caller-supplied
+storage shape (`SolidSyslogAddressStorage` + `SOLIDSYSLOG_ADDRESS_SIZE`)
+across three platform-specific implementations
+(`Platform/{FreeRtos,Posix,Windows}/Source/SolidSyslogAddressInternal.h`).
+Address is a transient value type, not a Created object — it has no
+`_Create`/`_Destroy` lifecycle and so was deliberately left out of E11's
+pool migration. Rules 11.2 / 11.3 / 11.5 all fire on the casts between
+`SolidSyslogAddress*` (incomplete public type) and the platform
+implementation struct.
+
+#### (c) `SolidSyslogFormatter` — variable-size stack builder
+
+`SolidSyslogFormatter` is a transient stack-built builder whose backing
+storage is sized at the call site via the
+`SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(n)` macro. Variable-size means it
+cannot fit the fixed-pool pattern used elsewhere in the library — its
+lifecycle is fundamentally per-call, not per-class. Rules 11.2 / 11.3
+fire on the cast between `SolidSyslogFormatterStorage*` and `struct
+SolidSyslogFormatter*`.
 
 ### Rationale
 
-The caller-supplied-storage pattern is foundational to SolidSyslog's
-embedded-friendly design — every `_Create` takes a pointer to caller
-memory of the size advertised by the matching `SOLIDSYSLOG_X_STORAGE_SIZE`
-constant, places the implementation struct in that memory, and returns
-a pointer of the opaque public type. The alternatives all conflict with
-project constraints:
-
-| Alternative | Why rejected |
-|-------------|--------------|
-| Dynamic allocation (`malloc`) | Not available on bare-metal, FreeRTOS-static-allocation, or DO-178C-style targets. SolidSyslog is callable from boot before any heap exists. |
-| Public concrete types | Leaks the implementation through the public API; ties integrators to internal layout and breaks ABI stability. |
-| Pass-by-value structs | Doubles the parameter footprint of every `_Create`; breaks the vtable indirection that decouples Core from Platform. |
-
-`Address.h` (Strict tier, opaque `SolidSyslogAddress`) and every
-caller-storage class (BlockStore, Formatter, the
-FreeRTOS/Posix/Windows mutexes and streams, …) hit the same three
-rules for the same structural reason — one deviation document
-covers all of them.
-
-Note that `SolidSyslogCircularBuffer` moved off this pattern under
-E11 (S11.01): the instance struct now lives in a library-internal
-static pool, and the caller supplies only the ring memory as
-plain `uint8_t* ring, size_t ringBytes`. No `void*` storage cast on
-the instance; the ring pointer is held untyped inside the impl
-struct.
-
-The 11.3 suppression listed against `Core/Source/SolidSyslogCircularBuffer.c`
-post-E11 is therefore narrower than the rest of the entries above: it
-covers only the **vtable downcast** inside `CircularBuffer_SelfFromBase`
-(`struct SolidSyslogBuffer*` → `struct SolidSyslogCircularBuffer*`), the
-standard OO-in-C "interface pointer back to derived implementation" cast
-that every vtable method needs. The same downcast survives in every
-caller-storage class listed above as a separate concern from the
-caller-storage void* cast; this deviation covers both shapes under one
-heading because both are MISRA 11.3 firings driven by the same
-"interface decoupled from concrete type" design.
+The pool migration under E11 retired the caller-supplied-storage pattern
+for every class that has a Create/Destroy lifecycle, leaving only the
+vtable downcast (which is required by the OO-in-C interface decoupling)
+and the two non-pool exceptions above (Address as a value type,
+Formatter as a per-call builder). All three would otherwise require
+either dynamic allocation (not available on bare-metal / FreeRTOS-
+static-allocation / DO-178C-style targets — the library is callable from
+boot before any heap exists) or leaking the implementation struct
+through the public API (breaks ABI stability and the embedded-friendly
+opaque-type design).
 
 ### Risk and mitigation
 
-- **Type safety** — Each `_Create` is the only place in the library
-  that knows the relationship between `SolidSyslogXStorage` and
-  `struct SolidSyslogXImpl`. A `_Static_assert` immediately below
-  every impl definition pins the relationship at build time:
+- **Type safety** — For (b) Address and (c) Formatter, a
+  `_Static_assert` immediately below the impl definition pins the
+  relationship between the public storage type and the private impl
+  struct at build time:
 
   ```c
   SOLIDSYSLOG_STATIC_ASSERT(
@@ -197,21 +202,27 @@ heading because both are MISRA 11.3 firings driven by the same
   );
   ```
 
-  An integrator who allocates undersized storage is caught at
-  compile time, not at runtime.
-- **Alignment** — The storage type is declared as
-  `intptr_t storage[N]` (or a struct of the same shape), giving
-  alignment at least as strict as any pointer or scalar the impl
-  contains. The cast is therefore well-defined per §6.3.2.3.
+  An integrator who allocates undersized storage is caught at compile
+  time. For (a) vtable downcasts, type safety is enforced by the
+  contract that each vtable method receives is only called via the
+  vtable installed in its own `SelfFromBase`-aware implementation.
+- **Alignment** — Storage types are declared as `intptr_t storage[N]`
+  (or a struct of the same shape), giving alignment at least as strict
+  as any pointer or scalar the impl contains. The cast is therefore
+  well-defined per §6.3.2.3.
 - **Static analysis** — These rules are advisory (11.5) or required
-  (11.2, 11.3). All 109 findings are suppressed via
+  (11.2, 11.3). All current findings are suppressed via
   `misra_suppressions.txt` referencing this section. The pattern is
   reviewed once here, not per call site.
 
 ### Approval
 
 Project owner — David Cozens. Recorded under
-[S10.06](https://github.com/DavidCozens/solid-syslog/issues/367).
+[S10.06](https://github.com/DavidCozens/solid-syslog/issues/367); scope
+narrowed under
+[S11.11](https://github.com/DavidCozens/solid-syslog/issues/414) once
+every Create-lifecycle class moved off caller-supplied storage onto the
+pool allocator.
 
 ---
 
@@ -398,73 +409,7 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.006 — Rule 1.4: emergent C language features (C11 `<stdatomic.h>`)
-
-### Rule
-
-> **Rule 1.4 (Required)** — Emergent language features, such as
-> non-standard extensions and deprecated features, shall not be used.
-
-cppcheck-misra's interpretation of "emergent" includes C11 features in
-projects that otherwise target C99. SolidSyslog's `--std=c11` build flag
-is set because one source file needs `<stdatomic.h>`; the rest of the
-codebase is C99.
-
-### Deviation
-
-`Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c` includes
-`<stdatomic.h>` and uses `_Atomic uint32_t` plus
-`atomic_compare_exchange_strong_explicit`. Its sibling
-`Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c` does not
-use C11 atomics — it uses `volatile LONG` + `InterlockedCompareExchange`,
-selected at link time on toolchains without `<stdatomic.h>`.
-
-### Scope
-
-One source file:
-
-- `Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c`
-
-The Windows AtomicCounter sibling uses only Win32 APIs and stays
-C99-compatible — no 1.4 suppression needed for it.
-
-### Rationale
-
-The atomic counter (`SolidSyslogAtomicCounter`) needs a portable
-compare-and-swap primitive across hosted POSIX, hosted Windows, and
-FreeRTOS targets. Three primitives are practical:
-
-1. **`<stdatomic.h>`** — the C11 standard. Available on gcc/clang
-   universally, on MSVC 2022+, and explicitly selected by the Atomics
-   CMake module when `HAVE_STDATOMIC_H` is set.
-2. **`InterlockedCompareExchange`** — Win32 API. Selected by the same
-   CMake module when `HAVE_WINDOWS_INTERLOCKED` is set (legacy MSVC,
-   pre-2022, and MinGW configurations without `<stdatomic.h>`).
-3. **Hand-rolled CAS in assembly** — rejected: not portable, requires
-   per-target maintenance.
-
-The C11 primitive is the only option that is both portable across all
-hosted targets and visible to the cppcheck-misra audit. The Atomics
-module makes the choice at configure time; integrators on toolchains
-without `<stdatomic.h>` automatically get the Win32 path with no
-source-code change.
-
-### Risk and mitigation
-
-- **C99 baseline drift.** The project's C99 baseline is preserved
-  everywhere except in this TU (and the macros that gate it).
-  No C11 feature leaks into public headers.
-- **Future C standards.** If C23's deprecation paths affect
-  `<stdatomic.h>`, the Atomics module is the single migration point.
-
-### Approval
-
-Project owner — David Cozens. Recorded under
-[S10.06](https://github.com/DavidCozens/solid-syslog/issues/367).
-
----
-
-## D.007 — Rule 11.8: `const` qualification under field access of `const struct*`
+## D.006 — Rule 11.8: `const` qualification under field access of `const struct*`
 
 ### Rule
 
@@ -549,7 +494,7 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.008 — Rule 21.10: transitive `<wchar.h>` via `<time.h>`
+## D.007 — Rule 21.10: transitive `<wchar.h>` via `<time.h>`
 
 ### Rule
 
@@ -602,7 +547,7 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.009 — Rule 21.6: `<stdio.h>` for `SEEK_SET` / `SEEK_END` only
+## D.008 — Rule 21.6: `<stdio.h>` for `SEEK_SET` / `SEEK_END` only
 
 ### Rule
 
@@ -657,7 +602,7 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.010 — Rule 2.4: anonymous `enum` used as named-constant container
+## D.009 — Rule 2.4: anonymous `enum` used as named-constant container
 
 ### Rule
 
@@ -739,7 +684,7 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.011 — Rule 20.10: `#` stringification in `_Static_assert` polyfill
+## D.010 — Rule 20.10: `#` stringification in `_Static_assert` polyfill
 
 ### Rule
 
@@ -803,7 +748,7 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.012 — Rule 2.5: public API macros consumed outside the cppcheck-misra scope
+## D.011 — Rule 2.5: public API macros consumed outside the cppcheck-misra scope
 
 ### Rule
 
