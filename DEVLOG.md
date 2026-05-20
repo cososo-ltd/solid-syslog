@@ -160,7 +160,7 @@ TlsStream, NullAtomicCounter) and the freertos-host devcontainer
 
 ### Handoff for CI
 
-Two CI-gated checks remain. Per pre-flight agreement, **MSVC
+Four CI-gated checks remain. Per pre-flight agreement, **MSVC
 validation moves to CI for this story** (departing from
 `feedback_local_msvc` for S11.09 specifically — the AtomicCounter
 family + the OpenSSL surface mean the local-MSVC overhead doesn't
