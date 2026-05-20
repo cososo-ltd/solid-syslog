@@ -30,6 +30,7 @@ if(SOLIDSYSLOG_WINSOCK)
         Source/SolidSyslogAddress.c
         Source/SolidSyslogWinsockResolver.c
         Source/SolidSyslogWinsockDatagram.c
+        Source/SolidSyslogWinsockDatagramStatic.c
         Source/SolidSyslogWinsockTcpStream.c
     )
     target_link_libraries(${PROJECT_NAME} PUBLIC ws2_32)

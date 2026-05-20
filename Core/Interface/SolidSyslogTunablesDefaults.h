@@ -379,4 +379,24 @@
 #error "SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE must be >= 1"
 #endif
 
+/*
+ * Number of SolidSyslogWinsockDatagram instances the library's internal
+ * static pool can simultaneously hold. Each instance carries the AF_INET
+ * SOCKET handle and a one-shot connect flag.
+ *
+ * Default 1 — almost all integrators wire a single WinsockDatagram into
+ * a UdpSender. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one
+ * is genuinely needed.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE < 1
+#error "SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE must be >= 1"
+#endif
+
 #endif /* SOLIDSYSLOG_TUNABLES_DEFAULTS_H */

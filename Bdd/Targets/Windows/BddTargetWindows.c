@@ -220,7 +220,7 @@ static void DestroySender(void)
     SolidSyslogStreamSender_Destroy(plainTcpSender);
     SolidSyslogWinsockTcpStream_Destroy(plainTcpStream);
     SolidSyslogUdpSender_Destroy(udpSender);
-    SolidSyslogWinsockDatagram_Destroy();
+    SolidSyslogWinsockDatagram_Destroy(udpDatagram);
     SolidSyslogWinsockResolver_Destroy();
 }
 

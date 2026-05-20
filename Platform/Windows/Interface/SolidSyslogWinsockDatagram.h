@@ -9,7 +9,7 @@ EXTERN_C_BEGIN
        and will call WSACleanup() on shutdown. The library does not manage
        Winsock lifecycle. */
     struct SolidSyslogDatagram* SolidSyslogWinsockDatagram_Create(void);
-    void SolidSyslogWinsockDatagram_Destroy(void);
+    void SolidSyslogWinsockDatagram_Destroy(struct SolidSyslogDatagram * base);
 
 EXTERN_C_END
 
