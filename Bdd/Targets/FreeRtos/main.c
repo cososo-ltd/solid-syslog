@@ -169,14 +169,12 @@ enum
 };
 
 static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(BDD_TARGET_BUFFER_MESSAGES)];
-static SolidSyslogFreeRtosMutexStorage mutexStorage;
 
 /* Lifecycle mutex serialises SolidSyslog_Service against the rebuild path
  * (`set store file` swaps NullStore for the file-backed BlockStore by
  * destroying and re-creating SolidSyslog mid-run). Service holds the lock
  * for one Service() call per iteration; the rebuild path holds it across
  * Destroy → BlockStore_Create → Create. */
-static SolidSyslogFreeRtosMutexStorage lifecycleMutexStorage;
 static struct SolidSyslogMutex* lifecycleMutex = NULL;
 static volatile bool solidSyslogReady;
 /* Signals Service to self-delete BEFORE Teardown destroys the lifecycle
@@ -820,12 +818,12 @@ static void InteractiveTask(void* argument)
      * emission in S08.04 slice 3 will add more). The buffer's Read side
      * is the Service task; its Write side is whichever task calls
      * SolidSyslog_Log. */
-    bufferMutex = SolidSyslogFreeRtosMutex_Create(&mutexStorage);
+    bufferMutex = SolidSyslogFreeRtosMutex_Create();
     buffer = SolidSyslogCircularBuffer_Create(bufferMutex, bufferRing, sizeof(bufferRing));
 
     /* Lifecycle mutex created up front so the Service task can take it
      * from its very first iteration without a NULL check. */
-    lifecycleMutex = SolidSyslogFreeRtosMutex_Create(&lifecycleMutexStorage);
+    lifecycleMutex = SolidSyslogFreeRtosMutex_Create();
 
     /* Default store is NullStore — flipped to FatFs/BlockStore by
      * `set store file` via RebuildWithFileStore(). */

@@ -3,61 +3,54 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-#include "SolidSyslogMacros.h"
+#include "SolidSyslogFreeRtosMutexPrivate.h"
 #include "SolidSyslogMutexDefinition.h"
-
-typedef struct SolidSyslogFreeRtosMutex FreeRtosMutex;
-
-/* xSemaphoreCreateMutexStatic returns a handle that is the same pointer
- * as the StaticSemaphore_t passed in, so the per-instance struct doesn't
- * carry a separate SemaphoreHandle_t — the kernel-primitive layout matches
- * the Posix (pthread_mutex_t) and Windows (CRITICAL_SECTION) adapters. */
-struct SolidSyslogFreeRtosMutex
-{
-    struct SolidSyslogMutex Base;
-    StaticSemaphore_t Buffer;
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    sizeof(FreeRtosMutex) <= SOLIDSYSLOG_FREE_RTOS_MUTEX_SIZE,
-    "SOLIDSYSLOG_FREE_RTOS_MUTEX_SIZE is too small for SolidSyslogFreeRtosMutex layout"
-);
+#include "SolidSyslogNullMutex.h"
 
 static void FreeRtosMutex_Lock(struct SolidSyslogMutex* base);
 static void FreeRtosMutex_Unlock(struct SolidSyslogMutex* base);
 
-static inline FreeRtosMutex* FreeRtosMutex_SelfFromStorage(SolidSyslogFreeRtosMutexStorage* storage);
-static inline FreeRtosMutex* FreeRtosMutex_SelfFromBase(struct SolidSyslogMutex* base);
-static inline SemaphoreHandle_t FreeRtosMutex_AsHandle(FreeRtosMutex* self);
+static inline struct SolidSyslogFreeRtosMutex* FreeRtosMutex_SelfFromBase(struct SolidSyslogMutex* base);
+static inline SemaphoreHandle_t FreeRtosMutex_AsHandle(struct SolidSyslogFreeRtosMutex* self);
 
-struct SolidSyslogMutex* SolidSyslogFreeRtosMutex_Create(SolidSyslogFreeRtosMutexStorage* storage)
+void FreeRtosMutex_Initialise(struct SolidSyslogMutex* base)
 {
-    FreeRtosMutex* self = FreeRtosMutex_SelfFromStorage(storage);
-    self->Base.Lock = FreeRtosMutex_Lock;
-    self->Base.Unlock = FreeRtosMutex_Unlock;
-    (void) xSemaphoreCreateMutexStatic(&self->Buffer);
-    return &self->Base;
+    struct SolidSyslogFreeRtosMutex* self = FreeRtosMutex_SelfFromBase(base);
+    /* xSemaphoreCreateMutexStatic returns NULL only when
+     * configSUPPORT_STATIC_ALLOCATION is not 1 — a compile-time config
+     * gate, not a runtime failure mode. Guarded anyway so a misconfigured
+     * integrator falls back to the NullMutex vtable instead of corrupting
+     * Lock/Unlock with a dangling handle, mirroring PosixMutex's defence
+     * against pthread_mutex_init failure. */
+    if (xSemaphoreCreateMutexStatic(&self->Buffer) != NULL)
+    {
+        self->Base.Lock = FreeRtosMutex_Lock;
+        self->Base.Unlock = FreeRtosMutex_Unlock;
+    }
+    else
+    {
+        *base = *SolidSyslogNullMutex_Get();
+    }
 }
 
-static inline FreeRtosMutex* FreeRtosMutex_SelfFromStorage(SolidSyslogFreeRtosMutexStorage* storage)
+void FreeRtosMutex_Cleanup(struct SolidSyslogMutex* base)
 {
-    return (FreeRtosMutex*) storage;
+    struct SolidSyslogFreeRtosMutex* self = FreeRtosMutex_SelfFromBase(base);
+    if (self->Base.Lock == FreeRtosMutex_Lock)
+    {
+        vSemaphoreDelete(FreeRtosMutex_AsHandle(self));
+    }
+    /* Overwrite the abstract base with the shared NullMutex vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullMutex_Get();
 }
 
-void SolidSyslogFreeRtosMutex_Destroy(struct SolidSyslogMutex* base)
+static inline struct SolidSyslogFreeRtosMutex* FreeRtosMutex_SelfFromBase(struct SolidSyslogMutex* base)
 {
-    FreeRtosMutex* self = FreeRtosMutex_SelfFromBase(base);
-    vSemaphoreDelete(FreeRtosMutex_AsHandle(self));
-    self->Base.Lock = NULL;
-    self->Base.Unlock = NULL;
+    return (struct SolidSyslogFreeRtosMutex*) base;
 }
 
-static inline FreeRtosMutex* FreeRtosMutex_SelfFromBase(struct SolidSyslogMutex* base)
-{
-    return (FreeRtosMutex*) base;
-}
-
-static inline SemaphoreHandle_t FreeRtosMutex_AsHandle(FreeRtosMutex* self)
+static inline SemaphoreHandle_t FreeRtosMutex_AsHandle(struct SolidSyslogFreeRtosMutex* self)
 {
     return (SemaphoreHandle_t) &self->Buffer;
 }

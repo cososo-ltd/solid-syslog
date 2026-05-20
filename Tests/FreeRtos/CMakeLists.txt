@@ -98,11 +98,14 @@ add_executable(SolidSyslogFreeRtosMutexTest
     SolidSyslogFreeRtosMutexTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutexStatic.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosSemaphoreFake.c
 )
 
 target_link_libraries(SolidSyslogFreeRtosMutexTest PRIVATE
     ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
     CppUTest
     CppUTestExt
 )
