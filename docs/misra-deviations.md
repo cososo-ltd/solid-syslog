@@ -398,73 +398,7 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.006 — Rule 1.4: emergent C language features (C11 `<stdatomic.h>`)
-
-### Rule
-
-> **Rule 1.4 (Required)** — Emergent language features, such as
-> non-standard extensions and deprecated features, shall not be used.
-
-cppcheck-misra's interpretation of "emergent" includes C11 features in
-projects that otherwise target C99. SolidSyslog's `--std=c11` build flag
-is set because one source file needs `<stdatomic.h>`; the rest of the
-codebase is C99.
-
-### Deviation
-
-`Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c` includes
-`<stdatomic.h>` and uses `_Atomic uint32_t` plus
-`atomic_compare_exchange_strong_explicit`. Its sibling
-`Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c` does not
-use C11 atomics — it uses `volatile LONG` + `InterlockedCompareExchange`,
-selected at link time on toolchains without `<stdatomic.h>`.
-
-### Scope
-
-One source file:
-
-- `Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c`
-
-The Windows AtomicCounter sibling uses only Win32 APIs and stays
-C99-compatible — no 1.4 suppression needed for it.
-
-### Rationale
-
-The atomic counter (`SolidSyslogAtomicCounter`) needs a portable
-compare-and-swap primitive across hosted POSIX, hosted Windows, and
-FreeRTOS targets. Three primitives are practical:
-
-1. **`<stdatomic.h>`** — the C11 standard. Available on gcc/clang
-   universally, on MSVC 2022+, and explicitly selected by the Atomics
-   CMake module when `HAVE_STDATOMIC_H` is set.
-2. **`InterlockedCompareExchange`** — Win32 API. Selected by the same
-   CMake module when `HAVE_WINDOWS_INTERLOCKED` is set (legacy MSVC,
-   pre-2022, and MinGW configurations without `<stdatomic.h>`).
-3. **Hand-rolled CAS in assembly** — rejected: not portable, requires
-   per-target maintenance.
-
-The C11 primitive is the only option that is both portable across all
-hosted targets and visible to the cppcheck-misra audit. The Atomics
-module makes the choice at configure time; integrators on toolchains
-without `<stdatomic.h>` automatically get the Win32 path with no
-source-code change.
-
-### Risk and mitigation
-
-- **C99 baseline drift.** The project's C99 baseline is preserved
-  everywhere except in this TU (and the macros that gate it).
-  No C11 feature leaks into public headers.
-- **Future C standards.** If C23's deprecation paths affect
-  `<stdatomic.h>`, the Atomics module is the single migration point.
-
-### Approval
-
-Project owner — David Cozens. Recorded under
-[S10.06](https://github.com/DavidCozens/solid-syslog/issues/367).
-
----
-
-## D.007 — Rule 11.8: `const` qualification under field access of `const struct*`
+## D.006 — Rule 11.8: `const` qualification under field access of `const struct*`
 
 ### Rule
 
@@ -549,7 +483,7 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.008 — Rule 21.10: transitive `<wchar.h>` via `<time.h>`
+## D.007 — Rule 21.10: transitive `<wchar.h>` via `<time.h>`
 
 ### Rule
 
@@ -602,7 +536,7 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.009 — Rule 21.6: `<stdio.h>` for `SEEK_SET` / `SEEK_END` only
+## D.008 — Rule 21.6: `<stdio.h>` for `SEEK_SET` / `SEEK_END` only
 
 ### Rule
 
@@ -657,7 +591,7 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.010 — Rule 2.4: anonymous `enum` used as named-constant container
+## D.009 — Rule 2.4: anonymous `enum` used as named-constant container
 
 ### Rule
 
@@ -739,7 +673,7 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.011 — Rule 20.10: `#` stringification in `_Static_assert` polyfill
+## D.010 — Rule 20.10: `#` stringification in `_Static_assert` polyfill
 
 ### Rule
 
@@ -803,7 +737,7 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.012 — Rule 2.5: public API macros consumed outside the cppcheck-misra scope
+## D.011 — Rule 2.5: public API macros consumed outside the cppcheck-misra scope
 
 ### Rule
 

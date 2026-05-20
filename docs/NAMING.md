@@ -578,8 +578,8 @@ The anonymous-enum named-constant idiom is itself unchanged — it's
 still the project's type-safe alternative to `#define` for integer
 constants, distinct in shape from tagged enums in purpose if not in
 casing. MISRA rule 2.4 (unused tag declarations) cppcheck-fires on
-anonymous enums; the project-wide deviation **D.010** covers all such
-sites — see `docs/misra-deviations.md#d010`.
+anonymous enums; the project-wide deviation **D.009** covers all such
+sites — see `docs/misra-deviations.md#d009`.
 
 This single-rule convention replaces the S10.07/S10.12 split where
 tagged-enum constants used `SolidSyslog<Class>_Constant` (PascalCase,

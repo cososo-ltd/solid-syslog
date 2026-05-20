@@ -6,6 +6,14 @@
 > conformance underway, the audit phase is closed. The live truth is
 > CI plus the two source-of-truth documents:
 >
+> **S11.11 update.** Deviation D.006-original (rule 1.4 / C11
+> `<stdatomic.h>`) was retired — cppcheck 2.10 no longer flags the
+> site. The remaining deviations were renumbered down by one
+> (old D.007–D.012 → new D.006–D.011). Cross-references in the
+> tables below have been updated to point at the new numbers; the
+> historical narrative (counts, original audit verdicts) is left
+> intact.
+>
 > - `docs/misra-deviations.md` — the deviation rationales and
 >   approvals. New per-site suppressions land here, not in this doc.
 > - `misra_suppressions.txt` — the cppcheck-misra suppressions list.
@@ -116,7 +124,7 @@ Each row carries the cppcheck addon's count. The verdict reflects how the rule s
 | **10.4** | 92 → 0 *(landed in S10.10)* | Both operands of operator shall be in same essential type category | `SolidSyslogFormatter.c` (15), `SolidSyslog.c` (6), `SolidSyslogFileBlockDevice.c` (6) | **Fix — landed in S10.10** | Mostly `size_t + 1` where `1` is `int`. Mechanical U-suffix sweep across `Core/Source/`, `Core/Interface/`, and `Platform/*/`. Two byte-comparison sites (BOM strip in `SolidSyslog.c`, UTF-8 lead range in `SolidSyslogFormatter.c`) refactored to `unsigned char` + hex-literal comparisons where the `(char)` cast did not satisfy cppcheck-misra's essential-type tracking. `SOLIDSYSLOG_FORMATTER_STORAGE_SIZE` picked up U on the literal inside the macro so every expansion is uniform. | **S10.10** |
 | **8.9** (advisory) | 56 | Object referenced in one function should have block scope | `SolidSyslogFormatter.c` (8), `SolidSyslogMetaSd.c` (5), `SolidSyslogOriginSd.c` (5) | **Fix** | File-scope statics that should be locals or `static const` block-scope. Per-site review. | **S10.09** (if "abbreviation purge" widens to "code-shape hygiene") or **new sweep story** |
 | **5.7** | 54 | Tag names unique | `BlockSequence.c` (2), `SolidSyslogFileBlockDevice.c` (2), `SolidSyslogBlockStore.h` (1), and so on across many forward-decl + definition pairs | **Deviate** | NAMING.md's no-typedef-struct convention deliberately repeats the same `struct SolidSyslogX` tag wherever it's used (forward-decl in headers, definition in source). 5.7 fires on every repetition. Document as deviation. | **S10.06** (deviation D.003) |
-| **11.8** | 11 | Cast shall not remove const/volatile qualification | `SolidSyslog.c` (8), `BlockSequence.c` (1), `SolidSyslogBlockStore.c` (1), `SolidSyslogWinsockTcpStream.c` (1) | **Deviate** *(resolved in S10.06: all 11 sites)* | All 10 Core sites are field-access "false positives" — accessing a non-const-pointer field through a `const struct*` parameter; C standard §6.5.2.3 ¶3 says the member-access yields an unqualified pointer rvalue, so this is not a real const-strip. The Winsock `select()` site is the documented platform-API const-strip already commented in source. Captured as **D.007**. | landed in **S10.06** |
+| **11.8** | 11 | Cast shall not remove const/volatile qualification | `SolidSyslog.c` (8), `BlockSequence.c` (1), `SolidSyslogBlockStore.c` (1), `SolidSyslogWinsockTcpStream.c` (1) | **Deviate** *(resolved in S10.06: all 11 sites)* | All 10 Core sites are field-access "false positives" — accessing a non-const-pointer field through a `const struct*` parameter; C standard §6.5.2.3 ¶3 says the member-access yields an unqualified pointer rvalue, so this is not a real const-strip. The Winsock `select()` site is the documented platform-API const-strip already commented in source. Captured as **D.006**. | landed in **S10.06** |
 | **17.7** | 11 | Value returned by non-void function shall be used | `RecordStore.c` (5), `SolidSyslogCircularBuffer.c` (4), `SolidSyslog.c` (1) | **Fix** | Use the return value or cast to `(void)` with comment. | **New sweep story** or **S10.10** (Buffer pilot) where most concentrate |
 | **10.1** | 11 → 0 *(landed in S10.10)* | Operands shall not be of inappropriate essential type | `SolidSyslogUtf8.h` (5), `SolidSyslogFormatter.c` (5), `SolidSyslogCrc16.c` (1) | **Fix — landed in S10.10** | Bitwise operators on plain `char` are inappropriate (char is essentially-character, bitwise operators require essentially-unsigned). Cast `char` operands to `unsigned char` and U-suffix the hex literal masks they are tested against. The Crc16 data-byte shift uses a literal `8U` instead of the `BITS_PER_BYTE` anonymous-enum constant (which cppcheck-misra still tracks as essentially-signed even with a U-suffixed initialiser). | **S10.10** |
 | **15.7** | 10 → 0 *(landed in S10.10)* | All if/else-if shall be terminated with `else` | `BlockSequence.c` (3), `SolidSyslogFormatter.c` (2), `SolidSyslogTlsStream.c` (1) | **Fix — landed in S10.10** | Added trailing `else { /* explanatory comment */ }` to ten if/else-if chains spanning Core and Platform. Empty bodies document the residual case the existing branches do not cover. | **S10.10** |
@@ -124,40 +132,40 @@ Each row carries the cppcheck addon's count. The verdict reflects how the rule s
 | **8.4** | 8 | Compatible declaration shall be visible | `SolidSyslogStdAtomicU32.c` (4), `SolidSyslogWindowsAtomicU32.c` (4) | **Fix** | Atomics adapters define functions whose external prototype lives in a header that should be visible at definition. Add include or forward decl. | **S10.11** (security policies + CRC + sync primitives) |
 | **12.1** (advisory) | 5 → 0 *(landed in S10.10; +3 sites surfaced after the 10.4 sweep were swept along; +2 surfaced after the STATIC_ASSERT polyfill switch were also cleared)* | Operator precedence should be explicit | `SolidSyslogCircularBuffer.c` (3), `SolidSyslogAtomicCounter.c` (1), `SolidSyslogTlsStream.c` (1) | **Fix — landed in S10.10** | Added explicit parens around sub-expressions mixing comparison with arithmetic or logical operators. One ternary in `SolidSyslogUdpPayload_FromMtu` refactored to an if/return — cppcheck-misra continued to flag the return-of-ternary form even after bracketing both arms. | **S10.10** |
 | **17.8** | 5 | Function parameter should not be modified | `SolidSyslogFormatter.c` (3), `SolidSyslogError.c` (1), `SolidSyslogUdpPayload.c` (1) | **Fix** | Introduce a local copy. | **S10.17** for Formatter; mixed for the rest |
-| **5.6** | 5 → 0 *(landed in S10.10)* | Typedef names unique | `SolidSyslogBlockStore.c` (1), `SolidSyslogCircularBuffer.c` (1), `SolidSyslogFileBlockDevice.c` (1) | **Fix — landed in S10.10** | Audit verdict had been "per-site review"; the actual cause was the project's `SOLIDSYSLOG_STATIC_ASSERT` polyfill emitting the same `typedef char solidsyslog_static_assert_[...]` in every TU. Replaced the negative-array polyfill with a C11 `_Static_assert` wrapper (the library compiles at `--std=c11`); the new form has no typedef and so cannot trigger 5.6. The unavoidable `#` stringify in the wrapper is captured by deviation **D.011** (Rule 20.10). | **S10.10** |
+| **5.6** | 5 → 0 *(landed in S10.10)* | Typedef names unique | `SolidSyslogBlockStore.c` (1), `SolidSyslogCircularBuffer.c` (1), `SolidSyslogFileBlockDevice.c` (1) | **Fix — landed in S10.10** | Audit verdict had been "per-site review"; the actual cause was the project's `SOLIDSYSLOG_STATIC_ASSERT` polyfill emitting the same `typedef char solidsyslog_static_assert_[...]` in every TU. Replaced the negative-array polyfill with a C11 `_Static_assert` wrapper (the library compiles at `--std=c11`); the new form has no typedef and so cannot trigger 5.6. The unavoidable `#` stringify in the wrapper is captured by deviation **D.010** (Rule 20.10). | **S10.10** |
 | **18.4** (advisory) | 4 | `+`, `-`, `+=`, `-=` shall not be applied to pointer types | `RecordStore.c` (4) | **Deviate** | RecordStore manipulates record buffers using pointer arithmetic by design (magic byte offset → length offset → message offset, etc.). This is the natural C expression for the algorithm. Document as deviation. | **S10.06** (D.004) |
 | **15.5** (advisory) | 4 | Function should have single exit point | `SolidSyslogFormatter.c` (3), `SolidSyslog.c` (1) | **Fix** | Already a documented project preference ("Production code (Tier 1, Core/Source/) — Single return per function" in CLAUDE.md). Real drift. | **S10.17** (core message pipeline) |
 | **11.5** | 4 | Conversion from pointer to void to pointer to object | `SolidSyslogWinsockTcpStream.c` (2), `SolidSyslogUdpSender.c` (1), `SolidSyslogWinsockDatagram.c` (1) | **Deviate** | Same opaque-type / vtable pattern as 11.3. | **S10.06** (with D.002) |
-| **21.10** | 3 | `wchar.h` shall not be used | `SolidSyslogPosixClock.c` (1), `SolidSyslogPosixSleep.c` (1), `SolidSyslogPosixSysUpTime.c` (1) | **Deviate** *(resolved in S10.06)* | All three sites are `#include <time.h>` — glibc transitively pulls in `<wchar.h>` via `bits/types/struct_tm.h`. No direct `<wchar.h>` use anywhere in the project. Captured as **D.008**. | landed in **S10.06** |
+| **21.10** | 3 | `wchar.h` shall not be used | `SolidSyslogPosixClock.c` (1), `SolidSyslogPosixSleep.c` (1), `SolidSyslogPosixSysUpTime.c` (1) | **Deviate** *(resolved in S10.06)* | All three sites are `#include <time.h>` — glibc transitively pulls in `<wchar.h>` via `bits/types/struct_tm.h`. No direct `<wchar.h>` use anywhere in the project. Captured as **D.007**. | landed in **S10.06** |
 | **22.10** | 3 | The value of `errno` shall be checked only after a function that may set it | `SolidSyslogPosixTcpStream.c` (2), `SolidSyslogPosixDatagram.c` (1) | **Fix** | We currently read `errno` in some places where the preceding function isn't documented to set it (or we check before re-calling). Per-site review. | **S10.15** (sender platform impls) |
 | **8.6** | 3 | Identifier with external linkage shall have exactly one external definition | `SolidSyslogAddress.c` (1 each across Posix/Windows/FreeRtos) | **Fix** | Either missing definition or duplicate declaration of `Address` helpers — needs per-site investigation. | **S10.15** |
 | **10.8** | 2 → 0 *(landed in S10.10)* | Composite-expression cast to wider essential type | `SolidSyslog.c` (2) | **Fix — landed in S10.10** | Hoisted the `(uint32_t)` cast to the top of `SolidSyslog_FormatNonZeroUtcOffset` so the hours/minutes split uses `uint32_t / 60U` and `% 60U` without casting a composite expression. | **S10.10** |
 | **18.7** (advisory) | 2 | Flexible array members shall not be declared | `SolidSyslogCircularBuffer.c` (1), `SolidSyslogFormatter.c` (1) | **Deviate** | Flexible array members are the storage mechanism for `SolidSyslogFormatter` and `SolidSyslogCircularBuffer` — they hold caller-supplied storage of variable size. Removing them would require copying or fixed-size buffers. Document as deviation. | **S10.06** (D.005) |
-| **1.4** (advisory) | 2 | Emergent language features shall not be used | `SolidSyslogStdAtomicU32.c` (1), `SolidSyslogWindowsAtomicU32.c` (1) | **Deviate** | C11 `<stdatomic.h>` is the project's atomic primitive on POSIX/clang/gcc/modern MSVC; we deliberately use C11 here and the alternative (`InterlockedCompareExchange`) is selected at link time on legacy MSVC. Use of C11 atomics is intentional, not accidental. | **S10.06** (D.006) |
-| **2.5** (advisory) | 2 → 0 *(landed in S10.10)* | Unused macro | `SolidSyslogCircularBuffer.h` (2) | **Deviate — landed in S10.10** | Audit verdict had been "delete them" — that was wrong. The two `SOLIDSYSLOG_CIRCULAR_BUFFER_STORAGE_SIZE[_BYTES]` macros are part of the public API; their consumers live under `Tests/` (Consistency-only tier) and `Bdd/Targets/` (Out of scope), so cppcheck-misra cannot see the call sites. Captured as **D.012**. | **S10.10** |
+| **1.4** (advisory) | 2 | Emergent language features shall not be used | `SolidSyslogStdAtomicU32.c` (1), `SolidSyslogWindowsAtomicU32.c` (1) | **Deviate** *(retired in S11.11)* | C11 `<stdatomic.h>` is the project's atomic primitive on POSIX/clang/gcc/modern MSVC; we deliberately use C11 here and the alternative (`InterlockedCompareExchange`) is selected at link time on legacy MSVC. Use of C11 atomics is intentional, not accidental. | **S10.06** (D.006-original — retired in **S11.11**: cppcheck 2.10 no longer flags this site) |
+| **2.5** (advisory) | 2 → 0 *(landed in S10.10)* | Unused macro | `SolidSyslogCircularBuffer.h` (2) | **Deviate — landed in S10.10** | Audit verdict had been "delete them" — that was wrong. The two `SOLIDSYSLOG_CIRCULAR_BUFFER_STORAGE_SIZE[_BYTES]` macros are part of the public API; their consumers live under `Tests/` (Consistency-only tier) and `Bdd/Targets/` (Out of scope), so cppcheck-misra cannot see the call sites. Captured as **D.011**. | **S10.10** |
 | **3.1** | 1 → 0 *(landed in S10.10)* | `/* */` shall not contain comment-start sequence | `SolidSyslogCrc16.c` (1) | **Fix — landed in S10.10** | The Crc16 banner contained a `https://` URL — the `//` inside the `/* */` is a nested comment-start. Dropped the protocol prefix and rephrased the citation. | **S10.10** |
 | **7.1** | 1 → 0 *(landed in S10.10)* | Octal constants shall not be used | `SolidSyslogPosixMessageQueueBuffer.c` (1) | **Fix — landed in S10.10** | `0600` (Posix file mode) replaced with a named hex enum `OWNER_READ_WRITE = 0x180U` in the file-scope anonymous-enum block. | **S10.10** |
-| **21.6** | 1 | The Standard Library `stdio.h` shall not be used | `SolidSyslogWindowsFile.c` (1) | **Deviate** *(resolved in S10.06)* | `WindowsFile.c` includes `<stdio.h>` solely for `SEEK_SET` / `SEEK_END` constants used by `_lseeki64` from `<io.h>`; no stdio function or type is referenced. Captured as **D.009**. | landed in **S10.06** |
+| **21.6** | 1 | The Standard Library `stdio.h` shall not be used | `SolidSyslogWindowsFile.c` (1) | **Deviate** *(resolved in S10.06)* | `WindowsFile.c` includes `<stdio.h>` solely for `SEEK_SET` / `SEEK_END` constants used by `_lseeki64` from `<io.h>`; no stdio function or type is referenced. Captured as **D.008**. | landed in **S10.06** |
 | **14.4** | 1 → 0 *(landed in S10.10)* | Controlling expression shall have essentially Boolean type | `SolidSyslogWindowsHostname.c` (1) | **Fix — landed in S10.10** | `GetComputerNameExA` returns `BOOL` (typedef `int`); the if now compares `!= FALSE` so the controlling expression is a real boolean result. | **S10.10** |
-| **2.4** (advisory) | 1 → 6 *(resolved in S10.06)* | A project should not contain unused tag declarations | Re-run with D.002–D.009 suppressions surfaced 5 more anonymous-`enum { … };` sites previously hidden behind 5.7 — the audit's original count understated the rule. All 6 sites are the project's anonymous-`enum` named-constant idiom (≈31 such blocks tree-wide). | **Deviate** | Captured as **D.010**. The anonymous-`enum` idiom is project-wide and intentional (type-safe constants without `#define`). | landed in **S10.06** |
+| **2.4** (advisory) | 1 → 6 *(resolved in S10.06)* | A project should not contain unused tag declarations | Re-run with D.002–D.008 suppressions surfaced 5 more anonymous-`enum { … };` sites previously hidden behind 5.7 — the audit's original count understated the rule. All 6 sites are the project's anonymous-`enum` named-constant idiom (≈31 such blocks tree-wide). | **Deviate** | Captured as **D.009**. The anonymous-`enum` idiom is project-wide and intentional (type-safe constants without `#define`). | landed in **S10.06** |
 
 ### MISRA totals by verdict
 
 | Verdict | Count | Rules |
 |---------|------:|-------|
 | **Fix — landed in S10.08** — rule 5.9 (static-function `Class_` prefix sweep) | 168 → 0 | 5.9 |
-| **Fix — landed in S10.10** — mechanical sweep (uniform U-suffixes, parens, trailing-else, …) + Rule 5.6 polyfill | 130 → 0 | 10.4 (92), 10.1 (11), 15.7 (10), 12.1 (5), 5.6 (5), 10.8 (2), 2.5 (2 — graduated to Deviate as D.012), 14.4 (1), 7.1 (1), 3.1 (1) |
+| **Fix — landed in S10.10** — mechanical sweep (uniform U-suffixes, parens, trailing-else, …) + Rule 5.6 polyfill | 130 → 0 | 10.4 (92), 10.1 (11), 15.7 (10), 12.1 (5), 5.6 (5), 10.8 (2), 2.5 (2 — graduated to Deviate as D.011), 14.4 (1), 7.1 (1), 3.1 (1) |
 | **Fix** — other rules (per-component sweeps S10.11+) | 90 | 8.9, 17.7, 8.4, 17.8, 15.5, 22.10, 8.6 |
-| **Deviate** — landed in S10.06 (D.002–D.010) | 187 | 11.3, 11.2, 11.5 *(D.002)*; 5.7 *(D.003)*; 18.4 *(D.004)*; 18.7 *(D.005)*; 1.4 *(D.006)*; 11.8 *(D.007)*; 21.10 *(D.008)*; 21.6 *(D.009)*; 2.4 *(D.010)* |
-| **Deviate** — landed in S10.10 (D.011, D.012) | 3 | 20.10 *(D.011, 1 site — `#` stringify in `_Static_assert` wrapper)*; 2.5 *(D.012, 2 sites — public API macros consumed under `Tests/` and `Bdd/Targets/`)* |
+| **Deviate** — landed in S10.06 (D.002–D.009; D.006-original / rule 1.4 retired in **S11.11**) | 187 | 11.3, 11.2, 11.5 *(D.002)*; 5.7 *(D.003)*; 18.4 *(D.004)*; 18.7 *(D.005)*; 1.4 *(retired S11.11)*; 11.8 *(D.006)*; 21.10 *(D.007)*; 21.6 *(D.008)*; 2.4 *(D.009)* |
+| **Deviate** — landed in S10.10 (D.010, D.011) | 3 | 20.10 *(D.010, 1 site — `#` stringify in `_Static_assert` wrapper)*; 2.5 *(D.011, 2 sites — public API macros consumed under `Tests/` and `Bdd/Targets/`)* |
 | **Disable** | 0 | — |
-| **Total reconciled** | **388 Fix + 190 Deviate = 575** (rule 2.5 moved from Fix to Deviate per D.012; raw `Fix` reduced by 2, raw `Deviate` increased by 3 with the new D.011 = +1) | Raw count includes 5 dual-rule overlaps (same code site reported under two rules, e.g. 11.2 + 11.3 cast in `Address.c`). |
+| **Total reconciled** | **388 Fix + 190 Deviate = 575** (rule 2.5 moved from Fix to Deviate per D.011; raw `Fix` reduced by 2, raw `Deviate` increased by 3 with the new D.010 = +1) | Raw count includes 5 dual-rule overlaps (same code site reported under two rules, e.g. 11.2 + 11.3 cast in `Address.c`). |
 
 The verdict surface evolved from the audit's headline:
-- S10.06 added D.008 / D.009 (Investigate items) and D.010 (D.003
+- S10.06 added D.007 / D.008 (Investigate items) and D.009 (D.003
   suppression revealed 5 more 2.4 findings).
-- S10.10 added D.011 (20.10 — stringify in the new `_Static_assert`
-  polyfill wrapper) and D.012 (2.5 — re-categorised from "delete
+- S10.10 added D.010 (20.10 — stringify in the new `_Static_assert`
+  polyfill wrapper) and D.011 (2.5 — re-categorised from "delete
   unused" when the audit's verdict was found to be wrong; the macros
   are consumed outside the cppcheck-misra scope).
 
@@ -193,7 +201,7 @@ Rough order-of-magnitude for sweep planning. These are **upper bounds** (some Fi
 | S10.09 *(was the S10.07-sibling slot; named in S10.09 issue)* | Data members lowerCamelCase → PascalCase per Tier 4 re-statement — **landed** | 186 → 0 |
 | S10.08 | Static functions → `Class_Function` (MISRA 5.9) | 168 |
 | Abbreviation purge *(deferred — separate cross-cutting story, not yet raised)* | Locals/parameters and function-name abbreviations — different lens, scope still to be sized | TBD |
-| **S10.10** *(was "Mechanical MISRA sweep" — picked up the next free story number)* | Tree-wide hybrid mechanical fixes — **landed**: 10.4 (92), 10.1 (11), 15.7 (10), 12.1 (5+drift), 5.6 (5), 10.8 (2), 2.5 (2, became D.012), 14.4 (1), 7.1 (1), 3.1 (1). +2 new deviations: D.011 (20.10), D.012 (2.5). | 130 → 0 |
+| **S10.10** *(was "Mechanical MISRA sweep" — picked up the next free story number)* | Tree-wide hybrid mechanical fixes — **landed**: 10.4 (92), 10.1 (11), 15.7 (10), 12.1 (5+drift), 5.6 (5), 10.8 (2), 2.5 (2, became D.011), 14.4 (1), 7.1 (1), 3.1 (1). +2 new deviations: D.010 (20.10), D.011 (2.5). | 130 → 0 |
 | S10.11 *(was S10.10 in audit-era numbering)* | Buffers pilot — receives 8.9 + 17.7 + 17.8 fragments | small (~5–10) |
 | S10.12 | SecurityPolicies + CRC + Sync — receives 8.4 + 2.5 fragments | ~10 |
 | S10.13 | Config + platform helpers — receives 14.4 fragment | small (~5) |
@@ -221,17 +229,17 @@ under a single review:
 |------|------------:|------------:|-----------|
 | 10.4 | 92 | 0 | Add `U` suffix to integer literals; occasional cast |
 | 12.1 | 5 | 0 | Add explicit precedence parentheses |
-| 2.5 | 2 | 0 | Audit said "delete"; actually consumed outside cppcheck scope — became D.012 |
+| 2.5 | 2 | 0 | Audit said "delete"; actually consumed outside cppcheck scope — became D.011 |
 | 15.7 | 10 | 0 | Add trailing `else { /* exhaustive */ }` |
 | 10.8 | 2 | 0 | Hoist cast above composite expression |
 | 10.1 | 11 | 0 | Bool/char essential-type mismatch — cast to `unsigned char` + hex literals |
 | 5.6 | 5 | 0 | Switch `SOLIDSYSLOG_STATIC_ASSERT` polyfill to C11 `_Static_assert` |
-| 2.4 | 1 → graduated to Deviate in S10.06 (D.010) before S10.10 ran | — | — |
+| 2.4 | 1 → graduated to Deviate in S10.06 (D.009) before S10.10 ran | — | — |
 | 3.1 | 1 | 0 | Disambiguate `//` inside a `/* */` URL |
 | 7.1 | 1 | 0 | Replace `0600` octal with named hex `OWNER_READ_WRITE = 0x180U` |
 | 14.4 | 1 | 0 | `BOOL` comparison with `!= FALSE` instead of bare value |
 | **S10.10 total** | **131** *(126 mechanical + 5 polyfill)* | **0** | |
-| **New deviations introduced as byproducts** | — | — | D.011 (20.10, 1 site — stringify); D.012 (2.5, 2 sites — public API macros) |
+| **New deviations introduced as byproducts** | — | — | D.010 (20.10, 1 site — stringify); D.011 (2.5, 2 sites — public API macros) |
 
 **Per-component sweep targets** *(absorbed into S10.10–S10.17)* —
 fixes that need local file context to apply correctly:
