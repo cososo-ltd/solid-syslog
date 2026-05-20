@@ -1684,37 +1684,6 @@ TEST(SolidSyslogLifecycle, LogBeforeCreateDoesNotCrash)
     SolidSyslog_Log(&message);
 }
 
-TEST(SolidSyslogLifecycle, LogBeforeCreateReportsNilBufferUsedOnce)
-{
-    ErrorHandlerFake_Install(nullptr);
-
-    SolidSyslog_Log(&message);
-
-    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_NIL_BUFFER_USED);
-}
-
-TEST(SolidSyslogLifecycle, RepeatedLogBeforeCreateReportsNilBufferUsedOnlyOnce)
-{
-    ErrorHandlerFake_Install(nullptr);
-
-    SolidSyslog_Log(&message);
-    SolidSyslog_Log(&message);
-    SolidSyslog_Log(&message);
-
-    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_NIL_BUFFER_USED);
-}
-
-TEST(SolidSyslogLifecycle, DestroyReArmsNilBufferReporter)
-{
-    SolidSyslog_Log(&message);
-    ErrorHandlerFake_Install(nullptr);
-
-    SolidSyslog_Destroy();
-    SolidSyslog_Log(&message);
-
-    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_NIL_BUFFER_USED);
-}
-
 TEST(SolidSyslogLifecycle, LogWithNullMessageReportsError)
 {
     ErrorHandlerFake_Install(nullptr);
@@ -1766,7 +1735,7 @@ TEST(SolidSyslogLifecycle, CreateWithNullStoreReportsError)
     CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_STORE);
 }
 
-TEST(SolidSyslogLifecycle, ServiceWithNilStoreDrainsThroughToRealSender)
+TEST(SolidSyslogLifecycle, ServiceWithDefaultStoreDrainsThroughToRealSender)
 {
     SolidSyslogConfig config = validConfig();
     config.Store = nullptr;
@@ -1776,36 +1745,6 @@ TEST(SolidSyslogLifecycle, ServiceWithNilStoreDrainsThroughToRealSender)
     SolidSyslog_Service();
 
     CALLED_FAKE_ON(SenderFake_Send, sender, ONCE);
-}
-
-TEST(SolidSyslogLifecycle, ServiceWithNilSenderReportsNilSenderUsed)
-{
-    SolidSyslogConfig config = validConfig();
-    config.Sender = nullptr;
-    SolidSyslog_Create(&config);
-    SolidSyslog_Log(&message);
-    ErrorHandlerFake_Install(nullptr);
-
-    SolidSyslog_Service();
-
-    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_NIL_SENDER_USED);
-}
-
-TEST(SolidSyslogLifecycle, RepeatedServiceWithNilSenderReportsNilSenderUsedOnlyOnce)
-{
-    SolidSyslogConfig config = validConfig();
-    config.Sender = nullptr;
-    SolidSyslog_Create(&config);
-    SolidSyslog_Log(&message);
-    SolidSyslog_Service();
-    ErrorHandlerFake_Install(nullptr);
-
-    SolidSyslog_Log(&message);
-    SolidSyslog_Service();
-    SolidSyslog_Log(&message);
-    SolidSyslog_Service();
-
-    CHECK_NOTHING_REPORTED();
 }
 
 TEST(SolidSyslogLifecycle, SecondCreateWithoutDestroyReportsAlreadyInitialised)
@@ -1862,21 +1801,4 @@ TEST(SolidSyslogLifecycle, DestroyClearsInitialisedFlagSoCreateSucceedsAgain)
 
     CHECK_NOTHING_REPORTED();
     CALLED_FAKE_ON(SenderFake_Send, sender, ONCE);
-}
-
-TEST(SolidSyslogLifecycle, DestroyReArmsNilSenderReporter)
-{
-    SolidSyslogConfig config = validConfig();
-    config.Sender = nullptr;
-    SolidSyslog_Create(&config);
-    SolidSyslog_Log(&message);
-    SolidSyslog_Service();
-
-    SolidSyslog_Destroy();
-    SolidSyslog_Create(&config);
-    SolidSyslog_Log(&message);
-    ErrorHandlerFake_Install(nullptr);
-    SolidSyslog_Service();
-
-    CHECK_REPORTED_ERROR(SOLIDSYSLOG_ERROR_MSG_NIL_SENDER_USED);
 }

@@ -8,8 +8,6 @@
 #define SOLIDSYSLOG_ERROR_MSG_CREATE_ALREADY_INITIALISED \
     "SolidSyslog_Create called while already initialised - call _Destroy first"
 #define SOLIDSYSLOG_ERROR_MSG_LOG_NULL_MESSAGE "SolidSyslog_Log called with NULL message"
-#define SOLIDSYSLOG_ERROR_MSG_NIL_BUFFER_USED "SolidSyslog_Log called with no buffer configured"
-#define SOLIDSYSLOG_ERROR_MSG_NIL_SENDER_USED "SolidSyslog_Service tried to send with no sender configured"
 #define SOLIDSYSLOG_ERROR_MSG_METASD_CREATE_NULL_CONFIG "SolidSyslogMetaSd_Create called with NULL config"
 #define SOLIDSYSLOG_ERROR_MSG_METASD_CREATE_NULL_COUNTER "SolidSyslogMetaSd_Create config.Counter is NULL"
 #define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_CREATE_NULL_CONFIG "SolidSyslogUdpSender_Create called with NULL config"
