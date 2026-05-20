@@ -72,7 +72,9 @@ void RunWithInput(const char* input, BddTargetInteractiveSetHandler onSet)
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) -- see comment above; fmemopen mode "r" never writes
     FILE* in = fmemopen(const_cast<char*>(input), strlen(input), "r");
     struct SolidSyslogMessage message = {};
-    BddTargetInteractive_Run(&message, in, nullptr, onSet);
+    /* These tests only exercise the set/switch/quit input paths, never `send`,
+       so the SolidSyslog handle is never dereferenced — nullptr is safe. */
+    BddTargetInteractive_Run(nullptr, &message, in, nullptr, onSet);
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- fclose is POSIX C; no owning memory concern
     fclose(in);
 }

@@ -18,6 +18,7 @@ endif()
 
 set(TEST_SOURCES
     SolidSyslogTest.cpp
+    SolidSyslogPoolTest.cpp
     SolidSyslogTunablesTest.cpp
     SolidSyslogSwitchingSenderTest.cpp
     SolidSyslogMetaSdTest.cpp

@@ -66,11 +66,12 @@ static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 }
 
 static volatile bool shutdown_flag;
+static struct SolidSyslog* solidSyslog;
 
 static void* ServiceThreadEntry(void* arg)
 {
     volatile bool* shutdown = (volatile bool*) arg;
-    BddTargetServiceThread_Run(shutdown, SolidSyslogPosixSleep);
+    BddTargetServiceThread_Run(solidSyslog, shutdown, SolidSyslogPosixSleep);
     return NULL;
 }
 
@@ -264,7 +265,7 @@ int main(int argc, char* argv[])
         .Sd = sdList,
         .SdCount = sdCount,
     };
-    SolidSyslog_Create(&config);
+    solidSyslog = SolidSyslog_Create(&config);
 
     shutdown_flag = false;
     haltExit = options.HaltExit;
@@ -279,12 +280,12 @@ int main(int argc, char* argv[])
         .Msg = options.Msg,
     };
 
-    BddTargetInteractive_Run(&message, stdin, BddTargetSwitchConfig_SetByName, NULL);
+    BddTargetInteractive_Run(solidSyslog, &message, stdin, BddTargetSwitchConfig_SetByName, NULL);
 
     shutdown_flag = true;
     pthread_join(serviceThread, NULL);
 
-    SolidSyslog_Destroy();
+    SolidSyslog_Destroy(solidSyslog);
     SolidSyslogOriginSd_Destroy(originSd);
     SolidSyslogTimeQualitySd_Destroy(timeQuality);
     SolidSyslogMetaSd_Destroy(metaSd);

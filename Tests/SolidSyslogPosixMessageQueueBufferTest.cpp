@@ -107,14 +107,14 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
     struct SolidSyslogSender* fakeSender = SenderFake_Create();
     SolidSyslogStore* nullStore = SolidSyslogNullStore_Get();
     SolidSyslogConfig config = {buffer, fakeSender, nullptr, nullptr, nullptr, nullptr, nullStore, nullptr, 0};
-    SolidSyslog_Create(&config);
+    struct SolidSyslog* solidSyslog = SolidSyslog_Create(&config);
 
     SolidSyslogMessage message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFORMATIONAL, nullptr, nullptr};
-    SolidSyslog_Log(&message);
-    SolidSyslog_Service();
+    SolidSyslog_Log(solidSyslog, &message);
+    SolidSyslog_Service(solidSyslog);
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
 
-    SolidSyslog_Destroy();
+    SolidSyslog_Destroy(solidSyslog);
     SenderFake_Destroy(fakeSender);
 }
 

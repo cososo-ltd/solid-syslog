@@ -6,6 +6,7 @@
 
 #include "ExternC.h"
 
+struct SolidSyslog;
 struct SolidSyslogMessage;
 
 EXTERN_C_BEGIN
@@ -14,6 +15,7 @@ EXTERN_C_BEGIN
     typedef bool (*BddTargetInteractiveSetHandler)(const char* name, const char* value);
 
     void BddTargetInteractive_Run(
+        struct SolidSyslog * handle,
         const struct SolidSyslogMessage* message,
         FILE* input,
         BddTargetInteractiveSwitchHandler onSwitch,

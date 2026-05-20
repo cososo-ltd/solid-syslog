@@ -9,6 +9,7 @@
 
 EXTERN_C_BEGIN
 
+    struct SolidSyslog;
     struct SolidSyslogBuffer;
     struct SolidSyslogFormatter;
     struct SolidSyslogSender;
@@ -28,8 +29,8 @@ EXTERN_C_BEGIN
         size_t SdCount;
     };
 
-    void SolidSyslog_Create(const struct SolidSyslogConfig* config);
-    void SolidSyslog_Destroy(void);
+    struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config);
+    void SolidSyslog_Destroy(struct SolidSyslog * handle);
 
 EXTERN_C_END
 

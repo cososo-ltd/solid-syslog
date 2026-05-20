@@ -62,13 +62,13 @@ static int ParseCount(const char* args)
     return (count > 0) ? count : 1;
 }
 
-static void HandleSend(const char* args, const struct SolidSyslogMessage* message)
+static void HandleSend(struct SolidSyslog* handle, const char* args, const struct SolidSyslogMessage* message)
 {
     int count = ParseCount(args);
 
     for (int i = 0; i < count; i++)
     {
-        SolidSyslog_Log(message);
+        SolidSyslog_Log(handle, message);
     }
 
     printf("Sent %d message%s\n", count, (count == 1) ? "" : "s");
@@ -95,6 +95,7 @@ static void HandleSet(const char* args, BddTargetInteractiveSetHandler onSet)
 }
 
 void BddTargetInteractive_Run(
+    struct SolidSyslog* handle,
     const struct SolidSyslogMessage* message,
     FILE* input,
     BddTargetInteractiveSwitchHandler onSwitch,
@@ -121,7 +122,7 @@ void BddTargetInteractive_Run(
         const char* args = NULL;
         if (MatchCommand(line, "send", &args))
         {
-            HandleSend(args, message);
+            HandleSend(handle, args, message);
         }
         else if (onSwitch != NULL && MatchCommand(line, "switch", &args))
         {

@@ -66,6 +66,7 @@ static const char* const THRESHOLD_MARKER_PATH = "Bdd/output/solidsyslog_thresho
 
 static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(BDD_TARGET_BUFFER_MESSAGES)];
 static volatile bool shutdownFlag;
+static struct SolidSyslog* solidSyslog;
 
 /* Created in CreateSender, destroyed in DestroySender — held in file scope so
    teardown can reach them after the SwitchingSender wraps them all. */
@@ -83,7 +84,7 @@ static struct SolidSyslogBlockDevice* storeBlockDevice;
 // NOLINTNEXTLINE(readability-non-const-parameter) -- _beginthreadex thread-entry signature requires void*
 static unsigned __stdcall ServiceThreadEntry(void* arg)
 {
-    BddTargetServiceThread_Run((volatile bool*) arg, SolidSyslogWindowsSleep);
+    BddTargetServiceThread_Run(solidSyslog, (volatile bool*) arg, SolidSyslogWindowsSleep);
     return 0;
 }
 
@@ -333,7 +334,7 @@ int BddTargetWindows_Run(int argc, char* argv[])
         .Sd = sdList,
         .SdCount = sdCount,
     };
-    SolidSyslog_Create(&config);
+    solidSyslog = SolidSyslog_Create(&config);
 
     shutdownFlag = false;
     HANDLE serviceThread = (HANDLE) _beginthreadex(NULL, 0, ServiceThreadEntry, (void*) &shutdownFlag, 0, NULL);
@@ -345,13 +346,13 @@ int BddTargetWindows_Run(int argc, char* argv[])
         .Msg = options.Msg,
     };
 
-    BddTargetInteractive_Run(&message, stdin, BddTargetSwitchConfig_SetByName, NULL);
+    BddTargetInteractive_Run(solidSyslog, &message, stdin, BddTargetSwitchConfig_SetByName, NULL);
 
     shutdownFlag = true;
     WaitForSingleObject(serviceThread, INFINITE);
     CloseHandle(serviceThread);
 
-    SolidSyslog_Destroy();
+    SolidSyslog_Destroy(solidSyslog);
     SolidSyslogOriginSd_Destroy(originSd);
     SolidSyslogTimeQualitySd_Destroy(timeQuality);
     SolidSyslogMetaSd_Destroy(metaSd);

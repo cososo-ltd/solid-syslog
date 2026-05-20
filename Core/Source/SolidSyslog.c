@@ -5,21 +5,25 @@
 #include <stdint.h>
 
 #include "SolidSyslogBuffer.h"
-#include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogNullBuffer.h"
+#include "SolidSyslogNullSender.h"
+#include "SolidSyslogNullStore.h"
+#include "SolidSyslogPrivate.h"
 #include "SolidSyslogSender.h"
-#include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogStore.h"
-#include "SolidSyslogStoreDefinition.h"
 #include "SolidSyslogStringFunction.h"
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTimestamp.h"
 #include "SolidSyslogTunables.h"
 
+struct SolidSyslogBuffer;
 struct SolidSyslogFormatter;
+struct SolidSyslogSender;
+struct SolidSyslogStore;
 struct SolidSyslogStructuredData;
 
 enum
@@ -30,72 +34,21 @@ enum
     SOLIDSYSLOG_MAX_PROCESS_ID_SIZE = 129
 };
 
-struct SolidSyslog
-{
-    struct SolidSyslogBuffer* Buffer;
-    struct SolidSyslogSender* Sender;
-    SolidSyslogClockFunction Clock;
-    SolidSyslogStringFunction GetHostname;
-    SolidSyslogStringFunction GetAppName;
-    SolidSyslogStringFunction GetProcessId;
-    struct SolidSyslogStore* Store;
-    struct SolidSyslogStructuredData** Sd;
-    size_t SdCount;
-};
-
-/* Forward declarations for the Nil "class" defined at the bottom of the file.
- * The Nil objects act as default collaborators that make the singleton
- * crash-safe pre-Create and post-Destroy; the file-static instance below and
- * the NilInstance template both reference these by address. The Nil
- * implementations live below SolidSyslog so this file reads as two cooperating
- * "classes" — SolidSyslog first, then the Nil collaborators it depends on. */
-static void SolidSyslog_NilClock(struct SolidSyslogTimestamp* ts);
-static void SolidSyslog_NilStringFunction(struct SolidSyslogFormatter* formatter);
-static struct SolidSyslogBuffer NilBuffer;
-static struct SolidSyslogSender NilSender;
-static struct SolidSyslogStore NilStore;
-static bool nilBufferReportArmed;
-static bool nilSenderReportArmed;
-static bool instanceInitialised;
-
-static struct SolidSyslog instance = {
-    .Buffer = &NilBuffer,
-    .Sender = &NilSender,
-    .Clock = SolidSyslog_NilClock,
-    .GetHostname = SolidSyslog_NilStringFunction,
-    .GetAppName = SolidSyslog_NilStringFunction,
-    .GetProcessId = SolidSyslog_NilStringFunction,
-    .Store = &NilStore,
-};
-
-/* Template used by _Create and _Destroy to reset every slot to its nil. C99
- * forbids initialising one file-static from another, so the same literal
- * appears once above and once here; both sites stay in sync trivially because
- * the values are nil-object addresses. */
-static const struct SolidSyslog NilInstance = {
-    .Buffer = &NilBuffer,
-    .Sender = &NilSender,
-    .Clock = SolidSyslog_NilClock,
-    .GetHostname = SolidSyslog_NilStringFunction,
-    .GetAppName = SolidSyslog_NilStringFunction,
-    .GetProcessId = SolidSyslog_NilStringFunction,
-    .Store = &NilStore,
-};
-
-/* SolidSyslog helpers forward-declared so the public functions and
- * _Create/_Destroy can call them; each is defined immediately beneath its
- * first caller below. */
 static inline int16_t SolidSyslog_AbsoluteInt16(int16_t value);
 static inline bool SolidSyslog_CaptureTimestamp(struct SolidSyslogTimestamp* ts, SolidSyslogClockFunction clock);
 static inline uint8_t SolidSyslog_CombineFacilityAndSeverity(uint8_t facility, uint8_t severity);
 static inline bool SolidSyslog_FacilityIsValid(uint8_t facility);
-static inline void SolidSyslog_DrainBufferIntoStore(void);
-static inline void SolidSyslog_SendOneFromStore(void);
+static inline void SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
+static inline void SolidSyslog_SendOneFromStore(struct SolidSyslog* self);
 static inline void SolidSyslog_FormatCapturedTimestamp(
     struct SolidSyslogFormatter* f,
     const struct SolidSyslogTimestamp* ts
 );
-static inline void SolidSyslog_FormatMessage(struct SolidSyslogFormatter* f, const struct SolidSyslogMessage* message);
+static inline void SolidSyslog_FormatMessage(
+    struct SolidSyslogFormatter* f,
+    struct SolidSyslog* self,
+    const struct SolidSyslogMessage* message
+);
 static inline void SolidSyslog_FormatMsg(struct SolidSyslogFormatter* f, const char* msg);
 static inline void SolidSyslog_FormatMsgId(struct SolidSyslogFormatter* f, const char* messageId);
 static inline void SolidSyslog_FormatNilvalue(struct SolidSyslogFormatter* f);
@@ -113,55 +66,63 @@ static inline void SolidSyslog_FormatStructuredData(
 );
 static inline void SolidSyslog_FormatTimestamp(struct SolidSyslogFormatter* f, SolidSyslogClockFunction clock);
 static inline void SolidSyslog_FormatUtcOffset(struct SolidSyslogFormatter* f, int16_t offsetMinutes);
-static void SolidSyslog_InstallAppName(SolidSyslogStringFunction configured);
-static void SolidSyslog_InstallBuffer(struct SolidSyslogBuffer* configured);
-static void SolidSyslog_InstallClock(SolidSyslogClockFunction configured);
-static void SolidSyslog_InstallConfig(const struct SolidSyslogConfig* config);
-static void SolidSyslog_InstallHostname(SolidSyslogStringFunction configured);
-static void SolidSyslog_InstallProcessId(SolidSyslogStringFunction configured);
-static void SolidSyslog_InstallSender(struct SolidSyslogSender* configured);
-static void SolidSyslog_InstallStore(struct SolidSyslogStore* configured);
-static void SolidSyslog_InstallStructuredData(struct SolidSyslogStructuredData** configured, size_t count);
-static inline bool SolidSyslog_IsServiceEnabled(void);
+static void SolidSyslog_InstallAppName(struct SolidSyslog* self, SolidSyslogStringFunction configured);
+static void SolidSyslog_InstallBuffer(struct SolidSyslog* self, struct SolidSyslogBuffer* configured);
+static void SolidSyslog_InstallClock(struct SolidSyslog* self, SolidSyslogClockFunction configured);
+static void SolidSyslog_InstallHostname(struct SolidSyslog* self, SolidSyslogStringFunction configured);
+static void SolidSyslog_InstallProcessId(struct SolidSyslog* self, SolidSyslogStringFunction configured);
+static void SolidSyslog_InstallSender(struct SolidSyslog* self, struct SolidSyslogSender* configured);
+static void SolidSyslog_InstallStore(struct SolidSyslog* self, struct SolidSyslogStore* configured);
+static void SolidSyslog_InstallStructuredData(
+    struct SolidSyslog* self,
+    struct SolidSyslogStructuredData** configured,
+    size_t count
+);
+static inline bool SolidSyslog_IsServiceEnabled(struct SolidSyslog* self);
 static inline uint8_t SolidSyslog_MakePrival(const struct SolidSyslogMessage* message);
 static inline bool SolidSyslog_PrivalComponentsAreValid(uint8_t facility, uint8_t severity);
-static void SolidSyslog_ProcessMessages(void);
+static void SolidSyslog_ProcessMessages(struct SolidSyslog* self);
+static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self);
 static inline bool SolidSyslog_SeverityIsValid(uint8_t severity);
 static inline const char* SolidSyslog_SkipLeadingBom(const char* msg);
 static inline bool SolidSyslog_StringIsValid(const char* value);
 static inline bool SolidSyslog_TimestampIsValid(const struct SolidSyslogTimestamp* ts);
 
-void SolidSyslog_Create(const struct SolidSyslogConfig* config)
+void SolidSyslog_Initialise(struct SolidSyslog* self, const struct SolidSyslogConfig* config)
 {
-    if (instanceInitialised)
-    {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_CREATE_ALREADY_INITIALISED);
-    }
-    else if (config == NULL)
-    {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_CREATE_NULL_CONFIG);
-    }
-    else
-    {
-        SolidSyslog_InstallConfig(config);
-        instanceInitialised = true;
-    }
+    SolidSyslog_ResetToDefaults(self);
+    SolidSyslog_InstallBuffer(self, config->Buffer);
+    SolidSyslog_InstallSender(self, config->Sender);
+    SolidSyslog_InstallStore(self, config->Store);
+    SolidSyslog_InstallClock(self, config->Clock);
+    SolidSyslog_InstallHostname(self, config->GetHostname);
+    SolidSyslog_InstallAppName(self, config->GetAppName);
+    SolidSyslog_InstallProcessId(self, config->GetProcessId);
+    SolidSyslog_InstallStructuredData(self, config->Sd, config->SdCount);
 }
 
-static void SolidSyslog_InstallConfig(const struct SolidSyslogConfig* config)
+void SolidSyslog_Cleanup(struct SolidSyslog* self)
 {
-    instance = NilInstance;
-    SolidSyslog_InstallBuffer(config->Buffer);
-    SolidSyslog_InstallSender(config->Sender);
-    SolidSyslog_InstallStore(config->Store);
-    SolidSyslog_InstallClock(config->Clock);
-    SolidSyslog_InstallHostname(config->GetHostname);
-    SolidSyslog_InstallAppName(config->GetAppName);
-    SolidSyslog_InstallProcessId(config->GetProcessId);
-    SolidSyslog_InstallStructuredData(config->Sd, config->SdCount);
+    /* Reset to safe defaults so a stale-handle Log/Service after Destroy is a
+     * silent no-op rather than a NULL-fn-pointer crash. The slot is then
+     * re-claimable by the next _Create. */
+    SolidSyslog_ResetToDefaults(self);
 }
 
-static void SolidSyslog_InstallBuffer(struct SolidSyslogBuffer* configured)
+static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
+{
+    self->Buffer = SolidSyslogNullBuffer_Get();
+    self->Sender = SolidSyslogNullSender_Get();
+    self->Store = SolidSyslogNullStore_Get();
+    self->Clock = SolidSyslog_NullClock;
+    self->GetHostname = SolidSyslog_NullStringFunction;
+    self->GetAppName = SolidSyslog_NullStringFunction;
+    self->GetProcessId = SolidSyslog_NullStringFunction;
+    self->Sd = NULL;
+    self->SdCount = 0;
+}
+
+static void SolidSyslog_InstallBuffer(struct SolidSyslog* self, struct SolidSyslogBuffer* configured)
 {
     if (configured == NULL)
     {
@@ -169,11 +130,11 @@ static void SolidSyslog_InstallBuffer(struct SolidSyslogBuffer* configured)
     }
     else
     {
-        instance.Buffer = configured;
+        self->Buffer = configured;
     }
 }
 
-static void SolidSyslog_InstallSender(struct SolidSyslogSender* configured)
+static void SolidSyslog_InstallSender(struct SolidSyslog* self, struct SolidSyslogSender* configured)
 {
     if (configured == NULL)
     {
@@ -181,11 +142,11 @@ static void SolidSyslog_InstallSender(struct SolidSyslogSender* configured)
     }
     else
     {
-        instance.Sender = configured;
+        self->Sender = configured;
     }
 }
 
-static void SolidSyslog_InstallStore(struct SolidSyslogStore* configured)
+static void SolidSyslog_InstallStore(struct SolidSyslog* self, struct SolidSyslogStore* configured)
 {
     if (configured == NULL)
     {
@@ -193,73 +154,77 @@ static void SolidSyslog_InstallStore(struct SolidSyslogStore* configured)
     }
     else
     {
-        instance.Store = configured;
+        self->Store = configured;
     }
 }
 
-static void SolidSyslog_InstallClock(SolidSyslogClockFunction configured)
+static void SolidSyslog_InstallClock(struct SolidSyslog* self, SolidSyslogClockFunction configured)
 {
     if (configured != NULL)
     {
-        instance.Clock = configured;
+        self->Clock = configured;
     }
 }
 
-static void SolidSyslog_InstallHostname(SolidSyslogStringFunction configured)
+static void SolidSyslog_InstallHostname(struct SolidSyslog* self, SolidSyslogStringFunction configured)
 {
     if (configured != NULL)
     {
-        instance.GetHostname = configured;
+        self->GetHostname = configured;
     }
 }
 
-static void SolidSyslog_InstallAppName(SolidSyslogStringFunction configured)
+static void SolidSyslog_InstallAppName(struct SolidSyslog* self, SolidSyslogStringFunction configured)
 {
     if (configured != NULL)
     {
-        instance.GetAppName = configured;
+        self->GetAppName = configured;
     }
 }
 
-static void SolidSyslog_InstallProcessId(SolidSyslogStringFunction configured)
+static void SolidSyslog_InstallProcessId(struct SolidSyslog* self, SolidSyslogStringFunction configured)
 {
     if (configured != NULL)
     {
-        instance.GetProcessId = configured;
+        self->GetProcessId = configured;
     }
 }
 
-static void SolidSyslog_InstallStructuredData(struct SolidSyslogStructuredData** configured, size_t count)
+static void SolidSyslog_InstallStructuredData(
+    struct SolidSyslog* self,
+    struct SolidSyslogStructuredData** configured,
+    size_t count
+)
 {
-    instance.Sd = configured;
-    instance.SdCount = count;
+    self->Sd = configured;
+    self->SdCount = count;
 }
 
-void SolidSyslog_Destroy(void)
+void SolidSyslog_Service(struct SolidSyslog* handle)
 {
-    instance = NilInstance;
-    nilBufferReportArmed = true;
-    nilSenderReportArmed = true;
-    instanceInitialised = false;
-}
-
-void SolidSyslog_Service(void)
-{
-    if (SolidSyslog_IsServiceEnabled())
+    if (handle == NULL)
     {
-        SolidSyslog_ProcessMessages();
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_SERVICE_NULL_HANDLE);
+    }
+    else if (SolidSyslog_IsServiceEnabled(handle))
+    {
+        SolidSyslog_ProcessMessages(handle);
+    }
+    else
+    {
+        /* Halted store — skip drain/send. */
     }
 }
 
-static inline bool SolidSyslog_IsServiceEnabled(void)
+static inline bool SolidSyslog_IsServiceEnabled(struct SolidSyslog* self)
 {
-    return !SolidSyslogStore_IsHalted(instance.Store);
+    return !SolidSyslogStore_IsHalted(self->Store);
 }
 
-static void SolidSyslog_ProcessMessages(void)
+static void SolidSyslog_ProcessMessages(struct SolidSyslog* self)
 {
-    SolidSyslog_DrainBufferIntoStore();
-    SolidSyslog_SendOneFromStore();
+    SolidSyslog_DrainBufferIntoStore(self);
+    SolidSyslog_SendOneFromStore(self);
 }
 
 /* Eagerly drain the buffer so the producer-side shock absorber stays small while
@@ -271,35 +236,39 @@ static void SolidSyslog_ProcessMessages(void)
  * discard policy speaking — letting that message escape via direct send would
  * break the discard-newest contract (a newer message would bypass older stored
  * ones once the sender recovered). */
-static inline void SolidSyslog_DrainBufferIntoStore(void)
+static inline void SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
 {
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t len = 0;
 
-    while (SolidSyslogBuffer_Read(instance.Buffer, buf, sizeof(buf), &len))
+    while (SolidSyslogBuffer_Read(self->Buffer, buf, sizeof(buf), &len))
     {
-        if (!SolidSyslogStore_Write(instance.Store, buf, len) && SolidSyslogStore_IsTransient(instance.Store))
+        if (!SolidSyslogStore_Write(self->Store, buf, len) && SolidSyslogStore_IsTransient(self->Store))
         {
-            SolidSyslogSender_Send(instance.Sender, buf, len);
+            SolidSyslogSender_Send(self->Sender, buf, len);
         }
     }
 }
 
-static inline void SolidSyslog_SendOneFromStore(void)
+static inline void SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
 {
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t len = 0;
 
-    if (SolidSyslogStore_ReadNextUnsent(instance.Store, buf, sizeof(buf), &len) &&
-        SolidSyslogSender_Send(instance.Sender, buf, len))
+    if (SolidSyslogStore_ReadNextUnsent(self->Store, buf, sizeof(buf), &len) &&
+        SolidSyslogSender_Send(self->Sender, buf, len))
     {
-        SolidSyslogStore_MarkSent(instance.Store);
+        SolidSyslogStore_MarkSent(self->Store);
     }
 }
 
-void SolidSyslog_Log(const struct SolidSyslogMessage* message)
+void SolidSyslog_Log(struct SolidSyslog* handle, const struct SolidSyslogMessage* message)
 {
-    if (message == NULL)
+    if (handle == NULL)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_LOG_NULL_HANDLE);
+    }
+    else if (message == NULL)
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_LOG_NULL_MESSAGE);
     }
@@ -308,31 +277,35 @@ void SolidSyslog_Log(const struct SolidSyslogMessage* message)
         SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(SOLIDSYSLOG_MAX_MESSAGE_SIZE)];
         struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(storage, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
 
-        SolidSyslog_FormatMessage(f, message);
+        SolidSyslog_FormatMessage(f, handle, message);
         SolidSyslogBuffer_Write(
-            instance.Buffer,
+            handle->Buffer,
             SolidSyslogFormatter_AsFormattedBuffer(f),
             SolidSyslogFormatter_Length(f)
         );
     }
 }
 
-static inline void SolidSyslog_FormatMessage(struct SolidSyslogFormatter* f, const struct SolidSyslogMessage* message)
+static inline void SolidSyslog_FormatMessage(
+    struct SolidSyslogFormatter* f,
+    struct SolidSyslog* self,
+    const struct SolidSyslogMessage* message
+)
 {
     SolidSyslog_FormatPrival(f, SolidSyslog_MakePrival(message));
     SolidSyslogFormatter_AsciiCharacter(f, '1');
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    SolidSyslog_FormatTimestamp(f, instance.Clock);
+    SolidSyslog_FormatTimestamp(f, self->Clock);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    SolidSyslog_FormatStringField(f, instance.GetHostname, SOLIDSYSLOG_MAX_HOSTNAME_SIZE);
+    SolidSyslog_FormatStringField(f, self->GetHostname, SOLIDSYSLOG_MAX_HOSTNAME_SIZE);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    SolidSyslog_FormatStringField(f, instance.GetAppName, SOLIDSYSLOG_MAX_APP_NAME_SIZE);
+    SolidSyslog_FormatStringField(f, self->GetAppName, SOLIDSYSLOG_MAX_APP_NAME_SIZE);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    SolidSyslog_FormatStringField(f, instance.GetProcessId, SOLIDSYSLOG_MAX_PROCESS_ID_SIZE);
+    SolidSyslog_FormatStringField(f, self->GetProcessId, SOLIDSYSLOG_MAX_PROCESS_ID_SIZE);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
     SolidSyslog_FormatMsgId(f, message->MessageId);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    SolidSyslog_FormatStructuredData(f, instance.Sd, instance.SdCount);
+    SolidSyslog_FormatStructuredData(f, self->Sd, self->SdCount);
     SolidSyslog_FormatMsg(f, message->Msg);
 }
 
@@ -557,158 +530,12 @@ static inline void SolidSyslog_FormatNilvalue(struct SolidSyslogFormatter* f)
     SolidSyslogFormatter_AsciiCharacter(f, '-');
 }
 
-/* ============================================================================
- * Nil collaborators
- *
- * Private no-op vtables that occupy every instance slot at file load, after
- * _Destroy, and for any required slot the integrator left NULL in their
- * config. Vtable dispatch never NULL-checks — the nils make every collaborator
- * pointer safe to call.
- *
- * NilBuffer and NilSender report one error via SolidSyslog_Error on first
- * use, then silently consume; _Destroy re-arms the flags. NilStore is silent
- * — its absence is a valid integrator choice (matches SolidSyslogNullStore
- * semantics: drain proceeds, fall-through to direct send).
- *
- * The public SolidSyslogNull* family is for integrator-chosen no-ops;
- * these internal nils are crash-safe defaults only.
- * ============================================================================ */
-
-static bool nilBufferReportArmed = true;
-static bool nilSenderReportArmed = true;
-
-static void SolidSyslog_NilClock(struct SolidSyslogTimestamp* ts)
+void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts)
 {
     (void) ts;
 }
 
-static void SolidSyslog_NilStringFunction(struct SolidSyslogFormatter* formatter)
+void SolidSyslog_NullStringFunction(struct SolidSyslogFormatter* formatter)
 {
     (void) formatter;
 }
-
-/* NilBuffer */
-
-static void SolidSyslog_NilBufferWrite(struct SolidSyslogBuffer* base, const void* data, size_t size)
-{
-    (void) base;
-    (void) data;
-    (void) size;
-    if (nilBufferReportArmed)
-    {
-        nilBufferReportArmed = false;
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_NIL_BUFFER_USED);
-    }
-}
-
-static bool SolidSyslog_NilBufferRead(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)
-{
-    (void) base;
-    (void) data;
-    (void) maxSize;
-    *bytesRead = 0;
-    return false;
-}
-
-static struct SolidSyslogBuffer NilBuffer = {
-    .Write = SolidSyslog_NilBufferWrite,
-    .Read = SolidSyslog_NilBufferRead,
-};
-
-/* NilSender */
-
-static bool SolidSyslog_NilSenderSend(struct SolidSyslogSender* base, const void* buffer, size_t size)
-{
-    (void) base;
-    (void) buffer;
-    (void) size;
-    if (nilSenderReportArmed)
-    {
-        nilSenderReportArmed = false;
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_NIL_SENDER_USED);
-    }
-    return true;
-}
-
-static void SolidSyslog_NilSenderDisconnect(struct SolidSyslogSender* base)
-{
-    (void) base;
-}
-
-static struct SolidSyslogSender NilSender = {
-    .Send = SolidSyslog_NilSenderSend,
-    .Disconnect = SolidSyslog_NilSenderDisconnect,
-};
-
-/* NilStore */
-
-static bool SolidSyslog_NilStoreWrite(struct SolidSyslogStore* base, const void* data, size_t size)
-{
-    (void) base;
-    (void) data;
-    (void) size;
-    return false;
-}
-
-static bool SolidSyslog_NilStoreReadNextUnsent(
-    struct SolidSyslogStore* base,
-    void* data,
-    size_t maxSize,
-    size_t* bytesRead
-)
-{
-    (void) base;
-    (void) data;
-    (void) maxSize;
-    *bytesRead = 0;
-    return false;
-}
-
-static void SolidSyslog_NilStoreMarkSent(struct SolidSyslogStore* base)
-{
-    (void) base;
-}
-
-static bool SolidSyslog_NilStoreHasUnsent(struct SolidSyslogStore* base)
-{
-    (void) base;
-    return false;
-}
-
-static bool SolidSyslog_NilStoreIsHalted(struct SolidSyslogStore* base)
-{
-    (void) base;
-    return false;
-}
-
-static size_t SolidSyslog_NilStoreGetTotalBytes(struct SolidSyslogStore* base)
-{
-    (void) base;
-    return 0;
-}
-
-static size_t SolidSyslog_NilStoreGetUsedBytes(struct SolidSyslogStore* base)
-{
-    (void) base;
-    return 0;
-}
-
-/* NilStore stands in when the integrator passes config.Store = NULL —
- * "no store, just try to send." Same transient semantics as NullStore:
- * Service falls through to the sender on Write rejection. */
-static bool SolidSyslog_NilStoreIsTransient(struct SolidSyslogStore* base)
-{
-    (void) base;
-    return true;
-}
-
-static struct SolidSyslogStore NilStore = {
-    .Write = SolidSyslog_NilStoreWrite,
-    .ReadNextUnsent = SolidSyslog_NilStoreReadNextUnsent,
-    .MarkSent = SolidSyslog_NilStoreMarkSent,
-    .HasUnsent = SolidSyslog_NilStoreHasUnsent,
-    .IsHalted = SolidSyslog_NilStoreIsHalted,
-    .GetTotalBytes = SolidSyslog_NilStoreGetTotalBytes,
-    .GetUsedBytes = SolidSyslog_NilStoreGetUsedBytes,
-    .IsTransient = SolidSyslog_NilStoreIsTransient,
-};

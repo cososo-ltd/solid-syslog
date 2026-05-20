@@ -11,8 +11,11 @@
  *   feedback on PR #407).
  * - SOLIDSYSLOG_STD_ATOMIC_COUNTER_POOL_SIZE bumped to 2 enables
  *   `TwoCountersFromPoolAreIndependent` in SolidSyslogAtomicCounterContractTest
- *   to exercise two concurrent counters drawn from the same pool. */
+ *   to exercise two concurrent counters drawn from the same pool.
+ * - SOLIDSYSLOG_POOL_SIZE bumped to 3 lets the SolidSyslogPool fixture's
+ *   FillPool walk three slots and exercise multi-instance Create/Destroy. */
 #define SOLIDSYSLOG_MAX_MESSAGE_SIZE 512
 #define SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE 2U
 #define SOLIDSYSLOG_STD_ATOMIC_COUNTER_POOL_SIZE 2U
 #define SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE 2U
+#define SOLIDSYSLOG_POOL_SIZE 3U

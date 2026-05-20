@@ -6,6 +6,8 @@
 
 EXTERN_C_BEGIN
 
+    struct SolidSyslog;
+
     struct SolidSyslogMessage
     {
         enum SolidSyslogFacility Facility;
@@ -14,8 +16,8 @@ EXTERN_C_BEGIN
         const char* Msg;
     };
 
-    void SolidSyslog_Log(const struct SolidSyslogMessage* message);
-    void SolidSyslog_Service(void);
+    void SolidSyslog_Log(struct SolidSyslog * handle, const struct SolidSyslogMessage* message);
+    void SolidSyslog_Service(struct SolidSyslog * handle);
 
 EXTERN_C_END
 

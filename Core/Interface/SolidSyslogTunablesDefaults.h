@@ -29,6 +29,26 @@
 #endif
 
 /*
+ * Number of SolidSyslog instances the library's internal static pool
+ * can simultaneously hold. Each instance is a small bookkeeping struct
+ * (collaborator pointers + SD array pointer + count).
+ *
+ * Most integrators only ever create one SolidSyslog per process; default 1.
+ * Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if the integrator needs multiple
+ * concurrent SolidSyslog instances.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_POOL_SIZE < 1
+#error "SOLIDSYSLOG_POOL_SIZE must be >= 1"
+#endif
+
+/*
  * Number of SolidSyslogCircularBuffer instances the library's internal
  * static pool can simultaneously hold. Each instance is a small
  * bookkeeping struct (vtable, mutex pointer, ring pointer, head/tail/wrap)

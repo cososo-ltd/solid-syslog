@@ -8,7 +8,13 @@
 
 EXTERN_C_BEGIN
 
-    void BddTargetServiceThread_Run(volatile bool* shutdown, SolidSyslogSleepFunction sleep);
+    struct SolidSyslog;
+
+    void BddTargetServiceThread_Run(
+        struct SolidSyslog * handle,
+        volatile bool* shutdown,
+        SolidSyslogSleepFunction sleep
+    );
 
 EXTERN_C_END
 

@@ -172,6 +172,7 @@ static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(BDD_TARGET_BUFF
  * for one Service() call per iteration; the rebuild path holds it across
  * Destroy → BlockStore_Create → Create. */
 static struct SolidSyslogMutex* lifecycleMutex = NULL;
+static struct SolidSyslog* solidSyslog = NULL;
 static volatile bool solidSyslogReady;
 /* Signals Service to self-delete BEFORE Teardown destroys the lifecycle
  * mutex. Without this, Service races against InteractiveTask: Teardown
@@ -572,7 +573,8 @@ static bool RebuildWithFileStore(void)
     }
 
     solidSyslogReady = false;
-    SolidSyslog_Destroy();
+    SolidSyslog_Destroy(solidSyslog);
+    solidSyslog = NULL;
     DestroyCurrentStore();
 
     /* Build a fresh FatFs-backed BlockStore. With the volume mounted above,
@@ -602,7 +604,7 @@ static bool RebuildWithFileStore(void)
      * sort order in target_driver.py guarantees `set no-sd` comes before
      * `set store file` so the value is final by the time we get here. */
     solidSyslogConfig.SdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0]));
-    SolidSyslog_Create(&solidSyslogConfig);
+    solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
     solidSyslogReady = true;
     SolidSyslogMutex_Unlock(lifecycleMutex);
     return true;
@@ -637,7 +639,8 @@ static void TeardownAll(void)
     SolidSyslogMutex_Lock(lifecycleMutex);
     solidSyslogTeardown = true;
     solidSyslogReady = false;
-    SolidSyslog_Destroy();
+    SolidSyslog_Destroy(solidSyslog);
+    solidSyslog = NULL;
     SolidSyslogOriginSd_Destroy(originSd);
     SolidSyslogTimeQualitySd_Destroy(timeQualitySd);
     SolidSyslogMetaSd_Destroy(metaSd);
@@ -866,10 +869,10 @@ static void InteractiveTask(void* argument)
         .SdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0])),
     };
     SolidSyslog_SetErrorHandler(ErrorHandler, NULL);
-    SolidSyslog_Create(&solidSyslogConfig);
+    solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
     solidSyslogReady = true;
 
-    BddTargetInteractive_Run(&testMessage, stdin, BddTargetSwitchConfig_SetByName, OnSet);
+    BddTargetInteractive_Run(solidSyslog, &testMessage, stdin, BddTargetSwitchConfig_SetByName, OnSet);
 
     /* Peak stack usage report on `quit`. Captured into every BDD run's QEMU
      * console output so stack regressions surface in bdd-freertos-qemu logs
@@ -924,7 +927,7 @@ static void ServiceTask(void* argument)
         }
         if (solidSyslogReady)
         {
-            SolidSyslog_Service();
+            SolidSyslog_Service(solidSyslog);
         }
         SolidSyslogMutex_Unlock(lifecycleMutex);
         vTaskDelay(pdMS_TO_TICKS(1));

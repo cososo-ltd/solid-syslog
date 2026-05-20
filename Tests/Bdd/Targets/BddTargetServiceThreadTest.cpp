@@ -49,6 +49,7 @@ static uint32_t BddTargetEndpointVersion() // NOLINT(modernize-use-trailing-retu
 // clang-format off
 TEST_GROUP(BddTargetServiceThread)
 {
+    struct SolidSyslog*         solidSyslog = nullptr;
     struct SolidSyslogSender*   sender   = nullptr;
     struct SolidSyslogBuffer*   buffer   = nullptr;
     struct SolidSyslogStore*    store    = nullptr;
@@ -75,22 +76,23 @@ TEST_GROUP(BddTargetServiceThread)
         store  = SolidSyslogNullStore_Get();
 
         SolidSyslogConfig config = {buffer, sender, nullptr, nullptr, nullptr, nullptr, store, nullptr, 0};
-        SolidSyslog_Create(&config);
+        // cppcheck-suppress unreadVariable -- read via Run() in tests; cppcheck does not model CppUTest macros
+        solidSyslog = SolidSyslog_Create(&config);
     }
 
     void teardown() override
     {
-        SolidSyslog_Destroy();
+        SolidSyslog_Destroy(solidSyslog);
         SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
         SolidSyslogUdpSender_Destroy(sender);
         SolidSyslogPosixDatagram_Destroy(datagram);
         SolidSyslogGetAddrInfoResolver_Destroy(resolver);
     }
 
-    static void Log()
+    void Log() const
     {
         SolidSyslogMessage message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFORMATIONAL, nullptr, nullptr};
-        SolidSyslog_Log(&message);
+        SolidSyslog_Log(solidSyslog, &message);
     }
 };
 
@@ -98,7 +100,7 @@ TEST_GROUP(BddTargetServiceThread)
 
 TEST(BddTargetServiceThread, DoesNotSendWhenBufferEmpty)
 {
-    BddTargetServiceThread_Run(&shutdown, SleepFake);
+    BddTargetServiceThread_Run(solidSyslog, &shutdown, SleepFake);
     CALLED_FAKE(SocketFake_Sendto, NEVER);
 }
 
@@ -107,7 +109,7 @@ TEST(BddTargetServiceThread, YieldsOneMillisecondAfterEachServiceTick)
     shutdown = false;
     sleepShutdownFlag = &shutdown;
 
-    BddTargetServiceThread_Run(&shutdown, SleepFake);
+    BddTargetServiceThread_Run(solidSyslog, &shutdown, SleepFake);
 
     CALLED_FUNCTION(SleepFake, ONCE);
     LONGS_EQUAL(1, lastSleepMs);

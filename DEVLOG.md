@@ -1,5 +1,193 @@
 # Dev Log
 
+## 2026-05-20 — S11.10: Retrofit SolidSyslog core onto PoolAllocator (handle API)
+
+Closes S11.10 (#413). The penultimate E11 story — retrofits the
+`SolidSyslog` core itself onto the canonical 3-TU split + handle-taking
+public API. The class-by-class sweep closed in S11.09; only S11.11
+(MISRA `D.002` suppression cleanup) remains in E11.
+
+Two commits on the branch, then DEVLOG.
+
+- `795df8e` — **`refactor: S11.10 collapse Nil collaborators onto public
+  Null siblings`**. Strip `NilBuffer` / `NilSender` / `NilStore` vtables
+  (~120 lines), point the file-static `instance` defaults at the public
+  `SolidSyslogNull{Buffer,Sender,Store}_Get()` siblings, drop the
+  loud-once `NIL_BUFFER_USED` / `NIL_SENDER_USED` reporters and their 5
+  asserting tests. The authoritative bad-config signal is the
+  Create-time `NULL_BUFFER` / `NULL_SENDER` error fired by
+  `_InstallBuffer` / `_InstallSender`. Net deletion: 273 lines.
+  `NilClock` / `NilStringFunction` (the two function-pointer no-ops with
+  no public Null equivalent) renamed to `NullClock` / `NullStringFunction`
+  and kept TU-local.
+
+- `00fa7d7` — **`feat!: S11.10 migrate SolidSyslog core onto
+  PoolAllocator with handle API`**. The architectural change. New
+  `SolidSyslogPrivate.h` lifts `struct SolidSyslog` + `_Initialise` /
+  `_Cleanup` signatures + the two TU-shared `NullClock` /
+  `NullStringFunction` declarations into a private header. New
+  `SolidSyslogStatic.c` carries `SolidSyslog_InUse[]`,
+  `SolidSyslog_Pool[]`, `SolidSyslog_Allocator`, `_Create` / `_Destroy` /
+  `IndexFromHandle` / `CleanupAtIndex`, and the `NullInstance`
+  exhaustion-fallback template. `SolidSyslog.c` keeps the algorithm:
+  every `instance.X` reference becomes `self->X`, and `_Log` / `_Service`
+  / `_FormatMessage` / `_DrainBufferIntoStore` / `_SendOneFromStore` /
+  `_IsServiceEnabled` take a `self` parameter. `_Initialise` absorbs the
+  per-slot `Install*` helpers; `_Cleanup` resets the slot to safe
+  defaults so a stale-handle Log/Service after Destroy is a silent
+  no-op.
+
+  The collapsed commit also folds in commit 3 from the story body — the
+  consumer-side BDD-target updates. Splitting them per the ticket
+  recipe would have left the debug build broken between commits 2 and
+  3, and CMake doesn't offer a granular "compile but don't link"
+  knob. All four BDD targets (Linux, Windows, FreeRtos, Common) +
+  every test fixture (`SolidSyslog`, `SolidSyslogLifecycle`,
+  `SolidSyslogServiceEagerDrain`, `BddTargetServiceThread`,
+  `ServiceDrainInterleave`, the PosixMessageQueueBuffer service test)
+  thread a `struct SolidSyslog*` through.
+
+### Decisions
+
+- **`SOLIDSYSLOG_POOL_SIZE` tunable, default 1U.** Mirrors every other
+  E11 class. The default preserves single-instance integrators
+  exactly; multi-instance is opt-in via
+  `SOLIDSYSLOG_USER_TUNABLES_FILE`.
+  `Tests/Fixtures/SmallMessageSizeTunables.h` bumps to 3U so
+  `tunable-override-debug` exercises pool walks across three slots.
+
+- **NullInstance, not NilInstance — and lazy-populated.** Decided
+  pre-coding (memory: AskUserQuestion answers). Once the collaborator
+  slots route through public Null siblings, "Nil" is a historical
+  name. The lazy-populate inside `SolidSyslog_EnsureNullInstancePopulated`
+  is forced by C99: `SolidSyslogNull*_Get()` returns runtime addresses,
+  so a file-scope designated initialiser cannot use them. Populated on
+  first reach (`_Create` always touches it).
+
+- **Class-specific error-message wording**
+  (`SOLIDSYSLOG_ERROR_MSG_SOLIDSYSLOG_POOL_EXHAUSTED` /
+  `_UNKNOWN_DESTROY`). Decided pre-coding. Matches every other E11
+  class's `MSG_<CLASS>_POOL_EXHAUSTED` / `_UNKNOWN_DESTROY` shape; the
+  uniform-format alternative would have forced a wider sweep across
+  every previous E11 class.
+
+- **`MSG_CREATE_ALREADY_INITIALISED` deleted.** Pool semantics replace
+  the singleton's double-Create-into-overwrite contract: a second Create
+  either gets a fresh slot or fires `POOL_EXHAUSTED`. The legacy
+  error message has no caller.
+
+- **NULL-handle defensive paths on the runtime entry points** —
+  `_Log(NULL, ...)` and `_Service(NULL)` fire ERROR + return.
+  `_Destroy(NULL)` and `_Destroy(unknown)` fire WARNING + return via
+  the existing `IndexFromHandle` invalid-pointer path; no separate
+  NULL check needed.
+
+- **Test fixtures absorb the handle as a member.** Five fixtures
+  needed `struct SolidSyslog* solidSyslog` added. The
+  `SolidSyslogLifecycle` fixture's old `setup()` called
+  `SolidSyslog_Destroy()` to clear singleton state — that's gone; the
+  new setup just initialises `solidSyslog = nullptr`, and teardown
+  destroys only if non-null. `LogBeforeCreateDoesNotCrash` / 
+  `ServiceBeforeCreateDoesNotCrash` were rewritten as
+  `LogWithNullHandleReportsError` / `ServiceWithNullHandleReportsError`
+  — same defensive property, different shape.
+
+- **The two pool-exhaustion tests live in the new
+  `SolidSyslogPool` TEST_GROUP only.** Initial drafts put parallel
+  tests in `SolidSyslogLifecycle`; those broke under
+  `tunable-override-debug` (POOL_SIZE=3) because they assumed a single
+  Create exhausts the pool. The Pool TEST_GROUP's `FillPool` is
+  pool-size-agnostic and the right home.
+
+- **`BddTargetInteractive_Run` and `BddTargetServiceThread_Run`
+  take the handle as a leading parameter.** Most natural place to
+  thread the handle; alternative was a global hook, which would have
+  been worse. `BddTargetInteractiveTest` doesn't exercise the `send`
+  command so it passes `nullptr` for the handle — documented in a
+  test-file comment.
+
+- **Forged "unknown handle" via `reinterpret_cast<struct
+  SolidSyslog*>(&stackByte)`** in the unknown-handle Destroy tests.
+  `struct SolidSyslog` is opaque in the public headers (private
+  shape lives in `SolidSyslogPrivate.h`, internal-only), so a
+  declared local won't compile. NOLINT-suppressed
+  `cppcoreguidelines-pro-type-reinterpret-cast` at each site.
+
+### Per-class delta
+
+- `SolidSyslog.c`: 568 → 567 lines (the format helpers dominate;
+  collapsed Install*-on-instance into Install*-on-self, dropped
+  `_Create` / `_Destroy` / lazy-init helpers / Nil collaborators).
+- `SolidSyslogStatic.c` new: 99 lines (Pool, Allocator, Create,
+  Destroy, IndexFromHandle, CleanupAtIndex, NullInstance).
+- `SolidSyslogPrivate.h` new: 41 lines (struct, _Initialise, _Cleanup,
+  NullClock / NullStringFunction extern decls).
+- `SolidSyslogPoolTest.cpp` new: 178 lines (9 tests mirroring
+  `SolidSyslogStdAtomicCounterPool`).
+- `Core/Interface/SolidSyslog.h` / `SolidSyslogConfig.h`: handle API.
+- `SolidSyslogErrorMessages.h`: -2 (NIL_*_USED) +4 (POOL_EXHAUSTED,
+  UNKNOWN_DESTROY, LOG_NULL_HANDLE, SERVICE_NULL_HANDLE) -1
+  (CREATE_ALREADY_INITIALISED) = +1 net.
+
+### Local validation
+
+All host gates green from the gcc devcontainer:
+
+- debug: 1282 tests pass at default `SOLIDSYSLOG_POOL_SIZE=1` and at
+  `SOLIDSYSLOG_POOL_SIZE=3` via the `tunable-override-debug` preset.
+- sanitize: 1282 tests pass; pre-existing UBSan finding on
+  `Tests/FileFake.c:424` from S10.04 unchanged.
+- coverage: aggregated 99.9% line; `SolidSyslog.c` 100% line on its
+  225 lines, `SolidSyslogStatic.c` 100% line on its 41 lines.
+- tidy: clean (NOLINTNEXTLINE needed for the
+  multi-line-signature shutdown-pointer-const-parameter complaint
+  after I added the handle param; folded back into single-line
+  signature).
+- cppcheck: clean (two new `unreadVariable` suppressions on
+  fixture-assigned `solidSyslog` per the existing
+  `// cppcheck-suppress unreadVariable -- ... cppcheck does not model
+  CppUTest macros` precedent).
+- format: clean. clang-format prefers `struct SolidSyslog * handle`
+  with spaces in some opaque-forward-decl contexts and `struct
+  SolidSyslog* handle` in others — the project's `.clang-format`
+  accepts both, both forms appear in formatted output.
+- IWYU clean via cpputest-clang (caught one missing
+  `SolidSyslogPrival.h` include in `SolidSyslogStatic.c` and missing
+  forward decls in `SolidSyslog.c`, both folded back into the
+  architectural commit).
+- OpenSSL integration suite green.
+
+### Handoff for CI
+
+- **`build-windows-msvc`** — Windows BDD target now stores the handle
+  + passes it through `BddTargetServiceThread_Run` and
+  `BddTargetInteractive_Run`. Expected pass.
+- **`bdd-windows-otel`** — exercises the handle threading via
+  Windows main + Interactive run. Expected pass.
+- **`bdd-linux-syslog-ng`** — exercises Linux main's handle storage
+  and threading. Expected pass.
+- **`bdd-freertos-qemu`** — exercises FreeRtos main's lifecycle-mutex
+  + handle pattern across `RebuildWithFileStore` and `TeardownAll`.
+  Expected pass; the lifecycle-mutex still guards Service against
+  Destroy/Create transitions, only now both ends thread the handle.
+
+### Known stale findings (pre-existing)
+
+- `Tests/FileFake.c:424` UBSan finding — pre-existing, S10.04.
+- `Tests/FreeRtos/CmsdkUartFake.c` tidy errors — pre-existing, S11.08.
+
+### Deferred
+
+- **S11.11 — wholesale MISRA `D.002` storage-cast deviation cleanup.**
+  Final E11 story. SolidSyslog itself had no storage-cast deviation to
+  begin with (it was file-static, not caller-supplied-storage), so
+  nothing in this story to inherit; S11.11 sweeps the per-class
+  deviations that landed across S11.02–S11.09.
+
+### Open questions
+
+- None.
+
 ## 2026-05-20 — S11.09: AtomicCounter family + TLS + FatFs onto PoolAllocator
 
 Closes S11.09 (#412). Closes out E11's class-by-class migration with the

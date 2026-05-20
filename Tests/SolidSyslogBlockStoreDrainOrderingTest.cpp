@@ -221,6 +221,7 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
      * until Service drains them (unlike BufferFake which only keeps
      * the last one). */
     uint8_t                          bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(16)] = {};
+    struct SolidSyslog*              solidSyslog                                               = nullptr;
     struct SolidSyslogStore*         store                                                     = nullptr;
     struct SolidSyslogMutex*         mutex                                                     = nullptr;
     struct SolidSyslogBuffer*        buffer                                                    = nullptr;
@@ -236,7 +237,8 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
 
     void teardown() override
     {
-        SolidSyslog_Destroy();
+        SolidSyslog_Destroy(solidSyslog);
+        solidSyslog = nullptr;
         if (store != nullptr)
         {
             SolidSyslogBlockStore_Destroy(store);
@@ -261,7 +263,7 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
         sysCfg.Buffer                   = buffer;
         sysCfg.Sender                   = &spy.Base;
         sysCfg.Store                    = store;
-        SolidSyslog_Create(&sysCfg);
+        solidSyslog = SolidSyslog_Create(&sysCfg);
     }
 
     /* Push one record into the buffer with sequenceId encoded in the first
@@ -278,11 +280,11 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
         SolidSyslogBuffer_Write(buffer, buf.data(), buf.size());
     }
 
-    static void ServiceTickUntilQuiet(size_t cap)
+    void ServiceTickUntilQuiet(size_t cap) const
     {
         for (size_t i = 0; i < cap; ++i)
         {
-            SolidSyslog_Service();
+            SolidSyslog_Service(solidSyslog);
         }
     }
 };
@@ -307,7 +309,7 @@ TEST(ServiceDrainInterleave, DiscardNewestDoesNotLetNewestBypassOldestOnRecovery
 
     /* Pre-outage send: msg 1 flows buffer -> store -> sender successfully. */
     Enqueue(1, cfg.PayloadSize);
-    SolidSyslog_Service();
+    SolidSyslog_Service(solidSyslog);
     LONGS_EQUAL(1U, spy.successfulSends.size());
 
     /* Outage begins. */
@@ -316,7 +318,7 @@ TEST(ServiceDrainInterleave, DiscardNewestDoesNotLetNewestBypassOldestOnRecovery
     /* Two messages fit into the 2-block store. */
     Enqueue(2, cfg.PayloadSize);
     Enqueue(3, cfg.PayloadSize);
-    SolidSyslog_Service();
+    SolidSyslog_Service(solidSyslog);
 
     /* Message 11 arrives still in outage — it lands in the buffer but
      * hasn't been pulled by Service yet at the moment the oracle resumes. */
