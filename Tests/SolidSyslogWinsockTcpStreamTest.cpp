@@ -3,15 +3,37 @@
 
 using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
     // macros
+#include "ConfigLockFake.h"
+#include "ErrorHandlerFake.h"
 #include "SolidSyslogAddress.h"
+#include "SolidSyslogErrorMessages.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
+#include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTransport.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogWinsockTcpStream.h"
 #include "SolidSyslogWinsockTcpStreamInternal.h"
 #include "WinsockFake.h"
 #include <cstdint>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
+
+// Asserts handle is non-null and not one of the slots in pool.
+#define CHECK_IS_FALLBACK(handle, pool)                                                \
+    do                                                                                 \
+    {                                                                                  \
+        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
+        for (auto* slot : (pool))                                                      \
+        {                                                                              \
+            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
+            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
+        }                                                                              \
+    } while (0)
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 // clang-format off
 static const char* const TEST_MESSAGE     = "hello";
@@ -21,7 +43,6 @@ static const int         TEST_PORT        = 514;
 
 TEST_GROUP(SolidSyslogWinsockTcpStream)
 {
-    SolidSyslogWinsockTcpStreamStorage streamStorage{};
     // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogStream* stream = nullptr;
     SolidSyslogAddressStorage addrStorage{};
@@ -42,7 +63,7 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
         UT_PTR_SET(WinsockTcpStream_select,           WinsockFake_select);
         UT_PTR_SET(WinsockTcpStream_WSAGetLastError,  WinsockFake_WSAGetLastError);
         // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
-        stream = SolidSyslogWinsockTcpStream_Create(&streamStorage);
+        stream = SolidSyslogWinsockTcpStream_Create();
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing, legal and necessary
         auto* bytes = reinterpret_cast<std::uint8_t*>(&addrStorage);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- reinterpret to platform layout, storage is intptr_t-aligned
@@ -80,14 +101,6 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
 
 TEST(SolidSyslogWinsockTcpStream, CreateDestroyWorksWithoutCrashing)
 {
-}
-
-TEST(SolidSyslogWinsockTcpStream, CreateReturnsHandleInsideCallerSuppliedStorage)
-{
-    SolidSyslogWinsockTcpStreamStorage storage{};
-    struct SolidSyslogStream* localStream = SolidSyslogWinsockTcpStream_Create(&storage);
-    POINTERS_EQUAL(&storage, localStream);
-    SolidSyslogWinsockTcpStream_Destroy(localStream);
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenCallsSocketOnce)
@@ -467,6 +480,141 @@ TEST(SolidSyslogWinsockTcpStream, DestroyClosesOpenSocket)
     SolidSyslogStream_Open(stream, addr);
     SolidSyslogWinsockTcpStream_Destroy(stream);
     CALLED_FAKE(WinsockFake_Close, ONCE);
+}
+
+// clang-format off
+TEST_GROUP(SolidSyslogWinsockTcpStreamPool)
+{
+    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
+    struct SolidSyslogStream* pooled[SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE] = {};
+    struct SolidSyslogStream* overflow                                         = nullptr;
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogWinsockTcpStream_Destroy(handle);
+            }
+        }
+        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
+        if (overflow != nullptr)
+        {
+            SolidSyslogWinsockTcpStream_Destroy(overflow);
+        }
+        ConfigLockFake_Uninstall();
+        ErrorHandlerFake_Uninstall();
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = SolidSyslogWinsockTcpStream_Create();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogWinsockTcpStreamPool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = SolidSyslogWinsockTcpStream_Create();
+
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
+TEST(SolidSyslogWinsockTcpStreamPool, ExhaustedCreateReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FillPool();
+
+    overflow = SolidSyslogWinsockTcpStream_Create();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_WINSOCKTCPSTREAM_POOL_EXHAUSTED, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogWinsockTcpStreamPool, FallbackSendIsNoOp)
+{
+    FillPool();
+    overflow = SolidSyslogWinsockTcpStream_Create();
+
+    CHECK_TRUE(SolidSyslogStream_Send(overflow, "x", 1));
+}
+
+TEST(SolidSyslogWinsockTcpStreamPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
+{
+    ConfigLockFake_Install();
+
+    pooled[0] = SolidSyslogWinsockTcpStream_Create();
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogWinsockTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
+{
+    FillPool();
+    ConfigLockFake_Install();
+
+    overflow = SolidSyslogWinsockTcpStream_Create();
+
+    LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+}
+
+TEST(SolidSyslogWinsockTcpStreamPool, DestroyOfPooledHandleLocksOnce)
+{
+    pooled[0] = SolidSyslogWinsockTcpStream_Create();
+    ConfigLockFake_Install();
+
+    SolidSyslogWinsockTcpStream_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogWinsockTcpStreamPool, DestroyOfUnknownHandleDoesNotLock)
+{
+    ConfigLockFake_Install();
+    struct SolidSyslogStream stranger = {};
+
+    SolidSyslogWinsockTcpStream_Destroy(&stranger);
+
+    CALLED_FAKE(ConfigLockFake_Lock, NEVER);
+    CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
+}
+
+TEST(SolidSyslogWinsockTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogStream stranger = {};
+
+    SolidSyslogWinsockTcpStream_Destroy(&stranger);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_WINSOCKTCPSTREAM_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogWinsockTcpStreamPool, DestroyOfStaleHandleReportsWarning)
+{
+    pooled[0] = SolidSyslogWinsockTcpStream_Create();
+    SolidSyslogWinsockTcpStream_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogWinsockTcpStream_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_WINSOCKTCPSTREAM_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
 }
 
 TEST(SolidSyslogWinsockTcpStream, DestroyClosesWithSocketFd)

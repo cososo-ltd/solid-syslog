@@ -1,5 +1,140 @@
 # Dev Log
 
+## 2026-05-20 — S11.07: Windows adapters onto PoolAllocator
+
+Closes S11.07 (#406). The second platform-adapter sweep in E11 — applies the
+canonical 3-TU split + `SolidSyslogPoolAllocator` to all five stateful
+Windows adapter classes (`WindowsMutex`, `WindowsFile`, `WinsockTcpStream` —
+storage-cast; `WinsockDatagram`, `WinsockResolver` — file-scope singleton).
+
+Five per-class commits on the branch — no new public GoF nulls (all four
+needed — `NullStream`, `NullDatagram`, `NullFile`, `NullResolver` — landed in
+S11.06; `NullMutex` already in `_Get` shape).
+
+- `80dfd5b` — `WindowsMutex` (storage-cast). `InitializeCriticalSection`
+  has no failure mode in our flow so Initialise has no partial-init
+  branch (unlike `PosixMutex_Initialise` which guards `pthread_mutex_init`'s
+  return). Refactor-only otherwise.
+- `8918100` — `WinsockDatagram` (singleton). The six file-scope
+  `Winsock_socket` / `_sendto` / `_closesocket` / `_connect` / `_setsockopt`
+  / `_getsockopt` function-pointer test seams stay in `WinsockDatagram.c`
+  per the C4232 `__declspec(dllimport)` forwarder workaround; the
+  `Internal.h` header continues to expose them to WinsockFake.
+  `Initialise` explicitly sets `Fd = INVALID_SOCKET` (not relying on pool
+  zero-init — `SOCKET 0` is a valid handle on Windows, not invalid).
+- `1f3ac1f` — `WinsockResolver` (singleton). Truly stateless today (the
+  struct is just `{ Base }`); pool-migrated for symmetry with the upcoming
+  `FreeRtosStaticResolver` (S11.08) which carries IPv4 octet state. Same
+  decision precedent as S11.06's `GetAddrInfoResolver`. The two
+  `Winsock_getaddrinfo` / `_freeaddrinfo` seams stay in `WinsockResolver.c`.
+- `766432a` — `WindowsFile` (storage-cast). The `DEFAULT_INSTANCE` /
+  `DESTROYED_INSTANCE` static const structs that the storage-cast variant
+  used to seed/clear the vtable + Fd are gone; that job moves to
+  `Initialise` / `Cleanup`.
+- `209b767` — `WinsockTcpStream` (storage-cast). Largest commit; all ten
+  `WinsockTcpStream_*` seams preserved verbatim, all keepalive setsockopt
+  calls preserved, the non-blocking connect-with-select-timeout dance
+  preserved, the WSAEWOULDBLOCK / WSAECONNRESET branches in Read / Send
+  preserved. **Refactor-only.** Also fixes a latent header-order accident:
+  `mstcpip.h` was being parsed correctly only because `Internal.h`
+  transitively pulled in `winsock2.h` first; the new TU layout exposes the
+  ordering explicitly with a documented `#include <winsock2.h>` ahead of
+  `<mstcpip.h>`.
+
+### Decisions
+
+- **No new public GoF nulls in this story.** All four needed
+  (`NullStream`, `NullDatagram`, `NullFile`, `NullResolver`) landed in
+  S11.06; `NullMutex` migrated to `_Get` in S11.06's commit `bba44d9`.
+  S11.07 is a pure migration sweep, no new API surface.
+
+- **`WinsockResolver` pool-migrated, not `_Get`.** The class is truly
+  stateless today (struct is one field), and `_Get(void)` would be the
+  more honest shape. Rejected in favour of consistency with
+  `FreeRtosStaticResolver` (S11.08), which carries 4 bytes of IPv4 octet
+  state and needs the pool. Mixing `_Get` and `_Create`/`_Destroy` within
+  the Resolver base class would force integrators to remember which
+  sibling wants which lifecycle. Same decision was taken for
+  `GetAddrInfoResolver` in S11.06.
+
+- **`WinsockTcpStream` pool size default 2U**, not 1U like the other four
+  classes. Matches the POSIX sibling. The BDD target needs a plain-TCP
+  stream and a TLS-underlying-TCP stream concurrently; a default of 1
+  would force every TLS integration to override the tunable.
+
+- **`WindowsMutex_Initialise` has no partial-init guard.** Unlike
+  `PosixMutex_Initialise` which keys `Cleanup` off `Base.Lock ==
+  PosixMutex_Lock` to handle a failed `pthread_mutex_init`,
+  `InitializeCriticalSection` is `void` (documented non-failing on Vista+)
+  and the pre-migration code didn't handle failure either. Per
+  refactor-only, no new failure path introduced. If the
+  `InitializeCriticalSectionAndSpinCount` path's BOOL return is ever
+  needed (resource exhaustion under stress), that's an E12 concern.
+
+- **`HandleEqualsStorageAddress` / `CreateReturnsHandleInsideCallerSuppliedStorage`
+  tests dropped.** Three of the five tests pinned the invariant "returned
+  handle equals address of caller's storage" — meaningful for the
+  storage-cast shape, no longer meaningful when the slot is library-internal.
+  The remaining interface tests carry the regression net forward.
+
+- **WSAStartup / WSACleanup ownership unchanged.** None of the five `.c`
+  files calls `WSAStartup` today; the BDD target / caller owns the
+  Winsock lifecycle. Pool migration preserves that — no new lifecycle
+  calls introduced.
+
+- **Pool-exhaustion fallback uses the shared GoF null per class:**
+  `NullMutex` / `NullStream` / `NullDatagram` / `NullFile` / `NullResolver`.
+  Same severity vocabulary as S11.06 — ERROR on exhausted Create,
+  WARNING on unknown/stale Destroy. Error message constants follow the
+  `SOLIDSYSLOG_ERROR_MSG_<CLASS>_POOL_EXHAUSTED` / `_UNKNOWN_DESTROY`
+  pattern verbatim.
+
+- **All local MSVC gates green.** `msvc-debug` preset: full 1131-test
+  suite passes at default pool sizes. Per-class Pool TEST_GROUPs add 45
+  tests overall (9 × 5 classes).
+
+### Deferred
+
+- **`WindowsAtomicCounter` migration.** Out of scope here per the E11
+  sequence — lands in S11.09 alongside `StdAtomicCounter` ("AtomicCounter
+  family + TLS + FatFs"). The two atomic counters share a contract test
+  and will likely share a `NullAtomicCounter` / class-private fallback
+  decision; that's cleaner as one PR.
+
+- **`SolidSyslogAddress` (Windows variant).** Utility on a struct, no
+  Create / Destroy. Out of scope for E11.
+
+- **Audience-table rows for `WinsockDatagram` / `WinsockResolver` /
+  `WinsockTcpStream`.** None today (only `WindowsFile` and `WindowsMutex`
+  carry audience rows on the Windows side); pre-existing inconsistency
+  with POSIX. Tracked for S11.11 wrap-up.
+
+- **`*Static.c` helper placement.** CodeRabbit flagged that
+  `IndexFromHandle` / `CleanupAtIndex` should be `static inline` and
+  defined immediately beneath the first caller per CLAUDE.md's helper
+  rule, rather than the forward-declare-at-top + define-at-end shape.
+  The rule has drifted across the entire `*Static.c` family — every
+  S11.01 / S11.04 / S11.05 / S11.06 / S11.07 `*Static.c` follows the
+  drifted shape today. Fixing S11.07 in isolation would leave the
+  already-merged stories inconsistent. Carved out as the next standalone
+  cleanup story (does not block S11.08).
+
+### Open questions
+
+- **`WinsockDatagram` `socket()` failure mode.** Today's pool Create
+  returns the slot unconditionally and stashes whatever the underlying
+  `socket()` returns (possibly `INVALID_SOCKET`); the migration preserves
+  that. Routing a `socket()` failure through `NullDatagram` would shift
+  the bad-setup contract — fits E12 better than this sweep. Mirrors
+  S11.06's `PosixMessageQueueBuffer` `mq_open` defer.
+
+- **`WinsockTcpStream`'s `select()`-bounded connect timeout** isn't
+  exercised by S11.07's pool tests (they only stress the slot allocator).
+  The existing TcpStream suite carries that contract forward unchanged —
+  no regression risk under refactor-only — but if the timeout semantics
+  ever drift, the failure mode would be a Service-loop wedge in BDD
+  outage scenarios.
+
 ## 2026-05-19 — S11.06: POSIX adapters onto PoolAllocator
 
 Closes S11.06 (#405). The first platform-adapter sweep in E11 — applies the

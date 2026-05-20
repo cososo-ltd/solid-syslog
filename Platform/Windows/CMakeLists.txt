@@ -8,8 +8,10 @@ if(HAVE_WINDOWS_PLATFORM)
     target_sources(${PROJECT_NAME} PRIVATE
         Source/SolidSyslogWindowsClock.c
         Source/SolidSyslogWindowsFile.c
+        Source/SolidSyslogWindowsFileStatic.c
         Source/SolidSyslogWindowsHostname.c
         Source/SolidSyslogWindowsMutex.c
+        Source/SolidSyslogWindowsMutexStatic.c
         Source/SolidSyslogWindowsProcessId.c
         Source/SolidSyslogWindowsSleep.c
         Source/SolidSyslogWindowsSysUpTime.c
@@ -28,8 +30,11 @@ if(SOLIDSYSLOG_WINSOCK)
     target_sources(${PROJECT_NAME} PRIVATE
         Source/SolidSyslogAddress.c
         Source/SolidSyslogWinsockResolver.c
+        Source/SolidSyslogWinsockResolverStatic.c
         Source/SolidSyslogWinsockDatagram.c
+        Source/SolidSyslogWinsockDatagramStatic.c
         Source/SolidSyslogWinsockTcpStream.c
+        Source/SolidSyslogWinsockTcpStreamStatic.c
     )
     target_link_libraries(${PROJECT_NAME} PUBLIC ws2_32)
 endif()

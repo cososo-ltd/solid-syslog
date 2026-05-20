@@ -3,14 +3,36 @@
 
 using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
     // macros
+#include "ConfigLockFake.h"
+#include "ErrorHandlerFake.h"
 #include "SolidSyslogAddress.h"
+#include "SolidSyslogErrorMessages.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogResolver.h"
+#include "SolidSyslogResolverDefinition.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogWinsockResolver.h"
 #include "SolidSyslogWinsockResolverInternal.h"
 #include "WinsockFake.h"
 #include <cstdint>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
+
+// Asserts handle is non-null and not one of the slots in pool.
+#define CHECK_IS_FALLBACK(handle, pool)                                                \
+    do                                                                                 \
+    {                                                                                  \
+        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
+        for (auto* slot : (pool))                                                      \
+        {                                                                              \
+            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
+            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
+        }                                                                              \
+    } while (0)
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 // clang-format off
 static const char* const TEST_HOST           = "127.0.0.1";
@@ -35,7 +57,7 @@ TEST_GROUP(SolidSyslogWinsockResolver)
 
     void teardown() override
     {
-        SolidSyslogWinsockResolver_Destroy();
+        SolidSyslogWinsockResolver_Destroy(resolver);
     }
 
     bool Resolve(const char* host, uint16_t port, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP)
@@ -121,4 +143,141 @@ TEST(SolidSyslogWinsockResolver, FreesAddrInfoOnSuccess)
 {
     Resolve(TEST_HOST, TEST_PORT);
     CALLED_FAKE(WinsockFake_FreeAddrInfo, ONCE);
+}
+
+// clang-format off
+TEST_GROUP(SolidSyslogWinsockResolverPool)
+{
+    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
+    struct SolidSyslogResolver* pooled[SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE] = {};
+    struct SolidSyslogResolver* overflow                                       = nullptr;
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogWinsockResolver_Destroy(handle);
+            }
+        }
+        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
+        if (overflow != nullptr)
+        {
+            SolidSyslogWinsockResolver_Destroy(overflow);
+        }
+        ConfigLockFake_Uninstall();
+        ErrorHandlerFake_Uninstall();
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = SolidSyslogWinsockResolver_Create();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogWinsockResolverPool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = SolidSyslogWinsockResolver_Create();
+
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
+TEST(SolidSyslogWinsockResolverPool, ExhaustedCreateReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FillPool();
+
+    overflow = SolidSyslogWinsockResolver_Create();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_WINSOCKRESOLVER_POOL_EXHAUSTED, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogWinsockResolverPool, FallbackResolveIsNoOp)
+{
+    FillPool();
+    overflow = SolidSyslogWinsockResolver_Create();
+    SolidSyslogAddressStorage addrStorage{};
+    struct SolidSyslogAddress* address = SolidSyslogAddress_FromStorage(&addrStorage);
+
+    CHECK_FALSE(SolidSyslogResolver_Resolve(overflow, SOLIDSYSLOG_TRANSPORT_UDP, "h", 1, address));
+}
+
+TEST(SolidSyslogWinsockResolverPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
+{
+    ConfigLockFake_Install();
+
+    pooled[0] = SolidSyslogWinsockResolver_Create();
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogWinsockResolverPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
+{
+    FillPool();
+    ConfigLockFake_Install();
+
+    overflow = SolidSyslogWinsockResolver_Create();
+
+    LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+}
+
+TEST(SolidSyslogWinsockResolverPool, DestroyOfPooledHandleLocksOnce)
+{
+    pooled[0] = SolidSyslogWinsockResolver_Create();
+    ConfigLockFake_Install();
+
+    SolidSyslogWinsockResolver_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogWinsockResolverPool, DestroyOfUnknownHandleDoesNotLock)
+{
+    ConfigLockFake_Install();
+    struct SolidSyslogResolver stranger = {};
+
+    SolidSyslogWinsockResolver_Destroy(&stranger);
+
+    CALLED_FAKE(ConfigLockFake_Lock, NEVER);
+    CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
+}
+
+TEST(SolidSyslogWinsockResolverPool, DestroyOfUnknownHandleReportsWarning)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogResolver stranger = {};
+
+    SolidSyslogWinsockResolver_Destroy(&stranger);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_WINSOCKRESOLVER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogWinsockResolverPool, DestroyOfStaleHandleReportsWarning)
+{
+    pooled[0] = SolidSyslogWinsockResolver_Create();
+    SolidSyslogWinsockResolver_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogWinsockResolver_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_WINSOCKRESOLVER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
 }

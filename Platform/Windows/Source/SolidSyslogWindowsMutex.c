@@ -3,46 +3,30 @@
 #include <stddef.h>
 #include <windows.h>
 
-#include "SolidSyslogMacros.h"
 #include "SolidSyslogMutexDefinition.h"
-
-struct SolidSyslogWindowsMutex
-{
-    struct SolidSyslogMutex Base;
-    CRITICAL_SECTION Section;
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    sizeof(struct SolidSyslogWindowsMutex) <= SOLIDSYSLOG_WINDOWS_MUTEX_SIZE,
-    "SOLIDSYSLOG_WINDOWS_MUTEX_SIZE is too small for SolidSyslogWindowsMutex layout"
-);
+#include "SolidSyslogNullMutex.h"
+#include "SolidSyslogWindowsMutexPrivate.h"
 
 static void WindowsMutex_Lock(struct SolidSyslogMutex* base);
 static void WindowsMutex_Unlock(struct SolidSyslogMutex* base);
 
-static inline struct SolidSyslogWindowsMutex* WindowsMutex_SelfFromStorage(SolidSyslogWindowsMutexStorage* storage);
 static inline struct SolidSyslogWindowsMutex* WindowsMutex_SelfFromBase(struct SolidSyslogMutex* base);
 
-struct SolidSyslogMutex* SolidSyslogWindowsMutex_Create(SolidSyslogWindowsMutexStorage* storage)
+void WindowsMutex_Initialise(struct SolidSyslogMutex* base)
 {
-    struct SolidSyslogWindowsMutex* self = WindowsMutex_SelfFromStorage(storage);
+    struct SolidSyslogWindowsMutex* self = WindowsMutex_SelfFromBase(base);
     self->Base.Lock = WindowsMutex_Lock;
     self->Base.Unlock = WindowsMutex_Unlock;
     InitializeCriticalSection(&self->Section);
-    return &self->Base;
 }
 
-static inline struct SolidSyslogWindowsMutex* WindowsMutex_SelfFromStorage(SolidSyslogWindowsMutexStorage* storage)
-{
-    return (struct SolidSyslogWindowsMutex*) storage;
-}
-
-void SolidSyslogWindowsMutex_Destroy(struct SolidSyslogMutex* base)
+void WindowsMutex_Cleanup(struct SolidSyslogMutex* base)
 {
     struct SolidSyslogWindowsMutex* self = WindowsMutex_SelfFromBase(base);
     DeleteCriticalSection(&self->Section);
-    self->Base.Lock = NULL;
-    self->Base.Unlock = NULL;
+    /* Overwrite the abstract base with the shared NullMutex vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullMutex_Get();
 }
 
 static inline struct SolidSyslogWindowsMutex* WindowsMutex_SelfFromBase(struct SolidSyslogMutex* base)

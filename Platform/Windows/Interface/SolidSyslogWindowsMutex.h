@@ -3,23 +3,11 @@
 
 #include "ExternC.h"
 
-#include <stdint.h>
-
 EXTERN_C_BEGIN
 
     struct SolidSyslogMutex;
 
-    enum
-    {
-        SOLIDSYSLOG_WINDOWS_MUTEX_SIZE = sizeof(intptr_t) * 10U
-    };
-
-    typedef struct
-    {
-        intptr_t slots[(SOLIDSYSLOG_WINDOWS_MUTEX_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
-    } SolidSyslogWindowsMutexStorage;
-
-    struct SolidSyslogMutex* SolidSyslogWindowsMutex_Create(SolidSyslogWindowsMutexStorage * storage);
+    struct SolidSyslogMutex* SolidSyslogWindowsMutex_Create(void);
     void SolidSyslogWindowsMutex_Destroy(struct SolidSyslogMutex * base);
 
 EXTERN_C_END

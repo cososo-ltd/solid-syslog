@@ -64,14 +64,13 @@ enum
 static const char* const STORE_PATH_PREFIX = "Bdd/output/STORE";
 static const char* const THRESHOLD_MARKER_PATH = "Bdd/output/solidsyslog_threshold_marker.log";
 
-static SolidSyslogWinsockTcpStreamStorage tcpStreamStorage;
 static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(BDD_TARGET_BUFFER_MESSAGES)];
-static SolidSyslogWindowsMutexStorage mutexStorage;
 static SolidSyslogWindowsAtomicCounterStorage counterStorage;
 static volatile bool shutdownFlag;
 
 /* Created in CreateSender, destroyed in DestroySender — held in file scope so
    teardown can reach them after the SwitchingSender wraps them all. */
+static struct SolidSyslogResolver* resolver;
 static struct SolidSyslogStream* plainTcpStream;
 static struct SolidSyslogSender* plainTcpSender;
 static struct SolidSyslogDatagram* udpDatagram;
@@ -179,7 +178,7 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetWindowsOptio
 {
     bool mtlsModeActive = (strcmp(options->Transport, "mtls") == 0);
 
-    struct SolidSyslogResolver* resolver = SolidSyslogWinsockResolver_Create();
+    resolver = SolidSyslogWinsockResolver_Create();
 
     udpDatagram = SolidSyslogWinsockDatagram_Create();
     static struct SolidSyslogUdpSenderConfig udpConfig = {0};
@@ -189,7 +188,7 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetWindowsOptio
     udpConfig.EndpointVersion = GetEndpointVersion;
     udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
-    plainTcpStream = SolidSyslogWinsockTcpStream_Create(&tcpStreamStorage);
+    plainTcpStream = SolidSyslogWinsockTcpStream_Create();
     static struct SolidSyslogStreamSenderConfig tcpConfig = {0};
     tcpConfig.Resolver = resolver;
     tcpConfig.Stream = plainTcpStream;
@@ -221,8 +220,8 @@ static void DestroySender(void)
     SolidSyslogStreamSender_Destroy(plainTcpSender);
     SolidSyslogWinsockTcpStream_Destroy(plainTcpStream);
     SolidSyslogUdpSender_Destroy(udpSender);
-    SolidSyslogWinsockDatagram_Destroy();
-    SolidSyslogWinsockResolver_Destroy();
+    SolidSyslogWinsockDatagram_Destroy(udpDatagram);
+    SolidSyslogWinsockResolver_Destroy(resolver);
 }
 
 static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions* options)
@@ -231,8 +230,7 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
 
     if (useFile)
     {
-        static SolidSyslogWindowsFileStorage fileStorage;
-        storeFile = SolidSyslogWindowsFile_Create(&fileStorage);
+        storeFile = SolidSyslogWindowsFile_Create();
 
         storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX);
 
@@ -299,7 +297,7 @@ int BddTargetWindows_Run(int argc, char* argv[])
     struct SolidSyslogSender* sender = CreateSender(&options);
     struct SolidSyslogStore* store = CreateStore(&options);
 
-    struct SolidSyslogMutex* mutex = SolidSyslogWindowsMutex_Create(&mutexStorage);
+    struct SolidSyslogMutex* mutex = SolidSyslogWindowsMutex_Create();
     struct SolidSyslogBuffer* buffer = SolidSyslogCircularBuffer_Create(mutex, bufferRing, sizeof(bufferRing));
     struct SolidSyslogAtomicCounter* counter = SolidSyslogWindowsAtomicCounter_Create(&counterStorage);
     struct SolidSyslogMetaSdConfig metaConfig = {

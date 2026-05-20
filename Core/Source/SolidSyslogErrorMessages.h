@@ -87,5 +87,25 @@
     "SolidSyslogPosixMessageQueueBuffer_Create pool exhausted; returning fallback buffer"
 #define SOLIDSYSLOG_ERROR_MSG_POSIXMESSAGEQUEUEBUFFER_UNKNOWN_DESTROY \
     "SolidSyslogPosixMessageQueueBuffer_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_WINDOWSMUTEX_POOL_EXHAUSTED \
+    "SolidSyslogWindowsMutex_Create pool exhausted; returning fallback mutex"
+#define SOLIDSYSLOG_ERROR_MSG_WINDOWSMUTEX_UNKNOWN_DESTROY \
+    "SolidSyslogWindowsMutex_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_WINSOCKDATAGRAM_POOL_EXHAUSTED \
+    "SolidSyslogWinsockDatagram_Create pool exhausted; returning fallback datagram"
+#define SOLIDSYSLOG_ERROR_MSG_WINSOCKDATAGRAM_UNKNOWN_DESTROY \
+    "SolidSyslogWinsockDatagram_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_WINSOCKRESOLVER_POOL_EXHAUSTED \
+    "SolidSyslogWinsockResolver_Create pool exhausted; returning fallback resolver"
+#define SOLIDSYSLOG_ERROR_MSG_WINSOCKRESOLVER_UNKNOWN_DESTROY \
+    "SolidSyslogWinsockResolver_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_WINDOWSFILE_POOL_EXHAUSTED \
+    "SolidSyslogWindowsFile_Create pool exhausted; returning fallback file"
+#define SOLIDSYSLOG_ERROR_MSG_WINDOWSFILE_UNKNOWN_DESTROY \
+    "SolidSyslogWindowsFile_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_WINSOCKTCPSTREAM_POOL_EXHAUSTED \
+    "SolidSyslogWinsockTcpStream_Create pool exhausted; returning fallback stream"
+#define SOLIDSYSLOG_ERROR_MSG_WINSOCKTCPSTREAM_UNKNOWN_DESTROY \
+    "SolidSyslogWinsockTcpStream_Destroy called with a handle not issued by this pool"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */

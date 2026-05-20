@@ -1,11 +1,15 @@
 #include "SolidSyslogWinsockResolver.h"
-#include "SolidSyslogAddressInternal.h"
-#include "SolidSyslogResolverDefinition.h"
-#include "SolidSyslogWinsockResolverInternal.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "SolidSyslogAddressInternal.h"
+#include "SolidSyslogNullResolver.h"
+#include "SolidSyslogResolverDefinition.h"
+#include "SolidSyslogTransport.h"
+#include "SolidSyslogWinsockResolverInternal.h"
+#include "SolidSyslogWinsockResolverPrivate.h"
 
 /* File-local forwarders. Taking the address of a __declspec(dllimport)
    Winsock function for static initialisation triggers MSVC C4232 (the address
@@ -43,22 +47,16 @@ static bool WinsockResolver_Resolve(
 );
 static int WinsockResolver_MapTransport(enum SolidSyslogTransport transport);
 
-struct SolidSyslogWinsockResolver
+void WinsockResolver_Initialise(struct SolidSyslogResolver* base)
 {
-    struct SolidSyslogResolver Base;
-};
-
-static struct SolidSyslogWinsockResolver instance;
-
-struct SolidSyslogResolver* SolidSyslogWinsockResolver_Create(void)
-{
-    instance.Base.Resolve = WinsockResolver_Resolve;
-    return &instance.Base;
+    base->Resolve = WinsockResolver_Resolve;
 }
 
-void SolidSyslogWinsockResolver_Destroy(void)
+void WinsockResolver_Cleanup(struct SolidSyslogResolver* base)
 {
-    instance.Base.Resolve = NULL;
+    /* Overwrite the abstract base with the shared NullResolver vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullResolver_Get();
 }
 
 static bool WinsockResolver_Resolve(

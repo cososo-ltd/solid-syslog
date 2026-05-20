@@ -1,12 +1,16 @@
 #include "SolidSyslogWindowsFile.h"
-#include "SolidSyslogFileDefinition.h"
-#include "SolidSyslogMacros.h"
 
 #include <fcntl.h>
 #include <io.h>
 #include <share.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <sys/stat.h>
+
+#include "SolidSyslogFileDefinition.h"
+#include "SolidSyslogNullFile.h"
+#include "SolidSyslogWindowsFilePrivate.h"
 
 /* _O_BINARY disables the MSVC CRT's CR/LF translation on read/write so
  * arbitrary binary content (e.g. SolidSyslogBlockStore frames) round-trips
@@ -33,61 +37,35 @@ static void WindowsFile_Truncate(struct SolidSyslogFile* base);
 static bool WindowsFile_Exists(struct SolidSyslogFile* base, const char* path);
 static bool WindowsFile_Delete(struct SolidSyslogFile* base, const char* path);
 
-static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromStorage(SolidSyslogWindowsFileStorage* storage);
 static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromBase(struct SolidSyslogFile* base);
 
-struct SolidSyslogWindowsFile
-{
-    struct SolidSyslogFile Base;
-    int Fd;
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    sizeof(struct SolidSyslogWindowsFile) <= sizeof(SolidSyslogWindowsFileStorage),
-    "SOLIDSYSLOG_WINDOWS_FILE_SIZE is too small for struct SolidSyslogWindowsFile"
-);
-
-static const struct SolidSyslogWindowsFile DEFAULT_INSTANCE = {
-    {WindowsFile_Open,
-     WindowsFile_Close,
-     WindowsFile_IsOpen,
-     WindowsFile_Read,
-     WindowsFile_Write,
-     WindowsFile_SeekTo,
-     WindowsFile_Size,
-     WindowsFile_Truncate,
-     WindowsFile_Exists,
-     WindowsFile_Delete},
-    INVALID_FD,
-};
-
-static const struct SolidSyslogWindowsFile DESTROYED_INSTANCE = {
-    {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
-    INVALID_FD,
-};
-
-struct SolidSyslogFile* SolidSyslogWindowsFile_Create(SolidSyslogWindowsFileStorage* storage)
-{
-    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromStorage(storage);
-    *self = DEFAULT_INSTANCE;
-    return &self->Base;
-}
-
-static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromStorage(SolidSyslogWindowsFileStorage* storage)
-{
-    return (struct SolidSyslogWindowsFile*) storage;
-}
-
-void SolidSyslogWindowsFile_Destroy(struct SolidSyslogFile* base)
+void WindowsFile_Initialise(struct SolidSyslogFile* base)
 {
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
+    self->Base.Open = WindowsFile_Open;
+    self->Base.Close = WindowsFile_Close;
+    self->Base.IsOpen = WindowsFile_IsOpen;
+    self->Base.Read = WindowsFile_Read;
+    self->Base.Write = WindowsFile_Write;
+    self->Base.SeekTo = WindowsFile_SeekTo;
+    self->Base.Size = WindowsFile_Size;
+    self->Base.Truncate = WindowsFile_Truncate;
+    self->Base.Exists = WindowsFile_Exists;
+    self->Base.Delete = WindowsFile_Delete;
+    self->Fd = INVALID_FD;
+}
 
+void WindowsFile_Cleanup(struct SolidSyslogFile* base)
+{
+    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
     if (self->Fd != INVALID_FD)
     {
         _close(self->Fd);
+        self->Fd = INVALID_FD;
     }
-
-    *self = DESTROYED_INSTANCE;
+    /* Overwrite the abstract base with the shared NullFile vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullFile_Get();
 }
 
 static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromBase(struct SolidSyslogFile* base)

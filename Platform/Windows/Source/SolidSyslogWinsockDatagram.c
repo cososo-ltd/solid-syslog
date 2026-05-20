@@ -1,12 +1,15 @@
 #include "SolidSyslogWinsockDatagram.h"
-#include "SolidSyslogAddressInternal.h"
-#include "SolidSyslogDatagramDefinition.h"
-#include "SolidSyslogUdpPayload.h"
-#include "SolidSyslogWinsockDatagramInternal.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <ws2tcpip.h>
+
+#include "SolidSyslogAddressInternal.h"
+#include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogNullDatagram.h"
+#include "SolidSyslogUdpPayload.h"
+#include "SolidSyslogWinsockDatagramInternal.h"
+#include "SolidSyslogWinsockDatagramPrivate.h"
 
 /* File-local forwarders. Taking the address of a __declspec(dllimport)
    Winsock function for static initialisation triggers MSVC C4232 (the address
@@ -58,13 +61,6 @@ static int WSAAPI WinsockDatagram_CallGetSockOpt(SOCKET s, int level, int optnam
     return getsockopt(s, level, optname, optval, optlen);
 }
 
-struct SolidSyslogWinsockDatagram
-{
-    struct SolidSyslogDatagram Base;
-    SOCKET Fd;
-    bool Connected;
-};
-
 static bool WinsockDatagram_Open(struct SolidSyslogDatagram* base);
 static enum SolidSyslogDatagramSendResult WinsockDatagram_SendTo(
     struct SolidSyslogDatagram* base,
@@ -82,23 +78,29 @@ static inline bool WinsockDatagram_ConnectIfNeeded(
 );
 static inline bool WinsockDatagram_IsSocketValid(SOCKET fd);
 
-static struct SolidSyslogWinsockDatagram instance = {.Fd = INVALID_SOCKET};
-
-struct SolidSyslogDatagram* SolidSyslogWinsockDatagram_Create(void)
+void WinsockDatagram_Initialise(struct SolidSyslogDatagram* base)
 {
-    instance.Base.Open = WinsockDatagram_Open;
-    instance.Base.SendTo = WinsockDatagram_SendTo;
-    instance.Base.MaxPayload = WinsockDatagram_MaxPayload;
-    instance.Base.Close = WinsockDatagram_Close;
-    return &instance.Base;
+    struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
+    self->Base.Open = WinsockDatagram_Open;
+    self->Base.SendTo = WinsockDatagram_SendTo;
+    self->Base.MaxPayload = WinsockDatagram_MaxPayload;
+    self->Base.Close = WinsockDatagram_Close;
+    self->Fd = INVALID_SOCKET;
+    self->Connected = false;
 }
 
-void SolidSyslogWinsockDatagram_Destroy(void)
+void WinsockDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
-    instance.Base.Open = NULL;
-    instance.Base.SendTo = NULL;
-    instance.Base.MaxPayload = NULL;
-    instance.Base.Close = NULL;
+    struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
+    if (WinsockDatagram_IsSocketValid(self->Fd))
+    {
+        Winsock_closesocket(self->Fd);
+        self->Fd = INVALID_SOCKET;
+        self->Connected = false;
+    }
+    /* Overwrite the abstract base with the shared NullDatagram vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullDatagram_Get();
 }
 
 static bool WinsockDatagram_Open(struct SolidSyslogDatagram* base)

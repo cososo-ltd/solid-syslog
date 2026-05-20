@@ -1,12 +1,38 @@
 #include "CppUTest/TestHarness.h"
+
+#include "ConfigLockFake.h"
+#include "ErrorHandlerFake.h"
+#include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogFile.h"
+#include "SolidSyslogFileDefinition.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogWindowsFile.h"
+#include "TestUtils.h"
 
 #include <cstdio>
 #include <string>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
+using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER into scope for CALLED_FAKE
+
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
+
+// Asserts handle is non-null and not one of the slots in pool.
+#define CHECK_IS_FALLBACK(handle, pool)                                                \
+    do                                                                                 \
+    {                                                                                  \
+        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
+        for (auto* slot : (pool))                                                      \
+        {                                                                              \
+            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
+            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
+        }                                                                              \
+    } while (0)
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 // clang-format off
 
@@ -19,7 +45,6 @@ static std::string MakeTempPath(const char* filename)
 
 TEST_GROUP(SolidSyslogWindowsFile)
 {
-    SolidSyslogWindowsFileStorage storage = {};
     // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogFile* file = nullptr;
     std::string testPath;
@@ -29,7 +54,7 @@ TEST_GROUP(SolidSyslogWindowsFile)
         testPath = MakeTempPath("test_windows_file.dat");
         std::remove(testPath.c_str());
         // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
-        file = SolidSyslogWindowsFile_Create(&storage);
+        file = SolidSyslogWindowsFile_Create();
     }
 
     void teardown() override
@@ -49,14 +74,6 @@ TEST_GROUP(SolidSyslogWindowsFile)
 TEST(SolidSyslogWindowsFile, CreateReturnsNonNull)
 {
     CHECK_TRUE(file != nullptr);
-}
-
-TEST(SolidSyslogWindowsFile, CreateReturnsHandleInsideCallerSuppliedStorage)
-{
-    SolidSyslogWindowsFileStorage localStorage{};
-    struct SolidSyslogFile* localFile = SolidSyslogWindowsFile_Create(&localStorage);
-    POINTERS_EQUAL(&localStorage, localFile);
-    SolidSyslogWindowsFile_Destroy(localFile);
 }
 
 TEST(SolidSyslogWindowsFile, IsOpenReturnsFalseBeforeOpen)
@@ -141,4 +158,139 @@ TEST(SolidSyslogWindowsFile, DeleteRemovesFile)
 TEST(SolidSyslogWindowsFile, DeleteReturnsFalseForNonexistentFile)
 {
     CHECK_FALSE(SolidSyslogFile_Delete(file, MakeTempPath("nonexistent_windows_file.dat").c_str()));
+}
+
+// clang-format off
+TEST_GROUP(SolidSyslogWindowsFilePool)
+{
+    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
+    struct SolidSyslogFile* pooled[SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE] = {};
+    struct SolidSyslogFile* overflow                                   = nullptr;
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogWindowsFile_Destroy(handle);
+            }
+        }
+        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
+        if (overflow != nullptr)
+        {
+            SolidSyslogWindowsFile_Destroy(overflow);
+        }
+        ConfigLockFake_Uninstall();
+        ErrorHandlerFake_Uninstall();
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = SolidSyslogWindowsFile_Create();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogWindowsFilePool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = SolidSyslogWindowsFile_Create();
+
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
+TEST(SolidSyslogWindowsFilePool, ExhaustedCreateReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FillPool();
+
+    overflow = SolidSyslogWindowsFile_Create();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_WINDOWSFILE_POOL_EXHAUSTED, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogWindowsFilePool, FallbackOpenReturnsFalse)
+{
+    FillPool();
+    overflow = SolidSyslogWindowsFile_Create();
+
+    CHECK_FALSE(SolidSyslogFile_Open(overflow, "any_path"));
+}
+
+TEST(SolidSyslogWindowsFilePool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
+{
+    ConfigLockFake_Install();
+
+    pooled[0] = SolidSyslogWindowsFile_Create();
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogWindowsFilePool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
+{
+    FillPool();
+    ConfigLockFake_Install();
+
+    overflow = SolidSyslogWindowsFile_Create();
+
+    LONGS_EQUAL(SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+}
+
+TEST(SolidSyslogWindowsFilePool, DestroyOfPooledHandleLocksOnce)
+{
+    pooled[0] = SolidSyslogWindowsFile_Create();
+    ConfigLockFake_Install();
+
+    SolidSyslogWindowsFile_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogWindowsFilePool, DestroyOfUnknownHandleDoesNotLock)
+{
+    ConfigLockFake_Install();
+    struct SolidSyslogFile stranger = {};
+
+    SolidSyslogWindowsFile_Destroy(&stranger);
+
+    CALLED_FAKE(ConfigLockFake_Lock, NEVER);
+    CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
+}
+
+TEST(SolidSyslogWindowsFilePool, DestroyOfUnknownHandleReportsWarning)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogFile stranger = {};
+
+    SolidSyslogWindowsFile_Destroy(&stranger);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_WINDOWSFILE_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+}
+
+TEST(SolidSyslogWindowsFilePool, DestroyOfStaleHandleReportsWarning)
+{
+    pooled[0] = SolidSyslogWindowsFile_Create();
+    SolidSyslogWindowsFile_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogWindowsFile_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_WINDOWSFILE_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
 }
