@@ -605,4 +605,26 @@
 #error "SOLIDSYSLOG_FATFS_FILE_POOL_SIZE must be >= 1"
 #endif
 
+/*
+ * Number of SolidSyslogTlsStream instances the library's internal static
+ * pool can simultaneously hold. Each instance carries an SSL_CTX*, SSL*,
+ * BIO_METHOD*, and the integrator's TlsStreamConfig (transport pointer,
+ * sleep callback, cert/key/CA paths).
+ *
+ * Default 1 — TLS senders are scoped per destination and almost all
+ * integrators wire a single TLS sender per process. Bump via
+ * SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is genuinely needed
+ * (e.g. multi-destination egress with separate TLS sessions per peer).
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_TLS_STREAM_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_TLS_STREAM_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_TLS_STREAM_POOL_SIZE < 1
+#error "SOLIDSYSLOG_TLS_STREAM_POOL_SIZE must be >= 1"
+#endif
+
 #endif /* SOLIDSYSLOG_TUNABLES_DEFAULTS_H */

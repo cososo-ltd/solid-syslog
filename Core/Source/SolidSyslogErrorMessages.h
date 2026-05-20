@@ -135,5 +135,9 @@
     "SolidSyslogFatFsFile_Create pool exhausted; returning fallback file"
 #define SOLIDSYSLOG_ERROR_MSG_FATFSFILE_UNKNOWN_DESTROY \
     "SolidSyslogFatFsFile_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_TLSSTREAM_POOL_EXHAUSTED \
+    "SolidSyslogTlsStream_Create pool exhausted; returning fallback stream"
+#define SOLIDSYSLOG_ERROR_MSG_TLSSTREAM_UNKNOWN_DESTROY \
+    "SolidSyslogTlsStream_Destroy called with a handle not issued by this pool"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */

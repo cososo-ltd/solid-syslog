@@ -1,24 +1,12 @@
 #ifndef SOLIDSYSLOGTLSSTREAM_H
 #define SOLIDSYSLOGTLSSTREAM_H
 
-#include <stdint.h>
-
 #include "ExternC.h"
 #include "SolidSyslogSleep.h"
 
 struct SolidSyslogStream;
 
 EXTERN_C_BEGIN
-
-    enum
-    {
-        SOLIDSYSLOG_TLS_STREAM_SIZE = sizeof(intptr_t) * 14U
-    };
-
-    typedef struct
-    {
-        intptr_t slots[(SOLIDSYSLOG_TLS_STREAM_SIZE + sizeof(intptr_t) - 1U) / sizeof(intptr_t)];
-    } SolidSyslogTlsStreamStorage;
 
     struct SolidSyslogTlsStreamConfig
     {
@@ -32,10 +20,7 @@ EXTERN_C_BEGIN
         const char* ClientKeyPath; /* PEM: matching private key; NULL = no mTLS */
     };
 
-    struct SolidSyslogStream* SolidSyslogTlsStream_Create(
-        SolidSyslogTlsStreamStorage * storage,
-        const struct SolidSyslogTlsStreamConfig* config
-    );
+    struct SolidSyslogStream* SolidSyslogTlsStream_Create(const struct SolidSyslogTlsStreamConfig* config);
     void SolidSyslogTlsStream_Destroy(struct SolidSyslogStream * base);
 
 EXTERN_C_END

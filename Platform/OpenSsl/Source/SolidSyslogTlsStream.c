@@ -1,3 +1,5 @@
+#include "SolidSyslogTlsStream.h"
+
 #include <openssl/bio.h>
 #include <openssl/prov_ssl.h>
 #include <openssl/ssl.h>
@@ -5,10 +7,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "SolidSyslogMacros.h"
+#include "SolidSyslogNullStream.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
-#include "SolidSyslogTlsStream.h"
+#include "SolidSyslogTlsStreamPrivate.h"
 
 enum
 {
@@ -22,21 +24,6 @@ enum
 
 struct SolidSyslogAddress;
 
-struct SolidSyslogTlsStream
-{
-    struct SolidSyslogStream Base;
-    struct SolidSyslogTlsStreamConfig Config;
-    SSL_CTX* Ctx;
-    SSL* Ssl;
-    BIO_METHOD* BioMethod;
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    sizeof(struct SolidSyslogTlsStream) <= sizeof(SolidSyslogTlsStreamStorage),
-    "SOLIDSYSLOG_TLS_STREAM_SIZE is too small for struct SolidSyslogTlsStream"
-);
-
-static inline struct SolidSyslogTlsStream* TlsStream_SelfFromStorage(SolidSyslogTlsStreamStorage* storage);
 static inline struct SolidSyslogTlsStream* TlsStream_SelfFromBase(struct SolidSyslogStream* base);
 
 static inline bool TlsStream_AttachTransportBio(struct SolidSyslogTlsStream* self);
@@ -65,44 +52,27 @@ static inline long TlsStream_TransportBioCtrl(BIO* bio, int cmd, long larg, void
 static inline int TlsStream_TransportBioRead(BIO* bio, char* buffer, int size);
 static inline int TlsStream_TransportBioWrite(BIO* bio, const char* buffer, int size);
 
-static const struct SolidSyslogTlsStream DEFAULT_INSTANCE = {
-    {TlsStream_Open, TlsStream_Send, TlsStream_Read, TlsStream_Close},
-    {NULL, NULL, NULL, NULL, NULL, NULL, NULL},
-    NULL,
-    NULL,
-    NULL,
-};
-
-static const struct SolidSyslogTlsStream DESTROYED_INSTANCE = {
-    {NULL, NULL, NULL, NULL},
-    {NULL, NULL, NULL, NULL, NULL, NULL, NULL},
-    NULL,
-    NULL,
-    NULL,
-};
-
-struct SolidSyslogStream* SolidSyslogTlsStream_Create(
-    SolidSyslogTlsStreamStorage* storage,
-    const struct SolidSyslogTlsStreamConfig* config
-)
+void TlsStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogTlsStreamConfig* config)
 {
-    struct SolidSyslogTlsStream* self = TlsStream_SelfFromStorage(storage);
-    *self = DEFAULT_INSTANCE;
+    struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
+    self->Base.Open = TlsStream_Open;
+    self->Base.Send = TlsStream_Send;
+    self->Base.Read = TlsStream_Read;
+    self->Base.Close = TlsStream_Close;
     self->Config = *config;
-    return &self->Base;
+    self->Ctx = NULL;
+    self->Ssl = NULL;
+    self->BioMethod = NULL;
 }
 
-static inline struct SolidSyslogTlsStream* TlsStream_SelfFromStorage(SolidSyslogTlsStreamStorage* storage)
-{
-    return (struct SolidSyslogTlsStream*) storage;
-}
-
-void SolidSyslogTlsStream_Destroy(struct SolidSyslogStream* base)
+void TlsStream_Cleanup(struct SolidSyslogStream* base)
 {
     struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
     TlsStream_ReleaseHandshakeState(self);
     TlsStream_ReleaseSslContext(self);
-    *self = DESTROYED_INSTANCE;
+    /* Overwrite the abstract base with the shared NullStream vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullStream_Get();
 }
 
 static inline struct SolidSyslogTlsStream* TlsStream_SelfFromBase(struct SolidSyslogStream* base)

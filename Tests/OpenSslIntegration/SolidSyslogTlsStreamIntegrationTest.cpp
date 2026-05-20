@@ -33,7 +33,7 @@ TEST_GROUP(TlsStreamIntegration)
     struct TlsTestServer*             server         = nullptr;
     struct SolidSyslogStream*         transport      = nullptr;
     struct SolidSyslogTlsStreamConfig tlsConfig      = {};
-    SolidSyslogTlsStreamStorage       tlsStreamStorage{};
+    
     struct SolidSyslogStream*         tlsStream      = nullptr;
     SolidSyslogAddressStorage         addrStorage    = {};
     struct SolidSyslogAddress*        addr           = nullptr;
@@ -92,7 +92,7 @@ TEST_GROUP(TlsStreamIntegration)
         tlsConfig.Sleep        = NoOpSleep;
         tlsConfig.CaBundlePath = caPath;
         tlsConfig.ServerName   = clientServerName;
-        tlsStream              = SolidSyslogTlsStream_Create(&tlsStreamStorage, &tlsConfig);
+        tlsStream              = SolidSyslogTlsStream_Create(&tlsConfig);
     }
 
     /* Creates the client-side mTLS material and writes it to disk.

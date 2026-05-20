@@ -11,7 +11,7 @@
 struct SolidSyslogResolver;
 
 static struct SolidSyslogStream* underlyingStream;
-static SolidSyslogTlsStreamStorage tlsStreamStorage;
+
 static struct SolidSyslogStream* tlsStream;
 static struct SolidSyslogSender* sender;
 
@@ -35,7 +35,7 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
         tlsStreamConfig.CaBundlePath = BddTargetTlsConfig_GetCaBundlePath();
         tlsStreamConfig.ServerName = BddTargetTlsConfig_GetServerName();
     }
-    tlsStream = SolidSyslogTlsStream_Create(&tlsStreamStorage, &tlsStreamConfig);
+    tlsStream = SolidSyslogTlsStream_Create(&tlsStreamConfig);
 
     static struct SolidSyslogStreamSenderConfig senderConfig;
     senderConfig = (struct SolidSyslogStreamSenderConfig) {0};
