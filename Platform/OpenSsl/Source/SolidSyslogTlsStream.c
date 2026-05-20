@@ -68,7 +68,12 @@ void TlsStream_Initialise(struct SolidSyslogStream* base, const struct SolidSysl
 void TlsStream_Cleanup(struct SolidSyslogStream* base)
 {
     struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
-    TlsStream_ReleaseHandshakeState(self);
+    /* Close first so an integrator who destroys a still-Open stream doesn't
+     * leak the underlying transport. Close is idempotent (guards on Ssl !=
+     * NULL for the TLS-side teardown; transport Close is itself idempotent
+     * on every Stream impl), so the normal Open → Close → Destroy lifecycle
+     * is unaffected. */
+    TlsStream_Close(base);
     TlsStream_ReleaseSslContext(self);
     /* Overwrite the abstract base with the shared NullStream vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */

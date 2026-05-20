@@ -428,6 +428,22 @@ TEST(SolidSyslogTlsStream, CloseClosesTransport)
     CALLED_FAKE_ON(StreamFake_Close, transport, ONCE);
 }
 
+/* Destroy on a still-Open stream must release the underlying transport,
+   otherwise an integrator that omits the explicit Close call leaks the
+   transport's socket / fd. Verified before the teardown's Destroy fires
+   (which would itself trigger another transport Close). */
+TEST(SolidSyslogTlsStream, DestroyClosesTransportWhenStillOpen)
+{
+    SolidSyslogStream_Open(stream, addr);
+
+    SolidSyslogTlsStream_Destroy(stream);
+
+    CALLED_FAKE_ON(StreamFake_Close, transport, ONCE);
+    /* Re-create so teardown's Destroy targets a live slot rather than a
+       stale handle (which would fire SOLIDSYSLOG_ERROR_MSG_TLSSTREAM_UNKNOWN_DESTROY). */
+    stream = SolidSyslogTlsStream_Create(&config);
+}
+
 TEST(SolidSyslogTlsStream, CloseFreesBioMethod)
 {
     SolidSyslogStream_Open(stream, addr);
