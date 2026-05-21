@@ -265,6 +265,7 @@ static bool EnsureFatFsMounted(void);
 static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy);
 static void OnStoreFull(void* context);
 static size_t GetCapacityThreshold(void* context);
+static void OnThresholdCrossed(void* context);
 static void SemihostingExit(int status);
 
 static uint32_t MmioRead32(uintptr_t address)
@@ -459,6 +460,16 @@ static bool OnSet(const char* name, const char* value)
             (strcmp(value, "newest") == 0) ? "newest" : ((strcmp(value, "halt") == 0) ? "halt" : "oldest");
         return true;
     }
+    if (strcmp(name, "capacity-threshold") == 0)
+    {
+        unsigned long parsed = 0U;
+        if (!TryParseUInt(value, &parsed))
+        {
+            return false;
+        }
+        pendingCapacityThreshold = (size_t) parsed;
+        return true;
+    }
     if (strcmp(name, "halt-exit") == 0)
     {
         /* Harness emits `set halt-exit 1` (or `0`) because the FreeRTOS
@@ -555,6 +566,20 @@ static size_t GetCapacityThreshold(void* context)
     return *(const size_t*) context;
 }
 
+/* Stdout-based marker the behave harness watches for. Linux's equivalent
+ * (Bdd/Targets/Linux/main.c::OnThresholdCrossed) writes a host file at
+ * /tmp/solidsyslog_threshold_marker.log — that file path isn't reachable
+ * from the QEMU guest. Instead we print a known token to the UART, which
+ * the captured-stdout reader in Bdd/features/steps/syslog_steps.py buffers
+ * and the threshold step then scans. The token is line-anchored so a stray
+ * substring inside a longer message body could not accidentally trip the
+ * assertion. */
+static void OnThresholdCrossed(void* context)
+{
+    (void) context;
+    (void) printf("[THRESHOLD-CROSSED]\r\n");
+}
+
 static bool RebuildWithFileStore(void)
 {
     /* Lifecycle mutex blocks the Service task from running SolidSyslog_Service
@@ -595,7 +620,7 @@ static bool RebuildWithFileStore(void)
         .OnStoreFull = OnStoreFull,
         .StoreFullContext = NULL,
         .GetCapacityThreshold = GetCapacityThreshold,
-        .OnThresholdCrossed = NULL,
+        .OnThresholdCrossed = OnThresholdCrossed,
         .ThresholdContext = &pendingCapacityThreshold,
     };
     currentStore = SolidSyslogBlockStore_Create(&storeConfig);
