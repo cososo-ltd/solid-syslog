@@ -1,0 +1,12 @@
+{
+    "version": 4,
+    "configurations": [
+        {
+            "name": "Linux (devcontainer, debug preset)",
+            "compileCommands": "${workspaceFolder}/build/debug/compile_commands.json",
+            "intelliSenseMode": "linux-gcc-x64",
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++17"
+        }
+    ]
+}

@@ -70,6 +70,29 @@ static mbedtls_ssl_context* lastSslFreeArg;
 static int sslConfigFreeCallCount;
 static mbedtls_ssl_config* lastSslConfigFreeArg;
 
+/* mbedtls_ssl_conf_authmode */
+static int sslConfAuthmodeCallCount;
+static mbedtls_ssl_config* lastSslConfAuthmodeConfigArg;
+static int lastSslConfAuthmodeArg;
+
+/* mbedtls_ssl_conf_ca_chain */
+static int sslConfCaChainCallCount;
+static mbedtls_ssl_config* lastSslConfCaChainConfigArg;
+static mbedtls_x509_crt* lastSslConfCaChainArg;
+static mbedtls_x509_crl* lastSslConfCaChainCrlArg;
+
+/* mbedtls_ssl_conf_rng */
+typedef int (*RngFunc)(void*, unsigned char*, size_t);
+static int sslConfRngCallCount;
+static mbedtls_ssl_config* lastSslConfRngConfigArg;
+static RngFunc lastSslConfRngFuncArg;
+static void* lastSslConfRngContextArg;
+
+/* mbedtls_ssl_set_hostname */
+static int sslSetHostnameCallCount;
+static mbedtls_ssl_context* lastSslSetHostnameContextArg;
+static const char* lastSslSetHostnameNameArg;
+
 /* -------------------------------------------------------------------------
  * Test accessors.
  * ------------------------------------------------------------------------- */
@@ -114,6 +137,20 @@ void MbedTlsFake_Reset(void)
     lastSslFreeArg = NULL;
     sslConfigFreeCallCount = 0;
     lastSslConfigFreeArg = NULL;
+    sslConfAuthmodeCallCount = 0;
+    lastSslConfAuthmodeConfigArg = NULL;
+    lastSslConfAuthmodeArg = 0;
+    sslConfCaChainCallCount = 0;
+    lastSslConfCaChainConfigArg = NULL;
+    lastSslConfCaChainArg = NULL;
+    lastSslConfCaChainCrlArg = NULL;
+    sslConfRngCallCount = 0;
+    lastSslConfRngConfigArg = NULL;
+    lastSslConfRngFuncArg = NULL;
+    lastSslConfRngContextArg = NULL;
+    sslSetHostnameCallCount = 0;
+    lastSslSetHostnameContextArg = NULL;
+    lastSslSetHostnameNameArg = NULL;
 }
 
 int MbedTlsFake_SslConfigInitCallCount(void)
@@ -297,6 +334,76 @@ mbedtls_ssl_config* MbedTlsFake_LastSslConfigFreeArg(void)
     return lastSslConfigFreeArg;
 }
 
+int MbedTlsFake_SslConfAuthmodeCallCount(void)
+{
+    return sslConfAuthmodeCallCount;
+}
+
+mbedtls_ssl_config* MbedTlsFake_LastSslConfAuthmodeConfigArg(void)
+{
+    return lastSslConfAuthmodeConfigArg;
+}
+
+int MbedTlsFake_LastSslConfAuthmodeArg(void)
+{
+    return lastSslConfAuthmodeArg;
+}
+
+int MbedTlsFake_SslConfCaChainCallCount(void)
+{
+    return sslConfCaChainCallCount;
+}
+
+mbedtls_ssl_config* MbedTlsFake_LastSslConfCaChainConfigArg(void)
+{
+    return lastSslConfCaChainConfigArg;
+}
+
+mbedtls_x509_crt* MbedTlsFake_LastSslConfCaChainArg(void)
+{
+    return lastSslConfCaChainArg;
+}
+
+mbedtls_x509_crl* MbedTlsFake_LastSslConfCaChainCrlArg(void)
+{
+    return lastSslConfCaChainCrlArg;
+}
+
+int MbedTlsFake_SslConfRngCallCount(void)
+{
+    return sslConfRngCallCount;
+}
+
+mbedtls_ssl_config* MbedTlsFake_LastSslConfRngConfigArg(void)
+{
+    return lastSslConfRngConfigArg;
+}
+
+RngFunc MbedTlsFake_LastSslConfRngFuncArg(void)
+{
+    return lastSslConfRngFuncArg;
+}
+
+void* MbedTlsFake_LastSslConfRngContextArg(void)
+{
+    return lastSslConfRngContextArg;
+}
+
+int MbedTlsFake_SslSetHostnameCallCount(void)
+{
+    return sslSetHostnameCallCount;
+}
+
+mbedtls_ssl_context* MbedTlsFake_LastSslSetHostnameContextArg(void)
+{
+    return lastSslSetHostnameContextArg;
+}
+
+const char* MbedTlsFake_LastSslSetHostnameNameArg(void)
+{
+    return lastSslSetHostnameNameArg;
+}
+
 /* -------------------------------------------------------------------------
  * Link-interposed mbedTLS symbols. The test executable does not link
  * libmbedtls; the production code's calls to mbedtls_* resolve here.
@@ -392,4 +499,47 @@ void mbedtls_ssl_config_free(mbedtls_ssl_config* conf)
 {
     sslConfigFreeCallCount++;
     lastSslConfigFreeArg = conf;
+}
+
+void mbedtls_ssl_conf_authmode(mbedtls_ssl_config* conf, int authmode)
+{
+    sslConfAuthmodeCallCount++;
+    lastSslConfAuthmodeConfigArg = conf;
+    lastSslConfAuthmodeArg = authmode;
+}
+
+void mbedtls_ssl_conf_ca_chain(mbedtls_ssl_config* conf, mbedtls_x509_crt* ca_chain, mbedtls_x509_crl* ca_crl)
+{
+    sslConfCaChainCallCount++;
+    lastSslConfCaChainConfigArg = conf;
+    lastSslConfCaChainArg = ca_chain;
+    lastSslConfCaChainCrlArg = ca_crl;
+}
+
+void mbedtls_ssl_conf_rng(mbedtls_ssl_config* conf, RngFunc f_rng, void* p_rng)
+{
+    sslConfRngCallCount++;
+    lastSslConfRngConfigArg = conf;
+    lastSslConfRngFuncArg = f_rng;
+    lastSslConfRngContextArg = p_rng;
+}
+
+/* Stub: the production code takes the address of mbedtls_ctr_drbg_random when
+ * wiring conf_rng. The fake never actually invokes the function via the
+ * captured pointer, so this body never runs at test time. Defined here so the
+ * symbol resolves at link time without pulling in real libmbedcrypto. */
+int mbedtls_ctr_drbg_random(void* p_rng, unsigned char* output, size_t output_len)
+{
+    (void) p_rng;
+    (void) output;
+    (void) output_len;
+    return 0;
+}
+
+int mbedtls_ssl_set_hostname(mbedtls_ssl_context* ssl, const char* hostname)
+{
+    sslSetHostnameCallCount++;
+    lastSslSetHostnameContextArg = ssl;
+    lastSslSetHostnameNameArg = hostname;
+    return 0;
 }

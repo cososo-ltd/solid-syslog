@@ -1,5 +1,6 @@
 #include "SolidSyslogMbedTlsStream.h"
 
+#include <mbedtls/ctr_drbg.h>
 #include <mbedtls/ssl.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -60,8 +61,18 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
     }
     if (ok)
     {
+        mbedtls_ssl_conf_authmode(&self->SslConfig, MBEDTLS_SSL_VERIFY_REQUIRED);
+        mbedtls_ssl_conf_ca_chain(&self->SslConfig, self->Config.CaChain, NULL);
+        mbedtls_ssl_conf_rng(&self->SslConfig, mbedtls_ctr_drbg_random, self->Config.Rng);
+    }
+    if (ok)
+    {
         mbedtls_ssl_init(&self->SslContext);
         ok = mbedtls_ssl_setup(&self->SslContext, &self->SslConfig) == 0;
+    }
+    if (ok && (self->Config.ServerName != NULL))
+    {
+        ok = mbedtls_ssl_set_hostname(&self->SslContext, self->Config.ServerName) == 0;
     }
     if (ok)
     {

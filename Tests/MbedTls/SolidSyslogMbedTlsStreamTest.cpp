@@ -2,6 +2,7 @@
 
 extern "C"
 {
+#include <mbedtls/ctr_drbg.h>
 #include <mbedtls/ssl.h>
 
 #include "MbedTlsFake.h"
@@ -40,6 +41,14 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
     {
         SolidSyslogMbedTlsStream_Destroy(handle);
         StreamFake_Destroy(transport);
+    }
+
+    /* Tests needing config tweaks (CaChain, Rng, ServerName, …) call this
+     * to release setup()'s pool slot, mutate `config`, then re-Create. */
+    void ReCreateHandleWithUpdatedConfig()
+    {
+        SolidSyslogMbedTlsStream_Destroy(handle);
+        handle = SolidSyslogMbedTlsStream_Create(&config);
     }
 };
 
@@ -282,4 +291,74 @@ TEST(SolidSyslogMbedTlsStream, BioRecvCallbackForwardsBufferToTransport)
     LONGS_EQUAL(1, StreamFake_ReadCallCount(transport));
     POINTERS_EQUAL(buffer, StreamFake_LastReadBuf(transport));
     LONGS_EQUAL(sizeof(buffer), StreamFake_LastReadSize(transport));
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenSetsAuthmodeRequired)
+{
+    SolidSyslogAddressStorage storage = {};
+    struct SolidSyslogAddress* addr = SolidSyslogAddress_FromStorage(&storage);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsFake_SslConfAuthmodeCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslConfigInitArg(), MbedTlsFake_LastSslConfAuthmodeConfigArg());
+    LONGS_EQUAL(MBEDTLS_SSL_VERIFY_REQUIRED, MbedTlsFake_LastSslConfAuthmodeArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenWiresCaChainFromConfigAndNullCrl)
+{
+    /* Use a non-null marker pointer; the fake captures it without dereferencing. */
+    static mbedtls_x509_crt caChainMarker;
+    config.CaChain = &caChainMarker;
+    ReCreateHandleWithUpdatedConfig();
+    SolidSyslogAddressStorage storage = {};
+    struct SolidSyslogAddress* addr = SolidSyslogAddress_FromStorage(&storage);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsFake_SslConfCaChainCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslConfigInitArg(), MbedTlsFake_LastSslConfCaChainConfigArg());
+    POINTERS_EQUAL(&caChainMarker, MbedTlsFake_LastSslConfCaChainArg());
+    POINTERS_EQUAL(nullptr, MbedTlsFake_LastSslConfCaChainCrlArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenWiresRngFromConfigUsingCtrDrbgRandom)
+{
+    static mbedtls_ctr_drbg_context rngMarker;
+    config.Rng = &rngMarker;
+    ReCreateHandleWithUpdatedConfig();
+    SolidSyslogAddressStorage storage = {};
+    struct SolidSyslogAddress* addr = SolidSyslogAddress_FromStorage(&storage);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsFake_SslConfRngCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslConfigInitArg(), MbedTlsFake_LastSslConfRngConfigArg());
+    POINTERS_EQUAL((void*) mbedtls_ctr_drbg_random, (void*) MbedTlsFake_LastSslConfRngFuncArg());
+    POINTERS_EQUAL(&rngMarker, MbedTlsFake_LastSslConfRngContextArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenSetsHostnameWhenServerNameProvided)
+{
+    config.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    SolidSyslogAddressStorage storage = {};
+    struct SolidSyslogAddress* addr = SolidSyslogAddress_FromStorage(&storage);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsFake_SslSetHostnameCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslInitArg(), MbedTlsFake_LastSslSetHostnameContextArg());
+    STRCMP_EQUAL("syslog.example.com", MbedTlsFake_LastSslSetHostnameNameArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenSkipsHostnameWhenServerNameIsNull)
+{
+    /* setup() left config.ServerName at NULL. */
+    SolidSyslogAddressStorage storage = {};
+    struct SolidSyslogAddress* addr = SolidSyslogAddress_FromStorage(&storage);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslSetHostnameCallCount());
 }

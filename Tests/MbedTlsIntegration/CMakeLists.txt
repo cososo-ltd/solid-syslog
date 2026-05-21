@@ -47,6 +47,11 @@ endforeach()
 add_executable(MbedTlsIntegrationTests
     main.cpp
     SolidSyslogMbedTlsStreamIntegrationTest.cpp
+    SocketStream.c
+    MbedTlsTestCert.c
+    MbedTlsTestServer.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
 )
 
 target_link_libraries(MbedTlsIntegrationTests PRIVATE
@@ -56,9 +61,12 @@ target_link_libraries(MbedTlsIntegrationTests PRIVATE
     mbedtls
     mbedx509
     mbedcrypto
+    Threads::Threads
 )
 
 target_include_directories(MbedTlsIntegrationTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Interface
     ${CMAKE_SOURCE_DIR}/Core/Source
     ${CMAKE_CURRENT_SOURCE_DIR}
 )

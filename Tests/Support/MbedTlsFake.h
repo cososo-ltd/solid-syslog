@@ -7,6 +7,9 @@
 
 struct mbedtls_ssl_config;
 struct mbedtls_ssl_context;
+struct mbedtls_x509_crt;
+struct mbedtls_x509_crl;
+struct mbedtls_ctr_drbg_context;
 
 EXTERN_C_BEGIN
 
@@ -71,6 +74,28 @@ EXTERN_C_BEGIN
     /* mbedtls_ssl_config_free */
     int MbedTlsFake_SslConfigFreeCallCount(void);
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfigFreeArg(void);
+
+    /* mbedtls_ssl_conf_authmode */
+    int MbedTlsFake_SslConfAuthmodeCallCount(void);
+    struct mbedtls_ssl_config* MbedTlsFake_LastSslConfAuthmodeConfigArg(void);
+    int MbedTlsFake_LastSslConfAuthmodeArg(void);
+
+    /* mbedtls_ssl_conf_ca_chain */
+    int MbedTlsFake_SslConfCaChainCallCount(void);
+    struct mbedtls_ssl_config* MbedTlsFake_LastSslConfCaChainConfigArg(void);
+    struct mbedtls_x509_crt* MbedTlsFake_LastSslConfCaChainArg(void);
+    struct mbedtls_x509_crl* MbedTlsFake_LastSslConfCaChainCrlArg(void);
+
+    /* mbedtls_ssl_conf_rng */
+    int MbedTlsFake_SslConfRngCallCount(void);
+    struct mbedtls_ssl_config* MbedTlsFake_LastSslConfRngConfigArg(void);
+    int (*MbedTlsFake_LastSslConfRngFuncArg(void))(void*, unsigned char*, size_t);
+    void* MbedTlsFake_LastSslConfRngContextArg(void);
+
+    /* mbedtls_ssl_set_hostname */
+    int MbedTlsFake_SslSetHostnameCallCount(void);
+    struct mbedtls_ssl_context* MbedTlsFake_LastSslSetHostnameContextArg(void);
+    const char* MbedTlsFake_LastSslSetHostnameNameArg(void);
 
 EXTERN_C_END
 
