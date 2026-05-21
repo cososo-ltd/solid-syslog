@@ -692,6 +692,13 @@ static void TeardownAll(void)
     SolidSyslogFreeRtosMutex_Destroy(lifecycleMutex);
     lifecycleMutex = NULL;
     SolidSyslogSwitchingSender_Destroy(switchingSender);
+    /* BddTargetTlsSender owns the inner MbedTlsStream + FreeRtosTcpStream pool
+     * slots and the StreamSender slot, so it must be destroyed before tcpSender
+     * / tcpStream below — releasing slots in roughly reverse order of Create
+     * keeps the dependency graph clean even though the pool allocator itself
+     * is order-insensitive. */
+    BddTargetTlsSender_Destroy();
+    tlsSender = NULL;
     SolidSyslogStreamSender_Destroy(tcpSender);
     SolidSyslogFreeRtosTcpStream_Destroy(tcpStream);
     SolidSyslogUdpSender_Destroy(udpSender);
@@ -821,17 +828,21 @@ static void InteractiveTask(void* argument)
     tcpSender = SolidSyslogStreamSender_Create(&tcpConfig);
 
     /* TLS slot: SolidSyslogMbedTlsStream over SolidSyslogFreeRtosTcpStream,
-     * with the demo CA / client cert / client key baked into the ELF.
-     * Slice 6b ships TLS-only (mtls=false) — port 6514 on the BDD syslog-ng
-     * oracle, no client cert presented. mTLS support (port 6515, client
-     * cert wired) is slice 6c work and may require an extra
-     * BDD_TARGET_SWITCH_MTLS slot or a runtime endpoint-dispatch shim. */
+     * with the demo CA / client cert / client key baked into the ELF. The
+     * same slot serves both @tls (port 6514) and @mtls (port 6515)
+     * scenarios — the wrapper wires the client cert unconditionally and
+     * its StreamSender Endpoint callback dispatches on
+     * BddTargetSwitchConfig_IsMtlsMode() at Connect time. The `false`
+     * argument here is honoured for cross-platform signature uniformity
+     * (Linux / Windows TLS senders read it at startup) but ignored on
+     * FreeRTOS, where the harness flips mode over the UART after the
+     * prompt is already up. */
     tlsSender = BddTargetTlsSender_Create(resolver, false);
 
-    /* SwitchingSender lets `set transport <udp|tcp|tls>` flip the active
-     * transport at runtime. Default to UDP so existing UDP-tagged scenarios
-     * stay green; `--transport tcp|tls` flowing through the behave harness
-     * lands here as `set transport <value>` over the UART. */
+    /* SwitchingSender lets `set transport <udp|tcp|tls|mtls>` flip the
+     * active transport at runtime. Default to UDP so existing UDP-tagged
+     * scenarios stay green; `--transport tcp|tls|mtls` flowing through the
+     * behave harness lands here as `set transport <value>` over the UART. */
     static struct SolidSyslogSender* inners[BDD_TARGET_SWITCH_COUNT];
     inners[BDD_TARGET_SWITCH_UDP] = udpSender;
     inners[BDD_TARGET_SWITCH_TCP] = tcpSender;

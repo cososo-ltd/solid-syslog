@@ -139,8 +139,9 @@ psa_status_t mbedtls_psa_external_get_random(
 /* Demo-only entropy: XOR the FreeRTOS tick count, a per-call counter, and
  * the destination address (which varies per call) into each output byte.
  * Quality is intentionally terrible — QEMU has no real source — and the
- * SolidSyslog_Error(WARNING, …) emit below makes that explicit. Real
- * integrators on bare-metal would replace this with TRNG / HSM bytes. */
+ * "demo-only entropy" printf emit at the end of EnsureMbedTlsInitialised
+ * makes that explicit. Real integrators on bare-metal would replace this
+ * with TRNG / HSM bytes. */
 static int DemoEntropySource(void* data, unsigned char* output, size_t len, size_t* olen)
 {
     (void) data;
@@ -198,17 +199,35 @@ static void EnsureMbedTlsInitialised(void)
     mbedtls_platform_set_calloc_free(FreeRtosMbedTlsCalloc, FreeRtosMbedTlsFree);
 
     mbedtls_entropy_init(&entropy);
+    /* Registered as MBEDTLS_ENTROPY_SOURCE_STRONG even though the demo
+     * randomness is intentionally terrible. The STRONG/WEAK label is
+     * checked structurally by `mbedtls_entropy_func`, which requires at
+     * least MBEDTLS_ENTROPY_BLOCK_SIZE bytes of strong contribution per
+     * call — without any strong source registered, every
+     * `mbedtls_ctr_drbg_seed` returns ENTROPY_SOURCE_FAILED (-0x0034)
+     * after looping 256 times trying to satisfy the threshold. The
+     * "demo-only entropy" notice printed at the end of this function is
+     * the real quality assertion; real integrators replace this with a
+     * TRNG / HSM source. */
     mbedtls_entropy_add_source(
         &entropy,
         DemoEntropySource,
         NULL,
         MBEDTLS_ENTROPY_BLOCK_SIZE,
-        MBEDTLS_ENTROPY_SOURCE_WEAK
+        MBEDTLS_ENTROPY_SOURCE_STRONG
     );
 
     mbedtls_ctr_drbg_init(&drbg);
     static const unsigned char personalization[] = "solidsyslog-freertos-bdd";
-    (void) mbedtls_ctr_drbg_seed(&drbg, mbedtls_entropy_func, &entropy, personalization, sizeof(personalization) - 1U);
+    int drbgSeedRc = mbedtls_ctr_drbg_seed(
+        &drbg, mbedtls_entropy_func, &entropy, personalization, sizeof(personalization) - 1U
+    );
+    if (drbgSeedRc != 0)
+    {
+        (void) printf("[mbedtls] ctr_drbg_seed FAILED rc=-0x%04x; TLS slot will be unusable\r\n",
+                      (unsigned) -drbgSeedRc);
+        return;
+    }
     vTaskDelay(1U);
 
     /* mbedTLS 3.6 routes TLS 1.3 cryptography through PSA, so psa_crypto_init()
@@ -219,14 +238,25 @@ static void EnsureMbedTlsInitialised(void)
      * PSA_ERROR_INSUFFICIENT_ENTROPY on this no-platform-entropy target), so
      * the init only succeeds once the DRBG is seeded above — that's why this
      * sits after the seed step. Idempotent across subsequent calls. */
-    (void) psa_crypto_init();
+    psa_status_t psaRc = psa_crypto_init();
+    if (psaRc != PSA_SUCCESS)
+    {
+        (void) printf("[mbedtls] psa_crypto_init FAILED rc=%d; TLS slot will be unusable\r\n", (int) psaRc);
+        return;
+    }
 
     (void) printf("[mbedtls] parsing CA chain\r\n");
 
     memcpy(caPemBuf, bdd_baked_ca_pem, sizeof(bdd_baked_ca_pem));
     caPemBuf[sizeof(bdd_baked_ca_pem)] = '\0';
     mbedtls_x509_crt_init(&caChain);
-    (void) mbedtls_x509_crt_parse(&caChain, caPemBuf, sizeof(caPemBuf));
+    int caParseRc = mbedtls_x509_crt_parse(&caChain, caPemBuf, sizeof(caPemBuf));
+    if (caParseRc != 0)
+    {
+        (void) printf("[mbedtls] CA chain parse FAILED rc=-0x%04x; TLS slot will be unusable\r\n",
+                      (unsigned) -caParseRc);
+        return;
+    }
     vTaskDelay(1U);
 
     (void) printf("[mbedtls] parsing client cert chain\r\n");
@@ -234,7 +264,14 @@ static void EnsureMbedTlsInitialised(void)
     memcpy(clientCertPemBuf, bdd_baked_client_cert_pem, sizeof(bdd_baked_client_cert_pem));
     clientCertPemBuf[sizeof(bdd_baked_client_cert_pem)] = '\0';
     mbedtls_x509_crt_init(&clientCertChain);
-    (void) mbedtls_x509_crt_parse(&clientCertChain, clientCertPemBuf, sizeof(clientCertPemBuf));
+    int clientCertParseRc =
+        mbedtls_x509_crt_parse(&clientCertChain, clientCertPemBuf, sizeof(clientCertPemBuf));
+    if (clientCertParseRc != 0)
+    {
+        (void) printf("[mbedtls] client cert parse FAILED rc=-0x%04x; mTLS will be unusable\r\n",
+                      (unsigned) -clientCertParseRc);
+        return;
+    }
     vTaskDelay(1U);
 
     (void) printf("[mbedtls] parsing client key (RSA — slowest step)\r\n");
@@ -242,7 +279,7 @@ static void EnsureMbedTlsInitialised(void)
     memcpy(clientKeyPemBuf, bdd_baked_client_key_pem, sizeof(bdd_baked_client_key_pem));
     clientKeyPemBuf[sizeof(bdd_baked_client_key_pem)] = '\0';
     mbedtls_pk_init(&clientKey);
-    (void) mbedtls_pk_parse_key(
+    int clientKeyParseRc = mbedtls_pk_parse_key(
         &clientKey,
         clientKeyPemBuf,
         sizeof(clientKeyPemBuf),
@@ -251,11 +288,20 @@ static void EnsureMbedTlsInitialised(void)
         mbedtls_ctr_drbg_random,
         &drbg
     );
+    if (clientKeyParseRc != 0)
+    {
+        (void) printf("[mbedtls] client key parse FAILED rc=-0x%04x; mTLS will be unusable\r\n",
+                      (unsigned) -clientKeyParseRc);
+        return;
+    }
     vTaskDelay(1U);
 
     /* Audit trail: every cold boot of this target announces the demo-only
      * entropy explicitly. Integrators porting this off the BDD target should
-     * see this and replace DemoEntropySource with TRNG before shipping. */
+     * see this and replace DemoEntropySource with TRNG before shipping. The
+     * `mbedTlsInitialised = true` latch happens only after every fail-able
+     * step above has succeeded — partial-init state would silently degrade
+     * later handshakes into confusing "internal" errors. */
     (void) printf("[mbedtls] init complete. WARNING: demo-only entropy "
                   "(xTaskGetTickCount + per-call counter). Not for production.\r\n");
 
