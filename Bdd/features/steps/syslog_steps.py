@@ -337,13 +337,20 @@ def _start_stdout_reader(process):
     threading.Thread(target=_reader, daemon=True).start()
 
 
-def wait_for_prompt(process, timeout=30):
+def wait_for_prompt(process, timeout=120):
     """Read stdout until we see 'SolidSyslog> ', confirming the command completed.
 
     Portable across POSIX and Windows: a daemon thread (started lazily by
     _start_stdout_reader) reads stdout byte-by-byte into a queue; this function
     pulls bytes off the queue with a per-iteration timeout so the deadline is
     honoured even on platforms where select.select can't monitor pipe fds.
+
+    The default is generous (120s) for the FreeRTOS QEMU target — first-boot
+    has to bring up Plus-TCP's IP task, parse the baked mbedTLS CA + client
+    cert + RSA client key (multi-second under QEMU's emulated Cortex-M3),
+    and then drop the interactive task. Linux/Windows native still complete
+    in well under a second, so the bump is a no-op for them; see
+    [[feedback-qemu-bdd-timeouts-generous]].
     """
     _start_stdout_reader(process)
 
