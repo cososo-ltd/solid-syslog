@@ -63,4 +63,37 @@
  * injected Sleep callback, so MBEDTLS_TIMING_C is unused. */
 #undef MBEDTLS_TIMING_C
 
+/* Route mbedTLS allocations through a runtime-installed calloc/free pair. By
+ * default mbedTLS calls libc calloc/free, which on this target funnels through
+ * newlib into the small 4 KiB syscall heap in Bdd/Targets/FreeRtos/Common/
+ * Syscalls.c — far too small for mbedTLS's per-context allocations (IN/OUT
+ * buffers plus handshake state run ~10–20 KiB). Enabling
+ * MBEDTLS_PLATFORM_MEMORY lets BddTargetTlsSender_MbedTls_FreeRtosTcp.c call
+ * mbedtls_platform_set_calloc_free(...) to redirect those allocations to
+ * pvPortMalloc, which uses the 96 KiB heap_4 region — the textbook
+ * FreeRTOS+mbedTLS integration. */
+#define MBEDTLS_PLATFORM_MEMORY
+
+/* Route PSA crypto's randomness through an integrator-supplied callback rather
+ * than PSA's internal entropy pool. mbedTLS 3.6's TLS 1.3 path is built on PSA,
+ * so psa_crypto_init() must succeed before any TLS 1.3 handshake — and the
+ * default PSA entropy collector returns PSA_ERROR_INSUFFICIENT_ENTROPY
+ * (-148) on platforms with no real entropy source (which is us, with
+ * MBEDTLS_NO_PLATFORM_ENTROPY defined above). With this define, PSA never
+ * tries to seed itself; the integrator provides mbedtls_psa_external_get_random
+ * (see BddTargetTlsSender_MbedTls_FreeRtosTcp.c) which feeds the same CTR_DRBG
+ * the classic API uses, so PSA and the classic API share one entropy chain. */
+#define MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG
+
+/* Shrink the TLS record buffers from the 16 KiB default. The BDD syslog-ng
+ * oracle's server cert + chain fits in 4 KiB IN comfortably, and the BDD
+ * messages we send fit in 2 KiB OUT. Cuts ~28 KiB off the per-context
+ * footprint — important when the FreeRTOS heap also has to satisfy
+ * FreeRTOS-Plus-TCP socket buffers, the SolidSyslog Service task, and the
+ * interactive task all at once. Embedded integrators replicating this
+ * footprint should re-tune both knobs against their peer's largest TLS
+ * record. */
+#define MBEDTLS_SSL_IN_CONTENT_LEN 4096
+#define MBEDTLS_SSL_OUT_CONTENT_LEN 2048
+
 #endif /* BDD_TARGET_FREERTOS_MBEDTLS_USER_CONFIG_H */

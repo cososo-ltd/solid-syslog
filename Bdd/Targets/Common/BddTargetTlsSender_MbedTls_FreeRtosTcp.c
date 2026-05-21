@@ -32,7 +32,9 @@
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/pk.h>
+#include <mbedtls/platform.h>
 #include <mbedtls/x509_crt.h>
+#include <psa/crypto.h>
 
 #include <FreeRTOS.h>
 #include <task.h>
@@ -73,6 +75,65 @@ static unsigned char clientKeyPemBuf[sizeof(bdd_baked_client_key_pem) + 1U];
 static mbedtls_x509_crt caChain;
 static mbedtls_x509_crt clientCertChain;
 static mbedtls_pk_context clientKey;
+
+/* mbedTLS allocates its per-SSL-context IN/OUT buffers (~6 KiB combined) and
+ * handshake state (~10 KiB) via libc calloc — on this FreeRTOS target that
+ * funnels through newlib's tiny syscall heap (~4 KiB, see Common/Syscalls.c),
+ * which can't satisfy a single TLS context. Redirect to pvPortMalloc so
+ * mbedTLS allocates from the 96 KiB FreeRTOS heap_4 region instead — the
+ * standard FreeRTOS+mbedTLS integration. Gated on MBEDTLS_PLATFORM_MEMORY in
+ * mbedtls_user_config.h. The zero-fill mirrors libc calloc's contract. */
+static void* FreeRtosMbedTlsCalloc(size_t nmemb, size_t size)
+{
+    void* result = NULL;
+    if ((nmemb != 0U) && (size != 0U))
+    {
+        size_t bytes = nmemb * size;
+        /* Detect the multiplication wrap so a maliciously huge request can't
+         * underestimate the allocation size — pvPortMalloc would then hand
+         * back a too-small buffer that the caller writes past. */
+        if ((bytes / nmemb) == size)
+        {
+            result = pvPortMalloc(bytes);
+            if (result != NULL)
+            {
+                memset(result, 0, bytes);
+            }
+        }
+    }
+    return result;
+}
+
+static void FreeRtosMbedTlsFree(void* ptr)
+{
+    if (ptr != NULL)
+    {
+        vPortFree(ptr);
+    }
+}
+
+/* PSA crypto's randomness hook (gated on MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG in
+ * the user config). mbedTLS 3.6's TLS 1.3 path drives PSA crypto, and PSA's
+ * built-in entropy collector returns PSA_ERROR_INSUFFICIENT_ENTROPY on
+ * MBEDTLS_NO_PLATFORM_ENTROPY targets — bypass it by feeding PSA from the
+ * same CTR_DRBG the classic mbedTLS API already uses. The DRBG must be
+ * seeded before psa_crypto_init() so the first PSA crypto operation can
+ * draw bytes — EnsureMbedTlsInitialised below enforces that ordering. */
+psa_status_t mbedtls_psa_external_get_random(
+    mbedtls_psa_external_random_context_t* context,
+    uint8_t* output,
+    size_t outputSize,
+    size_t* outputLength
+)
+{
+    (void) context;
+    if (mbedtls_ctr_drbg_random(&drbg, output, outputSize) != 0)
+    {
+        return PSA_ERROR_GENERIC_ERROR;
+    }
+    *outputLength = outputSize;
+    return PSA_SUCCESS;
+}
 
 /* Demo-only entropy: XOR the FreeRTOS tick count, a per-call counter, and
  * the destination address (which varies per call) into each output byte.
@@ -129,6 +190,12 @@ static void EnsureMbedTlsInitialised(void)
     (void) printf("[mbedtls] init entropy + DRBG seed (slow under QEMU)\r\n");
     vTaskDelay(1U);
 
+    /* Redirect mbedTLS allocations to the FreeRTOS heap before any
+     * mbedtls_*_init runs. Must come first — once an ssl_setup runs against
+     * the default libc calloc and fails, the failure mode is heap exhaustion
+     * inside newlib's 4 KiB syscall heap, not a recoverable error. */
+    mbedtls_platform_set_calloc_free(FreeRtosMbedTlsCalloc, FreeRtosMbedTlsFree);
+
     mbedtls_entropy_init(&entropy);
     mbedtls_entropy_add_source(
         &entropy,
@@ -142,6 +209,16 @@ static void EnsureMbedTlsInitialised(void)
     static const unsigned char personalization[] = "solidsyslog-freertos-bdd";
     (void) mbedtls_ctr_drbg_seed(&drbg, mbedtls_entropy_func, &entropy, personalization, sizeof(personalization) - 1U);
     vTaskDelay(1U);
+
+    /* mbedTLS 3.6 routes TLS 1.3 cryptography through PSA, so psa_crypto_init()
+     * must succeed before the first handshake or mbedtls_ssl_handshake returns
+     * MBEDTLS_ERR_ERROR_GENERIC_ERROR (-0x0001) at the first state transition.
+     * MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG in the user config disables PSA's
+     * built-in entropy collector (which would otherwise return
+     * PSA_ERROR_INSUFFICIENT_ENTROPY on this no-platform-entropy target), so
+     * the init only succeeds once the DRBG is seeded above — that's why this
+     * sits after the seed step. Idempotent across subsequent calls. */
+    (void) psa_crypto_init();
 
     (void) printf("[mbedtls] parsing CA chain\r\n");
 
