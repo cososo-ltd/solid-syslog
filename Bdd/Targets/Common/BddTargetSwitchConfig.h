@@ -3,6 +3,7 @@
 
 #include "ExternC.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 
 EXTERN_C_BEGIN
@@ -17,6 +18,13 @@ EXTERN_C_BEGIN
 
     void BddTargetSwitchConfig_SetByName(const char* name);
     uint8_t BddTargetSwitchConfig_Selector(void); // NOLINT(modernize-redundant-void-arg) -- C idiom
+    /* tls and mtls share the same Switching slot (BDD_TARGET_SWITCH_TLS) so
+     * the TLS sender / TLS stream / underlying TCP socket get reused across
+     * the two modes. The FreeRTOS BDD target reads this at TLS Connect time
+     * to pick between the syslog-ng oracle's port 6514 (TLS) and 6515 (mTLS);
+     * the client cert is wired regardless of mode, so the port is the only
+     * thing that has to flip. */
+    bool BddTargetSwitchConfig_IsMtlsMode(void); // NOLINT(modernize-redundant-void-arg) -- C idiom
 
 EXTERN_C_END
 

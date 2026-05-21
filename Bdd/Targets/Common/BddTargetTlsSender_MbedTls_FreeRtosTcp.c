@@ -23,6 +23,7 @@
 #include "BddTargetTlsSender.h"
 
 #include "BddTargetMtlsConfig.h"
+#include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
 #include "SolidSyslogFreeRtosTcpStream.h"
 #include "SolidSyslogMbedTlsStream.h"
@@ -261,8 +262,42 @@ static void EnsureMbedTlsInitialised(void)
     mbedTlsInitialised = true;
 }
 
+/* Dispatch the StreamSender's endpoint+version callbacks based on whether
+ * the harness most recently selected `tls` or `mtls` over the UART. tls
+ * and mtls share BDD_TARGET_SWITCH_TLS (and therefore one TLS stream / one
+ * TCP socket / one mbedTLS context); only the destination port (6514 vs
+ * 6515) differs at Connect time. The mTLS port's syslog-ng listener
+ * peer-verifies the client cert that the wrapper wires unconditionally
+ * below, and the plain-TLS port's listener accepts it as optional-untrusted
+ * — so the same client identity works on both ports. */
+static void DispatchEndpoint(struct SolidSyslogEndpoint* endpoint)
+{
+    if (BddTargetSwitchConfig_IsMtlsMode())
+    {
+        BddTargetMtlsConfig_GetEndpoint(endpoint);
+    }
+    else
+    {
+        BddTargetTlsConfig_GetEndpoint(endpoint);
+    }
+}
+
+static uint32_t DispatchEndpointVersion(void)
+{
+    return BddTargetSwitchConfig_IsMtlsMode() ? BddTargetMtlsConfig_GetEndpointVersion()
+                                              : BddTargetTlsConfig_GetEndpointVersion();
+}
+
 struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* resolver, bool mtls)
 {
+    /* `mtls` is honoured for cross-platform contract uniformity but does not
+     * gate cert wiring on FreeRTOS — both TLS and mTLS BDD scenarios share
+     * one Switching slot here, and `set transport mtls` arrives over the UART
+     * AFTER this Create call has run. Wiring the client identity
+     * unconditionally lets the dispatcher above flip ports at runtime without
+     * needing a sender re-create. */
+    (void) mtls;
+
     EnsureMbedTlsInitialised();
 
     underlyingStream = SolidSyslogFreeRtosTcpStream_Create();
@@ -273,21 +308,20 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     tlsStreamConfig.Sleep = RtosSleep;
     tlsStreamConfig.Rng = &drbg;
     tlsStreamConfig.CaChain = &caChain;
-    tlsStreamConfig.ServerName = mtls ? BddTargetMtlsConfig_GetServerName() : BddTargetTlsConfig_GetServerName();
-    if (mtls)
-    {
-        tlsStreamConfig.ClientCertChain = &clientCertChain;
-        tlsStreamConfig.ClientKey = &clientKey;
-    }
+    /* Plain-TLS and mTLS share one SNI on this oracle (CN/SAN = "syslog-ng"),
+     * so either *_GetServerName accessor returns the same string. Use the
+     * TLS one to make the equivalence explicit. */
+    tlsStreamConfig.ServerName = BddTargetTlsConfig_GetServerName();
+    tlsStreamConfig.ClientCertChain = &clientCertChain;
+    tlsStreamConfig.ClientKey = &clientKey;
     tlsStream = SolidSyslogMbedTlsStream_Create(&tlsStreamConfig);
 
     static struct SolidSyslogStreamSenderConfig senderConfig;
     senderConfig = (struct SolidSyslogStreamSenderConfig) {0};
     senderConfig.Resolver = resolver;
     senderConfig.Stream = tlsStream;
-    senderConfig.Endpoint = mtls ? BddTargetMtlsConfig_GetEndpoint : BddTargetTlsConfig_GetEndpoint;
-    senderConfig.EndpointVersion =
-        mtls ? BddTargetMtlsConfig_GetEndpointVersion : BddTargetTlsConfig_GetEndpointVersion;
+    senderConfig.Endpoint = DispatchEndpoint;
+    senderConfig.EndpointVersion = DispatchEndpointVersion;
     sender = SolidSyslogStreamSender_Create(&senderConfig);
 
     return sender;
