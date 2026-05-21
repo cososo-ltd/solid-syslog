@@ -1,0 +1,32 @@
+# Tests/MbedTls — host-side unit tests for the mbedTLS adapter under
+# Platform/MbedTls/Source/. Each test executable recompiles the adapter
+# source under test with the test's own (or upstream's) mbedtls_config.h
+# on the include path and links against $MBEDTLS_DIR/include — same shape
+# as Tests/FatFs/ and Tests/FreeRtos/, see project_header_configured_platforms.
+#
+# Gated by SOLIDSYSLOG_MBEDTLS at the top-level CMakeLists (this CMakeLists
+# is only entered when the option is ON), which itself defaults ON when
+# the MBEDTLS_DIR environment variable is set.
+
+add_executable(SolidSyslogMbedTlsStreamPoolTest
+    SolidSyslogMbedTlsStreamPoolTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
+)
+
+target_link_libraries(SolidSyslogMbedTlsStreamPoolTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogMbedTlsStreamPoolTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+)
+
+add_test(NAME SolidSyslogMbedTlsStreamPoolTest COMMAND SolidSyslogMbedTlsStreamPoolTest)

@@ -105,6 +105,26 @@ if(SOLIDSYSLOG_OPENSSL)
     endif()
 endif()
 
+# mbedTLS-based TLS is the embedded-target reference TLS backend (OpenSSL is too
+# large for Cortex-M). Default ON when the MBEDTLS_DIR environment variable is
+# set (the cpputest-freertos devcontainer image provides /opt/mbedtls); pass
+# -DSOLIDSYSLOG_MBEDTLS=OFF to disable explicitly. Unlike OpenSSL there is no
+# find_package — mbedTLS is header-configured (mbedtls_config.h changes ABI),
+# so the adapter ships as an INTERFACE pack and consumers compile the sources
+# themselves with their own config. See Platform/MbedTls/CMakeLists.txt.
+if(DEFINED ENV{MBEDTLS_DIR})
+    set(_solidsyslog_mbedtls_default ON)
+else()
+    set(_solidsyslog_mbedtls_default OFF)
+endif()
+option(SOLIDSYSLOG_MBEDTLS "Include mbedTLS-based TLS support" ${_solidsyslog_mbedtls_default})
+unset(_solidsyslog_mbedtls_default)
+if(SOLIDSYSLOG_MBEDTLS AND NOT DEFINED ENV{MBEDTLS_DIR})
+    message(FATAL_ERROR
+        "SOLIDSYSLOG_MBEDTLS=ON but MBEDTLS_DIR is not set; "
+        "export MBEDTLS_DIR=/path/to/mbedtls or pass -DSOLIDSYSLOG_MBEDTLS=OFF.")
+endif()
+
 # Allocation strategy (E11). Currently only "static" ships — internal static
 # pools allocate instance bookkeeping for stateful classes. A future epic
 # may add "dynamic" (heap-backed). Selecting "dynamic" now errors hard so
@@ -168,6 +188,10 @@ endif()
 
 if(SOLIDSYSLOG_OPENSSL)
     add_subdirectory(Platform/OpenSsl)
+endif()
+
+if(SOLIDSYSLOG_MBEDTLS)
+    add_subdirectory(Platform/MbedTls)
 endif()
 
 if(HAVE_WINDOWS_INTERLOCKED OR HAVE_WINDOWS_PLATFORM OR SOLIDSYSLOG_WINSOCK)

@@ -16,6 +16,11 @@ if(DEFINED ENV{FATFS_PATH})
     add_subdirectory(FatFs)
 endif()
 
+if(SOLIDSYSLOG_MBEDTLS)
+    add_subdirectory(MbedTls)
+    add_subdirectory(MbedTlsIntegration)
+endif()
+
 set(TEST_SOURCES
     SolidSyslogTest.cpp
     SolidSyslogPoolTest.cpp
@@ -243,6 +248,15 @@ foreach(fatfs_test_target IN ITEMS
 )
     if(TARGET ${fatfs_test_target})
         register_junit_test(${fatfs_test_target})
+    endif()
+endforeach()
+
+foreach(mbedtls_test_target IN ITEMS
+    SolidSyslogMbedTlsStreamPoolTest
+    MbedTlsIntegrationTests
+)
+    if(TARGET ${mbedtls_test_target})
+        register_junit_test(${mbedtls_test_target})
     endif()
 endforeach()
 

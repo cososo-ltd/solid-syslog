@@ -647,4 +647,27 @@
 #error "SOLIDSYSLOG_TLS_STREAM_POOL_SIZE must be >= 1"
 #endif
 
+/*
+ * Number of SolidSyslogMbedTlsStream instances the library's internal static
+ * pool can simultaneously hold. Each instance carries an mbedtls_ssl_context,
+ * mbedtls_ssl_config, and the integrator's MbedTlsStreamConfig (transport
+ * pointer, sleep callback, mbedTLS handle pointers — Rng, CaChain, optional
+ * ClientCertChain/ClientKey).
+ *
+ * Default 1 — TLS senders are scoped per destination and almost all
+ * integrators wire a single TLS sender per process. Bump via
+ * SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is genuinely needed
+ * (e.g. multi-destination egress with separate TLS sessions per peer).
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE < 1
+#error "SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE must be >= 1"
+#endif
+
 #endif /* SOLIDSYSLOG_TUNABLES_DEFAULTS_H */

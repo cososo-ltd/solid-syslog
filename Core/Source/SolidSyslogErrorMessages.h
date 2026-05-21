@@ -141,5 +141,9 @@
     "SolidSyslogTlsStream_Create pool exhausted; returning fallback stream"
 #define SOLIDSYSLOG_ERROR_MSG_TLSSTREAM_UNKNOWN_DESTROY \
     "SolidSyslogTlsStream_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_MBEDTLSSTREAM_POOL_EXHAUSTED \
+    "SolidSyslogMbedTlsStream_Create pool exhausted; returning fallback stream"
+#define SOLIDSYSLOG_ERROR_MSG_MBEDTLSSTREAM_UNKNOWN_DESTROY \
+    "SolidSyslogMbedTlsStream_Destroy called with a handle not issued by this pool"
 
 #endif /* SOLIDSYSLOGERRORMESSAGES_H */
