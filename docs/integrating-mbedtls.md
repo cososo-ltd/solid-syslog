@@ -1,213 +1,216 @@
-# Integrating mbedTLS
+# Integrating SolidSyslog with mbedTLS
 
-`SolidSyslogMbedTlsStream` is a `SolidSyslogStream` implementation that
-wraps an injected byte-stream (typically `SolidSyslogFreeRtosTcpStream` or
-`SolidSyslogPosixTcpStream`) with TLS via Mbed TLS 3.x. It is a reference
-adapter — small, dependency-injected, and intended to be auditable line by
-line. `SolidSyslogTlsStream` (OpenSSL-backed) remains the host-side
-reference; this guide covers the mbedTLS adapter for embedded / FreeRTOS /
-resource-constrained integrations where OpenSSL is impractical.
+`SolidSyslogMbedTlsStream` lets you deliver RFC 5425 (syslog over TLS)
+records from SolidSyslog through Mbed TLS instead of OpenSSL. It is the
+recommended adapter on embedded / FreeRTOS / bare-metal targets where
+OpenSSL is too large or impractical. Hosted Linux / Windows deployments
+should use `SolidSyslogTlsStream` (OpenSSL) — both adapters expose the
+same `SolidSyslogStream` vtable, so the rest of the wiring
+(`SolidSyslogStreamSender`, your buffer, your store) is identical.
 
-## When to use mbedTLS
+This document covers what *you*, the integrator, plug in. It does not
+re-teach mbedTLS — for that, see the
+[upstream Mbed TLS documentation](https://mbed-tls.readthedocs.io/).
 
-| Scenario | Recommended adapter |
-|---|---|
-| Linux server / appliance / containerised | `SolidSyslogTlsStream` (OpenSSL) |
-| Windows server / desktop | `SolidSyslogTlsStream` (OpenSSL) |
-| FreeRTOS / Zephyr / bare-metal Cortex-M with TCP/IP | `SolidSyslogMbedTlsStream` |
-| RTOS with no full-fat TLS library available | `SolidSyslogMbedTlsStream` |
+---
 
-Both adapters expose the same `SolidSyslogStream` vtable, so callers swap
-implementations at link time — `SolidSyslogStreamSender` doesn't know
-which TLS library is underneath.
+## The shape
+
+```
+SolidSyslog_Log ─▶ Buffer ─▶ Sender ─▶ SolidSyslogStreamSender
+                                              │
+                                              ▼
+                                  SolidSyslogMbedTlsStream  ◀── you build CA/cert/key/DRBG handles
+                                              │
+                                              ▼
+                                       SolidSyslogStream    ◀── you pick / write the TCP backend
+                                              │
+                                              ▼
+                                          (your TCP/IP stack)
+```
+
+You supply two things directly: the byte-transport `SolidSyslogStream` and
+the per-context mbedTLS handles passed through
+`SolidSyslogMbedTlsStreamConfig`.
+
+---
+
+## What you need to provide
+
+| Item | Owner | Notes |
+|---|---|---|
+| `Transport` | You | A `SolidSyslogStream*` carrying TCP. The library ships `SolidSyslogPosixTcpStream` (POSIX), `SolidSyslogWinsockTcpStream` (Windows), and `SolidSyslogFreeRtosTcpStream` (FreeRTOS-Plus-TCP). If your TCP/IP stack is different (LwIP, NicheStack, vendor BSP), write your own `SolidSyslogStream` — see [`Platform/Posix/Source/SolidSyslogPosixTcpStream.c`](../Platform/Posix/Source/SolidSyslogPosixTcpStream.c) as a reference. |
+| `Sleep` | You | A `SolidSyslogSleepFunction`. Drives the bounded handshake retry between `WANT_READ` / `WANT_WRITE` polls. On FreeRTOS use a `vTaskDelay`-backed wrapper; on POSIX `SolidSyslogPosixSleep` is the natural fit. Required. |
+| `Rng` | You | `mbedtls_ctr_drbg_context*` you seeded yourself. The adapter calls `mbedtls_ctr_drbg_random` against it. Required. |
+| `CaChain` | You | `mbedtls_x509_crt*` you parsed yourself (from filesystem, baked-in PEM, HSM, whatever fits your build). Required. |
+| `ServerName` | You | SNI + cert hostname check string. `NULL` skips the name check; only appropriate for closed networks where IP-pinning replaces hostname identity. |
+| `ClientCertChain` / `ClientKey` | You | `mbedtls_x509_crt*` + `mbedtls_pk_context*` for mTLS. Both `NULL` = server-auth-only TLS. Both non-`NULL` = mTLS. Supplying only one is treated as "no client cert" — the adapter never half-configures. |
+
+The full struct shape lives in
+[`Platform/MbedTls/Interface/SolidSyslogMbedTlsStream.h`](../Platform/MbedTls/Interface/SolidSyslogMbedTlsStream.h).
+
+---
+
+## Scenario A: you already have Mbed TLS in your image
+
+If your firmware already wires Mbed TLS for another subsystem (a cloud
+client, an OTA updater, a vendor security framework), you keep that wiring
+intact. The adapter consumes the handles you've already built — it never
+calls `mbedtls_platform_setup` / `_teardown`, never installs
+threading-alt hooks, never resets the global RNG, never replaces your
+debug callback. See the [coexistence contract](#coexistence-contract)
+below for the auditable list.
+
+Concretely, on top of your existing setup:
+
+1. **Pick a `SolidSyslogStream` for the byte transport.** Use one of the
+   shipped adapters that matches your TCP/IP stack
+   (`SolidSyslogFreeRtosTcpStream`, `SolidSyslogPosixTcpStream`,
+   `SolidSyslogWinsockTcpStream`) or write your own backing the same
+   `SolidSyslogStream` vtable. If you wrote your own, the existing
+   shipped adapters are the worked examples.
+2. **Fill in `SolidSyslogMbedTlsStreamConfig`** with the handles you
+   already have:
+   ```c
+   struct SolidSyslogMbedTlsStreamConfig cfg = {
+       .Transport       = myTcpStream,        /* from step 1 */
+       .Sleep           = MyVTaskDelayWrapper, /* or PosixSleep / similar */
+       .Rng             = &myAlreadySeededDrbg,
+       .CaChain         = &myAlreadyParsedCaChain,
+       .ServerName      = "syslog.example.com",
+       .ClientCertChain = &myClientCert,  /* NULL for server-auth-only */
+       .ClientKey       = &myClientKey,   /* paired with ClientCertChain */
+   };
+   struct SolidSyslogStream* tlsStream = SolidSyslogMbedTlsStream_Create(&cfg);
+   ```
+3. **Wire `tlsStream` into a `SolidSyslogStreamSender`** as the `Stream`
+   field — the same way you'd wire a plain TCP stream. RFC 6587
+   octet-counting framing is applied by `StreamSender` on top of the
+   adapter.
+
+That's the whole integration on the SolidSyslog side. There are no
+process-wide hooks to install and nothing to teardown beyond the matching
+`SolidSyslogMbedTlsStream_Destroy` when you tear the sender down.
+
+---
+
+## Scenario B: you do not have Mbed TLS yet
+
+If you're bringing Mbed TLS in fresh for SolidSyslog, do that work first
+following the upstream
+[Mbed TLS porting guide](https://mbed-tls.readthedocs.io/en/latest/kb/how-to/how-do-i-port-mbed-tls-to-a-new-environment-os/).
+Once Mbed TLS itself is building on your target, you need the following
+specifically for this adapter:
+
+- **A seeded `mbedtls_ctr_drbg_context`.** `mbedtls_entropy_init` +
+  `mbedtls_entropy_add_source` for at least one source registered as
+  `MBEDTLS_ENTROPY_SOURCE_STRONG` (without a STRONG-tagged source,
+  `mbedtls_entropy_func` never satisfies its internal threshold and
+  every `mbedtls_ctr_drbg_seed` call returns
+  `MBEDTLS_ERR_CTR_DRBG_ENTROPY_SOURCE_FAILED` — silent on the wire,
+  loud in your tests), then `mbedtls_ctr_drbg_init` +
+  `mbedtls_ctr_drbg_seed`. Production-quality entropy is a hardware
+  question — TRNG, vendor HSM, or a board-specific source.
+- **`psa_crypto_init()` called *after* the DRBG is seeded.** Mbed TLS
+  3.6's TLS 1.3 code path routes through PSA. If PSA isn't initialised,
+  the first handshake state transition returns
+  `MBEDTLS_ERR_ERROR_GENERIC_ERROR` (-0x0001) before any TLS bytes leave
+  the socket. If your target has no platform entropy source (a common
+  embedded case), `#define MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG` in your
+  mbedTLS config and provide
+  `mbedtls_psa_external_get_random` that wraps the DRBG you just seeded —
+  this keeps PSA and the classic mbedTLS API on the same entropy chain.
+- **A parsed CA chain.** `mbedtls_x509_crt_init` +
+  `mbedtls_x509_crt_parse` against whatever delivery mechanism fits your
+  build (filesystem on POSIX, baked-in array via `xxd -i` on bare-metal,
+  HSM-pulled blob, etc.). PEM input must be NUL-terminated.
+- **(mTLS only) a parsed client cert chain and private key.** Same
+  pattern as the CA chain plus `mbedtls_pk_init` /
+  `mbedtls_pk_parse_key`.
+- **A byte-transport `SolidSyslogStream`** matching your TCP/IP stack,
+  exactly as in [Scenario A](#scenario-a-you-already-have-mbed-tls-in-your-image).
+
+A worked end-to-end example for all of the above lives at
+[`Bdd/Targets/Common/BddTargetTlsSender_MbedTls_FreeRtosTcp.c`](../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_FreeRtosTcp.c)
+(FreeRTOS-Plus-TCP on QEMU mps2-an385). The matching Mbed TLS config
+overrides live at
+[`Bdd/Targets/FreeRtos/mbedtls_user_config.h`](../Bdd/Targets/FreeRtos/mbedtls_user_config.h).
+
+---
 
 ## Coexistence contract
 
-`Platform/MbedTls/Source/` MUST NOT call any process-global mbedTLS APIs
-(global RNG installers, global PSA initialisers, global mbedTLS allocator
-hooks). The contract is auditable by grep: any future change that
-introduces such a call must be flagged in review. See
-[[project-mbedtls-coexistence-contract]] for the rationale.
+`Platform/MbedTls/Source/` is auditably free of process-global Mbed TLS
+calls. The adapter:
 
-The integrator owns process-global setup. The adapter only consumes
-caller-built handles via the config struct.
+- ✗ does not call `mbedtls_platform_setup` / `_teardown`
+- ✗ does not call `mbedtls_threading_set_alt`
+- ✗ does not call `psa_crypto_init` (you do)
+- ✗ does not call `mbedtls_platform_set_calloc_free` (you do, if you need it)
+- ✗ does not call `mbedtls_debug_set_threshold` / `mbedtls_ssl_conf_dbg`
+- ✗ does not free any handle you passed in via the config struct
 
-This matters because mbedTLS allows applications to share a single global
-crypto context across multiple library users. If the SolidSyslog adapter
-installed its own global state — a process-wide allocator, RNG, or PSA
-context — it would silently overwrite the integrator's existing wiring
-or be silently overwritten by it.
+Everything in that list is global state your existing integration may
+already own. Auditors verify the contract by grepping
+`Platform/MbedTls/Source/` — any future change that introduces a global
+call must be flagged in review.
 
-## Configuration handles
+---
 
-`SolidSyslogMbedTlsStreamConfig` (in
-[Platform/MbedTls/Interface/SolidSyslogMbedTlsStream.h](../Platform/MbedTls/Interface/SolidSyslogMbedTlsStream.h))
-takes pre-built handles, never file paths or PEM blobs:
+## FreeRTOS-specific gotchas
 
-| Field | Owner | Notes |
-|---|---|---|
-| `Transport` | Caller | A `SolidSyslogStream*` carrying the byte transport. The adapter calls `Open`/`Send`/`Read`/`Close` on it — same vtable that `SolidSyslogStreamSender` would use directly for plain TCP. |
-| `Sleep` | Caller | A `SolidSyslogSleepFunction` driving the bounded handshake retry between `WANT_READ` / `WANT_WRITE` polls. Required. On FreeRTOS use a `vTaskDelay`-backed wrapper; on POSIX `SolidSyslogPosixSleep` is the natural fit. |
-| `Rng` | Caller | `mbedtls_ctr_drbg_context*` — seeded by the integrator before the first handshake. The adapter calls `mbedtls_ctr_drbg_random` against this handle. |
-| `CaChain` | Caller | `mbedtls_x509_crt*` parsed by the integrator from whatever source is appropriate (filesystem on POSIX, baked-in `xxd -i` arrays on FreeRTOS, HSM-backed trust store on a secure element). |
-| `ServerName` | Caller | SNI string and certificate-name check target. `NULL` skips the name check — only appropriate for closed networks where IP-pinning replaces hostname identity. |
-| `ClientCertChain` / `ClientKey` | Caller | `mbedtls_x509_crt*` + `mbedtls_pk_context*` for mTLS. Both NULL = server-auth TLS only. Both non-NULL = mTLS. Supplying only one is treated as "no client cert" — the adapter never half-configures. |
+These bit us during the BDD-target bring-up. If you're on FreeRTOS with
+newlib, treat them as integrator-side checklist items:
 
-The "caller owns handles" pattern keeps the adapter framework-agnostic: a
-deployment that already builds its own X.509 / DRBG handles for other
-purposes (key rotation policy, HSM integration, TRNG wiring) reuses those
-handles unchanged. See [[project-mbedtls-di-handles]] for the design note.
+- **Route mbedTLS allocations to the RTOS heap.** Mbed TLS calls libc
+  `calloc`, which on newlib targets typically hits a tiny `_sbrk`-backed
+  syscall heap (4 KiB in the SolidSyslog BDD reference at
+  [`Bdd/Targets/FreeRtos/Common/Syscalls.c`](../Bdd/Targets/FreeRtos/Common/Syscalls.c)).
+  A single `mbedtls_ssl_setup` wants ~10–16 KiB and will fail with
+  `MBEDTLS_ERR_SSL_ALLOC_FAILED` (-0x7F00). Set
+  `MBEDTLS_PLATFORM_MEMORY` in your config and call
+  `mbedtls_platform_set_calloc_free(yourCalloc, yourFree)` (pvPortMalloc
+  / vPortFree) before any `mbedtls_*_init`.
+- **Shrink the TLS record buffers from the 16 KiB default.** Set
+  `MBEDTLS_SSL_IN_CONTENT_LEN` to the largest TLS record your peer will
+  send (server cert + chain is typically 2–4 KiB), and
+  `MBEDTLS_SSL_OUT_CONTENT_LEN` to your largest application message.
+  The defaults cost ~32 KiB of FreeRTOS heap per TLS context.
+- **`mbedtls_ssl_setup` allocates roughly `IN + OUT + ~3 KiB` of
+  handshake state.** Size your FreeRTOS heap
+  (`configTOTAL_HEAP_SIZE`) accordingly across all concurrent TLS
+  contexts.
+- **`MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG` + the external RNG hook are
+  effectively mandatory** if you've defined
+  `MBEDTLS_NO_PLATFORM_ENTROPY` (which you typically have on
+  embedded). Without it, `psa_crypto_init` returns
+  `PSA_ERROR_INSUFFICIENT_ENTROPY` (-148).
 
-## Process-wide setup the integrator must do
+The BDD target's
+[mbedtls_user_config.h](../Bdd/Targets/FreeRtos/mbedtls_user_config.h)
+shows the minimal config that satisfies the above for QEMU mps2-an385.
 
-The order of operations matters — getting it wrong surfaces as misleading
-mbedTLS errors (the most common ones are documented at the end of this
-guide). Recommended sequence:
+---
 
-1. **Install the platform allocator** (if not using the default libc one).
-   On FreeRTOS this routes mbedTLS allocations through `pvPortMalloc` /
-   `vPortFree` so they land in the RTOS heap rather than newlib's tiny
-   syscall heap. Requires `MBEDTLS_PLATFORM_MEMORY` in the integrator's
-   mbedTLS config:
-   ```c
-   mbedtls_platform_set_calloc_free(YourCalloc, YourFree);
-   ```
-2. **Initialise entropy and seed the DRBG.** The adapter does not seed the
-   DRBG itself; that responsibility stays with the integrator, who knows
-   what hardware sources are available:
-   ```c
-   mbedtls_entropy_init(&entropy);
-   mbedtls_entropy_add_source(&entropy, YourEntropySource, NULL, ...);
-   mbedtls_ctr_drbg_init(&drbg);
-   mbedtls_ctr_drbg_seed(&drbg, mbedtls_entropy_func, &entropy, ...);
-   ```
-3. **Initialise PSA crypto** (mandatory for mbedTLS 3.6 with TLS 1.3
-   enabled — even when negotiating an older version, the handshake state
-   machine touches PSA). Must come *after* the DRBG is seeded if you are
-   using `MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG`:
-   ```c
-   psa_crypto_init();
-   ```
-4. **Parse the certificates and keys** the adapter will consume:
-   ```c
-   mbedtls_x509_crt_init(&caChain);
-   mbedtls_x509_crt_parse(&caChain, caPem, caPemLen + 1);  /* +1 for NUL */
-   /* …same pattern for client cert and key… */
-   ```
-5. **Build the adapter** via `SolidSyslogMbedTlsStream_Create(&config)`
-   passing the handles initialised above.
+## Reference integrations
 
-The adapter's `Open` / `Close` cycle is idempotent and re-entrant: the
-underlying mbedTLS contexts are zeroed on construction and after every
-`Close`, so reconnect after an outage is automatic and leak-free.
+| Target | Adapter source | Mbed TLS config | Notes |
+|---|---|---|---|
+| FreeRTOS QEMU mps2-an385 + FreeRTOS-Plus-TCP | [BddTargetTlsSender_MbedTls_FreeRtosTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_FreeRtosTcp.c) | [mbedtls_user_config.h](../Bdd/Targets/FreeRtos/mbedtls_user_config.h) | Demo-quality entropy and baked-in PEMs; loudly tagged not-for-production. |
+| Linux host (host-TDD parity with the embedded path) | [Tests/MbedTlsIntegration/](../Tests/MbedTlsIntegration/) | — | In-process TLS server drives a real handshake against the wrapper. |
+| POSIX (OpenSSL reference, for comparison) | [BddTargetTlsSender_OpenSsl_PosixTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_OpenSsl_PosixTcp.c) | — | Same composition shape using `SolidSyslogTlsStream` for the TLS layer. |
 
-## FreeRTOS-specific considerations
+---
 
-### Heap budget
+## What this adapter does not own
 
-mbedTLS `mbedtls_ssl_setup` allocates per-context buffers totalling roughly
-`MBEDTLS_SSL_IN_CONTENT_LEN + MBEDTLS_SSL_OUT_CONTENT_LEN + ~3 KiB` of
-handshake state. With mbedTLS defaults (16 KiB each) that's >35 KiB per
-context — likely larger than your RTOS heap if you haven't sized for it.
-
-Three knobs:
-
-- Size the **FreeRTOS heap** (`configTOTAL_HEAP_SIZE`) to cover the worst
-  case: per-SSL-context working set × (number of concurrent TLS connections),
-  plus everything else the application allocates.
-- Shrink **`MBEDTLS_SSL_IN_CONTENT_LEN`** to the largest TLS record the peer
-  will send. Server certificates with intermediates are typically 2–4 KiB;
-  a 4096-byte IN buffer is a reasonable starting point for syslog deployments.
-- Shrink **`MBEDTLS_SSL_OUT_CONTENT_LEN`** to the largest message you will
-  send. The library's default `SOLIDSYSLOG_MAX_MESSAGE_SIZE` fits inside
-  2048 comfortably.
-
-The BDD target's [mbedtls_user_config.h](../Bdd/Targets/FreeRtos/mbedtls_user_config.h)
-shows the full minimal config — `IN=4096`, `OUT=2048`, with rationale
-comments — for the QEMU mps2-an385 reference image.
-
-### newlib's syscall heap
-
-If the FreeRTOS target uses newlib (the SolidSyslog FreeRTOS BDD target
-does), libc `calloc` is backed by `_sbrk`, which in turn is typically backed
-by a small static buffer (4 KiB in the SolidSyslog BDD reference at
-[Syscalls.c](../Bdd/Targets/FreeRtos/Common/Syscalls.c)). That buffer is
-intended for newlib's small scratch allocations (printf, etc.), not TLS
-contexts.
-
-Without `mbedtls_platform_set_calloc_free`, mbedTLS will silently land
-every `calloc` in that 4 KiB buffer and `mbedtls_ssl_setup` will fail with
-`MBEDTLS_ERR_SSL_ALLOC_FAILED` (-0x7F00) before the first byte hits the
-socket.
-
-### PSA crypto on no-platform-entropy targets
-
-mbedTLS 3.6's TLS 1.3 code path routes random-number requests through PSA
-crypto. PSA's built-in entropy collector requires a platform entropy source
-— which is exactly what `MBEDTLS_NO_PLATFORM_ENTROPY` turns off on
-embedded targets.
-
-The fix is `MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG` plus an integrator-supplied
-`mbedtls_psa_external_get_random` that feeds PSA from the same CTR_DRBG
-the classic API uses. This keeps the entropy chain single-rooted at your
-hardware source.
-
-Reference implementation (BDD target):
-[BddTargetTlsSender_MbedTls_FreeRtosTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_FreeRtosTcp.c).
-
-### Bounded handshake retry
-
-The adapter polls `mbedtls_ssl_handshake` against the non-blocking
-transport — it never blocks the FreeRTOS service task indefinitely. The
-retry budget is `HANDSHAKE_TIMEOUT_MILLISECONDS` (5 seconds at time of
-writing, configurable in
-[SolidSyslogMbedTlsStream.c](../Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c)),
-sleeping `HANDSHAKE_POLL_INTERVAL_MILLISECONDS` between attempts via the
-caller's injected `Sleep` callback. A wedged peer surfaces as a fast Open
-failure on the integrator's reconnect loop, not a hang.
-
-## Reference integration
-
-The cleanest end-to-end reference is the FreeRTOS BDD target:
-
-- Adapter wiring:
-  [Bdd/Targets/Common/BddTargetTlsSender_MbedTls_FreeRtosTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_FreeRtosTcp.c)
-- mbedTLS user config:
-  [Bdd/Targets/FreeRtos/mbedtls_user_config.h](../Bdd/Targets/FreeRtos/mbedtls_user_config.h)
-- Stream composition (TLS over FreeRTOS-Plus-TCP):
-  [Bdd/Targets/FreeRtos/main.c](../Bdd/Targets/FreeRtos/main.c)
-
-The host-side reference (POSIX) lives at
-[Bdd/Targets/Common/BddTargetTlsSender_OpenSsl_PosixTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_OpenSsl_PosixTcp.c)
-and demonstrates the same shape using the OpenSSL-backed
-`SolidSyslogTlsStream` for comparison.
-
-## Common failure modes
-
-| Symptom | Likely cause |
-|---|---|
-| `mbedtls_ssl_setup` returns `MBEDTLS_ERR_SSL_ALLOC_FAILED` (-0x7F00) | Heap too small or routed to wrong allocator. Check the FreeRTOS heap budget and confirm `mbedtls_platform_set_calloc_free` was called before any `mbedtls_*_init`. |
-| `mbedtls_ssl_handshake` returns `MBEDTLS_ERR_ERROR_GENERIC_ERROR` (-0x0001) at the first call with no BIO traffic | `psa_crypto_init` was not called or returned non-zero. Verify PSA is initialised after DRBG is seeded if using `MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG`. |
-| `psa_crypto_init` returns `PSA_ERROR_INSUFFICIENT_ENTROPY` (-148) | PSA's built-in entropy collector cannot find a source. Define `MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG` and provide `mbedtls_psa_external_get_random`. |
-| Handshake fails with a hostname / SAN error | `ServerName` doesn't match a SAN on the peer's certificate. Pass the same string your peer's cert advertises (typically the DNS name the client is connecting to, not an IP). |
-| `mbedtls_x509_crt_parse` fails on baked-in PEM arrays | Missing NUL terminator. `xxd -i` does not append one; allocate `sizeof(array) + 1` and write `'\0'` at the last byte before parsing. |
-
-## Out of scope
-
-The adapter does not own:
-
-- **PEM-to-handle conversion.** Caller parses on the integrator's terms
-  (filesystem, baked-in, HSM-pulled). The DI shape is intentional —
-  baking parsing into the adapter would couple it to mbedTLS's filesystem
-  abstractions, which are typically disabled on embedded targets.
-- **Certificate rotation.** A rotation occurs when the integrator
-  re-parses the PEM into a new `mbedtls_x509_crt` and rebuilds the
-  adapter (or destroys and recreates the SolidSyslogStreamSender so the
-  next Connect picks up the new chain).
-- **HSM / TRNG integration.** The integrator's entropy source feeds
-  CTR_DRBG via `mbedtls_entropy_add_source`. On targets with no real
-  entropy source, the BDD reference uses a deliberately weak demo source
-  to keep the path testable — this is loudly marked as not for production.
-- **Per-connection TLS configuration.** A single adapter instance carries
-  one ssl_config; deployments needing per-peer cipher / version pinning
-  build multiple adapters.
+- **PEM-to-handle conversion** — you parse, in whatever way fits your
+  build.
+- **Certificate rotation** — re-parse and rebuild the adapter, or destroy
+  / re-create the `SolidSyslogStreamSender` so the next Connect picks up
+  the new chain.
+- **HSM / TRNG integration** — your entropy source feeds CTR_DRBG; the
+  adapter consumes the seeded DRBG.
+- **Per-connection TLS configuration** — one adapter instance, one
+  `ssl_config`. If you need per-peer cipher / version pinning, build
+  multiple adapters.
