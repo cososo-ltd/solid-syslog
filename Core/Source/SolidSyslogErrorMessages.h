@@ -97,6 +97,10 @@
     "SolidSyslogWindowsMutex_Create pool exhausted; returning fallback mutex"
 #define SOLIDSYSLOG_ERROR_MSG_WINDOWSMUTEX_UNKNOWN_DESTROY \
     "SolidSyslogWindowsMutex_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_WINSOCKADDRESS_POOL_EXHAUSTED \
+    "SolidSyslogWinsockAddress_Create pool exhausted; returning fallback address"
+#define SOLIDSYSLOG_ERROR_MSG_WINSOCKADDRESS_UNKNOWN_DESTROY \
+    "SolidSyslogWinsockAddress_Destroy called with a handle not issued by this pool"
 #define SOLIDSYSLOG_ERROR_MSG_WINSOCKDATAGRAM_POOL_EXHAUSTED \
     "SolidSyslogWinsockDatagram_Create pool exhausted; returning fallback datagram"
 #define SOLIDSYSLOG_ERROR_MSG_WINSOCKDATAGRAM_UNKNOWN_DESTROY \

@@ -152,6 +152,7 @@ endif()
 if(SOLIDSYSLOG_WINSOCK)
     list(APPEND TEST_SOURCES
         WinsockFakeTest.cpp
+        SolidSyslogWinsockAddressTest.cpp
         SolidSyslogWinsockResolverTest.cpp
         SolidSyslogWinsockDatagramTest.cpp
         SolidSyslogWinsockTcpStreamTest.cpp
