@@ -45,7 +45,7 @@
 #include "SolidSyslogFreeRtosAddress.h"
 #include "SolidSyslogFreeRtosDatagram.h"
 #include "SolidSyslogFreeRtosMutex.h"
-#include "SolidSyslogFreeRtosStaticResolver.h"
+#include "SolidSyslogFreeRtosResolver.h"
 #include "SolidSyslogFreeRtosSysUpTime.h"
 #include "SolidSyslogFreeRtosTcpStream.h"
 #include "SolidSyslogMetaSd.h"
@@ -463,9 +463,9 @@ static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 
 static void GetEndpoint(struct SolidSyslogEndpoint* endpoint)
 {
-    /* SolidSyslogFreeRtosStaticResolver currently ignores the host
-     * string and routes via TEST_DESTINATION_IPV4, so host is plumbed
-     * here for forward-compatibility with the follow-up slice that will
+    /* SolidSyslogFreeRtosResolver currently ignores the host string
+     * and routes via TEST_DESTINATION_IPV4, so host is plumbed here
+     * for forward-compatibility with the follow-up slice that will
      * teach the resolver to parse dotted-quads. The port reaches the
      * wire via sendto unchanged. */
     SolidSyslogFormatter_BoundedString(endpoint->Host, host, strlen(host));
@@ -888,7 +888,7 @@ static void TeardownAll(void)
     SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogFreeRtosAddress_Destroy(udpAddress);
     SolidSyslogFreeRtosDatagram_Destroy(datagram);
-    SolidSyslogFreeRtosStaticResolver_Destroy(resolver);
+    SolidSyslogFreeRtosResolver_Destroy(resolver);
 }
 
 static void SemihostingExit(int status)
@@ -918,7 +918,7 @@ static void InteractiveTask(void* argument)
 {
     (void) argument;
 
-    resolver = SolidSyslogFreeRtosStaticResolver_Create(TEST_DESTINATION_IPV4);
+    resolver = SolidSyslogFreeRtosResolver_Create(TEST_DESTINATION_IPV4);
     datagram = SolidSyslogFreeRtosDatagram_Create();
     udpAddress = SolidSyslogFreeRtosAddress_Create();
 

@@ -9,7 +9,7 @@ SolidSyslog runs here with the portable `SolidSyslogCircularBuffer` +
 a `SolidSyslogSwitchingSender` wrapping a UDP sender (over
 `SolidSyslogFreeRtosDatagram`) and a TCP sender (over
 `SolidSyslogFreeRtosTcpStream` + `SolidSyslogStreamSender`), the
-`SolidSyslogFreeRtosStaticResolver` pinned to the QEMU slirp gateway
+`SolidSyslogFreeRtosResolver` pinned to the QEMU slirp gateway
 (`10.0.2.2`), and the `Bdd/Targets/Common/BddTargetInteractive` runner.
 Drive identity / endpoint / PRIVAL fields over the UART command channel
 with `set NAME VALUE`, flip the active transport at runtime with

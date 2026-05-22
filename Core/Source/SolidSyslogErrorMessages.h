@@ -130,10 +130,10 @@
     "SolidSyslogFreeRtosDatagram_Create pool exhausted; returning fallback datagram"
 #define SOLIDSYSLOG_ERROR_MSG_FREERTOSDATAGRAM_UNKNOWN_DESTROY \
     "SolidSyslogFreeRtosDatagram_Destroy called with a handle not issued by this pool"
-#define SOLIDSYSLOG_ERROR_MSG_FREERTOSSTATICRESOLVER_POOL_EXHAUSTED \
-    "SolidSyslogFreeRtosStaticResolver_Create pool exhausted; returning fallback resolver"
-#define SOLIDSYSLOG_ERROR_MSG_FREERTOSSTATICRESOLVER_UNKNOWN_DESTROY \
-    "SolidSyslogFreeRtosStaticResolver_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_FREERTOSRESOLVER_POOL_EXHAUSTED \
+    "SolidSyslogFreeRtosResolver_Create pool exhausted; returning fallback resolver"
+#define SOLIDSYSLOG_ERROR_MSG_FREERTOSRESOLVER_UNKNOWN_DESTROY \
+    "SolidSyslogFreeRtosResolver_Destroy called with a handle not issued by this pool"
 #define SOLIDSYSLOG_ERROR_MSG_FREERTOSTCPSTREAM_POOL_EXHAUSTED \
     "SolidSyslogFreeRtosTcpStream_Create pool exhausted; returning fallback stream"
 #define SOLIDSYSLOG_ERROR_MSG_FREERTOSTCPSTREAM_UNKNOWN_DESTROY \

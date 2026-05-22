@@ -77,16 +77,16 @@ else()
 
     add_test(NAME SolidSyslogFreeRtosTcpStreamTest COMMAND SolidSyslogFreeRtosTcpStreamTest)
 
-    add_executable(SolidSyslogFreeRtosStaticResolverTest
-        SolidSyslogFreeRtosStaticResolverTest.cpp
+    add_executable(SolidSyslogFreeRtosResolverTest
+        SolidSyslogFreeRtosResolverTest.cpp
         main.cpp
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddress.c
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosStaticResolver.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosStaticResolverStatic.c
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosResolver.c
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosResolverStatic.c
     )
 
-    target_link_libraries(SolidSyslogFreeRtosStaticResolverTest PRIVATE
+    target_link_libraries(SolidSyslogFreeRtosResolverTest PRIVATE
         ${PROJECT_NAME}
         ConfigLockFake
         ErrorHandlerFake
@@ -94,7 +94,7 @@ else()
         CppUTestExt
     )
 
-    target_include_directories(SolidSyslogFreeRtosStaticResolverTest PRIVATE
+    target_include_directories(SolidSyslogFreeRtosResolverTest PRIVATE
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source
         ${CMAKE_SOURCE_DIR}/Core/Interface
@@ -105,7 +105,7 @@ else()
         $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
     )
 
-    add_test(NAME SolidSyslogFreeRtosStaticResolverTest COMMAND SolidSyslogFreeRtosStaticResolverTest)
+    add_test(NAME SolidSyslogFreeRtosResolverTest COMMAND SolidSyslogFreeRtosResolverTest)
 
     add_executable(SolidSyslogFreeRtosAddressTest
         SolidSyslogFreeRtosAddressTest.cpp
