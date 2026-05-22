@@ -19,24 +19,6 @@
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
 
-/* 200 ms is short enough that the Service task keeps draining predictably
- * during an outage, long enough for a healthy peer to ACK over slirp/LAN.
- * Both SO_SNDTIMEO and SO_RCVTIMEO are set before FreeRTOS_connect —
- * upstream gates connect on SO_RCVTIMEO, but we set both as belt-and-braces
- * against an upstream change. After connect both timeouts go back to 0 so
- * subsequent Send/Read follow the non-blocking single-call contract from
- * SolidSyslogStream. */
-static const TickType_t CONNECT_TIMEOUT_TICKS = pdMS_TO_TICKS(200);
-static const TickType_t NO_TIMEOUT_TICKS = 0;
-
-/* Yield window for the IP task to receive an ARP reply and populate the
- * cache before we attempt FreeRTOS_connect. Mirrors the established
- * SolidSyslogFreeRtosDatagram pattern (see [[freertos-arp-first-packet]]) —
- * without this, a cold-start TCP connect fires SYN before ARP resolves, the
- * SYN is dropped at the IP layer, and the bounded 200 ms RCV-timeout
- * connect expires before the retransmit ARP-and-resend cycle completes. */
-static const TickType_t ARP_RESOLUTION_WAIT_TICKS = pdMS_TO_TICKS(50);
-
 /* SolidSyslogStream_Read returns < 0 to signal EOF/error (socket closed
  * internally); -1 is the in-tree convention shared with Posix/Winsock. */
 static const SolidSyslogSsize READ_FAILED = -1;
@@ -170,6 +152,16 @@ static bool FreeRtosTcpStream_TryConnect(
     const struct SolidSyslogAddress* addr
 )
 {
+    /* 200 ms is short enough that the Service task keeps draining
+     * predictably during an outage, long enough for a healthy peer to
+     * ACK over slirp/LAN. Both SO_SNDTIMEO and SO_RCVTIMEO are set
+     * before FreeRTOS_connect — upstream gates connect on SO_RCVTIMEO,
+     * but we set both as belt-and-braces against an upstream change.
+     * After connect both timeouts go back to 0 so subsequent Send/Read
+     * follow the non-blocking single-call contract from
+     * SolidSyslogStream. */
+    static const TickType_t CONNECT_TIMEOUT_TICKS = pdMS_TO_TICKS(200);
+
     const struct freertos_sockaddr* dest = SolidSyslogFreeRtosAddress_AsConstFreertosSockaddr(addr);
     FreeRtosTcpStream_PrimeArpIfMissing(dest->sin_address.ulIP_IPv4);
     FreeRtosTcpStream_SetSendTimeout(self->Socket, CONNECT_TIMEOUT_TICKS);
@@ -184,6 +176,15 @@ static bool FreeRtosTcpStream_TryConnect(
  * cycle completes. Symmetric with SolidSyslogFreeRtosDatagram::SendTo. */
 static inline void FreeRtosTcpStream_PrimeArpIfMissing(uint32_t ip)
 {
+    /* Yield window for the IP task to receive an ARP reply and populate
+     * the cache before we attempt FreeRTOS_connect. Mirrors the
+     * established SolidSyslogFreeRtosDatagram pattern (see
+     * [[freertos-arp-first-packet]]) — without this, a cold-start TCP
+     * connect fires SYN before ARP resolves, the SYN is dropped at the
+     * IP layer, and the bounded 200 ms RCV-timeout connect expires
+     * before the retransmit ARP-and-resend cycle completes. */
+    static const TickType_t ARP_RESOLUTION_WAIT_TICKS = pdMS_TO_TICKS(50);
+
     if (xIsIPInARPCache(ip) == pdFALSE)
     {
         FreeRTOS_OutputARPRequest(ip);
@@ -193,6 +194,8 @@ static inline void FreeRtosTcpStream_PrimeArpIfMissing(uint32_t ip)
 
 static void FreeRtosTcpStream_ClearTimeouts(Socket_t socket)
 {
+    static const TickType_t NO_TIMEOUT_TICKS = 0;
+
     FreeRtosTcpStream_SetSendTimeout(socket, NO_TIMEOUT_TICKS);
     FreeRtosTcpStream_SetRecvTimeout(socket, NO_TIMEOUT_TICKS);
 }

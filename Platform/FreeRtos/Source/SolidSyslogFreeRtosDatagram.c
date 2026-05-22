@@ -18,13 +18,6 @@
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogUdpPayload.h"
 
-/* Time the calling task yields after issuing an ARP probe so the IP task can
- * receive the reply and populate the cache before we attempt FreeRTOS_sendto.
- * 50 ms is generous against typical sub-millisecond LAN ARP RTT but short
- * enough that the first send latency stays tolerable. If the reply hasn't
- * arrived in time the sendto is allowed to fail or be dropped — UDP semantics. */
-static const TickType_t ARP_RESOLUTION_WAIT_TICKS = pdMS_TO_TICKS(50);
-
 static bool FreeRtosDatagram_Open(struct SolidSyslogDatagram* base);
 static enum SolidSyslogDatagramSendResult FreeRtosDatagram_SendTo(
     struct SolidSyslogDatagram* base,
@@ -117,6 +110,14 @@ static enum SolidSyslogDatagramSendResult FreeRtosDatagram_SendTo(
  * retry belongs in the store-and-forward layer above, not here. */
 static inline void FreeRtosDatagram_PrimeArpIfMissing(uint32_t ip)
 {
+    /* Time the calling task yields after issuing an ARP probe so the IP
+     * task can receive the reply and populate the cache before we
+     * attempt FreeRTOS_sendto. 50 ms is generous against typical
+     * sub-millisecond LAN ARP RTT but short enough that the first send
+     * latency stays tolerable. If the reply hasn't arrived in time the
+     * sendto is allowed to fail or be dropped — UDP semantics. */
+    static const TickType_t ARP_RESOLUTION_WAIT_TICKS = pdMS_TO_TICKS(50);
+
     if (xIsIPInARPCache(ip) == pdFALSE)
     {
         FreeRTOS_OutputARPRequest(ip);
