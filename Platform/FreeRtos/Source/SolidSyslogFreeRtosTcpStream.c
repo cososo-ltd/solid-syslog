@@ -13,7 +13,7 @@
 #include "FreeRTOS_Sockets.h"
 #include "task.h"
 
-#include "SolidSyslogAddressInternal.h"
+#include "SolidSyslogFreeRtosAddressPrivate.h"
 #include "SolidSyslogFreeRtosTcpStreamPrivate.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogStream.h"
@@ -161,7 +161,7 @@ static bool FreeRtosTcpStream_TryConnect(
     const struct SolidSyslogAddress* addr
 )
 {
-    const struct freertos_sockaddr* dest = SolidSyslogAddress_AsConstFreertosSockaddr(addr);
+    const struct freertos_sockaddr* dest = SolidSyslogFreeRtosAddress_AsConstFreertosSockaddr(addr);
     FreeRtosTcpStream_PrimeArpIfMissing(dest->sin_address.ulIP_IPv4);
     FreeRtosTcpStream_SetSendTimeout(self->Socket, CONNECT_TIMEOUT_TICKS);
     FreeRtosTcpStream_SetRecvTimeout(self->Socket, CONNECT_TIMEOUT_TICKS);

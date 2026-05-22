@@ -2,7 +2,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "SolidSyslogAddress.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogNullSender.h"
@@ -53,6 +52,7 @@ void StreamSender_Initialise(struct SolidSyslogSender* base, const struct SolidS
     self->Base.Disconnect = StreamSender_Disconnect;
     self->Config.Resolver = config->Resolver;
     self->Config.Stream = config->Stream;
+    self->Config.Address = config->Address;
     self->Config.Endpoint = (config->Endpoint != NULL) ? config->Endpoint : StreamSender_NilEndpoint;
     self->Config.EndpointVersion =
         (config->EndpointVersion != NULL) ? config->EndpointVersion : StreamSender_NilEndpointVersion;
@@ -105,8 +105,7 @@ static inline bool StreamSender_Connected(struct SolidSyslogStreamSender* self)
 
 static bool StreamSender_Connect(struct SolidSyslogStreamSender* self)
 {
-    SolidSyslogAddressStorage addrStorage = {0};
-    struct SolidSyslogAddress* addr = SolidSyslogAddress_FromStorage(&addrStorage);
+    struct SolidSyslogAddress* addr = self->Config.Address;
 
     if (StreamSender_ResolveDestination(self, addr))
     {

@@ -8,6 +8,7 @@ set(OPENSSL_INTEGRATION_TESTS_SOURCES
     TlsTestServer.c
     SolidSyslogTlsStreamIntegrationTest.cpp
     main.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/AddressFake.c
 )
 
 # OpenSSL on MSVC requires applink.c when the application passes FILE* across
@@ -35,6 +36,7 @@ target_link_libraries(OpenSslIntegrationTests PRIVATE
 
 target_include_directories(OpenSslIntegrationTests PRIVATE
     ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 

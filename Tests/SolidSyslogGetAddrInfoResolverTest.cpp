@@ -5,9 +5,10 @@
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
-#include "SolidSyslogAddress.h"
 #include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogGetAddrInfoResolver.h"
+#include "SolidSyslogPosixAddress.h"
+#include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogResolver.h"
 #include "SolidSyslogResolverDefinition.h"
@@ -31,32 +32,32 @@ static const uint16_t    TEST_ALTERNATE_PORT = 9999;
 TEST_GROUP(SolidSyslogGetAddrInfoResolver)
 {
     struct SolidSyslogResolver* resolver = nullptr;
-    SolidSyslogAddressStorage   resultStorage{};
+    struct SolidSyslogAddress*  result   = nullptr;
 
     void setup() override
     {
         SocketFake_Reset();
+        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         resolver = SolidSyslogGetAddrInfoResolver_Create();
+        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
+        result   = SolidSyslogPosixAddress_Create();
     }
 
     void teardown() override
     {
+        SolidSyslogPosixAddress_Destroy(result);
         SolidSyslogGetAddrInfoResolver_Destroy(resolver);
     }
 
-    bool Resolve(const char* host, uint16_t port, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP)
+    bool Resolve(const char* host, uint16_t port, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP) const
     {
-        struct SolidSyslogAddress* address = SolidSyslogAddress_FromStorage(&resultStorage);
-        return SolidSyslogResolver_Resolve(resolver, transport, host, port, address);
+        return SolidSyslogResolver_Resolve(resolver, transport, host, port, result);
     }
 
     // NOLINTNEXTLINE(modernize-use-nodiscard) -- used through accessor syntax in tests
     const struct sockaddr_in* Result() const
     {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing, legal and necessary
-        const auto* bytes = reinterpret_cast<const std::uint8_t*>(&resultStorage);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- reinterpret to platform layout, storage is intptr_t-aligned
-        return reinterpret_cast<const struct sockaddr_in*>(bytes);
+        return SolidSyslogPosixAddress_AsConstSockaddrIn(result);
     }
 };
 
@@ -205,14 +206,9 @@ TEST(SolidSyslogGetAddrInfoResolverPool, FallbackResolveReturnsFalse)
     FillPool();
     overflow = SolidSyslogGetAddrInfoResolver_Create();
 
-    SolidSyslogAddressStorage resultStorage{};
-    CHECK_FALSE(SolidSyslogResolver_Resolve(
-        overflow,
-        SOLIDSYSLOG_TRANSPORT_UDP,
-        TEST_HOST,
-        TEST_PORT,
-        SolidSyslogAddress_FromStorage(&resultStorage)
-    ));
+    struct SolidSyslogAddress* fallbackResult = SolidSyslogPosixAddress_Create();
+    CHECK_FALSE(SolidSyslogResolver_Resolve(overflow, SOLIDSYSLOG_TRANSPORT_UDP, TEST_HOST, TEST_PORT, fallbackResult));
+    SolidSyslogPosixAddress_Destroy(fallbackResult);
 }
 
 TEST(SolidSyslogGetAddrInfoResolverPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)

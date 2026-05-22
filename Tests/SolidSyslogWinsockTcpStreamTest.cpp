@@ -5,7 +5,8 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
     // macros
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
-#include "SolidSyslogAddress.h"
+#include "SolidSyslogWinsockAddress.h"
+#include "SolidSyslogWinsockAddressPrivate.h"
 #include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
@@ -45,7 +46,6 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
 {
     // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogStream* stream = nullptr;
-    SolidSyslogAddressStorage addrStorage{};
     // cppcheck-suppress unreadVariable -- assigned in setup; cppcheck does not model CppUTest macros
     struct SolidSyslogAddress* addr = nullptr;
 
@@ -63,20 +63,17 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
         UT_PTR_SET(WinsockTcpStream_select,           WinsockFake_select);
         UT_PTR_SET(WinsockTcpStream_WSAGetLastError,  WinsockFake_WSAGetLastError);
         // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
-        stream = SolidSyslogWinsockTcpStream_Create();
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing, legal and necessary
-        auto* bytes = reinterpret_cast<std::uint8_t*>(&addrStorage);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- reinterpret to platform layout, storage is intptr_t-aligned
-        auto* sin       = reinterpret_cast<struct sockaddr_in*>(bytes);
-        sin->sin_family = AF_INET;
-        sin->sin_port   = htons(TEST_PORT);
+        stream                  = SolidSyslogWinsockTcpStream_Create();
+        addr                    = SolidSyslogWinsockAddress_Create();
+        struct sockaddr_in* sin = SolidSyslogWinsockAddress_AsSockaddrIn(addr);
+        sin->sin_family         = AF_INET;
+        sin->sin_port           = htons(TEST_PORT);
         inet_pton(AF_INET, TEST_ADDRESS, &sin->sin_addr);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        addr = SolidSyslogAddress_FromStorage(&addrStorage);
     }
 
     void teardown() override
     {
+        SolidSyslogWinsockAddress_Destroy(addr);
         SolidSyslogWinsockTcpStream_Destroy(stream);
     }
 

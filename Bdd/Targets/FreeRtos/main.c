@@ -42,6 +42,7 @@
 #include "SolidSyslogFatFsFile.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogFreeRtosAddress.h"
 #include "SolidSyslogFreeRtosDatagram.h"
 #include "SolidSyslogFreeRtosMutex.h"
 #include "SolidSyslogFreeRtosStaticResolver.h"
@@ -238,7 +239,9 @@ static struct SolidSyslogStructuredData* originSd = NULL;
  * TeardownAll then SemihostingExit). */
 static struct SolidSyslogResolver* resolver = NULL;
 static struct SolidSyslogDatagram* datagram = NULL;
+static struct SolidSyslogAddress* udpAddress = NULL;
 static struct SolidSyslogStream* tcpStream = NULL;
+static struct SolidSyslogAddress* tcpAddress = NULL;
 static struct SolidSyslogSender* tcpSender = NULL;
 static struct SolidSyslogSender* tlsSender = NULL;
 static struct SolidSyslogSender* udpSender = NULL;
@@ -700,8 +703,10 @@ static void TeardownAll(void)
     BddTargetTlsSender_Destroy();
     tlsSender = NULL;
     SolidSyslogStreamSender_Destroy(tcpSender);
+    SolidSyslogFreeRtosAddress_Destroy(tcpAddress);
     SolidSyslogFreeRtosTcpStream_Destroy(tcpStream);
     SolidSyslogUdpSender_Destroy(udpSender);
+    SolidSyslogFreeRtosAddress_Destroy(udpAddress);
     SolidSyslogFreeRtosDatagram_Destroy(datagram);
     SolidSyslogFreeRtosStaticResolver_Destroy(resolver);
 }
@@ -805,10 +810,12 @@ static void InteractiveTask(void* argument)
 
     resolver = SolidSyslogFreeRtosStaticResolver_Create(TEST_DESTINATION_IPV4);
     datagram = SolidSyslogFreeRtosDatagram_Create();
+    udpAddress = SolidSyslogFreeRtosAddress_Create();
 
     struct SolidSyslogUdpSenderConfig udpConfig = {
         .Resolver = resolver,
         .Datagram = datagram,
+        .Address = udpAddress,
         .Endpoint = GetEndpoint,
         .EndpointVersion = GetEndpointVersion,
     };
@@ -819,9 +826,11 @@ static void InteractiveTask(void* argument)
      * same host:port for both transports — the syslog-ng config in
      * Bdd/syslog-ng/syslog-ng.conf has a TCP listener on 5514 alongside UDP. */
     tcpStream = SolidSyslogFreeRtosTcpStream_Create();
+    tcpAddress = SolidSyslogFreeRtosAddress_Create();
     struct SolidSyslogStreamSenderConfig tcpConfig = {
         .Resolver = resolver,
         .Stream = tcpStream,
+        .Address = tcpAddress,
         .Endpoint = GetEndpoint,
         .EndpointVersion = GetEndpointVersion,
     };

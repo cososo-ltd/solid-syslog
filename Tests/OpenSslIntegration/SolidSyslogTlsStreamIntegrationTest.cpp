@@ -8,7 +8,7 @@
 #include <string>
 
 #include "BioPairStream.h"
-#include "SolidSyslogAddress.h"
+#include "AddressFake.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogTlsStream.h"
 #include "TlsTestCert.h"
@@ -35,7 +35,6 @@ TEST_GROUP(TlsStreamIntegration)
     struct SolidSyslogTlsStreamConfig tlsConfig      = {};
     
     struct SolidSyslogStream*         tlsStream      = nullptr;
-    SolidSyslogAddressStorage         addrStorage    = {};
     struct SolidSyslogAddress*        addr           = nullptr;
     char                              caPath[256]     = {};
     char                              clientCertPath[256] = {};
@@ -43,7 +42,7 @@ TEST_GROUP(TlsStreamIntegration)
 
     void setup() override
     {
-        addr = SolidSyslogAddress_FromStorage(&addrStorage);
+        addr = AddressFake_Get();
     }
 
     void teardown() override

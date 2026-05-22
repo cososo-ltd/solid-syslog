@@ -3,6 +3,7 @@
 #include "BddTargetMtlsConfig.h"
 #include "BddTargetTlsConfig.h"
 #include "BddTargetTlsSender.h"
+#include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixSleep.h"
 #include "SolidSyslogPosixTcpStream.h"
 #include "SolidSyslogStreamSender.h"
@@ -13,6 +14,7 @@ struct SolidSyslogResolver;
 static struct SolidSyslogStream* underlyingStream;
 
 static struct SolidSyslogStream* tlsStream;
+static struct SolidSyslogAddress* address;
 static struct SolidSyslogSender* sender;
 
 struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* resolver, bool mtls)
@@ -37,10 +39,13 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     }
     tlsStream = SolidSyslogTlsStream_Create(&tlsStreamConfig);
 
+    address = SolidSyslogPosixAddress_Create();
+
     static struct SolidSyslogStreamSenderConfig senderConfig;
     senderConfig = (struct SolidSyslogStreamSenderConfig) {0};
     senderConfig.Resolver = resolver;
     senderConfig.Stream = tlsStream;
+    senderConfig.Address = address;
     senderConfig.Endpoint = mtls ? BddTargetMtlsConfig_GetEndpoint : BddTargetTlsConfig_GetEndpoint;
     senderConfig.EndpointVersion =
         mtls ? BddTargetMtlsConfig_GetEndpointVersion : BddTargetTlsConfig_GetEndpointVersion;
@@ -52,6 +57,7 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
 void BddTargetTlsSender_Destroy(void)
 {
     SolidSyslogStreamSender_Destroy(sender);
+    SolidSyslogPosixAddress_Destroy(address);
     SolidSyslogTlsStream_Destroy(tlsStream);
     SolidSyslogPosixTcpStream_Destroy(underlyingStream);
 }

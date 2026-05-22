@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
-#include "SolidSyslogAddressInternal.h"
+#include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogGetAddrInfoResolverPrivate.h"
 #include "SolidSyslogNullResolver.h"
 #include "SolidSyslogResolverDefinition.h"
@@ -61,7 +61,7 @@ static bool GetAddrInfoResolver_Resolve(
 
     if (getaddrinfo(host, NULL, &hints, &info) == GETADDRINFO_SUCCESS)
     {
-        struct sockaddr_in* sin = SolidSyslogAddress_AsSockaddrIn(result);
+        struct sockaddr_in* sin = SolidSyslogPosixAddress_AsSockaddrIn(result);
         *sin = *(struct sockaddr_in*) info->ai_addr;
         sin->sin_port = htons(port);
         freeaddrinfo(info);

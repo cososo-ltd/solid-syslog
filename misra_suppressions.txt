@@ -9,18 +9,15 @@
 # Format: misra-c2012-<rule>:<file>:<line>
 # Lines starting with # are comments.
 
-# D.002 — Rules 11.2 / 11.3 / 11.5: vtable downcasts + Address + Formatter
+# D.002 — Rules 11.2 / 11.3 / 11.5: vtable downcasts + Formatter
 # See docs/misra-deviations.md#d002
 misra-c2012-11.2:Core/Interface/SolidSyslogFormatter.h:30
-misra-c2012-11.2:Platform/FreeRtos/Source/SolidSyslogAddress.c:5
-misra-c2012-11.2:Platform/FreeRtos/Source/SolidSyslogAddressInternal.h:19
-misra-c2012-11.2:Platform/FreeRtos/Source/SolidSyslogAddressInternal.h:25
-misra-c2012-11.2:Platform/Posix/Source/SolidSyslogAddress.c:5
-misra-c2012-11.2:Platform/Posix/Source/SolidSyslogAddressInternal.h:17
-misra-c2012-11.2:Platform/Posix/Source/SolidSyslogAddressInternal.h:23
-misra-c2012-11.2:Platform/Windows/Source/SolidSyslogAddress.c:5
-misra-c2012-11.2:Platform/Windows/Source/SolidSyslogAddressInternal.h:17
-misra-c2012-11.2:Platform/Windows/Source/SolidSyslogAddressInternal.h:23
+misra-c2012-11.2:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressPrivate.h:19
+misra-c2012-11.2:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressPrivate.h:26
+misra-c2012-11.2:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:17
+misra-c2012-11.2:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:23
+misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:19
+misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:26
 misra-c2012-11.3:Core/Interface/SolidSyslogFormatter.h:30
 misra-c2012-11.3:Core/Source/SolidSyslogBlockStore.c:69
 misra-c2012-11.3:Core/Source/SolidSyslogCircularBuffer.c:87
@@ -35,25 +32,31 @@ misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:59
 misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:98
 misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:36
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:53
-misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogAddress.c:5
-misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogAddressInternal.h:20
-misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogAddressInternal.h:26
+misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddress.c:8
+misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressPrivate.h:20
+misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressPrivate.h:27
+misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c:34
+misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c:60
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c:62
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:52
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosStaticResolver.c:50
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStream.c:112
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:85
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogAddress.c:5
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogAddressInternal.h:18
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogAddressInternal.h:24
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddress.c:8
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:18
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:24
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressStatic.c:33
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressStatic.c:60
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixDatagram.c:77
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixFile.c:66
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:99
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMutex.c:47
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:88
-misra-c2012-11.3:Platform/Windows/Source/SolidSyslogAddress.c:5
-misra-c2012-11.3:Platform/Windows/Source/SolidSyslogAddressInternal.h:18
-misra-c2012-11.3:Platform/Windows/Source/SolidSyslogAddressInternal.h:24
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddress.c:8
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:20
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:27
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressStatic.c:33
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressStatic.c:60
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c:40
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsFile.c:73
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsMutex.c:34

@@ -10792,3 +10792,52 @@ MISRA rule — different category, doesn't set precedent.
 ### Open questions
 
 - None.
+
+## 2026-05-22 — S24.07 SolidSyslogAddress as pool-allocated handle
+
+### Decisions
+
+- **Per-platform pool + TU-private fallback singleton.** The first
+  attempt at this story used a single `SolidSyslogNullAddress`
+  singleton in `Core/Source/` as the pool-exhaustion fallback.
+  David caught the bug: `Core/` can't include `<netinet/in.h>` /
+  `<winsock2.h>` / `<FreeRTOS_Sockets.h>`, so the singleton was
+  1 byte of storage. A platform Resolver writing a 16-byte
+  `sockaddr_in` into it on pool exhaustion was silent corruption.
+  Reverted, switched to a TU-private `<Plat>Address_Fallback`
+  inside each platform's `SolidSyslog<Plat>AddressStatic.c` —
+  sized as a real `SolidSyslog<Plat>Address`, so a Resolver
+  overwrite is bounded. Multi-overflow integrators share the
+  fallback storage and race; the `POOL_EXHAUSTED` error handler
+  call at every exhaustion is the signal to bump the tunable.
+- **Default pool size 3.** Matches the canonical BDD multi-
+  transport wiring (UDP + plain-TCP + TLS-stream). David
+  initially asked for default 1 with BDD-target overrides;
+  switched after I confirmed the library's pool array size is
+  baked at library build time, so a per-BDD-target override
+  would need a new top-level mechanism. The default-3 trade-
+  off matches the existing `SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE`
+  / `_STREAM_SENDER_POOL_SIZE` defaults.
+- **`HandleFromIndex` cast helper.** Centralises the pool-slot
+  `(struct SolidSyslogAddress*) &Pool[i]` cast at three call
+  sites (Create success path, IndexFromHandle comparison loop,
+  CleanupAtIndex). Fallback cast stays inline — one occurrence,
+  not worth a separate helper.
+- **D.002 narrowed.** Address moves off the old caller-supplied-
+  storage exception (D.002(b), retired) onto the standard
+  vtable / opaque-handle downcast (D.002(a)). The casts are
+  still there but their rationale is the same as every other
+  pool class.
+
+### Deferred
+
+- **StreamSender bad-setup contract.** UdpSender now rejects
+  NULL Address explicitly with the standard bad-setup error
+  pattern. StreamSender has historically been permissive
+  (no NULL-field validation) — kept as-is to avoid scope
+  creep. A future cleanup pass should align StreamSender with
+  UdpSender's contract for all NULL fields, not just Address.
+
+### Open questions
+
+- None.

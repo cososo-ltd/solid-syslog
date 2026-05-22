@@ -10,9 +10,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "SolidSyslogAddressInternal.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogWinsockAddressPrivate.h"
 #include "SolidSyslogWinsockTcpStreamInternal.h"
 #include "SolidSyslogWinsockTcpStreamPrivate.h"
 
@@ -171,7 +171,7 @@ static inline struct SolidSyslogWinsockTcpStream* WinsockTcpStream_SelfFromBase(
 static bool WinsockTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogWinsockTcpStream* self = WinsockTcpStream_SelfFromBase(base);
-    const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
+    const struct sockaddr_in* sin = SolidSyslogWinsockAddress_AsConstSockaddrIn(addr);
     bool connected = false;
 
     self->Fd = WinsockTcpStream_OpenAndConfigureSocket();

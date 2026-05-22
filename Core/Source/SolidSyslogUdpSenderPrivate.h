@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "SolidSyslogAddress.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogUdpSender.h"
 
@@ -12,7 +11,6 @@ struct SolidSyslogUdpSender
 {
     struct SolidSyslogSender Base;
     struct SolidSyslogUdpSenderConfig Config;
-    SolidSyslogAddressStorage AddrStorage;
     bool Connected;
     uint32_t LastEndpointVersion;
 };

@@ -17,6 +17,7 @@
 #define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_CREATE_NULL_CONFIG "SolidSyslogUdpSender_Create called with NULL config"
 #define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_CREATE_NULL_RESOLVER "SolidSyslogUdpSender_Create config.Resolver is NULL"
 #define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_CREATE_NULL_DATAGRAM "SolidSyslogUdpSender_Create config.Datagram is NULL"
+#define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_CREATE_NULL_ADDRESS "SolidSyslogUdpSender_Create config.Address is NULL"
 #define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_CREATE_NULL_ENDPOINT "SolidSyslogUdpSender_Create config.Endpoint is NULL"
 #define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_SEND_NULL_BUFFER "SolidSyslogUdpSender_Send called with NULL buffer"
 #define SOLIDSYSLOG_ERROR_MSG_UDPSENDER_POOL_EXHAUSTED \
@@ -69,6 +70,10 @@
     "SolidSyslogPosixMutex_Create pool exhausted; returning fallback mutex"
 #define SOLIDSYSLOG_ERROR_MSG_POSIXMUTEX_UNKNOWN_DESTROY \
     "SolidSyslogPosixMutex_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_POSIXADDRESS_POOL_EXHAUSTED \
+    "SolidSyslogPosixAddress_Create pool exhausted; returning fallback address"
+#define SOLIDSYSLOG_ERROR_MSG_POSIXADDRESS_UNKNOWN_DESTROY \
+    "SolidSyslogPosixAddress_Destroy called with a handle not issued by this pool"
 #define SOLIDSYSLOG_ERROR_MSG_POSIXDATAGRAM_POOL_EXHAUSTED \
     "SolidSyslogPosixDatagram_Create pool exhausted; returning fallback datagram"
 #define SOLIDSYSLOG_ERROR_MSG_POSIXDATAGRAM_UNKNOWN_DESTROY \
@@ -93,6 +98,10 @@
     "SolidSyslogWindowsMutex_Create pool exhausted; returning fallback mutex"
 #define SOLIDSYSLOG_ERROR_MSG_WINDOWSMUTEX_UNKNOWN_DESTROY \
     "SolidSyslogWindowsMutex_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_WINSOCKADDRESS_POOL_EXHAUSTED \
+    "SolidSyslogWinsockAddress_Create pool exhausted; returning fallback address"
+#define SOLIDSYSLOG_ERROR_MSG_WINSOCKADDRESS_UNKNOWN_DESTROY \
+    "SolidSyslogWinsockAddress_Destroy called with a handle not issued by this pool"
 #define SOLIDSYSLOG_ERROR_MSG_WINSOCKDATAGRAM_POOL_EXHAUSTED \
     "SolidSyslogWinsockDatagram_Create pool exhausted; returning fallback datagram"
 #define SOLIDSYSLOG_ERROR_MSG_WINSOCKDATAGRAM_UNKNOWN_DESTROY \
@@ -113,6 +122,10 @@
     "SolidSyslogFreeRtosMutex_Create pool exhausted; returning fallback mutex"
 #define SOLIDSYSLOG_ERROR_MSG_FREERTOSMUTEX_UNKNOWN_DESTROY \
     "SolidSyslogFreeRtosMutex_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_FREERTOSADDRESS_POOL_EXHAUSTED \
+    "SolidSyslogFreeRtosAddress_Create pool exhausted; returning fallback address"
+#define SOLIDSYSLOG_ERROR_MSG_FREERTOSADDRESS_UNKNOWN_DESTROY \
+    "SolidSyslogFreeRtosAddress_Destroy called with a handle not issued by this pool"
 #define SOLIDSYSLOG_ERROR_MSG_FREERTOSDATAGRAM_POOL_EXHAUSTED \
     "SolidSyslogFreeRtosDatagram_Create pool exhausted; returning fallback datagram"
 #define SOLIDSYSLOG_ERROR_MSG_FREERTOSDATAGRAM_UNKNOWN_DESTROY \

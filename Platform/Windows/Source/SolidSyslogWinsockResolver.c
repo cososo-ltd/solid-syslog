@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "SolidSyslogAddressInternal.h"
+#include "SolidSyslogWinsockAddressPrivate.h"
 #include "SolidSyslogNullResolver.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
@@ -78,7 +78,7 @@ static bool WinsockResolver_Resolve(
 
     if (Winsock_getaddrinfo(host, NULL, &hints, &info) == GETADDRINFO_SUCCESS)
     {
-        struct sockaddr_in* sin = SolidSyslogAddress_AsSockaddrIn(result);
+        struct sockaddr_in* sin = SolidSyslogWinsockAddress_AsSockaddrIn(result);
         *sin = *(struct sockaddr_in*) info->ai_addr;
         sin->sin_port = htons(port);
         Winsock_freeaddrinfo(info);

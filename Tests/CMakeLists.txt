@@ -51,6 +51,7 @@ set(TEST_SOURCES
     SolidSyslogFormatterTest.cpp
     SolidSyslogUdpPayloadTest.cpp
     BufferFakeTest.cpp
+    AddressFake.c
     BufferFake.c
     MutexFake.c
     StoreFakeTest.cpp
@@ -117,6 +118,7 @@ if(SOLIDSYSLOG_POSIX)
         SolidSyslogStreamSenderTest.cpp
         SolidSyslogPosixFileTest.cpp
         SolidSyslogBlockStorePosixTest.cpp
+        SolidSyslogPosixAddressTest.cpp
         SolidSyslogGetAddrInfoResolverTest.cpp
         SolidSyslogPosixDatagramTest.cpp
         SolidSyslogPosixTcpStreamTest.cpp
@@ -130,10 +132,6 @@ if(SOLIDSYSLOG_OPENSSL)
         SolidSyslogTlsStreamPoolTest.cpp
         OpenSslFakeTest.cpp
     )
-endif()
-
-if(SOLIDSYSLOG_POSIX OR SOLIDSYSLOG_WINSOCK)
-    list(APPEND TEST_SOURCES SolidSyslogAddressTest.cpp)
 endif()
 
 if(HAVE_WINDOWS_PLATFORM)
@@ -151,6 +149,7 @@ endif()
 if(SOLIDSYSLOG_WINSOCK)
     list(APPEND TEST_SOURCES
         WinsockFakeTest.cpp
+        SolidSyslogWinsockAddressTest.cpp
         SolidSyslogWinsockResolverTest.cpp
         SolidSyslogWinsockDatagramTest.cpp
         SolidSyslogWinsockTcpStreamTest.cpp
@@ -177,6 +176,7 @@ endif()
 
 if(SOLIDSYSLOG_POSIX)
     target_link_libraries(${PROJECT_NAME}Tests PRIVATE PosixFakes)
+    target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Platform/Posix/Source)
 endif()
 
 if(SOLIDSYSLOG_OPENSSL)

@@ -34,6 +34,7 @@
 #include "SolidSyslogWindowsProcessId.h"
 #include "SolidSyslogWindowsSleep.h"
 #include "SolidSyslogWindowsSysUpTime.h"
+#include "SolidSyslogWinsockAddress.h"
 #include "SolidSyslogWinsockDatagram.h"
 #include "SolidSyslogWinsockResolver.h"
 #include "SolidSyslogWinsockTcpStream.h"
@@ -72,8 +73,10 @@ static struct SolidSyslog* solidSyslog;
    teardown can reach them after the SwitchingSender wraps them all. */
 static struct SolidSyslogResolver* resolver;
 static struct SolidSyslogStream* plainTcpStream;
+static struct SolidSyslogAddress* plainTcpAddress;
 static struct SolidSyslogSender* plainTcpSender;
 static struct SolidSyslogDatagram* udpDatagram;
+static struct SolidSyslogAddress* udpAddress;
 static struct SolidSyslogSender* udpSender;
 static struct SolidSyslogSender* switchingSender;
 
@@ -181,17 +184,21 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetWindowsOptio
     resolver = SolidSyslogWinsockResolver_Create();
 
     udpDatagram = SolidSyslogWinsockDatagram_Create();
+    udpAddress = SolidSyslogWinsockAddress_Create();
     static struct SolidSyslogUdpSenderConfig udpConfig = {0};
     udpConfig.Resolver = resolver;
     udpConfig.Datagram = udpDatagram;
+    udpConfig.Address = udpAddress;
     udpConfig.Endpoint = GetEndpoint;
     udpConfig.EndpointVersion = GetEndpointVersion;
     udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
     plainTcpStream = SolidSyslogWinsockTcpStream_Create();
+    plainTcpAddress = SolidSyslogWinsockAddress_Create();
     static struct SolidSyslogStreamSenderConfig tcpConfig = {0};
     tcpConfig.Resolver = resolver;
     tcpConfig.Stream = plainTcpStream;
+    tcpConfig.Address = plainTcpAddress;
     tcpConfig.Endpoint = GetEndpoint;
     tcpConfig.EndpointVersion = GetEndpointVersion;
     plainTcpSender = SolidSyslogStreamSender_Create(&tcpConfig);
@@ -218,8 +225,10 @@ static void DestroySender(void)
     SolidSyslogSwitchingSender_Destroy(switchingSender);
     BddTargetTlsSender_Destroy();
     SolidSyslogStreamSender_Destroy(plainTcpSender);
+    SolidSyslogWinsockAddress_Destroy(plainTcpAddress);
     SolidSyslogWinsockTcpStream_Destroy(plainTcpStream);
     SolidSyslogUdpSender_Destroy(udpSender);
+    SolidSyslogWinsockAddress_Destroy(udpAddress);
     SolidSyslogWinsockDatagram_Destroy(udpDatagram);
     SolidSyslogWinsockResolver_Destroy(resolver);
 }

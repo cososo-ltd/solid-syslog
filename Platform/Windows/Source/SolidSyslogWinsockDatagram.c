@@ -4,10 +4,10 @@
 #include <stddef.h>
 #include <ws2tcpip.h>
 
-#include "SolidSyslogAddressInternal.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogUdpPayload.h"
+#include "SolidSyslogWinsockAddressPrivate.h"
 #include "SolidSyslogWinsockDatagramInternal.h"
 #include "SolidSyslogWinsockDatagramPrivate.h"
 
@@ -132,7 +132,7 @@ static enum SolidSyslogDatagramSendResult WinsockDatagram_SendTo(
     enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
     if (WinsockDatagram_ConnectIfNeeded(self, addr))
     {
-        const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
+        const struct sockaddr_in* sin = SolidSyslogWinsockAddress_AsConstSockaddrIn(addr);
         int sent = Winsock_sendto(
             self->Fd,
             (const char*) buffer,
@@ -164,7 +164,7 @@ static inline bool WinsockDatagram_ConnectIfNeeded(
 {
     if (!self->Connected)
     {
-        const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
+        const struct sockaddr_in* sin = SolidSyslogWinsockAddress_AsConstSockaddrIn(addr);
         if (Winsock_connect(self->Fd, (const struct sockaddr*) sin, (int) sizeof(*sin)) != SOCKET_ERROR)
         {
             const int pmtu = IP_PMTUDISC_DO;

@@ -9,6 +9,7 @@
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogGetAddrInfoResolver.h"
+#include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixDatagram.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpSender.h"
@@ -95,6 +96,7 @@ TEST_BASE(UdpSenderTestBase)
 {
     struct SolidSyslogResolver* resolver = nullptr;
     struct SolidSyslogDatagram* datagram = nullptr;
+    struct SolidSyslogAddress*  address  = nullptr;
     SolidSyslogUdpSenderConfig  config{};
     struct SolidSyslogSender*   sender = nullptr;
 
@@ -113,7 +115,8 @@ TEST_BASE(UdpSenderTestBase)
         resetEndpointStubs();
         resolver = SolidSyslogGetAddrInfoResolver_Create();
         datagram = SolidSyslogPosixDatagram_Create();
-        config   = {resolver, datagram, TestEndpoint, TestEndpointVersion};
+        address  = SolidSyslogPosixAddress_Create();
+        config   = {resolver, datagram, address, TestEndpoint, TestEndpointVersion};
     }
 
     void setupFakesWithDatagramFake()
@@ -122,17 +125,20 @@ TEST_BASE(UdpSenderTestBase)
         resetEndpointStubs();
         resolver = SolidSyslogGetAddrInfoResolver_Create();
         datagram = DatagramFake_Create();
-        config   = {resolver, datagram, TestEndpoint, TestEndpointVersion};
+        address  = SolidSyslogPosixAddress_Create();
+        config   = {resolver, datagram, address, TestEndpoint, TestEndpointVersion};
     }
 
     void teardownFakesWithPosixDatagram() const
     {
+        SolidSyslogPosixAddress_Destroy(address);
         SolidSyslogPosixDatagram_Destroy(datagram);
         SolidSyslogGetAddrInfoResolver_Destroy(resolver);
     }
 
     void teardownFakesWithDatagramFake() const
     {
+        SolidSyslogPosixAddress_Destroy(address);
         DatagramFake_Destroy(datagram);
         SolidSyslogGetAddrInfoResolver_Destroy(resolver);
     }
@@ -775,6 +781,13 @@ TEST(SolidSyslogUdpSenderBadSetup, CreateWithNullEndpointReportsError)
     config.Endpoint = nullptr;
     SolidSyslogUdpSender_Create(&config);
     CHECK_REPORTED_ERROR("SolidSyslogUdpSender_Create config.Endpoint is NULL");
+}
+
+TEST(SolidSyslogUdpSenderBadSetup, CreateWithNullAddressReportsError)
+{
+    config.Address = nullptr;
+    SolidSyslogUdpSender_Create(&config);
+    CHECK_REPORTED_ERROR("SolidSyslogUdpSender_Create config.Address is NULL");
 }
 
 TEST(SolidSyslogUdpSenderBadSetup, NullEndpointVersionIsOptional)

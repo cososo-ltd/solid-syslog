@@ -670,4 +670,30 @@
 #error "SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE must be >= 1"
 #endif
 
+/*
+ * Number of SolidSyslog{Posix,Winsock,FreeRtos}Address instances the
+ * library's internal static pool can simultaneously hold. Each instance
+ * carries one platform sockaddr (struct sockaddr_in on POSIX/Windows,
+ * struct freertos_sockaddr on FreeRTOS) — ~16 bytes per slot.
+ *
+ * Default 3 — matches the canonical BDD multi-transport wiring
+ * (UDP + plain-TCP + TLS-stream, one Address per Sender) so common
+ * integrators are spared an override. Same trade-off as
+ * SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE / _STREAM_SENDER_POOL_SIZE:
+ * single-transport integrators pay ~32 bytes of unused slots per platform;
+ * multi-transport integrators get the canonical wiring out of the box.
+ * Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than three concurrent
+ * senders are needed.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_ADDRESS_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_ADDRESS_POOL_SIZE 3U
+#endif
+
+#if SOLIDSYSLOG_ADDRESS_POOL_SIZE < 1
+#error "SOLIDSYSLOG_ADDRESS_POOL_SIZE must be >= 1"
+#endif
+
 #endif /* SOLIDSYSLOG_TUNABLES_DEFAULTS_H */

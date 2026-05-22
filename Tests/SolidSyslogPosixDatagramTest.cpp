@@ -5,10 +5,11 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
     // macros
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
-#include "SolidSyslogAddress.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogErrorMessages.h"
+#include "SolidSyslogPosixAddress.h"
+#include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPosixDatagram.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
@@ -16,7 +17,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include "SocketFake.h"
 #include <arpa/inet.h>
 #include <cerrno>
-#include <cstdint>
 #include <cstring>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -44,7 +44,6 @@ TEST_GROUP(SolidSyslogPosixDatagram)
 {
     // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogDatagram* datagram = nullptr;
-    SolidSyslogAddressStorage   addrStorage{};
     // cppcheck-suppress unreadVariable -- assigned in setup; cppcheck does not model CppUTest macros
     struct SolidSyslogAddress* addr = nullptr;
 
@@ -52,20 +51,17 @@ TEST_GROUP(SolidSyslogPosixDatagram)
     {
         SocketFake_Reset();
         // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
-        datagram = SolidSyslogPosixDatagram_Create();
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing, legal and necessary
-        auto* bytes = reinterpret_cast<std::uint8_t*>(&addrStorage);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- reinterpret to platform layout, storage is intptr_t-aligned
-        auto* sin       = reinterpret_cast<struct sockaddr_in*>(bytes);
+        datagram        = SolidSyslogPosixDatagram_Create();
+        addr            = SolidSyslogPosixAddress_Create();
+        struct sockaddr_in* sin = SolidSyslogPosixAddress_AsSockaddrIn(addr);
         sin->sin_family = AF_INET;
         sin->sin_port   = htons(TEST_PORT);
         inet_pton(AF_INET, TEST_ADDRESS, &sin->sin_addr);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        addr = SolidSyslogAddress_FromStorage(&addrStorage);
     }
 
     void teardown() override
     {
+        SolidSyslogPosixAddress_Destroy(addr);
         SolidSyslogPosixDatagram_Destroy(datagram);
     }
 };

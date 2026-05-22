@@ -110,7 +110,7 @@ document under [S10.01](https://github.com/DavidCozens/solid-syslog/issues/357).
 
 ---
 
-## D.002 — Rules 11.2 / 11.3 / 11.5: vtable downcasts + Address + Formatter
+## D.002 — Rules 11.2 / 11.3 / 11.5: vtable downcasts + Formatter
 
 ### Rule
 
@@ -125,12 +125,11 @@ document under [S10.01](https://github.com/DavidCozens/solid-syslog/issues/357).
 
 ### Deviation
 
-SolidSyslog accepts three structural pointer conversions that are
+SolidSyslog accepts two structural pointer conversions that are
 identified in code as `SelfFromBase` (vtable) or `(struct X*) storage`
-(Address / Formatter). All three are reviewed once here, not per call
-site.
+(Formatter). Both are reviewed once here, not per call site.
 
-#### (a) Vtable downcasts — every pool-allocated class
+#### (a) Vtable / opaque-handle downcasts — every pool-allocated class
 
 Every implementation class that participates in a vtable interface
 (`SolidSyslogBuffer`, `SolidSyslogSender`, `SolidSyslogStream`,
@@ -149,23 +148,21 @@ CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base)
 }
 ```
 
-Rule 11.3 fires on every such cast. This is the standard OO-in-C
-"interface pointer back to derived implementation" cast that every
-vtable method needs.
+The same structural cast applies to `SolidSyslogAddress` — a pool-
+allocated handle whose `struct SolidSyslogAddress` is an incomplete
+public type, fully defined per platform as
+`struct SolidSyslog{Posix,Winsock,FreeRtos}Address`. Each platform's
+`*AddressPrivate.h` carries downcast accessors
+(`SolidSyslog<Plat>Address_AsSockaddrIn` / `_AsConstSockaddrIn` /
+`_AsFreertosSockaddr` / `_AsConstFreertosSockaddr`) plus a
+`HandleFromIndex(size_t)` helper in `*AddressStatic.c` that converts a
+pool slot index back to the public handle type. Rule 11.3 fires on
+every such cast.
 
-#### (b) `SolidSyslogAddress` — strict-tier opaque value type
+This is the standard OO-in-C "interface pointer back to derived
+implementation" cast.
 
-`Address.h` exposes an opaque public type with a caller-supplied
-storage shape (`SolidSyslogAddressStorage` + `SOLIDSYSLOG_ADDRESS_SIZE`)
-across three platform-specific implementations
-(`Platform/{FreeRtos,Posix,Windows}/Source/SolidSyslogAddressInternal.h`).
-Address is a transient value type, not a Created object — it has no
-`_Create`/`_Destroy` lifecycle and so was deliberately left out of E11's
-pool migration. Rules 11.2 / 11.3 / 11.5 all fire on the casts between
-`SolidSyslogAddress*` (incomplete public type) and the platform
-implementation struct.
-
-#### (c) `SolidSyslogFormatter` — variable-size stack builder
+#### (b) `SolidSyslogFormatter` — variable-size stack builder
 
 `SolidSyslogFormatter` is a transient stack-built builder whose backing
 storage is sized at the call site via the
@@ -177,35 +174,30 @@ SolidSyslogFormatter*`.
 
 ### Rationale
 
-The pool migration under E11 retired the caller-supplied-storage pattern
-for every class that has a Create/Destroy lifecycle, leaving only the
-vtable downcast (which is required by the OO-in-C interface decoupling)
-and the two non-pool exceptions above (Address as a value type,
-Formatter as a per-call builder). All three would otherwise require
-either dynamic allocation (not available on bare-metal / FreeRTOS-
-static-allocation / DO-178C-style targets — the library is callable from
+The pool migration under E11 / E24 retired the caller-supplied-storage
+pattern for every class that has a Create/Destroy lifecycle, leaving
+only the vtable / opaque-handle downcast (which is required by the
+OO-in-C interface decoupling) and the one non-pool exception above
+(Formatter as a per-call builder). Both would otherwise require either
+dynamic allocation (not available on bare-metal / FreeRTOS-static-
+allocation / DO-178C-style targets — the library is callable from
 boot before any heap exists) or leaking the implementation struct
 through the public API (breaks ABI stability and the embedded-friendly
 opaque-type design).
 
 ### Risk and mitigation
 
-- **Type safety** — For (b) Address and (c) Formatter, a
-  `_Static_assert` immediately below the impl definition pins the
-  relationship between the public storage type and the private impl
-  struct at build time:
-
-  ```c
-  SOLIDSYSLOG_STATIC_ASSERT(
-      sizeof(struct SolidSyslogX) <= sizeof(SolidSyslogXStorage),
-      "SOLIDSYSLOG_X_STORAGE_SIZE is too small for struct SolidSyslogX"
-  );
-  ```
-
-  An integrator who allocates undersized storage is caught at compile
-  time. For (a) vtable downcasts, type safety is enforced by the
-  contract that each vtable method receives is only called via the
-  vtable installed in its own `SelfFromBase`-aware implementation.
+- **Type safety** — For (b) Formatter, a `_Static_assert` immediately
+  below the impl definition pins the relationship between the public
+  storage type and the private impl struct at build time. An
+  integrator who allocates undersized storage is caught at compile
+  time. For (a) vtable / opaque-handle downcasts, type safety is
+  enforced by the contract that vtable methods are only called via the
+  vtable installed in their own `SelfFromBase`-aware implementation;
+  the per-platform Address downcast is similarly locked down because
+  the pool slot is statically-typed `struct SolidSyslog<Plat>Address`,
+  so the cast back from the opaque `struct SolidSyslogAddress*` cannot
+  lie.
 - **Alignment** — Storage types are declared as `intptr_t storage[N]`
   (or a struct of the same shape), giving alignment at least as strict
   as any pointer or scalar the impl contains. The cast is therefore
@@ -222,7 +214,11 @@ Project owner — David Cozens. Recorded under
 narrowed under
 [S11.11](https://github.com/DavidCozens/solid-syslog/issues/414) once
 every Create-lifecycle class moved off caller-supplied storage onto the
-pool allocator.
+pool allocator; further narrowed under
+[S24.07](https://github.com/DavidCozens/solid-syslog/issues/418) once
+Address itself moved onto per-platform pool classes — the casts are
+now the same OO-in-C downcast that authorised (a), not a separate
+caller-supplied-storage exception.
 
 ---
 

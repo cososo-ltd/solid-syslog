@@ -5,7 +5,8 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
     // macros
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
-#include "SolidSyslogAddress.h"
+#include "SolidSyslogWinsockAddress.h"
+#include "SolidSyslogWinsockAddressPrivate.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogErrorMessages.h"
@@ -45,7 +46,6 @@ TEST_GROUP(SolidSyslogWinsockDatagram)
 {
     // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogDatagram* datagram = nullptr;
-    SolidSyslogAddressStorage   addrStorage{};
     // cppcheck-suppress unreadVariable -- assigned in setup; cppcheck does not model CppUTest macros
     struct SolidSyslogAddress* addr = nullptr;
 
@@ -59,20 +59,17 @@ TEST_GROUP(SolidSyslogWinsockDatagram)
         UT_PTR_SET(Winsock_setsockopt, WinsockFake_setsockopt);
         UT_PTR_SET(Winsock_getsockopt, WinsockFake_getsockopt);
         // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
-        datagram = SolidSyslogWinsockDatagram_Create();
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing, legal and necessary
-        auto* bytes = reinterpret_cast<std::uint8_t*>(&addrStorage);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- reinterpret to platform layout, storage is intptr_t-aligned
-        auto* sin       = reinterpret_cast<struct sockaddr_in*>(bytes);
-        sin->sin_family = AF_INET;
-        sin->sin_port   = htons(TEST_PORT);
+        datagram                = SolidSyslogWinsockDatagram_Create();
+        addr                    = SolidSyslogWinsockAddress_Create();
+        struct sockaddr_in* sin = SolidSyslogWinsockAddress_AsSockaddrIn(addr);
+        sin->sin_family         = AF_INET;
+        sin->sin_port           = htons(TEST_PORT);
         inet_pton(AF_INET, TEST_ADDRESS, &sin->sin_addr);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
-        addr = SolidSyslogAddress_FromStorage(&addrStorage);
     }
 
     void teardown() override
     {
+        SolidSyslogWinsockAddress_Destroy(addr);
         SolidSyslogWinsockDatagram_Destroy(datagram);
     }
 };
@@ -339,16 +336,14 @@ TEST(SolidSyslogWinsockDatagramPool, FallbackSendToIsNoOp)
 {
     FillPool();
     overflow = SolidSyslogWinsockDatagram_Create();
-    SolidSyslogAddressStorage addrStorage{};
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing, legal and necessary
-    auto* bytes = reinterpret_cast<std::uint8_t*>(&addrStorage);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- reinterpret to platform layout, storage is intptr_t-aligned
-    auto* sin = reinterpret_cast<struct sockaddr_in*>(bytes);
+    struct SolidSyslogAddress* nullAddr = SolidSyslogWinsockAddress_Create();
+    struct sockaddr_in* sin = SolidSyslogWinsockAddress_AsSockaddrIn(nullAddr);
     sin->sin_family = AF_INET;
     sin->sin_port = htons(514);
-    struct SolidSyslogAddress* nullAddr = SolidSyslogAddress_FromStorage(&addrStorage);
 
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, SolidSyslogDatagram_SendTo(overflow, "x", 1, nullAddr));
+
+    SolidSyslogWinsockAddress_Destroy(nullAddr);
 }
 
 TEST(SolidSyslogWinsockDatagramPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)

@@ -12,8 +12,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "SolidSyslogAddressInternal.h"
 #include "SolidSyslogNullStream.h"
+#include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPosixTcpStreamPrivate.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
@@ -91,7 +91,7 @@ static inline struct SolidSyslogPosixTcpStream* PosixTcpStream_SelfFromBase(stru
 static bool PosixTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogPosixTcpStream* self = PosixTcpStream_SelfFromBase(base);
-    const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
+    const struct sockaddr_in* sin = SolidSyslogPosixAddress_AsConstSockaddrIn(addr);
     bool connected = false;
 
     self->Fd = PosixTcpStream_OpenAndConfigureSocket();

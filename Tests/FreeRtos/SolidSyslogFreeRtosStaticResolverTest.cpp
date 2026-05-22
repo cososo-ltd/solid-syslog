@@ -6,7 +6,8 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
-#include "SolidSyslogAddress.h"
+#include "SolidSyslogFreeRtosAddress.h"
+#include "SolidSyslogFreeRtosAddressPrivate.h"
 #include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogFreeRtosStaticResolver.h"
 #include "SolidSyslogPrival.h"
@@ -44,17 +45,17 @@ static const char* IGNORED_HOST = "ignored.example.com";
 TEST_GROUP(SolidSyslogFreeRtosStaticResolver)
 {
     struct SolidSyslogResolver* resolver  = nullptr;
-    SolidSyslogAddressStorage   addrStorage{};
     struct SolidSyslogAddress*  addr      = nullptr;
 
     void setup() override
     {
         resolver = SolidSyslogFreeRtosStaticResolver_Create(TEST_OCTETS);
-        addr     = SolidSyslogAddress_FromStorage(&addrStorage);
+        addr     = SolidSyslogFreeRtosAddress_Create();
     }
 
     void teardown() override
     {
+        SolidSyslogFreeRtosAddress_Destroy(addr);
         SolidSyslogFreeRtosStaticResolver_Destroy(resolver);
     }
 
@@ -72,8 +73,7 @@ TEST_GROUP(SolidSyslogFreeRtosStaticResolver)
     // NOLINTNEXTLINE(modernize-use-nodiscard) -- used through accessor syntax in tests
     const struct freertos_sockaddr* Result() const
     {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- platform-layout cast, storage is intptr_t-aligned
-        return reinterpret_cast<const struct freertos_sockaddr*>(&addrStorage);
+        return SolidSyslogFreeRtosAddress_AsConstFreertosSockaddr(addr);
     }
 };
 
@@ -112,7 +112,7 @@ TEST(SolidSyslogFreeRtosStaticResolver, ResolveProducesSameIpv4ForAnyHostString)
     Resolve("first.Host");
     uint32_t firstIpv4 = Result()->sin_address.ulIP_IPv4;
 
-    addrStorage = {};
+    *SolidSyslogFreeRtosAddress_AsFreertosSockaddr(addr) = {};
     Resolve("totally.different.second.host");
 
     LONGS_EQUAL(firstIpv4, Result()->sin_address.ulIP_IPv4);
@@ -123,7 +123,7 @@ TEST(SolidSyslogFreeRtosStaticResolver, ResolveProducesSameIpv4ForUdpAndTcpTrans
     Resolve(IGNORED_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_UDP);
     uint32_t udpIpv4 = Result()->sin_address.ulIP_IPv4;
 
-    addrStorage = {};
+    *SolidSyslogFreeRtosAddress_AsFreertosSockaddr(addr) = {};
     Resolve(IGNORED_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_TCP);
 
     LONGS_EQUAL(udpIpv4, Result()->sin_address.ulIP_IPv4);
@@ -206,10 +206,11 @@ TEST(SolidSyslogFreeRtosStaticResolverPool, FallbackResolveReturnsFalse)
 {
     FillPool();
     overflow = SolidSyslogFreeRtosStaticResolver_Create(TEST_OCTETS);
-    SolidSyslogAddressStorage addrStorage{};
-    struct SolidSyslogAddress* addr = SolidSyslogAddress_FromStorage(&addrStorage);
+    struct SolidSyslogAddress* addr = SolidSyslogFreeRtosAddress_Create();
 
     CHECK_FALSE(SolidSyslogResolver_Resolve(overflow, SOLIDSYSLOG_TRANSPORT_UDP, "host", 514, addr));
+
+    SolidSyslogFreeRtosAddress_Destroy(addr);
 }
 
 TEST(SolidSyslogFreeRtosStaticResolverPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)

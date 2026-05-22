@@ -6,8 +6,9 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
-#include "SolidSyslogAddress.h"
 #include "SolidSyslogErrorMessages.h"
+#include "SolidSyslogFreeRtosAddress.h"
+#include "SolidSyslogFreeRtosAddressPrivate.h"
 #include "SolidSyslogFreeRtosTcpStream.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
@@ -48,7 +49,6 @@ static const BaseType_t TEST_READ_BYTES = 7;
 TEST_GROUP(SolidSyslogFreeRtosTcpStream)
 {
     struct SolidSyslogStream*           stream = nullptr;
-    SolidSyslogAddressStorage           addrStorage{};
     struct SolidSyslogAddress*          addr = nullptr;
     char                                readBuffer[16] = {0};
 
@@ -57,19 +57,17 @@ TEST_GROUP(SolidSyslogFreeRtosTcpStream)
         FreeRtosSocketsFake_Reset();
         FreeRtosArpFake_Reset();
         FreeRtosTaskFake_Reset();
-        stream = SolidSyslogFreeRtosTcpStream_Create();
-
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing into platform layout, storage is intptr_t-aligned
-        auto* sin                  = reinterpret_cast<struct freertos_sockaddr*>(&addrStorage);
-        sin->sin_family            = FREERTOS_AF_INET;
-        sin->sin_port              = FreeRTOS_htons(TEST_PORT);
-        sin->sin_address.ulIP_IPv4 = FreeRTOS_inet_addr_quick(10, 0, 2, 2);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- platform-layout cast, see above
-        addr = reinterpret_cast<struct SolidSyslogAddress*>(&addrStorage);
+        stream                        = SolidSyslogFreeRtosTcpStream_Create();
+        addr                          = SolidSyslogFreeRtosAddress_Create();
+        struct freertos_sockaddr* sin = SolidSyslogFreeRtosAddress_AsFreertosSockaddr(addr);
+        sin->sin_family               = FREERTOS_AF_INET;
+        sin->sin_port                 = FreeRTOS_htons(TEST_PORT);
+        sin->sin_address.ulIP_IPv4    = FreeRTOS_inet_addr_quick(10, 0, 2, 2);
     }
 
     void teardown() override
     {
+        SolidSyslogFreeRtosAddress_Destroy(addr);
         if (stream != nullptr)
         {
             SolidSyslogFreeRtosTcpStream_Destroy(stream);
@@ -169,8 +167,7 @@ TEST(SolidSyslogFreeRtosTcpStream, OpenCallsConnectWithSocketAndAddress)
     openStream();
     CALLED_FAKE(FreeRtosSocketsFake_Connect, ONCE);
     POINTERS_EQUAL(FreeRtosSocketsFake_LastSocketReturned(), FreeRtosSocketsFake_LastConnectSocket());
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- platform-layout cast, see setup
-    POINTERS_EQUAL(reinterpret_cast<const struct freertos_sockaddr*>(addr), FreeRtosSocketsFake_LastConnectAddress());
+    POINTERS_EQUAL(SolidSyslogFreeRtosAddress_AsConstFreertosSockaddr(addr), FreeRtosSocketsFake_LastConnectAddress());
     LONGS_EQUAL(sizeof(struct freertos_sockaddr), FreeRtosSocketsFake_LastConnectAddressLength());
 }
 
@@ -433,17 +430,17 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, FallbackVtableMethodsAreNoOps)
 {
     FillPool();
     overflow = SolidSyslogFreeRtosTcpStream_Create();
-    SolidSyslogAddressStorage addrStorage{};
-    struct SolidSyslogAddress* addr = SolidSyslogAddress_FromStorage(&addrStorage);
+    struct SolidSyslogAddress* localAddr = SolidSyslogFreeRtosAddress_Create();
     char buf[8] = {0};
     FreeRtosSocketsFake_Reset();
 
     /* NullStream's Open/Send/Read return safe values so the Service algorithm
      * does not tear the (non-existent) connection down on the fallback. */
-    CHECK_TRUE(SolidSyslogStream_Open(overflow, addr));
+    CHECK_TRUE(SolidSyslogStream_Open(overflow, localAddr));
     CHECK_TRUE(SolidSyslogStream_Send(overflow, buf, sizeof(buf)));
     LONGS_EQUAL(0, SolidSyslogStream_Read(overflow, buf, sizeof(buf)));
     SolidSyslogStream_Close(overflow);
+    SolidSyslogFreeRtosAddress_Destroy(localAddr);
 
     CALLED_FAKE(FreeRtosSocketsFake_Socket, NEVER);
     CALLED_FAKE(FreeRtosSocketsFake_Connect, NEVER);

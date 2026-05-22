@@ -8,10 +8,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "SolidSyslogAddressInternal.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogNullDatagram.h"
+#include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPosixDatagramPrivate.h"
 #include "SolidSyslogUdpPayload.h"
 
@@ -93,7 +93,7 @@ static enum SolidSyslogDatagramSendResult PosixDatagram_SendTo(
     enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
     if (PosixDatagram_ConnectIfNeeded(self, addr))
     {
-        const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
+        const struct sockaddr_in* sin = SolidSyslogPosixAddress_AsConstSockaddrIn(addr);
         ssize_t sent = sendto(self->Fd, buffer, size, 0, (const struct sockaddr*) sin, sizeof(*sin));
         if (sent >= 0)
         {
@@ -118,7 +118,7 @@ static inline bool PosixDatagram_ConnectIfNeeded(
 {
     if (!self->Connected)
     {
-        const struct sockaddr_in* sin = SolidSyslogAddress_AsConstSockaddrIn(addr);
+        const struct sockaddr_in* sin = SolidSyslogPosixAddress_AsConstSockaddrIn(addr);
         if (connect(self->Fd, (const struct sockaddr*) sin, sizeof(*sin)) == 0)
         {
             const int pmtu = IP_PMTUDISC_DO;

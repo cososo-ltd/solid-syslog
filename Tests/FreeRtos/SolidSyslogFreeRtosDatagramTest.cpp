@@ -6,10 +6,11 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
-#include "SolidSyslogAddress.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogErrorMessages.h"
+#include "SolidSyslogFreeRtosAddress.h"
+#include "SolidSyslogFreeRtosAddressPrivate.h"
 #include "SolidSyslogFreeRtosDatagram.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
@@ -44,7 +45,6 @@ static const uint16_t TEST_PORT = 514;
 TEST_GROUP(SolidSyslogFreeRtosDatagram)
 {
     struct SolidSyslogDatagram* datagram = nullptr;
-    SolidSyslogAddressStorage addrStorage{};
     struct SolidSyslogAddress* addr = nullptr;
 
     void setup() override
@@ -53,18 +53,16 @@ TEST_GROUP(SolidSyslogFreeRtosDatagram)
         FreeRtosArpFake_Reset();
         FreeRtosTaskFake_Reset();
         datagram = SolidSyslogFreeRtosDatagram_Create();
-
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing into platform layout, storage is intptr_t-aligned
-        auto* sin = reinterpret_cast<struct freertos_sockaddr*>(&addrStorage);
+        addr = SolidSyslogFreeRtosAddress_Create();
+        struct freertos_sockaddr* sin = SolidSyslogFreeRtosAddress_AsFreertosSockaddr(addr);
         sin->sin_family = FREERTOS_AF_INET;
         sin->sin_port = FreeRTOS_htons(TEST_PORT);
         sin->sin_address.ulIP_IPv4 = FreeRTOS_inet_addr_quick(127, 0, 0, 1);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- platform-layout cast, see above
-        addr = reinterpret_cast<struct SolidSyslogAddress*>(&addrStorage);
     }
 
     void teardown() override
     {
+        SolidSyslogFreeRtosAddress_Destroy(addr);
         SolidSyslogFreeRtosDatagram_Destroy(datagram);
     }
 
@@ -189,9 +187,8 @@ TEST(SolidSyslogFreeRtosDatagram, SendToSendsBufferToDestinationAfterOpen)
     POINTERS_EQUAL(TEST_MESSAGE, FreeRtosSocketsFake_LastSendtoBuffer());
     LONGS_EQUAL(TEST_MESSAGE_LEN, FreeRtosSocketsFake_LastSendtoLength());
     LONGS_EQUAL(0, FreeRtosSocketsFake_LastSendtoFlags());
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- platform-layout cast, see setup
     POINTERS_EQUAL(
-        reinterpret_cast<const struct freertos_sockaddr*>(addr),
+        SolidSyslogFreeRtosAddress_AsConstFreertosSockaddr(addr),
         FreeRtosSocketsFake_LastSendtoDestination()
     );
     LONGS_EQUAL(sizeof(struct freertos_sockaddr), FreeRtosSocketsFake_LastSendtoDestinationLength());
@@ -327,15 +324,16 @@ TEST(SolidSyslogFreeRtosDatagramPool, FallbackVtableMethodsAreNoOps)
 {
     FillPool();
     overflow = SolidSyslogFreeRtosDatagram_Create();
-    SolidSyslogAddressStorage addrStorage{};
-    struct SolidSyslogAddress* addr = SolidSyslogAddress_FromStorage(&addrStorage);
+    struct SolidSyslogAddress* localAddr = SolidSyslogFreeRtosAddress_Create();
     FreeRtosSocketsFake_Reset();
 
     /* NullDatagram's Open returns true so caller success paths are not
      * tripped; no underlying FreeRTOS_socket is created. */
     CHECK_TRUE(SolidSyslogDatagram_Open(overflow));
-    SolidSyslogDatagram_SendTo(overflow, "x", 1, addr);
+    SolidSyslogDatagram_SendTo(overflow, "x", 1, localAddr);
     SolidSyslogDatagram_Close(overflow);
+
+    SolidSyslogFreeRtosAddress_Destroy(localAddr);
 
     CALLED_FAKE(FreeRtosSocketsFake_Socket, NEVER);
     CALLED_FAKE(FreeRtosSocketsFake_Sendto, NEVER);

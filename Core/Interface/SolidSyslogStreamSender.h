@@ -12,6 +12,7 @@ EXTERN_C_BEGIN
     {
         struct SolidSyslogResolver* Resolver;
         struct SolidSyslogStream* Stream;
+        struct SolidSyslogAddress* Address;
         SolidSyslogEndpointFunction Endpoint; /* fills host/port; called only on (re)connect */
         SolidSyslogEndpointVersionFunction EndpointVersion; /* polled cheaply on every Send for stale check */
     };

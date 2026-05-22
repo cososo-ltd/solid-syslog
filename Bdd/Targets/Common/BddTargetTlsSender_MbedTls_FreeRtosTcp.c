@@ -25,6 +25,7 @@
 #include "BddTargetMtlsConfig.h"
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
+#include "SolidSyslogFreeRtosAddress.h"
 #include "SolidSyslogFreeRtosTcpStream.h"
 #include "SolidSyslogMbedTlsStream.h"
 #include "SolidSyslogNullSender.h"
@@ -55,6 +56,7 @@ struct SolidSyslogResolver;
 
 static struct SolidSyslogStream* underlyingStream;
 static struct SolidSyslogStream* tlsStream;
+static struct SolidSyslogAddress* address;
 static struct SolidSyslogSender* sender;
 
 /* Entropy + CTR_DRBG live for the lifetime of the BDD target; one-shot init
@@ -376,10 +378,13 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     tlsStreamConfig.ClientKey = &clientKey;
     tlsStream = SolidSyslogMbedTlsStream_Create(&tlsStreamConfig);
 
+    address = SolidSyslogFreeRtosAddress_Create();
+
     static struct SolidSyslogStreamSenderConfig senderConfig;
     senderConfig = (struct SolidSyslogStreamSenderConfig) {0};
     senderConfig.Resolver = resolver;
     senderConfig.Stream = tlsStream;
+    senderConfig.Address = address;
     senderConfig.Endpoint = DispatchEndpoint;
     senderConfig.EndpointVersion = DispatchEndpointVersion;
     sender = SolidSyslogStreamSender_Create(&senderConfig);
@@ -398,6 +403,7 @@ void BddTargetTlsSender_Destroy(void)
         return;
     }
     SolidSyslogStreamSender_Destroy(sender);
+    SolidSyslogFreeRtosAddress_Destroy(address);
     SolidSyslogMbedTlsStream_Destroy(tlsStream);
     SolidSyslogFreeRtosTcpStream_Destroy(underlyingStream);
 

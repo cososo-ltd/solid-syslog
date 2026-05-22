@@ -50,6 +50,7 @@ add_executable(MbedTlsIntegrationTests
     SocketStream.c
     MbedTlsTestCert.c
     MbedTlsTestServer.c
+    ${CMAKE_SOURCE_DIR}/Tests/AddressFake.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/SafeStringStandard.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
@@ -69,6 +70,7 @@ target_include_directories(MbedTlsIntegrationTests PRIVATE
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Interface
     ${CMAKE_SOURCE_DIR}/Core/Interface
     ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
     ${CMAKE_SOURCE_DIR}/Tests/Support
     ${CMAKE_CURRENT_SOURCE_DIR}
 )

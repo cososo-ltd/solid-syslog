@@ -5,7 +5,8 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
     // macros
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
-#include "SolidSyslogAddress.h"
+#include "SolidSyslogWinsockAddress.h"
+#include "SolidSyslogWinsockAddressPrivate.h"
 #include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogResolver.h"
@@ -45,7 +46,7 @@ static const uint16_t    TEST_ALTERNATE_PORT = 9999;
 TEST_GROUP(SolidSyslogWinsockResolver)
 {
     struct SolidSyslogResolver* resolver = nullptr;
-    SolidSyslogAddressStorage   resultStorage{};
+    struct SolidSyslogAddress*  result   = nullptr;
 
     void setup() override
     {
@@ -53,26 +54,24 @@ TEST_GROUP(SolidSyslogWinsockResolver)
         UT_PTR_SET(Winsock_getaddrinfo, WinsockFake_getaddrinfo);
         UT_PTR_SET(Winsock_freeaddrinfo, WinsockFake_freeaddrinfo);
         resolver = SolidSyslogWinsockResolver_Create();
+        result   = SolidSyslogWinsockAddress_Create();
     }
 
     void teardown() override
     {
+        SolidSyslogWinsockAddress_Destroy(result);
         SolidSyslogWinsockResolver_Destroy(resolver);
     }
 
     bool Resolve(const char* host, uint16_t port, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP)
     {
-        struct SolidSyslogAddress* address = SolidSyslogAddress_FromStorage(&resultStorage);
-        return SolidSyslogResolver_Resolve(resolver, transport, host, port, address);
+        return SolidSyslogResolver_Resolve(resolver, transport, host, port, result);
     }
 
     // NOLINTNEXTLINE(modernize-use-nodiscard) -- used through accessor syntax in tests
     const struct sockaddr_in* Result() const
     {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- char-type aliasing, legal and necessary
-        const auto* bytes = reinterpret_cast<const std::uint8_t*>(&resultStorage);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- reinterpret to platform layout, storage is intptr_t-aligned
-        return reinterpret_cast<const struct sockaddr_in*>(bytes);
+        return SolidSyslogWinsockAddress_AsConstSockaddrIn(result);
     }
 };
 
@@ -206,10 +205,11 @@ TEST(SolidSyslogWinsockResolverPool, FallbackResolveIsNoOp)
 {
     FillPool();
     overflow = SolidSyslogWinsockResolver_Create();
-    SolidSyslogAddressStorage addrStorage{};
-    struct SolidSyslogAddress* address = SolidSyslogAddress_FromStorage(&addrStorage);
+    struct SolidSyslogAddress* address = SolidSyslogWinsockAddress_Create();
 
     CHECK_FALSE(SolidSyslogResolver_Resolve(overflow, SOLIDSYSLOG_TRANSPORT_UDP, "h", 1, address));
+
+    SolidSyslogWinsockAddress_Destroy(address);
 }
 
 TEST(SolidSyslogWinsockResolverPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)

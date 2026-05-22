@@ -2,7 +2,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "SolidSyslogAddress.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogError.h"
@@ -171,7 +170,7 @@ static bool UdpSender_ResolveDestination(struct SolidSyslogUdpSender* self, cons
 
 static inline struct SolidSyslogAddress* UdpSender_Address(struct SolidSyslogUdpSender* self)
 {
-    return SolidSyslogAddress_FromStorage(&self->AddrStorage);
+    return self->Config.Address;
 }
 
 static inline void UdpSender_CloseSocket(struct SolidSyslogUdpSender* self)
