@@ -35,6 +35,11 @@ void FreeRtosMutex_Initialise(struct SolidSyslogMutex* base)
     }
 }
 
+static inline struct SolidSyslogFreeRtosMutex* FreeRtosMutex_SelfFromBase(struct SolidSyslogMutex* base)
+{
+    return (struct SolidSyslogFreeRtosMutex*) base;
+}
+
 void FreeRtosMutex_Cleanup(struct SolidSyslogMutex* base)
 {
     struct SolidSyslogFreeRtosMutex* self = FreeRtosMutex_SelfFromBase(base);
@@ -45,11 +50,6 @@ void FreeRtosMutex_Cleanup(struct SolidSyslogMutex* base)
     /* Overwrite the abstract base with the shared NullMutex vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullMutex_Get();
-}
-
-static inline struct SolidSyslogFreeRtosMutex* FreeRtosMutex_SelfFromBase(struct SolidSyslogMutex* base)
-{
-    return (struct SolidSyslogFreeRtosMutex*) base;
 }
 
 static inline SemaphoreHandle_t FreeRtosMutex_AsHandle(struct SolidSyslogFreeRtosMutex* self)

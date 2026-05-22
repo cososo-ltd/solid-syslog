@@ -43,6 +43,11 @@ struct SolidSyslogAddress* SolidSyslogPosixAddress_Create(void)
     return handle;
 }
 
+static inline struct SolidSyslogAddress* PosixAddress_HandleFromIndex(size_t index)
+{
+    return (struct SolidSyslogAddress*) &PosixAddress_Pool[index];
+}
+
 void SolidSyslogPosixAddress_Destroy(struct SolidSyslogAddress* base)
 {
     size_t index = PosixAddress_IndexFromHandle(base);
@@ -53,11 +58,6 @@ void SolidSyslogPosixAddress_Destroy(struct SolidSyslogAddress* base)
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_POSIXADDRESS_UNKNOWN_DESTROY);
     }
-}
-
-static inline struct SolidSyslogAddress* PosixAddress_HandleFromIndex(size_t index)
-{
-    return (struct SolidSyslogAddress*) &PosixAddress_Pool[index];
 }
 
 static inline size_t PosixAddress_IndexFromHandle(const struct SolidSyslogAddress* base)

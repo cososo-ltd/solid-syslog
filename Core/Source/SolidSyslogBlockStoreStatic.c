@@ -69,6 +69,40 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
     return result;
 }
 
+static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured)
+{
+    struct SolidSyslogSecurityPolicy* resolved = configured;
+
+    if ((resolved == NULL) || (resolved->IntegritySize > SOLIDSYSLOG_MAX_INTEGRITY_SIZE))
+    {
+        resolved = SolidSyslogNullSecurityPolicy_Get();
+    }
+
+    return resolved;
+}
+
+static struct BlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
+    const struct SolidSyslogBlockStoreConfig* config,
+    const struct RecordStore* recordStore
+)
+{
+    size_t minBlockSize = RecordStore_RecordSize(recordStore, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
+    size_t maxBlockSize = (config->MaxBlockSize < minBlockSize) ? minBlockSize : config->MaxBlockSize;
+
+    struct BlockSequenceConfig blockConfig = {
+        .BlockDevice = config->BlockDevice,
+        .MaxBlockSize = maxBlockSize,
+        .MaxBlocks = config->MaxBlocks,
+        .DiscardPolicy = config->DiscardPolicy,
+        .OnStoreFull = config->OnStoreFull,
+        .StoreFullContext = config->StoreFullContext,
+        .GetCapacityThreshold = config->GetCapacityThreshold,
+        .OnThresholdCrossed = config->OnThresholdCrossed,
+        .ThresholdContext = config->ThresholdContext,
+    };
+    return blockConfig;
+}
+
 void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore* base)
 {
     size_t index = BlockStore_IndexFromHandle(base);
@@ -118,38 +152,4 @@ static inline void BlockStore_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
     BlockStore_Cleanup(&BlockStore_Pool[index].Base);
-}
-
-static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured)
-{
-    struct SolidSyslogSecurityPolicy* resolved = configured;
-
-    if ((resolved == NULL) || (resolved->IntegritySize > SOLIDSYSLOG_MAX_INTEGRITY_SIZE))
-    {
-        resolved = SolidSyslogNullSecurityPolicy_Get();
-    }
-
-    return resolved;
-}
-
-static struct BlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
-    const struct SolidSyslogBlockStoreConfig* config,
-    const struct RecordStore* recordStore
-)
-{
-    size_t minBlockSize = RecordStore_RecordSize(recordStore, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
-    size_t maxBlockSize = (config->MaxBlockSize < minBlockSize) ? minBlockSize : config->MaxBlockSize;
-
-    struct BlockSequenceConfig blockConfig = {
-        .BlockDevice = config->BlockDevice,
-        .MaxBlockSize = maxBlockSize,
-        .MaxBlocks = config->MaxBlocks,
-        .DiscardPolicy = config->DiscardPolicy,
-        .OnStoreFull = config->OnStoreFull,
-        .StoreFullContext = config->StoreFullContext,
-        .GetCapacityThreshold = config->GetCapacityThreshold,
-        .OnThresholdCrossed = config->OnThresholdCrossed,
-        .ThresholdContext = config->ThresholdContext,
-    };
-    return blockConfig;
 }

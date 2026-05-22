@@ -65,6 +65,11 @@ void TlsStream_Initialise(struct SolidSyslogStream* base, const struct SolidSysl
     self->BioMethod = NULL;
 }
 
+static inline struct SolidSyslogTlsStream* TlsStream_SelfFromBase(struct SolidSyslogStream* base)
+{
+    return (struct SolidSyslogTlsStream*) base;
+}
+
 void TlsStream_Cleanup(struct SolidSyslogStream* base)
 {
     struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
@@ -80,9 +85,18 @@ void TlsStream_Cleanup(struct SolidSyslogStream* base)
     *base = *SolidSyslogNullStream_Get();
 }
 
-static inline struct SolidSyslogTlsStream* TlsStream_SelfFromBase(struct SolidSyslogStream* base)
+/* Idempotent: Send/Read may close internally on failure, after which the
+ * StreamSender's reconnect path or the caller's Destroy may call Close
+ * again. Skipping when ssl is already NULL keeps that safe. */
+static inline void TlsStream_Close(struct SolidSyslogStream* base)
 {
-    return (struct SolidSyslogTlsStream*) base;
+    struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
+    if (self->Ssl != NULL)
+    {
+        SSL_shutdown(self->Ssl);
+        TlsStream_ReleaseHandshakeState(self);
+    }
+    SolidSyslogStream_Close(self->Config.Transport);
 }
 
 static inline void TlsStream_ReleaseHandshakeState(struct SolidSyslogTlsStream* self)
@@ -418,18 +432,4 @@ static inline SolidSyslogSsize TlsStream_Read(struct SolidSyslogStream* base, vo
         TlsStream_Close(base);
     }
     return result;
-}
-
-/* Idempotent: Send/Read may close internally on failure, after which the
- * StreamSender's reconnect path or the caller's Destroy may call Close
- * again. Skipping when ssl is already NULL keeps that safe. */
-static inline void TlsStream_Close(struct SolidSyslogStream* base)
-{
-    struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
-    if (self->Ssl != NULL)
-    {
-        SSL_shutdown(self->Ssl);
-        TlsStream_ReleaseHandshakeState(self);
-    }
-    SolidSyslogStream_Close(self->Config.Transport);
 }

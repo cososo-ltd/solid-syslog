@@ -46,6 +46,11 @@ struct SolidSyslogAddress* SolidSyslogFreeRtosAddress_Create(void)
     return handle;
 }
 
+static inline struct SolidSyslogAddress* FreeRtosAddress_HandleFromIndex(size_t index)
+{
+    return (struct SolidSyslogAddress*) &FreeRtosAddress_Pool[index];
+}
+
 void SolidSyslogFreeRtosAddress_Destroy(struct SolidSyslogAddress* base)
 {
     size_t index = FreeRtosAddress_IndexFromHandle(base);
@@ -56,11 +61,6 @@ void SolidSyslogFreeRtosAddress_Destroy(struct SolidSyslogAddress* base)
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_FREERTOSADDRESS_UNKNOWN_DESTROY);
     }
-}
-
-static inline struct SolidSyslogAddress* FreeRtosAddress_HandleFromIndex(size_t index)
-{
-    return (struct SolidSyslogAddress*) &FreeRtosAddress_Pool[index];
 }
 
 static inline size_t FreeRtosAddress_IndexFromHandle(const struct SolidSyslogAddress* base)

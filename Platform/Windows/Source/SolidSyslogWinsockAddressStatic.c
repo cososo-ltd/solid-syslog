@@ -43,6 +43,11 @@ struct SolidSyslogAddress* SolidSyslogWinsockAddress_Create(void)
     return handle;
 }
 
+static inline struct SolidSyslogAddress* WinsockAddress_HandleFromIndex(size_t index)
+{
+    return (struct SolidSyslogAddress*) &WinsockAddress_Pool[index];
+}
+
 void SolidSyslogWinsockAddress_Destroy(struct SolidSyslogAddress* base)
 {
     size_t index = WinsockAddress_IndexFromHandle(base);
@@ -53,11 +58,6 @@ void SolidSyslogWinsockAddress_Destroy(struct SolidSyslogAddress* base)
     {
         SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_WINSOCKADDRESS_UNKNOWN_DESTROY);
     }
-}
-
-static inline struct SolidSyslogAddress* WinsockAddress_HandleFromIndex(size_t index)
-{
-    return (struct SolidSyslogAddress*) &WinsockAddress_Pool[index];
 }
 
 static inline size_t WinsockAddress_IndexFromHandle(const struct SolidSyslogAddress* base)

@@ -49,6 +49,11 @@ void FreeRtosDatagram_Initialise(struct SolidSyslogDatagram* base)
     self->Socket = FREERTOS_INVALID_SOCKET;
 }
 
+static inline struct SolidSyslogFreeRtosDatagram* FreeRtosDatagram_SelfFromBase(struct SolidSyslogDatagram* base)
+{
+    return (struct SolidSyslogFreeRtosDatagram*) base;
+}
+
 void FreeRtosDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
     FreeRtosDatagram_Close(base);
@@ -57,9 +62,14 @@ void FreeRtosDatagram_Cleanup(struct SolidSyslogDatagram* base)
     *base = *SolidSyslogNullDatagram_Get();
 }
 
-static inline struct SolidSyslogFreeRtosDatagram* FreeRtosDatagram_SelfFromBase(struct SolidSyslogDatagram* base)
+static void FreeRtosDatagram_Close(struct SolidSyslogDatagram* base)
 {
-    return (struct SolidSyslogFreeRtosDatagram*) base;
+    struct SolidSyslogFreeRtosDatagram* self = FreeRtosDatagram_SelfFromBase(base);
+    if (FreeRtosDatagram_IsOpen(self))
+    {
+        (void) FreeRTOS_closesocket(self->Socket);
+        self->Socket = FREERTOS_INVALID_SOCKET;
+    }
 }
 
 static bool FreeRtosDatagram_Open(struct SolidSyslogDatagram* base)
@@ -70,6 +80,11 @@ static bool FreeRtosDatagram_Open(struct SolidSyslogDatagram* base)
         self->Socket = FreeRTOS_socket(FREERTOS_AF_INET, FREERTOS_SOCK_DGRAM, FREERTOS_IPPROTO_UDP);
     }
     return FreeRtosDatagram_IsOpen(self);
+}
+
+static inline bool FreeRtosDatagram_IsOpen(const struct SolidSyslogFreeRtosDatagram* self)
+{
+    return self->Socket != FREERTOS_INVALID_SOCKET;
 }
 
 static enum SolidSyslogDatagramSendResult FreeRtosDatagram_SendTo(
@@ -109,25 +124,10 @@ static inline void FreeRtosDatagram_PrimeArpIfMissing(uint32_t ip)
     }
 }
 
-static inline bool FreeRtosDatagram_IsOpen(const struct SolidSyslogFreeRtosDatagram* self)
-{
-    return self->Socket != FREERTOS_INVALID_SOCKET;
-}
-
 static size_t FreeRtosDatagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
     (void) base;
     return SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD;
-}
-
-static void FreeRtosDatagram_Close(struct SolidSyslogDatagram* base)
-{
-    struct SolidSyslogFreeRtosDatagram* self = FreeRtosDatagram_SelfFromBase(base);
-    if (FreeRtosDatagram_IsOpen(self))
-    {
-        (void) FreeRTOS_closesocket(self->Socket);
-        self->Socket = FREERTOS_INVALID_SOCKET;
-    }
 }
 
 // NOLINTEND(performance-no-int-to-ptr)

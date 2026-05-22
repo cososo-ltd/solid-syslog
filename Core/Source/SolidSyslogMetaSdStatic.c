@@ -40,17 +40,6 @@ struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSys
     return result;
 }
 
-void SolidSyslogMetaSd_Destroy(struct SolidSyslogStructuredData* base)
-{
-    size_t index = MetaSd_IndexFromHandle(base);
-    bool released = SolidSyslogPoolAllocator_IndexIsValid(&MetaSd_Allocator, index) &&
-                    SolidSyslogPoolAllocator_FreeIfInUse(&MetaSd_Allocator, index, MetaSd_CleanupAtIndex, NULL);
-    if (!released)
-    {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_METASD_UNKNOWN_DESTROY);
-    }
-}
-
 static bool MetaSd_IsValidConfig(const struct SolidSyslogMetaSdConfig* config)
 {
     bool valid = false;
@@ -67,6 +56,17 @@ static bool MetaSd_IsValidConfig(const struct SolidSyslogMetaSdConfig* config)
         valid = true;
     }
     return valid;
+}
+
+void SolidSyslogMetaSd_Destroy(struct SolidSyslogStructuredData* base)
+{
+    size_t index = MetaSd_IndexFromHandle(base);
+    bool released = SolidSyslogPoolAllocator_IndexIsValid(&MetaSd_Allocator, index) &&
+                    SolidSyslogPoolAllocator_FreeIfInUse(&MetaSd_Allocator, index, MetaSd_CleanupAtIndex, NULL);
+    if (!released)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_METASD_UNKNOWN_DESTROY);
+    }
 }
 
 static inline size_t MetaSd_IndexFromHandle(const struct SolidSyslogStructuredData* base)

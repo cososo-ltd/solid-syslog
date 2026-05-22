@@ -70,6 +70,11 @@ void PosixTcpStream_Initialise(struct SolidSyslogStream* base)
     self->Fd = INVALID_FD;
 }
 
+static inline struct SolidSyslogPosixTcpStream* PosixTcpStream_SelfFromBase(struct SolidSyslogStream* base)
+{
+    return (struct SolidSyslogPosixTcpStream*) base;
+}
+
 void PosixTcpStream_Cleanup(struct SolidSyslogStream* base)
 {
     struct SolidSyslogPosixTcpStream* self = PosixTcpStream_SelfFromBase(base);
@@ -83,9 +88,9 @@ void PosixTcpStream_Cleanup(struct SolidSyslogStream* base)
     *base = *SolidSyslogNullStream_Get();
 }
 
-static inline struct SolidSyslogPosixTcpStream* PosixTcpStream_SelfFromBase(struct SolidSyslogStream* base)
+static inline bool PosixTcpStream_IsFileDescriptorValid(int fd)
 {
-    return (struct SolidSyslogPosixTcpStream*) base;
+    return (fd >= 0);
 }
 
 static bool PosixTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
@@ -153,11 +158,6 @@ static bool PosixTcpStream_SetNonBlocking(int fd)
 {
     int flags = fcntl(fd, F_GETFL, 0);
     return (flags >= 0) && (fcntl(fd, F_SETFL, flags | O_NONBLOCK) != -1);
-}
-
-static inline bool PosixTcpStream_IsFileDescriptorValid(int fd)
-{
-    return (fd >= 0);
 }
 
 static bool PosixTcpStream_ConnectOrCloseOnFailure(

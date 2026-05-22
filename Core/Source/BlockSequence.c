@@ -205,6 +205,41 @@ static inline int BlockSequence_CircularPrev(int index)
     return (index + MAX_SEQUENCE - 1) % MAX_SEQUENCE;
 }
 
+static inline bool BlockSequence_ThresholdEnabled(const struct BlockSequence* blockSequence);
+static inline bool BlockSequence_IsAboveThreshold(const struct BlockSequence* blockSequence, size_t threshold);
+
+static inline void BlockSequence_NotifyThresholdCrossed(struct BlockSequence* blockSequence)
+{
+    if (BlockSequence_ThresholdEnabled(blockSequence))
+    {
+        size_t threshold = blockSequence->GetCapacityThreshold(blockSequence->ThresholdContext);
+
+        if (!BlockSequence_IsAboveThreshold(blockSequence, threshold))
+        {
+            blockSequence->ThresholdCrossed = false;
+        }
+        else if (!blockSequence->ThresholdCrossed)
+        {
+            blockSequence->ThresholdCrossed = true;
+            blockSequence->OnThresholdCrossed(blockSequence->ThresholdContext);
+        }
+        else
+        {
+            /* still above threshold and already notified — no edge to report */
+        }
+    }
+}
+
+static inline bool BlockSequence_ThresholdEnabled(const struct BlockSequence* blockSequence)
+{
+    return (blockSequence->OnThresholdCrossed != NULL) && (blockSequence->GetCapacityThreshold != NULL);
+}
+
+static inline bool BlockSequence_IsAboveThreshold(const struct BlockSequence* blockSequence, size_t threshold)
+{
+    return (threshold != 0U) && (BlockSequence_UsedBytes(blockSequence) >= threshold);
+}
+
 static inline bool BlockSequence_BlockIsFull(const struct BlockSequence* blockSequence, size_t recordSize);
 static inline bool BlockSequence_StoreIsFull(const struct BlockSequence* blockSequence);
 static inline void BlockSequence_NotifyStoreFull(struct BlockSequence* blockSequence);
@@ -372,41 +407,6 @@ void BlockSequence_NoteRecordWritten(struct BlockSequence* blockSequence, size_t
 {
     blockSequence->WritePosition += recordSize;
     BlockSequence_NotifyThresholdCrossed(blockSequence);
-}
-
-static inline bool BlockSequence_ThresholdEnabled(const struct BlockSequence* blockSequence);
-static inline bool BlockSequence_IsAboveThreshold(const struct BlockSequence* blockSequence, size_t threshold);
-
-static inline void BlockSequence_NotifyThresholdCrossed(struct BlockSequence* blockSequence)
-{
-    if (BlockSequence_ThresholdEnabled(blockSequence))
-    {
-        size_t threshold = blockSequence->GetCapacityThreshold(blockSequence->ThresholdContext);
-
-        if (!BlockSequence_IsAboveThreshold(blockSequence, threshold))
-        {
-            blockSequence->ThresholdCrossed = false;
-        }
-        else if (!blockSequence->ThresholdCrossed)
-        {
-            blockSequence->ThresholdCrossed = true;
-            blockSequence->OnThresholdCrossed(blockSequence->ThresholdContext);
-        }
-        else
-        {
-            /* still above threshold and already notified — no edge to report */
-        }
-    }
-}
-
-static inline bool BlockSequence_ThresholdEnabled(const struct BlockSequence* blockSequence)
-{
-    return (blockSequence->OnThresholdCrossed != NULL) && (blockSequence->GetCapacityThreshold != NULL);
-}
-
-static inline bool BlockSequence_IsAboveThreshold(const struct BlockSequence* blockSequence, size_t threshold)
-{
-    return (threshold != 0U) && (BlockSequence_UsedBytes(blockSequence) >= threshold);
 }
 
 void BlockSequence_MarkWriteBlockCorrupt(struct BlockSequence* blockSequence)

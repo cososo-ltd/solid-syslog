@@ -40,25 +40,17 @@ void FatFsFile_Initialise(struct SolidSyslogFile* base)
     self->IsOpen = false;
 }
 
+static inline struct SolidSyslogFatFsFile* FatFsFile_SelfFromBase(struct SolidSyslogFile* base)
+{
+    return (struct SolidSyslogFatFsFile*) base;
+}
+
 void FatFsFile_Cleanup(struct SolidSyslogFile* base)
 {
     FatFsFile_Close(base);
     /* Overwrite the abstract base with the shared NullFile vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullFile_Get();
-}
-
-static inline struct SolidSyslogFatFsFile* FatFsFile_SelfFromBase(struct SolidSyslogFile* base)
-{
-    return (struct SolidSyslogFatFsFile*) base;
-}
-
-static bool FatFsFile_Open(struct SolidSyslogFile* base, const char* path)
-{
-    struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromBase(base);
-    FRESULT result = f_open(&self->Fp, path, READ_WRITE_OR_CREATE);
-    self->IsOpen = (result == FR_OK);
-    return self->IsOpen;
 }
 
 static void FatFsFile_Close(struct SolidSyslogFile* base)
@@ -69,6 +61,14 @@ static void FatFsFile_Close(struct SolidSyslogFile* base)
         f_close(&self->Fp);
         self->IsOpen = false;
     }
+}
+
+static bool FatFsFile_Open(struct SolidSyslogFile* base, const char* path)
+{
+    struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromBase(base);
+    FRESULT result = f_open(&self->Fp, path, READ_WRITE_OR_CREATE);
+    self->IsOpen = (result == FR_OK);
+    return self->IsOpen;
 }
 
 static bool FatFsFile_IsOpen(struct SolidSyslogFile* base)

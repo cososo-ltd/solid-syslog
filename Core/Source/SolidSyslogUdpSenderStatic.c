@@ -40,17 +40,6 @@ struct SolidSyslogSender* SolidSyslogUdpSender_Create(const struct SolidSyslogUd
     return result;
 }
 
-void SolidSyslogUdpSender_Destroy(struct SolidSyslogSender* base)
-{
-    size_t index = UdpSender_IndexFromHandle(base);
-    bool released = SolidSyslogPoolAllocator_IndexIsValid(&UdpSender_Allocator, index) &&
-                    SolidSyslogPoolAllocator_FreeIfInUse(&UdpSender_Allocator, index, UdpSender_CleanupAtIndex, NULL);
-    if (!released)
-    {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_UDPSENDER_UNKNOWN_DESTROY);
-    }
-}
-
 static bool UdpSender_IsValidConfig(const struct SolidSyslogUdpSenderConfig* config)
 {
     bool valid = false;
@@ -79,6 +68,17 @@ static bool UdpSender_IsValidConfig(const struct SolidSyslogUdpSenderConfig* con
         valid = true;
     }
     return valid;
+}
+
+void SolidSyslogUdpSender_Destroy(struct SolidSyslogSender* base)
+{
+    size_t index = UdpSender_IndexFromHandle(base);
+    bool released = SolidSyslogPoolAllocator_IndexIsValid(&UdpSender_Allocator, index) &&
+                    SolidSyslogPoolAllocator_FreeIfInUse(&UdpSender_Allocator, index, UdpSender_CleanupAtIndex, NULL);
+    if (!released)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_UDPSENDER_UNKNOWN_DESTROY);
+    }
 }
 
 static inline size_t UdpSender_IndexFromHandle(const struct SolidSyslogSender* base)

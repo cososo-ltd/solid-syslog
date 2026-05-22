@@ -98,6 +98,11 @@ void FreeRtosTcpStream_Initialise(struct SolidSyslogStream* base)
     self->Socket = FREERTOS_INVALID_SOCKET;
 }
 
+static inline struct SolidSyslogFreeRtosTcpStream* FreeRtosTcpStream_SelfFromBase(struct SolidSyslogStream* base)
+{
+    return (struct SolidSyslogFreeRtosTcpStream*) base;
+}
+
 void FreeRtosTcpStream_Cleanup(struct SolidSyslogStream* base)
 {
     struct SolidSyslogFreeRtosTcpStream* self = FreeRtosTcpStream_SelfFromBase(base);
@@ -107,9 +112,13 @@ void FreeRtosTcpStream_Cleanup(struct SolidSyslogStream* base)
     *base = *SolidSyslogNullStream_Get();
 }
 
-static inline struct SolidSyslogFreeRtosTcpStream* FreeRtosTcpStream_SelfFromBase(struct SolidSyslogStream* base)
+static void FreeRtosTcpStream_CloseSocket(struct SolidSyslogFreeRtosTcpStream* self)
 {
-    return (struct SolidSyslogFreeRtosTcpStream*) base;
+    if (FreeRtosTcpStream_IsOpen(self))
+    {
+        (void) FreeRTOS_closesocket(self->Socket);
+        self->Socket = FREERTOS_INVALID_SOCKET;
+    }
 }
 
 static bool FreeRtosTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
@@ -270,15 +279,6 @@ static SolidSyslogSsize FreeRtosTcpStream_ReceiveOrCloseOnFailure(
 static void FreeRtosTcpStream_Close(struct SolidSyslogStream* base)
 {
     FreeRtosTcpStream_CloseSocket(FreeRtosTcpStream_SelfFromBase(base));
-}
-
-static void FreeRtosTcpStream_CloseSocket(struct SolidSyslogFreeRtosTcpStream* self)
-{
-    if (FreeRtosTcpStream_IsOpen(self))
-    {
-        (void) FreeRTOS_closesocket(self->Socket);
-        self->Socket = FREERTOS_INVALID_SOCKET;
-    }
 }
 
 // NOLINTEND(performance-no-int-to-ptr)

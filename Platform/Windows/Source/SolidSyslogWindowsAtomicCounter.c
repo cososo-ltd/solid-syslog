@@ -21,11 +21,11 @@ void WindowsAtomicCounter_Initialise(struct SolidSyslogAtomicCounter* base)
     WindowsAtomicCounter_Init(self, 0U);
 }
 
-void WindowsAtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* base)
+static inline struct SolidSyslogWindowsAtomicCounter* WindowsAtomicCounter_SelfFromBase(
+    struct SolidSyslogAtomicCounter* base
+)
 {
-    /* Overwrite the abstract base with the shared NullAtomicCounter vtable so
-     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
-    *base = *SolidSyslogNullAtomicCounter_Get();
+    return (struct SolidSyslogWindowsAtomicCounter*) base;
 }
 
 void WindowsAtomicCounter_Init(struct SolidSyslogWindowsAtomicCounter* self, uint32_t value)
@@ -33,11 +33,11 @@ void WindowsAtomicCounter_Init(struct SolidSyslogWindowsAtomicCounter* self, uin
     self->Value = (LONG) value;
 }
 
-static inline struct SolidSyslogWindowsAtomicCounter* WindowsAtomicCounter_SelfFromBase(
-    struct SolidSyslogAtomicCounter* base
-)
+void WindowsAtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* base)
 {
-    return (struct SolidSyslogWindowsAtomicCounter*) base;
+    /* Overwrite the abstract base with the shared NullAtomicCounter vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullAtomicCounter_Get();
 }
 
 static uint32_t WindowsAtomicCounter_Increment(struct SolidSyslogAtomicCounter* base)

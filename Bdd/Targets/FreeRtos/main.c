@@ -117,6 +117,13 @@
  * absorbs it. */
 #define INTERACTIVE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 48U)
 
+/* Drains the CircularBuffer in the background while the interactive task
+ * (and, in S08.04 slice 3, additional worker tasks) call SolidSyslog_Log.
+ * Equal priority to the producers — FreeRTOS round-robins time slices
+ * between same-priority ready tasks so the buffer is drained without the
+ * Service task starving slower producers. */
+#define SERVICE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 16U)
+
 /* Static IPv4 wiring matching the QEMU slirp default. 10.0.2.15 is the
  * standard slirp DHCP-allocated guest address; we hardcode it here so no
  * DHCP server is required. The destination address — 10.0.2.2, the slirp
@@ -259,6 +266,10 @@ static TaskHandle_t serviceTaskHandle = NULL;
 
 extern NetworkInterface_t* pxMPS2_FillInterfaceDescriptor(BaseType_t xEMACIndex, NetworkInterface_t* pxInterface);
 
+static void SetEthernetIrqPriority(void);
+static void InteractiveTask(void* argument);
+static void ServiceTask(void* argument);
+
 static bool TryUpdateString(char* storage, size_t storageSize, const char* value);
 static bool TryParseUInt(const char* value, unsigned long* out);
 static bool RebuildWithFileStore(void);
@@ -298,6 +309,105 @@ static void RtosSleep(int milliseconds)
 }
 
 static const CmsdkUartMemoryAccess MMIO_ACCESS = {MmioRead32, MmioWrite32, RtosSleep};
+
+int main(void)
+{
+    CmsdkUart_Init(&MMIO_ACCESS, CMSDK_UART0_BASE_ADDRESS);
+
+    SetEthernetIrqPriority();
+
+    (void) pxMPS2_FillInterfaceDescriptor(0, &networkInterface);
+    FreeRTOS_FillEndPoint(
+        &networkInterface,
+        &networkEndPoint,
+        TEST_IP_ADDRESS,
+        TEST_NETMASK,
+        TEST_GATEWAY,
+        TEST_DNS,
+        TEST_MAC
+    );
+
+    if (FreeRTOS_IPInit_Multi() != pdPASS)
+    {
+        for (;;)
+        {
+        }
+    }
+
+    vTaskStartScheduler();
+
+    for (;;)
+    {
+    }
+    return 0;
+}
+
+void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, struct xNetworkEndPoint* pxEndPoint)
+{
+    (void) pxEndPoint;
+    if ((eNetworkEvent == eNetworkUp) && (interactiveTaskCreated == pdFALSE))
+    {
+        if (xTaskCreate(
+                InteractiveTask,
+                "interactive",
+                INTERACTIVE_TASK_STACK_DEPTH,
+                NULL,
+                tskIDLE_PRIORITY + 1,
+                NULL
+            ) == pdPASS)
+        {
+            (void) xTaskCreate(
+                ServiceTask,
+                "service",
+                SERVICE_TASK_STACK_DEPTH,
+                NULL,
+                tskIDLE_PRIORITY + 1,
+                &serviceTaskHandle
+            );
+            interactiveTaskCreated = pdTRUE;
+        }
+    }
+}
+
+void vApplicationMallocFailedHook(void)
+{
+    for (;;)
+    {
+    }
+}
+
+void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
+{
+    (void) task;
+    (void) taskName;
+    for (;;)
+    {
+    }
+}
+
+/* Plus-TCP requires the application to provide a per-endpoint random seed
+ * source for ARP / IP-ID generation. The QEMU mps2-an385 has no RNG; for a
+ * deterministic smoke test we return the run-time tick mixed with a fixed
+ * constant. */
+BaseType_t xApplicationGetRandomNumber(uint32_t* pulValue)
+{
+    *pulValue = (uint32_t) xTaskGetTickCount() ^ 0xA5A5A5A5U;
+    return pdPASS;
+}
+
+uint32_t ulApplicationGetNextSequenceNumber(
+    uint32_t ulSourceAddress,
+    uint16_t usSourcePort,
+    uint32_t ulDestinationAddress,
+    uint16_t usDestinationPort
+)
+{
+    (void) ulSourceAddress;
+    (void) usSourcePort;
+    (void) ulDestinationAddress;
+    (void) usDestinationPort;
+    return (uint32_t) xTaskGetTickCount();
+}
 
 static void SetEthernetIrqPriority(void)
 {
@@ -539,17 +649,37 @@ static bool OnSet(const char* name, const char* value)
     return false;
 }
 
-static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
+static bool TryUpdateString(char* storage, size_t storageSize, const char* value)
 {
-    if (strcmp(policy, "newest") == 0)
+    size_t length = strlen(value);
+    if ((length == 0U) || (length >= storageSize))
     {
-        return SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+        return false;
     }
-    if (strcmp(policy, "halt") == 0)
+    memcpy(storage, value, length);
+    storage[length] = '\0';
+    return true;
+}
+
+static bool TryParseUInt(const char* value, unsigned long* out)
+{
+    if (*value == '\0')
     {
-        return SOLIDSYSLOG_DISCARD_POLICY_HALT;
+        return false;
     }
-    return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    char* end = NULL;
+    unsigned long parsed = strtoul(value, &end, 10);
+    /* strtoul accepts a leading '-' and wraps to a huge unsigned. The port
+     * call site bounds-checks against UINT16_MAX upstream; facility and
+     * severity intentionally don't, mirroring the Linux example's
+     * atoi-and-cast so wrapped values reach the library and encode as
+     * the internal-error PRIVAL. */
+    if (*end != '\0')
+    {
+        return false;
+    }
+    *out = parsed;
+    return true;
 }
 
 static bool RebuildWithFileStore(void)
@@ -609,6 +739,72 @@ static bool RebuildWithFileStore(void)
     return true;
 }
 
+/* Mount volume 0; format-on-first-use if the disk image has no FAT yet.
+ * Idempotent — subsequent calls short-circuit on fatfsMounted. The work
+ * buffer for f_mkfs is sized to FF_MAX_SS (512 B) which is the minimum
+ * f_mkfs accepts on a FAT12/16 volume. */
+static bool EnsureFatFsMounted(void)
+{
+    if (fatfsMounted)
+    {
+        return true;
+    }
+    FRESULT res = f_mount(
+        &fatfs,
+        "",
+        1
+    ); /* opt=1 → mount immediately, surface FR_NO_FILESYSTEM here rather than at first f_open */
+    if (res == FR_NO_FILESYSTEM)
+    {
+        /* Fresh disk image — lay down a FAT and re-mount. FAT12 is the
+         * natural choice for a 1 MiB volume (small enough that FAT32's
+         * cluster overhead would dominate). */
+        static BYTE workBuffer[FF_MAX_SS];
+        const MKFS_PARM opts = {.fmt = FM_FAT | FM_SFD, .n_fat = 1, .align = 1, .n_root = 0, .au_size = 0};
+        res = f_mkfs("", &opts, workBuffer, sizeof(workBuffer));
+        if (res == FR_OK)
+        {
+            res = f_mount(&fatfs, "", 1);
+        }
+    }
+    if (res != FR_OK)
+    {
+        (void) printf("[solidsyslog] fatfs mount failed: FRESULT=%d\n", (int) res);
+        return false;
+    }
+    fatfsMounted = true;
+    return true;
+}
+
+/* Tears down whichever store is currently installed (file-backed or null).
+ * Shared by RebuildWithFileStore (which then re-creates) and
+ * ShutdownGracefully (which then exits). FatFsFile_Destroy → Close →
+ * f_close flushes the underlying FIL's dir entry. */
+static void DestroyCurrentStore(void)
+{
+    if (currentStoreIsFile)
+    {
+        SolidSyslogBlockStore_Destroy(currentStore);
+        SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
+        SolidSyslogCrc16Policy_Destroy();
+        SolidSyslogFatFsFile_Destroy(storeFile);
+    }
+    /* else: NullStore is shared and immutable — nothing to destroy. */
+}
+
+static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
+{
+    if (strcmp(policy, "newest") == 0)
+    {
+        return SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    }
+    if (strcmp(policy, "halt") == 0)
+    {
+        return SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    }
+    return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+}
+
 static void OnStoreFull(void* context)
 {
     (void) context;
@@ -638,22 +834,6 @@ static void OnThresholdCrossed(void* context)
 {
     (void) context;
     (void) printf("[THRESHOLD-CROSSED]\r\n");
-}
-
-/* Tears down whichever store is currently installed (file-backed or null).
- * Shared by RebuildWithFileStore (which then re-creates) and
- * ShutdownGracefully (which then exits). FatFsFile_Destroy → Close →
- * f_close flushes the underlying FIL's dir entry. */
-static void DestroyCurrentStore(void)
-{
-    if (currentStoreIsFile)
-    {
-        SolidSyslogBlockStore_Destroy(currentStore);
-        SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
-        SolidSyslogCrc16Policy_Destroy();
-        SolidSyslogFatFsFile_Destroy(storeFile);
-    }
-    /* else: NullStore is shared and immutable — nothing to destroy. */
 }
 
 /* Full teardown of every resource InteractiveTask allocated during Setup.
@@ -711,43 +891,6 @@ static void TeardownAll(void)
     SolidSyslogFreeRtosStaticResolver_Destroy(resolver);
 }
 
-/* Mount volume 0; format-on-first-use if the disk image has no FAT yet.
- * Idempotent — subsequent calls short-circuit on fatfsMounted. The work
- * buffer for f_mkfs is sized to FF_MAX_SS (512 B) which is the minimum
- * f_mkfs accepts on a FAT12/16 volume. */
-static bool EnsureFatFsMounted(void)
-{
-    if (fatfsMounted)
-    {
-        return true;
-    }
-    FRESULT res = f_mount(
-        &fatfs,
-        "",
-        1
-    ); /* opt=1 → mount immediately, surface FR_NO_FILESYSTEM here rather than at first f_open */
-    if (res == FR_NO_FILESYSTEM)
-    {
-        /* Fresh disk image — lay down a FAT and re-mount. FAT12 is the
-         * natural choice for a 1 MiB volume (small enough that FAT32's
-         * cluster overhead would dominate). */
-        static BYTE workBuffer[FF_MAX_SS];
-        const MKFS_PARM opts = {.fmt = FM_FAT | FM_SFD, .n_fat = 1, .align = 1, .n_root = 0, .au_size = 0};
-        res = f_mkfs("", &opts, workBuffer, sizeof(workBuffer));
-        if (res == FR_OK)
-        {
-            res = f_mount(&fatfs, "", 1);
-        }
-    }
-    if (res != FR_OK)
-    {
-        (void) printf("[solidsyslog] fatfs mount failed: FRESULT=%d\n", (int) res);
-        return false;
-    }
-    fatfsMounted = true;
-    return true;
-}
-
 static void SemihostingExit(int status)
 {
     /* SYS_EXIT_EXTENDED (0x20) — the only ARM Semihosting exit form on
@@ -769,39 +912,6 @@ static void SemihostingExit(int status)
     for (;;)
     {
     }
-}
-
-static bool TryUpdateString(char* storage, size_t storageSize, const char* value)
-{
-    size_t length = strlen(value);
-    if ((length == 0U) || (length >= storageSize))
-    {
-        return false;
-    }
-    memcpy(storage, value, length);
-    storage[length] = '\0';
-    return true;
-}
-
-static bool TryParseUInt(const char* value, unsigned long* out)
-{
-    if (*value == '\0')
-    {
-        return false;
-    }
-    char* end = NULL;
-    unsigned long parsed = strtoul(value, &end, 10);
-    /* strtoul accepts a leading '-' and wraps to a huge unsigned. The port
-     * call site bounds-checks against UINT16_MAX upstream; facility and
-     * severity intentionally don't, mirroring the Linux example's
-     * atoi-and-cast so wrapped values reach the library and encode as
-     * the internal-error PRIVAL. */
-    if (*end != '\0')
-    {
-        return false;
-    }
-    *out = parsed;
-    return true;
 }
 
 static void InteractiveTask(void* argument)
@@ -951,13 +1061,6 @@ static void InteractiveTask(void* argument)
     vTaskDelete(NULL);
 }
 
-/* Drains the CircularBuffer in the background while the interactive task
- * (and, in S08.04 slice 3, additional worker tasks) call SolidSyslog_Log.
- * Equal priority to the producers — FreeRTOS round-robins time slices
- * between same-priority ready tasks so the buffer is drained without the
- * Service task starving slower producers. */
-#define SERVICE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 16U)
-
 static void ServiceTask(void* argument)
 {
     (void) argument;
@@ -988,103 +1091,4 @@ static void ServiceTask(void* argument)
         SolidSyslogMutex_Unlock(lifecycleMutex);
         vTaskDelay(pdMS_TO_TICKS(1));
     }
-}
-
-void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, struct xNetworkEndPoint* pxEndPoint)
-{
-    (void) pxEndPoint;
-    if ((eNetworkEvent == eNetworkUp) && (interactiveTaskCreated == pdFALSE))
-    {
-        if (xTaskCreate(
-                InteractiveTask,
-                "interactive",
-                INTERACTIVE_TASK_STACK_DEPTH,
-                NULL,
-                tskIDLE_PRIORITY + 1,
-                NULL
-            ) == pdPASS)
-        {
-            (void) xTaskCreate(
-                ServiceTask,
-                "service",
-                SERVICE_TASK_STACK_DEPTH,
-                NULL,
-                tskIDLE_PRIORITY + 1,
-                &serviceTaskHandle
-            );
-            interactiveTaskCreated = pdTRUE;
-        }
-    }
-}
-
-int main(void)
-{
-    CmsdkUart_Init(&MMIO_ACCESS, CMSDK_UART0_BASE_ADDRESS);
-
-    SetEthernetIrqPriority();
-
-    (void) pxMPS2_FillInterfaceDescriptor(0, &networkInterface);
-    FreeRTOS_FillEndPoint(
-        &networkInterface,
-        &networkEndPoint,
-        TEST_IP_ADDRESS,
-        TEST_NETMASK,
-        TEST_GATEWAY,
-        TEST_DNS,
-        TEST_MAC
-    );
-
-    if (FreeRTOS_IPInit_Multi() != pdPASS)
-    {
-        for (;;)
-        {
-        }
-    }
-
-    vTaskStartScheduler();
-
-    for (;;)
-    {
-    }
-    return 0;
-}
-
-void vApplicationMallocFailedHook(void)
-{
-    for (;;)
-    {
-    }
-}
-
-void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
-{
-    (void) task;
-    (void) taskName;
-    for (;;)
-    {
-    }
-}
-
-/* Plus-TCP requires the application to provide a per-endpoint random seed
- * source for ARP / IP-ID generation. The QEMU mps2-an385 has no RNG; for a
- * deterministic smoke test we return the run-time tick mixed with a fixed
- * constant. */
-BaseType_t xApplicationGetRandomNumber(uint32_t* pulValue)
-{
-    *pulValue = (uint32_t) xTaskGetTickCount() ^ 0xA5A5A5A5U;
-    return pdPASS;
-}
-
-uint32_t ulApplicationGetNextSequenceNumber(
-    uint32_t ulSourceAddress,
-    uint16_t usSourcePort,
-    uint32_t ulDestinationAddress,
-    uint16_t usDestinationPort
-)
-{
-    (void) ulSourceAddress;
-    (void) usSourcePort;
-    (void) ulDestinationAddress;
-    (void) usDestinationPort;
-    return (uint32_t) xTaskGetTickCount();
 }

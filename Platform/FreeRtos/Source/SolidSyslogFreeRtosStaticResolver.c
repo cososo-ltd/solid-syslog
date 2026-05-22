@@ -35,19 +35,19 @@ void FreeRtosStaticResolver_Initialise(struct SolidSyslogResolver* base, const u
     self->Octets[3] = ipv4Octets[3];
 }
 
+static inline struct SolidSyslogFreeRtosStaticResolver* FreeRtosStaticResolver_SelfFromBase(
+    struct SolidSyslogResolver* base
+)
+{
+    return (struct SolidSyslogFreeRtosStaticResolver*) base;
+}
+
 void FreeRtosStaticResolver_Cleanup(struct SolidSyslogResolver* base)
 {
     /* Overwrite the abstract base with the shared NullResolver vtable so
      * use-after-destroy resolves cleanly to a failed-lookup error path
      * rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullResolver_Get();
-}
-
-static inline struct SolidSyslogFreeRtosStaticResolver* FreeRtosStaticResolver_SelfFromBase(
-    struct SolidSyslogResolver* base
-)
-{
-    return (struct SolidSyslogFreeRtosStaticResolver*) base;
 }
 
 static bool FreeRtosStaticResolver_Resolve(

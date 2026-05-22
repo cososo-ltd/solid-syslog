@@ -54,6 +54,23 @@ struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config)
     return result;
 }
 
+static void SolidSyslog_EnsureNullInstancePopulated(void)
+{
+    if (!SolidSyslog_NullInstancePopulated)
+    {
+        SolidSyslog_NullInstance.Buffer = SolidSyslogNullBuffer_Get();
+        SolidSyslog_NullInstance.Sender = SolidSyslogNullSender_Get();
+        SolidSyslog_NullInstance.Store = SolidSyslogNullStore_Get();
+        SolidSyslog_NullInstance.Clock = SolidSyslog_NullClock;
+        SolidSyslog_NullInstance.GetHostname = SolidSyslog_NullStringFunction;
+        SolidSyslog_NullInstance.GetAppName = SolidSyslog_NullStringFunction;
+        SolidSyslog_NullInstance.GetProcessId = SolidSyslog_NullStringFunction;
+        SolidSyslog_NullInstance.Sd = NULL;
+        SolidSyslog_NullInstance.SdCount = 0;
+        SolidSyslog_NullInstancePopulated = true;
+    }
+}
+
 void SolidSyslog_Destroy(struct SolidSyslog* handle)
 {
     size_t index = SolidSyslog_IndexFromHandle(handle);
@@ -84,21 +101,4 @@ static inline void SolidSyslog_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
     SolidSyslog_Cleanup(&SolidSyslog_Pool[index]);
-}
-
-static void SolidSyslog_EnsureNullInstancePopulated(void)
-{
-    if (!SolidSyslog_NullInstancePopulated)
-    {
-        SolidSyslog_NullInstance.Buffer = SolidSyslogNullBuffer_Get();
-        SolidSyslog_NullInstance.Sender = SolidSyslogNullSender_Get();
-        SolidSyslog_NullInstance.Store = SolidSyslogNullStore_Get();
-        SolidSyslog_NullInstance.Clock = SolidSyslog_NullClock;
-        SolidSyslog_NullInstance.GetHostname = SolidSyslog_NullStringFunction;
-        SolidSyslog_NullInstance.GetAppName = SolidSyslog_NullStringFunction;
-        SolidSyslog_NullInstance.GetProcessId = SolidSyslog_NullStringFunction;
-        SolidSyslog_NullInstance.Sd = NULL;
-        SolidSyslog_NullInstance.SdCount = 0;
-        SolidSyslog_NullInstancePopulated = true;
-    }
 }

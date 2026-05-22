@@ -89,6 +89,11 @@ void WinsockDatagram_Initialise(struct SolidSyslogDatagram* base)
     self->Connected = false;
 }
 
+static inline struct SolidSyslogWinsockDatagram* WinsockDatagram_SelfFromBase(struct SolidSyslogDatagram* base)
+{
+    return (struct SolidSyslogWinsockDatagram*) base;
+}
+
 void WinsockDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
@@ -103,22 +108,17 @@ void WinsockDatagram_Cleanup(struct SolidSyslogDatagram* base)
     *base = *SolidSyslogNullDatagram_Get();
 }
 
+static inline bool WinsockDatagram_IsSocketValid(SOCKET fd)
+{
+    return fd != INVALID_SOCKET;
+}
+
 static bool WinsockDatagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
     self->Fd = Winsock_socket(AF_INET, SOCK_DGRAM, 0);
     self->Connected = false;
     return WinsockDatagram_IsSocketValid(self->Fd);
-}
-
-static inline struct SolidSyslogWinsockDatagram* WinsockDatagram_SelfFromBase(struct SolidSyslogDatagram* base)
-{
-    return (struct SolidSyslogWinsockDatagram*) base;
-}
-
-static inline bool WinsockDatagram_IsSocketValid(SOCKET fd)
-{
-    return fd != INVALID_SOCKET;
 }
 
 static enum SolidSyslogDatagramSendResult WinsockDatagram_SendTo(

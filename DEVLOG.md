@@ -1,5 +1,57 @@
 # Dev Log
 
+## 2026-05-22 — S24.08 top-down function ordering sweep
+
+Closes S24.08 (#423). Pure refactoring pass: re-applied the documented
+function-ordering convention (`_Create`/`_Destroy` first, public funcs
+next, static helpers defined immediately beneath their first caller) to
+every `.c` file under Core/Source, Platform/, and Bdd/Targets/. Move-only
+diff; no behaviour change.
+
+### Audit first, then move
+
+Three parallel Explore agents audited Core, Platform, and Tests/fakes
+against the strict rule. First pass under-flagged Core/Source and
+over-flagged a few simple files (PosixClock, WindowsClock,
+WinsockResolver, CmsdkUart all turned out to be compliant once
+re-examined). Second pass with the precise rule — "a helper is
+non-compliant only when a non-calling function intervenes between its
+first caller and its definition" — landed the real list: 5 Core files,
+13 Platform files, 2 Bdd/Targets files (`diskio.c`, FreeRTOS BDD
+`main.c`). Tests/fakes audited clean.
+
+### Convention clarifications gathered along the way
+
+- **Vtable methods called by `_Cleanup`.** TLS-style files
+  (`TlsStream`, `MbedTlsStream`, `WinsockTcpStream`) where `_Cleanup`
+  delegates the close logic to `_Close`: `_Close` moved up to sit
+  beneath `_Cleanup`. Files where `_Cleanup` inlines its own close
+  logic (`PosixTcpStream`) keep `_Close` at the end in API order.
+- **Helper-to-helper call order within a cluster.** The strict
+  "next non-calling function" reading was followed for clear
+  violations (helper sits after an unrelated public function).
+  Reordering helpers *within* a single caller's helper cluster purely
+  for call-order aesthetics was skipped to keep the diff focused.
+- **`main` is a special case.** Entry-point function comes first
+  (David's call); other rules apply normally. The FreeRTOS BDD
+  `main.c` was restructured so `main` plus the four `vApplication*`
+  OS-callback hooks sit at the top, with the OnSet helper cluster
+  reorganised into call-graph order (TryUpdateString, TryParseUInt,
+  RebuildWithFileStore + its helper cascade, TeardownAll,
+  SemihostingExit).
+
+### Pre-existing format-violation noise
+
+`analyze-format` will continue to flag `TlsStreamStatic.c` and
+`FatFsFileStatic.c` for a `bool released = ...` continuation indent —
+both untouched by this PR. Pre-existing; out of scope here.
+
+### Deferred
+
+- Strict helper-to-helper call ordering within a single caller's
+  helper cluster — left for a future tightening pass if the
+  convention is sharpened to require it.
+
 ## 2026-05-21 — S08.07 slice 6 + 7: FreeRTOS TLS via mbedTLS
 
 Closes S08.07 (#272). Lights up the TLS slot on the FreeRTOS QEMU BDD

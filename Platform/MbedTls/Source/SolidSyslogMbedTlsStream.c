@@ -55,6 +55,11 @@ void MbedTlsStream_Initialise(struct SolidSyslogStream* base, const struct Solid
     mbedtls_ssl_config_init(&self->SslConfig);
 }
 
+static inline struct SolidSyslogMbedTlsStream* MbedTlsStream_SelfFromBase(struct SolidSyslogStream* base)
+{
+    return (struct SolidSyslogMbedTlsStream*) base;
+}
+
 void MbedTlsStream_Cleanup(struct SolidSyslogStream* base)
 {
     /* Mirror the OpenSSL TlsStream pattern: an integrator who destroys a
@@ -65,9 +70,17 @@ void MbedTlsStream_Cleanup(struct SolidSyslogStream* base)
     *base = *SolidSyslogNullStream_Get();
 }
 
-static inline struct SolidSyslogMbedTlsStream* MbedTlsStream_SelfFromBase(struct SolidSyslogStream* base)
+/* Idempotent: a previous Close left the structs in mbedTLS's freed-equivalent
+ * (zeroed) state, so close_notify sees conf == NULL and returns harmlessly,
+ * and the *_free calls are no-ops on already-freed structs. Transport Close
+ * is itself idempotent on every Stream impl. */
+static inline void MbedTlsStream_Close(struct SolidSyslogStream* base)
 {
-    return (struct SolidSyslogMbedTlsStream*) base;
+    struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
+    (void) mbedtls_ssl_close_notify(&self->SslContext);
+    mbedtls_ssl_free(&self->SslContext);
+    mbedtls_ssl_config_free(&self->SslConfig);
+    SolidSyslogStream_Close(self->Config.Transport);
 }
 
 static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
@@ -240,17 +253,4 @@ static inline SolidSyslogSsize MbedTlsStream_Read(struct SolidSyslogStream* base
         MbedTlsStream_Close(base);
     }
     return result;
-}
-
-/* Idempotent: a previous Close left the structs in mbedTLS's freed-equivalent
- * (zeroed) state, so close_notify sees conf == NULL and returns harmlessly,
- * and the *_free calls are no-ops on already-freed structs. Transport Close
- * is itself idempotent on every Stream impl. */
-static inline void MbedTlsStream_Close(struct SolidSyslogStream* base)
-{
-    struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
-    (void) mbedtls_ssl_close_notify(&self->SslContext);
-    mbedtls_ssl_free(&self->SslContext);
-    mbedtls_ssl_config_free(&self->SslConfig);
-    SolidSyslogStream_Close(self->Config.Transport);
 }

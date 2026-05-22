@@ -114,6 +114,76 @@ static bool DiskImageIsReady(void)
     return true;
 }
 
+static int SemihostingOpen(const char* path, int mode)
+{
+    const struct
+    {
+        const char* name;
+        int mode;
+        int length;
+    } args = {path, mode, (int) strlen(path)};
+
+    return Semihosting(SEMIHOSTING_SYS_OPEN, &args);
+}
+
+static int Semihosting(int op, const void* args)
+{
+    /* BKPT 0xAB is the Cortex-M Thumb semihosting trap. r0 is the
+     * operation number on entry and the return value on exit; r1
+     * is a pointer to a per-op parameter block. memory clobber so
+     * the compiler doesn't reorder around buffers passed by pointer. */
+    register int result __asm("r0") = op;
+    register const void* request __asm("r1") = args;
+    __asm volatile("bkpt 0xAB" : "+r"(result) : "r"(request) : "memory");
+    return result;
+}
+
+static int SemihostingFlen(int handle)
+{
+    /* SYS_FLEN returns the file length in bytes, -1 on error. */
+    const struct
+    {
+        int handle;
+    } args = {handle};
+
+    return Semihosting(SEMIHOSTING_SYS_FLEN, &args);
+}
+
+static int SemihostingClose(int handle)
+{
+    const struct
+    {
+        int handle;
+    } args = {handle};
+
+    return Semihosting(SEMIHOSTING_SYS_CLOSE, &args);
+}
+
+static int SemihostingSeek(int handle, int position)
+{
+    /* SYS_SEEK returns 0 on success, a negative value on error. */
+    const struct
+    {
+        int handle;
+        int position;
+    } args = {handle, position};
+
+    return Semihosting(SEMIHOSTING_SYS_SEEK, &args);
+}
+
+static int SemihostingWrite(int handle, const void* buffer, int count)
+{
+    /* SYS_WRITE returns the number of bytes NOT written (0 == full write). */
+    const struct
+    {
+        int handle;
+        const void* buffer;
+        int count;
+    } args = {handle, buffer, count};
+
+    return Semihosting(SEMIHOSTING_SYS_WRITE, &args);
+}
+
 DSTATUS disk_status(BYTE pdrv)
 {
     if (pdrv != 0)
@@ -144,6 +214,19 @@ DRESULT disk_read(BYTE pdrv, BYTE* buff, LBA_t sector, UINT count)
         return RES_ERROR;
     }
     return RES_OK;
+}
+
+static int SemihostingRead(int handle, void* buffer, int count)
+{
+    /* SYS_READ returns the number of bytes NOT read (0 == full read). */
+    const struct
+    {
+        int handle;
+        void* buffer;
+        int count;
+    } args = {handle, buffer, count};
+
+    return Semihosting(SEMIHOSTING_SYS_READ, &args);
 }
 
 DRESULT disk_write(BYTE pdrv, const BYTE* buff, LBA_t sector, UINT count)
@@ -195,87 +278,4 @@ DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void* buff)
         default:
             return RES_PARERR;
     }
-}
-
-static int Semihosting(int op, const void* args)
-{
-    /* BKPT 0xAB is the Cortex-M Thumb semihosting trap. r0 is the
-     * operation number on entry and the return value on exit; r1
-     * is a pointer to a per-op parameter block. memory clobber so
-     * the compiler doesn't reorder around buffers passed by pointer. */
-    register int result __asm("r0") = op;
-    register const void* request __asm("r1") = args;
-    __asm volatile("bkpt 0xAB" : "+r"(result) : "r"(request) : "memory");
-    return result;
-}
-
-static int SemihostingOpen(const char* path, int mode)
-{
-    const struct
-    {
-        const char* name;
-        int mode;
-        int length;
-    } args = {path, mode, (int) strlen(path)};
-
-    return Semihosting(SEMIHOSTING_SYS_OPEN, &args);
-}
-
-static int SemihostingRead(int handle, void* buffer, int count)
-{
-    /* SYS_READ returns the number of bytes NOT read (0 == full read). */
-    const struct
-    {
-        int handle;
-        void* buffer;
-        int count;
-    } args = {handle, buffer, count};
-
-    return Semihosting(SEMIHOSTING_SYS_READ, &args);
-}
-
-static int SemihostingWrite(int handle, const void* buffer, int count)
-{
-    /* SYS_WRITE returns the number of bytes NOT written (0 == full write). */
-    const struct
-    {
-        int handle;
-        const void* buffer;
-        int count;
-    } args = {handle, buffer, count};
-
-    return Semihosting(SEMIHOSTING_SYS_WRITE, &args);
-}
-
-static int SemihostingSeek(int handle, int position)
-{
-    /* SYS_SEEK returns 0 on success, a negative value on error. */
-    const struct
-    {
-        int handle;
-        int position;
-    } args = {handle, position};
-
-    return Semihosting(SEMIHOSTING_SYS_SEEK, &args);
-}
-
-static int SemihostingFlen(int handle)
-{
-    /* SYS_FLEN returns the file length in bytes, -1 on error. */
-    const struct
-    {
-        int handle;
-    } args = {handle};
-
-    return Semihosting(SEMIHOSTING_SYS_FLEN, &args);
-}
-
-static int SemihostingClose(int handle)
-{
-    const struct
-    {
-        int handle;
-    } args = {handle};
-
-    return Semihosting(SEMIHOSTING_SYS_CLOSE, &args);
 }

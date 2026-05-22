@@ -155,6 +155,11 @@ void WinsockTcpStream_Initialise(struct SolidSyslogStream* base)
     self->Fd = INVALID_SOCKET;
 }
 
+static inline struct SolidSyslogWinsockTcpStream* WinsockTcpStream_SelfFromBase(struct SolidSyslogStream* base)
+{
+    return (struct SolidSyslogWinsockTcpStream*) base;
+}
+
 void WinsockTcpStream_Cleanup(struct SolidSyslogStream* base)
 {
     WinsockTcpStream_Close(base);
@@ -163,9 +168,14 @@ void WinsockTcpStream_Cleanup(struct SolidSyslogStream* base)
     *base = *SolidSyslogNullStream_Get();
 }
 
-static inline struct SolidSyslogWinsockTcpStream* WinsockTcpStream_SelfFromBase(struct SolidSyslogStream* base)
+static void WinsockTcpStream_Close(struct SolidSyslogStream* base)
 {
-    return (struct SolidSyslogWinsockTcpStream*) base;
+    struct SolidSyslogWinsockTcpStream* self = WinsockTcpStream_SelfFromBase(base);
+    if (WinsockTcpStream_IsSocketValid(self->Fd))
+    {
+        WinsockTcpStream_closesocket(self->Fd);
+        self->Fd = INVALID_SOCKET;
+    }
 }
 
 static bool WinsockTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
@@ -350,14 +360,4 @@ static SolidSyslogSsize WinsockTcpStream_Read(struct SolidSyslogStream* base, vo
 static inline bool WinsockTcpStream_WouldBlock(int wsaError)
 {
     return wsaError == WSAEWOULDBLOCK;
-}
-
-static void WinsockTcpStream_Close(struct SolidSyslogStream* base)
-{
-    struct SolidSyslogWinsockTcpStream* self = WinsockTcpStream_SelfFromBase(base);
-    if (WinsockTcpStream_IsSocketValid(self->Fd))
-    {
-        WinsockTcpStream_closesocket(self->Fd);
-        self->Fd = INVALID_SOCKET;
-    }
 }

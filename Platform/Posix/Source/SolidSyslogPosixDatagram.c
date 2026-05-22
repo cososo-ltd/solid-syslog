@@ -50,6 +50,11 @@ void PosixDatagram_Initialise(struct SolidSyslogDatagram* base)
     self->Connected = false;
 }
 
+static inline struct SolidSyslogPosixDatagram* PosixDatagram_SelfFromBase(struct SolidSyslogDatagram* base)
+{
+    return (struct SolidSyslogPosixDatagram*) base;
+}
+
 void PosixDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogPosixDatagram* self = PosixDatagram_SelfFromBase(base);
@@ -64,22 +69,17 @@ void PosixDatagram_Cleanup(struct SolidSyslogDatagram* base)
     *base = *SolidSyslogNullDatagram_Get();
 }
 
+static inline bool PosixDatagram_IsFileDescriptorValid(int fd)
+{
+    return fd >= 0;
+}
+
 static bool PosixDatagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogPosixDatagram* self = PosixDatagram_SelfFromBase(base);
     self->Fd = socket(AF_INET, SOCK_DGRAM, 0);
     self->Connected = false;
     return PosixDatagram_IsFileDescriptorValid(self->Fd);
-}
-
-static inline struct SolidSyslogPosixDatagram* PosixDatagram_SelfFromBase(struct SolidSyslogDatagram* base)
-{
-    return (struct SolidSyslogPosixDatagram*) base;
-}
-
-static inline bool PosixDatagram_IsFileDescriptorValid(int fd)
-{
-    return fd >= 0;
 }
 
 static enum SolidSyslogDatagramSendResult PosixDatagram_SendTo(
