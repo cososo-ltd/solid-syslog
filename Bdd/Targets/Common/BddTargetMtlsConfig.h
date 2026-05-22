@@ -23,6 +23,12 @@ EXTERN_C_BEGIN
        to inject SOLIDSYSLOG_BDD_MTLS_HOST when set. */
     void BddTargetMtlsConfig_SetHost(const char* host);
 
+    /* Override the mTLS server name used for SNI and cert hostname
+       verification, independently of the connection host. See the
+       matching note in BddTargetTlsConfig.h — FreeRTOS BDD-on-QEMU
+       needs the connection IP separate from the cert subject. */
+    void BddTargetMtlsConfig_SetServerName(const char* serverName);
+
 EXTERN_C_END
 
 #endif /* BDDTARGETMTLSCONFIG_H */

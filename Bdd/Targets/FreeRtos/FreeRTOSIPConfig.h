@@ -2,10 +2,14 @@
 #define FREERTOS_IP_CONFIG_H
 
 /* FreeRTOS-Plus-TCP configuration for the QEMU mps2-an385 BDD target. UDP +
- * TCP, IPv4 static address, no DHCP / DNS / LLMNR / NBNS / IPv6. UDP was
- * brought up in S08.03; S08.09 enables TCP for the SolidSyslogFreeRtosTcpStream
+ * TCP, IPv4 static address, no DHCP / LLMNR / NBNS / IPv6. UDP was brought
+ * up in S08.03; S08.09 enables TCP for the SolidSyslogFreeRtosTcpStream
  * adapter so the SwitchingSender's TCP branch can land its frames on the
- * syslog-ng oracle alongside the existing UDP scenarios. */
+ * syslog-ng oracle alongside the existing UDP scenarios. S08.08 enables
+ * DNS (ipconfigUSE_DNS) so SolidSyslogFreeRtosResolver can wrap
+ * FreeRTOS_getaddrinfo and resolve hostnames via the slirp DNS forwarder
+ * at 10.0.2.3; the cache is enabled to avoid re-querying for back-to-back
+ * Resolve calls during scenario steps. */
 
 #define ipconfigBYTE_ORDER pdFREERTOS_LITTLE_ENDIAN
 
@@ -18,8 +22,8 @@
 #define ipconfigUSE_DHCP 0
 #define ipconfigUSE_DHCPv6 0
 #define ipconfigUSE_DHCP_HOOK 0
-#define ipconfigUSE_DNS 0
-#define ipconfigUSE_DNS_CACHE 0
+#define ipconfigUSE_DNS 1
+#define ipconfigUSE_DNS_CACHE 1
 #define ipconfigUSE_LLMNR 0
 #define ipconfigUSE_NBNS 0
 #define ipconfigUSE_NETWORK_EVENT_HOOK 1

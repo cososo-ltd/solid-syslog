@@ -85,7 +85,7 @@ Public headers are split by audience (Interface Segregation Principle):
 - **`SolidSyslogTimeQualitySd.h`** — timeQuality structured data (RFC 5424 §7.1): tzKnown, isSynced, syncAccuracy
 - **`SolidSyslogOriginSd.h`** — origin structured data (RFC 5424 §7.2): software, swVersion, enterpriseId, ip
 - **`SolidSyslogPosixClock.h`** / **`SolidSyslogPosixHostname.h`** / **`SolidSyslogPosixProcessId.h`** / **`SolidSyslogPosixSysUpTime.h`** — POSIX helpers
-- **`SolidSyslogFreeRtosDatagram.h`** / **`SolidSyslogFreeRtosTcpStream.h`** / **`SolidSyslogFreeRtosStaticResolver.h`** / **`SolidSyslogFreeRtosMutex.h`** / **`SolidSyslogFreeRtosSysUpTime.h`** — FreeRTOS adapters: FreeRTOS-Plus-TCP UDP datagram and TCP stream (with ARP-prime on cold connect and bounded `SO_RCVTIMEO` connect), hardcoded-IPv4 resolver, `xSemaphoreCreateMutexStatic`-backed mutex for CircularBuffer, and a kernel-tick sysUpTime source
+- **`SolidSyslogFreeRtosDatagram.h`** / **`SolidSyslogFreeRtosTcpStream.h`** / **`SolidSyslogFreeRtosResolver.h`** / **`SolidSyslogFreeRtosMutex.h`** / **`SolidSyslogFreeRtosSysUpTime.h`** — FreeRTOS adapters: FreeRTOS-Plus-TCP UDP datagram and TCP stream (with ARP-prime on cold connect and bounded `SO_RCVTIMEO` connect), hardcoded-IPv4 resolver, `xSemaphoreCreateMutexStatic`-backed mutex for CircularBuffer, and a kernel-tick sysUpTime source
 - **`SolidSyslogFatFsFile.h`** — ChaN FatFs file adapter for the `SolidSyslogFile` extension point; `f_sync` per write for crash-safe store-and-forward. RTOS-agnostic; runs on bare-metal, FreeRTOS, Zephyr, NuttX
 
 Three BDD-driven target binaries exercise the library on each supported

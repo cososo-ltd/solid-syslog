@@ -12,12 +12,21 @@
 static const char* const BDD_TARGET_TLS_CA_BUNDLE_PATH = "Bdd/syslog-ng/tls/ca.pem";
 
 static const char* tlsHost = "syslog-ng";
+static const char* tlsServerName = NULL;
 
 void BddTargetTlsConfig_SetHost(const char* host)
 {
     if (host != NULL)
     {
         tlsHost = host;
+    }
+}
+
+void BddTargetTlsConfig_SetServerName(const char* serverName)
+{
+    if (serverName != NULL)
+    {
+        tlsServerName = serverName;
     }
 }
 
@@ -38,7 +47,7 @@ const char* BddTargetTlsConfig_GetCaBundlePath(void)
 
 const char* BddTargetTlsConfig_GetServerName(void)
 {
-    return BddTargetTlsConfig_GetHost();
+    return (tlsServerName != NULL) ? tlsServerName : BddTargetTlsConfig_GetHost();
 }
 
 void BddTargetTlsConfig_GetEndpoint(struct SolidSyslogEndpoint* endpoint)

@@ -19,12 +19,21 @@ static const char* const BDD_TARGET_MTLS_CLIENT_CERT_CHAIN_PATH = "Bdd/syslog-ng
 static const char* const BDD_TARGET_MTLS_CLIENT_KEY_PATH = "Bdd/syslog-ng/tls/client.key";
 
 static const char* mtlsHost = "syslog-ng";
+static const char* mtlsServerName = NULL;
 
 void BddTargetMtlsConfig_SetHost(const char* host)
 {
     if (host != NULL)
     {
         mtlsHost = host;
+    }
+}
+
+void BddTargetMtlsConfig_SetServerName(const char* serverName)
+{
+    if (serverName != NULL)
+    {
+        mtlsServerName = serverName;
     }
 }
 
@@ -45,7 +54,7 @@ const char* BddTargetMtlsConfig_GetCaBundlePath(void)
 
 const char* BddTargetMtlsConfig_GetServerName(void)
 {
-    return BddTargetMtlsConfig_GetHost();
+    return (mtlsServerName != NULL) ? mtlsServerName : BddTargetMtlsConfig_GetHost();
 }
 
 const char* BddTargetMtlsConfig_GetClientCertChainPath(void)

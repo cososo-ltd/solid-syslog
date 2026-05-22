@@ -27,7 +27,9 @@
 #include "BddTargetInteractive.h"
 #include "BddTargetIps.h"
 #include "BddTargetLanguage.h"
+#include "BddTargetMtlsConfig.h"
 #include "BddTargetSwitchConfig.h"
+#include "BddTargetTlsConfig.h"
 #include "BddTargetTlsSender.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
@@ -45,7 +47,7 @@
 #include "SolidSyslogFreeRtosAddress.h"
 #include "SolidSyslogFreeRtosDatagram.h"
 #include "SolidSyslogFreeRtosMutex.h"
-#include "SolidSyslogFreeRtosStaticResolver.h"
+#include "SolidSyslogFreeRtosResolver.h"
 #include "SolidSyslogFreeRtosSysUpTime.h"
 #include "SolidSyslogFreeRtosTcpStream.h"
 #include "SolidSyslogMetaSd.h"
@@ -126,15 +128,14 @@
 
 /* Static IPv4 wiring matching the QEMU slirp default. 10.0.2.15 is the
  * standard slirp DHCP-allocated guest address; we hardcode it here so no
- * DHCP server is required. The destination address — 10.0.2.2, the slirp
- * gateway routed to the QEMU host — is the listener target driven into
- * the static resolver. */
+ * DHCP server is required. 10.0.2.2 is the slirp gateway routed to the
+ * QEMU host; 10.0.2.3 is slirp's built-in DNS forwarder, used by
+ * SolidSyslogFreeRtosResolver when ipconfigUSE_DNS is enabled. */
 static const uint8_t TEST_IP_ADDRESS[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 15U};
 static const uint8_t TEST_NETMASK[ipIP_ADDRESS_LENGTH_BYTES] = {255U, 255U, 255U, 0U};
 static const uint8_t TEST_GATEWAY[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 2U};
 static const uint8_t TEST_DNS[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 3U};
 static const uint8_t TEST_MAC[ipMAC_ADDRESS_LENGTH_BYTES] = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};
-static const uint8_t TEST_DESTINATION_IPV4[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 2U};
 
 /* Mutable walking-skeleton state. Defaults populated at boot; the
  * interactive `set <name> <value>` command rewrites these in-place via
@@ -148,6 +149,17 @@ static const uint8_t TEST_DESTINATION_IPV4[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U
 static char appName[49] = "SolidSyslogBddTarget";
 static char messageId[33] = "example";
 static char msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = "Hello from FreeRTOS";
+/* Numeric, not the docker-network hostname "syslog-ng" the Linux target
+ * uses. 10.0.2.2 is the slirp gateway IP, which slirp NATs to the host's
+ * loopback — and inside the docker-compose pair the QEMU host (the
+ * behave-freertos container) shares its network namespace with
+ * syslog-ng-freertos, so loopback is where the oracle listens. The
+ * resolver does still wrap FreeRTOS_getaddrinfo for parity with POSIX
+ * and Windows; FreeRTOS_getaddrinfo handles dotted-quads via its inline
+ * inet_addr path with no slirp DNS lookup needed. An earlier S08.08
+ * attempt to flip this to "syslog-ng" (matching the Linux default)
+ * broke every BDD scenario in CI — slirp DNS forwarder doesn't return
+ * a slirp-NAT-reachable address for the docker DNS alias. */
 static char host[16] = "10.0.2.2";
 static uint16_t port = (uint16_t) BDD_TARGET_UDP_PORT;
 static uint32_t endpointVersion = 0U;
@@ -463,11 +475,6 @@ static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 
 static void GetEndpoint(struct SolidSyslogEndpoint* endpoint)
 {
-    /* SolidSyslogFreeRtosStaticResolver currently ignores the host
-     * string and routes via TEST_DESTINATION_IPV4, so host is plumbed
-     * here for forward-compatibility with the follow-up slice that will
-     * teach the resolver to parse dotted-quads. The port reaches the
-     * wire via sendto unchanged. */
     SolidSyslogFormatter_BoundedString(endpoint->Host, host, strlen(host));
     endpoint->Port = port;
 }
@@ -888,7 +895,7 @@ static void TeardownAll(void)
     SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogFreeRtosAddress_Destroy(udpAddress);
     SolidSyslogFreeRtosDatagram_Destroy(datagram);
-    SolidSyslogFreeRtosStaticResolver_Destroy(resolver);
+    SolidSyslogFreeRtosResolver_Destroy(resolver);
 }
 
 static void SemihostingExit(int status)
@@ -918,7 +925,20 @@ static void InteractiveTask(void* argument)
 {
     (void) argument;
 
-    resolver = SolidSyslogFreeRtosStaticResolver_Create(TEST_DESTINATION_IPV4);
+    /* Linux defaults its TLS / mTLS host to "syslog-ng" (the docker DNS
+     * alias) and overrides via SOLIDSYSLOG_BDD_{TLS,MTLS}_HOST env vars
+     * when needed. FreeRTOS has no env-var access in QEMU and slirp DNS
+     * doesn't reach the docker DNS alias in CI, so route the connection
+     * via the slirp gateway 10.0.2.2 directly — same path UDP / TCP
+     * take. ServerName for SNI / cert verification is pinned separately
+     * to "syslog-ng" (the cert's subject); without that the handshake
+     * fails because the syslog-ng cert isn't issued for 10.0.2.2. */
+    BddTargetTlsConfig_SetHost("10.0.2.2");
+    BddTargetTlsConfig_SetServerName("syslog-ng");
+    BddTargetMtlsConfig_SetHost("10.0.2.2");
+    BddTargetMtlsConfig_SetServerName("syslog-ng");
+
+    resolver = SolidSyslogFreeRtosResolver_Create();
     datagram = SolidSyslogFreeRtosDatagram_Create();
     udpAddress = SolidSyslogFreeRtosAddress_Create();
 

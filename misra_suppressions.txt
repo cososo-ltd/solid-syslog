@@ -39,7 +39,7 @@ misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c:34
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c:60
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c:62
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:52
-misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosStaticResolver.c:50
+misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosResolver.c:44
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStream.c:112
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:85
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddress.c:8
