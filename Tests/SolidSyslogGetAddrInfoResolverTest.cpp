@@ -47,7 +47,7 @@ TEST_GROUP(SolidSyslogGetAddrInfoResolver)
         SolidSyslogGetAddrInfoResolver_Destroy(resolver);
     }
 
-    bool Resolve(const char* host, uint16_t port, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP)
+    bool Resolve(const char* host, uint16_t port, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP) const
     {
         return SolidSyslogResolver_Resolve(resolver, transport, host, port, result);
     }

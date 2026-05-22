@@ -17,7 +17,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include "SocketFake.h"
 #include <arpa/inet.h>
 #include <cerrno>
-#include <cstdint>
 #include <cstring>
 #include <netinet/in.h>
 #include <sys/socket.h>

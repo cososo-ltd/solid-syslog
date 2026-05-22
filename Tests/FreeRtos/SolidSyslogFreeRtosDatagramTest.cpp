@@ -187,7 +187,10 @@ TEST(SolidSyslogFreeRtosDatagram, SendToSendsBufferToDestinationAfterOpen)
     POINTERS_EQUAL(TEST_MESSAGE, FreeRtosSocketsFake_LastSendtoBuffer());
     LONGS_EQUAL(TEST_MESSAGE_LEN, FreeRtosSocketsFake_LastSendtoLength());
     LONGS_EQUAL(0, FreeRtosSocketsFake_LastSendtoFlags());
-    POINTERS_EQUAL(SolidSyslogFreeRtosAddress_AsConstFreertosSockaddr(addr), FreeRtosSocketsFake_LastSendtoDestination());
+    POINTERS_EQUAL(
+        SolidSyslogFreeRtosAddress_AsConstFreertosSockaddr(addr),
+        FreeRtosSocketsFake_LastSendtoDestination()
+    );
     LONGS_EQUAL(sizeof(struct freertos_sockaddr), FreeRtosSocketsFake_LastSendtoDestinationLength());
 }
 

@@ -4,7 +4,6 @@
 #include <sys/socket.h>
 #include <stddef.h>
 #include <cerrno>
-#include <cstdint>
 
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"

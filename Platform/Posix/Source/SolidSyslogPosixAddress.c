@@ -1,5 +1,6 @@
 #include "SolidSyslogPosixAddressPrivate.h"
 
+#include <netinet/in.h>
 #include <string.h>
 
 struct SolidSyslogAddress;

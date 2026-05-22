@@ -4,8 +4,9 @@
 using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
     // macros
 
+#include <arpa/inet.h>
 #include <netinet/in.h>
-#include <string.h>
+#include <sys/socket.h>
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
