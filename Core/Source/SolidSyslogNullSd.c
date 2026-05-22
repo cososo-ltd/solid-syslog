@@ -6,10 +6,9 @@ struct SolidSyslogFormatter;
 
 static void NullSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter);
 
-static struct SolidSyslogStructuredData instance = {.Format = NullSd_Format};
-
 struct SolidSyslogStructuredData* SolidSyslogNullSd_Get(void)
 {
+    static struct SolidSyslogStructuredData instance = {.Format = NullSd_Format};
     return &instance;
 }
 

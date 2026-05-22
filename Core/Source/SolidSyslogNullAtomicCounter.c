@@ -6,10 +6,9 @@
 
 static uint32_t NullAtomicCounter_Increment(struct SolidSyslogAtomicCounter* base);
 
-static struct SolidSyslogAtomicCounter instance = {.Increment = NullAtomicCounter_Increment};
-
 struct SolidSyslogAtomicCounter* SolidSyslogNullAtomicCounter_Get(void)
 {
+    static struct SolidSyslogAtomicCounter instance = {.Increment = NullAtomicCounter_Increment};
     return &instance;
 }
 

@@ -32,18 +32,17 @@ static bool NullBlockDevice_Append(
 );
 static size_t NullBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blockIndex);
 
-static struct SolidSyslogBlockDevice instance = {
-    .Acquire = NullBlockDevice_Acquire,
-    .Dispose = NullBlockDevice_Dispose,
-    .Exists = NullBlockDevice_Exists,
-    .Read = NullBlockDevice_Read,
-    .Append = NullBlockDevice_Append,
-    .WriteAt = NullBlockDevice_WriteAt,
-    .Size = NullBlockDevice_Size,
-};
-
 struct SolidSyslogBlockDevice* SolidSyslogNullBlockDevice_Get(void)
 {
+    static struct SolidSyslogBlockDevice instance = {
+        .Acquire = NullBlockDevice_Acquire,
+        .Dispose = NullBlockDevice_Dispose,
+        .Exists = NullBlockDevice_Exists,
+        .Read = NullBlockDevice_Read,
+        .Append = NullBlockDevice_Append,
+        .WriteAt = NullBlockDevice_WriteAt,
+        .Size = NullBlockDevice_Size,
+    };
     return &instance;
 }
 

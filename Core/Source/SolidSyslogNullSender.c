@@ -8,10 +8,9 @@
 static bool NullSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size);
 static void NullSender_Disconnect(struct SolidSyslogSender* base);
 
-static struct SolidSyslogSender instance = {.Send = NullSender_Send, .Disconnect = NullSender_Disconnect};
-
 struct SolidSyslogSender* SolidSyslogNullSender_Get(void)
 {
+    static struct SolidSyslogSender instance = {.Send = NullSender_Send, .Disconnect = NullSender_Disconnect};
     return &instance;
 }
 

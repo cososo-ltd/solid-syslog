@@ -16,10 +16,9 @@ static bool NullResolver_Resolve(
     struct SolidSyslogAddress* result
 );
 
-static struct SolidSyslogResolver instance = {.Resolve = NullResolver_Resolve};
-
 struct SolidSyslogResolver* SolidSyslogNullResolver_Get(void)
 {
+    static struct SolidSyslogResolver instance = {.Resolve = NullResolver_Resolve};
     return &instance;
 }
 

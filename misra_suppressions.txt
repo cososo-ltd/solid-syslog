@@ -26,10 +26,10 @@ misra-c2012-11.3:Core/Source/SolidSyslogFormatter.c:93
 misra-c2012-11.3:Core/Source/SolidSyslogMetaSd.c:51
 misra-c2012-11.3:Core/Source/SolidSyslogOriginSd.c:69
 misra-c2012-11.3:Core/Source/SolidSyslogPassthroughBuffer.c:49
-misra-c2012-11.3:Core/Source/SolidSyslogStreamSender.c:148
+misra-c2012-11.3:Core/Source/SolidSyslogStreamSender.c:147
 misra-c2012-11.3:Core/Source/SolidSyslogSwitchingSender.c:59
 misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:59
-misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:98
+misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:97
 misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:36
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:53
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddress.c:8
@@ -62,7 +62,7 @@ misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsFile.c:73
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsMutex.c:34
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:116
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:168
-misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:202
+misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:201
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:138
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:312
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:332
@@ -77,7 +77,6 @@ misra-c2012-5.7:Core/Interface/SolidSyslogFormatter.h:14
 misra-c2012-5.7:Core/Interface/SolidSyslogSecurityPolicyDefinition.h:13
 misra-c2012-5.7:Core/Interface/SolidSyslogTimeQuality.h:12
 misra-c2012-5.7:Core/Interface/SolidSyslogTransport.h:5
-misra-c2012-5.7:Core/Interface/SolidSyslogUdpPayload.h:15
 misra-c2012-5.7:Core/Source/BlockSequence.c:13
 misra-c2012-5.7:Core/Source/BlockSequence.c:107
 misra-c2012-5.7:Core/Source/RecordStore.c:14
@@ -89,8 +88,6 @@ misra-c2012-5.7:Core/Source/SolidSyslogCrc16Policy.c:10
 misra-c2012-5.7:Core/Source/SolidSyslogFileBlockDevice.c:16
 misra-c2012-5.7:Core/Source/SolidSyslogFileBlockDevice.c:23
 misra-c2012-5.7:Core/Source/SolidSyslogOriginSdPrivate.h:9
-misra-c2012-5.7:Core/Source/SolidSyslogStreamSender.c:20
-misra-c2012-5.7:Core/Source/SolidSyslogUdpPayload.c:5
 misra-c2012-5.7:Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c:7
 misra-c2012-5.7:Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStream.c:45
 misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:16
@@ -145,13 +142,19 @@ misra-c2012-21.10:Platform/Posix/Source/SolidSyslogPosixSysUpTime.c:3
 # See docs/misra-deviations.md#d008
 misra-c2012-21.6:Platform/Windows/Source/SolidSyslogWindowsFile.c:8
 
-# D.009 — Rule 2.4: anonymous enum used as named-constant container
+# D.009 — Rules 2.4 / 5.7: anonymous enum used as named-constant container
 # See docs/misra-deviations.md#d009
 misra-c2012-2.4:Core/Interface/SolidSyslogTransport.h:5
 misra-c2012-2.4:Core/Source/BlockSequence.c:13
 misra-c2012-2.4:Core/Source/BlockSequence.c:107
 misra-c2012-2.4:Core/Source/RecordStore.c:14
-misra-c2012-2.4:Core/Source/SolidSyslogStreamSender.c:20
+misra-c2012-2.4:Core/Source/SolidSyslogStreamSender.c:19
+# 5.7 anonymous-enum sites — migrated from the D.003 block as per-group
+# stories review their cluster. Historical sites still under D.003 will
+# move here as S10.17 / S10.18 / S10.19 land.
+misra-c2012-5.7:Core/Interface/SolidSyslogUdpPayload.h:15
+misra-c2012-5.7:Core/Source/SolidSyslogStreamSender.c:19
+misra-c2012-5.7:Core/Source/SolidSyslogUdpPayload.c:5
 
 # D.010 — Rule 20.10: # stringification in _Static_assert polyfill
 # See docs/misra-deviations.md#d010

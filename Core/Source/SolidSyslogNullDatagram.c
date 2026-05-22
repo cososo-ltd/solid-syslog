@@ -19,15 +19,14 @@ static enum SolidSyslogDatagramSendResult NullDatagram_SendTo(
 static size_t NullDatagram_MaxPayload(struct SolidSyslogDatagram* base);
 static void NullDatagram_Close(struct SolidSyslogDatagram* base);
 
-static struct SolidSyslogDatagram instance = {
-    .Open = NullDatagram_Open,
-    .SendTo = NullDatagram_SendTo,
-    .MaxPayload = NullDatagram_MaxPayload,
-    .Close = NullDatagram_Close,
-};
-
 struct SolidSyslogDatagram* SolidSyslogNullDatagram_Get(void)
 {
+    static struct SolidSyslogDatagram instance = {
+        .Open = NullDatagram_Open,
+        .SendTo = NullDatagram_SendTo,
+        .MaxPayload = NullDatagram_MaxPayload,
+        .Close = NullDatagram_Close,
+    };
     return &instance;
 }
 

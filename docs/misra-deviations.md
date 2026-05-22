@@ -598,17 +598,26 @@ Project owner — David Cozens. Recorded under
 
 ---
 
-## D.009 — Rule 2.4: anonymous `enum` used as named-constant container
+## D.009 — Rules 2.4 / 5.7: anonymous `enum` used as named-constant container
 
-### Rule
+### Rules
 
 > **Rule 2.4 (Advisory)** — A project should not contain unused tag
 > declarations.
+> **Rule 5.7 (Required)** — A tag name shall be a unique identifier.
 
 cppcheck-misra interprets an anonymous `enum { ... };` declaration
-(no enum tag, no `typedef`) as a "tag declared but unused" — the
-enumerators are used as named constants but the enum type itself
-is never referenced.
+(no enum tag, no `typedef`) two ways:
+
+- as a "tag declared but unused" (2.4) — the enumerators are used
+  as named constants but the enum type itself is never referenced;
+- as a non-unique tag (5.7) — every anonymous `enum` shares the
+  same empty tag identifier, so the second and subsequent ones
+  collide.
+
+Both findings originate from the same syntactic shape — the
+anonymous-`enum` named-constant idiom — and are covered by a single
+deviation here.
 
 ### Deviation
 
@@ -625,13 +634,20 @@ enum
 ```
 
 There are approximately 31 such declarations across `Core/` and
-`Platform/*/Source/`. cppcheck-misra surfaces a subset (currently
-8) under rule 2.4 once the rule 5.7 suppressions (D.003) take
-effect; before then, the 5.7 check absorbs the same sites and
-masks the 2.4 finding. Adding inline-suppress comments at every
+`Platform/*/Source/`. Adding inline-suppress comments at every
 site would add visual noise next to a project-wide intentional
 idiom — listing them in `misra_suppressions.txt` under this
 deviation keeps the source clean.
+
+**Suppression-file layout.** 5.7 anonymous-enum suppressions
+were historically grouped in the D.003 block (struct-tag
+repetition) because D.003 was the original 5.7 deviation; per-group
+conformance stories migrate them into the D.009 block as they
+review their cluster (S10.16 moved the Senders-cluster ones).
+Until every group has run, both blocks contain rule 5.7 lines
+and the deviation that authorises each is determined by the kind
+of identifier the cppcheck-misra finding lands on (struct tag →
+D.003; anonymous enum → D.009).
 
 ### Scope
 

@@ -14,19 +14,18 @@ static size_t NullStore_GetTotalBytes(struct SolidSyslogStore* base);
 static size_t NullStore_GetUsedBytes(struct SolidSyslogStore* base);
 static bool NullStore_IsTransient(struct SolidSyslogStore* base);
 
-static struct SolidSyslogStore instance = {
-    .Write = NullStore_Write,
-    .ReadNextUnsent = NullStore_ReadNextUnsent,
-    .MarkSent = NullStore_MarkSent,
-    .HasUnsent = NullStore_HasUnsent,
-    .IsHalted = NullStore_IsHalted,
-    .GetTotalBytes = NullStore_GetTotalBytes,
-    .GetUsedBytes = NullStore_GetUsedBytes,
-    .IsTransient = NullStore_IsTransient
-};
-
 struct SolidSyslogStore* SolidSyslogNullStore_Get(void)
 {
+    static struct SolidSyslogStore instance = {
+        .Write = NullStore_Write,
+        .ReadNextUnsent = NullStore_ReadNextUnsent,
+        .MarkSent = NullStore_MarkSent,
+        .HasUnsent = NullStore_HasUnsent,
+        .IsHalted = NullStore_IsHalted,
+        .GetTotalBytes = NullStore_GetTotalBytes,
+        .GetUsedBytes = NullStore_GetUsedBytes,
+        .IsTransient = NullStore_IsTransient
+    };
     return &instance;
 }
 

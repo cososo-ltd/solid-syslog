@@ -5,13 +5,12 @@
 static void NullMutex_Lock(struct SolidSyslogMutex* base);
 static void NullMutex_Unlock(struct SolidSyslogMutex* base);
 
-static struct SolidSyslogMutex instance = {
-    .Lock = NullMutex_Lock,
-    .Unlock = NullMutex_Unlock,
-};
-
 struct SolidSyslogMutex* SolidSyslogNullMutex_Get(void)
 {
+    static struct SolidSyslogMutex instance = {
+        .Lock = NullMutex_Lock,
+        .Unlock = NullMutex_Unlock,
+    };
     return &instance;
 }
 

@@ -16,21 +16,20 @@ static void NullFile_Truncate(struct SolidSyslogFile* base);
 static bool NullFile_Exists(struct SolidSyslogFile* base, const char* path);
 static bool NullFile_Delete(struct SolidSyslogFile* base, const char* path);
 
-static struct SolidSyslogFile instance = {
-    .Open = NullFile_Open,
-    .Close = NullFile_Close,
-    .IsOpen = NullFile_IsOpen,
-    .Read = NullFile_Read,
-    .Write = NullFile_Write,
-    .SeekTo = NullFile_SeekTo,
-    .Size = NullFile_Size,
-    .Truncate = NullFile_Truncate,
-    .Exists = NullFile_Exists,
-    .Delete = NullFile_Delete,
-};
-
 struct SolidSyslogFile* SolidSyslogNullFile_Get(void)
 {
+    static struct SolidSyslogFile instance = {
+        .Open = NullFile_Open,
+        .Close = NullFile_Close,
+        .IsOpen = NullFile_IsOpen,
+        .Read = NullFile_Read,
+        .Write = NullFile_Write,
+        .SeekTo = NullFile_SeekTo,
+        .Size = NullFile_Size,
+        .Truncate = NullFile_Truncate,
+        .Exists = NullFile_Exists,
+        .Delete = NullFile_Delete,
+    };
     return &instance;
 }
 

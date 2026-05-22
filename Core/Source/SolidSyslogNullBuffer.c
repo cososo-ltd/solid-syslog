@@ -8,10 +8,9 @@
 static bool NullBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void NullBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
 
-static struct SolidSyslogBuffer instance = {.Write = NullBuffer_Write, .Read = NullBuffer_Read};
-
 struct SolidSyslogBuffer* SolidSyslogNullBuffer_Get(void)
 {
+    static struct SolidSyslogBuffer instance = {.Write = NullBuffer_Write, .Read = NullBuffer_Read};
     return &instance;
 }
 

@@ -1,5 +1,98 @@
 # Dev Log
 
+## 2026-05-22 — S10.16 Senders conformance
+
+Closes S10.16 (#389). Fifth per-group conformance story in E10,
+applying the S10.12 pilot recipe to the Senders cluster
+(`Sender`, `NullSender`, `UdpSender`, `StreamSender`, `SwitchingSender`,
+`UdpPayload` plus the E11 three-TU split files for the three pool-backed
+senders). Started from the CI cppcheck-misra report against `main@ddbc81f`
+— `analyze-tidy` was already clean against the cluster, so the work was
+entirely on the cppcheck-misra side.
+
+### Findings landscape
+
+Six unsuppressed findings against scope in the starting CI report:
+
+- Four were one-line **anchor drift** in `misra_suppressions.txt`. The
+  11.3 / 11.5 vtable-cast lines were anchored at the closing `}` of
+  the inline `SelfFromBase` (or the comment line for 11.5); cppcheck
+  actually reports at the cast-expression line one above. The 5.7
+  anchor on the StreamSender anonymous enum was at the first constant
+  rather than the `{`. `SwitchingSender:59` matched by coincidence
+  (cast and brace on the same line).
+- One **genuine fix** at `UdpPayload.c:37` — function parameter
+  `length` mutated in-place (rule 17.8). Introduced a local `trimmed`
+  copy. The audit anticipated this site; the three sibling 17.8 sites
+  in `SolidSyslogFormatter.c` belong to S10.19.
+- One **family-wide pattern fix** at `NullSender.c:11` (rule 8.9).
+  The file-scope `static struct SolidSyslogSender instance = {...}`
+  is only used by the `_Get()` accessor — moving it inside the
+  accessor as a function-scope `static` narrows the identifier scope
+  per MISRA 8.9 with identical semantics (program-duration storage,
+  stable address).
+
+### Decisions taken at the bend
+
+- **8.9 — sweep all twelve sister null-objects, not just NullSender.**
+  The 8.9 finding fires on every `Null*.c` file (NullAtomicCounter,
+  NullBlockDevice, NullBuffer, NullDatagram, NullFile, NullMutex,
+  NullResolver, NullSd, NullSecurityPolicy, NullSender, NullStore,
+  NullStream). None were previously suppressed, so the cluster has
+  always been pending decision. The sender-only fix would have left
+  the family inconsistent for the duration of S10.17–S10.19, and the
+  diff per file is tiny. David's call: fix-when-we-see-it across
+  the family. No new deviation.
+- **D.009 widened to cover rule 5.7 in addition to 2.4.** cppcheck
+  fires both rules on the same anonymous-enum named-constant idiom,
+  for the same syntactic shape. Splitting them across D.003 (which
+  is strictly about struct-tag repetition) and D.009 added noise to
+  no benefit. D.009's title and rule statement now name both rules;
+  the three Senders-scope 5.7-on-anonymous-enum suppressions
+  (`UdpPayload.h:15`, `StreamSender.c:19`, `UdpPayload.c:5`)
+  moved from the D.003 block to the D.009 block. Other historical
+  5.7-on-anonymous-enum suppressions stay in the D.003 block until
+  S10.17 / S10.18 / S10.19 review their clusters — the deviation
+  that authorises each line is determined by the identifier kind,
+  not by the physical block.
+
+### Cppcheck dedup surfaced a second drift
+
+Re-running cppcheck after the 5.7 anchor fix surfaced rule 2.4 at
+`SolidSyslogStreamSender.c:19` — the existing 2.4 suppression at
+line 20 had been shadowed by the matching (mis-anchored) 5.7 at the
+same site. With 5.7 correctly at line 19, the 2.4 finding emerged.
+Sister anonymous-enum 2.4 suppressions (`BlockSequence.c:13`,
+`RecordStore.c:14`, `Transport.h:5`) already anchor at the `{`
+line. One more line bump, no new behaviour. Worth noting for
+future per-group stories: removing one suppression can unmask
+another on the same source line.
+
+### Acceptance
+
+- Zero in-scope `analyze-tidy` warnings (unchanged from starting state).
+- Zero in-scope `cppcheck-misra` findings after the fixes (verified
+  against the same `ghcr.io/davidcozens/cpputest:sha-18f19e1` image
+  the CI uses).
+- 1290/1290 tests pass on `debug` and `sanitize`.
+- Tree-wide coverage 99.9% (2921/2925 lines, 602/602 functions);
+  uncovered lines sit in `BlockStoreStatic.c` and `PosixMutex.c` and
+  are pre-existing — none of the changed files lost coverage.
+- clang-format clean tree-wide.
+- No new deviations; no new inline suppressions; one count-bump on
+  D.009 (three 5.7-on-anonymous-enum lines migrated in).
+
+### Scope clean-up noted for the issue body
+
+`UdpSender` is already three-TU-split under E11
+(`SolidSyslogUdpSenderPrivate.h`, `SolidSyslogUdpSenderStatic.c`) but
+the original issue body listed only `SolidSyslogUdpSender.c`. The
+`SolidSyslogNullSender.{c,h}` files were also added by E11 and missing
+from the original scope list. Both are folded into S10.16 — issue body
+updated to reflect.
+
+---
+
 ## 2026-05-22 — S24.08 top-down function ordering sweep
 
 Closes S24.08 (#423). Pure refactoring pass: re-applied the documented

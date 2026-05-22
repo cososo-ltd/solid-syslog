@@ -13,15 +13,14 @@ static bool NullStream_Send(struct SolidSyslogStream* base, const void* buffer, 
 static SolidSyslogSsize NullStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void NullStream_Close(struct SolidSyslogStream* base);
 
-static struct SolidSyslogStream instance = {
-    .Open = NullStream_Open,
-    .Send = NullStream_Send,
-    .Read = NullStream_Read,
-    .Close = NullStream_Close,
-};
-
 struct SolidSyslogStream* SolidSyslogNullStream_Get(void)
 {
+    static struct SolidSyslogStream instance = {
+        .Open = NullStream_Open,
+        .Send = NullStream_Send,
+        .Read = NullStream_Read,
+        .Close = NullStream_Close,
+    };
     return &instance;
 }
 
