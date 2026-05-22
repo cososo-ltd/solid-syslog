@@ -1,5 +1,185 @@
 # Dev Log
 
+## 2026-05-22 — S10.18 Storage stack conformance
+
+Closes S10.18 (#430). Seventh per-group conformance story in E10. Storage
+stack cluster: `Store`, `BlockStore`, `RecordStore`, `BlockSequence`,
+`BlockDevice`, `FileBlockDevice`, `File`, plus the POSIX / Windows / FatFs
+file impls. Started from the CI report at run 26309037474 (`main@a062d39`,
+post-S10.17), which surfaced 10 unsuppressed cppcheck-misra findings in
+scope; clang-tidy was clean.
+
+### Headline
+
+Four code-touching commits (Patterns A, B, C, E), two pure-review
+patterns (D and F), one clang-format follow-up. No new tree-wide
+findings; 10 in-scope findings cleared; one new deviation D.012
+authorising the FILE_EXTENSION 8.9 tracker false positive.
+
+### Pattern A — `(void)` cast on `PoolAllocator_FreeIfInUse` (MISRA 17.7)
+
+`SolidSyslogPoolAllocator_FreeIfInUse` returns `bool` (false when the
+slot wasn't ours / already free). Four call sites in pool-backed
+`*Static.c` Destroy and Create-rollback paths discard the return —
+the cleanup is best-effort. Explicit `(void)` cast at each site:
+`BlockSequenceStatic.c:37`, `RecordStoreStatic.c:36`,
+`SolidSyslogBlockStoreStatic.c:55/:60`.
+
+### Pattern B — discarded returns in `RecordStore.c` (MISRA 17.7 + 21.15)
+
+Five 17.7 sites in `RecordStore.c`. Treated per-site:
+
+- Lines 127, 332: `(void) memcpy(...)` — copy into a byte buffer from
+  an opaque source (`const void* data` / `void* dst`).
+- Line 477: `(void) SolidSyslogBlockDevice_Read(...)` —
+  `RecordStore_IsRecordSent` deliberately falls through to
+  `flag == SENT_FLAG_SENT` on a read failure during the
+  corruption-recovery scan. The function doc-comment already documents
+  the fail-safe; a skipped record surfaces downstream as a sequenceId
+  gap.
+- Lines 126, 250: the bare `(void) memcpy` cast didn't satisfy MISRA —
+  it unmasked rule 21.15 ("pointer arguments shall be to compatible
+  essential types") because the writes/reads went between `uint8_t*`
+  and `uint16_t*`. Refactored to explicit little-endian byte
+  pack/unpack:
+
+      lengthBytes[0] = (uint8_t) (length & 0xFFU);
+      lengthBytes[1] = (uint8_t) ((length >> 8) & 0xFFU);
+
+  Every supported target is little-endian (POSIX x86/x64/ARM, Windows
+  x86/x64, FreeRTOS-Cortex-M3 on QEMU); the existing
+  `SolidSyslogBlockStoreTest.cpp:1555` truncated-header fixture
+  already bakes in LE layout (`{0xA5, 0x5A, 0x05}` — length 5 packed
+  as `0x05 0x00`). Pure refactor on every host; the explicit shape
+  locks the on-disk format invariant in code rather than leaving it
+  implicit.
+
+### Pattern C — D.012 deviation for `FILE_EXTENSION` 8.9
+
+`Core/Source/SolidSyslogFileBlockDevice.c:20` declares
+`static const char FILE_EXTENSION[] = ".log"`. The constant is
+referenced from **two** sites in the TU — a file-scope enum
+`sizeof()` at line 25 (contributing to `FILENAME_SUFFIX` and the
+derived compile-time `MAX_PREFIX_LENGTH`) and `_FormatBlockFilename`
+at line 214. cppcheck-misra's 8.9 tracker counts only function-scope
+references, so the enum site is invisible and the rule fires
+spuriously.
+
+Three alternatives were investigated before recording D.012:
+
+1. **Inline the literal at both call sites** — DRY violation for a
+   single-source-of-truth on-disk constant.
+2. **Promote the dependent enum entries to file-scope
+   `static const size_t`** — *verified experimentally during S10.18
+   that this does not satisfy 8.9*; instead surfaces a second 8.9
+   false positive on the new constant for the same reason
+   (function-scope tracker treats all file-scope references
+   uniformly). The fix path amplifies the problem rather than
+   resolving it.
+3. **Promote to `#define FILE_EXTENSION ".log"`** — side-steps 8.9
+   (macros are not objects) at the cost of introducing a string
+   macro inconsistent with the file-scope-const pattern used
+   elsewhere in storage code.
+
+New deviation D.012 in `docs/misra-deviations.md`; single-site
+line-anchored suppression in `misra_suppressions.txt`. The story
+body specified "no new deviation rows in `docs/misra-deviations.md`"
+— D.012 is a divergence from that, raised as work per the per-group
+conformance workflow's "raise as work" clause. The per-site review
+surfaced a genuine cppcheck-misra tracker false positive rather than
+a fixable code defect.
+
+### Pattern D — D.002 11.3 vtable downcasts (no work)
+
+Five sites — `BlockStore.c:69`, `FileBlockDevice.c:102`,
+`FatFsFile.c:45`, `PosixFile.c:66`, `WindowsFile.c:73` — are all
+textbook `*_SelfFromBase` vtable downcasts established by S10.11.
+Anchors are correct, rationale holds, no code change.
+
+### Pattern E — D.003 → D.009 migration of 8 anonymous-enum 5.7 sites
+
+Per-site verification confirmed every D.003 / 5.7 entry in storage
+scope is an anonymous-enum site, not the struct-tag pattern D.003
+originally covered. All 8 migrated to the D.009 block. No 2.4
+entries surfaced after the migration — the cppcheck dedup pattern
+that unmasked `UdpPayload.h:15` in S10.17 doesn't fire here (no
+inclusion-chain narrowing).
+
+Out-of-scope D.003 5.7 entries kept where they are: `CircularBuffer.c`
+(closed S10.12), `Crc16.c` / `Crc16Policy.c` (closed S10.13), and
+the SolidSyslog.c + various platform impls deferred to S10.19. Same
+fix-when-we-see-it precedent S10.16 set.
+
+**Side observation captured during the migration.** I tried
+typedef-ing one of the anonymous enums (`BlockSequence.c:13`,
+`MIN_MAX_BLOCKS` etc.) as `typedef enum { … } BlockSequenceLimits`
+to see whether the typedef satisfied 5.7. It did — the 5.7+2.4
+findings on the declaration vanished. But it immediately surfaced
+**two new 10.4 findings** at the arithmetic use sites (`current + 1U`
+and `+ SEQUENCE_MODULUS` arithmetic mixing an `enum BlockSequenceLimits`
+member with `uint8_t` / unsigned-int operands violates 10.4's
+essential-type-category rule). Net trade: 2-per-declaration becomes
+N-per-use-site, where N is typically larger. The D.009 deviation
+implicitly captures this — the anonymous-enum-as-constant-container
+pattern is the cheaper shape under MISRA.
+
+### Pattern F — D.004 / D.006 / D.008 per-site re-justification (no work)
+
+Seven sites:
+
+- **D.004 / 18.4** — `RecordStore.c:37/:42/:47/:52`: textbook
+  field-offset pointer arithmetic chain inside the contiguous
+  record buffer (`MagicAddress + MAGIC_SIZE` → `LengthAddress` →
+  `MessageAddress` → `IntegrityChecksumAddress` → `SentFlagAddress`).
+  Exactly what D.004 authorises.
+- **D.006 / 11.8** — `BlockSequence.c:465` (const-receiver path
+  strips through to `BlockDevice_Size`'s non-const param) and
+  `BlockStoreStatic.c:39` (`config->SecurityPolicy` assigned to
+  non-const local). Both real false positives, same shape as
+  documented.
+- **D.008 / 21.6** — `WindowsFile.c:8` `#include <stdio.h>` for
+  `SEEK_SET` / `SEEK_END` only.
+
+All hold. No anchor drift after Patterns A/B/C.
+
+### clang-format follow-up
+
+`(void) SolidSyslogPoolAllocator_FreeIfInUse(...)` exceeds line
+length even with arguments inline; clang-format splits between
+`(void` and `)`. Ugly but mechanically what the formatter chose;
+accepted rather than adding helper scaffolding to dodge it.
+
+### Acceptance
+
+- Zero in-scope cppcheck-misra unsuppressed findings (10 cleared).
+- Zero in-scope `analyze-tidy` warnings.
+- Tree-wide unsuppressed total: 65 → 65 (no new findings outside scope).
+- 1290 / 1290 tests pass on `debug` and `sanitize` (ASan + UBSan).
+- Tree-wide coverage 99.9% (2925 / 2929 lines, 602 / 602 functions);
+  +1 line covered vs. main as a side effect of Pattern B's byte-pack
+  rewrite exercising paths the old `memcpy`-into-buffer path skipped.
+- clang-format clean tree-wide (within the CI scope:
+  `Core/Interface Core/Source Tests Bdd/Targets`).
+- One new deviation row D.012; no other changes to
+  `docs/misra-deviations.md`.
+
+### Carry-forward for S10.19 / S10.20
+
+- Engine + Formatter cluster owns 38 remaining unsuppressed findings
+  in `Core/Source/SolidSyslog.c`, `Core/Source/SolidSyslogFormatter.c`,
+  `Core/Source/SolidSyslogErrorMessages.h`, `Core/Source/SolidSyslogStatic.c`
+  — all S10.19's job.
+- 2 × 8.7 findings in `Platform/Atomics/Source/SolidSyslog{Std,Windows}AtomicCounter.c`
+  are orphans from closed S10.13. Fix-when-touched, or sweep at S10.20.
+- D.003 → D.009 migration still has out-of-scope sister sites to
+  visit: `CircularBuffer.c:15`, `Crc16.c:12`, `Crc16Policy.c:10`
+  (closed S10.12/S10.13), plus `SolidSyslog.c:30` and the platform
+  Hostname / SysUpTime / Clock impls — these belong to S10.19 (engine)
+  and the closed S10.14 (config + platform helpers); same
+  fix-when-we-see-it precedent.
+
+---
+
 ## 2026-05-22 — S10.17 Network primitives conformance
 
 Closes S10.17 (#428). Sixth per-group conformance story in E10. Network
