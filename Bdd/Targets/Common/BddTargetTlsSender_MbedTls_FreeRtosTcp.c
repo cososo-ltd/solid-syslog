@@ -27,6 +27,7 @@
 #include "BddTargetTlsConfig.h"
 #include "SolidSyslogFreeRtosTcpStream.h"
 #include "SolidSyslogMbedTlsStream.h"
+#include "SolidSyslogNullSender.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamSender.h"
 
@@ -347,6 +348,17 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     (void) mtls;
 
     EnsureMbedTlsInitialised();
+    if (!mbedTlsInitialised)
+    {
+        /* EnsureMbedTlsInitialised already printed a [mbedtls] ... FAILED
+         * diagnostic explaining which step tripped. Returning the shared
+         * NullSender here keeps the bad-setup contract intact — the
+         * SwitchingSender's tls slot drops messages cleanly rather than
+         * failing opaquely later inside MbedTlsStream_Open, and the
+         * statics below stay NULL so BddTargetTlsSender_Destroy can
+         * detect the short-circuit. */
+        return SolidSyslogNullSender_Get();
+    }
 
     underlyingStream = SolidSyslogFreeRtosTcpStream_Create();
 
@@ -377,6 +389,14 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
 
 void BddTargetTlsSender_Destroy(void)
 {
+    /* If EnsureMbedTlsInitialised failed, Create short-circuited to the
+     * shared NullSender and never assigned the file-scope statics — there
+     * is nothing to release. The pool-backed Destroy helpers tolerate
+     * a NULL handle but skipping makes the no-op explicit. */
+    if (sender == NULL)
+    {
+        return;
+    }
     SolidSyslogStreamSender_Destroy(sender);
     SolidSyslogMbedTlsStream_Destroy(tlsStream);
     SolidSyslogFreeRtosTcpStream_Destroy(underlyingStream);
