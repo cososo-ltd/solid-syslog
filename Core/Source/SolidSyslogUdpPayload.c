@@ -29,15 +29,16 @@ size_t SolidSyslogUdpPayload_FromMtu(size_t mtu, bool isIpv6)
 
 size_t SolidSyslogUdpPayload_TrimToCodepointBoundary(const uint8_t* buffer, size_t length)
 {
-    if (length > 0U)
+    size_t trimmed = length;
+    if (trimmed > 0U)
     {
-        size_t lastCodepointStart = UdpPayload_FindLastCodepointStart(buffer, length);
-        if (UdpPayload_LastCodepointExtendsPastCut(buffer, length, lastCodepointStart))
+        size_t lastCodepointStart = UdpPayload_FindLastCodepointStart(buffer, trimmed);
+        if (UdpPayload_LastCodepointExtendsPastCut(buffer, trimmed, lastCodepointStart))
         {
-            length = lastCodepointStart;
+            trimmed = lastCodepointStart;
         }
     }
-    return length;
+    return trimmed;
 }
 
 static inline size_t UdpPayload_FindLastCodepointStart(const uint8_t* buffer, size_t length)
