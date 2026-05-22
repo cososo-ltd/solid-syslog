@@ -27,7 +27,7 @@ struct SolidSyslogStream* SolidSyslogPosixTcpStream_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PosixTcpStream_Allocator);
     struct SolidSyslogStream* handle = SolidSyslogNullStream_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&PosixTcpStream_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&PosixTcpStream_Allocator, index) == true)
     {
         PosixTcpStream_Initialise(&PosixTcpStream_Pool[index].Base);
         handle = &PosixTcpStream_Pool[index].Base;

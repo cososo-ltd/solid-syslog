@@ -31,7 +31,7 @@ struct SolidSyslogAddress* SolidSyslogWinsockAddress_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&WinsockAddress_Allocator);
     struct SolidSyslogAddress* handle = (struct SolidSyslogAddress*) &WinsockAddress_Fallback;
-    if (SolidSyslogPoolAllocator_IndexIsValid(&WinsockAddress_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&WinsockAddress_Allocator, index) == true)
     {
         handle = WinsockAddress_HandleFromIndex(index);
         WinsockAddress_Initialise(handle);

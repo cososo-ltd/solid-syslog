@@ -24,7 +24,7 @@ struct SolidSyslogStream* SolidSyslogTlsStream_Create(const struct SolidSyslogTl
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&TlsStream_Allocator);
     struct SolidSyslogStream* handle = SolidSyslogNullStream_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&TlsStream_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&TlsStream_Allocator, index) == true)
     {
         TlsStream_Initialise(&TlsStream_Pool[index].Base, config);
         handle = &TlsStream_Pool[index].Base;

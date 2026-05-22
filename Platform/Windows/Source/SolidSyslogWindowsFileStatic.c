@@ -24,7 +24,7 @@ struct SolidSyslogFile* SolidSyslogWindowsFile_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&WindowsFile_Allocator);
     struct SolidSyslogFile* handle = SolidSyslogNullFile_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&WindowsFile_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&WindowsFile_Allocator, index) == true)
     {
         WindowsFile_Initialise(&WindowsFile_Pool[index].Base);
         handle = &WindowsFile_Pool[index].Base;

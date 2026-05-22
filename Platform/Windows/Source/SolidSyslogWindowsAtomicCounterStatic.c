@@ -27,7 +27,7 @@ struct SolidSyslogAtomicCounter* SolidSyslogWindowsAtomicCounter_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&WindowsAtomicCounter_Allocator);
     struct SolidSyslogAtomicCounter* handle = SolidSyslogNullAtomicCounter_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&WindowsAtomicCounter_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&WindowsAtomicCounter_Allocator, index) == true)
     {
         WindowsAtomicCounter_Initialise(&WindowsAtomicCounter_Pool[index].Base);
         handle = &WindowsAtomicCounter_Pool[index].Base;

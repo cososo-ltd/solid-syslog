@@ -24,7 +24,7 @@ struct SolidSyslogFile* SolidSyslogPosixFile_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PosixFile_Allocator);
     struct SolidSyslogFile* handle = SolidSyslogNullFile_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&PosixFile_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&PosixFile_Allocator, index) == true)
     {
         PosixFile_Initialise(&PosixFile_Pool[index].Base);
         handle = &PosixFile_Pool[index].Base;

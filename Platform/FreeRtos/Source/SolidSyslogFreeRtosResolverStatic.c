@@ -27,7 +27,7 @@ struct SolidSyslogResolver* SolidSyslogFreeRtosResolver_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&FreeRtosResolver_Allocator);
     struct SolidSyslogResolver* handle = SolidSyslogNullResolver_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&FreeRtosResolver_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&FreeRtosResolver_Allocator, index) == true)
     {
         FreeRtosResolver_Initialise(&FreeRtosResolver_Pool[index].Base);
         handle = &FreeRtosResolver_Pool[index].Base;

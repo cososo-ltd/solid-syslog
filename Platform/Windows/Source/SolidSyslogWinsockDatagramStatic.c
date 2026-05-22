@@ -27,7 +27,7 @@ struct SolidSyslogDatagram* SolidSyslogWinsockDatagram_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&WinsockDatagram_Allocator);
     struct SolidSyslogDatagram* handle = SolidSyslogNullDatagram_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&WinsockDatagram_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&WinsockDatagram_Allocator, index) == true)
     {
         WinsockDatagram_Initialise(&WinsockDatagram_Pool[index].Base);
         handle = &WinsockDatagram_Pool[index].Base;

@@ -24,7 +24,7 @@ struct SolidSyslogFile* SolidSyslogFatFsFile_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&FatFsFile_Allocator);
     struct SolidSyslogFile* handle = SolidSyslogNullFile_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&FatFsFile_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&FatFsFile_Allocator, index) == true)
     {
         FatFsFile_Initialise(&FatFsFile_Pool[index].Base);
         handle = &FatFsFile_Pool[index].Base;

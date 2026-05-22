@@ -27,7 +27,7 @@ struct SolidSyslogDatagram* SolidSyslogFreeRtosDatagram_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&FreeRtosDatagram_Allocator);
     struct SolidSyslogDatagram* handle = SolidSyslogNullDatagram_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&FreeRtosDatagram_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&FreeRtosDatagram_Allocator, index) == true)
     {
         FreeRtosDatagram_Initialise(&FreeRtosDatagram_Pool[index].Base);
         handle = &FreeRtosDatagram_Pool[index].Base;

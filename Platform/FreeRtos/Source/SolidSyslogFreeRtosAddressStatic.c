@@ -34,7 +34,7 @@ struct SolidSyslogAddress* SolidSyslogFreeRtosAddress_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&FreeRtosAddress_Allocator);
     struct SolidSyslogAddress* handle = (struct SolidSyslogAddress*) &FreeRtosAddress_Fallback;
-    if (SolidSyslogPoolAllocator_IndexIsValid(&FreeRtosAddress_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&FreeRtosAddress_Allocator, index) == true)
     {
         handle = FreeRtosAddress_HandleFromIndex(index);
         FreeRtosAddress_Initialise(handle);

@@ -34,7 +34,7 @@ struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMe
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PosixMessageQueueBuffer_Allocator);
     struct SolidSyslogBuffer* handle = SolidSyslogNullBuffer_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&PosixMessageQueueBuffer_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&PosixMessageQueueBuffer_Allocator, index) == true)
     {
         PosixMessageQueueBuffer_Initialise(
             &PosixMessageQueueBuffer_Pool[index].Base,

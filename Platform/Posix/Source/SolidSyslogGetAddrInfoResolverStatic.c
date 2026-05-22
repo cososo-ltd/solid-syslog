@@ -27,7 +27,7 @@ struct SolidSyslogResolver* SolidSyslogGetAddrInfoResolver_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&GetAddrInfoResolver_Allocator);
     struct SolidSyslogResolver* handle = SolidSyslogNullResolver_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&GetAddrInfoResolver_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&GetAddrInfoResolver_Allocator, index) == true)
     {
         GetAddrInfoResolver_Initialise(&GetAddrInfoResolver_Pool[index].Base);
         handle = &GetAddrInfoResolver_Pool[index].Base;

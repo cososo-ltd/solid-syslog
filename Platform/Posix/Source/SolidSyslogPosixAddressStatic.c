@@ -31,7 +31,7 @@ struct SolidSyslogAddress* SolidSyslogPosixAddress_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PosixAddress_Allocator);
     struct SolidSyslogAddress* handle = (struct SolidSyslogAddress*) &PosixAddress_Fallback;
-    if (SolidSyslogPoolAllocator_IndexIsValid(&PosixAddress_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&PosixAddress_Allocator, index) == true)
     {
         handle = PosixAddress_HandleFromIndex(index);
         PosixAddress_Initialise(handle);

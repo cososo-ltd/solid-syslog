@@ -27,7 +27,7 @@ struct SolidSyslogStream* SolidSyslogFreeRtosTcpStream_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&FreeRtosTcpStream_Allocator);
     struct SolidSyslogStream* handle = SolidSyslogNullStream_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&FreeRtosTcpStream_Allocator, index))
+    if (SolidSyslogPoolAllocator_IndexIsValid(&FreeRtosTcpStream_Allocator, index) == true)
     {
         FreeRtosTcpStream_Initialise(&FreeRtosTcpStream_Pool[index].Base);
         handle = &FreeRtosTcpStream_Pool[index].Base;
