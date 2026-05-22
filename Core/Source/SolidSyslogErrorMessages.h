@@ -121,6 +121,10 @@
     "SolidSyslogFreeRtosMutex_Create pool exhausted; returning fallback mutex"
 #define SOLIDSYSLOG_ERROR_MSG_FREERTOSMUTEX_UNKNOWN_DESTROY \
     "SolidSyslogFreeRtosMutex_Destroy called with a handle not issued by this pool"
+#define SOLIDSYSLOG_ERROR_MSG_FREERTOSADDRESS_POOL_EXHAUSTED \
+    "SolidSyslogFreeRtosAddress_Create pool exhausted; returning fallback address"
+#define SOLIDSYSLOG_ERROR_MSG_FREERTOSADDRESS_UNKNOWN_DESTROY \
+    "SolidSyslogFreeRtosAddress_Destroy called with a handle not issued by this pool"
 #define SOLIDSYSLOG_ERROR_MSG_FREERTOSDATAGRAM_POOL_EXHAUSTED \
     "SolidSyslogFreeRtosDatagram_Create pool exhausted; returning fallback datagram"
 #define SOLIDSYSLOG_ERROR_MSG_FREERTOSDATAGRAM_UNKNOWN_DESTROY \

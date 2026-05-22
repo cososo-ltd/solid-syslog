@@ -98,6 +98,34 @@ else()
     )
 
     add_test(NAME SolidSyslogFreeRtosStaticResolverTest COMMAND SolidSyslogFreeRtosStaticResolverTest)
+
+    add_executable(SolidSyslogFreeRtosAddressTest
+        SolidSyslogFreeRtosAddressTest.cpp
+        main.cpp
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddress.c
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c
+    )
+
+    target_link_libraries(SolidSyslogFreeRtosAddressTest PRIVATE
+        ${PROJECT_NAME}
+        ConfigLockFake
+        ErrorHandlerFake
+        CppUTest
+        CppUTestExt
+    )
+
+    target_include_directories(SolidSyslogFreeRtosAddressTest PRIVATE
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
+        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source
+        ${CMAKE_SOURCE_DIR}/Core/Interface
+        ${CMAKE_SOURCE_DIR}/Core/Source
+        ${CMAKE_SOURCE_DIR}/Tests/Support
+        ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
+        $ENV{FREERTOS_KERNEL_PATH}/include
+        $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
+    )
+
+    add_test(NAME SolidSyslogFreeRtosAddressTest COMMAND SolidSyslogFreeRtosAddressTest)
 endif()
 
 # SolidSyslogFreeRtosMutex — kernel-only adapter wrapping a FreeRTOS static
