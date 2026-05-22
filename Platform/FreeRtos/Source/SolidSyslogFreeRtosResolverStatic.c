@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorMessages.h"
@@ -24,13 +23,13 @@ static struct SolidSyslogPoolAllocator FreeRtosResolver_Allocator = {
     SOLIDSYSLOG_FREE_RTOS_RESOLVER_POOL_SIZE
 };
 
-struct SolidSyslogResolver* SolidSyslogFreeRtosResolver_Create(const uint8_t ipv4Octets[4])
+struct SolidSyslogResolver* SolidSyslogFreeRtosResolver_Create(void)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&FreeRtosResolver_Allocator);
     struct SolidSyslogResolver* handle = SolidSyslogNullResolver_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&FreeRtosResolver_Allocator, index))
     {
-        FreeRtosResolver_Initialise(&FreeRtosResolver_Pool[index].Base, ipv4Octets);
+        FreeRtosResolver_Initialise(&FreeRtosResolver_Pool[index].Base);
         handle = &FreeRtosResolver_Pool[index].Base;
     }
     else

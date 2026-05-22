@@ -126,15 +126,14 @@
 
 /* Static IPv4 wiring matching the QEMU slirp default. 10.0.2.15 is the
  * standard slirp DHCP-allocated guest address; we hardcode it here so no
- * DHCP server is required. The destination address — 10.0.2.2, the slirp
- * gateway routed to the QEMU host — is the listener target driven into
- * the static resolver. */
+ * DHCP server is required. 10.0.2.2 is the slirp gateway routed to the
+ * QEMU host; 10.0.2.3 is slirp's built-in DNS forwarder, used by
+ * SolidSyslogFreeRtosResolver when ipconfigUSE_DNS is enabled. */
 static const uint8_t TEST_IP_ADDRESS[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 15U};
 static const uint8_t TEST_NETMASK[ipIP_ADDRESS_LENGTH_BYTES] = {255U, 255U, 255U, 0U};
 static const uint8_t TEST_GATEWAY[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 2U};
 static const uint8_t TEST_DNS[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 3U};
 static const uint8_t TEST_MAC[ipMAC_ADDRESS_LENGTH_BYTES] = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};
-static const uint8_t TEST_DESTINATION_IPV4[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 2U};
 
 /* Mutable walking-skeleton state. Defaults populated at boot; the
  * interactive `set <name> <value>` command rewrites these in-place via
@@ -463,11 +462,6 @@ static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 
 static void GetEndpoint(struct SolidSyslogEndpoint* endpoint)
 {
-    /* SolidSyslogFreeRtosResolver currently ignores the host string
-     * and routes via TEST_DESTINATION_IPV4, so host is plumbed here
-     * for forward-compatibility with the follow-up slice that will
-     * teach the resolver to parse dotted-quads. The port reaches the
-     * wire via sendto unchanged. */
     SolidSyslogFormatter_BoundedString(endpoint->Host, host, strlen(host));
     endpoint->Port = port;
 }
@@ -918,7 +912,7 @@ static void InteractiveTask(void* argument)
 {
     (void) argument;
 
-    resolver = SolidSyslogFreeRtosResolver_Create(TEST_DESTINATION_IPV4);
+    resolver = SolidSyslogFreeRtosResolver_Create();
     datagram = SolidSyslogFreeRtosDatagram_Create();
     udpAddress = SolidSyslogFreeRtosAddress_Create();
 

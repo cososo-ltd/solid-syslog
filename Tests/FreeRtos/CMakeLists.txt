@@ -84,6 +84,8 @@ else()
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosResolver.c
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosResolverStatic.c
+        ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosDnsFake.c
+        ${CMAKE_SOURCE_DIR}/Tests/Support/SafeStringStandard.c
     )
 
     target_link_libraries(SolidSyslogFreeRtosResolverTest PRIVATE
