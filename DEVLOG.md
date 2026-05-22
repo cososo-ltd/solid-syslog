@@ -1,5 +1,225 @@
 # Dev Log
 
+## 2026-05-21 — S08.07 slice 6 + 7: FreeRTOS TLS via mbedTLS
+
+Closes S08.07 (#272). Lights up the TLS slot on the FreeRTOS QEMU BDD
+target (mps2-an385) and registers the Mbed TLS adapter across the
+documentation set.
+
+The first two pieces of slice 6 (6a CMake scaffolding, 6b real wrapper)
+shipped earlier on the work branch and got CI red on `tls_transport.feature`
+and `mtls_transport.feature` — every TLS scenario timed out with
+"oracle received 0 of 1 messages within 10 seconds". The diagnosis went
+three layers deep, and surfacing each layer required a code change in the
+adapter or its integrator wrapper. The story below is the order it
+happened in, not the order a clean rewrite would present.
+
+### Layer 1 — `mbedtls_ssl_setup` returning `MBEDTLS_ERR_SSL_ALLOC_FAILED`
+
+The CI failure mode was opaque: TCP connect succeeded, the BDD target
+reported `Sent 1 message`, but syslog-ng never saw a TLS record. Adding
+breadcrumbs into `MbedTlsStream_Open` showed `mbedtls_ssl_setup` returning
+`-0x7F00`, i.e. `MBEDTLS_ERR_SSL_ALLOC_FAILED`, before any TLS bytes hit
+the BIO callbacks. mbedTLS's per-context buffers — IN/OUT plus handshake
+state — were being requested via libc `calloc`, which on this target goes
+through newlib's `_sbrk` into the **4 KiB syscall heap** at
+[Bdd/Targets/FreeRtos/Common/Syscalls.c](Bdd/Targets/FreeRtos/Common/Syscalls.c).
+A single TLS context needs ~16 KiB and can't fit there.
+
+The standard FreeRTOS + Mbed TLS integration pattern is to route
+mbedTLS's allocations to the FreeRTOS heap via
+`mbedtls_platform_set_calloc_free`. That requires
+`MBEDTLS_PLATFORM_MEMORY` in the integrator's mbedTLS config and a
+pvPortMalloc-backed shim with calloc semantics (zero-fill on allocate,
+overflow-safe nmemb × size). Both shipped in
+[Bdd/Targets/Common/BddTargetTlsSender_MbedTls_FreeRtosTcp.c](Bdd/Targets/Common/BddTargetTlsSender_MbedTls_FreeRtosTcp.c)
+and
+[Bdd/Targets/FreeRtos/mbedtls_user_config.h](Bdd/Targets/FreeRtos/mbedtls_user_config.h).
+Also shrank `MBEDTLS_SSL_IN_CONTENT_LEN` to 4096 and
+`MBEDTLS_SSL_OUT_CONTENT_LEN` to 2048 from the 16 KiB defaults — server
+cert + chain fits in 4 KiB comfortably, application messages fit in 2 KiB
+comfortably, and the saving keeps the per-context working set under
+control across multiple concurrent contexts.
+
+### Layer 2 — `mbedtls_ssl_handshake` returning `MBEDTLS_ERR_ERROR_GENERIC_ERROR`
+
+With ssl_setup now succeeding, the next handshake call returned
+`-0x0001` at the very first state transition with no BIO `Send` ever
+firing. mbedTLS 3.6's TLS 1.3 code path routes through PSA crypto, and
+PSA's built-in entropy collector returns
+`PSA_ERROR_INSUFFICIENT_ENTROPY` (-148) on `MBEDTLS_NO_PLATFORM_ENTROPY`
+targets — which we are, by design, since there is no platform entropy
+source on a Cortex-M3 QEMU image.
+
+Defined `MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG` in the user config and provided
+`mbedtls_psa_external_get_random` that wraps the same CTR_DRBG the
+classic mbedTLS API uses, so PSA and the classic API share one entropy
+chain. Reordered `EnsureMbedTlsInitialised` so `psa_crypto_init()` is
+called after `mbedtls_ctr_drbg_seed` — otherwise the first PSA crypto
+operation pulls from an unseeded DRBG and the handshake explodes
+differently.
+
+After this, the local QEMU run handshook successfully and the message
+landed in syslog-ng's `/var/log/syslog-ng/received_tls.log`. The full
+freertos behave suite went 40-pass / 0-fail (the @mtls scenario was
+admitted in slice 6c via the dispatcher described below).
+
+### Slice 6c — dual-mode TLS/mTLS dispatch
+
+The FreeRTOS BDD target spawns the TLS sender once at boot from
+`InteractiveTask`, before the behave harness has had a chance to send
+`set transport tls|mtls` over the UART. POSIX and Windows binaries read
+the choice from argv before the equivalent setup runs, so on those
+platforms the same `BddTargetTlsSender_Create(resolver, mtls)` call gets
+the right value. On FreeRTOS the harness UART traffic only arrives after
+the prompt, by which point the sender is already wired with whatever
+default was passed in.
+
+Resolved by sharing one TLS sender / one TLS stream / one TCP socket
+across both modes and dispatching the destination port at Connect time:
+
+- `BddTargetSwitchConfig` (in
+  [Bdd/Targets/Common/](Bdd/Targets/Common/)) gains an `mtlsMode` bool
+  tracked by `SetByName` and exposed via
+  `BddTargetSwitchConfig_IsMtlsMode()`. `tls` clears it, `mtls` sets it;
+  both route through `BDD_TARGET_SWITCH_TLS`.
+- The mbedTLS wrapper wires the client cert + key unconditionally (the
+  oracle's plain-TLS listener accepts an optional client cert; its mTLS
+  listener requires one — so the same identity works on both ports) and
+  plumbs `DispatchEndpoint` / `DispatchEndpointVersion` as the
+  StreamSender Endpoint pair. Those read `IsMtlsMode` at each Connect
+  call and pick between `BddTargetTlsConfig` (port 6514) and
+  `BddTargetMtlsConfig` (port 6515).
+- `ci/docker-compose.bdd.yml` admits `@mtls` in the freertos behave
+  filter: `(@udp or @tcp or @tls or @mtls)`.
+
+The `mtls` parameter on `BddTargetTlsSender_Create` is retained for
+cross-platform contract uniformity (POSIX / Windows still read it at
+startup) but is ignored on FreeRTOS.
+
+### Slice 6c — `capacity_threshold.feature` admitted
+
+Closing the FreeRTOS BDD coverage gap. `capacity_threshold.feature` was
+previously gated `@freertoswip` because the host behave step asserts on
+`os.path.exists("/tmp/solidsyslog_threshold_marker.log")` (the Linux
+binary writes that file from its threshold callback) — and the FreeRTOS
+guest has no shared filesystem with the host.
+
+Wired a UART-based marker instead: FreeRTOS `OnThresholdCrossed` prints a
+line-anchored `[THRESHOLD-CROSSED]` token, and a new
+`_threshold_marker_present(context)` helper in
+[Bdd/features/steps/syslog_steps.py](Bdd/features/steps/syslog_steps.py)
+accepts either the host marker file (Linux / Windows binaries unchanged)
+or the token in the captured stdout buffer (FreeRTOS). The behave
+captured-stdout reader thread the harness already runs for the prompt
+protocol provides the channel for free. Also added a
+`set capacity-threshold N` handler to FreeRTOS `OnSet` and a
+`--capacity-threshold` entry in the FreeRTOS UART translation table so
+the existing harness flag reaches the target.
+
+After this the freertos suite is 42-pass / 0-fail; the only remaining
+`@freertoswip` exclusion is the oversize-UTF-8 MTU scenario, which is
+unreachable on this target because `SOLIDSYSLOG_MAX_MESSAGE_SIZE = 512`
+keeps every BDD message under the path MTU. Correctly documented now
+rather than hand-waved as "no semihosting equivalent."
+
+### CodeRabbit review — `mbedtls_ctr_drbg_seed` was failing silently all along
+
+CodeRabbit flagged the five `(void)`-discarded mbedTLS init returns
+(ctr_drbg_seed, psa_crypto_init, two x509_crt_parse, pk_parse_key) as
+hiding root-cause failures behind later opaque handshake errors.
+Replacing the `(void)` casts with rc capture + diagnostic printf + early
+return immediately broke every TLS scenario locally: `ctr_drbg_seed` now
+returned `MBEDTLS_ERR_CTR_DRBG_ENTROPY_SOURCE_FAILED` (-0x0034) and the
+early-return tripped, certs never got parsed, and the handshake had no
+state to work with.
+
+The actual bug: `DemoEntropySource` was registered as
+`MBEDTLS_ENTROPY_SOURCE_WEAK`. Reading
+[mbedtls/library/entropy.c](https://github.com/Mbed-TLS/mbedtls/blob/v3.6.2/library/entropy.c)
+shows the loop in `mbedtls_entropy_func` exits only when
+`thresholds_reached && strong_size >= MBEDTLS_ENTROPY_BLOCK_SIZE` —
+i.e. **at least one STRONG-tagged source must contribute**. Without
+that, the loop runs to `ENTROPY_MAX_LOOP=256` and returns
+`ENTROPY_SOURCE_FAILED`. ctr_drbg_seed then returns its DRBG-flavoured
+wrapper of the same error.
+
+Pre-CR-fix, the `(void)` discard hid the error. The partially-seeded
+DRBG context still produced deterministic-but-consistent bytes when
+`mbedtls_ctr_drbg_random` was called against it (the AES-CTR state had
+been written to, just not from validated entropy), and syslog-ng's
+server-side RNG drives its half of the handshake from real entropy. So
+the handshake completed and the message arrived — appearing to "work"
+while actually using nothing-like-random bytes for the client nonce.
+
+The fix is `MBEDTLS_ENTROPY_SOURCE_STRONG` in the
+`mbedtls_entropy_add_source` call. The audit-trail printf at the end of
+`EnsureMbedTlsInitialised` ("demo-only entropy ... Not for production")
+is the real quality assertion — the STRONG/WEAK label is mbedTLS-side
+structural, not a quality claim. A real integrator on bare-metal replaces
+`DemoEntropySource` with TRNG / HSM bytes before shipping; the demo
+source stays for QEMU smoke runs where no real entropy exists.
+
+Also addressed the two other CodeRabbit findings:
+- `tlsSender` was allocated at boot but never destroyed in
+  `TeardownAll()`. Added `BddTargetTlsSender_Destroy()` + `tlsSender =
+  NULL` between the `SwitchingSender_Destroy` and the inner stream
+  destroys, matching the (approximately reverse) Create order.
+- The comment block around `tlsSender = BddTargetTlsSender_Create(...)`
+  still described slice 6b as "TLS-only, mTLS support is slice 6c work
+  and may require an extra BDD_TARGET_SWITCH_MTLS slot" — refreshed to
+  describe the dispatcher that shipped.
+
+### Slice 7 — documentation sweep
+
+Four edits across the doc set:
+
+- **New [`docs/integrating-mbedtls.md`](docs/integrating-mbedtls.md).**
+  First draft was generic mbedTLS-tutorial flavoured ("here's how to
+  init mbedTLS") and missed the actual integrator question. Rewritten
+  around two concrete scenarios:
+  - *You already have Mbed TLS in your image* — three numbered steps
+    (pick a `SolidSyslogStream` byte transport, fill in the config
+    struct with your existing handles, wire into a
+    `SolidSyslogStreamSender`) plus the auditable coexistence-contract
+    not-touched list.
+  - *You do not have Mbed TLS yet* — defers to upstream Mbed TLS
+    porting docs and then lists the SolidSyslog-specific consumption
+    checklist (seeded CTR_DRBG with at least one STRONG source,
+    psa_crypto_init after the seed, parsed CA chain, optional client
+    cert + key, byte transport).
+  FreeRTOS-specific gotchas (newlib syscall heap, PSA external RNG,
+  buffer sizing) moved to a dedicated section labelled as an
+  integrator checklist rather than baked into the body.
+- **[`CLAUDE.md`](CLAUDE.md).** New row for
+  `SolidSyslogMbedTlsStream.h` in the Public-Header-Audiences table,
+  alongside the existing `SolidSyslogTlsStream.h` row. The
+  StreamSender row enumerates `SolidSyslogMbedTlsStream` alongside
+  `SolidSyslogTlsStream` as a TLS-capable Stream backend.
+- **[`docs/iec62443.md`](docs/iec62443.md).** New `### Embedded SL4`
+  subsection mapping `SolidSyslogMbedTlsStream` to the same CR 1.5 /
+  CR 1.8 / CR 2.12 / CR 3.9 controls the OpenSSL substrate satisfies.
+  The SL4 setup-recipe at the bottom mentions both adapters as
+  alternatives.
+- **[`docs/rfc-compliance.md`](docs/rfc-compliance.md).** RFC 5425
+  section table widens from OpenSSL-only language to per-row "OpenSSL:
+  … / Mbed TLS: …" coverage, with an intro paragraph noting the two
+  adapters share the SolidSyslogStream vtable so the requirement
+  matrix is per-section, not per-adapter.
+
+### Final state
+
+| Job | Status |
+|---|---|
+| bdd-freertos-qemu | green (42 scenarios pass / 0 fail / 7 skipped — `@freertoswip` udp_mtu only) |
+| integration-linux-mbedtls | green |
+| bdd-linux-syslog-ng | green |
+| All other jobs | green |
+
+PR #421 closes S08.07 (#272) and reaches the acceptance criteria laid out
+in the issue body (TLS / mTLS / tcp_reconnect on FreeRTOS, doc surface
+registered).
+
 ## 2026-05-20 — S11.11: Honest MISRA suppressions + E11 close-out
 
 Closes S11.11 (#414) and **closes E11** (#29).

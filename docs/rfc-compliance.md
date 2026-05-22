@@ -58,15 +58,17 @@ Status key:
 
 ## RFC 5425 — TLS Transport Mapping for Syslog
 
+The library ships two reference TLS adapters that satisfy this RFC: `SolidSyslogTlsStream` (OpenSSL, the POSIX / Windows reference) and `SolidSyslogMbedTlsStream` (Mbed TLS, the embedded / FreeRTOS reference). Both implement the same `SolidSyslogStream` vtable, so the section-by-section requirements below apply to whichever the integrator selects. mbedTLS-specific integration guidance lives in [`docs/integrating-mbedtls.md`](integrating-mbedtls.md).
+
 | Section | Requirement | Status | Notes |
 |---|---|---|---|
-| 4.1 | TLS over TCP | Supported | `SolidSyslogTlsStream` wraps a TCP `Stream` (typically `SolidSyslogPosixTcpStream`) |
+| 4.1 | TLS over TCP | Supported | `SolidSyslogTlsStream` (OpenSSL) or `SolidSyslogMbedTlsStream` (Mbed TLS) wraps a TCP `Stream` (`SolidSyslogPosixTcpStream` / `SolidSyslogWinsockTcpStream` / `SolidSyslogFreeRtosTcpStream` / caller-supplied) |
 | 4.2 | Default port 6514 | Supported | `SOLIDSYSLOG_TLS_DEFAULT_PORT` constant in `SolidSyslogTransport.h`, alongside the UDP and TCP defaults. Caller-supplied via the endpoint callback so multi-port deployments can override |
-| 5.1 | Server certificate validation | Supported | `SSL_VERIFY_PEER` + `SSL_CTX_load_verify_locations` + `SSL_set1_host` hostname check |
-| 5.2 | Mutual TLS (client certificate) | Supported | Optional `clientCertChainPath` / `clientKeyPath` on `SolidSyslogTlsStreamConfig`; `SSL_CTX_check_private_key` confirms pairing |
-| 5.3 | TLS 1.2+ cipher suites | Supported | `SSL_CTX_set_min_proto_version(TLS1_2_VERSION)` pinned; caller-supplied `cipherList` via `SSL_CTX_set_cipher_list` |
-| 5.4 | Octet counting framing (mandatory for TLS) | Supported | Reuses `SolidSyslogStreamSender` (RFC 6587 framing is identical) |
-| 5.5 | TLS close_notify handling | Supported | `SSL_shutdown` in `TlsStream_Close` |
+| 5.1 | Server certificate validation | Supported | OpenSSL adapter: `SSL_VERIFY_PEER` + `SSL_CTX_load_verify_locations` + `SSL_set1_host`. Mbed TLS adapter: `MBEDTLS_SSL_VERIFY_REQUIRED` + `mbedtls_ssl_conf_ca_chain` against the caller's `mbedtls_x509_crt*` + `mbedtls_ssl_set_hostname` |
+| 5.2 | Mutual TLS (client certificate) | Supported | OpenSSL: optional `clientCertChainPath` / `clientKeyPath` on `SolidSyslogTlsStreamConfig`; `SSL_CTX_check_private_key` confirms pairing. Mbed TLS: optional `ClientCertChain` / `ClientKey` handles on `SolidSyslogMbedTlsStreamConfig`; `mbedtls_ssl_conf_own_cert` |
+| 5.3 | TLS 1.2+ cipher suites | Supported | OpenSSL: `SSL_CTX_set_min_proto_version(TLS1_2_VERSION)` pinned; caller-supplied `cipherList` via `SSL_CTX_set_cipher_list`. Mbed TLS: inherited from `mbedtls_ssl_config_defaults(... PRESET_DEFAULT)`; cipher policy owned by the integrator's `mbedtls_config.h` |
+| 5.4 | Octet counting framing (mandatory for TLS) | Supported | Reuses `SolidSyslogStreamSender` (RFC 6587 framing is identical) for both adapters |
+| 5.5 | TLS close_notify handling | Supported | OpenSSL: `SSL_shutdown` in `TlsStream_Close`. Mbed TLS: `mbedtls_ssl_close_notify` in `MbedTlsStream_Close` |
 
 ## Summary
 

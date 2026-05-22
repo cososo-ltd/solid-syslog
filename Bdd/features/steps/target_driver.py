@@ -53,6 +53,9 @@ _FREERTOS_SET_TRANSLATION = {
     "--discard-policy": "discard-policy",
     "--halt-exit": "halt-exit",
     "--no-sd": "no-sd",
+    # S08.07 slice 6c admits capacity_threshold.feature on FreeRTOS — the
+    # threshold byte count must reach the rebuild path before `--store file`.
+    "--capacity-threshold": "capacity-threshold",
     "--store": "store",
 }
 

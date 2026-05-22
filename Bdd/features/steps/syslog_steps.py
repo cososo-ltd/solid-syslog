@@ -337,13 +337,20 @@ def _start_stdout_reader(process):
     threading.Thread(target=_reader, daemon=True).start()
 
 
-def wait_for_prompt(process, timeout=30):
+def wait_for_prompt(process, timeout=120):
     """Read stdout until we see 'SolidSyslog> ', confirming the command completed.
 
     Portable across POSIX and Windows: a daemon thread (started lazily by
     _start_stdout_reader) reads stdout byte-by-byte into a queue; this function
     pulls bytes off the queue with a per-iteration timeout so the deadline is
     honoured even on platforms where select.select can't monitor pipe fds.
+
+    The default is generous (120s) for the FreeRTOS QEMU target — first-boot
+    has to bring up Plus-TCP's IP task, parse the baked mbedTLS CA + client
+    cert + RSA client key (multi-second under QEMU's emulated Cortex-M3),
+    and then drop the interactive task. Linux/Windows native still complete
+    in well under a second, so the bump is a no-op for them; see
+    [[feedback-qemu-bdd-timeouts-generous]].
     """
     _start_stdout_reader(process)
 
@@ -613,20 +620,42 @@ def step_capacity_threshold_enabled(context, threshold):
         pass
 
 
+_THRESHOLD_STDOUT_TOKEN = b"[THRESHOLD-CROSSED]"
+
+
+def _threshold_marker_present(context):
+    """True if either marker channel reports a crossing.
+
+    Linux and Windows binaries write a host file at THRESHOLD_MARKER_PATH.
+    FreeRTOS-on-QEMU has no shared filesystem with the host, so its
+    OnThresholdCrossed prints the _THRESHOLD_STDOUT_TOKEN to UART and the
+    captured-stdout reader buffers it into process._solidsyslog_stdout_log.
+    Both channels are accepted so the same step works across all targets
+    without target branching at the assertion site.
+    """
+    if os.path.exists(THRESHOLD_MARKER_PATH) and os.path.getsize(THRESHOLD_MARKER_PATH) > 0:
+        return True
+    if hasattr(context, "interactive_process"):
+        log = getattr(context.interactive_process, "_solidsyslog_stdout_log", None)
+        if log and _THRESHOLD_STDOUT_TOKEN in bytes(log):
+            return True
+    return False
+
+
 @then("the capacity threshold callback was invoked")
 def step_threshold_callback_invoked(context):
-    assert os.path.exists(THRESHOLD_MARKER_PATH), (
-        f"Expected threshold marker at {THRESHOLD_MARKER_PATH}, found none"
-    )
-    assert os.path.getsize(THRESHOLD_MARKER_PATH) > 0, (
-        f"Threshold marker {THRESHOLD_MARKER_PATH} exists but is empty"
+    assert _threshold_marker_present(context), (
+        f"Expected threshold marker at {THRESHOLD_MARKER_PATH} or "
+        f"{_THRESHOLD_STDOUT_TOKEN.decode()} on captured stdout; found neither"
     )
 
 
 @then("the capacity threshold callback was not invoked")
 def step_threshold_callback_not_invoked(context):
-    assert not os.path.exists(THRESHOLD_MARKER_PATH) or os.path.getsize(THRESHOLD_MARKER_PATH) == 0, (
-        f"Expected no threshold marker but found {THRESHOLD_MARKER_PATH} non-empty"
+    assert not _threshold_marker_present(context), (
+        f"Expected no threshold marker but found one (file at "
+        f"{THRESHOLD_MARKER_PATH} or {_THRESHOLD_STDOUT_TOKEN.decode()} on "
+        f"captured stdout)"
     )
 
 

@@ -87,7 +87,7 @@ services:
 
   behave-freertos:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-bbc958b
+    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-1cb0f34
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -110,14 +110,18 @@ services:
     # capacity_threshold stays out via per-feature @freertoswip until the
     # threshold-marker plumbing has a semihosting equivalent.
     # S08.11 tags the non-@tls switching_transport scenario @udp @tcp so the
-    # existing (@udp or @tcp) clause admits it; the @tls sibling stays
-    # excluded until S08.07 lights up TLS on FreeRTOS.
+    # existing (@udp or @tcp) clause admits it. S08.07 slice 6b lights up
+    # TLS on FreeRTOS, and S08.07 slice 6c lights up mTLS via the dual-port
+    # dispatcher on the same Switching slot — admit both @tls and @mtls
+    # now. S08.07 slice 6c also wires the capacity_threshold marker over
+    # UART so capacity_threshold.feature runs here unmodified — the
+    # @freertoswip exclusion that used to gate it has been dropped.
     # @windows_wip excludes the Windows-only TCP singletask variant.
     # Tunable-driven gates like @requires_message_size_1500 are not listed
     # here — Bdd/features/environment.py skips them at runtime based on the
     # build's SOLIDSYSLOG_MAX_MESSAGE_SIZE so the exclusion auto-tracks
     # solidsyslog_user_tunables.h changes.
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp)' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp or @tls or @mtls)' Bdd/features/
 
 volumes:
   bdd-output-linux:

@@ -1,12 +1,13 @@
-@tcp @buffered @store @freertoswip
+@tcp @buffered @store
 Feature: Capacity threshold alert
-  # @freertoswip excludes this from the FreeRTOS BDD run (S08.05+).
-  # Threshold-callback support on FreeRTOS is a follow-up — the wiring
-  # in main.c plumbs g_pendingCapacityThreshold through to BlockStore
-  # but the .feature relies on the harness inspecting a marker file
-  # which has no semihosting equivalent today.
-  an early-warning callback fires when the block store crosses a configured
+  An early-warning callback fires when the block store crosses a configured
   capacity threshold, before the terminal full-store callback engages.
+  The callback marker is observed via a host file on POSIX/Windows
+  (OnThresholdCrossed writes /tmp/solidsyslog_threshold_marker.log) and
+  via a [THRESHOLD-CROSSED] line on UART on FreeRTOS-on-QEMU (which the
+  behave harness's captured-stdout reader sees) — see
+  Bdd/features/steps/syslog_steps.py::_threshold_marker_present for the
+  cross-target assertion.
 
   Scenario: Threshold callback fires when usage crosses configured threshold
     Given the syslog oracle is running

@@ -37,6 +37,13 @@ if(NOT FATFS_PATH)
         "which sets this to /opt/fatfs.")
 endif()
 
+set(MBEDTLS_SOURCE_DIR "$ENV{MBEDTLS_DIR}")
+if(NOT EXISTS "${MBEDTLS_SOURCE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR
+        "MBEDTLS_DIR not set or invalid. Use the cpputest-freertos-cross "
+        "container, which sets this to /opt/mbedtls.")
+endif()
+
 # Stage the upstream FatFs source pack alongside our integrator ffconf.h in
 # the build dir. FatFs's ff.h does `#include "ffconf.h"` and GCC's `""`
 # include lookup checks the source file's own directory first, so the only
@@ -161,6 +168,85 @@ target_include_directories(solid_syslog_freertos_upstream PRIVATE
     ${FATFS_STAGE_DIR}                                # ff.h, diskio.h, our ffconf.h colocated
 )
 
+# --- mbedTLS upstream as a subproject ----------------------------------------
+#
+# Same pattern as Tests/MbedTlsIntegration/CMakeLists.txt: bring mbedTLS in via
+# add_subdirectory(EXCLUDE_FROM_ALL), force-disable its programs/tests, and
+# strip our strict warning surface from the upstream targets so a future
+# mbedTLS bump doesn't break our build for diagnostic reasons. clang-tidy /
+# cppcheck are also disabled per-target — they would otherwise apply our
+# .clang-tidy ruleset to upstream code.
+set(ENABLE_PROGRAMS OFF CACHE BOOL "Disable mbedTLS demo programs in our build" FORCE)
+set(ENABLE_TESTING OFF CACHE BOOL "Disable mbedTLS upstream tests in our build" FORCE)
+set(MBEDTLS_FATAL_WARNINGS OFF CACHE BOOL "Upstream mbedTLS warnings are not errors in our build" FORCE)
+add_subdirectory(${MBEDTLS_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/_mbedtls EXCLUDE_FROM_ALL)
+
+# MBEDTLS_USER_CONFIG_FILE is consumed by mbedTLS's headers via `#include`,
+# so the macro value must be a quoted C string literal. CMake-quote with
+# `\"` to survive the shell -> compiler hop.
+set(MBEDTLS_USER_CONFIG_HEADER
+    "\"${CMAKE_CURRENT_SOURCE_DIR}/mbedtls_user_config.h\""
+)
+
+foreach(_mbedtls_upstream_target IN ITEMS mbedtls mbedx509 mbedcrypto everest p256m)
+    if(TARGET ${_mbedtls_upstream_target})
+        target_compile_options(${_mbedtls_upstream_target} PRIVATE -w)
+        target_compile_definitions(${_mbedtls_upstream_target} PRIVATE
+            MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
+        )
+        set_target_properties(${_mbedtls_upstream_target} PROPERTIES
+            C_CLANG_TIDY ""
+            CXX_CLANG_TIDY ""
+            C_CPPCHECK ""
+            CXX_CPPCHECK ""
+        )
+    endif()
+endforeach()
+
+# --- Bake demo PEMs into the ELF -------------------------------------------
+#
+# QEMU has no path to the host filesystem, and the integrator config disables
+# MBEDTLS_FS_IO, so the demo CA + client identity travel as `static const`
+# arrays in rodata. xxd -i emits the array shape we want; mbedTLS's PEM parser
+# additionally requires a NUL-terminated input, which the wrapper TU adds at
+# parse time by copying into a +1-sized buffer (cheaper than a shell pipeline
+# to append the NUL at bake time, and keeps this CMake step simple).
+
+set(BAKED_PEMS_DIR "${CMAKE_CURRENT_BINARY_DIR}/baked_pems")
+file(MAKE_DIRECTORY ${BAKED_PEMS_DIR})
+
+function(bake_pem_into_header input_pem output_header symbol)
+    add_custom_command(
+        OUTPUT ${output_header}
+        COMMAND bash -c "xxd -i -n '${symbol}' '${input_pem}' > '${output_header}'"
+        DEPENDS ${input_pem}
+        COMMENT "Baking ${input_pem} -> ${output_header}"
+        VERBATIM
+    )
+endfunction()
+
+bake_pem_into_header(
+    ${CMAKE_SOURCE_DIR}/Bdd/syslog-ng/tls/ca.pem
+    ${BAKED_PEMS_DIR}/BddBakedCaPem.h
+    bdd_baked_ca_pem
+)
+bake_pem_into_header(
+    ${CMAKE_SOURCE_DIR}/Bdd/syslog-ng/tls/client.pem
+    ${BAKED_PEMS_DIR}/BddBakedClientCertPem.h
+    bdd_baked_client_cert_pem
+)
+bake_pem_into_header(
+    ${CMAKE_SOURCE_DIR}/Bdd/syslog-ng/tls/client.key
+    ${BAKED_PEMS_DIR}/BddBakedClientKeyPem.h
+    bdd_baked_client_key_pem
+)
+
+set(BAKED_PEM_HEADERS
+    ${BAKED_PEMS_DIR}/BddBakedCaPem.h
+    ${BAKED_PEMS_DIR}/BddBakedClientCertPem.h
+    ${BAKED_PEMS_DIR}/BddBakedClientKeyPem.h
+)
+
 # --- Executable ---------------------------------------------------------------
 #
 # Project code only. Inherits the full project warning set
@@ -185,10 +271,16 @@ add_executable(SolidSyslogBddTarget
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStream.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetInteractive.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLanguage.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMtlsConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls_FreeRtosTcp.c
+    ${BAKED_PEM_HEADERS}
     $<TARGET_OBJECTS:solid_syslog_freertos_upstream>
 )
 
@@ -210,7 +302,10 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
     ${CMAKE_SOURCE_DIR}/Platform/FatFs/Interface      # SolidSyslogFatFsFile.h
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface   # SolidSyslogFreeRtos*.h
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source      # SolidSyslogAddressInternal.h
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Interface    # SolidSyslogMbedTlsStream.h
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source       # SolidSyslogMbedTlsStreamPrivate.h
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h
+    ${BAKED_PEMS_DIR}                                 # BddBaked*.h (xxd -i output)
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${PLUS_TCP_SRC_DIR}/include
@@ -226,6 +321,14 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
 
 target_link_libraries(SolidSyslogBddTarget PRIVATE
     ${PROJECT_NAME}                                   # libSolidSyslog.a (cross-compiled)
+    mbedtls mbedx509 mbedcrypto                       # mbedTLS upstream (subproject, cross-compiled)
+)
+
+# Platform/MbedTls/Source/*.c include <mbedtls/ssl.h>; they MUST see the same
+# user config as the mbedTLS library itself, otherwise struct sizes and the
+# enabled-feature bitset diverge between the consumer and the library.
+target_compile_definitions(SolidSyslogBddTarget PRIVATE
+    MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
 )
 
 target_link_options(SolidSyslogBddTarget PRIVATE

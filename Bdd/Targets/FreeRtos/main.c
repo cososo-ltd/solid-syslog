@@ -28,6 +28,7 @@
 #include "BddTargetIps.h"
 #include "BddTargetLanguage.h"
 #include "BddTargetSwitchConfig.h"
+#include "BddTargetTlsSender.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogStdAtomicCounter.h"
@@ -239,6 +240,7 @@ static struct SolidSyslogResolver* resolver = NULL;
 static struct SolidSyslogDatagram* datagram = NULL;
 static struct SolidSyslogStream* tcpStream = NULL;
 static struct SolidSyslogSender* tcpSender = NULL;
+static struct SolidSyslogSender* tlsSender = NULL;
 static struct SolidSyslogSender* udpSender = NULL;
 static struct SolidSyslogSender* switchingSender = NULL;
 static struct SolidSyslogBuffer* buffer = NULL;
@@ -263,6 +265,7 @@ static bool EnsureFatFsMounted(void);
 static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy);
 static void OnStoreFull(void* context);
 static size_t GetCapacityThreshold(void* context);
+static void OnThresholdCrossed(void* context);
 static void SemihostingExit(int status);
 
 static uint32_t MmioRead32(uintptr_t address)
@@ -457,6 +460,16 @@ static bool OnSet(const char* name, const char* value)
             (strcmp(value, "newest") == 0) ? "newest" : ((strcmp(value, "halt") == 0) ? "halt" : "oldest");
         return true;
     }
+    if (strcmp(name, "capacity-threshold") == 0)
+    {
+        unsigned long parsed = 0U;
+        if (!TryParseUInt(value, &parsed))
+        {
+            return false;
+        }
+        pendingCapacityThreshold = (size_t) parsed;
+        return true;
+    }
     if (strcmp(name, "halt-exit") == 0)
     {
         /* Harness emits `set halt-exit 1` (or `0`) because the FreeRTOS
@@ -536,23 +549,6 @@ static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
     return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 }
 
-static void OnStoreFull(void* context)
-{
-    (void) context;
-    if (pendingHaltExit)
-    {
-        /* Semihosting SYS_EXIT — terminates QEMU with the given status so
-         * the BDD harness sees the run end deterministically. Mirrors the
-         * Linux example's _exit(2) (Bdd/Targets/Linux/main.c::OnStoreFull). */
-        SemihostingExit(2);
-    }
-}
-
-static size_t GetCapacityThreshold(void* context)
-{
-    return *(const size_t*) context;
-}
-
 static bool RebuildWithFileStore(void)
 {
     /* Lifecycle mutex blocks the Service task from running SolidSyslog_Service
@@ -593,7 +589,7 @@ static bool RebuildWithFileStore(void)
         .OnStoreFull = OnStoreFull,
         .StoreFullContext = NULL,
         .GetCapacityThreshold = GetCapacityThreshold,
-        .OnThresholdCrossed = NULL,
+        .OnThresholdCrossed = OnThresholdCrossed,
         .ThresholdContext = &pendingCapacityThreshold,
     };
     currentStore = SolidSyslogBlockStore_Create(&storeConfig);
@@ -608,6 +604,37 @@ static bool RebuildWithFileStore(void)
     solidSyslogReady = true;
     SolidSyslogMutex_Unlock(lifecycleMutex);
     return true;
+}
+
+static void OnStoreFull(void* context)
+{
+    (void) context;
+    if (pendingHaltExit)
+    {
+        /* Semihosting SYS_EXIT — terminates QEMU with the given status so
+         * the BDD harness sees the run end deterministically. Mirrors the
+         * Linux example's _exit(2) (Bdd/Targets/Linux/main.c::OnStoreFull). */
+        SemihostingExit(2);
+    }
+}
+
+static size_t GetCapacityThreshold(void* context)
+{
+    return *(const size_t*) context;
+}
+
+/* Stdout-based marker the behave harness watches for. Linux's equivalent
+ * (Bdd/Targets/Linux/main.c::OnThresholdCrossed) writes a host file at
+ * /tmp/solidsyslog_threshold_marker.log — that file path isn't reachable
+ * from the QEMU guest. Instead we print a known token to the UART, which
+ * the captured-stdout reader in Bdd/features/steps/syslog_steps.py buffers
+ * and the threshold step then scans. The token is line-anchored so a stray
+ * substring inside a longer message body could not accidentally trip the
+ * assertion. */
+static void OnThresholdCrossed(void* context)
+{
+    (void) context;
+    (void) printf("[THRESHOLD-CROSSED]\r\n");
 }
 
 /* Tears down whichever store is currently installed (file-backed or null).
@@ -665,6 +692,13 @@ static void TeardownAll(void)
     SolidSyslogFreeRtosMutex_Destroy(lifecycleMutex);
     lifecycleMutex = NULL;
     SolidSyslogSwitchingSender_Destroy(switchingSender);
+    /* BddTargetTlsSender owns the inner MbedTlsStream + FreeRtosTcpStream pool
+     * slots and the StreamSender slot, so it must be destroyed before tcpSender
+     * / tcpStream below — releasing slots in roughly reverse order of Create
+     * keeps the dependency graph clean even though the pool allocator itself
+     * is order-insensitive. */
+    BddTargetTlsSender_Destroy();
+    tlsSender = NULL;
     SolidSyslogStreamSender_Destroy(tcpSender);
     SolidSyslogFreeRtosTcpStream_Destroy(tcpStream);
     SolidSyslogUdpSender_Destroy(udpSender);
@@ -793,16 +827,29 @@ static void InteractiveTask(void* argument)
     };
     tcpSender = SolidSyslogStreamSender_Create(&tcpConfig);
 
-    /* SwitchingSender lets `set transport <udp|tcp>` flip the active transport
-     * at runtime. Default to UDP so existing UDP-tagged scenarios stay green;
-     * `--transport tcp` flowing through the behave harness lands here as
-     * `set transport tcp` over the UART and switches before the first send. */
-    static struct SolidSyslogSender* inners[2];
+    /* TLS slot: SolidSyslogMbedTlsStream over SolidSyslogFreeRtosTcpStream,
+     * with the demo CA / client cert / client key baked into the ELF. The
+     * same slot serves both @tls (port 6514) and @mtls (port 6515)
+     * scenarios — the wrapper wires the client cert unconditionally and
+     * its StreamSender Endpoint callback dispatches on
+     * BddTargetSwitchConfig_IsMtlsMode() at Connect time. The `false`
+     * argument here is honoured for cross-platform signature uniformity
+     * (Linux / Windows TLS senders read it at startup) but ignored on
+     * FreeRTOS, where the harness flips mode over the UART after the
+     * prompt is already up. */
+    tlsSender = BddTargetTlsSender_Create(resolver, false);
+
+    /* SwitchingSender lets `set transport <udp|tcp|tls|mtls>` flip the
+     * active transport at runtime. Default to UDP so existing UDP-tagged
+     * scenarios stay green; `--transport tcp|tls|mtls` flowing through the
+     * behave harness lands here as `set transport <value>` over the UART. */
+    static struct SolidSyslogSender* inners[BDD_TARGET_SWITCH_COUNT];
     inners[BDD_TARGET_SWITCH_UDP] = udpSender;
     inners[BDD_TARGET_SWITCH_TCP] = tcpSender;
+    inners[BDD_TARGET_SWITCH_TLS] = tlsSender;
     struct SolidSyslogSwitchingSenderConfig switchConfig = {
         .Senders = inners,
-        .SenderCount = sizeof(inners) / sizeof(inners[0]),
+        .SenderCount = BDD_TARGET_SWITCH_COUNT,
         .Selector = BddTargetSwitchConfig_Selector,
     };
     BddTargetSwitchConfig_SetByName("udp");
