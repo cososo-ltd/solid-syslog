@@ -111,10 +111,10 @@ services:
     # threshold-marker plumbing has a semihosting equivalent.
     # S08.11 tags the non-@tls switching_transport scenario @udp @tcp so the
     # existing (@udp or @tcp) clause admits it. S08.07 slice 6b lights up
-    # TLS on FreeRTOS, and slice 6c (this commit) lights up mTLS via the
-    # dual-port dispatcher on the same Switching slot — admit both @tls
-    # and @mtls now. Slice 6c also wires the capacity_threshold marker
-    # over UART so capacity_threshold.feature runs here unmodified — the
+    # TLS on FreeRTOS, and S08.07 slice 6c lights up mTLS via the dual-port
+    # dispatcher on the same Switching slot — admit both @tls and @mtls
+    # now. S08.07 slice 6c also wires the capacity_threshold marker over
+    # UART so capacity_threshold.feature runs here unmodified — the
     # @freertoswip exclusion that used to gate it has been dropped.
     # @windows_wip excludes the Windows-only TCP singletask variant.
     # Tunable-driven gates like @requires_message_size_1500 are not listed

@@ -549,37 +549,6 @@ static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
     return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 }
 
-static void OnStoreFull(void* context)
-{
-    (void) context;
-    if (pendingHaltExit)
-    {
-        /* Semihosting SYS_EXIT — terminates QEMU with the given status so
-         * the BDD harness sees the run end deterministically. Mirrors the
-         * Linux example's _exit(2) (Bdd/Targets/Linux/main.c::OnStoreFull). */
-        SemihostingExit(2);
-    }
-}
-
-static size_t GetCapacityThreshold(void* context)
-{
-    return *(const size_t*) context;
-}
-
-/* Stdout-based marker the behave harness watches for. Linux's equivalent
- * (Bdd/Targets/Linux/main.c::OnThresholdCrossed) writes a host file at
- * /tmp/solidsyslog_threshold_marker.log — that file path isn't reachable
- * from the QEMU guest. Instead we print a known token to the UART, which
- * the captured-stdout reader in Bdd/features/steps/syslog_steps.py buffers
- * and the threshold step then scans. The token is line-anchored so a stray
- * substring inside a longer message body could not accidentally trip the
- * assertion. */
-static void OnThresholdCrossed(void* context)
-{
-    (void) context;
-    (void) printf("[THRESHOLD-CROSSED]\r\n");
-}
-
 static bool RebuildWithFileStore(void)
 {
     /* Lifecycle mutex blocks the Service task from running SolidSyslog_Service
@@ -635,6 +604,37 @@ static bool RebuildWithFileStore(void)
     solidSyslogReady = true;
     SolidSyslogMutex_Unlock(lifecycleMutex);
     return true;
+}
+
+static void OnStoreFull(void* context)
+{
+    (void) context;
+    if (pendingHaltExit)
+    {
+        /* Semihosting SYS_EXIT — terminates QEMU with the given status so
+         * the BDD harness sees the run end deterministically. Mirrors the
+         * Linux example's _exit(2) (Bdd/Targets/Linux/main.c::OnStoreFull). */
+        SemihostingExit(2);
+    }
+}
+
+static size_t GetCapacityThreshold(void* context)
+{
+    return *(const size_t*) context;
+}
+
+/* Stdout-based marker the behave harness watches for. Linux's equivalent
+ * (Bdd/Targets/Linux/main.c::OnThresholdCrossed) writes a host file at
+ * /tmp/solidsyslog_threshold_marker.log — that file path isn't reachable
+ * from the QEMU guest. Instead we print a known token to the UART, which
+ * the captured-stdout reader in Bdd/features/steps/syslog_steps.py buffers
+ * and the threshold step then scans. The token is line-anchored so a stray
+ * substring inside a longer message body could not accidentally trip the
+ * assertion. */
+static void OnThresholdCrossed(void* context)
+{
+    (void) context;
+    (void) printf("[THRESHOLD-CROSSED]\r\n");
 }
 
 /* Tears down whichever store is currently installed (file-backed or null).

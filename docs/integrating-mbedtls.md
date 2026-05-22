@@ -16,7 +16,7 @@ re-teach mbedTLS — for that, see the
 
 ## The shape
 
-```
+```text
 SolidSyslog_Log ─▶ Buffer ─▶ Sender ─▶ SolidSyslogStreamSender
                                               │
                                               ▼
