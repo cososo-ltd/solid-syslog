@@ -8,7 +8,7 @@
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 
-#include "SolidSyslogAddressInternal.h"
+#include "SolidSyslogFreeRtosAddressPrivate.h"
 #include "SolidSyslogFreeRtosStaticResolverPrivate.h"
 #include "SolidSyslogNullResolver.h"
 #include "SolidSyslogResolverDefinition.h"
@@ -61,7 +61,7 @@ static bool FreeRtosStaticResolver_Resolve(
     (void) transport;
     (void) host;
     struct SolidSyslogFreeRtosStaticResolver* self = FreeRtosStaticResolver_SelfFromBase(base);
-    struct freertos_sockaddr* sockaddr = SolidSyslogAddress_AsFreertosSockaddr(result);
+    struct freertos_sockaddr* sockaddr = SolidSyslogFreeRtosAddress_AsFreertosSockaddr(result);
     sockaddr->sin_family = FREERTOS_AF_INET;
     sockaddr->sin_port = (uint16_t) FreeRTOS_htons(port);
     sockaddr->sin_address.ulIP_IPv4 =
