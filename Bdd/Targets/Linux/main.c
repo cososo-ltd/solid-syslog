@@ -53,6 +53,7 @@ static const char* const THRESHOLD_MARKER_PATH = "/tmp/solidsyslog_threshold_mar
 static struct SolidSyslogFile* storeFile;
 static struct SolidSyslogBlockDevice* storeBlockDevice;
 static struct SolidSyslogStream* plainTcpStream;
+static struct SolidSyslogAddress* plainTcpAddress;
 static struct SolidSyslogSender* plainTcpSender;
 static struct SolidSyslogSender* udpSender;
 static struct SolidSyslogSender* switchingSender;
@@ -95,9 +96,11 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetOptions* opt
     udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
     plainTcpStream = SolidSyslogPosixTcpStream_Create();
+    plainTcpAddress = SolidSyslogPosixAddress_Create();
     static struct SolidSyslogStreamSenderConfig tcpConfig = {0};
     tcpConfig.Resolver = resolver;
     tcpConfig.Stream = plainTcpStream;
+    tcpConfig.Address = plainTcpAddress;
     tcpConfig.Endpoint = BddTargetTcpConfig_GetEndpoint;
     tcpConfig.EndpointVersion = BddTargetTcpConfig_GetEndpointVersion;
     plainTcpSender = SolidSyslogStreamSender_Create(&tcpConfig);
@@ -193,6 +196,7 @@ static void DestroySender(void)
     SolidSyslogSwitchingSender_Destroy(switchingSender);
     BddTargetTlsSender_Destroy();
     SolidSyslogStreamSender_Destroy(plainTcpSender);
+    SolidSyslogPosixAddress_Destroy(plainTcpAddress);
     SolidSyslogPosixTcpStream_Destroy(plainTcpStream);
     SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogPosixAddress_Destroy(udpAddress);

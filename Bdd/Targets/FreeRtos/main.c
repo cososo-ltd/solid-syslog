@@ -241,6 +241,7 @@ static struct SolidSyslogResolver* resolver = NULL;
 static struct SolidSyslogDatagram* datagram = NULL;
 static struct SolidSyslogAddress* udpAddress = NULL;
 static struct SolidSyslogStream* tcpStream = NULL;
+static struct SolidSyslogAddress* tcpAddress = NULL;
 static struct SolidSyslogSender* tcpSender = NULL;
 static struct SolidSyslogSender* tlsSender = NULL;
 static struct SolidSyslogSender* udpSender = NULL;
@@ -702,6 +703,7 @@ static void TeardownAll(void)
     BddTargetTlsSender_Destroy();
     tlsSender = NULL;
     SolidSyslogStreamSender_Destroy(tcpSender);
+    SolidSyslogFreeRtosAddress_Destroy(tcpAddress);
     SolidSyslogFreeRtosTcpStream_Destroy(tcpStream);
     SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogFreeRtosAddress_Destroy(udpAddress);
@@ -824,9 +826,11 @@ static void InteractiveTask(void* argument)
      * same host:port for both transports — the syslog-ng config in
      * Bdd/syslog-ng/syslog-ng.conf has a TCP listener on 5514 alongside UDP. */
     tcpStream = SolidSyslogFreeRtosTcpStream_Create();
+    tcpAddress = SolidSyslogFreeRtosAddress_Create();
     struct SolidSyslogStreamSenderConfig tcpConfig = {
         .Resolver = resolver,
         .Stream = tcpStream,
+        .Address = tcpAddress,
         .Endpoint = GetEndpoint,
         .EndpointVersion = GetEndpointVersion,
     };
