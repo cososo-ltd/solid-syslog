@@ -80,25 +80,17 @@ misra-c2012-5.7:Core/Interface/SolidSyslogFormatter.h:14
 misra-c2012-5.7:Core/Interface/SolidSyslogSecurityPolicyDefinition.h:13
 misra-c2012-5.7:Core/Interface/SolidSyslogTimeQuality.h:12
 misra-c2012-5.7:Core/Interface/SolidSyslogTransport.h:5
-misra-c2012-5.7:Core/Source/BlockSequence.c:13
-misra-c2012-5.7:Core/Source/BlockSequence.c:107
-misra-c2012-5.7:Core/Source/RecordStore.c:14
-misra-c2012-5.7:Core/Source/RecordStorePrivate.h:14
 misra-c2012-5.7:Core/Source/SolidSyslog.c:30
 misra-c2012-5.7:Core/Source/SolidSyslogCircularBuffer.c:15
 misra-c2012-5.7:Core/Source/SolidSyslogCrc16.c:12
 misra-c2012-5.7:Core/Source/SolidSyslogCrc16Policy.c:10
-misra-c2012-5.7:Core/Source/SolidSyslogFileBlockDevice.c:16
-misra-c2012-5.7:Core/Source/SolidSyslogFileBlockDevice.c:23
 misra-c2012-5.7:Core/Source/SolidSyslogOriginSdPrivate.h:9
 misra-c2012-5.7:Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c:7
-misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixFile.c:18
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixHostname.c:10
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:17
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBufferPrivate.h:11
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSysUpTime.c:6
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsClock.c:21
-misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsFile.c:24
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsHostname.c:19
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsSysUpTime.c:18
 
@@ -163,6 +155,15 @@ misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSleep.c:6
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:24
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWinsockResolver.c:37
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:100
+# Storage stack anonymous-enum 5.7 sites — migrated from D.003 by S10.18.
+misra-c2012-5.7:Core/Source/BlockSequence.c:13
+misra-c2012-5.7:Core/Source/BlockSequence.c:107
+misra-c2012-5.7:Core/Source/RecordStore.c:14
+misra-c2012-5.7:Core/Source/RecordStorePrivate.h:14
+misra-c2012-5.7:Core/Source/SolidSyslogFileBlockDevice.c:16
+misra-c2012-5.7:Core/Source/SolidSyslogFileBlockDevice.c:23
+misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixFile.c:18
+misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsFile.c:24
 
 # D.010 — Rule 20.10: # stringification in _Static_assert polyfill
 # See docs/misra-deviations.md#d010
