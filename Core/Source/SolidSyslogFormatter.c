@@ -317,9 +317,11 @@ static inline void Formatter_WriteEscaped(struct EscapedContext* context)
     {
         char escaped[] = {ESCAPE_PREFIX, context->Source[context->SourcePos]};
         Formatter_WriteContext(context, escaped, sizeof(escaped), 1, ESCAPED_CHARACTER_DECODED_LENGTH);
-        return;
     }
-    Formatter_Exhaust(context);
+    else
+    {
+        Formatter_Exhaust(context);
+    }
 }
 
 static inline bool Formatter_Fits(const struct EscapedContext* context, size_t decodedAdvance)
@@ -364,9 +366,11 @@ static inline void Formatter_WriteCodepoint(struct EscapedContext* context)
             codepointLength,
             codepointLength
         );
-        return;
     }
-    Formatter_WriteReplacement(context);
+    else
+    {
+        Formatter_WriteReplacement(context);
+    }
 }
 
 static inline void Formatter_WriteReplacement(struct EscapedContext* context)
@@ -380,9 +384,11 @@ static inline void Formatter_WriteReplacement(struct EscapedContext* context)
             1,
             sizeof(REPLACEMENT_CHARACTER)
         );
-        return;
     }
-    Formatter_Exhaust(context);
+    else
+    {
+        Formatter_Exhaust(context);
+    }
 }
 
 void SolidSyslogFormatter_PrintUsAsciiString(

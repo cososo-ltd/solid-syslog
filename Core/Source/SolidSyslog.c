@@ -542,11 +542,12 @@ static inline void SolidSyslog_FormatMsg(struct SolidSyslogFormatter* f, const c
 static inline const char* SolidSyslog_SkipLeadingBom(const char* msg)
 {
     const unsigned char* bytes = (const unsigned char*) msg;
+    const char* result = msg;
     if ((bytes[0] == 0xEFU) && (bytes[1] == 0xBBU) && (bytes[2] == 0xBFU))
     {
-        return msg + 3;
+        result = msg + 3;
     }
-    return msg;
+    return result;
 }
 
 static inline void SolidSyslog_FormatNilvalue(struct SolidSyslogFormatter* f)
