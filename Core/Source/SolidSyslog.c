@@ -545,7 +545,7 @@ static inline const char* SolidSyslog_SkipLeadingBom(const char* msg)
     const char* result = msg;
     if ((bytes[0] == 0xEFU) && (bytes[1] == 0xBBU) && (bytes[2] == 0xBFU))
     {
-        result = msg + 3;
+        result = &msg[3];
     }
     return result;
 }
