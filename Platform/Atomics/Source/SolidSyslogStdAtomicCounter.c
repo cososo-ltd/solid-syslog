@@ -9,6 +9,7 @@
 #include "SolidSyslogStdAtomicCounterPrivate.h"
 
 static uint32_t StdAtomicCounter_Increment(struct SolidSyslogAtomicCounter* base);
+static void StdAtomicCounter_Init(struct SolidSyslogStdAtomicCounter* self, uint32_t value);
 
 static inline struct SolidSyslogStdAtomicCounter* StdAtomicCounter_SelfFromBase(struct SolidSyslogAtomicCounter* base);
 
@@ -24,7 +25,7 @@ static inline struct SolidSyslogStdAtomicCounter* StdAtomicCounter_SelfFromBase(
     return (struct SolidSyslogStdAtomicCounter*) base;
 }
 
-void StdAtomicCounter_Init(struct SolidSyslogStdAtomicCounter* self, uint32_t value)
+static void StdAtomicCounter_Init(struct SolidSyslogStdAtomicCounter* self, uint32_t value)
 {
     atomic_init(&self->Value, value);
 }
