@@ -67,6 +67,7 @@ if(SOLIDSYSLOG_POSIX OR SOLIDSYSLOG_WINSOCK OR DEFINED ENV{FREERTOS_KERNEL_PATH}
         SolidSyslogDatagram.c
         SolidSyslogNullDatagram.c
         SolidSyslogUdpSender.c
+        SolidSyslogUdpSenderMessages.c
         SolidSyslogUdpSenderStatic.c
         SolidSyslogStreamSender.c
         SolidSyslogStreamSenderStatic.c
