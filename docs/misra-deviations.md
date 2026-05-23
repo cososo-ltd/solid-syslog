@@ -383,7 +383,7 @@ Two distinct site categories trigger this rule:
    a non-`const`-qualified pointer rvalue.
 
 2. **Platform-API const-strip (1 site)** —
-   `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:82`:
+   `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`:
 
    ```c
    return select(nfds, readfds, writefds, exceptfds, (struct timeval*) timeout);
@@ -397,10 +397,17 @@ Two distinct site categories trigger this rule:
 
 ### Scope
 
-- **Strict tier** — 10 field-access sites in `Core/Source/SolidSyslog.c`
-  (`InstallBuffer` and siblings, 8 sites),
-  `Core/Source/BlockSequence.c:438`, `Core/Source/SolidSyslogBlockStore.c:62`.
-- **Pragmatic tier** — 1 site, `SolidSyslogWinsockTcpStream.c:82`.
+- **Strict tier** — 10 field-access sites: 8 in `Core/Source/SolidSyslog.c`
+  (the `SolidSyslog_Install*` functions reading `config->` pointer
+  fields), 1 in `Core/Source/BlockSequence.c`
+  (`BlockSequence_IsReadBlockFullyDrained` passing
+  `blockSequence->BlockDevice` to `SolidSyslogBlockDevice_Size`), and
+  1 in `Core/Source/SolidSyslogBlockStoreStatic.c`
+  (`BlockStore_ResolveSecurityPolicy` accepting
+  `config->SecurityPolicy`).
+- **Pragmatic tier** — 1 site in
+  `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c` (the
+  `select()` timeout cast).
 
 ### Rationale
 
