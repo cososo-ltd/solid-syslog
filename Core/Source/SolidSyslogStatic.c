@@ -29,7 +29,6 @@ static struct SolidSyslogPoolAllocator SolidSyslog_Allocator = {SolidSyslog_InUs
  * fires WARNING + ignore, while _Log/_Service against it route through the
  * public Null* siblings and silently drop. */
 static struct SolidSyslog SolidSyslog_NullInstance;
-static bool SolidSyslog_NullInstancePopulated;
 
 struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config)
 {
@@ -65,7 +64,8 @@ struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config)
 
 static void SolidSyslog_EnsureNullInstancePopulated(void)
 {
-    if (!SolidSyslog_NullInstancePopulated)
+    static bool populated = false;
+    if (!populated)
     {
         SolidSyslog_NullInstance.Buffer = SolidSyslogNullBuffer_Get();
         SolidSyslog_NullInstance.Sender = SolidSyslogNullSender_Get();
@@ -76,7 +76,7 @@ static void SolidSyslog_EnsureNullInstancePopulated(void)
         SolidSyslog_NullInstance.GetProcessId = SolidSyslog_NullStringFunction;
         SolidSyslog_NullInstance.Sd = NULL;
         SolidSyslog_NullInstance.SdCount = 0;
-        SolidSyslog_NullInstancePopulated = true;
+        populated = true;
     }
 }
 
