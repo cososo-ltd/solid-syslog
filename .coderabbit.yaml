@@ -1,0 +1,13 @@
+reviews:
+  path_filters:
+    # Boilerplate 2-code message tables for cross-compile-only modules.
+    # The pattern is fully covered by other *Messages.c files CodeRabbit
+    # still reviews (e.g. PosixMutexMessages.c, CircularBufferMessages.c).
+    # Excluded only to bring file count under CodeRabbit's per-PR limit;
+    # remove these entries if the limit ever increases.
+    - "!Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressMessages.c"
+    - "!Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagramMessages.c"
+    - "!Platform/FreeRtos/Source/SolidSyslogFreeRtosMutexMessages.c"
+    - "!Platform/FreeRtos/Source/SolidSyslogFreeRtosResolverMessages.c"
+    - "!Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStreamMessages.c"
+    - "!Platform/FatFs/Source/SolidSyslogFatFsFileMessages.c"
