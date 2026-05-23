@@ -1,0 +1,20 @@
+#ifndef SOLIDSYSLOGGETADDRINFORESOLVERERRORS_H
+#define SOLIDSYSLOGGETADDRINFORESOLVERERRORS_H
+
+#include "ExternC.h"
+#include "SolidSyslogError.h"
+
+EXTERN_C_BEGIN
+
+    enum SolidSyslogGetAddrInfoResolverErrors
+    {
+        GETADDRINFORESOLVER_ERROR_POOL_EXHAUSTED,
+        GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY,
+        GETADDRINFORESOLVER_ERROR_MAX
+    };
+
+    extern const struct SolidSyslogErrorSource GetAddrInfoResolverErrorSource;
+
+EXTERN_C_END
+
+#endif /* SOLIDSYSLOGGETADDRINFORESOLVERERRORS_H */

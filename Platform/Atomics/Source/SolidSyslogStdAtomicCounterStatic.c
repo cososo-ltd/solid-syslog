@@ -4,10 +4,10 @@
 #include <stddef.h>
 
 #include "SolidSyslogError.h"
-#include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogNullAtomicCounter.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogStdAtomicCounterErrors.h"
 #include "SolidSyslogStdAtomicCounterPrivate.h"
 #include "SolidSyslogTunables.h"
 
@@ -34,7 +34,11 @@ struct SolidSyslogAtomicCounter* SolidSyslogStdAtomicCounter_Create(void)
     }
     else
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_STDATOMICCOUNTER_POOL_EXHAUSTED);
+        SolidSyslog_ErrorEx(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &StdAtomicCounterErrorSource,
+            (uint8_t) STDATOMICCOUNTER_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }
@@ -47,7 +51,11 @@ void SolidSyslogStdAtomicCounter_Destroy(struct SolidSyslogAtomicCounter* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&StdAtomicCounter_Allocator, index, StdAtomicCounter_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_STDATOMICCOUNTER_UNKNOWN_DESTROY);
+        SolidSyslog_ErrorEx(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            &StdAtomicCounterErrorSource,
+            (uint8_t) STDATOMICCOUNTER_ERROR_UNKNOWN_DESTROY
+        );
     }
 }
 

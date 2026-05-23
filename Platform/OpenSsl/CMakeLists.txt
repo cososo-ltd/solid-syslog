@@ -4,6 +4,7 @@
 
 target_sources(${PROJECT_NAME} PRIVATE
     Source/SolidSyslogTlsStream.c
+    Source/SolidSyslogTlsStreamMessages.c
     Source/SolidSyslogTlsStreamStatic.c
 )
 

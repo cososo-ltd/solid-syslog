@@ -5,12 +5,14 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
     // macros
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "ErrorHandlerFakeEx.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPosixDatagram.h"
+#include "SolidSyslogPosixDatagramErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
@@ -314,14 +316,15 @@ TEST(SolidSyslogPosixDatagramPool, FillingPoolThenOverflowReturnsDistinctFallbac
 
 TEST(SolidSyslogPosixDatagramPool, ExhaustedCreateReportsError)
 {
-    ErrorHandlerFake_Install(nullptr);
+    ErrorHandlerFakeEx_Install(nullptr);
     FillPool();
 
     overflow = SolidSyslogPosixDatagram_Create();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
-    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_POSIXDATAGRAM_POOL_EXHAUSTED, ErrorHandlerFake_LastMessage());
+    CALLED_FAKE(ErrorHandlerFakeEx_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFakeEx_LastSeverity());
+    POINTERS_EQUAL(&PosixDatagramErrorSource, ErrorHandlerFakeEx_LastSource());
+    UNSIGNED_LONGS_EQUAL(POSIXDATAGRAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFakeEx_LastCode());
 }
 
 TEST(SolidSyslogPosixDatagramPool, FallbackSendToReturnsSent)
@@ -378,26 +381,28 @@ TEST(SolidSyslogPosixDatagramPool, DestroyOfUnknownHandleDoesNotLock)
 
 TEST(SolidSyslogPosixDatagramPool, DestroyOfUnknownHandleReportsWarning)
 {
-    ErrorHandlerFake_Install(nullptr);
+    ErrorHandlerFakeEx_Install(nullptr);
     struct SolidSyslogDatagram stranger = {};
 
     SolidSyslogPosixDatagram_Destroy(&stranger);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_POSIXDATAGRAM_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+    CALLED_FAKE(ErrorHandlerFakeEx_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFakeEx_LastSeverity());
+    POINTERS_EQUAL(&PosixDatagramErrorSource, ErrorHandlerFakeEx_LastSource());
+    UNSIGNED_LONGS_EQUAL(POSIXDATAGRAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFakeEx_LastCode());
 }
 
 TEST(SolidSyslogPosixDatagramPool, DestroyOfStaleHandleReportsWarning)
 {
     pooled[0] = SolidSyslogPosixDatagram_Create();
     SolidSyslogPosixDatagram_Destroy(pooled[0]);
-    ErrorHandlerFake_Install(nullptr);
+    ErrorHandlerFakeEx_Install(nullptr);
 
     SolidSyslogPosixDatagram_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_POSIXDATAGRAM_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+    CALLED_FAKE(ErrorHandlerFakeEx_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFakeEx_LastSeverity());
+    POINTERS_EQUAL(&PosixDatagramErrorSource, ErrorHandlerFakeEx_LastSource());
+    UNSIGNED_LONGS_EQUAL(POSIXDATAGRAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFakeEx_LastCode());
 }

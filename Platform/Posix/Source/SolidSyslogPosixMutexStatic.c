@@ -4,9 +4,9 @@
 #include <stddef.h>
 
 #include "SolidSyslogError.h"
-#include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogPoolAllocator.h"
+#include "SolidSyslogPosixMutexErrors.h"
 #include "SolidSyslogPosixMutexPrivate.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
@@ -31,7 +31,11 @@ struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(void)
     }
     else
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_POSIXMUTEX_POOL_EXHAUSTED);
+        SolidSyslog_ErrorEx(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &PosixMutexErrorSource,
+            (uint8_t) POSIXMUTEX_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }
@@ -43,7 +47,11 @@ void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex* base)
                     SolidSyslogPoolAllocator_FreeIfInUse(&PosixMutex_Allocator, index, PosixMutex_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_POSIXMUTEX_UNKNOWN_DESTROY);
+        SolidSyslog_ErrorEx(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            &PosixMutexErrorSource,
+            (uint8_t) POSIXMUTEX_ERROR_UNKNOWN_DESTROY
+        );
     }
 }
 

@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 #include "SolidSyslogError.h"
-#include "SolidSyslogErrorMessages.h"
+#include "SolidSyslogGetAddrInfoResolverErrors.h"
 #include "SolidSyslogGetAddrInfoResolverPrivate.h"
 #include "SolidSyslogNullResolver.h"
 #include "SolidSyslogPoolAllocator.h"
@@ -34,7 +34,11 @@ struct SolidSyslogResolver* SolidSyslogGetAddrInfoResolver_Create(void)
     }
     else
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_GETADDRINFORESOLVER_POOL_EXHAUSTED);
+        SolidSyslog_ErrorEx(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &GetAddrInfoResolverErrorSource,
+            (uint8_t) GETADDRINFORESOLVER_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }
@@ -51,7 +55,11 @@ void SolidSyslogGetAddrInfoResolver_Destroy(struct SolidSyslogResolver* base)
                     );
     if (!released)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_GETADDRINFORESOLVER_UNKNOWN_DESTROY);
+        SolidSyslog_ErrorEx(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            &GetAddrInfoResolverErrorSource,
+            (uint8_t) GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY
+        );
     }
 }
 

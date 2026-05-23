@@ -4,9 +4,9 @@
 #include <stddef.h>
 
 #include "SolidSyslogError.h"
-#include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogPoolAllocator.h"
+#include "SolidSyslogPosixDatagramErrors.h"
 #include "SolidSyslogPosixDatagramPrivate.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
@@ -34,7 +34,11 @@ struct SolidSyslogDatagram* SolidSyslogPosixDatagram_Create(void)
     }
     else
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_POSIXDATAGRAM_POOL_EXHAUSTED);
+        SolidSyslog_ErrorEx(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &PosixDatagramErrorSource,
+            (uint8_t) POSIXDATAGRAM_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }
@@ -47,7 +51,11 @@ void SolidSyslogPosixDatagram_Destroy(struct SolidSyslogDatagram* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&PosixDatagram_Allocator, index, PosixDatagram_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_POSIXDATAGRAM_UNKNOWN_DESTROY);
+        SolidSyslog_ErrorEx(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            &PosixDatagramErrorSource,
+            (uint8_t) POSIXDATAGRAM_ERROR_UNKNOWN_DESTROY
+        );
     }
 }
 

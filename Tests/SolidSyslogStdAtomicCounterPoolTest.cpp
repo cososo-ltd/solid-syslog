@@ -2,11 +2,13 @@
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "ErrorHandlerFakeEx.h"
 #include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogAtomicCounterDefinition.h"
 #include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStdAtomicCounter.h"
+#include "SolidSyslogStdAtomicCounterErrors.h"
 #include "SolidSyslogTunables.h"
 #include "TestUtils.h"
 
@@ -75,14 +77,15 @@ TEST(SolidSyslogStdAtomicCounterPool, FillingPoolThenOverflowReturnsDistinctFall
 
 TEST(SolidSyslogStdAtomicCounterPool, ExhaustedCreateReportsError)
 {
-    ErrorHandlerFake_Install(nullptr);
+    ErrorHandlerFakeEx_Install(nullptr);
     FillPool();
 
     overflow = SolidSyslogStdAtomicCounter_Create();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
-    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_STDATOMICCOUNTER_POOL_EXHAUSTED, ErrorHandlerFake_LastMessage());
+    CALLED_FAKE(ErrorHandlerFakeEx_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFakeEx_LastSeverity());
+    POINTERS_EQUAL(&StdAtomicCounterErrorSource, ErrorHandlerFakeEx_LastSource());
+    UNSIGNED_LONGS_EQUAL(STDATOMICCOUNTER_ERROR_POOL_EXHAUSTED, ErrorHandlerFakeEx_LastCode());
 }
 
 TEST(SolidSyslogStdAtomicCounterPool, FallbackIncrementReturnsOne)
@@ -139,26 +142,28 @@ TEST(SolidSyslogStdAtomicCounterPool, DestroyOfUnknownHandleDoesNotLock)
 
 TEST(SolidSyslogStdAtomicCounterPool, DestroyOfUnknownHandleReportsWarning)
 {
-    ErrorHandlerFake_Install(nullptr);
+    ErrorHandlerFakeEx_Install(nullptr);
     struct SolidSyslogAtomicCounter stranger = {};
 
     SolidSyslogStdAtomicCounter_Destroy(&stranger);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_STDATOMICCOUNTER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+    CALLED_FAKE(ErrorHandlerFakeEx_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFakeEx_LastSeverity());
+    POINTERS_EQUAL(&StdAtomicCounterErrorSource, ErrorHandlerFakeEx_LastSource());
+    UNSIGNED_LONGS_EQUAL(STDATOMICCOUNTER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFakeEx_LastCode());
 }
 
 TEST(SolidSyslogStdAtomicCounterPool, DestroyOfStaleHandleReportsWarning)
 {
     pooled[0] = SolidSyslogStdAtomicCounter_Create();
     SolidSyslogStdAtomicCounter_Destroy(pooled[0]);
-    ErrorHandlerFake_Install(nullptr);
+    ErrorHandlerFakeEx_Install(nullptr);
 
     SolidSyslogStdAtomicCounter_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_STDATOMICCOUNTER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+    CALLED_FAKE(ErrorHandlerFakeEx_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFakeEx_LastSeverity());
+    POINTERS_EQUAL(&StdAtomicCounterErrorSource, ErrorHandlerFakeEx_LastSource());
+    UNSIGNED_LONGS_EQUAL(STDATOMICCOUNTER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFakeEx_LastCode());
 }

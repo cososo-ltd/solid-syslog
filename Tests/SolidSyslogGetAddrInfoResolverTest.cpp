@@ -5,8 +5,10 @@
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "ErrorHandlerFakeEx.h"
 #include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogGetAddrInfoResolver.h"
+#include "SolidSyslogGetAddrInfoResolverErrors.h"
 #include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPrival.h"
@@ -191,14 +193,15 @@ TEST(SolidSyslogGetAddrInfoResolverPool, FillingPoolThenOverflowReturnsDistinctF
 
 TEST(SolidSyslogGetAddrInfoResolverPool, ExhaustedCreateReportsError)
 {
-    ErrorHandlerFake_Install(nullptr);
+    ErrorHandlerFakeEx_Install(nullptr);
     FillPool();
 
     overflow = SolidSyslogGetAddrInfoResolver_Create();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
-    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_GETADDRINFORESOLVER_POOL_EXHAUSTED, ErrorHandlerFake_LastMessage());
+    CALLED_FAKE(ErrorHandlerFakeEx_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFakeEx_LastSeverity());
+    POINTERS_EQUAL(&GetAddrInfoResolverErrorSource, ErrorHandlerFakeEx_LastSource());
+    UNSIGNED_LONGS_EQUAL(GETADDRINFORESOLVER_ERROR_POOL_EXHAUSTED, ErrorHandlerFakeEx_LastCode());
 }
 
 TEST(SolidSyslogGetAddrInfoResolverPool, FallbackResolveReturnsFalse)
@@ -257,26 +260,28 @@ TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfUnknownHandleDoesNotLock)
 
 TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfUnknownHandleReportsWarning)
 {
-    ErrorHandlerFake_Install(nullptr);
+    ErrorHandlerFakeEx_Install(nullptr);
     struct SolidSyslogResolver stranger = {};
 
     SolidSyslogGetAddrInfoResolver_Destroy(&stranger);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_GETADDRINFORESOLVER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+    CALLED_FAKE(ErrorHandlerFakeEx_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFakeEx_LastSeverity());
+    POINTERS_EQUAL(&GetAddrInfoResolverErrorSource, ErrorHandlerFakeEx_LastSource());
+    UNSIGNED_LONGS_EQUAL(GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFakeEx_LastCode());
 }
 
 TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfStaleHandleReportsWarning)
 {
     pooled[0] = SolidSyslogGetAddrInfoResolver_Create();
     SolidSyslogGetAddrInfoResolver_Destroy(pooled[0]);
-    ErrorHandlerFake_Install(nullptr);
+    ErrorHandlerFakeEx_Install(nullptr);
 
     SolidSyslogGetAddrInfoResolver_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    STRCMP_EQUAL(SOLIDSYSLOG_ERROR_MSG_GETADDRINFORESOLVER_UNKNOWN_DESTROY, ErrorHandlerFake_LastMessage());
+    CALLED_FAKE(ErrorHandlerFakeEx_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFakeEx_LastSeverity());
+    POINTERS_EQUAL(&GetAddrInfoResolverErrorSource, ErrorHandlerFakeEx_LastSource());
+    UNSIGNED_LONGS_EQUAL(GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFakeEx_LastCode());
 }

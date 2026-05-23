@@ -4,10 +4,10 @@
 #include <stddef.h>
 
 #include "SolidSyslogError.h"
-#include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogTlsStreamErrors.h"
 #include "SolidSyslogTlsStreamPrivate.h"
 #include "SolidSyslogTunables.h"
 
@@ -31,7 +31,11 @@ struct SolidSyslogStream* SolidSyslogTlsStream_Create(const struct SolidSyslogTl
     }
     else
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_TLSSTREAM_POOL_EXHAUSTED);
+        SolidSyslog_ErrorEx(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &TlsStreamErrorSource,
+            (uint8_t) TLSSTREAM_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }
@@ -39,12 +43,15 @@ struct SolidSyslogStream* SolidSyslogTlsStream_Create(const struct SolidSyslogTl
 void SolidSyslogTlsStream_Destroy(struct SolidSyslogStream* base)
 {
     size_t index = TlsStream_IndexFromHandle(base);
-    bool released =
-        SolidSyslogPoolAllocator_IndexIsValid(&TlsStream_Allocator, index) &&
-        SolidSyslogPoolAllocator_FreeIfInUse(&TlsStream_Allocator, index, TlsStream_CleanupAtIndex, NULL);
+    bool released = SolidSyslogPoolAllocator_IndexIsValid(&TlsStream_Allocator, index) &&
+                    SolidSyslogPoolAllocator_FreeIfInUse(&TlsStream_Allocator, index, TlsStream_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_TLSSTREAM_UNKNOWN_DESTROY);
+        SolidSyslog_ErrorEx(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            &TlsStreamErrorSource,
+            (uint8_t) TLSSTREAM_ERROR_UNKNOWN_DESTROY
+        );
     }
 }
 

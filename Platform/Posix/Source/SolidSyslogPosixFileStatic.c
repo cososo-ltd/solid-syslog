@@ -4,9 +4,9 @@
 #include <stddef.h>
 
 #include "SolidSyslogError.h"
-#include "SolidSyslogErrorMessages.h"
 #include "SolidSyslogNullFile.h"
 #include "SolidSyslogPoolAllocator.h"
+#include "SolidSyslogPosixFileErrors.h"
 #include "SolidSyslogPosixFilePrivate.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
@@ -31,7 +31,11 @@ struct SolidSyslogFile* SolidSyslogPosixFile_Create(void)
     }
     else
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_ERROR_MSG_POSIXFILE_POOL_EXHAUSTED);
+        SolidSyslog_ErrorEx(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &PosixFileErrorSource,
+            (uint8_t) POSIXFILE_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }
@@ -43,7 +47,11 @@ void SolidSyslogPosixFile_Destroy(struct SolidSyslogFile* base)
                     SolidSyslogPoolAllocator_FreeIfInUse(&PosixFile_Allocator, index, PosixFile_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_ERROR_MSG_POSIXFILE_UNKNOWN_DESTROY);
+        SolidSyslog_ErrorEx(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            &PosixFileErrorSource,
+            (uint8_t) POSIXFILE_ERROR_UNKNOWN_DESTROY
+        );
     }
 }
 
