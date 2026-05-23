@@ -261,7 +261,7 @@ static inline void SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
     {
         if (!SolidSyslogStore_Write(self->Store, buf, len) && SolidSyslogStore_IsTransient(self->Store))
         {
-            SolidSyslogSender_Send(self->Sender, buf, len);
+            (void) SolidSyslogSender_Send(self->Sender, buf, len);
         }
     }
 }
