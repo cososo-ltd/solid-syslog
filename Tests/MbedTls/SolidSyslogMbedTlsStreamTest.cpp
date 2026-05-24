@@ -233,6 +233,23 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeB
     CHECK_OPEN_UNWOUND_WITH_ERROR(transport, MBEDTLSSTREAM_ERROR_HANDSHAKE_TIMEOUT);
 }
 
+TEST(SolidSyslogMbedTlsStream, SecondOpenAfterFailedFirstOpenSucceeds)
+{
+    /* The recovery contract that the per-failure-point unwinds enable: once
+     * Open's failure tail Closes the transport and frees the SSL state, the
+     * next Open is a clean Open-Close-Open cycle on the transport — Connected
+     * goes false, StreamSender's next reconnect tick re-enters, and the
+     * second handshake completes. Without the unwind, the inner transport
+     * would stay open and PosixTcpStream_Open would clobber its fd. */
+    int handshakeSequence[] = {MBEDTLS_ERR_SSL_BAD_INPUT_DATA, 0};
+    MbedTlsFake_SetSslHandshakeReturnSequence(handshakeSequence, 2);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    LONGS_EQUAL(2, StreamFake_OpenCallCount(transport));
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+}
+
 TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeFailsHard)
 {
     /* Non-WANT error (e.g. a verify/connection failure) is fail-fast — no
