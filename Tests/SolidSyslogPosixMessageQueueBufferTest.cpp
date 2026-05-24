@@ -133,6 +133,30 @@ TEST(SolidSyslogPosixMessageQueueBuffer, WriteWithOversizedMessageReportsError)
     UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_SEND_FAILED, ErrorHandlerFake_LastCode());
 }
 
+TEST(SolidSyslogPosixMessageQueueBuffer, ReadWhenMqReceiveFailsReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextReceive(EMSGSIZE);
+
+    Read();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    POINTERS_EQUAL(&PosixMessageQueueBufferErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_RECEIVE_FAILED, ErrorHandlerFake_LastCode());
+}
+
+/* Regression guard: empty queue (EAGAIN) is part of the happy poll loop
+ * and must NOT emit. The error handler must remain untouched. */
+TEST(SolidSyslogPosixMessageQueueBuffer, ReadFromEmptyQueueDoesNotEmitError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(Read());
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
 TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
 {
     struct SolidSyslogSender* fakeSender = SenderFake_Create();

@@ -1,5 +1,6 @@
 #include "SolidSyslogPosixMessageQueueBuffer.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <mqueue.h>
 #include <stdbool.h>
@@ -84,6 +85,17 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
     struct SolidSyslogPosixMessageQueueBuffer* self = PosixMessageQueueBuffer_SelfFromBase(base);
     ssize_t received = mq_receive(self->Mq, data, maxSize, NULL);
     bool success = received >= 0;
+
+    /* EAGAIN is the empty-queue poll signal — part of the happy path and must
+     * stay silent. Any other errno is a real failure worth surfacing. */
+    if (!success && (errno != EAGAIN))
+    {
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &PosixMessageQueueBufferErrorSource,
+            (uint8_t) POSIXMESSAGEQUEUEBUFFER_ERROR_RECEIVE_FAILED
+        );
+    }
 
     *bytesRead = success ? (size_t) received : 0U;
 
