@@ -377,6 +377,14 @@ static inline bool TlsStream_ConfigureExpectedHostname(struct SolidSyslogTlsStre
     {
         ok = (SSL_set_tlsext_host_name(self->Ssl, self->Config.ServerName) == 1) &&
              (SSL_set1_host(self->Ssl, self->Config.ServerName) == 1);
+        if (!ok)
+        {
+            SolidSyslog_Error(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                &TlsStreamErrorSource,
+                (uint8_t) TLSSTREAM_ERROR_SERVER_NAME_NOT_SET
+            );
+        }
     }
     return ok;
 }

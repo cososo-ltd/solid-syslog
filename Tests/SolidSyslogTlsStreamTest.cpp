@@ -645,20 +645,20 @@ TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenHandshakeFails)
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenSet1HostFails)
 {
-    SolidSyslogTlsStream_Destroy(stream);
     config.ServerName = "logs.example";
-    stream = SolidSyslogTlsStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetSet1HostFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_SERVER_NAME_NOT_SET);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenSniHostnameSetupFails)
 {
-    SolidSyslogTlsStream_Destroy(stream);
     config.ServerName = "logs.example";
-    stream = SolidSyslogTlsStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetSniHostnameFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_SERVER_NAME_NOT_SET);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenCtxNewFails)
