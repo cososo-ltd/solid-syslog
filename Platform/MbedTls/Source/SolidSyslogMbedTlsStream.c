@@ -209,6 +209,11 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
         }
         else if (MbedTlsStream_IsHandshakeBudgetExhausted(totalSleptMs))
         {
+            SolidSyslog_Error(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                &MbedTlsStreamErrorSource,
+                (uint8_t) MBEDTLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
+            );
             done = true;
         }
         else

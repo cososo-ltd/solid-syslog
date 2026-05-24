@@ -223,13 +223,14 @@ TEST(SolidSyslogMbedTlsStream, OpenRetriesHandshakeOnWantWrite)
     CALLED_FAKE(MbedTlsFake_SslHandshake, TWICE);
 }
 
-TEST(SolidSyslogMbedTlsStream, OpenFailsWhenHandshakeNeverCompletes)
+TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeBudgetExhausts)
 {
     /* mbedtls_ssl_handshake always returns WANT_READ — handshake never makes
      * progress, so the bounded budget should expire and Open returns false. */
     ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_WANT_READ);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, MBEDTLSSTREAM_ERROR_HANDSHAKE_TIMEOUT);
 }
 
 TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeFailsHard)

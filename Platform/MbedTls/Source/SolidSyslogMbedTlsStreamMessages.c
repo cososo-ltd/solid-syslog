@@ -18,6 +18,8 @@ static const char* MbedTlsStreamError_AsString(uint8_t code)
             "TLS server name (SNI / cert match) could not be configured; connection not established",
         [MBEDTLSSTREAM_ERROR_HANDSHAKE_REJECTED] =
             "TLS handshake rejected by peer or local verification; connection not established",
+        [MBEDTLSSTREAM_ERROR_HANDSHAKE_TIMEOUT] =
+            "TLS handshake did not complete within the bounded retry budget; connection not established",
     };
     const char* result = "unknown";
     if (code < (uint8_t) MBEDTLSSTREAM_ERROR_MAX)
