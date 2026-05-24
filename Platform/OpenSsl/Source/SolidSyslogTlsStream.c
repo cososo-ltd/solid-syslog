@@ -421,8 +421,22 @@ static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* self)
         else
         {
             int err = SSL_get_error(self->Ssl, rc);
-            if (!TlsStream_IsRetryableSslError(err) || TlsStream_IsHandshakeBudgetExhausted(totalSleptMs))
+            if (!TlsStream_IsRetryableSslError(err))
             {
+                SolidSyslog_Error(
+                    SOLIDSYSLOG_SEVERITY_ERROR,
+                    &TlsStreamErrorSource,
+                    (uint8_t) TLSSTREAM_ERROR_HANDSHAKE_REJECTED
+                );
+                done = true;
+            }
+            else if (TlsStream_IsHandshakeBudgetExhausted(totalSleptMs))
+            {
+                SolidSyslog_Error(
+                    SOLIDSYSLOG_SEVERITY_ERROR,
+                    &TlsStreamErrorSource,
+                    (uint8_t) TLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
+                );
                 done = true;
             }
             else

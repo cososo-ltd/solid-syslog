@@ -639,8 +639,13 @@ TEST(SolidSyslogTlsStream, OpenReturnsTrueOnHappyPath)
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenHandshakeFails)
 {
+    /* Default OpenSslFake_SetConnectFails(true) returns -1 from SSL_connect
+     * and SSL_get_error reports SSL_ERROR_SSL (the default for SetGetErrorReturn)
+     * — a non-retryable hard error, which is the HANDSHAKE_REJECTED branch. */
     OpenSslFake_SetConnectFails(true);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_HANDSHAKE_REJECTED);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenSet1HostFails)
@@ -1061,6 +1066,7 @@ TEST(SolidSyslogTlsStream, OpenFailsWhenHandshakeNeverCompletes)
        progress, so the bounded budget should expire and Open returns false. */
     ArrangePersistentHandshakeError(SSL_ERROR_WANT_READ);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_HANDSHAKE_TIMEOUT);
 }
 
 TEST(SolidSyslogTlsStream, OpenFailsImmediatelyOnHardSslError)
@@ -1070,6 +1076,7 @@ TEST(SolidSyslogTlsStream, OpenFailsImmediatelyOnHardSslError)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CALLED_FAKE(OpenSslFake_Connect, ONCE);
     CALLED_FUNCTION(NoOpSleep, NEVER);
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_HANDSHAKE_REJECTED);
 }
 
 /* -------------------------------------------------------------------------
