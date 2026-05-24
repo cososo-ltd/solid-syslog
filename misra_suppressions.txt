@@ -45,7 +45,7 @@ misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:40
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosResolver.c:44
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStream.c:85
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:64
-misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:70
+misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:74
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddress.c:10
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:20
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:26
@@ -119,7 +119,7 @@ misra-c2012-5.7:Core/Source/SolidSyslogUdpPayload.c:5
 misra-c2012-5.7:Platform/FreeRtos/Source/SolidSyslogFreeRtosResolver.c:21
 misra-c2012-5.7:Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStream.c:27
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:18
-misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:16
+misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:20
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogGetAddrInfoResolver.c:20
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixDatagram.c:21
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSleep.c:6
