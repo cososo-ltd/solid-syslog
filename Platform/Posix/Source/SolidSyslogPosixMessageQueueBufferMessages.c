@@ -12,6 +12,8 @@ static const char* PosixMessageQueueBufferError_AsString(uint8_t code)
             "SolidSyslogPosixMessageQueueBuffer_Destroy called with a handle not issued by this pool",
         [POSIXMESSAGEQUEUEBUFFER_ERROR_MQ_OPEN_FAILED] =
             "SolidSyslogPosixMessageQueueBuffer_Create mq_open failed; returning fallback buffer",
+        [POSIXMESSAGEQUEUEBUFFER_ERROR_SEND_FAILED] =
+            "SolidSyslogPosixMessageQueueBuffer_Write mq_send failed; record dropped",
     };
     const char* result = "unknown";
     if (code < (uint8_t) POSIXMESSAGEQUEUEBUFFER_ERROR_MAX)

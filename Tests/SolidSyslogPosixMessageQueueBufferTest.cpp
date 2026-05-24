@@ -105,6 +105,19 @@ TEST(SolidSyslogPosixMessageQueueBuffer, SecondReadAfterSingleWriteReturnsFalse)
     CHECK_FALSE(Read());
 }
 
+TEST(SolidSyslogPosixMessageQueueBuffer, WriteWhenMqSendFailsReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextSend(EAGAIN);
+
+    Write();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    POINTERS_EQUAL(&PosixMessageQueueBufferErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_SEND_FAILED, ErrorHandlerFake_LastCode());
+}
+
 TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
 {
     struct SolidSyslogSender* fakeSender = SenderFake_Create();

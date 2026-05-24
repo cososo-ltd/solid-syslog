@@ -8,10 +8,13 @@
 #include <sys/types.h>
 
 #include "SolidSyslogBufferDefinition.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogNullBuffer.h"
+#include "SolidSyslogPosixMessageQueueBufferErrors.h"
 #include "SolidSyslogPosixMessageQueueBufferPrivate.h"
 #include "SolidSyslogPosixProcessId.h"
+#include "SolidSyslogPrival.h"
 
 enum
 {
@@ -90,7 +93,14 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
 static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size)
 {
     struct SolidSyslogPosixMessageQueueBuffer* self = PosixMessageQueueBuffer_SelfFromBase(base);
-    mq_send(self->Mq, data, size, 0);
+    if (mq_send(self->Mq, data, size, 0) != 0)
+    {
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &PosixMessageQueueBufferErrorSource,
+            (uint8_t) POSIXMESSAGEQUEUEBUFFER_ERROR_SEND_FAILED
+        );
+    }
 }
 
 static inline struct SolidSyslogPosixMessageQueueBuffer* PosixMessageQueueBuffer_SelfFromBase(
