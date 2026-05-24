@@ -7,6 +7,7 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
     // macros
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "MqFake.h"
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogPosixMessageQueueBuffer.h"
@@ -33,6 +34,7 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
 
     void setup() override
     {
+        MqFake_Reset();
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         buffer = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
         readSize = 0;
@@ -156,6 +158,11 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBufferPool)
     // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogBuffer* pooled[SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE] = {};
     struct SolidSyslogBuffer* overflow                                                 = nullptr;
+
+    void setup() override
+    {
+        MqFake_Reset();
+    }
 
     void teardown() override
     {

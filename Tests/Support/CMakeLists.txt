@@ -9,6 +9,7 @@ target_link_libraries(ConfigLockFake PUBLIC ${PROJECT_NAME})
 if(SOLIDSYSLOG_POSIX)
     add_library(PosixFakes STATIC
         ClockFake.c
+        MqFake.c
         SafeStringStandard.c
         SocketFake.c
     )
