@@ -20,6 +20,7 @@ static mbedtls_ssl_config* lastSslConfigDefaultsConfigArg;
 static int lastSslConfigDefaultsEndpoint;
 static int lastSslConfigDefaultsTransport;
 static int lastSslConfigDefaultsPreset;
+static int sslConfigDefaultsReturn;
 
 /* mbedtls_ssl_init */
 static int sslInitCallCount;
@@ -118,6 +119,7 @@ void MbedTlsFake_Reset(void)
     lastSslConfigDefaultsEndpoint = 0;
     lastSslConfigDefaultsTransport = 0;
     lastSslConfigDefaultsPreset = 0;
+    sslConfigDefaultsReturn = 0;
     sslInitCallCount = 0;
     lastSslInitArg = NULL;
     sslSetupCallCount = 0;
@@ -203,6 +205,11 @@ int MbedTlsFake_LastSslConfigDefaultsTransport(void)
 int MbedTlsFake_LastSslConfigDefaultsPreset(void)
 {
     return lastSslConfigDefaultsPreset;
+}
+
+void MbedTlsFake_SetSslConfigDefaultsReturn(int value)
+{
+    sslConfigDefaultsReturn = value;
 }
 
 int MbedTlsFake_SslInitCallCount(void)
@@ -475,7 +482,7 @@ int mbedtls_ssl_config_defaults(mbedtls_ssl_config* conf, int endpoint, int tran
     lastSslConfigDefaultsEndpoint = endpoint;
     lastSslConfigDefaultsTransport = transport;
     lastSslConfigDefaultsPreset = preset;
-    return 0;
+    return sslConfigDefaultsReturn;
 }
 
 void mbedtls_ssl_init(mbedtls_ssl_context* ssl)

@@ -28,6 +28,7 @@ EXTERN_C_BEGIN
     int MbedTlsFake_LastSslConfigDefaultsEndpoint(void);
     int MbedTlsFake_LastSslConfigDefaultsTransport(void);
     int MbedTlsFake_LastSslConfigDefaultsPreset(void);
+    void MbedTlsFake_SetSslConfigDefaultsReturn(int value);
 
     /* mbedtls_ssl_init */
     int MbedTlsFake_SslInitCallCount(void);
