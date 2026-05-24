@@ -11811,3 +11811,75 @@ MISRA rule — different category, doesn't set precedent.
 ### Open questions
 
 - None.
+
+## 2026-05-24 — S26.03 TlsStream Open unwinds + per-failure-point error reporting (OpenSSL parity of S26.02)
+
+### Decisions
+
+- **Five codes, matching S26.02's coarse grain.** OpenSSL has more
+  configurable surfaces in the context (trust anchors, client identity,
+  protocol floor, cipher list — each independently failing with an
+  int return) than mbedTLS has, so a literal one-code-per-failing-API
+  expansion would have yielded 8-9 codes. Consolidated under
+  `TLSSTREAM_ERROR_CONTEXT_INIT_FAILED` so the integrator gets the
+  same diagnostic granularity as the MbedTls adapter. Finer codes
+  (TRUST_ANCHORS_NOT_LOADED, CLIENT_IDENTITY_INVALID,
+  CIPHER_LIST_REJECTED) are a future enhancement story if any
+  integrator surfaces a need.
+- **One emit site per bool-returning helper, shared code for the
+  SSL/BIO alloc pair.** `InitSslContext`, `InitSslSession`,
+  `AttachTransportBio`, `ConfigureExpectedHostname`, and the two
+  `PerformHandshake` exit branches each emit at the point of failure
+  detection. `InitSslSession` and `AttachTransportBio` share
+  `SESSION_INIT_FAILED` — both are alloc-class failures the
+  integrator cannot triage finer than "TLS session resources couldn't
+  be allocated".
+- **Per-mode resource-free assertions stay in the existing
+  XxxFailureFreesCtx tests.** The new `CHECK_OPEN_UNWOUND_WITH_ERROR`
+  macro pins the universal 5-assertion shape (transport closed, error
+  source, code, severity, count) without trying to pin SSL_CTX_free /
+  SSL_free counts — those vary by how far Open got before failing, so
+  they live in the existing per-mode tests that already pin them
+  precisely.
+- **Existing test names kept.** S26.02 renamed `OpenFailsImmediately…`
+  to `OpenClosesTransportAndFreesSslState…` because the new tests had
+  to be added from scratch and the rename established the convention.
+  Here, ~15 existing `OpenReturnsFalseWhen…` tests already exist —
+  renaming all of them would be a big mechanical diff and the macro's
+  name (`CHECK_OPEN_UNWOUND_WITH_ERROR`) carries the assertion meaning.
+  Kept the existing names; extended the bodies.
+- **`ReCreateStreamWithUpdatedConfig` helper added to the
+  TEST_GROUP.** Mirrors S26.02's `ReCreateHandleWithUpdatedConfig`.
+  Replaced inlined destroy/recreate-stream sequences in the eight
+  tests that needed a config tweak (CipherList, ClientCertChain/Key,
+  ServerName) — same six-line helper, same fixture-reset semantics
+  so the macro's `== 1` count assertions work.
+
+### Deferred
+
+- **Finer-grained CONTEXT_INIT codes** (TRUST_ANCHORS_NOT_LOADED,
+  CLIENT_IDENTITY_INVALID, CIPHER_LIST_REJECTED). Out of scope for
+  S26.03 by deliberate choice to maintain parity with S26.02.
+  Re-evaluate when an integrator asks for the granularity.
+- **CodeRabbit cppcheck-misra include-set false positives.** Per the
+  feedback memory captured after S26.02 PR #440, expect any
+  "stale suppression" finding on the line shifts (`70 -> 74`,
+  `16 -> 20`) to be a false positive from the script running cppcheck
+  without `-IPlatform/OpenSsl/Interface`. Reproduce with the full
+  CI include set before agreeing.
+
+### Open questions
+
+- None.
+
+### Process notes (collateral)
+
+- **Lost David's local `.devcontainer/devcontainer.json` clang-service
+  switch.** A misguided `xargs clang-format -i` over
+  `git diff --name-only main...HEAD` mangled non-C/C++ files
+  (DEVLOG.md, misra_suppressions.txt, devcontainer.json). Reverted via
+  `git checkout --`, which also reverted David's uncommitted switch.
+  The switch has no functional impact in-session (we're already in the
+  clang container) but needs re-applying via the IDE before the next
+  Rebuild Container. Format pipeline going forward: filter
+  `git diff --name-only` for `.c|.cpp|.h|.hpp$` extensions.
