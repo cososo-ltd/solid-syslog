@@ -6,10 +6,14 @@
 #include <openssl/types.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogNullStream.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogTlsStreamErrors.h"
 #include "SolidSyslogTlsStreamPrivate.h"
 
 enum
@@ -135,15 +139,30 @@ static inline void TlsStream_ReleaseSslContext(struct SolidSyslogTlsStream* self
 static inline bool TlsStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
-    return SolidSyslogStream_Open(self->Config.Transport, addr) && TlsStream_InitSslContext(self) &&
-           TlsStream_InitSslSession(self) && TlsStream_AttachTransportBio(self) &&
-           TlsStream_ConfigureExpectedHostname(self) && TlsStream_PerformHandshake(self);
+    bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && TlsStream_InitSslContext(self) &&
+              TlsStream_InitSslSession(self) && TlsStream_AttachTransportBio(self) &&
+              TlsStream_ConfigureExpectedHostname(self) && TlsStream_PerformHandshake(self);
+    if (!ok)
+    {
+        TlsStream_Close(base);
+        TlsStream_ReleaseSslContext(self);
+    }
+    return ok;
 }
 
 static inline bool TlsStream_InitSslContext(struct SolidSyslogTlsStream* self)
 {
     self->Ctx = TlsStream_CreateSslContext(&self->Config);
-    return self->Ctx != NULL;
+    bool ok = self->Ctx != NULL;
+    if (!ok)
+    {
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &TlsStreamErrorSource,
+            (uint8_t) TLSSTREAM_ERROR_CONTEXT_INIT_FAILED
+        );
+    }
+    return ok;
 }
 
 static inline SSL_CTX* TlsStream_CreateSslContext(const struct SolidSyslogTlsStreamConfig* config)
@@ -214,7 +233,16 @@ static inline bool TlsStream_ConfigureCipherList(SSL_CTX* ctx, const char* ciphe
 static inline bool TlsStream_InitSslSession(struct SolidSyslogTlsStream* self)
 {
     self->Ssl = SSL_new(self->Ctx);
-    return self->Ssl != NULL;
+    bool ok = self->Ssl != NULL;
+    if (!ok)
+    {
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &TlsStreamErrorSource,
+            (uint8_t) TLSSTREAM_ERROR_SESSION_INIT_FAILED
+        );
+    }
+    return ok;
 }
 
 static inline bool TlsStream_AttachTransportBio(struct SolidSyslogTlsStream* self)
@@ -225,6 +253,14 @@ static inline bool TlsStream_AttachTransportBio(struct SolidSyslogTlsStream* sel
     {
         BIO_set_data(bio, self->Config.Transport);
         SSL_set_bio(self->Ssl, bio, bio);
+    }
+    else
+    {
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &TlsStreamErrorSource,
+            (uint8_t) TLSSTREAM_ERROR_SESSION_INIT_FAILED
+        );
     }
     return ok;
 }
@@ -341,6 +377,14 @@ static inline bool TlsStream_ConfigureExpectedHostname(struct SolidSyslogTlsStre
     {
         ok = (SSL_set_tlsext_host_name(self->Ssl, self->Config.ServerName) == 1) &&
              (SSL_set1_host(self->Ssl, self->Config.ServerName) == 1);
+        if (!ok)
+        {
+            SolidSyslog_Error(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                &TlsStreamErrorSource,
+                (uint8_t) TLSSTREAM_ERROR_SERVER_NAME_NOT_SET
+            );
+        }
     }
     return ok;
 }
@@ -377,8 +421,22 @@ static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* self)
         else
         {
             int err = SSL_get_error(self->Ssl, rc);
-            if (!TlsStream_IsRetryableSslError(err) || TlsStream_IsHandshakeBudgetExhausted(totalSleptMs))
+            if (!TlsStream_IsRetryableSslError(err))
             {
+                SolidSyslog_Error(
+                    SOLIDSYSLOG_SEVERITY_ERROR,
+                    &TlsStreamErrorSource,
+                    (uint8_t) TLSSTREAM_ERROR_HANDSHAKE_REJECTED
+                );
+                done = true;
+            }
+            else if (TlsStream_IsHandshakeBudgetExhausted(totalSleptMs))
+            {
+                SolidSyslog_Error(
+                    SOLIDSYSLOG_SEVERITY_ERROR,
+                    &TlsStreamErrorSource,
+                    (uint8_t) TLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
+                );
                 done = true;
             }
             else

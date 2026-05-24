@@ -4,10 +4,13 @@
 #include <openssl/types.h>
 #include <stddef.h>
 
+#include "ErrorHandlerFake.h"
 #include "OpenSslFake.h"
 #include "AddressFake.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogTlsStream.h"
+#include "SolidSyslogTlsStreamErrors.h"
 #include "SolidSyslogTransport.h"
 #include "StreamFake.h"
 #include "TestUtils.h"
@@ -15,6 +18,18 @@
 
 using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
     // macros
+
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macro preserves __FILE__/__LINE__ in failure output; do-while wraps the multi-statement body for safe single-statement use
+#define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCode)                    \
+    do                                                                            \
+    {                                                                             \
+        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                     \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                               \
+        POINTERS_EQUAL(&TlsStreamErrorSource, ErrorHandlerFake_LastSource());     \
+        UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastCode());        \
+        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity()); \
+    } while (0)
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 class TEST_SolidSyslogTlsStream_ReadReturnsNegativeOneOnHardErrorAndClosesSsl_Test;
 class TEST_SolidSyslogTlsStream_ReadReturnsNegativeOneOnZeroReturnAndClosesSsl_Test;
@@ -40,6 +55,7 @@ TEST_GROUP(SolidSyslogTlsStream)
     void setup() override
     {
         OpenSslFake_Reset();
+        ErrorHandlerFake_Install(nullptr);
         NoOpSleepCallCount = 0;
         g_lastSleepMs    = 0;
         transport        = StreamFake_Create();
@@ -55,6 +71,22 @@ TEST_GROUP(SolidSyslogTlsStream)
     {
         SolidSyslogTlsStream_Destroy(stream);
         StreamFake_Destroy(transport);
+    }
+
+    /* Tests needing config tweaks (CipherList, ClientCertChainPath, ServerName, …)
+     * call this to release setup()'s pool slot, mutate `config`, then re-Create.
+     * Fully resets the fixture (transport, OpenSslFake counters, error handler)
+     * so the test body observes counts from this Open onwards only — matters
+     * for assertions like CHECK_OPEN_UNWOUND_WITH_ERROR that pin counts at == 1. */
+    void ReCreateStreamWithUpdatedConfig()
+    {
+        SolidSyslogTlsStream_Destroy(stream);
+        StreamFake_Destroy(transport);
+        OpenSslFake_Reset();
+        ErrorHandlerFake_Install(nullptr);
+        transport        = StreamFake_Create();
+        config.Transport = transport;
+        stream           = SolidSyslogTlsStream_Create(&config);
     }
 
     /* Drive the registered BIO read callback with the given transport return —
@@ -218,11 +250,11 @@ TEST(SolidSyslogTlsStream, OpenSkipsCipherListSetupWhenNotConfigured)
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenCipherListRejected)
 {
-    SolidSyslogTlsStream_Destroy(stream);
     config.CipherList = "not-a-real-cipher";
-    stream = SolidSyslogTlsStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetCipherListFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_CONTEXT_INIT_FAILED);
 }
 
 TEST(SolidSyslogTlsStream, CipherListFailureFreesCtx)
@@ -607,44 +639,52 @@ TEST(SolidSyslogTlsStream, OpenReturnsTrueOnHappyPath)
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenHandshakeFails)
 {
+    /* Default OpenSslFake_SetConnectFails(true) returns -1 from SSL_connect
+     * and SSL_get_error reports SSL_ERROR_SSL (the default for SetGetErrorReturn)
+     * — a non-retryable hard error, which is the HANDSHAKE_REJECTED branch. */
     OpenSslFake_SetConnectFails(true);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_HANDSHAKE_REJECTED);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenSet1HostFails)
 {
-    SolidSyslogTlsStream_Destroy(stream);
     config.ServerName = "logs.example";
-    stream = SolidSyslogTlsStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetSet1HostFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_SERVER_NAME_NOT_SET);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenSniHostnameSetupFails)
 {
-    SolidSyslogTlsStream_Destroy(stream);
     config.ServerName = "logs.example";
-    stream = SolidSyslogTlsStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetSniHostnameFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_SERVER_NAME_NOT_SET);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenCtxNewFails)
 {
     OpenSslFake_SetCtxNewFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_CONTEXT_INIT_FAILED);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenSslNewFails)
 {
     OpenSslFake_SetSslNewFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_SESSION_INIT_FAILED);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenLoadVerifyLocationsFails)
 {
     OpenSslFake_SetLoadVerifyLocationsFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_CONTEXT_INIT_FAILED);
 }
 
 TEST(SolidSyslogTlsStream, LoadVerifyLocationsFailureFreesCtx)
@@ -658,6 +698,7 @@ TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenMinProtoVersionFails)
 {
     OpenSslFake_SetMinProtoVersionFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_CONTEXT_INIT_FAILED);
 }
 
 TEST(SolidSyslogTlsStream, MinProtoVersionFailureFreesCtx)
@@ -671,12 +712,14 @@ TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenBioMethNewFails)
 {
     OpenSslFake_SetBioMethNewFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_SESSION_INIT_FAILED);
 }
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenBioNewFails)
 {
     OpenSslFake_SetBioNewFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_SESSION_INIT_FAILED);
 }
 
 TEST(SolidSyslogTlsStream, BioNewFailureFreesBioMethodInline)
@@ -805,11 +848,11 @@ TEST(SolidSyslogTlsStream, OpenChecksClientKeyMatchesCert)
 
 TEST(SolidSyslogTlsStream, OpenFailsWhenOnlyClientCertIsSet)
 {
-    SolidSyslogTlsStream_Destroy(stream);
     config.ClientCertChainPath = "/some/path/client.pem";
     config.ClientKeyPath = nullptr;
-    stream = SolidSyslogTlsStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_CONTEXT_INIT_FAILED);
 }
 
 TEST(SolidSyslogTlsStream, OpenMakesNoClientIdentityCallsWhenOnlyClientCertIsSet)
@@ -826,11 +869,11 @@ TEST(SolidSyslogTlsStream, OpenMakesNoClientIdentityCallsWhenOnlyClientCertIsSet
 
 TEST(SolidSyslogTlsStream, OpenFailsWhenOnlyClientKeyIsSet)
 {
-    SolidSyslogTlsStream_Destroy(stream);
     config.ClientCertChainPath = nullptr;
     config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogTlsStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_CONTEXT_INIT_FAILED);
 }
 
 TEST(SolidSyslogTlsStream, OpenMakesNoClientIdentityCallsWhenOnlyClientKeyIsSet)
@@ -857,12 +900,12 @@ TEST(SolidSyslogTlsStream, PartialClientIdentityConfigFreesCtx)
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenUseCertChainFileFails)
 {
-    SolidSyslogTlsStream_Destroy(stream);
     config.ClientCertChainPath = "/some/path/client.pem";
     config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogTlsStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetUseCertChainFileFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_CONTEXT_INIT_FAILED);
 }
 
 TEST(SolidSyslogTlsStream, UseCertChainFileFailureFreesCtx)
@@ -878,12 +921,12 @@ TEST(SolidSyslogTlsStream, UseCertChainFileFailureFreesCtx)
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenUsePrivateKeyFileFails)
 {
-    SolidSyslogTlsStream_Destroy(stream);
     config.ClientCertChainPath = "/some/path/client.pem";
     config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogTlsStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetUsePrivateKeyFileFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_CONTEXT_INIT_FAILED);
 }
 
 TEST(SolidSyslogTlsStream, UsePrivateKeyFileFailureFreesCtx)
@@ -899,12 +942,12 @@ TEST(SolidSyslogTlsStream, UsePrivateKeyFileFailureFreesCtx)
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenCheckPrivateKeyFails)
 {
-    SolidSyslogTlsStream_Destroy(stream);
     config.ClientCertChainPath = "/some/path/client.pem";
     config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogTlsStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetCheckPrivateKeyFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_CONTEXT_INIT_FAILED);
 }
 
 TEST(SolidSyslogTlsStream, CheckPrivateKeyFailureFreesCtx)
@@ -1023,6 +1066,7 @@ TEST(SolidSyslogTlsStream, OpenFailsWhenHandshakeNeverCompletes)
        progress, so the bounded budget should expire and Open returns false. */
     ArrangePersistentHandshakeError(SSL_ERROR_WANT_READ);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_HANDSHAKE_TIMEOUT);
 }
 
 TEST(SolidSyslogTlsStream, OpenFailsImmediatelyOnHardSslError)
@@ -1032,6 +1076,25 @@ TEST(SolidSyslogTlsStream, OpenFailsImmediatelyOnHardSslError)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CALLED_FAKE(OpenSslFake_Connect, ONCE);
     CALLED_FUNCTION(NoOpSleep, NEVER);
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_HANDSHAKE_REJECTED);
+}
+
+TEST(SolidSyslogTlsStream, SecondOpenAfterFailedFirstOpenSucceeds)
+{
+    /* The recovery contract that the per-failure-point unwinds enable: once
+     * Open's failure tail Closes the transport and releases the SSL state, the
+     * next Open is a clean Open-Close-Open cycle on the transport. Without the
+     * unwind, the inner transport would stay open and PosixTcpStream_Open would
+     * clobber its fd on the next StreamSender reconnect tick. */
+    int handshakeSequence[] = {-1, 1};
+    OpenSslFake_SetConnectReturnSequence(handshakeSequence, 2);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL); /* first call: hard error, fail-fast */
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    OpenSslFake_SetGetErrorReturn(0); /* second call: handshake succeeds, no error lookup */
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    LONGS_EQUAL(2, StreamFake_OpenCallCount(transport));
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
 }
 
 /* -------------------------------------------------------------------------
