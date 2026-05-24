@@ -2,6 +2,7 @@
 #define SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFERPRIVATE_H
 
 #include <mqueue.h>
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "SolidSyslogBufferDefinition.h"
@@ -21,7 +22,7 @@ struct SolidSyslogPosixMessageQueueBuffer
     size_t MaxMessageSize;
 };
 
-void PosixMessageQueueBuffer_Initialise(
+bool PosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     size_t maxMessageSize,
     long maxMessages,

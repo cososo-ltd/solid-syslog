@@ -1,3 +1,4 @@
+#include <cerrno>
 #include <cstdlib>
 
 #include "TestUtils.h"
@@ -217,6 +218,36 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, ExhaustedCreateReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixMessageQueueBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextOpen(EINVAL);
+
+    overflow = MakeBuffer();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    POINTERS_EQUAL(&PosixMessageQueueBufferErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_MQ_OPEN_FAILED, ErrorHandlerFake_LastCode());
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReleasesSlot)
+{
+    MqFake_FailNextOpen(EINVAL);
+
+    overflow = MakeBuffer();
+
+    // Fill the pool *after* the failed Create; if the failed Create had leaked
+    // its acquired slot, the pool would overflow into the fallback one slot
+    // sooner — and FillPool's last MakeBuffer would return the same NullBuffer
+    // singleton as `overflow`, since both Creates would have run out of slots.
+    FillPool();
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != overflow, "Pool slot collided with the failed-Create fallback handle");
+    }
 }
 
 TEST(SolidSyslogPosixMessageQueueBufferPool, FallbackReadAndWriteAreNoOps)

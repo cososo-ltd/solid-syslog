@@ -37,13 +37,30 @@ struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMe
     struct SolidSyslogBuffer* handle = SolidSyslogNullBuffer_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&PosixMessageQueueBuffer_Allocator, index) == true)
     {
-        PosixMessageQueueBuffer_Initialise(
+        bool opened = PosixMessageQueueBuffer_Initialise(
             &PosixMessageQueueBuffer_Pool[index].Base,
             maxMessageSize,
             maxMessages,
             index
         );
-        handle = &PosixMessageQueueBuffer_Pool[index].Base;
+        if (opened)
+        {
+            handle = &PosixMessageQueueBuffer_Pool[index].Base;
+        }
+        else
+        {
+            (void) SolidSyslogPoolAllocator_FreeIfInUse(
+                &PosixMessageQueueBuffer_Allocator,
+                index,
+                PosixMessageQueueBuffer_CleanupAtIndex,
+                NULL
+            );
+            SolidSyslog_Error(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                &PosixMessageQueueBufferErrorSource,
+                (uint8_t) POSIXMESSAGEQUEUEBUFFER_ERROR_MQ_OPEN_FAILED
+            );
+        }
     }
     else
     {
