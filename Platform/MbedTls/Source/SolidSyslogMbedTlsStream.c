@@ -4,9 +4,13 @@
 #include <mbedtls/ssl.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
+#include "SolidSyslogError.h"
+#include "SolidSyslogMbedTlsStreamErrors.h"
 #include "SolidSyslogMbedTlsStreamPrivate.h"
 #include "SolidSyslogNullStream.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
 
@@ -97,17 +101,30 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
         MbedTlsStream_InstallTransportCallbacks(self);
         ok = MbedTlsStream_PerformHandshake(self);
     }
+    if (!ok)
+    {
+        MbedTlsStream_Close(base);
+    }
     return ok;
 }
 
 static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTlsStream* self)
 {
-    return mbedtls_ssl_config_defaults(
-               &self->SslConfig,
-               MBEDTLS_SSL_IS_CLIENT,
-               MBEDTLS_SSL_TRANSPORT_STREAM,
-               MBEDTLS_SSL_PRESET_DEFAULT
-           ) == 0;
+    bool ok = mbedtls_ssl_config_defaults(
+                  &self->SslConfig,
+                  MBEDTLS_SSL_IS_CLIENT,
+                  MBEDTLS_SSL_TRANSPORT_STREAM,
+                  MBEDTLS_SSL_PRESET_DEFAULT
+              ) == 0;
+    if (!ok)
+    {
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &MbedTlsStreamErrorSource,
+            (uint8_t) MBEDTLSSTREAM_ERROR_DEFAULTS_NOT_APPLIED
+        );
+    }
+    return ok;
 }
 
 /* TLS policy owned by the library — set per-ssl_config so it cannot leak

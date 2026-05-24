@@ -5,8 +5,11 @@ extern "C"
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/ssl.h>
 
+#include "ErrorHandlerFake.h"
 #include "MbedTlsFake.h"
 #include "SolidSyslogMbedTlsStream.h"
+#include "SolidSyslogMbedTlsStreamErrors.h"
+#include "SolidSyslogPrival.h"
 #include "AddressFake.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
@@ -37,6 +40,7 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
     void setup() override
     {
         MbedTlsFake_Reset();
+        ErrorHandlerFake_Install(nullptr);
         NoOpSleepCallCount = 0;
         g_lastSleepMs = 0;
         transport = StreamFake_Create();
@@ -214,6 +218,27 @@ TEST(SolidSyslogMbedTlsStream, OpenFailsImmediatelyOnHardSslError)
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
     CALLED_FAKE(MbedTlsFake_SslHandshake, ONCE);
     CALLED_FUNCTION(NoOpSleep, NEVER);
+}
+
+/* -------------------------------------------------------------------------
+ * Open failure unwind + error reporting (S26.02). Every failure path after
+ * the first allocating operation must close the inner transport, free both
+ * mbedTLS structs, and emit the matching typed error code so the integrator
+ * sees a protocol-level diagnostic.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSslConfigDefaultsFails)
+{
+    MbedTlsFake_SetSslConfigDefaultsReturn(-1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+    LONGS_EQUAL(1, MbedTlsFake_SslFreeCallCount());
+    LONGS_EQUAL(1, MbedTlsFake_SslConfigFreeCallCount());
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(MBEDTLSSTREAM_ERROR_DEFAULTS_NOT_APPLIED, ErrorHandlerFake_LastCode());
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
 }
 
 TEST(SolidSyslogMbedTlsStream, SendForwardsBufferToSslWrite)
