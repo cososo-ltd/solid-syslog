@@ -2,17 +2,12 @@
 #define SOLIDSYSLOGSECURITYPOLICYDEFINITION_H
 
 #include "ExternC.h"
+#include "SolidSyslogTunables.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
 EXTERN_C_BEGIN
-
-    /* large enough for HMAC-SHA256 (32 bytes); CRC-16 uses 2 */
-    enum
-    {
-        SOLIDSYSLOG_MAX_INTEGRITY_SIZE = 32U
-    };
 
     struct SolidSyslogSecurityPolicy
     {
