@@ -6,15 +6,17 @@ QEMU's stdio UART.
 
 SolidSyslog runs here with the portable `SolidSyslogCircularBuffer` +
 `SolidSyslogFreeRtosMutex` drained by a dedicated FreeRTOS Service task,
-a `SolidSyslogSwitchingSender` wrapping a UDP sender (over
-`SolidSyslogFreeRtosDatagram`) and a TCP sender (over
-`SolidSyslogFreeRtosTcpStream` + `SolidSyslogStreamSender`), the
-`SolidSyslogFreeRtosResolver` pinned to the QEMU slirp gateway
-(`10.0.2.2`), and the `Bdd/Targets/Common/BddTargetInteractive` runner.
-Drive identity / endpoint / PRIVAL fields over the UART command channel
-with `set NAME VALUE`, flip the active transport at runtime with
-`switch udp` / `switch tcp` (routed through `BddTargetSwitchConfig`),
-emit N RFC 5424 messages with `send N`, exit cleanly with `quit`. See
+a `SolidSyslogSwitchingSender` wrapping four inner senders — UDP over
+`SolidSyslogFreeRtosDatagram`, TCP over `SolidSyslogFreeRtosTcpStream` +
+`SolidSyslogStreamSender`, and TLS + mTLS via `SolidSyslogMbedTlsStream`
+layered over the same `SolidSyslogFreeRtosTcpStream` byte transport.
+`SolidSyslogFreeRtosResolver` is pinned to the QEMU slirp gateway
+(`10.0.2.2`), and the `Bdd/Targets/Common/BddTargetInteractive` runner
+drives the target. Drive identity / endpoint / PRIVAL fields over the
+UART command channel with `set NAME VALUE`, flip the active transport at
+runtime with `switch udp` / `switch tcp` / `switch tls` / `switch mtls`
+(routed through `BddTargetSwitchConfig`), emit N RFC 5424 messages with
+`send N`, exit cleanly with `quit`. See
 [`Bdd/README.md`](../../Bdd/README.md) for how Behave pipes these
 commands through `qemu-system-arm`'s stdio UART.
 
@@ -163,10 +165,10 @@ static IPv4 of `10.0.2.15` on the QEMU slirp network, and starts the
 scheduler. On link-up the IP-task event hook spawns the interactive task
 (running `BddTargetInteractive_Run`) and the Service task (draining the
 `SolidSyslogCircularBuffer` and pushing through the
-`SolidSyslogSwitchingSender`'s active inner — UDP by default, TCP after
-`switch tcp`). Each `send N` line over the UART emits N RFC 5424
-messages to `{10.0.2.2, port=g_port}` over whichever transport is
-currently selected.
+`SolidSyslogSwitchingSender`'s active inner — UDP by default; TCP, TLS,
+or mTLS after the matching `switch` command). Each `send N` line over
+the UART emits N RFC 5424 messages to `{10.0.2.2, port=g_port}` over
+whichever transport is currently selected.
 
 The FreeRTOS GCC ARM_CM3 port supplies `vPortSVCHandler`,
 `xPortPendSVHandler`, and `xPortSysTickHandler`.
