@@ -41,6 +41,7 @@ the per-context mbedTLS handles passed through
 |---|---|---|
 | `Transport` | You | A `SolidSyslogStream*` carrying TCP. The library ships `SolidSyslogPosixTcpStream` (POSIX), `SolidSyslogWinsockTcpStream` (Windows), and `SolidSyslogFreeRtosTcpStream` (FreeRTOS-Plus-TCP). If your TCP/IP stack is different (LwIP, NicheStack, vendor BSP), write your own `SolidSyslogStream` — see [`Platform/Posix/Source/SolidSyslogPosixTcpStream.c`](../Platform/Posix/Source/SolidSyslogPosixTcpStream.c) as a reference. |
 | `Sleep` | You | A `SolidSyslogSleepFunction`. Drives the bounded handshake retry between `WANT_READ` / `WANT_WRITE` polls. On FreeRTOS use a `vTaskDelay`-backed wrapper; on POSIX `SolidSyslogPosixSleep` is the natural fit. Required. |
+| `GetHandshakeTimeoutMs` / `HandshakeTimeoutContext` | You (optional) | Per-instance accessor pair for the bounded handshake budget. `NULL` falls back to the `SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS` compile-time tunable (default 5000 ms). Install when you need to runtime-tune the handshake deadline — slow peers on a constrained link, or per-tenant policy from your existing configuration store. The accessor is called on every `Open`. See [S12.17 #282](https://github.com/DavidCozens/solid-syslog/issues/282). |
 | `Rng` | You | `mbedtls_ctr_drbg_context*` you seeded yourself. The adapter calls `mbedtls_ctr_drbg_random` against it. Required. |
 | `CaChain` | You | `mbedtls_x509_crt*` you parsed yourself (from filesystem, baked-in PEM, HSM, whatever fits your build). Required. |
 | `ServerName` | You | SNI + cert hostname check string. `NULL` skips the name check; only appropriate for closed networks where IP-pinning replaces hostname identity. |
@@ -73,13 +74,15 @@ Concretely, on top of your existing setup:
    already have:
    ```c
    struct SolidSyslogMbedTlsStreamConfig cfg = {
-       .Transport       = myTcpStream,        /* from step 1 */
-       .Sleep           = MyVTaskDelayWrapper, /* or PosixSleep / similar */
-       .Rng             = &myAlreadySeededDrbg,
-       .CaChain         = &myAlreadyParsedCaChain,
-       .ServerName      = "syslog.example.com",
-       .ClientCertChain = &myClientCert,  /* NULL for server-auth-only */
-       .ClientKey       = &myClientKey,   /* paired with ClientCertChain */
+       .Transport               = myTcpStream,        /* from step 1 */
+       .Sleep                   = MyVTaskDelayWrapper, /* or PosixSleep / similar */
+       .GetHandshakeTimeoutMs   = NULL,  /* defaults to SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS (5000 ms) */
+       .HandshakeTimeoutContext = NULL,
+       .Rng                     = &myAlreadySeededDrbg,
+       .CaChain                 = &myAlreadyParsedCaChain,
+       .ServerName              = "syslog.example.com",
+       .ClientCertChain         = &myClientCert,  /* NULL for server-auth-only */
+       .ClientKey               = &myClientKey,   /* paired with ClientCertChain */
    };
    struct SolidSyslogStream* tlsStream = SolidSyslogMbedTlsStream_Create(&cfg);
    ```

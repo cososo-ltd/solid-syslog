@@ -18,14 +18,19 @@ for the compose layout.
 
 ## Tags
 
+Authoritative reference: [`docs/bdd.md`](../docs/bdd.md#feature-tags). Quick recap below.
+
 | Tag | Meaning |
 |---|---|
 | `@udp` / `@tcp` / `@tls` / `@mtls` | Transport-specific scenario; CI jobs filter by these. |
+| `@buffered` | Needs a buffered wiring (CircularBuffer / PosixMessageQueueBuffer / service thread) beyond single-task PassthroughBuffer. Carried by all three targets. |
+| `@store` | Needs file-backed `SolidSyslogBlockStore` capability (write blocks, replay, threshold callbacks). Carried by all three targets. |
+| `@requires_message_size_1500` | Needs `SOLIDSYSLOG_MAX_MESSAGE_SIZE >= 1500` — only the UDP path-MTU clipping feature. FreeRTOS keeps the default trimmed, so this scenario is also `@freertoswip`. |
 | `@windows_wip` | Skipped on the Windows runner (typically OS-specific behaviour the OTel oracle doesn't model). |
 | `@freertoswip` | Skipped on the FreeRTOS-on-QEMU runner. Per-scenario follow-up tag for capability gaps; removed scenario-by-scenario as each gap closes. The early bring-up reasons (hardcoded `TEST_*` values, missing SD wiring, getopt-only args) have all been closed out by S08.03 + S08.04 slices. |
 | `@rtc` | Scenario assumes the device has an RTC and synchronised wall-clock time. Run on Linux/Windows (which have both). Skipped on FreeRTOS, which models a no-RTC product per RFC 5424 §6.2.3.1. |
 | `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on FreeRTOS. Skipped on Linux/Windows. The NILVALUE TIMESTAMP itself is not asserted via the oracle — syslog-ng silently substitutes receipt time for `${ISODATE}` / `${S_ISODATE}` when the wire timestamp is NILVALUE — so that case is covered by formatter unit tests. |
-| `@wip` | Globally skipped on every runner. |
+| `@wip` | Globally skipped on every runner. Not currently in use on any scenario. |
 
 ## Running locally
 
@@ -51,7 +56,7 @@ once and run Behave from inside the container:
 ```bash
 cmake --preset freertos-cross
 cmake --build --preset freertos-cross --target SolidSyslogBddTarget
-behave --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp)' Bdd/features/
+behave --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp or @tls or @mtls)' Bdd/features/
 ```
 
 `BDD_TARGET=freertos` and `EXAMPLE_BINARY=build/freertos-cross/...` are

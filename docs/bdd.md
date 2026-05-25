@@ -20,8 +20,8 @@ fail here.
                                      │ runs   │ reads
                                      ▼        │
                               ┌──────────────┐│
-                              │   Example    ││
-                              │   binary     ││
+                              │  BDD target  ││
+                              │    binary    ││
                               └──────┬───────┘│
                                      │        │
                             UDP 5514 / TCP 5514│
@@ -50,7 +50,7 @@ fault-finding tips.
 | FreeRTOS | inside `freertos-target` (cross image carries QEMU + Behave) | `syslog-ng-freertos` (shared netns; QEMU slirp `10.0.2.2` reaches it on loopback) |
 | Windows | `behave` on the runner | `otelcol-contrib` (no compose; runner-direct) |
 
-The Linux example binary is built in the `gcc` container but executed by Behave via
+The Linux BDD target binary is built in the `gcc` container but executed by Behave via
 `subprocess.run`. Both services share the workspace mount, so `Bdd/output/received.log`
 is visible to both syslog-ng (writer) and Behave (reader) without any network file
 transfer. The FreeRTOS ELF is built in the cross image and run under
@@ -132,23 +132,27 @@ etc.) without rewriting feature tags.
 | `@tcp` | Needs TCP transport (RFC 6587 framing) |
 | `@tls` | Needs TLS transport (RFC 5425, server-auth) |
 | `@mtls` | Needs mutual TLS (client cert + key) |
-| `@buffered` | Needs a Linux-only buffered example capability beyond a basic ring buffer + service thread — file-backed block store, switching sender between transports, or syslog-ng reload via the UNIX control socket. The cross-platform "single message via UDP/TCP through a real buffer" path is *not* `@buffered` post-S13.18; TLS and mTLS dropped `@buffered` in S13.19 once the OTel oracle gained TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
+| `@buffered` | Needs a buffered wiring (CircularBuffer + service thread, PosixMessageQueueBuffer, etc.) beyond the single-task PassthroughBuffer path — e.g. file-backed block store, switching sender between transports, syslog-ng reload via the UNIX control socket. All three target binaries (Linux, Windows, FreeRTOS) carry a buffered wiring as of S13/S26, so `@buffered` is no longer excluded by any runner. TLS and mTLS dropped `@buffered` in S13.19 once the OTel oracle gained TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
+| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on all three targets — Linux + Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`; FreeRTOS over `SolidSyslogFatFsFile`. |
+| `@rtc` | Scenario assumes a real-time clock with synchronised wall-clock time — asserts a known absolute TIMESTAMP. Run on Linux and Windows; excluded on FreeRTOS, which models a no-RTC product per RFC 5424 §6.2.3.1. |
+| `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on FreeRTOS; excluded on Linux and Windows. The complementary pair of `@rtc`. |
+| `@requires_message_size_1500` | Scenario requires `SOLIDSYSLOG_MAX_MESSAGE_SIZE` to be at least 1500 bytes — used by the UDP path-MTU clipping feature, which has to drive an oversized payload through `EMSGSIZE`. The Linux and Windows targets are built with the default 2048 max; FreeRTOS keeps the default trimmed to fit the embedded memory budget, so this scenario is also gated `@freertoswip` until the FreeRTOS target opts in. |
 
 Three rollout markers are also used (temporary; remove once the scenario passes):
 
 | Tag | Meaning |
 | --- | --- |
-| `@wip` | Skip everywhere — work in progress |
-| `@windows_wip` | Skip on Windows only — should work but not yet verified |
-| `@freertoswip` | Skip on FreeRTOS only — scenario currently fails or errors on the FreeRTOS-on-QEMU target and is gated until the relevant capability lands. Each tagged scenario is a follow-up tied to a specific gap; the tag is removed scenario-by-scenario as the gap closes. The early bring-up reasons (hardcoded `TEST_*` values, missing SD elements, cmdline-only args) have all been closed out by S08.03 + S08.04 slices. |
+| `@wip` | Skip everywhere — work in progress. Not currently in use on any scenario. |
+| `@windows_wip` | Skip on Windows only — should work but not yet verified. Currently on `tcp_singletask.feature` (whole feature) and one scenario in `udp_mtu.feature`. |
+| `@freertoswip` | Skip on FreeRTOS only — scenario currently fails or errors on the FreeRTOS-on-QEMU target and is gated until the relevant capability lands. Each tagged scenario is a follow-up tied to a specific gap; the tag is removed scenario-by-scenario as the gap closes. Currently on one scenario in `udp_mtu.feature` (paired with `@requires_message_size_1500`). |
 
-Runner tag filters:
+Runner tag filters (canonical source: `ci/docker-compose.bdd.yml` for Linux + FreeRTOS, `.github/workflows/ci.yml` for Windows):
 
 | Runner | Filter |
 | --- | --- |
-| Linux (syslog-ng) | `not @wip` |
-| FreeRTOS (syslog-ng-freertos via QEMU) | `not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp)` |
-| Windows (OTel Collector) | `not @wip and not @windows_wip and not @buffered` |
+| Linux (syslog-ng) | `not @wip and not @no_rtc` |
+| FreeRTOS (syslog-ng-freertos via QEMU) | `not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp or @tls or @mtls)` |
+| Windows (OTel Collector) | `not @wip and not @windows_wip and not @no_rtc` |
 
 ## Two oracles, one step file
 
@@ -160,10 +164,10 @@ Step definitions read the active oracle from `ORACLE_FORMAT`:
 | OTel Collector Contrib (JSON Lines) | `otel-jsonl` | `Bdd/output/received.jsonl` | Windows native |
 
 `parse_oracle_line` dispatches to the right parser; both produce the same flat field dict
-(`PRIORITY`, `TIMESTAMP`, `HOSTNAME`, `APP_NAME`, `PROCID`, ...) so the `Then` steps don't
-need to know which oracle is in use. Walking-skeleton scope only — `STRUCTURED_DATA`
-re-rendering for the OTel parser is added when the structured-data scenarios are
-promoted out of `@windows_wip`.
+(`PRIORITY`, `TIMESTAMP`, `HOSTNAME`, `APP_NAME`, `PROCID`, `STRUCTURED_DATA`, ...) so the
+`Then` steps don't need to know which oracle is in use. The OTel parser re-renders the SD-ELEMENT
+back into RFC 5424 wire form via `_render_otel_structured_data` so the structured-data scenarios
+run cross-platform against the same assertions.
 
 ## Local Windows BDD setup
 
