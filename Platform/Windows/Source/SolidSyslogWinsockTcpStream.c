@@ -142,21 +142,18 @@ static uint32_t WinsockTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogWinso
 static bool WinsockTcpStream_WroteAllBytes(int sent, size_t expected);
 static inline bool WinsockTcpStream_WouldBlock(int wsaError);
 
-/* Canonical "no integrator config" state for a pool slot — copied wholesale in
- * Initialise. Holds the vtable function pointers, the Null Object getter, and
- * INVALID_SOCKET so a pre-Open slot is safe to Close without owning a real fd. */
-static const struct SolidSyslogWinsockTcpStream DefaultWinsockTcpStream = {
-    .Base =
-        {.Open = WinsockTcpStream_Open,
-         .Send = WinsockTcpStream_Send,
-         .Read = WinsockTcpStream_Read,
-         .Close = WinsockTcpStream_Close},
-    .Config = {.GetConnectTimeoutMs = WinsockTcpStream_NullConnectTimeoutGetter, .ConnectTimeoutContext = NULL},
-    .Fd = INVALID_SOCKET,
-};
-
 void WinsockTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogWinsockTcpStreamConfig* config)
 {
+    static const struct SolidSyslogWinsockTcpStream DefaultWinsockTcpStream = {
+        .Base =
+            {.Open = WinsockTcpStream_Open,
+             .Send = WinsockTcpStream_Send,
+             .Read = WinsockTcpStream_Read,
+             .Close = WinsockTcpStream_Close},
+        .Config = {.GetConnectTimeoutMs = WinsockTcpStream_NullConnectTimeoutGetter, .ConnectTimeoutContext = NULL},
+        .Fd = INVALID_SOCKET,
+    };
+
     struct SolidSyslogWinsockTcpStream* self = WinsockTcpStream_SelfFromBase(base);
     *self = DefaultWinsockTcpStream;
     if (WinsockTcpStream_ConfigProvidesGetter(config) == true)

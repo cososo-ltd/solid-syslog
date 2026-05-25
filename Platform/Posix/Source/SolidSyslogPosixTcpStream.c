@@ -17,7 +17,6 @@
 #include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPosixTcpStreamPrivate.h"
 #include "SolidSyslogStream.h"
-#include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTunables.h"
 
 struct SolidSyslogAddress;
@@ -62,21 +61,18 @@ static long PosixTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogPosixTc
 static bool PosixTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
 static inline bool PosixTcpStream_WouldBlock(int err);
 
-/* Canonical "no integrator config" state for a pool slot — copied wholesale in
- * Initialise. Holds the vtable function pointers, the Null Object getter, and
- * an INVALID_FD so a pre-Open slot is safe to Close without owning a real fd. */
-static const struct SolidSyslogPosixTcpStream DefaultPosixTcpStream = {
-    .Base =
-        {.Open = PosixTcpStream_Open,
-         .Send = PosixTcpStream_Send,
-         .Read = PosixTcpStream_Read,
-         .Close = PosixTcpStream_Close},
-    .Config = {.GetConnectTimeoutMs = PosixTcpStream_NullConnectTimeoutGetter, .ConnectTimeoutContext = NULL},
-    .Fd = INVALID_FD,
-};
-
 void PosixTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogPosixTcpStreamConfig* config)
 {
+    static const struct SolidSyslogPosixTcpStream DefaultPosixTcpStream = {
+        .Base =
+            {.Open = PosixTcpStream_Open,
+             .Send = PosixTcpStream_Send,
+             .Read = PosixTcpStream_Read,
+             .Close = PosixTcpStream_Close},
+        .Config = {.GetConnectTimeoutMs = PosixTcpStream_NullConnectTimeoutGetter, .ConnectTimeoutContext = NULL},
+        .Fd = INVALID_FD,
+    };
+
     struct SolidSyslogPosixTcpStream* self = PosixTcpStream_SelfFromBase(base);
     *self = DefaultPosixTcpStream;
     if (PosixTcpStream_ConfigProvidesGetter(config) == true)

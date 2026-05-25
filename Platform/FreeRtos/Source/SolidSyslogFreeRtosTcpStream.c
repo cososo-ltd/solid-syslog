@@ -75,25 +75,21 @@ static SolidSyslogSsize FreeRtosTcpStream_ReceiveOrCloseOnFailure(
 );
 static void FreeRtosTcpStream_CloseSocket(struct SolidSyslogFreeRtosTcpStream* self);
 
-/* Canonical "no integrator config" state for a pool slot — copied wholesale in
- * Initialise. Holds the vtable function pointers, the Null Object getter, and
- * FREERTOS_INVALID_SOCKET so a pre-Open slot is safe to Close without owning a
- * real socket. */
-static const struct SolidSyslogFreeRtosTcpStream DefaultFreeRtosTcpStream = {
-    .Base =
-        {.Open = FreeRtosTcpStream_Open,
-         .Send = FreeRtosTcpStream_Send,
-         .Read = FreeRtosTcpStream_Read,
-         .Close = FreeRtosTcpStream_Close},
-    .Config = {.GetConnectTimeoutMs = FreeRtosTcpStream_NullConnectTimeoutGetter, .ConnectTimeoutContext = NULL},
-    .Socket = FREERTOS_INVALID_SOCKET,
-};
-
 void FreeRtosTcpStream_Initialise(
     struct SolidSyslogStream* base,
     const struct SolidSyslogFreeRtosTcpStreamConfig* config
 )
 {
+    static const struct SolidSyslogFreeRtosTcpStream DefaultFreeRtosTcpStream = {
+        .Base =
+            {.Open = FreeRtosTcpStream_Open,
+             .Send = FreeRtosTcpStream_Send,
+             .Read = FreeRtosTcpStream_Read,
+             .Close = FreeRtosTcpStream_Close},
+        .Config = {.GetConnectTimeoutMs = FreeRtosTcpStream_NullConnectTimeoutGetter, .ConnectTimeoutContext = NULL},
+        .Socket = FREERTOS_INVALID_SOCKET,
+    };
+
     struct SolidSyslogFreeRtosTcpStream* self = FreeRtosTcpStream_SelfFromBase(base);
     *self = DefaultFreeRtosTcpStream;
     if (FreeRtosTcpStream_ConfigProvidesGetter(config) == true)

@@ -3,6 +3,7 @@
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <cerrno>
 
 #include "TestUtils.h"

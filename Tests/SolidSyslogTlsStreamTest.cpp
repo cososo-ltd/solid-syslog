@@ -3,6 +3,7 @@
 #include <openssl/prov_ssl.h>
 #include <openssl/types.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "ErrorHandlerFake.h"
 #include "OpenSslFake.h"
