@@ -104,7 +104,8 @@ struct DrainTestConfig
     enum SolidSyslogDiscardPolicy DiscardPolicy;
 };
 
-/* Shared file / block-device / null-security-policy fixture. Lifted out of
+/* Shared block-device / null-security-policy fixture (the underlying FileFake is
+ * an implementation detail of the BlockDevice). Lifted out of
  * the two TEST_GROUPs below so each can focus on its own moving parts —
  * BlockStoreDrainOrdering adds a BlockStore directly; ServiceDrainInterleave
  * adds Buffer + Mutex + SenderSpy + the SolidSyslog facade. Matches the

@@ -84,23 +84,23 @@ TEST(SolidSyslogBlockStorePosix, DiscardOldestDrainYieldsOnlySurvivingRecords)
 
     char firstMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     std::memset(firstMsg, 'B', sizeof(firstMsg));
-    SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg)); /* file 00 — will be discarded */
+    SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg)); /* block 00 — will be discarded */
 
     char secondMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     std::memset(secondMsg, 'C', sizeof(secondMsg));
-    SolidSyslogStore_Write(store, secondMsg, sizeof(secondMsg)); /* file 01 — survives */
+    SolidSyslogStore_Write(store, secondMsg, sizeof(secondMsg)); /* block 01 — survives */
 
-    WriteMaxMsg(); /* file 02 — triggers discard of file 00 */
+    WriteMaxMsg(); /* block 02 — triggers discard of block 00 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
     size_t bytesRead = 0;
 
-    /* First record should be from surviving file 01, not discarded file 00 */
+    /* First record should be from surviving block 01, not discarded block 00 */
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     BYTES_EQUAL('C', buf[0]);
     SolidSyslogStore_MarkSent(store);
 
-    /* Second record from file 02 */
+    /* Second record from block 02 */
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     BYTES_EQUAL('A', buf[0]);
     SolidSyslogStore_MarkSent(store);
@@ -109,7 +109,7 @@ TEST(SolidSyslogBlockStorePosix, DiscardOldestDrainYieldsOnlySurvivingRecords)
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
-TEST(SolidSyslogBlockStorePosix, DiscardOldestWhenReadIsPartwayThroughOldestFile)
+TEST(SolidSyslogBlockStorePosix, DiscardOldestWhenReadIsPartwayThroughOldestBlock)
 {
     static const size_t TWO_MAX_MSG_RECORDS = 2 * ONE_MAX_MSG_RECORD;
     CreateStore(TWO_MAX_MSG_RECORDS);
@@ -123,25 +123,25 @@ TEST(SolidSyslogBlockStorePosix, DiscardOldestWhenReadIsPartwayThroughOldestFile
     std::memset(msgC, 'C', sizeof(msgC));
     std::memset(msgD, 'D', sizeof(msgD));
 
-    /* Fill file 00 with two records */
+    /* Fill block 00 with two records */
     SolidSyslogStore_Write(store, msgA, sizeof(msgA));
     SolidSyslogStore_Write(store, msgB, sizeof(msgB));
 
-    /* Fill file 01 with two records */
+    /* Fill block 01 with two records */
     SolidSyslogStore_Write(store, msgC, sizeof(msgC));
     SolidSyslogStore_Write(store, msgD, sizeof(msgD));
 
-    /* Read and send first record from file 00 — read cursor is now partway through */
+    /* Read and send first record from block 00 — read cursor is now partway through */
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
     size_t bytesRead = 0;
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     BYTES_EQUAL('A', buf[0]);
     SolidSyslogStore_MarkSent(store);
 
-    /* Write one more — triggers rotation to file 02 and discard of file 00 */
+    /* Write one more — triggers rotation to block 02 and discard of block 00 */
     WriteMaxMsg();
 
-    /* Should get record B is lost (discarded with file 00), then C, D from file 01, then E from file 02 */
+    /* Record B is lost (discarded with block 00); drain yields C, D from block 01, then maxMsg from block 02 */
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     BYTES_EQUAL('C', buf[0]);
     SolidSyslogStore_MarkSent(store);

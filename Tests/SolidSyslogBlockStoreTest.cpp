@@ -62,7 +62,10 @@ static struct SolidSyslogBlockStoreConfig MakeConfig(struct SolidSyslogBlockDevi
  * BlockDevice, the BlockDevice itself, and a teardown that closes them in the
  * right order. TEST_BASE / TEST_GROUP_BASE lifts that boilerplate out of every
  * group. Test bodies still reference `file`, `device` directly because they
- * are inherited members. */
+ * are inherited members. `file` is genuinely a `SolidSyslogFile*` (used for
+ * file-layer assertions like `SolidSyslogFile_Exists` and fault injection
+ * like `FileFake_FailNextOpen`); the BlockStore concept itself is exercised
+ * through `device` and `store`. */
 // clang-format off
 TEST_BASE(BlockDeviceTestBase)
 {
@@ -119,7 +122,7 @@ TEST(SolidSyslogBlockStore, CreateReturnsNonNull)
     CHECK_TRUE(store != nullptr);
 }
 
-TEST(SolidSyslogBlockStore, CreatesFileWithSequence00)
+TEST(SolidSyslogBlockStore, CreatesFirstBlockOnInit)
 {
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
 }
@@ -307,7 +310,7 @@ TEST(SolidSyslogBlockStore, FiveWritesDrainAllInOrder)
 }
 
 /* ------------------------------------------------------------------
- * Resume from existing file
+ * Resume from existing block
  * ----------------------------------------------------------------*/
 
 // clang-format off
@@ -404,7 +407,7 @@ TEST(SolidSyslogBlockStoreResume, AllSentReturnsNoUnsent)
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
-TEST(SolidSyslogBlockStoreResume, EmptyFileReturnsNoUnsent)
+TEST(SolidSyslogBlockStoreResume, EmptyPreviousSessionReturnsNoUnsent)
 {
     WritePreviousSession(0, 0);
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
@@ -681,7 +684,7 @@ TEST(SolidSyslogBlockStoreErrors, MarkSentDoesNotAdvanceWhenWriteFails)
 }
 
 /* ------------------------------------------------------------------
- * File rotation
+ * Block rotation
  * ----------------------------------------------------------------*/
 
 // clang-format off
@@ -728,7 +731,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreRotation, BlockDeviceTestBase)
 
 // clang-format on
 
-TEST(SolidSyslogBlockStoreRotation, WriteRotatesToNewFileWhenFull)
+TEST(SolidSyslogBlockStoreRotation, WriteRotatesToNewBlockWhenFull)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
     WriteMaxMsg();
@@ -736,7 +739,7 @@ TEST(SolidSyslogBlockStoreRotation, WriteRotatesToNewFileWhenFull)
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
 }
 
-TEST(SolidSyslogBlockStoreRotation, WriteDoesNotRotateWhenFileHasSpace)
+TEST(SolidSyslogBlockStoreRotation, WriteDoesNotRotateWhenBlockHasSpace)
 {
     CreateWithMaxBlockSize(2 * ONE_MAX_MSG_RECORD);
     WriteMaxMsg();
@@ -752,7 +755,7 @@ TEST(SolidSyslogBlockStoreRotation, HasUnsentReturnsTrueAfterRotation)
     CHECK_TRUE(SolidSyslogStore_HasUnsent(store));
 }
 
-TEST(SolidSyslogBlockStoreRotation, ReadReturnsFirstFileAfterRotation)
+TEST(SolidSyslogBlockStoreRotation, ReadReturnsFirstBlockAfterRotation)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
 
@@ -760,7 +763,7 @@ TEST(SolidSyslogBlockStoreRotation, ReadReturnsFirstFileAfterRotation)
     memset(firstMsg, 'B', sizeof(firstMsg));
     SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg));
 
-    WriteMaxMsg(); /* rotates to file 01 */
+    WriteMaxMsg(); /* rotates to block 01 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
     size_t bytesRead = 0;
@@ -770,7 +773,7 @@ TEST(SolidSyslogBlockStoreRotation, ReadReturnsFirstFileAfterRotation)
     BYTES_EQUAL('B', buf[0]);
 }
 
-TEST(SolidSyslogBlockStoreRotation, MarkSentAdvancesReadToSecondFile)
+TEST(SolidSyslogBlockStoreRotation, MarkSentAdvancesReadToSecondBlock)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
 
@@ -778,7 +781,7 @@ TEST(SolidSyslogBlockStoreRotation, MarkSentAdvancesReadToSecondFile)
     memset(firstMsg, 'B', sizeof(firstMsg));
     SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg));
 
-    WriteMaxMsg(); /* rotates to file 01 */
+    WriteMaxMsg(); /* rotates to block 01 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
     size_t bytesRead = 0;
@@ -792,7 +795,7 @@ TEST(SolidSyslogBlockStoreRotation, MarkSentAdvancesReadToSecondFile)
     BYTES_EQUAL('A', buf[0]);
 }
 
-TEST(SolidSyslogBlockStoreRotation, FullDrainAcrossTwoFilesHasUnsentFalse)
+TEST(SolidSyslogBlockStoreRotation, FullDrainAcrossTwoBlocksHasUnsentFalse)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
     WriteMaxMsg();
@@ -810,12 +813,12 @@ TEST(SolidSyslogBlockStoreRotation, FullDrainAcrossTwoFilesHasUnsentFalse)
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
-TEST(SolidSyslogBlockStoreRotation, DiscardOldestDeletesOldestFileWhenAtMaxFiles)
+TEST(SolidSyslogBlockStoreRotation, DiscardOldestDeletesOldestBlockWhenAtMaxBlocks)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
-    WriteMaxMsg(); /* file 00 */
-    WriteMaxMsg(); /* file 01 — now at maxBlocks=2 */
-    WriteMaxMsg(); /* file 02 — must discard 00 */
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 — now at maxBlocks=2 */
+    WriteMaxMsg(); /* block 02 — must discard 00 */
 
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store02.log"));
@@ -827,13 +830,13 @@ TEST(SolidSyslogBlockStoreRotation, DiscardOldestSurvivingDataIsReadable)
 
     char firstMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(firstMsg, 'B', sizeof(firstMsg));
-    SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg)); /* file 00 */
+    SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg)); /* block 00 */
 
     char secondMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(secondMsg, 'C', sizeof(secondMsg));
-    SolidSyslogStore_Write(store, secondMsg, sizeof(secondMsg)); /* file 01 */
+    SolidSyslogStore_Write(store, secondMsg, sizeof(secondMsg)); /* block 01 */
 
-    WriteMaxMsg(); /* file 02 — discards 00 */
+    WriteMaxMsg(); /* block 02 — discards 00 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
     size_t bytesRead = 0;
@@ -849,23 +852,23 @@ TEST(SolidSyslogBlockStoreRotation, DiscardOldestDrainYieldsOnlySurvivingRecords
 
     char firstMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(firstMsg, 'B', sizeof(firstMsg));
-    SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg)); /* file 00 — will be discarded */
+    SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg)); /* block 00 — will be discarded */
 
     char secondMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(secondMsg, 'C', sizeof(secondMsg));
-    SolidSyslogStore_Write(store, secondMsg, sizeof(secondMsg)); /* file 01 — survives */
+    SolidSyslogStore_Write(store, secondMsg, sizeof(secondMsg)); /* block 01 — survives */
 
-    WriteMaxMsg(); /* file 02 — triggers discard of file 00 */
+    WriteMaxMsg(); /* block 02 — triggers discard of block 00 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
     size_t bytesRead = 0;
 
-    /* First record should be from surviving file 01, not discarded file 00 */
+    /* First record should be from surviving block 01, not discarded block 00 */
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     BYTES_EQUAL('C', buf[0]);
     SolidSyslogStore_MarkSent(store);
 
-    /* Second record from file 02 */
+    /* Second record from block 02 */
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     BYTES_EQUAL('A', buf[0]);
     SolidSyslogStore_MarkSent(store);
@@ -874,11 +877,11 @@ TEST(SolidSyslogBlockStoreRotation, DiscardOldestDrainYieldsOnlySurvivingRecords
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
-TEST(SolidSyslogBlockStoreRotation, DiscardNewestReturnsFalseWhenAtMaxFiles)
+TEST(SolidSyslogBlockStoreRotation, DiscardNewestReturnsFalseWhenAtMaxBlocks)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
-    WriteMaxMsg(); /* file 00 */
-    WriteMaxMsg(); /* file 01 — now at maxBlocks=2 */
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 — now at maxBlocks=2 */
 
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 }
@@ -896,8 +899,8 @@ TEST(SolidSyslogBlockStoreRotation, HaltInvokesCallbackWhenStoreFull)
     StoreFullCallbackCallCount = 0;
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT, 2, StoreFullCallback);
 
-    WriteMaxMsg(); /* file 00 */
-    WriteMaxMsg(); /* file 01 — now at maxBlocks=2 */
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 — now at maxBlocks=2 */
 
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
     CALLED_FUNCTION(StoreFullCallback, ONCE);
@@ -907,8 +910,8 @@ TEST(SolidSyslogBlockStoreRotation, HaltWithNullCallbackDoesNotCrash)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT);
 
-    WriteMaxMsg(); /* file 00 */
-    WriteMaxMsg(); /* file 01 — now at maxBlocks=2 */
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 — now at maxBlocks=2 */
 
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 }
@@ -917,8 +920,8 @@ TEST(SolidSyslogBlockStoreRotation, HaltSetsIsHaltedTrue)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT);
 
-    WriteMaxMsg(); /* file 00 */
-    WriteMaxMsg(); /* file 01 — now at maxBlocks=2 */
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 — now at maxBlocks=2 */
 
     CHECK_FALSE(SolidSyslogStore_IsHalted(store));
     SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* triggers halt */
@@ -930,8 +933,8 @@ TEST(SolidSyslogBlockStoreRotation, DiscardNewestDoesNotInvokeCallback)
     StoreFullCallbackCallCount = 0;
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, 2, StoreFullCallback);
 
-    WriteMaxMsg(); /* file 00 */
-    WriteMaxMsg(); /* file 01 — now at maxBlocks=2 */
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 — now at maxBlocks=2 */
 
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
     CALLED_FUNCTION(StoreFullCallback, NEVER);
@@ -950,8 +953,8 @@ TEST(SolidSyslogBlockStoreRotation, HaltOnStoreFullFiresOncePerRisingEdge)
     CountStoreFullInvocationsCallCount = 0;
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT, 2, CountStoreFullInvocations);
 
-    WriteMaxMsg(); /* file 00 */
-    WriteMaxMsg(); /* file 01 — now at maxBlocks=2 */
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 — now at maxBlocks=2 */
 
     /* Three consecutive failed Writes — callback must fire on the first only. */
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
@@ -984,34 +987,34 @@ TEST(SolidSyslogBlockStoreRotation, OnStoreFullReceivesConfiguredContext)
         &sentinel
     );
 
-    WriteMaxMsg(); /* file 00 */
-    WriteMaxMsg(); /* file 01 — at maxBlocks */
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 — at maxBlocks */
 
     SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* triggers halt callback */
 
     POINTERS_EQUAL(&sentinel, storeFullCallbackContext);
 }
 
-TEST(SolidSyslogBlockStoreRotation, ResumeHasUnsentWhenMultipleFilesExist)
+TEST(SolidSyslogBlockStoreRotation, ResumeHasUnsentWhenMultipleBlocksExist)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
-    WriteMaxMsg(); /* file 00 */
-    WriteMaxMsg(); /* file 01 */
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
     SolidSyslogBlockStore_Destroy(store);
 
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
     CHECK_TRUE(SolidSyslogStore_HasUnsent(store));
 }
 
-TEST(SolidSyslogBlockStoreRotation, ResumeDrainsAcrossFilesInOrder)
+TEST(SolidSyslogBlockStoreRotation, ResumeDrainsAcrossBlocksInOrder)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
 
     char firstMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(firstMsg, 'B', sizeof(firstMsg));
-    SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg)); /* file 00 */
+    SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg)); /* block 00 */
 
-    WriteMaxMsg(); /* file 01 — 'A' */
+    WriteMaxMsg(); /* block 01 — 'A' */
     SolidSyslogBlockStore_Destroy(store);
 
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
@@ -1031,24 +1034,24 @@ TEST(SolidSyslogBlockStoreRotation, ResumeDrainsAcrossFilesInOrder)
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
-TEST(SolidSyslogBlockStoreRotation, ResumeContinuesWritingToCorrectFile)
+TEST(SolidSyslogBlockStoreRotation, ResumeContinuesWritingToCorrectBlock)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
-    WriteMaxMsg(); /* file 00 */
+    WriteMaxMsg(); /* block 00 */
     SolidSyslogBlockStore_Destroy(store);
 
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
-    WriteMaxMsg(); /* should rotate to file 01, not overwrite 00 */
+    WriteMaxMsg(); /* should rotate to block 01, not overwrite 00 */
 
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
 }
 
-TEST(SolidSyslogBlockStoreRotation, ResumeWithMultipleFilesCanWriteNewMessage)
+TEST(SolidSyslogBlockStoreRotation, ResumeWithMultipleBlocksCanWriteNewMessage)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
-    WriteMaxMsg(); /* file 00 */
-    WriteMaxMsg(); /* file 01 */
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
     SolidSyslogBlockStore_Destroy(store);
 
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
@@ -1057,23 +1060,23 @@ TEST(SolidSyslogBlockStoreRotation, ResumeWithMultipleFilesCanWriteNewMessage)
     memset(newMsg, 'N', sizeof(newMsg));
     CHECK_TRUE(SolidSyslogStore_Write(store, newMsg, sizeof(newMsg)));
 
-    /* Should have rotated to file 02 — file 01 was full */
+    /* Should have rotated to block 02 — block 01 was full */
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store02.log"));
 }
 
-TEST(SolidSyslogBlockStoreRotation, ResumeWriteAppendsToPartiallyFilledWriteFile)
+TEST(SolidSyslogBlockStoreRotation, ResumeWriteAppendsToPartiallyFilledWriteBlock)
 {
     static const size_t TWO_MAX_MSG_RECORDS = 2 * ONE_MAX_MSG_RECORD;
 
     CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS);
-    WriteMaxMsg(); /* file 00, record 1 */
-    WriteMaxMsg(); /* file 00, record 2 — file 00 full */
-    WriteMaxMsg(); /* file 01, record 1 — file 01 partially filled */
+    WriteMaxMsg(); /* block 00, record 1 */
+    WriteMaxMsg(); /* block 00, record 2 — block 00 full */
+    WriteMaxMsg(); /* block 01, record 1 — block 01 partially filled */
     SolidSyslogBlockStore_Destroy(store);
 
     CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS);
 
-    /* Write should append to file 01, not rotate */
+    /* Write should append to block 01, not rotate */
     CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store02.log"));
 }
@@ -1118,18 +1121,18 @@ TEST(SolidSyslogBlockStoreRotation, ResumeFindsUnsentInClosedReadBlockWhenWriteB
 
 TEST(SolidSyslogBlockStoreRotation, SequenceWrapsFrom99To00)
 {
-    /* Pre-seed file 99 so the scan finds it as the write file */
+    /* Pre-seed block 99 on disk so the scan finds it as the write block */
     SolidSyslogFile_Open(file, "/tmp/test_store99.log");
     SolidSyslogFile_Close(file);
 
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
-    WriteMaxMsg(); /* fills file 99 */
-    WriteMaxMsg(); /* should wrap to file 00 */
+    WriteMaxMsg(); /* fills block 99 */
+    WriteMaxMsg(); /* should wrap to block 00 */
 
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
 }
 
-TEST(SolidSyslogBlockStoreRotation, WriteAfterDrainRotatesToNextFile)
+TEST(SolidSyslogBlockStoreRotation, WriteAfterDrainRotatesToNextBlock)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
     WriteMaxMsg();
@@ -1141,13 +1144,13 @@ TEST(SolidSyslogBlockStoreRotation, WriteAfterDrainRotatesToNextFile)
 
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 
-    /* Drained file still occupies space — next write rotates */
+    /* Drained block still occupies space — next write rotates */
     WriteMaxMsg();
     CHECK_TRUE(SolidSyslogStore_HasUnsent(store));
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
 }
 
-TEST(SolidSyslogBlockStoreRotation, MixedMessageSizesDrainCorrectlyAcrossFiles)
+TEST(SolidSyslogBlockStoreRotation, MixedMessageSizesDrainCorrectlyAcrossBlocks)
 {
     static const size_t SHORT_LEN = 7;
 
@@ -1155,9 +1158,9 @@ TEST(SolidSyslogBlockStoreRotation, MixedMessageSizesDrainCorrectlyAcrossFiles)
 
     char shortMsg[SHORT_LEN];
     memset(shortMsg, 'S', SHORT_LEN);
-    SolidSyslogStore_Write(store, shortMsg, SHORT_LEN); /* file 00 — small record */
+    SolidSyslogStore_Write(store, shortMsg, SHORT_LEN); /* block 00 — small record */
 
-    WriteMaxMsg(); /* file 01 — max record */
+    WriteMaxMsg(); /* block 01 — max record */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
     size_t bytesRead = 0;
@@ -1180,7 +1183,7 @@ TEST(SolidSyslogBlockStoreRotation, ContinuousDiscardWithoutReadingSurvivorsCorr
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
 
-    /* Write 5 messages across 5 files — maxBlocks=2 means 3 are discarded */
+    /* Write 5 messages across 5 blocks — maxBlocks=2 means 3 are discarded */
     char msgs[5][SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     // NOLINTBEGIN(cppcoreguidelines-pro-bounds-constant-array-index) -- loop index is bounded by literal 5
     for (int i = 0; i < 5; i++)
@@ -1190,7 +1193,7 @@ TEST(SolidSyslogBlockStoreRotation, ContinuousDiscardWithoutReadingSurvivorsCorr
     }
     // NOLINTEND(cppcoreguidelines-pro-bounds-constant-array-index)
 
-    /* Only files 03 and 04 should survive */
+    /* Only blocks 03 and 04 should survive */
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store02.log"));
@@ -1213,34 +1216,34 @@ TEST(SolidSyslogBlockStoreRotation, ContinuousDiscardWithoutReadingSurvivorsCorr
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
-TEST(SolidSyslogBlockStoreRotation, MaxFilesAtUpperLimit)
+TEST(SolidSyslogBlockStoreRotation, MaxBlocksAtUpperLimit)
 {
     enum
     {
-        MAX_FILES = 99
+        MAX_BLOCKS = 99
     };
 
-    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, MAX_FILES);
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, MAX_BLOCKS);
 
-    /* Fill all 99 files */
-    for (int i = 0; i < MAX_FILES; i++)
+    /* Fill all 99 blocks */
+    for (int i = 0; i < MAX_BLOCKS; i++)
     {
         WriteMaxMsg();
     }
 
-    /* All 99 files should exist (00–98) */
+    /* All 99 blocks should exist (00–98) */
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store98.log"));
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store99.log"));
 
-    /* One more write — should discard file 00 and create file 99 */
+    /* One more write — should discard block 00 and create block 99 */
     WriteMaxMsg();
 
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store99.log"));
 }
 
-TEST(SolidSyslogBlockStoreRotation, MultipleRecordsPerFileDrainAcrossRotation)
+TEST(SolidSyslogBlockStoreRotation, MultipleRecordsPerBlockDrainAcrossRotation)
 {
     static const size_t TWO_MAX_MSG_RECORDS = 2 * ONE_MAX_MSG_RECORD;
 
@@ -1248,13 +1251,13 @@ TEST(SolidSyslogBlockStoreRotation, MultipleRecordsPerFileDrainAcrossRotation)
 
     char msg0[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(msg0, 'X', sizeof(msg0));
-    SolidSyslogStore_Write(store, msg0, sizeof(msg0)); /* file 00, record 1 */
+    SolidSyslogStore_Write(store, msg0, sizeof(msg0)); /* block 00, record 1 */
 
     char msg1[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(msg1, 'Y', sizeof(msg1));
-    SolidSyslogStore_Write(store, msg1, sizeof(msg1)); /* file 00, record 2 */
+    SolidSyslogStore_Write(store, msg1, sizeof(msg1)); /* block 00, record 2 */
 
-    WriteMaxMsg(); /* file 01, record 1 — 'A' */
+    WriteMaxMsg(); /* block 01, record 1 — 'A' */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
     size_t bytesRead = 0;
@@ -1279,8 +1282,8 @@ TEST(SolidSyslogBlockStoreRotation, MultipleRecordsPerFileDrainAcrossRotation)
 TEST(SolidSyslogBlockStoreRotation, MarkSentDisposesOlderBlockWhenDrained)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
-    WriteMaxMsg(); /* file 00 */
-    WriteMaxMsg(); /* rotates to file 01 */
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* rotates to block 01 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t bytesRead = 0;
@@ -1293,7 +1296,7 @@ TEST(SolidSyslogBlockStoreRotation, MarkSentDisposesOlderBlockWhenDrained)
 TEST(SolidSyslogBlockStoreRotation, MarkSentDoesNotDisposeActiveWriteBlock)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
-    WriteMaxMsg(); /* file 00 — also the active write block */
+    WriteMaxMsg(); /* block 00 — also the active write block */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t bytesRead = 0;
@@ -1328,7 +1331,7 @@ TEST(SolidSyslogBlockStoreRotation, RotationDisposesPriorBlockWhenAlreadyDrained
 TEST(SolidSyslogBlockStoreRotation, WriteReturnsFalseWhenRotationAcquireFails)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
-    WriteMaxMsg(); /* file 00 — fills block */
+    WriteMaxMsg(); /* fills block 00 */
 
     FileFake_FailNextOpen(file); /* next Acquire on rotation will fail */
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
@@ -1338,10 +1341,10 @@ TEST(SolidSyslogBlockStoreRotation, WriteReturnsFalseWhenRotationAcquireFails)
 TEST(SolidSyslogBlockStoreRotation, RotationRetriesAfterTransientAcquireFailure)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
-    WriteMaxMsg(); /* file 00 */
+    WriteMaxMsg(); /* block 00 */
 
     FileFake_FailNextOpen(file);
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* fails — Acquire on file 01 rejected */
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* fails — Acquire on block 01 rejected */
 
     CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* retry succeeds */
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
@@ -1351,18 +1354,18 @@ TEST(SolidSyslogBlockStoreRotation, DiscardRetriesAfterTransientDisposeFailure)
 {
     /* Without this guarantee the oldest pointer would advance past a still-on-disk
      * block, leaving it orphaned forever. Force a Dispose failure on the discard
-     * during file-02 rotation, then trigger another rotation: the next discard
+     * during block-02 rotation, then trigger another rotation: the next discard
      * cycle must re-attempt block 00 — not skip past it to block 01. Both Writes
      * succeed (rotation acquires the new block; only the discard silently fails). */
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
-    WriteMaxMsg(); /* file 00 */
-    WriteMaxMsg(); /* file 01 */
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
 
     FileFake_FailNextDelete(file);
     CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))
-    ); /* file 02 — discard of 00 fails; oldest must stay at 0 */
+    ); /* block 02 — discard of 00 fails; oldest must stay at 0 */
     CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))
-    ); /* file 03 — next discard cycle re-attempts and removes 00 */
+    ); /* block 03 — next discard cycle re-attempts and removes 00 */
 
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
 }
@@ -1706,15 +1709,15 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
 
 // clang-format on
 
-TEST(SolidSyslogBlockStoreCorruptionRecovery, ReadSkipsCorruptOlderFileToNextFile)
+TEST(SolidSyslogBlockStoreCorruptionRecovery, ReadSkipsCorruptOlderBlockToNextBlock)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
 
     char firstMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(firstMsg, 'B', sizeof(firstMsg));
-    SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg)); /* file 00 */
+    SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg)); /* block 00 */
 
-    WriteMaxMsg(); /* file 01 */
+    WriteMaxMsg(); /* block 01 */
     SolidSyslogBlockStore_Destroy(store);
 
     CorruptFirstRecordBody("/tmp/test_store00.log");
@@ -1728,21 +1731,21 @@ TEST(SolidSyslogBlockStoreCorruptionRecovery, ReadSkipsCorruptOlderFileToNextFil
     BYTES_EQUAL('A', buf[0]);
 }
 
-TEST(SolidSyslogBlockStoreCorruptionRecovery, CorruptWriteFileRotatesOnNextWrite)
+TEST(SolidSyslogBlockStoreCorruptionRecovery, CorruptWriteBlockRotatesOnNextWrite)
 {
-    /* Use a file size that fits two records — the first write leaves space,
+    /* Use a block size that fits two records — the first write leaves space,
      * so rotation on the second write proves corruption forced it */
     static const size_t TWO_MAX_MSG_RECORDS = 2 * ONE_MAX_MSG_RECORD;
 
     CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS);
-    WriteMaxMsg(); /* file 00 — partially filled */
+    WriteMaxMsg(); /* block 00 — partially filled */
     SolidSyslogBlockStore_Destroy(store);
 
     CorruptFirstRecordBody("/tmp/test_store00.log");
 
     CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS);
 
-    /* File 00 has space but is corrupt — write should rotate to file 01 */
+    /* Block 00 has space but is corrupt — write should rotate to block 01 */
     char newMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(newMsg, 'N', sizeof(newMsg));
     CHECK_TRUE(SolidSyslogStore_Write(store, newMsg, sizeof(newMsg)));
@@ -1802,7 +1805,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCapacity, BlockDeviceTestBase)
 /* Given maxBlocks × maxBlockSize configured,
  * When GetTotalBytes is queried,
  * Then it returns the product. */
-TEST(SolidSyslogBlockStoreCapacity, GetTotalBytesReturnsMaxFilesTimesMaxFileSize)
+TEST(SolidSyslogBlockStoreCapacity, GetTotalBytesReturnsMaxBlocksTimesMaxBlockSize)
 {
     CreateDefault();
     LONGS_EQUAL(TEST_MAX_BLOCKS * TEST_MAX_BLOCK_SIZE, SolidSyslogStore_GetTotalBytes(store));
