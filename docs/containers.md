@@ -6,8 +6,8 @@
 |---|---|---|
 | `ghcr.io/davidcozens/cpputest` | `sha-18f19e1` | devcontainer (`gcc` service), most CI jobs |
 | `ghcr.io/davidcozens/cpputest-clang` | `sha-7eac3ab` | `clang` compose service, `build-linux-clang` CI job, `analyze-iwyu` CI job |
-| `ghcr.io/davidcozens/cpputest-freertos` | `sha-24de138` | `freertos-host` compose service, `build-freertos-host-tdd` CI job — adds FreeRTOS-Kernel / Plus-TCP / lwIP / FatFs / Mbed TLS sources for host-TDD of FreeRTOS adapters against fakes |
-| `ghcr.io/davidcozens/cpputest-freertos-cross` | `sha-24de138` | `freertos-target` compose service, `build-freertos-target` CI job, `behave-freertos` BDD service, `bdd-freertos-qemu` CI job — adds `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm`, `python3` + `behave`, FreeRTOS-Kernel / Plus-TCP / lwIP / FatFs sources at `/opt/freertos-kernel` / `/opt/freertos-plus-tcp` / `/opt/lwip` / `/opt/fatfs` for cross builds, on-QEMU runs, and BDD scenarios driving a QEMU target |
+| `ghcr.io/davidcozens/cpputest-freertos` | `sha-24de138` | `freertos-host` compose service, `build-freertos-host-tdd-plustcp` CI job — adds FreeRTOS-Kernel / Plus-TCP / lwIP / FatFs / Mbed TLS sources for host-TDD of FreeRTOS adapters against fakes |
+| `ghcr.io/davidcozens/cpputest-freertos-cross` | `sha-24de138` | `freertos-target` compose service, `build-freertos-target-plustcp` CI job, `behave-freertos` BDD service, `bdd-freertos-qemu-plustcp` CI job — adds `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm`, `python3` + `behave`, FreeRTOS-Kernel / Plus-TCP / lwIP / FatFs sources at `/opt/freertos-kernel` / `/opt/freertos-plus-tcp` / `/opt/lwip` / `/opt/fatfs` for cross builds, on-QEMU runs, and BDD scenarios driving a QEMU target |
 | `balabit/syslog-ng` | `4.8.2` | `syslog-ng-linux` and `syslog-ng-freertos` services — BDD test oracles, one per target pair. Pinned to the 4.8 LTS line; 4.11.0 (`latest` as of 2026-02-24) regressed by aborting on `STATS` over the control socket, which crashed the oracle and cascaded to the dev-container network when `freertos-target` shares the namespace. |
 | `ghcr.io/davidcozens/behave` | `sha-3faff14` | `behave-linux` service — Debian trixie + Python 3.12 + Behave for Linux BDD scenarios. The FreeRTOS BDD runner uses the `cpputest-freertos-cross` image instead (which carries QEMU + Behave). |
 
@@ -36,6 +36,21 @@ pairs never run together, so the alias collision is academic.
 
 As more cross-compilation targets are added, each gets its own oracle pair in the
 same shape (`syslog-ng-<target>` + a runner service or in-container Behave).
+
+## FreeRTOS networking backend selection
+
+`cpputest-freertos` and `cpputest-freertos-cross` both ship the
+FreeRTOS-Plus-TCP and lwIP source trees side-by-side. The library picks
+between them at CMake time via `SOLIDSYSLOG_FREERTOS_NET`:
+
+| Value | Behaviour |
+|---|---|
+| `PLUSTCP` (default) | Compiles `Platform/PlusTcp/` against FreeRTOS-Plus-TCP. Current first-class backend. |
+| `LWIP` | `FATAL_ERROR` — `Platform/LwipRaw/` is in progress under epic E28 (stories S28.03–S28.05). |
+| `BOTH` | Compiles `PLUSTCP` only and emits a `STATUS` message until the lwIP backend lands (E28 S28.06). Lets dev-container users keep `BOTH` set without breaking their build during the gap. |
+
+CI runs `PLUSTCP` and (once E28 S28.06 lands) `LWIP` in isolation; the
+`BOTH` value is a dev-container convenience and is not exercised by CI.
 
 ## Running the clang build locally
 

@@ -39,7 +39,7 @@ the per-context mbedTLS handles passed through
 
 | Item | Owner | Notes |
 |---|---|---|
-| `Transport` | You | A `SolidSyslogStream*` carrying TCP. The library ships `SolidSyslogPosixTcpStream` (POSIX), `SolidSyslogWinsockTcpStream` (Windows), and `SolidSyslogFreeRtosTcpStream` (FreeRTOS-Plus-TCP). If your TCP/IP stack is different (LwIP, NicheStack, vendor BSP), write your own `SolidSyslogStream` — see [`Platform/Posix/Source/SolidSyslogPosixTcpStream.c`](../Platform/Posix/Source/SolidSyslogPosixTcpStream.c) as a reference. |
+| `Transport` | You | A `SolidSyslogStream*` carrying TCP. The library ships `SolidSyslogPosixTcpStream` (POSIX), `SolidSyslogWinsockTcpStream` (Windows), and `SolidSyslogPlusTcpTcpStream` (FreeRTOS-Plus-TCP). If your TCP/IP stack is different (LwIP, NicheStack, vendor BSP), write your own `SolidSyslogStream` — see [`Platform/Posix/Source/SolidSyslogPosixTcpStream.c`](../Platform/Posix/Source/SolidSyslogPosixTcpStream.c) as a reference. |
 | `Sleep` | You | A `SolidSyslogSleepFunction`. Drives the bounded handshake retry between `WANT_READ` / `WANT_WRITE` polls. On FreeRTOS use a `vTaskDelay`-backed wrapper; on POSIX `SolidSyslogPosixSleep` is the natural fit. Required. |
 | `GetHandshakeTimeoutMs` / `HandshakeTimeoutContext` | You (optional) | Per-instance accessor pair for the bounded handshake budget. `NULL` falls back to the `SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS` compile-time tunable (default 5000 ms). Install when you need to runtime-tune the handshake deadline — slow peers on a constrained link, or per-tenant policy from your existing configuration store. The accessor is called on every `Open`. See [S12.17 #282](https://github.com/DavidCozens/solid-syslog/issues/282). |
 | `Rng` | You | `mbedtls_ctr_drbg_context*` you seeded yourself. The adapter calls `mbedtls_ctr_drbg_random` against it. Required. |
@@ -66,7 +66,7 @@ Concretely, on top of your existing setup:
 
 1. **Pick a `SolidSyslogStream` for the byte transport.** Use one of the
    shipped adapters that matches your TCP/IP stack
-   (`SolidSyslogFreeRtosTcpStream`, `SolidSyslogPosixTcpStream`,
+   (`SolidSyslogPlusTcpTcpStream`, `SolidSyslogPosixTcpStream`,
    `SolidSyslogWinsockTcpStream`) or write your own backing the same
    `SolidSyslogStream` vtable. If you wrote your own, the existing
    shipped adapters are the worked examples.
@@ -134,7 +134,7 @@ specifically for this adapter:
   exactly as in [Scenario A](#scenario-a-you-already-have-mbed-tls-in-your-image).
 
 A worked end-to-end example for all of the above lives at
-[`Bdd/Targets/Common/BddTargetTlsSender_MbedTls_FreeRtosTcp.c`](../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_FreeRtosTcp.c)
+[`Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c`](../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c)
 (FreeRTOS-Plus-TCP on QEMU mps2-an385). The matching Mbed TLS config
 overrides live at
 [`Bdd/Targets/FreeRtos/mbedtls_user_config.h`](../Bdd/Targets/FreeRtos/mbedtls_user_config.h).
@@ -199,7 +199,7 @@ shows the minimal config that satisfies the above for QEMU mps2-an385.
 
 | Target | Adapter source | Mbed TLS config | Notes |
 |---|---|---|---|
-| FreeRTOS QEMU mps2-an385 + FreeRTOS-Plus-TCP | [BddTargetTlsSender_MbedTls_FreeRtosTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_FreeRtosTcp.c) | [mbedtls_user_config.h](../Bdd/Targets/FreeRtos/mbedtls_user_config.h) | Demo-quality entropy and baked-in PEMs; loudly tagged not-for-production. |
+| FreeRTOS QEMU mps2-an385 + FreeRTOS-Plus-TCP | [BddTargetTlsSender_MbedTls_PlusTcpTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c) | [mbedtls_user_config.h](../Bdd/Targets/FreeRtos/mbedtls_user_config.h) | Demo-quality entropy and baked-in PEMs; loudly tagged not-for-production. |
 | Linux host (host-TDD parity with the embedded path) | [Tests/MbedTlsIntegration/](../Tests/MbedTlsIntegration/) | — | In-process TLS server drives a real handshake against the wrapper. |
 | POSIX (OpenSSL reference, for comparison) | [BddTargetTlsSender_OpenSsl_PosixTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_OpenSsl_PosixTcp.c) | — | Same composition shape using `SolidSyslogTlsStream` for the TLS layer. |
 

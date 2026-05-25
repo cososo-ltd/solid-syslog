@@ -66,13 +66,13 @@ characters:
 
 The Tier 1 naming scheme in `docs/NAMING.md` (form
 `SolidSyslogClass_Function`) routinely produces identifiers in the
-30–40 character range — `SolidSyslogFreeRtosResolver_Create` is
-40, `SolidSyslogFreeRtosTcpStream_Destroy` is 36 — and a few public
+30–40 character range — `SolidSyslogPlusTcpResolver_Create` is
+40, `SolidSyslogPlusTcpTcpStream_Destroy` is 36 — and a few public
 storage-size enums sit just below 40 (e.g.
-`SOLIDSYSLOG_FREE_RTOS_RESOLVER_POOL_SIZE`, 40). Strict 31-character
+`SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE`, 40). Strict 31-character
 distinctness would either collapse identifier pairs that read
 identically up to a trailing word
-(`SolidSyslogFreeRtosResolver_Create` vs `_Destroy`) into a
+(`SolidSyslogPlusTcpResolver_Create` vs `_Destroy`) into a
 single name, or force unidiomatic abbreviation throughout the public
 API. Neither outcome serves clarity or MISRA's underlying intent
 ("the reader can tell two identifiers apart"); 63 characters does.

@@ -68,7 +68,7 @@
  * newlib into the small 4 KiB syscall heap in Bdd/Targets/FreeRtos/Common/
  * Syscalls.c — far too small for mbedTLS's per-context allocations (IN/OUT
  * buffers plus handshake state run ~10–20 KiB). Enabling
- * MBEDTLS_PLATFORM_MEMORY lets BddTargetTlsSender_MbedTls_FreeRtosTcp.c call
+ * MBEDTLS_PLATFORM_MEMORY lets BddTargetTlsSender_MbedTls_PlusTcpTcp.c call
  * mbedtls_platform_set_calloc_free(...) to redirect those allocations to
  * pvPortMalloc, which uses the 96 KiB heap_4 region — the textbook
  * FreeRTOS+mbedTLS integration. */
@@ -81,7 +81,7 @@
  * (-148) on platforms with no real entropy source (which is us, with
  * MBEDTLS_NO_PLATFORM_ENTROPY defined above). With this define, PSA never
  * tries to seed itself; the integrator provides mbedtls_psa_external_get_random
- * (see BddTargetTlsSender_MbedTls_FreeRtosTcp.c) which feeds the same CTR_DRBG
+ * (see BddTargetTlsSender_MbedTls_PlusTcpTcp.c) which feeds the same CTR_DRBG
  * the classic API uses, so PSA and the classic API share one entropy chain. */
 #define MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG
 

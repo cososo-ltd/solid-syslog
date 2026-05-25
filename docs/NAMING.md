@@ -190,7 +190,7 @@ Rationale:
 For source files matching `SolidSyslog<X>.c`, the Tier 2 class prefix
 is `<X>_` — the filename with the `SolidSyslog` library namespace
 stripped. So `SolidSyslogTlsStream.c` → `TlsStream_*`,
-`SolidSyslogFreeRtosTcpStream.c` → `FreeRtosTcpStream_*`,
+`SolidSyslogPlusTcpTcpStream.c` → `PlusTcpTcpStream_*`,
 `SolidSyslogWinsockTcpStream.c` → `WinsockTcpStream_*`. Files whose
 basename already drops the library prefix (e.g. `BlockSequence.c`,
 `RecordStore.c`) use the basename as the class verbatim →

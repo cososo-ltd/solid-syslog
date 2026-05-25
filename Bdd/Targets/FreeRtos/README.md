@@ -7,10 +7,10 @@ QEMU's stdio UART.
 SolidSyslog runs here with the portable `SolidSyslogCircularBuffer` +
 `SolidSyslogFreeRtosMutex` drained by a dedicated FreeRTOS Service task,
 a `SolidSyslogSwitchingSender` wrapping four inner senders — UDP over
-`SolidSyslogFreeRtosDatagram`, TCP over `SolidSyslogFreeRtosTcpStream` +
+`SolidSyslogPlusTcpDatagram`, TCP over `SolidSyslogPlusTcpTcpStream` +
 `SolidSyslogStreamSender`, and TLS + mTLS via `SolidSyslogMbedTlsStream`
-layered over the same `SolidSyslogFreeRtosTcpStream` byte transport.
-`SolidSyslogFreeRtosResolver` is pinned to the QEMU slirp gateway
+layered over the same `SolidSyslogPlusTcpTcpStream` byte transport.
+`SolidSyslogPlusTcpResolver` is pinned to the QEMU slirp gateway
 (`10.0.2.2`), and the `Bdd/Targets/Common/BddTargetInteractive` runner
 drives the target. Drive identity / endpoint / PRIVAL fields over the
 UART command channel with `set NAME VALUE`, flip the active transport at
