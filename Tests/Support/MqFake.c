@@ -15,7 +15,11 @@
 enum
 {
     MQFAKE_MAX_QUEUES = 4,
-    MQFAKE_MAX_MESSAGES_PER_QUEUE = 8,
+    /* Storage cap for the in-memory ring per queue. Per-call enforcement
+     * uses the caller's `mq_attr.mq_maxmsg` instead, so this value just
+     * needs to be at least as large as the largest `maxMessages` any test
+     * passes to `mq_open`. Bumping it is cheap (BSS only). */
+    MQFAKE_MAX_MESSAGES_PER_QUEUE = 16,
     MQFAKE_MAX_OPEN_HISTORY = 8,
     MQFAKE_MAX_NAME_LEN = 64,
     MQFAKE_HANDLE_BASE = 100,
@@ -354,18 +358,27 @@ int mq_send(mqd_t mqd, const char* msg, size_t msgLen, unsigned int msgPrio)
         {
             errno = EBADF;
         }
-        else if (queue->count >= MQFAKE_MAX_MESSAGES_PER_QUEUE)
+        else if (msgLen > queue->maxMessageSize)
         {
+            /* POSIX: mq_send must return -1/EMSGSIZE when msgLen exceeds the
+             * queue's per-message size. Truncating instead would mask real-kernel
+             * behaviour from tests. */
+            errno = EMSGSIZE;
+        }
+        else if (queue->count >= (int) queue->maxMessages)
+        {
+            /* POSIX: with O_NONBLOCK and the queue at capacity, mq_send must
+             * return -1/EAGAIN. Use the per-queue limit captured at mq_open,
+             * not the fake's storage cap. */
             errno = EAGAIN;
         }
         else
         {
-            size_t storeLen = (msgLen < sizeof(queue->messages[0])) ? msgLen : sizeof(queue->messages[0]);
-            if (storeLen > 0U)
+            if (msgLen > 0U)
             {
-                memcpy(queue->messages[queue->tail], msg, storeLen);
+                memcpy(queue->messages[queue->tail], msg, msgLen);
             }
-            queue->messageLens[queue->tail] = storeLen;
+            queue->messageLens[queue->tail] = msgLen;
             queue->tail = (queue->tail + 1) % MQFAKE_MAX_MESSAGES_PER_QUEUE;
             queue->count++;
             result = 0;

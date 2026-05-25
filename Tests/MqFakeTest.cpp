@@ -107,6 +107,26 @@ TEST(MqFake, FailNextSendReturnsMinusOneAndSetsErrno)
     LONGS_EQUAL(EMSGSIZE, errno);
 }
 
+/* Natural overflow — sending past mq_attr.mq_maxmsg must surface as
+ * -1/EAGAIN per POSIX, not silently succeed. */
+TEST(MqFake, SendBeyondMaxMessagesReturnsMinusOneEagain)
+{
+    mqd_t mqd = OpenTestQueue("/test", /*maxMessages=*/2, /*maxMessageSize=*/64);
+    LONGS_EQUAL(0, mq_send(mqd, "a", 1, 0));
+    LONGS_EQUAL(0, mq_send(mqd, "b", 1, 0));
+
+    LONGS_EQUAL(-1, mq_send(mqd, "c", 1, 0));
+    LONGS_EQUAL(EAGAIN, errno);
+}
+
+/* Natural oversize — POSIX requires -1/EMSGSIZE, not truncation. */
+TEST(MqFake, SendLargerThanMaxMessageSizeReturnsMinusOneEmsgsize)
+{
+    mqd_t mqd = OpenTestQueue("/test", /*maxMessages=*/4, /*maxMessageSize=*/4);
+    LONGS_EQUAL(-1, mq_send(mqd, "fivefive", 8, 0));
+    LONGS_EQUAL(EMSGSIZE, errno);
+}
+
 TEST(MqFake, FailNextReceiveReturnsMinusOneAndSetsErrno)
 {
     mqd_t mqd = OpenTestQueue("/test");
