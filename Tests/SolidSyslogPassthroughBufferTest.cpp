@@ -85,6 +85,18 @@ TEST(SolidSyslogPassthroughBuffer, ReadReturnsNothingToSend)
     CHECK_FALSE(sent);
 }
 
+TEST(SolidSyslogPassthroughBuffer, DestroyWithNullHandleEmitsUnknownDestroyWarning)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogPassthroughBuffer_Destroy(nullptr);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    POINTERS_EQUAL(&PassthroughBufferErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(PASSTHROUGHBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+}
+
 TEST(SolidSyslogPassthroughBuffer, UseAfterDestroyIsCrashSafeViaNullBufferVtable)
 {
     /* After Destroy the slot's abstract-base vtable is the shared NullBuffer's, so
@@ -100,15 +112,6 @@ TEST(SolidSyslogPassthroughBuffer, UseAfterDestroyIsCrashSafeViaNullBufferVtable
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
 
     buffer = SolidSyslogPassthroughBuffer_Create(fakeSender); // for teardown
-}
-
-IGNORE_TEST(SolidSyslogPassthroughBuffer, HappyPathOnly)
-
-{
-    // Error handling not yet implemented — see Epic #31
-    //   Create with NULL sender returns NULL
-    //   Write with NULL buffer does not crash
-    //   Destroy with NULL buffer does not crash
 }
 
 // Pool tests — prove SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE caps live
