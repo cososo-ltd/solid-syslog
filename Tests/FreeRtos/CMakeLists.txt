@@ -14,9 +14,9 @@ else()
     add_executable(SolidSyslogFreeRtosDatagramTest
         SolidSyslogFreeRtosDatagramTest.cpp
         main.cpp
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddress.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressMessages.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddress.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressMessages.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressStatic.c
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagramMessages.c
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagramStatic.c
@@ -36,6 +36,8 @@ else()
     target_include_directories(SolidSyslogFreeRtosDatagramTest PRIVATE
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Interface
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source
         ${CMAKE_SOURCE_DIR}/Core/Interface
         ${CMAKE_SOURCE_DIR}/Core/Source
         ${CMAKE_SOURCE_DIR}/Tests/Support
@@ -49,9 +51,9 @@ else()
     add_executable(SolidSyslogFreeRtosTcpStreamTest
         SolidSyslogFreeRtosTcpStreamTest.cpp
         main.cpp
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddress.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressMessages.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddress.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressMessages.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressStatic.c
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStream.c
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStreamMessages.c
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStreamStatic.c
@@ -71,6 +73,8 @@ else()
     target_include_directories(SolidSyslogFreeRtosTcpStreamTest PRIVATE
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Interface
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source
         ${CMAKE_SOURCE_DIR}/Core/Interface
         ${CMAKE_SOURCE_DIR}/Core/Source
         ${CMAKE_SOURCE_DIR}/Tests/Support
@@ -84,9 +88,9 @@ else()
     add_executable(SolidSyslogFreeRtosResolverTest
         SolidSyslogFreeRtosResolverTest.cpp
         main.cpp
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddress.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressMessages.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddress.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressMessages.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressStatic.c
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosResolver.c
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosResolverMessages.c
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosResolverStatic.c
@@ -105,6 +109,8 @@ else()
     target_include_directories(SolidSyslogFreeRtosResolverTest PRIVATE
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Interface
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source
         ${CMAKE_SOURCE_DIR}/Core/Interface
         ${CMAKE_SOURCE_DIR}/Core/Source
         ${CMAKE_SOURCE_DIR}/Tests/Support
@@ -118,9 +124,9 @@ else()
     add_executable(SolidSyslogFreeRtosAddressTest
         SolidSyslogFreeRtosAddressTest.cpp
         main.cpp
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddress.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressMessages.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddress.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressMessages.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressStatic.c
     )
 
     target_link_libraries(SolidSyslogFreeRtosAddressTest PRIVATE
@@ -134,6 +140,8 @@ else()
     target_include_directories(SolidSyslogFreeRtosAddressTest PRIVATE
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Interface
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source
         ${CMAKE_SOURCE_DIR}/Core/Interface
         ${CMAKE_SOURCE_DIR}/Core/Source
         ${CMAKE_SOURCE_DIR}/Tests/Support

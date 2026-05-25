@@ -162,11 +162,15 @@ if(NOT SOLIDSYSLOG_FREERTOS_NET STREQUAL "PLUSTCP"
         "SOLIDSYSLOG_FREERTOS_NET must be one of PLUSTCP, LWIP, or BOTH "
         "(got: '${SOLIDSYSLOG_FREERTOS_NET}').")
 endif()
-if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "LWIP"
-   OR SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
+if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "LWIP")
     message(FATAL_ERROR
-        "SOLIDSYSLOG_FREERTOS_NET=${SOLIDSYSLOG_FREERTOS_NET}: "
+        "SOLIDSYSLOG_FREERTOS_NET=LWIP: "
         "Platform/LwipRaw not yet implemented; see E28 stories S28.03-S28.05.")
+endif()
+if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
+    message(STATUS
+        "SOLIDSYSLOG_FREERTOS_NET=BOTH: lwIP backend not implemented, "
+        "building PLUSTCP only (see E28 S28.03-S28.06).")
 endif()
 
 # Build-time tunables (E21: Port-Time Configurability). Integrators override
@@ -229,12 +233,19 @@ if(SOLIDSYSLOG_POSIX OR (SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM))
     add_subdirectory(Bdd/Targets)
 endif()
 
-# FreeRTOS adapters ship as sources via an INTERFACE library — the integrator's
-# FreeRTOSConfig.h flows into each consumer's compile (see
-# project_header_configured_platforms memory). Gated on the upstream sources
-# being present in the build environment.
+# FreeRTOS adapters ship as sources via INTERFACE libraries — the integrator's
+# FreeRTOSConfig.h / FreeRTOSIPConfig.h flows into each consumer's compile (see
+# project_header_configured_platforms memory). Platform/FreeRtos hosts the
+# RTOS primitives (Mutex, SysUpTime) — always added when FREERTOS_KERNEL_PATH
+# is set, regardless of the chosen networking backend. Platform/PlusTcp hosts
+# the FreeRTOS-Plus-TCP networking adapters (Address/Datagram/Resolver/TcpStream)
+# — added when SOLIDSYSLOG_FREERTOS_NET selects PLUSTCP or BOTH.
 if(DEFINED ENV{FREERTOS_KERNEL_PATH})
     add_subdirectory(Platform/FreeRtos)
+    if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "PLUSTCP"
+       OR SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
+        add_subdirectory(Platform/PlusTcp)
+    endif()
 endif()
 
 # FatFs adapters likewise ship as sources via an INTERFACE library — the

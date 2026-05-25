@@ -262,9 +262,9 @@ add_executable(SolidSyslogBddTarget
     ${CMAKE_SOURCE_DIR}/Platform/FatFs/Source/SolidSyslogFatFsFile.c
     ${CMAKE_SOURCE_DIR}/Platform/FatFs/Source/SolidSyslogFatFsFileMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/FatFs/Source/SolidSyslogFatFsFileStatic.c
-    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddress.c
-    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressMessages.c
-    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddress.c
+    ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressMessages.c
+    ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagramMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagramStatic.c
@@ -308,8 +308,10 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
     ${CMAKE_SOURCE_DIR}/Platform/FatFs/Interface      # SolidSyslogFatFsFile.h
-    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface   # SolidSyslogFreeRtos*.h
-    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source      # SolidSyslogFreeRtosAddressPrivate.h
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface   # SolidSyslogFreeRtos{Mutex,SysUpTime}.h
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source      # SolidSyslogFreeRtosMutexPrivate.h
+    ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Interface    # SolidSyslogFreeRtos{Address,Datagram,Resolver,TcpStream}.h
+    ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source       # SolidSyslogFreeRtosAddressPrivate.h
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Interface    # SolidSyslogMbedTlsStream.h
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source       # SolidSyslogMbedTlsStreamPrivate.h
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h

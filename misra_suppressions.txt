@@ -12,9 +12,9 @@
 # D.002 — Rules 11.2 / 11.3 / 11.5: vtable downcasts + Formatter
 # See docs/misra-deviations.md#d002
 misra-c2012-11.2:Core/Interface/SolidSyslogFormatter.h:30
-misra-c2012-11.2:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddress.c:9
-misra-c2012-11.2:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressPrivate.h:20
-misra-c2012-11.2:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressPrivate.h:28
+misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogFreeRtosAddress.c:9
+misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressPrivate.h:20
+misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressPrivate.h:28
 misra-c2012-11.2:Platform/Posix/Source/SolidSyslogPosixAddress.c:10
 misra-c2012-11.2:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:20
 misra-c2012-11.2:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:26
@@ -35,11 +35,11 @@ misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:59
 misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:101
 misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:25
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:45
-misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddress.c:9
-misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressPrivate.h:20
-misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressPrivate.h:28
-misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c:37
-misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosAddressStatic.c:57
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogFreeRtosAddress.c:9
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressPrivate.h:20
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressPrivate.h:28
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressStatic.c:37
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogFreeRtosAddressStatic.c:57
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c:47
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:40
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosResolver.c:44
