@@ -40,7 +40,7 @@ misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:20
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:28
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:37
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:57
-misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c:47
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogFreeRtosDatagram.c:47
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:40
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosResolver.c:44
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStream.c:117

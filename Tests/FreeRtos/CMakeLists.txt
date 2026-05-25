@@ -17,9 +17,9 @@ else()
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressMessages.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagram.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagramMessages.c
-        ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosDatagramStatic.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosDatagram.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosDatagramMessages.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosDatagramStatic.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosSocketsFake.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosArpFake.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosTaskFake.c
