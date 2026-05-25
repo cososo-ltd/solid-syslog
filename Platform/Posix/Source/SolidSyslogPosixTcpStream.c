@@ -244,6 +244,7 @@ static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin, long t
     return connected;
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- fd is a kernel file descriptor; timeoutMicros is a duration; distinct semantics
 static bool PosixTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros)
 {
     fd_set writeSet;

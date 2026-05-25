@@ -54,6 +54,7 @@ uint32_t FakeGetConnectTimeoutMs_ReturnValue = SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_M
 void FakeGetConnectTimeoutMs_Reset()
 {
     FakeGetConnectTimeoutMs_CallCount = 0;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- sentinel pointer; we never deref, only compare to nullptr after Open
     FakeGetConnectTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
     FakeGetConnectTimeoutMs_ReturnValue = SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS;
 }
@@ -79,7 +80,7 @@ TEST_GROUP(SolidSyslogFreeRtosTcpStream)
         FreeRtosArpFake_Reset();
         FreeRtosTaskFake_Reset();
         FakeGetConnectTimeoutMs_Reset();
-        stream                        = SolidSyslogFreeRtosTcpStream_Create(NULL);
+        stream                        = SolidSyslogFreeRtosTcpStream_Create(nullptr);
         addr                          = SolidSyslogFreeRtosAddress_Create();
         struct freertos_sockaddr* sin = SolidSyslogFreeRtosAddress_AsFreertosSockaddr(addr);
         sin->sin_family               = FREERTOS_AF_INET;
@@ -455,7 +456,7 @@ TEST_GROUP(SolidSyslogFreeRtosTcpStreamPool)
     {
         for (auto*& slot : pooled)
         {
-            slot = SolidSyslogFreeRtosTcpStream_Create(NULL);
+            slot = SolidSyslogFreeRtosTcpStream_Create(nullptr);
         }
     }
 };
@@ -466,7 +467,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, FillingPoolThenOverflowReturnsDistinctFal
 {
     FillPool();
 
-    overflow = SolidSyslogFreeRtosTcpStream_Create(NULL);
+    overflow = SolidSyslogFreeRtosTcpStream_Create(nullptr);
 
     CHECK_IS_FALLBACK(overflow, pooled);
 }
@@ -476,7 +477,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, ExhaustedCreateReportsError)
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = SolidSyslogFreeRtosTcpStream_Create(NULL);
+    overflow = SolidSyslogFreeRtosTcpStream_Create(nullptr);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
@@ -487,7 +488,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, ExhaustedCreateReportsError)
 TEST(SolidSyslogFreeRtosTcpStreamPool, FallbackVtableMethodsAreNoOps)
 {
     FillPool();
-    overflow = SolidSyslogFreeRtosTcpStream_Create(NULL);
+    overflow = SolidSyslogFreeRtosTcpStream_Create(nullptr);
     struct SolidSyslogAddress* localAddr = SolidSyslogFreeRtosAddress_Create();
     char buf[8] = {0};
     FreeRtosSocketsFake_Reset();
@@ -511,7 +512,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, CreateAcquiresAndReleasesConfigLockOnFirs
 {
     ConfigLockFake_Install();
 
-    pooled[0] = SolidSyslogFreeRtosTcpStream_Create(NULL);
+    pooled[0] = SolidSyslogFreeRtosTcpStream_Create(nullptr);
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
@@ -522,7 +523,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFul
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = SolidSyslogFreeRtosTcpStream_Create(NULL);
+    overflow = SolidSyslogFreeRtosTcpStream_Create(nullptr);
 
     LONGS_EQUAL(SOLIDSYSLOG_FREE_RTOS_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_FREE_RTOS_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
@@ -530,7 +531,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFul
 
 TEST(SolidSyslogFreeRtosTcpStreamPool, DestroyOfPooledHandleLocksOnce)
 {
-    pooled[0] = SolidSyslogFreeRtosTcpStream_Create(NULL);
+    pooled[0] = SolidSyslogFreeRtosTcpStream_Create(nullptr);
     ConfigLockFake_Install();
 
     SolidSyslogFreeRtosTcpStream_Destroy(pooled[0]);
@@ -566,7 +567,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
 
 TEST(SolidSyslogFreeRtosTcpStreamPool, DestroyOfStaleHandleReportsWarning)
 {
-    pooled[0] = SolidSyslogFreeRtosTcpStream_Create(NULL);
+    pooled[0] = SolidSyslogFreeRtosTcpStream_Create(nullptr);
     SolidSyslogFreeRtosTcpStream_Destroy(pooled[0]);
     ErrorHandlerFake_Install(nullptr);
 

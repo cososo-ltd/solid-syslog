@@ -32,6 +32,7 @@ uint32_t FakeGetConnectTimeoutMs_ReturnValue = 200U;
 void FakeGetConnectTimeoutMs_Reset()
 {
     FakeGetConnectTimeoutMs_CallCount = 0;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- sentinel pointer; we never deref, only compare to nullptr after Open
     FakeGetConnectTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
     FakeGetConnectTimeoutMs_ReturnValue = 200U;
 }
@@ -62,7 +63,7 @@ TEST_GROUP(SolidSyslogPosixTcpStream)
         SocketFake_Reset();
         FakeGetConnectTimeoutMs_Reset();
         // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
-        stream                  = SolidSyslogPosixTcpStream_Create(NULL);
+        stream                  = SolidSyslogPosixTcpStream_Create(nullptr);
         addr                    = SolidSyslogPosixAddress_Create();
         struct sockaddr_in* sin = SolidSyslogPosixAddress_AsSockaddrIn(addr);
         sin->sin_family         = AF_INET;
@@ -611,7 +612,7 @@ TEST_GROUP(SolidSyslogPosixTcpStreamPool)
     {
         for (auto*& slot : pooled)
         {
-            slot = SolidSyslogPosixTcpStream_Create(NULL);
+            slot = SolidSyslogPosixTcpStream_Create(nullptr);
         }
     }
 };
@@ -622,7 +623,7 @@ TEST(SolidSyslogPosixTcpStreamPool, FillingPoolThenOverflowReturnsDistinctFallba
 {
     FillPool();
 
-    overflow = SolidSyslogPosixTcpStream_Create(NULL);
+    overflow = SolidSyslogPosixTcpStream_Create(nullptr);
 
     CHECK_IS_FALLBACK(overflow, pooled);
 }
@@ -632,7 +633,7 @@ TEST(SolidSyslogPosixTcpStreamPool, ExhaustedCreateReportsError)
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = SolidSyslogPosixTcpStream_Create(NULL);
+    overflow = SolidSyslogPosixTcpStream_Create(nullptr);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
@@ -643,7 +644,7 @@ TEST(SolidSyslogPosixTcpStreamPool, ExhaustedCreateReportsError)
 TEST(SolidSyslogPosixTcpStreamPool, FallbackSendReturnsTrue)
 {
     FillPool();
-    overflow = SolidSyslogPosixTcpStream_Create(NULL);
+    overflow = SolidSyslogPosixTcpStream_Create(nullptr);
 
     CHECK_TRUE(SolidSyslogStream_Send(overflow, "x", 1));
 }
@@ -652,7 +653,7 @@ TEST(SolidSyslogPosixTcpStreamPool, CreateAcquiresAndReleasesConfigLockOnFirstFr
 {
     ConfigLockFake_Install();
 
-    pooled[0] = SolidSyslogPosixTcpStream_Create(NULL);
+    pooled[0] = SolidSyslogPosixTcpStream_Create(nullptr);
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
@@ -663,7 +664,7 @@ TEST(SolidSyslogPosixTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = SolidSyslogPosixTcpStream_Create(NULL);
+    overflow = SolidSyslogPosixTcpStream_Create(nullptr);
 
     LONGS_EQUAL(SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
@@ -671,7 +672,7 @@ TEST(SolidSyslogPosixTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
 TEST(SolidSyslogPosixTcpStreamPool, DestroyOfPooledHandleLocksOnce)
 {
-    pooled[0] = SolidSyslogPosixTcpStream_Create(NULL);
+    pooled[0] = SolidSyslogPosixTcpStream_Create(nullptr);
     ConfigLockFake_Install();
 
     SolidSyslogPosixTcpStream_Destroy(pooled[0]);
@@ -707,7 +708,7 @@ TEST(SolidSyslogPosixTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
 
 TEST(SolidSyslogPosixTcpStreamPool, DestroyOfStaleHandleReportsWarning)
 {
-    pooled[0] = SolidSyslogPosixTcpStream_Create(NULL);
+    pooled[0] = SolidSyslogPosixTcpStream_Create(nullptr);
     SolidSyslogPosixTcpStream_Destroy(pooled[0]);
     ErrorHandlerFake_Install(nullptr);
 
