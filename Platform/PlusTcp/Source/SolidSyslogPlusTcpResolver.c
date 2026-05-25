@@ -1,4 +1,4 @@
-#include "SolidSyslogFreeRtosResolver.h"
+#include "SolidSyslogPlusTcpResolver.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -10,7 +10,7 @@
 #include "FreeRTOS_Sockets.h"
 
 #include "SolidSyslogPlusTcpAddressPrivate.h"
-#include "SolidSyslogFreeRtosResolverPrivate.h"
+#include "SolidSyslogPlusTcpResolverPrivate.h"
 #include "SolidSyslogNullResolver.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
@@ -22,21 +22,21 @@ enum
     GETADDRINFO_SUCCESS = 0
 };
 
-static bool FreeRtosResolver_Resolve(
+static bool PlusTcpResolver_Resolve(
     struct SolidSyslogResolver* base,
     enum SolidSyslogTransport transport,
     const char* host,
     uint16_t port,
     struct SolidSyslogAddress* result
 );
-static BaseType_t FreeRtosResolver_MapTransport(enum SolidSyslogTransport transport);
+static BaseType_t PlusTcpResolver_MapTransport(enum SolidSyslogTransport transport);
 
-void FreeRtosResolver_Initialise(struct SolidSyslogResolver* base)
+void PlusTcpResolver_Initialise(struct SolidSyslogResolver* base)
 {
-    base->Resolve = FreeRtosResolver_Resolve;
+    base->Resolve = PlusTcpResolver_Resolve;
 }
 
-void FreeRtosResolver_Cleanup(struct SolidSyslogResolver* base)
+void PlusTcpResolver_Cleanup(struct SolidSyslogResolver* base)
 {
     /* Overwrite the abstract base with the shared NullResolver vtable so
      * use-after-destroy resolves cleanly to a failed-lookup error path
@@ -44,7 +44,7 @@ void FreeRtosResolver_Cleanup(struct SolidSyslogResolver* base)
     *base = *SolidSyslogNullResolver_Get();
 }
 
-static bool FreeRtosResolver_Resolve(
+static bool PlusTcpResolver_Resolve(
     struct SolidSyslogResolver* base,
     enum SolidSyslogTransport transport,
     const char* host,
@@ -56,7 +56,7 @@ static bool FreeRtosResolver_Resolve(
 
     struct freertos_addrinfo hints = {0};
     hints.ai_family = FREERTOS_AF_INET4;
-    hints.ai_socktype = FreeRtosResolver_MapTransport(transport);
+    hints.ai_socktype = PlusTcpResolver_MapTransport(transport);
 
     struct freertos_addrinfo* info = NULL;
     bool resolved = false;
@@ -74,7 +74,7 @@ static bool FreeRtosResolver_Resolve(
     return resolved;
 }
 
-static BaseType_t FreeRtosResolver_MapTransport(enum SolidSyslogTransport transport)
+static BaseType_t PlusTcpResolver_MapTransport(enum SolidSyslogTransport transport)
 {
     BaseType_t socktype = FREERTOS_SOCK_DGRAM;
 

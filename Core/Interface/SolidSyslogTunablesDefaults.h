@@ -463,7 +463,7 @@
  * Number of SolidSyslogWinsockResolver instances the library's internal
  * static pool can simultaneously hold. The resolver is stateless (its
  * slot just holds the vtable); the pool exists for lifecycle symmetry
- * with the stateful FreeRtosResolver / GetAddrInfoResolver siblings.
+ * with the stateful PlusTcpResolver / GetAddrInfoResolver siblings.
  *
  * Default 1.
  *
@@ -559,7 +559,7 @@
 #endif
 
 /*
- * Number of SolidSyslogFreeRtosResolver instances the library's
+ * Number of SolidSyslogPlusTcpResolver instances the library's
  * internal static pool can simultaneously hold. Each instance carries
  * the 4-byte IPv4 octets the integrator pins it to.
  *
@@ -569,13 +569,13 @@
  *
  * Floor: 1. Sub-floor values rejected at compile time.
  */
-#ifndef SOLIDSYSLOG_FREE_RTOS_RESOLVER_POOL_SIZE
+#ifndef SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE
 /* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
-#define SOLIDSYSLOG_FREE_RTOS_RESOLVER_POOL_SIZE 1U
+#define SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE 1U
 #endif
 
-#if SOLIDSYSLOG_FREE_RTOS_RESOLVER_POOL_SIZE < 1
-#error "SOLIDSYSLOG_FREE_RTOS_RESOLVER_POOL_SIZE must be >= 1"
+#if SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE < 1
+#error "SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE must be >= 1"
 #endif
 
 /*

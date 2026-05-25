@@ -47,7 +47,7 @@
 #include "SolidSyslogPlusTcpAddress.h"
 #include "SolidSyslogPlusTcpDatagram.h"
 #include "SolidSyslogFreeRtosMutex.h"
-#include "SolidSyslogFreeRtosResolver.h"
+#include "SolidSyslogPlusTcpResolver.h"
 #include "SolidSyslogFreeRtosSysUpTime.h"
 #include "SolidSyslogFreeRtosTcpStream.h"
 #include "SolidSyslogMetaSd.h"
@@ -130,7 +130,7 @@
  * standard slirp DHCP-allocated guest address; we hardcode it here so no
  * DHCP server is required. 10.0.2.2 is the slirp gateway routed to the
  * QEMU host; 10.0.2.3 is slirp's built-in DNS forwarder, used by
- * SolidSyslogFreeRtosResolver when ipconfigUSE_DNS is enabled. */
+ * SolidSyslogPlusTcpResolver when ipconfigUSE_DNS is enabled. */
 static const uint8_t TEST_IP_ADDRESS[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 15U};
 static const uint8_t TEST_NETMASK[ipIP_ADDRESS_LENGTH_BYTES] = {255U, 255U, 255U, 0U};
 static const uint8_t TEST_GATEWAY[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 2U};
@@ -910,7 +910,7 @@ static void TeardownAll(void)
     SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogPlusTcpAddress_Destroy(udpAddress);
     SolidSyslogPlusTcpDatagram_Destroy(datagram);
-    SolidSyslogFreeRtosResolver_Destroy(resolver);
+    SolidSyslogPlusTcpResolver_Destroy(resolver);
 }
 
 static void SemihostingExit(int status)
@@ -953,7 +953,7 @@ static void InteractiveTask(void* argument)
     BddTargetMtlsConfig_SetHost("10.0.2.2");
     BddTargetMtlsConfig_SetServerName("syslog-ng");
 
-    resolver = SolidSyslogFreeRtosResolver_Create();
+    resolver = SolidSyslogPlusTcpResolver_Create();
     datagram = SolidSyslogPlusTcpDatagram_Create();
     udpAddress = SolidSyslogPlusTcpAddress_Create();
 

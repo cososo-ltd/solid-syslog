@@ -11,8 +11,8 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include "FreeRtosDnsFake.h"
 #include "SolidSyslogPlusTcpAddress.h"
 #include "SolidSyslogPlusTcpAddressPrivate.h"
-#include "SolidSyslogFreeRtosResolver.h"
-#include "SolidSyslogFreeRtosResolverErrors.h"
+#include "SolidSyslogPlusTcpResolver.h"
+#include "SolidSyslogPlusTcpResolverErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogResolver.h"
 #include "SolidSyslogResolverDefinition.h"
@@ -45,7 +45,7 @@ static const uint16_t TEST_PORT = 514;
 static const uint16_t TEST_ALTERNATE_PORT = 9999;
 
 // clang-format off
-TEST_GROUP(SolidSyslogFreeRtosResolverTest)
+TEST_GROUP(SolidSyslogPlusTcpResolverTest)
 {
     struct SolidSyslogResolver* resolver = nullptr;
     struct SolidSyslogAddress*  addr     = nullptr;
@@ -53,14 +53,14 @@ TEST_GROUP(SolidSyslogFreeRtosResolverTest)
     void setup() override
     {
         FreeRtosDnsFake_Reset();
-        resolver = SolidSyslogFreeRtosResolver_Create();
+        resolver = SolidSyslogPlusTcpResolver_Create();
         addr     = SolidSyslogPlusTcpAddress_Create();
     }
 
     void teardown() override
     {
         SolidSyslogPlusTcpAddress_Destroy(addr);
-        SolidSyslogFreeRtosResolver_Destroy(resolver);
+        SolidSyslogPlusTcpResolver_Destroy(resolver);
     }
 
     bool Resolve(const char* host = TEST_HOST, uint16_t port = TEST_PORT, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP) const
@@ -77,77 +77,77 @@ TEST_GROUP(SolidSyslogFreeRtosResolverTest)
 
 // clang-format on
 
-TEST(SolidSyslogFreeRtosResolverTest, CreateSucceeds)
+TEST(SolidSyslogPlusTcpResolverTest, CreateSucceeds)
 {
     CHECK(resolver != nullptr);
 }
 
-TEST(SolidSyslogFreeRtosResolverTest, ResolveReturnsTrueOnSuccess)
+TEST(SolidSyslogPlusTcpResolverTest, ResolveReturnsTrueOnSuccess)
 {
     CHECK_TRUE(Resolve());
 }
 
-TEST(SolidSyslogFreeRtosResolverTest, ResolvePopulatesAddressFamily)
+TEST(SolidSyslogPlusTcpResolverTest, ResolvePopulatesAddressFamily)
 {
     Resolve();
     LONGS_EQUAL(FREERTOS_AF_INET, Result()->sin_family);
 }
 
-TEST(SolidSyslogFreeRtosResolverTest, ResolvePopulatesIpv4FromGetAddrInfoResult)
+TEST(SolidSyslogPlusTcpResolverTest, ResolvePopulatesIpv4FromGetAddrInfoResult)
 {
     Resolve(TEST_HOST);
     LONGS_EQUAL(FreeRTOS_inet_addr_quick(10, 0, 2, 2), Result()->sin_address.ulIP_IPv4);
 }
 
-TEST(SolidSyslogFreeRtosResolverTest, ResolvePopulatesPortFromArgInNetworkOrder)
+TEST(SolidSyslogPlusTcpResolverTest, ResolvePopulatesPortFromArgInNetworkOrder)
 {
     Resolve(TEST_HOST, TEST_ALTERNATE_PORT);
     LONGS_EQUAL(FreeRTOS_htons(TEST_ALTERNATE_PORT), Result()->sin_port);
 }
 
-TEST(SolidSyslogFreeRtosResolverTest, ResolvePassesHostStringToGetAddrInfo)
+TEST(SolidSyslogPlusTcpResolverTest, ResolvePassesHostStringToGetAddrInfo)
 {
     Resolve(TEST_ALTERNATE_HOST);
     CALLED_FAKE(FreeRtosDnsFake_GetAddrInfo, ONCE);
     STRCMP_EQUAL(TEST_ALTERNATE_HOST, FreeRtosDnsFake_LastGetAddrInfoHostname());
 }
 
-TEST(SolidSyslogFreeRtosResolverTest, UdpTransportPassesDatagramSocktype)
+TEST(SolidSyslogPlusTcpResolverTest, UdpTransportPassesDatagramSocktype)
 {
     Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_UDP);
     LONGS_EQUAL(FREERTOS_SOCK_DGRAM, FreeRtosDnsFake_LastGetAddrInfoSocktype());
 }
 
-TEST(SolidSyslogFreeRtosResolverTest, TcpTransportPassesStreamSocktype)
+TEST(SolidSyslogPlusTcpResolverTest, TcpTransportPassesStreamSocktype)
 {
     Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_TCP);
     LONGS_EQUAL(FREERTOS_SOCK_STREAM, FreeRtosDnsFake_LastGetAddrInfoSocktype());
 }
 
-TEST(SolidSyslogFreeRtosResolverTest, ResolveReturnsFalseWhenGetAddrInfoFails)
+TEST(SolidSyslogPlusTcpResolverTest, ResolveReturnsFalseWhenGetAddrInfoFails)
 {
     FreeRtosDnsFake_SetGetAddrInfoFails(true);
     CHECK_FALSE(Resolve());
 }
 
-TEST(SolidSyslogFreeRtosResolverTest, DoesNotFreeAddrInfoWhenGetAddrInfoFails)
+TEST(SolidSyslogPlusTcpResolverTest, DoesNotFreeAddrInfoWhenGetAddrInfoFails)
 {
     FreeRtosDnsFake_SetGetAddrInfoFails(true);
     Resolve();
     CALLED_FAKE(FreeRtosDnsFake_FreeAddrInfo, NEVER);
 }
 
-TEST(SolidSyslogFreeRtosResolverTest, FreesAddrInfoOnSuccess)
+TEST(SolidSyslogPlusTcpResolverTest, FreesAddrInfoOnSuccess)
 {
     Resolve();
     CALLED_FAKE(FreeRtosDnsFake_FreeAddrInfo, ONCE);
 }
 
 // clang-format off
-TEST_GROUP(SolidSyslogFreeRtosResolverPoolTest)
+TEST_GROUP(SolidSyslogPlusTcpResolverPoolTest)
 {
     // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
-    struct SolidSyslogResolver* pooled[SOLIDSYSLOG_FREE_RTOS_RESOLVER_POOL_SIZE] = {};
+    struct SolidSyslogResolver* pooled[SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE] = {};
     struct SolidSyslogResolver* overflow                                         = nullptr;
 
     void teardown() override
@@ -156,13 +156,13 @@ TEST_GROUP(SolidSyslogFreeRtosResolverPoolTest)
         {
             if (handle != nullptr)
             {
-                SolidSyslogFreeRtosResolver_Destroy(handle);
+                SolidSyslogPlusTcpResolver_Destroy(handle);
             }
         }
         // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
-            SolidSyslogFreeRtosResolver_Destroy(overflow);
+            SolidSyslogPlusTcpResolver_Destroy(overflow);
         }
         ConfigLockFake_Uninstall();
     }
@@ -171,39 +171,39 @@ TEST_GROUP(SolidSyslogFreeRtosResolverPoolTest)
     {
         for (auto*& slot : pooled)
         {
-            slot = SolidSyslogFreeRtosResolver_Create();
+            slot = SolidSyslogPlusTcpResolver_Create();
         }
     }
 };
 
 // clang-format on
 
-TEST(SolidSyslogFreeRtosResolverPoolTest, FillingPoolThenOverflowReturnsDistinctFallback)
+TEST(SolidSyslogPlusTcpResolverPoolTest, FillingPoolThenOverflowReturnsDistinctFallback)
 {
     FillPool();
 
-    overflow = SolidSyslogFreeRtosResolver_Create();
+    overflow = SolidSyslogPlusTcpResolver_Create();
 
     CHECK_IS_FALLBACK(overflow, pooled);
 }
 
-TEST(SolidSyslogFreeRtosResolverPoolTest, ExhaustedCreateReportsError)
+TEST(SolidSyslogPlusTcpResolverPoolTest, ExhaustedCreateReportsError)
 {
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = SolidSyslogFreeRtosResolver_Create();
+    overflow = SolidSyslogPlusTcpResolver_Create();
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&FreeRtosResolverErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(FREERTOSRESOLVER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
+    POINTERS_EQUAL(&PlusTcpResolverErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(PLUSTCPRESOLVER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
 }
 
-TEST(SolidSyslogFreeRtosResolverPoolTest, FallbackResolveReturnsFalse)
+TEST(SolidSyslogPlusTcpResolverPoolTest, FallbackResolveReturnsFalse)
 {
     FillPool();
-    overflow = SolidSyslogFreeRtosResolver_Create();
+    overflow = SolidSyslogPlusTcpResolver_Create();
     struct SolidSyslogAddress* fallbackResult = SolidSyslogPlusTcpAddress_Create();
 
     CHECK_FALSE(SolidSyslogResolver_Resolve(overflow, SOLIDSYSLOG_TRANSPORT_UDP, TEST_HOST, TEST_PORT, fallbackResult));
@@ -211,74 +211,74 @@ TEST(SolidSyslogFreeRtosResolverPoolTest, FallbackResolveReturnsFalse)
     SolidSyslogPlusTcpAddress_Destroy(fallbackResult);
 }
 
-TEST(SolidSyslogFreeRtosResolverPoolTest, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
+TEST(SolidSyslogPlusTcpResolverPoolTest, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
 {
     ConfigLockFake_Install();
 
-    pooled[0] = SolidSyslogFreeRtosResolver_Create();
+    pooled[0] = SolidSyslogPlusTcpResolver_Create();
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
 }
 
-TEST(SolidSyslogFreeRtosResolverPoolTest, CreateLocksOncePerSlotProbedWhenPoolIsFull)
+TEST(SolidSyslogPlusTcpResolverPoolTest, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 {
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = SolidSyslogFreeRtosResolver_Create();
+    overflow = SolidSyslogPlusTcpResolver_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_FREE_RTOS_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_FREE_RTOS_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
-TEST(SolidSyslogFreeRtosResolverPoolTest, DestroyOfPooledHandleLocksOnce)
+TEST(SolidSyslogPlusTcpResolverPoolTest, DestroyOfPooledHandleLocksOnce)
 {
-    pooled[0] = SolidSyslogFreeRtosResolver_Create();
+    pooled[0] = SolidSyslogPlusTcpResolver_Create();
     ConfigLockFake_Install();
 
-    SolidSyslogFreeRtosResolver_Destroy(pooled[0]);
+    SolidSyslogPlusTcpResolver_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
 }
 
-TEST(SolidSyslogFreeRtosResolverPoolTest, DestroyOfUnknownHandleDoesNotLock)
+TEST(SolidSyslogPlusTcpResolverPoolTest, DestroyOfUnknownHandleDoesNotLock)
 {
     ConfigLockFake_Install();
     struct SolidSyslogResolver stranger = {};
 
-    SolidSyslogFreeRtosResolver_Destroy(&stranger);
+    SolidSyslogPlusTcpResolver_Destroy(&stranger);
 
     CALLED_FAKE(ConfigLockFake_Lock, NEVER);
     CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
 }
 
-TEST(SolidSyslogFreeRtosResolverPoolTest, DestroyOfUnknownHandleReportsWarning)
+TEST(SolidSyslogPlusTcpResolverPoolTest, DestroyOfUnknownHandleReportsWarning)
 {
     ErrorHandlerFake_Install(nullptr);
     struct SolidSyslogResolver stranger = {};
 
-    SolidSyslogFreeRtosResolver_Destroy(&stranger);
+    SolidSyslogPlusTcpResolver_Destroy(&stranger);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&FreeRtosResolverErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(FREERTOSRESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    POINTERS_EQUAL(&PlusTcpResolverErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(PLUSTCPRESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
 }
 
-TEST(SolidSyslogFreeRtosResolverPoolTest, DestroyOfStaleHandleReportsWarning)
+TEST(SolidSyslogPlusTcpResolverPoolTest, DestroyOfStaleHandleReportsWarning)
 {
-    pooled[0] = SolidSyslogFreeRtosResolver_Create();
-    SolidSyslogFreeRtosResolver_Destroy(pooled[0]);
+    pooled[0] = SolidSyslogPlusTcpResolver_Create();
+    SolidSyslogPlusTcpResolver_Destroy(pooled[0]);
     ErrorHandlerFake_Install(nullptr);
 
-    SolidSyslogFreeRtosResolver_Destroy(pooled[0]);
+    SolidSyslogPlusTcpResolver_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&FreeRtosResolverErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(FREERTOSRESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    POINTERS_EQUAL(&PlusTcpResolverErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(PLUSTCPRESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
 }

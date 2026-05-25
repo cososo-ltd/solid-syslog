@@ -271,9 +271,9 @@ add_executable(SolidSyslogBddTarget
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutexMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutexStatic.c
-    ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosResolver.c
-    ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosResolverMessages.c
-    ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosResolverStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c
+    ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpResolverMessages.c
+    ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpResolverStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStream.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosTcpStreamMessages.c

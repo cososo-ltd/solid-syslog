@@ -85,20 +85,20 @@ else()
 
     add_test(NAME SolidSyslogFreeRtosTcpStreamTest COMMAND SolidSyslogFreeRtosTcpStreamTest)
 
-    add_executable(SolidSyslogFreeRtosResolverTest
-        SolidSyslogFreeRtosResolverTest.cpp
+    add_executable(SolidSyslogPlusTcpResolverTest
+        SolidSyslogPlusTcpResolverTest.cpp
         main.cpp
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressMessages.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c
-        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosResolver.c
-        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosResolverMessages.c
-        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogFreeRtosResolverStatic.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpResolverMessages.c
+        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpResolverStatic.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosDnsFake.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/SafeStringStandard.c
     )
 
-    target_link_libraries(SolidSyslogFreeRtosResolverTest PRIVATE
+    target_link_libraries(SolidSyslogPlusTcpResolverTest PRIVATE
         ${PROJECT_NAME}
         ConfigLockFake
         ErrorHandlerFake
@@ -106,7 +106,7 @@ else()
         CppUTestExt
     )
 
-    target_include_directories(SolidSyslogFreeRtosResolverTest PRIVATE
+    target_include_directories(SolidSyslogPlusTcpResolverTest PRIVATE
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
         ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Interface
@@ -119,7 +119,7 @@ else()
         $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
     )
 
-    add_test(NAME SolidSyslogFreeRtosResolverTest COMMAND SolidSyslogFreeRtosResolverTest)
+    add_test(NAME SolidSyslogPlusTcpResolverTest COMMAND SolidSyslogPlusTcpResolverTest)
 
     add_executable(SolidSyslogPlusTcpAddressTest
         SolidSyslogPlusTcpAddressTest.cpp
