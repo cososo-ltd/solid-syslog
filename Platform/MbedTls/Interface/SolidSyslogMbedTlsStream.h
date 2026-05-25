@@ -3,6 +3,7 @@
 
 #include "ExternC.h"
 #include "SolidSyslogSleep.h"
+#include "SolidSyslogTlsHandshakeTimeoutFunction.h"
 
 struct SolidSyslogStream;
 
@@ -20,6 +21,9 @@ EXTERN_C_BEGIN
         struct SolidSyslogStream* Transport; /* underlying byte stream — caller owns */
         SolidSyslogSleepFunction
             Sleep; /* drives bounded handshake retry between WANT_READ/WANT_WRITE polls — required */
+        SolidSyslogTlsHandshakeTimeoutFunction
+            GetHandshakeTimeoutMs; /* NULL → use SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS tunable */
+        void* HandshakeTimeoutContext; /* passed through to GetHandshakeTimeoutMs; NULL is fine */
         struct mbedtls_ctr_drbg_context* Rng; /* seeded CTR-DRBG — caller owns */
         struct mbedtls_x509_crt* CaChain; /* trust anchors — caller owns */
         const char* ServerName; /* SNI + cert hostname check; NULL to skip */

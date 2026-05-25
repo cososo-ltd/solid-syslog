@@ -13,6 +13,7 @@ extern "C"
 #include "AddressFake.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogTunables.h"
 #include "StreamFake.h"
 }
 
@@ -43,6 +44,27 @@ static void NoOpSleep(int milliseconds)
     g_lastSleepMs = milliseconds;
 }
 
+namespace
+{
+int FakeGetHandshakeTimeoutMs_CallCount = 0;
+void* FakeGetHandshakeTimeoutMs_LastContext = nullptr;
+uint32_t FakeGetHandshakeTimeoutMs_ReturnValue = SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS;
+
+void FakeGetHandshakeTimeoutMs_Reset()
+{
+    FakeGetHandshakeTimeoutMs_CallCount = 0;
+    FakeGetHandshakeTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
+    FakeGetHandshakeTimeoutMs_ReturnValue = SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS;
+}
+
+extern "C" uint32_t FakeGetHandshakeTimeoutMs(void* context)
+{
+    FakeGetHandshakeTimeoutMs_CallCount++;
+    FakeGetHandshakeTimeoutMs_LastContext = context;
+    return FakeGetHandshakeTimeoutMs_ReturnValue;
+}
+} // namespace
+
 // clang-format off
 TEST_GROUP(SolidSyslogMbedTlsStream)
 {
@@ -55,6 +77,7 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
     {
         MbedTlsFake_Reset();
         ErrorHandlerFake_Install(nullptr);
+        FakeGetHandshakeTimeoutMs_Reset();
         NoOpSleepCallCount = 0;
         g_lastSleepMs = 0;
         transport = StreamFake_Create();
@@ -63,6 +86,17 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         handle = SolidSyslogMbedTlsStream_Create(&config);
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         addr = AddressFake_Get();
+    }
+
+    /* Replaces the default Null-getter handle with one that uses the fake
+     * handshake-timeout getter. Each test sets only the fake-getter return
+     * value (or context) it needs different from the defaults restored in
+     * setup(). */
+    void RecreateHandleWithFakeHandshakeGetter()
+    {
+        SolidSyslogMbedTlsStream_Destroy(handle);
+        config.GetHandshakeTimeoutMs = FakeGetHandshakeTimeoutMs;
+        handle                        = SolidSyslogMbedTlsStream_Create(&config);
     }
 
     void teardown() override
@@ -231,6 +265,35 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeB
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(transport, MBEDTLSSTREAM_ERROR_HANDSHAKE_TIMEOUT);
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenInvokesConfiguredHandshakeTimeoutGetter)
+{
+    RecreateHandleWithFakeHandshakeGetter();
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, FakeGetHandshakeTimeoutMs_CallCount);
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenUsesGetterReturnValueAsHandshakeBudget)
+{
+    /* 5 ms budget against the 1 ms poll interval → loop should sleep 5 times
+       before declaring HANDSHAKE_TIMEOUT and unwinding. */
+    FakeGetHandshakeTimeoutMs_ReturnValue = 5U;
+    RecreateHandleWithFakeHandshakeGetter();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_WANT_READ);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(5, NoOpSleepCallCount);
+}
+
+TEST(SolidSyslogMbedTlsStream, GetterReceivesNullContextWhenContextNotConfigured)
+{
+    RecreateHandleWithFakeHandshakeGetter();
+    SolidSyslogStream_Open(handle, addr);
+
+    POINTERS_EQUAL(nullptr, FakeGetHandshakeTimeoutMs_LastContext);
 }
 
 TEST(SolidSyslogMbedTlsStream, SecondOpenAfterFailedFirstOpenSucceeds)
