@@ -3,6 +3,7 @@
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <cerrno>
 
 #include "TestUtils.h"
@@ -23,6 +24,28 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include "SolidSyslogTunables.h"
 #include "SocketFake.h"
 
+namespace
+{
+int FakeGetConnectTimeoutMs_CallCount = 0;
+void* FakeGetConnectTimeoutMs_LastContext = nullptr;
+uint32_t FakeGetConnectTimeoutMs_ReturnValue = 200U;
+
+void FakeGetConnectTimeoutMs_Reset()
+{
+    FakeGetConnectTimeoutMs_CallCount = 0;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- sentinel pointer; we never deref, only compare to nullptr after Open
+    FakeGetConnectTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
+    FakeGetConnectTimeoutMs_ReturnValue = 200U;
+}
+
+extern "C" uint32_t FakeGetConnectTimeoutMs(void* context)
+{
+    FakeGetConnectTimeoutMs_CallCount++;
+    FakeGetConnectTimeoutMs_LastContext = context;
+    return FakeGetConnectTimeoutMs_ReturnValue;
+}
+} // namespace
+
 // clang-format off
 static const char* const TEST_MESSAGE     = "hello";
 static const size_t      TEST_MESSAGE_LEN = 5;
@@ -39,8 +62,9 @@ TEST_GROUP(SolidSyslogPosixTcpStream)
     void setup() override
     {
         SocketFake_Reset();
+        FakeGetConnectTimeoutMs_Reset();
         // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
-        stream                  = SolidSyslogPosixTcpStream_Create();
+        stream                  = SolidSyslogPosixTcpStream_Create(nullptr);
         addr                    = SolidSyslogPosixAddress_Create();
         struct sockaddr_in* sin = SolidSyslogPosixAddress_AsSockaddrIn(addr);
         sin->sin_family         = AF_INET;
@@ -58,6 +82,21 @@ TEST_GROUP(SolidSyslogPosixTcpStream)
     {
         char buf[16];
         return SolidSyslogStream_Read(stream, buf, sizeof(buf));
+    }
+
+    /* Replaces the default NULL-config stream with one that uses the fake
+     * getter, then drives Open through the bounded-wait path. Each test sets
+     * only the fake-getter return value (or context) it needs different from
+     * the defaults restored in setup(). */
+    void OpenStreamWithFakeGetter()
+    {
+        SolidSyslogPosixTcpStream_Destroy(stream);
+        struct SolidSyslogPosixTcpStreamConfig config = {};
+        config.GetConnectTimeoutMs                    = FakeGetConnectTimeoutMs;
+        stream                                        = SolidSyslogPosixTcpStream_Create(&config);
+
+        SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+        SolidSyslogStream_Open(stream, addr);
     }
 };
 
@@ -399,9 +438,34 @@ TEST(SolidSyslogPosixTcpStream, OpenPassesBoundedConnectTimeoutToSelect)
 {
     SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
     SolidSyslogStream_Open(stream, addr);
-    /* CONNECT_TIMEOUT_MICROSECONDS = 200 000 → 0 s + 200 000 µs. */
+    /* Default tunable SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS = 200 → 0 s + 200 000 µs. */
     LONGS_EQUAL(0, SocketFake_LastSelectTimeoutSec());
     LONGS_EQUAL(200000, SocketFake_LastSelectTimeoutUsec());
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenInvokesConfiguredConnectTimeoutGetter)
+{
+    OpenStreamWithFakeGetter();
+
+    LONGS_EQUAL(1, FakeGetConnectTimeoutMs_CallCount);
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenUsesGetterReturnValueAsConnectTimeout)
+{
+    FakeGetConnectTimeoutMs_ReturnValue = 1234U;
+
+    OpenStreamWithFakeGetter();
+
+    /* 1234 ms = 1 s + 234 000 µs. */
+    LONGS_EQUAL(1, SocketFake_LastSelectTimeoutSec());
+    LONGS_EQUAL(234000, SocketFake_LastSelectTimeoutUsec());
+}
+
+TEST(SolidSyslogPosixTcpStream, GetterReceivesNullContextWhenContextNotConfigured)
+{
+    OpenStreamWithFakeGetter();
+
+    POINTERS_EQUAL(nullptr, FakeGetConnectTimeoutMs_LastContext);
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenSucceedsWhenSelectReportsWritableAndZeroSO_ERROR)
@@ -549,7 +613,7 @@ TEST_GROUP(SolidSyslogPosixTcpStreamPool)
     {
         for (auto*& slot : pooled)
         {
-            slot = SolidSyslogPosixTcpStream_Create();
+            slot = SolidSyslogPosixTcpStream_Create(nullptr);
         }
     }
 };
@@ -560,7 +624,7 @@ TEST(SolidSyslogPosixTcpStreamPool, FillingPoolThenOverflowReturnsDistinctFallba
 {
     FillPool();
 
-    overflow = SolidSyslogPosixTcpStream_Create();
+    overflow = SolidSyslogPosixTcpStream_Create(nullptr);
 
     CHECK_IS_FALLBACK(overflow, pooled);
 }
@@ -570,7 +634,7 @@ TEST(SolidSyslogPosixTcpStreamPool, ExhaustedCreateReportsError)
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = SolidSyslogPosixTcpStream_Create();
+    overflow = SolidSyslogPosixTcpStream_Create(nullptr);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
@@ -581,7 +645,7 @@ TEST(SolidSyslogPosixTcpStreamPool, ExhaustedCreateReportsError)
 TEST(SolidSyslogPosixTcpStreamPool, FallbackSendReturnsTrue)
 {
     FillPool();
-    overflow = SolidSyslogPosixTcpStream_Create();
+    overflow = SolidSyslogPosixTcpStream_Create(nullptr);
 
     CHECK_TRUE(SolidSyslogStream_Send(overflow, "x", 1));
 }
@@ -590,7 +654,7 @@ TEST(SolidSyslogPosixTcpStreamPool, CreateAcquiresAndReleasesConfigLockOnFirstFr
 {
     ConfigLockFake_Install();
 
-    pooled[0] = SolidSyslogPosixTcpStream_Create();
+    pooled[0] = SolidSyslogPosixTcpStream_Create(nullptr);
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
@@ -601,7 +665,7 @@ TEST(SolidSyslogPosixTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = SolidSyslogPosixTcpStream_Create();
+    overflow = SolidSyslogPosixTcpStream_Create(nullptr);
 
     LONGS_EQUAL(SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
@@ -609,7 +673,7 @@ TEST(SolidSyslogPosixTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
 TEST(SolidSyslogPosixTcpStreamPool, DestroyOfPooledHandleLocksOnce)
 {
-    pooled[0] = SolidSyslogPosixTcpStream_Create();
+    pooled[0] = SolidSyslogPosixTcpStream_Create(nullptr);
     ConfigLockFake_Install();
 
     SolidSyslogPosixTcpStream_Destroy(pooled[0]);
@@ -645,7 +709,7 @@ TEST(SolidSyslogPosixTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
 
 TEST(SolidSyslogPosixTcpStreamPool, DestroyOfStaleHandleReportsWarning)
 {
-    pooled[0] = SolidSyslogPosixTcpStream_Create();
+    pooled[0] = SolidSyslogPosixTcpStream_Create(nullptr);
     SolidSyslogPosixTcpStream_Destroy(pooled[0]);
     ErrorHandlerFake_Install(nullptr);
 

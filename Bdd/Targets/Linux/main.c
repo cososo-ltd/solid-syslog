@@ -95,7 +95,7 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetOptions* opt
     udpConfig.EndpointVersion = BddTargetUdpConfig_GetEndpointVersion;
     udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
-    plainTcpStream = SolidSyslogPosixTcpStream_Create();
+    plainTcpStream = SolidSyslogPosixTcpStream_Create(NULL);
     plainTcpAddress = SolidSyslogPosixAddress_Create();
     static struct SolidSyslogStreamSenderConfig tcpConfig = {0};
     tcpConfig.Resolver = resolver;

@@ -13,19 +13,18 @@
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogTunables.h"
 
 enum
 {
-    /* Bounded retry budget for the TLS handshake under non-blocking transport.
-       Mirrors the OpenSSL TlsStream constants (5s comfortably covers WAN
-       deployments without burning the service thread indefinitely on a
-       wedged peer). */
-    HANDSHAKE_TIMEOUT_MILLISECONDS = 5000,
     HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1
 };
 
 struct SolidSyslogAddress;
 
+static uint32_t MbedTlsStream_NullHandshakeTimeoutGetter(void* context);
+static inline bool MbedTlsStream_ConfigProvidesHandshakeGetter(const struct SolidSyslogMbedTlsStreamConfig* config);
+static inline uint32_t MbedTlsStream_ResolveHandshakeTimeoutMs(struct SolidSyslogMbedTlsStream* self);
 static inline struct SolidSyslogMbedTlsStream* MbedTlsStream_SelfFromBase(struct SolidSyslogStream* base);
 static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTlsStream* self);
@@ -35,7 +34,7 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
 static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_IsRetryableHandshakeRc(int rc);
-static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(int totalSleptMs);
+static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static inline SolidSyslogSsize MbedTlsStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static inline void MbedTlsStream_Close(struct SolidSyslogStream* base);
@@ -50,6 +49,14 @@ void MbedTlsStream_Initialise(struct SolidSyslogStream* base, const struct Solid
     self->Base.Read = MbedTlsStream_Read;
     self->Base.Close = MbedTlsStream_Close;
     self->Config = *config;
+    if (MbedTlsStream_ConfigProvidesHandshakeGetter(config) == false)
+    {
+        /* Substitute the Null Object so the bounded-handshake loop has a
+         * single code path regardless of whether the integrator wired
+         * runtime tuning. */
+        self->Config.GetHandshakeTimeoutMs = MbedTlsStream_NullHandshakeTimeoutGetter;
+        self->Config.HandshakeTimeoutContext = NULL;
+    }
     /* Eager init so mbedtls_*_free in Close is always safe — whether Open
      * was ever reached, whether it succeeded, or whether Close is being
      * called twice in a row. mbedTLS guarantees a freed struct is left in
@@ -57,6 +64,29 @@ void MbedTlsStream_Initialise(struct SolidSyslogStream* base, const struct Solid
      * works without re-init. */
     mbedtls_ssl_init(&self->SslContext);
     mbedtls_ssl_config_init(&self->SslConfig);
+}
+
+/* Null Object substituted in Initialise when the integrator does not install a
+ * getter — returns the compile-time tunable so the bounded-handshake path is a
+ * single code path regardless of whether the integrator wired runtime tuning. */
+static uint32_t MbedTlsStream_NullHandshakeTimeoutGetter(void* context)
+{
+    (void) context;
+    return (uint32_t) SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS;
+}
+
+static inline bool MbedTlsStream_ConfigProvidesHandshakeGetter(const struct SolidSyslogMbedTlsStreamConfig* config)
+{
+    return (config != NULL) && (config->GetHandshakeTimeoutMs != NULL);
+}
+
+/* Bridges the integrator-installed getter (or the Null Object substituted at
+ * config-copy time) to the bounded handshake deadline. Invoked at the start
+ * of each handshake attempt so runtime-tunable values take effect on the next
+ * reconnect. */
+static inline uint32_t MbedTlsStream_ResolveHandshakeTimeoutMs(struct SolidSyslogMbedTlsStream* self)
+{
+    return self->Config.GetHandshakeTimeoutMs(self->Config.HandshakeTimeoutContext);
 }
 
 static inline struct SolidSyslogMbedTlsStream* MbedTlsStream_SelfFromBase(struct SolidSyslogStream* base)
@@ -186,7 +216,8 @@ static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbe
  * timeout. Same shape as OpenSSL's TlsStream_PerformHandshake. */
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self)
 {
-    int totalSleptMs = 0;
+    uint32_t budgetMs = MbedTlsStream_ResolveHandshakeTimeoutMs(self);
+    uint32_t totalSleptMs = 0;
     bool result = false;
     bool done = false;
 
@@ -207,7 +238,7 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
             );
             done = true;
         }
-        else if (MbedTlsStream_IsHandshakeBudgetExhausted(totalSleptMs))
+        else if (MbedTlsStream_IsHandshakeBudgetExhausted(totalSleptMs, budgetMs))
         {
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
@@ -219,7 +250,7 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
         else
         {
             self->Config.Sleep(HANDSHAKE_POLL_INTERVAL_MILLISECONDS);
-            totalSleptMs += HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
+            totalSleptMs += (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
         }
     }
     return result;
@@ -230,9 +261,9 @@ static inline bool MbedTlsStream_IsRetryableHandshakeRc(int rc)
     return (rc == MBEDTLS_ERR_SSL_WANT_READ) || (rc == MBEDTLS_ERR_SSL_WANT_WRITE);
 }
 
-static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(int totalSleptMs)
+static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs)
 {
-    return totalSleptMs >= HANDSHAKE_TIMEOUT_MILLISECONDS;
+    return totalSleptMs >= budgetMs;
 }
 
 static int MbedTlsStream_BioSend(void* ctx, const unsigned char* buf, size_t len)

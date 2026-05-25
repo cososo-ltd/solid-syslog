@@ -24,13 +24,13 @@ static struct SolidSyslogPoolAllocator PosixTcpStream_Allocator = {
     SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE
 };
 
-struct SolidSyslogStream* SolidSyslogPosixTcpStream_Create(void)
+struct SolidSyslogStream* SolidSyslogPosixTcpStream_Create(const struct SolidSyslogPosixTcpStreamConfig* config)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PosixTcpStream_Allocator);
     struct SolidSyslogStream* handle = SolidSyslogNullStream_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&PosixTcpStream_Allocator, index) == true)
     {
-        PosixTcpStream_Initialise(&PosixTcpStream_Pool[index].Base);
+        PosixTcpStream_Initialise(&PosixTcpStream_Pool[index].Base, config);
         handle = &PosixTcpStream_Pool[index].Base;
     }
     else

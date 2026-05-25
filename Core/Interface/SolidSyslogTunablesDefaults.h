@@ -696,4 +696,48 @@
 #error "SOLIDSYSLOG_ADDRESS_POOL_SIZE must be >= 1"
 #endif
 
+/*
+ * Default bounded-connect deadline applied by every TCP Stream backend
+ * (POSIX, Winsock, FreeRTOS) when the integrator does not install a
+ * SolidSyslogTcpConnectTimeoutFunction on the config struct. 200 ms is
+ * comfortable for loopback / LAN and short enough that ten failing attempts
+ * cost 2 s; raise it for WAN deployments behind a high-RTT link.
+ *
+ * Runtime override: install GetConnectTimeoutMs on the per-Stream config —
+ * the getter is invoked on every connect attempt so live tuning takes effect
+ * without rebuilding or recreating the stream.
+ *
+ * Floor: 1 ms. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS 200U
+#endif
+
+#if SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS < 1
+#error "SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS must be >= 1"
+#endif
+
+/*
+ * Default bounded TLS handshake deadline applied by every TLS Stream backend
+ * (OpenSSL, Mbed TLS) when the integrator does not install a
+ * SolidSyslogTlsHandshakeTimeoutFunction on the config struct. 5 s covers a
+ * full TLS 1.2 / 1.3 exchange on a healthy LAN with cert validation; raise
+ * it for WAN deployments or constrained MCUs that handshake slowly.
+ *
+ * Runtime override: install GetHandshakeTimeoutMs on the per-Stream config —
+ * the getter is invoked on every handshake attempt so live tuning takes
+ * effect without rebuilding or recreating the stream.
+ *
+ * Floor: 1 ms. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS 5000U
+#endif
+
+#if SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS < 1
+#error "SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS must be >= 1"
+#endif
+
 #endif /* SOLIDSYSLOG_TUNABLES_DEFAULTS_H */

@@ -193,7 +193,7 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetWindowsOptio
     udpConfig.EndpointVersion = GetEndpointVersion;
     udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
-    plainTcpStream = SolidSyslogWinsockTcpStream_Create();
+    plainTcpStream = SolidSyslogWinsockTcpStream_Create(NULL);
     plainTcpAddress = SolidSyslogWinsockAddress_Create();
     static struct SolidSyslogStreamSenderConfig tcpConfig = {0};
     tcpConfig.Resolver = resolver;

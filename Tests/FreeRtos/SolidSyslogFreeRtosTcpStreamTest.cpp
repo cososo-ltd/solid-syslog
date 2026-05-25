@@ -45,6 +45,28 @@ static const size_t TEST_MESSAGE_LEN = sizeof(TEST_MESSAGE) - 1U;
 static const BaseType_t TEST_SHORT_WRITE_BYTES = 3;
 static const BaseType_t TEST_READ_BYTES = 7;
 
+namespace
+{
+int FakeGetConnectTimeoutMs_CallCount = 0;
+void* FakeGetConnectTimeoutMs_LastContext = nullptr;
+uint32_t FakeGetConnectTimeoutMs_ReturnValue = SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS;
+
+void FakeGetConnectTimeoutMs_Reset()
+{
+    FakeGetConnectTimeoutMs_CallCount = 0;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- sentinel pointer; we never deref, only compare to nullptr after Open
+    FakeGetConnectTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
+    FakeGetConnectTimeoutMs_ReturnValue = SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS;
+}
+
+extern "C" uint32_t FakeGetConnectTimeoutMs(void* context)
+{
+    FakeGetConnectTimeoutMs_CallCount++;
+    FakeGetConnectTimeoutMs_LastContext = context;
+    return FakeGetConnectTimeoutMs_ReturnValue;
+}
+} // namespace
+
 // clang-format off
 TEST_GROUP(SolidSyslogFreeRtosTcpStream)
 {
@@ -57,7 +79,8 @@ TEST_GROUP(SolidSyslogFreeRtosTcpStream)
         FreeRtosSocketsFake_Reset();
         FreeRtosArpFake_Reset();
         FreeRtosTaskFake_Reset();
-        stream                        = SolidSyslogFreeRtosTcpStream_Create();
+        FakeGetConnectTimeoutMs_Reset();
+        stream                        = SolidSyslogFreeRtosTcpStream_Create(nullptr);
         addr                          = SolidSyslogFreeRtosAddress_Create();
         struct freertos_sockaddr* sin = SolidSyslogFreeRtosAddress_AsFreertosSockaddr(addr);
         sin->sin_family               = FREERTOS_AF_INET;
@@ -82,6 +105,19 @@ TEST_GROUP(SolidSyslogFreeRtosTcpStream)
     SolidSyslogSsize readIntoBuffer()
     {
         return SolidSyslogStream_Read(stream, readBuffer, sizeof(readBuffer));
+    }
+
+    /* Replaces the default NULL-config stream with one that uses the fake
+     * getter, then drives Open through the bounded-wait path. Each test sets
+     * only the fake-getter return value (or context) it needs different from
+     * the defaults restored in setup(). */
+    void openStreamWithFakeGetter()
+    {
+        SolidSyslogFreeRtosTcpStream_Destroy(stream);
+        struct SolidSyslogFreeRtosTcpStreamConfig config = {};
+        config.GetConnectTimeoutMs                       = FakeGetConnectTimeoutMs;
+        stream                                           = SolidSyslogFreeRtosTcpStream_Create(&config);
+        SolidSyslogStream_Open(stream, addr);
     }
 };
 
@@ -153,13 +189,36 @@ TEST(SolidSyslogFreeRtosTcpStream, OpenSkipsArpProbeAndYieldOnCacheHit)
 TEST(SolidSyslogFreeRtosTcpStream, OpenSetsConnectTimeoutBeforeConnect)
 {
     openStream();
-    LONGS_EQUAL(pdMS_TO_TICKS(200), FreeRtosSocketsFake_SndTimeoAtConnect());
+    LONGS_EQUAL(pdMS_TO_TICKS(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS), FreeRtosSocketsFake_SndTimeoAtConnect());
 }
 
 TEST(SolidSyslogFreeRtosTcpStream, OpenSetsRecvTimeoutBeforeConnect)
 {
     openStream();
-    LONGS_EQUAL(pdMS_TO_TICKS(200), FreeRtosSocketsFake_RcvTimeoAtConnect());
+    LONGS_EQUAL(pdMS_TO_TICKS(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS), FreeRtosSocketsFake_RcvTimeoAtConnect());
+}
+
+TEST(SolidSyslogFreeRtosTcpStream, OpenInvokesConfiguredConnectTimeoutGetter)
+{
+    openStreamWithFakeGetter();
+
+    LONGS_EQUAL(1, FakeGetConnectTimeoutMs_CallCount);
+}
+
+TEST(SolidSyslogFreeRtosTcpStream, OpenUsesGetterReturnValueAsConnectTimeout)
+{
+    FakeGetConnectTimeoutMs_ReturnValue = 1234U;
+
+    openStreamWithFakeGetter();
+
+    LONGS_EQUAL(pdMS_TO_TICKS(1234), FreeRtosSocketsFake_RcvTimeoAtConnect());
+}
+
+TEST(SolidSyslogFreeRtosTcpStream, GetterReceivesNullContextWhenContextNotConfigured)
+{
+    openStreamWithFakeGetter();
+
+    POINTERS_EQUAL(nullptr, FakeGetConnectTimeoutMs_LastContext);
 }
 
 TEST(SolidSyslogFreeRtosTcpStream, OpenCallsConnectWithSocketAndAddress)
@@ -397,7 +456,7 @@ TEST_GROUP(SolidSyslogFreeRtosTcpStreamPool)
     {
         for (auto*& slot : pooled)
         {
-            slot = SolidSyslogFreeRtosTcpStream_Create();
+            slot = SolidSyslogFreeRtosTcpStream_Create(nullptr);
         }
     }
 };
@@ -408,7 +467,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, FillingPoolThenOverflowReturnsDistinctFal
 {
     FillPool();
 
-    overflow = SolidSyslogFreeRtosTcpStream_Create();
+    overflow = SolidSyslogFreeRtosTcpStream_Create(nullptr);
 
     CHECK_IS_FALLBACK(overflow, pooled);
 }
@@ -418,7 +477,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, ExhaustedCreateReportsError)
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = SolidSyslogFreeRtosTcpStream_Create();
+    overflow = SolidSyslogFreeRtosTcpStream_Create(nullptr);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
@@ -429,7 +488,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, ExhaustedCreateReportsError)
 TEST(SolidSyslogFreeRtosTcpStreamPool, FallbackVtableMethodsAreNoOps)
 {
     FillPool();
-    overflow = SolidSyslogFreeRtosTcpStream_Create();
+    overflow = SolidSyslogFreeRtosTcpStream_Create(nullptr);
     struct SolidSyslogAddress* localAddr = SolidSyslogFreeRtosAddress_Create();
     char buf[8] = {0};
     FreeRtosSocketsFake_Reset();
@@ -453,7 +512,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, CreateAcquiresAndReleasesConfigLockOnFirs
 {
     ConfigLockFake_Install();
 
-    pooled[0] = SolidSyslogFreeRtosTcpStream_Create();
+    pooled[0] = SolidSyslogFreeRtosTcpStream_Create(nullptr);
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
@@ -464,7 +523,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFul
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = SolidSyslogFreeRtosTcpStream_Create();
+    overflow = SolidSyslogFreeRtosTcpStream_Create(nullptr);
 
     LONGS_EQUAL(SOLIDSYSLOG_FREE_RTOS_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_FREE_RTOS_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
@@ -472,7 +531,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFul
 
 TEST(SolidSyslogFreeRtosTcpStreamPool, DestroyOfPooledHandleLocksOnce)
 {
-    pooled[0] = SolidSyslogFreeRtosTcpStream_Create();
+    pooled[0] = SolidSyslogFreeRtosTcpStream_Create(nullptr);
     ConfigLockFake_Install();
 
     SolidSyslogFreeRtosTcpStream_Destroy(pooled[0]);
@@ -508,7 +567,7 @@ TEST(SolidSyslogFreeRtosTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
 
 TEST(SolidSyslogFreeRtosTcpStreamPool, DestroyOfStaleHandleReportsWarning)
 {
-    pooled[0] = SolidSyslogFreeRtosTcpStream_Create();
+    pooled[0] = SolidSyslogFreeRtosTcpStream_Create(nullptr);
     SolidSyslogFreeRtosTcpStream_Destroy(pooled[0]);
     ErrorHandlerFake_Install(nullptr);
 

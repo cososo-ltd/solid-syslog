@@ -362,7 +362,7 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
         return SolidSyslogNullSender_Get();
     }
 
-    underlyingStream = SolidSyslogFreeRtosTcpStream_Create();
+    underlyingStream = SolidSyslogFreeRtosTcpStream_Create(NULL);
 
     static struct SolidSyslogMbedTlsStreamConfig tlsStreamConfig;
     tlsStreamConfig = (struct SolidSyslogMbedTlsStreamConfig) {0};

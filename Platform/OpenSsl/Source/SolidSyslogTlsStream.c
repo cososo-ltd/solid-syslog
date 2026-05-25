@@ -15,16 +15,16 @@
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTlsStreamErrors.h"
 #include "SolidSyslogTlsStreamPrivate.h"
+#include "SolidSyslogTunables.h"
 
 enum
 {
-    /* Bounded retry budget for the TLS handshake under non-blocking transport.
-       Real-world handshakes take ~100–500 ms (1–3 RTTs to a cloud SIEM); 5 s
-       comfortably covers WAN deployments without burning the service thread
-       indefinitely on a wedged peer. */
-    HANDSHAKE_TIMEOUT_MILLISECONDS = 5000,
     HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1
 };
+
+static uint32_t TlsStream_NullHandshakeTimeoutGetter(void* context);
+static inline bool TlsStream_ConfigProvidesHandshakeGetter(const struct SolidSyslogTlsStreamConfig* config);
+static inline uint32_t TlsStream_ResolveHandshakeTimeoutMs(struct SolidSyslogTlsStream* self);
 
 struct SolidSyslogAddress;
 
@@ -64,6 +64,14 @@ void TlsStream_Initialise(struct SolidSyslogStream* base, const struct SolidSysl
     self->Base.Read = TlsStream_Read;
     self->Base.Close = TlsStream_Close;
     self->Config = *config;
+    if (TlsStream_ConfigProvidesHandshakeGetter(config) == false)
+    {
+        /* Substitute the Null Object so the bounded-handshake loop has a
+         * single code path regardless of whether the integrator wired
+         * runtime tuning. */
+        self->Config.GetHandshakeTimeoutMs = TlsStream_NullHandshakeTimeoutGetter;
+        self->Config.HandshakeTimeoutContext = NULL;
+    }
     self->Ctx = NULL;
     self->Ssl = NULL;
     self->BioMethod = NULL;
@@ -394,9 +402,32 @@ static inline bool TlsStream_IsRetryableSslError(int err)
     return (err == SSL_ERROR_WANT_READ) || (err == SSL_ERROR_WANT_WRITE);
 }
 
-static inline bool TlsStream_IsHandshakeBudgetExhausted(int totalSleptMs)
+static inline bool TlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs)
 {
-    return totalSleptMs >= HANDSHAKE_TIMEOUT_MILLISECONDS;
+    return totalSleptMs >= budgetMs;
+}
+
+/* Null Object substituted at Initialise when the integrator does not install a
+ * getter — returns the compile-time tunable so the bounded-handshake path is a
+ * single code path regardless of whether the integrator wired runtime tuning. */
+static uint32_t TlsStream_NullHandshakeTimeoutGetter(void* context)
+{
+    (void) context;
+    return (uint32_t) SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS;
+}
+
+static inline bool TlsStream_ConfigProvidesHandshakeGetter(const struct SolidSyslogTlsStreamConfig* config)
+{
+    return (config != NULL) && (config->GetHandshakeTimeoutMs != NULL);
+}
+
+/* Bridges the integrator-installed getter (or the Null Object substituted at
+ * config-copy time) to the bounded handshake deadline. Invoked at the start
+ * of each handshake attempt so runtime-tunable values take effect on the next
+ * reconnect. */
+static inline uint32_t TlsStream_ResolveHandshakeTimeoutMs(struct SolidSyslogTlsStream* self)
+{
+    return self->Config.GetHandshakeTimeoutMs(self->Config.HandshakeTimeoutContext);
 }
 
 /* Drive SSL_connect to completion under non-blocking transport. Each call may
@@ -406,7 +437,8 @@ static inline bool TlsStream_IsHandshakeBudgetExhausted(int totalSleptMs)
  * expires. */
 static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* self)
 {
-    int totalSleptMs = 0;
+    uint32_t budgetMs = TlsStream_ResolveHandshakeTimeoutMs(self);
+    uint32_t totalSleptMs = 0;
     bool result = false;
     bool done = false;
 
@@ -430,7 +462,7 @@ static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* self)
                 );
                 done = true;
             }
-            else if (TlsStream_IsHandshakeBudgetExhausted(totalSleptMs))
+            else if (TlsStream_IsHandshakeBudgetExhausted(totalSleptMs, budgetMs))
             {
                 SolidSyslog_Error(
                     SOLIDSYSLOG_SEVERITY_ERROR,
@@ -442,7 +474,7 @@ static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* self)
             else
             {
                 self->Config.Sleep(HANDSHAKE_POLL_INTERVAL_MILLISECONDS);
-                totalSleptMs += HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
+                totalSleptMs += (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
             }
         }
     }

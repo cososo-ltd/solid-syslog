@@ -24,13 +24,13 @@ static struct SolidSyslogPoolAllocator WinsockTcpStream_Allocator = {
     SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE
 };
 
-struct SolidSyslogStream* SolidSyslogWinsockTcpStream_Create(void)
+struct SolidSyslogStream* SolidSyslogWinsockTcpStream_Create(const struct SolidSyslogWinsockTcpStreamConfig* config)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&WinsockTcpStream_Allocator);
     struct SolidSyslogStream* handle = SolidSyslogNullStream_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&WinsockTcpStream_Allocator, index) == true)
     {
-        WinsockTcpStream_Initialise(&WinsockTcpStream_Pool[index].Base);
+        WinsockTcpStream_Initialise(&WinsockTcpStream_Pool[index].Base, config);
         handle = &WinsockTcpStream_Pool[index].Base;
     }
     else

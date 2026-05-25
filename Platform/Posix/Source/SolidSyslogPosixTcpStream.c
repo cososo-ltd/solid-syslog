@@ -6,6 +6,7 @@
 #include <netinet/tcp.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -16,17 +17,13 @@
 #include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPosixTcpStreamPrivate.h"
 #include "SolidSyslogStream.h"
-#include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogTunables.h"
 
 struct SolidSyslogAddress;
 
 enum
 {
     INVALID_FD = -1,
-    /* Caps the time a single connect() attempt can stall the service thread.
-       Mirrors the Winsock value: 200 ms is comfortable for loopback/LAN and
-       short enough that 10 failing attempts cost 2 s instead of 20+ s. */
-    CONNECT_TIMEOUT_MICROSECONDS = 200000,
     /* Keepalive parameters — bound the dead-peer detection window when the
        socket is idle. Worst case: 45 + 4 * 10 = 85 s before ETIMEDOUT.
        TCP_USER_TIMEOUT covers the pending-write case (where keepalive does
@@ -37,12 +34,15 @@ enum
     USER_TIMEOUT_MILLISECONDS = 30000
 };
 
+static uint32_t PosixTcpStream_NullConnectTimeoutGetter(void* context);
+
 static bool PosixTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static bool PosixTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static SolidSyslogSsize PosixTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void PosixTcpStream_Close(struct SolidSyslogStream* base);
 
 static inline struct SolidSyslogPosixTcpStream* PosixTcpStream_SelfFromBase(struct SolidSyslogStream* base);
+static inline bool PosixTcpStream_ConfigProvidesGetter(const struct SolidSyslogPosixTcpStreamConfig* config);
 
 static int PosixTcpStream_OpenAndConfigureSocket(void);
 static bool PosixTcpStream_ConfigureSocket(int fd);
@@ -54,20 +54,45 @@ static bool PosixTcpStream_ConnectOrCloseOnFailure(
     struct SolidSyslogPosixTcpStream* self,
     const struct sockaddr_in* sin
 );
-static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin);
-static bool PosixTcpStream_WaitForConnectCompletion(int fd);
+static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin, long timeoutMicros);
+static bool PosixTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros);
 static bool PosixTcpStream_ReadDeferredConnectError(int fd);
+static long PosixTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogPosixTcpStream* self);
 static bool PosixTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
 static inline bool PosixTcpStream_WouldBlock(int err);
 
-void PosixTcpStream_Initialise(struct SolidSyslogStream* base)
+void PosixTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogPosixTcpStreamConfig* config)
 {
+    static const struct SolidSyslogPosixTcpStream DefaultPosixTcpStream = {
+        .Base =
+            {.Open = PosixTcpStream_Open,
+             .Send = PosixTcpStream_Send,
+             .Read = PosixTcpStream_Read,
+             .Close = PosixTcpStream_Close},
+        .Config = {.GetConnectTimeoutMs = PosixTcpStream_NullConnectTimeoutGetter, .ConnectTimeoutContext = NULL},
+        .Fd = INVALID_FD,
+    };
+
     struct SolidSyslogPosixTcpStream* self = PosixTcpStream_SelfFromBase(base);
-    self->Base.Open = PosixTcpStream_Open;
-    self->Base.Send = PosixTcpStream_Send;
-    self->Base.Read = PosixTcpStream_Read;
-    self->Base.Close = PosixTcpStream_Close;
-    self->Fd = INVALID_FD;
+    *self = DefaultPosixTcpStream;
+    if (PosixTcpStream_ConfigProvidesGetter(config) == true)
+    {
+        self->Config = *config;
+    }
+}
+
+static inline bool PosixTcpStream_ConfigProvidesGetter(const struct SolidSyslogPosixTcpStreamConfig* config)
+{
+    return (config != NULL) && (config->GetConnectTimeoutMs != NULL);
+}
+
+/* Null Object substituted when the integrator does not install a getter —
+ * returns the compile-time tunable so the bounded-wait path has a single
+ * code path regardless of whether the integrator wired runtime tuning. */
+static uint32_t PosixTcpStream_NullConnectTimeoutGetter(void* context)
+{
+    (void) context;
+    return (uint32_t) SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS;
 }
 
 static inline struct SolidSyslogPosixTcpStream* PosixTcpStream_SelfFromBase(struct SolidSyslogStream* base)
@@ -165,7 +190,8 @@ static bool PosixTcpStream_ConnectOrCloseOnFailure(
     const struct sockaddr_in* sin
 )
 {
-    bool connected = PosixTcpStream_Connect(self->Fd, sin);
+    long timeoutMicros = PosixTcpStream_ResolveConnectTimeoutMicros(self);
+    bool connected = PosixTcpStream_Connect(self->Fd, sin, timeoutMicros);
     if (!connected)
     {
         close(self->Fd);
@@ -174,13 +200,22 @@ static bool PosixTcpStream_ConnectOrCloseOnFailure(
     return connected;
 }
 
+/* Bridges the integrator-installed getter (or the Null Object substituted in
+ * Initialise) to the bounded select() deadline. Invoked on every connect
+ * attempt so a runtime-tunable value takes effect on the next reconnect. */
+static long PosixTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogPosixTcpStream* self)
+{
+    uint32_t ms = self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
+    return (long) ms * 1000L;
+}
+
 /* Non-blocking connect with bounded wait. connect() returns immediately:
  *   0           — connected (loopback success path).
  *   -1 EINPROGRESS — connect started; wait via select() up to
  *                    CONNECT_TIMEOUT_MICROSECONDS, then read SO_ERROR to
  *                    distinguish completed-success from deferred-failure.
  *   -1 other    — immediate fail-fast (refused, unreachable, etc.). */
-static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin)
+static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin, long timeoutMicros)
 {
     bool connected = false;
     int rc = connect(fd, (const struct sockaddr*) sin, sizeof(*sin));
@@ -195,7 +230,8 @@ static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin)
     }
     else if (connectErrno == EINPROGRESS)
     {
-        connected = PosixTcpStream_WaitForConnectCompletion(fd) && PosixTcpStream_ReadDeferredConnectError(fd);
+        connected =
+            PosixTcpStream_WaitForConnectCompletion(fd, timeoutMicros) && PosixTcpStream_ReadDeferredConnectError(fd);
     }
     else
     {
@@ -204,7 +240,8 @@ static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin)
     return connected;
 }
 
-static bool PosixTcpStream_WaitForConnectCompletion(int fd)
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- fd is a kernel file descriptor; timeoutMicros is a duration; distinct semantics
+static bool PosixTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros)
 {
     fd_set writeSet;
     FD_ZERO(&writeSet);
@@ -214,7 +251,7 @@ static bool PosixTcpStream_WaitForConnectCompletion(int fd)
     FD_ZERO(&errorSet);
     FD_SET(fd, &errorSet);
 
-    struct timeval timeout = {.tv_sec = 0, .tv_usec = CONNECT_TIMEOUT_MICROSECONDS};
+    struct timeval timeout = {.tv_sec = timeoutMicros / 1000000L, .tv_usec = timeoutMicros % 1000000L};
 
     int rc = select(fd + 1, NULL, &writeSet, &errorSet, &timeout);
     return (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);

@@ -3,6 +3,7 @@
 #include <openssl/prov_ssl.h>
 #include <openssl/types.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "ErrorHandlerFake.h"
 #include "OpenSslFake.h"
@@ -12,6 +13,7 @@
 #include "SolidSyslogTlsStream.h"
 #include "SolidSyslogTlsStreamErrors.h"
 #include "SolidSyslogTransport.h"
+#include "SolidSyslogTunables.h"
 #include "StreamFake.h"
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
@@ -44,6 +46,28 @@ static void NoOpSleep(int milliseconds)
     g_lastSleepMs = milliseconds;
 }
 
+namespace
+{
+int FakeGetHandshakeTimeoutMs_CallCount = 0;
+void* FakeGetHandshakeTimeoutMs_LastContext = nullptr;
+uint32_t FakeGetHandshakeTimeoutMs_ReturnValue = SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS;
+
+void FakeGetHandshakeTimeoutMs_Reset()
+{
+    FakeGetHandshakeTimeoutMs_CallCount = 0;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- sentinel pointer; we never deref, only compare to nullptr after Open
+    FakeGetHandshakeTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
+    FakeGetHandshakeTimeoutMs_ReturnValue = SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS;
+}
+
+extern "C" uint32_t FakeGetHandshakeTimeoutMs(void* context)
+{
+    FakeGetHandshakeTimeoutMs_CallCount++;
+    FakeGetHandshakeTimeoutMs_LastContext = context;
+    return FakeGetHandshakeTimeoutMs_ReturnValue;
+}
+} // namespace
+
 // clang-format off
 TEST_GROUP(SolidSyslogTlsStream)
 {
@@ -56,6 +80,7 @@ TEST_GROUP(SolidSyslogTlsStream)
     {
         OpenSslFake_Reset();
         ErrorHandlerFake_Install(nullptr);
+        FakeGetHandshakeTimeoutMs_Reset();
         NoOpSleepCallCount = 0;
         g_lastSleepMs    = 0;
         transport        = StreamFake_Create();
@@ -65,6 +90,17 @@ TEST_GROUP(SolidSyslogTlsStream)
         stream = SolidSyslogTlsStream_Create(&config);
         // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         addr = AddressFake_Get();
+    }
+
+    /* Replaces the default Null-getter stream with one that uses the fake
+     * handshake-timeout getter. Each test sets only the fake-getter return
+     * value (or context) it needs different from the defaults restored in
+     * setup(). */
+    void RecreateStreamWithFakeHandshakeGetter()
+    {
+        SolidSyslogTlsStream_Destroy(stream);
+        config.GetHandshakeTimeoutMs    = FakeGetHandshakeTimeoutMs;
+        stream                          = SolidSyslogTlsStream_Create(&config);
     }
 
     void teardown() override
@@ -1067,6 +1103,35 @@ TEST(SolidSyslogTlsStream, OpenFailsWhenHandshakeNeverCompletes)
     ArrangePersistentHandshakeError(SSL_ERROR_WANT_READ);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(transport, TLSSTREAM_ERROR_HANDSHAKE_TIMEOUT);
+}
+
+TEST(SolidSyslogTlsStream, OpenInvokesConfiguredHandshakeTimeoutGetter)
+{
+    RecreateStreamWithFakeHandshakeGetter();
+    SolidSyslogStream_Open(stream, addr);
+
+    LONGS_EQUAL(1, FakeGetHandshakeTimeoutMs_CallCount);
+}
+
+TEST(SolidSyslogTlsStream, OpenUsesGetterReturnValueAsHandshakeBudget)
+{
+    /* 5 ms budget against the 1 ms poll interval → loop should sleep 5 times
+       before declaring HANDSHAKE_TIMEOUT and unwinding. */
+    FakeGetHandshakeTimeoutMs_ReturnValue = 5U;
+    RecreateStreamWithFakeHandshakeGetter();
+    ArrangePersistentHandshakeError(SSL_ERROR_WANT_READ);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    LONGS_EQUAL(5, NoOpSleepCallCount);
+}
+
+TEST(SolidSyslogTlsStream, GetterReceivesNullContextWhenContextNotConfigured)
+{
+    RecreateStreamWithFakeHandshakeGetter();
+    SolidSyslogStream_Open(stream, addr);
+
+    POINTERS_EQUAL(nullptr, FakeGetHandshakeTimeoutMs_LastContext);
 }
 
 TEST(SolidSyslogTlsStream, OpenFailsImmediatelyOnHardSslError)

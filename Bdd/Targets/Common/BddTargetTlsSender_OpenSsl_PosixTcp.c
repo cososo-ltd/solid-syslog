@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "BddTargetMtlsConfig.h"
 #include "BddTargetTlsConfig.h"
@@ -19,7 +20,7 @@ static struct SolidSyslogSender* sender;
 
 struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* resolver, bool mtls)
 {
-    underlyingStream = SolidSyslogPosixTcpStream_Create();
+    underlyingStream = SolidSyslogPosixTcpStream_Create(NULL);
 
     static struct SolidSyslogTlsStreamConfig tlsStreamConfig;
     tlsStreamConfig = (struct SolidSyslogTlsStreamConfig) {0};

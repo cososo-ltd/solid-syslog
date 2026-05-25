@@ -24,13 +24,13 @@ static struct SolidSyslogPoolAllocator FreeRtosTcpStream_Allocator = {
     SOLIDSYSLOG_FREE_RTOS_TCP_STREAM_POOL_SIZE
 };
 
-struct SolidSyslogStream* SolidSyslogFreeRtosTcpStream_Create(void)
+struct SolidSyslogStream* SolidSyslogFreeRtosTcpStream_Create(const struct SolidSyslogFreeRtosTcpStreamConfig* config)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&FreeRtosTcpStream_Allocator);
     struct SolidSyslogStream* handle = SolidSyslogNullStream_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&FreeRtosTcpStream_Allocator, index) == true)
     {
-        FreeRtosTcpStream_Initialise(&FreeRtosTcpStream_Pool[index].Base);
+        FreeRtosTcpStream_Initialise(&FreeRtosTcpStream_Pool[index].Base, config);
         handle = &FreeRtosTcpStream_Pool[index].Base;
     }
     else

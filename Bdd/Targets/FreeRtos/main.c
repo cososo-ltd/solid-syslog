@@ -970,7 +970,7 @@ static void InteractiveTask(void* argument)
      * UDP endpoint callbacks because the BDD oracle (syslog-ng) listens on the
      * same host:port for both transports — the syslog-ng config in
      * Bdd/syslog-ng/syslog-ng.conf has a TCP listener on 5514 alongside UDP. */
-    tcpStream = SolidSyslogFreeRtosTcpStream_Create();
+    tcpStream = SolidSyslogFreeRtosTcpStream_Create(NULL);
     tcpAddress = SolidSyslogFreeRtosAddress_Create();
     struct SolidSyslogStreamSenderConfig tcpConfig = {
         .Resolver = resolver,

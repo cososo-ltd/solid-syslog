@@ -3,6 +3,7 @@
 
 #include "ExternC.h"
 #include "SolidSyslogSleep.h"
+#include "SolidSyslogTlsHandshakeTimeoutFunction.h"
 
 struct SolidSyslogStream;
 
@@ -13,6 +14,9 @@ EXTERN_C_BEGIN
         struct SolidSyslogStream* Transport; /* underlying byte stream — caller owns */
         SolidSyslogSleepFunction
             Sleep; /* drives bounded handshake retry between WANT_READ/WANT_WRITE polls — required */
+        SolidSyslogTlsHandshakeTimeoutFunction
+            GetHandshakeTimeoutMs; /* NULL → use SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS tunable */
+        void* HandshakeTimeoutContext; /* passed through to GetHandshakeTimeoutMs; NULL is fine */
         const char* CaBundlePath; /* PEM file of trust anchors */
         const char* ServerName; /* SNI + cert hostname check; NULL to skip */
         const char* CipherList; /* TLS 1.2 cipher list; NULL = OpenSSL default */

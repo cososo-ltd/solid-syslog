@@ -19,7 +19,7 @@ static struct SolidSyslogSender* sender;
 
 struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* resolver, bool mtls)
 {
-    underlyingStream = SolidSyslogWinsockTcpStream_Create();
+    underlyingStream = SolidSyslogWinsockTcpStream_Create(NULL);
 
     static struct SolidSyslogTlsStreamConfig tlsStreamConfig;
     tlsStreamConfig = (struct SolidSyslogTlsStreamConfig) {0};

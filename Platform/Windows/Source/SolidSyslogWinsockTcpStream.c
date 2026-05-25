@@ -9,9 +9,11 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogWinsockAddressPrivate.h"
 #include "SolidSyslogWinsockTcpStreamInternal.h"
 #include "SolidSyslogWinsockTcpStreamPrivate.h"
@@ -98,15 +100,6 @@ static int WSAAPI WinsockTcpStream_CallWSAGetLastError(void)
 
 enum
 {
-    /* Caps the time a single connect() attempt can stall the service thread.
-       Windows' default connect() to a refused loopback port retries internally
-       for ~2 s before returning WSAECONNREFUSED, which throttles the service
-       thread's drain rate during an outage and prevents the BlockStore's
-       discard policy from firing. Non-blocking connect + select() with this
-       timeout keeps each iteration bounded; on outage the next service tick
-       retries. 200 ms is comfortable for loopback/LAN and short enough that
-       10 failing attempts cost 2 s instead of 20 s. */
-    CONNECT_TIMEOUT_MILLISECONDS = 200,
     MILLISECONDS_PER_SECOND = 1000,
     MICROSECONDS_PER_MILLISECOND = 1000,
     /* Winsock ignores nfds (its fd_set is a literal array, not a bitmask),
@@ -122,12 +115,15 @@ enum
     KEEPALIVE_PROBE_COUNT = 4
 };
 
+static uint32_t WinsockTcpStream_NullConnectTimeoutGetter(void* context);
+
 static bool WinsockTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static bool WinsockTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static SolidSyslogSsize WinsockTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void WinsockTcpStream_Close(struct SolidSyslogStream* base);
 
 static inline struct SolidSyslogWinsockTcpStream* WinsockTcpStream_SelfFromBase(struct SolidSyslogStream* base);
+static inline bool WinsockTcpStream_ConfigProvidesGetter(const struct SolidSyslogWinsockTcpStreamConfig* config);
 
 static SOCKET WinsockTcpStream_OpenAndConfigureSocket(void);
 static bool WinsockTcpStream_ConfigureSocket(SOCKET fd);
@@ -138,21 +134,46 @@ static bool WinsockTcpStream_ConnectOrCloseOnFailure(
     struct SolidSyslogWinsockTcpStream* self,
     const struct sockaddr_in* sin
 );
-static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin);
+static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin, uint32_t connectTimeoutMs);
 static bool WinsockTcpStream_SetNonBlocking(SOCKET fd);
-static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd);
+static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd, uint32_t connectTimeoutMs);
 static bool WinsockTcpStream_ReadDeferredConnectError(SOCKET fd);
+static uint32_t WinsockTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogWinsockTcpStream* self);
 static bool WinsockTcpStream_WroteAllBytes(int sent, size_t expected);
 static inline bool WinsockTcpStream_WouldBlock(int wsaError);
 
-void WinsockTcpStream_Initialise(struct SolidSyslogStream* base)
+void WinsockTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogWinsockTcpStreamConfig* config)
 {
+    static const struct SolidSyslogWinsockTcpStream DefaultWinsockTcpStream = {
+        .Base =
+            {.Open = WinsockTcpStream_Open,
+             .Send = WinsockTcpStream_Send,
+             .Read = WinsockTcpStream_Read,
+             .Close = WinsockTcpStream_Close},
+        .Config = {.GetConnectTimeoutMs = WinsockTcpStream_NullConnectTimeoutGetter, .ConnectTimeoutContext = NULL},
+        .Fd = INVALID_SOCKET,
+    };
+
     struct SolidSyslogWinsockTcpStream* self = WinsockTcpStream_SelfFromBase(base);
-    self->Base.Open = WinsockTcpStream_Open;
-    self->Base.Send = WinsockTcpStream_Send;
-    self->Base.Read = WinsockTcpStream_Read;
-    self->Base.Close = WinsockTcpStream_Close;
-    self->Fd = INVALID_SOCKET;
+    *self = DefaultWinsockTcpStream;
+    if (WinsockTcpStream_ConfigProvidesGetter(config) == true)
+    {
+        self->Config = *config;
+    }
+}
+
+static inline bool WinsockTcpStream_ConfigProvidesGetter(const struct SolidSyslogWinsockTcpStreamConfig* config)
+{
+    return (config != NULL) && (config->GetConnectTimeoutMs != NULL);
+}
+
+/* Null Object substituted when the integrator does not install a getter —
+ * returns the compile-time tunable so the bounded-wait path has a single
+ * code path regardless of whether the integrator wired runtime tuning. */
+static uint32_t WinsockTcpStream_NullConnectTimeoutGetter(void* context)
+{
+    (void) context;
+    return (uint32_t) SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS;
 }
 
 static inline struct SolidSyslogWinsockTcpStream* WinsockTcpStream_SelfFromBase(struct SolidSyslogStream* base)
@@ -245,13 +266,22 @@ static bool WinsockTcpStream_ConnectOrCloseOnFailure(
     const struct sockaddr_in* sin
 )
 {
-    bool connected = WinsockTcpStream_Connect(self->Fd, sin);
+    uint32_t connectTimeoutMs = WinsockTcpStream_ResolveConnectTimeoutMs(self);
+    bool connected = WinsockTcpStream_Connect(self->Fd, sin, connectTimeoutMs);
     if (!connected)
     {
         WinsockTcpStream_closesocket(self->Fd);
         self->Fd = INVALID_SOCKET;
     }
     return connected;
+}
+
+/* Bridges the integrator-installed getter (or the Null Object substituted in
+ * Initialise) to the bounded select() deadline. Invoked on every connect
+ * attempt so a runtime-tunable value takes effect on the next reconnect. */
+static uint32_t WinsockTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogWinsockTcpStream* self)
+{
+    return self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
 }
 
 /* Non-blocking connect with bounded wait. Windows' default blocking connect()
@@ -261,7 +291,7 @@ static bool WinsockTcpStream_ConnectOrCloseOnFailure(
  * discard policy from firing in BDD outage scenarios. The non-blocking path
  * bounds each connect attempt to CONNECT_TIMEOUT_MILLISECONDS; the socket
  * stays non-blocking thereafter so WinsockTcpStream_Send/WinsockTcpStream_Read are also fail-fast. */
-static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin)
+static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin, uint32_t connectTimeoutMs)
 {
     bool connected = false;
     int rc = WinsockTcpStream_connect(fd, (const struct sockaddr*) sin, (int) sizeof(*sin));
@@ -272,7 +302,8 @@ static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin)
     }
     else if (WinsockTcpStream_WSAGetLastError() == WSAEWOULDBLOCK)
     {
-        connected = WinsockTcpStream_WaitForConnectCompletion(fd) && WinsockTcpStream_ReadDeferredConnectError(fd);
+        connected = WinsockTcpStream_WaitForConnectCompletion(fd, connectTimeoutMs) &&
+                    WinsockTcpStream_ReadDeferredConnectError(fd);
     }
     else
     {
@@ -287,7 +318,7 @@ static bool WinsockTcpStream_SetNonBlocking(SOCKET fd)
     return WinsockTcpStream_ioctlsocket(fd, (long) FIONBIO, &mode) != SOCKET_ERROR;
 }
 
-static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd)
+static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd, uint32_t connectTimeoutMs)
 {
     fd_set writeSet;
     FD_ZERO(&writeSet);
@@ -298,8 +329,8 @@ static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd)
     FD_SET(fd, &errorSet);
 
     struct timeval timeout = {
-        .tv_sec = CONNECT_TIMEOUT_MILLISECONDS / MILLISECONDS_PER_SECOND,
-        .tv_usec = (CONNECT_TIMEOUT_MILLISECONDS % MILLISECONDS_PER_SECOND) * MICROSECONDS_PER_MILLISECOND
+        .tv_sec = (long) (connectTimeoutMs / MILLISECONDS_PER_SECOND),
+        .tv_usec = (long) ((connectTimeoutMs % MILLISECONDS_PER_SECOND) * MICROSECONDS_PER_MILLISECOND)
     };
 
     int rc = WinsockTcpStream_select(WINSOCK_NFDS_IGNORED, NULL, &writeSet, &errorSet, &timeout);
