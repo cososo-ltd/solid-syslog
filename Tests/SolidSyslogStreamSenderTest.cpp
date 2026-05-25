@@ -732,6 +732,19 @@ TEST(SolidSyslogStreamSenderPool, FillingPoolThenOverflowReturnsDistinctFallback
 // SolidSyslogNullSender without consuming a pool slot. Matches the
 // SolidSyslogUdpSenderBadSetup contract from S12.06.
 
+/* Macro (not function) so test failures report the caller's __FILE__/__LINE__. */
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macro preserves caller location in test failure output
+#define CHECK_STREAMSENDER_BAD_SETUP_ERROR(expectedCode)                          \
+    do                                                                            \
+    {                                                                             \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                               \
+        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity()); \
+        POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());  \
+        UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastCode());        \
+    } while (0)
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+
 // clang-format off
 TEST_GROUP(SolidSyslogStreamSenderBadSetup)
 {
@@ -771,40 +784,28 @@ TEST_GROUP(SolidSyslogStreamSenderBadSetup)
 TEST(SolidSyslogStreamSenderBadSetup, CreateWithNullConfigReportsError)
 {
     SolidSyslogStreamSender_Create(nullptr);
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(STREAMSENDER_ERROR_NULL_CONFIG, ErrorHandlerFake_LastCode());
+    CHECK_STREAMSENDER_BAD_SETUP_ERROR(STREAMSENDER_ERROR_NULL_CONFIG);
 }
 
 TEST(SolidSyslogStreamSenderBadSetup, CreateWithNullResolverReportsError)
 {
     config.Resolver = nullptr;
     SolidSyslogStreamSender_Create(&config);
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(STREAMSENDER_ERROR_NULL_RESOLVER, ErrorHandlerFake_LastCode());
+    CHECK_STREAMSENDER_BAD_SETUP_ERROR(STREAMSENDER_ERROR_NULL_RESOLVER);
 }
 
 TEST(SolidSyslogStreamSenderBadSetup, CreateWithNullStreamReportsError)
 {
     config.Stream = nullptr;
     SolidSyslogStreamSender_Create(&config);
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(STREAMSENDER_ERROR_NULL_STREAM, ErrorHandlerFake_LastCode());
+    CHECK_STREAMSENDER_BAD_SETUP_ERROR(STREAMSENDER_ERROR_NULL_STREAM);
 }
 
 TEST(SolidSyslogStreamSenderBadSetup, CreateWithNullAddressReportsError)
 {
     config.Address = nullptr;
     SolidSyslogStreamSender_Create(&config);
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(STREAMSENDER_ERROR_NULL_ADDRESS, ErrorHandlerFake_LastCode());
+    CHECK_STREAMSENDER_BAD_SETUP_ERROR(STREAMSENDER_ERROR_NULL_ADDRESS);
 }
 
 TEST(SolidSyslogStreamSenderBadSetup, SendOnBadSetupSenderReturnsTrue)
