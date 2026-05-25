@@ -89,9 +89,13 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
         ssize_t received = mq_receive(self->Mq, data, maxSize, NULL);
         success = received >= 0;
 
-        /* EAGAIN is the empty-queue poll signal — part of the happy path and must
-         * stay silent. Any other errno is a real failure worth surfacing. */
-        if (!success && (errno != EAGAIN))
+        /* Capture errno immediately after mq_receive so the EAGAIN test below
+         * stays a pure predicate and is decoupled from errno's lifetime
+         * between the errno-setting call and the read (MISRA C:2012 Rule 22.10).
+         * EAGAIN is the empty-queue poll signal — part of the happy path and
+         * must stay silent. Any other errno is a real failure worth surfacing. */
+        int receiveErrno = success ? 0 : errno;
+        if (!success && (receiveErrno != EAGAIN))
         {
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
