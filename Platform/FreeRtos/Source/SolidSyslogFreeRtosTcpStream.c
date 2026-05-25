@@ -18,6 +18,7 @@
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogTunables.h"
 
 /* SolidSyslogStream_Read returns < 0 to signal EOF/error (socket closed
  * internally); -1 is the in-tree convention shared with Posix/Winsock. */
@@ -35,12 +36,15 @@ enum
     SEND_RECV_FLAGS_DEFAULT = 0
 };
 
+static uint32_t FreeRtosTcpStream_NullConnectTimeoutGetter(void* context);
+
 static bool FreeRtosTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static bool FreeRtosTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static SolidSyslogSsize FreeRtosTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void FreeRtosTcpStream_Close(struct SolidSyslogStream* base);
 
 static inline struct SolidSyslogFreeRtosTcpStream* FreeRtosTcpStream_SelfFromBase(struct SolidSyslogStream* base);
+static inline bool FreeRtosTcpStream_ConfigProvidesGetter(const struct SolidSyslogFreeRtosTcpStreamConfig* config);
 static inline bool FreeRtosTcpStream_IsOpen(const struct SolidSyslogFreeRtosTcpStream* self);
 static inline bool FreeRtosTcpStream_IsClosed(const struct SolidSyslogFreeRtosTcpStream* self);
 static void FreeRtosTcpStream_OpenSocket(struct SolidSyslogFreeRtosTcpStream* self);
@@ -56,6 +60,7 @@ static inline void FreeRtosTcpStream_PrimeArpIfMissing(uint32_t ip);
 static void FreeRtosTcpStream_ClearTimeouts(Socket_t socket);
 static void FreeRtosTcpStream_SetSendTimeout(Socket_t socket, TickType_t ticks);
 static void FreeRtosTcpStream_SetRecvTimeout(Socket_t socket, TickType_t ticks);
+static uint32_t FreeRtosTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogFreeRtosTcpStream* self);
 static bool FreeRtosTcpStream_SendOrCloseOnFailure(
     struct SolidSyslogFreeRtosTcpStream* self,
     const void* buffer,
@@ -70,14 +75,45 @@ static SolidSyslogSsize FreeRtosTcpStream_ReceiveOrCloseOnFailure(
 );
 static void FreeRtosTcpStream_CloseSocket(struct SolidSyslogFreeRtosTcpStream* self);
 
-void FreeRtosTcpStream_Initialise(struct SolidSyslogStream* base)
+/* Canonical "no integrator config" state for a pool slot — copied wholesale in
+ * Initialise. Holds the vtable function pointers, the Null Object getter, and
+ * FREERTOS_INVALID_SOCKET so a pre-Open slot is safe to Close without owning a
+ * real socket. */
+static const struct SolidSyslogFreeRtosTcpStream DefaultFreeRtosTcpStream = {
+    .Base =
+        {.Open = FreeRtosTcpStream_Open,
+         .Send = FreeRtosTcpStream_Send,
+         .Read = FreeRtosTcpStream_Read,
+         .Close = FreeRtosTcpStream_Close},
+    .Config = {.GetConnectTimeoutMs = FreeRtosTcpStream_NullConnectTimeoutGetter, .ConnectTimeoutContext = NULL},
+    .Socket = FREERTOS_INVALID_SOCKET,
+};
+
+void FreeRtosTcpStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogFreeRtosTcpStreamConfig* config
+)
 {
     struct SolidSyslogFreeRtosTcpStream* self = FreeRtosTcpStream_SelfFromBase(base);
-    self->Base.Open = FreeRtosTcpStream_Open;
-    self->Base.Send = FreeRtosTcpStream_Send;
-    self->Base.Read = FreeRtosTcpStream_Read;
-    self->Base.Close = FreeRtosTcpStream_Close;
-    self->Socket = FREERTOS_INVALID_SOCKET;
+    *self = DefaultFreeRtosTcpStream;
+    if (FreeRtosTcpStream_ConfigProvidesGetter(config) == true)
+    {
+        self->Config = *config;
+    }
+}
+
+static inline bool FreeRtosTcpStream_ConfigProvidesGetter(const struct SolidSyslogFreeRtosTcpStreamConfig* config)
+{
+    return (config != NULL) && (config->GetConnectTimeoutMs != NULL);
+}
+
+/* Null Object substituted when the integrator does not install a getter —
+ * returns the compile-time tunable so the bounded-wait path has a single
+ * code path regardless of whether the integrator wired runtime tuning. */
+static uint32_t FreeRtosTcpStream_NullConnectTimeoutGetter(void* context)
+{
+    (void) context;
+    return (uint32_t) SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS;
 }
 
 static inline struct SolidSyslogFreeRtosTcpStream* FreeRtosTcpStream_SelfFromBase(struct SolidSyslogStream* base)
@@ -152,21 +188,29 @@ static bool FreeRtosTcpStream_TryConnect(
     const struct SolidSyslogAddress* addr
 )
 {
-    /* 200 ms is short enough that the Service task keeps draining
-     * predictably during an outage, long enough for a healthy peer to
-     * ACK over slirp/LAN. Both SO_SNDTIMEO and SO_RCVTIMEO are set
-     * before FreeRTOS_connect — upstream gates connect on SO_RCVTIMEO,
-     * but we set both as belt-and-braces against an upstream change.
-     * After connect both timeouts go back to 0 so subsequent Send/Read
-     * follow the non-blocking single-call contract from
-     * SolidSyslogStream. */
-    static const TickType_t CONNECT_TIMEOUT_TICKS = pdMS_TO_TICKS(200);
+    /* Both SO_SNDTIMEO and SO_RCVTIMEO are set before FreeRTOS_connect —
+     * upstream gates connect on SO_RCVTIMEO, but we set both as belt-and-
+     * braces against an upstream change. After connect both timeouts go
+     * back to 0 so subsequent Send/Read follow the non-blocking single-
+     * call contract from SolidSyslogStream. The default
+     * SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS = 200 is short enough that the
+     * Service task keeps draining predictably during an outage, long
+     * enough for a healthy peer to ACK over slirp/LAN. */
+    const TickType_t connectTimeoutTicks = pdMS_TO_TICKS(FreeRtosTcpStream_ResolveConnectTimeoutMs(self));
 
     const struct freertos_sockaddr* dest = SolidSyslogFreeRtosAddress_AsConstFreertosSockaddr(addr);
     FreeRtosTcpStream_PrimeArpIfMissing(dest->sin_address.ulIP_IPv4);
-    FreeRtosTcpStream_SetSendTimeout(self->Socket, CONNECT_TIMEOUT_TICKS);
-    FreeRtosTcpStream_SetRecvTimeout(self->Socket, CONNECT_TIMEOUT_TICKS);
+    FreeRtosTcpStream_SetSendTimeout(self->Socket, connectTimeoutTicks);
+    FreeRtosTcpStream_SetRecvTimeout(self->Socket, connectTimeoutTicks);
     return FreeRTOS_connect(self->Socket, dest, sizeof(*dest)) == 0;
+}
+
+/* Bridges the integrator-installed getter (or the Null Object substituted in
+ * Initialise) to the bounded SO_*TIMEO deadline. Invoked on every connect
+ * attempt so a runtime-tunable value takes effect on the next reconnect. */
+static uint32_t FreeRtosTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogFreeRtosTcpStream* self)
+{
+    return self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
 }
 
 /* On ARP cache miss issue a probe and yield once for the reply to land
