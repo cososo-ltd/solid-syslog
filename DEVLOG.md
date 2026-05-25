@@ -1,5 +1,122 @@
 # Dev Log
 
+## 2026-05-25 — S28.01 lwIP container pin + SOLIDSYSLOG_FREERTOS_NET option
+
+Foundation story for E28 (#439 — lwIP Raw API support). No production-code
+changes; this is image plumbing plus a CMake option that gates the future
+backend selection.
+
+### What landed
+
+1. **Container image bump** (CppUTestFreertosDocker PR #3, merged). Adds
+   lwIP `STABLE-2_2_1_RELEASE` (commit `77dcd25a`) to `dockerfile.host` at
+   `/opt/lwip`, alongside the existing FreeRTOS-Kernel / Plus-TCP / FatFs /
+   Mbed TLS sources. Pulled from the lwip-tcpip/lwip GitHub mirror to match
+   the existing dockerfile pattern; SHA-gated so a moved tag fails the
+   build loudly. New env var `LWIP_PATH=/opt/lwip`. The cross dockerfile
+   FROMs the host image so it picks the new sources up automatically. Both
+   images now publish at `sha-24de138`.
+2. **SHA bump in solid-syslog** to `sha-24de138` across all seven
+   references called out in `docs/containers.md`'s "Files to update"
+   table: `.devcontainer/docker-compose.yml` (2× — `freertos-host` and
+   `freertos-target` services), `.github/workflows/ci.yml` (3× — the
+   integration-linux-mbedtls, build-freertos-host-tdd, and
+   build-freertos-target jobs), `ci/docker-compose.bdd.yml` (1× —
+   `behave-freertos`), and `docs/containers.md` (2× table rows). The
+   "Used by" descriptions in the docs table also gain "lwIP" alongside
+   "Plus-TCP" and the new `/opt/lwip` path.
+3. **`SOLIDSYSLOG_FREERTOS_NET` CMake option** added to the top-level
+   `CMakeLists.txt` as a cached `STRING` with `STRINGS PLUSTCP LWIP BOTH`.
+   Default `PLUSTCP` — current behaviour, build graph byte-identical to
+   the option-absent case. `LWIP` and `BOTH` both raise
+   `message(FATAL_ERROR "... Platform/LwipRaw not yet implemented; see
+   E28 stories S28.03-S28.05.")`. Any value outside the STRINGS list
+   raises a separate validation FATAL_ERROR. S28.02 will wire `PLUSTCP`
+   to the renamed `Platform/PlusTcp/` tree; S28.03–S28.06 will fill in
+   the `LWIP` and `BOTH` paths.
+
+### Why this slice
+
+Splitting the container pin and the option from the actual `Platform/LwipRaw/`
+implementation keeps the diff reviewable: this PR is plumbing only and
+fully reversible by reverting the SHA + the option. S28.02 (the +TCP rename)
+can land independently; S28.03+ (real lwIP wrappers) can then proceed
+against the existing pinned sources without a separate image roundtrip.
+
+### Branch + commit
+
+`feat/s28-01-lwip-cmake-option-and-container-bump`, single commit, not yet
+pushed.
+
+### Local validation
+
+All variants of the CMake option behave per the story's acceptance:
+
+| `-DSOLIDSYSLOG_FREERTOS_NET=…` | Outcome |
+|---|---|
+| (omitted) | Configures, same build graph as `=PLUSTCP` |
+| `PLUSTCP` | Configures, default path |
+| `LWIP` | `FATAL_ERROR` — "Platform/LwipRaw not yet implemented; see E28 stories S28.03-S28.05." |
+| `BOTH` | Same `FATAL_ERROR` |
+| `BOGUS` (or any other) | `FATAL_ERROR` — "must be one of PLUSTCP, LWIP, or BOTH" |
+
+Verified under both the `debug` preset (gcc devcontainer) and the
+`freertos-cross` preset (freertos-target devcontainer). Build graph
+byte-diff between option-absent and `=PLUSTCP` configurations: empty.
+
+Preflight green on the bumped images:
+- `build-linux-gcc` (debug): 1332 tests, 3044 checks, 0 failures.
+- `build-linux-clang` (clang-debug): same 1332/3044.
+- `sanitize-linux-gcc` (sanitize): 1332/3044, no ASan/UBSan reports.
+- `coverage-linux-gcc` (coverage target): clean build, 97.0% function
+  coverage at the bottom of the report (CI gate is 90%).
+- `analyze-tidy` (tidy): clean build, no clang-tidy warnings.
+- `analyze-cppcheck` (cppcheck): clean build.
+- `analyze-format`: clean.
+- `build-freertos-host-tdd` (debug preset on `cpputest-freertos:sha-24de138`):
+  `SolidSyslogTests` linked OK.
+- `build-freertos-target` (freertos-cross preset on `cpputest-freertos-cross:sha-24de138`):
+  `SolidSyslogBddTarget.elf` cross-built OK, 3 206 532 bytes.
+
+`bdd-freertos-qemu` is CI's responsibility per CLAUDE.md (running BDD
+locally would slow development too much). The host-TDD and cross-build
+green on the new images cover the image-level smoke test.
+
+### Decisions
+
+- **lwIP upstream:** `github.com/lwip-tcpip/lwip` (the GitHub mirror of
+  the Savannah repo), to match the existing dockerfile pattern. All other
+  upstreams are cloned from GitHub already; the only Savannah option
+  would have been a one-off `git.savannah.nongnu.org` URL.
+- **Pin to `STABLE-2_2_1_RELEASE`**: the latest stable tag on the 2.2.x
+  line at the time of writing (2026-01-09 release). Commit
+  `77dcd25a72509eb83f72b033d219b1d40cd8eb95`.
+- **Install location `/opt/lwip`**: flat under `/opt`, mirroring
+  `/opt/fatfs` and `/opt/mbedtls` (and unlike `/opt/freertos/{kernel,plus-tcp}`
+  which are bundled because they share a vendor). lwIP is a separate
+  project so it gets its own top-level directory.
+- **Container PR over direct push**: opened
+  CppUTestFreertosDocker PR #3 rather than pushing directly to `main`, so
+  the dockerfile change has its own audit trail. Same shape as previous
+  image bumps.
+- **One PR for the whole story**: container pin + option + SHA bump + docs
+  all in one PR. The story is scoped tightly enough (no production-code
+  changes) that splitting would be churn.
+
+### Deferred
+
+- `Platform/PlusTcp/` rename + CI job rename — S28.02.
+- `Platform/LwipRaw/` actual wrappers — S28.03–S28.05.
+- `Bdd/Targets/FreeRtosLwip/` + the three new CI jobs (host-tdd-lwip,
+  target-lwip, qemu-lwip) — S28.06.
+- README badge / CLAUDE.md branch-protection list updates — happen
+  alongside the CI job changes in S28.02 / S28.06.
+- `docs/integrating-lwip.md` — S28.05.
+
+### Open questions
+
+- None — story scope was unambiguous.
+
 ## 2026-05-25 — S21.03 lift MAX_PATH_SIZE and MAX_INTEGRITY_SIZE to build-time tunables
 
 Implements S21.03 (#446) under E21 (#217). Two small wins moving the

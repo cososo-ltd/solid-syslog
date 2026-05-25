@@ -119,7 +119,7 @@ jobs:
     # cpputest-freertos image carries /opt/mbedtls (and exports MBEDTLS_DIR);
     # Tests/MbedTlsIntegration/CMakeLists.txt requires that env var.
     container:
-      image: ghcr.io/davidcozens/cpputest-freertos:sha-1cb0f34
+      image: ghcr.io/davidcozens/cpputest-freertos:sha-24de138
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -851,7 +851,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/davidcozens/cpputest-freertos:sha-1cb0f34
+      image: ghcr.io/davidcozens/cpputest-freertos:sha-24de138
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -895,7 +895,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-1cb0f34
+      image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-24de138
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1

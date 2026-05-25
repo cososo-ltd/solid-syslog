@@ -142,6 +142,33 @@ elseif(NOT SOLIDSYSLOG_ALLOCATION_STRATEGY STREQUAL "static")
         "SOLIDSYSLOG_ALLOCATION_STRATEGY must be 'static' (got: '${SOLIDSYSLOG_ALLOCATION_STRATEGY}').")
 endif()
 
+# FreeRTOS networking backend (E28). Two adapter trees ship in the same
+# library: FreeRTOS-Plus-TCP (current) and lwIP Raw (new). The integrator
+# picks one — or both, for dev-container context-switching — at configure
+# time. CI builds PLUSTCP and LWIP in isolation; BOTH is a dev-container
+# convenience.
+#
+# This story (S28.01) lands only the option, the container-image lwIP pin,
+# and the validation. The PLUSTCP path is unchanged (the +TCP classes have
+# not been renamed or moved yet — that is S28.02). LWIP and BOTH fail fast
+# because no Platform/LwipRaw/ tree exists yet (S28.03–S28.05).
+set(SOLIDSYSLOG_FREERTOS_NET "PLUSTCP" CACHE STRING
+    "FreeRTOS networking backend: PLUSTCP (default), LWIP, or BOTH")
+set_property(CACHE SOLIDSYSLOG_FREERTOS_NET PROPERTY STRINGS PLUSTCP LWIP BOTH)
+if(NOT SOLIDSYSLOG_FREERTOS_NET STREQUAL "PLUSTCP"
+   AND NOT SOLIDSYSLOG_FREERTOS_NET STREQUAL "LWIP"
+   AND NOT SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
+    message(FATAL_ERROR
+        "SOLIDSYSLOG_FREERTOS_NET must be one of PLUSTCP, LWIP, or BOTH "
+        "(got: '${SOLIDSYSLOG_FREERTOS_NET}').")
+endif()
+if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "LWIP"
+   OR SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
+    message(FATAL_ERROR
+        "SOLIDSYSLOG_FREERTOS_NET=${SOLIDSYSLOG_FREERTOS_NET}: "
+        "Platform/LwipRaw not yet implemented; see E28 stories S28.03-S28.05.")
+endif()
+
 # Build-time tunables (E21: Port-Time Configurability). Integrators override
 # library defaults by setting SOLIDSYSLOG_USER_TUNABLES_FILE to the absolute
 # path of their own header containing #define lines for whichever tunables
