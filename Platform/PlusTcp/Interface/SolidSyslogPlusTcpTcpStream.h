@@ -15,8 +15,7 @@ EXTERN_C_BEGIN
         void* ConnectTimeoutContext; /* passed through to GetConnectTimeoutMs; NULL is fine */
     };
 
-    struct SolidSyslogStream* SolidSyslogPlusTcpTcpStream_Create(
-        const struct SolidSyslogPlusTcpTcpStreamConfig* config
+    struct SolidSyslogStream* SolidSyslogPlusTcpTcpStream_Create(const struct SolidSyslogPlusTcpTcpStreamConfig* config
     );
     void SolidSyslogPlusTcpTcpStream_Destroy(struct SolidSyslogStream * base);
 

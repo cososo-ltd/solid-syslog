@@ -75,10 +75,7 @@ static SolidSyslogSsize PlusTcpTcpStream_ReceiveOrCloseOnFailure(
 );
 static void PlusTcpTcpStream_CloseSocket(struct SolidSyslogPlusTcpTcpStream* self);
 
-void PlusTcpTcpStream_Initialise(
-    struct SolidSyslogStream* base,
-    const struct SolidSyslogPlusTcpTcpStreamConfig* config
-)
+void PlusTcpTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogPlusTcpTcpStreamConfig* config)
 {
     static const struct SolidSyslogPlusTcpTcpStream DefaultPlusTcpTcpStream = {
         .Base =
@@ -179,10 +176,7 @@ static void PlusTcpTcpStream_ConnectOrCloseOnFailure(
     }
 }
 
-static bool PlusTcpTcpStream_TryConnect(
-    struct SolidSyslogPlusTcpTcpStream* self,
-    const struct SolidSyslogAddress* addr
-)
+static bool PlusTcpTcpStream_TryConnect(struct SolidSyslogPlusTcpTcpStream* self, const struct SolidSyslogAddress* addr)
 {
     /* Both SO_SNDTIMEO and SO_RCVTIMEO are set before FreeRTOS_connect —
      * upstream gates connect on SO_RCVTIMEO, but we set both as belt-and-

@@ -18,10 +18,7 @@ static inline size_t PlusTcpAddress_IndexFromHandle(const struct SolidSyslogAddr
 static inline void PlusTcpAddress_CleanupAtIndex(size_t index, void* context);
 
 static bool PlusTcpAddress_InUse[SOLIDSYSLOG_ADDRESS_POOL_SIZE];
-static struct SolidSyslogPoolAllocator PlusTcpAddress_Allocator = {
-    PlusTcpAddress_InUse,
-    SOLIDSYSLOG_ADDRESS_POOL_SIZE
-};
+static struct SolidSyslogPoolAllocator PlusTcpAddress_Allocator = {PlusTcpAddress_InUse, SOLIDSYSLOG_ADDRESS_POOL_SIZE};
 
 struct SolidSyslogAddress* SolidSyslogPlusTcpAddress_Create(void)
 {

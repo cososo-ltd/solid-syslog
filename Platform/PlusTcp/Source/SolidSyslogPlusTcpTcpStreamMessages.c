@@ -20,7 +20,4 @@ static const char* PlusTcpTcpStreamError_AsString(uint8_t code)
     return result;
 }
 
-const struct SolidSyslogErrorSource PlusTcpTcpStreamErrorSource = {
-    "PlusTcpTcpStream",
-    PlusTcpTcpStreamError_AsString
-};
+const struct SolidSyslogErrorSource PlusTcpTcpStreamErrorSource = {"PlusTcpTcpStream", PlusTcpTcpStreamError_AsString};

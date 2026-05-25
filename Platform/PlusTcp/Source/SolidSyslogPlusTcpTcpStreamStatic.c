@@ -47,13 +47,9 @@ struct SolidSyslogStream* SolidSyslogPlusTcpTcpStream_Create(const struct SolidS
 void SolidSyslogPlusTcpTcpStream_Destroy(struct SolidSyslogStream* base)
 {
     size_t index = PlusTcpTcpStream_IndexFromHandle(base);
-    bool released = SolidSyslogPoolAllocator_IndexIsValid(&PlusTcpTcpStream_Allocator, index) &&
-                    SolidSyslogPoolAllocator_FreeIfInUse(
-                        &PlusTcpTcpStream_Allocator,
-                        index,
-                        PlusTcpTcpStream_CleanupAtIndex,
-                        NULL
-                    );
+    bool released =
+        SolidSyslogPoolAllocator_IndexIsValid(&PlusTcpTcpStream_Allocator, index) &&
+        SolidSyslogPoolAllocator_FreeIfInUse(&PlusTcpTcpStream_Allocator, index, PlusTcpTcpStream_CleanupAtIndex, NULL);
     if (!released)
     {
         SolidSyslog_Error(
