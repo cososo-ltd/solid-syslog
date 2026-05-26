@@ -1,8 +1,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogWinsockAddress.h"
@@ -20,8 +19,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
-
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     do                                                                                 \
@@ -34,8 +31,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
         }                                                                              \
     } while (0)
 
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-
 namespace
 {
 int FakeGetConnectTimeoutMs_CallCount = 0;
@@ -45,7 +40,6 @@ uint32_t FakeGetConnectTimeoutMs_ReturnValue = 200U;
 void FakeGetConnectTimeoutMs_Reset()
 {
     FakeGetConnectTimeoutMs_CallCount = 0;
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- sentinel pointer; we never deref, only compare to nullptr after Open
     FakeGetConnectTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
     FakeGetConnectTimeoutMs_ReturnValue = 200U;
 }
@@ -66,9 +60,7 @@ static const int         TEST_PORT        = 514;
 
 TEST_GROUP(SolidSyslogWinsockTcpStream)
 {
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogStream* stream = nullptr;
-    // cppcheck-suppress unreadVariable -- assigned in setup; cppcheck does not model CppUTest macros
     struct SolidSyslogAddress* addr = nullptr;
 
     void setup() override
@@ -85,7 +77,6 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
         UT_PTR_SET(WinsockTcpStream_ioctlsocket,      WinsockFake_ioctlsocket);
         UT_PTR_SET(WinsockTcpStream_select,           WinsockFake_select);
         UT_PTR_SET(WinsockTcpStream_WSAGetLastError,  WinsockFake_WSAGetLastError);
-        // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
         stream                  = SolidSyslogWinsockTcpStream_Create(nullptr);
         addr                    = SolidSyslogWinsockAddress_Create();
         struct sockaddr_in* sin = SolidSyslogWinsockAddress_AsSockaddrIn(addr);
@@ -124,15 +115,12 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
 
 // clang-format on
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 #define CHECK_SOCKET_CLOSED_ONCE()                                   \
     do                                                               \
     {                                                                \
         CALLED_FAKE(WinsockFake_Close, ONCE);                        \
         CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd()); \
     } while (0)
-
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 TEST(SolidSyslogWinsockTcpStream, CreateDestroyWorksWithoutCrashing)
 {
@@ -544,7 +532,6 @@ TEST(SolidSyslogWinsockTcpStream, DestroyClosesOpenSocket)
 // clang-format off
 TEST_GROUP(SolidSyslogWinsockTcpStreamPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogStream* pooled[SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                         = nullptr;
 
@@ -557,7 +544,6 @@ TEST_GROUP(SolidSyslogWinsockTcpStreamPool)
                 SolidSyslogWinsockTcpStream_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogWinsockTcpStream_Destroy(overflow);

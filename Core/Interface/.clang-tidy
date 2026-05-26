@@ -1,0 +1,17 @@
+---
+# Public-header tier per docs/NAMING.md — Tier 1.
+#
+# Inherits the root .clang-tidy and disables one rule:
+#
+# -cppcoreguidelines-macro-usage
+#   Core/Interface/ is C-macro-heavy by design — `SOLIDSYSLOG_*_POOL_SIZE`
+#   defaults must be visible to the preprocessor (`#if`-checked floors) and
+#   usable as array-size const-expressions in dependent headers. Replacing
+#   with `static const` or `constexpr` loses both properties. The same idiom
+#   appears in SolidSyslogFormatter.h (worst-case output sizing macros),
+#   SolidSyslogCircularBuffer.h (ring-bytes helper) and ExternC.h
+#   (extern "C" linkage block). The rule fires on every entry, the
+#   rationale is uniform, so disable tier-wide here rather than carry the
+#   same NOLINT comment on dozens of macro definitions.
+InheritParentConfig: true
+Checks: '-cppcoreguidelines-macro-usage'

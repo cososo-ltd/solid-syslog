@@ -16,7 +16,7 @@ extern "C"
 
 #include "TestUtils.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER into scope for CALLED_FAKE
+using namespace CososoTesting;
 
 namespace
 {
@@ -25,8 +25,6 @@ void NoOpSleep(int milliseconds)
     (void) milliseconds;
 }
 } // namespace
-
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -40,14 +38,11 @@ void NoOpSleep(int milliseconds)
         }                                                                              \
     } while (0)
 
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-
 // clang-format off
 TEST_GROUP(SolidSyslogTlsStreamPool)
 {
     struct SolidSyslogStream*         transport = nullptr;
     struct SolidSyslogTlsStreamConfig config    = {};
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogStream* pooled[SOLIDSYSLOG_TLS_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                 = nullptr;
 
@@ -68,7 +63,6 @@ TEST_GROUP(SolidSyslogTlsStreamPool)
                 SolidSyslogTlsStream_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogTlsStream_Destroy(overflow);

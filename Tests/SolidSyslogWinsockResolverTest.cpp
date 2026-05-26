@@ -1,8 +1,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogWinsockAddress.h"
@@ -19,8 +18,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
-
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     do                                                                                 \
@@ -32,8 +29,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
             CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
         }                                                                              \
     } while (0)
-
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 // clang-format off
 static const char* const TEST_HOST           = "127.0.0.1";
@@ -147,7 +142,6 @@ TEST(SolidSyslogWinsockResolver, FreesAddrInfoOnSuccess)
 // clang-format off
 TEST_GROUP(SolidSyslogWinsockResolverPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogResolver* pooled[SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE] = {};
     struct SolidSyslogResolver* overflow                                       = nullptr;
 
@@ -160,7 +154,6 @@ TEST_GROUP(SolidSyslogWinsockResolverPool)
                 SolidSyslogWinsockResolver_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogWinsockResolver_Destroy(overflow);

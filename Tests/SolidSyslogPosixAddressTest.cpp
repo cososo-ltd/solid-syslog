@@ -1,8 +1,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -16,8 +15,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
-
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     do                                                                                 \
@@ -30,8 +27,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
         }                                                                              \
     } while (0)
 
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-
 // clang-format off
 TEST_GROUP(SolidSyslogPosixAddress)
 {
@@ -39,7 +34,6 @@ TEST_GROUP(SolidSyslogPosixAddress)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         address = SolidSyslogPosixAddress_Create();
     }
 
@@ -87,7 +81,6 @@ TEST(SolidSyslogPosixAddress, CreateZeroesTheSockaddrFromAnyPriorSlotContents)
 // clang-format off
 TEST_GROUP(SolidSyslogPosixAddressPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogAddress* pooled[SOLIDSYSLOG_ADDRESS_POOL_SIZE] = {};
     struct SolidSyslogAddress* overflow                              = nullptr;
 
@@ -100,7 +93,6 @@ TEST_GROUP(SolidSyslogPosixAddressPool)
                 SolidSyslogPosixAddress_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPosixAddress_Destroy(overflow);

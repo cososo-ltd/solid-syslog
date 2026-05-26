@@ -3,8 +3,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogPassthroughBuffer.h"
@@ -25,7 +24,6 @@ TEST_GROUP(SolidSyslogPassthroughBuffer)
     void setup() override
     {
         fakeSender = SenderFake_Create();
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         buffer = SolidSyslogPassthroughBuffer_Create(fakeSender);
     }
 
@@ -128,7 +126,6 @@ TEST_GROUP(SolidSyslogPassthroughBufferPool)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         fakeSender = SenderFake_Create();
     }
 

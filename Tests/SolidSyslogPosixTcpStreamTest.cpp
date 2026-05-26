@@ -9,8 +9,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogPosixAddress.h"
@@ -33,7 +32,6 @@ uint32_t FakeGetConnectTimeoutMs_ReturnValue = 200U;
 void FakeGetConnectTimeoutMs_Reset()
 {
     FakeGetConnectTimeoutMs_CallCount = 0;
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- sentinel pointer; we never deref, only compare to nullptr after Open
     FakeGetConnectTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
     FakeGetConnectTimeoutMs_ReturnValue = 200U;
 }
@@ -54,16 +52,13 @@ static const int         TEST_PORT        = 514;
 
 TEST_GROUP(SolidSyslogPosixTcpStream)
 {
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogStream* stream = nullptr;
-    // cppcheck-suppress unreadVariable -- assigned in setup; cppcheck does not model CppUTest macros
     struct SolidSyslogAddress* addr = nullptr;
 
     void setup() override
     {
         SocketFake_Reset();
         FakeGetConnectTimeoutMs_Reset();
-        // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
         stream                  = SolidSyslogPosixTcpStream_Create(nullptr);
         addr                    = SolidSyslogPosixAddress_Create();
         struct sockaddr_in* sin = SolidSyslogPosixAddress_AsSockaddrIn(addr);
@@ -102,15 +97,12 @@ TEST_GROUP(SolidSyslogPosixTcpStream)
 
 // clang-format on
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 #define CHECK_SOCKET_CLOSED_ONCE()                                     \
     do                                                                 \
     {                                                                  \
         CALLED_FAKE(SocketFake_Close, ONCE);                           \
         LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd()); \
     } while (0)
-
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 TEST(SolidSyslogPosixTcpStream, CreateDestroyWorksWithoutCrashing)
 {
@@ -571,7 +563,6 @@ TEST(SolidSyslogPosixTcpStream, ReadReturnsNegativeOneOnErrorAndClosesSocket)
     CHECK_SOCKET_CLOSED_ONCE();
 }
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     do                                                                                 \
     {                                                                                  \
@@ -583,12 +574,9 @@ TEST(SolidSyslogPosixTcpStream, ReadReturnsNegativeOneOnErrorAndClosesSocket)
         }                                                                              \
     } while (0)
 
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-
 // clang-format off
 TEST_GROUP(SolidSyslogPosixTcpStreamPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogStream* pooled[SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                       = nullptr;
 
@@ -601,7 +589,6 @@ TEST_GROUP(SolidSyslogPosixTcpStreamPool)
                 SolidSyslogPosixTcpStream_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPosixTcpStream_Destroy(overflow);

@@ -1,5 +1,121 @@
 # Dev Log
 
+## 2026-05-26 — S24.12 inline cppcheck-suppress and NOLINT audit
+
+E24 code-hygiene story #461. The session-end of S24.11 left 213 inline
+`// cppcheck-suppress` and ~340 inline `NOLINT*` comments tree-wide.
+David's open question was the residual count of non-MISRA cppcheck
+inline suppressions after triaging per the story's priority order
+(tier-level > fix > misra_suppressions > inline).
+
+### Decisions
+
+- **One PR, three commits.** Per David's preference for fewer slices
+  with rule-disable + inline-strip in the same commit, the audit lands
+  as `chore: S24.12 …` × 3 on `ci/s24-12-inline-suppression-audit`:
+  (1) clang-tidy tier promotions + CmsdkUart enum conversion,
+  (2) cppcheck Tests/* glob suppressions + Platform AddressPrivate.h
+  cstyleCast, (3) further Tests-tier promotions surfaced during the
+  residual audit + DEVLOG.
+
+- **Promoted to root `.clang-tidy`:** `modernize-redundant-void-arg`.
+  We're a C codebase; the rule is meaningless. Dropped ~8 identical
+  "C idiom" NOLINTs.
+
+- **New `Core/Interface/.clang-tidy`:** disables
+  `cppcoreguidelines-macro-usage`. Public headers carry preprocessor-
+  visible (`#if` floor) and array-size const-expr macros by design.
+  Dropped ~37 identical NOLINTs — 33 of them on `SolidSyslogTunablesDefaults.h`
+  alone, where the pattern repeats per pool tunable.
+
+- **Extended `Tests/.clang-tidy`** with four further tier disables:
+  `google-build-using-namespace` (the `using namespace CososoTesting`
+  pattern at file scope), `cppcoreguidelines-macro-usage` and
+  `cppcoreguidelines-avoid-do-while` (paired for `CHECK_*` macros
+  preserving `__FILE__/__LINE__`), and
+  `cppcoreguidelines-pro-type-reinterpret-cast` (vtable downcasts to
+  Fake/Spy structs + sentinel/forge pointers for fault-injection
+  tests). Together these removed ~140 inline NOLINTs.
+
+- **CmsdkUart register macros converted to anonymous enums.** Per
+  David's "fix beats suppress" steer. The SoC-manual grep traceability
+  is preserved by keeping the names verbatim; the type-check the rule
+  wanted is gained. Applied symmetrically to
+  `Bdd/Targets/FreeRtos/Common/CmsdkUart.c` and
+  `Tests/FreeRtos/CmsdkUartFake.c`.
+
+- **New `cppcheck_suppressions_tests.txt`** with project-glob entries
+  for the CppUTest-macro-model false-positive cluster
+  (`unreadVariable`, `variableScope`, `constVariable`,
+  `knownConditionTrueFalse`, `unusedStructMember`,
+  `constVariablePointer`). Wired into the cppcheck preset via
+  `CMAKE_C_CPPCHECK` / `CMAKE_CXX_CPPCHECK` and into the CI
+  analyze-cppcheck report step. Cppcheck's glob matcher anchors at
+  both ends and `*` does match `/`, so paths use `*Tests/*` to allow
+  any absolute prefix (the cppcheck invocation in CMake passes
+  absolute paths). The same file carries `cstyleCast:*Platform/*/Source/*AddressPrivate.h`
+  for the eight opaque-to-impl downcasts whose `cstyleCast` warning
+  only fires when the C header is included from a C++ test
+  compilation unit.
+
+- **misra_suppressions.txt line drift handled.** Inline NOLINT
+  deletions shifted two lines on `SolidSyslogFormatter.h`, one on
+  `SolidSyslogCircularBuffer.h`. Pass-1 of `scripts/misra_renumber.py`
+  caught those automatically. Slice 2's `cstyleCast` deletion in the
+  `*AddressPrivate.h` headers shifted both 11.2 and 11.3 entries on
+  Posix/Windows/PlusTcp — and the rule-dedup-unmask pattern
+  (`feedback_cppcheck_dedup_unmask`) bit again: pass-1 only saw the
+  11.2 shift; the 11.3 entries needed manual update once 11.2 was
+  out of the way. Recipe holds — re-run cppcheck after every
+  suppression edit; manually patch when pass-2 hits the multi-entry
+  guard.
+
+- **Residual NOLINTs kept inline.** The remaining 124 NOLINTs have
+  per-site rationales that don't share a tier-level pattern:
+  `bugprone-easily-swappable-parameters` (72; vtable signatures,
+  pair APIs, byte-value semantics — rationales vary per site),
+  `readability-inconsistent-declaration-parameter-name` (16; POSIX
+  API mirroring in MqFake / SocketFake / ClockFake),
+  `performance-no-int-to-ptr` (9; MMIO + `FREERTOS_INVALID_SOCKET`
+  sentinel), `readability-non-const-parameter` (7; third-party
+  signature contracts), and a long tail of one-offs.
+
+- **Residual non-MISRA inline `cppcheck-suppress`: 4.** David's
+  question answered.
+  - `Tests/Support/ClockFake.{c,h}` — `constParameter`; API allows
+    `NULL` to signal failure.
+  - `Bdd/Targets/Common/BddTargetServiceThread.c` — `constParameter`;
+    `volatile bool` written by another thread.
+  - `Core/Interface/SolidSyslogTunables.h` — `preprocessorErrorDirective`;
+    build-time macro path supplied via `-D`.
+
+  Down from 213; 209 eliminated this session (98% reduction).
+
+### Deferred
+
+- **`Core/Source/SolidSyslogMacros.h`** keeps its
+  `cppcoreguidelines-macro-usage` NOLINTBEGIN/END pair for the
+  `_Static_assert` wrapper. Disabling the rule for `Core/Source/`
+  tree-wide would be too coarse — the file is the only legitimate
+  site. Self-contained inline pair is the right scope.
+
+- **Future Bdd-tier reconsideration.** `Bdd/.clang-tidy` currently
+  only disables `readability-identifier-naming`. The five
+  `performance-no-int-to-ptr` NOLINTs in `Bdd/Targets/FreeRtos/main.c`
+  (MMIO + NVIC IPR) and the `readability-non-const-parameter` on
+  `BddTargetWindows.c` (_beginthreadex signature) are third-party-
+  contract patterns that would justify tier-level rules if the BDD
+  target count grows further. Not worth doing for the current
+  count.
+
+### Open questions
+
+- None outstanding for this story. The pre-existing AMBIGUOUS
+  warnings in `scripts/misra_renumber.py` (cppcheck 2.10 in the
+  container missing findings that CI's cppcheck version still sees)
+  were noted in the prior DEVLOG (S24.11 close) and remain;
+  they are a tooling-version mismatch, not a code finding.
+
 ## 2026-05-26 — S28.03 SolidSyslogLwipRawAddress + SolidSyslogLwipRawResolver (literal IPv4, no DNS)
 
 Third story in E28 (#457, parent #439). First real lwIP code: the

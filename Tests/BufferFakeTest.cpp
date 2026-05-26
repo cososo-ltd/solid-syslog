@@ -12,12 +12,10 @@ TEST_GROUP(BufferFake)
 {
     struct SolidSyslogBuffer* buffer = nullptr;
     char   readData[512];
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     size_t readSize;
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         buffer = BufferFake_Create();
         readSize = 0;
     }

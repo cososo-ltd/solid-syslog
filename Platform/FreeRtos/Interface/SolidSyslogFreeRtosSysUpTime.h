@@ -7,7 +7,7 @@
 
 EXTERN_C_BEGIN
 
-    uint32_t SolidSyslogFreeRtosSysUpTime_Get(void); // NOLINT(modernize-redundant-void-arg) -- C idiom
+    uint32_t SolidSyslogFreeRtosSysUpTime_Get(void);
 
 EXTERN_C_END
 

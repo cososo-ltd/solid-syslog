@@ -1,8 +1,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogDatagram.h"
@@ -21,7 +20,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     do                                                                                 \
     {                                                                                  \
@@ -32,7 +30,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
             CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
         }                                                                              \
     } while (0)
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 // clang-format off
 static const char* const TEST_MESSAGE     = "hello";
@@ -42,15 +39,12 @@ static const int         TEST_PORT        = 514;
 
 TEST_GROUP(SolidSyslogPosixDatagram)
 {
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogDatagram* datagram = nullptr;
-    // cppcheck-suppress unreadVariable -- assigned in setup; cppcheck does not model CppUTest macros
     struct SolidSyslogAddress* addr = nullptr;
 
     void setup() override
     {
         SocketFake_Reset();
-        // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
         datagram        = SolidSyslogPosixDatagram_Create();
         addr            = SolidSyslogPosixAddress_Create();
         struct sockaddr_in* sin = SolidSyslogPosixAddress_AsSockaddrIn(addr);
@@ -270,7 +264,6 @@ TEST(SolidSyslogPosixDatagram, SendToReturnsFailedWhenConnectFails)
 // clang-format off
 TEST_GROUP(SolidSyslogPosixDatagramPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogDatagram* pooled[SOLIDSYSLOG_POSIX_DATAGRAM_POOL_SIZE] = {};
     struct SolidSyslogDatagram* overflow                                     = nullptr;
 
@@ -283,7 +276,6 @@ TEST_GROUP(SolidSyslogPosixDatagramPool)
                 SolidSyslogPosixDatagram_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPosixDatagram_Destroy(overflow);

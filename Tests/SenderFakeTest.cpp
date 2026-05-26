@@ -3,8 +3,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 
 // clang-format off
 TEST_GROUP(SenderFake)
@@ -13,7 +12,6 @@ TEST_GROUP(SenderFake)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         sender = SenderFake_Create();
     }
 
@@ -134,9 +132,7 @@ TEST_GROUP(SenderFakeInstances)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         a = SenderFake_Create();
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         b = SenderFake_Create();
     }
 

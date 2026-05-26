@@ -4,8 +4,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "MqFake.h"
@@ -30,13 +29,11 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
 {
     struct SolidSyslogBuffer* buffer = nullptr;
     char   readData[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     size_t readSize;
 
     void setup() override
     {
         MqFake_Reset();
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         buffer = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
         readSize = 0;
     }
@@ -198,7 +195,6 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
     SenderFake_Destroy(fakeSender);
 }
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     do                                                                                 \
     {                                                                                  \
@@ -210,12 +206,9 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
         }                                                                              \
     } while (0)
 
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-
 // clang-format off
 TEST_GROUP(SolidSyslogPosixMessageQueueBufferPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogBuffer* pooled[SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE] = {};
     struct SolidSyslogBuffer* overflow                                                 = nullptr;
 
@@ -233,7 +226,6 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBufferPool)
                 SolidSyslogPosixMessageQueueBuffer_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPosixMessageQueueBuffer_Destroy(overflow);

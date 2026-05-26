@@ -54,7 +54,6 @@ struct SenderSpy
 
 static bool SenderSpy_Send(struct SolidSyslogSender* self, const void* buffer, size_t size)
 {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- vtable downcast; SenderSpy embeds SolidSyslogSender as its first field
     auto* spy = reinterpret_cast<SenderSpy*>(self);
     if (spy->outage)
     {
@@ -95,12 +94,9 @@ struct DrainTestConfig
 {
     /* cppcheck cannot follow CreateStore's reads through TEST_GROUP-
      * generated test classes; these fields ARE consumed there. */
-    // cppcheck-suppress unusedStructMember
     size_t MaxBlocks;
-    // cppcheck-suppress unusedStructMember
     size_t MaxBlockSize;
     size_t PayloadSize;
-    // cppcheck-suppress unusedStructMember
     enum SolidSyslogDiscardPolicy DiscardPolicy;
 };
 

@@ -16,6 +16,7 @@ Checks: >
   readability-*,
   -modernize-use-trailing-return-type,
   -modernize-use-using,
+  -modernize-redundant-void-arg,
   -cppcoreguidelines-avoid-non-const-global-variables,
   -readability-magic-numbers,
   -cppcoreguidelines-avoid-magic-numbers,

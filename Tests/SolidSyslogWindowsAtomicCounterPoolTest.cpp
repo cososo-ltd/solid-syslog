@@ -10,9 +10,7 @@
 #include "SolidSyslogWindowsAtomicCounterErrors.h"
 #include "TestUtils.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER into scope for CALLED_FAKE
-
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
+using namespace CososoTesting;
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -26,12 +24,9 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
         }                                                                              \
     } while (0)
 
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-
 // clang-format off
 TEST_GROUP(SolidSyslogWindowsAtomicCounterPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogAtomicCounter* pooled[SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE] = {};
     struct SolidSyslogAtomicCounter* overflow                                             = nullptr;
 
@@ -44,7 +39,6 @@ TEST_GROUP(SolidSyslogWindowsAtomicCounterPool)
                 SolidSyslogWindowsAtomicCounter_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogWindowsAtomicCounter_Destroy(overflow);

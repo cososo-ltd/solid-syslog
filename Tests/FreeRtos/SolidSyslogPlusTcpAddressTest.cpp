@@ -1,8 +1,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
@@ -15,8 +14,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
-
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     do                                                                                 \
@@ -28,8 +25,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
             CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
         }                                                                              \
     } while (0)
-
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 // clang-format off
 TEST_GROUP(SolidSyslogPlusTcpAddress)
@@ -88,7 +83,6 @@ TEST(SolidSyslogPlusTcpAddress, CreateZeroesTheSockaddrFromAnyPriorSlotContents)
 // clang-format off
 TEST_GROUP(SolidSyslogPlusTcpAddressPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogAddress* pooled[SOLIDSYSLOG_ADDRESS_POOL_SIZE] = {};
     struct SolidSyslogAddress* overflow                              = nullptr;
 
@@ -101,7 +95,6 @@ TEST_GROUP(SolidSyslogPlusTcpAddressPool)
                 SolidSyslogPlusTcpAddress_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPlusTcpAddress_Destroy(overflow);

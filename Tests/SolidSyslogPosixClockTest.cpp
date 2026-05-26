@@ -9,7 +9,6 @@
 static const time_t TEST_EPOCH = 1743552000;
 
 // clang-format off
-// NOLINTBEGIN(cppcoreguidelines-macro-usage) -- macros preserve __FILE__/__LINE__ in test failure output
 #define GET_TIMESTAMP()              getTimestamp()
 #define CHECK_YEAR(expected)         LONGS_EQUAL(expected, GET_TIMESTAMP().Year)
 #define CHECK_MONTH(expected)        LONGS_EQUAL(expected, GET_TIMESTAMP().Month)
@@ -20,7 +19,6 @@ static const time_t TEST_EPOCH = 1743552000;
 #define CHECK_MICROSECOND(expected)  LONGS_EQUAL(expected, GET_TIMESTAMP().Microsecond)
 #define CHECK_UTC_OFFSET(expected)   LONGS_EQUAL(expected, GET_TIMESTAMP().UtcOffsetMinutes)
 #define CHECK_MONTH_IS_INVALID()     LONGS_EQUAL(0, GET_TIMESTAMP().Month)
-// NOLINTEND(cppcoreguidelines-macro-usage)
 // clang-format on
 
 // clang-format off

@@ -25,7 +25,6 @@ struct FakeBlockDevice
 
 inline FakeBlockDevice& ToFake(struct SolidSyslogBlockDevice* self)
 {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- vtable downcast: base is the first member of FakeBlockDevice
     return *reinterpret_cast<FakeBlockDevice*>(self);
 }
 
@@ -104,7 +103,6 @@ TEST_GROUP(SolidSyslogBlockDevice)
         fake.Base.Append  = FakeAppend;
         fake.Base.WriteAt = FakeWriteAt;
         fake.Base.Size    = FakeSize;
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         device = &fake.Base;
     }
 };

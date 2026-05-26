@@ -12,9 +12,7 @@
 #include "SolidSyslogTunables.h"
 #include "TestUtils.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER into scope for CALLED_FAKE
-
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
+using namespace CososoTesting;
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -28,15 +26,12 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
         }                                                                              \
     } while (0)
 
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-
 // clang-format off
 TEST_GROUP(SolidSyslogPool)
 {
     struct SolidSyslogSender* fakeSender = nullptr;
     struct SolidSyslogBuffer* buffer = nullptr;
     SolidSyslogConfig config{};
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslog* pooled[SOLIDSYSLOG_POOL_SIZE] = {};
     struct SolidSyslog* overflow = nullptr;
 
@@ -57,7 +52,6 @@ TEST_GROUP(SolidSyslogPool)
                 SolidSyslog_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslog_Destroy(overflow);
@@ -150,7 +144,6 @@ TEST(SolidSyslogPool, DestroyOfUnknownHandleDoesNotLock)
     ConfigLockFake_Install();
     /* Any non-pool address — cast a stack byte, value never dereferenced. */
     char stackByte = 0;
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- forging an "unknown" handle to drive the bad-setup path
     auto* stranger = reinterpret_cast<struct SolidSyslog*>(&stackByte);
 
     SolidSyslog_Destroy(stranger);
@@ -163,7 +156,6 @@ TEST(SolidSyslogPool, DestroyOfUnknownHandleReportsWarning)
 {
     ErrorHandlerFake_Install(nullptr);
     char stackByte = 0;
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- forging an "unknown" handle to drive the bad-setup path
     auto* stranger = reinterpret_cast<struct SolidSyslog*>(&stackByte);
 
     SolidSyslog_Destroy(stranger);

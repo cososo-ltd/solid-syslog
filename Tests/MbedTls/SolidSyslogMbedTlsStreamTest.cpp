@@ -21,9 +21,8 @@ extern "C"
 
 #include "TestUtils.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER/TWICE into scope for CALLED_FUNCTION / CALLED_FAKE
+using namespace CososoTesting;
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macro preserves __FILE__/__LINE__ in failure output; do-while wraps the multi-statement body for safe single-statement use
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCode)                    \
     do                                                                            \
     {                                                                             \
@@ -35,7 +34,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
         UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastCode());        \
         LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity()); \
     } while (0)
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 static int NoOpSleepCallCount;
 static int g_lastSleepMs;
@@ -55,7 +53,6 @@ uint32_t FakeGetHandshakeTimeoutMs_ReturnValue = SOLIDSYSLOG_TLS_HANDSHAKE_TIMEO
 void FakeGetHandshakeTimeoutMs_Reset()
 {
     FakeGetHandshakeTimeoutMs_CallCount = 0;
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- sentinel pointer; we never deref, only compare to nullptr after Open
     FakeGetHandshakeTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
     FakeGetHandshakeTimeoutMs_ReturnValue = SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS;
 }
@@ -87,7 +84,6 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         config.Transport = transport;
         config.Sleep = NoOpSleep;
         handle = SolidSyslogMbedTlsStream_Create(&config);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         addr = AddressFake_Get();
     }
 

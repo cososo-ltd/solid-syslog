@@ -11,7 +11,6 @@ TEST_GROUP(SolidSyslogCrc16Policy)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         policy = SolidSyslogCrc16Policy_Create();
     }
 

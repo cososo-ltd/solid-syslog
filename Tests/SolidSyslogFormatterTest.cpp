@@ -105,8 +105,6 @@ class TEST_SolidSyslogFormatter_ZeroSizeBoundedStringIsNoOp_Test;
 class TEST_SolidSyslogFormatter_ZeroSizeUint32IsNoOp_Test;
 struct TEST_GROUP_CppUTestGroupSolidSyslogFormatter;
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage) -- test helper macros for readability; CppUTest requires macros for correct failure location
-
 #define CREATE_FORMATTER(bufferSize) formatter = SolidSyslogFormatter_Create(storage, bufferSize)
 
 #define CHECK_FORMATTED(expected)                                              \
@@ -114,8 +112,6 @@ struct TEST_GROUP_CppUTestGroupSolidSyslogFormatter;
     LONGS_EQUAL(strlen(expected), SolidSyslogFormatter_Length(formatter))
 
 #define CHECK_LENGTH(expected) LONGS_EQUAL(expected, SolidSyslogFormatter_Length(formatter))
-
-// NOLINTEND(cppcoreguidelines-macro-usage)
 
 enum
 {
@@ -126,12 +122,10 @@ enum
 TEST_GROUP(SolidSyslogFormatter)
 {
     SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(TEST_BUFFER_SIZE)];
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     struct SolidSyslogFormatter* formatter;
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- formatter is used across TEST() bodies via CppUTest macro
         CREATE_FORMATTER(TEST_BUFFER_SIZE);
     }
 

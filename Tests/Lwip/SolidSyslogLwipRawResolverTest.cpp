@@ -2,8 +2,7 @@
 #include "CppUTest/TestHarness.h"
 #include "lwip/ip4_addr.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 
 #include <cstdint>
 
@@ -19,8 +18,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
 #include "lwip/ip_addr.h"
-
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -44,8 +41,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
         POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());  \
         UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastCode()); \
     } while (0)
-
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 static const char* const TEST_HOST = "127.0.0.1";
 static const uint16_t TEST_PORT = 514;
@@ -133,7 +128,6 @@ TEST(SolidSyslogLwipRawResolver, ResolveReturnsFalseWhenIpaddrAtonRejectsHost)
 // clang-format off
 TEST_GROUP(SolidSyslogLwipRawResolverPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogResolver* pooled[SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE] = {};
     struct SolidSyslogResolver* overflow                                         = nullptr;
 
@@ -146,7 +140,6 @@ TEST_GROUP(SolidSyslogLwipRawResolverPool)
                 SolidSyslogLwipRawResolver_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogLwipRawResolver_Destroy(overflow);

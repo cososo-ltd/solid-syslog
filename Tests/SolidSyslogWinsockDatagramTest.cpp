@@ -1,8 +1,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogWinsockAddress.h"
@@ -20,8 +19,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
-
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     do                                                                                 \
@@ -34,8 +31,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
         }                                                                              \
     } while (0)
 
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-
 // clang-format off
 static const char* const TEST_MESSAGE     = "hello";
 static const size_t      TEST_MESSAGE_LEN = 5;
@@ -44,9 +39,7 @@ static const int         TEST_PORT        = 514;
 
 TEST_GROUP(SolidSyslogWinsockDatagram)
 {
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogDatagram* datagram = nullptr;
-    // cppcheck-suppress unreadVariable -- assigned in setup; cppcheck does not model CppUTest macros
     struct SolidSyslogAddress* addr = nullptr;
 
     void setup() override
@@ -58,7 +51,6 @@ TEST_GROUP(SolidSyslogWinsockDatagram)
         UT_PTR_SET(Winsock_connect, WinsockFake_connect);
         UT_PTR_SET(Winsock_setsockopt, WinsockFake_setsockopt);
         UT_PTR_SET(Winsock_getsockopt, WinsockFake_getsockopt);
-        // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
         datagram                = SolidSyslogWinsockDatagram_Create();
         addr                    = SolidSyslogWinsockAddress_Create();
         struct sockaddr_in* sin = SolidSyslogWinsockAddress_AsSockaddrIn(addr);
@@ -278,7 +270,6 @@ TEST(SolidSyslogWinsockDatagram, MaxPayloadFallsBackWhenIpMtuLookupFails)
 // clang-format off
 TEST_GROUP(SolidSyslogWinsockDatagramPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogDatagram* pooled[SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE] = {};
     struct SolidSyslogDatagram* overflow                                       = nullptr;
 
@@ -291,7 +282,6 @@ TEST_GROUP(SolidSyslogWinsockDatagramPool)
                 SolidSyslogWinsockDatagram_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogWinsockDatagram_Destroy(overflow);

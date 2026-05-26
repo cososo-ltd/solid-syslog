@@ -2,7 +2,6 @@
 #define FREERTOS_IP_CONFIG_H
 
 #include "FreeRTOS.h"
-// NOLINTBEGIN(cppcoreguidelines-macro-usage) -- FreeRTOS-Plus-TCP API requires these to be #defines
 
 /* Host-suitable FreeRTOS-Plus-TCP config for unit-test fakes. The IP stack
  * itself is never run on the host — these values are only here so the
@@ -21,7 +20,5 @@
 #define ipconfigBYTE_ORDER pdFREERTOS_LITTLE_ENDIAN
 #define ipconfigZERO_COPY_RX_DRIVER 0
 #define ipconfigZERO_COPY_TX_DRIVER 0
-
-// NOLINTEND(cppcoreguidelines-macro-usage)
 
 #endif /* FREERTOS_IP_CONFIG_H */

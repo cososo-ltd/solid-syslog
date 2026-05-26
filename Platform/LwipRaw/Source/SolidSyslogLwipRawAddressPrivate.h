@@ -21,7 +21,6 @@ void LwipRawAddress_Cleanup(struct SolidSyslogAddress* base);
 
 static inline struct SolidSyslogLwipRawAddress* SolidSyslogLwipRawAddress_As(struct SolidSyslogAddress* base)
 {
-    // cppcheck-suppress cstyleCast -- opaque-to-impl downcast: pool slot is a real SolidSyslogLwipRawAddress
     return (struct SolidSyslogLwipRawAddress*) base;
 }
 
@@ -29,7 +28,6 @@ static inline const struct SolidSyslogLwipRawAddress* SolidSyslogLwipRawAddress_
     const struct SolidSyslogAddress* base
 )
 {
-    // cppcheck-suppress cstyleCast -- opaque-to-impl downcast: pool slot is a real SolidSyslogLwipRawAddress
     return (const struct SolidSyslogLwipRawAddress*) base;
 }
 

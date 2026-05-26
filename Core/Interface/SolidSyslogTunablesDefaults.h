@@ -20,7 +20,6 @@
  * Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_MAX_MESSAGE_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_MAX_MESSAGE_SIZE 2048U /* RFC 5424 section 6.1 SHOULD value */
 #endif
 
@@ -40,7 +39,6 @@
  * filesystem location. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_MAX_PATH_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_MAX_PATH_SIZE 128U
 #endif
 
@@ -60,7 +58,6 @@
  * rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_MAX_INTEGRITY_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_MAX_INTEGRITY_SIZE 32U
 #endif
 
@@ -80,7 +77,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_POOL_SIZE 1U
 #endif
 
@@ -102,7 +98,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_CIRCULAR_BUFFER_POOL_SIZE 1U
 #endif
 
@@ -123,7 +118,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE 1U
 #endif
 
@@ -143,7 +137,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_POSIX_DATAGRAM_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_POSIX_DATAGRAM_POOL_SIZE 1U
 #endif
 
@@ -164,7 +157,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE 1U
 #endif
 
@@ -184,7 +176,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_POSIX_FILE_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_POSIX_FILE_POOL_SIZE 1U
 #endif
 
@@ -207,7 +198,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE 2U
 #endif
 
@@ -229,7 +219,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE 1U
 #endif
 
@@ -250,7 +239,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE 1U
 #endif
 
@@ -272,7 +260,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_UDP_SENDER_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_UDP_SENDER_POOL_SIZE 1U
 #endif
 
@@ -291,7 +278,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE 1U
 #endif
 
@@ -314,7 +300,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE 2U
 #endif
 
@@ -339,7 +324,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE 1U
 #endif
 
@@ -359,7 +343,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_FILE_BLOCK_DEVICE_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_FILE_BLOCK_DEVICE_POOL_SIZE 1U
 #endif
 
@@ -375,7 +358,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_META_SD_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_META_SD_POOL_SIZE 1U
 #endif
 
@@ -390,7 +372,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE 1U
 #endif
 
@@ -410,7 +391,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE 1U
 #endif
 
@@ -431,7 +411,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE 1U
 #endif
 
@@ -451,7 +430,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE 1U
 #endif
 
@@ -470,7 +448,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE 1U
 #endif
 
@@ -489,7 +466,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE 1U
 #endif
 
@@ -508,7 +484,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE 2U
 #endif
 
@@ -530,7 +505,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE 1U
 #endif
 
@@ -550,7 +524,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE 1U
 #endif
 
@@ -570,7 +543,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE 1U
 #endif
 
@@ -590,7 +562,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE 1U
 #endif
 
@@ -613,7 +584,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_PLUS_TCP_TCP_STREAM_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_PLUS_TCP_TCP_STREAM_POOL_SIZE 2U
 #endif
 
@@ -634,7 +604,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_STD_ATOMIC_COUNTER_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_STD_ATOMIC_COUNTER_POOL_SIZE 1U
 #endif
 
@@ -656,7 +625,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE 1U
 #endif
 
@@ -677,7 +645,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_FATFS_FILE_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_FATFS_FILE_POOL_SIZE 1U
 #endif
 
@@ -699,7 +666,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_TLS_STREAM_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_TLS_STREAM_POOL_SIZE 1U
 #endif
 
@@ -722,7 +688,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE 1U
 #endif
 
@@ -748,7 +713,6 @@
  * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_ADDRESS_POOL_SIZE
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_ADDRESS_POOL_SIZE 3U
 #endif
 
@@ -770,7 +734,6 @@
  * Floor: 1 ms. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS 200U
 #endif
 
@@ -792,7 +755,6 @@
  * Floor: 1 ms. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
 #define SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS 5000U
 #endif
 

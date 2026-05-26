@@ -4,8 +4,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
@@ -24,8 +23,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
-
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     do                                                                                 \
@@ -37,8 +34,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
             CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
         }                                                                              \
     } while (0)
-
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 static const uint16_t TEST_PORT = 514;
 static const char TEST_MESSAGE[] = "hello";
@@ -55,7 +50,6 @@ uint32_t FakeGetConnectTimeoutMs_ReturnValue = SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_M
 void FakeGetConnectTimeoutMs_Reset()
 {
     FakeGetConnectTimeoutMs_CallCount = 0;
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- sentinel pointer; we never deref, only compare to nullptr after Open
     FakeGetConnectTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
     FakeGetConnectTimeoutMs_ReturnValue = SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS;
 }
@@ -124,15 +118,12 @@ TEST_GROUP(SolidSyslogPlusTcpTcpStream)
 
 // clang-format on
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 #define CHECK_SOCKET_CLOSED_ONCE()                                                                             \
     do                                                                                                         \
     {                                                                                                          \
         CALLED_FAKE(FreeRtosSocketsFake_Closesocket, ONCE);                                                    \
         POINTERS_EQUAL(FreeRtosSocketsFake_LastSocketReturned(), FreeRtosSocketsFake_LastClosesocketSocket()); \
     } while (0)
-
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 TEST(SolidSyslogPlusTcpTcpStream, CreateReturnsNonNullStream)
 
@@ -467,7 +458,6 @@ TEST(SolidSyslogPlusTcpTcpStream, DestroyAfterCloseDoesNotCloseAgain)
 // clang-format off
 TEST_GROUP(SolidSyslogPlusTcpTcpStreamPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogStream* pooled[SOLIDSYSLOG_PLUS_TCP_TCP_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                           = nullptr;
 
@@ -485,7 +475,6 @@ TEST_GROUP(SolidSyslogPlusTcpTcpStreamPool)
                 SolidSyslogPlusTcpTcpStream_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPlusTcpTcpStream_Destroy(overflow);

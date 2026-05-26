@@ -581,6 +581,7 @@ jobs:
           cppcheck
           --enable=warning,style,performance,portability
           --suppress=missingIncludeSystem
+          --suppressions-list=cppcheck_suppressions_tests.txt
           --inline-suppr
           --std=c11
           -ICore/Interface

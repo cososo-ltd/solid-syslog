@@ -9,7 +9,6 @@ TEST_GROUP(SolidSyslogNullAtomicCounter)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         counter = SolidSyslogNullAtomicCounter_Get();
     }
 };

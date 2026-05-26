@@ -11,8 +11,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 
 /* Selector return values — named for the inner sender they select, so tests
  * read as `selectorReturn = INNER_B`. */
@@ -35,7 +34,7 @@ enum
 
 static uint8_t selectorReturn;
 
-static uint8_t TestSelector() // NOLINT(modernize-redundant-void-arg) -- matches C callback signature
+static uint8_t TestSelector()
 {
     return selectorReturn;
 }
@@ -47,7 +46,6 @@ TEST_GROUP(SolidSyslogSwitchingSender)
     struct SolidSyslogSender* innerB = nullptr;
     struct SolidSyslogSender* innerC = nullptr;
     struct SolidSyslogSender* inners[3] = {nullptr, nullptr, nullptr};
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogSender* sender = nullptr;
 
     void setup() override
@@ -370,7 +368,6 @@ TEST_GROUP(SolidSyslogSwitchingSenderBadSetup)
     {
         innerA   = SenderFake_Create();
         inners[0] = innerA;
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         config   = {inners, 1, TestSelector};
         ErrorHandlerFake_Install(&sentinel);
     }

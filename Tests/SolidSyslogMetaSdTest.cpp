@@ -12,7 +12,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER into scope for the CALLED_FAKE macro
+using namespace CososoTesting;
 
 class TEST_SolidSyslogMetaSd_FirstFormatProducesSequenceId1_Test;
 class TEST_SolidSyslogMetaSd_FormatEscapesBackslashInLanguage_Test;
@@ -50,7 +50,6 @@ static void FakeLanguage_Get(struct SolidSyslogFormatter* formatter)
     SolidSyslogFormatter_EscapedString(formatter, fakeLanguageContent, fakeLanguageMaxLength);
 }
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage) -- macros preserve __FILE__/__LINE__ in test failure output
 #define CHECK_SEQUENCEID(expected) \
     STRCMP_EQUAL("[meta sequenceId=\"" expected "\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter))
 #define CHECK_SYSUPTIME(expected)                             \
@@ -61,20 +60,14 @@ static void FakeLanguage_Get(struct SolidSyslogFormatter* formatter)
 #define CHECK_LANGUAGE(expected) \
     STRCMP_EQUAL("[meta sequenceId=\"1\" language=\"" expected "\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter))
 
-// NOLINTEND(cppcoreguidelines-macro-usage)
-
 // clang-format off
 TEST_GROUP(SolidSyslogMetaSd)
 {
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogAtomicCounter* counter;
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogStructuredData* sd;
     SolidSyslogMetaSdConfig config;
     SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(TEST_BUFFER_SIZE)];
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogFormatter* formatter;
-    // cppcheck-suppress unreadVariable -- read via context-propagation through ErrorHandlerFake_Install
     int sentinel = 0;
 
     void setup() override

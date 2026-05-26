@@ -12,7 +12,6 @@ TEST_GROUP(FileFake)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         api = FileFake_Create(&storage);
     }
 
@@ -287,7 +286,6 @@ TEST(FileFake, TwoInstancesShareFilesystem)
     SolidSyslogFile_Close(reader);
 
     /* Restore lastCreated to group-owned storage so teardown doesn't use dangling pointer */
-    // cppcheck-suppress unreadVariable -- restores lastCreated for teardown; cppcheck does not model CppUTest macros
     api = FileFake_Create(&storage);
 }
 
@@ -301,7 +299,6 @@ TEST(FileFake, OpenWhileAnotherInstanceHoldsPathOpenAsserts)
     CHECK_THROWS(std::runtime_error, SolidSyslogFile_Open(second, "shared.dat"));
 
     SolidSyslogFile_Close(api);
-    // cppcheck-suppress unreadVariable -- restores lastCreated for teardown; cppcheck does not model CppUTest macros
     api = FileFake_Create(&storage);
 }
 
@@ -352,7 +349,6 @@ TEST_GROUP(FileFakeAfterDestroy)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         api = FileFake_Create(&storage);
         FileFake_Destroy();
     }
@@ -429,9 +425,7 @@ TEST_GROUP(FileFakeStaleHandle)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         handleA = FileFake_Create(&storageA);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         handleB = FileFake_Create(&storageB);
     }
 

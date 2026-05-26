@@ -23,8 +23,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 
 class TEST_SolidSyslogUdpSenderRetry_DoubleOversizeDoesNotSendThird_Test;
 class TEST_SolidSyslogUdpSenderRetry_NonOversizeFailureDoesNotRetry_Test;
@@ -574,10 +573,8 @@ TEST(SolidSyslogUdpSenderFailure, SendRecoversAfterTransientResolveFailure)
     CHECK_TRUE(Send());
 }
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage) -- macros preserve __FILE__/__LINE__ in test failure output
 #define CALLED_DATAGRAM_SEND(times) CALLED_FAKE_ON(DatagramFake_Send, datagram, times)
 #define CALLED_DATAGRAM_MAX_PAYLOAD(times) CALLED_FAKE_ON(DatagramFake_MaxPayload, datagram, times)
-// NOLINTEND(cppcoreguidelines-macro-usage)
 
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogUdpSenderRetry, UdpSenderTestBase)

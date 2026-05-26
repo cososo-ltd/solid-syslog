@@ -6,7 +6,7 @@
 #ifndef LWIP_ARCH_CC_H
 #define LWIP_ARCH_CC_H
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,bugprone-macro-parentheses) -- lwIP API requires these to be #defines
+// NOLINTBEGIN(bugprone-macro-parentheses) -- lwIP API requires these to be #defines
 #define LWIP_PLATFORM_DIAG(x) \
     do                        \
     {                         \
@@ -17,6 +17,6 @@
     {                           \
         (void) (x);             \
     } while (0)
-// NOLINTEND(cppcoreguidelines-macro-usage,bugprone-macro-parentheses)
+// NOLINTEND(bugprone-macro-parentheses)
 
 #endif /* LWIP_ARCH_CC_H */

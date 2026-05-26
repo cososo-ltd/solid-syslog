@@ -9,7 +9,6 @@ TEST_GROUP(SolidSyslogNullStream)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         stream = SolidSyslogNullStream_Get();
     }
 };

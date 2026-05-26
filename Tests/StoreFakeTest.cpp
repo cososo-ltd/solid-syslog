@@ -5,8 +5,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 
 static const char* const TEST_MESSAGE = "hello";
 static const size_t TEST_MESSAGE_LEN = 5;
@@ -16,12 +15,10 @@ TEST_GROUP(StoreFake)
 {
     struct SolidSyslogStore* store = nullptr;
     char   readData[512];
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     size_t readSize;
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = StoreFake_Create();
         readSize = 0;
     }

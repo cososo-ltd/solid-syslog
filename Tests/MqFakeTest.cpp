@@ -9,8 +9,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 
 static mqd_t OpenTestQueue(const char* name, long maxMessages = 4, size_t maxMessageSize = 64)
 {

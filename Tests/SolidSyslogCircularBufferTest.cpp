@@ -15,11 +15,10 @@
 #include "SolidSyslogTunables.h"
 #include "TestUtils.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER into scope for CALLED_FAKE
+using namespace CososoTesting;
 
 // Assertion macros at file scope so failures report the test's own
 // __FILE__/__LINE__ rather than the helper's.
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
 
 // Asserts the last record read equals `expected` bytes of length `size`.
 // Depends on `readData` and `readSize` from CircularBufferFixture being in scope.
@@ -43,8 +42,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
             CHECK_TEXT((buf) != slot, "Fallback handle collided with a pool slot");  \
         }                                                                            \
     } while (0)
-
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 enum
 {
@@ -91,7 +88,6 @@ TEST_GROUP_BASE(SolidSyslogCircularBuffer, CircularBufferFixture)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring));
     }
 
@@ -243,7 +239,6 @@ TEST_GROUP_BASE(SolidSyslogCircularBufferMutex, CircularBufferFixture)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         buffer = SolidSyslogCircularBuffer_Create(MutexFake_Create(), ring, sizeof(ring));
     }
 
@@ -277,7 +272,6 @@ TEST_GROUP_BASE(SolidSyslogCircularBufferSmallRing, CircularBufferFixture)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring));
     }
 
@@ -387,7 +381,6 @@ TEST_GROUP(SolidSyslogCircularBufferPool)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         mutex = SolidSyslogNullMutex_Get();
     }
 

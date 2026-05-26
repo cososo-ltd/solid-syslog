@@ -18,7 +18,6 @@ EXTERN_C_BEGIN
         SOLIDSYSLOG_CIRCULAR_BUFFER_HEADER_BYTES = sizeof(uint16_t)
     };
 
-/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- C array-size const-expr; not a function-like expression */
 #define SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(maxMessages) \
     ((maxMessages) * (SOLIDSYSLOG_MAX_MESSAGE_SIZE + SOLIDSYSLOG_CIRCULAR_BUFFER_HEADER_BYTES))
 

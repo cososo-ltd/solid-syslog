@@ -4,7 +4,7 @@
 #include "SolidSyslogConfigLock.h"
 #include "TestUtils.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE into scope for CALLED_FAKE
+using namespace CososoTesting;
 
 static int testLockCallCount;
 static int testUnlockCallCount;

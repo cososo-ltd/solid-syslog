@@ -18,10 +18,8 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macro preserves __FILE__/__LINE__ in failure output; do-while wraps the multi-statement body for safe single-statement use
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCode)                    \
     do                                                                            \
     {                                                                             \
@@ -31,7 +29,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
         UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastCode());        \
         LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity()); \
     } while (0)
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 class TEST_SolidSyslogTlsStream_ReadReturnsNegativeOneOnHardErrorAndClosesSsl_Test;
 class TEST_SolidSyslogTlsStream_ReadReturnsNegativeOneOnZeroReturnAndClosesSsl_Test;
@@ -55,7 +52,6 @@ uint32_t FakeGetHandshakeTimeoutMs_ReturnValue = SOLIDSYSLOG_TLS_HANDSHAKE_TIMEO
 void FakeGetHandshakeTimeoutMs_Reset()
 {
     FakeGetHandshakeTimeoutMs_CallCount = 0;
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast) -- sentinel pointer; we never deref, only compare to nullptr after Open
     FakeGetHandshakeTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
     FakeGetHandshakeTimeoutMs_ReturnValue = SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS;
 }
@@ -86,9 +82,7 @@ TEST_GROUP(SolidSyslogTlsStream)
         transport        = StreamFake_Create();
         config.Transport = transport;
         config.Sleep     = NoOpSleep;
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         stream = SolidSyslogTlsStream_Create(&config);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         addr = AddressFake_Get();
     }
 
@@ -195,7 +189,6 @@ TEST_GROUP(SolidSyslogTlsStream)
 
 // clang-format on
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 #define CHECK_BIO_READ_RETRY_SIGNALLED()            \
     do                                              \
     {                                               \
@@ -222,8 +215,6 @@ TEST_GROUP(SolidSyslogTlsStream)
     {                                                      \
         CALLED_FAKE_ON(StreamFake_Close, transport, ONCE); \
     } while (0)
-
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
 TEST(SolidSyslogTlsStream, CreateSucceeds)
 {

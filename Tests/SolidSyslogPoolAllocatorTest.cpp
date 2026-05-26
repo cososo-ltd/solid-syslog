@@ -6,7 +6,7 @@
 #include "SolidSyslogPoolAllocator.h"
 #include "TestUtils.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER into scope for CALLED_FAKE
+using namespace CososoTesting;
 
 namespace
 {

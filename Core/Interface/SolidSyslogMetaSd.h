@@ -11,7 +11,7 @@ EXTERN_C_BEGIN
     struct SolidSyslogAtomicCounter;
     struct SolidSyslogStructuredData;
 
-    typedef uint32_t (*SolidSyslogSysUpTimeFunction)(void); // NOLINT(modernize-redundant-void-arg) -- C idiom
+    typedef uint32_t (*SolidSyslogSysUpTimeFunction)(void);
 
     struct SolidSyslogMetaSdConfig
     {

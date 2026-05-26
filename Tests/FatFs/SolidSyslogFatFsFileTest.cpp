@@ -13,7 +13,6 @@ using namespace CososoTesting;
 
 static const char* const TEST_PATH = "test.log";
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage) -- macros preserve __FILE__/__LINE__ in test failure output
 #define CHECK_FILE_IS_OPEN() CHECK_TRUE(SolidSyslogFile_IsOpen(file))
 #define CHECK_FILE_CLOSED() CHECK_FALSE(SolidSyslogFile_IsOpen(file))
 #define CHECK_OPEN_PATH(path) STRCMP_EQUAL((path), FatFsFake_LastOpenPath())
@@ -24,19 +23,15 @@ static const char* const TEST_PATH = "test.log";
 #define CHECK_STAT_PATH(path) STRCMP_EQUAL((path), FatFsFake_LastStatPath())
 #define CHECK_UNLINK_PATH(path) STRCMP_EQUAL((path), FatFsFake_LastUnlinkPath())
 
-// NOLINTEND(cppcoreguidelines-macro-usage)
-
 // clang-format off
 TEST_GROUP(SolidSyslogFatFsFile)
 {
     struct SolidSyslogFile* file = nullptr;
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     char buffer[5] = {'h', 'e', 'l', 'l', 'o'};
 
     void setup() override
     {
         FatFsFake_Reset();
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         file = SolidSyslogFatFsFile_Create();
     }
 

@@ -8,7 +8,6 @@
 #ifndef SOLIDSYSLOG_TEST_LWIPOPTS_H
 #define SOLIDSYSLOG_TEST_LWIPOPTS_H
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage) -- lwIP API requires these to be #defines
 #define NO_SYS 1
 #define LWIP_RAW 1
 #define LWIP_UDP 1
@@ -23,6 +22,5 @@
 #define MEM_LIBC_MALLOC 1
 #define MEMP_MEM_MALLOC 1
 #define SYS_LIGHTWEIGHT_PROT 0
-// NOLINTEND(cppcoreguidelines-macro-usage)
 
 #endif /* SOLIDSYSLOG_TEST_LWIPOPTS_H */

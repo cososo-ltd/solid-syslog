@@ -12,12 +12,10 @@
 
 #include <cstdio>
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 
 static const char* const TEST_PATH = "/tmp/test_posix_file.dat";
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     do                                                                                 \
     {                                                                                  \
@@ -29,8 +27,6 @@ static const char* const TEST_PATH = "/tmp/test_posix_file.dat";
         }                                                                              \
     } while (0)
 
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-
 // clang-format off
 TEST_GROUP(SolidSyslogPosixFile)
 {
@@ -40,7 +36,6 @@ TEST_GROUP(SolidSyslogPosixFile)
     {
         SocketFake_Reset();
         remove(TEST_PATH);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         file = SolidSyslogPosixFile_Create();
     }
 
@@ -134,7 +129,6 @@ TEST(SolidSyslogPosixFile, DeleteReturnsFalseForNonexistentFile)
 // clang-format off
 TEST_GROUP(SolidSyslogPosixFilePool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogFile* pooled[SOLIDSYSLOG_POSIX_FILE_POOL_SIZE] = {};
     struct SolidSyslogFile* overflow                                 = nullptr;
 
@@ -147,7 +141,6 @@ TEST_GROUP(SolidSyslogPosixFilePool)
                 SolidSyslogPosixFile_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPosixFile_Destroy(overflow);

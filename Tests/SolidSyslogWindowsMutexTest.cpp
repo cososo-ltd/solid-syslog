@@ -10,9 +10,7 @@
 #include "SolidSyslogWindowsMutexErrors.h"
 #include "TestUtils.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings ONCE/NEVER into scope for CALLED_FAKE
-
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
+using namespace CososoTesting;
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -26,8 +24,6 @@ using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-f
         }                                                                              \
     } while (0)
 
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-
 // clang-format off
 TEST_GROUP(SolidSyslogWindowsMutex)
 {
@@ -35,7 +31,6 @@ TEST_GROUP(SolidSyslogWindowsMutex)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         mutex = SolidSyslogWindowsMutex_Create();
     }
 
@@ -60,7 +55,6 @@ TEST(SolidSyslogWindowsMutex, LockUnlockDoesNotCrash)
 // clang-format off
 TEST_GROUP(SolidSyslogWindowsMutexPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogMutex* pooled[SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE] = {};
     struct SolidSyslogMutex* overflow                                    = nullptr;
 
@@ -73,7 +67,6 @@ TEST_GROUP(SolidSyslogWindowsMutexPool)
                 SolidSyslogWindowsMutex_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogWindowsMutex_Destroy(overflow);

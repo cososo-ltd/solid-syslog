@@ -53,6 +53,7 @@ if(ENABLE_CPPCHECK)
             "--enable=warning,style,performance,portability"
             "--error-exitcode=1"
             "--suppress=missingIncludeSystem"
+            "--suppressions-list=${CMAKE_SOURCE_DIR}/cppcheck_suppressions_tests.txt"
             "--inline-suppr"
             "--std=c11"
         )
@@ -62,6 +63,7 @@ if(ENABLE_CPPCHECK)
             "--error-exitcode=1"
             "--suppress=missingIncludeSystem"
             "--suppress=useStlAlgorithm"
+            "--suppressions-list=${CMAKE_SOURCE_DIR}/cppcheck_suppressions_tests.txt"
             "--inline-suppr"
             "--std=c++17"
         )

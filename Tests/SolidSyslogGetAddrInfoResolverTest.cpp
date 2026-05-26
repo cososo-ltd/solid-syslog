@@ -18,8 +18,7 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
-using namespace CososoTesting; // NOLINT(google-build-using-namespace) -- test-file scope only; brings NEVER/ONCE/TWICE/THRICE into scope for the CALLED_*
-    // macros
+using namespace CososoTesting;
 
 // clang-format off
 static const char* const TEST_HOST           = "127.0.0.1";
@@ -37,9 +36,7 @@ TEST_GROUP(SolidSyslogGetAddrInfoResolver)
     void setup() override
     {
         SocketFake_Reset();
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         resolver = SolidSyslogGetAddrInfoResolver_Create();
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         result   = SolidSyslogPosixAddress_Create();
     }
 
@@ -130,7 +127,6 @@ TEST(SolidSyslogGetAddrInfoResolver, FreesAddrInfoOnSuccess)
     CALLED_FAKE(SocketFake_FreeAddrInfo, ONCE);
 }
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while) -- macros preserve __FILE__/__LINE__ at the call site
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     do                                                                                 \
     {                                                                                  \
@@ -142,12 +138,9 @@ TEST(SolidSyslogGetAddrInfoResolver, FreesAddrInfoOnSuccess)
         }                                                                              \
     } while (0)
 
-// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-
 // clang-format off
 TEST_GROUP(SolidSyslogGetAddrInfoResolverPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogResolver* pooled[SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE] = {};
     struct SolidSyslogResolver* overflow                                            = nullptr;
 
@@ -160,7 +153,6 @@ TEST_GROUP(SolidSyslogGetAddrInfoResolverPool)
                 SolidSyslogGetAddrInfoResolver_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogGetAddrInfoResolver_Destroy(overflow);

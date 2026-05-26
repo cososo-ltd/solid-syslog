@@ -20,7 +20,43 @@
 #   the types carry semantic distinction the rule can't see. Disabled tier-
 #   wide because the rule fires too often for legitimate patterns; real
 #   argument-order bugs in tests get caught by the tests themselves.
+#
+# -google-build-using-namespace
+#   Test files use `using namespace CososoTesting;` at file scope to bring
+#   the CALLED_FAKE multiplicity tokens (NEVER, ONCE, TWICE, THRICE) into
+#   scope at the call site. The scope is one .cpp file and the symbols are
+#   intentional sugar; the rule's "don't pollute global scope" concern does
+#   not apply to test-only translation units.
+#
+# -cppcoreguidelines-macro-usage
+#   Test code uses macros to preserve __FILE__/__LINE__ at the call site
+#   (CppUTest convention) — the rule's "prefer function" alternative
+#   destroys the failure-location information that makes test reports
+#   navigable. Same constraint applies to test fake config headers
+#   (FreeRTOSConfig.h, lwipopts.h, …) which the test harness includes:
+#   the upstream symbols must remain macros.
+#
+# -cppcoreguidelines-avoid-do-while
+#   Paired with the macro-usage relaxation above: do { ... } while (0)
+#   is the standard idiom for wrapping a multi-statement macro body so
+#   it remains a single statement at the call site. Without the wrapper,
+#   the macros lose composability inside if/else.
+#
+# -cppcoreguidelines-pro-type-reinterpret-cast
+#   Test fixtures legitimately reinterpret-cast for two patterns:
+#   (a) vtable downcast from base to a FakeX struct that embeds the base
+#       as its first field — the project's vtable contract guarantees the
+#       layout, and the cast is the way tests reach the spy/fake state;
+#   (b) sentinel pointer values for fault-injection (Open returns an
+#       opaque handle that the test only compares to nullptr, never
+#       dereferences) and "forged" handles to drive bad-setup paths.
+#   Both are deliberate fixture machinery; neither pattern occurs in
+#   production code.
 InheritParentConfig: true
 Checks: >
   -readability-identifier-naming,
-  -bugprone-easily-swappable-parameters
+  -bugprone-easily-swappable-parameters,
+  -google-build-using-namespace,
+  -cppcoreguidelines-macro-usage,
+  -cppcoreguidelines-avoid-do-while,
+  -cppcoreguidelines-pro-type-reinterpret-cast

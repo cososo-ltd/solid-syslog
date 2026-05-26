@@ -10,7 +10,7 @@ EXTERN_C_BEGIN
     struct SolidSyslogFormatter;
     struct SolidSyslogStructuredData;
 
-    typedef size_t (*SolidSyslogOriginIpCountFunction)(void); // NOLINT(modernize-redundant-void-arg) -- C idiom
+    typedef size_t (*SolidSyslogOriginIpCountFunction)(void);
     typedef void (*SolidSyslogOriginIpAtFunction)(struct SolidSyslogFormatter* formatter, size_t index);
 
     struct SolidSyslogOriginSdConfig

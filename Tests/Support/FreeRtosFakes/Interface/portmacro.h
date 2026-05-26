@@ -1,8 +1,8 @@
 #ifndef SOLIDSYSLOG_TESTS_FREERTOSFAKES_PORTMACRO_H
 #define SOLIDSYSLOG_TESTS_FREERTOSFAKES_PORTMACRO_H
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage,bugprone-macro-parentheses) -- FreeRTOS-Kernel port API requires these to be #defines, the function-declaration
-// macros can't parenthesise their args
+// NOLINTBEGIN(bugprone-macro-parentheses) -- FreeRTOS-Kernel port API:
+// the function-declaration macros can't parenthesise their args.
 
 /* Stub of FreeRTOS-Kernel's portmacro.h.
  *
@@ -54,6 +54,6 @@ typedef uint32_t StackType_t;
 #define portTASK_FUNCTION_PROTO(vFunction, pvParameters) void vFunction(void* pvParameters)
 #define portTASK_FUNCTION(vFunction, pvParameters) void vFunction(void* pvParameters)
 
-// NOLINTEND(cppcoreguidelines-macro-usage,bugprone-macro-parentheses)
+// NOLINTEND(bugprone-macro-parentheses)
 
 #endif /* SOLIDSYSLOG_TESTS_FREERTOSFAKES_PORTMACRO_H */

@@ -32,10 +32,8 @@ enum
  *   CALLED_FAKE_ON(SenderFake_Send, inner, ONCE)
  *       -> LONGS_EQUAL(1, SenderFake_SendCallCount(inner))
  */
-// NOLINTBEGIN(cppcoreguidelines-macro-usage) -- token paste enforces the <name>CallCount naming rule
 #define CALLED_FUNCTION(name, count) LONGS_EQUAL((count), name##CallCount)
 #define CALLED_FAKE(getter, count) LONGS_EQUAL((count), getter##CallCount())
 #define CALLED_FAKE_ON(getter, instance, count) LONGS_EQUAL((count), getter##CallCount(instance))
-// NOLINTEND(cppcoreguidelines-macro-usage)
 
 #endif /* TESTUTILS_H */

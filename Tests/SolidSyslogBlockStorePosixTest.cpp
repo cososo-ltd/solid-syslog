@@ -66,7 +66,6 @@ TEST_GROUP(SolidSyslogBlockStorePosix)
         config.MaxBlockSize  = maxBlockSize;
         config.MaxBlocks     = maxBlocks;
         config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&config);
     }
 
