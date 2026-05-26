@@ -1,0 +1,22 @@
+---
+# Pragmatic tier per docs/NAMING.md — Platform/MbedTls.
+#
+# Inherits the root .clang-tidy. SolidSyslogMbedTlsStream.h (Interface/) and
+# SolidSyslogMbedTlsStream.c (Source/) both refer to upstream Mbed TLS struct
+# types — `mbedtls_ctr_drbg_context`, `mbedtls_x509_crt`, `mbedtls_pk_context`,
+# `mbedtls_ssl_context`, … — because the integrator-supplied handles in
+# SolidSyslogMbedTlsStreamConfig are those types (see
+# project_mbedtls_di_handles). The upstream names use snake_case prefixed with
+# `mbedtls_`, which violates the project's StructCase + StructPrefix rule, but
+# renaming is impossible (they're third-party). Extend StructIgnoredRegexp
+# locally so the rule exempts the mbedTLS namespace.
+#
+# clang-tidy CheckOption values do not merge across the hierarchy — the
+# latest-encountered value wins. The pattern below therefore re-states the
+# root .clang-tidy whitelist plus the mbedtls_ namespace. Keep in sync.
+InheritParentConfig: true
+CheckOptions:
+  - {
+      key: readability-identifier-naming.StructIgnoredRegexp,
+      value: "^(SolidSyslog|EscapedContext|BlockPresence|OpenHandle|mbedtls_[a-z0-9_]+)$",
+    }
