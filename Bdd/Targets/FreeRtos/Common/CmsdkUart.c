@@ -3,6 +3,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+// The CMSDK UART register-offset, control-bit and status-bit macros below
+// mirror the ARM CMSDK UART hardware datasheet exactly, plus the integer-
+// valued YIELD_MILLISECONDS yield interval. The macro form is intentional —
+// a future reader can grep `DATA_OFFSET` against vendor docs and land on
+// these definitions verbatim. Converting them to enums would obscure that
+// mapping, so we keep them as #defines. Mirrors the suppression in
+// Tests/FreeRtos/CmsdkUartFake.c.
+// NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum)
 #define DATA_OFFSET 0x000U
 #define STATE_OFFSET 0x004U
 #define CTRL_OFFSET 0x008U
@@ -15,6 +23,7 @@
 #define RX_FULL_BIT 0x02U
 
 #define YIELD_MILLISECONDS 1
+// NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum)
 
 static const CmsdkUartMemoryAccess* memoryAccess = NULL;
 static uintptr_t base = 0U;
