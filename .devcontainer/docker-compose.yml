@@ -1,6 +1,6 @@
 services:
   gcc:
-    image: ghcr.io/davidcozens/cpputest:sha-18f19e1
+    image: ghcr.io/davidcozens/cpputest:sha-2c7b76b
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
@@ -102,7 +102,7 @@ services:
     command: sleep infinity
 
   freertos-host:
-    image: ghcr.io/davidcozens/cpputest-freertos:sha-24de138
+    image: ghcr.io/davidcozens/cpputest-freertos:sha-a0c1c0a
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
@@ -153,7 +153,7 @@ services:
           - syslog-ng
 
   freertos-target:
-    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-24de138
+    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-a0c1c0a
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - syslog-ng-ctl-freertos:/var/lib/syslog-ng
