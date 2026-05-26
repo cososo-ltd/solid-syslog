@@ -2,6 +2,12 @@
 
 #include <stddef.h>
 
+// The CMSDK UART register-offset and status-bit macros below mirror the
+// ARM CMSDK UART hardware datasheet exactly. The macro form is intentional —
+// a future reader can grep for `DATA_OFFSET` against vendor docs and land on
+// these definitions verbatim. Converting them to enums would obscure that
+// mapping, so we keep them as #defines.
+// NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum)
 #define DATA_OFFSET 0x000U
 #define STATE_OFFSET 0x004U
 #define CTRL_OFFSET 0x008U
@@ -11,6 +17,8 @@
 #define TX_FULL_BIT 0x01U
 #define RX_FULL_BIT 0x02U
 #define TX_OVRE_BIT 0x04U
+
+// NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum)
 
 static struct
 {

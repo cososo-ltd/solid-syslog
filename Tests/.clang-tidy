@@ -1,15 +1,26 @@
 ---
 # Consistency-only tier per docs/NAMING.md.
 #
-# Inherits the root .clang-tidy and disables readability-identifier-naming
-# outright — CppUTest's TEST_GROUP / TEST / CHECK_* macros expand to
-# external-linkage identifiers (TEST_GroupName_TestName_TestShell etc.)
-# that routinely exceed any reasonable identifier window, and test code
-# uses a documented set of relaxations (lowerCamelCase preferred but not
-# enforced; PascalCase helpers; SolidSyslog prefix dropped on fakes /
-# spies; SCREAMING_SNAKE on test-only macros without a project prefix).
-#
-# The other safety checks (bugprone-*, clang-analyzer-*, cppcoreguidelines-*,
+# Inherits the root .clang-tidy and disables a documented set of rules.
+# Other safety checks (bugprone-*, clang-analyzer-*, cppcoreguidelines-*,
 # etc.) continue to apply — they catch real bugs in test code too.
+#
+# -readability-identifier-naming
+#   CppUTest's TEST_GROUP / TEST / CHECK_* macros expand to external-linkage
+#   identifiers (TEST_GroupName_TestName_TestShell etc.) that routinely
+#   exceed any reasonable identifier window, and test code uses a documented
+#   set of relaxations (lowerCamelCase preferred but not enforced;
+#   PascalCase helpers; SolidSyslog prefix dropped on fakes / spies;
+#   SCREAMING_SNAKE on test-only macros without a project prefix).
+#
+# -bugprone-easily-swappable-parameters
+#   Test helpers and hardware fakes routinely take adjacent parameters of
+#   convertible types — `uintptr_t address + uint32_t value` in MMIO writes,
+#   pairs of similarly-typed values in equality / range assertions — where
+#   the types carry semantic distinction the rule can't see. Disabled tier-
+#   wide because the rule fires too often for legitimate patterns; real
+#   argument-order bugs in tests get caught by the tests themselves.
 InheritParentConfig: true
-Checks: '-readability-identifier-naming'
+Checks: >
+  -readability-identifier-naming,
+  -bugprone-easily-swappable-parameters
