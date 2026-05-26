@@ -16,6 +16,10 @@ if(DEFINED ENV{FATFS_PATH})
     add_subdirectory(FatFs)
 endif()
 
+if(DEFINED ENV{LWIP_PATH})
+    add_subdirectory(Lwip)
+endif()
+
 if(SOLIDSYSLOG_MBEDTLS)
     add_subdirectory(MbedTls)
     add_subdirectory(MbedTlsIntegration)
@@ -192,6 +196,7 @@ if(SOLIDSYSLOG_WINSOCK)
     target_link_libraries(${PROJECT_NAME}Tests PRIVATE WinsockFakes)
 endif()
 
+
 if(SOLIDSYSLOG_OPENSSL)
     add_subdirectory(OpenSslIntegration)
 endif()
@@ -260,6 +265,15 @@ foreach(mbedtls_test_target IN ITEMS
 )
     if(TARGET ${mbedtls_test_target})
         register_junit_test(${mbedtls_test_target})
+    endif()
+endforeach()
+
+foreach(lwip_test_target IN ITEMS
+    SolidSyslogLwipRawAddressTest
+    SolidSyslogLwipRawResolverTest
+)
+    if(TARGET ${lwip_test_target})
+        register_junit_test(${lwip_test_target})
     endif()
 endforeach()
 

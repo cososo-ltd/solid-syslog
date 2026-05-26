@@ -148,10 +148,12 @@ endif()
 # time. CI builds PLUSTCP and LWIP in isolation; BOTH is a dev-container
 # convenience.
 #
-# This story (S28.01) lands only the option, the container-image lwIP pin,
-# and the validation. The PLUSTCP path is unchanged (the +TCP classes have
-# not been renamed or moved yet — that is S28.02). LWIP and BOTH fail fast
-# because no Platform/LwipRaw/ tree exists yet (S28.03–S28.05).
+# S28.03 lands the first slice of the lwIP backend (Address + Resolver,
+# literal IPv4 only). LWIP and BOTH configure but the backend is still
+# partial — Datagram/TcpStream/BDD arrive in S28.04-S28.06. Platform/LwipRaw
+# is OS-agnostic by construction (wraps lwIP only, no FreeRTOS coupling)
+# and is gated separately on LWIP_PATH below; this option only controls
+# which adapter pack the FreeRTOS BDD target wires up.
 set(SOLIDSYSLOG_FREERTOS_NET "PLUSTCP" CACHE STRING
     "FreeRTOS networking backend: PLUSTCP (default), LWIP, or BOTH")
 set_property(CACHE SOLIDSYSLOG_FREERTOS_NET PROPERTY STRINGS PLUSTCP LWIP BOTH)
@@ -163,14 +165,14 @@ if(NOT SOLIDSYSLOG_FREERTOS_NET STREQUAL "PLUSTCP"
         "(got: '${SOLIDSYSLOG_FREERTOS_NET}').")
 endif()
 if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "LWIP")
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_FREERTOS_NET=LWIP: "
-        "Platform/LwipRaw not yet implemented; see E28 stories S28.03-S28.05.")
+    message(STATUS
+        "SOLIDSYSLOG_FREERTOS_NET=LWIP: lwIP backend partial — "
+        "Address+Resolver only; Datagram/TcpStream/BDD arrive in S28.04-S28.06.")
 endif()
 if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
     message(STATUS
-        "SOLIDSYSLOG_FREERTOS_NET=BOTH: lwIP backend not implemented, "
-        "building PLUSTCP only (see E28 S28.03-S28.06).")
+        "SOLIDSYSLOG_FREERTOS_NET=BOTH: lwIP backend partial — "
+        "Address+Resolver only; Datagram/TcpStream/BDD arrive in S28.04-S28.06.")
 endif()
 
 # Build-time tunables (E21: Port-Time Configurability). Integrators override
@@ -246,6 +248,15 @@ if(DEFINED ENV{FREERTOS_KERNEL_PATH})
        OR SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
         add_subdirectory(Platform/PlusTcp)
     endif()
+endif()
+
+# Platform/LwipRaw — OS-agnostic wrapper of lwIP Raw API. Compiles whenever
+# LWIP_PATH is set, independent of FREERTOS_KERNEL_PATH (lwIP runs on bare
+# metal, Zephyr, ThreadX, FreeRTOS, ...). SOLIDSYSLOG_FREERTOS_NET only
+# governs which adapter pack the FreeRTOS BDD target links against — it
+# does not gate this library's existence.
+if(DEFINED ENV{LWIP_PATH})
+    add_subdirectory(Platform/LwipRaw)
 endif()
 
 # FatFs adapters likewise ship as sources via an INTERFACE library — the

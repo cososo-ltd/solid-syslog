@@ -1,5 +1,164 @@
 # Dev Log
 
+## 2026-05-26 — S28.03 SolidSyslogLwipRawAddress + SolidSyslogLwipRawResolver (literal IPv4, no DNS)
+
+Third story in E28 (#457, parent #439). First real lwIP code: the
+`Platform/LwipRaw/` tree lands with two classes and the test scaffolding
+to drive them under the existing `build-freertos-host-tdd-plustcp` CI
+lane. No production behaviour for any existing class touched.
+
+### What landed
+
+1. **`SolidSyslogLwipRawAddress`** — POD wrapper around
+   `ip_addr_t Ip` + `u16_t Port`. Behind the opaque
+   `struct SolidSyslogAddress*` handle. Two thin downcast inlines in
+   `Private.h` (`_As` / `_AsConst`) hide the single safe cast; consumers
+   reach `->Ip` and `->Port` directly. *No* per-field accessors — the
+   data has no invariant to enforce, so it's POD. (Discussion mid-Phase
+   2 surfaced that the four-accessor pattern I started with was a
+   reflexive copy of PlusTcp's whole-sockaddr shape; LwipRaw's
+   split-fields data made it noise. Confirmed POD with David before
+   re-shape.)
+
+2. **`SolidSyslogLwipRawResolver`** — Resolve delegates to lwIP's
+   `ipaddr_aton`. Whatever the parser accepts (numeric IPv4, including
+   Berkeley-style `"10.0.2"`), we accept; anything it rejects (DNS
+   names, alphabetic input, empty string), we reject. Transport is
+   ignored (lwIP Raw is pcb-typed by Datagram/Stream, not by Resolver).
+   The real-collaborator choice here is deliberate — `ipaddr_aton` is
+   a pure parser with no global state, so linking lwIP's `ip4_addr.c`
+   gives us the same parser the target will run with no fake-vs-real
+   divergence risk. Real DNS lands as the sibling
+   `SolidSyslogLwipRawDnsResolver` in S28.07; not a flag on this class.
+
+3. **E11 three-TU split** for both classes — `Class.c` (Initialise +
+   Cleanup + vtable hookup), `ClassPrivate.h` (struct + private sigs +
+   downcast inlines for Address), `ClassStatic.c` (pool +
+   Create/Destroy + error reporting), `ClassMessages.c` (ErrorSource
+   const). Pool plumbing via `SolidSyslogPoolAllocator`. Pool-exhaustion
+   fallback is the shared `SolidSyslogNullResolver` for Resolver; a
+   TU-private fallback singleton for Address (matching PlusTcpAddress
+   precedent).
+
+4. **New tunable** `SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE` (default
+   `1U`). LwipRawAddress reuses the existing `SOLIDSYSLOG_ADDRESS_POOL_SIZE`
+   (default `3U`).
+
+5. **`Tests/Support/LwipFakes/Interface/`** — host-side test config
+   (`arch/cc.h` + `lwipopts.h`) sized to compile lwIP headers under
+   Linux GCC with `NO_SYS=1`. No actual fakes — the production
+   collaborator (`ipaddr_aton`) is linked in from
+   `$LWIP_PATH/src/core/ipv4/ip4_addr.c`.
+
+6. **`Tests/Lwip/`** — dedicated test directory with its own
+   `CMakeLists.txt`, two test executables
+   (`SolidSyslogLwipRawAddressTest`, `SolidSyslogLwipRawResolverTest`),
+   shared `main.cpp`. **Why a separate directory** — lwIP's `opt.h`
+   has hundreds of `#ifdef` paths that trip cppcheck's `toomanyconfigs`
+   limit when the test `.cpp`s land in the mega-`SolidSyslogTests`
+   executable. The per-platform pattern (mirroring `Tests/FreeRtos/`,
+   `Tests/MbedTls/`) keeps **production code cppchecked** (David's
+   non-negotiable for platform code) while disabling cppcheck on the
+   test `.cpp`s via `set_target_properties(... CXX_CPPCHECK "")`.
+   Upstream lwIP `ip4_addr.c` + `def.c` are wrapped in their own
+   `LwipUpstreamParser` STATIC library with `C_CPPCHECK ""` — we don't
+   audit upstream code. Each test exe's per-group JUnit XML lands in
+   `build/debug/cpputest_*.xml` and is registered via
+   `register_junit_test` so CI's existing
+   `junit-build-freertos-host-tdd-plustcp` artifact picks them up.
+
+7. **Top-level CMake** — `Platform/LwipRaw/` is OS-agnostic by
+   construction, so its `add_subdirectory` is gated on `LWIP_PATH`
+   alone, **not** on `FREERTOS_KERNEL_PATH`. The
+   `SOLIDSYSLOG_FREERTOS_NET=LWIP` and `=BOTH` paths now configure
+   cleanly (was FATAL_ERROR / partial-warning before); STATUS message
+   updated to "lwIP backend partial — Address+Resolver only;
+   Datagram/TcpStream/BDD arrive in S28.04-S28.06".
+
+8. **CLAUDE.md** — four new public-headers table rows describing the
+   new classes. Resolver row clarifies that "literal numeric IPv4" is
+   accepted (not strict dotted-quad) since we defer to `ipaddr_aton`'s
+   parser; DNS sibling reference points at S28.07.
+
+### Test coverage
+
+28 new host-side tests across two executables, all green:
+
+- `SolidSyslogLwipRawAddressTest` — 12 tests (4 basic + 8 pool)
+- `SolidSyslogLwipRawResolverTest` — 16 tests (7 basic + 9 pool)
+
+Full local preset matrix run on the dev container:
+
+- `build-linux-gcc`: 1338/1338 (Lwip tests skipped — no LWIP_PATH)
+- `build-linux-clang`: 1338/1338
+- `sanitize-linux-gcc`: 1338/1338, no ASan/UBSan reports
+- `coverage-linux-gcc`: 96.2% lines / 97.0% functions (lwIP not built;
+  on freertos-host with lwIP: 95.9% / 96.8%; LwipRaw `.c` files
+  themselves at 100% except `Messages.c` which is the established
+  "captured by error-handler-text path only, not exercised in tests"
+  no-coverage pattern across the codebase)
+- `analyze-tidy`: clean on LwipRaw + tests. Pre-existing
+  `Tests/FreeRtos/CmsdkUartFake.c` warnings on `main` are untouched.
+- `analyze-cppcheck`: clean. Production `Platform/LwipRaw/Source/*.c`
+  *are* cppchecked under the new test exes (verified
+  `Checking /workspaces/SolidSyslog/Platform/LwipRaw/Source/...`
+  output for every file). Upstream lwIP and test `.cpp`s are
+  intentionally excluded as described.
+- `analyze-format`: clean whole tree.
+- `build-freertos-host-tdd` (= the CI lane that exercises the lwIP
+  install): 15/15 ctest including both Lwip exes; full
+  `SolidSyslogTests` mega-exe still passes too.
+
+### Decisions
+
+- **POD over per-field accessors** for `SolidSyslogLwipRawAddress` —
+  see `feedback_no_premature_generalisation`. The four-accessor pattern
+  I copied from PlusTcp was reflexive; PlusTcp's single bundled-field
+  data justified its single accessor pair, lwIP's split data did not.
+  Resulting shape: POD struct + one downcast pair (`_As` / `_AsConst`)
+  in the header.
+
+- **Real `ipaddr_aton` collaborator** — linked the actual lwIP source
+  rather than a fake parser. Pure parser, no global state, no
+  fake-vs-real divergence risk; tests assert on observable address
+  bytes after Resolve.
+
+- **Defer to parser leniency** — lwIP accepts Berkeley-style numeric
+  IPv4. Test names + CLAUDE.md row honestly describe this rather than
+  pretending we enforce strict dotted-quad. No wrapper validation
+  layer — would duplicate parsing logic for marginal benefit.
+
+- **Per-platform test directory** — `Tests/Lwip/` mirrors
+  `Tests/FreeRtos/` / `Tests/MbedTls/` rather than bundling into the
+  mega-`SolidSyslogTests`. Production code stays cppchecked; the
+  toomanyconfigs noise from third-party headers is contained.
+  Pattern scales linearly to Zephyr / vxWorks. Memory
+  `project_cmake_restructure_post_e28` flags a broader CMake refactor
+  for after E28 closes — the option matrix and per-platform if-blocks
+  are growing toward needing a Find-modules / component-package
+  shape.
+
+### Deferred
+
+- **Strict dotted-quad validation** — explicitly out. `ipaddr_aton`'s
+  notion of "numeric IPv4" is what we accept.
+
+- **DNS resolution** — `SolidSyslogLwipRawDnsResolver` sibling in
+  S28.07. Different threading model (callback-driven), needs a wait
+  primitive abstraction.
+
+- **Bigger CMake restructure** — recorded in
+  `project_cmake_restructure_post_e28` memory; revisit after E28.
+
+- **PlusTcp accessor-shape audit** — David called out the PlusTcp
+  `_AsFreertosSockaddr` accessor pattern earned its keep at the time
+  (single bundled-field data) but a future revisit may want to align
+  it with the LwipRaw POD shape. Not for this story.
+
+### Open questions
+
+- None outstanding.
+
 ## 2026-05-25 — S28.02 rename FreeRtos networking classes to PlusTcp + move to Platform/PlusTcp/
 
 Second story in E28 (#454, parent #439). Pure cosmetic rename — no

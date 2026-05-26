@@ -579,6 +579,26 @@
 #endif
 
 /*
+ * Number of SolidSyslogLwipRawResolver instances the library's
+ * internal static pool can simultaneously hold. The resolver is
+ * stateless — it just delegates to lwIP's ipaddr_aton on each Resolve
+ * call — so a single instance comfortably serves any number of senders.
+ *
+ * Default 1 — bump via SOLIDSYSLOG_USER_TUNABLES_FILE if a use case
+ * for multiple instances surfaces (none anticipated).
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE
+/* NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- macro form required for preprocessor visibility (floor #if) and C array-size const-expr. */
+#define SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE < 1
+#error "SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE must be >= 1"
+#endif
+
+/*
  * Number of SolidSyslogPlusTcpTcpStream instances the library's
  * internal static pool can simultaneously hold. Each instance carries
  * a FreeRTOS-Plus-TCP Socket_t for the bounded-blocking-connect
