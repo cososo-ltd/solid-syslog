@@ -12,7 +12,7 @@
 # D.002 — Rules 11.2 / 11.3 / 11.5: vtable downcasts + Formatter
 # See docs/misra-deviations.md#d002
 misra-c2012-11.2:Core/Interface/SolidSyslogFormatter.h:30
-misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:9
+misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:10
 misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:20
 misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:28
 misra-c2012-11.2:Platform/Posix/Source/SolidSyslogPosixAddress.c:10
@@ -35,12 +35,12 @@ misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:59
 misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:101
 misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:25
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:45
-misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:9
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:10
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:20
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:28
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:34
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:54
-misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpDatagram.c:47
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpDatagram.c:49
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:40
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:44
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:114
