@@ -132,7 +132,6 @@ TEST(SolidSyslogLwipRawResolver, ResolveReturnsFalseWhenIpaddrAtonRejectsHost)
 // clang-format off
 TEST_GROUP(SolidSyslogLwipRawResolverPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogResolver* pooled[SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE] = {};
     struct SolidSyslogResolver* overflow                                         = nullptr;
 
@@ -145,7 +144,6 @@ TEST_GROUP(SolidSyslogLwipRawResolverPool)
                 SolidSyslogLwipRawResolver_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogLwipRawResolver_Destroy(overflow);

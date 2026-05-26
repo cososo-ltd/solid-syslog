@@ -103,7 +103,6 @@ TEST_GROUP_BASE(SolidSyslogBlockStore, BlockDeviceTestBase)
     {
         setupBlockDeviceFakes();
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -332,13 +331,11 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreResume, BlockDeviceTestBase)
     void WritePreviousSession(int total, int markedSent)
     {
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-        // cppcheck-suppress unreadVariable -- used by WriteMessages/DrainMessages; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&config);
         WriteMessages(total);
         DrainMessages(markedSent);
         SolidSyslogBlockStore_Destroy(store);
 
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -480,7 +477,6 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
     {
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
         config.MaxBlocks = maxBlocks;
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -488,17 +484,14 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
     {
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
         config.MaxBlockSize = maxBlockSize;
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&config);
     }
 
     void CreateWithPathPrefix(const char* prefix)
     {
         SolidSyslogFileBlockDevice_Destroy(device);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         device = SolidSyslogFileBlockDevice_Create(file, prefix);
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -610,7 +603,6 @@ TEST(SolidSyslogBlockStoreConfig, OversizedSecurityPolicyLeavesNoIntegrityGap)
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreErrors, BlockDeviceTestBase)
 {
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogStore*   store   = nullptr;
 
     void setup() override
@@ -718,7 +710,6 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreRotation, BlockDeviceTestBase)
         config.DiscardPolicy     = policy;
         config.OnStoreFull       = onStoreFull;
         config.StoreFullContext  = storeFullContext;
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -1428,7 +1419,6 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
         struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
         config.BlockDevice    = device;
         config.SecurityPolicy = &spyPolicy;
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -1529,7 +1519,6 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruption, BlockDeviceTestBase)
     void CreateStore()
     {
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&config);
     }
 };
@@ -1687,7 +1676,6 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
         config.MaxBlockSize     = maxBlockSize;
         config.MaxBlocks        = maxBlocks;
         config.SecurityPolicy  = policy;
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -1760,7 +1748,6 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCapacity, BlockDeviceTestBase)
 {
     static const size_t ONE_MAX_MSG_RECORD = SOLIDSYSLOG_MAX_MESSAGE_SIZE + TEST_RECORD_OVERHEAD;
 
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogStore* store = nullptr;
     char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
 
@@ -1903,7 +1890,6 @@ static void CountThresholdCrossings(void* context)
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreCapacityThreshold, BlockDeviceTestBase)
 {
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogStore* store = nullptr;
 
     void setup() override

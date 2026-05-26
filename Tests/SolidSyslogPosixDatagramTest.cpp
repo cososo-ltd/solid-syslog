@@ -41,15 +41,12 @@ static const int         TEST_PORT        = 514;
 
 TEST_GROUP(SolidSyslogPosixDatagram)
 {
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogDatagram* datagram = nullptr;
-    // cppcheck-suppress unreadVariable -- assigned in setup; cppcheck does not model CppUTest macros
     struct SolidSyslogAddress* addr = nullptr;
 
     void setup() override
     {
         SocketFake_Reset();
-        // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
         datagram        = SolidSyslogPosixDatagram_Create();
         addr            = SolidSyslogPosixAddress_Create();
         struct sockaddr_in* sin = SolidSyslogPosixAddress_AsSockaddrIn(addr);
@@ -269,7 +266,6 @@ TEST(SolidSyslogPosixDatagram, SendToReturnsFailedWhenConnectFails)
 // clang-format off
 TEST_GROUP(SolidSyslogPosixDatagramPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogDatagram* pooled[SOLIDSYSLOG_POSIX_DATAGRAM_POOL_SIZE] = {};
     struct SolidSyslogDatagram* overflow                                     = nullptr;
 
@@ -282,7 +278,6 @@ TEST_GROUP(SolidSyslogPosixDatagramPool)
                 SolidSyslogPosixDatagram_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPosixDatagram_Destroy(overflow);

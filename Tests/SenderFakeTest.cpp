@@ -12,7 +12,6 @@ TEST_GROUP(SenderFake)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         sender = SenderFake_Create();
     }
 
@@ -133,9 +132,7 @@ TEST_GROUP(SenderFakeInstances)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         a = SenderFake_Create();
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         b = SenderFake_Create();
     }
 

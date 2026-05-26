@@ -1,0 +1,46 @@
+# Non-MISRA cppcheck suppressions — test-compile-only false positives.
+# -
+# This file accompanies misra_suppressions.txt (which scopes MISRA-rule
+# suppressions in production code). It targets rules that only fire — or
+# only fire as false positives — when cppcheck runs over test-compilation
+# units, and consolidates what would otherwise be hundreds of identical
+# inline `// cppcheck-suppress` comments.
+# -
+# Wired into the cppcheck preset via CMAKE_C_CPPCHECK / CMAKE_CXX_CPPCHECK
+# in CMakeLists.txt, and into the CI report-generation step in
+# .github/workflows/ci.yml. Inline `cppcheck-suppress` still works
+# (--inline-suppr stays enabled) for site-specific rationales.
+# -
+# Format: <rule>:<file-glob>[:line]. cppcheck accepts * and ? in <file-glob>.
+# Lines starting with # are comments.
+
+# -----------------------------------------------------------------------
+# CppUTest harness model gap — Tests/*
+# -----------------------------------------------------------------------
+# CppUTest's TEST_GROUP / TEST / CHECK_* macros expand to a class whose
+# fields are accessed across setup, teardown, and TEST() bodies via
+# implicit `this` from the macros. cppcheck's data-flow model does not
+# see these expansions, so any field-typed TEST_GROUP member appears
+# `unreadVariable`, the assignments appear to leave `constVariable`-eligible
+# variables, branches read from helper fixtures look `knownConditionTrueFalse`,
+# and the macro-expanded CALLED_* multiplicity macros generate spurious
+# `constVariablePointer` findings. The signal-to-noise of these rules in
+# test code is poor enough to disable tree-wide for Tests/*.
+unreadVariable:*Tests/*
+variableScope:*Tests/*
+constVariable:*Tests/*
+knownConditionTrueFalse:*Tests/*
+unusedStructMember:*Tests/*
+constVariablePointer:*Tests/*
+
+# -----------------------------------------------------------------------
+# Opaque-to-impl downcast in Platform address-private headers
+# -----------------------------------------------------------------------
+# Platform/*/Source/SolidSyslog*AddressPrivate.h carries inline static
+# downcasts from the public `struct SolidSyslogAddress*` opaque type to
+# the platform-specific impl struct (D.002 in docs/misra-deviations.md).
+# The downcast is a C-style cast — necessary in a C header — and the
+# header is included from C++ test compilation units, where cppcheck's
+# `cstyleCast` rule fires. The MISRA halves (11.2 / 11.3) live in
+# misra_suppressions.txt; this is the non-MISRA half.
+cstyleCast:*Platform/*/Source/*AddressPrivate.h

@@ -145,7 +145,6 @@ TEST(SolidSyslogPlusTcpResolverTest, FreesAddrInfoOnSuccess)
 // clang-format off
 TEST_GROUP(SolidSyslogPlusTcpResolverPoolTest)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogResolver* pooled[SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE] = {};
     struct SolidSyslogResolver* overflow                                         = nullptr;
 
@@ -158,7 +157,6 @@ TEST_GROUP(SolidSyslogPlusTcpResolverPoolTest)
                 SolidSyslogPlusTcpResolver_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPlusTcpResolver_Destroy(overflow);

@@ -126,12 +126,10 @@ enum
 TEST_GROUP(SolidSyslogFormatter)
 {
     SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(TEST_BUFFER_SIZE)];
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     struct SolidSyslogFormatter* formatter;
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- formatter is used across TEST() bodies via CppUTest macro
         CREATE_FORMATTER(TEST_BUFFER_SIZE);
     }
 

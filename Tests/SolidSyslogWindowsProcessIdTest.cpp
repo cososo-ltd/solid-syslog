@@ -21,14 +21,12 @@ static DWORD WINAPI FakeGetCurrentProcessId(void)
 TEST_GROUP(SolidSyslogWindowsProcessId)
 {
     SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(FORMATTER_BUFFER_SIZE)];
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogFormatter* formatter = nullptr;
 
     void setup() override
     {
         fakePid = 4321;
         UT_PTR_SET(WindowsProcessId_GetCurrentProcessId, FakeGetCurrentProcessId);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         formatter = SolidSyslogFormatter_Create(storage, FORMATTER_BUFFER_SIZE);
     }
 

@@ -30,13 +30,11 @@ static const char* const TEST_PATH = "test.log";
 TEST_GROUP(SolidSyslogFatFsFile)
 {
     struct SolidSyslogFile* file = nullptr;
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     char buffer[5] = {'h', 'e', 'l', 'l', 'o'};
 
     void setup() override
     {
         FatFsFake_Reset();
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         file = SolidSyslogFatFsFile_Create();
     }
 

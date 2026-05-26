@@ -24,9 +24,7 @@ enum class CallType
 
 struct DeviceCall
 {
-    // cppcheck-suppress unusedStructMember -- read by DisposePrecedesAcquire / loop assertions; cppcheck does not model std::vector element access
     CallType type;
-    // cppcheck-suppress unusedStructMember -- read by DisposePrecedesAcquire; cppcheck does not model std::vector element access
     size_t BlockIndex;
 };
 
@@ -156,7 +154,6 @@ TEST_GROUP(BlockSequenceScan)
         fakeDevice.Base.Append  = FakeAppend;
         fakeDevice.Base.WriteAt = FakeWriteAt;
         fakeDevice.Base.Size    = FakeSize;
-        // cppcheck-suppress unreadVariable -- read indirectly via FakeExists; cppcheck does not model the function-pointer indirection
         fakeDevice.existing     = &existing;
 
         struct BlockSequenceConfig config = {};
@@ -164,7 +161,6 @@ TEST_GROUP(BlockSequenceScan)
         config.MaxBlockSize                = 1000;
         config.MaxBlocks                   = 99;
         config.DiscardPolicy              = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
-        // cppcheck-suppress unreadVariable -- read across TEST_GROUP methods; cppcheck does not model CppUTest macros
         sequence = BlockSequence_Create(&config);
     }
 
@@ -248,11 +244,8 @@ TEST_GROUP(BlockSequenceRotation)
         fakeDevice.Base.Append  = FakeAppend;
         fakeDevice.Base.WriteAt = FakeWriteAt;
         fakeDevice.Base.Size    = FakeSize;
-        // cppcheck-suppress unreadVariable -- read indirectly via FakeExists; cppcheck does not model the function-pointer indirection
         fakeDevice.existing     = &existing;
-        // cppcheck-suppress unreadVariable -- read indirectly via RecordCall; cppcheck does not model the function-pointer indirection
         fakeDevice.calls        = &calls;
-        // cppcheck-suppress unreadVariable -- read indirectly via FakeSize; cppcheck does not model the function-pointer indirection
         fakeDevice.sizes        = &sizes;
 
         struct BlockSequenceConfig config = {};

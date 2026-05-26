@@ -40,7 +40,6 @@ TEST_GROUP(SolidSyslogFileBlockDevice)
     void setup() override
     {
         file = FileFake_Create(&fileStorage);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX);
     }
 

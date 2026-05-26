@@ -91,7 +91,6 @@ TEST_GROUP_BASE(SolidSyslogCircularBuffer, CircularBufferFixture)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring));
     }
 
@@ -243,7 +242,6 @@ TEST_GROUP_BASE(SolidSyslogCircularBufferMutex, CircularBufferFixture)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         buffer = SolidSyslogCircularBuffer_Create(MutexFake_Create(), ring, sizeof(ring));
     }
 
@@ -277,7 +275,6 @@ TEST_GROUP_BASE(SolidSyslogCircularBufferSmallRing, CircularBufferFixture)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring));
     }
 
@@ -387,7 +384,6 @@ TEST_GROUP(SolidSyslogCircularBufferPool)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         mutex = SolidSyslogNullMutex_Get();
     }
 

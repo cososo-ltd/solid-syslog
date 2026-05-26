@@ -354,23 +354,16 @@ TEST_GROUP(SolidSyslog)
 {
     SolidSyslogConfig config;
     SolidSyslogMessage message;
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     struct SolidSyslog *solidSyslog;
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogBuffer *buffer;
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogStore  *store;
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     struct SolidSyslogSender *fakeSender;
     /* Pool-backed handles owned by tests that exercise Meta/TimeQuality SD.
        Held as fixture state so teardown releases their pool slots even if a
        test body fails mid-assertion — otherwise the leaked slot returns the
        fallback to subsequent tests and cascades the failure. */
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     struct SolidSyslogAtomicCounter   *metaSdCounter;
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     struct SolidSyslogStructuredData  *metaSd;
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     struct SolidSyslogStructuredData  *timeQualitySd;
 
     void setup() override
@@ -384,7 +377,6 @@ TEST_GROUP(SolidSyslog)
         timeQualitySd = nullptr;
         config = {buffer, nullptr, nullptr, StringFake_GetHostname, StringFake_GetAppName, StringFake_GetProcessId, store, nullptr, 0};
         solidSyslog = SolidSyslog_Create(&config);
-        // cppcheck-suppress unreadVariable -- read via Log() through &message; cppcheck does not model CppUTest macros
         message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFORMATIONAL, nullptr, nullptr};
     }
 
@@ -1564,7 +1556,6 @@ TEST_GROUP(SolidSyslogServiceEagerDrain)
         serviceConfig.Buffer            = circularBuffer;
         serviceConfig.Sender            = fakeSender;
         serviceConfig.Store             = fakeStore;
-        // cppcheck-suppress unreadVariable -- read via Service(solidSyslog) in tests; cppcheck does not model CppUTest macros
         solidSyslog = SolidSyslog_Create(&serviceConfig);
     }
 
@@ -1652,13 +1643,9 @@ TEST_GROUP(SolidSyslogLifecycle)
     void setup() override
     {
         solidSyslog = nullptr;
-        // cppcheck-suppress unreadVariable -- read via Log() in tests; cppcheck does not model CppUTest macros
         message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFORMATIONAL, nullptr, nullptr};
-        // cppcheck-suppress unreadVariable -- read via validConfig() in tests; cppcheck does not model CppUTest macros
         sender = SenderFake_Create();
-        // cppcheck-suppress unreadVariable -- read via validConfig() in tests; cppcheck does not model CppUTest macros
         buffer = BufferFake_Create();
-        // cppcheck-suppress unreadVariable -- read via validConfig() in tests; cppcheck does not model CppUTest macros
         store = SolidSyslogNullStore_Get();
     }
 

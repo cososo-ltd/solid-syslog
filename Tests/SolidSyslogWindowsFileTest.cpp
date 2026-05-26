@@ -45,7 +45,6 @@ static std::string MakeTempPath(const char* filename)
 
 TEST_GROUP(SolidSyslogWindowsFile)
 {
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogFile* file = nullptr;
     std::string testPath;
 
@@ -53,7 +52,6 @@ TEST_GROUP(SolidSyslogWindowsFile)
     {
         testPath = MakeTempPath("test_windows_file.dat");
         std::remove(testPath.c_str());
-        // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
         file = SolidSyslogWindowsFile_Create();
     }
 
@@ -163,7 +161,6 @@ TEST(SolidSyslogWindowsFile, DeleteReturnsFalseForNonexistentFile)
 // clang-format off
 TEST_GROUP(SolidSyslogWindowsFilePool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogFile* pooled[SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE] = {};
     struct SolidSyslogFile* overflow                                   = nullptr;
 
@@ -176,7 +173,6 @@ TEST_GROUP(SolidSyslogWindowsFilePool)
                 SolidSyslogWindowsFile_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogWindowsFile_Destroy(overflow);

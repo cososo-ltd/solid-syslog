@@ -8,10 +8,8 @@ using namespace CososoTesting;
 // clang-format off
 TEST_GROUP(DatagramFake)
 {
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogDatagram* datagram = nullptr;
 
-    // cppcheck-suppress unreadVariable -- read by teardown and tests; cppcheck does not model CppUTest lifecycle
     void setup() override { datagram = DatagramFake_Create(); }
     void teardown() override { DatagramFake_Destroy(datagram); }
 };

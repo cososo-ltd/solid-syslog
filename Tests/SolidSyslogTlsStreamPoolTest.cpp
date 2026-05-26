@@ -47,7 +47,6 @@ TEST_GROUP(SolidSyslogTlsStreamPool)
 {
     struct SolidSyslogStream*         transport = nullptr;
     struct SolidSyslogTlsStreamConfig config    = {};
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogStream* pooled[SOLIDSYSLOG_TLS_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                 = nullptr;
 
@@ -68,7 +67,6 @@ TEST_GROUP(SolidSyslogTlsStreamPool)
                 SolidSyslogTlsStream_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogTlsStream_Destroy(overflow);

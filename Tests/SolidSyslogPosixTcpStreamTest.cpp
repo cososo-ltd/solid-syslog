@@ -53,16 +53,13 @@ static const int         TEST_PORT        = 514;
 
 TEST_GROUP(SolidSyslogPosixTcpStream)
 {
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogStream* stream = nullptr;
-    // cppcheck-suppress unreadVariable -- assigned in setup; cppcheck does not model CppUTest macros
     struct SolidSyslogAddress* addr = nullptr;
 
     void setup() override
     {
         SocketFake_Reset();
         FakeGetConnectTimeoutMs_Reset();
-        // cppcheck-suppress unreadVariable -- used in tests; cppcheck does not model CppUTest macros
         stream                  = SolidSyslogPosixTcpStream_Create(nullptr);
         addr                    = SolidSyslogPosixAddress_Create();
         struct sockaddr_in* sin = SolidSyslogPosixAddress_AsSockaddrIn(addr);
@@ -587,7 +584,6 @@ TEST(SolidSyslogPosixTcpStream, ReadReturnsNegativeOneOnErrorAndClosesSocket)
 // clang-format off
 TEST_GROUP(SolidSyslogPosixTcpStreamPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogStream* pooled[SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                       = nullptr;
 
@@ -600,7 +596,6 @@ TEST_GROUP(SolidSyslogPosixTcpStreamPool)
                 SolidSyslogPosixTcpStream_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPosixTcpStream_Destroy(overflow);

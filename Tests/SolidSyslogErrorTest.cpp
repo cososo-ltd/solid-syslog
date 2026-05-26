@@ -10,7 +10,6 @@ using namespace CososoTesting;
 // clang-format off
 TEST_GROUP(SolidSyslogErrorEx)
 {
-    // cppcheck-suppress unreadVariable -- read via context-propagation test through CppUTest macros
     int sentinel = 0;
 };
 

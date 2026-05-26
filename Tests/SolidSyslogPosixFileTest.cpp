@@ -39,7 +39,6 @@ TEST_GROUP(SolidSyslogPosixFile)
     {
         SocketFake_Reset();
         remove(TEST_PATH);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         file = SolidSyslogPosixFile_Create();
     }
 
@@ -133,7 +132,6 @@ TEST(SolidSyslogPosixFile, DeleteReturnsFalseForNonexistentFile)
 // clang-format off
 TEST_GROUP(SolidSyslogPosixFilePool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogFile* pooled[SOLIDSYSLOG_POSIX_FILE_POOL_SIZE] = {};
     struct SolidSyslogFile* overflow                                 = nullptr;
 
@@ -146,7 +144,6 @@ TEST_GROUP(SolidSyslogPosixFilePool)
                 SolidSyslogPosixFile_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPosixFile_Destroy(overflow);

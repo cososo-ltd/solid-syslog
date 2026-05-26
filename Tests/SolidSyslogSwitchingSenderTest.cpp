@@ -46,7 +46,6 @@ TEST_GROUP(SolidSyslogSwitchingSender)
     struct SolidSyslogSender* innerB = nullptr;
     struct SolidSyslogSender* innerC = nullptr;
     struct SolidSyslogSender* inners[3] = {nullptr, nullptr, nullptr};
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogSender* sender = nullptr;
 
     void setup() override
@@ -369,7 +368,6 @@ TEST_GROUP(SolidSyslogSwitchingSenderBadSetup)
     {
         innerA   = SenderFake_Create();
         inners[0] = innerA;
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         config   = {inners, 1, TestSelector};
         ErrorHandlerFake_Install(&sentinel);
     }

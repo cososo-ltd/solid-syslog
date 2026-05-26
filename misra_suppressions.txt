@@ -13,14 +13,14 @@
 # See docs/misra-deviations.md#d002
 misra-c2012-11.2:Core/Interface/SolidSyslogFormatter.h:28
 misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:10
-misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:20
-misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:28
+misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:19
+misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:26
 misra-c2012-11.2:Platform/Posix/Source/SolidSyslogPosixAddress.c:10
-misra-c2012-11.2:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:20
-misra-c2012-11.2:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:26
+misra-c2012-11.2:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:19
+misra-c2012-11.2:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:24
 misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddress.c:9
-misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:20
-misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:28
+misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:19
+misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:26
 misra-c2012-11.3:Core/Interface/SolidSyslogFormatter.h:28
 misra-c2012-11.3:Core/Source/SolidSyslogBlockStore.c:69
 misra-c2012-11.3:Core/Source/SolidSyslogCircularBuffer.c:87
@@ -36,8 +36,8 @@ misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:101
 misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:25
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:45
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:10
-misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:20
-misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:28
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:19
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:26
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:34
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:54
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpDatagram.c:49
@@ -47,8 +47,8 @@ misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:114
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:94
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:82
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddress.c:10
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:20
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:26
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:19
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:24
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressStatic.c:34
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressStatic.c:54
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixDatagram.c:55
@@ -57,8 +57,8 @@ misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:129
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMutex.c:47
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:100
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddress.c:9
-misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:20
-misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:28
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:19
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:26
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressStatic.c:34
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressStatic.c:54
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c:29

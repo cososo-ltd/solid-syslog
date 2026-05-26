@@ -15,12 +15,10 @@ TEST_GROUP(StoreFake)
 {
     struct SolidSyslogStore* store = nullptr;
     char   readData[512];
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     size_t readSize;
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         store = StoreFake_Create();
         readSize = 0;
     }

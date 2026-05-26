@@ -77,11 +77,9 @@ std::string escapeEach(const std::string& allSpecials)
 // clang-format off
 TEST_GROUP(SolidSyslogOriginSd)
 {
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogStructuredData* sd;
     SolidSyslogOriginSdConfig config;
     SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(TEST_BUFFER_SIZE)];
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogFormatter* formatter;
 
     void setup() override

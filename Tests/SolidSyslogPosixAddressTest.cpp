@@ -38,7 +38,6 @@ TEST_GROUP(SolidSyslogPosixAddress)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         address = SolidSyslogPosixAddress_Create();
     }
 
@@ -86,7 +85,6 @@ TEST(SolidSyslogPosixAddress, CreateZeroesTheSockaddrFromAnyPriorSlotContents)
 // clang-format off
 TEST_GROUP(SolidSyslogPosixAddressPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogAddress* pooled[SOLIDSYSLOG_ADDRESS_POOL_SIZE] = {};
     struct SolidSyslogAddress* overflow                              = nullptr;
 
@@ -99,7 +97,6 @@ TEST_GROUP(SolidSyslogPosixAddressPool)
                 SolidSyslogPosixAddress_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPosixAddress_Destroy(overflow);

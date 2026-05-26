@@ -24,7 +24,6 @@ TEST_GROUP(SolidSyslogPassthroughBuffer)
     void setup() override
     {
         fakeSender = SenderFake_Create();
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         buffer = SolidSyslogPassthroughBuffer_Create(fakeSender);
     }
 
@@ -127,7 +126,6 @@ TEST_GROUP(SolidSyslogPassthroughBufferPool)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         fakeSender = SenderFake_Create();
     }
 

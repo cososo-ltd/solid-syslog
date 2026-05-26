@@ -104,7 +104,6 @@ TEST_GROUP(SolidSyslogBlockDevice)
         fake.Base.Append  = FakeAppend;
         fake.Base.WriteAt = FakeWriteAt;
         fake.Base.Size    = FakeSize;
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         device = &fake.Base;
     }
 };

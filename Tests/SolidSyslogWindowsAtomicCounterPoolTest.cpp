@@ -31,7 +31,6 @@ using namespace CososoTesting;
 // clang-format off
 TEST_GROUP(SolidSyslogWindowsAtomicCounterPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogAtomicCounter* pooled[SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE] = {};
     struct SolidSyslogAtomicCounter* overflow                                             = nullptr;
 
@@ -44,7 +43,6 @@ TEST_GROUP(SolidSyslogWindowsAtomicCounterPool)
                 SolidSyslogWindowsAtomicCounter_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogWindowsAtomicCounter_Destroy(overflow);

@@ -12,9 +12,7 @@ TEST_GROUP(SolidSyslogNullSd)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         sd = SolidSyslogNullSd_Get();
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         formatter = SolidSyslogFormatter_Create(formatterStorage, 32);
     }
 };

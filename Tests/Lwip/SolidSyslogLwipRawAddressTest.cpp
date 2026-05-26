@@ -104,7 +104,6 @@ TEST(SolidSyslogLwipRawAddress, CreateZeroesIpAndPortFromAnyPriorSlotContents)
 // clang-format off
 TEST_GROUP(SolidSyslogLwipRawAddressPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogAddress* pooled[SOLIDSYSLOG_ADDRESS_POOL_SIZE] = {};
     struct SolidSyslogAddress* overflow                              = nullptr;
 
@@ -117,7 +116,6 @@ TEST_GROUP(SolidSyslogLwipRawAddressPool)
                 SolidSyslogLwipRawAddress_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogLwipRawAddress_Destroy(overflow);

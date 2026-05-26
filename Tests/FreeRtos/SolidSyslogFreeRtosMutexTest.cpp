@@ -38,7 +38,6 @@ TEST_GROUP(SolidSyslogFreeRtosMutex)
     void setup() override
     {
         FreeRtosSemaphoreFake_Reset();
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         mutex = SolidSyslogFreeRtosMutex_Create();
     }
 
@@ -84,7 +83,6 @@ TEST(SolidSyslogFreeRtosMutex, DestroyCallsSemaphoreDeleteOnce)
 // clang-format off
 TEST_GROUP(SolidSyslogFreeRtosMutexPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogMutex* pooled[SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE] = {};
     struct SolidSyslogMutex* overflow                                      = nullptr;
 
@@ -102,7 +100,6 @@ TEST_GROUP(SolidSyslogFreeRtosMutexPool)
                 SolidSyslogFreeRtosMutex_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogFreeRtosMutex_Destroy(overflow);

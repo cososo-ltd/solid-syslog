@@ -282,7 +282,6 @@ TEST(SolidSyslogPlusTcpDatagram, SendToForwardsLengthVerbatim)
 // clang-format off
 TEST_GROUP(SolidSyslogPlusTcpDatagramPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogDatagram* pooled[SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE] = {};
     struct SolidSyslogDatagram* overflow                                         = nullptr;
 
@@ -300,7 +299,6 @@ TEST_GROUP(SolidSyslogPlusTcpDatagramPool)
                 SolidSyslogPlusTcpDatagram_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPlusTcpDatagram_Destroy(overflow);

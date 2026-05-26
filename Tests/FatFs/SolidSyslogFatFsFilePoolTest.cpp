@@ -35,7 +35,6 @@ using namespace CososoTesting;
 // clang-format off
 TEST_GROUP(SolidSyslogFatFsFilePool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogFile* pooled[SOLIDSYSLOG_FATFS_FILE_POOL_SIZE] = {};
     struct SolidSyslogFile* overflow                                 = nullptr;
 
@@ -53,7 +52,6 @@ TEST_GROUP(SolidSyslogFatFsFilePool)
                 SolidSyslogFatFsFile_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogFatFsFile_Destroy(overflow);

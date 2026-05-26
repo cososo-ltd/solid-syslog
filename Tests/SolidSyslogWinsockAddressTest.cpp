@@ -84,7 +84,6 @@ TEST(SolidSyslogWinsockAddress, CreateZeroesTheSockaddrFromAnyPriorSlotContents)
 // clang-format off
 TEST_GROUP(SolidSyslogWinsockAddressPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogAddress* pooled[SOLIDSYSLOG_ADDRESS_POOL_SIZE] = {};
     struct SolidSyslogAddress* overflow                              = nullptr;
 
@@ -97,7 +96,6 @@ TEST_GROUP(SolidSyslogWinsockAddressPool)
                 SolidSyslogWinsockAddress_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogWinsockAddress_Destroy(overflow);

@@ -37,7 +37,6 @@ static BOOL WINAPI FakeGetComputerNameExA(COMPUTER_NAME_FORMAT nameType, LPSTR b
 TEST_GROUP(SolidSyslogWindowsHostname)
 {
     SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(FORMATTER_BUFFER_SIZE)];
-    // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
     struct SolidSyslogFormatter* formatter = nullptr;
 
     void setup() override
@@ -45,7 +44,6 @@ TEST_GROUP(SolidSyslogWindowsHostname)
         fakeHostname    = "winhost";
         fakeReturnValue = TRUE;
         UT_PTR_SET(WindowsHostname_GetComputerNameExA, FakeGetComputerNameExA);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         formatter = SolidSyslogFormatter_Create(storage, FORMATTER_BUFFER_SIZE);
     }
 

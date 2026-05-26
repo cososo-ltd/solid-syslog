@@ -66,15 +66,11 @@ static void FakeLanguage_Get(struct SolidSyslogFormatter* formatter)
 // clang-format off
 TEST_GROUP(SolidSyslogMetaSd)
 {
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogAtomicCounter* counter;
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogStructuredData* sd;
     SolidSyslogMetaSdConfig config;
     SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(TEST_BUFFER_SIZE)];
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogFormatter* formatter;
-    // cppcheck-suppress unreadVariable -- read via context-propagation through ErrorHandlerFake_Install
     int sentinel = 0;
 
     void setup() override

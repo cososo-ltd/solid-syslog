@@ -35,7 +35,6 @@ TEST_GROUP(SolidSyslogWindowsMutex)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         mutex = SolidSyslogWindowsMutex_Create();
     }
 
@@ -60,7 +59,6 @@ TEST(SolidSyslogWindowsMutex, LockUnlockDoesNotCrash)
 // clang-format off
 TEST_GROUP(SolidSyslogWindowsMutexPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogMutex* pooled[SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE] = {};
     struct SolidSyslogMutex* overflow                                    = nullptr;
 
@@ -73,7 +71,6 @@ TEST_GROUP(SolidSyslogWindowsMutexPool)
                 SolidSyslogWindowsMutex_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogWindowsMutex_Destroy(overflow);

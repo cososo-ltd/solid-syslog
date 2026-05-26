@@ -10,7 +10,6 @@ TEST_GROUP(SolidSyslogNullResolver)
 
     void setup() override
     {
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         resolver = SolidSyslogNullResolver_Get();
     }
 };

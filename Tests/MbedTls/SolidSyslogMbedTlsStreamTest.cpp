@@ -87,7 +87,6 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         config.Transport = transport;
         config.Sleep = NoOpSleep;
         handle = SolidSyslogMbedTlsStream_Create(&config);
-        // cppcheck-suppress unreadVariable -- used across TEST_GROUP methods; cppcheck does not model CppUTest macros
         addr = AddressFake_Get();
     }
 

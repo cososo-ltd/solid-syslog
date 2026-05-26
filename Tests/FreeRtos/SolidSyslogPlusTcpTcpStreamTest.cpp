@@ -466,7 +466,6 @@ TEST(SolidSyslogPlusTcpTcpStream, DestroyAfterCloseDoesNotCloseAgain)
 // clang-format off
 TEST_GROUP(SolidSyslogPlusTcpTcpStreamPool)
 {
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslogStream* pooled[SOLIDSYSLOG_PLUS_TCP_TCP_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                           = nullptr;
 
@@ -484,7 +483,6 @@ TEST_GROUP(SolidSyslogPlusTcpTcpStreamPool)
                 SolidSyslogPlusTcpTcpStream_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslogPlusTcpTcpStream_Destroy(overflow);

@@ -32,10 +32,8 @@ static void StubGetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 // clang-format off
 TEST_GROUP(SolidSyslogTimeQualitySd)
 {
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogStructuredData* sd;
     SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(TEST_BUFFER_SIZE)];
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     SolidSyslogFormatter* formatter;
 
     void setup() override
@@ -167,7 +165,6 @@ TEST(SolidSyslogTimeQualitySd, DestroyDoesNotCrash)
 // clang-format off
 TEST_GROUP(SolidSyslogTimeQualitySdPool)
 {
-    // cppcheck-suppress constVariable -- assigned in TEST() bodies; cppcheck does not model CppUTest macros
     struct SolidSyslogStructuredData* pooled[SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE] = {};
     struct SolidSyslogStructuredData* overflow                                       = nullptr;
 
@@ -180,7 +177,6 @@ TEST_GROUP(SolidSyslogTimeQualitySdPool)
                 SolidSyslogTimeQualitySd_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in TEST() bodies; cppcheck does not model CppUTest macros
         if (overflow != nullptr)
         {
             SolidSyslogTimeQualitySd_Destroy(overflow);

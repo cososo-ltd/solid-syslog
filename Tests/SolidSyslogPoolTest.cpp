@@ -36,7 +36,6 @@ TEST_GROUP(SolidSyslogPool)
     struct SolidSyslogSender* fakeSender = nullptr;
     struct SolidSyslogBuffer* buffer = nullptr;
     SolidSyslogConfig config{};
-    // cppcheck-suppress constVariable -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
     struct SolidSyslog* pooled[SOLIDSYSLOG_POOL_SIZE] = {};
     struct SolidSyslog* overflow = nullptr;
 
@@ -57,7 +56,6 @@ TEST_GROUP(SolidSyslogPool)
                 SolidSyslog_Destroy(handle);
             }
         }
-        // cppcheck-suppress knownConditionTrueFalse -- assigned in test bodies; cppcheck does not model CppUTest lifecycle
         if (overflow != nullptr)
         {
             SolidSyslog_Destroy(overflow);

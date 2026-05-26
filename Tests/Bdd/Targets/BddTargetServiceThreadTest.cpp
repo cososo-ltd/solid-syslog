@@ -56,7 +56,6 @@ TEST_GROUP(BddTargetServiceThread)
     struct SolidSyslogDatagram* datagram = nullptr;
     struct SolidSyslogResolver* resolver = nullptr;
     struct SolidSyslogAddress*  address  = nullptr;
-    // cppcheck-suppress variableScope -- member of TEST_GROUP; scope managed by CppUTest macro
     volatile bool               shutdown;
 
     void setup() override
@@ -78,7 +77,6 @@ TEST_GROUP(BddTargetServiceThread)
         store  = SolidSyslogNullStore_Get();
 
         SolidSyslogConfig config = {buffer, sender, nullptr, nullptr, nullptr, nullptr, store, nullptr, 0};
-        // cppcheck-suppress unreadVariable -- read via Run() in tests; cppcheck does not model CppUTest macros
         solidSyslog = SolidSyslog_Create(&config);
     }
 
