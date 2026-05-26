@@ -17,11 +17,16 @@ All changes to `main` must go via a pull request — direct pushes are blocked b
 **Merge strategy:** Squash merge only. This keeps a linear history on `main` and means the PR title
 becomes the single commit message — so the PR title must follow Conventional Commits format (see below).
 
-**Before raising a PR — run locally:**
-- build-linux-gcc, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format
-- Windows, BDD, and OpenSSL integration jobs are CI's responsibility — running them locally would slow development too much
-- Commits on the branch can be informal (work-in-progress messages are fine)
-- The PR title is what matters — it becomes the permanent commit message on `main`
+**Before raising a PR — see [docs/local-checks.md](docs/local-checks.md)** for the
+full tiered pre-PR check budget. One-line summary:
+
+- Per-commit: `debug` build + tests for the matching preset (~30–60 s)
+- Pre-push (only when production source changed): IWYU + `clang-format` reflow + `scripts/misra_renumber.py` (~3–5 min)
+- Everything else (`tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross) — CI's job; do not run locally
+- If CI surfaces a finding you missed, fix in another commit on the same branch rather than re-running every lane locally
+
+Commits on the branch can be informal (WIP messages are fine). The PR title is
+what matters — it becomes the permanent commit message on `main` on squash merge.
 
 **Branch protection rules (configured on GitHub):**
 - Direct pushes to `main` are blocked
