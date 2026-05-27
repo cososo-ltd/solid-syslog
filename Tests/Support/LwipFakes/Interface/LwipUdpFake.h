@@ -22,6 +22,11 @@ EXTERN_C_BEGIN
     unsigned LwipUdpFake_UdpRemoveCallCount(void);
     struct udp_pcb* LwipUdpFake_LastUdpRemovePcb(void);
 
+    /* Allocated-but-not-yet-freed PCB count. Successful udp_new bumps it;
+     * udp_remove decrements. A test that ends with a non-zero value has
+     * leaked a PCB — pin this in teardown to catch leaks across the suite. */
+    int LwipUdpFake_OutstandingPcbCount(void);
+
 EXTERN_C_END
 
 #endif /* LWIPUDPFAKE_H */

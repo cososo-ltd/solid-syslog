@@ -12,6 +12,8 @@ static bool udpNewFails = false;
 static unsigned udpRemoveCallCount = 0;
 static struct udp_pcb* lastUdpRemovePcb = NULL;
 
+static int outstandingPcbCount = 0;
+
 void LwipUdpFake_Reset(void)
 {
     udpNewCallCount = 0;
@@ -19,6 +21,7 @@ void LwipUdpFake_Reset(void)
     udpNewFails = false;
     udpRemoveCallCount = 0;
     lastUdpRemovePcb = NULL;
+    outstandingPcbCount = 0;
 }
 
 void LwipUdpFake_SetUdpNewFails(bool fails)
@@ -46,10 +49,23 @@ struct udp_pcb* LwipUdpFake_LastUdpRemovePcb(void)
     return lastUdpRemovePcb;
 }
 
+int LwipUdpFake_OutstandingPcbCount(void)
+{
+    return outstandingPcbCount;
+}
+
 struct udp_pcb* udp_new(void)
 {
     ++udpNewCallCount;
-    lastUdpNewReturned = udpNewFails ? NULL : &fakePcb;
+    if (udpNewFails)
+    {
+        lastUdpNewReturned = NULL;
+    }
+    else
+    {
+        lastUdpNewReturned = &fakePcb;
+        ++outstandingPcbCount;
+    }
     return lastUdpNewReturned;
 }
 
@@ -57,4 +73,5 @@ void udp_remove(struct udp_pcb* pcb)
 {
     ++udpRemoveCallCount;
     lastUdpRemovePcb = pcb;
+    --outstandingPcbCount;
 }
