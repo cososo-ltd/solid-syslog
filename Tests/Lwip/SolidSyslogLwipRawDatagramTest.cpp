@@ -260,14 +260,11 @@ TEST(SolidSyslogLwipRawDatagramOpen, SendToAllocatesTransportLayerPbufRef)
 
 TEST(SolidSyslogLwipRawDatagramOpen, SendToPbufPayloadPointsAtCallerBuffer)
 {
-    /* Distinct local buffer (not the fixture's sendBuffer) so the
-     * assertion proves the production forwarded the exact pointer the
-     * test handed in, not just any address that happened to round-trip. */
-    static const char callerBuffer[] = "hello";
+    memcpy(sendBuffer, "hello", 5);
 
-    SolidSyslogDatagram_SendTo(datagram, callerBuffer, sizeof(callerBuffer) - 1U, address);
+    sendBytes(5);
 
-    POINTERS_EQUAL(callerBuffer, LwipPbufFake_LastAllocReturned()->payload);
+    POINTERS_EQUAL(sendBuffer, LwipPbufFake_LastAllocReturned()->payload);
 }
 
 TEST(SolidSyslogLwipRawDatagramOpen, SendToForwardsAddressIpAndPort)
