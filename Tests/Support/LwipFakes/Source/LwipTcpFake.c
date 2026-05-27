@@ -38,6 +38,21 @@ static err_t tcpCloseError = ERR_OK;
 static unsigned tcpAbortCallCount = 0;
 static struct tcp_pcb* lastAbortPcb = NULL;
 
+static unsigned tcpWriteCallCount = 0;
+static struct tcp_pcb* lastWritePcb = NULL;
+static const void* lastWriteDataptr = NULL;
+static u16_t lastWriteLength = 0;
+static u8_t lastWriteApiFlags = 0;
+static err_t tcpWriteError = ERR_OK;
+
+static unsigned tcpOutputCallCount = 0;
+static struct tcp_pcb* lastOutputPcb = NULL;
+static err_t tcpOutputError = ERR_OK;
+
+static unsigned tcpRecvedCallCount = 0;
+static struct tcp_pcb* lastRecvedPcb = NULL;
+static u16_t lastRecvedLen = 0;
+
 static int outstandingPcbCount = 0;
 
 void LwipTcpFake_Reset(void)
@@ -74,6 +89,21 @@ void LwipTcpFake_Reset(void)
 
     tcpAbortCallCount = 0;
     lastAbortPcb = NULL;
+
+    tcpWriteCallCount = 0;
+    lastWritePcb = NULL;
+    lastWriteDataptr = NULL;
+    lastWriteLength = 0;
+    lastWriteApiFlags = 0;
+    tcpWriteError = ERR_OK;
+
+    tcpOutputCallCount = 0;
+    lastOutputPcb = NULL;
+    tcpOutputError = ERR_OK;
+
+    tcpRecvedCallCount = 0;
+    lastRecvedPcb = NULL;
+    lastRecvedLen = 0;
 
     outstandingPcbCount = 0;
 }
@@ -198,6 +228,66 @@ struct tcp_pcb* LwipTcpFake_LastAbortPcb(void)
     return lastAbortPcb;
 }
 
+void LwipTcpFake_SetTcpWriteError(int8_t err)
+{
+    tcpWriteError = (err_t) err;
+}
+
+unsigned LwipTcpFake_TcpWriteCallCount(void)
+{
+    return tcpWriteCallCount;
+}
+
+struct tcp_pcb* LwipTcpFake_LastWritePcb(void)
+{
+    return lastWritePcb;
+}
+
+const void* LwipTcpFake_LastWriteDataptr(void)
+{
+    return lastWriteDataptr;
+}
+
+uint16_t LwipTcpFake_LastWriteLength(void)
+{
+    return lastWriteLength;
+}
+
+uint8_t LwipTcpFake_LastWriteApiFlags(void)
+{
+    return lastWriteApiFlags;
+}
+
+void LwipTcpFake_SetTcpOutputError(int8_t err)
+{
+    tcpOutputError = (err_t) err;
+}
+
+unsigned LwipTcpFake_TcpOutputCallCount(void)
+{
+    return tcpOutputCallCount;
+}
+
+struct tcp_pcb* LwipTcpFake_LastOutputPcb(void)
+{
+    return lastOutputPcb;
+}
+
+unsigned LwipTcpFake_TcpRecvedCallCount(void)
+{
+    return tcpRecvedCallCount;
+}
+
+struct tcp_pcb* LwipTcpFake_LastRecvedPcb(void)
+{
+    return lastRecvedPcb;
+}
+
+uint16_t LwipTcpFake_LastRecvedLen(void)
+{
+    return lastRecvedLen;
+}
+
 int LwipTcpFake_OutstandingPcbCount(void)
 {
     return outstandingPcbCount;
@@ -285,4 +375,28 @@ void tcp_abort(struct tcp_pcb* pcb)
     ++tcpAbortCallCount;
     lastAbortPcb = pcb;
     --outstandingPcbCount;
+}
+
+err_t tcp_write(struct tcp_pcb* pcb, const void* dataptr, u16_t len, u8_t apiflags)
+{
+    ++tcpWriteCallCount;
+    lastWritePcb = pcb;
+    lastWriteDataptr = dataptr;
+    lastWriteLength = len;
+    lastWriteApiFlags = apiflags;
+    return tcpWriteError;
+}
+
+err_t tcp_output(struct tcp_pcb* pcb)
+{
+    ++tcpOutputCallCount;
+    lastOutputPcb = pcb;
+    return tcpOutputError;
+}
+
+void tcp_recved(struct tcp_pcb* pcb, u16_t len)
+{
+    ++tcpRecvedCallCount;
+    lastRecvedPcb = pcb;
+    lastRecvedLen = len;
 }

@@ -3,12 +3,15 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "lwip/arch.h"
 #include "lwip/err.h"
 #include "lwip/ip.h"
 #include "lwip/ip_addr.h"
+#include "lwip/pbuf.h"
 #include "lwip/tcp.h"
+#include "lwip/tcpbase.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogStream.h"
@@ -17,14 +20,22 @@
 
 struct SolidSyslogAddress;
 
+/* SolidSyslogStream_Read returns < 0 to signal EOF/error (socket closed
+ * internally); -1 is the in-tree convention shared with Posix/Winsock/PlusTcp. */
+static const SolidSyslogSsize READ_FAILED = -1;
+
 static uint32_t LwipRawTcpStream_NullConnectTimeoutGetter(void* context);
 
 static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static bool LwipRawTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
+static SolidSyslogSsize LwipRawTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void LwipRawTcpStream_Close(struct SolidSyslogStream* base);
 
 static inline struct SolidSyslogLwipRawTcpStream* LwipRawTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 static inline bool LwipRawTcpStream_ConfigProvidesGetter(const struct SolidSyslogLwipRawTcpStreamConfig* config);
 static inline bool LwipRawTcpStream_IsOpen(const struct SolidSyslogLwipRawTcpStream* self);
+static inline bool LwipRawTcpStream_HasQueuedRx(const struct SolidSyslogLwipRawTcpStream* self);
+static inline bool LwipRawTcpStream_RxQueueIsFull(const struct SolidSyslogLwipRawTcpStream* self);
 static struct tcp_pcb* LwipRawTcpStream_OpenAndConfigurePcb(struct SolidSyslogLwipRawTcpStream* self);
 static bool LwipRawTcpStream_ConnectOrAbortOnFailure(
     struct SolidSyslogLwipRawTcpStream* self,
@@ -37,6 +48,15 @@ static bool LwipRawTcpStream_TryConnect(
 static bool LwipRawTcpStream_WaitForConnectedCallback(struct SolidSyslogLwipRawTcpStream* self);
 static uint32_t LwipRawTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogLwipRawTcpStream* self);
 static void LwipRawTcpStream_AbortAndForgetPcb(struct SolidSyslogLwipRawTcpStream* self);
+static bool LwipRawTcpStream_SendOrCloseOnFailure(
+    struct SolidSyslogLwipRawTcpStream* self,
+    const void* buffer,
+    size_t size
+);
+static bool LwipRawTcpStream_OutputResultIsAcceptable(err_t outputErr);
+static size_t LwipRawTcpStream_DrainHeadBytes(struct SolidSyslogLwipRawTcpStream* self, void* buffer, size_t size);
+static void LwipRawTcpStream_EnqueueRxPbuf(struct SolidSyslogLwipRawTcpStream* self, struct pbuf* p);
+static void LwipRawTcpStream_DrainAllQueuedPbufs(struct SolidSyslogLwipRawTcpStream* self);
 static void LwipRawTcpStream_ClosePcb(struct SolidSyslogLwipRawTcpStream* self);
 
 static err_t LwipRawTcpStream_ConnectedCallback(void* arg, struct tcp_pcb* pcb, err_t err);
@@ -50,7 +70,10 @@ void LwipRawTcpStream_Initialise(
 )
 {
     static const struct SolidSyslogLwipRawTcpStream DefaultLwipRawTcpStream = {
-        .Base = {.Open = LwipRawTcpStream_Open, .Send = NULL, .Read = NULL, .Close = LwipRawTcpStream_Close},
+        .Base = {.Open = LwipRawTcpStream_Open,
+                 .Send = LwipRawTcpStream_Send,
+                 .Read = LwipRawTcpStream_Read,
+                 .Close = LwipRawTcpStream_Close},
         .Config = {.GetConnectTimeoutMs = LwipRawTcpStream_NullConnectTimeoutGetter,
                    .ConnectTimeoutContext = NULL,
                    .Sleep = NULL},
@@ -117,6 +140,16 @@ static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct S
 static inline bool LwipRawTcpStream_IsOpen(const struct SolidSyslogLwipRawTcpStream* self)
 {
     return self->Pcb != NULL;
+}
+
+static inline bool LwipRawTcpStream_HasQueuedRx(const struct SolidSyslogLwipRawTcpStream* self)
+{
+    return self->RxQueueCount > 0;
+}
+
+static inline bool LwipRawTcpStream_RxQueueIsFull(const struct SolidSyslogLwipRawTcpStream* self)
+{
+    return self->RxQueueCount >= SOLIDSYSLOG_LWIP_RAW_TCP_RX_QUEUE_SIZE;
 }
 
 static struct tcp_pcb* LwipRawTcpStream_OpenAndConfigurePcb(struct SolidSyslogLwipRawTcpStream* self)
@@ -195,6 +228,115 @@ static void LwipRawTcpStream_AbortAndForgetPcb(struct SolidSyslogLwipRawTcpStrea
     self->Pcb = NULL;
 }
 
+static bool LwipRawTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
+{
+    struct SolidSyslogLwipRawTcpStream* self = LwipRawTcpStream_SelfFromBase(base);
+    bool sent = false;
+    if (LwipRawTcpStream_IsOpen(self))
+    {
+        sent = LwipRawTcpStream_SendOrCloseOnFailure(self, buffer, size);
+    }
+    return sent;
+}
+
+static bool LwipRawTcpStream_SendOrCloseOnFailure(
+    struct SolidSyslogLwipRawTcpStream* self,
+    const void* buffer,
+    size_t size
+)
+{
+    /* TCP_WRITE_FLAG_COPY hands the caller's buffer to lwIP-owned pbufs
+     * before tcp_write returns — caller buffer lifetime ends here.
+     * tcp_output nudges transmission; ERR_MEM there is "queued, lwIP
+     * retries" so we still report success (lwIP owns the bytes). */
+    err_t writeErr = tcp_write(self->Pcb, buffer, (u16_t) size, TCP_WRITE_FLAG_COPY);
+    bool ok = (writeErr == ERR_OK);
+    if (ok)
+    {
+        err_t outputErr = tcp_output(self->Pcb);
+        ok = LwipRawTcpStream_OutputResultIsAcceptable(outputErr);
+    }
+    if (!ok)
+    {
+        LwipRawTcpStream_ClosePcb(self);
+    }
+    return ok;
+}
+
+static bool LwipRawTcpStream_OutputResultIsAcceptable(err_t outputErr)
+{
+    return (outputErr == ERR_OK) || (outputErr == ERR_MEM);
+}
+
+static SolidSyslogSsize LwipRawTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size)
+{
+    struct SolidSyslogLwipRawTcpStream* self = LwipRawTcpStream_SelfFromBase(base);
+    SolidSyslogSsize result = READ_FAILED;
+    if (LwipRawTcpStream_IsOpen(self))
+    {
+        if (LwipRawTcpStream_HasQueuedRx(self))
+        {
+            size_t copied = LwipRawTcpStream_DrainHeadBytes(self, buffer, size);
+            tcp_recved(self->Pcb, (u16_t) copied);
+            result = (SolidSyslogSsize) copied;
+        }
+        else if (self->Errored)
+        {
+            /* Peer FIN drained → close internally per the Stream contract
+             * ("< 0 means EOF AND socket closed internally"). */
+            LwipRawTcpStream_ClosePcb(self);
+        }
+        else
+        {
+            result = 0; /* would-block */
+        }
+    }
+    return result;
+}
+
+/* Copies up to `size` bytes out of the head pbuf, advancing the read
+ * cursor. When the head is fully drained, pbuf_free's it and advances
+ * the queue head — tail entries shift up through the bounded ring via
+ * modular arithmetic, no compaction. */
+static size_t LwipRawTcpStream_DrainHeadBytes(struct SolidSyslogLwipRawTcpStream* self, void* buffer, size_t size)
+{
+    struct pbuf* head = self->RxQueue[self->RxQueueHead];
+    size_t available = (size_t) head->len - self->RxHeadOffset;
+    size_t toCopy = (size < available) ? size : available;
+    (void) memcpy(buffer, ((const uint8_t*) head->payload) + self->RxHeadOffset, toCopy);
+    self->RxHeadOffset += toCopy;
+    if (self->RxHeadOffset >= (size_t) head->len)
+    {
+        (void) pbuf_free(head);
+        self->RxQueueHead = (self->RxQueueHead + 1U) % SOLIDSYSLOG_LWIP_RAW_TCP_RX_QUEUE_SIZE;
+        self->RxQueueCount--;
+        self->RxHeadOffset = 0;
+    }
+    return toCopy;
+}
+
+static void LwipRawTcpStream_EnqueueRxPbuf(struct SolidSyslogLwipRawTcpStream* self, struct pbuf* p)
+{
+    size_t tail = (self->RxQueueHead + self->RxQueueCount) % SOLIDSYSLOG_LWIP_RAW_TCP_RX_QUEUE_SIZE;
+    self->RxQueue[tail] = p;
+    self->RxQueueCount++;
+}
+
+/* Drains every queued pbuf via pbuf_free. Used by ClosePcb so an explicit
+ * Close, Send-failure-induced Close, or Destroy never leaks the pbufs lwIP
+ * handed us via tcp_recv. After tcp_err nulls Pcb the queue may still hold
+ * pbufs we accepted before the error — those need freeing too. */
+static void LwipRawTcpStream_DrainAllQueuedPbufs(struct SolidSyslogLwipRawTcpStream* self)
+{
+    while (LwipRawTcpStream_HasQueuedRx(self))
+    {
+        (void) pbuf_free(self->RxQueue[self->RxQueueHead]);
+        self->RxQueueHead = (self->RxQueueHead + 1U) % SOLIDSYSLOG_LWIP_RAW_TCP_RX_QUEUE_SIZE;
+        self->RxQueueCount--;
+    }
+    self->RxHeadOffset = 0;
+}
+
 static void LwipRawTcpStream_Close(struct SolidSyslogStream* base)
 {
     struct SolidSyslogLwipRawTcpStream* self = LwipRawTcpStream_SelfFromBase(base);
@@ -204,9 +346,11 @@ static void LwipRawTcpStream_Close(struct SolidSyslogStream* base)
 /* tcp_close must NOT be called on a pcb that has already been released by
  * tcp_err — that's a use-after-free in lwIP. The Pcb != NULL guard works
  * because LwipRawTcpStream_ErrCallback nulls Pcb when lwIP releases the
- * pcb on its side. */
+ * pcb on its side. The queue drain runs unconditionally — pbufs we
+ * accepted via tcp_recv are ours to free regardless of pcb state. */
 static void LwipRawTcpStream_ClosePcb(struct SolidSyslogLwipRawTcpStream* self)
 {
+    LwipRawTcpStream_DrainAllQueuedPbufs(self);
     if (LwipRawTcpStream_IsOpen(self))
     {
         (void) tcp_close(self->Pcb);
@@ -229,23 +373,34 @@ static err_t LwipRawTcpStream_ConnectedCallback(void* arg, struct tcp_pcb* pcb, 
     return ERR_OK;
 }
 
-/* RX queue + tcp_recved drain (and pbuf_free of the head pbuf when drained)
- * land in the Send/Read slice. For now the callback is a no-op stub — lwIP
- * requires the slot wired before tcp_connect so the recv path is set up by
- * the time the peer sends data, even though the wrapper's Stream_Read does
- * not yet drain. */
+/* tcp_recv fires when lwIP has bytes for us — non-NULL p means a pbuf
+ * arrived; NULL p means peer half-closed (FIN). Backpressure on a full
+ * queue by returning non-ERR_OK; lwIP holds the pbuf and replays the
+ * callback when the queue drains. */
 static err_t LwipRawTcpStream_RecvCallback(void* arg, struct tcp_pcb* tpcb, struct pbuf* p, err_t err)
 {
-    (void) arg;
     (void) tpcb;
-    (void) p;
     (void) err;
-    return ERR_OK;
+    struct SolidSyslogLwipRawTcpStream* self = (struct SolidSyslogLwipRawTcpStream*) arg;
+    err_t result = ERR_OK;
+    if (p == NULL)
+    {
+        self->Errored = true;
+    }
+    else if (LwipRawTcpStream_RxQueueIsFull(self))
+    {
+        result = ERR_MEM;
+    }
+    else
+    {
+        LwipRawTcpStream_EnqueueRxPbuf(self, p);
+    }
+    return result;
 }
 
-/* Real tcp_sent handling is unused under TCP_WRITE_FLAG_COPY (Commit 3
- * decision 1) — caller buffers are released at Send return, not at
- * peer-ACK time. The callback exists because lwIP requires the slot set. */
+/* Real tcp_sent handling is unused under TCP_WRITE_FLAG_COPY — caller
+ * buffers are released at Send return, not at peer-ACK time. The slot
+ * exists because lwIP requires the callback set when the pcb is wired. */
 static err_t LwipRawTcpStream_SentCallback(void* arg, struct tcp_pcb* tpcb, u16_t len)
 {
     (void) arg;

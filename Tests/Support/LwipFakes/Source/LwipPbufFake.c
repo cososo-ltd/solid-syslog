@@ -69,6 +69,11 @@ int LwipPbufFake_OutstandingPbufCount(void)
     return outstandingPbufCount;
 }
 
+void LwipPbufFake_NoteIncomingPbuf(void)
+{
+    ++outstandingPbufCount;
+}
+
 struct pbuf* pbuf_alloc(pbuf_layer layer, u16_t length, pbuf_type type)
 {
     ++pbufAllocCallCount;

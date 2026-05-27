@@ -145,6 +145,7 @@ add_test(NAME SolidSyslogLwipRawDatagramTest COMMAND SolidSyslogLwipRawDatagramT
 add_executable(SolidSyslogLwipRawTcpStreamTest
     SolidSyslogLwipRawTcpStreamTest.cpp
     main.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/Support/LwipFakes/Source/LwipPbufFake.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/LwipFakes/Source/LwipTcpFake.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawAddress.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawAddressMessages.c

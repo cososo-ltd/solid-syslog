@@ -65,6 +65,28 @@ EXTERN_C_BEGIN
     unsigned LwipTcpFake_TcpAbortCallCount(void);
     struct tcp_pcb* LwipTcpFake_LastAbortPcb(void);
 
+    /* tcp_write configuration */
+    void LwipTcpFake_SetTcpWriteError(int8_t err);
+
+    /* tcp_write spy */
+    unsigned LwipTcpFake_TcpWriteCallCount(void);
+    struct tcp_pcb* LwipTcpFake_LastWritePcb(void);
+    const void* LwipTcpFake_LastWriteDataptr(void);
+    uint16_t LwipTcpFake_LastWriteLength(void);
+    uint8_t LwipTcpFake_LastWriteApiFlags(void);
+
+    /* tcp_output configuration */
+    void LwipTcpFake_SetTcpOutputError(int8_t err);
+
+    /* tcp_output spy */
+    unsigned LwipTcpFake_TcpOutputCallCount(void);
+    struct tcp_pcb* LwipTcpFake_LastOutputPcb(void);
+
+    /* tcp_recved spy — window-update ACK after the wrapper drains bytes */
+    unsigned LwipTcpFake_TcpRecvedCallCount(void);
+    struct tcp_pcb* LwipTcpFake_LastRecvedPcb(void);
+    uint16_t LwipTcpFake_LastRecvedLen(void);
+
     /* Allocated-but-not-yet-freed PCB count. Successful tcp_new bumps it;
      * tcp_close / tcp_abort decrement. The tcp_err callback releases the
      * pcb upstream — tests that fire it via LwipTcpFake_LastErrFn must call
