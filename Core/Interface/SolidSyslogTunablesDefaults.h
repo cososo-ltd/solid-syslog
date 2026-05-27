@@ -570,6 +570,25 @@
 #endif
 
 /*
+ * Number of SolidSyslogLwipRawDatagram instances the library's internal
+ * static pool can simultaneously hold. Each instance carries a single
+ * struct udp_pcb pointer the wrapper holds across Open/SendTo/Close.
+ *
+ * Default 1 — almost all lwIP Raw integrators wire a single datagram into
+ * a UdpSender. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one
+ * is genuinely needed.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE
+#define SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE < 1
+#error "SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE must be >= 1"
+#endif
+
+/*
  * Number of SolidSyslogPlusTcpTcpStream instances the library's
  * internal static pool can simultaneously hold. Each instance carries
  * a FreeRTOS-Plus-TCP Socket_t for the bounded-blocking-connect

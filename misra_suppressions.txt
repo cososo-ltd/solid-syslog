@@ -12,6 +12,8 @@
 # D.002 — Rules 11.2 / 11.3 / 11.5: vtable downcasts + Formatter
 # See docs/misra-deviations.md#d002
 misra-c2012-11.2:Core/Interface/SolidSyslogFormatter.h:28
+misra-c2012-11.2:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:24
+misra-c2012-11.2:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:31
 misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:10
 misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:19
 misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:26
@@ -35,6 +37,11 @@ misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:59
 misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:101
 misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:25
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:45
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:24
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:31
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:34
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:54
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:43
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:10
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:19
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:26
@@ -81,7 +88,7 @@ misra-c2012-5.7:Core/Interface/SolidSyslogAddress.h:10
 # See docs/misra-deviations.md#d005
 misra-c2012-18.7:Core/Source/SolidSyslogFormatter.c:12
 
-# D.006 — Rule 11.8: const-strip false-positives + Winsock platform-API
+# D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP)
 # See docs/misra-deviations.md#d006
 misra-c2012-11.8:Core/Source/BlockSequence.c:465
 misra-c2012-11.8:Core/Source/SolidSyslog.c:94
@@ -93,6 +100,7 @@ misra-c2012-11.8:Core/Source/SolidSyslog.c:99
 misra-c2012-11.8:Core/Source/SolidSyslog.c:100
 misra-c2012-11.8:Core/Source/SolidSyslog.c:101
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:40
+misra-c2012-11.8:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:94
 misra-c2012-11.8:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:93
 
 # D.007 — Rule 21.10: transitive <wchar.h> via <time.h>

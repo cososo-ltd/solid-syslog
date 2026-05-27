@@ -382,8 +382,9 @@ Two distinct site categories trigger this rule:
    that 11.8 applies to *pointer casts*, not to member-access yielding
    a non-`const`-qualified pointer rvalue.
 
-2. **Platform-API const-strip (1 site)** —
-   `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`:
+2. **Platform-API const-strip (2 sites)** —
+
+   **(a)** `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`:
 
    ```c
    return select(nfds, readfds, writefds, exceptfds, (struct timeval*) timeout);
@@ -395,6 +396,28 @@ Two distinct site categories trigger this rule:
    const-correct and forces the const-strip down to the platform-API
    boundary. The code carries a comment explaining the cast.
 
+   **(b)** `Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c`:
+
+   ```c
+   /* SolidSyslogDatagram_SendTo's buffer is const void*; lwIP's
+    * pbuf->payload is plain void*. Assignment forces the const-strip. */
+   p->payload = (void*) buffer;
+   ```
+
+   `SolidSyslogDatagram_SendTo` takes the caller's buffer as
+   `const void*` — the contract is read-only inside the library.
+   lwIP's `struct pbuf::payload` is declared `void*` (no `const`
+   variant in the lwIP headers); `udp_sendto` only reads the
+   payload (the PBUF_REF zero-copy contract — see handoff design
+   decision #1) but the field type does not encode that. Assigning
+   our `const void*` parameter to lwIP's `void*` field strips the
+   qualifier at the platform-API boundary, same shape as the
+   Winsock `select()` site above. Alternatives considered and
+   rejected: changing the public `SendTo` signature to `void*`
+   (breaks const-correctness for every other backend); copying
+   the buffer to PBUF_RAM (defeats the zero-copy point of PBUF_REF
+   and doubles per-send pool pressure).
+
 ### Scope
 
 - **Strict tier** — 10 field-access sites: 8 in `Core/Source/SolidSyslog.c`
@@ -405,9 +428,11 @@ Two distinct site categories trigger this rule:
   1 in `Core/Source/SolidSyslogBlockStoreStatic.c`
   (`BlockStore_ResolveSecurityPolicy` accepting
   `config->SecurityPolicy`).
-- **Pragmatic tier** — 1 site in
+- **Pragmatic tier** — 2 sites: 1 in
   `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c` (the
-  `select()` timeout cast).
+  `select()` timeout cast); 1 in
+  `Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c` (the
+  lwIP `pbuf->payload` field cast).
 
 ### Rationale
 
@@ -418,11 +443,12 @@ false-positive would either drop the outer `const` qualifier on
 introduce a no-op `const_cast`-style explicit cast that the tool would
 still flag. A site-local deviation is the honest record.
 
-The Winsock site is the canonical example MISRA itself calls out
-("forced by an external interface") in the deviation guidance for
-rule 11.8. The Windows-side declaration is fixed by Microsoft; the
-SolidSyslog seam keeps the const-correctness contract on the caller's
-side of the boundary.
+The two platform-API sites are the canonical "forced by an external
+interface" pattern MISRA itself calls out in the deviation guidance for
+rule 11.8. Both upstream declarations (Microsoft's `select()` timeout,
+lwIP's `pbuf::payload`) are fixed by their vendors; the SolidSyslog seam
+keeps the const-correctness contract on the caller's side of the
+boundary.
 
 ### Risk and mitigation
 
@@ -430,8 +456,10 @@ side of the boundary.
   codebase would surface as a fresh 11.8 finding, not be silently
   absorbed by the existing suppressions — the suppressions are
   line-specific.
-- **Platform-API site.** The Winsock cast is the only one of its
-  kind in the codebase and is documented at the call site.
+- **Platform-API sites.** Both the Winsock and lwIP casts are
+  documented at the call site and listed individually here; any new
+  const-strip at a platform boundary surfaces as a fresh 11.8 finding
+  rather than being absorbed by glob.
 
 ### Approval
 

@@ -271,6 +271,7 @@ endforeach()
 foreach(lwip_test_target IN ITEMS
     SolidSyslogLwipRawAddressTest
     SolidSyslogLwipRawResolverTest
+    SolidSyslogLwipRawDatagramTest
 )
     if(TARGET ${lwip_test_target})
         register_junit_test(${lwip_test_target})
