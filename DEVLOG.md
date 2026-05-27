@@ -1,5 +1,102 @@
 # Dev Log
 
+## 2026-05-27 — S28.04 SolidSyslogLwipRawDatagram
+
+Fourth story in E28 (#463, parent #439). UDP datagram adapter for the
+lwIP Raw API. Same three-TU pool shape as S28.03; the new ground was
+the lwIP calling convention (`pbuf` allocation discipline + ARP
+behaviour) and a test-shape refactor that lifted the lwIP fakes into
+their own directory and pinned down a leak invariant.
+
+### Design decisions
+
+1. **`pbuf` strategy — PBUF_REF + `pbuf_alloc` per send.** SendTo
+   allocates a header from lwIP's `MEMP_PBUF` pool with type
+   `PBUF_REF`, points `payload` at the caller's buffer, calls
+   `udp_sendto`, and `pbuf_free`s on every exit. Mid-commit-3 David
+   reopened the question with a MISRA hat (Rule 21.3, no dynamic
+   allocation): the alternative was embedding a `struct pbuf` in
+   `SolidSyslogLwipRawDatagram` and skipping alloc/free entirely.
+   Conclusion: keep PBUF_REF. Embedding the pbuf would save *one*
+   `MEMP_PBUF` slot per send, but lwIP's `udp_sendto` still internally
+   allocates a header pbuf to prepend the UDP header. The asymmetry
+   doesn't justify the manual `ref`/`type` init and the latent risk
+   that lwIP later changes assumptions about who owns the pbuf. The
+   project's no-dynamic-allocation philosophy applies at *our* code
+   boundary; lwIP's pool is its concern.
+
+2. **ARP cache miss — delegate to lwIP.** No manual ARP probe in
+   our SendTo (the PlusTcpDatagram pattern, where the host stack does
+   *not* queue on cache miss). lwIP's `etharp_query` fires the ARP
+   request and queues the pbuf when `ARP_QUEUEING=1` (the lwIP
+   compiled-in default), then drops it onto the wire when the reply
+   lands. First datagram survives. The `ARP_QUEUEING=0` integrator
+   footgun lives in S28.05's integrator guide, not here. Keeps the
+   wrapper netif-agnostic — no `netif*` argument, no `netif_default`
+   dependence.
+
+3. **Failure mapping.** `udp_sendto` → `ERR_OK` maps to `SENT`;
+   everything else maps to `FAILED`. **No `OVERSIZE`** — lwIP has no
+   clean oversize signal, and the upstream `Service` algorithm already
+   honours `MaxPayload()` before reaching SendTo.
+
+4. **`MaxPayload()` returns 1232 unconditionally.** `SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD`,
+   same as PlusTcp. No `netif_get_mtu()` plumbing — the IPv6-safe
+   default covers every interface this adapter is realistically
+   wired against.
+
+### Test-shape work
+
+The test file grew through three refactor passes (commits 4–6 on the
+branch) responding to David's feedback. Worth recording the shape it
+settled into — applicable to every future pool-allocated adapter:
+
+- **`TEST_BASE` + two `TEST_GROUP_BASE` derivations** —
+  `SolidSyslogLwipRawDatagram` (Created-only) and
+  `SolidSyslogLwipRawDatagramOpen` (Open in setup). Most lifecycle
+  tests don't need to repeat `SolidSyslogDatagram_Open(datagram)` in
+  the body; the assertion is what matters. The two-group split keeps
+  setup focused on the precondition each test class shares.
+
+- **Leak invariants in the shared teardown.** `LwipUdpFake_OutstandingPcbCount()`
+  and `LwipPbufFake_OutstandingPbufCount()` track successful
+  alloc-minus-free per resource, asserted to be zero in every
+  teardown. Earned its keep at commit 6 — the invariant caught the
+  missing `pbuf_free` before the explicit `SendToFreesPbufAfterSendto`
+  test landed. **Pattern is general** — extend to other adapter
+  fakes whenever the production owns alloc/free of a host resource.
+
+- **`sendBytes(size_t length = 1U)` helper on the base** — most
+  SendTo tests just need *a* send, default-1 byte. Tests that observe
+  length pass it explicitly. Cut ~7 lines per test of `SolidSyslogDatagram_SendTo(datagram, "x", 1, address)`
+  boilerplate.
+
+### New tunable, new error source
+
+- `SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE` default `1U` — pool of
+  one is the dominant integrator shape (single UDP sender).
+- `LwipRawDatagramErrorSource` with `POOL_EXHAUSTED` /
+  `UNKNOWN_DESTROY`, matching every other pool class.
+
+### LwipFakes evolution
+
+Two new fake files: `LwipUdpFake.{c,h}` (`udp_new`, `udp_remove`,
+`udp_sendto` + spies + failure injection) and `LwipPbufFake.{c,h}`
+(`pbuf_alloc`, `pbuf_free` + spies + alloc-fail injection).
+`LwipUpstreamParser` is not pulled in — none of these calls need
+real lwIP code. Sources inlined per-test-executable via
+`LWIP_FAKE_SOURCES` variable in `Tests/Lwip/CMakeLists.txt`,
+matching the FreeRtosFakes / FatFsFakes precedent.
+
+### Next up
+
+S28.05 — `SolidSyslogLwipRawTcpStream`. Stream side of the same
+adapter pair: `tcp_new` / `tcp_connect` / `tcp_write` /
+`tcp_recv` / `tcp_close`, with the receive callback bridging into
+the synchronous `Stream_Read` contract (the part of lwIP Raw that
+genuinely differs from sockets — a tiny pending-data ring the
+adapter owns).
+
 ## 2026-05-26 — S24.12 inline cppcheck-suppress and NOLINT audit
 
 E24 code-hygiene story #461. The session-end of S24.11 left 213 inline

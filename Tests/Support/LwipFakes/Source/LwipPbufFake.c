@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 
+#include "lwip/arch.h"
 #include "lwip/pbuf.h"
 
 static unsigned pbufAllocCallCount = 0;

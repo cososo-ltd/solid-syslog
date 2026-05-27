@@ -169,12 +169,12 @@ endif()
 if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "LWIP")
     message(STATUS
         "SOLIDSYSLOG_FREERTOS_NET=LWIP: lwIP backend partial — "
-        "Address+Resolver only; Datagram/TcpStream/BDD arrive in S28.04-S28.06.")
+        "Address+Resolver+Datagram only; TcpStream/BDD arrive in S28.05-S28.06.")
 endif()
 if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
     message(STATUS
         "SOLIDSYSLOG_FREERTOS_NET=BOTH: lwIP backend partial — "
-        "Address+Resolver only; Datagram/TcpStream/BDD arrive in S28.04-S28.06.")
+        "Address+Resolver+Datagram only; TcpStream/BDD arrive in S28.05-S28.06.")
 endif()
 
 # Build-time tunables (E21: Port-Time Configurability). Integrators override

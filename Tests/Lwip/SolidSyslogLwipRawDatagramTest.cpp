@@ -1,3 +1,6 @@
+#include <stdint.h>
+#include <string.h>
+
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
@@ -17,7 +20,9 @@ using namespace CososoTesting;
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
+#include "lwip/err.h"
 #include "lwip/ip4_addr.h"
+#include "lwip/pbuf.h"
 
 static const uint16_t TEST_PORT = 514;
 
@@ -357,6 +362,7 @@ TEST_GROUP(SolidSyslogLwipRawDatagramPool)
         }
     }
 };
+
 // clang-format on
 
 TEST(SolidSyslogLwipRawDatagramPool, FillingPoolThenOverflowReturnsDistinctFallback)
@@ -389,10 +395,7 @@ TEST(SolidSyslogLwipRawDatagramPool, FallbackVtableMethodsAreNoOps)
      * because the production-side vtable is never wired on the fallback
      * handle. */
     CHECK_TRUE(SolidSyslogDatagram_Open(overflow));
-    LONGS_EQUAL(
-        SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT,
-        SolidSyslogDatagram_SendTo(overflow, "x", 1, localAddr)
-    );
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, SolidSyslogDatagram_SendTo(overflow, "x", 1, localAddr));
     SolidSyslogDatagram_Close(overflow);
 
     SolidSyslogLwipRawAddress_Destroy(localAddr);

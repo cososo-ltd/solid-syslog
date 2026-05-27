@@ -2,6 +2,8 @@
 
 #include <stddef.h>
 
+#include "lwip/arch.h"
+#include "lwip/err.h"
 #include "lwip/udp.h"
 
 static unsigned udpNewCallCount = 0;

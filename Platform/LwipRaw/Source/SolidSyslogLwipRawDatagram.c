@@ -3,8 +3,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "lwip/arch.h"
+#include "lwip/err.h"
 #include "lwip/pbuf.h"
 #include "lwip/udp.h"
+#include "SolidSyslogDatagram.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
 #include "SolidSyslogNullDatagram.h"
