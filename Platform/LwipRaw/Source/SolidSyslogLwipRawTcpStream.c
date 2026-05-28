@@ -200,8 +200,7 @@ static void LwipRawTcpStream_DoOpenAndConnect(void* context)
     {
         self->Connected = false;
         self->Errored = false;
-        call->ConnectErr =
-            tcp_connect(self->Pcb, &call->Dst->Ip, call->Dst->Port, LwipRawTcpStream_ConnectedCallback);
+        call->ConnectErr = tcp_connect(self->Pcb, &call->Dst->Ip, call->Dst->Port, LwipRawTcpStream_ConnectedCallback);
     }
 }
 

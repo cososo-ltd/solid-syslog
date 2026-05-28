@@ -20,6 +20,7 @@ static void CustomMarshal(SolidSyslogLwipRawCallback callback, void* context)
     callback(context);
 }
 
+// clang-format off
 TEST_GROUP(SolidSyslogLwipRawMarshal)
 {
     void setup() override
@@ -34,6 +35,7 @@ TEST_GROUP(SolidSyslogLwipRawMarshal)
         SolidSyslogLwipRaw_SetMarshal(nullptr);
     }
 };
+// clang-format on
 
 TEST(SolidSyslogLwipRawMarshal, DefaultMarshalInvokesCallbackOnce)
 {

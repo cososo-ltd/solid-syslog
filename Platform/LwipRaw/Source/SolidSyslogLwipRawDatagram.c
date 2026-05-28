@@ -123,13 +123,8 @@ static enum SolidSyslogDatagramSendResult LwipRawDatagram_SendTo(
     enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
     if (LwipRawDatagram_IsOpen(self))
     {
-        struct LwipRawDatagram_SendToCall call = {
-            self->Pcb,
-            SolidSyslogLwipRawAddress_AsConst(addr),
-            buffer,
-            size,
-            SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED
-        };
+        struct LwipRawDatagram_SendToCall call =
+            {self->Pcb, SolidSyslogLwipRawAddress_AsConst(addr), buffer, size, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED};
         SolidSyslogLwipRaw_Marshal(LwipRawDatagram_DoSendTo, &call);
         result = call.Result;
     }
