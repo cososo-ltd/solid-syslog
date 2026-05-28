@@ -42,6 +42,11 @@ static bool LwipRawResolver_Resolve(
     (void) base;
     (void) transport;
     struct SolidSyslogLwipRawAddress* self = SolidSyslogLwipRawAddress_As(result);
+    /* No SolidSyslogLwipRaw_Marshal hop here: ipaddr_aton is a pure string
+     * parser that touches no lwIP core state, so it is safe on any thread.
+     * The sibling SolidSyslogLwipRawDnsResolver (S28.08) WILL call lwIP DNS
+     * APIs (dns_gethostbyname) and must marshal them — that is where the hop
+     * belongs, not here. */
     bool resolved = ipaddr_aton(host, &self->Ip) != 0;
     if (resolved)
     {
