@@ -26,7 +26,7 @@ re-teach lwIP — for that, see the
 | Class | Wraps | Purpose |
 |---|---|---|
 | `SolidSyslogLwipRawAddress` | `ip_addr_t` + `u16_t` port | Destination handle the Resolver writes into and the Datagram/TcpStream read from. |
-| `SolidSyslogLwipRawResolver` | `ipaddr_aton` | Synchronous numeric IPv4 parsing. Rejects DNS names — they need the future `SolidSyslogLwipRawDnsResolver` (S28.07). |
+| `SolidSyslogLwipRawResolver` | `ipaddr_aton` | Synchronous numeric IPv4 parsing. Rejects DNS names — they need the future `SolidSyslogLwipRawDnsResolver` (S28.08). |
 | `SolidSyslogLwipRawDatagram` | `udp_new` / `udp_sendto` / `udp_remove` | UDP sender. Zero-copy `PBUF_REF` send. |
 | `SolidSyslogLwipRawTcpStream` | `tcp_new` / `tcp_connect` / `tcp_write` / `tcp_output` / `tcp_recv` / `tcp_recved` / `tcp_close` / `tcp_abort` | TCP byte transport. Bounded synchronous Open. Bounded RX pbuf queue. |
 
@@ -213,7 +213,7 @@ features you must enable are flagged.
 | `LWIP_RAW=1` | **Yes** | The whole point — Raw API. |
 | `LWIP_UDP=1` | **Yes (Datagram)** | Wraps `udp_*`. |
 | `LWIP_TCP=1` | **Yes (TcpStream)** | Wraps `tcp_*`. |
-| `LWIP_DNS` | No | The current Resolver only parses numeric IPv4 via `ipaddr_aton`. DNS lands in a later story. |
+| `LWIP_DNS` | No | The current Resolver only parses numeric IPv4 via `ipaddr_aton`. DNS lands in S28.08. |
 | `LWIP_TCPIP_CORE_LOCKING` | Marshal-dependent | Only needed if you install the core-locking marshal (option B above). The default `tcpip_callback` marshal (option A) does not require it. `NO_SYS=1` never needs it. |
 | `ARP_QUEUEING=1` | **Recommended** | lwIP default. With it, the first datagram to an unresolved peer is `pbuf_clone`d into PBUF_RAM and queued behind the ARP request — when the reply lands, the packet ships. With `ARP_QUEUEING=0` the first datagram is silently dropped at the IP layer; cold-start logging loses messages. |
 | `LWIP_TCP_KEEPALIVE=1` | **Recommended** | Without this, the `SOF_KEEPALIVE` bit the adapter sets on every pcb is a no-op. Tune `TCP_KEEPIDLE_DEFAULT` / `TCP_KEEPINTVL_DEFAULT` / `TCP_KEEPCNT_DEFAULT` for your deadline budget. |
@@ -408,11 +408,11 @@ the `SOLIDSYSLOG_USER_TUNABLES_FILE` CMake variable.
 
 - **DNS** — currently out of scope. `SolidSyslogLwipRawResolver` only
   parses numeric IPv4. `SolidSyslogLwipRawDnsResolver` lands in
-  S28.07.
+  S28.08.
 - **IPv6** — the current Address / Resolver are IPv4-only.
 - **Multi-`netif` routing** — neither Datagram nor TcpStream selects
   an output interface; lwIP's routing table decides.
 - **Jumbo-frame MTU discovery** — `Datagram_MaxPayload` returns
   `SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD` (1232 bytes) unconditionally.
 - **BDD coverage** — the FreeRTOS-on-lwIP BDD target arrives in
-  S28.06.
+  S28.07.

@@ -89,6 +89,6 @@ TEST(SolidSyslogLwipRawMarshal, MarshalForwardsCallbackAndContextUnchanged)
 
     SolidSyslogLwipRaw_Marshal(Increment, &calls);
 
-    POINTERS_EQUAL((void*) Increment, (void*) lastMarshalledCallback);
+    FUNCTIONPOINTERS_EQUAL(Increment, lastMarshalledCallback);
     POINTERS_EQUAL(&calls, lastMarshalledContext);
 }

@@ -42,7 +42,11 @@ void LwipFakeMarshalGuard_CheckNoBreach(void)
 
 void LwipFakeMarshalGuard_TrackingMarshal(SolidSyslogLwipRawCallback callback, void* context)
 {
+    /* Save/restore rather than unconditionally clearing, so a nested marshal
+     * (callback re-entering the marshal) leaves the outer scope still active
+     * on return instead of a false breach. */
+    bool wasActive = LwipFakeMarshalGuard_Active;
     LwipFakeMarshalGuard_Active = true;
     callback(context);
-    LwipFakeMarshalGuard_Active = false;
+    LwipFakeMarshalGuard_Active = wasActive;
 }
