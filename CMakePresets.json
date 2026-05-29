@@ -116,6 +116,17 @@
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
                 "SOLIDSYSLOG_USER_TUNABLES_FILE": "${sourceDir}/Bdd/Targets/FreeRtos/solidsyslog_user_tunables.h"
             }
+        },
+        {
+            "name": "freertos-cross-lwip",
+            "displayName": "FreeRTOS+lwIP cross link-probe (ARM Cortex-M3, mps2-an385)",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "toolchainFile": "${sourceDir}/Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "SOLIDSYSLOG_FREERTOS_NET": "LWIP"
+            }
         }
     ],
     "buildPresets": [
@@ -129,7 +140,8 @@
         { "name": "clang-debug",    "configurePreset": "clang-debug" },
         { "name": "iwyu",           "configurePreset": "iwyu" },
         { "name": "msvc-debug",     "configurePreset": "msvc-debug", "configuration": "Debug" },
-        { "name": "freertos-cross", "configurePreset": "freertos-cross" }
+        { "name": "freertos-cross", "configurePreset": "freertos-cross" },
+        { "name": "freertos-cross-lwip", "configurePreset": "freertos-cross-lwip" }
     ],
     "testPresets": [
         {

@@ -1014,6 +1014,50 @@ jobs:
           path: Bdd/features/steps/solidsyslog_tunables.py
           retention-days: 1
 
+  # Advisory (S28.07) — promoted to a required check in S28.11. Proves the
+  # Platform/LwipRaw tree cross-builds for FreeRTOS/ARM under
+  # SOLIDSYSLOG_FREERTOS_NET=LWIP with zero PlusTcp dependency. Deliberately
+  # absent from the `summary` needs list and the branch-protection required
+  # set so a break here does not block merges yet. No QEMU run.
+  build-freertos-target-lwip:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-a0c1c0a
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Configure (ARM cross, NET=LWIP)
+        run: cmake --preset freertos-cross-lwip
+
+      - name: Cross-build FreeRTOS+lwIP link-probe ELF
+        run: cmake --build --preset freertos-cross-lwip --target SolidSyslogBddTargetLwip
+
+      - name: Assert no PlusTcp / Plus-TCP symbols linked
+        run: |
+          elf=build/freertos-cross-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf
+          arm-none-eabi-nm "$elf" > /tmp/lwip-probe-symbols.txt
+          if grep -E -i 'PlusTcp|FreeRTOS_socket|FreeRTOS_sendto|FreeRTOS_recv|FreeRTOS_IPInit' /tmp/lwip-probe-symbols.txt; then
+            echo "::error::PlusTcp / FreeRTOS-Plus-TCP symbol linked into the lwIP probe ELF"
+            exit 1
+          fi
+          echo "OK: no PlusTcp / FreeRTOS-Plus-TCP symbols in the lwIP probe ELF"
+
+      - name: Upload FreeRTOS+lwIP link-probe ELF
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: solid-syslog-bdd-target-freertos-lwip
+          path: build/freertos-cross-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf
+          retention-days: 1
+          compression-level: 0
+
   bdd-freertos-qemu-plustcp:
     needs: build-freertos-target-plustcp
     runs-on: ubuntu-latest
