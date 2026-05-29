@@ -12957,3 +12957,71 @@ MISRA rule — different category, doesn't set precedent.
   every untriaged style finding becomes a hard gate. Worth E24
   discussion.
 
+## 2026-05-29 — S28.09 FreeRtosLwip LAN9118 netif + NO_SYS=0 UDP on QEMU
+
+### Decisions
+
+- **First-packet ARP drop was a PBUF_REF lifetime bug, fixed with a
+  bring-up ARP warm-up, not by switching to PBUF_RAM.** `LwipRawDatagram`
+  sends zero-copy (PBUF_REF over the integrator's transient marshal
+  buffer). When the first datagram hit an ARP cache miss, lwIP queued
+  the pbuf for post-resolution transmission — but the referenced buffer
+  was freed the moment `_SendTo` returned, so the queued seqId=1 went
+  out as garbage / was dropped while seqId=2 (cache now warm) delivered.
+  Rather than pay a copy on every send, `main.c`'s `WarmUpGatewayArp`
+  issues `etharp_request(gw)` at netif bring-up and polls
+  `etharp_find_addr` (marshalled off the tcpip thread) until the gateway
+  is resolved before the logging pipeline goes live. pcap now shows
+  gratuitous ARP → gw ARP request → reply → UDP seqId=1 → seqId=2 in
+  order. This keeps the zero-copy contract intact and pushes the
+  one-time resolution cost to setup.
+
+- **Vendored Arm smsc9220 LAN9118 driver isolated from clang-format.**
+  `Bdd/Targets/FreeRtosLwip/netif/smsc9220/` carries its Apache-2.0
+  upstream headers and a `DisableFormat: true` `.clang-format` so the
+  `analyze-format` lane won't reflow third-party source. The
+  hand-written netif glue (`netif/EthernetIf.c`) is ours and stays
+  under the project style.
+
+- **NO_SYS=0 with the tcpip thread; lwIP calls marshalled via S28.06's
+  `_SetMarshal`.** `lwipopts.h` runs the full tcpip thread + contrib
+  `sys_arch.c`. `main` calls `tcpip_init` pre-scheduler; netif bring-up
+  runs from the interactive task via `tcpip_callback` because
+  `smsc9220_init` calls `vTaskDelay` and must run post-scheduler. The
+  Datagram/TcpStream adapters route through a
+  `tcpip_callback_with_block` marshal shim installed with
+  `SolidSyslogLwipRaw_SetMarshal`.
+
+- **Oracle parity confirms the UDP path.** Slice 4 ran the
+  `behave-freertos-lwip` + `syslog-ng-freertos-lwip` compose pair in
+  WSL (no docker-in-docker in the freertos-target container). Result:
+  8 features / 25 scenarios / 96 steps passed, 0 failed — a strict
+  subset of the +TCP lane's scenarios under the same library config,
+  so parity was expected and observed. Delivery truth comes from the
+  syslog-ng oracle's "receives a message with priority/hostname/PROCID"
+  assertions, not an ad-hoc host listener (slirp doesn't reliably
+  deliver the NATed datagram to a host-loopback listener even though
+  it's correct on the wire).
+
+- **Advisory CI lane only this story.** `bdd-freertos-qemu-lwip` runs
+  UDP-only (`@udp and not @tcp/@tls/@mtls/@store`) with
+  `@freertoslwipwip` as the per-scenario escape hatch, and is NOT in
+  `summary.needs` — promotion to a required gate is S28.11's job.
+
+### Deferred
+
+- **Slice 6 (LwipRaw TCP into the SwitchingSender)** — left for S28.10.
+  S28.09 is scoped to the netif + UDP; the SwitchingSender's TCP/TLS
+  slots stay wired to `NullSender` here. Pulling TCP in would be scope
+  creep across a story boundary.
+
+- **`build-freertos-target-lwip` → required-gate promotion** — stays
+  advisory until S28.11.
+
+### Open questions
+
+- Does any other lwIP zero-copy send site (a future TCP path) carry the
+  same transient-buffer-lifetime assumption the UDP warm-up now papers
+  over at the ARP layer, or is gateway warm-up sufficient because
+  established TCP connections never re-resolve mid-stream?
+
