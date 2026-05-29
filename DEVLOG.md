@@ -1,5 +1,58 @@
 # Dev Log
 
+## 2026-05-29 — S28.07 FreeRtosLwip cross link-probe
+
+The real S28.07 (#471) turned out to be a CI/build-infra story, **not** the
+DNS resolver my memory pointed to. The original S28.07 note ("lwIP DNS
+resolver") was decomposed into ~3 stories; the LwipRaw resolver shipped
+literal-IPv4-only on purpose (S28.03), and DNS isn't on the near board.
+What #471 actually wants: prove the `Platform/LwipRaw/` tree cross-builds
+for a FreeRTOS/ARM target under `SOLIDSYSLOG_FREERTOS_NET=LWIP`, independent
+of `Platform/PlusTcp/`, with a stub `main` and no QEMU — cheap de-risk
+before the S28.09 netif + BDD lift.
+
+### What landed
+
+- **`Bdd/Targets/FreeRtosLwip/`** — a `NO_SYS=1` Cortex-M3 link-probe.
+  Stub `main.c` starts the scheduler + one task that `_Create`/`_Destroy`s
+  all four LwipRaw adapters, so the linker must resolve every adapter entry
+  point and the lwIP core behind it. Reuses the existing `Common/startup.c`
+  + `mps2-an385.ld`; seeds `lwipopts.h` / `FreeRTOSConfig.h` / `arch/cc.h`
+  (the two integrator hooks lwIP needs under `NO_SYS=1` — `sys_now()` and a
+  self-contained `LWIP_RAND()`) for S28.09 to grow into the real
+  `NO_SYS=0` + `tcpip_callback` runtime.
+- Top-level CMake **selects FreeRtos vs FreeRtosLwip on the backend** (the
+  one `add_subdirectory` under the cross branch became an if/else);
+  `freertos-cross-lwip` preset; advisory **`build-freertos-target-lwip`**
+  lane (asserts no PlusTcp symbols in the ELF, uploads it; deliberately not
+  in `summary` needs — promoted to required in S28.11).
+- docs/containers.md backend table corrected (LWIP was still `FATAL_ERROR`).
+
+### Following "what the existing build did"
+
+David's steer was to mirror the existing freertos-cross target structure.
+(His premise that the LwipRaw sources were already cross-built wasn't quite
+right — `Platform/LwipRaw` is an INTERFACE lib that's `add_subdirectory`'d
+when `LWIP_PATH` is set, but no executable compiled its `.c` sources, and
+lwIP core had never been cross-compiled. So this was net-new.) Mirrored the
+upstream-OBJECT-lib (relaxed warnings) + strict-executable split, the arm
+toolchain, and the linker script.
+
+### Host de-risk paid off; one cross-only gap
+
+Before the container flip I compiled lwIP core + all five LwipRaw adapters
+on host gcc under the strict bar (`-Wconversion -Wsign-conversion -Werror`)
+against the real lwIP headers — all clean, which is exactly what held at
+cross-compile. The only cross-only failure was a **link** gap: `LWIP_ARP=1`
+pulls `etharp` into the IPv4 core, which calls `ethernet_output` /
+`ethbroadcast` / `ethzero` from `netif/ethernet.c` — a file I'd excluded.
+Added just that one netif source (not bridgeif/slipif). Kept ARP on because
+it's the realistic config S28.09 reuses, not a probe shortcut.
+
+Result: a 278 KB statically-linked Cortex-M3 ELF carrying kernel + lwIP +
+13 LwipRaw symbols, zero PlusTcp symbols. The required PLUSTCP cross lane
+rebuilds green, so the gating change didn't regress it.
+
 ## 2026-05-28 — S28.06 LwipRaw marshal injection
 
 Sixth story under E28. Added `SolidSyslogLwipRaw_SetMarshal` — a
