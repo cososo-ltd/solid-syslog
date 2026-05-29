@@ -55,6 +55,7 @@
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpSender.h"
 
+#include "lwip/etharp.h"
 #include "lwip/init.h"
 #include "lwip/ip4_addr.h"
 #include "lwip/netif.h"
@@ -98,6 +99,9 @@ static struct SolidSyslogMessage testMessage = {
 
 /* lwIP netif descriptor — must outlive the tcpip thread. */
 static struct netif networkInterface;
+/* Gateway IP, kept at file scope so the ARP warm-up (which resolves it before
+ * the first datagram) can reach it after bring-up. */
+static ip4_addr_t gatewayAddress;
 
 /* CircularBuffer + FreeRtosMutex for cross-task emission. 8 max-sized messages
  * is comfortably above the 3-message BDD scenarios. */
@@ -137,6 +141,8 @@ static void InteractiveTask(void* argument);
 static void ServiceTask(void* argument);
 static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context);
 static void NetworkBringUp(void* context);
+static void WarmUpGatewayArp(void);
+static void GatewayResolvedQuery(void* context);
 static bool TryUpdateString(char* storage, size_t storageSize, const char* value);
 static bool TryParseUInt(const char* value, unsigned long* out);
 static void TeardownAll(void);
@@ -196,9 +202,8 @@ int main(void)
     tcpip_init(NULL, NULL);
 
     (void) xTaskCreate(InteractiveTask, "interactive", INTERACTIVE_TASK_STACK_DEPTH, NULL, tskIDLE_PRIORITY + 1, NULL);
-    (void) xTaskCreate(
-        ServiceTask, "service", SERVICE_TASK_STACK_DEPTH, NULL, tskIDLE_PRIORITY + 1, &serviceTaskHandle
-    );
+    (void
+    ) xTaskCreate(ServiceTask, "service", SERVICE_TASK_STACK_DEPTH, NULL, tskIDLE_PRIORITY + 1, &serviceTaskHandle);
 
     vTaskStartScheduler();
 
@@ -216,17 +221,56 @@ static void NetworkBringUp(void* context)
     (void) context;
     ip4_addr_t ipAddress;
     ip4_addr_t netmask;
-    ip4_addr_t gateway;
     /* QEMU slirp default: 10.0.2.15 guest, 10.0.2.2 gateway (NATed to the
      * QEMU host, where the syslog-ng oracle listens). */
     IP4_ADDR(&ipAddress, 10, 0, 2, 15);
     IP4_ADDR(&netmask, 255, 255, 255, 0);
-    IP4_ADDR(&gateway, 10, 0, 2, 2);
+    IP4_ADDR(&gatewayAddress, 10, 0, 2, 2);
 
-    (void) netif_add(&networkInterface, &ipAddress, &netmask, &gateway, NULL, EthernetIf_Init, tcpip_input);
+    (void) netif_add(&networkInterface, &ipAddress, &netmask, &gatewayAddress, NULL, EthernetIf_Init, tcpip_input);
     netif_set_default(&networkInterface);
     netif_set_up(&networkInterface);
     netif_set_link_up(&networkInterface);
+
+    /* Kick off ARP resolution for the gateway now, so the cache is warm before
+     * the first datagram. SolidSyslogLwipRawDatagram sends PBUF_REF packets
+     * pointing at a transient buffer; if the first send hit an ARP miss the
+     * queued copy would reference freed memory and be lost (the documented
+     * first-packet drop). The reply is processed by this tcpip thread; the
+     * interactive task waits for the cache to populate via WarmUpGatewayArp. */
+    (void) etharp_request(&networkInterface, &gatewayAddress);
+}
+
+/* Marshalled onto the tcpip thread: report whether the gateway's MAC is in the
+ * ARP cache yet. The bool* context is set to the result. */
+static void GatewayResolvedQuery(void* context)
+{
+    struct eth_addr* ethRet = NULL;
+    const ip4_addr_t* ipRet = NULL;
+    *(bool*) context = (etharp_find_addr(&networkInterface, &gatewayAddress, &ethRet, &ipRet) >= 0);
+}
+
+/* Blocks the calling (interactive) task — never the tcpip thread, which must
+ * stay free to process the ARP reply — until the gateway resolves or a bounded
+ * deadline passes. Generous deadline: QEMU is markedly slower than host. */
+static void WarmUpGatewayArp(void)
+{
+    enum
+    {
+        WARM_UP_ATTEMPTS = 60,
+        WARM_UP_INTERVAL_MS = 50
+    };
+
+    for (int attempt = 0; attempt < WARM_UP_ATTEMPTS; attempt++)
+    {
+        bool resolved = false;
+        (void) tcpip_callback(GatewayResolvedQuery, &resolved);
+        if (resolved)
+        {
+            break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(WARM_UP_INTERVAL_MS));
+    }
 }
 
 static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
@@ -411,6 +455,10 @@ static void InteractiveTask(void* argument)
      * Blocking callback — returns once the interface is added and link/up. */
     (void) tcpip_callback(NetworkBringUp, NULL);
 
+    /* Wait for the gateway ARP to resolve before any datagram goes out, so the
+     * first send is not lost to a cache miss (see WarmUpGatewayArp). */
+    WarmUpGatewayArp();
+
     resolver = SolidSyslogLwipRawResolver_Create();
     datagram = SolidSyslogLwipRawDatagram_Create();
     udpAddress = SolidSyslogLwipRawAddress_Create();
@@ -483,7 +531,8 @@ static void InteractiveTask(void* argument)
     const UBaseType_t interactiveHwm = uxTaskGetStackHighWaterMark(NULL);
     const UBaseType_t serviceHwm = (serviceTaskHandle != NULL) ? uxTaskGetStackHighWaterMark(serviceTaskHandle) : 0U;
     (void) printf(
-        "[stack-hwm] interactive=%lu words service=%lu words\n", (unsigned long) interactiveHwm,
+        "[stack-hwm] interactive=%lu words service=%lu words\n",
+        (unsigned long) interactiveHwm,
         (unsigned long) serviceHwm
     );
 

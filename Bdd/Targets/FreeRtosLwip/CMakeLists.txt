@@ -70,7 +70,7 @@ add_library(solid_syslog_freertos_lwip_upstream OBJECT
     # Vendored Arm LAN9118 (SMSC9220) low-level driver (Apache-2.0). The lwIP
     # netif wrapper over it (netif/EthernetIf.c) stays in the executable under
     # the strict bar; this third-party source sits under the relaxations.
-    ${CMAKE_CURRENT_SOURCE_DIR}/netif/smsc9220_eth_drv.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/netif/smsc9220/smsc9220_eth_drv.c
 )
 
 target_compile_options(solid_syslog_freertos_lwip_upstream PRIVATE
@@ -95,7 +95,7 @@ target_compile_options(solid_syslog_freertos_lwip_upstream PRIVATE
 
 target_include_directories(solid_syslog_freertos_lwip_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, lwipopts.h, arch/cc.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/netif                 # smsc9220_eth_drv.h, smsc9220_emac_config.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/netif/smsc9220        # smsc9220_eth_drv.h, smsc9220_emac_config.h
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${LWIP_DIR}/src/include
@@ -149,7 +149,8 @@ target_compile_options(SolidSyslogBddTargetLwip PRIVATE
 
 target_include_directories(SolidSyslogBddTargetLwip PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, lwipopts.h, arch/cc.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/netif                 # EthernetIf.h, smsc9220_eth_drv.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/netif                 # EthernetIf.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/netif/smsc9220        # smsc9220_eth_drv.h, smsc9220_emac_config.h
     ${FREERTOS_COMMON_DIR}                            # CmsdkUart.h
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters

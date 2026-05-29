@@ -2,7 +2,7 @@
  * controller, FreeRTOS + lwIP NO_SYS=0.
  *
  * Bridges lwIP's struct netif to the vendored Arm smsc9220_eth_drv (see
- * netif/smsc9220_eth_drv.c, Apache-2.0). The shape is adapted from the lwIP
+ * netif/smsc9220/, Apache-2.0). The shape is adapted from the lwIP
  * contrib ethernetif.c skeleton (BSD, Adam Dunkels) and the FreeRTOS-Plus-TCP
  * MPS2_AN385 NetworkInterface.c (MIT) RX/IRQ pattern:
  *   - low-level output sends a (possibly chained) pbuf via
@@ -102,7 +102,11 @@ static void EthernetIf_LowLevelInit(struct netif* netif)
 
     /* The ISR notifies this task, so it must exist before the IRQ is enabled. */
     (void) xTaskCreate(
-        EthernetIf_RxTask, "ethrx", ETHERNETIF_RX_TASK_STACK_DEPTH, NULL, ETHERNETIF_RX_TASK_PRIORITY,
+        EthernetIf_RxTask,
+        "ethrx",
+        ETHERNETIF_RX_TASK_STACK_DEPTH,
+        NULL,
+        ETHERNETIF_RX_TASK_PRIORITY,
         &EthernetIf_RxTaskHandle
     );
 

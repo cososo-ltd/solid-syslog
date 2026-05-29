@@ -1,0 +1,5 @@
+# Vendored third-party code (Arm SMSC9220 LAN9118 driver, Apache-2.0). Keep it
+# byte-for-byte as upstream ships it — DisableFormat makes clang-format a no-op
+# here so the analyze-format lane does not try to reflow it to project style.
+DisableFormat: true
+SortIncludes: Never
