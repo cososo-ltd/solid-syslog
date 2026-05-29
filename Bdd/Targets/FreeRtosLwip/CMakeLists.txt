@@ -49,6 +49,10 @@ add_library(solid_syslog_freertos_lwip_upstream OBJECT
     ${FREERTOS_KERNEL_PATH}/portable/MemMang/heap_4.c
     ${lwipcore_SRCS}
     ${lwipcore4_SRCS}
+    # etharp (in core4) emits ARP frames via ethernet_output/ethbroadcast/
+    # ethzero from netif/ethernet.c — pull that one netif source in (but not
+    # bridgeif/slipif from lwipnetif_SRCS, which this probe has no use for).
+    ${LWIP_DIR}/src/netif/ethernet.c
 )
 
 target_compile_options(solid_syslog_freertos_lwip_upstream PRIVATE
