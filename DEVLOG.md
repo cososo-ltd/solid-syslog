@@ -12989,15 +12989,18 @@ MISRA rule — different category, doesn't set precedent.
   runs from the interactive task via `tcpip_callback` because
   `smsc9220_init` calls `vTaskDelay` and must run post-scheduler. The
   Datagram/TcpStream adapters route through `LwipTcpipMarshal` (installed
-  with `SolidSyslogLwipRaw_SetMarshal`), which calls lwIP `tcpip_callback`.
-  Note `tcpip_callback` only blocks until the work is *queued*, not until
-  it runs — the synchronous-marshal contract is satisfied here by priority:
-  `TCPIP_THREAD_PRIO` is `configMAX_PRIORITIES - 1`, above every task that
-  marshals, so the post preempts the caller and the callback completes
-  before control returns. PR #476 review flagged that this is implicit;
-  the `LOCK_TCPIP_CORE`/`UNLOCK_TCPIP_CORE` pair (core-locking is already
-  enabled) would make it synchronous independent of priority — tracked as
-  a follow-up.
+  with `SolidSyslogLwipRaw_SetMarshal`). The synchronous-marshal contract
+  requires the callback's results to be ready when the marshal returns;
+  lwIP `tcpip_callback` only blocks until the work is *queued*, so it
+  cannot satisfy that on its own. `LWIP_TCPIP_CORE_LOCKING` is enabled, so
+  the marshal runs the callback in the caller's task context under a
+  `LOCK_TCPIP_CORE`/`UNLOCK_TCPIP_CORE` pair — unconditionally synchronous,
+  independent of task priority, no per-send mailbox message. The ARP
+  warm-up query reuses the same marshal, so its `resolved` flag is written
+  before it is read. (PR #476 review #4: an earlier revision relied on
+  `tcpip_callback` + `TCPIP_THREAD_PRIO` preemption, which worked but left
+  an implicit "marshalling tasks must be below the tcpip thread" invariant;
+  the core-lock pair removes it.)
 
 - **Oracle parity confirms the UDP path.** Slice 4 ran the
   `behave-freertos-lwip` + `syslog-ng-freertos-lwip` compose pair in

@@ -271,7 +271,10 @@ static void WarmUpGatewayArp(void)
     for (int attempt = 0; attempt < WARM_UP_ATTEMPTS; attempt++)
     {
         bool resolved = false;
-        (void) tcpip_callback(GatewayResolvedQuery, &resolved);
+        /* Same synchronous marshal the LwipRaw adapters use: the query runs under
+         * the core lock and writes `resolved` before this returns, so there is no
+         * race between the queued callback and the next loop iteration. */
+        LwipTcpipMarshal(GatewayResolvedQuery, &resolved);
         if (resolved)
         {
             break;
@@ -282,16 +285,16 @@ static void WarmUpGatewayArp(void)
 
 static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
 {
-    /* tcpip_callback posts to the tcpip thread and returns once the message is
-     * queued — not once the callback has run. We satisfy the synchronous-marshal
-     * contract (SolidSyslogLwipRawMarshal.h: results must be ready when this
-     * returns) by priority: TCPIP_THREAD_PRIO (configMAX_PRIORITIES - 1) is
-     * strictly above every task that marshals, so the post immediately preempts
-     * the caller, the tcpip thread runs the callback to completion, then control
-     * returns here. See PR #476 review (#4) — switching to the
-     * LOCK_TCPIP_CORE/UNLOCK_TCPIP_CORE pair would make this synchronous
-     * independent of priorities. */
-    (void) tcpip_callback(callback, context);
+    /* The synchronous-marshal contract (SolidSyslogLwipRawMarshal.h) requires the
+     * callback's results to be ready when this returns. lwIP's tcpip_callback only
+     * blocks until the work is *queued*, so it cannot satisfy that by itself.
+     * LWIP_TCPIP_CORE_LOCKING is enabled, so we run the callback in the caller's
+     * own task context under the core lock instead: unconditionally synchronous,
+     * independent of task priority, and no per-send mailbox message. The lock is
+     * recursive and our callbacks never re-marshal, so this cannot self-deadlock. */
+    LOCK_TCPIP_CORE();
+    callback(context);
+    UNLOCK_TCPIP_CORE();
 }
 
 void vApplicationMallocFailedHook(void)
