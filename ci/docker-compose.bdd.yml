@@ -123,13 +123,13 @@ services:
     # solidsyslog_user_tunables.h changes.
     command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp or @tls or @mtls)' Bdd/features/
 
-  # FreeRTOS + lwIP pair (S28.09). Same shape as the freertos (+TCP) pair —
-  # its own syslog-ng on its own bridge network, behave sharing the netns so
-  # QEMU's slirp gateway 10.0.2.2 NATs to the pair's loopback where syslog-ng
-  # listens on 0.0.0.0:5514. The only differences are EXAMPLE_BINARY (the lwIP
-  # ELF) and the tag filter: this advisory lane runs UDP only for S28.09 —
-  # TCP / TLS / mTLS / store land in later E28 stories, and @freertoslwipwip
-  # is the per-scenario escape hatch while the netif is bedding in.
+  # FreeRTOS + lwIP pair (S28.09 UDP, S28.10 TCP). Same shape as the freertos
+  # (+TCP) pair — its own syslog-ng on its own bridge network, behave sharing the
+  # netns so QEMU's slirp gateway 10.0.2.2 NATs to the pair's loopback where
+  # syslog-ng listens on 0.0.0.0:5514. The only differences are EXAMPLE_BINARY
+  # (the lwIP ELF) and the tag filter: this advisory lane runs UDP + TCP —
+  # TLS / mTLS / store land in later E28 stories, and @freertoslwipwip is the
+  # per-scenario escape hatch while the netif is bedding in.
   syslog-ng-freertos-lwip:
     image: balabit/syslog-ng:4.8.2
     volumes:
@@ -178,7 +178,7 @@ services:
       # ELF rides the existing freertos driver — only the binary path differs.
       - BDD_TARGET=freertos
       - EXAMPLE_BINARY=build/freertos-cross-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @freertoslwipwip and not @rtc and not @windows_wip and @udp and not @tcp and not @tls and not @mtls and not @store' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @freertoslwipwip and not @rtc and not @windows_wip and (@udp or @tcp) and not @tls and not @mtls and not @store' Bdd/features/
 
 volumes:
   bdd-output-linux:

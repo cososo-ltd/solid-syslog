@@ -42,7 +42,7 @@ misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:31
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:34
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:54
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:61
-misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:129
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:130
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:10
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:19
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:26
@@ -76,8 +76,8 @@ misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:94
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:181
 misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:205
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:70
-misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:138
-misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:146
+misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:139
+misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:147
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:271
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:283
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:138

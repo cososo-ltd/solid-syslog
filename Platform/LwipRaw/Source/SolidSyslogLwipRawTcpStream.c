@@ -51,6 +51,7 @@ static inline struct SolidSyslogLwipRawTcpStream* LwipRawTcpStream_SelfFromArg(v
 static inline struct LwipRawTcpStreamCall* LwipRawTcpStreamCallFromContext(void* context);
 static inline bool LwipRawTcpStream_ConfigProvidesGetter(const struct SolidSyslogLwipRawTcpStreamConfig* config);
 static inline bool LwipRawTcpStream_IsOpen(const struct SolidSyslogLwipRawTcpStream* self);
+static inline bool LwipRawTcpStream_IsWritable(const struct SolidSyslogLwipRawTcpStream* self);
 static inline bool LwipRawTcpStream_HasQueuedRx(const struct SolidSyslogLwipRawTcpStream* self);
 static inline bool LwipRawTcpStream_RxQueueIsFull(const struct SolidSyslogLwipRawTcpStream* self);
 static inline bool LwipRawTcpStream_HasCloseWork(const struct SolidSyslogLwipRawTcpStream* self);
@@ -263,13 +264,23 @@ static bool LwipRawTcpStream_Send(struct SolidSyslogStream* base, const void* bu
 {
     struct SolidSyslogLwipRawTcpStream* self = LwipRawTcpStream_SelfFromBase(base);
     bool sent = false;
-    if (LwipRawTcpStream_IsOpen(self))
+    if (LwipRawTcpStream_IsWritable(self))
     {
         struct LwipRawTcpStreamCall call = {.Self = self, .SendBuffer = buffer, .Length = size};
         SolidSyslogLwipRaw_Marshal(LwipRawTcpStream_DoSend, &call);
         sent = call.SendResult;
     }
     return sent;
+}
+
+/* Sendable means the pcb is live AND no peer close / error has been observed.
+ * A peer FIN (RecvCallback with NULL p) sets Errored but leaves the pcb non-NULL,
+ * so IsOpen alone would keep writing into a doomed connection; failing the send
+ * lets StreamSender close and reconnect. Read deliberately still runs while
+ * Errored — it must drain queued bytes and then close on EOF. */
+static inline bool LwipRawTcpStream_IsWritable(const struct SolidSyslogLwipRawTcpStream* self)
+{
+    return LwipRawTcpStream_IsOpen(self) && !self->Errored;
 }
 
 static void LwipRawTcpStream_DoSend(void* context)

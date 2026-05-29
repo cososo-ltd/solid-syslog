@@ -12957,6 +12957,57 @@ MISRA rule — different category, doesn't set precedent.
   every untriaged style finding becomes a hard gate. Worth E24
   discussion.
 
+## 2026-05-29 — S28.10 FreeRtosLwip TCP (octet-framed StreamSender over LwipRawTcpStream)
+
+### Decisions
+
+- **Mostly wiring — but TCP did not come entirely "for free".** The conditional
+  #473 asked whether TCP fell out of S28.09; it didn't quite. Plain delivery and
+  runtime UDP→TCP switching were pure wiring (a `SolidSyslogStreamSender` over
+  `SolidSyslogLwipRawTcpStream` in the SwitchingSender's TCP slot, sharing the
+  resolver + endpoint callbacks; `RtosSleep` already matched
+  `SolidSyslogSleepFunction`; the adapter sources were already compiled in). But
+  `tcp_reconnect` exposed a real Tier-2 gap (below), so S28.10 earned its keep.
+
+- **`LwipRawTcpStream_Send` now fails on a peer close (the reconnect fix).**
+  Root cause of the `tcp_reconnect` failure: `StreamSender` only reconnects when a
+  `Send` returns false (or the endpoint version changes) — it never `Read`s. On a
+  graceful server FIN (syslog-ng config-reload closes the connection), lwIP's
+  `RecvCallback(NULL)` set `Errored` but left the pcb non-NULL, and `Send` guarded
+  only on `IsOpen` (pcb != NULL) — so `tcp_write` kept returning `ERR_OK` into a
+  doomed half-closed connection and the sender never reconnected. Fix: a new
+  intent-named predicate `LwipRawTcpStream_IsWritable` (`IsOpen && !Errored`) gates
+  `Send`, so a post-FIN send fails, `StreamSender` closes + reconnects on the next
+  message, and the recovered message is delivered. `Read` deliberately still runs
+  while `Errored` (it must drain queued bytes then close on EOF). Driven red→green
+  by a new `Tests/Lwip` unit test (`SendReturnsFalseAfterPeerFin`); this matches
+  FreeRTOS-Plus-TCP's send-side closed-socket detection, which is why the +TCP lane
+  already passed the same scenario.
+
+- **Lane scope: `(@udp or @tcp)`, TLS still excluded.** The lwIP lane filter went
+  from `@udp and not @tcp …` to `(@udp or @tcp) and not @tls and not @mtls and not
+  @store`. That enables `tcp_transport`, `tcp_reconnect`, and the UDP→TCP
+  `switching_transport` scenario; `tcp_singletask` (`@windows_wip`) and the TCP→TLS
+  switch (`@tls`) stay excluded. TLS lands in S28.11.
+
+- **Local-run gotcha recorded.** Any `cmake` configure regenerates the in-tree
+  `Bdd/features/steps/solidsyslog_tunables.py`; an intermediate host `debug` build
+  (default 2048) clobbered the lwIP target's 512, so a stray oracle run *ran* the
+  `@requires_message_size_1500` `udp_mtu` scenario (which must skip on a 512-byte
+  target) and failed spuriously. Re-running the cross-lwip configure restored 512
+  and the lane is green. CI is immune — each lane downloads its own
+  `bdd-tunables-<target>` artifact.
+
+### Verification
+
+- Oracle (`ci/docker-compose.bdd.yml`, lwIP pair): **11 features / 28 scenarios /
+  116 steps passed, 0 failed** — `tcp_transport`, `tcp_reconnect`, and UDP→TCP
+  switch green alongside the full UDP set; TLS/mTLS/store/1500-MTU correctly
+  skipped. `Tests/Lwip/SolidSyslogLwipRawTcpStreamTest` 56 tests green. Tree
+  clang-format clean.
+
+---
+
 ## 2026-05-29 — S28.09 FreeRtosLwip LAN9118 netif + NO_SYS=0 UDP on QEMU
 
 ### Decisions

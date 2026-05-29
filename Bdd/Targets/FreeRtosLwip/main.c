@@ -11,10 +11,10 @@
  * drains over UDP, and BddTargetInteractive drives `send N` / `set <k> <v>` /
  * `quit` over the QEMU -serial stdio UART.
  *
- * Scope is UDP this story. The SwitchingSender keeps TCP / TLS slots so
- * `set transport tcp|tls` resolves cleanly (to the shared NullSender, which
- * drops on the floor) rather than crashing; the real LwipRaw TCP / TLS senders
- * land in later E28 stories.
+ * Scope is UDP (S28.09) + TCP (S28.10). The SwitchingSender carries a real UDP
+ * sender (LwipRawDatagram) and a real octet-framed TCP sender (StreamSender over
+ * LwipRawTcpStream); the TLS slot still resolves to the shared NullSender (drops
+ * on the floor) until S28.11 wires the LwipRaw TLS sender.
  *
  * Static IPv4 (10.0.2.15) on the QEMU slirp network, host reachable at the
  * slirp gateway 10.0.2.2 — numeric, because slirp has no route to the docker
@@ -42,6 +42,7 @@
 #include "SolidSyslogLwipRawDatagram.h"
 #include "SolidSyslogLwipRawMarshal.h"
 #include "SolidSyslogLwipRawResolver.h"
+#include "SolidSyslogLwipRawTcpStream.h"
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogMutex.h"
 #include "SolidSyslogNullSender.h"
@@ -49,6 +50,7 @@
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStdAtomicCounter.h"
+#include "SolidSyslogStreamSender.h"
 #include "SolidSyslogSwitchingSender.h"
 #include "SolidSyslogTimeQuality.h"
 #include "SolidSyslogTimeQualitySd.h"
@@ -131,6 +133,9 @@ static struct SolidSyslogResolver* resolver = NULL;
 static struct SolidSyslogDatagram* datagram = NULL;
 static struct SolidSyslogAddress* udpAddress = NULL;
 static struct SolidSyslogSender* udpSender = NULL;
+static struct SolidSyslogStream* tcpStream = NULL;
+static struct SolidSyslogAddress* tcpAddress = NULL;
+static struct SolidSyslogSender* tcpSender = NULL;
 static struct SolidSyslogSender* switchingSender = NULL;
 static struct SolidSyslogBuffer* buffer = NULL;
 static struct SolidSyslogMutex* bufferMutex = NULL;
@@ -492,12 +497,34 @@ static void InteractiveTask(void* argument)
     };
     udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
+    /* Plain TCP path: RFC 6587 octet-framed StreamSender over the LwipRaw TCP
+     * stream adapter. Shares the resolver and the UDP endpoint callbacks because
+     * the syslog-ng oracle listens on the same host:port for both transports.
+     * RtosSleep drives the stream's bounded synchronous-connect spin; the
+     * connect timeout comes from the SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS tunable
+     * (GetConnectTimeoutMs NULL). */
+    struct SolidSyslogLwipRawTcpStreamConfig tcpStreamConfig = {
+        .GetConnectTimeoutMs = NULL,
+        .ConnectTimeoutContext = NULL,
+        .Sleep = RtosSleep,
+    };
+    tcpStream = SolidSyslogLwipRawTcpStream_Create(&tcpStreamConfig);
+    tcpAddress = SolidSyslogLwipRawAddress_Create();
+    struct SolidSyslogStreamSenderConfig tcpConfig = {
+        .Resolver = resolver,
+        .Stream = tcpStream,
+        .Address = tcpAddress,
+        .Endpoint = GetEndpoint,
+        .EndpointVersion = GetEndpointVersion,
+    };
+    tcpSender = SolidSyslogStreamSender_Create(&tcpConfig);
+
     /* SwitchingSender lets `set transport <udp|tcp|tls>` flip transport at
-     * runtime. UDP is wired; TCP / TLS route to the shared NullSender (drop on
-     * the floor) until later E28 stories wire the LwipRaw TCP / TLS senders. */
+     * runtime. UDP and TCP are wired; TLS routes to the shared NullSender (drop
+     * on the floor) until S28.11 wires the LwipRaw TLS sender. */
     static struct SolidSyslogSender* inners[BDD_TARGET_SWITCH_COUNT];
     inners[BDD_TARGET_SWITCH_UDP] = udpSender;
-    inners[BDD_TARGET_SWITCH_TCP] = SolidSyslogNullSender_Get();
+    inners[BDD_TARGET_SWITCH_TCP] = tcpSender;
     inners[BDD_TARGET_SWITCH_TLS] = SolidSyslogNullSender_Get();
     struct SolidSyslogSwitchingSenderConfig switchConfig = {
         .Senders = inners,
@@ -608,7 +635,10 @@ static void TeardownAll(void)
     lifecycleMutex = NULL;
     SolidSyslogSwitchingSender_Destroy(switchingSender);
     SolidSyslogUdpSender_Destroy(udpSender);
+    SolidSyslogStreamSender_Destroy(tcpSender);
+    SolidSyslogLwipRawTcpStream_Destroy(tcpStream);
     SolidSyslogLwipRawAddress_Destroy(udpAddress);
+    SolidSyslogLwipRawAddress_Destroy(tcpAddress);
     SolidSyslogLwipRawDatagram_Destroy(datagram);
     SolidSyslogLwipRawResolver_Destroy(resolver);
 }

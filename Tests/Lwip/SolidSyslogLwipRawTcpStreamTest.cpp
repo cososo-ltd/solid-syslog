@@ -629,6 +629,17 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, ReadAdvancesPastDrainedPbufToNextInQu
     LONGS_EQUAL(2, LwipPbufFake_PbufFreeCallCount());
 }
 
+TEST(SolidSyslogLwipRawTcpStreamConnected, SendReturnsFalseAfterPeerFin)
+{
+    pushPeerFin();
+
+    /* A peer half-close (FIN) leaves the pcb alive but the connection doomed.
+     * Send must report failure — without it the StreamSender keeps writing into
+     * the dead connection and never reconnects after the server recovers. */
+    CHECK_FALSE(sendBytes());
+    CALLED_FAKE(LwipTcpFake_TcpWrite, NEVER);
+}
+
 TEST(SolidSyslogLwipRawTcpStreamConnected, ReadReturnsMinusOneAfterPeerFinAndDrainsBeforeEof)
 {
     struct pbuf p = {};

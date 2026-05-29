@@ -32,11 +32,13 @@ oracle.
 
 ## Scope
 
-UDP for S28.09. The `SwitchingSender` keeps TCP / TLS slots wired to the shared
-`NullSender` so `set transport tcp|tls` resolves cleanly (drops on the floor)
-rather than crashing; the real LwipRaw TCP / TLS senders land in later E28
-stories. `lwipopts.h` runs `NO_SYS=0` (tcpip thread + the contrib FreeRTOS
-`sys_arch`); `FreeRTOSConfig.h` mirrors the +TCP networking config.
+UDP (S28.09) + TCP (S28.10). The `SwitchingSender` carries a real UDP sender
+(`SolidSyslogLwipRawDatagram`) and a real RFC 6587 octet-framed TCP sender
+(`SolidSyslogStreamSender` over `SolidSyslogLwipRawTcpStream`); the TLS slot
+stays wired to the shared `NullSender` so `set transport tls` resolves cleanly
+(drops on the floor) until S28.11 wires the LwipRaw TLS sender. `lwipopts.h`
+runs `NO_SYS=0` (tcpip thread + the contrib FreeRTOS `sys_arch`);
+`FreeRTOSConfig.h` mirrors the +TCP networking config.
 
 ## Build
 
