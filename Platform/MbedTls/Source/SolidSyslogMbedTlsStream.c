@@ -33,6 +33,8 @@ static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsSt
 static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self);
+static inline void MbedTlsStream_RestoreSession(struct SolidSyslogMbedTlsStream* self);
+static inline void MbedTlsStream_CaptureSession(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_IsRetryableHandshakeRc(int rc);
 static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
@@ -64,6 +66,12 @@ void MbedTlsStream_Initialise(struct SolidSyslogStream* base, const struct Solid
      * works without re-init. */
     mbedtls_ssl_init(&self->SslContext);
     mbedtls_ssl_config_init(&self->SslConfig);
+    /* Eager init so the session_free in Cleanup is always safe, whether or
+     * not a session was ever captured. The saved session outlives Close (it
+     * must survive the fail-fast reconnect to be resumable) and is freed only
+     * on Destroy. */
+    mbedtls_ssl_session_init(&self->SavedSession);
+    self->HasSavedSession = false;
 }
 
 /* Null Object substituted in Initialise when the integrator does not install a
@@ -96,9 +104,15 @@ static inline struct SolidSyslogMbedTlsStream* MbedTlsStream_SelfFromBase(struct
 
 void MbedTlsStream_Cleanup(struct SolidSyslogStream* base)
 {
+    struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
     /* Mirror the OpenSSL TlsStream pattern: an integrator who destroys a
      * still-Open stream must not leak the underlying TLS state. */
     MbedTlsStream_Close(base);
+    /* Release the saved resumption session — Destroy is the one site that
+     * frees it, since it must survive every Close to stay resumable. Safe on
+     * an empty session thanks to the eager init in Initialise. */
+    mbedtls_ssl_session_free(&self->SavedSession);
+    self->HasSavedSession = false;
     /* Overwrite the abstract base with the shared NullStream vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullStream_Get();
@@ -129,13 +143,43 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
     if (ok)
     {
         MbedTlsStream_InstallTransportCallbacks(self);
+        MbedTlsStream_RestoreSession(self);
         ok = MbedTlsStream_PerformHandshake(self);
+    }
+    if (ok)
+    {
+        MbedTlsStream_CaptureSession(self);
     }
     if (!ok)
     {
         MbedTlsStream_Close(base);
     }
     return ok;
+}
+
+/* Feed a previously-captured session back so this handshake can resume it.
+ * No-op on the first connect (nothing saved yet). */
+static inline void MbedTlsStream_RestoreSession(struct SolidSyslogMbedTlsStream* self)
+{
+    if (self->HasSavedSession)
+    {
+        (void) mbedtls_ssl_set_session(&self->SslContext, &self->SavedSession);
+    }
+}
+
+/* Save the just-negotiated session so the next Open of this instance can
+ * resume it. Best-effort: a non-zero return leaves HasSavedSession false so
+ * the next connect simply does a full handshake. */
+static inline void MbedTlsStream_CaptureSession(struct SolidSyslogMbedTlsStream* self)
+{
+    /* get_session deep-copies into SavedSession; free any prior session first
+     * so its peer cert / ticket allocations are not leaked. */
+    if (self->HasSavedSession)
+    {
+        mbedtls_ssl_session_free(&self->SavedSession);
+        self->HasSavedSession = false;
+    }
+    self->HasSavedSession = mbedtls_ssl_get_session(&self->SslContext, &self->SavedSession) == 0;
 }
 
 static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTlsStream* self)

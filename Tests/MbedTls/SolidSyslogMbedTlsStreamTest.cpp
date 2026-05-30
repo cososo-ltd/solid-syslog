@@ -159,6 +159,16 @@ TEST(SolidSyslogMbedTlsStream, CreateInitialisesSslConfigForSafeFree)
     LONGS_EQUAL(1, MbedTlsFake_SslConfigInitCallCount());
 }
 
+TEST(SolidSyslogMbedTlsStream, CreateInitialisesSavedSessionForSafeFree)
+
+{
+    /* The per-instance saved-session slot (session resumption, S26.04) is
+     * init'd eagerly in Create so the session_free in Destroy is always safe
+     * — whether a session was ever captured or not. Same eager-init invariant
+     * as the SslConfig / SslContext cases. */
+    LONGS_EQUAL(1, MbedTlsFake_SslSessionInitCallCount());
+}
+
 TEST(SolidSyslogMbedTlsStream, OpenAppliesClientStreamDefaultsToSslConfig)
 
 {
@@ -228,6 +238,143 @@ TEST(SolidSyslogMbedTlsStream, OpenReturnsFalseWhenHandshakeFails)
     MbedTlsFake_SetSslHandshakeReturn(-1);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+}
+
+/* -------------------------------------------------------------------------
+ * Session resumption (S26.04). After a successful handshake the adapter
+ * captures the negotiated session into its per-instance SavedSession slot,
+ * feeds it back via mbedtls_ssl_set_session before the next handshake, and
+ * frees it on Destroy (not Close — it must survive the fail-fast reconnect).
+ * Best-effort: any failure falls back to a full handshake; delivery never
+ * depends on resumption.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogMbedTlsStream, OpenCapturesSessionWhenHandshakeSucceeds)
+
+{
+    MbedTlsFake_SetSslHandshakeReturn(0);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsFake_SslGetSessionCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslInitArg(), MbedTlsFake_LastSslGetSessionContextArg());
+    POINTERS_EQUAL(MbedTlsFake_LastSslSessionInitArg(), MbedTlsFake_LastSslGetSessionSessionArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenDoesNotCaptureSessionWhenHandshakeFails)
+
+{
+    /* A failed handshake leaves no session to save — capture must be gated on
+     * handshake success so we never resume from a half-built session. */
+    MbedTlsFake_SetSslHandshakeReturn(-1);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslGetSessionCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenSucceedsEvenWhenSessionCaptureFails)
+
+{
+    /* Resumption is best-effort: a get_session failure must not fail the Open
+     * — the handshake completed, the message can be delivered, the next
+     * connect simply won't resume. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+    MbedTlsFake_SetSslGetSessionReturn(-1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+}
+
+TEST(SolidSyslogMbedTlsStream, FirstOpenDoesNotRestoreSession)
+
+{
+    /* Nothing captured yet on a fresh stream, so the first handshake must run
+     * full — no set_session call. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslSetSessionCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, SecondOpenRestoresSavedSessionBeforeHandshake)
+
+{
+    /* First Open captures; the reconnect Close tears the connection down; the
+     * second Open of the same instance feeds the saved session back via
+     * set_session *before* the handshake it primes. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+    SolidSyslogStream_Open(handle, addr);
+    SolidSyslogStream_Close(handle);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsFake_SslSetSessionCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslInitArg(), MbedTlsFake_LastSslSetSessionContextArg());
+    POINTERS_EQUAL(MbedTlsFake_LastSslSessionInitArg(), MbedTlsFake_LastSslSetSessionSessionArg());
+    /* One handshake (the first Open's) had completed when set_session ran,
+     * proving the restore precedes the second Open's handshake. */
+    LONGS_EQUAL(1, MbedTlsFake_SslSetSessionHandshakeCountAtCall());
+}
+
+TEST(SolidSyslogMbedTlsStream, SecondOpenSucceedsWhenSessionRestoreFails)
+
+{
+    /* Best-effort restore: a set_session failure must not fail the Open — the
+     * adapter falls through to a full handshake and still delivers. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+    SolidSyslogStream_Open(handle, addr);
+    SolidSyslogStream_Close(handle);
+    MbedTlsFake_SetSslSetSessionReturn(-1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+}
+
+TEST(SolidSyslogMbedTlsStream, CloseDoesNotFreeSavedSession)
+
+{
+    /* The lifecycle lock-in: Close runs on every fail-fast reconnect, so it
+     * must NOT free the saved session — otherwise the very next Open could
+     * never resume. The session is freed only on Destroy. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslSessionFreeCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, DestroyFreesSavedSession)
+
+{
+    /* Destroy is the one site that releases the saved session — symmetric with
+     * the eager session_init in Create. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogMbedTlsStream_Destroy(handle);
+    LONGS_EQUAL(1, MbedTlsFake_SslSessionFreeCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslSessionInitArg(), MbedTlsFake_LastSslSessionFreeArg());
+
+    handle = SolidSyslogMbedTlsStream_Create(&config); /* keep teardown's Destroy valid */
+}
+
+TEST(SolidSyslogMbedTlsStream, SecondCaptureFreesPreviousSession)
+
+{
+    /* mbedtls_ssl_get_session deep-copies into the destination; capturing a
+     * second session over a populated slot would leak the first's peer cert /
+     * ticket. The recapture must free the prior session first. Close in
+     * between does not free (lifecycle), so exactly one free is observed. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+    SolidSyslogStream_Open(handle, addr); /* capture #1 */
+    SolidSyslogStream_Close(handle); /* survives — no free */
+
+    SolidSyslogStream_Open(handle, addr); /* recapture #2 frees #1 first */
+
+    LONGS_EQUAL(1, MbedTlsFake_SslSessionFreeCallCount());
+    LONGS_EQUAL(2, MbedTlsFake_SslGetSessionCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslSessionInitArg(), MbedTlsFake_LastSslSessionFreeArg());
 }
 
 /* -------------------------------------------------------------------------

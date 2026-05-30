@@ -112,6 +112,27 @@ static mbedtls_ssl_config* lastSslConfOwnCertConfigArg;
 static mbedtls_x509_crt* lastSslConfOwnCertCertArg;
 static mbedtls_pk_context* lastSslConfOwnCertKeyArg;
 
+/* mbedtls_ssl_session_init */
+static int sslSessionInitCallCount;
+static mbedtls_ssl_session* lastSslSessionInitArg;
+
+/* mbedtls_ssl_get_session */
+static int sslGetSessionCallCount;
+static const mbedtls_ssl_context* lastSslGetSessionContextArg;
+static mbedtls_ssl_session* lastSslGetSessionSessionArg;
+static int sslGetSessionReturn;
+
+/* mbedtls_ssl_set_session */
+static int sslSetSessionCallCount;
+static mbedtls_ssl_context* lastSslSetSessionContextArg;
+static const mbedtls_ssl_session* lastSslSetSessionSessionArg;
+static int sslSetSessionReturn;
+static int sslSetSessionHandshakeCountAtCall;
+
+/* mbedtls_ssl_session_free */
+static int sslSessionFreeCallCount;
+static mbedtls_ssl_session* lastSslSessionFreeArg;
+
 /* -------------------------------------------------------------------------
  * Test accessors.
  * ------------------------------------------------------------------------- */
@@ -178,6 +199,19 @@ void MbedTlsFake_Reset(void)
     lastSslConfOwnCertConfigArg = NULL;
     lastSslConfOwnCertCertArg = NULL;
     lastSslConfOwnCertKeyArg = NULL;
+    sslSessionInitCallCount = 0;
+    lastSslSessionInitArg = NULL;
+    sslGetSessionCallCount = 0;
+    lastSslGetSessionContextArg = NULL;
+    lastSslGetSessionSessionArg = NULL;
+    sslGetSessionReturn = 0;
+    sslSetSessionCallCount = 0;
+    lastSslSetSessionContextArg = NULL;
+    lastSslSetSessionSessionArg = NULL;
+    sslSetSessionReturn = 0;
+    sslSetSessionHandshakeCountAtCall = 0;
+    sslSessionFreeCallCount = 0;
+    lastSslSessionFreeArg = NULL;
 }
 
 int MbedTlsFake_SslConfigInitCallCount(void)
@@ -481,6 +515,71 @@ mbedtls_pk_context* MbedTlsFake_LastSslConfOwnCertKeyArg(void)
     return lastSslConfOwnCertKeyArg;
 }
 
+int MbedTlsFake_SslSessionInitCallCount(void)
+{
+    return sslSessionInitCallCount;
+}
+
+mbedtls_ssl_session* MbedTlsFake_LastSslSessionInitArg(void)
+{
+    return lastSslSessionInitArg;
+}
+
+int MbedTlsFake_SslGetSessionCallCount(void)
+{
+    return sslGetSessionCallCount;
+}
+
+const mbedtls_ssl_context* MbedTlsFake_LastSslGetSessionContextArg(void)
+{
+    return lastSslGetSessionContextArg;
+}
+
+mbedtls_ssl_session* MbedTlsFake_LastSslGetSessionSessionArg(void)
+{
+    return lastSslGetSessionSessionArg;
+}
+
+void MbedTlsFake_SetSslGetSessionReturn(int value)
+{
+    sslGetSessionReturn = value;
+}
+
+int MbedTlsFake_SslSetSessionCallCount(void)
+{
+    return sslSetSessionCallCount;
+}
+
+mbedtls_ssl_context* MbedTlsFake_LastSslSetSessionContextArg(void)
+{
+    return lastSslSetSessionContextArg;
+}
+
+const mbedtls_ssl_session* MbedTlsFake_LastSslSetSessionSessionArg(void)
+{
+    return lastSslSetSessionSessionArg;
+}
+
+void MbedTlsFake_SetSslSetSessionReturn(int value)
+{
+    sslSetSessionReturn = value;
+}
+
+int MbedTlsFake_SslSetSessionHandshakeCountAtCall(void)
+{
+    return sslSetSessionHandshakeCountAtCall;
+}
+
+int MbedTlsFake_SslSessionFreeCallCount(void)
+{
+    return sslSessionFreeCallCount;
+}
+
+mbedtls_ssl_session* MbedTlsFake_LastSslSessionFreeArg(void)
+{
+    return lastSslSessionFreeArg;
+}
+
 /* -------------------------------------------------------------------------
  * Link-interposed mbedTLS symbols. The test executable does not link
  * libmbedtls; the production code's calls to mbedtls_* resolve here.
@@ -636,4 +735,33 @@ int mbedtls_ssl_set_hostname(mbedtls_ssl_context* ssl, const char* hostname)
     lastSslSetHostnameContextArg = ssl;
     lastSslSetHostnameNameArg = hostname;
     return sslSetHostnameReturn;
+}
+
+void mbedtls_ssl_session_init(mbedtls_ssl_session* session)
+{
+    sslSessionInitCallCount++;
+    lastSslSessionInitArg = session;
+}
+
+int mbedtls_ssl_get_session(const mbedtls_ssl_context* ssl, mbedtls_ssl_session* session)
+{
+    sslGetSessionCallCount++;
+    lastSslGetSessionContextArg = ssl;
+    lastSslGetSessionSessionArg = session;
+    return sslGetSessionReturn;
+}
+
+int mbedtls_ssl_set_session(mbedtls_ssl_context* ssl, const mbedtls_ssl_session* session)
+{
+    sslSetSessionCallCount++;
+    lastSslSetSessionContextArg = ssl;
+    lastSslSetSessionSessionArg = session;
+    sslSetSessionHandshakeCountAtCall = sslHandshakeCallCount;
+    return sslSetSessionReturn;
+}
+
+void mbedtls_ssl_session_free(mbedtls_ssl_session* session)
+{
+    sslSessionFreeCallCount++;
+    lastSslSessionFreeArg = session;
 }

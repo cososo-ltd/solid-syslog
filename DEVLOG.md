@@ -13336,3 +13336,40 @@ MISRA rule — different category, doesn't set precedent.
 
 - None outstanding. Forum post drafted for David to post under the
   Libraries category at his discretion; in-repo docs land via this PR.
+
+## 2026-05-30 — S26.04 mbedTLS client-side session resumption
+
+### Decisions
+- **Mirror the OpenSSL story's intent, independent of its code.** S26.01
+  (#280, OpenSSL) is still open; S26.04 is independent so we built the
+  mbedTLS backend first. Capture the negotiated session with
+  `mbedtls_ssl_get_session` after a successful handshake, feed it back via
+  `mbedtls_ssl_set_session` before the next handshake, on the same
+  `SolidSyslogMbedTlsStream` instance.
+- **Free on Destroy, not Close.** The story said "Close / Destroy", but the
+  saved session must survive the S12.14 fail-fast Close to be resumable on
+  the next Open — so it lives for the life of the instance and is freed only
+  in `_Cleanup` (plus free-before-recapture so `get_session`'s deep copy
+  never leaks the prior peer cert / ticket). Eager `session_init` in Create
+  keeps that free always safe.
+- **Best-effort, silent.** A failed capture or restore never fails the Open
+  and emits no error code — resumption is an optimisation, not a delivery
+  precondition; the sibling OpenSSL story emits nothing either. Keeps the
+  error channel meaningful.
+- **Integration observable = server-side ticket-parse wrapper.** mbedTLS has
+  no client-side `SSL_session_reused()`, so the in-test server wraps its
+  ticket write/parse callbacks (shared `p_ticket`) and records when a
+  presented ticket parses successfully. A new reconnecting socketpair
+  transport double feeds the stream a fresh connection per Open (no TCP
+  ports → deterministic); a two-handshake ticket server shares one ticket
+  key for the resume case and rotates it for the non-resuming-peer fallback.
+  Verified non-vacuous by disabling the production restore and watching only
+  the resume assertion fail while delivery still passed.
+
+### Deferred
+- **Test/code hygiene pass.** David will take a separate PR for tidy-ups on
+  the new tests and adapter.
+- **S26.01 (OpenSSL backend).** Still open; can now mirror this one.
+
+### Open questions
+- None outstanding.

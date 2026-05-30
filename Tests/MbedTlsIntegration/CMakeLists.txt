@@ -48,8 +48,10 @@ add_executable(MbedTlsIntegrationTests
     main.cpp
     SolidSyslogMbedTlsStreamIntegrationTest.cpp
     SocketStream.c
+    ReconnectingSocketStream.c
     MbedTlsTestCert.c
     MbedTlsTestServer.c
+    MbedTlsResumptionServer.c
     ${CMAKE_SOURCE_DIR}/Tests/AddressFake.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/SafeStringStandard.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c

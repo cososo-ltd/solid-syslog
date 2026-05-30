@@ -53,7 +53,7 @@ misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpDatagram.c:49
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:40
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:44
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:114
-misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:94
+misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:102
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:82
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddress.c:10
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:19
@@ -81,8 +81,8 @@ misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:145
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:207
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:139
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:147
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:271
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:283
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:315
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:327
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:138
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:353
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:373
@@ -183,5 +183,5 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:16
 
 # D.013 — Rule 11.5: void* ↔ unsigned char* at third-party byte-buffer API boundaries
 # See docs/misra-deviations.md#d013
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:308
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:327
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:352
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:371
