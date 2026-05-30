@@ -281,6 +281,53 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveDoesNotSpinOnErrArg)
     LONGS_EQUAL(0, FakeSleep_CallCount);
 }
 
+TEST(SolidSyslogLwipRawDnsResolver, ResolveInvokesDnsGetHostByNameUnderMarshal)
+{
+    // The standing LwipFakeMarshalGuard (installed in setup, checked in
+    // teardown) fails the test if dns_gethostbyname ran outside the marshal;
+    // this asserts the call actually happened, so the guard has something to
+    // vouch for. dns_gethostbyname touches lwIP core state and MUST be marshalled
+    // (unlike the numeric resolver's pure ipaddr_aton parse).
+    LwipDnsFake_SetResult(ERR_OK);
+
+    Resolve();
+
+    LONGS_EQUAL(1, LwipDnsFake_GetHostByNameCallCount());
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, UdpTransportResolvesIdenticallyToTcp)
+{
+    // Locks in that the DNS resolver does not dispatch on transport — a future
+    // reader must not add transport-typed lookup behaviour here.
+    ip_addr_t hit = Ipv4(10, 0, 2, 2);
+    LwipDnsFake_SetResult(ERR_OK);
+    LwipDnsFake_SetResolvedIp(&hit);
+
+    Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_UDP);
+    uint32_t udpIp = Ipv4U32(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip);
+    uint16_t udpPort = SolidSyslogLwipRawAddress_AsConst(addr)->Port;
+
+    Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_TCP);
+
+    LONGS_EQUAL(udpIp, Ipv4U32(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+    LONGS_EQUAL(udpPort, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, ResolveAcceptsNumericLiteralAsSynchronousHit)
+{
+    // Superset of the numeric resolver: a dotted-quad is handed to
+    // dns_gethostbyname, which resolves it synchronously (ERR_OK) — so numeric
+    // hosts still resolve through this class. Here the fake stands in for that
+    // ERR_OK return; the contract under test is that the literal host string
+    // flows through unchanged and the resolve succeeds.
+    ip_addr_t hit = Ipv4(10, 0, 2, 2);
+    LwipDnsFake_SetResult(ERR_OK);
+    LwipDnsFake_SetResolvedIp(&hit);
+
+    CHECK_TRUE(Resolve("10.0.2.2"));
+    STRCMP_EQUAL("10.0.2.2", LwipDnsFake_LastHostname());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipRawDnsResolverPool)
 {
