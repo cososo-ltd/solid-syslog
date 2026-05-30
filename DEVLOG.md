@@ -13167,3 +13167,59 @@ MISRA rule — different category, doesn't set precedent.
   every untriaged style finding becomes a hard gate. Worth E24
   discussion.
 
+
+## 2026-05-30 — S28.12: vendored smsc9220 driver — document, report, no patch
+
+### Decisions
+
+- **Closed S28.12 (#479) as documented known-limitations, not a code
+  patch.** The three CodeRabbit findings in the vendored Arm LAN9118
+  driver (busy-bit poll in `smsc9220_mac_regwrite`, TX filler DWORD on
+  word-aligned chunks, `smsc9220_check_id` returning `int` into an
+  `enum`) are real against silicon but provably inert on QEMU's
+  deterministic MPS2 LAN9118 model — each only diverges on a path the
+  model never enters (BUSY never held, FIFO never near-full with small
+  syslog records, chip ID always matches). We run only under QEMU and
+  have no real-hardware rig, so a fix would be unverifiable on the only
+  axis that matters; an untested change to hardware-facing code is a
+  liability. Applied the project's "no untested production code"
+  discipline to vendored code: document, don't patch.
+
+- **Confirmed they are not a BDD-flakiness source.** Flakiness needs a
+  non-deterministic source; all three are dead code on the deterministic
+  model and produce bit-identical results every run. Real flake suspects
+  (if any appear) live in the async/timing layer — tcpip thread, RX
+  IRQ→task-notify, ARP timing, syslog-ng readiness, Nagle, harness log
+  handling — not in this driver's logic.
+
+- **Provenance honesty fix.** Established our snapshot predates upstream
+  PR #1245 (2025-05-22 `-Wconversion` cleanup): we're missing only its
+  narrowing casts, which we don't need because the TU is built with
+  `-Wno-conversion -Wno-sign-conversion`. Dropped the "byte-for-byte
+  verbatim" wording in the README and the driver's `.clang-format`;
+  added `netif/smsc9220/KNOWN-LIMITATIONS.md` with the snapshot basis,
+  the three defects (location + correct fix + why benign on QEMU), and a
+  "do not fix without a real-hardware rig" warning.
+
+- **Report upstream as one forum post, not issues or a PR.** Searched
+  (via Claude AI) for prior reports across FreeRTOS-Plus-TCP, TF-M,
+  mbed-os, CMSIS, Zephyr, CVEs — none found. FreeRTOS's CONTRIBUTING
+  points to the forum first; settled on a single good-citizen post under
+  the FreeRTOS forum **Libraries** category (no per-library +TCP
+  sub-category) covering all three, with a provenance note that the
+  driver is Arm-origin (also in TF-M/mbed-os/CMSIS) so a fix may belong
+  at the Arm source too. Not filing issues or a merge-ready PR — we
+  can't validate on real HW, and the aim is to put it on the record
+  without committing to chase follow-ups.
+
+### Deferred
+
+- **Re-sync to current upstream `main`.** Not done — out of scope for a
+  document-and-close story, and re-pinning is itself an untested driver
+  change. If upstream ever lands hardware-validated fixes for the three
+  defects, prefer re-syncing to that commit over carrying local patches.
+
+### Open questions
+
+- None outstanding. Forum post drafted for David to post under the
+  Libraries category at his discretion; in-repo docs land via this PR.

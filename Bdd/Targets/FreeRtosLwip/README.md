@@ -25,10 +25,14 @@ oracle.
   LAN9118 (SMSC9220) low-level driver. RX is driven by the IRQ-13 `EthernetISR`
   through a task notification; TX sends pbufs via `smsc9220_send_by_chunks`.
 - `netif/smsc9220/smsc9220_eth_drv.{c,h}`, `netif/smsc9220/smsc9220_emac_config.h`:
-  the Arm low-level driver, vendored verbatim from FreeRTOS-Plus-TCP's MPS2_AN385
-  network interface (Apache-2.0; copyright and license headers preserved). Kept in
-  its own `smsc9220/` subdirectory with a `DisableFormat` `.clang-format` so
-  `analyze-format` leaves the third-party source untouched.
+  the Arm low-level driver, vendored from FreeRTOS-Plus-TCP's MPS2_AN385 network
+  interface (Apache-2.0; copyright and license headers preserved). Kept in its own
+  `smsc9220/` subdirectory with a `DisableFormat` `.clang-format` so `analyze-format`
+  leaves the third-party source untouched. Our snapshot predates upstream's
+  `-Wconversion` cleanup (PR #1245) and carries three known defects that are benign
+  on QEMU but would bite on real silicon — see
+  [`netif/smsc9220/KNOWN-LIMITATIONS.md`](netif/smsc9220/KNOWN-LIMITATIONS.md) for the
+  provenance snapshot and the defect/fix details.
 
 ## Scope
 
