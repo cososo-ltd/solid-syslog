@@ -7,6 +7,8 @@ using namespace CososoTesting;
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "LwipDnsFake.h"
+#include "LwipFakeMarshalGuard.h"
 #include "SolidSyslogLwipRawAddress.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
 #include "SolidSyslogLwipRawDnsResolver.h"
@@ -16,6 +18,8 @@ using namespace CososoTesting;
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
+#include "lwip/err.h"
+#include "lwip/ip4_addr.h"
 #include "lwip/ip_addr.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
@@ -43,9 +47,31 @@ using namespace CososoTesting;
 static const char* const TEST_HOST = "syslog-ng";
 static const uint16_t TEST_PORT = 514;
 
+unsigned FakeSleep_CallCount = 0;
+int FakeSleep_LastMs = 0;
+
+void FakeSleep_Reset()
+{
+    FakeSleep_CallCount = 0;
+    FakeSleep_LastMs = 0;
+}
+
 extern "C" void FakeSleep(int milliseconds)
 {
-    (void) milliseconds;
+    FakeSleep_CallCount++;
+    FakeSleep_LastMs = milliseconds;
+}
+
+static ip_addr_t Ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
+{
+    ip_addr_t address;
+    IP4_ADDR(&address, a, b, c, d);
+    return address;
+}
+
+static uint32_t Ipv4U32(const ip_addr_t* address)
+{
+    return ip4_addr_get_u32(ip_2_ip4(address));
 }
 
 // clang-format off
@@ -57,6 +83,10 @@ TEST_GROUP(SolidSyslogLwipRawDnsResolver)
 
     void setup() override
     {
+        LwipDnsFake_Reset();
+        FakeSleep_Reset();
+        LwipFakeMarshalGuard_Reset();
+        SolidSyslogLwipRaw_SetMarshal(LwipFakeMarshalGuard_TrackingMarshal);
         config.Sleep = FakeSleep;
         resolver     = SolidSyslogLwipRawDnsResolver_Create(&config);
         addr         = SolidSyslogLwipRawAddress_Create();
@@ -66,6 +96,8 @@ TEST_GROUP(SolidSyslogLwipRawDnsResolver)
     {
         SolidSyslogLwipRawAddress_Destroy(addr);
         SolidSyslogLwipRawDnsResolver_Destroy(resolver);
+        LwipFakeMarshalGuard_CheckNoBreach();
+        SolidSyslogLwipRaw_SetMarshal(nullptr);
     }
 
     bool Resolve(const char* host = TEST_HOST, uint16_t port = TEST_PORT, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP) const
@@ -79,6 +111,55 @@ TEST_GROUP(SolidSyslogLwipRawDnsResolver)
 TEST(SolidSyslogLwipRawDnsResolver, CreateSucceeds)
 {
     CHECK(resolver != nullptr);
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, ResolveReturnsTrueOnSynchronousHit)
+{
+    ip_addr_t hit = Ipv4(10, 0, 2, 2);
+    LwipDnsFake_SetResult(ERR_OK);
+    LwipDnsFake_SetResolvedIp(&hit);
+
+    CHECK_TRUE(Resolve());
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, ResolvePopulatesIpFromSynchronousHit)
+{
+    ip_addr_t hit = Ipv4(10, 0, 2, 2);
+    LwipDnsFake_SetResult(ERR_OK);
+    LwipDnsFake_SetResolvedIp(&hit);
+
+    Resolve();
+
+    LONGS_EQUAL(Ipv4U32(&hit), Ipv4U32(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, ResolvePopulatesPortFromArgOnSynchronousHit)
+{
+    ip_addr_t hit = Ipv4(10, 0, 2, 2);
+    LwipDnsFake_SetResult(ERR_OK);
+    LwipDnsFake_SetResolvedIp(&hit);
+
+    Resolve(TEST_HOST, 9999);
+
+    LONGS_EQUAL(9999, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, ResolveDoesNotSpinOnSynchronousHit)
+{
+    LwipDnsFake_SetResult(ERR_OK);
+
+    Resolve();
+
+    LONGS_EQUAL(0, FakeSleep_CallCount);
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, ResolvePassesHostToDnsGetHostByName)
+{
+    LwipDnsFake_SetResult(ERR_OK);
+
+    Resolve("syslog-ng");
+
+    STRCMP_EQUAL("syslog-ng", LwipDnsFake_LastHostname());
 }
 
 // clang-format off
