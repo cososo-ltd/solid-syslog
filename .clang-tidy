@@ -76,7 +76,7 @@ CheckOptions:
   # alternative. New Tier 2 helper structs join this list; Tier 1
   # public tags continue to be subject to StructPrefix above.
   # See docs/NAMING.md Tier 2 "file-scope struct tags".
-  - { key: readability-identifier-naming.StructIgnoredRegexp,  value: '^(SolidSyslog|EscapedContext|BlockPresence|OpenHandle|LwipRawDatagramCall|LwipRawTcpStreamCall)$' }
+  - { key: readability-identifier-naming.StructIgnoredRegexp,  value: '^(SolidSyslog|EscapedContext|BlockPresence|OpenHandle|LwipRawDatagramCall|LwipRawDnsResolverCall|LwipRawTcpStreamCall)$' }
 
   # Tier 1 — public enum tags: SolidSyslogClass
   - { key: readability-identifier-naming.EnumCase,              value: CamelCase   }
