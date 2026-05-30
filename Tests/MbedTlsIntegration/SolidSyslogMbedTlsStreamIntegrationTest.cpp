@@ -8,8 +8,10 @@ extern "C"
 #include <sys/socket.h>
 #include <sys/time.h>
 
+#include "MbedTlsResumptionServer.h"
 #include "MbedTlsTestCert.h"
 #include "MbedTlsTestServer.h"
+#include "ReconnectingSocketStream.h"
 #include "SocketStream.h"
 #include "SolidSyslogMbedTlsStream.h"
 #include "AddressFake.h"
@@ -303,4 +305,178 @@ TEST(SolidSyslogMbedTlsStreamIntegration, BinaryLinksAgainstRealLibMbedTls)
      * integration scaffold pulls in the real library, not a fake. */
     const unsigned int major = (mbedtls_version_get_number() >> 24) & 0xFFU;
     LONGS_EQUAL(3, major);
+}
+
+/* -------------------------------------------------------------------------
+ * Session resumption (S26.04). Drives two consecutive handshakes on the SAME
+ * SolidSyslogMbedTlsStream instance — the library's real Close -> Open
+ * fail-fast reconnect — against a ticket-issuing server. The observable is
+ * server-side: mbedTLS has no client-side SSL_session_reused(), so the server
+ * wraps its ticket-parse callback to report when a presented ticket was
+ * accepted. A reconnecting transport feeds the stream a fresh socketpair on
+ * each Open; the TLS layer is still wired straight to the oracle (no
+ * production TCP stream in the loop).
+ * ------------------------------------------------------------------------- */
+
+namespace
+{
+void SetRecvTimeout(int fd, int seconds)
+{
+    struct timeval rcvTimeout = {seconds, 0};
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &rcvTimeout, sizeof(rcvTimeout));
+}
+} // namespace
+
+// clang-format off
+TEST_GROUP(SolidSyslogMbedTlsStreamResumption)
+{
+    mbedtls_entropy_context    entropy         = {};
+    mbedtls_ctr_drbg_context   rng             = {};
+    int                        clientFds[2]    = {-1, -1};
+    int                        serverFds[2]    = {-1, -1};
+    struct MbedTlsTestCert     trustedCa       = {};
+    struct MbedTlsTestCert     serverCert      = {};
+    struct MbedTlsResumptionServer* server     = nullptr;
+    struct SolidSyslogStream*  transport       = nullptr;
+    struct SolidSyslogStream*  tlsStream       = nullptr;
+    struct SolidSyslogAddress* addr            = nullptr;
+
+    void setup() override
+    {
+        addr = AddressFake_Get();
+        mbedtls_entropy_init(&entropy);
+        mbedtls_ctr_drbg_init(&rng);
+        const unsigned char pers[] = "mbedtls-resumption-test";
+        mbedtls_ctr_drbg_seed(&rng, mbedtls_entropy_func, &entropy, pers, sizeof(pers) - 1U);
+
+        /* Two pre-connected socketpairs: one per handshake. The reconnecting
+         * transport consumes the client ends in order; the server thread
+         * services the server ends in order. No TCP ports -> deterministic. */
+        int pairA[2] = {-1, -1};
+        int pairB[2] = {-1, -1};
+        socketpair(AF_UNIX, SOCK_STREAM, 0, pairA);
+        socketpair(AF_UNIX, SOCK_STREAM, 0, pairB);
+        clientFds[0] = pairA[0];
+        clientFds[1] = pairB[0];
+        serverFds[0] = pairA[1];
+        serverFds[1] = pairB[1];
+        for (int fd : {clientFds[0], clientFds[1], serverFds[0], serverFds[1]})
+        {
+            SetRecvTimeout(fd, 5);
+        }
+
+        struct MbedTlsTestCertConfig caConfig = {};
+        caConfig.SubjectName = TEST_CA_SUBJECT;
+        caConfig.IsCa = 1;
+        MbedTlsTestCert_Create(&caConfig, &trustedCa, &rng);
+
+        struct MbedTlsTestCertConfig serverConfig = {};
+        serverConfig.SubjectName = TEST_SERVER_SUBJECT;
+        serverConfig.SubjectAltDns = TEST_SERVER_HOSTNAME;
+        serverConfig.IsCa = 0;
+        serverConfig.Issuer = &trustedCa;
+        MbedTlsTestCert_Create(&serverConfig, &serverCert, &rng);
+    }
+
+    void teardown() override
+    {
+        /* tlsStream first: its Destroy drives the transport Close that closes
+         * the current client fd, so it must run before the transport is freed. */
+        if (tlsStream != nullptr)
+        {
+            SolidSyslogMbedTlsStream_Destroy(tlsStream);
+        }
+        if (transport != nullptr)
+        {
+            ReconnectingSocketStream_Destroy(transport);
+        }
+        if (server != nullptr)
+        {
+            MbedTlsResumptionServer_Destroy(server);
+        }
+        MbedTlsTestCert_Destroy(&serverCert);
+        MbedTlsTestCert_Destroy(&trustedCa);
+        mbedtls_ctr_drbg_free(&rng);
+        mbedtls_entropy_free(&entropy);
+    }
+
+    struct SolidSyslogMbedTlsStreamConfig BuildBaseConfig(struct SolidSyslogStream* clientTransport)
+    {
+        struct SolidSyslogMbedTlsStreamConfig cfg = {};
+        cfg.Transport = clientTransport;
+        cfg.Sleep = NoOpSleep;
+        cfg.Rng = &rng;
+        cfg.CaChain = &trustedCa.Cert;
+        cfg.ServerName = TEST_SERVER_HOSTNAME;
+        return cfg;
+    }
+
+    struct MbedTlsResumptionServer* StartServer(bool rotateTicketKey)
+    {
+        struct MbedTlsResumptionServerConfig serverConfig = {};
+        serverConfig.ServerFds[0] = serverFds[0];
+        serverConfig.ServerFds[1] = serverFds[1];
+        serverConfig.ServerCert = &serverCert;
+        serverConfig.Rng = &rng;
+        serverConfig.RotateTicketKeyBetweenConnections = rotateTicketKey;
+        return MbedTlsResumptionServer_Create(&serverConfig);
+    }
+
+    /* One Open -> Send -> (the test closes if reconnecting) cycle on the same
+     * stream. Returns whether the Open and Send both succeeded. */
+    bool ConnectAndDeliver(const char* payload)
+    {
+        bool opened = SolidSyslogStream_Open(tlsStream, addr);
+        bool sent = opened && SolidSyslogStream_Send(tlsStream, payload, 8U);
+        return opened && sent;
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogMbedTlsStreamResumption, SameStreamReconnectResumesTheTlsSession)
+
+{
+    transport = ReconnectingSocketStream_Create(clientFds, 2);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+    server = StartServer(/*rotateTicketKey=*/false);
+
+    CHECK_TRUE_TEXT(ConnectAndDeliver("<13>one\n"), "first (full) handshake + send should succeed");
+    SolidSyslogStream_Close(tlsStream); /* the fail-fast reconnect the library performs in production */
+    CHECK_TRUE_TEXT(ConnectAndDeliver("<13>two\n"), "second (resumed) handshake + send should succeed");
+
+    MbedTlsResumptionServer_Join(server);
+    CHECK_TRUE_TEXT(MbedTlsResumptionServer_BothHandshakesSucceeded(server), "both server-side handshakes should complete");
+    CHECK_TRUE_TEXT(MbedTlsResumptionServer_BothMessagesDelivered(server), "a record should arrive on each connection");
+    CHECK_TRUE_TEXT(
+        MbedTlsResumptionServer_SecondHandshakeResumed(server),
+        "the second handshake must present a ticket the server accepts (abbreviated handshake)"
+    );
+}
+
+TEST(SolidSyslogMbedTlsStreamResumption, NonResumingPeerFallsBackToFullHandshakeAndStillDelivers)
+
+{
+    transport = ReconnectingSocketStream_Create(clientFds, 2);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+    /* Rotate the ticket key between connections so the client's saved ticket
+     * no longer decrypts — the resume offer is rejected. */
+    server = StartServer(/*rotateTicketKey=*/true);
+
+    CHECK_TRUE_TEXT(ConnectAndDeliver("<13>one\n"), "first handshake + send should succeed");
+    SolidSyslogStream_Close(tlsStream);
+    CHECK_TRUE_TEXT(ConnectAndDeliver("<13>two\n"), "second handshake + send should still succeed");
+
+    MbedTlsResumptionServer_Join(server);
+    CHECK_TRUE_TEXT(MbedTlsResumptionServer_BothHandshakesSucceeded(server), "both handshakes should complete");
+    CHECK_TRUE_TEXT(
+        MbedTlsResumptionServer_BothMessagesDelivered(server),
+        "delivery must survive the full-handshake fallback"
+    );
+    CHECK_FALSE_TEXT(
+        MbedTlsResumptionServer_SecondHandshakeResumed(server),
+        "with a rotated ticket key the second handshake must NOT resume"
+    );
 }
