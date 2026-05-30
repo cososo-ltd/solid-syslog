@@ -1,5 +1,215 @@
 # Dev Log
 
+## 2026-05-30 — S28.11 FreeRtosLwip TLS/mTLS (mbedTLS over LwipRawTcpStream)
+
+Wiring complete; **both plain TLS and mutual TLS are green** on the lwIP BDD
+lane at main's original `lwipopts.h` sizing. The "mTLS blocker" recorded in the
+WIP draft of this entry turned out to be a **measurement artifact in the
+verification harness, not a defect** — see Verification.
+
+### Decisions
+
+- **The mTLS/TLS sender is a transport-swap clone of the +TCP variant.**
+  `Bdd/Targets/Common/BddTargetTlsSender_MbedTls_LwipRawTcp.c` is
+  `..._PlusTcpTcp.c` with `SolidSyslogPlusTcpTcpStream` → `SolidSyslogLwipRawTcpStream`
+  (created with `{GetConnectTimeoutMs=NULL, Sleep=RtosSleep}`) and
+  `SolidSyslogPlusTcpAddress` → `SolidSyslogLwipRawAddress`. All the mbedTLS
+  init (entropy/DRBG/PSA, baked PEMs, the tls/mtls endpoint dispatcher) is
+  transport-agnostic and copied verbatim. CMake gained the mbedTLS subproject +
+  PEM-baking blocks (mirroring `Bdd/Targets/FreeRtos/CMakeLists.txt`), and
+  `FreeRtosLwip/mbedtls_user_config.h` is the +TCP config with a fresh guard.
+
+- **The resolver/host bug — silent, and the first real blocker.** `BddTargetTlsConfig`
+  defaults the TLS/mTLS host to `"syslog-ng"` (a DNS name; it doubles as the SNI).
+  `SolidSyslogLwipRawResolver` is numeric-only (`ipaddr_aton`, no DNS), so it
+  rejected the name, the `StreamSender` never connected, and **nothing was logged**.
+  Fix mirrors the +TCP target: pin the host to the numeric slirp gateway `10.0.2.2`
+  in `main.c` while keeping `ServerName="syslog-ng"` for SNI/cert verification. The
+  +TCP target dodges this because its `PlusTcpResolver` ignores the host. This silent
+  failure cost real debugging time — see Deferred (resolve-failure logging).
+
+- **Nagle disabled on the lwIP TCP pcb (Tier-2, `tcp_nagle_disable`) — the actual
+  fix.** Packet capture proved a mid-handshake send-stall: the client sent
+  ClientHello + CCS, then the Certificate/CertVerify/Finished flight was accepted
+  by `tcp_write` (returned OK, sndbuf healthy) but **never put on the wire** —
+  Nagle held the sub-MSS segments waiting for an ACK that the peer only sends
+  per-flight. With `TCP_NODELAY` the full flight (and the app-data record) goes
+  out and is ACK'd. `TCP_NODELAY` is the correct default for this small-record
+  request/response workload anyway. Driven by a new unit test
+  (`OpenDisablesNagleOnPcb`) asserting `TF_NODELAY` on the pcb after Open.
+
+- **`lwipopts.h` reverted to main's minimum — the provisional bump was
+  unnecessary.** During the WIP investigation the counts were bumped
+  16/16/16 → 48/48/32 and `TCP_WND`/`TCP_SND_BUF` 4→6×MSS, on the belief that
+  lower values left mTLS "flaky". That flakiness observation was the same
+  measurement artifact (see Verification). Re-tested this session at main's
+  original `16/16/16 + 4×MSS`: mTLS delivered **5/5** in the corrected manual
+  sweep, and the full lwIP BDD lane (`@tls`, `@mtls`, TLS 1.3, TCP→TLS switch)
+  is green. The bump is reverted; the file is now identical to `main`. The
+  `tcp_write`-`ERR_MEM`-tears-down-the-connection coupling is real, but a single
+  mutual-TLS handshake fits the 4×MSS budget comfortably.
+
+### Verification
+
+- Cross ELF builds clean under the strict bar (no PlusTcp symbols; mbedTLS +
+  TLS-sender symbols present). `Tests/Lwip` 57 tests green (added the Nagle test).
+- **Plain TLS over lwIP: PASS.** After the Nagle fix the encrypted record is
+  delivered, ACK'd, and logged.
+- **mTLS over lwIP: PASS.** The full lwIP BDD lane reports `13 features passed,
+  0 failed`; `mtls_transport` junit shows `status="passed" skipped="0"`, and the
+  delivered record (`Hello from FreeRTOS lwIP`) lands in `received_mtls.log`.
+  Confirmed deterministic (5/5 manual fresh-boot runs) via syslog-ng's own
+  `source(s_mtls)` processed counter.
+- **The WIP "mTLS FAIL (unsolved)" was a harness artifact.** The manual probe
+  loop (`mtls_loop.sh`) did `rm -f received_mtls.log` before each run *while
+  syslog-ng held the file open* — syslog-ng kept writing to the now-unlinked
+  inode, so the line-count check always read 0. The real BDD harness counts a
+  baseline→delta on the file (no `rm`), which is why `bdd-freertos-qemu-lwip` was
+  **green in CI the whole time**. The earlier `strace` "`recvmsg`→`EAGAIN`"
+  evidence was captured before the Nagle fix was built into the ELF. Lesson:
+  never reset a log file the server has open — truncate-in-place or baseline the
+  offset.
+
+### Deferred
+
+- **Resolve-failure logging — still queued (not implemented).** The
+  numeric-resolver-rejects-a-hostname path is silent today (cost real debugging
+  time via the resolver/host bug above). Agreed approach: add a
+  `SolidSyslog_Error` on resolve failure, TDD'd (a test provokes the silent
+  failure and asserts the error fires). Surfaced for David's call on whether to
+  fold it into this PR (interactive TDD) or take it as a follow-up.
+
+---
+
+## 2026-05-29 — S28.10 FreeRtosLwip TCP (octet-framed StreamSender over LwipRawTcpStream)
+
+### Decisions
+
+- **Mostly wiring — but TCP did not come entirely "for free".** The conditional
+  #473 asked whether TCP fell out of S28.09; it didn't quite. Plain delivery and
+  runtime UDP→TCP switching were pure wiring (a `SolidSyslogStreamSender` over
+  `SolidSyslogLwipRawTcpStream` in the SwitchingSender's TCP slot, sharing the
+  resolver + endpoint callbacks; `RtosSleep` already matched
+  `SolidSyslogSleepFunction`; the adapter sources were already compiled in). But
+  `tcp_reconnect` exposed a real Tier-2 gap (below), so S28.10 earned its keep.
+
+- **`LwipRawTcpStream_Send` now fails on a peer close (the reconnect fix).**
+  Root cause of the `tcp_reconnect` failure: `StreamSender` only reconnects when a
+  `Send` returns false (or the endpoint version changes) — it never `Read`s. On a
+  graceful server FIN (syslog-ng config-reload closes the connection), lwIP's
+  `RecvCallback(NULL)` set `Errored` but left the pcb non-NULL, and `Send` guarded
+  only on `IsOpen` (pcb != NULL) — so `tcp_write` kept returning `ERR_OK` into a
+  doomed half-closed connection and the sender never reconnected. Fix: a new
+  intent-named predicate `LwipRawTcpStream_IsWritable` (`IsOpen && !Errored`) gates
+  `Send`, so a post-FIN send fails, `StreamSender` closes + reconnects on the next
+  message, and the recovered message is delivered. `Read` deliberately still runs
+  while `Errored` (it must drain queued bytes then close on EOF). Driven red→green
+  by a new `Tests/Lwip` unit test (`SendReturnsFalseAfterPeerFin`); this matches
+  FreeRTOS-Plus-TCP's send-side closed-socket detection, which is why the +TCP lane
+  already passed the same scenario.
+
+- **Lane scope: `(@udp or @tcp)`, TLS still excluded.** The lwIP lane filter went
+  from `@udp and not @tcp …` to `(@udp or @tcp) and not @tls and not @mtls and not
+  @store`. That enables `tcp_transport`, `tcp_reconnect`, and the UDP→TCP
+  `switching_transport` scenario; `tcp_singletask` (`@windows_wip`) and the TCP→TLS
+  switch (`@tls`) stay excluded. TLS lands in S28.11.
+
+- **Local-run gotcha recorded.** Any `cmake` configure regenerates the in-tree
+  `Bdd/features/steps/solidsyslog_tunables.py`; an intermediate host `debug` build
+  (default 2048) clobbered the lwIP target's 512, so a stray oracle run *ran* the
+  `@requires_message_size_1500` `udp_mtu` scenario (which must skip on a 512-byte
+  target) and failed spuriously. Re-running the cross-lwip configure restored 512
+  and the lane is green. CI is immune — each lane downloads its own
+  `bdd-tunables-<target>` artifact.
+
+### Verification
+
+- Oracle (`ci/docker-compose.bdd.yml`, lwIP pair): **11 features / 28 scenarios /
+  116 steps passed, 0 failed** — `tcp_transport`, `tcp_reconnect`, and UDP→TCP
+  switch green alongside the full UDP set; TLS/mTLS/store/1500-MTU correctly
+  skipped. `Tests/Lwip/SolidSyslogLwipRawTcpStreamTest` 56 tests green. Tree
+  clang-format clean.
+
+---
+
+## 2026-05-29 — S28.09 FreeRtosLwip LAN9118 netif + NO_SYS=0 UDP on QEMU
+
+### Decisions
+
+- **First-packet ARP drop was a PBUF_REF lifetime bug, fixed with a
+  bring-up ARP warm-up, not by switching to PBUF_RAM.** `LwipRawDatagram`
+  sends zero-copy (PBUF_REF over the integrator's transient marshal
+  buffer). When the first datagram hit an ARP cache miss, lwIP queued
+  the pbuf for post-resolution transmission — but the referenced buffer
+  was freed the moment `_SendTo` returned, so the queued seqId=1 went
+  out as garbage / was dropped while seqId=2 (cache now warm) delivered.
+  Rather than pay a copy on every send, `main.c`'s `WarmUpGatewayArp`
+  issues `etharp_request(gw)` at netif bring-up and polls
+  `etharp_find_addr` (marshalled off the tcpip thread) until the gateway
+  is resolved before the logging pipeline goes live. pcap now shows
+  gratuitous ARP → gw ARP request → reply → UDP seqId=1 → seqId=2 in
+  order. This keeps the zero-copy contract intact and pushes the
+  one-time resolution cost to setup.
+
+- **Vendored Arm smsc9220 LAN9118 driver isolated from clang-format.**
+  `Bdd/Targets/FreeRtosLwip/netif/smsc9220/` carries its Apache-2.0
+  upstream headers and a `DisableFormat: true` `.clang-format` so the
+  `analyze-format` lane won't reflow third-party source. The
+  hand-written netif glue (`netif/EthernetIf.c`) is ours and stays
+  under the project style.
+
+- **NO_SYS=0 with the tcpip thread; lwIP calls marshalled via S28.06's
+  `_SetMarshal`.** `lwipopts.h` runs the full tcpip thread + contrib
+  `sys_arch.c`. `main` calls `tcpip_init` pre-scheduler; netif bring-up
+  runs from the interactive task via `tcpip_callback` because
+  `smsc9220_init` calls `vTaskDelay` and must run post-scheduler. The
+  Datagram/TcpStream adapters route through `LwipTcpipMarshal` (installed
+  with `SolidSyslogLwipRaw_SetMarshal`). The synchronous-marshal contract
+  requires the callback's results to be ready when the marshal returns;
+  lwIP `tcpip_callback` only blocks until the work is *queued*, so it
+  cannot satisfy that on its own. `LWIP_TCPIP_CORE_LOCKING` is enabled, so
+  the marshal runs the callback in the caller's task context under a
+  `LOCK_TCPIP_CORE`/`UNLOCK_TCPIP_CORE` pair — unconditionally synchronous,
+  independent of task priority, no per-send mailbox message. The ARP
+  warm-up query reuses the same marshal, so its `resolved` flag is written
+  before it is read. (PR #476 review #4: an earlier revision relied on
+  `tcpip_callback` + `TCPIP_THREAD_PRIO` preemption, which worked but left
+  an implicit "marshalling tasks must be below the tcpip thread" invariant;
+  the core-lock pair removes it.)
+
+- **Oracle parity confirms the UDP path.** Slice 4 ran the
+  `behave-freertos-lwip` + `syslog-ng-freertos-lwip` compose pair in
+  WSL (no docker-in-docker in the freertos-target container). Result:
+  8 features / 25 scenarios / 96 steps passed, 0 failed — a strict
+  subset of the +TCP lane's scenarios under the same library config,
+  so parity was expected and observed. Delivery truth comes from the
+  syslog-ng oracle's "receives a message with priority/hostname/PROCID"
+  assertions, not an ad-hoc host listener (slirp doesn't reliably
+  deliver the NATed datagram to a host-loopback listener even though
+  it's correct on the wire).
+
+- **Advisory CI lane only this story.** `bdd-freertos-qemu-lwip` runs
+  UDP-only (`@udp and not @tcp/@tls/@mtls/@store`) with
+  `@freertoslwipwip` as the per-scenario escape hatch, and is NOT in
+  `summary.needs` — promotion to a required gate is S28.11's job.
+
+### Deferred
+
+- **Slice 6 (LwipRaw TCP into the SwitchingSender)** — left for S28.10.
+  S28.09 is scoped to the netif + UDP; the SwitchingSender's TCP/TLS
+  slots stay wired to `NullSender` here. Pulling TCP in would be scope
+  creep across a story boundary.
+
+- **`build-freertos-target-lwip` → required-gate promotion** — stays
+  advisory until S28.11.
+
+### Open questions
+
+- Does any other lwIP zero-copy send site (a future TCP path) carry the
+  same transient-buffer-lifetime assumption the UDP warm-up now papers
+  over at the ARP layer, or is gateway warm-up sufficient because
+  established TCP connections never re-resolve mid-stream?
+
 ## 2026-05-29 — S28.07 FreeRtosLwip cross link-probe
 
 The real S28.07 (#471) turned out to be a CI/build-infra story, **not** the
@@ -12956,133 +13166,4 @@ MISRA rule — different category, doesn't set precedent.
   `--error-exitcode=1` so quiet style findings can't accumulate? Risk:
   every untriaged style finding becomes a hard gate. Worth E24
   discussion.
-
-## 2026-05-29 — S28.10 FreeRtosLwip TCP (octet-framed StreamSender over LwipRawTcpStream)
-
-### Decisions
-
-- **Mostly wiring — but TCP did not come entirely "for free".** The conditional
-  #473 asked whether TCP fell out of S28.09; it didn't quite. Plain delivery and
-  runtime UDP→TCP switching were pure wiring (a `SolidSyslogStreamSender` over
-  `SolidSyslogLwipRawTcpStream` in the SwitchingSender's TCP slot, sharing the
-  resolver + endpoint callbacks; `RtosSleep` already matched
-  `SolidSyslogSleepFunction`; the adapter sources were already compiled in). But
-  `tcp_reconnect` exposed a real Tier-2 gap (below), so S28.10 earned its keep.
-
-- **`LwipRawTcpStream_Send` now fails on a peer close (the reconnect fix).**
-  Root cause of the `tcp_reconnect` failure: `StreamSender` only reconnects when a
-  `Send` returns false (or the endpoint version changes) — it never `Read`s. On a
-  graceful server FIN (syslog-ng config-reload closes the connection), lwIP's
-  `RecvCallback(NULL)` set `Errored` but left the pcb non-NULL, and `Send` guarded
-  only on `IsOpen` (pcb != NULL) — so `tcp_write` kept returning `ERR_OK` into a
-  doomed half-closed connection and the sender never reconnected. Fix: a new
-  intent-named predicate `LwipRawTcpStream_IsWritable` (`IsOpen && !Errored`) gates
-  `Send`, so a post-FIN send fails, `StreamSender` closes + reconnects on the next
-  message, and the recovered message is delivered. `Read` deliberately still runs
-  while `Errored` (it must drain queued bytes then close on EOF). Driven red→green
-  by a new `Tests/Lwip` unit test (`SendReturnsFalseAfterPeerFin`); this matches
-  FreeRTOS-Plus-TCP's send-side closed-socket detection, which is why the +TCP lane
-  already passed the same scenario.
-
-- **Lane scope: `(@udp or @tcp)`, TLS still excluded.** The lwIP lane filter went
-  from `@udp and not @tcp …` to `(@udp or @tcp) and not @tls and not @mtls and not
-  @store`. That enables `tcp_transport`, `tcp_reconnect`, and the UDP→TCP
-  `switching_transport` scenario; `tcp_singletask` (`@windows_wip`) and the TCP→TLS
-  switch (`@tls`) stay excluded. TLS lands in S28.11.
-
-- **Local-run gotcha recorded.** Any `cmake` configure regenerates the in-tree
-  `Bdd/features/steps/solidsyslog_tunables.py`; an intermediate host `debug` build
-  (default 2048) clobbered the lwIP target's 512, so a stray oracle run *ran* the
-  `@requires_message_size_1500` `udp_mtu` scenario (which must skip on a 512-byte
-  target) and failed spuriously. Re-running the cross-lwip configure restored 512
-  and the lane is green. CI is immune — each lane downloads its own
-  `bdd-tunables-<target>` artifact.
-
-### Verification
-
-- Oracle (`ci/docker-compose.bdd.yml`, lwIP pair): **11 features / 28 scenarios /
-  116 steps passed, 0 failed** — `tcp_transport`, `tcp_reconnect`, and UDP→TCP
-  switch green alongside the full UDP set; TLS/mTLS/store/1500-MTU correctly
-  skipped. `Tests/Lwip/SolidSyslogLwipRawTcpStreamTest` 56 tests green. Tree
-  clang-format clean.
-
----
-
-## 2026-05-29 — S28.09 FreeRtosLwip LAN9118 netif + NO_SYS=0 UDP on QEMU
-
-### Decisions
-
-- **First-packet ARP drop was a PBUF_REF lifetime bug, fixed with a
-  bring-up ARP warm-up, not by switching to PBUF_RAM.** `LwipRawDatagram`
-  sends zero-copy (PBUF_REF over the integrator's transient marshal
-  buffer). When the first datagram hit an ARP cache miss, lwIP queued
-  the pbuf for post-resolution transmission — but the referenced buffer
-  was freed the moment `_SendTo` returned, so the queued seqId=1 went
-  out as garbage / was dropped while seqId=2 (cache now warm) delivered.
-  Rather than pay a copy on every send, `main.c`'s `WarmUpGatewayArp`
-  issues `etharp_request(gw)` at netif bring-up and polls
-  `etharp_find_addr` (marshalled off the tcpip thread) until the gateway
-  is resolved before the logging pipeline goes live. pcap now shows
-  gratuitous ARP → gw ARP request → reply → UDP seqId=1 → seqId=2 in
-  order. This keeps the zero-copy contract intact and pushes the
-  one-time resolution cost to setup.
-
-- **Vendored Arm smsc9220 LAN9118 driver isolated from clang-format.**
-  `Bdd/Targets/FreeRtosLwip/netif/smsc9220/` carries its Apache-2.0
-  upstream headers and a `DisableFormat: true` `.clang-format` so the
-  `analyze-format` lane won't reflow third-party source. The
-  hand-written netif glue (`netif/EthernetIf.c`) is ours and stays
-  under the project style.
-
-- **NO_SYS=0 with the tcpip thread; lwIP calls marshalled via S28.06's
-  `_SetMarshal`.** `lwipopts.h` runs the full tcpip thread + contrib
-  `sys_arch.c`. `main` calls `tcpip_init` pre-scheduler; netif bring-up
-  runs from the interactive task via `tcpip_callback` because
-  `smsc9220_init` calls `vTaskDelay` and must run post-scheduler. The
-  Datagram/TcpStream adapters route through `LwipTcpipMarshal` (installed
-  with `SolidSyslogLwipRaw_SetMarshal`). The synchronous-marshal contract
-  requires the callback's results to be ready when the marshal returns;
-  lwIP `tcpip_callback` only blocks until the work is *queued*, so it
-  cannot satisfy that on its own. `LWIP_TCPIP_CORE_LOCKING` is enabled, so
-  the marshal runs the callback in the caller's task context under a
-  `LOCK_TCPIP_CORE`/`UNLOCK_TCPIP_CORE` pair — unconditionally synchronous,
-  independent of task priority, no per-send mailbox message. The ARP
-  warm-up query reuses the same marshal, so its `resolved` flag is written
-  before it is read. (PR #476 review #4: an earlier revision relied on
-  `tcpip_callback` + `TCPIP_THREAD_PRIO` preemption, which worked but left
-  an implicit "marshalling tasks must be below the tcpip thread" invariant;
-  the core-lock pair removes it.)
-
-- **Oracle parity confirms the UDP path.** Slice 4 ran the
-  `behave-freertos-lwip` + `syslog-ng-freertos-lwip` compose pair in
-  WSL (no docker-in-docker in the freertos-target container). Result:
-  8 features / 25 scenarios / 96 steps passed, 0 failed — a strict
-  subset of the +TCP lane's scenarios under the same library config,
-  so parity was expected and observed. Delivery truth comes from the
-  syslog-ng oracle's "receives a message with priority/hostname/PROCID"
-  assertions, not an ad-hoc host listener (slirp doesn't reliably
-  deliver the NATed datagram to a host-loopback listener even though
-  it's correct on the wire).
-
-- **Advisory CI lane only this story.** `bdd-freertos-qemu-lwip` runs
-  UDP-only (`@udp and not @tcp/@tls/@mtls/@store`) with
-  `@freertoslwipwip` as the per-scenario escape hatch, and is NOT in
-  `summary.needs` — promotion to a required gate is S28.11's job.
-
-### Deferred
-
-- **Slice 6 (LwipRaw TCP into the SwitchingSender)** — left for S28.10.
-  S28.09 is scoped to the netif + UDP; the SwitchingSender's TCP/TLS
-  slots stay wired to `NullSender` here. Pulling TCP in would be scope
-  creep across a story boundary.
-
-- **`build-freertos-target-lwip` → required-gate promotion** — stays
-  advisory until S28.11.
-
-### Open questions
-
-- Does any other lwIP zero-copy send site (a future TCP path) carry the
-  same transient-buffer-lifetime assumption the UDP warm-up now papers
-  over at the ARP layer, or is gateway warm-up sufficient because
-  established TCP connections never re-resolve mid-stream?
 

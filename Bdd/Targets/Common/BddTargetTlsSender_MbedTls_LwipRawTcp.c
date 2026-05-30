@@ -1,23 +1,24 @@
-/* MbedTLS-over-PlusTcpTcpStream BDD TLS sender (slice 6b).
+/* MbedTLS-over-LwipRawTcpStream BDD TLS sender (S28.11).
  *
  * Composes:
- *   - SolidSyslogPlusTcpTcpStream  inner TCP transport
+ *   - SolidSyslogLwipRawTcpStream   inner TCP transport (lwIP Raw API, NO_SYS=0)
  *   - SolidSyslogMbedTlsStream      TLS over the injected Stream
  *   - SolidSyslogStreamSender       RFC 6587 octet-counting framing
  *
- * Mirrors BddTargetTlsSender_OpenSsl_PosixTcp.c on the POSIX target. The
- * mbedTLS adapter takes pre-built handles (mbedtls_ctr_drbg, mbedtls_x509_crt,
- * mbedtls_pk_context) rather than file paths, because MBEDTLS_FS_IO is
- * disabled in the integrator config — there is no host path reachable from
- * QEMU. The demo CA / client cert / client key PEMs travel as `static const`
- * arrays in rodata, baked at CMake-time by xxd -i from
- * Bdd/syslog-ng/tls/ ca.pem / client.pem / client.key. The arrays are
- * parsed once on first BddTargetTlsSender_Create call.
+ * Network-backend twin of BddTargetTlsSender_MbedTls_PlusTcpTcp.c: identical
+ * mbedTLS init / entropy / DRBG / baked-PEM machinery, with the FreeRTOS-Plus-TCP
+ * inner stream swapped for the OS-agnostic LwipRaw adapter. The mbedTLS adapter
+ * takes pre-built handles (mbedtls_ctr_drbg, mbedtls_x509_crt, mbedtls_pk_context)
+ * rather than file paths, because MBEDTLS_FS_IO is disabled in the integrator
+ * config — there is no host path reachable from QEMU. The demo CA / client cert /
+ * client key PEMs travel as `static const` arrays in rodata, baked at CMake-time
+ * by xxd -i from Bdd/syslog-ng/tls/ ca.pem / client.pem / client.key. The arrays
+ * are parsed once on first BddTargetTlsSender_Create call.
  *
  * Entropy + CTR_DRBG also live in this TU rather than in main.c so all
  * mbedTLS-specific state is one file's responsibility. The entropy source
  * is deliberately weak — see DemoEntropySource — and an audit-trail
- * WARNING is emitted via SolidSyslog_Error on first init.
+ * WARNING is emitted via printf on first init.
  */
 
 #include "BddTargetTlsSender.h"
@@ -25,8 +26,8 @@
 #include "BddTargetMtlsConfig.h"
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
-#include "SolidSyslogPlusTcpAddress.h"
-#include "SolidSyslogPlusTcpTcpStream.h"
+#include "SolidSyslogLwipRawAddress.h"
+#include "SolidSyslogLwipRawTcpStream.h"
 #include "SolidSyslogMbedTlsStream.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogStream.h"
@@ -174,12 +175,12 @@ static void RtosSleep(int milliseconds)
  * state for entropy/DRBG/cert/key lives at file scope and survives across
  * connect/disconnect cycles.
  *
- * Each major step emits a SolidSyslog_Error INFO message and yields one
- * tick to the FreeRTOS scheduler. Under QEMU mps2-an385 the DRBG seed +
- * cert/key parses can each take several seconds (mbedTLS does serious
- * crypto work — RSA key parse, ECDHE primes, ASN.1 walks); without the
- * yields, lower-priority tasks would starve until init finishes, and
- * without the diagnostic prints the boot would appear to hang. */
+ * Each major step emits a printf diagnostic and yields one tick to the
+ * FreeRTOS scheduler. Under QEMU mps2-an385 the DRBG seed + cert/key parses
+ * can each take several seconds (mbedTLS does serious crypto work — RSA key
+ * parse, ECDHE primes, ASN.1 walks); without the yields, lower-priority tasks
+ * would starve until init finishes, and without the diagnostic prints the
+ * boot would appear to hang. */
 static void EnsureMbedTlsInitialised(void)
 {
     if (mbedTlsInitialised)
@@ -360,7 +361,17 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
         return SolidSyslogNullSender_Get();
     }
 
-    underlyingStream = SolidSyslogPlusTcpTcpStream_Create(NULL);
+    /* Inner byte transport: lwIP Raw API TCP stream. RtosSleep drives the
+     * bounded synchronous-connect spin; the connect timeout comes from the
+     * SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS tunable (GetConnectTimeoutMs NULL).
+     * All lwIP-core touches inside the adapter are marshalled onto the tcpip
+     * thread via the SolidSyslogLwipRaw_SetMarshal hop main.c installs. */
+    static struct SolidSyslogLwipRawTcpStreamConfig underlyingStreamConfig;
+    underlyingStreamConfig = (struct SolidSyslogLwipRawTcpStreamConfig) {0};
+    underlyingStreamConfig.GetConnectTimeoutMs = NULL;
+    underlyingStreamConfig.ConnectTimeoutContext = NULL;
+    underlyingStreamConfig.Sleep = RtosSleep;
+    underlyingStream = SolidSyslogLwipRawTcpStream_Create(&underlyingStreamConfig);
 
     static struct SolidSyslogMbedTlsStreamConfig tlsStreamConfig;
     tlsStreamConfig = (struct SolidSyslogMbedTlsStreamConfig) {0};
@@ -376,7 +387,7 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     tlsStreamConfig.ClientKey = &clientKey;
     tlsStream = SolidSyslogMbedTlsStream_Create(&tlsStreamConfig);
 
-    address = SolidSyslogPlusTcpAddress_Create();
+    address = SolidSyslogLwipRawAddress_Create();
 
     static struct SolidSyslogStreamSenderConfig senderConfig;
     senderConfig = (struct SolidSyslogStreamSenderConfig) {0};
@@ -401,9 +412,9 @@ void BddTargetTlsSender_Destroy(void)
         return;
     }
     SolidSyslogStreamSender_Destroy(sender);
-    SolidSyslogPlusTcpAddress_Destroy(address);
+    SolidSyslogLwipRawAddress_Destroy(address);
     SolidSyslogMbedTlsStream_Destroy(tlsStream);
-    SolidSyslogPlusTcpTcpStream_Destroy(underlyingStream);
+    SolidSyslogLwipRawTcpStream_Destroy(underlyingStream);
 
     /* Entropy / DRBG / parsed certs survive across Destroy → Create cycles to
      * avoid re-seeding on every reconnect. Real teardown only happens at

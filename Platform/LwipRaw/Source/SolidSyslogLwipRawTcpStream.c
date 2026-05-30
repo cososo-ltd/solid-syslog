@@ -217,6 +217,16 @@ static struct tcp_pcb* LwipRawTcpStream_OpenAndConfigurePcb(struct SolidSyslogLw
     if (pcb != NULL)
     {
         ip_set_option(pcb, SOF_KEEPALIVE);
+        /* Disable Nagle. The syslog client writes small, latency-sensitive
+         * records (octet-framed messages, and — when an upper TLS layer is
+         * stacked on this stream — multi-segment handshake flights) and never
+         * pipelines a second write behind an unacked one. With Nagle on, lwIP
+         * holds a sub-MSS segment until the previous one is ACKed; a TLS
+         * handshake flight (e.g. a client certificate) then stalls mid-exchange
+         * waiting for an ACK that the peer only sends after it has the whole
+         * flight — a deadlock observed against syslog-ng over mutual TLS.
+         * TCP_NODELAY is the right default for this request/response workload. */
+        tcp_nagle_disable(pcb);
         tcp_arg(pcb, self);
         tcp_recv(pcb, LwipRawTcpStream_RecvCallback);
         tcp_sent(pcb, LwipRawTcpStream_SentCallback);

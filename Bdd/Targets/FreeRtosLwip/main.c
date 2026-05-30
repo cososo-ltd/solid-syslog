@@ -11,10 +11,12 @@
  * drains over UDP, and BddTargetInteractive drives `send N` / `set <k> <v>` /
  * `quit` over the QEMU -serial stdio UART.
  *
- * Scope is UDP (S28.09) + TCP (S28.10). The SwitchingSender carries a real UDP
- * sender (LwipRawDatagram) and a real octet-framed TCP sender (StreamSender over
- * LwipRawTcpStream); the TLS slot still resolves to the shared NullSender (drops
- * on the floor) until S28.11 wires the LwipRaw TLS sender.
+ * Scope is UDP (S28.09) + TCP (S28.10) + TLS/mTLS (S28.11). The SwitchingSender
+ * carries a real UDP sender (LwipRawDatagram), a real octet-framed TCP sender
+ * (StreamSender over LwipRawTcpStream), and a real TLS sender (StreamSender over
+ * SolidSyslogMbedTlsStream over a second LwipRawTcpStream) — see
+ * BddTargetTlsSender_MbedTls_LwipRawTcp.c. tls and mtls share the one TLS slot;
+ * the destination port (6514 vs 6515) is dispatched at Connect time.
  *
  * Static IPv4 (10.0.2.15) on the QEMU slirp network, host reachable at the
  * slirp gateway 10.0.2.2 — numeric, because slirp has no route to the docker
@@ -27,7 +29,10 @@
 #include "BddTargetInteractive.h"
 #include "BddTargetIps.h"
 #include "BddTargetLanguage.h"
+#include "BddTargetMtlsConfig.h"
 #include "BddTargetSwitchConfig.h"
+#include "BddTargetTlsConfig.h"
+#include "BddTargetTlsSender.h"
 
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
@@ -45,7 +50,6 @@
 #include "SolidSyslogLwipRawTcpStream.h"
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogMutex.h"
-#include "SolidSyslogNullSender.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
@@ -77,12 +81,13 @@
 /* Unprivileged mirror of SOLIDSYSLOG_UDP_DEFAULT_PORT (514) for BDD listeners. */
 #define BDD_TARGET_UDP_PORT 5514U
 
-/* UDP-only interactive task: BddTargetInteractive's 2048-byte line + name
- * frames plus SolidSyslog_Log's two SOLIDSYSLOG_MAX_MESSAGE_SIZE formatter
- * frames and newlib printf. *40 (20 KB) matches the empirical pre-TLS budget
- * the +TCP target recorded for the same 2048-byte line buffer. heap_4 (96 KB)
- * absorbs it alongside the lwIP tcpip / RX tasks. */
-#define INTERACTIVE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 40U)
+/* Interactive task: BddTargetInteractive's 2048-byte line + name frames plus
+ * SolidSyslog_Log's two SOLIDSYSLOG_MAX_MESSAGE_SIZE formatter frames and
+ * newlib printf, *and* the one-shot mbedTLS init (DRBG seed, RSA key parse,
+ * x509 walks) that BddTargetTlsSender_Create drives on this task at startup.
+ * *48 (24 KB) matches the +TCP target's post-TLS budget for the same work;
+ * heap_4 (96 KB) absorbs it alongside the lwIP tcpip / RX tasks. */
+#define INTERACTIVE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 48U)
 #define SERVICE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 16U)
 
 static char appName[49] = "SolidSyslogBddTarget";
@@ -484,6 +489,20 @@ static void InteractiveTask(void* argument)
      * first send is not lost to a cache miss (see WarmUpGatewayArp). */
     WarmUpGatewayArp();
 
+    /* Pin the TLS / mTLS destination host to the slirp gateway 10.0.2.2 (the
+     * same numeric path UDP / TCP take) rather than the "syslog-ng" docker DNS
+     * alias the shared BddTargetTlsConfig defaults to: SolidSyslogLwipRawResolver
+     * is numeric-only (ipaddr_aton, no DNS), so a hostname would fail to resolve
+     * and the TLS StreamSender would never connect. ServerName for SNI / cert
+     * verification stays "syslog-ng" (the cert's subject); without that the
+     * handshake fails because the syslog-ng cert isn't issued for 10.0.2.2.
+     * Mirrors Bdd/Targets/FreeRtos/main.c (the +TCP target's PlusTcpResolver
+     * ignores the host, so this only bites the numeric lwIP resolver). */
+    BddTargetTlsConfig_SetHost("10.0.2.2");
+    BddTargetTlsConfig_SetServerName("syslog-ng");
+    BddTargetMtlsConfig_SetHost("10.0.2.2");
+    BddTargetMtlsConfig_SetServerName("syslog-ng");
+
     resolver = SolidSyslogLwipRawResolver_Create();
     datagram = SolidSyslogLwipRawDatagram_Create();
     udpAddress = SolidSyslogLwipRawAddress_Create();
@@ -519,13 +538,22 @@ static void InteractiveTask(void* argument)
     };
     tcpSender = SolidSyslogStreamSender_Create(&tcpConfig);
 
-    /* SwitchingSender lets `set transport <udp|tcp|tls>` flip transport at
-     * runtime. UDP and TCP are wired; TLS routes to the shared NullSender (drop
-     * on the floor) until S28.11 wires the LwipRaw TLS sender. */
+    /* TLS slot: SolidSyslogMbedTlsStream over a second LwipRawTcpStream, with
+     * the demo CA / client cert / client key baked into the ELF. The same slot
+     * serves both @tls (port 6514) and @mtls (port 6515) scenarios — the
+     * wrapper wires the client cert unconditionally and its StreamSender
+     * Endpoint callback dispatches on BddTargetSwitchConfig_IsMtlsMode() at
+     * Connect time. The `false` argument is honoured for cross-platform
+     * signature uniformity but ignored on FreeRTOS, where the harness flips
+     * mode over the UART after the prompt is already up. */
+    struct SolidSyslogSender* tlsSender = BddTargetTlsSender_Create(resolver, false);
+
+    /* SwitchingSender lets `set transport <udp|tcp|tls|mtls>` flip transport at
+     * runtime. UDP, TCP, and TLS/mTLS are all wired. */
     static struct SolidSyslogSender* inners[BDD_TARGET_SWITCH_COUNT];
     inners[BDD_TARGET_SWITCH_UDP] = udpSender;
     inners[BDD_TARGET_SWITCH_TCP] = tcpSender;
-    inners[BDD_TARGET_SWITCH_TLS] = SolidSyslogNullSender_Get();
+    inners[BDD_TARGET_SWITCH_TLS] = tlsSender;
     struct SolidSyslogSwitchingSenderConfig switchConfig = {
         .Senders = inners,
         .SenderCount = BDD_TARGET_SWITCH_COUNT,
@@ -634,6 +662,11 @@ static void TeardownAll(void)
     SolidSyslogFreeRtosMutex_Destroy(lifecycleMutex);
     lifecycleMutex = NULL;
     SolidSyslogSwitchingSender_Destroy(switchingSender);
+    /* BddTargetTlsSender owns the inner MbedTlsStream + LwipRawTcpStream pool
+     * slots and its own StreamSender slot, so release it before the plain-TCP
+     * tcpSender / tcpStream below — roughly reverse order of Create keeps the
+     * dependency graph clean even though the pool allocator is order-insensitive. */
+    BddTargetTlsSender_Destroy();
     SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogStreamSender_Destroy(tcpSender);
     SolidSyslogLwipRawTcpStream_Destroy(tcpStream);

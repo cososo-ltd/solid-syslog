@@ -546,6 +546,72 @@ jobs:
           path: build/iwyu/iwyu-output.txt
           retention-days: 1
 
+  # NET=LWIP twin of analyze-tidy-freertos-plustcp. Same cpputest-freertos image
+  # and tidy preset, but SOLIDSYSLOG_FREERTOS_NET=LWIP so the configure exercises
+  # the lwIP wiring path (Platform/PlusTcp library target dropped; the LwipRaw
+  # adapter pack is the active FreeRTOS networking backend). Guards the NET=LWIP
+  # configure + the LwipRaw tree / Tests under clang-tidy as a named required check.
+  analyze-tidy-freertos-lwip:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/davidcozens/cpputest-freertos:sha-a0c1c0a
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Configure
+        run: cmake --preset tidy -DSOLIDSYSLOG_FREERTOS_NET=LWIP
+
+      - name: Build with clang-tidy
+        shell: bash
+        run: set -o pipefail && cmake --build --preset tidy 2>&1 | tee build/tidy/clang-tidy-output.txt
+
+      - name: Upload clang-tidy output
+        if: success() || failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: clang-tidy-report-freertos-lwip
+          path: build/tidy/clang-tidy-output.txt
+          retention-days: 1
+
+  # NET=LWIP twin of analyze-iwyu-freertos-plustcp — see that lane for the
+  # clang-19 override rationale and analyze-tidy-freertos-lwip for the NET scope.
+  # Advisory per S24.13.
+  analyze-iwyu-freertos-lwip:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/davidcozens/cpputest-freertos:sha-a0c1c0a
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Configure
+        run: cmake --preset iwyu -DSOLIDSYSLOG_FREERTOS_NET=LWIP -DCMAKE_C_COMPILER=clang-19 -DCMAKE_CXX_COMPILER=clang++-19
+
+      # Advisory per S24.13 — see analyze-iwyu above for rationale.
+      - name: Run include-what-you-use (advisory)
+        shell: bash
+        continue-on-error: true
+        run: set -o pipefail && cmake --build --preset iwyu --target iwyu 2>&1 | tee build/iwyu/iwyu-output.txt
+
+      - name: Upload iwyu output
+        if: success() || failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: iwyu-report-freertos-lwip
+          path: build/iwyu/iwyu-output.txt
+          retention-days: 1
+
   analyze-format:
     runs-on: ubuntu-latest
     container:
@@ -1014,11 +1080,11 @@ jobs:
           path: Bdd/features/steps/solidsyslog_tunables.py
           retention-days: 1
 
-  # Advisory (S28.07) — promoted to a required check in S28.11. Proves the
+  # Required as of S28.11 (in the `summary` needs list). Proves the
   # Platform/LwipRaw tree cross-builds for FreeRTOS/ARM under
-  # SOLIDSYSLOG_FREERTOS_NET=LWIP with zero PlusTcp dependency. Deliberately
-  # absent from the `summary` needs list and the branch-protection required
-  # set so a break here does not block merges yet. No QEMU run.
+  # SOLIDSYSLOG_FREERTOS_NET=LWIP with zero PlusTcp dependency (the symbol
+  # assertion below enforces that). No QEMU run. Adding it to the GitHub
+  # branch-protection required-checks set is a separate manual step (David).
   build-freertos-target-lwip:
     runs-on: ubuntu-latest
     permissions:
@@ -1120,8 +1186,10 @@ jobs:
         if: failure()
         run: docker compose -f ci/docker-compose.bdd.yml logs --no-color
 
-  # Advisory (S28.09): not in summary.needs, so a failure does not block
-  # merges while the lwIP netif beds in. S28.11 promotes it to required.
+  # Required as of S28.11 (in the `summary` needs list): runs the lwIP BDD
+  # target on QEMU against the syslog-ng oracle over UDP / TCP / TLS / mTLS.
+  # Adding it to the GitHub branch-protection required-checks set is a
+  # separate manual step (David).
   bdd-freertos-qemu-lwip:
     needs: build-freertos-target-lwip
     runs-on: ubuntu-latest
@@ -1176,7 +1244,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-cppcheck, analyze-format, analyze-iwyu, analyze-iwyu-freertos-plustcp, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp]
+    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1273,6 +1341,11 @@ jobs:
                     "id": "junit",
                     "name": "bdd-freertos-qemu-plustcp",
                     "pattern": "**/junit-bdd-freertos-qemu-plustcp/TESTS-*.xml"
+                  },
+                  {
+                    "id": "junit",
+                    "name": "bdd-freertos-qemu-lwip",
+                    "pattern": "**/junit-bdd-freertos-qemu-lwip/TESTS-*.xml"
                   },
                   {
                     "id": "junit",
