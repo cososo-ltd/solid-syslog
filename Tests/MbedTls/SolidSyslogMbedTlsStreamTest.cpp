@@ -330,6 +330,53 @@ TEST(SolidSyslogMbedTlsStream, SecondOpenSucceedsWhenSessionRestoreFails)
     CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
 }
 
+TEST(SolidSyslogMbedTlsStream, CloseDoesNotFreeSavedSession)
+
+{
+    /* The lifecycle lock-in: Close runs on every fail-fast reconnect, so it
+     * must NOT free the saved session — otherwise the very next Open could
+     * never resume. The session is freed only on Destroy. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslSessionFreeCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, DestroyFreesSavedSession)
+
+{
+    /* Destroy is the one site that releases the saved session — symmetric with
+     * the eager session_init in Create. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogMbedTlsStream_Destroy(handle);
+    LONGS_EQUAL(1, MbedTlsFake_SslSessionFreeCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslSessionInitArg(), MbedTlsFake_LastSslSessionFreeArg());
+
+    handle = SolidSyslogMbedTlsStream_Create(&config); /* keep teardown's Destroy valid */
+}
+
+TEST(SolidSyslogMbedTlsStream, SecondCaptureFreesPreviousSession)
+
+{
+    /* mbedtls_ssl_get_session deep-copies into the destination; capturing a
+     * second session over a populated slot would leak the first's peer cert /
+     * ticket. The recapture must free the prior session first. Close in
+     * between does not free (lifecycle), so exactly one free is observed. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+    SolidSyslogStream_Open(handle, addr); /* capture #1 */
+    SolidSyslogStream_Close(handle);      /* survives — no free */
+
+    SolidSyslogStream_Open(handle, addr); /* recapture #2 frees #1 first */
+
+    LONGS_EQUAL(1, MbedTlsFake_SslSessionFreeCallCount());
+    LONGS_EQUAL(2, MbedTlsFake_SslGetSessionCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslSessionInitArg(), MbedTlsFake_LastSslSessionFreeArg());
+}
+
 /* -------------------------------------------------------------------------
  * Bounded handshake retry loop. mbedtls_ssl_handshake under non-blocking
  * transport will emit MBEDTLS_ERR_SSL_WANT_READ / WANT_WRITE between RTTs;

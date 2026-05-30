@@ -104,9 +104,15 @@ static inline struct SolidSyslogMbedTlsStream* MbedTlsStream_SelfFromBase(struct
 
 void MbedTlsStream_Cleanup(struct SolidSyslogStream* base)
 {
+    struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
     /* Mirror the OpenSSL TlsStream pattern: an integrator who destroys a
      * still-Open stream must not leak the underlying TLS state. */
     MbedTlsStream_Close(base);
+    /* Release the saved resumption session — Destroy is the one site that
+     * frees it, since it must survive every Close to stay resumable. Safe on
+     * an empty session thanks to the eager init in Initialise. */
+    mbedtls_ssl_session_free(&self->SavedSession);
+    self->HasSavedSession = false;
     /* Overwrite the abstract base with the shared NullStream vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullStream_Get();
@@ -166,6 +172,13 @@ static inline void MbedTlsStream_RestoreSession(struct SolidSyslogMbedTlsStream*
  * the next connect simply does a full handshake. */
 static inline void MbedTlsStream_CaptureSession(struct SolidSyslogMbedTlsStream* self)
 {
+    /* get_session deep-copies into SavedSession; free any prior session first
+     * so its peer cert / ticket allocations are not leaked. */
+    if (self->HasSavedSession)
+    {
+        mbedtls_ssl_session_free(&self->SavedSession);
+        self->HasSavedSession = false;
+    }
     self->HasSavedSession = mbedtls_ssl_get_session(&self->SslContext, &self->SavedSession) == 0;
 }
 

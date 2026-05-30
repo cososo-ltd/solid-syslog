@@ -129,6 +129,10 @@ static const mbedtls_ssl_session* lastSslSetSessionSessionArg;
 static int sslSetSessionReturn;
 static int sslSetSessionHandshakeCountAtCall;
 
+/* mbedtls_ssl_session_free */
+static int sslSessionFreeCallCount;
+static mbedtls_ssl_session* lastSslSessionFreeArg;
+
 /* -------------------------------------------------------------------------
  * Test accessors.
  * ------------------------------------------------------------------------- */
@@ -206,6 +210,8 @@ void MbedTlsFake_Reset(void)
     lastSslSetSessionSessionArg = NULL;
     sslSetSessionReturn = 0;
     sslSetSessionHandshakeCountAtCall = 0;
+    sslSessionFreeCallCount = 0;
+    lastSslSessionFreeArg = NULL;
 }
 
 int MbedTlsFake_SslConfigInitCallCount(void)
@@ -564,6 +570,16 @@ int MbedTlsFake_SslSetSessionHandshakeCountAtCall(void)
     return sslSetSessionHandshakeCountAtCall;
 }
 
+int MbedTlsFake_SslSessionFreeCallCount(void)
+{
+    return sslSessionFreeCallCount;
+}
+
+mbedtls_ssl_session* MbedTlsFake_LastSslSessionFreeArg(void)
+{
+    return lastSslSessionFreeArg;
+}
+
 /* -------------------------------------------------------------------------
  * Link-interposed mbedTLS symbols. The test executable does not link
  * libmbedtls; the production code's calls to mbedtls_* resolve here.
@@ -742,4 +758,10 @@ int mbedtls_ssl_set_session(mbedtls_ssl_context* ssl, const mbedtls_ssl_session*
     lastSslSetSessionSessionArg = session;
     sslSetSessionHandshakeCountAtCall = sslHandshakeCallCount;
     return sslSetSessionReturn;
+}
+
+void mbedtls_ssl_session_free(mbedtls_ssl_session* session)
+{
+    sslSessionFreeCallCount++;
+    lastSslSessionFreeArg = session;
 }

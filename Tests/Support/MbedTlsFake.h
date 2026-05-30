@@ -127,6 +127,10 @@ EXTERN_C_BEGIN
      * lets a test prove the restore happens before the handshake it primes. */
     int MbedTlsFake_SslSetSessionHandshakeCountAtCall(void);
 
+    /* mbedtls_ssl_session_free (release saved session on Destroy / recapture) */
+    int MbedTlsFake_SslSessionFreeCallCount(void);
+    struct mbedtls_ssl_session* MbedTlsFake_LastSslSessionFreeArg(void);
+
     /* mbedtls_ssl_conf_own_cert (mTLS client identity wiring) */
     int MbedTlsFake_SslConfOwnCertCallCount(void);
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfOwnCertConfigArg(void);
