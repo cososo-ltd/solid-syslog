@@ -195,6 +195,41 @@ shows the minimal config that satisfies the above for QEMU mps2-an385.
 
 ---
 
+## Session resumption
+
+Under the fail-fast reconnect model, every transient peer hiccup tears the
+TLS connection down and the next `Open` does a fresh handshake. A full
+handshake costs ~2 RTTs plus the asymmetric crypto on both sides — the
+dominant cost of the reconnect loop on a constrained target.
+
+The adapter resumes the TLS session across reconnects of the **same**
+`SolidSyslogMbedTlsStream` instance. After a successful handshake it
+captures the negotiated session (`mbedtls_ssl_get_session`) and feeds it
+back (`mbedtls_ssl_set_session`) before the next handshake, so the peer can
+issue an abbreviated handshake (~1 RTT, no asymmetric crypto). One session
+is held per stream; the adapter does not multiplex destinations inside a
+single stream. The saved session lives for the life of the instance and is
+freed on `Destroy`.
+
+**Integrator requirement.** Resumption needs client-side session tickets
+compiled into your Mbed TLS config:
+
+```c
+#define MBEDTLS_SSL_SESSION_TICKETS   /* client-side ticket storage */
+```
+
+This is enabled by default in the upstream `mbedtls_config.h` (and in the
+3.6.x tree used by the `integration-linux-mbedtls` check). If your trimmed
+embedded config leaves it undefined, the adapter still works — resumption
+simply never engages and every connect is a full handshake.
+
+**Best-effort, never a delivery precondition.** No saved session yet, a
+peer that offers no ticket, or an expired / evicted ticket all fall back to
+a full handshake transparently; the message is still delivered. Resumption
+only ever makes the handshake cheaper — it never blocks the send path.
+
+---
+
 ## Reference integrations
 
 | Target | Adapter source | Mbed TLS config | Notes |
