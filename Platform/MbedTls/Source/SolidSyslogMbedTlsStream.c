@@ -33,6 +33,7 @@ static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsSt
 static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self);
+static inline void MbedTlsStream_RestoreSession(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_CaptureSession(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_IsRetryableHandshakeRc(int rc);
 static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
@@ -136,6 +137,7 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
     if (ok)
     {
         MbedTlsStream_InstallTransportCallbacks(self);
+        MbedTlsStream_RestoreSession(self);
         ok = MbedTlsStream_PerformHandshake(self);
     }
     if (ok)
@@ -147,6 +149,16 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
         MbedTlsStream_Close(base);
     }
     return ok;
+}
+
+/* Feed a previously-captured session back so this handshake can resume it.
+ * No-op on the first connect (nothing saved yet). */
+static inline void MbedTlsStream_RestoreSession(struct SolidSyslogMbedTlsStream* self)
+{
+    if (self->HasSavedSession)
+    {
+        (void) mbedtls_ssl_set_session(&self->SslContext, &self->SavedSession);
+    }
 }
 
 /* Save the just-negotiated session so the next Open of this instance can

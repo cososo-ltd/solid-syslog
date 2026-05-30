@@ -118,6 +118,15 @@ EXTERN_C_BEGIN
     struct mbedtls_ssl_session* MbedTlsFake_LastSslGetSessionSessionArg(void);
     void MbedTlsFake_SetSslGetSessionReturn(int value);
 
+    /* mbedtls_ssl_set_session (feed saved session back before next handshake) */
+    int MbedTlsFake_SslSetSessionCallCount(void);
+    struct mbedtls_ssl_context* MbedTlsFake_LastSslSetSessionContextArg(void);
+    const struct mbedtls_ssl_session* MbedTlsFake_LastSslSetSessionSessionArg(void);
+    void MbedTlsFake_SetSslSetSessionReturn(int value);
+    /* Snapshot of the handshake call count at the moment set_session ran —
+     * lets a test prove the restore happens before the handshake it primes. */
+    int MbedTlsFake_SslSetSessionHandshakeCountAtCall(void);
+
     /* mbedtls_ssl_conf_own_cert (mTLS client identity wiring) */
     int MbedTlsFake_SslConfOwnCertCallCount(void);
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfOwnCertConfigArg(void);

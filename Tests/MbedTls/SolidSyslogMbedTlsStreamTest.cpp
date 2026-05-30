@@ -285,6 +285,51 @@ TEST(SolidSyslogMbedTlsStream, OpenSucceedsEvenWhenSessionCaptureFails)
     CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
 }
 
+TEST(SolidSyslogMbedTlsStream, FirstOpenDoesNotRestoreSession)
+
+{
+    /* Nothing captured yet on a fresh stream, so the first handshake must run
+     * full — no set_session call. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslSetSessionCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, SecondOpenRestoresSavedSessionBeforeHandshake)
+
+{
+    /* First Open captures; the reconnect Close tears the connection down; the
+     * second Open of the same instance feeds the saved session back via
+     * set_session *before* the handshake it primes. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+    SolidSyslogStream_Open(handle, addr);
+    SolidSyslogStream_Close(handle);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsFake_SslSetSessionCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslInitArg(), MbedTlsFake_LastSslSetSessionContextArg());
+    POINTERS_EQUAL(MbedTlsFake_LastSslSessionInitArg(), MbedTlsFake_LastSslSetSessionSessionArg());
+    /* One handshake (the first Open's) had completed when set_session ran,
+     * proving the restore precedes the second Open's handshake. */
+    LONGS_EQUAL(1, MbedTlsFake_SslSetSessionHandshakeCountAtCall());
+}
+
+TEST(SolidSyslogMbedTlsStream, SecondOpenSucceedsWhenSessionRestoreFails)
+
+{
+    /* Best-effort restore: a set_session failure must not fail the Open — the
+     * adapter falls through to a full handshake and still delivers. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+    SolidSyslogStream_Open(handle, addr);
+    SolidSyslogStream_Close(handle);
+    MbedTlsFake_SetSslSetSessionReturn(-1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+}
+
 /* -------------------------------------------------------------------------
  * Bounded handshake retry loop. mbedtls_ssl_handshake under non-blocking
  * transport will emit MBEDTLS_ERR_SSL_WANT_READ / WANT_WRITE between RTTs;
