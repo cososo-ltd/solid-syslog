@@ -33,6 +33,7 @@ static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsSt
 static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self);
+static inline void MbedTlsStream_CaptureSession(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_IsRetryableHandshakeRc(int rc);
 static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
@@ -64,6 +65,12 @@ void MbedTlsStream_Initialise(struct SolidSyslogStream* base, const struct Solid
      * works without re-init. */
     mbedtls_ssl_init(&self->SslContext);
     mbedtls_ssl_config_init(&self->SslConfig);
+    /* Eager init so the session_free in Cleanup is always safe, whether or
+     * not a session was ever captured. The saved session outlives Close (it
+     * must survive the fail-fast reconnect to be resumable) and is freed only
+     * on Destroy. */
+    mbedtls_ssl_session_init(&self->SavedSession);
+    self->HasSavedSession = false;
 }
 
 /* Null Object substituted in Initialise when the integrator does not install a
@@ -131,11 +138,23 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
         MbedTlsStream_InstallTransportCallbacks(self);
         ok = MbedTlsStream_PerformHandshake(self);
     }
+    if (ok)
+    {
+        MbedTlsStream_CaptureSession(self);
+    }
     if (!ok)
     {
         MbedTlsStream_Close(base);
     }
     return ok;
+}
+
+/* Save the just-negotiated session so the next Open of this instance can
+ * resume it. Best-effort: a non-zero return leaves HasSavedSession false so
+ * the next connect simply does a full handshake. */
+static inline void MbedTlsStream_CaptureSession(struct SolidSyslogMbedTlsStream* self)
+{
+    self->HasSavedSession = mbedtls_ssl_get_session(&self->SslContext, &self->SavedSession) == 0;
 }
 
 static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTlsStream* self)

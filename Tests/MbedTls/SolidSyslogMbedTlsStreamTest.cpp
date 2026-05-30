@@ -159,6 +159,16 @@ TEST(SolidSyslogMbedTlsStream, CreateInitialisesSslConfigForSafeFree)
     LONGS_EQUAL(1, MbedTlsFake_SslConfigInitCallCount());
 }
 
+TEST(SolidSyslogMbedTlsStream, CreateInitialisesSavedSessionForSafeFree)
+
+{
+    /* The per-instance saved-session slot (session resumption, S26.04) is
+     * init'd eagerly in Create so the session_free in Destroy is always safe
+     * — whether a session was ever captured or not. Same eager-init invariant
+     * as the SslConfig / SslContext cases. */
+    LONGS_EQUAL(1, MbedTlsFake_SslSessionInitCallCount());
+}
+
 TEST(SolidSyslogMbedTlsStream, OpenAppliesClientStreamDefaultsToSslConfig)
 
 {
@@ -228,6 +238,51 @@ TEST(SolidSyslogMbedTlsStream, OpenReturnsFalseWhenHandshakeFails)
     MbedTlsFake_SetSslHandshakeReturn(-1);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+}
+
+/* -------------------------------------------------------------------------
+ * Session resumption (S26.04). After a successful handshake the adapter
+ * captures the negotiated session into its per-instance SavedSession slot,
+ * feeds it back via mbedtls_ssl_set_session before the next handshake, and
+ * frees it on Destroy (not Close — it must survive the fail-fast reconnect).
+ * Best-effort: any failure falls back to a full handshake; delivery never
+ * depends on resumption.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogMbedTlsStream, OpenCapturesSessionWhenHandshakeSucceeds)
+
+{
+    MbedTlsFake_SetSslHandshakeReturn(0);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsFake_SslGetSessionCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslInitArg(), MbedTlsFake_LastSslGetSessionContextArg());
+    POINTERS_EQUAL(MbedTlsFake_LastSslSessionInitArg(), MbedTlsFake_LastSslGetSessionSessionArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenDoesNotCaptureSessionWhenHandshakeFails)
+
+{
+    /* A failed handshake leaves no session to save — capture must be gated on
+     * handshake success so we never resume from a half-built session. */
+    MbedTlsFake_SetSslHandshakeReturn(-1);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslGetSessionCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenSucceedsEvenWhenSessionCaptureFails)
+
+{
+    /* Resumption is best-effort: a get_session failure must not fail the Open
+     * — the handshake completed, the message can be delivered, the next
+     * connect simply won't resume. */
+    MbedTlsFake_SetSslHandshakeReturn(0);
+    MbedTlsFake_SetSslGetSessionReturn(-1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
 }
 
 /* -------------------------------------------------------------------------

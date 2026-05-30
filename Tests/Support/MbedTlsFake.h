@@ -8,6 +8,7 @@
 
 struct mbedtls_ssl_config;
 struct mbedtls_ssl_context;
+struct mbedtls_ssl_session;
 struct mbedtls_x509_crt;
 struct mbedtls_x509_crl;
 struct mbedtls_ctr_drbg_context;
@@ -106,6 +107,16 @@ EXTERN_C_BEGIN
     struct mbedtls_ssl_context* MbedTlsFake_LastSslSetHostnameContextArg(void);
     const char* MbedTlsFake_LastSslSetHostnameNameArg(void);
     void MbedTlsFake_SetSslSetHostnameReturn(int value);
+
+    /* mbedtls_ssl_session_init (session-resumption save slot) */
+    int MbedTlsFake_SslSessionInitCallCount(void);
+    struct mbedtls_ssl_session* MbedTlsFake_LastSslSessionInitArg(void);
+
+    /* mbedtls_ssl_get_session (capture negotiated session after handshake) */
+    int MbedTlsFake_SslGetSessionCallCount(void);
+    const struct mbedtls_ssl_context* MbedTlsFake_LastSslGetSessionContextArg(void);
+    struct mbedtls_ssl_session* MbedTlsFake_LastSslGetSessionSessionArg(void);
+    void MbedTlsFake_SetSslGetSessionReturn(int value);
 
     /* mbedtls_ssl_conf_own_cert (mTLS client identity wiring) */
     int MbedTlsFake_SslConfOwnCertCallCount(void);
