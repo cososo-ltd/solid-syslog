@@ -447,7 +447,10 @@ TEST(SolidSyslogMbedTlsStreamResumption, SameStreamReconnectResumesTheTlsSession
     CHECK_TRUE_TEXT(ConnectAndDeliver("<13>two\n"), "second (resumed) handshake + send should succeed");
 
     MbedTlsResumptionServer_Join(server);
-    CHECK_TRUE_TEXT(MbedTlsResumptionServer_BothHandshakesSucceeded(server), "both server-side handshakes should complete");
+    CHECK_TRUE_TEXT(
+        MbedTlsResumptionServer_BothHandshakesSucceeded(server),
+        "both server-side handshakes should complete"
+    );
     CHECK_TRUE_TEXT(MbedTlsResumptionServer_BothMessagesDelivered(server), "a record should arrive on each connection");
     CHECK_TRUE_TEXT(
         MbedTlsResumptionServer_SecondHandshakeResumed(server),

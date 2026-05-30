@@ -368,7 +368,7 @@ TEST(SolidSyslogMbedTlsStream, SecondCaptureFreesPreviousSession)
      * between does not free (lifecycle), so exactly one free is observed. */
     MbedTlsFake_SetSslHandshakeReturn(0);
     SolidSyslogStream_Open(handle, addr); /* capture #1 */
-    SolidSyslogStream_Close(handle);      /* survives — no free */
+    SolidSyslogStream_Close(handle); /* survives — no free */
 
     SolidSyslogStream_Open(handle, addr); /* recapture #2 frees #1 first */
 
