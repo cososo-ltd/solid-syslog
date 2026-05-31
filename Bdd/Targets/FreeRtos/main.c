@@ -40,6 +40,8 @@
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogCrc16Policy.h"
 #include "SolidSyslogEndpoint.h"
+#include "SolidSyslogMbedTlsHmacSha256Policy.h"
+#include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogFatFsFile.h"
 #include "SolidSyslogFileBlockDevice.h"
@@ -236,6 +238,11 @@ static size_t pendingMaxBlockSize = DEFAULT_PENDING_MAX_BLOCK_SIZE;
 static const char* pendingDiscardPolicy = "oldest";
 static volatile bool pendingHaltExit = false;
 static size_t pendingCapacityThreshold = 0;
+/* At-rest integrity policy for the file store: "crc16" (default), "hmac-sha256"
+ * (mbedTLS), or "null". Set before `store file`; consumed by RebuildWithFileStore.
+ * currentPolicy holds the created handle so DestroyCurrentStore can release it. */
+static const char* pendingSecurityPolicy = "crc16";
+static struct SolidSyslogSecurityPolicy* currentPolicy = NULL;
 /* When true, SolidSyslog gets only the meta SD (sequenceId / sysUpTime /
  * language) — timeQuality and origin are dropped. Mirrors Linux's
  * --no-sd. Consumed by the initial Setup and by RebuildWithFileStore. */
@@ -595,6 +602,17 @@ static bool OnSet(const char* name, const char* value)
             (strcmp(value, "newest") == 0) ? "newest" : ((strcmp(value, "halt") == 0) ? "halt" : "oldest");
         return true;
     }
+    if (strcmp(name, "security-policy") == 0)
+    {
+        if ((strcmp(value, "crc16") != 0) && (strcmp(value, "hmac-sha256") != 0) && (strcmp(value, "null") != 0))
+        {
+            return false;
+        }
+        /* String literal storage — see discard-policy above. */
+        pendingSecurityPolicy =
+            (strcmp(value, "hmac-sha256") == 0) ? "hmac-sha256" : ((strcmp(value, "null") == 0) ? "null" : "crc16");
+        return true;
+    }
     if (strcmp(name, "capacity-threshold") == 0)
     {
         unsigned long parsed = 0U;
@@ -704,6 +722,42 @@ static bool TryParseUInt(const char* value, unsigned long* out)
     return true;
 }
 
+/* DEMO KEY ONLY. A real integrator supplies key material from a secure element,
+ * a KDF, or encrypted NVM via their own SolidSyslogKeyFunction — never a
+ * hard-coded constant. This exists so the BDD scenario can exercise the mbedTLS
+ * HMAC-SHA256 at-rest policy end-to-end with real crypto. */
+static bool BddDemoGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* keyLengthOut)
+{
+    enum
+    {
+        DEMO_KEY_SIZE = 32
+    };
+    (void) context;
+    size_t written = (capacity < DEMO_KEY_SIZE) ? capacity : (size_t) DEMO_KEY_SIZE;
+    (void) memset(keyOut, 0x5A, written);
+    *keyLengthOut = written;
+    return true;
+}
+
+static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
+{
+    struct SolidSyslogSecurityPolicy* policy = NULL;
+    if (strcmp(pendingSecurityPolicy, "hmac-sha256") == 0)
+    {
+        static const struct SolidSyslogMbedTlsHmacSha256PolicyConfig hmacConfig = {BddDemoGetKey, NULL};
+        policy = SolidSyslogMbedTlsHmacSha256Policy_Create(&hmacConfig);
+    }
+    else if (strcmp(pendingSecurityPolicy, "null") == 0)
+    {
+        policy = SolidSyslogNullSecurityPolicy_Get();
+    }
+    else
+    {
+        policy = SolidSyslogCrc16Policy_Create();
+    }
+    return policy;
+}
+
 static bool RebuildWithFileStore(void)
 {
     /* Lifecycle mutex blocks the Service task from running SolidSyslog_Service
@@ -734,7 +788,8 @@ static bool RebuildWithFileStore(void)
     storeFile = SolidSyslogFatFsFile_Create();
     storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX);
 
-    struct SolidSyslogSecurityPolicy* policy = SolidSyslogCrc16Policy_Create();
+    struct SolidSyslogSecurityPolicy* policy = CreateSecurityPolicy();
+    currentPolicy = policy;
     struct SolidSyslogBlockStoreConfig storeConfig = {
         .BlockDevice = storeBlockDevice,
         .MaxBlockSize = pendingMaxBlockSize,
@@ -802,13 +857,27 @@ static bool EnsureFatFsMounted(void)
  * Shared by RebuildWithFileStore (which then re-creates) and
  * ShutdownGracefully (which then exits). FatFsFile_Destroy → Close →
  * f_close flushes the underlying FIL's dir entry. */
+static void DestroySecurityPolicy(void)
+{
+    if (strcmp(pendingSecurityPolicy, "hmac-sha256") == 0)
+    {
+        SolidSyslogMbedTlsHmacSha256Policy_Destroy(currentPolicy);
+    }
+    else if (strcmp(pendingSecurityPolicy, "crc16") == 0)
+    {
+        SolidSyslogCrc16Policy_Destroy();
+    }
+    /* else "null": the shared NullSecurityPolicy is immutable — nothing to free. */
+    currentPolicy = NULL;
+}
+
 static void DestroyCurrentStore(void)
 {
     if (currentStoreIsFile)
     {
         SolidSyslogBlockStore_Destroy(currentStore);
         SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
-        SolidSyslogCrc16Policy_Destroy();
+        DestroySecurityPolicy();
         SolidSyslogFatFsFile_Destroy(storeFile);
     }
     /* else: NullStore is shared and immutable — nothing to destroy. */
