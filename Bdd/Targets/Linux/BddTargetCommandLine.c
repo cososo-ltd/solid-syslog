@@ -43,6 +43,86 @@ static bool IsValidSecurityPolicy(const char* policy)
     return (strcmp(policy, "crc16") == 0) || (strcmp(policy, "hmac-sha256") == 0) || (strcmp(policy, "null") == 0);
 }
 
+/* Applies one parsed option to `options`. Returns 0 on success, 1 if the
+ * option's argument is invalid (which fails the whole parse). Split out of
+ * _Parse to keep the loop a thin driver and the per-option logic in one place. */
+static int ApplyOption(int opt, const char* value, struct BddTargetOptions* options)
+{
+    int result = 0;
+    switch (opt)
+    {
+        case 'f':
+            options->Facility = (enum SolidSyslogFacility) atoi(value);
+            break;
+        case 's':
+            options->Severity = (enum SolidSyslogSeverity) atoi(value);
+            break;
+        case 'i':
+            options->MessageId = value;
+            break;
+        case 'm':
+            options->Msg = value;
+            break;
+        case 't':
+            if ((strcmp(value, "udp") != 0) && (strcmp(value, "tcp") != 0) && (strcmp(value, "tls") != 0) &&
+                (strcmp(value, "mtls") != 0))
+            {
+                result = 1;
+            }
+            else
+            {
+                options->Transport = value;
+            }
+            break;
+        case 'o':
+            if ((strcmp(value, "null") != 0) && (strcmp(value, "file") != 0))
+            {
+                result = 1;
+            }
+            else
+            {
+                options->Store = value;
+            }
+            break;
+        case OPT_MAX_BLOCKS:
+            result = ParsePositiveNumber(value, &options->MaxBlocks) ? 0 : 1;
+            break;
+        case OPT_MAX_BLOCK_SIZE:
+            result = ParsePositiveNumber(value, &options->MaxBlockSize) ? 0 : 1;
+            break;
+        case OPT_DISCARD_POLICY:
+            result = IsValidDiscardPolicy(value) ? 0 : 1;
+            if (result == 0)
+            {
+                options->DiscardPolicy = value;
+            }
+            break;
+        case OPT_SECURITY_POLICY:
+            result = IsValidSecurityPolicy(value) ? 0 : 1;
+            if (result == 0)
+            {
+                options->SecurityPolicy = value;
+            }
+            break;
+        case OPT_CAPACITY_THRESHOLD:
+            result = ParsePositiveNumber(value, &options->CapacityThreshold) ? 0 : 1;
+            break;
+        case OPT_NO_SD:
+            options->NoSd = true;
+            break;
+        case OPT_HALT_EXIT:
+            options->HaltExit = true;
+            break;
+        case OPT_APP_NAME:
+            options->AppName = value;
+            break;
+        default:
+            result = 1;
+            break;
+    }
+    return result;
+}
+
 int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* options)
 {
     options->Facility = SOLIDSYSLOG_FACILITY_LOCAL0;
@@ -79,82 +159,11 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
     };
 
     int opt = 0;
-    while ((opt = getopt_long(argc, argv, "f:s:i:m:t:o:", longOptions, NULL)) != -1)
+    int result = 0;
+    while ((result == 0) && ((opt = getopt_long(argc, argv, "f:s:i:m:t:o:", longOptions, NULL)) != -1))
     {
-        switch (opt)
-        {
-            case 'f':
-                options->Facility = (enum SolidSyslogFacility) atoi(optarg);
-                break;
-            case 's':
-                options->Severity = (enum SolidSyslogSeverity) atoi(optarg);
-                break;
-            case 'i':
-                options->MessageId = optarg;
-                break;
-            case 'm':
-                options->Msg = optarg;
-                break;
-            case 't':
-                if ((strcmp(optarg, "udp") != 0) && (strcmp(optarg, "tcp") != 0) && (strcmp(optarg, "tls") != 0) &&
-                    (strcmp(optarg, "mtls") != 0))
-                {
-                    return 1;
-                }
-                options->Transport = optarg;
-                break;
-            case 'o':
-                if ((strcmp(optarg, "null") != 0) && (strcmp(optarg, "file") != 0))
-                {
-                    return 1;
-                }
-                options->Store = optarg;
-                break;
-            case OPT_MAX_BLOCKS:
-                if (!ParsePositiveNumber(optarg, &options->MaxBlocks))
-                {
-                    return 1;
-                }
-                break;
-            case OPT_MAX_BLOCK_SIZE:
-                if (!ParsePositiveNumber(optarg, &options->MaxBlockSize))
-                {
-                    return 1;
-                }
-                break;
-            case OPT_DISCARD_POLICY:
-                if (!IsValidDiscardPolicy(optarg))
-                {
-                    return 1;
-                }
-                options->DiscardPolicy = optarg;
-                break;
-            case OPT_SECURITY_POLICY:
-                if (!IsValidSecurityPolicy(optarg))
-                {
-                    return 1;
-                }
-                options->SecurityPolicy = optarg;
-                break;
-            case OPT_CAPACITY_THRESHOLD:
-                if (!ParsePositiveNumber(optarg, &options->CapacityThreshold))
-                {
-                    return 1;
-                }
-                break;
-            case OPT_NO_SD:
-                options->NoSd = true;
-                break;
-            case OPT_HALT_EXIT:
-                options->HaltExit = true;
-                break;
-            case OPT_APP_NAME:
-                options->AppName = optarg;
-                break;
-            default:
-                return 1;
-        }
+        result = ApplyOption(opt, optarg, options);
     }
 
-    return 0;
+    return result;
 }
