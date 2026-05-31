@@ -112,6 +112,53 @@ TEST(BddTargetCommandLine, InvalidDiscardPolicyReturnsOne)
     LONGS_EQUAL(1, Parse(3, argv));
 }
 
+TEST(BddTargetCommandLine, DefaultSecurityPolicy)
+{
+    char arg0[] = "test";
+    char* argv[] = {arg0, nullptr};
+    Parse(1, argv);
+    STRCMP_EQUAL("crc16", options.SecurityPolicy);
+}
+
+TEST(BddTargetCommandLine, SecurityPolicyCrc16)
+{
+    char arg0[] = "test";
+    char arg1[] = "--security-policy";
+    char arg2[] = "crc16";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    LONGS_EQUAL(0, Parse(3, argv));
+    STRCMP_EQUAL("crc16", options.SecurityPolicy);
+}
+
+TEST(BddTargetCommandLine, SecurityPolicyHmacSha256)
+{
+    char arg0[] = "test";
+    char arg1[] = "--security-policy";
+    char arg2[] = "hmac-sha256";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    LONGS_EQUAL(0, Parse(3, argv));
+    STRCMP_EQUAL("hmac-sha256", options.SecurityPolicy);
+}
+
+TEST(BddTargetCommandLine, SecurityPolicyNull)
+{
+    char arg0[] = "test";
+    char arg1[] = "--security-policy";
+    char arg2[] = "null";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    LONGS_EQUAL(0, Parse(3, argv));
+    STRCMP_EQUAL("null", options.SecurityPolicy);
+}
+
+TEST(BddTargetCommandLine, InvalidSecurityPolicyReturnsOne)
+{
+    char arg0[] = "test";
+    char arg1[] = "--security-policy";
+    char arg2[] = "invalid";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    LONGS_EQUAL(1, Parse(3, argv));
+}
+
 TEST(BddTargetCommandLine, NegativeMaxBlocksReturnsOne)
 {
     char arg0[] = "test";

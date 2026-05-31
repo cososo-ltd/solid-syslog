@@ -21,11 +21,12 @@ Feature: Power cycle replay from block store
     Then the syslog oracle receives 5 messages
     And the last message has sequenceId 1
 
-  # Same flow, but records are sealed at rest with HMAC-SHA256 (mbedTLS) instead
-  # of CRC-16. Proves the keyed policy is transparent to behaviour and that real
-  # mbedTLS HMAC round-trips on the target: records sealed on write are verified
-  # on replay-read after a power cycle. @hmac scopes this to the FreeRTOS-plustcp
-  # runner — the Linux/Windows targets don't wire an HMAC policy until S17.01.
+  # Same flow, but records are sealed at rest with HMAC-SHA256 instead of CRC-16.
+  # Proves the keyed policy is transparent to behaviour and that real HMAC
+  # round-trips on the target: records sealed on write are verified on
+  # replay-read after a power cycle. @hmac runs on every store-capable runner
+  # that wires an HMAC policy — FreeRTOS-plustcp (mbedTLS, S17.02) plus Linux and
+  # Windows (OpenSSL, S17.01). FreeRTOS-lwip is excluded via @store.
   @hmac
   Scenario: Stored messages replayed after power cycle with HMAC-SHA256 at rest
     Given the syslog oracle is running

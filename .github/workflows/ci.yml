@@ -956,7 +956,7 @@ jobs:
           ORACLE_FORMAT: otel-jsonl
         run: >
           behave --junit --junit-directory Bdd/junit
-          --tags='not @wip and not @windows_wip and not @no_rtc and not @hmac'
+          --tags='not @wip and not @windows_wip and not @no_rtc'
           Bdd/features/
 
       - name: BDD Test Report (Windows)

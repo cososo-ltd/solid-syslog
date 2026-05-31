@@ -48,6 +48,7 @@ void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetW
     options->MaxBlocks = DEFAULT_MAX_BLOCKS;
     options->MaxBlockSize = DEFAULT_MAX_BLOCK_SIZE;
     options->DiscardPolicy = "oldest";
+    options->SecurityPolicy = "crc16";
     options->CapacityThreshold = 0;
     options->HaltExit = false;
     options->NoSd = false;
@@ -93,6 +94,10 @@ void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetW
         else if (((i + 1) < argc) && (strcmp(argv[i], "--discard-policy") == 0))
         {
             options->DiscardPolicy = argv[++i];
+        }
+        else if (((i + 1) < argc) && (strcmp(argv[i], "--security-policy") == 0))
+        {
+            options->SecurityPolicy = argv[++i];
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--capacity-threshold") == 0))
         {

@@ -44,7 +44,7 @@ services:
         condition: service_healthy
     environment:
       - BDD_TARGET=linux
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc and not @hmac' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc' Bdd/features/
 
   # Each BDD target pairs with its own syslog-ng instance on its own
   # bridge network so the `syslog-ng` DNS alias is scoped per-pair —

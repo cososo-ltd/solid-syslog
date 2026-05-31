@@ -21,6 +21,7 @@ EXTERN_C_BEGIN
         size_t MaxBlocks; /* --max-blocks */
         size_t MaxBlockSize; /* --max-block-size */
         const char* DiscardPolicy; /* "oldest" (default) | "newest" | "halt" */
+        const char* SecurityPolicy; /* "crc16" (default) | "hmac-sha256" | "null" — at-rest integrity */
         size_t CapacityThreshold; /* --capacity-threshold (bytes; 0 disables) */
         bool HaltExit; /* --halt-exit */
         bool NoSd; /* --no-sd (suppress structured data) */
@@ -40,6 +41,7 @@ EXTERN_C_BEGIN
          --max-blocks N                  (default set by example)
          --max-block-size N              (default set by example)
          --discard-policy oldest|newest|halt   (default: oldest)
+         --security-policy crc16|hmac-sha256|null   (default: crc16)
          --capacity-threshold N          (default: 0 — disabled)
          --halt-exit                     (flag; default: off — matches the Linux Threaded example so the BDD step's --halt-exit flag works on both runners)
          --no-sd                         (flag; default: off — suppress structured data)

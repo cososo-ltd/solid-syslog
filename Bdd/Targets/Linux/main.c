@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,8 @@
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogCrc16Policy.h"
+#include "SolidSyslogNullSecurityPolicy.h"
+#include "SolidSyslogOpenSslHmacSha256Policy.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogMetaSd.h"
@@ -60,6 +63,10 @@ static struct SolidSyslogSender* switchingSender;
 static struct SolidSyslogDatagram* udpDatagram;
 static struct SolidSyslogAddress* udpAddress;
 static struct SolidSyslogResolver* sharedResolver;
+/* Holds the created at-rest SecurityPolicy handle so DestroyStore can release
+ * it. Only the keyed hmac-sha256 policy needs the handle to destroy; crc16 and
+ * null are dispatched by name. */
+static struct SolidSyslogSecurityPolicy* securityPolicy;
 
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
@@ -162,6 +169,43 @@ static void OnThresholdCrossed(void* context)
     }
 }
 
+/* DEMO KEY ONLY. A real integrator supplies key material from a secure element,
+ * a KDF, or encrypted NVM via their own SolidSyslogKeyFunction — never a
+ * hard-coded constant. This exists so the BDD scenario can exercise the OpenSSL
+ * HMAC-SHA256 at-rest policy end-to-end with real crypto. */
+static bool BddDemoGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* keyLengthOut)
+{
+    enum
+    {
+        DEMO_KEY_SIZE = 32
+    };
+
+    (void) context;
+    size_t written = (capacity < DEMO_KEY_SIZE) ? capacity : (size_t) DEMO_KEY_SIZE;
+    (void) memset(keyOut, 0x5A, written);
+    *keyLengthOut = written;
+    return true;
+}
+
+static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(const struct BddTargetOptions* options)
+{
+    struct SolidSyslogSecurityPolicy* policy = NULL;
+    if (strcmp(options->SecurityPolicy, "hmac-sha256") == 0)
+    {
+        static const struct SolidSyslogOpenSslHmacSha256PolicyConfig hmacConfig = {BddDemoGetKey, NULL};
+        policy = SolidSyslogOpenSslHmacSha256Policy_Create(&hmacConfig);
+    }
+    else if (strcmp(options->SecurityPolicy, "null") == 0)
+    {
+        policy = SolidSyslogNullSecurityPolicy_Get();
+    }
+    else
+    {
+        policy = SolidSyslogCrc16Policy_Create();
+    }
+    return policy;
+}
+
 static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* options)
 {
     bool useFile = (strcmp(options->Store, "file") == 0);
@@ -174,12 +218,13 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* optio
 
         static size_t capacityThreshold;
         capacityThreshold = options->CapacityThreshold;
+        securityPolicy = CreateSecurityPolicy(options);
         static struct SolidSyslogBlockStoreConfig storeConfig = {0};
         storeConfig.BlockDevice = storeBlockDevice;
         storeConfig.MaxBlockSize = options->MaxBlockSize;
         storeConfig.MaxBlocks = options->MaxBlocks;
         storeConfig.DiscardPolicy = MapDiscardPolicy(options->DiscardPolicy);
-        storeConfig.SecurityPolicy = SolidSyslogCrc16Policy_Create();
+        storeConfig.SecurityPolicy = securityPolicy;
         storeConfig.OnStoreFull = OnStoreFull;
         storeConfig.GetCapacityThreshold = GetCapacityThreshold;
         storeConfig.OnThresholdCrossed = OnThresholdCrossed;
@@ -204,6 +249,20 @@ static void DestroySender(void)
     SolidSyslogGetAddrInfoResolver_Destroy(sharedResolver);
 }
 
+static void DestroySecurityPolicy(const struct BddTargetOptions* options)
+{
+    if (strcmp(options->SecurityPolicy, "hmac-sha256") == 0)
+    {
+        SolidSyslogOpenSslHmacSha256Policy_Destroy(securityPolicy);
+    }
+    else if (strcmp(options->SecurityPolicy, "crc16") == 0)
+    {
+        SolidSyslogCrc16Policy_Destroy();
+    }
+    /* else "null": the shared NullSecurityPolicy is immutable — nothing to free. */
+    securityPolicy = NULL;
+}
+
 static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetOptions* options)
 {
     bool useFile = (strcmp(options->Store, "file") == 0);
@@ -212,7 +271,7 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetO
     {
         SolidSyslogBlockStore_Destroy(store);
         SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
-        SolidSyslogCrc16Policy_Destroy();
+        DestroySecurityPolicy(options);
         SolidSyslogPosixFile_Destroy(storeFile);
     }
     /* else: NullStore is shared and immutable — nothing to destroy. */

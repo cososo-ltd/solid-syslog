@@ -15,7 +15,8 @@ enum
     OPT_NO_SD = 259,
     OPT_HALT_EXIT = 260,
     OPT_CAPACITY_THRESHOLD = 261,
-    OPT_APP_NAME = 262
+    OPT_APP_NAME = 262,
+    OPT_SECURITY_POLICY = 263
 };
 
 static bool ParsePositiveNumber(const char* str, size_t* result)
@@ -37,6 +38,11 @@ static bool IsValidDiscardPolicy(const char* policy)
     return (strcmp(policy, "oldest") == 0) || (strcmp(policy, "newest") == 0) || (strcmp(policy, "halt") == 0);
 }
 
+static bool IsValidSecurityPolicy(const char* policy)
+{
+    return (strcmp(policy, "crc16") == 0) || (strcmp(policy, "hmac-sha256") == 0) || (strcmp(policy, "null") == 0);
+}
+
 int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* options)
 {
     options->Facility = SOLIDSYSLOG_FACILITY_LOCAL0;
@@ -49,6 +55,7 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
     options->MaxBlocks = DEFAULT_MAX_BLOCKS;
     options->MaxBlockSize = DEFAULT_MAX_BLOCK_SIZE;
     options->DiscardPolicy = "oldest";
+    options->SecurityPolicy = "crc16";
     options->CapacityThreshold = 0;
     options->NoSd = false;
     options->HaltExit = false;
@@ -63,6 +70,7 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
         {"max-blocks", required_argument, NULL, OPT_MAX_BLOCKS},
         {"max-block-size", required_argument, NULL, OPT_MAX_BLOCK_SIZE},
         {"discard-policy", required_argument, NULL, OPT_DISCARD_POLICY},
+        {"security-policy", required_argument, NULL, OPT_SECURITY_POLICY},
         {"capacity-threshold", required_argument, NULL, OPT_CAPACITY_THRESHOLD},
         {"no-sd", no_argument, NULL, OPT_NO_SD},
         {"halt-exit", no_argument, NULL, OPT_HALT_EXIT},
@@ -120,6 +128,13 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
                     return 1;
                 }
                 options->DiscardPolicy = optarg;
+                break;
+            case OPT_SECURITY_POLICY:
+                if (!IsValidSecurityPolicy(optarg))
+                {
+                    return 1;
+                }
+                options->SecurityPolicy = optarg;
                 break;
             case OPT_CAPACITY_THRESHOLD:
                 if (!ParsePositiveNumber(optarg, &options->CapacityThreshold))
