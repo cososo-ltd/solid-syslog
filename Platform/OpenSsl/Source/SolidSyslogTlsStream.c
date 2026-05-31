@@ -84,14 +84,12 @@ static inline struct SolidSyslogTlsStream* TlsStream_SelfFromBase(struct SolidSy
 
 void TlsStream_Cleanup(struct SolidSyslogStream* base)
 {
-    struct SolidSyslogTlsStream* self = TlsStream_SelfFromBase(base);
     /* Close first so an integrator who destroys a still-Open stream doesn't
-     * leak the underlying transport. Close is idempotent (guards on Ssl !=
-     * NULL for the TLS-side teardown; transport Close is itself idempotent
-     * on every Stream impl), so the normal Open → Close → Destroy lifecycle
-     * is unaffected. */
+     * leak the underlying transport. Close now releases the SSL, BIO_METHOD
+     * and SSL_CTX, and is idempotent (the TLS-side teardown guards on Ssl /
+     * Ctx != NULL; transport Close is itself idempotent on every Stream
+     * impl), so the normal Open → Close → Destroy lifecycle is unaffected. */
     TlsStream_Close(base);
-    TlsStream_ReleaseSslContext(self);
     /* Overwrite the abstract base with the shared NullStream vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullStream_Get();
@@ -108,6 +106,11 @@ static inline void TlsStream_Close(struct SolidSyslogStream* base)
         SSL_shutdown(self->Ssl);
         TlsStream_ReleaseHandshakeState(self);
     }
+    /* Each Open rebuilds the CTX (cert-rotation contract), so Close must free
+       the current one or the fail-fast Open -> Close -> Open reconnect cycle
+       leaks an SSL_CTX every round. NULL-guarded, so the Open-failure tail and
+       Cleanup that also call it stay double-free safe. */
+    TlsStream_ReleaseSslContext(self);
     SolidSyslogStream_Close(self->Config.Transport);
 }
 
@@ -153,7 +156,6 @@ static inline bool TlsStream_Open(struct SolidSyslogStream* base, const struct S
     if (!ok)
     {
         TlsStream_Close(base);
-        TlsStream_ReleaseSslContext(self);
     }
     return ok;
 }

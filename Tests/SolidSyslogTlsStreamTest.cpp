@@ -548,6 +548,20 @@ TEST(SolidSyslogTlsStream, DestroyAfterCloseDoesNotDoubleFreeSsl)
     CALLED_FAKE(OpenSslFake_Free, ONCE);
 }
 
+TEST(SolidSyslogTlsStream, ReopenAfterCloseDoesNotLeakSslContext)
+{
+    /* Each Open rebuilds the SSL_CTX (the cert-rotation contract — a fresh CTX
+       per connection picks up trust-store / client-identity changes). The
+       fail-fast reconnect model therefore drives Open -> Close -> Open on a
+       single stream instance repeatedly; Close must free the CTX so the next
+       Open does not leak the previous one. */
+    SolidSyslogStream_Open(stream, addr);
+    SolidSyslogStream_Close(stream);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(2, OpenSslFake_CtxNewCallCount());
+    LONGS_EQUAL(1, OpenSslFake_CtxFreeCallCount());
+}
+
 /* -------------------------------------------------------------------------
  * Pointer-chain assertions: each OpenSSL call must receive the handle
  * returned by the preceding call, not some stale or NULL pointer.
