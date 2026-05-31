@@ -70,6 +70,15 @@
             }
         },
         {
+            "name": "c99",
+            "displayName": "C99 language portability check (library only)",
+            "inherits": "debug",
+            "cacheVariables": {
+                "CMAKE_C_STANDARD": "99",
+                "HAVE_STDATOMIC_H": "OFF"
+            }
+        },
+        {
             "name": "clang-debug",
             "displayName": "Clang Debug",
             "inherits": "base",
@@ -138,6 +147,7 @@
         { "name": "coverage",       "configurePreset": "coverage" },
         { "name": "tidy",           "configurePreset": "tidy" },
         { "name": "cppcheck",       "configurePreset": "cppcheck" },
+        { "name": "c99",            "configurePreset": "c99", "targets": ["SolidSyslog"] },
         { "name": "clang-debug",    "configurePreset": "clang-debug" },
         { "name": "iwyu",           "configurePreset": "iwyu" },
         { "name": "msvc-debug",     "configurePreset": "msvc-debug", "configuration": "Debug" },

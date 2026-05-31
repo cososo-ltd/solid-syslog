@@ -169,9 +169,11 @@ misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsClock.c:21
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsHostname.c:19
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsSysUpTime.c:18
 
-# D.010 — Rule 20.10: # stringification in _Static_assert polyfill
+# D.010 — Rule 20.10: # stringification (C11 path) and ## tag-pasting (C99
+# fallback) in the SOLIDSYSLOG_STATIC_ASSERT polyfill
 # See docs/misra-deviations.md#d010
-misra-c2012-20.10:Core/Source/SolidSyslogMacros.h:9
+misra-c2012-20.10:Core/Source/SolidSyslogMacros.h:16
+misra-c2012-20.10:Core/Source/SolidSyslogMacros.h:20
 
 # D.011 — Rule 2.5: public API macros consumed outside cppcheck-misra scope
 # See docs/misra-deviations.md#d011

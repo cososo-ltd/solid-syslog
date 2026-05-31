@@ -6,7 +6,12 @@ include(LayerGuard)
 solidsyslog_enforce_layering()
 include(Iwyu)
 
-set(CMAKE_C_STANDARD 11)
+# Default to C11 (for the optional C11 atomics counter), but let an externally
+# supplied standard win so the pre-release C99 portability check can build the
+# library at -std=c99 without editing this file. See docs/local-checks.md.
+if(NOT DEFINED CMAKE_C_STANDARD)
+    set(CMAKE_C_STANDARD 11)
+endif()
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -83,8 +88,29 @@ set(CMAKE_REQUIRED_LIBRARIES "${_SOLIDSYSLOG_PREV_CMAKE_REQUIRED_LIBRARIES}")
 unset(_SOLIDSYSLOG_PREV_CMAKE_REQUIRED_LIBRARIES)
 option(SOLIDSYSLOG_WINSOCK "Include Winsock UDP sender" ${HAVE_WINSOCK})
 
-include(CheckIncludeFile)
-check_include_file(stdatomic.h HAVE_STDATOMIC_H)
+include(CheckCSourceCompiles)
+# Detect real C11 atomics by *compiling* an _Atomic snippet rather than probing
+# for <stdatomic.h>, which exists on every toolchain regardless of whether the
+# _Atomic keyword is actually supported. The probe fails on a toolchain without
+# working C11 atomics, excluding Platform/Atomics in favour of the Windows or
+# Null counter. (The C99 portability preset declares HAVE_STDATOMIC_H=OFF up
+# front — see docs/local-checks.md — so a C99 target skips the C11 atomics by
+# design rather than relying on the probe to infer their absence.)
+check_c_source_compiles(
+    "#include <stdatomic.h>
+#include <stdint.h>
+int main(void)
+{
+    _Atomic uint32_t value;
+    uint32_t expected = 0u;
+    atomic_init(&value, 0u);
+    (void) atomic_compare_exchange_strong_explicit(
+        &value, &expected, 1u, memory_order_relaxed, memory_order_relaxed);
+    return (int) atomic_load_explicit(&value, memory_order_relaxed);
+}
+"
+    HAVE_STDATOMIC_H
+)
 check_symbol_exists(InterlockedIncrement "windows.h" HAVE_WINDOWS_INTERLOCKED)
 check_symbol_exists(GetSystemTimeAsFileTime "windows.h" HAVE_WINDOWS_PLATFORM)
 
