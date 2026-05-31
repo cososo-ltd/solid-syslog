@@ -732,6 +732,7 @@ static bool BddDemoGetKey(void* context, uint8_t* keyOut, size_t capacity, size_
     {
         DEMO_KEY_SIZE = 32
     };
+
     (void) context;
     size_t written = (capacity < DEMO_KEY_SIZE) ? capacity : (size_t) DEMO_KEY_SIZE;
     (void) memset(keyOut, 0x5A, written);
