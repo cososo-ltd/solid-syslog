@@ -113,6 +113,31 @@ EXTERN_C_BEGIN
     struct mbedtls_x509_crt* MbedTlsFake_LastSslConfOwnCertCertArg(void);
     struct mbedtls_pk_context* MbedTlsFake_LastSslConfOwnCertKeyArg(void);
 
+    /* mbedtls_md_info_from_type / mbedtls_md_hmac */
+    int MbedTlsFake_MdHmacCallCount(void);
+    int MbedTlsFake_LastMdInfoType(void);
+    const uint8_t* MbedTlsFake_LastMdHmacKey(void);
+    size_t MbedTlsFake_LastMdHmacKeyLen(void);
+    const uint8_t* MbedTlsFake_LastMdHmacInput(void);
+    size_t MbedTlsFake_LastMdHmacInputLen(void);
+    void MbedTlsFake_SetMdHmacReturn(int value);
+
+    /* Computes the same deterministic, non-cryptographic 32-byte tag the fake's
+     * mbedtls_md_hmac writes — derived from (key, input) so tests can predict the
+     * tag and exercise round-trip / tamper / wrong-key behaviour. NOT a real HMAC. */
+    void MbedTlsFake_ComputeExpectedTag(
+        const uint8_t* key,
+        size_t keyLength,
+        const uint8_t* input,
+        size_t inputLength,
+        uint8_t* tagOut
+    );
+
+    /* mbedtls_platform_zeroize */
+    int MbedTlsFake_PlatformZeroizeCallCount(void);
+    const void* MbedTlsFake_LastPlatformZeroizeBuf(void);
+    size_t MbedTlsFake_LastPlatformZeroizeLen(void);
+
 EXTERN_C_END
 
 #endif /* MBEDTLSFAKE_H */

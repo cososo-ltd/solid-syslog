@@ -27,5 +27,5 @@ TEST(SolidSyslogNullSecurityPolicy, IntegritySizeIsZero)
 
 TEST(SolidSyslogNullSecurityPolicy, VerifyIntegrityReturnsTrue)
 {
-    CHECK_TRUE(policy->VerifyIntegrity(nullptr, 0, nullptr));
+    CHECK_TRUE(policy->VerifyIntegrity(policy, nullptr, 0, nullptr));
 }

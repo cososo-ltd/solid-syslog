@@ -533,6 +533,8 @@ def build_buffered_extra_args(context, transport, no_sd=False):
         args.extend(["--max-block-size", str(context.store_max_block_size)])
     if getattr(context, "store_discard_policy", None):
         args.extend(["--discard-policy", context.store_discard_policy])
+    if getattr(context, "security_policy", None):
+        args.extend(["--security-policy", context.security_policy])
     if getattr(context, "capacity_threshold", None) is not None:
         args.extend(["--capacity-threshold", str(context.capacity_threshold)])
     if getattr(context, "message_body", None):
@@ -584,6 +586,16 @@ def step_block_store_enabled(context):
     context.store_type = "file"
     if os.path.exists(STORE_FILE_PATH):
         os.remove(STORE_FILE_PATH)
+
+
+@given("the security policy is {policy}")
+def step_security_policy(context, policy):
+    # Selects the at-rest integrity policy for the block store (S17.02). On
+    # FreeRTOS, build_buffered_extra_args emits `--security-policy <policy>`
+    # which target_driver translates to `set security-policy ...` before
+    # `set store file`. Today only the FreeRTOS target wires hmac-sha256, so
+    # scenarios using it carry @hmac and run on the FreeRTOS-plustcp runner only.
+    context.security_policy = policy
 
 
 @given("the block store is enabled with max-blocks {max_blocks:d} and max-block-size {max_block_size:d} and discard-policy {policy}")

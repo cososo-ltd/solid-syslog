@@ -1,12 +1,36 @@
 #include "MbedTlsFake.h"
 
+#include <mbedtls/md.h>
+#include <mbedtls/platform_util.h>
 #include <mbedtls/ssl.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <string.h>
 
 #include "mbedtls/pk.h"
 #include "mbedtls/x509_crl.h"
 #include "mbedtls/x509_crt.h"
+
+enum
+{
+    MBEDTLSFAKE_MAX_KEY = 64,
+    MBEDTLSFAKE_MAX_INPUT = 256
+};
+
+/* mbedtls_md_info_from_type / mbedtls_md_hmac */
+static int mdHmacCallCount;
+static int lastMdInfoType;
+static uint8_t lastMdHmacKey[MBEDTLSFAKE_MAX_KEY];
+static size_t lastMdHmacKeyLen;
+static uint8_t lastMdHmacInput[MBEDTLSFAKE_MAX_INPUT];
+static size_t lastMdHmacInputLen;
+static int mdHmacReturn;
+
+/* mbedtls_platform_zeroize */
+static int platformZeroizeCallCount;
+static const void* lastPlatformZeroizeBuf;
+static size_t lastPlatformZeroizeLen;
 
 /* -------------------------------------------------------------------------
  * Captured state — one section per mbedTLS API call. Tests read these via
@@ -178,6 +202,16 @@ void MbedTlsFake_Reset(void)
     lastSslConfOwnCertConfigArg = NULL;
     lastSslConfOwnCertCertArg = NULL;
     lastSslConfOwnCertKeyArg = NULL;
+    mdHmacCallCount = 0;
+    lastMdInfoType = 0;
+    lastMdHmacKeyLen = 0;
+    lastMdHmacInputLen = 0;
+    mdHmacReturn = 0;
+    memset(lastMdHmacKey, 0, sizeof lastMdHmacKey);
+    memset(lastMdHmacInput, 0, sizeof lastMdHmacInput);
+    platformZeroizeCallCount = 0;
+    lastPlatformZeroizeBuf = NULL;
+    lastPlatformZeroizeLen = 0;
 }
 
 int MbedTlsFake_SslConfigInitCallCount(void)
@@ -636,4 +670,117 @@ int mbedtls_ssl_set_hostname(mbedtls_ssl_context* ssl, const char* hostname)
     lastSslSetHostnameContextArg = ssl;
     lastSslSetHostnameNameArg = hostname;
     return sslSetHostnameReturn;
+}
+
+int MbedTlsFake_MdHmacCallCount(void)
+{
+    return mdHmacCallCount;
+}
+
+int MbedTlsFake_LastMdInfoType(void)
+{
+    return lastMdInfoType;
+}
+
+const uint8_t* MbedTlsFake_LastMdHmacKey(void)
+{
+    return lastMdHmacKey;
+}
+
+size_t MbedTlsFake_LastMdHmacKeyLen(void)
+{
+    return lastMdHmacKeyLen;
+}
+
+const uint8_t* MbedTlsFake_LastMdHmacInput(void)
+{
+    return lastMdHmacInput;
+}
+
+size_t MbedTlsFake_LastMdHmacInputLen(void)
+{
+    return lastMdHmacInputLen;
+}
+
+void MbedTlsFake_SetMdHmacReturn(int value)
+{
+    mdHmacReturn = value;
+}
+
+int MbedTlsFake_PlatformZeroizeCallCount(void)
+{
+    return platformZeroizeCallCount;
+}
+
+const void* MbedTlsFake_LastPlatformZeroizeBuf(void)
+{
+    return lastPlatformZeroizeBuf;
+}
+
+size_t MbedTlsFake_LastPlatformZeroizeLen(void)
+{
+    return lastPlatformZeroizeLen;
+}
+
+/* Deterministic, NON-cryptographic tag: an FNV-1a fold over the key then the
+ * input then each output position. Sensitive to key, input, and position so a
+ * changed key, tampered data, or tampered tag all produce a different value —
+ * enough to exercise the policy's round-trip / tamper / wrong-key paths without
+ * linking real libmbedcrypto. */
+void MbedTlsFake_ComputeExpectedTag(
+    const uint8_t* key,
+    size_t keyLength,
+    const uint8_t* input,
+    size_t inputLength,
+    uint8_t* tagOut
+)
+{
+    uint32_t hash = 2166136261U;
+    for (size_t index = 0; index < keyLength; index++)
+    {
+        hash = (hash ^ key[index]) * 16777619U;
+    }
+    for (size_t index = 0; index < inputLength; index++)
+    {
+        hash = (hash ^ input[index]) * 16777619U;
+    }
+    for (size_t index = 0; index < 32U; index++)
+    {
+        hash = (hash ^ (uint32_t) index) * 16777619U;
+        tagOut[index] = (uint8_t) (hash >> 24U);
+    }
+}
+
+const mbedtls_md_info_t* mbedtls_md_info_from_type(mbedtls_md_type_t md_type)
+{
+    static const int mdInfoSentinel = 0;
+    lastMdInfoType = (int) md_type;
+    return (const mbedtls_md_info_t*) &mdInfoSentinel;
+}
+
+int mbedtls_md_hmac(
+    const mbedtls_md_info_t* md_info,
+    const unsigned char* key,
+    size_t keylen,
+    const unsigned char* input,
+    size_t ilen,
+    unsigned char* output
+)
+{
+    (void) md_info;
+    mdHmacCallCount++;
+    lastMdHmacKeyLen = keylen;
+    memcpy(lastMdHmacKey, key, (keylen < sizeof lastMdHmacKey) ? keylen : sizeof lastMdHmacKey);
+    lastMdHmacInputLen = ilen;
+    memcpy(lastMdHmacInput, input, (ilen < sizeof lastMdHmacInput) ? ilen : sizeof lastMdHmacInput);
+    MbedTlsFake_ComputeExpectedTag(key, keylen, input, ilen, output);
+    return mdHmacReturn;
+}
+
+void mbedtls_platform_zeroize(void* buf, size_t len)
+{
+    platformZeroizeCallCount++;
+    lastPlatformZeroizeBuf = buf;
+    lastPlatformZeroizeLen = len;
+    memset(buf, 0, len);
 }

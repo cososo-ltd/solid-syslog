@@ -1373,21 +1373,34 @@ static int SpyComputeIntegrityCallCount;
 static uint8_t computeIntegrityData[INTEGRITY_REGION_MAX];
 static uint16_t computeIntegrityLength;
 
-// NOLINTNEXTLINE(readability-non-const-parameter) -- matches SecurityPolicy vtable signature
-static void SpyComputeIntegrity(const uint8_t* data, uint16_t length, uint8_t* integrityOut)
+static bool SpyComputeIntegrity(
+    struct SolidSyslogSecurityPolicy* self,
+    const uint8_t* data,
+    uint16_t length,
+    // NOLINTNEXTLINE(readability-non-const-parameter) -- integrityOut is non-const to match the vtable signature
+    uint8_t* integrityOut
+)
 {
+    (void) self;
     (void) integrityOut;
     SpyComputeIntegrityCallCount++;
     computeIntegrityLength = length;
     memcpy(computeIntegrityData, data, length);
+    return true;
 }
 
 static int SpyVerifyIntegrityCallCount;
 static uint8_t verifyIntegrityData[INTEGRITY_REGION_MAX];
 static uint16_t verifyIntegrityLength;
 
-static bool SpyVerifyIntegrity(const uint8_t* data, uint16_t length, const uint8_t* integrityIn)
+static bool SpyVerifyIntegrity(
+    struct SolidSyslogSecurityPolicy* self,
+    const uint8_t* data,
+    uint16_t length,
+    const uint8_t* integrityIn
+)
 {
+    (void) self;
     (void) integrityIn;
     SpyVerifyIntegrityCallCount++;
     verifyIntegrityLength = length;

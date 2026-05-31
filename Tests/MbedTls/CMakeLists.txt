@@ -79,3 +79,42 @@ set_target_properties(SolidSyslogMbedTlsStreamTest PROPERTIES
 )
 
 add_test(NAME SolidSyslogMbedTlsStreamTest COMMAND SolidSyslogMbedTlsStreamTest)
+
+# SolidSyslogMbedTlsHmacSha256Policy — keyed at-rest integrity policy.
+# Slice 3 (lifecycle / pool / bad-config) has no mbedTLS dependency: the
+# seal/verify methods are stubs, so this exe links neither MbedTlsFakes nor
+# real libmbedtls. Slice 4 adds the deterministic md_hmac fake (and the
+# MBEDTLS include path) when the real HMAC call is wired under test.
+add_executable(SolidSyslogMbedTlsHmacSha256PolicyTest
+    SolidSyslogMbedTlsHmacSha256PolicyTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256PolicyMessages.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256PolicyStatic.c
+)
+
+target_link_libraries(SolidSyslogMbedTlsHmacSha256PolicyTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    MbedTlsFakes
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogMbedTlsHmacSha256PolicyTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+# The policy source pulls in <mbedtls/md.h>; cppcheck cannot resolve mbedTLS's
+# MBEDTLS_USER_CONFIG_FILE macro indirection. Disable per-target, same as the
+# stream test exes.
+set_target_properties(SolidSyslogMbedTlsHmacSha256PolicyTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
+)
+
+add_test(NAME SolidSyslogMbedTlsHmacSha256PolicyTest COMMAND SolidSyslogMbedTlsHmacSha256PolicyTest)

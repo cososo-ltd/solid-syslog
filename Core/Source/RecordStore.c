@@ -102,7 +102,7 @@ size_t RecordStore_RecordSize(const struct RecordStore* recordStore, uint16_t da
            SENT_FLAG_SIZE;
 }
 
-static inline void RecordStore_AssembleRecord(struct RecordStore* recordStore, const void* data, size_t size);
+static inline bool RecordStore_AssembleRecord(struct RecordStore* recordStore, const void* data, size_t size);
 
 bool RecordStore_Append(
     struct RecordStore* recordStore,
@@ -112,16 +112,20 @@ bool RecordStore_Append(
     size_t dataSize
 )
 {
-    RecordStore_AssembleRecord(recordStore, data, dataSize);
-    return SolidSyslogBlockDevice_Append(
-        blockDevice,
-        blockIndex,
-        recordStore->Buffer,
-        RecordStore_RecordSize(recordStore, (uint16_t) dataSize)
-    );
+    bool appended = false;
+    if (RecordStore_AssembleRecord(recordStore, data, dataSize))
+    {
+        appended = SolidSyslogBlockDevice_Append(
+            blockDevice,
+            blockIndex,
+            recordStore->Buffer,
+            RecordStore_RecordSize(recordStore, (uint16_t) dataSize)
+        );
+    }
+    return appended;
 }
 
-static inline void RecordStore_AssembleRecord(struct RecordStore* recordStore, const void* data, size_t size)
+static inline bool RecordStore_AssembleRecord(struct RecordStore* recordStore, const void* data, size_t size)
 {
     RecordStore_MagicAddress(recordStore)[0] = MAGIC_BYTE_0;
     RecordStore_MagicAddress(recordStore)[1] = MAGIC_BYTE_1;
@@ -136,13 +140,15 @@ static inline void RecordStore_AssembleRecord(struct RecordStore* recordStore, c
     lengthBytes[1] = (uint8_t) ((length >> 8) & 0xFFU);
     (void) memcpy(RecordStore_MessageAddress(recordStore), data, size);
 
-    recordStore->SecurityPolicy->ComputeIntegrity(
+    bool sealed = recordStore->SecurityPolicy->ComputeIntegrity(
+        recordStore->SecurityPolicy,
         RecordStore_IntegrityRegionAddress(recordStore),
         RecordStore_IntegrityRegionSize(size),
         RecordStore_IntegrityChecksumAddress(recordStore, size)
     );
 
     *RecordStore_SentFlagAddress(recordStore, size) = SENT_FLAG_UNSENT;
+    return sealed;
 }
 
 static bool RecordStore_ReadAndValidateRecord(
@@ -319,6 +325,7 @@ static inline bool RecordStore_ReadIntegrityChecksum(
 static inline bool RecordStore_VerifyIntegrity(struct RecordStore* recordStore, uint16_t length)
 {
     return recordStore->SecurityPolicy->VerifyIntegrity(
+        recordStore->SecurityPolicy,
         RecordStore_IntegrityRegionAddress(recordStore),
         RecordStore_IntegrityRegionSize(length),
         RecordStore_IntegrityChecksumAddress(recordStore, length)

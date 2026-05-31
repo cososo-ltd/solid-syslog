@@ -56,6 +56,9 @@ _FREERTOS_SET_TRANSLATION = {
     # S08.07 slice 6c admits capacity_threshold.feature on FreeRTOS — the
     # threshold byte count must reach the rebuild path before `--store file`.
     "--capacity-threshold": "capacity-threshold",
+    # S17.02 at-rest integrity policy selector — like the other store keys it
+    # must reach the rebuild before `--store file` (the order key sorts it ahead).
+    "--security-policy": "security-policy",
     "--store": "store",
 }
 
