@@ -1,5 +1,55 @@
 # Dev Log
 
+## 2026-05-31 — Drop TLS session resumption from both reference integrations (revert S26.04, won't-do S26.01)
+
+Decision session, not a feature. TLS session resumption is now **out of scope**
+for both reference TLS integrations (`Platform/OpenSsl/`, `Platform/MbedTls/`),
+on either backend, for either TLS 1.2 or TLS 1.3. This commit reverts the merged
+mbedTLS work (S26.04, #489) and the OpenSSL story (S26.01, #280) is closed
+won't-do.
+
+### Decision
+
+- **mbedTLS (S26.04, #489, already on main):** reverted here via a clean
+  single-parent `git revert d37ef31`. The production diff was purely additive
+  (42 add / 0 del) with no bundled bug fix to preserve, so the revert is total.
+- **OpenSSL (S26.01, #280):** won't-do. The in-progress slices 1–5 are dropped
+  (abandoned `feat/s26-01-openssl-session-resumption` branch). The one genuine
+  independent bug found along the way — `SSL_CTX` leaked on `Close` under the
+  fail-fast reconnect cycle — is kept and lands as its own PR
+  (`fix/openssl-tlsstream-ctx-leak`).
+
+### Why (architectural rationale)
+
+1. **Resumption is an optimization, never correctness.** A full handshake must
+   always succeed on every (re)connect without disrupting core operation;
+   products must be architected for that regardless.
+2. **Long-lived connections make it near-worthless here.** The TCP streams use
+   keepalive — a syslog client does one handshake then streams for a long time.
+   Resumption only pays at reconnect, and reconnects are rare.
+3. **When reconnects DO happen, resumption is least likely to be available.** A
+   reconnect is usually triggered by a disgraceful close — exactly when the
+   server has discarded the state needed to resume. The optimization tends to be
+   absent in the very case it was meant to help.
+4. **Disproportionate cost/complexity to do honestly.** TLS 1.2 (RFC 5077) and
+   1.3 (RFC 8446 PSK) use different mechanisms; 1.3 tickets arrive post-handshake
+   and need a defined read to capture; mTLS-on-resume has separate identity
+   semantics. Four real cases ({1.2,1.3} × {server-auth, mTLS}), each needing an
+   honest mechanism-correct test — a large surface for an optional speedup.
+
+TLS 1.3 0-RTT / early data was already out of scope and stays out.
+
+### Test-strategy lesson (if ever revisited)
+
+Don't hand-roll a TLS server in the harness — it encodes our own fallible
+understanding of resumption semantics, so a failing test can't distinguish a
+client bug from a server-config bug. This cost real time. Prefer driving the
+**real sender stack** against an **off-the-shelf** server (`openssl s_server` /
+stunnel), observed **server-side** — one backend-neutral server covers both
+OpenSSL and mbedTLS clients and all four cases via flags. That is process-level
+(real port), so it belongs in the BDD/compose layer, not the in-process CppUTest
+binary.
+
 ## 2026-05-30 — S28.08 SolidSyslogLwipRawDnsResolver (DNS via dns_gethostbyname) + FreeRtosLwip BDD by-name
 
 Last implementation story of E28. Adds the DNS sibling of the numeric
