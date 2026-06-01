@@ -78,7 +78,7 @@ static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct
 {
     struct SolidSyslogSecurityPolicy* resolved = configured;
 
-    if ((resolved == NULL) || (resolved->IntegritySize > SOLIDSYSLOG_MAX_INTEGRITY_SIZE))
+    if ((resolved == NULL) || (resolved->TrailerSize > SOLIDSYSLOG_MAX_INTEGRITY_SIZE))
     {
         resolved = SolidSyslogNullSecurityPolicy_Get();
     }

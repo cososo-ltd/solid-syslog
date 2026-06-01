@@ -1366,52 +1366,60 @@ TEST(SolidSyslogBlockStoreRotation, DiscardRetriesAfterTransientDisposeFailure)
 
 enum
 {
-    INTEGRITY_REGION_MAX = 2 + 2 + SOLIDSYSLOG_MAX_MESSAGE_SIZE /* magic + length + body */
+    CONTENT_REGION_MAX = 2 + 2 + SOLIDSYSLOG_MAX_MESSAGE_SIZE /* magic + length + body */
 };
 
-static int SpyComputeIntegrityCallCount;
-static uint8_t computeIntegrityData[INTEGRITY_REGION_MAX];
-static uint16_t computeIntegrityLength;
+static int SpySealRecordCallCount;
+static uint8_t sealContentData[CONTENT_REGION_MAX];
+static uint16_t sealContentLength;
+static uint16_t sealHeaderLength;
 
-static bool SpyComputeIntegrity(
+static bool SpySealRecord(
     struct SolidSyslogSecurityPolicy* self,
-    const uint8_t* data,
-    uint16_t length,
-    // NOLINTNEXTLINE(readability-non-const-parameter) -- integrityOut is non-const to match the vtable signature
-    uint8_t* integrityOut
+    // NOLINTNEXTLINE(readability-non-const-parameter) -- content is non-const to match the vtable signature
+    uint8_t* content,
+    uint16_t contentLength,
+    uint16_t headerLength,
+    // NOLINTNEXTLINE(readability-non-const-parameter) -- trailerOut is non-const to match the vtable signature
+    uint8_t* trailerOut
 )
 {
     (void) self;
-    (void) integrityOut;
-    SpyComputeIntegrityCallCount++;
-    computeIntegrityLength = length;
-    memcpy(computeIntegrityData, data, length);
+    (void) trailerOut;
+    SpySealRecordCallCount++;
+    sealContentLength = contentLength;
+    sealHeaderLength = headerLength;
+    memcpy(sealContentData, content, contentLength);
     return true;
 }
 
-static int SpyVerifyIntegrityCallCount;
-static uint8_t verifyIntegrityData[INTEGRITY_REGION_MAX];
-static uint16_t verifyIntegrityLength;
+static int SpyOpenRecordCallCount;
+static uint8_t openContentData[CONTENT_REGION_MAX];
+static uint16_t openContentLength;
+static uint16_t openHeaderLength;
 
-static bool SpyVerifyIntegrity(
+static bool SpyOpenRecord(
     struct SolidSyslogSecurityPolicy* self,
-    const uint8_t* data,
-    uint16_t length,
-    const uint8_t* integrityIn
+    // NOLINTNEXTLINE(readability-non-const-parameter) -- content is non-const to match the vtable signature
+    uint8_t* content,
+    uint16_t contentLength,
+    uint16_t headerLength,
+    const uint8_t* trailerIn
 )
 {
     (void) self;
-    (void) integrityIn;
-    SpyVerifyIntegrityCallCount++;
-    verifyIntegrityLength = length;
-    memcpy(verifyIntegrityData, data, length);
+    (void) trailerIn;
+    SpyOpenRecordCallCount++;
+    openContentLength = contentLength;
+    openHeaderLength = headerLength;
+    memcpy(openContentData, content, contentLength);
     return true;
 }
 
 static struct SolidSyslogSecurityPolicy spyPolicy = {
     0,
-    SpyComputeIntegrity,
-    SpyVerifyIntegrity,
+    SpySealRecord,
+    SpyOpenRecord,
 };
 
 // clang-format off
@@ -1422,12 +1430,14 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
     void setup() override
     {
         setupBlockDeviceFakes();
-        SpyComputeIntegrityCallCount  = 0;
-        computeIntegrityLength  = 0;
-        memset(computeIntegrityData, 0, sizeof(computeIntegrityData));
-        SpyVerifyIntegrityCallCount   = 0;
-        verifyIntegrityLength   = 0;
-        memset(verifyIntegrityData, 0, sizeof(verifyIntegrityData));
+        SpySealRecordCallCount  = 0;
+        sealContentLength  = 0;
+        sealHeaderLength  = 0;
+        memset(sealContentData, 0, sizeof(sealContentData));
+        SpyOpenRecordCallCount   = 0;
+        openContentLength   = 0;
+        openHeaderLength   = 0;
+        memset(openContentData, 0, sizeof(openContentData));
 
         struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
         config.BlockDevice    = device;
@@ -1444,62 +1454,70 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
 
 // clang-format on
 
-TEST(SolidSyslogBlockStoreIntegrity, WriteCallsComputeIntegrity)
+TEST(SolidSyslogBlockStoreIntegrity, WriteCallsSealRecord)
 {
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
-    CALLED_FUNCTION(SpyComputeIntegrity, ONCE);
+    CALLED_FUNCTION(SpySealRecord, ONCE);
 }
 
-TEST(SolidSyslogBlockStoreIntegrity, ComputeIntegrityReceivesIntegrityRegion)
+TEST(SolidSyslogBlockStoreIntegrity, SealRecordReceivesContentRegionAndHeaderSplit)
 {
     enum
     {
         MAGIC_SIZE = 2,
         LENGTH_SIZE = 2,
-        REGION_SIZE = MAGIC_SIZE + LENGTH_SIZE + TEST_DATA_LEN
+        HEADER_SIZE = MAGIC_SIZE + LENGTH_SIZE,
+        REGION_SIZE = HEADER_SIZE + TEST_DATA_LEN
     };
 
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
-    LONGS_EQUAL(REGION_SIZE, computeIntegrityLength);
+    LONGS_EQUAL(REGION_SIZE, sealContentLength);
+
+    /* magic|length is the cleartext header; message is the body */
+    LONGS_EQUAL(HEADER_SIZE, sealHeaderLength);
 
     /* verify magic bytes */
-    BYTES_EQUAL(0xA5, computeIntegrityData[0]);
-    BYTES_EQUAL(0x5A, computeIntegrityData[1]);
+    BYTES_EQUAL(0xA5, sealContentData[0]);
+    BYTES_EQUAL(0x5A, sealContentData[1]);
 
     /* verify body is included */
-    MEMCMP_EQUAL(TEST_DATA, computeIntegrityData + MAGIC_SIZE + LENGTH_SIZE, TEST_DATA_LEN);
+    MEMCMP_EQUAL(TEST_DATA, sealContentData + HEADER_SIZE, TEST_DATA_LEN);
 }
 
-TEST(SolidSyslogBlockStoreIntegrity, ReadCallsVerifyIntegrity)
+TEST(SolidSyslogBlockStoreIntegrity, ReadCallsOpenRecord)
 {
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     char buf[TEST_BUF_SIZE];
     size_t bytesRead = 0;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
-    CALLED_FUNCTION(SpyVerifyIntegrity, ONCE);
+    CALLED_FUNCTION(SpyOpenRecord, ONCE);
 }
 
-TEST(SolidSyslogBlockStoreIntegrity, VerifyIntegrityReceivesIntegrityRegion)
+TEST(SolidSyslogBlockStoreIntegrity, OpenRecordReceivesContentRegionAndHeaderSplit)
 {
     enum
     {
         MAGIC_SIZE = 2,
         LENGTH_SIZE = 2,
-        REGION_SIZE = MAGIC_SIZE + LENGTH_SIZE + TEST_DATA_LEN
+        HEADER_SIZE = MAGIC_SIZE + LENGTH_SIZE,
+        REGION_SIZE = HEADER_SIZE + TEST_DATA_LEN
     };
 
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     char buf[TEST_BUF_SIZE];
     size_t bytesRead = 0;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
-    LONGS_EQUAL(REGION_SIZE, verifyIntegrityLength);
+    LONGS_EQUAL(REGION_SIZE, openContentLength);
+
+    /* magic|length is the cleartext header; message is the body */
+    LONGS_EQUAL(HEADER_SIZE, openHeaderLength);
 
     /* verify magic bytes */
-    BYTES_EQUAL(0xA5, verifyIntegrityData[0]);
-    BYTES_EQUAL(0x5A, verifyIntegrityData[1]);
+    BYTES_EQUAL(0xA5, openContentData[0]);
+    BYTES_EQUAL(0x5A, openContentData[1]);
 
     /* verify body is included */
-    MEMCMP_EQUAL(TEST_DATA, verifyIntegrityData + MAGIC_SIZE + LENGTH_SIZE, TEST_DATA_LEN);
+    MEMCMP_EQUAL(TEST_DATA, openContentData + HEADER_SIZE, TEST_DATA_LEN);
 }
 
 /* ------------------------------------------------------------------

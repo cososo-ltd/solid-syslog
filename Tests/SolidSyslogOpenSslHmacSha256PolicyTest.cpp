@@ -28,8 +28,10 @@ enum
     TEST_KEY_BYTE = 0x2B
 };
 
-/* Record bytes a seal/verify test runs through the policy. */
-static const uint8_t TEST_RECORD[] = {0x10, 0x20, 0x30, 0x40};
+/* Record bytes a seal/verify test runs through the policy. Non-const because the
+ * vtable's content parameter is non-const (an AEAD policy mutates it); HMAC does
+ * not. */
+static uint8_t TEST_RECORD[] = {0x10, 0x20, 0x30, 0x40};
 
 /* The buffer + capacity the policy handed to GetKey on the most recent fetch —
  * lets a test assert the key buffer is wiped at exactly that pointer and size. */
@@ -136,14 +138,14 @@ TEST_GROUP_BASE(SolidSyslogOpenSslHmacSha256PolicySeal, OpenSslHmacSha256PolicyT
         ConfigLockFake_Uninstall();
     }
 
-    bool seal(const uint8_t* record, size_t length, uint8_t* tag) const
+    bool seal(uint8_t* record, size_t length, uint8_t* tag) const
     {
-        return policy->ComputeIntegrity(policy, record, (uint16_t) length, tag);
+        return policy->SealRecord(policy, record, (uint16_t) length, 0, tag);
     }
 
-    bool verify(const uint8_t* record, size_t length, const uint8_t* tag) const
+    bool verify(uint8_t* record, size_t length, const uint8_t* tag) const
     {
-        return policy->VerifyIntegrity(policy, record, (uint16_t) length, tag);
+        return policy->OpenRecord(policy, record, (uint16_t) length, 0, tag);
     }
 
     static void expectedTagFor(const uint8_t* record, size_t length, uint8_t* tagOut)
@@ -166,11 +168,11 @@ TEST(SolidSyslogOpenSslHmacSha256Policy, CreateReturnsHandleDistinctFromFallback
     SolidSyslogOpenSslHmacSha256Policy_Destroy(handle);
 }
 
-TEST(SolidSyslogOpenSslHmacSha256Policy, IntegritySizeIsThirtyTwo)
+TEST(SolidSyslogOpenSslHmacSha256Policy, TrailerSizeIsThirtyTwo)
 {
     struct SolidSyslogSecurityPolicy* handle = SolidSyslogOpenSslHmacSha256Policy_Create(&config);
 
-    LONGS_EQUAL(HMAC_SHA256_TAG_SIZE, handle->IntegritySize);
+    LONGS_EQUAL(HMAC_SHA256_TAG_SIZE, handle->TrailerSize);
 
     SolidSyslogOpenSslHmacSha256Policy_Destroy(handle);
 }
@@ -259,7 +261,7 @@ TEST(SolidSyslogOpenSslHmacSha256Policy, DestroyOfStaleHandleReportsWarning)
     CHECK_REPORTED_ERROR(SOLIDSYSLOG_SEVERITY_WARNING, OPENSSLHMACSHA256POLICY_ERROR_UNKNOWN_DESTROY);
 }
 
-TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ComputeIntegrityHmacsTheRecordWithTheFetchedKey)
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordHmacsTheRecordWithTheFetchedKey)
 {
     uint8_t expectedKey[TEST_KEY_SIZE];
     memset(expectedKey, TEST_KEY_BYTE, sizeof expectedKey);
@@ -275,7 +277,7 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ComputeIntegrityHmacsTheRecordWithT
     MEMCMP_EQUAL(TEST_RECORD, OpenSslFake_LastHmacInput(), sizeof TEST_RECORD);
 }
 
-TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ComputeIntegrityWritesTheTagIntoTheIntegrityBuffer)
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordWritesTheTagIntoTheTrailer)
 {
     uint8_t expected[HMAC_SHA256_TAG_SIZE];
     expectedTagFor(TEST_RECORD, sizeof TEST_RECORD, expected);
@@ -286,7 +288,7 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ComputeIntegrityWritesTheTagIntoThe
     MEMCMP_EQUAL(expected, tag, HMAC_SHA256_TAG_SIZE);
 }
 
-TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ComputeIntegrityReportsHmacFailure)
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordReportsHmacFailure)
 {
     ErrorHandlerFake_Install(nullptr);
     OpenSslFake_SetHmacFails(true);
@@ -298,7 +300,7 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ComputeIntegrityReportsHmacFailure)
     CHECK_REPORTED_ERROR(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLHMACSHA256POLICY_ERROR_HMAC_FAILED);
 }
 
-TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ComputeIntegrityReportsKeyUnavailable)
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordReportsKeyUnavailable)
 {
     ErrorHandlerFake_Install(nullptr);
     keyAvailable = false;
@@ -310,7 +312,7 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ComputeIntegrityReportsKeyUnavailab
     CHECK_REPORTED_ERROR(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE);
 }
 
-TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ComputeIntegrityWipesTheKeyBufferAfterUse)
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordWipesTheKeyBufferAfterUse)
 {
     uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
 
@@ -321,7 +323,7 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ComputeIntegrityWipesTheKeyBufferAf
     LONGS_EQUAL(lastGetKeyCapacity, OpenSslFake_LastCleanseLen());
 }
 
-TEST(SolidSyslogOpenSslHmacSha256PolicySeal, VerifyIntegrityAcceptsATagItProduced)
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, OpenRecordAcceptsATagItProduced)
 {
     uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
     seal(TEST_RECORD, sizeof TEST_RECORD, tag);
@@ -329,7 +331,7 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, VerifyIntegrityAcceptsATagItProduce
     CHECK_TRUE(verify(TEST_RECORD, sizeof TEST_RECORD, tag));
 }
 
-TEST(SolidSyslogOpenSslHmacSha256PolicySeal, VerifyIntegrityRejectsAModifiedTag)
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, OpenRecordRejectsAModifiedTag)
 {
     uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
     seal(TEST_RECORD, sizeof TEST_RECORD, tag);
@@ -338,7 +340,7 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, VerifyIntegrityRejectsAModifiedTag)
     CHECK_FALSE(verify(TEST_RECORD, sizeof TEST_RECORD, tag));
 }
 
-TEST(SolidSyslogOpenSslHmacSha256PolicySeal, VerifyIntegrityFailsClosedWhenKeyUnavailable)
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, OpenRecordFailsClosedWhenKeyUnavailable)
 {
     uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
     seal(TEST_RECORD, sizeof TEST_RECORD, tag);

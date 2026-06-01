@@ -16,16 +16,21 @@ enum
     MAGIC_BYTE_0 = 0xA5,
     MAGIC_BYTE_1 = 0x5A,
     RECORD_LENGTH_SIZE = 2,
+    /* The policy authenticates magic|length as the cleartext header (an AEAD
+     * policy never encrypts it) and message as the body. */
+    CONTENT_HEADER_SIZE = MAGIC_SIZE + RECORD_LENGTH_SIZE,
     SENT_FLAG_SIZE = 1,
     SENT_FLAG_UNSENT = 0xFF,
     SENT_FLAG_SENT = 0x00
 };
 
 /* Each record in the buffer is laid out as
- *   [ magic | length | message | integrity | sentFlag ]
- * Field-address helpers chain outward from the record's base so the
- * field offsets are stated in one place each. The same chaining shapes
- * the block-offset helpers below. */
+ *   [ magic | length | message | trailer | sentFlag ]
+ * The security policy authenticates the content span (magic|length|message),
+ * treating magic|length as the header and message as the body, and owns the
+ * trailer (TrailerSize bytes). Field-address helpers chain outward from the
+ * record's base so the field offsets are stated in one place each. The same
+ * chaining shapes the block-offset helpers below. */
 
 static inline uint8_t* RecordStore_MagicAddress(struct RecordStore* recordStore)
 {
@@ -44,7 +49,7 @@ static inline uint8_t* RecordStore_MessageAddress(struct RecordStore* recordStor
     return &length[RECORD_LENGTH_SIZE];
 }
 
-static inline uint8_t* RecordStore_IntegrityChecksumAddress(struct RecordStore* recordStore, size_t dataSize)
+static inline uint8_t* RecordStore_TrailerAddress(struct RecordStore* recordStore, size_t dataSize)
 {
     uint8_t* message = RecordStore_MessageAddress(recordStore);
     return &message[dataSize];
@@ -52,21 +57,21 @@ static inline uint8_t* RecordStore_IntegrityChecksumAddress(struct RecordStore* 
 
 static inline uint8_t* RecordStore_SentFlagAddress(struct RecordStore* recordStore, size_t dataSize)
 {
-    uint8_t* integrity = RecordStore_IntegrityChecksumAddress(recordStore, dataSize);
-    return &integrity[recordStore->SecurityPolicy->IntegritySize];
+    uint8_t* trailer = RecordStore_TrailerAddress(recordStore, dataSize);
+    return &trailer[recordStore->SecurityPolicy->TrailerSize];
 }
 
-static inline uint8_t* RecordStore_IntegrityRegionAddress(struct RecordStore* recordStore)
+static inline uint8_t* RecordStore_ContentAddress(struct RecordStore* recordStore)
 {
     return RecordStore_MagicAddress(recordStore);
 }
 
-static inline uint16_t RecordStore_IntegrityRegionSize(size_t dataSize)
+static inline uint16_t RecordStore_ContentSize(size_t dataSize)
 {
     return (uint16_t) (MAGIC_SIZE + RECORD_LENGTH_SIZE + dataSize);
 }
 
-static inline size_t RecordStore_IntegrityChecksumOffset(size_t recordStart, uint16_t dataLength)
+static inline size_t RecordStore_TrailerOffset(size_t recordStart, uint16_t dataLength)
 {
     return recordStart + MAGIC_SIZE + RECORD_LENGTH_SIZE + dataLength;
 }
@@ -77,7 +82,7 @@ static inline size_t RecordStore_SentFlagOffset(
     uint16_t dataLength
 )
 {
-    return RecordStore_IntegrityChecksumOffset(recordStart, dataLength) + recordStore->SecurityPolicy->IntegritySize;
+    return RecordStore_TrailerOffset(recordStart, dataLength) + recordStore->SecurityPolicy->TrailerSize;
 }
 
 void RecordStore_Initialise(struct RecordStore* recordStore, struct SolidSyslogSecurityPolicy* securityPolicy)
@@ -98,7 +103,7 @@ void RecordStore_Cleanup(struct RecordStore* recordStore)
 
 size_t RecordStore_RecordSize(const struct RecordStore* recordStore, uint16_t dataLength)
 {
-    return (size_t) MAGIC_SIZE + RECORD_LENGTH_SIZE + dataLength + recordStore->SecurityPolicy->IntegritySize +
+    return (size_t) MAGIC_SIZE + RECORD_LENGTH_SIZE + dataLength + recordStore->SecurityPolicy->TrailerSize +
            SENT_FLAG_SIZE;
 }
 
@@ -140,11 +145,12 @@ static inline bool RecordStore_AssembleRecord(struct RecordStore* recordStore, c
     lengthBytes[1] = (uint8_t) ((length >> 8) & 0xFFU);
     (void) memcpy(RecordStore_MessageAddress(recordStore), data, size);
 
-    bool sealed = recordStore->SecurityPolicy->ComputeIntegrity(
+    bool sealed = recordStore->SecurityPolicy->SealRecord(
         recordStore->SecurityPolicy,
-        RecordStore_IntegrityRegionAddress(recordStore),
-        RecordStore_IntegrityRegionSize(size),
-        RecordStore_IntegrityChecksumAddress(recordStore, size)
+        RecordStore_ContentAddress(recordStore),
+        RecordStore_ContentSize(size),
+        CONTENT_HEADER_SIZE,
+        RecordStore_TrailerAddress(recordStore, size)
     );
 
     *RecordStore_SentFlagAddress(recordStore, size) = SENT_FLAG_UNSENT;
@@ -214,14 +220,14 @@ static inline bool RecordStore_ReadRecordBody(
     size_t offset,
     uint16_t length
 );
-static inline bool RecordStore_ReadIntegrityChecksum(
+static inline bool RecordStore_ReadTrailer(
     struct RecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t recordStart,
     uint16_t dataLength
 );
-static inline bool RecordStore_VerifyIntegrity(struct RecordStore* recordStore, uint16_t length);
+static inline bool RecordStore_OpenRecord(struct RecordStore* recordStore, uint16_t length);
 
 static bool RecordStore_ReadAndValidateRecord(
     struct RecordStore* recordStore,
@@ -234,8 +240,8 @@ static bool RecordStore_ReadAndValidateRecord(
     return RecordStore_ReadRecordHeader(recordStore, blockDevice, blockIndex, offset) &&
            RecordStore_ValidateHeader(recordStore, length) &&
            RecordStore_ReadRecordBody(recordStore, blockDevice, blockIndex, offset, *length) &&
-           RecordStore_ReadIntegrityChecksum(recordStore, blockDevice, blockIndex, offset, *length) &&
-           RecordStore_VerifyIntegrity(recordStore, *length);
+           RecordStore_ReadTrailer(recordStore, blockDevice, blockIndex, offset, *length) &&
+           RecordStore_OpenRecord(recordStore, *length);
 }
 
 static inline bool RecordStore_ReadRecordHeader(
@@ -249,7 +255,7 @@ static inline bool RecordStore_ReadRecordHeader(
         blockDevice,
         blockIndex,
         offset,
-        RecordStore_IntegrityRegionAddress(recordStore),
+        RecordStore_ContentAddress(recordStore),
         MAGIC_SIZE + RECORD_LENGTH_SIZE
     );
 }
@@ -305,7 +311,7 @@ static inline bool RecordStore_ReadRecordBody(
 
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-static inline bool RecordStore_ReadIntegrityChecksum(
+static inline bool RecordStore_ReadTrailer(
     struct RecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
@@ -316,19 +322,20 @@ static inline bool RecordStore_ReadIntegrityChecksum(
     return SolidSyslogBlockDevice_Read(
         blockDevice,
         blockIndex,
-        RecordStore_IntegrityChecksumOffset(recordStart, dataLength),
-        RecordStore_IntegrityChecksumAddress(recordStore, dataLength),
-        recordStore->SecurityPolicy->IntegritySize
+        RecordStore_TrailerOffset(recordStart, dataLength),
+        RecordStore_TrailerAddress(recordStore, dataLength),
+        recordStore->SecurityPolicy->TrailerSize
     );
 }
 
-static inline bool RecordStore_VerifyIntegrity(struct RecordStore* recordStore, uint16_t length)
+static inline bool RecordStore_OpenRecord(struct RecordStore* recordStore, uint16_t length)
 {
-    return recordStore->SecurityPolicy->VerifyIntegrity(
+    return recordStore->SecurityPolicy->OpenRecord(
         recordStore->SecurityPolicy,
-        RecordStore_IntegrityRegionAddress(recordStore),
-        RecordStore_IntegrityRegionSize(length),
-        RecordStore_IntegrityChecksumAddress(recordStore, length)
+        RecordStore_ContentAddress(recordStore),
+        RecordStore_ContentSize(length),
+        CONTENT_HEADER_SIZE,
+        RecordStore_TrailerAddress(recordStore, length)
     );
 }
 

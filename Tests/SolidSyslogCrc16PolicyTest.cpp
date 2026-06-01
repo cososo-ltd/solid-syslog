@@ -27,45 +27,45 @@ TEST(SolidSyslogCrc16Policy, CreateReturnsNonNull)
     CHECK_TRUE(policy != nullptr);
 }
 
-TEST(SolidSyslogCrc16Policy, IntegritySizeIsTwo)
+TEST(SolidSyslogCrc16Policy, TrailerSizeIsTwo)
 {
-    LONGS_EQUAL(2, policy->IntegritySize);
+    LONGS_EQUAL(2, policy->TrailerSize);
 }
 
-TEST(SolidSyslogCrc16Policy, ComputeIntegrityReturnsCrc16)
+TEST(SolidSyslogCrc16Policy, SealRecordWritesCrc16ToTrailer)
 {
-    const uint8_t data[] = "123456789";
-    uint8_t integrity[2] = {};
-    policy->ComputeIntegrity(policy, data, 9, integrity);
+    uint8_t content[] = "123456789";
+    uint8_t trailer[2] = {};
+    policy->SealRecord(policy, content, 9, 0, trailer);
     /* CRC-16/CCITT-FALSE of "123456789" is 0x29B1 */
-    BYTES_EQUAL(0x29, integrity[0]);
-    BYTES_EQUAL(0xB1, integrity[1]);
+    BYTES_EQUAL(0x29, trailer[0]);
+    BYTES_EQUAL(0xB1, trailer[1]);
 }
 
-TEST(SolidSyslogCrc16Policy, ComputeThenVerifyRoundTrip)
+TEST(SolidSyslogCrc16Policy, SealThenOpenRoundTrip)
 {
-    const uint8_t data[] = "hello";
-    uint8_t integrity[2] = {};
-    policy->ComputeIntegrity(policy, data, 5, integrity);
-    CHECK_TRUE(policy->VerifyIntegrity(policy, data, 5, integrity));
+    uint8_t content[] = "hello";
+    uint8_t trailer[2] = {};
+    policy->SealRecord(policy, content, 5, 0, trailer);
+    CHECK_TRUE(policy->OpenRecord(policy, content, 5, 0, trailer));
 }
 
-TEST(SolidSyslogCrc16Policy, VerifyDetectsSingleBitFlip)
+TEST(SolidSyslogCrc16Policy, OpenDetectsTrailerBitFlip)
 {
-    const uint8_t data[] = "hello";
-    uint8_t integrity[2] = {};
-    policy->ComputeIntegrity(policy, data, 5, integrity);
-    integrity[0] ^= 0x01;
-    CHECK_FALSE(policy->VerifyIntegrity(policy, data, 5, integrity));
+    uint8_t content[] = "hello";
+    uint8_t trailer[2] = {};
+    policy->SealRecord(policy, content, 5, 0, trailer);
+    trailer[0] ^= 0x01;
+    CHECK_FALSE(policy->OpenRecord(policy, content, 5, 0, trailer));
 }
 
-TEST(SolidSyslogCrc16Policy, VerifyDetectsDataCorruption)
+TEST(SolidSyslogCrc16Policy, OpenDetectsContentCorruption)
 {
-    uint8_t data[] = "hello";
-    uint8_t integrity[2] = {};
-    policy->ComputeIntegrity(policy, data, 5, integrity);
-    data[0] ^= 0x01;
-    CHECK_FALSE(policy->VerifyIntegrity(policy, data, 5, integrity));
+    uint8_t content[] = "hello";
+    uint8_t trailer[2] = {};
+    policy->SealRecord(policy, content, 5, 0, trailer);
+    content[0] ^= 0x01;
+    CHECK_FALSE(policy->OpenRecord(policy, content, 5, 0, trailer));
 }
 
 TEST(SolidSyslogCrc16Policy, DestroyDoesNotCrash)

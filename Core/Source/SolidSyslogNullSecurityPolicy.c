@@ -5,32 +5,38 @@
 
 #include "SolidSyslogSecurityPolicyDefinition.h"
 
-static bool NullSecurityPolicy_NullComputeIntegrity(
+static bool NullSecurityPolicy_NullSealRecord(
     struct SolidSyslogSecurityPolicy* self,
-    const uint8_t* data,
-    uint16_t length,
-    // NOLINTNEXTLINE(readability-non-const-parameter) -- integrityOut is non-const to match the vtable signature
-    uint8_t* integrityOut
+    // NOLINTNEXTLINE(readability-non-const-parameter) -- content is non-const to match the vtable signature
+    uint8_t* content,
+    uint16_t contentLength,
+    uint16_t headerLength,
+    // NOLINTNEXTLINE(readability-non-const-parameter) -- trailerOut is non-const to match the vtable signature
+    uint8_t* trailerOut
 )
 {
     (void) self;
-    (void) data;
-    (void) length;
-    (void) integrityOut;
+    (void) content;
+    (void) contentLength;
+    (void) headerLength;
+    (void) trailerOut;
     return true;
 }
 
-static bool NullSecurityPolicy_NullVerifyIntegrity(
+static bool NullSecurityPolicy_NullOpenRecord(
     struct SolidSyslogSecurityPolicy* self,
-    const uint8_t* data,
-    uint16_t length,
-    const uint8_t* integrityIn
+    // NOLINTNEXTLINE(readability-non-const-parameter) -- content is non-const to match the vtable signature
+    uint8_t* content,
+    uint16_t contentLength,
+    uint16_t headerLength,
+    const uint8_t* trailerIn
 )
 {
     (void) self;
-    (void) data;
-    (void) length;
-    (void) integrityIn;
+    (void) content;
+    (void) contentLength;
+    (void) headerLength;
+    (void) trailerIn;
     return true;
 }
 
@@ -38,8 +44,8 @@ struct SolidSyslogSecurityPolicy* SolidSyslogNullSecurityPolicy_Get(void)
 {
     static struct SolidSyslogSecurityPolicy instance = {
         0,
-        NullSecurityPolicy_NullComputeIntegrity,
-        NullSecurityPolicy_NullVerifyIntegrity,
+        NullSecurityPolicy_NullSealRecord,
+        NullSecurityPolicy_NullOpenRecord,
     };
     return &instance;
 }

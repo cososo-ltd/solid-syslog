@@ -20,17 +20,19 @@ enum
 static inline struct SolidSyslogMbedTlsHmacSha256Policy* MbedTlsHmacSha256Policy_SelfFromBase(
     struct SolidSyslogSecurityPolicy* base
 );
-static bool MbedTlsHmacSha256Policy_ComputeIntegrity(
+static bool MbedTlsHmacSha256Policy_SealRecord(
     struct SolidSyslogSecurityPolicy* self,
-    const uint8_t* data,
-    uint16_t length,
-    uint8_t* integrityOut
+    uint8_t* content,
+    uint16_t contentLength,
+    uint16_t headerLength,
+    uint8_t* trailerOut
 );
-static bool MbedTlsHmacSha256Policy_VerifyIntegrity(
+static bool MbedTlsHmacSha256Policy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
-    const uint8_t* data,
-    uint16_t length,
-    const uint8_t* integrityIn
+    uint8_t* content,
+    uint16_t contentLength,
+    uint16_t headerLength,
+    const uint8_t* trailerIn
 );
 static bool MbedTlsHmacSha256Policy_ComputeTag(
     struct SolidSyslogMbedTlsHmacSha256Policy* policy,
@@ -46,9 +48,9 @@ void MbedTlsHmacSha256Policy_Initialise(
 )
 {
     struct SolidSyslogMbedTlsHmacSha256Policy* self = MbedTlsHmacSha256Policy_SelfFromBase(base);
-    self->Base.IntegritySize = HMAC_SHA256_TAG_SIZE;
-    self->Base.ComputeIntegrity = MbedTlsHmacSha256Policy_ComputeIntegrity;
-    self->Base.VerifyIntegrity = MbedTlsHmacSha256Policy_VerifyIntegrity;
+    self->Base.TrailerSize = HMAC_SHA256_TAG_SIZE;
+    self->Base.SealRecord = MbedTlsHmacSha256Policy_SealRecord;
+    self->Base.OpenRecord = MbedTlsHmacSha256Policy_OpenRecord;
     self->Config = *config;
 }
 
@@ -67,14 +69,23 @@ static inline struct SolidSyslogMbedTlsHmacSha256Policy* MbedTlsHmacSha256Policy
     return (struct SolidSyslogMbedTlsHmacSha256Policy*) base;
 }
 
-static bool MbedTlsHmacSha256Policy_ComputeIntegrity(
+/* HMAC authenticates the whole content as one buffer — the header/body split
+ * only matters to AEAD policies, so headerLength is ignored here. */
+static bool MbedTlsHmacSha256Policy_SealRecord(
     struct SolidSyslogSecurityPolicy* self,
-    const uint8_t* data,
-    uint16_t length,
-    uint8_t* integrityOut
+    uint8_t* content,
+    uint16_t contentLength,
+    uint16_t headerLength,
+    uint8_t* trailerOut
 )
 {
-    return MbedTlsHmacSha256Policy_ComputeTag(MbedTlsHmacSha256Policy_SelfFromBase(self), data, length, integrityOut);
+    (void) headerLength;
+    return MbedTlsHmacSha256Policy_ComputeTag(
+        MbedTlsHmacSha256Policy_SelfFromBase(self),
+        content,
+        contentLength,
+        trailerOut
+    );
 }
 
 /* Fetches the key on demand into a transient buffer, computes HMAC-SHA256 over
@@ -114,18 +125,20 @@ static bool MbedTlsHmacSha256Policy_ComputeTag(
     return computed;
 }
 
-static bool MbedTlsHmacSha256Policy_VerifyIntegrity(
+static bool MbedTlsHmacSha256Policy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
-    const uint8_t* data,
-    uint16_t length,
-    const uint8_t* integrityIn
+    uint8_t* content,
+    uint16_t contentLength,
+    uint16_t headerLength,
+    const uint8_t* trailerIn
 )
 {
+    (void) headerLength;
     uint8_t expected[HMAC_SHA256_TAG_SIZE];
     bool verified = false;
-    if (MbedTlsHmacSha256Policy_ComputeTag(MbedTlsHmacSha256Policy_SelfFromBase(self), data, length, expected))
+    if (MbedTlsHmacSha256Policy_ComputeTag(MbedTlsHmacSha256Policy_SelfFromBase(self), content, contentLength, expected))
     {
-        verified = MbedTlsHmacSha256Policy_ConstantTimeEquals(expected, integrityIn, HMAC_SHA256_TAG_SIZE);
+        verified = MbedTlsHmacSha256Policy_ConstantTimeEquals(expected, trailerIn, HMAC_SHA256_TAG_SIZE);
     }
     return verified;
 }
