@@ -1,5 +1,60 @@
 # Dev Log
 
+## 2026-06-01 — S12.20 Extract SolidSyslogTimestampFormatter
+
+Lifted timestamp validation + RFC 3339 formatting (seven functions, ~75 lines)
+out of `SolidSyslog.c` into a private `Core/Source` module, continuing E12's
+structural-decomposition axis. Reviewed the extracted story first; it held up,
+but two things had drifted since it was written and one design question surfaced
+during planning.
+
+### Decisions
+
+- **Boundary takes a value, not a clock.** The story originally proposed
+  `_Format(f, clock)`. David asked whether future SD formatting a non-now time
+  implied passing the timestamp by value instead. Agreed it does — and that
+  value-in is the *narrower* interface (the formatter no longer knows what a
+  clock is), so it's the right boundary, not premature generalisation. Final
+  API: `SolidSyslogTimestampFormatter_Format(f, const SolidSyslogTimestamp*)`.
+  Capture (`clock(&ts)`) stays in `SolidSyslog.c`'s thin `FormatTimestamp`
+  wrapper, where the nil-object clock substitution already lives — so the module
+  holds no clock dependency and, deliberately, no NULL-pointer guard. This also
+  dissolved the story's "NULL-clock" ambiguity: the module never sees a clock.
+
+- **Promote `SolidSyslogFormatter_NilValue` first.** The deferred "out of scope"
+  NILVALUE decision became pressing — the local `FormatNilvalue` helper had grown
+  to four call sites in `SolidSyslog.c`, so extracting timestamp would split it.
+  Promoted it to a real Formatter primitive (RFC 5424 §6 NILVALUE; the Formatter
+  is already a SolidSyslog-specific builder, so no over-broadening) as a strict
+  red/green step one, repointing all four sites.
+
+- **Extraction strategy: existing tests as the safety net (Approach A), with B's
+  discipline.** Debated A (refactor under existing tests) vs B (test-drive a new
+  module then cut over). Landed on A as the spine — it's a genuine refactor and
+  avoids a transient second implementation — but kept B's "miss nothing"
+  guarantee via *ordering*: wrote the new direct test file first (red by compile
+  error → module created by moving the code → green via existing wire-parser
+  tests proving the move), backfilled the full ~30-case boundary suite as
+  characterization tests (mutation-checked that they bite), and only then deleted
+  the 40 old round-trip timestamp tests. Net −8 tests, sharper coverage.
+
+- **Split `NullClockProducesNilvalue`.** Its two behaviours separated: the
+  `config.Clock == NULL` → Create-substitutes-nil-object half stays in
+  `SolidSyslogTest.cpp`; the zero-init-struct → NILVALUE half moved to the new
+  unit file (driven by a struct literal, no clock). Also kept
+  `TimestampAppearsInCorrectMessageFieldPosition` in the old file as the
+  message-level layout test. Removed the dead support apparatus too (20 position
+  constants, 7 sub-field macros, 38 forward decls).
+
+### Deferred
+
+- **S12.21 (`SolidSyslogMessageFormatter`)** — the next E12 extraction; will
+  capture *now* and pass the value into this module via `MessageFormatterContext`.
+
+### Open questions
+
+- None outstanding.
+
 ## 2026-05-31 — S17.01 OpenSSL HMAC-SHA256 at-rest SecurityPolicy (Linux + Windows)
 
 The OpenSSL sibling of S17.02's mbedTLS HMAC policy. Confirmed up front that
