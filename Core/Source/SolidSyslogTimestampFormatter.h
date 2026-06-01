@@ -3,10 +3,10 @@
 
 #include "ExternC.h"
 
-#include "SolidSyslogFormatter.h"
-#include "SolidSyslogTimestamp.h"
-
 EXTERN_C_BEGIN
+
+    struct SolidSyslogFormatter;
+    struct SolidSyslogTimestamp;
 
     /* Formats a captured timestamp as an RFC 3339 / RFC 5424 TIMESTAMP field:
      * YYYY-MM-DDTHH:MM:SS.ffffff followed by 'Z' (UTC) or '±HH:MM'. A value

@@ -1,4 +1,5 @@
 #include <cstring>
+#include <stdint.h>
 
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogFormatter.h"

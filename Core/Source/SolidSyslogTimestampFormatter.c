@@ -6,6 +6,8 @@
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogTimestamp.h"
 
+struct SolidSyslogFormatter;
+
 static inline bool TimestampFormatter_IsValid(const struct SolidSyslogTimestamp* ts);
 static inline void TimestampFormatter_FormatValid(
     struct SolidSyslogFormatter* f,
