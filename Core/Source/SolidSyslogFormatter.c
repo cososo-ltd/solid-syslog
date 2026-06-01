@@ -111,6 +111,12 @@ void SolidSyslogFormatter_Bom(struct SolidSyslogFormatter* formatter)
     Formatter_NullTerminate(formatter);
 }
 
+void SolidSyslogFormatter_NilValue(struct SolidSyslogFormatter* formatter)
+{
+    /* RFC 5424 §6 NILVALUE — a single '-' standing in for an absent field. */
+    SolidSyslogFormatter_AsciiCharacter(formatter, '-');
+}
+
 static inline bool Formatter_IsAsciiCharacter(char value)
 {
     return (value == ' ') || Formatter_IsPrintableUsAscii(value);

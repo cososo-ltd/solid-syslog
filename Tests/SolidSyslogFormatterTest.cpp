@@ -75,6 +75,7 @@ class TEST_SolidSyslogFormatter_FourDigitFormatsMax_Test;
 class TEST_SolidSyslogFormatter_FourDigitFormatsZero_Test;
 class TEST_SolidSyslogFormatter_LengthAdvancesWithWrites_Test;
 class TEST_SolidSyslogFormatter_LengthStartsAtZero_Test;
+class TEST_SolidSyslogFormatter_NilValueWritesHyphen_Test;
 class TEST_SolidSyslogFormatter_OneByteBufferHoldsOnlyNullTerminator_Test;
 class TEST_SolidSyslogFormatter_PrintUsAsciiStringPassesBangAndTildeBoundariesThrough_Test;
 class TEST_SolidSyslogFormatter_PrintUsAsciiStringPassesPrintableCharacterThrough_Test;
@@ -1041,4 +1042,11 @@ TEST(SolidSyslogFormatter, BomWritesUtf8ByteOrderMark)
     SolidSyslogFormatter_Bom(formatter);
 
     CHECK_FORMATTED("\xEF\xBB\xBF");
+}
+
+TEST(SolidSyslogFormatter, NilValueWritesHyphen)
+{
+    SolidSyslogFormatter_NilValue(formatter);
+
+    CHECK_FORMATTED("-");
 }

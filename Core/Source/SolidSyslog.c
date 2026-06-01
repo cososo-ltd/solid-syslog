@@ -51,7 +51,6 @@ static inline void SolidSyslog_FormatMessage(
 );
 static inline void SolidSyslog_FormatMsg(struct SolidSyslogFormatter* f, const char* msg);
 static inline void SolidSyslog_FormatMsgId(struct SolidSyslogFormatter* f, const char* messageId);
-static inline void SolidSyslog_FormatNilvalue(struct SolidSyslogFormatter* f);
 static inline void SolidSyslog_FormatNonZeroUtcOffset(struct SolidSyslogFormatter* f, int16_t offsetMinutes);
 static inline void SolidSyslog_FormatPrival(struct SolidSyslogFormatter* f, uint8_t prival);
 static inline void SolidSyslog_FormatStringField(
@@ -384,7 +383,7 @@ static inline void SolidSyslog_FormatTimestamp(struct SolidSyslogFormatter* f, S
     }
     else
     {
-        SolidSyslog_FormatNilvalue(f);
+        SolidSyslogFormatter_NilValue(f);
     }
 }
 
@@ -483,7 +482,7 @@ static inline void SolidSyslog_FormatStringField(
     }
     else
     {
-        SolidSyslog_FormatNilvalue(f);
+        SolidSyslogFormatter_NilValue(f);
     }
 }
 
@@ -498,7 +497,7 @@ static inline void SolidSyslog_FormatMsgId(struct SolidSyslogFormatter* f, const
 
     if (SolidSyslogFormatter_Length(f) == lengthBefore)
     {
-        SolidSyslog_FormatNilvalue(f);
+        SolidSyslogFormatter_NilValue(f);
     }
 }
 
@@ -522,7 +521,7 @@ static inline void SolidSyslog_FormatStructuredData(
 
     if (SolidSyslogFormatter_Length(f) == lengthBefore)
     {
-        SolidSyslog_FormatNilvalue(f);
+        SolidSyslogFormatter_NilValue(f);
     }
 }
 
@@ -548,11 +547,6 @@ static inline const char* SolidSyslog_SkipLeadingBom(const char* msg)
         result = &msg[3];
     }
     return result;
-}
-
-static inline void SolidSyslog_FormatNilvalue(struct SolidSyslogFormatter* f)
-{
-    SolidSyslogFormatter_AsciiCharacter(f, '-');
 }
 
 void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts)

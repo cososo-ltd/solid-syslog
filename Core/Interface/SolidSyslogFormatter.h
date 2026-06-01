@@ -31,6 +31,7 @@ EXTERN_C_BEGIN
     struct SolidSyslogFormatter* SolidSyslogFormatter_Create(SolidSyslogFormatterStorage * storage, size_t bufferSize);
     void SolidSyslogFormatter_AsciiCharacter(struct SolidSyslogFormatter * formatter, char value);
     void SolidSyslogFormatter_Bom(struct SolidSyslogFormatter * formatter);
+    void SolidSyslogFormatter_NilValue(struct SolidSyslogFormatter * formatter);
     void SolidSyslogFormatter_BoundedString(
         struct SolidSyslogFormatter * formatter,
         const char* source,
