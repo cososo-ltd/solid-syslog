@@ -226,7 +226,7 @@ static enum OpenSslAesGcmPolicy_OpenResult OpenSslAesGcmPolicy_GcmDecrypt(
     /* Copy the expected tag into a non-const buffer — EVP_CIPHER_CTX_ctrl's
      * SET_TAG parameter is void*, and copying avoids casting away const. */
     uint8_t tag[GCM_TAG_SIZE];
-    memcpy(tag, tagIn, sizeof tag);
+    (void) memcpy(tag, tagIn, sizeof tag);
 
     enum OpenSslAesGcmPolicy_OpenResult result = AES_GCM_OPEN_ERROR;
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();

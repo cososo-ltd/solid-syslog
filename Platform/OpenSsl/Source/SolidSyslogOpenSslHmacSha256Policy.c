@@ -136,7 +136,12 @@ static bool OpenSslHmacSha256Policy_OpenRecord(
     (void) headerLength;
     uint8_t expected[HMAC_SHA256_TAG_SIZE];
     bool verified = false;
-    if (OpenSslHmacSha256Policy_ComputeTag(OpenSslHmacSha256Policy_SelfFromBase(self), content, contentLength, expected))
+    if (OpenSslHmacSha256Policy_ComputeTag(
+            OpenSslHmacSha256Policy_SelfFromBase(self),
+            content,
+            contentLength,
+            expected
+        ))
     {
         verified = OpenSslHmacSha256Policy_ConstantTimeEquals(expected, trailerIn, HMAC_SHA256_TAG_SIZE);
     }

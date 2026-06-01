@@ -21,7 +21,8 @@ EXTERN_C_BEGIN
         size_t MaxBlocks;
         size_t MaxBlockSize;
         const char* DiscardPolicy;
-        const char* SecurityPolicy; /* "crc16" (default) | "hmac-sha256" | "aes-256-gcm" | "null" — at-rest protection */
+        const char*
+            SecurityPolicy; /* "crc16" (default) | "hmac-sha256" | "aes-256-gcm" | "null" — at-rest protection */
         size_t CapacityThreshold;
         bool NoSd;
         bool HaltExit;

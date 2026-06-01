@@ -44,7 +44,7 @@ void SetKey(uint8_t fill)
 {
     memset(activeKey, fill, sizeof activeKey);
 }
-}
+} // namespace
 
 // clang-format off
 TEST_GROUP(SolidSyslogOpenSslAesGcmPolicyIntegration)
