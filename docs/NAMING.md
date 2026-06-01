@@ -533,6 +533,36 @@ pressure from rule 5.4.)
 **Exceptions:** CppUTest's `TEST`, `TEST_GROUP`, `CHECK_*`, `LONGS_EQUAL`,
 etc. are used unmodified — see Tests below.
 
+### Pool-size tunables are named by role, not platform
+
+Every stateful Created class lives in a static pool sized by a
+`SOLIDSYSLOG_..._POOL_SIZE` tunable (see CLAUDE.md, *Pool Allocation (E11)*).
+For classes selected by platform or crypto vendor — where a build links
+exactly one implementation of a given role — the tunable is named for the
+**role**, not the implementation:
+
+```c
+#define SOLIDSYSLOG_TCP_STREAM_POOL_SIZE 2U   /* not _POSIX_TCP_STREAM_ */
+#define SOLIDSYSLOG_MUTEX_POOL_SIZE      1U   /* not _POSIX_MUTEX_ / _WINDOWS_MUTEX_ */
+#define SOLIDSYSLOG_TLS_STREAM_POOL_SIZE 1U   /* OpenSSL or Mbed TLS, one name */
+```
+
+The integrator reasons about "how many TCP streams", never "how many POSIX
+streams". `SOLIDSYSLOG_ADDRESS_POOL_SIZE` established the pattern; the role
+pools (`TCP_STREAM`, `DATAGRAM`, `RESOLVER`, `MUTEX`, `FILE`, `ATOMIC_COUNTER`,
+`TLS_STREAM`, `HMAC_SHA256_POLICY`) follow it. Do **not** reintroduce a
+per-platform pool name when adding a new OS, network stack, or crypto vendor —
+the new implementation references the existing role tunable.
+
+The pool counts **instances, not implementations**. The naming holds only
+because a build links one implementation per role. If a future build ever
+wires two implementations of the same role into one executable (e.g. the lwIP
+numeric *and* DNS resolver, or two crypto vendors), size that role's pool to
+the **sum** of the concurrent instances rather than splitting the name again.
+
+Classes with no platform/vendor variants keep their class-specific name
+(`SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE`, `SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE`, etc.).
+
 ### Enum constants
 
 All enum constants — tagged or anonymous, public or TU-local — are

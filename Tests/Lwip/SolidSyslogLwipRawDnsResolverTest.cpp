@@ -386,7 +386,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveAcceptsNumericLiteralAsSynchronousHit
 TEST_GROUP(SolidSyslogLwipRawDnsResolverPool)
 {
     struct SolidSyslogLwipRawDnsResolverConfig config = {};
-    struct SolidSyslogResolver* pooled[SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE] = {};
+    struct SolidSyslogResolver* pooled[SOLIDSYSLOG_RESOLVER_POOL_SIZE] = {};
     struct SolidSyslogResolver* overflow                                            = nullptr;
 
     void setup() override
@@ -488,8 +488,8 @@ TEST(SolidSyslogLwipRawDnsResolverPool, CreateLocksOncePerSlotProbedWhenPoolIsFu
 
     overflow = SolidSyslogLwipRawDnsResolver_Create(&config);
 
-    LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfPooledHandleLocksOnce)

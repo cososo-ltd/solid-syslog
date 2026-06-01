@@ -17,11 +17,11 @@ struct SolidSyslogStream;
 static inline size_t MbedTlsStream_IndexFromHandle(const struct SolidSyslogStream* base);
 static inline void MbedTlsStream_CleanupAtIndex(size_t index, void* context);
 
-static bool MbedTlsStream_InUse[SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE];
-static struct SolidSyslogMbedTlsStream MbedTlsStream_Pool[SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE];
+static bool MbedTlsStream_InUse[SOLIDSYSLOG_TLS_STREAM_POOL_SIZE];
+static struct SolidSyslogMbedTlsStream MbedTlsStream_Pool[SOLIDSYSLOG_TLS_STREAM_POOL_SIZE];
 static struct SolidSyslogPoolAllocator MbedTlsStream_Allocator = {
     MbedTlsStream_InUse,
-    SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE
+    SOLIDSYSLOG_TLS_STREAM_POOL_SIZE
 };
 
 struct SolidSyslogStream* SolidSyslogMbedTlsStream_Create(const struct SolidSyslogMbedTlsStreamConfig* config)
@@ -62,8 +62,8 @@ void SolidSyslogMbedTlsStream_Destroy(struct SolidSyslogStream* base)
 
 static inline size_t MbedTlsStream_IndexFromHandle(const struct SolidSyslogStream* base)
 {
-    size_t result = SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_TLS_STREAM_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_TLS_STREAM_POOL_SIZE; poolIndex++)
     {
         if (base == &MbedTlsStream_Pool[poolIndex].Base)
         {

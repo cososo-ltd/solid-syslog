@@ -129,7 +129,7 @@ TEST(SolidSyslogPosixFile, DeleteReturnsFalseForNonexistentFile)
 // clang-format off
 TEST_GROUP(SolidSyslogPosixFilePool)
 {
-    struct SolidSyslogFile* pooled[SOLIDSYSLOG_POSIX_FILE_POOL_SIZE] = {};
+    struct SolidSyslogFile* pooled[SOLIDSYSLOG_FILE_POOL_SIZE] = {};
     struct SolidSyslogFile* overflow                                 = nullptr;
 
     void teardown() override
@@ -206,8 +206,8 @@ TEST(SolidSyslogPosixFilePool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
     overflow = SolidSyslogPosixFile_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_POSIX_FILE_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_POSIX_FILE_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_FILE_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_FILE_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogPosixFilePool, DestroyOfPooledHandleLocksOnce)

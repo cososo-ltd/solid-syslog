@@ -79,7 +79,7 @@ TEST(SolidSyslogFreeRtosMutex, DestroyCallsSemaphoreDeleteOnce)
 // clang-format off
 TEST_GROUP(SolidSyslogFreeRtosMutexPool)
 {
-    struct SolidSyslogMutex* pooled[SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE] = {};
+    struct SolidSyslogMutex* pooled[SOLIDSYSLOG_MUTEX_POOL_SIZE] = {};
     struct SolidSyslogMutex* overflow                                      = nullptr;
 
     void setup() override
@@ -171,8 +171,8 @@ TEST(SolidSyslogFreeRtosMutexPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
     overflow = SolidSyslogFreeRtosMutex_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_MUTEX_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_MUTEX_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogFreeRtosMutexPool, DestroyOfPooledHandleLocksOnce)

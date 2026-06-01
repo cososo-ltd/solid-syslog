@@ -264,7 +264,7 @@ TEST(SolidSyslogPosixDatagram, SendToReturnsFailedWhenConnectFails)
 // clang-format off
 TEST_GROUP(SolidSyslogPosixDatagramPool)
 {
-    struct SolidSyslogDatagram* pooled[SOLIDSYSLOG_POSIX_DATAGRAM_POOL_SIZE] = {};
+    struct SolidSyslogDatagram* pooled[SOLIDSYSLOG_DATAGRAM_POOL_SIZE] = {};
     struct SolidSyslogDatagram* overflow                                     = nullptr;
 
     void teardown() override
@@ -341,8 +341,8 @@ TEST(SolidSyslogPosixDatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
     overflow = SolidSyslogPosixDatagram_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_POSIX_DATAGRAM_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_POSIX_DATAGRAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogPosixDatagramPool, DestroyOfPooledHandleLocksOnce)

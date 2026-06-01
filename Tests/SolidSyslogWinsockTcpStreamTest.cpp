@@ -532,7 +532,7 @@ TEST(SolidSyslogWinsockTcpStream, DestroyClosesOpenSocket)
 // clang-format off
 TEST_GROUP(SolidSyslogWinsockTcpStreamPool)
 {
-    struct SolidSyslogStream* pooled[SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE] = {};
+    struct SolidSyslogStream* pooled[SOLIDSYSLOG_TCP_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                         = nullptr;
 
     void teardown() override
@@ -609,8 +609,8 @@ TEST(SolidSyslogWinsockTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFull
 
     overflow = SolidSyslogWinsockTcpStream_Create(nullptr);
 
-    LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogWinsockTcpStreamPool, DestroyOfPooledHandleLocksOnce)

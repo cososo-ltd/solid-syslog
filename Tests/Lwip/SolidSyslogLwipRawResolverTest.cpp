@@ -128,7 +128,7 @@ TEST(SolidSyslogLwipRawResolver, ResolveReturnsFalseWhenIpaddrAtonRejectsHost)
 // clang-format off
 TEST_GROUP(SolidSyslogLwipRawResolverPool)
 {
-    struct SolidSyslogResolver* pooled[SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE] = {};
+    struct SolidSyslogResolver* pooled[SOLIDSYSLOG_RESOLVER_POOL_SIZE] = {};
     struct SolidSyslogResolver* overflow                                         = nullptr;
 
     void teardown() override
@@ -210,8 +210,8 @@ TEST(SolidSyslogLwipRawResolverPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
     overflow = SolidSyslogLwipRawResolver_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogLwipRawResolverPool, DestroyOfPooledHandleLocksOnce)

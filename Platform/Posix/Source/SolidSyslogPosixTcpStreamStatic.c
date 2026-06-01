@@ -17,11 +17,11 @@ struct SolidSyslogStream;
 static inline size_t PosixTcpStream_IndexFromHandle(const struct SolidSyslogStream* base);
 static inline void PosixTcpStream_CleanupAtIndex(size_t index, void* context);
 
-static bool PosixTcpStream_InUse[SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE];
-static struct SolidSyslogPosixTcpStream PosixTcpStream_Pool[SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE];
+static bool PosixTcpStream_InUse[SOLIDSYSLOG_TCP_STREAM_POOL_SIZE];
+static struct SolidSyslogPosixTcpStream PosixTcpStream_Pool[SOLIDSYSLOG_TCP_STREAM_POOL_SIZE];
 static struct SolidSyslogPoolAllocator PosixTcpStream_Allocator = {
     PosixTcpStream_InUse,
-    SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE
+    SOLIDSYSLOG_TCP_STREAM_POOL_SIZE
 };
 
 struct SolidSyslogStream* SolidSyslogPosixTcpStream_Create(const struct SolidSyslogPosixTcpStreamConfig* config)
@@ -62,8 +62,8 @@ void SolidSyslogPosixTcpStream_Destroy(struct SolidSyslogStream* base)
 
 static inline size_t PosixTcpStream_IndexFromHandle(const struct SolidSyslogStream* base)
 {
-    size_t result = SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_TCP_STREAM_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_TCP_STREAM_POOL_SIZE; poolIndex++)
     {
         if (base == &PosixTcpStream_Pool[poolIndex].Base)
         {

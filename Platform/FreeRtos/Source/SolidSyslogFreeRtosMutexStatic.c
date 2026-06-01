@@ -17,12 +17,9 @@ struct SolidSyslogMutex;
 static inline size_t FreeRtosMutex_IndexFromHandle(const struct SolidSyslogMutex* base);
 static inline void FreeRtosMutex_CleanupAtIndex(size_t index, void* context);
 
-static bool FreeRtosMutex_InUse[SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE];
-static struct SolidSyslogFreeRtosMutex FreeRtosMutex_Pool[SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE];
-static struct SolidSyslogPoolAllocator FreeRtosMutex_Allocator = {
-    FreeRtosMutex_InUse,
-    SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE
-};
+static bool FreeRtosMutex_InUse[SOLIDSYSLOG_MUTEX_POOL_SIZE];
+static struct SolidSyslogFreeRtosMutex FreeRtosMutex_Pool[SOLIDSYSLOG_MUTEX_POOL_SIZE];
+static struct SolidSyslogPoolAllocator FreeRtosMutex_Allocator = {FreeRtosMutex_InUse, SOLIDSYSLOG_MUTEX_POOL_SIZE};
 
 struct SolidSyslogMutex* SolidSyslogFreeRtosMutex_Create(void)
 {
@@ -62,8 +59,8 @@ void SolidSyslogFreeRtosMutex_Destroy(struct SolidSyslogMutex* base)
 
 static inline size_t FreeRtosMutex_IndexFromHandle(const struct SolidSyslogMutex* base)
 {
-    size_t result = SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_MUTEX_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_MUTEX_POOL_SIZE; poolIndex++)
     {
         if (base == &FreeRtosMutex_Pool[poolIndex].Base)
         {

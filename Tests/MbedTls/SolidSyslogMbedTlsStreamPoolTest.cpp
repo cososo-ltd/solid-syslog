@@ -35,7 +35,7 @@ TEST_GROUP(SolidSyslogMbedTlsStreamPool)
 {
     struct SolidSyslogStream*             transport = nullptr;
     struct SolidSyslogMbedTlsStreamConfig config    = {};
-    struct SolidSyslogStream* pooled[SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE] = {};
+    struct SolidSyslogStream* pooled[SOLIDSYSLOG_TLS_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                      = nullptr;
 
     void setup() override
@@ -132,8 +132,8 @@ TEST(SolidSyslogMbedTlsStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
     overflow = SolidSyslogMbedTlsStream_Create(&config);
 
-    LONGS_EQUAL(SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogMbedTlsStreamPool, DestroyOfPooledHandleLocksOnce)

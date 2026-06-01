@@ -17,11 +17,11 @@ struct SolidSyslogDatagram;
 static inline size_t WinsockDatagram_IndexFromHandle(const struct SolidSyslogDatagram* base);
 static inline void WinsockDatagram_CleanupAtIndex(size_t index, void* context);
 
-static bool WinsockDatagram_InUse[SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE];
-static struct SolidSyslogWinsockDatagram WinsockDatagram_Pool[SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE];
+static bool WinsockDatagram_InUse[SOLIDSYSLOG_DATAGRAM_POOL_SIZE];
+static struct SolidSyslogWinsockDatagram WinsockDatagram_Pool[SOLIDSYSLOG_DATAGRAM_POOL_SIZE];
 static struct SolidSyslogPoolAllocator WinsockDatagram_Allocator = {
     WinsockDatagram_InUse,
-    SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE
+    SOLIDSYSLOG_DATAGRAM_POOL_SIZE
 };
 
 struct SolidSyslogDatagram* SolidSyslogWinsockDatagram_Create(void)
@@ -62,8 +62,8 @@ void SolidSyslogWinsockDatagram_Destroy(struct SolidSyslogDatagram* base)
 
 static inline size_t WinsockDatagram_IndexFromHandle(const struct SolidSyslogDatagram* base)
 {
-    size_t result = SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_DATAGRAM_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_DATAGRAM_POOL_SIZE; poolIndex++)
     {
         if (base == &WinsockDatagram_Pool[poolIndex].Base)
         {

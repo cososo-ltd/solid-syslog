@@ -17,9 +17,9 @@ struct SolidSyslogFile;
 static inline size_t FatFsFile_IndexFromHandle(const struct SolidSyslogFile* base);
 static inline void FatFsFile_CleanupAtIndex(size_t index, void* context);
 
-static bool FatFsFile_InUse[SOLIDSYSLOG_FATFS_FILE_POOL_SIZE];
-static struct SolidSyslogFatFsFile FatFsFile_Pool[SOLIDSYSLOG_FATFS_FILE_POOL_SIZE];
-static struct SolidSyslogPoolAllocator FatFsFile_Allocator = {FatFsFile_InUse, SOLIDSYSLOG_FATFS_FILE_POOL_SIZE};
+static bool FatFsFile_InUse[SOLIDSYSLOG_FILE_POOL_SIZE];
+static struct SolidSyslogFatFsFile FatFsFile_Pool[SOLIDSYSLOG_FILE_POOL_SIZE];
+static struct SolidSyslogPoolAllocator FatFsFile_Allocator = {FatFsFile_InUse, SOLIDSYSLOG_FILE_POOL_SIZE};
 
 struct SolidSyslogFile* SolidSyslogFatFsFile_Create(void)
 {
@@ -54,8 +54,8 @@ void SolidSyslogFatFsFile_Destroy(struct SolidSyslogFile* base)
 
 static inline size_t FatFsFile_IndexFromHandle(const struct SolidSyslogFile* base)
 {
-    size_t result = SOLIDSYSLOG_FATFS_FILE_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_FATFS_FILE_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_FILE_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_FILE_POOL_SIZE; poolIndex++)
     {
         if (base == &FatFsFile_Pool[poolIndex].Base)
         {

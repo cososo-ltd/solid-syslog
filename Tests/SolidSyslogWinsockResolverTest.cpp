@@ -142,7 +142,7 @@ TEST(SolidSyslogWinsockResolver, FreesAddrInfoOnSuccess)
 // clang-format off
 TEST_GROUP(SolidSyslogWinsockResolverPool)
 {
-    struct SolidSyslogResolver* pooled[SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE] = {};
+    struct SolidSyslogResolver* pooled[SOLIDSYSLOG_RESOLVER_POOL_SIZE] = {};
     struct SolidSyslogResolver* overflow                                       = nullptr;
 
     void teardown() override
@@ -222,8 +222,8 @@ TEST(SolidSyslogWinsockResolverPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
     overflow = SolidSyslogWinsockResolver_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogWinsockResolverPool, DestroyOfPooledHandleLocksOnce)

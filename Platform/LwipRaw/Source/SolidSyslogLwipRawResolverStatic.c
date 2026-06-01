@@ -17,11 +17,11 @@ struct SolidSyslogResolver;
 static inline size_t LwipRawResolver_IndexFromHandle(const struct SolidSyslogResolver* base);
 static inline void LwipRawResolver_CleanupAtIndex(size_t index, void* context);
 
-static bool LwipRawResolver_InUse[SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE];
-static struct SolidSyslogLwipRawResolver LwipRawResolver_Pool[SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE];
+static bool LwipRawResolver_InUse[SOLIDSYSLOG_RESOLVER_POOL_SIZE];
+static struct SolidSyslogLwipRawResolver LwipRawResolver_Pool[SOLIDSYSLOG_RESOLVER_POOL_SIZE];
 static struct SolidSyslogPoolAllocator LwipRawResolver_Allocator = {
     LwipRawResolver_InUse,
-    SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE
+    SOLIDSYSLOG_RESOLVER_POOL_SIZE
 };
 
 struct SolidSyslogResolver* SolidSyslogLwipRawResolver_Create(void)
@@ -62,8 +62,8 @@ void SolidSyslogLwipRawResolver_Destroy(struct SolidSyslogResolver* base)
 
 static inline size_t LwipRawResolver_IndexFromHandle(const struct SolidSyslogResolver* base)
 {
-    size_t result = SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_RESOLVER_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_RESOLVER_POOL_SIZE; poolIndex++)
     {
         if (base == &LwipRawResolver_Pool[poolIndex].Base)
         {

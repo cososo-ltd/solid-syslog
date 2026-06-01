@@ -157,7 +157,7 @@ TEST(SolidSyslogWindowsFile, DeleteReturnsFalseForNonexistentFile)
 // clang-format off
 TEST_GROUP(SolidSyslogWindowsFilePool)
 {
-    struct SolidSyslogFile* pooled[SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE] = {};
+    struct SolidSyslogFile* pooled[SOLIDSYSLOG_FILE_POOL_SIZE] = {};
     struct SolidSyslogFile* overflow                                   = nullptr;
 
     void teardown() override
@@ -234,8 +234,8 @@ TEST(SolidSyslogWindowsFilePool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
     overflow = SolidSyslogWindowsFile_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_FILE_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_FILE_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogWindowsFilePool, DestroyOfPooledHandleLocksOnce)

@@ -27,7 +27,7 @@ using namespace CososoTesting;
 // clang-format off
 TEST_GROUP(SolidSyslogStdAtomicCounterPool)
 {
-    struct SolidSyslogAtomicCounter* pooled[SOLIDSYSLOG_STD_ATOMIC_COUNTER_POOL_SIZE] = {};
+    struct SolidSyslogAtomicCounter* pooled[SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE] = {};
     struct SolidSyslogAtomicCounter* overflow                                         = nullptr;
 
     void teardown() override
@@ -104,8 +104,8 @@ TEST(SolidSyslogStdAtomicCounterPool, CreateLocksOncePerSlotProbedWhenPoolIsFull
 
     overflow = SolidSyslogStdAtomicCounter_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_STD_ATOMIC_COUNTER_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_STD_ATOMIC_COUNTER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogStdAtomicCounterPool, DestroyOfPooledHandleLocksOnce)

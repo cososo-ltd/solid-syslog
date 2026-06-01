@@ -17,11 +17,11 @@ struct SolidSyslogStream;
 static inline size_t WinsockTcpStream_IndexFromHandle(const struct SolidSyslogStream* base);
 static inline void WinsockTcpStream_CleanupAtIndex(size_t index, void* context);
 
-static bool WinsockTcpStream_InUse[SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE];
-static struct SolidSyslogWinsockTcpStream WinsockTcpStream_Pool[SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE];
+static bool WinsockTcpStream_InUse[SOLIDSYSLOG_TCP_STREAM_POOL_SIZE];
+static struct SolidSyslogWinsockTcpStream WinsockTcpStream_Pool[SOLIDSYSLOG_TCP_STREAM_POOL_SIZE];
 static struct SolidSyslogPoolAllocator WinsockTcpStream_Allocator = {
     WinsockTcpStream_InUse,
-    SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE
+    SOLIDSYSLOG_TCP_STREAM_POOL_SIZE
 };
 
 struct SolidSyslogStream* SolidSyslogWinsockTcpStream_Create(const struct SolidSyslogWinsockTcpStreamConfig* config)
@@ -62,8 +62,8 @@ void SolidSyslogWinsockTcpStream_Destroy(struct SolidSyslogStream* base)
 
 static inline size_t WinsockTcpStream_IndexFromHandle(const struct SolidSyslogStream* base)
 {
-    size_t result = SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_TCP_STREAM_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_TCP_STREAM_POOL_SIZE; poolIndex++)
     {
         if (base == &WinsockTcpStream_Pool[poolIndex].Base)
         {

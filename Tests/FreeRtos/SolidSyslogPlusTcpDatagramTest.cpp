@@ -278,7 +278,7 @@ TEST(SolidSyslogPlusTcpDatagram, SendToForwardsLengthVerbatim)
 // clang-format off
 TEST_GROUP(SolidSyslogPlusTcpDatagramPool)
 {
-    struct SolidSyslogDatagram* pooled[SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE] = {};
+    struct SolidSyslogDatagram* pooled[SOLIDSYSLOG_DATAGRAM_POOL_SIZE] = {};
     struct SolidSyslogDatagram* overflow                                         = nullptr;
 
     void setup() override
@@ -377,8 +377,8 @@ TEST(SolidSyslogPlusTcpDatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
     overflow = SolidSyslogPlusTcpDatagram_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogPlusTcpDatagramPool, DestroyOfPooledHandleLocksOnce)

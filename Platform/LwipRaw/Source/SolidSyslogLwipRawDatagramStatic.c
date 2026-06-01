@@ -17,11 +17,11 @@ struct SolidSyslogDatagram;
 static inline size_t LwipRawDatagram_IndexFromHandle(const struct SolidSyslogDatagram* base);
 static inline void LwipRawDatagram_CleanupAtIndex(size_t index, void* context);
 
-static bool LwipRawDatagram_InUse[SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE];
-static struct SolidSyslogLwipRawDatagram LwipRawDatagram_Pool[SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE];
+static bool LwipRawDatagram_InUse[SOLIDSYSLOG_DATAGRAM_POOL_SIZE];
+static struct SolidSyslogLwipRawDatagram LwipRawDatagram_Pool[SOLIDSYSLOG_DATAGRAM_POOL_SIZE];
 static struct SolidSyslogPoolAllocator LwipRawDatagram_Allocator = {
     LwipRawDatagram_InUse,
-    SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE
+    SOLIDSYSLOG_DATAGRAM_POOL_SIZE
 };
 
 struct SolidSyslogDatagram* SolidSyslogLwipRawDatagram_Create(void)
@@ -62,8 +62,8 @@ void SolidSyslogLwipRawDatagram_Destroy(struct SolidSyslogDatagram* base)
 
 static inline size_t LwipRawDatagram_IndexFromHandle(const struct SolidSyslogDatagram* base)
 {
-    size_t result = SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_DATAGRAM_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_DATAGRAM_POOL_SIZE; poolIndex++)
     {
         if (base == &LwipRawDatagram_Pool[poolIndex].Base)
         {

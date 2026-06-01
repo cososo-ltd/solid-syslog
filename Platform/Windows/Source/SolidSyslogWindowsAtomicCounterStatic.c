@@ -17,11 +17,11 @@ struct SolidSyslogAtomicCounter;
 static inline size_t WindowsAtomicCounter_IndexFromHandle(const struct SolidSyslogAtomicCounter* base);
 static inline void WindowsAtomicCounter_CleanupAtIndex(size_t index, void* context);
 
-static bool WindowsAtomicCounter_InUse[SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE];
-static struct SolidSyslogWindowsAtomicCounter WindowsAtomicCounter_Pool[SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE];
+static bool WindowsAtomicCounter_InUse[SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE];
+static struct SolidSyslogWindowsAtomicCounter WindowsAtomicCounter_Pool[SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE];
 static struct SolidSyslogPoolAllocator WindowsAtomicCounter_Allocator = {
     WindowsAtomicCounter_InUse,
-    SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE
+    SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE
 };
 
 struct SolidSyslogAtomicCounter* SolidSyslogWindowsAtomicCounter_Create(void)
@@ -66,8 +66,8 @@ void SolidSyslogWindowsAtomicCounter_Destroy(struct SolidSyslogAtomicCounter* ba
 
 static inline size_t WindowsAtomicCounter_IndexFromHandle(const struct SolidSyslogAtomicCounter* base)
 {
-    size_t result = SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE; poolIndex++)
     {
         if (base == &WindowsAtomicCounter_Pool[poolIndex].Base)
         {

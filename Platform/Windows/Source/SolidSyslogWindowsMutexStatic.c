@@ -17,12 +17,9 @@ struct SolidSyslogMutex;
 static inline size_t WindowsMutex_IndexFromHandle(const struct SolidSyslogMutex* base);
 static inline void WindowsMutex_CleanupAtIndex(size_t index, void* context);
 
-static bool WindowsMutex_InUse[SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE];
-static struct SolidSyslogWindowsMutex WindowsMutex_Pool[SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE];
-static struct SolidSyslogPoolAllocator WindowsMutex_Allocator = {
-    WindowsMutex_InUse,
-    SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE
-};
+static bool WindowsMutex_InUse[SOLIDSYSLOG_MUTEX_POOL_SIZE];
+static struct SolidSyslogWindowsMutex WindowsMutex_Pool[SOLIDSYSLOG_MUTEX_POOL_SIZE];
+static struct SolidSyslogPoolAllocator WindowsMutex_Allocator = {WindowsMutex_InUse, SOLIDSYSLOG_MUTEX_POOL_SIZE};
 
 struct SolidSyslogMutex* SolidSyslogWindowsMutex_Create(void)
 {
@@ -62,8 +59,8 @@ void SolidSyslogWindowsMutex_Destroy(struct SolidSyslogMutex* base)
 
 static inline size_t WindowsMutex_IndexFromHandle(const struct SolidSyslogMutex* base)
 {
-    size_t result = SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_MUTEX_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_MUTEX_POOL_SIZE; poolIndex++)
     {
         if (base == &WindowsMutex_Pool[poolIndex].Base)
         {

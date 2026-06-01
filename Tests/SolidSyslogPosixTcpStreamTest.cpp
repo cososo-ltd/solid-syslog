@@ -577,7 +577,7 @@ TEST(SolidSyslogPosixTcpStream, ReadReturnsNegativeOneOnErrorAndClosesSocket)
 // clang-format off
 TEST_GROUP(SolidSyslogPosixTcpStreamPool)
 {
-    struct SolidSyslogStream* pooled[SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE] = {};
+    struct SolidSyslogStream* pooled[SOLIDSYSLOG_TCP_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                       = nullptr;
 
     void teardown() override
@@ -654,8 +654,8 @@ TEST(SolidSyslogPosixTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
     overflow = SolidSyslogPosixTcpStream_Create(nullptr);
 
-    LONGS_EQUAL(SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogPosixTcpStreamPool, DestroyOfPooledHandleLocksOnce)

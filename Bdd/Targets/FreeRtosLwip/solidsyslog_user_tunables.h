@@ -19,6 +19,6 @@
  * `lifecycleMutex` (serialising SolidSyslog_Service against teardown). The
  * library default of 1 would silently fall the second Create back to
  * NullMutex — Lock/Unlock would become no-ops. */
-#define SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE 2U
+#define SOLIDSYSLOG_MUTEX_POOL_SIZE 2U
 
 #endif /* SOLIDSYSLOG_USER_TUNABLES_H */

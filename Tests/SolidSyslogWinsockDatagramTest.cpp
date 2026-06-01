@@ -270,7 +270,7 @@ TEST(SolidSyslogWinsockDatagram, MaxPayloadFallsBackWhenIpMtuLookupFails)
 // clang-format off
 TEST_GROUP(SolidSyslogWinsockDatagramPool)
 {
-    struct SolidSyslogDatagram* pooled[SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE] = {};
+    struct SolidSyslogDatagram* pooled[SOLIDSYSLOG_DATAGRAM_POOL_SIZE] = {};
     struct SolidSyslogDatagram* overflow                                       = nullptr;
 
     void teardown() override
@@ -353,8 +353,8 @@ TEST(SolidSyslogWinsockDatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
     overflow = SolidSyslogWinsockDatagram_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogWinsockDatagramPool, DestroyOfPooledHandleLocksOnce)

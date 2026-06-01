@@ -729,7 +729,7 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, CloseDrainsRxQueueBeforeTcpClose)
 TEST_GROUP(SolidSyslogLwipRawTcpStreamPool)
 {
     struct SolidSyslogLwipRawTcpStreamConfig validConfig{};
-    struct SolidSyslogStream* pooled[SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE] = {};
+    struct SolidSyslogStream* pooled[SOLIDSYSLOG_TCP_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                          = nullptr;
 
     void setup() override
@@ -815,8 +815,8 @@ TEST(SolidSyslogLwipRawTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFull
 
     overflow = SolidSyslogLwipRawTcpStream_Create(&validConfig);
 
-    LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogLwipRawTcpStreamPool, DestroyOfPooledHandleLocksOnce)

@@ -1,5 +1,43 @@
 # Dev Log
 
+## 2026-06-01 — S24.17 Collapse per-platform pool tunables to role-based
+
+Reduced the pool-size tunable surface in `SolidSyslogTunablesDefaults.h` from
+35 macros to 18 by collapsing 8 platform/vendor-selected role groups (TCP
+stream, datagram, resolver, mutex, file, atomic counter, TLS stream, HMAC
+policy) to a single role-named tunable each. A build links exactly one
+implementation per role, so the integrator now tunes the role
+(`SOLIDSYSLOG_TCP_STREAM_POOL_SIZE`) rather than the platform
+(`SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE`). Pure rename + header
+consolidation; no behaviour change.
+
+### Decisions
+
+- **Extends the Address precedent, not a new pattern.** `ADDRESS_POOL_SIZE`
+  already pooled three platform Address types under one role tunable; this
+  applies the same model to the rest. The table now grows O(1) per new
+  OS/stack/vendor instead of O(roles).
+
+- **Role pool counts instances, not implementations.** Documented in
+  `docs/NAMING.md` and the header preamble. The two same-platform coexistence
+  cases (lwIP numeric + DNS resolver; two crypto vendors) share a role pool —
+  wire N, set the pool to N. A pre-implementation audit (issue #501) confirmed
+  no current BDD executable wires two implementations of one role, so every
+  per-platform override mapped 1:1 to a role override at the same value
+  (`FREE_RTOS_MUTEX=2` → `MUTEX=2`; the fixture's two atomic-counter lines
+  collapsed to one).
+
+- **Clean break, no deprecated aliases.** Pre-1.0; the 17 removed names appear
+  nowhere in the tree (verified by grep). All floor `static_assert`s preserved.
+
+### Deferred
+
+- Nothing — single mechanical commit.
+
+### Open questions
+
+- None.
+
 ## 2026-06-01 — S12.21 Extract SolidSyslogMessageFormatter
 
 Lifted the rest of the RFC 5424 wire-format knowledge (PRIVAL, header layout,

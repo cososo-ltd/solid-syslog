@@ -141,7 +141,7 @@ TEST(SolidSyslogGetAddrInfoResolver, FreesAddrInfoOnSuccess)
 // clang-format off
 TEST_GROUP(SolidSyslogGetAddrInfoResolverPool)
 {
-    struct SolidSyslogResolver* pooled[SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE] = {};
+    struct SolidSyslogResolver* pooled[SOLIDSYSLOG_RESOLVER_POOL_SIZE] = {};
     struct SolidSyslogResolver* overflow                                            = nullptr;
 
     void teardown() override
@@ -220,8 +220,8 @@ TEST(SolidSyslogGetAddrInfoResolverPool, CreateLocksOncePerSlotProbedWhenPoolIsF
 
     overflow = SolidSyslogGetAddrInfoResolver_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfPooledHandleLocksOnce)

@@ -458,7 +458,7 @@ TEST(SolidSyslogPlusTcpTcpStream, DestroyAfterCloseDoesNotCloseAgain)
 // clang-format off
 TEST_GROUP(SolidSyslogPlusTcpTcpStreamPool)
 {
-    struct SolidSyslogStream* pooled[SOLIDSYSLOG_PLUS_TCP_TCP_STREAM_POOL_SIZE] = {};
+    struct SolidSyslogStream* pooled[SOLIDSYSLOG_TCP_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                           = nullptr;
 
     void setup() override
@@ -560,8 +560,8 @@ TEST(SolidSyslogPlusTcpTcpStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFull
 
     overflow = SolidSyslogPlusTcpTcpStream_Create(nullptr);
 
-    LONGS_EQUAL(SOLIDSYSLOG_PLUS_TCP_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_PLUS_TCP_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogPlusTcpTcpStreamPool, DestroyOfPooledHandleLocksOnce)

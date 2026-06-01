@@ -18,11 +18,11 @@ static inline bool LwipRawTcpStream_IsValidConfig(const struct SolidSyslogLwipRa
 static inline size_t LwipRawTcpStream_IndexFromHandle(const struct SolidSyslogStream* base);
 static inline void LwipRawTcpStream_CleanupAtIndex(size_t index, void* context);
 
-static bool LwipRawTcpStream_InUse[SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE];
-static struct SolidSyslogLwipRawTcpStream LwipRawTcpStream_Pool[SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE];
+static bool LwipRawTcpStream_InUse[SOLIDSYSLOG_TCP_STREAM_POOL_SIZE];
+static struct SolidSyslogLwipRawTcpStream LwipRawTcpStream_Pool[SOLIDSYSLOG_TCP_STREAM_POOL_SIZE];
 static struct SolidSyslogPoolAllocator LwipRawTcpStream_Allocator = {
     LwipRawTcpStream_InUse,
-    SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE
+    SOLIDSYSLOG_TCP_STREAM_POOL_SIZE
 };
 
 struct SolidSyslogStream* SolidSyslogLwipRawTcpStream_Create(const struct SolidSyslogLwipRawTcpStreamConfig* config)
@@ -71,8 +71,8 @@ static inline bool LwipRawTcpStream_IsValidConfig(const struct SolidSyslogLwipRa
 
 static inline size_t LwipRawTcpStream_IndexFromHandle(const struct SolidSyslogStream* base)
 {
-    size_t result = SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_TCP_STREAM_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_TCP_STREAM_POOL_SIZE; poolIndex++)
     {
         if (base == &LwipRawTcpStream_Pool[poolIndex].Base)
         {

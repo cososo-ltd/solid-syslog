@@ -17,9 +17,9 @@ struct SolidSyslogMutex;
 static inline size_t PosixMutex_IndexFromHandle(const struct SolidSyslogMutex* base);
 static inline void PosixMutex_CleanupAtIndex(size_t index, void* context);
 
-static bool PosixMutex_InUse[SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE];
-static struct SolidSyslogPosixMutex PosixMutex_Pool[SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE];
-static struct SolidSyslogPoolAllocator PosixMutex_Allocator = {PosixMutex_InUse, SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE};
+static bool PosixMutex_InUse[SOLIDSYSLOG_MUTEX_POOL_SIZE];
+static struct SolidSyslogPosixMutex PosixMutex_Pool[SOLIDSYSLOG_MUTEX_POOL_SIZE];
+static struct SolidSyslogPoolAllocator PosixMutex_Allocator = {PosixMutex_InUse, SOLIDSYSLOG_MUTEX_POOL_SIZE};
 
 struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(void)
 {
@@ -58,8 +58,8 @@ void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex* base)
 
 static inline size_t PosixMutex_IndexFromHandle(const struct SolidSyslogMutex* base)
 {
-    size_t result = SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_MUTEX_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_MUTEX_POOL_SIZE; poolIndex++)
     {
         if (base == &PosixMutex_Pool[poolIndex].Base)
         {

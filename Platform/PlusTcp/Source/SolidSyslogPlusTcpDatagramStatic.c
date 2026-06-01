@@ -17,11 +17,11 @@ struct SolidSyslogDatagram;
 static inline size_t PlusTcpDatagram_IndexFromHandle(const struct SolidSyslogDatagram* base);
 static inline void PlusTcpDatagram_CleanupAtIndex(size_t index, void* context);
 
-static bool PlusTcpDatagram_InUse[SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE];
-static struct SolidSyslogPlusTcpDatagram PlusTcpDatagram_Pool[SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE];
+static bool PlusTcpDatagram_InUse[SOLIDSYSLOG_DATAGRAM_POOL_SIZE];
+static struct SolidSyslogPlusTcpDatagram PlusTcpDatagram_Pool[SOLIDSYSLOG_DATAGRAM_POOL_SIZE];
 static struct SolidSyslogPoolAllocator PlusTcpDatagram_Allocator = {
     PlusTcpDatagram_InUse,
-    SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE
+    SOLIDSYSLOG_DATAGRAM_POOL_SIZE
 };
 
 struct SolidSyslogDatagram* SolidSyslogPlusTcpDatagram_Create(void)
@@ -62,8 +62,8 @@ void SolidSyslogPlusTcpDatagram_Destroy(struct SolidSyslogDatagram* base)
 
 static inline size_t PlusTcpDatagram_IndexFromHandle(const struct SolidSyslogDatagram* base)
 {
-    size_t result = SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_DATAGRAM_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_DATAGRAM_POOL_SIZE; poolIndex++)
     {
         if (base == &PlusTcpDatagram_Pool[poolIndex].Base)
         {

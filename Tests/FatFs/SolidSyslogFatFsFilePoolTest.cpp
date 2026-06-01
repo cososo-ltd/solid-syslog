@@ -31,7 +31,7 @@ using namespace CososoTesting;
 // clang-format off
 TEST_GROUP(SolidSyslogFatFsFilePool)
 {
-    struct SolidSyslogFile* pooled[SOLIDSYSLOG_FATFS_FILE_POOL_SIZE] = {};
+    struct SolidSyslogFile* pooled[SOLIDSYSLOG_FILE_POOL_SIZE] = {};
     struct SolidSyslogFile* overflow                                 = nullptr;
 
     void setup() override
@@ -113,8 +113,8 @@ TEST(SolidSyslogFatFsFilePool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
     overflow = SolidSyslogFatFsFile_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_FATFS_FILE_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_FATFS_FILE_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_FILE_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_FILE_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogFatFsFilePool, DestroyOfPooledHandleLocksOnce)

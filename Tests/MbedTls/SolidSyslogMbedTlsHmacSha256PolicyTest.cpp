@@ -87,7 +87,7 @@ TEST_BASE(MbedTlsHmacSha256PolicyTestBase)
 
 TEST_GROUP_BASE(SolidSyslogMbedTlsHmacSha256Policy, MbedTlsHmacSha256PolicyTestBase)
 {
-    struct SolidSyslogSecurityPolicy* pooled[SOLIDSYSLOG_MBED_TLS_HMAC_SHA256_POLICY_POOL_SIZE] = {};
+    struct SolidSyslogSecurityPolicy* pooled[SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE] = {};
     struct SolidSyslogSecurityPolicy* overflow = nullptr;
 
     void setup() override

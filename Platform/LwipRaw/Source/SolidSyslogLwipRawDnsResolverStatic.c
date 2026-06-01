@@ -18,11 +18,11 @@ static inline bool LwipRawDnsResolver_IsValidConfig(const struct SolidSyslogLwip
 static inline size_t LwipRawDnsResolver_IndexFromHandle(const struct SolidSyslogResolver* base);
 static inline void LwipRawDnsResolver_CleanupAtIndex(size_t index, void* context);
 
-static bool LwipRawDnsResolver_InUse[SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE];
-static struct SolidSyslogLwipRawDnsResolver LwipRawDnsResolver_Pool[SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE];
+static bool LwipRawDnsResolver_InUse[SOLIDSYSLOG_RESOLVER_POOL_SIZE];
+static struct SolidSyslogLwipRawDnsResolver LwipRawDnsResolver_Pool[SOLIDSYSLOG_RESOLVER_POOL_SIZE];
 static struct SolidSyslogPoolAllocator LwipRawDnsResolver_Allocator = {
     LwipRawDnsResolver_InUse,
-    SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE
+    SOLIDSYSLOG_RESOLVER_POOL_SIZE
 };
 
 struct SolidSyslogResolver* SolidSyslogLwipRawDnsResolver_Create(
@@ -77,8 +77,8 @@ static inline bool LwipRawDnsResolver_IsValidConfig(const struct SolidSyslogLwip
 
 static inline size_t LwipRawDnsResolver_IndexFromHandle(const struct SolidSyslogResolver* base)
 {
-    size_t result = SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_RESOLVER_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_RESOLVER_POOL_SIZE; poolIndex++)
     {
         if (base == &LwipRawDnsResolver_Pool[poolIndex].Base)
         {

@@ -69,7 +69,7 @@ The Tier 1 naming scheme in `docs/NAMING.md` (form
 30–40 character range — `SolidSyslogPlusTcpResolver_Create` is
 40, `SolidSyslogPlusTcpTcpStream_Destroy` is 36 — and a few public
 storage-size enums sit just below 40 (e.g.
-`SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE`, 40). Strict 31-character
+`SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE`, 40). Strict 31-character
 distinctness would either collapse identifier pairs that read
 identically up to a trailing word
 (`SolidSyslogPlusTcpResolver_Create` vs `_Destroy`) into a

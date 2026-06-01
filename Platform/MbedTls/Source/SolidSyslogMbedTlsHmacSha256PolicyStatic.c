@@ -16,12 +16,11 @@ static inline bool MbedTlsHmacSha256Policy_ConfigIsValid(const struct SolidSyslo
 static inline size_t MbedTlsHmacSha256Policy_IndexFromHandle(const struct SolidSyslogSecurityPolicy* base);
 static inline void MbedTlsHmacSha256Policy_CleanupAtIndex(size_t index, void* context);
 
-static bool MbedTlsHmacSha256Policy_InUse[SOLIDSYSLOG_MBED_TLS_HMAC_SHA256_POLICY_POOL_SIZE];
-static struct SolidSyslogMbedTlsHmacSha256Policy
-    MbedTlsHmacSha256Policy_Pool[SOLIDSYSLOG_MBED_TLS_HMAC_SHA256_POLICY_POOL_SIZE];
+static bool MbedTlsHmacSha256Policy_InUse[SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE];
+static struct SolidSyslogMbedTlsHmacSha256Policy MbedTlsHmacSha256Policy_Pool[SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE];
 static struct SolidSyslogPoolAllocator MbedTlsHmacSha256Policy_Allocator = {
     MbedTlsHmacSha256Policy_InUse,
-    SOLIDSYSLOG_MBED_TLS_HMAC_SHA256_POLICY_POOL_SIZE
+    SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE
 };
 
 struct SolidSyslogSecurityPolicy* SolidSyslogMbedTlsHmacSha256Policy_Create(
@@ -72,8 +71,8 @@ static inline bool MbedTlsHmacSha256Policy_ConfigIsValid(const struct SolidSyslo
 
 static inline size_t MbedTlsHmacSha256Policy_IndexFromHandle(const struct SolidSyslogSecurityPolicy* base)
 {
-    size_t result = SOLIDSYSLOG_MBED_TLS_HMAC_SHA256_POLICY_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_MBED_TLS_HMAC_SHA256_POLICY_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE; poolIndex++)
     {
         if (base == &MbedTlsHmacSha256Policy_Pool[poolIndex].Base)
         {

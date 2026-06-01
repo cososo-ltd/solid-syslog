@@ -55,7 +55,7 @@ TEST(SolidSyslogPosixMutex, LockUnlockDoesNotCrash)
 // clang-format off
 TEST_GROUP(SolidSyslogPosixMutexPool)
 {
-    struct SolidSyslogMutex* pooled[SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE] = {};
+    struct SolidSyslogMutex* pooled[SOLIDSYSLOG_MUTEX_POOL_SIZE] = {};
     struct SolidSyslogMutex* overflow                                  = nullptr;
 
     void teardown() override
@@ -133,8 +133,8 @@ TEST(SolidSyslogPosixMutexPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
     overflow = SolidSyslogPosixMutex_Create();
 
-    LONGS_EQUAL(SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE, ConfigLockFake_LockCallCount());
-    LONGS_EQUAL(SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_MUTEX_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_MUTEX_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
 TEST(SolidSyslogPosixMutexPool, DestroyOfPooledHandleLocksOnce)

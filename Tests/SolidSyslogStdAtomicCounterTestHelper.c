@@ -41,5 +41,5 @@ void TestAtomicCounter_Destroy(struct SolidSyslogAtomicCounter* base)
 
 size_t TestAtomicCounter_PoolSize(void)
 {
-    return SOLIDSYSLOG_STD_ATOMIC_COUNTER_POOL_SIZE;
+    return SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE;
 }

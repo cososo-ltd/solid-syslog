@@ -396,12 +396,11 @@ the `SOLIDSYSLOG_USER_TUNABLES_FILE` CMake variable.
 
 | Tunable | Default | Adjust when |
 |---|---|---|
-| `SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE` | `1U` | You need multiple concurrent numeric resolver instances (rare). |
-| `SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE` | `1U` | You need multiple concurrent DNS resolver instances (rare). |
+| `SOLIDSYSLOG_RESOLVER_POOL_SIZE` | `1U` | You wire more than one resolver. Role pool shared by the numeric and DNS resolvers — counts instances, not implementations, so wiring **both** the numeric and DNS resolver in one build means setting this to `2U`. |
 | `SOLIDSYSLOG_DNS_RESOLVE_TIMEOUT_MS` | `5000U` | Default suits a healthy recursive resolver. Raise for a slow / distant DNS server. |
 | `SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVE_POLL_MS` | `10U` | Default gives 500 polls inside the 5 s resolve deadline. Lower to notice completion sooner; raise to reduce spin overhead on a constrained MCU. |
-| `SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE` | `1U` | You wire more than one UDP sender. |
-| `SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE` | `2U` | You wire more than the canonical plain-TCP + TLS-underlying-TCP pair. |
+| `SOLIDSYSLOG_DATAGRAM_POOL_SIZE` | `1U` | You wire more than one UDP sender. |
+| `SOLIDSYSLOG_TCP_STREAM_POOL_SIZE` | `2U` | You wire more than the canonical plain-TCP + TLS-underlying-TCP pair. |
 | `SOLIDSYSLOG_ADDRESS_POOL_SIZE` | `3U` | Shared with PlusTcp / Posix / Winsock — bump if you need >3 concurrent destinations. |
 | `SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS` | `200U` | Default suits loopback / LAN. Raise for WAN deployments behind a high-RTT link; or install a runtime `GetConnectTimeoutMs` getter for per-instance tuning. |
 | `SOLIDSYSLOG_LWIP_RAW_TCP_CONNECT_POLL_MS` | `10U` | Default gives 20 polls inside the 200 ms connect deadline. Lower it to notice a fast connect sooner; raise it to reduce spin overhead on a constrained MCU. |

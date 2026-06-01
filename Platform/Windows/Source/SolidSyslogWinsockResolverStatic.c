@@ -17,11 +17,11 @@ struct SolidSyslogResolver;
 static inline size_t WinsockResolver_IndexFromHandle(const struct SolidSyslogResolver* base);
 static inline void WinsockResolver_CleanupAtIndex(size_t index, void* context);
 
-static bool WinsockResolver_InUse[SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE];
-static struct SolidSyslogWinsockResolver WinsockResolver_Pool[SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE];
+static bool WinsockResolver_InUse[SOLIDSYSLOG_RESOLVER_POOL_SIZE];
+static struct SolidSyslogWinsockResolver WinsockResolver_Pool[SOLIDSYSLOG_RESOLVER_POOL_SIZE];
 static struct SolidSyslogPoolAllocator WinsockResolver_Allocator = {
     WinsockResolver_InUse,
-    SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE
+    SOLIDSYSLOG_RESOLVER_POOL_SIZE
 };
 
 struct SolidSyslogResolver* SolidSyslogWinsockResolver_Create(void)
@@ -62,8 +62,8 @@ void SolidSyslogWinsockResolver_Destroy(struct SolidSyslogResolver* base)
 
 static inline size_t WinsockResolver_IndexFromHandle(const struct SolidSyslogResolver* base)
 {
-    size_t result = SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_RESOLVER_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_RESOLVER_POOL_SIZE; poolIndex++)
     {
         if (base == &WinsockResolver_Pool[poolIndex].Base)
         {

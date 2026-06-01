@@ -17,11 +17,11 @@ struct SolidSyslogResolver;
 static inline size_t PlusTcpResolver_IndexFromHandle(const struct SolidSyslogResolver* base);
 static inline void PlusTcpResolver_CleanupAtIndex(size_t index, void* context);
 
-static bool PlusTcpResolver_InUse[SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE];
-static struct SolidSyslogPlusTcpResolver PlusTcpResolver_Pool[SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE];
+static bool PlusTcpResolver_InUse[SOLIDSYSLOG_RESOLVER_POOL_SIZE];
+static struct SolidSyslogPlusTcpResolver PlusTcpResolver_Pool[SOLIDSYSLOG_RESOLVER_POOL_SIZE];
 static struct SolidSyslogPoolAllocator PlusTcpResolver_Allocator = {
     PlusTcpResolver_InUse,
-    SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE
+    SOLIDSYSLOG_RESOLVER_POOL_SIZE
 };
 
 struct SolidSyslogResolver* SolidSyslogPlusTcpResolver_Create(void)
@@ -62,8 +62,8 @@ void SolidSyslogPlusTcpResolver_Destroy(struct SolidSyslogResolver* base)
 
 static inline size_t PlusTcpResolver_IndexFromHandle(const struct SolidSyslogResolver* base)
 {
-    size_t result = SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE; poolIndex++)
+    size_t result = SOLIDSYSLOG_RESOLVER_POOL_SIZE;
+    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_RESOLVER_POOL_SIZE; poolIndex++)
     {
         if (base == &PlusTcpResolver_Pool[poolIndex].Base)
         {

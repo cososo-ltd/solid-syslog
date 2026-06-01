@@ -6,6 +6,22 @@
 // SOLIDSYSLOG_USER_TUNABLES_FILE override gets a chance to win first.
 
 /*
+ * Pool-size tunables are named by ROLE, not by platform or vendor.
+ *
+ * A build links exactly one implementation of each platform/vendor-selected
+ * role (one TCP stream backend, one datagram backend, one mutex, one crypto
+ * vendor, ...), so a single role tunable serves whichever implementation is
+ * compiled in — the integrator reasons about "how many TCP streams", never
+ * "how many POSIX streams". SOLIDSYSLOG_ADDRESS_POOL_SIZE established this
+ * pattern; the role blocks below follow it.
+ *
+ * The pool counts INSTANCES, not implementations. If a future build ever
+ * wires two implementations of the same role into one executable (e.g. a
+ * numeric AND a DNS resolver, or two crypto vendors), size that role's pool
+ * to the SUM of the concurrent instances.
+ */
+
+/*
  * Maximum bytes the library will format for a single syslog message.
  *
  * Caps the per-Log Formatter buffer (stack-allocated inside SolidSyslog_Log),
@@ -106,103 +122,110 @@
 #endif
 
 /*
- * Number of SolidSyslogPosixMutex instances the library's internal
- * static pool can simultaneously hold. Each instance carries a
- * pthread_mutex_t.
+ * Role pool: Mutex. Number of mutex instances the library's internal static
+ * pool can simultaneously hold, across whichever implementation is compiled
+ * in — SolidSyslogPosixMutex (pthread_mutex_t), SolidSyslogWindowsMutex
+ * (CRITICAL_SECTION), or SolidSyslogFreeRtosMutex (StaticSemaphore_t).
  *
- * Default 1 — almost all integrators wire a single PosixMutex into
- * a CircularBuffer or other thread-safe primitive. Bump via
- * SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is genuinely
+ * Default 1 — most integrators wire a single mutex into a CircularBuffer or
+ * other thread-safe primitive. Targets that need more (e.g. a separate
+ * lifecycle mutex alongside a buffer mutex) bump this via
+ * SOLIDSYSLOG_USER_TUNABLES_FILE.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_MUTEX_POOL_SIZE
+#define SOLIDSYSLOG_MUTEX_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_MUTEX_POOL_SIZE < 1
+#error "SOLIDSYSLOG_MUTEX_POOL_SIZE must be >= 1"
+#endif
+
+/*
+ * Role pool: Datagram (UDP transport). Number of datagram instances the
+ * library's internal static pool can simultaneously hold, across whichever
+ * implementation is compiled in — SolidSyslogPosixDatagram,
+ * SolidSyslogWinsockDatagram, SolidSyslogPlusTcpDatagram, or
+ * SolidSyslogLwipRawDatagram.
+ *
+ * Default 1 — almost all integrators wire a single datagram into a UdpSender.
+ * Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is genuinely
  * needed.
  *
  * Floor: 1. Sub-floor values rejected at compile time.
  */
-#ifndef SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE
-#define SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE 1U
+#ifndef SOLIDSYSLOG_DATAGRAM_POOL_SIZE
+#define SOLIDSYSLOG_DATAGRAM_POOL_SIZE 1U
 #endif
 
-#if SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE < 1
-#error "SOLIDSYSLOG_POSIX_MUTEX_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogPosixDatagram instances the library's internal
- * static pool can simultaneously hold. Each instance carries the
- * AF_INET socket FD and a one-shot connect flag.
- *
- * Default 1 — almost all integrators wire a single PosixDatagram into
- * a UdpSender. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than
- * one is genuinely needed.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_POSIX_DATAGRAM_POOL_SIZE
-#define SOLIDSYSLOG_POSIX_DATAGRAM_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_POSIX_DATAGRAM_POOL_SIZE < 1
-#error "SOLIDSYSLOG_POSIX_DATAGRAM_POOL_SIZE must be >= 1"
+#if SOLIDSYSLOG_DATAGRAM_POOL_SIZE < 1
+#error "SOLIDSYSLOG_DATAGRAM_POOL_SIZE must be >= 1"
 #endif
 
 /*
- * Number of SolidSyslogGetAddrInfoResolver instances the library's
- * internal static pool can simultaneously hold. The class is
- * effectively stateless today — the pool slot carries the vtable
- * holder.
+ * Role pool: Resolver. Number of resolver instances the library's internal
+ * static pool can simultaneously hold, across whichever implementation is
+ * compiled in — SolidSyslogGetAddrInfoResolver, SolidSyslogWinsockResolver,
+ * SolidSyslogPlusTcpResolver, SolidSyslogLwipRawResolver, or
+ * SolidSyslogLwipRawDnsResolver.
  *
- * Default 1 — almost all integrators wire a single resolver into
- * one or more Senders. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if
- * more than one is genuinely needed.
+ * Default 1 — almost all integrators wire a single resolver shared across
+ * their Senders. If a build wires two resolver implementations into one
+ * executable (e.g. the lwIP numeric AND DNS resolver), set this to the sum
+ * via SOLIDSYSLOG_USER_TUNABLES_FILE.
  *
  * Floor: 1. Sub-floor values rejected at compile time.
  */
-#ifndef SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE
-#define SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE 1U
+#ifndef SOLIDSYSLOG_RESOLVER_POOL_SIZE
+#define SOLIDSYSLOG_RESOLVER_POOL_SIZE 1U
 #endif
 
-#if SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE < 1
-#error "SOLIDSYSLOG_GETADDRINFO_RESOLVER_POOL_SIZE must be >= 1"
+#if SOLIDSYSLOG_RESOLVER_POOL_SIZE < 1
+#error "SOLIDSYSLOG_RESOLVER_POOL_SIZE must be >= 1"
 #endif
 
 /*
- * Number of SolidSyslogPosixFile instances the library's internal
- * static pool can simultaneously hold. Each instance carries an
- * int file descriptor.
+ * Role pool: File. Number of file instances the library's internal static
+ * pool can simultaneously hold, across whichever implementation is compiled
+ * in — SolidSyslogPosixFile, SolidSyslogWindowsFile, or SolidSyslogFatFsFile.
  *
- * Default 1 — almost all integrators wire a single PosixFile into a
- * FileBlockDevice. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more
- * than one is genuinely needed.
+ * Default 1 — almost all integrators wire a single file into a
+ * FileBlockDevice. Integrators using FileBlockDevice with BlockStore may
+ * want to bump this in line with SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE via
+ * SOLIDSYSLOG_USER_TUNABLES_FILE.
  *
  * Floor: 1. Sub-floor values rejected at compile time.
  */
-#ifndef SOLIDSYSLOG_POSIX_FILE_POOL_SIZE
-#define SOLIDSYSLOG_POSIX_FILE_POOL_SIZE 1U
+#ifndef SOLIDSYSLOG_FILE_POOL_SIZE
+#define SOLIDSYSLOG_FILE_POOL_SIZE 1U
 #endif
 
-#if SOLIDSYSLOG_POSIX_FILE_POOL_SIZE < 1
-#error "SOLIDSYSLOG_POSIX_FILE_POOL_SIZE must be >= 1"
+#if SOLIDSYSLOG_FILE_POOL_SIZE < 1
+#error "SOLIDSYSLOG_FILE_POOL_SIZE must be >= 1"
 #endif
 
 /*
- * Number of SolidSyslogPosixTcpStream instances the library's internal
- * static pool can simultaneously hold. Each instance carries an
- * int file descriptor.
+ * Role pool: TCP stream. Number of TCP stream instances the library's
+ * internal static pool can simultaneously hold, across whichever
+ * implementation is compiled in — SolidSyslogPosixTcpStream,
+ * SolidSyslogWinsockTcpStream, SolidSyslogPlusTcpTcpStream, or
+ * SolidSyslogLwipRawTcpStream.
  *
- * Default 2 — the Linux BDD target wires *two* stream-framed senders
- * behind a SwitchingSender (plain TCP, plus TLS that wraps another
- * underlying PosixTcpStream as its transport), so default 1 would
- * silently fall back to NullStream on the second Create. Matches the
- * SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE default for the same reason.
- * Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more are needed.
+ * Default 2 — common multi-transport wirings combine a plain TCP stream with
+ * a second TCP stream that underlies a TLS stream (TLS wraps an injected
+ * Stream as its byte transport), so a pool of 1 would silently fall the
+ * second Create back to NullStream. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE
+ * for wirings that need more.
  *
  * Floor: 1. Sub-floor values rejected at compile time.
  */
-#ifndef SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE
-#define SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE 2U
+#ifndef SOLIDSYSLOG_TCP_STREAM_POOL_SIZE
+#define SOLIDSYSLOG_TCP_STREAM_POOL_SIZE 2U
 #endif
 
-#if SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE < 1
-#error "SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE must be >= 1"
+#if SOLIDSYSLOG_TCP_STREAM_POOL_SIZE < 1
+#error "SOLIDSYSLOG_TCP_STREAM_POOL_SIZE must be >= 1"
 #endif
 
 /*
@@ -399,239 +422,6 @@
 #endif
 
 /*
- * Number of SolidSyslogWindowsMutex instances the library's internal
- * static pool can simultaneously hold. Each instance carries a
- * CRITICAL_SECTION.
- *
- * Default 1 — almost all integrators wire a single WindowsMutex into
- * a CircularBuffer or other thread-safe primitive. Bump via
- * SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is genuinely
- * needed.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE
-#define SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE < 1
-#error "SOLIDSYSLOG_WINDOWS_MUTEX_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogWinsockDatagram instances the library's internal
- * static pool can simultaneously hold. Each instance carries the AF_INET
- * SOCKET handle and a one-shot connect flag.
- *
- * Default 1 — almost all integrators wire a single WinsockDatagram into
- * a UdpSender. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one
- * is genuinely needed.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE
-#define SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE < 1
-#error "SOLIDSYSLOG_WINSOCK_DATAGRAM_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogWinsockResolver instances the library's internal
- * static pool can simultaneously hold. The resolver is stateless (its
- * slot just holds the vtable); the pool exists for lifecycle symmetry
- * with the stateful PlusTcpResolver / GetAddrInfoResolver siblings.
- *
- * Default 1.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE
-#define SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE < 1
-#error "SOLIDSYSLOG_WINSOCK_RESOLVER_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogWindowsFile instances the library's internal
- * static pool can simultaneously hold. Each instance carries an `int`
- * MSVC CRT file descriptor.
- *
- * Default 1. Integrators using FileBlockDevice with BlockStore may want
- * to bump this in line with SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE
-#define SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE < 1
-#error "SOLIDSYSLOG_WINDOWS_FILE_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogWinsockTcpStream instances the library's internal
- * static pool can simultaneously hold. Each instance carries the SOCKET
- * for the non-blocking TCP connection.
- *
- * Default 2 — the BDD target needs a plain-TCP stream and a
- * TLS-underlying-TCP stream concurrently, matching the POSIX pool size.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE
-#define SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE 2U
-#endif
-
-#if SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE < 1
-#error "SOLIDSYSLOG_WINSOCK_TCP_STREAM_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogFreeRtosMutex instances the library's internal
- * static pool can simultaneously hold. Each instance carries a
- * StaticSemaphore_t — the kernel-primitive layout the adapter wraps
- * via xSemaphoreCreateMutexStatic.
- *
- * Default 1 — almost all FreeRTOS integrators wire a single mutex
- * into a CircularBuffer or other thread-safe primitive. Bump via
- * SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is genuinely
- * needed.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE
-#define SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE < 1
-#error "SOLIDSYSLOG_FREE_RTOS_MUTEX_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogPlusTcpDatagram instances the library's
- * internal static pool can simultaneously hold. Each instance carries
- * a FreeRTOS-Plus-TCP Socket_t.
- *
- * Default 1 — almost all FreeRTOS integrators wire a single datagram
- * into a UdpSender. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more
- * than one is genuinely needed.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE
-#define SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE < 1
-#error "SOLIDSYSLOG_PLUS_TCP_DATAGRAM_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogPlusTcpResolver instances the library's
- * internal static pool can simultaneously hold. Each instance carries
- * the 4-byte IPv4 octets the integrator pins it to.
- *
- * Default 1 — the resolver pairs with a single hardcoded
- * destination; the typical FreeRTOS integrator wires one. Bump via
- * SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is needed.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE
-#define SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE < 1
-#error "SOLIDSYSLOG_PLUS_TCP_RESOLVER_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogLwipRawResolver instances the library's
- * internal static pool can simultaneously hold. The resolver is
- * stateless — it just delegates to lwIP's ipaddr_aton on each Resolve
- * call — so a single instance comfortably serves any number of senders.
- *
- * Default 1 — bump via SOLIDSYSLOG_USER_TUNABLES_FILE if a use case
- * for multiple instances surfaces (none anticipated).
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE
-#define SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE < 1
-#error "SOLIDSYSLOG_LWIP_RAW_RESOLVER_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogLwipRawDnsResolver instances the library's
- * internal static pool can simultaneously hold. Each instance carries
- * the in-flight async-resolve state (done flag + resolved address) the
- * dns_found_callback writes and the bounded spin polls, so unlike the
- * stateless numeric SolidSyslogLwipRawResolver it is not freely shareable
- * mid-resolve — but the Service loop is single-threaded per sender, so one
- * instance per sender comfortably serialises its own lookups.
- *
- * Default 1 — almost all integrators wire a single resolver. Bump via
- * SOLIDSYSLOG_USER_TUNABLES_FILE if multiple concurrent resolvers surface.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE
-#define SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE < 1
-#error "SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVER_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogLwipRawDatagram instances the library's internal
- * static pool can simultaneously hold. Each instance carries a single
- * struct udp_pcb pointer the wrapper holds across Open/SendTo/Close.
- *
- * Default 1 — almost all lwIP Raw integrators wire a single datagram into
- * a UdpSender. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one
- * is genuinely needed.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE
-#define SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE < 1
-#error "SOLIDSYSLOG_LWIP_RAW_DATAGRAM_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogLwipRawTcpStream instances the library's internal
- * static pool can simultaneously hold. Each instance carries a struct tcp_pcb
- * pointer, the Connected / Errored flags, and a bounded RX pbuf ring sized
- * by SOLIDSYSLOG_LWIP_RAW_TCP_RX_QUEUE_SIZE.
- *
- * Default 2 — matches SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE and the other
- * TCP-stream-backend defaults so the canonical TLS-over-plain-TCP pair does
- * not silently fall back to NullStream on the second Create. Bump via
- * SOLIDSYSLOG_USER_TUNABLES_FILE if more are needed.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE
-#define SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE 2U
-#endif
-
-#if SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE < 1
-#error "SOLIDSYSLOG_LWIP_RAW_TCP_STREAM_POOL_SIZE must be >= 1"
-#endif
-
-/*
  * Period (milliseconds) the SolidSyslogLwipRawTcpStream bounded-connect
  * spin loop sleeps between polls of the lwIP-side connected_cb flag.
  * Each iteration calls the integrator-injected SolidSyslogSleepFunction
@@ -719,93 +509,33 @@
 #endif
 
 /*
- * Number of SolidSyslogPlusTcpTcpStream instances the library's
- * internal static pool can simultaneously hold. Each instance carries
- * a FreeRTOS-Plus-TCP Socket_t for the bounded-blocking-connect
- * non-blocking TCP transport.
+ * Role pool: AtomicCounter. Number of atomic-counter instances the library's
+ * internal static pool can simultaneously hold, across whichever
+ * implementation is compiled in — SolidSyslogStdAtomicCounter (C11
+ * <stdatomic.h>) or SolidSyslogWindowsAtomicCounter (legacy MSVC
+ * InterlockedCompareExchange). Each instance carries a single counter word
+ * (the sequenceId counter).
  *
- * Default 2 — matches the POSIX and Windows TCP stream pool defaults
- * so a future TLS-via-mbedTLS path (S08.07) wrapping an underlying
- * PlusTcpTcpStream does not silently fall back to NullStream on the
- * second Create. Plain-TCP-only integrators pay 8 bytes of extra
- * static state; mbedTLS integrators are spared an override.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_PLUS_TCP_TCP_STREAM_POOL_SIZE
-#define SOLIDSYSLOG_PLUS_TCP_TCP_STREAM_POOL_SIZE 2U
-#endif
-
-#if SOLIDSYSLOG_PLUS_TCP_TCP_STREAM_POOL_SIZE < 1
-#error "SOLIDSYSLOG_PLUS_TCP_TCP_STREAM_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogStdAtomicCounter instances the library's
- * internal static pool can simultaneously hold. Each instance carries
- * a single _Atomic uint32_t (the sequenceId counter).
- *
- * Default 1 — RFC 5424 sequenceIds are scoped per SolidSyslog instance,
- * and almost all integrators run a single SolidSyslog instance per
- * process. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is
- * genuinely needed (e.g. several independent SolidSyslog instances).
+ * Default 1 — RFC 5424 sequenceIds are scoped per SolidSyslog instance, and
+ * almost all integrators run a single SolidSyslog instance per process. Bump
+ * via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is genuinely needed.
  *
  * Floor: 1. Sub-floor values rejected at compile time.
  */
-#ifndef SOLIDSYSLOG_STD_ATOMIC_COUNTER_POOL_SIZE
-#define SOLIDSYSLOG_STD_ATOMIC_COUNTER_POOL_SIZE 1U
+#ifndef SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE
+#define SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE 1U
 #endif
 
-#if SOLIDSYSLOG_STD_ATOMIC_COUNTER_POOL_SIZE < 1
-#error "SOLIDSYSLOG_STD_ATOMIC_COUNTER_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogWindowsAtomicCounter instances the library's
- * internal static pool can simultaneously hold. Each instance carries
- * a single `volatile LONG` (the sequenceId counter, manipulated via
- * `InterlockedCompareExchange`).
- *
- * Default 1 — RFC 5424 sequenceIds are scoped per SolidSyslog instance,
- * and almost all integrators run a single SolidSyslog instance per
- * process. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is
- * genuinely needed.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE
-#define SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE < 1
-#error "SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_POOL_SIZE must be >= 1"
+#if SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE < 1
+#error "SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE must be >= 1"
 #endif
 
 /*
- * Number of SolidSyslogFatFsFile instances the library's internal static
- * pool can simultaneously hold. Each instance carries a FatFs FIL object
- * (~56 B header + 512 B sector buffer when FF_MAX_SS=512, FF_FS_TINY=0)
- * plus an IsOpen flag.
- *
- * Default 1 — store-and-forward integrations wire a single file under
- * BlockStore + FileBlockDevice; that's the dominant pattern. Bump via
- * SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is genuinely needed.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_FATFS_FILE_POOL_SIZE
-#define SOLIDSYSLOG_FATFS_FILE_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_FATFS_FILE_POOL_SIZE < 1
-#error "SOLIDSYSLOG_FATFS_FILE_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogTlsStream instances the library's internal static
- * pool can simultaneously hold. Each instance carries an SSL_CTX*, SSL*,
- * BIO_METHOD*, and the integrator's TlsStreamConfig (transport pointer,
- * sleep callback, cert/key/CA paths).
+ * Role pool: TLS stream. Number of TLS stream instances the library's
+ * internal static pool can simultaneously hold, across whichever crypto
+ * vendor is compiled in — SolidSyslogTlsStream (OpenSSL) or
+ * SolidSyslogMbedTlsStream (Mbed TLS). Each instance carries the vendor's
+ * session/context handles and the integrator's TLS config.
  *
  * Default 1 — TLS senders are scoped per destination and almost all
  * integrators wire a single TLS sender per process. Bump via
@@ -823,65 +553,26 @@
 #endif
 
 /*
- * Number of SolidSyslogMbedTlsStream instances the library's internal static
- * pool can simultaneously hold. Each instance carries an mbedtls_ssl_context,
- * mbedtls_ssl_config, and the integrator's MbedTlsStreamConfig (transport
- * pointer, sleep callback, mbedTLS handle pointers — Rng, CaChain, optional
- * ClientCertChain/ClientKey).
- *
- * Default 1 — TLS senders are scoped per destination and almost all
- * integrators wire a single TLS sender per process. Bump via
- * SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is genuinely needed
- * (e.g. multi-destination egress with separate TLS sessions per peer).
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE
-#define SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE < 1
-#error "SOLIDSYSLOG_MBED_TLS_STREAM_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogMbedTlsHmacSha256Policy instances the library's internal
- * static pool can simultaneously hold. Each instance carries the integrator's
- * key-accessor callback (SolidSyslogKeyFunction) and its context — the policy
- * fetches the key on demand and never stores it.
+ * Role pool: HMAC-SHA256 SecurityPolicy. Number of keyed HMAC policy
+ * instances the library's internal static pool can simultaneously hold,
+ * across whichever crypto vendor is compiled in —
+ * SolidSyslogMbedTlsHmacSha256Policy or SolidSyslogOpenSslHmacSha256Policy.
+ * Each instance carries the integrator's key-accessor callback
+ * (SolidSyslogKeyFunction) and its context — the policy fetches the key on
+ * demand and never stores it.
  *
  * Default 1 — a single at-rest store with one integrity policy is the common
- * case. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one store with an
- * independent key is genuinely needed.
+ * case. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one store with
+ * an independent key is genuinely needed.
  *
  * Floor: 1. Sub-floor values rejected at compile time.
  */
-#ifndef SOLIDSYSLOG_MBED_TLS_HMAC_SHA256_POLICY_POOL_SIZE
-#define SOLIDSYSLOG_MBED_TLS_HMAC_SHA256_POLICY_POOL_SIZE 1U
+#ifndef SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE
+#define SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE 1U
 #endif
 
-#if SOLIDSYSLOG_MBED_TLS_HMAC_SHA256_POLICY_POOL_SIZE < 1
-#error "SOLIDSYSLOG_MBED_TLS_HMAC_SHA256_POLICY_POOL_SIZE must be >= 1"
-#endif
-
-/*
- * Number of SolidSyslogOpenSslHmacSha256Policy instances the library's internal
- * static pool can simultaneously hold. The OpenSSL sibling of the mbedTLS HMAC
- * policy above — same key-on-demand contract (SolidSyslogKeyFunction; the key
- * is fetched per operation and never stored on the instance).
- *
- * Default 1 — a single at-rest store with one integrity policy is the common
- * case. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one store with an
- * independent key is genuinely needed.
- *
- * Floor: 1. Sub-floor values rejected at compile time.
- */
-#ifndef SOLIDSYSLOG_OPEN_SSL_HMAC_SHA256_POLICY_POOL_SIZE
-#define SOLIDSYSLOG_OPEN_SSL_HMAC_SHA256_POLICY_POOL_SIZE 1U
-#endif
-
-#if SOLIDSYSLOG_OPEN_SSL_HMAC_SHA256_POLICY_POOL_SIZE < 1
-#error "SOLIDSYSLOG_OPEN_SSL_HMAC_SHA256_POLICY_POOL_SIZE must be >= 1"
+#if SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE < 1
+#error "SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE must be >= 1"
 #endif
 
 /*
@@ -912,7 +603,7 @@
  * Default 3 — matches the canonical BDD multi-transport wiring
  * (UDP + plain-TCP + TLS-stream, one Address per Sender) so common
  * integrators are spared an override. Same trade-off as
- * SOLIDSYSLOG_POSIX_TCP_STREAM_POOL_SIZE / _STREAM_SENDER_POOL_SIZE:
+ * SOLIDSYSLOG_TCP_STREAM_POOL_SIZE / _STREAM_SENDER_POOL_SIZE:
  * single-transport integrators pay ~32 bytes of unused slots per platform;
  * multi-transport integrators get the canonical wiring out of the box.
  * Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than three concurrent
