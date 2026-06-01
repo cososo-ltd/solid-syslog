@@ -1,5 +1,55 @@
 # Dev Log
 
+## 2026-06-01 — S12.21 Extract SolidSyslogMessageFormatter
+
+Lifted the rest of the RFC 5424 wire-format knowledge (PRIVAL, header layout,
+per-field truncation/PRINTUSASCII, SD iteration, MSG/BOM) out of `SolidSyslog.c`
+into a private module, reducing the singleton to lifecycle + Service + Nil
+collaborators. Sliced into three reviewable commits per the agreed plan.
+
+### Decisions
+
+- **Three slices.** (0) Promote the `SyslogField`/`SYSLOG_FIELD_*` parser to
+  `Tests/Support/SyslogFieldParser.{cpp,h}` (standalone, unblocks the unit test).
+  (1) Extract the module + reshape `struct SolidSyslog` to embed a
+  `SolidSyslogMessageFormatterContext Format` + migrate ~35 field tests. (2) The
+  BOM-empty-MSG fix as an isolated red/green commit. The behaviour change was
+  kept out of the move so Slice 1 stayed a verifiable no-op.
+
+- **Migration scope follows the formatter/integration boundary.** Migrated the
+  pure (message, context) → output tests (PRIVAL, hostname/app/proc, msgid,
+  all-fields) to the unit file; left SD/MSG-body/buffer-truncation/Service/
+  lifecycle as integration coverage of the full `_Log` pipeline. As in S12.20's
+  NullClock split, the three `NullGet*ProducesNilvalue` tests stay in
+  `SolidSyslogTest.cpp` (they assert Create's nil-object substitution, not
+  formatter behaviour); the formatter's empty→NILVALUE path is `Empty*` in the
+  unit file.
+
+- **BOM-empty-MSG fix.** A caller-supplied BOM-only message (`"\xEF\xBB\xBF"`)
+  stripped to an empty body but still emitted SP+BOM. Now the post-strip body is
+  guarded — emit SP+BOM+body only when non-empty. The `msg` NULL/empty guard
+  stays *outside* the strip (SkipLeadingBom dereferences `msg`). Confirmed the
+  SD SP BOM body byte order against RFC 5424 §6 ABNF and pinned it with a
+  byte-sequence guard test.
+
+- **MISRA: extend D.006, don't weaken the signature.** Making
+  `MessageFormatter_Format` take a `const context` reproduced the exact 11.8
+  const-strip false positive `SolidSyslog_Create(const config)` already carries
+  (reading a non-const pointer member through a `const struct*`). Kept the
+  `const` (the formatter must not mutate the context) and extended D.006 from 10
+  to 15 field-access sites rather than drop `const` to silence cppcheck.
+  Verified with the full `cppcheck --suppressions-list`: no unsuppressed
+  violations, no unmatched suppressions.
+
+### Deferred
+
+- SD per-element NULL guards and the SD config-pair consistency check remain
+  S12.06's territory.
+
+### Open questions
+
+- None outstanding.
+
 ## 2026-06-01 — S12.20 Extract SolidSyslogTimestampFormatter
 
 Lifted timestamp validation + RFC 3339 formatting (seven functions, ~75 lines)
