@@ -55,6 +55,14 @@ TEST_GROUP(SolidSyslogMessageFormatter)
     {
         SolidSyslogMessageFormatter_Format(formatter, &message, &context);
     }
+
+    // Clears the output buffer between two format() calls without rebuilding
+    // the context, so "callback invoked per call" tests exercise consecutive
+    // formats on the same fixture (a cached callback result would be caught).
+    void resetFormatter()
+    {
+        formatter = SolidSyslogFormatter_Create(storage, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
+    }
 };
 
 TEST(SolidSyslogMessageFormatter, PriValIs134)
@@ -135,7 +143,7 @@ TEST(SolidSyslogMessageFormatter, HostnameCallbackIsInvokedPerFormatCall)
     StringFake_SetHostname("FirstHost");
     format();
     CHECK_HOSTNAME("FirstHost");
-    setup();
+    resetFormatter();
     StringFake_SetHostname("SecondHost");
     format();
     CHECK_HOSTNAME("SecondHost");
@@ -185,7 +193,7 @@ TEST(SolidSyslogMessageFormatter, AppNameCallbackIsInvokedPerFormatCall)
     StringFake_SetAppName("FirstApp");
     format();
     CHECK_APP_NAME("FirstApp");
-    setup();
+    resetFormatter();
     StringFake_SetAppName("SecondApp");
     format();
     CHECK_APP_NAME("SecondApp");
@@ -235,7 +243,7 @@ TEST(SolidSyslogMessageFormatter, ProcessIdCallbackIsInvokedPerFormatCall)
     StringFake_SetProcessId("1111");
     format();
     CHECK_PROCID("1111");
-    setup();
+    resetFormatter();
     StringFake_SetProcessId("2222");
     format();
     CHECK_PROCID("2222");

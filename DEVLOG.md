@@ -12,7 +12,7 @@ collaborators. Sliced into three reviewable commits per the agreed plan.
 - **Three slices.** (0) Promote the `SyslogField`/`SYSLOG_FIELD_*` parser to
   `Tests/Support/SyslogFieldParser.{cpp,h}` (standalone, unblocks the unit test).
   (1) Extract the module + reshape `struct SolidSyslog` to embed a
-  `SolidSyslogMessageFormatterContext Format` + migrate ~35 field tests. (2) The
+  `SolidSyslogMessageFormatterContext Format` + migrate 35 field tests. (2) The
   BOM-empty-MSG fix as an isolated red/green commit. The behaviour change was
   kept out of the move so Slice 1 stayed a verifiable no-op.
 

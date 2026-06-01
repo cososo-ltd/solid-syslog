@@ -460,9 +460,12 @@ Two distinct site categories trigger this rule:
 
 ### Scope
 
-- **Strict tier** — 10 field-access sites: 8 in `Core/Source/SolidSyslog.c`
+- **Strict tier** — 15 field-access sites: 8 in `Core/Source/SolidSyslog.c`
   (the `SolidSyslog_Install*` functions reading `config->` pointer
-  fields), 1 in `Core/Source/BlockSequence.c`
+  fields), 5 in `Core/Source/SolidSyslogMessageFormatter.c`
+  (`SolidSyslogMessageFormatter_Format` reading `context->Clock`,
+  `GetHostname`, `GetAppName`, `GetProcessId`, `Sd`), 1 in
+  `Core/Source/BlockSequence.c`
   (`BlockSequence_IsReadBlockFullyDrained` passing
   `blockSequence->BlockDevice` to `SolidSyslogBlockDevice_Size`), and
   1 in `Core/Source/SolidSyslogBlockStoreStatic.c`
