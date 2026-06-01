@@ -164,8 +164,22 @@ static void SolidSyslog_InstallStructuredData(
     size_t count
 )
 {
-    self->Format.Sd = configured;
-    self->Format.SdCount = count;
+    if ((configured == NULL) && (count > 0U))
+    {
+        /* Inconsistent pairing — the formatter would dereference Sd[i] for
+         * i < SdCount against a NULL array. Report and leave the reset
+         * defaults (no SD) in place so Log() degrades safely. */
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &SolidSyslogErrorSource,
+            (uint8_t) SOLIDSYSLOG_ERROR_CREATE_INCONSISTENT_SD
+        );
+    }
+    else
+    {
+        self->Format.Sd = configured;
+        self->Format.SdCount = count;
+    }
 }
 
 void SolidSyslog_Service(struct SolidSyslog* handle)

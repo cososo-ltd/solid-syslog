@@ -10,6 +10,8 @@ static const char* SolidSyslogError_AsString(uint8_t code)
         [SOLIDSYSLOG_ERROR_CREATE_NULL_BUFFER] = "SolidSyslog_Create config.Buffer is NULL",
         [SOLIDSYSLOG_ERROR_CREATE_NULL_SENDER] = "SolidSyslog_Create config.Sender is NULL",
         [SOLIDSYSLOG_ERROR_CREATE_NULL_STORE] = "SolidSyslog_Create config.Store is NULL",
+        [SOLIDSYSLOG_ERROR_CREATE_INCONSISTENT_SD] =
+            "SolidSyslog_Create config.Sd is NULL but config.SdCount is non-zero",
         [SOLIDSYSLOG_ERROR_LOG_NULL_MESSAGE] = "SolidSyslog_Log called with NULL message",
         [SOLIDSYSLOG_ERROR_LOG_NULL_HANDLE] = "SolidSyslog_Log called with NULL handle",
         [SOLIDSYSLOG_ERROR_SERVICE_NULL_HANDLE] = "SolidSyslog_Service called with NULL handle",

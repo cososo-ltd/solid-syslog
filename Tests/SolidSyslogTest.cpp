@@ -204,6 +204,16 @@ TEST(SolidSyslog, StructuredDataIsNilValue)
     STRCMP_EQUAL(TEST_SDATA, SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
 }
 
+TEST(SolidSyslog, NullSdArrayWithNonZeroCountDegradesToNilvalueWithoutCrashing)
+{
+    config.Sd = nullptr;
+    config.SdCount = 1;
+    SolidSyslog_Destroy(solidSyslog);
+    solidSyslog = SolidSyslog_Create(&config);
+    Log();
+    STRCMP_EQUAL("-", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
+}
+
 TEST(SolidSyslog, InjectedSdObjectFormatIsCalledDuringLog)
 {
     SolidSyslogStructuredData* sdList[] = {&sdSpy};
@@ -925,6 +935,21 @@ TEST(SolidSyslogLifecycle, CreateWithNullStoreReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&SolidSyslogErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_ERROR_CREATE_NULL_STORE, ErrorHandlerFake_LastCode());
+}
+
+TEST(SolidSyslogLifecycle, CreateWithNullSdArrayAndNonZeroCountReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogConfig config = validConfig();
+    config.Sd = nullptr;
+    config.SdCount = 1;
+
+    solidSyslog = SolidSyslog_Create(&config);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    POINTERS_EQUAL(&SolidSyslogErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_ERROR_CREATE_INCONSISTENT_SD, ErrorHandlerFake_LastCode());
 }
 
 TEST(SolidSyslogLifecycle, ServiceWithDefaultStoreDrainsThroughToRealSender)

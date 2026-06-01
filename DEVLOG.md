@@ -1,5 +1,34 @@
 # Dev Log
 
+## 2026-06-01 — S12.24 Report inconsistent SD config
+
+Closed the SD config-pair consistency gap CodeRabbit re-raised on PR #502 (deferred
+from S12.04, missed by S12.06). `SolidSyslog_InstallStructuredData` accepted
+`config.Sd == NULL && config.SdCount > 0` verbatim, so the first `Log()` crashed
+when the formatter dereferenced `Sd[i]` for `i < SdCount`.
+
+### Decisions
+
+- **Report, don't mask.** Added `SOLIDSYSLOG_ERROR_CREATE_INCONSISTENT_SD` and made
+  `InstallStructuredData` emit it (matching the other `Install*` bad-setup guards)
+  rather than silently normalising `SdCount` to 0 — silent normalisation would hide
+  the misconfiguration. The reset defaults (`Sd = NULL`, `SdCount = 0`) already in
+  place from `ResetToDefaults` mean the error branch degrades to no-SD, so `Log()`
+  is crash-safe and emits NILVALUE for the SD field.
+- **Parallel-story isolation.** Built in a dedicated git worktree off `origin/main`
+  (S24.17 was in flight with uncommitted work in the main tree). Unit builds ran as
+  a separate compose project with `--no-deps` to dodge the syslog-ng port-5514 clash
+  with the other story's container.
+
+### Deferred
+
+- Per-element SD NULL guards (`Sd != NULL` but `Sd[k] == NULL`) remain S12.06's
+  per-element territory, out of scope here.
+
+### Open questions
+
+- None outstanding.
+
 ## 2026-06-01 — S24.17 Collapse per-platform pool tunables to role-based
 
 Reduced the pool-size tunable surface in `SolidSyslogTunablesDefaults.h` from
