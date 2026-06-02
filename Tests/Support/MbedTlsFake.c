@@ -891,10 +891,13 @@ int mbedtls_gcm_crypt_and_tag(
     (void) mode;
     gcmSealCount++;
     memcpy(lastGcmNonce, iv, (iv_len < sizeof lastGcmNonce) ? iv_len : sizeof lastGcmNonce);
-    lastGcmAadLen = add_len;
-    memcpy(lastGcmAad, add, (add_len < sizeof lastGcmAad) ? add_len : sizeof lastGcmAad);
-    lastGcmPlaintextLen = length;
-    memcpy(lastGcmPlaintext, input, (length < sizeof lastGcmPlaintext) ? length : sizeof lastGcmPlaintext);
+    /* Report only what was actually captured — a reader walking LastGcmAad() /
+     * LastGcmPlaintext() up to the reported length then never runs past the
+     * capture buffer if a test exceeds its capacity. */
+    lastGcmAadLen = (add_len < sizeof lastGcmAad) ? add_len : sizeof lastGcmAad;
+    memcpy(lastGcmAad, add, lastGcmAadLen);
+    lastGcmPlaintextLen = (length < sizeof lastGcmPlaintext) ? length : sizeof lastGcmPlaintext;
+    memcpy(lastGcmPlaintext, input, lastGcmPlaintextLen);
     /* The double does not encrypt: copy input to output unchanged so the
      * in-place buffer stays defined (memmove — production passes output == input)
      * and write a canned all-zero tag the adapter only forwards into the trailer. */
@@ -921,8 +924,8 @@ int mbedtls_gcm_auth_decrypt(
     (void) tag_len;
     gcmOpenCount++;
     memcpy(lastGcmNonce, iv, (iv_len < sizeof lastGcmNonce) ? iv_len : sizeof lastGcmNonce);
-    lastGcmAadLen = add_len;
-    memcpy(lastGcmAad, add, (add_len < sizeof lastGcmAad) ? add_len : sizeof lastGcmAad);
+    lastGcmAadLen = (add_len < sizeof lastGcmAad) ? add_len : sizeof lastGcmAad;
+    memcpy(lastGcmAad, add, lastGcmAadLen);
     memmove(output, input, length);
     /* Canned verdict — real tag verification is the integration suite's job.
      * SetGcmAuthFails drives the tamper / wrong-key rejection (silent false);
