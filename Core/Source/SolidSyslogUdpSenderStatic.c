@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
@@ -38,7 +39,8 @@ struct SolidSyslogSender* SolidSyslogUdpSender_Create(const struct SolidSyslogUd
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &UdpSenderErrorSource,
-                (uint8_t) UDPSENDER_ERROR_POOL_EXHAUSTED
+                (uint16_t) SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                (int32_t) UDPSENDER_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -50,23 +52,48 @@ static bool UdpSender_IsValidConfig(const struct SolidSyslogUdpSenderConfig* con
     bool valid = false;
     if (config == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &UdpSenderErrorSource, (uint8_t) UDPSENDER_ERROR_NULL_CONFIG);
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &UdpSenderErrorSource,
+            (uint16_t) SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) UDPSENDER_ERROR_NULL_CONFIG
+        );
     }
     else if (config->Resolver == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &UdpSenderErrorSource, (uint8_t) UDPSENDER_ERROR_NULL_RESOLVER);
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &UdpSenderErrorSource,
+            (uint16_t) SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) UDPSENDER_ERROR_NULL_RESOLVER
+        );
     }
     else if (config->Datagram == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &UdpSenderErrorSource, (uint8_t) UDPSENDER_ERROR_NULL_DATAGRAM);
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &UdpSenderErrorSource,
+            (uint16_t) SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) UDPSENDER_ERROR_NULL_DATAGRAM
+        );
     }
     else if (config->Address == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &UdpSenderErrorSource, (uint8_t) UDPSENDER_ERROR_NULL_ADDRESS);
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &UdpSenderErrorSource,
+            (uint16_t) SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) UDPSENDER_ERROR_NULL_ADDRESS
+        );
     }
     else if (config->Endpoint == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &UdpSenderErrorSource, (uint8_t) UDPSENDER_ERROR_NULL_ENDPOINT);
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &UdpSenderErrorSource,
+            (uint16_t) SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) UDPSENDER_ERROR_NULL_ENDPOINT
+        );
     }
     else
     {
@@ -85,7 +112,8 @@ void SolidSyslogUdpSender_Destroy(struct SolidSyslogSender* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &UdpSenderErrorSource,
-            (uint8_t) UDPSENDER_ERROR_UNKNOWN_DESTROY
+            (uint16_t) SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) UDPSENDER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

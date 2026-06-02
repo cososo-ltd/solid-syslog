@@ -14,7 +14,8 @@ EXTERN_C_BEGIN
     int ErrorHandlerFake_HandleCallCount(void);
     enum SolidSyslogSeverity ErrorHandlerFake_LastSeverity(void);
     const struct SolidSyslogErrorSource* ErrorHandlerFake_LastSource(void);
-    uint8_t ErrorHandlerFake_LastCode(void);
+    uint16_t ErrorHandlerFake_LastCategory(void);
+    int32_t ErrorHandlerFake_LastDetail(void);
     const void* ErrorHandlerFake_LastContext(void);
 
 EXTERN_C_END
