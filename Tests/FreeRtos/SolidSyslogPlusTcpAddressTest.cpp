@@ -5,14 +5,15 @@ using namespace CososoTesting;
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "FreeRTOS.h"
+#include "FreeRTOS_IP.h"
+#include "FreeRTOS_Sockets.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPlusTcpAddress.h"
 #include "SolidSyslogPlusTcpAddressErrors.h"
 #include "SolidSyslogPlusTcpAddressPrivate.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
-#include "FreeRTOS.h"
-#include "FreeRTOS_IP.h"
-#include "FreeRTOS_Sockets.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -134,7 +135,8 @@ TEST(SolidSyslogPlusTcpAddressPool, ExhaustedCreateReportsError)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PlusTcpAddressErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(PLUSTCPADDRESS_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(PLUSTCPADDRESS_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPlusTcpAddressPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
@@ -196,7 +198,8 @@ TEST(SolidSyslogPlusTcpAddressPool, DestroyOfUnknownHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PlusTcpAddressErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(PLUSTCPADDRESS_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(PLUSTCPADDRESS_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPlusTcpAddressPool, DestroyOfStaleHandleReportsWarning)
@@ -212,5 +215,6 @@ TEST(SolidSyslogPlusTcpAddressPool, DestroyOfStaleHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PlusTcpAddressErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(PLUSTCPADDRESS_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(PLUSTCPADDRESS_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

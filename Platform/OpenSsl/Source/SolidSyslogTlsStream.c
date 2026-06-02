@@ -9,10 +9,12 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogTlsStreamErrors.h"
 #include "SolidSyslogTlsStreamPrivate.h"
 #include "SolidSyslogTunables.h"
@@ -169,7 +171,8 @@ static inline bool TlsStream_InitSslContext(struct SolidSyslogTlsStream* self)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &TlsStreamErrorSource,
-            (uint8_t) TLSSTREAM_ERROR_CONTEXT_INIT_FAILED
+            SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
+            (int32_t) TLSSTREAM_ERROR_CONTEXT_INIT_FAILED
         );
     }
     return ok;
@@ -249,7 +252,8 @@ static inline bool TlsStream_InitSslSession(struct SolidSyslogTlsStream* self)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &TlsStreamErrorSource,
-            (uint8_t) TLSSTREAM_ERROR_SESSION_INIT_FAILED
+            SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
+            (int32_t) TLSSTREAM_ERROR_SESSION_INIT_FAILED
         );
     }
     return ok;
@@ -269,7 +273,8 @@ static inline bool TlsStream_AttachTransportBio(struct SolidSyslogTlsStream* sel
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &TlsStreamErrorSource,
-            (uint8_t) TLSSTREAM_ERROR_SESSION_INIT_FAILED
+            SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
+            (int32_t) TLSSTREAM_ERROR_SESSION_INIT_FAILED
         );
     }
     return ok;
@@ -392,7 +397,8 @@ static inline bool TlsStream_ConfigureExpectedHostname(struct SolidSyslogTlsStre
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &TlsStreamErrorSource,
-                (uint8_t) TLSSTREAM_ERROR_SERVER_NAME_NOT_SET
+                SOLIDSYSLOG_CAT_BAD_CONFIG,
+                (int32_t) TLSSTREAM_ERROR_SERVER_NAME_NOT_SET
             );
         }
     }
@@ -460,7 +466,8 @@ static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* self)
                 SolidSyslog_Error(
                     SOLIDSYSLOG_SEVERITY_ERROR,
                     &TlsStreamErrorSource,
-                    (uint8_t) TLSSTREAM_ERROR_HANDSHAKE_REJECTED
+                    SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
+                    (int32_t) TLSSTREAM_ERROR_HANDSHAKE_REJECTED
                 );
                 done = true;
             }
@@ -469,7 +476,8 @@ static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* self)
                 SolidSyslog_Error(
                     SOLIDSYSLOG_SEVERITY_ERROR,
                     &TlsStreamErrorSource,
-                    (uint8_t) TLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
+                    SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
+                    (int32_t) TLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
                 );
                 done = true;
             }

@@ -35,8 +35,9 @@ const struct SolidSyslogErrorSource MbedTlsHmacSha256PolicyErrorSource = {
 
 void MbedTlsHmacSha256Policy_Report(
     enum SolidSyslogSeverity severity,
+    uint16_t category,
     enum SolidSyslogMbedTlsHmacSha256PolicyErrors code
 )
 {
-    SolidSyslog_Error(severity, &MbedTlsHmacSha256PolicyErrorSource, (uint8_t) code);
+    SolidSyslog_Error(severity, &MbedTlsHmacSha256PolicyErrorSource, category, (int32_t) code);
 }

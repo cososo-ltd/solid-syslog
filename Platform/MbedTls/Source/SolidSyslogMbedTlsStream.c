@@ -7,12 +7,14 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMbedTlsStreamErrors.h"
 #include "SolidSyslogMbedTlsStreamPrivate.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogTunables.h"
 
 enum
@@ -151,7 +153,8 @@ static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTl
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &MbedTlsStreamErrorSource,
-            (uint8_t) MBEDTLSSTREAM_ERROR_DEFAULTS_NOT_APPLIED
+            SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
+            (int32_t) MBEDTLSSTREAM_ERROR_DEFAULTS_NOT_APPLIED
         );
     }
     return ok;
@@ -178,7 +181,8 @@ static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsSt
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &MbedTlsStreamErrorSource,
-            (uint8_t) MBEDTLSSTREAM_ERROR_SESSION_INIT_FAILED
+            SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
+            (int32_t) MBEDTLSSTREAM_ERROR_SESSION_INIT_FAILED
         );
     }
     return ok;
@@ -195,7 +199,8 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &MbedTlsStreamErrorSource,
-                (uint8_t) MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET
+                SOLIDSYSLOG_CAT_BAD_CONFIG,
+                (int32_t) MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET
             );
         }
     }
@@ -234,7 +239,8 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &MbedTlsStreamErrorSource,
-                (uint8_t) MBEDTLSSTREAM_ERROR_HANDSHAKE_REJECTED
+                SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
+                (int32_t) MBEDTLSSTREAM_ERROR_HANDSHAKE_REJECTED
             );
             done = true;
         }
@@ -243,7 +249,8 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &MbedTlsStreamErrorSource,
-                (uint8_t) MBEDTLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
+                SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
+                (int32_t) MBEDTLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
             );
             done = true;
         }

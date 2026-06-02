@@ -4,7 +4,10 @@
 #include <cstdint>
 
 #include "ConfigLockFake.h"
+#include "CppUTest/TestHarness.h"
 #include "ErrorHandlerFake.h"
+#include "SocketFake.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogGetAddrInfoResolver.h"
 #include "SolidSyslogGetAddrInfoResolverErrors.h"
 #include "SolidSyslogPosixAddress.h"
@@ -12,11 +15,9 @@
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogResolver.h"
 #include "SolidSyslogResolverDefinition.h"
-#include "SocketFake.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
 #include "TestUtils.h"
-#include "CppUTest/TestHarness.h"
 
 using namespace CososoTesting;
 
@@ -190,7 +191,8 @@ TEST(SolidSyslogGetAddrInfoResolverPool, ExhaustedCreateReportsError)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&GetAddrInfoResolverErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(GETADDRINFORESOLVER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(GETADDRINFORESOLVER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogGetAddrInfoResolverPool, FallbackResolveReturnsFalse)
@@ -257,7 +259,8 @@ TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfUnknownHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&GetAddrInfoResolverErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfStaleHandleReportsWarning)
@@ -272,5 +275,6 @@ TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfStaleHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&GetAddrInfoResolverErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

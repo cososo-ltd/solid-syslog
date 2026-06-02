@@ -5,12 +5,13 @@
 
 using namespace CososoTesting;
 #include "ErrorHandlerFake.h"
+#include "SenderFake.h"
 #include "SolidSyslogBuffer.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPassthroughBuffer.h"
 #include "SolidSyslogPassthroughBufferErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
-#include "SenderFake.h"
 
 static const char* const TEST_MESSAGE = "hello";
 static const size_t TEST_MESSAGE_LEN = 5;
@@ -92,7 +93,8 @@ TEST(SolidSyslogPassthroughBuffer, DestroyWithNullHandleEmitsUnknownDestroyWarni
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PassthroughBufferErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(PASSTHROUGHBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(PASSTHROUGHBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPassthroughBuffer, UseAfterDestroyIsCrashSafeViaNullBufferVtable)
@@ -198,7 +200,8 @@ TEST(SolidSyslogPassthroughBufferPool, CreateWithNullSenderReportsError)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PassthroughBufferErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(PASSTHROUGHBUFFER_ERROR_NULL_SENDER, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(PASSTHROUGHBUFFER_ERROR_NULL_SENDER, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPassthroughBufferPool, CreateWithNullSenderReturnsFallbackDistinctFromAnyPoolSlot)

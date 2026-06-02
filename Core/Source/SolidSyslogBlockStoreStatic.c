@@ -9,6 +9,7 @@
 #include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogBlockStorePrivate.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPoolAllocator.h"
@@ -67,7 +68,8 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &BlockStoreErrorSource,
-            (uint8_t) BLOCKSTORE_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) BLOCKSTORE_ERROR_POOL_EXHAUSTED
         );
     }
 
@@ -138,7 +140,8 @@ void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &BlockStoreErrorSource,
-            (uint8_t) BLOCKSTORE_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) BLOCKSTORE_ERROR_UNKNOWN_DESTROY
         );
     }
 }

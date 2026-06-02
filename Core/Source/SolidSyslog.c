@@ -7,6 +7,7 @@
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogErrors.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogMessageFormatter.h"
@@ -85,7 +86,8 @@ static void SolidSyslog_InstallBuffer(struct SolidSyslog* self, struct SolidSysl
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &SolidSyslogErrorSource,
-            (uint8_t) SOLIDSYSLOG_ERROR_CREATE_NULL_BUFFER
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) SOLIDSYSLOG_ERROR_CREATE_NULL_BUFFER
         );
     }
     else
@@ -101,7 +103,8 @@ static void SolidSyslog_InstallSender(struct SolidSyslog* self, struct SolidSysl
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &SolidSyslogErrorSource,
-            (uint8_t) SOLIDSYSLOG_ERROR_CREATE_NULL_SENDER
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) SOLIDSYSLOG_ERROR_CREATE_NULL_SENDER
         );
     }
     else
@@ -117,7 +120,8 @@ static void SolidSyslog_InstallStore(struct SolidSyslog* self, struct SolidSyslo
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &SolidSyslogErrorSource,
-            (uint8_t) SOLIDSYSLOG_ERROR_CREATE_NULL_STORE
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) SOLIDSYSLOG_ERROR_CREATE_NULL_STORE
         );
     }
     else
@@ -172,7 +176,8 @@ static void SolidSyslog_InstallStructuredData(
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &SolidSyslogErrorSource,
-            (uint8_t) SOLIDSYSLOG_ERROR_CREATE_INCONSISTENT_SD
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) SOLIDSYSLOG_ERROR_CREATE_INCONSISTENT_SD
         );
     }
     else
@@ -189,7 +194,8 @@ void SolidSyslog_Service(struct SolidSyslog* handle)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &SolidSyslogErrorSource,
-            (uint8_t) SOLIDSYSLOG_ERROR_SERVICE_NULL_HANDLE
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            (int32_t) SOLIDSYSLOG_ERROR_SERVICE_NULL_HANDLE
         );
     }
     else if (SolidSyslog_IsServiceEnabled(handle))
@@ -255,7 +261,8 @@ void SolidSyslog_Log(struct SolidSyslog* handle, const struct SolidSyslogMessage
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &SolidSyslogErrorSource,
-            (uint8_t) SOLIDSYSLOG_ERROR_LOG_NULL_HANDLE
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            (int32_t) SOLIDSYSLOG_ERROR_LOG_NULL_HANDLE
         );
     }
     else if (message == NULL)
@@ -263,7 +270,8 @@ void SolidSyslog_Log(struct SolidSyslog* handle, const struct SolidSyslogMessage
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &SolidSyslogErrorSource,
-            (uint8_t) SOLIDSYSLOG_ERROR_LOG_NULL_MESSAGE
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            (int32_t) SOLIDSYSLOG_ERROR_LOG_NULL_MESSAGE
         );
     }
     else

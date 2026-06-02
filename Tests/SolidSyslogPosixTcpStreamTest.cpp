@@ -12,6 +12,8 @@
 using namespace CososoTesting;
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "SocketFake.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPosixTcpStream.h"
@@ -21,7 +23,6 @@ using namespace CososoTesting;
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
-#include "SocketFake.h"
 
 namespace
 {
@@ -626,7 +627,8 @@ TEST(SolidSyslogPosixTcpStreamPool, ExhaustedCreateReportsError)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixTcpStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(POSIXTCPSTREAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(POSIXTCPSTREAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixTcpStreamPool, FallbackSendReturnsTrue)
@@ -691,7 +693,8 @@ TEST(SolidSyslogPosixTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixTcpStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(POSIXTCPSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(POSIXTCPSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixTcpStreamPool, DestroyOfStaleHandleReportsWarning)
@@ -706,5 +709,6 @@ TEST(SolidSyslogPosixTcpStreamPool, DestroyOfStaleHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixTcpStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(POSIXTCPSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(POSIXTCPSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

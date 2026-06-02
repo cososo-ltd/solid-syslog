@@ -2,6 +2,7 @@
 #include "CppUTest/TestHarness.h"
 #include "ErrorHandlerFake.h"
 #include "SocketFake.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFile.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogPosixFile.h"
@@ -178,7 +179,8 @@ TEST(SolidSyslogPosixFilePool, ExhaustedCreateReportsError)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixFileErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(POSIXFILE_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(POSIXFILE_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixFilePool, FallbackOpenReturnsFalse)
@@ -243,7 +245,8 @@ TEST(SolidSyslogPosixFilePool, DestroyOfUnknownHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixFileErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(POSIXFILE_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(POSIXFILE_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixFilePool, DestroyOfStaleHandleReportsWarning)
@@ -258,5 +261,6 @@ TEST(SolidSyslogPosixFilePool, DestroyOfStaleHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixFileErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(POSIXFILE_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(POSIXFILE_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

@@ -5,9 +5,10 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogNullStream.h"
 #include "SolidSyslogPlusTcpTcpStreamErrors.h"
 #include "SolidSyslogPlusTcpTcpStreamPrivate.h"
-#include "SolidSyslogNullStream.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
@@ -38,7 +39,8 @@ struct SolidSyslogStream* SolidSyslogPlusTcpTcpStream_Create(const struct SolidS
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &PlusTcpTcpStreamErrorSource,
-            (uint8_t) PLUSTCPTCPSTREAM_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) PLUSTCPTCPSTREAM_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -55,7 +57,8 @@ void SolidSyslogPlusTcpTcpStream_Destroy(struct SolidSyslogStream* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &PlusTcpTcpStreamErrorSource,
-            (uint8_t) PLUSTCPTCPSTREAM_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) PLUSTCPTCPSTREAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

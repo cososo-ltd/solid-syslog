@@ -17,6 +17,8 @@ extern "C"
 
 #include <openssl/evp.h>
 
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogSecurityPolicyCategories.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -59,13 +61,14 @@ static bool TestGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* 
 
 /* Asserts exactly one error of (severity, code) was reported from this policy's source. */
 // NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
-#define CHECK_REPORTED_ERROR(severity, code)                                                \
+#define CHECK_REPORTED_ERROR(severity, expectedCategory, code)                              \
     do                                                                                      \
     {                                                                                       \
         CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                         \
         LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());                           \
         POINTERS_EQUAL(&OpenSslHmacSha256PolicyErrorSource, ErrorHandlerFake_LastSource()); \
-        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastCode());                          \
+        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory());          \
+        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastDetail());                        \
     } while (0)
 // NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
 
@@ -195,7 +198,11 @@ TEST(SolidSyslogOpenSslHmacSha256Policy, ExhaustedCreateReportsError)
 
     overflow = SolidSyslogOpenSslHmacSha256Policy_Create(&config);
 
-    CHECK_REPORTED_ERROR(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLHMACSHA256POLICY_ERROR_POOL_EXHAUSTED);
+    CHECK_REPORTED_ERROR(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        OPENSSLHMACSHA256POLICY_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogOpenSslHmacSha256Policy, NullConfigReturnsNullFallback)
@@ -216,7 +223,11 @@ TEST(SolidSyslogOpenSslHmacSha256Policy, BadConfigReportsError)
 
     SolidSyslogOpenSslHmacSha256Policy_Create(nullptr);
 
-    CHECK_REPORTED_ERROR(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLHMACSHA256POLICY_ERROR_BAD_CONFIG);
+    CHECK_REPORTED_ERROR(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        OPENSSLHMACSHA256POLICY_ERROR_BAD_CONFIG
+    );
 }
 
 TEST(SolidSyslogOpenSslHmacSha256Policy, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
@@ -248,7 +259,11 @@ TEST(SolidSyslogOpenSslHmacSha256Policy, DestroyOfUnknownHandleReportsWarning)
 
     SolidSyslogOpenSslHmacSha256Policy_Destroy(&stranger);
 
-    CHECK_REPORTED_ERROR(SOLIDSYSLOG_SEVERITY_WARNING, OPENSSLHMACSHA256POLICY_ERROR_UNKNOWN_DESTROY);
+    CHECK_REPORTED_ERROR(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        OPENSSLHMACSHA256POLICY_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogOpenSslHmacSha256Policy, DestroyOfStaleHandleReportsWarning)
@@ -260,7 +275,11 @@ TEST(SolidSyslogOpenSslHmacSha256Policy, DestroyOfStaleHandleReportsWarning)
     SolidSyslogOpenSslHmacSha256Policy_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    CHECK_REPORTED_ERROR(SOLIDSYSLOG_SEVERITY_WARNING, OPENSSLHMACSHA256POLICY_ERROR_UNKNOWN_DESTROY);
+    CHECK_REPORTED_ERROR(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        OPENSSLHMACSHA256POLICY_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordHmacsTheRecordWithTheFetchedKey)
@@ -299,7 +318,11 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordReportsHmacFailure)
     bool sealed = seal(TEST_RECORD, sizeof TEST_RECORD, tag);
 
     CHECK_FALSE(sealed);
-    CHECK_REPORTED_ERROR(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLHMACSHA256POLICY_ERROR_HMAC_FAILED);
+    CHECK_REPORTED_ERROR(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
+        OPENSSLHMACSHA256POLICY_ERROR_HMAC_FAILED
+    );
 }
 
 TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordReportsKeyUnavailable)
@@ -311,7 +334,11 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordReportsKeyUnavailable)
     bool sealed = seal(TEST_RECORD, sizeof TEST_RECORD, tag);
 
     CHECK_FALSE(sealed);
-    CHECK_REPORTED_ERROR(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE);
+    CHECK_REPORTED_ERROR(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
+        OPENSSLHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE
+    );
 }
 
 TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordWipesTheKeyBufferAfterUse)

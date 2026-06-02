@@ -34,59 +34,59 @@ misra-c2012-11.3:Core/Source/SolidSyslogPassthroughBuffer.c:49
 misra-c2012-11.3:Core/Source/SolidSyslogStreamSender.c:147
 misra-c2012-11.3:Core/Source/SolidSyslogSwitchingSender.c:59
 misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:59
-misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:101
+misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:103
 misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:25
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:45
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:24
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:31
-misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:34
-misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:54
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:35
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:56
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:61
-misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:202
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:205
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:130
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:10
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:19
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:26
-misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:34
-misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:54
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:35
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:56
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpDatagram.c:49
 misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:40
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:44
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:114
-misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:94
-misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:63
-misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:76
-misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:80
-misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:64
-misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:82
+misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:96
+misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:65
+misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:78
+misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:82
+misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:66
+misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:84
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddress.c:10
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:19
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:24
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressStatic.c:34
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressStatic.c:54
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressStatic.c:35
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressStatic.c:56
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixDatagram.c:55
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixFile.c:66
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:129
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:133
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMutex.c:47
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:100
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddress.c:9
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:19
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:26
-misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressStatic.c:34
-misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressStatic.c:54
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressStatic.c:35
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressStatic.c:56
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c:29
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsFile.c:73
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsMutex.c:34
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:94
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:181
-misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:205
+misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:207
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:70
-misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:145
-misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:207
+misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:147
+misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:210
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:139
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:147
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:271
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:283
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:278
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:290
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:138
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:353
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:373
@@ -102,7 +102,6 @@ misra-c2012-18.7:Core/Source/SolidSyslogFormatter.c:12
 # D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP)
 # See docs/misra-deviations.md#d006
 misra-c2012-11.8:Core/Source/BlockSequence.c:465
-misra-c2012-11.8:Core/Source/SolidSyslog.c:50
 misra-c2012-11.8:Core/Source/SolidSyslog.c:51
 misra-c2012-11.8:Core/Source/SolidSyslog.c:52
 misra-c2012-11.8:Core/Source/SolidSyslog.c:53
@@ -110,12 +109,13 @@ misra-c2012-11.8:Core/Source/SolidSyslog.c:54
 misra-c2012-11.8:Core/Source/SolidSyslog.c:55
 misra-c2012-11.8:Core/Source/SolidSyslog.c:56
 misra-c2012-11.8:Core/Source/SolidSyslog.c:57
+misra-c2012-11.8:Core/Source/SolidSyslog.c:58
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:57
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:59
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:61
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:63
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:67
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:40
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:41
 misra-c2012-11.8:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:155
 misra-c2012-11.8:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:93
 
@@ -142,12 +142,12 @@ misra-c2012-5.7:Core/Source/SolidSyslogStreamSender.c:19
 misra-c2012-5.7:Core/Source/SolidSyslogUdpPayload.c:5
 misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:21
 misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:28
-misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:19
-misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:16
-misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:19
-misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:17
-misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:17
-misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:21
+misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:21
+misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:18
+misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:21
+misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:19
+misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:19
+misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:23
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogGetAddrInfoResolver.c:20
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixDatagram.c:21
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSleep.c:6
@@ -175,7 +175,7 @@ misra-c2012-5.7:Core/Source/SolidSyslogCrc16Policy.c:10
 misra-c2012-5.7:Core/Source/SolidSyslogOriginSdPrivate.h:9
 misra-c2012-5.7:Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c:7
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixHostname.c:10
-misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:21
+misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:23
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBufferPrivate.h:12
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSysUpTime.c:6
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsClock.c:21
@@ -196,8 +196,8 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:16
 
 # D.013 — Rule 11.5: void* ↔ unsigned char* at third-party byte-buffer API boundaries
 # See docs/misra-deviations.md#d013
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:308
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:327
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:315
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:334
 
 # D.014 — Rule 8.7: public-API SolidSyslogErrorSource objects with external linkage
 # See docs/misra-deviations.md#d014

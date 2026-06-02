@@ -7,9 +7,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogOpenSslHmacSha256PolicyErrors.h"
 #include "SolidSyslogOpenSslHmacSha256PolicyPrivate.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogTunables.h"
 
@@ -105,12 +107,20 @@ static bool OpenSslHmacSha256Policy_ComputeTag(
         }
         else
         {
-            OpenSslHmacSha256Policy_Report(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLHMACSHA256POLICY_ERROR_HMAC_FAILED);
+            OpenSslHmacSha256Policy_Report(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
+                OPENSSLHMACSHA256POLICY_ERROR_HMAC_FAILED
+            );
         }
     }
     else
     {
-        OpenSslHmacSha256Policy_Report(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE);
+        OpenSslHmacSha256Policy_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
+            OPENSSLHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE
+        );
     }
     /* Wipe the whole key buffer — the full region GetKey was handed, not just
      * the bytes written — so no key material lingers on the stack. */

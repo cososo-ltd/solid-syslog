@@ -4,8 +4,11 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
+#include "CppUTest/TestHarness.h"
 #include "ErrorHandlerFake.h"
+#include "SocketFake.h"
 #include "SolidSyslogEndpoint.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogGetAddrInfoResolver.h"
 #include "SolidSyslogPosixAddress.h"
@@ -15,9 +18,7 @@
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogStreamSenderErrors.h"
 #include "SolidSyslogTunables.h"
-#include "SocketFake.h"
 #include "TestUtils.h"
-#include "CppUTest/TestHarness.h"
 
 using namespace CososoTesting;
 
@@ -719,13 +720,14 @@ TEST(SolidSyslogStreamSenderPool, FillingPoolThenOverflowReturnsDistinctFallback
 // SolidSyslogUdpSenderBadSetup contract from S12.06.
 
 /* Macro (not function) so test failures report the caller's __FILE__/__LINE__. */
-#define CHECK_STREAMSENDER_BAD_SETUP_ERROR(expectedCode)                          \
-    do                                                                            \
-    {                                                                             \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                               \
-        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity()); \
-        POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());  \
-        UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastCode());        \
+#define CHECK_STREAMSENDER_BAD_SETUP_ERROR(expectedCategory, expectedCode)         \
+    do                                                                             \
+    {                                                                              \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                \
+        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());  \
+        POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());   \
+        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory()); \
+        UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail());       \
     } while (0)
 
 // clang-format off
@@ -765,28 +767,28 @@ TEST_GROUP(SolidSyslogStreamSenderBadSetup)
 TEST(SolidSyslogStreamSenderBadSetup, CreateWithNullConfigReportsError)
 {
     SolidSyslogStreamSender_Create(nullptr);
-    CHECK_STREAMSENDER_BAD_SETUP_ERROR(STREAMSENDER_ERROR_NULL_CONFIG);
+    CHECK_STREAMSENDER_BAD_SETUP_ERROR(SOLIDSYSLOG_CAT_BAD_CONFIG, STREAMSENDER_ERROR_NULL_CONFIG);
 }
 
 TEST(SolidSyslogStreamSenderBadSetup, CreateWithNullResolverReportsError)
 {
     config.Resolver = nullptr;
     SolidSyslogStreamSender_Create(&config);
-    CHECK_STREAMSENDER_BAD_SETUP_ERROR(STREAMSENDER_ERROR_NULL_RESOLVER);
+    CHECK_STREAMSENDER_BAD_SETUP_ERROR(SOLIDSYSLOG_CAT_BAD_CONFIG, STREAMSENDER_ERROR_NULL_RESOLVER);
 }
 
 TEST(SolidSyslogStreamSenderBadSetup, CreateWithNullStreamReportsError)
 {
     config.Stream = nullptr;
     SolidSyslogStreamSender_Create(&config);
-    CHECK_STREAMSENDER_BAD_SETUP_ERROR(STREAMSENDER_ERROR_NULL_STREAM);
+    CHECK_STREAMSENDER_BAD_SETUP_ERROR(SOLIDSYSLOG_CAT_BAD_CONFIG, STREAMSENDER_ERROR_NULL_STREAM);
 }
 
 TEST(SolidSyslogStreamSenderBadSetup, CreateWithNullAddressReportsError)
 {
     config.Address = nullptr;
     SolidSyslogStreamSender_Create(&config);
-    CHECK_STREAMSENDER_BAD_SETUP_ERROR(STREAMSENDER_ERROR_NULL_ADDRESS);
+    CHECK_STREAMSENDER_BAD_SETUP_ERROR(SOLIDSYSLOG_CAT_BAD_CONFIG, STREAMSENDER_ERROR_NULL_ADDRESS);
 }
 
 TEST(SolidSyslogStreamSenderBadSetup, SendOnBadSetupSenderReturnsTrue)

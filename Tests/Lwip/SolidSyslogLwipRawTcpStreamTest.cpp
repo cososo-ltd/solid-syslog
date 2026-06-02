@@ -13,6 +13,7 @@ using namespace CososoTesting;
 #include "LwipFakeMarshalGuard.h"
 #include "LwipPbufFake.h"
 #include "LwipTcpFake.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipRawAddress.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
 #include "SolidSyslogLwipRawTcpStream.h"
@@ -45,13 +46,14 @@ static const uint16_t TEST_PORT = 514;
     } while (0)
 
 // Asserts the most recent ErrorHandlerFake call matched (severity, source, code).
-#define CHECK_REPORTED(severity, source, code)                     \
-    do                                                             \
-    {                                                              \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                \
-        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());  \
-        POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());  \
-        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastCode()); \
+#define CHECK_REPORTED(severity, source, expectedCategory, code)                   \
+    do                                                                             \
+    {                                                                              \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                \
+        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());                  \
+        POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());                  \
+        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory()); \
+        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastDetail());               \
     } while (0)
 
 // Asserts the lwIP API call recorded the pcb the wrapper got back from
@@ -783,7 +785,12 @@ TEST(SolidSyslogLwipRawTcpStreamPool, ExhaustedCreateReportsError)
 
     overflow = SolidSyslogLwipRawTcpStream_Create(&validConfig);
 
-    CHECK_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, LwipRawTcpStreamErrorSource, LWIPRAWTCPSTREAM_ERROR_POOL_EXHAUSTED);
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        LwipRawTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        LWIPRAWTCPSTREAM_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogLwipRawTcpStreamPool, FallbackVtableMethodsAreNoOps)
@@ -849,7 +856,12 @@ TEST(SolidSyslogLwipRawTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
 
     SolidSyslogLwipRawTcpStream_Destroy(&stranger);
 
-    CHECK_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, LwipRawTcpStreamErrorSource, LWIPRAWTCPSTREAM_ERROR_UNKNOWN_DESTROY);
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        LwipRawTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        LWIPRAWTCPSTREAM_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogLwipRawTcpStreamPool, DestroyOfStaleHandleReportsWarning)
@@ -862,5 +874,10 @@ TEST(SolidSyslogLwipRawTcpStreamPool, DestroyOfStaleHandleReportsWarning)
 
     SolidSyslogLwipRawTcpStream_Destroy(stale);
 
-    CHECK_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, LwipRawTcpStreamErrorSource, LWIPRAWTCPSTREAM_ERROR_UNKNOWN_DESTROY);
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        LwipRawTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        LWIPRAWTCPSTREAM_ERROR_UNKNOWN_DESTROY
+    );
 }

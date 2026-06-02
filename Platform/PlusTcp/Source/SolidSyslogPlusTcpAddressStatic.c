@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPlusTcpAddressErrors.h"
 #include "SolidSyslogPlusTcpAddressPrivate.h"
 #include "SolidSyslogPoolAllocator.h"
@@ -42,7 +43,8 @@ struct SolidSyslogAddress* SolidSyslogPlusTcpAddress_Create(void)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &PlusTcpAddressErrorSource,
-            (uint8_t) PLUSTCPADDRESS_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) PLUSTCPADDRESS_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -65,7 +67,8 @@ void SolidSyslogPlusTcpAddress_Destroy(struct SolidSyslogAddress* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &PlusTcpAddressErrorSource,
-            (uint8_t) PLUSTCPADDRESS_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) PLUSTCPADDRESS_ERROR_UNKNOWN_DESTROY
         );
     }
 }

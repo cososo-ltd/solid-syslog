@@ -5,9 +5,10 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogNullResolver.h"
 #include "SolidSyslogPlusTcpResolverErrors.h"
 #include "SolidSyslogPlusTcpResolverPrivate.h"
-#include "SolidSyslogNullResolver.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
@@ -38,7 +39,8 @@ struct SolidSyslogResolver* SolidSyslogPlusTcpResolver_Create(void)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &PlusTcpResolverErrorSource,
-            (uint8_t) PLUSTCPRESOLVER_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) PLUSTCPRESOLVER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -55,7 +57,8 @@ void SolidSyslogPlusTcpResolver_Destroy(struct SolidSyslogResolver* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &PlusTcpResolverErrorSource,
-            (uint8_t) PLUSTCPRESOLVER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) PLUSTCPRESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

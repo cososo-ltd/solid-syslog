@@ -3,6 +3,7 @@
 
 #include "CppUTest/TestHarness.h"
 #include "ErrorHandlerFake.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStructuredData.h"
@@ -238,5 +239,6 @@ TEST(SolidSyslogTimeQualitySdBadSetup, CreateWithNullCallbackReportsError)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&TimeQualitySdErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(TIMEQUALITYSD_ERROR_NULL_CALLBACK, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(TIMEQUALITYSD_ERROR_NULL_CALLBACK, ErrorHandlerFake_LastDetail());
 }

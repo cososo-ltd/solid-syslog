@@ -7,6 +7,7 @@
 #include "SolidSyslogCircularBufferErrors.h"
 #include "SolidSyslogCircularBufferPrivate.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
@@ -43,7 +44,8 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &CircularBufferErrorSource,
-            (uint8_t) CIRCULARBUFFER_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) CIRCULARBUFFER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -60,7 +62,8 @@ void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &CircularBufferErrorSource,
-            (uint8_t) CIRCULARBUFFER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) CIRCULARBUFFER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

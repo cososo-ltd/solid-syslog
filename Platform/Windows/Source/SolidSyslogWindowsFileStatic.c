@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullFile.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
@@ -35,7 +36,8 @@ struct SolidSyslogFile* SolidSyslogWindowsFile_Create(void)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &WindowsFileErrorSource,
-            (uint8_t) WINDOWSFILE_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) WINDOWSFILE_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -52,7 +54,8 @@ void SolidSyslogWindowsFile_Destroy(struct SolidSyslogFile* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &WindowsFileErrorSource,
-            (uint8_t) WINDOWSFILE_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) WINDOWSFILE_ERROR_UNKNOWN_DESTROY
         );
     }
 }

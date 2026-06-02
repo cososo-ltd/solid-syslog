@@ -23,6 +23,7 @@ void MbedTlsHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base);
  * Static.c). */
 void MbedTlsHmacSha256Policy_Report(
     enum SolidSyslogSeverity severity,
+    uint16_t category,
     enum SolidSyslogMbedTlsHmacSha256PolicyErrors code
 );
 

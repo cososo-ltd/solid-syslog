@@ -4,8 +4,10 @@
 using namespace CososoTesting;
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "SocketFake.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPosixDatagram.h"
@@ -13,7 +15,6 @@ using namespace CososoTesting;
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
-#include "SocketFake.h"
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstring>
@@ -313,7 +314,8 @@ TEST(SolidSyslogPosixDatagramPool, ExhaustedCreateReportsError)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixDatagramErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(POSIXDATAGRAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(POSIXDATAGRAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixDatagramPool, FallbackSendToReturnsSent)
@@ -378,7 +380,8 @@ TEST(SolidSyslogPosixDatagramPool, DestroyOfUnknownHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixDatagramErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(POSIXDATAGRAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(POSIXDATAGRAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixDatagramPool, DestroyOfStaleHandleReportsWarning)
@@ -393,5 +396,6 @@ TEST(SolidSyslogPosixDatagramPool, DestroyOfStaleHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixDatagramErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(POSIXDATAGRAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(POSIXDATAGRAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

@@ -9,6 +9,7 @@ using namespace CososoTesting;
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixAddressErrors.h"
 #include "SolidSyslogPosixAddressPrivate.h"
@@ -130,7 +131,8 @@ TEST(SolidSyslogPosixAddressPool, ExhaustedCreateReportsError)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixAddressErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(POSIXADDRESS_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(POSIXADDRESS_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixAddressPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
@@ -187,7 +189,8 @@ TEST(SolidSyslogPosixAddressPool, DestroyOfUnknownHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixAddressErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(POSIXADDRESS_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(POSIXADDRESS_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixAddressPool, DestroyOfStaleHandleReportsWarning)
@@ -202,5 +205,6 @@ TEST(SolidSyslogPosixAddressPool, DestroyOfStaleHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixAddressErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(POSIXADDRESS_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(POSIXADDRESS_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

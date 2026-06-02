@@ -372,25 +372,28 @@ static uint32_t GetEndpointVersion(void)
     return endpointVersion;
 }
 
-static void ErrorHandlerEx(
-    void* context,
-    enum SolidSyslogSeverity severity,
-    const struct SolidSyslogErrorSource* source,
-    uint8_t code
-)
+static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* event)
 {
     (void) context;
     const char* sourceName = "<unknown>";
     const char* message = "<no translation>";
+    const struct SolidSyslogErrorSource* source = event->Source;
     if (source != NULL)
     {
         sourceName = source->Name;
         if (source->AsString != NULL)
         {
-            message = source->AsString(code);
+            message = source->AsString((uint8_t) event->Detail);
         }
     }
-    (void) printf("[solidsyslog] severity=%d [%s/%u] %s\n", (int) severity, sourceName, (unsigned) code, message);
+    (void) printf(
+        "[solidsyslog] severity=%d [%s cat=%u detail=%ld] %s\n",
+        (int) event->Severity,
+        sourceName,
+        (unsigned) event->Category,
+        (long) event->Detail,
+        message
+    );
 }
 
 static bool OnSet(const char* name, const char* value)

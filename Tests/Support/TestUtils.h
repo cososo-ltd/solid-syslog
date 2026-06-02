@@ -36,4 +36,18 @@ enum
 #define CALLED_FAKE(getter, count) LONGS_EQUAL((count), getter##CallCount())
 #define CALLED_FAKE_ON(getter, instance, count) LONGS_EQUAL((count), getter##CallCount(instance))
 
+/* Assert the last error event captured by ErrorHandlerFake matches an expected
+ * (source, category, detail) triple. Prefer the portable Category — it survives
+ * a backend swap — over the per-class Detail code when a portable reaction is
+ * the thing under test. Use at a site that includes "ErrorHandlerFake.h". */
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+#define CHECK_ERROR_EVENT(expectedSource, expectedCategory, expectedDetail)        \
+    do                                                                             \
+    {                                                                              \
+        POINTERS_EQUAL((expectedSource), ErrorHandlerFake_LastSource());           \
+        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory()); \
+        LONGS_EQUAL((expectedDetail), ErrorHandlerFake_LastDetail());              \
+    } while (0)
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+
 #endif /* TESTUTILS_H */

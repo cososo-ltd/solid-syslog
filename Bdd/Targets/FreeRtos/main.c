@@ -485,25 +485,28 @@ static void GetAppName(struct SolidSyslogFormatter* formatter)
  * tzKnown=0, isSynced=0. SolidSyslogConfig.Clock=NULL drops through to the
  * library's NilClock; the resulting all-zero SolidSyslogTimestamp fails
  * TimestampIsValid in Core/Source/SolidSyslog.c and emits "-" on the wire. */
-static void ErrorHandlerEx(
-    void* context,
-    enum SolidSyslogSeverity severity,
-    const struct SolidSyslogErrorSource* source,
-    uint8_t code
-)
+static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* event)
 {
     (void) context;
     const char* sourceName = "<unknown>";
     const char* message = "<no translation>";
+    const struct SolidSyslogErrorSource* source = event->Source;
     if (source != NULL)
     {
         sourceName = source->Name;
         if (source->AsString != NULL)
         {
-            message = source->AsString(code);
+            message = source->AsString((uint8_t) event->Detail);
         }
     }
-    (void) printf("[solidsyslog] severity=%d [%s/%u] %s\n", (int) severity, sourceName, (unsigned) code, message);
+    (void) printf(
+        "[solidsyslog] severity=%d [%s cat=%u detail=%ld] %s\n",
+        (int) event->Severity,
+        sourceName,
+        (unsigned) event->Category,
+        (long) event->Detail,
+        message
+    );
 }
 
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)

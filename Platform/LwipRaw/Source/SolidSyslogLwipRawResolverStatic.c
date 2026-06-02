@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipRawResolverErrors.h"
 #include "SolidSyslogLwipRawResolverPrivate.h"
 #include "SolidSyslogNullResolver.h"
@@ -38,7 +39,8 @@ struct SolidSyslogResolver* SolidSyslogLwipRawResolver_Create(void)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &LwipRawResolverErrorSource,
-            (uint8_t) LWIPRAWRESOLVER_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) LWIPRAWRESOLVER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -55,7 +57,8 @@ void SolidSyslogLwipRawResolver_Destroy(struct SolidSyslogResolver* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &LwipRawResolverErrorSource,
-            (uint8_t) LWIPRAWRESOLVER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) LWIPRAWRESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

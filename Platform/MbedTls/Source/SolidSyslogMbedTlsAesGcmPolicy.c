@@ -8,10 +8,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMacros.h"
 #include "SolidSyslogMbedTlsAesGcmPolicyErrors.h"
 #include "SolidSyslogMbedTlsAesGcmPolicyPrivate.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogTunables.h"
 
@@ -101,12 +103,20 @@ static bool MbedTlsAesGcmPolicy_SealRecord(
             }
             else
             {
-                MbedTlsAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, MBEDTLSAESGCMPOLICY_ERROR_ENCRYPT_FAILED);
+                MbedTlsAesGcmPolicy_Report(
+                    SOLIDSYSLOG_SEVERITY_ERROR,
+                    SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
+                    MBEDTLSAESGCMPOLICY_ERROR_ENCRYPT_FAILED
+                );
             }
         }
         else
         {
-            MbedTlsAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, MBEDTLSAESGCMPOLICY_ERROR_NONCE_FAILED);
+            MbedTlsAesGcmPolicy_Report(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
+                MBEDTLSAESGCMPOLICY_ERROR_NONCE_FAILED
+            );
         }
     }
     mbedtls_platform_zeroize(key, sizeof key);
@@ -122,7 +132,11 @@ static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* 
                    (keyLength == (size_t) AES_256_KEY_SIZE);
     if (!fetched)
     {
-        MbedTlsAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, MBEDTLSAESGCMPOLICY_ERROR_KEY_UNAVAILABLE);
+        MbedTlsAesGcmPolicy_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
+            MBEDTLSAESGCMPOLICY_ERROR_KEY_UNAVAILABLE
+        );
     }
     return fetched;
 }
@@ -229,7 +243,11 @@ static bool MbedTlsAesGcmPolicy_GcmDecrypt(const struct SolidSyslogSecurityRecor
     mbedtls_gcm_free(&ctx);
     if (errored)
     {
-        MbedTlsAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, MBEDTLSAESGCMPOLICY_ERROR_DECRYPT_FAILED);
+        MbedTlsAesGcmPolicy_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_SECURITYPOLICY_OPEN_FAILED,
+            MBEDTLSAESGCMPOLICY_ERROR_DECRYPT_FAILED
+        );
     }
     return opened;
 }

@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipRawDatagramErrors.h"
 #include "SolidSyslogLwipRawDatagramPrivate.h"
 #include "SolidSyslogNullDatagram.h"
@@ -38,7 +39,8 @@ struct SolidSyslogDatagram* SolidSyslogLwipRawDatagram_Create(void)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &LwipRawDatagramErrorSource,
-            (uint8_t) LWIPRAWDATAGRAM_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) LWIPRAWDATAGRAM_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -55,7 +57,8 @@ void SolidSyslogLwipRawDatagram_Destroy(struct SolidSyslogDatagram* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &LwipRawDatagramErrorSource,
-            (uint8_t) LWIPRAWDATAGRAM_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) LWIPRAWDATAGRAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

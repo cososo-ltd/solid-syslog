@@ -5,14 +5,15 @@ using namespace CososoTesting;
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "FreeRTOS.h"
 #include "FreeRtosSemaphoreFake.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFreeRtosMutex.h"
 #include "SolidSyslogFreeRtosMutexErrors.h"
 #include "SolidSyslogMutex.h"
 #include "SolidSyslogMutexDefinition.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
-#include "FreeRTOS.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -135,7 +136,8 @@ TEST(SolidSyslogFreeRtosMutexPool, ExhaustedCreateReportsError)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&FreeRtosMutexErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(FREERTOSMUTEX_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(FREERTOSMUTEX_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogFreeRtosMutexPool, FallbackLockUnlockAreNoOps)
@@ -211,7 +213,8 @@ TEST(SolidSyslogFreeRtosMutexPool, DestroyOfUnknownHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&FreeRtosMutexErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(FREERTOSMUTEX_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(FREERTOSMUTEX_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogFreeRtosMutexPool, DestroyOfStaleHandleReportsWarning)
@@ -227,5 +230,6 @@ TEST(SolidSyslogFreeRtosMutexPool, DestroyOfStaleHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&FreeRtosMutexErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(FREERTOSMUTEX_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(FREERTOSMUTEX_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFileBlockDeviceErrors.h"
 #include "SolidSyslogFileBlockDevicePrivate.h"
 #include "SolidSyslogNullBlockDevice.h"
@@ -39,7 +40,8 @@ struct SolidSyslogBlockDevice* SolidSyslogFileBlockDevice_Create(struct SolidSys
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &FileBlockDeviceErrorSource,
-            (uint8_t) FILEBLOCKDEVICE_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) FILEBLOCKDEVICE_ERROR_POOL_EXHAUSTED
         );
     }
     return result;
@@ -56,7 +58,8 @@ void SolidSyslogFileBlockDevice_Destroy(struct SolidSyslogBlockDevice* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &FileBlockDeviceErrorSource,
-            (uint8_t) FILEBLOCKDEVICE_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) FILEBLOCKDEVICE_ERROR_UNKNOWN_DESTROY
         );
     }
 }

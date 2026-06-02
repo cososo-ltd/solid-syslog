@@ -9,12 +9,14 @@ using namespace CososoTesting;
 #include "ErrorHandlerFake.h"
 #include "LwipDnsFake.h"
 #include "LwipFakeMarshalGuard.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipRawAddress.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
 #include "SolidSyslogLwipRawDnsResolver.h"
 #include "SolidSyslogLwipRawDnsResolverErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogResolver.h"
+#include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
@@ -35,13 +37,14 @@ using namespace CososoTesting;
     } while (0)
 
 // Asserts the most recent ErrorHandlerFake call matched (severity, source, code).
-#define CHECK_REPORTED(severity, source, code)                     \
-    do                                                             \
-    {                                                              \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                \
-        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());  \
-        POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());  \
-        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastCode()); \
+#define CHECK_REPORTED(severity, source, expectedCategory, code)                   \
+    do                                                                             \
+    {                                                                              \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                \
+        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());                  \
+        POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());                  \
+        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory()); \
+        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastDetail());               \
     } while (0)
 
 static const char* const TEST_HOST = "syslog-ng";
@@ -315,6 +318,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveReportsWarningOnTimeout)
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
         LwipRawDnsResolverErrorSource,
+        SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
         LWIPRAWDNSRESOLVER_ERROR_RESOLVE_TIMEOUT
     );
 }
@@ -457,7 +461,12 @@ TEST(SolidSyslogLwipRawDnsResolverPool, ExhaustedCreateReportsError)
 
     overflow = SolidSyslogLwipRawDnsResolver_Create(&config);
 
-    CHECK_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, LwipRawDnsResolverErrorSource, LWIPRAWDNSRESOLVER_ERROR_POOL_EXHAUSTED);
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        LwipRawDnsResolverErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        LWIPRAWDNSRESOLVER_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogLwipRawDnsResolverPool, FallbackResolveReturnsFalse)
@@ -525,6 +534,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfUnknownHandleReportsWarning)
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
         LwipRawDnsResolverErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         LWIPRAWDNSRESOLVER_ERROR_UNKNOWN_DESTROY
     );
 }
@@ -541,6 +551,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfStaleHandleReportsWarning)
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
         LwipRawDnsResolverErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         LWIPRAWDNSRESOLVER_ERROR_UNKNOWN_DESTROY
     );
 }

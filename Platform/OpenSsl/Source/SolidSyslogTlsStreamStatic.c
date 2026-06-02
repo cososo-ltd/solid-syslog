@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
@@ -32,7 +33,12 @@ struct SolidSyslogStream* SolidSyslogTlsStream_Create(const struct SolidSyslogTl
     }
     else
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &TlsStreamErrorSource, (uint8_t) TLSSTREAM_ERROR_POOL_EXHAUSTED);
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &TlsStreamErrorSource,
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) TLSSTREAM_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }
@@ -47,7 +53,8 @@ void SolidSyslogTlsStream_Destroy(struct SolidSyslogStream* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &TlsStreamErrorSource,
-            (uint8_t) TLSSTREAM_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) TLSSTREAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

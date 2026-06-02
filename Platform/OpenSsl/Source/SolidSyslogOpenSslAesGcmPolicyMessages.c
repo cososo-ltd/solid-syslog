@@ -37,7 +37,11 @@ const struct SolidSyslogErrorSource OpenSslAesGcmPolicyErrorSource = {
     OpenSslAesGcmPolicyError_AsString
 };
 
-void OpenSslAesGcmPolicy_Report(enum SolidSyslogSeverity severity, enum SolidSyslogOpenSslAesGcmPolicyErrors code)
+void OpenSslAesGcmPolicy_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogOpenSslAesGcmPolicyErrors code
+)
 {
-    SolidSyslog_Error(severity, &OpenSslAesGcmPolicyErrorSource, (uint8_t) code);
+    SolidSyslog_Error(severity, &OpenSslAesGcmPolicyErrorSource, category, (int32_t) code);
 }

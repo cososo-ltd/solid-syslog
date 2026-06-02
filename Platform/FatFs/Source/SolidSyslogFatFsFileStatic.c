@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFatFsFileErrors.h"
 #include "SolidSyslogFatFsFilePrivate.h"
 #include "SolidSyslogNullFile.h"
@@ -32,7 +33,12 @@ struct SolidSyslogFile* SolidSyslogFatFsFile_Create(void)
     }
     else
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &FatFsFileErrorSource, (uint8_t) FATFSFILE_ERROR_POOL_EXHAUSTED);
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &FatFsFileErrorSource,
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) FATFSFILE_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }
@@ -47,7 +53,8 @@ void SolidSyslogFatFsFile_Destroy(struct SolidSyslogFile* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &FatFsFileErrorSource,
-            (uint8_t) FATFSFILE_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) FATFSFILE_ERROR_UNKNOWN_DESTROY
         );
     }
 }

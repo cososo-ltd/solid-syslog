@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
@@ -41,7 +42,8 @@ struct SolidSyslogSender* SolidSyslogStreamSender_Create(const struct SolidSyslo
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &StreamSenderErrorSource,
-                (uint8_t) STREAMSENDER_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                (int32_t) STREAMSENDER_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -56,7 +58,8 @@ static bool StreamSender_IsValidConfig(const struct SolidSyslogStreamSenderConfi
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &StreamSenderErrorSource,
-            (uint8_t) STREAMSENDER_ERROR_NULL_CONFIG
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) STREAMSENDER_ERROR_NULL_CONFIG
         );
     }
     else if (config->Resolver == NULL)
@@ -64,7 +67,8 @@ static bool StreamSender_IsValidConfig(const struct SolidSyslogStreamSenderConfi
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &StreamSenderErrorSource,
-            (uint8_t) STREAMSENDER_ERROR_NULL_RESOLVER
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) STREAMSENDER_ERROR_NULL_RESOLVER
         );
     }
     else if (config->Stream == NULL)
@@ -72,7 +76,8 @@ static bool StreamSender_IsValidConfig(const struct SolidSyslogStreamSenderConfi
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &StreamSenderErrorSource,
-            (uint8_t) STREAMSENDER_ERROR_NULL_STREAM
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) STREAMSENDER_ERROR_NULL_STREAM
         );
     }
     else if (config->Address == NULL)
@@ -80,7 +85,8 @@ static bool StreamSender_IsValidConfig(const struct SolidSyslogStreamSenderConfi
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &StreamSenderErrorSource,
-            (uint8_t) STREAMSENDER_ERROR_NULL_ADDRESS
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) STREAMSENDER_ERROR_NULL_ADDRESS
         );
     }
     else
@@ -101,7 +107,8 @@ void SolidSyslogStreamSender_Destroy(struct SolidSyslogSender* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &StreamSenderErrorSource,
-            (uint8_t) STREAMSENDER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) STREAMSENDER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

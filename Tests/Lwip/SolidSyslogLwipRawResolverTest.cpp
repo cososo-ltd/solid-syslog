@@ -8,6 +8,7 @@ using namespace CososoTesting;
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipRawAddress.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
 #include "SolidSyslogLwipRawResolver.h"
@@ -33,13 +34,14 @@ using namespace CososoTesting;
 
 // Asserts the most recent ErrorHandlerFake call matched (severity, source, code).
 // Use after the act-phase of a test that expects exactly one SolidSyslog_Error call.
-#define CHECK_REPORTED(severity, source, code)                     \
-    do                                                             \
-    {                                                              \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                \
-        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());  \
-        POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());  \
-        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastCode()); \
+#define CHECK_REPORTED(severity, source, expectedCategory, code)                   \
+    do                                                                             \
+    {                                                                              \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                \
+        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());                  \
+        POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());                  \
+        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory()); \
+        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastDetail());               \
     } while (0)
 
 static const char* const TEST_HOST = "127.0.0.1";
@@ -176,7 +178,12 @@ TEST(SolidSyslogLwipRawResolverPool, ExhaustedCreateReportsError)
 
     overflow = SolidSyslogLwipRawResolver_Create();
 
-    CHECK_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, LwipRawResolverErrorSource, LWIPRAWRESOLVER_ERROR_POOL_EXHAUSTED);
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        LwipRawResolverErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        LWIPRAWRESOLVER_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogLwipRawResolverPool, FallbackResolveReturnsFalse)
@@ -247,7 +254,12 @@ TEST(SolidSyslogLwipRawResolverPool, DestroyOfUnknownHandleReportsWarning)
 
     SolidSyslogLwipRawResolver_Destroy(&stranger);
 
-    CHECK_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, LwipRawResolverErrorSource, LWIPRAWRESOLVER_ERROR_UNKNOWN_DESTROY);
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        LwipRawResolverErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        LWIPRAWRESOLVER_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogLwipRawResolverPool, DestroyOfStaleHandleReportsWarning)
@@ -260,7 +272,12 @@ TEST(SolidSyslogLwipRawResolverPool, DestroyOfStaleHandleReportsWarning)
     SolidSyslogLwipRawResolver_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    CHECK_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, LwipRawResolverErrorSource, LWIPRAWRESOLVER_ERROR_UNKNOWN_DESTROY);
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        LwipRawResolverErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        LWIPRAWRESOLVER_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogLwipRawResolver, UdpTransportResolvesIdenticallyToTcp)

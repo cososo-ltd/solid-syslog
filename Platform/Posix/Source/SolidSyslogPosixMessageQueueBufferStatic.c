@@ -4,7 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPosixMessageQueueBufferErrors.h"
@@ -58,7 +60,8 @@ struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMe
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &PosixMessageQueueBufferErrorSource,
-                (uint8_t) POSIXMESSAGEQUEUEBUFFER_ERROR_MQ_OPEN_FAILED
+                SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+                (int32_t) POSIXMESSAGEQUEUEBUFFER_ERROR_MQ_OPEN_FAILED
             );
         }
     }
@@ -67,7 +70,8 @@ struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMe
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &PosixMessageQueueBufferErrorSource,
-            (uint8_t) POSIXMESSAGEQUEUEBUFFER_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) POSIXMESSAGEQUEUEBUFFER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -88,7 +92,8 @@ void SolidSyslogPosixMessageQueueBuffer_Destroy(struct SolidSyslogBuffer* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &PosixMessageQueueBufferErrorSource,
-            (uint8_t) POSIXMESSAGEQUEUEBUFFER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) POSIXMESSAGEQUEUEBUFFER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

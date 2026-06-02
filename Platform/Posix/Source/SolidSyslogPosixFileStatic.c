@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullFile.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPosixFileErrors.h"
@@ -32,7 +33,12 @@ struct SolidSyslogFile* SolidSyslogPosixFile_Create(void)
     }
     else
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &PosixFileErrorSource, (uint8_t) POSIXFILE_ERROR_POOL_EXHAUSTED);
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &PosixFileErrorSource,
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) POSIXFILE_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }
@@ -47,7 +53,8 @@ void SolidSyslogPosixFile_Destroy(struct SolidSyslogFile* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &PosixFileErrorSource,
-            (uint8_t) POSIXFILE_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) POSIXFILE_ERROR_UNKNOWN_DESTROY
         );
     }
 }

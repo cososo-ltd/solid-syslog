@@ -1,8 +1,10 @@
 #include <cstdint>
 #include <cstring>
 
+#include "CppUTest/TestHarness.h"
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogAtomicCounterTestHelper.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogMetaSdErrors.h"
@@ -10,7 +12,6 @@
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTunables.h"
 #include "TestUtils.h"
-#include "CppUTest/TestHarness.h"
 
 using namespace CososoTesting;
 
@@ -277,7 +278,8 @@ TEST(SolidSyslogMetaSd, CreateWithNullConfigReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&MetaSdErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(METASD_ERROR_NULL_CONFIG, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(METASD_ERROR_NULL_CONFIG, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsWarning)
@@ -288,7 +290,8 @@ TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&MetaSdErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(METASD_ERROR_NULL_COUNTER, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(METASD_ERROR_NULL_COUNTER, ErrorHandlerFake_LastDetail());
 }
 
 // Pool tests — prove SOLIDSYSLOG_META_SD_POOL_SIZE caps live instances

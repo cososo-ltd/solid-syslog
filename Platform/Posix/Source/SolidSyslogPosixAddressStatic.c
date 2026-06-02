@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPosixAddressErrors.h"
 #include "SolidSyslogPosixAddressPrivate.h"
@@ -42,7 +43,8 @@ struct SolidSyslogAddress* SolidSyslogPosixAddress_Create(void)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &PosixAddressErrorSource,
-            (uint8_t) POSIXADDRESS_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) POSIXADDRESS_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -65,7 +67,8 @@ void SolidSyslogPosixAddress_Destroy(struct SolidSyslogAddress* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &PosixAddressErrorSource,
-            (uint8_t) POSIXADDRESS_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) POSIXADDRESS_ERROR_UNKNOWN_DESTROY
         );
     }
 }

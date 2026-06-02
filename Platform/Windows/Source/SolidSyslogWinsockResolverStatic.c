@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullResolver.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
@@ -38,7 +39,8 @@ struct SolidSyslogResolver* SolidSyslogWinsockResolver_Create(void)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &WinsockResolverErrorSource,
-            (uint8_t) WINSOCKRESOLVER_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) WINSOCKRESOLVER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -55,7 +57,8 @@ void SolidSyslogWinsockResolver_Destroy(struct SolidSyslogResolver* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &WinsockResolverErrorSource,
-            (uint8_t) WINSOCKRESOLVER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) WINSOCKRESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

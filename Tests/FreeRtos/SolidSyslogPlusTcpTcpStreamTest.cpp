@@ -8,6 +8,13 @@ using namespace CososoTesting;
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "FreeRTOS.h"
+#include "FreeRTOS_IP.h"
+#include "FreeRTOS_Sockets.h"
+#include "FreeRtosArpFake.h"
+#include "FreeRtosSocketsFake.h"
+#include "FreeRtosTaskFake.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPlusTcpAddress.h"
 #include "SolidSyslogPlusTcpAddressPrivate.h"
 #include "SolidSyslogPlusTcpTcpStream.h"
@@ -16,12 +23,6 @@ using namespace CososoTesting;
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTunables.h"
-#include "FreeRtosArpFake.h"
-#include "FreeRtosSocketsFake.h"
-#include "FreeRtosTaskFake.h"
-#include "FreeRTOS.h"
-#include "FreeRTOS_IP.h"
-#include "FreeRTOS_Sockets.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -514,7 +515,8 @@ TEST(SolidSyslogPlusTcpTcpStreamPool, ExhaustedCreateReportsError)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PlusTcpTcpStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(PLUSTCPTCPSTREAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(PLUSTCPTCPSTREAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPlusTcpTcpStreamPool, FallbackVtableMethodsAreNoOps)
@@ -600,7 +602,8 @@ TEST(SolidSyslogPlusTcpTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PlusTcpTcpStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(PLUSTCPTCPSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(PLUSTCPTCPSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPlusTcpTcpStreamPool, DestroyOfStaleHandleReportsWarning)
@@ -616,5 +619,6 @@ TEST(SolidSyslogPlusTcpTcpStreamPool, DestroyOfStaleHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PlusTcpTcpStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(PLUSTCPTCPSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(PLUSTCPTCPSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

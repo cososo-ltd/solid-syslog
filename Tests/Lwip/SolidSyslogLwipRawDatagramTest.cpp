@@ -13,6 +13,7 @@ using namespace CososoTesting;
 #include "LwipUdpFake.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipRawAddress.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
 #include "SolidSyslogLwipRawDatagram.h"
@@ -41,13 +42,14 @@ static const uint16_t TEST_PORT = 514;
 
 // Asserts the most recent ErrorHandlerFake call matched (severity, source, code).
 // Use after the act-phase of a test that expects exactly one SolidSyslog_Error call.
-#define CHECK_REPORTED(severity, source, code)                     \
-    do                                                             \
-    {                                                              \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                \
-        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());  \
-        POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());  \
-        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastCode()); \
+#define CHECK_REPORTED(severity, source, expectedCategory, code)                   \
+    do                                                                             \
+    {                                                                              \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                \
+        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());                  \
+        POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());                  \
+        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory()); \
+        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastDetail());               \
     } while (0)
 
 /* Shared fixture: every Datagram lifecycle test needs the fake reset, a fresh
@@ -386,7 +388,12 @@ TEST(SolidSyslogLwipRawDatagramPool, ExhaustedCreateReportsError)
 
     overflow = SolidSyslogLwipRawDatagram_Create();
 
-    CHECK_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, LwipRawDatagramErrorSource, LWIPRAWDATAGRAM_ERROR_POOL_EXHAUSTED);
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        LwipRawDatagramErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        LWIPRAWDATAGRAM_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogLwipRawDatagramPool, FallbackVtableMethodsAreNoOps)
@@ -457,7 +464,12 @@ TEST(SolidSyslogLwipRawDatagramPool, DestroyOfUnknownHandleReportsWarning)
 
     SolidSyslogLwipRawDatagram_Destroy(&stranger);
 
-    CHECK_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, LwipRawDatagramErrorSource, LWIPRAWDATAGRAM_ERROR_UNKNOWN_DESTROY);
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        LwipRawDatagramErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        LWIPRAWDATAGRAM_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogLwipRawDatagramPool, DestroyOfStaleHandleReportsWarning)
@@ -469,5 +481,10 @@ TEST(SolidSyslogLwipRawDatagramPool, DestroyOfStaleHandleReportsWarning)
     SolidSyslogLwipRawDatagram_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    CHECK_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, LwipRawDatagramErrorSource, LWIPRAWDATAGRAM_ERROR_UNKNOWN_DESTROY);
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        LwipRawDatagramErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        LWIPRAWDATAGRAM_ERROR_UNKNOWN_DESTROY
+    );
 }

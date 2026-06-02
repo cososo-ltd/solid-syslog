@@ -19,20 +19,23 @@ extern "C"
 #include "StreamFake.h"
 }
 
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogTlsStreamCategories.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
 
-#define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCode)                    \
-    do                                                                            \
-    {                                                                             \
-        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                     \
-        LONGS_EQUAL(1, MbedTlsFake_SslFreeCallCount());                           \
-        LONGS_EQUAL(1, MbedTlsFake_SslConfigFreeCallCount());                     \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                               \
-        POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource()); \
-        UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastCode());        \
-        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity()); \
+#define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode)   \
+    do                                                                             \
+    {                                                                              \
+        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                      \
+        LONGS_EQUAL(1, MbedTlsFake_SslFreeCallCount());                            \
+        LONGS_EQUAL(1, MbedTlsFake_SslConfigFreeCallCount());                      \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                \
+        POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource());  \
+        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory()); \
+        UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail());       \
+        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());  \
     } while (0)
 
 static int NoOpSleepCallCount;
@@ -276,7 +279,11 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeB
     ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_WANT_READ);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, MBEDTLSSTREAM_ERROR_HANDSHAKE_TIMEOUT);
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
+        MBEDTLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
+    );
 }
 
 TEST(SolidSyslogMbedTlsStream, OpenInvokesConfiguredHandshakeTimeoutGetter)
@@ -339,7 +346,11 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeF
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
     CALLED_FAKE(MbedTlsFake_SslHandshake, ONCE);
     CALLED_FUNCTION(NoOpSleep, NEVER);
-    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, MBEDTLSSTREAM_ERROR_HANDSHAKE_REJECTED);
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
+        MBEDTLSSTREAM_ERROR_HANDSHAKE_REJECTED
+    );
 }
 
 /* -------------------------------------------------------------------------
@@ -355,7 +366,11 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSslConfigD
     MbedTlsFake_SetSslConfigDefaultsReturn(-1);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, MBEDTLSSTREAM_ERROR_DEFAULTS_NOT_APPLIED);
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
+        MBEDTLSSTREAM_ERROR_DEFAULTS_NOT_APPLIED
+    );
 }
 
 TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSslSetupFails)
@@ -364,7 +379,11 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSslSetupFa
     MbedTlsFake_SetSslSetupReturn(-1);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, MBEDTLSSTREAM_ERROR_SESSION_INIT_FAILED);
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
+        MBEDTLSSTREAM_ERROR_SESSION_INIT_FAILED
+    );
 }
 
 TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSetHostnameFails)
@@ -377,7 +396,7 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSetHostnam
     MbedTlsFake_SetSslSetHostnameReturn(-1);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET);
+    CHECK_OPEN_UNWOUND_WITH_ERROR(transport, SOLIDSYSLOG_CAT_BAD_CONFIG, MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET);
 }
 
 TEST(SolidSyslogMbedTlsStream, SendForwardsBufferToSslWrite)

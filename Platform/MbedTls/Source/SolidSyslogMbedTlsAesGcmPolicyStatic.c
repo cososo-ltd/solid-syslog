@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMbedTlsAesGcmPolicyErrors.h"
 #include "SolidSyslogMbedTlsAesGcmPolicyPrivate.h"
 #include "SolidSyslogNullSecurityPolicy.h"
@@ -38,12 +39,20 @@ struct SolidSyslogSecurityPolicy* SolidSyslogMbedTlsAesGcmPolicy_Create(
         }
         else
         {
-            MbedTlsAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, MBEDTLSAESGCMPOLICY_ERROR_POOL_EXHAUSTED);
+            MbedTlsAesGcmPolicy_Report(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                MBEDTLSAESGCMPOLICY_ERROR_POOL_EXHAUSTED
+            );
         }
     }
     else
     {
-        MbedTlsAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, MBEDTLSAESGCMPOLICY_ERROR_BAD_CONFIG);
+        MbedTlsAesGcmPolicy_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            MBEDTLSAESGCMPOLICY_ERROR_BAD_CONFIG
+        );
     }
     return handle;
 }
@@ -60,7 +69,11 @@ void SolidSyslogMbedTlsAesGcmPolicy_Destroy(struct SolidSyslogSecurityPolicy* ba
                     );
     if (!released)
     {
-        MbedTlsAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_WARNING, MBEDTLSAESGCMPOLICY_ERROR_UNKNOWN_DESTROY);
+        MbedTlsAesGcmPolicy_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            MBEDTLSAESGCMPOLICY_ERROR_UNKNOWN_DESTROY
+        );
     }
 }
 

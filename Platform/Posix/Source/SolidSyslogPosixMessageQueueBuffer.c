@@ -8,8 +8,10 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogPosixMessageQueueBufferErrors.h"
@@ -100,7 +102,8 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &PosixMessageQueueBufferErrorSource,
-                (uint8_t) POSIXMESSAGEQUEUEBUFFER_ERROR_RECEIVE_FAILED
+                SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+                (int32_t) POSIXMESSAGEQUEUEBUFFER_ERROR_RECEIVE_FAILED
             );
         }
 
@@ -117,7 +120,8 @@ static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const 
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &PosixMessageQueueBufferErrorSource,
-            (uint8_t) POSIXMESSAGEQUEUEBUFFER_ERROR_SEND_FAILED
+            SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+            (int32_t) POSIXMESSAGEQUEUEBUFFER_ERROR_SEND_FAILED
         );
     }
 }

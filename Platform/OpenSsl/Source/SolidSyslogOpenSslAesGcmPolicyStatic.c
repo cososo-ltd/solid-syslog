@@ -4,9 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogOpenSslAesGcmPolicyErrors.h"
 #include "SolidSyslogOpenSslAesGcmPolicyPrivate.h"
-#include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
@@ -38,12 +39,20 @@ struct SolidSyslogSecurityPolicy* SolidSyslogOpenSslAesGcmPolicy_Create(
         }
         else
         {
-            OpenSslAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLAESGCMPOLICY_ERROR_POOL_EXHAUSTED);
+            OpenSslAesGcmPolicy_Report(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                OPENSSLAESGCMPOLICY_ERROR_POOL_EXHAUSTED
+            );
         }
     }
     else
     {
-        OpenSslAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLAESGCMPOLICY_ERROR_BAD_CONFIG);
+        OpenSslAesGcmPolicy_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            OPENSSLAESGCMPOLICY_ERROR_BAD_CONFIG
+        );
     }
     return handle;
 }
@@ -60,7 +69,11 @@ void SolidSyslogOpenSslAesGcmPolicy_Destroy(struct SolidSyslogSecurityPolicy* ba
                     );
     if (!released)
     {
-        OpenSslAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_WARNING, OPENSSLAESGCMPOLICY_ERROR_UNKNOWN_DESTROY);
+        OpenSslAesGcmPolicy_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            OPENSSLAESGCMPOLICY_ERROR_UNKNOWN_DESTROY
+        );
     }
 }
 

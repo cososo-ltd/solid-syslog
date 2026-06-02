@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipRawDnsResolverErrors.h"
 #include "SolidSyslogLwipRawDnsResolverPrivate.h"
 #include "SolidSyslogNullResolver.h"
@@ -43,7 +44,8 @@ struct SolidSyslogResolver* SolidSyslogLwipRawDnsResolver_Create(
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &LwipRawDnsResolverErrorSource,
-                (uint8_t) LWIPRAWDNSRESOLVER_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                (int32_t) LWIPRAWDNSRESOLVER_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -65,7 +67,8 @@ void SolidSyslogLwipRawDnsResolver_Destroy(struct SolidSyslogResolver* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &LwipRawDnsResolverErrorSource,
-            (uint8_t) LWIPRAWDNSRESOLVER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) LWIPRAWDNSRESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

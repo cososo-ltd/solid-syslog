@@ -13733,3 +13733,59 @@ MISRA rule — different category, doesn't set precedent.
 ### Open questions
 
 - None outstanding.
+
+## 2026-06-02 — S12.25 portable category axis + event-struct error boundary
+
+### Decisions
+
+- **Event struct over positional handler params.** `SolidSyslog_Error` is now
+  `(severity, source, uint16_t category, int32_t detail)` and the handler is
+  `void(void* context, const struct SolidSyslogErrorEvent* event)`. Collapsing the
+  handler to an event pointer sidesteps `bugprone-easily-swappable-parameters` and
+  makes future axes (timestamp, sequence) additive rather than another signature break.
+  `Detail` is `int32_t` so a future native code (`errno`, `X509_V_ERR_*`) drops in
+  without losing sign; today every detail is still the per-class `enum` value.
+- **Category axis = `uint16_t` MACROS, not enums.** Spiked both. Anonymous-enum
+  categories forced explicit-literal values (to dodge a required-rule 10.4 on
+  `BASE + n`) and dragged in D.009 `2.4`/`5.7` suppressions on every category header.
+  Macros restored the errno-domain `BASE + n` design, embed their own `(uint16_t)`
+  cast so emit sites are cast-free, and — because every category has a live emit site
+  (decision below) — added **zero** new MISRA suppressions/deviations. The wire type
+  stays `uint16_t` (not an enum type) so integrator classes supply their own
+  `>= 0xC000` categories without being boxed into a library enum.
+- **Detail stays a per-class enum** with a visible `(int32_t)` cast at the call site.
+  Category is monomorphic (always a library `uint16_t`) → embed the cast; detail is
+  polymorphic (enum today, native code later) → keep the cast visible so the widening
+  is explicit. Macro-ising detail would have re-opened #433 (lose the `_MAX` bookend +
+  type-honest `AsString` lookup) across 43+43 files for no real gain.
+- **Taxonomy, by role, defined only where a live emit site raises it.** Universal:
+  `BAD_CONFIG`, `BAD_ARGUMENT` (new — runtime NULL args, distinct from setup-time
+  `BAD_CONFIG`; absorbed the old per-Sender `SEND_NULL_BUFFER` category and let the
+  Sender category header be dropped), `POOL_EXHAUSTED`, `UNKNOWN_DESTROY`. Role:
+  Resolver `RESOLVE_FAILED`; TlsStream `INIT_FAILED` / `HANDSHAKE_FAILED`;
+  SecurityPolicy `KEY_UNAVAILABLE` / `SEAL_FAILED` / `OPEN_FAILED` (seal vs open kept
+  distinct — "can't read a stored record back" is a different operational signal from
+  "couldn't write"); Buffer `BACKEND_FAILED`. With macros this is self-enforcing — a
+  category with no emit site is a cppcheck `2.5` failure.
+- **Tests: event-based asserts + portable-category coverage.** New shared
+  `CHECK_ERROR_EVENT(src, cat, detail)` in `TestUtils.h`; `ErrorHandlerFake` captures
+  the event (`_LastCategory` / `_LastDetail`, `_LastCode` retired). Every error
+  assertion across ~44 test files now checks the portable category alongside the
+  detail (3292 → 3406 checks). The crypto-policy `_Report(severity, code)` wrappers
+  gained a `category` parameter threaded from each call site.
+- **Atomic by necessity.** The signature break cannot stay green split across PRs, so
+  the whole sweep (124 emit sites, ~44 test files, 4 BDD/FreeRtos handlers) lands in
+  one PR. Mechanical bulk done with auditable transform scripts; gcc + freertos-host
+  both green (1392 tests), cppcheck-misra clean, clang-format clean.
+
+### Deferred
+
+- Text decoupling / codes-only / i18n / dropping `AsString` — sibling story S12.26
+  (the source struct deliberately keeps `AsString` here, so the bundled-text handler
+  is unchanged in behaviour).
+- Structured-context payload / self-emit layer (#318) — sequence against this final
+  event shape later.
+
+### Open questions
+
+- None outstanding.

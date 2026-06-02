@@ -4,9 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogOpenSslHmacSha256PolicyErrors.h"
 #include "SolidSyslogOpenSslHmacSha256PolicyPrivate.h"
-#include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
@@ -38,12 +39,20 @@ struct SolidSyslogSecurityPolicy* SolidSyslogOpenSslHmacSha256Policy_Create(
         }
         else
         {
-            OpenSslHmacSha256Policy_Report(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLHMACSHA256POLICY_ERROR_POOL_EXHAUSTED);
+            OpenSslHmacSha256Policy_Report(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                OPENSSLHMACSHA256POLICY_ERROR_POOL_EXHAUSTED
+            );
         }
     }
     else
     {
-        OpenSslHmacSha256Policy_Report(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLHMACSHA256POLICY_ERROR_BAD_CONFIG);
+        OpenSslHmacSha256Policy_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            OPENSSLHMACSHA256POLICY_ERROR_BAD_CONFIG
+        );
     }
     return handle;
 }
@@ -60,7 +69,11 @@ void SolidSyslogOpenSslHmacSha256Policy_Destroy(struct SolidSyslogSecurityPolicy
                     );
     if (!released)
     {
-        OpenSslHmacSha256Policy_Report(SOLIDSYSLOG_SEVERITY_WARNING, OPENSSLHMACSHA256POLICY_ERROR_UNKNOWN_DESTROY);
+        OpenSslHmacSha256Policy_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            OPENSSLHMACSHA256POLICY_ERROR_UNKNOWN_DESTROY
+        );
     }
 }
 

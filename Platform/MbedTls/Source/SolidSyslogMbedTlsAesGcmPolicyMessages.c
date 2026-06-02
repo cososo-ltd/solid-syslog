@@ -37,7 +37,11 @@ const struct SolidSyslogErrorSource MbedTlsAesGcmPolicyErrorSource = {
     MbedTlsAesGcmPolicyError_AsString
 };
 
-void MbedTlsAesGcmPolicy_Report(enum SolidSyslogSeverity severity, enum SolidSyslogMbedTlsAesGcmPolicyErrors code)
+void MbedTlsAesGcmPolicy_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogMbedTlsAesGcmPolicyErrors code
+)
 {
-    SolidSyslog_Error(severity, &MbedTlsAesGcmPolicyErrorSource, (uint8_t) code);
+    SolidSyslog_Error(severity, &MbedTlsAesGcmPolicyErrorSource, category, (int32_t) code);
 }

@@ -35,8 +35,9 @@ const struct SolidSyslogErrorSource OpenSslHmacSha256PolicyErrorSource = {
 
 void OpenSslHmacSha256Policy_Report(
     enum SolidSyslogSeverity severity,
+    uint16_t category,
     enum SolidSyslogOpenSslHmacSha256PolicyErrors code
 )
 {
-    SolidSyslog_Error(severity, &OpenSslHmacSha256PolicyErrorSource, (uint8_t) code);
+    SolidSyslog_Error(severity, &OpenSslHmacSha256PolicyErrorSource, category, (int32_t) code);
 }

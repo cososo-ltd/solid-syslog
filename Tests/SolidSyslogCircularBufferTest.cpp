@@ -10,6 +10,7 @@
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogCircularBufferErrors.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
@@ -435,7 +436,8 @@ TEST(SolidSyslogCircularBufferPool, ExhaustedCreateReportsError)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&CircularBufferErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(CIRCULARBUFFER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(CIRCULARBUFFER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogCircularBufferPool, FallbackWriteAndReadAreNoOps)
@@ -505,7 +507,8 @@ TEST(SolidSyslogCircularBufferPool, DestroyOfUnknownHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&CircularBufferErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(CIRCULARBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(CIRCULARBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogCircularBufferPool, DestroyOfStaleHandleReportsWarning)
@@ -520,5 +523,6 @@ TEST(SolidSyslogCircularBufferPool, DestroyOfStaleHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&CircularBufferErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(CIRCULARBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(CIRCULARBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

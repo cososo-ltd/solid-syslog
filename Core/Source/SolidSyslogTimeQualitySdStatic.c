@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullSd.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
@@ -33,7 +34,8 @@ struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTim
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &TimeQualitySdErrorSource,
-            (uint8_t) TIMEQUALITYSD_ERROR_NULL_CALLBACK
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) TIMEQUALITYSD_ERROR_NULL_CALLBACK
         );
     }
     else
@@ -49,7 +51,8 @@ struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTim
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &TimeQualitySdErrorSource,
-                (uint8_t) TIMEQUALITYSD_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                (int32_t) TIMEQUALITYSD_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -67,7 +70,8 @@ void SolidSyslogTimeQualitySd_Destroy(struct SolidSyslogStructuredData* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &TimeQualitySdErrorSource,
-            (uint8_t) TIMEQUALITYSD_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) TIMEQUALITYSD_ERROR_UNKNOWN_DESTROY
         );
     }
 }

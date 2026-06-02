@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipRawTcpStreamErrors.h"
 #include "SolidSyslogLwipRawTcpStreamPrivate.h"
 #include "SolidSyslogNullStream.h"
@@ -41,7 +42,8 @@ struct SolidSyslogStream* SolidSyslogLwipRawTcpStream_Create(const struct SolidS
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &LwipRawTcpStreamErrorSource,
-                (uint8_t) LWIPRAWTCPSTREAM_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                (int32_t) LWIPRAWTCPSTREAM_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -59,7 +61,8 @@ void SolidSyslogLwipRawTcpStream_Destroy(struct SolidSyslogStream* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &LwipRawTcpStreamErrorSource,
-            (uint8_t) LWIPRAWTCPSTREAM_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) LWIPRAWTCPSTREAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

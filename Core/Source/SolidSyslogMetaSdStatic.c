@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMetaSdErrors.h"
 #include "SolidSyslogMetaSdPrivate.h"
 #include "SolidSyslogNullSd.h"
@@ -35,7 +36,12 @@ struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSys
         }
         else
         {
-            SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &MetaSdErrorSource, (uint8_t) METASD_ERROR_POOL_EXHAUSTED);
+            SolidSyslog_Error(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                &MetaSdErrorSource,
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                (int32_t) METASD_ERROR_POOL_EXHAUSTED
+            );
         }
     }
     return result;
@@ -46,11 +52,21 @@ static bool MetaSd_IsValidConfig(const struct SolidSyslogMetaSdConfig* config)
     bool valid = false;
     if (config == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &MetaSdErrorSource, (uint8_t) METASD_ERROR_NULL_CONFIG);
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            &MetaSdErrorSource,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) METASD_ERROR_NULL_CONFIG
+        );
     }
     else if (config->Counter == NULL)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &MetaSdErrorSource, (uint8_t) METASD_ERROR_NULL_COUNTER);
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            &MetaSdErrorSource,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) METASD_ERROR_NULL_COUNTER
+        );
     }
     else
     {
@@ -66,7 +82,12 @@ void SolidSyslogMetaSd_Destroy(struct SolidSyslogStructuredData* base)
                     SolidSyslogPoolAllocator_FreeIfInUse(&MetaSd_Allocator, index, MetaSd_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &MetaSdErrorSource, (uint8_t) METASD_ERROR_UNKNOWN_DESTROY);
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            &MetaSdErrorSource,
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) METASD_ERROR_UNKNOWN_DESTROY
+        );
     }
 }
 

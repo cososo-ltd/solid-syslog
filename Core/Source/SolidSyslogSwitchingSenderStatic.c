@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
@@ -41,7 +42,8 @@ struct SolidSyslogSender* SolidSyslogSwitchingSender_Create(const struct SolidSy
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &SwitchingSenderErrorSource,
-                (uint8_t) SWITCHINGSENDER_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                (int32_t) SWITCHINGSENDER_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -56,7 +58,8 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &SwitchingSenderErrorSource,
-            (uint8_t) SWITCHINGSENDER_ERROR_NULL_CONFIG
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) SWITCHINGSENDER_ERROR_NULL_CONFIG
         );
     }
     else if (config->Senders == NULL)
@@ -64,7 +67,8 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &SwitchingSenderErrorSource,
-            (uint8_t) SWITCHINGSENDER_ERROR_NULL_SENDERS
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) SWITCHINGSENDER_ERROR_NULL_SENDERS
         );
     }
     else if (config->Selector == NULL)
@@ -72,7 +76,8 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &SwitchingSenderErrorSource,
-            (uint8_t) SWITCHINGSENDER_ERROR_NULL_SELECTOR
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) SWITCHINGSENDER_ERROR_NULL_SELECTOR
         );
     }
     else
@@ -93,7 +98,8 @@ void SolidSyslogSwitchingSender_Destroy(struct SolidSyslogSender* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &SwitchingSenderErrorSource,
-            (uint8_t) SWITCHINGSENDER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) SWITCHINGSENDER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

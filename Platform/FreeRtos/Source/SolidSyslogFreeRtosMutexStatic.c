@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFreeRtosMutexErrors.h"
 #include "SolidSyslogFreeRtosMutexPrivate.h"
 #include "SolidSyslogNullMutex.h"
@@ -35,7 +36,8 @@ struct SolidSyslogMutex* SolidSyslogFreeRtosMutex_Create(void)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &FreeRtosMutexErrorSource,
-            (uint8_t) FREERTOSMUTEX_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) FREERTOSMUTEX_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -52,7 +54,8 @@ void SolidSyslogFreeRtosMutex_Destroy(struct SolidSyslogMutex* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &FreeRtosMutexErrorSource,
-            (uint8_t) FREERTOSMUTEX_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) FREERTOSMUTEX_ERROR_UNKNOWN_DESTROY
         );
     }
 }

@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogGetAddrInfoResolverErrors.h"
 #include "SolidSyslogGetAddrInfoResolverPrivate.h"
 #include "SolidSyslogNullResolver.h"
@@ -38,7 +39,8 @@ struct SolidSyslogResolver* SolidSyslogGetAddrInfoResolver_Create(void)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &GetAddrInfoResolverErrorSource,
-            (uint8_t) GETADDRINFORESOLVER_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) GETADDRINFORESOLVER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -59,7 +61,8 @@ void SolidSyslogGetAddrInfoResolver_Destroy(struct SolidSyslogResolver* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &GetAddrInfoResolverErrorSource,
-            (uint8_t) GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

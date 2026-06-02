@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPosixMutexErrors.h"
@@ -35,7 +36,8 @@ struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(void)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &PosixMutexErrorSource,
-            (uint8_t) POSIXMUTEX_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) POSIXMUTEX_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -51,7 +53,8 @@ void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &PosixMutexErrorSource,
-            (uint8_t) POSIXMUTEX_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) POSIXMUTEX_ERROR_UNKNOWN_DESTROY
         );
     }
 }

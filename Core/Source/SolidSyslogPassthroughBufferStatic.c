@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogPassthroughBufferErrors.h"
 #include "SolidSyslogPassthroughBufferPrivate.h"
@@ -33,7 +34,8 @@ struct SolidSyslogBuffer* SolidSyslogPassthroughBuffer_Create(struct SolidSyslog
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &PassthroughBufferErrorSource,
-            (uint8_t) PASSTHROUGHBUFFER_ERROR_NULL_SENDER
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) PASSTHROUGHBUFFER_ERROR_NULL_SENDER
         );
     }
     else
@@ -49,7 +51,8 @@ struct SolidSyslogBuffer* SolidSyslogPassthroughBuffer_Create(struct SolidSyslog
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &PassthroughBufferErrorSource,
-                (uint8_t) PASSTHROUGHBUFFER_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                (int32_t) PASSTHROUGHBUFFER_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -71,7 +74,8 @@ void SolidSyslogPassthroughBuffer_Destroy(struct SolidSyslogBuffer* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &PassthroughBufferErrorSource,
-            (uint8_t) PASSTHROUGHBUFFER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) PASSTHROUGHBUFFER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

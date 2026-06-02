@@ -4,6 +4,7 @@
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogAtomicCounterDefinition.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogWindowsAtomicCounter.h"
@@ -76,7 +77,8 @@ TEST(SolidSyslogWindowsAtomicCounterPool, ExhaustedCreateReportsError)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&WindowsAtomicCounterErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(WINDOWSATOMICCOUNTER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(WINDOWSATOMICCOUNTER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogWindowsAtomicCounterPool, FallbackIncrementReturnsOne)
@@ -141,7 +143,8 @@ TEST(SolidSyslogWindowsAtomicCounterPool, DestroyOfUnknownHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&WindowsAtomicCounterErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(WINDOWSATOMICCOUNTER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(WINDOWSATOMICCOUNTER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogWindowsAtomicCounterPool, DestroyOfStaleHandleReportsWarning)
@@ -156,5 +159,6 @@ TEST(SolidSyslogWindowsAtomicCounterPool, DestroyOfStaleHandleReportsWarning)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&WindowsAtomicCounterErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(WINDOWSATOMICCOUNTER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastCode());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(WINDOWSATOMICCOUNTER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

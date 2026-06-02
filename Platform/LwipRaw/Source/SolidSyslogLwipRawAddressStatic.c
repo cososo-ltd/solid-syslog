@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipRawAddressErrors.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
 #include "SolidSyslogPoolAllocator.h"
@@ -42,7 +43,8 @@ struct SolidSyslogAddress* SolidSyslogLwipRawAddress_Create(void)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &LwipRawAddressErrorSource,
-            (uint8_t) LWIPRAWADDRESS_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) LWIPRAWADDRESS_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -65,7 +67,8 @@ void SolidSyslogLwipRawAddress_Destroy(struct SolidSyslogAddress* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &LwipRawAddressErrorSource,
-            (uint8_t) LWIPRAWADDRESS_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) LWIPRAWADDRESS_ERROR_UNKNOWN_DESTROY
         );
     }
 }

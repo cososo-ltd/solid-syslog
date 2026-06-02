@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
@@ -42,7 +43,8 @@ struct SolidSyslogAddress* SolidSyslogWinsockAddress_Create(void)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &WinsockAddressErrorSource,
-            (uint8_t) WINSOCKADDRESS_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            (int32_t) WINSOCKADDRESS_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -65,7 +67,8 @@ void SolidSyslogWinsockAddress_Destroy(struct SolidSyslogAddress* base)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &WinsockAddressErrorSource,
-            (uint8_t) WINSOCKADDRESS_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) WINSOCKADDRESS_ERROR_UNKNOWN_DESTROY
         );
     }
 }

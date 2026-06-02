@@ -8,9 +8,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogOpenSslAesGcmPolicyErrors.h"
 #include "SolidSyslogOpenSslAesGcmPolicyPrivate.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 
 enum
@@ -115,12 +117,20 @@ static bool OpenSslAesGcmPolicy_SealRecord(
             }
             else
             {
-                OpenSslAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLAESGCMPOLICY_ERROR_ENCRYPT_FAILED);
+                OpenSslAesGcmPolicy_Report(
+                    SOLIDSYSLOG_SEVERITY_ERROR,
+                    SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
+                    OPENSSLAESGCMPOLICY_ERROR_ENCRYPT_FAILED
+                );
             }
         }
         else
         {
-            OpenSslAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLAESGCMPOLICY_ERROR_NONCE_FAILED);
+            OpenSslAesGcmPolicy_Report(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
+                OPENSSLAESGCMPOLICY_ERROR_NONCE_FAILED
+            );
         }
     }
     OPENSSL_cleanse(key, sizeof key);
@@ -136,7 +146,11 @@ static bool OpenSslAesGcmPolicy_FetchKey(struct SolidSyslogOpenSslAesGcmPolicy* 
                    (keyLength == (size_t) AES_256_KEY_SIZE);
     if (!fetched)
     {
-        OpenSslAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLAESGCMPOLICY_ERROR_KEY_UNAVAILABLE);
+        OpenSslAesGcmPolicy_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
+            OPENSSLAESGCMPOLICY_ERROR_KEY_UNAVAILABLE
+        );
     }
     return fetched;
 }
@@ -235,7 +249,11 @@ static bool OpenSslAesGcmPolicy_GcmDecrypt(
     }
     if (errored)
     {
-        OpenSslAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, OPENSSLAESGCMPOLICY_ERROR_DECRYPT_FAILED);
+        OpenSslAesGcmPolicy_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_SECURITYPOLICY_OPEN_FAILED,
+            OPENSSLAESGCMPOLICY_ERROR_DECRYPT_FAILED
+        );
     }
     return opened;
 }

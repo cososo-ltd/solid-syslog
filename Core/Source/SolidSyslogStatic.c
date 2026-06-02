@@ -5,12 +5,13 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogErrors.h"
-#include "SolidSyslogPrival.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPoolAllocator.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogPrivate.h"
 #include "SolidSyslogTunables.h"
 
@@ -39,7 +40,8 @@ struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
             &SolidSyslogErrorSource,
-            (uint8_t) SOLIDSYSLOG_ERROR_CREATE_NULL_CONFIG
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            (int32_t) SOLIDSYSLOG_ERROR_CREATE_NULL_CONFIG
         );
     }
     else
@@ -55,7 +57,8 @@ struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config)
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 &SolidSyslogErrorSource,
-                (uint8_t) SOLIDSYSLOG_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                (int32_t) SOLIDSYSLOG_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -91,7 +94,8 @@ void SolidSyslog_Destroy(struct SolidSyslog* handle)
         SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_WARNING,
             &SolidSyslogErrorSource,
-            (uint8_t) SOLIDSYSLOG_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            (int32_t) SOLIDSYSLOG_ERROR_UNKNOWN_DESTROY
         );
     }
 }
