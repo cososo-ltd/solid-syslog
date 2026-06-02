@@ -71,11 +71,14 @@ static bool OpenSslHmacSha256Policy_SealRecord(
     const struct SolidSyslogSecurityRecord* record
 )
 {
+    /* Bind the trailer to a local before passing it as the writable tag
+     * destination — same shape the AES-GCM sibling uses for its nonce/tag. */
+    uint8_t* tag = record->Trailer;
     return OpenSslHmacSha256Policy_ComputeTag(
         OpenSslHmacSha256Policy_SelfFromBase(self),
         record->Content,
         record->ContentLength,
-        record->Trailer
+        tag
     );
 }
 
