@@ -180,3 +180,14 @@ TEST(SolidSyslogPlusFatFile, SizeReturnsFfilelength)
 
     LONGS_EQUAL(42, SolidSyslogFile_Size(file));
 }
+
+TEST(SolidSyslogPlusFatFile, TruncateSeeksToZeroAndCallsFseteof)
+{
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Truncate(file);
+
+    CALLED_FAKE(PlusFatFake_Seek, ONCE);
+    LONGS_EQUAL(0, PlusFatFake_LastSeekOffset());
+    CALLED_FAKE(PlusFatFake_Seteof, ONCE);
+}

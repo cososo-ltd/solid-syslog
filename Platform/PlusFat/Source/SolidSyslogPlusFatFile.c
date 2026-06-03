@@ -18,6 +18,7 @@ static bool PlusFatFile_Read(struct SolidSyslogFile* base, void* buf, size_t cou
 static bool PlusFatFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
 static void PlusFatFile_SeekTo(struct SolidSyslogFile* base, size_t offset);
 static size_t PlusFatFile_Size(struct SolidSyslogFile* base);
+static void PlusFatFile_Truncate(struct SolidSyslogFile* base);
 
 static inline struct SolidSyslogPlusFatFile* PlusFatFile_SelfFromBase(struct SolidSyslogFile* base);
 
@@ -31,6 +32,7 @@ void PlusFatFile_Initialise(struct SolidSyslogFile* base)
     self->Base.Write = PlusFatFile_Write;
     self->Base.SeekTo = PlusFatFile_SeekTo;
     self->Base.Size = PlusFatFile_Size;
+    self->Base.Truncate = PlusFatFile_Truncate;
     self->Fp = NULL;
 }
 
@@ -101,4 +103,14 @@ static void PlusFatFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
 static size_t PlusFatFile_Size(struct SolidSyslogFile* base)
 {
     return ff_filelength(PlusFatFile_SelfFromBase(base)->Fp);
+}
+
+static void PlusFatFile_Truncate(struct SolidSyslogFile* base)
+{
+    struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
+    /* Empty the file: rewind to the start, then set EOF there so the length
+     * becomes zero. ff_seteof truncates at the current position and Plus-FAT
+     * has no truncate-to-zero call of its own. */
+    ff_fseek(self->Fp, 0, SEEK_SET);
+    ff_seteof(self->Fp);
 }

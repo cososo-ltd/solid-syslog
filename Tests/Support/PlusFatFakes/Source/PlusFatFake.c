@@ -50,6 +50,9 @@ static int lastSeekWhence;
 /* ff_filelength state */
 static size_t fileLength;
 
+/* ff_seteof state */
+static int seteofCallCount;
+
 void PlusFatFake_Reset(void)
 {
     openCallCount = 0;
@@ -73,6 +76,7 @@ void PlusFatFake_Reset(void)
     lastSeekOffset = 0;
     lastSeekWhence = 0;
     fileLength = 0;
+    seteofCallCount = 0;
 }
 
 void PlusFatFake_SetOpenFailsForMode(const char* mode)
@@ -251,4 +255,16 @@ size_t ff_filelength(FF_FILE* pxStream)
 {
     (void) pxStream;
     return fileLength;
+}
+
+int PlusFatFake_SeteofCallCount(void)
+{
+    return seteofCallCount;
+}
+
+int ff_seteof(FF_FILE* pxStream)
+{
+    (void) pxStream;
+    seteofCallCount++;
+    return 0;
 }

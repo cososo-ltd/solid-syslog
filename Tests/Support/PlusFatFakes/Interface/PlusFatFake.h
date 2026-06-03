@@ -41,6 +41,9 @@ EXTERN_C_BEGIN
     /* ff_filelength */
     void PlusFatFake_SetFileLength(unsigned long length);
 
+    /* ff_seteof */
+    int PlusFatFake_SeteofCallCount(void);
+
 EXTERN_C_END
 
 #endif /* PLUSFATFAKE_H */
