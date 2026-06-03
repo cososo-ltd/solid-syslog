@@ -7,10 +7,12 @@
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogPlusFatFileErrors.h"
 #include "SolidSyslogPrival.h"
+#include "ff_stdio.h"
 
 struct SolidSyslogPlusFatFile
 {
     struct SolidSyslogFile Base;
+    FF_FILE* Fp;
 };
 
 void PlusFatFile_Initialise(struct SolidSyslogFile* base);

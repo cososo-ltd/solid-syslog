@@ -36,3 +36,56 @@ TEST(SolidSyslogPlusFatFile, CreateSucceeds)
 {
     CHECK(file != nullptr);
 }
+
+TEST(SolidSyslogPlusFatFile, OpenSucceeds)
+{
+    CHECK_TRUE(SolidSyslogFile_Open(file, TEST_PATH));
+    CHECK_TRUE(SolidSyslogFile_IsOpen(file));
+}
+
+TEST(SolidSyslogPlusFatFile, OpenFallsBackToCreateModeWhenReadPlusFails)
+{
+    PlusFatFake_SetOpenFailsForMode("r+");
+
+    CHECK_TRUE(SolidSyslogFile_Open(file, TEST_PATH));
+
+    LONGS_EQUAL(2, PlusFatFake_OpenCallCount());
+    STRCMP_EQUAL(TEST_PATH, PlusFatFake_LastOpenPath());
+    STRCMP_EQUAL("r+", PlusFatFake_OpenModeAt(0));
+    STRCMP_EQUAL("w+", PlusFatFake_OpenModeAt(1));
+}
+
+TEST(SolidSyslogPlusFatFile, OpenFailsWhenBothModesFail)
+{
+    PlusFatFake_SetOpenAlwaysFails();
+
+    CHECK_FALSE(SolidSyslogFile_Open(file, TEST_PATH));
+    CHECK_FALSE(SolidSyslogFile_IsOpen(file));
+}
+
+TEST(SolidSyslogPlusFatFile, CloseCallsFfcloseAndClearsIsOpen)
+{
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Close(file);
+
+    CALLED_FAKE(PlusFatFake_Close, ONCE);
+    CHECK_FALSE(SolidSyslogFile_IsOpen(file));
+}
+
+TEST(SolidSyslogPlusFatFile, CloseIsNoOpWhenAlreadyClosed)
+{
+    SolidSyslogFile_Close(file);
+
+    CALLED_FAKE(PlusFatFake_Close, NEVER);
+}
+
+TEST(SolidSyslogPlusFatFile, DestroyClosesOpenFile)
+{
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogPlusFatFile_Destroy(file);
+    file = nullptr;
+
+    CALLED_FAKE(PlusFatFake_Close, ONCE);
+}
