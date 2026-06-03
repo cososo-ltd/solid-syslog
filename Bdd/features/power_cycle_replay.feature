@@ -25,8 +25,8 @@ Feature: Power cycle replay from block store
   # Proves the keyed policy is transparent to behaviour and that real HMAC
   # round-trips on the target: records sealed on write are verified on
   # replay-read after a power cycle. @hmac runs on every store-capable runner
-  # that wires an HMAC policy — FreeRTOS-plustcp (mbedTLS, S17.02) plus Linux and
-  # Windows (OpenSSL, S17.01). FreeRTOS-lwip is excluded via @store.
+  # that wires an HMAC policy — FreeRTOS-plustcp and FreeRTOS-lwip (mbedTLS,
+  # S17.02 / S29.01) plus Linux and Windows (OpenSSL, S17.01).
   @hmac
   Scenario: Stored messages replayed after power cycle with HMAC-SHA256 at rest
     Given the syslog oracle is running
@@ -51,8 +51,8 @@ Feature: Power cycle replay from block store
   # behaviour and that real AES-GCM round-trips on the target: records encrypted
   # and tagged on write are decrypted and verified on replay-read after a power
   # cycle. @aesgcm runs on every store-capable runner that wires an AES-GCM
-  # policy — Linux (OpenSSL, S17.03) plus FreeRTOS-plustcp (mbedTLS, S17.04).
-  # Windows excludes it (no AES-GCM policy wired there), FreeRTOS-lwip via @store.
+  # policy — Linux (OpenSSL, S17.03) plus FreeRTOS-plustcp and FreeRTOS-lwip
+  # (mbedTLS, S17.04 / S29.01). Windows excludes it (no AES-GCM policy wired there).
   @aesgcm
   Scenario: Stored messages replayed after power cycle with AES-256-GCM at rest
     Given the syslog oracle is running

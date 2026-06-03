@@ -41,8 +41,10 @@ shape used here is BDD-target glue, not a reference port.
 
 `Common/` carries the shared infrastructure (CMSDK UART driver, newlib
 syscalls, mps2-an385 linker script, startup) and `cmake/` the
-`arm-none-eabi.cmake` toolchain file. `diskio.c` and `ffsystem.c` are
-the FatFs ports specific to this BDD target. The `freertos-cross`
+`arm-none-eabi.cmake` toolchain file. The FatFs ports — `diskio.c`
+(semihosting media, 8 MiB FAT16), `ffsystem.c`, and `ffconf.h` — live in
+the cross-target `../Common/` pack (`Bdd/Targets/Common/`) since S29.01,
+shared with the lwIP BDD target. The `freertos-cross`
 CMake preset and the `freertos-target` devcontainer service
 ([`docs/containers.md`](../../docs/containers.md)) carry everything
 needed to build and run.

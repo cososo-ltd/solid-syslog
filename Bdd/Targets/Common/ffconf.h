@@ -1,6 +1,7 @@
-/* FatFs integrator configuration for the FreeRTOS BDD target on QEMU
- * mps2-an385. FF_VOLUMES=1 — single logical drive on the semihosting
- * disk image; FF_USE_MKFS=1 so disk_initialize can fall through to
+/* FatFs integrator configuration shared by the FreeRTOS-Plus-TCP and lwIP
+ * BDD targets on QEMU mps2-an385. FF_VOLUMES=1 — single logical drive on
+ * the semihosting disk image; FF_USE_MKFS=1 so disk_initialize can fall
+ * through to
  * f_mkfs when the image is fresh (after_scenario deletes
  * solidsyslog-disk.img between scenarios, so every scenario starts
  * with no filesystem and the integrator formats on first mount).

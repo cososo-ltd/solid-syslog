@@ -128,7 +128,9 @@ services:
   # sharing the netns so QEMU's slirp gateway 10.0.2.2 NATs to the pair's loopback
   # where syslog-ng listens on 0.0.0.0:5514 (and 6514 tls / 6515 mtls). The only
   # differences are EXAMPLE_BINARY (the lwIP ELF) and the tag filter: this lane
-  # runs UDP + TCP + TLS + mTLS — only @store lands in a later E28 story, and
+  # runs UDP + TCP + TLS + mTLS, and — since S29.01 wired the FatFs store +
+  # at-rest crypto onto this target — the full @store suite (store_and_forward,
+  # store_capacity, power_cycle_replay incl. @hmac / @aesgcm) too.
   # @freertoslwipwip is the per-scenario escape hatch while the netif is bedding in.
   syslog-ng-freertos-lwip:
     image: balabit/syslog-ng:4.8.2
@@ -178,7 +180,7 @@ services:
       # ELF rides the existing freertos driver — only the binary path differs.
       - BDD_TARGET=freertos
       - EXAMPLE_BINARY=build/freertos-cross-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @freertoslwipwip and not @rtc and not @windows_wip and (@udp or @tcp or @tls or @mtls) and not @store' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @freertoslwipwip and not @rtc and not @windows_wip and (@udp or @tcp or @tls or @mtls)' Bdd/features/
 
 volumes:
   bdd-output-linux:
