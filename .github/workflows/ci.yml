@@ -189,6 +189,15 @@ jobs:
       # on a runner-image-set env var (the linter can't see those).
       - name: Cache vcpkg installed tree
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        # The cache is a pure speed optimisation — a flaky restore must never
+        # skip the build+test. actions/cache can fail mid-restore (even after
+        # reporting a hit); without continue-on-error that failure trips the
+        # default `if: success()` on every following step, so Install / Configure
+        # / Build-and-test all skip and the job goes red without ever compiling.
+        # On a miss or partial restore the `vcpkg install` below rebuilds the
+        # tree (backed by the x-gha binary cache), so the only cost is a slower
+        # run.
+        continue-on-error: true
         with:
           path: C:\vcpkg\installed
           key: ${{ runner.os }}-vcpkg-cpputest-openssl-v1
@@ -822,6 +831,15 @@ jobs:
       # entry. See that job's comment for rationale and key-bump policy.
       - name: Cache vcpkg installed tree
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        # The cache is a pure speed optimisation — a flaky restore must never
+        # skip the build+test. actions/cache can fail mid-restore (even after
+        # reporting a hit); without continue-on-error that failure trips the
+        # default `if: success()` on every following step, so Install / Configure
+        # / Build-and-test all skip and the job goes red without ever compiling.
+        # On a miss or partial restore the `vcpkg install` below rebuilds the
+        # tree (backed by the x-gha binary cache), so the only cost is a slower
+        # run.
+        continue-on-error: true
         with:
           path: C:\vcpkg\installed
           key: ${{ runner.os }}-vcpkg-cpputest-openssl-v1
