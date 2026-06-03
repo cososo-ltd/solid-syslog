@@ -6,8 +6,8 @@
 |---|---|---|
 | `ghcr.io/davidcozens/cpputest` | `sha-2c7b76b` | devcontainer (`gcc` service), most CI jobs. Now ships `include-what-you-use 0.23 (clang_19)` matching the `cpputest-clang` build, so local `iwyu` runs work in the gcc container |
 | `ghcr.io/davidcozens/cpputest-clang` | `sha-7eac3ab` | `clang` compose service, `build-linux-clang` CI job, `analyze-iwyu` CI job |
-| `ghcr.io/davidcozens/cpputest-freertos` | `sha-a0c1c0a` | `freertos-host` compose service, `build-freertos-host-tdd-plustcp` CI job — adds FreeRTOS-Kernel / Plus-TCP / lwIP / FatFs / Mbed TLS sources for host-TDD of FreeRTOS adapters against fakes; inherits IWYU from the rebased `cpputest` base, enabling the freertos-aware `analyze-iwyu` lane |
-| `ghcr.io/davidcozens/cpputest-freertos-cross` | `sha-a0c1c0a` | `freertos-target` compose service, `build-freertos-target-plustcp` CI job, `behave-freertos` BDD service, `bdd-freertos-qemu-plustcp` CI job — adds `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm`, `python3` + `behave`, FreeRTOS-Kernel / Plus-TCP / lwIP / FatFs sources at `/opt/freertos-kernel` / `/opt/freertos-plus-tcp` / `/opt/lwip` / `/opt/fatfs` for cross builds, on-QEMU runs, and BDD scenarios driving a QEMU target |
+| `ghcr.io/davidcozens/cpputest-freertos` | `sha-0b93766` | `freertos-host` compose service, `build-freertos-host-tdd-plustcp` CI job — adds FreeRTOS-Kernel / Plus-TCP / Plus-FAT / lwIP / FatFs / Mbed TLS sources for host-TDD of FreeRTOS adapters against fakes; inherits IWYU from the rebased `cpputest` base, enabling the freertos-aware `analyze-iwyu` lane |
+| `ghcr.io/davidcozens/cpputest-freertos-cross` | `sha-0b93766` | `freertos-target` compose service, `build-freertos-target-plustcp` CI job, `behave-freertos` BDD service, `bdd-freertos-qemu-plustcp` CI job — adds `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm`, `python3` + `behave`, FreeRTOS-Kernel / Plus-TCP / Plus-FAT / lwIP / FatFs sources at `/opt/freertos-kernel` / `/opt/freertos-plus-tcp` / `/opt/freertos/plus-fat` / `/opt/lwip` / `/opt/fatfs` for cross builds, on-QEMU runs, and BDD scenarios driving a QEMU target |
 | `balabit/syslog-ng` | `4.8.2` | `syslog-ng-linux` and `syslog-ng-freertos` services — BDD test oracles, one per target pair. Pinned to the 4.8 LTS line; 4.11.0 (`latest` as of 2026-02-24) regressed by aborting on `STATS` over the control socket, which crashed the oracle and cascaded to the dev-container network when `freertos-target` shares the namespace. |
 | `ghcr.io/davidcozens/behave` | `sha-3faff14` | `behave-linux` service — Debian trixie + Python 3.12 + Behave for Linux BDD scenarios. The FreeRTOS BDD runner uses the `cpputest-freertos-cross` image instead (which carries QEMU + Behave). |
 
@@ -79,7 +79,7 @@ When a new image tag is available:
 | `cpputest` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml` |
 | `cpputest-clang` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml` |
 | `cpputest-freertos` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `docs/containers.md` |
-| `cpputest-freertos-cross` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `docs/containers.md` |
+| `cpputest-freertos-cross` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
 | `behave` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml` |
 
 The `cpputest-freertos` and `cpputest-freertos-cross` images both come from

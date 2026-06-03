@@ -1,5 +1,47 @@
 # Dev Log
 
+## 2026-06-03 — S29.02 Re-provision FreeRTOS container images with FreeRTOS-Plus-FAT
+
+Container/infra prep for E29: brings FreeRTOS-Plus-FAT back into the
+`cpputest-freertos` images **alongside** FatFs (it was swapped out for FatFs in
+CppUTestFreertosDocker `ef27fc0`), so a later story can run a Plus-FAT-backed
+store on the Plus-TCP target while the lwIP target keeps FatFs. No solid-syslog
+source — provisioned-but-unused until S29.04 wires the `Platform/PlusFat/` pack.
+
+### Decisions
+
+- **Pin `8d38036` (main HEAD).** FreeRTOS-Plus-FAT is a FreeRTOS *Labs* project
+  (`Lab-Project-FreeRTOS-FAT`) with **no release tags / no LTS** — verified
+  `git ls-remote --tags` is empty. Its `main` HEAD is the exact SHA the images
+  carried before the swap, so known-good == latest. SHA-gated in the dockerfile
+  like every other upstream; a moved `main` fails the build loudly. Documented to
+  switch to a release tag if upstream ever publishes one. Pin-checked `ff_seteof`
+  (plus `ff_fopen` / `ff_filelength` / `ff_fflush` / `FF_Disk_t`) present in the
+  pinned tree — the ops the planned PlusFat adapter maps onto.
+- **No template backport needed — verified, not assumed.** `docs/template-updates.md`
+  lists `ci.yml` / `ci/docker-compose.bdd.yml` / `docs/` as template-owned, but
+  checked CppUTestTemplate directly: it has **zero** references to the
+  `cpputest-freertos*` images (FreeRTOS support is a solid-syslog E08+ addition,
+  absent from the base template). So the image SHA + the Plus-FAT doc additions
+  are entirely solid-syslog-local; nothing flows back to the template.
+- **Fixed an incomplete propagation list.** `docs/containers.md`'s
+  `cpputest-freertos-cross` "files to update" row omitted `ci/docker-compose.bdd.yml`
+  (which references the image twice) — a latent missed-update trap; added it.
+
+### Phases / validation
+
+- **Phase 1** (CppUTestFreertosDocker PR #5, merged → `0b93766`): added the
+  Plus-FAT clone to `dockerfile.host`. Built the host image locally and verified
+  in the running image — `FREERTOS_PLUS_FAT_PATH=/opt/freertos/plus-fat`, HEAD
+  pinned, `ff_seteof` present, owned by `developer`, all other upstreams intact.
+  The publish workflow republished both images at `sha-0b93766` (green).
+- **Phase 2** (this commit): bumped `sha-a0c1c0a → sha-0b93766` across the 14
+  propagation refs (`.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`,
+  `ci/docker-compose.bdd.yml`, `docs/containers.md`); added Plus-FAT to the
+  containers.md image descriptions. Both new image tags confirmed live on ghcr.
+  CI proves the existing FreeRTOS lanes (host-TDD, cross, lwIP, BDD) stay green on
+  the additive image.
+
 ## 2026-06-03 — S29.01 FatFs store on the lwIP BDD target + 8 MiB FAT16 geometry
 
 First story of E29 (FreeRTOS-Plus-FAT support & coherent FS/TCP pairings). Gives
