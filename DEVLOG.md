@@ -1,5 +1,57 @@
 # Dev Log
 
+## 2026-06-03 — S29.01 FatFs store on the lwIP BDD target + 8 MiB FAT16 geometry
+
+First story of E29 (FreeRTOS-Plus-FAT support & coherent FS/TCP pairings). Gives
+the FreeRTOS+lwIP QEMU target a FatFs-backed store — it ran `NullStore` before —
+and lights up the full `@store` BDD suite on it, in parallel with the Plus-TCP
+store lane. Independent of any PlusFAT work (that lands in S29.02–05).
+
+### Decisions
+
+- **Lift the FatFs-on-semihosting scaffolding to the cross-target Common pack.**
+  `diskio.c` (the media driver, carrying the disk geometry), `ffconf.h`, and the
+  reentrancy glue `ffsystem.c` move from `Bdd/Targets/FreeRtos/` to
+  `Bdd/Targets/Common/`. Both FreeRTOS targets reference one copy. The lwIP CMake
+  already borrowed `Startup.c` / `CmsdkUart.c` / the linker script from the
+  Plus-TCP dir, so this just extends that sharing to the FatFs bits. The bigger
+  two-`main.c` DRY pass is deferred to S29.03.
+- **8 MiB / 16384×512 B geometry → FAT16.** Bumped from 1 MiB (which formatted
+  FAT12). `f_mkfs` auto cluster sizing clears the ~4085-cluster FAT12/16 boundary
+  at 8 MiB, so both targets now lay down FAT16 — the geometry the later
+  FreeRTOS-Plus-FAT formatter needs (its weak FAT12 path is the reason). The
+  host-backed image is sparse, so the size is free.
+- **Include the at-rest crypto variants on lwIP, not just plain CRC-16.** The
+  lwIP target already links mbedTLS for TLS, so wiring the HMAC-SHA256 and
+  AES-256-GCM at-rest policies (reusing the TLS module's seeded CTR-DRBG as the
+  AEAD nonce source) was cheap and keeps the lwIP store lane a true peer of the
+  Plus-TCP one. `Crc16Policy` is in Core, already linked.
+- **Port the store/policy lifecycle verbatim into the lwIP `main.c`,** in that
+  file's single-return `OnSet` style. Accepted duplication between the two
+  `main.c` files — S29.03 is the dedicated extraction. `set store file` /
+  `set security-policy` mirror the Plus-TCP target exactly.
+- **Fold `@store` into the existing lwIP lane** rather than adding a new CI job —
+  store scenarios are `@tcp`, already admitted by the lane's `(@udp or @tcp …)`
+  clause, so just dropping `not @store` from the compose filter lights them up.
+
+### Validation
+
+- Both FreeRTOS targets cross-build clean in `cpputest-freertos-cross` (ELF
+  links, zero warnings); no `Platform/PlusTcp` symbols leak into the lwIP ELF.
+  clang-format clean.
+- Ran the lwIP `@store` suite on QEMU: **12/12 green** — store_and_forward,
+  store_capacity ×4, power_cycle_replay ×3 (incl. `@hmac` / `@aesgcm`),
+  capacity_threshold ×2, block_lifecycle ×2.
+- **One real finding, fixed:** `capacity_threshold` "callback fires" failed
+  *only* on lwIP at first. Root cause was a harness race, not a port defect — the
+  crossing is edge-triggered inside the Service drain loop, and on lwIP each
+  offline drain first burns a slow dead-connection send timeout, so the
+  `[THRESHOLD-CROSSED]` marker lagged the single-shot assertion. `power_cycle`'s
+  exact replay count on the same target proves the records *are* stored. Fix:
+  give the "was invoked" assertion a bounded 10 s poll (target-agnostic; the
+  negative "was not invoked" stays single-shot so an absent marker can't be
+  masked). Plus-TCP unaffected — its marker is already present on the first poll.
+
 ## 2026-06-03 — S12.26 Error text decoupling — codes-only library
 
 Completed the error-reporting redesign begun in S12.25: the library is now
