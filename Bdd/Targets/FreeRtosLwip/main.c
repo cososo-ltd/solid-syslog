@@ -1,82 +1,38 @@
 /* FreeRTOS + lwIP (Raw API, NO_SYS=0) SolidSyslog BDD target for QEMU
  * mps2-an385.
  *
- * S28.09: the worked NO_SYS=0 integration the lwIP guide promises. lwIP runs
- * its own tcpip thread (tcpip_init); a hand-written LAN9118 netif
- * (netif/EthernetIf.c) drives the wire; the SolidSyslog LwipRaw adapters reach
- * the lwIP core through the tcpip_callback marshal (S28.06,
- * SolidSyslogLwipRaw_SetMarshal). The pipeline mirrors the FreeRTOS-Plus-TCP
- * target (Bdd/Targets/FreeRtos/main.c) with the network backend swapped
- * PlusTcp -> LwipRaw: a CircularBuffer + FreeRtosMutex feed a Service task that
- * drains over UDP, and BddTargetInteractive drives `send N` / `set <k> <v>` /
- * `quit` over the QEMU -serial stdio UART.
+ * The platform-independent pipeline — SolidSyslog lifecycle, FatFs-backed store
+ * + security policies, SD set, the interactive `set` handler, the Service drain
+ * task, and the console glue — lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
+ * (shared with the FreeRTOS-Plus-TCP target, S29.03). This file keeps only the
+ * lwIP network backend behind the pipeline seam: the tcpip thread + tcpip_callback
+ * marshal (S28.06), the hand-written LAN9118 netif (netif/EthernetIf.c), the
+ * static-IP bring-up + gateway ARP warm-up, the LwipRaw sender wiring (UDP +
+ * octet-framed TCP + TLS/mTLS via mbedTLS over a second LwipRaw TCP), and the
+ * RFC 5424 HOSTNAME read from the netif.
  *
- * Scope is UDP (S28.09) + TCP (S28.10) + TLS/mTLS (S28.11). The SwitchingSender
- * carries a real UDP sender (LwipRawDatagram), a real octet-framed TCP sender
- * (StreamSender over LwipRawTcpStream), and a real TLS sender (StreamSender over
- * SolidSyslogMbedTlsStream over a second LwipRawTcpStream) — see
- * BddTargetTlsSender_MbedTls_LwipRawTcp.c. tls and mtls share the one TLS slot;
- * the destination port (6514 vs 6515) is dispatched at Connect time.
- *
- * S29.01 adds the FatFs-backed store, mirroring the Plus-TCP target: `set store
- * file` tears down the default NullStore and rebuilds with FatFsFile +
- * FileBlockDevice + BlockStore over QEMU semihosting (shared diskio.c, 8 MiB
- * FAT16). `set security-policy <crc16|hmac-sha256|aes-256-gcm|null>` selects the
- * at-rest integrity policy (hmac / aes reuse the TLS module's mbedTLS RNG).
- *
- * Static IPv4 (10.0.2.15) on the QEMU slirp network, host reachable at the
- * slirp gateway 10.0.2.2. The oracle is addressed by name ("syslog-ng") via
- * SolidSyslogLwipRawDnsResolver; lwIP's DNS_LOCAL_HOSTLIST (see lwipopts.h)
- * maps that name statically to 10.0.2.2, since slirp cannot return a reachable
- * address for the docker alias over real DNS. This is the by-name end-to-end
- * path S28.08 delivers — host now equals the TLS serverName, so no numeric pin. */
+ * Static IPv4 (10.0.2.15) on the QEMU slirp network, host reachable at the slirp
+ * gateway 10.0.2.2. The oracle is addressed by name ("syslog-ng") via
+ * SolidSyslogLwipRawDnsResolver; lwIP's DNS_LOCAL_HOSTLIST (see lwipopts.h) maps
+ * that name statically to 10.0.2.2 (slirp can't return a reachable address for
+ * the docker alias over real DNS). */
 
-#include "CmsdkUart.h"
+#include "BddTargetFreeRtosPipeline.h"
 #include "EthernetIf.h"
 
-#include "BddTargetEnterpriseId.h"
-#include "BddTargetErrorText.h"
-#include "BddTargetInteractive.h"
-#include "BddTargetIps.h"
-#include "BddTargetLanguage.h"
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsSender.h"
 
-#include "SolidSyslog.h"
-#include "SolidSyslogAtomicCounter.h"
-#include "SolidSyslogBlockStore.h"
-#include "SolidSyslogCircularBuffer.h"
-#include "SolidSyslogConfig.h"
-#include "SolidSyslogCrc16Policy.h"
-#include "SolidSyslogEndpoint.h"
-#include "SolidSyslogError.h"
-#include "SolidSyslogFatFsFile.h"
-#include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogFormatter.h"
-#include "SolidSyslogFreeRtosMutex.h"
-#include "SolidSyslogFreeRtosSysUpTime.h"
 #include "SolidSyslogLwipRawAddress.h"
 #include "SolidSyslogLwipRawDatagram.h"
 #include "SolidSyslogLwipRawDnsResolver.h"
 #include "SolidSyslogLwipRawMarshal.h"
 #include "SolidSyslogLwipRawTcpStream.h"
-#include "SolidSyslogMbedTlsAesGcmPolicy.h"
-#include "SolidSyslogMbedTlsHmacSha256Policy.h"
-#include "SolidSyslogMetaSd.h"
-#include "SolidSyslogMutex.h"
-#include "SolidSyslogNullSecurityPolicy.h"
-#include "SolidSyslogNullStore.h"
-#include "SolidSyslogOriginSd.h"
-#include "SolidSyslogPrival.h"
-#include "SolidSyslogStdAtomicCounter.h"
+#include "SolidSyslogSender.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogSwitchingSender.h"
-#include "SolidSyslogTimeQuality.h"
-#include "SolidSyslogTimeQualitySd.h"
-#include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpSender.h"
-
-#include "ff.h" /* f_mount / f_mkfs — eager mount-or-format on the `set store file` rebuild trigger. */
 
 #include "lwip/etharp.h"
 #include "lwip/init.h"
@@ -89,111 +45,17 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define CMSDK_UART0_BASE_ADDRESS UINT32_C(0x40004000)
 
-/* Unprivileged mirror of SOLIDSYSLOG_UDP_DEFAULT_PORT (514) for BDD listeners. */
-#define BDD_TARGET_UDP_PORT 5514U
-
-/* Interactive task: BddTargetInteractive's 2048-byte line + name frames plus
- * SolidSyslog_Log's two SOLIDSYSLOG_MAX_MESSAGE_SIZE formatter frames and
- * newlib printf, *and* the one-shot mbedTLS init (DRBG seed, RSA key parse,
- * x509 walks) that BddTargetTlsSender_Create drives on this task at startup.
- * *48 (24 KB) matches the +TCP target's post-TLS budget for the same work;
- * heap_4 (96 KB) absorbs it alongside the lwIP tcpip / RX tasks. */
-#define INTERACTIVE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 48U)
-#define SERVICE_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 16U)
-
-static char appName[49] = "SolidSyslogBddTarget";
-static char messageId[33] = "example";
-static char msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = "Hello from FreeRTOS lwIP";
-static char host[16] = "syslog-ng";
-static uint16_t port = (uint16_t) BDD_TARGET_UDP_PORT;
-static uint32_t endpointVersion = 0U;
-
-static struct SolidSyslogMessage testMessage = {
-    .Facility = SOLIDSYSLOG_FACILITY_LOCAL0,
-    .Severity = SOLIDSYSLOG_SEVERITY_INFORMATIONAL,
-    .MessageId = messageId,
-    .Msg = msg,
-};
-
 /* lwIP netif descriptor — must outlive the tcpip thread. */
 static struct netif networkInterface;
-/* Gateway IP, kept at file scope so the ARP warm-up (which resolves it before
- * the first datagram) can reach it after bring-up. */
+/* Gateway IP, kept at file scope so the ARP warm-up can reach it after bring-up. */
 static ip4_addr_t gatewayAddress;
 
-/* CircularBuffer + FreeRtosMutex for cross-task emission. 8 max-sized messages
- * is comfortably above the 3-message BDD scenarios. */
-enum
-{
-    BDD_TARGET_BUFFER_MESSAGES = 8
-};
-
-static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(BDD_TARGET_BUFFER_MESSAGES)];
-
-/* Lifecycle mutex serialises SolidSyslog_Service against the teardown path.
- * solidSyslogTeardown is set inside the critical section so Service observes
- * it atomically with the destroy and self-deletes before the mutex goes. */
-static struct SolidSyslogMutex* lifecycleMutex = NULL;
-static struct SolidSyslog* solidSyslog = NULL;
-static volatile bool solidSyslogReady = false;
-static volatile bool solidSyslogTeardown = false;
-
-static struct SolidSyslogConfig solidSyslogConfig;
-static struct SolidSyslogStructuredData* sdList[3];
-static struct SolidSyslogAtomicCounter* atomicCounter = NULL;
-static struct SolidSyslogStructuredData* metaSd = NULL;
-static struct SolidSyslogStructuredData* timeQualitySd = NULL;
-static struct SolidSyslogStructuredData* originSd = NULL;
-
-/* File-backed store storage. Lives in .bss so it persists across the `set
- * store file` rebuild; only populated when that command fires. STORE_PATH_PREFIX
- * is "STORE" — sequence-numbered FAT filenames land as STORE00.log, STORE01.log,
- * … which fit 8.3 short-filename mode (LFN=0 in our shared ffconf.h). */
-static const char STORE_PATH_PREFIX[] = "STORE";
-
-/* FATFS object lives in .bss because f_mount stores its address inside the FatFs
- * volume registry — the object must outlive every f_open / f_stat / f_unlink.
- * One per volume (FF_VOLUMES = 1). */
-static FATFS fatfs;
-static bool fatfsMounted = false;
-
-static struct SolidSyslogFile* storeFile = NULL;
-static struct SolidSyslogBlockDevice* storeBlockDevice = NULL;
-static struct SolidSyslogStore* currentStore = NULL;
-static bool currentStoreIsFile = false;
-
-/* Pending values populated by the `set max-blocks` / `max-block-size` /
- * `discard-policy` / `halt-exit` / `capacity-threshold` / `security-policy` /
- * `no-sd` commands and consumed by `set store file`. Defaults mirror the
- * Plus-TCP target (Bdd/Targets/FreeRtos/main.c). */
-enum
-{
-    DEFAULT_PENDING_MAX_BLOCKS = 10,
-    DEFAULT_PENDING_MAX_BLOCK_SIZE = 65536,
-};
-
-static size_t pendingMaxBlocks = DEFAULT_PENDING_MAX_BLOCKS;
-static size_t pendingMaxBlockSize = DEFAULT_PENDING_MAX_BLOCK_SIZE;
-static const char* pendingDiscardPolicy = "oldest";
-static volatile bool pendingHaltExit = false;
-static size_t pendingCapacityThreshold = 0;
-/* At-rest integrity policy for the file store: "crc16" (default), "hmac-sha256"
- * (mbedTLS), "aes-256-gcm" (mbedTLS AEAD), or "null". Set before `store file`;
- * consumed by RebuildWithFileStore. currentPolicy holds the created handle so
- * DestroyCurrentStore can release it. */
-static const char* pendingSecurityPolicy = "crc16";
-static struct SolidSyslogSecurityPolicy* currentPolicy = NULL;
-/* When true, SolidSyslog gets only the meta SD — timeQuality and origin are
- * dropped. Mirrors Linux's --no-sd. Consumed by the initial Setup and by
- * RebuildWithFileStore. */
-static volatile bool pendingNoSd = false;
-
+/* LwipRaw sender adapters — built by BuildSender on the interactive task, torn
+ * down by TeardownNetwork. */
 static struct SolidSyslogResolver* resolver = NULL;
 static struct SolidSyslogDatagram* datagram = NULL;
 static struct SolidSyslogAddress* udpAddress = NULL;
@@ -202,76 +64,26 @@ static struct SolidSyslogStream* tcpStream = NULL;
 static struct SolidSyslogAddress* tcpAddress = NULL;
 static struct SolidSyslogSender* tcpSender = NULL;
 static struct SolidSyslogSender* switchingSender = NULL;
-static struct SolidSyslogBuffer* buffer = NULL;
-static struct SolidSyslogMutex* bufferMutex = NULL;
 
-static TaskHandle_t serviceTaskHandle = NULL;
-
-/* The task awaiting ServiceTask's exit during teardown. Set by TeardownAll
- * (inside the lifecycle critical section, so ServiceTask reads it atomically
- * with the teardown flag); ServiceTask notifies it the instant before it
- * self-deletes, letting TeardownAll destroy the lifecycle mutex on a real
- * "service stopped" signal instead of a fixed delay. */
-static TaskHandle_t serviceStopWaiter = NULL;
-
-/* Upper bound on the teardown wait for ServiceTask to self-delete. ServiceTask
- * observes the flag within one ~1 ms iteration, so this is only ever reached if
- * the Service task never started (xTaskCreate failure); it bounds teardown
- * rather than timing it. */
-enum
-{
-    SERVICE_STOP_TIMEOUT_MS = 1000,
-};
-
-static void InteractiveTask(void* argument);
-static void ServiceTask(void* argument);
 static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context);
 static void NetworkBringUp(void* context);
 static void WarmUpGatewayArp(void);
 static void GatewayResolvedQuery(void* context);
-static bool TryUpdateString(char* storage, size_t storageSize, const char* value);
-static bool TryParseUInt(const char* value, unsigned long* out);
-static bool RebuildWithFileStore(void);
-static void DestroyCurrentStore(void);
-static bool EnsureFatFsMounted(void);
-static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void);
-static void DestroySecurityPolicy(void);
-static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy);
-static void OnStoreFull(void* context);
-static size_t GetCapacityThreshold(void* context);
-static void OnThresholdCrossed(void* context);
-static void TeardownAll(void);
-static void SemihostingExit(int status);
+static void GetHostname(struct SolidSyslogFormatter* formatter);
+static struct SolidSyslogSender* BuildSender(void);
+static void TeardownNetwork(void);
 
-static uint32_t MmioRead32(uintptr_t address)
-{
-    // NOLINTNEXTLINE(performance-no-int-to-ptr) -- mapping the CMSDK UART MMIO address into a 32-bit volatile pointer.
-    return *(volatile uint32_t*) address;
-}
+static const struct BddTargetFreeRtosPipelineConfig PIPELINE_CONFIG = {
+    .DefaultHost = "syslog-ng",
+    .BuildSender = BuildSender,
+    .GetHostname = GetHostname,
+    .TeardownNetwork = TeardownNetwork,
+};
 
-static void MmioWrite32(uintptr_t address, uint32_t value)
-{
-    // NOLINTNEXTLINE(performance-no-int-to-ptr) -- mapping the CMSDK UART MMIO address into a 32-bit volatile pointer.
-    *(volatile uint32_t*) address = value;
-}
-
-static void RtosSleep(int milliseconds)
-{
-    TickType_t ticks = pdMS_TO_TICKS((TickType_t) milliseconds);
-    if ((milliseconds > 0) && (ticks == 0U))
-    {
-        ticks = 1U;
-    }
-    vTaskDelay(ticks);
-}
-
-static const CmsdkUartMemoryAccess MMIO_ACCESS = {MmioRead32, MmioWrite32, RtosSleep};
-
-/* lwIP randomness source (declared by arch/cc.h's LWIP_RAND). sys_now() is
- * provided by the contrib FreeRTOS sys_arch under NO_SYS=0, so — unlike the
- * S28.07 probe — we do not define it here. A self-contained xorshift32 keeps
- * TCP ISN selection deterministic without newlib rand() / a real entropy
- * backend; adequate for the BDD smoke test. */
+/* lwIP randomness source (declared by arch/cc.h's LWIP_RAND). sys_now() comes
+ * from the contrib FreeRTOS sys_arch under NO_SYS=0. A self-contained xorshift32
+ * keeps TCP ISN selection deterministic without a real entropy backend;
+ * adequate for the BDD smoke test. */
 unsigned int LwipPortRand(void)
 {
     static uint32_t state = 0x2545F491U;
@@ -283,28 +95,39 @@ unsigned int LwipPortRand(void)
 
 int main(void)
 {
-    CmsdkUart_Init(&MMIO_ACCESS, CMSDK_UART0_BASE_ADDRESS);
+    BddTargetFreeRtosPipeline_InitConsole(CMSDK_UART0_BASE_ADDRESS);
+    BddTargetFreeRtosPipeline_SetConfig(&PIPELINE_CONFIG);
 
     /* Pin every LwipRaw adapter call onto the tcpip thread. */
     SolidSyslogLwipRaw_SetMarshal(LwipTcpipMarshal);
 
-    /* Create the tcpip thread + mbox + core-lock mutex. Pre-scheduler safe
-     * (xTaskCreate / xQueueCreate / xSemaphoreCreate all work before
-     * vTaskStartScheduler); the thread itself only runs once the scheduler
-     * starts. The netif bring-up is deferred to NetworkBringUp on that thread
-     * — smsc9220_init() calls vTaskDelay, which would deref a NULL
-     * pxCurrentTCB if run before the scheduler. */
+    /* Create the tcpip thread + mbox + core-lock mutex. Pre-scheduler safe; the
+     * thread runs once the scheduler starts. The netif bring-up is deferred to
+     * NetworkBringUp on that thread (smsc9220_init calls vTaskDelay, which would
+     * deref a NULL pxCurrentTCB before the scheduler). */
     tcpip_init(NULL, NULL);
 
-    if (xTaskCreate(InteractiveTask, "interactive", INTERACTIVE_TASK_STACK_DEPTH, NULL, tskIDLE_PRIORITY + 1, NULL) !=
-        pdPASS)
+    if (xTaskCreate(
+            BddTargetFreeRtosPipeline_InteractiveTask,
+            "interactive",
+            configMINIMAL_STACK_SIZE * BDD_TARGET_INTERACTIVE_STACK_MULTIPLIER,
+            NULL,
+            tskIDLE_PRIORITY + 1,
+            NULL
+        ) != pdPASS)
     {
-        SemihostingExit(1);
+        BddTargetFreeRtosPipeline_Exit(1);
     }
-    if (xTaskCreate(ServiceTask, "service", SERVICE_TASK_STACK_DEPTH, NULL, tskIDLE_PRIORITY + 1, &serviceTaskHandle) !=
-        pdPASS)
+    if (xTaskCreate(
+            BddTargetFreeRtosPipeline_ServiceTask,
+            "service",
+            configMINIMAL_STACK_SIZE * BDD_TARGET_SERVICE_STACK_MULTIPLIER,
+            NULL,
+            tskIDLE_PRIORITY + 1,
+            NULL
+        ) != pdPASS)
     {
-        SemihostingExit(1);
+        BddTargetFreeRtosPipeline_Exit(1);
     }
 
     vTaskStartScheduler();
@@ -315,16 +138,16 @@ int main(void)
     return 0;
 }
 
-/* Runs on the tcpip thread (dispatched via tcpip_callback once the scheduler
- * is up) so netif_add, the link/up transitions, and smsc9220_init's vTaskDelay
- * all execute in a valid task context with the lwIP core lock held. */
+/* Runs on the tcpip thread (dispatched via tcpip_callback once the scheduler is
+ * up) so netif_add, the link/up transitions, and smsc9220_init's vTaskDelay all
+ * execute in a valid task context with the lwIP core lock held. */
 static void NetworkBringUp(void* context)
 {
     (void) context;
     ip4_addr_t ipAddress;
     ip4_addr_t netmask;
-    /* QEMU slirp default: 10.0.2.15 guest, 10.0.2.2 gateway (NATed to the
-     * QEMU host, where the syslog-ng oracle listens). */
+    /* QEMU slirp default: 10.0.2.15 guest, 10.0.2.2 gateway (NATed to the QEMU
+     * host, where the syslog-ng oracle listens). */
     IP4_ADDR(&ipAddress, 10, 0, 2, 15);
     IP4_ADDR(&netmask, 255, 255, 255, 0);
     IP4_ADDR(&gatewayAddress, 10, 0, 2, 2);
@@ -335,11 +158,9 @@ static void NetworkBringUp(void* context)
     netif_set_link_up(&networkInterface);
 
     /* Kick off ARP resolution for the gateway now, so the cache is warm before
-     * the first datagram. SolidSyslogLwipRawDatagram sends PBUF_REF packets
-     * pointing at a transient buffer; if the first send hit an ARP miss the
-     * queued copy would reference freed memory and be lost (the documented
-     * first-packet drop). The reply is processed by this tcpip thread; the
-     * interactive task waits for the cache to populate via WarmUpGatewayArp. */
+     * the first datagram (SolidSyslogLwipRawDatagram sends PBUF_REF packets; an
+     * ARP miss on the first send would drop it). The reply is processed by this
+     * tcpip thread; the interactive task waits via WarmUpGatewayArp. */
     (void) etharp_request(&networkInterface, &gatewayAddress);
 }
 
@@ -352,9 +173,9 @@ static void GatewayResolvedQuery(void* context)
     *(bool*) context = (etharp_find_addr(&networkInterface, &gatewayAddress, &ethRet, &ipRet) >= 0);
 }
 
-/* Blocks the calling (interactive) task — never the tcpip thread, which must
- * stay free to process the ARP reply — until the gateway resolves or a bounded
- * deadline passes. Generous deadline: QEMU is markedly slower than host. */
+/* Blocks the calling (interactive) task — never the tcpip thread — until the
+ * gateway resolves or a bounded deadline passes. Generous deadline: QEMU is
+ * markedly slower than host. */
 static void WarmUpGatewayArp(void)
 {
     enum
@@ -367,8 +188,7 @@ static void WarmUpGatewayArp(void)
     {
         bool resolved = false;
         /* Same synchronous marshal the LwipRaw adapters use: the query runs under
-         * the core lock and writes `resolved` before this returns, so there is no
-         * race between the queued callback and the next loop iteration. */
+         * the core lock and writes `resolved` before this returns. */
         LwipTcpipMarshal(GatewayResolvedQuery, &resolved);
         if (resolved)
         {
@@ -382,10 +202,10 @@ static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
 {
     /* The synchronous-marshal contract (SolidSyslogLwipRawMarshal.h) requires the
      * callback's results to be ready when this returns. lwIP's tcpip_callback only
-     * blocks until the work is *queued*, so it cannot satisfy that by itself.
+     * blocks until the work is queued, so it cannot satisfy that alone.
      * LWIP_TCPIP_CORE_LOCKING is enabled, so we run the callback in the caller's
      * own task context under the core lock instead: unconditionally synchronous,
-     * independent of task priority, and no per-send mailbox message. The lock is
+     * independent of task priority, no per-send mailbox message. The lock is
      * recursive and our callbacks never re-marshal, so this cannot self-deadlock. */
     LOCK_TCPIP_CORE();
     callback(context);
@@ -410,504 +230,51 @@ void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
 
 static void GetHostname(struct SolidSyslogFormatter* formatter)
 {
-    /* RFC 5424 section 6.2.4 rung 2 (static IP address) — read back from the
-     * netif so a future DHCP slice satisfies the same rung without touching
-     * this callback. */
+    /* RFC 5424 §6.2.4 rung 2 (static IP) — read back from the netif so a future
+     * DHCP slice satisfies the same rung without touching this callback. */
     const char* address = ip4addr_ntoa(netif_ip4_addr(&networkInterface));
     SolidSyslogFormatter_BoundedString(formatter, address, strlen(address));
 }
 
-static void GetAppName(struct SolidSyslogFormatter* formatter)
+/* Bring up the netif on the tcpip thread, warm the gateway ARP, then build the
+ * LwipRaw SwitchingSender: UDP, octet-framed TCP, and a TLS/mTLS slot (mbedTLS
+ * over a second LwipRaw TCP stream). Default transport UDP. Runs on the
+ * interactive task — LwipRaw adapters touch a started lwIP core, which is now up. */
+static struct SolidSyslogSender* BuildSender(void)
 {
-    SolidSyslogFormatter_BoundedString(formatter, appName, strlen(appName));
-}
-
-static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
-{
-    timeQuality->TzKnown = false;
-    timeQuality->IsSynced = false;
-    timeQuality->SyncAccuracyMicroseconds = SOLIDSYSLOG_SYNC_ACCURACY_OMIT;
-}
-
-static void GetEndpoint(struct SolidSyslogEndpoint* endpoint)
-{
-    SolidSyslogFormatter_BoundedString(endpoint->Host, host, strlen(host));
-    endpoint->Port = port;
-}
-
-static uint32_t GetEndpointVersion(void)
-{
-    return endpointVersion;
-}
-
-static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* event)
-{
-    (void) context;
-    const char* sourceName = "<unknown>";
-    const struct SolidSyslogErrorSource* source = event->Source;
-    if (source != NULL)
-    {
-        sourceName = source->Name;
-    }
-    const char* message = BddTargetErrorText_Category(event->Category);
-    (void) printf(
-        "[solidsyslog] severity=%d [%s cat=%u detail=%ld] %s\n",
-        (int) event->Severity,
-        sourceName,
-        (unsigned) event->Category,
-        (long) event->Detail,
-        message
-    );
-}
-
-static bool OnSet(const char* name, const char* value)
-{
-    bool handled = false;
-    if (strcmp(name, "appname") == 0)
-    {
-        handled = TryUpdateString(appName, sizeof(appName), value);
-    }
-    else if (strcmp(name, "msgid") == 0)
-    {
-        handled = TryUpdateString(messageId, sizeof(messageId), value);
-    }
-    else if (strcmp(name, "msg") == 0)
-    {
-        handled = TryUpdateString(msg, sizeof(msg), value);
-    }
-    else if (strcmp(name, "host") == 0)
-    {
-        handled = TryUpdateString(host, sizeof(host), value);
-        if (handled)
-        {
-            endpointVersion++;
-        }
-    }
-    else if (strcmp(name, "port") == 0)
-    {
-        unsigned long parsed = 0U;
-        if (TryParseUInt(value, &parsed) && (parsed != 0U) && (parsed <= UINT16_MAX))
-        {
-            port = (uint16_t) parsed;
-            endpointVersion++;
-            handled = true;
-        }
-    }
-    else if (strcmp(name, "facility") == 0)
-    {
-        unsigned long parsed = 0U;
-        if (TryParseUInt(value, &parsed))
-        {
-            testMessage.Facility = (enum SolidSyslogFacility) parsed;
-            handled = true;
-        }
-    }
-    else if (strcmp(name, "severity") == 0)
-    {
-        unsigned long parsed = 0U;
-        if (TryParseUInt(value, &parsed))
-        {
-            testMessage.Severity = (enum SolidSyslogSeverity) parsed;
-            handled = true;
-        }
-    }
-    else if (strcmp(name, "transport") == 0)
-    {
-        BddTargetSwitchConfig_SetByName(value);
-        handled = true;
-    }
-    else if (strcmp(name, "max-blocks") == 0)
-    {
-        unsigned long parsed = 0U;
-        if (TryParseUInt(value, &parsed))
-        {
-            pendingMaxBlocks = (size_t) parsed;
-            handled = true;
-        }
-    }
-    else if (strcmp(name, "max-block-size") == 0)
-    {
-        unsigned long parsed = 0U;
-        if (TryParseUInt(value, &parsed))
-        {
-            pendingMaxBlockSize = (size_t) parsed;
-            handled = true;
-        }
-    }
-    else if (strcmp(name, "discard-policy") == 0)
-    {
-        if ((strcmp(value, "oldest") == 0) || (strcmp(value, "newest") == 0) || (strcmp(value, "halt") == 0))
-        {
-            /* String literal storage — target_driver.py emits one of the three
-             * literals so the pointer stays valid (no copy needed). */
-            pendingDiscardPolicy =
-                (strcmp(value, "newest") == 0) ? "newest" : ((strcmp(value, "halt") == 0) ? "halt" : "oldest");
-            handled = true;
-        }
-    }
-    else if (strcmp(name, "security-policy") == 0)
-    {
-        if (strcmp(value, "hmac-sha256") == 0)
-        {
-            pendingSecurityPolicy = "hmac-sha256";
-            handled = true;
-        }
-        else if (strcmp(value, "aes-256-gcm") == 0)
-        {
-            pendingSecurityPolicy = "aes-256-gcm";
-            handled = true;
-        }
-        else if (strcmp(value, "null") == 0)
-        {
-            pendingSecurityPolicy = "null";
-            handled = true;
-        }
-        else if (strcmp(value, "crc16") == 0)
-        {
-            pendingSecurityPolicy = "crc16";
-            handled = true;
-        }
-    }
-    else if (strcmp(name, "capacity-threshold") == 0)
-    {
-        unsigned long parsed = 0U;
-        if (TryParseUInt(value, &parsed))
-        {
-            pendingCapacityThreshold = (size_t) parsed;
-            handled = true;
-        }
-    }
-    else if (strcmp(name, "halt-exit") == 0)
-    {
-        /* Harness emits `set halt-exit 1` (or `0`); anything non-zero trips the
-         * halt path. Mirrors Linux's bare --halt-exit flag. */
-        unsigned long parsed = 0U;
-        if (TryParseUInt(value, &parsed))
-        {
-            pendingHaltExit = (parsed != 0U);
-            handled = true;
-        }
-    }
-    else if (strcmp(name, "no-sd") == 0)
-    {
-        /* `set no-sd 1` drops the SD list to only metaSd — mirrors Linux's
-         * --no-sd. Takes effect via SolidSyslog re-Create (initial Setup or the
-         * `set store file` rebuild). */
-        unsigned long parsed = 0U;
-        if (TryParseUInt(value, &parsed))
-        {
-            pendingNoSd = (parsed != 0U);
-            handled = true;
-        }
-    }
-    else if (strcmp(name, "store") == 0)
-    {
-        /* "null" is the default state — accept it as an unconditional no-op so
-         * the harness can pass --store null without special-casing. "file"
-         * triggers the rebuild (one-way for the lifetime of this QEMU
-         * instance — see RebuildWithFileStore). */
-        if (strcmp(value, "null") == 0)
-        {
-            handled = true;
-        }
-        else if (strcmp(value, "file") == 0)
-        {
-            handled = RebuildWithFileStore();
-        }
-    }
-    else if (strcmp(name, "shutdown") == 0)
-    {
-        unsigned long parsed = 0U;
-        if (TryParseUInt(value, &parsed))
-        {
-            if (parsed != 0U)
-            {
-                TeardownAll();
-                SemihostingExit(0);
-            }
-            handled = true;
-        }
-    }
-    return handled;
-}
-
-static bool TryUpdateString(char* storage, size_t storageSize, const char* value)
-{
-    bool updated = false;
-    size_t length = strlen(value);
-    if ((length != 0U) && (length < storageSize))
-    {
-        memcpy(storage, value, length);
-        storage[length] = '\0';
-        updated = true;
-    }
-    return updated;
-}
-
-static bool TryParseUInt(const char* value, unsigned long* out)
-{
-    bool parsed = false;
-    if (*value != '\0')
-    {
-        char* end = NULL;
-        unsigned long candidate = strtoul(value, &end, 10);
-        if (*end == '\0')
-        {
-            *out = candidate;
-            parsed = true;
-        }
-    }
-    return parsed;
-}
-
-/* DEMO KEY ONLY. A real integrator supplies key material from a secure element,
- * a KDF, or encrypted NVM via their own SolidSyslogKeyFunction — never a
- * hard-coded constant. This exists so the BDD scenario can exercise the mbedTLS
- * HMAC-SHA256 / AES-256-GCM at-rest policies end-to-end with real crypto. */
-static bool BddDemoGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* keyLengthOut)
-{
-    enum
-    {
-        DEMO_KEY_SIZE = 32
-    };
-
-    (void) context;
-    size_t written = (capacity < DEMO_KEY_SIZE) ? capacity : (size_t) DEMO_KEY_SIZE;
-    (void) memset(keyOut, 0x5A, written);
-    *keyLengthOut = written;
-    return true;
-}
-
-static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
-{
-    struct SolidSyslogSecurityPolicy* policy = NULL;
-    if (strcmp(pendingSecurityPolicy, "hmac-sha256") == 0)
-    {
-        static const struct SolidSyslogMbedTlsHmacSha256PolicyConfig hmacConfig = {BddDemoGetKey, NULL};
-        policy = SolidSyslogMbedTlsHmacSha256Policy_Create(&hmacConfig);
-    }
-    else if (strcmp(pendingSecurityPolicy, "aes-256-gcm") == 0)
-    {
-        /* Reuse the TLS module's already-seeded CTR-DRBG as the AEAD nonce
-         * source — see BddTargetTlsSender_GetRng. Not static const: Rng is a
-         * runtime handle. */
-        const struct SolidSyslogMbedTlsAesGcmPolicyConfig aesConfig =
-            {BddDemoGetKey, NULL, BddTargetTlsSender_GetRng()};
-        policy = SolidSyslogMbedTlsAesGcmPolicy_Create(&aesConfig);
-    }
-    else if (strcmp(pendingSecurityPolicy, "null") == 0)
-    {
-        policy = SolidSyslogNullSecurityPolicy_Get();
-    }
-    else
-    {
-        policy = SolidSyslogCrc16Policy_Create();
-    }
-    return policy;
-}
-
-/* `set store file` trigger: swap the default NullStore for a FatFs-backed
- * BlockStore. One-way for the lifetime of this QEMU instance. The lifecycle
- * mutex blocks the Service task across the Destroy → re-Create transition. */
-static bool RebuildWithFileStore(void)
-{
-    SolidSyslogMutex_Lock(lifecycleMutex);
-
-    /* FatFs does NOT auto-mount on first f_open — mount (and format-on-first-use)
-     * before tearing down the existing store so a mount failure leaves the
-     * target running on the original NullStore (zero-disruption); return false
-     * so OnSet reports the failure to the harness. */
-    if (!EnsureFatFsMounted())
-    {
-        SolidSyslogMutex_Unlock(lifecycleMutex);
-        return false;
-    }
-
-    solidSyslogReady = false;
-    SolidSyslog_Destroy(solidSyslog);
-    solidSyslog = NULL;
-    DestroyCurrentStore();
-
-    storeFile = SolidSyslogFatFsFile_Create();
-    storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX);
-
-    struct SolidSyslogSecurityPolicy* policy = CreateSecurityPolicy();
-    currentPolicy = policy;
-    struct SolidSyslogBlockStoreConfig storeConfig = {
-        .BlockDevice = storeBlockDevice,
-        .MaxBlockSize = pendingMaxBlockSize,
-        .MaxBlocks = pendingMaxBlocks,
-        .DiscardPolicy = MapDiscardPolicy(pendingDiscardPolicy),
-        .SecurityPolicy = policy,
-        .OnStoreFull = OnStoreFull,
-        .StoreFullContext = NULL,
-        .GetCapacityThreshold = GetCapacityThreshold,
-        .OnThresholdCrossed = OnThresholdCrossed,
-        .ThresholdContext = &pendingCapacityThreshold,
-    };
-    currentStore = SolidSyslogBlockStore_Create(&storeConfig);
-    currentStoreIsFile = true;
-
-    solidSyslogConfig.Store = currentStore;
-    /* Re-honour `set no-sd 1` if it arrived before this rebuild — target_driver.py
-     * sorts `set no-sd` before `set store file`, so the value is final here. */
-    solidSyslogConfig.SdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0]));
-    solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
-    solidSyslogReady = true;
-    SolidSyslogMutex_Unlock(lifecycleMutex);
-    return true;
-}
-
-/* Mount volume 0; format-on-first-use if the disk image has no FAT yet.
- * Idempotent — subsequent calls short-circuit on fatfsMounted. The work buffer
- * for f_mkfs is sized to FF_MAX_SS (512 B), the minimum f_mkfs accepts on a
- * FAT12/16 volume. */
-static bool EnsureFatFsMounted(void)
-{
-    if (fatfsMounted)
-    {
-        return true;
-    }
-    FRESULT res = f_mount(&fatfs, "", 1); /* opt=1 → mount immediately, surface FR_NO_FILESYSTEM here */
-    if (res == FR_NO_FILESYSTEM)
-    {
-        /* Fresh disk image — lay down a FAT and re-mount. FM_FAT keeps the
-         * formatter on FAT12/16; at the shared 8 MiB geometry auto cluster
-         * sizing clears the ~4085-cluster boundary, so this lands FAT16 (the
-         * geometry the later FreeRTOS-Plus-FAT formatter needs). */
-        static BYTE workBuffer[FF_MAX_SS];
-        const MKFS_PARM opts = {.fmt = FM_FAT | FM_SFD, .n_fat = 1, .align = 1, .n_root = 0, .au_size = 0};
-        res = f_mkfs("", &opts, workBuffer, sizeof(workBuffer));
-        if (res == FR_OK)
-        {
-            res = f_mount(&fatfs, "", 1);
-        }
-    }
-    if (res != FR_OK)
-    {
-        (void) printf("[solidsyslog] fatfs mount failed: FRESULT=%d\n", (int) res);
-        return false;
-    }
-    fatfsMounted = true;
-    return true;
-}
-
-static void DestroySecurityPolicy(void)
-{
-    if (strcmp(pendingSecurityPolicy, "hmac-sha256") == 0)
-    {
-        SolidSyslogMbedTlsHmacSha256Policy_Destroy(currentPolicy);
-    }
-    else if (strcmp(pendingSecurityPolicy, "aes-256-gcm") == 0)
-    {
-        SolidSyslogMbedTlsAesGcmPolicy_Destroy(currentPolicy);
-    }
-    else if (strcmp(pendingSecurityPolicy, "crc16") == 0)
-    {
-        SolidSyslogCrc16Policy_Destroy();
-    }
-    /* else "null": the shared NullSecurityPolicy is immutable — nothing to free. */
-    currentPolicy = NULL;
-}
-
-/* Tears down whichever store is currently installed (file-backed or null).
- * FatFsFile_Destroy → Close → f_close flushes the underlying FIL's dir entry. */
-static void DestroyCurrentStore(void)
-{
-    if (currentStoreIsFile)
-    {
-        SolidSyslogBlockStore_Destroy(currentStore);
-        SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
-        DestroySecurityPolicy();
-        SolidSyslogFatFsFile_Destroy(storeFile);
-    }
-    /* else: NullStore is shared and immutable — nothing to destroy. */
-}
-
-static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
-{
-    if (strcmp(policy, "newest") == 0)
-    {
-        return SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
-    }
-    if (strcmp(policy, "halt") == 0)
-    {
-        return SOLIDSYSLOG_DISCARD_POLICY_HALT;
-    }
-    return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
-}
-
-static void OnStoreFull(void* context)
-{
-    (void) context;
-    if (pendingHaltExit)
-    {
-        /* Semihosting SYS_EXIT — terminates QEMU with status 2 so the BDD
-         * harness sees the run end deterministically. Mirrors the Linux
-         * example's _exit(2). */
-        SemihostingExit(2);
-    }
-}
-
-static size_t GetCapacityThreshold(void* context)
-{
-    return *(const size_t*) context;
-}
-
-/* Stdout marker the behave harness watches for. The Linux equivalent writes a
- * host file unreachable from the QEMU guest; instead we print a line-anchored
- * token to the UART, which the captured-stdout reader in syslog_steps.py scans. */
-static void OnThresholdCrossed(void* context)
-{
-    (void) context;
-    (void) printf("[THRESHOLD-CROSSED]\r\n");
-}
-
-static void InteractiveTask(void* argument)
-{
-    (void) argument;
-
-    /* Bring the netif up on the tcpip thread now the scheduler is running.
-     * Blocking callback — returns once the interface is added and link/up. */
+    /* Bring the netif up on the tcpip thread now the scheduler is running, then
+     * wait for the gateway ARP so the first datagram is not lost to a cache miss. */
     (void) tcpip_callback(NetworkBringUp, NULL);
-
-    /* Wait for the gateway ARP to resolve before any datagram goes out, so the
-     * first send is not lost to a cache miss (see WarmUpGatewayArp). */
     WarmUpGatewayArp();
 
-    /* No host pin needed: SolidSyslogLwipRawDnsResolver resolves the oracle by
-     * name, and the DNS_LOCAL_HOSTLIST entry maps "syslog-ng" -> 10.0.2.2 on the
-     * guest. The shared BddTargetTlsConfig already defaults host to "syslog-ng"
-     * with serverName falling back to it, so the destination host now equals the
-     * TLS serverName / cert subject without any override. RtosSleep drives the
-     * resolver's bounded async-resolve spin (a local-hostlist hit returns
-     * synchronously, so it never actually spins here). */
+    /* SolidSyslogLwipRawDnsResolver resolves the oracle by name; the
+     * DNS_LOCAL_HOSTLIST entry maps "syslog-ng" -> 10.0.2.2 on the guest, so the
+     * destination host equals the TLS serverName / cert subject without any
+     * numeric pin. The shared Sleep drives the bounded async-resolve spin (a
+     * local-hostlist hit returns synchronously, so it never actually spins). */
     struct SolidSyslogLwipRawDnsResolverConfig dnsConfig = {
-        .Sleep = RtosSleep,
+        .Sleep = BddTargetFreeRtosPipeline_Sleep,
     };
     resolver = SolidSyslogLwipRawDnsResolver_Create(&dnsConfig);
     datagram = SolidSyslogLwipRawDatagram_Create();
     udpAddress = SolidSyslogLwipRawAddress_Create();
-
     struct SolidSyslogUdpSenderConfig udpConfig = {
         .Resolver = resolver,
         .Datagram = datagram,
         .Address = udpAddress,
-        .Endpoint = GetEndpoint,
-        .EndpointVersion = GetEndpointVersion,
+        .Endpoint = BddTargetFreeRtosPipeline_GetEndpoint,
+        .EndpointVersion = BddTargetFreeRtosPipeline_GetEndpointVersion,
     };
     udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
-    /* Plain TCP path: RFC 6587 octet-framed StreamSender over the LwipRaw TCP
-     * stream adapter. Shares the resolver and the UDP endpoint callbacks because
-     * the syslog-ng oracle listens on the same host:port for both transports.
-     * RtosSleep drives the stream's bounded synchronous-connect spin; the
-     * connect timeout comes from the SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS tunable
-     * (GetConnectTimeoutMs NULL). */
+    /* Plain TCP: RFC 6587 octet-framed StreamSender over the LwipRaw TCP stream.
+     * The connect timeout comes from the SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS
+     * tunable (GetConnectTimeoutMs NULL); the shared Sleep drives the bounded
+     * synchronous-connect spin. */
     struct SolidSyslogLwipRawTcpStreamConfig tcpStreamConfig = {
         .GetConnectTimeoutMs = NULL,
         .ConnectTimeoutContext = NULL,
-        .Sleep = RtosSleep,
+        .Sleep = BddTargetFreeRtosPipeline_Sleep,
     };
     tcpStream = SolidSyslogLwipRawTcpStream_Create(&tcpStreamConfig);
     tcpAddress = SolidSyslogLwipRawAddress_Create();
@@ -915,23 +282,13 @@ static void InteractiveTask(void* argument)
         .Resolver = resolver,
         .Stream = tcpStream,
         .Address = tcpAddress,
-        .Endpoint = GetEndpoint,
-        .EndpointVersion = GetEndpointVersion,
+        .Endpoint = BddTargetFreeRtosPipeline_GetEndpoint,
+        .EndpointVersion = BddTargetFreeRtosPipeline_GetEndpointVersion,
     };
     tcpSender = SolidSyslogStreamSender_Create(&tcpConfig);
 
-    /* TLS slot: SolidSyslogMbedTlsStream over a second LwipRawTcpStream, with
-     * the demo CA / client cert / client key baked into the ELF. The same slot
-     * serves both @tls (port 6514) and @mtls (port 6515) scenarios — the
-     * wrapper wires the client cert unconditionally and its StreamSender
-     * Endpoint callback dispatches on BddTargetSwitchConfig_IsMtlsMode() at
-     * Connect time. The `false` argument is honoured for cross-platform
-     * signature uniformity but ignored on FreeRTOS, where the harness flips
-     * mode over the UART after the prompt is already up. */
     struct SolidSyslogSender* tlsSender = BddTargetTlsSender_Create(resolver, false);
 
-    /* SwitchingSender lets `set transport <udp|tcp|tls|mtls>` flip transport at
-     * runtime. UDP, TCP, and TLS/mTLS are all wired. */
     static struct SolidSyslogSender* inners[BDD_TARGET_SWITCH_COUNT];
     inners[BDD_TARGET_SWITCH_UDP] = udpSender;
     inners[BDD_TARGET_SWITCH_TCP] = tcpSender;
@@ -943,144 +300,15 @@ static void InteractiveTask(void* argument)
     };
     BddTargetSwitchConfig_SetByName("udp");
     switchingSender = SolidSyslogSwitchingSender_Create(&switchConfig);
-
-    bufferMutex = SolidSyslogFreeRtosMutex_Create();
-    buffer = SolidSyslogCircularBuffer_Create(bufferMutex, bufferRing, sizeof(bufferRing));
-    lifecycleMutex = SolidSyslogFreeRtosMutex_Create();
-
-    /* Default store is NullStore — flipped to FatFs/BlockStore by
-     * `set store file` via RebuildWithFileStore(). */
-    currentStore = SolidSyslogNullStore_Get();
-    currentStoreIsFile = false;
-
-    atomicCounter = SolidSyslogStdAtomicCounter_Create();
-    struct SolidSyslogMetaSdConfig metaConfig = {
-        .Counter = atomicCounter,
-        .GetSysUpTime = SolidSyslogFreeRtosSysUpTime_Get,
-        .GetLanguage = BddTargetLanguage_Get,
-    };
-    metaSd = SolidSyslogMetaSd_Create(&metaConfig);
-    timeQualitySd = SolidSyslogTimeQualitySd_Create(GetTimeQuality);
-    struct SolidSyslogOriginSdConfig originConfig = {
-        .Software = "SolidSyslogBddTarget",
-        .SwVersion = "0.7.0",
-        .EnterpriseId = BDD_TARGET_ENTERPRISE_ID,
-        .GetIpCount = BddTargetIps_Count,
-        .GetIpAt = BddTargetIps_At,
-    };
-    originSd = SolidSyslogOriginSd_Create(&originConfig);
-    sdList[0] = metaSd;
-    sdList[1] = timeQualitySd;
-    sdList[2] = originSd;
-
-    solidSyslogConfig = (struct SolidSyslogConfig) {
-        .Buffer = buffer,
-        .Sender = switchingSender,
-        .Clock = NULL,
-        .GetHostname = GetHostname,
-        .GetAppName = GetAppName,
-        .GetProcessId = NULL,
-        .Store = currentStore,
-        .Sd = sdList,
-        /* pendingNoSd is normally false at this initial Setup — `set no-sd 1`
-         * arrives over the UART after the prompt is up, and the `set store file`
-         * rebuild rewrites .SdCount with the final value. Defensive here in case
-         * a scenario sends `set no-sd 1` before any rebuild. */
-        .SdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0])),
-    };
-    SolidSyslog_SetErrorHandler(ErrorHandlerEx, NULL);
-    solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
-    solidSyslogReady = true;
-
-    BddTargetInteractive_Run(solidSyslog, &testMessage, stdin, BddTargetSwitchConfig_SetByName, OnSet);
-
-    const UBaseType_t interactiveHwm = uxTaskGetStackHighWaterMark(NULL);
-    const UBaseType_t serviceHwm = (serviceTaskHandle != NULL) ? uxTaskGetStackHighWaterMark(serviceTaskHandle) : 0U;
-    (void) printf(
-        "[stack-hwm] interactive=%lu words service=%lu words\n",
-        (unsigned long) interactiveHwm,
-        (unsigned long) serviceHwm
-    );
-
-    TeardownAll();
-    vTaskDelete(NULL);
+    return switchingSender;
 }
 
-static void ServiceTask(void* argument)
+/* Reverse-order teardown of the LwipRaw sender stack. BddTargetTlsSender owns
+ * the inner MbedTlsStream + LwipRawTcpStream + StreamSender pool slots, so it is
+ * released before the plain-TCP tcpSender / tcpStream. */
+static void TeardownNetwork(void)
 {
-    (void) argument;
-    while ((lifecycleMutex == NULL) || !solidSyslogReady)
-    {
-        vTaskDelay(pdMS_TO_TICKS(1));
-    }
-    for (;;)
-    {
-        SolidSyslogMutex_Lock(lifecycleMutex);
-        if (solidSyslogTeardown)
-        {
-            /* Capture the waiter under the lock, release, notify it that
-             * Service has stopped, then self-delete before Teardown destroys
-             * the mutex. */
-            TaskHandle_t waiter = serviceStopWaiter;
-            SolidSyslogMutex_Unlock(lifecycleMutex);
-            if (waiter != NULL)
-            {
-                (void) xTaskNotifyGive(waiter);
-            }
-            vTaskDelete(NULL);
-        }
-        if (solidSyslogReady)
-        {
-            SolidSyslog_Service(solidSyslog);
-        }
-        SolidSyslogMutex_Unlock(lifecycleMutex);
-        vTaskDelay(pdMS_TO_TICKS(1));
-    }
-}
-
-static void TeardownAll(void)
-{
-    SolidSyslogMutex_Lock(lifecycleMutex);
-    serviceStopWaiter = xTaskGetCurrentTaskHandle();
-    solidSyslogTeardown = true;
-    solidSyslogReady = false;
-    SolidSyslog_Destroy(solidSyslog);
-    solidSyslog = NULL;
-    SolidSyslogOriginSd_Destroy(originSd);
-    SolidSyslogTimeQualitySd_Destroy(timeQualitySd);
-    SolidSyslogMetaSd_Destroy(metaSd);
-    SolidSyslogStdAtomicCounter_Destroy(atomicCounter);
-    DestroyCurrentStore();
-    /* f_unmount regardless of how we got here so the next session's f_mount
-     * finds STORE*.log directory entries up-to-date — the power_cycle_replay
-     * scenario relies on this. */
-    if (fatfsMounted)
-    {
-        (void) f_unmount("");
-        fatfsMounted = false;
-    }
-    SolidSyslogMutex_Unlock(lifecycleMutex);
-
-    /* Wait for Service to observe the teardown flag and vTaskDelete itself
-     * before the lifecycle mutex is destroyed under it. ServiceTask notifies
-     * us from its self-delete path, so this returns the moment it has actually
-     * exited rather than after a fixed guess. Bounded so a Service task that
-     * never started (xTaskCreate failure → NULL handle) cannot wedge teardown. */
-    if (serviceTaskHandle != NULL)
-    {
-        (void) ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(SERVICE_STOP_TIMEOUT_MS));
-    }
-    serviceTaskHandle = NULL;
-
-    SolidSyslogCircularBuffer_Destroy(buffer);
-    SolidSyslogFreeRtosMutex_Destroy(bufferMutex);
-    SolidSyslogFreeRtosMutex_Destroy(lifecycleMutex);
-    lifecycleMutex = NULL;
     SolidSyslogSwitchingSender_Destroy(switchingSender);
-    /* BddTargetTlsSender owns the inner MbedTlsStream + LwipRawTcpStream pool
-     * slots and its own StreamSender slot, so release it before the plain-TCP
-     * tcpSender / tcpStream below — roughly reverse order of Create keeps the
-     * dependency graph clean even though the pool allocator is order-insensitive. */
     BddTargetTlsSender_Destroy();
     SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogStreamSender_Destroy(tcpSender);
@@ -1089,23 +317,4 @@ static void TeardownAll(void)
     SolidSyslogLwipRawAddress_Destroy(tcpAddress);
     SolidSyslogLwipRawDatagram_Destroy(datagram);
     SolidSyslogLwipRawDnsResolver_Destroy(resolver);
-}
-
-static void SemihostingExit(int status)
-{
-    /* SYS_EXIT_EXTENDED (0x20) — propagates a non-zero status on AArch32 via a
-     * { reason, subcode } block. QEMU terminates the VM; the for(;;) is
-     * defensive. */
-    const struct
-    {
-        uint32_t reason;
-        uint32_t subcode;
-    } args = {0x20026U, (uint32_t) status};
-
-    register int r0 __asm("r0") = 0x20;
-    register const void* r1 __asm("r1") = &args;
-    __asm volatile("bkpt 0xAB" : "+r"(r0) : "r"(r1) : "memory");
-    for (;;)
-    {
-    }
 }

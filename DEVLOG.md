@@ -1,5 +1,46 @@
 # Dev Log
 
+## 2026-06-03 — S29.03 Extract the shared FreeRTOS BDD-target pipeline
+
+The DRY pass S29.01 deferred. The two FreeRTOS target `main.c` files
+(FreeRTOS-Plus-TCP + lwIP) had drifted to ~600 lines of near-verbatim shared
+code — the whole store/security-policy lifecycle, the `OnSet` handler, the SD
+set, the Service drain task, the console glue, `ErrorHandlerEx`. Extracted all of
+it into `Bdd/Targets/Common/BddTargetFreeRtosPipeline.{c,h}`; each `main.c` now
+keeps only its network backend.
+
+### Design — shared pipeline + injection seam
+
+`BddTargetFreeRtosPipelineConfig` is the whole seam: `DefaultHost`, a `BuildSender`
+thunk (platform brings up its network + builds the Switching sender, runs on the
+interactive task), a `GetHostname` callback (reads the platform IP stack), and a
+`TeardownNetwork` thunk. The pipeline owns the SolidSyslog lifecycle, store,
+SD/config, both FreeRTOS tasks, and exposes `GetEndpoint`/`GetEndpointVersion`
+(the sender configs in each `main.c` wire these — they read the shared host/port)
+plus `Sleep` / `Exit` / `InitConsole`. The Service task self-registers its handle,
+so neither task needs the caller to plumb anything.
+
+### Decisions
+
+- **One TU, compiled into each executable** — not a static lib. It's Tier-3 BDD
+  glue; the existing pattern is per-target source lists.
+- **`BuildSender` is a thunk, not a pre-built pointer** — the lwIP adapters must
+  touch a *started* lwIP core, so the netif bring-up + ARP warm-up had to run on
+  the interactive task, inside the seam, not in `main()` before the scheduler.
+- **`GetEndpoint`/`GetEndpointVersion` exported** — they read the shared
+  host/port but are consumed by the platform sender configs; leaving them static
+  would have been an unused-symbol warning *and* unreachable from `main.c`.
+
+### Result / validation
+
+- `FreeRtos/main.c` 1258 → 291, `FreeRtosLwip/main.c` 1111 → 320; the shared
+  surface (956 lines incl. header) now exists once. Net −800 lines.
+- Both targets cross-build clean on the new `sha-0b93766` image (no warnings);
+  the lwIP ELF still has **zero `Platform/PlusTcp` symbols**; clang-format clean.
+- Full BDD suite green on **both** targets — **44/44** scenarios each (UDP / TCP /
+  TLS / mTLS / the whole `@store` suite incl. `@hmac` / `@aesgcm` / capacity /
+  power-cycle / block-lifecycle). Pure behaviour preservation.
+
 ## 2026-06-03 — S29.02 Re-provision FreeRTOS container images with FreeRTOS-Plus-FAT
 
 Container/infra prep for E29: brings FreeRTOS-Plus-FAT back into the
