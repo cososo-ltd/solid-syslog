@@ -24,7 +24,7 @@ static inline void TimeQualitySd_Report(
     enum SolidSyslogTimeQualitySdErrors code
 )
 {
-    SolidSyslog_Error(severity, &TimeQualitySdErrorSource, category, code);
+    SolidSyslog_Error(severity, &TimeQualitySdErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGTIMEQUALITYSDPRIVATE_H */

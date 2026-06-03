@@ -25,7 +25,7 @@ static inline void SwitchingSender_Report(
     enum SolidSyslogSwitchingSenderErrors code
 )
 {
-    SolidSyslog_Error(severity, &SwitchingSenderErrorSource, category, code);
+    SolidSyslog_Error(severity, &SwitchingSenderErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGSWITCHINGSENDERPRIVATE_H */

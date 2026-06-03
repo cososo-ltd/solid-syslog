@@ -36,7 +36,7 @@ static inline void WinsockAddress_Report(
     enum SolidSyslogWinsockAddressErrors code
 )
 {
-    SolidSyslog_Error(severity, &WinsockAddressErrorSource, category, code);
+    SolidSyslog_Error(severity, &WinsockAddressErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGWINSOCKADDRESSPRIVATE_H */

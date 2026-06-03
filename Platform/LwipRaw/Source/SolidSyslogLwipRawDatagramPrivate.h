@@ -25,7 +25,7 @@ static inline void LwipRawDatagram_Report(
     enum SolidSyslogLwipRawDatagramErrors code
 )
 {
-    SolidSyslog_Error(severity, &LwipRawDatagramErrorSource, category, code);
+    SolidSyslog_Error(severity, &LwipRawDatagramErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGLWIPRAWDATAGRAMPRIVATE_H */

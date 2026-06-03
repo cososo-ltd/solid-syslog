@@ -22,7 +22,7 @@ static inline void PlusTcpResolver_Report(
     enum SolidSyslogPlusTcpResolverErrors code
 )
 {
-    SolidSyslog_Error(severity, &PlusTcpResolverErrorSource, category, code);
+    SolidSyslog_Error(severity, &PlusTcpResolverErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPLUSTCPRESOLVERPRIVATE_H */

@@ -33,7 +33,7 @@ void SolidSyslog_NullStringFunction(struct SolidSyslogFormatter* formatter);
 
 static inline void SolidSyslog_Report(enum SolidSyslogSeverity severity, uint16_t category, enum SolidSyslogErrors code)
 {
-    SolidSyslog_Error(severity, &SolidSyslogErrorSource, category, code);
+    SolidSyslog_Error(severity, &SolidSyslogErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPRIVATE_H */

@@ -27,7 +27,7 @@ static inline void MbedTlsAesGcmPolicy_Report(
     enum SolidSyslogMbedTlsAesGcmPolicyErrors code
 )
 {
-    SolidSyslog_Error(severity, &MbedTlsAesGcmPolicyErrorSource, category, code);
+    SolidSyslog_Error(severity, &MbedTlsAesGcmPolicyErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGMBEDTLSAESGCMPOLICYPRIVATE_H */

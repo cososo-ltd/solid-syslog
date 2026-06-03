@@ -26,7 +26,7 @@ static inline void PosixDatagram_Report(
     enum SolidSyslogPosixDatagramErrors code
 )
 {
-    SolidSyslog_Error(severity, &PosixDatagramErrorSource, category, code);
+    SolidSyslog_Error(severity, &PosixDatagramErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPOSIXDATAGRAMPRIVATE_H */

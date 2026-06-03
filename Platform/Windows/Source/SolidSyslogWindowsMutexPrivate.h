@@ -25,7 +25,7 @@ static inline void WindowsMutex_Report(
     enum SolidSyslogWindowsMutexErrors code
 )
 {
-    SolidSyslog_Error(severity, &WindowsMutexErrorSource, category, code);
+    SolidSyslog_Error(severity, &WindowsMutexErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGWINDOWSMUTEXPRIVATE_H */

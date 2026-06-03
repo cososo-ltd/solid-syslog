@@ -26,7 +26,7 @@ static inline void PlusTcpDatagram_Report(
     enum SolidSyslogPlusTcpDatagramErrors code
 )
 {
-    SolidSyslog_Error(severity, &PlusTcpDatagramErrorSource, category, code);
+    SolidSyslog_Error(severity, &PlusTcpDatagramErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPLUSTCPDATAGRAMPRIVATE_H */

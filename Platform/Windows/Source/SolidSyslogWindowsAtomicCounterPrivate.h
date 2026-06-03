@@ -24,7 +24,7 @@ static inline void WindowsAtomicCounter_Report(
     enum SolidSyslogWindowsAtomicCounterErrors code
 )
 {
-    SolidSyslog_Error(severity, &WindowsAtomicCounterErrorSource, category, code);
+    SolidSyslog_Error(severity, &WindowsAtomicCounterErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGWINDOWSATOMICCOUNTERPRIVATE_H */

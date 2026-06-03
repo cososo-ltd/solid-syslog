@@ -42,10 +42,11 @@ string table — are deleted. `struct SolidSyslogErrorSource` slims to
   directly. Three problems fall out at once: the typed `code` parameter keeps
   each per-class error enum's *tag* referenced (deleting the message tables had
   orphaned them — MISRA 2.4 ×43), `static inline` gives internal linkage (no
-  8.7), and the body passes `code` to the `int32_t` detail param **uncast** —
-  enum→int32 is value-preserving (both signed, `int32_t` wide enough) and does
-  not trip essential-type 10.3 — so the `(int32_t)` cast disappears from every
-  call site. This *supersedes* an earlier crypto-only `_Report` unwind: the 2.4
+  8.7), and the single `(int32_t)` cast moves out of all 134 call sites into the
+  one wrapper body per class (clang's `-Wsign-conversion` treats the unscoped
+  enum's underlying type as unsigned, so the enum→`int32_t` conversion must stay
+  explicit — but now it lives in exactly one place per class). This *supersedes*
+  an earlier crypto-only `_Report` unwind: the 2.4
   fallout forced the uniformly-wrapped direction, which is the better end-state
   (MISRA-clean tags, cast-free call sites, no suppressions). A *separate* report
   fn can be added later if a future site needs a non-enum detail.

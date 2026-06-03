@@ -27,7 +27,7 @@ static inline void WinsockDatagram_Report(
     enum SolidSyslogWinsockDatagramErrors code
 )
 {
-    SolidSyslog_Error(severity, &WinsockDatagramErrorSource, category, code);
+    SolidSyslog_Error(severity, &WinsockDatagramErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGWINSOCKDATAGRAMPRIVATE_H */

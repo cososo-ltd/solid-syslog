@@ -30,7 +30,7 @@ static inline void TlsStream_Report(
     enum SolidSyslogTlsStreamErrors code
 )
 {
-    SolidSyslog_Error(severity, &TlsStreamErrorSource, category, code);
+    SolidSyslog_Error(severity, &TlsStreamErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGTLSSTREAMPRIVATE_H */

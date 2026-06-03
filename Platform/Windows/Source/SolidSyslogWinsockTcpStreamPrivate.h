@@ -30,7 +30,7 @@ static inline void WinsockTcpStream_Report(
     enum SolidSyslogWinsockTcpStreamErrors code
 )
 {
-    SolidSyslog_Error(severity, &WinsockTcpStreamErrorSource, category, code);
+    SolidSyslog_Error(severity, &WinsockTcpStreamErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGWINSOCKTCPSTREAMPRIVATE_H */

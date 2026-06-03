@@ -41,7 +41,7 @@ static inline void PosixMessageQueueBuffer_Report(
     enum SolidSyslogPosixMessageQueueBufferErrors code
 )
 {
-    SolidSyslog_Error(severity, &PosixMessageQueueBufferErrorSource, category, code);
+    SolidSyslog_Error(severity, &PosixMessageQueueBufferErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFERPRIVATE_H */

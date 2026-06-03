@@ -27,7 +27,7 @@ static inline void FatFsFile_Report(
     enum SolidSyslogFatFsFileErrors code
 )
 {
-    SolidSyslog_Error(severity, &FatFsFileErrorSource, category, code);
+    SolidSyslog_Error(severity, &FatFsFileErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGFATFSFILEPRIVATE_H */

@@ -37,7 +37,7 @@ static inline void BlockStore_Report(
     enum SolidSyslogBlockStoreErrors code
 )
 {
-    SolidSyslog_Error(severity, &BlockStoreErrorSource, category, code);
+    SolidSyslog_Error(severity, &BlockStoreErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGBLOCKSTOREPRIVATE_H */

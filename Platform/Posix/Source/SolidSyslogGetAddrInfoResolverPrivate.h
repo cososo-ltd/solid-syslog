@@ -22,7 +22,7 @@ static inline void GetAddrInfoResolver_Report(
     enum SolidSyslogGetAddrInfoResolverErrors code
 )
 {
-    SolidSyslog_Error(severity, &GetAddrInfoResolverErrorSource, category, code);
+    SolidSyslog_Error(severity, &GetAddrInfoResolverErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGGETADDRINFORESOLVERPRIVATE_H */

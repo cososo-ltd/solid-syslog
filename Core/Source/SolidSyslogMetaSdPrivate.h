@@ -29,7 +29,7 @@ static inline void MetaSd_Report(
     enum SolidSyslogMetaSdErrors code
 )
 {
-    SolidSyslog_Error(severity, &MetaSdErrorSource, category, code);
+    SolidSyslog_Error(severity, &MetaSdErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGMETASDPRIVATE_H */

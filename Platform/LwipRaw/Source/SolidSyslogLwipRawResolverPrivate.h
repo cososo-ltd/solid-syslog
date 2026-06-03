@@ -22,7 +22,7 @@ static inline void LwipRawResolver_Report(
     enum SolidSyslogLwipRawResolverErrors code
 )
 {
-    SolidSyslog_Error(severity, &LwipRawResolverErrorSource, category, code);
+    SolidSyslog_Error(severity, &LwipRawResolverErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGLWIPRAWRESOLVERPRIVATE_H */

@@ -25,7 +25,7 @@ static inline void PosixTcpStream_Report(
     enum SolidSyslogPosixTcpStreamErrors code
 )
 {
-    SolidSyslog_Error(severity, &PosixTcpStreamErrorSource, category, code);
+    SolidSyslog_Error(severity, &PosixTcpStreamErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPOSIXTCPSTREAMPRIVATE_H */

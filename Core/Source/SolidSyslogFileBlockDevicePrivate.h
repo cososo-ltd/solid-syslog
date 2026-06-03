@@ -44,7 +44,7 @@ static inline void FileBlockDevice_Report(
     enum SolidSyslogFileBlockDeviceErrors code
 )
 {
-    SolidSyslog_Error(severity, &FileBlockDeviceErrorSource, category, code);
+    SolidSyslog_Error(severity, &FileBlockDeviceErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGFILEBLOCKDEVICEPRIVATE_H */

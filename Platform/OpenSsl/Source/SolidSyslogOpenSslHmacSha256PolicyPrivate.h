@@ -27,7 +27,7 @@ static inline void OpenSslHmacSha256Policy_Report(
     enum SolidSyslogOpenSslHmacSha256PolicyErrors code
 )
 {
-    SolidSyslog_Error(severity, &OpenSslHmacSha256PolicyErrorSource, category, code);
+    SolidSyslog_Error(severity, &OpenSslHmacSha256PolicyErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGOPENSSLHMACSHA256POLICYPRIVATE_H */

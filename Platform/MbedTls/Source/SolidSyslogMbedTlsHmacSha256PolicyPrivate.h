@@ -27,7 +27,7 @@ static inline void MbedTlsHmacSha256Policy_Report(
     enum SolidSyslogMbedTlsHmacSha256PolicyErrors code
 )
 {
-    SolidSyslog_Error(severity, &MbedTlsHmacSha256PolicyErrorSource, category, code);
+    SolidSyslog_Error(severity, &MbedTlsHmacSha256PolicyErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGMBEDTLSHMACSHA256POLICYPRIVATE_H */

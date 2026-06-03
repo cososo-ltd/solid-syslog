@@ -25,7 +25,7 @@ static inline void PosixMutex_Report(
     enum SolidSyslogPosixMutexErrors code
 )
 {
-    SolidSyslog_Error(severity, &PosixMutexErrorSource, category, code);
+    SolidSyslog_Error(severity, &PosixMutexErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPOSIXMUTEXPRIVATE_H */
