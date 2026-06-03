@@ -304,6 +304,13 @@ if(DEFINED ENV{FATFS_PATH})
     add_subdirectory(Platform/FatFs)
 endif()
 
+# FreeRTOS-Plus-FAT adapters ship as sources via an INTERFACE library too — the
+# integrator's FreeRTOSFATConfig.h flows into each consumer's compile. Gated on
+# the upstream Plus-FAT sources being present in the build environment.
+if(DEFINED ENV{FREERTOS_PLUS_FAT_PATH})
+    add_subdirectory(Platform/PlusFat)
+endif()
+
 # The cross-compiled FreeRTOS target is selected by the arm-none-eabi
 # toolchain file (see Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake); it
 # only enters the build when a freertos-cross preset is active. The chosen

@@ -1,5 +1,51 @@
 # Dev Log
 
+## 2026-06-03 — S29.04 Platform/PlusFat adapter pack (host TDD)
+
+The FreeRTOS-Plus-FAT `SolidSyslogFile` adapter, mirroring the FatFs sibling but
+adapted to the `ff_stdio` API. No media driver, no QEMU, no target swap — that is
+S29.05; this story is the host-tested pack only.
+
+### Harness spike first
+
+Plus-FAT is FreeRTOS-coupled (unlike OS-agnostic ChaN FatFs): `ff_stdio.h` →
+`ff_headers.h` pulls `FreeRTOS.h` / `task.h` / `semphr.h`. A throwaway spike proved
+a host TU compiles `ff_stdio.h` given (1) a test-local `FreeRTOSFATConfig.h`
+(byte-order, CWD TLS index, `portINLINE` fallback — matching Plus-FAT's own
+DefaultConf), (2) `configNUM_THREAD_LOCAL_STORAGE_POINTERS >= 3` in the shared
+`FreeRtosFakes/FreeRTOSConfig.h` (Plus-FAT keeps errno/CWD/ff_error in TLS slots),
+and (3) the kernel + Plus-FAT include dirs. We surface that coupling in the test
+include path rather than hiding it.
+
+### Pool experience copied, behaviour TDD'd
+
+The pool plumbing (`Static.c`) and its 9-test suite are **copied + renamed
+verbatim** from FatFs — proven, agreed coverage, not re-derived. Everything
+`ff_*` was driven by genuine red→green: Open (`"r+"`→`"w+"` fallback,
+open-or-create without truncation), Close (guarded `ff_fclose`), Read
+(`ff_fread`, item-count == requested), Write + per-write `ff_fflush` durability,
+SeekTo/Size, Truncate (`ff_fseek(0)`+`ff_seteof`), Exists/Delete. 30 tests, 100%
+line+branch by construction.
+
+### Decisions
+
+- **`FF_FILE*` sentinel is the open-state** — no separate `IsOpen` bool (FatFs
+  needs one because its `FIL` is embedded; Plus-FAT's handle is a pointer).
+- **Adapter calls `ff_fread`/`ff_fwrite` with `xSize == 1`** so the returned item
+  count is the byte count; a short read/write is the single failure mode.
+- **D.002 11.3 suppression** added for the one `SelfFromBase` downcast, mirroring
+  every other vtable class.
+
+### Lesson — TDD, not TDD-costume
+
+First cut wrote the whole pool allocator to satisfy a trivial `CreateSucceeds`,
+then dressed it as a slice. Reverted to the literal minimum; the rule for these
+pool classes is copy+rename the proven pool block (plumbing **and** its tests)
+for instant agreed coverage, then do real per-op TDD for the rest. Also caught two
+invalid reds that passed for free through the `NullFile` fallback
+(`IsOpen`-false, `Write`-returns-true) — the genuine driver is asserting the call
+reached the fake.
+
 ## 2026-06-03 — S29.03 Extract the shared FreeRTOS BDD-target pipeline
 
 The DRY pass S29.01 deferred. The two FreeRTOS target `main.c` files

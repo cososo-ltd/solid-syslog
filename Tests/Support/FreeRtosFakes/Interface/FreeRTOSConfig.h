@@ -47,6 +47,14 @@
 #define configUSE_CO_ROUTINES 0
 #define configMAX_CO_ROUTINE_PRIORITIES 1
 
+/* Thread-local storage pointers. FreeRTOS-Plus-FAT's ff_stdio.h keeps three
+ * per-task entries (errno, CWD, ff_error) starting at ffconfigCWD_THREAD_LOCAL_INDEX
+ * and #errors at compile time if fewer than three are available; it also gates
+ * the v/pvTaskGetThreadLocalStoragePointer declarations on this being > 0. Set
+ * to 5 to clear that requirement with headroom. Harmless to the other host
+ * tests, which never touch thread-local storage. */
+#define configNUM_THREAD_LOCAL_STORAGE_POINTERS 5
+
 /* Optional API inclusions. */
 #define INCLUDE_vTaskPrioritySet 0
 #define INCLUDE_uxTaskPriorityGet 0

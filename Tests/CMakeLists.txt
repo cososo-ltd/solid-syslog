@@ -16,6 +16,11 @@ if(DEFINED ENV{FATFS_PATH})
     add_subdirectory(FatFs)
 endif()
 
+if(DEFINED ENV{FREERTOS_PLUS_FAT_PATH})
+    add_subdirectory(Support/PlusFatFakes)
+    add_subdirectory(PlusFat)
+endif()
+
 if(DEFINED ENV{LWIP_PATH})
     add_subdirectory(Lwip)
 endif()
@@ -260,6 +265,14 @@ foreach(fatfs_test_target IN ITEMS
 )
     if(TARGET ${fatfs_test_target})
         register_junit_test(${fatfs_test_target})
+    endif()
+endforeach()
+
+foreach(plusfat_test_target IN ITEMS
+    SolidSyslogPlusFatFileTest
+)
+    if(TARGET ${plusfat_test_target})
+        register_junit_test(${plusfat_test_target})
     endif()
 endforeach()
 

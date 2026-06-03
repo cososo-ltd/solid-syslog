@@ -1,0 +1,133 @@
+#include "SolidSyslogPlusFatFile.h"
+
+#include <stdbool.h>
+#include <stddef.h>
+
+#include "SolidSyslogFileDefinition.h"
+#include "SolidSyslogNullFile.h"
+#include "SolidSyslogPlusFatFileErrors.h"
+#include "SolidSyslogPlusFatFilePrivate.h"
+#include "ff_stdio.h"
+
+const struct SolidSyslogErrorSource PlusFatFileErrorSource = {"PlusFatFile"};
+
+static bool PlusFatFile_Open(struct SolidSyslogFile* base, const char* path);
+static void PlusFatFile_Close(struct SolidSyslogFile* base);
+static bool PlusFatFile_IsOpen(struct SolidSyslogFile* base);
+static bool PlusFatFile_Read(struct SolidSyslogFile* base, void* buf, size_t count);
+static bool PlusFatFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
+static void PlusFatFile_SeekTo(struct SolidSyslogFile* base, size_t offset);
+static size_t PlusFatFile_Size(struct SolidSyslogFile* base);
+static void PlusFatFile_Truncate(struct SolidSyslogFile* base);
+static bool PlusFatFile_Exists(struct SolidSyslogFile* base, const char* path);
+static bool PlusFatFile_Delete(struct SolidSyslogFile* base, const char* path);
+
+static inline struct SolidSyslogPlusFatFile* PlusFatFile_SelfFromBase(struct SolidSyslogFile* base);
+
+void PlusFatFile_Initialise(struct SolidSyslogFile* base)
+{
+    struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
+    self->Base.Open = PlusFatFile_Open;
+    self->Base.Close = PlusFatFile_Close;
+    self->Base.IsOpen = PlusFatFile_IsOpen;
+    self->Base.Read = PlusFatFile_Read;
+    self->Base.Write = PlusFatFile_Write;
+    self->Base.SeekTo = PlusFatFile_SeekTo;
+    self->Base.Size = PlusFatFile_Size;
+    self->Base.Truncate = PlusFatFile_Truncate;
+    self->Base.Exists = PlusFatFile_Exists;
+    self->Base.Delete = PlusFatFile_Delete;
+    self->Fp = NULL;
+}
+
+static inline struct SolidSyslogPlusFatFile* PlusFatFile_SelfFromBase(struct SolidSyslogFile* base)
+{
+    return (struct SolidSyslogPlusFatFile*) base;
+}
+
+void PlusFatFile_Cleanup(struct SolidSyslogFile* base)
+{
+    PlusFatFile_Close(base);
+    /* Overwrite the abstract base with the shared NullFile vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullFile_Get();
+}
+
+static bool PlusFatFile_Open(struct SolidSyslogFile* base, const char* path)
+{
+    struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
+    /* "r+" opens an existing file without truncating; if it does not exist,
+     * "w+" creates it. Together this is open-or-create with no data loss —
+     * Plus-FAT has no single open-always mode. */
+    self->Fp = ff_fopen(path, "r+");
+    if (self->Fp == NULL)
+    {
+        self->Fp = ff_fopen(path, "w+");
+    }
+    return self->Fp != NULL;
+}
+
+static void PlusFatFile_Close(struct SolidSyslogFile* base)
+{
+    struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
+    if (self->Fp != NULL)
+    {
+        ff_fclose(self->Fp);
+        self->Fp = NULL;
+    }
+}
+
+static bool PlusFatFile_IsOpen(struct SolidSyslogFile* base)
+{
+    return PlusFatFile_SelfFromBase(base)->Fp != NULL;
+}
+
+static bool PlusFatFile_Read(struct SolidSyslogFile* base, void* buf, size_t count)
+{
+    struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
+    /* xSize == 1 so the ff_fread return value is the byte count delivered. */
+    return ff_fread(buf, 1, count, self->Fp) == count;
+}
+
+static bool PlusFatFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count)
+{
+    struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
+    /* Flush after every complete write so a power loss never loses a record
+     * the BlockStore was told had been stored. */
+    bool wroteAll = ff_fwrite(buf, 1, count, self->Fp) == count;
+    return wroteAll && (ff_fflush(self->Fp) == 0);
+}
+
+static void PlusFatFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
+{
+    struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
+    ff_fseek(self->Fp, (long) offset, SEEK_SET);
+}
+
+static size_t PlusFatFile_Size(struct SolidSyslogFile* base)
+{
+    return ff_filelength(PlusFatFile_SelfFromBase(base)->Fp);
+}
+
+static void PlusFatFile_Truncate(struct SolidSyslogFile* base)
+{
+    struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
+    /* Empty the file: rewind to the start, then set EOF there so the length
+     * becomes zero. ff_seteof truncates at the current position and Plus-FAT
+     * has no truncate-to-zero call of its own. */
+    ff_fseek(self->Fp, 0, SEEK_SET);
+    ff_seteof(self->Fp);
+}
+
+static bool PlusFatFile_Exists(struct SolidSyslogFile* base, const char* path)
+{
+    (void) base;
+    FF_Stat_t status;
+    return ff_stat(path, &status) == 0;
+}
+
+static bool PlusFatFile_Delete(struct SolidSyslogFile* base, const char* path)
+{
+    (void) base;
+    return ff_remove(path) == 0;
+}
