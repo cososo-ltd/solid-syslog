@@ -113,21 +113,19 @@ static bool OpenSslHmacSha256Policy_ComputeTag(
         }
         else
         {
-            SolidSyslog_Error(
+            OpenSslHmacSha256Policy_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &OpenSslHmacSha256PolicyErrorSource,
                 failureCategory,
-                (int32_t) OPENSSLHMACSHA256POLICY_ERROR_HMAC_FAILED
+                OPENSSLHMACSHA256POLICY_ERROR_HMAC_FAILED
             );
         }
     }
     else
     {
-        SolidSyslog_Error(
+        OpenSslHmacSha256Policy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &OpenSslHmacSha256PolicyErrorSource,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
-            (int32_t) OPENSSLHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE
+            OPENSSLHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE
         );
     }
     /* Wipe the whole key buffer — the full region GetKey was handed, not just

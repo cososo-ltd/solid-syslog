@@ -36,11 +36,10 @@ struct SolidSyslogStream* SolidSyslogPosixTcpStream_Create(const struct SolidSys
     }
     else
     {
-        SolidSyslog_Error(
+        PosixTcpStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &PosixTcpStreamErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) POSIXTCPSTREAM_ERROR_POOL_EXHAUSTED
+            POSIXTCPSTREAM_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -54,11 +53,10 @@ void SolidSyslogPosixTcpStream_Destroy(struct SolidSyslogStream* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&PosixTcpStream_Allocator, index, PosixTcpStream_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        PosixTcpStream_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &PosixTcpStreamErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) POSIXTCPSTREAM_ERROR_UNKNOWN_DESTROY
+            POSIXTCPSTREAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

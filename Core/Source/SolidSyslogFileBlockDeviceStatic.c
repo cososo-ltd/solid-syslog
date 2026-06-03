@@ -37,11 +37,10 @@ struct SolidSyslogBlockDevice* SolidSyslogFileBlockDevice_Create(struct SolidSys
     }
     else
     {
-        SolidSyslog_Error(
+        FileBlockDevice_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &FileBlockDeviceErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) FILEBLOCKDEVICE_ERROR_POOL_EXHAUSTED
+            FILEBLOCKDEVICE_ERROR_POOL_EXHAUSTED
         );
     }
     return result;
@@ -55,11 +54,10 @@ void SolidSyslogFileBlockDevice_Destroy(struct SolidSyslogBlockDevice* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&FileBlockDevice_Allocator, index, FileBlockDevice_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        FileBlockDevice_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &FileBlockDeviceErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) FILEBLOCKDEVICE_ERROR_UNKNOWN_DESTROY
+            FILEBLOCKDEVICE_ERROR_UNKNOWN_DESTROY
         );
     }
 }

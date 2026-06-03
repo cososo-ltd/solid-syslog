@@ -36,11 +36,10 @@ struct SolidSyslogResolver* SolidSyslogLwipRawResolver_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        LwipRawResolver_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &LwipRawResolverErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) LWIPRAWRESOLVER_ERROR_POOL_EXHAUSTED
+            LWIPRAWRESOLVER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -54,11 +53,10 @@ void SolidSyslogLwipRawResolver_Destroy(struct SolidSyslogResolver* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&LwipRawResolver_Allocator, index, LwipRawResolver_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        LwipRawResolver_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &LwipRawResolverErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) LWIPRAWRESOLVER_ERROR_UNKNOWN_DESTROY
+            LWIPRAWRESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

@@ -170,11 +170,10 @@ static inline bool TlsStream_InitSslContext(struct SolidSyslogTlsStream* self)
     bool ok = self->Ctx != NULL;
     if (!ok)
     {
-        SolidSyslog_Error(
+        TlsStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &TlsStreamErrorSource,
             SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-            (int32_t) TLSSTREAM_ERROR_CONTEXT_INIT_FAILED
+            TLSSTREAM_ERROR_CONTEXT_INIT_FAILED
         );
     }
     return ok;
@@ -251,11 +250,10 @@ static inline bool TlsStream_InitSslSession(struct SolidSyslogTlsStream* self)
     bool ok = self->Ssl != NULL;
     if (!ok)
     {
-        SolidSyslog_Error(
+        TlsStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &TlsStreamErrorSource,
             SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-            (int32_t) TLSSTREAM_ERROR_SESSION_INIT_FAILED
+            TLSSTREAM_ERROR_SESSION_INIT_FAILED
         );
     }
     return ok;
@@ -272,11 +270,10 @@ static inline bool TlsStream_AttachTransportBio(struct SolidSyslogTlsStream* sel
     }
     else
     {
-        SolidSyslog_Error(
+        TlsStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &TlsStreamErrorSource,
             SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-            (int32_t) TLSSTREAM_ERROR_SESSION_INIT_FAILED
+            TLSSTREAM_ERROR_SESSION_INIT_FAILED
         );
     }
     return ok;
@@ -396,11 +393,10 @@ static inline bool TlsStream_ConfigureExpectedHostname(struct SolidSyslogTlsStre
              (SSL_set1_host(self->Ssl, self->Config.ServerName) == 1);
         if (!ok)
         {
-            SolidSyslog_Error(
+            TlsStream_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &TlsStreamErrorSource,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
-                (int32_t) TLSSTREAM_ERROR_SERVER_NAME_NOT_SET
+                TLSSTREAM_ERROR_SERVER_NAME_NOT_SET
             );
         }
     }
@@ -465,21 +461,19 @@ static inline bool TlsStream_PerformHandshake(struct SolidSyslogTlsStream* self)
             int err = SSL_get_error(self->Ssl, rc);
             if (!TlsStream_IsRetryableSslError(err))
             {
-                SolidSyslog_Error(
+                TlsStream_Report(
                     SOLIDSYSLOG_SEVERITY_ERROR,
-                    &TlsStreamErrorSource,
                     SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
-                    (int32_t) TLSSTREAM_ERROR_HANDSHAKE_REJECTED
+                    TLSSTREAM_ERROR_HANDSHAKE_REJECTED
                 );
                 done = true;
             }
             else if (TlsStream_IsHandshakeBudgetExhausted(totalSleptMs, budgetMs))
             {
-                SolidSyslog_Error(
+                TlsStream_Report(
                     SOLIDSYSLOG_SEVERITY_ERROR,
-                    &TlsStreamErrorSource,
                     SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
-                    (int32_t) TLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
+                    TLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
                 );
                 done = true;
             }

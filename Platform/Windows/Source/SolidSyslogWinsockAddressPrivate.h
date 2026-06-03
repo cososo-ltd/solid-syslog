@@ -1,6 +1,10 @@
 #ifndef SOLIDSYSLOGWINSOCKADDRESSPRIVATE_H
 #define SOLIDSYSLOGWINSOCKADDRESSPRIVATE_H
 
+#include "SolidSyslogError.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogWinsockAddressErrors.h"
+
 #include <stdint.h>
 #include <winsock2.h>
 
@@ -24,6 +28,15 @@ static inline const struct sockaddr_in* SolidSyslogWinsockAddress_AsConstSockadd
 )
 {
     return &((const struct SolidSyslogWinsockAddress*) base)->Sockaddr;
+}
+
+static inline void WinsockAddress_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogWinsockAddressErrors code
+)
+{
+    SolidSyslog_Error(severity, &WinsockAddressErrorSource, category, code);
 }
 
 #endif /* SOLIDSYSLOGWINSOCKADDRESSPRIVATE_H */

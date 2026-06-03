@@ -33,11 +33,10 @@ struct SolidSyslogMutex* SolidSyslogWindowsMutex_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        WindowsMutex_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &WindowsMutexErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) WINDOWSMUTEX_ERROR_POOL_EXHAUSTED
+            WINDOWSMUTEX_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -51,11 +50,10 @@ void SolidSyslogWindowsMutex_Destroy(struct SolidSyslogMutex* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&WindowsMutex_Allocator, index, WindowsMutex_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        WindowsMutex_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &WindowsMutexErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) WINDOWSMUTEX_ERROR_UNKNOWN_DESTROY
+            WINDOWSMUTEX_ERROR_UNKNOWN_DESTROY
         );
     }
 }

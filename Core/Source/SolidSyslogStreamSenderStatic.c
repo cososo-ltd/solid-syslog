@@ -39,11 +39,10 @@ struct SolidSyslogSender* SolidSyslogStreamSender_Create(const struct SolidSyslo
         }
         else
         {
-            SolidSyslog_Error(
+            StreamSender_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &StreamSenderErrorSource,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                (int32_t) STREAMSENDER_ERROR_POOL_EXHAUSTED
+                STREAMSENDER_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -55,39 +54,19 @@ static bool StreamSender_IsValidConfig(const struct SolidSyslogStreamSenderConfi
     bool valid = false;
     if (config == NULL)
     {
-        SolidSyslog_Error(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            &StreamSenderErrorSource,
-            SOLIDSYSLOG_CAT_BAD_CONFIG,
-            (int32_t) STREAMSENDER_ERROR_NULL_CONFIG
-        );
+        StreamSender_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_BAD_CONFIG, STREAMSENDER_ERROR_NULL_CONFIG);
     }
     else if (config->Resolver == NULL)
     {
-        SolidSyslog_Error(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            &StreamSenderErrorSource,
-            SOLIDSYSLOG_CAT_BAD_CONFIG,
-            (int32_t) STREAMSENDER_ERROR_NULL_RESOLVER
-        );
+        StreamSender_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_BAD_CONFIG, STREAMSENDER_ERROR_NULL_RESOLVER);
     }
     else if (config->Stream == NULL)
     {
-        SolidSyslog_Error(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            &StreamSenderErrorSource,
-            SOLIDSYSLOG_CAT_BAD_CONFIG,
-            (int32_t) STREAMSENDER_ERROR_NULL_STREAM
-        );
+        StreamSender_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_BAD_CONFIG, STREAMSENDER_ERROR_NULL_STREAM);
     }
     else if (config->Address == NULL)
     {
-        SolidSyslog_Error(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            &StreamSenderErrorSource,
-            SOLIDSYSLOG_CAT_BAD_CONFIG,
-            (int32_t) STREAMSENDER_ERROR_NULL_ADDRESS
-        );
+        StreamSender_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_BAD_CONFIG, STREAMSENDER_ERROR_NULL_ADDRESS);
     }
     else
     {
@@ -104,11 +83,10 @@ void SolidSyslogStreamSender_Destroy(struct SolidSyslogSender* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&StreamSender_Allocator, index, StreamSender_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        StreamSender_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &StreamSenderErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) STREAMSENDER_ERROR_UNKNOWN_DESTROY
+            STREAMSENDER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

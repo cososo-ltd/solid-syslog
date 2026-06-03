@@ -1,7 +1,12 @@
 #ifndef SOLIDSYSLOGMBEDTLSAESGCMPOLICYPRIVATE_H
 #define SOLIDSYSLOGMBEDTLSAESGCMPOLICYPRIVATE_H
 
+#include <stdint.h>
+
+#include "SolidSyslogError.h"
 #include "SolidSyslogMbedTlsAesGcmPolicy.h"
+#include "SolidSyslogMbedTlsAesGcmPolicyErrors.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 
 struct SolidSyslogMbedTlsAesGcmPolicy
@@ -15,5 +20,14 @@ void MbedTlsAesGcmPolicy_Initialise(
     const struct SolidSyslogMbedTlsAesGcmPolicyConfig* config
 );
 void MbedTlsAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base);
+
+static inline void MbedTlsAesGcmPolicy_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogMbedTlsAesGcmPolicyErrors code
+)
+{
+    SolidSyslog_Error(severity, &MbedTlsAesGcmPolicyErrorSource, category, code);
+}
 
 #endif /* SOLIDSYSLOGMBEDTLSAESGCMPOLICYPRIVATE_H */

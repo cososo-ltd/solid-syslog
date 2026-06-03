@@ -120,21 +120,19 @@ static bool OpenSslAesGcmPolicy_SealRecord(
             }
             else
             {
-                SolidSyslog_Error(
+                OpenSslAesGcmPolicy_Report(
                     SOLIDSYSLOG_SEVERITY_ERROR,
-                    &OpenSslAesGcmPolicyErrorSource,
                     SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
-                    (int32_t) OPENSSLAESGCMPOLICY_ERROR_ENCRYPT_FAILED
+                    OPENSSLAESGCMPOLICY_ERROR_ENCRYPT_FAILED
                 );
             }
         }
         else
         {
-            SolidSyslog_Error(
+            OpenSslAesGcmPolicy_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &OpenSslAesGcmPolicyErrorSource,
                 SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
-                (int32_t) OPENSSLAESGCMPOLICY_ERROR_NONCE_FAILED
+                OPENSSLAESGCMPOLICY_ERROR_NONCE_FAILED
             );
         }
     }
@@ -151,11 +149,10 @@ static bool OpenSslAesGcmPolicy_FetchKey(struct SolidSyslogOpenSslAesGcmPolicy* 
                    (keyLength == (size_t) AES_256_KEY_SIZE);
     if (!fetched)
     {
-        SolidSyslog_Error(
+        OpenSslAesGcmPolicy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &OpenSslAesGcmPolicyErrorSource,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
-            (int32_t) OPENSSLAESGCMPOLICY_ERROR_KEY_UNAVAILABLE
+            OPENSSLAESGCMPOLICY_ERROR_KEY_UNAVAILABLE
         );
     }
     return fetched;
@@ -255,11 +252,10 @@ static bool OpenSslAesGcmPolicy_GcmDecrypt(
     }
     if (errored)
     {
-        SolidSyslog_Error(
+        OpenSslAesGcmPolicy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &OpenSslAesGcmPolicyErrorSource,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_OPEN_FAILED,
-            (int32_t) OPENSSLAESGCMPOLICY_ERROR_DECRYPT_FAILED
+            OPENSSLAESGCMPOLICY_ERROR_DECRYPT_FAILED
         );
     }
     return opened;

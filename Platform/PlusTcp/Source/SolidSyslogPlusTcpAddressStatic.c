@@ -40,11 +40,10 @@ struct SolidSyslogAddress* SolidSyslogPlusTcpAddress_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        PlusTcpAddress_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &PlusTcpAddressErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) PLUSTCPADDRESS_ERROR_POOL_EXHAUSTED
+            PLUSTCPADDRESS_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -64,11 +63,10 @@ void SolidSyslogPlusTcpAddress_Destroy(struct SolidSyslogAddress* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&PlusTcpAddress_Allocator, index, PlusTcpAddress_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        PlusTcpAddress_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &PlusTcpAddressErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) PLUSTCPADDRESS_ERROR_UNKNOWN_DESTROY
+            PLUSTCPADDRESS_ERROR_UNKNOWN_DESTROY
         );
     }
 }

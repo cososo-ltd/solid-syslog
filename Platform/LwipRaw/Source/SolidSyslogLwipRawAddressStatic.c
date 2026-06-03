@@ -40,11 +40,10 @@ struct SolidSyslogAddress* SolidSyslogLwipRawAddress_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        LwipRawAddress_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &LwipRawAddressErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) LWIPRAWADDRESS_ERROR_POOL_EXHAUSTED
+            LWIPRAWADDRESS_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -64,11 +63,10 @@ void SolidSyslogLwipRawAddress_Destroy(struct SolidSyslogAddress* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&LwipRawAddress_Allocator, index, LwipRawAddress_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        LwipRawAddress_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &LwipRawAddressErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) LWIPRAWADDRESS_ERROR_UNKNOWN_DESTROY
+            LWIPRAWADDRESS_ERROR_UNKNOWN_DESTROY
         );
     }
 }

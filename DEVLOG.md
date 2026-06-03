@@ -36,18 +36,27 @@ string table — are deleted. `struct SolidSyslogErrorSource` slims to
   error identity is allocation-agnostic; `Static.c` is the static-allocation TU
   (a future `Dynamic.c` would emit the same source). Each `Xxx.c` gains
   `SolidSyslogError.h` + its `*Errors.h` (MISRA 8.4).
-- **`_Report` wrapper unwound.** The 4 crypto-policy classes were the only ones
-  routing emission through an `Xxx_Report(sev, cat, code)` indirection; inlined
-  all 24 call sites to the direct `SolidSyslog_Error(...)` the other 39 use, so
-  they're uniform. A *uniform* wrapper, if ever wanted, is a clean separate
-  refactor.
-- **D.014 (MISRA 8.7) retired.** It existed because `_Report` confined each
-  crypto source's use to one TU; the unwind makes them cross-TU referenced like
-  every other source. cppcheck-misra reports no 8.7; the 4 suppressions and the
-  deviation are gone (tombstoned).
-- **Validation:** gcc + clang `1391` tests; freertos-host all platform suites
+- **Uniform typed `_Report` emit wrapper.** Each class gets a `static inline
+  Xxx_Report(severity, uint16_t category, enum SolidSyslog<Class>Errors code)` in
+  its `Private.h`; all 134 emit sites call it instead of `SolidSyslog_Error`
+  directly. Three problems fall out at once: the typed `code` parameter keeps
+  each per-class error enum's *tag* referenced (deleting the message tables had
+  orphaned them — MISRA 2.4 ×43), `static inline` gives internal linkage (no
+  8.7), and the body passes `code` to the `int32_t` detail param **uncast** —
+  enum→int32 is value-preserving (both signed, `int32_t` wide enough) and does
+  not trip essential-type 10.3 — so the `(int32_t)` cast disappears from every
+  call site. This *supersedes* an earlier crypto-only `_Report` unwind: the 2.4
+  fallout forced the uniformly-wrapped direction, which is the better end-state
+  (MISRA-clean tags, cast-free call sites, no suppressions). A *separate* report
+  fn can be added later if a future site needs a non-enum detail.
+- **D.014 (MISRA 8.7) retired.** It existed because the crypto-policy source
+  symbols were referenced from a single TU; relocation + the wrapper make every
+  source cross-TU referenced. cppcheck-misra reports no 8.7; the 4 suppressions
+  and the deviation are gone (tombstoned).
+- **Validation:** gcc + clang full unit suites; freertos-host all platform suites
   (FreeRtos/Lwip/MbedTls/FatFs); both FreeRTOS cross BDD ELFs built; clang-tidy,
-  clang-format, cppcheck-misra all clean. Windows/MSVC left to CI.
+  clang-format, and cppcheck-misra (full Core+Platform scope, suppressions
+  renumbered) all clean. Windows/MSVC left to CI; IWYU is advisory.
 
 ### Deferred
 
@@ -66,10 +75,12 @@ string table — are deleted. `struct SolidSyslogErrorSource` slims to
 
 ### Open questions
 
-- CI to confirm Windows/MSVC and the exact cppcheck / freertos-analysis lane
-  scoping. `misra_renumber.py` bails `AMBIGUOUS` (new 2.4 *analysis* findings on
-  now-unused enum tags confuse its count-matching), but the actual cppcheck-misra
-  gate is green, so nothing is gate-failing to renumber.
+- CI to confirm Windows/MSVC (the only tree not built locally). The first CI run
+  failed `analyze-cppcheck` on stale suppression lines (the relocation +
+  emit-site collapse shifted ~90 sites) plus the 43 new 2.4 findings; resolved by
+  the uniform wrapper (2.4) + `misra_renumber.py --apply` and a manual fix of 8
+  Address-`Private.h` 11.3 lines the script left `AMBIGUOUS` (11.2/11.3 coincide
+  on the same line). Gate now exit 0 in full scope.
 
 ## 2026-06-01 — S12.24 Report inconsistent SD config
 

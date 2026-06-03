@@ -41,11 +41,10 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     }
     else
     {
-        SolidSyslog_Error(
+        CircularBuffer_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &CircularBufferErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) CIRCULARBUFFER_ERROR_POOL_EXHAUSTED
+            CIRCULARBUFFER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -59,11 +58,10 @@ void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&CircularBuffer_Allocator, index, CircularBuffer_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        CircularBuffer_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &CircularBufferErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) CIRCULARBUFFER_ERROR_UNKNOWN_DESTROY
+            CIRCULARBUFFER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

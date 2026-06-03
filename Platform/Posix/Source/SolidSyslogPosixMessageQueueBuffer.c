@@ -101,11 +101,10 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
         int receiveErrno = success ? 0 : errno;
         if (!success && (receiveErrno != EAGAIN))
         {
-            SolidSyslog_Error(
+            PosixMessageQueueBuffer_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &PosixMessageQueueBufferErrorSource,
                 SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-                (int32_t) POSIXMESSAGEQUEUEBUFFER_ERROR_RECEIVE_FAILED
+                POSIXMESSAGEQUEUEBUFFER_ERROR_RECEIVE_FAILED
             );
         }
 
@@ -119,11 +118,10 @@ static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const 
     struct SolidSyslogPosixMessageQueueBuffer* self = PosixMessageQueueBuffer_SelfFromBase(base);
     if (mq_send(self->Mq, data, size, 0) != 0)
     {
-        SolidSyslog_Error(
+        PosixMessageQueueBuffer_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &PosixMessageQueueBufferErrorSource,
             SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-            (int32_t) POSIXMESSAGEQUEUEBUFFER_ERROR_SEND_FAILED
+            POSIXMESSAGEQUEUEBUFFER_ERROR_SEND_FAILED
         );
     }
 }

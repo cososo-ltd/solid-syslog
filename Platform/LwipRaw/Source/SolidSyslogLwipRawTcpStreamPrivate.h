@@ -1,10 +1,15 @@
 #ifndef SOLIDSYSLOGLWIPRAWTCPSTREAMPRIVATE_H
 #define SOLIDSYSLOGLWIPRAWTCPSTREAMPRIVATE_H
 
+#include <stdint.h>
+
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogLwipRawTcpStream.h"
+#include "SolidSyslogLwipRawTcpStreamErrors.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTunables.h"
 
@@ -29,5 +34,14 @@ void LwipRawTcpStream_Initialise(
     const struct SolidSyslogLwipRawTcpStreamConfig* config
 );
 void LwipRawTcpStream_Cleanup(struct SolidSyslogStream* base);
+
+static inline void LwipRawTcpStream_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogLwipRawTcpStreamErrors code
+)
+{
+    SolidSyslog_Error(severity, &LwipRawTcpStreamErrorSource, category, code);
+}
 
 #endif /* SOLIDSYSLOGLWIPRAWTCPSTREAMPRIVATE_H */

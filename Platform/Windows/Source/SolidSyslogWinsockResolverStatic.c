@@ -36,11 +36,10 @@ struct SolidSyslogResolver* SolidSyslogWinsockResolver_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        WinsockResolver_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &WinsockResolverErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) WINSOCKRESOLVER_ERROR_POOL_EXHAUSTED
+            WINSOCKRESOLVER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -54,11 +53,10 @@ void SolidSyslogWinsockResolver_Destroy(struct SolidSyslogResolver* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&WinsockResolver_Allocator, index, WinsockResolver_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        WinsockResolver_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &WinsockResolverErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) WINSOCKRESOLVER_ERROR_UNKNOWN_DESTROY
+            WINSOCKRESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

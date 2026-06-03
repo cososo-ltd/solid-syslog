@@ -1,6 +1,11 @@
 #ifndef SOLIDSYSLOGPLUSTCPTCPSTREAMPRIVATE_H
 #define SOLIDSYSLOGPLUSTCPTCPSTREAMPRIVATE_H
 
+#include <stdint.h>
+#include "SolidSyslogError.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogPlusTcpTcpStreamErrors.h"
+
 #include "FreeRTOS.h"
 #include "FreeRTOS_Sockets.h"
 
@@ -19,5 +24,14 @@ void PlusTcpTcpStream_Initialise(
     const struct SolidSyslogPlusTcpTcpStreamConfig* config
 );
 void PlusTcpTcpStream_Cleanup(struct SolidSyslogStream* base);
+
+static inline void PlusTcpTcpStream_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogPlusTcpTcpStreamErrors code
+)
+{
+    SolidSyslog_Error(severity, &PlusTcpTcpStreamErrorSource, category, code);
+}
 
 #endif /* SOLIDSYSLOGPLUSTCPTCPSTREAMPRIVATE_H */

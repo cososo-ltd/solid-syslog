@@ -36,11 +36,10 @@ struct SolidSyslogDatagram* SolidSyslogLwipRawDatagram_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        LwipRawDatagram_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &LwipRawDatagramErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) LWIPRAWDATAGRAM_ERROR_POOL_EXHAUSTED
+            LWIPRAWDATAGRAM_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -54,11 +53,10 @@ void SolidSyslogLwipRawDatagram_Destroy(struct SolidSyslogDatagram* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&LwipRawDatagram_Allocator, index, LwipRawDatagram_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        LwipRawDatagram_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &LwipRawDatagramErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) LWIPRAWDATAGRAM_ERROR_UNKNOWN_DESTROY
+            LWIPRAWDATAGRAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

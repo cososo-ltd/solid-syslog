@@ -5,6 +5,9 @@
 #include <stdint.h>
 
 #include "SolidSyslogBufferDefinition.h"
+#include "SolidSyslogCircularBufferErrors.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogPrival.h"
 
 struct SolidSyslogMutex;
 
@@ -26,5 +29,14 @@ void CircularBuffer_Initialise(
     size_t ringBytes
 );
 void CircularBuffer_Cleanup(struct SolidSyslogBuffer* base);
+
+static inline void CircularBuffer_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogCircularBufferErrors code
+)
+{
+    SolidSyslog_Error(severity, &CircularBufferErrorSource, category, code);
+}
 
 #endif /* SOLIDSYSLOGCIRCULARBUFFERPRIVATE_H */

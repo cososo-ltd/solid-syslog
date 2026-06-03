@@ -1,7 +1,10 @@
 #ifndef SOLIDSYSLOGPRIVATE_H
 #define SOLIDSYSLOGPRIVATE_H
 
+#include "SolidSyslogError.h"
+#include "SolidSyslogErrors.h"
 #include "SolidSyslogMessageFormatter.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogTimestamp.h"
 
 struct SolidSyslogBuffer;
@@ -27,5 +30,10 @@ void SolidSyslog_Cleanup(struct SolidSyslog* self);
  * typedefs, so they stay TU-internal across this class. */
 void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts);
 void SolidSyslog_NullStringFunction(struct SolidSyslogFormatter* formatter);
+
+static inline void SolidSyslog_Report(enum SolidSyslogSeverity severity, uint16_t category, enum SolidSyslogErrors code)
+{
+    SolidSyslog_Error(severity, &SolidSyslogErrorSource, category, code);
+}
 
 #endif /* SOLIDSYSLOGPRIVATE_H */

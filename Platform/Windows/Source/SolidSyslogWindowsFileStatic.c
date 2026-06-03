@@ -33,11 +33,10 @@ struct SolidSyslogFile* SolidSyslogWindowsFile_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        WindowsFile_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &WindowsFileErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) WINDOWSFILE_ERROR_POOL_EXHAUSTED
+            WINDOWSFILE_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -51,11 +50,10 @@ void SolidSyslogWindowsFile_Destroy(struct SolidSyslogFile* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&WindowsFile_Allocator, index, WindowsFile_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        WindowsFile_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &WindowsFileErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) WINDOWSFILE_ERROR_UNKNOWN_DESTROY
+            WINDOWSFILE_ERROR_UNKNOWN_DESTROY
         );
     }
 }

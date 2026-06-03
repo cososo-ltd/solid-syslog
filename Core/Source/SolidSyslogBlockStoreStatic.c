@@ -65,12 +65,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
 
     if (result == SolidSyslogNullStore_Get())
     {
-        SolidSyslog_Error(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            &BlockStoreErrorSource,
-            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) BLOCKSTORE_ERROR_POOL_EXHAUSTED
-        );
+        BlockStore_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_POOL_EXHAUSTED, BLOCKSTORE_ERROR_POOL_EXHAUSTED);
     }
 
     return result;
@@ -137,11 +132,10 @@ void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore* base)
 
     if (!released)
     {
-        SolidSyslog_Error(
+        BlockStore_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &BlockStoreErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) BLOCKSTORE_ERROR_UNKNOWN_DESTROY
+            BLOCKSTORE_ERROR_UNKNOWN_DESTROY
         );
     }
 }

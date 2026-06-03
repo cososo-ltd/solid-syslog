@@ -1,6 +1,11 @@
 #ifndef SOLIDSYSLOGFREERTOSMUTEXPRIVATE_H
 #define SOLIDSYSLOGFREERTOSMUTEXPRIVATE_H
 
+#include <stdint.h>
+#include "SolidSyslogError.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogFreeRtosMutexErrors.h"
+
 #include "FreeRTOS.h"
 #include "semphr.h"
 
@@ -18,5 +23,14 @@ struct SolidSyslogFreeRtosMutex
 
 void FreeRtosMutex_Initialise(struct SolidSyslogMutex* base);
 void FreeRtosMutex_Cleanup(struct SolidSyslogMutex* base);
+
+static inline void FreeRtosMutex_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogFreeRtosMutexErrors code
+)
+{
+    SolidSyslog_Error(severity, &FreeRtosMutexErrorSource, category, code);
+}
 
 #endif /* SOLIDSYSLOGFREERTOSMUTEXPRIVATE_H */

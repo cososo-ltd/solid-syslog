@@ -4,8 +4,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "SolidSyslogError.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogUdpSender.h"
+#include "SolidSyslogUdpSenderErrors.h"
 
 struct SolidSyslogUdpSender
 {
@@ -17,5 +20,14 @@ struct SolidSyslogUdpSender
 
 void UdpSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogUdpSenderConfig* config);
 void UdpSender_Cleanup(struct SolidSyslogSender* base);
+
+static inline void UdpSender_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogUdpSenderErrors code
+)
+{
+    SolidSyslog_Error(severity, &UdpSenderErrorSource, category, code);
+}
 
 #endif /* SOLIDSYSLOGUDPSENDERPRIVATE_H */

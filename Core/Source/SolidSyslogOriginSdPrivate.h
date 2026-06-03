@@ -1,8 +1,13 @@
 #ifndef SOLIDSYSLOGORIGINSDPRIVATE_H
 #define SOLIDSYSLOGORIGINSDPRIVATE_H
 
+#include <stdint.h>
+
+#include "SolidSyslogError.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogOriginSd.h"
+#include "SolidSyslogOriginSdErrors.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 
 enum
@@ -29,5 +34,14 @@ struct SolidSyslogOriginSd
 
 void OriginSd_Initialise(struct SolidSyslogStructuredData* base, const struct SolidSyslogOriginSdConfig* config);
 void OriginSd_Cleanup(struct SolidSyslogStructuredData* base);
+
+static inline void OriginSd_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogOriginSdErrors code
+)
+{
+    SolidSyslog_Error(severity, &OriginSdErrorSource, category, code);
+}
 
 #endif /* SOLIDSYSLOGORIGINSDPRIVATE_H */

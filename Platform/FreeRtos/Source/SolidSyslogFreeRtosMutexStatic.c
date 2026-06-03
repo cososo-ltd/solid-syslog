@@ -33,11 +33,10 @@ struct SolidSyslogMutex* SolidSyslogFreeRtosMutex_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        FreeRtosMutex_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &FreeRtosMutexErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) FREERTOSMUTEX_ERROR_POOL_EXHAUSTED
+            FREERTOSMUTEX_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -51,11 +50,10 @@ void SolidSyslogFreeRtosMutex_Destroy(struct SolidSyslogMutex* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&FreeRtosMutex_Allocator, index, FreeRtosMutex_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        FreeRtosMutex_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &FreeRtosMutexErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) FREERTOSMUTEX_ERROR_UNKNOWN_DESTROY
+            FREERTOSMUTEX_ERROR_UNKNOWN_DESTROY
         );
     }
 }

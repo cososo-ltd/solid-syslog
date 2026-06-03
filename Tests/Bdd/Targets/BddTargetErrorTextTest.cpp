@@ -8,62 +8,71 @@
 
 TEST_GROUP(BddTargetErrorText){};
 
+// NOLINTBEGIN(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+#define CHECK_CATEGORY_TEXT(category, expectedText)                            \
+    do                                                                         \
+    {                                                                          \
+        STRCMP_EQUAL((expectedText), BddTargetErrorText_Category((category))); \
+    } while (0)
+
+// NOLINTEND(cppcoreguidelines-macro-usage,cppcoreguidelines-avoid-do-while)
+
 TEST(BddTargetErrorText, BadConfigCategoryMapsToText)
 {
-    STRCMP_EQUAL("bad config", BddTargetErrorText_Category(SOLIDSYSLOG_CAT_BAD_CONFIG));
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_BAD_CONFIG, "bad config");
 }
 
 TEST(BddTargetErrorText, BadArgumentCategoryMapsToText)
 {
-    STRCMP_EQUAL("bad argument", BddTargetErrorText_Category(SOLIDSYSLOG_CAT_BAD_ARGUMENT));
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_BAD_ARGUMENT, "bad argument");
 }
 
 TEST(BddTargetErrorText, PoolExhaustedCategoryMapsToText)
 {
-    STRCMP_EQUAL("pool exhausted", BddTargetErrorText_Category(SOLIDSYSLOG_CAT_POOL_EXHAUSTED));
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, "pool exhausted");
 }
 
 TEST(BddTargetErrorText, UnknownDestroyCategoryMapsToText)
 {
-    STRCMP_EQUAL("unknown destroy", BddTargetErrorText_Category(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY));
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, "unknown destroy");
 }
 
 TEST(BddTargetErrorText, BufferBackendFailedCategoryMapsToText)
 {
-    STRCMP_EQUAL("buffer backend failed", BddTargetErrorText_Category(SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED));
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, "buffer backend failed");
 }
 
 TEST(BddTargetErrorText, ResolverResolveFailedCategoryMapsToText)
 {
-    STRCMP_EQUAL("resolve failed", BddTargetErrorText_Category(SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED));
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED, "resolve failed");
 }
 
 TEST(BddTargetErrorText, SecurityPolicyKeyUnavailableCategoryMapsToText)
 {
-    STRCMP_EQUAL("key unavailable", BddTargetErrorText_Category(SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE));
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE, "key unavailable");
 }
 
 TEST(BddTargetErrorText, SecurityPolicySealFailedCategoryMapsToText)
 {
-    STRCMP_EQUAL("seal failed", BddTargetErrorText_Category(SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED));
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED, "seal failed");
 }
 
 TEST(BddTargetErrorText, SecurityPolicyOpenFailedCategoryMapsToText)
 {
-    STRCMP_EQUAL("open failed", BddTargetErrorText_Category(SOLIDSYSLOG_CAT_SECURITYPOLICY_OPEN_FAILED));
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITYPOLICY_OPEN_FAILED, "open failed");
 }
 
 TEST(BddTargetErrorText, TlsStreamInitFailedCategoryMapsToText)
 {
-    STRCMP_EQUAL("TLS init failed", BddTargetErrorText_Category(SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED));
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED, "TLS init failed");
 }
 
 TEST(BddTargetErrorText, TlsStreamHandshakeFailedCategoryMapsToText)
 {
-    STRCMP_EQUAL("TLS handshake failed", BddTargetErrorText_Category(SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED));
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED, "TLS handshake failed");
 }
 
 TEST(BddTargetErrorText, UnrecognisedCategoryMapsToUnknown)
 {
-    STRCMP_EQUAL("unknown", BddTargetErrorText_Category((uint16_t) 0xFFFFU));
+    CHECK_CATEGORY_TEXT((uint16_t) 0xFFFFU, "unknown");
 }

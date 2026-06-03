@@ -40,21 +40,19 @@ struct SolidSyslogSecurityPolicy* SolidSyslogOpenSslAesGcmPolicy_Create(
         }
         else
         {
-            SolidSyslog_Error(
+            OpenSslAesGcmPolicy_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &OpenSslAesGcmPolicyErrorSource,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                (int32_t) OPENSSLAESGCMPOLICY_ERROR_POOL_EXHAUSTED
+                OPENSSLAESGCMPOLICY_ERROR_POOL_EXHAUSTED
             );
         }
     }
     else
     {
-        SolidSyslog_Error(
+        OpenSslAesGcmPolicy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &OpenSslAesGcmPolicyErrorSource,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            (int32_t) OPENSSLAESGCMPOLICY_ERROR_BAD_CONFIG
+            OPENSSLAESGCMPOLICY_ERROR_BAD_CONFIG
         );
     }
     return handle;
@@ -72,11 +70,10 @@ void SolidSyslogOpenSslAesGcmPolicy_Destroy(struct SolidSyslogSecurityPolicy* ba
                     );
     if (!released)
     {
-        SolidSyslog_Error(
+        OpenSslAesGcmPolicy_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &OpenSslAesGcmPolicyErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) OPENSSLAESGCMPOLICY_ERROR_UNKNOWN_DESTROY
+            OPENSSLAESGCMPOLICY_ERROR_UNKNOWN_DESTROY
         );
     }
 }

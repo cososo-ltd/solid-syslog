@@ -106,21 +106,19 @@ static bool MbedTlsAesGcmPolicy_SealRecord(
             }
             else
             {
-                SolidSyslog_Error(
+                MbedTlsAesGcmPolicy_Report(
                     SOLIDSYSLOG_SEVERITY_ERROR,
-                    &MbedTlsAesGcmPolicyErrorSource,
                     SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
-                    (int32_t) MBEDTLSAESGCMPOLICY_ERROR_ENCRYPT_FAILED
+                    MBEDTLSAESGCMPOLICY_ERROR_ENCRYPT_FAILED
                 );
             }
         }
         else
         {
-            SolidSyslog_Error(
+            MbedTlsAesGcmPolicy_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &MbedTlsAesGcmPolicyErrorSource,
                 SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
-                (int32_t) MBEDTLSAESGCMPOLICY_ERROR_NONCE_FAILED
+                MBEDTLSAESGCMPOLICY_ERROR_NONCE_FAILED
             );
         }
     }
@@ -137,11 +135,10 @@ static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* 
                    (keyLength == (size_t) AES_256_KEY_SIZE);
     if (!fetched)
     {
-        SolidSyslog_Error(
+        MbedTlsAesGcmPolicy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &MbedTlsAesGcmPolicyErrorSource,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
-            (int32_t) MBEDTLSAESGCMPOLICY_ERROR_KEY_UNAVAILABLE
+            MBEDTLSAESGCMPOLICY_ERROR_KEY_UNAVAILABLE
         );
     }
     return fetched;
@@ -249,11 +246,10 @@ static bool MbedTlsAesGcmPolicy_GcmDecrypt(const struct SolidSyslogSecurityRecor
     mbedtls_gcm_free(&ctx);
     if (errored)
     {
-        SolidSyslog_Error(
+        MbedTlsAesGcmPolicy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &MbedTlsAesGcmPolicyErrorSource,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_OPEN_FAILED,
-            (int32_t) MBEDTLSAESGCMPOLICY_ERROR_DECRYPT_FAILED
+            MBEDTLSAESGCMPOLICY_ERROR_DECRYPT_FAILED
         );
     }
     return opened;

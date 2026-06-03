@@ -36,11 +36,10 @@ struct SolidSyslogDatagram* SolidSyslogWinsockDatagram_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        WinsockDatagram_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &WinsockDatagramErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) WINSOCKDATAGRAM_ERROR_POOL_EXHAUSTED
+            WINSOCKDATAGRAM_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -54,11 +53,10 @@ void SolidSyslogWinsockDatagram_Destroy(struct SolidSyslogDatagram* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&WinsockDatagram_Allocator, index, WinsockDatagram_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        WinsockDatagram_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &WinsockDatagramErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) WINSOCKDATAGRAM_ERROR_UNKNOWN_DESTROY
+            WINSOCKDATAGRAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

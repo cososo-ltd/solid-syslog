@@ -33,12 +33,7 @@ struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            &PosixMutexErrorSource,
-            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) POSIXMUTEX_ERROR_POOL_EXHAUSTED
-        );
+        PosixMutex_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_POOL_EXHAUSTED, POSIXMUTEX_ERROR_POOL_EXHAUSTED);
     }
     return handle;
 }
@@ -50,11 +45,10 @@ void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex* base)
                     SolidSyslogPoolAllocator_FreeIfInUse(&PosixMutex_Allocator, index, PosixMutex_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        PosixMutex_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &PosixMutexErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) POSIXMUTEX_ERROR_UNKNOWN_DESTROY
+            POSIXMUTEX_ERROR_UNKNOWN_DESTROY
         );
     }
 }

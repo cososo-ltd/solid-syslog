@@ -33,12 +33,7 @@ struct SolidSyslogFile* SolidSyslogPosixFile_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            &PosixFileErrorSource,
-            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) POSIXFILE_ERROR_POOL_EXHAUSTED
-        );
+        PosixFile_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_POOL_EXHAUSTED, POSIXFILE_ERROR_POOL_EXHAUSTED);
     }
     return handle;
 }
@@ -50,11 +45,10 @@ void SolidSyslogPosixFile_Destroy(struct SolidSyslogFile* base)
                     SolidSyslogPoolAllocator_FreeIfInUse(&PosixFile_Allocator, index, PosixFile_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        PosixFile_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &PosixFileErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) POSIXFILE_ERROR_UNKNOWN_DESTROY
+            POSIXFILE_ERROR_UNKNOWN_DESTROY
         );
     }
 }

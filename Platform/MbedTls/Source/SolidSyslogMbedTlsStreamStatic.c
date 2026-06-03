@@ -36,11 +36,10 @@ struct SolidSyslogStream* SolidSyslogMbedTlsStream_Create(const struct SolidSysl
     }
     else
     {
-        SolidSyslog_Error(
+        MbedTlsStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &MbedTlsStreamErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) MBEDTLSSTREAM_ERROR_POOL_EXHAUSTED
+            MBEDTLSSTREAM_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -54,11 +53,10 @@ void SolidSyslogMbedTlsStream_Destroy(struct SolidSyslogStream* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&MbedTlsStream_Allocator, index, MbedTlsStream_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        MbedTlsStream_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &MbedTlsStreamErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) MBEDTLSSTREAM_ERROR_UNKNOWN_DESTROY
+            MBEDTLSSTREAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

@@ -152,11 +152,10 @@ static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTl
               ) == 0;
     if (!ok)
     {
-        SolidSyslog_Error(
+        MbedTlsStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &MbedTlsStreamErrorSource,
             SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-            (int32_t) MBEDTLSSTREAM_ERROR_DEFAULTS_NOT_APPLIED
+            MBEDTLSSTREAM_ERROR_DEFAULTS_NOT_APPLIED
         );
     }
     return ok;
@@ -180,11 +179,10 @@ static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsSt
     bool ok = mbedtls_ssl_setup(&self->SslContext, &self->SslConfig) == 0;
     if (!ok)
     {
-        SolidSyslog_Error(
+        MbedTlsStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &MbedTlsStreamErrorSource,
             SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-            (int32_t) MBEDTLSSTREAM_ERROR_SESSION_INIT_FAILED
+            MBEDTLSSTREAM_ERROR_SESSION_INIT_FAILED
         );
     }
     return ok;
@@ -198,11 +196,10 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
         ok = mbedtls_ssl_set_hostname(&self->SslContext, self->Config.ServerName) == 0;
         if (!ok)
         {
-            SolidSyslog_Error(
+            MbedTlsStream_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &MbedTlsStreamErrorSource,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
-                (int32_t) MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET
+                MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET
             );
         }
     }
@@ -238,21 +235,19 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
         }
         else if (!MbedTlsStream_IsRetryableHandshakeRc(rc))
         {
-            SolidSyslog_Error(
+            MbedTlsStream_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &MbedTlsStreamErrorSource,
                 SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
-                (int32_t) MBEDTLSSTREAM_ERROR_HANDSHAKE_REJECTED
+                MBEDTLSSTREAM_ERROR_HANDSHAKE_REJECTED
             );
             done = true;
         }
         else if (MbedTlsStream_IsHandshakeBudgetExhausted(totalSleptMs, budgetMs))
         {
-            SolidSyslog_Error(
+            MbedTlsStream_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &MbedTlsStreamErrorSource,
                 SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
-                (int32_t) MBEDTLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
+                MBEDTLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
             );
             done = true;
         }

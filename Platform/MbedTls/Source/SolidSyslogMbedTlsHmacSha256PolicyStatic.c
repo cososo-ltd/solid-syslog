@@ -40,21 +40,19 @@ struct SolidSyslogSecurityPolicy* SolidSyslogMbedTlsHmacSha256Policy_Create(
         }
         else
         {
-            SolidSyslog_Error(
+            MbedTlsHmacSha256Policy_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &MbedTlsHmacSha256PolicyErrorSource,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                (int32_t) MBEDTLSHMACSHA256POLICY_ERROR_POOL_EXHAUSTED
+                MBEDTLSHMACSHA256POLICY_ERROR_POOL_EXHAUSTED
             );
         }
     }
     else
     {
-        SolidSyslog_Error(
+        MbedTlsHmacSha256Policy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &MbedTlsHmacSha256PolicyErrorSource,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            (int32_t) MBEDTLSHMACSHA256POLICY_ERROR_BAD_CONFIG
+            MBEDTLSHMACSHA256POLICY_ERROR_BAD_CONFIG
         );
     }
     return handle;
@@ -72,11 +70,10 @@ void SolidSyslogMbedTlsHmacSha256Policy_Destroy(struct SolidSyslogSecurityPolicy
                     );
     if (!released)
     {
-        SolidSyslog_Error(
+        MbedTlsHmacSha256Policy_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &MbedTlsHmacSha256PolicyErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) MBEDTLSHMACSHA256POLICY_ERROR_UNKNOWN_DESTROY
+            MBEDTLSHMACSHA256POLICY_ERROR_UNKNOWN_DESTROY
         );
     }
 }
