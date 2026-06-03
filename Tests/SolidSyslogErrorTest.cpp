@@ -17,13 +17,13 @@ TEST_GROUP(SolidSyslogErrorEx)
 
 TEST(SolidSyslogErrorEx, ErrorExWithDefaultHandlerDoesNotCrash)
 {
-    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    static const struct SolidSyslogErrorSource source = {"test"};
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &source, 0U, 0);
 }
 
 TEST(SolidSyslogErrorEx, InstalledHandlerReceivesEventFieldsAndContext)
 {
-    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    static const struct SolidSyslogErrorSource source = {"test"};
     ErrorHandlerFake_Install(&sentinel);
 
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, 7U, 42);
@@ -38,7 +38,7 @@ TEST(SolidSyslogErrorEx, InstalledHandlerReceivesEventFieldsAndContext)
 
 TEST(SolidSyslogErrorEx, SetErrorHandlerExWithNullHandlerRestoresDefault)
 {
-    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    static const struct SolidSyslogErrorSource source = {"test"};
     ErrorHandlerFake_Install(&sentinel);
 
     SolidSyslog_SetErrorHandler(nullptr, &sentinel);

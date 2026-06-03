@@ -1,5 +1,76 @@
 # Dev Log
 
+## 2026-06-03 — S12.26 Error text decoupling — codes-only library
+
+Completed the error-reporting redesign begun in S12.25: the library is now
+**codes-only**. The 43 `*Messages.c` translation units — every error message
+string table — are deleted. `struct SolidSyslogErrorSource` slims to
+`{ const char* Name; }`; `AsString` is gone.
+
+### Decisions
+
+- **Slim struct over the link-seam override.** The original intent (recalled by
+  David) was that `AsString` stay on the struct as an *overridable* per-class
+  symbol, so an integrator could substitute their own and the library's strings
+  would never link. The implementation had drifted — the resolver was `static`
+  and co-located with the source symbol, so referencing a source always linked
+  its table. We could have restored the seam, but it was judged overkill: its
+  only payoff is free per-detail dispatch in the bundled handler, and it forces a
+  `TextNull.c` workaround to reach true zero-text (no weak symbols allowed). The
+  slim struct gives zero-text **by construction** — strings link only if some
+  code calls a text function, and none does.
+- **Consumer-lens reframing.** A library *user* has one hook: install one
+  `SolidSyslogErrorHandler` and react on the four event axes
+  (Severity / Source / Category / Detail). Those reaction axes were all delivered
+  by S12.25; S12.26 only moves *text*, which only the log path wants — an HMI
+  keys on the portable `Category`, and a codes-only build links nothing. So text
+  decoupling is invisible to the user and actively helps the flash-constrained /
+  i18n integrator.
+- **One consumer-side text owner.** `BddTargetErrorText_Category(uint16_t)` (12
+  categories, TDD'd) is the single place mapping the portable category axis to
+  prose. The three BDD/FreeRtos handlers print `Source->Name` + category text +
+  numeric `Detail`; no per-source dispatch table needed. Lives in
+  `Bdd/Targets/Common/` for now — promotable to a top-level `Example/` for the
+  future SL1/SL2/SL3 worked examples without touching the library.
+- **Source symbol relocates to the vtable TU `Xxx.c`, never `Static.c`.** The
+  error identity is allocation-agnostic; `Static.c` is the static-allocation TU
+  (a future `Dynamic.c` would emit the same source). Each `Xxx.c` gains
+  `SolidSyslogError.h` + its `*Errors.h` (MISRA 8.4).
+- **`_Report` wrapper unwound.** The 4 crypto-policy classes were the only ones
+  routing emission through an `Xxx_Report(sev, cat, code)` indirection; inlined
+  all 24 call sites to the direct `SolidSyslog_Error(...)` the other 39 use, so
+  they're uniform. A *uniform* wrapper, if ever wanted, is a clean separate
+  refactor.
+- **D.014 (MISRA 8.7) retired.** It existed because `_Report` confined each
+  crypto source's use to one TU; the unwind makes them cross-TU referenced like
+  every other source. cppcheck-misra reports no 8.7; the 4 suppressions and the
+  deviation are gone (tombstoned).
+- **Validation:** gcc + clang `1391` tests; freertos-host all platform suites
+  (FreeRtos/Lwip/MbedTls/FatFs); both FreeRTOS cross BDD ELFs built; clang-tidy,
+  clang-format, cppcheck-misra all clean. Windows/MSVC left to CI.
+
+### Deferred
+
+- **Delivery-health events.** Tracing the consumer use cases surfaced a real gap:
+  "server down" raises *no* event today — the Sender/Stream category bases are
+  reserved-but-unallocated and `PosixTcpStream` is silent on connect/send
+  failure, so a user cannot react to "can't reach the server". Worth more than
+  any text decision; proposed as the next E12 story (edge-triggered
+  stalled/resumed categories + documented handler execution contract). Out of
+  scope here.
+- **Rich per-detail prose** in the text handler — shipped category-only +
+  numeric detail; per-class prose is addable later as deletable example code.
+- **Codes-only CI gate** — dropped. With the strings physically removed (not
+  hidden behind a link choice), codes-only is true by construction; a regression
+  would be a visible code addition in review, not a silent link inclusion.
+
+### Open questions
+
+- CI to confirm Windows/MSVC and the exact cppcheck / freertos-analysis lane
+  scoping. `misra_renumber.py` bails `AMBIGUOUS` (new 2.4 *analysis* findings on
+  now-unused enum tags confuse its count-matching), but the actual cppcheck-misra
+  gate is green, so nothing is gate-failing to renumber.
+
 ## 2026-06-01 — S12.24 Report inconsistent SD config
 
 Closed the SD config-pair consistency gap CodeRabbit re-raised on PR #502 (deferred

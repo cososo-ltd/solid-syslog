@@ -5,8 +5,12 @@
 
 #include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogAtomicCounterDefinition.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogNullAtomicCounter.h"
+#include "SolidSyslogStdAtomicCounterErrors.h"
 #include "SolidSyslogStdAtomicCounterPrivate.h"
+
+const struct SolidSyslogErrorSource StdAtomicCounterErrorSource = {"StdAtomicCounter"};
 
 static uint32_t StdAtomicCounter_Increment(struct SolidSyslogAtomicCounter* base);
 static void StdAtomicCounter_Init(struct SolidSyslogStdAtomicCounter* self, uint32_t value);

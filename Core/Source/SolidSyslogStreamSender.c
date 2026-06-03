@@ -3,14 +3,18 @@
 #include <stdint.h>
 
 #include "SolidSyslogEndpoint.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogResolver.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamSender.h"
+#include "SolidSyslogStreamSenderErrors.h"
 #include "SolidSyslogStreamSenderPrivate.h"
 #include "SolidSyslogTransport.h"
+
+const struct SolidSyslogErrorSource StreamSenderErrorSource = {"StreamSender"};
 
 struct SolidSyslogAddress;
 struct SolidSyslogFormatter;

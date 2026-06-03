@@ -6,10 +6,14 @@
 #include <string.h>
 
 #include "SolidSyslogBufferDefinition.h"
+#include "SolidSyslogCircularBufferErrors.h"
 #include "SolidSyslogCircularBufferPrivate.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogMutex.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogTunables.h"
+
+const struct SolidSyslogErrorSource CircularBufferErrorSource = {"CircularBuffer"};
 
 enum
 {

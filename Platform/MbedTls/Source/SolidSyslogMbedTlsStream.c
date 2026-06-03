@@ -17,6 +17,8 @@
 #include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogTunables.h"
 
+const struct SolidSyslogErrorSource MbedTlsStreamErrorSource = {"MbedTlsStream"};
+
 enum
 {
     HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1

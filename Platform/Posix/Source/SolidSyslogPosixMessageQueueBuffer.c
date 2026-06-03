@@ -19,6 +19,8 @@
 #include "SolidSyslogPosixProcessId.h"
 #include "SolidSyslogPrival.h"
 
+const struct SolidSyslogErrorSource PosixMessageQueueBufferErrorSource = {"PosixMessageQueueBuffer"};
+
 enum
 {
     /* 0600 in octal — owner read/write, equivalent to S_IRUSR | S_IWUSR. Hex form avoids MISRA 7.1. */

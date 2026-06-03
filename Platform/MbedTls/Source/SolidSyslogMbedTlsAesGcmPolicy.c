@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMacros.h"
 #include "SolidSyslogMbedTlsAesGcmPolicyErrors.h"
@@ -16,6 +17,8 @@
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogTunables.h"
+
+const struct SolidSyslogErrorSource MbedTlsAesGcmPolicyErrorSource = {"MbedTlsAesGcmPolicy"};
 
 enum
 {
@@ -103,19 +106,21 @@ static bool MbedTlsAesGcmPolicy_SealRecord(
             }
             else
             {
-                MbedTlsAesGcmPolicy_Report(
+                SolidSyslog_Error(
                     SOLIDSYSLOG_SEVERITY_ERROR,
+                    &MbedTlsAesGcmPolicyErrorSource,
                     SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
-                    MBEDTLSAESGCMPOLICY_ERROR_ENCRYPT_FAILED
+                    (int32_t) MBEDTLSAESGCMPOLICY_ERROR_ENCRYPT_FAILED
                 );
             }
         }
         else
         {
-            MbedTlsAesGcmPolicy_Report(
+            SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
+                &MbedTlsAesGcmPolicyErrorSource,
                 SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
-                MBEDTLSAESGCMPOLICY_ERROR_NONCE_FAILED
+                (int32_t) MBEDTLSAESGCMPOLICY_ERROR_NONCE_FAILED
             );
         }
     }
@@ -132,10 +137,11 @@ static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* 
                    (keyLength == (size_t) AES_256_KEY_SIZE);
     if (!fetched)
     {
-        MbedTlsAesGcmPolicy_Report(
+        SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
+            &MbedTlsAesGcmPolicyErrorSource,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
-            MBEDTLSAESGCMPOLICY_ERROR_KEY_UNAVAILABLE
+            (int32_t) MBEDTLSAESGCMPOLICY_ERROR_KEY_UNAVAILABLE
         );
     }
     return fetched;
@@ -243,10 +249,11 @@ static bool MbedTlsAesGcmPolicy_GcmDecrypt(const struct SolidSyslogSecurityRecor
     mbedtls_gcm_free(&ctx);
     if (errored)
     {
-        MbedTlsAesGcmPolicy_Report(
+        SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
+            &MbedTlsAesGcmPolicyErrorSource,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_OPEN_FAILED,
-            MBEDTLSAESGCMPOLICY_ERROR_DECRYPT_FAILED
+            (int32_t) MBEDTLSAESGCMPOLICY_ERROR_DECRYPT_FAILED
         );
     }
     return opened;

@@ -8,12 +8,15 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogOpenSslAesGcmPolicyErrors.h"
 #include "SolidSyslogOpenSslAesGcmPolicyPrivate.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
+
+const struct SolidSyslogErrorSource OpenSslAesGcmPolicyErrorSource = {"OpenSslAesGcmPolicy"};
 
 enum
 {
@@ -117,19 +120,21 @@ static bool OpenSslAesGcmPolicy_SealRecord(
             }
             else
             {
-                OpenSslAesGcmPolicy_Report(
+                SolidSyslog_Error(
                     SOLIDSYSLOG_SEVERITY_ERROR,
+                    &OpenSslAesGcmPolicyErrorSource,
                     SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
-                    OPENSSLAESGCMPOLICY_ERROR_ENCRYPT_FAILED
+                    (int32_t) OPENSSLAESGCMPOLICY_ERROR_ENCRYPT_FAILED
                 );
             }
         }
         else
         {
-            OpenSslAesGcmPolicy_Report(
+            SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
+                &OpenSslAesGcmPolicyErrorSource,
                 SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED,
-                OPENSSLAESGCMPOLICY_ERROR_NONCE_FAILED
+                (int32_t) OPENSSLAESGCMPOLICY_ERROR_NONCE_FAILED
             );
         }
     }
@@ -146,10 +151,11 @@ static bool OpenSslAesGcmPolicy_FetchKey(struct SolidSyslogOpenSslAesGcmPolicy* 
                    (keyLength == (size_t) AES_256_KEY_SIZE);
     if (!fetched)
     {
-        OpenSslAesGcmPolicy_Report(
+        SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
+            &OpenSslAesGcmPolicyErrorSource,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
-            OPENSSLAESGCMPOLICY_ERROR_KEY_UNAVAILABLE
+            (int32_t) OPENSSLAESGCMPOLICY_ERROR_KEY_UNAVAILABLE
         );
     }
     return fetched;
@@ -249,10 +255,11 @@ static bool OpenSslAesGcmPolicy_GcmDecrypt(
     }
     if (errored)
     {
-        OpenSslAesGcmPolicy_Report(
+        SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
+            &OpenSslAesGcmPolicyErrorSource,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_OPEN_FAILED,
-            OPENSSLAESGCMPOLICY_ERROR_DECRYPT_FAILED
+            (int32_t) OPENSSLAESGCMPOLICY_ERROR_DECRYPT_FAILED
         );
     }
     return opened;

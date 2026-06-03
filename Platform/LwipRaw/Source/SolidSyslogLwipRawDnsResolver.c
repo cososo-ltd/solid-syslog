@@ -18,6 +18,8 @@
 #include "lwip/err.h"
 #include "lwip/ip_addr.h"
 
+const struct SolidSyslogErrorSource LwipRawDnsResolverErrorSource = {"LwipRawDnsResolver"};
+
 struct SolidSyslogAddress;
 
 /* Per-resolve parameters carried across the marshal hops. The dns_gethostbyname

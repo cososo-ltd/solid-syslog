@@ -198,10 +198,3 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:16
 # See docs/misra-deviations.md#d013
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:315
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:334
-
-# D.014 — Rule 8.7: public-API SolidSyslogErrorSource objects with external linkage
-# See docs/misra-deviations.md#d014
-misra-c2012-8.7:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256PolicyMessages.c:31
-misra-c2012-8.7:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicyMessages.c:35
-misra-c2012-8.7:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicyMessages.c:35
-misra-c2012-8.7:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256PolicyMessages.c:31

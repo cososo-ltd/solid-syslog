@@ -4,9 +4,13 @@
 #include <stddef.h>
 
 #include "SolidSyslogBufferDefinition.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogNullBuffer.h"
+#include "SolidSyslogPassthroughBufferErrors.h"
 #include "SolidSyslogPassthroughBufferPrivate.h"
 #include "SolidSyslogSender.h"
+
+const struct SolidSyslogErrorSource PassthroughBufferErrorSource = {"PassthroughBuffer"};
 
 static bool PassthroughBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void PassthroughBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);

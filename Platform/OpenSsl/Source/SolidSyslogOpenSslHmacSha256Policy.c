@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogOpenSslHmacSha256PolicyErrors.h"
 #include "SolidSyslogOpenSslHmacSha256PolicyPrivate.h"
@@ -14,6 +15,8 @@
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogTunables.h"
+
+const struct SolidSyslogErrorSource OpenSslHmacSha256PolicyErrorSource = {"OpenSslHmacSha256Policy"};
 
 enum
 {
@@ -110,19 +113,21 @@ static bool OpenSslHmacSha256Policy_ComputeTag(
         }
         else
         {
-            OpenSslHmacSha256Policy_Report(
+            SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_ERROR,
+                &OpenSslHmacSha256PolicyErrorSource,
                 failureCategory,
-                OPENSSLHMACSHA256POLICY_ERROR_HMAC_FAILED
+                (int32_t) OPENSSLHMACSHA256POLICY_ERROR_HMAC_FAILED
             );
         }
     }
     else
     {
-        OpenSslHmacSha256Policy_Report(
+        SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
+            &OpenSslHmacSha256PolicyErrorSource,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
-            OPENSSLHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE
+            (int32_t) OPENSSLHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE
         );
     }
     /* Wipe the whole key buffer — the full region GetKey was handed, not just

@@ -2,10 +2,14 @@
 
 #include <stddef.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogNullSd.h"
+#include "SolidSyslogOriginSdErrors.h"
 #include "SolidSyslogOriginSdPrivate.h"
 #include "SolidSyslogStructuredDataDefinition.h"
+
+const struct SolidSyslogErrorSource OriginSdErrorSource = {"OriginSd"};
 
 static void OriginSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter);
 

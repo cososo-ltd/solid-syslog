@@ -1,9 +1,9 @@
 #include "BddTargetStderrErrorHandler.h"
 
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "BddTargetErrorText.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
 
@@ -11,16 +11,12 @@ static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEve
 {
     (void) context;
     const char* sourceName = "<unknown>";
-    const char* message = "<no translation>";
     const struct SolidSyslogErrorSource* source = event->Source;
     if (source != NULL)
     {
         sourceName = source->Name;
-        if (source->AsString != NULL)
-        {
-            message = source->AsString((uint8_t) event->Detail);
-        }
     }
+    const char* message = BddTargetErrorText_Category(event->Category);
     if (event->Severity <= SOLIDSYSLOG_SEVERITY_ERROR)
     {
         (void) fprintf(

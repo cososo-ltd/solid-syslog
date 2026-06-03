@@ -10,7 +10,6 @@
 #include "SocketFake.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogEndpoint.h"
-#include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogGetAddrInfoResolver.h"
@@ -919,23 +918,4 @@ TEST(SolidSyslogUdpSenderPool, ExhaustedCreateReportsError)
     POINTERS_EQUAL(&UdpSenderErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
     UNSIGNED_LONGS_EQUAL(UDPSENDER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
-}
-
-TEST_GROUP(SolidSyslogUdpSenderErrorSource){};
-
-TEST(SolidSyslogUdpSenderErrorSource, AsStringReturnsMessageForKnownCode)
-{
-    STRCMP_EQUAL(
-        "SolidSyslogUdpSender_Create called with NULL config",
-        UdpSenderErrorSource.AsString(UDPSENDER_ERROR_NULL_CONFIG)
-    );
-    STRCMP_EQUAL(
-        "SolidSyslogUdpSender_Create pool exhausted; returning fallback sender",
-        UdpSenderErrorSource.AsString(UDPSENDER_ERROR_POOL_EXHAUSTED)
-    );
-}
-
-TEST(SolidSyslogUdpSenderErrorSource, AsStringReturnsFallbackForOutOfRangeCode)
-{
-    STRCMP_EQUAL("unknown", UdpSenderErrorSource.AsString(UDPSENDER_ERROR_MAX));
 }

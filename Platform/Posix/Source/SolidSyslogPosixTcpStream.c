@@ -13,11 +13,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogPosixAddressPrivate.h"
+#include "SolidSyslogPosixTcpStreamErrors.h"
 #include "SolidSyslogPosixTcpStreamPrivate.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogTunables.h"
+
+const struct SolidSyslogErrorSource PosixTcpStreamErrorSource = {"PosixTcpStream"};
 
 struct SolidSyslogAddress;
 

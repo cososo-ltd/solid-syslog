@@ -1,6 +1,10 @@
+#include "SolidSyslogError.h"
+#include "SolidSyslogLwipRawAddressErrors.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
 
 #include <string.h>
+
+const struct SolidSyslogErrorSource LwipRawAddressErrorSource = {"LwipRawAddress"};
 
 struct SolidSyslogAddress;
 

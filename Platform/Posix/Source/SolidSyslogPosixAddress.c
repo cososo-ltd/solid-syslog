@@ -1,7 +1,11 @@
+#include "SolidSyslogError.h"
+#include "SolidSyslogPosixAddressErrors.h"
 #include "SolidSyslogPosixAddressPrivate.h"
 
 #include <netinet/in.h>
 #include <string.h>
+
+const struct SolidSyslogErrorSource PosixAddressErrorSource = {"PosixAddress"};
 
 struct SolidSyslogAddress;
 

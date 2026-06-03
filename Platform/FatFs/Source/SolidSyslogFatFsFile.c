@@ -3,10 +3,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "SolidSyslogError.h"
+#include "SolidSyslogFatFsFileErrors.h"
 #include "SolidSyslogFatFsFilePrivate.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogNullFile.h"
 #include "ff.h"
+
+const struct SolidSyslogErrorSource FatFsFileErrorSource = {"FatFsFile"};
 
 #define READ_WRITE_OR_CREATE (FA_READ | FA_WRITE | FA_OPEN_ALWAYS)
 

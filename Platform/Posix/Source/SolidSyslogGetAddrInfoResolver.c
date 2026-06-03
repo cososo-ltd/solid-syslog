@@ -8,11 +8,15 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
-#include "SolidSyslogPosixAddressPrivate.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogGetAddrInfoResolverErrors.h"
 #include "SolidSyslogGetAddrInfoResolverPrivate.h"
 #include "SolidSyslogNullResolver.h"
+#include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
+
+const struct SolidSyslogErrorSource GetAddrInfoResolverErrorSource = {"GetAddrInfoResolver"};
 
 struct SolidSyslogAddress;
 

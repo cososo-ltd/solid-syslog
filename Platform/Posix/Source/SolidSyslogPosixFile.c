@@ -7,9 +7,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogNullFile.h"
+#include "SolidSyslogPosixFileErrors.h"
 #include "SolidSyslogPosixFilePrivate.h"
+
+const struct SolidSyslogErrorSource PosixFileErrorSource = {"PosixFile"};
 
 #define OWNER_READ_WRITE (S_IRUSR | S_IWUSR)
 #define DEFAULT_FILE_PERMISSIONS OWNER_READ_WRITE

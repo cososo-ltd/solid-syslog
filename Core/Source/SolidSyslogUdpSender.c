@@ -19,6 +19,8 @@
 
 struct SolidSyslogFormatter;
 
+const struct SolidSyslogErrorSource UdpSenderErrorSource = {"UdpSender"};
+
 static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size);
 static void UdpSender_Disconnect(struct SolidSyslogSender* base);
 

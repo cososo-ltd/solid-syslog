@@ -5,11 +5,15 @@
 #include <ws2tcpip.h>
 
 #include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogWinsockAddressPrivate.h"
+#include "SolidSyslogWinsockDatagramErrors.h"
 #include "SolidSyslogWinsockDatagramInternal.h"
 #include "SolidSyslogWinsockDatagramPrivate.h"
+
+const struct SolidSyslogErrorSource WinsockDatagramErrorSource = {"WinsockDatagram"};
 
 /* File-local forwarders. Taking the address of a __declspec(dllimport)
    Winsock function for static initialisation triggers MSVC C4232 (the address

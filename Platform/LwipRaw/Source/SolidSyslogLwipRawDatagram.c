@@ -3,16 +3,20 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "SolidSyslogDatagram.h"
+#include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogLwipRawAddressPrivate.h"
+#include "SolidSyslogLwipRawDatagramErrors.h"
+#include "SolidSyslogLwipRawMarshalPrivate.h"
+#include "SolidSyslogNullDatagram.h"
+#include "SolidSyslogUdpPayload.h"
 #include "lwip/arch.h"
 #include "lwip/err.h"
 #include "lwip/pbuf.h"
 #include "lwip/udp.h"
-#include "SolidSyslogDatagram.h"
-#include "SolidSyslogDatagramDefinition.h"
-#include "SolidSyslogLwipRawAddressPrivate.h"
-#include "SolidSyslogLwipRawMarshalPrivate.h"
-#include "SolidSyslogNullDatagram.h"
-#include "SolidSyslogUdpPayload.h"
+
+const struct SolidSyslogErrorSource LwipRawDatagramErrorSource = {"LwipRawDatagram"};
 
 struct SolidSyslogAddress;
 

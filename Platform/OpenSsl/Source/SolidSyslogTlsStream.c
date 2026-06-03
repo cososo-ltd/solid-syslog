@@ -19,6 +19,8 @@
 #include "SolidSyslogTlsStreamPrivate.h"
 #include "SolidSyslogTunables.h"
 
+const struct SolidSyslogErrorSource TlsStreamErrorSource = {"TlsStream"};
+
 enum
 {
     HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1

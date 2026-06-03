@@ -5,11 +5,15 @@
 #include <stdint.h>
 
 #include "SolidSyslogBlockDeviceDefinition.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogFile.h"
+#include "SolidSyslogFileBlockDeviceErrors.h"
 #include "SolidSyslogFileBlockDevicePrivate.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogNullBlockDevice.h"
 #include "SolidSyslogTunables.h"
+
+const struct SolidSyslogErrorSource FileBlockDeviceErrorSource = {"FileBlockDevice"};
 
 struct SolidSyslogFile;
 

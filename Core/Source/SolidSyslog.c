@@ -21,6 +21,8 @@
 #include "SolidSyslogTimestamp.h"
 #include "SolidSyslogTunables.h"
 
+const struct SolidSyslogErrorSource SolidSyslogErrorSource = {"SolidSyslog"};
+
 struct SolidSyslogBuffer;
 struct SolidSyslogFormatter;
 struct SolidSyslogSender;

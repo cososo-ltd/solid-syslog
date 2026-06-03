@@ -10,10 +10,14 @@
 
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogPosixAddressPrivate.h"
+#include "SolidSyslogPosixDatagramErrors.h"
 #include "SolidSyslogPosixDatagramPrivate.h"
 #include "SolidSyslogUdpPayload.h"
+
+const struct SolidSyslogErrorSource PosixDatagramErrorSource = {"PosixDatagram"};
 
 struct SolidSyslogAddress;
 
