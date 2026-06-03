@@ -69,7 +69,10 @@ void PlusFatFake_Reset(void)
     lastOpenPath = NULL;
     openFailMode = NULL;
     openAlwaysFails = false;
-    memset(openModes, 0, sizeof(openModes));
+    for (size_t modeIndex = 0; modeIndex < OPEN_MODE_CAPACITY; modeIndex++)
+    {
+        openModes[modeIndex] = NULL;
+    }
     closeCallCount = 0;
     memset(readSource, 0, sizeof(readSource));
     readSourceCount = 0;
@@ -267,9 +270,9 @@ void PlusFatFake_SetFileLength(unsigned long length)
     fileLength = (size_t) length;
 }
 
-size_t ff_filelength(FF_FILE* pxStream)
+size_t ff_filelength(FF_FILE* pxFile)
 {
-    (void) pxStream;
+    (void) pxFile;
     return fileLength;
 }
 

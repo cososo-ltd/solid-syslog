@@ -78,6 +78,7 @@ CPPCHECK_CMD = [
     "-IPlatform/PlusTcp/Interface",
     "-IPlatform/LwipRaw/Interface",
     "-IPlatform/FatFs/Interface",
+    "-IPlatform/PlusFat/Interface",
     "--xml",
     "--xml-version=2",
     "Core/Source/",
@@ -90,6 +91,7 @@ CPPCHECK_CMD = [
     "Platform/PlusTcp/Source/",
     "Platform/LwipRaw/Source/",
     "Platform/FatFs/Source/",
+    "Platform/PlusFat/Source/",
 ]
 
 SUPPRESSION_LINE = re.compile(r"^(misra-c2012-[0-9.]+):([^:]+):(\d+)\s*$")

@@ -45,8 +45,9 @@ struct SolidSyslogFile* SolidSyslogPlusFatFile_Create(void)
 void SolidSyslogPlusFatFile_Destroy(struct SolidSyslogFile* base)
 {
     size_t index = PlusFatFile_IndexFromHandle(base);
-    bool released = SolidSyslogPoolAllocator_IndexIsValid(&PlusFatFile_Allocator, index) &&
-                    SolidSyslogPoolAllocator_FreeIfInUse(&PlusFatFile_Allocator, index, PlusFatFile_CleanupAtIndex, NULL);
+    bool released =
+        SolidSyslogPoolAllocator_IndexIsValid(&PlusFatFile_Allocator, index) &&
+        SolidSyslogPoolAllocator_FreeIfInUse(&PlusFatFile_Allocator, index, PlusFatFile_CleanupAtIndex, NULL);
     if (!released)
     {
         PlusFatFile_Report(

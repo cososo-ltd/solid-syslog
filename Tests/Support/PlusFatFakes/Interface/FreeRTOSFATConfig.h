@@ -12,11 +12,11 @@
 #ifndef FREERTOSFATCONFIG_H
 #define FREERTOSFATCONFIG_H
 
-#define ffconfigBYTE_ORDER                ( pdFREERTOS_LITTLE_ENDIAN )
-#define ffconfigCWD_THREAD_LOCAL_INDEX    ( 0 )
+#define ffconfigBYTE_ORDER (pdFREERTOS_LITTLE_ENDIAN)
+#define ffconfigCWD_THREAD_LOCAL_INDEX (0)
 
-#if !defined( portINLINE )
-    #define portINLINE    __inline
+#if !defined(portINLINE)
+#define portINLINE __inline
 #endif
 
 #endif /* FREERTOSFATCONFIG_H */
