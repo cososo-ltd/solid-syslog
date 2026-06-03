@@ -44,6 +44,16 @@ EXTERN_C_BEGIN
     /* ff_seteof */
     int PlusFatFake_SeteofCallCount(void);
 
+    /* ff_stat */
+    void PlusFatFake_SetStatFails(void);
+    int PlusFatFake_StatCallCount(void);
+    const char* PlusFatFake_LastStatPath(void);
+
+    /* ff_remove */
+    void PlusFatFake_SetRemoveFails(void);
+    int PlusFatFake_RemoveCallCount(void);
+    const char* PlusFatFake_LastRemovePath(void);
+
 EXTERN_C_END
 
 #endif /* PLUSFATFAKE_H */

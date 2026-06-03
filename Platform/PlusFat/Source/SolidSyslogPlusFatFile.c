@@ -19,6 +19,8 @@ static bool PlusFatFile_Write(struct SolidSyslogFile* base, const void* buf, siz
 static void PlusFatFile_SeekTo(struct SolidSyslogFile* base, size_t offset);
 static size_t PlusFatFile_Size(struct SolidSyslogFile* base);
 static void PlusFatFile_Truncate(struct SolidSyslogFile* base);
+static bool PlusFatFile_Exists(struct SolidSyslogFile* base, const char* path);
+static bool PlusFatFile_Delete(struct SolidSyslogFile* base, const char* path);
 
 static inline struct SolidSyslogPlusFatFile* PlusFatFile_SelfFromBase(struct SolidSyslogFile* base);
 
@@ -33,6 +35,8 @@ void PlusFatFile_Initialise(struct SolidSyslogFile* base)
     self->Base.SeekTo = PlusFatFile_SeekTo;
     self->Base.Size = PlusFatFile_Size;
     self->Base.Truncate = PlusFatFile_Truncate;
+    self->Base.Exists = PlusFatFile_Exists;
+    self->Base.Delete = PlusFatFile_Delete;
     self->Fp = NULL;
 }
 
@@ -113,4 +117,17 @@ static void PlusFatFile_Truncate(struct SolidSyslogFile* base)
      * has no truncate-to-zero call of its own. */
     ff_fseek(self->Fp, 0, SEEK_SET);
     ff_seteof(self->Fp);
+}
+
+static bool PlusFatFile_Exists(struct SolidSyslogFile* base, const char* path)
+{
+    (void) base;
+    FF_Stat_t status;
+    return ff_stat(path, &status) == 0;
+}
+
+static bool PlusFatFile_Delete(struct SolidSyslogFile* base, const char* path)
+{
+    (void) base;
+    return ff_remove(path) == 0;
 }

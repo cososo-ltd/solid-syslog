@@ -53,6 +53,16 @@ static size_t fileLength;
 /* ff_seteof state */
 static int seteofCallCount;
 
+/* ff_stat state */
+static int statCallCount;
+static const char* lastStatPath;
+static int statResult;
+
+/* ff_remove state */
+static int removeCallCount;
+static const char* lastRemovePath;
+static int removeResult;
+
 void PlusFatFake_Reset(void)
 {
     openCallCount = 0;
@@ -77,6 +87,12 @@ void PlusFatFake_Reset(void)
     lastSeekWhence = 0;
     fileLength = 0;
     seteofCallCount = 0;
+    statCallCount = 0;
+    lastStatPath = NULL;
+    statResult = 0;
+    removeCallCount = 0;
+    lastRemovePath = NULL;
+    removeResult = 0;
 }
 
 void PlusFatFake_SetOpenFailsForMode(const char* mode)
@@ -267,4 +283,49 @@ int ff_seteof(FF_FILE* pxStream)
     (void) pxStream;
     seteofCallCount++;
     return 0;
+}
+
+void PlusFatFake_SetStatFails(void)
+{
+    statResult = -1;
+}
+
+int PlusFatFake_StatCallCount(void)
+{
+    return statCallCount;
+}
+
+const char* PlusFatFake_LastStatPath(void)
+{
+    return lastStatPath;
+}
+
+int ff_stat(const char* pcFileName, FF_Stat_t* pxStatBuffer)
+{
+    (void) pxStatBuffer;
+    statCallCount++;
+    lastStatPath = pcFileName;
+    return statResult;
+}
+
+void PlusFatFake_SetRemoveFails(void)
+{
+    removeResult = -1;
+}
+
+int PlusFatFake_RemoveCallCount(void)
+{
+    return removeCallCount;
+}
+
+const char* PlusFatFake_LastRemovePath(void)
+{
+    return lastRemovePath;
+}
+
+int ff_remove(const char* pcPath)
+{
+    removeCallCount++;
+    lastRemovePath = pcPath;
+    return removeResult;
 }

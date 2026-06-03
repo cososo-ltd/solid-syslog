@@ -191,3 +191,33 @@ TEST(SolidSyslogPlusFatFile, TruncateSeeksToZeroAndCallsFseteof)
     LONGS_EQUAL(0, PlusFatFake_LastSeekOffset());
     CALLED_FAKE(PlusFatFake_Seteof, ONCE);
 }
+
+TEST(SolidSyslogPlusFatFile, ExistsCallsFstatAndReportsTrue)
+{
+    CHECK_TRUE(SolidSyslogFile_Exists(file, TEST_PATH));
+
+    CALLED_FAKE(PlusFatFake_Stat, ONCE);
+    STRCMP_EQUAL(TEST_PATH, PlusFatFake_LastStatPath());
+}
+
+TEST(SolidSyslogPlusFatFile, ExistsReportsFalseWhenFstatFails)
+{
+    PlusFatFake_SetStatFails();
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, TEST_PATH));
+}
+
+TEST(SolidSyslogPlusFatFile, DeleteCallsFremoveAndReportsTrue)
+{
+    CHECK_TRUE(SolidSyslogFile_Delete(file, TEST_PATH));
+
+    CALLED_FAKE(PlusFatFake_Remove, ONCE);
+    STRCMP_EQUAL(TEST_PATH, PlusFatFake_LastRemovePath());
+}
+
+TEST(SolidSyslogPlusFatFile, DeleteReportsFalseWhenFremoveFails)
+{
+    PlusFatFake_SetRemoveFails();
+
+    CHECK_FALSE(SolidSyslogFile_Delete(file, TEST_PATH));
+}
