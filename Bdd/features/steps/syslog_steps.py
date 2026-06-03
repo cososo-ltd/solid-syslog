@@ -656,6 +656,18 @@ def _threshold_marker_present(context):
 
 @then("the capacity threshold callback was invoked")
 def step_threshold_callback_invoked(context):
+    # The crossing is edge-triggered inside the Service task's drain loop, so
+    # the marker appears asynchronously after the producing `send` returns. On
+    # a host target the drain is effectively instant; on FreeRTOS-on-QEMU each
+    # offline drain first burns a dead-connection send timeout, so the marker
+    # can lag the assertion by a second or two. Poll a bounded deadline rather
+    # than checking once — the negative case ("was not invoked") still asserts
+    # immediately, so a genuinely-absent marker cannot be masked by this wait.
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        if _threshold_marker_present(context):
+            break
+        time.sleep(0.1)
     assert _threshold_marker_present(context), (
         f"Expected threshold marker at {THRESHOLD_MARKER_PATH} or "
         f"{_THRESHOLD_STDOUT_TOKEN.decode()} on captured stdout; found neither"
