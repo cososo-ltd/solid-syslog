@@ -18,6 +18,8 @@
 #include "lwip/err.h"
 #include "lwip/ip_addr.h"
 
+const struct SolidSyslogErrorSource LwipRawDnsResolverErrorSource = {"LwipRawDnsResolver"};
+
 struct SolidSyslogAddress;
 
 /* Per-resolve parameters carried across the marshal hops. The dns_gethostbyname
@@ -172,11 +174,10 @@ static bool LwipRawDnsResolver_WaitForCallback(struct SolidSyslogLwipRawDnsResol
     }
     if (!self->Done)
     {
-        SolidSyslog_Error(
+        LwipRawDnsResolver_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &LwipRawDnsResolverErrorSource,
             SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
-            (int32_t) LWIPRAWDNSRESOLVER_ERROR_RESOLVE_TIMEOUT
+            LWIPRAWDNSRESOLVER_ERROR_RESOLVE_TIMEOUT
         );
     }
     return self->Done;

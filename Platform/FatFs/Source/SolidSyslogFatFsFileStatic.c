@@ -33,12 +33,7 @@ struct SolidSyslogFile* SolidSyslogFatFsFile_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            &FatFsFileErrorSource,
-            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) FATFSFILE_ERROR_POOL_EXHAUSTED
-        );
+        FatFsFile_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_POOL_EXHAUSTED, FATFSFILE_ERROR_POOL_EXHAUSTED);
     }
     return handle;
 }
@@ -50,11 +45,10 @@ void SolidSyslogFatFsFile_Destroy(struct SolidSyslogFile* base)
                     SolidSyslogPoolAllocator_FreeIfInUse(&FatFsFile_Allocator, index, FatFsFile_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        FatFsFile_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &FatFsFileErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) FATFSFILE_ERROR_UNKNOWN_DESTROY
+            FATFSFILE_ERROR_UNKNOWN_DESTROY
         );
     }
 }

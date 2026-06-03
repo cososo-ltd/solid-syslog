@@ -1,6 +1,11 @@
 #ifndef SOLIDSYSLOGBLOCKSTOREPRIVATE_H
 #define SOLIDSYSLOGBLOCKSTOREPRIVATE_H
 
+#include <stdint.h>
+
+#include "SolidSyslogBlockStoreErrors.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStoreDefinition.h"
 
 struct RecordStore;
@@ -25,5 +30,14 @@ void BlockStore_Initialise(
     const struct SolidSyslogBlockStoreConfig* config
 );
 void BlockStore_Cleanup(struct SolidSyslogStore* base);
+
+static inline void BlockStore_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogBlockStoreErrors code
+)
+{
+    SolidSyslog_Error(severity, &BlockStoreErrorSource, category, (int32_t) code);
+}
 
 #endif /* SOLIDSYSLOGBLOCKSTOREPRIVATE_H */

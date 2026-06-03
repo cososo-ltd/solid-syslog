@@ -41,11 +41,10 @@ struct SolidSyslogResolver* SolidSyslogLwipRawDnsResolver_Create(
         }
         else
         {
-            SolidSyslog_Error(
+            LwipRawDnsResolver_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &LwipRawDnsResolverErrorSource,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                (int32_t) LWIPRAWDNSRESOLVER_ERROR_POOL_EXHAUSTED
+                LWIPRAWDNSRESOLVER_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -64,11 +63,10 @@ void SolidSyslogLwipRawDnsResolver_Destroy(struct SolidSyslogResolver* base)
                     );
     if (!released)
     {
-        SolidSyslog_Error(
+        LwipRawDnsResolver_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &LwipRawDnsResolverErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) LWIPRAWDNSRESOLVER_ERROR_UNKNOWN_DESTROY
+            LWIPRAWDNSRESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

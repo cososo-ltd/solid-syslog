@@ -200,25 +200,20 @@ add_executable(SolidSyslogBddTargetLwip
     ${FREERTOS_COMMON_DIR}/Syscalls.c
     netif/EthernetIf.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawAddress.c
-    ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawAddressMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c
-    ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolverMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolverStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c
-    ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawDatagramMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawDatagramStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c
-    ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStreamMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStreamStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawMarshal.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c
-    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutexMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutexStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
-    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetInteractive.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLanguage.c

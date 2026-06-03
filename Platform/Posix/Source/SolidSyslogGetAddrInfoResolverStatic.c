@@ -36,11 +36,10 @@ struct SolidSyslogResolver* SolidSyslogGetAddrInfoResolver_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        GetAddrInfoResolver_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &GetAddrInfoResolverErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) GETADDRINFORESOLVER_ERROR_POOL_EXHAUSTED
+            GETADDRINFORESOLVER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -58,11 +57,10 @@ void SolidSyslogGetAddrInfoResolver_Destroy(struct SolidSyslogResolver* base)
                     );
     if (!released)
     {
-        SolidSyslog_Error(
+        GetAddrInfoResolver_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &GetAddrInfoResolverErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY
+            GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

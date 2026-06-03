@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMacros.h"
 #include "SolidSyslogMbedTlsAesGcmPolicyErrors.h"
@@ -16,6 +17,8 @@
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogTunables.h"
+
+const struct SolidSyslogErrorSource MbedTlsAesGcmPolicyErrorSource = {"MbedTlsAesGcmPolicy"};
 
 enum
 {

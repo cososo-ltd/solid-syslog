@@ -1,7 +1,6 @@
 if(HAVE_WINDOWS_INTERLOCKED)
     target_sources(${PROJECT_NAME} PRIVATE
         Source/SolidSyslogWindowsAtomicCounter.c
-        Source/SolidSyslogWindowsAtomicCounterMessages.c
         Source/SolidSyslogWindowsAtomicCounterStatic.c
     )
 endif()
@@ -10,11 +9,9 @@ if(HAVE_WINDOWS_PLATFORM)
     target_sources(${PROJECT_NAME} PRIVATE
         Source/SolidSyslogWindowsClock.c
         Source/SolidSyslogWindowsFile.c
-        Source/SolidSyslogWindowsFileMessages.c
         Source/SolidSyslogWindowsFileStatic.c
         Source/SolidSyslogWindowsHostname.c
         Source/SolidSyslogWindowsMutex.c
-        Source/SolidSyslogWindowsMutexMessages.c
         Source/SolidSyslogWindowsMutexStatic.c
         Source/SolidSyslogWindowsProcessId.c
         Source/SolidSyslogWindowsSleep.c
@@ -33,16 +30,12 @@ endif()
 if(SOLIDSYSLOG_WINSOCK)
     target_sources(${PROJECT_NAME} PRIVATE
         Source/SolidSyslogWinsockAddress.c
-        Source/SolidSyslogWinsockAddressMessages.c
         Source/SolidSyslogWinsockAddressStatic.c
         Source/SolidSyslogWinsockResolver.c
-        Source/SolidSyslogWinsockResolverMessages.c
         Source/SolidSyslogWinsockResolverStatic.c
         Source/SolidSyslogWinsockDatagram.c
-        Source/SolidSyslogWinsockDatagramMessages.c
         Source/SolidSyslogWinsockDatagramStatic.c
         Source/SolidSyslogWinsockTcpStream.c
-        Source/SolidSyslogWinsockTcpStreamMessages.c
         Source/SolidSyslogWinsockTcpStreamStatic.c
     )
     target_link_libraries(${PROJECT_NAME} PUBLIC ws2_32)

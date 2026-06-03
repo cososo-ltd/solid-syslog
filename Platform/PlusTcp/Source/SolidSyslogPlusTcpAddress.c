@@ -1,7 +1,11 @@
 #include <string.h>
 
-#include "SolidSyslogPlusTcpAddressPrivate.h"
 #include "FreeRTOS_Sockets.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogPlusTcpAddressErrors.h"
+#include "SolidSyslogPlusTcpAddressPrivate.h"
+
+const struct SolidSyslogErrorSource PlusTcpAddressErrorSource = {"PlusTcpAddress"};
 
 struct SolidSyslogAddress;
 

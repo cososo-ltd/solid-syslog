@@ -1,12 +1,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "SolidSyslogLwipRawResolverPrivate.h"
-#include "lwip/ip_addr.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
+#include "SolidSyslogLwipRawResolverErrors.h"
+#include "SolidSyslogLwipRawResolverPrivate.h"
 #include "SolidSyslogNullResolver.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
+#include "lwip/ip_addr.h"
+
+const struct SolidSyslogErrorSource LwipRawResolverErrorSource = {"LwipRawResolver"};
 
 struct SolidSyslogAddress;
 

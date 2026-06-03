@@ -5,9 +5,13 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
+#include "SolidSyslogError.h"
+#include "SolidSyslogFreeRtosMutexErrors.h"
 #include "SolidSyslogFreeRtosMutexPrivate.h"
 #include "SolidSyslogMutexDefinition.h"
 #include "SolidSyslogNullMutex.h"
+
+const struct SolidSyslogErrorSource FreeRtosMutexErrorSource = {"FreeRtosMutex"};
 
 static void FreeRtosMutex_Lock(struct SolidSyslogMutex* base);
 static void FreeRtosMutex_Unlock(struct SolidSyslogMutex* base);

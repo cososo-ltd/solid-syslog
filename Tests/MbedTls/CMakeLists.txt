@@ -12,7 +12,6 @@ add_executable(SolidSyslogMbedTlsStreamPoolTest
     SolidSyslogMbedTlsStreamPoolTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
-    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
     ${CMAKE_SOURCE_DIR}/Tests/StreamFake.c
 )
@@ -51,7 +50,6 @@ add_executable(SolidSyslogMbedTlsStreamTest
     SolidSyslogMbedTlsStreamTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
-    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
     ${CMAKE_SOURCE_DIR}/Tests/AddressFake.c
     ${CMAKE_SOURCE_DIR}/Tests/StreamFake.c
@@ -89,7 +87,6 @@ add_executable(SolidSyslogMbedTlsHmacSha256PolicyTest
     SolidSyslogMbedTlsHmacSha256PolicyTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c
-    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256PolicyMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256PolicyStatic.c
 )
 
@@ -128,7 +125,6 @@ add_executable(SolidSyslogMbedTlsAesGcmPolicyTest
     SolidSyslogMbedTlsAesGcmPolicyTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c
-    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicyMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicyStatic.c
 )
 

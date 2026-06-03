@@ -39,11 +39,10 @@ struct SolidSyslogStream* SolidSyslogLwipRawTcpStream_Create(const struct SolidS
         }
         else
         {
-            SolidSyslog_Error(
+            LwipRawTcpStream_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &LwipRawTcpStreamErrorSource,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                (int32_t) LWIPRAWTCPSTREAM_ERROR_POOL_EXHAUSTED
+                LWIPRAWTCPSTREAM_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -58,11 +57,10 @@ void SolidSyslogLwipRawTcpStream_Destroy(struct SolidSyslogStream* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&LwipRawTcpStream_Allocator, index, LwipRawTcpStream_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        LwipRawTcpStream_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &LwipRawTcpStreamErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) LWIPRAWTCPSTREAM_ERROR_UNKNOWN_DESTROY
+            LWIPRAWTCPSTREAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

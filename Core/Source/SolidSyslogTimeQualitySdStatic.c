@@ -31,12 +31,7 @@ struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTim
     struct SolidSyslogStructuredData* handle = SolidSyslogNullSd_Get();
     if (getTimeQuality == NULL)
     {
-        SolidSyslog_Error(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            &TimeQualitySdErrorSource,
-            SOLIDSYSLOG_CAT_BAD_CONFIG,
-            (int32_t) TIMEQUALITYSD_ERROR_NULL_CALLBACK
-        );
+        TimeQualitySd_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_BAD_CONFIG, TIMEQUALITYSD_ERROR_NULL_CALLBACK);
     }
     else
     {
@@ -48,11 +43,10 @@ struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTim
         }
         else
         {
-            SolidSyslog_Error(
+            TimeQualitySd_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &TimeQualitySdErrorSource,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                (int32_t) TIMEQUALITYSD_ERROR_POOL_EXHAUSTED
+                TIMEQUALITYSD_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -67,11 +61,10 @@ void SolidSyslogTimeQualitySd_Destroy(struct SolidSyslogStructuredData* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&TimeQualitySd_Allocator, index, TimeQualitySd_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        TimeQualitySd_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &TimeQualitySdErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) TIMEQUALITYSD_ERROR_UNKNOWN_DESTROY
+            TIMEQUALITYSD_ERROR_UNKNOWN_DESTROY
         );
     }
 }

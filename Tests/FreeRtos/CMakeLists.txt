@@ -15,10 +15,8 @@ else()
         SolidSyslogPlusTcpDatagramTest.cpp
         main.cpp
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c
-        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressMessages.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpDatagram.c
-        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpDatagramMessages.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpDatagramStatic.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosSocketsFake.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosArpFake.c
@@ -52,10 +50,8 @@ else()
         SolidSyslogPlusTcpTcpStreamTest.cpp
         main.cpp
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c
-        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressMessages.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c
-        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStreamMessages.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStreamStatic.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosSocketsFake.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosArpFake.c
@@ -89,10 +85,8 @@ else()
         SolidSyslogPlusTcpResolverTest.cpp
         main.cpp
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c
-        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressMessages.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c
-        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpResolverMessages.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpResolverStatic.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosDnsFake.c
         ${CMAKE_SOURCE_DIR}/Tests/Support/SafeStringStandard.c
@@ -125,7 +119,6 @@ else()
         SolidSyslogPlusTcpAddressTest.cpp
         main.cpp
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c
-        ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressMessages.c
         ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c
     )
 
@@ -160,7 +153,6 @@ add_executable(SolidSyslogFreeRtosMutexTest
     SolidSyslogFreeRtosMutexTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c
-    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutexMessages.c
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosMutexStatic.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosSemaphoreFake.c
 )

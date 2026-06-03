@@ -5,6 +5,9 @@
 #include <stdint.h>
 
 #include "SolidSyslogAtomicCounterDefinition.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogStdAtomicCounterErrors.h"
 
 struct SolidSyslogStdAtomicCounter
 {
@@ -14,5 +17,14 @@ struct SolidSyslogStdAtomicCounter
 
 void StdAtomicCounter_Initialise(struct SolidSyslogAtomicCounter* base);
 void StdAtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* base);
+
+static inline void StdAtomicCounter_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogStdAtomicCounterErrors code
+)
+{
+    SolidSyslog_Error(severity, &StdAtomicCounterErrorSource, category, (int32_t) code);
+}
 
 #endif /* SOLIDSYSLOGSTDATOMICCOUNTERPRIVATE_H */

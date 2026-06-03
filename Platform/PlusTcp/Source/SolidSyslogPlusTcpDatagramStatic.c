@@ -36,11 +36,10 @@ struct SolidSyslogDatagram* SolidSyslogPlusTcpDatagram_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        PlusTcpDatagram_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &PlusTcpDatagramErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) PLUSTCPDATAGRAM_ERROR_POOL_EXHAUSTED
+            PLUSTCPDATAGRAM_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -54,11 +53,10 @@ void SolidSyslogPlusTcpDatagram_Destroy(struct SolidSyslogDatagram* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&PlusTcpDatagram_Allocator, index, PlusTcpDatagram_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        PlusTcpDatagram_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &PlusTcpDatagramErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) PLUSTCPDATAGRAM_ERROR_UNKNOWN_DESTROY
+            PLUSTCPDATAGRAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

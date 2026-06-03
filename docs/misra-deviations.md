@@ -1006,64 +1006,18 @@ The cast is well-defined: `unsigned char` may alias any object type
 Project owner — David Cozens. Recorded under
 [S10.20](https://github.com/DavidCozens/solid-syslog/issues/437).
 
-## D.014 — Rule 8.7: public-API `SolidSyslogErrorSource` objects with external linkage
+## D.014 — Rule 8.7: public-API `SolidSyslogErrorSource` objects (retired)
 
-### Rule
+**Retired in S12.26.** This deviation covered the crypto-policy
+`SolidSyslogErrorSource` objects, which rule 8.7 flagged because the
+`Xxx_Report` wrapper confined every emission to the source's own `*Messages.c`
+— a single translation unit. S12.26 decoupled error text from the library
+(deleting the `*Messages.c` message tables) and unwound the `_Report` wrapper,
+so each source is now defined in its class's vtable TU and referenced from both
+that TU's emit sites and its `*Static.c` lifecycle code — genuinely cross-TU,
+exactly the resolution this deviation's "Risk and mitigation" anticipated.
+cppcheck-misra reports no 8.7 finding for any error source; the suppression
+lines were removed.
 
-> **Rule 8.7 (Advisory)** — Functions and objects should not be defined with
-> external linkage if they are referenced in only one translation unit.
-
-### Deviation
-
-Each error-reporting class exposes a single `const struct SolidSyslogErrorSource`
-instance (e.g. `MbedTlsHmacSha256PolicyErrorSource`) with external linkage,
-declared `extern` in the class's public `*Errors.h` header. The external linkage
-is part of the public API: an integrator installs one `SolidSyslogErrorHandler`
-and attributes an event to a library component by matching the handler's `source`
-argument against these objects by pointer identity, then switches on the
-per-source error enum:
-
-```c
-if (source == &MbedTlsHmacSha256PolicyErrorSource) { switch (code) { ... } }
-```
-
-Those references live in integrator code, outside the library's translation
-units, so cppcheck-misra cannot see them and reports the object as referenced in
-only one TU.
-
-### Scope
-
-- `Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256PolicyMessages.c` —
-  `MbedTlsHmacSha256PolicyErrorSource`.
-- `Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256PolicyMessages.c` —
-  `OpenSslHmacSha256PolicyErrorSource` (the OpenSSL sibling; S17.01).
-
-The deviation extends to any `SolidSyslogErrorSource` instance whose internal
-references are confined to a single TU. Most error sources escape rule 8.7
-incidentally because their `*Static.c` lifecycle code emits through the same
-source; this class routes every emission through one internal helper
-(`MbedTlsHmacSha256Policy_Report`) co-located with the source in `*Messages.c`,
-leaving it referenced from that one TU. The external linkage is required either
-way by the public error-handler API.
-
-### Rationale
-
-| Alternative | Why rejected |
-|---|---|
-| Make the object `static` | Breaks the public error-handler API — integrators could no longer pointer-match the source to attribute an event to this component. |
-| Scatter `SolidSyslog_Error(&…ErrorSource, …)` calls back across `*Static.c` and the policy `.c` so the source is referenced cross-TU | Re-introduces the duplicated severity/source/cast argument lists the `_Report` helper removed, and couples error emission to the static-pool TU — a dynamic-allocation variant would replace `*Static.c` and lose the references again. |
-| Inline `cppcheck-suppress` at the definition | Inline suppressions are weaker per MISRA Compliance:2020 §4.2; project preference is structural deviations recorded here. |
-
-### Risk and mitigation
-
-- The object is `const` — read-only, no mutable shared state across TUs.
-- Rule 8.7 is Advisory; the external linkage is a deliberate API choice.
-- If a future revision references the source from a second library TU (e.g. a
-  dynamic-allocation lifecycle file that emits its own errors), the finding
-  disappears and the suppression line can be retired.
-
-### Approval
-
-Project owner — David Cozens. Recorded under
-[S17.02](https://github.com/DavidCozens/solid-syslog/issues/493).
-
+Recorded under [S17.02](https://github.com/DavidCozens/solid-syslog/issues/493),
+retired under [S12.26](https://github.com/DavidCozens/solid-syslog/issues/507).

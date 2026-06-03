@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMbedTlsHmacSha256PolicyErrors.h"
 #include "SolidSyslogMbedTlsHmacSha256PolicyPrivate.h"

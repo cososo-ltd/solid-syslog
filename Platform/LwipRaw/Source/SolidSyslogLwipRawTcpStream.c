@@ -6,17 +6,21 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "SolidSyslogError.h"
+#include "SolidSyslogLwipRawAddressPrivate.h"
+#include "SolidSyslogLwipRawMarshalPrivate.h"
+#include "SolidSyslogLwipRawTcpStreamErrors.h"
+#include "SolidSyslogNullStream.h"
+#include "SolidSyslogStream.h"
+#include "SolidSyslogTunables.h"
 #include "lwip/arch.h"
 #include "lwip/err.h"
 #include "lwip/ip.h"
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 #include "lwip/tcpbase.h"
-#include "SolidSyslogLwipRawAddressPrivate.h"
-#include "SolidSyslogLwipRawMarshalPrivate.h"
-#include "SolidSyslogNullStream.h"
-#include "SolidSyslogStream.h"
-#include "SolidSyslogTunables.h"
+
+const struct SolidSyslogErrorSource LwipRawTcpStreamErrorSource = {"LwipRawTcpStream"};
 
 struct SolidSyslogAddress;
 struct SolidSyslogStream;

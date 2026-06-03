@@ -2,11 +2,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogSender.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogSwitchingSender.h"
+#include "SolidSyslogSwitchingSenderErrors.h"
 #include "SolidSyslogSwitchingSenderPrivate.h"
+
+const struct SolidSyslogErrorSource SwitchingSenderErrorSource = {"SwitchingSender"};
 
 static bool SwitchingSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size);
 static void SwitchingSender_Disconnect(struct SolidSyslogSender* base);

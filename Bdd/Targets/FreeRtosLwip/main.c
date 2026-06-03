@@ -29,6 +29,7 @@
 #include "EthernetIf.h"
 
 #include "BddTargetEnterpriseId.h"
+#include "BddTargetErrorText.h"
 #include "BddTargetInteractive.h"
 #include "BddTargetIps.h"
 #include "BddTargetLanguage.h"
@@ -376,16 +377,12 @@ static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* ev
 {
     (void) context;
     const char* sourceName = "<unknown>";
-    const char* message = "<no translation>";
     const struct SolidSyslogErrorSource* source = event->Source;
     if (source != NULL)
     {
         sourceName = source->Name;
-        if (source->AsString != NULL)
-        {
-            message = source->AsString((uint8_t) event->Detail);
-        }
     }
+    const char* message = BddTargetErrorText_Category(event->Category);
     (void) printf(
         "[solidsyslog] severity=%d [%s cat=%u detail=%ld] %s\n",
         (int) event->Severity,

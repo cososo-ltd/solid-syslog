@@ -1,24 +1,19 @@
 set(SOURCES
     SolidSyslog.c
-    SolidSyslogMessages.c
     SolidSyslogStatic.c
     SolidSyslogError.c
     SolidSyslogConfigLock.c
     SolidSyslogSwitchingSender.c
-    SolidSyslogSwitchingSenderMessages.c
     SolidSyslogSwitchingSenderStatic.c
     SolidSyslogBuffer.c
     SolidSyslogFormatter.c
     SolidSyslogTimestampFormatter.c
     SolidSyslogMessageFormatter.c
     SolidSyslogMetaSd.c
-    SolidSyslogMetaSdMessages.c
     SolidSyslogMetaSdStatic.c
     SolidSyslogPassthroughBuffer.c
-    SolidSyslogPassthroughBufferMessages.c
     SolidSyslogPassthroughBufferStatic.c
     SolidSyslogCircularBuffer.c
-    SolidSyslogCircularBufferMessages.c
     SolidSyslogCircularBufferStatic.c
     SolidSyslogPoolAllocator.c
     SolidSyslogMutex.c
@@ -37,15 +32,12 @@ set(SOURCES
     SolidSyslogNullStream.c
     SolidSyslogStructuredData.c
     SolidSyslogTimeQualitySd.c
-    SolidSyslogTimeQualitySdMessages.c
     SolidSyslogTimeQualitySdStatic.c
     SolidSyslogOriginSd.c
-    SolidSyslogOriginSdMessages.c
     SolidSyslogOriginSdStatic.c
     SolidSyslogFile.c
     SolidSyslogNullFile.c
     SolidSyslogBlockStore.c
-    SolidSyslogBlockStoreMessages.c
     SolidSyslogBlockStoreStatic.c
     RecordStore.c
     RecordStoreStatic.c
@@ -53,7 +45,6 @@ set(SOURCES
     BlockSequenceStatic.c
     SolidSyslogBlockDevice.c
     SolidSyslogFileBlockDevice.c
-    SolidSyslogFileBlockDeviceMessages.c
     SolidSyslogFileBlockDeviceStatic.c
     SolidSyslogUdpPayload.c
 )
@@ -78,10 +69,8 @@ if(SOLIDSYSLOG_POSIX OR SOLIDSYSLOG_WINSOCK OR DEFINED ENV{FREERTOS_KERNEL_PATH}
         SolidSyslogDatagram.c
         SolidSyslogNullDatagram.c
         SolidSyslogUdpSender.c
-        SolidSyslogUdpSenderMessages.c
         SolidSyslogUdpSenderStatic.c
         SolidSyslogStreamSender.c
-        SolidSyslogStreamSenderMessages.c
         SolidSyslogStreamSenderStatic.c
     )
 endif()

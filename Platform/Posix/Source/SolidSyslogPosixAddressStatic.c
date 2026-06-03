@@ -40,11 +40,10 @@ struct SolidSyslogAddress* SolidSyslogPosixAddress_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        PosixAddress_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &PosixAddressErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) POSIXADDRESS_ERROR_POOL_EXHAUSTED
+            POSIXADDRESS_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -64,11 +63,10 @@ void SolidSyslogPosixAddress_Destroy(struct SolidSyslogAddress* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&PosixAddress_Allocator, index, PosixAddress_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        PosixAddress_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &PosixAddressErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) POSIXADDRESS_ERROR_UNKNOWN_DESTROY
+            POSIXADDRESS_ERROR_UNKNOWN_DESTROY
         );
     }
 }

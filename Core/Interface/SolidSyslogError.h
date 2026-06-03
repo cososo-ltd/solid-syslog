@@ -11,7 +11,6 @@ EXTERN_C_BEGIN
     struct SolidSyslogErrorSource
     {
         const char* Name;
-        const char* (*AsString)(uint8_t code);
     };
 
     struct SolidSyslogErrorEvent

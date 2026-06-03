@@ -3,10 +3,14 @@
 #include <stddef.h>
 
 #include "SolidSyslogAtomicCounter.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogMetaSdErrors.h"
 #include "SolidSyslogMetaSdPrivate.h"
 #include "SolidSyslogNullSd.h"
 #include "SolidSyslogStructuredDataDefinition.h"
+
+const struct SolidSyslogErrorSource MetaSdErrorSource = {"MetaSd"};
 
 struct SolidSyslogFormatter;
 

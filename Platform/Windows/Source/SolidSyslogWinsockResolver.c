@@ -4,12 +4,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "SolidSyslogWinsockAddressPrivate.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogNullResolver.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
+#include "SolidSyslogWinsockAddressPrivate.h"
+#include "SolidSyslogWinsockResolverErrors.h"
 #include "SolidSyslogWinsockResolverInternal.h"
 #include "SolidSyslogWinsockResolverPrivate.h"
+
+const struct SolidSyslogErrorSource WinsockResolverErrorSource = {"WinsockResolver"};
 
 /* File-local forwarders. Taking the address of a __declspec(dllimport)
    Winsock function for static initialisation triggers MSVC C4232 (the address

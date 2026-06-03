@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogOpenSslHmacSha256PolicyErrors.h"
 #include "SolidSyslogOpenSslHmacSha256PolicyPrivate.h"
@@ -14,6 +15,8 @@
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogTunables.h"
+
+const struct SolidSyslogErrorSource OpenSslHmacSha256PolicyErrorSource = {"OpenSslHmacSha256Policy"};
 
 enum
 {

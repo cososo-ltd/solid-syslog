@@ -11,12 +11,16 @@
 #include "FreeRTOS_ARP.h"
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
-#include "task.h"
-#include "SolidSyslogPlusTcpAddressPrivate.h"
-#include "SolidSyslogPlusTcpTcpStreamPrivate.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogNullStream.h"
+#include "SolidSyslogPlusTcpAddressPrivate.h"
+#include "SolidSyslogPlusTcpTcpStreamErrors.h"
+#include "SolidSyslogPlusTcpTcpStreamPrivate.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogTunables.h"
+#include "task.h"
+
+const struct SolidSyslogErrorSource PlusTcpTcpStreamErrorSource = {"PlusTcpTcpStream"};
 
 struct SolidSyslogAddress;
 

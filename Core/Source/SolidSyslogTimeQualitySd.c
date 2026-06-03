@@ -4,10 +4,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogNullSd.h"
 #include "SolidSyslogStructuredDataDefinition.h"
+#include "SolidSyslogTimeQualitySdErrors.h"
 #include "SolidSyslogTimeQualitySdPrivate.h"
+
+const struct SolidSyslogErrorSource TimeQualitySdErrorSource = {"TimeQualitySd"};
 
 struct SolidSyslogFormatter;
 

@@ -19,6 +19,8 @@
 
 struct SolidSyslogFormatter;
 
+const struct SolidSyslogErrorSource UdpSenderErrorSource = {"UdpSender"};
+
 static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size);
 static void UdpSender_Disconnect(struct SolidSyslogSender* base);
 
@@ -73,12 +75,7 @@ static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, s
     bool result = false;
     if (buffer == NULL)
     {
-        SolidSyslog_Error(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            &UdpSenderErrorSource,
-            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
-            (int32_t) UDPSENDER_ERROR_SEND_NULL_BUFFER
-        );
+        UdpSender_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_BAD_ARGUMENT, UDPSENDER_ERROR_SEND_NULL_BUFFER);
     }
     else
     {

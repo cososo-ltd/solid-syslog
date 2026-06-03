@@ -1,6 +1,10 @@
+#include "SolidSyslogError.h"
+#include "SolidSyslogWinsockAddressErrors.h"
 #include "SolidSyslogWinsockAddressPrivate.h"
 
 #include <string.h>
+
+const struct SolidSyslogErrorSource WinsockAddressErrorSource = {"WinsockAddress"};
 
 struct SolidSyslogAddress;
 

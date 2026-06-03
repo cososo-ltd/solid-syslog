@@ -3,9 +3,13 @@
 #include <pthread.h>
 #include <stddef.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogMutexDefinition.h"
 #include "SolidSyslogNullMutex.h"
+#include "SolidSyslogPosixMutexErrors.h"
 #include "SolidSyslogPosixMutexPrivate.h"
+
+const struct SolidSyslogErrorSource PosixMutexErrorSource = {"PosixMutex"};
 
 static void PosixMutex_Lock(struct SolidSyslogMutex* base);
 static void PosixMutex_Unlock(struct SolidSyslogMutex* base);

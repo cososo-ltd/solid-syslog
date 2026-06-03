@@ -1,6 +1,9 @@
 #ifndef SOLIDSYSLOGMBEDTLSHMACSHA256POLICYPRIVATE_H
 #define SOLIDSYSLOGMBEDTLSHMACSHA256POLICYPRIVATE_H
 
+#include <stdint.h>
+
+#include "SolidSyslogError.h"
 #include "SolidSyslogMbedTlsHmacSha256Policy.h"
 #include "SolidSyslogMbedTlsHmacSha256PolicyErrors.h"
 #include "SolidSyslogPrival.h"
@@ -18,13 +21,13 @@ void MbedTlsHmacSha256Policy_Initialise(
 );
 void MbedTlsHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base);
 
-/* Emits one error from this class's source — hides the source pointer and the
- * enum-to-uint8 cast from every call site (seal/verify in Policy.c, the pool in
- * Static.c). */
-void MbedTlsHmacSha256Policy_Report(
+static inline void MbedTlsHmacSha256Policy_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
     enum SolidSyslogMbedTlsHmacSha256PolicyErrors code
-);
+)
+{
+    SolidSyslog_Error(severity, &MbedTlsHmacSha256PolicyErrorSource, category, (int32_t) code);
+}
 
 #endif /* SOLIDSYSLOGMBEDTLSHMACSHA256POLICYPRIVATE_H */

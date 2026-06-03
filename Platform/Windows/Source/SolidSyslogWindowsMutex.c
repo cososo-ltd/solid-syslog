@@ -3,9 +3,13 @@
 #include <stddef.h>
 #include <windows.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogMutexDefinition.h"
 #include "SolidSyslogNullMutex.h"
+#include "SolidSyslogWindowsMutexErrors.h"
 #include "SolidSyslogWindowsMutexPrivate.h"
+
+const struct SolidSyslogErrorSource WindowsMutexErrorSource = {"WindowsMutex"};
 
 static void WindowsMutex_Lock(struct SolidSyslogMutex* base);
 static void WindowsMutex_Unlock(struct SolidSyslogMutex* base);

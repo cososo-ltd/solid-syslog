@@ -1,12 +1,17 @@
 #ifndef SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFERPRIVATE_H
 #define SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFERPRIVATE_H
 
+#include <stdint.h>
+
 #include <mqueue.h>
 #include <stdbool.h>
 #include <stddef.h>
 
 #include "SolidSyslogBufferDefinition.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogPosixMessageQueueBufferErrors.h"
+#include "SolidSyslogPrival.h"
 
 enum
 {
@@ -29,5 +34,14 @@ bool PosixMessageQueueBuffer_Initialise(
     size_t slotIndex
 );
 void PosixMessageQueueBuffer_Cleanup(struct SolidSyslogBuffer* base);
+
+static inline void PosixMessageQueueBuffer_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogPosixMessageQueueBufferErrors code
+)
+{
+    SolidSyslog_Error(severity, &PosixMessageQueueBufferErrorSource, category, (int32_t) code);
+}
 
 #endif /* SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFERPRIVATE_H */

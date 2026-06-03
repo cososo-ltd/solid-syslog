@@ -8,9 +8,13 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogNullFile.h"
+#include "SolidSyslogWindowsFileErrors.h"
 #include "SolidSyslogWindowsFilePrivate.h"
+
+const struct SolidSyslogErrorSource WindowsFileErrorSource = {"WindowsFile"};
 
 /* _O_BINARY disables the MSVC CRT's CR/LF translation on read/write so
  * arbitrary binary content (e.g. SolidSyslogBlockStore frames) round-trips

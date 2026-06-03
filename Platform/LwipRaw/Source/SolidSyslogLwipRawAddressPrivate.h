@@ -1,6 +1,11 @@
 #ifndef SOLIDSYSLOGLWIPRAWADDRESSPRIVATE_H
 #define SOLIDSYSLOGLWIPRAWADDRESSPRIVATE_H
 
+#include <stdint.h>
+
+#include "SolidSyslogError.h"
+#include "SolidSyslogLwipRawAddressErrors.h"
+#include "SolidSyslogPrival.h"
 #include "lwip/ip_addr.h"
 
 struct SolidSyslogAddress;
@@ -29,6 +34,15 @@ static inline const struct SolidSyslogLwipRawAddress* SolidSyslogLwipRawAddress_
 )
 {
     return (const struct SolidSyslogLwipRawAddress*) base;
+}
+
+static inline void LwipRawAddress_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogLwipRawAddressErrors code
+)
+{
+    SolidSyslog_Error(severity, &LwipRawAddressErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGLWIPRAWADDRESSPRIVATE_H */

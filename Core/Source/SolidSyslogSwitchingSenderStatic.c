@@ -39,11 +39,10 @@ struct SolidSyslogSender* SolidSyslogSwitchingSender_Create(const struct SolidSy
         }
         else
         {
-            SolidSyslog_Error(
+            SwitchingSender_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                &SwitchingSenderErrorSource,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                (int32_t) SWITCHINGSENDER_ERROR_POOL_EXHAUSTED
+                SWITCHINGSENDER_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -55,29 +54,26 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
     bool valid = false;
     if (config == NULL)
     {
-        SolidSyslog_Error(
+        SwitchingSender_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &SwitchingSenderErrorSource,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            (int32_t) SWITCHINGSENDER_ERROR_NULL_CONFIG
+            SWITCHINGSENDER_ERROR_NULL_CONFIG
         );
     }
     else if (config->Senders == NULL)
     {
-        SolidSyslog_Error(
+        SwitchingSender_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &SwitchingSenderErrorSource,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            (int32_t) SWITCHINGSENDER_ERROR_NULL_SENDERS
+            SWITCHINGSENDER_ERROR_NULL_SENDERS
         );
     }
     else if (config->Selector == NULL)
     {
-        SolidSyslog_Error(
+        SwitchingSender_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &SwitchingSenderErrorSource,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            (int32_t) SWITCHINGSENDER_ERROR_NULL_SELECTOR
+            SWITCHINGSENDER_ERROR_NULL_SELECTOR
         );
     }
     else
@@ -95,11 +91,10 @@ void SolidSyslogSwitchingSender_Destroy(struct SolidSyslogSender* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&SwitchingSender_Allocator, index, SwitchingSender_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        SwitchingSender_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &SwitchingSenderErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) SWITCHINGSENDER_ERROR_UNKNOWN_DESTROY
+            SWITCHINGSENDER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

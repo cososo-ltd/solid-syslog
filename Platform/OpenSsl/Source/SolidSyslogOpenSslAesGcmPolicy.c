@@ -8,12 +8,15 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogOpenSslAesGcmPolicyErrors.h"
 #include "SolidSyslogOpenSslAesGcmPolicyPrivate.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
+
+const struct SolidSyslogErrorSource OpenSslAesGcmPolicyErrorSource = {"OpenSslAesGcmPolicy"};
 
 enum
 {

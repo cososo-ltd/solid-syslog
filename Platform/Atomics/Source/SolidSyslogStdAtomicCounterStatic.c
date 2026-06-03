@@ -36,11 +36,10 @@ struct SolidSyslogAtomicCounter* SolidSyslogStdAtomicCounter_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        StdAtomicCounter_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &StdAtomicCounterErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) STDATOMICCOUNTER_ERROR_POOL_EXHAUSTED
+            STDATOMICCOUNTER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -54,11 +53,10 @@ void SolidSyslogStdAtomicCounter_Destroy(struct SolidSyslogAtomicCounter* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&StdAtomicCounter_Allocator, index, StdAtomicCounter_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        StdAtomicCounter_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &StdAtomicCounterErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) STDATOMICCOUNTER_ERROR_UNKNOWN_DESTROY
+            STDATOMICCOUNTER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

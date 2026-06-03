@@ -36,11 +36,10 @@ struct SolidSyslogResolver* SolidSyslogPlusTcpResolver_Create(void)
     }
     else
     {
-        SolidSyslog_Error(
+        PlusTcpResolver_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            &PlusTcpResolverErrorSource,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            (int32_t) PLUSTCPRESOLVER_ERROR_POOL_EXHAUSTED
+            PLUSTCPRESOLVER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -54,11 +53,10 @@ void SolidSyslogPlusTcpResolver_Destroy(struct SolidSyslogResolver* base)
         SolidSyslogPoolAllocator_FreeIfInUse(&PlusTcpResolver_Allocator, index, PlusTcpResolver_CleanupAtIndex, NULL);
     if (!released)
     {
-        SolidSyslog_Error(
+        PlusTcpResolver_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
-            &PlusTcpResolverErrorSource,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            (int32_t) PLUSTCPRESOLVER_ERROR_UNKNOWN_DESTROY
+            PLUSTCPRESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

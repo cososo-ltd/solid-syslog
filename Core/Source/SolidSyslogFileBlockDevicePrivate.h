@@ -1,10 +1,15 @@
 #ifndef SOLIDSYSLOGFILEBLOCKDEVICEPRIVATE_H
 #define SOLIDSYSLOGFILEBLOCKDEVICEPRIVATE_H
 
+#include <stdint.h>
+
 #include <stdbool.h>
 #include <stddef.h>
 
 #include "SolidSyslogBlockDeviceDefinition.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogFileBlockDeviceErrors.h"
+#include "SolidSyslogPrival.h"
 
 struct SolidSyslogFile;
 
@@ -32,5 +37,14 @@ void FileBlockDevice_Initialise(
     const char* pathPrefix
 );
 void FileBlockDevice_Cleanup(struct SolidSyslogBlockDevice* base);
+
+static inline void FileBlockDevice_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogFileBlockDeviceErrors code
+)
+{
+    SolidSyslog_Error(severity, &FileBlockDeviceErrorSource, category, (int32_t) code);
+}
 
 #endif /* SOLIDSYSLOGFILEBLOCKDEVICEPRIVATE_H */

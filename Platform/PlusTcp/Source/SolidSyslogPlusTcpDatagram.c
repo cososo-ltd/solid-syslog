@@ -10,13 +10,17 @@
 #include "FreeRTOS.h"
 #include "FreeRTOS_ARP.h"
 #include "FreeRTOS_Sockets.h"
-#include "task.h"
-#include "SolidSyslogDatagramDefinition.h"
-#include "SolidSyslogPlusTcpAddressPrivate.h"
-#include "SolidSyslogPlusTcpDatagramPrivate.h"
-#include "SolidSyslogNullDatagram.h"
-#include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogDatagram.h"
+#include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogNullDatagram.h"
+#include "SolidSyslogPlusTcpAddressPrivate.h"
+#include "SolidSyslogPlusTcpDatagramErrors.h"
+#include "SolidSyslogPlusTcpDatagramPrivate.h"
+#include "SolidSyslogUdpPayload.h"
+#include "task.h"
+
+const struct SolidSyslogErrorSource PlusTcpDatagramErrorSource = {"PlusTcpDatagram"};
 
 struct SolidSyslogAddress;
 

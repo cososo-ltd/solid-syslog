@@ -9,11 +9,15 @@
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 
-#include "SolidSyslogPlusTcpAddressPrivate.h"
-#include "SolidSyslogPlusTcpResolverPrivate.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogNullResolver.h"
+#include "SolidSyslogPlusTcpAddressPrivate.h"
+#include "SolidSyslogPlusTcpResolverErrors.h"
+#include "SolidSyslogPlusTcpResolverPrivate.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
+
+const struct SolidSyslogErrorSource PlusTcpResolverErrorSource = {"PlusTcpResolver"};
 
 struct SolidSyslogAddress;
 
