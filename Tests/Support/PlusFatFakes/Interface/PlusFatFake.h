@@ -17,6 +17,12 @@ EXTERN_C_BEGIN
     /* ff_fclose */
     int PlusFatFake_CloseCallCount(void);
 
+    /* ff_fread */
+    void PlusFatFake_SetReadSource(const void* bytes, unsigned long count);
+    int PlusFatFake_ReadCallCount(void);
+    unsigned long PlusFatFake_LastReadSize(void);
+    unsigned long PlusFatFake_LastReadItems(void);
+
 EXTERN_C_END
 
 #endif /* PLUSFATFAKE_H */

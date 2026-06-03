@@ -17,6 +17,7 @@ static const char* const TEST_PATH = "test.log";
 TEST_GROUP(SolidSyslogPlusFatFile)
 {
     struct SolidSyslogFile* file = nullptr;
+    char buffer[5] = {};
 
     void setup() override
     {
@@ -88,4 +89,37 @@ TEST(SolidSyslogPlusFatFile, DestroyClosesOpenFile)
     file = nullptr;
 
     CALLED_FAKE(PlusFatFake_Close, ONCE);
+}
+
+TEST(SolidSyslogPlusFatFile, ReadReturnsRequestedBytes)
+{
+    SolidSyslogFile_Open(file, TEST_PATH);
+    const char source[5] = {'h', 'e', 'l', 'l', 'o'};
+    PlusFatFake_SetReadSource(source, sizeof(source));
+
+    CHECK_TRUE(SolidSyslogFile_Read(file, buffer, sizeof(buffer)));
+
+    MEMCMP_EQUAL(source, buffer, sizeof(source));
+}
+
+TEST(SolidSyslogPlusFatFile, ReadCallsFfreadWithUnitSizeAndCount)
+{
+    SolidSyslogFile_Open(file, TEST_PATH);
+    const char source[5] = {'h', 'e', 'l', 'l', 'o'};
+    PlusFatFake_SetReadSource(source, sizeof(source));
+
+    SolidSyslogFile_Read(file, buffer, sizeof(buffer));
+
+    CALLED_FAKE(PlusFatFake_Read, ONCE);
+    UNSIGNED_LONGS_EQUAL(1, PlusFatFake_LastReadSize());
+    UNSIGNED_LONGS_EQUAL(sizeof(buffer), PlusFatFake_LastReadItems());
+}
+
+TEST(SolidSyslogPlusFatFile, ReadFailsWhenFewerBytesAvailable)
+{
+    SolidSyslogFile_Open(file, TEST_PATH);
+    const char source[3] = {'a', 'b', 'c'};
+    PlusFatFake_SetReadSource(source, sizeof(source));
+
+    CHECK_FALSE(SolidSyslogFile_Read(file, buffer, sizeof(buffer)));
 }
