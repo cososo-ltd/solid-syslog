@@ -36,6 +36,25 @@ if(NOT EXISTS "${MBEDTLS_SOURCE_DIR}/CMakeLists.txt")
         "container, which sets this to /opt/mbedtls.")
 endif()
 
+set(FATFS_PATH "$ENV{FATFS_PATH}")
+if(NOT FATFS_PATH)
+    message(FATAL_ERROR
+        "FATFS_PATH not set. Use the cpputest-freertos-cross container, "
+        "which sets this to /opt/fatfs.")
+endif()
+
+# Stage the upstream FatFs source pack alongside our integrator ffconf.h
+# (shared with the Plus-TCP target — Bdd/Targets/Common/ffconf.h) in the
+# build dir. FatFs's ff.h does `#include "ffconf.h"` and GCC's `""` lookup
+# checks the source file's own directory first, so colocating them is the
+# only way our integrator config wins over upstream's sample. Same pattern
+# as Bdd/Targets/FreeRtos/CMakeLists.txt.
+set(FATFS_STAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/fatfs")
+configure_file(${FATFS_PATH}/source/ff.c     ${FATFS_STAGE_DIR}/ff.c     COPYONLY)
+configure_file(${FATFS_PATH}/source/ff.h     ${FATFS_STAGE_DIR}/ff.h     COPYONLY)
+configure_file(${FATFS_PATH}/source/diskio.h ${FATFS_STAGE_DIR}/diskio.h COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/ffconf.h ${FATFS_STAGE_DIR}/ffconf.h COPYONLY)
+
 # lwIP ships its source lists as *_SRCS variables via Filelists.cmake. For
 # NO_SYS=0 we consume the IPv4 core set plus the api/ set (tcpip.c, api_lib,
 # api_msg, …) — the tcpip thread, timeouts, and tcpip_callback marshal hop
@@ -78,6 +97,12 @@ add_library(solid_syslog_freertos_lwip_upstream OBJECT
     # netif wrapper over it (netif/EthernetIf.c) stays in the executable under
     # the strict bar; this third-party source sits under the relaxations.
     ${CMAKE_CURRENT_SOURCE_DIR}/netif/smsc9220/smsc9220_eth_drv.c
+    # FatFs upstream (R0.16) + our shared integrator ffsystem.c — same
+    # relaxed-warnings treatment as the Plus-TCP target (ff.c inherits FatFs's
+    # sign-conversion / typedef-via-BYTE patterns). ff.c is staged so its
+    # `#include "ff.h"` / "ffconf.h" resolve to our integrator config.
+    ${FATFS_STAGE_DIR}/ff.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/ffsystem.c
 )
 
 target_compile_options(solid_syslog_freertos_lwip_upstream PRIVATE
@@ -107,6 +132,7 @@ target_include_directories(solid_syslog_freertos_lwip_upstream PRIVATE
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${LWIP_DIR}/src/include
     ${LWIP_CONTRIB_FREERTOS_DIR}/include              # arch/sys_arch.h
+    ${FATFS_STAGE_DIR}                                # ff.h, diskio.h + integrator ffconf.h colocated
 )
 
 # --- mbedTLS upstream as a subproject ----------------------------------------
@@ -213,6 +239,16 @@ add_executable(SolidSyslogBddTargetLwip
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
+    # At-rest store: FatFs file adapter + the mbedTLS HMAC / AES-GCM security
+    # policies (Crc16Policy lives in Core, already linked). diskio.c is the
+    # shared semihosting media driver (Bdd/Targets/Common, 8 MiB FAT16).
+    ${CMAKE_SOURCE_DIR}/Platform/FatFs/Source/SolidSyslogFatFsFile.c
+    ${CMAKE_SOURCE_DIR}/Platform/FatFs/Source/SolidSyslogFatFsFileStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256PolicyStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicyStatic.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/diskio.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetInteractive.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
@@ -246,8 +282,10 @@ target_include_directories(SolidSyslogBddTargetLwip PRIVATE
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source        # SolidSyslogLwipRaw*Private.h
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface   # SolidSyslogFreeRtos{Mutex,SysUpTime}.h
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source      # SolidSyslogFreeRtosMutexPrivate.h
-    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Interface    # SolidSyslogMbedTlsStream.h
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Interface    # SolidSyslogMbedTlsStream.h, *Policy.h
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source       # SolidSyslogMbedTlsStreamPrivate.h
+    ${CMAKE_SOURCE_DIR}/Platform/FatFs/Interface      # SolidSyslogFatFsFile.h
+    ${FATFS_STAGE_DIR}                                # ff.h, diskio.h + integrator ffconf.h colocated
     ${BAKED_PEMS_DIR}                                 # BddBaked*.h (xxd -i output)
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h, BddTargetSwitchConfig.h, …
     ${FREERTOS_KERNEL_PATH}/include

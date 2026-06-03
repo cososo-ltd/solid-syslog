@@ -4,14 +4,19 @@
  * file I/O against solidsyslog-disk.img in QEMU's working directory.
  *
  * Behave's after_scenario removes the image so each scenario starts
- * with no filesystem; disk_initialize creates a fresh 1 MiB sparse
+ * with no filesystem; disk_initialize creates a fresh 8 MiB sparse
  * file when it sees the open fail or the file is too small,
  * f_mount returns FR_NO_FILESYSTEM on the zero-filled image, and the
  * integrator falls through to f_mkfs to lay down a FAT.
  *
- * Single logical drive (pdrv 0); no exFAT, no LFN. 2048 sectors x
- * 512 B = 1 MiB — large enough for the store-and-forward / capacity /
- * power-cycle scenarios that exercise multi-block files. */
+ * Shared by the FreeRTOS-Plus-TCP and lwIP BDD targets (Bdd/Targets/Common)
+ * so both exercise the same semihosting media geometry.
+ *
+ * Single logical drive (pdrv 0); no exFAT, no LFN. 16384 sectors x
+ * 512 B = 8 MiB — large enough for the store-and-forward / capacity /
+ * power-cycle scenarios that exercise multi-block files, and clear of
+ * the ~4085-cluster FAT12/16 boundary so f_mkfs lays down FAT16 (the
+ * geometry the later FreeRTOS-Plus-FAT formatter needs). */
 
 /* ff.h before diskio.h: diskio.h declares disk_* in terms of BYTE / UINT /
  * LBA_t / DWORD / WORD which are typedef'd in ff.h's integer headers. */
@@ -45,7 +50,7 @@ enum
 enum
 {
     DISK_SECTOR_SIZE = 512,
-    DISK_SECTOR_COUNT = 2048,
+    DISK_SECTOR_COUNT = 16384,
     DISK_TOTAL_BYTES = DISK_SECTOR_COUNT * DISK_SECTOR_SIZE,
 };
 

@@ -54,7 +54,7 @@ set(FATFS_STAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/fatfs")
 configure_file(${FATFS_PATH}/source/ff.c       ${FATFS_STAGE_DIR}/ff.c       COPYONLY)
 configure_file(${FATFS_PATH}/source/ff.h       ${FATFS_STAGE_DIR}/ff.h       COPYONLY)
 configure_file(${FATFS_PATH}/source/diskio.h   ${FATFS_STAGE_DIR}/diskio.h   COPYONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ffconf.h ${FATFS_STAGE_DIR}/ffconf.h COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/ffconf.h ${FATFS_STAGE_DIR}/ffconf.h COPYONLY)
 
 set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3")
 
@@ -128,13 +128,14 @@ add_library(solid_syslog_freertos_upstream OBJECT
     # sign-conversion / shadow / type-narrowing warnings the FreeRTOS
     # kernel sources do, so it lives in the upstream OBJECT lib under the
     # relaxed warning set. ffsystem.c is our integrator copy
-    # (Bdd/Targets/FreeRtos/) with OS_TYPE 3 (FreeRTOS) selected — it sits
-    # under the same relaxations because it includes ff.h and inherits
-    # FatFs's typedef-via-BYTE/UINT patterns. ff.c is staged into the
-    # build dir so its `#include "ff.h"` (and ff.h's "ffconf.h") resolve
-    # to our integrator config — see the configure_file calls above.
+    # (Bdd/Targets/Common/, shared with the lwIP target) with OS_TYPE 3
+    # (FreeRTOS) selected — it sits under the same relaxations because it
+    # includes ff.h and inherits FatFs's typedef-via-BYTE/UINT patterns.
+    # ff.c is staged into the build dir so its `#include "ff.h"` (and
+    # ff.h's "ffconf.h") resolve to our integrator config — see the
+    # configure_file calls above.
     ${FATFS_STAGE_DIR}/ff.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ffsystem.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/ffsystem.c
 )
 
 target_compile_options(solid_syslog_freertos_upstream PRIVATE
@@ -256,7 +257,6 @@ set(BAKED_PEM_HEADERS
 add_executable(SolidSyslogBddTarget
     main.c
     Startup.c
-    diskio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Common/CmsdkUart.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Common/Syscalls.c
     ${CMAKE_SOURCE_DIR}/Platform/FatFs/Source/SolidSyslogFatFsFile.c
@@ -286,6 +286,7 @@ add_executable(SolidSyslogBddTarget
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/diskio.c
     ${BAKED_PEM_HEADERS}
     $<TARGET_OBJECTS:solid_syslog_freertos_upstream>
 )

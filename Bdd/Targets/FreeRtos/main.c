@@ -876,9 +876,10 @@ static bool EnsureFatFsMounted(void)
     ); /* opt=1 → mount immediately, surface FR_NO_FILESYSTEM here rather than at first f_open */
     if (res == FR_NO_FILESYSTEM)
     {
-        /* Fresh disk image — lay down a FAT and re-mount. FAT12 is the
-         * natural choice for a 1 MiB volume (small enough that FAT32's
-         * cluster overhead would dominate). */
+        /* Fresh disk image — lay down a FAT and re-mount. FM_FAT keeps the
+         * formatter on FAT12/16; at the shared 8 MiB geometry auto cluster
+         * sizing clears the ~4085-cluster boundary, so this lands FAT16 (the
+         * geometry the later FreeRTOS-Plus-FAT formatter needs). */
         static BYTE workBuffer[FF_MAX_SS];
         const MKFS_PARM opts = {.fmt = FM_FAT | FM_SFD, .n_fat = 1, .align = 1, .n_root = 0, .au_size = 0};
         res = f_mkfs("", &opts, workBuffer, sizeof(workBuffer));
