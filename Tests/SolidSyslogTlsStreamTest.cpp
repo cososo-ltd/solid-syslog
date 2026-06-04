@@ -374,6 +374,50 @@ TEST(SolidSyslogTlsStream, OpenSkipsHostnameSetupWhenServerNameIsNull)
     POINTERS_EQUAL(NULL, OpenSslFake_LastSet1Host());
 }
 
+TEST(SolidSyslogTlsStream, OpenWarnsWhenServerNameIsNull)
+{
+    /* Default config.ServerName is NULL — peer identity is unverified, which the
+     * library must surface rather than swallow (S12.28). */
+    SolidSyslogStream_Open(stream, addr);
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    POINTERS_EQUAL(&TlsStreamErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(TLSSTREAM_ERROR_SERVER_NAME_NOT_SET, ErrorHandlerFake_LastDetail());
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+}
+
+TEST(SolidSyslogTlsStream, OpenStillConnectsWhenServerNameIsNull)
+{
+    /* The unverified-peer WARNING is observable but non-fatal — the IP-pinned /
+     * closed-network use case must still connect. */
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    LONGS_EQUAL(0, StreamFake_CloseCallCount(transport));
+}
+
+TEST(SolidSyslogTlsStream, OpenDoesNotWarnWhenServerNameIsEmpty)
+{
+    /* Empty string is the deliberate opt-out — no diagnostic. */
+    config.ServerName = "";
+    ReCreateStreamWithUpdatedConfig();
+    SolidSyslogStream_Open(stream, addr);
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogTlsStream, OpenSkipsHostnameSetupWhenServerNameIsEmpty)
+{
+    config.ServerName = "";
+    ReCreateStreamWithUpdatedConfig();
+    SolidSyslogStream_Open(stream, addr);
+    POINTERS_EQUAL(NULL, OpenSslFake_LastSet1Host());
+}
+
+TEST(SolidSyslogTlsStream, OpenConnectsWhenServerNameIsEmpty)
+{
+    config.ServerName = "";
+    ReCreateStreamWithUpdatedConfig();
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+}
+
 TEST(SolidSyslogTlsStream, OpenAttachesTransportAsBioData)
 {
     SolidSyslogStream_Open(stream, addr);
@@ -687,9 +731,13 @@ TEST(SolidSyslogTlsStream, OpenReturnsTrueOnHappyPath)
 
 TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenHandshakeFails)
 {
-    /* Default OpenSslFake_SetConnectFails(true) returns -1 from SSL_connect
-     * and SSL_get_error reports SSL_ERROR_SSL (the default for SetGetErrorReturn)
-     * — a non-retryable hard error, which is the HANDSHAKE_REJECTED branch. */
+    /* ServerName set so the handshake stage is the only error source (a NULL
+     * ServerName would also emit the unverified-peer WARNING). Default
+     * OpenSslFake_SetConnectFails(true) returns -1 from SSL_connect and
+     * SSL_get_error reports SSL_ERROR_SSL (the default for SetGetErrorReturn) —
+     * a non-retryable hard error, which is the HANDSHAKE_REJECTED branch. */
+    config.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetConnectFails(true);
     OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
@@ -1158,8 +1206,11 @@ TEST(SolidSyslogTlsStream, OpenRetriesHandshakeOnWantWrite)
 
 TEST(SolidSyslogTlsStream, OpenFailsWhenHandshakeNeverCompletes)
 {
-    /* SSL_connect always returns -1 with WANT_READ — handshake never makes
+    /* ServerName set so the handshake timeout is the only error source.
+       SSL_connect always returns -1 with WANT_READ — handshake never makes
        progress, so the bounded budget should expire and Open returns false. */
+    config.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
     ArrangePersistentHandshakeError(SSL_ERROR_WANT_READ);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
@@ -1200,7 +1251,10 @@ TEST(SolidSyslogTlsStream, GetterReceivesNullContextWhenContextNotConfigured)
 
 TEST(SolidSyslogTlsStream, OpenFailsImmediatelyOnHardSslError)
 {
-    /* Non-WANT error (e.g. SSL_ERROR_SSL) is fail-fast — no retry budget burn. */
+    /* ServerName set so the handshake hard error is the only error source.
+       Non-WANT error (e.g. SSL_ERROR_SSL) is fail-fast — no retry budget burn. */
+    config.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
     ArrangePersistentHandshakeError(SSL_ERROR_SSL);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CALLED_FAKE(OpenSslFake_Connect, ONCE);

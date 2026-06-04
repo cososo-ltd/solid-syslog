@@ -191,9 +191,22 @@ static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsSt
 static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbedTlsStream* self)
 {
     bool ok = true;
-    if (self->Config.ServerName != NULL)
+    const char* serverName = self->Config.ServerName;
+    if (serverName == NULL)
     {
-        ok = mbedtls_ssl_set_hostname(&self->SslContext, self->Config.ServerName) == 0;
+        /* No expected identity supplied — the handshake will accept any cert that
+         * chains to a trusted CA, so the peer is unverified. Surface it as a
+         * WARNING (still connect, preserving the IP-pinned / closed-network case)
+         * rather than swallowing the MITM-class default silently. S12.28. */
+        MbedTlsStream_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET
+        );
+    }
+    else if (serverName[0] != '\0')
+    {
+        ok = mbedtls_ssl_set_hostname(&self->SslContext, serverName) == 0;
         if (!ok)
         {
             MbedTlsStream_Report(
@@ -202,6 +215,12 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
                 MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET
             );
         }
+    }
+    else
+    {
+        /* Empty string is the deliberate opt-out: the integrator has no name to
+         * verify against (IP-pinning / private CA) and has said so explicitly, so
+         * connect chain-only without a diagnostic. */
     }
     return ok;
 }

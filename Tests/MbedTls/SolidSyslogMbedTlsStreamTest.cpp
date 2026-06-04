@@ -274,8 +274,12 @@ TEST(SolidSyslogMbedTlsStream, OpenRetriesHandshakeOnWantWrite)
 TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeBudgetExhausts)
 
 {
-    /* mbedtls_ssl_handshake always returns WANT_READ — handshake never makes
+    /* ServerName set so the handshake timeout is the only error source (a NULL
+     * ServerName would also emit the unverified-peer WARNING).
+     * mbedtls_ssl_handshake always returns WANT_READ — handshake never makes
      * progress, so the bounded budget should expire and Open returns false. */
+    config.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
     ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_WANT_READ);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
@@ -339,8 +343,11 @@ TEST(SolidSyslogMbedTlsStream, SecondOpenAfterFailedFirstOpenSucceeds)
 TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeFailsHard)
 
 {
-    /* Non-WANT error (e.g. a verify/connection failure) is fail-fast — no
+    /* ServerName set so the handshake hard error is the only error source.
+     * Non-WANT error (e.g. a verify/connection failure) is fail-fast — no
      * retry budget burn, no Sleep. */
+    config.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
     ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
@@ -714,6 +721,59 @@ TEST(SolidSyslogMbedTlsStream, OpenSkipsHostnameWhenServerNameIsNull)
     SolidSyslogStream_Open(handle, addr);
 
     LONGS_EQUAL(0, MbedTlsFake_SslSetHostnameCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenWarnsWhenServerNameIsNull)
+
+{
+    /* setup() left config.ServerName at NULL — peer identity is unverified, which
+     * the library must surface rather than swallow (S12.28). */
+    SolidSyslogStream_Open(handle, addr);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET, ErrorHandlerFake_LastDetail());
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenStillConnectsWhenServerNameIsNull)
+
+{
+    /* The unverified-peer WARNING is observable but non-fatal — the IP-pinned /
+     * closed-network use case must still connect. */
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    LONGS_EQUAL(0, StreamFake_CloseCallCount(transport));
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenDoesNotWarnWhenServerNameIsEmpty)
+
+{
+    /* Empty string is the deliberate opt-out — no diagnostic. */
+    config.ServerName = "";
+    ReCreateHandleWithUpdatedConfig();
+    SolidSyslogStream_Open(handle, addr);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenSkipsHostnameSetupWhenServerNameIsEmpty)
+
+{
+    config.ServerName = "";
+    ReCreateHandleWithUpdatedConfig();
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslSetHostnameCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenConnectsWhenServerNameIsEmpty)
+
+{
+    config.ServerName = "";
+    ReCreateHandleWithUpdatedConfig();
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
 }
 
 /* -------------------------------------------------------------------------

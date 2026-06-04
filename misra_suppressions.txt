@@ -86,8 +86,8 @@ misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:149
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:211
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:143
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:151
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:275
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:287
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:294
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:306
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:142
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:357
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:377
@@ -199,5 +199,5 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:20
 
 # D.013 — Rule 11.5: void* ↔ unsigned char* at third-party byte-buffer API boundaries
 # See docs/misra-deviations.md#d013
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:312
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:331
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:350

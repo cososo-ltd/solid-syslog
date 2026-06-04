@@ -1,5 +1,36 @@
 # Dev Log
 
+## 2026-06-04 — S12.28 TLS peer-hostname verification surfaced when ServerName is NULL
+
+Closes the High-severity finding from the pre-0.1.0 security audit: both TLS adapters
+(OpenSSL, mbedTLS) bound the peer identity to the certificate only when `ServerName` was
+set, so a NULL `ServerName` connected against *any* CA-issued cert — a silent, MITM-class
+default with no diagnostic. Now the unverified-peer case is observable.
+
+### Decisions
+
+- **NULL warns, `""` opts out (Model chosen with David).** `ServerName == NULL` emits a
+  `WARNING` (`BAD_CONFIG` / `*_SERVER_NAME_NOT_SET`) and still connects chain-only,
+  preserving the closed-network / IP-pinning use case. `ServerName == ""` is the deliberate
+  opt-out — connect chain-only, no diagnostic. A non-empty name verifies as before.
+- **Key insight surfaced in the design discussion: "no DNS" ≠ "no hostname verification".**
+  Identity binding (`SSL_set1_host` / `mbedtls_ssl_set_hostname`) is a string check against
+  the cert and needs no DNS. An IP-pinned target can still set `ServerName` to the name (or
+  IP SAN) on its cert and get full MITM protection. Documented in `integrating-mbedtls.md`
+  and both `ServerName` header comments.
+- **Reused the existing `*_SERVER_NAME_NOT_SET` detail at WARNING severity** rather than
+  adding a new enum value — the name fits the NULL case and severity is the discriminator
+  (ERROR = a provided name couldn't be applied → unwound; WARNING = no name → connected
+  unverified). No public error-enum change.
+- TDD across both adapters; a few existing handshake-failure tests had to set a `ServerName`
+  so the new NULL-warning didn't double-fire alongside their single expected error.
+
+### Deferred
+
+- IP-SAN verification (`X509_VERIFY_PARAM_set1_ip` / mbedTLS equivalent) for IP-literal
+  targets — `SSL_set1_host` is name-based. A possible follow-up if integrators want verified
+  IP-pinning rather than the `""` opt-out.
+
 ## 2026-06-04 — S21.04 BlockDevice owns its block size
 
 Closes the last open thread under E21 (Port-Time Configurability). Block size moves

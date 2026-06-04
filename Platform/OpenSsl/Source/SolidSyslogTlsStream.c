@@ -387,10 +387,18 @@ static inline long TlsStream_TransportBioCtrl(BIO* bio, int cmd, long larg, void
 static inline bool TlsStream_ConfigureExpectedHostname(struct SolidSyslogTlsStream* self)
 {
     bool ok = true;
-    if (self->Config.ServerName != NULL)
+    const char* serverName = self->Config.ServerName;
+    if (serverName == NULL)
     {
-        ok = (SSL_set_tlsext_host_name(self->Ssl, self->Config.ServerName) == 1) &&
-             (SSL_set1_host(self->Ssl, self->Config.ServerName) == 1);
+        /* No expected identity supplied — the handshake will accept any cert that
+         * chains to a trusted CA, so the peer is unverified. Surface it as a
+         * WARNING (still connect, preserving the IP-pinned / closed-network case)
+         * rather than swallowing the MITM-class default silently. S12.28. */
+        TlsStream_Report(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_CAT_BAD_CONFIG, TLSSTREAM_ERROR_SERVER_NAME_NOT_SET);
+    }
+    else if (serverName[0] != '\0')
+    {
+        ok = (SSL_set_tlsext_host_name(self->Ssl, serverName) == 1) && (SSL_set1_host(self->Ssl, serverName) == 1);
         if (!ok)
         {
             TlsStream_Report(
@@ -399,6 +407,12 @@ static inline bool TlsStream_ConfigureExpectedHostname(struct SolidSyslogTlsStre
                 TLSSTREAM_ERROR_SERVER_NAME_NOT_SET
             );
         }
+    }
+    else
+    {
+        /* Empty string is the deliberate opt-out: the integrator has no name to
+         * verify against (IP-pinning / private CA) and has said so explicitly, so
+         * connect chain-only without a diagnostic. */
     }
     return ok;
 }

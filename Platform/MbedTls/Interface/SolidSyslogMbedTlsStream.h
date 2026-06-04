@@ -26,7 +26,10 @@ EXTERN_C_BEGIN
         void* HandshakeTimeoutContext; /* passed through to GetHandshakeTimeoutMs; NULL is fine */
         struct mbedtls_ctr_drbg_context* Rng; /* seeded CTR-DRBG — caller owns */
         struct mbedtls_x509_crt* CaChain; /* trust anchors — caller owns */
-        const char* ServerName; /* SNI + cert hostname check; NULL to skip */
+        const char* ServerName; /* SNI + peer-identity check. A non-empty name is verified against the
+                                   cert (SAN/CN). NULL connects chain-only but emits a WARNING — the peer
+                                   is unverified (MITM-class). "" is the deliberate opt-out (IP-pinning /
+                                   private CA): connect chain-only, no diagnostic. */
         struct mbedtls_x509_crt* ClientCertChain; /* leaf (+ intermediates); NULL = no mTLS */
         struct mbedtls_pk_context* ClientKey; /* matching private key; NULL = no mTLS */
     };
