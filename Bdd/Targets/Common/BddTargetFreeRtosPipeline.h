@@ -5,19 +5,25 @@
 #include "SolidSyslogSender.h"
 #include "SolidSyslogStringFunction.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /* Shared FreeRTOS BDD-target pipeline.
  *
  * Everything platform-independent lives in this component: the SolidSyslog
- * lifecycle, the FatFs-backed store + security-policy machinery (crc16 /
+ * lifecycle, the file-backed store + security-policy machinery (crc16 /
  * hmac-sha256 / aes-256-gcm / null), the SD set, the interactive `set` handler,
- * the CircularBuffer + Service drain task, the console glue, and the
- * mount/format-on-first-use semihosting FatFs path. Both FreeRTOS BDD targets
- * (Bdd/Targets/FreeRtos = FreeRTOS-Plus-TCP, Bdd/Targets/FreeRtosLwip = lwIP)
- * drive this; their main.c files keep only the network backend behind the seam
- * below — the adapter wiring (PlusTcp vs LwipRaw) and the IP-stack bring-up that
- * genuinely differ. See SolidSyslog S29.03. */
+ * the CircularBuffer + Service drain task, and the console glue. Both FreeRTOS
+ * BDD targets (Bdd/Targets/FreeRtos = FreeRTOS-Plus-TCP, Bdd/Targets/FreeRtosLwip
+ * = lwIP) drive this; their main.c files keep only the network backend and the
+ * FS-mount seam behind the config below — the network adapter wiring (PlusTcp vs
+ * LwipRaw), the IP-stack bring-up, and the filesystem vendor (FreeRTOS-Plus-FAT
+ * vs ChaN-FatFs) that genuinely differ. See SolidSyslog S29.03 (network seam)
+ * and S29.05 (FS-mount seam). */
+
+/* Forward declaration — the FS-mount seam traffics in SolidSyslogFile handles
+ * without the pipeline header pulling SolidSyslogFile.h. */
+struct SolidSyslogFile;
 
 /* The platform seam each target injects via BddTargetFreeRtosPipeline_SetConfig. */
 struct BddTargetFreeRtosPipelineConfig
@@ -35,6 +41,20 @@ struct BddTargetFreeRtosPipelineConfig
     /* Tear down the sender + platform adapters. Runs on the interactive task
      * after the shared pipeline teardown (SolidSyslog / SD / store / buffer). */
     void (*TeardownNetwork)(void);
+
+    /* FS-mount seam — the FS-vendor-specific half of the file-backed store.
+     * The Plus-TCP target wires the FreeRTOS-Plus-FAT shim (BddTargetPlusFatMount);
+     * the lwIP target wires the ChaN-FatFs shim (BddTargetFatFsMount). The
+     * pipeline drives the store machinery (BlockStore / FileBlockDevice /
+     * security policy) FS-vendor-agnostically through these four hooks. */
+    /* Mount + format-on-first-use; idempotent; false on unrecoverable failure
+     * (the rebuild path then leaves the target on its current store). */
+    bool (*MountStore)(void);
+    /* Unmount on teardown; safe to call when not mounted. */
+    void (*UnmountStore)(void);
+    /* Create / destroy the platform SolidSyslogFile adapter for the store. */
+    struct SolidSyslogFile* (*CreateStoreFile)(void);
+    void (*DestroyStoreFile)(struct SolidSyslogFile* file);
 };
 
 /* Install the platform seam. Call once from main() before the tasks run. */

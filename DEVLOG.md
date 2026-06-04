@@ -1,5 +1,64 @@
 # Dev Log
 
+## 2026-06-04 — S29.05 PlusFAT media driver + Plus-TCP target swap
+
+The last functional story of E29: a FreeRTOS-Plus-FAT `FF_Disk_t` semihosting
+media driver, the Plus-TCP BDD target swapped from FatFs to PlusFAT, and the full
+`@store` suite green on QEMU over PlusFAT — proving the `SolidSyslogFile` seam is
+FS-vendor-portable (FatFs on the lwIP target, PlusFAT on the Plus-TCP target) the
+way E28 proved the transport seam.
+
+### Decisions
+
+- **FS-mount seam, introduced now.** S29.03 extracted only the *network* backend
+  behind the pipeline config — both targets shared FatFs, so no FS seam was
+  needed (YAGNI). S29.05 is the first divergence, so the pipeline gained four
+  function pointers (`MountStore` / `UnmountStore` / `CreateStoreFile` /
+  `DestroyStoreFile`); the FatFs logic moved to `BddTargetFatFsMount`, the new
+  PlusFAT logic to `BddTargetPlusFatMount`. The pipeline no longer includes
+  `ff.h` / `SolidSyslogFatFsFile.h` and is FS-vendor-agnostic.
+- **DRY'd the semihosting trap.** The BKPT-0xAB host-file I/O and the 8 MiB FAT16
+  geometry moved from `diskio.c` into a shared `SemihostingDisk` TU, consumed by
+  both the ChaN `diskio.c` glue and the new `FFSemihostingDisk` FF_Disk_t driver —
+  so a FatFs run and a PlusFAT run hit byte-for-byte the same host image.
+- **`FFSemihostingDisk` is mount-or-format-on-first-use**, not format-always
+  (unlike Plus-FAT's volatile `ff_ramdisk.c` template): it tries `FF_Mount` first
+  so a power cycle keeps its data, and only partitions + formats a fresh image.
+  FAT16 forced via `FF_Format(..., xPreferFAT16 = pdTRUE)` on the 8 MiB geometry.
+- **`ff_fflush` is a phantom — fixed the adapter (approved scope expansion).**
+  The S29.04 adapter called `ff_fflush` for write durability; FreeRTOS-Plus-FAT
+  *declares* it in `ff_stdio.h` but never *defines* it (SHA `8d38036`).
+  `PlusFatFake` defined it, so S29.04's host tests passed while the real Plus-TCP
+  target failed to link — the host-fake masking a real-library gap. With David's
+  go-ahead the adapter now flushes via `FF_FlushCache(Fp->pxIOManager)` (the real
+  cache-flush primitive; the dirent size is still committed on Close); the fake
+  and the three durability tests were updated to match. This expanded S29.05 past
+  its "adapter untouched" AC by design.
+- **Absolute store paths.** Plus-FAT `ff_stdio` only accepts absolute paths at
+  `ffconfigHAS_CWD = 0`, so the shared store prefix became `/STORE` (valid for
+  ChaN too — the lwIP FatFs target stayed green).
+- **Warning scoping.** Plus-FAT core sources sit in the relaxed upstream OBJECT
+  lib (+ `-Wno-cpp` for `ff_fat.c`'s one-FAT-table `#warning`); `FFSemihostingDisk.c`
+  stays in the strict executable with only `-Wno-sign-conversion` (Plus-FAT's
+  `FF_ERR_*` carry the 0x80000000 flag bit and can't be sign-clean at the call
+  site). The adapter needed no relaxation.
+
+### Validation
+
+- Host `SolidSyslogPlusFatFileTest`: 30/30 green with the `FF_FlushCache` swap.
+- Both FreeRTOS cross targets build; Plus-TCP ELF links — `nm` confirms
+  `FF_FlushCache` present, no `ff_fflush`, no FatFs symbols.
+- Plus-TCP `@store` BDD on QEMU: 5 features / 12 scenarios passed, 0 failed
+  (`store_and_forward`, `store_capacity`, `power_cycle_replay`, `capacity_threshold`,
+  `block_lifecycle`). `power_cycle_replay` passing confirms the
+  flush-data + commit-size-on-close durability is sound across a graceful restart.
+
+### Open questions
+
+- Hard-power-cut durability (vs the graceful BDD restart) is best-effort: the
+  dirent size lands on Close, so a crash mid-record could leave a stale size.
+  Documented in `docs/integrating-plusfat.md`; revisit only if a target needs it.
+
 ## 2026-06-03 — S29.04 Platform/PlusFat adapter pack (host TDD)
 
 The FreeRTOS-Plus-FAT `SolidSyslogFile` adapter, mirroring the FatFs sibling but

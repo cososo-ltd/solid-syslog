@@ -25,7 +25,6 @@
 #include "SolidSyslogCrc16Policy.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogError.h"
-#include "SolidSyslogFatFsFile.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogFreeRtosMutex.h"
@@ -42,8 +41,6 @@
 #include "SolidSyslogTimeQuality.h"
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogTunables.h"
-
-#include "ff.h" /* f_mount / f_mkfs — eager mount-or-format on the `set store file` rebuild trigger. */
 
 #include <FreeRTOS.h>
 #include <task.h>
@@ -100,15 +97,12 @@ static volatile bool solidSyslogTeardown = false;
 
 /* File-backed store storage. Lives in .bss so it persists across the `set store
  * file` rebuild; only populated when that command fires. STORE_PATH_PREFIX is
- * "STORE" — sequence-numbered FAT filenames land as STORE00.log, STORE01.log,
- * … which fit 8.3 short-filename mode (LFN=0 in our shared ffconf.h). */
-static const char STORE_PATH_PREFIX[] = "STORE";
-
-/* FATFS object lives in .bss because f_mount stores its address inside the FatFs
- * volume registry — the object must outlive every f_open / f_stat / f_unlink.
- * One per volume (FF_VOLUMES = 1). */
-static FATFS fatfs;
-static bool fatfsMounted = false;
+ * "/STORE" — sequence-numbered filenames land at the volume root as
+ * /STORE00.log, /STORE01.log, … which fit 8.3 short-filename mode. The leading
+ * slash makes the path absolute: ChaN-FatFs treats it as the default-drive root
+ * (unchanged behaviour), and FreeRTOS-Plus-FAT's ff_stdio requires an absolute
+ * path when ffconfigHAS_CWD is 0 (its prvABSPath is a pass-through). */
+static const char STORE_PATH_PREFIX[] = "/STORE";
 
 static struct SolidSyslogFile* storeFile = NULL;
 static struct SolidSyslogBlockDevice* storeBlockDevice = NULL;
@@ -175,7 +169,6 @@ static bool OnSet(const char* name, const char* value);
 static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void);
 static void DestroySecurityPolicy(void);
 static bool RebuildWithFileStore(void);
-static bool EnsureFatFsMounted(void);
 static void DestroyCurrentStore(void);
 static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy);
 static void OnStoreFull(void* context);
@@ -541,18 +534,20 @@ static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
     return policy;
 }
 
-/* `set store file` trigger: swap the default NullStore for a FatFs-backed
- * BlockStore. One-way for the lifetime of this QEMU instance. The lifecycle
- * mutex blocks the Service task across the Destroy → re-Create transition. */
+/* `set store file` trigger: swap the default NullStore for a file-backed
+ * BlockStore over the platform FS-mount seam. One-way for the lifetime of this
+ * QEMU instance. The lifecycle mutex blocks the Service task across the
+ * Destroy → re-Create transition. */
 static bool RebuildWithFileStore(void)
 {
     SolidSyslogMutex_Lock(lifecycleMutex);
 
-    /* FatFs does NOT auto-mount on first f_open — mount (and format-on-first-use)
-     * before tearing down the existing store so a mount failure leaves the
-     * target running on the original NullStore (zero-disruption); return false
-     * so OnSet reports the failure to the harness. */
-    if (!EnsureFatFsMounted())
+    /* The FS layer does NOT auto-mount on first open — mount (and
+     * format-on-first-use) via the platform FS-mount seam before tearing down
+     * the existing store so a mount failure leaves the target running on the
+     * original NullStore (zero-disruption); return false so OnSet reports the
+     * failure to the harness. */
+    if (!g_config->MountStore())
     {
         SolidSyslogMutex_Unlock(lifecycleMutex);
         return false;
@@ -563,7 +558,7 @@ static bool RebuildWithFileStore(void)
     solidSyslog = NULL;
     DestroyCurrentStore();
 
-    storeFile = SolidSyslogFatFsFile_Create();
+    storeFile = g_config->CreateStoreFile();
     storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX);
 
     struct SolidSyslogSecurityPolicy* policy = CreateSecurityPolicy();
@@ -593,40 +588,6 @@ static bool RebuildWithFileStore(void)
     return true;
 }
 
-/* Mount volume 0; format-on-first-use if the disk image has no FAT yet.
- * Idempotent — subsequent calls short-circuit on fatfsMounted. The work buffer
- * for f_mkfs is sized to FF_MAX_SS (512 B), the minimum f_mkfs accepts on a
- * FAT12/16 volume. */
-static bool EnsureFatFsMounted(void)
-{
-    if (fatfsMounted)
-    {
-        return true;
-    }
-    FRESULT res = f_mount(&fatfs, "", 1); /* opt=1 → mount immediately, surface FR_NO_FILESYSTEM here */
-    if (res == FR_NO_FILESYSTEM)
-    {
-        /* Fresh disk image — lay down a FAT and re-mount. FM_FAT keeps the
-         * formatter on FAT12/16; at the shared 8 MiB geometry auto cluster
-         * sizing clears the ~4085-cluster boundary, so this lands FAT16 (the
-         * geometry the later FreeRTOS-Plus-FAT formatter needs). */
-        static BYTE workBuffer[FF_MAX_SS];
-        const MKFS_PARM opts = {.fmt = FM_FAT | FM_SFD, .n_fat = 1, .align = 1, .n_root = 0, .au_size = 0};
-        res = f_mkfs("", &opts, workBuffer, sizeof(workBuffer));
-        if (res == FR_OK)
-        {
-            res = f_mount(&fatfs, "", 1);
-        }
-    }
-    if (res != FR_OK)
-    {
-        (void) printf("[solidsyslog] fatfs mount failed: FRESULT=%d\n", (int) res);
-        return false;
-    }
-    fatfsMounted = true;
-    return true;
-}
-
 static void DestroySecurityPolicy(void)
 {
     if (strcmp(installedSecurityPolicy, "hmac-sha256") == 0)
@@ -646,7 +607,8 @@ static void DestroySecurityPolicy(void)
 }
 
 /* Tears down whichever store is currently installed (file-backed or null).
- * FatFsFile_Destroy → Close → f_close flushes the underlying FIL's dir entry. */
+ * The platform DestroyStoreFile hook's Close flushes any buffered dir entry /
+ * file data through to the media. */
 static void DestroyCurrentStore(void)
 {
     if (currentStoreIsFile)
@@ -654,7 +616,7 @@ static void DestroyCurrentStore(void)
         SolidSyslogBlockStore_Destroy(currentStore);
         SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
         DestroySecurityPolicy();
-        SolidSyslogFatFsFile_Destroy(storeFile);
+        g_config->DestroyStoreFile(storeFile);
     }
     /* else: NullStore is shared and immutable — nothing to destroy. */
 }
@@ -702,11 +664,12 @@ static void OnThresholdCrossed(void* context)
 
 /* Full teardown of every shared resource. Two entry points — `quit` (falls
  * through after BddTargetInteractive_Run returns) and `set shutdown 1` — both
- * route through here. f_unmount fires regardless so the next session's f_mount
- * finds STORE*.log directory entries up-to-date (power_cycle_replay relies on
- * this). The lifecycle mutex held across the SolidSyslog + store destroy keeps
- * Service from racing the teardown. The platform's network teardown runs last,
- * after the shared resources are released. */
+ * route through here. The platform UnmountStore hook fires regardless so the
+ * next session's mount finds STORE*.log directory entries up-to-date
+ * (power_cycle_replay relies on this). The lifecycle mutex held across the
+ * SolidSyslog + store destroy keeps Service from racing the teardown. The
+ * platform's network teardown runs last, after the shared resources are
+ * released. */
 static void TeardownAll(void)
 {
     SolidSyslogMutex_Lock(lifecycleMutex);
@@ -720,11 +683,7 @@ static void TeardownAll(void)
     SolidSyslogMetaSd_Destroy(metaSd);
     SolidSyslogStdAtomicCounter_Destroy(atomicCounter);
     DestroyCurrentStore();
-    if (fatfsMounted)
-    {
-        (void) f_unmount("");
-        fatfsMounted = false;
-    }
+    g_config->UnmountStore();
     SolidSyslogMutex_Unlock(lifecycleMutex);
 
     /* Wait for Service to observe the teardown flag and vTaskDelete itself
@@ -791,8 +750,8 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
      * very first iteration without a NULL check. */
     lifecycleMutex = SolidSyslogFreeRtosMutex_Create();
 
-    /* Default store is NullStore — flipped to FatFs/BlockStore by `set store
-     * file` via RebuildWithFileStore(). */
+    /* Default store is NullStore — flipped to the file-backed BlockStore by
+     * `set store file` via RebuildWithFileStore(). */
     currentStore = SolidSyslogNullStore_Get();
     currentStoreIsFile = false;
 

@@ -1,19 +1,24 @@
 /* FreeRTOS-Plus-TCP SolidSyslog BDD target for QEMU mps2-an385.
  *
- * The platform-independent pipeline — SolidSyslog lifecycle, FatFs-backed store
+ * The platform-independent pipeline — SolidSyslog lifecycle, file-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue — lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
  * (shared with the lwIP target, S29.03). This file keeps only the FreeRTOS-Plus-TCP
- * network backend behind the pipeline seam: static-IP bring-up, the LAN9118 IRQ
- * priority fix, the per-endpoint RNG / sequence hooks, the PlusTcp sender wiring
- * (UDP datagram + octet-framed TCP + TLS/mTLS via mbedTLS over PlusTcp TCP), and
- * the RFC 5424 HOSTNAME read from the Plus-TCP endpoint.
+ * network backend and the FreeRTOS-Plus-FAT store behind the pipeline seam:
+ * static-IP bring-up, the LAN9118 IRQ priority fix, the per-endpoint RNG /
+ * sequence hooks, the PlusTcp sender wiring (UDP datagram + octet-framed TCP +
+ * TLS/mTLS via mbedTLS over PlusTcp TCP), the RFC 5424 HOSTNAME read from the
+ * Plus-TCP endpoint, and the Plus-FAT FS-mount seam (BddTargetPlusFatMount over
+ * the FF_Disk_t semihosting media driver). The lwIP target pairs lwIP with
+ * ChaN-FatFs instead — together the two targets prove the SolidSyslogFile seam
+ * is FS-vendor-portable (S29.05).
  *
  * Static IPv4 (10.0.2.15) on the QEMU slirp network with the host reachable at
  * the slirp gateway 10.0.2.2. */
 
 #include "BddTargetFreeRtosPipeline.h"
 #include "BddTargetMtlsConfig.h"
+#include "BddTargetPlusFatMount.h"
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
 #include "BddTargetTlsSender.h"
@@ -100,6 +105,10 @@ static const struct BddTargetFreeRtosPipelineConfig PIPELINE_CONFIG = {
     .BuildSender = BuildSender,
     .GetHostname = GetHostname,
     .TeardownNetwork = TeardownNetwork,
+    .MountStore = BddTargetPlusFatMount_Mount,
+    .UnmountStore = BddTargetPlusFatMount_Unmount,
+    .CreateStoreFile = BddTargetPlusFatMount_CreateFile,
+    .DestroyStoreFile = BddTargetPlusFatMount_DestroyFile,
 };
 
 int main(void)

@@ -17,6 +17,7 @@
  * that name statically to 10.0.2.2 (slirp can't return a reachable address for
  * the docker alias over real DNS). */
 
+#include "BddTargetFatFsMount.h"
 #include "BddTargetFreeRtosPipeline.h"
 #include "EthernetIf.h"
 
@@ -78,6 +79,10 @@ static const struct BddTargetFreeRtosPipelineConfig PIPELINE_CONFIG = {
     .BuildSender = BuildSender,
     .GetHostname = GetHostname,
     .TeardownNetwork = TeardownNetwork,
+    .MountStore = BddTargetFatFsMount_Mount,
+    .UnmountStore = BddTargetFatFsMount_Unmount,
+    .CreateStoreFile = BddTargetFatFsMount_CreateFile,
+    .DestroyStoreFile = BddTargetFatFsMount_DestroyFile,
 };
 
 /* lwIP randomness source (declared by arch/cc.h's LWIP_RAND). sys_now() comes

@@ -29,9 +29,9 @@ EXTERN_C_BEGIN
     const void* PlusFatFake_LastWriteBytes(void);
     unsigned long PlusFatFake_LastWriteItems(void);
 
-    /* ff_fflush */
-    void PlusFatFake_SetFflushFails(void);
-    int PlusFatFake_FflushCallCount(void);
+    /* FF_FlushCache */
+    void PlusFatFake_SetFlushCacheFails(void);
+    int PlusFatFake_FlushCacheCallCount(void);
 
     /* ff_fseek */
     int PlusFatFake_SeekCallCount(void);

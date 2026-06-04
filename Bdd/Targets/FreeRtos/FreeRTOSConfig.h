@@ -41,6 +41,12 @@
 #define configSUPPORT_DYNAMIC_ALLOCATION 1
 #define configKERNEL_PROVIDED_STATIC_MEMORY 1
 
+/* FreeRTOS-Plus-FAT's ff_stdio stores its errno, CWD, and FF_Error in per-task
+ * thread-local storage at offsets ffconfigCWD_THREAD_LOCAL_INDEX + {0,1,2}. With
+ * the index pinned to 0 (see FreeRTOSFATConfig.h), three slots are the minimum
+ * ff_stdio.h enforces at compile time. */
+#define configNUM_THREAD_LOCAL_STORAGE_POINTERS 3
+
 #define configUSE_CO_ROUTINES 0
 #define configMAX_CO_ROUTINE_PRIORITIES 1
 

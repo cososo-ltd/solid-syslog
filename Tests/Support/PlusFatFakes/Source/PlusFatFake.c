@@ -38,9 +38,9 @@ static unsigned char lastWriteBytes[WRITE_CAPTURE_CAPACITY];
 static size_t lastWriteItems;
 static bool writeIncomplete;
 
-/* ff_fflush state */
-static int fflushCallCount;
-static int fflushResult;
+/* FF_FlushCache state */
+static int flushCacheCallCount;
+static int flushCacheResult;
 
 /* ff_fseek state */
 static int seekCallCount;
@@ -83,8 +83,8 @@ void PlusFatFake_Reset(void)
     memset(lastWriteBytes, 0, sizeof(lastWriteBytes));
     lastWriteItems = 0;
     writeIncomplete = false;
-    fflushCallCount = 0;
-    fflushResult = 0;
+    flushCacheCallCount = 0;
+    flushCacheResult = 0;
     seekCallCount = 0;
     lastSeekOffset = 0;
     lastSeekWhence = 0;
@@ -224,21 +224,23 @@ size_t ff_fwrite(const void* pvBuffer, size_t xSize, size_t xItems, FF_FILE* pxS
     return itemsWritten;
 }
 
-void PlusFatFake_SetFflushFails(void)
+void PlusFatFake_SetFlushCacheFails(void)
 {
-    fflushResult = -1;
+    /* Any error code with the FF_ERRFLAG bit set is non-FF_ERR_NONE — the
+     * adapter treats it as a flush failure. */
+    flushCacheResult = (int) (FF_ERR_IOMAN_DRIVER_FATAL_ERROR | FF_ERRFLAG);
 }
 
-int PlusFatFake_FflushCallCount(void)
+int PlusFatFake_FlushCacheCallCount(void)
 {
-    return fflushCallCount;
+    return flushCacheCallCount;
 }
 
-int ff_fflush(FF_FILE* pxStream)
+FF_Error_t FF_FlushCache(FF_IOManager_t* pxIOManager)
 {
-    (void) pxStream;
-    fflushCallCount++;
-    return fflushResult;
+    (void) pxIOManager;
+    flushCacheCallCount++;
+    return flushCacheResult;
 }
 
 int PlusFatFake_SeekCallCount(void)

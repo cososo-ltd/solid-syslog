@@ -135,13 +135,13 @@ TEST(SolidSyslogPlusFatFile, WriteCallsFfwriteWithData)
     UNSIGNED_LONGS_EQUAL(sizeof(buffer), PlusFatFake_LastWriteItems());
 }
 
-TEST(SolidSyslogPlusFatFile, WriteCommitsToDiskWithFfflush)
+TEST(SolidSyslogPlusFatFile, WriteCommitsToDiskWithFlushCache)
 {
     SolidSyslogFile_Open(file, TEST_PATH);
 
     SolidSyslogFile_Write(file, buffer, 1);
 
-    CALLED_FAKE(PlusFatFake_Fflush, ONCE);
+    CALLED_FAKE(PlusFatFake_FlushCache, ONCE);
 }
 
 TEST(SolidSyslogPlusFatFile, WriteFailsAndSkipsFlushWhenFfwriteIncomplete)
@@ -151,13 +151,13 @@ TEST(SolidSyslogPlusFatFile, WriteFailsAndSkipsFlushWhenFfwriteIncomplete)
 
     CHECK_FALSE(SolidSyslogFile_Write(file, buffer, sizeof(buffer)));
 
-    CALLED_FAKE(PlusFatFake_Fflush, NEVER);
+    CALLED_FAKE(PlusFatFake_FlushCache, NEVER);
 }
 
-TEST(SolidSyslogPlusFatFile, WriteFailsWhenFfflushFails)
+TEST(SolidSyslogPlusFatFile, WriteFailsWhenFlushCacheFails)
 {
     SolidSyslogFile_Open(file, TEST_PATH);
-    PlusFatFake_SetFflushFails();
+    PlusFatFake_SetFlushCacheFails();
 
     CHECK_FALSE(SolidSyslogFile_Write(file, buffer, sizeof(buffer)));
 }
