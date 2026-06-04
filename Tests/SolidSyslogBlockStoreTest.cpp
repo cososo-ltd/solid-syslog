@@ -5,13 +5,17 @@
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
+#include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogCrc16Policy.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFile.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogStore.h"
 #include "SolidSyslogTunables.h"
+#include "ErrorHandlerFake.h"
 #include "FileFake.h"
 #include "TestUtils.h"
 
@@ -484,6 +488,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
 
     void teardown() override
     {
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
         SolidSyslogBlockStore_Destroy(store);
         teardownBlockDeviceFakes();
     }
@@ -546,10 +551,18 @@ TEST(SolidSyslogBlockStoreConfig, ZeroBlockSizeUsesDeviceDefault)
     VerifyWriteAndReadBack();
 }
 
-TEST(SolidSyslogBlockStoreConfig, MaxBlockSizeOneClampedToMinimum)
+TEST(SolidSyslogBlockStoreConfig, BelowMinimumBlockSizeRejectsToNullStore)
 {
     CreateWithMaxBlockSize(1);
-    VerifyWriteAndReadBack();
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
+}
+
+TEST(SolidSyslogBlockStoreConfig, BelowMinimumBlockSizeReportsBadConfig)
+{
+    ErrorHandlerFake_Install(nullptr);
+    CreateWithMaxBlockSize(1);
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(BLOCKSTORE_ERROR_BLOCK_TOO_SMALL, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogBlockStoreConfig, FilenameExactlyAtMaxPath)
