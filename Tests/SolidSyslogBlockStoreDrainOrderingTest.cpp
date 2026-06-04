@@ -49,7 +49,7 @@ static const char* const TEST_PATH_PREFIX = "/tmp/draintest_";
  * clamp; the device is now the source of truth and an undersized block is a
  * hard error, so the size is explicit here.) */
 static const size_t ONE_RECORD_BLOCK_SIZE = SOLIDSYSLOG_MAX_MESSAGE_SIZE + 16U;
-static const size_t NEAR_MAX_PAYLOAD      = SOLIDSYSLOG_MAX_MESSAGE_SIZE - 100U;
+static const size_t NEAR_MAX_PAYLOAD = SOLIDSYSLOG_MAX_MESSAGE_SIZE - 100U;
 
 /* SenderSpy — sticky outage mode (every Send returns false until cleared)
  * and a vector of every *successful* send. Bigger than SenderFake's
@@ -394,9 +394,12 @@ TEST(ServiceDrainInterleave, DiscardNewestDoesNotLetNewestBypassOldestOnRecovery
  * we have the bug in our hands. */
 TEST(BlockStoreDrainOrdering, OutageDrainProducesAscendingSequenceIds)
 {
-    DrainTestConfig cfg =
-        {/*maxBlocks=*/2, /*maxBlockSize=*/ONE_RECORD_BLOCK_SIZE, /*payloadSize=*/NEAR_MAX_PAYLOAD,
-         SOLIDSYSLOG_DISCARD_POLICY_NEWEST};
+    DrainTestConfig cfg = {
+        /*maxBlocks=*/2,
+        /*maxBlockSize=*/ONE_RECORD_BLOCK_SIZE,
+        /*payloadSize=*/NEAR_MAX_PAYLOAD,
+        SOLIDSYSLOG_DISCARD_POLICY_NEWEST
+    };
     CreateStore(cfg);
 
     /* Pre-outage send + drain — mirrors `When the client sends a message`

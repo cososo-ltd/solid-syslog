@@ -83,6 +83,10 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
     {
         BlockStore_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_POOL_EXHAUSTED, BLOCKSTORE_ERROR_POOL_EXHAUSTED);
     }
+    else
+    {
+        /* Store created successfully — no diagnostic to emit. */
+    }
 
     return result;
 }

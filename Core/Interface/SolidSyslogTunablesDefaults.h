@@ -100,7 +100,8 @@
 #endif
 
 #if SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE < (SOLIDSYSLOG_MAX_MESSAGE_SIZE + SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 5)
-#error "SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE must hold one worst-case record (MAX_MESSAGE_SIZE + MAX_INTEGRITY_SIZE + 5 framing bytes)"
+#error \
+    "SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE must hold one worst-case record (MAX_MESSAGE_SIZE + MAX_INTEGRITY_SIZE + 5 framing bytes)"
 #endif
 
 /*

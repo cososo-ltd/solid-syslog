@@ -1,5 +1,51 @@
 # Dev Log
 
+## 2026-06-04 — S21.04 BlockDevice owns its block size
+
+Closes the last open thread under E21 (Port-Time Configurability). Block size moves
+from `SolidSyslogBlockStoreConfig.MaxBlockSize` to a property of the
+`SolidSyslogBlockDevice` — the device becomes the single source of truth, queried
+once at `BlockStore_Create`. An API break, deliberately landed in the 0.x beta
+window so 1.0.0 stays additive-only.
+
+### Decisions
+
+- **Device is authoritative; the store validates, it does not clamp (Design Y).**
+  The previous `max(configuredSize, oneMaxRecord)` clamp silently grew an
+  undersized block. That silently betrayed "device is the source of truth," so it's
+  replaced by an honest reject: a device whose block cannot hold one worst-case
+  record (max message + framing + the active policy's trailer) → `BlockStore_Create`
+  reports `SOLIDSYSLOG_CAT_BAD_CONFIG` / `BLOCKSTORE_ERROR_BLOCK_TOO_SMALL` and
+  falls back to `NullStore` (the established bad-setup contract).
+- **`_Create(file, prefix, blockSize)` takes the size at construction**, preserving
+  the BDD targets' runtime `--max-block-size` knob (they route the parsed value into
+  the device instead of the store config).
+- **`SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE` (8192), `0` selects it.** Floored at one
+  worst-case record so passing 0 always clears the reject; FatFs adapter adds a
+  compile-time `FF_MAX_SS` floor on the default.
+
+### Sliced (5 commits, strict red/green)
+
+1. `GetBlockSize` on the contract → 2. FileBlockDevice takes the size → 3. store
+reads the device, `MaxBlockSize` dropped from config → 4. default tunable + `0→default`
+→ 5. Design Y reject. 1396 host tests green throughout.
+
+### Worth remembering
+
+- The old clamp was **load-bearing in a documented way**: a drain-ordering test set
+  `maxBlockSize=200` and commented *"will clamp up so each block holds exactly one
+  record."* Design Y made that an error, so those tests now size blocks explicitly to
+  one near-max record. Real implication for integrators: a block smaller than one
+  max-size message is now rejected, not silently grown.
+- Size-varying BlockStore tests re-point the fixture device through an **idempotent**
+  `EnsureDeviceBlockSize` helper — same-size calls reuse the device so corruption-
+  recovery's single persistent file handle survives a destroy/recreate.
+
+### Not verified locally (CI's job)
+
+- FatFs `FF_MAX_SS` floor and the Windows / FreeRTOS BDD-target callers — the gcc
+  lane can't build them; their edits are symmetric to the green Linux target.
+
 ## 2026-06-04 — S29.05 PlusFAT media driver + Plus-TCP target swap
 
 The last functional story of E29: a FreeRTOS-Plus-FAT `FF_Disk_t` semihosting
