@@ -6,6 +6,7 @@
 
 #include "BlockSequencePrivate.h"
 #include "RecordStorePrivate.h"
+#include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogBlockStorePrivate.h"
 #include "SolidSyslogError.h"
@@ -88,8 +89,9 @@ static struct BlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
     const struct RecordStore* recordStore
 )
 {
-    size_t minBlockSize = RecordStore_RecordSize(recordStore, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
-    size_t maxBlockSize = (config->MaxBlockSize < minBlockSize) ? minBlockSize : config->MaxBlockSize;
+    size_t minBlockSize    = RecordStore_RecordSize(recordStore, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
+    size_t deviceBlockSize = SolidSyslogBlockDevice_GetBlockSize(config->BlockDevice);
+    size_t maxBlockSize    = (deviceBlockSize < minBlockSize) ? minBlockSize : deviceBlockSize;
 
     struct BlockSequenceConfig blockConfig = {
         .BlockDevice = config->BlockDevice,

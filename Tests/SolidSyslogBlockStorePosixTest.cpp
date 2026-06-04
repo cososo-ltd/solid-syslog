@@ -4,6 +4,7 @@
 #include <string>
 
 #include "CppUTest/TestHarness.h"
+#include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogPosixFile.h"
@@ -61,9 +62,13 @@ TEST_GROUP(SolidSyslogBlockStorePosix)
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- test helper mirrors rotation test group signature
     void CreateStore(size_t maxBlockSize = ONE_MAX_MSG_RECORD, size_t maxBlocks = 2)
     {
+        if (SolidSyslogBlockDevice_GetBlockSize(device) != maxBlockSize)
+        {
+            SolidSyslogFileBlockDevice_Destroy(device);
+            device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, maxBlockSize);
+        }
         struct SolidSyslogBlockStoreConfig config = {};
         config.BlockDevice   = device;
-        config.MaxBlockSize  = maxBlockSize;
         config.MaxBlocks     = maxBlocks;
         config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
         store = SolidSyslogBlockStore_Create(&config);

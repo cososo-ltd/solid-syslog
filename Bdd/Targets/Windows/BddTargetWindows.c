@@ -291,7 +291,6 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
         securityPolicy = CreateSecurityPolicy(options);
         static struct SolidSyslogBlockStoreConfig storeConfig = {0};
         storeConfig.BlockDevice = storeBlockDevice;
-        storeConfig.MaxBlockSize = options->MaxBlockSize;
         storeConfig.MaxBlocks = options->MaxBlocks;
         storeConfig.DiscardPolicy = MapDiscardPolicy(options->DiscardPolicy);
         storeConfig.SecurityPolicy = securityPolicy;

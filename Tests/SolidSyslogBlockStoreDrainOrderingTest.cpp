@@ -19,6 +19,7 @@ extern "C"
 {
 #include "FileFake.h"
 #include "SolidSyslog.h"
+#include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogCircularBuffer.h"
@@ -122,6 +123,18 @@ TEST_BASE(DrainTestFixtureBase)
         policy = SolidSyslogNullSecurityPolicy_Get();
     }
 
+    /* Block size is a property of the device; re-point it (pool size 1, so
+     * destroy-then-recreate on the same FileFake) at the scenario's size.
+     * Idempotent — unchanged size reuses the existing device. */
+    void ensureDeviceBlockSize(size_t blockSize)
+    {
+        if (SolidSyslogBlockDevice_GetBlockSize(device) != blockSize)
+        {
+            SolidSyslogFileBlockDevice_Destroy(device);
+            device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, blockSize);
+        }
+    }
+
     void teardownBlockDeviceAndPolicy() const
     {
         SolidSyslogFileBlockDevice_Destroy(device);
@@ -152,9 +165,9 @@ TEST_GROUP_BASE(BlockStoreDrainOrdering, DrainTestFixtureBase)
 
     void CreateStore(const DrainTestConfig& cfg)
     {
+        ensureDeviceBlockSize(cfg.MaxBlockSize);
         struct SolidSyslogBlockStoreConfig config = {};
         config.BlockDevice                        = device;
-        config.MaxBlockSize                       = cfg.MaxBlockSize;
         config.MaxBlocks                          = cfg.MaxBlocks;
         config.DiscardPolicy                      = cfg.DiscardPolicy;
         config.SecurityPolicy                     = policy;
@@ -248,9 +261,9 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
     /* Build BlockStore + wire SolidSyslog facade with buffer + store + spy. */
     void Setup(const DrainTestConfig& cfg)
     {
+        ensureDeviceBlockSize(cfg.MaxBlockSize);
         struct SolidSyslogBlockStoreConfig storeCfg = {};
         storeCfg.BlockDevice                        = device;
-        storeCfg.MaxBlockSize                       = cfg.MaxBlockSize;
         storeCfg.MaxBlocks                          = cfg.MaxBlocks;
         storeCfg.DiscardPolicy                      = cfg.DiscardPolicy;
         storeCfg.SecurityPolicy                     = policy;

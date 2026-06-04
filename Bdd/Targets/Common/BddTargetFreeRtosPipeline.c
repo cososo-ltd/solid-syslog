@@ -565,7 +565,6 @@ static bool RebuildWithFileStore(void)
     currentPolicy = policy;
     struct SolidSyslogBlockStoreConfig storeConfig = {
         .BlockDevice = storeBlockDevice,
-        .MaxBlockSize = pendingMaxBlockSize,
         .MaxBlocks = pendingMaxBlocks,
         .DiscardPolicy = MapDiscardPolicy(pendingDiscardPolicy),
         .SecurityPolicy = policy,
