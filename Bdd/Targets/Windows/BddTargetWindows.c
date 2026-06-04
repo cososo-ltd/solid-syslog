@@ -284,7 +284,7 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
     {
         storeFile = SolidSyslogWindowsFile_Create();
 
-        storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX);
+        storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, options->MaxBlockSize);
 
         static size_t capacityThreshold;
         capacityThreshold = options->CapacityThreshold;

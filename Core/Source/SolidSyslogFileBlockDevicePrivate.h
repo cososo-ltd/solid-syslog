@@ -29,12 +29,14 @@ struct SolidSyslogFileBlockDevice
     struct SolidSyslogBlockDevice Base;
     struct OpenHandle Handle;
     const char* PathPrefix;
+    size_t BlockSize;
 };
 
 void FileBlockDevice_Initialise(
     struct SolidSyslogBlockDevice* base,
     struct SolidSyslogFile* file,
-    const char* pathPrefix
+    const char* pathPrefix,
+    size_t blockSize
 );
 void FileBlockDevice_Cleanup(struct SolidSyslogBlockDevice* base);
 

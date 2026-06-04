@@ -26,13 +26,17 @@ static struct SolidSyslogPoolAllocator FileBlockDevice_Allocator = {
     SOLIDSYSLOG_FILE_BLOCK_DEVICE_POOL_SIZE
 };
 
-struct SolidSyslogBlockDevice* SolidSyslogFileBlockDevice_Create(struct SolidSyslogFile* file, const char* pathPrefix)
+struct SolidSyslogBlockDevice* SolidSyslogFileBlockDevice_Create(
+    struct SolidSyslogFile* file,
+    const char* pathPrefix,
+    size_t blockSize
+)
 {
     struct SolidSyslogBlockDevice* result = SolidSyslogNullBlockDevice_Get();
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&FileBlockDevice_Allocator);
     if (SolidSyslogPoolAllocator_IndexIsValid(&FileBlockDevice_Allocator, index))
     {
-        FileBlockDevice_Initialise(&FileBlockDevice_Pool[index].Base, file, pathPrefix);
+        FileBlockDevice_Initialise(&FileBlockDevice_Pool[index].Base, file, pathPrefix, blockSize);
         result = &FileBlockDevice_Pool[index].Base;
     }
     else

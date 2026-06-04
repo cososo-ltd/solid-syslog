@@ -559,7 +559,7 @@ static bool RebuildWithFileStore(void)
     DestroyCurrentStore();
 
     storeFile = g_config->CreateStoreFile();
-    storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX);
+    storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, pendingMaxBlockSize);
 
     struct SolidSyslogSecurityPolicy* policy = CreateSecurityPolicy();
     currentPolicy = policy;

@@ -46,7 +46,7 @@ TEST_GROUP(SolidSyslogBlockStorePosix)
     {
         CleanStoreFiles();
         file   = SolidSyslogPosixFile_Create();
-        device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX);
+        device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, 4096);
         std::memset(maxMsg, 'A', sizeof(maxMsg));
     }
 

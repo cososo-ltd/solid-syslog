@@ -75,7 +75,7 @@ TEST_BASE(BlockDeviceTestBase)
     void setupBlockDeviceFakes()
     {
         file   = FileFake_Create(&storage);
-        device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX);
+        device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, 4096);
     }
 
     void teardownBlockDeviceFakes() const
@@ -490,7 +490,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
     void CreateWithPathPrefix(const char* prefix)
     {
         SolidSyslogFileBlockDevice_Destroy(device);
-        device = SolidSyslogFileBlockDevice_Create(file, prefix);
+        device = SolidSyslogFileBlockDevice_Create(file, prefix, 4096);
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
         store = SolidSyslogBlockStore_Create(&config);
     }

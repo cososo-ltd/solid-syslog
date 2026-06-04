@@ -118,7 +118,7 @@ TEST_BASE(DrainTestFixtureBase)
     void setupBlockDeviceAndPolicy()
     {
         file   = FileFake_Create(&fileStorage);
-        device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX);
+        device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, 4096);
         policy = SolidSyslogNullSecurityPolicy_Get();
     }
 

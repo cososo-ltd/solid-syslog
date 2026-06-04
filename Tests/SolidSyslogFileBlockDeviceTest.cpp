@@ -37,7 +37,7 @@ TEST_GROUP(SolidSyslogFileBlockDevice)
     void setup() override
     {
         file = FileFake_Create(&fileStorage);
-        device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX);
+        device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, 4096);
     }
 
     void teardown() override
@@ -55,6 +55,11 @@ TEST_GROUP(SolidSyslogFileBlockDevice)
 TEST(SolidSyslogFileBlockDevice, CreateReturnsNonNull)
 {
     CHECK_TRUE(device != nullptr);
+}
+
+TEST(SolidSyslogFileBlockDevice, GetBlockSizeReturnsCreatedSize)
+{
+    LONGS_EQUAL(4096, SolidSyslogBlockDevice_GetBlockSize(device));
 }
 
 TEST(SolidSyslogFileBlockDevice, ExistsReturnsFalseOnFreshSlate)
@@ -308,7 +313,7 @@ TEST_GROUP(SolidSyslogFileBlockDevicePool)
 
     [[nodiscard]] struct SolidSyslogBlockDevice* MakeDevice() const
     {
-        return SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX);
+        return SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, 4096);
     }
 
     void FillPool()
