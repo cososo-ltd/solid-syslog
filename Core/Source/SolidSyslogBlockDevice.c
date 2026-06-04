@@ -55,3 +55,8 @@ size_t SolidSyslogBlockDevice_Size(struct SolidSyslogBlockDevice* device, size_t
 {
     return device->Size(device, blockIndex);
 }
+
+size_t SolidSyslogBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* device)
+{
+    return device->GetBlockSize(device);
+}

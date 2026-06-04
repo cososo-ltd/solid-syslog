@@ -64,6 +64,7 @@ static bool FileBlockDevice_WriteAt(
 );
 // NOLINTEND(bugprone-easily-swappable-parameters)
 static size_t FileBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blockIndex);
+static size_t FileBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* base);
 
 static inline struct SolidSyslogFileBlockDevice* FileBlockDevice_SelfFromBase(struct SolidSyslogBlockDevice* base);
 static inline void FileBlockDevice_CloseIfOpen(struct OpenHandle* handle);
@@ -71,7 +72,8 @@ static inline void FileBlockDevice_CloseIfOpen(struct OpenHandle* handle);
 void FileBlockDevice_Initialise(
     struct SolidSyslogBlockDevice* base,
     struct SolidSyslogFile* file,
-    const char* pathPrefix
+    const char* pathPrefix,
+    size_t blockSize
 )
 {
     struct SolidSyslogFileBlockDevice* self = FileBlockDevice_SelfFromBase(base);
@@ -82,8 +84,10 @@ void FileBlockDevice_Initialise(
     self->Base.Append = FileBlockDevice_Append;
     self->Base.WriteAt = FileBlockDevice_WriteAt;
     self->Base.Size = FileBlockDevice_Size;
+    self->Base.GetBlockSize = FileBlockDevice_GetBlockSize;
     self->Handle = (struct OpenHandle) {.File = file, .BlockIndex = 0, .IsOpen = false};
     self->PathPrefix = pathPrefix;
+    self->BlockSize = blockSize;
 }
 
 void FileBlockDevice_Cleanup(struct SolidSyslogBlockDevice* base)
@@ -360,4 +364,9 @@ static size_t FileBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t b
     }
 
     return size;
+}
+
+static size_t FileBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* base)
+{
+    return FileBlockDevice_SelfFromBase(base)->BlockSize;
 }

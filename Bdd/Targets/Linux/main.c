@@ -221,14 +221,13 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* optio
     {
         storeFile = SolidSyslogPosixFile_Create();
 
-        storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX);
+        storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, options->MaxBlockSize);
 
         static size_t capacityThreshold;
         capacityThreshold = options->CapacityThreshold;
         securityPolicy = CreateSecurityPolicy(options);
         static struct SolidSyslogBlockStoreConfig storeConfig = {0};
         storeConfig.BlockDevice = storeBlockDevice;
-        storeConfig.MaxBlockSize = options->MaxBlockSize;
         storeConfig.MaxBlocks = options->MaxBlocks;
         storeConfig.DiscardPolicy = MapDiscardPolicy(options->DiscardPolicy);
         storeConfig.SecurityPolicy = securityPolicy;

@@ -39,6 +39,12 @@ EXTERN_C_BEGIN
     );
     size_t SolidSyslogBlockDevice_Size(struct SolidSyslogBlockDevice * device, size_t blockIndex);
 
+    /* The device-wide block capacity in bytes — how large each block can grow. Distinct from
+     * Size(blockIndex), which reports the current occupancy of one block. The device is the
+     * single source of truth for this value; a BlockStore reads it at construction rather than
+     * taking a separate configured size. */
+    size_t SolidSyslogBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice * device);
+
 EXTERN_C_END
 
 #endif /* SOLIDSYSLOGBLOCKDEVICE_H */

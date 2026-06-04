@@ -3,14 +3,19 @@
 #include <cstring>
 
 #include "CppUTest/TestHarness.h"
+#include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
+#include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogCrc16Policy.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFile.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogStore.h"
 #include "SolidSyslogTunables.h"
+#include "ErrorHandlerFake.h"
 #include "FileFake.h"
 #include "TestUtils.h"
 
@@ -39,7 +44,6 @@ enum
 
 static const struct SolidSyslogBlockStoreConfig DEFAULT_CONFIG = {
     nullptr,
-    TEST_MAX_BLOCK_SIZE,
     TEST_MAX_BLOCKS,
     SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
     nullptr,
@@ -75,7 +79,7 @@ TEST_BASE(BlockDeviceTestBase)
     void setupBlockDeviceFakes()
     {
         file   = FileFake_Create(&storage);
-        device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX);
+        device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, TEST_MAX_BLOCK_SIZE);
     }
 
     void teardownBlockDeviceFakes() const
@@ -85,6 +89,21 @@ TEST_BASE(BlockDeviceTestBase)
             SolidSyslogFileBlockDevice_Destroy(device);
         }
         FileFake_Destroy();
+    }
+
+    /* Block size is now a property of the device, not the store config. Tests that
+     * exercise a specific block size re-point the fixture device at it (pool size 1,
+     * so destroy-then-recreate on the same FileFake, mirroring CreateWithPathPrefix).
+     * Idempotent: when the size is unchanged the existing device is reused, so tests
+     * that rebuild the store on the same device (e.g. corruption recovery) keep their
+     * single persistent file handle. */
+    void EnsureDeviceBlockSize(size_t blockSize)
+    {
+        if (SolidSyslogBlockDevice_GetBlockSize(device) != blockSize)
+        {
+            SolidSyslogFileBlockDevice_Destroy(device);
+            device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, blockSize);
+        }
     }
 };
 
@@ -469,6 +488,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
 
     void teardown() override
     {
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
         SolidSyslogBlockStore_Destroy(store);
         teardownBlockDeviceFakes();
     }
@@ -482,15 +502,15 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
 
     void CreateWithMaxBlockSize(size_t maxBlockSize)
     {
+        EnsureDeviceBlockSize(maxBlockSize);
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-        config.MaxBlockSize = maxBlockSize;
         store = SolidSyslogBlockStore_Create(&config);
     }
 
     void CreateWithPathPrefix(const char* prefix)
     {
         SolidSyslogFileBlockDevice_Destroy(device);
-        device = SolidSyslogFileBlockDevice_Create(file, prefix);
+        device = SolidSyslogFileBlockDevice_Create(file, prefix, 4096);
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
         store = SolidSyslogBlockStore_Create(&config);
     }
@@ -525,16 +545,26 @@ TEST(SolidSyslogBlockStoreConfig, MaxBlocksHundredClampedToMaximum)
     VerifyWriteAndReadBack();
 }
 
-TEST(SolidSyslogBlockStoreConfig, MaxBlockSizeZeroClampedToMinimum)
+TEST(SolidSyslogBlockStoreConfig, ZeroBlockSizeUsesDeviceDefault)
 {
     CreateWithMaxBlockSize(0);
     VerifyWriteAndReadBack();
 }
 
-TEST(SolidSyslogBlockStoreConfig, MaxBlockSizeOneClampedToMinimum)
+TEST(SolidSyslogBlockStoreConfig, BelowMinimumBlockSizeIsGrownAndStoreWorks)
 {
     CreateWithMaxBlockSize(1);
+    CHECK(store != SolidSyslogNullStore_Get());
     VerifyWriteAndReadBack();
+}
+
+TEST(SolidSyslogBlockStoreConfig, BelowMinimumBlockSizeReportsWarning)
+{
+    ErrorHandlerFake_Install(nullptr);
+    CreateWithMaxBlockSize(1);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(BLOCKSTORE_ERROR_BLOCK_TOO_SMALL, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogBlockStoreConfig, FilenameExactlyAtMaxPath)
@@ -703,9 +733,9 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreRotation, BlockDeviceTestBase)
                                size_t maxBlocks = 2,
                                SolidSyslogStoreFullCallback onStoreFull = nullptr, void* storeFullContext = nullptr)
     {
+        EnsureDeviceBlockSize(maxBlockSize);
         struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
         config.BlockDevice       = device;
-        config.MaxBlockSize       = maxBlockSize;
         config.MaxBlocks          = maxBlocks;
         config.DiscardPolicy     = policy;
         config.OnStoreFull       = onStoreFull;
@@ -1685,9 +1715,9 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- maxBlockSize and maxBlocks have distinct semantics
     void CreateWithMaxBlockSize(size_t maxBlockSize, size_t maxBlocks = 2)
     {
+        EnsureDeviceBlockSize(maxBlockSize);
         struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
         config.BlockDevice     = device;
-        config.MaxBlockSize     = maxBlockSize;
         config.MaxBlocks        = maxBlocks;
         config.SecurityPolicy  = policy;
         store = SolidSyslogBlockStore_Create(&config);
@@ -1787,8 +1817,8 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCapacity, BlockDeviceTestBase)
     void CreateWithCapacity(size_t maxBlockSize, size_t maxBlocks,
                             enum SolidSyslogDiscardPolicy policy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST)
     {
+        EnsureDeviceBlockSize(maxBlockSize);
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-        config.MaxBlockSize   = maxBlockSize;
         config.MaxBlocks      = maxBlocks;
         config.DiscardPolicy = policy;
         store                = SolidSyslogBlockStore_Create(&config);
@@ -1815,6 +1845,13 @@ TEST(SolidSyslogBlockStoreCapacity, GetTotalBytesScalesWithConfig)
 {
     CreateWithCapacity(10000, 3);
     LONGS_EQUAL(3 * 10000, SolidSyslogStore_GetTotalBytes(store));
+}
+
+TEST(SolidSyslogBlockStoreCapacity, TotalBytesDerivesFromDeviceBlockSize)
+{
+    EnsureDeviceBlockSize(8192);
+    CreateDefault();
+    LONGS_EQUAL(TEST_MAX_BLOCKS * 8192, SolidSyslogStore_GetTotalBytes(store));
 }
 
 /* Given an empty store,
@@ -1964,8 +2001,8 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, ReArmsAfterFallingEdgeOnDiscardOlde
     char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(maxMsg, 'A', sizeof(maxMsg));
 
+    EnsureDeviceBlockSize(TWO_RECORDS);
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.MaxBlockSize = TWO_RECORDS;
     config.MaxBlocks = 2;
     config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
     config.GetCapacityThreshold = ReturnsConfiguredThreshold;
@@ -2076,8 +2113,8 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, AtFullCapacityWithHaltThresholdFire
     thresholdFireOrder = 0;
     storeFullFireOrder = 0;
 
+    EnsureDeviceBlockSize(MAX_MSG_RECORD + SLACK);
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.MaxBlockSize = MAX_MSG_RECORD + SLACK;
     config.MaxBlocks = 2;
     config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
     config.OnStoreFull = RecordStoreFullFireOrder;
@@ -2107,8 +2144,8 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, StickyHundredPercentDoesNotRefireTh
     char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(maxMsg, 'A', sizeof(maxMsg));
 
+    EnsureDeviceBlockSize(MAX_MSG_RECORD + SLACK);
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.MaxBlockSize = MAX_MSG_RECORD + SLACK;
     config.MaxBlocks = 2;
     config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
     config.GetCapacityThreshold = ReturnsConfiguredThreshold;

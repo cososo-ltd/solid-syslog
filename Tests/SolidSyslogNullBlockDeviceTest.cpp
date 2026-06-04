@@ -56,6 +56,11 @@ TEST(SolidSyslogNullBlockDevice, SizeReturnsZero)
     LONGS_EQUAL(0, SolidSyslogBlockDevice_Size(device, 0));
 }
 
+TEST(SolidSyslogNullBlockDevice, GetBlockSizeReturnsZero)
+{
+    LONGS_EQUAL(0, SolidSyslogBlockDevice_GetBlockSize(device));
+}
+
 TEST(SolidSyslogNullBlockDevice, GetIsIdempotentAndReturnsSameInstance)
 {
     POINTERS_EQUAL(device, SolidSyslogNullBlockDevice_Get());

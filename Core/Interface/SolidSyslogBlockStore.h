@@ -35,7 +35,6 @@ EXTERN_C_BEGIN
         /* Required. Caller-owned: must outlive the BlockStore. SolidSyslogBlockStore_Destroy
          * does NOT destroy the block device — that is the integrator's responsibility. */
         struct SolidSyslogBlockDevice* BlockDevice;
-        size_t MaxBlockSize;
         size_t MaxBlocks;
         enum SolidSyslogDiscardPolicy DiscardPolicy;
         struct SolidSyslogSecurityPolicy* SecurityPolicy;

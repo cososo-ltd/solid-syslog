@@ -1,5 +1,60 @@
 # Dev Log
 
+## 2026-06-04 — S21.04 BlockDevice owns its block size
+
+Closes the last open thread under E21 (Port-Time Configurability). Block size moves
+from `SolidSyslogBlockStoreConfig.MaxBlockSize` to a property of the
+`SolidSyslogBlockDevice` — the device becomes the single source of truth, queried
+once at `BlockStore_Create`. An API break, deliberately landed in the 0.x beta
+window so 1.0.0 stays additive-only.
+
+### Decisions
+
+- **Device is the single source of truth, but the store keeps a usable floor and warns
+  (Design Z).** The block-size source moves from config to the device; what changes vs
+  the old code is only the *too-small* case. A first attempt (Design Y) rejected an
+  undersized block outright (`ERROR` → `NullStore`). CI showed the old
+  `max(deviceSize, oneRecord)` clamp was far more load-bearing than realised — it was a
+  *deliberate, documented* cross-target calibration mechanism (block size MAX-coupled
+  via the clamp), relied on by the drain-ordering tests **and** the
+  `store_capacity` / `capacity_threshold` / `block_lifecycle` BDD suites across host and
+  freertos-cross. Rejecting broke all of them, and re-deriving the per-target message-fit
+  math to keep them working is exactly the fragile calculation that has bitten this repo
+  before. So the clamp stays — a device whose block can't hold one worst-case record is
+  grown to that floor — but now emits a `WARNING` (`SOLIDSYSLOG_CAT_BAD_CONFIG` /
+  `BLOCKSTORE_ERROR_BLOCK_TOO_SMALL`): delivered, degraded, no longer silent. The store
+  still works; `GetBlockSize` reports the device's requested value.
+- **`_Create(file, prefix, blockSize)` takes the size at construction**, preserving
+  the BDD targets' runtime `--max-block-size` knob (they route the parsed value into
+  the device instead of the store config).
+- **`SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE` (8192), `0` selects it.** Floored at one
+  worst-case record; FatFs adapter adds a `defined()`-guarded compile-time `FF_MAX_SS`
+  floor on the default.
+
+### Sliced (strict red/green)
+
+1. `GetBlockSize` on the contract → 2. FileBlockDevice takes the size → 3. store
+reads the device, `MaxBlockSize` dropped from config (clamp retained) → 4. default
+tunable + `0→default` → 5. WARNING on clamp. 1396 host tests green throughout.
+
+### Worth remembering
+
+- **The clamp is a load-bearing, documented feature, not an accident.**
+  `syslog_steps.py` literally comments that the store_capacity scenarios *depend* on the
+  clamp making block size MAX-coupled. Design Y (reject) is wrong here precisely because
+  it removes that. Keep the clamp; make it loud, not silent.
+- A `WARNING` is safe in the BDD targets: their stderr handler `_Exit(3)`s only on
+  `Severity <= ERROR`; a `WARNING` just prints and the process survives — which is why
+  the Y reject (ERROR) killed the BDD targets and Z (WARNING) does not.
+- Size-varying BlockStore tests re-point the fixture device through an **idempotent**
+  `EnsureDeviceBlockSize` helper — same-size calls reuse the device so corruption-
+  recovery's single persistent file handle survives a destroy/recreate.
+
+### Not verified locally (CI's job)
+
+- FatFs `FF_MAX_SS` floor and the Windows / FreeRTOS BDD-target callers — the gcc
+  lane can't build them; their edits are symmetric to the green Linux target.
+
 ## 2026-06-04 — S29.05 PlusFAT media driver + Plus-TCP target swap
 
 The last functional story of E29: a FreeRTOS-Plus-FAT `FF_Disk_t` semihosting

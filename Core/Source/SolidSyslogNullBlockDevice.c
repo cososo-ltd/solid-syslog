@@ -31,6 +31,7 @@ static bool NullBlockDevice_Append(
     size_t count
 );
 static size_t NullBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blockIndex);
+static size_t NullBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* base);
 
 struct SolidSyslogBlockDevice* SolidSyslogNullBlockDevice_Get(void)
 {
@@ -42,6 +43,7 @@ struct SolidSyslogBlockDevice* SolidSyslogNullBlockDevice_Get(void)
         .Append = NullBlockDevice_Append,
         .WriteAt = NullBlockDevice_WriteAt,
         .Size = NullBlockDevice_Size,
+        .GetBlockSize = NullBlockDevice_GetBlockSize,
     };
     return &instance;
 }
@@ -123,5 +125,11 @@ static size_t NullBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t b
 {
     (void) base;
     (void) blockIndex;
+    return 0;
+}
+
+static size_t NullBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* base)
+{
+    (void) base;
     return 0;
 }

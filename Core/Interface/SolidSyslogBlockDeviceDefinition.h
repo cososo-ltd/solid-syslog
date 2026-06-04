@@ -23,6 +23,7 @@ EXTERN_C_BEGIN
             size_t count
         );
         size_t (*Size)(struct SolidSyslogBlockDevice* base, size_t blockIndex);
+        size_t (*GetBlockSize)(struct SolidSyslogBlockDevice* base);
     };
 
 EXTERN_C_END
