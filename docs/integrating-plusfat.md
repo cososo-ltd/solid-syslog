@@ -14,7 +14,7 @@ store see [`SolidSyslogBlockStore.h`](../Core/Interface/SolidSyslogBlockStore.h)
 
 ## The shape
 
-```
+```text
 SolidSyslogBlockStore
         │  (SolidSyslogStore vtable)
 SolidSyslogFileBlockDevice          <-- sequence-numbered <prefix><NN>.log files

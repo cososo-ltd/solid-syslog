@@ -23,6 +23,8 @@ static bool PlusFatFile_Exists(struct SolidSyslogFile* base, const char* path);
 static bool PlusFatFile_Delete(struct SolidSyslogFile* base, const char* path);
 
 static inline struct SolidSyslogPlusFatFile* PlusFatFile_SelfFromBase(struct SolidSyslogFile* base);
+static inline bool PlusFatFile_IsFileOpen(const struct SolidSyslogPlusFatFile* self);
+static inline bool PlusFatFile_Flush(struct SolidSyslogPlusFatFile* self);
 
 void PlusFatFile_Initialise(struct SolidSyslogFile* base)
 {
@@ -53,6 +55,23 @@ void PlusFatFile_Cleanup(struct SolidSyslogFile* base)
     *base = *SolidSyslogNullFile_Get();
 }
 
+static void PlusFatFile_Close(struct SolidSyslogFile* base)
+{
+    struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
+    if (PlusFatFile_IsFileOpen(self))
+    {
+        ff_fclose(self->Fp);
+        self->Fp = NULL;
+    }
+}
+
+/* Open-state is carried by the FF_FILE* sentinel: non-NULL once a file is open,
+ * NULL when closed. The single source of truth for every open-state check. */
+static inline bool PlusFatFile_IsFileOpen(const struct SolidSyslogPlusFatFile* self)
+{
+    return self->Fp != NULL;
+}
+
 static bool PlusFatFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
@@ -60,26 +79,16 @@ static bool PlusFatFile_Open(struct SolidSyslogFile* base, const char* path)
      * "w+" creates it. Together this is open-or-create with no data loss —
      * Plus-FAT has no single open-always mode. */
     self->Fp = ff_fopen(path, "r+");
-    if (self->Fp == NULL)
+    if (!PlusFatFile_IsFileOpen(self))
     {
         self->Fp = ff_fopen(path, "w+");
     }
-    return self->Fp != NULL;
-}
-
-static void PlusFatFile_Close(struct SolidSyslogFile* base)
-{
-    struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
-    if (self->Fp != NULL)
-    {
-        ff_fclose(self->Fp);
-        self->Fp = NULL;
-    }
+    return PlusFatFile_IsFileOpen(self);
 }
 
 static bool PlusFatFile_IsOpen(struct SolidSyslogFile* base)
 {
-    return PlusFatFile_SelfFromBase(base)->Fp != NULL;
+    return PlusFatFile_IsFileOpen(PlusFatFile_SelfFromBase(base));
 }
 
 static bool PlusFatFile_Read(struct SolidSyslogFile* base, void* buf, size_t count)
@@ -97,8 +106,14 @@ static bool PlusFatFile_Write(struct SolidSyslogFile* base, const void* buf, siz
      * has no per-file flush — ff_stdio.h declares ff_fflush but the library
      * never defines it; FF_FlushCache against the file's IO manager is the real
      * durability primitive. The directory entry's size is committed on Close. */
-    bool wroteAll = ff_fwrite(buf, 1, count, self->Fp) == count;
-    return wroteAll && (FF_FlushCache(self->Fp->pxIOManager) == FF_ERR_NONE);
+    bool wroteAll = (ff_fwrite(buf, 1, count, self->Fp) == count);
+    return wroteAll && PlusFatFile_Flush(self);
+}
+
+/* Flush the IO-manager cache to the media; returns whether it succeeded. */
+static inline bool PlusFatFile_Flush(struct SolidSyslogPlusFatFile* self)
+{
+    return FF_FlushCache(self->Fp->pxIOManager) == FF_ERR_NONE;
 }
 
 static void PlusFatFile_SeekTo(struct SolidSyslogFile* base, size_t offset)

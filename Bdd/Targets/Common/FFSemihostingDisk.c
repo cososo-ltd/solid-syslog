@@ -46,6 +46,7 @@ static StaticSemaphore_t g_mutexStorage;
 static int32_t ReadBlocks(uint8_t* buffer, uint32_t sector, uint32_t count, FF_Disk_t* disk);
 static int32_t WriteBlocks(uint8_t* buffer, uint32_t sector, uint32_t count, FF_Disk_t* disk);
 static FF_Error_t PartitionAndFormat(void);
+static bool FFSemihostingDisk_IsValidDisk(const FF_Disk_t* disk);
 
 bool FFSemihostingDisk_Mount(void)
 {
@@ -145,7 +146,7 @@ static FF_Error_t PartitionAndFormat(void)
 static int32_t ReadBlocks(uint8_t* buffer, uint32_t sector, uint32_t count, FF_Disk_t* disk)
 {
     int32_t result;
-    if ((disk == NULL) || (disk->ulSignature != DISK_SIGNATURE) || (disk->xStatus.bIsInitialised == pdFALSE))
+    if (!FFSemihostingDisk_IsValidDisk(disk))
     {
         result = FF_ERR_IOMAN_DRIVER_FATAL_ERROR | FF_ERRFLAG;
     }
@@ -167,10 +168,17 @@ static int32_t ReadBlocks(uint8_t* buffer, uint32_t sector, uint32_t count, FF_D
     return result;
 }
 
+/* Guards the block callbacks: a disk handed to us must be non-NULL, carry our
+ * signature, and have been through FF_CreateIOManager. */
+static bool FFSemihostingDisk_IsValidDisk(const FF_Disk_t* disk)
+{
+    return (disk != NULL) && (disk->ulSignature == DISK_SIGNATURE) && (disk->xStatus.bIsInitialised != pdFALSE);
+}
+
 static int32_t WriteBlocks(uint8_t* buffer, uint32_t sector, uint32_t count, FF_Disk_t* disk)
 {
     int32_t result;
-    if ((disk == NULL) || (disk->ulSignature != DISK_SIGNATURE) || (disk->xStatus.bIsInitialised == pdFALSE))
+    if (!FFSemihostingDisk_IsValidDisk(disk))
     {
         result = FF_ERR_IOMAN_DRIVER_FATAL_ERROR | FF_ERRFLAG;
     }

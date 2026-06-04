@@ -17,6 +17,10 @@
 
 #include "SemihostingDisk.h"
 
+#include <stdbool.h>
+
+static bool Diskio_IsDriveReady(BYTE pdrv);
+
 DSTATUS disk_initialize(BYTE pdrv)
 {
     if (pdrv != 0)
@@ -38,7 +42,7 @@ DSTATUS disk_status(BYTE pdrv)
 DRESULT disk_read(BYTE pdrv, BYTE* buff, LBA_t sector, UINT count)
 {
     DRESULT result;
-    if ((pdrv != 0) || !SemihostingDisk_IsReady())
+    if (!Diskio_IsDriveReady(pdrv))
     {
         result = RES_NOTRDY;
     }
@@ -60,10 +64,16 @@ DRESULT disk_read(BYTE pdrv, BYTE* buff, LBA_t sector, UINT count)
     return result;
 }
 
+/* Single logical drive 0 must be present and the backing image opened. */
+static bool Diskio_IsDriveReady(BYTE pdrv)
+{
+    return (pdrv == 0) && SemihostingDisk_IsReady();
+}
+
 DRESULT disk_write(BYTE pdrv, const BYTE* buff, LBA_t sector, UINT count)
 {
     DRESULT result;
-    if ((pdrv != 0) || !SemihostingDisk_IsReady())
+    if (!Diskio_IsDriveReady(pdrv))
     {
         result = RES_NOTRDY;
     }

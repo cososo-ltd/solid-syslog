@@ -44,6 +44,7 @@ static int SemihostingWrite(int handle, const void* buffer, int count);
 static int SemihostingSeek(int handle, int position);
 static int SemihostingFlen(int handle);
 static int SemihostingClose(int handle);
+static bool SemihostingDisk_IsRangeValid(uint32_t sector, uint32_t count);
 
 bool SemihostingDisk_EnsureReady(void)
 {
@@ -87,69 +88,6 @@ bool SemihostingDisk_EnsureReady(void)
     return true;
 }
 
-bool SemihostingDisk_IsReady(void)
-{
-    return g_diskHandle >= 0;
-}
-
-enum SemihostingDiskResult SemihostingDisk_Read(void* buffer, uint32_t sector, uint32_t count)
-{
-    enum SemihostingDiskResult result = SEMIHOSTING_DISK_OK;
-    if ((sector + count) > (uint32_t) SEMIHOSTING_DISK_SECTOR_COUNT)
-    {
-        result = SEMIHOSTING_DISK_OUT_OF_RANGE;
-    }
-    else
-    {
-        int position = (int) sector * (int) SEMIHOSTING_DISK_SECTOR_SIZE;
-        int bytes = (int) count * (int) SEMIHOSTING_DISK_SECTOR_SIZE;
-        if (SemihostingSeek(g_diskHandle, position) != 0)
-        {
-            result = SEMIHOSTING_DISK_IO_ERROR;
-        }
-        else if (SemihostingRead(g_diskHandle, buffer, bytes) != 0)
-        {
-            result = SEMIHOSTING_DISK_IO_ERROR;
-        }
-    }
-    return result;
-}
-
-enum SemihostingDiskResult SemihostingDisk_Write(const void* buffer, uint32_t sector, uint32_t count)
-{
-    enum SemihostingDiskResult result = SEMIHOSTING_DISK_OK;
-    if ((sector + count) > (uint32_t) SEMIHOSTING_DISK_SECTOR_COUNT)
-    {
-        result = SEMIHOSTING_DISK_OUT_OF_RANGE;
-    }
-    else
-    {
-        int position = (int) sector * (int) SEMIHOSTING_DISK_SECTOR_SIZE;
-        int bytes = (int) count * (int) SEMIHOSTING_DISK_SECTOR_SIZE;
-        if (SemihostingSeek(g_diskHandle, position) != 0)
-        {
-            result = SEMIHOSTING_DISK_IO_ERROR;
-        }
-        else if (SemihostingWrite(g_diskHandle, buffer, bytes) != 0)
-        {
-            result = SEMIHOSTING_DISK_IO_ERROR;
-        }
-    }
-    return result;
-}
-
-static int Semihosting(int op, const void* args)
-{
-    /* BKPT 0xAB is the Cortex-M Thumb semihosting trap. r0 is the
-     * operation number on entry and the return value on exit; r1
-     * is a pointer to a per-op parameter block. memory clobber so
-     * the compiler doesn't reorder around buffers passed by pointer. */
-    register int result __asm("r0") = op;
-    register const void* request __asm("r1") = args;
-    __asm volatile("bkpt 0xAB" : "+r"(result) : "r"(request) : "memory");
-    return result;
-}
-
 static int SemihostingOpen(const char* path, int mode)
 {
     const struct
@@ -162,42 +100,16 @@ static int SemihostingOpen(const char* path, int mode)
     return Semihosting(SEMIHOSTING_SYS_OPEN, &args);
 }
 
-static int SemihostingRead(int handle, void* buffer, int count)
+static int Semihosting(int op, const void* args)
 {
-    /* SYS_READ returns the number of bytes NOT read (0 == full read). */
-    const struct
-    {
-        int handle;
-        void* buffer;
-        int count;
-    } args = {handle, buffer, count};
-
-    return Semihosting(SEMIHOSTING_SYS_READ, &args);
-}
-
-static int SemihostingWrite(int handle, const void* buffer, int count)
-{
-    /* SYS_WRITE returns the number of bytes NOT written (0 == full write). */
-    const struct
-    {
-        int handle;
-        const void* buffer;
-        int count;
-    } args = {handle, buffer, count};
-
-    return Semihosting(SEMIHOSTING_SYS_WRITE, &args);
-}
-
-static int SemihostingSeek(int handle, int position)
-{
-    /* SYS_SEEK returns 0 on success, a negative value on error. */
-    const struct
-    {
-        int handle;
-        int position;
-    } args = {handle, position};
-
-    return Semihosting(SEMIHOSTING_SYS_SEEK, &args);
+    /* BKPT 0xAB is the Cortex-M Thumb semihosting trap. r0 is the
+     * operation number on entry and the return value on exit; r1
+     * is a pointer to a per-op parameter block. memory clobber so
+     * the compiler doesn't reorder around buffers passed by pointer. */
+    register int result __asm("r0") = op;
+    register const void* request __asm("r1") = args;
+    __asm volatile("bkpt 0xAB" : "+r"(result) : "r"(request) : "memory");
+    return result;
 }
 
 static int SemihostingFlen(int handle)
@@ -219,4 +131,102 @@ static int SemihostingClose(int handle)
     } args = {handle};
 
     return Semihosting(SEMIHOSTING_SYS_CLOSE, &args);
+}
+
+static int SemihostingSeek(int handle, int position)
+{
+    /* SYS_SEEK returns 0 on success, a negative value on error. */
+    const struct
+    {
+        int handle;
+        int position;
+    } args = {handle, position};
+
+    return Semihosting(SEMIHOSTING_SYS_SEEK, &args);
+}
+
+static int SemihostingWrite(int handle, const void* buffer, int count)
+{
+    /* SYS_WRITE returns the number of bytes NOT written (0 == full write). */
+    const struct
+    {
+        int handle;
+        const void* buffer;
+        int count;
+    } args = {handle, buffer, count};
+
+    return Semihosting(SEMIHOSTING_SYS_WRITE, &args);
+}
+
+bool SemihostingDisk_IsReady(void)
+{
+    return g_diskHandle >= 0;
+}
+
+enum SemihostingDiskResult SemihostingDisk_Read(void* buffer, uint32_t sector, uint32_t count)
+{
+    enum SemihostingDiskResult result = SEMIHOSTING_DISK_OK;
+    if (!SemihostingDisk_IsRangeValid(sector, count))
+    {
+        result = SEMIHOSTING_DISK_OUT_OF_RANGE;
+    }
+    else
+    {
+        int position = (int) sector * (int) SEMIHOSTING_DISK_SECTOR_SIZE;
+        int bytes = (int) count * (int) SEMIHOSTING_DISK_SECTOR_SIZE;
+        if (SemihostingSeek(g_diskHandle, position) != 0)
+        {
+            result = SEMIHOSTING_DISK_IO_ERROR;
+        }
+        else if (SemihostingRead(g_diskHandle, buffer, bytes) != 0)
+        {
+            result = SEMIHOSTING_DISK_IO_ERROR;
+        }
+    }
+    return result;
+}
+
+/* Range-checks an LBA span without overflow: the subtraction form keeps the sum
+ * `sector + count` from wrapping in uint32 (an arithmetic add could wrap a huge
+ * sector past the comparison and admit an out-of-bounds seek). */
+static bool SemihostingDisk_IsRangeValid(uint32_t sector, uint32_t count)
+{
+    return (count <= (uint32_t) SEMIHOSTING_DISK_SECTOR_COUNT) &&
+           (sector <= ((uint32_t) SEMIHOSTING_DISK_SECTOR_COUNT - count));
+}
+
+static int SemihostingRead(int handle, void* buffer, int count)
+{
+    /* SYS_READ returns the number of bytes NOT read (0 == full read). */
+    const struct
+    {
+        int handle;
+        void* buffer;
+        int count;
+    } args = {handle, buffer, count};
+
+    return Semihosting(SEMIHOSTING_SYS_READ, &args);
+}
+
+enum SemihostingDiskResult SemihostingDisk_Write(const void* buffer, uint32_t sector, uint32_t count)
+{
+    enum SemihostingDiskResult result = SEMIHOSTING_DISK_OK;
+    if (!SemihostingDisk_IsRangeValid(sector, count))
+    {
+        result = SEMIHOSTING_DISK_OUT_OF_RANGE;
+    }
+    else
+    {
+        int position = (int) sector * (int) SEMIHOSTING_DISK_SECTOR_SIZE;
+        int bytes = (int) count * (int) SEMIHOSTING_DISK_SECTOR_SIZE;
+        if (SemihostingSeek(g_diskHandle, position) != 0)
+        {
+            result = SEMIHOSTING_DISK_IO_ERROR;
+        }
+        else if (SemihostingWrite(g_diskHandle, buffer, bytes) != 0)
+        {
+            result = SEMIHOSTING_DISK_IO_ERROR;
+        }
+    }
+    return result;
 }
