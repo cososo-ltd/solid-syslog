@@ -30,11 +30,11 @@ if(NOT FREERTOS_PLUS_TCP_PATH)
         "container, which sets this to /opt/freertos/plus-tcp.")
 endif()
 
-set(FATFS_PATH "$ENV{FATFS_PATH}")
-if(NOT FATFS_PATH)
+set(FREERTOS_PLUS_FAT_PATH "$ENV{FREERTOS_PLUS_FAT_PATH}")
+if(NOT FREERTOS_PLUS_FAT_PATH)
     message(FATAL_ERROR
-        "FATFS_PATH not set. Use the cpputest-freertos-cross container, "
-        "which sets this to /opt/fatfs.")
+        "FREERTOS_PLUS_FAT_PATH not set. Use the cpputest-freertos-cross "
+        "container, which sets this to /opt/freertos/plus-fat.")
 endif()
 
 set(MBEDTLS_SOURCE_DIR "$ENV{MBEDTLS_DIR}")
@@ -44,17 +44,12 @@ if(NOT EXISTS "${MBEDTLS_SOURCE_DIR}/CMakeLists.txt")
         "container, which sets this to /opt/mbedtls.")
 endif()
 
-# Stage the upstream FatFs source pack alongside our integrator ffconf.h in
-# the build dir. FatFs's ff.h does `#include "ffconf.h"` and GCC's `""`
-# include lookup checks the source file's own directory first, so the only
-# way our integrator config wins over upstream's is to colocate them.
-# configure_file(COPYONLY) sets up the CMake dependency so reconfigure
-# triggers on changes to either side.
-set(FATFS_STAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/fatfs")
-configure_file(${FATFS_PATH}/source/ff.c       ${FATFS_STAGE_DIR}/ff.c       COPYONLY)
-configure_file(${FATFS_PATH}/source/ff.h       ${FATFS_STAGE_DIR}/ff.h       COPYONLY)
-configure_file(${FATFS_PATH}/source/diskio.h   ${FATFS_STAGE_DIR}/diskio.h   COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/ffconf.h ${FATFS_STAGE_DIR}/ffconf.h COPYONLY)
+# No source staging for FreeRTOS-Plus-FAT (unlike ChaN-FatFs). ff_headers.h's
+# `#include "FreeRTOSFATConfig.h"` finds no copy beside itself in
+# ${FREERTOS_PLUS_FAT_PATH}/include, so GCC's `""` lookup falls through to the
+# -I path, where our integrator FreeRTOSFATConfig.h (this directory) wins.
+
+set(PLUS_FAT_SRC_DIR "${FREERTOS_PLUS_FAT_PATH}")
 
 set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3")
 
@@ -124,18 +119,26 @@ add_library(solid_syslog_freertos_upstream OBJECT
     # MPS2_AN385 LAN9118 NetworkInterface + driver.
     ${PLUS_TCP_NIF_DIR}/NetworkInterface.c
     ${PLUS_TCP_NIF_DIR}/ether_lan9118/smsc9220_eth_drv.c
-    # FatFs upstream (R0.16, FFCONF_DEF 80386). ff.c trips the same
-    # sign-conversion / shadow / type-narrowing warnings the FreeRTOS
-    # kernel sources do, so it lives in the upstream OBJECT lib under the
-    # relaxed warning set. ffsystem.c is our integrator copy
-    # (Bdd/Targets/Common/, shared with the lwIP target) with OS_TYPE 3
-    # (FreeRTOS) selected — it sits under the same relaxations because it
-    # includes ff.h and inherits FatFs's typedef-via-BYTE/UINT patterns.
-    # ff.c is staged into the build dir so its `#include "ff.h"` (and
-    # ff.h's "ffconf.h") resolve to our integrator config — see the
-    # configure_file calls above.
-    ${FATFS_STAGE_DIR}/ff.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/ffsystem.c
+    # FreeRTOS-Plus-FAT upstream core (SHA 8d38036). Like the FreeRTOS kernel
+    # and Plus-TCP sources, these trip the relaxed warnings (sign-conversion,
+    # shadow, type narrowing), so they live in this OBJECT lib. The integrator
+    # FreeRTOSFATConfig.h is found off the -I path (CMAKE_CURRENT_SOURCE_DIR
+    # below) — no source staging, see note above. The FF_Disk_t media driver
+    # (FFSemihostingDisk.c) is OUR code and stays in the strict executable
+    # target alongside the SolidSyslogPlusFatFile adapter.
+    ${PLUS_FAT_SRC_DIR}/ff_crc.c
+    ${PLUS_FAT_SRC_DIR}/ff_dir.c
+    ${PLUS_FAT_SRC_DIR}/ff_error.c
+    ${PLUS_FAT_SRC_DIR}/ff_fat.c
+    ${PLUS_FAT_SRC_DIR}/ff_file.c
+    ${PLUS_FAT_SRC_DIR}/ff_format.c
+    ${PLUS_FAT_SRC_DIR}/ff_ioman.c
+    ${PLUS_FAT_SRC_DIR}/ff_locking.c
+    ${PLUS_FAT_SRC_DIR}/ff_memory.c
+    ${PLUS_FAT_SRC_DIR}/ff_stdio.c
+    ${PLUS_FAT_SRC_DIR}/ff_string.c
+    ${PLUS_FAT_SRC_DIR}/ff_sys.c
+    ${PLUS_FAT_SRC_DIR}/ff_time.c
 )
 
 target_compile_options(solid_syslog_freertos_upstream PRIVATE
@@ -144,9 +147,9 @@ target_compile_options(solid_syslog_freertos_upstream PRIVATE
     -ffunction-sections
     -fdata-sections
     -fno-common
-    # FreeRTOS-Kernel + Plus-TCP V11.1.0/V4.2.2 use non-prototype function
-    # declarations, type-narrowing constructs, sign-conversion patterns, and
-    # shadowed locals that trip our strict host warnings. Scoped to this
+    # FreeRTOS-Kernel + Plus-TCP V11.1.0/V4.2.2 + Plus-FAT use non-prototype
+    # function declarations, type-narrowing constructs, sign-conversion patterns,
+    # and shadowed locals that trip our strict host warnings. Scoped to this
     # OBJECT library so the relaxations never reach project code.
     -Wno-unused-parameter
     -Wno-unused-but-set-variable
@@ -156,6 +159,10 @@ target_compile_options(solid_syslog_freertos_upstream PRIVATE
     -Wno-sign-conversion
     -Wno-shadow
     -Wno-pedantic
+    # Plus-FAT's ff_fat.c emits `#warning Only maintaining one FAT table` when
+    # built with a single FAT (our config: n_fat = 1, the intended layout). The
+    # informational #warning would otherwise be promoted by -Werror.
+    -Wno-cpp
 )
 
 target_include_directories(solid_syslog_freertos_upstream PRIVATE
@@ -166,7 +173,7 @@ target_include_directories(solid_syslog_freertos_upstream PRIVATE
     ${PLUS_TCP_PORT_GCC_DIR}                          # pack_struct_*.h
     ${PLUS_TCP_NIF_DIR}                               # NetworkInterface.h consumed locally
     ${PLUS_TCP_NIF_DIR}/ether_lan9118                 # SMM_MPS2.h, smsc9220_*.h
-    ${FATFS_STAGE_DIR}                                # ff.h, diskio.h, our ffconf.h colocated
+    ${FREERTOS_PLUS_FAT_PATH}/include                 # ff_headers.h, ff_stdio.h, ff_ioman.h, …
 )
 
 # --- mbedTLS upstream as a subproject ----------------------------------------
@@ -259,8 +266,8 @@ add_executable(SolidSyslogBddTarget
     Startup.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Common/CmsdkUart.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Common/Syscalls.c
-    ${CMAKE_SOURCE_DIR}/Platform/FatFs/Source/SolidSyslogFatFsFile.c
-    ${CMAKE_SOURCE_DIR}/Platform/FatFs/Source/SolidSyslogFatFsFileStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/PlusFat/Source/SolidSyslogPlusFatFile.c
+    ${CMAKE_SOURCE_DIR}/Platform/PlusFat/Source/SolidSyslogPlusFatFileStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c
     ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Source/SolidSyslogPlusTcpDatagram.c
@@ -279,16 +286,16 @@ add_executable(SolidSyslogBddTarget
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicyStatic.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFatFsMount.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosPipeline.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetInteractive.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLanguage.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMtlsConfig.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetPlusFatMount.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/diskio.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/FFSemihostingDisk.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/SemihostingDisk.c
     ${BAKED_PEM_HEADERS}
     $<TARGET_OBJECTS:solid_syslog_freertos_upstream>
@@ -309,7 +316,7 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Common                # CmsdkUart.h
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
-    ${CMAKE_SOURCE_DIR}/Platform/FatFs/Interface      # SolidSyslogFatFsFile.h
+    ${CMAKE_SOURCE_DIR}/Platform/PlusFat/Interface    # SolidSyslogPlusFatFile.h
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface   # SolidSyslogFreeRtos{Mutex,SysUpTime}.h
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source      # SolidSyslogFreeRtosMutexPrivate.h
     ${CMAKE_SOURCE_DIR}/Platform/PlusTcp/Interface    # SolidSyslogFreeRtos{Address,Datagram,Resolver,TcpStream}.h
@@ -322,13 +329,24 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${PLUS_TCP_SRC_DIR}/include
     ${PLUS_TCP_PORT_GCC_DIR}                          # pack_struct_*.h
-    ${FATFS_STAGE_DIR}                                # ff.h, diskio.h + integrator ffconf.h colocated — must match
-                                                      # the OBJECT lib (above) so ff.c, main.c, diskio.c, and
-                                                      # SolidSyslogFatFsFile.c all see the SAME ffconf.h. Pointing
-                                                      # the executable at FATFS_PATH/source would resolve ff.h's
-                                                      # `#include "ffconf.h"` to upstream's sample (same directory
-                                                      # rule) and diverge FATFS / config-conditional layout between
-                                                      # translation units.
+    ${FREERTOS_PLUS_FAT_PATH}/include                 # ff_stdio.h (adapter) + ff_headers.h / ff_ioman.h /
+                                                      # ff_format.h / ff_sys.h (FFSemihostingDisk.c). The
+                                                      # integrator FreeRTOSFATConfig.h resolves to
+                                                      # CMAKE_CURRENT_SOURCE_DIR above — same as the OBJECT lib,
+                                                      # so the Plus-FAT core and our adapter/driver share one
+                                                      # config across all translation units.
+)
+
+# FFSemihostingDisk.c drives the mount/format lifecycle via Plus-FAT's FF_isERR /
+# FF_ERR_* macros, whose error codes carry the 0x80000000 FF_ERRFLAG bit and so
+# are unsigned-with-high-bit — they cannot be made -Wsign-conversion clean at the
+# call site. Relax only that one diagnostic for only this file; every other
+# strict warning (and the rest of our code) is unaffected. The SolidSyslogPlusFatFile
+# adapter needs no such relaxation — it uses the ff_stdio handle API, not the
+# error-code macros.
+set_source_files_properties(
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/FFSemihostingDisk.c
+    PROPERTIES COMPILE_OPTIONS "-Wno-sign-conversion"
 )
 
 target_link_libraries(SolidSyslogBddTarget PRIVATE

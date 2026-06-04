@@ -97,9 +97,12 @@ static volatile bool solidSyslogTeardown = false;
 
 /* File-backed store storage. Lives in .bss so it persists across the `set store
  * file` rebuild; only populated when that command fires. STORE_PATH_PREFIX is
- * "STORE" — sequence-numbered FAT filenames land as STORE00.log, STORE01.log,
- * … which fit 8.3 short-filename mode (LFN=0 in our shared ffconf.h). */
-static const char STORE_PATH_PREFIX[] = "STORE";
+ * "/STORE" — sequence-numbered filenames land at the volume root as
+ * /STORE00.log, /STORE01.log, … which fit 8.3 short-filename mode. The leading
+ * slash makes the path absolute: ChaN-FatFs treats it as the default-drive root
+ * (unchanged behaviour), and FreeRTOS-Plus-FAT's ff_stdio requires an absolute
+ * path when ffconfigHAS_CWD is 0 (its prvABSPath is a pass-through). */
+static const char STORE_PATH_PREFIX[] = "/STORE";
 
 static struct SolidSyslogFile* storeFile = NULL;
 static struct SolidSyslogBlockDevice* storeBlockDevice = NULL;
