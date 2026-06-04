@@ -33,10 +33,11 @@ struct SolidSyslogBlockDevice* SolidSyslogFileBlockDevice_Create(
 )
 {
     struct SolidSyslogBlockDevice* result = SolidSyslogNullBlockDevice_Get();
+    size_t resolvedBlockSize = (blockSize == 0U) ? (size_t) SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE : blockSize;
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&FileBlockDevice_Allocator);
     if (SolidSyslogPoolAllocator_IndexIsValid(&FileBlockDevice_Allocator, index))
     {
-        FileBlockDevice_Initialise(&FileBlockDevice_Pool[index].Base, file, pathPrefix, blockSize);
+        FileBlockDevice_Initialise(&FileBlockDevice_Pool[index].Base, file, pathPrefix, resolvedBlockSize);
         result = &FileBlockDevice_Pool[index].Base;
     }
     else

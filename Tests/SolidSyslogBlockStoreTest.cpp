@@ -540,7 +540,7 @@ TEST(SolidSyslogBlockStoreConfig, MaxBlocksHundredClampedToMaximum)
     VerifyWriteAndReadBack();
 }
 
-TEST(SolidSyslogBlockStoreConfig, MaxBlockSizeZeroClampedToMinimum)
+TEST(SolidSyslogBlockStoreConfig, ZeroBlockSizeUsesDeviceDefault)
 {
     CreateWithMaxBlockSize(0);
     VerifyWriteAndReadBack();

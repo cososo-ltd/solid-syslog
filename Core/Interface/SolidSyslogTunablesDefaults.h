@@ -82,6 +82,28 @@
 #endif
 
 /*
+ * Default per-block capacity (bytes) for file-backed block devices
+ * (SolidSyslogFileBlockDevice and any FatFs / FreeRTOS-Plus-FAT-backed
+ * equivalent). Supplied to SolidSyslogFileBlockDevice_Create when the
+ * integrator has no specific size in mind; passing 0 to _Create selects
+ * this default. A larger block holds more records before rotating to a
+ * fresh file; a smaller block rotates (and fsyncs) more often.
+ *
+ * Floor: one worst-case record — the RFC 5424 max message plus the widest
+ * integrity tag plus the 5-byte record framing (2 magic + 2 length +
+ * 1 sent-flag). Below that a block could not hold a single record, so the
+ * default must clear it for every SecurityPolicy. Sub-floor values
+ * rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE
+#define SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE 8192U
+#endif
+
+#if SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE < (SOLIDSYSLOG_MAX_MESSAGE_SIZE + SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 5)
+#error "SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE must hold one worst-case record (MAX_MESSAGE_SIZE + MAX_INTEGRITY_SIZE + 5 framing bytes)"
+#endif
+
+/*
  * Number of SolidSyslog instances the library's internal static pool
  * can simultaneously hold. Each instance is a small bookkeeping struct
  * (collaborator pointers + SD array pointer + count).

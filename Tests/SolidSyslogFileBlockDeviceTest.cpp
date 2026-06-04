@@ -62,6 +62,13 @@ TEST(SolidSyslogFileBlockDevice, GetBlockSizeReturnsCreatedSize)
     LONGS_EQUAL(4096, SolidSyslogBlockDevice_GetBlockSize(device));
 }
 
+TEST(SolidSyslogFileBlockDevice, ZeroBlockSizeUsesDefault)
+{
+    SolidSyslogFileBlockDevice_Destroy(device);
+    device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, 0);
+    LONGS_EQUAL(SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE, SolidSyslogBlockDevice_GetBlockSize(device));
+}
+
 TEST(SolidSyslogFileBlockDevice, ExistsReturnsFalseOnFreshSlate)
 {
     CHECK_FALSE(SolidSyslogBlockDevice_Exists(device, 0));

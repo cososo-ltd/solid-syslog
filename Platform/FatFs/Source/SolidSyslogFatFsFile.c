@@ -8,7 +8,15 @@
 #include "SolidSyslogFatFsFilePrivate.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogNullFile.h"
+#include "SolidSyslogTunables.h"
 #include "ff.h"
+
+/* The shared file-block-size default must clear one FatFs sector — a block
+ * smaller than the underlying sector cannot back a coherent on-disk record
+ * layout. FF_MAX_SS comes from the integrator's ffconf.h. */
+#if SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE < FF_MAX_SS
+#error "SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE must be >= FF_MAX_SS (one FatFs sector)"
+#endif
 
 const struct SolidSyslogErrorSource FatFsFileErrorSource = {"FatFsFile"};
 
