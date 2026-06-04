@@ -26,7 +26,7 @@ EXTERN_C_BEGIN
     /* Create / destroy the ChaN-FatFs SolidSyslogFile adapter (forward-declared
      * to keep ff.h / SolidSyslogFatFsFile.h out of the seam's public surface). */
     struct SolidSyslogFile* BddTargetFatFsMount_CreateFile(void);
-    void BddTargetFatFsMount_DestroyFile(struct SolidSyslogFile* file);
+    void BddTargetFatFsMount_DestroyFile(struct SolidSyslogFile * file);
 
 EXTERN_C_END
 

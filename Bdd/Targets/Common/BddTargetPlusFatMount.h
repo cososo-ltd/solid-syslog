@@ -27,7 +27,7 @@ EXTERN_C_BEGIN
      * keep ff_stdio.h / SolidSyslogPlusFatFile.h out of the seam's public
      * surface). */
     struct SolidSyslogFile* BddTargetPlusFatMount_CreateFile(void);
-    void BddTargetPlusFatMount_DestroyFile(struct SolidSyslogFile* file);
+    void BddTargetPlusFatMount_DestroyFile(struct SolidSyslogFile * file);
 
 EXTERN_C_END
 
