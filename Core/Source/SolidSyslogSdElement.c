@@ -32,3 +32,10 @@ struct SolidSyslogSdValue* SolidSyslogSdElement_Param(struct SolidSyslogSdElemen
     SolidSyslogSdValue_FromFormatter(&element->Value, element->Formatter);
     return &element->Value;
 }
+
+void SolidSyslogSdElement_End(struct SolidSyslogSdElement* element)
+{
+    SolidSyslogSdValue_Close(&element->Value);
+    SolidSyslogFormatter_AsciiCharacter(element->Formatter, '"');
+    SolidSyslogFormatter_AsciiCharacter(element->Formatter, ']');
+}

@@ -60,3 +60,13 @@ TEST(SolidSyslogSdElement, ParamReturnsValueSinkStreamingIntoTheElement)
 
     CHECK_FRAMED("[meta tzKnown=\"1");
 }
+
+TEST(SolidSyslogSdElement, EndClosesValueQuoteAndElement)
+{
+    SolidSyslogSdElement_Begin(&element, "meta", 0);
+    struct SolidSyslogSdValue* value = SolidSyslogSdElement_Param(&element, "tzKnown");
+    SolidSyslogSdValue_String(value, "1");
+    SolidSyslogSdElement_End(&element);
+
+    CHECK_FRAMED("[meta tzKnown=\"1\"]");
+}

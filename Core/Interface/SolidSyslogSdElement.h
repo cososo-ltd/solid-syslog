@@ -22,6 +22,9 @@ EXTERN_C_BEGIN
      * element and stays valid until the next _Param or _End. */
     struct SolidSyslogSdValue* SolidSyslogSdElement_Param(struct SolidSyslogSdElement * element, const char* name);
 
+    /* Closes the SD-ELEMENT: closes any open param value's quote and emits ']'. */
+    void SolidSyslogSdElement_End(struct SolidSyslogSdElement * element);
+
 EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSDELEMENT_H */
