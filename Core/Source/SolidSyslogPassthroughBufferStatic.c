@@ -32,7 +32,7 @@ struct SolidSyslogBuffer* SolidSyslogPassthroughBuffer_Create(struct SolidSyslog
     if (sender == NULL)
     {
         PassthroughBuffer_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             PASSTHROUGHBUFFER_ERROR_NULL_SENDER
         );

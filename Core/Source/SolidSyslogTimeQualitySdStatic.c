@@ -31,7 +31,7 @@ struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTim
     struct SolidSyslogStructuredData* handle = SolidSyslogNullSd_Get();
     if (getTimeQuality == NULL)
     {
-        TimeQualitySd_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_BAD_CONFIG, TIMEQUALITYSD_ERROR_NULL_CALLBACK);
+        TimeQualitySd_Report(SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY, SOLIDSYSLOG_CAT_BAD_CONFIG, TIMEQUALITYSD_ERROR_NULL_CALLBACK);
     }
     else
     {

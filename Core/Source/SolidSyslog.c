@@ -86,7 +86,7 @@ static void SolidSyslog_InstallBuffer(struct SolidSyslog* self, struct SolidSysl
     if (configured == NULL)
     {
         SolidSyslog_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_ERROR_CREATE_NULL_BUFFER
         );
@@ -102,7 +102,7 @@ static void SolidSyslog_InstallSender(struct SolidSyslog* self, struct SolidSysl
     if (configured == NULL)
     {
         SolidSyslog_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_ERROR_CREATE_NULL_SENDER
         );
@@ -117,7 +117,7 @@ static void SolidSyslog_InstallStore(struct SolidSyslog* self, struct SolidSyslo
 {
     if (configured == NULL)
     {
-        SolidSyslog_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_BAD_CONFIG, SOLIDSYSLOG_ERROR_CREATE_NULL_STORE);
+        SolidSyslog_Report(SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY, SOLIDSYSLOG_CAT_BAD_CONFIG, SOLIDSYSLOG_ERROR_CREATE_NULL_STORE);
     }
     else
     {
@@ -169,7 +169,7 @@ static void SolidSyslog_InstallStructuredData(
          * i < SdCount against a NULL array. Report and leave the reset
          * defaults (no SD) in place so Log() degrades safely. */
         SolidSyslog_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_ERROR_CREATE_INCONSISTENT_SD
         );
@@ -186,7 +186,7 @@ void SolidSyslog_Service(struct SolidSyslog* handle)
     if (handle == NULL)
     {
         SolidSyslog_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_ARGUMENT,
             SOLIDSYSLOG_ERROR_SERVICE_NULL_HANDLE
         );
@@ -251,12 +251,12 @@ void SolidSyslog_Log(struct SolidSyslog* handle, const struct SolidSyslogMessage
 {
     if (handle == NULL)
     {
-        SolidSyslog_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_BAD_ARGUMENT, SOLIDSYSLOG_ERROR_LOG_NULL_HANDLE);
+        SolidSyslog_Report(SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY, SOLIDSYSLOG_CAT_BAD_ARGUMENT, SOLIDSYSLOG_ERROR_LOG_NULL_HANDLE);
     }
     else if (message == NULL)
     {
         SolidSyslog_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_ARGUMENT,
             SOLIDSYSLOG_ERROR_LOG_NULL_MESSAGE
         );

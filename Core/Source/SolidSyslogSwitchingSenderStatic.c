@@ -55,7 +55,7 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
     if (config == NULL)
     {
         SwitchingSender_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SWITCHINGSENDER_ERROR_NULL_CONFIG
         );
@@ -63,7 +63,7 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
     else if (config->Senders == NULL)
     {
         SwitchingSender_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SWITCHINGSENDER_ERROR_NULL_SENDERS
         );
@@ -71,7 +71,7 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
     else if (config->Selector == NULL)
     {
         SwitchingSender_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SWITCHINGSENDER_ERROR_NULL_SELECTOR
         );

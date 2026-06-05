@@ -50,7 +50,7 @@ struct SolidSyslogSecurityPolicy* SolidSyslogMbedTlsAesGcmPolicy_Create(
     else
     {
         MbedTlsAesGcmPolicy_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             MBEDTLSAESGCMPOLICY_ERROR_BAD_CONFIG
         );

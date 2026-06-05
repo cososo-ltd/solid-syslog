@@ -229,7 +229,7 @@ TEST(SolidSyslogOpenSslHmacSha256Policy, BadConfigReportsError)
     SolidSyslogOpenSslHmacSha256Policy_Create(nullptr);
 
     CHECK_REPORTED_ERROR(
-        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         OPENSSLHMACSHA256POLICY_ERROR_BAD_CONFIG
     );
