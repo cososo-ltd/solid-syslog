@@ -49,6 +49,7 @@ set(TEST_SOURCES
     SolidSyslogNullStreamTest.cpp
     SolidSyslogNullMutexTest.cpp
     SolidSyslogNullSdTest.cpp
+    SolidSyslogSdValueTest.cpp
     SolidSyslogNullSenderTest.cpp
     SolidSyslogNullStoreTest.cpp
     SolidSyslogNullSecurityPolicyTest.cpp

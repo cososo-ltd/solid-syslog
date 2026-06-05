@@ -3,10 +3,10 @@
     "dockerComposeFile": "docker-compose.yml",
     // Pick one service — comment the active line, uncomment the desired one,
     // then "Dev Containers: Rebuild Container". See docs/containers.md.
-    // "service": "gcc",                // host development — BUILD_PRESET=debug
+    "service": "gcc",                // host development — BUILD_PRESET=debug
     // "service": "clang",              // clang variant — BUILD_PRESET=clang-debug
     // "service": "freertos-host",      // FreeRTOS adapter TDD vs fakes — BUILD_PRESET=debug
-    "service": "freertos-target",    // ARM cross + QEMU + GDB — BUILD_PRESET=freertos-cross
+    // "service": "freertos-target",    // ARM cross + QEMU + GDB — BUILD_PRESET=freertos-cross
     // "service": "behave",             // BDD scenarios — no cmake (BUILD_PRESET unset)
     "workspaceFolder": "/workspaces/SolidSyslog",
     "features": {
