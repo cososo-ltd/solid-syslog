@@ -119,3 +119,14 @@ TEST(SolidSyslogSdElement, SkippedParamDoesNotDisturbSurroundingParams)
 
     CHECK_FRAMED("[meta a=\"1\" b=\"2\"]");
 }
+
+TEST(SolidSyslogSdElement, ParamValueIsEscapedThroughTheValueSink)
+{
+    /* The element owns no escaping path of its own — the value's '"' is escaped
+     * by the reused SolidSyslogSdValue, so framing stays intact. */
+    SolidSyslogSdElement_Begin(&element, "meta", 0);
+    SolidSyslogSdValue_String(SolidSyslogSdElement_Param(&element, "p"), "a\"b");
+    SolidSyslogSdElement_End(&element);
+
+    CHECK_FRAMED("[meta p=\"a\\\"b\"]");
+}
