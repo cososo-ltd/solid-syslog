@@ -11,7 +11,10 @@
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTunables.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting;
 
 class TEST_SolidSyslogOriginSd_EnterpriseIdContainingSpecialsIsEscaped_Test;
 class TEST_SolidSyslogOriginSd_FormatIncludesDifferentEnterpriseIdFromConfig_Test;
@@ -558,6 +561,7 @@ TEST(SolidSyslogOriginSdPool, OverflowReportsPoolExhausted)
 
     overflow = MakeSd();
 
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&OriginSdErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());

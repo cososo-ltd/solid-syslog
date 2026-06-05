@@ -7,7 +7,10 @@
 #include "SolidSyslogFile.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting;
 
 class TEST_SolidSyslogFileBlockDevice_AcquireSecondBlockPreservesFirstBlockContent_Test;
 class TEST_SolidSyslogFileBlockDevice_AppendsAccumulateAtEnd_Test;
@@ -345,6 +348,7 @@ TEST(SolidSyslogFileBlockDevicePool, OverflowReportsPoolExhausted)
 
     overflow = MakeDevice();
 
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&FileBlockDeviceErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
