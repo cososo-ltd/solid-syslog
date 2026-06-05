@@ -115,6 +115,17 @@ TEST(SolidSyslogSdValue, Uint32EmitsDecimalDigits)
     CHECK_VALUE("42");
 }
 
+TEST(SolidSyslogSdValue, ReassemblesTwoByteCodepointSplitAcrossStringCalls)
+{
+    /* U+00A9 COPYRIGHT SIGN streamed as its lead byte then its continuation
+     * byte across two _String calls — the value must reassemble the codepoint,
+     * not emit a U+FFFD per orphaned half. */
+    writeString("\xC2");
+    writeString("\xA9");
+
+    CHECK_VALUE("\xC2\xA9");
+}
+
 TEST(SolidSyslogSdValue, BoundedStringPassesValueShorterThanCapThrough)
 {
     writeBoundedString("hi", 8);
