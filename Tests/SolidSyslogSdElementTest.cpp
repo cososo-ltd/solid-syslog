@@ -5,6 +5,7 @@
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogSdElement.h"
 #include "SolidSyslogSdElementPrivate.h"
+#include "SolidSyslogSdValue.h"
 
 enum
 {
@@ -41,4 +42,21 @@ TEST(SolidSyslogSdElement, BeginEmitsNameWithEnterpriseNumber)
     SolidSyslogSdElement_Begin(&element, "ex", 32473);
 
     CHECK_FRAMED("[ex@32473");
+}
+
+TEST(SolidSyslogSdElement, ParamOpensSpaceNameEqualsQuote)
+{
+    SolidSyslogSdElement_Begin(&element, "meta", 0);
+    SolidSyslogSdElement_Param(&element, "tzKnown");
+
+    CHECK_FRAMED("[meta tzKnown=\"");
+}
+
+TEST(SolidSyslogSdElement, ParamReturnsValueSinkStreamingIntoTheElement)
+{
+    SolidSyslogSdElement_Begin(&element, "meta", 0);
+    struct SolidSyslogSdValue* value = SolidSyslogSdElement_Param(&element, "tzKnown");
+    SolidSyslogSdValue_String(value, "1");
+
+    CHECK_FRAMED("[meta tzKnown=\"1");
 }

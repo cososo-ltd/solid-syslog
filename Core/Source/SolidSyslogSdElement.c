@@ -22,3 +22,13 @@ void SolidSyslogSdElement_Begin(struct SolidSyslogSdElement* element, const char
         SolidSyslogFormatter_Uint32(element->Formatter, enterpriseNumber);
     }
 }
+
+struct SolidSyslogSdValue* SolidSyslogSdElement_Param(struct SolidSyslogSdElement* element, const char* name)
+{
+    SolidSyslogFormatter_AsciiCharacter(element->Formatter, ' ');
+    SolidSyslogFormatter_PrintUsAsciiString(element->Formatter, name, SDELEMENT_NAME_MAX);
+    SolidSyslogFormatter_AsciiCharacter(element->Formatter, '=');
+    SolidSyslogFormatter_AsciiCharacter(element->Formatter, '"');
+    SolidSyslogSdValue_FromFormatter(&element->Value, element->Formatter);
+    return &element->Value;
+}
