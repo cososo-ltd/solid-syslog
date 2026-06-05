@@ -39,9 +39,7 @@ using namespace CososoTesting;
     } while (0)
 
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
-    CHECK_OPEN_UNWOUND_WITH_SEVERITY(                                            \
-        transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode    \
-    )
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode)
 
 static int NoOpSleepCallCount;
 static int g_lastSleepMs;
@@ -410,7 +408,10 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSetHostnam
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(
-        transport, SOLIDSYSLOG_SEVERITY_CRITICAL, SOLIDSYSLOG_CAT_BAD_CONFIG, MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET
+        transport,
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET
     );
 }
 

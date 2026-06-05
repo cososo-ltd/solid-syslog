@@ -33,7 +33,11 @@ struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(void)
     }
     else
     {
-        PosixMutex_Report(SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY, SOLIDSYSLOG_CAT_POOL_EXHAUSTED, POSIXMUTEX_ERROR_POOL_EXHAUSTED);
+        PosixMutex_Report(
+            SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            POSIXMUTEX_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }

@@ -34,9 +34,7 @@ using namespace CososoTesting;
     } while (0)
 
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
-    CHECK_OPEN_UNWOUND_WITH_SEVERITY(                                            \
-        transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode    \
-    )
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode)
 
 class TEST_SolidSyslogTlsStream_ReadReturnsNegativeOneOnHardErrorAndClosesSsl_Test;
 class TEST_SolidSyslogTlsStream_ReadReturnsNegativeOneOnZeroReturnAndClosesSsl_Test;
@@ -760,7 +758,10 @@ TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenSet1HostFails)
     OpenSslFake_SetSet1HostFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(
-        transport, SOLIDSYSLOG_SEVERITY_CRITICAL, SOLIDSYSLOG_CAT_BAD_CONFIG, TLSSTREAM_ERROR_SERVER_NAME_NOT_SET
+        transport,
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        TLSSTREAM_ERROR_SERVER_NAME_NOT_SET
     );
 }
 
@@ -771,7 +772,10 @@ TEST(SolidSyslogTlsStream, OpenReturnsFalseWhenSniHostnameSetupFails)
     OpenSslFake_SetSniHostnameFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(
-        transport, SOLIDSYSLOG_SEVERITY_CRITICAL, SOLIDSYSLOG_CAT_BAD_CONFIG, TLSSTREAM_ERROR_SERVER_NAME_NOT_SET
+        transport,
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        TLSSTREAM_ERROR_SERVER_NAME_NOT_SET
     );
 }
 

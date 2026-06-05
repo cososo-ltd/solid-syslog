@@ -25,10 +25,10 @@ void SolidSyslogSenderHealth_Update(
         }
         else
         {
-            /* WARNING, not ERROR: a destination outage is operator-fixable and
-             * recoverable (store-and-forward covers it), unlike a library setup
-             * fault (bad config / pool exhaustion) which an integrator must fix
-             * in code. ERROR and above stays reserved for the latter. */
+            /* WARNING: a destination outage is recoverable (store-and-forward
+             * covers it) and may clear on its own — it is not a library fault.
+             * Setup faults an integrator must fix in code (bad config, pool
+             * exhaustion) are CRITICAL; see docs/error-severity.md. */
             SolidSyslog_Error(
                 SOLIDSYSLOG_SEVERITY_WARNING,
                 reporter->Source,

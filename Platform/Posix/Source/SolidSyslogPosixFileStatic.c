@@ -33,7 +33,11 @@ struct SolidSyslogFile* SolidSyslogPosixFile_Create(void)
     }
     else
     {
-        PosixFile_Report(SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY, SOLIDSYSLOG_CAT_POOL_EXHAUSTED, POSIXFILE_ERROR_POOL_EXHAUSTED);
+        PosixFile_Report(
+            SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            POSIXFILE_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }

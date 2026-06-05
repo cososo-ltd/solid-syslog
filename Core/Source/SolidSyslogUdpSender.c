@@ -78,7 +78,11 @@ static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, s
     bool result = false;
     if (buffer == NULL)
     {
-        UdpSender_Report(SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY, SOLIDSYSLOG_CAT_BAD_ARGUMENT, UDPSENDER_ERROR_SEND_NULL_BUFFER);
+        UdpSender_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            UDPSENDER_ERROR_SEND_NULL_BUFFER
+        );
     }
     else
     {

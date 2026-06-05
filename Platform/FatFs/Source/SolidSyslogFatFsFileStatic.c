@@ -33,7 +33,11 @@ struct SolidSyslogFile* SolidSyslogFatFsFile_Create(void)
     }
     else
     {
-        FatFsFile_Report(SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY, SOLIDSYSLOG_CAT_POOL_EXHAUSTED, FATFSFILE_ERROR_POOL_EXHAUSTED);
+        FatFsFile_Report(
+            SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            FATFSFILE_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }

@@ -33,7 +33,11 @@ struct SolidSyslogStructuredData* SolidSyslogOriginSd_Create(const struct SolidS
     }
     else
     {
-        OriginSd_Report(SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY, SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ORIGINSD_ERROR_POOL_EXHAUSTED);
+        OriginSd_Report(
+            SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
+            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+            ORIGINSD_ERROR_POOL_EXHAUSTED
+        );
     }
     return handle;
 }
@@ -45,7 +49,11 @@ void SolidSyslogOriginSd_Destroy(struct SolidSyslogStructuredData* base)
                     SolidSyslogPoolAllocator_FreeIfInUse(&OriginSd_Allocator, index, OriginSd_CleanupAtIndex, NULL);
     if (!released)
     {
-        OriginSd_Report(SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY, SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ORIGINSD_ERROR_UNKNOWN_DESTROY);
+        OriginSd_Report(
+            SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            ORIGINSD_ERROR_UNKNOWN_DESTROY
+        );
     }
 }
 

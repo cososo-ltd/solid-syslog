@@ -36,7 +36,11 @@ struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSys
         }
         else
         {
-            MetaSd_Report(SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY, SOLIDSYSLOG_CAT_POOL_EXHAUSTED, METASD_ERROR_POOL_EXHAUSTED);
+            MetaSd_Report(
+                SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                METASD_ERROR_POOL_EXHAUSTED
+            );
         }
     }
     return result;
@@ -67,7 +71,11 @@ void SolidSyslogMetaSd_Destroy(struct SolidSyslogStructuredData* base)
                     SolidSyslogPoolAllocator_FreeIfInUse(&MetaSd_Allocator, index, MetaSd_CleanupAtIndex, NULL);
     if (!released)
     {
-        MetaSd_Report(SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY, SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, METASD_ERROR_UNKNOWN_DESTROY);
+        MetaSd_Report(
+            SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            METASD_ERROR_UNKNOWN_DESTROY
+        );
     }
 }
 
