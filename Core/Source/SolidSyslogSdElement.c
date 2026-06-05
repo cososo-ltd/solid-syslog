@@ -7,6 +7,8 @@ enum
     SDELEMENT_NAME_MAX = 32
 };
 
+static inline void SdElement_CloseOpenValue(struct SolidSyslogSdElement* element);
+
 void SolidSyslogSdElement_FromFormatter(struct SolidSyslogSdElement* element, struct SolidSyslogFormatter* formatter)
 {
     element->Formatter = formatter;
@@ -26,6 +28,7 @@ void SolidSyslogSdElement_Begin(struct SolidSyslogSdElement* element, const char
 
 struct SolidSyslogSdValue* SolidSyslogSdElement_Param(struct SolidSyslogSdElement* element, const char* name)
 {
+    SdElement_CloseOpenValue(element);
     SolidSyslogFormatter_AsciiCharacter(element->Formatter, ' ');
     SolidSyslogFormatter_PrintUsAsciiString(element->Formatter, name, SDELEMENT_NAME_MAX);
     SolidSyslogFormatter_AsciiCharacter(element->Formatter, '=');
@@ -35,7 +38,10 @@ struct SolidSyslogSdValue* SolidSyslogSdElement_Param(struct SolidSyslogSdElemen
     return &element->Value;
 }
 
-void SolidSyslogSdElement_End(struct SolidSyslogSdElement* element)
+/* Closes an open param value: flushes any held UTF-8 tail (one U+FFFD) and
+ * emits the closing quote. Idempotent when no value is open, so both _Param
+ * (before the next param) and _End can call it unconditionally. */
+static inline void SdElement_CloseOpenValue(struct SolidSyslogSdElement* element)
 {
     if (element->ValueOpen)
     {
@@ -43,5 +49,10 @@ void SolidSyslogSdElement_End(struct SolidSyslogSdElement* element)
         SolidSyslogFormatter_AsciiCharacter(element->Formatter, '"');
         element->ValueOpen = false;
     }
+}
+
+void SolidSyslogSdElement_End(struct SolidSyslogSdElement* element)
+{
+    SdElement_CloseOpenValue(element);
     SolidSyslogFormatter_AsciiCharacter(element->Formatter, ']');
 }

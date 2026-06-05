@@ -78,3 +78,13 @@ TEST(SolidSyslogSdElement, EndWithNoParamClosesElementOnly)
 
     CHECK_FRAMED("[meta]");
 }
+
+TEST(SolidSyslogSdElement, SecondParamClosesThePreviousValueQuote)
+{
+    SolidSyslogSdElement_Begin(&element, "timeQuality", 0);
+    SolidSyslogSdValue_String(SolidSyslogSdElement_Param(&element, "tzKnown"), "1");
+    SolidSyslogSdValue_String(SolidSyslogSdElement_Param(&element, "isSynced"), "0");
+    SolidSyslogSdElement_End(&element);
+
+    CHECK_FRAMED("[timeQuality tzKnown=\"1\" isSynced=\"0\"]");
+}
