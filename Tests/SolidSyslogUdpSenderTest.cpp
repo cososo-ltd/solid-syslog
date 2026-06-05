@@ -17,6 +17,7 @@
 #include "SolidSyslogPosixDatagram.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSender.h"
+#include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpSender.h"
@@ -918,4 +919,81 @@ TEST(SolidSyslogUdpSenderPool, ExhaustedCreateReportsError)
     POINTERS_EQUAL(&UdpSenderErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
     UNSIGNED_LONGS_EQUAL(UDPSENDER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+}
+
+// Delivery-health tests — same edge-triggered DeliveryHealthy bit as
+// StreamSender, here observing the SolidSyslogDatagram_SendTo result. The
+// DatagramFake drives per-call SendTo outcomes; the shared Sender-role
+// categories key the events while Source distinguishes the UDP transport.
+
+// clang-format off
+TEST_GROUP_BASE(SolidSyslogUdpSenderDeliveryHealth, UdpSenderTestBase)
+{
+    int sentinel = 0;
+
+    void setup() override
+    {
+        setupFakesWithDatagramFake();
+        sender = SolidSyslogUdpSender_Create(&config);
+        ErrorHandlerFake_Install(&sentinel);
+    }
+
+    void teardown() override
+    {
+        SolidSyslogUdpSender_Destroy(sender);
+        teardownFakesWithDatagramFake();
+    }
+
+    void sendNumberFails(int callIndex) const
+    {
+        DatagramFake_SetSendResult(datagram, callIndex, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED);
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogUdpSenderDeliveryHealth, FirstFailingSendReportsDeliveryFailed)
+{
+    sendNumberFails(0);
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    POINTERS_EQUAL(&UdpSenderErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(UDPSENDER_ERROR_DELIVERY_FAILED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogUdpSenderDeliveryHealth, StayingDownReportsDeliveryFailedOnlyOnce)
+{
+    sendNumberFails(0);
+    sendNumberFails(1);
+    Send();
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogUdpSenderDeliveryHealth, RecoveryAfterDownReportsDeliveryRestored)
+{
+    sendNumberFails(0);
+    Send();
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_NOTICE, ErrorHandlerFake_LastSeverity());
+    POINTERS_EQUAL(&UdpSenderErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(UDPSENDER_ERROR_DELIVERY_RESTORED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogUdpSenderDeliveryHealth, StayingUpReportsNothing)
+{
+    Send();
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogUdpSenderDeliveryHealth, NullBufferDoesNotReportDeliveryFailed)
+{
+    Send(nullptr, TEST_MESSAGE_LEN);
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_ARGUMENT, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(UDPSENDER_ERROR_SEND_NULL_BUFFER, ErrorHandlerFake_LastDetail());
 }

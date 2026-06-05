@@ -26,10 +26,11 @@
 /*
  * Per-role base ranges. A role occupies [BASE, BASE + 0xFF]. A base is listed
  * here only once a role family carries a role-specific category; roles that
- * emit only the universal categories above need none. (0x0100 Sender and
- * 0x0300 Stream are intentionally unallocated — those roles emit only
- * universal categories today.)
+ * emit only the universal categories above need none. (0x0300 Stream is
+ * intentionally unallocated — that role emits only universal categories
+ * today.)
  */
+#define SOLIDSYSLOG_CAT_SENDER_BASE ((uint16_t) 0x0100U)
 #define SOLIDSYSLOG_CAT_RESOLVER_BASE ((uint16_t) 0x0200U)
 #define SOLIDSYSLOG_CAT_TLSSTREAM_BASE ((uint16_t) 0x0400U)
 #define SOLIDSYSLOG_CAT_SECURITYPOLICY_BASE ((uint16_t) 0x0500U)

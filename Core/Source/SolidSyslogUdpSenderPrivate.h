@@ -15,6 +15,7 @@ struct SolidSyslogUdpSender
     struct SolidSyslogSender Base;
     struct SolidSyslogUdpSenderConfig Config;
     bool Connected;
+    bool DeliveryHealthy;
     uint32_t LastEndpointVersion;
 };
 

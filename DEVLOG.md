@@ -1,5 +1,36 @@
 # Dev Log
 
+## 2026-06-05 — S12.27 delivery-health events at the Sender layer
+
+Closes the delivery-health follow-up [#519] flagged when S12.26 shipped, and is the
+productive replacement for the declined self-emit story S12.19: every transport was
+**silent when the destination went down**. Now `StreamSender` and `UdpSender` raise a clean
+error *event* on the edges — the integrator's installed handler decides what to do (count,
+GPIO, watchdog, re-emit). Each sender holds one `DeliveryHealthy` bit (init **true**) and
+fires `DELIVERY_FAILED` (ERR) once on healthy→down and `DELIVERY_RESTORED` (NOTICE) once on
+down→healthy. Staying down (or up) is silent — edge-triggering, not per-failure, sidesteps
+the flooding concern that sank S12.19's rate-limiter. Core-only, TDD-only: the platform tree
+already returns `false` honestly, so no per-stack change.
+
+### Decisions
+
+- **Emit at the Sender layer, wrapping the public `Send` boolean.** The sender already
+  observes the only fact that matters for "can I deliver?". UDP nuance: the edge wraps only
+  the genuine delivery path, **not** the NULL-buffer bad-argument `false` (pinned by a test).
+  A successful first send from startup reports nothing (initial state is healthy).
+- **New Sender-role category base `0x0100`** (was "intentionally unallocated") →
+  `SolidSyslogSenderCategories.h`: `_SENDER_DELIVERY_FAILED` / `_SENDER_DELIVERY_RESTORED`,
+  shared by both senders so a handler keys on the portable category while `Source` still tells
+  it which transport. Per-class detail codes `{STREAM,UDP}SENDER_ERROR_DELIVERY_{FAILED,RESTORED}`.
+- **Shared edge helper `SolidSyslogSenderHealth` (TU-internal, Core/Source).** The refactor
+  step extracted the duplicated edge + severity/category mapping into one authoritative place.
+  `_Update(bool* healthy, bool delivered, const struct SolidSyslogSenderHealthReporter*)` — the
+  `Reporter` struct (David's call, to kill a 5-arg smell) carries only the per-sender bits
+  (`Source`, `FailedDetail`, `RestoredDetail`); the NOTICE/ERR ladder and categories live in the
+  helper. Each sender builds a function-local `static const` reporter. Future senders reuse it.
+- **Tests** drive the edges with `StreamFake` / `DatagramFake` + `ErrorHandlerFake`
+  (first-fail, staying-down-once, recovery, staying-up-silent, plus the UDP NULL-buffer guard).
+
 ## 2026-06-05 — S12.31 pin mbedTLS minimum TLS version to 1.2
 
 Closes the Medium finding [#532] from the pre-0.1.0 security audit: the mbedTLS adapter
