@@ -136,7 +136,7 @@ static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* 
     if (!fetched)
     {
         MbedTlsAesGcmPolicy_Report(
-            SOLIDSYSLOG_SEVERITY_CRITICAL,
+            SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
             MBEDTLSAESGCMPOLICY_ERROR_KEY_UNAVAILABLE
         );

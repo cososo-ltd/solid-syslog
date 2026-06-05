@@ -158,7 +158,7 @@ static bool OpenSslHmacSha256Policy_FetchKey(
         else
         {
             OpenSslHmacSha256Policy_Report(
-                SOLIDSYSLOG_SEVERITY_CRITICAL,
+                SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
                 OPENSSLHMACSHA256POLICY_ERROR_KEY_TOO_SHORT
             );
@@ -167,7 +167,7 @@ static bool OpenSslHmacSha256Policy_FetchKey(
     else
     {
         OpenSslHmacSha256Policy_Report(
-            SOLIDSYSLOG_SEVERITY_CRITICAL,
+            SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
             OPENSSLHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE
         );

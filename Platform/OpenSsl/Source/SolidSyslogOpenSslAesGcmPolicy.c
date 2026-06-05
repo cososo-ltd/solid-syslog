@@ -150,7 +150,7 @@ static bool OpenSslAesGcmPolicy_FetchKey(struct SolidSyslogOpenSslAesGcmPolicy* 
     if (!fetched)
     {
         OpenSslAesGcmPolicy_Report(
-            SOLIDSYSLOG_SEVERITY_CRITICAL,
+            SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
             OPENSSLAESGCMPOLICY_ERROR_KEY_UNAVAILABLE
         );

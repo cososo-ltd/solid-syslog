@@ -25,8 +25,8 @@ config bug." The category already says that.
 |---|---|---|
 | `EMERGENCY` | — | no (reserved) |
 | `ALERT` | — | no (reserved) |
-| `CRITICAL` | The library **cannot do its job here** and the only fix is the integrating engineer changing code. | yes |
-| `ERROR` | A **runtime** fault impacting delivery that needs a human, but the library is otherwise operating. | yes |
+| `CRITICAL` | The library **cannot do its job here** and the only fix is the engineer who built the device **changing code or build** (pool sizes, wiring, config structs). | yes |
+| `ERROR` | A fault impacting delivery that needs a human, but is fixable **at deploy/runtime by the operator or systems integrator** without a code change (rejected cert, missing/short key, server unreachable). | yes |
 | `WARNING` | Transient / self-healing, **or** delivered-but-degraded. | yes |
 | `NOTICE` | Normal-but-significant — recovery from a down state. | yes |
 | `INFORMATIONAL` | — | no (reserved) |
@@ -51,6 +51,13 @@ rating it `CRITICAL` would fire a handler's "everything is broken" reaction at a
 is, in fact, working. The `BAD_CONFIG` category already tells the integrator a code change is
 needed.
 
+`CRITICAL` vs `ERROR` is a *who fixes it, and how* distinction. `CRITICAL` is reserved for faults
+only the engineer **building the device** can clear by changing code or build settings — a NULL
+dependency, a pool sized too small, a wiring bug. `ERROR` is a fault a human must act on but which
+the **operator or systems integrator deploying the device** can clear without touching code — a
+rejected certificate, a missing or too-short key, an unreachable server. A missing key is provisioned
+in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
+
 ## Policy by category
 
 | Category | Severity | Notes |
@@ -63,7 +70,7 @@ needed.
 | `TLSSTREAM_HANDSHAKE_FAILED` — rejected | `ERROR` | cert / protocol — a human must fix the peer or the cert. |
 | `TLSSTREAM_HANDSHAKE_FAILED` — timeout | `WARNING` | transient — may clear on the next reconnect. |
 | `TLSSTREAM_INIT_FAILED` | `ERROR` | setup fault needing a human; not split. |
-| `SECURITYPOLICY_KEY_UNAVAILABLE` | `CRITICAL` | key too short / unavailable — a permanent integrator-supplied-config fault. |
+| `SECURITYPOLICY_KEY_UNAVAILABLE` | `ERROR` | key too short / unavailable — provisioned in the field by the operator / systems integrator, fixable without a code change. |
 | `SECURITYPOLICY_SEAL_FAILED` / `_OPEN_FAILED` | `ERROR` | runtime crypto operation failed. |
 | `BUFFER_BACKEND_FAILED` | `ERROR` | message-queue backend fault; not split. |
 | `RESOLVER_RESOLVE_FAILED` | `WARNING` | DNS may resolve on a later attempt. |

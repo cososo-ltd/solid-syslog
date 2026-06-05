@@ -20,7 +20,9 @@ a NULL handle (caller code bug). Built-but-degraded stays WARNING.
   **WARNING** — it is still delivering.
 - TLS handshake **timeout** ERROR→**WARNING** (transient); handshake **rejected** stays ERROR.
   TLS server-name-late ERROR→**CRITICAL**. `INIT_FAILED` unchanged (ERROR).
-- `SECURITYPOLICY_KEY_UNAVAILABLE` ERROR→**CRITICAL** (permanent key misconfig, fail-closed).
+- `SECURITYPOLICY_KEY_UNAVAILABLE` stays **ERROR**: CRITICAL is for faults the engineer *building
+  the device* must fix in code; a key is provisioned in the field by the operator / systems
+  integrator, so it is operator-fixable like a rejected cert (David's call).
 
 **Single-source macros** (refactor, no behaviour change): `SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY`,
 `_BAD_CONFIG_FATAL_SEVERITY`, `_BAD_ARGUMENT_SEVERITY`, `_UNKNOWN_DESTROY_SEVERITY` in
