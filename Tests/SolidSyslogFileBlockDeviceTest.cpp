@@ -5,6 +5,7 @@
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogFileBlockDeviceErrors.h"
 #include "SolidSyslogFile.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 #include "CppUTest/TestHarness.h"
 

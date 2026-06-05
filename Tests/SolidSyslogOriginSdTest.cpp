@@ -8,6 +8,7 @@
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogOriginSdErrors.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTunables.h"
 #include "CppUTest/TestHarness.h"
