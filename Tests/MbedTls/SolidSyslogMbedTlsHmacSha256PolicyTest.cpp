@@ -40,6 +40,10 @@ static uint8_t TEST_RECORD[] = {0x10, 0x20, 0x30, 0x40};
 static const uint8_t* lastGetKeyBuffer = nullptr;
 static size_t lastGetKeyCapacity = 0;
 
+/* The key length GetKey reports on the next fetch. Defaults to a full-strength
+ * TEST_KEY_SIZE key; a test lowers it to drive the sub-minimum-key path. */
+static size_t testKeyLength = TEST_KEY_SIZE;
+
 /* A key accessor: writes a fixed TEST_KEY_BYTE key. The policy fetches this on
  * every seal and verify; expectedTagFor() mirrors it so tests can predict the
  * fake's deterministic tag. `context` points at a bool the test can clear to
@@ -53,9 +57,9 @@ static bool TestGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* 
     {
         return false;
     }
-    size_t written = (capacity < TEST_KEY_SIZE) ? capacity : (size_t) TEST_KEY_SIZE;
+    size_t written = (capacity < testKeyLength) ? capacity : testKeyLength;
     memset(keyOut, TEST_KEY_BYTE, written);
-    *keyLengthOut = written;
+    *keyLengthOut = testKeyLength;
     return true;
 }
 
@@ -85,6 +89,7 @@ TEST_BASE(MbedTlsHmacSha256PolicyTestBase)
         MbedTlsFake_Reset();
         lastGetKeyBuffer  = nullptr;
         lastGetKeyCapacity = 0;
+        testKeyLength     = TEST_KEY_SIZE;
         config.GetKey     = TestGetKey;
         config.KeyContext = &keyAvailable;
     }
@@ -339,6 +344,51 @@ TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, SealRecordReportsKeyUnavailable)
         SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
         MBEDTLSHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE
     );
+}
+
+TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, SealRecordFailsClosedWhenKeyBelowMinimum)
+{
+    testKeyLength = 16;
+    uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
+
+    bool sealed = seal(TEST_RECORD, sizeof TEST_RECORD, tag);
+
+    CHECK_FALSE(sealed);
+}
+
+TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, SealRecordReportsKeyTooShort)
+{
+    ErrorHandlerFake_Install(nullptr);
+    testKeyLength = 16;
+    uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
+
+    bool sealed = seal(TEST_RECORD, sizeof TEST_RECORD, tag);
+
+    CHECK_FALSE(sealed);
+    CHECK_REPORTED_ERROR(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
+        MBEDTLSHMACSHA256POLICY_ERROR_KEY_TOO_SHORT
+    );
+}
+
+// A key longer than the buffer GetKey was handed is a contract violation; reject
+// it too rather than passing an out-of-range length to mbedtls_md_hmac.
+TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, SealRecordFailsClosedWhenKeyExceedsCapacity)
+{
+    testKeyLength = SOLIDSYSLOG_MAX_HMAC_KEY_SIZE + 1U;
+    uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
+
+    CHECK_FALSE(seal(TEST_RECORD, sizeof TEST_RECORD, tag));
+}
+
+TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, OpenRecordFailsClosedWhenKeyBelowMinimum)
+{
+    uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
+    seal(TEST_RECORD, sizeof TEST_RECORD, tag);
+    testKeyLength = 16;
+
+    CHECK_FALSE(verify(TEST_RECORD, sizeof TEST_RECORD, tag));
 }
 
 TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, SealRecordWipesTheKeyBufferAfterUse)

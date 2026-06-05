@@ -10,7 +10,8 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogOpenSslHmacSha256PolicyConfig
     {
-        SolidSyslogKeyFunction GetKey; /* fetches the HMAC key on demand — required */
+        SolidSyslogKeyFunction GetKey; /* fetches the HMAC key on demand — required; must report at
+                                          least 32 bytes (SHA-256 output size) or seal/verify fails closed */
         void* KeyContext; /* passed through to GetKey; NULL is fine */
     };
 

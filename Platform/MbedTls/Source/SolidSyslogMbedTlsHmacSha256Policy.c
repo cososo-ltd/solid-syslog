@@ -19,7 +19,11 @@ const struct SolidSyslogErrorSource MbedTlsHmacSha256PolicyErrorSource = {"MbedT
 
 enum
 {
-    HMAC_SHA256_TAG_SIZE = 32
+    HMAC_SHA256_TAG_SIZE = 32,
+    /* RFC 2104 / NIST SP 800-107: an HMAC key should be at least the hash
+     * output length. A shorter key (or an empty one) yields a well-defined but
+     * cryptographically worthless MAC, so we reject it and fail closed. */
+    HMAC_SHA256_MIN_KEY_SIZE = 32
 };
 
 static inline struct SolidSyslogMbedTlsHmacSha256Policy* MbedTlsHmacSha256Policy_SelfFromBase(
@@ -40,6 +44,12 @@ static bool MbedTlsHmacSha256Policy_ComputeTag(
     uint8_t* tagOut,
     uint16_t failureCategory
 );
+static bool MbedTlsHmacSha256Policy_FetchKey(
+    struct SolidSyslogMbedTlsHmacSha256Policy* policy,
+    uint8_t* keyOut,
+    size_t* keyLengthOut
+);
+static inline bool MbedTlsHmacSha256Policy_KeyLengthIsValid(size_t keyLength);
 static inline bool MbedTlsHmacSha256Policy_ConstantTimeEquals(const uint8_t* a, const uint8_t* b, size_t length);
 
 void MbedTlsHmacSha256Policy_Initialise(
@@ -104,7 +114,7 @@ static bool MbedTlsHmacSha256Policy_ComputeTag(
     uint8_t key[SOLIDSYSLOG_MAX_HMAC_KEY_SIZE];
     size_t keyLength = 0;
     bool computed = false;
-    if (policy->Config.GetKey(policy->Config.KeyContext, key, sizeof key, &keyLength))
+    if (MbedTlsHmacSha256Policy_FetchKey(policy, key, &keyLength))
     {
         const mbedtls_md_info_t* sha256 = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
         if (mbedtls_md_hmac(sha256, key, keyLength, data, length, tagOut) == 0)
@@ -120,6 +130,39 @@ static bool MbedTlsHmacSha256Policy_ComputeTag(
             );
         }
     }
+    /* Wipe the whole key buffer — the full region GetKey was handed, not just
+     * the bytes written — so no key material lingers on the stack. */
+    mbedtls_platform_zeroize(key, sizeof key);
+    return computed;
+}
+
+/* Fetches the key on demand and validates its length. Fails closed (and
+ * reports) if the key is unavailable, or if its length falls outside
+ * [HMAC_SHA256_MIN_KEY_SIZE, sizeof buffer]. */
+static bool MbedTlsHmacSha256Policy_FetchKey(
+    struct SolidSyslogMbedTlsHmacSha256Policy* policy,
+    uint8_t* keyOut,
+    size_t* keyLengthOut
+)
+{
+    size_t keyLength = 0;
+    bool fetched = false;
+    if (policy->Config.GetKey(policy->Config.KeyContext, keyOut, SOLIDSYSLOG_MAX_HMAC_KEY_SIZE, &keyLength))
+    {
+        if (MbedTlsHmacSha256Policy_KeyLengthIsValid(keyLength))
+        {
+            *keyLengthOut = keyLength;
+            fetched = true;
+        }
+        else
+        {
+            MbedTlsHmacSha256Policy_Report(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
+                MBEDTLSHMACSHA256POLICY_ERROR_KEY_TOO_SHORT
+            );
+        }
+    }
     else
     {
         MbedTlsHmacSha256Policy_Report(
@@ -128,10 +171,12 @@ static bool MbedTlsHmacSha256Policy_ComputeTag(
             MBEDTLSHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE
         );
     }
-    /* Wipe the whole key buffer — the full region GetKey was handed, not just
-     * the bytes written — so no key material lingers on the stack. */
-    mbedtls_platform_zeroize(key, sizeof key);
-    return computed;
+    return fetched;
+}
+
+static inline bool MbedTlsHmacSha256Policy_KeyLengthIsValid(size_t keyLength)
+{
+    return (keyLength >= (size_t) HMAC_SHA256_MIN_KEY_SIZE) && (keyLength <= (size_t) SOLIDSYSLOG_MAX_HMAC_KEY_SIZE);
 }
 
 static bool MbedTlsHmacSha256Policy_OpenRecord(

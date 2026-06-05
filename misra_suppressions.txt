@@ -55,10 +55,10 @@ misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:44
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:44
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:118
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:98
-misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:69
+misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:79
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:81
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:85
-misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:70
+misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:80
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:86
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddress.c:14
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:23

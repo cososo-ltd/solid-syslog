@@ -1,5 +1,32 @@
 # Dev Log
 
+## 2026-06-05 — S12.30 enforce HMAC-SHA256 minimum key length (fail closed)
+
+Closes the Medium finding [#531] from the pre-0.1.0 security audit: both HMAC-SHA256
+at-rest policies (OpenSSL, mbedTLS) fed the integrator-reported `keyLength` straight into
+the primitive with no lower bound, so a `GetKey` reporting an empty or tiny key produced a
+cryptographically worthless MAC while records still looked tamper-evident. The OpenSSL path
+also cast `(int) keyLength` for `HMAC()`, so a bogus huge length would wrap negative. Both
+now validate the fetched length against `[32, sizeof key]` and fail closed.
+
+### Decisions
+
+- **Range check, not exact-length (mirrors the AES-GCM sibling's `FetchKey`).** Extracted a
+  `FetchKey` helper out of `ComputeTag` in both adapters — fetch, validate via an
+  intent-named `KeyLengthIsValid` predicate, report + fail closed on violation, wipe the key
+  on every path. Minimum is 32 bytes (the SHA-256 output size, RFC 2104 / NIST SP 800-107);
+  the upper bound is the key buffer's `sizeof` (`SOLIDSYSLOG_MAX_HMAC_KEY_SIZE`), which also
+  closes the OpenSSL negative-wrap.
+- **Dedicated `*_ERROR_KEY_TOO_SHORT` detail (David's call).** A new per-adapter error code
+  under the existing `SECURITYPOLICY_KEY_UNAVAILABLE` category, so a handler can distinguish
+  "no key" from "key present but too weak". Not folded into `ERROR_KEY_UNAVAILABLE`.
+- **TDD, OpenSSL first then mbedTLS.** Per adapter: red sub-minimum key → fails closed; red
+  reports `KEY_TOO_SHORT`; above-capacity also fails closed; verify path fails closed too.
+  Existing valid-key seal/open + constant-time compare stay green. Drove a `testKeyLength`
+  knob into the shared `TestGetKey` fake (defaults to full strength, so every existing test
+  is unchanged). Full suite green (1406) + mbedTLS HMAC unit (24).
+- **Docs:** minimum documented in `SolidSyslogKeyFunction.h` and both HMAC config headers.
+
 ## 2026-06-04 — S12.29 Windows atomic counter unsigned wrap (pure refactor)
 
 Closes the High-robustness finding [#530] from the pre-0.1.0 security audit:
