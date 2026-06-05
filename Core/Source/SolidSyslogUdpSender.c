@@ -11,6 +11,7 @@
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogResolver.h"
 #include "SolidSyslogSenderDefinition.h"
+#include "SolidSyslogSenderHealth.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogUdpSender.h"
@@ -25,6 +26,7 @@ static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, s
 static void UdpSender_Disconnect(struct SolidSyslogSender* base);
 
 static inline struct SolidSyslogUdpSender* UdpSender_SelfFromBase(struct SolidSyslogSender* base);
+static inline void UdpSender_UpdateDeliveryHealth(struct SolidSyslogUdpSender* self, bool delivered);
 static inline bool UdpSender_Reconcile(struct SolidSyslogUdpSender* self);
 static inline void UdpSender_DisconnectIfStale(struct SolidSyslogUdpSender* self);
 static inline bool UdpSender_EnsureConnected(struct SolidSyslogUdpSender* self);
@@ -57,6 +59,7 @@ void UdpSender_Initialise(struct SolidSyslogSender* base, const struct SolidSysl
         self->Config.EndpointVersion = UdpSender_NilEndpointVersion;
     }
     self->Connected = false;
+    self->DeliveryHealthy = true;
     self->LastEndpointVersion = 0;
 }
 
@@ -81,8 +84,21 @@ static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, s
     {
         struct SolidSyslogUdpSender* self = UdpSender_SelfFromBase(base);
         result = UdpSender_Reconcile(self) && UdpSender_TransmitDatagram(self, buffer, size);
+        UdpSender_UpdateDeliveryHealth(self, result);
     }
     return result;
+}
+
+/* Driven only from the genuine delivery path — a NULL-buffer argument error
+ * never touches the delivery-health edge. */
+static inline void UdpSender_UpdateDeliveryHealth(struct SolidSyslogUdpSender* self, bool delivered)
+{
+    static const struct SolidSyslogSenderHealthReporter reporter = {
+        .Source = &UdpSenderErrorSource,
+        .FailedDetail = (int32_t) UDPSENDER_ERROR_DELIVERY_FAILED,
+        .RestoredDetail = (int32_t) UDPSENDER_ERROR_DELIVERY_RESTORED
+    };
+    SolidSyslogSenderHealth_Update(&self->DeliveryHealthy, delivered, &reporter);
 }
 
 static void UdpSender_Disconnect(struct SolidSyslogSender* base)

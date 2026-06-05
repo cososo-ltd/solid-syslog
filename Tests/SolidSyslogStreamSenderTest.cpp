@@ -15,9 +15,11 @@
 #include "SolidSyslogPosixTcpStream.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSender.h"
+#include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogStreamSenderErrors.h"
 #include "SolidSyslogTunables.h"
+#include "StreamFake.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -801,4 +803,91 @@ TEST(SolidSyslogStreamSenderBadSetup, DisconnectOnBadSetupSenderDoesNotCrash)
 {
     sender = SolidSyslogStreamSender_Create(nullptr);
     SolidSyslogSender_Disconnect(sender);
+}
+
+// Delivery-health tests — the sender holds one DeliveryHealthy edge bit
+// (initial true). It emits one DELIVERY_FAILED (ERR) event on the
+// healthy->down transition and one DELIVERY_RESTORED (NOTICE) event on the
+// down->healthy transition; staying down stays silent (anti-flood). The
+// StreamFake's sticky SetSendFails toggle drives the underlying Stream_Send
+// boolean directly, isolating the edge logic from any platform stack.
+
+// clang-format off
+TEST_GROUP(SolidSyslogStreamSenderDeliveryHealth)
+{
+    struct SolidSyslogResolver*          resolver = nullptr;
+    struct SolidSyslogStream*            stream   = nullptr;
+    struct SolidSyslogAddress*           address  = nullptr;
+    struct SolidSyslogStreamSenderConfig config{};
+    struct SolidSyslogSender*            sender   = nullptr;
+    int                                  sentinel = 0;
+
+    void setup() override
+    {
+        SocketFake_Reset();
+        endpointGetHost = GetHost;
+        endpointVersion = 0;
+        endpointGetPort = GetPort;
+        resolver = SolidSyslogGetAddrInfoResolver_Create();
+        stream   = StreamFake_Create();
+        address  = SolidSyslogPosixAddress_Create();
+        config   = {resolver, stream, address, TestEndpoint, TestEndpointVersion};
+        sender   = SolidSyslogStreamSender_Create(&config);
+        ErrorHandlerFake_Install(&sentinel);
+    }
+
+    void teardown() override
+    {
+        SolidSyslogStreamSender_Destroy(sender);
+        SolidSyslogPosixAddress_Destroy(address);
+        StreamFake_Destroy(stream);
+        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
+    }
+
+    void Send() const
+    {
+        SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogStreamSenderDeliveryHealth, FirstFailingSendReportsDeliveryFailed)
+{
+    StreamFake_SetSendFails(stream, true);
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(STREAMSENDER_ERROR_DELIVERY_FAILED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogStreamSenderDeliveryHealth, StayingDownReportsDeliveryFailedOnlyOnce)
+{
+    StreamFake_SetSendFails(stream, true);
+    Send();
+    Send();
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogStreamSenderDeliveryHealth, RecoveryAfterDownReportsDeliveryRestored)
+{
+    StreamFake_SetSendFails(stream, true);
+    Send();
+    StreamFake_SetSendFails(stream, false);
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_NOTICE, ErrorHandlerFake_LastSeverity());
+    POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(STREAMSENDER_ERROR_DELIVERY_RESTORED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogStreamSenderDeliveryHealth, StayingUpReportsNothing)
+{
+    Send();
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }

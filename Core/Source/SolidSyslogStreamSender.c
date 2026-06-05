@@ -8,6 +8,7 @@
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogResolver.h"
 #include "SolidSyslogSenderDefinition.h"
+#include "SolidSyslogSenderHealth.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogStreamSenderErrors.h"
@@ -31,6 +32,7 @@ enum
 static bool StreamSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size);
 static void StreamSender_Disconnect(struct SolidSyslogSender* base);
 
+static inline void StreamSender_UpdateDeliveryHealth(struct SolidSyslogStreamSender* self, bool delivered);
 static inline struct SolidSyslogStreamSender* StreamSender_SelfFromBase(struct SolidSyslogSender* base);
 
 static inline bool StreamSender_Reconcile(struct SolidSyslogStreamSender* self);
@@ -61,6 +63,7 @@ void StreamSender_Initialise(struct SolidSyslogSender* base, const struct SolidS
     self->Config.EndpointVersion =
         (config->EndpointVersion != NULL) ? config->EndpointVersion : StreamSender_NilEndpointVersion;
     self->Connected = false;
+    self->DeliveryHealthy = true;
     self->LastEndpointVersion = 0;
 }
 
@@ -77,7 +80,19 @@ void StreamSender_Cleanup(struct SolidSyslogSender* base)
 static bool StreamSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size)
 {
     struct SolidSyslogStreamSender* self = StreamSender_SelfFromBase(base);
-    return StreamSender_Reconcile(self) && StreamSender_TransmitFramed(self, buffer, size);
+    bool delivered = StreamSender_Reconcile(self) && StreamSender_TransmitFramed(self, buffer, size);
+    StreamSender_UpdateDeliveryHealth(self, delivered);
+    return delivered;
+}
+
+static inline void StreamSender_UpdateDeliveryHealth(struct SolidSyslogStreamSender* self, bool delivered)
+{
+    static const struct SolidSyslogSenderHealthReporter reporter = {
+        .Source = &StreamSenderErrorSource,
+        .FailedDetail = (int32_t) STREAMSENDER_ERROR_DELIVERY_FAILED,
+        .RestoredDetail = (int32_t) STREAMSENDER_ERROR_DELIVERY_RESTORED
+    };
+    SolidSyslogSenderHealth_Update(&self->DeliveryHealthy, delivered, &reporter);
 }
 
 static inline bool StreamSender_Reconcile(struct SolidSyslogStreamSender* self)
