@@ -42,6 +42,13 @@ static inline void MessageFormatter_FormatMsgId(struct SolidSyslogFormatter* f, 
 static inline bool MessageFormatter_StringIsValid(const char* value);
 static inline void MessageFormatter_FormatStructuredData(
     struct SolidSyslogFormatter* f,
+    struct SolidSyslogStructuredData** baseSd,
+    size_t baseSdCount,
+    struct SolidSyslogStructuredData** messageSd,
+    size_t messageSdCount
+);
+static inline void MessageFormatter_FormatSdElements(
+    struct SolidSyslogSdElement* element,
     struct SolidSyslogStructuredData** sd,
     size_t sdCount
 );
@@ -51,7 +58,9 @@ static inline const char* MessageFormatter_SkipLeadingBom(const char* msg);
 void SolidSyslogMessageFormatter_Format(
     struct SolidSyslogFormatter* f,
     const struct SolidSyslogMessage* message,
-    const struct SolidSyslogMessageFormatterContext* context
+    const struct SolidSyslogMessageFormatterContext* context,
+    struct SolidSyslogStructuredData** messageSd,
+    size_t messageSdCount
 )
 {
     MessageFormatter_FormatPrival(f, MessageFormatter_MakePrival(message));
@@ -82,7 +91,7 @@ void SolidSyslogMessageFormatter_Format(
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
     MessageFormatter_FormatMsgId(f, message->MessageId);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    MessageFormatter_FormatStructuredData(f, context->Sd, context->SdCount);
+    MessageFormatter_FormatStructuredData(f, context->Sd, context->SdCount, messageSd, messageSdCount);
     MessageFormatter_FormatMsg(f, message->Msg);
 }
 
@@ -180,22 +189,41 @@ static inline bool MessageFormatter_StringIsValid(const char* value)
 
 static inline void MessageFormatter_FormatStructuredData(
     struct SolidSyslogFormatter* f,
-    struct SolidSyslogStructuredData** sd,
-    size_t sdCount
+    struct SolidSyslogStructuredData** baseSd,
+    size_t baseSdCount,
+    struct SolidSyslogStructuredData** messageSd,
+    size_t messageSdCount
 )
 {
     size_t lengthBefore = SolidSyslogFormatter_Length(f);
     struct SolidSyslogSdElement element;
 
     SolidSyslogSdElement_FromFormatter(&element, f);
-    for (size_t i = 0; i < sdCount; i++)
-    {
-        SolidSyslogStructuredData_Format(sd[i], &element);
-    }
+    MessageFormatter_FormatSdElements(&element, baseSd, baseSdCount);
+    MessageFormatter_FormatSdElements(&element, messageSd, messageSdCount);
 
     if (SolidSyslogFormatter_Length(f) == lengthBefore)
     {
         SolidSyslogFormatter_NilValue(f);
+    }
+}
+
+static inline void MessageFormatter_FormatSdElements(
+    struct SolidSyslogSdElement* element,
+    struct SolidSyslogStructuredData** sd,
+    size_t sdCount
+)
+{
+    for (size_t i = 0; i < sdCount; i++)
+    {
+        /* Skip NULL entries rather than dereference them. Per-instance slots are
+           expected to use SolidSyslogNullSd, but a per-message array is supplied
+           at the call site where a conditionally-absent SD is naturally NULL —
+           the library must not crash on caller input. */
+        if (sd[i] != NULL)
+        {
+            SolidSyslogStructuredData_Format(sd[i], element);
+        }
     }
 }
 

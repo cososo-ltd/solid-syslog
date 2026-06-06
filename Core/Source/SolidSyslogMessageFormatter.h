@@ -33,11 +33,15 @@ EXTERN_C_BEGIN
     /* Emits a full RFC 5424 SYSLOG-MSG into f:
      * <PRIVAL>1 TIMESTAMP HOSTNAME APP-NAME PROCID MSGID SD [SP BOM MSG].
      * Captures the timestamp via context->Clock and delegates its formatting
-     * to SolidSyslogTimestampFormatter_Format. */
+     * to SolidSyslogTimestampFormatter_Format. The SD area emits the per-instance
+     * SDs (context->Sd) followed by the per-message SDs (messageSd[0..messageSdCount)),
+     * NILVALUE only when neither produces an element. */
     void SolidSyslogMessageFormatter_Format(
         struct SolidSyslogFormatter * formatter,
         const struct SolidSyslogMessage* message,
-        const struct SolidSyslogMessageFormatterContext* context
+        const struct SolidSyslogMessageFormatterContext* context,
+        struct SolidSyslogStructuredData** messageSd,
+        size_t messageSdCount
     );
 
 EXTERN_C_END

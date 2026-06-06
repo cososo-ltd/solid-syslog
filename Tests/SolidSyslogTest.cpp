@@ -20,6 +20,7 @@
 #include "SolidSyslogPassthroughBuffer.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSdElement.h"
+#include "SolidSyslogSdValue.h"
 #include "SolidSyslogStore.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 #include "SolidSyslogTimeQuality.h"
@@ -80,6 +81,15 @@ static void SdFailFormat(struct SolidSyslogStructuredData* /* self */, struct So
 }
 
 static struct SolidSyslogStructuredData sdFail = {SdFailFormat};
+
+static void SdInjectFormat(struct SolidSyslogStructuredData* /* self */, struct SolidSyslogSdElement* element)
+{
+    SolidSyslogSdElement_Begin(element, "inj", 0U);
+    SolidSyslogSdValue_String(SolidSyslogSdElement_Param(element, "k"), "a]b");
+    SolidSyslogSdElement_End(element);
+}
+
+static struct SolidSyslogStructuredData sdInject = {SdInjectFormat};
 
 static void IntegrationGetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
@@ -224,6 +234,71 @@ TEST(SolidSyslog, InjectedSdObjectFormatIsCalledDuringLog)
     solidSyslog = SolidSyslog_Create(&config);
     Log();
     STRCMP_EQUAL("[spy]", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
+}
+
+TEST(SolidSyslog, NullElementInConfigSdArrayIsSkipped)
+{
+    SolidSyslogStructuredData* sdList[] = {&sdSpy, nullptr};
+    config.Sd = sdList;
+    config.SdCount = 2;
+    SolidSyslog_Destroy(solidSyslog);
+    solidSyslog = SolidSyslog_Create(&config);
+    Log();
+    STRCMP_EQUAL("[spy]", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
+}
+
+TEST(SolidSyslog, LogWithSdEmitsThePerMessageElement)
+{
+    SolidSyslogStructuredData* perMessage[] = {&sdSpy};
+    SolidSyslog_LogWithSd(solidSyslog, &message, perMessage, 1);
+    STRCMP_EQUAL("[spy]", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
+}
+
+TEST(SolidSyslog, LogWithSdEmitsPerInstanceBeforePerMessage)
+{
+    SolidSyslogStructuredData* baseList[] = {&sdSpy};
+    config.Sd = baseList;
+    config.SdCount = 1;
+    SolidSyslog_Destroy(solidSyslog);
+    solidSyslog = SolidSyslog_Create(&config);
+
+    SolidSyslogStructuredData* perMessage[] = {&sdSpy2};
+    SolidSyslog_LogWithSd(solidSyslog, &message, perMessage, 1);
+    STRCMP_EQUAL("[spy][spy2]", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
+}
+
+TEST(SolidSyslog, LogWithSdSkipsNullElementsInTheArray)
+{
+    SolidSyslogStructuredData* perMessage[] = {&sdSpy, nullptr, &sdSpy2};
+    SolidSyslog_LogWithSd(solidSyslog, &message, perMessage, 3);
+    STRCMP_EQUAL("[spy][spy2]", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
+}
+
+TEST(SolidSyslog, LogWithSdNullArrayWithCountStillEmitsNilvalue)
+{
+    SolidSyslog_LogWithSd(solidSyslog, &message, nullptr, 1);
+    STRCMP_EQUAL("-", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
+}
+
+TEST(SolidSyslog, LogWithSdEmptyPerMessageKeepsPerInstanceSd)
+{
+    SolidSyslogStructuredData* baseList[] = {&sdSpy};
+    config.Sd = baseList;
+    config.SdCount = 1;
+    SolidSyslog_Destroy(solidSyslog);
+    solidSyslog = SolidSyslog_Create(&config);
+
+    SolidSyslog_LogWithSd(solidSyslog, &message, nullptr, 0);
+    STRCMP_EQUAL("[spy]", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
+}
+
+TEST(SolidSyslog, LogWithSdEscapesPerMessageValues)
+{
+    SolidSyslogStructuredData* perMessage[] = {&sdInject};
+    SolidSyslog_LogWithSd(solidSyslog, &message, perMessage, 1);
+    /* The injected ']' is escaped to '\]' so it cannot break the SD framing
+       (asserted against the raw frame — the SDATA helper stops at any ']'). */
+    STRCMP_CONTAINS("[inj k=\"a\\]b\"]", lastMessage());
 }
 
 TEST(SolidSyslog, MetaSdProducesSequenceIdInStructuredData)
@@ -887,6 +962,21 @@ TEST(SolidSyslogLifecycle, LogWithNullMessageReportsError)
     POINTERS_EQUAL(&SolidSyslogErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_ARGUMENT, ErrorHandlerFake_LastCategory());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_ERROR_LOG_NULL_MESSAGE, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogLifecycle, LogWithSdNullArrayAndNonZeroCountReportsError)
+{
+    SolidSyslogConfig config = validConfig();
+    solidSyslog = SolidSyslog_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_LogWithSd(solidSyslog, &message, nullptr, 1);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
+    POINTERS_EQUAL(&SolidSyslogErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_ARGUMENT, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_ERROR_LOG_INCONSISTENT_SD, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogLifecycle, CreateWithNullConfigReportsError)

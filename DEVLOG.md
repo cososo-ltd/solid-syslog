@@ -14657,3 +14657,58 @@ MISRA rule — different category, doesn't set precedent.
 
 ### Open questions
 - None outstanding.
+
+## 2026-06-06 — S14.09: per-message structured data (SolidSyslog_LogWithSd)
+
+This is the per-message-attachment wave of E14 — the headline "custom SD on
+individual Log calls" — pulled ahead of the integrator guide (the old S14.09
+guide was renumbered to **S14.10 #549**; this story is the new **#560**). Confirmed
+the epic still scopes it ("attaching caller-built SD-ELEMENTs … via
+SolidSyslogMessage"; the per-message Open questions); it was the never-decomposed
+"Later wave".
+
+### Decisions
+- **`SolidSyslog_LogWithSd(handle, message, sd, sdCount)`** — David's shape: per-message
+  SD is a *call argument* (array of `SolidSyslogStructuredData*`, same type as
+  `SolidSyslogConfig.Sd[]`), not a field on `SolidSyslogMessage` (which stays a pure
+  data struct). `SolidSyslog_Log` is exactly `LogWithSd(h, m, NULL, 0)`.
+- **Ordering:** per-instance (config) SDs first, then per-message — both into the one
+  shared `SolidSyslogSdElement` the dispatch already builds; NILVALUE only when neither
+  writes. `MessageFormatter_Format` gained the per-message array; `FormatSdElements`
+  helper DRYs the base-then-message loop.
+- **NULL array + nonzero count** → reported (new `SOLIDSYSLOG_ERROR_LOG_INCONSISTENT_SD`,
+  BAD_ARGUMENT) and treated as 0 so the message still logs — mirrors the Create-time
+  `InstallStructuredData` guard.
+- **NULL element *inside* the array** (David's catch on review) → skipped, message still
+  emits, no crash. The dispatch `SolidSyslogStructuredData_Format` never null-guarded, and
+  nothing tested a NULL element in *either* array (create-time relied only on the
+  "use SolidSyslogNullSd, not NULL" convention). Guard added in the shared
+  `MessageFormatter_FormatSdElements` loop, so both the per-instance and per-message arrays
+  now tolerate a conditionally-absent (NULL) SD — justified because the per-message array is
+  caller input at the call site. Tests added for both arrays + the still-emits-NILVALUE case.
+- **Reentrancy clarification (David pushed back, rightly):** the vtable `Format(self,
+  element)` has no per-call argument, so a custom SD reads call-specific data via `self`.
+  Formatting is synchronous, so the SD objects need only live across the call. The only
+  hazard is sharing one mutable SD object across concurrent Log calls — avoidable with a
+  per-call-site instance. Not an API flaw; a one-line note for the S14.10 guide.
+- **MISRA 8.7 surprise + the `_Emit`→`_DoLog` naming:** making `Log` call `LogWithSd`
+  directly gave `LogWithSd` exactly one internal reference → cppcheck 8.7 (public API,
+  external callers invisible to the analysis set; a BDD/test caller wouldn't help — those
+  aren't in the cppcheck file set). Rather than add the project's first active 8.7
+  suppression (D.014 retired the last), both public functions delegate to a static
+  `SolidSyslog_DoLog`, so each is zero-internal-ref (like every other public function
+  here). Named DoLog not Emit — `_Emit` is taken in OriginSd (write one SD piece) and
+  heavy in prose; `_Do<Operation>` is the established "real impl behind the public op"
+  idiom (`LwipRawTcpStream_Do*`).
+- Tests: emit, base-before-per-message ordering, empty-per-message keeps the base set,
+  per-message values escaped (injection-proof — asserted on the raw frame because the
+  SDATA test-helper naively stops at any `]`), NULL-with-count guard. 1479 green;
+  BddTargetTests 66/66; clang-format clean; cppcheck-MISRA exit 0 (8.7 cleared by the
+  static helper; 11.8 line drift renumbered SolidSyslog.c +6 / MessageFormatter.c +9).
+
+### Deferred
+- Worked custom-SD example, oracle round-trip BDD, and the integrator-guide prose
+  (incl. the don't-share-a-mutable-SD-object note) → **S14.10 (#549)**, which closes E14.
+
+### Open questions
+- None outstanding.

@@ -56,7 +56,7 @@ TEST_GROUP(SolidSyslogMessageFormatter)
 
     void format()
     {
-        SolidSyslogMessageFormatter_Format(formatter, &message, &context);
+        SolidSyslogMessageFormatter_Format(formatter, &message, &context, nullptr, 0);
     }
 
     // Clears the output buffer between two format() calls without rebuilding
