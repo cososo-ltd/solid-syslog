@@ -31,6 +31,12 @@ struct SolidSyslogStructuredData;
 
 static inline void SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
 static inline void SolidSyslog_SendOneFromStore(struct SolidSyslog* self);
+static void SolidSyslog_DoLog(
+    struct SolidSyslog* handle,
+    const struct SolidSyslogMessage* message,
+    struct SolidSyslogStructuredData** sd,
+    size_t sdCount
+);
 static void SolidSyslog_InstallAppName(
     struct SolidSyslog* self,
     SolidSyslogHeaderFieldFunction configured,
@@ -283,10 +289,20 @@ static inline void SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
 
 void SolidSyslog_Log(struct SolidSyslog* handle, const struct SolidSyslogMessage* message)
 {
-    SolidSyslog_LogWithSd(handle, message, NULL, 0);
+    SolidSyslog_DoLog(handle, message, NULL, 0);
 }
 
 void SolidSyslog_LogWithSd(
+    struct SolidSyslog* handle,
+    const struct SolidSyslogMessage* message,
+    struct SolidSyslogStructuredData** sd,
+    size_t sdCount
+)
+{
+    SolidSyslog_DoLog(handle, message, sd, sdCount);
+}
+
+static void SolidSyslog_DoLog(
     struct SolidSyslog* handle,
     const struct SolidSyslogMessage* message,
     struct SolidSyslogStructuredData** sd,
