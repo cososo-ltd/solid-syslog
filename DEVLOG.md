@@ -14452,3 +14452,37 @@ MISRA rule — different category, doesn't set precedent.
 ### Open questions
 
 - None outstanding.
+
+## 2026-06-06 — S14.04: MetaSd onto the SD writer + SdValueFunction callback
+
+### Decisions
+- **MetaSd migrated onto the E14 SD writer**, byte-identical to the old raw-formatter
+  framing (existing MetaSd tests are the safety net), exactly as S14.03 did for
+  TimeQualitySd: `SdElement_FromFormatter` + `_Begin("meta",0U)` / `_Param` →
+  `SolidSyslogSdValue_*` / `_End`. The three `MetaSd_Emit*` helpers collapse into
+  `MetaSd_Format`.
+- **`GetLanguage` callback signature changed** `SolidSyslogStringFunction`
+  (writes into a formatter) → new `SolidSyslogSdValueFunction`
+  (`void(struct SolidSyslogSdValue*, void* context)`), with a paired
+  `MetaSdConfig.LanguageContext`. Routing the value through the `SdElement` param sink
+  makes the library own the escaping unconditionally — closes the `language`
+  SD-injection vector (first half of #533). New behaviour driven RED-first by
+  `FormatPassesLanguageContextThrough`; the rest is refactor-under-existing-tests.
+- **Typedef gets its own header** `Core/Interface/SolidSyslogSdValueFunction.h`
+  (David's call over folding it into `SolidSyslogSdValue.h`) — mirrors the
+  `SolidSyslogStringFunction.h` precedent and is what OriginSd's `GetIpAt` reuses at
+  S14.05.
+- The shared `BddTargetLanguage_Get` moved to `SolidSyslogSdValue_String`; its unit
+  test now builds an `SdValue` via the private `_FromFormatter`/`_Close`, so
+  `Tests/Bdd/Targets/CMakeLists.txt` gained `Core/Source` on the BddTargetTests
+  include path.
+- Checks: debug green (1458 tests), MetaSd 22/22, BddTargetLanguage 1/1; clang-format
+  applied; cppcheck-MISRA exit 0 (the `misra-c2012-11.3` MetaSd.c cast suppression
+  anchor moved 55→64). PR #554.
+
+### Deferred
+- SD vtable flip (S14.06), OriginSd migration incl. scratch-blob removal (S14.05),
+  config header-field rework (S14.07) — all out of scope here.
+
+### Open questions
+- None outstanding.
