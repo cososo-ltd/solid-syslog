@@ -236,6 +236,17 @@ TEST(SolidSyslog, InjectedSdObjectFormatIsCalledDuringLog)
     STRCMP_EQUAL("[spy]", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
 }
 
+TEST(SolidSyslog, NullElementInConfigSdArrayIsSkipped)
+{
+    SolidSyslogStructuredData* sdList[] = {&sdSpy, nullptr};
+    config.Sd = sdList;
+    config.SdCount = 2;
+    SolidSyslog_Destroy(solidSyslog);
+    solidSyslog = SolidSyslog_Create(&config);
+    Log();
+    STRCMP_EQUAL("[spy]", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
+}
+
 TEST(SolidSyslog, LogWithSdEmitsThePerMessageElement)
 {
     SolidSyslogStructuredData* perMessage[] = {&sdSpy};
@@ -254,6 +265,19 @@ TEST(SolidSyslog, LogWithSdEmitsPerInstanceBeforePerMessage)
     SolidSyslogStructuredData* perMessage[] = {&sdSpy2};
     SolidSyslog_LogWithSd(solidSyslog, &message, perMessage, 1);
     STRCMP_EQUAL("[spy][spy2]", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
+}
+
+TEST(SolidSyslog, LogWithSdSkipsNullElementsInTheArray)
+{
+    SolidSyslogStructuredData* perMessage[] = {&sdSpy, nullptr, &sdSpy2};
+    SolidSyslog_LogWithSd(solidSyslog, &message, perMessage, 3);
+    STRCMP_EQUAL("[spy][spy2]", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
+}
+
+TEST(SolidSyslog, LogWithSdNullArrayWithCountStillEmitsNilvalue)
+{
+    SolidSyslog_LogWithSd(solidSyslog, &message, nullptr, 1);
+    STRCMP_EQUAL("-", SyslogField(lastMessage(), SYSLOG_FIELD_SDATA).c_str());
 }
 
 TEST(SolidSyslog, LogWithSdEmptyPerMessageKeepsPerInstanceSd)

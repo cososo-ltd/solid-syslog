@@ -14679,6 +14679,13 @@ SolidSyslogMessage"; the per-message Open questions); it was the never-decompose
 - **NULL array + nonzero count** → reported (new `SOLIDSYSLOG_ERROR_LOG_INCONSISTENT_SD`,
   BAD_ARGUMENT) and treated as 0 so the message still logs — mirrors the Create-time
   `InstallStructuredData` guard.
+- **NULL element *inside* the array** (David's catch on review) → skipped, message still
+  emits, no crash. The dispatch `SolidSyslogStructuredData_Format` never null-guarded, and
+  nothing tested a NULL element in *either* array (create-time relied only on the
+  "use SolidSyslogNullSd, not NULL" convention). Guard added in the shared
+  `MessageFormatter_FormatSdElements` loop, so both the per-instance and per-message arrays
+  now tolerate a conditionally-absent (NULL) SD — justified because the per-message array is
+  caller input at the call site. Tests added for both arrays + the still-emits-NILVALUE case.
 - **Reentrancy clarification (David pushed back, rightly):** the vtable `Format(self,
   element)` has no per-call argument, so a custom SD reads call-specific data via `self`.
   Formatting is synchronous, so the SD objects need only live across the call. The only

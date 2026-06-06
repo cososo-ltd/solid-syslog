@@ -216,7 +216,14 @@ static inline void MessageFormatter_FormatSdElements(
 {
     for (size_t i = 0; i < sdCount; i++)
     {
-        SolidSyslogStructuredData_Format(sd[i], element);
+        /* Skip NULL entries rather than dereference them. Per-instance slots are
+           expected to use SolidSyslogNullSd, but a per-message array is supplied
+           at the call site where a conditionally-absent SD is naturally NULL —
+           the library must not crash on caller input. */
+        if (sd[i] != NULL)
+        {
+            SolidSyslogStructuredData_Format(sd[i], element);
+        }
     }
 }
 
