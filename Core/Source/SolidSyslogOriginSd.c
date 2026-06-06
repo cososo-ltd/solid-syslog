@@ -6,15 +6,13 @@
 #include "SolidSyslogNullSd.h"
 #include "SolidSyslogOriginSdErrors.h"
 #include "SolidSyslogOriginSdPrivate.h"
-#include "SolidSyslogSdElementPrivate.h"
+#include "SolidSyslogSdElement.h"
 #include "SolidSyslogSdValue.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 
 const struct SolidSyslogErrorSource OriginSdErrorSource = {"OriginSd"};
 
-struct SolidSyslogFormatter;
-
-static void OriginSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter);
+static void OriginSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element);
 
 static inline struct SolidSyslogOriginSd* OriginSd_SelfFromBase(struct SolidSyslogStructuredData* base);
 static inline void OriginSd_EmitSoftware(struct SolidSyslogSdElement* element, const char* software);
@@ -42,18 +40,16 @@ void OriginSd_Cleanup(struct SolidSyslogStructuredData* base)
     *base = *SolidSyslogNullSd_Get();
 }
 
-static void OriginSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter)
+static void OriginSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element)
 {
     struct SolidSyslogOriginSd* self = OriginSd_SelfFromBase(base);
-    struct SolidSyslogSdElement element;
 
-    SolidSyslogSdElement_FromFormatter(&element, formatter);
-    SolidSyslogSdElement_Begin(&element, "origin", 0U);
-    OriginSd_EmitSoftware(&element, self->Software);
-    OriginSd_EmitSwVersion(&element, self->SwVersion);
-    OriginSd_EmitEnterpriseId(&element, self->EnterpriseId);
-    OriginSd_EmitIps(&element, self);
-    SolidSyslogSdElement_End(&element);
+    SolidSyslogSdElement_Begin(element, "origin", 0U);
+    OriginSd_EmitSoftware(element, self->Software);
+    OriginSd_EmitSwVersion(element, self->SwVersion);
+    OriginSd_EmitEnterpriseId(element, self->EnterpriseId);
+    OriginSd_EmitIps(element, self);
+    SolidSyslogSdElement_End(element);
 }
 
 static inline struct SolidSyslogOriginSd* OriginSd_SelfFromBase(struct SolidSyslogStructuredData* base)

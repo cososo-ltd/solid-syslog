@@ -7,6 +7,7 @@
 #include "SolidSyslog.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogSdElementPrivate.h"
 #include "SolidSyslogStringFunction.h"
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTimestamp.h"
@@ -168,10 +169,12 @@ static inline void MessageFormatter_FormatStructuredData(
 )
 {
     size_t lengthBefore = SolidSyslogFormatter_Length(f);
+    struct SolidSyslogSdElement element;
 
+    SolidSyslogSdElement_FromFormatter(&element, f);
     for (size_t i = 0; i < sdCount; i++)
     {
-        SolidSyslogStructuredData_Format(sd[i], f);
+        SolidSyslogStructuredData_Format(sd[i], &element);
     }
 
     if (SolidSyslogFormatter_Length(f) == lengthBefore)

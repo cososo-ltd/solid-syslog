@@ -9,6 +9,7 @@
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogMetaSdErrors.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogSdElementPrivate.h"
 #include "SolidSyslogSdValue.h"
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTunables.h"
@@ -120,7 +121,9 @@ TEST_GROUP(SolidSyslogMetaSd)
 
     void format() const
     {
-        SolidSyslogStructuredData_Format(sd, formatter);
+        struct SolidSyslogSdElement element{};
+        SolidSyslogSdElement_FromFormatter(&element, formatter);
+        SolidSyslogStructuredData_Format(sd, &element);
     }
 
     void resetFormatter()
@@ -178,7 +181,7 @@ TEST(SolidSyslogMetaSd, UseAfterDestroyIsCrashSafeViaNullSdVtable)
      * Format through the stale handle is a safe no-op rather than a NULL-fn-pointer
      * crash. NullSd.Format writes nothing into the Formatter. */
     SolidSyslogMetaSd_Destroy(sd);
-    SolidSyslogStructuredData_Format(sd, formatter);
+    format();
     LONGS_EQUAL(0, SolidSyslogFormatter_Length(formatter));
     sd = SolidSyslogMetaSd_Create(&config); // for teardown
 }

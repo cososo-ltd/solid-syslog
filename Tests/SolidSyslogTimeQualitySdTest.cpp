@@ -6,6 +6,7 @@
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogSdElementPrivate.h"
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTimeQuality.h"
 #include "SolidSyslogTimeQualitySd.h"
@@ -51,7 +52,9 @@ TEST_GROUP(SolidSyslogTimeQualitySd)
 
     void format() const
     {
-        SolidSyslogStructuredData_Format(sd, formatter);
+        struct SolidSyslogSdElement element{};
+        SolidSyslogSdElement_FromFormatter(&element, formatter);
+        SolidSyslogStructuredData_Format(sd, &element);
     }
 
     void resetFormatter()
@@ -135,7 +138,7 @@ TEST(SolidSyslogTimeQualitySd, UseAfterDestroyIsCrashSafeViaNullSdVtable)
      * Format through the stale handle is a safe no-op rather than a NULL-fn-pointer
      * crash. NullSd.Format writes nothing into the Formatter. */
     SolidSyslogTimeQualitySd_Destroy(sd);
-    SolidSyslogStructuredData_Format(sd, formatter);
+    format();
     LONGS_EQUAL(0, SolidSyslogFormatter_Length(formatter));
     sd = SolidSyslogTimeQualitySd_Create(StubGetTimeQuality); // for teardown
 }

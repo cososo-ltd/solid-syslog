@@ -5,7 +5,7 @@
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogNullSd.h"
-#include "SolidSyslogSdElementPrivate.h"
+#include "SolidSyslogSdElement.h"
 #include "SolidSyslogSdValue.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 #include "SolidSyslogTimeQualitySdErrors.h"
@@ -13,9 +13,7 @@
 
 const struct SolidSyslogErrorSource TimeQualitySdErrorSource = {"TimeQualitySd"};
 
-struct SolidSyslogFormatter;
-
-static void TimeQualitySd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter);
+static void TimeQualitySd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element);
 
 static inline struct SolidSyslogTimeQualitySd* TimeQualitySd_SelfFromBase(struct SolidSyslogStructuredData* base);
 
@@ -34,23 +32,21 @@ void TimeQualitySd_Cleanup(struct SolidSyslogStructuredData* base)
     *base = *SolidSyslogNullSd_Get();
 }
 
-static void TimeQualitySd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter)
+static void TimeQualitySd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element)
 {
     struct SolidSyslogTimeQualitySd* self = TimeQualitySd_SelfFromBase(base);
     struct SolidSyslogTimeQuality q = {0};
-    struct SolidSyslogSdElement element;
 
     self->GetTimeQuality(&q);
 
-    SolidSyslogSdElement_FromFormatter(&element, formatter);
-    SolidSyslogSdElement_Begin(&element, "timeQuality", 0U);
-    SolidSyslogSdValue_Uint32(SolidSyslogSdElement_Param(&element, "tzKnown"), q.TzKnown ? 1U : 0U);
-    SolidSyslogSdValue_Uint32(SolidSyslogSdElement_Param(&element, "isSynced"), q.IsSynced ? 1U : 0U);
+    SolidSyslogSdElement_Begin(element, "timeQuality", 0U);
+    SolidSyslogSdValue_Uint32(SolidSyslogSdElement_Param(element, "tzKnown"), q.TzKnown ? 1U : 0U);
+    SolidSyslogSdValue_Uint32(SolidSyslogSdElement_Param(element, "isSynced"), q.IsSynced ? 1U : 0U);
     if (q.SyncAccuracyMicroseconds != SOLIDSYSLOG_SYNC_ACCURACY_OMIT)
     {
-        SolidSyslogSdValue_Uint32(SolidSyslogSdElement_Param(&element, "syncAccuracy"), q.SyncAccuracyMicroseconds);
+        SolidSyslogSdValue_Uint32(SolidSyslogSdElement_Param(element, "syncAccuracy"), q.SyncAccuracyMicroseconds);
     }
-    SolidSyslogSdElement_End(&element);
+    SolidSyslogSdElement_End(element);
 }
 
 static inline struct SolidSyslogTimeQualitySd* TimeQualitySd_SelfFromBase(struct SolidSyslogStructuredData* base)

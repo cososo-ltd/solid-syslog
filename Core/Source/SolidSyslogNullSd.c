@@ -2,9 +2,9 @@
 
 #include "SolidSyslogStructuredDataDefinition.h"
 
-struct SolidSyslogFormatter;
+struct SolidSyslogSdElement;
 
-static void NullSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter);
+static void NullSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element);
 
 struct SolidSyslogStructuredData* SolidSyslogNullSd_Get(void)
 {
@@ -12,8 +12,8 @@ struct SolidSyslogStructuredData* SolidSyslogNullSd_Get(void)
     return &instance;
 }
 
-static void NullSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogFormatter* formatter)
+static void NullSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element)
 {
     (void) base;
-    (void) formatter;
+    (void) element;
 }

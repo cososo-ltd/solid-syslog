@@ -1,9 +1,9 @@
 #include "SolidSyslogStructuredDataDefinition.h"
 #include "SolidSyslogStructuredData.h"
 
-struct SolidSyslogFormatter;
+struct SolidSyslogSdElement;
 
-void SolidSyslogStructuredData_Format(struct SolidSyslogStructuredData* sd, struct SolidSyslogFormatter* formatter)
+void SolidSyslogStructuredData_Format(struct SolidSyslogStructuredData* sd, struct SolidSyslogSdElement* element)
 {
-    sd->Format(sd, formatter);
+    sd->Format(sd, element);
 }

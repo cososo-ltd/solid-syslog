@@ -9,6 +9,7 @@
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogOriginSdErrors.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogSdElementPrivate.h"
 #include "SolidSyslogSdValue.h"
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTunables.h"
@@ -139,7 +140,9 @@ TEST_GROUP(SolidSyslogOriginSd)
 
     void format() const
     {
-        SolidSyslogStructuredData_Format(sd, formatter);
+        struct SolidSyslogSdElement element{};
+        SolidSyslogSdElement_FromFormatter(&element, formatter);
+        SolidSyslogStructuredData_Format(sd, &element);
     }
 
     void resetFormatter()
@@ -161,7 +164,7 @@ TEST(SolidSyslogOriginSd, UseAfterDestroyIsCrashSafeViaNullSdVtable)
      * Format through the stale handle is a safe no-op rather than a NULL-fn-pointer
      * crash. NullSd.Format writes nothing into the Formatter. */
     SolidSyslogOriginSd_Destroy(sd);
-    SolidSyslogStructuredData_Format(sd, formatter);
+    format();
     LONGS_EQUAL(0, SolidSyslogFormatter_Length(formatter));
     sd = SolidSyslogOriginSd_Create(&config); // for teardown
 }

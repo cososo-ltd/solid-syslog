@@ -1,6 +1,7 @@
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogNullSd.h"
+#include "SolidSyslogSdElementPrivate.h"
 #include "SolidSyslogStructuredData.h"
 
 // clang-format off
@@ -21,6 +22,8 @@ TEST_GROUP(SolidSyslogNullSd)
 
 TEST(SolidSyslogNullSd, FormatWritesNothing)
 {
-    SolidSyslogStructuredData_Format(sd, formatter);
+    struct SolidSyslogSdElement element{};
+    SolidSyslogSdElement_FromFormatter(&element, formatter);
+    SolidSyslogStructuredData_Format(sd, &element);
     LONGS_EQUAL(0, SolidSyslogFormatter_Length(formatter));
 }

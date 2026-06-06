@@ -19,6 +19,7 @@
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPassthroughBuffer.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogSdElement.h"
 #include "SolidSyslogStore.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 #include "SolidSyslogTimeQuality.h"
@@ -58,24 +59,23 @@ static const char * const TEST_MSG       = "hello world";
 
 #define CHECK_PROCID(expected) STRCMP_EQUAL(expected, SyslogField(lastMessage(), SYSLOG_FIELD_PROCID).c_str())
 
-static const char SD_SPY_TEXT[] = "[spy]";
-static const char SD_SPY2_TEXT[] = "[spy2]";
-
-static void SdSpyFormat(struct SolidSyslogStructuredData* /* self */, struct SolidSyslogFormatter* formatter)
+static void SdSpyFormat(struct SolidSyslogStructuredData* /* self */, struct SolidSyslogSdElement* element)
 {
-    SolidSyslogFormatter_BoundedString(formatter, SD_SPY_TEXT, sizeof(SD_SPY_TEXT) - 1);
+    SolidSyslogSdElement_Begin(element, "spy", 0U);
+    SolidSyslogSdElement_End(element);
 }
 
 static struct SolidSyslogStructuredData sdSpy = {SdSpyFormat};
 
-static void SdSpyFormat2(struct SolidSyslogStructuredData* /* self */, struct SolidSyslogFormatter* formatter)
+static void SdSpyFormat2(struct SolidSyslogStructuredData* /* self */, struct SolidSyslogSdElement* element)
 {
-    SolidSyslogFormatter_BoundedString(formatter, SD_SPY2_TEXT, sizeof(SD_SPY2_TEXT) - 1);
+    SolidSyslogSdElement_Begin(element, "spy2", 0U);
+    SolidSyslogSdElement_End(element);
 }
 
 static struct SolidSyslogStructuredData sdSpy2 = {SdSpyFormat2};
 
-static void SdFailFormat(struct SolidSyslogStructuredData* /* self */, struct SolidSyslogFormatter* /* formatter */)
+static void SdFailFormat(struct SolidSyslogStructuredData* /* self */, struct SolidSyslogSdElement* /* element */)
 {
 }
 
