@@ -34,6 +34,7 @@ set(SOURCES
     SolidSyslogStructuredData.c
     SolidSyslogSdValue.c
     SolidSyslogSdElement.c
+    SolidSyslogHeaderField.c
     SolidSyslogTimeQualitySd.c
     SolidSyslogTimeQualitySdStatic.c
     SolidSyslogOriginSd.c

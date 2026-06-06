@@ -1,5 +1,6 @@
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogHeaderFieldPrivate.h"
 #include "SolidSyslogWindowsHostname.h"
 #include "SolidSyslogWindowsHostnameInternal.h"
 
@@ -38,6 +39,7 @@ TEST_GROUP(SolidSyslogWindowsHostname)
 {
     SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(FORMATTER_BUFFER_SIZE)];
     struct SolidSyslogFormatter* formatter = nullptr;
+    struct SolidSyslogHeaderField field{};
 
     void setup() override
     {
@@ -45,6 +47,7 @@ TEST_GROUP(SolidSyslogWindowsHostname)
         fakeReturnValue = TRUE;
         UT_PTR_SET(WindowsHostname_GetComputerNameExA, FakeGetComputerNameExA);
         formatter = SolidSyslogFormatter_Create(storage, FORMATTER_BUFFER_SIZE);
+        SolidSyslogHeaderField_FromFormatter(&field, formatter, FORMATTER_BUFFER_SIZE);
     }
 
     const char* formatted() const
@@ -57,21 +60,21 @@ TEST_GROUP(SolidSyslogWindowsHostname)
 
 TEST(SolidSyslogWindowsHostname, WritesFakeHostnameIntoFormatter)
 {
-    SolidSyslogWindowsHostname_Get(formatter);
+    SolidSyslogWindowsHostname_Get(&field, nullptr);
     STRCMP_EQUAL("winhost", formatted());
 }
 
 TEST(SolidSyslogWindowsHostname, WritesNothingWhenApiFails)
 {
     fakeReturnValue = FALSE;
-    SolidSyslogWindowsHostname_Get(formatter);
+    SolidSyslogWindowsHostname_Get(&field, nullptr);
     STRCMP_EQUAL("", formatted());
 }
 
 TEST(SolidSyslogWindowsHostname, EmptyHostnameProducesEmptyString)
 {
     fakeHostname = "";
-    SolidSyslogWindowsHostname_Get(formatter);
+    SolidSyslogWindowsHostname_Get(&field, nullptr);
     STRCMP_EQUAL("", formatted());
 }
 
@@ -83,6 +86,6 @@ TEST(SolidSyslogWindowsHostname, HostnameTooLongForBufferProducesEmptyString)
     memset(longName, 'x', 260);
     longName[260] = '\0';
     fakeHostname = longName;
-    SolidSyslogWindowsHostname_Get(formatter);
+    SolidSyslogWindowsHostname_Get(&field, nullptr);
     STRCMP_EQUAL("", formatted());
 }

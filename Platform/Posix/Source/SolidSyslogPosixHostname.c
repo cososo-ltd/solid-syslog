@@ -2,22 +2,24 @@
 
 #include <unistd.h>
 
-#include "SolidSyslogFormatter.h"
+#include "SolidSyslogHeaderField.h"
 
-struct SolidSyslogFormatter;
+struct SolidSyslogHeaderField;
 
 enum
 {
     MAX_HOSTNAME_SIZE = 256U
 };
 
-void SolidSyslogPosixHostname_Get(struct SolidSyslogFormatter* formatter)
+void SolidSyslogPosixHostname_Get(struct SolidSyslogHeaderField* field, void* context)
 {
     char hostname[MAX_HOSTNAME_SIZE];
+
+    (void) context;
 
     if (gethostname(hostname, sizeof(hostname)) == 0)
     {
         hostname[sizeof(hostname) - 1U] = '\0';
-        SolidSyslogFormatter_PrintUsAsciiString(formatter, hostname, sizeof(hostname));
+        SolidSyslogHeaderField_PrintUsAscii(field, hostname, sizeof(hostname));
     }
 }

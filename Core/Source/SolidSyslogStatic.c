@@ -72,9 +72,12 @@ static void SolidSyslog_EnsureNullInstancePopulated(void)
         SolidSyslog_NullInstance.Sender = SolidSyslogNullSender_Get();
         SolidSyslog_NullInstance.Store = SolidSyslogNullStore_Get();
         SolidSyslog_NullInstance.Format.Clock = SolidSyslog_NullClock;
-        SolidSyslog_NullInstance.Format.GetHostname = SolidSyslog_NullStringFunction;
-        SolidSyslog_NullInstance.Format.GetAppName = SolidSyslog_NullStringFunction;
-        SolidSyslog_NullInstance.Format.GetProcessId = SolidSyslog_NullStringFunction;
+        SolidSyslog_NullInstance.Format.GetHostname = SolidSyslog_NullHeaderField;
+        SolidSyslog_NullInstance.Format.GetHostnameContext = NULL;
+        SolidSyslog_NullInstance.Format.GetAppName = SolidSyslog_NullHeaderField;
+        SolidSyslog_NullInstance.Format.GetAppNameContext = NULL;
+        SolidSyslog_NullInstance.Format.GetProcessId = SolidSyslog_NullHeaderField;
+        SolidSyslog_NullInstance.Format.GetProcessIdContext = NULL;
         SolidSyslog_NullInstance.Format.Sd = NULL;
         SolidSyslog_NullInstance.Format.SdCount = 0;
         populated = true;

@@ -1,5 +1,5 @@
 #include "SolidSyslogWindowsProcessId.h"
-#include "SolidSyslogFormatter.h"
+#include "SolidSyslogHeaderField.h"
 #include "SolidSyslogWindowsProcessIdInternal.h"
 
 #include <stdint.h>
@@ -17,7 +17,8 @@ static DWORD WINAPI WindowsProcessId_CallGetCurrentProcessId(void)
     return GetCurrentProcessId();
 }
 
-void SolidSyslogWindowsProcessId_Get(struct SolidSyslogFormatter* formatter)
+void SolidSyslogWindowsProcessId_Get(struct SolidSyslogHeaderField* field, void* context)
 {
-    SolidSyslogFormatter_Uint32(formatter, (uint32_t) WindowsProcessId_GetCurrentProcessId());
+    (void) context;
+    SolidSyslogHeaderField_Uint32(field, (uint32_t) WindowsProcessId_GetCurrentProcessId());
 }

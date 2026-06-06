@@ -76,7 +76,8 @@ TEST_GROUP(BddTargetServiceThread)
         buffer = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
         store  = SolidSyslogNullStore_Get();
 
-        SolidSyslogConfig config = {buffer, sender, nullptr, nullptr, nullptr, nullptr, store, nullptr, 0};
+        SolidSyslogConfig config =
+            {buffer, sender, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, store, nullptr, 0};
         solidSyslog = SolidSyslog_Create(&config);
     }
 

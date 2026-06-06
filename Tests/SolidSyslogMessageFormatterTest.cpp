@@ -43,8 +43,11 @@ TEST_GROUP(SolidSyslogMessageFormatter)
         context = {
             MessageFormatterTestClock,
             StringFake_GetHostname,
+            nullptr,
             StringFake_GetAppName,
+            nullptr,
             StringFake_GetProcessId,
+            nullptr,
             nullptr,
             0
         };

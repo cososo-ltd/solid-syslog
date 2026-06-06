@@ -2,9 +2,9 @@
 
 #include <string.h>
 
-#include "SolidSyslogFormatter.h"
+#include "SolidSyslogHeaderField.h"
 
-struct SolidSyslogFormatter;
+struct SolidSyslogHeaderField;
 
 static const char* fakeHostname;
 static const char* fakeAppName;
@@ -22,9 +22,10 @@ void StringFake_SetHostname(const char* hostname)
     fakeHostname = hostname;
 }
 
-void StringFake_GetHostname(struct SolidSyslogFormatter* formatter)
+void StringFake_GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
-    SolidSyslogFormatter_PrintUsAsciiString(formatter, fakeHostname, strlen(fakeHostname));
+    (void) context;
+    SolidSyslogHeaderField_PrintUsAscii(field, fakeHostname, strlen(fakeHostname));
 }
 
 void StringFake_SetAppName(const char* appName)
@@ -32,9 +33,10 @@ void StringFake_SetAppName(const char* appName)
     fakeAppName = appName;
 }
 
-void StringFake_GetAppName(struct SolidSyslogFormatter* formatter)
+void StringFake_GetAppName(struct SolidSyslogHeaderField* field, void* context)
 {
-    SolidSyslogFormatter_PrintUsAsciiString(formatter, fakeAppName, strlen(fakeAppName));
+    (void) context;
+    SolidSyslogHeaderField_PrintUsAscii(field, fakeAppName, strlen(fakeAppName));
 }
 
 void StringFake_SetProcessId(const char* procId)
@@ -42,7 +44,8 @@ void StringFake_SetProcessId(const char* procId)
     fakeProcessId = procId;
 }
 
-void StringFake_GetProcessId(struct SolidSyslogFormatter* formatter)
+void StringFake_GetProcessId(struct SolidSyslogHeaderField* field, void* context)
 {
-    SolidSyslogFormatter_PrintUsAsciiString(formatter, fakeProcessId, strlen(fakeProcessId));
+    (void) context;
+    SolidSyslogHeaderField_PrintUsAscii(field, fakeProcessId, strlen(fakeProcessId));
 }

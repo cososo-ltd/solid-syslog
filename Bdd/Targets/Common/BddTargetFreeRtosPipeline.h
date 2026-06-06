@@ -2,8 +2,8 @@
 #define BDD_TARGET_FREE_RTOS_PIPELINE_H
 
 #include "SolidSyslogEndpoint.h"
+#include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogSender.h"
-#include "SolidSyslogStringFunction.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -37,7 +37,7 @@ struct BddTargetFreeRtosPipelineConfig
     struct SolidSyslogSender* (*BuildSender)(void);
     /* Emit the RFC 5424 HOSTNAME by reading the platform IP stack. Wired into
      * SolidSyslogConfig.GetHostname. */
-    SolidSyslogStringFunction GetHostname;
+    SolidSyslogHeaderFieldFunction GetHostname;
     /* Tear down the sender + platform adapters. Runs on the interactive task
      * after the shared pipeline teardown (SolidSyslog / SD / store / buffer). */
     void (*TeardownNetwork)(void);

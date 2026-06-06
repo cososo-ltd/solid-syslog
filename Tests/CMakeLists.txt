@@ -51,6 +51,7 @@ set(TEST_SOURCES
     SolidSyslogNullSdTest.cpp
     SolidSyslogSdValueTest.cpp
     SolidSyslogSdElementTest.cpp
+    SolidSyslogHeaderFieldTest.cpp
     SolidSyslogNullSenderTest.cpp
     SolidSyslogNullStoreTest.cpp
     SolidSyslogNullSecurityPolicyTest.cpp

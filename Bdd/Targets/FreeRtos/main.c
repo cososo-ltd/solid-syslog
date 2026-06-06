@@ -23,7 +23,7 @@
 #include "BddTargetTlsConfig.h"
 #include "BddTargetTlsSender.h"
 
-#include "SolidSyslogFormatter.h"
+#include "SolidSyslogHeaderField.h"
 #include "SolidSyslogPlusTcpAddress.h"
 #include "SolidSyslogPlusTcpDatagram.h"
 #include "SolidSyslogPlusTcpResolver.h"
@@ -96,7 +96,7 @@ static BaseType_t interactiveTaskCreated = pdFALSE;
 extern NetworkInterface_t* pxMPS2_FillInterfaceDescriptor(BaseType_t xEMACIndex, NetworkInterface_t* pxInterface);
 
 static void SetEthernetIrqPriority(void);
-static void GetHostname(struct SolidSyslogFormatter* formatter);
+static void GetHostname(struct SolidSyslogHeaderField* field, void* context);
 static struct SolidSyslogSender* BuildSender(void);
 static void TeardownNetwork(void);
 
@@ -229,16 +229,17 @@ static void SetEthernetIrqPriority(void)
     *ipr = ETHERNET_IRQ_PRIORITY;
 }
 
-static void GetHostname(struct SolidSyslogFormatter* formatter)
+static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
     /* RFC 5424 §6.2.4 rung 2 (static IP address). Read back from the IP stack so
      * a future DHCP / hostname slice satisfies the same rung without re-touching
      * this callback. */
     uint32_t ipAddress = 0U;
     char ipBuffer[16];
+    (void) context;
     FreeRTOS_GetEndPointConfiguration(&ipAddress, NULL, NULL, NULL, &networkEndPoint);
     FreeRTOS_inet_ntoa(ipAddress, ipBuffer);
-    SolidSyslogFormatter_BoundedString(formatter, ipBuffer, strlen(ipBuffer));
+    SolidSyslogHeaderField_PrintUsAscii(field, ipBuffer, strlen(ipBuffer));
 }
 
 /* Build the PlusTcp SwitchingSender: UDP datagram, octet-framed TCP, and a

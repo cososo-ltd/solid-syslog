@@ -9,7 +9,7 @@
 
 struct SolidSyslogBuffer;
 struct SolidSyslogConfig;
-struct SolidSyslogFormatter;
+struct SolidSyslogHeaderField;
 struct SolidSyslogSender;
 struct SolidSyslogStore;
 
@@ -29,7 +29,7 @@ void SolidSyslog_Cleanup(struct SolidSyslog* self);
  * NullInstance). No public Null equivalent exists for the function-pointer
  * typedefs, so they stay TU-internal across this class. */
 void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts);
-void SolidSyslog_NullStringFunction(struct SolidSyslogFormatter* formatter);
+void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context);
 
 static inline void SolidSyslog_Report(enum SolidSyslogSeverity severity, uint16_t category, enum SolidSyslogErrors code)
 {

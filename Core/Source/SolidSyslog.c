@@ -15,27 +15,39 @@
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPrivate.h"
+#include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogSender.h"
 #include "SolidSyslogStore.h"
-#include "SolidSyslogStringFunction.h"
 #include "SolidSyslogTimestamp.h"
 #include "SolidSyslogTunables.h"
 
 const struct SolidSyslogErrorSource SolidSyslogErrorSource = {"SolidSyslog"};
 
 struct SolidSyslogBuffer;
-struct SolidSyslogFormatter;
+struct SolidSyslogHeaderField;
 struct SolidSyslogSender;
 struct SolidSyslogStore;
 struct SolidSyslogStructuredData;
 
 static inline void SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
 static inline void SolidSyslog_SendOneFromStore(struct SolidSyslog* self);
-static void SolidSyslog_InstallAppName(struct SolidSyslog* self, SolidSyslogStringFunction configured);
+static void SolidSyslog_InstallAppName(
+    struct SolidSyslog* self,
+    SolidSyslogHeaderFieldFunction configured,
+    void* context
+);
 static void SolidSyslog_InstallBuffer(struct SolidSyslog* self, struct SolidSyslogBuffer* configured);
 static void SolidSyslog_InstallClock(struct SolidSyslog* self, SolidSyslogClockFunction configured);
-static void SolidSyslog_InstallHostname(struct SolidSyslog* self, SolidSyslogStringFunction configured);
-static void SolidSyslog_InstallProcessId(struct SolidSyslog* self, SolidSyslogStringFunction configured);
+static void SolidSyslog_InstallHostname(
+    struct SolidSyslog* self,
+    SolidSyslogHeaderFieldFunction configured,
+    void* context
+);
+static void SolidSyslog_InstallProcessId(
+    struct SolidSyslog* self,
+    SolidSyslogHeaderFieldFunction configured,
+    void* context
+);
 static void SolidSyslog_InstallSender(struct SolidSyslog* self, struct SolidSyslogSender* configured);
 static void SolidSyslog_InstallStore(struct SolidSyslog* self, struct SolidSyslogStore* configured);
 static void SolidSyslog_InstallStructuredData(
@@ -54,9 +66,9 @@ void SolidSyslog_Initialise(struct SolidSyslog* self, const struct SolidSyslogCo
     SolidSyslog_InstallSender(self, config->Sender);
     SolidSyslog_InstallStore(self, config->Store);
     SolidSyslog_InstallClock(self, config->Clock);
-    SolidSyslog_InstallHostname(self, config->GetHostname);
-    SolidSyslog_InstallAppName(self, config->GetAppName);
-    SolidSyslog_InstallProcessId(self, config->GetProcessId);
+    SolidSyslog_InstallHostname(self, config->GetHostname, config->GetHostnameContext);
+    SolidSyslog_InstallAppName(self, config->GetAppName, config->GetAppNameContext);
+    SolidSyslog_InstallProcessId(self, config->GetProcessId, config->GetProcessIdContext);
     SolidSyslog_InstallStructuredData(self, config->Sd, config->SdCount);
 }
 
@@ -74,9 +86,12 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->Sender = SolidSyslogNullSender_Get();
     self->Store = SolidSyslogNullStore_Get();
     self->Format.Clock = SolidSyslog_NullClock;
-    self->Format.GetHostname = SolidSyslog_NullStringFunction;
-    self->Format.GetAppName = SolidSyslog_NullStringFunction;
-    self->Format.GetProcessId = SolidSyslog_NullStringFunction;
+    self->Format.GetHostname = SolidSyslog_NullHeaderField;
+    self->Format.GetHostnameContext = NULL;
+    self->Format.GetAppName = SolidSyslog_NullHeaderField;
+    self->Format.GetAppNameContext = NULL;
+    self->Format.GetProcessId = SolidSyslog_NullHeaderField;
+    self->Format.GetProcessIdContext = NULL;
     self->Format.Sd = NULL;
     self->Format.SdCount = 0;
 }
@@ -137,27 +152,42 @@ static void SolidSyslog_InstallClock(struct SolidSyslog* self, SolidSyslogClockF
     }
 }
 
-static void SolidSyslog_InstallHostname(struct SolidSyslog* self, SolidSyslogStringFunction configured)
+static void SolidSyslog_InstallHostname(
+    struct SolidSyslog* self,
+    SolidSyslogHeaderFieldFunction configured,
+    void* context
+)
 {
     if (configured != NULL)
     {
         self->Format.GetHostname = configured;
+        self->Format.GetHostnameContext = context;
     }
 }
 
-static void SolidSyslog_InstallAppName(struct SolidSyslog* self, SolidSyslogStringFunction configured)
+static void SolidSyslog_InstallAppName(
+    struct SolidSyslog* self,
+    SolidSyslogHeaderFieldFunction configured,
+    void* context
+)
 {
     if (configured != NULL)
     {
         self->Format.GetAppName = configured;
+        self->Format.GetAppNameContext = context;
     }
 }
 
-static void SolidSyslog_InstallProcessId(struct SolidSyslog* self, SolidSyslogStringFunction configured)
+static void SolidSyslog_InstallProcessId(
+    struct SolidSyslog* self,
+    SolidSyslogHeaderFieldFunction configured,
+    void* context
+)
 {
     if (configured != NULL)
     {
         self->Format.GetProcessId = configured;
+        self->Format.GetProcessIdContext = context;
     }
 }
 
@@ -288,7 +318,8 @@ void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts)
     (void) ts;
 }
 
-void SolidSyslog_NullStringFunction(struct SolidSyslogFormatter* formatter)
+void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context)
 {
-    (void) formatter;
+    (void) field;
+    (void) context;
 }

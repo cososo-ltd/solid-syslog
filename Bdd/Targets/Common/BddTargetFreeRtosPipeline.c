@@ -27,6 +27,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogHeaderField.h"
 #include "SolidSyslogFreeRtosMutex.h"
 #include "SolidSyslogFreeRtosSysUpTime.h"
 #include "SolidSyslogMbedTlsAesGcmPolicy.h"
@@ -175,7 +176,7 @@ static void OnStoreFull(void* context);
 static size_t GetCapacityThreshold(void* context);
 static void OnThresholdCrossed(void* context);
 static void TeardownAll(void);
-static void GetAppName(struct SolidSyslogFormatter* formatter);
+static void GetAppName(struct SolidSyslogHeaderField* field, void* context);
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality);
 static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* event);
 
@@ -220,9 +221,10 @@ void BddTargetFreeRtosPipeline_SetConfig(const struct BddTargetFreeRtosPipelineC
 
 /* ---- SolidSyslog config callbacks ------------------------------------------ */
 
-static void GetAppName(struct SolidSyslogFormatter* formatter)
+static void GetAppName(struct SolidSyslogHeaderField* field, void* context)
 {
-    SolidSyslogFormatter_BoundedString(formatter, appName, strlen(appName));
+    (void) context;
+    SolidSyslogHeaderField_PrintUsAscii(field, appName, strlen(appName));
 }
 
 /* No RTC and no time-sync on these reference targets — RFC 5424 §6.2.3.1

@@ -103,19 +103,19 @@ misra-c2012-18.7:Core/Source/SolidSyslogFormatter.c:12
 # D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP)
 # See docs/misra-deviations.md#d006
 misra-c2012-11.8:Core/Source/BlockSequence.c:465
-misra-c2012-11.8:Core/Source/SolidSyslog.c:53
-misra-c2012-11.8:Core/Source/SolidSyslog.c:54
-misra-c2012-11.8:Core/Source/SolidSyslog.c:55
-misra-c2012-11.8:Core/Source/SolidSyslog.c:56
-misra-c2012-11.8:Core/Source/SolidSyslog.c:57
-misra-c2012-11.8:Core/Source/SolidSyslog.c:58
-misra-c2012-11.8:Core/Source/SolidSyslog.c:59
-misra-c2012-11.8:Core/Source/SolidSyslog.c:60
-misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:58
+misra-c2012-11.8:Core/Source/SolidSyslog.c:65
+misra-c2012-11.8:Core/Source/SolidSyslog.c:66
+misra-c2012-11.8:Core/Source/SolidSyslog.c:67
+misra-c2012-11.8:Core/Source/SolidSyslog.c:68
+misra-c2012-11.8:Core/Source/SolidSyslog.c:69
+misra-c2012-11.8:Core/Source/SolidSyslog.c:70
+misra-c2012-11.8:Core/Source/SolidSyslog.c:71
+misra-c2012-11.8:Core/Source/SolidSyslog.c:72
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:60
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:62
-misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:64
-misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:68
+misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:69
+misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:76
+misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:46
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:117
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:143
@@ -171,7 +171,7 @@ misra-c2012-5.7:Core/Interface/SolidSyslogFormatter.h:14
 misra-c2012-5.7:Core/Interface/SolidSyslogSecurityPolicyDefinition.h:13
 misra-c2012-5.7:Core/Interface/SolidSyslogTimeQuality.h:12
 misra-c2012-5.7:Core/Interface/SolidSyslogTransport.h:5
-misra-c2012-5.7:Core/Source/SolidSyslogMessageFormatter.c:20
+misra-c2012-5.7:Core/Source/SolidSyslogMessageFormatter.c:21
 misra-c2012-5.7:Core/Source/SolidSyslogCircularBuffer.c:19
 misra-c2012-5.7:Core/Source/SolidSyslogCrc16.c:12
 misra-c2012-5.7:Core/Source/SolidSyslogCrc16Policy.c:10

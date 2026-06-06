@@ -24,7 +24,7 @@
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsSender.h"
 
-#include "SolidSyslogFormatter.h"
+#include "SolidSyslogHeaderField.h"
 #include "SolidSyslogLwipRawAddress.h"
 #include "SolidSyslogLwipRawDatagram.h"
 #include "SolidSyslogLwipRawDnsResolver.h"
@@ -70,7 +70,7 @@ static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
 static void NetworkBringUp(void* context);
 static void WarmUpGatewayArp(void);
 static void GatewayResolvedQuery(void* context);
-static void GetHostname(struct SolidSyslogFormatter* formatter);
+static void GetHostname(struct SolidSyslogHeaderField* field, void* context);
 static struct SolidSyslogSender* BuildSender(void);
 static void TeardownNetwork(void);
 
@@ -233,12 +233,13 @@ void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
     }
 }
 
-static void GetHostname(struct SolidSyslogFormatter* formatter)
+static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
     /* RFC 5424 §6.2.4 rung 2 (static IP) — read back from the netif so a future
      * DHCP slice satisfies the same rung without touching this callback. */
     const char* address = ip4addr_ntoa(netif_ip4_addr(&networkInterface));
-    SolidSyslogFormatter_BoundedString(formatter, address, strlen(address));
+    (void) context;
+    SolidSyslogHeaderField_PrintUsAscii(field, address, strlen(address));
 }
 
 /* Bring up the netif on the tcpip thread, warm the gateway ARP, then build the

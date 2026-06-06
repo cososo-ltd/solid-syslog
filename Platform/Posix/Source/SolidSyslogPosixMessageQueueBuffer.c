@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogBufferDefinition.h"
@@ -16,7 +17,6 @@
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogPosixMessageQueueBufferErrors.h"
 #include "SolidSyslogPosixMessageQueueBufferPrivate.h"
-#include "SolidSyslogPosixProcessId.h"
 #include "SolidSyslogPrival.h"
 
 const struct SolidSyslogErrorSource PosixMessageQueueBufferErrorSource = {"PosixMessageQueueBuffer"};
@@ -54,7 +54,7 @@ bool PosixMessageQueueBuffer_Initialise(
     struct SolidSyslogFormatter* name =
         SolidSyslogFormatter_Create(self->NameStorage, POSIX_MESSAGE_QUEUE_BUFFER_MAX_NAME_SIZE);
     SolidSyslogFormatter_BoundedString(name, queueNamePrefix, sizeof(queueNamePrefix) - 1U);
-    SolidSyslogPosixProcessId_Get(name);
+    SolidSyslogFormatter_Uint32(name, (uint32_t) getpid());
     SolidSyslogFormatter_AsciiCharacter(name, '_');
     SolidSyslogFormatter_Uint32(name, (uint32_t) slotIndex);
 

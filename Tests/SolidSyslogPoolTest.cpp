@@ -40,7 +40,7 @@ TEST_GROUP(SolidSyslogPool)
     {
         fakeSender = SenderFake_Create();
         buffer = SolidSyslogPassthroughBuffer_Create(fakeSender);
-        config = {buffer, fakeSender, nullptr, nullptr, nullptr, nullptr,
+        config = {buffer, fakeSender, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
                   SolidSyslogNullStore_Get(), nullptr, 0};
     }
 

@@ -3,11 +3,11 @@
 
 #include "ExternC.h"
 
-struct SolidSyslogFormatter;
+struct SolidSyslogHeaderField;
 
 EXTERN_C_BEGIN
 
-    void SolidSyslogPosixProcessId_Get(struct SolidSyslogFormatter * formatter);
+    void SolidSyslogPosixProcessId_Get(struct SolidSyslogHeaderField * field, void* context);
 
 EXTERN_C_END
 

@@ -5,10 +5,10 @@
 
 EXTERN_C_BEGIN
 
-    struct SolidSyslogFormatter;
+    struct SolidSyslogHeaderField;
 
     void BddTargetAppName_Set(const char* argv0);
-    void BddTargetAppName_Get(struct SolidSyslogFormatter * formatter);
+    void BddTargetAppName_Get(struct SolidSyslogHeaderField * field, void* context);
 
 EXTERN_C_END
 

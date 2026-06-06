@@ -1,5 +1,5 @@
 #include "BddTargetAppName.h"
-#include "SolidSyslogFormatter.h"
+#include "SolidSyslogHeaderField.h"
 
 #include <ctype.h>
 #include <stdbool.h>
@@ -57,7 +57,8 @@ void BddTargetAppName_Set(const char* argv0)
     }
 }
 
-void BddTargetAppName_Get(struct SolidSyslogFormatter* formatter)
+void BddTargetAppName_Get(struct SolidSyslogHeaderField* field, void* context)
 {
-    SolidSyslogFormatter_BoundedString(formatter, appName, appNameLength);
+    (void) context;
+    SolidSyslogHeaderField_PrintUsAscii(field, appName, appNameLength);
 }

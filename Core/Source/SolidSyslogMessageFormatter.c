@@ -6,9 +6,10 @@
 
 #include "SolidSyslog.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogHeaderFieldFunction.h"
+#include "SolidSyslogHeaderFieldPrivate.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSdElementPrivate.h"
-#include "SolidSyslogStringFunction.h"
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTimestamp.h"
 #include "SolidSyslogTimestampFormatter.h"
@@ -33,7 +34,8 @@ static inline bool MessageFormatter_SeverityIsValid(uint8_t severity);
 static inline void MessageFormatter_FormatTimestamp(struct SolidSyslogFormatter* f, SolidSyslogClockFunction clock);
 static inline void MessageFormatter_FormatStringField(
     struct SolidSyslogFormatter* f,
-    SolidSyslogStringFunction fn,
+    SolidSyslogHeaderFieldFunction fn,
+    void* context,
     size_t maxSize
 );
 static inline void MessageFormatter_FormatMsgId(struct SolidSyslogFormatter* f, const char* messageId);
@@ -57,11 +59,26 @@ void SolidSyslogMessageFormatter_Format(
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
     MessageFormatter_FormatTimestamp(f, context->Clock);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    MessageFormatter_FormatStringField(f, context->GetHostname, SOLIDSYSLOG_MAX_HOSTNAME_SIZE);
+    MessageFormatter_FormatStringField(
+        f,
+        context->GetHostname,
+        context->GetHostnameContext,
+        SOLIDSYSLOG_MAX_HOSTNAME_SIZE
+    );
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    MessageFormatter_FormatStringField(f, context->GetAppName, SOLIDSYSLOG_MAX_APP_NAME_SIZE);
+    MessageFormatter_FormatStringField(
+        f,
+        context->GetAppName,
+        context->GetAppNameContext,
+        SOLIDSYSLOG_MAX_APP_NAME_SIZE
+    );
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
-    MessageFormatter_FormatStringField(f, context->GetProcessId, SOLIDSYSLOG_MAX_PROCESS_ID_SIZE);
+    MessageFormatter_FormatStringField(
+        f,
+        context->GetProcessId,
+        context->GetProcessIdContext,
+        SOLIDSYSLOG_MAX_PROCESS_ID_SIZE
+    );
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
     MessageFormatter_FormatMsgId(f, message->MessageId);
     SolidSyslogFormatter_AsciiCharacter(f, ' ');
@@ -121,22 +138,21 @@ static inline void MessageFormatter_FormatTimestamp(struct SolidSyslogFormatter*
 
 static inline void MessageFormatter_FormatStringField(
     struct SolidSyslogFormatter* f,
-    SolidSyslogStringFunction fn,
+    SolidSyslogHeaderFieldFunction fn,
+    void* context,
     size_t maxSize
 )
 {
-    SolidSyslogFormatterStorage fieldStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(SOLIDSYSLOG_MAX_HOSTNAME_SIZE)];
-    struct SolidSyslogFormatter* field = SolidSyslogFormatter_Create(fieldStorage, maxSize);
+    size_t lengthBefore = SolidSyslogFormatter_Length(f);
+    struct SolidSyslogHeaderField field;
 
-    fn(field);
+    /* maxSize is the field's storage size (carries a NUL slot); the usable
+     * field width is one less — matching the RFC HOSTNAME / APP-NAME / PROCID
+     * caps the scratch-field formatter enforced before this writer existed. */
+    SolidSyslogHeaderField_FromFormatter(&field, f, maxSize - 1U);
+    fn(&field, context);
 
-    size_t fieldLength = SolidSyslogFormatter_Length(field);
-
-    if (fieldLength > 0U)
-    {
-        SolidSyslogFormatter_PrintUsAsciiString(f, SolidSyslogFormatter_AsFormattedBuffer(field), fieldLength);
-    }
-    else
+    if (SolidSyslogFormatter_Length(f) == lengthBefore)
     {
         SolidSyslogFormatter_NilValue(f);
     }

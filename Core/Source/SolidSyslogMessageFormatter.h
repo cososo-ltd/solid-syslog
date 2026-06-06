@@ -5,7 +5,7 @@
 
 #include <stddef.h>
 
-#include "SolidSyslogStringFunction.h"
+#include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogTimestamp.h"
 
 EXTERN_C_BEGIN
@@ -20,9 +20,12 @@ EXTERN_C_BEGIN
     struct SolidSyslogMessageFormatterContext
     {
         SolidSyslogClockFunction Clock;
-        SolidSyslogStringFunction GetHostname;
-        SolidSyslogStringFunction GetAppName;
-        SolidSyslogStringFunction GetProcessId;
+        SolidSyslogHeaderFieldFunction GetHostname;
+        void* GetHostnameContext;
+        SolidSyslogHeaderFieldFunction GetAppName;
+        void* GetAppNameContext;
+        SolidSyslogHeaderFieldFunction GetProcessId;
+        void* GetProcessIdContext;
         struct SolidSyslogStructuredData** Sd;
         size_t SdCount;
     };

@@ -5,7 +5,7 @@
 
 EXTERN_C_BEGIN
 
-    void SolidSyslogWindowsHostname_Get(struct SolidSyslogFormatter * formatter);
+    void SolidSyslogWindowsHostname_Get(struct SolidSyslogHeaderField * field, void* context);
 
 EXTERN_C_END
 

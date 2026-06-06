@@ -1,5 +1,5 @@
 #include "SolidSyslogWindowsHostname.h"
-#include "SolidSyslogFormatter.h"
+#include "SolidSyslogHeaderField.h"
 #include "SolidSyslogWindowsHostnameInternal.h"
 
 /* File-local forwarder. Taking the address of an imported Windows API
@@ -20,14 +20,16 @@ enum
     MAX_HOSTNAME_SIZE = 256U
 };
 
-void SolidSyslogWindowsHostname_Get(struct SolidSyslogFormatter* formatter)
+void SolidSyslogWindowsHostname_Get(struct SolidSyslogHeaderField* field, void* context)
 {
     char hostname[MAX_HOSTNAME_SIZE];
     DWORD size = sizeof(hostname);
 
+    (void) context;
+
     if (WindowsHostname_GetComputerNameExA(ComputerNamePhysicalDnsHostname, hostname, &size) != FALSE)
     {
         hostname[sizeof(hostname) - 1U] = '\0';
-        SolidSyslogFormatter_PrintUsAsciiString(formatter, hostname, sizeof(hostname));
+        SolidSyslogHeaderField_PrintUsAscii(field, hostname, sizeof(hostname));
     }
 }

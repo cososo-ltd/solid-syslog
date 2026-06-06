@@ -3,11 +3,12 @@
 #include <unistd.h>
 #include <stdint.h>
 
-#include "SolidSyslogFormatter.h"
+#include "SolidSyslogHeaderField.h"
 
-struct SolidSyslogFormatter;
+struct SolidSyslogHeaderField;
 
-void SolidSyslogPosixProcessId_Get(struct SolidSyslogFormatter* formatter)
+void SolidSyslogPosixProcessId_Get(struct SolidSyslogHeaderField* field, void* context)
 {
-    SolidSyslogFormatter_Uint32(formatter, (uint32_t) getpid());
+    (void) context;
+    SolidSyslogHeaderField_Uint32(field, (uint32_t) getpid());
 }

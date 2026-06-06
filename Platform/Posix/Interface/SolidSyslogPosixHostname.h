@@ -3,11 +3,11 @@
 
 #include "ExternC.h"
 
-struct SolidSyslogFormatter;
+struct SolidSyslogHeaderField;
 
 EXTERN_C_BEGIN
 
-    void SolidSyslogPosixHostname_Get(struct SolidSyslogFormatter * formatter);
+    void SolidSyslogPosixHostname_Get(struct SolidSyslogHeaderField * field, void* context);
 
 EXTERN_C_END
 
