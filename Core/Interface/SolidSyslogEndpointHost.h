@@ -19,11 +19,7 @@ EXTERN_C_BEGIN
     /* Appends up to maxLength bytes of source (stopping at a NUL terminator)
      * verbatim into the host sink, further bounded by the host-field width the
      * sink was created with. */
-    void SolidSyslogEndpointHost_String(
-        struct SolidSyslogEndpointHost* host,
-        const char* source,
-        size_t maxLength
-    );
+    void SolidSyslogEndpointHost_String(struct SolidSyslogEndpointHost * host, const char* source, size_t maxLength);
 
 EXTERN_C_END
 

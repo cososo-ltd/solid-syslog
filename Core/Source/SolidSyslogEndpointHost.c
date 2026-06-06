@@ -2,10 +2,7 @@
 
 #include "SolidSyslogFormatter.h"
 
-void SolidSyslogEndpointHost_FromFormatter(
-    struct SolidSyslogEndpointHost* host,
-    struct SolidSyslogFormatter* formatter
-)
+void SolidSyslogEndpointHost_FromFormatter(struct SolidSyslogEndpointHost* host, struct SolidSyslogFormatter* formatter)
 {
     host->Formatter = formatter;
 }

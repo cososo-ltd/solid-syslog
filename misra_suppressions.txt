@@ -11,7 +11,7 @@
 
 # D.002 — Rules 11.2 / 11.3 / 11.5: vtable downcasts + Formatter
 # See docs/misra-deviations.md#d002
-misra-c2012-11.2:Core/Interface/SolidSyslogFormatter.h:28
+misra-c2012-11.2:Core/Source/SolidSyslogFormatter.h:35
 misra-c2012-11.2:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:29
 misra-c2012-11.2:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:36
 misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:14
@@ -23,7 +23,7 @@ misra-c2012-11.2:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:28
 misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddress.c:13
 misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:23
 misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:30
-misra-c2012-11.3:Core/Interface/SolidSyslogFormatter.h:28
+misra-c2012-11.3:Core/Source/SolidSyslogFormatter.h:35
 misra-c2012-11.3:Core/Source/SolidSyslogBlockStore.c:73
 misra-c2012-11.3:Core/Source/SolidSyslogCircularBuffer.c:91
 misra-c2012-11.3:Core/Source/SolidSyslogFileBlockDevice.c:106
@@ -31,10 +31,10 @@ misra-c2012-11.3:Core/Source/SolidSyslogFormatter.c:79
 misra-c2012-11.3:Core/Source/SolidSyslogMetaSd.c:60
 misra-c2012-11.3:Core/Source/SolidSyslogOriginSd.c:57
 misra-c2012-11.3:Core/Source/SolidSyslogPassthroughBuffer.c:53
-misra-c2012-11.3:Core/Source/SolidSyslogStreamSender.c:166
+misra-c2012-11.3:Core/Source/SolidSyslogStreamSender.c:169
 misra-c2012-11.3:Core/Source/SolidSyslogSwitchingSender.c:63
 misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:54
-misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:120
+misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:121
 misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:29
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:59
 misra-c2012-11.3:Platform/PlusFat/Source/SolidSyslogPlusFatFile.c:47
@@ -80,7 +80,7 @@ misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsFile.c:77
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsMutex.c:38
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:98
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:185
-misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:224
+misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:227
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:74
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:149
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:211
@@ -138,10 +138,10 @@ misra-c2012-2.4:Core/Interface/SolidSyslogTransport.h:5
 misra-c2012-2.4:Core/Source/BlockSequence.c:13
 misra-c2012-2.4:Core/Source/BlockSequence.c:107
 misra-c2012-2.4:Core/Source/RecordStore.c:14
-misra-c2012-2.4:Core/Source/SolidSyslogStreamSender.c:24
+misra-c2012-2.4:Core/Source/SolidSyslogStreamSender.c:25
 misra-c2012-2.4:Core/Interface/SolidSyslogUdpPayload.h:15
 misra-c2012-5.7:Core/Interface/SolidSyslogUdpPayload.h:15
-misra-c2012-5.7:Core/Source/SolidSyslogStreamSender.c:24
+misra-c2012-5.7:Core/Source/SolidSyslogStreamSender.c:25
 misra-c2012-5.7:Core/Source/SolidSyslogUdpPayload.c:5
 misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:25
 misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:32
@@ -167,7 +167,7 @@ misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsFile.c:28
 misra-c2012-5.7:Core/Interface/SolidSyslogAtomicCounter.h:11
 misra-c2012-5.7:Core/Interface/SolidSyslogCircularBuffer.h:17
 misra-c2012-5.7:Core/Interface/SolidSyslogEndpoint.h:11
-misra-c2012-5.7:Core/Interface/SolidSyslogFormatter.h:14
+misra-c2012-5.7:Core/Source/SolidSyslogFormatter.h:14
 misra-c2012-5.7:Core/Interface/SolidSyslogSecurityPolicyDefinition.h:13
 misra-c2012-5.7:Core/Interface/SolidSyslogTimeQuality.h:12
 misra-c2012-5.7:Core/Interface/SolidSyslogTransport.h:5

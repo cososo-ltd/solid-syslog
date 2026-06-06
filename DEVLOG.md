@@ -14604,3 +14604,56 @@ MISRA rule — different category, doesn't set precedent.
   5424 §6 ABNF is the source of the per-field caps (HOSTNAME 255 / APP-NAME 48 / PROCID 128
   / MSGID 32), and streaming straight to the message buffer is exactly why the writer must
   carry the cap explicitly now (the old scratch formatter enforced it via its capacity).
+
+## 2026-06-06 — S14.08: make SolidSyslogFormatter library-private (#548)
+
+### Blocker resolved first
+- #548's premise ("no remaining public consumer of `SolidSyslogFormatter`") was
+  wrong: `SolidSyslogEndpoint.Host` was still a raw `SolidSyslogFormatter*` the
+  endpoint callback wrote the destination host into. David's call (over reusing
+  `SolidSyslogHeaderField`, a plain `char[]`, or rescoping #548): **a new
+  dedicated endpoint-host writer**, mirroring the S14.07 HeaderField migration.
+
+### Decisions
+- **New `SolidSyslogEndpointHost` sink** (TDD'd first, 3 tests): opaque,
+  stack-transient, wraps the sender's stack host formatter. `_String(source,
+  maxLength)` does a **verbatim** bounded copy — *no* PRINTUSASCII substitution,
+  unlike HeaderField — because a DNS name / IP literal headed to the resolver
+  must not be silently mangled. That charset difference is exactly why it's its
+  own type, not `SolidSyslogHeaderField`.
+- **Cutover** flipped `SolidSyslogEndpoint.Host` to `SolidSyslogEndpointHost*`.
+  Every endpoint-host writer migrated together: both senders (wrap → call back →
+  read host out, byte-identical), StreamSender nil-endpoint, **all five BDD
+  configs** (Tcp/Udp/Tls/Mtls/Windows), the FreeRTOS pipeline, and the BDD
+  service-thread test.
+- **Surprise:** the cutover was *not* just the two senders — five `Bdd/Targets`
+  config files + a BDD test also wrote `endpoint->Host` via the old formatter
+  API. They compile only in `BddTargetTests` / the BDD lanes, **not** the
+  `debug`/`junit` target, so the type mismatch was invisible to a plain debug
+  build. Caught by a repo-wide grep + building `BddTargetTests` explicitly.
+- **`SolidSyslogFormatter.h` moved** `Core/Interface/` → `Core/Source/`. No CMake
+  include-path change needed: Platform sources compile into the `${PROJECT_NAME}`
+  target (so inherit its PRIVATE `Core/Source` view), and Tests/BddTargetTests
+  already add `Core/Source` to their include dirs. The two sizing macros gained a
+  `NOLINTBEGIN/END(cppcoreguidelines-macro-usage)` pair (the `Core/Interface`
+  tier-wide disable no longer covers them; matches `SolidSyslogMacros.h`).
+- **CLAUDE.md table swept** (deferred since S14.01): dropped Formatter +
+  StringFunction rows; added EndpointHost / HeaderField(+Function) / SdElement /
+  SdValue / SdValueFunction; fixed Endpoint / StructuredData(Definition) / MetaSd
+  / OriginSd. Swept the stale OriginSd lines in `rfc-compliance.md`.
+- cppcheck-MISRA path-move handling: the renumber script can't migrate a file
+  *path* change, and local cppcheck 2.10 prints baseline noise main also prints
+  (exit 0). Reproduced CI's exact `--addon=misra` command against a clean-main
+  worktree to isolate *my* drift, then updated 8 suppressions (Formatter.h path
+  + cast 28→35; StreamSender/UdpSender +1 line shifts). Re-ran → exit 0, fired
+  set == main baseline.
+- Checks: debug green (1474 tests), BddTargetTests 66/66; clang-format applied;
+  cppcheck-MISRA exit 0.
+
+### Deferred
+- `docs/structured-data.md` (the SD-authoring design note) → **S14.09**, David's
+  call, so it lands beside the integrator guide rather than alone here. #548 to
+  get a note. E14 then closes with S14.09.
+
+### Open questions
+- None outstanding.
