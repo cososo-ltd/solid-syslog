@@ -1,5 +1,30 @@
 # Dev Log
 
+## 2026-06-06 — S14.03 migrate TimeQualitySd onto the SD writer (walking skeleton)
+
+First real consumer of the E14 SD writer. `TimeQualitySd_Format` now emits via
+`SolidSyslogSdElement` (`_Begin`/`_Param`/`_End`) + `SolidSyslogSdValue` instead of raw
+`SolidSyslogFormatter_*` — proving the writer builds a complete SD element end-to-end through
+the real pipeline. Chosen first because it is struct-fill with **no string callback**, so it
+carries no callback-signature change — the cleanest first cut.
+
+### Decisions
+- **No new value primitive needed.** `tzKnown`/`isSynced` (bool → `'1'`/`'0'`) map onto
+  `SolidSyslogSdValue_Uint32(value ? 1U : 0U)`; `syncAccuracy` onto `_Uint32`. The S14.01 menu
+  already covers TimeQualitySd, so the "additive primitive" the story allowed for wasn't required.
+- **Vtable unchanged** (the flip is S14.06). The SD still receives a `SolidSyslogFormatter*` and
+  wraps it itself via `SolidSyslogSdElement_FromFormatter` — so `TimeQualitySd.c` includes the
+  Core/Source-private `SolidSyslogSdElementPrivate.h` to stack-construct the element.
+- Output **byte-for-byte identical** — existing TimeQualitySd tests stand unchanged (the safety
+  net for this refactor); `TimeQualitySd_Format` now calls **zero** raw `SolidSyslogFormatter_*`.
+
+### Verification
+- Full suite 1457 green; `TimeQualitySd.c` 100% line-covered (22/22, 4/4 fns — leaner, two
+  format helpers dropped). `tidy` + `clang-format` clean.
+- MISRA: the file shrank, so the existing `11.3` downcast suppression for `SelfFromBase` moved
+  63→58 in `misra_suppressions.txt` (a line-move only, applied manually — the renumber tool's
+  other entries are the known leave-for-CI platform/anon-enum ambiguities).
+
 ## 2026-06-06 — S14.02 SolidSyslogSdElement: SD framing + name validation
 
 Second E14 foundation story. `SolidSyslogSdElement` is the element writer handed to an SD's
