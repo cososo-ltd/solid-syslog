@@ -167,6 +167,13 @@ TEST(BddTargetInteractive, SetCommandPrintsInvalidOnHandlerFailure)
     CHECK(captured.find("set: invalid") != std::string::npos);
 }
 
+TEST(BddTargetInteractive, SendCustomCommandIsDispatchedAndCounted)
+{
+    std::string captured = RunCapturingStdout("send-custom 2\nquit\n", RecordSet);
+
+    CHECK(captured.find("Sent 2 custom messages") != std::string::npos);
+}
+
 /* Test list (ZOMBIES order):
  *  Z  [x] SetHandlerNotCalledWithQuitOnly
  *  O  [x] SetCommandCallsHandlerOnce

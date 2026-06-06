@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "BddTargetCustomSd.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogTunables.h"
 
@@ -74,6 +75,19 @@ static void HandleSend(struct SolidSyslog* handle, const char* args, const struc
     printf("Sent %d message%s\n", count, (count == 1) ? "" : "s");
 }
 
+static void HandleSendCustom(struct SolidSyslog* handle, const char* args, const struct SolidSyslogMessage* message)
+{
+    int count = ParseCount(args);
+    struct SolidSyslogStructuredData* sd[] = {BddTargetCustomSd_Get()};
+
+    for (int i = 0; i < count; i++)
+    {
+        SolidSyslog_LogWithSd(handle, message, sd, 1);
+    }
+
+    printf("Sent %d custom message%s\n", count, (count == 1) ? "" : "s");
+}
+
 static void HandleSet(const char* args, BddTargetInteractiveSetHandler onSet)
 {
     char name[MAX_LINE_LENGTH];
@@ -120,7 +134,11 @@ void BddTargetInteractive_Run(
         }
 
         const char* args = NULL;
-        if (MatchCommand(line, "send", &args))
+        if (MatchCommand(line, "send-custom", &args))
+        {
+            HandleSendCustom(handle, args, message);
+        }
+        else if (MatchCommand(line, "send", &args))
         {
             HandleSend(handle, args, message);
         }

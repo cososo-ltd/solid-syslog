@@ -19,6 +19,7 @@ if(SOLIDSYSLOG_POSIX)
         Linux/BddTargetUdpConfig.c
         Common/BddTargetAppName.c
         Common/BddTargetErrorText.c
+        Common/BddTargetCustomSd.c
         Common/BddTargetInteractive.c
         Common/BddTargetIps.c
         Common/BddTargetLanguage.c
@@ -54,6 +55,7 @@ elseif(SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM)
         Windows/BddTargetWindowsCommandLine.c
         Common/BddTargetAppName.c
         Common/BddTargetErrorText.c
+        Common/BddTargetCustomSd.c
         Common/BddTargetInteractive.c
         Common/BddTargetIps.c
         Common/BddTargetLanguage.c

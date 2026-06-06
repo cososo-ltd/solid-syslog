@@ -404,7 +404,7 @@ def wait_for_messages(context, expected_messages):
     context.message_count = len(context.all_lines)
 
 
-def run_example(context, extra_args=None, expected_messages=1):
+def run_example(context, extra_args=None, expected_messages=1, command="send"):
     """Run the BDD target via the prompt protocol.
 
     Every supported runner ships a single buffered binary now — Linux
@@ -433,7 +433,7 @@ def run_example(context, extra_args=None, expected_messages=1):
     try:
         wait_for_prompt(process)
         apply_extra_args(context, process, extra_args)
-        send_command(process, f"send {expected_messages}")
+        send_command(process, f"{command} {expected_messages}")
         wait_for_messages(context, expected_messages)
 
         returncode = stop_example_process(process, context.target)
@@ -804,6 +804,11 @@ def step_bdd_target_sends_message(context):
     run_example(context)
 
 
+@when("the BDD target sends a custom syslog message")
+def step_bdd_target_sends_custom_message(context):
+    run_example(context, command="send-custom")
+
+
 @when("the BDD target sends a syslog message with transport {transport}")
 def step_bdd_target_sends_with_transport(context, transport):
     run_example(context, ["--transport", transport])
@@ -1113,6 +1118,21 @@ def step_check_language(context, value):
     actual = re.sub(r"\\(.)", r"\1", match.group(1))
     assert actual == value, (
         f"Expected language {value}, got {actual}"
+    )
+
+
+@then('the structured data contains detail "{value}"')
+def step_check_detail(context, value):
+    sd = context.fields.get("STRUCTURED_DATA", "")
+    # Escape-aware like the language matcher (RFC 5424 §6.3.3), so the assertion
+    # holds whether the oracle re-renders the value escaped or decoded.
+    match = re.search(r'detail="((?:\\.|[^"])*)"', sd)
+    assert match, (
+        f"No detail found in structured data: {sd}"
+    )
+    actual = re.sub(r"\\(.)", r"\1", match.group(1))
+    assert actual == value, (
+        f"Expected detail {value}, got {actual}"
     )
 
 

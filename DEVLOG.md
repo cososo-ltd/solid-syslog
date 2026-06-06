@@ -14712,3 +14712,41 @@ SolidSyslogMessage"; the per-message Open questions); it was the never-decompose
 
 ### Open questions
 - None outstanding.
+
+## 2026-06-06 — S14.10: custom-SD integrator guide + worked example (E14 close)
+
+The user-facing payoff of E14: document and demonstrate authoring a custom SD with the new
+safe API.
+
+### Decisions
+- **`docs/structured-data.md`** — the custom-SD integrator guide: two-type writer model
+  (SdElement frames + names, SdValue escapes values), implementing a `Format` vtable with the
+  embed-base downcast for stateful data, SD-IDs / enterprise numbers (`@32473`), registering
+  per-instance (`Config.Sd[]`) **and** per-message (`SolidSyslog_LogWithSd`), the reentrancy
+  note, and a library-owns-vs-you-own table. Written around the real worked example.
+- **Worked custom SD is cross-platform, not Linux-only** (David's steer): `BddTargetCustomSd`
+  + a `send-custom` command live in `Bdd/Targets/Common`, so all four targets
+  (Linux/Windows/FreeRtos/FreeRtosLwip) expose it from the one shared `BddTargetInteractive`
+  runner. `send-custom` emits the element via `SolidSyslog_LogWithSd` — exercising S14.09's
+  new API end-to-end.
+- **Kept the example simple** (David's steer): `detail="Hello World"`, not a value full of
+  escapables. A clear example beats one muddied by escaped data.
+- **Escape round-trip oracle BDD dropped** (David's call): escaping is already covered by the
+  SdValue unit tests, and syslog-ng vs OTEL re-render an *escaped* value differently — so an
+  oracle assertion there would be testing the oracle's quirks, not the library. (`Hello World`
+  round-trips identically on both, so the one `custom_sd.feature` scenario is clean and
+  cross-platform.) Updates #549's acceptance criteria.
+- **Doc accuracy:** `_Begin`/`_Param` only suppress on a NULL name and bound length to 32;
+  they do not validate the name charset at format time (`=`/`]`/`"` pass through). The guide
+  says valid names are the integrator's responsibility — not an overstated "library skips
+  invalid names".
+
+### Checks
+- BddTargetTests 68/68 (custom-SD escaped... → simple element; send-custom dispatch). Linux
+  target links; `send-custom` smoke-tested (prints "Sent 1 custom message"). clang-format clean.
+- BDD target code is Tier-3 (outside the cppcheck-misra file set), so no suppression work.
+
+### Pending → WSL
+- The `custom_sd.feature` oracle round-trip is **authored but not yet run** — `behave` needs
+  the docker/syslog-ng oracle, which runs from WSL, not the devcontainer. Next step: pull the
+  branch in WSL, run the `@udp` `custom_sd` scenario, confirm `detail "Hello World"` round-trips.
