@@ -33,6 +33,7 @@ set(SOURCES
     SolidSyslogNullStream.c
     SolidSyslogStructuredData.c
     SolidSyslogSdValue.c
+    SolidSyslogSdElement.c
     SolidSyslogTimeQualitySd.c
     SolidSyslogTimeQualitySdStatic.c
     SolidSyslogOriginSd.c

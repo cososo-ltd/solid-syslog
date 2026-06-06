@@ -1,5 +1,39 @@
 # Dev Log
 
+## 2026-06-06 — S14.02 SolidSyslogSdElement: SD framing + name validation
+
+Second E14 foundation story. `SolidSyslogSdElement` is the element writer handed to an SD's
+`Format` — it owns the SD grammar and the SD-NAME/PARAM-NAME charset so an author can't
+desync the framing. Built standalone (no SD migrated onto it yet — that's S14.03). Opaque,
+stack-transient, no pool (D.002). Drives the value through the S14.01 `SolidSyslogSdValue`.
+
+**API:** `_Begin(name, enterpriseNumber)` → `[name` (IANA, enterpriseNumber 0) or
+`[name@number`; `_Param(name)` → emits ` name="`, returns the embedded `SdValue*`; `_End` →
+closes any open value quote and emits `]`. Internal `_FromFormatter` (reused by
+MessageFormatter at S14.06).
+
+### Decisions
+- **"Invalid name" = NULL pointer only, for this story** (David's narrowing). RFC charset/
+  length validation is a *caller-supplied-name* concern enforced at `Create` time in the
+  S14.09 wave; in S14.02 every name is a compile-time-valid library constant, and the
+  formatter's PrintUsAscii substitution covers stray non-printables. So the only format-time
+  reaction is **NULL → skip**: a NULL SD-ID suppresses the whole element (zero bytes); a NULL
+  PARAM-NAME skips just that param, element stands.
+- **Skipped-param safe sink.** `_Param` must always return a usable `SdValue*`. For a skipped
+  param it points the embedded value at a per-element **zero-size drop formatter** (writes
+  always drop, buffer never read) — so the caller's value writes are absorbed without
+  corrupting framing. Clean reuse of the formatter's existing capacity guard.
+- **One open value at a time.** `_Param`/`_End` close the previous open value's quote (flush
+  the `SdValue` tail via `_Close`, emit `"`) before their own output — shared
+  `SdElement_CloseOpenValue`, idempotent when nothing is open.
+
+### Verification
+- TDD throughout; 13 `SolidSyslogSdElement` tests; full suite 1457 green.
+- `SolidSyslogSdElement.c` 100% line-covered (43/43, 6/6 fns). `tidy` + `clang-format` clean.
+- MISRA: bare `0` to `FORMATTER_STORAGE_SIZE` mixes signed/unsigned (10.4) — fixed to `0U`
+  (the local cppcheck check caught a real one this time; the 5.7 anon-enum flag is the same
+  false positive as S14.01, CI confirms).
+
 ## 2026-06-05 — S14.01 SolidSyslogSdValue: escaped streaming value sink
 
 First foundation story of E14's safe SD-authoring API. Built `SolidSyslogSdValue` standalone
