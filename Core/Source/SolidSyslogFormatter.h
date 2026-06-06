@@ -15,11 +15,18 @@ EXTERN_C_BEGIN
         SOLIDSYSLOG_FORMATTER_OVERHEAD = 2U
     };
 
+/* NOLINTBEGIN(cppcoreguidelines-macro-usage) — worst-case output sizing
+   macros: must be preprocessor-visible array-size const-expressions, so a
+   static const / constexpr cannot replace them. Now that this header is
+   library-private (Core/Source) the root .clang-tidy governs it and enables
+   the rule; the Core/Interface tier-wide disable no longer covers it. Matches
+   the SolidSyslogMacros.h idiom. */
 #define SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(bufferSize) \
     (SOLIDSYSLOG_FORMATTER_OVERHEAD +                  \
      (((bufferSize) + sizeof(SolidSyslogFormatterStorage) - 1U) / sizeof(SolidSyslogFormatterStorage)))
 
 #define SOLIDSYSLOG_ESCAPED_MAX_SIZE(maxDecodedLength) (2U * (maxDecodedLength))
+/* NOLINTEND(cppcoreguidelines-macro-usage) */
 
     struct SolidSyslogFormatter;
 
