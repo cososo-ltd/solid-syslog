@@ -14551,3 +14551,45 @@ MISRA rule — different category, doesn't set precedent.
 
 ### Open questions
 - None outstanding.
+
+## 2026-06-06 — S14.07: move header-field callbacks off the formatter
+
+### Decisions
+- **New `SolidSyslogHeaderField` writer** (TDD'd first, 10 tests): opaque,
+  stack-transient US-ASCII sink for the RFC 5424 HOSTNAME / APP-NAME / PROCID
+  fields. Wraps the message-buffer formatter; exposes `_PrintUsAscii(source,
+  maxLength)` (printable-US-ASCII filter, space substituted, NUL-stopped, bounded
+  by maxLength AND the field width) and `_Uint32` (PROCID). A different charset
+  rule from SD escaping → its own type, not `SolidSyslogSdValue`. Name chosen by
+  David over `SolidSyslogToken` / `SolidSyslogField`.
+- **Callbacks flipped** `SolidSyslogStringFunction` → `SolidSyslogHeaderFieldFunction`
+  (`void(SolidSyslogHeaderField*, void* context)`) in its own header, with three
+  paired context fields on `SolidSyslogConfig` + the MessageFormatter context.
+  MessageFormatter builds one HeaderField per field (cap = field-storage size − 1,
+  preserving the old scratch-formatter's null-slot width) and passes it; the
+  scratch-field + re-filter is gone. Byte-identical (existing tests stand).
+- **`SolidSyslogStringFunction.h` retired** — it was the last public consumer of
+  `SolidSyslogFormatter`, clearing the way for S14.08 to make the formatter
+  fully private.
+- **Surprises:** (1) `PosixMessageQueueBuffer` coincidentally reused the PROCID
+  helper to stamp its queue name with the pid — decoupled to a direct `getpid()`
+  + `Formatter_Uint32` rather than route a queue name through the header-field
+  helper (which would have forced a Platform source to include a Core/Source
+  private header). (2) ~16 positional `SolidSyslogConfig{}` test literals
+  silently misaligned once three context fields were interleaved (`store` landing
+  in a `void*` context slot) — fixed by inserting the context nullptrs.
+- Migrated the Posix/Windows hostname & processId helpers + all BDD header-field
+  callbacks (BddTargetAppName, FreeRtos/FreeRtosLwip GetHostname, pipeline
+  GetAppName). Updated the two stale `docs/rfc-compliance.md` `language`
+  references (already wrong since S14.04) to `SolidSyslogSdValueFunction`.
+- Checks: debug green (1469 tests), BddTargetTests 66/66; clang-format applied;
+  cppcheck-MISRA exit 0 (anchors moved: SolidSyslog.c 11.8 ×8, MessageFormatter.c
+  11.8 ×5 + 5.7 20→21; renumber clean).
+
+### Deferred
+- Moving `SolidSyslogFormatter.h` out of the public interface is S14.08, along
+  with the wholesale CLAUDE.md public-header-table revision (the new HeaderField /
+  HeaderFieldFunction rows land there).
+
+### Open questions
+- None outstanding.
