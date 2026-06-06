@@ -24,7 +24,7 @@ EXTERN_C_BEGIN
     {
         struct SolidSyslogFormatter* Formatter;
         struct SolidSyslogSdValue Value;
-        SolidSyslogFormatterStorage DropStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(0)];
+        SolidSyslogFormatterStorage DropStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(0U)];
         struct SolidSyslogFormatter* DropFormatter;
         bool ValueOpen;
         bool Suppressed;
@@ -33,7 +33,10 @@ EXTERN_C_BEGIN
     /* Internal constructor — wraps a message-buffer formatter. MessageFormatter
      * (S14.06) builds one of these around the handed formatter and passes it to
      * each SD's Format. Stack-transient: the caller owns the storage. */
-    void SolidSyslogSdElement_FromFormatter(struct SolidSyslogSdElement * element, struct SolidSyslogFormatter * formatter);
+    void SolidSyslogSdElement_FromFormatter(
+        struct SolidSyslogSdElement * element,
+        struct SolidSyslogFormatter * formatter
+    );
 
 EXTERN_C_END
 
