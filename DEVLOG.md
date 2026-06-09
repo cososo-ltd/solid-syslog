@@ -1,5 +1,53 @@
 # Dev Log
 
+## 2026-06-09 — S12.34 drain full lwIP RX pbuf chain
+
+`LwipRawTcpStream_DrainHeadBytes` read only the head link (`head->len`) then
+`pbuf_free(head)` freed the whole chain — silently losing `tot_len - len` tail
+bytes whenever lwIP delivered a chained pbuf (segment spanning more than one
+pool pbuf). Memory-safe but corrupts the byte stream, and the advertised
+TLS-over-LwipRawTcpStream stack carries real TLS record bytes on `_Read`, so the
+corruption is network-reachable. Slipped through because the unit test only ever
+fabricated single-link pbufs (`len == tot_len`, `next == NULL`).
+
+### Decisions
+- **`tot_len`-keyed drain via `pbuf_copy_partial`.** The cursor (`RxHeadOffset`)
+  and the fully-drained test now key off `tot_len`, and the copy delegates to
+  lwIP's own `pbuf_copy_partial`, which walks `head->next`. Chose the platform
+  primitive over a hand-rolled link walk — one line, idiomatic, less MISRA
+  surface in Tier-2 code. The issue listed it as an acceptable approach.
+- **Cursor/return driven by the actual copied count, not the requested amount.**
+  Raised by David in review: ignoring `pbuf_copy_partial`'s return is only safe
+  under lwIP's `tot_len == Σ link->len` invariant. Driving the cursor off the
+  real return is free and strictly safer — a malformed/overstated `tot_len`
+  degrades to "delivered fewer bytes / would-block" (StreamSender recovers)
+  instead of "advance past un-copied bytes and report stale buffer content"
+  (which would corrupt a stacked TLS stream — the exact bug class). Added a test
+  pinning it (single link, `len = 2`, `tot_len = 4` → returns 2, not 4).
+- **Faithful `pbuf_copy_partial` added to `LwipPbufFake`** (walks `next`,
+  marshal-guarded like its siblings) so the chained tests exercise a real
+  multi-link walk rather than a fabricated single link. The TcpStream test exe
+  links the fake, not upstream `pbuf.c`.
+- **Docs:** chained-pbuf contract noted in `docs/integrating-lwip.md`, including
+  the warning for integrators supplying their own `SolidSyslogStream` byte
+  transport.
+
+### Verification
+- freertos-host container, debug preset. `SolidSyslogLwipRawTcpStreamTest`
+  **60 tests green** (3 new: full-chain, cross-boundary partial, overstated
+  `tot_len`); `SolidSyslogLwipRawDatagramTest` 36 green (shares the fake). pbuf
+  leak invariant balanced throughout.
+- cppcheck-misra (CI invocation): changed file clean. Removing the now-unused
+  `#include <string.h>` shifted three pre-existing cast-helper suppressions —
+  moved their line numbers in `misra_suppressions.txt` (134/143/151 →
+  133/142/150). Local cppcheck 2.10 flags unrelated 5.7/2.4/2.5 in untouched
+  Core files (version drift vs CI), ignored.
+- clang-format clean on all touched code files.
+
+### Deferred
+- The MITM-class no-hostname-verification TLS default is out of scope here —
+  already tracked/decided in S12.28 (#529).
+
 ## 2026-06-06 — S24.18 drop do/while(0) from test CHECK_* macros
 
 Mechanical tree-wide sweep: removed the `do { ... } while (0)` wrapper (and the
