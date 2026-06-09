@@ -174,6 +174,39 @@ TEST_BASE(LwipRawTcpStreamTestBase)
         return result;
     }
 
+    /* Drive the wrapper's tcp_recv callback with a fabricated TWO-link pbuf
+     * chain (head -> tail), as lwIP delivers whenever a segment spans more
+     * than one pool pbuf (tot_len > len). The head's tot_len spans both
+     * links so the wrapper must walk head->next to recover every byte.
+     * Same ownership / leak-balance contract as pushIncomingPbuf. */
+    static err_t pushIncomingChain(
+        struct pbuf* head,
+        const void* headData,
+        uint16_t headLen,
+        struct pbuf* tail,
+        const void* tailData,
+        uint16_t tailLen
+    )
+    {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) -- pbuf->payload is void*; tests pass string literals
+        tail->payload = const_cast<void*>(tailData);
+        tail->len = tailLen;
+        tail->tot_len = tailLen;
+        tail->next = nullptr;
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) -- pbuf->payload is void*; tests pass string literals
+        head->payload = const_cast<void*>(headData);
+        head->len = headLen;
+        head->tot_len = static_cast<uint16_t>(headLen + tailLen);
+        head->next = tail;
+        tcp_recv_fn recvCb = LwipTcpFake_LastRecvFn();
+        err_t result = recvCb(LwipTcpFake_LastCallbackArg(), LwipTcpFake_LastTcpNewReturned(), head, ERR_OK);
+        if (result == ERR_OK)
+        {
+            LwipPbufFake_NoteIncomingPbuf();
+        }
+        return result;
+    }
+
     /* Drive the wrapper's tcp_recv callback with NULL p — peer half-close
      * (FIN). lwIP retains the pcb; only the receive half is gone. */
     static void pushPeerFin()
@@ -635,6 +668,64 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, ReadAdvancesPastDrainedPbufToNextInQu
     LONGS_EQUAL(2, n2);
     /* Both pbufs were freed as each was drained. */
     LONGS_EQUAL(2, LwipPbufFake_PbufFreeCallCount());
+}
+
+TEST(SolidSyslogLwipRawTcpStreamConnected, ReadDrainsEveryLinkOfAChainedPbuf)
+{
+    struct pbuf link1 = {};
+    struct pbuf link2 = {};
+    pushIncomingChain(&link1, "AB", 2, &link2, "CD", 2);
+
+    SolidSyslogSsize n = readBytes();
+
+    LONGS_EQUAL(4, n);
+    MEMCMP_EQUAL("ABCD", readBuffer, 4);
+}
+
+TEST(SolidSyslogLwipRawTcpStreamConnected, ReadAcrossChainedPbufLinkBoundaryPreservesByteOrder)
+{
+    struct pbuf link1 = {};
+    struct pbuf link2 = {};
+    pushIncomingChain(&link1, "AB", 2, &link2, "CD", 2);
+
+    /* A 3-byte read straddles the link boundary — two bytes from link1, one
+     * from link2 — and the chain is not yet fully drained. */
+    SolidSyslogSsize first = readBytes(3);
+
+    LONGS_EQUAL(3, first);
+    MEMCMP_EQUAL("ABC", readBuffer, 3);
+    CALLED_FAKE(LwipPbufFake_PbufFree, NEVER);
+
+    /* The final byte comes from the tail link; the whole chain frees once. */
+    SolidSyslogSsize second = readBytes();
+
+    LONGS_EQUAL(1, second);
+    MEMCMP_EQUAL("D", readBuffer, 1);
+    CALLED_FAKE(LwipPbufFake_PbufFree, ONCE);
+}
+
+TEST(SolidSyslogLwipRawTcpStreamConnected, ReadReportsOnlyBytesActuallyCopiedWhenTotLenOverstatesChain)
+{
+    /* A malformed pbuf: tot_len claims 4 bytes but the single link holds only
+     * 2 and there is no next link. The drain must report what lwIP actually
+     * copied (2), never the phantom tail the overstated tot_len implies —
+     * advancing past un-copied bytes would feed stale buffer content to a
+     * stacked TLS record stream. */
+    struct pbuf link = {};
+    const char data[] = "AB";
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) -- pbuf->payload is void*; tests pass string literals
+    link.payload = const_cast<void*>(static_cast<const void*>(data));
+    link.len = 2;
+    link.tot_len = 4;
+    link.next = nullptr;
+    tcp_recv_fn recvCb = LwipTcpFake_LastRecvFn();
+    (void) recvCb(LwipTcpFake_LastCallbackArg(), LwipTcpFake_LastTcpNewReturned(), &link, ERR_OK);
+    LwipPbufFake_NoteIncomingPbuf();
+
+    SolidSyslogSsize n = readBytes();
+
+    LONGS_EQUAL(2, n);
+    MEMCMP_EQUAL("AB", readBuffer, 2);
 }
 
 TEST(SolidSyslogLwipRawTcpStreamConnected, SendReturnsFalseAfterPeerFin)

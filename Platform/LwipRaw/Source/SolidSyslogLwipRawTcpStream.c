@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
@@ -388,25 +387,33 @@ static void LwipRawTcpStream_DoRead(void* context)
     }
 }
 
-/* Copies up to `size` bytes out of the head pbuf, advancing the read
- * cursor. When the head is fully drained, pbuf_free's it and advances
- * the queue head — tail entries shift up through the bounded ring via
- * modular arithmetic, no compaction. */
+/* Copies up to `size` bytes out of the head pbuf chain, advancing the read
+ * cursor. The cursor (RxHeadOffset) and the fully-drained test are keyed off
+ * tot_len, not the first link's len — lwIP hands us a pbuf chain whenever a
+ * segment spans more than one pool pbuf, and pbuf_copy_partial walks head->next
+ * for us so the tail links are not lost. The cursor advances by the count
+ * pbuf_copy_partial actually copied, not the requested amount: under lwIP's
+ * tot_len == Σ link->len invariant the two are equal, but keying off the real
+ * copy keeps a malformed/overstated tot_len from advancing past un-copied
+ * bytes and reporting stale buffer content as received. When the whole chain
+ * is drained, pbuf_free's it (frees every link) and advances the queue head —
+ * tail entries shift up through the bounded ring via modular arithmetic, no
+ * compaction. */
 static size_t LwipRawTcpStream_DrainHeadBytes(struct SolidSyslogLwipRawTcpStream* self, void* buffer, size_t size)
 {
     struct pbuf* head = self->RxQueue[self->RxQueueHead];
-    size_t available = (size_t) head->len - self->RxHeadOffset;
+    size_t available = (size_t) head->tot_len - self->RxHeadOffset;
     size_t toCopy = (size < available) ? size : available;
-    (void) memcpy(buffer, &((const uint8_t*) head->payload)[self->RxHeadOffset], toCopy);
-    self->RxHeadOffset += toCopy;
-    if (self->RxHeadOffset >= (size_t) head->len)
+    size_t copied = (size_t) pbuf_copy_partial(head, buffer, (u16_t) toCopy, (u16_t) self->RxHeadOffset);
+    self->RxHeadOffset += copied;
+    if (self->RxHeadOffset >= (size_t) head->tot_len)
     {
         (void) pbuf_free(head);
         self->RxQueueHead = (self->RxQueueHead + 1U) % SOLIDSYSLOG_LWIP_RAW_TCP_RX_QUEUE_SIZE;
         self->RxQueueCount--;
         self->RxHeadOffset = 0;
     }
-    return toCopy;
+    return copied;
 }
 
 static void LwipRawTcpStream_EnqueueRxPbuf(struct SolidSyslogLwipRawTcpStream* self, struct pbuf* p)

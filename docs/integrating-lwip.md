@@ -353,6 +353,18 @@ calls `tcp_recved(pcb, n)` to ACK back to lwIP's receive window, and
 callback returns non-`ERR_OK` so lwIP retains the pbuf and replays
 the callback later (lwIP's flow-control hook).
 
+> **Chained pbufs.** lwIP hands a single received segment as a **pbuf
+> chain** (`p->tot_len > p->len`, `p->next != NULL`) whenever the
+> payload spans more than one pool pbuf — normal once a segment exceeds
+> one `PBUF_POOL_BUFSIZE`, and influenced by the peer / on-path
+> segmentation. The wrapper drains the *whole chain* keyed off
+> `tot_len` (via `pbuf_copy_partial`, walking `p->next`) across one or
+> more `Stream_Read` calls, and `pbuf_free`s the head — which frees
+> every link — only once the chain is fully consumed. Integrators
+> supplying their own `SolidSyslogStream` byte transport must honour the
+> same contract: never read only `head->len` and then free the chain, or
+> the tail bytes are lost (this corrupts a stacked TLS record stream).
+
 The default-8 queue size is sized for the typical mTLS handshake
 flight (ServerHello + Certificate + ServerKeyExchange +
 ServerHelloDone is 2–4 segments). Bump it for streaming server
