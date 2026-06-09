@@ -18,7 +18,7 @@ Status key:
 | 6.2.1 | VERSION = 1 | Supported | |
 | 6.2.2 | TIMESTAMP — ISO 8601 with microseconds | Supported | 6-digit fractional seconds, UTC offset or `Z` |
 | 6.2.2 | TIMESTAMP — NILVALUE when clock unavailable | Supported | NilClock produces `-` |
-| 6.2.3 | HOSTNAME — max 255 chars, PRINTUSASCII | Supported | Truncated to 255. Non-PRINTUSASCII bytes substituted with `?` via `SolidSyslogFormatter_PrintUsAsciiString` |
+| 6.2.3 | HOSTNAME — max 255 chars, PRINTUSASCII | Supported | Truncated to 255. Non-PRINTUSASCII bytes substituted with `?`. Written through the public `SolidSyslogHeaderField` sink (`_PrintUsAscii`); the underlying formatter is library-private |
 | 6.2.4 | APP-NAME — max 48 chars, PRINTUSASCII | Supported | Truncated to 48. Non-PRINTUSASCII bytes substituted with `?` |
 | 6.2.5 | PROCID — max 128 chars, PRINTUSASCII | Supported | Truncated to 128. Non-PRINTUSASCII bytes substituted with `?` |
 | 6.2.6 | MSGID — max 32 chars, PRINTUSASCII | Supported | Truncated to 32. Non-PRINTUSASCII bytes substituted with `?` |
@@ -62,7 +62,7 @@ The library ships two reference TLS adapters that satisfy this RFC: `SolidSyslog
 
 | Section | Requirement | Status | Notes |
 |---|---|---|---|
-| 4.1 | TLS over TCP | Supported | `SolidSyslogTlsStream` (OpenSSL) or `SolidSyslogMbedTlsStream` (Mbed TLS) wraps a TCP `Stream` (`SolidSyslogPosixTcpStream` / `SolidSyslogWinsockTcpStream` / `SolidSyslogPlusTcpTcpStream` / caller-supplied) |
+| 4.1 | TLS over TCP | Supported | `SolidSyslogTlsStream` (OpenSSL) or `SolidSyslogMbedTlsStream` (Mbed TLS) wraps a TCP `Stream` (`SolidSyslogPosixTcpStream` / `SolidSyslogWinsockTcpStream` / `SolidSyslogPlusTcpTcpStream` / `SolidSyslogLwipRawTcpStream` / caller-supplied) |
 | 4.2 | Default port 6514 | Supported | `SOLIDSYSLOG_TLS_DEFAULT_PORT` constant in `SolidSyslogTransport.h`, alongside the UDP and TCP defaults. Caller-supplied via the endpoint callback so multi-port deployments can override |
 | 5.1 | Server certificate validation | Supported | OpenSSL adapter: `SSL_VERIFY_PEER` + `SSL_CTX_load_verify_locations` + `SSL_set1_host`. Mbed TLS adapter: `MBEDTLS_SSL_VERIFY_REQUIRED` + `mbedtls_ssl_conf_ca_chain` against the caller's `mbedtls_x509_crt*` + `mbedtls_ssl_set_hostname` |
 | 5.2 | Mutual TLS (client certificate) | Supported | OpenSSL: optional `clientCertChainPath` / `clientKeyPath` on `SolidSyslogTlsStreamConfig`; `SSL_CTX_check_private_key` confirms pairing. Mbed TLS: optional `ClientCertChain` / `ClientKey` handles on `SolidSyslogMbedTlsStreamConfig`; `mbedtls_ssl_conf_own_cert` |
