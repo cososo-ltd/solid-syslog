@@ -1,5 +1,49 @@
 # Dev Log
 
+## 2026-06-10 — S30.02 consumer-friendly CMake umbrellas + dogfood
+
+E30's CI-risk story. Made the six Pattern-B platform packs consumable in one line
+and proved it by routing the FreeRTOS BDD targets through them the way a customer
+would.
+
+### Decisions
+- **Packs carry their own sources.** Each pack (`FreeRtos`, `PlusTcp`, `LwipRaw`,
+  `MbedTls`, `FatFs`, `PlusFat`) now does `target_sources(<pack> INTERFACE …)`, so
+  linking it compiles the adapter `.c` into the consumer's target against the
+  consumer's config header. Discovered every pack's sources also need
+  `Core/Source` (the internal `SolidSyslogPoolAllocator.h`; MbedTls also
+  `SolidSyslogMacros.h`), so each pack exports `Interface` + `Source` +
+  `Core/Source` and links `SolidSyslogTunables` (Core/Interface). Nobody linked
+  these `INTERFACE` targets before, so the change is inert until consumers switch.
+- **`SolidSyslog::<Pack>` aliases.** Namespaced ALIAS per pack for the consumer
+  API.
+- **Umbrella vs component.** Umbrella = adapters that compile in *any* valid
+  config. The lwIP DNS resolver needs `LWIP_DNS=1`, so it's kept OUT of the
+  `LwipRaw` umbrella and shipped as opt-in `SolidSyslog::LwipRawDnsResolver`
+  (links the umbrella). Confirmed with David: MbedTls umbrella = Stream + both
+  at-rest policies (not split); tests stay hand-listed (they compile deliberate
+  per-adapter subsets — dogfood = BDD targets only).
+- **Dogfood = the two cross BDD targets.** FreeRtos (Plus-TCP) links
+  `SolidSyslog::{PlusTcp,FreeRtos,MbedTls,PlusFat}`; FreeRtosLwip links
+  `SolidSyslog::{LwipRawDnsResolver,FreeRtos,MbedTls,FatFs}`. Removed ~75 lines of
+  hand-listed `Platform/*/Source/*.c` + Platform include dirs.
+
+### Verification (local)
+- `freertos-cross` (Plus-TCP) and `freertos-cross-lwip` ARM ELFs both build + link
+  via the umbrellas.
+- Behaviour-neutral: same sources, same per-target config/defines. The lwIP target
+  now also *compiles* the umbrella's numeric resolver, but it's unreferenced and
+  `arm-none-eabi-nm` confirms it's **absent from the linked ELF** (dead-stripped
+  under `-Wl,--gc-sections`).
+- `freertos-host` TDD suite configures + passes (pack CMake executes cleanly on a
+  host compiler; tests unaffected).
+- Updated `getting-started.md` Path A to document the now-available umbrellas
+  (replacing the "lands in S30.02" placeholder).
+
+### Deferred
+- Manifest generation from CMake (S30.03 #569).
+- Fine-grained per-adapter component targets beyond the DnsResolver split.
+
 ## 2026-06-10 — S30.01 getting-started doc + integration manifest
 
 First story of E30 (#566, frictionless integration). Docs-only, authored against

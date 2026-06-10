@@ -106,12 +106,8 @@ later epic, but the seams exist today.)
 
 ## Path A — CMake consumer
 
-> The frictionless one-line-per-platform form (`SolidSyslog::LwipRaw` +
-> `SolidSyslog::MbedTls` umbrella targets) lands in S30.02. Until then, the
-> current consumer path is the maintainer/CI mechanism described here.
-
-Selection today is auto-detect plus environment variables pointing at your
-upstream trees:
+Selection is auto-detect plus environment variables pointing at your upstream
+trees:
 
 - Host roles (POSIX / Winsock / OpenSSL / C11 atomics) are **auto-detected**
   (`find_package(OpenSSL)`, `check_symbol_exists`, an `_Atomic` compile probe)
@@ -121,11 +117,30 @@ upstream trees:
 - The FreeRTOS networking backend is chosen with
   `-DSOLIDSYSLOG_FREERTOS_NET=PLUSTCP|LWIP|BOTH`.
 
-The header-configured packs (`FreeRtos`, `PlusTcp`, `LwipRaw`, `MbedTls`,
-`FatFs`, `PlusFat`) are `INTERFACE` libraries that export include dirs; today the
-consuming target still hand-lists `Platform/<X>/Source/*.c`. See the worked
-target wiring in [`Bdd/Targets/FreeRtos/`](../Bdd/Targets/FreeRtos/) for a
-complete example, and the platform-specific guides:
+The header-configured packs ship as **namespaced umbrella targets** — link one
+per platform and the adapter sources compile into *your* target against *your*
+config header, with the SolidSyslog-side include dirs carried automatically (you
+still point at your own upstream trees):
+
+```cmake
+target_link_libraries(my_app PRIVATE
+    SolidSyslog::LwipRaw      # Address + Datagram + TcpStream + numeric Resolver + Marshal
+    SolidSyslog::MbedTls      # TLS Stream + HMAC / AES-GCM at-rest policies
+    SolidSyslog::FreeRtos     # Mutex + SysUpTime
+    SolidSyslog::FatFs)       # FatFs file adapter
+```
+
+Available umbrellas: `SolidSyslog::FreeRtos`, `SolidSyslog::PlusTcp`,
+`SolidSyslog::LwipRaw`, `SolidSyslog::MbedTls`, `SolidSyslog::FatFs`,
+`SolidSyslog::PlusFat`. The lwIP **DNS** resolver is config-gated (needs
+`LWIP_DNS=1`), so it sits outside the umbrella as an opt-in component —
+`SolidSyslog::LwipRawDnsResolver` (linking it also pulls the `LwipRaw` umbrella).
+A numeric-only lwIP build links `SolidSyslog::LwipRaw` and never enables DNS.
+
+See the worked target wiring in
+[`Bdd/Targets/FreeRtos/`](../Bdd/Targets/FreeRtos/) and
+[`Bdd/Targets/FreeRtosLwip/`](../Bdd/Targets/FreeRtosLwip/) (both consume the
+umbrellas), and the platform-specific guides:
 
 - [Integrating with lwIP (Raw API)](integrating-lwip.md)
 - [Integrating with Mbed TLS](integrating-mbedtls.md)
