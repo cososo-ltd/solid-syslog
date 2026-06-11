@@ -1,5 +1,53 @@
 # Dev Log
 
+## 2026-06-10 — S30.03 generate the integration manifest from CMake
+
+E30's anti-drift story. The non-CMake file/include/`-D` manifest is now generated
+from the build instead of hand-listed in the doc, so it can't drift from what the
+packs ship.
+
+### Decisions
+- **`cmake/Manifest.cmake` reads the targets.** The generator pulls the `.c` lists
+  from the Core lib's `SOURCES` and each selected pack's `INTERFACE_SOURCES`
+  (populated in S30.02) — the volatile data comes from the build, never
+  hand-maintained. Stable per-pack knowledge (which config header each pack needs)
+  stays as a small curated map.
+- **Selection via `SOLIDSYSLOG_MANIFEST_PACKS`** (`;`-list of pack short-names;
+  empty = every defined `SolidSyslog::<Pack>`). Core is always included. The host
+  Pattern-A adapters baked into the Core target (POSIX/Windows/OpenSSL/C11 atomics)
+  are filtered OUT — they're host-build conveniences with no place in an embedded
+  manifest. Include dirs are de-duplicated.
+- **`manifest` target** prints the generated file; generation runs at configure
+  time (writes `${BINARY_DIR}/solidsyslog-manifest.txt`, and also to
+  `SOLIDSYSLOG_MANIFEST_OUTPUT` when set). Print uses a `-P` helper
+  (`cmake/PrintManifest.cmake`) so it works on the 3.16 floor (`cmake -E cat` is
+  3.18+).
+- **Committed sample + gating CI diff** (David's call, accepting a new required
+  check despite the epic's "don't add gates" note). The beta-stack manifest is
+  committed at `docs/generated/beta-stack-manifest.txt`; the new `verify-manifest`
+  CI job regenerates it in the cpputest-freertos image and `git diff --exit-code`s.
+  getting-started.md now points at that generated file (its hand-listed `.c` blocks
+  are gone) + shows the regenerate command.
+- Beta sample now includes the DNS resolver (matches the FreeRtosLwip BDD target,
+  which uses DNS) — so the manifest demonstrates the opt-in component +
+  `-DLWIP_DNS=1`.
+
+### Verification (local, cpputest-freertos image)
+- `manifest` target emits a correct manifest; Core list has no Platform/ leak;
+  include dirs de-duplicated.
+- The committed beta sample matches a fresh regeneration (`git diff --exit-code`
+  clean — the gate passes and would catch real drift).
+- Default-selection (`cmake --preset debug`, all 7 packs) configures + full junit
+  build passes.
+
+### Follow-up for David
+- **Add `verify-manifest` to branch-protection required checks** (manual GitHub
+  step) so the drift gate actually blocks merges.
+
+### Deferred
+- JSON manifest variant (story said optional/"if cheap" — skipped for now, no
+  consumer yet).
+
 ## 2026-06-10 — S30.02 consumer-friendly CMake umbrellas + dogfood
 
 E30's CI-risk story. Made the six Pattern-B platform packs consumable in one line

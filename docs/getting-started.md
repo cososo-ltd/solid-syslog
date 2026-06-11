@@ -174,111 +174,60 @@ SolidSyslog integration is **three things**:
 > `Platform/<X>/Source` on the include path for the `FooPrivate.h` header.
 > The matrix above lists which groups you need per role.
 
-> *(This manifest is hand-authored against the current tree. S30.03 will
-> generate it from CMake so it can never drift — see #569.)*
-
 ---
 
 ## Worked manifest — the beta stack
 
 **Target:** FreeRTOS + lwIP + Mbed TLS + FatFs, IAR, **no CMake**. TLS transport,
-store-and-forward, numeric (no-DNS) resolver, `NO_SYS=0`.
+store-and-forward, numeric resolver + DNS, `NO_SYS=0`.
 
-### 1. Source files to compile
+### 1. Source files + include directories — generated, not hand-listed
 
-**Core (all of it):**
+The exact `.c` file list and SolidSyslog-side include directories for this stack
+are **generated from CMake** and committed, so they can never drift from what the
+packs actually ship (CI regenerates and fails on any difference):
 
-```
-Core/Source/*.c
-```
+**→ [`docs/generated/beta-stack-manifest.txt`](generated/beta-stack-manifest.txt)**
 
-> All 63 Core `.c` files. The sender group
-> (`SolidSyslogUdpSender*`, `SolidSyslogStreamSender*`,
-> `SolidSyslogSwitchingSender*`), the resolver/datagram dispatchers, and the
-> atomic-counter dispatcher (`SolidSyslogAtomicCounter*`) are part of Core; CMake
-> gates them by host probe, but a non-CMake build simply compiles the whole
-> directory — unused objects are dead-stripped by the linker and every role has a
-> Null fallback.
+That file is the authoritative source/include/`-D`/config-header list — copy it
+straight into your IDE or Makefile. To generate the manifest for a **different**
+selection of packs, configure with your upstream trees on the environment and
+your pack list, then build the `manifest` target:
 
-**Network — lwIP (numeric resolver; DNS omitted so no `LWIP_DNS` needed):**
-
-```
-Platform/LwipRaw/Source/SolidSyslogLwipRawAddress.c
-Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c
-Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c          # only if you send UDP
-Platform/LwipRaw/Source/SolidSyslogLwipRawDatagramStatic.c    # only if you send UDP
-Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c
-Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStreamStatic.c
-Platform/LwipRaw/Source/SolidSyslogLwipRawResolver.c
-Platform/LwipRaw/Source/SolidSyslogLwipRawResolverStatic.c
-Platform/LwipRaw/Source/SolidSyslogLwipRawMarshal.c           # NO_SYS=0 only
+```bash
+cmake -S . -B build/manifest \
+  -DSOLIDSYSLOG_MANIFEST_PACKS="LwipRaw;LwipRawDnsResolver;MbedTls;FreeRtos;FatFs"
+cmake --build build/manifest --target manifest      # prints the manifest
 ```
 
-> Omit `SolidSyslogLwipRawDnsResolver*` (that is what keeps `LWIP_DNS` off the
-> requirement list).
+Leave `SOLIDSYSLOG_MANIFEST_PACKS` empty to include every pack the configure
+defined. The Core `.c` set is always included; the host Pattern-A adapters
+(POSIX / Windows / OpenSSL / C11 atomics) are CMake-auto-detected host
+conveniences and are intentionally omitted from the (embedded) manifest.
 
-**TLS — Mbed TLS (over the lwIP TCP stream):**
+> The manifest lists the SolidSyslog-side include dirs only. You still add your
+> own upstream include dirs (lwIP, Mbed TLS, FreeRTOS, FatFs) and the directory
+> holding your config headers + `my_tunables.h`. FatFs also needs your own
+> `diskio.c` media driver.
 
-```
-Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
-Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
-```
+### 2. Defines
 
-> Optional at-rest integrity: add
-> `SolidSyslogMbedTlsHmacSha256Policy*` and/or `SolidSyslogMbedTlsAesGcmPolicy*`.
+The generated manifest's *Required defines* section is authoritative. For this
+stack:
 
-**OS — FreeRTOS:**
-
-```
-Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c
-Platform/FreeRtos/Source/SolidSyslogFreeRtosMutexStatic.c
-Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c
-```
-
-**Store — FatFs (crash-safe persistent store-and-forward):**
-
-```
-Platform/FatFs/Source/SolidSyslogFatFsFile.c
-Platform/FatFs/Source/SolidSyslogFatFsFileStatic.c
-```
-
-> Plus your own `diskio.c` media driver (FatFs is RTOS-agnostic; you supply the
-> block device). `BlockStore` / `RecordStore` / `BlockSequence` /
-> `FileBlockDevice` are already in the Core set above.
-
-### 2. Include directories
-
-```
-Core/Interface
-Core/Source
-Platform/LwipRaw/Interface
-Platform/LwipRaw/Source
-Platform/MbedTls/Interface
-Platform/MbedTls/Source
-Platform/FreeRtos/Interface
-Platform/FreeRtos/Source
-Platform/FatFs/Interface
-Platform/FatFs/Source
-<your lwIP include dirs>
-<your Mbed TLS include dir>
-<your FreeRTOS-Kernel include dir + port>
-<your FatFs include dir>
-<dir holding your config headers + my_tunables.h>
-```
-
-### 3. Defines
-
-```
+```text
 -DSOLIDSYSLOG_USER_TUNABLES_FILE="my_tunables.h"   # your tunable overrides
+-DLWIP_DNS=1                                        # required by SolidSyslog::LwipRawDnsResolver
 ```
 
-> No `LWIP_DNS` is required for this stack (numeric resolver). The header-configured
-> upstreams take their settings from your config headers, not from `-D`s:
-> `lwipopts.h` (incl. `NO_SYS`, `LWIP_RAW`/`UDP`/`TCP`), `mbedtls_config.h`,
-> `FreeRTOSConfig.h` (with `configSUPPORT_STATIC_ALLOCATION=1` for the mutex),
-> `ffconf.h`.
+> `LWIP_DNS=1` is required because this stack includes the lwIP DNS resolver; a
+> numeric-only build (omit `SolidSyslog::LwipRawDnsResolver`) does not need it.
+> The header-configured upstreams take their other settings from your config
+> headers, not from `-D`s: `lwipopts.h` (incl. `NO_SYS`, `LWIP_RAW`/`UDP`/`TCP`),
+> `mbedtls_config.h`, `FreeRTOSConfig.h` (with
+> `configSUPPORT_STATIC_ALLOCATION=1` for the mutex), `ffconf.h`.
 
-### 4. Config headers you own
+### 3. Config headers you own
 
 | Header | Owns |
 |---|---|
@@ -288,7 +237,7 @@ Platform/FatFs/Source
 | `ffconf.h` | FatFs feature set |
 | `my_tunables.h` | SolidSyslog pool sizes / limits (see below) |
 
-### 5. Bring-your-own callbacks for this stack
+### 4. Bring-your-own callbacks for this stack
 
 - **Sleep** — required by Mbed TLS (handshake retry) and the lwIP TCP stream
   (bounded synchronous open). Wrap `vTaskDelay`.
@@ -310,7 +259,7 @@ library. Two equivalent mechanisms (works the same for CMake and non-CMake):
 
 - **A whole file of overrides:**
 
-  ```
+  ```text
   -DSOLIDSYSLOG_USER_TUNABLES_FILE="my_tunables.h"
   ```
 
@@ -319,7 +268,7 @@ library. Two equivalent mechanisms (works the same for CMake and non-CMake):
 
 - **Per-value on the command line:**
 
-  ```
+  ```text
   -DSOLIDSYSLOG_MAX_MESSAGE_SIZE=1024
   ```
 

@@ -1314,9 +1314,43 @@ jobs:
         if: failure()
         run: docker compose -f ci/docker-compose.bdd.yml logs --no-color
 
+  # Anti-drift gate (S30.03): regenerate the committed beta-stack integration
+  # manifest from CMake and fail if it differs from what is checked in. Keeps
+  # docs/generated/beta-stack-manifest.txt honest against the pack source lists
+  # (the generator reads each pack's INTERFACE_SOURCES). Uses the cpputest-freertos
+  # image because it exports the FreeRTOS / lwIP / Mbed TLS / FatFs upstream paths,
+  # so every SolidSyslog::* pack target the manifest references is defined.
+  verify-manifest:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/davidcozens/cpputest-freertos:sha-0b93766
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Regenerate the beta-stack manifest
+        shell: bash
+        run: |
+          cmake -S . -B build/manifest -DBUILD_TESTING=OFF \
+            -DSOLIDSYSLOG_MANIFEST_PACKS="LwipRaw;LwipRawDnsResolver;MbedTls;FreeRtos;FatFs" \
+            -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/beta-stack-manifest.txt"
+
+      - name: Fail on drift
+        shell: bash
+        run: |
+          git diff --exit-code docs/generated/beta-stack-manifest.txt \
+            || { echo "::error::docs/generated/beta-stack-manifest.txt is stale — regenerate with the manifest target (see docs/getting-started.md)"; exit 1; }
+
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip]
+    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip, verify-manifest]
     runs-on: ubuntu-latest
     permissions:
       contents: read

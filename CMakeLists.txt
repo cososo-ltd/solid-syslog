@@ -5,6 +5,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(LayerGuard)
 solidsyslog_enforce_layering()
 include(Iwyu)
+include(Manifest)
 
 # Default to C11 (for the optional C11 atomics counter), but let an externally
 # supplied standard win so the pre-release C99 portability check can build the
@@ -329,3 +330,10 @@ if(BUILD_TESTING AND NOT CMAKE_CROSSCOMPILING)
     enable_testing()
     add_subdirectory(Tests)
 endif()
+
+# Integration manifest (S30.03) — generated from the configured targets (Core
+# SOURCES + each selected pack's INTERFACE_SOURCES) so the non-CMake
+# file/include/-D list can't drift from the build. Runs last, after every pack
+# target is defined. `cmake --build <dir> --target manifest` prints it. See
+# cmake/Manifest.cmake.
+solidsyslog_generate_manifest()
