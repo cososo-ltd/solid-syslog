@@ -81,7 +81,7 @@ $stressJobs = @()
 $otel = $null
 try {
     Write-Host "Starting otelcol-contrib oracle..." -ForegroundColor Cyan
-    taskkill /F /IM otelcol-contrib.exe 2>$null | Out-Null
+    Get-Process otelcol-contrib -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     $otel = Start-Process -FilePath $otelBin -ArgumentList "--config=$otelConfig" `
         -RedirectStandardOutput (Join-Path $outDir 'otelcol.out') `
         -RedirectStandardError  (Join-Path $outDir 'otelcol.err') `
@@ -124,5 +124,5 @@ try {
 }
 finally {
     if ($stressJobs) { $stressJobs | Remove-Job -Force -ErrorAction SilentlyContinue }
-    taskkill /F /IM otelcol-contrib.exe 2>$null | Out-Null
+    Get-Process otelcol-contrib -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 }
