@@ -195,23 +195,32 @@ def before_scenario(context, scenario):
 
 def after_step(context, step):
     """On step failure, dump the recent BDD-target stdout (FreeRTOS guest
-    UART output for the QEMU target) so [solidsyslog] error lines and
-    printf diagnostics are visible in the behave log. _solidsyslog_stdout_log
-    is the 16 KB sliding buffer the reader thread maintains; if the target
-    didn't go through _start_stdout_reader (Linux/Windows path), this is a
-    no-op."""
+    UART output for the QEMU target) and stderr (the error handler's
+    [solidsyslog] / BDD-TARGET error lines) so diagnostics are visible in the
+    behave log. The _solidsyslog_{stdout,stderr}_log are 16 KB sliding buffers
+    the reader threads maintain; if the target didn't go through
+    _start_stdout_reader (so neither buffer exists), this is a no-op.
+
+    stderr is the channel that carries the client-side TLS/mTLS failure reason
+    (handshake timeout vs cert rejected vs connection refused vs fatal exit),
+    so it is what distinguishes a real bug from an environmental flake."""
     if step.status != "failed":
         return
     if not hasattr(context, "interactive_process"):
         return
     process = context.interactive_process
-    log = getattr(process, "_solidsyslog_stdout_log", None)
+    _dump_target_log(process, "_solidsyslog_stdout_log", "stdout", "GUEST")
+    _dump_target_log(process, "_solidsyslog_stderr_log", "stderr", "ERR")
+
+
+def _dump_target_log(process, attr, channel, prefix):
+    log = getattr(process, attr, None)
     if not log:
         return
     text = bytes(log).decode("utf-8", errors="replace")
-    print(f"--- last {len(log)} bytes of BDD target stdout ---", file=sys.stderr, flush=True)
+    print(f"--- last {len(log)} bytes of BDD target {channel} ---", file=sys.stderr, flush=True)
     for line in text.splitlines():
-        print(f"  GUEST: {line}", file=sys.stderr, flush=True)
+        print(f"  {prefix}: {line}", file=sys.stderr, flush=True)
     print("--- end ---", file=sys.stderr, flush=True)
 
 

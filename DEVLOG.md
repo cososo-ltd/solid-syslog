@@ -1,5 +1,44 @@
 # Dev Log
 
+## 2026-06-17 — capture BDD-target stderr (mTLS flake diagnosis)
+
+Chased the `bdd-windows-otel` mTLS flake that put `main` red after the S30 CMake
+epic. A full-workflow re-run of `9605afa` went green (`46 scenarios passed`), and
+the failing path (Windows mTLS = OpenSSL over Winsock) was untouched by S30.02/03,
+so the merge wasn't the cause. But "it's just a flake" wasn't satisfying — the
+signature didn't fit a slow handshake.
+
+### Findings
+- The service thread retries `SolidSyslog_Service` in a ~1 ms loop, so within the
+  10 s oracle-wait the sender retries thousands of times. Staying at **0 of 1**
+  for the whole window means the target **stalled or died**, not "was slow."
+- The target is spawned with `stderr=PIPE` (`target_driver.py`) but **nothing reads
+  it** — only stdout is teed (`_start_stdout_reader`). The error handler
+  (`BddTargetStderrErrorHandler.c`) writes every error event to stderr.
+- Hypothesis: under a transient TLS/mTLS handshake failure the error handler spams
+  the undrained stderr pipe; on Windows the pipe fills (~4–64 KB) and the next
+  write **blocks the target inside `Service`** → stall → `0 of N`. Intermittent
+  because it only bites if the handshake hasn't succeeded before the pipe fills.
+  mTLS is the chattiest/heaviest handshake, which fits why it's the one that flakes.
+- Crucially we **couldn't tell flake from real bug** because the client-side error
+  was discarded.
+
+### Change (test-side only — no library/production change)
+- `_start_stderr_reader` drains the target's stderr into a 16 KB sliding buffer
+  (mirrors the stdout reader; started from `_start_stdout_reader` under the same
+  idempotency guard). Draining removes the pipe-full stall.
+- `after_step` now dumps both stdout (`GUEST:`) and stderr (`ERR:`) on failure, so
+  any future failure shows the exact client-side cause (handshake timeout vs cert
+  rejected vs connection refused vs fatal `_Exit`).
+- `scripts/repro-mtls-flake.ps1` loops the `@mtls` scenario on a native Windows box
+  (optional `-Stress` load) and saves failing-run logs — to confirm the hypothesis
+  and decide whether any library/timeout change is actually warranted.
+
+### Decisions
+- Held off on any production change (e.g. the 200 ms connect timeout, error-spew
+  throttling) until the captured stderr says what's actually failing. Fix the
+  diagnosis gap first, then let evidence drive any library change.
+
 ## 2026-06-10 — S30.03 generate the integration manifest from CMake
 
 E30's anti-drift story. The non-CMake file/include/`-D` manifest is now generated

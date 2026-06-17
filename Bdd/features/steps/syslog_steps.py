@@ -335,6 +335,44 @@ def _start_stdout_reader(process):
             process._solidsyslog_byte_queue.put(None)
 
     threading.Thread(target=_reader, daemon=True).start()
+    _start_stderr_reader(process)
+
+
+def _start_stderr_reader(process):
+    """Drain process.stderr into a capped buffer for after_step diagnostics.
+
+    The BDD target's error handler (BddTargetStderrErrorHandler.c) writes
+    every SolidSyslog error event to stderr. The prompt protocol only reads
+    stdout, so without this drain the stderr PIPE is never emptied: under a
+    retrying failure (e.g. a transient TLS/mTLS handshake error spun by the
+    ~1ms service loop) it fills, and on Windows the next write blocks the
+    target mid-Service — stalling it for the rest of the scenario and
+    producing the "oracle received 0 of N" flake. Draining both prevents the
+    stall and captures the client-side error so failures are diagnosable
+    instead of silent. Started by _start_stdout_reader, so it shares the same
+    idempotency guard.
+
+    Reads in chunks (no byte-queue) because nothing parses stderr — it is
+    diagnostics only.
+    """
+    if process.stderr is None:
+        return
+
+    process._solidsyslog_stderr_log = bytearray()
+    fd = process.stderr.fileno()
+
+    def _reader():
+        while True:
+            data = os.read(fd, 4096)
+            if not data:
+                break
+            log = process._solidsyslog_stderr_log
+            log += data
+            # Cap at 16 KB — recent context only.
+            if len(log) > 16384:
+                del log[: len(log) - 16384]
+
+    threading.Thread(target=_reader, daemon=True).start()
 
 
 def wait_for_prompt(process, timeout=120):
