@@ -109,10 +109,6 @@ TEST_BASE(BlockDeviceTestBase)
 
 // clang-format on
 
-/* ------------------------------------------------------------------
- * Basic operations
- * ----------------------------------------------------------------*/
-
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStore, BlockDeviceTestBase)
 {
@@ -326,10 +322,6 @@ TEST(SolidSyslogBlockStore, FiveWritesDrainAllInOrder)
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
-/* ------------------------------------------------------------------
- * Resume from existing block
- * ----------------------------------------------------------------*/
-
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreResume, BlockDeviceTestBase)
 {
@@ -444,10 +436,6 @@ TEST(SolidSyslogBlockStoreResume, CanWriteNewMessagesAfterResume)
     MEMCMP_EQUAL("new", buf, strlen("new"));
 }
 
-/* ------------------------------------------------------------------
- * Destroy
- * ----------------------------------------------------------------*/
-
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreDestroy, BlockDeviceTestBase)
 {
@@ -471,10 +459,6 @@ TEST(SolidSyslogBlockStoreDestroy, DoubleDestroyDoesNotCrash)
     SolidSyslogBlockStore_Destroy(store);
     SolidSyslogBlockStore_Destroy(store);
 }
-
-/* ------------------------------------------------------------------
- * Config validation
- * ----------------------------------------------------------------*/
 
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
@@ -626,10 +610,6 @@ TEST(SolidSyslogBlockStoreConfig, OversizedSecurityPolicyLeavesNoIntegrityGap)
     MEMCMP_EQUAL(body, static_cast<const uint8_t*>(FileFake_FileContent()) + RECORD_HEADER, bodyLen);
 }
 
-/* ------------------------------------------------------------------
- * Error paths
- * ----------------------------------------------------------------*/
-
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreErrors, BlockDeviceTestBase)
 {
@@ -703,10 +683,6 @@ TEST(SolidSyslogBlockStoreErrors, MarkSentDoesNotAdvanceWhenWriteFails)
 
     CHECK_TRUE(SolidSyslogStore_HasUnsent(store));
 }
-
-/* ------------------------------------------------------------------
- * Block rotation
- * ----------------------------------------------------------------*/
 
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreRotation, BlockDeviceTestBase)
@@ -1390,10 +1366,6 @@ TEST(SolidSyslogBlockStoreRotation, DiscardRetriesAfterTransientDisposeFailure)
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
 }
 
-/* ------------------------------------------------------------------
- * Integrity (SecurityPolicy integration)
- * ----------------------------------------------------------------*/
-
 enum
 {
     CONTENT_REGION_MAX = 2 + 2 + SOLIDSYSLOG_MAX_MESSAGE_SIZE /* magic + length + body */
@@ -1489,11 +1461,9 @@ TEST(SolidSyslogBlockStoreIntegrity, SealRecordReceivesContentRegionAndHeaderSpl
     /* magic|length is the cleartext header; message is the body */
     LONGS_EQUAL(HEADER_SIZE, sealHeaderLength);
 
-    /* verify magic bytes */
     BYTES_EQUAL(0xA5, sealContentData[0]);
     BYTES_EQUAL(0x5A, sealContentData[1]);
 
-    /* verify body is included */
     MEMCMP_EQUAL(TEST_DATA, sealContentData + HEADER_SIZE, TEST_DATA_LEN);
 }
 
@@ -1525,17 +1495,11 @@ TEST(SolidSyslogBlockStoreIntegrity, OpenRecordReceivesContentRegionAndHeaderSpl
     /* magic|length is the cleartext header; message is the body */
     LONGS_EQUAL(HEADER_SIZE, openHeaderLength);
 
-    /* verify magic bytes */
     BYTES_EQUAL(0xA5, openContentData[0]);
     BYTES_EQUAL(0x5A, openContentData[1]);
 
-    /* verify body is included */
     MEMCMP_EQUAL(TEST_DATA, openContentData + HEADER_SIZE, TEST_DATA_LEN);
 }
-
-/* ------------------------------------------------------------------
- * Corruption detection
- * ----------------------------------------------------------------*/
 
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreCorruption, BlockDeviceTestBase)
@@ -1685,10 +1649,6 @@ TEST(SolidSyslogBlockStoreCorruption, InvalidLengthReadReturnsFalse)
     CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
 }
 
-/* ------------------------------------------------------------------
- * Corruption recovery
- * ----------------------------------------------------------------*/
-
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
 {
@@ -1782,10 +1742,6 @@ TEST(SolidSyslogBlockStoreCorruptionRecovery, CorruptWriteBlockRotatesOnNextWrit
     CHECK_TRUE(SolidSyslogStore_Write(store, newMsg, sizeof(newMsg)));
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
 }
-
-/* ------------------------------------------------------------------
- * Capacity getters
- * ----------------------------------------------------------------*/
 
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreCapacity, BlockDeviceTestBase)
@@ -1918,10 +1874,6 @@ TEST(SolidSyslogBlockStoreCapacity, GetUsedBytesIsStickyAtTotalAfterSizeFailure)
     /* Sticky: GetUsedBytes returns total even though the active blocks have slack. */
     LONGS_EQUAL(SolidSyslogStore_GetTotalBytes(store), SolidSyslogStore_GetUsedBytes(store));
 }
-
-/* ------------------------------------------------------------------
- * Capacity threshold alert (S05.09)
- * ----------------------------------------------------------------*/
 
 static int CountThresholdCrossingsCallCount;
 static size_t thresholdReturnValue;

@@ -127,11 +127,9 @@ TEST(SolidSyslogBlockStorePosix, DiscardOldestWhenReadIsPartwayThroughOldestBloc
     std::memset(msgC, 'C', sizeof(msgC));
     std::memset(msgD, 'D', sizeof(msgD));
 
-    /* Fill block 00 with two records */
     SolidSyslogStore_Write(store, msgA, sizeof(msgA));
     SolidSyslogStore_Write(store, msgB, sizeof(msgB));
 
-    /* Fill block 01 with two records */
     SolidSyslogStore_Write(store, msgC, sizeof(msgC));
     SolidSyslogStore_Write(store, msgD, sizeof(msgD));
 

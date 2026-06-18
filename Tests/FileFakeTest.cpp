@@ -263,10 +263,6 @@ TEST(FileFake, DeleteReturnsFalseForUnknownFile)
     CHECK_FALSE(SolidSyslogFile_Delete(api, "nonexistent.dat"));
 }
 
-/* ------------------------------------------------------------------
- * Two independent instances
- * ----------------------------------------------------------------*/
-
 TEST(FileFake, TwoInstancesShareFilesystem)
 {
     SolidSyslogFile_Open(api, "shared.dat");
@@ -302,10 +298,6 @@ TEST(FileFake, OpenWhileAnotherInstanceHoldsPathOpenAsserts)
     api = FileFake_Create(&storage);
 }
 
-/* ------------------------------------------------------------------
- * Operations on closed file
- * ----------------------------------------------------------------*/
-
 TEST(FileFake, CloseWithNoFileOpenThrows)
 {
     CHECK_THROWS(std::runtime_error, SolidSyslogFile_Close(api));
@@ -336,10 +328,6 @@ TEST(FileFake, TruncateWithNoFileOpenThrows)
 {
     CHECK_THROWS(std::runtime_error, SolidSyslogFile_Truncate(api));
 }
-
-/* ------------------------------------------------------------------
- * Operations after Destroy
- * ----------------------------------------------------------------*/
 
 // clang-format off
 TEST_GROUP(FileFakeAfterDestroy)
@@ -411,10 +399,6 @@ TEST(FileFakeAfterDestroy, DeleteThrows)
     CHECK_THROWS(std::runtime_error, SolidSyslogFile_Delete(api, "test.dat"));
 }
 
-/* ------------------------------------------------------------------
- * Stale handle after delete
- * ----------------------------------------------------------------*/
-
 // clang-format off
 TEST_GROUP(FileFakeStaleHandle)
 {
@@ -439,12 +423,10 @@ TEST_GROUP(FileFakeStaleHandle)
 
 TEST(FileFakeStaleHandle, ReadFailsOnStaleHandleAfterDeleteAndSlotReuse)
 {
-    /* handleA opens file "old.dat" and writes data */
     SolidSyslogFile_Open(handleA, "old.dat");
     const char data[] = "original";
     SolidSyslogFile_Write(handleA, data, sizeof(data));
 
-    /* Delete the file via handleB */
     SolidSyslogFile_Delete(handleB, "old.dat");
 
     /* Create a new file that could reuse the freed slot */
