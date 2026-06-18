@@ -12,11 +12,9 @@ EXTERN_C_BEGIN
 
     void SocketFake_Reset(void);
 
-    /* sendto configuration */
     void SocketFake_SetSendtoFails(bool fails);
     void SocketFake_FailNextSendtoWithErrno(int errnoValue);
 
-    /* sendto accessors */
     int SocketFake_SendtoCallCount(void);
     const void* SocketFake_LastBuf(void);
     const char* SocketFake_LastBufAsString(void);
@@ -28,41 +26,34 @@ EXTERN_C_BEGIN
     socklen_t SocketFake_LastAddrLen(void);
     int SocketFake_LastSendtoFd(void);
 
-    /* socket configuration */
     void SocketFake_SetSocketFails(bool fails);
 
-    /* socket accessors */
     int SocketFake_SocketCallCount(void);
     int SocketFake_SocketFd(void);
     int SocketFake_SocketDomain(void);
     int SocketFake_SocketType(void);
 
-    /* send configuration */
     void SocketFake_SetSendFails(bool fails);
     void SocketFake_FailSendOnCall(int callNumber);
     void SocketFake_SetSendReturn(ssize_t value);
     void SocketFake_FailNextSendWithErrno(int errnoValue);
 
-    /* send accessors */
     int SocketFake_SendCallCount(void);
     const char* SocketFake_SendBufAsString(int callIndex);
     size_t SocketFake_SendLen(int callIndex);
     int SocketFake_LastSendFd(void);
     int SocketFake_SendFlags(int callIndex);
 
-    /* connect configuration */
     void SocketFake_SetConnectFails(bool fails);
     /* When set, connect returns -1 with errno == errnoValue (e.g. EINPROGRESS so
        the non-blocking-connect path can be exercised). One-shot. */
     void SocketFake_SetConnectFailsWithErrno(int errnoValue);
 
-    /* connect accessors */
     int SocketFake_ConnectCallCount(void);
     int SocketFake_LastConnectFd(void);
     int SocketFake_LastConnectPort(void);
     const char* SocketFake_LastConnectAddrAsString(void);
 
-    /* setsockopt accessors */
     int SocketFake_SetSockOptCallCount(void);
     int SocketFake_LastSetSockOptLevel(void);
     int SocketFake_LastSetSockOptOptname(void);
@@ -80,16 +71,13 @@ EXTERN_C_BEGIN
     void SocketFake_SetSoError(int err);
     void SocketFake_SetSoErrorLookupFails(bool fails);
 
-    /* getsockopt accessors */
     int SocketFake_GetSockOptCallCount(void);
     int SocketFake_LastGetSockOptLevel(void);
     int SocketFake_LastGetSockOptOptname(void);
 
-    /* fcntl configuration */
     void SocketFake_SetFcntlSetFlFails(bool fails);
     void SocketFake_SetFcntlGetFlReturn(int flags);
 
-    /* fcntl accessors */
     int SocketFake_FcntlCallCount(void);
     int SocketFake_LastFcntlCmd(void);
     int SocketFake_LastFcntlSetFlags(void);
@@ -111,35 +99,28 @@ EXTERN_C_BEGIN
     void SocketFake_SetSelectError(bool hasError);
     void SocketFake_SetSelectReturn(int value);
 
-    /* select accessors */
     int SocketFake_SelectCallCount(void);
     long SocketFake_LastSelectTimeoutSec(void);
     long SocketFake_LastSelectTimeoutUsec(void);
 
-    /* close accessors */
     int SocketFake_CloseCallCount(void);
     int SocketFake_LastClosedFd(void);
 
-    /* recv configuration */
     void SocketFake_SetRecvReturn(ssize_t value);
     void SocketFake_FailNextRecvWithErrno(int errnoValue);
 
-    /* recv accessors */
     int SocketFake_RecvCallCount(void);
     int SocketFake_LastRecvFd(void);
     const void* SocketFake_LastRecvBuf(void);
     size_t SocketFake_LastRecvLen(void);
     int SocketFake_LastRecvFlags(void);
 
-    /* getaddrinfo configuration */
     void SocketFake_SetGetAddrInfoFails(bool fails);
 
-    /* getaddrinfo accessors */
     int SocketFake_GetAddrInfoCallCount(void);
     const char* SocketFake_LastGetAddrInfoHostname(void);
     int SocketFake_LastGetAddrInfoSocktype(void);
 
-    /* freeaddrinfo accessors */
     int SocketFake_FreeAddrInfoCallCount(void);
 
 EXTERN_C_END

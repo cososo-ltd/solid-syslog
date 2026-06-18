@@ -19,11 +19,9 @@ EXTERN_C_BEGIN
      * Call from TEST_GROUP::setup() so each test starts from a clean slate. */
     void MbedTlsFake_Reset(void);
 
-    /* mbedtls_ssl_config_init */
     int MbedTlsFake_SslConfigInitCallCount(void);
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfigInitArg(void);
 
-    /* mbedtls_ssl_config_defaults */
     int MbedTlsFake_SslConfigDefaultsCallCount(void);
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfigDefaultsConfigArg(void);
     int MbedTlsFake_LastSslConfigDefaultsEndpoint(void);
@@ -31,17 +29,14 @@ EXTERN_C_BEGIN
     int MbedTlsFake_LastSslConfigDefaultsPreset(void);
     void MbedTlsFake_SetSslConfigDefaultsReturn(int value);
 
-    /* mbedtls_ssl_init */
     int MbedTlsFake_SslInitCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslInitArg(void);
 
-    /* mbedtls_ssl_setup */
     int MbedTlsFake_SslSetupCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslSetupContextArg(void);
     const struct mbedtls_ssl_config* MbedTlsFake_LastSslSetupConfigArg(void);
     void MbedTlsFake_SetSslSetupReturn(int value);
 
-    /* mbedtls_ssl_set_bio */
     int MbedTlsFake_SslSetBioCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslSetBioContextArg(void);
     void* MbedTlsFake_LastSslSetBioPBioArg(void);
@@ -49,7 +44,6 @@ EXTERN_C_BEGIN
     int (*MbedTlsFake_LastSslSetBioRecvCallback(void))(void*, unsigned char*, size_t);
     int (*MbedTlsFake_LastSslSetBioRecvTimeoutCallback(void))(void*, unsigned char*, size_t, uint32_t);
 
-    /* mbedtls_ssl_handshake */
     int MbedTlsFake_SslHandshakeCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslHandshakeArg(void);
     void MbedTlsFake_SetSslHandshakeReturn(int value);
@@ -59,33 +53,27 @@ EXTERN_C_BEGIN
      * at MBEDTLSFAKE_MAX_HANDSHAKE_RETURNS (silently truncated). */
     void MbedTlsFake_SetSslHandshakeReturnSequence(const int* values, int count);
 
-    /* mbedtls_ssl_write */
     int MbedTlsFake_SslWriteCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslWriteContextArg(void);
     const unsigned char* MbedTlsFake_LastSslWriteBufArg(void);
     size_t MbedTlsFake_LastSslWriteLenArg(void);
     void MbedTlsFake_SetSslWriteReturn(int value);
 
-    /* mbedtls_ssl_read */
     int MbedTlsFake_SslReadCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslReadContextArg(void);
     unsigned char* MbedTlsFake_LastSslReadBufArg(void);
     size_t MbedTlsFake_LastSslReadLenArg(void);
     void MbedTlsFake_SetSslReadReturn(int value);
 
-    /* mbedtls_ssl_close_notify */
     int MbedTlsFake_SslCloseNotifyCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslCloseNotifyArg(void);
 
-    /* mbedtls_ssl_free */
     int MbedTlsFake_SslFreeCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslFreeArg(void);
 
-    /* mbedtls_ssl_config_free */
     int MbedTlsFake_SslConfigFreeCallCount(void);
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfigFreeArg(void);
 
-    /* mbedtls_ssl_conf_authmode */
     int MbedTlsFake_SslConfAuthmodeCallCount(void);
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfAuthmodeConfigArg(void);
     int MbedTlsFake_LastSslConfAuthmodeArg(void);
@@ -96,19 +84,16 @@ EXTERN_C_BEGIN
      * production inline call set, so a test can assert the negotiated floor. */
     int MbedTlsFake_ConfMinTlsVersion(const struct mbedtls_ssl_config* conf);
 
-    /* mbedtls_ssl_conf_ca_chain */
     int MbedTlsFake_SslConfCaChainCallCount(void);
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfCaChainConfigArg(void);
     struct mbedtls_x509_crt* MbedTlsFake_LastSslConfCaChainArg(void);
     struct mbedtls_x509_crl* MbedTlsFake_LastSslConfCaChainCrlArg(void);
 
-    /* mbedtls_ssl_conf_rng */
     int MbedTlsFake_SslConfRngCallCount(void);
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfRngConfigArg(void);
     int (*MbedTlsFake_LastSslConfRngFuncArg(void))(void*, unsigned char*, size_t);
     void* MbedTlsFake_LastSslConfRngContextArg(void);
 
-    /* mbedtls_ssl_set_hostname */
     int MbedTlsFake_SslSetHostnameCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslSetHostnameContextArg(void);
     const char* MbedTlsFake_LastSslSetHostnameNameArg(void);
@@ -120,7 +105,6 @@ EXTERN_C_BEGIN
     struct mbedtls_x509_crt* MbedTlsFake_LastSslConfOwnCertCertArg(void);
     struct mbedtls_pk_context* MbedTlsFake_LastSslConfOwnCertKeyArg(void);
 
-    /* mbedtls_md_info_from_type / mbedtls_md_hmac */
     int MbedTlsFake_MdHmacCallCount(void);
     int MbedTlsFake_LastMdInfoType(void);
     const uint8_t* MbedTlsFake_LastMdHmacKey(void);
@@ -140,7 +124,6 @@ EXTERN_C_BEGIN
         uint8_t* tagOut
     );
 
-    /* mbedtls_platform_zeroize */
     int MbedTlsFake_PlatformZeroizeCallCount(void);
     const void* MbedTlsFake_LastPlatformZeroizeBuf(void);
     size_t MbedTlsFake_LastPlatformZeroizeLen(void);

@@ -13,10 +13,8 @@ EXTERN_C_BEGIN
 
     void LwipTcpFake_Reset(void);
 
-    /* tcp_new configuration */
     void LwipTcpFake_SetTcpNewFails(bool fails);
 
-    /* tcp_new spy */
     unsigned LwipTcpFake_TcpNewCallCount(void);
     struct tcp_pcb* LwipTcpFake_LastTcpNewReturned(void);
 
@@ -32,7 +30,6 @@ EXTERN_C_BEGIN
     unsigned LwipTcpFake_TcpSentCallCount(void);
     tcp_sent_fn LwipTcpFake_LastSentFn(void);
 
-    /* tcp_connect configuration */
 
     /* Immediate err returned by tcp_connect itself. Default ERR_OK. */
     void LwipTcpFake_SetTcpConnectError(int8_t err);
@@ -45,38 +42,30 @@ EXTERN_C_BEGIN
     /* The err passed to the connected_cb when it fires. Default ERR_OK. */
     void LwipTcpFake_SetConnectCallbackResult(int8_t err);
 
-    /* tcp_connect spy */
     unsigned LwipTcpFake_TcpConnectCallCount(void);
     struct tcp_pcb* LwipTcpFake_LastConnectPcb(void);
     const ip_addr_t* LwipTcpFake_LastConnectIpaddr(void);
     uint16_t LwipTcpFake_LastConnectPort(void);
     tcp_connected_fn LwipTcpFake_LastConnectedFn(void);
 
-    /* tcp_close configuration */
     void LwipTcpFake_SetTcpCloseError(int8_t err);
 
-    /* tcp_close spy */
     unsigned LwipTcpFake_TcpCloseCallCount(void);
     struct tcp_pcb* LwipTcpFake_LastClosePcb(void);
 
-    /* tcp_abort spy */
     unsigned LwipTcpFake_TcpAbortCallCount(void);
     struct tcp_pcb* LwipTcpFake_LastAbortPcb(void);
 
-    /* tcp_write configuration */
     void LwipTcpFake_SetTcpWriteError(int8_t err);
 
-    /* tcp_write spy */
     unsigned LwipTcpFake_TcpWriteCallCount(void);
     struct tcp_pcb* LwipTcpFake_LastWritePcb(void);
     const void* LwipTcpFake_LastWriteDataptr(void);
     uint16_t LwipTcpFake_LastWriteLength(void);
     uint8_t LwipTcpFake_LastWriteApiFlags(void);
 
-    /* tcp_output configuration */
     void LwipTcpFake_SetTcpOutputError(int8_t err);
 
-    /* tcp_output spy */
     unsigned LwipTcpFake_TcpOutputCallCount(void);
     struct tcp_pcb* LwipTcpFake_LastOutputPcb(void);
 

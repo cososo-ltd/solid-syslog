@@ -15,21 +15,16 @@ EXTERN_C_BEGIN
 
     void LwipUdpFake_Reset(void);
 
-    /* udp_new configuration */
     void LwipUdpFake_SetUdpNewFails(bool fails);
 
-    /* udp_new spy */
     unsigned LwipUdpFake_UdpNewCallCount(void);
     struct udp_pcb* LwipUdpFake_LastUdpNewReturned(void);
 
-    /* udp_remove spy */
     unsigned LwipUdpFake_UdpRemoveCallCount(void);
     struct udp_pcb* LwipUdpFake_LastUdpRemovePcb(void);
 
-    /* udp_sendto configuration */
     void LwipUdpFake_SetUdpSendtoError(int8_t err);
 
-    /* udp_sendto spy */
     unsigned LwipUdpFake_UdpSendtoCallCount(void);
     struct udp_pcb* LwipUdpFake_LastSendtoPcb(void);
     struct pbuf* LwipUdpFake_LastSendtoPbuf(void);
