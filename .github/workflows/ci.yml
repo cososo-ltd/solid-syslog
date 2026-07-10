@@ -669,6 +669,20 @@ jobs:
           find Core/Interface Core/Source Platform Tests Bdd/Targets -name '*.c' -o -name '*.cpp' -o -name '*.h' \
             | xargs clang-format --dry-run --Werror
 
+  analyze-markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      # Same pinned engine (markdownlint-cli2 v0.22.1) used locally and by
+      # CodeRabbit. Config + ignores come from .markdownlint-cli2.jsonc.
+      - name: Lint markdown
+        run: |
+          docker run --rm -v "$PWD:/workdir" \
+            davidanson/markdownlint-cli2@sha256:0ed9a5f4c77ef447da2a2ac6e67caf74b214a7f80288819565e8b7d2ac148fe5
+
   analyze-cppcheck:
     runs-on: ubuntu-latest
     container:
@@ -1350,7 +1364,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip, verify-manifest]
+    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-markdown, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip, verify-manifest]
     runs-on: ubuntu-latest
     permissions:
       contents: read
