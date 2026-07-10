@@ -38,8 +38,9 @@ attached so integrators can verify provenance (per
 
 Coordinated with the disclosure — see the runbook's *Release coordination* stage:
 
-- **High / Critical** — fix on the GHSA private fork; publish the advisory
-  coordinated with the release.
+- **High / Critical** — develop the fix on the advisory's temporary private fork;
+  the draft GHSA stays the single tracking record, published coordinated with the
+  release.
 - **Low / Medium** — fix in the open; the advisory publishes when the release
   ships.
 - Record affected and fixed version ranges in the advisory **before** publishing.
@@ -47,7 +48,9 @@ Coordinated with the disclosure — see the runbook's *Release coordination* sta
 ## Checklist
 
 - [ ] `main` is green.
-- [ ] Cut the release: merge the release PR, or trigger release-please from the
-      Actions tab while parked.
-- [ ] Confirm the tag + GitHub Release and the four attached SBOM/hash assets.
+- [ ] Cut the release by merging the release PR.
+- [ ] Confirm the tag + GitHub Release, and **verify** the attached SBOM, source
+      hash, and both cosign signatures per
+      [`security/release-verification.md`](security/release-verification.md) — not
+      just that the assets are present (signing is advisory and can fail silently).
 - [ ] Security release: publish the coordinated GHSA.
