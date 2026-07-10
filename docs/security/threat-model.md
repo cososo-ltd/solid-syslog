@@ -35,7 +35,7 @@ identities — it consumes ones you provide.
 
 A single log record travels:
 
-```
+```text
 your code ──Log()──▶ buffer ──Service()──▶ store ──▶ sender ──▶ TLS/TCP/UDP ──▶ receiver
               (in-process)      (optional persistence)     (network)
 ```
@@ -133,6 +133,7 @@ These are properties of the shipped code, not aspirations:
 |---|---|
 | Not log secrets you don't want transported/stored | The library is a transport, not a redactor — it never inspects content. |
 | Provision and validate TLS/mTLS certificates; supply the CA bundle and cipher policy | The library consumes trust material; it does not mint or manage it. |
+| Resolve and trust the destination address | The library connects to whatever address the injected resolver returns; it does not authenticate DNS responses. On targets without DNS you supply the address directly. |
 | Supply a properly-seeded RNG (Mbed TLS `ctr_drbg`) | A weak RNG silently weakens TLS. The library uses the RNG you inject. |
 | Inject a real mutex (CircularBuffer) / config-lock (multi-task pools) where concurrency exists | The library's synchronisation primitives are injected; the defaults are no-ops. |
 | Keep `Log()`→`Service()` within one trust domain, or secure a boundary-crossing Buffer yourself | The library does not check the buffer dataflow (B4). |
@@ -150,8 +151,17 @@ These are properties of the shipped code, not aspirations:
   cryptographic guarantee that downstream records are unaltered. RFC 5848 message
   signing is the standard answer and is **not implemented** — tracked under
   [E22 (#232)](../../issues/232), which may be revisited given demand.
-- **TLS certificate revocation (CRL/OCSP)** — deferred to the OS trust store; the
-  library performs no revocation checks itself.
+- **Replay of captured records** — TLS prevents replay within a live session, but
+  SolidSyslog adds no cryptographic anti-replay of its own. Anyone able to
+  re-inject records downstream of a terminated TLS hop (a malicious or compromised
+  relay) can replay valid records undetected — the same root cause as the
+  end-to-end integrity gap above. Receiver-side de-duplication on the RFC 5424
+  `sequenceId` / timestamp is the mitigation; note `sequenceId` is informational,
+  not cryptographically bound.
+- **TLS certificate revocation (CRL/OCSP)** — the library performs no revocation
+  checking itself. Whether revocation is enforced depends on the TLS backend and
+  platform you configure; treat it as your responsibility unless your backend
+  guarantees it.
 - **Cryptographic attacks on the underlying TLS/crypto library** — delegated to
   OpenSSL / Mbed TLS.
 - **Network denial of service** — a sender cannot prevent it. The library degrades
