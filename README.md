@@ -42,8 +42,8 @@ scenarios driven through QEMU's UART
   matching pools live in `Core/Source/SolidSyslog*SenderStatic.c`.
 - At-rest integrity is CRC-16 only; HMAC + AES-at-rest are planned for SL4
   ([E17 #105](https://github.com/DavidCozens/solid-syslog/issues/105)).
-- TLS revocation (CRL / OCSP) is deferred to the OS trust store; the library
-  itself does not perform revocation checks.
+- TLS revocation (CRL / OCSP) is not performed by the library; whether it is
+  enforced depends on the TLS backend and platform you configure.
 - Comprehensive error guards still rolling out
   ([E12 #31](https://github.com/DavidCozens/solid-syslog/issues/31)).
 
