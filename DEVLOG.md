@@ -15052,3 +15052,51 @@ polished, presentable library plus the business-account migration.
 ### Open questions
 - Merge order S19.03 vs S19.04 — SECURITY.md forward-links threat-model.md.
 - Go-public: history curation + DEVLOG.md (792 KB) handling — decided at the gate.
+
+## 2026-07-09 — S19.04: threat model
+
+Drafted `docs/security/threat-model.md` (E19). Integrator-first voice per David's
+steer — a library component can only ever help integrators with *their* modelling,
+so the doc is framed as trust boundaries + the division-of-responsibility contract,
+not a system DFD.
+
+### Decisions
+- **Buffer is a conditional (B4) boundary, not an unconditional one** (David's
+  catch). CircularBuffer/Passthrough are intra-process → no trust boundary (mutex is
+  concurrency, not security). PosixMQ transits a kernel queue but the library creates
+  it `0600`, so single-process/same-UID stays in-domain by construction. Documented
+  the assumption + the integrator obligation if a custom Buffer crosses a
+  process/privilege boundary (library applies no check across the buffer path today).
+- **RFC 5848 gap named plainly** and pointed at E22 (#232) — TLS is hop-by-hop only;
+  end-to-end integrity through relays is not provided. "May revisit given demand."
+- Repo-relative issue link (`../../issues/232`) for cross-refs — survives the org move.
+- Referenced iec62443.md / rfc-compliance.md generally rather than asserting specific
+  FR-number mappings — keeps this a threat model, not a compliance doc.
+
+### Verification (claims checked against source before asserting)
+- PosixMessageQueueBuffer `mq_open(..., 0600, ...)` — owner-only. ✔
+- Formatter owns wire framing; SdValue escaper is single source of truth for `" \ ]`
+  + ill-formed-byte substitution → syslog injection prevented by construction. ✔
+- PosixTcpStream non-blocking from the start, bounded `select()` connect deadline,
+  fail-fast → service-thread liveness defended. ✔
+- All four E17 at-rest policies (OpenSSL/mbedTLS × HMAC-SHA256/AES-GCM) shipped. ✔
+
+### Open questions
+- Merge order S19.03 (#585) ↔ S19.04: the two docs cross-link; land both close
+  together so neither forward-link is dead on `main`.
+
+## 2026-07-10 — resolve S19.04 merge conflict
+
+Merged `origin/main` into the threat-model branch after `SECURITY.md` work landed
+first and both sessions appended to `DEVLOG.md`.
+
+### Decisions
+- Kept both append-only DEVLOG entries in chronological order rather than trying to
+  rewrite or compress them; the only real conflict was both branches touching EOF.
+- Left the branch-scoped work narrowly focused on the merge resolution. `SECURITY.md`
+  comes from `origin/main`; this branch's content change remains the threat-model
+  docs work already under review.
+
+### Deferred
+- The README note about E17 at-rest policies still claiming "planned for SL4" stays
+  deferred to the separate README pass already tracked in PR discussion.
