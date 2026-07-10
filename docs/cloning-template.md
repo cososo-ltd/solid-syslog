@@ -72,6 +72,7 @@ bash scripts/init-component.sh LedDriver
 ```
 
 This will:
+
 - Rename the CMake project to `LedDriver`
 - Replace the example source, header, and test files with a `LedDriver` stub
 - Replace the BDD target binary in `Bdd/Targets/` with a `LedDriver` stub
@@ -108,6 +109,7 @@ git push
 ### 10. Enable GitHub Pages for coverage reports
 
 In the GitHub repository settings, under **Pages**:
+
 - Set **Source** to `GitHub Actions`
 
 Without this, the `deploy-coverage-pages` job will fail on every push to `main`.
@@ -130,6 +132,7 @@ gh api repos/OWNER/REPO/pages -X POST -f build_type=workflow
 This is required for the Release Please workflow to open its release PR automatically.
 
 In the GitHub repository settings, under **Actions** → **General** → **Workflow permissions**:
+
 - Select **Read and write permissions**
 - Check **Allow GitHub Actions to create and approve pull requests**
 
@@ -145,6 +148,7 @@ gh api repos/OWNER/REPO/actions/permissions/workflow \
 ### 12. Configure branch protection on the new repository
 
 In the GitHub repository settings, under **Branches** → **Add branch protection rule** for `main`:
+
 - Require a pull request before merging
 - Require all status checks to pass: `build-linux-gcc`, `build-linux-clang`, `build-windows-msvc`, `sanitize-linux-gcc`, `coverage-linux-gcc`, `analyze-tidy`, `analyze-cppcheck`, `analyze-format`, `integration-linux-openssl`, `bdd-linux-syslog-ng`, `bdd-windows-otel`
 - Require squash merge only

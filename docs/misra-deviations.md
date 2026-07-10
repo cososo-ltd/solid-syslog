@@ -819,7 +819,7 @@ scanned scope.
 The macros *are* used — by integrators in `Tests/` and `Bdd/Targets/`.
 Verified by `grep` over the tree:
 
-```
+```text
 Tests/SolidSyslogCircularBufferTest.cpp         — RING_BYTES
 Tests/SolidSyslogBlockStoreDrainOrderingTest.cpp — RING_BYTES
 Bdd/Targets/Windows/BddTargetWindows.c           — RING_BYTES

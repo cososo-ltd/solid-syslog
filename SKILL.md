@@ -18,7 +18,8 @@ When in doubt about intent or architecture, ask the developer rather than assumi
 ## DEVLOG.md convention
 
 Append an entry to DEVLOG.md after every meaningful session. Format:
-```
+
+```text
 ## YYYY-MM-DD — <short session title>
 
 ### Decisions

@@ -6,6 +6,7 @@ walks through the verification a careful integrator would run, in the order
 they'd naturally run it.
 
 Prerequisites:
+
 - [cosign](https://docs.sigstore.dev/system_config/installation/) v2 or
   later on your `$PATH`.
 - [cyclonedx-cli](https://github.com/CycloneDX/cyclonedx-cli) v0.30.0 or
@@ -71,6 +72,7 @@ find Core Platform CMakeLists.txt CMakePresets.json LICENSE.md -type f \
 ```
 
 Same hash expected, same comparison. Caveats:
+
 - Assumes the working tree is clean — any untracked or locally-modified
   file under the in-scope paths will change the hash.
 - Assumes line endings are LF on disk (git's `.gitattributes` enforces

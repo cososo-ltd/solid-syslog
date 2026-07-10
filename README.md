@@ -8,6 +8,7 @@ mbedTLS, hardware-offload, …) by implementing the same Stream vtable. TLS itse
 is not a core dependency; Core has zero OpenSSL references.
 
 Designed for resource-constrained environments:
+
 - C99, no dynamic memory allocation required — allocator is caller-injected
 - Transport-agnostic — UDP, TCP, TLS, or bring your own
 - Buffer-agnostic — PassthroughBuffer (direct send), portable CircularBuffer (mutex-injected ring), POSIX message queue, or bring your own
@@ -69,6 +70,7 @@ Optional features are composed at link time via dead code elimination; there are
 no conditional compilation directives in the library source.
 
 Public headers are split by audience (Interface Segregation Principle):
+
 - **`SolidSyslog.h`** — application code that logs events (`Log`, `Service`)
 - **`SolidSyslogConfig.h`** — system setup code that creates and destroys loggers
 - **`SolidSyslogError.h`** — install a handler to react to library-internal errors (NULL guards, send failures); default is silent. See `Bdd/Targets/Common/BddTargetStderrErrorHandler.c` for a reference implementation

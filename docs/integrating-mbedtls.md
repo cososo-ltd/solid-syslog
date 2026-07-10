@@ -79,6 +79,7 @@ Concretely, on top of your existing setup:
    shipped adapters are the worked examples.
 2. **Fill in `SolidSyslogMbedTlsStreamConfig`** with the handles you
    already have:
+
    ```c
    struct SolidSyslogMbedTlsStreamConfig cfg = {
        .Transport               = myTcpStream,        /* from step 1 */
@@ -93,6 +94,7 @@ Concretely, on top of your existing setup:
    };
    struct SolidSyslogStream* tlsStream = SolidSyslogMbedTlsStream_Create(&cfg);
    ```
+
 3. **Wire `tlsStream` into a `SolidSyslogStreamSender`** as the `Stream`
    field — the same way you'd wire a plain TCP stream. RFC 6587
    octet-counting framing is applied by `StreamSender` on top of the

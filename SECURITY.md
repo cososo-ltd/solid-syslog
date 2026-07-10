@@ -13,7 +13,7 @@ requests, or discussions.** Use one of the private channels below:
    repository, go to the **Security** tab → **Report a vulnerability**.
    This opens a private advisory visible only to you and the maintainer.
 2. **Web form.** If you cannot use GitHub, submit the form at
-   **https://cososo.co.uk/security/report**. It routes to a private inbox.
+   **<https://cososo.co.uk/security/report>**. It routes to a private inbox.
 
 We do not publish a security email address. Both channels above reach the
 maintainer privately.

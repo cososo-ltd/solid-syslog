@@ -15100,3 +15100,33 @@ first and both sessions appended to `DEVLOG.md`.
 ### Deferred
 - The README note about E17 at-rest policies still claiming "planned for SL4" stays
   deferred to the separate README pass already tracked in PR discussion.
+
+## 2026-07-10 — S24.19: markdownlint config + CI lane
+
+Recurring CodeRabbit markdown nitpicks (MD040/MD060/MD034) had no local or CI
+gate — the linter was effectively per-comment. Added a configured
+markdownlint-cli2 so the rules are codified once and CodeRabbit (which honours a
+repo's markdownlint config) stops flagging them at the source.
+
+### Decisions
+- Tool: markdownlint-cli2 **v0.22.1** — the exact engine CodeRabbit runs —
+  pinned by image digest in CI, so CI / local / CodeRabbit all agree.
+- Conventions: MD013 (line length) and MD060 (table style) off (compact tables +
+  hand-wrapping are deliberate); MD040 (fence language) on; MD024 siblings-only.
+- Ignores: DEVLOG.md, CHANGELOG.md, LICENSE.md, generated/vendored.
+- **DEVLOG stays ignored** (reversed an earlier "lint it" call): `--fix` rewrites
+  ~300 historical lines and in places corrupts content (stripped the intentional
+  leading space in the `_Param` → emits ` name="` note). Meaningful linting needs
+  that reformatting, which clashes with "never rewrite DEVLOG history".
+- PR template: MD041 disabled via an inline `disable-file` directive, not a
+  nested `.github/.markdownlint.jsonc` — cli2 doesn't merge a nested config with
+  the root ruleset, so the nested file silently re-enabled MD013.
+- Backlog: `--fix` cleared the mechanical majority; 12 manual fixes (8 fenced
+  language tags → `text`, 4 CMSDK bold → `####` headings).
+
+### Deferred
+- Add `analyze-markdown` to branch-protection required checks (GitHub settings —
+  David's task). Wired into `summary` for visibility meanwhile.
+
+### Open questions
+- None.

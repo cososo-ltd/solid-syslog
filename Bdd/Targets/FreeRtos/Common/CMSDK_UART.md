@@ -61,7 +61,7 @@ The driver currently uses UART0 and is hardcoded to `0x40004000` in
 
 ### 1.4 Bit semantics
 
-**DATA (0x000) — R/W, 8 valid bits**
+#### DATA (0x000) — R/W, 8 valid bits
 
 - **Write:** loads transmit holding byte. Effective only if `CTRL.TX_EN=1`.
   In QEMU, a write while `STATE.TXFULL` is already set sets
@@ -69,7 +69,7 @@ The driver currently uses UART0 and is hardcoded to `0x40004000` in
 - **Read:** returns the last received byte. Reading clears `STATE.RXFULL`
   as a side-effect.
 
-**STATE (0x004)**
+#### STATE (0x004)
 
 | Bit | Name      | Direction  |
 |-----|-----------|------------|
@@ -83,7 +83,7 @@ of HW transmit completion (TXFULL) and DATA reads (RXFULL). Overrun bits
 are write-1-to-clear: write `STATE = 0x4` to clear TXOVERRUN, `STATE = 0x8`
 for RXOVERRUN, `0xC` for both.
 
-**CTRL (0x008)**
+#### CTRL (0x008)
 
 | Bit | Name      |
 |-----|-----------|
@@ -97,7 +97,7 @@ for RXOVERRUN, `0xC` for both.
 
 In QEMU the writable mask is `0x7F`; bits 7+ are dropped silently.
 
-**INTSTATUS / INTCLEAR (0x00C)**
+#### INTSTATUS / INTCLEAR (0x00C)
 
 Same address; reads return INTSTATUS, writes act as INTCLEAR (W1C).
 
@@ -234,10 +234,12 @@ slice, written down here so the reader doesn't have to chase it:
 ### 3.1 Required sequence
 
 **Initialization (once):**
+
 1. BAUDDIV ≥ 16.
 2. CTRL.RX_EN = 1.
 
 **Per-character RX (non-blocking poll):**
+
 1. If `STATE & RXFULL` is 0, return "no data".
 2. Read `DATA` → byte.
 
@@ -265,7 +267,7 @@ consumer is too slow, RXOVERRUN will fire and bytes will be lost.
 
 ### 3.4 Read-then-clear pseudocode
 
-```
+```text
 poll_in():
     if (STATE & RXFULL) == 0:
         return EMPTY
@@ -368,6 +370,7 @@ which lets the spin behaviour be unit-tested without threading.
 | RX poll loop without yield                 | Doesn't burn CPU  | Burns CPU at 100% |
 
 The first three are addressed by the slice-2 driver:
+
 - `BAUDDIV ≥ 16` is a hardcoded constant.
 - `CTRL.TX_EN` is set in `Init`, before any `PutChar`.
 - `STATE.TXFULL` is polled before each DATA write.

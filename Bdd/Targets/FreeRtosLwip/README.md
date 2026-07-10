@@ -56,7 +56,8 @@ so the resolve completes on-device without a DNS server.
 
 > **Known limitation — over-the-wire DNS is not exercised here.** This target
 > drives only the resolver's *synchronous local-hostlist* branch. The QEMU slirp
-> + docker topology cannot hand the guest a reachable address for the `syslog-ng`
+>
+> - docker topology cannot hand the guest a reachable address for the `syslog-ng`
 > docker alias over real DNS — slirp's forwarder (`10.0.2.3`) resolves it to a
 > docker-bridge IP the guest has no route to; only `10.0.2.2` (slirp NAT → the
 > shared-namespace host loopback) reaches the oracle. The async / over-the-wire /
