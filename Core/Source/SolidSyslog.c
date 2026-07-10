@@ -255,23 +255,22 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
 {
     bool drained = SolidSyslog_DrainBufferIntoStore(self);
     bool sendFailed = SolidSyslog_SendOneFromStore(self);
-    enum SolidSyslogServiceStatus status;
+    enum SolidSyslogServiceStatus status = SOLIDSYSLOG_SERVICE_IDLE;
 
-    if (drained)
-    {
-        status = SOLIDSYSLOG_SERVICE_READY;
-    }
-    else if (sendFailed)
+    /* Buffer activity out-ranks a send failure: only a buffer that stayed idle lets a
+       failed send surface as BLOCKED, and any buffer drain or remaining stored record
+       keeps the loop READY. */
+    if (sendFailed && !drained)
     {
         status = SOLIDSYSLOG_SERVICE_BLOCKED;
     }
-    else if (SolidSyslogStore_HasUnsent(self->Store))
+    else if (drained || SolidSyslogStore_HasUnsent(self->Store))
     {
         status = SOLIDSYSLOG_SERVICE_READY;
     }
     else
     {
-        status = SOLIDSYSLOG_SERVICE_IDLE;
+        /* Buffer idle, nothing stored, no failed send — IDLE (initial value). */
     }
 
     return status;
