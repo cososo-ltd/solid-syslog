@@ -15012,3 +15012,35 @@ safe API.
 - The `custom_sd.feature` oracle round-trip is **authored but not yet run** — `behave` needs
   the docker/syslog-ng oracle, which runs from WSL, not the devcontainer. Next step: pull the
   branch in WSL, run the `@udp` `custom_sd` scenario, confirm `detail "Hello World"` round-trips.
+
+## 2026-07-09 — S19.04: threat model
+
+Drafted `docs/security/threat-model.md` (E19). Integrator-first voice per David's
+steer — a library component can only ever help integrators with *their* modelling,
+so the doc is framed as trust boundaries + the division-of-responsibility contract,
+not a system DFD.
+
+### Decisions
+- **Buffer is a conditional (B4) boundary, not an unconditional one** (David's
+  catch). CircularBuffer/Passthrough are intra-process → no trust boundary (mutex is
+  concurrency, not security). PosixMQ transits a kernel queue but the library creates
+  it `0600`, so single-process/same-UID stays in-domain by construction. Documented
+  the assumption + the integrator obligation if a custom Buffer crosses a
+  process/privilege boundary (library applies no check across the buffer path today).
+- **RFC 5848 gap named plainly** and pointed at E22 (#232) — TLS is hop-by-hop only;
+  end-to-end integrity through relays is not provided. "May revisit given demand."
+- Repo-relative issue link (`../../issues/232`) for cross-refs — survives the org move.
+- Referenced iec62443.md / rfc-compliance.md generally rather than asserting specific
+  FR-number mappings — keeps this a threat model, not a compliance doc.
+
+### Verification (claims checked against source before asserting)
+- PosixMessageQueueBuffer `mq_open(..., 0600, ...)` — owner-only. ✔
+- Formatter owns wire framing; SdValue escaper is single source of truth for `" \ ]`
+  + ill-formed-byte substitution → syslog injection prevented by construction. ✔
+- PosixTcpStream non-blocking from the start, bounded `select()` connect deadline,
+  fail-fast → service-thread liveness defended. ✔
+- All four E17 at-rest policies (OpenSSL/mbedTLS × HMAC-SHA256/AES-GCM) shipped. ✔
+
+### Open questions
+- Merge order S19.03 (#585) ↔ S19.04: the two docs cross-link; land both close
+  together so neither forward-link is dead on `main`.
