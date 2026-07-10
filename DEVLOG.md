@@ -15197,3 +15197,30 @@ operational counterpart to SECURITY.md (what we promise) and the threat model
 
 ### Open questions
 - None.
+
+## 2026-07-10 — S19.06: release process playbook
+
+`docs/release-process.md` — fourth of E19's five docs, and the target of S19.05's
+forward-link.
+
+### Decisions
+- **It's documentation, not a release** (David's steer) — writing the playbook
+  needs no release and no unpark; it describes the process and honestly records
+  the current parked state.
+- **Trimmed hard** (David's steer) — the durable steady-state flow (Conventional
+  Commits → release-please PR → tag/Release → SBOM + cosign) is the doc; the
+  transient parked state is a **one-line status pointer** to `release-please.yml`,
+  not a duplicated section (single source of truth, won't drift). Simplify now,
+  not "document heavily then delete at 0.1.0".
+- Verification is what integrators do afterward, not a maintainer release step —
+  folded into the intro as cross-refs to `release-verification.md` / `sbom.md`,
+  not its own section.
+- Grounded in the real wiring: `release-please-config.json` (`bump-minor-pre-major`,
+  initial 0.1.0), `sbom.yml` (`release: published` → CycloneDX render/validate →
+  content-tree SHA-256 → cosign keyless sign → attach 4 assets).
+
+### Deferred
+- None.
+
+### Open questions
+- None.
