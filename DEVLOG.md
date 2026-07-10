@@ -15013,6 +15013,46 @@ safe API.
   the docker/syslog-ng oracle, which runs from WSL, not the devcontainer. Next step: pull the
   branch in WSL, run the `@udp` `custom_sd` scenario, confirm `detail "Hello World"` round-trips.
 
+## 2026-07-06 — Launch planning, epic audit, E19 security-docs elaboration, S19.03 SECURITY.md
+
+Returning after client work. Swept repo/issue state and planned the path to a
+polished, presentable library plus the business-account migration.
+
+### Decisions
+- Sequence: pre-migration polish (E19 security docs + E31 `Service()` 4-state to
+  lock the API shape) → transfer to Cozens org via GitHub Transfer (keep full
+  history, stay PRIVATE) → owner-reference sweep (62 `DavidCozens` refs) → E23
+  docs site (Sphinx) against the stable API → go-public gate → 0.1.0.
+- Contribution model: **closed to external code** (PolyForm Noncommercial +
+  dual-licensing needs clean copyright). Issues welcome, PRs by invitation.
+- Community-health files folded into E23 as S23.08 (not a new epic). Account
+  migration / go-public need no epic yet.
+- Epic audit: sub-issue roll-up % is unreliable under lazy elaboration. Audited
+  all 25 closed epic bodies + 7 open — all closed genuinely done bar intentional
+  declines (E16, E26 session resumption, E09). E19 was the false-100%: SBOM half
+  built, security-docs half never decomposed.
+- E09 (C++ wrapper) closed as not-planned with rationale — C library is the
+  product; wrapper additive, no demand.
+- E19 elaborated into S19.03–07 (per-story PRs). Intake: GitHub private reporting
+  → `cososo.co.uk/security/report` form → no email published.
+- S19.03 SECURITY.md approved: tier-based scope, 72h/7d free-tier SLAs, 90+14
+  disclosure, force-majeure + continuity (relicense-to-Apache-if-abandoned).
+
+### Deferred
+- E18 flash (S18.04), E22 RFC 5848 signing, E25 fuzz — not launch blockers;
+  E25-C (OSS-Fuzz) blocked on public repo.
+- release-please parked (PR #575, dangling 0.1.0 PR #101) — unpark story at the
+  docs/release phase; flagged on S19.06.
+
+### External (maintainer, off-repo)
+- E19 preconditions: `/security/report` form → Gmail-routed inbox, Gmail filter
+  rules, `security@cososo.co.uk` forwarder. Flagged on S19.03; needed before
+  go-public since SECURITY.md links the form.
+
+### Open questions
+- Merge order S19.03 vs S19.04 — SECURITY.md forward-links threat-model.md.
+- Go-public: history curation + DEVLOG.md (792 KB) handling — decided at the gate.
+
 ## 2026-07-09 — S19.04: threat model
 
 Drafted `docs/security/threat-model.md` (E19). Integrator-first voice per David's
@@ -15044,3 +15084,19 @@ not a system DFD.
 ### Open questions
 - Merge order S19.03 (#585) ↔ S19.04: the two docs cross-link; land both close
   together so neither forward-link is dead on `main`.
+
+## 2026-07-10 — resolve S19.04 merge conflict
+
+Merged `origin/main` into the threat-model branch after `SECURITY.md` work landed
+first and both sessions appended to `DEVLOG.md`.
+
+### Decisions
+- Kept both append-only DEVLOG entries in chronological order rather than trying to
+  rewrite or compress them; the only real conflict was both branches touching EOF.
+- Left the branch-scoped work narrowly focused on the merge resolution. `SECURITY.md`
+  comes from `origin/main`; this branch's content change remains the threat-model
+  docs work already under review.
+
+### Deferred
+- The README note about E17 at-rest policies still claiming "planned for SL4" stays
+  deferred to the separate README pass already tracked in PR discussion.
