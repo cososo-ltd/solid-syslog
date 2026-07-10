@@ -29,8 +29,8 @@ struct SolidSyslogSender;
 struct SolidSyslogStore;
 struct SolidSyslogStructuredData;
 
-static inline void SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
-static inline void SolidSyslog_SendOneFromStore(struct SolidSyslog* self);
+static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
+static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self);
 static void SolidSyslog_DoLog(
     struct SolidSyslog* handle,
     const struct SolidSyslogMessage* message,
@@ -62,7 +62,7 @@ static void SolidSyslog_InstallStructuredData(
     size_t count
 );
 static inline bool SolidSyslog_IsServiceEnabled(struct SolidSyslog* self);
-static void SolidSyslog_ProcessMessages(struct SolidSyslog* self);
+static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self);
 static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self);
 
 void SolidSyslog_Initialise(struct SolidSyslog* self, const struct SolidSyslogConfig* config)
@@ -221,8 +221,10 @@ static void SolidSyslog_InstallStructuredData(
     }
 }
 
-void SolidSyslog_Service(struct SolidSyslog* handle)
+enum SolidSyslogServiceStatus SolidSyslog_Service(struct SolidSyslog* handle)
 {
+    enum SolidSyslogServiceStatus status = SOLIDSYSLOG_SERVICE_IDLE;
+
     if (handle == NULL)
     {
         SolidSyslog_Report(
@@ -233,12 +235,15 @@ void SolidSyslog_Service(struct SolidSyslog* handle)
     }
     else if (SolidSyslog_IsServiceEnabled(handle))
     {
-        SolidSyslog_ProcessMessages(handle);
+        status = SolidSyslog_ProcessMessages(handle);
     }
     else
     {
         /* Halted store — skip drain/send. */
+        status = SOLIDSYSLOG_SERVICE_HALTED;
     }
+
+    return status;
 }
 
 static inline bool SolidSyslog_IsServiceEnabled(struct SolidSyslog* self)
@@ -246,10 +251,30 @@ static inline bool SolidSyslog_IsServiceEnabled(struct SolidSyslog* self)
     return !SolidSyslogStore_IsHalted(self->Store);
 }
 
-static void SolidSyslog_ProcessMessages(struct SolidSyslog* self)
+static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self)
 {
-    SolidSyslog_DrainBufferIntoStore(self);
-    SolidSyslog_SendOneFromStore(self);
+    bool drained = SolidSyslog_DrainBufferIntoStore(self);
+    bool sendFailed = SolidSyslog_SendOneFromStore(self);
+    enum SolidSyslogServiceStatus status;
+
+    if (drained)
+    {
+        status = SOLIDSYSLOG_SERVICE_READY;
+    }
+    else if (sendFailed)
+    {
+        status = SOLIDSYSLOG_SERVICE_BLOCKED;
+    }
+    else if (SolidSyslogStore_HasUnsent(self->Store))
+    {
+        status = SOLIDSYSLOG_SERVICE_READY;
+    }
+    else
+    {
+        status = SOLIDSYSLOG_SERVICE_IDLE;
+    }
+
+    return status;
 }
 
 /* Eagerly drain the buffer so the producer-side shock absorber stays small while
@@ -261,30 +286,43 @@ static void SolidSyslog_ProcessMessages(struct SolidSyslog* self)
  * discard policy speaking — letting that message escape via direct send would
  * break the discard-newest contract (a newer message would bypass older stored
  * ones once the sender recovered). */
-static inline void SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
+static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
 {
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t len = 0;
+    bool drained = false;
 
     while (SolidSyslogBuffer_Read(self->Buffer, buf, sizeof(buf), &len))
     {
+        drained = true;
         if (!SolidSyslogStore_Write(self->Store, buf, len) && SolidSyslogStore_IsTransient(self->Store))
         {
             (void) SolidSyslogSender_Send(self->Sender, buf, len);
         }
     }
+
+    return drained;
 }
 
-static inline void SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
+static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
 {
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t len = 0;
+    bool sendFailed = false;
 
-    if (SolidSyslogStore_ReadNextUnsent(self->Store, buf, sizeof(buf), &len) &&
-        SolidSyslogSender_Send(self->Sender, buf, len))
+    if (SolidSyslogStore_ReadNextUnsent(self->Store, buf, sizeof(buf), &len))
     {
-        SolidSyslogStore_MarkSent(self->Store);
+        if (SolidSyslogSender_Send(self->Sender, buf, len))
+        {
+            SolidSyslogStore_MarkSent(self->Store);
+        }
+        else
+        {
+            sendFailed = true;
+        }
     }
+
+    return sendFailed;
 }
 
 void SolidSyslog_Log(struct SolidSyslog* handle, const struct SolidSyslogMessage* message)

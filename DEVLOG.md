@@ -1,5 +1,47 @@
 # Dev Log
 
+## 2026-07-10 — S31.01 Service returns a four-state servicing status
+
+First story of E31 (event-driven servicing). `SolidSyslog_Service` changes from
+`void` to `enum SolidSyslogServiceStatus` so a host can drive a wake/back-off loop
+instead of a fixed-delay poll — no new OS surface, no injected primitive; the
+integrator owns the wake mechanism in a thin wrapper around `Log`/`Service`.
+
+### Change
+
+- New public header `SolidSyslogServiceStatus.h` — `IDLE` / `READY` / `BLOCKED` /
+  `HALTED` (Transport-enum shape). `Service` returns it; the contract lives in the
+  `Service()` header comment (no new `.md`).
+- Internals: `DrainBufferIntoStore` and `SendOneFromStore` now report their outcome
+  (`drained` / `sendFailed`); `ProcessMessages` composes the decision order. Key
+  invariant: **buffer drain out-ranks a send failure** — a down sender never demotes
+  the loop out of "keep draining" while the buffer has anything to move.
+- `void`→`enum` is source-compatible: existing poll loops that ignore the result are
+  untouched (no `warn_unused_result`).
+
+### Decisions
+
+- Drove all four decision-order branches by test, including the `HasUnsent → READY`
+  path (backlog remains after a successful send). The story's numbered TDD list only
+  covered three status paths; rather than ship that branch untested I added a failing
+  test for it. NULL-handle → `IDLE` guarded on the existing null-handle test.
+- `HALTED` documented as only reachable under the halt-when-full discard policy
+  (`SolidSyslogDiscardPolicy_Halt`).
+- Dogfooded the new return in the shared BDD service thread
+  (`BddTargetServiceThread`, used by the Linux/Windows/FreeRTOS targets): it now
+  consumes the status instead of discarding it — on `READY` it skips the 1 ms idle
+  yield and loops again immediately, otherwise it yields as before. Kept it light per
+  the "use it, don't exhaustively assert it in BDD" steer: one unit test on the yield
+  duration, no new wake primitive, no new scenario. Existing BDD behaviour/timing
+  unchanged (still polls every 1 ms while idle or a sender is down).
+
+### Deferred
+
+- The latent "a HALTED store never drains itself even once the sender recovers"
+  behaviour is out of scope for E31 (separate fix if we decide it's wrong).
+- A fully event-driven wait (wake-on-`Log` primitive replacing the poll) — a later
+  step if we decide the poll floor is worth removing.
+
 ## 2026-06-17 — capture BDD-target stderr (mTLS flake diagnosis)
 
 Chased the `bdd-windows-otel` mTLS flake that put `main` red after the S30 CMake

@@ -116,3 +116,15 @@ TEST(BddTargetServiceThread, YieldsOneMillisecondAfterEachServiceTick)
     CALLED_FUNCTION(SleepFake, ONCE);
     LONGS_EQUAL(1, lastSleepMs);
 }
+
+TEST(BddTargetServiceThread, SkipsIdleYieldWhenServiceReportsWorkReady)
+{
+    shutdown = false;
+    sleepShutdownFlag = &shutdown;
+    Log();
+
+    BddTargetServiceThread_Run(solidSyslog, &shutdown, SleepFake);
+
+    CALLED_FUNCTION(SleepFake, ONCE);
+    LONGS_EQUAL(0, lastSleepMs);
+}
