@@ -5,6 +5,7 @@ document tracks which requirements are currently met, partially met, or
 planned.
 
 Status key:
+
 - Supported — implemented and tested
 - Partial — implemented with known limitations
 - Planned — tracked in an issue or epic

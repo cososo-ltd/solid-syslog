@@ -73,12 +73,14 @@ oracle on the shared loopback.
   spawns once `eNetworkUp` fires. Add `-d guest_errors` to the QEMU args
   (in `target_driver.py::_QEMU_BASE_ARGS`) to surface CPU exceptions, or
   detach the same QEMU command from Behave and drive it manually:
+
   ```bash
   qemu-system-arm -M mps2-an385 -m 16M -display none -serial stdio \
       -icount shift=auto,sleep=off,align=off \
       -netdev user,id=net0 -net nic,netdev=net0,model=lan9118 \
       -kernel build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf
   ```
+
 - **Oracle is silent**: confirm the syslog-ng-freertos service is
   healthy (`docker compose ps`), and that the host you're testing
   resolves under the shared netns. Slice 3b.1.5's ARP-priming work

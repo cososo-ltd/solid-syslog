@@ -29,6 +29,7 @@ Commits on the branch can be informal (WIP messages are fine). The PR title is
 what matters — it becomes the permanent commit message on `main` on squash merge.
 
 **Branch protection rules (configured on GitHub):**
+
 - Direct pushes to `main` are blocked
 - PRs require all status checks to pass before merging: build-linux-gcc, build-linux-clang, build-windows-msvc, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, analyze-iwyu, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, bdd-linux-syslog-ng, bdd-windows-otel, bdd-freertos-qemu-plustcp, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, analyze-tidy-freertos-plustcp, analyze-iwyu-freertos-plustcp, bdd-freertos-qemu-lwip, build-freertos-target-lwip, analyze-tidy-freertos-lwip, analyze-iwyu-freertos-lwip, summary
 - Squash merge only — other merge strategies are disabled
@@ -199,7 +200,7 @@ need a numeric roll-up.
 All commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) format.
 This drives automated changelog generation and release versioning via release-please.
 
-```
+```text
 <type>[!]: <description>
 
 [optional body]
@@ -245,6 +246,7 @@ Named constants and test helpers emerge through the refactor step — never intr
 3. You may not write more production code than is sufficient to pass the one failing unit test.
 
 Refactoring must follow SOLID and DRY principles:
+
 - **Single Responsibility** — one reason to change per module/class
 - **Open/Closed** — open for extension, closed for modification
 - **Liskov Substitution** — subtypes must be substitutable for their base types
@@ -279,7 +281,7 @@ Coverage report: `cmake --preset coverage && cmake --build --preset coverage --t
 
 ## Project Structure
 
-```
+```text
 Core/Interface/     — Public headers of the core library. No implementation. This is the API boundary.
 Core/Source/        — Core library implementation. Compiled into a static library.
 Platform/           — Platform-specific code (Posix, Windows, OpenSsl) — each a subfolder with its own Interface/ and Source/.

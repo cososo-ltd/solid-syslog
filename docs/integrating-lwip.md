@@ -88,7 +88,6 @@ one tcpip thread, so per-instance marshals would be flexibility without use.
 Install nothing — the default direct-call marshal is correct. There is one
 execution context and no core to protect.
 
-
 Your `main()` is a forever-loop that, on each pass, calls
 `sys_check_timeouts()` and drives the RX path
 (`netif->input()` / `ethernetif_input()` / whichever your BSP wires).

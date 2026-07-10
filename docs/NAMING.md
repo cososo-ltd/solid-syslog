@@ -256,11 +256,11 @@ Constraints:
   `configuration` not `cfg`, `pointer` not `ptr`. Distinguish lazy
   abbreviations from domain terms — the latter are the real names of
   things and should be used unmodified. Domain terms include:
-    - RFC field names from specs the library implements (RFC 5424
+  - RFC field names from specs the library implements (RFC 5424
       `MSG` / `MSGID` / `PRIVAL` / `BOM` / `SD` / `PROCID`).
-    - Protocol and technology shorthands (`mq`, `crc`, `tls`, `tcp`,
+  - Protocol and technology shorthands (`mq`, `crc`, `tls`, `tcp`,
       `udp`, `ip`, `dns`).
-    - POSIX / Win32 idioms that mirror third-party signatures (`fd`,
+  - POSIX / Win32 idioms that mirror third-party signatures (`fd`,
       `errno`, `pid`, `sock`) — see also the Pragmatic-tier exemption
       in the Scope table for parameter locals in adapter wrappers
       (`buf` / `len` in `send` / `recv` wrappers, `attr` for
@@ -432,7 +432,7 @@ struct SolidSyslogBlockStore
 
 The struct tag and the member identifier live in separate C namespaces,
 so this is unambiguous to the compiler and to MISRA. To a reader it parses
-naturally after one or two exposures — the `struct ` keyword introduces
+naturally after one or two exposures — the `struct` keyword introduces
 the type, the trailing identifier is the member.
 
 ### Uniqueness within a struct

@@ -3,7 +3,7 @@
 RFC 5424 lets a message carry **structured data** — one or more `SD-ELEMENT`s, each a
 named bag of `PARAM="value"` pairs:
 
-```
+```text
 [example@32473 detail="Hello World"]
 ```
 

@@ -13,6 +13,7 @@ questions — this document is only concerned with the first.
 ## Product SBOM scope
 
 In scope:
+
 - `Core/` — Tier 1 (full support, stable API).
 - `Platform/` — Tier 2 (supported; API may evolve per target).
 - Root `CMakeLists.txt` + `CMakePresets.json` — the build contract an
@@ -21,6 +22,7 @@ In scope:
   downstream integrators inherit. Tampering here is a compliance issue.
 
 Out of scope:
+
 - `Tests/`, `Bdd/` — test harnesses (`Bdd/Targets/` holds the BDD-driven binaries — test infrastructure, not product).
 - `ci/`, `docs/`, `.devcontainer/`, `.github/`, `.vscode/` — dev/CI infrastructure.
 - `sbom/` — the SBOM template itself (meta; including it would be self-referential).
@@ -31,12 +33,14 @@ Out of scope:
   Informational / agent-facing / git configuration, not library source.
 
 Runtime dependencies we declare but do not bundle:
+
 - **OpenSSL** — optional, only when `SOLIDSYSLOG_OPENSSL=ON`. Listed as a
   CycloneDX component with `scope: optional`. No version pinned —
   integrators select their own OpenSSL and capture it in their own SBOM
   alongside the specific licence terms of the version they ship.
 
 Runtime dependencies we document as environment (not components):
+
 - **POSIX libc / Winsock / POSIX message queues** — host OS APIs, not
   shipped software. Recorded as `metadata.properties` rather than
   components.

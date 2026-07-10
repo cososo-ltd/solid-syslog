@@ -1,3 +1,4 @@
+<!-- markdownlint-disable-file MD041 — a PR template has no top-level heading by design. -->
 <!-- PR title must follow Conventional Commits format — it becomes the commit message on merge.
      Examples:
        feat: add arm-cortex-m toolchain preset
