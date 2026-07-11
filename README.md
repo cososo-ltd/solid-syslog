@@ -29,14 +29,27 @@ and at-rest record protection — CRC-16 for accidental corruption, or keyed
 HMAC-SHA256 / AES-256-GCM where a local attacker is in scope. The full
 [IEC 62443 SL1–SL4 component set](docs/iec62443.md) is available.
 
-POSIX and Windows are first-class hosts. FreeRTOS on Cortex-M carries the same
-UDP / TCP / TLS / mTLS transports — networking via FreeRTOS-Plus-TCP or lwIP,
-transport security via `SolidSyslogMbedTlsStream` (Mbed TLS) — with persistent
-store-and-forward over ChaN FatFs or FreeRTOS-Plus-FAT.
+SolidSyslog is built for embedded and RTOS targets. Every platform dependency —
+TCP/IP stack, TLS library, filesystem, OS primitives, clock — is injected through
+a vtable, so the library ports to **any** embedded OS by filling roles rather
+than editing Core. Reference adapters ship for FreeRTOS on Cortex-M (networking
+via FreeRTOS-Plus-TCP or lwIP, transport security via `SolidSyslogMbedTlsStream`
+over Mbed TLS, persistent store-and-forward over ChaN FatFs or FreeRTOS-Plus-FAT)
+— and for POSIX and Windows, fully supported as development, test, and edge /
+gateway hosts. Bring your own stack and the same Core runs unchanged.
 
 The library is pre-1.0: the public API may still change and carries no stability
 guarantee yet. TLS revocation (CRL / OCSP) is delegated to the platform trust
 store rather than performed by the library.
+
+## Documentation
+
+Full documentation lives in [`docs/`](docs/README.md) — the documentation home,
+organised around what you came to do: **Overview**, **Adopt**, **Port a new
+platform**, **Compliance**, **API reference**, and **Maintaining**. New here?
+[Compliance in one page](docs/overview.md) is the fastest orientation for
+evaluators; [Getting started](docs/getting-started.md) is the integrator front
+door.
 
 ## Getting started
 
@@ -104,6 +117,8 @@ per platform, all named `SolidSyslogBddTarget`:
 
 ## Compliance
 
+- [Compliance in one page](docs/overview.md) — the evaluator's one-screen orientation on CRA and IEC 62443
+- [Choosing components by Security Level](docs/security-levels.md) — which components to wire for each SL, and why
 - [IEC 62443 Compliance Guide](docs/iec62443.md) — component selection by Security Level (SL1–SL4) for industrial control systems
 - [RFC Compliance Matrix](docs/rfc-compliance.md) — sender-side coverage of RFC 5424, 5426, 6587, and 5425
 
