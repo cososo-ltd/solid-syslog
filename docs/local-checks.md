@@ -76,7 +76,7 @@ CI runs both lanes advisory — findings appear in the `iwyu-report` and
 Markdown is linted in CI by the `analyze-markdown` lane (markdownlint-cli2
 v0.22.1), wired into `summary`. The rules live in `.markdownlint-cli2.jsonc` —
 our conventions (line-length and table-column-style off, fenced-code language
-required); `DEVLOG.md`, `CHANGELOG.md`, and `LICENSE.md` are ignored.
+required); `CHANGELOG.md` and `LICENSE.md` are ignored.
 
 If you touch any `.md`, run it locally first. Same pinned engine as CI and
 CodeRabbit, via Docker (no Node needed):
