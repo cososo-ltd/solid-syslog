@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 690" font-family="'Segoe Print', 'Bradley Hand', 'Patrick Hand', cursive">
+  <!-- SolidSyslog storage stack — the Store -> BlockDevice -> File layering. Style kit: postit-defs.svg. -->
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="3.5"/>
+    </filter>
+    <filter id="postitShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="2" dy="5" stdDeviation="4" flood-color="#000" flood-opacity="0.28"/>
+    </filter>
+    <marker id="arrowUses" markerWidth="12" markerHeight="12" refX="8" refY="5" orient="auto">
+      <path d="M1,1 L9,5 L1,9" fill="none" stroke="#2b2b2b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowRealises" markerWidth="18" markerHeight="16" refX="13" refY="7" orient="auto">
+      <path d="M2,1 L15,7 L2,13" fill="#fbfbf5" stroke="#2b2b2b" stroke-width="1.6" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowInject" markerWidth="12" markerHeight="12" refX="8" refY="5" orient="auto">
+      <path d="M1,1 L9,5 L1,9" fill="none" stroke="#b0506a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="980" height="690" fill="#fbfbf5"/>
+  <text x="50" y="54" font-size="28" fill="#1a1f6e" font-weight="bold">SolidSyslog storage stack</text>
+  <text x="52" y="82" font-size="15" fill="#6a6a60" font-family="'Segoe UI', sans-serif">How a stored record reaches your media — three roles deep, with two places you can plug in.</text>
+  <line x1="50" y1="96" x2="930" y2="96" stroke="#3340a8" stroke-width="3" stroke-linecap="round" filter="url(#rough)"/>
+
+  <!-- legend -->
+  <g font-family="'Segoe UI', sans-serif" font-size="12" fill="#2b2b2b">
+    <rect x="690" y="30" width="14" height="14" fill="#bfe3c0"/><text x="709" y="42">role</text>
+    <rect x="760" y="30" width="14" height="14" fill="#cdd4f5"/><text x="779" y="42">backend</text>
+    <rect x="847" y="30" width="14" height="14" fill="#f6c6c6"/><text x="866" y="42">you inject</text>
+  </g>
+
+  <!-- Layer 1: Store / BlockStore -->
+  <g filter="url(#postitShadow)"><rect x="100" y="120" width="185" height="82" fill="#bfe3c0" transform="rotate(-1 192 161)"/></g>
+  <g transform="rotate(-1 192 161)" fill="#21401f"><text x="118" y="148" font-size="11.5" font-style="italic" font-family="'Segoe UI', sans-serif">«role»</text><text x="118" y="170" font-size="17" font-weight="bold">Store</text><text x="118" y="190" font-size="11.5" font-family="'Segoe UI', sans-serif">store &amp; forward API</text></g>
+  <g filter="url(#postitShadow)"><rect x="360" y="120" width="290" height="82" fill="#cdd4f5" transform="rotate(1 505 161)"/></g>
+  <g transform="rotate(1 505 161)" fill="#15324f"><text x="378" y="150" font-size="16" font-weight="bold">BlockStore</text><text x="378" y="172" font-size="11.5" font-family="'Segoe UI', sans-serif">rotating blocks · discard policy</text><text x="378" y="190" font-size="11.5" font-family="'Segoe UI', sans-serif">(RecordStore + BlockSequence inside)</text></g>
+
+  <!-- Layer 2: BlockDevice / FileBlockDevice -->
+  <g filter="url(#postitShadow)"><rect x="100" y="270" width="185" height="82" fill="#bfe3c0" transform="rotate(1 192 311)"/></g>
+  <g transform="rotate(1 192 311)" fill="#21401f"><text x="118" y="298" font-size="11.5" font-style="italic" font-family="'Segoe UI', sans-serif">«role»</text><text x="118" y="320" font-size="17" font-weight="bold">BlockDevice</text><text x="118" y="340" font-size="11.5" font-family="'Segoe UI', sans-serif">block-indexed I/O</text></g>
+  <g filter="url(#postitShadow)"><rect x="360" y="270" width="290" height="82" fill="#cdd4f5" transform="rotate(-1 505 311)"/></g>
+  <g transform="rotate(-1 505 311)" fill="#15324f"><text x="378" y="300" font-size="16" font-weight="bold">FileBlockDevice</text><text x="378" y="322" font-size="11.5" font-family="'Segoe UI', sans-serif">maps blocks onto a file</text><text x="378" y="340" font-size="11.5" font-family="'Segoe UI', sans-serif">(sequence-numbered .log files)</text></g>
+
+  <!-- Layer 3: File / platform file impls -->
+  <g filter="url(#postitShadow)"><rect x="100" y="420" width="185" height="82" fill="#bfe3c0" transform="rotate(-1 192 461)"/></g>
+  <g transform="rotate(-1 192 461)" fill="#21401f"><text x="118" y="448" font-size="11.5" font-style="italic" font-family="'Segoe UI', sans-serif">«role»</text><text x="118" y="470" font-size="17" font-weight="bold">File</text><text x="118" y="490" font-size="11.5" font-family="'Segoe UI', sans-serif">byte-file I/O</text></g>
+  <g filter="url(#postitShadow)"><rect x="360" y="420" width="290" height="82" fill="#cdd4f5" transform="rotate(1 505 461)"/></g>
+  <g transform="rotate(1 505 461)" fill="#15324f"><text x="378" y="450" font-size="15" font-weight="bold">PosixFile · WindowsFile</text><text x="378" y="470" font-size="15" font-weight="bold">FatFsFile · PlusFatFile</text><text x="378" y="490" font-size="11.5" font-family="'Segoe UI', sans-serif">realises File on your platform</text></g>
+
+  <!-- Media (injected) -->
+  <g filter="url(#postitShadow)"><rect x="360" y="560" width="290" height="80" fill="#f6c6c6" transform="rotate(-0.6 505 600)"/></g>
+  <g transform="rotate(-0.6 505 600)" fill="#4a2c2c"><text x="378" y="592" font-size="16" font-weight="bold">your media</text><text x="378" y="614" font-size="11.5" font-family="'Segoe UI', sans-serif">OS filesystem · FatFs · raw flash</text></g>
+
+  <!-- realises arrows (backend -> role) -->
+  <g fill="none" stroke="#2b2b2b" stroke-width="1.8" stroke-dasharray="6 5" filter="url(#rough)">
+    <path d="M358 161 H 288" marker-end="url(#arrowRealises)"/>
+    <path d="M358 311 H 288" marker-end="url(#arrowRealises)"/>
+    <path d="M358 461 H 288" marker-end="url(#arrowRealises)"/>
+  </g>
+  <text x="300" y="150" font-size="12" fill="#444" font-family="'Segoe UI', sans-serif" font-style="italic">realises</text>
+
+  <!-- uses arrows (backend -> next role down) -->
+  <g fill="none" stroke="#2b2b2b" stroke-width="2.2" filter="url(#rough)">
+    <path d="M430 203 C 350 238, 260 250, 196 268" marker-end="url(#arrowUses)"/>
+    <path d="M430 353 C 350 388, 260 400, 196 418" marker-end="url(#arrowUses)"/>
+  </g>
+  <text x="300" y="238" font-size="12" fill="#444" font-family="'Segoe UI', sans-serif" font-style="italic">uses</text>
+  <text x="300" y="388" font-size="12" fill="#444" font-family="'Segoe UI', sans-serif" font-style="italic">uses</text>
+
+  <!-- wraps / inject: PosixFile -> media -->
+  <g fill="none" stroke="#b0506a" stroke-width="2" stroke-dasharray="3 5" filter="url(#rough)">
+    <path d="M505 504 V 558" marker-end="url(#arrowInject)"/>
+  </g>
+  <text x="514" y="536" font-size="12" fill="#b0506a" font-family="'Segoe UI', sans-serif" font-style="italic">wraps</text>
+
+  <!-- Tap-in callouts -->
+  <g filter="url(#postitShadow)"><rect x="700" y="268" width="250" height="90" fill="#fff7cf" transform="rotate(0.6 825 313)"/></g>
+  <g transform="rotate(0.6 825 313)" fill="#4a441f" font-family="'Segoe UI', sans-serif">
+    <text x="718" y="294" font-size="13" font-weight="bold">Plug-in point ①</text>
+    <text x="718" y="314" font-size="12">Implement BlockDevice yourself for</text>
+    <text x="718" y="331" font-size="12">raw flash or a custom medium —</text>
+    <text x="718" y="348" font-size="12">no File layer needed.</text>
+  </g>
+  <path d="M698 313 H 654" fill="none" stroke="#b89a3c" stroke-width="2" marker-end="url(#arrowUses)" filter="url(#rough)"/>
+
+  <g filter="url(#postitShadow)"><rect x="700" y="418" width="250" height="90" fill="#fff7cf" transform="rotate(-0.6 825 463)"/></g>
+  <g transform="rotate(-0.6 825 463)" fill="#4a441f" font-family="'Segoe UI', sans-serif">
+    <text x="718" y="444" font-size="13" font-weight="bold">Plug-in point ②</text>
+    <text x="718" y="464" font-size="12">Keep FileBlockDevice and supply</text>
+    <text x="718" y="481" font-size="12">a File — the shipped path for a</text>
+    <text x="718" y="498" font-size="12">filesystem.</text>
+  </g>
+  <path d="M698 463 H 654" fill="none" stroke="#b89a3c" stroke-width="2" marker-end="url(#arrowUses)" filter="url(#rough)"/>
+</svg>

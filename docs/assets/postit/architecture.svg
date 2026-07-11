@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 780" font-family="'Segoe Print', 'Bradley Hand', 'Patrick Hand', cursive">
+  <!--
+    SolidSyslog — components & collaborators (architecture overview).
+    Style kit: docs/assets/postit/postit-defs.svg (defs inlined so this renders standalone).
+  -->
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="3.5"/>
+    </filter>
+    <filter id="postitShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="2" dy="5" stdDeviation="4" flood-color="#000" flood-opacity="0.28"/>
+    </filter>
+    <marker id="arrowUses" markerWidth="12" markerHeight="12" refX="8" refY="5" orient="auto">
+      <path d="M1,1 L9,5 L1,9" fill="none" stroke="#2b2b2b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowRealises" markerWidth="18" markerHeight="16" refX="13" refY="7" orient="auto">
+      <path d="M2,1 L15,7 L2,13" fill="#fbfbf5" stroke="#2b2b2b" stroke-width="1.6" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowInject" markerWidth="12" markerHeight="12" refX="8" refY="5" orient="auto">
+      <path d="M1,1 L9,5 L1,9" fill="none" stroke="#b0506a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1180" height="780" fill="#fbfbf5"/>
+
+  <text x="50" y="56" font-size="30" fill="#1a1f6e" font-weight="bold">SolidSyslog — components &amp; collaborators</text>
+  <text x="52" y="84" font-size="16" fill="#6a6a60" font-family="'Segoe UI', sans-serif">You call one facade. It drives a handful of roles; each has a backend you pick (or a Null fallback). Backends bottom out in the platform you inject.</text>
+  <line x1="50" y1="98" x2="1130" y2="98" stroke="#3340a8" stroke-width="3" stroke-linecap="round" filter="url(#rough)"/>
+
+  <!-- legend -->
+  <g font-family="'Segoe UI', sans-serif" font-size="12.5" fill="#2b2b2b">
+    <rect x="840" y="32" width="15" height="15" fill="#ffe7a3"/><text x="861" y="44">facade</text>
+    <rect x="840" y="52" width="15" height="15" fill="#bfe3c0"/><text x="861" y="64">role / vtable</text>
+    <rect x="994" y="32" width="15" height="15" fill="#cdd4f5"/><text x="1015" y="44">backend impl</text>
+    <rect x="994" y="52" width="15" height="15" fill="#f6c6c6"/><text x="1015" y="64">you inject</text>
+  </g>
+
+  <!-- FACADE -->
+  <g filter="url(#postitShadow)"><rect x="50" y="185" width="185" height="150" fill="#ffe7a3" transform="rotate(-2 142 260)"/></g>
+  <g transform="rotate(-2 142 260)" fill="#3a3320">
+    <text x="72" y="222" font-size="20" font-weight="bold">SolidSyslog</text>
+    <text x="72" y="245" font-size="12.5" font-family="'Segoe UI', sans-serif">the handle you call</text>
+    <line x1="72" y1="255" x2="222" y2="255" stroke="#b89a3c" stroke-width="1.5"/>
+    <text x="72" y="278" font-size="13" font-family="'Segoe UI', sans-serif">· Log(message)</text>
+    <text x="72" y="300" font-size="13" font-family="'Segoe UI', sans-serif">· Service()</text>
+    <text x="72" y="322" font-size="13" font-family="'Segoe UI', sans-serif">· Create / Destroy</text>
+  </g>
+
+  <!-- CONFIG (injected) -->
+  <g filter="url(#postitShadow)"><rect x="64" y="420" width="172" height="112" fill="#f6c6c6" transform="rotate(1.5 150 476)"/></g>
+  <g transform="rotate(1.5 150 476)" fill="#4a2c2c">
+    <text x="84" y="452" font-size="17" font-weight="bold">Config</text>
+    <text x="84" y="474" font-size="12" font-family="'Segoe UI', sans-serif">you wire the roles +</text>
+    <text x="84" y="492" font-size="12" font-family="'Segoe UI', sans-serif">clock / hostname /</text>
+    <text x="84" y="510" font-size="12" font-family="'Segoe UI', sans-serif">app-name callbacks</text>
+  </g>
+
+  <!-- ROLES (green) -->
+  <!-- Buffer -->
+  <g filter="url(#postitShadow)"><rect x="375" y="140" width="180" height="82" fill="#bfe3c0" transform="rotate(-1 465 181)"/></g>
+  <g transform="rotate(-1 465 181)" fill="#21401f"><text x="393" y="168" font-size="11.5" font-style="italic" font-family="'Segoe UI', sans-serif">«role»</text><text x="393" y="190" font-size="17" font-weight="bold">Buffer</text><text x="393" y="210" font-size="11.5" font-family="'Segoe UI', sans-serif">Write · Read</text></g>
+  <!-- Sender -->
+  <g filter="url(#postitShadow)"><rect x="375" y="270" width="180" height="82" fill="#bfe3c0" transform="rotate(1 465 311)"/></g>
+  <g transform="rotate(1 465 311)" fill="#21401f"><text x="393" y="298" font-size="11.5" font-style="italic" font-family="'Segoe UI', sans-serif">«role»</text><text x="393" y="320" font-size="17" font-weight="bold">Sender</text><text x="393" y="340" font-size="11.5" font-family="'Segoe UI', sans-serif">Send · Disconnect</text></g>
+  <!-- Store -->
+  <g filter="url(#postitShadow)"><rect x="375" y="400" width="180" height="82" fill="#bfe3c0" transform="rotate(-1 465 441)"/></g>
+  <g transform="rotate(-1 465 441)" fill="#21401f"><text x="393" y="428" font-size="11.5" font-style="italic" font-family="'Segoe UI', sans-serif">«role»</text><text x="393" y="450" font-size="17" font-weight="bold">Store</text><text x="393" y="470" font-size="11.5" font-family="'Segoe UI', sans-serif">store &amp; forward</text></g>
+  <!-- Structured Data -->
+  <g filter="url(#postitShadow)"><rect x="375" y="530" width="180" height="82" fill="#bfe3c0" transform="rotate(1 465 571)"/></g>
+  <g transform="rotate(1 465 571)" fill="#21401f"><text x="393" y="558" font-size="11.5" font-style="italic" font-family="'Segoe UI', sans-serif">«role»</text><text x="393" y="580" font-size="16" font-weight="bold">Structured Data</text><text x="393" y="600" font-size="11.5" font-family="'Segoe UI', sans-serif">SD elements</text></g>
+
+  <!-- BACKENDS (blue) -->
+  <g filter="url(#postitShadow)"><rect x="655" y="140" width="205" height="82" fill="#cdd4f5" transform="rotate(1 757 181)"/></g>
+  <g transform="rotate(1 757 181)" fill="#15324f"><text x="673" y="174" font-size="16" font-weight="bold">CircularBuffer</text><text x="673" y="196" font-size="11.5" font-family="'Segoe UI', sans-serif">ring + injected mutex</text><text x="673" y="213" font-size="11.5" font-family="'Segoe UI', sans-serif">(or Passthrough · Null)</text></g>
+
+  <g filter="url(#postitShadow)"><rect x="655" y="270" width="205" height="82" fill="#cdd4f5" transform="rotate(-1 757 311)"/></g>
+  <g transform="rotate(-1 757 311)" fill="#15324f"><text x="673" y="304" font-size="16" font-weight="bold">StreamSender</text><text x="673" y="326" font-size="11.5" font-family="'Segoe UI', sans-serif">TCP / TLS · RFC 6587</text><text x="673" y="343" font-size="11.5" font-family="'Segoe UI', sans-serif">(or Udp · Switching · Null)</text></g>
+
+  <g filter="url(#postitShadow)"><rect x="655" y="400" width="205" height="82" fill="#cdd4f5" transform="rotate(1 757 441)"/></g>
+  <g transform="rotate(1 757 441)" fill="#15324f"><text x="673" y="434" font-size="16" font-weight="bold">BlockStore</text><text x="673" y="456" font-size="11.5" font-family="'Segoe UI', sans-serif">rotating blocks · discard policy</text><text x="673" y="473" font-size="11.5" font-family="'Segoe UI', sans-serif">→ a BlockDevice + File you supply</text></g>
+
+  <g filter="url(#postitShadow)"><rect x="655" y="530" width="205" height="82" fill="#cdd4f5" transform="rotate(-1 757 571)"/></g>
+  <g transform="rotate(-1 757 571)" fill="#15324f"><text x="673" y="562" font-size="14.5" font-weight="bold">Meta · TimeQuality</text><text x="673" y="582" font-size="14.5" font-weight="bold">· Origin</text><text x="673" y="602" font-size="11.5" font-family="'Segoe UI', sans-serif">(mix and match · Null)</text></g>
+
+  <!-- DEEPER LAYER: platform + file -->
+  <!-- Platform net (injected) under the sender -->
+  <g filter="url(#postitShadow)"><rect x="915" y="270" width="200" height="82" fill="#f6c6c6" transform="rotate(1 1015 311)"/></g>
+  <g transform="rotate(1 1015 311)" fill="#4a2c2c"><text x="933" y="304" font-size="15" font-weight="bold">Platform net</text><text x="933" y="326" font-size="11.5" font-family="'Segoe UI', sans-serif">your socket · TLS library</text><text x="933" y="343" font-size="11.5" font-family="'Segoe UI', sans-serif">(OpenSSL / mbedTLS / …)</text></g>
+
+  <!-- Platform storage (injected). The full BlockStore -> BlockDevice -> File chain is its own diagram (storage.svg). -->
+  <g filter="url(#postitShadow)"><rect x="915" y="400" width="200" height="82" fill="#f6c6c6" transform="rotate(1 1015 441)"/></g>
+  <g transform="rotate(1 1015 441)" fill="#4a2c2c"><text x="933" y="430" font-size="15" font-weight="bold">Platform storage</text><text x="933" y="452" font-size="11.5" font-family="'Segoe UI', sans-serif">a BlockDevice + File you supply</text><text x="933" y="470" font-size="11.5" font-family="'Segoe UI', sans-serif">→ FatFs · POSIX · raw flash</text></g>
+
+  <!-- NOTE -->
+  <g filter="url(#postitShadow)"><rect x="50" y="590" width="290" height="120" fill="#fff7cf" transform="rotate(-0.6 195 650)"/></g>
+  <g transform="rotate(-0.6 195 650)" fill="#4a441f" font-family="'Segoe UI', sans-serif">
+    <text x="70" y="622" font-size="13.5" font-weight="bold">Every role has a Null fallback.</text>
+    <text x="70" y="644" font-size="12.5">Omit an adapter and nothing dangles at</text>
+    <text x="70" y="662" font-size="12.5">link time. No malloc — every instance</text>
+    <text x="70" y="680" font-size="12.5">lives in a static pool.</text>
+  </g>
+
+  <!-- ARROWS: facade uses roles -->
+  <g fill="none" stroke="#2b2b2b" stroke-width="2.2" filter="url(#rough)">
+    <path d="M236 248 C 300 210, 330 186, 372 182" marker-end="url(#arrowUses)"/>
+    <path d="M238 268 C 300 300, 330 310, 372 311" marker-end="url(#arrowUses)"/>
+    <path d="M236 300 C 300 420, 330 440, 372 441" marker-end="url(#arrowUses)"/>
+    <path d="M232 316 C 296 520, 326 566, 372 571" marker-end="url(#arrowUses)"/>
+  </g>
+  <text x="286" y="232" font-size="13" fill="#444" font-family="'Segoe UI', sans-serif" font-style="italic">uses</text>
+
+  <!-- backends realise roles -->
+  <g fill="none" stroke="#2b2b2b" stroke-width="2" stroke-dasharray="7 5" filter="url(#rough)">
+    <path d="M653 181 H 559" marker-end="url(#arrowRealises)"/>
+    <path d="M653 311 H 559" marker-end="url(#arrowRealises)"/>
+    <path d="M653 441 H 559" marker-end="url(#arrowRealises)"/>
+    <path d="M653 571 H 559" marker-end="url(#arrowRealises)"/>
+  </g>
+  <text x="576" y="168" font-size="12" fill="#444" font-family="'Segoe UI', sans-serif" font-style="italic">realises</text>
+
+  <!-- injects: config->facade, store->platform storage, sender->platform net -->
+  <g fill="none" stroke="#b0506a" stroke-width="2" stroke-dasharray="3 5" filter="url(#rough)">
+    <path d="M150 418 V 340" marker-end="url(#arrowInject)"/>
+    <path d="M862 441 H 912" marker-end="url(#arrowInject)"/>
+    <path d="M862 311 H 912" marker-end="url(#arrowInject)"/>
+  </g>
+  <text x="120" y="392" font-size="12" fill="#b0506a" font-family="'Segoe UI', sans-serif" font-style="italic">inject</text>
+</svg>

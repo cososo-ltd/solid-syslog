@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 420" font-family="'Segoe Print', 'Bradley Hand', 'Patrick Hand', cursive">
+  <!--
+    SolidSyslog post-it diagram kit — the SHARED definitions.
+
+    This file is the single source of the hand-drawn "whiteboard sticky" look.
+    Tune the roughness, shadow, arrow markers, and palette here and every diagram
+    that copies these <defs> inherits the change. See README.md in this folder for
+    how to author a diagram and why published diagrams inline these defs.
+
+    Palette (role = colour):
+      core / facade ............ #ffe7a3  (yellow)   stroke #b89a3c  text #3a3320
+      interface / vtable role .. #bfe3c0  (green)    stroke #6fae74  text #21401f
+      backend implementation ... #cdd4f5  (brand periwinkle)  text #15324f
+      injected by the caller ... #f6c6c6  (pink)     stroke #cf8a8a  text #4a2c2c
+
+    Arrows:
+      solid head    = "uses / depends on"
+      hollow head   = "realises" (a backend realises a role's vtable)
+  -->
+  <defs>
+    <!-- Hand-drawn wobble for connective lines and legend edges. -->
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="3.5"/>
+    </filter>
+    <!-- Soft drop shadow so stickies lift off the board (kept off text for legibility). -->
+    <filter id="postitShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="2" dy="5" stdDeviation="4" flood-color="#000" flood-opacity="0.28"/>
+    </filter>
+    <!-- "uses / depends on" — solid arrowhead. -->
+    <marker id="arrowUses" markerWidth="12" markerHeight="12" refX="8" refY="5" orient="auto">
+      <path d="M1,1 L9,5 L1,9" fill="none" stroke="#2b2b2b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <!-- "realises" — hollow triangle pointing at the interface. -->
+    <marker id="arrowRealises" markerWidth="18" markerHeight="16" refX="13" refY="7" orient="auto">
+      <path d="M2,1 L15,7 L2,13" fill="#fbfbf5" stroke="#2b2b2b" stroke-width="1.6" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="760" height="420" fill="#fbfbf5"/>
+  <text x="40" y="52" font-size="28" fill="#1a1f6e" font-weight="bold">SolidSyslog post-it kit</text>
+  <text x="42" y="80" font-size="15" fill="#6a6a60" font-family="'Segoe UI', sans-serif">The shared look. Colour = role · marker = relationship. Copy these defs into a diagram.</text>
+  <line x1="40" y1="94" x2="720" y2="94" stroke="#3340a8" stroke-width="3" stroke-linecap="round" filter="url(#rough)"/>
+
+  <!-- Palette swatches -->
+  <g>
+    <g filter="url(#postitShadow)"><rect x="40" y="130" width="150" height="96" fill="#ffe7a3" transform="rotate(-2 115 178)"/></g>
+    <text x="60" y="164" font-size="15" fill="#3a3320" font-weight="bold" transform="rotate(-2 115 178)">core / facade</text>
+    <text x="60" y="190" font-size="12" fill="#3a3320" font-family="'Segoe UI', sans-serif" transform="rotate(-2 115 178)">the SolidSyslog</text>
+    <text x="60" y="206" font-size="12" fill="#3a3320" font-family="'Segoe UI', sans-serif" transform="rotate(-2 115 178)">handle you call</text>
+
+    <g filter="url(#postitShadow)"><rect x="215" y="130" width="150" height="96" fill="#bfe3c0" transform="rotate(1.5 290 178)"/></g>
+    <text x="235" y="158" font-size="12" fill="#21401f" font-style="italic" font-family="'Segoe UI', sans-serif" transform="rotate(1.5 290 178)">«interface»</text>
+    <text x="235" y="178" font-size="15" fill="#21401f" font-weight="bold" transform="rotate(1.5 290 178)">role / vtable</text>
+    <text x="235" y="204" font-size="12" fill="#21401f" font-family="'Segoe UI', sans-serif" transform="rotate(1.5 290 178)">an extension point</text>
+
+    <g filter="url(#postitShadow)"><rect x="390" y="130" width="150" height="96" fill="#cdd4f5" transform="rotate(-1 465 178)"/></g>
+    <text x="410" y="164" font-size="15" fill="#15324f" font-weight="bold" transform="rotate(-1 465 178)">backend impl</text>
+    <text x="410" y="190" font-size="12" fill="#15324f" font-family="'Segoe UI', sans-serif" transform="rotate(-1 465 178)">realises a role</text>
+    <text x="410" y="206" font-size="12" fill="#15324f" font-family="'Segoe UI', sans-serif" transform="rotate(-1 465 178)">for a platform</text>
+
+    <g filter="url(#postitShadow)"><rect x="565" y="130" width="150" height="96" fill="#f6c6c6" transform="rotate(2 640 178)"/></g>
+    <text x="585" y="164" font-size="15" fill="#4a2c2c" font-weight="bold" transform="rotate(2 640 178)">injected</text>
+    <text x="585" y="190" font-size="12" fill="#4a2c2c" font-family="'Segoe UI', sans-serif" transform="rotate(2 640 178)">you supply it</text>
+    <text x="585" y="206" font-size="12" fill="#4a2c2c" font-family="'Segoe UI', sans-serif" transform="rotate(2 640 178)">(config / callback)</text>
+  </g>
+
+  <!-- Arrow legend -->
+  <g font-family="'Segoe UI', sans-serif">
+    <path d="M60 300 H 210" fill="none" stroke="#2b2b2b" stroke-width="2.2" marker-end="url(#arrowUses)" filter="url(#rough)"/>
+    <text x="230" y="305" font-size="15" fill="#2b2b2b">uses / depends on</text>
+
+    <path d="M60 350 H 210" fill="none" stroke="#2b2b2b" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrowRealises)" filter="url(#rough)"/>
+    <text x="230" y="355" font-size="15" fill="#2b2b2b">realises (backend → role)</text>
+  </g>
+</svg>
