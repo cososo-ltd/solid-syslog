@@ -336,7 +336,7 @@ PosixMutex_SelfFromStorage(SolidSyslogPosixMutexStorage* storage)
 }
 ```
 
-Classes migrated under E11 no longer use this cast — their instance
+Pool-allocated classes do not use this cast — their instance
 struct lives in a library-internal static pool, and `_Create` returns
 a slot pointer without any storage cast.
 
@@ -611,11 +611,10 @@ casing. MISRA rule 2.4 (unused tag declarations) cppcheck-fires on
 anonymous enums; the project-wide deviation **D.009** covers all such
 sites — see `docs/misra-deviations.md#d009`.
 
-This single-rule convention replaces the S10.07/S10.12 split where
-tagged-enum constants used `SolidSyslog<Class>_Constant` (PascalCase,
-class-scoped) and anonymous-enum constants used SCREAMING_SNAKE. The
-split was hard to enforce mechanically (only judgement separated the
-two cases) and was drifting in S10.16; S10.22 collapsed it.
+A single rule is used deliberately, rather than splitting tagged-enum
+constants (`SolidSyslog<Class>_Constant`, PascalCase, class-scoped) from
+anonymous-enum constants (SCREAMING_SNAKE): that split is hard to enforce
+mechanically, since only judgement separates the two cases.
 
 ---
 

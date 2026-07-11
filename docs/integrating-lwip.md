@@ -198,7 +198,7 @@ void MyLwipSleep(int milliseconds)
 
 The tcpip thread runs concurrently and processes the SYN/SYN-ACK exchange
 while you yield. A worked `NO_SYS=0` + `tcpip_callback` integration ships as
-the FreeRtosLwip BDD target (S28.07).
+the FreeRtosLwip BDD target.
 
 ---
 
@@ -335,8 +335,7 @@ bridges by spinning on a `Connected` flag set by its `connected_cb`,
 sleeping `SOLIDSYSLOG_LWIP_RAW_TCP_CONNECT_POLL_MS` (default 10 ms)
 between checks via your injected `Sleep`, bounded by the
 `GetConnectTimeoutMs` getter (default `SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS`
-= 200 ms — install a runtime getter per the S12.17 pattern if you
-need to vary it).
+= 200 ms — install a runtime getter if you need to vary it).
 
 Timeout → `tcp_abort` on the pcb, Open returns `false`. Errored
 callback → `tcp_abort`, Open returns `false`. Immediate non-`ERR_OK`

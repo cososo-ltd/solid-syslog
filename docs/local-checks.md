@@ -14,7 +14,7 @@ when, so the wait stays under a few minutes and CI catches the rest.
 | **C** — none | — | — | — |
 | **CI** — everything else | After push | `tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel; results in ~10–15 min |
 
-**IWYU is advisory** (S24.13 / E24). The lanes still run on every PR and
+**IWYU is advisory**. The lanes still run on every PR and
 the report is uploaded as an artifact, but findings no longer fail the
 build. Sweep the IWYU artifact when you do a release cleanup; do not
 treat it as a per-PR blocker.

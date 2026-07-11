@@ -3,7 +3,7 @@
 `SolidSyslog_Error(severity, source, category, detail)` carries a `severity` drawn from
 `enum SolidSyslogSeverity` (`SolidSyslogPrival.h`). This document is the **single source of
 truth** for which level an emit site picks. It exists because the ladder is easy to drift —
-S12.27 shipped two faults at the same level that an error handler needed to tell apart.
+two faults can sit at the same level that an error handler needs to tell apart.
 
 ## The ladder is an *urgency* axis, not a *who-fixes-it* axis
 
@@ -74,8 +74,8 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 | `SECURITYPOLICY_SEAL_FAILED` / `_OPEN_FAILED` | `ERROR` | runtime crypto operation failed. |
 | `BUFFER_BACKEND_FAILED` | `ERROR` | message-queue backend fault; not split. |
 | `RESOLVER_RESOLVE_FAILED` | `WARNING` | DNS may resolve on a later attempt. |
-| `SENDER_DELIVERY_FAILED` | `WARNING` | destination outage — recoverable, store-and-forward covers it (S12.27). |
-| `SENDER_DELIVERY_RESTORED` | `NOTICE` | recovery (S12.27). |
+| `SENDER_DELIVERY_FAILED` | `WARNING` | destination outage — recoverable, store-and-forward covers it. |
+| `SENDER_DELIVERY_RESTORED` | `NOTICE` | recovery. |
 
 ## Single-source severity macros
 

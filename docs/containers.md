@@ -46,11 +46,11 @@ between them at CMake time via `SOLIDSYSLOG_FREERTOS_NET`:
 | Value | Behaviour |
 |---|---|
 | `PLUSTCP` (default) | Cross-builds the full FreeRTOS-Plus-TCP BDD target (`Bdd/Targets/FreeRtos/`). Current first-class backend. |
-| `LWIP` | Cross-builds the `Bdd/Targets/FreeRtosLwip/` link-probe — a stub proving `Platform/LwipRaw/` links against lwIP core for FreeRTOS/ARM with no PlusTcp dependency (E28 S28.07). The worked netif + QEMU UDP BDD integration lands in S28.09. |
+| `LWIP` | Cross-builds the `Bdd/Targets/FreeRtosLwip/` link-probe — a stub proving `Platform/LwipRaw/` links against lwIP core for FreeRTOS/ARM with no PlusTcp dependency. The worked netif + QEMU UDP BDD integration is not yet wired. |
 | `BOTH` | Cross-builds the `PLUSTCP` target only and emits a `STATUS` message noting the lwIP backend builds in isolation under `LWIP`. Lets dev-container users keep `BOTH` set without breaking their build. |
 
 CI runs `PLUSTCP` (required) and `LWIP` (advisory `build-freertos-target-lwip`
-lane, S28.07) in isolation; the `BOTH` value is a dev-container convenience and
+lane) in isolation; the `BOTH` value is a dev-container convenience and
 is not exercised by CI.
 
 ## Running the clang build locally

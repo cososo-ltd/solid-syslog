@@ -201,10 +201,10 @@ third-party API contract (the public `Send` / `SendTo` interface) is
 
 ### Rationale
 
-The pool migration under E11 / E24 retired the caller-supplied-storage
-pattern for every class that has a Create/Destroy lifecycle, leaving
-only the vtable / opaque-handle downcast (which is required by the
-OO-in-C interface decoupling) and the one non-pool exception above
+Every class with a Create/Destroy lifecycle uses the static pool
+allocator rather than caller-supplied storage, so the only structural
+pointer conversions are the vtable / opaque-handle downcast (required by
+the OO-in-C interface decoupling) and the one non-pool exception above
 (Formatter as a per-call builder). Both would otherwise require either
 dynamic allocation (not available on bare-metal / FreeRTOS-static-
 allocation / DO-178C-style targets — the library is callable from
@@ -341,9 +341,8 @@ One class only:
 
 - `Core/Source/SolidSyslogFormatter.c`
 
-`SolidSyslogCircularBuffer` used to share this shape but moved off
-it under E11 (S11.01) — its instance struct now holds an external
-ring pointer rather than a trailing FAM.
+`SolidSyslogCircularBuffer` does not use this shape — its instance
+struct holds an external ring pointer rather than a trailing FAM.
 
 ### Rationale
 

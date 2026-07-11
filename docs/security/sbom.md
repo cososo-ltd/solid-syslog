@@ -133,7 +133,7 @@ For a step-by-step verification guide aimed at downstream integrators, see
   `sign-blob` is a natural next step — it produces an attestation
   statement that says "this SBOM was produced by this workflow from
   these inputs" rather than just "this SBOM was signed by this
-  workflow." Separate E19 follow-on.
+  workflow."
 - **Binary-artefact signing.** The project is source-only; nothing to
   sign beyond the SBOM and content-tree hash.
 - **Flip the signing/attach steps off `continue-on-error: true`.** The

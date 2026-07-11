@@ -97,7 +97,7 @@ cmake --build --preset iwyu --target iwyu
 
 Note the `--target iwyu` — building the bare preset does not run the tool.
 
-**IWYU is advisory, not a gate** (S24.13 / E24). The CI lanes (`analyze-iwyu`,
+**IWYU is advisory, not a gate**. The CI lanes (`analyze-iwyu`,
 `analyze-iwyu-freertos-plustcp`, `analyze-iwyu-freertos-lwip`) run on every PR but
 do not block the build; their findings land in the `iwyu-report*` artifacts. Sweep
 those at release cleanup. See [local-checks.md](local-checks.md) for the FreeRTOS
