@@ -1,0 +1,189 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit configuration for SolidSyslog.
+#
+# The path_instructions below encode the project's own standards so reviews
+# hold the same bar as the human review gate:
+#   - Production C (Core/, Platform/*/Interface/, Platform/*/Source/) is
+#     MISRA C:2012-informed and Clean-Code-driven — see docs/NAMING.md and
+#     docs/misra-deviations.md, which are the authoritative references.
+#   - C++ exists only as CppUTest test harnesses (Tests/) — relaxed vs
+#     production, but the Clean Code tenets still apply.
+# Keep this file in step with CLAUDE.md, docs/NAMING.md and
+# docs/misra-deviations.md when any of those change.
+
+language: en-GB
+
+tone_instructions: >-
+  You are reviewing a MISRA C:2012-informed, TDD-built embedded syslog
+  library. Hold production C to a high bar and cite the specific rule or
+  naming tier; be pragmatic about the C++ test harnesses. Be terse and
+  technical. Use UK English.
+
+reviews:
+  profile: assertive
+  # Comment-only. CodeRabbit does not gate merges here; branch protection's
+  # required status checks (build/sanitize/coverage/tidy/cppcheck/bdd/...) do.
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+
+  # Everything not excluded here is reviewed. Skip build output and binary
+  # assets; keep docs prose in scope (the repo is documentation-heavy).
+  path_filters:
+    - "!**/build/**"
+    - "!**/out/**"
+    - "!**/*.svg"
+    - "!docs/assets/**"
+
+  path_instructions:
+    # ---------------------------------------------------------------------
+    # Production C — strict baseline. Applies to the whole Core/ tree and
+    # the whole Platform/ tree (Interface/ headers + Source/ bodies). The
+    # Platform/*/Source/ relaxations are layered on top by the next entry.
+    # ---------------------------------------------------------------------
+    - path: "{Core,Platform}/**/*.{c,h}"
+      instructions: |
+        This is MISRA C:2012-informed production C (C99 baseline). Hold a high
+        bar and cite the specific rule/tier. docs/NAMING.md and
+        docs/misra-deviations.md are authoritative — defer to them.
+
+        MISRA / structure:
+        - Single point of exit: one `return` per function. Flag early returns;
+          the fix is a result local plus an `if` wrapper (see
+          BlockSequence.c::ScanForExistingBlocks).
+        - Every `if`/`else`/`for`/`while` body must be a braced compound
+          statement (Rule 15.6) — flag any unbraced body.
+        - Fully bracket compound conditions that mix `||` with arithmetic or
+          comparison operators (Rule 12.1). Plain `&&` between bool-typed
+          operands needs NO extra parens — do not ask for it.
+        - Unsigned literals carry the `U` suffix (`0U`, `1U`) in unsigned
+          contexts.
+        - No dynamic memory: no malloc/calloc/realloc/free. Every stateful
+          "Created" class lives in a library-internal static pool (E11);
+          pool exhaustion falls back to a shared Null sibling. Flag any heap use.
+        - Null Object pattern over NULL guards: where a Null sibling exists
+          (SolidSyslogNullStore, SolidSyslogNullSender, ...), do not add
+          `if (x != NULL) x->M()` — dispatch through the null vtable instead.
+        - Do NOT flag the deviations catalogued in docs/misra-deviations.md as
+          defects: vtable/opaque-handle downcasts via `*_SelfFromBase` /
+          `*_SelfFromStorage` (11.3/11.5), the SolidSyslogFormatter flexible
+          array member (18.7), the anonymous-`enum` named-constant idiom
+          (2.4/5.7), `struct SolidSyslogX` tag repetition from the
+          no-typedef-struct rule (5.7), documented const-strip sites (11.8).
+          Only flag a NEW deviation not covered there.
+
+        Naming (docs/NAMING.md tiers):
+        - Public functions `SolidSyslogClass_Function`; public types
+          `SolidSyslogClass`; public macros/enum constants
+          `SOLIDSYSLOG_SCREAMING_SNAKE`; file-scope statics `Class_Function`
+          / `CLASS_SCREAMING_SNAKE`; struct members `PascalCase` (data AND
+          vtable function-pointer members alike); locals/params
+          `lowerCamelCase`.
+        - The this-pointer is the FIRST parameter, named by its declared type:
+          `self` when the type is the concrete class, `base` when it is the
+          abstract base struct. Flag any function that puts state after other
+          args, or names the this-pointer anything else.
+        - No `typedef struct` for project structs — refer to structs by tag.
+          Typedefs allowed only for enums and function-pointer types.
+        - No Hungarian; no `p`/`P` prefix or `Ptr` suffix on pointers; no
+          single-letter identifiers; out-params `outX`; booleans `isX`/`hasX`/
+          `canX`; no lazy abbreviations (`buffer` not `buf`) but domain terms
+          (tls/tcp/udp/crc/mq/dns/RFC field names) are real names, keep them.
+
+        Clean Code:
+        - One level of abstraction per function; read top-down.
+        - Extract composite boolean conditions into intent-naming
+          `static inline bool IsXxx(...)` predicates — the name is the doc.
+        - Function ordering: `_Create` first, `_Destroy` second, other public
+          functions in API order, helpers forward-declared at the top and
+          defined immediately beneath their first caller.
+        - DRY: one authoritative representation per piece of knowledge.
+        - New callbacks take a `void* context` parameter with a paired context
+          field on the config struct.
+
+        Banned APIs (Microsoft SDL): production code must never use `strncpy`,
+        `sprintf`, `sscanf`, `strtok`, etc. String building goes through
+        SolidSyslogFormatter; parsing uses `strtol`. Flag any banned call.
+
+        Pre-1.0: this library is 0.x — do NOT flag API/signature changes as
+        breaking, and do not suggest a `!`/"BREAKING CHANGE" commit trailer.
+
+    # ---------------------------------------------------------------------
+    # Platform/*/Source/ — Pragmatic tier relaxations layered on the strict
+    # baseline above. Platform/*/Interface/ stays strict.
+    # ---------------------------------------------------------------------
+    - path: "Platform/*/Source/**/*.{c,h}"
+      instructions: |
+        Pragmatic tier (adapter code wrapping third-party APIs). Everything in
+        the production-C baseline still applies, with these relaxations only:
+        - Local names that mirror a third-party API are fine (`mqd_t mq`,
+          `SOCKET sock`, `FIL file`, `buf`/`len` in send/recv wrappers,
+          `attr` for `struct mq_attr`). Do not demand renames to the
+          no-abbreviation rule for these.
+        - Rule 5.3 shadowing is relaxed when the shadowed name is a
+          third-party identifier.
+        - A per-file MISRA deviation is acceptable when a third-party API
+          forces it, provided it is (or should be) recorded in
+          docs/misra-deviations.md with rationale — flag undocumented ones.
+
+    # ---------------------------------------------------------------------
+    # Tests — C++ CppUTest harnesses. Consistency-only tier: no MISRA.
+    # ---------------------------------------------------------------------
+    - path: "Tests/**/*.{c,cpp,h,hpp}"
+      instructions: |
+        C++ CppUTest test harnesses. MISRA does NOT apply here — do not raise
+        MISRA findings. Judge these on Clean Code and test hygiene:
+        - DRY the setup AND the assertions. Repeated multi-line setup belongs
+          in `setup()` or a TEST_GROUP helper; repeated assertion shapes
+          belong in a `CHECK_*` macro that NAMES the intent. It must be a macro
+          (not a function) so failures report the caller's __FILE__/__LINE__.
+        - Do NOT wrap CHECK_* macro bodies in `do { ... } while (0)` — the
+          `Tests/` tier bans it (cppcoreguidelines-avoid-do-while) and
+          clang-format's InsertBraces already braces every conditional body,
+          so the wrapper is dead weight. A single-statement macro is a bare
+          expression; a multi-statement one is a plain `{ ... }` block.
+        - Lift shared fixture (same storage/file/device vars + setup/teardown
+          across TEST_GROUPs) into a TEST_BASE / TEST_GROUP_BASE.
+        - Each TEST body should read arrange -> act -> assert in a few lines.
+        - Never link production code directly — always exercise it through the
+          library. Use the SafeString abstraction, never raw `strncpy`.
+        - Test fakes/spies drop the `SolidSyslog` prefix (`SocketFake_Reset`).
+          `lowerCamelCase` locals preferred but not enforced; do not request
+          rename sweeps of existing test code.
+        - The this-pointer-first convention applies to test helpers too.
+        - IWYU: when a CHECK_* macro references a TEST_GROUP member, the test
+          file needs a forward declaration `class TEST_<group>_<name>_Test;`.
+
+    # ---------------------------------------------------------------------
+    # BDD — out of scope for support, but two rules matter.
+    # ---------------------------------------------------------------------
+    - path: "Bdd/**"
+      instructions: |
+        BDD infrastructure. Two hard rules:
+        - `.feature` files are the product-owner contract — never edit a
+          feature file to fix breakage. When an internal constant/port/name
+          moves and breaks a scenario, compensate in the Python step layer.
+        - Python steps must stay Windows-portable: `process.kill()` not
+          `signal.SIGKILL`; `os.path.join` (not forward-slash literals) for
+          paths passed to CreateProcess; `127.0.0.1` not `localhost`. Prefer
+          test-side portability fixes over changing production semantics.
+
+    # ---------------------------------------------------------------------
+    # Docs — prose. Keep the tier model and conventions self-consistent.
+    # ---------------------------------------------------------------------
+    - path: "**/*.md"
+      instructions: |
+        Documentation prose. Use UK English. Flag statements that contradict
+        the authoritative references (docs/NAMING.md, docs/misra-deviations.md,
+        CLAUDE.md) — e.g. a naming shape or tier claim that no longer matches
+        the code. Keep story/epic references in the padded `E00` / `S00.00`
+        form. Do not nitpick Conventional-Commits-style headings.
