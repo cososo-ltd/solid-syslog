@@ -8,7 +8,7 @@
 This is the documentation home. It is organised around what you came to do.
 Pick a lane:
 
-- **[Overview](#overview)** — what SolidSyslog is and how it shortcuts compliance.
+- **[Overview](#overview)** — what SolidSyslog is and how it helps with CRA and IEC 62443 compliance.
 - **[Adopt it](#adopt)** — get a syslog stack compiling and sending in your product.
 - **[Port it to a new platform](#port-a-new-platform)** — fill a role for an OS, network stack, filesystem, or crypto library we don't ship yet.
 - **[Compliance](#compliance)** — IEC 62443, the RFCs, and the security posture.

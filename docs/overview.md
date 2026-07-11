@@ -5,10 +5,10 @@
 > inaccurate.** Do not rely on it — for integration, security, or compliance
 > decisions — until the 0.1.0 release.
 
-SolidSyslog is a client-side structured-syslog library built to shortcut the
-audit-logging and product-security obligations that the **EU Cyber Resilience
-Act (CRA)** and **IEC 62443** place on industrial and connected products. You
-wire the roles your deployment needs; the library does the RFC 5424 formatting,
+SolidSyslog is a client-side structured-syslog library that helps you implement
+the audit-logging and product-security controls the **EU Cyber Resilience Act
+(CRA)** and **IEC 62443** expect of industrial and connected products. You wire
+the roles your deployment needs; the library handles the RFC 5424 formatting,
 reliable delivery, store-and-forward survival, at-rest record protection, and
 evidence metadata that those frameworks expect an audit-logging function to
 provide — on any embedded RTOS or bare-metal target (bring your own network
@@ -21,8 +21,10 @@ control-by-control detail rather than restating it.
 > [!NOTE]
 > IEC 62443 certifies **systems**, not components, and a Security Level is a
 > property of your whole system, its deployment, and its assessment — not of a
-> parts list. Likewise, CRA obligations fall on the manufacturer of the finished
-> product. SolidSyslog is a **component**: this is our best advice on how it
+> parts list. Likewise, the CRA places its obligations on the economic operators
+> who bring a product to market — manufacturers, and in defined cases importers
+> and distributors — not on any single component. SolidSyslog is a **component**:
+> this is our best advice on how it
 > *helps you address* the audit-logging and security aspects of those
 > frameworks. It is guidance, not a guarantee of compliance, and no substitute
 > for assessment of your full product.
@@ -36,7 +38,7 @@ below. SolidSyslog gives you the audit-logging building blocks at every rung.
 |---|---|---|
 | **SL1** | Casual or accidental | A valid, timestamped RFC 5424 record, delivered to your collector and kept readable |
 | **SL2** | Simple, intentional | Trusted-time metadata, gap-visible delivery, a protected and authenticated channel (TLS), and store-and-forward survival across outages |
-| **SL3** | Sophisticated, IACS-aware | Non-repudiation (mutual TLS + `sequenceId`), tamper-evident at-rest integrity, per-device identity, and storage-threshold warnings |
+| **SL3** | Sophisticated, IACS-aware | Authenticated provenance and gap detection (mutual TLS + `sequenceId`), tamper-evident (keyed) at-rest integrity, per-device identity, and storage-threshold warnings |
 | **SL4** | State-level | The same evidence, hardened: write-once / immutable storage, a protected time source, and keys held in hardware |
 
 *Which* components realise each rung, and *why* each choice is driven by your
@@ -49,15 +51,15 @@ satisfy it — is in the
 
 ## CRA — where SolidSyslog helps
 
-The CRA's essential requirements (Annex I) ask a product with digital elements
-to log security-relevant events, ship with a bill of materials, handle
-vulnerabilities, and be updated and verified securely. SolidSyslog contributes
-to several of those obligations directly:
+The CRA's essential requirements (Annex I) ask a product with digital elements to
+log security-relevant events and support secure updates, and its manufacturer to
+maintain a machine-readable bill of materials and handle vulnerabilities.
+SolidSyslog contributes to several of those obligations directly:
 
 | CRA obligation | How SolidSyslog supports it |
 |---|---|
 | **Security logging & monitoring** | The library's whole purpose — RFC 5424 audit records to any SIEM, with SIEM-side gap detection via `sequenceId`. See [IEC 62443 guide → SIEM integration](iec62443.md#siem-integration) |
-| **Software bill of materials** | [Software Bill of Materials (SBOM)](security/sbom.md) — a CycloneDX SBOM per release |
+| **Software bill of materials** | The SolidSyslog project publishes a CycloneDX [SBOM](security/sbom.md) per release, ready to fold into your product's own bill of materials |
 | **Vulnerability handling & coordinated disclosure** | [`SECURITY.md`](../SECURITY.md) and the [vulnerability triage runbook](security/triage-runbook.md) |
 | **Secure, verifiable releases** | [Release verification guide](security/release-verification.md) — signed, reproducible artefacts |
 | **Secure-by-design & documented risk** | [Threat model](security/threat-model.md) and [at-rest cryptography](security/at-rest-cryptography.md) |
