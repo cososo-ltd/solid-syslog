@@ -30,7 +30,7 @@ services:
       retries: 10
 
   behave-linux:
-    image: ghcr.io/davidcozens/behave:sha-3faff14
+    image: ghcr.io/cososo-ltd/behave:sha-be8da62
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -87,7 +87,7 @@ services:
 
   behave-freertos:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-0b93766
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross:sha-ad10bf2
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -164,7 +164,7 @@ services:
 
   behave-freertos-lwip:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-0b93766
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross:sha-ad10bf2
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog

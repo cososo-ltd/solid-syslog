@@ -1,6 +1,6 @@
 services:
   gcc:
-    image: ghcr.io/davidcozens/cpputest:sha-2c7b76b
+    image: ghcr.io/cososo-ltd/cpputest:sha-6715942
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
@@ -64,7 +64,7 @@ services:
           - syslog-ng
 
   behave-linux:
-    image: ghcr.io/davidcozens/behave:sha-3faff14
+    image: ghcr.io/cososo-ltd/behave:sha-be8da62
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ../Bdd/output:/workspaces/SolidSyslog/Bdd/output
@@ -84,7 +84,7 @@ services:
     command: sleep infinity
 
   clang:
-    image: ghcr.io/davidcozens/cpputest-clang:sha-7eac3ab
+    image: ghcr.io/cososo-ltd/cpputest-clang:sha-5905aea
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
@@ -102,7 +102,7 @@ services:
     command: sleep infinity
 
   freertos-host:
-    image: ghcr.io/davidcozens/cpputest-freertos:sha-0b93766
+    image: ghcr.io/cososo-ltd/cpputest-freertos:sha-ad10bf2
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
@@ -153,7 +153,7 @@ services:
           - syslog-ng
 
   freertos-target:
-    image: ghcr.io/davidcozens/cpputest-freertos-cross:sha-0b93766
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross:sha-ad10bf2
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - syslog-ng-ctl-freertos:/var/lib/syslog-ng
