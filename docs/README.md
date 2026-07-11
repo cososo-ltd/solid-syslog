@@ -39,22 +39,15 @@ Everything you need to consume SolidSyslog in your product.
 ## Port a new platform
 
 Porting SolidSyslog is *filling roles*, not editing Core — omit an adapter and
-Core's Null object stands in. Until the dedicated porting guide lands, the
-material you need already exists in the tree:
+Core's Null object stands in.
 
-- **The role contracts** — the vtable extension points under
-  [`Core/Interface/`](../Core/Interface/): each `SolidSyslog*Definition.h`
-  (e.g. `SolidSyslogStreamDefinition.h`, `SolidSyslogFileDefinition.h`,
-  `SolidSyslogMutexDefinition.h`) is the contract a new adapter must honour.
-- **The reference implementations** — [`Platform/Posix/`](../Platform/Posix/)
-  reads alongside each contract as the worked example, including the
-  library-internal static-pool pattern (`*Static.c` +
-  `SOLIDSYSLOG_*_POOL_SIZE`) and the per-adapter `*Errors.h` convention.
-- **The coexistence invariants** — the "never free injected handles" and
-  idempotent `Close`/`Destroy` rules, illustrated by the Mbed TLS coexistence
-  contract in the [IEC 62443 guide](iec62443.md#embedded-sl4-solidsyslogmbedtlsstream).
-
-*A consolidated porting overview and role-contracts page are planned.*
+- **[Porting guide](porting.md)** — the role model, the anatomy of an adapter
+  (instance shape, the no-`malloc` static pool, the error convention), the
+  invariants every adapter must honour, and the twelve vtable role contracts each
+  with its Null fallback and POSIX reference implementation.
+- **The contracts themselves** — the `SolidSyslog*Definition.h` vtables under
+  [`Core/Interface/`](../Core/Interface/); [`Platform/Posix/`](../Platform/Posix/)
+  is the reference implementation to read alongside them.
 
 ## Compliance
 

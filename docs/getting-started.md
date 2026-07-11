@@ -341,6 +341,7 @@ the config struct.
 - [Integrating with lwIP (Raw API)](integrating-lwip.md)
 - [Integrating with Mbed TLS](integrating-mbedtls.md)
 - [Integrating with FreeRTOS-Plus-FAT](integrating-plusfat.md)
+- [Porting to a new platform](porting.md) — writing an adapter for an OS, network stack, or filesystem we don't ship
 - [Structured data](structured-data.md)
 - [Error handling and severity](error-severity.md)
 - [IEC 62443 component selection by Security Level](iec62443.md)
