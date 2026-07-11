@@ -16,37 +16,22 @@ Designed for resource-constrained environments:
 - MISRA C:2012 informed
 - Dependency injection throughout — fully testable without a network
 
-## Status
+## Capabilities
 
-Approaching feature-complete for POSIX and Windows: RFC 5424 structured
-formatting, UDP / TCP / TLS / mTLS transport, asynchronous buffering, rotating
-block store-and-forward with CRC-16 integrity, and the full
-[IEC 62443 SL1–SL4 component set](docs/iec62443.md).
+RFC 5424 structured formatting over UDP (RFC 5426), TCP (RFC 6587), and TLS /
+mutual TLS (RFC 5425). Asynchronous buffering, rotating block store-and-forward,
+and at-rest record protection — CRC-16 for accidental corruption, or keyed
+HMAC-SHA256 / AES-256-GCM where a local attacker is in scope. The full
+[IEC 62443 SL1–SL4 component set](docs/iec62443.md) is available.
 
-FreeRTOS support is in active development on Cortex-M3 (mps2-an385 under QEMU):
-UDP, TCP, TLS, and mTLS transports — TCP and UDP via FreeRTOS-Plus-TCP, TLS
-and mTLS via `SolidSyslogMbedTlsStream` (Mbed TLS) layered over the same
-FreeRTOS-Plus-TCP byte stream. Persistent store-and-forward via ChaN FatFs
-(semihosting-backed disk image in BDD; integrator-supplied `diskio.c` in
-production), host-TDD'd adapters, an interactive BDD target wired with the
-portable CircularBuffer + FreeRtosMutex behind a Service task, and BDD
-scenarios driven through QEMU's UART
-([epic E08 #10](https://github.com/cososo-ltd/solid-syslog/issues/10)).
+POSIX and Windows are first-class hosts. FreeRTOS on Cortex-M carries the same
+UDP / TCP / TLS / mTLS transports — networking via FreeRTOS-Plus-TCP or lwIP,
+transport security via `SolidSyslogMbedTlsStream` (Mbed TLS) — with persistent
+store-and-forward over ChaN FatFs or FreeRTOS-Plus-FAT.
 
-**Not yet production-ready**, and no API stability guarantee yet. Known gaps:
-
-- Public API may evolve. Multiple concurrent sender instances are now
-  pool-backed (E11) — `SOLIDSYSLOG_UDP_SENDER_POOL_SIZE`,
-  `SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE`,
-  `SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE` in
-  `Core/Interface/SolidSyslogTunablesDefaults.h` set the slot counts; the
-  matching pools live in `Core/Source/SolidSyslog*SenderStatic.c`.
-- At-rest integrity is CRC-16 only; HMAC + AES-at-rest are planned for SL4
-  ([E17 #105](https://github.com/cososo-ltd/solid-syslog/issues/105)).
-- TLS revocation (CRL / OCSP) is not performed by the library; whether it is
-  enforced depends on the TLS backend and platform you configure.
-- Comprehensive error guards still rolling out
-  ([E12 #31](https://github.com/cososo-ltd/solid-syslog/issues/31)).
+The library is pre-1.0: the public API may still change and carries no stability
+guarantee yet. TLS revocation (CRL / OCSP) is delegated to the platform trust
+store rather than performed by the library.
 
 ## Getting started
 
@@ -77,7 +62,7 @@ Public headers are split by audience (Interface Segregation Principle):
 - **`SolidSyslogConfigLock.h`** — optional setup-time lock injection (`SolidSyslog_SetConfigLock(lockFn, unlockFn)`); wraps library-internal pool slot walks so multi-task setup is safe. Defaults are no-ops, so single-task systems can ignore it. Integrators on RTOS / multi-core wire `taskENTER_CRITICAL`, a static `pthread_mutex_t`, `EnterCriticalSection`, or a spinlock pair
 - **`SolidSyslogSenderDefinition.h`** / **`SolidSyslogBufferDefinition.h`** — extension points for custom senders and buffers
 - **`SolidSyslogPassthroughBuffer.h`** — direct-send buffer for single-task systems
-- **`SolidSyslogCircularBuffer.h`** — portable ring buffer with caller-allocated ring memory and an injected `SolidSyslogMutex` (`SolidSyslogPosixMutex` / `SolidSyslogWindowsMutex` / `SolidSyslogFreeRtosMutex` / `SolidSyslogNullMutex` / your own); the cross-platform threaded buffer. Instance bookkeeping lives in a library-internal static pool (E11)
+- **`SolidSyslogCircularBuffer.h`** — portable ring buffer with caller-allocated ring memory and an injected `SolidSyslogMutex` (`SolidSyslogPosixMutex` / `SolidSyslogWindowsMutex` / `SolidSyslogFreeRtosMutex` / `SolidSyslogNullMutex` / your own); the cross-platform threaded buffer. Instance bookkeeping lives in a library-internal static pool
 - **`SolidSyslogPosixMessageQueueBuffer.h`** — thread-safe POSIX message queue buffer
 - **`SolidSyslogUdpSender.h`** — UDP transport (RFC 5426)
 - **`SolidSyslogStreamSender.h`** — octet-framed syslog (RFC 6587) over any Stream. Note: RFC 6587
@@ -100,7 +85,7 @@ Public headers are split by audience (Interface Segregation Principle):
 - **`SolidSyslogTimeQualitySd.h`** — timeQuality structured data (RFC 5424 §7.1): tzKnown, isSynced, syncAccuracy
 - **`SolidSyslogOriginSd.h`** — origin structured data (RFC 5424 §7.2): software, swVersion, enterpriseId, ip
 - **`SolidSyslogPosixClock.h`** / **`SolidSyslogPosixHostname.h`** / **`SolidSyslogPosixProcessId.h`** / **`SolidSyslogPosixSysUpTime.h`** — POSIX helpers
-- **`SolidSyslogPlusTcpDatagram.h`** / **`SolidSyslogPlusTcpTcpStream.h`** / **`SolidSyslogPlusTcpResolver.h`** / **`SolidSyslogPlusTcpAddress.h`** — FreeRTOS-Plus-TCP networking adapters: UDP datagram and TCP stream (with ARP-prime on cold connect and bounded `SO_RCVTIMEO` connect), hardcoded-IPv4 resolver, `struct freertos_sockaddr` address adapter. Selected at CMake time via `SOLIDSYSLOG_FREERTOS_NET=PLUSTCP`; an lwIP Raw sibling backend is in progress under epic E28
+- **`SolidSyslogPlusTcpDatagram.h`** / **`SolidSyslogPlusTcpTcpStream.h`** / **`SolidSyslogPlusTcpResolver.h`** / **`SolidSyslogPlusTcpAddress.h`** — FreeRTOS-Plus-TCP networking adapters: UDP datagram and TCP stream (with ARP-prime on cold connect and bounded `SO_RCVTIMEO` connect), hardcoded-IPv4 resolver, `struct freertos_sockaddr` address adapter. Selected at CMake time via `SOLIDSYSLOG_FREERTOS_NET=PLUSTCP` (an lwIP Raw sibling backend is selected with `LWIP`)
 - **`SolidSyslogFreeRtosMutex.h`** / **`SolidSyslogFreeRtosSysUpTime.h`** — FreeRTOS kernel primitives independent of the chosen networking backend: `xSemaphoreCreateMutexStatic`-backed mutex for CircularBuffer and a kernel-tick sysUpTime source
 - **`SolidSyslogFatFsFile.h`** — ChaN FatFs file adapter for the `SolidSyslogFile` extension point; `f_sync` per write for crash-safe store-and-forward. RTOS-agnostic; runs on bare-metal, FreeRTOS, Zephyr, NuttX
 
