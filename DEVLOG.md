@@ -15224,3 +15224,40 @@ forward-link.
 
 ### Open questions
 - None.
+
+## 2026-07-11 — Container images migrated to the cososo-ltd org
+
+Moved the 5 CI/dev container images from `ghcr.io/davidcozens/*` to the `cososo-ltd`
+org, ahead of the solid-syslog repo transfer (containers-first, to de-risk).
+
+### What happened
+- Business org handle is **`cososo-ltd`** — `cososo` is GitHub-reserved (404 on
+  lookup but "taken" on creation; confirmed unobtainable, matches the earlier
+  attempt that led to `-ltd`).
+- Transferred the 4 source repos (CppUTestDocker, CppUTestDockerClang,
+  CppUTestFreertosDocker, BehaveDocker) to `cososo-ltd`. Repo transfer does **not**
+  move GHCR packages (account-scoped), so triggered fresh builds instead.
+- Workflows already push to `${{ github.repository_owner }}`, so builds auto-publish
+  to `cososo-ltd`; new tags are the trigger-commit shas.
+- Fixes needed along the way:
+  - CppUTestFreertosDocker hardcoded `FROM ghcr.io/davidcozens/cpputest` (+ `-freertos`)
+    → repointed to `cososo-ltd` (host base pinned to `cpputest:sha-6715942`).
+  - cpputest had to be public so the freertos build could pull it — cross-repo
+    private `GITHUB_TOKEN` access isn't automatic.
+  - FreeRTOS-Plus-FAT clone used `--branch=main` + SHA-assert, which fails once
+    upstream `main` drifts (pre-existing, not the migration). Fixed to fetch the
+    pinned SHA directly (`git init` + `git fetch --depth 1 origin <SHA>` +
+    `checkout FETCH_HEAD`) — now a robust pin. FAT was the only branch-pinned dep.
+- All 5 images rebuilt, public under `cososo-ltd`, verified anonymously.
+
+### New tags
+`cpputest:sha-6715942`, `cpputest-clang:sha-5905aea`,
+`cpputest-freertos` + `-cross:sha-ad10bf2`, `behave:sha-be8da62`.
+
+### solid-syslog
+Repointed all `ghcr.io/davidcozens/*` refs → `cososo-ltd` + new tags (ci.yml,
+compose files, docs). `github.com/DavidCozens` URLs left untouched — they follow
+the repo transfer. Proving CI green on the new images *before* the transfer.
+
+### Open questions
+- None — container half done; repo transfer + owner-URL sweep next.
