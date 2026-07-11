@@ -31,7 +31,7 @@ FreeRTOS-Plus-TCP byte stream. Persistent store-and-forward via ChaN FatFs
 production), host-TDD'd adapters, an interactive BDD target wired with the
 portable CircularBuffer + FreeRtosMutex behind a Service task, and BDD
 scenarios driven through QEMU's UART
-([epic E08 #10](https://github.com/DavidCozens/solid-syslog/issues/10)).
+([epic E08 #10](https://github.com/cososo-ltd/solid-syslog/issues/10)).
 
 **Not yet production-ready**, and no API stability guarantee yet. Known gaps:
 
@@ -42,11 +42,11 @@ scenarios driven through QEMU's UART
   `Core/Interface/SolidSyslogTunablesDefaults.h` set the slot counts; the
   matching pools live in `Core/Source/SolidSyslog*SenderStatic.c`.
 - At-rest integrity is CRC-16 only; HMAC + AES-at-rest are planned for SL4
-  ([E17 #105](https://github.com/DavidCozens/solid-syslog/issues/105)).
+  ([E17 #105](https://github.com/cososo-ltd/solid-syslog/issues/105)).
 - TLS revocation (CRL / OCSP) is not performed by the library; whether it is
   enforced depends on the TLS backend and platform you configure.
 - Comprehensive error guards still rolling out
-  ([E12 #31](https://github.com/DavidCozens/solid-syslog/issues/31)).
+  ([E12 #31](https://github.com/cososo-ltd/solid-syslog/issues/31)).
 
 ## Getting started
 

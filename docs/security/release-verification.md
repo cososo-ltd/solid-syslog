@@ -35,7 +35,7 @@ paths.
 ### Reproduce with git (authoritative)
 
 ```shell
-git clone --depth 1 --branch v<version> https://github.com/DavidCozens/solid-syslog.git
+git clone --depth 1 --branch v<version> https://github.com/cososo-ltd/solid-syslog.git
 cd solid-syslog
 git ls-tree -r --name-only HEAD -- \
     Core/ Platform/ CMakeLists.txt CMakePresets.json LICENSE.md \
@@ -109,7 +109,7 @@ Verification:
 ```shell
 cosign verify-blob \
   --bundle sbom.cdx.json.bundle \
-  --certificate-identity "https://github.com/DavidCozens/solid-syslog/.github/workflows/sbom.yml@refs/tags/v<version>" \
+  --certificate-identity "https://github.com/cososo-ltd/solid-syslog/.github/workflows/sbom.yml@refs/tags/v<version>" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   sbom.cdx.json
 ```
@@ -128,7 +128,7 @@ conditions fail the verification loudly:
 ```shell
 cosign verify-blob \
   --bundle source-tree-sha256.txt.bundle \
-  --certificate-identity "https://github.com/DavidCozens/solid-syslog/.github/workflows/sbom.yml@refs/tags/v<version>" \
+  --certificate-identity "https://github.com/cososo-ltd/solid-syslog/.github/workflows/sbom.yml@refs/tags/v<version>" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   source-tree-sha256.txt
 ```

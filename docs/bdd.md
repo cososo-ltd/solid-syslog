@@ -62,7 +62,7 @@ through the QEMU UART (`-serial stdio`).
 | File | Purpose |
 |---|---|
 | `Bdd/syslog-ng/syslog-ng.conf` | syslog-ng configuration — UDP source, key=value template output |
-| `ghcr.io/cososo-ltd/behave` | GHCR image — Debian trixie + Python + Behave ([source](https://github.com/DavidCozens/BehaveDocker)) |
+| `ghcr.io/cososo-ltd/behave` | GHCR image — Debian trixie + Python + Behave ([source](https://github.com/cososo-ltd/BehaveDocker)) |
 | `Bdd/output/` | Shared directory — syslog-ng writes here, Behave reads |
 | `Bdd/features/` | Gherkin feature files and step definitions |
 | `Bdd/Targets/Linux/main.c` | Linux BDD target: PosixMessageQueueBuffer + service pthread + SwitchingSender. Accepts `--facility`, `--severity`, `--transport`, `--app-name`, store-config flags |

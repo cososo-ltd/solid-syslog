@@ -83,7 +83,7 @@ When a new image tag is available:
 | `behave` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/bdd.md`, `docs/containers.md` |
 
 The `cpputest-freertos` and `cpputest-freertos-cross` images both come from
-[CppUTestFreertosDocker](https://github.com/DavidCozens/CppUTestFreertosDocker).
+[CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker).
 A single push to that repo's `main` rebuilds and publishes both images at
 the same `sha-<short>` tag — always update both rows together.
 

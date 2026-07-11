@@ -15,7 +15,7 @@ Each deviation is paired with a matching entry in `misra_suppressions.txt`
 
 Each entry in `misra_suppressions.txt` shall reference the section of
 this document that authorises it. The suppressions file was populated
-under [S10.06](https://github.com/DavidCozens/solid-syslog/issues/367)
+under [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367)
 after the rule subset was curated; before then it carried only a
 header comment.
 
@@ -97,7 +97,7 @@ identifiers (§5.2.4.1) — a single number applies project-wide.
   cppcheck-misra configuration change is required; the
   enforcement window is strictly stricter than the deviation
   allows, which is the safe direction. (Decision recorded under
-  [S10.06](https://github.com/DavidCozens/solid-syslog/issues/367).)
+  [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).)
 - **Review** — The naming scheme itself (see `docs/NAMING.md`,
   Tier 1) builds in a `SolidSyslog` prefix and a `Class_Function`
   shape that makes accidental 63-character collisions extremely
@@ -106,7 +106,7 @@ identifiers (§5.2.4.1) — a single number applies project-wide.
 ### Approval
 
 Project owner — David Cozens. Recorded as the founding entry in this
-document under [S10.01](https://github.com/DavidCozens/solid-syslog/issues/357).
+document under [S10.01](https://github.com/cososo-ltd/solid-syslog/issues/357).
 
 ---
 
@@ -241,12 +241,12 @@ opaque-type design).
 ### Approval
 
 Project owner — David Cozens. Recorded under
-[S10.06](https://github.com/DavidCozens/solid-syslog/issues/367); scope
+[S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367); scope
 narrowed under
-[S11.11](https://github.com/DavidCozens/solid-syslog/issues/414) once
+[S11.11](https://github.com/cososo-ltd/solid-syslog/issues/414) once
 every Create-lifecycle class moved off caller-supplied storage onto the
 pool allocator; further narrowed under
-[S24.07](https://github.com/DavidCozens/solid-syslog/issues/418) once
+[S24.07](https://github.com/cososo-ltd/solid-syslog/issues/418) once
 Address itself moved onto per-platform pool classes — the casts are
 now the same OO-in-C downcast that authorised (a), not a separate
 caller-supplied-storage exception.
@@ -311,7 +311,7 @@ and in the definition. The repetition is the convention, not a defect.
 ### Approval
 
 Project owner — David Cozens. Recorded under
-[S10.06](https://github.com/DavidCozens/solid-syslog/issues/367).
+[S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
 ---
 
@@ -375,7 +375,7 @@ shape (§6.7.2.1 ¶18). The alternatives all regress:
 ### Approval
 
 Project owner — David Cozens. Recorded under
-[S10.06](https://github.com/DavidCozens/solid-syslog/issues/367).
+[S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
 ---
 
@@ -507,7 +507,7 @@ boundary.
 ### Approval
 
 Project owner — David Cozens. Recorded under
-[S10.06](https://github.com/DavidCozens/solid-syslog/issues/367).
+[S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
 ---
 
@@ -560,7 +560,7 @@ unavoidable on this platform.
 ### Approval
 
 Project owner — David Cozens. Recorded under
-[S10.06](https://github.com/DavidCozens/solid-syslog/issues/367).
+[S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
 ---
 
@@ -615,7 +615,7 @@ use. The deviation is narrow and visible.
 ### Approval
 
 Project owner — David Cozens. Recorded under
-[S10.06](https://github.com/DavidCozens/solid-syslog/issues/367).
+[S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
 ---
 
@@ -713,7 +713,7 @@ would not be substitutable for any other type.
 ### Approval
 
 Project owner — David Cozens. Recorded under
-[S10.06](https://github.com/DavidCozens/solid-syslog/issues/367).
+[S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
 ---
 
@@ -783,7 +783,7 @@ been since C89; it is neither opaque nor novel.
 ### Approval
 
 Project owner — David Cozens. Recorded under
-[S10.10](https://github.com/DavidCozens/solid-syslog/issues/375).
+[S10.10](https://github.com/cososo-ltd/solid-syslog/issues/375).
 
 ---
 
@@ -853,7 +853,7 @@ The alternatives all regress:
 ### Approval
 
 Project owner — David Cozens. Recorded under
-[S10.10](https://github.com/DavidCozens/solid-syslog/issues/375).
+[S10.10](https://github.com/cososo-ltd/solid-syslog/issues/375).
 
 ---
 
@@ -936,7 +936,7 @@ Summary:
 ### Approval
 
 Project owner — David Cozens. Recorded under
-[S10.18](https://github.com/DavidCozens/solid-syslog/issues/430).
+[S10.18](https://github.com/cososo-ltd/solid-syslog/issues/430).
 
 ---
 
@@ -1004,7 +1004,7 @@ The cast is well-defined: `unsigned char` may alias any object type
 ### Approval
 
 Project owner — David Cozens. Recorded under
-[S10.20](https://github.com/DavidCozens/solid-syslog/issues/437).
+[S10.20](https://github.com/cososo-ltd/solid-syslog/issues/437).
 
 ## D.014 — Rule 8.7: public-API `SolidSyslogErrorSource` objects (retired)
 
@@ -1019,5 +1019,5 @@ exactly the resolution this deviation's "Risk and mitigation" anticipated.
 cppcheck-misra reports no 8.7 finding for any error source; the suppression
 lines were removed.
 
-Recorded under [S17.02](https://github.com/DavidCozens/solid-syslog/issues/493),
-retired under [S12.26](https://github.com/DavidCozens/solid-syslog/issues/507).
+Recorded under [S17.02](https://github.com/cososo-ltd/solid-syslog/issues/493),
+retired under [S12.26](https://github.com/cososo-ltd/solid-syslog/issues/507).

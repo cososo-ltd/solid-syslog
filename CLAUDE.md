@@ -52,7 +52,7 @@ When creating a new story under an epic, link it immediately after `gh issue cre
 # 1. Get the node IDs (epic and story).
 gh api graphql -f query='
 query {
-  repository(owner: "DavidCozens", name: "solid-syslog") {
+  repository(owner: "cososo-ltd", name: "solid-syslog") {
     epic:  issue(number: <EPIC_NUM>)  { id }
     story: issue(number: <STORY_NUM>) { id }
   }
@@ -69,7 +69,7 @@ mutation {
 # 3. Verify.
 gh api graphql -f query='
 query {
-  repository(owner: "DavidCozens", name: "solid-syslog") {
+  repository(owner: "cososo-ltd", name: "solid-syslog") {
     issue(number: <EPIC_NUM>) {
       subIssuesSummary { total completed }
       subIssues(first: 50) { nodes { number title state } }
@@ -122,7 +122,7 @@ done explicitly.
 # 1. Get the issue's node ID.
 gh api graphql -f query='
 query {
-  repository(owner: "DavidCozens", name: "solid-syslog") {
+  repository(owner: "cososo-ltd", name: "solid-syslog") {
     issue(number: <N>) { id }
   }
 }'

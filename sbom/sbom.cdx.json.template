@@ -13,12 +13,12 @@
       }
     ],
     "component": {
-      "bom-ref": "pkg:github/DavidCozens/solid-syslog@${COMMIT_SHA}",
+      "bom-ref": "pkg:github/cososo-ltd/solid-syslog@${COMMIT_SHA}",
       "type": "library",
       "name": "SolidSyslog",
       "version": "${VERSION}",
       "description": "A structured syslog client library for embedded and industrial systems, implementing RFC 5424, RFC 5426 (UDP), RFC 6587 (TCP), and RFC 5425 (TLS via a pluggable Stream abstraction).",
-      "purl": "pkg:github/DavidCozens/solid-syslog@${COMMIT_SHA}",
+      "purl": "pkg:github/cososo-ltd/solid-syslog@${COMMIT_SHA}",
       "supplier": {
         "name": "COSOSO (Cozens Software Solutions Limited)",
         "url": ["https://cososo.co.uk"]
@@ -33,11 +33,11 @@
       "externalReferences": [
         {
           "type": "vcs",
-          "url": "https://github.com/DavidCozens/solid-syslog"
+          "url": "https://github.com/cososo-ltd/solid-syslog"
         },
         {
           "type": "issue-tracker",
-          "url": "https://github.com/DavidCozens/solid-syslog/issues"
+          "url": "https://github.com/cososo-ltd/solid-syslog/issues"
         }
       ],
       "properties": [
@@ -82,7 +82,7 @@
   ],
   "dependencies": [
     {
-      "ref": "pkg:github/DavidCozens/solid-syslog@${COMMIT_SHA}",
+      "ref": "pkg:github/cososo-ltd/solid-syslog@${COMMIT_SHA}",
       "dependsOn": ["pkg:generic/openssl"]
     }
   ]

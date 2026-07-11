@@ -15261,3 +15261,32 @@ the repo transfer. Proving CI green on the new images *before* the transfer.
 
 ### Open questions
 - None — container half done; repo transfer + owner-URL sweep next.
+
+## 2026-07-11 — Repo transferred to cososo-ltd + owner-ref sweep
+
+Transferred `DavidCozens/solid-syslog` → the `cososo-ltd` org (after the container
+images, to de-risk), then swept the owner references.
+
+### Transfer
+- Clean: 17 issues moved with the repo, **branch protection survived** (26 checks +
+  enforce-admins), Actions enabled, old URLs redirect. No repo secrets (OIDC-keyless
+  SBOM signing), so nothing to re-add. Local remote repointed to cososo-ltd.
+- **Visibility correction:** the repo is PUBLIC and always was — source-available,
+  public read/clone/fork, **owner-only write/merge**. The earlier "stay private /
+  go-public gate" framing was a misread; there is no pending visibility flip.
+
+### Sweep
+- Targeted, not blanket (`CppUTestTemplate` did NOT move): repointed
+  `DavidCozens/{solid-syslog,CppUTestFreertosDocker,BehaveDocker}` URLs + SBOM PURLs
+  + `release-verification.md` cosign cert-identity + CLAUDE.md `repository(owner:)`
+  queries → `cososo-ltd`. Left untouched: the personal project board
+  (`--owner DavidCozens`), the `CppUTestTemplate`/`LedDriver` links in
+  `cloning-template.md`, and the "Cozens Software Solutions" company name.
+
+### Still to do post-transfer
+- Pages re-verify (URL is now `cososo-ltd.github.io/solid-syslog`).
+- Enable private vulnerability reporting (S19.07).
+- Confirm CI green on the org repo.
+
+### Open questions
+- None.

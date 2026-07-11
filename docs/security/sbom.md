@@ -112,7 +112,7 @@ To verify a downloaded asset set:
 ```shell
 cosign verify-blob \
   --bundle sbom.cdx.json.bundle \
-  --certificate-identity "https://github.com/DavidCozens/solid-syslog/.github/workflows/sbom.yml@refs/tags/v<version>" \
+  --certificate-identity "https://github.com/cososo-ltd/solid-syslog/.github/workflows/sbom.yml@refs/tags/v<version>" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   sbom.cdx.json
 ```
