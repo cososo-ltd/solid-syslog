@@ -52,15 +52,20 @@ markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
 
-# Many docs link to repo source (../Core/…, ../Platform/…, ../SECURITY.md) — valid
-# on GitHub but outside the site's docs tree. Downgrade those to info so a strict
-# build passes; converting them to canonical GitHub URLs is a tracked follow-up.
-# Nav references stay at warn so a genuine nav typo still fails the build.
+# TEMPORARY, tracked trade-off (docs overhaul Phase 6 follow-up):
+#   not_found  — many docs link to repo source (../Core/…, ../Platform/…,
+#                ../SECURITY.md), valid on GitHub but outside the site's docs
+#                tree. Downgraded until those links are converted to canonical
+#                GitHub URLs, after which this returns to `warn` (fatal).
+#   anchors    — the mkdoxy-generated API pages emit a few internal anchors
+#                (e.g. #enum-@0) that fail anchor validation; kept at info so
+#                mkdoxy output does not fail the strict build.
+# Everything else keeps its default: nav typos (validation.nav.*) and
+# unrecognized links still fail a strict build.
 validation:
   links:
     not_found: info
     anchors: info
-    unrecognized_links: info
 
 plugins:
   - search

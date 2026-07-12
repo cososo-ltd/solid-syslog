@@ -93,6 +93,16 @@ The `mkdocs-mkdoxy` image comes from
 [MkdocsMkdoxyDocker](https://github.com/cososo-ltd/MkdocsMkdoxyDocker); a push to
 that repo's `main` rebuilds and publishes it at a new `sha-<short>` tag.
 
+`mkdocs-mkdoxy` is a CI-only image — it is not a devcontainer service, so the
+generic "rebuild the devcontainer and verify" step above does not exercise it.
+Verify a tag bump by running the same command the `docs-build` job runs, from the
+repo root, before raising the bump PR:
+
+```bash
+docker run --rm -v "$PWD:/docs" \
+  ghcr.io/cososo-ltd/mkdocs-mkdoxy:sha-<new> mkdocs build --strict
+```
+
 All references to a given image must use the same tag. Never update one without the others.
 
 ## Switching to a different container as the devcontainer
