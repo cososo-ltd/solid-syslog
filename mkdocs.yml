@@ -8,30 +8,41 @@ site_url: https://cososo-ltd.github.io/solid-syslog/
 repo_url: https://github.com/cososo-ltd/solid-syslog
 repo_name: cososo-ltd/solid-syslog
 edit_uri: edit/main/docs/
+copyright: © Cozens Software Solutions Limited
+
+extra_css:
+  - assets/stylesheets/brand.css
+
+extra:
+  # The corporate logo and site title link here (cososo.co.uk homepage).
+  homepage: https://www.cososo.co.uk
 
 theme:
   name: material
+  custom_dir: overrides
+  # Header: corporate CoSoSo logo (→ homepage). Favicon: the SolidSyslog cube —
+  # the browser tab represents the product, so it carries the product mark.
+  logo: assets/images/cososo-logo.svg
+  favicon: assets/images/solidsyslog-cube.svg
+  # Match cososo.co.uk: Open Sans body, Montserrat headings (headings set in
+  # assets/stylesheets/brand.css). The site accent #3e2199 is set there too.
+  font:
+    text: Open Sans
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/weather-sunny
-        name: Switch to light mode
+    # cososo.co.uk is white/light only, so the docs are light only too — one
+    # clean scheme, no dark toggle, so it always matches the website. primary:
+    # white gives a white header with dark text and correctly styled search/icons.
+    - scheme: default
+      primary: white
+      accent: deep purple
   features:
+    # Top-level sections become a horizontal nav bar (closer to the website's
+    # menu than the mobile hamburger); sub-pages stay in the left sidebar.
+    - navigation.tabs
     - navigation.sections
     - navigation.top
     - navigation.indexes
     - content.code.copy
-    - content.action.edit
     - toc.follow
     - search.suggest
 

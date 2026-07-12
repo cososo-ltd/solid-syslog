@@ -1,0 +1,123 @@
+/*
+ * Brand styling to match cososo.co.uk (SiteOrigin Corp theme): a clean, mostly
+ * white site with Montserrat headings, Open Sans body, and the accent violet
+ * #3e2199 used sparingly. Values (weights, sizes, colours, header padding) are
+ * taken from the live theme CSS. Open Sans is loaded by theme.font.text.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap");
+
+:root {
+  --md-typeset-a-color: #3e2199;
+  --md-accent-fg-color:  #5a3fc0;
+  /* Footer in the website's charcoal (.site-footer #363a43, bottom-bar #2f333b). */
+  --md-footer-bg-color:       #363a43;
+  --md-footer-bg-color--dark: #2f333b;
+}
+
+/* Small SolidSyslog wordmark (white variant) above the footer copyright. */
+.ss-footer-mark {
+  display: block;
+  height: auto;
+  margin-bottom: 0.5rem;
+}
+
+/* Headings: Montserrat 600, #2d2d2d, modest sizes — as on the website
+   (h1 29px, h2 26px, h3 23px). Not the heavy 700 black default. */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6,
+.md-nav__title {
+  font-family: "Montserrat", sans-serif;
+  font-weight: 600;
+  color: #2d2d2d;
+}
+
+.md-typeset h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #2d2d2d;
+  letter-spacing: normal;
+}
+
+.md-typeset h2 { font-size: 1.5rem; }
+.md-typeset h3 { font-size: 1.3rem; }
+
+/* Header/banner: white, taller, with the hairline bottom border the site uses
+   (.site-header: padding 25px 0; border-bottom 1px #e6e6e6). */
+.md-header {
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.md-header--shadow {
+  box-shadow: 0 0 0.2rem rgba(0, 0, 0, 0.05);
+}
+
+.md-header__inner {
+  min-height: 4rem;
+}
+
+.md-header__title {
+  font-family: "Montserrat", sans-serif;
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+.md-header__button.md-logo {
+  padding: 0.2rem 0.4rem;
+}
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 2.6rem;
+}
+
+/* Keep the corporate logo top-left on narrow viewports too — Material hides the
+   header logo below its mobile breakpoint, but the website always shows it. */
+@media screen and (max-width: 76.234375em) {
+  .md-header__button.md-logo {
+    display: inline-flex;
+  }
+}
+
+/* Logo-only header, like the website (the corporate CoSoSo logo, no product name
+   in the bar). Hide the title text via font-size, not display:none, so the
+   title keeps its flex-grow spacer and search + repo stay pushed to the right. */
+.md-header__title {
+  font-size: 0;
+}
+
+/* Search magnifier at the far top-right, like the website (repo just left of it). */
+.md-search {
+  order: 2;
+}
+
+.md-header__source {
+  order: 1;
+}
+
+/* Top-nav tabs styled like the site menu: white bar, Montserrat uppercase,
+   violet on hover/active. */
+.md-tabs {
+  background-color: #ffffff;
+  color: #2d2d2d;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.md-tabs__link {
+  font-family: "Montserrat", sans-serif;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 1;
+  color: #2d2d2d;
+}
+
+.md-tabs__link:hover,
+.md-tabs__link--active {
+  color: #3e2199;
+}

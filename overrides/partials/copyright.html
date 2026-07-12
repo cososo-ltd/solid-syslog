@@ -1,0 +1,23 @@
+{#-
+  Custom footer copyright: a small SolidSyslog wordmark (white variant, for the
+  dark footer) above the copyright line. Otherwise mirrors Material's default.
+-#}
+<div class="md-copyright">
+  <img
+    class="ss-footer-mark"
+    src="{{ 'assets/images/solidsyslog-mark-white.svg' | url }}"
+    alt="SolidSyslog"
+    width="150"
+  />
+  {% if config.copyright %}
+    <div class="md-copyright__highlight">
+      {{ config.copyright }}
+    </div>
+  {% endif %}
+  {% if not config.extra.generator == false %}
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  {% endif %}
+</div>

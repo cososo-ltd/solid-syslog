@@ -1,4 +1,4 @@
-# SolidSyslog documentation
+# ![SolidSyslog](assets/images/solidsyslog-mark-a.svg)
 
 > [!WARNING]
 > **The documentation is under active development and may be incomplete or
