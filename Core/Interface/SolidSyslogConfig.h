@@ -30,9 +30,9 @@ EXTERN_C_BEGIN
         SolidSyslogHeaderFieldFunction GetHostname; /**< RFC 5424 HOSTNAME; NULL emits "-". */
         void* GetHostnameContext; /**< Passed back to the callback unchanged. */
         SolidSyslogHeaderFieldFunction GetAppName; /**< RFC 5424 APP-NAME; NULL emits "-". */
-        void* GetAppNameContext;
+        void* GetAppNameContext; /**< Passed back to the callback unchanged. */
         SolidSyslogHeaderFieldFunction GetProcessId; /**< RFC 5424 PROCID; NULL emits "-". */
-        void* GetProcessIdContext;
+        void* GetProcessIdContext; /**< Passed back to the callback unchanged. */
         struct SolidSyslogStore* Store; /**< NULL (or SolidSyslogNullStore_Get()) means no store-and-forward. */
         struct SolidSyslogStructuredData** Sd; /**< Per-instance SD-ELEMENTs on every message, before per-message SD. */
         size_t SdCount;

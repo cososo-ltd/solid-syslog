@@ -26,7 +26,7 @@ EXTERN_C_BEGIN
      *  blocks depends on that Buffer: a PassthroughBuffer sends inline; a
      *  CircularBuffer enqueues and returns, leaving delivery to
      *  SolidSyslog_Service. Concurrent calls are safe only if the configured
-     *  Buffer is (e.g. a CircularBuffer with a real Mutex). A NULL handle or
+     *  Buffer is thread-safe (e.g. a CircularBuffer with a real Mutex). A NULL handle or
      *  message is reported via SolidSyslog_Error and otherwise ignored. */
     void SolidSyslog_Log(struct SolidSyslog * handle, const struct SolidSyslogMessage* message);
 

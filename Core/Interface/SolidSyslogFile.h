@@ -9,10 +9,9 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogFile;
 
-    /* These dispatch straight to the SolidSyslogFile vtable; the per-operation
-     * contract (open-or-create, exact-count Read/Write, durable Write, seek and
-     * truncate semantics) lives in SolidSyslogFileDefinition.h. */
-
+    /** These dispatch straight to the SolidSyslogFile vtable; the per-operation
+     *  contract (open-or-create, exact-count Read/Write, durable Write, seek and
+     *  truncate semantics) lives in SolidSyslogFileDefinition.h. */
     bool SolidSyslogFile_Open(struct SolidSyslogFile * file, const char* path);
     void SolidSyslogFile_Close(struct SolidSyslogFile * file);
     bool SolidSyslogFile_IsOpen(struct SolidSyslogFile * file);
