@@ -683,6 +683,34 @@ jobs:
           docker run --rm -v "$PWD:/workdir" \
             davidanson/markdownlint-cli2@sha256:0ed9a5f4c77ef447da2a2ac6e67caf74b214a7f80288819565e8b7d2ac148fe5
 
+  # Builds the MkDocs + mkdoxy documentation site with the pinned toolchain
+  # image (see docs/containers.md) so the site cannot silently rot. It does NOT
+  # publish to GitHub Pages — publishing stays gated until the site look and
+  # content are release-ready. Advisory for now: promote to a required check by
+  # adding `docs-build` to branch protection once the site is public.
+  docs-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      # --strict fails the build on broken nav or config. Out-of-docs source
+      # links (../Core/…, ../SECURITY.md) are info-level by mkdocs.yml design;
+      # the api/ reference is generated from Core/Interface/*.h by mkdoxy.
+      - name: Build docs site
+        run: |
+          docker run --rm -v "$PWD:/docs" \
+            ghcr.io/cososo-ltd/mkdocs-mkdoxy:sha-34173c0 \
+            mkdocs build --strict
+
+      - name: Upload site artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docs-site
+          path: site/
+          retention-days: 7
+
   analyze-cppcheck:
     runs-on: ubuntu-latest
     container:

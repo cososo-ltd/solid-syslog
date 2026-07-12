@@ -1,0 +1,120 @@
+# Documentation site build. The toolchain (Doxygen + MkDocs + Material + mkdoxy)
+# ships as the ghcr.io/cososo-ltd/mkdocs-mkdoxy image — see docs/containers.md.
+# The API reference under api/ is generated from Core/Interface/*.h by mkdoxy at
+# build time and is git-ignored.
+site_name: SolidSyslog
+site_description: Structured syslog for embedded and industrial systems
+site_url: https://cososo-ltd.github.io/solid-syslog/
+repo_url: https://github.com/cososo-ltd/solid-syslog
+repo_name: cososo-ltd/solid-syslog
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+    - search.suggest
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      # GitHub-compatible slug function so in-page anchors match the ones the
+      # same Markdown produces on GitHub (keeps cross-doc #anchors resolving).
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+
+# TEMPORARY, tracked trade-off (docs overhaul Phase 6 follow-up):
+#   not_found  — many docs link to repo source (../Core/…, ../Platform/…,
+#                ../SECURITY.md), valid on GitHub but outside the site's docs
+#                tree. Downgraded until those links are converted to canonical
+#                GitHub URLs, after which this returns to `warn` (fatal).
+#   anchors    — the mkdoxy-generated API pages emit a few internal anchors
+#                (e.g. #enum-@0) that fail anchor validation; kept at info so
+#                mkdoxy output does not fail the strict build.
+# Everything else keeps its default: nav typos (validation.nav.*) and
+# unrecognized links still fail a strict build.
+validation:
+  links:
+    not_found: info
+    anchors: info
+
+plugins:
+  - search
+  # Renders GitHub alert blocks ( > [!NOTE] / [!WARNING] ) as Material
+  # admonitions, so the same source renders natively on GitHub and in the site.
+  - gh-admonitions
+  - mkdoxy:
+      projects:
+        api:
+          src-dirs: Core/Interface
+          full-doc: true
+          doxy-cfg:
+            FILE_PATTERNS: "*.h"
+            RECURSIVE: true
+            EXTRACT_ALL: true
+            OPTIMIZE_OUTPUT_FOR_C: true
+
+nav:
+  - Home: README.md
+  - Overview:
+      - Compliance in one page: overview.md
+  - Adopt:
+      - Getting started: getting-started.md
+      - Components by Security Level: security-levels.md
+      - Structured data: structured-data.md
+      - Error handling: error-severity.md
+      - Integrating lwIP: integrating-lwip.md
+      - Integrating Mbed TLS: integrating-mbedtls.md
+      - Integrating FreeRTOS-Plus-FAT: integrating-plusfat.md
+  - Port a new platform:
+      - Porting guide: porting.md
+  - Compliance:
+      - IEC 62443 guide: iec62443.md
+      - RFC matrix: rfc-compliance.md
+      - Threat model: security/threat-model.md
+      - At-rest cryptography: security/at-rest-cryptography.md
+      - SBOM: security/sbom.md
+      - Vulnerability triage: security/triage-runbook.md
+      - Release verification: security/release-verification.md
+  - API reference:
+      - Overview: api/links.md
+      - Headers: api/files.md
+      - Data structures: api/annotated.md
+  - Maintaining:
+      - Building & testing: builds.md
+      - Local checks: local-checks.md
+      - BDD testing: bdd.md
+      - CI pipeline: ci.md
+      - Container images: containers.md
+      - Naming conventions: NAMING.md
+      - MISRA deviations: misra-deviations.md
+      - Release process: release-process.md
