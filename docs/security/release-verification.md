@@ -10,8 +10,8 @@ Prerequisites:
 - [cosign](https://docs.sigstore.dev/system_config/installation/) v2 or
   later on your `$PATH`.
 - [cyclonedx-cli](https://github.com/CycloneDX/cyclonedx-cli) v0.30.0 or
-  later (optional — only needed to re-validate the SBOM).
-- A `git` checkout of the repo at the release's tag (optional — only
+  later (optional, only needed to re-validate the SBOM).
+- A `git` checkout of the repo at the release's tag (optional, only
   needed to reproduce the source hash yourself).
 
 All four Release assets should be present:
@@ -28,8 +28,8 @@ source-tree-sha256.txt.bundle
 `source-tree-sha256.txt` records the content-tree SHA-256 of the product at
 the release commit. The product scope is `Core/` + `Platform/` plus the
 root-level `CMakeLists.txt`, `CMakePresets.json`, and `LICENSE.md`. The hash
-is deterministic across git versions, archive formats, locales, and tooling
-— it depends only on the bytes of each tracked file and the sorted list of
+is deterministic across git versions, archive formats, locales, and tooling;
+it depends only on the bytes of each tracked file and the sorted list of
 paths.
 
 ### Reproduce with git (authoritative)
@@ -59,7 +59,7 @@ the tree the SBOM describes.
 
 ### Reproduce without git (fallback, working tree only)
 
-If you don't have a git clone — e.g. you received a source archive instead —
+If you don't have a git clone (e.g. you received a source archive instead)
 but you do have an extracted working tree with the product files present:
 
 ```shell
@@ -73,7 +73,7 @@ find Core Platform CMakeLists.txt CMakePresets.json LICENSE.md -type f \
 
 Same hash expected, same comparison. Caveats:
 
-- Assumes the working tree is clean — any untracked or locally-modified
+- Assumes the working tree is clean: any untracked or locally-modified
   file under the in-scope paths will change the hash.
 - Assumes line endings are LF on disk (git's `.gitattributes` enforces
   this at checkout; some extraction tools may convert on platforms that
@@ -147,7 +147,7 @@ cyclonedx validate \
   --fail-on-errors
 ```
 
-This isn't strictly a provenance check — the CI already ran it — but it
+This isn't strictly a provenance check (the CI already ran it), but it
 confirms the document on your disk is structurally and semantically a valid
 CycloneDX 1.5 SBOM. Useful if you're plugging it into an SBOM-consuming tool
 and want to rule out corruption-in-transit.

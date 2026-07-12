@@ -23,15 +23,15 @@ split between the two tools so they cannot disagree on the same name:
   the distinction between macros, typedefs, tags and ordinary identifiers.
   Per-directory `.clang-tidy` files implement the tier model below.
   Note: `readability-identifier-naming` enforces case style + prefix +
-  suffix per identifier kind, but does **not** support a positive
+  suffix per identifier kind, but does not support a positive
   must-match regex. The `SolidSyslogClass_Function` shape past the
   `SolidSyslog` prefix is therefore enforced by review and by
   cppcheck-misra rule 5.1 distinctness, not by clang-tidy directly.
 - **cppcheck-misra** is the sole authority on naming *uniqueness*. The
   MISRA addon surfaces rules 5.1, 5.2, 5.4, 5.6, 5.7, 5.8 and 5.9
-  violations — pattern matching alone cannot detect these.
+  violations, which pattern matching alone cannot detect.
 
-cppcheck's `naming` addon is deliberately **not** used: it does less than
+cppcheck's `naming` addon is deliberately not used: it does less than
 clang-tidy on every axis we care about, and a second tool checking the
 same conditions creates the risk of contradictory verdicts.
 
@@ -76,7 +76,7 @@ in MISRA but treated as required here.
 
 **Form:** `SolidSyslog<Class>_<Function>` for class-scoped operations,
 or `SolidSyslog_<Function>` for whole-library operations where the
-library *itself* is the class. `SolidSyslog<Class>` for exported types
+library itself is the class. `SolidSyslog<Class>` for exported types
 and tag names.
 
 ```c
@@ -121,8 +121,8 @@ enum SolidSyslogSeverity
 
 The `SolidSyslog` prefix is the library's namespace. The `<Class>_`
 portion (when present) identifies the module. The function name
-follows in PascalCase. The "whole-library" form is **not** an
-exception — both shapes are first-class Tier 1; the difference is
+follows in PascalCase. The "whole-library" form is not an
+exception: both shapes are first-class Tier 1; the difference is
 whether the operation lives on a specific class or on the library
 itself.
 
@@ -205,7 +205,7 @@ be harder to enforce going forward.
 #### The `SolidSyslog.c` exception
 
 `Core/Source/SolidSyslog.c` is the one file where the strip rule
-yields an empty prefix (the file *is* the library namespace).
+yields an empty prefix (the file is the library namespace).
 Statics in this file use **`SolidSyslog_<Function>`** — the same
 shape as Tier 1 whole-library API entry points (`SolidSyslog_Log`,
 `SolidSyslog_Service`, etc.). Linkage (`static`) distinguishes them
@@ -299,7 +299,7 @@ enter the decision.
 
 When a vtable entry point or a concrete-class `_Destroy` receives a
 `base` and needs to operate on its concrete type, the downcast is named
-and centralised — one `static inline` helper per derived class:
+and centralised, one `static inline` helper per derived class:
 
 ```c
 static inline struct SolidSyslogCircularBuffer*
@@ -325,7 +325,7 @@ static bool CircularBuffer_Read(struct SolidSyslogBuffer* base,
 For classes still on the caller-supplied-storage pattern (the
 Posix/Windows/FreeRTOS mutexes and streams, FatFs/TLS adapters, …),
 `_Create` takes opaque storage and re-interprets it as the concrete
-struct. The same convention applies — one named `static inline` helper
+struct. The same convention applies, one named `static inline` helper
 per class:
 
 ```c
@@ -370,7 +370,7 @@ They are also reserved at Tier 2 — no file-scope static should be named
 **Form:** PascalCase, no prefix, no class qualifier. No member-kind
 exceptions — data members and function-pointer (vtable) members both use
 the same shape. The boolean and no-Hungarian conventions from Tier 3
-do **not** apply at this tier — PascalCase carries the visual signal that
+do not apply at this tier — PascalCase carries the visual signal that
 "this is a named, persistent piece of state" without needing an `is`/`has`
 prefix to convey "this is a boolean."
 
@@ -414,7 +414,7 @@ case shape encodes lifetime, not the member's kind.
 The previous scheme used lowerCamelCase for data members and tolerated
 PascalCase only for vtable function-pointer members "to mirror the
 function name." That is the kind of implicit semantic encoding Clean Code
-argues against — case meaning shifted based on what *kind* of thing the
+argues against — case meaning shifted based on what kind of thing the
 member held. Tier 4 now states a single rule.
 
 ### The `struct X X;` shape
@@ -445,7 +445,7 @@ by the struct instance: `policy->IntegrityCheck` is self-documenting.
 
 ## No struct typedefs
 
-SolidSyslog does **not** use `typedef struct` for its own struct types,
+SolidSyslog does not use `typedef struct` for its own struct types,
 whether the type is opaque or value-typed. Code refers to struct types by
 tag everywhere:
 
@@ -500,7 +500,7 @@ int SolidSyslogTransport_Send(struct SolidSyslogTransport*    transport,
 
 ### Typedefs that are permitted
 
-Typedefs are used **only** for:
+Typedefs are used only for:
 
 - **Enum types** intended to be passed by value:
   `typedef enum SolidSyslogSeverity SolidSyslogSeverity;`
@@ -550,15 +550,15 @@ exactly one implementation of a given role — the tunable is named for the
 The integrator reasons about "how many TCP streams", never "how many POSIX
 streams". `SOLIDSYSLOG_ADDRESS_POOL_SIZE` established the pattern; the role
 pools (`TCP_STREAM`, `DATAGRAM`, `RESOLVER`, `MUTEX`, `FILE`, `ATOMIC_COUNTER`,
-`TLS_STREAM`, `HMAC_SHA256_POLICY`) follow it. Do **not** reintroduce a
+`TLS_STREAM`, `HMAC_SHA256_POLICY`) follow it. Do not reintroduce a
 per-platform pool name when adding a new OS, network stack, or crypto vendor —
 the new implementation references the existing role tunable.
 
 The pool counts **instances, not implementations**. The naming holds only
 because a build links one implementation per role. If a future build ever
 wires two implementations of the same role into one executable (e.g. the lwIP
-numeric *and* DNS resolver, or two crypto vendors), size that role's pool to
-the **sum** of the concurrent instances rather than splitting the name again.
+numeric and DNS resolver, or two crypto vendors), size that role's pool to
+the sum of the concurrent instances rather than splitting the name again.
 
 Classes with no platform/vendor variants keep their class-specific name
 (`SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE`, `SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE`, etc.).

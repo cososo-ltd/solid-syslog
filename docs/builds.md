@@ -1,8 +1,8 @@
 # Building and Testing
 
-> **This is the contributor / maintainer build doc** — the CMake preset catalogue
+> This is the contributor / maintainer build doc: the CMake preset catalogue
 > for developing the library and reproducing CI lanes locally. If you are
-> *consuming* SolidSyslog in your own product (CMake or non-CMake), start at
+> consuming SolidSyslog in your own product (CMake or non-CMake), start at
 > [Getting started](getting-started.md) instead.
 
 All builds use CMake presets. Output goes to `build/<preset>/`.
@@ -17,7 +17,7 @@ cmake --preset $BUILD_PRESET
 cmake --build --preset $BUILD_PRESET --target junit
 ```
 
-In VS Code, **Ctrl+Shift+B** runs the build and test and reports pass/fail in the terminal.
+In VS Code, Ctrl+Shift+B runs the build and test and reports pass/fail in the terminal.
 
 ## Clang build — `clang-debug`
 
@@ -36,7 +36,7 @@ See [Container images](containers.md) for how to switch.
 ## C99 portability — `c99`
 
 Compiles the library with `CMAKE_C_STANDARD=99` (and `HAVE_STDATOMIC_H=OFF`,
-`BUILD_TESTING=OFF`) to enforce the C99 baseline — catches accidental use of
+`BUILD_TESTING=OFF`) to enforce the C99 baseline: catches accidental use of
 later-standard features in production source. Library only; tests are not built.
 
 ```bash
@@ -88,16 +88,16 @@ cmake --build --preset cppcheck
 
 Runs include-what-you-use over the source set to flag missing or unused
 `#include` directives. It inherits `clang-debug`, so use the `clang` (or
-`cpputest-freertos`) image — not the `gcc` image.
+`cpputest-freertos`) image, not the `gcc` image.
 
 ```bash
 cmake --preset iwyu
 cmake --build --preset iwyu --target iwyu
 ```
 
-Note the `--target iwyu` — building the bare preset does not run the tool.
+Note the `--target iwyu`: building the bare preset does not run the tool.
 
-**IWYU is advisory, not a gate**. The CI lanes (`analyze-iwyu`,
+IWYU is advisory, not a gate. The CI lanes (`analyze-iwyu`,
 `analyze-iwyu-freertos-plustcp`, `analyze-iwyu-freertos-lwip`) run on every PR but
 do not block the build; their findings land in the `iwyu-report*` artifacts. Sweep
 those at release cleanup. See [local-checks.md](local-checks.md) for the FreeRTOS
@@ -183,7 +183,7 @@ rebuilding, or run from the gcc container:
 behave Bdd/features/
 ```
 
-In the behave-linux container, **Ctrl+Shift+B** runs `behave Bdd/features/` automatically.
+In the behave-linux container, Ctrl+Shift+B runs `behave Bdd/features/` automatically.
 
 For the FreeRTOS pair (cross-build the BDD target ELF, then drive QEMU through
 Behave inside `freertos-target`), see [`Bdd/README.md`](../Bdd/README.md).

@@ -6,10 +6,10 @@ planned.
 
 Status key:
 
-- Supported — implemented and tested
-- Partial — implemented with known limitations
-- Planned — tracked in an issue or epic
-- N/A — not applicable to a sender implementation
+- Supported: implemented and tested
+- Partial: implemented with known limitations
+- Planned: tracked in an issue or epic
+- N/A: not applicable to a sender implementation
 
 ## RFC 5424 — The Syslog Protocol
 

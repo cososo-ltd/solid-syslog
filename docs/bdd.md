@@ -6,7 +6,7 @@ BDD (Behaviour-Driven Development) tests verify SolidSyslog end-to-end: a C prog
 RFC 5424 syslog message over UDP to a real syslog-ng instance, and Behave (Python) asserts that
 the received message was parsed into the expected fields.
 
-This catches conformance issues that unit tests cannot — syslog-ng's RFC 5424 parser is the test
+This catches conformance issues that unit tests cannot: syslog-ng's RFC 5424 parser is the test
 oracle, so a malformed message that happens to match a byte-level expectation in a unit test will
 fail here.
 
@@ -39,7 +39,7 @@ fail here.
 
 BDD targets pair with their own oracle so jobs and developers
 switching containers never interfere. Each pair lives on its own
-bridge network so the `syslog-ng` DNS alias is scoped per-pair —
+bridge network so the `syslog-ng` DNS alias is scoped per-pair;
 see [`Bdd/README.md`](../Bdd/README.md) for the per-target compose
 layout, the `BDD_TARGET` env-var contract, and FreeRTOS local
 fault-finding tips.
@@ -115,13 +115,13 @@ response = sock.recv(1024)  # b'OK Config reload successful\n.\n'
 sock.close()
 ```
 
-This is exercised by scenarios that need a different syslog-ng source configuration — for
+This is exercised by scenarios that need a different syslog-ng source configuration, for
 example, the TLS and mTLS scenarios swap in tighter `peer-verify` settings and reload without
 restarting the container.
 
 ## Feature tags
 
-Features are tagged by **capability** — what the system under test must provide for the
+Features are tagged by capability, what the system under test must provide for the
 scenario to be meaningful. Runners declare which capabilities they have by excluding the
 tags they lack. This lets us add new runners (Windows, bare-metal RTOS, TLS-only client,
 etc.) without rewriting feature tags.
@@ -174,8 +174,8 @@ run cross-platform against the same assertions.
 Prerequisites: Python 3.13+ on `PATH` (`winget install Python.Python.3.13`), MSVC + vcpkg
 for the `msvc-debug` build.
 
-> **Shell:** the recipe below uses bash syntax (background `&`, inline `VAR=value command`).
-> Run it from **Git Bash for Windows**, which ships with the Git installer that's already
+> Shell: the recipe below uses bash syntax (background `&`, inline `VAR=value command`).
+> Run it from Git Bash for Windows, which ships with the Git installer that's already
 > required for this repo. PowerShell users either translate (`Start-Process` for backgrounding,
 > `$env:VAR = "..."` for env vars) or invoke `bash -c "..."`.
 
@@ -246,4 +246,4 @@ If the file is not created, check that:
 
 1. The syslog-ng container is running: `docker compose -f .devcontainer/docker-compose.yml ps`
 2. The config is mounted correctly: `docker compose -f .devcontainer/docker-compose.yml exec syslog-ng cat /etc/syslog-ng/syslog-ng.conf`
-3. After editing `syslog-ng.conf`, reload the config — either via the control socket (see above) or by recreating the container: `docker compose rm -sf syslog-ng && docker compose up -d syslog-ng`
+3. After editing `syslog-ng.conf`, reload the config, either via the control socket (see above) or by recreating the container: `docker compose rm -sf syslog-ng && docker compose up -d syslog-ng`

@@ -1,11 +1,11 @@
 # Getting started
 
-This is the **integrator front door**. It gets a real syslog stack compiling and
-sending in your project — whether you build with CMake or drop the sources
+This is the integrator front door. It gets a real syslog stack compiling and
+sending in your project, whether you build with CMake or drop the sources
 straight into an IAR / Keil / MPLAB / CCS project or a hand-written Makefile.
 
 > Building the library itself (presets, tests, CI)? That is the *contributor*
-> path — see [builds.md](builds.md). This page is for **consuming** SolidSyslog
+> path; see [builds.md](builds.md). This page is for consuming SolidSyslog
 > in your product.
 
 ## How SolidSyslog composes
@@ -13,30 +13,30 @@ straight into an IAR / Keil / MPLAB / CCS project or a hand-written Makefile.
 There is no monolith to subtract from. You assemble exactly the stack you need
 from three layers:
 
-1. **Core** — always present. The `SolidSyslog.h` API, the
+1. Core: always present. The `SolidSyslog.h` API, the
    formatter/message pipeline, error reporting, the buffer / store / structured-data
-   machinery, the static pool allocator, and a **Null object for every role**.
-2. **Adapters** — one per role you want filled (network, TLS, OS mutex, file,
+   machinery, the static pool allocator, and a Null object for every role.
+2. Adapters: one per role you want filled (network, TLS, OS mutex, file,
    atomic counter, …). Each is a small group of `.c` files under
    `Platform/<X>/`. Pick the provider that matches your platform.
-3. **Your callbacks and config** — a few function pointers (clock, hostname,
+3. Your callbacks and config: a few function pointers (clock, hostname,
    sleep) and your tunables.
 
-Every role has a Core **Null** fallback, so **omitting an adapter degrades
-safely** — its `_Create` is simply never called, and nothing dangles at link
+Every role has a Core Null fallback, so omitting an adapter degrades
+safely: its `_Create` is simply never called, and nothing dangles at link
 time. You only compile the adapters you actually wire.
 
 Two facts decide everything below:
 
-- **Non-CMake = everything is source.** A cross-compiled IAR/Keil/CCS project
-  compiles the Core sources *and* the selected adapter sources together, against
-  *your* config headers. There is no prebuilt Core library for a cross build —
+- Non-CMake = everything is source. A cross-compiled IAR/Keil/CCS project
+  compiles the Core sources and the selected adapter sources together, against
+  your config headers. There is no prebuilt Core library for a cross build;
   Core must be built with your toolchain too. (The "Core is a prebuilt `.a`" idea
   is a CMake-consumer convenience only.)
-- **Some adapters are header-configured.** lwIP (`lwipopts.h`), Mbed TLS
+- Some adapters are header-configured. lwIP (`lwipopts.h`), Mbed TLS
   (`mbedtls_config.h`), FreeRTOS (`FreeRTOSConfig.h`), and FatFs (`ffconf.h`)
-  change types and behaviour through *your* config header, so their `.c` files
-  must be compiled with that header on the include path — they can never be a
+  change types and behaviour through your config header, so their `.c` files
+  must be compiled with that header on the include path; they can never be a
   one-size pre-build. That is why they ship as sources.
 
 ---
@@ -60,7 +60,7 @@ path. *Pool tunable* is the `SOLIDSYSLOG_<NAME>` slot count (see
 | | Winsock | `WinsockResolver*` | Win32 | ″ |
 | | PlusTcp (static IPv4) | `PlusTcpResolver*` | FreeRTOS-Plus-TCP | ″ |
 | | LwipRaw numeric | `LwipRawResolver*` | lwIP `ipaddr_aton` | ″ |
-| | LwipRaw **DNS** | `LwipRawDnsResolver*` | lwIP **`LWIP_DNS=1`** + Sleep cb | ″ |
+| | LwipRaw DNS | `LwipRawDnsResolver*` | lwIP `LWIP_DNS=1` + Sleep cb | ″ |
 | Datagram (UDP) | Posix / Winsock / PlusTcp / LwipRaw | `{Posix,Winsock,PlusTcp,LwipRaw}Datagram*` | resp. stacks | `DATAGRAM_POOL_SIZE` |
 | Stream (TCP) | Posix / Winsock / PlusTcp / LwipRaw | `{…}TcpStream*` | resp. stacks (lwIP also needs a Sleep cb) | `TCP_STREAM_POOL_SIZE` |
 | Address | Posix / Winsock / PlusTcp / LwipRaw | `{…}Address*` | resp. `sockaddr` | `ADDRESS_POOL_SIZE` |
@@ -109,7 +109,7 @@ later epic, but the seams exist today.)
 Selection is auto-detect plus environment variables pointing at your upstream
 trees:
 
-- Host roles (POSIX / Winsock / OpenSSL / C11 atomics) are **auto-detected**
+- Host roles (POSIX / Winsock / OpenSSL / C11 atomics) are auto-detected
   (`find_package(OpenSSL)`, `check_symbol_exists`, an `_Atomic` compile probe)
   and baked into `libSolidSyslog.a`.
 - Embedded upstreams are located by env var: `FREERTOS_KERNEL_PATH`, `LWIP_PATH`,
@@ -117,8 +117,8 @@ trees:
 - The FreeRTOS networking backend is chosen with
   `-DSOLIDSYSLOG_FREERTOS_NET=PLUSTCP|LWIP|BOTH`.
 
-The header-configured packs ship as **namespaced umbrella targets** — link one
-per platform and the adapter sources compile into *your* target against *your*
+The header-configured packs ship as namespaced umbrella targets: link one
+per platform and the adapter sources compile into your target against your
 config header, with the SolidSyslog-side include dirs carried automatically (you
 still point at your own upstream trees):
 
@@ -132,8 +132,8 @@ target_link_libraries(my_app PRIVATE
 
 Available umbrellas: `SolidSyslog::FreeRtos`, `SolidSyslog::PlusTcp`,
 `SolidSyslog::LwipRaw`, `SolidSyslog::MbedTls`, `SolidSyslog::FatFs`,
-`SolidSyslog::PlusFat`. The lwIP **DNS** resolver is config-gated (needs
-`LWIP_DNS=1`), so it sits outside the umbrella as an opt-in component —
+`SolidSyslog::PlusFat`. The lwIP DNS resolver is config-gated (needs
+`LWIP_DNS=1`), so it sits outside the umbrella as an opt-in component,
 `SolidSyslog::LwipRawDnsResolver` (linking it also pulls the `LwipRaw` umbrella).
 A numeric-only lwIP build links `SolidSyslog::LwipRaw` and never enables DNS.
 
@@ -151,25 +151,25 @@ umbrellas), and the platform-specific guides:
 ## Path B — non-CMake integrator (the manifest)
 
 For an IAR / Keil / MPLAB / CCS native project or a hand-written Makefile, a
-SolidSyslog integration is **three things**:
+SolidSyslog integration is three things:
 
-1. **Source files** — the Core `.c` set plus the selected adapter `.c` files. Add
+1. Source files: the Core `.c` set plus the selected adapter `.c` files. Add
    them to your project's source list / compile them in your Makefile.
-2. **Include directories** — so the compiler finds both public and private
+2. Include directories, so the compiler finds both public and private
    headers:
-   - `Core/Interface` — the public API headers.
-   - `Core/Source` — Core-internal private headers (e.g.
+   - `Core/Interface`: the public API headers.
+   - `Core/Source`: Core-internal private headers (e.g.
      `SolidSyslogBlockStorePrivate.h`, `RecordStorePrivate.h`).
-   - For every adapter you use: `Platform/<X>/Interface` **and**
+   - For every adapter you use: `Platform/<X>/Interface` and
      `Platform/<X>/Source` (adapter `.c` files include their own
      `*Private.h` from `Source/`).
    - Each upstream library's include dir (lwIP, Mbed TLS, FreeRTOS, FatFs).
-   - The directory holding *your* config headers (`lwipopts.h`,
+   - The directory holding your config headers (`lwipopts.h`,
      `mbedtls_config.h`, `FreeRTOSConfig.h`, `ffconf.h`) and your tunables file.
-3. **Defines** — any `-D` an adapter requires (e.g. `LWIP_DNS=1` only if you use
+3. Defines: any `-D` an adapter requires (e.g. `LWIP_DNS=1` only if you use
    the lwIP DNS resolver), plus your tunable overrides (see [Tunables](#tunables)).
 
-> **Tip — adapter file groups.** For an adapter named `Foo`, compile every
+> Tip: adapter file groups. For an adapter named `Foo`, compile every
 > `Platform/<X>/Source/SolidSyslogFoo*.c` (the `Foo` + `FooStatic` pair) and put
 > `Platform/<X>/Source` on the include path for the `FooPrivate.h` header.
 > The matrix above lists which groups you need per role.
@@ -178,19 +178,19 @@ SolidSyslog integration is **three things**:
 
 ## Worked manifest — the beta stack
 
-**Target:** FreeRTOS + lwIP + Mbed TLS + FatFs, IAR, **no CMake**. TLS transport,
+Target: FreeRTOS + lwIP + Mbed TLS + FatFs, IAR, no CMake. TLS transport,
 store-and-forward, numeric resolver + DNS, `NO_SYS=0`.
 
 ### 1. Source files + include directories — generated, not hand-listed
 
 The exact `.c` file list and SolidSyslog-side include directories for this stack
-are **generated from CMake** and committed, so they can never drift from what the
+are generated from CMake and committed, so they can never drift from what the
 packs actually ship (CI regenerates and fails on any difference):
 
-**→ [`docs/generated/beta-stack-manifest.txt`](generated/beta-stack-manifest.txt)**
+→ [`docs/generated/beta-stack-manifest.txt`](generated/beta-stack-manifest.txt)
 
-That file is the authoritative source/include/`-D`/config-header list — copy it
-straight into your IDE or Makefile. To generate the manifest for a **different**
+That file is the authoritative source/include/`-D`/config-header list; copy it
+straight into your IDE or Makefile. To generate the manifest for a different
 selection of packs, configure with your upstream trees on the environment and
 your pack list, then build the `manifest` target:
 
@@ -239,10 +239,10 @@ stack:
 
 ### 4. Bring-your-own callbacks for this stack
 
-- **Sleep** — required by Mbed TLS (handshake retry) and the lwIP TCP stream
+- Sleep: required by Mbed TLS (handshake retry) and the lwIP TCP stream
   (bounded synchronous open). Wrap `vTaskDelay`.
-- **Clock**, **Hostname**, **ProcessId** — small callbacks (see the matrix).
-- **AtomicCounter** — only if you want RFC 5424 sequence-ids; otherwise it
+- Clock, Hostname, ProcessId: small callbacks (see the matrix).
+- AtomicCounter: only if you want RFC 5424 sequence-ids; otherwise it
   degrades to the Null counter (always 1).
 
 For the exact wiring of each adapter's `_Create` config struct, follow the
@@ -253,11 +253,11 @@ platform guides: [lwIP](integrating-lwip.md), [Mbed TLS](integrating-mbedtls.md)
 ## Tunables
 
 All compile-time limits live in
-[`Core/Interface/SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h)
-— 34 values, every one `#ifndef`-guarded so you override without editing the
+[`Core/Interface/SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h),
+34 values, every one `#ifndef`-guarded so you override without editing the
 library. Two equivalent mechanisms (works the same for CMake and non-CMake):
 
-- **A whole file of overrides:**
+- A whole file of overrides:
 
   ```text
   -DSOLIDSYSLOG_USER_TUNABLES_FILE="my_tunables.h"
@@ -266,23 +266,23 @@ library. Two equivalent mechanisms (works the same for CMake and non-CMake):
   Your `my_tunables.h` just `#define`s the values you want to change; the
   defaults header fills in the rest.
 
-- **Per-value on the command line:**
+- Per-value on the command line:
 
   ```text
   -DSOLIDSYSLOG_MAX_MESSAGE_SIZE=1024
   ```
 
-Pool-size tunables are named **by role, not by platform** (e.g.
-`SOLIDSYSLOG_TCP_STREAM_POOL_SIZE`, not a per-vendor name) — a build links one
+Pool-size tunables are named by role, not by platform (e.g.
+`SOLIDSYSLOG_TCP_STREAM_POOL_SIZE`, not a per-vendor name): a build links one
 implementation per role, so you size "how many TCP streams", never "how many
-*POSIX* streams". The pool counts concurrent *instances*. See the header's
+POSIX streams". The pool counts concurrent instances. See the header's
 top-of-file comment for the full rationale.
 
 ---
 
 ## Your first log
 
-The application-facing API is tiny — `Create` once at setup, then `Log` from
+The application-facing API is tiny: `Create` once at setup, then `Log` from
 anywhere and `Service` from your drain loop:
 
 ```c
@@ -327,11 +327,11 @@ SolidSyslog_Destroy(logger);
 
 With a `PassthroughBuffer`, `Log` sends inline and the `Service` loop is a no-op.
 With a `CircularBuffer` (the embedded default), `Log` enqueues and `Service`
-drains — run `Service` from a dedicated task. To attach per-message structured
+drains; run `Service` from a dedicated task. To attach per-message structured
 data, use `SolidSyslog_LogWithSd` instead of `SolidSyslog_Log`.
 
 Application code only ever includes `SolidSyslog.h` (and `SolidSyslogConfig.h` at
-setup). Everything else — senders, buffers, TLS, stores — is wired once behind
+setup). Everything else (senders, buffers, TLS, stores) is wired once behind
 the config struct.
 
 ---
@@ -341,9 +341,9 @@ the config struct.
 - [Integrating with lwIP (Raw API)](integrating-lwip.md)
 - [Integrating with Mbed TLS](integrating-mbedtls.md)
 - [Integrating with FreeRTOS-Plus-FAT](integrating-plusfat.md)
-- [Porting to a new platform](porting.md) — writing an adapter for an OS, network stack, filesystem, or crypto library we don't ship
+- [Porting to a new platform](porting.md): writing an adapter for an OS, network stack, filesystem, or crypto library we don't ship
 - [Structured data](structured-data.md)
 - [Error handling and severity](error-severity.md)
 - [IEC 62443 component selection by Security Level](iec62443.md)
 - [RFC compliance matrix](rfc-compliance.md)
-- [builds.md](builds.md) — building/testing the library itself (contributors)
+- [builds.md](builds.md): building/testing the library itself (contributors)

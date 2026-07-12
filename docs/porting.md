@@ -1,12 +1,12 @@
 # Porting SolidSyslog to a new platform
 
 > [!WARNING]
-> **The documentation is under active development and may be incomplete or
-> inaccurate.** Do not rely on it — for integration, security, or compliance
-> decisions — until the 0.1.0 release.
+> The documentation is under active development and may be incomplete or
+> inaccurate. Do not rely on it for integration, security, or compliance
+> decisions until the 0.1.0 release.
 
 Porting SolidSyslog to a new OS, network stack, filesystem, or crypto library is
-**filling a role, not editing Core**. Core never changes. You write a small
+filling a role, not editing Core. Core never changes. You write a small
 adapter that satisfies one of the twelve vtable contracts, drop it into your
 build, and wire it into your config. This page is the contract those adapters
 honour, written from the code that already ships.
@@ -14,17 +14,17 @@ honour, written from the code that already ships.
 ## The role model
 
 Core is a fixed set of algorithms (the formatter/message pipeline, the Service
-drain loop, the buffer/store machinery) plus twelve **roles**. A role is a
-`struct` of function pointers — a vtable — declared in a
+drain loop, the buffer/store machinery) plus twelve roles. A role is a
+`struct` of function pointers (a vtable) declared in a
 `SolidSyslog<Role>Definition.h` header under
 [`Core/Interface/`](../Core/Interface/). An *adapter* is a concrete
 implementation of one role for one platform (`SolidSyslogPosixMutex`,
 `SolidSyslogLwipRawDatagram`, …).
 
-Every role has a Core **Null** implementation
+Every role has a Core Null implementation
 (`SolidSyslogNull<Role>_Get()`) whose methods are safe no-ops. Omit an adapter
-and the Null object stands in — nothing dangles, and Core's algorithms keep
-running against a well-behaved do-nothing. So porting is *additive*: you provide
+and the Null object stands in: nothing dangles, and Core's algorithms keep
+running against a well-behaved do-nothing. So porting is additive: you provide
 the roles your deployment needs and leave the rest to their Nulls. You never edit
 Core, and you never touch a role you don't use.
 
@@ -35,7 +35,7 @@ when none of the shipped adapters fits your platform.
 ## Anatomy of an adapter
 
 Take [`SolidSyslogPosixMutex`](../Platform/Posix/Source/SolidSyslogPosixMutex.c)
-as the worked example — the simplest role, but the shape is identical for all
+as the worked example: the simplest role, but the shape is identical for all
 twelve. An adapter is four files:
 
 | File | Holds |
@@ -47,7 +47,7 @@ twelve. An adapter is four files:
 
 ### The instance shape
 
-The instance `struct` embeds the role type as its **first member**, named `Base`:
+The instance `struct` embeds the role type as its first member, named `Base`:
 
 ```c
 struct SolidSyslogPosixMutex
@@ -58,7 +58,7 @@ struct SolidSyslogPosixMutex
 ```
 
 Because `Base` is first, a `struct SolidSyslogMutex*` and a
-`struct SolidSyslogPosixMutex*` share an address — Core holds the former, your
+`struct SolidSyslogPosixMutex*` share an address; Core holds the former, your
 adapter downcasts to the latter by pointer identity. The vtable function pointers
 are wired to your `static` implementations once, when the instance is
 initialised.
@@ -99,8 +99,8 @@ struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(void)
 ```
 
 See [`SolidSyslogPosixMutexStatic.c`](../Platform/Posix/Source/SolidSyslogPosixMutexStatic.c)
-for the matching `_Destroy`. The pool size is a **role-named** tunable —
-`SOLIDSYSLOG_MUTEX_POOL_SIZE`, not a per-platform name — because a build links one
+for the matching `_Destroy`. The pool size is a role-named tunable,
+`SOLIDSYSLOG_MUTEX_POOL_SIZE`, not a per-platform name, because a build links one
 implementation per role. Every tunable lives in
 [`SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h),
 `#ifndef`-guarded so integrators override without editing the library.
@@ -115,67 +115,67 @@ detail)`: `source` is its own `ErrorSource` (matched by pointer identity in a
 handler), `category` is a portable reaction axis from
 [`SolidSyslogErrorCategory.h`](../Core/Interface/SolidSyslogErrorCategory.h), and
 `detail` is the adapter's own enum value. A handler that doesn't care about your
-adapter simply never matches its source. The default handler is a silent no-op —
-adapters **report and carry on**, they never crash the caller.
+adapter simply never matches its source. The default handler is a silent no-op:
+adapters report and carry on, they never crash the caller.
 
 ### Synchronising the slot walk
 
 The pool allocator wraps each slot claim and release in the
-`SolidSyslog_LockConfig()` / `SolidSyslog_UnlockConfig()` pair *internally* —
+`SolidSyslog_LockConfig()` / `SolidSyslog_UnlockConfig()` pair internally:
 `AcquireFirstFree` locks per-slot around the claim, `FreeIfInUse` locks around the
 release, so an adapter's `_Create` / `_Destroy` inherit the synchronisation for
 free and never lock themselves (which is why the example above has no lock call).
 Single-task setup gets the no-op default and pays nothing. On a multi-task or multi-core target
-where setup races, install the pair once with `SolidSyslog_SetConfigLock(...)` —
+where setup races, install the pair once with `SolidSyslog_SetConfigLock(...)`:
 `taskENTER_CRITICAL` / `taskEXIT_CRITICAL` (FreeRTOS), a static `pthread_mutex_t`
 (POSIX), `EnterCriticalSection` / `LeaveCriticalSection` (Windows), or a spinlock.
-This is the *only* synchronisation primitive the pools use for their own walks.
+This is the only synchronisation primitive the pools use for their own walks.
 
 ## Invariants every adapter must honour
 
-- **Idempotent `Close` / `Destroy`.** No leak on a partial `Open` failure, no
+- Idempotent `Close` / `Destroy`. No leak on a partial `Open` failure, no
   double-free if `Close` and `Destroy` are both called. Release each resource
   exactly once and null the handle.
-- **Never free injected handles.** An adapter frees only what it created. Handles
+- Never free injected handles. An adapter frees only what it created. Handles
   the integrator passed in (an `mbedtls_x509_crt*`, an RNG, a caller's socket)
-  are borrowed — the owner frees them. The [Mbed TLS coexistence
+  are borrowed; the owner frees them. The [Mbed TLS coexistence
   contract](iec62443.md#embedded-sl4-solidsyslogmbedtlsstream) is the template:
   `Platform/MbedTls/Source/` never touches process-global Mbed TLS state.
-- **A Null must be safe to call.** Whatever your role's Null returns (see each
-  contract below), it must let Core's algorithm proceed sanely — drop-on-the-floor
+- A Null must be safe to call. Whatever your role's Null returns (see each
+  contract below), it must let Core's algorithm proceed sanely: drop-on-the-floor
   where a drop is harmless, `false` where the caller has an error path to run.
-- **Bounded blocking.** Anything that can wedge (a `connect`, a handshake) is
-  bounded by an explicit timeout or deadline — a timeout tunable (e.g.
+- Bounded blocking. Anything that can wedge (a `connect`, a handshake) is
+  bounded by an explicit timeout or deadline: a timeout tunable (e.g.
   `SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS`) or a caller-supplied deadline. A
   `SolidSyslogSleepFunction`, where one is used, only paces the poll loop between
   checks; it does not bound the total wait. Steady-state `Send` / `Read` are
   non-blocking.
-- **Production-C discipline.** Tier 1/2 code is single-return, fully braced, and
-  MISRA-leaning — see [MISRA deviations](misra-deviations.md) and
+- Production-C discipline. Tier 1/2 code is single-return, fully braced, and
+  MISRA-leaning, see [MISRA deviations](misra-deviations.md) and
   [Naming conventions](NAMING.md).
 
 ## Wiring a new pack into the build
 
-- **CMake.** Group the adapter sources into a namespaced umbrella target
+- CMake. Group the adapter sources into a namespaced umbrella target
   (`SolidSyslog::<Pack>`) so linking one target compiles the adapter into the
-  consumer against *its* config headers. See the umbrella list in
+  consumer against its config headers. See the umbrella list in
   [Getting started → Path A](getting-started.md#path-a--cmake-consumer).
-- **Non-CMake.** Add the adapter's `.c` files to your project and put its
+- Non-CMake. Add the adapter's `.c` files to your project and put its
   `Interface/` and `Source/` on the include path. The
   [manifest](getting-started.md#path-b--non-cmake-integrator-the-manifest)
   generator lists the exact files for a chosen pack set.
 
 ## The twelve role contracts
 
-Each row is a vtable to implement. The **reference** column is the shipped
-implementation to read alongside the contract — a `Platform/Posix/` adapter where
-one exists, otherwise the Core composition over a lower role. The **Null** column
+Each row is a vtable to implement. The reference column is the shipped
+implementation to read alongside the contract: a `Platform/Posix/` adapter where
+one exists, otherwise the Core composition over a lower role. The Null column
 is the fallback Core substitutes when the role is unfilled.
 
 ### Networking
 
-Most network ports implement **Stream** (TCP / TLS byte transport) and
-**Datagram** (UDP); `Sender` is a Core composition over them, so you rarely write
+Most network ports implement Stream (TCP / TLS byte transport) and
+Datagram (UDP); `Sender` is a Core composition over them, so you rarely write
 one directly.
 
 | Role | Contract | Vtable | Null fallback | Reference |
@@ -192,9 +192,9 @@ connect/keepalive lifecycle; `Read` returns `0` for would-block and a negative
 
 ### Storage
 
-The store-and-forward stack is layered: **Store** (Core `BlockStore`) sits over
-**BlockDevice**, which sits over **File**. On a new platform you usually implement
-only **File** (and **BlockDevice** for raw flash); the rest is Core.
+The store-and-forward stack is layered: Store (Core `BlockStore`) sits over
+BlockDevice, which sits over File. On a new platform you usually implement
+only File (and BlockDevice for raw flash); the rest is Core.
 
 | Role | Contract | Vtable | Null fallback | Reference |
 |---|---|---|---|---|
@@ -205,7 +205,7 @@ only **File** (and **BlockDevice** for raw flash); the rest is Core.
 
 `Store.IsTransient` is the crucial hint: a *transient* store (like Null) never
 retained the record, so Service may try the sender directly; a real store's `Write`
-rejection is the discard policy speaking, and Service must **not** let a newer
+rejection is the discard policy speaking, and Service must not let a newer
 record jump the queue past older ones. The portable in-memory `CircularBuffer`
 takes an injected `Mutex`, so a `Buffer` port is often just a `Mutex` port.
 
@@ -223,19 +223,19 @@ takes an injected `Mutex`, so a `Buffer` port is often just a `Mutex` port.
 | **StructuredData** | [`StructuredDataDefinition.h`](../Core/Interface/SolidSyslogStructuredDataDefinition.h) | `Format(element)` — write one `[SD-ID …]` via the `SolidSyslogSdElement` sink | No-op (element omitted) | [`MetaSd.c`](../Core/Source/SolidSyslogMetaSd.c) |
 | **SecurityPolicy** | [`SecurityPolicyDefinition.h`](../Core/Interface/SolidSyslogSecurityPolicyDefinition.h) | `TrailerSize` + `SealRecord` · `OpenRecord` over a `SolidSyslogSecurityRecord` | No integrity check; `TrailerSize` `0`, seal/open pass through | [`Crc16Policy.c`](../Core/Source/SolidSyslogCrc16Policy.c) |
 
-A `StructuredData.Format` writes through the opaque `SolidSyslogSdElement` sink —
+A `StructuredData.Format` writes through the opaque `SolidSyslogSdElement` sink;
 it owns the brackets, the `@`-enterprise SD-ID suffix, and the escaping, so a
 producer cannot break the RFC 5424 framing. A `SecurityPolicy` is handed a
 `SolidSyslogSecurityRecord` split into a cleartext header (associated data) and a
 body. A keyed MAC policy authenticates the whole span (tamper-evident); a
 checksum policy such as the vendor-free `Crc16Policy` covers the same span but
-only detects *accidental* corruption, not an attacker; an AEAD policy encrypts the
+only detects accidental corruption, not an attacker; an AEAD policy encrypts the
 body in place and writes its `TrailerSize`-byte trailer. `Crc16Policy` is the
 reference to read first.
 
 ## Where to go next
 
-- [Getting started](getting-started.md) — the capability matrix, tunables, and build wiring.
-- [Integrating with lwIP (Raw API)](integrating-lwip.md), [Mbed TLS](integrating-mbedtls.md), [FreeRTOS-Plus-FAT](integrating-plusfat.md) — worked ports of the networking, TLS, and file roles.
-- [Naming conventions](NAMING.md) and [MISRA deviations](misra-deviations.md) — the rules Tier 1/2 adapter code follows.
-- [Error-event severity policy](error-severity.md) — choosing the severity for your adapter's reports.
+- [Getting started](getting-started.md): the capability matrix, tunables, and build wiring.
+- [Integrating with lwIP (Raw API)](integrating-lwip.md), [Mbed TLS](integrating-mbedtls.md), [FreeRTOS-Plus-FAT](integrating-plusfat.md): worked ports of the networking, TLS, and file roles.
+- [Naming conventions](NAMING.md) and [MISRA deviations](misra-deviations.md): the rules Tier 1/2 adapter code follows.
+- [Error-event severity policy](error-severity.md): choosing the severity for your adapter's reports.

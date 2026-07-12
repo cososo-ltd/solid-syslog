@@ -5,8 +5,8 @@
 `SolidSyslogResolver` vtables the rest of the library composes against.
 It is the right choice when:
 
-- Your target runs lwIP — bare-metal, FreeRTOS, Zephyr, ThreadX, NuttX
-  — including `NO_SYS=1` deployments where sockets/NETCONN aren't
+- Your target runs lwIP (bare-metal, FreeRTOS, Zephyr, ThreadX, NuttX),
+  including `NO_SYS=1` deployments where sockets/NETCONN aren't
   available.
 - You want to share TCP/IP between SolidSyslog and other lwIP-using
   subsystems (HTTP server, MQTT client, OTA updater) without
@@ -15,8 +15,8 @@ It is the right choice when:
   or sizing reasons. Both backends ship in the same library; pick at
   CMake time with `SOLIDSYSLOG_FREERTOS_NET=LWIP`.
 
-This document covers what *you*, the integrator, plug in. It does not
-re-teach lwIP — for that, see the
+This document covers what you, the integrator, plug in. It does not
+re-teach lwIP; for that, see the
 [upstream lwIP documentation](https://www.nongnu.org/lwip/2_1_x/index.html).
 
 ---
@@ -31,14 +31,14 @@ re-teach lwIP — for that, see the
 | `SolidSyslogLwipRawDatagram` | `udp_new` / `udp_sendto` / `udp_remove` | UDP sender. Zero-copy `PBUF_REF` send. |
 | `SolidSyslogLwipRawTcpStream` | `tcp_new` / `tcp_connect` / `tcp_write` / `tcp_output` / `tcp_recv` / `tcp_recved` / `tcp_close` / `tcp_abort` | TCP byte transport. Bounded synchronous Open. Bounded RX pbuf queue. |
 
-`Platform/LwipRaw/Source/` is **OS-agnostic** — it wraps lwIP only and
+`Platform/LwipRaw/Source/` is OS-agnostic: it wraps lwIP only and
 contains zero direct calls to FreeRTOS, POSIX, Win32, Zephyr, or any
 other host primitive. The one host primitive the TcpStream needs (a
 bounded sleep for the synchronous-Open spin loop) is abstracted behind
 the `SolidSyslogSleepFunction` typedef and supplied by you at
 configure time.
 
-mbedTLS layering is unchanged — `SolidSyslogMbedTlsStream` consumes
+mbedTLS layering is unchanged: `SolidSyslogMbedTlsStream` consumes
 `SolidSyslogLwipRawTcpStream` as its byte transport without
 modification. See [`docs/integrating-mbedtls.md`](integrating-mbedtls.md)
 for the TLS side.
@@ -47,14 +47,14 @@ for the TLS side.
 
 ## `NO_SYS=1` vs `NO_SYS=0`
 
-lwIP supports both threading models. SolidSyslog supports both — the
-adapter code is the same; the difference is entirely in how *you*
-drive lwIP forward, and which **marshal** you install.
+lwIP supports both threading models. SolidSyslog supports both; the
+adapter code is the same. The difference is entirely in how you
+drive lwIP forward, and which marshal you install.
 
 ### The marshal seam
 
-Every Raw API call the adapters make — `udp_sendto`, `tcp_write`,
-`pbuf_alloc`, `tcp_close`, … — is routed through a single hop:
+Every Raw API call the adapters make (`udp_sendto`, `tcp_write`,
+`pbuf_alloc`, `tcp_close`, …) is routed through a single hop:
 
 ```c
 #include "SolidSyslogLwipRawMarshal.h"
@@ -63,29 +63,29 @@ SolidSyslogLwipRaw_SetMarshal(MyMarshal);   /* once, at boot */
 ```
 
 The default (nothing installed, or `SolidSyslogLwipRaw_SetMarshal(NULL)`)
-is a **direct call** — the adapter calls lwIP on the calling thread. That
+is a direct call: the adapter calls lwIP on the calling thread. That
 is exactly right for `NO_SYS=1`. For `NO_SYS=0` you install a marshal that
 hops onto the thread owning the lwIP core.
 
-> **Earlier guidance was wrong.** Prior versions of this guide told you to
-> "marshal at the SolidSyslog API boundary" — wrap `SolidSyslog_Service()`
+> Earlier guidance was wrong. Prior versions of this guide told you to
+> "marshal at the SolidSyslog API boundary", wrap `SolidSyslog_Service()`
 > in `tcpip_callback()`. Don't. That puts file I/O, mbedTLS crypto, the
 > CircularBuffer mutex, the StreamSender's formatter work, and the Resolver
-> parse — none of which touch lwIP — on the tcpip thread, starving lwIP's
-> timer / RX path under load. The correct boundary is the **individual lwIP
-> Raw API call**, which is what the marshal seam gives you.
+> parse (none of which touch lwIP) on the tcpip thread, starving lwIP's
+> timer / RX path under load. The correct boundary is the individual lwIP
+> Raw API call, which is what the marshal seam gives you.
 
-**Contract.** The marshal MUST invoke its callback *synchronously* — before
+**Contract.** The marshal MUST invoke its callback synchronously, before
 the marshal function returns. The adapter reads results the callback wrote
 immediately after the hop returns. `tcpip_callback_with_block(.., block=1)`
 honours this; a bare `tcpip_callback(..)` does not (it queues and returns).
 
-One global slot serves the whole process — there is one lwIP instance and
+One global slot serves the whole process: there is one lwIP instance and
 one tcpip thread, so per-instance marshals would be flexibility without use.
 
 ### `NO_SYS=1` (bare-metal main-loop)
 
-Install nothing — the default direct-call marshal is correct. There is one
+Install nothing: the default direct-call marshal is correct. There is one
 execution context and no core to protect.
 
 Your `main()` is a forever-loop that, on each pass, calls
@@ -93,11 +93,11 @@ Your `main()` is a forever-loop that, on each pass, calls
 (`netif->input()` / `ethernetif_input()` / whichever your BSP wires).
 Every lwIP Raw API call must happen on that same thread.
 
-SolidSyslog's `Service` loop fits this naturally — call it from your
+SolidSyslog's `Service` loop fits this naturally: call it from your
 main loop alongside `sys_check_timeouts()`. The TcpStream's bounded
 synchronous-Open spin loop calls your injected `Sleep` callback
 between polls; under `NO_SYS=1` your Sleep implementation should
-**tick the lwIP machinery** while it waits:
+tick the lwIP machinery while it waits:
 
 ```c
 void MyLwipSleep(int milliseconds)
@@ -117,7 +117,7 @@ advance its state machine while you sleep), and Open times out.
 ### `NO_SYS=0` (tcpip thread) — option A: `tcpip_callback`
 
 lwIP runs a dedicated `tcpip` thread that owns its state machine. Install a
-marshal that posts each adapter callback to it and **blocks until it runs**:
+marshal that posts each adapter callback to it and blocks until it runs:
 
 ```c
 #include "lwip/tcpip.h"
@@ -155,7 +155,7 @@ void MyTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
 SolidSyslogLwipRaw_SetMarshal(MyTcpipMarshal);
 ```
 
-`tcpip_callback_with_block` needs an OS mailbox sized for the blocking post —
+`tcpip_callback_with_block` needs an OS mailbox sized for the blocking post;
 ensure `TCPIP_MBOX_SIZE` is adequate. lwIP does not expose a portable
 "am I on the tcpip thread?" predicate; most ports compare the current task
 handle against the one passed to `tcpip_init`.
@@ -163,8 +163,8 @@ handle against the one passed to `tcpip_init`.
 ### `NO_SYS=0` (tcpip thread) — option B: core locking
 
 If you compiled lwIP with `LWIP_TCPIP_CORE_LOCKING=1`, take the core lock
-around the hop instead of posting to the mailbox — lower latency, no context
-switch:
+around the hop instead of posting to the mailbox (lower latency, no context
+switch):
 
 ```c
 #include "lwip/tcpip.h"
@@ -186,8 +186,8 @@ the adapter is reached from a context that already holds it.
 
 ### The `Sleep` callback under `NO_SYS=0`
 
-TcpStream's bounded-Open spin runs on *your* thread (never the tcpip thread),
-so its `Sleep` is just a yield — typically `vTaskDelay` on FreeRTOS:
+TcpStream's bounded-Open spin runs on your thread (never the tcpip thread),
+so its `Sleep` is just a yield, typically `vTaskDelay` on FreeRTOS:
 
 ```c
 void MyLwipSleep(int milliseconds)
@@ -204,7 +204,7 @@ the FreeRtosLwip BDD target.
 
 ## `lwipopts.h` expectations
 
-The adapter wraps a specific subset of lwIP — your `lwipopts.h` needs
+The adapter wraps a specific subset of lwIP; your `lwipopts.h` needs
 those features compiled in. Defaults that already cover us are noted;
 features you must enable are flagged.
 
@@ -306,7 +306,7 @@ buffer, `udp_sendto` is called, and the header is `pbuf_free`d before
 return. Zero copy on the hot path.
 
 This is safe across ARP queueing because lwIP's `etharp_query` does
-`pbuf_clone(…, PBUF_RAM, q)` — it copies the referenced payload into
+`pbuf_clone(…, PBUF_RAM, q)`: it copies the referenced payload into
 a private RAM pbuf before queueing, so the caller's buffer only needs
 to live for the `udp_sendto` call itself (which is the synchronous
 guarantee `SolidSyslogDatagram_SendTo` already provides).
@@ -316,12 +316,12 @@ guarantee `SolidSyslogDatagram_SendTo` already provides).
 `SolidSyslogLwipRawTcpStream` uses `TCP_WRITE_FLAG_COPY`: lwIP copies
 your bytes into its own pbufs before `tcp_write` returns. This costs
 one `memcpy` per send but honours the synchronous `Stream_Send(buf,
-len)` lifetime contract — caller buffers are free at return,
+len)` lifetime contract: caller buffers are free at return,
 regardless of when the peer ACKs.
 
 `tcp_output` is called after every successful `tcp_write` to nudge
 transmission. If `tcp_output` returns `ERR_MEM`, the data is already
-in `pcb->snd_buf` — lwIP will retry on the next `tcp_tmr` tick and
+in `pcb->snd_buf`; lwIP will retry on the next `tcp_tmr` tick and
 the wrapper reports Send-success (lwIP owns the bytes, exactly
 matching POSIX's "kernel accepted the data into the send buffer"
 semantics).
@@ -335,7 +335,7 @@ bridges by spinning on a `Connected` flag set by its `connected_cb`,
 sleeping `SOLIDSYSLOG_LWIP_RAW_TCP_CONNECT_POLL_MS` (default 10 ms)
 between checks via your injected `Sleep`, bounded by the
 `GetConnectTimeoutMs` getter (default `SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS`
-= 200 ms — install a runtime getter if you need to vary it).
+= 200 ms; install a runtime getter if you need to vary it).
 
 Timeout → `tcp_abort` on the pcb, Open returns `false`. Errored
 callback → `tcp_abort`, Open returns `false`. Immediate non-`ERR_OK`
@@ -351,14 +351,14 @@ calls `tcp_recved(pcb, n)` to ACK back to lwIP's receive window, and
 callback returns non-`ERR_OK` so lwIP retains the pbuf and replays
 the callback later (lwIP's flow-control hook).
 
-> **Chained pbufs.** lwIP hands a single received segment as a **pbuf
-> chain** (`p->tot_len > p->len`, `p->next != NULL`) whenever the
-> payload spans more than one pool pbuf — normal once a segment exceeds
+> Chained pbufs. lwIP hands a single received segment as a pbuf
+> chain (`p->tot_len > p->len`, `p->next != NULL`) whenever the
+> payload spans more than one pool pbuf: normal once a segment exceeds
 > one `PBUF_POOL_BUFSIZE`, and influenced by the peer / on-path
-> segmentation. The wrapper drains the *whole chain* keyed off
+> segmentation. The wrapper drains the whole chain keyed off
 > `tot_len` (via `pbuf_copy_partial`, walking `p->next`) across one or
-> more `Stream_Read` calls, and `pbuf_free`s the head — which frees
-> every link — only once the chain is fully consumed. Integrators
+> more `Stream_Read` calls, and `pbuf_free`s the head (which frees
+> every link) only once the chain is fully consumed. Integrators
 > supplying their own `SolidSyslogStream` byte transport must honour the
 > same contract: never read only `head->len` and then free the chain, or
 > the tail bytes are lost (this corrupts a stacked TLS record stream).
@@ -373,24 +373,24 @@ need lwIP to backpressure sooner.
 
 The wrapper owns its `tcp_pcb` end-to-end. Three things to know:
 
-1. **`tcp_err` releases the pcb upstream.** When lwIP fires
+1. `tcp_err` releases the pcb upstream. When lwIP fires
    `tcp_err` for a fatal event (RST, OOM, ABRT), the pcb is gone
-   from lwIP's side *before* the callback runs. The wrapper's
+   from lwIP's side before the callback runs. The wrapper's
    `tcp_err` handler nulls its internal `Pcb` field and sets an
    `Errored` flag. The next `Stream_Send` returns `false`; the next
    `Stream_Read` returns `-1`. Crucially, calling `tcp_close` on a
-   pcb that was already released by `tcp_err` is a **use-after-free
-   in lwIP** — the wrapper guards against this with a `Pcb != NULL`
-   check before `tcp_close`. **You never see this rule** unless you
+   pcb that was already released by `tcp_err` is a use-after-free
+   in lwIP, so the wrapper guards against this with a `Pcb != NULL`
+   check before `tcp_close`. You never see this rule unless you
    bypass the abstraction and poke at lwIP pcbs directly through
-   your own code — don't.
+   your own code, so don't.
 
-2. **Peer FIN (`tcp_recv` with `p == NULL`) drains before EOF.**
+2. Peer FIN (`tcp_recv` with `p == NULL`) drains before EOF.
    The half-close sets `Errored`; the next `Stream_Read` that finds
    the queue empty returns `-1` and internally `tcp_close`s the
    pcb. Already-queued bytes drain first.
 
-3. **`Close` is idempotent.** Second `Close` is a no-op. `Destroy`
+3. `Close` is idempotent. Second `Close` is a no-op. `Destroy`
    internally calls `Close` (which drains the RX queue's pbufs and
    then `tcp_close`s if the pcb is still around), then overwrites
    the abstract base with `SolidSyslogNullStream` so use-after-
@@ -420,10 +420,10 @@ the `SOLIDSYSLOG_USER_TUNABLES_FILE` CMake variable.
 
 ## DNS
 
-`SolidSyslogLwipRawDnsResolver` resolves the destination **by name** via
+`SolidSyslogLwipRawDnsResolver` resolves the destination by name via
 lwIP's `dns_gethostbyname`. It is a superset of the numeric
-`SolidSyslogLwipRawResolver` — numeric literals, DNS-cache hits, and
-local-hostlist entries all resolve through it too — so you only need one
+`SolidSyslogLwipRawResolver` (numeric literals, DNS-cache hits, and
+local-hostlist entries all resolve through it too), so you only need one
 resolver, picked by whether you compile DNS in.
 
 ### The async bridge
@@ -434,13 +434,13 @@ answer arrives. The library's `SolidSyslogResolver_Resolve` contract is
 synchronous, so the adapter bridges the two exactly as `SolidSyslogLwipRawTcpStream`
 bridges `tcp_connect`:
 
-1. The `dns_gethostbyname` call is made **under the marshal hop**
-   (`SolidSyslogLwipRaw_SetMarshal`) — it touches lwIP core state, unlike the
+1. The `dns_gethostbyname` call is made under the marshal hop
+   (`SolidSyslogLwipRaw_SetMarshal`): it touches lwIP core state, unlike the
    numeric resolver's pure `ipaddr_aton` parse, which is why only this resolver
    marshals.
-2. `ERR_OK` (synchronous hit — numeric, cache, or local hostlist) → the address
+2. `ERR_OK` (synchronous hit: numeric, cache, or local hostlist) → the address
    is ready immediately; no spin.
-3. `ERR_INPROGRESS` → the adapter spins on the **caller's** thread, sleeping via
+3. `ERR_INPROGRESS` → the adapter spins on the caller's thread, sleeping via
    your injected `Sleep` between polls of a flag the callback sets, until the
    answer arrives or the deadline elapses. The spin never sleeps the tcpip
    thread (that would starve the DNS retransmit timer and RX).
@@ -448,15 +448,15 @@ bridges `tcp_connect`:
    deadline exceeded → failure plus a `SolidSyslog_Error` report
    (`LWIPRAWDNSRESOLVER_ERROR_RESOLVE_TIMEOUT`).
 
-`Sleep` is **required** (a `NULL` config falls back to `NullResolver`). The
+`Sleep` is required (a `NULL` config falls back to `NullResolver`). The
 deadline and poll period come from `SOLIDSYSLOG_DNS_RESOLVE_TIMEOUT_MS` (5 s)
-and `SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVE_POLL_MS` (10 ms) — build-time only; DNS
+and `SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVE_POLL_MS` (10 ms), build-time only; DNS
 timeout rarely needs runtime tuning, so there is no per-instance getter.
 
 ### Local hostlist (no DNS server)
 
-For fixed deployments — or test topologies where a real resolver can't return a
-*reachable* address — `DNS_LOCAL_HOSTLIST` maps names statically. A hostlist hit
+For fixed deployments (or test topologies where a real resolver can't return a
+reachable address), `DNS_LOCAL_HOSTLIST` maps names statically. A hostlist hit
 returns `ERR_OK` before any server is consulted, so the resolve completes
 synchronously and entirely on-device:
 
@@ -481,9 +481,9 @@ struct SolidSyslogResolver* resolver = SolidSyslogLwipRawDnsResolver_Create(&dns
    numeric resolver — the destination host is now a name, e.g. "logs.example.com". */
 ```
 
-> **Known limitation — over-the-wire DNS is not BDD-covered.** The
+> Known limitation: over-the-wire DNS is not BDD-covered. The
 > FreeRTOS-on-lwIP BDD target resolves the oracle by name, but only through the
-> *synchronous local-hostlist* branch: the QEMU slirp + docker topology cannot
+> synchronous local-hostlist branch: the QEMU slirp + docker topology cannot
 > hand the guest a reachable address for the `syslog-ng` alias over real DNS
 > (slirp's forwarder resolves it to a docker-bridge IP the guest has no route
 > to; only `10.0.2.2` reaches the oracle). The async / over-the-wire / timeout
@@ -496,8 +496,8 @@ struct SolidSyslogResolver* resolver = SolidSyslogLwipRawDnsResolver_Create(&dns
 
 ## What this guide does not cover
 
-- **IPv6** — the current Address / Resolver are IPv4-only.
-- **Multi-`netif` routing** — neither Datagram nor TcpStream selects
+- IPv6: the current Address / Resolver are IPv4-only.
+- Multi-`netif` routing: neither Datagram nor TcpStream selects
   an output interface; lwIP's routing table decides.
-- **Jumbo-frame MTU discovery** — `Datagram_MaxPayload` returns
+- Jumbo-frame MTU discovery: `Datagram_MaxPayload` returns
   `SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD` (1232 bytes) unconditionally.

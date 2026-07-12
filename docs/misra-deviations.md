@@ -1,6 +1,6 @@
 # MISRA C:2012 deviations
 
-SolidSyslog is **MISRA-informed**, not certified-compliant. The project
+SolidSyslog is MISRA-informed, not certified-compliant. The project
 adopts a curated subset of MISRA C:2012 rules per tier (see
 `docs/NAMING.md` for the tier model). This document records every
 deliberate deviation from a rule the project otherwise enforces.
@@ -32,14 +32,14 @@ The format below is patterned on MISRA's own deviation record template
 
 The "distinct" requirement is parameterised by the implementation's
 significant-character count for external identifiers. C99 §5.2.4.1
-specifies a **minimum** of 31 significant characters in external
+specifies a minimum of 31 significant characters in external
 identifiers — i.e. a conforming compiler may treat two external
 identifiers that agree in the first 31 characters as the same identifier.
 
 ### Deviation
 
 SolidSyslog requires external identifiers to be distinct in the first
-**63** characters rather than the first 31.
+63 characters rather than the first 31.
 
 ### Scope
 
@@ -79,7 +79,7 @@ API. Neither outcome serves clarity or MISRA's underlying intent
 
 63 was chosen rather than "unlimited" so the project still names a
 concrete number that every targeted toolchain comfortably exceeds. It
-also matches C99's separate 63-character minimum for **internal**
+also matches C99's separate 63-character minimum for internal
 identifiers (§5.2.4.1) — a single number applies project-wide.
 
 ### Risk and mitigation
@@ -194,7 +194,7 @@ canonical shape).
 
 A second 11.5 sub-case the library leans on is the
 `void* ↔ const uint8_t*` cast in `SolidSyslogUdpSender` when trimming
-codepoint-boundary bytes from the caller's `const void*` buffer — a
+codepoint-boundary bytes from the caller's `const void*` buffer, a
 byte-buffer reinterpretation that crosses the same advisory rule. The
 third-party API contract (the public `Send` / `SendTo` interface) is
 `void*` for opacity; the byte-level work needs a concrete unit type.
@@ -692,7 +692,7 @@ named integer constants for two reasons:
    global namespace pollution.
 
 The anonymous form (no tag) is correct because the enum *type*
-is never needed — only the enumerator *values*. Adding a tag
+is never needed, only the enumerator *values*. Adding a tag
 solely to satisfy rule 2.4 would create an unused identifier
 that would itself need a suppression, and the tag-named enum
 would not be substitutable for any other type.
@@ -815,7 +815,7 @@ scanned scope.
 
 ### Rationale
 
-The macros *are* used — by integrators in `Tests/` and `Bdd/Targets/`.
+The macros *are* used, by integrators in `Tests/` and `Bdd/Targets/`.
 Verified by `grep` over the tree:
 
 ```text
@@ -890,7 +890,7 @@ function would break the enum's compile-time `sizeof()` evaluation.
 
 A future per-component sweep may surface this shape on other
 file-scope `static const` objects whose identifier is used by a
-file-scope enum's `sizeof()`/value initialiser **and** exactly one
+file-scope enum's `sizeof()`/value initialiser and exactly one
 function. When that happens, the deviation extends to those files;
 the rule still catches genuinely single-function-scoped objects.
 
@@ -904,7 +904,7 @@ Three alternatives were considered and rejected:
   effectively a single on-disk format invariant.
 - Promoting the constant's dependents from enum entries to file-scope
   `static const size_t` (verified experimentally during S10.18) does
-  **not** satisfy the rule — the tracker treats file-scope references
+  not satisfy the rule — the tracker treats file-scope references
   uniformly, so a new `static const size_t FILENAME_SUFFIX` trips a
   *second* 8.9 finding for the same reason. The fix path amplifies
   the problem rather than resolving it.
@@ -919,7 +919,7 @@ Summary:
 |-------------|--------------|
 | Inline `cppcheck-suppress misra-c2012-8.9` at the declaration | Inline suppressions are weaker by MISRA Compliance:2020 §4.2 (rationale scattered, not centrally auditable). Project preference is structural deviations in this document. |
 | Inline the `".log"` literal at both use sites | DRY violation for a single-source-of-truth on-disk constant. |
-| Promote the dependent enum entries to `static const size_t` | Verified to **not** satisfy 8.9; instead surfaces a second false positive on the new constant. |
+| Promote the dependent enum entries to `static const size_t` | Verified to not satisfy 8.9; instead surfaces a second false positive on the new constant. |
 | Promote to `#define FILE_EXTENSION ".log"` | Introduces a string macro inconsistent with the file-scope-const pattern used elsewhere in storage code. |
 
 ### Risk and mitigation
@@ -969,7 +969,7 @@ Rule 11.5 fires on each such adapter cast.
 The deviation extends to any future Stream / Datagram / hash / MAC
 implementation that wraps a byte-typed third-party C API
 (`unsigned char*` rather than `void*`). The OpenSSL adapter
-(`Platform/OpenSsl/Source/SolidSyslogTlsStream.c`) does **not** fall
+(`Platform/OpenSsl/Source/SolidSyslogTlsStream.c`) does not fall
 under this deviation — `SSL_write` / `SSL_read` take `void*` and so no
 cast is needed.
 
@@ -1009,11 +1009,11 @@ Project owner — David Cozens. Recorded under
 
 **Retired in S12.26.** This deviation covered the crypto-policy
 `SolidSyslogErrorSource` objects, which rule 8.7 flagged because the
-`Xxx_Report` wrapper confined every emission to the source's own `*Messages.c`
-— a single translation unit. S12.26 decoupled error text from the library
+`Xxx_Report` wrapper confined every emission to the source's own `*Messages.c`,
+a single translation unit. S12.26 decoupled error text from the library
 (deleting the `*Messages.c` message tables) and unwound the `_Report` wrapper,
 so each source is now defined in its class's vtable TU and referenced from both
-that TU's emit sites and its `*Static.c` lifecycle code — genuinely cross-TU,
+that TU's emit sites and its `*Static.c` lifecycle code, genuinely cross-TU,
 exactly the resolution this deviation's "Risk and mitigation" anticipated.
 cppcheck-misra reports no 8.7 finding for any error source; the suppression
 lines were removed.

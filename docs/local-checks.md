@@ -14,7 +14,7 @@ when, so the wait stays under a few minutes and CI catches the rest.
 | **C** — none | — | — | — |
 | **CI** — everything else | After push | `tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel; results in ~10–15 min |
 
-**IWYU is advisory**. The lanes still run on every PR and
+IWYU is advisory. The lanes still run on every PR and
 the report is uploaded as an artifact, but findings no longer fail the
 build. Sweep the IWYU artifact when you do a release cleanup; do not
 treat it as a per-PR blocker.
@@ -27,10 +27,10 @@ add a `clang-format -i` sweep over touched files to Tier A.
 
 Tier B does MISRA-line-drift cleanup, so scope it to what changed:
 
-- **Touched only `Tests/`, `Bdd/Targets/`, `docs/`, `cmake/`, or `*.md`** —
+- Touched only `Tests/`, `Bdd/Targets/`, `docs/`, `cmake/`, or `*.md`:
   skip Tier B entirely. Push and let CI run.
-- **Touched any `Core/Source/`, `Platform/*/Source/`, or public-header file**
-  — run `clang-format -i` over touched files and
+- Touched any `Core/Source/`, `Platform/*/Source/`, or public-header file:
+  run `clang-format -i` over touched files and
   `scripts/misra_renumber.py --apply` to update the suppressions.
 
 ## Running Tier B
@@ -47,7 +47,7 @@ scripts/misra_renumber.py --apply    # write back updated suppressions
 ```
 
 The script bails on genuine new findings (mismatched counts per
-rule+file) — those need manual review. See the script's docstring.
+rule+file); those need manual review. See the script's docstring.
 
 ### IWYU (optional, advisory)
 
@@ -68,13 +68,13 @@ docker compose -f .devcontainer/docker-compose.yml run --rm freertos-host \
     && cmake --build --preset iwyu --target iwyu'
 ```
 
-CI runs both lanes advisory — findings appear in the `iwyu-report` and
+CI runs both lanes advisory, findings appear in the `iwyu-report` and
 `iwyu-report-freertos-plustcp` artifacts and don't block the build.
 
 ## Markdown
 
 Markdown is linted in CI by the `analyze-markdown` lane (markdownlint-cli2
-v0.22.1), wired into `summary`. The rules live in `.markdownlint-cli2.jsonc` —
+v0.22.1), wired into `summary`. The rules live in `.markdownlint-cli2.jsonc`,
 our conventions (line-length and table-column-style off, fenced-code language
 required); `CHANGELOG.md` and `LICENSE.md` are ignored.
 
@@ -90,7 +90,7 @@ docker run --rm -v "$PWD:/workdir" davidanson/markdownlint-cli2:v0.22.1 --fix
 ```
 
 With Node available, `npx markdownlint-cli2@0.22.1` is equivalent. Fenced-code
-languages (MD040) and a few structural rules are not auto-fixable — tag or
+languages (MD040) and a few structural rules are not auto-fixable; tag or
 adjust those by hand.
 
 ## Pre-release checks
@@ -100,7 +100,7 @@ at release. Run these once while preparing a release, not on every branch.
 
 ### C99 language portability
 
-The library is meant to stay C99-capable, with C11 atomics as an *optional*
+The library is meant to stay C99-capable, with C11 atomics as an optional
 add-on (the `SolidSyslogStdAtomicCounter`; a strict-C99 target falls back to
 `SolidSyslogWindowsAtomicCounter` or `SolidSyslogNullAtomicCounter`). Nothing
 per-PR enforces this, so verify it before a release with a one-shot build of
@@ -119,15 +119,15 @@ language construct that has crept into the portable code (`_Static_assert`,
 `_Atomic`, statement-expressions, …) fails the build and names the file:line.
 
 A clean build means the portable surface is still C99. If it fails, either
-fix the construct or — if it genuinely belongs to a C11-only component —
+fix the construct or, if it genuinely belongs to a C11-only component,
 gate that component the way `Platform/Atomics` is gated.
 
 ## What CI runs and you should not run locally
 
-- `tidy`, `sanitize`, `coverage` — minutes each, all gated by CI
-- Windows MSVC + BDD + integration — depend on tools you may not have
-- BDD-linux-syslog-ng, BDD-windows-otel, BDD-freertos-qemu — heavy
+- `tidy`, `sanitize`, `coverage`: minutes each, all gated by CI
+- Windows MSVC + BDD + integration: depend on tools you may not have
+- BDD-linux-syslog-ng, BDD-windows-otel, BDD-freertos-qemu: heavy
   multi-container stacks
 
 If CI surfaces a finding you missed locally, fix in another commit on the
-same branch — cheaper than running every CI lane on every push.
+same branch, cheaper than running every CI lane on every push.

@@ -15,7 +15,7 @@
 ## Docker Compose setup
 
 The devcontainer uses Docker Compose (`.devcontainer/docker-compose.yml`).
-VS Code connects to the `gcc` service (GCC). The `clang` service is on-demand only —
+VS Code connects to the `gcc` service (GCC). The `clang` service is on-demand only:
 it starts when you explicitly run a command against it and stops when done.
 
 BDD testing pairs each target with its own `syslog-ng` oracle so jobs running
@@ -73,7 +73,7 @@ When a new image tag is available:
 1. Build and push the new image in the container image repo
 2. Update the SHA tag in all files that reference it (see table below), plus `docs/containers.md`
 3. Rebuild the devcontainer (`Ctrl+Shift+P` → "Dev Containers: Rebuild Container") and verify locally
-4. Raise a PR — use `chore: bump container image to <sha>` as the title
+4. Raise a PR: use `chore: bump container image to <sha>` as the title
 
 | Image | Files to update |
 |---|---|
@@ -87,13 +87,13 @@ When a new image tag is available:
 The `cpputest-freertos` and `cpputest-freertos-cross` images both come from
 [CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker).
 A single push to that repo's `main` rebuilds and publishes both images at
-the same `sha-<short>` tag — always update both rows together.
+the same `sha-<short>` tag; always update both rows together.
 
 The `mkdocs-mkdoxy` image comes from
 [MkdocsMkdoxyDocker](https://github.com/cososo-ltd/MkdocsMkdoxyDocker); a push to
 that repo's `main` rebuilds and publishes it at a new `sha-<short>` tag.
 
-`mkdocs-mkdoxy` is a CI-only image — it is not a devcontainer service, so the
+`mkdocs-mkdoxy` is a CI-only image; it is not a devcontainer service, so the
 generic "rebuild the devcontainer and verify" step above does not exercise it.
 Verify a tag bump by running the same command the `docs-build` job runs, from the
 repo root, before raising the bump PR:
@@ -121,7 +121,7 @@ To switch:
 
 1. In `.devcontainer/devcontainer.json`, change `"service": "gcc"` to the target service name (e.g. `"freertos-target"`).
 2. `Ctrl+Shift+P` → "Dev Containers: Rebuild Container".
-3. Work normally — `Ctrl+Shift+B` and all other tasks pick up the right preset via `$BUILD_PRESET`.
+3. Work normally; `Ctrl+Shift+B` and all other tasks pick up the right preset via `$BUILD_PRESET`.
 
 When done, revert `"service"` back to `"gcc"` and rebuild again.
 
@@ -132,18 +132,18 @@ The same VS Code keys work across every service:
   ELF; under `debug` / `clang-debug` it builds and runs `SolidSyslogTests`;
   with `BUILD_PRESET` empty (the `behave` service) it runs `behave`.
 - `F5` debugs:
-  - `Debug SolidSyslogTests (host)` — works in `gcc`, `clang`, and
+  - `Debug SolidSyslogTests (host)`: works in `gcc`, `clang`, and
     `freertos-host` (path resolves via `${env:BUILD_PRESET}`). Builds first
     via the same `build and test` task and stops at `main`.
-  - `Debug FreeRTOS BDD Target (QEMU)` — works in `freertos-target`
+  - `Debug FreeRTOS BDD Target (QEMU)`: works in `freertos-target`
     (cortex-debug + arm-none-eabi-gdb + qemu-system-arm). Stops at `main`
     via `runToEntryPoint`.
   - After switching the devcontainer service, pick the matching config from
     the Run-and-Debug dropdown once. VS Code remembers the last-picked
     config per workspace (not per container), so the previous choice
-    survives a container rebuild — a stale selection will fail with the
+    survives a container rebuild; a stale selection will fail with the
     wrong debugger type.
-- `Ctrl+Shift+P` → "Tasks: Run Task" → `run on QEMU (FreeRTOS)` — one-shot
+- `Ctrl+Shift+P` → "Tasks: Run Task" → `run on QEMU (FreeRTOS)`: one-shot
   QEMU run for sanity-checking the build, output to the integrated
   terminal. Use only in the `freertos-target` service.
 

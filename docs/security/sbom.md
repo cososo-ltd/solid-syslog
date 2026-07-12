@@ -2,7 +2,7 @@
 
 SolidSyslog publishes a [CycloneDX](https://cyclonedx.org/) 1.5 SBOM for the
 shipped library. SBOMs come in three flavours that answer three different
-questions — this document is only concerned with the first.
+questions; this document is only concerned with the first.
 
 | Flavour | Question it answers | Status here |
 |---|---|---|
@@ -14,19 +14,19 @@ questions — this document is only concerned with the first.
 
 In scope:
 
-- `Core/` — Tier 1 (full support, stable API).
-- `Platform/` — Tier 2 (supported; API may evolve per target).
-- Root `CMakeLists.txt` + `CMakePresets.json` — the build contract an
+- `Core/`: Tier 1 (full support, stable API).
+- `Platform/`: Tier 2 (supported; API may evolve per target).
+- Root `CMakeLists.txt` + `CMakePresets.json`: the build contract an
   integrator invokes directly. Tampering here affects the built library.
-- Root `LICENSE.md` — the licence text we are legally bound by and that
+- Root `LICENSE.md`: the licence text we are legally bound by and that
   downstream integrators inherit. Tampering here is a compliance issue.
 
 Out of scope:
 
-- `Tests/`, `Bdd/` — test harnesses (`Bdd/Targets/` holds the BDD-driven binaries — test infrastructure, not product).
-- `ci/`, `docs/`, `.devcontainer/`, `.github/`, `.vscode/` — dev/CI infrastructure.
-- `sbom/` — the SBOM template itself (meta; including it would be self-referential).
-- `scripts/` — utility scripts not consumed by the integrator.
+- `Tests/`, `Bdd/`: test harnesses (`Bdd/Targets/` holds the BDD-driven binaries, test infrastructure, not product).
+- `ci/`, `docs/`, `.devcontainer/`, `.github/`, `.vscode/`: dev/CI infrastructure.
+- `sbom/`: the SBOM template itself (meta; including it would be self-referential).
+- `scripts/`: utility scripts not consumed by the integrator.
 - Other root-level meta files (`CLAUDE.md`, `SKILL.md`,
   `README.md`, `CHANGELOG.md`, `.clang-format`, `.clang-tidy`,
   `.gitattributes`, `.gitignore`, `.release-please-manifest.json`).
@@ -34,25 +34,25 @@ Out of scope:
 
 Runtime dependencies we declare but do not bundle:
 
-- **OpenSSL** — optional, only when `SOLIDSYSLOG_OPENSSL=ON`. Listed as a
-  CycloneDX component with `scope: optional`. No version pinned —
+- **OpenSSL**: optional, only when `SOLIDSYSLOG_OPENSSL=ON`. Listed as a
+  CycloneDX component with `scope: optional`. No version pinned;
   integrators select their own OpenSSL and capture it in their own SBOM
   alongside the specific licence terms of the version they ship.
 
 Runtime dependencies we document as environment (not components):
 
-- **POSIX libc / Winsock / POSIX message queues** — host OS APIs, not
+- **POSIX libc / Winsock / POSIX message queues**: host OS APIs, not
   shipped software. Recorded as `metadata.properties` rather than
   components.
 
 ## What the SBOM says
 
 The SBOM is a single-component document. `Core/` is a pure-C library with no
-runtime dependencies — so the subject (`metadata.component`) is SolidSyslog
+runtime dependencies, so the subject (`metadata.component`) is SolidSyslog
 itself, and the top-level `components` array is empty. Runtime facts that a
 deployer must supply (a POSIX or Windows host, optionally a TLS library
 implementing the Stream abstraction) are documented as `properties`, not as
-components — they are *requirements on the deployment*, not *shipped software*.
+components: they are requirements on the deployment, not shipped software.
 
 Key fields worth reading:
 
@@ -79,7 +79,7 @@ a workflow artifact.
    page and download `sbom-cyclonedx-<version>`.
 5. Unzip; the file inside is `sbom.cdx.json`.
 
-The workflow uses only the default `GITHUB_TOKEN` — no repo secrets required.
+The workflow uses only the default `GITHUB_TOKEN`: no repo secrets required.
 
 ## Sanity-check a generated SBOM
 
@@ -101,7 +101,7 @@ Every GitHub Release created by Release Please gets four assets attached:
 | `source-tree-sha256.txt` | The content-tree SHA-256 with a human-readable header. Reproducible from any clone at the SBOM's commit with `git ls-tree` + `git show` + `sha256sum` + `sort`. |
 | `source-tree-sha256.txt.bundle` | cosign bundle for the above. |
 
-Signing is **keyless** via GitHub OIDC — no private keys live in this repo.
+Signing is keyless via GitHub OIDC: no private keys live in this repo.
 The signature commits to the specific workflow run (`sbom.yml` in this repo
 at the tagged commit) that produced the SBOM; a verifier checks the
 certificate identity against an expected workflow identity to tell "this
@@ -121,7 +121,7 @@ The same pattern verifies `source-tree-sha256.txt.bundle` against `source-tree-s
 
 Every cosign signature is also logged to [Rekor](https://docs.sigstore.dev/logging/overview/),
 Sigstore's public transparency log. Anyone can look up the signature entry
-by its hash and confirm it was issued at the stated time — independent of
+by its hash and confirm it was issued at the stated time, independent of
 whether GitHub, Sigstore, or this project still exist at the time of audit.
 
 For a step-by-step verification guide aimed at downstream integrators, see
@@ -129,14 +129,14 @@ For a step-by-step verification guide aimed at downstream integrators, see
 
 ## Deferred
 
-- **Signed SLSA provenance attestation.** `cosign attest` on top of
-  `sign-blob` is a natural next step — it produces an attestation
+- Signed SLSA provenance attestation. `cosign attest` on top of
+  `sign-blob` is a natural next step: it produces an attestation
   statement that says "this SBOM was produced by this workflow from
   these inputs" rather than just "this SBOM was signed by this
   workflow."
-- **Binary-artefact signing.** The project is source-only; nothing to
+- Binary-artefact signing. The project is source-only; nothing to
   sign beyond the SBOM and content-tree hash.
-- **Flip the signing/attach steps off `continue-on-error: true`.** The
+- Flip the signing/attach steps off `continue-on-error: true`. The
   initial rollout keeps those steps advisory so a signing infrastructure
   outage doesn't block a release. Tighten to hard-fail after the first
   real release has demonstrated the pipeline works.
