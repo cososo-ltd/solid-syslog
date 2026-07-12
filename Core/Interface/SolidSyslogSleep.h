@@ -5,10 +5,11 @@
 
 EXTERN_C_BEGIN
 
-    /* Cross-platform millisecond sleep callback. The TLS handshake retry loop
-       (and any future wait-and-retry path) takes one of these via config so
-       the library never sees platform-specific sleep APIs and tests can
-       inject a no-op without conditional compilation. */
+    /** Millisecond sleep callback injected via config. Drives the bounded
+     *  wait-and-retry loops that would otherwise busy-spin: the TLS handshake
+     *  poll, and the lwIP TCP connect and DNS resolve spins. Injecting it keeps
+     *  platform sleep APIs out of the library and lets tests pass a no-op with
+     *  no conditional compilation. */
     typedef void (*SolidSyslogSleepFunction)(int milliseconds);
 
 EXTERN_C_END

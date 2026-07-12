@@ -1,11 +1,14 @@
 #ifndef SOLIDSYSLOGTRANSPORT_H
 #define SOLIDSYSLOGTRANSPORT_H
 
+/** IANA-registered default destination ports per transport. Convenience
+ *  constants only, not applied automatically: the integrator supplies the port
+ *  to the endpoint callback and may pick any value. */
 enum
 {
-    SOLIDSYSLOG_UDP_DEFAULT_PORT = 514, /* RFC 5426 */
-    SOLIDSYSLOG_TCP_DEFAULT_PORT = 601, /* RFC 6587 §3.2 / IANA assignment for syslog over TCP */
-    SOLIDSYSLOG_TLS_DEFAULT_PORT = 6514 /* RFC 5425 §4.2 / IANA syslog-tls */
+    SOLIDSYSLOG_UDP_DEFAULT_PORT = 514, /**< RFC 5426. */
+    SOLIDSYSLOG_TCP_DEFAULT_PORT = 601, /**< RFC 6587 §3.2 / IANA syslog over TCP. */
+    SOLIDSYSLOG_TLS_DEFAULT_PORT = 6514 /**< RFC 5425 §4.2 / IANA syslog-tls. */
 };
 
 enum SolidSyslogTransport
