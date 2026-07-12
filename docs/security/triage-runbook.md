@@ -63,8 +63,11 @@ security-specific steps are:
 
 - [ ] Merge the fix to `main` (from the private fork for High/Critical).
 - [ ] Merge release-please's release PR to cut the tagged release.
-- [ ] Confirm the `sbom.yml` workflow, triggered by the `release.published`
-      event, attached the SBOM and signatures.
+- [ ] Verify the release carries all four provenance assets: the SBOM, the
+      source-tree hash, and their two signatures. `sbom.yml` (triggered by the
+      `release.published` event) attempts to attach them, but attachment is
+      advisory (`continue-on-error`), so confirm all four are present before
+      relying on provenance.
 - [ ] Record and verify the affected and fixed version ranges in the advisory;
       never publish without a safe version for users to move to.
 - [ ] Publish the GHSA coordinated with the release going live.
