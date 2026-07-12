@@ -70,6 +70,11 @@ __pycache__/
 # from Bdd/features/steps/solidsyslog_tunables.py.in
 Bdd/features/steps/solidsyslog_tunables.py
 
+# MkDocs site build output and the mkdoxy-generated API reference
+# (regenerated from Core/Interface/*.h on every docs build)
+/site/
+/docs/api/
+
 # Claude Code local config
 .claude/
 pr*-comments.json

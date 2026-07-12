@@ -10,6 +10,7 @@
 | `ghcr.io/cososo-ltd/cpputest-freertos-cross` | `sha-ad10bf2` | `freertos-target` compose service, `build-freertos-target-plustcp` CI job, `behave-freertos` BDD service, `bdd-freertos-qemu-plustcp` CI job — adds `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm`, `python3` + `behave`, FreeRTOS-Kernel / Plus-TCP / Plus-FAT / lwIP / FatFs sources at `/opt/freertos-kernel` / `/opt/freertos-plus-tcp` / `/opt/freertos/plus-fat` / `/opt/lwip` / `/opt/fatfs` for cross builds, on-QEMU runs, and BDD scenarios driving a QEMU target |
 | `balabit/syslog-ng` | `4.8.2` | `syslog-ng-linux` and `syslog-ng-freertos` services — BDD test oracles, one per target pair. Pinned to the 4.8 LTS line; 4.11.0 (`latest` as of 2026-02-24) regressed by aborting on `STATS` over the control socket, which crashed the oracle and cascaded to the dev-container network when `freertos-target` shares the namespace. |
 | `ghcr.io/cososo-ltd/behave` | `sha-be8da62` | `behave-linux` service — Debian trixie + Python 3.12 + Behave for Linux BDD scenarios. The FreeRTOS BDD runner uses the `cpputest-freertos-cross` image instead (which carries QEMU + Behave). |
+| `ghcr.io/cososo-ltd/mkdocs-mkdoxy` | `sha-34173c0` | `docs-build` CI job — builds the MkDocs documentation site. Doxygen 1.9.4 + mkdocs 1.6.1 + mkdocs-material 9.7.6 + mkdoxy 1.2.8 + mkdocs-github-admonitions-plugin 0.1.1. mkdoxy renders `Core/Interface/*.h` as native Material API pages. |
 
 ## Docker Compose setup
 
@@ -81,11 +82,16 @@ When a new image tag is available:
 | `cpputest-freertos` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `docs/containers.md` |
 | `cpputest-freertos-cross` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
 | `behave` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/bdd.md`, `docs/containers.md` |
+| `mkdocs-mkdoxy` | `.github/workflows/ci.yml`, `docs/containers.md` |
 
 The `cpputest-freertos` and `cpputest-freertos-cross` images both come from
 [CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker).
 A single push to that repo's `main` rebuilds and publishes both images at
 the same `sha-<short>` tag — always update both rows together.
+
+The `mkdocs-mkdoxy` image comes from
+[MkdocsMkdoxyDocker](https://github.com/cososo-ltd/MkdocsMkdoxyDocker); a push to
+that repo's `main` rebuilds and publishes it at a new `sha-<short>` tag.
 
 All references to a given image must use the same tag. Never update one without the others.
 
