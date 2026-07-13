@@ -1,3 +1,5 @@
+/** @file
+ *  The Windows SolidSyslogSleepFunction. */
 #ifndef SOLIDSYSLOGWINDOWSSLEEP_H
 #define SOLIDSYSLOGWINDOWSSLEEP_H
 
@@ -5,8 +7,8 @@
 
 EXTERN_C_BEGIN
 
-    /* Windows implementation of SolidSyslogSleepFunction. Wraps Sleep so the
-       TLS handshake retry loop yields to the scheduler between attempts. */
+    /** Wraps Sleep so a bounded retry loop (e.g. the TLS handshake) yields to the
+     *  scheduler between attempts. */
     void SolidSyslogWindowsSleep(int milliseconds);
 
 EXTERN_C_END
