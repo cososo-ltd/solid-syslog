@@ -10,11 +10,12 @@
 
 EXTERN_C_BEGIN
 
-    /** Hundredths of a second derived from xTaskGetTickCount, as RFC 3418
-     *  sysUpTime; a uint64 intermediate keeps the scaling correct at any
-     *  configTICK_RATE_HZ. The value tracks the FreeRTOS tick counter, which
-     *  itself wraps (well before 2^32 hundredths, and quickly under
-     *  configUSE_16_BIT_TICKS), so uptime resets at that period. */
+    /** Hundredths of a second of uptime from xTaskGetTickCount, for the meta-SD
+     *  sysUpTime field. A uint64 intermediate keeps the scaling correct at any
+     *  configTICK_RATE_HZ, but the value inherits the FreeRTOS tick counter's
+     *  wrap — it resets well before the RFC 3418 2^32-hundredths range (and
+     *  quickly under configUSE_16_BIT_TICKS), so it is not a full TimeTicks
+     *  counter. */
     uint32_t SolidSyslogFreeRtosSysUpTime_Get(void);
 
 EXTERN_C_END
