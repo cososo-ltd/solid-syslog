@@ -116,6 +116,15 @@
   order: 1;
 }
 
+/* Hamburger (drawer toggle) to the far right, after the search magnifier:
+   cososo.co.uk collapses its menu to a hamburger on the right of the header as
+   the viewport narrows. Without this the drawer toggle defaults to order 0 and
+   sits on the left by the logo. Only visible below the tabs breakpoint — wider
+   screens show the top-nav tabs instead. */
+.md-header__button[for="__drawer"] {
+  order: 3;
+}
+
 /* Top-nav tabs styled like the site menu: white bar, Montserrat uppercase,
    violet on hover/active. */
 .md-tabs {
