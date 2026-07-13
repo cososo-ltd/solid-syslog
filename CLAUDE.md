@@ -30,7 +30,7 @@ what matters — it becomes the permanent commit message on `main` on squash mer
 **Branch protection rules (configured on GitHub):**
 
 - Direct pushes to `main` are blocked
-- PRs require all status checks to pass before merging: build-linux-gcc, build-linux-clang, build-windows-msvc, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, analyze-iwyu, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, bdd-linux-syslog-ng, bdd-windows-otel, bdd-freertos-qemu-plustcp, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, analyze-tidy-freertos-plustcp, analyze-iwyu-freertos-plustcp, bdd-freertos-qemu-lwip, build-freertos-target-lwip, analyze-tidy-freertos-lwip, analyze-iwyu-freertos-lwip, summary
+- PRs require all status checks to pass before merging: build-linux-gcc, build-linux-clang, build-windows-msvc, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-cppcheck, analyze-format, analyze-iwyu, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, bdd-linux-syslog-ng, bdd-windows-otel, bdd-freertos-qemu-plustcp, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, analyze-tidy-freertos-plustcp, analyze-iwyu-freertos-plustcp, bdd-freertos-qemu-lwip, build-freertos-target-lwip, analyze-tidy-freertos-lwip, analyze-iwyu-freertos-lwip, docs-build, summary
 - Squash merge only — other merge strategies are disabled
 - Branches are deleted automatically after merge
 
