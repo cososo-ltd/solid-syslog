@@ -4,7 +4,7 @@
 # build time and is git-ignored.
 site_name: SolidSyslog
 site_description: Structured syslog for embedded and industrial systems
-site_url: https://cososo-ltd.github.io/solid-syslog/
+site_url: https://docs.cososo.co.uk/solid-syslog/
 repo_url: https://github.com/cososo-ltd/solid-syslog
 repo_name: cososo-ltd/solid-syslog
 edit_uri: edit/main/docs/
