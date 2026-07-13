@@ -80,7 +80,10 @@
 
 .md-header__button.md-logo img,
 .md-header__button.md-logo svg {
-  height: 2.6rem;
+  /* Base ~40px, scaled by --logo-scale (set by javascripts/logo-scroll.js):
+     1.0 at the top, easing to 0.755 past 48px of scroll, like cososo.co.uk. */
+  height: calc(2.6rem * var(--logo-scale, 1));
+  transition: height 60ms linear;
 }
 
 /* Keep the corporate logo top-left on narrow viewports too — Material hides the
