@@ -1,3 +1,19 @@
+/** @file
+ *  An in-memory ring Buffer that decouples Log (enqueue) from Service (drain),
+ *  backed entirely by caller-supplied storage — no allocation of its own.
+ *
+ *  Records are framed with a uint16 length prefix and stored back-to-back. A
+ *  record is never split across the ring's end: one that would straddle the
+ *  wrap point is written whole to the front, leaving a gap that the reader skips
+ *  via a wrap marker. On a full ring the newest record is dropped (the write is
+ *  simply refused) rather than overwriting unsent data, so the oldest queued
+ *  records survive. A record larger than SOLIDSYSLOG_MAX_MESSAGE_SIZE is
+ *  rejected outright, and a Read whose buffer is too small for the head record
+ *  leaves the record in place and reports nothing delivered.
+ *
+ *  Every enqueue and drain is bracketed by the injected mutex, so the two sides
+ *  are safe on separate tasks; inject SolidSyslogNullMutex_Get() for single-task
+ *  use where the lock is pure overhead. */
 #ifndef SOLIDSYSLOGCIRCULARBUFFER_H
 #define SOLIDSYSLOGCIRCULARBUFFER_H
 

@@ -1,3 +1,13 @@
+/** @file
+ *  A SecurityPolicy that appends a two-byte CRC-16 trailer to each stored
+ *  record. Seal computes the CRC over the whole content; Open recomputes and
+ *  compares. This is an unkeyed checksum — it catches accidental corruption
+ *  (bit-rot, a truncated write) but is not tamper-evidence: anyone who edits a
+ *  record can recompute a matching CRC. For tamper-evidence or confidentiality
+ *  use a keyed policy. Being a checksum (not an AEAD), it ignores the record's
+ *  header/body split and authenticates the content as one span. The instance is
+ *  a shared stateless singleton, so it holds no pool slot and Destroy is a
+ *  no-op. */
 #ifndef SOLIDSYSLOGCRC16POLICY_H
 #define SOLIDSYSLOGCRC16POLICY_H
 

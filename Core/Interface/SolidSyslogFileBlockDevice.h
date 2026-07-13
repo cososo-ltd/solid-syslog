@@ -1,3 +1,17 @@
+/** @file
+ *  A BlockDevice that maps each block to its own file, named by a caller-given
+ *  prefix plus a two-digit block index and ".log" (block 0 is "<prefix>00.log").
+ *  The two-digit sequence caps the device at 100 blocks: an index above 99 is
+ *  rejected, which also stops a wide index being narrowed and aliasing an
+ *  existing block.
+ *
+ *  It caches a single open file handle and re-points it only when the addressed
+ *  block changes, so it upholds the one-open-handle-per-path invariant the
+ *  storage layer relies on and never leaves two handles racing on the same file.
+ *  Acquire opens (creating if needed) and truncates a block for fresh writes;
+ *  Append writes at end-of-file, WriteAt/Read seek to an explicit offset, and
+ *  Dispose deletes the block's file. GetBlockSize reports the configured
+ *  per-block capacity that a BlockStore reads once at construction. */
 #ifndef SOLIDSYSLOGFILEBLOCKDEVICE_H
 #define SOLIDSYSLOGFILEBLOCKDEVICE_H
 

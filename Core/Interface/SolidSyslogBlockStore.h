@@ -1,3 +1,24 @@
+/** @file
+ *  A store-and-forward Store backed by a BlockDevice: records are appended to
+ *  the current write block, and once a block fills the write rolls to the next,
+ *  giving durable retention across a restart. Create resumes from whatever
+ *  records are already on the device (scanning the read block, honouring any
+ *  per-record integrity trailer from the injected SecurityPolicy) so a reboot
+ *  keeps unsent records queued.
+ *
+ *  MaxBlocks caps retention; DiscardPolicy governs the overflow once every block
+ *  is full — Oldest evicts the oldest block to keep accepting writes, Newest
+ *  refuses the incoming record, Halt refuses it, latches (IsHalted stops
+ *  Service), and fires OnStoreFull once. An optional capacity-threshold function
+ *  (queried each Write) drives an edge-triggered OnThresholdCrossed callback for
+ *  early back-pressure signalling. Mind the recursion gotcha: under a
+ *  PassthroughBuffer, SolidSyslog_Log sends inline, so logging from the
+ *  threshold callback re-enters Write — drive the logger from a returning Buffer
+ *  or gate the Log instead.
+ *
+ *  Internally each pool slot composes an inner RecordStore over a BlockSequence,
+ *  both drawn from sibling pools; a block too small for one worst-case record is
+ *  grown to fit and reported as a WARNING rather than failing Create. */
 #ifndef SOLIDSYSLOGBLOCKSTORE_H
 #define SOLIDSYSLOGBLOCKSTORE_H
 

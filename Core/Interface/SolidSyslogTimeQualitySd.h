@@ -1,3 +1,10 @@
+/** @file
+ *  A StructuredData source for the RFC 5424 §7.1 "timeQuality" SD-ELEMENT (IANA
+ *  SD-ID, so no enterprise-number suffix), emitted on every message the owning
+ *  logger formats. The getTimeQuality callback is queried once per message; the
+ *  element always carries tzKnown and isSynced (emitted as 0/1), and adds
+ *  syncAccuracy only when the callback supplies a value other than
+ *  SOLIDSYSLOG_SYNC_ACCURACY_OMIT. */
 #ifndef SOLIDSYSLOGTIMEQUALITYSD_H
 #define SOLIDSYSLOGTIMEQUALITYSD_H
 

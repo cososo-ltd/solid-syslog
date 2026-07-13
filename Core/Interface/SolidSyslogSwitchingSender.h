@@ -1,3 +1,14 @@
+/** @file
+ *  A composite Sender that fronts several inner senders and routes each message
+ *  through the one the Selector picks — the wiring for dual-SIEM fan-out or an
+ *  active/standby failover stack. The Selector is called on every Send and
+ *  returns an index into the Senders array; a value at or beyond SenderCount
+ *  (including any value when the array is empty) routes to the shared
+ *  NullSender, which drops the message so a misconfigured selector never retains
+ *  records in the Store. Switching away from a sender disconnects it, so only
+ *  the currently selected inner sender holds a live connection; the inner
+ *  senders themselves are caller-owned and are not disconnected or freed on
+ *  Destroy. */
 #ifndef SOLIDSYSLOGSWITCHINGSENDER_H
 #define SOLIDSYSLOGSWITCHINGSENDER_H
 

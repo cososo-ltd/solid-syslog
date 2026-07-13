@@ -1,3 +1,14 @@
+/** @file
+ *  A Sender that delivers each message octet-framed (RFC 6587 octet-counting: a
+ *  decimal length, a space, then the message bytes) over any injected Stream —
+ *  plain TCP, TLS, or a caller-supplied byte transport. It resolves the endpoint
+ *  and opens the stream lazily on the first Send, reconnecting when the endpoint
+ *  version changes or after any send failure (a short or failed write closes the
+ *  stream so the next Send reconnects). Repeated delivery failures and the
+ *  recovery after them are reported once each via SolidSyslog_Error
+ *  (DELIVERY_FAILED / DELIVERY_RESTORED), so a flapping link is not a log storm.
+ *  Destroy closes the stream but does not free the injected Resolver, Stream, or
+ *  Address. */
 #ifndef SOLIDSYSLOG_STREAM_SENDER_H
 #define SOLIDSYSLOG_STREAM_SENDER_H
 

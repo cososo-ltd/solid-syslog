@@ -1,3 +1,12 @@
+/** @file
+ *  A StructuredData source for the RFC 5424 §7.2 "origin" SD-ELEMENT (IANA
+ *  SD-ID, so no enterprise-number suffix), emitted on every message the owning
+ *  logger formats. It can carry software, swVersion, enterpriseId, and any
+ *  number of repeated ip PARAMs. Every field is independently optional: a NULL
+ *  string omits its PARAM, and the ip PARAMs appear only when both GetIpCount
+ *  and GetIpAt are supplied (GetIpAt is then called once per index). The config
+ *  strings are borrowed, not copied, and read at Format time — they must outlive
+ *  the created SD. */
 #ifndef SOLIDSYSLOGORIGINSD_H
 #define SOLIDSYSLOGORIGINSD_H
 

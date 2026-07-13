@@ -1,3 +1,10 @@
+/** @file
+ *  The no-queue Buffer. Write forwards the record straight to the injected
+ *  sender inline, so SolidSyslog_Log blocks on the send and returns only once it
+ *  completes; Read always reports empty because nothing is ever queued, so
+ *  Service has nothing to drain. This is the simplest wiring for a single-task
+ *  setup with no store-and-forward — no ring, no mutex, no background drain. The
+ *  cost is that a slow or blocking sender stalls the logging thread. */
 #ifndef SOLIDSYSLOGPASSTHROUGHBUFFER_H
 #define SOLIDSYSLOGPASSTHROUGHBUFFER_H
 
