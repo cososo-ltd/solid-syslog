@@ -13,6 +13,10 @@ copyright: © Cozens Software Solutions Limited
 extra_css:
   - assets/stylesheets/brand.css
 
+extra_javascript:
+  # Shrinks the header logo on scroll (1.0 -> 0.755) to match cososo.co.uk.
+  - javascripts/logo-scroll.js
+
 extra:
   # The corporate logo and site title link here (cososo.co.uk homepage).
   homepage: https://www.cososo.co.uk

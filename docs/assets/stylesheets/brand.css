@@ -9,10 +9,19 @@
 
 :root {
   --md-typeset-a-color: #3e2199;
-  --md-accent-fg-color:  #5a3fc0;
+  --md-accent-fg-color:  #3e2199;
   /* Footer in the website's charcoal (.site-footer #363a43, bottom-bar #2f333b). */
   --md-footer-bg-color:       #363a43;
   --md-footer-bg-color--dark: #2f333b;
+}
+
+/* Body text in cososo.co.uk's body tone (#626262) and its airier line-height
+   (~1.73), rather than Material's darker/tighter defaults — matches the
+   marketing site. */
+.md-typeset {
+  color: #626262;
+  font-size: 16px;
+  line-height: 1.73;
 }
 
 /* Small SolidSyslog wordmark (white variant) above the footer copyright. */
@@ -22,8 +31,10 @@
   margin-bottom: 0.5rem;
 }
 
-/* Headings: Montserrat 600, #2d2d2d, modest sizes — as on the website
-   (h1 29px, h2 26px, h3 23px). Not the heavy 700 black default. */
+/* Headings: Montserrat 600, #2d2d2d, at cososo.co.uk's fixed px scale. Fixed
+   px (not rem) on purpose: Material scales its rem root 125%->150% with viewport
+   width, which oversized rem-based headings against the website's fixed scale.
+   Not the heavy 700 black default. */
 .md-typeset h1,
 .md-typeset h2,
 .md-typeset h3,
@@ -37,14 +48,17 @@
 }
 
 .md-typeset h1 {
-  font-size: 1.8rem;
+  font-size: 29px;
   font-weight: 600;
   color: #2d2d2d;
   letter-spacing: normal;
 }
 
-.md-typeset h2 { font-size: 1.5rem; }
-.md-typeset h3 { font-size: 1.3rem; }
+.md-typeset h2 { font-size: 26px; }
+.md-typeset h3 { font-size: 23px; }
+.md-typeset h4 { font-size: 20px; }
+.md-typeset h5 { font-size: 18px; }
+.md-typeset h6 { font-size: 16px; }
 
 /* Header/banner: white, taller, with the hairline bottom border the site uses
    (.site-header: padding 25px 0; border-bottom 1px #e6e6e6). */
@@ -72,7 +86,10 @@
 
 .md-header__button.md-logo img,
 .md-header__button.md-logo svg {
-  height: 2.6rem;
+  /* Base ~40px, scaled by --logo-scale (set by javascripts/logo-scroll.js):
+     1.0 at the top, easing to 0.755 past 48px of scroll, like cososo.co.uk. */
+  height: calc(2.6rem * var(--logo-scale, 1));
+  transition: height 60ms linear;
 }
 
 /* Keep the corporate logo top-left on narrow viewports too — Material hides the
