@@ -14,7 +14,7 @@ without renaming what's already there.
 | `build-linux-clang` | `clang-debug` | Second compiler check using Clang 19 |
 | `build-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`; CppUTest via vcpkg; test results annotated on PR |
 | `sanitize-linux-gcc` | `sanitize` | ASan + UBSan — test results annotated on PR |
-| `coverage-linux-gcc` | `coverage` | Summary in Actions UI; HTML report deployed to GitHub Pages on merge to `main` |
+| `coverage-linux-gcc` | `coverage` | Summary in Actions UI; HTML report uploaded as a downloadable run artifact |
 | `analyze-tidy` | `tidy` | clang-tidy — pass/fail with errors in job log |
 | `analyze-cppcheck` | `cppcheck` | cppcheck static analysis |
 | `analyze-format` | — | clang-format dry-run; fails if any file needs reformatting |
@@ -26,6 +26,7 @@ without renaming what's already there.
 | `build-freertos-host-tdd` | `debug` | Host-TDD of FreeRTOS adapters against fakes; runs inside `cpputest-freertos` (FreeRTOS upstream sources at fixed paths) |
 | `build-freertos-target` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the BDD target ELF; uploads it as an artifact for `bdd-freertos-qemu` |
 | `bdd-freertos-qemu` | — | Pulls the BDD target ELF artifact, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
+| `docs-build` | — | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`; on `main`, `deploy-docs-pages` publishes it to GitHub Pages |
 
 ## Branch protection
 
@@ -43,5 +44,5 @@ Merging that PR creates a GitHub Release and tag.
 
 Each job is granted only the permissions it needs. The default token scope is
 `contents: read`. Jobs that publish test results additionally hold `checks: write`
-and `pull-requests: write`. The coverage job additionally holds `pages: write` and
-`id-token: write` for GitHub Pages deployment.
+and `pull-requests: write`. The `deploy-docs-pages` job additionally holds
+`pages: write` and `id-token: write` to publish the documentation site to GitHub Pages.
