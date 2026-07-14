@@ -11,7 +11,10 @@ Output is a self-contained inline ``<svg>`` string. Its ``<style>`` is scoped by
 the svg's id so nothing leaks into the page. Each sticky links to its API page.
 """
 
-BASE_URL = "/solid-syslog/api"
+# Page-relative. Every diagram is injected on an api/<name>_8h/ page, so a sibling
+# API page is one level up — "../<page>/". Keeps node links correct under any
+# deployment prefix and under `mkdocs serve`, not just the /solid-syslog/ base.
+BASE_URL = ".."
 
 # fill, stroke, text
 _GREEN = ("#bfe3c0", "#6fae74", "#21401f")
