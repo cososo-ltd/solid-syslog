@@ -105,6 +105,15 @@ plugins:
             OPTIMIZE_OUTPUT_FOR_C: true
             # First sentence of each /** */ block becomes the API-index brief.
             JAVADOC_AUTOBRIEF: true
+            # Expand the C-linkage guard macros to nothing so Doxygen sees plain
+            # file-scope C declarations. Without this the unexpanded EXTERN_C_BEGIN
+            # token gets glued onto the first declaration in each header (e.g.
+            # SolidSyslogSsize's type rendered as "EXTERN_C_BEGIN typedef intptr_t").
+            # EXPAND_ONLY_PREDEF keeps every other macro (the SOLIDSYSLOG_* constants)
+            # documented by name rather than expanded to its value.
+            MACRO_EXPANSION: true
+            EXPAND_ONLY_PREDEF: true
+            PREDEFINED: "EXTERN_C_BEGIN= EXTERN_C_END="
 
 nav:
   - Home: README.md
