@@ -75,6 +75,9 @@ markdown_extensions:
 # (a release tag or commit SHA); it defaults to main.
 hooks:
   - hooks/source_links.py
+  # Injects post-it "realised by" relationship diagrams at the top of selected
+  # generated API pages (experiment — see hooks/relationship_diagrams.py).
+  - hooks/relationship_diagrams.py
 
 # not_found — enforced (fatal under --strict): the hook above resolves every
 #             in-repo source link, so a genuinely broken link fails the build.
