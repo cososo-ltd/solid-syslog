@@ -31,9 +31,11 @@
     <marker id="arrowUses" markerWidth="12" markerHeight="12" refX="8" refY="5" orient="auto">
       <path d="M1,1 L9,5 L1,9" fill="none" stroke="#2b2b2b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
     </marker>
-    <!-- "realises" — hollow triangle pointing at the interface. -->
-    <marker id="arrowRealises" markerWidth="18" markerHeight="16" refX="13" refY="7" orient="auto">
-      <path d="M2,1 L15,7 L2,13" fill="#fbfbf5" stroke="#2b2b2b" stroke-width="1.6" stroke-linejoin="round"/>
+    <!-- "realises" — hand-drawn hollow UML triangle pointing at the interface
+         (closed path, edges slightly bowed so it reads whiteboard, not CAD). -->
+    <marker id="arrowRealises" markerWidth="22" markerHeight="16" refX="15" refY="7.5" orient="auto">
+      <path d="M2,2 Q10,0.5 15.5,7.5 Q9.5,14 2.5,12.5 Q4,7.5 2,2 Z"
+            fill="#fbfbf5" stroke="#2b2b2b" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
     </marker>
   </defs>
 
