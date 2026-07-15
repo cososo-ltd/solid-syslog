@@ -37,7 +37,7 @@ EXTERN_C_BEGIN
         SolidSyslogHeaderFieldFunction GetProcessId; /**< RFC 5424 PROCID; NULL emits "-". */
         void* GetProcessIdContext; /**< Passed back to the callback unchanged. */
         struct SolidSyslogStore* Store; /**< NULL (or SolidSyslogNullStore_Get()) means no store-and-forward. */
-        struct SolidSyslogStructuredData** Sd; /**< Per-instance SD-ELEMENTs on every message, before per-message SD. */
+        struct SolidSyslogStructuredData** Sd; /**< @optional per-instance SD-ELEMENTs, before any per-message SD. */
         size_t SdCount;
     };
 
