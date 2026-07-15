@@ -108,6 +108,10 @@ plugins:
             OPTIMIZE_OUTPUT_FOR_C: true
             # First sentence of each /** */ block becomes the API-index brief.
             JAVADOC_AUTOBRIEF: true
+            # Custom command: @optional tags a config member the caller may leave
+            # NULL. Doubles as the machine-readable marker the relationship-diagram
+            # hook reads to draw a 0.. lower bound (see hooks/relationship_data.py).
+            ALIASES: '"optional=**Optional:** "'
             # Expand the C-linkage guard macros to nothing so Doxygen sees plain
             # file-scope C declarations. Without this the unexpanded EXTERN_C_BEGIN
             # token gets glued onto the first declaration in each header (e.g.

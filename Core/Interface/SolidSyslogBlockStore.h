@@ -66,7 +66,7 @@ EXTERN_C_BEGIN
         struct SolidSyslogBlockDevice* BlockDevice; /**< Required; block store is the sole writer. */
         size_t MaxBlocks; /**< Retention ceiling in blocks; DiscardPolicy governs the overflow. */
         enum SolidSyslogDiscardPolicy DiscardPolicy;
-        struct SolidSyslogSecurityPolicy* SecurityPolicy; /**< NULL means no per-record integrity trailer. */
+        struct SolidSyslogSecurityPolicy* SecurityPolicy; /**< @optional no per-record integrity trailer when NULL. */
         SolidSyslogStoreFullCallback OnStoreFull;
         void* StoreFullContext;
         SolidSyslogStoreThresholdFunction GetCapacityThreshold;
