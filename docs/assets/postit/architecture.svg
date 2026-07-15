@@ -14,13 +14,15 @@
     <marker id="arrowUses" markerWidth="12" markerHeight="12" refX="8" refY="5" orient="auto">
       <path d="M1,1 L9,5 L1,9" fill="none" stroke="#2b2b2b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
     </marker>
-    <marker id="arrowRealises" markerWidth="18" markerHeight="16" refX="13" refY="7" orient="auto">
-      <path d="M2,1 L15,7 L2,13" fill="#fbfbf5" stroke="#2b2b2b" stroke-width="1.6" stroke-linejoin="round"/>
+    <marker id="arrowRealises" markerWidth="22" markerHeight="16" refX="15" refY="7.5" orient="auto">
+      <path d="M2,2 Q10,0.5 15.5,7.5 Q9.5,14 2.5,12.5 Q4,7.5 2,2 Z" fill="#fbfbf5" stroke="#2b2b2b" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
     </marker>
     <marker id="arrowInject" markerWidth="12" markerHeight="12" refX="8" refY="5" orient="auto">
       <path d="M1,1 L9,5 L1,9" fill="none" stroke="#b0506a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
     </marker>
   </defs>
+
+  <style>.node{cursor:pointer}.node:hover .card{stroke:#6fae74;stroke-width:3}.node:hover .facade{stroke:#b89a3c;stroke-width:3}.node:hover .config{stroke:#cf8a8a;stroke-width:3}</style>
 
   <rect width="1180" height="780" fill="#fbfbf5"/>
 
@@ -37,7 +39,8 @@
   </g>
 
   <!-- FACADE -->
-  <g filter="url(#postitShadow)"><rect x="50" y="185" width="185" height="150" fill="#ffe7a3" transform="rotate(-2 142 260)"/></g>
+  <a href="../../api/SolidSyslog_8h/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="facade" x="50" y="185" width="185" height="150" fill="#ffe7a3" transform="rotate(-2 142 260)"/></g>
   <g transform="rotate(-2 142 260)" fill="#3a3320">
     <text x="72" y="222" font-size="20" font-weight="bold">SolidSyslog</text>
     <text x="72" y="245" font-size="12.5" font-family="'Segoe UI', sans-serif">the handle you call</text>
@@ -46,29 +49,40 @@
     <text x="72" y="300" font-size="13" font-family="'Segoe UI', sans-serif">· Service()</text>
     <text x="72" y="322" font-size="13" font-family="'Segoe UI', sans-serif">· Create / Destroy</text>
   </g>
+  </a>
 
   <!-- CONFIG (injected) -->
-  <g filter="url(#postitShadow)"><rect x="64" y="420" width="172" height="112" fill="#f6c6c6" transform="rotate(1.5 150 476)"/></g>
+  <a href="../../api/structSolidSyslogConfig/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="config" x="64" y="420" width="172" height="112" fill="#f6c6c6" transform="rotate(1.5 150 476)"/></g>
   <g transform="rotate(1.5 150 476)" fill="#4a2c2c">
     <text x="84" y="452" font-size="17" font-weight="bold">Config</text>
     <text x="84" y="474" font-size="12" font-family="'Segoe UI', sans-serif">you wire the roles +</text>
     <text x="84" y="492" font-size="12" font-family="'Segoe UI', sans-serif">clock / hostname /</text>
     <text x="84" y="510" font-size="12" font-family="'Segoe UI', sans-serif">app-name callbacks</text>
   </g>
+  </a>
 
   <!-- ROLES (green) -->
   <!-- Buffer -->
-  <g filter="url(#postitShadow)"><rect x="375" y="140" width="180" height="82" fill="#bfe3c0" transform="rotate(-1 465 181)"/></g>
+  <a href="../../api/structSolidSyslogBuffer/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="card" x="375" y="140" width="180" height="82" fill="#bfe3c0" transform="rotate(-1 465 181)"/></g>
   <g transform="rotate(-1 465 181)" fill="#21401f"><text x="393" y="168" font-size="11.5" font-style="italic" font-family="'Segoe UI', sans-serif">«role»</text><text x="393" y="190" font-size="17" font-weight="bold">Buffer</text><text x="393" y="210" font-size="11.5" font-family="'Segoe UI', sans-serif">Write · Read</text></g>
+  </a>
   <!-- Sender -->
-  <g filter="url(#postitShadow)"><rect x="375" y="270" width="180" height="82" fill="#bfe3c0" transform="rotate(1 465 311)"/></g>
+  <a href="../../api/structSolidSyslogSender/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="card" x="375" y="270" width="180" height="82" fill="#bfe3c0" transform="rotate(1 465 311)"/></g>
   <g transform="rotate(1 465 311)" fill="#21401f"><text x="393" y="298" font-size="11.5" font-style="italic" font-family="'Segoe UI', sans-serif">«role»</text><text x="393" y="320" font-size="17" font-weight="bold">Sender</text><text x="393" y="340" font-size="11.5" font-family="'Segoe UI', sans-serif">Send · Disconnect</text></g>
+  </a>
   <!-- Store -->
-  <g filter="url(#postitShadow)"><rect x="375" y="400" width="180" height="82" fill="#bfe3c0" transform="rotate(-1 465 441)"/></g>
+  <a href="../../api/structSolidSyslogStore/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="card" x="375" y="400" width="180" height="82" fill="#bfe3c0" transform="rotate(-1 465 441)"/></g>
   <g transform="rotate(-1 465 441)" fill="#21401f"><text x="393" y="428" font-size="11.5" font-style="italic" font-family="'Segoe UI', sans-serif">«role»</text><text x="393" y="450" font-size="17" font-weight="bold">Store</text><text x="393" y="470" font-size="11.5" font-family="'Segoe UI', sans-serif">store &amp; forward</text></g>
+  </a>
   <!-- Structured Data -->
-  <g filter="url(#postitShadow)"><rect x="375" y="530" width="180" height="82" fill="#bfe3c0" transform="rotate(1 465 571)"/></g>
+  <a href="../../api/structSolidSyslogStructuredData/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="card" x="375" y="530" width="180" height="82" fill="#bfe3c0" transform="rotate(1 465 571)"/></g>
   <g transform="rotate(1 465 571)" fill="#21401f"><text x="393" y="558" font-size="11.5" font-style="italic" font-family="'Segoe UI', sans-serif">«role»</text><text x="393" y="580" font-size="16" font-weight="bold">Structured Data</text><text x="393" y="600" font-size="11.5" font-family="'Segoe UI', sans-serif">SD elements</text></g>
+  </a>
 
   <!-- BACKENDS (blue) -->
   <g filter="url(#postitShadow)"><rect x="655" y="140" width="205" height="82" fill="#cdd4f5" transform="rotate(1 757 181)"/></g>

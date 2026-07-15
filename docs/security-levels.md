@@ -58,9 +58,15 @@ on. This is our reading of the standard's direction of travel; see the
 Starting points, not verdicts; each names its choices and why. Adapt them to
 your own drivers.
 
+<!-- markdownlint-disable MD033 — these diagrams are embedded as <object>, not a Markdown image, so the SVG's interface stickies stay clickable through to their API pages. -->
+
 ### A lean edge sensor
 
-![A lean edge sensor](assets/postit/sl1.svg)
+<div class="postit-diagram">
+  <object type="image/svg+xml" data="../assets/postit/sl1.svg" title="A lean edge sensor">
+    <img src="assets/postit/sl1.svg" alt="A lean edge sensor">
+  </object>
+</div>
 
 Core (`SolidSyslog` + `Config`) + an injected clock + `UdpSender` +
 `PassthroughBuffer`; store, policy, and structured data all `Null`. Why: a
@@ -70,7 +76,11 @@ to your collector.
 
 ### A device on an untrusted network
 
-![A device on an untrusted network](assets/postit/sl2.svg)
+<div class="postit-diagram">
+  <object type="image/svg+xml" data="../assets/postit/sl2.svg" title="A device on an untrusted network">
+    <img src="assets/postit/sl2.svg" alt="A device on an untrusted network">
+  </object>
+</div>
 
 Adds a server-auth `TlsStream` (confidentiality over the untrusted hop),
 `BlockStore` store-and-forward (records survive outages), and `TimeQualitySd` +
@@ -81,7 +91,13 @@ the collector needs both timestamp trust and gap visibility.
 
 ### A device needing non-repudiation
 
-![A device needing non-repudiation](assets/postit/sl3.svg)
+<div class="postit-diagram">
+  <object type="image/svg+xml" data="../assets/postit/sl3.svg" title="A device needing non-repudiation">
+    <img src="assets/postit/sl3.svg" alt="A device needing non-repudiation">
+  </object>
+</div>
+
+<!-- markdownlint-enable MD033 -->
 
 Adds mutual TLS with a per-device certificate, a keyed at-rest integrity
 policy (HMAC is tamper-evident; CRC-16 catches only accidental corruption, not an

@@ -147,3 +147,20 @@
 .md-tabs__link--active {
   color: #3e2199;
 }
+
+/* Worked-combination post-it diagrams are embedded as <object> (not a Markdown
+   image) so the SVG's interface stickies stay clickable — an <img>-loaded SVG
+   swallows its own internal links. The <object> carries only a viewBox, so a
+   definite width plus height:auto lets the browser derive the height from the
+   aspect ratio and scale responsively. */
+.postit-diagram {
+  margin: 1.2rem auto;
+}
+
+.postit-diagram object {
+  display: block;
+  width: 100%;
+  max-width: 960px;
+  height: auto;
+  margin: 0 auto;
+}
