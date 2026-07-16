@@ -11,6 +11,18 @@ adapter that satisfies one of the twelve vtable contracts, drop it into your
 build, and wire it into your config. This page is the contract those adapters
 honour, written from the code that already ships.
 
+<!-- markdownlint-disable MD033 — the sticky is styled HTML (.postit-note in brand.css); md_in_html keeps its body as Markdown. -->
+
+<div class="postit-note" markdown>
+**Rather we did it?**
+
+We write and support SolidSyslog platform adapters — your RTOS, network stack,
+filesystem or crypto library — and the tests that prove them against the
+contract. [Talk to us about it](https://www.cososo.co.uk/?service=solidsyslog#contact).
+</div>
+
+<!-- markdownlint-enable MD033 -->
+
 ## The role model
 
 Core is a fixed set of algorithms (the formatter/message pipeline, the Service
