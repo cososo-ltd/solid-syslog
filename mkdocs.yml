@@ -78,6 +78,9 @@ hooks:
   # Injects post-it "realised by" relationship diagrams at the top of selected
   # generated API pages (experiment — see hooks/relationship_diagrams.py).
   - hooks/relationship_diagrams.py
+  # Hides the one-entry table of contents on the generated Functions / Macros
+  # indexes, whose letter buckets collapse under the common SolidSyslog prefix.
+  - hooks/api_index_toc.py
 
 # not_found — enforced (fatal under --strict): the hook above resolves every
 #             in-repo source link, so a genuinely broken link fails the build.
@@ -121,6 +124,10 @@ plugins:
             MACRO_EXPANSION: true
             EXPAND_ONLY_PREDEF: true
             PREDEFINED: "EXTERN_C_BEGIN= EXTERN_C_END="
+            # The guards are internal C-linkage plumbing from Core/Interface/ExternC.h,
+            # not integrator-facing API. PREDEFINED above only stops them corrupting the
+            # declarations; this keeps them out of the public macro index as well.
+            EXCLUDE_SYMBOLS: "EXTERN_C_*"
 
 nav:
   - Home: README.md
@@ -145,10 +152,43 @@ nav:
       - Vulnerability triage: security/triage-runbook.md
       - Release verification: security/release-verification.md
   - API reference:
-      - Headers: api/files.md
-      - Data structures: api/annotated.md
-      - Functions: api/functions.md
-      - Macros: api/macros.md
+      # index.md (not api-reference.md) so navigation.indexes promotes it into the
+      # section link — Material only promotes a child whose file is an index.
+      - API reference:
+          - api-reference/index.md
+          - Headers: api/files.md
+          - Data structures: api/annotated.md
+          - Functions: api/functions.md
+          - Macros: api/macros.md
+      - Platforms:
+          - platforms/index.md
+          - Posix: platforms/posix.md
+          - Windows: platforms/windows.md
+          - FreeRTOS: platforms/freertos.md
+          - FreeRTOS-Plus-TCP: platforms/plustcp.md
+          - lwIP (Raw API): platforms/lwip.md
+          - OpenSSL: platforms/openssl.md
+          - Mbed TLS: platforms/mbedtls.md
+          - FatFs: platforms/fatfs.md
+          - FreeRTOS-Plus-FAT: platforms/plusfat.md
+          - C11 atomics: platforms/atomics.md
+      # A role *is* its vtable, so each entry links straight to the generated
+      # contract page; detail belongs in the SolidSyslog<Role>Definition.h
+      # doc comment, not a hand-maintained copy here.
+      - Roles:
+          - roles/index.md
+          - Resolver: api/structSolidSyslogResolver.md
+          - Datagram: api/structSolidSyslogDatagram.md
+          - Stream: api/structSolidSyslogStream.md
+          - Sender: api/structSolidSyslogSender.md
+          - Buffer: api/structSolidSyslogBuffer.md
+          - Store: api/structSolidSyslogStore.md
+          - BlockDevice: api/structSolidSyslogBlockDevice.md
+          - File: api/structSolidSyslogFile.md
+          - Mutex: api/structSolidSyslogMutex.md
+          - AtomicCounter: api/structSolidSyslogAtomicCounter.md
+          - StructuredData: api/structSolidSyslogStructuredData.md
+          - SecurityPolicy: api/structSolidSyslogSecurityPolicy.md
   - Maintaining:
       - Building & testing: builds.md
       - Local checks: local-checks.md
