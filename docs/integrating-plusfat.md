@@ -1,7 +1,7 @@
 # Integrating SolidSyslog with FreeRTOS-Plus-FAT
 
 `SolidSyslogPlusFatFile` is the `SolidSyslogFile` adapter backed by
-[FreeRTOS-Plus-FAT](https://www.freertos.org/Documentation/03-Libraries/05-FreeRTOS-labs/04-FreeRTOS-plus-FAT/00-FreeRTOS-Plus-FAT)
+[FreeRTOS-Plus-FAT](https://www.freertos.org/Documentation/03-Libraries/05-FreeRTOS-labs/04-FreeRTOS-plus-FAT/01-FreeRTOS-plus-FAT)
 (the `ff_stdio` API). It is the FreeRTOS-Plus ecosystem counterpart to the
 OS-agnostic [ChaN FatFs adapter](../Platform/FatFs/); pair it with
 FreeRTOS-Plus-TCP for a coherent all-FreeRTOS-Plus storage + transport stack. It

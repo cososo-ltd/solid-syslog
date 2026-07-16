@@ -254,7 +254,7 @@ platform guides: [lwIP](integrating-lwip.md), [Mbed TLS](integrating-mbedtls.md)
 
 All compile-time limits live in
 [`Core/Interface/SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h),
-34 values, every one `#ifndef`-guarded so you override without editing the
+multiple values, every one `#ifndef`-guarded so you override without editing the
 library. Two equivalent mechanisms (works the same for CMake and non-CMake):
 
 - A whole file of overrides:
@@ -288,6 +288,10 @@ anywhere and `Service` from your drain loop:
 ```c
 #include "SolidSyslog.h"
 #include "SolidSyslogConfig.h"
+/* Setup also includes one header per component it wires — e.g.
+ * "SolidSyslogCircularBuffer.h", "SolidSyslogStreamSender.h",
+ * "SolidSyslogBlockStore.h", "SolidSyslogPosixClock.h". Code that only
+ * logs or drains (elsewhere in your app) includes just "SolidSyslog.h". */
 
 /* 1. Build a config and create the logger (setup code).
  *    Wire your chosen Buffer, Sender, Store, clock and header-field
@@ -330,9 +334,12 @@ With a `CircularBuffer` (the embedded default), `Log` enqueues and `Service`
 drains; run `Service` from a dedicated task. To attach per-message structured
 data, use `SolidSyslog_LogWithSd` instead of `SolidSyslog_Log`.
 
-Application code only ever includes `SolidSyslog.h` (and `SolidSyslogConfig.h` at
-setup). Everything else (senders, buffers, TLS, stores) is wired once behind
-the config struct.
+Code that logs an event or drains the queue (the `Service` loop) includes only
+`SolidSyslog.h`. Building the logger is the other job: it includes
+`SolidSyslogConfig.h` plus one header per component it wires (a Sender, a Buffer,
+an optional Store, structured data, and the clock / hostname / app-name
+callbacks), fills the config once, and hands the returned handle to the other
+two. See the [API reference](api-reference/index.md) for the header-by-job map.
 
 ---
 

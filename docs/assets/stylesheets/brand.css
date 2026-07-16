@@ -164,3 +164,37 @@
   height: auto;
   margin: 0 auto;
 }
+
+/* A single jaunty sticky, in the same hand-drawn house style as the post-it
+   diagrams (docs/assets/postit/README.md) — the yellow "facade" swatch, Segoe
+   Print, a couple of degrees off square. Built from HTML rather than SVG so the
+   text stays selectable and searchable and the call to action is a real anchor
+   rather than a link buried inside an <object>. */
+.postit-note {
+  max-width: 34rem;
+  margin: 2rem auto;
+  padding: 1.1rem 1.4rem 1.3rem;
+  background: #ffe7a3;
+  color: #3a3320;
+  font-family: "Segoe Print", "Bradley Hand", "Patrick Hand", cursive;
+  box-shadow: 2px 5px 8px rgba(0, 0, 0, 0.28);
+  transform: rotate(-1.4deg);
+}
+
+.postit-note > :first-child {
+  margin-top: 0;
+}
+
+.postit-note > :last-child {
+  margin-bottom: 0;
+}
+
+/* The sticky is already amber; the site accent on top of it is unreadable. */
+.postit-note a {
+  color: #6b2d2d;
+  text-decoration: underline;
+}
+
+.postit-note a:hover {
+  color: #3e2199;
+}

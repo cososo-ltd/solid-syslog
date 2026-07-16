@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" font-family="'Segoe Print', 'Bradley Hand', 'Patrick Hand', cursive">
+  <!--
+    SolidSyslog — three jobs, two include lists.
+    Style kit: docs/assets/postit/postit-defs.svg (defs inlined so this renders standalone).
+    Two runtime jobs (log · drain) each include only SolidSyslog.h.
+    One setup job includes SolidSyslogConfig.h + one header per component wired.
+  -->
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="3.5"/>
+    </filter>
+    <filter id="postitShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="2" dy="5" stdDeviation="4" flood-color="#000" flood-opacity="0.28"/>
+    </filter>
+    <marker id="arrowUses" markerWidth="12" markerHeight="12" refX="8" refY="5" orient="auto">
+      <path d="M1,1 L9,5 L1,9" fill="none" stroke="#2b2b2b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowInject" markerWidth="12" markerHeight="12" refX="8" refY="5" orient="auto">
+      <path d="M1,1 L9,5 L1,9" fill="none" stroke="#b0506a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <style>.node{cursor:pointer}.node:hover .facade{stroke:#b89a3c;stroke-width:3}.node:hover .impl{stroke:#5b6fd6;stroke-width:3}</style>
+
+  <rect width="1200" height="720" fill="#fbfbf5"/>
+
+  <text x="50" y="52" font-size="30" fill="#1a1f6e" font-weight="bold">SolidSyslog — three jobs, two include lists</text>
+  <text x="52" y="80" font-size="16" fill="#6a6a60" font-family="'Segoe UI', sans-serif">Logging and draining each include one header — SolidSyslog.h. Setup includes Config plus one header per component it wires.</text>
+  <line x1="50" y1="94" x2="1150" y2="94" stroke="#3340a8" stroke-width="3" stroke-linecap="round" filter="url(#rough)"/>
+
+  <!-- legend -->
+  <g font-family="'Segoe UI', sans-serif" font-size="12.5" fill="#2b2b2b">
+    <rect x="980" y="26" width="14" height="14" fill="#f6c6c6"/><text x="1000" y="38">your code</text>
+    <rect x="980" y="46" width="14" height="14" fill="#ffe7a3"/><text x="1000" y="58">facade header</text>
+    <rect x="980" y="66" width="14" height="14" fill="#cdd4f5"/><text x="1000" y="78">component header (setup)</text>
+  </g>
+
+  <!-- column separator -->
+  <line x1="428" y1="118" x2="428" y2="628" stroke="#d7d7cc" stroke-width="1.5" stroke-dasharray="4 6"/>
+
+  <!-- column labels -->
+  <text x="55" y="132" font-size="18" fill="#1a1f6e" font-weight="bold">Runtime — two jobs, one header</text>
+  <text x="55" y="153" font-size="13" fill="#6a6a60" font-family="'Segoe UI', sans-serif">logging and draining both include only SolidSyslog.h</text>
+  <text x="470" y="132" font-size="18" fill="#1a1f6e" font-weight="bold">Setup — one place, at startup</text>
+  <text x="470" y="153" font-size="13" fill="#6a6a60" font-family="'Segoe UI', sans-serif">builds the logger, then hands over the handle</text>
+
+  <!-- ===== LEFT: two runtime jobs ===== -->
+  <!-- job 1: logging code -->
+  <g filter="url(#postitShadow)"><rect x="58" y="178" width="160" height="72" fill="#f6c6c6" transform="rotate(-1.5 138 214)"/></g>
+  <g transform="rotate(-1.5 138 214)" fill="#4a2c2c">
+    <text x="78" y="208" font-size="15" font-weight="bold">logging code</text>
+    <text x="78" y="228" font-size="11" font-family="'Segoe UI', sans-serif">any thread · emits events</text>
+  </g>
+
+  <!-- job 2: service task -->
+  <g filter="url(#postitShadow)"><rect x="232" y="178" width="160" height="72" fill="#f6c6c6" transform="rotate(1.5 312 214)"/></g>
+  <g transform="rotate(1.5 312 214)" fill="#4a2c2c">
+    <text x="252" y="208" font-size="14" font-weight="bold">service task / loop</text>
+    <text x="252" y="228" font-size="11" font-family="'Segoe UI', sans-serif">drains + sends the queue</text>
+  </g>
+
+  <!-- SolidSyslog.h (facade) shared by both runtime jobs -->
+  <a href="../../api/SolidSyslog_8h/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="facade" x="105" y="312" width="220" height="150" fill="#ffe7a3" transform="rotate(-2 215 387)"/></g>
+  <g transform="rotate(-2 215 387)" fill="#3a3320">
+    <text x="127" y="350" font-size="20" font-weight="bold">SolidSyslog.h</text>
+    <text x="127" y="372" font-size="11.5" font-family="'Segoe UI', sans-serif">the only header either includes</text>
+    <line x1="127" y1="382" x2="315" y2="382" stroke="#b89a3c" stroke-width="1.5"/>
+    <text x="127" y="408" font-size="13" font-family="'Segoe UI', sans-serif">· Log(message)</text>
+    <text x="127" y="432" font-size="13" font-family="'Segoe UI', sans-serif">· Service(handle)</text>
+  </g>
+  </a>
+
+  <text x="112" y="492" font-size="13" fill="#5a5a50" font-family="'Segoe UI', sans-serif" font-style="italic">Two jobs, one header.</text>
+
+  <!-- call arrows: each runtime job -> SolidSyslog.h -->
+  <g fill="none" stroke="#2b2b2b" stroke-width="2.2" filter="url(#rough)">
+    <path d="M138 252 C 150 285, 172 300, 192 308" marker-end="url(#arrowUses)"/>
+    <path d="M312 252 C 300 285, 272 300, 250 308" marker-end="url(#arrowUses)"/>
+  </g>
+  <text x="140" y="290" font-size="11.5" fill="#444" font-family="'Segoe UI', sans-serif" font-style="italic">Log()</text>
+  <text x="262" y="290" font-size="11.5" fill="#444" font-family="'Segoe UI', sans-serif" font-style="italic">Service()</text>
+
+  <!-- ===== RIGHT: setup job ===== -->
+  <!-- your setup / main (caller) -->
+  <g filter="url(#postitShadow)"><rect x="455" y="178" width="200" height="72" fill="#f6c6c6" transform="rotate(1.5 555 214)"/></g>
+  <g transform="rotate(1.5 555 214)" fill="#4a2c2c">
+    <text x="476" y="208" font-size="16" font-weight="bold">your setup / main</text>
+    <text x="476" y="228" font-size="11.5" font-family="'Segoe UI', sans-serif">runs once at startup</text>
+  </g>
+
+  <!-- SolidSyslogConfig.h (facade) -->
+  <a href="../../api/SolidSyslogConfig_8h/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="facade" x="455" y="322" width="200" height="120" fill="#ffe7a3" transform="rotate(-1.5 555 382)"/></g>
+  <g transform="rotate(-1.5 555 382)" fill="#3a3320">
+    <text x="476" y="354" font-size="17" font-weight="bold">SolidSyslogConfig.h</text>
+    <line x1="476" y1="364" x2="636" y2="364" stroke="#b89a3c" stroke-width="1.5"/>
+    <text x="476" y="388" font-size="12.5" font-family="'Segoe UI', sans-serif">· Create(config) → handle</text>
+    <text x="476" y="410" font-size="12.5" font-family="'Segoe UI', sans-serif">· Destroy(handle)</text>
+  </g>
+  </a>
+
+  <!-- include arrow: setup -> Config.h -->
+  <g fill="none" stroke="#2b2b2b" stroke-width="2.2" filter="url(#rough)">
+    <path d="M555 252 V 318" marker-end="url(#arrowUses)"/>
+  </g>
+  <text x="566" y="290" font-size="11.5" fill="#444" font-family="'Segoe UI', sans-serif" font-style="italic">#include</text>
+
+  <!-- component header stack (blue) -->
+  <text x="720" y="168" font-size="12" fill="#444" font-family="'Segoe UI', sans-serif" font-style="italic">one header each — you #include it and _Create()</text>
+
+  <a href="../../api/SolidSyslogStreamSender_8h/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="impl" x="720" y="178" width="215" height="58" fill="#cdd4f5" transform="rotate(1 827 207)"/></g>
+  <g transform="rotate(1 827 207)" fill="#15324f"><text x="738" y="204" font-size="15" font-weight="bold">a Sender</text><text x="738" y="223" font-size="11.5" font-family="'Segoe UI', sans-serif">StreamSender.h / UdpSender.h</text></g>
+  </a>
+
+  <a href="../../api/SolidSyslogCircularBuffer_8h/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="impl" x="720" y="252" width="215" height="58" fill="#cdd4f5" transform="rotate(-1 827 281)"/></g>
+  <g transform="rotate(-1 827 281)" fill="#15324f"><text x="738" y="278" font-size="15" font-weight="bold">a Buffer</text><text x="738" y="297" font-size="11.5" font-family="'Segoe UI', sans-serif">CircularBuffer.h / Passthrough</text></g>
+  </a>
+
+  <a href="../../api/SolidSyslogBlockStore_8h/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="impl" x="720" y="326" width="215" height="58" fill="#cdd4f5" transform="rotate(1 827 355)"/></g>
+  <g transform="rotate(1 827 355)" fill="#15324f"><text x="738" y="352" font-size="15" font-weight="bold">a Store</text><text x="738" y="371" font-size="11.5" font-family="'Segoe UI', sans-serif">BlockStore.h (+ BlockDevice, File)</text></g>
+  </a>
+
+  <a href="../../api/SolidSyslogMetaSd_8h/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="impl" x="720" y="400" width="215" height="58" fill="#cdd4f5" transform="rotate(-1 827 429)"/></g>
+  <g transform="rotate(-1 827 429)" fill="#15324f"><text x="738" y="426" font-size="15" font-weight="bold">structured data</text><text x="738" y="445" font-size="11.5" font-family="'Segoe UI', sans-serif">MetaSd.h · OriginSd.h · …</text></g>
+  </a>
+
+  <a href="../../api/SolidSyslogPosixClock_8h/" target="_top" class="node">
+  <g filter="url(#postitShadow)"><rect class="impl" x="720" y="474" width="215" height="58" fill="#cdd4f5" transform="rotate(1 827 503)"/></g>
+  <g transform="rotate(1 827 503)" fill="#15324f"><text x="738" y="500" font-size="15" font-weight="bold">clock / hostname</text><text x="738" y="519" font-size="11.5" font-family="'Segoe UI', sans-serif">PosixClock.h · Hostname · …</text></g>
+  </a>
+
+  <!-- inject arrows: component headers -> Config -->
+  <g fill="none" stroke="#b0506a" stroke-width="2" stroke-dasharray="3 5" filter="url(#rough)">
+    <path d="M718 207 C 700 296, 690 356, 658 380" marker-end="url(#arrowInject)"/>
+    <path d="M718 281 C 700 318, 690 360, 658 382" marker-end="url(#arrowInject)"/>
+    <path d="M718 355 C 700 362, 690 378, 658 384" marker-end="url(#arrowInject)"/>
+    <path d="M718 429 C 700 410, 690 394, 658 386" marker-end="url(#arrowInject)"/>
+    <path d="M718 503 C 700 450, 690 402, 658 388" marker-end="url(#arrowInject)"/>
+  </g>
+  <text x="672" y="326" font-size="11.5" fill="#b0506a" font-family="'Segoe UI', sans-serif" font-style="italic">wired into Config</text>
+
+  <!-- returns the handle: Config.h -> SolidSyslog.h (ties setup to the runtime jobs) -->
+  <g fill="none" stroke="#2b2b2b" stroke-width="2.2" filter="url(#rough)">
+    <path d="M453 428 C 400 458, 362 424, 331 404" marker-end="url(#arrowUses)"/>
+  </g>
+  <text x="345" y="452" font-size="12" fill="#444" font-family="'Segoe UI', sans-serif" font-style="italic">Create() → the logger handle</text>
+
+  <!-- NOTE -->
+  <g filter="url(#postitShadow)"><rect x="455" y="536" width="470" height="132" fill="#fff7cf" transform="rotate(-0.5 690 602)"/></g>
+  <g transform="rotate(-0.5 690 602)" fill="#4a441f" font-family="'Segoe UI', sans-serif">
+    <text x="476" y="570" font-size="13.5" font-weight="bold">Setup includes one header per component it wires.</text>
+    <text x="476" y="594" font-size="12.5">The Linux reference target pulls around two dozen; a lean SL1 stack, a</text>
+    <text x="476" y="614" font-size="12.5">handful. Every file that logs or drains includes only SolidSyslog.h.</text>
+  </g>
+</svg>

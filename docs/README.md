@@ -59,16 +59,13 @@ Core's Null object stands in.
 
 ## API reference
 
-Application code only ever includes `SolidSyslog.h` (and `SolidSyslogConfig.h`
-at setup); everything else is wired once behind the config struct. The public
-headers are split by audience (Interface Segregation) under
-[`Core/Interface/`](../Core/Interface/) and each `Platform/*/Interface/`. The
-[project README](../README.md#architecture) lists the headers by audience.
-
-The generated reference is under **API reference** in the site navigation:
-[Headers](api/files.md) browses every public header grouped by directory
-(`Core/Interface`, then one folder per platform); [Data structures](api/annotated.md)
-lists the config and vtable structs.
+The public headers are split by the job your code is doing: logging an event or
+draining the queue each include only `SolidSyslog.h`, while the setup that builds
+the logger includes `SolidSyslogConfig.h` plus one header per component it wires.
+The [API reference](api-reference/index.md) explains that split, introduces the
+platforms and roles behind the config struct, and links the full generated
+reference — [Headers](api/files.md), [Data structures](api/annotated.md),
+[Functions](api/functions.md), and [Macros](api/macros.md).
 
 ## Maintaining
 
