@@ -58,7 +58,7 @@ path. *Pool tunable* is the `SOLIDSYSLOG_<NAME>` slot count (see
 |---|---|---|---|---|
 | Resolver | GetAddrInfo | `GetAddrInfoResolver*` | POSIX | `RESOLVER_POOL_SIZE` |
 | | Winsock | `WinsockResolver*` | Win32 | ″ |
-| | PlusTcp (static IPv4) | `PlusTcpResolver*` | FreeRTOS-Plus-TCP | ″ |
+| | PlusTcp (DNS) | `PlusTcpResolver*` | FreeRTOS-Plus-TCP + `ipconfigUSE_DNS=1` | ″ |
 | | LwipRaw numeric | `LwipRawResolver*` | lwIP `ipaddr_aton` | ″ |
 | | LwipRaw DNS | `LwipRawDnsResolver*` | lwIP `LWIP_DNS=1` + Sleep cb | ″ |
 | Datagram (UDP) | Posix / Winsock / PlusTcp / LwipRaw | `{Posix,Winsock,PlusTcp,LwipRaw}Datagram*` | resp. stacks | `DATAGRAM_POOL_SIZE` |
