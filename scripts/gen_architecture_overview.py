@@ -66,7 +66,7 @@ def fs(t):
     return 11.5 if len(t) > 13 else (12.5 if len(t) > 10 else 14)
 
 
-def box(cx, y, label, fill, edge, link=None, cls="node", bold=False, w=BOX_W, h=BOX_H):
+def box(cx, y, label, fill, edge, link=None, cls="node", *, bold=False, w=BOX_W, h=BOX_H):
     xx = cx - w / 2
     weight = ' font-weight="700"' if bold else ' font-weight="600"'
     rect = (f'<rect x="{xx:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h}" rx="7" '
@@ -127,7 +127,7 @@ for t in touch:
     box(t["cx"], Y_TOUCH, t["name"], GREEN, GREEN_E, link=f'../../api/structSolidSyslog{t["name"]}/')
     box_bottom = Y_TOUCH + BOX_H
     mid = (box_bottom + band_top) / 2
-    for cx2, ext in zip(t["slots"], t["exts"]):
+    for cx2, ext in zip(t["slots"], t["exts"], strict=True):
         # fan out of the box, cross the boundary, into the adapter
         out.append(f'  <path class="wire" d="M {t["cx"]:.0f} {box_bottom} V {mid:.0f} H {cx2:.0f} V {Y_BLUE:.0f}"/>')
         out.append(f'  <a href="{PLATFORMS}" target="_top" class="plat">'

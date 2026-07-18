@@ -24,8 +24,8 @@ band links to [Platforms](../platforms/index.md).
 
 | Header | Provides |
 |---|---|
-| [`SolidSyslog.h`](../api/SolidSyslog_8h.md) | `_Log`, `_LogWithSd`, `_Service` — the whole runtime surface |
-| [`SolidSyslogConfig.h`](../api/SolidSyslogConfig_8h.md) | `_Create`, `_Destroy`, and the [`SolidSyslogConfig`](../api/structSolidSyslogConfig.md) struct you fill |
+| [`SolidSyslog.h`](../api/SolidSyslog_8h.md) | `SolidSyslog_Log`, `SolidSyslog_LogWithSd`, `SolidSyslog_Service` — the whole runtime surface |
+| [`SolidSyslogConfig.h`](../api/SolidSyslogConfig_8h.md) | `SolidSyslog_Create`, `SolidSyslog_Destroy`, and the [`SolidSyslogConfig`](../api/structSolidSyslogConfig.md) struct you fill |
 
 ## What it ships
 
