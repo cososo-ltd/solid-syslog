@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1444 506" font-family="'Segoe UI', sans-serif">
+  <desc>SolidSyslog architecture overview. The Core rectangle is a boundary; everything
+  inside is portable C. You wire four roles on the SolidSyslog facade: Sender, Store,
+  Buffer and Structured Data. Beneath them, the roles that cross the Core boundary to
+  reach your system -- name resolution, UDP sockets, TCP sockets and a TLS library
+  (Sender); the filesystem and a crypto library (Store); an OS mutex (Buffer); atomics
+  (Structured Data) -- each through a thin platform adapter you supply. The adapter layer
+  depends inward on Core and outward on your system; Core depends on nothing outside
+  itself.</desc>
+  <defs>
+    <marker id="big" markerWidth="7" markerHeight="6" refX="3.4" refY="3" orient="auto">
+      <path d="M0 0 L7 3 L0 6 Z" fill="#6a74c4"/></marker>
+  </defs>
+  <style>
+    .wire { fill:none; stroke:#8fbf92; stroke-width:1.7; }
+    .node, .plat { cursor:pointer; }
+    .node:hover rect { stroke:#3a7a40; stroke-width:3; }
+    .plat:hover rect { stroke:#3a4590; stroke-width:2.6; }
+  </style>
+  <rect width="1444" height="506" fill="#fbfbf5"/>
+
+  <rect x="104" y="32" width="1308" height="272" rx="18" fill="#eef6ee" stroke="#8fbf92" stroke-width="2.2"/>
+  <text x="122" y="58" font-size="17" font-weight="700" fill="#3a7a40">Core</text>
+  <a href="../../platforms/" target="_top" class="plat">
+    <rect x="104" y="308" width="1308" height="82" rx="14" fill="#e7ebfa" stroke="#9aa6e0" stroke-width="1.6"/>
+    <text x="122" y="332" font-size="14.5" font-weight="700" fill="#5a67c0">Platform adapters</text>
+  </a>
+  <a href="../../api/SolidSyslog_8h/" target="_top" class="node">
+    <rect x="666" y="56" width="184" height="50" rx="7" fill="#ffe7a3" stroke="#d8b94e" stroke-width="1.5"/>
+    <text x="758" y="81" text-anchor="middle" dominant-baseline="middle" font-size="12.5" font-weight="700" fill="#5a481a">SolidSyslog</text>
+  </a>
+  <a href="../../api/structSolidSyslogSender/" target="_top" class="node">
+    <rect x="345" y="148" width="126" height="48" rx="7" fill="#bfe3c0" stroke="#8fbf92" stroke-width="1.5"/>
+    <text x="408" y="172" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="#21401f">Sender</text>
+  </a>
+  <a href="../../api/structSolidSyslogStore/" target="_top" class="node">
+    <rect x="819" y="148" width="126" height="48" rx="7" fill="#bfe3c0" stroke="#8fbf92" stroke-width="1.5"/>
+    <text x="882" y="172" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="#21401f">Store</text>
+  </a>
+  <a href="../../api/structSolidSyslogBuffer/" target="_top" class="node">
+    <rect x="1080" y="148" width="126" height="48" rx="7" fill="#bfe3c0" stroke="#8fbf92" stroke-width="1.5"/>
+    <text x="1143" y="172" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="#21401f">Buffer</text>
+  </a>
+  <a href="../../api/structSolidSyslogStructuredData/" target="_top" class="node">
+    <rect x="1270" y="148" width="126" height="48" rx="7" fill="#bfe3c0" stroke="#8fbf92" stroke-width="1.5"/>
+    <text x="1333" y="172" text-anchor="middle" dominant-baseline="middle" font-size="11.5" font-weight="600" fill="#21401f">StructuredData</text>
+  </a>
+  <a href="../../api/structSolidSyslogResolver/" target="_top" class="node">
+    <rect x="132" y="240" width="126" height="48" rx="7" fill="#bfe3c0" stroke="#8fbf92" stroke-width="1.5"/>
+    <text x="195" y="264" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="#21401f">Resolver</text>
+  </a>
+  <path class="wire" d="M 195 288 V 298 H 195 V 336"/>
+  <a href="../../platforms/" target="_top" class="plat"><rect x="145" y="336" width="100" height="40" rx="6" fill="#cdd4f5" stroke="#9aa6e0" stroke-width="1.5"/></a>
+  <line x1="195" y1="376" x2="195" y2="424" class="wire"/>
+  <rect x="135" y="424" width="120" height="48" rx="7" fill="#f6c6c6" stroke="#dba3a3" stroke-width="1.5"/>
+  <text x="195" y="448" text-anchor="middle" dominant-baseline="middle" font-size="11.5" font-weight="600" fill="#4a2c2c">name resolution</text>
+  <a href="../../api/structSolidSyslogDatagram/" target="_top" class="node">
+    <rect x="274" y="240" width="126" height="48" rx="7" fill="#bfe3c0" stroke="#8fbf92" stroke-width="1.5"/>
+    <text x="337" y="264" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="#21401f">Datagram</text>
+  </a>
+  <path class="wire" d="M 337 288 V 298 H 337 V 336"/>
+  <a href="../../platforms/" target="_top" class="plat"><rect x="287" y="336" width="100" height="40" rx="6" fill="#cdd4f5" stroke="#9aa6e0" stroke-width="1.5"/></a>
+  <line x1="337" y1="376" x2="337" y2="424" class="wire"/>
+  <rect x="277" y="424" width="120" height="48" rx="7" fill="#f6c6c6" stroke="#dba3a3" stroke-width="1.5"/>
+  <text x="337" y="448" text-anchor="middle" dominant-baseline="middle" font-size="12.5" font-weight="600" fill="#4a2c2c">UDP sockets</text>
+  <a href="../../api/structSolidSyslogStream/" target="_top" class="node">
+    <rect x="487" y="240" width="126" height="48" rx="7" fill="#bfe3c0" stroke="#8fbf92" stroke-width="1.5"/>
+    <text x="550" y="264" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="#21401f">Stream</text>
+  </a>
+  <path class="wire" d="M 550 288 V 298 H 479 V 336"/>
+  <a href="../../platforms/" target="_top" class="plat"><rect x="429" y="336" width="100" height="40" rx="6" fill="#cdd4f5" stroke="#9aa6e0" stroke-width="1.5"/></a>
+  <line x1="479" y1="376" x2="479" y2="424" class="wire"/>
+  <rect x="419" y="424" width="120" height="48" rx="7" fill="#f6c6c6" stroke="#dba3a3" stroke-width="1.5"/>
+  <text x="479" y="448" text-anchor="middle" dominant-baseline="middle" font-size="12.5" font-weight="600" fill="#4a2c2c">TCP sockets</text>
+  <path class="wire" d="M 550 288 V 298 H 621 V 336"/>
+  <a href="../../platforms/" target="_top" class="plat"><rect x="571" y="336" width="100" height="40" rx="6" fill="#cdd4f5" stroke="#9aa6e0" stroke-width="1.5"/></a>
+  <line x1="621" y1="376" x2="621" y2="424" class="wire"/>
+  <rect x="561" y="424" width="120" height="48" rx="7" fill="#f6c6c6" stroke="#dba3a3" stroke-width="1.5"/>
+  <text x="621" y="448" text-anchor="middle" dominant-baseline="middle" font-size="12.5" font-weight="600" fill="#4a2c2c">TLS library</text>
+  <a href="../../api/structSolidSyslogFile/" target="_top" class="node">
+    <rect x="748" y="240" width="126" height="48" rx="7" fill="#bfe3c0" stroke="#8fbf92" stroke-width="1.5"/>
+    <text x="811" y="264" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="#21401f">File</text>
+  </a>
+  <path class="wire" d="M 811 288 V 298 H 811 V 336"/>
+  <a href="../../platforms/" target="_top" class="plat"><rect x="761" y="336" width="100" height="40" rx="6" fill="#cdd4f5" stroke="#9aa6e0" stroke-width="1.5"/></a>
+  <line x1="811" y1="376" x2="811" y2="424" class="wire"/>
+  <rect x="751" y="424" width="120" height="48" rx="7" fill="#f6c6c6" stroke="#dba3a3" stroke-width="1.5"/>
+  <text x="811" y="448" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="#4a2c2c">filesystem</text>
+  <a href="../../api/structSolidSyslogSecurityPolicy/" target="_top" class="node">
+    <rect x="890" y="240" width="126" height="48" rx="7" fill="#bfe3c0" stroke="#8fbf92" stroke-width="1.5"/>
+    <text x="953" y="264" text-anchor="middle" dominant-baseline="middle" font-size="11.5" font-weight="600" fill="#21401f">SecurityPolicy</text>
+  </a>
+  <path class="wire" d="M 953 288 V 298 H 953 V 336"/>
+  <a href="../../platforms/" target="_top" class="plat"><rect x="903" y="336" width="100" height="40" rx="6" fill="#cdd4f5" stroke="#9aa6e0" stroke-width="1.5"/></a>
+  <line x1="953" y1="376" x2="953" y2="424" class="wire"/>
+  <rect x="893" y="424" width="120" height="48" rx="7" fill="#f6c6c6" stroke="#dba3a3" stroke-width="1.5"/>
+  <text x="953" y="448" text-anchor="middle" dominant-baseline="middle" font-size="11.5" font-weight="600" fill="#4a2c2c">crypto library</text>
+  <a href="../../api/structSolidSyslogMutex/" target="_top" class="node">
+    <rect x="1080" y="240" width="126" height="48" rx="7" fill="#bfe3c0" stroke="#8fbf92" stroke-width="1.5"/>
+    <text x="1143" y="264" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="#21401f">Mutex</text>
+  </a>
+  <path class="wire" d="M 1143 288 V 298 H 1143 V 336"/>
+  <a href="../../platforms/" target="_top" class="plat"><rect x="1093" y="336" width="100" height="40" rx="6" fill="#cdd4f5" stroke="#9aa6e0" stroke-width="1.5"/></a>
+  <line x1="1143" y1="376" x2="1143" y2="424" class="wire"/>
+  <rect x="1083" y="424" width="120" height="48" rx="7" fill="#f6c6c6" stroke="#dba3a3" stroke-width="1.5"/>
+  <text x="1143" y="448" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="#4a2c2c">OS mutex</text>
+  <a href="../../api/structSolidSyslogAtomicCounter/" target="_top" class="node">
+    <rect x="1270" y="240" width="126" height="48" rx="7" fill="#bfe3c0" stroke="#8fbf92" stroke-width="1.5"/>
+    <text x="1333" y="264" text-anchor="middle" dominant-baseline="middle" font-size="12.5" font-weight="600" fill="#21401f">AtomicCounter</text>
+  </a>
+  <path class="wire" d="M 1333 288 V 298 H 1333 V 336"/>
+  <a href="../../platforms/" target="_top" class="plat"><rect x="1283" y="336" width="100" height="40" rx="6" fill="#cdd4f5" stroke="#9aa6e0" stroke-width="1.5"/></a>
+  <line x1="1333" y1="376" x2="1333" y2="424" class="wire"/>
+  <rect x="1273" y="424" width="120" height="48" rx="7" fill="#f6c6c6" stroke="#dba3a3" stroke-width="1.5"/>
+  <text x="1333" y="448" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="#4a2c2c">atomics</text>
+  <g stroke="#6a74c4" stroke-width="8" fill="none" stroke-linecap="round">
+    <path d="M 48.0 328 V 302" marker-end="url(#big)"/>
+    <path d="M 48.0 384 V 426" marker-end="url(#big)"/>
+  </g>
+</svg>

@@ -160,6 +160,11 @@ nav:
           - Data structures: api/annotated.md
           - Functions: api/functions.md
           - Macros: api/macros.md
+      # A section (not a bare page) so Material gives it md-nav__item--section and
+      # it reads with the same weight as Platforms / Roles. Its index is its only
+      # child — navigation.indexes promotes it into the section link.
+      - Core:
+          - core/index.md
       - Platforms:
           - platforms/index.md
           - Posix: platforms/posix.md

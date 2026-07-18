@@ -10,7 +10,7 @@ address handle they share.
 
 | Class | Role |
 |---|---|
-| [`SolidSyslogPlusTcpResolver`](../api/SolidSyslogPlusTcpResolver_8h.md) | static IPv4 resolver (no DNS) |
+| [`SolidSyslogPlusTcpResolver`](../api/SolidSyslogPlusTcpResolver_8h.md) | DNS resolver (`FreeRTOS_getaddrinfo`) |
 | [`SolidSyslogPlusTcpAddress`](../api/SolidSyslogPlusTcpAddress_8h.md) | address (`freertos_sockaddr`) |
 | [`SolidSyslogPlusTcpDatagram`](../api/SolidSyslogPlusTcpDatagram_8h.md) | UDP sender |
 | [`SolidSyslogPlusTcpTcpStream`](../api/SolidSyslogPlusTcpTcpStream_8h.md) | TCP stream (bounded connect) |
@@ -18,5 +18,5 @@ address handle they share.
 ## Requirements
 
 FreeRTOS-Plus-TCP, selected at CMake time with
-`SOLIDSYSLOG_FREERTOS_NET=PLUSTCP`. The resolver is a fixed IPv4 destination — no
-DNS.
+`SOLIDSYSLOG_FREERTOS_NET=PLUSTCP`. The resolver wraps `FreeRTOS_getaddrinfo`, so
+your `FreeRTOSIPConfig.h` needs `ipconfigUSE_DNS=1`.

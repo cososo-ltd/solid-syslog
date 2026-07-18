@@ -34,6 +34,13 @@ relationship.
 3. Aim for ~10–12 stickies. If it needs more, it probably wants to be two
    diagrams.
 
+One exception: [`architecture-overview.svg`](architecture-overview.svg) is
+**generated**, not hand-drawn — its layout (boundary crossings, fan-out lines)
+is computed. Edit [`scripts/gen_architecture_overview.py`](../../../scripts/gen_architecture_overview.py)
+and re-run it; do not hand-edit the SVG. It keeps the same palette but drops the
+sticky rotation/shadow for a precise architectural read, and colours by
+provenance (Core / adapter / third party) with the boundary marking Core.
+
 ## Why the defs are copied into each diagram
 
 Published diagrams inline the shared `<defs>` (filters, markers) rather than
