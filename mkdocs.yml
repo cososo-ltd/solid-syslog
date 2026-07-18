@@ -152,10 +152,15 @@ nav:
       - Vulnerability triage: security/triage-runbook.md
       - Release verification: security/release-verification.md
   - API reference:
-      # index.md (not api-reference.md) so navigation.indexes promotes it into the
-      # section link — Material only promotes a child whose file is an index.
-      - API reference:
-          - api-reference/index.md
+      # api-reference/index.md is the tab's own first child, so navigation.indexes
+      # promotes it into the tab link — and the narrow-width drawer opens on this
+      # landing at the tab level, where Core / Platforms / Roles are its siblings.
+      # Nesting it inside a same-named section (as before) made the drawer open one
+      # level deeper, hiding those doorways behind the back arrow.
+      - api-reference/index.md
+      # The raw Doxygen indexes as one peer section beside Core / Platforms / Roles;
+      # labelled distinctly (not "API reference") so it doesn't shadow the tab name.
+      - Headers and Symbols:
           - Headers: api/files.md
           - Data structures: api/annotated.md
           - Functions: api/functions.md
