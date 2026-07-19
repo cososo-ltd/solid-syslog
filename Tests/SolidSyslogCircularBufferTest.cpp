@@ -250,6 +250,18 @@ TEST(SolidSyslogCircularBuffer, ReadWithBufferTooSmallForHeadRecordReportsError)
     UNSIGNED_LONGS_EQUAL(CIRCULARBUFFER_ERROR_RECORD_TOO_LARGE, ErrorHandlerFake_LastDetail());
 }
 
+TEST(SolidSyslogCircularBuffer, ReadWithBufferTooSmallLeavesRecordQueued)
+{
+    Write("hello");
+
+    char small[4] = {};
+    size_t got = 0;
+    (void) SolidSyslogBuffer_Read(buffer, small, sizeof(small), &got);
+
+    CHECK_TRUE(Read()); // fixture Read() uses a MAX-sized buffer
+    CHECK_LAST_READ_RECORD("hello", 5);
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogCircularBufferMutex, CircularBufferFixture)
 {
