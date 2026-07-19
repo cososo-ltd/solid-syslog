@@ -7,6 +7,7 @@
 #include "ErrorHandlerFake.h"
 #include "MutexFake.h"
 #include "SolidSyslogBuffer.h"
+#include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogCircularBufferErrors.h"
@@ -229,6 +230,36 @@ TEST(SolidSyslogCircularBuffer, WriteExceedingMaxMessageSizeIsDropped)
     Write(tooBig, sizeof(tooBig));
 
     CHECK_FALSE(Read());
+}
+
+TEST(SolidSyslogCircularBuffer, ReadWithBufferTooSmallForHeadRecordReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    Write("hello");
+
+    char small[4] = {};
+    size_t got = 0;
+    bool delivered = SolidSyslogBuffer_Read(buffer, small, sizeof(small), &got);
+
+    CHECK_FALSE(delivered);
+    LONGS_EQUAL(0, got);
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
+    POINTERS_EQUAL(&CircularBufferErrorSource, ErrorHandlerFake_LastSource());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, ErrorHandlerFake_LastCategory());
+    UNSIGNED_LONGS_EQUAL(CIRCULARBUFFER_ERROR_RECORD_TOO_LARGE, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogCircularBuffer, ReadWithBufferTooSmallLeavesRecordQueued)
+{
+    Write("hello");
+
+    char small[4] = {};
+    size_t got = 0;
+    (void) SolidSyslogBuffer_Read(buffer, small, sizeof(small), &got);
+
+    CHECK_TRUE(Read()); // fixture Read() uses a MAX-sized buffer
+    CHECK_LAST_READ_RECORD("hello", 5);
 }
 
 // clang-format off
