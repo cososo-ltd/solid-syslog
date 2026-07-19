@@ -5,12 +5,14 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogCircularBufferErrors.h"
 #include "SolidSyslogCircularBufferPrivate.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogMutex.h"
 #include "SolidSyslogNullBuffer.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 
 const struct SolidSyslogErrorSource CircularBufferErrorSource = {"CircularBuffer"};
@@ -24,6 +26,8 @@ static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size
 static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
 
 static inline struct SolidSyslogCircularBuffer* CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
+
+static inline void CircularBuffer_ReportRecordTooLarge(void);
 
 static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer* self);
 static inline bool CircularBuffer_IsWrapped(const struct SolidSyslogCircularBuffer* self);
@@ -64,6 +68,7 @@ void CircularBuffer_Cleanup(struct SolidSyslogBuffer* base)
 static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)
 {
     struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
+    bool recordTooLarge = false;
     SolidSyslogMutex_Lock(self->Mutex);
     *bytesRead = 0;
     bool delivered = !CircularBuffer_IsEmpty(self);
@@ -79,11 +84,30 @@ static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size
         }
         else
         {
+            recordTooLarge = true;
             delivered = false;
         }
     }
     SolidSyslogMutex_Unlock(self->Mutex);
+
+    /* Reported after the unlock: the handler is integrator code and may log,
+     * which re-enters Write and would deadlock on this same non-recursive mutex.
+     * The oversized branch mutates no state, so deferring the report costs
+     * nothing. */
+    if (recordTooLarge)
+    {
+        CircularBuffer_ReportRecordTooLarge();
+    }
     return delivered;
+}
+
+static inline void CircularBuffer_ReportRecordTooLarge(void)
+{
+    CircularBuffer_Report(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+        CIRCULARBUFFER_ERROR_RECORD_TOO_LARGE
+    );
 }
 
 static inline struct SolidSyslogCircularBuffer* CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base)

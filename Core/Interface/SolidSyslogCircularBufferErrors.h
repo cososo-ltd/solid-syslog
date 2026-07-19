@@ -16,6 +16,13 @@ EXTERN_C_BEGIN
     {
         CIRCULARBUFFER_ERROR_POOL_EXHAUSTED,
         CIRCULARBUFFER_ERROR_UNKNOWN_DESTROY,
+        /** The record at the head of the ring is larger than the read buffer
+         *  Service handed to Read, so it cannot be delivered and is left
+         *  un-dequeued — the drain stalls at this record. This cannot occur
+         *  under correct configuration (the drain scratch is sized to hold any
+         *  record Write accepts), so an emitted code indicates the ring's
+         *  length prefix has been corrupted. */
+        CIRCULARBUFFER_ERROR_RECORD_TOO_LARGE,
         CIRCULARBUFFER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
