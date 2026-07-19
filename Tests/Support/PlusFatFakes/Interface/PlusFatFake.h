@@ -9,6 +9,7 @@ EXTERN_C_BEGIN
 
     void PlusFatFake_SetOpenFailsForMode(const char* mode);
     void PlusFatFake_SetOpenAlwaysFails(void);
+    void PlusFatFake_SetOpenErrno(int errnoValue);
     int PlusFatFake_OpenCallCount(void);
     const char* PlusFatFake_OpenModeAt(int index);
     const char* PlusFatFake_LastOpenPath(void);

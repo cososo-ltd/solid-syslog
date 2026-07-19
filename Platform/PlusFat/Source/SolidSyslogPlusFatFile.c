@@ -24,6 +24,7 @@ static bool PlusFatFile_Delete(struct SolidSyslogFile* base, const char* path);
 
 static inline struct SolidSyslogPlusFatFile* PlusFatFile_SelfFromBase(struct SolidSyslogFile* base);
 static inline bool PlusFatFile_IsFileOpen(const struct SolidSyslogPlusFatFile* self);
+static inline bool PlusFatFile_OpenFailedBecauseAbsent(void);
 static inline bool PlusFatFile_Flush(struct SolidSyslogPlusFatFile* self);
 
 void PlusFatFile_Initialise(struct SolidSyslogFile* base)
@@ -76,19 +77,27 @@ static bool PlusFatFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
     /* "r+" opens an existing file without truncating. Fall back to the
-     * file-creating "w+" only when the file is genuinely absent — "w+"
-     * truncates, so an "r+" failure from a transient cause (media busy, lock,
-     * permissions) on an existing file must never reach it, or it would empty a
-     * record file the BlockStore believes is durably stored. ff_fopen("r+")
-     * returns NULL for any failure without distinguishing absence, so existence
-     * is confirmed with ff_stat before creating. Plus-FAT has no single
-     * non-truncating open-or-create mode. */
+     * file-creating "w+" only when the "r+" failure was specifically "file does
+     * not exist" — "w+" truncates, so an "r+" failure from any other cause
+     * (media/I/O error) on an existing file must never reach it, or it would
+     * empty a record file the BlockStore believes is durably stored. The exact
+     * reason lives in the task errno ff_fopen just set; ENOENT is the only code
+     * for which creating is safe. Plus-FAT has no single non-truncating
+     * open-or-create mode. */
     self->Fp = ff_fopen(path, "r+");
-    if (!PlusFatFile_IsFileOpen(self) && !PlusFatFile_Exists(base, path))
+    if (!PlusFatFile_IsFileOpen(self) && PlusFatFile_OpenFailedBecauseAbsent())
     {
         self->Fp = ff_fopen(path, "w+");
     }
     return PlusFatFile_IsFileOpen(self);
+}
+
+/* True only when the ff_fopen that just failed did so because the file does not
+ * exist. Plus-FAT records the reason in the task errno; ENOENT is the single
+ * code for which falling back to the truncating "w+" cannot destroy data. */
+static inline bool PlusFatFile_OpenFailedBecauseAbsent(void)
+{
+    return stdioGET_ERRNO() == pdFREERTOS_ERRNO_ENOENT;
 }
 
 static bool PlusFatFile_IsOpen(struct SolidSyslogFile* base)

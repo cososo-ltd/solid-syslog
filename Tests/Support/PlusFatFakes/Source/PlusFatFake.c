@@ -15,12 +15,32 @@ enum
 
 static FF_FILE fakeFile;
 
+/* Backing store for the FreeRTOS thread-local pointers that Plus-FAT's ff_stdio
+ * layer uses to hold the task errno (stdioSET_ERRNO / stdioGET_ERRNO). The host
+ * link has no kernel, so the fake supplies these two kernel entry points over a
+ * plain array — this is how the adapter's stdioGET_ERRNO() reads back the errno
+ * the fake's ff_fopen leaves behind. */
+static void* threadLocalStorage[configNUM_THREAD_LOCAL_STORAGE_POINTERS];
+
 /* ff_fopen state */
 static int openCallCount;
 static const char* openModes[OPEN_MODE_CAPACITY];
 static const char* lastOpenPath;
 static const char* openFailMode;
 static bool openAlwaysFails;
+static int openFailErrno;
+
+void vTaskSetThreadLocalStoragePointer(TaskHandle_t xTaskToSet, BaseType_t xIndex, void* pvValue)
+{
+    (void) xTaskToSet;
+    threadLocalStorage[xIndex] = pvValue;
+}
+
+void* pvTaskGetThreadLocalStoragePointer(TaskHandle_t xTaskToQuery, BaseType_t xIndex)
+{
+    (void) xTaskToQuery;
+    return threadLocalStorage[xIndex];
+}
 
 /* ff_fclose state */
 static int closeCallCount;
@@ -69,9 +89,14 @@ void PlusFatFake_Reset(void)
     lastOpenPath = NULL;
     openFailMode = NULL;
     openAlwaysFails = false;
+    openFailErrno = pdFREERTOS_ERRNO_ENOENT;
     for (size_t modeIndex = 0; modeIndex < OPEN_MODE_CAPACITY; modeIndex++)
     {
         openModes[modeIndex] = NULL;
+    }
+    for (size_t slotIndex = 0; slotIndex < configNUM_THREAD_LOCAL_STORAGE_POINTERS; slotIndex++)
+    {
+        threadLocalStorage[slotIndex] = NULL;
     }
     closeCallCount = 0;
     memset(readSource, 0, sizeof(readSource));
@@ -108,6 +133,11 @@ void PlusFatFake_SetOpenAlwaysFails(void)
     openAlwaysFails = true;
 }
 
+void PlusFatFake_SetOpenErrno(int errnoValue)
+{
+    openFailErrno = errnoValue;
+}
+
 int PlusFatFake_OpenCallCount(void)
 {
     return openCallCount;
@@ -137,6 +167,9 @@ FF_FILE* ff_fopen(const char* pcFile, const char* pcMode)
     {
         result = NULL;
     }
+    /* Mirror the real ff_fopen, which always records the outcome in the task
+     * errno: the configured failure code on failure, zero on success. */
+    stdioSET_ERRNO((result == NULL) ? openFailErrno : 0);
     return result;
 }
 
