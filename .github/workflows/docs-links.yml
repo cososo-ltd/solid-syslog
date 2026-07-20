@@ -32,6 +32,13 @@ on:
 permissions:
   contents: read
 
+# Serialise runs so PR updates, manual runs, and the weekly sweep don't overlap
+# and burn external crawl quota. Only cancel superseded pull_request runs — let
+# scheduled and manual runs finish.
+concurrency:
+  group: docs-links-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   docs-links:
     runs-on: ubuntu-latest
@@ -55,5 +62,8 @@ jobs:
             SECURITY.md
             SUPPORT.md
           # Advisory on PR / manual, blocking only on the weekly rot sweep.
+          # failIfEmpty defaults to true in v2.9.0, so mirror the same guard —
+          # an empty scan must not fail a PR either.
           fail: ${{ github.event_name == 'schedule' }}
+          failIfEmpty: ${{ github.event_name == 'schedule' }}
           jobSummary: true

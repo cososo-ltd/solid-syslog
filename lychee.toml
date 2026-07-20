@@ -10,8 +10,8 @@ timeout = 20
 # Some hosts reject unknown user agents with a 403; present a real one.
 user_agent = "Mozilla/5.0 (compatible; SolidSyslog-lychee-linkcheck; +https://cososo-ltd.github.io/solid-syslog/)"
 
-# Rate-limited responses are not dead links.
-accept = ["200..=206", "429"]
+# Any 2xx is success; rate-limited responses are not dead links either.
+accept = ["200..=299", "429"]
 
 # Check http/https only — leave file:// and mailto: to other tooling.
 scheme = ["https", "http"]
@@ -21,7 +21,7 @@ exclude = [
   # canonical github.com/cososo-ltd/solid-syslog URLs at *build* time only, and
   # `mkdocs build --strict` already resolves them pre-rewrite — so checking them
   # here would be redundant (and rate-limit-prone against ~99 self-links).
-  '^https?://github\.com/cososo-ltd/solid-syslog',
+  '^https?://github\.com/cososo-ltd/solid-syslog(?:[/?#]|$)',
 ]
 
 # NOTE (#626): known suspects are intentionally NOT excluded so the first run
