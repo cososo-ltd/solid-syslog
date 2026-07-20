@@ -1,0 +1,25 @@
+# Dependabot version updates — keeps CI and test tooling current.
+# Security updates (vulnerability-driven bumps) are enabled separately in the
+# repository's Security settings and do not need to be listed here.
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates
+version: 2
+updates:
+  # GitHub Actions used by the CI, release-please, and SBOM workflows.
+  # Actions are SHA-pinned; Dependabot bumps the SHA and refreshes the version
+  # comment, reinforcing the action-pinning hardening posture.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+
+  # Python packages used by the BDD test harness.
+  - package-ecosystem: pip
+    directory: /Bdd
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
