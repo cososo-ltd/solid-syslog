@@ -7,7 +7,7 @@ they'd naturally run it.
 
 Prerequisites:
 
-- [cosign](https://docs.sigstore.dev/system_config/installation/) v2 or
+- [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) v2 or
   later on your `$PATH`.
 - [cyclonedx-cli](https://github.com/CycloneDX/cyclonedx-cli) v0.30.0 or
   later (optional, only needed to re-validate the SBOM).

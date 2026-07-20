@@ -110,7 +110,7 @@ process-wide hooks to install and nothing to teardown beyond the matching
 
 If you're bringing Mbed TLS in fresh for SolidSyslog, do that work first
 following the upstream
-[Mbed TLS porting guide](https://mbed-tls.readthedocs.io/en/latest/kb/how-to/how-do-i-port-mbed-tls-to-a-new-environment-os/).
+[Mbed TLS porting guide](https://mbed-tls.readthedocs.io/en/latest/kb/how-to/how-do-i-port-mbed-tls-to-a-new-environment-OS/).
 Once Mbed TLS itself is building on your target, you need the following
 specifically for this adapter:
 
