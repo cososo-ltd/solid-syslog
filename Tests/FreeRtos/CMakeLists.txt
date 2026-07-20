@@ -195,6 +195,7 @@ target_link_libraries(SolidSyslogFreeRtosSysUpTimeTest PRIVATE
 target_include_directories(SolidSyslogFreeRtosSysUpTimeTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
     ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
     ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
     $ENV{FREERTOS_KERNEL_PATH}/include
 )

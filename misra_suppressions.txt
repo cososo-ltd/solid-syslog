@@ -176,7 +176,7 @@ misra-c2012-5.7:Core/Source/SolidSyslogCircularBuffer.c:21
 misra-c2012-5.7:Core/Source/SolidSyslogCrc16.c:12
 misra-c2012-5.7:Core/Source/SolidSyslogCrc16Policy.c:10
 misra-c2012-5.7:Core/Source/SolidSyslogOriginSdPrivate.h:13
-misra-c2012-5.7:Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c:7
+misra-c2012-5.7:Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c:9
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixHostname.c:10
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:25
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBufferPrivate.h:17

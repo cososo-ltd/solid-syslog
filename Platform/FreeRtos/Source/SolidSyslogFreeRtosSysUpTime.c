@@ -3,6 +3,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "SolidSyslogMacros.h"
+
 enum
 {
     HUNDREDTHS_PER_SECOND = 100
@@ -19,7 +21,7 @@ enum
  * rather than ship a subtly wrong value. An integrator outside this envelope
  * should widen TickType_t (configTICK_TYPE_WIDTH_IN_BITS = TICK_TYPE_WIDTH_64_BITS),
  * pick a rate that divides 100, or supply their own SolidSyslogSysUpTimeFunction. */
-_Static_assert(
+SOLIDSYSLOG_STATIC_ASSERT(
     (sizeof(TickType_t) >= 8U) || ((sizeof(TickType_t) >= 4U) && ((HUNDREDTHS_PER_SECOND % configTICK_RATE_HZ) == 0U)),
     "SolidSyslogFreeRtosSysUpTime needs a 64-bit TickType_t (any tick rate), or a 32-bit TickType_t "
     "with a configTICK_RATE_HZ that divides 100 (100/50/25/20/10/5/4/2/1 Hz), for a faithful RFC "
