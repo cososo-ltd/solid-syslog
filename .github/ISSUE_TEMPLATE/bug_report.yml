@@ -1,0 +1,78 @@
+name: Bug report
+description: Report a defect in SolidSyslog
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug.
+
+        **Do not report security vulnerabilities here.** Follow the private
+        process in `SECURITY.md` instead.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component
+      description: Which support tier does this touch? (See SECURITY.md → Scope.)
+      options:
+        - Core (Core/)
+        - Platform adapter (Platform/)
+        - BDD target (Bdd/Targets/)
+        - Build / CMake / tooling
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version, tag, or commit SHA
+      description: Which build are you on?
+      placeholder: "e.g. v1.2.0, or commit 09372e7"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the defect and its impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps, configuration, or a code snippet that triggers it.
+      placeholder: |
+        1. Configure SolidSyslog with ...
+        2. Call ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual behaviour
+      description: What you expected to happen, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Target platform, RTOS/OS, compiler and version, and (if relevant) TLS/TCP/filesystem backend.
+      placeholder: |
+        - Target: FreeRTOS on Cortex-M4 / POSIX host / Windows
+        - Compiler: arm-none-eabi-gcc 13.2 / gcc 13 / MSVC 19.4
+        - Backends: FreeRTOS-Plus-TCP, Mbed TLS, FatFs
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: This is not a security vulnerability (those go via SECURITY.md).
+          required: true

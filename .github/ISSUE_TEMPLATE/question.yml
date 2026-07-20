@@ -1,0 +1,45 @@
+name: Question / usage help
+description: Ask a usage or integration question about SolidSyslog
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Usage and integration questions are welcome — there is no separate forum
+        or chat. Please check `docs/` and search existing issues first.
+
+        For security concerns, do **not** post here; follow `SECURITY.md`.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the library is your question about?
+      options:
+        - Core (Core/)
+        - Platform adapter (Platform/)
+        - Build / CMake / tooling
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What are you trying to do, and where are you stuck?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Target platform, backends, and anything you've already tried or read.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and the docs, and this is not answered already.
+          required: true
