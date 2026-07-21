@@ -25,8 +25,8 @@ EXTERN_C_BEGIN
      *  through. Called on every Send, so it must be cheap; an index at or beyond
      *  SenderCount (including any value when SenderCount is 0) routes to the shared
      *  NullSender, which drops the message so a misconfigured selector never
-     *  retains records in the Store. */
-    typedef uint8_t (*SolidSyslogSwitchingSenderSelector)(void);
+     *  retains records in the Store. @p context is SelectorContext, passed through unchanged. */
+    typedef uint8_t (*SolidSyslogSwitchingSenderSelector)(void* context);
 
     /** Wiring for SolidSyslogSwitchingSender_Create, a sender that fronts several
      *  inner senders and picks one per message via Selector (dual-SIEM, failover).
@@ -40,6 +40,7 @@ EXTERN_C_BEGIN
         /** Length of Senders; also the exclusive upper bound the Selector's index is checked against. */
         size_t SenderCount;
         SolidSyslogSwitchingSenderSelector Selector;
+        void* SelectorContext; /**< Passed to Selector unchanged. */
     };
 
     /** Create a switching sender from @p config. Never returns NULL: a NULL or

@@ -78,15 +78,18 @@ static const char* SpyGetHost()
 static const char* (*endpointGetHost)() = GetHost;
 static int (*endpointGetPort)() = GetPort;
 static uint32_t endpointVersion = 0;
+static void* endpointContext;
 
-static void TestEndpoint(struct SolidSyslogEndpoint* endpoint)
+static void TestEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 {
+    endpointContext = context;
     SolidSyslogEndpointHost_String(endpoint->Host, endpointGetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
     endpoint->Port = (uint16_t) endpointGetPort();
 }
 
-static uint32_t TestEndpointVersion() // NOLINT(modernize-use-trailing-return-type)
+static uint32_t TestEndpointVersion(void* context) // NOLINT(modernize-use-trailing-return-type)
 {
+    endpointContext = context;
     return endpointVersion;
 }
 
@@ -108,7 +111,7 @@ TEST_GROUP(SolidSyslogStreamSender)
         resolver        = SolidSyslogGetAddrInfoResolver_Create();
         stream          = SolidSyslogPosixTcpStream_Create(nullptr);
         address         = SolidSyslogPosixAddress_Create();
-        config          = {resolver, stream, address, TestEndpoint, TestEndpointVersion};
+        config          = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
         sender = SolidSyslogStreamSender_Create(&config);
     }
 
@@ -152,6 +155,16 @@ TEST(SolidSyslogStreamSender, FirstSendSetsTcpNoDelay)
     CHECK_TRUE(SocketFake_HasSetSockOpt(IPPROTO_TCP, TCP_NODELAY));
 }
 
+TEST(SolidSyslogStreamSender, EndpointCallbacksReceiveEndpointContext)
+{
+    int context = 0;
+    SolidSyslogStreamSender_Destroy(sender);
+    config.EndpointContext = &context;
+    sender = SolidSyslogStreamSender_Create(&config);
+    Send();
+    POINTERS_EQUAL(&context, endpointContext);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogStreamSenderDestroy)
 {
@@ -169,7 +182,7 @@ TEST_GROUP(SolidSyslogStreamSenderDestroy)
         resolver        = SolidSyslogGetAddrInfoResolver_Create();
         stream          = SolidSyslogPosixTcpStream_Create(nullptr);
         address         = SolidSyslogPosixAddress_Create();
-        config = {resolver, stream, address, TestEndpoint, TestEndpointVersion};
+        config = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
     }
 
     void teardown() override
@@ -372,7 +385,7 @@ TEST_GROUP(SolidSyslogStreamSenderConfig)
         resolver = SolidSyslogGetAddrInfoResolver_Create();
         stream   = SolidSyslogPosixTcpStream_Create(nullptr);
         address  = SolidSyslogPosixAddress_Create();
-        struct SolidSyslogStreamSenderConfig config = {resolver, stream, address, TestEndpoint, TestEndpointVersion};
+        struct SolidSyslogStreamSenderConfig config = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
         sender = SolidSyslogStreamSender_Create(&config);
     }
 
@@ -462,7 +475,7 @@ TEST_GROUP(SolidSyslogStreamSenderFailure)
         resolver        = SolidSyslogGetAddrInfoResolver_Create();
         stream          = SolidSyslogPosixTcpStream_Create(nullptr);
         address         = SolidSyslogPosixAddress_Create();
-        config          = {resolver, stream, address, TestEndpoint, TestEndpointVersion};
+        config          = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
         sender = SolidSyslogStreamSender_Create(&config);
     }
 
@@ -635,7 +648,7 @@ TEST(SolidSyslogStreamSenderFailure, NoEndpointConfiguredConnectsToPortZero)
      * with pool semantics a second live Create on a SIZE=1 pool would otherwise overflow
      * to NullSender. Reassigning to `sender` lets teardown release the no-endpoint sender. */
     SolidSyslogStreamSender_Destroy(sender);
-    struct SolidSyslogStreamSenderConfig configNoEndpoint = {resolver, stream, address, nullptr, nullptr};
+    struct SolidSyslogStreamSenderConfig configNoEndpoint = {resolver, stream, address, nullptr, nullptr, nullptr};
     sender = SolidSyslogStreamSender_Create(&configNoEndpoint);
     SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN);
     CALLED_FAKE(SocketFake_Connect, ONCE);
@@ -666,7 +679,7 @@ TEST_GROUP(SolidSyslogStreamSenderPool)
         resolver        = SolidSyslogGetAddrInfoResolver_Create();
         stream          = SolidSyslogPosixTcpStream_Create(nullptr);
         address         = SolidSyslogPosixAddress_Create();
-        config = {resolver, stream, address, TestEndpoint, TestEndpointVersion};
+        config = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
     }
 
     void teardown() override
@@ -766,7 +779,7 @@ TEST_GROUP(SolidSyslogStreamSenderBadSetup)
         resolver = SolidSyslogGetAddrInfoResolver_Create();
         stream   = SolidSyslogPosixTcpStream_Create(nullptr);
         address  = SolidSyslogPosixAddress_Create();
-        config   = {resolver, stream, address, TestEndpoint, TestEndpointVersion};
+        config   = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
         ErrorHandlerFake_Install(&sentinel);
     }
 
@@ -846,7 +859,7 @@ TEST_GROUP(SolidSyslogStreamSenderDeliveryHealth)
         resolver = SolidSyslogGetAddrInfoResolver_Create();
         stream   = StreamFake_Create();
         address  = SolidSyslogPosixAddress_Create();
-        config   = {resolver, stream, address, TestEndpoint, TestEndpointVersion};
+        config   = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
         sender   = SolidSyslogStreamSender_Create(&config);
         ErrorHandlerFake_Install(&sentinel);
     }

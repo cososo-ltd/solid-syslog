@@ -63,8 +63,8 @@ void BddTargetFreeRtosPipeline_SetConfig(const struct BddTargetFreeRtosPipelineC
 /* Endpoint callbacks (SolidSyslogEndpointFunction / …VersionFunction shaped),
  * reading the shared host/port that `set host` / `set port` rewrite. A target's
  * BuildSender wires these into its UdpSender / StreamSender configs. */
-void BddTargetFreeRtosPipeline_GetEndpoint(struct SolidSyslogEndpoint* endpoint);
-uint32_t BddTargetFreeRtosPipeline_GetEndpointVersion(void);
+void BddTargetFreeRtosPipeline_GetEndpoint(struct SolidSyslogEndpoint* endpoint, void* context);
+uint32_t BddTargetFreeRtosPipeline_GetEndpointVersion(void* context);
 
 /* Initialise the CMSDK UART console with the shared MMIO access. */
 void BddTargetFreeRtosPipeline_InitConsole(uint32_t uartBaseAddress);

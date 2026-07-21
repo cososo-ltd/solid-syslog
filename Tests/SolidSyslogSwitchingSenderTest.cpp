@@ -34,9 +34,11 @@ enum
 };
 
 static uint8_t selectorReturn;
+static void* selectorContext;
 
-static uint8_t TestSelector()
+static uint8_t TestSelector(void* context)
 {
+    selectorContext = context;
     return selectorReturn;
 }
 
@@ -52,6 +54,7 @@ TEST_GROUP(SolidSyslogSwitchingSender)
     void setup() override
     {
         selectorReturn = INNER_A;
+        selectorContext = nullptr;
         innerA = SenderFake_Create();
         innerB = SenderFake_Create();
         innerC = SenderFake_Create();
@@ -78,7 +81,7 @@ TEST_GROUP(SolidSyslogSwitchingSender)
         {
             SolidSyslogSwitchingSender_Destroy(sender);
         }
-        struct SolidSyslogSwitchingSenderConfig config = {inners, count, TestSelector};
+        struct SolidSyslogSwitchingSenderConfig config = {inners, count, TestSelector, nullptr};
         sender                                         = SolidSyslogSwitchingSender_Create(&config);
     }
 
@@ -136,6 +139,16 @@ TEST(SolidSyslogSwitchingSender, UseAfterDestroyIsCrashSafeViaNullSenderVtable)
 
     // Re-create so teardown's Destroy(sender) targets a live handle.
     CreateSwitchingSender(2);
+}
+
+TEST(SolidSyslogSwitchingSender, SelectorReceivesSelectorContext)
+{
+    int context = 0;
+    struct SolidSyslogSwitchingSenderConfig config = {inners, 2, TestSelector, &context};
+    SolidSyslogSwitchingSender_Destroy(sender);
+    sender = SolidSyslogSwitchingSender_Create(&config);
+    Send("x", 1);
+    POINTERS_EQUAL(&context, selectorContext);
 }
 
 TEST(SolidSyslogSwitchingSender, SendDelegatesToSenderAtSelectedIndex)
@@ -306,7 +319,7 @@ TEST_GROUP(SolidSyslogSwitchingSenderPool)
     {
         innerA   = SenderFake_Create();
         inners[0] = innerA;
-        config   = {inners, 1, TestSelector};
+        config   = {inners, 1, TestSelector, nullptr};
     }
 
     void teardown() override
@@ -383,7 +396,7 @@ TEST_GROUP(SolidSyslogSwitchingSenderBadSetup)
     {
         innerA   = SenderFake_Create();
         inners[0] = innerA;
-        config   = {inners, 1, TestSelector};
+        config   = {inners, 1, TestSelector, nullptr};
         ErrorHandlerFake_Install(&sentinel);
     }
 

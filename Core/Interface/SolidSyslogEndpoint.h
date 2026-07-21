@@ -26,13 +26,15 @@ EXTERN_C_BEGIN
         uint16_t Port;
     };
 
-    /** Called by the sender to pull the current destination into @p endpoint. */
-    typedef void (*SolidSyslogEndpointFunction)(struct SolidSyslogEndpoint* endpoint);
+    /** Called by the sender to pull the current destination into @p endpoint.
+     *  @p context is EndpointContext, passed through unchanged. */
+    typedef void (*SolidSyslogEndpointFunction)(struct SolidSyslogEndpoint* endpoint, void* context);
 
     /** Returns a monotonic version the user bumps on any change to host or port.
      *  The sender polls this every Send and re-pulls the endpoint only when the
-     *  version differs from the last it acted on, so it must be cheap and pure. */
-    typedef uint32_t (*SolidSyslogEndpointVersionFunction)(void);
+     *  version differs from the last it acted on, so it must be cheap and pure.
+     *  @p context is EndpointContext, passed through unchanged. */
+    typedef uint32_t (*SolidSyslogEndpointVersionFunction)(void* context);
 
 EXTERN_C_END
 

@@ -21,15 +21,17 @@ uint16_t BddTargetUdpConfig_GetPort(void)
     return (uint16_t) BDD_TARGET_UDP_PORT;
 }
 
-void BddTargetUdpConfig_GetEndpoint(struct SolidSyslogEndpoint* endpoint)
+void BddTargetUdpConfig_GetEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 {
+    (void) context;
     SolidSyslogEndpointHost_String(endpoint->Host, BddTargetUdpConfig_GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
     endpoint->Port = BddTargetUdpConfig_GetPort();
 }
 
 /* Static config — host/port never change, so version stays 0 forever and the
    sender connects exactly once. */
-uint32_t BddTargetUdpConfig_GetEndpointVersion(void)
+uint32_t BddTargetUdpConfig_GetEndpointVersion(void* context)
 {
+    (void) context;
     return 0;
 }

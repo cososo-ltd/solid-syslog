@@ -9,7 +9,7 @@ EXTERN_C_BEGIN
 
     struct SolidSyslogSdValue;
 
-    size_t BddTargetIps_Count(void);
+    size_t BddTargetIps_Count(void* context);
     void BddTargetIps_At(struct SolidSyslogSdValue * value, void* context, size_t index);
 
 EXTERN_C_END

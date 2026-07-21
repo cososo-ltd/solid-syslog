@@ -20,8 +20,9 @@ EXTERN_C_BEGIN
     struct SolidSyslogStructuredData;
 
     /** Returns how many origin "ip" PARAMs to emit; GetIpAt is then called for
-     *  each index in [0, count). */
-    typedef size_t (*SolidSyslogOriginIpCountFunction)(void);
+     *  each index in [0, count). @p context is the shared IpContext, passed
+     *  through unchanged (the same value GetIpAt receives). */
+    typedef size_t (*SolidSyslogOriginIpCountFunction)(void* context);
     /** Writes the @p index-th origin address into the @p value sink. @p context
      *  is passed through unchanged. */
     typedef void (*SolidSyslogOriginIpAtFunction)(struct SolidSyslogSdValue* value, void* context, size_t index);

@@ -11,8 +11,8 @@ EXTERN_C_BEGIN
 
     const char* BddTargetUdpConfig_GetHost(void);
     uint16_t BddTargetUdpConfig_GetPort(void);
-    void BddTargetUdpConfig_GetEndpoint(struct SolidSyslogEndpoint * endpoint);
-    uint32_t BddTargetUdpConfig_GetEndpointVersion(void);
+    void BddTargetUdpConfig_GetEndpoint(struct SolidSyslogEndpoint * endpoint, void* context);
+    uint32_t BddTargetUdpConfig_GetEndpointVersion(void* context);
 
 EXTERN_C_END
 

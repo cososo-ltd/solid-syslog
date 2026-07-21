@@ -13,8 +13,8 @@ EXTERN_C_BEGIN
     uint16_t BddTargetTlsConfig_GetPort(void);
     const char* BddTargetTlsConfig_GetCaBundlePath(void);
     const char* BddTargetTlsConfig_GetServerName(void);
-    void BddTargetTlsConfig_GetEndpoint(struct SolidSyslogEndpoint * endpoint);
-    uint32_t BddTargetTlsConfig_GetEndpointVersion(void);
+    void BddTargetTlsConfig_GetEndpoint(struct SolidSyslogEndpoint * endpoint, void* context);
+    uint32_t BddTargetTlsConfig_GetEndpointVersion(void* context);
 
     /* Override the default TLS host ("syslog-ng" — Linux compose service
        name). Caller owns the string lifetime. Used by the per-platform

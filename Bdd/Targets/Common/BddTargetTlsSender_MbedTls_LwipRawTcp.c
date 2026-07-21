@@ -320,22 +320,22 @@ static void EnsureMbedTlsInitialised(void)
  * peer-verifies the client cert that the wrapper wires unconditionally
  * below, and the plain-TLS port's listener accepts it as optional-untrusted
  * — so the same client identity works on both ports. */
-static void DispatchEndpoint(struct SolidSyslogEndpoint* endpoint)
+static void DispatchEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 {
     if (BddTargetSwitchConfig_IsMtlsMode())
     {
-        BddTargetMtlsConfig_GetEndpoint(endpoint);
+        BddTargetMtlsConfig_GetEndpoint(endpoint, context);
     }
     else
     {
-        BddTargetTlsConfig_GetEndpoint(endpoint);
+        BddTargetTlsConfig_GetEndpoint(endpoint, context);
     }
 }
 
-static uint32_t DispatchEndpointVersion(void)
+static uint32_t DispatchEndpointVersion(void* context)
 {
-    return BddTargetSwitchConfig_IsMtlsMode() ? BddTargetMtlsConfig_GetEndpointVersion()
-                                              : BddTargetTlsConfig_GetEndpointVersion();
+    return BddTargetSwitchConfig_IsMtlsMode() ? BddTargetMtlsConfig_GetEndpointVersion(context)
+                                              : BddTargetTlsConfig_GetEndpointVersion(context);
 }
 
 struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* resolver, bool mtls)

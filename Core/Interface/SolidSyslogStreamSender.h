@@ -35,6 +35,7 @@ EXTERN_C_BEGIN
         SolidSyslogEndpointFunction Endpoint;
         /** Polled every Send to detect an endpoint change; NULL pins the destination (never reconnects for a change). */
         SolidSyslogEndpointVersionFunction EndpointVersion;
+        void* EndpointContext; /**< Passed to Endpoint and EndpointVersion unchanged. */
     };
 
     /** Create a stream sender from @p config. Never returns NULL: a NULL or

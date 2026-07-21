@@ -234,14 +234,16 @@ static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
     timeQuality->SyncAccuracyMicroseconds = SOLIDSYSLOG_SYNC_ACCURACY_OMIT;
 }
 
-void BddTargetFreeRtosPipeline_GetEndpoint(struct SolidSyslogEndpoint* endpoint)
+void BddTargetFreeRtosPipeline_GetEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 {
+    (void) context;
     SolidSyslogEndpointHost_String(endpoint->Host, host, strlen(host));
     endpoint->Port = port;
 }
 
-uint32_t BddTargetFreeRtosPipeline_GetEndpointVersion(void)
+uint32_t BddTargetFreeRtosPipeline_GetEndpointVersion(void* context)
 {
+    (void) context;
     return endpointVersion;
 }
 

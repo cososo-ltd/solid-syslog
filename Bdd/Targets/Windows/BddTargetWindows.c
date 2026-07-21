@@ -107,14 +107,16 @@ static int GetPort(void)
     return BDD_TARGET_PORT;
 }
 
-static void GetEndpoint(struct SolidSyslogEndpoint* endpoint)
+static void GetEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 {
+    (void) context;
     SolidSyslogEndpointHost_String(endpoint->Host, GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
     endpoint->Port = (uint16_t) GetPort();
 }
 
-static uint32_t GetEndpointVersion(void)
+static uint32_t GetEndpointVersion(void* context)
 {
+    (void) context;
     return 0;
 }
 

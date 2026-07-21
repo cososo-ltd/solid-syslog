@@ -33,8 +33,9 @@ void BddTargetSwitchConfig_SetByName(const char* name)
     }
 }
 
-uint8_t BddTargetSwitchConfig_Selector(void)
+uint8_t BddTargetSwitchConfig_Selector(void* context)
 {
+    (void) context;
     return selectedIndex;
 }
 

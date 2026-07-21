@@ -17,7 +17,7 @@ EXTERN_C_BEGIN
     };
 
     void BddTargetSwitchConfig_SetByName(const char* name);
-    uint8_t BddTargetSwitchConfig_Selector(void);
+    uint8_t BddTargetSwitchConfig_Selector(void* context);
     /* tls and mtls share the same Switching slot (BDD_TARGET_SWITCH_TLS) so
      * the TLS sender / TLS stream / underlying TCP socket get reused across
      * the two modes. The FreeRTOS BDD target reads this at TLS Connect time

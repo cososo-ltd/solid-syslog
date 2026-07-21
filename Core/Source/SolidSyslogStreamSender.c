@@ -49,8 +49,8 @@ static struct SolidSyslogFormatter* StreamSender_FormatOctetCountingPrefix(
     size_t messageSize
 );
 static bool StreamSender_SendBytes(struct SolidSyslogStreamSender* self, const void* data, size_t len);
-static void StreamSender_NilEndpoint(struct SolidSyslogEndpoint* endpoint);
-static uint32_t StreamSender_NilEndpointVersion(void);
+static void StreamSender_NilEndpoint(struct SolidSyslogEndpoint* endpoint, void* context);
+static uint32_t StreamSender_NilEndpointVersion(void* context);
 
 void StreamSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogStreamSenderConfig* config)
 {
@@ -63,6 +63,7 @@ void StreamSender_Initialise(struct SolidSyslogSender* base, const struct SolidS
     self->Config.Endpoint = (config->Endpoint != NULL) ? config->Endpoint : StreamSender_NilEndpoint;
     self->Config.EndpointVersion =
         (config->EndpointVersion != NULL) ? config->EndpointVersion : StreamSender_NilEndpointVersion;
+    self->Config.EndpointContext = config->EndpointContext;
     self->Connected = false;
     self->DeliveryHealthy = true;
     self->LastEndpointVersion = 0;
@@ -104,7 +105,7 @@ static inline bool StreamSender_Reconcile(struct SolidSyslogStreamSender* self)
 
 static inline void StreamSender_DisconnectIfStale(struct SolidSyslogStreamSender* self)
 {
-    uint32_t version = self->Config.EndpointVersion();
+    uint32_t version = self->Config.EndpointVersion(self->Config.EndpointContext);
 
     if (version != self->LastEndpointVersion)
     {
@@ -143,7 +144,7 @@ static bool StreamSender_ResolveDestination(struct SolidSyslogStreamSender* self
     SolidSyslogEndpointHost_FromFormatter(&hostSink, hostFormatter);
     struct SolidSyslogEndpoint endpoint = {.Host = &hostSink, .Port = 0};
 
-    self->Config.Endpoint(&endpoint);
+    self->Config.Endpoint(&endpoint, self->Config.EndpointContext);
 
     return SolidSyslogResolver_Resolve(
         self->Config.Resolver,
@@ -211,13 +212,15 @@ static bool StreamSender_SendBytes(struct SolidSyslogStreamSender* self, const v
     return sent;
 }
 
-static void StreamSender_NilEndpoint(struct SolidSyslogEndpoint* endpoint)
+static void StreamSender_NilEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 {
+    (void) context;
     SolidSyslogEndpointHost_String(endpoint->Host, "", 0);
     endpoint->Port = 0;
 }
 
-static uint32_t StreamSender_NilEndpointVersion(void)
+static uint32_t StreamSender_NilEndpointVersion(void* context)
 {
+    (void) context;
     return 0;
 }

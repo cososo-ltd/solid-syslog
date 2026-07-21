@@ -31,7 +31,7 @@ misra-c2012-11.3:Core/Source/SolidSyslogFormatter.c:79
 misra-c2012-11.3:Core/Source/SolidSyslogMetaSd.c:60
 misra-c2012-11.3:Core/Source/SolidSyslogOriginSd.c:57
 misra-c2012-11.3:Core/Source/SolidSyslogPassthroughBuffer.c:53
-misra-c2012-11.3:Core/Source/SolidSyslogStreamSender.c:169
+misra-c2012-11.3:Core/Source/SolidSyslogStreamSender.c:170
 misra-c2012-11.3:Core/Source/SolidSyslogSwitchingSender.c:63
 misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:54
 misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:121

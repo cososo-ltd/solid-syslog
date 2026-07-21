@@ -41,9 +41,11 @@ enum
 static std::array<const char*, MAX_FAKE_IPS> fakeIps;
 static size_t fakeIpCount;
 static void* fakeIpContext;
+static void* fakeIpCountContext;
 
-static size_t FakeIpCount()
+static size_t FakeIpCount(void* context)
 {
+    fakeIpCountContext = context;
     return fakeIpCount;
 }
 
@@ -100,6 +102,7 @@ TEST_GROUP(SolidSyslogOriginSd)
         config.SwVersion = "9.8.7";
         fakeIpCount = 0;
         fakeIpContext = nullptr;
+        fakeIpCountContext = nullptr;
         sd = SolidSyslogOriginSd_Create(&config);
     }
 
@@ -431,6 +434,16 @@ TEST(SolidSyslogOriginSd, FormatPassesIpContextThrough)
     resetFormatter();
     format();
     POINTERS_EQUAL(&ipContext, fakeIpContext);
+}
+
+TEST(SolidSyslogOriginSd, FormatPassesIpContextToIpCount)
+{
+    int ipContext = 0;
+    config.IpContext = &ipContext;
+    useIps({"192.0.2.1"});
+    resetFormatter();
+    format();
+    POINTERS_EQUAL(&ipContext, fakeIpCountContext);
 }
 
 TEST(SolidSyslogOriginSd, IpAtMaxLength)

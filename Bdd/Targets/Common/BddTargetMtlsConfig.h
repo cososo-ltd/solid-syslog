@@ -15,8 +15,8 @@ EXTERN_C_BEGIN
     const char* BddTargetMtlsConfig_GetServerName(void);
     const char* BddTargetMtlsConfig_GetClientCertChainPath(void);
     const char* BddTargetMtlsConfig_GetClientKeyPath(void);
-    void BddTargetMtlsConfig_GetEndpoint(struct SolidSyslogEndpoint * endpoint);
-    uint32_t BddTargetMtlsConfig_GetEndpointVersion(void);
+    void BddTargetMtlsConfig_GetEndpoint(struct SolidSyslogEndpoint * endpoint, void* context);
+    uint32_t BddTargetMtlsConfig_GetEndpointVersion(void* context);
 
     /* Override the default mTLS host ("syslog-ng" — Linux compose service
        name). Caller owns the string lifetime. Used by per-platform main.c

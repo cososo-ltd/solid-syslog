@@ -32,7 +32,7 @@ TEST_GROUP(BddTargetIps)
 
 TEST(BddTargetIps, CountIsOne)
 {
-    LONGS_EQUAL(1, BddTargetIps_Count());
+    LONGS_EQUAL(1, BddTargetIps_Count(nullptr));
 }
 
 TEST(BddTargetIps, AtZeroEmitsTheConfiguredIp)

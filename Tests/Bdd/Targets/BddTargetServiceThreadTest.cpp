@@ -35,14 +35,16 @@ static void SleepFake(int milliseconds)
     }
 }
 
-static void BddTargetEndpoint(struct SolidSyslogEndpoint* endpoint)
+static void BddTargetEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 {
+    (void) context;
     SolidSyslogEndpointHost_String(endpoint->Host, BddTargetUdpConfig_GetHost(), SOLIDSYSLOG_MAX_HOST_SIZE);
     endpoint->Port = BddTargetUdpConfig_GetPort();
 }
 
-static uint32_t BddTargetEndpointVersion() // NOLINT(modernize-use-trailing-return-type)
+static uint32_t BddTargetEndpointVersion(void* context) // NOLINT(modernize-use-trailing-return-type)
 {
+    (void) context;
     return 0;
 }
 
@@ -71,7 +73,8 @@ TEST_GROUP(BddTargetServiceThread)
         resolver = SolidSyslogGetAddrInfoResolver_Create();
         datagram = SolidSyslogPosixDatagram_Create();
         address  = SolidSyslogPosixAddress_Create();
-        SolidSyslogUdpSenderConfig udpConfig = {resolver, datagram, address, BddTargetEndpoint, BddTargetEndpointVersion};
+        SolidSyslogUdpSenderConfig udpConfig = {
+            resolver, datagram, address, BddTargetEndpoint, BddTargetEndpointVersion, nullptr};
         sender = SolidSyslogUdpSender_Create(&udpConfig);
         buffer = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
         store  = SolidSyslogNullStore_Get();

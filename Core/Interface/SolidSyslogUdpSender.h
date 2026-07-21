@@ -35,6 +35,7 @@ EXTERN_C_BEGIN
         SolidSyslogEndpointFunction Endpoint; /**< Fills host/port; called only on (re)connect. */
         /** Polled every Send to detect an endpoint change; NULL pins the destination (never re-resolves). */
         SolidSyslogEndpointVersionFunction EndpointVersion;
+        void* EndpointContext; /**< Passed to Endpoint and EndpointVersion unchanged. */
     };
 
     /** Create a UDP sender from @p config. Never returns NULL: a NULL or invalid

@@ -97,7 +97,7 @@ static inline void SwitchingSender_SwitchTo(
 static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(const struct SolidSyslogSwitchingSender* self)
 {
     struct SolidSyslogSender* result = SolidSyslogNullSender_Get();
-    uint8_t index = self->Config.Selector();
+    uint8_t index = self->Config.Selector(self->Config.SelectorContext);
 
     if (index < self->Config.SenderCount)
     {

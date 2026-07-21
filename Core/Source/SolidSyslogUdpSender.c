@@ -47,7 +47,7 @@ static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
     const void* buffer,
     size_t size
 );
-static uint32_t UdpSender_NilEndpointVersion(void);
+static uint32_t UdpSender_NilEndpointVersion(void* context);
 
 void UdpSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogUdpSenderConfig* config)
 {
@@ -129,7 +129,7 @@ static inline bool UdpSender_Reconcile(struct SolidSyslogUdpSender* self)
 
 static inline void UdpSender_DisconnectIfStale(struct SolidSyslogUdpSender* self)
 {
-    uint32_t version = self->Config.EndpointVersion();
+    uint32_t version = self->Config.EndpointVersion(self->Config.EndpointContext);
 
     if (version != self->LastEndpointVersion)
     {
@@ -174,7 +174,7 @@ static inline uint16_t UdpSender_QueryEndpointPort(
     struct SolidSyslogEndpointHost hostSink;
     SolidSyslogEndpointHost_FromFormatter(&hostSink, hostFormatter);
     struct SolidSyslogEndpoint endpoint = {.Host = &hostSink, .Port = 0};
-    self->Config.Endpoint(&endpoint);
+    self->Config.Endpoint(&endpoint, self->Config.EndpointContext);
     return endpoint.Port;
 }
 
@@ -241,7 +241,8 @@ static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
     return result;
 }
 
-static uint32_t UdpSender_NilEndpointVersion(void)
+static uint32_t UdpSender_NilEndpointVersion(void* context)
 {
+    (void) context;
     return 0;
 }

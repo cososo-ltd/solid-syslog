@@ -18,8 +18,9 @@ enum
    roundtrip cleanly through the syslog-ng BDD oracle. */
 static const char* const BDD_TARGET_IPS[] = {"192.0.2.1"};
 
-size_t BddTargetIps_Count(void)
+size_t BddTargetIps_Count(void* context)
 {
+    (void) context;
     return sizeof(BDD_TARGET_IPS) / sizeof(BDD_TARGET_IPS[0]);
 }
 
