@@ -152,6 +152,14 @@ TEST_GROUP(SolidSyslogOriginSd)
     {
         formatter = SolidSyslogFormatter_Create(storage, TEST_BUFFER_SIZE);
     }
+
+    void formatOneIpWithContext(void* ipContext)
+    {
+        config.IpContext = ipContext;
+        useIps({"192.0.2.1"});
+        resetFormatter();
+        format();
+    }
 };
 
 // clang-format on
@@ -429,20 +437,14 @@ TEST(SolidSyslogOriginSd, FormatIncludesMultipleIpsFromCallback)
 TEST(SolidSyslogOriginSd, FormatPassesIpContextThrough)
 {
     int ipContext = 0;
-    config.IpContext = &ipContext;
-    useIps({"192.0.2.1"});
-    resetFormatter();
-    format();
+    formatOneIpWithContext(&ipContext);
     POINTERS_EQUAL(&ipContext, fakeIpContext);
 }
 
 TEST(SolidSyslogOriginSd, FormatPassesIpContextToIpCount)
 {
     int ipContext = 0;
-    config.IpContext = &ipContext;
-    useIps({"192.0.2.1"});
-    resetFormatter();
-    format();
+    formatOneIpWithContext(&ipContext);
     POINTERS_EQUAL(&ipContext, fakeIpCountContext);
 }
 

@@ -81,6 +81,7 @@ static const char* (*endpointGetHost)() = GetDefaultHost;
 static int (*endpointGetPort)() = GetDefaultPort;
 static uint32_t endpointVersion = 0;
 static void* endpointContext;
+static void* endpointVersionContext;
 
 static void TestEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 {
@@ -91,7 +92,7 @@ static void TestEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 
 static uint32_t TestEndpointVersion(void* context) // NOLINT(modernize-use-trailing-return-type)
 {
-    endpointContext = context;
+    endpointVersionContext = context;
     return endpointVersion;
 }
 
@@ -112,9 +113,10 @@ TEST_BASE(UdpSenderTestBase)
     {
         endpointGetHost     = GetDefaultHost;
         endpointGetPort     = GetDefaultPort;
-        endpointVersion     = 0;
-        endpointContext     = nullptr;
-        SpyGetHostCallCount = 0;
+        endpointVersion        = 0;
+        endpointContext        = nullptr;
+        endpointVersionContext = nullptr;
+        SpyGetHostCallCount    = 0;
         SpyGetPortCallCount = 0;
     }
 
@@ -207,6 +209,7 @@ TEST(SolidSyslogUdpSender, EndpointCallbacksReceiveEndpointContext)
     sender = SolidSyslogUdpSender_Create(&config);
     Send();
     POINTERS_EQUAL(&context, endpointContext);
+    POINTERS_EQUAL(&context, endpointVersionContext);
 }
 
 TEST(SolidSyslogUdpSender, SendReturnsFalseOnSendtoFailure)

@@ -79,6 +79,7 @@ static const char* (*endpointGetHost)() = GetHost;
 static int (*endpointGetPort)() = GetPort;
 static uint32_t endpointVersion = 0;
 static void* endpointContext;
+static void* endpointVersionContext;
 
 static void TestEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 {
@@ -89,7 +90,7 @@ static void TestEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 
 static uint32_t TestEndpointVersion(void* context) // NOLINT(modernize-use-trailing-return-type)
 {
-    endpointContext = context;
+    endpointVersionContext = context;
     return endpointVersion;
 }
 
@@ -163,6 +164,7 @@ TEST(SolidSyslogStreamSender, EndpointCallbacksReceiveEndpointContext)
     sender = SolidSyslogStreamSender_Create(&config);
     Send();
     POINTERS_EQUAL(&context, endpointContext);
+    POINTERS_EQUAL(&context, endpointVersionContext);
 }
 
 // clang-format off
