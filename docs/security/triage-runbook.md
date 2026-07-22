@@ -134,6 +134,6 @@ GitHub is the primary record of the diligence trail: published GHSAs, release
 assets, SBOMs, signatures, and commit history. GitHub retention is not an
 immutable guarantee, though: advisories can be deleted via GitHub Support,
 release assets removed with write access, and history rewritten. To rely on it
-as the CRA evidence store: protect the release tags and `main`, restrict who can
-delete releases and advisories, and take a periodic immutable export (or
-off-platform archive) of the advisories, SBOMs, and signatures.
+as the [CRA](../cra.md) evidence store: protect the release tags and `main`,
+restrict who can delete releases and advisories, and take a periodic immutable
+export (or off-platform archive) of the advisories, SBOMs, and signatures.

@@ -135,6 +135,7 @@ nav:
       - Compliance in one page: overview.md
   - Adopt:
       - Getting started: getting-started.md
+      - Reference designs: reference-designs.md
       - Components by Security Level: security-levels.md
       - Structured data: structured-data.md
       - Error handling: error-severity.md
@@ -145,6 +146,7 @@ nav:
       - Porting guide: porting.md
   - Compliance:
       - IEC 62443 guide: iec62443.md
+      - CRA guide: cra.md
       - RFC matrix: rfc-compliance.md
       - Threat model: security/threat-model.md
       - At-rest cryptography: security/at-rest-cryptography.md

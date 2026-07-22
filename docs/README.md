@@ -27,7 +27,8 @@ Pick a lane:
 Everything you need to consume SolidSyslog in your product.
 
 - [Getting started](getting-started.md): the integrator front door. The capability matrix, both consumption paths (CMake and non-CMake / IAR / Keil source integration), the worked embedded manifest, the tunables, and a "your first log" walkthrough.
-- [Choosing components by Security Level](security-levels.md): which roles to fill for a good story at each SL, framed around your deployment's drivers, with worked starter combinations.
+- [Reference designs](reference-designs.md): three worked component sets — a minimal device, a sensible secure device, and one hardened against a state-level attacker — mapped to IEC Security Levels and CRA risk postures.
+- [Choosing components by Security Level](security-levels.md): which roles to fill for a good story at each SL, framed around your deployment's drivers.
 - [Authoring custom structured data](structured-data.md): attaching RFC 5424 SD-ELEMENTs.
 - [Error-event severity policy](error-severity.md): installing an error handler and reading the event axes.
 - Platform integration guides:
@@ -47,7 +48,9 @@ Core's Null object stands in.
 ## Compliance
 
 - [Compliance in one page](overview.md): start here.
+- [Reference designs](reference-designs.md): three worked component sets — minimal, sensible-secure, hardened — that IEC and CRA both refer to.
 - [IEC 62443 compliance guide](iec62443.md): component selection by Security Level (SL1–SL4), mapped control-by-control to IEC 62443-4-2 CRs and 62443-3-3 SRs.
+- [CRA guide](cra.md): the Annex I audit-trail essential requirements mapped to the SolidSyslog capability that helps meet each.
 - [RFC compliance matrix](rfc-compliance.md): sender-side coverage of RFC 5424, 5426, 6587, and 5425.
 - Security:
   - [Threat model](security/threat-model.md)

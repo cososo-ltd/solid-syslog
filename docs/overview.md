@@ -23,10 +23,10 @@ control-by-control detail rather than restating it.
 > property of your whole system, its deployment, and its assessment, not of a
 > parts list. Likewise, the CRA places its obligations on the economic operators
 > who bring a product to market (manufacturers, and in defined cases importers
-> and distributors), not on any single component. SolidSyslog is a component:
-> this is our best advice on how it helps you address the audit-logging and
-> security aspects of those frameworks. It is guidance, not a guarantee of
-> compliance, and no substitute for assessment of your full product.
+> and distributors), not on any single component. This is guidance on how
+> SolidSyslog's components help you address the audit-logging aspects of these
+> frameworks; it is not a guarantee of compliance, and no substitute for
+> assessment of your full product.
 
 ## IEC 62443 — audit logging at a glance
 
@@ -57,19 +57,23 @@ SolidSyslog contributes to several of those obligations directly:
 
 | CRA obligation | How SolidSyslog supports it |
 |---|---|
-| **Security logging & monitoring** | The library's whole purpose: RFC 5424 audit records to any SIEM, with SIEM-side gap detection via `sequenceId`. See [IEC 62443 guide → SIEM integration](iec62443.md#siem-integration) |
+| **Security logging & monitoring** | The library's whole purpose: RFC 5424 audit records to any SIEM, with SIEM-side gap detection via `sequenceId`. See the [CRA guide](cra.md) for the Annex I map, or [IEC 62443 guide → SIEM integration](iec62443.md#siem-integration) |
 | **Software bill of materials** | The SolidSyslog project publishes a CycloneDX [SBOM](security/sbom.md) per release, ready to fold into your product's own bill of materials |
 | **Vulnerability handling & coordinated disclosure** | [`SECURITY.md`](../SECURITY.md) and the [vulnerability triage runbook](security/triage-runbook.md) |
 | **Secure, verifiable releases** | [Release verification guide](security/release-verification.md): signed, reproducible artefacts |
 | **Secure-by-design & documented risk** | [Threat model](security/threat-model.md) and [at-rest cryptography](security/at-rest-cryptography.md) |
 
 These support the manufacturer's CRA duties for the finished product; they do
-not discharge them on their own.
+not discharge them on their own. The [CRA guide](cra.md) maps the audit-trail
+Annex I essential requirements to the SolidSyslog capability that helps meet
+each, the way the [IEC 62443 guide](iec62443.md) does for the IEC controls.
 
 ## Go deeper
 
+- [Reference designs](reference-designs.md): three worked component sets — minimal, sensible-secure, hardened.
 - [Choosing components by Security Level](security-levels.md): the choices you make and what drives each.
 - [IEC 62443 compliance guide](iec62443.md): the control-by-control map underneath this page.
+- [CRA guide](cra.md): the Annex I audit-trail essential requirements, requirement by requirement.
 - [RFC compliance matrix](rfc-compliance.md): sender-side coverage of RFC 5424 / 5426 / 6587 / 5425.
 - [Security documentation](README.md#compliance): threat model, at-rest crypto, SBOM, triage, release verification.
 - [Getting started](getting-started.md): when you are ready to wire it up.

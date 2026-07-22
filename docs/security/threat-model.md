@@ -181,7 +181,8 @@ These are properties of the shipped code, not aspirations:
 
 This model supports SolidSyslog's IEC 62443 / EU CRA positioning as a
 security-conscious component supplier. See [`iec62443.md`](../iec62443.md) for
-component selection by Security Level and [`rfc-compliance.md`](../rfc-compliance.md)
+component selection by Security Level, [`cra.md`](../cra.md) for the CRA Annex I
+audit-trail map, and [`rfc-compliance.md`](../rfc-compliance.md)
 for the standards coverage matrix. The public disclosure process for issues found
 against this model is in [`SECURITY.md`](../../SECURITY.md).
 

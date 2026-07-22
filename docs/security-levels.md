@@ -9,11 +9,11 @@ the IEC 62443 Security Levels raise the bar as you climb them.
 > [!NOTE]
 > IEC 62443 certifies systems, not components, and a Security Level is a
 > property of your whole system, its deployment, and its assessment, not of a
-> parts list. This is our best advice on how SolidSyslog's components help you
-> address the audit-logging aspects of each level; it is guidance, not a
-> guarantee of compliance. The standard is also protocol-agnostic: where we name
-> TLS, HMAC, or a sequence counter, those are proven ways to realise a
-> capability, not the standard's own wording.
+> parts list. This is guidance on how SolidSyslog's components help you address
+> the audit-logging aspects of these frameworks; it is not a guarantee of
+> compliance, and no substitute for assessment of your full product. The standard
+> is also protocol-agnostic: where we name TLS, HMAC, or a sequence counter,
+> those are proven ways to realise a capability, not the standard's own wording.
 
 ## The choices you make
 
@@ -55,61 +55,15 @@ on. This is our reading of the standard's direction of travel; see the
 
 ## Worked combinations
 
-Starting points, not verdicts; each names its choices and why. Adapt them to
-your own drivers.
-
-<!-- markdownlint-disable MD033 — these diagrams are embedded as <object>, not a Markdown image, so the SVG's interface stickies stay clickable through to their API pages. -->
-
-### A lean edge sensor
-
-<div class="postit-diagram">
-  <object type="image/svg+xml" data="../assets/postit/sl1.svg" title="A lean edge sensor">
-    <img src="assets/postit/sl1.svg" alt="A lean edge sensor">
-  </object>
-</div>
-
-Core (`SolidSyslog` + `Config`) + an injected clock + `UdpSender` +
-`PassthroughBuffer`; store, policy, and structured data all `Null`. Why: a
-trusted internal network, a single task with time to send inline, and no
-audit-loss budget yet. The least that emits a valid, timestamped RFC 5424 record
-to your collector.
-
-### A device on an untrusted network
-
-<div class="postit-diagram">
-  <object type="image/svg+xml" data="../assets/postit/sl2.svg" title="A device on an untrusted network">
-    <img src="assets/postit/sl2.svg" alt="A device on an untrusted network">
-  </object>
-</div>
-
-Adds a server-auth `TlsStream` (confidentiality over the untrusted hop),
-`BlockStore` store-and-forward (records survive outages), and `TimeQualitySd` +
-`MetaSd` sequenceId (the collector can trust the timestamps and see the gaps).
-Reach for mutual TLS if the receiver must authenticate the device. Why: the
-path leaves your trust boundary, records must not be lost across an outage, and
-the collector needs both timestamp trust and gap visibility.
-
-### A device needing non-repudiation
-
-<div class="postit-diagram">
-  <object type="image/svg+xml" data="../assets/postit/sl3.svg" title="A device needing non-repudiation">
-    <img src="assets/postit/sl3.svg" alt="A device needing non-repudiation">
-  </object>
-</div>
-
-<!-- markdownlint-enable MD033 -->
-
-Adds mutual TLS with a per-device certificate, a keyed at-rest integrity
-policy (HMAC is tamper-evident; CRC-16 catches only accidental corruption, not an
-attacker), `OriginSd` + sysUpTime, and a discard policy with the matching
-store-full response (`OnStoreFull` under the halt policy, or the threshold
-callback for a pre-full warning).
-Why: the receiver must be able to prove the origin of each record, stored
-records may be physically reachable, and storage exhaustion needs a defined,
-caller-chosen response.
+Three worked combinations — a minimal device, a sensible secure device, and a
+device hardened against a state-level attacker — now live on their own page,
+[Reference designs](reference-designs.md). Each names its choices and why, maps
+to an IEC Security Level and the matching CRA risk posture, and is a starting
+point you adapt to your own drivers.
 
 ## Where to go next
 
+- [Reference designs](reference-designs.md): the three worked combinations, wired end to end.
 - [IEC 62443 control-by-control map](iec62443.md): the CR/SR detail behind this guidance.
 - [Getting started](getting-started.md): wiring the components you chose.
 - [Structured data](structured-data.md): authoring the evidence SD elements.
