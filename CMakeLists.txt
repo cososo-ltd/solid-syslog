@@ -69,6 +69,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # find_package runs in a consumer's build.
 option(SOLIDSYSLOG_BUILD_TESTING "Build the SolidSyslog unit test suite" ${SOLIDSYSLOG_IS_TOP_LEVEL})
 
+# Tests/ addresses the tree through CMAKE_SOURCE_DIR and links the CppUTest
+# targets found below, so it only ever works top-level. Turning the flag on
+# inside someone else's build cannot succeed — say that here rather than failing
+# further down on an undefined CppUTest target.
+if(SOLIDSYSLOG_BUILD_TESTING AND NOT SOLIDSYSLOG_IS_TOP_LEVEL)
+    message(WARNING
+        "SOLIDSYSLOG_BUILD_TESTING is ignored here: the SolidSyslog unit suite "
+        "only configures when SolidSyslog is the top-level project.")
+    set(SOLIDSYSLOG_BUILD_TESTING OFF)
+endif()
+
 if(SOLIDSYSLOG_IS_TOP_LEVEL AND NOT CMAKE_CROSSCOMPILING)
     find_package(Threads REQUIRED)
 
