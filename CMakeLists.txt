@@ -259,6 +259,78 @@ solidsyslog_declare_pack(SOLIDSYSLOG_PLUSFAT
     "Include the FreeRTOS-Plus-FAT platform pack (File)"
     FREERTOS_PLUS_FAT_PATH)
 
+# SOLIDSYSLOG_PLATFORMS — state the whole selection on one line instead of one
+# -D per pack:
+#
+#     -DSOLIDSYSLOG_PLATFORMS="LwipRaw;MbedTls"
+#
+# When set it is authoritative: a named pack is on, an unnamed pack is off,
+# whatever the environment happens to say. That is the point — an integrator
+# declares their platforms once and stops depending on the build environment.
+# Unset means today's per-pack defaults, unchanged.
+#
+# It is applied by setting a NORMAL variable per pack, which shadows the cache
+# entry for the rest of this configure. Normal variables are recomputed every
+# run, so editing the list takes effect immediately; writing the cache instead
+# would leave a stale entry that option() would then refuse to update and a
+# later configure would silently honour.
+#
+# Scoped to the header-configured packs deliberately. The host roles are
+# auto-detected, and two of them (the Windows platform check, the C11 atomics
+# probe) are compile probes with no option to drive at all — folding them in
+# would make the list only partly authoritative, which is worse than a boundary
+# that can be stated. POSIX, Winsock and OpenSSL already have their own
+# -DSOLIDSYSLOG_POSIX=OFF switches, so nothing here is unreachable.
+#
+# Registry of every selectable pack: the token an integrator writes, and the
+# option it drives. Column-aligned so the two lists cannot drift unnoticed.
+set(SOLIDSYSLOG_PLATFORM_TOKENS  LwipRaw          FreeRtos             MbedTls             FatFs             PlusFat)
+set(SOLIDSYSLOG_PLATFORM_OPTIONS SOLIDSYSLOG_LWIP SOLIDSYSLOG_FREERTOS SOLIDSYSLOG_MBEDTLS SOLIDSYSLOG_FATFS SOLIDSYSLOG_PLUSFAT)
+
+set(SOLIDSYSLOG_PLATFORMS "" CACHE STRING
+    "Platform packs to build, e.g. LwipRaw;FreeRtos;MbedTls. Empty selects each pack from its own option.")
+
+if(SOLIDSYSLOG_PLATFORMS)
+    foreach(requested_platform IN LISTS SOLIDSYSLOG_PLATFORMS)
+        if(NOT requested_platform IN_LIST SOLIDSYSLOG_PLATFORM_TOKENS)
+            message(FATAL_ERROR
+                "SOLIDSYSLOG_PLATFORMS names an unknown platform '${requested_platform}'. "
+                "Valid platforms: ${SOLIDSYSLOG_PLATFORM_TOKENS}. The host roles (POSIX, "
+                "Winsock, OpenSSL) are auto-detected rather than listed here — turn one "
+                "off with -DSOLIDSYSLOG_POSIX=OFF and friends.")
+        endif()
+    endforeach()
+
+    list(LENGTH SOLIDSYSLOG_PLATFORM_TOKENS solidsyslog_platform_count)
+    math(EXPR solidsyslog_last_platform "${solidsyslog_platform_count} - 1")
+    foreach(platform_index RANGE ${solidsyslog_last_platform})
+        list(GET SOLIDSYSLOG_PLATFORM_TOKENS  ${platform_index} platform_token)
+        list(GET SOLIDSYSLOG_PLATFORM_OPTIONS ${platform_index} platform_option)
+        if(platform_token IN_LIST SOLIDSYSLOG_PLATFORMS)
+            set(${platform_option} ON)
+        else()
+            set(${platform_option} OFF)
+        endif()
+    endforeach()
+endif()
+
+# What actually got selected, however it was selected. One line, and it answers
+# the question this whole section exists to make answerable: did my -D take?
+set(solidsyslog_selected_packs "")
+list(LENGTH SOLIDSYSLOG_PLATFORM_TOKENS solidsyslog_platform_count)
+math(EXPR solidsyslog_last_platform "${solidsyslog_platform_count} - 1")
+foreach(platform_index RANGE ${solidsyslog_last_platform})
+    list(GET SOLIDSYSLOG_PLATFORM_TOKENS  ${platform_index} platform_token)
+    list(GET SOLIDSYSLOG_PLATFORM_OPTIONS ${platform_index} platform_option)
+    if(${platform_option})
+        list(APPEND solidsyslog_selected_packs ${platform_token})
+    endif()
+endforeach()
+if(NOT solidsyslog_selected_packs)
+    set(solidsyslog_selected_packs "(none)")
+endif()
+message(STATUS "SolidSyslog platform packs: ${solidsyslog_selected_packs}")
+
 # Where each upstream tree lives. Selecting a pack does not need this — the pack
 # carries its sources and the consumer's own target supplies the headers. What
 # needs it is OUR unit tests and BDD targets, which compile against the real
