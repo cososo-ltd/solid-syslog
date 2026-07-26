@@ -207,25 +207,57 @@ if(SOLIDSYSLOG_OPENSSL)
     endif()
 endif()
 
-# mbedTLS-based TLS is the embedded-target reference TLS backend (OpenSSL is too
-# large for Cortex-M). Default ON when the MBEDTLS_DIR environment variable is
-# set (the cpputest-freertos devcontainer image provides /opt/mbedtls); pass
-# -DSOLIDSYSLOG_MBEDTLS=OFF to disable explicitly. Unlike OpenSSL there is no
-# find_package — mbedTLS is header-configured (mbedtls_config.h changes ABI),
-# so the adapter ships as an INTERFACE pack and consumers compile the sources
-# themselves with their own config. See Platform/MbedTls/CMakeLists.txt.
-if(DEFINED ENV{MBEDTLS_DIR})
-    set(_solidsyslog_mbedtls_default ON)
-else()
-    set(_solidsyslog_mbedtls_default OFF)
-endif()
-option(SOLIDSYSLOG_MBEDTLS "Include mbedTLS-based TLS support" ${_solidsyslog_mbedtls_default})
-unset(_solidsyslog_mbedtls_default)
-if(SOLIDSYSLOG_MBEDTLS AND NOT DEFINED ENV{MBEDTLS_DIR})
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_MBEDTLS=ON but MBEDTLS_DIR is not set; "
-        "export MBEDTLS_DIR=/path/to/mbedtls or pass -DSOLIDSYSLOG_MBEDTLS=OFF.")
-endif()
+# Header-configured platform packs (S30.05).
+#
+# Unlike the host roles above, these have no find_package and no compile probe:
+# each is header-configured (lwipopts.h, FreeRTOSConfig.h, mbedtls_config.h and
+# ffconf.h all change layout and behaviour), so the pack ships as an INTERFACE
+# library carrying its own adapter sources and the consumer compiles them
+# against their own config. A pack therefore never needs to know where its
+# upstream tree lives — the consumer's target is what puts lwip/*.h, FreeRTOS.h,
+# mbedtls/*.h and ff.h on the include path.
+#
+# Selection is one switch per pack, defaulting to "the matching upstream path is
+# on the environment". That default is what every preset, devcontainer service
+# and CI lane here already expresses, so all of them configure exactly as
+# before. What it adds is a way to say so explicitly: an integrator who vendors
+# lwIP inside their own tree and exports nothing passes -DSOLIDSYSLOG_LWIP=ON.
+# Before S30.05 the environment was the only vocabulary, so that integrator got
+# a silently absent pack and a generate-time "target not found" naming
+# SolidSyslog::LwipRaw with nothing pointing at the cause.
+#
+# The upstream paths have not gone away — our own unit tests and BDD targets
+# compile against the real upstream headers and still need them. They are
+# separate variables, demanded only where they are genuinely used.
+function(solidsyslog_declare_pack option_name help environment_fallback)
+    if(DEFINED ENV{${environment_fallback}})
+        set(selected_by_default ON)
+    else()
+        set(selected_by_default OFF)
+    endif()
+    option(${option_name} "${help}" ${selected_by_default})
+endfunction()
+
+solidsyslog_declare_pack(SOLIDSYSLOG_FREERTOS
+    "Include the FreeRTOS platform pack (Mutex, SysUpTime, and the Plus-TCP networking adapters)"
+    FREERTOS_KERNEL_PATH)
+
+solidsyslog_declare_pack(SOLIDSYSLOG_LWIP
+    "Include the lwIP Raw API platform pack (Address, Resolver, Datagram, TcpStream)"
+    LWIP_PATH)
+
+# The embedded-target reference TLS backend — OpenSSL is too large for Cortex-M.
+solidsyslog_declare_pack(SOLIDSYSLOG_MBEDTLS
+    "Include mbedTLS-based TLS support"
+    MBEDTLS_DIR)
+
+solidsyslog_declare_pack(SOLIDSYSLOG_FATFS
+    "Include the ChaN FatFs platform pack (File)"
+    FATFS_PATH)
+
+solidsyslog_declare_pack(SOLIDSYSLOG_PLUSFAT
+    "Include the FreeRTOS-Plus-FAT platform pack (File)"
+    FREERTOS_PLUS_FAT_PATH)
 
 # Allocation strategy (E11). Currently only "static" ships — internal static
 # pools allocate instance bookkeeping for stateful classes. A future epic
@@ -345,11 +377,11 @@ endif()
 # FreeRTOS adapters ship as sources via INTERFACE libraries — the integrator's
 # FreeRTOSConfig.h / FreeRTOSIPConfig.h flows into each consumer's compile (see
 # project_header_configured_platforms memory). Platform/FreeRtos hosts the
-# RTOS primitives (Mutex, SysUpTime) — always added when FREERTOS_KERNEL_PATH
-# is set, regardless of the chosen networking backend. Platform/PlusTcp hosts
-# the FreeRTOS-Plus-TCP networking adapters (Address/Datagram/Resolver/TcpStream)
-# — added when SOLIDSYSLOG_FREERTOS_NET selects PLUSTCP or BOTH.
-if(DEFINED ENV{FREERTOS_KERNEL_PATH})
+# RTOS primitives (Mutex, SysUpTime) — always added with the pack, regardless of
+# the chosen networking backend. Platform/PlusTcp hosts the FreeRTOS-Plus-TCP
+# networking adapters (Address/Datagram/Resolver/TcpStream) — added when
+# SOLIDSYSLOG_FREERTOS_NET selects PLUSTCP or BOTH.
+if(SOLIDSYSLOG_FREERTOS)
     add_subdirectory(Platform/FreeRtos)
     if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "PLUSTCP"
        OR SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
@@ -357,26 +389,23 @@ if(DEFINED ENV{FREERTOS_KERNEL_PATH})
     endif()
 endif()
 
-# Platform/LwipRaw — OS-agnostic wrapper of lwIP Raw API. Compiles whenever
-# LWIP_PATH is set, independent of FREERTOS_KERNEL_PATH (lwIP runs on bare
-# metal, Zephyr, ThreadX, FreeRTOS, ...). SOLIDSYSLOG_FREERTOS_NET only
-# governs which adapter pack the FreeRTOS BDD target links against — it
-# does not gate this library's existence.
-if(DEFINED ENV{LWIP_PATH})
+# Platform/LwipRaw — OS-agnostic wrapper of lwIP Raw API. Selected independently
+# of SOLIDSYSLOG_FREERTOS (lwIP runs on bare metal, Zephyr, ThreadX, FreeRTOS,
+# ...). SOLIDSYSLOG_FREERTOS_NET only governs which adapter pack the FreeRTOS BDD
+# target links against — it does not gate this library's existence.
+if(SOLIDSYSLOG_LWIP)
     add_subdirectory(Platform/LwipRaw)
 endif()
 
 # FatFs adapters likewise ship as sources via an INTERFACE library — the
-# integrator's ffconf.h flows into each consumer's compile. Gated on the
-# upstream FatFs sources being present in the build environment.
-if(DEFINED ENV{FATFS_PATH})
+# integrator's ffconf.h flows into each consumer's compile.
+if(SOLIDSYSLOG_FATFS)
     add_subdirectory(Platform/FatFs)
 endif()
 
 # FreeRTOS-Plus-FAT adapters ship as sources via an INTERFACE library too — the
-# integrator's FreeRTOSFATConfig.h flows into each consumer's compile. Gated on
-# the upstream Plus-FAT sources being present in the build environment.
-if(DEFINED ENV{FREERTOS_PLUS_FAT_PATH})
+# integrator's FreeRTOSFATConfig.h flows into each consumer's compile.
+if(SOLIDSYSLOG_PLUSFAT)
     add_subdirectory(Platform/PlusFat)
 endif()
 

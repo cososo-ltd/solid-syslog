@@ -6,22 +6,27 @@ if(SOLIDSYSLOG_POSIX OR (SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM))
     add_subdirectory(Bdd/Targets)
 endif()
 
-if(DEFINED ENV{FREERTOS_KERNEL_PATH})
+# Each pack's unit tests follow the pack's own selection switch, so a lane that
+# turns a pack off stops building its tests too. Unlike the packs, these DO need
+# the upstream tree — they compile against the real lwip/*.h, FreeRTOS.h and ff.h
+# — which is why the top-level CMakeLists demands a path for every selected pack
+# when SOLIDSYSLOG_BUILD_TESTING is on.
+if(SOLIDSYSLOG_FREERTOS)
     add_subdirectory(Support/FreeRtosFakes)
     add_subdirectory(FreeRtos)
 endif()
 
-if(DEFINED ENV{FATFS_PATH})
+if(SOLIDSYSLOG_FATFS)
     add_subdirectory(Support/FatFsFakes)
     add_subdirectory(FatFs)
 endif()
 
-if(DEFINED ENV{FREERTOS_PLUS_FAT_PATH})
+if(SOLIDSYSLOG_PLUSFAT)
     add_subdirectory(Support/PlusFatFakes)
     add_subdirectory(PlusFat)
 endif()
 
-if(DEFINED ENV{LWIP_PATH})
+if(SOLIDSYSLOG_LWIP)
     add_subdirectory(Lwip)
 endif()
 

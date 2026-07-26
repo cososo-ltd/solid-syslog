@@ -52,7 +52,25 @@ set(SOURCES
     SolidSyslogFileBlockDevice.c
     SolidSyslogFileBlockDeviceStatic.c
     SolidSyslogUdpPayload.c
+    SolidSyslogResolver.c
+    SolidSyslogNullResolver.c
+    SolidSyslogDatagram.c
+    SolidSyslogNullDatagram.c
+    SolidSyslogUdpSender.c
+    SolidSyslogUdpSenderStatic.c
+    SolidSyslogStreamSender.c
+    SolidSyslogStreamSenderStatic.c
 )
+# The eight above used to compile only when POSIX, Winsock or FREERTOS_KERNEL_PATH
+# selected a transport, which was accidental: every one of them includes Core
+# headers and nothing else, and their siblings (SolidSyslogStream.c,
+# SolidSyslogUdpPayload.c) were never gated. The gate cost a bare-metal lwIP
+# consumer — no POSIX, no Winsock, no FreeRTOS — a libSolidSyslog.a silently
+# missing its senders: they linked SolidSyslog::LwipRaw, got the adapters, and
+# failed on an undefined SolidSyslogUdpSender_Create with nothing naming the
+# cause. The same held for anyone supplying their own Stream through the
+# documented extension point. These are transport-neutral core, so they compile
+# unconditionally (S30.05).
 
 if(HAVE_ATOMIC_COUNTER)
     list(APPEND SOURCES
@@ -66,19 +84,6 @@ endif()
 # Platform/Windows), so it's only compiled when at least one atomic
 # backend is available. SolidSyslogNullAtomicCounter.c is the shared
 # pool-exhaustion fallback for both backends.
-
-if(SOLIDSYSLOG_POSIX OR SOLIDSYSLOG_WINSOCK OR DEFINED ENV{FREERTOS_KERNEL_PATH})
-    list(APPEND SOURCES
-        SolidSyslogResolver.c
-        SolidSyslogNullResolver.c
-        SolidSyslogDatagram.c
-        SolidSyslogNullDatagram.c
-        SolidSyslogUdpSender.c
-        SolidSyslogUdpSenderStatic.c
-        SolidSyslogStreamSender.c
-        SolidSyslogStreamSenderStatic.c
-    )
-endif()
 
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 
