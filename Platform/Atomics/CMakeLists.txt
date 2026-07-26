@@ -7,7 +7,4 @@ endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Interface)
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Interface/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.h"
-)
+solidsyslog_install_public_headers()

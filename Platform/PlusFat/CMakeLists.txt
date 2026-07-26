@@ -35,7 +35,4 @@ target_link_libraries(SolidSyslogPlusFat INTERFACE SolidSyslogTunables)
 
 add_library(SolidSyslog::PlusFat ALIAS SolidSyslogPlusFat)
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Interface/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.h"
-)
+solidsyslog_install_public_headers()

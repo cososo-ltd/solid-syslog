@@ -1,6 +1,34 @@
 cmake_minimum_required(VERSION 3.16)
 project(SolidSyslog C CXX)
 
+# Is SolidSyslog the top-level project, or is it nested inside a consumer's build
+# via FetchContent / add_subdirectory / a submodule? Everything a consumer has no
+# use for — the developer checks, the unit tests, the BDD targets, install() —
+# hangs off this. PROJECT_IS_TOP_LEVEL says exactly this, but it needs CMake 3.21
+# and the floor above is 3.16; raising the floor is consumer-visible, so compute
+# it instead. This is CMake's own definition of that variable.
+if(CMAKE_SOURCE_DIR STREQUAL SolidSyslog_SOURCE_DIR)
+    set(SOLIDSYSLOG_IS_TOP_LEVEL TRUE)
+else()
+    set(SOLIDSYSLOG_IS_TOP_LEVEL FALSE)
+endif()
+
+# Every Platform pack installs its Interface/ headers the same way, and every one
+# of those rules is top-level-only: the library ships no export set, so a nested
+# build has nothing to contribute to the consumer's `install` target beyond
+# scattering headers into their prefix. Called from each pack in place of ten
+# copies of the same rule. CMAKE_CURRENT_SOURCE_DIR inside a function is still
+# the calling directory, so each pack installs its own headers.
+function(solidsyslog_install_public_headers)
+    if(SOLIDSYSLOG_IS_TOP_LEVEL)
+        include(GNUInstallDirs)
+        install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Interface/
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.h"
+        )
+    endif()
+endfunction()
+
 # Everything that ships (this file, Core/, Platform/*, cmake/*.cmake) addresses
 # the library tree through SolidSyslog_SOURCE_DIR / SolidSyslog_BINARY_DIR, never
 # CMAKE_SOURCE_DIR / CMAKE_BINARY_DIR. Under FetchContent or add_subdirectory the
@@ -8,11 +36,16 @@ project(SolidSyslog C CXX)
 # the module path below — took the whole configure down. The project()-scoped
 # names are correct at any nesting depth. Tests/ and Bdd/ only ever configure
 # top-level and keep the CMAKE_ forms.
-list(APPEND CMAKE_MODULE_PATH "${SolidSyslog_SOURCE_DIR}/cmake")
-include(LayerGuard)
-solidsyslog_enforce_layering()
-include(Iwyu)
-include(Manifest)
+#
+# LayerGuard's layering scan, the IWYU targets and the manifest generator are
+# maintainer tooling: a consumer gets neither the cache entries nor the targets.
+if(SOLIDSYSLOG_IS_TOP_LEVEL)
+    list(APPEND CMAKE_MODULE_PATH "${SolidSyslog_SOURCE_DIR}/cmake")
+    include(LayerGuard)
+    solidsyslog_enforce_layering()
+    include(Iwyu)
+    include(Manifest)
+endif()
 
 # Default to C11 (for the optional C11 atomics counter), but let an externally
 # supplied standard win so the pre-release C99 portability check can build the
@@ -27,70 +60,79 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # CppUTest is only needed when the unit-test suite is built. Library-only
 # configurations (e.g. the `c99` portability preset) set BUILD_TESTING=OFF so
 # they configure without it present. Threads is needed more widely (the host
-# BDD targets link it), so it stays outside the BUILD_TESTING guard.
+# BDD targets link it), so it stays outside the BUILD_TESTING guard — but both
+# are still ours alone: nothing in Core/ or Platform/ links either, so neither
+# find_package runs in a consumer's build.
 option(BUILD_TESTING "Build the unit test suite" ON)
 
-if(NOT CMAKE_CROSSCOMPILING)
+if(SOLIDSYSLOG_IS_TOP_LEVEL AND NOT CMAKE_CROSSCOMPILING)
     find_package(Threads REQUIRED)
+
+    if(BUILD_TESTING)
+        find_package(CppUTest REQUIRED)
+    endif()
 endif()
 
-if(BUILD_TESTING AND NOT CMAKE_CROSSCOMPILING)
-    find_package(CppUTest REQUIRED)
-endif()
-
-if(MSVC)
-    # /wd4200: char buffer[] (C99 flexible array member) — valid C99, MSVC warns as nonstandard extension
-    # /wd4297: test infrastructure throws C++ exceptions from extern "C" functions
-    # to propagate assertion failures from C fakes through CppUTest. Permanent suppression.
-    add_compile_options(/W4 /WX /wd4200 /wd4297)
-else()
-    add_compile_options(-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Werror)
-endif()
-
-option(SANITIZE "Enable AddressSanitizer and UndefinedBehaviourSanitizer" OFF)
-if(SANITIZE)
-    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address,undefined)
-endif()
-
-option(COVERAGE "Enable code coverage instrumentation" OFF)
-if(COVERAGE)
-    add_compile_options(--coverage)
-    add_link_options(--coverage)
-endif()
-
-option(ENABLE_CLANG_TIDY "Run clang-tidy on all source files during build" OFF)
-if(ENABLE_CLANG_TIDY)
-    find_program(CLANG_TIDY_EXECUTABLE NAMES clang-tidy REQUIRED)
-    set(CMAKE_C_CLANG_TIDY   "${CLANG_TIDY_EXECUTABLE}")
-    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXECUTABLE}")
-endif()
-
-option(ENABLE_CPPCHECK "Run cppcheck on all source files during build" OFF)
-if(ENABLE_CPPCHECK)
-    find_program(CPPCHECK_EXECUTABLE NAMES cppcheck)
-    if(CPPCHECK_EXECUTABLE)
-        set(CMAKE_C_CPPCHECK
-            "${CPPCHECK_EXECUTABLE}"
-            "--enable=warning,style,performance,portability"
-            "--error-exitcode=1"
-            "--suppress=missingIncludeSystem"
-            "--suppressions-list=${SolidSyslog_SOURCE_DIR}/cppcheck_suppressions_tests.txt"
-            "--inline-suppr"
-            "--std=c11"
-        )
-        set(CMAKE_CXX_CPPCHECK
-            "${CPPCHECK_EXECUTABLE}"
-            "--enable=warning,style,performance,portability"
-            "--error-exitcode=1"
-            "--suppress=missingIncludeSystem"
-            "--suppress=useStlAlgorithm"
-            "--suppressions-list=${SolidSyslog_SOURCE_DIR}/cppcheck_suppressions_tests.txt"
-            "--inline-suppr"
-            "--std=c++17"
-        )
+# Warning bar and developer instrumentation — top-level only. A consumer
+# building libSolidSyslog.a inside their tree should not inherit -Werror (the
+# bar is tuned against the compilers CI runs, not theirs), and SANITIZE /
+# COVERAGE / ENABLE_CLANG_TIDY / ENABLE_CPPCHECK are maintainer switches whose
+# generic names would collide with a consumer's own cache entries.
+if(SOLIDSYSLOG_IS_TOP_LEVEL)
+    if(MSVC)
+        # /wd4200: char buffer[] (C99 flexible array member) — valid C99, MSVC warns as nonstandard extension
+        # /wd4297: test infrastructure throws C++ exceptions from extern "C" functions
+        # to propagate assertion failures from C fakes through CppUTest. Permanent suppression.
+        add_compile_options(/W4 /WX /wd4200 /wd4297)
     else()
-        message(WARNING "cppcheck not found — ENABLE_CPPCHECK has no effect")
+        add_compile_options(-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Werror)
+    endif()
+
+    option(SANITIZE "Enable AddressSanitizer and UndefinedBehaviourSanitizer" OFF)
+    if(SANITIZE)
+        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=address,undefined)
+    endif()
+
+    option(COVERAGE "Enable code coverage instrumentation" OFF)
+    if(COVERAGE)
+        add_compile_options(--coverage)
+        add_link_options(--coverage)
+    endif()
+
+    option(ENABLE_CLANG_TIDY "Run clang-tidy on all source files during build" OFF)
+    if(ENABLE_CLANG_TIDY)
+        find_program(CLANG_TIDY_EXECUTABLE NAMES clang-tidy REQUIRED)
+        set(CMAKE_C_CLANG_TIDY   "${CLANG_TIDY_EXECUTABLE}")
+        set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXECUTABLE}")
+    endif()
+
+    option(ENABLE_CPPCHECK "Run cppcheck on all source files during build" OFF)
+    if(ENABLE_CPPCHECK)
+        find_program(CPPCHECK_EXECUTABLE NAMES cppcheck)
+        if(CPPCHECK_EXECUTABLE)
+            set(CMAKE_C_CPPCHECK
+                "${CPPCHECK_EXECUTABLE}"
+                "--enable=warning,style,performance,portability"
+                "--error-exitcode=1"
+                "--suppress=missingIncludeSystem"
+                "--suppressions-list=${SolidSyslog_SOURCE_DIR}/cppcheck_suppressions_tests.txt"
+                "--inline-suppr"
+                "--std=c11"
+            )
+            set(CMAKE_CXX_CPPCHECK
+                "${CPPCHECK_EXECUTABLE}"
+                "--enable=warning,style,performance,portability"
+                "--error-exitcode=1"
+                "--suppress=missingIncludeSystem"
+                "--suppress=useStlAlgorithm"
+                "--suppressions-list=${SolidSyslog_SOURCE_DIR}/cppcheck_suppressions_tests.txt"
+                "--inline-suppr"
+                "--std=c++17"
+            )
+        else()
+            message(WARNING "cppcheck not found — ENABLE_CPPCHECK has no effect")
+        endif()
     endif()
 endif()
 
@@ -238,22 +280,25 @@ endif()
 # Parse the default from SolidSyslogTunablesDefaults.h; if a user override
 # is in effect and defines the macro, use its value instead. The generated
 # file is written to the source tree because behave's import discovery
-# expects modules under Bdd/features/steps/; it is gitignored.
-file(READ "${SolidSyslog_SOURCE_DIR}/Core/Interface/SolidSyslogTunablesDefaults.h" _solidsyslog_defaults)
-string(REGEX MATCH "#define[ \t]+SOLIDSYSLOG_MAX_MESSAGE_SIZE[ \t]+([0-9]+)" _ "${_solidsyslog_defaults}")
-set(SOLIDSYSLOG_BDD_MAX_MESSAGE_SIZE "${CMAKE_MATCH_1}")
-if(SOLIDSYSLOG_USER_TUNABLES_FILE AND EXISTS "${SOLIDSYSLOG_USER_TUNABLES_FILE}")
-    file(READ "${SOLIDSYSLOG_USER_TUNABLES_FILE}" _solidsyslog_user_tunables)
-    string(REGEX MATCH "#define[ \t]+SOLIDSYSLOG_MAX_MESSAGE_SIZE[ \t]+([0-9]+)" _ "${_solidsyslog_user_tunables}")
-    if(CMAKE_MATCH_1)
-        set(SOLIDSYSLOG_BDD_MAX_MESSAGE_SIZE "${CMAKE_MATCH_1}")
+# expects modules under Bdd/features/steps/; it is gitignored. Top-level only:
+# configuring a dependency must never write into that dependency's checkout.
+if(SOLIDSYSLOG_IS_TOP_LEVEL)
+    file(READ "${SolidSyslog_SOURCE_DIR}/Core/Interface/SolidSyslogTunablesDefaults.h" _solidsyslog_defaults)
+    string(REGEX MATCH "#define[ \t]+SOLIDSYSLOG_MAX_MESSAGE_SIZE[ \t]+([0-9]+)" _ "${_solidsyslog_defaults}")
+    set(SOLIDSYSLOG_BDD_MAX_MESSAGE_SIZE "${CMAKE_MATCH_1}")
+    if(SOLIDSYSLOG_USER_TUNABLES_FILE AND EXISTS "${SOLIDSYSLOG_USER_TUNABLES_FILE}")
+        file(READ "${SOLIDSYSLOG_USER_TUNABLES_FILE}" _solidsyslog_user_tunables)
+        string(REGEX MATCH "#define[ \t]+SOLIDSYSLOG_MAX_MESSAGE_SIZE[ \t]+([0-9]+)" _ "${_solidsyslog_user_tunables}")
+        if(CMAKE_MATCH_1)
+            set(SOLIDSYSLOG_BDD_MAX_MESSAGE_SIZE "${CMAKE_MATCH_1}")
+        endif()
     endif()
+    configure_file(
+        "${SolidSyslog_SOURCE_DIR}/Bdd/features/steps/solidsyslog_tunables.py.in"
+        "${SolidSyslog_SOURCE_DIR}/Bdd/features/steps/solidsyslog_tunables.py"
+        @ONLY
+    )
 endif()
-configure_file(
-    "${SolidSyslog_SOURCE_DIR}/Bdd/features/steps/solidsyslog_tunables.py.in"
-    "${SolidSyslog_SOURCE_DIR}/Bdd/features/steps/solidsyslog_tunables.py"
-    @ONLY
-)
 
 add_subdirectory(Core/Source)
 
@@ -277,7 +322,8 @@ if(HAVE_WINDOWS_INTERLOCKED OR HAVE_WINDOWS_PLATFORM OR SOLIDSYSLOG_WINSOCK)
     add_subdirectory(Platform/Windows)
 endif()
 
-if(SOLIDSYSLOG_POSIX OR (SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM))
+if(SOLIDSYSLOG_IS_TOP_LEVEL
+   AND (SOLIDSYSLOG_POSIX OR (SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM)))
     add_subdirectory(Bdd/Targets)
 endif()
 
@@ -325,7 +371,13 @@ endif()
 # networking backend picks which target: PLUSTCP/BOTH builds the full
 # FreeRTOS-Plus-TCP BDD target; LWIP builds the FreeRtosLwip BDD target
 # (S28.09) — LAN9118 netif + NO_SYS=0 lwIP + LwipRaw adapters, no PlusTcp.
-if(CMAKE_CROSSCOMPILING AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm")
+#
+# The top-level gate matters most here: an integrator cross-compiling for
+# Cortex-M sets exactly these two variables in their own toolchain file, and
+# without it their build would try to produce SolidSyslog's BDD ELF.
+if(SOLIDSYSLOG_IS_TOP_LEVEL
+   AND CMAKE_CROSSCOMPILING
+   AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm")
     if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "LWIP")
         add_subdirectory(Bdd/Targets/FreeRtosLwip)
     else()
@@ -343,4 +395,6 @@ endif()
 # file/include/-D list can't drift from the build. Runs last, after every pack
 # target is defined. `cmake --build <dir> --target manifest` prints it. See
 # cmake/Manifest.cmake.
-solidsyslog_generate_manifest()
+if(SOLIDSYSLOG_IS_TOP_LEVEL)
+    solidsyslog_generate_manifest()
+endif()
