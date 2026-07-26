@@ -40,7 +40,7 @@ function(_solidsyslog_scan_layer LAYER_LABEL FORBIDDEN_NAMES OUT_VIOLATIONS)
                 string(REGEX REPLACE ".*\"([^\"]+)\".*" "\\1" _path "${_line}")
                 get_filename_component(_n "${_path}" NAME)
                 if(_n IN_LIST FORBIDDEN_NAMES)
-                    file(RELATIVE_PATH _rel "${CMAKE_SOURCE_DIR}" "${_f}")
+                    file(RELATIVE_PATH _rel "${SolidSyslog_SOURCE_DIR}" "${_f}")
                     list(APPEND _local "  [${LAYER_LABEL}] ${_rel}: #include \"${_path}\"")
                 endif()
             endforeach()
@@ -51,10 +51,10 @@ endfunction()
 
 function(solidsyslog_enforce_layering)
     _solidsyslog_collect_header_names(_platform_names
-        "${CMAKE_SOURCE_DIR}/Platform"
+        "${SolidSyslog_SOURCE_DIR}/Platform"
     )
     _solidsyslog_collect_header_names(_bdd_target_names
-        "${CMAKE_SOURCE_DIR}/Bdd/Targets"
+        "${SolidSyslog_SOURCE_DIR}/Bdd/Targets"
     )
 
     set(_forbidden_in_core "${_platform_names}")
@@ -64,10 +64,10 @@ function(solidsyslog_enforce_layering)
     set(_violations "")
 
     _solidsyslog_scan_layer("Core" "${_forbidden_in_core}" _violations
-        "${CMAKE_SOURCE_DIR}/Core"
+        "${SolidSyslog_SOURCE_DIR}/Core"
     )
     _solidsyslog_scan_layer("Platform" "${_bdd_target_names}" _violations
-        "${CMAKE_SOURCE_DIR}/Platform"
+        "${SolidSyslog_SOURCE_DIR}/Platform"
     )
 
     if(_violations)

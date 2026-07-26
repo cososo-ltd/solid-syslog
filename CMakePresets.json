@@ -76,7 +76,7 @@
             "cacheVariables": {
                 "CMAKE_C_STANDARD": "99",
                 "HAVE_STDATOMIC_H": "OFF",
-                "BUILD_TESTING": "OFF"
+                "SOLIDSYSLOG_BUILD_TESTING": "OFF"
             }
         },
         {

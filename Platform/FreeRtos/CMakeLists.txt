@@ -32,14 +32,11 @@ target_sources(SolidSyslogFreeRtos INTERFACE
 target_include_directories(SolidSyslogFreeRtos INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Interface
     ${CMAKE_CURRENT_SOURCE_DIR}/Source          # SolidSyslogFreeRtosMutexPrivate.h
-    ${CMAKE_SOURCE_DIR}/Core/Source             # SolidSyslogPoolAllocator.h
+    ${SolidSyslog_SOURCE_DIR}/Core/Source             # SolidSyslogPoolAllocator.h
 )
 
 target_link_libraries(SolidSyslogFreeRtos INTERFACE SolidSyslogTunables)
 
 add_library(SolidSyslog::FreeRtos ALIAS SolidSyslogFreeRtos)
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Interface/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.h"
-)
+solidsyslog_install_public_headers()

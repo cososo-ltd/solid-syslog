@@ -45,7 +45,7 @@ target_sources(SolidSyslogLwipRaw INTERFACE
 target_include_directories(SolidSyslogLwipRaw INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Interface
     ${CMAKE_CURRENT_SOURCE_DIR}/Source          # SolidSyslogLwipRaw*Private.h
-    ${CMAKE_SOURCE_DIR}/Core/Source             # SolidSyslogPoolAllocator.h
+    ${SolidSyslog_SOURCE_DIR}/Core/Source             # SolidSyslogPoolAllocator.h
 )
 
 target_link_libraries(SolidSyslogLwipRaw INTERFACE SolidSyslogTunables)
@@ -67,7 +67,4 @@ target_link_libraries(SolidSyslogLwipRawDnsResolver INTERFACE SolidSyslogLwipRaw
 
 add_library(SolidSyslog::LwipRawDnsResolver ALIAS SolidSyslogLwipRawDnsResolver)
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Interface/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.h"
-)
+solidsyslog_install_public_headers()

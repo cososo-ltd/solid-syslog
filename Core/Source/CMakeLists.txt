@@ -83,7 +83,7 @@ endif()
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 
 target_include_directories(${PROJECT_NAME}
-    PUBLIC  ${CMAKE_SOURCE_DIR}/Core/Interface
+    PUBLIC  ${SolidSyslog_SOURCE_DIR}/Core/Interface
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -93,13 +93,17 @@ if(SOLIDSYSLOG_POSIX)
     target_link_libraries(${PROJECT_NAME} PUBLIC rt)
 endif()
 
-include(GNUInstallDirs)
+# Top-level only — see solidsyslog_install_public_headers() in the root
+# CMakeLists for why a nested build installs nothing.
+if(SOLIDSYSLOG_IS_TOP_LEVEL)
+    include(GNUInstallDirs)
 
-install(TARGETS ${PROJECT_NAME}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
+    install(TARGETS ${PROJECT_NAME}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    )
 
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/Core/Interface/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.h"
-)
+    install(DIRECTORY ${SolidSyslog_SOURCE_DIR}/Core/Interface/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILES_MATCHING PATTERN "*.h"
+    )
+endif()

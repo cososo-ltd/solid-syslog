@@ -29,7 +29,7 @@ if(ENABLE_IWYU)
     find_program(BASH_EXECUTABLE NAMES bash REQUIRED)
 
     set(_iwyu_mapping_dir "/usr/local/share/include-what-you-use")
-    set(_iwyu_filter "${CMAKE_SOURCE_DIR}/scripts/iwyu_filter.py")
+    set(_iwyu_filter "${SolidSyslog_SOURCE_DIR}/scripts/iwyu_filter.py")
 
     # No explicit source-file list — iwyu_tool.py iterates every entry in
     # compile_commands.json, so the active configuration's sources are exactly
@@ -42,20 +42,20 @@ if(ENABLE_IWYU)
     # gets a chance to suppress benign findings. Instead, IWYU always exits 0
     # and scripts/iwyu_filter.py is the authoritative gate.
     set(_iwyu_invocation
-        "${IWYU_TOOL} -p ${CMAKE_BINARY_DIR} -- \
+        "${IWYU_TOOL} -p ${SolidSyslog_BINARY_DIR} -- \
 -Xiwyu --check_also=*Interface/*.h \
 -Xiwyu --check_also=*Bdd/Targets/*/*.h \
 -Xiwyu --check_also=*Tests/*.h \
 -Xiwyu --mapping_file=${_iwyu_mapping_dir}/gcc.libc.imp \
 -Xiwyu --mapping_file=${_iwyu_mapping_dir}/stl.c.headers.imp \
 -Xiwyu --mapping_file=${_iwyu_mapping_dir}/stl.public.imp \
--Xiwyu --mapping_file=${CMAKE_SOURCE_DIR}/cmake/cpputest.imp"
+-Xiwyu --mapping_file=${SolidSyslog_SOURCE_DIR}/cmake/cpputest.imp"
     )
 
     add_custom_target(iwyu
         COMMAND "${BASH_EXECUTABLE}" -c
             "set -o pipefail; ${_iwyu_invocation} | python3 ${_iwyu_filter}"
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        WORKING_DIRECTORY "${SolidSyslog_SOURCE_DIR}"
         COMMENT "Running include-what-you-use (filtered) over Core/, Platform/, Bdd/Targets/"
         VERBATIM
         USES_TERMINAL
@@ -64,7 +64,7 @@ if(ENABLE_IWYU)
     add_custom_target(iwyu-apply
         COMMAND "${BASH_EXECUTABLE}" -c
             "${_iwyu_invocation} | python3 ${_iwyu_filter} --filter-only | ${IWYU_FIX} --nosafe_headers"
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        WORKING_DIRECTORY "${SolidSyslog_SOURCE_DIR}"
         COMMENT "Applying include-what-you-use suggestions (filtered)"
         VERBATIM
         USES_TERMINAL

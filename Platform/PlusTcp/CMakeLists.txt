@@ -35,14 +35,11 @@ target_sources(SolidSyslogPlusTcp INTERFACE
 target_include_directories(SolidSyslogPlusTcp INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Interface
     ${CMAKE_CURRENT_SOURCE_DIR}/Source          # SolidSyslogPlusTcp*Private.h
-    ${CMAKE_SOURCE_DIR}/Core/Source             # SolidSyslogPoolAllocator.h
+    ${SolidSyslog_SOURCE_DIR}/Core/Source             # SolidSyslogPoolAllocator.h
 )
 
 target_link_libraries(SolidSyslogPlusTcp INTERFACE SolidSyslogTunables)
 
 add_library(SolidSyslog::PlusTcp ALIAS SolidSyslogPlusTcp)
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Interface/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.h"
-)
+solidsyslog_install_public_headers()
