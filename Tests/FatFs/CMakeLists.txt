@@ -32,7 +32,7 @@ target_include_directories(SolidSyslogFatFsFileTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Tests/Support
     ${CMAKE_SOURCE_DIR}/Tests/Support/FatFsFakes/Interface
     ${CMAKE_SOURCE_DIR}/Tests/Support/FatFsFakes/Source
-    $ENV{FATFS_PATH}/source
+    ${SOLIDSYSLOG_FATFS_PATH}/source
 )
 
 add_test(NAME SolidSyslogFatFsFileTest COMMAND SolidSyslogFatFsFileTest)

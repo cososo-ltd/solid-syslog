@@ -207,25 +207,192 @@ if(SOLIDSYSLOG_OPENSSL)
     endif()
 endif()
 
-# mbedTLS-based TLS is the embedded-target reference TLS backend (OpenSSL is too
-# large for Cortex-M). Default ON when the MBEDTLS_DIR environment variable is
-# set (the cpputest-freertos devcontainer image provides /opt/mbedtls); pass
-# -DSOLIDSYSLOG_MBEDTLS=OFF to disable explicitly. Unlike OpenSSL there is no
-# find_package — mbedTLS is header-configured (mbedtls_config.h changes ABI),
-# so the adapter ships as an INTERFACE pack and consumers compile the sources
-# themselves with their own config. See Platform/MbedTls/CMakeLists.txt.
-if(DEFINED ENV{MBEDTLS_DIR})
-    set(_solidsyslog_mbedtls_default ON)
-else()
-    set(_solidsyslog_mbedtls_default OFF)
+# Header-configured platform packs (S30.05).
+#
+# Unlike the host roles above, these have no find_package and no compile probe:
+# each is header-configured (lwipopts.h, FreeRTOSConfig.h, mbedtls_config.h and
+# ffconf.h all change layout and behaviour), so the pack ships as an INTERFACE
+# library carrying its own adapter sources and the consumer compiles them
+# against their own config. A pack therefore never needs to know where its
+# upstream tree lives — the consumer's target is what puts lwip/*.h, FreeRTOS.h,
+# mbedtls/*.h and ff.h on the include path.
+#
+# Selection is one switch per pack, defaulting to "the matching upstream path is
+# on the environment". That default is what every preset, devcontainer service
+# and CI lane here already expresses, so all of them configure exactly as
+# before. What it adds is a way to say so explicitly: an integrator who vendors
+# lwIP inside their own tree and exports nothing passes -DSOLIDSYSLOG_LWIP=ON.
+# Before S30.05 the environment was the only vocabulary, so that integrator got
+# a silently absent pack and a generate-time "target not found" naming
+# SolidSyslog::LwipRaw with nothing pointing at the cause.
+#
+# The upstream paths have not gone away — our own unit tests and BDD targets
+# compile against the real upstream headers and still need them. They are
+# separate variables, demanded only where they are genuinely used.
+function(solidsyslog_declare_pack option_name help environment_fallback)
+    if(DEFINED ENV{${environment_fallback}})
+        set(selected_by_default ON)
+    else()
+        set(selected_by_default OFF)
+    endif()
+    option(${option_name} "${help}" ${selected_by_default})
+endfunction()
+
+solidsyslog_declare_pack(SOLIDSYSLOG_FREERTOS
+    "Include the FreeRTOS platform pack (Mutex, SysUpTime, and the Plus-TCP networking adapters)"
+    FREERTOS_KERNEL_PATH)
+
+solidsyslog_declare_pack(SOLIDSYSLOG_LWIP
+    "Include the lwIP Raw API platform pack (Address, Resolver, Datagram, TcpStream)"
+    LWIP_PATH)
+
+# The embedded-target reference TLS backend — OpenSSL is too large for Cortex-M.
+solidsyslog_declare_pack(SOLIDSYSLOG_MBEDTLS
+    "Include mbedTLS-based TLS support"
+    MBEDTLS_DIR)
+
+solidsyslog_declare_pack(SOLIDSYSLOG_FATFS
+    "Include the ChaN FatFs platform pack (File)"
+    FATFS_PATH)
+
+solidsyslog_declare_pack(SOLIDSYSLOG_PLUSFAT
+    "Include the FreeRTOS-Plus-FAT platform pack (File)"
+    FREERTOS_PLUS_FAT_PATH)
+
+# SOLIDSYSLOG_PLATFORMS — state the whole selection on one line instead of one
+# -D per pack:
+#
+#     -DSOLIDSYSLOG_PLATFORMS="LwipRaw;MbedTls"
+#
+# When set it is authoritative: a named pack is on, an unnamed pack is off,
+# whatever the environment happens to say. That is the point — an integrator
+# declares their platforms once and stops depending on the build environment.
+# Unset means today's per-pack defaults, unchanged.
+#
+# It is applied by setting a NORMAL variable per pack, which shadows the cache
+# entry for the rest of this configure. Normal variables are recomputed every
+# run, so editing the list takes effect immediately; writing the cache instead
+# would leave a stale entry that option() would then refuse to update and a
+# later configure would silently honour.
+#
+# Scoped to the header-configured packs deliberately. The host roles are
+# auto-detected, and two of them (the Windows platform check, the C11 atomics
+# probe) are compile probes with no option to drive at all — folding them in
+# would make the list only partly authoritative, which is worse than a boundary
+# that can be stated. POSIX, Winsock and OpenSSL already have their own
+# -DSOLIDSYSLOG_POSIX=OFF switches, so nothing here is unreachable.
+#
+# Registry of every selectable pack: the token an integrator writes, and the
+# option it drives. Column-aligned so the two lists cannot drift unnoticed.
+set(SOLIDSYSLOG_PLATFORM_TOKENS  LwipRaw          FreeRtos             MbedTls             FatFs             PlusFat)
+set(SOLIDSYSLOG_PLATFORM_OPTIONS SOLIDSYSLOG_LWIP SOLIDSYSLOG_FREERTOS SOLIDSYSLOG_MBEDTLS SOLIDSYSLOG_FATFS SOLIDSYSLOG_PLUSFAT)
+
+set(SOLIDSYSLOG_PLATFORMS "" CACHE STRING
+    "Platform packs to build, e.g. LwipRaw;FreeRtos;MbedTls. Empty selects each pack from its own option.")
+
+if(SOLIDSYSLOG_PLATFORMS)
+    foreach(requested_platform IN LISTS SOLIDSYSLOG_PLATFORMS)
+        if(NOT requested_platform IN_LIST SOLIDSYSLOG_PLATFORM_TOKENS)
+            message(FATAL_ERROR
+                "SOLIDSYSLOG_PLATFORMS names an unknown platform '${requested_platform}'. "
+                "Valid platforms: ${SOLIDSYSLOG_PLATFORM_TOKENS}. The host roles (POSIX, "
+                "Winsock, OpenSSL) are auto-detected rather than listed here — turn one "
+                "off with -DSOLIDSYSLOG_POSIX=OFF and friends.")
+        endif()
+    endforeach()
+
+    list(LENGTH SOLIDSYSLOG_PLATFORM_TOKENS solidsyslog_platform_count)
+    math(EXPR solidsyslog_last_platform "${solidsyslog_platform_count} - 1")
+    foreach(platform_index RANGE ${solidsyslog_last_platform})
+        list(GET SOLIDSYSLOG_PLATFORM_TOKENS  ${platform_index} platform_token)
+        list(GET SOLIDSYSLOG_PLATFORM_OPTIONS ${platform_index} platform_option)
+        if(platform_token IN_LIST SOLIDSYSLOG_PLATFORMS)
+            set(${platform_option} ON)
+        else()
+            set(${platform_option} OFF)
+        endif()
+    endforeach()
 endif()
-option(SOLIDSYSLOG_MBEDTLS "Include mbedTLS-based TLS support" ${_solidsyslog_mbedtls_default})
-unset(_solidsyslog_mbedtls_default)
-if(SOLIDSYSLOG_MBEDTLS AND NOT DEFINED ENV{MBEDTLS_DIR})
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_MBEDTLS=ON but MBEDTLS_DIR is not set; "
-        "export MBEDTLS_DIR=/path/to/mbedtls or pass -DSOLIDSYSLOG_MBEDTLS=OFF.")
+
+# What actually got selected, however it was selected. One line, and it answers
+# the question this whole section exists to make answerable: did my -D take?
+set(solidsyslog_selected_packs "")
+list(LENGTH SOLIDSYSLOG_PLATFORM_TOKENS solidsyslog_platform_count)
+math(EXPR solidsyslog_last_platform "${solidsyslog_platform_count} - 1")
+foreach(platform_index RANGE ${solidsyslog_last_platform})
+    list(GET SOLIDSYSLOG_PLATFORM_TOKENS  ${platform_index} platform_token)
+    list(GET SOLIDSYSLOG_PLATFORM_OPTIONS ${platform_index} platform_option)
+    if(${platform_option})
+        list(APPEND solidsyslog_selected_packs ${platform_token})
+    endif()
+endforeach()
+if(NOT solidsyslog_selected_packs)
+    set(solidsyslog_selected_packs "(none)")
 endif()
+message(STATUS "SolidSyslog platform packs: ${solidsyslog_selected_packs}")
+
+# Where each upstream tree lives. Selecting a pack does not need this — the pack
+# carries its sources and the consumer's own target supplies the headers. What
+# needs it is OUR unit tests and BDD targets, which compile against the real
+# upstream. Cache variables with the same environment fallback, so every
+# container and CI lane that exports these keeps working untouched, and anyone
+# with a hand-placed checkout can pass -DSOLIDSYSLOG_LWIP_PATH=... instead of
+# arranging their shell. A -D on the command line wins: set() without FORCE
+# leaves an existing cache entry alone.
+function(solidsyslog_declare_path variable_name help environment_fallback)
+    set(${variable_name} "$ENV{${environment_fallback}}" CACHE PATH "${help}")
+endfunction()
+
+solidsyslog_declare_path(SOLIDSYSLOG_FREERTOS_KERNEL_PATH
+    "Path to the FreeRTOS-Kernel source tree (SolidSyslog's own tests and BDD targets only)"
+    FREERTOS_KERNEL_PATH)
+
+solidsyslog_declare_path(SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH
+    "Path to the FreeRTOS-Plus-TCP source tree (SolidSyslog's own tests and BDD targets only)"
+    FREERTOS_PLUS_TCP_PATH)
+
+solidsyslog_declare_path(SOLIDSYSLOG_FREERTOS_PLUS_FAT_PATH
+    "Path to the FreeRTOS-Plus-FAT source tree (SolidSyslog's own tests and BDD targets only)"
+    FREERTOS_PLUS_FAT_PATH)
+
+solidsyslog_declare_path(SOLIDSYSLOG_LWIP_PATH
+    "Path to the lwIP source tree (SolidSyslog's own tests and BDD targets only)"
+    LWIP_PATH)
+
+solidsyslog_declare_path(SOLIDSYSLOG_MBEDTLS_DIR
+    "Path to the Mbed TLS source tree (SolidSyslog's own tests and BDD targets only)"
+    MBEDTLS_DIR)
+
+solidsyslog_declare_path(SOLIDSYSLOG_FATFS_PATH
+    "Path to the ChaN FatFs source tree (SolidSyslog's own tests and BDD targets only)"
+    FATFS_PATH)
+
+# Selecting a pack without telling us where its upstream lives is perfectly
+# valid for a consumer, and impossible for our own suite. Name the variable to
+# set rather than failing three directories down on a missing lwip/opt.h.
+function(solidsyslog_require_path_for_tests pack_option path_variable environment_fallback)
+    if(SOLIDSYSLOG_BUILD_TESTING AND ${pack_option} AND NOT ${path_variable})
+        message(FATAL_ERROR
+            "${pack_option}=ON with SOLIDSYSLOG_BUILD_TESTING=ON, but ${path_variable} "
+            "is empty. The pack itself needs no path — its sources compile against your "
+            "config header — but SolidSyslog's own tests compile against the real "
+            "upstream headers. Pass -D${path_variable}=/path/to/tree, export "
+            "${environment_fallback}, or turn the pack off with -D${pack_option}=OFF.")
+    endif()
+endfunction()
+
+solidsyslog_require_path_for_tests(SOLIDSYSLOG_FREERTOS
+    SOLIDSYSLOG_FREERTOS_KERNEL_PATH FREERTOS_KERNEL_PATH)
+solidsyslog_require_path_for_tests(SOLIDSYSLOG_LWIP
+    SOLIDSYSLOG_LWIP_PATH LWIP_PATH)
+solidsyslog_require_path_for_tests(SOLIDSYSLOG_MBEDTLS
+    SOLIDSYSLOG_MBEDTLS_DIR MBEDTLS_DIR)
+solidsyslog_require_path_for_tests(SOLIDSYSLOG_FATFS
+    SOLIDSYSLOG_FATFS_PATH FATFS_PATH)
+solidsyslog_require_path_for_tests(SOLIDSYSLOG_PLUSFAT
+    SOLIDSYSLOG_FREERTOS_PLUS_FAT_PATH FREERTOS_PLUS_FAT_PATH)
+# Plus-TCP is deliberately absent: Tests/FreeRtos skips only the tests that need
+# it, so a kernel-only environment still builds the UART test.
 
 # Allocation strategy (E11). Currently only "static" ships — internal static
 # pools allocate instance bookkeeping for stateful classes. A future epic
@@ -345,11 +512,11 @@ endif()
 # FreeRTOS adapters ship as sources via INTERFACE libraries — the integrator's
 # FreeRTOSConfig.h / FreeRTOSIPConfig.h flows into each consumer's compile (see
 # project_header_configured_platforms memory). Platform/FreeRtos hosts the
-# RTOS primitives (Mutex, SysUpTime) — always added when FREERTOS_KERNEL_PATH
-# is set, regardless of the chosen networking backend. Platform/PlusTcp hosts
-# the FreeRTOS-Plus-TCP networking adapters (Address/Datagram/Resolver/TcpStream)
-# — added when SOLIDSYSLOG_FREERTOS_NET selects PLUSTCP or BOTH.
-if(DEFINED ENV{FREERTOS_KERNEL_PATH})
+# RTOS primitives (Mutex, SysUpTime) — always added with the pack, regardless of
+# the chosen networking backend. Platform/PlusTcp hosts the FreeRTOS-Plus-TCP
+# networking adapters (Address/Datagram/Resolver/TcpStream) — added when
+# SOLIDSYSLOG_FREERTOS_NET selects PLUSTCP or BOTH.
+if(SOLIDSYSLOG_FREERTOS)
     add_subdirectory(Platform/FreeRtos)
     if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "PLUSTCP"
        OR SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
@@ -357,26 +524,23 @@ if(DEFINED ENV{FREERTOS_KERNEL_PATH})
     endif()
 endif()
 
-# Platform/LwipRaw — OS-agnostic wrapper of lwIP Raw API. Compiles whenever
-# LWIP_PATH is set, independent of FREERTOS_KERNEL_PATH (lwIP runs on bare
-# metal, Zephyr, ThreadX, FreeRTOS, ...). SOLIDSYSLOG_FREERTOS_NET only
-# governs which adapter pack the FreeRTOS BDD target links against — it
-# does not gate this library's existence.
-if(DEFINED ENV{LWIP_PATH})
+# Platform/LwipRaw — OS-agnostic wrapper of lwIP Raw API. Selected independently
+# of SOLIDSYSLOG_FREERTOS (lwIP runs on bare metal, Zephyr, ThreadX, FreeRTOS,
+# ...). SOLIDSYSLOG_FREERTOS_NET only governs which adapter pack the FreeRTOS BDD
+# target links against — it does not gate this library's existence.
+if(SOLIDSYSLOG_LWIP)
     add_subdirectory(Platform/LwipRaw)
 endif()
 
 # FatFs adapters likewise ship as sources via an INTERFACE library — the
-# integrator's ffconf.h flows into each consumer's compile. Gated on the
-# upstream FatFs sources being present in the build environment.
-if(DEFINED ENV{FATFS_PATH})
+# integrator's ffconf.h flows into each consumer's compile.
+if(SOLIDSYSLOG_FATFS)
     add_subdirectory(Platform/FatFs)
 endif()
 
 # FreeRTOS-Plus-FAT adapters ship as sources via an INTERFACE library too — the
-# integrator's FreeRTOSFATConfig.h flows into each consumer's compile. Gated on
-# the upstream Plus-FAT sources being present in the build environment.
-if(DEFINED ENV{FREERTOS_PLUS_FAT_PATH})
+# integrator's FreeRTOSFATConfig.h flows into each consumer's compile.
+if(SOLIDSYSLOG_PLUSFAT)
     add_subdirectory(Platform/PlusFat)
 endif()
 

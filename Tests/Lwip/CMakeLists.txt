@@ -24,7 +24,7 @@ set(LWIP_TEST_INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/Core/Source
     ${CMAKE_SOURCE_DIR}/Tests/Support
     ${CMAKE_SOURCE_DIR}/Tests/Support/LwipFakes/Interface
-    $ENV{LWIP_PATH}/src/include
+    ${SOLIDSYSLOG_LWIP_PATH}/src/include
 )
 
 # lwIP host-side fakes — recompiled into each test exe that needs them, mirroring
@@ -43,8 +43,8 @@ set(LWIP_FAKE_SOURCES
 # Our own Platform/LwipRaw/Source/ files in the test executables below
 # remain cppchecked because their target's default C_CPPCHECK is honoured.
 add_library(LwipUpstreamParser STATIC
-    $ENV{LWIP_PATH}/src/core/ipv4/ip4_addr.c
-    $ENV{LWIP_PATH}/src/core/def.c
+    ${SOLIDSYSLOG_LWIP_PATH}/src/core/ipv4/ip4_addr.c
+    ${SOLIDSYSLOG_LWIP_PATH}/src/core/def.c
 )
 target_include_directories(LwipUpstreamParser PRIVATE ${LWIP_TEST_INCLUDE_DIRS})
 set_target_properties(LwipUpstreamParser PROPERTIES

@@ -106,21 +106,44 @@ later epic, but the seams exist today.)
 
 ## Path A — CMake consumer
 
-Selection is auto-detect plus environment variables pointing at your upstream
-trees:
+State the platforms you want and link them. Nothing needs to be arranged in
+your shell:
+
+```bash
+cmake -S . -B build -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos;MbedTls"
+```
+
+Named packs are on, unnamed packs are off. Each also has its own switch —
+`-DSOLIDSYSLOG_LWIP=ON`, `-DSOLIDSYSLOG_FREERTOS=ON`, `-DSOLIDSYSLOG_MBEDTLS=ON`,
+`-DSOLIDSYSLOG_FATFS=ON`, `-DSOLIDSYSLOG_PLUSFAT=ON` — if you would rather set
+them individually. Every configure prints what it selected:
+
+```text
+-- SolidSyslog platform packs: LwipRaw;FreeRtos;MbedTls
+```
+
+Leave `SOLIDSYSLOG_PLATFORMS` unset and each pack falls back to whether its
+upstream path is on the environment (`FREERTOS_KERNEL_PATH`, `LWIP_PATH`,
+`MBEDTLS_DIR`, `FATFS_PATH`, `FREERTOS_PLUS_FAT_PATH`). That is how this repo's
+own containers work, and it is a convenience, not the contract — your build
+should not have to depend on it.
+
+Two things are chosen separately:
 
 - Host roles (POSIX / Winsock / OpenSSL / C11 atomics) are auto-detected
   (`find_package(OpenSSL)`, `check_symbol_exists`, an `_Atomic` compile probe)
-  and baked into `libSolidSyslog.a`.
-- Embedded upstreams are located by env var: `FREERTOS_KERNEL_PATH`, `LWIP_PATH`,
-  `MBEDTLS_DIR`, `FATFS_PATH`, `FREERTOS_PLUS_FAT_PATH`.
+  and baked into `libSolidSyslog.a`. Turn one off with `-DSOLIDSYSLOG_POSIX=OFF`
+  and friends. They are not part of `SOLIDSYSLOG_PLATFORMS`: two of them are
+  compile probes with no switch to drive, so listing them would make the list
+  only partly authoritative.
 - The FreeRTOS networking backend is chosen with
   `-DSOLIDSYSLOG_FREERTOS_NET=PLUSTCP|LWIP|BOTH`.
 
-The header-configured packs ship as namespaced umbrella targets: link one
-per platform and the adapter sources compile into your target against your
-config header, with the SolidSyslog-side include dirs carried automatically (you
-still point at your own upstream trees):
+You do not tell SolidSyslog where your upstream trees live. The packs ship as
+namespaced umbrella targets carrying their own sources: link one and the adapter
+sources compile into *your* target against *your* config header, so your target
+is already what puts `lwip/*.h`, `FreeRTOS.h`, `mbedtls/*.h` and `ff.h` on the
+include path. The SolidSyslog-side include dirs come with the pack:
 
 ```cmake
 target_link_libraries(my_app PRIVATE
@@ -136,6 +159,37 @@ Available umbrellas: `SolidSyslog::FreeRtos`, `SolidSyslog::PlusTcp`,
 `LWIP_DNS=1`), so it sits outside the umbrella as an opt-in component,
 `SolidSyslog::LwipRawDnsResolver` (linking it also pulls the `LwipRaw` umbrella).
 A numeric-only lwIP build links `SolidSyslog::LwipRaw` and never enables DNS.
+
+Put together, a consumer is one `FetchContent` block, one selection, and one
+link line:
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(SolidSyslog
+    GIT_REPOSITORY https://github.com/cososo-ltd/solid-syslog.git
+    GIT_TAG        main)
+set(SOLIDSYSLOG_PLATFORMS "LwipRaw;FreeRtos" CACHE STRING "")
+FetchContent_MakeAvailable(SolidSyslog)
+
+add_executable(my_app main.c)
+target_link_libraries(my_app PRIVATE
+    SolidSyslog SolidSyslog::LwipRaw SolidSyslog::FreeRtos)
+
+# Yours, because the pack sources compile into your target.
+target_include_directories(my_app PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/config      # lwipopts.h, arch/cc.h, FreeRTOSConfig.h
+    ${MY_LWIP_TREE}/src/include
+    ${MY_FREERTOS_KERNEL}/include
+    ${MY_FREERTOS_KERNEL}/portable/GCC/ARM_CM3)
+```
+
+[`ci/consumer-smoke/`](../ci/consumer-smoke/) is that project, kept honest by
+CI: it cross-builds with the environment scrubbed, so the only thing selecting
+a pack is `SOLIDSYSLOG_PLATFORMS`.
+
+SolidSyslog also has `SOLIDSYSLOG_LWIP_PATH` and siblings. Those build
+*SolidSyslog's own* unit tests and BDD targets against the real upstream
+headers — a consumer never sets them.
 
 See the worked target wiring in
 [`Bdd/Targets/FreeRtos/`](../Bdd/Targets/FreeRtos/) and

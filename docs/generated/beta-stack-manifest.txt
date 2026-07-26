@@ -62,8 +62,6 @@ Core/Source/SolidSyslogBlockDevice.c
 Core/Source/SolidSyslogFileBlockDevice.c
 Core/Source/SolidSyslogFileBlockDeviceStatic.c
 Core/Source/SolidSyslogUdpPayload.c
-Core/Source/SolidSyslogAtomicCounter.c
-Core/Source/SolidSyslogNullAtomicCounter.c
 Core/Source/SolidSyslogResolver.c
 Core/Source/SolidSyslogNullResolver.c
 Core/Source/SolidSyslogDatagram.c
@@ -72,6 +70,8 @@ Core/Source/SolidSyslogUdpSender.c
 Core/Source/SolidSyslogUdpSenderStatic.c
 Core/Source/SolidSyslogStreamSender.c
 Core/Source/SolidSyslogStreamSenderStatic.c
+Core/Source/SolidSyslogAtomicCounter.c
+Core/Source/SolidSyslogNullAtomicCounter.c
 
 # LwipRaw:
 Platform/LwipRaw/Source/SolidSyslogLwipRawAddress.c
