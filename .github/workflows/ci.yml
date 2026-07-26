@@ -1384,9 +1384,9 @@ jobs:
   # Anti-drift gate (S30.03): regenerate the committed beta-stack integration
   # manifest from CMake and fail if it differs from what is checked in. Keeps
   # docs/generated/beta-stack-manifest.txt honest against the pack source lists
-  # (the generator reads each pack's INTERFACE_SOURCES). Uses the cpputest-freertos
-  # image because it exports the FreeRTOS / lwIP / Mbed TLS / FatFs upstream paths,
-  # so every SolidSyslog::* pack target the manifest references is defined.
+  # (the generator reads each pack's INTERFACE_SOURCES). The stack is stated in
+  # SOLIDSYSLOG_PLATFORMS rather than inherited from the image's environment, so
+  # the manifest describes the packs this gate means to describe (S30.05).
   verify-manifest:
     runs-on: ubuntu-latest
     container:
@@ -1406,6 +1406,7 @@ jobs:
         shell: bash
         run: |
           cmake -S . -B build/manifest -DSOLIDSYSLOG_BUILD_TESTING=OFF \
+            -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos;MbedTls;FatFs" \
             -DSOLIDSYSLOG_MANIFEST_PACKS="LwipRaw;LwipRawDnsResolver;MbedTls;FreeRtos;FatFs" \
             -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/beta-stack-manifest.txt"
 
