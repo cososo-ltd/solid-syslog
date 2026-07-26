@@ -1,7 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
 project(SolidSyslog C CXX)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+# Everything that ships (this file, Core/, Platform/*, cmake/*.cmake) addresses
+# the library tree through SolidSyslog_SOURCE_DIR / SolidSyslog_BINARY_DIR, never
+# CMAKE_SOURCE_DIR / CMAKE_BINARY_DIR. Under FetchContent or add_subdirectory the
+# CMAKE_ forms point at the CONSUMER's tree, so the first thing that used one —
+# the module path below — took the whole configure down. The project()-scoped
+# names are correct at any nesting depth. Tests/ and Bdd/ only ever configure
+# top-level and keep the CMAKE_ forms.
+list(APPEND CMAKE_MODULE_PATH "${SolidSyslog_SOURCE_DIR}/cmake")
 include(LayerGuard)
 solidsyslog_enforce_layering()
 include(Iwyu)
@@ -68,7 +75,7 @@ if(ENABLE_CPPCHECK)
             "--enable=warning,style,performance,portability"
             "--error-exitcode=1"
             "--suppress=missingIncludeSystem"
-            "--suppressions-list=${CMAKE_SOURCE_DIR}/cppcheck_suppressions_tests.txt"
+            "--suppressions-list=${SolidSyslog_SOURCE_DIR}/cppcheck_suppressions_tests.txt"
             "--inline-suppr"
             "--std=c11"
         )
@@ -78,7 +85,7 @@ if(ENABLE_CPPCHECK)
             "--error-exitcode=1"
             "--suppress=missingIncludeSystem"
             "--suppress=useStlAlgorithm"
-            "--suppressions-list=${CMAKE_SOURCE_DIR}/cppcheck_suppressions_tests.txt"
+            "--suppressions-list=${SolidSyslog_SOURCE_DIR}/cppcheck_suppressions_tests.txt"
             "--inline-suppr"
             "--std=c++17"
         )
@@ -220,7 +227,7 @@ endif()
 # they want to change. Defaults live in Core/Interface/SolidSyslogTunablesDefaults.h.
 add_library(SolidSyslogTunables INTERFACE)
 target_include_directories(SolidSyslogTunables INTERFACE
-    ${CMAKE_SOURCE_DIR}/Core/Interface)
+    ${SolidSyslog_SOURCE_DIR}/Core/Interface)
 if(SOLIDSYSLOG_USER_TUNABLES_FILE)
     target_compile_definitions(SolidSyslogTunables INTERFACE
         SOLIDSYSLOG_USER_TUNABLES_FILE="${SOLIDSYSLOG_USER_TUNABLES_FILE}")
@@ -232,7 +239,7 @@ endif()
 # is in effect and defines the macro, use its value instead. The generated
 # file is written to the source tree because behave's import discovery
 # expects modules under Bdd/features/steps/; it is gitignored.
-file(READ "${CMAKE_SOURCE_DIR}/Core/Interface/SolidSyslogTunablesDefaults.h" _solidsyslog_defaults)
+file(READ "${SolidSyslog_SOURCE_DIR}/Core/Interface/SolidSyslogTunablesDefaults.h" _solidsyslog_defaults)
 string(REGEX MATCH "#define[ \t]+SOLIDSYSLOG_MAX_MESSAGE_SIZE[ \t]+([0-9]+)" _ "${_solidsyslog_defaults}")
 set(SOLIDSYSLOG_BDD_MAX_MESSAGE_SIZE "${CMAKE_MATCH_1}")
 if(SOLIDSYSLOG_USER_TUNABLES_FILE AND EXISTS "${SOLIDSYSLOG_USER_TUNABLES_FILE}")
@@ -243,8 +250,8 @@ if(SOLIDSYSLOG_USER_TUNABLES_FILE AND EXISTS "${SOLIDSYSLOG_USER_TUNABLES_FILE}"
     endif()
 endif()
 configure_file(
-    "${CMAKE_SOURCE_DIR}/Bdd/features/steps/solidsyslog_tunables.py.in"
-    "${CMAKE_SOURCE_DIR}/Bdd/features/steps/solidsyslog_tunables.py"
+    "${SolidSyslog_SOURCE_DIR}/Bdd/features/steps/solidsyslog_tunables.py.in"
+    "${SolidSyslog_SOURCE_DIR}/Bdd/features/steps/solidsyslog_tunables.py"
     @ONLY
 )
 

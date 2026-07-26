@@ -11,7 +11,7 @@
 # Empty (the default) means "every SolidSyslog::<Pack> target that this configure
 # defined". Core is always included.
 #
-# Output: written to ${CMAKE_BINARY_DIR}/solidsyslog-manifest.txt at configure
+# Output: written to ${SolidSyslog_BINARY_DIR}/solidsyslog-manifest.txt at configure
 # time, and printed by `cmake --build <dir> --target manifest`. If
 # SOLIDSYSLOG_MANIFEST_OUTPUT is set it is ALSO written there (used to refresh the
 # committed docs/generated sample, which CI diff-checks for drift).
@@ -40,7 +40,7 @@ set(_SOLIDSYSLOG_MANIFEST_CFG_PlusFat            "FreeRTOSFATConfig.h")
 function(_solidsyslog_manifest_relpath OUT_VAR PATH)
     set(_p "${PATH}")
     if(IS_ABSOLUTE "${_p}")
-        file(RELATIVE_PATH _p "${CMAKE_SOURCE_DIR}" "${_p}")
+        file(RELATIVE_PATH _p "${SolidSyslog_SOURCE_DIR}" "${_p}")
     endif()
     set(${OUT_VAR} "${_p}" PARENT_SCOPE)
 endfunction()
@@ -162,7 +162,7 @@ function(solidsyslog_generate_manifest)
     endforeach()
 
     # --- Emit -----------------------------------------------------------------
-    set(_out "${CMAKE_BINARY_DIR}/solidsyslog-manifest.txt")
+    set(_out "${SolidSyslog_BINARY_DIR}/solidsyslog-manifest.txt")
     file(WRITE "${_out}" "${_m}")
     set(SOLIDSYSLOG_MANIFEST_FILE "${_out}" CACHE INTERNAL "Generated manifest path")
     if(SOLIDSYSLOG_MANIFEST_OUTPUT)
@@ -174,7 +174,7 @@ function(solidsyslog_generate_manifest)
     if(NOT TARGET manifest)
         add_custom_target(manifest
             COMMAND ${CMAKE_COMMAND} -DSOLIDSYSLOG_MANIFEST_FILE=${_out}
-                    -P ${CMAKE_SOURCE_DIR}/cmake/PrintManifest.cmake
+                    -P ${SolidSyslog_SOURCE_DIR}/cmake/PrintManifest.cmake
             VERBATIM
             COMMENT "SolidSyslog integration manifest (${_selected_display})")
     endif()
