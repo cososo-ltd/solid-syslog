@@ -15,31 +15,31 @@
 # Platform/LwipRaw + Platform/FreeRtos adapters, and the shared BddTarget
 # sources) stays in the executable under the strict project warning bar.
 
-set(FREERTOS_KERNEL_PATH "$ENV{FREERTOS_KERNEL_PATH}")
+set(FREERTOS_KERNEL_PATH "${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}")
 if(NOT FREERTOS_KERNEL_PATH)
     message(FATAL_ERROR
-        "FREERTOS_KERNEL_PATH not set. Use the cpputest-freertos-cross "
+        "SOLIDSYSLOG_FREERTOS_KERNEL_PATH is empty (falls back to $FREERTOS_KERNEL_PATH). Use the cpputest-freertos-cross "
         "container, which sets this to /opt/freertos/kernel.")
 endif()
 
-set(LWIP_DIR "$ENV{LWIP_PATH}")
+set(LWIP_DIR "${SOLIDSYSLOG_LWIP_PATH}")
 if(NOT LWIP_DIR)
     message(FATAL_ERROR
-        "LWIP_PATH not set. Use the cpputest-freertos-cross container, "
+        "SOLIDSYSLOG_LWIP_PATH is empty (falls back to $LWIP_PATH). Use the cpputest-freertos-cross container, "
         "which sets this to /opt/lwip.")
 endif()
 
-set(MBEDTLS_SOURCE_DIR "$ENV{MBEDTLS_DIR}")
+set(MBEDTLS_SOURCE_DIR "${SOLIDSYSLOG_MBEDTLS_DIR}")
 if(NOT EXISTS "${MBEDTLS_SOURCE_DIR}/CMakeLists.txt")
     message(FATAL_ERROR
-        "MBEDTLS_DIR not set or invalid. Use the cpputest-freertos-cross "
+        "SOLIDSYSLOG_MBEDTLS_DIR is empty or invalid (falls back to $MBEDTLS_DIR). Use the cpputest-freertos-cross "
         "container, which sets this to /opt/mbedtls.")
 endif()
 
-set(FATFS_PATH "$ENV{FATFS_PATH}")
+set(FATFS_PATH "${SOLIDSYSLOG_FATFS_PATH}")
 if(NOT FATFS_PATH)
     message(FATAL_ERROR
-        "FATFS_PATH not set. Use the cpputest-freertos-cross container, "
+        "SOLIDSYSLOG_FATFS_PATH is empty (falls back to $FATFS_PATH). Use the cpputest-freertos-cross container, "
         "which sets this to /opt/fatfs.")
 endif()
 

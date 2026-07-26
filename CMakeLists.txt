@@ -259,6 +259,69 @@ solidsyslog_declare_pack(SOLIDSYSLOG_PLUSFAT
     "Include the FreeRTOS-Plus-FAT platform pack (File)"
     FREERTOS_PLUS_FAT_PATH)
 
+# Where each upstream tree lives. Selecting a pack does not need this — the pack
+# carries its sources and the consumer's own target supplies the headers. What
+# needs it is OUR unit tests and BDD targets, which compile against the real
+# upstream. Cache variables with the same environment fallback, so every
+# container and CI lane that exports these keeps working untouched, and anyone
+# with a hand-placed checkout can pass -DSOLIDSYSLOG_LWIP_PATH=... instead of
+# arranging their shell. A -D on the command line wins: set() without FORCE
+# leaves an existing cache entry alone.
+function(solidsyslog_declare_path variable_name help environment_fallback)
+    set(${variable_name} "$ENV{${environment_fallback}}" CACHE PATH "${help}")
+endfunction()
+
+solidsyslog_declare_path(SOLIDSYSLOG_FREERTOS_KERNEL_PATH
+    "Path to the FreeRTOS-Kernel source tree (SolidSyslog's own tests and BDD targets only)"
+    FREERTOS_KERNEL_PATH)
+
+solidsyslog_declare_path(SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH
+    "Path to the FreeRTOS-Plus-TCP source tree (SolidSyslog's own tests and BDD targets only)"
+    FREERTOS_PLUS_TCP_PATH)
+
+solidsyslog_declare_path(SOLIDSYSLOG_FREERTOS_PLUS_FAT_PATH
+    "Path to the FreeRTOS-Plus-FAT source tree (SolidSyslog's own tests and BDD targets only)"
+    FREERTOS_PLUS_FAT_PATH)
+
+solidsyslog_declare_path(SOLIDSYSLOG_LWIP_PATH
+    "Path to the lwIP source tree (SolidSyslog's own tests and BDD targets only)"
+    LWIP_PATH)
+
+solidsyslog_declare_path(SOLIDSYSLOG_MBEDTLS_DIR
+    "Path to the Mbed TLS source tree (SolidSyslog's own tests and BDD targets only)"
+    MBEDTLS_DIR)
+
+solidsyslog_declare_path(SOLIDSYSLOG_FATFS_PATH
+    "Path to the ChaN FatFs source tree (SolidSyslog's own tests and BDD targets only)"
+    FATFS_PATH)
+
+# Selecting a pack without telling us where its upstream lives is perfectly
+# valid for a consumer, and impossible for our own suite. Name the variable to
+# set rather than failing three directories down on a missing lwip/opt.h.
+function(solidsyslog_require_path_for_tests pack_option path_variable environment_fallback)
+    if(SOLIDSYSLOG_BUILD_TESTING AND ${pack_option} AND NOT ${path_variable})
+        message(FATAL_ERROR
+            "${pack_option}=ON with SOLIDSYSLOG_BUILD_TESTING=ON, but ${path_variable} "
+            "is empty. The pack itself needs no path — its sources compile against your "
+            "config header — but SolidSyslog's own tests compile against the real "
+            "upstream headers. Pass -D${path_variable}=/path/to/tree, export "
+            "${environment_fallback}, or turn the pack off with -D${pack_option}=OFF.")
+    endif()
+endfunction()
+
+solidsyslog_require_path_for_tests(SOLIDSYSLOG_FREERTOS
+    SOLIDSYSLOG_FREERTOS_KERNEL_PATH FREERTOS_KERNEL_PATH)
+solidsyslog_require_path_for_tests(SOLIDSYSLOG_LWIP
+    SOLIDSYSLOG_LWIP_PATH LWIP_PATH)
+solidsyslog_require_path_for_tests(SOLIDSYSLOG_MBEDTLS
+    SOLIDSYSLOG_MBEDTLS_DIR MBEDTLS_DIR)
+solidsyslog_require_path_for_tests(SOLIDSYSLOG_FATFS
+    SOLIDSYSLOG_FATFS_PATH FATFS_PATH)
+solidsyslog_require_path_for_tests(SOLIDSYSLOG_PLUSFAT
+    SOLIDSYSLOG_FREERTOS_PLUS_FAT_PATH FREERTOS_PLUS_FAT_PATH)
+# Plus-TCP is deliberately absent: Tests/FreeRtos skips only the tests that need
+# it, so a kernel-only environment still builds the UART test.
+
 # Allocation strategy (E11). Currently only "static" ships — internal static
 # pools allocate instance bookkeeping for stateful classes. A future epic
 # may add "dynamic" (heap-backed). Selecting "dynamic" now errors hard so

@@ -14,8 +14,8 @@
 # is only entered when FREERTOS_PLUS_FAT_PATH is set), and additionally needs
 # FREERTOS_KERNEL_PATH for the kernel headers Plus-FAT depends on.
 
-if("$ENV{FREERTOS_KERNEL_PATH}" STREQUAL "")
-    message(STATUS "Skipping SolidSyslogPlusFatFileTest: FREERTOS_KERNEL_PATH not set.")
+if("${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}" STREQUAL "")
+    message(STATUS "Skipping SolidSyslogPlusFatFileTest: SOLIDSYSLOG_FREERTOS_KERNEL_PATH is empty.")
 else()
     add_executable(SolidSyslogPlusFatFileTest
         SolidSyslogPlusFatFileTest.cpp
@@ -42,8 +42,8 @@ else()
         ${CMAKE_SOURCE_DIR}/Tests/Support/PlusFatFakes/Interface
         ${CMAKE_SOURCE_DIR}/Tests/Support/PlusFatFakes/Source
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
-        $ENV{FREERTOS_KERNEL_PATH}/include
-        $ENV{FREERTOS_PLUS_FAT_PATH}/include
+        ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
+        ${SOLIDSYSLOG_FREERTOS_PLUS_FAT_PATH}/include
     )
 
     add_test(NAME SolidSyslogPlusFatFileTest COMMAND SolidSyslogPlusFatFileTest)

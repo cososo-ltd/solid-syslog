@@ -50,7 +50,7 @@ if(SOLIDSYSLOG_MBEDTLS)
 
     target_include_directories(MbedTlsFakes PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
-        $ENV{MBEDTLS_DIR}/include
+        ${SOLIDSYSLOG_MBEDTLS_DIR}/include
     )
 
     target_link_libraries(MbedTlsFakes PUBLIC ${PROJECT_NAME})

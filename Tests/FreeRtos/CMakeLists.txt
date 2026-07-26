@@ -8,8 +8,8 @@
 # it tests UART board glue and never touches the IP stack. Scope the guard
 # to the datagram test so a minimal FREERTOS_KERNEL_PATH-only environment
 # can still build the UART test.
-if("$ENV{FREERTOS_PLUS_TCP_PATH}" STREQUAL "")
-    message(STATUS "Skipping SolidSyslogPlusTcpDatagramTest: FREERTOS_PLUS_TCP_PATH not set.")
+if("${SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH}" STREQUAL "")
+    message(STATUS "Skipping SolidSyslogPlusTcpDatagramTest: SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH is empty.")
 else()
     add_executable(SolidSyslogPlusTcpDatagramTest
         SolidSyslogPlusTcpDatagramTest.cpp
@@ -40,8 +40,8 @@ else()
         ${CMAKE_SOURCE_DIR}/Core/Source
         ${CMAKE_SOURCE_DIR}/Tests/Support
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
-        $ENV{FREERTOS_KERNEL_PATH}/include
-        $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
+        ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
+        ${SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH}/source/include
     )
 
     add_test(NAME SolidSyslogPlusTcpDatagramTest COMMAND SolidSyslogPlusTcpDatagramTest)
@@ -75,8 +75,8 @@ else()
         ${CMAKE_SOURCE_DIR}/Core/Source
         ${CMAKE_SOURCE_DIR}/Tests/Support
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
-        $ENV{FREERTOS_KERNEL_PATH}/include
-        $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
+        ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
+        ${SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH}/source/include
     )
 
     add_test(NAME SolidSyslogPlusTcpTcpStreamTest COMMAND SolidSyslogPlusTcpTcpStreamTest)
@@ -109,8 +109,8 @@ else()
         ${CMAKE_SOURCE_DIR}/Core/Source
         ${CMAKE_SOURCE_DIR}/Tests/Support
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
-        $ENV{FREERTOS_KERNEL_PATH}/include
-        $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
+        ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
+        ${SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH}/source/include
     )
 
     add_test(NAME SolidSyslogPlusTcpResolverTest COMMAND SolidSyslogPlusTcpResolverTest)
@@ -139,8 +139,8 @@ else()
         ${CMAKE_SOURCE_DIR}/Core/Source
         ${CMAKE_SOURCE_DIR}/Tests/Support
         ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
-        $ENV{FREERTOS_KERNEL_PATH}/include
-        $ENV{FREERTOS_PLUS_TCP_PATH}/source/include
+        ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
+        ${SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH}/source/include
     )
 
     add_test(NAME SolidSyslogPlusTcpAddressTest COMMAND SolidSyslogPlusTcpAddressTest)
@@ -171,7 +171,7 @@ target_include_directories(SolidSyslogFreeRtosMutexTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Core/Source
     ${CMAKE_SOURCE_DIR}/Tests/Support
     ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
-    $ENV{FREERTOS_KERNEL_PATH}/include
+    ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
 )
 
 add_test(NAME SolidSyslogFreeRtosMutexTest COMMAND SolidSyslogFreeRtosMutexTest)
@@ -197,7 +197,7 @@ target_include_directories(SolidSyslogFreeRtosSysUpTimeTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Core/Interface
     ${CMAKE_SOURCE_DIR}/Core/Source
     ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
-    $ENV{FREERTOS_KERNEL_PATH}/include
+    ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
 )
 
 add_test(NAME SolidSyslogFreeRtosSysUpTimeTest COMMAND SolidSyslogFreeRtosSysUpTimeTest)

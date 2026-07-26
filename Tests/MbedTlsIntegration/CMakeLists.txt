@@ -9,7 +9,7 @@
 # to build, no value to us). ENABLE_TESTING is left to the upstream default
 # (OFF when added as a subproject).
 
-set(MBEDTLS_SOURCE_DIR "$ENV{MBEDTLS_DIR}")
+set(MBEDTLS_SOURCE_DIR "${SOLIDSYSLOG_MBEDTLS_DIR}")
 if(NOT EXISTS "${MBEDTLS_SOURCE_DIR}/CMakeLists.txt")
     message(FATAL_ERROR
         "Tests/MbedTlsIntegration requires MBEDTLS_DIR to point at an mbedTLS source tree; "
