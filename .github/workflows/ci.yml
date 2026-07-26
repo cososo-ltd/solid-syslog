@@ -1487,6 +1487,31 @@ jobs:
       - name: Cross-build the consumer project
         run: cmake --build build/consumer-smoke-cross
 
+      # The integrator shape no other lane has (S30.05). Every container here
+      # exports all five upstream paths, so a pack that exists only because the
+      # environment says so looks identical to one that works. Scrubbing the
+      # environment leaves -DSOLIDSYSLOG_PLATFORMS as the only thing that can
+      # select a pack and -D as the only thing that can locate an upstream tree.
+      #
+      # It LINKS the packs rather than asserting their targets exist: the packs
+      # carry their sources into the consumer's target, so "do these compile
+      # against someone else's config header" is the question, and only linking
+      # asks it.
+      - name: Configure the consumer project (scrubbed environment, explicit selection)
+        run: |
+          env -u LWIP_PATH -u FREERTOS_KERNEL_PATH -u MBEDTLS_DIR \
+              -u FATFS_PATH -u FREERTOS_PLUS_FAT_PATH -u FREERTOS_PLUS_TCP_PATH \
+          cmake -S ci/consumer-smoke -B build/consumer-smoke-scrubbed \
+            -DCMAKE_TOOLCHAIN_FILE="$(pwd)/Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake" \
+            -DFETCHCONTENT_SOURCE_DIR_SOLIDSYSLOG="$(pwd)" \
+            -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos" \
+            -DSOLIDSYSLOG_LWIP_PATH=/opt/lwip \
+            -DSOLIDSYSLOG_FREERTOS_KERNEL_PATH=/opt/freertos/kernel \
+            -DSOLIDSYSLOG_SMOKE_LINK_PACKS=ON
+
+      - name: Cross-build and link the packs
+        run: cmake --build build/consumer-smoke-scrubbed
+
       # A nested configure must not write into the dependency's checkout. The BDD
       # tunables mirror is the one that did, and it is gitignored, so check for
       # the file itself as well as for tracked-file drift.

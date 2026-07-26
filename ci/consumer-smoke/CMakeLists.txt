@@ -48,9 +48,11 @@ foreach(_leaked IN ITEMS
     endif()
 endforeach()
 
-# The packs an embedded integrator links. They exist only when the upstream
-# trees are on the environment, which the cross container provides; asserting
-# them here catches a pack that stops being defined under nesting.
+# The weak check, for the lanes that let the environment pick the packs: a pack
+# that stops being defined under nesting is caught here. It cannot catch a pack
+# that is absent BECAUSE the environment is bare — the condition and the bug
+# have the same trigger — which is what SOLIDSYSLOG_SMOKE_LINK_PACKS below is
+# for.
 if(DEFINED ENV{LWIP_PATH} AND NOT TARGET SolidSyslog::LwipRaw)
     message(FATAL_ERROR "LWIP_PATH is set but SolidSyslog::LwipRaw was not defined.")
 endif()
@@ -68,3 +70,40 @@ else()
 endif()
 
 target_link_libraries(consumer_smoke PRIVATE SolidSyslog)
+
+# The strong check (S30.05). Asserting a target exists only proves it was
+# defined; the packs carry their sources into the consumer's target, so the
+# thing that can actually break — do those sources compile and link against a
+# consumer's own config header — is only exercised by linking them.
+#
+# The lane that drives this scrubs the environment first, so the packs can only
+# come from -DSOLIDSYSLOG_PLATFORMS and the paths can only come from -D. That is
+# the shape a real integrator has, and it is the shape no other lane here has:
+# every one of them runs in a container that exports all five paths.
+option(SOLIDSYSLOG_SMOKE_LINK_PACKS
+    "Link the embedded packs rather than only asserting their targets exist" OFF)
+
+if(SOLIDSYSLOG_SMOKE_LINK_PACKS)
+    foreach(required_path IN ITEMS SOLIDSYSLOG_LWIP_PATH SOLIDSYSLOG_FREERTOS_KERNEL_PATH)
+        if(NOT ${required_path})
+            message(FATAL_ERROR
+                "SOLIDSYSLOG_SMOKE_LINK_PACKS=ON needs ${required_path} — the consumer "
+                "compiles the pack sources and must supply the upstream headers itself.")
+        endif()
+    endforeach()
+
+    target_link_libraries(consumer_smoke PRIVATE
+        SolidSyslog::LwipRaw
+        SolidSyslog::LwipRawDnsResolver
+        SolidSyslog::FreeRtos
+    )
+
+    # Exactly what an integrator supplies: their own config headers, then the
+    # upstream trees. SolidSyslog's own include dirs arrive with the packs.
+    target_include_directories(consumer_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/config
+        ${SOLIDSYSLOG_LWIP_PATH}/src/include
+        ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
+        ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3
+    )
+endif()
