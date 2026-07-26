@@ -36,8 +36,9 @@ See [Container images](containers.md) for how to switch.
 ## C99 portability — `c99`
 
 Compiles the library with `CMAKE_C_STANDARD=99` (and `HAVE_STDATOMIC_H=OFF`,
-`BUILD_TESTING=OFF`) to enforce the C99 baseline: catches accidental use of
-later-standard features in production source. Library only; tests are not built.
+`SOLIDSYSLOG_BUILD_TESTING=OFF`) to enforce the C99 baseline: catches accidental
+use of later-standard features in production source. Library only; tests are not
+built.
 
 ```bash
 cmake --preset c99

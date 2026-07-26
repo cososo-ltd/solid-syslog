@@ -57,18 +57,22 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# CppUTest is only needed when the unit-test suite is built. Library-only
-# configurations (e.g. the `c99` portability preset) set BUILD_TESTING=OFF so
-# they configure without it present. Threads is needed more widely (the host
-# BDD targets link it), so it stays outside the BUILD_TESTING guard — but both
+# Our unit suite, under our own name. BUILD_TESTING belongs to CTest: a consumer
+# who calls include(CTest) for their own tests sets it globally, and would then
+# be asked for CppUTest to build a dependency's test suite. Library-only
+# configurations (e.g. the `c99` portability preset) turn this off so they
+# configure without CppUTest present; nested builds default it off.
+#
+# CppUTest is only needed when the suite is built. Threads is needed more widely
+# (the host BDD targets link it), so it stays outside the suite guard — but both
 # are still ours alone: nothing in Core/ or Platform/ links either, so neither
 # find_package runs in a consumer's build.
-option(BUILD_TESTING "Build the unit test suite" ON)
+option(SOLIDSYSLOG_BUILD_TESTING "Build the SolidSyslog unit test suite" ${SOLIDSYSLOG_IS_TOP_LEVEL})
 
 if(SOLIDSYSLOG_IS_TOP_LEVEL AND NOT CMAKE_CROSSCOMPILING)
     find_package(Threads REQUIRED)
 
-    if(BUILD_TESTING)
+    if(SOLIDSYSLOG_BUILD_TESTING)
         find_package(CppUTest REQUIRED)
     endif()
 endif()
@@ -385,7 +389,7 @@ if(SOLIDSYSLOG_IS_TOP_LEVEL
     endif()
 endif()
 
-if(BUILD_TESTING AND NOT CMAKE_CROSSCOMPILING)
+if(SOLIDSYSLOG_BUILD_TESTING AND NOT CMAKE_CROSSCOMPILING)
     enable_testing()
     add_subdirectory(Tests)
 endif()

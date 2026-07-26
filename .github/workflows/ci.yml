@@ -1405,7 +1405,7 @@ jobs:
       - name: Regenerate the beta-stack manifest
         shell: bash
         run: |
-          cmake -S . -B build/manifest -DBUILD_TESTING=OFF \
+          cmake -S . -B build/manifest -DSOLIDSYSLOG_BUILD_TESTING=OFF \
             -DSOLIDSYSLOG_MANIFEST_PACKS="LwipRaw;LwipRawDnsResolver;MbedTls;FreeRtos;FatFs" \
             -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/beta-stack-manifest.txt"
 
