@@ -3,13 +3,19 @@
 # source under test with the FreeRtosFakes config and links against the
 # fakes — see project_header_configured_platforms memory.
 
-# SolidSyslogPlusTcpDatagramTest transitively includes FreeRTOS-Plus-TCP
-# headers, so it requires FREERTOS_PLUS_TCP_PATH. CmsdkUartTest does not —
-# it tests UART board glue and never touches the IP stack. Scope the guard
-# to the datagram test so a minimal FREERTOS_KERNEL_PATH-only environment
-# can still build the UART test.
-if("${SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH}" STREQUAL "")
-    message(STATUS "Skipping SolidSyslogPlusTcpDatagramTest: SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH is empty.")
+# The Plus-TCP tests follow the Plus-TCP platform, not the FreeRTOS one: they
+# exercise Platform/PlusTcp/Source and transitively include FreeRTOS-Plus-TCP
+# headers, so deselecting that platform must take its tests with it. Before
+# S30.06 they rode on SOLIDSYSLOG_FREERTOS, which meant a build that dropped
+# Plus-TCP still compiled its sources here.
+#
+# They also need the upstream tree, which the kernel-only tests below do not —
+# CmsdkUartTest is UART board glue and never touches the IP stack — so a
+# minimal kernel-only environment still builds those.
+if(NOT SOLIDSYSLOG_PLUSTCP)
+    message(STATUS "Skipping the Plus-TCP tests: SOLIDSYSLOG_PLUSTCP is off.")
+elseif("${SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH}" STREQUAL "")
+    message(STATUS "Skipping the Plus-TCP tests: SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH is empty.")
 else()
     add_executable(SolidSyslogPlusTcpDatagramTest
         SolidSyslogPlusTcpDatagramTest.cpp

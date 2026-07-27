@@ -6,11 +6,20 @@ if(SOLIDSYSLOG_POSIX OR (SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM))
     add_subdirectory(Bdd/Targets)
 endif()
 
-# Each pack's unit tests follow the pack's own selection switch, so a lane that
-# turns a pack off stops building its tests too. Unlike the packs, these DO need
-# the upstream tree — they compile against the real lwip/*.h, FreeRTOS.h and ff.h
-# — which is why the top-level CMakeLists demands a path for every selected pack
-# when SOLIDSYSLOG_BUILD_TESTING is on.
+# Each platform's unit tests follow that platform's own switch, so a lane which
+# turns one off stops building its tests too. Unlike the platforms themselves,
+# these DO need the upstream tree — they compile against the real lwip/*.h,
+# FreeRTOS.h and ff.h — which is why the top-level CMakeLists demands a path for
+# every selected platform when SOLIDSYSLOG_BUILD_TESTING is on.
+#
+# A devcontainer build sets no platform list, so both FreeRTOS networking stacks
+# are selected from the environment and both stacks' tests build together — you
+# can work on lwIP and Plus-TCP in one tree without reconfiguring. That has
+# always been true by accident of the gating; say it out loud so a future change
+# to platform selection cannot quietly halve the suite.
+if(SOLIDSYSLOG_LWIP AND SOLIDSYSLOG_PLUSTCP)
+    message(STATUS "SolidSyslog tests: both FreeRTOS networking stacks selected — lwIP and Plus-TCP suites build together.")
+endif()
 if(SOLIDSYSLOG_FREERTOS)
     add_subdirectory(Support/FreeRtosFakes)
     add_subdirectory(FreeRtos)

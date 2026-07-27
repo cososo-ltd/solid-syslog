@@ -92,6 +92,19 @@ if(SOLIDSYSLOG_SMOKE_LINK_PACKS)
         endif()
     endforeach()
 
+    # The list is authoritative, so a platform we did not name must not be here.
+    # Linking proves the named ones work; this proves the unnamed ones are
+    # genuinely absent rather than arriving as a side effect of naming something
+    # else — which is how PlusTcp used to reach a build that asked only for
+    # FreeRtos (S30.06).
+    foreach(_unnamed IN ITEMS PlusTcp MbedTls FatFs PlusFat)
+        if(TARGET SolidSyslog::${_unnamed})
+            message(FATAL_ERROR
+                "SolidSyslog::${_unnamed} exists, but SOLIDSYSLOG_PLATFORMS did not name it "
+                "(asked for: ${SOLIDSYSLOG_PLATFORMS}). The platform list is not authoritative.")
+        endif()
+    endforeach()
+
     target_link_libraries(consumer_smoke PRIVATE
         SolidSyslog::LwipRaw
         SolidSyslog::LwipRawDnsResolver
