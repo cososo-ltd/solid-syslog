@@ -9,7 +9,7 @@ FreeRTOS-Plus-TCP target in [`../FreeRtos/`](../FreeRtos/) — same interactive 
 service-task shape, Common code, startup, linker, and CMSDK UART, with the
 network backend swapped PlusTcp → LwipRaw.
 
-It is selected by `SOLIDSYSLOG_FREERTOS_NET=LWIP` (see the top-level
+It is selected by `SOLIDSYSLOG_BDD_FREERTOS_NET=LWIP` (see the top-level
 `CMakeLists.txt`), built by the `freertos-cross-lwip` preset, and run on QEMU by
 the advisory `bdd-freertos-qemu-lwip` CI lane against the shared syslog-ng
 oracle.

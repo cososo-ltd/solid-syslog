@@ -19,10 +19,10 @@ if(HAVE_WINDOWS_PLATFORM)
     )
 endif()
 
-if(HAVE_WINDOWS_INTERLOCKED OR HAVE_WINDOWS_PLATFORM OR SOLIDSYSLOG_WINSOCK)
-    target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Interface)
-    solidsyslog_install_public_headers()
-endif()
+# Unconditional: the top level only enters this directory when SOLIDSYSLOG_WINDOWS
+# is on, which already means at least one of the three groups above compiled.
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Interface)
+solidsyslog_install_public_headers()
 
 if(SOLIDSYSLOG_WINSOCK)
     target_sources(${PROJECT_NAME} PRIVATE

@@ -6,11 +6,20 @@ if(SOLIDSYSLOG_POSIX OR (SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM))
     add_subdirectory(Bdd/Targets)
 endif()
 
-# Each pack's unit tests follow the pack's own selection switch, so a lane that
-# turns a pack off stops building its tests too. Unlike the packs, these DO need
-# the upstream tree — they compile against the real lwip/*.h, FreeRTOS.h and ff.h
-# — which is why the top-level CMakeLists demands a path for every selected pack
-# when SOLIDSYSLOG_BUILD_TESTING is on.
+# Each platform's unit tests follow that platform's own switch, so a lane which
+# turns one off stops building its tests too. Unlike the platforms themselves,
+# these DO need the upstream tree — they compile against the real lwip/*.h,
+# FreeRTOS.h and ff.h — which is why the top-level CMakeLists demands a path for
+# every selected platform when SOLIDSYSLOG_BUILD_TESTING is on.
+#
+# A devcontainer build sets no platform list, so both FreeRTOS networking stacks
+# are selected from the environment and both stacks' tests build together — you
+# can work on lwIP and Plus-TCP in one tree without reconfiguring. That has
+# always been true by accident of the gating; say it out loud so a future change
+# to platform selection cannot quietly halve the suite.
+if(SOLIDSYSLOG_LWIP AND SOLIDSYSLOG_PLUSTCP)
+    message(STATUS "SolidSyslog tests: both FreeRTOS networking stacks selected — lwIP and Plus-TCP suites build together.")
+endif()
 if(SOLIDSYSLOG_FREERTOS)
     add_subdirectory(Support/FreeRtosFakes)
     add_subdirectory(FreeRtos)
@@ -115,12 +124,12 @@ endif()
 # matching impl's .c. Prefer stdatomic when available; fall back to
 # Windows Interlocked. Both flags can be true on MSVC 2022+; the elseif
 # ensures only one helper is compiled, so there are no duplicate symbols.
-if(HAVE_STDATOMIC_H)
+if(SOLIDSYSLOG_ATOMICS)
     list(APPEND TEST_SOURCES
         SolidSyslogStdAtomicCounterTestHelper.c
         SolidSyslogStdAtomicCounterPoolTest.cpp
     )
-elseif(HAVE_WINDOWS_INTERLOCKED)
+elseif(SOLIDSYSLOG_WINDOWS AND HAVE_WINDOWS_INTERLOCKED)
     list(APPEND TEST_SOURCES
         SolidSyslogWindowsAtomicCounterTestHelper.c
         SolidSyslogWindowsAtomicCounterPoolTest.cpp
@@ -185,9 +194,9 @@ add_executable(${PROJECT_NAME}Tests ${TEST_SOURCES})
 target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake ConfigLockFake CppUTest CppUTestExt Threads::Threads)
 target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Core/Source ${CMAKE_CURRENT_SOURCE_DIR}/Support)
 
-if(HAVE_STDATOMIC_H)
+if(SOLIDSYSLOG_ATOMICS)
     target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Platform/Atomics/Source)
-elseif(HAVE_WINDOWS_INTERLOCKED)
+elseif(SOLIDSYSLOG_WINDOWS AND HAVE_WINDOWS_INTERLOCKED)
     target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Platform/Windows/Source)
 endif()
 

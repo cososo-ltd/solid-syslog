@@ -106,86 +106,138 @@ later epic, but the seams exist today.)
 
 ## Path A — CMake consumer
 
-State the platforms you want and link them. Nothing needs to be arranged in
-your shell:
+Name the platforms you want and link what they provide:
 
-```bash
-cmake -S . -B build -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos;MbedTls"
+```cmake
+set(SOLIDSYSLOG_PLATFORMS "FreeRtos;LwipRaw;MbedTls;FatFs")
+FetchContent_MakeAvailable(SolidSyslog)
 ```
 
-Named packs are on, unnamed packs are off. Each also has its own switch —
-`-DSOLIDSYSLOG_LWIP=ON`, `-DSOLIDSYSLOG_FREERTOS=ON`, `-DSOLIDSYSLOG_MBEDTLS=ON`,
-`-DSOLIDSYSLOG_FATFS=ON`, `-DSOLIDSYSLOG_PLUSFAT=ON` — if you would rather set
-them individually. Every configure prints what it selected:
+Named platforms are on, unnamed platforms are off — set it before
+`FetchContent_MakeAvailable`, or pass `-DSOLIDSYSLOG_PLATFORMS=...` on the
+command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIP=ON`,
+`-DSOLIDSYSLOG_PLUSTCP=OFF`, …) when you want to adjust one without restating
+the list.
+
+| Platform | Roles filled | Backed by |
+|---|---|---|
+| `Posix` | network, file, mutex, clock | POSIX sockets, `pthread`, `mqueue` |
+| `Windows` | network, file, mutex, atomics, clock | Winsock, `CRITICAL_SECTION`, Win32 |
+| `Atomics` | atomics | C11 `<stdatomic.h>` |
+| `OpenSsl` | tls | OpenSSL 3.0+ |
+| `MbedTls` | tls | Mbed TLS |
+| `LwipRaw` | network | lwIP Raw API |
+| `PlusTcp` | network | FreeRTOS-Plus-TCP |
+| `FreeRtos` | mutex, clock | FreeRTOS kernel |
+| `FatFs` | file | ChaN FatFs |
+| `PlusFat` | file | FreeRTOS-Plus-FAT |
+
+`Posix` and `Windows` each carry more than the roles above — hostname and
+process-id callbacks, a sleep wrapper, and on POSIX a message-queue buffer.
+Those are extras rather than roles, because nothing forces you to pick a
+platform for them: the core ships buffers of its own, and the callbacks have
+bring-your-own seams.
+
+Every configure reports what it selected and what those platforms fill, so a
+gap shows up as the thing it actually causes — a store with no file, a
+CircularBuffer with no mutex:
 
 ```text
--- SolidSyslog platform packs: LwipRaw;FreeRtos;MbedTls
+-- SolidSyslog platforms: MbedTls;LwipRaw;FreeRtos;FatFs
+-- SolidSyslog roles:      network=LwipRaw  file=FatFs  mutex=FreeRtos  clock=FreeRtos  atomics=(none)  tls=MbedTls
 ```
 
-Leave `SOLIDSYSLOG_PLATFORMS` unset and each pack falls back to whether its
-upstream path is on the environment (`FREERTOS_KERNEL_PATH`, `LWIP_PATH`,
-`MBEDTLS_DIR`, `FATFS_PATH`, `FREERTOS_PLUS_FAT_PATH`). That is how this repo's
-own containers work, and it is a convenience, not the contract — your build
-should not have to depend on it.
+Platforms are listed in registry order, not the order you named them.
 
-Two things are chosen separately:
+Leave `SOLIDSYSLOG_PLATFORMS` unset and each platform falls back to its own
+availability — a compile probe for the host ones, "the upstream tree is on the
+environment" (`FREERTOS_KERNEL_PATH`, `LWIP_PATH`, `MBEDTLS_DIR`, `FATFS_PATH`,
+`FREERTOS_PLUS_TCP_PATH`, `FREERTOS_PLUS_FAT_PATH`) for the rest. That is how
+this repo's own containers work. It is a convenience, not the contract — your
+build should not have to depend on how it was invoked.
 
-- Host roles (POSIX / Winsock / OpenSSL / C11 atomics) are auto-detected
-  (`find_package(OpenSSL)`, `check_symbol_exists`, an `_Atomic` compile probe)
-  and baked into `libSolidSyslog.a`. Turn one off with `-DSOLIDSYSLOG_POSIX=OFF`
-  and friends. They are not part of `SOLIDSYSLOG_PLATFORMS`: two of them are
-  compile probes with no switch to drive, so listing them would make the list
-  only partly authoritative.
-- The FreeRTOS networking backend is chosen with
-  `-DSOLIDSYSLOG_FREERTOS_NET=PLUSTCP|LWIP|BOTH`.
+### What you link
 
-You do not tell SolidSyslog where your upstream trees live. The packs ship as
-namespaced umbrella targets carrying their own sources: link one and the adapter
-sources compile into *your* target against *your* config header, so your target
-is already what puts `lwip/*.h`, `FreeRTOS.h`, `mbedtls/*.h` and `ff.h` on the
-include path. The SolidSyslog-side include dirs come with the pack:
+Platforms attach in one of two ways, and the rule is short: **if the upstream
+needs your config header, you link it; otherwise it is already inside.**
 
-```cmake
-target_link_libraries(my_app PRIVATE
-    SolidSyslog::LwipRaw      # Address + Datagram + TcpStream + numeric Resolver + Marshal
-    SolidSyslog::MbedTls      # TLS Stream + HMAC / AES-GCM at-rest policies
-    SolidSyslog::FreeRtos     # Mutex + SysUpTime
-    SolidSyslog::FatFs)       # FatFs file adapter
-```
+Header-configured upstreams — lwIP, FreeRTOS, Plus-TCP, Plus-FAT, Mbed TLS,
+FatFs — cannot be precompiled, because `lwipopts.h`, `FreeRTOSConfig.h`,
+`mbedtls_config.h` and `ffconf.h` change layout and behaviour and we cannot see
+your copy. Each is a `SolidSyslog::<Platform>` target carrying its adapter
+sources, which compile into *your* target against *your* config.
 
-Available umbrellas: `SolidSyslog::FreeRtos`, `SolidSyslog::PlusTcp`,
-`SolidSyslog::LwipRaw`, `SolidSyslog::MbedTls`, `SolidSyslog::FatFs`,
-`SolidSyslog::PlusFat`. The lwIP DNS resolver is config-gated (needs
-`LWIP_DNS=1`), so it sits outside the umbrella as an opt-in component,
-`SolidSyslog::LwipRawDnsResolver` (linking it also pulls the `LwipRaw` umbrella).
+Stable system APIs — POSIX, Win32/Winsock, OpenSSL, C11 atomics — have no such
+hazard and compile straight into `libSolidSyslog.a`. Linking `SolidSyslog` is
+all they need, which is why a Windows or Linux consumer writes one link line.
+
+You never tell SolidSyslog where your upstream trees live — your own target
+already puts `lwip/*.h`, `FreeRTOS.h`, `mbedtls/*.h` and `ff.h` on the include
+path, and the SolidSyslog-side include dirs arrive with each platform target.
+
+The lwIP DNS resolver is config-gated (it needs `LWIP_DNS=1`), so it sits
+outside the `LwipRaw` umbrella as an opt-in component,
+`SolidSyslog::LwipRawDnsResolver`; linking it also pulls `SolidSyslog::LwipRaw`.
 A numeric-only lwIP build links `SolidSyslog::LwipRaw` and never enables DNS.
 
-Put together, a consumer is one `FetchContent` block, one selection, and one
-link line:
+### A full embedded consumer
 
 ```cmake
+cmake_minimum_required(VERSION 3.16)
+project(my_logger C)
+
 include(FetchContent)
 FetchContent_Declare(SolidSyslog
     GIT_REPOSITORY https://github.com/cososo-ltd/solid-syslog.git
     GIT_TAG        main)
-set(SOLIDSYSLOG_PLATFORMS "LwipRaw;FreeRtos" CACHE STRING "")
+
+set(SOLIDSYSLOG_PLATFORMS "FreeRtos;LwipRaw;MbedTls;FatFs;Atomics")
 FetchContent_MakeAvailable(SolidSyslog)
 
-add_executable(my_app main.c)
-target_link_libraries(my_app PRIVATE
-    SolidSyslog SolidSyslog::LwipRaw SolidSyslog::FreeRtos)
+add_executable(my_logger main.c diskio.c)
 
-# Yours, because the pack sources compile into your target.
-target_include_directories(my_app PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/config      # lwipopts.h, arch/cc.h, FreeRTOSConfig.h
-    ${MY_LWIP_TREE}/src/include
-    ${MY_FREERTOS_KERNEL}/include
-    ${MY_FREERTOS_KERNEL}/portable/GCC/ARM_CM3)
+target_link_libraries(my_logger PRIVATE
+    SolidSyslog                        # core
+    SolidSyslog::FreeRtos              # Mutex, SysUpTime
+    SolidSyslog::LwipRawDnsResolver    # pulls ::LwipRaw too
+    SolidSyslog::MbedTls               # TLS + at-rest policies
+    SolidSyslog::FatFs                 # File
+    freertos_kernel lwip mbedtls fatfs)  # yours — we ship adapters, not upstreams
+
+target_include_directories(my_logger PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/config   # lwipopts.h, arch/cc.h, FreeRTOSConfig.h,
+                                         # mbedtls_config.h, ffconf.h — all yours
+    ${LWIP_DIR}/src/include
+    ${FREERTOS_KERNEL_DIR}/include
+    ${FREERTOS_KERNEL_DIR}/portable/GCC/ARM_CM4F
+    ${MBEDTLS_DIR}/include
+    ${FATFS_DIR}/source)
 ```
 
-[`ci/consumer-smoke/`](../ci/consumer-smoke/) is that project, kept honest by
-CI: it cross-builds with the environment scrubbed, so the only thing selecting
-a pack is `SOLIDSYSLOG_PLATFORMS`.
+`Atomics` is named but never linked — it compiles the C11 counter into
+`libSolidSyslog.a`. Naming it says "my toolchain has working `_Atomic`"; get it
+wrong and the configure stops rather than silently degrading to the Null
+counter.
+
+### A host consumer
+
+```cmake
+set(SOLIDSYSLOG_PLATFORMS "Windows;OpenSsl")   # or "Posix;OpenSsl"
+FetchContent_MakeAvailable(SolidSyslog)
+
+add_executable(my_logger main.c)
+target_link_libraries(my_logger PRIVATE SolidSyslog)
+```
+
+That is the whole thing — no config headers, no include paths, no upstream to
+build. You can drop the `set()` entirely and let auto-detection find the same
+stack; declare it when you would rather the build state its platforms than
+infer them.
+
+[`ci/consumer-smoke/`](../ci/consumer-smoke/) is a working consumer of this
+shape, kept honest by CI: it cross-builds with the environment scrubbed, so
+`SOLIDSYSLOG_PLATFORMS` is the only thing that can select a platform, and it
+links them rather than merely checking the targets exist.
 
 SolidSyslog also has `SOLIDSYSLOG_LWIP_PATH` and siblings. Those build
 *SolidSyslog's own* unit tests and BDD targets against the real upstream

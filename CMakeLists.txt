@@ -151,16 +151,18 @@ if(SOLIDSYSLOG_IS_TOP_LEVEL)
     endif()
 endif()
 
+# Availability probes. These answer "could this platform build here?", nothing
+# more — selection is the platform registry's job further down. Keeping the two
+# apart is what lets one vocabulary cover auto-detected host platforms and
+# explicitly declared embedded ones (S30.06).
 include(CheckSymbolExists)
 check_symbol_exists(sendto "sys/socket.h" HAVE_POSIX_SOCKETS)
-option(SOLIDSYSLOG_POSIX "Include POSIX UDP sender" ${HAVE_POSIX_SOCKETS})
 
 set(_SOLIDSYSLOG_PREV_CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES}")
 set(CMAKE_REQUIRED_LIBRARIES ws2_32)
 check_symbol_exists(sendto "winsock2.h" HAVE_WINSOCK)
 set(CMAKE_REQUIRED_LIBRARIES "${_SOLIDSYSLOG_PREV_CMAKE_REQUIRED_LIBRARIES}")
 unset(_SOLIDSYSLOG_PREV_CMAKE_REQUIRED_LIBRARIES)
-option(SOLIDSYSLOG_WINSOCK "Include Winsock UDP sender" ${HAVE_WINSOCK})
 
 include(CheckCSourceCompiles)
 # Detect real C11 atomics by *compiling* an _Atomic snippet rather than probing
@@ -188,125 +190,153 @@ int main(void)
 check_symbol_exists(InterlockedIncrement "windows.h" HAVE_WINDOWS_INTERLOCKED)
 check_symbol_exists(GetSystemTimeAsFileTime "windows.h" HAVE_WINDOWS_PLATFORM)
 
-if(HAVE_STDATOMIC_H OR HAVE_WINDOWS_INTERLOCKED)
-    set(HAVE_ATOMIC_COUNTER TRUE)
-endif()
-
-# OpenSSL-based TLS is an optional platform feature. Default ON when OpenSSL is
-# discoverable so CI and most workstations get TLS automatically; pass
-# -DSOLIDSYSLOG_OPENSSL=OFF to build a UDP/TCP-only library on systems without
-# OpenSSL.
 find_package(OpenSSL QUIET)
-option(SOLIDSYSLOG_OPENSSL "Include OpenSSL-based TLS support" ${OpenSSL_FOUND})
-if(SOLIDSYSLOG_OPENSSL)
-    if(NOT OpenSSL_FOUND)
-        message(FATAL_ERROR "SOLIDSYSLOG_OPENSSL=ON but OpenSSL was not found; install OpenSSL or pass -DSOLIDSYSLOG_OPENSSL=OFF")
-    endif()
-    if(OPENSSL_VERSION VERSION_LESS 3.0)
-        message(FATAL_ERROR "SOLIDSYSLOG_OPENSSL requires OpenSSL 3.0 or later; found ${OPENSSL_VERSION}. The integration harness uses EVP_RSA_gen (3.0+).")
-    endif()
+
+# Platform/Windows is one directory holding three separately-probed groups: the
+# Interlocked counter, the Win32 clock/file/identity set, and the Winsock
+# network adapters. Any one of them being available is reason to offer the
+# platform; which parts compile is decided inside Platform/Windows.
+if(HAVE_WINDOWS_INTERLOCKED OR HAVE_WINDOWS_PLATFORM OR HAVE_WINSOCK)
+    set(HAVE_WINDOWS_ANY TRUE)
+else()
+    set(HAVE_WINDOWS_ANY FALSE)
 endif()
 
-# Header-configured platform packs (S30.05).
+# ─── Platform registry (S30.06) ─────────────────────────────────────────────
 #
-# Unlike the host roles above, these have no find_package and no compile probe:
-# each is header-configured (lwipopts.h, FreeRTOSConfig.h, mbedtls_config.h and
-# ffconf.h all change layout and behaviour), so the pack ships as an INTERFACE
-# library carrying its own adapter sources and the consumer compiles them
-# against their own config. A pack therefore never needs to know where its
-# upstream tree lives — the consumer's target is what puts lwip/*.h, FreeRTOS.h,
-# mbedtls/*.h and ff.h on the include path.
+# One vocabulary for every platform SolidSyslog can build against. A consumer
+# names the ones they want and links what those provide:
 #
-# Selection is one switch per pack, defaulting to "the matching upstream path is
-# on the environment". That default is what every preset, devcontainer service
-# and CI lane here already expresses, so all of them configure exactly as
-# before. What it adds is a way to say so explicitly: an integrator who vendors
-# lwIP inside their own tree and exports nothing passes -DSOLIDSYSLOG_LWIP=ON.
-# Before S30.05 the environment was the only vocabulary, so that integrator got
-# a silently absent pack and a generate-time "target not found" naming
-# SolidSyslog::LwipRaw with nothing pointing at the cause.
+#     set(SOLIDSYSLOG_PLATFORMS "FreeRtos;LwipRaw;MbedTls;FatFs")
 #
-# The upstream paths have not gone away — our own unit tests and BDD targets
-# compile against the real upstream headers and still need them. They are
-# separate variables, demanded only where they are genuinely used.
-function(solidsyslog_declare_pack option_name help environment_fallback)
-    if(DEFINED ENV{${environment_fallback}})
-        set(selected_by_default ON)
+# Leave it unset and each platform falls back to its own availability default —
+# a compile probe for the host ones, "the upstream path is on the environment"
+# for the embedded ones — which is how every preset, devcontainer service and CI
+# lane here works, so all of them configure exactly as before.
+#
+# Platforms attach to the build in one of two ways, and the rule is causal
+# rather than arbitrary:
+#
+#   * Header-configured upstreams (lwIP, FreeRTOS, Plus-TCP, Plus-FAT, mbedTLS,
+#     FatFs) cannot be precompiled — lwipopts.h, FreeRTOSConfig.h,
+#     mbedtls_config.h and ffconf.h change layout and behaviour, and we cannot
+#     see the consumer's copy. Each ships as an INTERFACE library carrying its
+#     adapter sources, which compile into the CONSUMER's target against the
+#     CONSUMER's config. These are the SolidSyslog::<Token> targets to link, and
+#     it is the consumer's own target that supplies the upstream include paths.
+#
+#   * Stable system APIs (POSIX, Win32/Winsock, OpenSSL, C11 atomics) have no
+#     such hazard, so they compile straight into libSolidSyslog.a. There is
+#     nothing extra to link — SolidSyslog alone carries them.
+#
+# In one line: if the upstream needs your config header, you link it; otherwise
+# it is already inside.
+#
+# Platforms are independent — no Platform/ directory references another — so
+# naming any combination is legal, including two that fill the same role. The
+# report below names roles precisely so an unintended combination is visible
+# (see docs/NAMING.md on role-named pool tunables sizing both implementations).
+
+# `kind` carries the distinction the two attachment modes turn on, and it is the
+# reason the default column means different things per row:
+#
+#   probe    — a capability of this toolchain or host. The default IS the
+#              answer, so naming one that probed false is an error: no amount of
+#              configuration will make <stdatomic.h> work on a C99 compiler.
+#              These compile into libSolidSyslog.a.
+#   upstream — a header-configured upstream. The default is only a hint (we
+#              noticed the tree on your environment); the platform itself needs
+#              no path, because its sources compile in the consumer's target
+#              against the consumer's config. Naming one is ALWAYS legal — a
+#              consumer who vendors lwIP and exports nothing is the case S30.05
+#              exists to serve. These are the SolidSyslog::<Token> link targets.
+#
+# Rows are split on `|` and read by index, so every field must be a token that
+# cannot contain a separator. The upstream hints are collapsed to booleans here
+# rather than interpolated as paths: a tree at a path containing `;` or `|`
+# would otherwise shift every later field, and a mis-read `kind` turns the
+# probe fatal-error below into a silent no-op. The default column is only ever
+# used as a truth value, so nothing is lost.
+foreach(upstream_hint MBEDTLS_DIR LWIP_PATH FREERTOS_PLUS_TCP_PATH
+                      FREERTOS_KERNEL_PATH FATFS_PATH FREERTOS_PLUS_FAT_PATH)
+    if(DEFINED ENV{${upstream_hint}} AND NOT "$ENV{${upstream_hint}}" STREQUAL "")
+        set(HAVE_${upstream_hint} TRUE)
     else()
-        set(selected_by_default OFF)
+        set(HAVE_${upstream_hint} FALSE)
     endif()
-    option(${option_name} "${help}" ${selected_by_default})
-endfunction()
+endforeach()
 
-solidsyslog_declare_pack(SOLIDSYSLOG_FREERTOS
-    "Include the FreeRTOS platform pack (Mutex, SysUpTime, and the Plus-TCP networking adapters)"
-    FREERTOS_KERNEL_PATH)
+#                                 token     option                default                        kind      directory            roles
+set(SOLIDSYSLOG_PLATFORM_REGISTRY
+    "Posix|SOLIDSYSLOG_POSIX|${HAVE_POSIX_SOCKETS}|probe|Platform/Posix|network file mutex clock"
+    "Windows|SOLIDSYSLOG_WINDOWS|${HAVE_WINDOWS_ANY}|probe|Platform/Windows|network file mutex atomics clock"
+    "Atomics|SOLIDSYSLOG_ATOMICS|${HAVE_STDATOMIC_H}|probe|Platform/Atomics|atomics"
+    "OpenSsl|SOLIDSYSLOG_OPENSSL|${OpenSSL_FOUND}|probe|Platform/OpenSsl|tls"
+    "MbedTls|SOLIDSYSLOG_MBEDTLS|${HAVE_MBEDTLS_DIR}|upstream|Platform/MbedTls|tls"
+    "LwipRaw|SOLIDSYSLOG_LWIP|${HAVE_LWIP_PATH}|upstream|Platform/LwipRaw|network"
+    "PlusTcp|SOLIDSYSLOG_PLUSTCP|${HAVE_FREERTOS_PLUS_TCP_PATH}|upstream|Platform/PlusTcp|network"
+    "FreeRtos|SOLIDSYSLOG_FREERTOS|${HAVE_FREERTOS_KERNEL_PATH}|upstream|Platform/FreeRtos|mutex clock"
+    "FatFs|SOLIDSYSLOG_FATFS|${HAVE_FATFS_PATH}|upstream|Platform/FatFs|file"
+    "PlusFat|SOLIDSYSLOG_PLUSFAT|${HAVE_FREERTOS_PLUS_FAT_PATH}|upstream|Platform/PlusFat|file"
+)
 
-solidsyslog_declare_pack(SOLIDSYSLOG_LWIP
-    "Include the lwIP Raw API platform pack (Address, Resolver, Datagram, TcpStream)"
-    LWIP_PATH)
+# Split one registry row into the names the loops below use. A row is
+# `token|option|default|kind|directory|roles`.
+macro(solidsyslog_read_platform row)
+    string(REPLACE "|" ";" solidsyslog_row "${row}")
+    list(GET solidsyslog_row 0 platform_token)
+    list(GET solidsyslog_row 1 platform_option)
+    list(GET solidsyslog_row 2 platform_default)
+    list(GET solidsyslog_row 3 platform_kind)
+    list(GET solidsyslog_row 4 platform_directory)
+    list(GET solidsyslog_row 5 platform_roles)
+endmacro()
 
-# The embedded-target reference TLS backend — OpenSSL is too large for Cortex-M.
-solidsyslog_declare_pack(SOLIDSYSLOG_MBEDTLS
-    "Include mbedTLS-based TLS support"
-    MBEDTLS_DIR)
-
-solidsyslog_declare_pack(SOLIDSYSLOG_FATFS
-    "Include the ChaN FatFs platform pack (File)"
-    FATFS_PATH)
-
-solidsyslog_declare_pack(SOLIDSYSLOG_PLUSFAT
-    "Include the FreeRTOS-Plus-FAT platform pack (File)"
-    FREERTOS_PLUS_FAT_PATH)
-
-# SOLIDSYSLOG_PLATFORMS — state the whole selection on one line instead of one
-# -D per pack:
-#
-#     -DSOLIDSYSLOG_PLATFORMS="LwipRaw;MbedTls"
-#
-# When set it is authoritative: a named pack is on, an unnamed pack is off,
-# whatever the environment happens to say. That is the point — an integrator
-# declares their platforms once and stops depending on the build environment.
-# Unset means today's per-pack defaults, unchanged.
-#
-# It is applied by setting a NORMAL variable per pack, which shadows the cache
-# entry for the rest of this configure. Normal variables are recomputed every
-# run, so editing the list takes effect immediately; writing the cache instead
-# would leave a stale entry that option() would then refuse to update and a
-# later configure would silently honour.
-#
-# Scoped to the header-configured packs deliberately. The host roles are
-# auto-detected, and two of them (the Windows platform check, the C11 atomics
-# probe) are compile probes with no option to drive at all — folding them in
-# would make the list only partly authoritative, which is worse than a boundary
-# that can be stated. POSIX, Winsock and OpenSSL already have their own
-# -DSOLIDSYSLOG_POSIX=OFF switches, so nothing here is unreachable.
-#
-# Registry of every selectable pack: the token an integrator writes, and the
-# option it drives. Column-aligned so the two lists cannot drift unnoticed.
-set(SOLIDSYSLOG_PLATFORM_TOKENS  LwipRaw          FreeRtos             MbedTls             FatFs             PlusFat)
-set(SOLIDSYSLOG_PLATFORM_OPTIONS SOLIDSYSLOG_LWIP SOLIDSYSLOG_FREERTOS SOLIDSYSLOG_MBEDTLS SOLIDSYSLOG_FATFS SOLIDSYSLOG_PLUSFAT)
+set(SOLIDSYSLOG_PLATFORM_TOKENS "")
+foreach(row IN LISTS SOLIDSYSLOG_PLATFORM_REGISTRY)
+    solidsyslog_read_platform("${row}")
+    list(APPEND SOLIDSYSLOG_PLATFORM_TOKENS ${platform_token})
+    if(platform_default)
+        option(${platform_option} "Include the ${platform_token} platform" ON)
+    else()
+        option(${platform_option} "Include the ${platform_token} platform" OFF)
+    endif()
+endforeach()
 
 set(SOLIDSYSLOG_PLATFORMS "" CACHE STRING
-    "Platform packs to build, e.g. LwipRaw;FreeRtos;MbedTls. Empty selects each pack from its own option.")
+    "Platforms to build, e.g. FreeRtos;LwipRaw;MbedTls. Empty selects each platform from its own availability.")
 
+# When set, the list is authoritative: a named platform is on, an unnamed one is
+# off, whatever the environment or a probe says. That is the point — a build
+# declares its platforms once and stops depending on how it was invoked.
+#
+# Applied by setting a NORMAL variable per platform, which shadows the cache
+# entry for the rest of this configure. Normal variables are recomputed every
+# run, so editing the list takes effect immediately; writing the cache would
+# leave an entry option() then refuses to update and a later run would silently
+# honour.
 if(SOLIDSYSLOG_PLATFORMS)
     foreach(requested_platform IN LISTS SOLIDSYSLOG_PLATFORMS)
         if(NOT requested_platform IN_LIST SOLIDSYSLOG_PLATFORM_TOKENS)
             message(FATAL_ERROR
                 "SOLIDSYSLOG_PLATFORMS names an unknown platform '${requested_platform}'. "
-                "Valid platforms: ${SOLIDSYSLOG_PLATFORM_TOKENS}. The host roles (POSIX, "
-                "Winsock, OpenSSL) are auto-detected rather than listed here — turn one "
-                "off with -DSOLIDSYSLOG_POSIX=OFF and friends.")
+                "Valid platforms: ${SOLIDSYSLOG_PLATFORM_TOKENS}.")
         endif()
     endforeach()
 
-    list(LENGTH SOLIDSYSLOG_PLATFORM_TOKENS solidsyslog_platform_count)
-    math(EXPR solidsyslog_last_platform "${solidsyslog_platform_count} - 1")
-    foreach(platform_index RANGE ${solidsyslog_last_platform})
-        list(GET SOLIDSYSLOG_PLATFORM_TOKENS  ${platform_index} platform_token)
-        list(GET SOLIDSYSLOG_PLATFORM_OPTIONS ${platform_index} platform_option)
+    foreach(row IN LISTS SOLIDSYSLOG_PLATFORM_REGISTRY)
+        solidsyslog_read_platform("${row}")
         if(platform_token IN_LIST SOLIDSYSLOG_PLATFORMS)
+            # Only a probe can say "no". An upstream platform's default is a
+            # hint about the environment, never a capability — the sources
+            # compile in the consumer's target against the consumer's config, so
+            # naming one with a bare environment is exactly the supported case.
+            if(platform_kind STREQUAL "probe" AND NOT platform_default)
+                message(FATAL_ERROR
+                    "SOLIDSYSLOG_PLATFORMS names '${platform_token}', which this toolchain "
+                    "cannot provide — the availability probe for it failed. Drop it from the "
+                    "list, or build where it is available.")
+            endif()
             set(${platform_option} ON)
         else()
             set(${platform_option} OFF)
@@ -314,22 +344,73 @@ if(SOLIDSYSLOG_PLATFORMS)
     endforeach()
 endif()
 
-# What actually got selected, however it was selected. One line, and it answers
-# the question this whole section exists to make answerable: did my -D take?
-set(solidsyslog_selected_packs "")
-list(LENGTH SOLIDSYSLOG_PLATFORM_TOKENS solidsyslog_platform_count)
-math(EXPR solidsyslog_last_platform "${solidsyslog_platform_count} - 1")
-foreach(platform_index RANGE ${solidsyslog_last_platform})
-    list(GET SOLIDSYSLOG_PLATFORM_TOKENS  ${platform_index} platform_token)
-    list(GET SOLIDSYSLOG_PLATFORM_OPTIONS ${platform_index} platform_option)
+if(SOLIDSYSLOG_OPENSSL AND OPENSSL_VERSION VERSION_LESS 3.0)
+    message(FATAL_ERROR
+        "SOLIDSYSLOG_OPENSSL requires OpenSSL 3.0 or later; found ${OPENSSL_VERSION}. "
+        "The integration harness uses EVP_RSA_gen (3.0+).")
+endif()
+
+# Winsock is not separately selectable: Platform/Windows is one bundle, and
+# bundling the roles an OS fills is deliberate — it is what makes the host case
+# a single name. Derived rather than cached so it tracks the platform list on
+# every configure.
+if(SOLIDSYSLOG_WINDOWS AND HAVE_WINSOCK)
+    set(SOLIDSYSLOG_WINSOCK TRUE)
+else()
+    set(SOLIDSYSLOG_WINSOCK FALSE)
+endif()
+
+if(SOLIDSYSLOG_ATOMICS OR (SOLIDSYSLOG_WINDOWS AND HAVE_WINDOWS_INTERLOCKED))
+    set(HAVE_ATOMIC_COUNTER TRUE)
+else()
+    set(HAVE_ATOMIC_COUNTER FALSE)
+endif()
+
+# What was selected and what it provides, however it was selected. The token
+# line answers "did my -D take?"; the role line answers "is my stack complete?",
+# which is the question a missing platform actually shows up as — a Store with
+# no file, a CircularBuffer with no mutex.
+# The vocabulary comes from the registry rather than a list restated here, so
+# adding a role to a row shows up in the report instead of doing nothing.
+set(solidsyslog_all_roles "")
+foreach(row IN LISTS SOLIDSYSLOG_PLATFORM_REGISTRY)
+    solidsyslog_read_platform("${row}")
+    string(REPLACE " " ";" platform_role_list "${platform_roles}")
+    list(APPEND solidsyslog_all_roles ${platform_role_list})
+endforeach()
+list(REMOVE_DUPLICATES solidsyslog_all_roles)
+
+set(solidsyslog_selected_platforms "")
+foreach(role IN LISTS solidsyslog_all_roles)
+    set(solidsyslog_role_${role} "")
+endforeach()
+
+foreach(row IN LISTS SOLIDSYSLOG_PLATFORM_REGISTRY)
+    solidsyslog_read_platform("${row}")
     if(${platform_option})
-        list(APPEND solidsyslog_selected_packs ${platform_token})
+        list(APPEND solidsyslog_selected_platforms ${platform_token})
+        string(REPLACE " " ";" platform_role_list "${platform_roles}")
+        foreach(role IN LISTS platform_role_list)
+            list(APPEND solidsyslog_role_${role} ${platform_token})
+        endforeach()
     endif()
 endforeach()
-if(NOT solidsyslog_selected_packs)
-    set(solidsyslog_selected_packs "(none)")
+
+if(NOT solidsyslog_selected_platforms)
+    set(solidsyslog_selected_platforms "(none)")
 endif()
-message(STATUS "SolidSyslog platform packs: ${solidsyslog_selected_packs}")
+message(STATUS "SolidSyslog platforms: ${solidsyslog_selected_platforms}")
+
+set(solidsyslog_role_report "")
+foreach(role IN LISTS solidsyslog_all_roles)
+    if(solidsyslog_role_${role})
+        string(REPLACE ";" "," solidsyslog_role_names "${solidsyslog_role_${role}}")
+    else()
+        set(solidsyslog_role_names "(none)")
+    endif()
+    string(APPEND solidsyslog_role_report "  ${role}=${solidsyslog_role_names}")
+endforeach()
+message(STATUS "SolidSyslog roles:    ${solidsyslog_role_report}")
 
 # Where each upstream tree lives. Selecting a pack does not need this — the pack
 # carries its sources and the consumer's own target supplies the headers. What
@@ -411,38 +492,21 @@ elseif(NOT SOLIDSYSLOG_ALLOCATION_STRATEGY STREQUAL "static")
         "SOLIDSYSLOG_ALLOCATION_STRATEGY must be 'static' (got: '${SOLIDSYSLOG_ALLOCATION_STRATEGY}').")
 endif()
 
-# FreeRTOS networking backend (E28). Two adapter trees ship in the same
-# library: FreeRTOS-Plus-TCP (current) and lwIP Raw (new). The integrator
-# picks one — or both, for dev-container context-switching — at configure
-# time. CI builds PLUSTCP and LWIP in isolation; BOTH is a dev-container
-# convenience.
-#
-# S28.03-S28.05 land the OS-agnostic slices (Address, Resolver, Datagram,
-# TcpStream). LWIP and BOTH configure but the backend is still partial —
-# BDD arrives in S28.06. Platform/LwipRaw is OS-agnostic by construction
-# (wraps lwIP only, no FreeRTOS coupling) and is gated separately on
-# LWIP_PATH below; this option only controls which adapter pack the
-# FreeRTOS BDD target wires up.
-set(SOLIDSYSLOG_FREERTOS_NET "PLUSTCP" CACHE STRING
-    "FreeRTOS networking backend: PLUSTCP (default), LWIP, or BOTH")
-set_property(CACHE SOLIDSYSLOG_FREERTOS_NET PROPERTY STRINGS PLUSTCP LWIP BOTH)
-if(NOT SOLIDSYSLOG_FREERTOS_NET STREQUAL "PLUSTCP"
-   AND NOT SOLIDSYSLOG_FREERTOS_NET STREQUAL "LWIP"
-   AND NOT SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_FREERTOS_NET must be one of PLUSTCP, LWIP, or BOTH "
-        "(got: '${SOLIDSYSLOG_FREERTOS_NET}').")
-endif()
-if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "LWIP")
-    message(STATUS
-        "SOLIDSYSLOG_FREERTOS_NET=LWIP: cross builds the FreeRtosLwip BDD "
-        "target (LAN9118 netif + NO_SYS=0 tcpip + LwipRaw adapters), run on "
-        "QEMU mps2-an385 by the advisory bdd-freertos-qemu-lwip lane (S28.09).")
-endif()
-if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
-    message(STATUS
-        "SOLIDSYSLOG_FREERTOS_NET=BOTH: cross builds the PlusTcp BDD target; "
-        "the lwIP backend cross-builds in isolation under NET=LWIP.")
+# Which FreeRTOS BDD target the cross build produces (E28). This is maintainer
+# tooling, not a consumer knob: BDD targets are top-level-only, and since S30.06
+# it no longer selects any platform — PlusTcp and LwipRaw are named in
+# SOLIDSYSLOG_PLATFORMS like every other platform. It survives only to answer
+# "which ELF does a freertos-cross preset build?", which is why the name says so.
+if(SOLIDSYSLOG_IS_TOP_LEVEL)
+    set(SOLIDSYSLOG_BDD_FREERTOS_NET "PLUSTCP" CACHE STRING
+        "Which FreeRTOS BDD target the cross build produces: PLUSTCP (default) or LWIP")
+    set_property(CACHE SOLIDSYSLOG_BDD_FREERTOS_NET PROPERTY STRINGS PLUSTCP LWIP)
+    if(NOT SOLIDSYSLOG_BDD_FREERTOS_NET STREQUAL "PLUSTCP"
+       AND NOT SOLIDSYSLOG_BDD_FREERTOS_NET STREQUAL "LWIP")
+        message(FATAL_ERROR
+            "SOLIDSYSLOG_BDD_FREERTOS_NET must be PLUSTCP or LWIP "
+            "(got: '${SOLIDSYSLOG_BDD_FREERTOS_NET}').")
+    endif()
 endif()
 
 # Build-time tunables (E21: Port-Time Configurability). Integrators override
@@ -484,70 +548,28 @@ endif()
 
 add_subdirectory(Core/Source)
 
-if(HAVE_STDATOMIC_H)
-    add_subdirectory(Platform/Atomics)
-endif()
+# Every selected platform, in registry order. Platforms are independent — no
+# Platform/ directory references another — so the order is presentational.
+# Core/Source has already run, which matters for the precompiled ones: they
+# reach back with target_sources(SolidSyslog PRIVATE ...).
+foreach(row IN LISTS SOLIDSYSLOG_PLATFORM_REGISTRY)
+    solidsyslog_read_platform("${row}")
+    if(${platform_option})
+        add_subdirectory(${platform_directory})
+    endif()
+endforeach()
 
-if(SOLIDSYSLOG_POSIX)
-    add_subdirectory(Platform/Posix)
-endif()
-
-if(SOLIDSYSLOG_OPENSSL)
-    add_subdirectory(Platform/OpenSsl)
-endif()
-
-if(SOLIDSYSLOG_MBEDTLS)
-    add_subdirectory(Platform/MbedTls)
-endif()
-
-if(HAVE_WINDOWS_INTERLOCKED OR HAVE_WINDOWS_PLATFORM OR SOLIDSYSLOG_WINSOCK)
-    add_subdirectory(Platform/Windows)
-endif()
-
+# Host BDD targets — top-level only, and only where a host network stack exists
+# to drive them.
 if(SOLIDSYSLOG_IS_TOP_LEVEL
    AND (SOLIDSYSLOG_POSIX OR (SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM)))
     add_subdirectory(Bdd/Targets)
 endif()
 
-# FreeRTOS adapters ship as sources via INTERFACE libraries — the integrator's
-# FreeRTOSConfig.h / FreeRTOSIPConfig.h flows into each consumer's compile (see
-# project_header_configured_platforms memory). Platform/FreeRtos hosts the
-# RTOS primitives (Mutex, SysUpTime) — always added with the pack, regardless of
-# the chosen networking backend. Platform/PlusTcp hosts the FreeRTOS-Plus-TCP
-# networking adapters (Address/Datagram/Resolver/TcpStream) — added when
-# SOLIDSYSLOG_FREERTOS_NET selects PLUSTCP or BOTH.
-if(SOLIDSYSLOG_FREERTOS)
-    add_subdirectory(Platform/FreeRtos)
-    if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "PLUSTCP"
-       OR SOLIDSYSLOG_FREERTOS_NET STREQUAL "BOTH")
-        add_subdirectory(Platform/PlusTcp)
-    endif()
-endif()
-
-# Platform/LwipRaw — OS-agnostic wrapper of lwIP Raw API. Selected independently
-# of SOLIDSYSLOG_FREERTOS (lwIP runs on bare metal, Zephyr, ThreadX, FreeRTOS,
-# ...). SOLIDSYSLOG_FREERTOS_NET only governs which adapter pack the FreeRTOS BDD
-# target links against — it does not gate this library's existence.
-if(SOLIDSYSLOG_LWIP)
-    add_subdirectory(Platform/LwipRaw)
-endif()
-
-# FatFs adapters likewise ship as sources via an INTERFACE library — the
-# integrator's ffconf.h flows into each consumer's compile.
-if(SOLIDSYSLOG_FATFS)
-    add_subdirectory(Platform/FatFs)
-endif()
-
-# FreeRTOS-Plus-FAT adapters ship as sources via an INTERFACE library too — the
-# integrator's FreeRTOSFATConfig.h flows into each consumer's compile.
-if(SOLIDSYSLOG_PLUSFAT)
-    add_subdirectory(Platform/PlusFat)
-endif()
-
 # The cross-compiled FreeRTOS target is selected by the arm-none-eabi
 # toolchain file (see Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake); it
 # only enters the build when a freertos-cross preset is active. The chosen
-# networking backend picks which target: PLUSTCP/BOTH builds the full
+# BDD backend selector picks which target: PLUSTCP builds the full
 # FreeRTOS-Plus-TCP BDD target; LWIP builds the FreeRtosLwip BDD target
 # (S28.09) — LAN9118 netif + NO_SYS=0 lwIP + LwipRaw adapters, no PlusTcp.
 #
@@ -557,7 +579,7 @@ endif()
 if(SOLIDSYSLOG_IS_TOP_LEVEL
    AND CMAKE_CROSSCOMPILING
    AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm")
-    if(SOLIDSYSLOG_FREERTOS_NET STREQUAL "LWIP")
+    if(SOLIDSYSLOG_BDD_FREERTOS_NET STREQUAL "LWIP")
         add_subdirectory(Bdd/Targets/FreeRtosLwip)
     else()
         add_subdirectory(Bdd/Targets/FreeRtos)

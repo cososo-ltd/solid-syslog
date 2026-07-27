@@ -568,11 +568,12 @@ jobs:
           path: build/iwyu/iwyu-output.txt
           retention-days: 1
 
-  # NET=LWIP twin of analyze-tidy-freertos-plustcp. Same cpputest-freertos image
-  # and tidy preset, but SOLIDSYSLOG_FREERTOS_NET=LWIP so the configure exercises
-  # the lwIP wiring path (Platform/PlusTcp library target dropped; the LwipRaw
-  # adapter pack is the active FreeRTOS networking backend). Guards the NET=LWIP
-  # configure + the LwipRaw tree / Tests under clang-tidy as a named required check.
+  # lwIP twin of analyze-tidy-freertos-plustcp. Same cpputest-freertos image and
+  # tidy preset, with Plus-TCP deselected so the configure exercises the lwIP
+  # wiring path with Platform/PlusTcp absent. Since S30.06 that is said directly
+  # — a platform is deselected by its own switch — rather than inferred from a
+  # FreeRTOS networking-backend variable. Guards the LwipRaw tree and its Tests
+  # under clang-tidy as a named required check.
   analyze-tidy-freertos-lwip:
     runs-on: ubuntu-latest
     container:
@@ -589,7 +590,7 @@ jobs:
           persist-credentials: false
 
       - name: Configure
-        run: cmake --preset tidy -DSOLIDSYSLOG_FREERTOS_NET=LWIP
+        run: cmake --preset tidy -DSOLIDSYSLOG_PLUSTCP=OFF
 
       - name: Build with clang-tidy
         shell: bash
@@ -622,7 +623,7 @@ jobs:
           persist-credentials: false
 
       - name: Configure
-        run: cmake --preset iwyu -DSOLIDSYSLOG_FREERTOS_NET=LWIP -DCMAKE_C_COMPILER=clang-19 -DCMAKE_CXX_COMPILER=clang++-19
+        run: cmake --preset iwyu -DSOLIDSYSLOG_PLUSTCP=OFF -DCMAKE_C_COMPILER=clang-19 -DCMAKE_CXX_COMPILER=clang++-19
 
       # Advisory per S24.13 — see analyze-iwyu above for rationale.
       - name: Run include-what-you-use (advisory)
@@ -1214,8 +1215,8 @@ jobs:
           retention-days: 1
 
   # Required as of S28.11 (in the `summary` needs list). Proves the
-  # Platform/LwipRaw tree cross-builds for FreeRTOS/ARM under
-  # SOLIDSYSLOG_FREERTOS_NET=LWIP with zero PlusTcp dependency (the symbol
+  # Platform/LwipRaw tree cross-builds for FreeRTOS/ARM with Plus-TCP
+  # deselected and zero PlusTcp dependency (the symbol
   # assertion below enforces that). No QEMU run. Adding it to the GitHub
   # branch-protection required-checks set is a separate manual step (David).
   build-freertos-target-lwip:
@@ -1406,7 +1407,7 @@ jobs:
         shell: bash
         run: |
           cmake -S . -B build/manifest -DSOLIDSYSLOG_BUILD_TESTING=OFF \
-            -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos;MbedTls;FatFs" \
+            -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos;MbedTls;FatFs;Atomics" \
             -DSOLIDSYSLOG_MANIFEST_PACKS="LwipRaw;LwipRawDnsResolver;MbedTls;FreeRtos;FatFs" \
             -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/beta-stack-manifest.txt"
 
