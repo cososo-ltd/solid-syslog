@@ -41,18 +41,25 @@ same shape (`syslog-ng-<target>` + a runner service or in-container Behave).
 ## FreeRTOS networking backend selection
 
 `cpputest-freertos` and `cpputest-freertos-cross` both ship the
-FreeRTOS-Plus-TCP and lwIP source trees side-by-side. The library picks
-between them at CMake time via `SOLIDSYSLOG_FREERTOS_NET`:
+FreeRTOS-Plus-TCP and lwIP source trees side-by-side, and a default build
+selects **both** — you can work on either networking stack, and run both
+stacks' unit tests, without reconfiguring. The configure says so:
 
-| Value | Behaviour |
-|---|---|
-| `PLUSTCP` (default) | Cross-builds the full FreeRTOS-Plus-TCP BDD target (`Bdd/Targets/FreeRtos/`). Current first-class backend. |
-| `LWIP` | Cross-builds the `Bdd/Targets/FreeRtosLwip/` link-probe — a stub proving `Platform/LwipRaw/` links against lwIP core for FreeRTOS/ARM with no PlusTcp dependency. The worked netif + QEMU UDP BDD integration is not yet wired. |
-| `BOTH` | Cross-builds the `PLUSTCP` target only and emits a `STATUS` message noting the lwIP backend builds in isolation under `LWIP`. Lets dev-container users keep `BOTH` set without breaking their build. |
+```text
+-- SolidSyslog tests: both FreeRTOS networking stacks selected — lwIP and Plus-TCP suites build together.
+```
 
-CI runs `PLUSTCP` (required) and `LWIP` (advisory `build-freertos-target-lwip`
-lane) in isolation; the `BOTH` value is a dev-container convenience and
-is not exercised by CI.
+To work in one stack only, deselect the other with its own switch
+(`-DSOLIDSYSLOG_PLUSTCP=OFF` or `-DSOLIDSYSLOG_LWIP=OFF`), which drops that
+platform and its tests together. The lwIP lint lanes do exactly this.
+
+Which BDD ELF a *cross* build produces is separate, and maintainer-only —
+`SOLIDSYSLOG_BDD_FREERTOS_NET=PLUSTCP` (default) or `LWIP`. It selects a test
+artefact, not a platform; since S30.06 platforms are named in
+`SOLIDSYSLOG_PLATFORMS` like everything else.
+
+CI runs both cross targets in isolation: `PLUSTCP` (required) and `LWIP`
+(advisory `build-freertos-target-lwip` lane).
 
 ## Running the clang build locally
 

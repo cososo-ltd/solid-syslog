@@ -4,7 +4,7 @@
 # S28.09: grew the S28.07 link-probe into a runnable BDD target — a real
 # LAN9118 lwIP netif (netif/EthernetIf.c over the vendored Arm smsc9220
 # driver), tcpip_init + a static IP, and the SolidSyslog UDP pipeline reaching
-# the syslog-ng oracle on QEMU. Selected via SOLIDSYSLOG_FREERTOS_NET=LWIP,
+# the syslog-ng oracle on QEMU. Selected via SOLIDSYSLOG_BDD_FREERTOS_NET=LWIP,
 # with zero dependency on Platform/PlusTcp / FreeRTOS-Plus-TCP.
 #
 # Source layout mirrors Bdd/Targets/FreeRtos/CMakeLists.txt: upstream

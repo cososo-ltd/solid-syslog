@@ -18,5 +18,5 @@ address handle they share.
 ## Requirements
 
 FreeRTOS-Plus-TCP, selected at CMake time with
-`SOLIDSYSLOG_FREERTOS_NET=PLUSTCP`. The resolver wraps `FreeRTOS_getaddrinfo`, so
+naming `PlusTcp` in `SOLIDSYSLOG_PLATFORMS`. The resolver wraps `FreeRTOS_getaddrinfo`, so
 your `FreeRTOSIPConfig.h` needs `ipconfigUSE_DNS=1`.

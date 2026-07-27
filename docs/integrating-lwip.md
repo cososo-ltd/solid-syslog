@@ -13,7 +13,7 @@ It is the right choice when:
   duplicating the stack.
 - You're on FreeRTOS but prefer lwIP to FreeRTOS-Plus-TCP for licence
   or sizing reasons. Both backends ship in the same library; pick at
-  CMake time with `SOLIDSYSLOG_FREERTOS_NET=LWIP`.
+  CMake time by naming `LwipRaw` rather than `PlusTcp` in `SOLIDSYSLOG_PLATFORMS`.
 
 This document covers what you, the integrator, plug in. It does not
 re-teach lwIP; for that, see the
