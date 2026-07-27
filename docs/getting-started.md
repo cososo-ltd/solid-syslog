@@ -119,27 +119,35 @@ command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIP=ON`,
 `-DSOLIDSYSLOG_PLUSTCP=OFF`, …) when you want to adjust one without restating
 the list.
 
-| Platform | Provides |
-|---|---|
-| `Posix` | network, file, mutex, buffer, clock, identity |
-| `Windows` | network, file, mutex, atomics, clock, identity |
-| `Atomics` | C11 atomic sequence-id counter |
-| `OpenSsl` | TLS stream + HMAC / AES-GCM at-rest policies |
-| `MbedTls` | TLS stream + HMAC / AES-GCM at-rest policies (embedded) |
-| `LwipRaw` | network (lwIP Raw API) |
-| `PlusTcp` | network (FreeRTOS-Plus-TCP) |
-| `FreeRtos` | mutex, sysUpTime |
-| `FatFs` | file (ChaN FatFs) |
-| `PlusFat` | file (FreeRTOS-Plus-FAT) |
+| Platform | Roles filled | Backed by |
+|---|---|---|
+| `Posix` | network, file, mutex, clock | POSIX sockets, `pthread`, `mqueue` |
+| `Windows` | network, file, mutex, atomics, clock | Winsock, `CRITICAL_SECTION`, Win32 |
+| `Atomics` | atomics | C11 `<stdatomic.h>` |
+| `OpenSsl` | tls | OpenSSL 3.0+ |
+| `MbedTls` | tls | Mbed TLS |
+| `LwipRaw` | network | lwIP Raw API |
+| `PlusTcp` | network | FreeRTOS-Plus-TCP |
+| `FreeRtos` | mutex, clock | FreeRTOS kernel |
+| `FatFs` | file | ChaN FatFs |
+| `PlusFat` | file | FreeRTOS-Plus-FAT |
+
+`Posix` and `Windows` each carry more than the roles above — hostname and
+process-id callbacks, a sleep wrapper, and on POSIX a message-queue buffer.
+Those are extras rather than roles, because nothing forces you to pick a
+platform for them: the core ships buffers of its own, and the callbacks have
+bring-your-own seams.
 
 Every configure reports what it selected and what those platforms fill, so a
 gap shows up as the thing it actually causes — a store with no file, a
 CircularBuffer with no mutex:
 
 ```text
--- SolidSyslog platforms: LwipRaw;FreeRtos;MbedTls;FatFs
--- SolidSyslog roles:      network=LwipRaw  tls=MbedTls  file=FatFs  mutex=FreeRtos  atomics=(none)
+-- SolidSyslog platforms: MbedTls;LwipRaw;FreeRtos;FatFs
+-- SolidSyslog roles:      network=LwipRaw  file=FatFs  mutex=FreeRtos  clock=FreeRtos  atomics=(none)  tls=MbedTls
 ```
+
+Platforms are listed in registry order, not the order you named them.
 
 Leave `SOLIDSYSLOG_PLATFORMS` unset and each platform falls back to its own
 availability — a compile probe for the host ones, "the upstream tree is on the

@@ -251,18 +251,33 @@ endif()
 #              consumer who vendors lwIP and exports nothing is the case S30.05
 #              exists to serve. These are the SolidSyslog::<Token> link targets.
 #
-#                                 token     option                default               kind      directory            roles
+# Rows are split on `|` and read by index, so every field must be a token that
+# cannot contain a separator. The upstream hints are collapsed to booleans here
+# rather than interpolated as paths: a tree at a path containing `;` or `|`
+# would otherwise shift every later field, and a mis-read `kind` turns the
+# probe fatal-error below into a silent no-op. The default column is only ever
+# used as a truth value, so nothing is lost.
+foreach(upstream_hint MBEDTLS_DIR LWIP_PATH FREERTOS_PLUS_TCP_PATH
+                      FREERTOS_KERNEL_PATH FATFS_PATH FREERTOS_PLUS_FAT_PATH)
+    if(DEFINED ENV{${upstream_hint}} AND NOT "$ENV{${upstream_hint}}" STREQUAL "")
+        set(HAVE_${upstream_hint} TRUE)
+    else()
+        set(HAVE_${upstream_hint} FALSE)
+    endif()
+endforeach()
+
+#                                 token     option                default                        kind      directory            roles
 set(SOLIDSYSLOG_PLATFORM_REGISTRY
-    "Posix|SOLIDSYSLOG_POSIX|${HAVE_POSIX_SOCKETS}|probe|Platform/Posix|network file mutex buffer clock"
+    "Posix|SOLIDSYSLOG_POSIX|${HAVE_POSIX_SOCKETS}|probe|Platform/Posix|network file mutex clock"
     "Windows|SOLIDSYSLOG_WINDOWS|${HAVE_WINDOWS_ANY}|probe|Platform/Windows|network file mutex atomics clock"
     "Atomics|SOLIDSYSLOG_ATOMICS|${HAVE_STDATOMIC_H}|probe|Platform/Atomics|atomics"
     "OpenSsl|SOLIDSYSLOG_OPENSSL|${OpenSSL_FOUND}|probe|Platform/OpenSsl|tls"
-    "MbedTls|SOLIDSYSLOG_MBEDTLS|$ENV{MBEDTLS_DIR}|upstream|Platform/MbedTls|tls"
-    "LwipRaw|SOLIDSYSLOG_LWIP|$ENV{LWIP_PATH}|upstream|Platform/LwipRaw|network"
-    "PlusTcp|SOLIDSYSLOG_PLUSTCP|$ENV{FREERTOS_PLUS_TCP_PATH}|upstream|Platform/PlusTcp|network"
-    "FreeRtos|SOLIDSYSLOG_FREERTOS|$ENV{FREERTOS_KERNEL_PATH}|upstream|Platform/FreeRtos|mutex clock"
-    "FatFs|SOLIDSYSLOG_FATFS|$ENV{FATFS_PATH}|upstream|Platform/FatFs|file"
-    "PlusFat|SOLIDSYSLOG_PLUSFAT|$ENV{FREERTOS_PLUS_FAT_PATH}|upstream|Platform/PlusFat|file"
+    "MbedTls|SOLIDSYSLOG_MBEDTLS|${HAVE_MBEDTLS_DIR}|upstream|Platform/MbedTls|tls"
+    "LwipRaw|SOLIDSYSLOG_LWIP|${HAVE_LWIP_PATH}|upstream|Platform/LwipRaw|network"
+    "PlusTcp|SOLIDSYSLOG_PLUSTCP|${HAVE_FREERTOS_PLUS_TCP_PATH}|upstream|Platform/PlusTcp|network"
+    "FreeRtos|SOLIDSYSLOG_FREERTOS|${HAVE_FREERTOS_KERNEL_PATH}|upstream|Platform/FreeRtos|mutex clock"
+    "FatFs|SOLIDSYSLOG_FATFS|${HAVE_FATFS_PATH}|upstream|Platform/FatFs|file"
+    "PlusFat|SOLIDSYSLOG_PLUSFAT|${HAVE_FREERTOS_PLUS_FAT_PATH}|upstream|Platform/PlusFat|file"
 )
 
 # Split one registry row into the names the loops below use. A row is
@@ -355,8 +370,18 @@ endif()
 # line answers "did my -D take?"; the role line answers "is my stack complete?",
 # which is the question a missing platform actually shows up as — a Store with
 # no file, a CircularBuffer with no mutex.
+# The vocabulary comes from the registry rather than a list restated here, so
+# adding a role to a row shows up in the report instead of doing nothing.
+set(solidsyslog_all_roles "")
+foreach(row IN LISTS SOLIDSYSLOG_PLATFORM_REGISTRY)
+    solidsyslog_read_platform("${row}")
+    string(REPLACE " " ";" platform_role_list "${platform_roles}")
+    list(APPEND solidsyslog_all_roles ${platform_role_list})
+endforeach()
+list(REMOVE_DUPLICATES solidsyslog_all_roles)
+
 set(solidsyslog_selected_platforms "")
-foreach(role IN ITEMS network tls file mutex atomics clock)
+foreach(role IN LISTS solidsyslog_all_roles)
     set(solidsyslog_role_${role} "")
 endforeach()
 
@@ -377,7 +402,7 @@ endif()
 message(STATUS "SolidSyslog platforms: ${solidsyslog_selected_platforms}")
 
 set(solidsyslog_role_report "")
-foreach(role IN ITEMS network tls file mutex atomics)
+foreach(role IN LISTS solidsyslog_all_roles)
     if(solidsyslog_role_${role})
         string(REPLACE ";" "," solidsyslog_role_names "${solidsyslog_role_${role}}")
     else()

@@ -58,8 +58,8 @@ Which BDD ELF a *cross* build produces is separate, and maintainer-only —
 artefact, not a platform; since S30.06 platforms are named in
 `SOLIDSYSLOG_PLATFORMS` like everything else.
 
-CI runs both cross targets in isolation: `PLUSTCP` (required) and `LWIP`
-(advisory `build-freertos-target-lwip` lane).
+CI runs both cross targets in isolation, and both are required checks:
+`build-freertos-target-plustcp` and `build-freertos-target-lwip`.
 
 ## Running the clang build locally
 
