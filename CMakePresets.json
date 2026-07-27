@@ -75,7 +75,7 @@
             "inherits": "debug",
             "cacheVariables": {
                 "CMAKE_C_STANDARD": "99",
-                "HAVE_STDATOMIC_H": "OFF",
+                "SOLIDSYSLOG_ATOMICS": "OFF",
                 "SOLIDSYSLOG_BUILD_TESTING": "OFF"
             }
         },
@@ -135,7 +135,8 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-                "SOLIDSYSLOG_FREERTOS_NET": "LWIP",
+                "SOLIDSYSLOG_BDD_FREERTOS_NET": "LWIP",
+                "SOLIDSYSLOG_PLATFORMS": "FreeRtos;LwipRaw;MbedTls;FatFs;Atomics",
                 "SOLIDSYSLOG_USER_TUNABLES_FILE": "${sourceDir}/Bdd/Targets/FreeRtosLwip/solidsyslog_user_tunables.h"
             }
         }

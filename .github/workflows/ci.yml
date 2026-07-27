@@ -589,7 +589,7 @@ jobs:
           persist-credentials: false
 
       - name: Configure
-        run: cmake --preset tidy -DSOLIDSYSLOG_FREERTOS_NET=LWIP
+        run: cmake --preset tidy -DSOLIDSYSLOG_BDD_FREERTOS_NET=LWIP
 
       - name: Build with clang-tidy
         shell: bash
@@ -622,7 +622,7 @@ jobs:
           persist-credentials: false
 
       - name: Configure
-        run: cmake --preset iwyu -DSOLIDSYSLOG_FREERTOS_NET=LWIP -DCMAKE_C_COMPILER=clang-19 -DCMAKE_CXX_COMPILER=clang++-19
+        run: cmake --preset iwyu -DSOLIDSYSLOG_BDD_FREERTOS_NET=LWIP -DCMAKE_C_COMPILER=clang-19 -DCMAKE_CXX_COMPILER=clang++-19
 
       # Advisory per S24.13 — see analyze-iwyu above for rationale.
       - name: Run include-what-you-use (advisory)

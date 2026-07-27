@@ -115,12 +115,12 @@ endif()
 # matching impl's .c. Prefer stdatomic when available; fall back to
 # Windows Interlocked. Both flags can be true on MSVC 2022+; the elseif
 # ensures only one helper is compiled, so there are no duplicate symbols.
-if(HAVE_STDATOMIC_H)
+if(SOLIDSYSLOG_ATOMICS)
     list(APPEND TEST_SOURCES
         SolidSyslogStdAtomicCounterTestHelper.c
         SolidSyslogStdAtomicCounterPoolTest.cpp
     )
-elseif(HAVE_WINDOWS_INTERLOCKED)
+elseif(SOLIDSYSLOG_WINDOWS AND HAVE_WINDOWS_INTERLOCKED)
     list(APPEND TEST_SOURCES
         SolidSyslogWindowsAtomicCounterTestHelper.c
         SolidSyslogWindowsAtomicCounterPoolTest.cpp
@@ -185,9 +185,9 @@ add_executable(${PROJECT_NAME}Tests ${TEST_SOURCES})
 target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake ConfigLockFake CppUTest CppUTestExt Threads::Threads)
 target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Core/Source ${CMAKE_CURRENT_SOURCE_DIR}/Support)
 
-if(HAVE_STDATOMIC_H)
+if(SOLIDSYSLOG_ATOMICS)
     target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Platform/Atomics/Source)
-elseif(HAVE_WINDOWS_INTERLOCKED)
+elseif(SOLIDSYSLOG_WINDOWS AND HAVE_WINDOWS_INTERLOCKED)
     target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Platform/Windows/Source)
 endif()
 
