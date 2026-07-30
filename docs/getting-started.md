@@ -175,10 +175,10 @@ You never tell SolidSyslog where your upstream trees live — your own target
 already puts `lwip/*.h`, `FreeRTOS.h`, `mbedtls/*.h` and `ff.h` on the include
 path, and the SolidSyslog-side include dirs arrive with each platform target.
 
-The lwIP DNS resolver is config-gated (it needs `LWIP_DNS=1`), so it sits
-outside the `LwipRaw` umbrella as an opt-in component,
-`SolidSyslog::LwipRawDnsResolver`; linking it also pulls `SolidSyslog::LwipRaw`.
-A numeric-only lwIP build links `SolidSyslog::LwipRaw` and never enables DNS.
+The lwIP DNS resolver needs `LWIP_DNS=1`, and gates its own translation units on
+it (S33.01). It ships inside `SolidSyslog::LwipRaw` like every other lwIP
+adapter: a numeric-only build links the same target and compiles the resolver to
+nothing. See [porting.md](porting.md#depending-on-upstream-configuration).
 
 ### A full embedded consumer
 
@@ -199,7 +199,7 @@ add_executable(my_logger main.c diskio.c)
 target_link_libraries(my_logger PRIVATE
     SolidSyslog                        # core
     SolidSyslog::FreeRtos              # Mutex, SysUpTime
-    SolidSyslog::LwipRawDnsResolver    # pulls ::LwipRaw too
+    SolidSyslog::LwipRaw               # Datagram, TcpStream, Resolver (+ DNS)
     SolidSyslog::MbedTls               # TLS + at-rest policies
     SolidSyslog::FatFs                 # File
     freertos_kernel lwip mbedtls fatfs)  # yours — we ship adapters, not upstreams
@@ -295,21 +295,28 @@ packs actually ship (CI regenerates and fails on any difference):
 
 → [`docs/generated/beta-stack-manifest.txt`](generated/beta-stack-manifest.txt)
 
-That file is the authoritative source/include/`-D`/config-header list; copy it
-straight into your IDE or Makefile. To generate the manifest for a different
-selection of packs, configure with your upstream trees on the environment and
-your pack list, then build the `manifest` target:
+That file is the authoritative source/include/`-D`/language/config-header list;
+copy it straight into your IDE or Makefile. To generate the manifest for a
+different stack, configure with your platform list and build the `manifest`
+target:
 
 ```bash
 cmake -S . -B build/manifest \
-  -DSOLIDSYSLOG_MANIFEST_PACKS="LwipRaw;LwipRawDnsResolver;MbedTls;FreeRtos;FatFs"
+  -DSOLIDSYSLOG_PLATFORMS="LwipRaw;MbedTls;FreeRtos;FatFs;Atomics" \
+  -DSOLIDSYSLOG_MANIFEST_PLATFORMS="LwipRaw;MbedTls;FreeRtos;FatFs;Atomics"
 cmake --build build/manifest --target manifest      # prints the manifest
 ```
 
-Leave `SOLIDSYSLOG_MANIFEST_PACKS` empty to include every pack the configure
-defined. The Core `.c` set is always included; the host Pattern-A adapters
-(POSIX / Windows / OpenSSL / C11 atomics) are CMake-auto-detected host
-conveniences and are intentionally omitted from the (embedded) manifest.
+`SOLIDSYSLOG_MANIFEST_PLATFORMS` takes the same tokens as
+`SOLIDSYSLOG_PLATFORMS`; leave it empty to describe every platform the configure
+selected. The Core `.c` set is always included.
+
+Platforms selected by a toolchain capability probe — `Atomics`, `Posix`,
+`Windows`, `OpenSsl` — get their own section. A CMake consumer receives them
+inside `libSolidSyslog.a`, but a manifest build has no such library, so compile
+them alongside everything else. `Atomics` is the one that matters on a
+cross-toolchain: without it there is no atomic counter, and every RFC 5424
+`sequenceId` is `1`.
 
 > The manifest lists the SolidSyslog-side include dirs only. You still add your
 > own upstream include dirs (lwIP, Mbed TLS, FreeRTOS, FatFs) and the directory
@@ -318,22 +325,31 @@ conveniences and are intentionally omitted from the (embedded) manifest.
 
 ### 2. Defines
 
-The generated manifest's *Required defines* section is authoritative. For this
-stack:
+The generated manifest's *Required defines* section names the one define
+SolidSyslog itself takes, then notes the upstream options its adapters gate on —
+those it describes in prose rather than emitting, because they are yours to set.
+For this stack that comes to:
 
 ```text
 -DSOLIDSYSLOG_USER_TUNABLES_FILE="my_tunables.h"   # your tunable overrides
--DLWIP_DNS=1                                        # required by SolidSyslog::LwipRawDnsResolver
+-DLWIP_DNS=1                                        # enables the lwIP DNS resolver
 ```
 
-> `LWIP_DNS=1` is required because this stack includes the lwIP DNS resolver; a
-> numeric-only build (omit `SolidSyslog::LwipRawDnsResolver`) does not need it.
+> `LWIP_DNS=1` is required because this stack resolves the collector by name; a
+> numeric-only build compiles the DNS resolver to nothing and does not need it.
 > The header-configured upstreams take their other settings from your config
 > headers, not from `-D`s: `lwipopts.h` (incl. `NO_SYS`, `LWIP_RAW`/`UDP`/`TCP`),
 > `mbedtls_config.h`, `FreeRTOSConfig.h` (with
 > `configSUPPORT_STATIC_ALLOCATION=1` for the mutex), `ffconf.h`.
 
-### 3. Config headers you own
+### 3. Language standard
+
+The manifest's *Language* section states the floor and any platform that raises
+it. The library is C99; the `Atomics` platform uses `<stdatomic.h>` and needs
+C11. Anything at or above that works — C11, C17 and C23 are all fine — so the
+manifest names the standard, not a `-std=` flag.
+
+### 4. Config headers you own
 
 | Header | Owns |
 |---|---|
@@ -343,7 +359,7 @@ stack:
 | `ffconf.h` | FatFs feature set |
 | `my_tunables.h` | SolidSyslog pool sizes / limits (see below) |
 
-### 4. Bring-your-own callbacks for this stack
+### 5. Bring-your-own callbacks for this stack
 
 - Sleep: required by Mbed TLS (handshake retry) and the lwIP TCP stream
   (bounded synchronous open). Wrap `vTaskDelay`.

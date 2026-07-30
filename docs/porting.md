@@ -202,6 +202,10 @@ A gated adapter must also honour these:
 
 - The upstream config header is the first include. It defines the macro, so the
   gate cannot be evaluated before it.
+- That hoisted include is the file's only copy. Where the adapter already
+  included it further down, delete that one — clang-tidy's
+  `readability-duplicate-include` fails the `analyze-tidy-freertos-*` lanes,
+  which the `debug` preset does not cover.
 - Both translation units gate: the adapter and its `*Static.c` pool sibling.
 - The public header neither gates nor includes an upstream header. It states the
   requirement in prose; asking for the class without the option is a link error.
@@ -224,6 +228,10 @@ product and one further state, absent, which has no behaviour to test.
 
 ## Wiring a new pack into the build
 
+- The registry. Add a row to `SOLIDSYSLOG_PLATFORM_REGISTRY` in the top-level
+  `CMakeLists.txt`. It is the only platform vocabulary in the repo: the option,
+  the `SOLIDSYSLOG_PLATFORMS` token, the role report and the manifest all read
+  it, so a platform that is not in it does not exist.
 - CMake. Group the adapter sources into a namespaced umbrella target
   (`SolidSyslog::<Pack>`) so linking one target compiles the adapter into the
   consumer against its config headers. See the umbrella list in
@@ -231,7 +239,7 @@ product and one further state, absent, which has no behaviour to test.
 - Non-CMake. Add the adapter's `.c` files to your project and put its
   `Interface/` and `Source/` on the include path. The
   [manifest](getting-started.md#path-b--non-cmake-integrator-the-manifest)
-  generator lists the exact files for a chosen pack set.
+  generator lists the exact files for a chosen set of platforms.
 
 ## The twelve role contracts
 
