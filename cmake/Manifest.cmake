@@ -6,34 +6,47 @@
 # library's SOURCES and each selected pack's INTERFACE_SOURCES (populated in
 # S30.02) — so the manifest can never drift from what the packs actually ship.
 #
-# Selection: SOLIDSYSLOG_MANIFEST_PACKS is a ;-list of pack short-names (without
-# the SolidSyslog:: prefix), e.g. "LwipRaw;MbedTls;FreeRtos;FatFs".
-# Empty (the default) means "every SolidSyslog::<Pack> target that this configure
-# defined". Core is always included.
+# Selection: SOLIDSYSLOG_MANIFEST_PLATFORMS is a ;-list of platform tokens from
+# SOLIDSYSLOG_PLATFORM_REGISTRY, e.g. "LwipRaw;MbedTls;FreeRtos;Atomics".
+# Empty (the default) means "every platform this configure selected". Core is
+# always included.
+#
+# The registry is the only platform vocabulary in the repo (S30.06) and this
+# generator holds no list of its own (S33.03). Its `kind` column is already the
+# distinction the manifest has to present:
+#
+#   upstream — a SolidSyslog::<Token> target carrying its own INTERFACE_SOURCES.
+#   probe    — compiled into the Core target by target_sources(SolidSyslog
+#              PRIVATE ...). A non-CMake build has no libSolidSyslog.a to get
+#              those from, so they must be listed too; leaving them out is what
+#              silently cost an integrator their atomic counter.
 #
 # Output: written to ${SolidSyslog_BINARY_DIR}/solidsyslog-manifest.txt at configure
 # time, and printed by `cmake --build <dir> --target manifest`. If
 # SOLIDSYSLOG_MANIFEST_OUTPUT is set it is ALSO written there (used to refresh the
 # committed docs/generated sample, which CI diff-checks for drift).
 
-set(SOLIDSYSLOG_MANIFEST_PACKS "" CACHE STRING
-    "Packs to include in the generated integration manifest (;-list of short \
-names without the SolidSyslog:: prefix). Empty = all defined packs.")
+set(SOLIDSYSLOG_MANIFEST_PLATFORMS "" CACHE STRING
+    "Platforms to include in the generated integration manifest (;-list of \
+tokens from SOLIDSYSLOG_PLATFORM_REGISTRY). Empty = every platform this \
+configure selected.")
 set(SOLIDSYSLOG_MANIFEST_OUTPUT "" CACHE FILEPATH
     "Optional extra path to also write the generated manifest to (e.g. the \
 committed docs/generated sample).")
 
-# Every pack the generator knows about, in manifest display order. Each carries
-# the integrator-supplied config header(s) that pack requires (stable knowledge;
-# the volatile .c lists come from the targets, not from here).
-set(_SOLIDSYSLOG_MANIFEST_KNOWN_PACKS
-    FreeRtos PlusTcp LwipRaw MbedTls FatFs PlusFat)
+# Per-platform manifest knowledge, keyed by registry token: the integrator-supplied
+# config header(s) the platform requires, and any language standard it raises above
+# the floor. Stable knowledge, which is why it lives here and not in the registry —
+# the registry says what the build does. The volatile .c lists come from the targets.
 set(_SOLIDSYSLOG_MANIFEST_CFG_FreeRtos           "FreeRTOSConfig.h")
 set(_SOLIDSYSLOG_MANIFEST_CFG_PlusTcp            "FreeRTOSConfig.h, FreeRTOSIPConfig.h")
 set(_SOLIDSYSLOG_MANIFEST_CFG_LwipRaw            "lwipopts.h")
 set(_SOLIDSYSLOG_MANIFEST_CFG_MbedTls            "mbedtls_config.h")
 set(_SOLIDSYSLOG_MANIFEST_CFG_FatFs              "ffconf.h")
 set(_SOLIDSYSLOG_MANIFEST_CFG_PlusFat            "FreeRTOSFATConfig.h")
+
+set(_SOLIDSYSLOG_MANIFEST_LANGUAGE_FLOOR         "C99")
+set(_SOLIDSYSLOG_MANIFEST_LANG_Atomics           "C11")
 
 # Make an absolute path repo-relative for display; pass others through unchanged.
 function(_solidsyslog_manifest_relpath OUT_VAR PATH)
@@ -58,17 +71,59 @@ function(_solidsyslog_manifest_pack_sources OUT_VAR TARGET)
 endfunction()
 
 function(solidsyslog_generate_manifest)
-    # Resolve the selection: explicit list, else every known pack that exists.
-    set(_selected "")
-    if(SOLIDSYSLOG_MANIFEST_PACKS)
-        set(_selected ${SOLIDSYSLOG_MANIFEST_PACKS})
-    else()
-        foreach(_pack ${_SOLIDSYSLOG_MANIFEST_KNOWN_PACKS})
-            if(TARGET SolidSyslog::${_pack})
-                list(APPEND _selected ${_pack})
+    # Flatten the registry into per-token lookups. Registry order is the manifest's
+    # display order throughout, so the output is a function of the selection alone
+    # and not of the order the selection was typed — the committed sample is
+    # diff-checked in CI.
+    set(_known "")
+    foreach(_row IN LISTS SOLIDSYSLOG_PLATFORM_REGISTRY)
+        solidsyslog_read_platform("${_row}")
+        list(APPEND _known ${platform_token})
+        set(_kind_${platform_token} "${platform_kind}")
+        set(_dir_${platform_token} "${platform_directory}")
+        set(_on_${platform_token} ${${platform_option}})
+    endforeach()
+
+    set(_requested ${_known})
+    if(SOLIDSYSLOG_MANIFEST_PLATFORMS)
+        foreach(_token IN LISTS SOLIDSYSLOG_MANIFEST_PLATFORMS)
+            if(NOT _token IN_LIST _known)
+                message(FATAL_ERROR
+                    "SOLIDSYSLOG_MANIFEST_PLATFORMS names an unknown platform "
+                    "'${_token}'. Valid platforms: ${_known}.")
             endif()
         endforeach()
+        set(_requested ${SOLIDSYSLOG_MANIFEST_PLATFORMS})
     endif()
+
+    # A platform can only be described if this configure actually selected it:
+    # an upstream one defines its target, a probe one compiles into Core. Naming
+    # one that did not is worth saying out loud; the default selection just skips.
+    set(_selected "")
+    set(_selected_upstream "")
+    set(_selected_probe "")
+    foreach(_token IN LISTS _known)
+        if(NOT _token IN_LIST _requested)
+            continue()
+        endif()
+        if(_kind_${_token} STREQUAL "upstream")
+            if(TARGET SolidSyslog::${_token})
+                list(APPEND _selected_upstream ${_token})
+            elseif(SOLIDSYSLOG_MANIFEST_PLATFORMS)
+                message(WARNING
+                    "Manifest: SolidSyslog::${_token} is not a defined target in "
+                    "this configuration; skipping. (Is it in SOLIDSYSLOG_PLATFORMS?)")
+            endif()
+        elseif(_on_${_token})
+            list(APPEND _selected_probe ${_token})
+        elseif(SOLIDSYSLOG_MANIFEST_PLATFORMS)
+            message(WARNING
+                "Manifest: the ${_token} platform is not selected in this "
+                "configuration; skipping. (Is it in SOLIDSYSLOG_PLATFORMS, and "
+                "does its availability probe pass on this toolchain?)")
+        endif()
+    endforeach()
+    set(_selected ${_selected_upstream} ${_selected_probe})
 
     string(REPLACE ";" ", " _selected_display "${_selected}")
     if(NOT _selected_display)
@@ -78,59 +133,96 @@ function(solidsyslog_generate_manifest)
     # --- Header ---------------------------------------------------------------
     set(_m "# SolidSyslog integration manifest — GENERATED by CMake (S30.03).\n")
     string(APPEND _m "# Do not edit by hand. Regenerate with: cmake --build <build-dir> --target manifest\n")
-    string(APPEND _m "# Selected packs: ${_selected_display}\n")
+    string(APPEND _m "# Selected platforms: ${_selected_display}\n")
     string(APPEND _m "#\n")
     string(APPEND _m "# A non-CMake integrator (IAR / Keil / MPLAB / CCS / Make) compiles the .c\n")
     string(APPEND _m "# files below, with the include dirs on the compiler path, against their own\n")
     string(APPEND _m "# config headers. See docs/getting-started.md for the walkthrough.\n\n")
 
     # --- Source files ---------------------------------------------------------
-    string(APPEND _m "## Source files (.c) — compile all of these\n\n")
-    string(APPEND _m "# Core (always required):\n")
-    get_target_property(_core_srcs SolidSyslog SOURCES)
-    foreach(_s ${_core_srcs})
-        if(IS_ABSOLUTE "${_s}")
-            # The host Pattern-A adapters (Posix / Windows / OpenSSL / C11 atomics)
-            # are baked into the Core target by CMake auto-detect. They are
-            # host-build conveniences and have no place in a (cross / embedded)
-            # integration manifest — keep only the portable Core/Source set.
-            string(FIND "${_s}" "/Core/Source/" _in_core)
-            if(_in_core EQUAL -1)
-                continue()
-            endif()
-            _solidsyslog_manifest_relpath(_rel "${_s}")
-        else()
-            set(_rel "Core/Source/${_s}")
-        endif()
-        string(APPEND _m "${_rel}\n")
+    #
+    # Core's SOURCES carries the probe platforms' sources too — they attach with
+    # target_sources(SolidSyslog PRIVATE ...) from Platform/<X>/CMakeLists.txt and
+    # arrive as absolute paths. Bucket them by the registry's directory column
+    # instead of dropping them.
+    foreach(_token IN LISTS _selected_probe)
+        set(_probe_srcs_${_token} "")
     endforeach()
 
-    foreach(_pack ${_selected})
-        if(NOT TARGET SolidSyslog::${_pack})
-            message(WARNING
-                "Manifest: SolidSyslog::${_pack} is not a defined target in this "
-                "configuration; skipping. (Is its upstream env path set?)")
+    set(_core_lines "")
+    get_target_property(_core_srcs SolidSyslog SOURCES)
+    foreach(_s ${_core_srcs})
+        if(NOT IS_ABSOLUTE "${_s}")
+            string(APPEND _core_lines "Core/Source/${_s}\n")
+            continue()
+        endif()
+        _solidsyslog_manifest_relpath(_rel "${_s}")
+        set(_owner "")
+        foreach(_token IN LISTS _known)
+            if(_rel MATCHES "^${_dir_${_token}}/")
+                set(_owner ${_token})
+                break()
+            endif()
+        endforeach()
+        if(_owner)
+            if(_owner IN_LIST _selected_probe)
+                string(APPEND _probe_srcs_${_owner} "${_rel}\n")
+            endif()
+        elseif(_rel MATCHES "^Core/Source/")
+            string(APPEND _core_lines "${_rel}\n")
         else()
-            string(APPEND _m "\n# ${_pack}:\n")
-            _solidsyslog_manifest_pack_sources(_pack_srcs SolidSyslog::${_pack})
-            string(APPEND _m "${_pack_srcs}")
+            message(WARNING
+                "Manifest: '${_rel}' is in the Core target but under neither "
+                "Core/Source nor a registered platform directory, so the manifest "
+                "cannot place it. Add its directory to SOLIDSYSLOG_PLATFORM_REGISTRY.")
         endif()
     endforeach()
+
+    string(APPEND _m "## Source files (.c) — compile all of these\n\n")
+    string(APPEND _m "# Core (always required):\n")
+    string(APPEND _m "${_core_lines}")
+
+    foreach(_token IN LISTS _selected_upstream)
+        string(APPEND _m "\n# ${_token}:\n")
+        _solidsyslog_manifest_pack_sources(_pack_srcs SolidSyslog::${_token})
+        string(APPEND _m "${_pack_srcs}")
+    endforeach()
+
+    if(_selected_probe)
+        string(APPEND _m "\n# The platforms below are selected by a toolchain capability probe. A CMake\n")
+        string(APPEND _m "# consumer gets them compiled into libSolidSyslog.a; every other build has no\n")
+        string(APPEND _m "# such library, so compile them explicitly with everything else.\n")
+        foreach(_token IN LISTS _selected_probe)
+            string(APPEND _m "\n# ${_token}:\n")
+            string(APPEND _m "${_probe_srcs_${_token}}")
+        endforeach()
+    endif()
 
     # --- Include directories --------------------------------------------------
     string(APPEND _m "\n## Include directories\n\n")
     set(_incdirs "Core/Interface" "Core/Source")
-    foreach(_pack ${_selected})
-        if(TARGET SolidSyslog::${_pack})
-            get_target_property(_incs SolidSyslog::${_pack} INTERFACE_INCLUDE_DIRECTORIES)
-            if(_incs)
-                foreach(_i ${_incs})
-                    _solidsyslog_manifest_relpath(_rel "${_i}")
-                    list(APPEND _incdirs "${_rel}")
-                endforeach()
-            endif()
+    foreach(_token IN LISTS _selected_upstream)
+        get_target_property(_incs SolidSyslog::${_token} INTERFACE_INCLUDE_DIRECTORIES)
+        if(_incs)
+            foreach(_i ${_incs})
+                _solidsyslog_manifest_relpath(_rel "${_i}")
+                list(APPEND _incdirs "${_rel}")
+            endforeach()
         endif()
     endforeach()
+    if(_selected_probe)
+        # A probe platform publishes its Interface on the Core target, the same
+        # way it publishes its sources into Core's SOURCES.
+        get_target_property(_core_incs SolidSyslog INTERFACE_INCLUDE_DIRECTORIES)
+        foreach(_i ${_core_incs})
+            _solidsyslog_manifest_relpath(_rel "${_i}")
+            foreach(_token IN LISTS _selected_probe)
+                if(_rel MATCHES "^${_dir_${_token}}/")
+                    list(APPEND _incdirs "${_rel}")
+                endif()
+            endforeach()
+        endforeach()
+    endif()
     list(REMOVE_DUPLICATES _incdirs)
     foreach(_d ${_incdirs})
         string(APPEND _m "${_d}\n")
@@ -153,12 +245,24 @@ function(solidsyslog_generate_manifest)
         string(APPEND _m "#           and use the SAME config when building the mbedTLS library itself.\n")
     endif()
 
+    # --- Language -------------------------------------------------------------
+    # The floor, and any platform that raises it. Which -std= flag spells that is
+    # the integrator's business: anything at or above the floor is supported.
+    string(APPEND _m "\n## Language\n\n")
+    string(APPEND _m "${_SOLIDSYSLOG_MANIFEST_LANGUAGE_FLOOR} or later.\n")
+    foreach(_token IN LISTS _selected)
+        set(_lang "${_SOLIDSYSLOG_MANIFEST_LANG_${_token}}")
+        if(_lang)
+            string(APPEND _m "The ${_token} platform requires ${_lang} or later.\n")
+        endif()
+    endforeach()
+
     # --- Config headers you supply --------------------------------------------
     string(APPEND _m "\n## Integrator-supplied config headers\n\n")
-    foreach(_pack ${_selected})
-        set(_cfg "${_SOLIDSYSLOG_MANIFEST_CFG_${_pack}}")
+    foreach(_token IN LISTS _selected)
+        set(_cfg "${_SOLIDSYSLOG_MANIFEST_CFG_${_token}}")
         if(_cfg)
-            string(APPEND _m "${_cfg}   (${_pack})\n")
+            string(APPEND _m "${_cfg}   (${_token})\n")
         endif()
     endforeach()
 
