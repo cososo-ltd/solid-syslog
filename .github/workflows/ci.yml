@@ -659,6 +659,15 @@ jobs:
           find Core/Interface Core/Source Platform Tests Bdd/Targets -name '*.c' -o -name '*.cpp' -o -name '*.h' \
             | xargs clang-format --dry-run --Werror
 
+      # README.md and SKILL.md claim Core's implementation has no conditional
+      # compilation. Keep that true rather than aspirational.
+      - name: Assert Core's implementation has no conditional compilation
+        run: |
+          if grep -rnE '^[[:space:]]*#[[:space:]]*(if|ifdef|ifndef|elif|else)' Core/Source/*.c; then
+            echo "::error::Core/Source/*.c must contain no conditional compilation (see README.md, Architecture)"
+            exit 1
+          fi
+
   analyze-markdown:
     runs-on: ubuntu-latest
     steps:
