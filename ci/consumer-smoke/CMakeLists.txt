@@ -23,6 +23,10 @@ project(SolidSyslogConsumerSmoke C)
 # demand CppUTest; SOLIDSYSLOG_BUILD_TESTING is why it no longer does.
 include(CTest)
 
+# config/ turns the gated adapters on; config-gates-off/ turns them off.
+set(SOLIDSYSLOG_SMOKE_CONFIG_DIR "config" CACHE STRING
+    "Integrator config header directory, relative to this file.")
+
 include(FetchContent)
 FetchContent_Declare(SolidSyslog
     GIT_REPOSITORY https://github.com/cososo-ltd/solid-syslog.git
@@ -107,14 +111,13 @@ if(SOLIDSYSLOG_SMOKE_LINK_PACKS)
 
     target_link_libraries(consumer_smoke PRIVATE
         SolidSyslog::LwipRaw
-        SolidSyslog::LwipRawDnsResolver
         SolidSyslog::FreeRtos
     )
 
     # Exactly what an integrator supplies: their own config headers, then the
     # upstream trees. SolidSyslog's own include dirs arrive with the packs.
     target_include_directories(consumer_smoke PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/config
+        ${CMAKE_CURRENT_SOURCE_DIR}/${SOLIDSYSLOG_SMOKE_CONFIG_DIR}
         ${SOLIDSYSLOG_LWIP_PATH}/src/include
         ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
         ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3

@@ -767,6 +767,12 @@ jobs:
           --suppressions-list=cppcheck_suppressions_tests.txt
           --inline-suppr
           --std=c11
+          -DLWIP_DNS=1
+          -DLWIP_UDP=1
+          -DLWIP_TCP=1
+          -DconfigSUPPORT_STATIC_ALLOCATION=1
+          -DconfigUSE_MUTEXES=1
+          -DipconfigUSE_TCP=1
           -ICore/Interface
           -IPlatform/Atomics/Interface
           -IPlatform/Posix/Interface
@@ -816,6 +822,12 @@ jobs:
           --error-exitcode=1
           --inline-suppr
           --std=c11
+          -DLWIP_DNS=1
+          -DLWIP_UDP=1
+          -DLWIP_TCP=1
+          -DconfigSUPPORT_STATIC_ALLOCATION=1
+          -DconfigUSE_MUTEXES=1
+          -DipconfigUSE_TCP=1
           -ICore/Interface
           -IPlatform/Atomics/Interface
           -IPlatform/Posix/Interface
@@ -849,6 +861,12 @@ jobs:
             --error-exitcode=1 \
             --inline-suppr \
             --std=c11 \
+            -DLWIP_DNS=1 \
+            -DLWIP_UDP=1 \
+            -DLWIP_TCP=1 \
+            -DconfigSUPPORT_STATIC_ALLOCATION=1 \
+            -DconfigUSE_MUTEXES=1 \
+            -DipconfigUSE_TCP=1 \
             -ICore/Interface \
             -IPlatform/Atomics/Interface \
             -IPlatform/Posix/Interface \
@@ -1408,7 +1426,7 @@ jobs:
         run: |
           cmake -S . -B build/manifest -DSOLIDSYSLOG_BUILD_TESTING=OFF \
             -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos;MbedTls;FatFs;Atomics" \
-            -DSOLIDSYSLOG_MANIFEST_PACKS="LwipRaw;LwipRawDnsResolver;MbedTls;FreeRtos;FatFs" \
+            -DSOLIDSYSLOG_MANIFEST_PACKS="LwipRaw;MbedTls;FreeRtos;FatFs" \
             -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/beta-stack-manifest.txt"
 
       - name: Fail on drift
@@ -1513,6 +1531,24 @@ jobs:
 
       - name: Cross-build and link the packs
         run: cmake --build build/consumer-smoke-scrubbed
+
+      # Builds the gated-out path for the packs this lane selects. PlusTcp is an
+      # alternative network stack and is not built here.
+      - name: Configure the consumer project (LwipRaw and FreeRtos gates off)
+        run: |
+          env -u LWIP_PATH -u FREERTOS_KERNEL_PATH -u MBEDTLS_DIR \
+              -u FATFS_PATH -u FREERTOS_PLUS_FAT_PATH -u FREERTOS_PLUS_TCP_PATH \
+          cmake -S ci/consumer-smoke -B build/consumer-smoke-gates-off \
+            -DCMAKE_TOOLCHAIN_FILE="$(pwd)/Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake" \
+            -DFETCHCONTENT_SOURCE_DIR_SOLIDSYSLOG="$(pwd)" \
+            -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos" \
+            -DSOLIDSYSLOG_LWIP_PATH=/opt/lwip \
+            -DSOLIDSYSLOG_FREERTOS_KERNEL_PATH=/opt/freertos/kernel \
+            -DSOLIDSYSLOG_SMOKE_CONFIG_DIR=config-gates-off \
+            -DSOLIDSYSLOG_SMOKE_LINK_PACKS=ON
+
+      - name: Cross-build the packs with the LwipRaw and FreeRtos gates off
+        run: cmake --build build/consumer-smoke-gates-off
 
       # A nested configure must not write into the dependency's checkout. The BDD
       # tunables mirror is the one that did, and it is gitignored, so check for

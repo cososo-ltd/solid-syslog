@@ -166,6 +166,62 @@ This is the only synchronisation primitive the pools use for their own walks.
   MISRA-leaning, see [MISRA deviations](misra-deviations.md) and
   [Naming conventions](NAMING.md).
 
+## Depending on upstream configuration
+
+An adapter often needs something the upstream project provides only under a
+configuration macro — lwIP's `LWIP_DNS`, FreeRTOS's
+`configSUPPORT_STATIC_ALLOCATION`. Take these in order.
+
+**Prefer a seam.** Where the adapter is thin, take the dependency as an injected
+function pointer with a safe default and never name the upstream symbol.
+`SolidSyslogLwipRaw_SetMarshal` covers `NO_SYS=0` against `NO_SYS=1` this way:
+the library calls a callback, and the integrator installs `LOCK_TCPIP_CORE` or a
+`tcpip_callback_with_block` shim. Nothing to select at build time.
+
+**Otherwise gate the translation unit.** Where the adapter carries logic that
+belongs in the library — the DNS resolver's async callback handling, poll
+interval and timeout — keep it and wrap the file:
+
+```c
+#include "lwip/opt.h"
+
+/* This component requires lwIP built with DNS. */
+#if LWIP_DNS
+
+/* ... */
+
+#else
+
+/* ISO C forbids an empty translation unit. */
+typedef int LwipRawDnsResolver_EmptyTranslationUnit;
+
+#endif /* LWIP_DNS */
+```
+
+A gated adapter must also honour these:
+
+- The upstream config header is the first include. It defines the macro, so the
+  gate cannot be evaluated before it.
+- Both translation units gate: the adapter and its `*Static.c` pool sibling.
+- The public header neither gates nor includes an upstream header. It states the
+  requirement in prose; asking for the class without the option is a link error.
+- The adapter stays in its platform's umbrella target, so a consumer globbing the
+  pack directory is correct in any configuration.
+- Add the macro to the `-D` list in the `cppcheck` steps of
+  `.github/workflows/ci.yml` and to `CPPCHECK_CMD` in
+  `scripts/misra_renumber.py`. Without it cppcheck analyses the `#else` branch
+  and the adapter goes unchecked.
+
+**An `#error` is for a different case.** Use one where the integrator is using
+the class and their configuration contradicts it — `SolidSyslogFatFsFile.c`
+requires `SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE` to be at least `FF_MAX_SS`.
+Absence is not a correct outcome there, so do not gate it.
+
+**Never ship two behaviours from one file.** `#if FEATURE` / `#else` selecting
+between implementations is out of scope: it ships two products from one source,
+and the combinations multiply across upstream configurations. A gate has one
+product and one further state, absent, which has no behaviour to test.
+
 ## Wiring a new pack into the build
 
 - CMake. Group the adapter sources into a namespaced umbrella target

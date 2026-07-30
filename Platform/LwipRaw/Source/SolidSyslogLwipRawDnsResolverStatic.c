@@ -1,3 +1,8 @@
+#include "lwip/opt.h"
+
+/* This component requires lwIP built with DNS. */
+#if LWIP_DNS
+
 #include "SolidSyslogLwipRawDnsResolver.h"
 
 #include <stdbool.h>
@@ -95,3 +100,10 @@ static inline void LwipRawDnsResolver_CleanupAtIndex(size_t index, void* context
     (void) context;
     LwipRawDnsResolver_Cleanup(&LwipRawDnsResolver_Pool[index].Base);
 }
+
+#else
+
+/* ISO C forbids an empty translation unit. */
+typedef int LwipRawDnsResolverStatic_EmptyTranslationUnit;
+
+#endif /* LWIP_DNS */

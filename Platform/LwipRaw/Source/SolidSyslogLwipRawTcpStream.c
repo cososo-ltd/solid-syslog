@@ -1,3 +1,8 @@
+#include "lwip/opt.h"
+
+/* This component requires lwIP built with TCP. */
+#if LWIP_TCP
+
 #include "SolidSyslogLwipRawTcpStream.h"
 #include "SolidSyslogLwipRawTcpStreamPrivate.h"
 
@@ -540,3 +545,10 @@ static void LwipRawTcpStream_ErrCallback(void* arg, err_t err)
     self->Pcb = NULL;
     self->Errored = true;
 }
+
+#else
+
+/* ISO C forbids an empty translation unit. */
+typedef int LwipRawTcpStream_EmptyTranslationUnit;
+
+#endif /* LWIP_TCP */

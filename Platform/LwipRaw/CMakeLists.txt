@@ -26,10 +26,8 @@
 
 add_library(SolidSyslogLwipRaw INTERFACE)
 
-# Umbrella = the adapters that compile in ANY valid lwIP config: Address,
-# Datagram, TcpStream, the NUMERIC Resolver, and the Marshal hop. The DNS
-# resolver is config-gated (needs LWIP_DNS=1) and is kept OUT of the umbrella —
-# see the SolidSyslogLwipRawDnsResolver component below.
+# Config-gated adapters are in the umbrella: each compiles to nothing when the
+# lwIP option it needs is off.
 target_sources(SolidSyslogLwipRaw INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawAddress.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawAddressStatic.c
@@ -39,6 +37,8 @@ target_sources(SolidSyslogLwipRaw INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawTcpStreamStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawResolver.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawResolverStatic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawDnsResolver.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawDnsResolverStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawMarshal.c
 )
 
@@ -51,20 +51,5 @@ target_include_directories(SolidSyslogLwipRaw INTERFACE
 target_link_libraries(SolidSyslogLwipRaw INTERFACE SolidSyslogTunables)
 
 add_library(SolidSyslog::LwipRaw ALIAS SolidSyslogLwipRaw)
-
-# Opt-in DNS resolver component — REQUIRES LWIP_DNS=1 in the consumer's
-# lwipopts.h. Kept out of the umbrella so a numeric-only build never has to
-# enable DNS. Links the umbrella, so a consumer that wants DNS links just this
-# one target and gets Address/Datagram/TcpStream/Marshal too.
-add_library(SolidSyslogLwipRawDnsResolver INTERFACE)
-
-target_sources(SolidSyslogLwipRawDnsResolver INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawDnsResolver.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawDnsResolverStatic.c
-)
-
-target_link_libraries(SolidSyslogLwipRawDnsResolver INTERFACE SolidSyslogLwipRaw)
-
-add_library(SolidSyslog::LwipRawDnsResolver ALIAS SolidSyslogLwipRawDnsResolver)
 
 solidsyslog_install_public_headers()

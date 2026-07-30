@@ -1,3 +1,8 @@
+#include "lwip/opt.h"
+
+/* This component requires lwIP built with DNS. */
+#if LWIP_DNS
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -210,3 +215,10 @@ static inline struct LwipRawDnsResolverCall* LwipRawDnsResolverCallFromContext(v
 {
     return (struct LwipRawDnsResolverCall*) context;
 }
+
+#else
+
+/* ISO C forbids an empty translation unit. */
+typedef int LwipRawDnsResolver_EmptyTranslationUnit;
+
+#endif /* LWIP_DNS */

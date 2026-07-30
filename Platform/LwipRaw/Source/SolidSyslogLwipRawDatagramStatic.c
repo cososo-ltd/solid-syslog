@@ -1,3 +1,8 @@
+#include "lwip/opt.h"
+
+/* This component requires lwIP built with UDP. */
+#if LWIP_UDP
+
 #include "SolidSyslogLwipRawDatagram.h"
 
 #include <stdbool.h>
@@ -80,3 +85,10 @@ static inline void LwipRawDatagram_CleanupAtIndex(size_t index, void* context)
     (void) context;
     LwipRawDatagram_Cleanup(&LwipRawDatagram_Pool[index].Base);
 }
+
+#else
+
+/* ISO C forbids an empty translation unit. */
+typedef int LwipRawDatagramStatic_EmptyTranslationUnit;
+
+#endif /* LWIP_UDP */
