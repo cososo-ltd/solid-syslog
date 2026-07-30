@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGMBEDTLSHMACSHA256POLICYERRORS_H
 #define SOLIDSYSLOGMBEDTLSHMACSHA256POLICYERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -31,6 +31,6 @@ EXTERN_C_BEGIN
      *  reads event->Detail as an enum SolidSyslogMbedTlsHmacSha256PolicyErrors. */
     extern const struct SolidSyslogErrorSource MbedTlsHmacSha256PolicyErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGMBEDTLSHMACSHA256POLICYERRORS_H */

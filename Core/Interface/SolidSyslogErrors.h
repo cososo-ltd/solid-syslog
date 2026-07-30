@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGERRORS_H
 #define SOLIDSYSLOGERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -33,6 +33,6 @@ EXTERN_C_BEGIN
      *  event->Detail as an enum SolidSyslogErrors. */
     extern const struct SolidSyslogErrorSource SolidSyslogErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGERRORS_H */

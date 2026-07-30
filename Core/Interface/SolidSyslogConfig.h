@@ -8,9 +8,9 @@
 
 #include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogTimestamp.h"
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslog;
     struct SolidSyslogBuffer;
@@ -52,6 +52,6 @@ EXTERN_C_BEGIN
      *  already-destroyed handle is reported via SolidSyslog_Error and ignored. */
     void SolidSyslog_Destroy(struct SolidSyslog * handle);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGCONFIG_H */

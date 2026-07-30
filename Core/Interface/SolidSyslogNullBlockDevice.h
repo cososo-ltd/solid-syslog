@@ -5,9 +5,9 @@
 #ifndef SOLIDSYSLOGNULLBLOCKDEVICE_H
 #define SOLIDSYSLOGNULLBLOCKDEVICE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogBlockDevice;
 
@@ -15,6 +15,6 @@ EXTERN_C_BEGIN
      *  Read, Append and WriteAt all return false, and Size and GetBlockSize return 0. */
     struct SolidSyslogBlockDevice* SolidSyslogNullBlockDevice_Get(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGNULLBLOCKDEVICE_H */

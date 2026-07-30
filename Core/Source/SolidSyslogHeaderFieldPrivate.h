@@ -1,13 +1,13 @@
 #ifndef SOLIDSYSLOGHEADERFIELDPRIVATE_H
 #define SOLIDSYSLOGHEADERFIELDPRIVATE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stddef.h>
 
 #include "SolidSyslogHeaderField.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogFormatter;
 
@@ -30,6 +30,6 @@ EXTERN_C_BEGIN
         size_t maxLength
     );
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGHEADERFIELDPRIVATE_H */

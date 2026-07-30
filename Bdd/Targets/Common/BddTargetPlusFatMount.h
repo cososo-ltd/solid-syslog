@@ -1,11 +1,11 @@
 #ifndef BDDTARGETPLUSFATMOUNT_H
 #define BDDTARGETPLUSFATMOUNT_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* FreeRTOS-Plus-FAT implementation of the shared pipeline's FS-mount seam
      * (struct BddTargetFreeRtosPipelineConfig). The Plus-FAT sibling of
@@ -29,6 +29,6 @@ EXTERN_C_BEGIN
     struct SolidSyslogFile* BddTargetPlusFatMount_CreateFile(void);
     void BddTargetPlusFatMount_DestroyFile(struct SolidSyslogFile * file);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BDDTARGETPLUSFATMOUNT_H */

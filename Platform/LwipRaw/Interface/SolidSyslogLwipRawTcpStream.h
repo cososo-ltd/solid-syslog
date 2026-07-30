@@ -32,11 +32,11 @@
 #ifndef SOLIDSYSLOGLWIPRAWTCPSTREAM_H
 #define SOLIDSYSLOGLWIPRAWTCPSTREAM_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogSleep.h"
 #include "SolidSyslogTcpConnectTimeoutFunction.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogStream;
 
@@ -62,6 +62,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot and close the connection. */
     void SolidSyslogLwipRawTcpStream_Destroy(struct SolidSyslogStream * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGLWIPRAWTCPSTREAM_H */

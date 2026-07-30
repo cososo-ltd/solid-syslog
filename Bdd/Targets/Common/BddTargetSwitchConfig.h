@@ -1,12 +1,12 @@
 #ifndef BDDTARGETSWITCHCONFIG_H
 #define BDDTARGETSWITCHCONFIG_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     enum
     {
@@ -26,6 +26,6 @@ EXTERN_C_BEGIN
      * thing that has to flip. */
     bool BddTargetSwitchConfig_IsMtlsMode(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BDDTARGETSWITCHCONFIG_H */

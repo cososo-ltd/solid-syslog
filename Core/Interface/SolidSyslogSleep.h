@@ -4,9 +4,9 @@
 #ifndef SOLIDSYSLOGSLEEP_H
 #define SOLIDSYSLOGSLEEP_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Millisecond sleep callback injected via config. Drives the bounded
      *  wait-and-retry loops that would otherwise busy-spin: the TLS handshake
@@ -15,6 +15,6 @@ EXTERN_C_BEGIN
      *  no conditional compilation. */
     typedef void (*SolidSyslogSleepFunction)(int milliseconds);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSLEEP_H */

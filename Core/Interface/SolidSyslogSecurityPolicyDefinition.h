@@ -7,12 +7,12 @@
 #ifndef SOLIDSYSLOGSECURITYPOLICYDEFINITION_H
 #define SOLIDSYSLOGSECURITYPOLICYDEFINITION_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** One record presented to a security policy. The Content span is split as
      *    Content[0 .. HeaderLength)             associated data, authenticated
@@ -65,6 +65,6 @@ EXTERN_C_BEGIN
         bool (*OpenRecord)(struct SolidSyslogSecurityPolicy* self, const struct SolidSyslogSecurityRecord* record);
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSECURITYPOLICYDEFINITION_H */

@@ -6,12 +6,12 @@
 
 #include "SolidSyslogConfig.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Writes the process id (GetCurrentProcessId) into @p field. @p context is
      *  unused. */
     void SolidSyslogWindowsProcessId_Get(struct SolidSyslogHeaderField * field, void* context);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINDOWSPROCESSID_H */

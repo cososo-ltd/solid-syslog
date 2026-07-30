@@ -1,9 +1,9 @@
 #ifndef PLUSFATFAKE_H
 #define PLUSFATFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void PlusFatFake_Reset(void);
 
@@ -45,6 +45,6 @@ EXTERN_C_BEGIN
     int PlusFatFake_RemoveCallCount(void);
     const char* PlusFatFake_LastRemovePath(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* PLUSFATFAKE_H */

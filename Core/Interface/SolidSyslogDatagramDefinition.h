@@ -9,11 +9,11 @@
 #include <stddef.h>
 
 #include "SolidSyslogDatagram.h"
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogAddress;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Vtable an unconnected-datagram (UDP) transport implements. Each method
      *  receives the same struct as its first argument, so an implementation
@@ -32,6 +32,6 @@ EXTERN_C_BEGIN
         void (*Close)(struct SolidSyslogDatagram* base);
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGDATAGRAMDEFINITION_H */

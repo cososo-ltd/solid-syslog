@@ -1,7 +1,7 @@
 #ifndef LWIPTCPFAKE_H
 #define LWIPTCPFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -9,7 +9,7 @@
 #include "lwip/ip_addr.h"
 #include "lwip/tcp.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void LwipTcpFake_Reset(void);
 
@@ -80,6 +80,6 @@ EXTERN_C_BEGIN
     int LwipTcpFake_OutstandingPcbCount(void);
     void LwipTcpFake_NotePcbReleasedByErr(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* LWIPTCPFAKE_H */

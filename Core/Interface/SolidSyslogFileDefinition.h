@@ -8,9 +8,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The File contract a porter implements (FatFs, FreeRTOS-Plus-FAT, a raw
      *  flash driver, ...). One instance holds at most one open file; Open on an
@@ -44,6 +44,6 @@ EXTERN_C_BEGIN
         bool (*Delete)(struct SolidSyslogFile* base, const char* path);
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGFILEDEFINITION_H */

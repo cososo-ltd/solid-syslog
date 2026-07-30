@@ -22,10 +22,10 @@
 #ifndef SOLIDSYSLOGLWIPRAWDNSRESOLVER_H
 #define SOLIDSYSLOGLWIPRAWDNSRESOLVER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogSleep.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogResolver;
 
@@ -47,6 +47,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot. */
     void SolidSyslogLwipRawDnsResolver_Destroy(struct SolidSyslogResolver * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGLWIPRAWDNSRESOLVER_H */

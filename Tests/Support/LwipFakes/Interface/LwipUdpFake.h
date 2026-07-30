@@ -1,14 +1,14 @@
 #ifndef LWIPUDPFAKE_H
 #define LWIPUDPFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
 #include "lwip/ip_addr.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct udp_pcb;
     struct pbuf;
@@ -36,6 +36,6 @@ EXTERN_C_BEGIN
      * leaked a PCB — pin this in teardown to catch leaks across the suite. */
     int LwipUdpFake_OutstandingPcbCount(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* LWIPUDPFAKE_H */

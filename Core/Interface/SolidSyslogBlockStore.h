@@ -24,11 +24,11 @@
 
 #include <stddef.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogStore;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogBlockDevice;
     struct SolidSyslogSecurityPolicy;
@@ -83,6 +83,6 @@ EXTERN_C_BEGIN
      *  SecurityPolicy. */
     void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGBLOCKSTORE_H */

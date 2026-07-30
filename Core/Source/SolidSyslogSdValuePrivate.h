@@ -1,11 +1,11 @@
 #ifndef SOLIDSYSLOGSDVALUEPRIVATE_H
 #define SOLIDSYSLOGSDVALUEPRIVATE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include "SolidSyslogSdValue.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogFormatter;
 
@@ -37,6 +37,6 @@ EXTERN_C_BEGIN
      * calls this when the param's value ends. */
     void SolidSyslogSdValue_Close(struct SolidSyslogSdValue * value);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSDVALUEPRIVATE_H */

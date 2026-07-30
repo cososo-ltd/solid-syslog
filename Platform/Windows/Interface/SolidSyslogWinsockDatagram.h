@@ -14,7 +14,7 @@
 
 #include "SolidSyslogDatagram.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Create takes no config; an exhausted pool falls back to the shared
      *  NullDatagram, whose SendTo reports SENT so undeliverables are dropped
@@ -23,6 +23,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot and close the socket. */
     void SolidSyslogWinsockDatagram_Destroy(struct SolidSyslogDatagram * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINSOCKDATAGRAM_H */

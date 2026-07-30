@@ -1,13 +1,13 @@
 #ifndef BDDTARGETWINDOWSCOMMANDLINE_H
 #define BDDTARGETWINDOWSCOMMANDLINE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogPrival.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct BddTargetWindowsOptions
     {
@@ -49,6 +49,6 @@ EXTERN_C_BEGIN
        handful of flags would be overkill. */
     void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetWindowsOptions* options);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BDDTARGETWINDOWSCOMMANDLINE_H */

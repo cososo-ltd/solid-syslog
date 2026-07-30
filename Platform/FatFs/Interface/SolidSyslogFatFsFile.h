@@ -7,11 +7,11 @@
 #ifndef SOLIDSYSLOGFATFSFILE_H
 #define SOLIDSYSLOGFATFSFILE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogFile;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Create takes no config; an exhausted pool falls back to the shared
      *  NullFile. */
@@ -19,6 +19,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot. */
     void SolidSyslogFatFsFile_Destroy(struct SolidSyslogFile * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGFATFSFILE_H */

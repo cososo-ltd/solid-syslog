@@ -1,12 +1,12 @@
 #ifndef SOLIDSYSLOGFORMATTER_H
 #define SOLIDSYSLOGFORMATTER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stddef.h>
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     typedef size_t SolidSyslogFormatterStorage;
 
@@ -67,6 +67,6 @@ EXTERN_C_BEGIN
     const char* SolidSyslogFormatter_AsFormattedBuffer(struct SolidSyslogFormatter * formatter);
     size_t SolidSyslogFormatter_Length(const struct SolidSyslogFormatter* formatter);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGFORMATTER_H */

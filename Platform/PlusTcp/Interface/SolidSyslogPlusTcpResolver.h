@@ -9,9 +9,9 @@
 #ifndef SOLIDSYSLOGPLUSTCPRESOLVER_H
 #define SOLIDSYSLOGPLUSTCPRESOLVER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogResolver;
 
@@ -21,6 +21,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot. */
     void SolidSyslogPlusTcpResolver_Destroy(struct SolidSyslogResolver * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPLUSTCPRESOLVER_H */

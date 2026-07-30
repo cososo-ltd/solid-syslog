@@ -5,12 +5,12 @@
 #ifndef SOLIDSYSLOGSDVALUE_H
 #define SOLIDSYSLOGSDVALUE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stddef.h>
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The per-param value sink of the SD authoring API. A value producer is
      *  handed only a SolidSyslogSdValue*, so it can stream escaped, UTF-8-safe
@@ -38,6 +38,6 @@ EXTERN_C_BEGIN
      *  escaping applies. Output is bounded by the message buffer. */
     void SolidSyslogSdValue_Uint32(struct SolidSyslogSdValue * value, uint32_t number);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSDVALUE_H */

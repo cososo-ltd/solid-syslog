@@ -7,9 +7,9 @@
 #ifndef SOLIDSYSLOGPOSIXADDRESS_H
 #define SOLIDSYSLOGPOSIXADDRESS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogAddress;
 
@@ -20,6 +20,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot. */
     void SolidSyslogPosixAddress_Destroy(struct SolidSyslogAddress * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPOSIXADDRESS_H */

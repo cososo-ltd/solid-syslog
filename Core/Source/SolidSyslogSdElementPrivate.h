@@ -1,7 +1,7 @@
 #ifndef SOLIDSYSLOGSDELEMENTPRIVATE_H
 #define SOLIDSYSLOGSDELEMENTPRIVATE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 
@@ -9,7 +9,7 @@
 #include "SolidSyslogSdElement.h"
 #include "SolidSyslogSdValuePrivate.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Definition lives here (not the public header) so an SD author handed a
      * SolidSyslogSdElement* cannot reach the wrapped formatter. The embedded
@@ -38,6 +38,6 @@ EXTERN_C_BEGIN
         struct SolidSyslogFormatter * formatter
     );
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSDELEMENTPRIVATE_H */

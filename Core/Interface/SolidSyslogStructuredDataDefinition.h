@@ -4,9 +4,9 @@
 #ifndef SOLIDSYSLOGSTRUCTUREDDATADEFINITION_H
 #define SOLIDSYSLOGSTRUCTUREDDATADEFINITION_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogSdElement;
 
@@ -20,6 +20,6 @@ EXTERN_C_BEGIN
         void (*Format)(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element);
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSTRUCTUREDDATADEFINITION_H */

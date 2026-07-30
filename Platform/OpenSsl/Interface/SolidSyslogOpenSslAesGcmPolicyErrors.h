@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGOPENSSLAESGCMPOLICYERRORS_H
 #define SOLIDSYSLOGOPENSSLAESGCMPOLICYERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -29,6 +29,6 @@ EXTERN_C_BEGIN
      *  event->Detail as an enum SolidSyslogOpenSslAesGcmPolicyErrors. */
     extern const struct SolidSyslogErrorSource OpenSslAesGcmPolicyErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGOPENSSLAESGCMPOLICYERRORS_H */

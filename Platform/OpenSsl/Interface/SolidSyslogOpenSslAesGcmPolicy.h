@@ -19,12 +19,12 @@
 #ifndef SOLIDSYSLOGOPENSSLAESGCMPOLICY_H
 #define SOLIDSYSLOGOPENSSLAESGCMPOLICY_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogKeyFunction.h"
 
 struct SolidSyslogSecurityPolicy;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Supplies the key SolidSyslogOpenSslAesGcmPolicy seals and opens with. */
     struct SolidSyslogOpenSslAesGcmPolicyConfig
@@ -44,6 +44,6 @@ EXTERN_C_BEGIN
      *  stored on the instance — so this only frees the slot. */
     void SolidSyslogOpenSslAesGcmPolicy_Destroy(struct SolidSyslogSecurityPolicy * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGOPENSSLAESGCMPOLICY_H */

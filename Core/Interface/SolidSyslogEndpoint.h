@@ -6,9 +6,9 @@
 
 #include <stdint.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     enum
     {
@@ -36,6 +36,6 @@ EXTERN_C_BEGIN
      *  @p context is EndpointContext, passed through unchanged. */
     typedef uint32_t (*SolidSyslogEndpointVersionFunction)(void* context);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGENDPOINT_H */

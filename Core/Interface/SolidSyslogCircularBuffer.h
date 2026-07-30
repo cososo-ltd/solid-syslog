@@ -17,14 +17,14 @@
 #ifndef SOLIDSYSLOGCIRCULARBUFFER_H
 #define SOLIDSYSLOGCIRCULARBUFFER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogTunables.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogBuffer;
     struct SolidSyslogMutex;
@@ -58,6 +58,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot; does not free the caller-supplied ring or mutex. */
     void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGCIRCULARBUFFER_H */

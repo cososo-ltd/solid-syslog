@@ -1,12 +1,12 @@
 #ifndef SOLIDSYSLOGSENDERHEALTH_H
 #define SOLIDSYSLOGSENDERHEALTH_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -40,6 +40,6 @@ EXTERN_C_BEGIN
         const struct SolidSyslogSenderHealthReporter* reporter
     );
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSENDERHEALTH_H */

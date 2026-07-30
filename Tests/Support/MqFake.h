@@ -4,9 +4,9 @@
 #include <mqueue.h>
 #include <stddef.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void MqFake_Reset(void);
 
@@ -41,6 +41,6 @@ EXTERN_C_BEGIN
     int MqFake_UnlinkCallCount(void);
     const char* MqFake_LastUnlinkName(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* MQFAKE_H */

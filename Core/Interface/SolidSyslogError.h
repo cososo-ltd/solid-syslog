@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogPrival.h"
 
 /*
@@ -24,7 +24,7 @@
 #define SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY SOLIDSYSLOG_SEVERITY_CRITICAL
 #define SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY SOLIDSYSLOG_SEVERITY_WARNING
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The identity of an error-emitting class. There is one extern instance per
      *  class (e.g. SolidSyslogErrorSource); a handler recognises the emitter by
@@ -69,6 +69,6 @@ EXTERN_C_BEGIN
         int32_t detail
     );
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGERROR_H */

@@ -3,10 +3,10 @@
 
 #include <stdbool.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogLwipRawMarshal.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Invariant rail proving every lwIP Raw API call the production wrappers
      * make happens inside an installed marshal. Each faked lwIP function calls
@@ -36,7 +36,7 @@ EXTERN_C_BEGIN
      * Fixtures install this via SolidSyslogLwipRaw_SetMarshal. */
     void LwipFakeMarshalGuard_TrackingMarshal(SolidSyslogLwipRawCallback callback, void* context);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #define LWIP_REQUIRE_MARSHAL_ACTIVE() LwipFakeMarshalGuard_RequireActive(__FILE__, __LINE__)
 

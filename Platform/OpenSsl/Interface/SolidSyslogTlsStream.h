@@ -25,13 +25,13 @@
 #ifndef SOLIDSYSLOGTLSSTREAM_H
 #define SOLIDSYSLOGTLSSTREAM_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogSleep.h"
 #include "SolidSyslogTlsHandshakeTimeoutFunction.h"
 
 struct SolidSyslogStream;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Wires SolidSyslogTlsStream to its transport, trust anchors, and identity. */
     struct SolidSyslogTlsStreamConfig
@@ -69,6 +69,6 @@ EXTERN_C_BEGIN
      *  first if the stream is still Open. */
     void SolidSyslogTlsStream_Destroy(struct SolidSyslogStream * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGTLSSTREAM_H */

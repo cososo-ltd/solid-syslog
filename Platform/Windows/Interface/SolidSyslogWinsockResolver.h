@@ -13,7 +13,7 @@
 
 #include "SolidSyslogResolver.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Create takes no config; an exhausted pool falls back to the shared
      *  NullResolver. */
@@ -21,6 +21,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot. */
     void SolidSyslogWinsockResolver_Destroy(struct SolidSyslogResolver * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINSOCKRESOLVERH */

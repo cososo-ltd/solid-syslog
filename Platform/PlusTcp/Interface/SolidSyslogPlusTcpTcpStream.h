@@ -19,10 +19,10 @@
 #ifndef SOLIDSYSLOGPLUSTCPTCPSTREAM_H
 #define SOLIDSYSLOGPLUSTCPTCPSTREAM_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogTcpConnectTimeoutFunction.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogStream;
 
@@ -44,6 +44,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot and close the socket. */
     void SolidSyslogPlusTcpTcpStream_Destroy(struct SolidSyslogStream * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPLUSTCPTCPSTREAM_H */

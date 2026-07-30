@@ -7,9 +7,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Vtable an implementation embeds as its first member (base) and downcasts
      *  from. Write and Read carry the SolidSyslogBuffer_Write / _Read contract;
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
         bool (*Read)(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGBUFFERDEFINITION_H */

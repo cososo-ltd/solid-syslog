@@ -1,7 +1,7 @@
 #ifndef OPENSSLFAKE_H
 #define OPENSSLFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h> // IWYU pragma: keep — dual-use header (C and C++ TUs); IWYU only sees the C++ side and would drop this.
 #include <stddef.h>
@@ -14,7 +14,7 @@ struct ssl_method_st;
 struct bio_st;
 struct bio_method_st;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void OpenSslFake_Reset(void);
 
@@ -207,6 +207,6 @@ EXTERN_C_BEGIN
     int OpenSslFake_LastRandBytesLen(void);
     void OpenSslFake_SetRandBytesFails(bool fails);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* OPENSSLFAKE_H */

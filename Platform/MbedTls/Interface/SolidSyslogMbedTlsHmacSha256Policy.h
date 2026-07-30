@@ -18,12 +18,12 @@
 #ifndef SOLIDSYSLOGMBEDTLSHMACSHA256POLICY_H
 #define SOLIDSYSLOGMBEDTLSHMACSHA256POLICY_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogKeyFunction.h"
 
 struct SolidSyslogSecurityPolicy;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogMbedTlsHmacSha256PolicyConfig
     {
@@ -41,6 +41,6 @@ EXTERN_C_BEGIN
      *  key is fetched per-call). */
     void SolidSyslogMbedTlsHmacSha256Policy_Destroy(struct SolidSyslogSecurityPolicy * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGMBEDTLSHMACSHA256POLICY_H */

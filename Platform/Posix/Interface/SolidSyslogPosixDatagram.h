@@ -9,9 +9,9 @@
 #ifndef SOLIDSYSLOGPOSIXDATAGRAM_H
 #define SOLIDSYSLOGPOSIXDATAGRAM_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogDatagram;
 
@@ -22,6 +22,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot. */
     void SolidSyslogPosixDatagram_Destroy(struct SolidSyslogDatagram * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPOSIXDATAGRAM_H */

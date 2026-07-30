@@ -1,11 +1,11 @@
 #ifndef SOCKETSTREAM_H
 #define SOCKETSTREAM_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogStream;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Minimal SolidSyslogStream wrapper over a raw socket fd. Open is a
      * no-op (the fd is supplied at Create time and assumed already-connected,
@@ -15,6 +15,6 @@ EXTERN_C_BEGIN
     struct SolidSyslogStream* SocketStream_Create(int fd);
     void SocketStream_Destroy(struct SolidSyslogStream * self);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOCKETSTREAM_H */

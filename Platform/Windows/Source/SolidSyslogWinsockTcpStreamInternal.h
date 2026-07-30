@@ -8,12 +8,12 @@
    with the un-namespaced Winsock_* symbols already exported by
    SolidSyslogWinsockDatagram and SolidSyslogWinsockResolver. */
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     typedef SOCKET(WSAAPI * WinsockTcpStreamSocketFn)(int, int, int);
     typedef int(WSAAPI * WinsockTcpStreamConnectFn)(SOCKET, const struct sockaddr*, int);
@@ -37,6 +37,6 @@ EXTERN_C_BEGIN
     extern WinsockTcpStreamSelectFn WinsockTcpStream_select;
     extern WinsockTcpStreamWSAGetLastErrorFn WinsockTcpStream_WSAGetLastError;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINSOCKTCPSTREAMINTERNAL_H */

@@ -1,9 +1,9 @@
 #ifndef STOREFAKE_H
 #define STOREFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogStore* StoreFake_Create(void);
     void StoreFake_Destroy(void);
@@ -12,6 +12,6 @@ EXTERN_C_BEGIN
     void StoreFake_SetHalted(void);
     int StoreFake_WriteCallCount(struct SolidSyslogStore * store);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* STOREFAKE_H */

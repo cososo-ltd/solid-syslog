@@ -1,11 +1,11 @@
 #ifndef SOLIDSYSLOGUTF8_H
 #define SOLIDSYSLOGUTF8_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Byte-level UTF-8 lead and continuation classifiers per RFC 3629 §4.
      * These cover the disjoint top-bit patterns only — overlong / surrogate /
@@ -36,6 +36,6 @@ EXTERN_C_BEGIN
         return ((unsigned char) byte & 0xF8U) == 0xF0U;
     }
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGUTF8_H */

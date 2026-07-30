@@ -1,9 +1,9 @@
 #ifndef BDDTARGETCUSTOMSD_H
 #define BDDTARGETCUSTOMSD_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogStructuredData;
 
@@ -13,6 +13,6 @@ EXTERN_C_BEGIN
      * `send-custom` interactive command. */
     struct SolidSyslogStructuredData* BddTargetCustomSd_Get(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BDDTARGETCUSTOMSD_H */

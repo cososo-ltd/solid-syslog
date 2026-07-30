@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGPLUSTCPRESOLVERERRORS_H
 #define SOLIDSYSLOGPLUSTCPRESOLVERERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
      *  event->Detail as an enum SolidSyslogPlusTcpResolverErrors. */
     extern const struct SolidSyslogErrorSource PlusTcpResolverErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPLUSTCPRESOLVERERRORS_H */

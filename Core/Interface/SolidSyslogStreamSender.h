@@ -13,9 +13,9 @@
 #define SOLIDSYSLOG_STREAM_SENDER_H
 
 #include "SolidSyslogEndpoint.h"
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogSender;
 
@@ -48,6 +48,6 @@ EXTERN_C_BEGIN
      *  injected Resolver, Stream, or Address; the caller owns those. */
     void SolidSyslogStreamSender_Destroy(struct SolidSyslogSender * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOG_STREAM_SENDER_H */

@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGWINDOWSMUTEXERRORS_H
 #define SOLIDSYSLOGWINDOWSMUTEXERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
      *  enum SolidSyslogWindowsMutexErrors. */
     extern const struct SolidSyslogErrorSource WindowsMutexErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINDOWSMUTEXERRORS_H */

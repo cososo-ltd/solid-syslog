@@ -8,12 +8,12 @@
 #ifndef SOLIDSYSLOGMETASD_H
 #define SOLIDSYSLOGMETASD_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogSdValueFunction.h"
 
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogAtomicCounter;
     struct SolidSyslogStructuredData;
@@ -42,6 +42,6 @@ EXTERN_C_BEGIN
      *  caller owns it. */
     void SolidSyslogMetaSd_Destroy(struct SolidSyslogStructuredData * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGMETASD_H */

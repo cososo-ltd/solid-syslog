@@ -8,11 +8,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogAddress;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogDatagram;
 
@@ -56,6 +56,6 @@ EXTERN_C_BEGIN
      *  datagram. */
     void SolidSyslogDatagram_Close(struct SolidSyslogDatagram * datagram);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGDATAGRAM_H */

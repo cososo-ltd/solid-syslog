@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGLWIPRAWRESOLVERERRORS_H
 #define SOLIDSYSLOGLWIPRAWRESOLVERERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
      *  event->Detail as an enum SolidSyslogLwipRawResolverErrors. */
     extern const struct SolidSyslogErrorSource LwipRawResolverErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGLWIPRAWRESOLVERERRORS_H */

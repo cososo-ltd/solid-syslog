@@ -4,9 +4,9 @@
 #include <time.h>
 #include <openssl/types.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct TlsTestCert
     {
@@ -28,6 +28,6 @@ EXTERN_C_BEGIN
     void TlsTestCert_WritePemToFile(const struct TlsTestCert* cert, const char* path);
     void TlsTestCert_WritePrivateKeyPemToFile(const struct TlsTestCert* cert, const char* path);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* TLSTESTCERT_H */

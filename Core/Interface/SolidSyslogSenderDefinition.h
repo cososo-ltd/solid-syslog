@@ -7,9 +7,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The contract an implementer fills in. The library composes one sender per
      *  destination and calls it from the servicing pass; a sender is not a
@@ -31,6 +31,6 @@ EXTERN_C_BEGIN
         void (*Disconnect)(struct SolidSyslogSender* base);
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSENDERDEFINITION_H */

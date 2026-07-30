@@ -9,12 +9,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogTransport.h"
 
 struct SolidSyslogAddress;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogResolver;
 
@@ -37,6 +37,6 @@ EXTERN_C_BEGIN
         struct SolidSyslogAddress* result
     );
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGRESOLVER_H */

@@ -4,9 +4,9 @@
 #ifndef SOLIDSYSLOGNULLBUFFER_H
 #define SOLIDSYSLOGNULLBUFFER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogBuffer;
 
@@ -14,6 +14,6 @@ EXTERN_C_BEGIN
      *  Service algorithm sees an empty buffer and stops draining. */
     struct SolidSyslogBuffer* SolidSyslogNullBuffer_Get(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGNULLBUFFER_H */

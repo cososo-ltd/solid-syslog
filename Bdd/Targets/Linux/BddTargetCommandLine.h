@@ -1,13 +1,13 @@
 #ifndef BDDTARGETCOMMANDLINE_H
 #define BDDTARGETCOMMANDLINE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogPrival.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct BddTargetOptions
     {
@@ -30,6 +30,6 @@ EXTERN_C_BEGIN
 
     int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* options);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BDDTARGETCOMMANDLINE_H */

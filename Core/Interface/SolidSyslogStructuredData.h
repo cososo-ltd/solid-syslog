@@ -5,9 +5,9 @@
 #ifndef SOLIDSYSLOGSTRUCTUREDDATA_H
 #define SOLIDSYSLOGSTRUCTUREDDATA_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogSdElement;
     struct SolidSyslogStructuredData;
@@ -20,6 +20,6 @@ EXTERN_C_BEGIN
      *  mutably across threads logging concurrently. */
     void SolidSyslogStructuredData_Format(struct SolidSyslogStructuredData * sd, struct SolidSyslogSdElement * element);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSTRUCTUREDDATA_H */

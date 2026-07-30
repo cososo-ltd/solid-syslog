@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGWINSOCKTCPSTREAMERRORS_H
 #define SOLIDSYSLOGWINSOCKTCPSTREAMERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
      *  event->Detail as an enum SolidSyslogWinsockTcpStreamErrors. */
     extern const struct SolidSyslogErrorSource WinsockTcpStreamErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINSOCKTCPSTREAMERRORS_H */

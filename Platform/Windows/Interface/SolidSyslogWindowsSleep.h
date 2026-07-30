@@ -3,14 +3,14 @@
 #ifndef SOLIDSYSLOGWINDOWSSLEEP_H
 #define SOLIDSYSLOGWINDOWSSLEEP_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Wraps Sleep so a bounded retry loop (e.g. the TLS handshake) yields to the
      *  scheduler between attempts. */
     void SolidSyslogWindowsSleep(int milliseconds);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINDOWSSLEEP_H */

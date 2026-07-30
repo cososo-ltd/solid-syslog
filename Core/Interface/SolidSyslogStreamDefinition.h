@@ -9,11 +9,11 @@
 #include <stddef.h>
 
 #include "SolidSyslogStream.h"
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogAddress;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The contract a byte-stream transport (TCP, TLS over TCP) fills in; the
      *  library drives it from the servicing pass, so it need not be reentrant.
@@ -29,6 +29,6 @@ EXTERN_C_BEGIN
         void (*Close)(struct SolidSyslogStream* base);
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSTREAMDEFINITION_H */

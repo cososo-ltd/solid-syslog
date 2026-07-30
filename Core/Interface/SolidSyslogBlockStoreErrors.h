@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGBLOCKSTOREERRORS_H
 #define SOLIDSYSLOGBLOCKSTOREERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -25,6 +25,6 @@ EXTERN_C_BEGIN
      *  event->Detail as an enum SolidSyslogBlockStoreErrors. */
     extern const struct SolidSyslogErrorSource BlockStoreErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGBLOCKSTOREERRORS_H */

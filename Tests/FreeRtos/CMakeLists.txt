@@ -226,7 +226,7 @@ target_link_libraries(CmsdkUartTest PRIVATE
 
 target_include_directories(CmsdkUartTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/FreeRtos/Common
-    ${CMAKE_SOURCE_DIR}/Core/Interface                # ExternC.h (via CmsdkUart.h)
+    ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslogExternC.h (via CmsdkUart.h)
     ${CMAKE_SOURCE_DIR}/Tests/Support
 )
 

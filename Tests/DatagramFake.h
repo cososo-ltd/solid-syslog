@@ -3,12 +3,12 @@
 
 #include <stddef.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogDatagram.h"
 
 struct SolidSyslogDatagram;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogAddress;
 
@@ -33,6 +33,6 @@ EXTERN_C_BEGIN
     const void* DatagramFake_SendBuffer(struct SolidSyslogDatagram * datagram, int callIndex);
     size_t DatagramFake_SendSize(struct SolidSyslogDatagram * datagram, int callIndex);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* DATAGRAMFAKE_H */

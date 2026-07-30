@@ -12,9 +12,9 @@
 #ifndef SOLIDSYSLOGPLUSTCPDATAGRAM_H
 #define SOLIDSYSLOGPLUSTCPDATAGRAM_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogDatagram;
 
@@ -25,6 +25,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot and close the socket. */
     void SolidSyslogPlusTcpDatagram_Destroy(struct SolidSyslogDatagram * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPLUSTCPDATAGRAM_H */

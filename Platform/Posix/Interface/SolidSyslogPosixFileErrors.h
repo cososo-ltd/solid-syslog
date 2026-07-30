@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGPOSIXFILEERRORS_H
 #define SOLIDSYSLOGPOSIXFILEERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
      *  enum SolidSyslogPosixFileErrors. */
     extern const struct SolidSyslogErrorSource PosixFileErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPOSIXFILEERRORS_H */

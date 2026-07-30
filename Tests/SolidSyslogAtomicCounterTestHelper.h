@@ -1,12 +1,12 @@
 #ifndef SOLIDSYSLOGATOMICCOUNTERTESTHELPER_H
 #define SOLIDSYSLOGATOMICCOUNTERTESTHELPER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stddef.h>
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogAtomicCounter;
 
@@ -19,6 +19,6 @@ EXTERN_C_BEGIN
        runtime-gate scenarios that need two simultaneous handles. */
     size_t TestAtomicCounter_PoolSize(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGATOMICCOUNTERTESTHELPER_H */

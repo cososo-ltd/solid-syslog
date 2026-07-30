@@ -1,13 +1,13 @@
 #ifndef WINSOCKFAKE_H
 #define WINSOCKFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void WinsockFake_Reset(void);
 
@@ -138,6 +138,6 @@ EXTERN_C_BEGIN
     WinsockFake_getaddrinfo(const char* node, const char* service, const struct addrinfo* hints, struct addrinfo** res);
     void WSAAPI WinsockFake_freeaddrinfo(struct addrinfo * res);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* WINSOCKFAKE_H */

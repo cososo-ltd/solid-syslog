@@ -6,9 +6,9 @@
 
 #include <stdint.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Returns the bounded-handshake deadline in milliseconds. Called at the start
      *  of every TLS handshake attempt, so a runtime-tunable value (e.g.
@@ -18,6 +18,6 @@ EXTERN_C_BEGIN
      *  on. */
     typedef uint32_t (*SolidSyslogTlsHandshakeTimeoutFunction)(void* context);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGTLSHANDSHAKETIMEOUTFUNCTION_H */

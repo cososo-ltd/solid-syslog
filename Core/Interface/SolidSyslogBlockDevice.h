@@ -6,11 +6,11 @@
 #ifndef SOLIDSYSLOGBLOCKDEVICE_H
 #define SOLIDSYSLOGBLOCKDEVICE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include <stdbool.h>
 #include <stddef.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogBlockDevice;
 
@@ -73,6 +73,6 @@ EXTERN_C_BEGIN
      *  configured size. Fixed for the device's lifetime. */
     size_t SolidSyslogBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice * device);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGBLOCKDEVICE_H */

@@ -3,11 +3,11 @@
 
 #include <stddef.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogSender;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogSender* SenderFake_Create(void);
     void SenderFake_Destroy(struct SolidSyslogSender * sender);
@@ -18,6 +18,6 @@ EXTERN_C_BEGIN
     size_t SenderFake_LastSize(struct SolidSyslogSender * sender);
     void SenderFake_FailNextSend(struct SolidSyslogSender * sender);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SENDERFAKE_H */

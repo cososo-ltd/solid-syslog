@@ -5,9 +5,9 @@
 #ifndef SOLIDSYSLOGNULLFILE_H
 #define SOLIDSYSLOGNULLFILE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Open, IsOpen, Read and Exists return false, so consumers see a consistently
      *  non-functional file and take their error path. Write and Delete return true,
@@ -15,6 +15,6 @@ EXTERN_C_BEGIN
      *  SeekTo, Truncate and Close are no-ops; Size returns 0. */
     struct SolidSyslogFile* SolidSyslogNullFile_Get(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGNULLFILE_H */

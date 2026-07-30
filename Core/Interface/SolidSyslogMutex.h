@@ -5,9 +5,9 @@
 #ifndef SOLIDSYSLOGMUTEX_H
 #define SOLIDSYSLOGMUTEX_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogMutex;
 
@@ -16,6 +16,6 @@ EXTERN_C_BEGIN
     void SolidSyslogMutex_Lock(struct SolidSyslogMutex * mutex);
     void SolidSyslogMutex_Unlock(struct SolidSyslogMutex * mutex);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGMUTEX_H */

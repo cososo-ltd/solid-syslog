@@ -6,11 +6,11 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "FreeRTOS.h"
 #include "FreeRTOS_Sockets.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void FreeRtosSocketsFake_Reset(void);
 
@@ -75,6 +75,6 @@ EXTERN_C_BEGIN
     unsigned FreeRtosSocketsFake_ClosesocketCallCount(void);
     Socket_t FreeRtosSocketsFake_LastClosesocketSocket(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* FREERTOSSOCKETSFAKE_H */

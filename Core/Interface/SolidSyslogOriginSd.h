@@ -10,11 +10,11 @@
 #ifndef SOLIDSYSLOGORIGINSD_H
 #define SOLIDSYSLOGORIGINSD_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stddef.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogSdValue;
     struct SolidSyslogStructuredData;
@@ -52,6 +52,6 @@ EXTERN_C_BEGIN
      *  the caller owns them. */
     void SolidSyslogOriginSd_Destroy(struct SolidSyslogStructuredData * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGORIGINSD_H */

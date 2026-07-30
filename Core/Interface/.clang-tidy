@@ -8,9 +8,9 @@
 #   defaults must be visible to the preprocessor (`#if`-checked floors) and
 #   usable as array-size const-expressions in dependent headers. Replacing
 #   with `static const` or `constexpr` loses both properties. The same idiom
-#   appears in SolidSyslogCircularBuffer.h (ring-bytes helper) and ExternC.h
-#   (extern "C" linkage block). The rule fires on every entry, the
-#   rationale is uniform, so disable tier-wide here rather than carry the
-#   same NOLINT comment on dozens of macro definitions.
+#   appears in SolidSyslogCircularBuffer.h (ring-bytes helper) and
+#   SolidSyslogExternC.h (extern "C" linkage block). The rule fires on every
+#   entry, the rationale is uniform, so disable tier-wide here rather than
+#   carry the same NOLINT comment on dozens of macro definitions.
 InheritParentConfig: true
 Checks: '-cppcoreguidelines-macro-usage'

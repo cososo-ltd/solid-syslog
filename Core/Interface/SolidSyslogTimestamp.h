@@ -4,11 +4,11 @@
 #ifndef SOLIDSYSLOGTIMESTAMP_H
 #define SOLIDSYSLOGTIMESTAMP_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Broken-down timestamp as emitted by a SolidSyslogClockFunction. All
      *  calendar/time fields are expressed in the timezone indicated by
@@ -34,6 +34,6 @@ EXTERN_C_BEGIN
      *  usable timestamp". Installed as SolidSyslogConfig.Clock. */
     typedef void (*SolidSyslogClockFunction)(struct SolidSyslogTimestamp* timestamp);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGTIMESTAMP_H */

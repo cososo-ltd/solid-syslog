@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGTLSSTREAMERRORS_H
 #define SOLIDSYSLOGTLSSTREAMERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -29,6 +29,6 @@ EXTERN_C_BEGIN
      *  enum SolidSyslogTlsStreamErrors. */
     extern const struct SolidSyslogErrorSource TlsStreamErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGTLSSTREAMERRORS_H */

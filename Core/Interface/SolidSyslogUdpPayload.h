@@ -5,13 +5,13 @@
 #ifndef SOLIDSYSLOGUDPPAYLOAD_H
 #define SOLIDSYSLOGUDPPAYLOAD_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Largest UDP payload guaranteed to fit an unfragmented IPv6 datagram:
      *  IPv6 minimum MTU 1280 − 40-byte IPv6 header − 8-byte UDP header
@@ -32,6 +32,6 @@ EXTERN_C_BEGIN
      * cut form valid UTF-8 (the formatter guarantees this — S12.10). */
     size_t SolidSyslogUdpPayload_TrimToCodepointBoundary(const uint8_t* buffer, size_t length);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGUDPPAYLOAD_H */
