@@ -72,7 +72,7 @@ All fields — required and optional — use a uniform field object pattern.
 Optional features are composed at link time via dead code elimination, not by
 preprocessor configuration. Core's implementation contains no conditional
 compilation at all; Core's headers use it only for include guards, tunable
-defaults, and C/C++ language shims.
+defaults and their consistency assertions, and C/C++ language shims.
 
 Public headers are split by audience (Interface Segregation Principle):
 
