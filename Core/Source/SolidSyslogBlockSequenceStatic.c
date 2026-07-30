@@ -1,33 +1,33 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "BlockSequencePrivate.h"
+#include "SolidSyslogBlockSequencePrivate.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogTunables.h"
 
-static inline size_t BlockSequence_IndexFromHandle(const struct BlockSequence* blockSequence);
+static inline size_t BlockSequence_IndexFromHandle(const struct SolidSyslogBlockSequence* blockSequence);
 static inline void BlockSequence_CleanupAtIndex(size_t index, void* context);
 
 static bool BlockSequence_InUse[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE];
-static struct BlockSequence BlockSequence_Pool[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE];
+static struct SolidSyslogBlockSequence BlockSequence_Pool[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE];
 static struct SolidSyslogPoolAllocator BlockSequence_Allocator = {
     BlockSequence_InUse,
     SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE
 };
 
-struct BlockSequence* BlockSequence_Create(const struct BlockSequenceConfig* config)
+struct SolidSyslogBlockSequence* SolidSyslogBlockSequence_Create(const struct SolidSyslogBlockSequenceConfig* config)
 {
-    struct BlockSequence* result = NULL;
+    struct SolidSyslogBlockSequence* result = NULL;
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&BlockSequence_Allocator);
     if (SolidSyslogPoolAllocator_IndexIsValid(&BlockSequence_Allocator, index))
     {
-        BlockSequence_Initialise(&BlockSequence_Pool[index], config);
+        SolidSyslogBlockSequence_Initialise(&BlockSequence_Pool[index], config);
         result = &BlockSequence_Pool[index];
     }
     return result;
 }
 
-void BlockSequence_Destroy(struct BlockSequence* blockSequence)
+void SolidSyslogBlockSequence_Destroy(struct SolidSyslogBlockSequence* blockSequence)
 {
     if (blockSequence != NULL)
     {
@@ -40,7 +40,7 @@ void BlockSequence_Destroy(struct BlockSequence* blockSequence)
     }
 }
 
-static inline size_t BlockSequence_IndexFromHandle(const struct BlockSequence* blockSequence)
+static inline size_t BlockSequence_IndexFromHandle(const struct SolidSyslogBlockSequence* blockSequence)
 {
     size_t result = SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE;
     for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE; poolIndex++)
@@ -57,5 +57,5 @@ static inline size_t BlockSequence_IndexFromHandle(const struct BlockSequence* b
 static inline void BlockSequence_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    BlockSequence_Cleanup(&BlockSequence_Pool[index]);
+    SolidSyslogBlockSequence_Cleanup(&BlockSequence_Pool[index]);
 }

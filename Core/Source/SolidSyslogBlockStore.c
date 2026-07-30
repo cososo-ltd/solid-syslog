@@ -3,8 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "BlockSequencePrivate.h"
-#include "RecordStorePrivate.h"
+#include "SolidSyslogBlockSequencePrivate.h"
+#include "SolidSyslogRecordStorePrivate.h"
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogBlockStorePrivate.h"
@@ -41,8 +41,8 @@ static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* sel
 
 void BlockStore_Initialise(
     struct SolidSyslogStore* base,
-    struct RecordStore* recordStore,
-    struct BlockSequence* blockSequence,
+    struct SolidSyslogRecordStore* recordStore,
+    struct SolidSyslogBlockSequence* blockSequence,
     const struct SolidSyslogBlockStoreConfig* config
 )
 {
@@ -52,7 +52,7 @@ void BlockStore_Initialise(
     self->BlockSequence = blockSequence;
     BlockStore_InitialiseVtable(self);
 
-    if (BlockSequence_Open(self->BlockSequence))
+    if (SolidSyslogBlockSequence_Open(self->BlockSequence))
     {
         BlockStore_ResumeFromExistingBlock(self);
     }
@@ -87,21 +87,22 @@ static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* sel
 
 static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* self)
 {
-    struct SolidSyslogBlockDevice* device = BlockSequence_BlockDevice(self->BlockSequence);
-    size_t readSequence = BlockSequence_ReadSequence(self->BlockSequence);
+    struct SolidSyslogBlockDevice* device = SolidSyslogBlockSequence_BlockDevice(self->BlockSequence);
+    size_t readSequence = SolidSyslogBlockSequence_ReadSequence(self->BlockSequence);
     /* Bound the scan by the read block's actual size, not WritePosition. On a
      * multi-block resume the read block is a closed earlier block whose size
      * is independent of the write block's fill level. */
     size_t readBlockSize = SolidSyslogBlockDevice_Size(device, readSequence);
 
     bool corrupt = false;
-    size_t cursor = RecordStore_FindFirstUnsent(self->RecordStore, device, readSequence, readBlockSize, &corrupt);
+    size_t cursor =
+        SolidSyslogRecordStore_FindFirstUnsent(self->RecordStore, device, readSequence, readBlockSize, &corrupt);
 
-    BlockSequence_SetReadCursor(self->BlockSequence, cursor);
+    SolidSyslogBlockSequence_SetReadCursor(self->BlockSequence, cursor);
 
     if (corrupt)
     {
-        BlockSequence_MarkWriteBlockCorrupt(self->BlockSequence);
+        SolidSyslogBlockSequence_MarkWriteBlockCorrupt(self->BlockSequence);
     }
 }
 
@@ -114,26 +115,26 @@ static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, si
 
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size)
 {
-    size_t recordSize = RecordStore_RecordSize(self->RecordStore, (uint16_t) size);
+    size_t recordSize = SolidSyslogRecordStore_RecordSize(self->RecordStore, (uint16_t) size);
     bool readBlockChanged = false;
     bool written = false;
 
-    if (BlockSequence_PrepareForWrite(self->BlockSequence, recordSize, &readBlockChanged))
+    if (SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize, &readBlockChanged))
     {
         if (readBlockChanged)
         {
-            RecordStore_ForgetLastRead(self->RecordStore);
+            SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
         }
 
-        if (RecordStore_Append(
+        if (SolidSyslogRecordStore_Append(
                 self->RecordStore,
-                BlockSequence_BlockDevice(self->BlockSequence),
-                BlockSequence_WriteSequence(self->BlockSequence),
+                SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
+                SolidSyslogBlockSequence_WriteSequence(self->BlockSequence),
                 data,
                 size
             ))
         {
-            BlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
+            SolidSyslogBlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
             written = true;
         }
     }
@@ -143,22 +144,22 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
 
 static bool BlockStore_HasUnsent(struct SolidSyslogStore* base)
 {
-    return BlockSequence_HasUnsent(BlockStore_SelfFromBase(base)->BlockSequence);
+    return SolidSyslogBlockSequence_HasUnsent(BlockStore_SelfFromBase(base)->BlockSequence);
 }
 
 static bool BlockStore_IsHalted(struct SolidSyslogStore* base)
 {
-    return BlockSequence_IsHalted(BlockStore_SelfFromBase(base)->BlockSequence);
+    return SolidSyslogBlockSequence_IsHalted(BlockStore_SelfFromBase(base)->BlockSequence);
 }
 
 static size_t BlockStore_GetTotalBytes(struct SolidSyslogStore* base)
 {
-    return BlockSequence_TotalBytes(BlockStore_SelfFromBase(base)->BlockSequence);
+    return SolidSyslogBlockSequence_TotalBytes(BlockStore_SelfFromBase(base)->BlockSequence);
 }
 
 static size_t BlockStore_GetUsedBytes(struct SolidSyslogStore* base)
 {
-    return BlockSequence_UsedBytes(BlockStore_SelfFromBase(base)->BlockSequence);
+    return SolidSyslogBlockSequence_UsedBytes(BlockStore_SelfFromBase(base)->BlockSequence);
 }
 
 /* BlockStore retains records — a BlockStore_Write rejection here is the discard
@@ -178,14 +179,14 @@ static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data,
     bool read = false;
     *bytesRead = 0;
 
-    if (BlockSequence_HasUnsent(self->BlockSequence))
+    if (SolidSyslogBlockSequence_HasUnsent(self->BlockSequence))
     {
         read = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
 
-        while (!read && BlockSequence_ReadIsBehindWrite(self->BlockSequence))
+        while (!read && SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence))
         {
-            BlockSequence_AdvanceToNextReadBlock(self->BlockSequence);
-            RecordStore_ForgetLastRead(self->RecordStore);
+            SolidSyslogBlockSequence_AdvanceToNextReadBlock(self->BlockSequence);
+            SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
             read = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
         }
     }
@@ -195,11 +196,11 @@ static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data,
 
 static bool BlockStore_ReadCurrent(struct SolidSyslogBlockStore* self, void* data, size_t maxSize, size_t* bytesRead)
 {
-    return RecordStore_Read(
+    return SolidSyslogRecordStore_Read(
         self->RecordStore,
-        BlockSequence_BlockDevice(self->BlockSequence),
-        BlockSequence_ReadSequence(self->BlockSequence),
-        BlockSequence_ReadCursor(self->BlockSequence),
+        SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
+        SolidSyslogBlockSequence_ReadSequence(self->BlockSequence),
+        SolidSyslogBlockSequence_ReadCursor(self->BlockSequence),
         data,
         maxSize,
         bytesRead
@@ -211,16 +212,20 @@ static void BlockStore_MarkSent(struct SolidSyslogStore* base)
     struct SolidSyslogBlockStore* self = BlockStore_SelfFromBase(base);
     size_t nextCursor = 0;
 
-    if (RecordStore_MarkLastReadAsSent(self->RecordStore, BlockSequence_BlockDevice(self->BlockSequence), &nextCursor))
+    if (SolidSyslogRecordStore_MarkLastReadAsSent(
+            self->RecordStore,
+            SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
+            &nextCursor
+        ))
     {
-        BlockSequence_SetReadCursor(self->BlockSequence, nextCursor);
+        SolidSyslogBlockSequence_SetReadCursor(self->BlockSequence, nextCursor);
 
         bool readBlockChanged = false;
-        BlockSequence_DisposeReadBlockIfDrained(self->BlockSequence, &readBlockChanged);
+        SolidSyslogBlockSequence_DisposeReadBlockIfDrained(self->BlockSequence, &readBlockChanged);
 
         if (readBlockChanged)
         {
-            RecordStore_ForgetLastRead(self->RecordStore);
+            SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
         }
     }
 }

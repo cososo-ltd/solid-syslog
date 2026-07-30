@@ -2,7 +2,7 @@
 
 extern "C"
 {
-#include "RecordStorePrivate.h"
+#include "SolidSyslogRecordStorePrivate.h"
 #include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogTunables.h"
 }
@@ -11,8 +11,8 @@ extern "C"
 TEST_GROUP(RecordStorePool)
 {
     struct SolidSyslogSecurityPolicy* policy = nullptr;
-    struct RecordStore* pooled[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE] = {};
-    struct RecordStore* overflow                                   = nullptr;
+    struct SolidSyslogRecordStore* pooled[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE] = {};
+    struct SolidSyslogRecordStore* overflow                                   = nullptr;
 
     void setup() override
     {
@@ -23,10 +23,10 @@ TEST_GROUP(RecordStorePool)
     {
         for (auto*& slot : pooled)
         {
-            RecordStore_Destroy(slot);
+            SolidSyslogRecordStore_Destroy(slot);
             slot = nullptr;
         }
-        RecordStore_Destroy(overflow);
+        SolidSyslogRecordStore_Destroy(overflow);
         overflow = nullptr;
     }
 
@@ -34,7 +34,7 @@ TEST_GROUP(RecordStorePool)
     {
         for (auto*& slot : pooled)
         {
-            slot = RecordStore_Create(policy);
+            slot = SolidSyslogRecordStore_Create(policy);
         }
     }
 };
@@ -43,16 +43,16 @@ TEST_GROUP(RecordStorePool)
 
 TEST(RecordStorePool, CreateReturnsNonNullForFreshPool)
 {
-    struct RecordStore* slot = RecordStore_Create(policy);
+    struct SolidSyslogRecordStore* slot = SolidSyslogRecordStore_Create(policy);
     CHECK_TEXT(slot != nullptr, "first Create on empty pool returned NULL");
-    RecordStore_Destroy(slot);
+    SolidSyslogRecordStore_Destroy(slot);
 }
 
 TEST(RecordStorePool, FillingPoolThenOverflowReturnsNull)
 {
     FillPool();
 
-    overflow = RecordStore_Create(policy);
+    overflow = SolidSyslogRecordStore_Create(policy);
 
     CHECK_TEXT(overflow == nullptr, "exhausted pool should return NULL, not a handle");
     for (auto* slot : pooled)
@@ -65,8 +65,8 @@ TEST(RecordStorePool, DestroyReleasesSlotForReuse)
 {
     FillPool();
 
-    RecordStore_Destroy(pooled[0]);
-    pooled[0] = RecordStore_Create(policy);
+    SolidSyslogRecordStore_Destroy(pooled[0]);
+    pooled[0] = SolidSyslogRecordStore_Create(policy);
 
     CHECK_TEXT(pooled[0] != nullptr, "reacquire after Destroy returned NULL");
 }
@@ -77,5 +77,5 @@ TEST(RecordStorePool, DestroyOfNullIsSilentNoop)
      * The only legitimate path to a NULL handle is a failed Create, and the
      * consumer's own error reporting covers that. _Destroy(NULL) must therefore
      * be a silent no-op. */
-    RecordStore_Destroy(nullptr);
+    SolidSyslogRecordStore_Destroy(nullptr);
 }

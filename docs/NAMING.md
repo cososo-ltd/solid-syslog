@@ -130,6 +130,17 @@ itself.
 or `Platform/*/Interface/`, plus any identifier with external linkage
 declared in a `.c` file.
 
+Tier 1 is decided by linkage, not by whether an integrator is meant to call
+the identifier. A class that is internal to the library but spans more than one
+translation unit — declared in a `Core/Source/` `*Private.h`, defined in one
+`.c`, used from another — has external linkage and takes the prefix. Its
+struct tags follow, since the tag is no longer local to a file. `SolidSyslogRecordStore`
+and `SolidSyslogBlockSequence` are the two: `SolidSyslogBlockStore` composes them,
+and no public header names either. Path B is what makes this load-bearing rather
+than tidy — an integrator compiling from a manifest gets `Core/Source` on the
+include path and every object in one directory, so an unprefixed
+`RecordStore_Append` is a symbol collision waiting to happen.
+
 ---
 
 ## Tier 2 — Internal linkage (file-scope `static`)
@@ -191,10 +202,9 @@ For source files matching `SolidSyslog<X>.c`, the Tier 2 class prefix
 is `<X>_` — the filename with the `SolidSyslog` library namespace
 stripped. So `SolidSyslogTlsStream.c` → `TlsStream_*`,
 `SolidSyslogPlusTcpTcpStream.c` → `PlusTcpTcpStream_*`,
-`SolidSyslogWinsockTcpStream.c` → `WinsockTcpStream_*`. Files whose
-basename already drops the library prefix (e.g. `BlockSequence.c`,
-`RecordStore.c`) use the basename as the class verbatim →
-`BlockSequence_*`, `RecordStore_*`.
+`SolidSyslogWinsockTcpStream.c` → `WinsockTcpStream_*`,
+`SolidSyslogBlockSequence.c` → `BlockSequence_*`. Every file under `Core/` and
+`Platform/` carries the prefix, so the rule has no second case.
 
 The strip-only rule is mechanical and predictable; short-shorthand
 prefixes (e.g. `Tls_`, `FrTcp_`, `WinTcp_`) were considered and
@@ -425,8 +435,8 @@ produces legal declarations like:
 ```c
 struct SolidSyslogBlockStore
 {
-    struct RecordStore   RecordStore;
-    struct BlockSequence BlockSequence;
+    struct SolidSyslogRecordStore   RecordStore;
+    struct SolidSyslogBlockSequence BlockSequence;
 };
 ```
 
