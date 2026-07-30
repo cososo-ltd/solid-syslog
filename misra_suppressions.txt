@@ -42,18 +42,18 @@ misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:29
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:36
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:35
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:55
-misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:65
-misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:206
-misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:133
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:70
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:211
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:138
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:14
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:24
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:31
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:35
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:55
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpDatagram.c:53
-misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:44
+misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:49
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:44
-misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:118
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:123
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:98
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:79
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:81
@@ -81,11 +81,11 @@ misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsMutex.c:38
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:98
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:185
 misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:227
-misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:74
-misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:149
-misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:211
-misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:142
-misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:150
+misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:79
+misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:154
+misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:216
+misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:147
+misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:155
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:298
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:310
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:142
@@ -119,7 +119,7 @@ misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:94
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:46
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:117
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:143
-misra-c2012-11.8:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:159
+misra-c2012-11.8:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:164
 misra-c2012-11.8:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:97
 
 # D.007 — Rule 21.10: transitive <wchar.h> via <time.h>
@@ -140,11 +140,11 @@ misra-c2012-2.4:Core/Source/BlockSequence.c:107
 misra-c2012-2.4:Core/Source/RecordStore.c:14
 misra-c2012-2.4:Core/Source/SolidSyslogStreamSender.c:25
 misra-c2012-2.4:Core/Interface/SolidSyslogUdpPayload.h:17
-misra-c2012-5.7:Core/Interface/SolidSyslogUdpPayload.h:17
+misra-c2012-5.7:Core/Interface/SolidSyslogUdpPayload.h:21
 misra-c2012-5.7:Core/Source/SolidSyslogStreamSender.c:25
 misra-c2012-5.7:Core/Source/SolidSyslogUdpPayload.c:5
 misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:25
-misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:32
+misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:37
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:23
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:21
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:24
@@ -164,13 +164,13 @@ misra-c2012-5.7:Core/Source/RecordStorePrivate.h:14
 misra-c2012-5.7:Core/Source/SolidSyslogFileBlockDevice.c:23
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixFile.c:22
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsFile.c:28
-misra-c2012-5.7:Core/Interface/SolidSyslogAtomicCounter.h:11
-misra-c2012-5.7:Core/Interface/SolidSyslogCircularBuffer.h:17
-misra-c2012-5.7:Core/Interface/SolidSyslogEndpoint.h:11
+misra-c2012-5.7:Core/Interface/SolidSyslogAtomicCounter.h:15
+misra-c2012-5.7:Core/Interface/SolidSyslogCircularBuffer.h:33
+misra-c2012-5.7:Core/Interface/SolidSyslogEndpoint.h:14
 misra-c2012-5.7:Core/Source/SolidSyslogFormatter.h:14
 misra-c2012-5.7:Core/Interface/SolidSyslogSecurityPolicyDefinition.h:13
-misra-c2012-5.7:Core/Interface/SolidSyslogTimeQuality.h:12
-misra-c2012-5.7:Core/Interface/SolidSyslogTransport.h:8
+misra-c2012-5.7:Core/Interface/SolidSyslogTimeQuality.h:15
+misra-c2012-5.7:Core/Interface/SolidSyslogTransport.h:11
 misra-c2012-5.7:Core/Source/SolidSyslogMessageFormatter.c:21
 misra-c2012-5.7:Core/Source/SolidSyslogCircularBuffer.c:21
 misra-c2012-5.7:Core/Source/SolidSyslogCrc16.c:12
@@ -191,7 +191,7 @@ misra-c2012-20.10:Core/Source/SolidSyslogMacros.h:15
 
 # D.011 — Rule 2.5: public API macros consumed outside cppcheck-misra scope
 # See docs/misra-deviations.md#d011
-misra-c2012-2.5:Core/Interface/SolidSyslogCircularBuffer.h:25
+misra-c2012-2.5:Core/Interface/SolidSyslogCircularBuffer.h:41
 
 # D.012 — Rule 8.9: file-scope static const referenced from a file-scope enum + one function
 # See docs/misra-deviations.md#d012

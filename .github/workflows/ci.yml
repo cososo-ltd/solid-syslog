@@ -767,6 +767,12 @@ jobs:
           --suppressions-list=cppcheck_suppressions_tests.txt
           --inline-suppr
           --std=c11
+          -DLWIP_DNS=1
+          -DLWIP_UDP=1
+          -DLWIP_TCP=1
+          -DconfigSUPPORT_STATIC_ALLOCATION=1
+          -DconfigUSE_MUTEXES=1
+          -DipconfigUSE_TCP=1
           -ICore/Interface
           -IPlatform/Atomics/Interface
           -IPlatform/Posix/Interface
@@ -816,6 +822,12 @@ jobs:
           --error-exitcode=1
           --inline-suppr
           --std=c11
+          -DLWIP_DNS=1
+          -DLWIP_UDP=1
+          -DLWIP_TCP=1
+          -DconfigSUPPORT_STATIC_ALLOCATION=1
+          -DconfigUSE_MUTEXES=1
+          -DipconfigUSE_TCP=1
           -ICore/Interface
           -IPlatform/Atomics/Interface
           -IPlatform/Posix/Interface
@@ -849,6 +861,12 @@ jobs:
             --error-exitcode=1 \
             --inline-suppr \
             --std=c11 \
+            -DLWIP_DNS=1 \
+            -DLWIP_UDP=1 \
+            -DLWIP_TCP=1 \
+            -DconfigSUPPORT_STATIC_ALLOCATION=1 \
+            -DconfigUSE_MUTEXES=1 \
+            -DipconfigUSE_TCP=1 \
             -ICore/Interface \
             -IPlatform/Atomics/Interface \
             -IPlatform/Posix/Interface \
