@@ -7,7 +7,7 @@
 # S30.02) — so the manifest can never drift from what the packs actually ship.
 #
 # Selection: SOLIDSYSLOG_MANIFEST_PACKS is a ;-list of pack short-names (without
-# the SolidSyslog:: prefix), e.g. "LwipRaw;LwipRawDnsResolver;MbedTls;FreeRtos;FatFs".
+# the SolidSyslog:: prefix), e.g. "LwipRaw;MbedTls;FreeRtos;FatFs".
 # Empty (the default) means "every SolidSyslog::<Pack> target that this configure
 # defined". Core is always included.
 #
@@ -27,11 +27,10 @@ committed docs/generated sample).")
 # the integrator-supplied config header(s) that pack requires (stable knowledge;
 # the volatile .c lists come from the targets, not from here).
 set(_SOLIDSYSLOG_MANIFEST_KNOWN_PACKS
-    FreeRtos PlusTcp LwipRaw LwipRawDnsResolver MbedTls FatFs PlusFat)
+    FreeRtos PlusTcp LwipRaw MbedTls FatFs PlusFat)
 set(_SOLIDSYSLOG_MANIFEST_CFG_FreeRtos           "FreeRTOSConfig.h")
 set(_SOLIDSYSLOG_MANIFEST_CFG_PlusTcp            "FreeRTOSConfig.h, FreeRTOSIPConfig.h")
 set(_SOLIDSYSLOG_MANIFEST_CFG_LwipRaw            "lwipopts.h")
-set(_SOLIDSYSLOG_MANIFEST_CFG_LwipRawDnsResolver "lwipopts.h (with LWIP_DNS=1)")
 set(_SOLIDSYSLOG_MANIFEST_CFG_MbedTls            "mbedtls_config.h")
 set(_SOLIDSYSLOG_MANIFEST_CFG_FatFs              "ffconf.h")
 set(_SOLIDSYSLOG_MANIFEST_CFG_PlusFat            "FreeRTOSFATConfig.h")
@@ -142,9 +141,11 @@ function(solidsyslog_generate_manifest)
     # --- Required defines -----------------------------------------------------
     string(APPEND _m "\n## Required defines\n\n")
     string(APPEND _m "-DSOLIDSYSLOG_USER_TUNABLES_FILE=\"my_tunables.h\"   # your tunable overrides (optional)\n")
-    list(FIND _selected "LwipRawDnsResolver" _has_dns)
-    if(NOT _has_dns EQUAL -1)
-        string(APPEND _m "-DLWIP_DNS=1                                         # required by SolidSyslog::LwipRawDnsResolver\n")
+    list(FIND _selected "LwipRaw" _has_lwip)
+    if(NOT _has_lwip EQUAL -1)
+        string(APPEND _m "# lwIP: each adapter gates itself on the lwIP option it needs, so a source you\n")
+        string(APPEND _m "#       do not enable compiles to nothing. LWIP_DNS=1 enables the DNS resolver;\n")
+        string(APPEND _m "#       LWIP_UDP / LWIP_TCP the datagram / stream adapters.\n")
     endif()
     list(FIND _selected "MbedTls" _has_mbedtls)
     if(NOT _has_mbedtls EQUAL -1)

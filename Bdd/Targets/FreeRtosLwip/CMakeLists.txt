@@ -226,9 +226,9 @@ add_executable(SolidSyslogBddTargetLwip
     ${FREERTOS_COMMON_DIR}/Syscalls.c
     netif/EthernetIf.c
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
-    # linked below (S30.02 dogfood): LwipRawDnsResolver (the opt-in DNS component
-    # — pulls the LwipRaw umbrella's Address/Datagram/TcpStream/numeric-Resolver/
-    # Marshal too; the unused numeric resolver dead-strips), FreeRtos (Mutex +
+    # linked below (S30.02 dogfood): LwipRaw (Address/Datagram/TcpStream/
+    # Resolver/DnsResolver/Marshal; the unused numeric resolver dead-strips),
+    # FreeRtos (Mutex +
     # SysUpTime), MbedTls (TLS Stream + HMAC/AES-GCM policies), FatFs (file
     # adapter). diskio.c is the shared semihosting media driver (8 MiB FAT16).
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/diskio.c
@@ -278,7 +278,7 @@ target_include_directories(SolidSyslogBddTargetLwip PRIVATE
 
 target_link_libraries(SolidSyslogBddTargetLwip PRIVATE
     ${PROJECT_NAME}                                   # libSolidSyslog.a (cross-compiled)
-    SolidSyslog::LwipRawDnsResolver                   # DNS resolver (opt-in, needs LWIP_DNS=1) + LwipRaw umbrella
+    SolidSyslog::LwipRaw                              # lwIP Raw adapters (DNS resolver needs LWIP_DNS=1)
     SolidSyslog::FreeRtos                             # Mutex + SysUpTime adapters (sources)
     SolidSyslog::MbedTls                              # TLS Stream + HMAC/AES-GCM policy adapters (sources)
     SolidSyslog::FatFs                                # FatFs file adapter (sources)

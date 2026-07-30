@@ -107,7 +107,6 @@ if(SOLIDSYSLOG_SMOKE_LINK_PACKS)
 
     target_link_libraries(consumer_smoke PRIVATE
         SolidSyslog::LwipRaw
-        SolidSyslog::LwipRawDnsResolver
         SolidSyslog::FreeRtos
     )
 

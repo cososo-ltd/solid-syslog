@@ -1408,7 +1408,7 @@ jobs:
         run: |
           cmake -S . -B build/manifest -DSOLIDSYSLOG_BUILD_TESTING=OFF \
             -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos;MbedTls;FatFs;Atomics" \
-            -DSOLIDSYSLOG_MANIFEST_PACKS="LwipRaw;LwipRawDnsResolver;MbedTls;FreeRtos;FatFs" \
+            -DSOLIDSYSLOG_MANIFEST_PACKS="LwipRaw;MbedTls;FreeRtos;FatFs" \
             -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/beta-stack-manifest.txt"
 
       - name: Fail on drift
