@@ -23,7 +23,7 @@ project(SolidSyslogConsumerSmoke C)
 # demand CppUTest; SOLIDSYSLOG_BUILD_TESTING is why it no longer does.
 include(CTest)
 
-# config/ turns every gated adapter on; config-gates-off/ turns them all off.
+# config/ turns the gated adapters on; config-gates-off/ turns them off.
 set(SOLIDSYSLOG_SMOKE_CONFIG_DIR "config" CACHE STRING
     "Integrator config header directory, relative to this file.")
 

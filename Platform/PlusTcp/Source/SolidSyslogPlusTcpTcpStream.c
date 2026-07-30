@@ -14,7 +14,6 @@
 
 #include "FreeRTOS.h"
 #include "FreeRTOS_ARP.h"
-#include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogNullStream.h"

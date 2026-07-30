@@ -51,9 +51,9 @@ misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:31
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:35
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressStatic.c:55
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpDatagram.c:53
-misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:49
+misra-c2012-11.3:Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c:48
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:44
-misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:123
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:122
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:98
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:79
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:81
@@ -144,7 +144,7 @@ misra-c2012-5.7:Core/Interface/SolidSyslogUdpPayload.h:21
 misra-c2012-5.7:Core/Source/SolidSyslogStreamSender.c:25
 misra-c2012-5.7:Core/Source/SolidSyslogUdpPayload.c:5
 misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:25
-misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:37
+misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:36
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:23
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:21
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:24

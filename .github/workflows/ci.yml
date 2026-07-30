@@ -1532,8 +1532,9 @@ jobs:
       - name: Cross-build and link the packs
         run: cmake --build build/consumer-smoke-scrubbed
 
-      # Builds the gated-out path: every gated adapter's upstream option is off.
-      - name: Configure the consumer project (every gated adapter off)
+      # Builds the gated-out path for the packs this lane selects. PlusTcp is an
+      # alternative network stack and is not built here.
+      - name: Configure the consumer project (LwipRaw and FreeRtos gates off)
         run: |
           env -u LWIP_PATH -u FREERTOS_KERNEL_PATH -u MBEDTLS_DIR \
               -u FATFS_PATH -u FREERTOS_PLUS_FAT_PATH -u FREERTOS_PLUS_TCP_PATH \
@@ -1546,7 +1547,7 @@ jobs:
             -DSOLIDSYSLOG_SMOKE_CONFIG_DIR=config-gates-off \
             -DSOLIDSYSLOG_SMOKE_LINK_PACKS=ON
 
-      - name: Cross-build the packs with every gated adapter off
+      - name: Cross-build the packs with the LwipRaw and FreeRtos gates off
         run: cmake --build build/consumer-smoke-gates-off
 
       # A nested configure must not write into the dependency's checkout. The BDD
