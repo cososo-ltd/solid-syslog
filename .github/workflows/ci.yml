@@ -1412,10 +1412,10 @@ jobs:
   # Anti-drift gate (S30.03): regenerate the committed beta-stack integration
   # manifest from CMake and fail if it differs from what is checked in. Keeps
   # docs/generated/beta-stack-manifest.txt honest against the platform source
-  # lists (the generator reads each pack's INTERFACE_SOURCES and the Core
-  # target's SOURCES). The stack is stated in SOLIDSYSLOG_PLATFORMS rather than
-  # inherited from the image's environment, so the manifest describes the
-  # platforms this gate means to describe (S30.05).
+  # lists (the generator reads each upstream platform target's INTERFACE_SOURCES
+  # and the Core target's SOURCES). The stack is stated in SOLIDSYSLOG_PLATFORMS
+  # rather than inherited from the image's environment, so the manifest
+  # describes the platforms this gate means to describe (S30.05).
   verify-manifest:
     runs-on: ubuntu-latest
     container:

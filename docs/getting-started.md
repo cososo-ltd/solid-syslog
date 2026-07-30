@@ -325,8 +325,10 @@ cross-toolchain: without it there is no atomic counter, and every RFC 5424
 
 ### 2. Defines
 
-The generated manifest's *Required defines* section is authoritative. For this
-stack:
+The generated manifest's *Required defines* section names the one define
+SolidSyslog itself takes, then notes the upstream options its adapters gate on —
+those it describes in prose rather than emitting, because they are yours to set.
+For this stack that comes to:
 
 ```text
 -DSOLIDSYSLOG_USER_TUNABLES_FILE="my_tunables.h"   # your tunable overrides

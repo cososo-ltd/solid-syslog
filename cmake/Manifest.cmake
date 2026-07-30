@@ -3,8 +3,9 @@
 # Emits the file / include-dir / -D manifest a NON-CMake integrator (IAR / Keil /
 # MPLAB / CCS / hand Makefile) needs to compile SolidSyslog into their own
 # project. The .c file lists are read straight from the build targets — the Core
-# library's SOURCES and each selected pack's INTERFACE_SOURCES (populated in
-# S30.02) — so the manifest can never drift from what the packs actually ship.
+# library's SOURCES and each selected upstream platform's INTERFACE_SOURCES
+# (populated in S30.02) — so the manifest can never drift from what the platforms
+# actually ship.
 #
 # Selection: SOLIDSYSLOG_MANIFEST_PLATFORMS is a ;-list of platform tokens from
 # SOLIDSYSLOG_PLATFORM_REGISTRY, e.g. "LwipRaw;MbedTls;FreeRtos;Atomics".
@@ -57,8 +58,9 @@ function(_solidsyslog_manifest_relpath OUT_VAR PATH)
     set(${OUT_VAR} "${_p}" PARENT_SCOPE)
 endfunction()
 
-# Append the .c sources of an INTERFACE pack target (repo-relative) to OUT_VAR.
-function(_solidsyslog_manifest_pack_sources OUT_VAR TARGET)
+# Append the .c sources of an upstream platform's INTERFACE target (repo-relative)
+# to OUT_VAR.
+function(_solidsyslog_manifest_upstream_sources OUT_VAR TARGET)
     set(_lines "")
     get_target_property(_srcs "${TARGET}" INTERFACE_SOURCES)
     if(_srcs)
@@ -184,8 +186,8 @@ function(solidsyslog_generate_manifest)
 
     foreach(_token IN LISTS _selected_upstream)
         string(APPEND _m "\n# ${_token}:\n")
-        _solidsyslog_manifest_pack_sources(_pack_srcs SolidSyslog::${_token})
-        string(APPEND _m "${_pack_srcs}")
+        _solidsyslog_manifest_upstream_sources(_upstream_srcs SolidSyslog::${_token})
+        string(APPEND _m "${_upstream_srcs}")
     endforeach()
 
     if(_selected_probe)
