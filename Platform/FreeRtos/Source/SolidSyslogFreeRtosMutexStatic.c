@@ -1,3 +1,8 @@
+#include "FreeRTOS.h"
+
+/* This component requires FreeRTOS built with static allocation and mutexes. */
+#if (configSUPPORT_STATIC_ALLOCATION == 1) && (configUSE_MUTEXES == 1)
+
 #include "SolidSyslogFreeRtosMutex.h"
 
 #include <stdbool.h>
@@ -77,3 +82,10 @@ static inline void FreeRtosMutex_CleanupAtIndex(size_t index, void* context)
     (void) context;
     FreeRtosMutex_Cleanup(&FreeRtosMutex_Pool[index].Base);
 }
+
+#else
+
+/* ISO C forbids an empty translation unit. */
+typedef int FreeRtosMutexStatic_EmptyTranslationUnit;
+
+#endif /* configSUPPORT_STATIC_ALLOCATION && configUSE_MUTEXES */

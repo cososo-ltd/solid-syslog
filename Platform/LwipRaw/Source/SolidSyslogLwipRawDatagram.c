@@ -1,3 +1,8 @@
+#include "lwip/opt.h"
+
+/* This component requires lwIP built with UDP. */
+#if LWIP_UDP
+
 #include "SolidSyslogLwipRawDatagramPrivate.h"
 
 #include <stdbool.h>
@@ -171,3 +176,10 @@ static size_t LwipRawDatagram_MaxPayload(struct SolidSyslogDatagram* base)
     (void) base;
     return SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD;
 }
+
+#else
+
+/* ISO C forbids an empty translation unit. */
+typedef int LwipRawDatagram_EmptyTranslationUnit;
+
+#endif /* LWIP_UDP */

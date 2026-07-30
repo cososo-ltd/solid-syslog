@@ -1,3 +1,8 @@
+#include "FreeRTOS_IP.h"
+
+/* This component requires FreeRTOS-Plus-TCP built with TCP. */
+#if (ipconfigUSE_TCP == 1)
+
 // NOLINTBEGIN(performance-no-int-to-ptr) -- FREERTOS_INVALID_SOCKET is ((Socket_t)~0U) from FreeRTOS-Plus-TCP; the int-to-ptr cast is intrinsic to the upstream
 // sentinel and unavoidable.
 
@@ -323,3 +328,10 @@ static void PlusTcpTcpStream_Close(struct SolidSyslogStream* base)
 }
 
 // NOLINTEND(performance-no-int-to-ptr)
+
+#else
+
+/* ISO C forbids an empty translation unit. */
+typedef int PlusTcpTcpStream_EmptyTranslationUnit;
+
+#endif /* ipconfigUSE_TCP */

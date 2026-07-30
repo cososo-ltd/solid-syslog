@@ -1,3 +1,8 @@
+#include "FreeRTOS_IP.h"
+
+/* This component requires FreeRTOS-Plus-TCP built with TCP. */
+#if (ipconfigUSE_TCP == 1)
+
 #include "SolidSyslogPlusTcpTcpStream.h"
 
 #include <stdbool.h>
@@ -80,3 +85,10 @@ static inline void PlusTcpTcpStream_CleanupAtIndex(size_t index, void* context)
     (void) context;
     PlusTcpTcpStream_Cleanup(&PlusTcpTcpStream_Pool[index].Base);
 }
+
+#else
+
+/* ISO C forbids an empty translation unit. */
+typedef int PlusTcpTcpStreamStatic_EmptyTranslationUnit;
+
+#endif /* ipconfigUSE_TCP */

@@ -1514,6 +1514,23 @@ jobs:
       - name: Cross-build and link the packs
         run: cmake --build build/consumer-smoke-scrubbed
 
+      # Builds the gated-out path: every gated adapter's upstream option is off.
+      - name: Configure the consumer project (every gated adapter off)
+        run: |
+          env -u LWIP_PATH -u FREERTOS_KERNEL_PATH -u MBEDTLS_DIR \
+              -u FATFS_PATH -u FREERTOS_PLUS_FAT_PATH -u FREERTOS_PLUS_TCP_PATH \
+          cmake -S ci/consumer-smoke -B build/consumer-smoke-gates-off \
+            -DCMAKE_TOOLCHAIN_FILE="$(pwd)/Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake" \
+            -DFETCHCONTENT_SOURCE_DIR_SOLIDSYSLOG="$(pwd)" \
+            -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos" \
+            -DSOLIDSYSLOG_LWIP_PATH=/opt/lwip \
+            -DSOLIDSYSLOG_FREERTOS_KERNEL_PATH=/opt/freertos/kernel \
+            -DSOLIDSYSLOG_SMOKE_CONFIG_DIR=config-gates-off \
+            -DSOLIDSYSLOG_SMOKE_LINK_PACKS=ON
+
+      - name: Cross-build the packs with every gated adapter off
+        run: cmake --build build/consumer-smoke-gates-off
+
       # A nested configure must not write into the dependency's checkout. The BDD
       # tunables mirror is the one that did, and it is gitignored, so check for
       # the file itself as well as for tracked-file drift.

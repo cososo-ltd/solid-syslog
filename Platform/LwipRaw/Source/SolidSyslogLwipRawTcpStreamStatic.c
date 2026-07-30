@@ -1,3 +1,8 @@
+#include "lwip/opt.h"
+
+/* This component requires lwIP built with TCP. */
+#if LWIP_TCP
+
 #include "SolidSyslogLwipRawTcpStream.h"
 
 #include <stdbool.h>
@@ -89,3 +94,10 @@ static inline void LwipRawTcpStream_CleanupAtIndex(size_t index, void* context)
     (void) context;
     LwipRawTcpStream_Cleanup(&LwipRawTcpStream_Pool[index].Base);
 }
+
+#else
+
+/* ISO C forbids an empty translation unit. */
+typedef int LwipRawTcpStreamStatic_EmptyTranslationUnit;
+
+#endif /* LWIP_TCP */

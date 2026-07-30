@@ -1,3 +1,8 @@
+#include "FreeRTOS.h"
+
+/* This component requires FreeRTOS built with static allocation and mutexes. */
+#if (configSUPPORT_STATIC_ALLOCATION == 1) && (configUSE_MUTEXES == 1)
+
 #include "SolidSyslogFreeRtosMutex.h"
 
 #include <stddef.h>
@@ -70,3 +75,10 @@ static void FreeRtosMutex_Unlock(struct SolidSyslogMutex* base)
 {
     (void) xSemaphoreGive(FreeRtosMutex_AsHandle(FreeRtosMutex_SelfFromBase(base)));
 }
+
+#else
+
+/* ISO C forbids an empty translation unit. */
+typedef int FreeRtosMutex_EmptyTranslationUnit;
+
+#endif /* configSUPPORT_STATIC_ALLOCATION && configUSE_MUTEXES */

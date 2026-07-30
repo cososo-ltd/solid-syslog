@@ -26,9 +26,8 @@
 
 add_library(SolidSyslogLwipRaw INTERFACE)
 
-# Config-gated adapters are in the umbrella too: each gates itself on the lwIP
-# option it needs and compiles to nothing when that option is off, so globbing
-# this directory is always a correct pack selection.
+# Config-gated adapters are in the umbrella: each compiles to nothing when the
+# lwIP option it needs is off.
 target_sources(SolidSyslogLwipRaw INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawAddress.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawAddressStatic.c
