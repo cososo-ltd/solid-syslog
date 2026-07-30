@@ -1,11 +1,11 @@
 #ifndef FFSEMIHOSTINGDISK_H
 #define FFSEMIHOSTINGDISK_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* FreeRTOS-Plus-FAT FF_Disk_t media driver over the shared semihosting flat
      * disk (SemihostingDisk) for the QEMU mps2-an385 BDD target. The Plus-FAT
@@ -32,6 +32,6 @@ EXTERN_C_BEGIN
      * Safe to call when not mounted. */
     void FFSemihostingDisk_Unmount(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* FFSEMIHOSTINGDISK_H */

@@ -4,9 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     typedef uint32_t (*CmsdkUartRead32Function)(uintptr_t address);
     typedef void (*CmsdkUartWrite32Function)(uintptr_t address, uint32_t value);
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
     void CmsdkUart_Write(const char* buffer, size_t length);
     char CmsdkUart_GetChar(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif

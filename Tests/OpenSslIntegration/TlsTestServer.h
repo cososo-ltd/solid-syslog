@@ -3,9 +3,9 @@
 
 #include <openssl/types.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct TlsTestServer;
 
@@ -28,6 +28,6 @@ EXTERN_C_BEGIN
      * TlsTestServer pointer. */
     void TlsTestServer_Pump(void* context);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* TLSTESTSERVER_H */

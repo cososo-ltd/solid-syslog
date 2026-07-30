@@ -10,11 +10,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogAddress;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Signed byte count, the return type of Read. Models POSIX ssize_t using a
      *  standard-C type for portability to targets that lack <sys/types.h>'s
@@ -55,6 +55,6 @@ EXTERN_C_BEGIN
      *  a later Open reconnects. */
     void SolidSyslogStream_Close(struct SolidSyslogStream * stream);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSTREAM_H */

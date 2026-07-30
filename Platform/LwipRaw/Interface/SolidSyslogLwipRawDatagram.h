@@ -15,9 +15,9 @@
 #ifndef SOLIDSYSLOGLWIPRAWDATAGRAM_H
 #define SOLIDSYSLOGLWIPRAWDATAGRAM_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogDatagram;
 
@@ -28,6 +28,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot; removes the udp pcb. */
     void SolidSyslogLwipRawDatagram_Destroy(struct SolidSyslogDatagram * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGLWIPRAWDATAGRAM_H */

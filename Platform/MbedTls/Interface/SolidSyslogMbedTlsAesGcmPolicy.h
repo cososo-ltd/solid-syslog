@@ -18,13 +18,13 @@
 #ifndef SOLIDSYSLOGMBEDTLSAESGCMPOLICY_H
 #define SOLIDSYSLOGMBEDTLSAESGCMPOLICY_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogKeyFunction.h"
 
 struct SolidSyslogSecurityPolicy;
 struct mbedtls_ctr_drbg_context;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogMbedTlsAesGcmPolicyConfig
     {
@@ -45,6 +45,6 @@ EXTERN_C_BEGIN
      *  key is fetched per-call, the CTR-DRBG is caller-owned). */
     void SolidSyslogMbedTlsAesGcmPolicy_Destroy(struct SolidSyslogSecurityPolicy * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGMBEDTLSAESGCMPOLICY_H */

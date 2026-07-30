@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGWINDOWSFILEERRORS_H
 #define SOLIDSYSLOGWINDOWSFILEERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
      *  enum SolidSyslogWindowsFileErrors. */
     extern const struct SolidSyslogErrorSource WindowsFileErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINDOWSFILEERRORS_H */

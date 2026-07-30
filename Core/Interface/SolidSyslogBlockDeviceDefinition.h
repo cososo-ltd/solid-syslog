@@ -8,9 +8,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The block-device extension point: an implementor fills this vtable and embeds it as
      *  the first member of its own struct, so @p base downcasts back to that struct. Each
@@ -36,6 +36,6 @@ EXTERN_C_BEGIN
         size_t (*GetBlockSize)(struct SolidSyslogBlockDevice* base);
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGBLOCKDEVICEDEFINITION_H */

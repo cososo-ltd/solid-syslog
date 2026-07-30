@@ -17,12 +17,12 @@
 
 #include <stddef.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogBlockDevice;
 struct SolidSyslogFile;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Back a BlockDevice with one file per block, named @p pathPrefix followed by
      *  a two-digit block index and ".log" (so block 0 is "<prefix>00.log"; indices
@@ -42,6 +42,6 @@ EXTERN_C_BEGIN
      *  injected file. */
     void SolidSyslogFileBlockDevice_Destroy(struct SolidSyslogBlockDevice * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGFILEBLOCKDEVICE_H */

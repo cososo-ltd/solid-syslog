@@ -1,11 +1,11 @@
 #ifndef SOLIDSYSLOGENDPOINTHOSTPRIVATE_H
 #define SOLIDSYSLOGENDPOINTHOSTPRIVATE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include "SolidSyslogEndpointHost.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogFormatter;
 
@@ -25,6 +25,6 @@ EXTERN_C_BEGIN
         struct SolidSyslogFormatter * formatter
     );
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGENDPOINTHOSTPRIVATE_H */

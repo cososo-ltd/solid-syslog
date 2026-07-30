@@ -8,9 +8,9 @@
 #ifndef SOLIDSYSLOGPASSTHROUGHBUFFER_H
 #define SOLIDSYSLOGPASSTHROUGHBUFFER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogSender;
     struct SolidSyslogBuffer;
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot; does not destroy the injected sender. */
     void SolidSyslogPassthroughBuffer_Destroy(struct SolidSyslogBuffer * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPASSTHROUGHBUFFER_H */

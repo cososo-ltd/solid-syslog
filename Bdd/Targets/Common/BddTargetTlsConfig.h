@@ -3,11 +3,11 @@
 
 #include <stdint.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogEndpoint;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     const char* BddTargetTlsConfig_GetHost(void);
     uint16_t BddTargetTlsConfig_GetPort(void);
@@ -33,6 +33,6 @@ EXTERN_C_BEGIN
        string lifetime. */
     void BddTargetTlsConfig_SetServerName(const char* serverName);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BDDTARGETTLSCONFIG_H */

@@ -5,11 +5,11 @@
 #ifndef SOLIDSYSLOGSENDER_H
 #define SOLIDSYSLOGSENDER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include <stdbool.h>
 #include <stddef.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogSender;
 
@@ -21,6 +21,6 @@ EXTERN_C_BEGIN
     /** Drop the connection; the next Send reconnects. Idempotent. */
     void SolidSyslogSender_Disconnect(struct SolidSyslogSender * sender);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSENDER_H */

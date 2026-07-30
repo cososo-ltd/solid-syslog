@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGLWIPRAWTCPSTREAMERRORS_H
 #define SOLIDSYSLOGLWIPRAWTCPSTREAMERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
      *  event->Detail as an enum SolidSyslogLwipRawTcpStreamErrors. */
     extern const struct SolidSyslogErrorSource LwipRawTcpStreamErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGLWIPRAWTCPSTREAMERRORS_H */

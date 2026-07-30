@@ -8,9 +8,9 @@
 #ifndef SOLIDSYSLOGWINDOWSFILE_H
 #define SOLIDSYSLOGWINDOWSFILE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogFile;
 
@@ -20,6 +20,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot and close the descriptor. */
     void SolidSyslogWindowsFile_Destroy(struct SolidSyslogFile * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINDOWSFILE_H */

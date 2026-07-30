@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGSTDATOMICCOUNTERERRORS_H
 #define SOLIDSYSLOGSTDATOMICCOUNTERERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
      *  event->Detail as an enum SolidSyslogStdAtomicCounterErrors. */
     extern const struct SolidSyslogErrorSource StdAtomicCounterErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSTDATOMICCOUNTERERRORS_H */

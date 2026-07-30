@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFERERRORS_H
 #define SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFERERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -28,6 +28,6 @@ EXTERN_C_BEGIN
      *  reads event->Detail as an enum SolidSyslogPosixMessageQueueBufferErrors. */
     extern const struct SolidSyslogErrorSource PosixMessageQueueBufferErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFERERRORS_H */

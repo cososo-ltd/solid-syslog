@@ -1,9 +1,9 @@
 #ifndef ADDRESSFAKE_H
 #define ADDRESSFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /*
      * Returns an opaque SolidSyslogAddress* suitable for tests that treat
@@ -14,6 +14,6 @@ EXTERN_C_BEGIN
      */
     struct SolidSyslogAddress* AddressFake_Get(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* ADDRESSFAKE_H */

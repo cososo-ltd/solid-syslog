@@ -4,9 +4,9 @@
 #ifndef SOLIDSYSLOGHEADERFIELDFUNCTION_H
 #define SOLIDSYSLOGHEADERFIELDFUNCTION_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogHeaderField;
 
@@ -16,6 +16,6 @@ EXTERN_C_BEGIN
      *  from the config the callback was registered in. */
     typedef void (*SolidSyslogHeaderFieldFunction)(struct SolidSyslogHeaderField* field, void* context);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGHEADERFIELDFUNCTION_H */

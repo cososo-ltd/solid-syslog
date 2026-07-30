@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGWINSOCKADDRESSERRORS_H
 #define SOLIDSYSLOGWINSOCKADDRESSERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
      *  event->Detail as an enum SolidSyslogWinsockAddressErrors. */
     extern const struct SolidSyslogErrorSource WinsockAddressErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINSOCKADDRESSERRORS_H */

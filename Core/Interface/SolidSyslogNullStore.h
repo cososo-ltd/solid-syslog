@@ -5,9 +5,9 @@
 #ifndef SOLIDSYSLOGNULLSTORE_H
 #define SOLIDSYSLOGNULLSTORE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Never retains a record. Write returns false (not held by this store), so the
      *  Service algorithm falls through to a direct send instead of buffering, giving the
@@ -15,6 +15,6 @@ EXTERN_C_BEGIN
      *  ReadNextUnsent and HasUnsent report empty; IsHalted reports false. */
     struct SolidSyslogStore* SolidSyslogNullStore_Get(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGNULLSTORE_H */

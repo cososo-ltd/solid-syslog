@@ -14,9 +14,9 @@
 #define SOLIDSYSLOGUDPSENDER_H
 
 #include "SolidSyslogEndpoint.h"
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogSender;
 
@@ -48,6 +48,6 @@ EXTERN_C_BEGIN
      *  injected Resolver, Datagram, or Address; the caller owns those. */
     void SolidSyslogUdpSender_Destroy(struct SolidSyslogSender * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGUDPSENDER_H */

@@ -8,10 +8,10 @@
 #ifndef SOLIDSYSLOGTIMEQUALITYSD_H
 #define SOLIDSYSLOGTIMEQUALITYSD_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogTimeQuality.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogStructuredData;
 
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
     /** Release the SD's pool slot. */
     void SolidSyslogTimeQualitySd_Destroy(struct SolidSyslogStructuredData * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGTIMEQUALITYSD_H */

@@ -4,9 +4,9 @@
 #ifndef SOLIDSYSLOGSDVALUEFUNCTION_H
 #define SOLIDSYSLOGSDVALUEFUNCTION_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogSdValue;
 
@@ -16,6 +16,6 @@ EXTERN_C_BEGIN
      *  config the callback was registered in. */
     typedef void (*SolidSyslogSdValueFunction)(struct SolidSyslogSdValue* value, void* context);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSDVALUEFUNCTION_H */

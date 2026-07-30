@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct mbedtls_ssl_config;
 struct mbedtls_ssl_context;
@@ -13,7 +13,7 @@ struct mbedtls_x509_crt;
 struct mbedtls_x509_crl;
 struct mbedtls_ctr_drbg_context;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Resets every counter and captured-arg field to its initial state.
      * Call from TEST_GROUP::setup() so each test starts from a clean slate. */
@@ -169,6 +169,6 @@ EXTERN_C_BEGIN
     size_t MbedTlsFake_LastCtrDrbgRandomLen(void);
     void MbedTlsFake_SetCtrDrbgRandomFails(bool fails);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* MBEDTLSFAKE_H */

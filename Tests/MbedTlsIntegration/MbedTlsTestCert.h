@@ -5,9 +5,9 @@
 #include <mbedtls/pk.h>
 #include <mbedtls/x509_crt.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct MbedTlsTestCert
     {
@@ -35,6 +35,6 @@ EXTERN_C_BEGIN
 
     void MbedTlsTestCert_Destroy(struct MbedTlsTestCert * cert);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* MBEDTLSTESTCERT_H */

@@ -4,9 +4,9 @@
 #ifndef SOLIDSYSLOGMUTEXDEFINITION_H
 #define SOLIDSYSLOGMUTEXDEFINITION_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The one synchronisation seam a CircularBuffer needs: it guards the ring's
      *  producer (Log/Write) against its consumer (Service/Read). Core takes the
@@ -20,6 +20,6 @@ EXTERN_C_BEGIN
         void (*Unlock)(struct SolidSyslogMutex* base);
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGMUTEXDEFINITION_H */

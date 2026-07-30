@@ -7,9 +7,9 @@
 #ifndef SOLIDSYSLOGWINDOWSATOMICCOUNTER_H
 #define SOLIDSYSLOGWINDOWSATOMICCOUNTER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogAtomicCounter;
 
@@ -19,6 +19,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot; the counter's state is discarded. */
     void SolidSyslogWindowsAtomicCounter_Destroy(struct SolidSyslogAtomicCounter * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINDOWSATOMICCOUNTER_H */

@@ -20,9 +20,9 @@
 #ifndef SOLIDSYSLOGLWIPRAWMARSHAL_H
 #define SOLIDSYSLOGLWIPRAWMARSHAL_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The work the marshal must run on the core-owning thread. */
     typedef void (*SolidSyslogLwipRawCallback)(void* context);
@@ -37,6 +37,6 @@ EXTERN_C_BEGIN
      *  installs. */
     void SolidSyslogLwipRaw_SetMarshal(SolidSyslogLwipRawMarshalFunction marshal);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGLWIPRAWMARSHAL_H */

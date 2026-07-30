@@ -1,14 +1,14 @@
 #ifndef SOLIDSYSLOGMESSAGEFORMATTER_H
 #define SOLIDSYSLOGMESSAGEFORMATTER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stddef.h>
 
 #include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogTimestamp.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogFormatter;
     struct SolidSyslogMessage;
@@ -44,6 +44,6 @@ EXTERN_C_BEGIN
         size_t messageSdCount
     );
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGMESSAGEFORMATTER_H */

@@ -5,9 +5,9 @@
 #ifndef SOLIDSYSLOGNULLSTREAM_H
 #define SOLIDSYSLOGNULLSTREAM_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Open and Close are no-ops. Send returns true, reporting the bytes as delivered
      *  so the Store does not retain undeliverables. Read returns 0 (would-block, nothing
@@ -15,6 +15,6 @@ EXTERN_C_BEGIN
      *  connection as broken and tear it down. */
     struct SolidSyslogStream* SolidSyslogNullStream_Get(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGNULLSTREAM_H */

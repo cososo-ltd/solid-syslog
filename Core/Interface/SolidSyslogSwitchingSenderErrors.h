@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGSWITCHINGSENDERERRORS_H
 #define SOLIDSYSLOGSWITCHINGSENDERERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -27,6 +27,6 @@ EXTERN_C_BEGIN
      *  event->Detail as an enum SolidSyslogSwitchingSenderErrors. */
     extern const struct SolidSyslogErrorSource SwitchingSenderErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSWITCHINGSENDERERRORS_H */

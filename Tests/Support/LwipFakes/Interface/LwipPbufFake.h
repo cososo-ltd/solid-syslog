@@ -1,14 +1,14 @@
 #ifndef LWIPPBUFFAKE_H
 #define LWIPPBUFFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
 #include "lwip/pbuf.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void LwipPbufFake_Reset(void);
 
@@ -34,6 +34,6 @@ EXTERN_C_BEGIN
      * stays honest. */
     void LwipPbufFake_NoteIncomingPbuf(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* LWIPPBUFFAKE_H */

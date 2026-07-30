@@ -78,6 +78,6 @@ ReflowComments: false
 # Includes
 SortIncludes: false
 
-# Recognise extern "C" wrapper macros (see Core/Interface/ExternC.h)
-MacroBlockBegin: '^EXTERN_C_BEGIN$'
-MacroBlockEnd:   '^EXTERN_C_END$'
+# Recognise extern "C" wrapper macros (see Core/Interface/SolidSyslogExternC.h)
+MacroBlockBegin: '^SOLIDSYSLOG_EXTERN_C_BEGIN$'
+MacroBlockEnd:   '^SOLIDSYSLOG_EXTERN_C_END$'

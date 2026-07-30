@@ -7,11 +7,11 @@
 #ifndef SOLIDSYSLOGSTORE_H
 #define SOLIDSYSLOGSTORE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include <stdbool.h>
 #include <stddef.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogStore;
 
@@ -33,6 +33,6 @@ EXTERN_C_BEGIN
     size_t SolidSyslogStore_GetUsedBytes(struct SolidSyslogStore * store);
     bool SolidSyslogStore_IsTransient(struct SolidSyslogStore * store);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSTORE_H */

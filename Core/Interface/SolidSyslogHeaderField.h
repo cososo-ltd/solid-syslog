@@ -4,12 +4,12 @@
 #ifndef SOLIDSYSLOGHEADERFIELD_H
 #define SOLIDSYSLOGHEADERFIELD_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stddef.h>
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The value sink for an RFC 5424 header field (HOSTNAME / APP-NAME /
      *  PROCID). A field producer is handed only a SolidSyslogHeaderField*: it
@@ -35,6 +35,6 @@ EXTERN_C_BEGIN
      *  bounded by the same field width. */
     void SolidSyslogHeaderField_Uint32(struct SolidSyslogHeaderField * field, uint32_t value);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGHEADERFIELD_H */

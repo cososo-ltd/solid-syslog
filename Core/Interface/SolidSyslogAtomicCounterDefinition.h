@@ -4,11 +4,11 @@
 #ifndef SOLIDSYSLOGATOMICCOUNTERDEFINITION_H
 #define SOLIDSYSLOGATOMICCOUNTERDEFINITION_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Extension point for supplying the sequenceId counter (see
      *  SolidSyslogAtomicCounter_Increment for the caller-facing contract). An
@@ -20,6 +20,6 @@ EXTERN_C_BEGIN
         uint32_t (*Increment)(struct SolidSyslogAtomicCounter* base); /**< Advance and return the new value. */
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGATOMICCOUNTERDEFINITION_H */

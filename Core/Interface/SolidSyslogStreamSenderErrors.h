@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGSTREAMSENDERERRORS_H
 #define SOLIDSYSLOGSTREAMSENDERERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -30,6 +30,6 @@ EXTERN_C_BEGIN
      *  event->Detail as an enum SolidSyslogStreamSenderErrors. */
     extern const struct SolidSyslogErrorSource StreamSenderErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSTREAMSENDERERRORS_H */

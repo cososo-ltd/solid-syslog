@@ -1,10 +1,10 @@
 #ifndef FREERTOSTASKFAKE_H
 #define FREERTOSTASKFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "FreeRTOS.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void FreeRtosTaskFake_Reset(void);
 
@@ -13,6 +13,6 @@ EXTERN_C_BEGIN
 
     void FreeRtosTaskFake_SetTickCount(TickType_t ticks);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* FREERTOSTASKFAKE_H */

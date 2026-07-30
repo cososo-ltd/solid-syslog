@@ -8,11 +8,11 @@
 #include <stdbool.h>
 
 #include "SolidSyslogTransport.h"
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogAddress;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Extension point for resolving a destination host to a platform address.
      *  Implementors write @p result (caller-owned SolidSyslogAddress storage,
@@ -31,6 +31,6 @@ EXTERN_C_BEGIN
         );
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGRESOLVERDEFINITION_H */

@@ -4,9 +4,9 @@
 #ifndef SOLIDSYSLOGPOSIXMUTEX_H
 #define SOLIDSYSLOGPOSIXMUTEX_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogMutex;
 
@@ -17,6 +17,6 @@ EXTERN_C_BEGIN
      *  was successfully initialised). */
     void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPOSIXMUTEX_H */

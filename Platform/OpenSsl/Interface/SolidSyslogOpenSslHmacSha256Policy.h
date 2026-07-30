@@ -18,12 +18,12 @@
 #ifndef SOLIDSYSLOGOPENSSLHMACSHA256POLICY_H
 #define SOLIDSYSLOGOPENSSLHMACSHA256POLICY_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogKeyFunction.h"
 
 struct SolidSyslogSecurityPolicy;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Supplies the key SolidSyslogOpenSslHmacSha256Policy seals and verifies with. */
     struct SolidSyslogOpenSslHmacSha256PolicyConfig
@@ -43,6 +43,6 @@ EXTERN_C_BEGIN
      *  stored on the instance — so this only frees the slot. */
     void SolidSyslogOpenSslHmacSha256Policy_Destroy(struct SolidSyslogSecurityPolicy * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGOPENSSLHMACSHA256POLICY_H */

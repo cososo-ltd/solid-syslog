@@ -1,10 +1,10 @@
 #ifndef FREERTOSSEMAPHOREFAKE_H
 #define FREERTOSSEMAPHOREFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "FreeRTOS.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void FreeRtosSemaphoreFake_Reset(void);
 
@@ -16,6 +16,6 @@ EXTERN_C_BEGIN
 
     unsigned FreeRtosSemaphoreFake_SemaphoreDeleteCallCount(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* FREERTOSSEMAPHOREFAKE_H */

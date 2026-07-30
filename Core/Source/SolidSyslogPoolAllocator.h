@@ -1,12 +1,12 @@
 #ifndef SOLIDSYSLOGPOOLALLOCATOR_H
 #define SOLIDSYSLOGPOOLALLOCATOR_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogPoolAllocator
     {
@@ -30,6 +30,6 @@ EXTERN_C_BEGIN
         return index < self->Count;
     }
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPOOLALLOCATOR_H */

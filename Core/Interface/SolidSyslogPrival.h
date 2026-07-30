@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGPRIVAL_H
 #define SOLIDSYSLOGPRIVAL_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** RFC 5424 facility codes; the numeric values are the RFC's own. */
     enum SolidSyslogFacility
@@ -53,6 +53,6 @@ EXTERN_C_BEGIN
         SOLIDSYSLOG_SEVERITY_DEBUG = 7
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPRIVAL_H */

@@ -5,11 +5,11 @@
 #ifndef SOLIDSYSLOGSDELEMENT_H
 #define SOLIDSYSLOGSDELEMENT_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The element writer handed to an SD's Format. Owns the brackets and the
      *  SD-NAME / PARAM-NAME charset (each bounded to 32 bytes), so an author
@@ -35,6 +35,6 @@ EXTERN_C_BEGIN
      *  (nothing if _Begin suppressed the element). */
     void SolidSyslogSdElement_End(struct SolidSyslogSdElement * element);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSDELEMENT_H */

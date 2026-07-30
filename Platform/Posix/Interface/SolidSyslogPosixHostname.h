@@ -4,15 +4,15 @@
 #ifndef SOLIDSYSLOGPOSIXHOSTNAME_H
 #define SOLIDSYSLOGPOSIXHOSTNAME_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogHeaderField;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Writes the host's name (gethostname) into @p field. @p context is unused. */
     void SolidSyslogPosixHostname_Get(struct SolidSyslogHeaderField * field, void* context);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPOSIXHOSTNAME_H */

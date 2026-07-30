@@ -3,10 +3,10 @@
 
 #include <stdbool.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "FreeRTOS.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void FreeRtosDnsFake_Reset(void);
 
@@ -18,6 +18,6 @@ EXTERN_C_BEGIN
 
     unsigned FreeRtosDnsFake_FreeAddrInfoCallCount(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* FREERTOSDNSFAKE_H */

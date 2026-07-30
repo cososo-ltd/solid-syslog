@@ -4,10 +4,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogStream.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogStream;
 
@@ -28,6 +28,6 @@ EXTERN_C_BEGIN
     void StreamFake_SetSendFails(struct SolidSyslogStream * stream, bool fails);
     int StreamFake_CloseCallCount(struct SolidSyslogStream * stream);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* STREAMFAKE_H */

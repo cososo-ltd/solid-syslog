@@ -1,12 +1,12 @@
 #ifndef SEMIHOSTINGDISK_H
 #define SEMIHOSTINGDISK_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Host-backed flat-disk media access over ARM semihosting (BKPT 0xAB),
      * shared by both filesystem media drivers on the QEMU mps2-an385 BDD
@@ -53,6 +53,6 @@ EXTERN_C_BEGIN
     enum SemihostingDiskResult SemihostingDisk_Read(void* buffer, uint32_t sector, uint32_t count);
     enum SemihostingDiskResult SemihostingDisk_Write(const void* buffer, uint32_t sector, uint32_t count);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SEMIHOSTINGDISK_H */

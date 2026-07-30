@@ -4,9 +4,9 @@
 #ifndef SOLIDSYSLOGCONFIGLOCK_H
 #define SOLIDSYSLOGCONFIGLOCK_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Critical-section enter/leave callback wrapping every pool Create/Destroy
      *  slot-walk. Single-task targets need none (the default is a no-op);
@@ -27,6 +27,6 @@ EXTERN_C_BEGIN
     void SolidSyslog_LockConfig(void);
     void SolidSyslog_UnlockConfig(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGCONFIGLOCK_H */

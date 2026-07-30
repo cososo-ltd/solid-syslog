@@ -11,9 +11,9 @@
 #ifndef SOLIDSYSLOGCRC16POLICY_H
 #define SOLIDSYSLOGCRC16POLICY_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** An unkeyed at-rest integrity policy: it appends a CRC-16 trailer that
      *  catches accidental corruption of a stored record, but offers no defence
@@ -25,6 +25,6 @@ EXTERN_C_BEGIN
      *  lifecycle symmetry with the keyed policies. */
     void SolidSyslogCrc16Policy_Destroy(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGCRC16POLICY_H */

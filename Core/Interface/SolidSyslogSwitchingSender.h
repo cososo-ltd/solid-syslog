@@ -15,9 +15,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogSender;
 
@@ -53,6 +53,6 @@ EXTERN_C_BEGIN
      *  senders; the caller owns those. */
     void SolidSyslogSwitchingSender_Destroy(struct SolidSyslogSender * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSWITCHINGSENDER_H */

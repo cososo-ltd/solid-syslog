@@ -4,11 +4,11 @@
 #ifndef SOLIDSYSLOGENDPOINTHOST_H
 #define SOLIDSYSLOGENDPOINTHOST_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stddef.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The value sink for a destination host (the SolidSyslogEndpoint.Host a
      *  sender hands its endpoint callback). The callback is given only a
@@ -23,6 +23,6 @@ EXTERN_C_BEGIN
      *  width the sink was created with. */
     void SolidSyslogEndpointHost_String(struct SolidSyslogEndpointHost * host, const char* source, size_t maxLength);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGENDPOINTHOST_H */

@@ -4,13 +4,13 @@
 #ifndef SOLIDSYSLOG_H
 #define SOLIDSYSLOG_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogServiceStatus.h"
 
 #include <stddef.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslog;
     struct SolidSyslogStructuredData;
@@ -64,6 +64,6 @@ EXTERN_C_BEGIN
      *  loop out of "keep draining" while the buffer still has records to move. */
     enum SolidSyslogServiceStatus SolidSyslog_Service(struct SolidSyslog * handle);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOG_H */

@@ -4,11 +4,11 @@
 #ifndef SOLIDSYSLOGFREERTOSSYSUPTIME_H
 #define SOLIDSYSLOGFREERTOSSYSUPTIME_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdint.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Hundredths of a second of uptime from xTaskGetTickCount, for the meta-SD
      *  sysUpTime field — a faithful RFC 3418 modulo-2^32 TimeTicks counter. A
@@ -22,6 +22,6 @@ EXTERN_C_BEGIN
      *  pick a dividing rate, or supply your own SolidSyslogSysUpTimeFunction). */
     uint32_t SolidSyslogFreeRtosSysUpTime_Get(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGFREERTOSSYSUPTIME_H */

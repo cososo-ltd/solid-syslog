@@ -1,11 +1,11 @@
 #ifndef BDDTARGETTLSSENDER_H
 #define BDDTARGETTLSSENDER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogResolver;
     struct SolidSyslogSender;
@@ -23,6 +23,6 @@ EXTERN_C_BEGIN
      * degraded behaviour. */
     struct mbedtls_ctr_drbg_context* BddTargetTlsSender_GetRng(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BDDTARGETTLSSENDER_H */

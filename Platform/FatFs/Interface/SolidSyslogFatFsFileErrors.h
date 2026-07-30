@@ -3,9 +3,9 @@
 #ifndef SOLIDSYSLOGFATFSFILEERRORS_H
 #define SOLIDSYSLOGFATFSFILEERRORS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
@@ -24,6 +24,6 @@ EXTERN_C_BEGIN
      *  enum SolidSyslogFatFsFileErrors. */
     extern const struct SolidSyslogErrorSource FatFsFileErrorSource;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGFATFSFILEERRORS_H */

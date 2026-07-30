@@ -3,11 +3,11 @@
 
 #include <stdint.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogEndpoint;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     const char* BddTargetMtlsConfig_GetHost(void);
     uint16_t BddTargetMtlsConfig_GetPort(void);
@@ -29,6 +29,6 @@ EXTERN_C_BEGIN
        needs the connection IP separate from the cert subject. */
     void BddTargetMtlsConfig_SetServerName(const char* serverName);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BDDTARGETMTLSCONFIG_H */

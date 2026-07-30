@@ -4,11 +4,11 @@
 #include <mbedtls/ctr_drbg.h>
 #include <stdbool.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct MbedTlsTestCert;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct MbedTlsTestServer;
 
@@ -33,6 +33,6 @@ EXTERN_C_BEGIN
      * completed successfully. Callable once per server. */
     bool MbedTlsTestServer_JoinAndHandshakeSucceeded(struct MbedTlsTestServer * self);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* MBEDTLSTESTSERVER_H */

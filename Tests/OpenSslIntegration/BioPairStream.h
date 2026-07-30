@@ -3,11 +3,11 @@
 
 #include <openssl/types.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogStream;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     typedef void (*BioPairStreamPumpFunction)(void* context);
 
@@ -15,6 +15,6 @@ EXTERN_C_BEGIN
     void BioPairStream_Destroy(struct SolidSyslogStream * self);
     void BioPairStream_SetPump(struct SolidSyslogStream * self, BioPairStreamPumpFunction pump, void* context);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BIOPAIRSTREAM_H */

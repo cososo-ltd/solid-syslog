@@ -1,9 +1,9 @@
 #ifndef SOLIDSYSLOGTIMESTAMPFORMATTER_H
 #define SOLIDSYSLOGTIMESTAMPFORMATTER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogFormatter;
     struct SolidSyslogTimestamp;
@@ -18,6 +18,6 @@ EXTERN_C_BEGIN
         const struct SolidSyslogTimestamp* timestamp
     );
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGTIMESTAMPFORMATTER_H */

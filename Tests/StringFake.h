@@ -1,11 +1,11 @@
 #ifndef STRINGFAKE_H
 #define STRINGFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogHeaderField;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void StringFake_Reset(void);
     void StringFake_SetHostname(const char* hostname);
@@ -15,6 +15,6 @@ EXTERN_C_BEGIN
     void StringFake_SetProcessId(const char* procId);
     void StringFake_GetProcessId(struct SolidSyslogHeaderField * field, void* context);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* STRINGFAKE_H */

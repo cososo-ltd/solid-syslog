@@ -3,17 +3,17 @@
 
 #include <stdint.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogEndpoint;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     const char* BddTargetTcpConfig_GetHost(void);
     uint16_t BddTargetTcpConfig_GetPort(void);
     void BddTargetTcpConfig_GetEndpoint(struct SolidSyslogEndpoint * endpoint, void* context);
     uint32_t BddTargetTcpConfig_GetEndpointVersion(void* context);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BDDTARGETTCPCONFIG_H */

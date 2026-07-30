@@ -5,11 +5,11 @@
    CppUTest's UT_PTR_SET to inject fakes (MSVC does not support GCC's
    weak/strong symbol override trick used by the POSIX SocketFake). */
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <winsock2.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     typedef SOCKET(WSAAPI * WinsockSocketFn)(int, int, int);
     typedef int(WSAAPI * WinsockSendToFn)(SOCKET, const char*, int, int, const struct sockaddr*, int);
@@ -25,6 +25,6 @@ EXTERN_C_BEGIN
     extern WinsockGetSockOptFn Winsock_getsockopt;
     extern WinsockCloseSocketFn Winsock_closesocket;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINSOCKDATAGRAMINTERNAL_H */

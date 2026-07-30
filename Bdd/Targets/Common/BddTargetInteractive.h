@@ -4,12 +4,12 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslog;
 struct SolidSyslogMessage;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     typedef void (*BddTargetInteractiveSwitchHandler)(const char* name);
     typedef bool (*BddTargetInteractiveSetHandler)(const char* name, const char* value);
@@ -22,6 +22,6 @@ EXTERN_C_BEGIN
         BddTargetInteractiveSetHandler onSet
     );
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BDDTARGETINTERACTIVE_H */

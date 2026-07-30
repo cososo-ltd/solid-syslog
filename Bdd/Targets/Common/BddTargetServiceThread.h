@@ -1,12 +1,12 @@
 #ifndef BDDTARGETSERVICETHREAD_H
 #define BDDTARGETSERVICETHREAD_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogSleep.h"
 
 #include <stdbool.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslog;
 
@@ -16,6 +16,6 @@ EXTERN_C_BEGIN
         SolidSyslogSleepFunction sleep
     );
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BDDTARGETSERVICETHREAD_H */

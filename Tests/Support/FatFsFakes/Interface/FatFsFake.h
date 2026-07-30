@@ -1,10 +1,10 @@
 #ifndef FATFSFAKE_H
 #define FATFSFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "ff.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void FatFsFake_Reset(void);
 
@@ -48,6 +48,6 @@ EXTERN_C_BEGIN
      * value. */
     void FatFsFake_SetFileSize(unsigned long size);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* FATFSFAKE_H */

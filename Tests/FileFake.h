@@ -3,11 +3,11 @@
 
 #include <stddef.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 struct SolidSyslogFile;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     enum
     {
@@ -30,6 +30,6 @@ EXTERN_C_BEGIN
     const void* FileFake_FileContent(void);
     size_t FileFake_FileSize(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* FILEFAKE_H */

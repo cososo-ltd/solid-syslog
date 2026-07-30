@@ -31,7 +31,7 @@
 #include "SolidSyslogTcpConnectTimeoutFunction.h"
 #include "SolidSyslogTransport.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Tunes SolidSyslogWinsockTcpStream's bounded connect. */
     struct SolidSyslogWinsockTcpStreamConfig
@@ -51,6 +51,6 @@ EXTERN_C_BEGIN
     /** Release the pool slot and close the socket. */
     void SolidSyslogWinsockTcpStream_Destroy(struct SolidSyslogStream * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINSOCKTCPSTREAM_H */

@@ -1,14 +1,14 @@
 #ifndef LWIPDNSFAKE_H
 #define LWIPDNSFAKE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
 #include "lwip/ip_addr.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void LwipDnsFake_Reset(void);
 
@@ -39,6 +39,6 @@ EXTERN_C_BEGIN
      * from their injected Sleep. */
     void LwipDnsFake_FireCallback(const ip_addr_t* ipaddr);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* LWIPDNSFAKE_H */

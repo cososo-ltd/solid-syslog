@@ -6,11 +6,11 @@
 #ifndef SOLIDSYSLOGBUFFER_H
 #define SOLIDSYSLOGBUFFER_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include <stdbool.h>
 #include <stddef.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogBuffer;
 
@@ -31,6 +31,6 @@ EXTERN_C_BEGIN
      *  the buffer-backend-failed category rather than failing silently. */
     bool SolidSyslogBuffer_Read(struct SolidSyslogBuffer * buffer, void* data, size_t maxSize, size_t* bytesRead);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGBUFFER_H */

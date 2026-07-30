@@ -8,9 +8,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Store-and-forward vtable. The Service loop is the only reader: it drains
      *  the buffer through Write, then repeatedly ReadNextUnsent / MarkSent as the
@@ -50,6 +50,6 @@ EXTERN_C_BEGIN
         bool (*IsTransient)(struct SolidSyslogStore* base);
     };
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGSTOREDEFINITION_H */

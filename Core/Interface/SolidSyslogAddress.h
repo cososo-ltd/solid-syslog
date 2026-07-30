@@ -4,9 +4,9 @@
 #ifndef SOLIDSYSLOGADDRESS_H
 #define SOLIDSYSLOGADDRESS_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Opaque resolved-destination handle. Obtained from a per-platform factory
      *  (SolidSyslog{Posix,Winsock,PlusTcp,LwipRaw}Address_Create); a Resolver
@@ -15,6 +15,6 @@ EXTERN_C_BEGIN
      *  that platform's sources. */
     struct SolidSyslogAddress;
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGADDRESS_H */

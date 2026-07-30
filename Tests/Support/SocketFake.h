@@ -6,9 +6,9 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void SocketFake_Reset(void);
 
@@ -123,6 +123,6 @@ EXTERN_C_BEGIN
 
     int SocketFake_FreeAddrInfoCallCount(void);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOCKETFAKE_H */

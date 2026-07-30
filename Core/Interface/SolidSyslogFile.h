@@ -5,11 +5,11 @@
 #ifndef SOLIDSYSLOGFILE_H
 #define SOLIDSYSLOGFILE_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include <stdbool.h>
 #include <stddef.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogFile;
 
@@ -27,6 +27,6 @@ EXTERN_C_BEGIN
     bool SolidSyslogFile_Exists(struct SolidSyslogFile * file, const char* path);
     bool SolidSyslogFile_Delete(struct SolidSyslogFile * file, const char* path);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGFILE_H */

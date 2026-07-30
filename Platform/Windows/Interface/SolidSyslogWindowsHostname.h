@@ -6,12 +6,12 @@
 
 #include "SolidSyslogConfig.h"
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Writes the physical DNS host name (GetComputerNameExA) into @p field.
      *  @p context is unused. */
     void SolidSyslogWindowsHostname_Get(struct SolidSyslogHeaderField * field, void* context);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGWINDOWSHOSTNAME_H */

@@ -31,7 +31,7 @@
 #ifndef SOLIDSYSLOGMBEDTLSSTREAM_H
 #define SOLIDSYSLOGMBEDTLSSTREAM_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 #include "SolidSyslogSleep.h"
 #include "SolidSyslogTlsHandshakeTimeoutFunction.h"
 
@@ -44,7 +44,7 @@ struct mbedtls_ctr_drbg_context;
 struct mbedtls_x509_crt;
 struct mbedtls_pk_context;
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogMbedTlsStreamConfig
     {
@@ -79,6 +79,6 @@ EXTERN_C_BEGIN
      *  if the stream is still open. */
     void SolidSyslogMbedTlsStream_Destroy(struct SolidSyslogStream * base);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGMBEDTLSSTREAM_H */

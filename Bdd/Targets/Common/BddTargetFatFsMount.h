@@ -1,11 +1,11 @@
 #ifndef BDDTARGETFATFSMOUNT_H
 #define BDDTARGETFATFSMOUNT_H
 
-#include "ExternC.h"
+#include "SolidSyslogExternC.h"
 
 #include <stdbool.h>
 
-EXTERN_C_BEGIN
+SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* ChaN-FatFs implementation of the shared pipeline's FS-mount seam
      * (struct BddTargetFreeRtosPipelineConfig). Owns the single-volume FATFS
@@ -28,6 +28,6 @@ EXTERN_C_BEGIN
     struct SolidSyslogFile* BddTargetFatFsMount_CreateFile(void);
     void BddTargetFatFsMount_DestroyFile(struct SolidSyslogFile * file);
 
-EXTERN_C_END
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* BDDTARGETFATFSMOUNT_H */
