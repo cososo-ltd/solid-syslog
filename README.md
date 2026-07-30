@@ -69,8 +69,10 @@ is the [Getting started](docs/getting-started.md) path above.)
 
 SolidSyslog uses an OO-in-C style with vtable structs and dependency injection.
 All fields — required and optional — use a uniform field object pattern.
-Optional features are composed at link time via dead code elimination; there are
-no conditional compilation directives in the library source.
+Optional features are composed at link time via dead code elimination, not by
+preprocessor configuration. Core's implementation contains no conditional
+compilation at all; Core's headers use it only for include guards, tunable
+defaults and their consistency assertions, and C/C++ language shims.
 
 Public headers are split by audience (Interface Segregation Principle):
 

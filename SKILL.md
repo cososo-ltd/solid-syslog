@@ -56,7 +56,7 @@ Test progression follows ZOMBIES order.
   primitive), PosixMessageQueueBuffer (POSIX message queue, used by the Linux Threaded example)
 - Null object pattern throughout
 - All fields use uniform field object pattern with format function pointer
-- Optional features composed at link time — no conditional compilation
+- Optional features composed at link time, not by preprocessor configuration
 - C11 static assertions via compatibility shim
 
 ## Static analysis
