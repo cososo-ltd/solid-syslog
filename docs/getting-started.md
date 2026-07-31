@@ -291,7 +291,8 @@ store-and-forward, numeric resolver + DNS, `NO_SYS=0`.
 
 The exact `.c` file list and SolidSyslog-side include directories for this stack
 are generated from CMake and committed, so they can never drift from what the
-packs actually ship (CI regenerates and fails on any difference):
+packs actually ship (CI regenerates and fails on any difference, and separately
+asserts every listed file group matches the directory it comes from):
 
 → [`docs/generated/beta-stack-manifest.txt`](generated/beta-stack-manifest.txt)
 
