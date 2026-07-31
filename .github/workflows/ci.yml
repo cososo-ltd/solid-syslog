@@ -1609,6 +1609,27 @@ jobs:
       - name: Cross-build the packs with the LwipRaw and FreeRtos gates off
         run: cmake --build build/consumer-smoke-gates-off
 
+      # Path B has no CMake to select anything, so the same consumer is built by
+      # directory selection. The environment is scrubbed for the same reason as
+      # above: the platform list and the -D paths are all that can reach it.
+      - name: Build the Make consumer (scrubbed environment)
+        run: |
+          env -u LWIP_PATH -u FREERTOS_KERNEL_PATH -u MBEDTLS_DIR \
+              -u FATFS_PATH -u FREERTOS_PLUS_FAT_PATH -u FREERTOS_PLUS_TCP_PATH \
+          make -f ci/consumer-smoke/Makefile -j"$(nproc)" \
+            LWIP_PATH=/opt/lwip \
+            FREERTOS_KERNEL_PATH=/opt/freertos/kernel
+
+      - name: Build the Make consumer with the LwipRaw and FreeRtos gates off
+        run: |
+          env -u LWIP_PATH -u FREERTOS_KERNEL_PATH -u MBEDTLS_DIR \
+              -u FATFS_PATH -u FREERTOS_PLUS_FAT_PATH -u FREERTOS_PLUS_TCP_PATH \
+          make -f ci/consumer-smoke/Makefile -j"$(nproc)" \
+            LWIP_PATH=/opt/lwip \
+            FREERTOS_KERNEL_PATH=/opt/freertos/kernel \
+            CONFIG_DIR=config-gates-off \
+            BUILD="$(pwd)/build/consumer-smoke-make-gates-off"
+
       # A nested configure must not write into the dependency's checkout. The BDD
       # tunables mirror is the one that did, and it is gitignored, so check for
       # the file itself as well as for tracked-file drift.
