@@ -57,9 +57,15 @@ def read_registry(root):
 
 
 def read_manifest(path):
-    """Return (selected platform tokens, {section: set of listed .c paths})."""
+    """Return (selected tokens, {section: set of .c paths}, orphaned .c paths).
+
+    A source line under no section header is orphaned. Reporting those rather
+    than dropping them is what stops a malformed manifest passing by having
+    nothing left to compare.
+    """
     selected = []
     sections = {}
+    orphans = set()
     current = None
     in_sources = False
 
@@ -84,10 +90,13 @@ def read_manifest(path):
             sections.setdefault(current, set())
         elif line.startswith("#"):
             current = None
-        elif line.endswith(".c") and current:
-            sections[current].add(line)
+        elif line.endswith(".c"):
+            if current:
+                sections[current].add(line)
+            else:
+                orphans.add(line)
 
-    return selected, sections
+    return selected, sections, orphans
 
 
 def sources_on_disk(root, directory):
@@ -105,9 +114,18 @@ def main():
 
     root = arguments.root.resolve()
     registry = read_registry(root)
-    selected, sections = read_manifest(arguments.manifest)
+    selected, sections, orphans = read_manifest(arguments.manifest)
 
     problems = []
+
+    if CORE_SECTION not in sections:
+        problems.append(
+            f"{CORE_SECTION}: no '{CORE_HEADER}' section — every manifest carries "
+            f"the Core sources"
+        )
+
+    for path in sorted(orphans):
+        problems.append(f"{path} is listed under no section header")
 
     for token in selected:
         if token not in sections:
