@@ -1,8 +1,8 @@
 # Consumer smoke test, Make flavour: the Path B counterpart to CMakeLists.txt in
-# this directory. Selects sources by directory, the way a hand-written Makefile
-# does, and compiles them against the integrator config headers in CONFIG_DIR.
-# Cross builds have no linker script here, so compiling and archiving under
-# someone else's toolchain is the check.
+# this directory. Consumes solidsyslog.mk the way an integrator does and compiles
+# what it names against the config headers in CONFIG_DIR. Cross builds have no
+# linker script here, so compiling and archiving under someone else's toolchain
+# is the check.
 #
 #   make -f ci/consumer-smoke/Makefile LWIP_PATH=/opt/lwip \
 #        FREERTOS_KERNEL_PATH=/opt/freertos/kernel
@@ -24,15 +24,8 @@ ifndef FREERTOS_KERNEL_PATH
 $(error FREERTOS_KERNEL_PATH is not set — the consumer supplies the upstream trees)
 endif
 
-CORE_SRCS     := $(wildcard $(SOLIDSYSLOG_DIR)/Core/Source/*.c)
-PLATFORM_SRCS := $(foreach p,$(PLATFORMS),$(wildcard $(SOLIDSYSLOG_DIR)/Platform/$(p)/Source/*.c))
-
-SOLIDSYSLOG_INCLUDES := \
-	-I$(SOLIDSYSLOG_DIR)/Core/Interface \
-	-I$(SOLIDSYSLOG_DIR)/Core/Source \
-	$(foreach p,$(PLATFORMS), \
-		-I$(SOLIDSYSLOG_DIR)/Platform/$(p)/Interface \
-		-I$(SOLIDSYSLOG_DIR)/Platform/$(p)/Source)
+SOLIDSYSLOG_PLATFORMS := $(PLATFORMS)
+include $(SOLIDSYSLOG_DIR)/solidsyslog.mk
 
 UPSTREAM_INCLUDES := \
 	-I$(HERE)$(CONFIG_DIR) \
@@ -43,7 +36,7 @@ UPSTREAM_INCLUDES := \
 CFLAGS := -mcpu=cortex-m3 -mthumb -Wall -Wextra -Wpedantic -Werror \
 	$(SOLIDSYSLOG_INCLUDES) $(UPSTREAM_INCLUDES)
 
-OBJS := $(patsubst $(SOLIDSYSLOG_DIR)/%.c,$(BUILD)/%.o,$(CORE_SRCS) $(PLATFORM_SRCS)) \
+OBJS := $(patsubst $(SOLIDSYSLOG_DIR)/%.c,$(BUILD)/%.o,$(SOLIDSYSLOG_SRCS)) \
 	$(BUILD)/main.o
 
 .PHONY: all clean
