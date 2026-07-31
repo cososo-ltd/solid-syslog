@@ -33,11 +33,16 @@ UPSTREAM_INCLUDES := \
 	-I$(FREERTOS_KERNEL_PATH)/include \
 	-I$(FREERTOS_KERNEL_PATH)/portable/GCC/ARM_CM3
 
-CFLAGS := -mcpu=cortex-m3 -mthumb -Wall -Wextra -Wpedantic -Werror \
-	$(SOLIDSYSLOG_INCLUDES) $(UPSTREAM_INCLUDES)
+BASE_CFLAGS := -mcpu=cortex-m3 -mthumb -Wall -Wextra -Wpedantic -Werror
 
-OBJS := $(patsubst $(SOLIDSYSLOG_DIR)/%.c,$(BUILD)/%.o,$(SOLIDSYSLOG_SRCS)) \
-	$(BUILD)/main.o
+CORE_OBJS     := $(patsubst $(SOLIDSYSLOG_DIR)/%.c,$(BUILD)/%.o,$(SOLIDSYSLOG_CORE_SRCS))
+PLATFORM_OBJS := $(patsubst $(SOLIDSYSLOG_DIR)/%.c,$(BUILD)/%.o,$(SOLIDSYSLOG_PLATFORM_SRCS))
+OBJS          := $(CORE_OBJS) $(PLATFORM_OBJS) $(BUILD)/main.o
+
+# The split the fragment exists to express: Core sees the library's own headers
+# alone, the platform sources and consumer code also see the config headers.
+$(CORE_OBJS): CFLAGS := $(BASE_CFLAGS) $(SOLIDSYSLOG_CORE_INCLUDES)
+$(PLATFORM_OBJS) $(BUILD)/main.o: CFLAGS := $(BASE_CFLAGS) $(SOLIDSYSLOG_INCLUDES) $(UPSTREAM_INCLUDES)
 
 .PHONY: all clean
 all: $(BUILD)/libconsumer_smoke.a
