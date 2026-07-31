@@ -265,7 +265,7 @@ SolidSyslog integration is three things:
    headers:
    - `Core/Interface`: the public API headers.
    - `Core/Source`: Core-internal private headers (e.g.
-     `SolidSyslogBlockStorePrivate.h`, `RecordStorePrivate.h`).
+     `SolidSyslogBlockStorePrivate.h`, `SolidSyslogRecordStorePrivate.h`).
    - For every adapter you use: `Platform/<X>/Interface` and
      `Platform/<X>/Source` (adapter `.c` files include their own
      `*Private.h` from `Source/`).

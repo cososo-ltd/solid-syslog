@@ -464,7 +464,7 @@ Two distinct site categories trigger this rule:
   fields), 5 in `Core/Source/SolidSyslogMessageFormatter.c`
   (`SolidSyslogMessageFormatter_Format` reading `context->Clock`,
   `GetHostname`, `GetAppName`, `GetProcessId`, `Sd`), 1 in
-  `Core/Source/BlockSequence.c`
+  `Core/Source/SolidSyslogBlockSequence.c`
   (`BlockSequence_IsReadBlockFullyDrained` passing
   `blockSequence->BlockDevice` to `SolidSyslogBlockDevice_Size`), and
   1 in `Core/Source/SolidSyslogBlockStoreStatic.c`

@@ -4,8 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "BlockSequencePrivate.h"
-#include "RecordStorePrivate.h"
+#include "SolidSyslogBlockSequencePrivate.h"
+#include "SolidSyslogRecordStorePrivate.h"
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogBlockStorePrivate.h"
@@ -23,13 +23,13 @@ struct SolidSyslogStore;
 static inline size_t BlockStore_IndexFromHandle(const struct SolidSyslogStore* base);
 static inline void BlockStore_CleanupAtIndex(size_t index, void* context);
 static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured);
-static struct BlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
+static struct SolidSyslogBlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
     const struct SolidSyslogBlockStoreConfig* config,
-    const struct RecordStore* recordStore
+    const struct SolidSyslogRecordStore* recordStore
 );
 static bool BlockStore_DeviceCanHoldOneRecord(
     const struct SolidSyslogBlockStoreConfig* config,
-    const struct RecordStore* recordStore
+    const struct SolidSyslogRecordStore* recordStore
 );
 
 static bool BlockStore_InUse[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE];
@@ -44,7 +44,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
     if (SolidSyslogPoolAllocator_IndexIsValid(&BlockStore_Allocator, index))
     {
         struct SolidSyslogSecurityPolicy* policy = BlockStore_ResolveSecurityPolicy(config->SecurityPolicy);
-        struct RecordStore* recordStore = RecordStore_Create(policy);
+        struct SolidSyslogRecordStore* recordStore = SolidSyslogRecordStore_Create(policy);
 
         if (recordStore != NULL)
         {
@@ -61,8 +61,9 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
                 );
             }
 
-            struct BlockSequenceConfig blockConfig = BlockStore_BuildBlockSequenceConfig(config, recordStore);
-            struct BlockSequence* blockSequence = BlockSequence_Create(&blockConfig);
+            struct SolidSyslogBlockSequenceConfig blockConfig =
+                BlockStore_BuildBlockSequenceConfig(config, recordStore);
+            struct SolidSyslogBlockSequence* blockSequence = SolidSyslogBlockSequence_Create(&blockConfig);
 
             if (blockSequence != NULL)
             {
@@ -71,7 +72,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
             }
             else
             {
-                RecordStore_Destroy(recordStore);
+                SolidSyslogRecordStore_Destroy(recordStore);
                 (void) SolidSyslogPoolAllocator_FreeIfInUse(&BlockStore_Allocator, index, NULL, NULL);
             }
         }
@@ -105,19 +106,19 @@ static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct
     return resolved;
 }
 
-static struct BlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
+static struct SolidSyslogBlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
     const struct SolidSyslogBlockStoreConfig* config,
-    const struct RecordStore* recordStore
+    const struct SolidSyslogRecordStore* recordStore
 )
 {
     /* The device is the single source of truth for block size, but a block smaller than
      * one worst-case record is grown to that floor so a single record always fits (Create
      * has already emitted a WARNING for that case). */
-    size_t minBlockSize = RecordStore_RecordSize(recordStore, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
+    size_t minBlockSize = SolidSyslogRecordStore_RecordSize(recordStore, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
     size_t deviceBlockSize = SolidSyslogBlockDevice_GetBlockSize(config->BlockDevice);
     size_t maxBlockSize = (deviceBlockSize < minBlockSize) ? minBlockSize : deviceBlockSize;
 
-    struct BlockSequenceConfig blockConfig = {
+    struct SolidSyslogBlockSequenceConfig blockConfig = {
         .BlockDevice = config->BlockDevice,
         .MaxBlockSize = maxBlockSize,
         .MaxBlocks = config->MaxBlocks,
@@ -136,10 +137,10 @@ static struct BlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
  * WARNING is emitted — the store works, but the device's configured size was degraded. */
 static bool BlockStore_DeviceCanHoldOneRecord(
     const struct SolidSyslogBlockStoreConfig* config,
-    const struct RecordStore* recordStore
+    const struct SolidSyslogRecordStore* recordStore
 )
 {
-    size_t minBlockSize = RecordStore_RecordSize(recordStore, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
+    size_t minBlockSize = SolidSyslogRecordStore_RecordSize(recordStore, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
     return SolidSyslogBlockDevice_GetBlockSize(config->BlockDevice) >= minBlockSize;
 }
 
@@ -156,15 +157,15 @@ void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore* base)
          * BlockSequence pointers stay in the slot. After the outer FreeIfInUse
          * releases the ConfigLock we destroy the inner slots — keeps each pool's
          * lock acquisition sequential rather than nested. */
-        struct RecordStore* recordStore = BlockStore_Pool[index].RecordStore;
-        struct BlockSequence* blockSequence = BlockStore_Pool[index].BlockSequence;
+        struct SolidSyslogRecordStore* recordStore = BlockStore_Pool[index].RecordStore;
+        struct SolidSyslogBlockSequence* blockSequence = BlockStore_Pool[index].BlockSequence;
 
         released = SolidSyslogPoolAllocator_FreeIfInUse(&BlockStore_Allocator, index, BlockStore_CleanupAtIndex, NULL);
 
         if (released)
         {
-            BlockSequence_Destroy(blockSequence);
-            RecordStore_Destroy(recordStore);
+            SolidSyslogBlockSequence_Destroy(blockSequence);
+            SolidSyslogRecordStore_Destroy(recordStore);
         }
     }
 

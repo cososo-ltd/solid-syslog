@@ -44,10 +44,10 @@ set(SOURCES
     SolidSyslogNullFile.c
     SolidSyslogBlockStore.c
     SolidSyslogBlockStoreStatic.c
-    RecordStore.c
-    RecordStoreStatic.c
-    BlockSequence.c
-    BlockSequenceStatic.c
+    SolidSyslogRecordStore.c
+    SolidSyslogRecordStoreStatic.c
+    SolidSyslogBlockSequence.c
+    SolidSyslogBlockSequenceStatic.c
     SolidSyslogBlockDevice.c
     SolidSyslogFileBlockDevice.c
     SolidSyslogFileBlockDeviceStatic.c

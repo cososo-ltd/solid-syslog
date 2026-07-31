@@ -54,10 +54,10 @@ Core/Source/SolidSyslogFile.c
 Core/Source/SolidSyslogNullFile.c
 Core/Source/SolidSyslogBlockStore.c
 Core/Source/SolidSyslogBlockStoreStatic.c
-Core/Source/RecordStore.c
-Core/Source/RecordStoreStatic.c
-Core/Source/BlockSequence.c
-Core/Source/BlockSequenceStatic.c
+Core/Source/SolidSyslogRecordStore.c
+Core/Source/SolidSyslogRecordStoreStatic.c
+Core/Source/SolidSyslogBlockSequence.c
+Core/Source/SolidSyslogBlockSequenceStatic.c
 Core/Source/SolidSyslogBlockDevice.c
 Core/Source/SolidSyslogFileBlockDevice.c
 Core/Source/SolidSyslogFileBlockDeviceStatic.c

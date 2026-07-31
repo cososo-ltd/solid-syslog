@@ -102,7 +102,7 @@ misra-c2012-18.7:Core/Source/SolidSyslogFormatter.c:12
 
 # D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP)
 # See docs/misra-deviations.md#d006
-misra-c2012-11.8:Core/Source/BlockSequence.c:465
+misra-c2012-11.8:Core/Source/SolidSyslogBlockSequence.c:494
 misra-c2012-11.8:Core/Source/SolidSyslog.c:71
 misra-c2012-11.8:Core/Source/SolidSyslog.c:72
 misra-c2012-11.8:Core/Source/SolidSyslog.c:73
@@ -117,8 +117,8 @@ misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:94
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:46
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:117
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:143
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:118
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:144
 misra-c2012-11.8:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:164
 misra-c2012-11.8:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:97
 
@@ -135,9 +135,9 @@ misra-c2012-21.6:Platform/Windows/Source/SolidSyslogWindowsFile.c:8
 # D.009 — Rules 2.4 / 5.7: anonymous enum used as named-constant container
 # See docs/misra-deviations.md#d009
 misra-c2012-2.4:Core/Interface/SolidSyslogTransport.h:8
-misra-c2012-2.4:Core/Source/BlockSequence.c:13
-misra-c2012-2.4:Core/Source/BlockSequence.c:107
-misra-c2012-2.4:Core/Source/RecordStore.c:14
+misra-c2012-2.4:Core/Source/SolidSyslogBlockSequence.c:13
+misra-c2012-2.4:Core/Source/SolidSyslogBlockSequence.c:107
+misra-c2012-2.4:Core/Source/SolidSyslogRecordStore.c:14
 misra-c2012-2.4:Core/Source/SolidSyslogStreamSender.c:25
 misra-c2012-2.4:Core/Interface/SolidSyslogUdpPayload.h:17
 misra-c2012-5.7:Core/Interface/SolidSyslogUdpPayload.h:21
@@ -157,10 +157,10 @@ misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSleep.c:6
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:29
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWinsockResolver.c:41
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:106
-misra-c2012-5.7:Core/Source/BlockSequence.c:13
-misra-c2012-5.7:Core/Source/BlockSequence.c:107
-misra-c2012-5.7:Core/Source/RecordStore.c:14
-misra-c2012-5.7:Core/Source/RecordStorePrivate.h:14
+misra-c2012-5.7:Core/Source/SolidSyslogBlockSequence.c:13
+misra-c2012-5.7:Core/Source/SolidSyslogBlockSequence.c:110
+misra-c2012-5.7:Core/Source/SolidSyslogRecordStore.c:14
+misra-c2012-5.7:Core/Source/SolidSyslogRecordStorePrivate.h:14
 misra-c2012-5.7:Core/Source/SolidSyslogFileBlockDevice.c:23
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixFile.c:22
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsFile.c:28

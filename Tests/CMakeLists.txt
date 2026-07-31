@@ -101,9 +101,9 @@ set(TEST_SOURCES
     SolidSyslogBlockStoreDrainOrderingTest.cpp
     SolidSyslogBlockDeviceTest.cpp
     SolidSyslogFileBlockDeviceTest.cpp
-    BlockSequenceTest.cpp
-    BlockSequencePoolTest.cpp
-    RecordStorePoolTest.cpp
+    SolidSyslogBlockSequenceTest.cpp
+    SolidSyslogBlockSequencePoolTest.cpp
+    SolidSyslogRecordStorePoolTest.cpp
     main.cpp
 )
 

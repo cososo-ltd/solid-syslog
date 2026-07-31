@@ -520,7 +520,7 @@ code should follow them; reviewers should call out drift.
 
 - **Single return per function.** MISRA-leaning. If the natural shape has an
   early return, restructure with a result local and an `if` wrapper. See
-  `BlockSequence.c::ScanForExistingBlocks` for the pattern.
+  `SolidSyslogBlockSequence.c::ScanForExistingBlocks` for the pattern.
 - **Intent-naming static-inline predicates.** When a composite condition is
   inlined into an `if` or a `return`, extract a `static inline bool IsXxx(...)`
   helper. The helper's *name* is the documentation. Examples:

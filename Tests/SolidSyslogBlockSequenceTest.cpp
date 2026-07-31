@@ -9,7 +9,7 @@
 
 extern "C"
 {
-#include "BlockSequencePrivate.h"
+#include "SolidSyslogBlockSequencePrivate.h"
 }
 #include "SolidSyslogBlockDeviceDefinition.h"
 
@@ -142,7 +142,7 @@ TEST_GROUP(BlockSequenceScan)
 {
     ScanFake fakeDevice = {};
     std::set<size_t> existing;
-    struct BlockSequence* sequence = nullptr;
+    struct SolidSyslogBlockSequence* sequence = nullptr;
 
     void setup() override
     {
@@ -155,17 +155,17 @@ TEST_GROUP(BlockSequenceScan)
         fakeDevice.Base.Size    = FakeSize;
         fakeDevice.existing     = &existing;
 
-        struct BlockSequenceConfig config = {};
+        struct SolidSyslogBlockSequenceConfig config = {};
         config.BlockDevice                = &fakeDevice.Base;
         config.MaxBlockSize                = 1000;
         config.MaxBlocks                   = 99;
         config.DiscardPolicy              = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
-        sequence = BlockSequence_Create(&config);
+        sequence = SolidSyslogBlockSequence_Create(&config);
     }
 
     void teardown() override
     {
-        BlockSequence_Destroy(sequence);
+        SolidSyslogBlockSequence_Destroy(sequence);
     }
 };
 
@@ -173,25 +173,25 @@ TEST_GROUP(BlockSequenceScan)
 
 TEST(BlockSequenceScan, ColdStartAcquiresBlockZero)
 {
-    CHECK_TRUE(BlockSequence_Open(sequence));
-    LONGS_EQUAL(0, BlockSequence_ReadSequence(sequence));
-    LONGS_EQUAL(0, BlockSequence_WriteSequence(sequence));
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    LONGS_EQUAL(0, SolidSyslogBlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(0, SolidSyslogBlockSequence_WriteSequence(sequence));
 }
 
 TEST(BlockSequenceScan, ResumesContiguousLinearRange)
 {
     existing = {2, 3, 4};
-    CHECK_TRUE(BlockSequence_Open(sequence));
-    LONGS_EQUAL(2, BlockSequence_ReadSequence(sequence));
-    LONGS_EQUAL(4, BlockSequence_WriteSequence(sequence));
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    LONGS_EQUAL(2, SolidSyslogBlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(4, SolidSyslogBlockSequence_WriteSequence(sequence));
 }
 
 TEST(BlockSequenceScan, ResumesAtZeroWhenOnlyBlockZeroExists)
 {
     existing = {0};
-    CHECK_TRUE(BlockSequence_Open(sequence));
-    LONGS_EQUAL(0, BlockSequence_ReadSequence(sequence));
-    LONGS_EQUAL(0, BlockSequence_WriteSequence(sequence));
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    LONGS_EQUAL(0, SolidSyslogBlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(0, SolidSyslogBlockSequence_WriteSequence(sequence));
 }
 
 /* After enough rotations, the on-disk block range straddles the 99 -> 00
@@ -202,17 +202,17 @@ TEST(BlockSequenceScan, ResumesAtZeroWhenOnlyBlockZeroExists)
 TEST(BlockSequenceScan, ResumesWrappedSequenceRangeCorrectly)
 {
     existing = {98, 99, 0, 1};
-    CHECK_TRUE(BlockSequence_Open(sequence));
-    LONGS_EQUAL(98, BlockSequence_ReadSequence(sequence));
-    LONGS_EQUAL(1, BlockSequence_WriteSequence(sequence));
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    LONGS_EQUAL(98, SolidSyslogBlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(1, SolidSyslogBlockSequence_WriteSequence(sequence));
 }
 
 TEST(BlockSequenceScan, ResumesWrappedSingleBlockAtBoundary)
 {
     existing = {99, 0};
-    CHECK_TRUE(BlockSequence_Open(sequence));
-    LONGS_EQUAL(99, BlockSequence_ReadSequence(sequence));
-    LONGS_EQUAL(0, BlockSequence_WriteSequence(sequence));
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    LONGS_EQUAL(99, SolidSyslogBlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(0, SolidSyslogBlockSequence_WriteSequence(sequence));
 }
 
 namespace
@@ -232,7 +232,7 @@ TEST_GROUP(BlockSequenceRotation)
     std::set<size_t> existing;
     std::vector<DeviceCall> calls;
     std::map<size_t, size_t> sizes;
-    struct BlockSequence* sequence = nullptr;
+    struct SolidSyslogBlockSequence* sequence = nullptr;
 
     void setup() override
     {
@@ -247,25 +247,25 @@ TEST_GROUP(BlockSequenceRotation)
         fakeDevice.calls        = &calls;
         fakeDevice.sizes        = &sizes;
 
-        struct BlockSequenceConfig config = {};
+        struct SolidSyslogBlockSequenceConfig config = {};
         config.BlockDevice                = &fakeDevice.Base;
         config.MaxBlockSize               = ROTATION_BLOCK_SIZE;
         config.MaxBlocks                  = 99;
         config.DiscardPolicy              = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
-        sequence = BlockSequence_Create(&config);
+        sequence = SolidSyslogBlockSequence_Create(&config);
 
-        BlockSequence_Open(sequence); /* cold start: Acquire(0) */
+        SolidSyslogBlockSequence_Open(sequence); /* cold start: Acquire(0) */
         /* Simulate one record's worth of data in block 0 — production rotation
          * never seals an empty block, and the dispose-on-empty trigger uses
          * device.Size to decide drained-ness. */
-        BlockSequence_NoteRecordWritten(sequence, SIMULATED_RECORD_SIZE);
-        sizes[BlockSequence_WriteSequence(sequence)] = SIMULATED_RECORD_SIZE;
+        SolidSyslogBlockSequence_NoteRecordWritten(sequence, SIMULATED_RECORD_SIZE);
+        sizes[SolidSyslogBlockSequence_WriteSequence(sequence)] = SIMULATED_RECORD_SIZE;
         calls.clear();
     }
 
     void teardown() override
     {
-        BlockSequence_Destroy(sequence);
+        SolidSyslogBlockSequence_Destroy(sequence);
     }
 
     [[nodiscard]] bool DisposePrecedesAcquire(size_t blockIndex) const
@@ -289,7 +289,7 @@ TEST_GROUP(BlockSequenceRotation)
     void ForceRotation() const
     {
         bool readBlockChanged = false;
-        BlockSequence_PrepareForWrite(sequence, ROTATION_BLOCK_SIZE + 1, &readBlockChanged);
+        SolidSyslogBlockSequence_PrepareForWrite(sequence, ROTATION_BLOCK_SIZE + 1, &readBlockChanged);
     }
 };
 
@@ -326,7 +326,7 @@ TEST(BlockSequenceRotation, RotationFailsWhenStaleBlockDisposeFails)
     fakeDevice.failNextDispose = true;
 
     bool readBlockChanged = false;
-    bool acquired = BlockSequence_PrepareForWrite(sequence, ROTATION_BLOCK_SIZE + 1, &readBlockChanged);
+    bool acquired = SolidSyslogBlockSequence_PrepareForWrite(sequence, ROTATION_BLOCK_SIZE + 1, &readBlockChanged);
 
     CHECK_FALSE(acquired);
     for (const auto& call : calls)

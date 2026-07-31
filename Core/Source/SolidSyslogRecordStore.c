@@ -1,4 +1,4 @@
-#include "RecordStorePrivate.h"
+#include "SolidSyslogRecordStorePrivate.h"
 
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
@@ -32,36 +32,36 @@ enum
  * record's base so the field offsets are stated in one place each. The same
  * chaining shapes the block-offset helpers below. */
 
-static inline uint8_t* RecordStore_MagicAddress(struct RecordStore* recordStore)
+static inline uint8_t* RecordStore_MagicAddress(struct SolidSyslogRecordStore* recordStore)
 {
     return recordStore->Buffer;
 }
 
-static inline uint8_t* RecordStore_LengthAddress(struct RecordStore* recordStore)
+static inline uint8_t* RecordStore_LengthAddress(struct SolidSyslogRecordStore* recordStore)
 {
     uint8_t* magic = RecordStore_MagicAddress(recordStore);
     return &magic[MAGIC_SIZE];
 }
 
-static inline uint8_t* RecordStore_MessageAddress(struct RecordStore* recordStore)
+static inline uint8_t* RecordStore_MessageAddress(struct SolidSyslogRecordStore* recordStore)
 {
     uint8_t* length = RecordStore_LengthAddress(recordStore);
     return &length[RECORD_LENGTH_SIZE];
 }
 
-static inline uint8_t* RecordStore_TrailerAddress(struct RecordStore* recordStore, size_t dataSize)
+static inline uint8_t* RecordStore_TrailerAddress(struct SolidSyslogRecordStore* recordStore, size_t dataSize)
 {
     uint8_t* message = RecordStore_MessageAddress(recordStore);
     return &message[dataSize];
 }
 
-static inline uint8_t* RecordStore_SentFlagAddress(struct RecordStore* recordStore, size_t dataSize)
+static inline uint8_t* RecordStore_SentFlagAddress(struct SolidSyslogRecordStore* recordStore, size_t dataSize)
 {
     uint8_t* trailer = RecordStore_TrailerAddress(recordStore, dataSize);
     return &trailer[recordStore->SecurityPolicy->TrailerSize];
 }
 
-static inline uint8_t* RecordStore_ContentAddress(struct RecordStore* recordStore)
+static inline uint8_t* RecordStore_ContentAddress(struct SolidSyslogRecordStore* recordStore)
 {
     return RecordStore_MagicAddress(recordStore);
 }
@@ -77,7 +77,7 @@ static inline size_t RecordStore_TrailerOffset(size_t recordStart, uint16_t data
 }
 
 static inline size_t RecordStore_SentFlagOffset(
-    const struct RecordStore* recordStore,
+    const struct SolidSyslogRecordStore* recordStore,
     size_t recordStart,
     uint16_t dataLength
 )
@@ -85,7 +85,10 @@ static inline size_t RecordStore_SentFlagOffset(
     return RecordStore_TrailerOffset(recordStart, dataLength) + recordStore->SecurityPolicy->TrailerSize;
 }
 
-void RecordStore_Initialise(struct RecordStore* recordStore, struct SolidSyslogSecurityPolicy* securityPolicy)
+void SolidSyslogRecordStore_Initialise(
+    struct SolidSyslogRecordStore* recordStore,
+    struct SolidSyslogSecurityPolicy* securityPolicy
+)
 {
     recordStore->SecurityPolicy = securityPolicy;
     recordStore->HasReadRecord = false;
@@ -93,7 +96,7 @@ void RecordStore_Initialise(struct RecordStore* recordStore, struct SolidSyslogS
     recordStore->LastSentFlagOffset = 0;
 }
 
-void RecordStore_Cleanup(struct RecordStore* recordStore)
+void SolidSyslogRecordStore_Cleanup(struct SolidSyslogRecordStore* recordStore)
 {
     /* No owned resources to release. The next _Initialise overwrites every
      * field, so leave the slot's bytes alone — clearing them would be
@@ -101,16 +104,20 @@ void RecordStore_Cleanup(struct RecordStore* recordStore)
     (void) recordStore;
 }
 
-size_t RecordStore_RecordSize(const struct RecordStore* recordStore, uint16_t dataLength)
+size_t SolidSyslogRecordStore_RecordSize(const struct SolidSyslogRecordStore* recordStore, uint16_t dataLength)
 {
     return (size_t) MAGIC_SIZE + RECORD_LENGTH_SIZE + dataLength + recordStore->SecurityPolicy->TrailerSize +
            SENT_FLAG_SIZE;
 }
 
-static inline bool RecordStore_AssembleRecord(struct RecordStore* recordStore, const void* data, size_t size);
+static inline bool RecordStore_AssembleRecord(
+    struct SolidSyslogRecordStore* recordStore,
+    const void* data,
+    size_t size
+);
 
-bool RecordStore_Append(
-    struct RecordStore* recordStore,
+bool SolidSyslogRecordStore_Append(
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     const void* data,
@@ -124,13 +131,13 @@ bool RecordStore_Append(
             blockDevice,
             blockIndex,
             recordStore->Buffer,
-            RecordStore_RecordSize(recordStore, (uint16_t) dataSize)
+            SolidSyslogRecordStore_RecordSize(recordStore, (uint16_t) dataSize)
         );
     }
     return appended;
 }
 
-static inline bool RecordStore_AssembleRecord(struct RecordStore* recordStore, const void* data, size_t size)
+static inline bool RecordStore_AssembleRecord(struct SolidSyslogRecordStore* recordStore, const void* data, size_t size)
 {
     RecordStore_MagicAddress(recordStore)[0] = MAGIC_BYTE_0;
     RecordStore_MagicAddress(recordStore)[1] = MAGIC_BYTE_1;
@@ -158,14 +165,14 @@ static inline bool RecordStore_AssembleRecord(struct RecordStore* recordStore, c
 }
 
 static bool RecordStore_ReadAndValidateRecord(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t offset,
     uint16_t* length
 );
 static inline void RecordStore_CopyRecordData(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     uint16_t length,
     void* dst,
     size_t maxSize,
@@ -173,7 +180,7 @@ static inline void RecordStore_CopyRecordData(
 );
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- blockIndex / offset are positional fields of the just-read record; distinct semantics
 static inline void RecordStore_RememberCurrentRecord(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     size_t blockIndex,
     size_t offset,
     uint16_t length
@@ -181,8 +188,8 @@ static inline void RecordStore_RememberCurrentRecord(
 
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-bool RecordStore_Read(
-    struct RecordStore* recordStore,
+bool SolidSyslogRecordStore_Read(
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t offset,
@@ -207,30 +214,30 @@ bool RecordStore_Read(
 }
 
 static inline bool RecordStore_ReadRecordHeader(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t offset
 );
-static inline bool RecordStore_ValidateHeader(struct RecordStore* recordStore, uint16_t* length);
+static inline bool RecordStore_ValidateHeader(struct SolidSyslogRecordStore* recordStore, uint16_t* length);
 static inline bool RecordStore_ReadRecordBody(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t offset,
     uint16_t length
 );
 static inline bool RecordStore_ReadTrailer(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t recordStart,
     uint16_t dataLength
 );
-static inline bool RecordStore_OpenRecord(struct RecordStore* recordStore, uint16_t length);
+static inline bool RecordStore_OpenRecord(struct SolidSyslogRecordStore* recordStore, uint16_t length);
 
 static bool RecordStore_ReadAndValidateRecord(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t offset,
@@ -245,7 +252,7 @@ static bool RecordStore_ReadAndValidateRecord(
 }
 
 static inline bool RecordStore_ReadRecordHeader(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t offset
@@ -260,13 +267,13 @@ static inline bool RecordStore_ReadRecordHeader(
     );
 }
 
-static inline bool RecordStore_IsMagicValid(struct RecordStore* recordStore)
+static inline bool RecordStore_IsMagicValid(struct SolidSyslogRecordStore* recordStore)
 {
     return (RecordStore_MagicAddress(recordStore)[0] == MAGIC_BYTE_0) &&
            (RecordStore_MagicAddress(recordStore)[1] == MAGIC_BYTE_1);
 }
 
-static inline uint16_t RecordStore_RecordLength(struct RecordStore* recordStore)
+static inline uint16_t RecordStore_RecordLength(struct SolidSyslogRecordStore* recordStore)
 {
     /* Little-endian unpack — see AssembleRecord for the format invariant. */
     const uint8_t* lengthBytes = RecordStore_LengthAddress(recordStore);
@@ -278,7 +285,7 @@ static inline bool RecordStore_IsValidLength(uint16_t length)
     return length <= SOLIDSYSLOG_MAX_MESSAGE_SIZE;
 }
 
-static inline bool RecordStore_ValidateHeader(struct RecordStore* recordStore, uint16_t* length)
+static inline bool RecordStore_ValidateHeader(struct SolidSyslogRecordStore* recordStore, uint16_t* length)
 {
     bool valid = RecordStore_IsMagicValid(recordStore);
 
@@ -293,7 +300,7 @@ static inline bool RecordStore_ValidateHeader(struct RecordStore* recordStore, u
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- offset is a block position, length is a data size; distinct semantics
 static inline bool RecordStore_ReadRecordBody(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t offset,
@@ -312,7 +319,7 @@ static inline bool RecordStore_ReadRecordBody(
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 static inline bool RecordStore_ReadTrailer(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t recordStart,
@@ -328,7 +335,7 @@ static inline bool RecordStore_ReadTrailer(
     );
 }
 
-static inline bool RecordStore_OpenRecord(struct RecordStore* recordStore, uint16_t length)
+static inline bool RecordStore_OpenRecord(struct SolidSyslogRecordStore* recordStore, uint16_t length)
 {
     struct SolidSyslogSecurityRecord record = {
         RecordStore_ContentAddress(recordStore),
@@ -345,7 +352,7 @@ static inline size_t RecordStore_BoundedSize(uint16_t length, size_t maxSize)
 }
 
 static inline void RecordStore_CopyRecordData(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     uint16_t length,
     void* dst,
     size_t maxSize,
@@ -359,7 +366,7 @@ static inline void RecordStore_CopyRecordData(
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- blockIndex / offset are positional fields of the just-read record; distinct semantics
 static inline void RecordStore_RememberCurrentRecord(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     size_t blockIndex,
     size_t offset,
     uint16_t length
@@ -373,12 +380,12 @@ static inline void RecordStore_RememberCurrentRecord(
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 static inline bool RecordStore_WriteSentFlag(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice
 );
 
-bool RecordStore_MarkLastReadAsSent(
-    struct RecordStore* recordStore,
+bool SolidSyslogRecordStore_MarkLastReadAsSent(
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t* nextCursor
 )
@@ -396,7 +403,7 @@ bool RecordStore_MarkLastReadAsSent(
 }
 
 static inline bool RecordStore_WriteSentFlag(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice
 )
 {
@@ -410,13 +417,13 @@ static inline bool RecordStore_WriteSentFlag(
     );
 }
 
-void RecordStore_ForgetLastRead(struct RecordStore* recordStore)
+void SolidSyslogRecordStore_ForgetLastRead(struct SolidSyslogRecordStore* recordStore)
 {
     recordStore->HasReadRecord = false;
 }
 
 static bool RecordStore_AdvancePastSentRecord(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t* cursor,
@@ -424,16 +431,20 @@ static bool RecordStore_AdvancePastSentRecord(
     bool* corrupt
 );
 static inline bool RecordStore_IsRecordSent(
-    const struct RecordStore* recordStore,
+    const struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t recordStart,
     uint16_t length
 );
-static inline void RecordStore_SkipRecord(const struct RecordStore* recordStore, size_t* cursor, uint16_t length);
+static inline void RecordStore_SkipRecord(
+    const struct SolidSyslogRecordStore* recordStore,
+    size_t* cursor,
+    uint16_t length
+);
 
-size_t RecordStore_FindFirstUnsent(
-    struct RecordStore* recordStore,
+size_t SolidSyslogRecordStore_FindFirstUnsent(
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t blockSize,
@@ -453,7 +464,7 @@ size_t RecordStore_FindFirstUnsent(
 }
 
 static bool RecordStore_AdvancePastSentRecord(
-    struct RecordStore* recordStore,
+    struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t* cursor,
@@ -490,7 +501,7 @@ static bool RecordStore_AdvancePastSentRecord(
  * can detect; an integrator-supplied error reporter will surface
  * persistent media errors directly when that path lands. */
 static inline bool RecordStore_IsRecordSent(
-    const struct RecordStore* recordStore,
+    const struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t recordStart,
@@ -508,7 +519,11 @@ static inline bool RecordStore_IsRecordSent(
     return flag == SENT_FLAG_SENT;
 }
 
-static inline void RecordStore_SkipRecord(const struct RecordStore* recordStore, size_t* cursor, uint16_t length)
+static inline void RecordStore_SkipRecord(
+    const struct SolidSyslogRecordStore* recordStore,
+    size_t* cursor,
+    uint16_t length
+)
 {
-    *cursor += RecordStore_RecordSize(recordStore, length);
+    *cursor += SolidSyslogRecordStore_RecordSize(recordStore, length);
 }

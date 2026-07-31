@@ -8,15 +8,15 @@
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStoreDefinition.h"
 
-struct RecordStore;
-struct BlockSequence;
+struct SolidSyslogRecordStore;
+struct SolidSyslogBlockSequence;
 struct SolidSyslogBlockStoreConfig;
 
 struct SolidSyslogBlockStore
 {
     struct SolidSyslogStore Base;
-    struct RecordStore* RecordStore;
-    struct BlockSequence* BlockSequence;
+    struct SolidSyslogRecordStore* RecordStore;
+    struct SolidSyslogBlockSequence* BlockSequence;
 };
 
 /* _Initialise wires the vtable + composes the inner pool slots that the
@@ -25,8 +25,8 @@ struct SolidSyslogBlockStore
  * without ever having to undo a partial _Initialise. */
 void BlockStore_Initialise(
     struct SolidSyslogStore* base,
-    struct RecordStore* recordStore,
-    struct BlockSequence* blockSequence,
+    struct SolidSyslogRecordStore* recordStore,
+    struct SolidSyslogBlockSequence* blockSequence,
     const struct SolidSyslogBlockStoreConfig* config
 );
 void BlockStore_Cleanup(struct SolidSyslogStore* base);
