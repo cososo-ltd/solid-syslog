@@ -987,6 +987,21 @@ jobs:
           path: Bdd/features/steps/solidsyslog_tunables.py
           retention-days: 1
 
+      # Windows is the one platform whose sources are entirely probe-gated, so a
+      # Linux runner would emit an empty fragment and verify-manifest cannot
+      # generate it. It is checked here rather than committed: a hand-written
+      # copy of a generated file would rot, and Path B's audience is embedded
+      # toolchains. The check still catches a Windows adapter that reaches the
+      # directory without reaching CMakeLists.
+      - name: Check the Windows platform manifest against the tree
+        shell: bash
+        run: |
+          cmake -S . -B build/manifest-windows -DSOLIDSYSLOG_BUILD_TESTING=OFF \
+            -DSOLIDSYSLOG_MANIFEST_SCOPE=platform \
+            -DSOLIDSYSLOG_PLATFORMS=Windows \
+            -DSOLIDSYSLOG_MANIFEST_PLATFORMS=Windows
+          python3 scripts/check_manifest.py build/manifest-windows/solidsyslog-manifest.txt
+
   bdd-windows-otel:
     needs: build-windows-msvc
     runs-on: windows-2025
@@ -1431,6 +1446,29 @@ jobs:
         with:
           persist-credentials: false
 
+      # The environment is scrubbed so an upstream platform is described because
+      # it was named, not because the image happens to carry its tree. Windows is
+      # the one token missing here — it is probe-kind, so it cannot be selected on
+      # Linux; build-windows-msvc generates that fragment.
+      - name: Regenerate the Core and per-platform manifests
+        shell: bash
+        run: |
+          scrubbed() {
+            env -u LWIP_PATH -u FREERTOS_KERNEL_PATH -u MBEDTLS_DIR \
+                -u FATFS_PATH -u FREERTOS_PLUS_FAT_PATH -u FREERTOS_PLUS_TCP_PATH "$@"
+          }
+          scrubbed cmake -S . -B build/manifest-core -DSOLIDSYSLOG_BUILD_TESTING=OFF \
+            -DSOLIDSYSLOG_MANIFEST_SCOPE=core \
+            -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/core-manifest.txt"
+          for platform in $(python3 scripts/check_manifest.py --list-platforms); do
+            [ "$platform" = "Windows" ] && continue
+            scrubbed cmake -S . -B "build/manifest-$platform" -DSOLIDSYSLOG_BUILD_TESTING=OFF \
+              -DSOLIDSYSLOG_MANIFEST_SCOPE=platform \
+              -DSOLIDSYSLOG_PLATFORMS="$platform" \
+              -DSOLIDSYSLOG_MANIFEST_PLATFORMS="$platform" \
+              -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/$platform-manifest.txt"
+          done
+
       - name: Regenerate the beta-stack manifest
         shell: bash
         run: |
@@ -1442,17 +1480,19 @@ jobs:
       - name: Fail on drift
         shell: bash
         run: |
-          git diff --exit-code docs/generated/beta-stack-manifest.txt \
-            || { echo "::error::docs/generated/beta-stack-manifest.txt is stale — regenerate with the manifest target (see docs/getting-started.md)"; exit 1; }
+          git diff --exit-code docs/generated/ \
+            || { echo "::error::docs/generated is stale — regenerate with the manifest target (see docs/getting-started.md)"; exit 1; }
 
       # Every manifest section's file list must equal that directory's *.c,
       # compared against the filesystem rather than the build targets, so a
       # source no target lists is visible.
-      - name: Assert the manifest matches the tree
+      - name: Assert every manifest matches the tree
         shell: bash
         run: |
-          python3 scripts/check_manifest.py docs/generated/beta-stack-manifest.txt \
-            || { echo "::error::the generated manifest does not match the source tree — see the diff above"; exit 1; }
+          for manifest in docs/generated/*-manifest.txt; do
+            python3 scripts/check_manifest.py "$manifest" \
+              || { echo "::error::$manifest does not match the source tree — see the diff above"; exit 1; }
+          done
 
   # Consume the library from outside, the way an integrator does (S30.04). The
   # bug this guards against — SolidSyslog assuming it is the top-level project —

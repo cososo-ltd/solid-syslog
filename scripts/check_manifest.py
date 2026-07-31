@@ -40,6 +40,7 @@ REGISTRY_ROW = re.compile(r'"([^"|]+)\|[^"|]*\|[^"|]*\|[^"|]*\|([^"|]+)\|[^"]*"'
 SECTION_HEADER = re.compile(r"^# ([A-Za-z0-9]+):$")
 CORE_HEADER = "# Core (always required):"
 SELECTED_HEADER = re.compile(r"^# Selected platforms: (.*)$")
+SCOPE_HEADER = re.compile(r"^# Scope: (\w+)$")
 
 CORE_SECTION = "Core"
 CORE_SOURCE_DIR = "Core/Source"
@@ -57,12 +58,13 @@ def read_registry(root):
 
 
 def read_manifest(path):
-    """Return (selected tokens, {section: set of .c paths}, orphaned .c paths).
+    """Return (scope, selected tokens, {section: .c paths}, orphaned .c paths).
 
     A source line under no section header is orphaned. Reporting those rather
     than dropping them is what stops a malformed manifest passing by having
     nothing left to compare.
     """
+    scope = "all"
     selected = []
     sections = {}
     orphans = set()
@@ -70,6 +72,9 @@ def read_manifest(path):
     in_sources = False
 
     for line in path.read_text(encoding="utf-8").splitlines():
+        header = SCOPE_HEADER.match(line)
+        if header:
+            scope = header.group(1)
         header = SELECTED_HEADER.match(line)
         if header:
             selected = [
@@ -96,7 +101,7 @@ def read_manifest(path):
             else:
                 orphans.add(line)
 
-    return selected, sections, orphans
+    return scope, selected, sections, orphans
 
 
 def sources_on_disk(root, directory):
@@ -108,20 +113,39 @@ def sources_on_disk(root, directory):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("manifest", type=pathlib.Path)
+    parser.add_argument("manifest", type=pathlib.Path, nargs="?")
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path("."))
+    parser.add_argument(
+        "--list-platforms",
+        action="store_true",
+        help="print the registry's platform tokens, one per line, and exit",
+    )
     arguments = parser.parse_args()
 
     root = arguments.root.resolve()
     registry = read_registry(root)
-    selected, sections, orphans = read_manifest(arguments.manifest)
+
+    if arguments.list_platforms:
+        print("\n".join(sorted(registry)))
+        return 0
+    if arguments.manifest is None:
+        parser.error("a manifest path is required unless --list-platforms is given")
+    scope, selected, sections, orphans = read_manifest(arguments.manifest)
 
     problems = []
 
-    if CORE_SECTION not in sections:
+    if scope == "platform":
+        if CORE_SECTION in sections:
+            problems.append(
+                f"{CORE_SECTION}: a platform-scoped manifest must not carry the "
+                f"Core sources — they belong in the core manifest"
+            )
+        if not sections:
+            problems.append("no platform section — this manifest describes nothing")
+    elif CORE_SECTION not in sections:
         problems.append(
-            f"{CORE_SECTION}: no '{CORE_HEADER}' section — every manifest carries "
-            f"the Core sources"
+            f"{CORE_SECTION}: no '{CORE_HEADER}' section — a {scope}-scoped "
+            f"manifest carries the Core sources"
         )
 
     for path in sorted(orphans):
@@ -159,7 +183,10 @@ def main():
         return 1
 
     checked = ", ".join(sorted(sections))
-    print(f"{arguments.manifest}: {len(sections)} sections match the tree ({checked})")
+    plural = "section" if len(sections) == 1 else "sections"
+    print(
+        f"{arguments.manifest}: {len(sections)} {plural} match the tree ({checked})"
+    )
     return 0
 
 
