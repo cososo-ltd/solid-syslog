@@ -1,8 +1,7 @@
 # Tests/PlusFat — host-side unit tests for FreeRTOS-Plus-FAT adapters under
 # Platform/PlusFat/Source/. Each test executable recompiles the adapter source
-# under test with the PlusFatFakes config and links against the fakes — same
-# shape as Tests/FatFs/ and Tests/FreeRtos/, see
-# project_header_configured_platforms memory.
+# under test with the PlusFatFakes config and links against the fakes — the same
+# shape as Tests/FatFs/ and Tests/FreeRtos/.
 #
 # Plus-FAT is FreeRTOS-coupled: ff_stdio.h pulls FreeRTOS.h / task.h / semphr.h,
 # so the include path carries FreeRtosFakes/Interface (FreeRTOSConfig.h,

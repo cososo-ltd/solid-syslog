@@ -1,13 +1,10 @@
 # Tests/FreeRtos — host-side unit tests for FreeRTOS adapters under
 # Platform/FreeRtos/Source/. Each test executable recompiles the adapter
-# source under test with the FreeRtosFakes config and links against the
-# fakes — see project_header_configured_platforms memory.
+# source under test with the FreeRtosFakes config and links against the fakes.
 
 # The Plus-TCP tests follow the Plus-TCP platform, not the FreeRTOS one: they
 # exercise Platform/PlusTcp/Source and transitively include FreeRTOS-Plus-TCP
-# headers, so deselecting that platform must take its tests with it. Before
-# S30.06 they rode on SOLIDSYSLOG_FREERTOS, which meant a build that dropped
-# Plus-TCP still compiled its sources here.
+# headers, so deselecting that platform takes its tests with it.
 #
 # They also need the upstream tree, which the kernel-only tests below do not —
 # CmsdkUartTest is UART board glue and never touches the IP stack — so a

@@ -1,22 +1,9 @@
-# mbedTLS adapter pack — shipped as sources, not a precompiled library.
-#
-# mbedTLS is header-configured: the integrator's mbedtls_config.h flows
-# through upstream headers and changes the size/layout of mbedtls_ssl_context,
-# mbedtls_x509_crt, mbedtls_pk_context, and the visible API surface.
-# Compiling our adapter once into libSolidSyslog.a would silently break
-# consumers that use a different mbedtls_config.h.
-#
-# Instead, this is an INTERFACE library — each consumer (Bdd/Targets/FreeRtos,
-# Tests/MbedTls/*Test, downstream integrator apps) recompiles the adapter
-# sources from Source/ with its own mbedtls_config.h on the include path.
-# Mirrors Platform/FreeRtos/ and Platform/FatFs/ — see
-# project_header_configured_platforms memory.
-#
-# The pack CARRIES its umbrella sources via target_sources(INTERFACE) (S30.02):
-# a consumer that links SolidSyslog::MbedTls compiles the adapter .c files into
-# its own target, seeing its own mbedtls_config.h — no per-file listing. The
-# consumer still points at its own mbedTLS tree (mbedtls/*.h are consumer-located)
-# and sets MBEDTLS_USER_CONFIG_FILE on its target.
+# mbedTLS adapter pack. An INTERFACE library rather than a precompiled one: the
+# integrator's mbedtls_config.h changes the layout of mbedtls_ssl_context,
+# mbedtls_x509_crt and mbedtls_pk_context and the visible API, so each consumer
+# compiles these sources against their own config. Linking SolidSyslog::MbedTls
+# is enough — the pack carries its sources. The consumer points at their own
+# mbedTLS tree and sets MBEDTLS_USER_CONFIG_FILE on their target.
 
 add_library(SolidSyslogMbedTls INTERFACE)
 

@@ -1,22 +1,9 @@
-# FreeRTOS-Plus-FAT adapter pack — shipped as sources, not a precompiled library.
-#
-# Plus-FAT is header-configured: the integrator's FreeRTOSFATConfig.h flows
-# through upstream headers and changes the size/layout of the FF_FILE /
-# FF_IOManager objects and the visible API surface. Plus-FAT is also FreeRTOS-
-# coupled (ff_headers.h pulls FreeRTOS.h / task.h / semphr.h), so compiling our
-# adapter once into libSolidSyslog.a would silently break consumers that use a
-# different FreeRTOSFATConfig.h or kernel config.
-#
-# Instead, this is an INTERFACE library — each consumer (Bdd/Targets/FreeRtos,
-# Tests/PlusFat/*Test, downstream integrator apps) recompiles the adapter
-# sources with its own FreeRTOSFATConfig.h on the include path. Mirrors the
-# Platform/FatFs/ and Platform/FreeRtos/ packs — see
-# project_header_configured_platforms memory.
-#
-# The pack CARRIES its sources via target_sources(INTERFACE) (S30.02): a
-# consumer that links SolidSyslog::PlusFat compiles the adapter into its own
-# target, seeing its own FreeRTOSFATConfig.h — no per-file listing. The consumer
-# still points at its own FreeRTOS-Plus-FAT tree and supplies its FF_Disk_t driver.
+# FreeRTOS-Plus-FAT adapter pack. An INTERFACE library rather than a precompiled
+# one: FreeRTOSFATConfig.h changes the layout of FF_FILE and FF_IOManager, and
+# Plus-FAT is FreeRTOS-coupled (ff_headers.h pulls FreeRTOS.h / task.h /
+# semphr.h), so each consumer compiles these sources against their own config.
+# Linking SolidSyslog::PlusFat is enough — the pack carries its sources. The
+# consumer points at their own Plus-FAT tree and supplies their FF_Disk_t driver.
 
 add_library(SolidSyslogPlusFat INTERFACE)
 

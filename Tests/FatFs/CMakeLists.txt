@@ -1,8 +1,7 @@
 # Tests/FatFs — host-side unit tests for FatFs adapters under
 # Platform/FatFs/Source/. Each test executable recompiles the adapter
 # source under test with the FatFsFakes config and links against the
-# fakes — same shape as Tests/FreeRtos/, see
-# project_header_configured_platforms memory.
+# fakes — the same shape as Tests/FreeRtos/.
 #
 # Gated by $FATFS_PATH at the top-level CMakeLists (this CMakeLists is
 # only entered when FATFS_PATH is set), so the placeholder below is safe

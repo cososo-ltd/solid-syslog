@@ -1,28 +1,13 @@
-# lwIP Raw API adapter pack — shipped as sources, not a precompiled library.
+# lwIP Raw API adapter pack. An INTERFACE library rather than a precompiled one:
+# lwipopts.h (LWIP_RAW / LWIP_UDP / LWIP_TCP / NO_SYS / pool sizing) changes the
+# types and behaviour these wrappers interact with, so each consumer compiles
+# them against their own config. Linking SolidSyslog::LwipRaw is enough — the
+# pack carries its sources and exports the SolidSyslog-side include dirs they
+# need. The consumer points at their own lwIP tree.
 #
-# lwIP is header-configured (lwipopts.h): LWIP_RAW / LWIP_UDP / LWIP_TCP /
-# NO_SYS / MEM_SIZE / PBUF pool sizing all change the types and behaviour
-# the wrapper interacts with. Compiling our adapters once into libSolidSyslog.a
-# would silently break consumers that use a different lwipopts.h.
-#
-# Instead, this is an INTERFACE library — each consumer (Tests/SolidSyslogLwipRaw*Test,
-# downstream integrator apps, and in S28.06 the FreeRtosLwip BDD target) recompiles
-# the adapter sources with its own config on the include path. Mirrors Platform/PlusTcp/,
-# Platform/FreeRtos/, and Platform/MbedTls/ — see project_header_configured_platforms
-# memory.
-#
-# OS-agnostic by construction: zero direct calls to FreeRTOS / POSIX / Win32 / Zephyr
-# primitives in Source/. Any host primitive needed (e.g. a wait primitive for DNS in
-# the future S28.07 sibling) is abstracted behind a SolidSyslog* vtable, mirroring
-# how SolidSyslogMutex abstracts locking. See E28 (#439) Architecture boundary.
-#
-# The pack CARRIES its umbrella sources via target_sources(INTERFACE) (S30.02):
-# a consumer that links SolidSyslog::LwipRaw compiles the adapter .c files into
-# its own target, seeing its own lwipopts.h — no per-file listing. The pack
-# exports the SolidSyslog-side include dirs its sources need (its own
-# Interface/Source, Core/Interface via SolidSyslogTunables, and Core/Source for
-# the internal pool-allocator helper); the consumer still points at its own lwIP
-# tree (lwip/*.h are consumer-located).
+# OS-agnostic by construction: no direct FreeRTOS / POSIX / Win32 / Zephyr calls
+# in Source/. Any host primitive is reached through a SolidSyslog vtable, the way
+# SolidSyslogMutex abstracts locking.
 
 add_library(SolidSyslogLwipRaw INTERFACE)
 

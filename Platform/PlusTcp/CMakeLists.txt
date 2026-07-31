@@ -1,21 +1,8 @@
-# FreeRTOS-Plus-TCP adapter pack — shipped as sources, not a precompiled library.
-#
-# FreeRTOS and Mbed TLS are header-configured: the integrator's
-# FreeRTOSConfig.h / FreeRTOSIPConfig.h flows through upstream headers and
-# changes the size/layout of TCBs, sockets, and IP-task internals. Compiling
-# our adapters once into libSolidSyslog.a would silently break consumers
-# that use a different config.
-#
-# Instead, this is an INTERFACE library — each consumer (Bdd/Targets/FreeRtos,
-# Tests/FreeRtos/*Test, downstream integrator apps) recompiles the adapter
-# sources with its own config on the include path. Mirrors Platform/FreeRtos/
-# (kernel primitives — Mutex, SysUpTime) and Platform/MbedTls/ — see
-# project_header_configured_platforms memory.
-#
-# The pack CARRIES its umbrella sources via target_sources(INTERFACE) (S30.02):
-# a consumer that links SolidSyslog::PlusTcp compiles the adapter .c files into
-# its own target, seeing its own FreeRTOSConfig.h / FreeRTOSIPConfig.h — no
-# per-file listing. The consumer still points at its own FreeRTOS-Plus-TCP tree.
+# FreeRTOS-Plus-TCP adapter pack. An INTERFACE library rather than a precompiled
+# one: FreeRTOSConfig.h / FreeRTOSIPConfig.h change the layout of TCBs, sockets
+# and IP-task internals, so each consumer compiles these sources against their
+# own config. Linking SolidSyslog::PlusTcp is enough — the pack carries its
+# sources. The consumer points at their own Plus-TCP tree.
 
 add_library(SolidSyslogPlusTcp INTERFACE)
 
