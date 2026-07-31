@@ -29,8 +29,9 @@
 
 set(SOLIDSYSLOG_MANIFEST_PLATFORMS "Auto" CACHE STRING
     "Platforms to describe in the generated manifest (;-list of tokens from \
-SOLIDSYSLOG_PLATFORM_REGISTRY). Auto describes every platform this configure \
-selected; empty describes none. Same vocabulary as SOLIDSYSLOG_PLATFORMS.")
+SOLIDSYSLOG_PLATFORM_REGISTRY). Auto describes every platform this \
+configuration selected; empty describes none. Same vocabulary as \
+SOLIDSYSLOG_PLATFORMS.")
 set(SOLIDSYSLOG_MANIFEST_OUTPUT "" CACHE FILEPATH
     "Optional extra path to also write the generated manifest to (e.g. the \
 committed docs/generated sample).")
@@ -94,7 +95,7 @@ function(solidsyslog_generate_manifest)
     set(_requested "")
     if(SOLIDSYSLOG_MANIFEST_PLATFORMS STREQUAL "Auto")
         set(_requested ${_known})
-    elseif(SOLIDSYSLOG_MANIFEST_PLATFORMS)
+    elseif(NOT SOLIDSYSLOG_MANIFEST_PLATFORMS STREQUAL "")
         foreach(_token IN LISTS SOLIDSYSLOG_MANIFEST_PLATFORMS)
             if(NOT _token IN_LIST _known)
                 message(FATAL_ERROR

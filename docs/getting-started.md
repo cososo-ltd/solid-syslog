@@ -315,8 +315,8 @@ cmake --build build/manifest --target manifest      # prints the manifest
 ```
 
 `SOLIDSYSLOG_MANIFEST_PLATFORMS` takes the same vocabulary as
-`SOLIDSYSLOG_PLATFORMS`: `Auto` describes every platform the configure selected,
-empty describes none. The Core `.c` set is always included.
+`SOLIDSYSLOG_PLATFORMS`: `Auto` describes every platform this configuration
+selected, empty describes none. The Core `.c` set is always included.
 
 Platforms selected by a toolchain capability probe — `Atomics`, `Posix`,
 `Windows`, `OpenSsl` — get their own section. A CMake consumer receives them

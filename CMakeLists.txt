@@ -326,7 +326,7 @@ from its own availability; empty selects none, leaving Core alone.")
 # honour.
 if(SOLIDSYSLOG_PLATFORMS STREQUAL "Auto")
     # The option defaults above already are the answer.
-elseif(NOT SOLIDSYSLOG_PLATFORMS)
+elseif(SOLIDSYSLOG_PLATFORMS STREQUAL "")
     foreach(row IN LISTS SOLIDSYSLOG_PLATFORM_REGISTRY)
         solidsyslog_read_platform("${row}")
         set(${platform_option} OFF)
