@@ -1445,6 +1445,15 @@ jobs:
           git diff --exit-code docs/generated/beta-stack-manifest.txt \
             || { echo "::error::docs/generated/beta-stack-manifest.txt is stale — regenerate with the manifest target (see docs/getting-started.md)"; exit 1; }
 
+      # Every manifest section's file list must equal that directory's *.c,
+      # compared against the filesystem rather than the build targets, so a
+      # source no target lists is visible.
+      - name: Assert the manifest matches the tree
+        shell: bash
+        run: |
+          python3 scripts/check_manifest.py docs/generated/beta-stack-manifest.txt \
+            || { echo "::error::the generated manifest does not match the source tree — see the diff above"; exit 1; }
+
   # Consume the library from outside, the way an integrator does (S30.04). The
   # bug this guards against — SolidSyslog assuming it is the top-level project —
   # survived every other lane precisely because they all build it top-level.
