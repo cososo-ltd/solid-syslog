@@ -24,13 +24,14 @@
 #
 # Output: written to ${SolidSyslog_BINARY_DIR}/solidsyslog-manifest.txt at configure
 # time, and printed by `cmake --build <dir> --target manifest`. If
-# SOLIDSYSLOG_MANIFEST_OUTPUT is set it is ALSO written there (used to refresh the
-# committed docs/generated sample, which CI diff-checks for drift).
+# SOLIDSYSLOG_MANIFEST_OUTPUT is set it is ALSO written there, which is how the
+# committed docs/generated set is refreshed; CI diff-checks it for drift.
 
-set(SOLIDSYSLOG_MANIFEST_PLATFORMS "" CACHE STRING
-    "Platforms to include in the generated integration manifest (;-list of \
-tokens from SOLIDSYSLOG_PLATFORM_REGISTRY). Empty = every platform this \
-configure selected.")
+set(SOLIDSYSLOG_MANIFEST_PLATFORMS "Auto" CACHE STRING
+    "Platforms to describe in the generated manifest (;-list of tokens from \
+SOLIDSYSLOG_PLATFORM_REGISTRY). Auto describes every platform this \
+configuration selected; empty describes none. Same vocabulary as \
+SOLIDSYSLOG_PLATFORMS.")
 set(SOLIDSYSLOG_MANIFEST_OUTPUT "" CACHE FILEPATH
     "Optional extra path to also write the generated manifest to (e.g. the \
 committed docs/generated sample).")
@@ -91,8 +92,10 @@ function(solidsyslog_generate_manifest)
         set(_on_${platform_token} ${${platform_option}})
     endforeach()
 
-    set(_requested ${_known})
-    if(SOLIDSYSLOG_MANIFEST_PLATFORMS)
+    set(_requested "")
+    if(SOLIDSYSLOG_MANIFEST_PLATFORMS STREQUAL "Auto")
+        set(_requested ${_known})
+    elseif(NOT SOLIDSYSLOG_MANIFEST_PLATFORMS STREQUAL "")
         foreach(_token IN LISTS SOLIDSYSLOG_MANIFEST_PLATFORMS)
             if(NOT _token IN_LIST _known)
                 message(FATAL_ERROR

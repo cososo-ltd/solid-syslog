@@ -149,12 +149,18 @@ CircularBuffer with no mutex:
 
 Platforms are listed in registry order, not the order you named them.
 
-Leave `SOLIDSYSLOG_PLATFORMS` unset and each platform falls back to its own
-availability — a compile probe for the host ones, "the upstream tree is on the
-environment" (`FREERTOS_KERNEL_PATH`, `LWIP_PATH`, `MBEDTLS_DIR`, `FATFS_PATH`,
-`FREERTOS_PLUS_TCP_PATH`, `FREERTOS_PLUS_FAT_PATH`) for the rest. That is how
-this repo's own containers work. It is a convenience, not the contract — your
-build should not have to depend on how it was invoked.
+The variable takes three kinds of answer:
+
+| Value | Selects |
+|---|---|
+| `Auto` (the default) | the host platforms this toolchain can provide, decided by a compile probe: `Posix`, `Windows`, `Atomics`, `OpenSsl` |
+| `""` | nothing — Core alone, for an integrator supplying every adapter themselves |
+| a list | exactly those, host or upstream |
+
+`LwipRaw`, `PlusTcp`, `FreeRtos`, `MbedTls`, `FatFs` and `PlusFat` are never
+selected for you: you name them or you do not get them. Setting
+`LWIP_PATH` or `FREERTOS_KERNEL_PATH` in your environment does not change what
+your build contains.
 
 ### What you link
 
@@ -308,9 +314,9 @@ cmake -S . -B build/manifest \
 cmake --build build/manifest --target manifest      # prints the manifest
 ```
 
-`SOLIDSYSLOG_MANIFEST_PLATFORMS` takes the same tokens as
-`SOLIDSYSLOG_PLATFORMS`; leave it empty to describe every platform the configure
-selected. The Core `.c` set is always included.
+`SOLIDSYSLOG_MANIFEST_PLATFORMS` takes the same vocabulary as
+`SOLIDSYSLOG_PLATFORMS`: `Auto` describes every platform this configuration
+selected, empty describes none. The Core `.c` set is always included.
 
 Platforms selected by a toolchain capability probe — `Atomics`, `Posix`,
 `Windows`, `OpenSsl` — get their own section. A CMake consumer receives them

@@ -31,11 +31,10 @@ endfunction()
 
 # Everything that ships (this file, Core/, Platform/*, cmake/*.cmake) addresses
 # the library tree through SolidSyslog_SOURCE_DIR / SolidSyslog_BINARY_DIR, never
-# CMAKE_SOURCE_DIR / CMAKE_BINARY_DIR. Under FetchContent or add_subdirectory the
-# CMAKE_ forms point at the CONSUMER's tree, so the first thing that used one —
-# the module path below — took the whole configure down. The project()-scoped
-# names are correct at any nesting depth. Tests/ and Bdd/ only ever configure
-# top-level and keep the CMAKE_ forms.
+# CMAKE_SOURCE_DIR / CMAKE_BINARY_DIR: under FetchContent or add_subdirectory the
+# CMAKE_ forms point at the CONSUMER's tree. The project()-scoped names are
+# correct at any nesting depth. Tests/ and Bdd/ only ever configure top-level and
+# keep the CMAKE_ forms.
 #
 # LayerGuard's layering scan, the IWYU targets and the manifest generator are
 # maintainer tooling: a consumer gets neither the cache entries nor the targets.
@@ -293,29 +292,52 @@ macro(solidsyslog_read_platform row)
 endmacro()
 
 set(SOLIDSYSLOG_PLATFORM_TOKENS "")
+# A probe default answers a capability question, so it holds for everyone. An
+# upstream default only says a tree was noticed on the environment — ours to act
+# on, not a consumer's, whose library would otherwise change the day they export
+# LWIP_PATH for an unrelated reason. A consumer names their upstream platforms.
 foreach(row IN LISTS SOLIDSYSLOG_PLATFORM_REGISTRY)
     solidsyslog_read_platform("${row}")
     list(APPEND SOLIDSYSLOG_PLATFORM_TOKENS ${platform_token})
-    if(platform_default)
+    set(platform_auto ${platform_default})
+    if(platform_kind STREQUAL "upstream" AND NOT SOLIDSYSLOG_IS_TOP_LEVEL)
+        set(platform_auto OFF)
+    endif()
+    if(platform_auto)
         option(${platform_option} "Include the ${platform_token} platform" ON)
     else()
         option(${platform_option} "Include the ${platform_token} platform" OFF)
     endif()
 endforeach()
 
-set(SOLIDSYSLOG_PLATFORMS "" CACHE STRING
-    "Platforms to build, e.g. FreeRtos;LwipRaw;MbedTls. Empty selects each platform from its own availability.")
+set(SOLIDSYSLOG_PLATFORMS "Auto" CACHE STRING
+    "Platforms to build, e.g. FreeRtos;LwipRaw;MbedTls. Auto selects each platform \
+from its own availability; empty selects none, leaving Core alone.")
 
-# When set, the list is authoritative: a named platform is on, an unnamed one is
-# off, whatever the environment or a probe says. That is the point — a build
-# declares its platforms once and stops depending on how it was invoked.
+# Three answers, not two. Auto leaves the defaults above standing; empty selects
+# nothing, which is how an integrator who brings every adapter themselves asks
+# for Core alone; a list is authoritative — a named platform is on, an unnamed
+# one is off, whatever the environment or a probe says.
 #
 # Applied by setting a NORMAL variable per platform, which shadows the cache
 # entry for the rest of this configure. Normal variables are recomputed every
 # run, so editing the list takes effect immediately; writing the cache would
 # leave an entry option() then refuses to update and a later run would silently
 # honour.
-if(SOLIDSYSLOG_PLATFORMS)
+if(SOLIDSYSLOG_PLATFORMS STREQUAL "Auto")
+    # The option defaults above already are the answer.
+elseif(SOLIDSYSLOG_PLATFORMS STREQUAL "")
+    foreach(row IN LISTS SOLIDSYSLOG_PLATFORM_REGISTRY)
+        solidsyslog_read_platform("${row}")
+        set(${platform_option} OFF)
+    endforeach()
+else()
+    if("Auto" IN_LIST SOLIDSYSLOG_PLATFORMS)
+        message(FATAL_ERROR
+            "SOLIDSYSLOG_PLATFORMS mixes 'Auto' with named platforms "
+            "(${SOLIDSYSLOG_PLATFORMS}). Auto is the whole answer or none of it: "
+            "use Auto alone, a list alone, or empty for Core only.")
+    endif()
     foreach(requested_platform IN LISTS SOLIDSYSLOG_PLATFORMS)
         if(NOT requested_platform IN_LIST SOLIDSYSLOG_PLATFORM_TOKENS)
             message(FATAL_ERROR
@@ -492,11 +514,9 @@ elseif(NOT SOLIDSYSLOG_ALLOCATION_STRATEGY STREQUAL "static")
         "SOLIDSYSLOG_ALLOCATION_STRATEGY must be 'static' (got: '${SOLIDSYSLOG_ALLOCATION_STRATEGY}').")
 endif()
 
-# Which FreeRTOS BDD target the cross build produces (E28). This is maintainer
-# tooling, not a consumer knob: BDD targets are top-level-only, and since S30.06
-# it no longer selects any platform — PlusTcp and LwipRaw are named in
-# SOLIDSYSLOG_PLATFORMS like every other platform. It survives only to answer
-# "which ELF does a freertos-cross preset build?", which is why the name says so.
+# Which ELF a freertos-cross preset builds. Maintainer tooling, not a consumer
+# knob: BDD targets are top-level-only, and it selects no platform — PlusTcp and
+# LwipRaw are named in SOLIDSYSLOG_PLATFORMS like every other platform.
 if(SOLIDSYSLOG_IS_TOP_LEVEL)
     set(SOLIDSYSLOG_BDD_FREERTOS_NET "PLUSTCP" CACHE STRING
         "Which FreeRTOS BDD target the cross build produces: PLUSTCP (default) or LWIP")
@@ -521,8 +541,8 @@ if(SOLIDSYSLOG_USER_TUNABLES_FILE)
         SOLIDSYSLOG_USER_TUNABLES_FILE="${SOLIDSYSLOG_USER_TUNABLES_FILE}")
 endif()
 
-# BDD-side mirror of the configured tunables — eliminates the hardcoded
-# "remember to bump this" mirror that used to live in syslog_steps.py.
+# BDD-side mirror of the configured tunables, so the step definitions never
+# restate a value the build owns.
 # Parse the default from SolidSyslogTunablesDefaults.h; if a user override
 # is in effect and defines the macro, use its value instead. The generated
 # file is written to the source tree because behave's import discovery

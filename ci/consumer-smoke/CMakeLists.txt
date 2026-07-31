@@ -18,9 +18,9 @@
 cmake_minimum_required(VERSION 3.16)
 project(SolidSyslogConsumerSmoke C)
 
-# A consumer with tests of their own calls this, and it sets BUILD_TESTING ON
-# for the whole build. That used to switch SolidSyslog's unit suite on and
-# demand CppUTest; SOLIDSYSLOG_BUILD_TESTING is why it no longer does.
+# A consumer with tests of their own calls this, and it sets BUILD_TESTING ON for
+# the whole build. SolidSyslog's own suite is behind SOLIDSYSLOG_BUILD_TESTING so
+# that does not drag in CppUTest.
 include(CTest)
 
 # config/ turns the gated adapters on; config-gates-off/ turns them off.
@@ -52,17 +52,9 @@ foreach(_leaked IN ITEMS
     endif()
 endforeach()
 
-# The weak check, for the lanes that let the environment pick the packs: a pack
-# that stops being defined under nesting is caught here. It cannot catch a pack
-# that is absent BECAUSE the environment is bare — the condition and the bug
-# have the same trigger — which is what SOLIDSYSLOG_SMOKE_LINK_PACKS below is
-# for.
-if(DEFINED ENV{LWIP_PATH} AND NOT TARGET SolidSyslog::LwipRaw)
-    message(FATAL_ERROR "LWIP_PATH is set but SolidSyslog::LwipRaw was not defined.")
-endif()
-if(DEFINED ENV{FREERTOS_KERNEL_PATH} AND NOT TARGET SolidSyslog::FreeRtos)
-    message(FATAL_ERROR "FREERTOS_KERNEL_PATH is set but SolidSyslog::FreeRtos was not defined.")
-endif()
+# A pack exists here only if SOLIDSYSLOG_PLATFORMS named it — a consumer's
+# environment selects nothing. SOLIDSYSLOG_SMOKE_LINK_PACKS below is what proves
+# the named ones compile against the consumer's own config headers.
 
 # Bare-metal cross builds have no linker script here, and proving we can link an
 # ELF is not the point — the point is that the library compiles under someone
@@ -97,10 +89,8 @@ if(SOLIDSYSLOG_SMOKE_LINK_PACKS)
     endforeach()
 
     # The list is authoritative, so a platform we did not name must not be here.
-    # Linking proves the named ones work; this proves the unnamed ones are
-    # genuinely absent rather than arriving as a side effect of naming something
-    # else — which is how PlusTcp used to reach a build that asked only for
-    # FreeRtos (S30.06).
+    # Linking proves the named ones work; this proves the unnamed ones are absent
+    # rather than arriving as a side effect of naming something else.
     foreach(_unnamed IN ITEMS PlusTcp MbedTls FatFs PlusFat)
         if(TARGET SolidSyslog::${_unnamed})
             message(FATAL_ERROR

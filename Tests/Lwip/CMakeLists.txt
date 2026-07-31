@@ -11,8 +11,8 @@
 #    (default C_CPPCHECK property inherited), only the .cpp test files
 #    skip cppcheck via CXX_CPPCHECK="". David's non-negotiable: platform
 #    production code must be checked.
-#  - Scales linearly: next OS (Zephyr, vxWorks) gets its own Tests/X/
-#    mirroring this layout. See project_cmake_restructure_post_e28 memory.
+#  - Scales linearly: the next OS (Zephyr, VxWorks) gets its own Tests/X/
+#    mirroring this layout.
 #
 # Gated by LWIP_PATH at the top-level (this CMakeLists is only entered
 # when the env var is set).

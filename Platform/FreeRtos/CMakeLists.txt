@@ -1,23 +1,11 @@
-# FreeRTOS adapter pack — shipped as sources, not a precompiled library.
+# FreeRTOS adapter pack. An INTERFACE library rather than a precompiled one: the
+# integrator's FreeRTOSConfig.h changes the layout of TCBs and semaphores, so
+# each consumer compiles these sources against their own config. Linking
+# SolidSyslog::FreeRtos is enough — the pack carries its sources. The consumer
+# points at their own FreeRTOS-Kernel tree.
 #
-# FreeRTOS and Mbed TLS are header-configured: the integrator's
-# FreeRTOSConfig.h / mbedtls_config.h flows through upstream headers and
-# changes the size/layout of TCBs, semaphores, and SSL contexts. Compiling
-# our adapters once into libSolidSyslog.a would silently break consumers
-# that use a different config.
-#
-# Instead, this is an INTERFACE library — each consumer (Example/FreeRtos/*,
-# Tests/FreeRtos/*Test, downstream integrator apps) recompiles the adapter
-# sources with its own config on the include path.
-#
-# Posix / Windows / OpenSSL keep the existing PRIVATE-into-${PROJECT_NAME}
-# pattern; their ABIs are OS-level, not header-configured. Don't retrofit
-# INTERFACE across the tree.
-#
-# The pack CARRIES its sources via target_sources(INTERFACE) (S30.02): a
-# consumer that links SolidSyslog::FreeRtos compiles the kernel-primitive
-# adapters into its own target, seeing its own FreeRTOSConfig.h — no per-file
-# listing. The consumer still points at its own FreeRTOS-Kernel tree.
+# Posix, Windows and OpenSsl compile PRIVATE into ${PROJECT_NAME} instead; their
+# ABIs are OS-level rather than header-configured.
 
 add_library(SolidSyslogFreeRtos INTERFACE)
 
