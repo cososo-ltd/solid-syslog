@@ -46,7 +46,8 @@ static bool IsValidSecurityPolicy(const char* policy)
 
 /* Applies one parsed option to `options`. Returns 0 on success, 1 if the
  * option's argument is invalid (which fails the whole parse). Split out of
- * _Parse to keep the loop a thin driver and the per-option logic in one place. */
+ * BddTargetCommandLine_Parse to keep the loop a thin driver and the per-option
+ * logic in one place. */
 static int ApplyOption(int opt, const char* value, struct BddTargetOptions* options)
 {
     int result = 0;

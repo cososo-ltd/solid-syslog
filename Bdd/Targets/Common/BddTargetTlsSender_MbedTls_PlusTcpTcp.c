@@ -369,8 +369,8 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     tlsStreamConfig.Rng = &drbg;
     tlsStreamConfig.CaChain = &caChain;
     /* Plain-TLS and mTLS share one SNI on this oracle (CN/SAN = "syslog-ng"),
-     * so either *_GetServerName accessor returns the same string. Use the
-     * TLS one to make the equivalence explicit. */
+     * so BddTargetTlsConfig_GetServerName and BddTargetMtlsConfig_GetServerName
+     * return the same string. Use the TLS one to make the equivalence explicit. */
     tlsStreamConfig.ServerName = BddTargetTlsConfig_GetServerName();
     tlsStreamConfig.ClientCertChain = &clientCertChain;
     tlsStreamConfig.ClientKey = &clientKey;

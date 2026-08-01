@@ -25,7 +25,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Override the TLS server name used for SNI and cert hostname
        verification, independently of the connection host. By default
-       _GetServerName aliases _GetHost (the Linux / Windows BDD setup
+       BddTargetTlsConfig_GetServerName aliases BddTargetTlsConfig_GetHost
+       (the Linux / Windows BDD setup
        uses the cert subject as the connection host), but the FreeRTOS
        BDD target's QEMU networking needs the connection IP separate
        from the cert subject — slirp NAT goes through 10.0.2.2, while

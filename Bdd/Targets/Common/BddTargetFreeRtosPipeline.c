@@ -55,7 +55,8 @@
 /* Unprivileged mirror of SOLIDSYSLOG_UDP_DEFAULT_PORT (514) for BDD listeners. */
 #define BDD_TARGET_UDP_PORT 5514U
 
-/* The injected platform seam — set once via _SetConfig before the tasks run. */
+/* The injected platform seam — set once via BddTargetFreeRtosPipeline_SetConfig
+ * before the tasks run. */
 static const struct BddTargetFreeRtosPipelineConfig* g_config = NULL;
 
 /* Mutable walking-skeleton state. Defaults populated at boot; the interactive

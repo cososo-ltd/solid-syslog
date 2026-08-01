@@ -128,8 +128,8 @@ static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 }
 
 /* MSVC's getenv triggers C4996; getenv_s is the strict-mode equivalent.
-   Static buffer is single-thread-safe (called once from _Run before threads
-   start) and large enough for any reasonable hostname. Returns the buffer
+   Static buffer is single-thread-safe (called once from BddTargetWindows_Run
+   before threads start) and large enough for any reasonable hostname. Returns the buffer
    when the env var is set and non-empty, NULL otherwise. */
 static const char* GetEnvVar(char* buffer, size_t bufferSize, const char* name)
 {
