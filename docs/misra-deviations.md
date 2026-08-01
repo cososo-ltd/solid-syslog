@@ -349,8 +349,8 @@ struct holds an external ring pointer rather than a trailing FAM.
 ### Rationale
 
 The Formatter implements the variable-size variant of the
-caller-supplied-storage pattern (D.002). The integrator declares a
-storage buffer of arbitrary size (with a minimum enforced by
+caller-supplied-storage pattern (D.002). The calling translation unit
+declares a storage buffer of arbitrary size (with a minimum enforced by
 `_Static_assert`), and the class lives inside that storage —
 bookkeeping fields at the start, payload bytes filling the rest.
 

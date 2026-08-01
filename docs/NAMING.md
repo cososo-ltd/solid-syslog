@@ -330,25 +330,28 @@ static bool CircularBuffer_Read(struct SolidSyslogBuffer* base,
 }
 ```
 
-#### The storage cast: `<Class>_SelfFromStorage`
+#### The callback cast: `<Class>_SelfFromArg`
 
-For classes still on the caller-supplied-storage pattern (the
-Posix/Windows/FreeRTOS mutexes and streams, FatFs/TLS adapters, …),
-`<Class>_Create` takes opaque storage and re-interprets it as the concrete
-struct. The same convention applies, one named `static inline` helper
-per class:
+A third-party callback that hands back a `void*` context needs the same
+treatment, for the same reason: the cast lives in one named place, so
+MISRA 11.5 has a single suppression site rather than one per callback.
+`SolidSyslogLwipRawTcpStream` registers itself with `tcp_arg(pcb, self)`
+and recovers it in every lwIP callback:
 
 ```c
-static inline struct SolidSyslogPosixMutex*
-PosixMutex_SelfFromStorage(SolidSyslogPosixMutexStorage* storage)
+static inline struct SolidSyslogLwipRawTcpStream*
+LwipRawTcpStream_SelfFromArg(void* arg)
 {
-    return (struct SolidSyslogPosixMutex*) storage;
+    return (struct SolidSyslogLwipRawTcpStream*) arg;
 }
 ```
 
-Pool-allocated classes do not use this cast — their instance
-struct lives in a library-internal static pool, and `<Class>_Create` returns
-a slot pointer without any storage cast.
+There is no cast from caller-supplied *instance* storage. Every stateful
+class is pool-allocated (E11), so `<Class>_Create` returns a slot pointer
+from the class's static pool. Where a caller still supplies memory it
+backs the payload rather than the instance — the ring handed to
+`SolidSyslogCircularBuffer_Create` is the one public example, and the
+buffer's own instance struct is still a pool slot pointing at it.
 
 Helpers are named per Tier 2 (`Class_Function`, `static inline`, no
 `SolidSyslog` prefix). Placement follows the function-ordering rule:
@@ -707,7 +710,7 @@ forbids.
 ## Worked example
 
 A small slice showing every tier in one place, including the derived-class
-vtable shape with `SelfFromBase` / `SelfFromStorage` helpers.
+vtable shape with its `SelfFromBase` helper.
 
 ```c
 /* Core/Interface/SolidSyslogBufferDefinition.h -------------------------- */
@@ -723,15 +726,14 @@ struct SolidSyslogBuffer
 
 /* Core/Interface/SolidSyslogCircularBuffer.h ---------------------------- */
 
-#define SOLIDSYSLOG_CIRCULAR_BUFFER_STORAGE_SIZE_BYTES(bytes) /* ... */
+#define SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(maxMessages) /* ... */
 
-typedef size_t SolidSyslogCircularBufferStorage;
-
-/* Tier 1 — public Create returns the base-class view.
+/* Tier 1 — public Create returns the base-class view. The caller supplies the
+   backing ring, not the instance: the instance itself is a pool slot.
    SolidSyslogCircularBuffer_Destroy takes the base type (matches the
    abstract Buffer contract), so its parameter is `base`. */
 struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
-    SolidSyslogCircularBufferStorage* storage, size_t storageBytes, struct SolidSyslogMutex* mutex
+    struct SolidSyslogMutex* mutex, uint8_t* ring, size_t ringBytes
 );
 void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base);
 
@@ -753,9 +755,7 @@ struct SolidSyslogCircularBuffer
 static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
 
-/* Tier 2 — named downcast helpers, one per cast type. */
-static inline struct SolidSyslogCircularBuffer*
-CircularBuffer_SelfFromStorage(SolidSyslogCircularBufferStorage* storage);
+/* Tier 2 — named downcast helper. */
 static inline struct SolidSyslogCircularBuffer*
 CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
 
@@ -763,23 +763,23 @@ CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
    parameters are `self`. */
 static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer* self);
 
+/* Core/Source/SolidSyslogCircularBufferStatic.c ------------------------- */
+
 struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
-    SolidSyslogCircularBufferStorage* storage, size_t storageBytes, struct SolidSyslogMutex* mutex
+    struct SolidSyslogMutex* mutex, uint8_t* ring, size_t ringBytes
 )
 {
-    /* Tier 3 — `self` is the concrete-class this-pointer obtained from the
-       caller-supplied storage. */
-    struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromStorage(storage);
-    self->Base.Read  = CircularBuffer_Read;
-    self->Base.Write = CircularBuffer_Write;
-    /* ... */
-    return &self->Base;
-}
-
-static inline struct SolidSyslogCircularBuffer*
-CircularBuffer_SelfFromStorage(SolidSyslogCircularBufferStorage* storage)
-{
-    return (struct SolidSyslogCircularBuffer*) storage;
+    /* Tier 3 — `index` and `handle` are locals; the pool slot is the instance,
+       so there is no cast from caller-supplied storage. On exhaustion the
+       shared NullBuffer is returned and the caller keeps running. */
+    size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&CircularBuffer_Allocator);
+    struct SolidSyslogBuffer* handle = SolidSyslogNullBuffer_Get();
+    if (SolidSyslogPoolAllocator_IndexIsValid(&CircularBuffer_Allocator, index))
+    {
+        CircularBuffer_Initialise(&CircularBuffer_Pool[index].Base, mutex, ring, ringBytes);
+        handle = &CircularBuffer_Pool[index].Base;
+    }
+    return handle;
 }
 
 void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base)
@@ -830,7 +830,7 @@ static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer
 | File-scope macro                      | `CLASS_SCREAMING_SNAKE`                    | `BUFFER_RECORD_MAGIC`                      |
 | Function parameter / local            | `lowerCamelCase`                           | `recordLength`, `bytesAvailable`           |
 | This-pointer parameter                | `self` (own type) / `base` (abstract base) | `* self` in helpers; `* base` in vtable impls |
-| Downcast helper                       | `Class_SelfFromBase` / `Class_SelfFromStorage` | `CircularBuffer_SelfFromBase`         |
+| Downcast helper                       | `Class_SelfFromBase` / `Class_SelfFromArg`  | `CircularBuffer_SelfFromBase`              |
 | Out-parameter                         | `outX` prefix                              | `outBuffer`                                |
 | Boolean / predicate                   | `isX` / `hasX` / `canX`                    | `isValid`, `hasUnsent`                     |
 | Loop variable                         | short domain word, lowerCamelCase          | `index`, `count`, `cursor`                 |

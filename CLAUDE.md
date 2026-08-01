@@ -620,11 +620,14 @@ role, not platform*, for the rule and the two-implementations-in-one-build cavea
   three-operation contract (`AcquireFirstFree`, `FreeIfInUse`, `IndexIsValid`) every
   pool class reuses. No class re-implements the slot walk.
 
-**Caller-supplied storage** survives in two places only — both intentionally outside the
-pool pattern. `SolidSyslogFormatter` is a transient stack-built builder whose payload size
-is per-call (`SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(n)`); `SolidSyslogAddress` is a value type
-(`SolidSyslogAddressStorage` + `SOLIDSYSLOG_ADDRESS_SIZE`) with no `<Class>_Create`/`<Class>_Destroy`
-lifecycle. Both are documented under deviation D.002 in `docs/misra-deviations.md`.
+**Caller-supplied storage** never holds an instance — every stateful class is a pool slot.
+What a caller can still supply is payload memory. Publicly that is one case:
+`SolidSyslogCircularBuffer_Create` takes the backing ring
+(`SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(maxMessages)`) plus a mutex, both of which must
+outlive the buffer, while the buffer's own instance stays in the pool. Library-internally
+`SolidSyslogFormatter` is a transient stack-built builder whose payload size is per-call
+(`SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(n)`); it lives in `Core/Source/`, so integrators never
+see it. The Formatter shape is documented under deviation D.002 in `docs/misra-deviations.md`.
 
 **Internal sub-components** of pool-allocated classes (e.g. `RecordStore` and
 `BlockSequence` inside `BlockStore`) live in sibling pools sized off the parent's
