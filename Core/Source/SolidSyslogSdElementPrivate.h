@@ -13,8 +13,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Definition lives here (not the public header) so an SD author handed a
      * SolidSyslogSdElement* cannot reach the wrapped formatter. The embedded
-     * Value is the sink _Param hands back — one per element, re-initialised on
-     * each _Param (only one param value is open at a time).
+     * Value is the sink SolidSyslogSdElement_Param hands back — one per element,
+     * re-initialised on each SolidSyslogSdElement_Param (only one param value is
+     * open at a time).
      *
      * DropStorage backs a zero-size formatter that safely absorbs the value of
      * a skipped param (NULL param name, or a NULL-SD-ID-suppressed element):

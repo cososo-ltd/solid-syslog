@@ -27,7 +27,7 @@ void TimeQualitySd_Initialise(struct SolidSyslogStructuredData* base, SolidSyslo
 void TimeQualitySd_Cleanup(struct SolidSyslogStructuredData* base)
 {
     /* Overwrite the abstract base with the shared NullSd vtable so use-after-destroy
-     * is a safe no-op. Derived fields are private to this TU; the next _Initialise
+     * is a safe no-op. Derived fields are private to this TU; the next TimeQualitySd_Initialise
      * overwrites them. */
     *base = *SolidSyslogNullSd_Get();
 }

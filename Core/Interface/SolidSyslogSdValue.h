@@ -24,10 +24,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  across two calls is reassembled. Output is bounded by the message buffer. */
     void SolidSyslogSdValue_String(struct SolidSyslogSdValue * value, const char* source);
 
-    /** As _String, but caps the value at @p maxDecodedLength decoded bytes, for
-     *  SD params a receiver parses into a width-limited field. The bound counts
-     *  what the reader's un-escaping decoder extracts (an escape pair as one
-     *  byte, a substituted U+FFFD as three), not the on-wire byte count. */
+    /** As SolidSyslogSdValue_String, but caps the value at @p maxDecodedLength
+     *  decoded bytes, for SD params a receiver parses into a width-limited
+     *  field. The bound counts what the reader's un-escaping decoder extracts
+     *  (an escape pair as one byte, a substituted U+FFFD as three), not the
+     *  on-wire byte count. */
     void SolidSyslogSdValue_BoundedString(
         struct SolidSyslogSdValue * value,
         const char* source,

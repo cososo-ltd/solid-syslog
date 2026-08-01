@@ -16,10 +16,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Definition lives here (not the public header) so a producer handed a
      * SolidSyslogSdValue* cannot reach the wrapped formatter. SolidSyslogSdElement
-     * (S14.02) embeds one of these and initialises it via _FromFormatter.
+     * (S14.02) embeds one of these and initialises it via
+     * SolidSyslogSdValue_FromFormatter.
      *
      * Pending holds an incomplete trailing UTF-8 sequence (Option B streaming
-     * state): when a _String chunk ends mid-codepoint the leading bytes wait
+     * state): when a SolidSyslogSdValue_String chunk ends mid-codepoint the
+     * leading bytes wait
      * here for the next chunk's continuation bytes to complete them. */
     struct SolidSyslogSdValue
     {

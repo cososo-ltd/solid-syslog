@@ -69,7 +69,7 @@ void UdpSender_Cleanup(struct SolidSyslogSender* base)
     /* Disconnect first so the live Config.Datagram is still reachable; then overwrite the
      * abstract base with the shared NullSender vtable so use-after-destroy is a safe
      * no-op rather than a NULL-fn-pointer crash. Derived fields are private to this TU
-     * so the next _Initialise overwrites them; no need to wipe here. */
+     * so the next UdpSender_Initialise overwrites them; no need to wipe here. */
     UdpSender_Disconnect(base);
     *base = *SolidSyslogNullSender_Get();
 }

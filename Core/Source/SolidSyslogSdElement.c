@@ -60,7 +60,8 @@ struct SolidSyslogSdValue* SolidSyslogSdElement_Param(struct SolidSyslogSdElemen
 /* A skipped param (NULL name, or a suppressed element) opens no framing and
  * hands back a sink over the drop formatter, so the caller's value writes are
  * absorbed without disturbing the element. ValueOpen stays false — there is no
- * quote for the next _Param / _End to close. */
+ * quote for the next SolidSyslogSdElement_Param / SolidSyslogSdElement_End to
+ * close. */
 static inline struct SolidSyslogSdValue* SdElement_SkipParam(struct SolidSyslogSdElement* element)
 {
     SolidSyslogSdValue_FromFormatter(&element->Value, element->DropFormatter);
@@ -68,8 +69,9 @@ static inline struct SolidSyslogSdValue* SdElement_SkipParam(struct SolidSyslogS
 }
 
 /* Closes an open param value: flushes any held UTF-8 tail (one U+FFFD) and
- * emits the closing quote. Idempotent when no value is open, so both _Param
- * (before the next param) and _End can call it unconditionally. */
+ * emits the closing quote. Idempotent when no value is open, so both
+ * SolidSyslogSdElement_Param (before the next param) and
+ * SolidSyslogSdElement_End can call it unconditionally. */
 static inline void SdElement_CloseOpenValue(struct SolidSyslogSdElement* element)
 {
     if (element->ValueOpen)

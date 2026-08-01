@@ -89,9 +89,10 @@
  * Default per-block capacity (bytes) for file-backed block devices
  * (SolidSyslogFileBlockDevice and any FatFs / FreeRTOS-Plus-FAT-backed
  * equivalent). Supplied to SolidSyslogFileBlockDevice_Create when the
- * integrator has no specific size in mind; passing 0 to _Create selects
- * this default. A larger block holds more records before rotating to a
- * fresh file; a smaller block rotates (and fsyncs) more often.
+ * integrator has no specific size in mind; passing 0 to
+ * SolidSyslogFileBlockDevice_Create selects this default. A larger block
+ * holds more records before rotating to a fresh file; a smaller block
+ * rotates (and fsyncs) more often.
  *
  * Floor: one worst-case record — the RFC 5424 max message plus the widest
  * integrity tag plus the 5-byte record framing (2 magic + 2 length +
@@ -132,7 +133,7 @@
  * static pool can simultaneously hold. Each instance is a small
  * bookkeeping struct (vtable, mutex pointer, ring pointer, head/tail/wrap)
  * — roughly 64 bytes on a 64-bit target, 32 on a 32-bit target. The
- * caller's ring memory is separate (passed to _Create).
+ * caller's ring memory is separate (passed to SolidSyslogCircularBuffer_Create).
  *
  * Most integrators only ever create one CircularBuffer per process;
  * default 1. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if the integrator

@@ -82,7 +82,7 @@ void SolidSyslog_Cleanup(struct SolidSyslog* self)
 {
     /* Reset to safe defaults so a stale-handle Log/Service after Destroy is a
      * silent no-op rather than a NULL-fn-pointer crash. The slot is then
-     * re-claimable by the next _Create. */
+     * re-claimable by the next SolidSyslog_Create. */
     SolidSyslog_ResetToDefaults(self);
 }
 

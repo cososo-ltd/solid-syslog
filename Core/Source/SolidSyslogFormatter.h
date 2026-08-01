@@ -61,9 +61,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Returns a pointer to the formatted bytes. The buffer is NUL-terminated for
      * convenience but the content is not a C string — UTF-8 content may contain
      * embedded NUL (U+0000), and a truncated multi-byte tail is masked with NULs
-     * so strlen stops before any invalid UTF-8. _Length reports the raw byte
-     * count (independent of the trim); bytes in [strlen(_AsFormattedBuffer),
-     * _Length) are guaranteed zero-padding. */
+     * so strlen stops before any invalid UTF-8. SolidSyslogFormatter_Length
+     * reports the raw byte count (independent of the trim); bytes in
+     * [strlen(SolidSyslogFormatter_AsFormattedBuffer),
+     * SolidSyslogFormatter_Length) are guaranteed zero-padding. */
     const char* SolidSyslogFormatter_AsFormattedBuffer(struct SolidSyslogFormatter * formatter);
     size_t SolidSyslogFormatter_Length(const struct SolidSyslogFormatter* formatter);
 
