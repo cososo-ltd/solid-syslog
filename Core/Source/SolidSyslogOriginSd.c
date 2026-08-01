@@ -35,7 +35,7 @@ void OriginSd_Initialise(struct SolidSyslogStructuredData* base, const struct So
 void OriginSd_Cleanup(struct SolidSyslogStructuredData* base)
 {
     /* Overwrite the abstract base with the shared NullSd vtable so use-after-destroy
-     * is a safe no-op. Derived fields are private to this TU; the next _Initialise
+     * is a safe no-op. Derived fields are private to this TU; the next OriginSd_Initialise
      * overwrites them. */
     *base = *SolidSyslogNullSd_Get();
 }

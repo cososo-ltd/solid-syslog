@@ -31,7 +31,7 @@ void MetaSd_Cleanup(struct SolidSyslogStructuredData* base)
 {
     /* Overwrite the abstract base with the shared NullSd vtable so use-after-destroy
      * is a safe no-op rather than a NULL-fn-pointer crash. Derived fields are private
-     * to this TU; the next _Initialise overwrites them. */
+     * to this TU; the next MetaSd_Initialise overwrites them. */
     *base = *SolidSyslogNullSd_Get();
 }
 

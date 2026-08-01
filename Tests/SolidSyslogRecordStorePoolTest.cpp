@@ -75,7 +75,8 @@ TEST(RecordStorePool, DestroyOfNullIsSilentNoop)
 {
     /* TU-internal classes return NULL on exhaustion (no shared null-object).
      * The only legitimate path to a NULL handle is a failed Create, and the
-     * consumer's own error reporting covers that. _Destroy(NULL) must therefore
-     * be a silent no-op. */
+     * consumer's own error reporting covers that.
+     * SolidSyslogRecordStore_Destroy(NULL) must therefore be a silent
+     * no-op. */
     SolidSyslogRecordStore_Destroy(nullptr);
 }

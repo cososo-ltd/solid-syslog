@@ -32,7 +32,8 @@ using namespace CososoTesting;
 
 // Asserts buf is a non-null handle that is not one of the slots in pool.
 // Used to pin the pool-exhaustion Fallback contract: every legitimate
-// _Create returns either a pool slot or the Fallback singleton, never NULL.
+// SolidSyslogCircularBuffer_Create returns either a pool slot or the Fallback
+// singleton, never NULL.
 #define CHECK_IS_FALLBACK(buf, pool)                                                 \
     {                                                                                \
         CHECK_TEXT((buf) != nullptr, "Fallback handle was nullptr");                 \

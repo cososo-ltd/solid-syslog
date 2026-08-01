@@ -75,7 +75,7 @@ void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequ
 {
     /* No owned resources to release. The BlockDevice pointer is caller-owned
      * (integrator-supplied via BlockSequenceConfig.BlockDevice); the next
-     * _Initialise overwrites every field, so clearing here would be churn. */
+     * SolidSyslogBlockSequence_Initialise overwrites every field, so clearing here would be churn. */
     (void) blockSequence;
 }
 

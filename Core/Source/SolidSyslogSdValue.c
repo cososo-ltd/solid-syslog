@@ -160,10 +160,11 @@ void SolidSyslogSdValue_Close(struct SolidSyslogSdValue* value)
     SdValue_FlushPendingIfHeld(value);
 }
 
-/* A held incomplete UTF-8 tail is the dangling state of a prior _String call.
- * Any non-_String write (or close) terminates it with one U+FFFD before its own
- * output, so the tail is never reordered after, or merged into, that output.
- * Only consecutive _String calls continue a tail (streaming continuation). */
+/* A held incomplete UTF-8 tail is the dangling state of a prior
+ * SolidSyslogSdValue_String call. Any non-SolidSyslogSdValue_String write (or
+ * close) terminates it with one U+FFFD before its own output, so the tail is
+ * never reordered after, or merged into, that output. Only consecutive
+ * SolidSyslogSdValue_String calls continue a tail (streaming continuation). */
 static inline void SdValue_FlushPendingIfHeld(struct SolidSyslogSdValue* value)
 {
     if (value->PendingCount > 0U)

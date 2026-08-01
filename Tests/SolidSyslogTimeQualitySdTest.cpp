@@ -231,7 +231,8 @@ TEST(SolidSyslogTimeQualitySdPool, FillingPoolThenOverflowReturnsDistinctFallbac
     }
 }
 
-// Bad-setup test — _Create rejects NULL callback and routes to NullSd.
+// Bad-setup test — SolidSyslogTimeQualitySd_Create rejects NULL callback and
+// routes to NullSd.
 
 // clang-format off
 TEST_GROUP(SolidSyslogTimeQualitySdBadSetup)

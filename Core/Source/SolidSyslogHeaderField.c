@@ -27,8 +27,9 @@ void SolidSyslogHeaderField_PrintUsAscii(struct SolidSyslogHeaderField* field, c
 
 void SolidSyslogHeaderField_Uint32(struct SolidSyslogHeaderField* field, uint32_t value)
 {
-    /* Unlike _PrintUsAscii, _Uint32 cannot pre-clamp its output to the field
-     * budget (the formatter writes the whole number), so guard the budget
+    /* Unlike SolidSyslogHeaderField_PrintUsAscii, SolidSyslogHeaderField_Uint32
+     * cannot pre-clamp its output to the field budget (the formatter writes the
+     * whole number), so guard the budget
      * directly: skip once the field is full, and clamp to zero rather than
      * letting the size_t subtraction underflow when this number alone overruns
      * the remainder. A header-field callback may mix any number of appends. */

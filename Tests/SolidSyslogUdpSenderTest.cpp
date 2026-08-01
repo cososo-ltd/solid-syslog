@@ -365,7 +365,7 @@ TEST(SolidSyslogUdpSender, ZeroLengthSendPassesThrough)
 }
 
 // Destroy tests manage their own sender lifetime — base teardown does
-// not call _Destroy because tests already did.
+// not call SolidSyslogUdpSender_Destroy because tests already did.
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogUdpSenderDestroy, UdpSenderTestBase)
 {

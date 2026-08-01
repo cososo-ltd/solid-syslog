@@ -98,7 +98,7 @@ void SolidSyslogRecordStore_Initialise(
 
 void SolidSyslogRecordStore_Cleanup(struct SolidSyslogRecordStore* recordStore)
 {
-    /* No owned resources to release. The next _Initialise overwrites every
+    /* No owned resources to release. The next SolidSyslogRecordStore_Initialise overwrites every
      * field, so leave the slot's bytes alone — clearing them would be
      * write-then-overwrite churn. */
     (void) recordStore;

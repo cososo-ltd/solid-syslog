@@ -52,10 +52,10 @@ twelve. An adapter is four files:
 
 | File | Holds |
 |---|---|
-| `Platform/<X>/Interface/SolidSyslog<Adapter>.h` | Public `_Create` / `_Destroy` — the only symbols system-setup code touches |
+| `Platform/<X>/Interface/SolidSyslog<Adapter>.h` | Public `<Class>_Create` / `<Class>_Destroy` — the only symbols system-setup code touches |
 | `Platform/<X>/Source/SolidSyslog<Adapter>Private.h` | The instance `struct`, embedding the role vtable as its first member |
 | `Platform/<X>/Source/SolidSyslog<Adapter>.c` | The vtable function implementations |
-| `Platform/<X>/Source/SolidSyslog<Adapter>Static.c` | The static instance pool + `_Create` / `_Destroy` |
+| `Platform/<X>/Source/SolidSyslog<Adapter>Static.c` | The static instance pool + `<Class>_Create` / `<Class>_Destroy` |
 
 ### The instance shape
 
@@ -75,12 +75,12 @@ adapter downcasts to the latter by pointer identity. The vtable function pointer
 are wired to your `static` implementations once, when the instance is
 initialised.
 
-### `_Create` / `_Destroy` and the static pool (no `malloc`)
+### `<Class>_Create` / `<Class>_Destroy` and the static pool (no `malloc`)
 
 There is no heap. Each adapter owns a file-scope `static` array of instances and
-a parallel `InUse[]` flag array, sized by a role tunable. `_Create` acquires the
+a parallel `InUse[]` flag array, sized by a role tunable. `<Class>_Create` acquires the
 first free slot, initialises it, and returns `&pool[i].Base`; on exhaustion it
-returns the shared Null sibling and reports an error. `_Destroy` finds the slot
+returns the shared Null sibling and reports an error. `<Class>_Destroy` finds the slot
 by handle identity, cleans it up, and releases it. The
 [`SolidSyslogPoolAllocator`](../Core/Source/SolidSyslogPoolAllocator.h) owns the
 slot-walk so no adapter re-implements it:
@@ -111,7 +111,7 @@ struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(void)
 ```
 
 See [`SolidSyslogPosixMutexStatic.c`](../Platform/Posix/Source/SolidSyslogPosixMutexStatic.c)
-for the matching `_Destroy`. The pool size is a role-named tunable,
+for the matching `SolidSyslogPosixMutex_Destroy`. The pool size is a role-named tunable,
 `SOLIDSYSLOG_MUTEX_POOL_SIZE`, not a per-platform name, because a build links one
 implementation per role. Every tunable lives in
 [`SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h),
@@ -135,7 +135,7 @@ adapters report and carry on, they never crash the caller.
 The pool allocator wraps each slot claim and release in the
 `SolidSyslog_LockConfig()` / `SolidSyslog_UnlockConfig()` pair internally:
 `AcquireFirstFree` locks per-slot around the claim, `FreeIfInUse` locks around the
-release, so an adapter's `_Create` / `_Destroy` inherit the synchronisation for
+release, so an adapter's `<Class>_Create` / `<Class>_Destroy` inherit the synchronisation for
 free and never lock themselves (which is why the example above has no lock call).
 Single-task setup gets the no-op default and pays nothing. On a multi-task or multi-core target
 where setup races, install the pair once with `SolidSyslog_SetConfigLock(...)`:

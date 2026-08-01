@@ -382,7 +382,8 @@ TEST(SolidSyslogSwitchingSenderPool, FillingPoolThenOverflowReturnsDistinctFallb
     }
 }
 
-// Bad-setup tests — _Create rejects malformed config and routes to NullSender.
+// Bad-setup tests — SolidSyslogSwitchingSender_Create rejects malformed config
+// and routes to NullSender.
 
 // clang-format off
 TEST_GROUP(SolidSyslogSwitchingSenderBadSetup)
@@ -442,8 +443,9 @@ TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullSelectorReportsError)
 
 TEST(SolidSyslogSwitchingSenderBadSetup, SendOnBadSetupSenderReturnsTrueAndDrops)
 {
-    /* Bad-config _Create returns NullSender (Send drops on the floor),
-     * so a misconfigured SwitchingSender doesn't fill the Store. */
+    /* Bad-config SolidSyslogSwitchingSender_Create returns NullSender (Send
+     * drops on the floor), so a misconfigured SwitchingSender doesn't fill the
+     * Store. */
     struct SolidSyslogSender* badSender = SolidSyslogSwitchingSender_Create(nullptr);
     CHECK_TRUE(SolidSyslogSender_Send(badSender, "x", 1));
 }

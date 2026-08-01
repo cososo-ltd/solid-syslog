@@ -668,6 +668,30 @@ jobs:
             exit 1
           fi
 
+      # A bare _Create in a comment or in Markdown stops meaning anything the
+      # moment the surrounding text names a second class, and the header tables
+      # name several per row. See docs/NAMING.md, "Writing identifiers in prose".
+      #
+      # The sed neutralises the reserved identifiers that legitimately begin _X
+      # before the second grep, so filtering is per match rather than per line —
+      # one line can carry both a legitimate _Atomic and a bare _Destroy, and
+      # discarding the whole line would hide the second. Tracked files only, so
+      # an untracked local `site/` build never trips it. NAMING.md is exempt: it
+      # is the one file that has to quote the form it forbids.
+      - name: Assert API identifiers are written in full in prose
+        run: |
+          violations=$(git ls-files '*.md' '*.c' '*.h' '*.cpp' \
+            | grep -v '^docs/NAMING\.md$' \
+            | xargs -r grep -nE '(^|[^A-Za-z0-9_>])_[A-Z][a-z]' \
+            | sed -E 's/_(Atomic|Bool|Static_assert|Noreturn|Thread_local|Generic|Alignas|Alignof|Complex|Imaginary|Pragma|Exit)\b/KEYWORD/g' \
+            | grep -E '(^|[^A-Za-z0-9_>])_[A-Z][a-z]' \
+            | cut -d: -f1,2)
+          if [ -n "$violations" ]; then
+            echo "$violations"
+            echo "::error::Write API identifiers in full in prose — SolidSyslogFoo_Create, or <Class>_Create for a pattern-level statement (see docs/NAMING.md, 'Writing identifiers in prose')"
+            exit 1
+          fi
+
   analyze-markdown:
     runs-on: ubuntu-latest
     steps:

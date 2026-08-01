@@ -119,8 +119,8 @@ TEST(SolidSyslogSdValue, Uint32EmitsDecimalDigits)
 TEST(SolidSyslogSdValue, ReassemblesTwoByteCodepointSplitAcrossStringCalls)
 {
     /* U+00A9 COPYRIGHT SIGN streamed as its lead byte then its continuation
-     * byte across two _String calls — the value must reassemble the codepoint,
-     * not emit a U+FFFD per orphaned half. */
+     * byte across two SolidSyslogSdValue_String calls — the value must
+     * reassemble the codepoint, not emit a U+FFFD per orphaned half. */
     writeString("\xC2");
     writeString("\xA9");
 
@@ -195,8 +195,8 @@ TEST(SolidSyslogSdValue, CloseWithNoHeldTailWritesNothing)
 
 TEST(SolidSyslogSdValue, Uint32FlushesHeldTailBeforeDigits)
 {
-    /* A held incomplete _String tail must resolve to U+FFFD before the digits,
-     * not be silently reordered after them (or dropped). */
+    /* A held incomplete SolidSyslogSdValue_String tail must resolve to U+FFFD
+     * before the digits, not be silently reordered after them (or dropped). */
     writeString("\xC2");
     writeUint32(5);
 
