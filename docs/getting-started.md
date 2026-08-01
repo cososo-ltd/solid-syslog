@@ -23,7 +23,7 @@ from three layers:
    sleep) and your tunables.
 
 Every role has a Core Null fallback, so omitting an adapter degrades
-safely: its `_Create` is simply never called, and nothing dangles at link
+safely: its `<Class>_Create` is simply never called, and nothing dangles at link
 time. You only compile the adapters you actually wire.
 
 Two facts decide everything below:
@@ -374,7 +374,7 @@ manifest names the standard, not a `-std=` flag.
 - AtomicCounter: only if you want RFC 5424 sequence-ids; otherwise it
   degrades to the Null counter (always 1).
 
-For the exact wiring of each adapter's `_Create` config struct, follow the
+For the exact wiring of each adapter's `<Class>_Create` config struct, follow the
 platform guides: [lwIP](integrating-lwip.md), [Mbed TLS](integrating-mbedtls.md).
 
 ---

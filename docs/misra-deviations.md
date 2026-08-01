@@ -71,9 +71,9 @@ The Tier 1 naming scheme in `docs/NAMING.md` (form
 storage-size enums sit just below 40 (e.g.
 `SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE`, 40). Strict 31-character
 distinctness would either collapse identifier pairs that read
-identically up to a trailing word
-(`SolidSyslogPlusTcpResolver_Create` vs `_Destroy`) into a
-single name, or force unidiomatic abbreviation throughout the public
+identically up to a trailing word (`SolidSyslogPlusTcpResolver_Create`
+vs `SolidSyslogPlusTcpResolver_Destroy`) into a single name, or force
+unidiomatic abbreviation throughout the public
 API. Neither outcome serves clarity or MISRA's underlying intent
 ("the reader can tell two identifiers apart"); 63 characters does.
 
@@ -153,8 +153,10 @@ allocated handle whose `struct SolidSyslogAddress` is an incomplete
 public type, fully defined per platform as
 `struct SolidSyslog{Posix,Winsock,FreeRtos}Address`. Each platform's
 `*AddressPrivate.h` carries downcast accessors
-(`SolidSyslog<Plat>Address_AsSockaddrIn` / `_AsConstSockaddrIn` /
-`_AsFreertosSockaddr` / `_AsConstFreertosSockaddr`) plus a
+(`SolidSyslog<Plat>Address_AsSockaddrIn` /
+`SolidSyslog<Plat>Address_AsConstSockaddrIn` /
+`SolidSyslog<Plat>Address_AsFreertosSockaddr` /
+`SolidSyslog<Plat>Address_AsConstFreertosSockaddr`) plus a
 `HandleFromIndex(size_t)` helper in `*AddressStatic.c` that converts a
 pool slot index back to the public handle type. Rule 11.3 fires on
 every such cast.
@@ -416,7 +418,7 @@ Two distinct site categories trigger this rule:
    `SolidSyslogMessageFormatter_Format(const struct
    SolidSyslogMessageFormatterContext* context)` (5 sites — `context->Clock`,
    `GetHostname`, `GetAppName`, `GetProcessId`, `Sd`), which reads its
-   read-only context exactly as `_Create` reads its config. The `const`
+   read-only context exactly as `<Class>_Create` reads its config. The `const`
    is deliberate (the formatter must not mutate the context); keeping it
    and accepting the false positive is preferred over weakening the
    signature to silence the tool.
@@ -1011,7 +1013,7 @@ Project owner — David Cozens. Recorded under
 `SolidSyslogErrorSource` objects, which rule 8.7 flagged because the
 `Xxx_Report` wrapper confined every emission to the source's own `*Messages.c`,
 a single translation unit. S12.26 decoupled error text from the library
-(deleting the `*Messages.c` message tables) and unwound the `_Report` wrapper,
+(deleting the `*Messages.c` message tables) and unwound the `Xxx_Report` wrapper,
 so each source is now defined in its class's vtable TU and referenced from both
 that TU's emit sites and its `*Static.c` lifecycle code, genuinely cross-TU,
 exactly the resolution this deviation's "Risk and mitigation" anticipated.

@@ -35,11 +35,11 @@ config bug." The category already says that.
 `EMERGENCY`, `ALERT`, `INFORMATIONAL`, and `DEBUG` are deliberately unused, reserved for
 integrator-defined use and possible future events.
 
-## The discriminator: did `_Create` fall back to the Null object?
+## The discriminator: did `<Class>_Create` fall back to the Null object?
 
 The `CRITICAL` / `WARNING` line for setup faults is mechanically checkable:
 
-- `CRITICAL`: the component could not be built. `_Create` returned the shared Null
+- `CRITICAL`: the component could not be built. `<Class>_Create` returned the shared Null
   sibling (pool exhausted, or a hard misconfig with no usable fallback). Also: a public-API
   call handed a NULL handle / argument, a caller code bug.
 - `WARNING`: the component was built and is delivering, just degraded (soft
@@ -62,9 +62,9 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 
 | Category | Severity | Notes |
 |---|---|---|
-| `POOL_EXHAUSTED` | `CRITICAL` | always: `_Create` fell back to Null. Single-sourced via `SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY`. |
+| `POOL_EXHAUSTED` | `CRITICAL` | always: `<Class>_Create` fell back to Null. Single-sourced via `SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY`. |
 | `BAD_ARGUMENT` | `CRITICAL` | always: caller code bug. Single-sourced via `SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY`. |
-| `BAD_CONFIG` — fatal | `CRITICAL` | `_Create` fell back to Null. Single-sourced via `SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY`. |
+| `BAD_CONFIG` — fatal | `CRITICAL` | `<Class>_Create` fell back to Null. Single-sourced via `SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY`. |
 | `BAD_CONFIG` — degraded | `WARNING` | component still constructs and delivers (e.g. MetaSd without a counter, block-too-small, TLS chain-only). Emitted with an explicit `SOLIDSYSLOG_SEVERITY_WARNING` literal at the site, not the macro. |
 | `UNKNOWN_DESTROY` | `WARNING` | benign lifecycle misuse: library keeps working. Single-sourced via `SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY`. |
 | `TLSSTREAM_HANDSHAKE_FAILED` — rejected | `ERROR` | cert / protocol: a human must fix the peer or the cert. |

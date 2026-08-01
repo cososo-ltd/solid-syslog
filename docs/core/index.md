@@ -47,7 +47,7 @@ Portable [role](../roles/index.md) implementations — no platform required:
 
 Every role also has a Null — `SolidSyslogNull<Role>_Get()` —
 whose methods are safe no-ops. That is what an unfilled slot resolves to, and
-what a `_Create` returns when its pool is exhausted, so nothing dangles and
+what a `<Class>_Create` returns when its pool is exhausted, so nothing dangles and
 nothing needs a NULL guard. See [Roles](../roles/index.md).
 
 ## Cross-cutting

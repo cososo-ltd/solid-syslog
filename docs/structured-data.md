@@ -25,8 +25,8 @@ Authoring uses two opaque, stack-transient writers; you never touch a raw buffer
 
 | Type | You get it from | What it does |
 |---|---|---|
-| `SolidSyslogSdElement` | handed to your `Format` callback | Opens/closes one element: `_Begin(name, enterprise)`, `_Param(name)`, `_End`. Owns the `SD-ID` and `PARAM-NAME` syntax. |
-| `SolidSyslogSdValue` | `SolidSyslogSdElement_Param(...)` returns one | Writes one `PARAM` value: `_String`, `_BoundedString`, `_Uint32`. Applies the §6.3.3 escaping. |
+| `SolidSyslogSdElement` | handed to your `Format` callback | Opens/closes one element: `SolidSyslogSdElement_Begin(name, enterprise)`, `SolidSyslogSdElement_Param(name)`, `SolidSyslogSdElement_End`. Owns the `SD-ID` and `PARAM-NAME` syntax. |
+| `SolidSyslogSdValue` | `SolidSyslogSdElement_Param(...)` returns one | Writes one `PARAM` value: `SolidSyslogSdValue_String`, `SolidSyslogSdValue_BoundedString`, `SolidSyslogSdValue_Uint32`. Applies the §6.3.3 escaping. |
 
 A value producer is only ever handed a `SolidSyslogSdValue*`; it physically cannot open a
 parameter or reach the framing.
@@ -82,7 +82,7 @@ pool). It only needs to stay valid for the duration of the log call.
 
 ## SD-IDs and enterprise numbers
 
-`_Begin(name, enterpriseNumber)` builds the `SD-ID`:
+`SolidSyslogSdElement_Begin(name, enterpriseNumber)` builds the `SD-ID`:
 
 - Enterprise number `0` → an IANA-registered name, emitted verbatim: `[meta …]`.
 - Non-zero → a private `name@number`: `[example@32473 …]`. The number is your
@@ -133,9 +133,9 @@ first example) is never affected.
 
 Write values with `SolidSyslogSdValue`:
 
-- `_String(value, source)`: a NUL-terminated string.
-- `_BoundedString(value, source, maxLength)`: at most `maxLength` bytes.
-- `_Uint32(value, number)`: decimal digits.
+- `SolidSyslogSdValue_String(value, source)`: a NUL-terminated string.
+- `SolidSyslogSdValue_BoundedString(value, source, maxLength)`: at most `maxLength` bytes.
+- `SolidSyslogSdValue_Uint32(value, number)`: decimal digits.
 
 The library applies the RFC 5424 §6.3.3 escaping for you (`"`, `\`, and `]` are
 backslash-escaped) and validates UTF-8; you pass the raw value and the receiver gets it
