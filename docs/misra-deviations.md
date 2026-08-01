@@ -1011,9 +1011,9 @@ Project owner — David Cozens. Recorded under
 
 **Retired in S12.26.** This deviation covered the crypto-policy
 `SolidSyslogErrorSource` objects, which rule 8.7 flagged because the
-`Xxx_Report` wrapper confined every emission to the source's own `*Messages.c`,
+`<Class>_Report` wrapper confined every emission to the source's own `*Messages.c`,
 a single translation unit. S12.26 decoupled error text from the library
-(deleting the `*Messages.c` message tables) and unwound the `Xxx_Report` wrapper,
+(deleting the `*Messages.c` message tables) and unwound the `<Class>_Report` wrapper,
 so each source is now defined in its class's vtable TU and referenced from both
 that TU's emit sites and its `*Static.c` lifecycle code, genuinely cross-TU,
 exactly the resolution this deviation's "Risk and mitigation" anticipated.

@@ -595,8 +595,9 @@ keep their current shape until the class that owns them is next touched.
 
 Every stateful Created class lives in a library-internal static pool of N slots, sized by a
 `SOLIDSYSLOG_<CLASS>_POOL_SIZE` tunable in `Core/Interface/SolidSyslogTunablesDefaults.h`. The
-public `<Class>_Create` accepts a config struct and returns an opaque handle (a pointer into the
-pool); `<Class>_Destroy` takes the handle and releases the slot. Pool semantics:
+public `<Class>_Create` takes whatever that class needs — a config struct, a short argument list,
+or `void` — and returns an opaque handle (a pointer into the pool); `<Class>_Destroy` takes the
+handle and releases the slot. Pool semantics:
 
 Platform- and vendor-selected classes (TCP stream, datagram, resolver, mutex, file,
 atomic counter, TLS stream, HMAC policy) share a **role-named** tunable rather than one
