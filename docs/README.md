@@ -1,10 +1,5 @@
 # ![SolidSyslog](assets/images/solidsyslog-mark-a.svg)
 
-> [!WARNING]
-> The documentation is under active development and may be incomplete or
-> inaccurate. Do not rely on it for integration, security, or compliance
-> decisions until the 0.1.0 release.
-
 This is the documentation home. It is organised around what you came to do.
 Pick a lane:
 
@@ -27,7 +22,7 @@ Pick a lane:
 Everything you need to consume SolidSyslog in your product.
 
 - [Getting started](getting-started.md): the integrator front door. The capability matrix, both consumption paths (CMake and non-CMake / IAR / Keil source integration), the worked embedded manifest, the tunables, and a "your first log" walkthrough.
-- [Choosing components by Security Level](security-levels.md): which roles to fill for a good story at each SL, framed around your deployment's drivers, with worked starter combinations.
+- [Building up the protection you need](hardening-path.md): the integration path from a device with no syslog to a hardened one, a stage at a time, with the question that drives each step and an indication of what it costs.
 - [Authoring custom structured data](structured-data.md): attaching RFC 5424 SD-ELEMENTs.
 - [Error-event severity policy](error-severity.md): installing an error handler and reading the event axes.
 - Platform integration guides:

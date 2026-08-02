@@ -1,10 +1,5 @@
 # Compliance in one page
 
-> [!WARNING]
-> The documentation is under active development and may be incomplete or
-> inaccurate. Do not rely on it for integration, security, or compliance
-> decisions until the 0.1.0 release.
-
 SolidSyslog is a client-side structured-syslog library that helps you implement
 the audit-logging and product-security controls the EU Cyber Resilience Act
 (CRA) and IEC 62443 expect of industrial and connected products. You wire
@@ -42,7 +37,7 @@ below. SolidSyslog gives you the audit-logging building blocks at every rung.
 
 Which components realise each rung, and why each choice is driven by your
 deployment rather than the label, is on
-[Choosing components by Security Level](security-levels.md). The
+[Building up the protection you need](hardening-path.md). The
 control-by-control map (every relevant IEC 62443-4-2 Component Requirement and
 62443-3-3 System Requirement, the level it applies at, and the components that
 satisfy it) is in the
@@ -68,7 +63,7 @@ not discharge them on their own.
 
 ## Go deeper
 
-- [Choosing components by Security Level](security-levels.md): the choices you make and what drives each.
+- [Building up the protection you need](hardening-path.md): the integration path, and the question that drives each step along it.
 - [IEC 62443 compliance guide](iec62443.md): the control-by-control map underneath this page.
 - [RFC compliance matrix](rfc-compliance.md): sender-side coverage of RFC 5424 / 5426 / 6587 / 5425.
 - [Security documentation](README.md#compliance): threat model, at-rest crypto, SBOM, triage, release verification.

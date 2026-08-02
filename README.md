@@ -1,10 +1,5 @@
 # SolidSyslog
 
-> [!WARNING]
-> **The documentation is under active development and may be incomplete or
-> inaccurate.** Do not rely on it — for integration, security, or compliance
-> decisions — until the 0.1.0 release.
-
 A structured syslog client library for embedded and industrial systems, implementing
 RFC 5424 (structured syslog) with RFC 5426 (UDP) and RFC 6587 (TCP) transports.
 TLS per RFC 5425 is available via a pluggable Stream abstraction — the repo ships
@@ -120,7 +115,7 @@ per platform, all named `SolidSyslogBddTarget`:
 ## Compliance
 
 - [Compliance in one page](docs/overview.md) — the evaluator's one-screen orientation on CRA and IEC 62443
-- [Choosing components by Security Level](docs/security-levels.md) — which components to wire for each SL, and why
+- [Building up the protection you need](docs/hardening-path.md) — the integration path, stage by stage, with an indication of what each costs
 - [IEC 62443 Compliance Guide](docs/iec62443.md) — component selection by Security Level (SL1–SL4) for industrial control systems
 - [RFC Compliance Matrix](docs/rfc-compliance.md) — sender-side coverage of RFC 5424, 5426, 6587, and 5425
 

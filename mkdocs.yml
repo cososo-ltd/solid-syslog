@@ -136,8 +136,8 @@ nav:
   - Overview:
       - Compliance in one page: overview.md
   - Adopt:
+      - Building up the protection you need: hardening-path.md
       - Getting started: getting-started.md
-      - Components by Security Level: security-levels.md
       - Structured data: structured-data.md
       - Error handling: error-severity.md
       - Integrating lwIP: integrating-lwip.md

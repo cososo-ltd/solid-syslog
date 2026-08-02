@@ -1,10 +1,5 @@
 # Porting SolidSyslog to a new platform
 
-> [!WARNING]
-> The documentation is under active development and may be incomplete or
-> inaccurate. Do not rely on it for integration, security, or compliance
-> decisions until the 0.1.0 release.
-
 Porting SolidSyslog to a new OS, network stack, filesystem, or crypto library is
 filling a role, not editing Core. Core never changes. You write a small
 adapter that satisfies one of the twelve vtable contracts, drop it into your

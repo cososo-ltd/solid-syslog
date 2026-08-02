@@ -26,6 +26,9 @@
     // Verbatim PolyForm Noncommercial license text — must not be reformatted.
     "LICENSE.md",
     "docs/generated/**",
+    // Local `mkdocs build` output. Not present in CI, but a local docs preview
+    // leaves it behind and its generated Markdown fails the lint.
+    "site/**",
     "node_modules/**"
   ]
 }
