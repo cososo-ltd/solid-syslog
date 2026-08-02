@@ -146,6 +146,7 @@ nav:
   - Port a new platform:
       - Porting guide: porting.md
   - Compliance:
+      - CRA guide: cra.md
       - IEC 62443 guide: iec62443.md
       - RFC matrix: rfc-compliance.md
       - Threat model: security/threat-model.md

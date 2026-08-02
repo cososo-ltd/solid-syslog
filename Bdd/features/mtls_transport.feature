@@ -2,7 +2,7 @@
 Feature: Mutual TLS message delivery
   The BDD target authenticates itself to the oracle with a client
   certificate over RFC 5425 TLS, exercising mTLS end-to-end. Satisfies
-  IEC 62443 SL4 CR 2.12 (non-repudiation) — the SIEM cryptographically
+  IEC 62443 CR 2.12 (non-repudiation, SL3+) — the SIEM cryptographically
   identifies the sender. Cross-platform: Linux runner uses syslog-ng,
   Windows runner uses otelcol-contrib with client_ca_file.
 

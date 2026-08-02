@@ -14,56 +14,39 @@ This page is the evaluator's one-screen orientation. It links out to the
 control-by-control detail rather than restating it.
 
 > [!NOTE]
-> IEC 62443 certifies systems, not components, and a Security Level is a
-> property of your whole system, its deployment, and its assessment, not of a
-> parts list. Likewise, the CRA places its obligations on the economic operators
-> who bring a product to market (manufacturers, and in defined cases importers
-> and distributors), not on any single component. SolidSyslog is a component:
-> this is our best advice on how it helps you address the audit-logging and
-> security aspects of those frameworks. It is guidance, not a guarantee of
-> compliance, and no substitute for assessment of your full product.
+> SolidSyslog is a component, not a product. IEC 62443 certifies systems, and CRA
+> obligations fall on the manufacturer placing a product on the market. What follows is
+> our account of how the library helps you meet the audit-logging parts of those
+> frameworks. It is guidance, not a guarantee of compliance, and no substitute for
+> assessment of your finished product.
 
-## IEC 62443 — audit logging at a glance
+## Neither framework hands you a parts list
 
-The Security Levels are a superset ladder: each adds controls on top of the one
-below. SolidSyslog gives you the audit-logging building blocks at every rung.
+Both state capabilities and leave the realisation to you.
 
-| Security Level | Attacker in scope | What a SolidSyslog deployment adds on top of the level below |
-|---|---|---|
-| **SL1** | Casual or accidental | A valid, timestamped RFC 5424 record, delivered to your collector and kept readable |
-| **SL2** | Simple, intentional | Trusted-time metadata, gap-visible delivery, a protected and authenticated channel (TLS), and store-and-forward survival across outages |
-| **SL3** | Sophisticated, IACS-aware | Authenticated provenance and gap detection (mutual TLS + `sequenceId`), tamper-evident (keyed) at-rest integrity, per-device identity, and storage-threshold warnings |
-| **SL4** | State-level | The same evidence, hardened: write-once / immutable storage, a protected time source, and keys held in hardware |
+The CRA gates its Annex I product requirements on the manufacturer's own risk
+assessment, and applies them "where applicable" — so two conforming products can
+implement them very differently. IEC 62443 assigns Security Levels to a system in its
+deployment and its assessment, not to a component; the same library can appear in
+deployments assessed at different levels.
 
-Which components realise each rung, and why each choice is driven by your
-deployment rather than the label, is on
-[Building up the protection you need](hardening-path.md). The
-control-by-control map (every relevant IEC 62443-4-2 Component Requirement and
-62443-3-3 System Requirement, the level it applies at, and the components that
-satisfy it) is in the
-[IEC 62443 compliance guide](iec62443.md#control-implementation).
+What your device needs from its audit trail therefore follows from your threat model,
+your documented intended purpose and your resources.
+[Building up the protection you need](hardening-path.md) walks the capabilities in the
+order an integration usually adds them, with the question that decides each one and an
+indication of what it costs, so you can see where your own answer lands.
 
-## CRA — where SolidSyslog helps
+## The two maps
 
-The CRA's essential requirements (Annex I) ask a product with digital elements to
-log security-relevant events and support secure updates, and its manufacturer to
-maintain a machine-readable bill of materials and handle vulnerabilities.
-SolidSyslog contributes to several of those obligations directly:
-
-| CRA obligation | How SolidSyslog supports it |
+| Framework | What the map covers |
 |---|---|
-| **Security logging & monitoring** | The library's whole purpose: RFC 5424 audit records to any SIEM, with SIEM-side gap detection via `sequenceId`. See [IEC 62443 guide → SIEM integration](iec62443.md#siem-integration) |
-| **Software bill of materials** | The SolidSyslog project publishes a CycloneDX [SBOM](security/sbom.md) per release, ready to fold into your product's own bill of materials |
-| **Vulnerability handling & coordinated disclosure** | [`SECURITY.md`](../SECURITY.md) and the [vulnerability triage runbook](security/triage-runbook.md) |
-| **Secure, verifiable releases** | [Release verification guide](security/release-verification.md): signed, reproducible artefacts |
-| **Secure-by-design & documented risk** | [Threat model](security/threat-model.md) and [at-rest cryptography](security/at-rest-cryptography.md) |
-
-These support the manufacturer's CRA duties for the finished product; they do
-not discharge them on their own.
+| [CRA](cra.md) | Annex I Part I (2)(l), the requirement that names recording and monitoring internal activity; the Part I points an audit trail contributes to; and what the project publishes for your Part II vulnerability handling |
+| [IEC 62443](iec62443.md) | The audit-logging-relevant Component and System Requirements from 62443-4-2 and 62443-3-3, the levels each helps with, and the components that address them |
 
 ## Go deeper
 
 - [Building up the protection you need](hardening-path.md): the integration path, and the question that drives each step along it.
+- [CRA guide](cra.md): the Annex I map underneath this page.
 - [IEC 62443 compliance guide](iec62443.md): the control-by-control map underneath this page.
 - [RFC compliance matrix](rfc-compliance.md): sender-side coverage of RFC 5424 / 5426 / 6587 / 5425.
 - [Security documentation](README.md#compliance): threat model, at-rest crypto, SBOM, triage, release verification.

@@ -6,7 +6,7 @@ Pick a lane:
 - [Overview](#overview): what SolidSyslog is and how it helps with CRA and IEC 62443 compliance.
 - [Adopt it](#adopt): get a syslog stack compiling and sending in your product.
 - [Port it to a new platform](#port-a-new-platform): fill a role for an OS, network stack, filesystem, or crypto library we don't ship yet.
-- [Compliance](#compliance): IEC 62443, the RFCs, and the security posture.
+- [Compliance](#compliance): the CRA, IEC 62443, the RFCs, and the security posture.
 - [API reference](#api-reference): the public contracts, by audience.
 - [Maintaining the library](#maintaining): building, testing, and releasing SolidSyslog itself.
 
@@ -42,7 +42,8 @@ Core's Null object stands in.
 ## Compliance
 
 - [Compliance in one page](overview.md): start here.
-- [IEC 62443 compliance guide](iec62443.md): component selection by Security Level (SL1–SL4), mapped control-by-control to IEC 62443-4-2 CRs and 62443-3-3 SRs.
+- [CRA guide](cra.md): the Annex I map — the requirement that names logging, the requirements an audit trail contributes to, and what the project publishes for your vulnerability handling.
+- [IEC 62443 compliance guide](iec62443.md): the audit-logging-relevant 62443-4-2 CRs and 62443-3-3 SRs, the levels each helps with, and the components that address them.
 - [RFC compliance matrix](rfc-compliance.md): sender-side coverage of RFC 5424, 5426, 6587, and 5425.
 - Security:
   - [Threat model](security/threat-model.md)
