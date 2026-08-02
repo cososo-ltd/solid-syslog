@@ -255,6 +255,11 @@ Set `SOLIDSYSLOG_MAX_MESSAGE_SIZE` to fit your own records rather than taking th
 library's default. Anything longer is truncated rather than dropped. RFC 5424 §6.1 says
 a receiver should accept 2048 octets; over UDP, RFC 5426 §3.2 guarantees only 480.
 
+This is the first of several compile-time limits you can override, and the override has
+to reach Core, the platform sources and your own code alike — see
+[tunables](build-integration.md#tunables), which covers the mechanism and the way it is
+most often got wrong.
+
 The cost is all RAM, and not where it looks. The record is built on the stack of
 whichever task calls `SolidSyslog_Log`, so the cap is the largest single demand the
 formatter makes of that task — setting it is what moves the record there. In the example
@@ -616,7 +621,7 @@ device negotiating a GCM ciphersuite for TLS has already linked the same primiti
 
 ## Where to go next
 
-- [Getting started](getting-started.md): the build detail behind the nods on this page.
+- [Adding it to your build](build-integration.md): the build detail behind the nods on this page, plus the tunables.
 - [Structured data](structured-data.md): authoring the evidence elements, and your own.
 - [Error handling and severity](error-severity.md): reading the events from stage 2.
 - [Compliance in one page](overview.md): what CRA and IEC 62443 ask of an audit-logging function.

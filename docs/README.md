@@ -21,15 +21,15 @@ Pick a lane:
 
 Everything you need to consume SolidSyslog in your product.
 
-- [Getting started](getting-started.md): the integrator front door. The capability matrix, both consumption paths (CMake and non-CMake / IAR / Keil source integration), the worked embedded manifest, the tunables, and a "your first log" walkthrough.
-- [Building up the protection you need](hardening-path.md): the integration path from a device with no syslog to a hardened one, a stage at a time, with the question that drives each step and an indication of what it costs.
+- [Building up the protection you need](hardening-path.md): start here. The integration path from a device with no syslog to a hardened one, a stage at a time, with the question that drives each step and an indication of what it costs.
+- [Adding it to your build](build-integration.md): the build detail. The capability matrix, the three ways to consume the library (CMake, Make, and a source manifest for an IDE project), and the compile-time tunables.
 - [Authoring custom structured data](structured-data.md): attaching RFC 5424 SD-ELEMENTs.
 - [Error-event severity policy](error-severity.md): installing an error handler and reading the event axes.
 - Platform integration guides:
   - [lwIP (Raw API)](integrating-lwip.md)
   - [Mbed TLS](integrating-mbedtls.md)
   - [FreeRTOS-Plus-FAT](integrating-plusfat.md)
-- Tunables: the compile-time limits, all `#ifndef`-guarded. See [Getting started → Tunables](getting-started.md#tunables) and [`Core/Interface/SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h).
+- Tunables: the compile-time limits, all `#ifndef`-guarded. See [Adding it to your build → Tunables](build-integration.md#tunables) and [`Core/Interface/SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h).
 
 ## Port a new platform
 

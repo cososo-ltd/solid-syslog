@@ -67,4 +67,4 @@ not discharge them on their own.
 - [IEC 62443 compliance guide](iec62443.md): the control-by-control map underneath this page.
 - [RFC compliance matrix](rfc-compliance.md): sender-side coverage of RFC 5424 / 5426 / 6587 / 5425.
 - [Security documentation](README.md#compliance): threat model, at-rest crypto, SBOM, triage, release verification.
-- [Getting started](getting-started.md): when you are ready to wire it up.
+- [Adding it to your build](build-integration.md): when you are ready to wire it up.

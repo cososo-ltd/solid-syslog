@@ -1505,7 +1505,7 @@ jobs:
         shell: bash
         run: |
           git diff --exit-code docs/generated/ \
-            || { echo "::error::docs/generated is stale — regenerate with the manifest target (see docs/getting-started.md)"; exit 1; }
+            || { echo "::error::docs/generated is stale — regenerate with the manifest target (see docs/build-integration.md)"; exit 1; }
 
       # Every manifest section's file list must equal that directory's *.c,
       # compared against the filesystem rather than the build targets, so a

@@ -1,8 +1,12 @@
-# Getting started
+# Adding it to your build
 
-This is the integrator front door. It gets a real syslog stack compiling and
-sending in your project, whether you build with CMake or drop the sources
-straight into an IAR / Keil / MPLAB / CCS project or a hand-written Makefile.
+This page gets SolidSyslog compiling in your project. It covers the three ways to
+consume it — CMake, Make, and a source manifest for an IDE project — along with the
+adapters available for each role and the compile-time tunables.
+
+For what to wire and why, in the order an integration is usually built up, see
+[building up the protection you need](hardening-path.md). This page is the build
+detail behind it.
 
 > Building the library itself (presets, tests, CI)? That is the *contributor*
 > path; see [builds.md](builds.md). This page is for consuming SolidSyslog
@@ -10,8 +14,7 @@ straight into an IAR / Keil / MPLAB / CCS project or a hand-written Makefile.
 
 ## How SolidSyslog composes
 
-There is no monolith to subtract from. You assemble exactly the stack you need
-from three layers:
+You assemble the stack you need from three layers:
 
 1. Core: always present. The `SolidSyslog.h` API, the
    formatter/message pipeline, error reporting, the buffer / store / structured-data
@@ -104,7 +107,7 @@ later epic, but the seams exist today.)
 
 ---
 
-## Path A — CMake consumer
+## CMake
 
 Name the platforms you want and link what they provide:
 
@@ -260,10 +263,71 @@ umbrellas), and the platform-specific guides:
 
 ---
 
-## Path B — non-CMake integrator (the manifest)
+## Make
 
-For an IAR / Keil / MPLAB / CCS native project or a hand-written Makefile, a
-SolidSyslog integration is three things:
+The library ships `solidsyslog.mk` at its root. Name the platforms you want and include
+it:
+
+```make
+SOLIDSYSLOG_PLATFORMS := LwipRaw Atomics FreeRtos MbedTls FatFs
+include third_party/solid-syslog/solidsyslog.mk
+```
+
+It sets five variables and defines no rules, so your build keeps its own object layout,
+flag sets and archive step:
+
+| Variable | Holds |
+|---|---|
+| `SOLIDSYSLOG_CORE_SRCS` | the Core `.c` set |
+| `SOLIDSYSLOG_PLATFORM_SRCS` | the `.c` files of the platforms you named |
+| `SOLIDSYSLOG_SRCS` | both of the above |
+| `SOLIDSYSLOG_CORE_INCLUDES` | the include set for compiling Core |
+| `SOLIDSYSLOG_INCLUDES` | the include set for the platform sources, and for your own code calling the library |
+
+`SOLIDSYSLOG_PLATFORMS` takes the same vocabulary as the CMake variable of that name.
+Naming no platform yields Core alone. Naming one that does not exist is an error that
+lists the ones that do, rather than a build that quietly omits every adapter it was
+supposed to bring.
+
+Core and the platform sources are listed separately because they compile differently.
+Core builds against the library's own headers; the platform sources must see your flags
+and your config headers (`lwipopts.h`, `FreeRTOSConfig.h`, `mbedtls_config.h`,
+`ffconf.h`), for the reason given in [how SolidSyslog composes](#how-solidsyslog-composes)
+above. A typical consumer therefore compiles the two groups with different flag sets and
+archives Core on its own:
+
+<!-- markdownlint-disable MD010 — a Make recipe line must begin with a literal tab, so the snippet carries one for a reader who copies it. -->
+
+```make
+$(SOLIDSYSLOG_CORE_OBJS): CFLAGS := $(COMMON_CFLAGS) $(SOLIDSYSLOG_CORE_INCLUDES) $(SOLIDSYSLOG_USER_TUNABLES)
+
+$(BUILD)/libSolidSyslog.a: $(SOLIDSYSLOG_CORE_OBJS)
+	$(AR) rcs $@ $^
+```
+
+<!-- markdownlint-enable MD010 -->
+
+There is no separate link step and no distinction between platforms that are named and
+platforms that are linked. That distinction exists only for CMake consumers, who receive
+some platforms inside `libSolidSyslog.a`; a Make build has no such library, so naming
+`Atomics` compiles its sources exactly as naming `LwipRaw` compiles its own.
+
+Each adapter gates itself on the upstream option it needs, so naming a platform is safe
+whatever your configuration. A build with `LWIP_DNS=0` compiles the lwIP DNS resolver to
+nothing rather than failing, and nothing has to be excluded by hand.
+
+Set `SOLIDSYSLOG_DIR` before the `include` if the library does not sit where the fragment
+does — by default it locates itself.
+
+[`solid-syslog-example-make`](https://github.com/cososo-ltd/solid-syslog-example-make) is
+a worked consumer of this shape, cross-building FreeRTOS, lwIP, Mbed TLS and FatFs.
+
+---
+
+## IDE and manifest builds
+
+For an IAR / Keil / MPLAB / CCS native project, a SolidSyslog integration is three
+things:
 
 1. Source files: the Core `.c` set plus the selected adapter `.c` files. Add
    them to your project's source list / compile them in your Makefile.
@@ -407,79 +471,35 @@ implementation per role, so you size "how many TCP streams", never "how many
 POSIX streams". The pool counts concurrent instances. See the header's
 top-of-file comment for the full rationale.
 
----
+### The override must reach every translation unit
 
-## Your first log
+Several tunables are compile-time sizes inside library structs. A build where only some
+translation units saw the override would disagree about how large those structs are, and
+it would link without complaint before misbehaving at run time.
 
-The application-facing API is tiny: `Create` once at setup, then `Log` from
-anywhere and `Service` from your drain loop:
+Apply the define to Core, to the platform sources, and to your own code that includes a
+SolidSyslog header — all three, with the same value. A CMake consumer gets this from the
+library, which propagates `SOLIDSYSLOG_USER_TUNABLES_FILE` to everything that needs it.
+A Make or manifest consumer applies it themselves, and this is the most common way to get
+a tunables setup wrong.
 
-```c
-#include "SolidSyslog.h"
-#include "SolidSyslogConfig.h"
-/* Setup also includes one header per component it wires — e.g.
- * "SolidSyslogCircularBuffer.h", "SolidSyslogStreamSender.h",
- * "SolidSyslogBlockStore.h", "SolidSyslogPosixClock.h". Code that only
- * logs or drains (elsewhere in your app) includes just "SolidSyslog.h". */
+If you use `SOLIDSYSLOG_USER_TUNABLES_FILE`, its value is consumed by `#include`, so give
+an absolute path and escape the quotes. Core compiles without your application's include
+path, so a bare filename will not be found:
 
-/* 1. Build a config and create the logger (setup code).
- *    Wire your chosen Buffer, Sender, Store, clock and header-field
- *    callbacks into the config struct — the worked manifest and the
- *    platform guides show how to build each one for your stack. */
-struct SolidSyslogConfig config = {
-    .Buffer      = myBuffer,      /* e.g. SolidSyslogCircularBuffer_Create(...) */
-    .Sender      = mySender,      /* e.g. SolidSyslogStreamSender_Create(...)   */
-    .Store       = myStore,       /* e.g. SolidSyslogBlockStore_Create(...) or NULL */
-    .Clock       = myClock,       /* SolidSyslogClockFunction */
-    .GetHostname = myHostname,    /* SolidSyslogHeaderFieldFunction */
-    .GetAppName  = myAppName,
-    .GetProcessId = myProcessId,
-    /* .Sd / .SdCount for per-instance structured data, optional */
-};
-
-struct SolidSyslog* logger = SolidSyslog_Create(&config);
-
-/* 2. Log an event (anywhere in your application). */
-struct SolidSyslogMessage message = {
-    .Facility  = SOLIDSYSLOG_FACILITY_LOCAL0,
-    .Severity  = SOLIDSYSLOG_SEVERITY_INFORMATIONAL,
-    .MessageId = "BOOT",
-    .Msg       = "system started",
-};
-SolidSyslog_Log(logger, &message);
-
-/* 3. Drain the buffer to the network (your Service task / main loop). */
-for (;;) {
-    SolidSyslog_Service(logger);
-    /* ... your scheduling / sleep ... */
-}
-
-/* 4. On shutdown (rare on embedded). */
-SolidSyslog_Destroy(logger);
+```make
+SOLIDSYSLOG_USER_TUNABLES := -DSOLIDSYSLOG_USER_TUNABLES_FILE=\"$(CURDIR)/$(APP_DIR)/config/solid_syslog_tunables.h\"
 ```
-
-With a `PassthroughBuffer`, `Log` sends inline and the `Service` loop is a no-op.
-With a `CircularBuffer` (the embedded default), `Log` enqueues and `Service`
-drains; run `Service` from a dedicated task. To attach per-message structured
-data, use `SolidSyslog_LogWithSd` instead of `SolidSyslog_Log`.
-
-Code that logs an event or drains the queue (the `Service` loop) includes only
-`SolidSyslog.h`. Building the logger is the other job: it includes
-`SolidSyslogConfig.h` plus one header per component it wires (a Sender, a Buffer,
-an optional Store, structured data, and the clock / hostname / app-name
-callbacks), fills the config once, and hands the returned handle to the other
-two. See the [API reference](api-reference/index.md) for the header-by-job map.
-
----
 
 ## Where to go next
 
+- [Building up the protection you need](hardening-path.md): what to wire and why, stage by stage
 - [Integrating with lwIP (Raw API)](integrating-lwip.md)
 - [Integrating with Mbed TLS](integrating-mbedtls.md)
 - [Integrating with FreeRTOS-Plus-FAT](integrating-plusfat.md)
 - [Porting to a new platform](porting.md): writing an adapter for an OS, network stack, filesystem, or crypto library we don't ship
 - [Structured data](structured-data.md)
 - [Error handling and severity](error-severity.md)
-- [IEC 62443 component selection by Security Level](iec62443.md)
+- [IEC 62443 guide](iec62443.md)
 - [RFC compliance matrix](rfc-compliance.md)
 - [builds.md](builds.md): building/testing the library itself (contributors)

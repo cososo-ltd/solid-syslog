@@ -33,9 +33,8 @@ over Mbed TLS, persistent store-and-forward over ChaN FatFs or FreeRTOS-Plus-FAT
 — and for POSIX and Windows, fully supported as development, test, and edge /
 gateway hosts. Bring your own stack and the same Core runs unchanged.
 
-The library is pre-1.0: the public API may still change and carries no stability
-guarantee yet. TLS revocation (CRL / OCSP) is delegated to the platform trust
-store rather than performed by the library.
+TLS revocation (CRL / OCSP) is delegated to the platform trust store rather than
+performed by the library.
 
 ## Documentation
 
@@ -43,22 +42,25 @@ Full documentation lives in [`docs/`](docs/README.md) — the documentation home
 organised around what you came to do: **Overview**, **Adopt**, **Port a new
 platform**, **Compliance**, **API reference**, and **Maintaining**. New here?
 [Compliance in one page](docs/overview.md) is the fastest orientation for
-evaluators; [Getting started](docs/getting-started.md) is the integrator front
-door.
+evaluators; [Building up the protection you need](docs/hardening-path.md) is
+where an integrator starts.
 
-## Getting started
+## Integrating it
 
-New to SolidSyslog? Start at [Getting started](docs/getting-started.md) — the
-integrator front door. It covers picking your stack from the capability matrix,
-both consumption paths (CMake and non-CMake / IAR / Keil source integration), a
-copy-pasteable manifest for an embedded stack, the tunables, and a minimal "your
-first log" walkthrough.
+[Building up the protection you need](docs/hardening-path.md) walks an
+integration from a device with no syslog to a hardened one, one stage at a time,
+stating what each stage adds, the question that decides whether you need it, and
+an indication of what it costs.
+
+[Adding it to your build](docs/build-integration.md) is the build detail behind
+it: the capability matrix, the three ways to consume the library — CMake, Make,
+and a source manifest for an IDE project — and the compile-time tunables.
 
 ## Building and testing
 
 Developing the library itself? See [Building and testing](docs/builds.md) — the
 contributor/maintainer preset catalogue. (Consuming the library in your product
-is the [Getting started](docs/getting-started.md) path above.)
+is the [integration path](docs/hardening-path.md) above.)
 
 ## Architecture
 
