@@ -102,7 +102,7 @@
   <g filter="url(#postitShadow)"><rect x="915" y="270" width="200" height="82" fill="#f6c6c6" transform="rotate(1 1015 311)"/></g>
   <g transform="rotate(1 1015 311)" fill="#4a2c2c"><text x="933" y="304" font-size="15" font-weight="bold">Platform net</text><text x="933" y="326" font-size="11.5" font-family="'Segoe UI', sans-serif">your socket · TLS library</text><text x="933" y="343" font-size="11.5" font-family="'Segoe UI', sans-serif">(OpenSSL / mbedTLS / …)</text></g>
 
-  <!-- Platform storage (injected). The full BlockStore -> BlockDevice -> File chain is its own diagram (storage.svg). -->
+  <!-- Platform storage (injected). The full BlockStore -> BlockDevice -> File chain is described in the hardening path, stage 11. -->
   <g filter="url(#postitShadow)"><rect x="915" y="400" width="200" height="82" fill="#f6c6c6" transform="rotate(1 1015 441)"/></g>
   <g transform="rotate(1 1015 441)" fill="#4a2c2c"><text x="933" y="430" font-size="15" font-weight="bold">Platform storage</text><text x="933" y="452" font-size="11.5" font-family="'Segoe UI', sans-serif">a BlockDevice + File you supply</text><text x="933" y="470" font-size="11.5" font-family="'Segoe UI', sans-serif">→ FatFs · POSIX · raw flash</text></g>
 

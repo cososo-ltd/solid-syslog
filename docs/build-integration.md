@@ -406,7 +406,7 @@ those it describes in prose rather than emitting, because they are yours to set.
 For this stack that comes to:
 
 ```text
--DSOLIDSYSLOG_USER_TUNABLES_FILE="my_tunables.h"   # your tunable overrides
+-DSOLIDSYSLOG_USER_TUNABLES_FILE="/abs/path/to/my_tunables.h"   # your tunable overrides
 -DLWIP_DNS=1                                        # enables the lwIP DNS resolver
 ```
 
@@ -457,7 +457,7 @@ library. Two equivalent mechanisms (works the same for CMake and non-CMake):
 - A whole file of overrides:
 
   ```text
-  -DSOLIDSYSLOG_USER_TUNABLES_FILE="my_tunables.h"
+  -DSOLIDSYSLOG_USER_TUNABLES_FILE="/abs/path/to/my_tunables.h"
   ```
 
   Your `my_tunables.h` just `#define`s the values you want to change; the

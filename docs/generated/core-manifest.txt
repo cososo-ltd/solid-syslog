@@ -5,7 +5,7 @@
 #
 # A non-CMake integrator (IAR / Keil / MPLAB / CCS / Make) compiles the .c
 # files below, with the include dirs on the compiler path, against their own
-# config headers. See docs/getting-started.md for the walkthrough.
+# config headers. See docs/build-integration.md for the walkthrough.
 #
 # This is the Core half, required by every integration. Add one platform
 # manifest for each platform you picked; there is no fixed combination.
