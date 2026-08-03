@@ -148,8 +148,7 @@ These are properties of the shipped code, not aspirations:
 - Log content confidentiality/correctness: yours. See obligations.
 - End-to-end integrity through log relays: not provided. TLS protects each
   hop only; once a relay terminates the connection, SolidSyslog offers no
-  cryptographic guarantee that downstream records are unaltered. RFC 5848 message
-  signing is the standard answer and is not implemented.
+  cryptographic guarantee that downstream records are unaltered.
 - Replay of captured records: TLS prevents replay within a live session, but
   SolidSyslog adds no cryptographic anti-replay of its own. Anyone able to
   re-inject records downstream of a terminated TLS hop (a malicious or compromised

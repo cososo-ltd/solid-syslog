@@ -585,10 +585,9 @@ between the device and the SIEM, which is a common industrial shape, this stage 
 an authenticated first hop rather than end-to-end attribution.
 
 Where that matters, `OriginSd` from stages 12 and 15 is what the device says about
-itself and survives the hop, and the collector's trust in it rests on the relay. Record
-signing per RFC 5848, which would carry origin across a relay cryptographically, is not
-implemented. The [threat model](security/threat-model.md) states this limitation and the
-related replay exposure in full.
+itself and survives the hop, and the collector's trust in it rests on the relay. The
+[threat model](security/threat-model.md) states this limitation and the related replay
+exposure in full.
 
 **When you need it.** When the receiver has to authenticate the device rather than take
 its word — a collector that requires client certificates, or a deployment where the
