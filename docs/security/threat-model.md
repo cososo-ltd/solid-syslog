@@ -51,7 +51,7 @@ accessible.
 |---|---|---|---|
 | B1 | Your code ↔ library | In-process API surface | The library trusts its caller but defends its own invariants and the wire framing (see *Defended by construction*). |
 | B2 | Library ↔ network | Real boundary — the network is untrusted | TLS/mTLS (RFC 5425) provides confidentiality, authenticity, and hop integrity. Plain UDP/TCP provide none. |
-| B3 | Library ↔ storage medium | Real boundary if the medium is physically accessible (removable/embedded/stolen) | Optional at-rest integrity (CRC-16) and cryptographic policies (HMAC-SHA256, AES-GCM). |
+| B3 | Library ↔ storage medium | Real boundary if the medium is physically accessible (removable/embedded/stolen) | Optional keyed at-rest policies (HMAC-SHA256, AES-GCM). The unkeyed CRC-16 policy addresses accidental corruption only, not an attacker with access to the medium. |
 | B4 | Log producer ↔ consumer (the buffer) | Conditional — see below | None. Buffer contents are treated as trusted bytes. |
 
 ### B4 — the conditional buffer boundary
@@ -165,7 +165,8 @@ These are properties of the shipped code, not aspirations:
 - Network denial of service: a sender cannot prevent it. The library degrades
   gracefully (store-and-forward, discard policies) but cannot keep packets flowing.
 - Physical extraction of stored logs when no at-rest policy is selected: the
-  default store is plaintext + CRC-16 (integrity, not confidentiality).
+  default store is plaintext + CRC-16, which detects accidental corruption and
+  provides neither confidentiality nor tamper-evidence.
 
 ## Residual risks
 

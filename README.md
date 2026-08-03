@@ -96,7 +96,7 @@ Public headers are split by audience (Interface Segregation Principle):
   Disconnect and lazily reopen when the version changes — supports runtime address rotation
 - **`SolidSyslogStoreDefinition.h`** / **`SolidSyslogBlockStore.h`** — BlockDevice-backed store-and-forward with rotating blocks
 - **`SolidSyslogSecurityPolicyDefinition.h`** — extension point for record integrity policies
-- **`SolidSyslogCrc16Policy.h`** — CRC-16/CCITT-FALSE integrity policy
+- **`SolidSyslogCrc16Policy.h`** — CRC-16/CCITT-FALSE checksum policy: detects accidental corruption, not tampering
 - **`SolidSyslogStructuredDataDefinition.h`** — extension point for custom structured data
 - **`SolidSyslogMetaSd.h`** — meta structured data (RFC 5424 §7.3): sequenceId, sysUpTime, language
 - **`SolidSyslogTimeQualitySd.h`** — timeQuality structured data (RFC 5424 §7.1): tzKnown, isSynced, syncAccuracy
