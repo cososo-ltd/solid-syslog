@@ -560,8 +560,8 @@ member whose pipeline has silently degraded.
 Server-authenticated TLS proves the collector is genuine. It does not tell the collector
 which device it is talking to: any client the collector will admit can connect, and the
 device name in the record is a claim rather than a proof. Adding a client certificate
-and its key makes the handshake mutual, so the collector authenticates the device
-cryptographically and can attribute a record to it.
+and its key makes the handshake mutual, so the receiver authenticates the device
+cryptographically.
 
 ```c
 struct SolidSyslogMbedTlsStreamConfig tlsConfig = {
@@ -576,13 +576,28 @@ server-authenticated rather than failing, which is exactly the weakening an audi
 would look for — which is why the pipeline element in stage 18 reports what is actually
 in force rather than what was intended.
 
-**When you need it.** When a record's origin has to be provable rather than asserted —
-non-repudiation, or simply a collector that requires client certificates. It is not a
-free upgrade. Mutual TLS needs a certificate per device, somewhere safe to keep the
-private key, and an issuing and revocation process behind both. A device that keeps its
-key in readable flash gains the appearance of attribution without the substance. Where
-devices are already identified at another layer, or where there is no device PKI to
-build on, server-authenticated TLS is an honest place to stop.
+**What it authenticates is the TLS peer.** If the device connects to the collector
+directly, that is the device. If anything terminates the connection in between — a
+relay, a gateway, a broker — then the collector authenticates that hop, not the device
+behind it, and the device's identity in the record is once again a claim. TLS protects
+each hop; it does not carry provenance across one. On a control network with a relay
+between the device and the SIEM, which is a common industrial shape, this stage buys you
+an authenticated first hop rather than end-to-end attribution.
+
+Where that matters, `OriginSd` from stages 12 and 15 is what the device says about
+itself and survives the hop, and the collector's trust in it rests on the relay. Record
+signing per RFC 5848, which would carry origin across a relay cryptographically, is not
+implemented. The [threat model](security/threat-model.md) states this limitation and the
+related replay exposure in full.
+
+**When you need it.** When the receiver has to authenticate the device rather than take
+its word — a collector that requires client certificates, or a deployment where the
+device reaches the collector directly and origin has to be provable. It is not a free
+upgrade. Mutual TLS needs a certificate per device, somewhere safe to keep the private
+key, and an issuing and revocation process behind both. A device that keeps its key in
+readable flash gains the appearance of attribution without the substance. Where devices
+are already identified at another layer, or where there is no device PKI to build on,
+server-authenticated TLS is an honest place to stop.
 
 **Cost.** Flash ~70 B, RAM ~2k. Presenting a certificate costs almost no code; the RAM
 is the TLS library's working buffer growing to carry the client certificate through the

@@ -6,6 +6,11 @@ two parts: Part I covers the properties of the product, Part II the manufacturer
 vulnerability-handling process. This page maps the audit-trail-relevant parts of both to
 what SolidSyslog provides and what stays yours.
 
+The Regulation applies from **11 December 2027**, with two earlier dates: Chapter IV
+(Articles 35 to 51) from 11 June 2026, and Article 14, the manufacturer's reporting
+obligations for actively exploited vulnerabilities and severe incidents, from 11
+September 2026.
+
 > [!NOTE]
 > SolidSyslog is a component, not a product. IEC 62443 certifies systems, and CRA
 > obligations fall on the manufacturer placing a product on the market. What follows is
@@ -28,9 +33,9 @@ maintenance. The Part I requirements then apply *on the basis of* that assessmen
 So the regulation does not hand you a fixed specification, and two products can meet it
 with very different implementations. What your device needs from its audit trail is an
 output of your risk assessment and your documented intended purpose. That is the same
-reasoning behind [building up the protection you need](hardening-path.md), which walks the
-capabilities in the order an integration usually adds them so you can stop where your own
-assessment says to.
+reasoning behind [building up the protection you need](hardening-path.md), which walks
+the capabilities in the order an integration usually adds them so you can stop where
+your own assessment says to.
 
 ## Part I (2)(l) — the requirement that names logging
 
@@ -38,9 +43,9 @@ assessment says to.
 > activity, including the access to or modification of data, services or functions, with
 > an opt-out mechanism for the user
 
-This is the requirement SolidSyslog exists to serve. The library formats RFC 5424 records
-and delivers them to a collector, so what your device records becomes evidence a SIEM can
-consume, correlate across devices, and retain.
+This is the requirement SolidSyslog exists to serve. The library formats RFC 5424
+records and delivers them to a collector, so what your device records becomes evidence a
+SIEM can consume, correlate across devices, and retain.
 
 | What the point asks for | What SolidSyslog provides |
 |---|---|
@@ -50,8 +55,8 @@ consume, correlate across devices, and retain.
 | Activity that must survive the device | Store-and-forward across outages and reboots, with at-rest protection |
 
 **What stays yours.** Deciding which internal activity is relevant. Providing the user's
-opt-out mechanism, which is a product-level control the library has no view of. Retention,
-access control and disposal at the collector.
+opt-out mechanism, which is a product-level control the library has no view of.
+Retention, access control and disposal at the collector.
 
 ## Part I — requirements an audit trail contributes to
 
@@ -61,13 +66,13 @@ call for reporting.
 
 | Point | What it asks for | How the audit trail contributes |
 |---|---|---|
-| **(2)(d)** | protection from unauthorised access, and *report on possible unauthorised access* | The reporting half. Access events reach the collector as records; mutual TLS lets the collector authenticate which device sent them |
+| **(2)(d)** | protection from unauthorised access, and *report on possible unauthorised access* | The reporting half only, and only the carriage of it: your application detects the access and decides it is reportable, the library delivers the record. Mutual TLS authenticates the TLS peer to the receiver, which is the device itself only where it connects directly |
 | **(2)(e)** | confidentiality of stored, transmitted or otherwise processed data, including by encryption at rest or in transit | TLS in transit; authenticated encryption at rest for the spooled store. Records routinely carry data you would not publish |
 | **(2)(f)** | integrity of stored and transmitted data against unauthorised modification, and *report on corruptions* | A keyed at-rest policy makes stored records tamper-evident rather than merely checksummed; TLS protects them in transit; the error handler surfaces corruption the store detects |
 | **(2)(h)** | availability of essential and basic functions, also after an incident | Buffering keeps logging off the critical path, and store-and-forward keeps records through an outage so the trail survives the incident it recorded |
 
-Where each of these sits on the integration path, and what it costs, is on
-[building up the protection you need](hardening-path.md).
+Where each of these sits on the integration path, and what it costs, is on [building up
+the protection you need](hardening-path.md).
 
 ## Part II — supporting your vulnerability handling
 
@@ -82,10 +87,10 @@ consuming.
 | **(5)**, **(6)** | a coordinated vulnerability disclosure policy, and a contact address | [`SECURITY.md`](../SECURITY.md) |
 | **(7)** | securely distribute updates | [Release verification](security/release-verification.md): signed, reproducible artefacts you can check before adopting |
 
-Secure-by-design evidence for your technical file is in the
-[threat model](security/threat-model.md) and
-[at-rest cryptography](security/at-rest-cryptography.md), which state what the library
-defends by construction and what it delegates to you by contract.
+Secure-by-design evidence for your technical file is in the [threat
+model](security/threat-model.md) and [at-rest
+cryptography](security/at-rest-cryptography.md), which state what the library defends by
+construction and what it delegates to you by contract.
 
 ## Where to go next
 

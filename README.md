@@ -33,8 +33,8 @@ over Mbed TLS, persistent store-and-forward over ChaN FatFs or FreeRTOS-Plus-FAT
 — and for POSIX and Windows, fully supported as development, test, and edge /
 gateway hosts. Bring your own stack and the same Core runs unchanged.
 
-TLS revocation (CRL / OCSP) is delegated to the platform trust store rather than
-performed by the library.
+TLS revocation (CRL / OCSP) is not performed by the library. Whether it is
+enforced depends on the TLS backend and platform you configure.
 
 ## Documentation
 
