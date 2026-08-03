@@ -299,6 +299,10 @@ archives Core on its own:
 <!-- markdownlint-disable MD010 — a Make recipe line must begin with a literal tab, so the snippet carries one for a reader who copies it. -->
 
 ```make
+# Yours, not the fragment's: it sets no object lists and defines no rules.
+SOLIDSYSLOG_CORE_OBJS     := $(SOLIDSYSLOG_CORE_SRCS:%.c=$(OBJ_DIR)/%.o)
+SOLIDSYSLOG_USER_TUNABLES := -DSOLIDSYSLOG_USER_TUNABLES_FILE=\"$(CURDIR)/config/solid_syslog_tunables.h\"
+
 $(SOLIDSYSLOG_CORE_OBJS): CFLAGS := $(COMMON_CFLAGS) $(SOLIDSYSLOG_CORE_INCLUDES) $(SOLIDSYSLOG_USER_TUNABLES)
 
 $(BUILD)/libSolidSyslog.a: $(SOLIDSYSLOG_CORE_OBJS)
