@@ -3,7 +3,7 @@
 > This is the contributor / maintainer build doc: the CMake preset catalogue
 > for developing the library and reproducing CI lanes locally. If you are
 > consuming SolidSyslog in your own product (CMake or non-CMake), start at
-> [Getting started](getting-started.md) instead.
+> [Adding it to your build](build-integration.md) instead.
 
 All builds use CMake presets. Output goes to `build/<preset>/`.
 

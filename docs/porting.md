@@ -1,10 +1,5 @@
 # Porting SolidSyslog to a new platform
 
-> [!WARNING]
-> The documentation is under active development and may be incomplete or
-> inaccurate. Do not rely on it for integration, security, or compliance
-> decisions until the 0.1.0 release.
-
 Porting SolidSyslog to a new OS, network stack, filesystem, or crypto library is
 filling a role, not editing Core. Core never changes. You write a small
 adapter that satisfies one of the twelve vtable contracts, drop it into your
@@ -40,7 +35,7 @@ running against a well-behaved do-nothing. So porting is additive: you provide
 the roles your deployment needs and leave the rest to their Nulls. You never edit
 Core, and you never touch a role you don't use.
 
-The [capability matrix in Getting started](getting-started.md#pick-your-stack--capability-matrix)
+The [capability matrix](build-integration.md#pick-your-stack--capability-matrix)
 lists every role and the adapters that ship for it; this page is what you write
 when none of the shipped adapters fits your platform.
 
@@ -235,10 +230,10 @@ product and one further state, absent, which has no behaviour to test.
 - CMake. Group the adapter sources into a namespaced umbrella target
   (`SolidSyslog::<Pack>`) so linking one target compiles the adapter into the
   consumer against its config headers. See the umbrella list in
-  [Getting started → Path A](getting-started.md#path-a--cmake-consumer).
+  [the CMake section of the build guide](build-integration.md#cmake).
 - Non-CMake. Add the adapter's `.c` files to your project and put its
   `Interface/` and `Source/` on the include path. The
-  [manifest](getting-started.md#path-b--non-cmake-integrator-the-manifest)
+  [manifest](build-integration.md#ide-and-manifest-builds)
   generator lists the exact files for a chosen set of platforms.
 
 ## The twelve role contracts
@@ -311,7 +306,7 @@ reference to read first.
 
 ## Where to go next
 
-- [Getting started](getting-started.md): the capability matrix, tunables, and build wiring.
+- [Adding it to your build](build-integration.md): the capability matrix, tunables, and build wiring.
 - [Integrating with lwIP (Raw API)](integrating-lwip.md), [Mbed TLS](integrating-mbedtls.md), [FreeRTOS-Plus-FAT](integrating-plusfat.md): worked ports of the networking, TLS, and file roles.
 - [Naming conventions](NAMING.md) and [MISRA deviations](misra-deviations.md): the rules Tier 1/2 adapter code follows.
 - [Error-event severity policy](error-severity.md): choosing the severity for your adapter's reports.

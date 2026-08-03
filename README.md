@@ -1,10 +1,5 @@
 # SolidSyslog
 
-> [!WARNING]
-> **The documentation is under active development and may be incomplete or
-> inaccurate.** Do not rely on it — for integration, security, or compliance
-> decisions — until the 0.1.0 release.
-
 A structured syslog client library for embedded and industrial systems, implementing
 RFC 5424 (structured syslog) with RFC 5426 (UDP) and RFC 6587 (TCP) transports.
 TLS per RFC 5425 is available via a pluggable Stream abstraction — the repo ships
@@ -38,9 +33,8 @@ over Mbed TLS, persistent store-and-forward over ChaN FatFs or FreeRTOS-Plus-FAT
 — and for POSIX and Windows, fully supported as development, test, and edge /
 gateway hosts. Bring your own stack and the same Core runs unchanged.
 
-The library is pre-1.0: the public API may still change and carries no stability
-guarantee yet. TLS revocation (CRL / OCSP) is delegated to the platform trust
-store rather than performed by the library.
+TLS revocation (CRL / OCSP) is not performed by the library. Whether it is
+enforced depends on the TLS backend and platform you configure.
 
 ## Documentation
 
@@ -48,22 +42,25 @@ Full documentation lives in [`docs/`](docs/README.md) — the documentation home
 organised around what you came to do: **Overview**, **Adopt**, **Port a new
 platform**, **Compliance**, **API reference**, and **Maintaining**. New here?
 [Compliance in one page](docs/overview.md) is the fastest orientation for
-evaluators; [Getting started](docs/getting-started.md) is the integrator front
-door.
+evaluators; [Building up the protection you need](docs/hardening-path.md) is
+where an integrator starts.
 
-## Getting started
+## Integrating it
 
-New to SolidSyslog? Start at [Getting started](docs/getting-started.md) — the
-integrator front door. It covers picking your stack from the capability matrix,
-both consumption paths (CMake and non-CMake / IAR / Keil source integration), a
-copy-pasteable manifest for an embedded stack, the tunables, and a minimal "your
-first log" walkthrough.
+[Building up the protection you need](docs/hardening-path.md) walks an
+integration from a device with no syslog to a hardened one, one stage at a time,
+stating what each stage adds, the question that decides whether you need it, and
+an indication of what it costs.
+
+[Adding it to your build](docs/build-integration.md) is the build detail behind
+it: the capability matrix, the three ways to consume the library — CMake, Make,
+and a source manifest for an IDE project — and the compile-time tunables.
 
 ## Building and testing
 
 Developing the library itself? See [Building and testing](docs/builds.md) — the
 contributor/maintainer preset catalogue. (Consuming the library in your product
-is the [Getting started](docs/getting-started.md) path above.)
+is the [integration path](docs/hardening-path.md) above.)
 
 ## Architecture
 
@@ -99,7 +96,7 @@ Public headers are split by audience (Interface Segregation Principle):
   Disconnect and lazily reopen when the version changes — supports runtime address rotation
 - **`SolidSyslogStoreDefinition.h`** / **`SolidSyslogBlockStore.h`** — BlockDevice-backed store-and-forward with rotating blocks
 - **`SolidSyslogSecurityPolicyDefinition.h`** — extension point for record integrity policies
-- **`SolidSyslogCrc16Policy.h`** — CRC-16/CCITT-FALSE integrity policy
+- **`SolidSyslogCrc16Policy.h`** — CRC-16/CCITT-FALSE checksum policy: detects accidental corruption, not tampering
 - **`SolidSyslogStructuredDataDefinition.h`** — extension point for custom structured data
 - **`SolidSyslogMetaSd.h`** — meta structured data (RFC 5424 §7.3): sequenceId, sysUpTime, language
 - **`SolidSyslogTimeQualitySd.h`** — timeQuality structured data (RFC 5424 §7.1): tzKnown, isSynced, syncAccuracy
@@ -120,7 +117,7 @@ per platform, all named `SolidSyslogBddTarget`:
 ## Compliance
 
 - [Compliance in one page](docs/overview.md) — the evaluator's one-screen orientation on CRA and IEC 62443
-- [Choosing components by Security Level](docs/security-levels.md) — which components to wire for each SL, and why
+- [Building up the protection you need](docs/hardening-path.md) — the integration path, stage by stage, with an indication of what each costs
 - [IEC 62443 Compliance Guide](docs/iec62443.md) — component selection by Security Level (SL1–SL4) for industrial control systems
 - [RFC Compliance Matrix](docs/rfc-compliance.md) — sender-side coverage of RFC 5424, 5426, 6587, and 5425
 

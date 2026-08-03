@@ -1,17 +1,12 @@
 # ![SolidSyslog](assets/images/solidsyslog-mark-a.svg)
 
-> [!WARNING]
-> The documentation is under active development and may be incomplete or
-> inaccurate. Do not rely on it for integration, security, or compliance
-> decisions until the 0.1.0 release.
-
 This is the documentation home. It is organised around what you came to do.
 Pick a lane:
 
 - [Overview](#overview): what SolidSyslog is and how it helps with CRA and IEC 62443 compliance.
 - [Adopt it](#adopt): get a syslog stack compiling and sending in your product.
 - [Port it to a new platform](#port-a-new-platform): fill a role for an OS, network stack, filesystem, or crypto library we don't ship yet.
-- [Compliance](#compliance): IEC 62443, the RFCs, and the security posture.
+- [Compliance](#compliance): the CRA, IEC 62443, the RFCs, and the security posture.
 - [API reference](#api-reference): the public contracts, by audience.
 - [Maintaining the library](#maintaining): building, testing, and releasing SolidSyslog itself.
 
@@ -26,15 +21,15 @@ Pick a lane:
 
 Everything you need to consume SolidSyslog in your product.
 
-- [Getting started](getting-started.md): the integrator front door. The capability matrix, both consumption paths (CMake and non-CMake / IAR / Keil source integration), the worked embedded manifest, the tunables, and a "your first log" walkthrough.
-- [Choosing components by Security Level](security-levels.md): which roles to fill for a good story at each SL, framed around your deployment's drivers, with worked starter combinations.
+- [Building up the protection you need](hardening-path.md): start here. The integration path from a device with no syslog to a hardened one, a stage at a time, with the question that drives each step and an indication of what it costs.
+- [Adding it to your build](build-integration.md): the build detail. The capability matrix, the three ways to consume the library (CMake, Make, and a source manifest for an IDE project), and the compile-time tunables.
 - [Authoring custom structured data](structured-data.md): attaching RFC 5424 SD-ELEMENTs.
 - [Error-event severity policy](error-severity.md): installing an error handler and reading the event axes.
 - Platform integration guides:
   - [lwIP (Raw API)](integrating-lwip.md)
   - [Mbed TLS](integrating-mbedtls.md)
   - [FreeRTOS-Plus-FAT](integrating-plusfat.md)
-- Tunables: the compile-time limits, all `#ifndef`-guarded. See [Getting started → Tunables](getting-started.md#tunables) and [`Core/Interface/SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h).
+- Tunables: the compile-time limits, all `#ifndef`-guarded. See [Adding it to your build → Tunables](build-integration.md#tunables) and [`Core/Interface/SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h).
 
 ## Port a new platform
 
@@ -47,7 +42,8 @@ Core's Null object stands in.
 ## Compliance
 
 - [Compliance in one page](overview.md): start here.
-- [IEC 62443 compliance guide](iec62443.md): component selection by Security Level (SL1–SL4), mapped control-by-control to IEC 62443-4-2 CRs and 62443-3-3 SRs.
+- [CRA guide](cra.md): the Annex I map — the requirement that names logging, the requirements an audit trail contributes to, and what the project publishes for your vulnerability handling.
+- [IEC 62443 compliance guide](iec62443.md): the audit-logging-relevant 62443-4-2 CRs and 62443-3-3 SRs, the levels each helps with, and the components that address them.
 - [RFC compliance matrix](rfc-compliance.md): sender-side coverage of RFC 5424, 5426, 6587, and 5425.
 - Security:
   - [Threat model](security/threat-model.md)

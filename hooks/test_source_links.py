@@ -44,8 +44,8 @@ class RewriteTargets(unittest.TestCase):
                          render('[rp](../release-process.md)', src_path='security/x.md'))
 
     def test_internal_anchor_and_absolute_untouched(self):
-        self.assertEqual('[a](getting-started.md#tunables)',
-                         render('[a](getting-started.md#tunables)'))
+        self.assertEqual('[a](build-integration.md#tunables)',
+                         render('[a](build-integration.md#tunables)'))
         self.assertEqual('[a](#section)', render('[a](#section)'))
         self.assertEqual('[a](https://example.com/x)',
                          render('[a](https://example.com/x)'))

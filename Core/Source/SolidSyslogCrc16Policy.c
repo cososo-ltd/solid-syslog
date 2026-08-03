@@ -34,8 +34,9 @@ void SolidSyslogCrc16Policy_Destroy(void)
 {
 }
 
-/* CRC-16 is a checksum, not an AEAD — it authenticates the whole content and
- * has no use for the header/body split, so HeaderLength is ignored. */
+/* CRC-16 is a checksum, not an AEAD — it covers the whole content and has no
+ * use for the header/body split, so HeaderLength is ignored. It detects
+ * accidental corruption; it authenticates nothing. */
 static bool Crc16Policy_Crc16SealRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record

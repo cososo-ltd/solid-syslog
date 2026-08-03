@@ -136,8 +136,8 @@ nav:
   - Overview:
       - Compliance in one page: overview.md
   - Adopt:
-      - Getting started: getting-started.md
-      - Components by Security Level: security-levels.md
+      - Building up the protection you need: hardening-path.md
+      - Adding it to your build: build-integration.md
       - Structured data: structured-data.md
       - Error handling: error-severity.md
       - Integrating lwIP: integrating-lwip.md
@@ -146,6 +146,7 @@ nav:
   - Port a new platform:
       - Porting guide: porting.md
   - Compliance:
+      - CRA guide: cra.md
       - IEC 62443 guide: iec62443.md
       - RFC matrix: rfc-compliance.md
       - Threat model: security/threat-model.md
