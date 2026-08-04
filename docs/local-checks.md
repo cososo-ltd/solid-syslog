@@ -78,16 +78,40 @@ v0.22.1), wired into `summary`. The rules live in `.markdownlint-cli2.jsonc`,
 our conventions (line-length and table-column-style off, fenced-code language
 required); `CHANGELOG.md` and `LICENSE.md` are ignored.
 
-If you touch any `.md`, run it locally first. Same pinned engine as CI and
-CodeRabbit, via Docker (no Node needed):
+If you touch any `.md`, lint the files you changed before pushing. Same pinned
+engine as CI and CodeRabbit, via Docker (no Node needed):
 
 ```bash
-# Lint (reads .markdownlint-cli2.jsonc automatically):
-docker run --rm -v "$PWD:/workdir" davidanson/markdownlint-cli2:v0.22.1
+# Collect the .md files changed on this branch. git's exit status is captured
+# rather than consumed by a process substitution: if it fails — an unfetched
+# origin/main, say — the array would silently be empty, both commands below
+# would skip, and the check would report success having linted nothing.
+# --diff-filter=ACMRT drops deletions, which would otherwise reach the linter as
+# missing files, and the array keeps paths containing spaces intact:
+diff_output=$(git diff --name-only --diff-filter=ACMRT origin/main...HEAD -- '*.md') \
+  || echo 'Cannot list changed Markdown — is origin/main fetched?' >&2
+
+changed=()
+[[ -n "$diff_output" ]] && mapfile -t changed <<<"$diff_output"
+
+# --no-globs is required: the "globs" entry in .markdownlint-cli2.jsonc is
+# combined with any paths given on the command line, so without it the whole
+# tree is linted whatever you pass. The "ignores" entry still applies.
+if ((${#changed[@]})); then
+  docker run --rm -v "$PWD:/workdir" \
+    davidanson/markdownlint-cli2:v0.22.1 --no-globs "${changed[@]}"
+fi
 
 # Auto-fix the mechanical rules (blank lines, trailing space, list style, ...):
-docker run --rm -v "$PWD:/workdir" davidanson/markdownlint-cli2:v0.22.1 --fix
+if ((${#changed[@]})); then
+  docker run --rm -v "$PWD:/workdir" \
+    davidanson/markdownlint-cli2:v0.22.1 --fix --no-globs "${changed[@]}"
+fi
 ```
+
+CI lints the whole tree, so a rule change or a config edit can surface findings
+in files this branch did not touch. Run the no-argument form when you change
+`.markdownlint-cli2.jsonc` itself.
 
 With Node available, `npx markdownlint-cli2@0.22.1` is equivalent. Fenced-code
 languages (MD040) and a few structural rules are not auto-fixable; tag or
