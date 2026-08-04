@@ -1,6 +1,15 @@
 # ![SolidSyslog](assets/images/solidsyslog-mark-a.svg)
 
-This is the documentation home. It is organised around what you came to do.
+SolidSyslog is a structured RFC 5424 syslog library for embedded and industrial
+systems, built to give shipping products the audit trail the EU Cyber Resilience
+Act and IEC 62443 expect. This documentation is organised around what you came
+to do.
+
+See a complete integration, one commit at a time, with every byte measured:
+[solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example) (CMake)
+and [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make)
+(Make).
+
 Pick a lane:
 
 - [Overview](#overview): what SolidSyslog is and how it helps with CRA and IEC 62443 compliance.
@@ -41,8 +50,8 @@ Core's Null object stands in.
 
 ## Compliance
 
-- [Compliance in one page](overview.md): start here.
-- [CRA guide](cra.md): the Annex I map — the requirement that names logging, the requirements an audit trail contributes to, and what the project publishes for your vulnerability handling.
+- [CRA guide](cra.md): start here. The Annex I map — the requirement that names logging, the requirements an audit trail contributes to, and what the project publishes for your vulnerability handling. Reporting obligations apply from 11 September 2026; the Regulation applies in full from 11 December 2027.
+- [Compliance in one page](overview.md): the one-screen orientation on CRA and IEC 62443 together.
 - [IEC 62443 compliance guide](iec62443.md): the audit-logging-relevant 62443-4-2 CRs and 62443-3-3 SRs, the levels each helps with, and the components that address them.
 - [RFC compliance matrix](rfc-compliance.md): sender-side coverage of RFC 5424, 5426, 6587, and 5425.
 - Security:

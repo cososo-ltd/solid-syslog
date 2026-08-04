@@ -2,19 +2,36 @@
 
 A structured syslog client library for embedded and industrial systems, implementing
 RFC 5424 (structured syslog) with RFC 5426 (UDP) and RFC 6587 (TCP) transports.
-TLS per RFC 5425 is available via a pluggable Stream abstraction — the repo ships
-a reference OpenSSL integration, and callers can plug in any TLS library (wolfSSL,
-mbedTLS, hardware-offload, …) by implementing the same Stream vtable. TLS itself
-is not a core dependency; Core has zero OpenSSL references.
+TLS per RFC 5425 ships two ways — `SolidSyslogTlsStream` over OpenSSL and
+`SolidSyslogMbedTlsStream` over Mbed TLS — and any other TLS library (wolfSSL,
+hardware offload, …) plugs in behind the same Stream vtable. TLS is not a core
+dependency: Core carries no reference to any TLS library.
+
+It exists to give shipping embedded products the security audit trail the EU
+Cyber Resilience Act and IEC 62443 expect — as a component you add, not a
+redesign.
+
+## What it costs
+
+**+5 KB flash** for a valid, timestamped RFC 5424 record on the wire, and **0.4 KB
+of RAM**. **+13.5 KB flash** for the whole path — store-and-forward, device identity,
+mutual TLS and AES-GCM encryption at rest — and **37 KB of RAM**, mainly TLS buffers.
+Figures measured on FreeRTOS with lwIP on a Cortex-M3, run under QEMU — a
+representative device, not a specification.
+
+Both are measured by a worked integration, published in full as
+[solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example) (consumed
+with CMake) and
+[solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make)
+(the same integration, consumed with Make). Each stage is one commit; `git show`
+gives the diff and the measured cost.
 
 Designed for resource-constrained environments:
 
-- C99, no dynamic memory allocation required — allocator is caller-injected
+- C99, no dynamic memory allocation — every instance lives in a library-internal static pool, sized at compile time
 - Transport-agnostic — UDP, TCP, TLS, or bring your own
 - Buffer-agnostic — PassthroughBuffer (direct send), portable CircularBuffer (mutex-injected ring), POSIX message queue, or bring your own
-- No `#ifdef` feature flags — optional features composed at link time
 - MISRA C:2012 informed
-- Dependency injection throughout — fully testable without a network
 
 ## Capabilities
 
@@ -22,7 +39,8 @@ RFC 5424 structured formatting over UDP (RFC 5426), TCP (RFC 6587), and TLS /
 mutual TLS (RFC 5425). Asynchronous buffering, rotating block store-and-forward,
 and at-rest record protection — CRC-16 for accidental corruption, or keyed
 HMAC-SHA256 / AES-256-GCM where a local attacker is in scope. The full
-[IEC 62443 SL1–SL4 component set](docs/iec62443.md) is available.
+[IEC 62443 SL1–SL4 component set](https://docs.cososo.co.uk/solid-syslog/iec62443/)
+is available.
 
 SolidSyslog is built for embedded and RTOS targets. Every platform dependency —
 TCP/IP stack, TLS library, filesystem, OS primitives, clock — is injected through
@@ -38,100 +56,63 @@ enforced depends on the TLS backend and platform you configure.
 
 ## Documentation
 
-Full documentation lives in [`docs/`](docs/README.md) — the documentation home,
-organised around what you came to do: **Overview**, **Adopt**, **Port a new
-platform**, **Compliance**, **API reference**, and **Maintaining**. New here?
-[Compliance in one page](docs/overview.md) is the fastest orientation for
-evaluators; [Building up the protection you need](docs/hardening-path.md) is
-where an integrator starts.
+Full documentation lives at
+[docs.cososo.co.uk/solid-syslog](https://docs.cososo.co.uk/solid-syslog/), organised
+around what you came to do: **Overview**, **Adopt**, **Port a new platform**,
+**Compliance**, **API reference**, and **Maintaining**. New here?
+[Compliance in one page](https://docs.cososo.co.uk/solid-syslog/overview/) is the
+fastest orientation for evaluators.
 
 ## Integrating it
 
-[Building up the protection you need](docs/hardening-path.md) walks an
-integration from a device with no syslog to a hardened one, one stage at a time,
-stating what each stage adds, the question that decides whether you need it, and
-an indication of what it costs.
+[Building up the protection you need](https://docs.cososo.co.uk/solid-syslog/hardening-path/)
+walks an integration from a device with no syslog to a hardened one, one stage at a
+time, stating what each stage adds, the question that decides whether you need it,
+and an indication of what it costs.
 
-[Adding it to your build](docs/build-integration.md) is the build detail behind
-it: the capability matrix, the three ways to consume the library — CMake, Make,
-and a source manifest for an IDE project — and the compile-time tunables.
+[Adding it to your build](https://docs.cososo.co.uk/solid-syslog/build-integration/)
+is the build detail behind it: the capability matrix, the three ways to consume the
+library — CMake, Make, and a source manifest for an IDE project — and the
+compile-time tunables.
 
 ## Building and testing
 
-Developing the library itself? See [Building and testing](docs/builds.md) — the
-contributor/maintainer preset catalogue. (Consuming the library in your product
-is the [integration path](docs/hardening-path.md) above.)
+Developing the library itself? See
+[Building and testing](https://docs.cososo.co.uk/solid-syslog/builds/) — the
+contributor/maintainer preset catalogue — alongside the pre-PR check budget, the BDD
+infrastructure, the CI pipeline, and the container images, all under **Maintaining**
+on the documentation site. (Consuming the library in your product is the integration
+path above.)
 
 ## Architecture
 
-SolidSyslog uses an OO-in-C style with vtable structs and dependency injection.
-All fields — required and optional — use a uniform field object pattern.
-Optional features are composed at link time via dead code elimination, not by
-preprocessor configuration. Core's implementation contains no conditional
-compilation at all; Core's headers use it only for include guards, tunable
-defaults and their consistency assertions, and C/C++ language shims.
+SolidSyslog is OO-in-C. Every platform dependency and every optional feature is a
+vtable role, injected at setup and composed at link time, so a feature you do not
+wire is dead code the linker drops rather than a preprocessor branch — Core's
+implementation contains no conditional compilation at all. Public headers are split
+by audience: application code that logs events includes `SolidSyslog.h` and nothing
+else, while the setup that builds a logger includes `SolidSyslogConfig.h` plus one
+header per component it wires.
 
-Public headers are split by audience (Interface Segregation Principle):
+The [API reference](https://docs.cososo.co.uk/solid-syslog/api-reference/) explains
+that split and links the generated reference for every header, type and symbol. The
+[porting guide](https://docs.cososo.co.uk/solid-syslog/porting/) covers the twelve
+roles, the anatomy of an adapter, and the Null object that stands in for any role you
+leave unfilled.
 
-- **`SolidSyslog.h`** — application code that logs events (`Log`, `Service`)
-- **`SolidSyslogConfig.h`** — system setup code that creates and destroys loggers
-- **`SolidSyslogError.h`** — install a handler to react to library-internal errors (NULL guards, send failures); default is silent. See `Bdd/Targets/Common/BddTargetStderrErrorHandler.c` for a reference implementation
-- **`SolidSyslogConfigLock.h`** — optional setup-time lock injection (`SolidSyslog_SetConfigLock(lockFn, unlockFn)`); wraps library-internal pool slot walks so multi-task setup is safe. Defaults are no-ops, so single-task systems can ignore it. Integrators on RTOS / multi-core wire `taskENTER_CRITICAL`, a static `pthread_mutex_t`, `EnterCriticalSection`, or a spinlock pair
-- **`SolidSyslogSenderDefinition.h`** / **`SolidSyslogBufferDefinition.h`** — extension points for custom senders and buffers
-- **`SolidSyslogPassthroughBuffer.h`** — direct-send buffer for single-task systems
-- **`SolidSyslogCircularBuffer.h`** — portable ring buffer with caller-allocated ring memory and an injected `SolidSyslogMutex` (`SolidSyslogPosixMutex` / `SolidSyslogWindowsMutex` / `SolidSyslogFreeRtosMutex` / `SolidSyslogNullMutex` / your own); the cross-platform threaded buffer. Instance bookkeeping lives in a library-internal static pool
-- **`SolidSyslogPosixMessageQueueBuffer.h`** — thread-safe POSIX message queue buffer
-- **`SolidSyslogUdpSender.h`** — UDP transport (RFC 5426)
-- **`SolidSyslogStreamSender.h`** — octet-framed syslog (RFC 6587) over any Stream. Note: RFC 6587
-  is a Historic RFC — the IESG recommends TLS (RFC 5425) over plain TCP for new deployments.
-  TCP is provided for interoperability with existing infrastructure
-- **`SolidSyslogTlsStream.h`** — OpenSSL-backed TLS 1.2+ Stream (RFC 5425): server cert validation,
-  hostname verification, cipher pinning, optional mutual TLS. Plugs into `SolidSyslogStreamSender`
-  as a drop-in for `SolidSyslogPosixTcpStream`
-- **`SolidSyslogSwitchingSender.h`** — composition sender delegating to one of several
-  inner senders via an application-supplied selector callback; `Disconnect`s the
-  outgoing inner on every change
-- **`SolidSyslogEndpoint.h`** — destination spec for senders. Application supplies `endpoint`
-  (fills host/port on (re)connect) and `endpointVersion` (cheap polled fingerprint); senders
-  Disconnect and lazily reopen when the version changes — supports runtime address rotation
-- **`SolidSyslogStoreDefinition.h`** / **`SolidSyslogBlockStore.h`** — BlockDevice-backed store-and-forward with rotating blocks
-- **`SolidSyslogSecurityPolicyDefinition.h`** — extension point for record integrity policies
-- **`SolidSyslogCrc16Policy.h`** — CRC-16/CCITT-FALSE checksum policy: detects accidental corruption, not tampering
-- **`SolidSyslogStructuredDataDefinition.h`** — extension point for custom structured data
-- **`SolidSyslogMetaSd.h`** — meta structured data (RFC 5424 §7.3): sequenceId, sysUpTime, language
-- **`SolidSyslogTimeQualitySd.h`** — timeQuality structured data (RFC 5424 §7.1): tzKnown, isSynced, syncAccuracy
-- **`SolidSyslogOriginSd.h`** — origin structured data (RFC 5424 §7.2): software, swVersion, enterpriseId, ip
-- **`SolidSyslogPosixClock.h`** / **`SolidSyslogPosixHostname.h`** / **`SolidSyslogPosixProcessId.h`** / **`SolidSyslogPosixSysUpTime.h`** — POSIX helpers
-- **`SolidSyslogPlusTcpDatagram.h`** / **`SolidSyslogPlusTcpTcpStream.h`** / **`SolidSyslogPlusTcpResolver.h`** / **`SolidSyslogPlusTcpAddress.h`** — FreeRTOS-Plus-TCP networking adapters: UDP datagram and TCP stream (with ARP-prime on cold connect and bounded `SO_RCVTIMEO` connect), hardcoded-IPv4 resolver, `struct freertos_sockaddr` address adapter. Selected at CMake time by naming `PlusTcp` in `SOLIDSYSLOG_PLATFORMS` (the lwIP Raw sibling backend is `LwipRaw`)
-- **`SolidSyslogFreeRtosMutex.h`** / **`SolidSyslogFreeRtosSysUpTime.h`** — FreeRTOS kernel primitives independent of the chosen networking backend: `xSemaphoreCreateMutexStatic`-backed mutex for CircularBuffer and a kernel-tick sysUpTime source
-- **`SolidSyslogFatFsFile.h`** — ChaN FatFs file adapter for the `SolidSyslogFile` extension point; `f_sync` per write for crash-safe store-and-forward. RTOS-agnostic; runs on bare-metal, FreeRTOS, Zephyr, NuttX
-
-Three BDD-driven target binaries exercise the library on each supported
-platform. They live under [`Bdd/Targets/`](Bdd/Targets/) — one binary
-per platform, all named `SolidSyslogBddTarget`:
-
-- **`Bdd/Targets/Linux/`** — POSIX, PosixMessageQueueBuffer, two pthreads (logger + service), SwitchingSender over UDP + TCP + TLS + mTLS (OpenSSL); `--transport` sets the initial transport, `switch <name>` flips it at runtime
-- **`Bdd/Targets/Windows/`** — Windows, CircularBuffer + WindowsMutex, Win32 service thread (`_beginthreadex`) draining the buffer, SwitchingSender over Winsock UDP / TCP + OpenSSL TLS / mTLS over Winsock TCP, file-backed `SolidSyslogBlockStore` over `SolidSyslogWindowsFile`, with the Windows clock / hostname / process-id / sysUpTime helpers
-- **`Bdd/Targets/FreeRtos/`** — FreeRTOS-on-QEMU (Cortex-M3, mps2-an385), CircularBuffer + FreeRtosMutex drained by a dedicated Service task, SwitchingSender over UDP + TCP via FreeRTOS-Plus-TCP plus TLS + mTLS via `SolidSyslogMbedTlsStream` (Mbed TLS) layered over the same FreeRTOS-Plus-TCP byte stream, persistent store-and-forward via ChaN FatFs over a semihosting-backed disk image, interactive `set NAME VALUE` / `send N` / `set store file` / `set shutdown 1` / `quit` command channel over the CMSDK UART; BDD-driven against syslog-ng including `store_and_forward`, `power_cycle_replay`, `store_capacity`, `tls_transport`, and `mtls_transport` scenarios. See [`Bdd/Targets/FreeRtos/README.md`](Bdd/Targets/FreeRtos/README.md)
+[`Bdd/Targets/`](Bdd/Targets/) holds one BDD-driven binary per platform — Linux,
+Windows, and FreeRTOS on QEMU — each exercising the library end to end against a real
+syslog server; see [BDD testing](https://docs.cososo.co.uk/solid-syslog/bdd/).
 
 ## Compliance
 
-- [Compliance in one page](docs/overview.md) — the evaluator's one-screen orientation on CRA and IEC 62443
-- [Building up the protection you need](docs/hardening-path.md) — the integration path, stage by stage, with an indication of what each costs
-- [IEC 62443 Compliance Guide](docs/iec62443.md) — component selection by Security Level (SL1–SL4) for industrial control systems
-- [RFC Compliance Matrix](docs/rfc-compliance.md) — sender-side coverage of RFC 5424, 5426, 6587, and 5425
+- [CRA guide](https://docs.cososo.co.uk/solid-syslog/cra/) — the Annex I map: the requirement that names logging, the requirements an audit trail contributes to, what the project publishes for your vulnerability handling, and the dates the Regulation applies from
+- [Compliance in one page](https://docs.cososo.co.uk/solid-syslog/overview/) — the evaluator's one-screen orientation on CRA and IEC 62443
+- [IEC 62443 compliance guide](https://docs.cososo.co.uk/solid-syslog/iec62443/) — component selection by Security Level (SL1–SL4) for industrial control systems
+- [RFC compliance matrix](https://docs.cososo.co.uk/solid-syslog/rfc-compliance/) — sender-side coverage of RFC 5424, 5426, 6587, and 5425
+- [Threat model](https://docs.cososo.co.uk/solid-syslog/security/threat-model/) — the division of responsibility between the library and your product
 
-## CI pipeline
-
-See [CI pipeline](docs/ci.md).
-
-## BDD testing
-
-See [BDD testing](docs/bdd.md).
-
-## Container images
-
-See [Container images](docs/containers.md).
+Reporting a vulnerability: [`SECURITY.md`](SECURITY.md).
 
 ## License
 
@@ -140,5 +121,7 @@ Copyright 2026 Cozens Software Solutions Limited.
 Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE.md). Free for
 noncommercial, personal, educational, and government use.
 
-For commercial licensing enquiries, please use the contact form at
-[cososo.co.uk](https://www.cososo.co.uk/#contact).
+For commercial licensing — including pricing, the early-adopter programme, and
+the platform adapter policy — see the
+[SolidSyslog product page](https://www.cososo.co.uk/products/solid-syslog/), or
+use the contact form at [cososo.co.uk](https://www.cososo.co.uk/#contact).
