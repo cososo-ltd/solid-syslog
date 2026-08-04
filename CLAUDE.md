@@ -269,7 +269,7 @@ competing record.
 
 Set a due date only where an external commitment exists, and set it to the
 commitment rather than the internal estimate. `0.1.0` is due 2026-08-31 and
-`1.0.0` 2026-12-31, because both dates are stated publicly on the website;
+`1.0.0` 2026-12-31 because both dates are stated publicly on the website;
 shipping earlier is the intent. Nothing goes red for a date we set for ourselves.
 
 ### What each release milestone means
