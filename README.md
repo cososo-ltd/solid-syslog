@@ -88,7 +88,7 @@ path above.)
 
 SolidSyslog is OO-in-C. Every platform dependency and every optional feature is a
 vtable role, injected at setup and composed at link time, so a feature you do not
-wire is dead code the linker drops rather than a preprocessor branch — Core's
+wire is dropped by the linker rather than excluded by the preprocessor — Core's
 implementation contains no conditional compilation at all. Public headers are split
 by audience: application code that logs events includes `SolidSyslog.h` and nothing
 else, while the setup that builds a logger includes `SolidSyslogConfig.h` plus one
