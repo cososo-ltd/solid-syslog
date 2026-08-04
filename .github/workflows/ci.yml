@@ -717,12 +717,13 @@ jobs:
         with:
           persist-credentials: false
 
-      # Guard the source-link rewrite hook's Markdown parsing against regression.
-      - name: Test source-link hook
+      # Guard the build hooks against regression — the source-link rewrite's
+      # Markdown parsing, and the meta-description map's nav validation.
+      - name: Test docs build hooks
         run: |
           docker run --rm -v "$PWD:/docs" \
             ghcr.io/cososo-ltd/mkdocs-mkdoxy:sha-34173c0 \
-            python3 /docs/hooks/test_source_links.py
+            python3 -m unittest discover -s /docs/hooks -p 'test_*.py'
 
       # --strict fails the build on broken nav, config, or links. Out-of-docs
       # source links (../Core/…, ../SECURITY.md) are rewritten to canonical
