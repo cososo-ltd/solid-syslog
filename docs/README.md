@@ -50,7 +50,7 @@ Core's Null object stands in.
 
 ## Compliance
 
-- [CRA guide](cra.md): start here. The Annex I map — the requirement that names logging, the requirements an audit trail contributes to, and what the project publishes for your vulnerability handling. Incident reporting obligations apply from 11 September 2026; the Regulation applies in full from 11 December 2027.
+- [CRA guide](cra.md): start here. The Annex I map — the requirement that names logging, the requirements an audit trail contributes to, and what the project publishes for your vulnerability handling. Vulnerability and incident reporting obligations apply from 11 September 2026; the Regulation applies in full from 11 December 2027.
 - [Compliance in one page](overview.md): the one-screen orientation on CRA and IEC 62443 together.
 - [IEC 62443 compliance guide](iec62443.md): the audit-logging-relevant 62443-4-2 CRs and 62443-3-3 SRs, the levels each helps with, and the components that address them.
 - [RFC compliance matrix](rfc-compliance.md): sender-side coverage of RFC 5424, 5426, 6587, and 5425.
