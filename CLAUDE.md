@@ -268,17 +268,24 @@ competing record.
 ### Due dates
 
 Set a due date only where an external commitment exists, and set it to the
-commitment rather than the internal estimate. `0.1.0` is due 2026-08-31 because
-August is stated publicly on the website; shipping earlier is the intent. Nothing
-goes red for a date we set for ourselves.
+commitment rather than the internal estimate. `0.1.0` is due 2026-08-31 and
+`1.0.0` 2026-12-31, because both dates are stated publicly on the website;
+shipping earlier is the intent. Nothing goes red for a date we set for ourselves.
 
-### The 1.0.0 milestone
+### What each release milestone means
 
-`1.0.0` is the API-stability gate, not a feature bucket. It admits only work that
-must be true before the public API is declared frozen — breaking changes and API
-reviews — because after 1.0.0 they cost a major version. It is expected to sit
-empty much of the time, and has no due date: it is gated on API readiness, not a
-calendar.
+`0.1.0` is the first public release: production quality and thoroughly tested,
+on a limited set of platforms. Beta describes the breadth of platform coverage
+and the absence of field integration so far, not the maturity of the code. The
+public API is believed stable, and the reservation to change it is exactly that —
+a reservation, exercised only if integration feedback shows a problem. Do not
+write it up as though instability were expected.
+
+`1.0.0` is the commitment that the public API is stable; after it, a breaking
+change costs a major version. It is not a feature bucket: platform support and
+feedback-driven work belong to the 0.x releases in between, each milestoned as it
+is planned. `1.0.0` admits only what must be settled before the commitment
+itself — API review, and any breaking change beta feedback shows is needed.
 
 ---
 
