@@ -20,7 +20,8 @@ becomes the single commit message — so the PR title must follow Conventional C
 full tiered pre-PR check budget. One-line summary:
 
 - Per-commit: `debug` build + tests for the matching preset (~30–60 s)
-- Pre-push (only when production source changed): IWYU + `clang-format` reflow + `scripts/misra_renumber.py` (~3–5 min)
+- Pre-push (only when production source changed): `clang-format` reflow, then `scripts/misra_renumber.py` — in that order, because the reflow moves the lines the renumbering annotates (~2–3 min)
+- Pre-push (only when Markdown changed): markdownlint over the changed `.md` files (~5 s). Do not run IWYU locally — the lanes are advisory and CI reports them
 - Everything else (`tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross) — CI's job; do not run locally
 - If CI surfaces a finding you missed, fix in another commit on the same branch rather than re-running every lane locally
 

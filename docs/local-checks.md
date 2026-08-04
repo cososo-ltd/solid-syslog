@@ -78,16 +78,25 @@ v0.22.1), wired into `summary`. The rules live in `.markdownlint-cli2.jsonc`,
 our conventions (line-length and table-column-style off, fenced-code language
 required); `CHANGELOG.md` and `LICENSE.md` are ignored.
 
-If you touch any `.md`, run it locally first. Same pinned engine as CI and
-CodeRabbit, via Docker (no Node needed):
+If you touch any `.md`, lint the files you changed before pushing. Same pinned
+engine as CI and CodeRabbit, via Docker (no Node needed):
 
 ```bash
-# Lint (reads .markdownlint-cli2.jsonc automatically):
-docker run --rm -v "$PWD:/workdir" davidanson/markdownlint-cli2:v0.22.1
+# Lint the .md files changed on this branch (reads .markdownlint-cli2.jsonc
+# automatically). Passing no file arguments would lint the whole tree, so the
+# guard matters when the branch touched no Markdown:
+changed=$(git diff --name-only origin/main...HEAD -- '*.md')
+[ -n "$changed" ] && docker run --rm -v "$PWD:/workdir" \
+  davidanson/markdownlint-cli2:v0.22.1 $changed
 
 # Auto-fix the mechanical rules (blank lines, trailing space, list style, ...):
-docker run --rm -v "$PWD:/workdir" davidanson/markdownlint-cli2:v0.22.1 --fix
+[ -n "$changed" ] && docker run --rm -v "$PWD:/workdir" \
+  davidanson/markdownlint-cli2:v0.22.1 --fix $changed
 ```
+
+CI lints the whole tree, so a rule change or a config edit can surface findings
+in files this branch did not touch. Run the no-argument form when you change
+`.markdownlint-cli2.jsonc` itself.
 
 With Node available, `npx markdownlint-cli2@0.22.1` is equivalent. Fenced-code
 languages (MD040) and a few structural rules are not auto-fixable; tag or
