@@ -31,8 +31,8 @@ full tiered pre-PR check budget. One-line summary:
 
 - Per-commit: `debug` build + tests for the matching preset (~30–60 s)
 - Pre-push (only when production source changed): `clang-format` reflow, then `scripts/misra_renumber.py` — in that order, because the reflow moves the lines the renumbering annotates (~2–3 min)
-- Pre-push (only when Markdown changed): markdownlint over the changed `.md` files (~5 s). Do not run IWYU locally — the lanes are advisory and CI reports them
-- Everything else (`tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross) — CI's job; do not run locally
+- Pre-push (only when Markdown changed): markdownlint over the changed `.md` files (~5 s)
+- Everything else (`tidy`, `sanitize`, `coverage`, IWYU, Windows, BDD, integration, FreeRTOS host/cross) — CI's job; do not run locally. IWYU is advisory even in CI, and is not part of any pre-push budget; `docs/local-checks.md` keeps an optional command for the release-cleanup sweep
 - If CI surfaces a finding you missed, fix in another commit on the same branch rather than re-running every lane locally
 
 Commits on the branch can be informal (WIP messages are fine). The PR title is
@@ -233,7 +233,7 @@ release does this ship in*.
 
 ### Which issues get one
 
-**Milestone the finest-grained committed unit that exists.**
+**Assign the milestone to the finest-grained committed unit that exists.**
 
 - An epic with no stories yet carries the milestone itself. Stories are only
   written when work is prioritised, so for a committed but unelaborated epic the
@@ -417,9 +417,10 @@ boundary that makes the code testable and portable to embedded targets.
 
 ### Public header audiences (Interface Segregation)
 
-Public headers are split by audience — each user includes only what they need, so
-application code never sees allocators, senders, buffers, or config structs. Core headers
-live under `Core/Interface/`; each platform pack puts its own under
+Public headers are split by audience — each user includes only what they need. Code that
+only logs events never sees allocators, senders, buffers, or config structs; the setup
+code that wires an instance does, and includes only the headers for the pieces it wires.
+Core headers live under `Core/Interface/`; each platform pack puts its own under
 `Platform/<Pack>/Interface/`.
 
 **Each header's `@file` brief is the authoritative description of what it provides and

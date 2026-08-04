@@ -82,16 +82,25 @@ If you touch any `.md`, lint the files you changed before pushing. Same pinned
 engine as CI and CodeRabbit, via Docker (no Node needed):
 
 ```bash
-# Lint the .md files changed on this branch (reads .markdownlint-cli2.jsonc
-# automatically). Passing no file arguments would lint the whole tree, so the
-# guard matters when the branch touched no Markdown:
-changed=$(git diff --name-only origin/main...HEAD -- '*.md')
-[ -n "$changed" ] && docker run --rm -v "$PWD:/workdir" \
-  davidanson/markdownlint-cli2:v0.22.1 $changed
+# Lint the .md files changed on this branch. --no-globs is required: the "globs"
+# entry in .markdownlint-cli2.jsonc is combined with any paths given on the
+# command line, so without it the whole tree is linted whatever you pass. The
+# "ignores" entry still applies. --diff-filter=ACMRT drops deletions, which would
+# otherwise reach the linter as missing files, and the array keeps paths
+# containing spaces intact:
+mapfile -t changed < <(
+  git diff --name-only --diff-filter=ACMRT origin/main...HEAD -- '*.md'
+)
+if ((${#changed[@]})); then
+  docker run --rm -v "$PWD:/workdir" \
+    davidanson/markdownlint-cli2:v0.22.1 --no-globs "${changed[@]}"
+fi
 
 # Auto-fix the mechanical rules (blank lines, trailing space, list style, ...):
-[ -n "$changed" ] && docker run --rm -v "$PWD:/workdir" \
-  davidanson/markdownlint-cli2:v0.22.1 --fix $changed
+if ((${#changed[@]})); then
+  docker run --rm -v "$PWD:/workdir" \
+    davidanson/markdownlint-cli2:v0.22.1 --fix --no-globs "${changed[@]}"
+fi
 ```
 
 CI lints the whole tree, so a rule change or a config edit can surface findings
