@@ -81,6 +81,12 @@ hooks:
   # Hides the one-entry table of contents on the generated Functions / Macros
   # indexes, whose letter buckets collapse under the common SolidSyslog prefix.
   - hooks/api_index_toc.py
+  # Gives each hand-written page its own <meta name="description">, the snippet
+  # a search result shows, instead of the site_description above. The map lives
+  # in the hook rather than in front matter because the same Markdown is read on
+  # GitHub, which renders front matter as a table; the hook fails the build if
+  # the map and the nav disagree.
+  - hooks/page_descriptions.py
 
 # not_found — enforced (fatal under --strict): the hook above resolves every
 #             in-repo source link, so a genuinely broken link fails the build.
