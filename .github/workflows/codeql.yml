@@ -59,20 +59,23 @@ jobs:
             -DFETCHCONTENT_SOURCE_DIR_SOLIDSYSLOG="$(pwd)" \
             -DSOLIDSYSLOG_PLATFORMS="Posix;Atomics;OpenSsl"
 
-      # A platform dropping out of the build would shrink the analysis without
-      # failing the lane, so assert the scope rather than assume it.
+      - name: Build the consumer project
+        run: cmake --build build/consumer-smoke
+
+      # A platform dropping out would shrink the analysis without failing the
+      # lane. Assert on compiled objects rather than on the configure: what the
+      # compiler produced is what CodeQL saw, and a pack that is selected but
+      # contributes no sources would pass any check of the selection itself.
       - name: Assert analysis scope
         run: |
           set -euo pipefail
-          for var in SOLIDSYSLOG_POSIX SOLIDSYSLOG_ATOMICS SOLIDSYSLOG_OPENSSL; do
-            grep -qx "$var:BOOL=ON" build/consumer-smoke/CMakeCache.txt || {
-              echo "::error::$var is OFF — CodeQL would analyse less than intended"
+          for pack in Posix Atomics OpenSsl; do
+            find build/consumer-smoke -path "*Platform/$pack/*" -name '*.o' -print -quit \
+              | grep -q . || {
+              echo "::error::no compiled objects from Platform/$pack — CodeQL would analyse less than intended"
               exit 1
             }
           done
-
-      - name: Build the consumer project
-        run: cmake --build build/consumer-smoke
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
