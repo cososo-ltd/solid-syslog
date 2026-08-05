@@ -70,8 +70,38 @@
   box-shadow: 0 0 0.2rem rgba(0, 0, 0, 0.05);
 }
 
+/* 90px = the website's header box: a 40px logo between 25px of padding above
+   and below. Fixed px, not rem, for the same reason as the logo below. It
+   collapses on scroll by the same --logo-scale the logo uses, because the
+   website shrinks its header padding along with the logo (25px -> 18.875px) —
+   so both bars are 90px at rest and ~68px once scrolled, and moving between
+   the two sites never shifts the masthead. */
 .md-header__inner {
-  min-height: 4rem;
+  min-height: calc(90px * var(--logo-scale, 1));
+}
+
+/* Material pins its sticky sidebars to the height of its own header — 2.4rem,
+   or 4.8rem while the tabs bar is lifting them. Ours is taller (90px + the 1px
+   rule), so without these the top of the nav and of the table of contents slide
+   underneath it on scroll. Below 76.25em the primary sidebar is a drawer
+   positioned from the top of the viewport, so it keeps Material's offset. */
+@media screen and (min-width: 60em) {
+  .md-sidebar--secondary {
+    top: calc(90px * var(--logo-scale, 1) + 1px);
+  }
+}
+
+@media screen and (min-width: 76.25em) {
+  .md-sidebar {
+    top: calc(90px * var(--logo-scale, 1) + 1px);
+  }
+
+  /* The tabs bar only lifts the sidebars at the top of the page, where the
+     header is still full height: 90px + its rule, then Material's 2.4rem tab
+     items + ours. The tabs do not shrink — the website has no equivalent bar. */
+  .md-header--lifted ~ .md-container .md-sidebar {
+    top: calc(92px + 2.4rem);
+  }
 }
 
 .md-header__title {
@@ -86,9 +116,14 @@
 
 .md-header__button.md-logo img,
 .md-header__button.md-logo svg {
-  /* Base ~40px, scaled by --logo-scale (set by javascripts/logo-scroll.js):
-     1.0 at the top, easing to 0.755 past 48px of scroll, like cososo.co.uk. */
-  height: calc(2.6rem * var(--logo-scale, 1));
+  /* 40px is the height cososo.co.uk serves the logo at (a 50x40 <img>), and it
+     is px rather than rem on purpose: Material scales its rem root with the
+     viewport (125% normally, 137.5% past 100em, 150% past 125em), so a rem
+     height would render the same logo 52px, 57px or 62px tall depending on the
+     window while the website's stayed at 40px. Scaled by --logo-scale (set by
+     javascripts/logo-scroll.js): 1.0 at the top, easing to 0.755 past 48px of
+     scroll, matching the website's own shrink-on-scroll. */
+  height: calc(40px * var(--logo-scale, 1));
   transition: height 60ms linear;
 }
 
