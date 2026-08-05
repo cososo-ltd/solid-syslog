@@ -25,12 +25,12 @@ attached so integrators can verify provenance (per
 4. The `release: published` event triggers `sbom.yml`: it renders and validates
    the CycloneDX SBOM, writes the content-tree SHA-256 (scope: `Core/` +
    `Platform/` + `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`), cosign
-   keyless-signs both (GitHub OIDC), and attempts to attach the four assets to
-   the Release.
-5. Signing and attachment are advisory (`continue-on-error`) on initial
-   rollout, so a failure in either can't block a release; confirm all four
-   assets are present on the Release before relying on them (see
-   [release verification](security/release-verification.md)).
+   keyless-signs both (GitHub OIDC), and attaches the four assets to the
+   Release.
+5. Signing and attachment hard-fail. The Release already exists by the time the
+   job runs, so a failure cannot block it — it means the Release went out
+   without provenance. A red run is the signal: fix the cause and re-run the
+   job (see [release verification](security/release-verification.md)).
 
 > Status: release-please is parked (manual `workflow_dispatch` only) until the
 > 0.1.0 baseline; trigger a release from the Actions tab meanwhile. See
@@ -54,5 +54,6 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
 - [ ] Confirm the tag + GitHub Release, and verify the attached SBOM, source
       hash, and both cosign signatures per
       [`security/release-verification.md`](security/release-verification.md), not
-      just that the assets are present (signing is advisory and can fail silently).
+      just that the assets are present — a bundle that is present is not yet a
+      bundle that verifies.
 - [ ] Security release: publish the coordinated GHSA.

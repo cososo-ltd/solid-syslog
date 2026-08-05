@@ -127,9 +127,12 @@ jobs:
 
   publish:
     # Release-only: keyless-sign the SBOM and source hash file, attach both
-    # (plus signatures) to the GitHub Release as assets. Advisory-only on
-    # initial rollout (per E19 guidance) — continue-on-error is set on the
-    # sign + attach steps so a signing failure does not block the release.
+    # (plus signatures) to the GitHub Release as assets.
+    #
+    # Every step hard-fails. The Release already exists by the time this job
+    # runs, so swallowing a failure could not protect it — it would publish a
+    # Release with no provenance while reporting success. A red run means the
+    # Release is incomplete and the job must be re-run.
     if: github.event_name == 'release'
     needs: sbom
     runs-on: ubuntu-latest
@@ -147,28 +150,24 @@ jobs:
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
           cosign-release: 'v3.0.6'
-        continue-on-error: true
 
       # The .sigstore suffix is load-bearing, not cosmetic: signature-detecting
       # tooling matches on it, so a bundle named .bundle reads as an unsigned
       # release asset. Change it only to another recognised suffix — .asc,
       # .minisig, .sig, .sign, .sigstore or .sigstore.json.
       - name: Sign SBOM (keyless, GitHub OIDC)
-        continue-on-error: true
         run: |
           cosign sign-blob --yes \
             --bundle sbom/sbom.cdx.json.sigstore \
             sbom/sbom.cdx.json
 
       - name: Sign source-tree-sha256.txt (keyless, GitHub OIDC)
-        continue-on-error: true
         run: |
           cosign sign-blob --yes \
             --bundle sbom/source-tree-sha256.txt.sigstore \
             sbom/source-tree-sha256.txt
 
       - name: Attach assets to Release
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

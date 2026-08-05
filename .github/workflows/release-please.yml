@@ -20,11 +20,9 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
-    # The write scopes belong to this job, not the workflow: release-please
-    # creates the release PR and, on merge, the tag and release.
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write # to create the tag and the GitHub Release
+      pull-requests: write # to open and update the release PR
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:

@@ -63,7 +63,7 @@ Key fields worth reading:
 | `metadata.component.purl` | Package URL keyed to the exact commit SHA — unambiguous pointer back to the source. |
 | `metadata.component.supplier.name` | `COSOSO (Cozens Software Solutions Limited)`. |
 | `metadata.component.licenses[0].license.id` | `PolyForm-Noncommercial-1.0.0` — SPDX identifier. |
-| `metadata.properties[solidsyslog:source-tree-sha256]` | Content-tree hash: SHA-256 of a sorted list of `<content-sha256>  <path>` lines for every tracked file in `Core/` and `Platform/` at the commit. Reproducible byte-for-byte from any clone, with no dependency on `git archive` output format or git version. |
+| `metadata.properties[solidsyslog:source-tree-sha256]` | Content-tree hash: SHA-256 of a sorted list of `<content-sha256>  <path>` lines for every tracked file in `Core/` + `Platform/` plus the root-level `CMakeLists.txt`, `CMakePresets.json`, and `LICENSE.md`, at the commit. Reproducible byte-for-byte from any clone, with no dependency on `git archive` output format or git version. |
 
 ## How to generate one (rehearsal)
 
@@ -136,7 +136,3 @@ For a step-by-step verification guide aimed at downstream integrators, see
   workflow."
 - Binary-artefact signing. The project is source-only; nothing to
   sign beyond the SBOM and content-tree hash.
-- Flip the signing/attach steps off `continue-on-error: true`. The
-  initial rollout keeps those steps advisory so a signing infrastructure
-  outage doesn't block a release. Tighten to hard-fail after the first
-  real release has demonstrated the pipeline works.

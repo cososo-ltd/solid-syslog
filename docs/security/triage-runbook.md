@@ -65,9 +65,9 @@ security-specific steps are:
 - [ ] Merge release-please's release PR to cut the tagged release.
 - [ ] Verify the release carries all four provenance assets: the SBOM, the
       source-tree hash, and their two signatures. `sbom.yml` (triggered by the
-      `release.published` event) attempts to attach them, but attachment is
-      advisory (`continue-on-error`), so confirm all four are present before
-      relying on provenance.
+      `release.published` event) attaches them and hard-fails if it cannot, so a
+      red run means the release went out without provenance — re-run the job
+      before relying on it.
 - [ ] Record and verify the affected and fixed version ranges in the advisory;
       never publish without a safe version for users to move to.
 - [ ] Publish the GHSA coordinated with the release going live.
