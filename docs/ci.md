@@ -68,8 +68,8 @@ Code scanning contributes two required contexts, and both are needed:
 - **`analyze-codeql`** — the Actions job. Proves the analysis ran and uploaded, so a
   lane that breaks or stops running blocks the merge rather than passing silently.
 - **`CodeQL`** — the code-scanning results check. This is the one that fails when a
-  pull request introduces a new alert. Without it a PR could add findings and still
-  merge green, because the job itself succeeded.
+  pull request introduces a new alert. Without it, a PR could add findings and still
+  merge green because the job itself succeeded.
 
 Both were made required on a clean baseline: `security-extended` over 58,144 lines of
 C produced no alerts, so nothing had to be grandfathered in.

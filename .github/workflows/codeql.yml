@@ -75,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
           for pack in ${ANALYSIS_PLATFORMS//;/ }; do
-            find build/consumer-smoke -path "*Platform/$pack/*" -name '*.o' -print -quit \
+            find build/consumer-smoke -path "*Platform/$pack/*" -type f -name '*.o' -print -quit \
               | grep -q . || {
               echo "::error::no compiled objects from Platform/$pack — CodeQL would analyse less than intended"
               exit 1
