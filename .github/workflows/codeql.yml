@@ -28,6 +28,11 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    env:
+      # Declared once: the configure asks for these, the assertion proves the
+      # compiler produced them. Deliberately not named SOLIDSYSLOG_PLATFORMS —
+      # platform selection must come from -D alone, never the environment.
+      ANALYSIS_PLATFORMS: Posix;Atomics;OpenSsl
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
@@ -57,7 +62,7 @@ jobs:
         run: |
           cmake -S ci/consumer-smoke -B build/consumer-smoke \
             -DFETCHCONTENT_SOURCE_DIR_SOLIDSYSLOG="$(pwd)" \
-            -DSOLIDSYSLOG_PLATFORMS="Posix;Atomics;OpenSsl"
+            -DSOLIDSYSLOG_PLATFORMS="$ANALYSIS_PLATFORMS"
 
       - name: Build the consumer project
         run: cmake --build build/consumer-smoke
@@ -69,7 +74,7 @@ jobs:
       - name: Assert analysis scope
         run: |
           set -euo pipefail
-          for pack in Posix Atomics OpenSsl; do
+          for pack in ${ANALYSIS_PLATFORMS//;/ }; do
             find build/consumer-smoke -path "*Platform/$pack/*" -name '*.o' -print -quit \
               | grep -q . || {
               echo "::error::no compiled objects from Platform/$pack — CodeQL would analyse less than intended"
