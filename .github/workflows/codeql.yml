@@ -1,0 +1,86 @@
+name: CodeQL
+
+# CodeQL over the shipped library, complementing the clang-tidy, cppcheck-MISRA,
+# sanitizer and coverage gates in ci.yml. Findings land in Security -> Code
+# scanning rather than the job log.
+#
+# The build decides what is analysed, so this lane builds ci/consumer-smoke —
+# the documented FetchContent adoption, the same steps the published example
+# uses — rather than a bespoke configuration.
+#
+# Rationale, scope and triage convention: docs/ci.md, "Code scanning".
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Weekly, so new queries shipped by GitHub are applied to unchanged code.
+    - cron: '17 3 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze-codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      # Declared once: the configure asks for these, the assertion proves the
+      # compiler produced them. Deliberately not named SOLIDSYSLOG_PLATFORMS —
+      # platform selection must come from -D alone, never the environment.
+      ANALYSIS_PLATFORMS: Posix;Atomics;OpenSsl
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # No container, unlike the ci.yml lanes: the CodeQL tooling expects the
+      # runner's tool cache. A consumer build needs no CppUTest, so a stock
+      # runner plus libssl is the whole dependency set.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+        with:
+          languages: c-cpp
+          build-mode: manual
+          queries: security-extended
+
+      # FETCHCONTENT_SOURCE_DIR_SOLIDSYSLOG analyses the PR against its own tree
+      # rather than main. The platform list is authoritative, so it must name
+      # every pack Linux can build — Atomics is a platform in its own right and
+      # is silently dropped if omitted.
+      - name: Configure the consumer project
+        run: |
+          cmake -S ci/consumer-smoke -B build/consumer-smoke \
+            -DFETCHCONTENT_SOURCE_DIR_SOLIDSYSLOG="$(pwd)" \
+            -DSOLIDSYSLOG_PLATFORMS="$ANALYSIS_PLATFORMS"
+
+      - name: Build the consumer project
+        run: cmake --build build/consumer-smoke
+
+      # A platform dropping out would shrink the analysis without failing the
+      # lane. Assert on compiled objects rather than on the configure: what the
+      # compiler produced is what CodeQL saw, and a pack that is selected but
+      # contributes no sources would pass any check of the selection itself.
+      - name: Assert analysis scope
+        run: |
+          set -euo pipefail
+          for pack in ${ANALYSIS_PLATFORMS//;/ }; do
+            find build/consumer-smoke -path "*Platform/$pack/*" -type f -name '*.o' -print -quit \
+              | grep -q . || {
+              echo "::error::no compiled objects from Platform/$pack — CodeQL would analyse less than intended"
+              exit 1
+            }
+          done
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
