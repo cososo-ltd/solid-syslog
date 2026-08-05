@@ -17,7 +17,7 @@ without renaming what's already there.
 | `coverage-linux-gcc` | `coverage` | Summary in Actions UI; HTML report uploaded as a downloadable run artifact |
 | `analyze-tidy` | `tidy` | clang-tidy — pass/fail with errors in job log |
 | `analyze-cppcheck` | `cppcheck` | cppcheck static analysis |
-| `analyze-codeql` | — | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) and advisory — see *Code scanning* |
+| `analyze-codeql` | — | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) — see *Code scanning* |
 | `analyze-format` | — | clang-format dry-run; fails if any file needs reformatting |
 | `analyze-iwyu` | `iwyu` | include-what-you-use; fails on missing or unused `#include` directives |
 | `integration-linux-openssl` | `debug` | Runs the in-process TLS integration tests against libssl (no network oracle) |
@@ -31,9 +31,9 @@ without renaming what's already there.
 
 ## Branch protection
 
-Every job in `ci.yml` is a required status check. A PR cannot be merged unless all
-checks pass. `analyze-codeql` is the one lane that is not required — see
-*Code scanning*. Direct pushes to `main` are blocked. Squash merge only.
+Every job in `ci.yml` is a required status check, as are the two contexts code
+scanning contributes. A PR cannot be merged unless all checks pass. Direct pushes
+to `main` are blocked. Squash merge only.
 
 ## Code scanning
 
@@ -63,8 +63,24 @@ Accepted findings are dismissed in the Security tab with a reason, not suppresse
 in-source comments. The C sources already carry clang-tidy, cppcheck-MISRA and IWYU
 suppression dialects, and a fourth would cost more in readability than it returns.
 
-The lane is advisory while the baseline is triaged. Adding `analyze-codeql` to the
-required checks is a separate decision, taken once the false-positive rate is known.
+Code scanning contributes two required contexts, and both are needed:
+
+- **`analyze-codeql`** — the Actions job. Proves the analysis ran and uploaded, so a
+  lane that breaks or stops running blocks the merge rather than passing silently.
+- **`CodeQL`** — the code-scanning results check. This is the one that fails when a
+  pull request introduces a new alert. Without it a PR could add findings and still
+  merge green, because the job itself succeeded.
+
+Both were made required on a clean baseline: `security-extended` over 58,144 lines of
+C produced no alerts, so nothing had to be grandfathered in.
+
+A clean baseline is not the same as an absence of vulnerabilities. Much of
+`security-extended` is taint tracking, and this database offers it no source: `Core/`
+makes no library read calls of its own, and everything arrives through a vtable that
+CodeQL's dataflow does not follow. Those queries cannot fire whatever the code does.
+Read the result as *no local defects found* — buffer arithmetic, conversions,
+comparisons, unchecked returns — rather than as proof that no injection or overflow
+path exists.
 
 ## Release automation
 

@@ -2,7 +2,7 @@ name: CodeQL
 
 # CodeQL over the shipped library, complementing the clang-tidy, cppcheck-MISRA,
 # sanitizer and coverage gates in ci.yml. Findings land in Security -> Code
-# scanning rather than the job log, and the lane is advisory, not required.
+# scanning rather than the job log.
 #
 # The build decides what is analysed, so this lane builds ci/consumer-smoke —
 # the documented FetchContent adoption, the same steps the published example
