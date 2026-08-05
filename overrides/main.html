@@ -1,0 +1,20 @@
+{#-
+  Site-wide analytics. Plausible is cookieless and stores nothing on the
+  visitor's device, so the docs need no consent banner — the processing is
+  described in the analytics section of https://www.cososo.co.uk/privacy-policy/.
+
+  data-domain is the *root* domain, not docs.cososo.co.uk. The identical
+  snippet runs on cososo.co.uk (WordPress) and on the docs landing page
+  (cososo-ltd.github.io), so all three properties report into one dashboard
+  and are split apart by the hostname filter there. Change it in one place
+  and you have to change it in all three.
+
+  extrahead is Material's documented extension point for adding to <head>;
+  it keeps working across theme upgrades, unlike overriding base.html.
+-#}
+{% extends "base.html" %}
+
+{% block extrahead %}
+  <script defer data-domain="cososo.co.uk"
+          src="https://plausible.io/js/script.file-downloads.outbound-links.js"></script>
+{% endblock %}
