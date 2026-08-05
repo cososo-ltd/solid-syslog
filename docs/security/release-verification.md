@@ -18,9 +18,9 @@ All four Release assets should be present:
 
 ```text
 sbom.cdx.json
-sbom.cdx.json.bundle
+sbom.cdx.json.sigstore
 source-tree-sha256.txt
-source-tree-sha256.txt.bundle
+source-tree-sha256.txt.sigstore
 ```
 
 ## 1. Verify the source is what we claim
@@ -108,7 +108,7 @@ Verification:
 
 ```shell
 cosign verify-blob \
-  --bundle sbom.cdx.json.bundle \
+  --bundle sbom.cdx.json.sigstore \
   --certificate-identity "https://github.com/cososo-ltd/solid-syslog/.github/workflows/sbom.yml@refs/tags/v<version>" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   sbom.cdx.json
@@ -127,7 +127,7 @@ conditions fail the verification loudly:
 
 ```shell
 cosign verify-blob \
-  --bundle source-tree-sha256.txt.bundle \
+  --bundle source-tree-sha256.txt.sigstore \
   --certificate-identity "https://github.com/cososo-ltd/solid-syslog/.github/workflows/sbom.yml@refs/tags/v<version>" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   source-tree-sha256.txt

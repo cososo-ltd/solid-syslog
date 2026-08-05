@@ -63,7 +63,7 @@ Key fields worth reading:
 | `metadata.component.purl` | Package URL keyed to the exact commit SHA — unambiguous pointer back to the source. |
 | `metadata.component.supplier.name` | `COSOSO (Cozens Software Solutions Limited)`. |
 | `metadata.component.licenses[0].license.id` | `PolyForm-Noncommercial-1.0.0` — SPDX identifier. |
-| `metadata.properties[solidsyslog:source-tree-sha256]` | Content-tree hash: SHA-256 of a sorted list of `<content-sha256>  <path>` lines for every tracked file in `Core/` and `Platform/` at the commit. Reproducible byte-for-byte from any clone, with no dependency on `git archive` output format or git version. |
+| `metadata.properties[solidsyslog:source-tree-sha256]` | Content-tree hash: SHA-256 of a sorted list of `<content-sha256>  <path>` lines for every tracked file in `Core/` + `Platform/` plus the root-level `CMakeLists.txt`, `CMakePresets.json`, and `LICENSE.md`, at the commit. Reproducible byte-for-byte from any clone, with no dependency on `git archive` output format or git version. |
 
 ## How to generate one (rehearsal)
 
@@ -97,9 +97,9 @@ Every GitHub Release created by Release Please gets four assets attached:
 | Asset | Contents |
 |---|---|
 | `sbom.cdx.json` | The SBOM itself. |
-| `sbom.cdx.json.bundle` | [sigstore/cosign](https://docs.sigstore.dev/) signature bundle — signature + ephemeral signing certificate + Rekor inclusion proof, in a single JSON blob. |
+| `sbom.cdx.json.sigstore` | [sigstore/cosign](https://docs.sigstore.dev/) signature bundle — signature + ephemeral signing certificate + Rekor inclusion proof, in a single JSON blob. |
 | `source-tree-sha256.txt` | The content-tree SHA-256 with a human-readable header. Reproducible from any clone at the SBOM's commit with `git ls-tree` + `git show` + `sha256sum` + `sort`. |
-| `source-tree-sha256.txt.bundle` | cosign bundle for the above. |
+| `source-tree-sha256.txt.sigstore` | cosign bundle for the above. |
 
 Signing is keyless via GitHub OIDC: no private keys live in this repo.
 The signature commits to the specific workflow run (`sbom.yml` in this repo
@@ -111,13 +111,13 @@ To verify a downloaded asset set:
 
 ```shell
 cosign verify-blob \
-  --bundle sbom.cdx.json.bundle \
+  --bundle sbom.cdx.json.sigstore \
   --certificate-identity "https://github.com/cososo-ltd/solid-syslog/.github/workflows/sbom.yml@refs/tags/v<version>" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   sbom.cdx.json
 ```
 
-The same pattern verifies `source-tree-sha256.txt.bundle` against `source-tree-sha256.txt`.
+The same pattern verifies `source-tree-sha256.txt.sigstore` against `source-tree-sha256.txt`.
 
 Every cosign signature is also logged to [Rekor](https://docs.sigstore.dev/logging/overview/),
 Sigstore's public transparency log. Anyone can look up the signature entry
@@ -136,7 +136,3 @@ For a step-by-step verification guide aimed at downstream integrators, see
   workflow."
 - Binary-artefact signing. The project is source-only; nothing to
   sign beyond the SBOM and content-tree hash.
-- Flip the signing/attach steps off `continue-on-error: true`. The
-  initial rollout keeps those steps advisory so a signing infrastructure
-  outage doesn't block a release. Tighten to hard-fail after the first
-  real release has demonstrated the pipeline works.
