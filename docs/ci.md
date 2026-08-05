@@ -91,9 +91,14 @@ Merging that PR creates a GitHub Release and tag.
 
 ## Permissions
 
-Each job is granted only the permissions it needs. The default token scope is
-`contents: read`. Jobs that publish test results additionally hold `checks: write`
-and `pull-requests: write`. The `deploy-docs-pages` job additionally holds
-`pages: write` and `id-token: write` to publish the documentation site to GitHub Pages.
-`analyze-codeql` additionally holds `security-events: write` to upload its results to
-the Security tab.
+Each job is granted only the permissions it needs. Every workflow declares
+`permissions: contents: read` at the top level and no workflow grants a write scope
+there, so a job added later starts read-only rather than inheriting a write token by
+default. Write scopes are held by the jobs that need them: jobs publishing test
+results add `checks: write` and `pull-requests: write`; `deploy-docs-pages` adds
+`pages: write` and `id-token: write` to publish the documentation site to GitHub
+Pages; `analyze-codeql` adds `security-events: write` to upload its results to the
+Security tab; `sbom.yml`'s publish job adds `contents: write` and `id-token: write` to
+attach keyless-signed assets to a release; and `release-please.yml`'s job adds
+`contents: write` and `pull-requests: write` to maintain the release PR and create the
+tag.

@@ -97,9 +97,9 @@ Every GitHub Release created by Release Please gets four assets attached:
 | Asset | Contents |
 |---|---|
 | `sbom.cdx.json` | The SBOM itself. |
-| `sbom.cdx.json.bundle` | [sigstore/cosign](https://docs.sigstore.dev/) signature bundle — signature + ephemeral signing certificate + Rekor inclusion proof, in a single JSON blob. |
+| `sbom.cdx.json.sigstore` | [sigstore/cosign](https://docs.sigstore.dev/) signature bundle — signature + ephemeral signing certificate + Rekor inclusion proof, in a single JSON blob. |
 | `source-tree-sha256.txt` | The content-tree SHA-256 with a human-readable header. Reproducible from any clone at the SBOM's commit with `git ls-tree` + `git show` + `sha256sum` + `sort`. |
-| `source-tree-sha256.txt.bundle` | cosign bundle for the above. |
+| `source-tree-sha256.txt.sigstore` | cosign bundle for the above. |
 
 Signing is keyless via GitHub OIDC: no private keys live in this repo.
 The signature commits to the specific workflow run (`sbom.yml` in this repo
@@ -111,13 +111,13 @@ To verify a downloaded asset set:
 
 ```shell
 cosign verify-blob \
-  --bundle sbom.cdx.json.bundle \
+  --bundle sbom.cdx.json.sigstore \
   --certificate-identity "https://github.com/cososo-ltd/solid-syslog/.github/workflows/sbom.yml@refs/tags/v<version>" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   sbom.cdx.json
 ```
 
-The same pattern verifies `source-tree-sha256.txt.bundle` against `source-tree-sha256.txt`.
+The same pattern verifies `source-tree-sha256.txt.sigstore` against `source-tree-sha256.txt`.
 
 Every cosign signature is also logged to [Rekor](https://docs.sigstore.dev/logging/overview/),
 Sigstore's public transparency log. Anyone can look up the signature entry

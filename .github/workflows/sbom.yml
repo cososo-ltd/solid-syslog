@@ -5,6 +5,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
   sbom:
     # Generation + validation — shared by both triggers. Read-only; no secrets.
@@ -146,18 +149,22 @@ jobs:
           cosign-release: 'v3.0.6'
         continue-on-error: true
 
+      # The .sigstore suffix is load-bearing, not cosmetic: signature-detecting
+      # tooling matches on it, so a bundle named .bundle reads as an unsigned
+      # release asset. Change it only to another recognised suffix — .asc,
+      # .minisig, .sig, .sign, .sigstore or .sigstore.json.
       - name: Sign SBOM (keyless, GitHub OIDC)
         continue-on-error: true
         run: |
           cosign sign-blob --yes \
-            --bundle sbom/sbom.cdx.json.bundle \
+            --bundle sbom/sbom.cdx.json.sigstore \
             sbom/sbom.cdx.json
 
       - name: Sign source-tree-sha256.txt (keyless, GitHub OIDC)
         continue-on-error: true
         run: |
           cosign sign-blob --yes \
-            --bundle sbom/source-tree-sha256.txt.bundle \
+            --bundle sbom/source-tree-sha256.txt.sigstore \
             sbom/source-tree-sha256.txt
 
       - name: Attach assets to Release
@@ -169,8 +176,8 @@ jobs:
           # source, so `gh` has no git config to infer the repo from.
           gh release upload "${{ github.event.release.tag_name }}" \
             sbom/sbom.cdx.json \
-            sbom/sbom.cdx.json.bundle \
+            sbom/sbom.cdx.json.sigstore \
             sbom/source-tree-sha256.txt \
-            sbom/source-tree-sha256.txt.bundle \
+            sbom/source-tree-sha256.txt.sigstore \
             --clobber \
             --repo "${{ github.repository }}"
