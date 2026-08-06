@@ -12,7 +12,9 @@ justifies it. A **tool limitation** is not: the code complies, cppcheck-misra
 reports a finding anyway, and the entry explains why the report is wrong. Both
 are recorded here because a suppression exists either way, and the authorisation
 for a suppression belongs in one place. Counting the entries is therefore not a
-count of departures — eight of them are.
+count of departures: seven of the entries record a departure. Where the
+distinction does not matter, the words *deviation* and *entry* are used
+interchangeably below.
 
 This register is published as evidence of process, not as a compliance
 submission. It exists so that an integrator building SolidSyslog into a
@@ -43,7 +45,7 @@ after the rule subset was curated; before then it carried only a
 header comment.
 
 Each entry follows a fixed shape: the guideline and its category, the construct
-that deviates, the scope the deviation covers, the engineering rationale, the
+at issue, the scope the entry covers, the engineering rationale, the
 residual risk and how it is mitigated, and a named approval with its dates. The
 register follows the deviation record structure of MISRA Compliance:2020
 (Section 4, example record at Appendix B), adopted voluntarily; it is mandatory
@@ -59,7 +61,8 @@ than inheriting this approval.
 ## Guideline text is not reproduced here
 
 Each entry identifies its guideline by number and category and then describes
-**the construct in SolidSyslog that deviates** — not what the guideline says.
+**the construct in SolidSyslog that the finding lands on** — not what the
+guideline says.
 MISRA C:2012 is copyrighted and not redistributable, so its rule text,
 amplification and examples are omitted deliberately rather than by oversight.
 Read them in your own licensed copy, available from
@@ -96,7 +99,7 @@ here rather than left to the reader.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 **Classification:** Deviation — the code departs from the guideline.
 
-### Deviation
+### Construct
 
 SolidSyslog requires external identifiers to be distinct within their first
 63 characters rather than their first 31.
@@ -193,7 +196,7 @@ the founding entry in this document under
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 **Classification:** Deviation — the code departs from the guideline.
 
-### Deviation
+### Construct
 
 SolidSyslog accepts two structural pointer conversions that are
 identified in code as `SelfFromBase` (vtable) or `(struct X*) storage`
@@ -368,7 +371,7 @@ cppcheck-misra interprets Rule 5.7 strictly — every repeated `struct X`
 declaration counts as a non-unique tag, including forward declarations
 in headers and the matching definition in source.
 
-### Deviation
+### Construct
 
 SolidSyslog uses `struct SolidSyslogX` directly throughout the public
 API and source rather than typedef'ing it (see `docs/NAMING.md`, Tier 1
@@ -448,7 +451,7 @@ founding entries; retired 2026-05-23 under
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 **Classification:** Deviation — the code departs from the guideline.
 
-### Deviation
+### Construct
 
 `struct SolidSyslogFormatter` ends with a flexible array member that
 holds the caller-supplied backing storage:
@@ -518,7 +521,7 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 **Classification:** both kinds, which is why they share an entry — category 1
 below is a tool limitation, category 2 is a genuine deviation.
 
-### Deviation
+### Construct
 
 Two distinct site categories trigger this rule:
 
@@ -625,7 +628,8 @@ standard; reorganising the code to avoid the cppcheck-misra
 false-positive would either drop the outer `const` qualifier on
 `*config` / `*blockSequence` / `*config` (the wrong direction) or
 introduce a no-op `const_cast`-style explicit cast that the tool would
-still flag. A site-local deviation is the honest record.
+still flag. Recording the finding here, with the reasoning, is the honest
+alternative to bending the code around a tool.
 
 The two platform-API sites are the standard case of a const-correct interior
 forced to strip qualification at a fixed third-party API boundary. Both
@@ -663,7 +667,7 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 cppcheck-misra also raises this rule for `<wchar.h>` inclusion, which is what
 brings the construct below into scope.
 
-### Deviation
+### Construct
 
 Three POSIX platform sources include `<time.h>` for `struct timespec`
 and `clock_gettime`/`nanosleep`:
@@ -716,7 +720,7 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 **Classification:** Deviation — the code departs from the guideline.
 
-### Deviation
+### Construct
 
 `Platform/Windows/Source/SolidSyslogWindowsFile.c` includes `<stdio.h>`
 solely to obtain the `SEEK_SET` and `SEEK_END` constants used by
@@ -787,7 +791,7 @@ Both findings originate from the same syntactic shape — the
 anonymous-`enum` named-constant idiom — and are covered by a single
 deviation here.
 
-### Deviation
+### Construct
 
 SolidSyslog uses the anonymous-`enum` idiom across the codebase as
 a portable mechanism for declaring named integer constants in
@@ -870,7 +874,7 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 **Classification:** Deviation — the code departs from the guideline.
 
-### Deviation
+### Construct
 
 `Core/Source/SolidSyslogMacros.h` defines `SOLIDSYSLOG_STATIC_ASSERT`. The
 native C++/C11 expansions need a string-literal message, so the macro
@@ -947,9 +951,9 @@ Raised 2026-05-15, approved 2026-05-16 by the project owner, David Cozens. Recor
 
 **MISRA C:2012 Rule 2.5** — Advisory.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Deviation — the code departs from the guideline.
+**Classification:** Tool limitation — the code complies; cppcheck-misra reports a finding regardless.
 
-### Deviation
+### Construct
 
 `Core/Interface/SolidSyslogCircularBuffer.h` declares one function-like
 macro — `SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES` — that integrator code
@@ -1021,7 +1025,7 @@ Raised 2026-05-15, approved 2026-05-16 by the project owner, David Cozens. Recor
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 **Classification:** Tool limitation — the code complies; cppcheck-misra reports a finding regardless.
 
-### Deviation
+### Construct
 
 `Core/Source/SolidSyslogFileBlockDevice.c:20` declares
 `static const char FILE_EXTENSION[] = ".log"`. The constant is the
@@ -1106,7 +1110,7 @@ Raised and approved 2026-05-22 by the project owner, David Cozens. Recorded unde
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 **Classification:** Deviation — the code departs from the guideline.
 
-### Deviation
+### Construct
 
 `SolidSyslogStream::Send` takes `const void*` and `SolidSyslogStream::Read`
 takes `void*` — the project-wide byte-buffer contract used by every
