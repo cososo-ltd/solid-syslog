@@ -73,8 +73,8 @@ DESCRIPTIONS = {
         "stays yours."
     ),
     "iec62443.md": (
-        "IEC 62443-4-2 and 62443-3-3 audit-logging controls mapped "
-        "control-by-control to SolidSyslog components."
+        "IEC 62443-4-2 audit-logging controls mapped control-by-control to "
+        "what SolidSyslog provides and what stays yours."
     ),
     "rfc-compliance.md": (
         "Requirement-by-requirement status of SolidSyslog against the syslog "
