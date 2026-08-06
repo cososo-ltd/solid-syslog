@@ -146,7 +146,7 @@ This is the only synchronisation primitive the pools use for their own walks.
 - Never free injected handles. An adapter frees only what it created. Handles
   the integrator passed in (an `mbedtls_x509_crt*`, an RNG, a caller's socket)
   are borrowed; the owner frees them. The [Mbed TLS coexistence
-  contract](iec62443.md#embedded-sl4-solidsyslogmbedtlsstream) is the template:
+  contract](integrating-mbedtls.md#coexistence-contract) is the template:
   `Platform/MbedTls/Source/` never touches process-global Mbed TLS state.
 - A Null must be safe to call. Whatever your role's Null returns (see each
   contract below), it must let Core's algorithm proceed sanely: drop-on-the-floor

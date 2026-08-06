@@ -38,13 +38,13 @@ Designed for resource-constrained environments:
 RFC 5424 structured formatting over UDP (RFC 5426), TCP (RFC 6587), and TLS /
 mutual TLS (RFC 5425). Asynchronous buffering, rotating block store-and-forward,
 and at-rest record protection — CRC-16 for accidental corruption, or keyed
-HMAC-SHA256 / AES-256-GCM where a local attacker is in scope. The full
-[IEC 62443 SL1–SL4 component set](https://docs.cososo.co.uk/solid-syslog/iec62443/)
-is available.
+HMAC-SHA256 / AES-256-GCM where a local attacker is in scope. The audit-logging
+capabilities an IEC 62443 deployment draws on are mapped control by control in the
+[IEC 62443 guide](https://docs.cososo.co.uk/solid-syslog/iec62443/).
 
 SolidSyslog is built for embedded and RTOS targets. Every platform dependency —
 TCP/IP stack, TLS library, filesystem, OS primitives, clock — is injected through
-a vtable, so the library ports to **any** embedded OS by filling roles rather
+a vtable, so the library ports to an embedded OS by filling roles rather
 than editing Core. Reference adapters ship for FreeRTOS on Cortex-M (networking
 via FreeRTOS-Plus-TCP or lwIP, transport security via `SolidSyslogMbedTlsStream`
 over Mbed TLS, persistent store-and-forward over ChaN FatFs or FreeRTOS-Plus-FAT)
@@ -108,7 +108,7 @@ syslog server; see [BDD testing](https://docs.cososo.co.uk/solid-syslog/bdd/).
 
 - [CRA guide](https://docs.cososo.co.uk/solid-syslog/cra/) — the Annex I map: the requirement that names logging, the requirements an audit trail contributes to, what the project publishes for your vulnerability handling, and the dates the Regulation applies from
 - [Compliance in one page](https://docs.cososo.co.uk/solid-syslog/overview/) — the evaluator's one-screen orientation on CRA and IEC 62443
-- [IEC 62443 compliance guide](https://docs.cososo.co.uk/solid-syslog/iec62443/) — component selection by Security Level (SL1–SL4) for industrial control systems
+- [IEC 62443 compliance guide](https://docs.cososo.co.uk/solid-syslog/iec62443/) — the audit-logging-relevant controls, and what the library provides against each
 - [RFC compliance matrix](https://docs.cososo.co.uk/solid-syslog/rfc-compliance/) — sender-side coverage of RFC 5424, 5426, 6587, and 5425
 - [Threat model](https://docs.cososo.co.uk/solid-syslog/security/threat-model/) — the division of responsibility between the library and your product
 
