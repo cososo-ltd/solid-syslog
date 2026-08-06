@@ -500,10 +500,10 @@ format-on-save:
 
 - **`InsertBraces: true`** combined with `AllowShortIfStatementsOnASingleLine: Never`,
   `AllowShortLoopsOnASingleLine: false`, `AllowShortFunctionsOnASingleLine: None`, and
-  `AllowShortBlocksOnASingleLine: Never` — formatter-side enforcement of **MISRA 15.6**
-  (the body of an iteration- or selection-statement shall be a compound-statement). clang-format
-  rewrites your code to add the braces if they are missing, and the `AllowShort*` settings
-  stop them being collapsed back onto a single line.
+  `AllowShortBlocksOnASingleLine: Never` — formatter-side enforcement of **MISRA 15.6**,
+  which is why every `if`, `else`, `for` and `while` body in this project is braced.
+  clang-format rewrites your code to add the braces if they are missing, and the
+  `AllowShort*` settings stop them being collapsed back onto a single line.
 - **`RemoveParentheses: Leave`** — keeps the project **MISRA 12.1 safe**. The advisory rule
   prefers explicit precedence parentheses; flipping this to `MultipleParentheses` would let
   clang-format strip them.

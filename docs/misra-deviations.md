@@ -22,24 +22,46 @@ header comment.
 The format below is patterned on MISRA's own deviation record template
 (MISRA Compliance:2020 §4.2).
 
+## Guideline text is not reproduced here
+
+Each entry identifies its guideline by number and category and then describes
+**the construct in SolidSyslog that deviates** — not what the guideline says.
+MISRA C:2012 is copyrighted and not redistributable, so its rule text,
+amplification and examples are omitted deliberately rather than by oversight.
+Read them in your own licensed copy, available from
+[misra.org.uk](https://misra.org.uk/); Appendix A lists every guideline with its
+category.
+
+Nothing is lost by this. A deviation record exists to show that the project
+understood the guideline and reasoned about the risk of departing from it, and a
+precise description of our own code demonstrates that better than a restated
+headline an assessor already has in front of them.
+
 ---
 
 ## D.001 — Rule 5.1 external identifier uniqueness relaxed to 63 characters
 
-### Rule
+### Guideline
 
-> **Rule 5.1 (Required)** — External identifiers shall be distinct.
-
-The "distinct" requirement is parameterised by the implementation's
-significant-character count for external identifiers. C99 §5.2.4.1
-specifies a minimum of 31 significant characters in external
-identifiers — i.e. a conforming compiler may treat two external
-identifiers that agree in the first 31 characters as the same identifier.
+**MISRA C:2012 Rule 5.1** — Required.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 
 ### Deviation
 
-SolidSyslog requires external identifiers to be distinct in the first
-63 characters rather than the first 31.
+SolidSyslog requires external identifiers to be distinct within their first
+63 characters rather than their first 31.
+
+Thirty-one is the floor the C language sets: C99 §5.2.4.1 guarantees
+only 31 significant characters in an external identifier, so a conforming
+compiler is permitted to treat two identifiers that agree that far as the same
+identifier. The project asserts a longer guarantee than the language requires,
+and states the number rather than leaving it implicit.
+
+Every toolchain this project builds and tests on resolves external identifiers
+well past 63 characters, and the table under *Rationale* below records what
+each of them documents. Yours may not be among them: if you build SolidSyslog
+with a different compiler or linker, confirm its significant-character limit
+before relying on this deviation.
 
 ### Scope
 
@@ -112,16 +134,13 @@ document under [S10.01](https://github.com/cososo-ltd/solid-syslog/issues/357).
 
 ## D.002 — Rules 11.2 / 11.3 / 11.5: vtable downcasts + Formatter
 
-### Rule
+### Guidelines
 
-> **Rule 11.3 (Required)** — A cast shall not be performed between a
-> pointer to object type and a pointer to a different object type.
->
-> **Rule 11.2 (Required)** — Conversions shall not be performed between
-> a pointer to an incomplete type and any other type.
->
-> **Rule 11.5 (Advisory)** — A conversion should not be performed from
-> pointer to `void` into pointer to object.
+- **MISRA C:2012 Rule 11.2** — Required.
+- **MISRA C:2012 Rule 11.3** — Required.
+- **MISRA C:2012 Rule 11.5** — Advisory.
+
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 
 ### Deviation
 
@@ -257,11 +276,12 @@ caller-supplied-storage exception.
 
 ## D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
 
-### Rule
+### Guideline
 
-> **Rule 5.7 (Required)** — A tag name shall be a unique identifier.
+**MISRA C:2012 Rule 5.7** — Required.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 
-cppcheck-misra interprets this strictly — every repeated `struct X`
+cppcheck-misra interprets Rule 5.7 strictly — every repeated `struct X`
 declaration counts as a non-unique tag, including forward declarations
 in headers and the matching definition in source.
 
@@ -338,10 +358,10 @@ owner — David Cozens. Recorded under
 
 ## D.005 — Rule 18.7: flexible array members
 
-### Rule
+### Guideline
 
-> **Rule 18.7 (Required)** — Flexible array members shall not be
-> declared.
+**MISRA C:2012 Rule 18.7** — Required.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 
 ### Deviation
 
@@ -401,11 +421,10 @@ Project owner — David Cozens. Recorded under
 
 ## D.006 — Rule 11.8: `const` qualification under field access of `const struct*`
 
-### Rule
+### Guideline
 
-> **Rule 11.8 (Required)** — A cast shall not be performed that
-> removes any `const` or `volatile` qualification from the type
-> pointed to by a pointer.
+**MISRA C:2012 Rule 11.8** — Required.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 
 ### Deviation
 
@@ -533,11 +552,13 @@ Project owner — David Cozens. Recorded under
 
 ## D.007 — Rule 21.10: transitive `<wchar.h>` via `<time.h>`
 
-### Rule
+### Guideline
 
-> **Rule 21.10 (Required)** — The Standard Library time and date
-> functions shall not be used. (cppcheck-misra also flags
-> `<wchar.h>` inclusion under this rule.)
+**MISRA C:2012 Rule 21.10** — Required.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+
+cppcheck-misra also raises this rule for `<wchar.h>` inclusion, which is what
+brings the construct below into scope.
 
 ### Deviation
 
@@ -586,10 +607,10 @@ Project owner — David Cozens. Recorded under
 
 ## D.008 — Rule 21.6: `<stdio.h>` for `SEEK_SET` / `SEEK_END` only
 
-### Rule
+### Guideline
 
-> **Rule 21.6 (Required)** — The Standard Library input/output
-> functions shall not be used.
+**MISRA C:2012 Rule 21.6** — Required.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 
 ### Deviation
 
@@ -641,11 +662,12 @@ Project owner — David Cozens. Recorded under
 
 ## D.009 — Rules 2.4 / 5.7: anonymous `enum` used as named-constant container
 
-### Rules
+### Guidelines
 
-> **Rule 2.4 (Advisory)** — A project should not contain unused tag
-> declarations.
-> **Rule 5.7 (Required)** — A tag name shall be a unique identifier.
+- **MISRA C:2012 Rule 2.4** — Advisory.
+- **MISRA C:2012 Rule 5.7** — Required.
+
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 
 cppcheck-misra interprets an anonymous `enum { ... };` declaration
 (no enum tag, no `typedef`) two ways:
@@ -739,10 +761,10 @@ Project owner — David Cozens. Recorded under
 
 ## D.010 — Rule 20.10: `#` stringification in the `SOLIDSYSLOG_STATIC_ASSERT` polyfill
 
-### Rule
+### Guideline
 
-> **Rule 20.10 (Advisory)** — The `#` and `##` preprocessor operators
-> should not be used.
+**MISRA C:2012 Rule 20.10** — Advisory.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 
 ### Deviation
 
@@ -809,10 +831,10 @@ Project owner — David Cozens. Recorded under
 
 ## D.011 — Rule 2.5: public API macros consumed outside the cppcheck-misra scope
 
-### Rule
+### Guideline
 
-> **Rule 2.5 (Advisory)** — A project should not contain unused macro
-> definitions.
+**MISRA C:2012 Rule 2.5** — Advisory.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 
 ### Deviation
 
@@ -879,10 +901,10 @@ Project owner — David Cozens. Recorded under
 
 ## D.012 — Rule 8.9: file-scope `static const` referenced from a file-scope enum + one function
 
-### Rule
+### Guideline
 
-> **Rule 8.9 (Advisory)** — An object should be defined at block scope
-> if its identifier only appears in a single function.
+**MISRA C:2012 Rule 8.9** — Advisory.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 
 ### Deviation
 
@@ -962,10 +984,10 @@ Project owner — David Cozens. Recorded under
 
 ## D.013 — Rule 11.5: `void*` ↔ `unsigned char*` at third-party byte-buffer API boundaries
 
-### Rule
+### Guideline
 
-> **Rule 11.5 (Advisory)** — A conversion should not be performed from
-> pointer to `void` into pointer to object.
+**MISRA C:2012 Rule 11.5** — Advisory.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
 
 ### Deviation
 
