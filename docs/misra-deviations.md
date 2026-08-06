@@ -109,16 +109,15 @@ tiers (rule 5.1 is not enforced there at all).
 ### Rationale
 
 The C99 31-character limit is a legacy linker artifact from the late
-1980s. Every toolchain that SolidSyslog targets — hosted or embedded —
-supports external identifiers well in excess of 63 significant
-characters:
+1980s. No toolchain SolidSyslog is built with imposes anything close to
+it:
 
 | Toolchain | External identifier behaviour |
 |-----------|-------------------------------|
 | GCC (incl. `arm-none-eabi-gcc`)                | No compiler-imposed limit; identifier length is delegated to the target's linker, and all characters are significant on every linker SolidSyslog targets (ld, gold, lld, link.exe). See GCC manual, "Implementation-defined behavior". |
 | Clang / LLVM (incl. Arm Compiler 6 / armclang) | Same rule as GCC for external identifiers — no compiler-imposed limit. |
-| MSVC 2015+                                     | Documented maximum identifier length **2,047 characters** ([Microsoft Learn — C Identifiers](https://learn.microsoft.com/en-us/cpp/c-language/c-identifiers)). |
-| IAR Embedded Workbench                         | C/C++ compiler reference manual documents an identifier limit well above 63 characters in every currently shipping version (verify on the target SKU's compiler reference for ports of SolidSyslog to non-standard SKUs). |
+| MSVC                                           | Documented maximum identifier length **2,047 characters** ([Microsoft Learn — C Identifiers](https://learn.microsoft.com/en-us/cpp/c-language/c-identifiers)). CI builds with the `windows-latest` toolchain; older MSVC releases are not tested. |
+| IAR Embedded Workbench, Keil ARMCC 6            | Not built in CI. Identifier limits are documented per compiler SKU; confirm against your SKU's reference at port time. |
 
 The Tier 1 naming scheme in `docs/NAMING.md` (form
 `SolidSyslogClass_Function`) routinely produces identifiers in the
@@ -142,9 +141,9 @@ identifiers (§5.2.4.1) — a single number applies project-wide.
 ### Risk and mitigation
 
 - **Portability** — Constrained to toolchains that support ≥ 63
-  significant characters in external identifiers. The table above
-  covers every supported target; adding a new target requires verifying
-  this constraint.
+  significant characters in external identifiers. The table above states
+  which of those are proven by CI and which rest on documentation;
+  adding a target requires verifying the constraint on it.
 - **Tooling** — cppcheck-misra applies its default 31-character
   window for rule 5.1. The deviation only matters when a real
   collision would resolve at 63 characters but not at 31 — at
@@ -469,9 +468,14 @@ shape (§6.7.2.1 ¶16). The alternatives all regress:
 
 ### Risk and mitigation
 
-- **Compiler support.** All target toolchains support C99 flexible
-  array members (gcc, clang, MSVC 2013+, IAR, Keil ARMCC 6). The
-  project's CI builds prove this on every push.
+- **Compiler support.** GCC, Clang and the ARM cross-compilers accept
+  the construct as the C99 feature it is, and CI compiles it on every
+  push. MSVC compiles it too, but reports C4200 — it treats a trailing
+  unsized array as a nonstandard extension — so the build carries
+  `/wd4200` for this construct specifically (see `CMakeLists.txt`);
+  without it, `/WX` would fail the Windows lane. IAR and Keil ARMCC 6
+  are not built in CI, so support there rests on their documentation
+  and is confirmed at port time rather than per push.
 - **Allocation surprise.** The `_Static_assert` accompanying each
   flexible-array struct pins the storage-type-to-impl-type
   relationship at build time; an undersized storage allocation is a
@@ -769,15 +773,13 @@ site would add visual noise next to a project-wide intentional
 idiom — listing them in `misra_suppressions.txt` under this
 deviation keeps the source clean.
 
-**Suppression-file layout.** 5.7 anonymous-enum suppressions
-were historically grouped in the D.003 block (struct-tag
-repetition) because D.003 was the original 5.7 deviation; per-group
-conformance stories migrate them into the D.009 block as they
-review their cluster (S10.16 moved the Senders-cluster ones).
-Until every group has run, both blocks contain rule 5.7 lines
-and the deviation that authorises each is determined by the kind
-of identifier the cppcheck-misra finding lands on (struct tag →
-D.003; anonymous enum → D.009).
+**Suppression-file layout.** Two deviations authorise rule 5.7 findings, and
+which one applies is decided by the identifier the finding lands on: a repeated
+struct tag is D.003, an anonymous enum is D.009. That is a standing convention,
+not a transitional state — both kinds of finding exist permanently in this
+codebase, so both blocks permanently carry rule 5.7 lines. Each block in
+`misra_suppressions.txt` is headed by the deviation that authorises its entries,
+so the mapping is explicit per line rather than inferred.
 
 ### Scope
 
