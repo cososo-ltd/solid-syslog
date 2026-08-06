@@ -19,8 +19,9 @@ under [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367)
 after the rule subset was curated; before then it carried only a
 header comment.
 
-The format below is patterned on MISRA's own deviation record template
-(MISRA Compliance:2020 §4.2).
+Each entry follows a fixed shape: the guideline and its category, the construct
+that deviates, the scope the deviation covers, the engineering rationale, the
+residual risk and how it is mitigated, and a named approval.
 
 ## Guideline text is not reproduced here
 
@@ -36,6 +37,18 @@ Nothing is lost by this. A deviation record exists to show that the project
 understood the guideline and reasoned about the risk of departing from it, and a
 precise description of our own code demonstrates that better than a restated
 headline an assessor already has in front of them.
+
+## Language edition for clause references
+
+Unless otherwise stated, all clause references are to ISO/IEC 9899:1999 (C99),
+which is the edition SolidSyslog conforms to. Where a deviation concerns a code
+path that only a later edition compiles, that entry names the applicable edition
+and cites both.
+
+Paragraph numbering differs between editions — §6.7.2.1 renumbered when C11
+added anonymous structure and union members — so a C11 paragraph number read
+against a C99 copy lands on the wrong sentence. That is why the edition is fixed
+here rather than left to the reader.
 
 ---
 
@@ -96,8 +109,9 @@ distinctness would either collapse identifier pairs that read
 identically up to a trailing word (`SolidSyslogPlusTcpResolver_Create`
 vs `SolidSyslogPlusTcpResolver_Destroy`) into a single name, or force
 unidiomatic abbreviation throughout the public
-API. Neither outcome serves clarity or MISRA's underlying intent
-("the reader can tell two identifiers apart"); 63 characters does.
+API. Neither outcome serves clarity, and neither preserves the
+distinguishability the guideline exists to protect. Sixty-three characters
+preserves both.
 
 63 was chosen rather than "unlimited" so the project still names a
 concrete number that every targeted toolchain comfortably exceeds. It
@@ -394,7 +408,7 @@ declares a storage buffer of arbitrary size (with a minimum enforced by
 bookkeeping fields at the start, payload bytes filling the rest.
 
 The flexible array member is C99's standard mechanism for exactly this
-shape (§6.7.2.1 ¶18). The alternatives all regress:
+shape (§6.7.2.1 ¶16). The alternatives all regress:
 
 | Alternative | Why rejected |
 |-------------|--------------|
@@ -443,14 +457,15 @@ Two distinct site categories trigger this rule:
    }
    ```
 
-   Per C11 §6.5.2.3 ¶3, the result of `->` is the type of the named
+   Per §6.5.2.3 ¶4, the result of `->` is the type of the named
    member; `config->buffer` evaluates to `struct SolidSyslogBuffer *`
    with no `const` qualifier on the pointed-to object. cppcheck-misra
    nonetheless flags the field access as a const-strip — it tracks the
    outer `const` on `*config` rather than the type of the member
-   expression. The accepted interpretation in the MISRA community is
-   that 11.8 applies to *pointer casts*, not to member-access yielding
-   a non-`const`-qualified pointer rvalue.
+   expression. No cast is performed at these sites, so the project
+   assesses them as a tool limitation rather than a genuine departure
+   from the guideline, and records them here so that the assessment is
+   visible rather than silent.
 
    The same pattern recurs in
    `SolidSyslogMessageFormatter_Format(const struct
@@ -525,9 +540,9 @@ false-positive would either drop the outer `const` qualifier on
 introduce a no-op `const_cast`-style explicit cast that the tool would
 still flag. A site-local deviation is the honest record.
 
-The two platform-API sites are the canonical "forced by an external
-interface" pattern MISRA itself calls out in the deviation guidance for
-rule 11.8. Both upstream declarations (Microsoft's `select()` timeout,
+The two platform-API sites are the standard case of a const-correct interior
+forced to strip qualification at a fixed third-party API boundary. Both
+upstream declarations (Microsoft's `select()` timeout,
 lwIP's `pbuf::payload`) are fixed by their vendors; the SolidSyslog seam
 keeps the const-correctness contract on the caller's side of the
 boundary.
@@ -672,11 +687,11 @@ Project owner — David Cozens. Recorded under
 cppcheck-misra interprets an anonymous `enum { ... };` declaration
 (no enum tag, no `typedef`) two ways:
 
-- as a "tag declared but unused" (2.4) — the enumerators are used
-  as named constants but the enum type itself is never referenced;
-- as a non-unique tag (5.7) — every anonymous `enum` shares the
-  same empty tag identifier, so the second and subsequent ones
-  collide.
+- under 2.4 it reports the enum tag as unused — the enumerators are
+  used as named constants but the enum type itself is never referenced;
+- under 5.7 it reports the tag as non-unique — every anonymous `enum`
+  shares the same empty tag identifier, so the second and subsequent
+  ones collide.
 
 Both findings originate from the same syntactic shape — the
 anonymous-`enum` named-constant idiom — and are covered by a single
@@ -796,12 +811,20 @@ declarations in one translation unit are compatible, so no `__LINE__` pasting
 
 ### Rationale
 
+`SOLIDSYSLOG_STATIC_ASSERT` selects one of three expansions on
+`__cplusplus` / `__STDC_VERSION__`, and all three are compiled: C++
+`static_assert` in the CppUTest harnesses, C11 `_Static_assert` in the default
+build (`CMAKE_C_STANDARD` is 11 unless overridden), and the C99
+negative-array-size fallback under the `c99` preset, which is the pre-release
+check that the portable surface is still C99 — see
+[local checks](local-checks.md). The deviation is confined to the two
+string-literal forms; only they need the message stringified, and the C99
+fallback uses no preprocessor operator at all.
+
 C++ `static_assert` and C11 `_Static_assert` are the standard compile-time
-assertion primitives, and the project compiles at `--std=c11` (so the
-`_Static_assert` branch is what every normal and CI build — including the
-cppcheck-misra lane — compiles). Their message argument is a string literal,
-and there is no way to convert an arbitrary identifier-shaped message into one
-without `#`. The alternatives all regress:
+assertion primitives for their editions. Their message argument is a string
+literal, and there is no way to convert an arbitrary identifier-shaped message
+into one without `#`. The alternatives all regress:
 
 | Alternative | Why rejected |
 |-------------|--------------|
@@ -878,7 +901,7 @@ The alternatives all regress:
 
 | Alternative | Why rejected |
 |-------------|--------------|
-| Inline `cppcheck-suppress misra-c2012-2.5` at each macro | Inline suppressions are weaker by MISRA Compliance:2020 §4.2 (rationale scattered, not centrally auditable). Project preference is structural deviations in this document. |
+| Inline `cppcheck-suppress misra-c2012-2.5` at each macro | **Project preference.** Deviations are recorded structurally in this document so the rationale is centrally auditable rather than scattered across call sites. |
 | Widen the cppcheck-misra scan to include `Tests/` | Tests are the Consistency-only tier per E10's tier model; running MISRA there is out of scope by design. |
 | Move the macros into `Core/Source/` | Public API by definition lives under `Core/Interface/`. Moving them would break the audience-segregated header layout. |
 
@@ -960,7 +983,7 @@ Summary:
 
 | Alternative | Why rejected |
 |-------------|--------------|
-| Inline `cppcheck-suppress misra-c2012-8.9` at the declaration | Inline suppressions are weaker by MISRA Compliance:2020 §4.2 (rationale scattered, not centrally auditable). Project preference is structural deviations in this document. |
+| Inline `cppcheck-suppress misra-c2012-8.9` at the declaration | **Project preference.** Deviations are recorded structurally in this document so the rationale is centrally auditable rather than scattered across call sites. |
 | Inline the `".log"` literal at both use sites | DRY violation for a single-source-of-truth on-disk constant. |
 | Promote the dependent enum entries to `static const size_t` | Verified to not satisfy 8.9; instead surfaces a second false positive on the new constant. |
 | Promote to `#define FILE_EXTENSION ".log"` | Introduces a string macro inconsistent with the file-scope-const pattern used elsewhere in storage code. |
@@ -1024,10 +1047,10 @@ The alternatives all regress:
 |-------------|--------------|
 | Refactor `SolidSyslogStream::Send`/`Read` to use `unsigned char*` | Public-API ABI change that propagates to every Stream implementation (Posix TCP, Winsock TCP, FreeRTOS TCP, OpenSSL TLS, mbedTLS TLS, NullStream) and every Stream caller (`SolidSyslogStreamSender`). The `void*` byte-buffer contract is the conventional C idiom for transport interfaces and matches POSIX `send`/`recv`, OpenSSL `SSL_write`/`SSL_read`, etc. Changing it for the sake of one third-party API's typing choice is the wrong direction. |
 | Copy through an `unsigned char` scratch buffer per call | Runtime cost on the hot send/receive path; adds a fixed-size scratch or a stack-allocated VLA in a critical-path function. Defeats the zero-copy intent of the Stream contract. |
-| Inline `cppcheck-suppress misra-c2012-11.5` at each site | Inline suppressions are weaker by MISRA Compliance:2020 §4.2 (rationale scattered, not centrally auditable). Project preference is structural deviations in this document. |
+| Inline `cppcheck-suppress misra-c2012-11.5` at each site | **Project preference.** Deviations are recorded structurally in this document so the rationale is centrally auditable rather than scattered across call sites. |
 
 The cast is well-defined: `unsigned char` may alias any object type
-(C99 §6.5 ¶7), so reinterpreting a `void*` byte buffer as
+(§6.5 ¶7), so reinterpreting a `void*` byte buffer as
 `unsigned char*` and back is a no-op at the abstract-machine level.
 
 ### Risk and mitigation
