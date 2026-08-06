@@ -44,7 +44,10 @@ header comment.
 
 Each entry follows a fixed shape: the guideline and its category, the construct
 that deviates, the scope the deviation covers, the engineering rationale, the
-residual risk and how it is mitigated, and a named approval with its dates.
+residual risk and how it is mitigated, and a named approval with its dates. The
+register follows the deviation record structure of MISRA Compliance:2020
+(Section 4, example record at Appendix B), adopted voluntarily; it is mandatory
+only from MISRA C:2023 onward.
 
 Every deviation here is raised and approved by the same person. SolidSyslog is
 developed by a one-person consultancy, so the project owner holds the designated
