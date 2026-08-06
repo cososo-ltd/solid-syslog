@@ -74,7 +74,7 @@ DESCRIPTIONS = {
     ),
     "iec62443.md": (
         "IEC 62443-4-2 and 62443-3-3 audit-logging controls mapped "
-        "control-by-control to SolidSyslog components, by Security Level."
+        "control-by-control to SolidSyslog components."
     ),
     "rfc-compliance.md": (
         "Requirement-by-requirement status of SolidSyslog against the syslog "
