@@ -5,6 +5,17 @@ adopts a curated subset of MISRA C:2012 rules per tier (see
 `docs/NAMING.md` for the tier model). This document records every
 deliberate deviation from a rule the project otherwise enforces.
 
+This register is published as evidence of process, not as a compliance
+submission. It exists so that an integrator building SolidSyslog into a
+MISRA-constrained product can see where the code knowingly departs from a
+guideline, and judge each departure against their own risk posture. It makes no
+conformance claim on your behalf, and it is an input to your compliance
+documentation rather than a substitute for it.
+
+MISRA and MISRA C are registered trade marks of The MISRA Consortium Limited,
+used here for identification only. This project is neither endorsed by nor
+affiliated with MISRA.
+
 Each deviation is paired with a matching entry in `misra_suppressions.txt`
 (the cppcheck-misra input). The two files are complementary:
 
@@ -13,15 +24,25 @@ Each deviation is paired with a matching entry in `misra_suppressions.txt`
 | `misra_suppressions.txt` | cppcheck-misra | Machine-readable suppressions per rule / file / line |
 | `docs/misra-deviations.md` | Reviewers, auditors, integrators | Why each deviation exists, with rationale, scope, approval |
 
-Each entry in `misra_suppressions.txt` shall reference the section of
-this document that authorises it. The suppressions file was populated
+`misra_suppressions.txt` is the authoritative instance-level trace: its entries
+are line-specific, so every individual site a deviation authorises appears there
+by rule, file and line, and each block back-references the deviation in this
+document that authorises it. A finding on a line not listed is not covered by
+any deviation and surfaces in CI. The suppressions file was populated
 under [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367)
 after the rule subset was curated; before then it carried only a
 header comment.
 
 Each entry follows a fixed shape: the guideline and its category, the construct
 that deviates, the scope the deviation covers, the engineering rationale, the
-residual risk and how it is mitigated, and a named approval.
+residual risk and how it is mitigated, and a named approval with its dates.
+
+Every deviation here is raised and approved by the same person. SolidSyslog is
+developed by a one-person consultancy, so the project owner holds the designated
+technical authority for these decisions; there is no second reviewer and the
+record does not pretend otherwise. An integrator running their own compliance
+process should re-review each deviation against their own risk posture rather
+than inheriting this approval.
 
 ## Guideline text is not reproduced here
 
@@ -141,8 +162,9 @@ identifiers (§5.2.4.1) — a single number applies project-wide.
 
 ### Approval
 
-Project owner — David Cozens. Recorded as the founding entry in this
-document under [S10.01](https://github.com/cososo-ltd/solid-syslog/issues/357).
+Raised and approved 2026-05-14 by the project owner, David Cozens. Recorded as
+the founding entry in this document under
+[S10.01](https://github.com/cososo-ltd/solid-syslog/issues/357).
 
 ---
 
@@ -234,6 +256,24 @@ byte-buffer reinterpretation that crosses the same advisory rule. The
 third-party API contract (the public `Send` / `SendTo` interface) is
 `void*` for opacity; the byte-level work needs a concrete unit type.
 
+### Scope
+
+- **Strict tier** — `Core/Source/`: the `SelfFromBase` helpers on every vtable
+  class, and the Formatter storage cast of sub-case (b). 14 sites.
+- **Pragmatic tier** — `Platform/*/Source/`: the same `SelfFromBase` shape in
+  each adapter, the per-platform Address downcasts, and the callback `void*`
+  casts of sub-case (c). 66 sites, across the Atomics, FatFs, FreeRtos,
+  LwipRaw, MbedTls, OpenSsl, PlusFat, PlusTcp, Posix and Windows packs.
+
+80 line-specific suppressions in total — 12 against rule 11.2, 57 against 11.3
+and 11 against 11.5. The deviation does not extend to `Tests/` or `Bdd/`, where
+these rules are not enforced.
+
+A new class added to any vtable role inherits this shape, and its suppressions
+belong in this block; adding them is a review step, not an automatic
+consequence, because the reviewer has to confirm the new site really is the
+`SelfFromBase` pattern and not a different conversion wearing the same name.
+
 ### Rationale
 
 Every class with a Create/Destroy lifecycle uses the static pool
@@ -264,10 +304,20 @@ opaque-type design).
   `mbedtls_ssl_set_bio(..., self, ...)`) is the same pointer that
   comes back — the library is a pass-through; the cast can only
   succeed against the type the wrapper passed in.
-- **Alignment** — Storage types are declared as `intptr_t storage[N]`
-  (or a struct of the same shape), giving alignment at least as strict
-  as any pointer or scalar the impl contains. The cast is therefore
-  well-defined per §6.3.2.3.
+- **Validity of the conversion, sub-cases (a) and (c)** — These do not
+  rest on an alignment argument at all. The public base struct is the
+  first member of the concrete struct, and §6.7.2.1 ¶13 guarantees that
+  a pointer to a structure object, suitably converted, points to its
+  initial member and back again. The address is the same address by
+  definition, so no alignment question arises. Sub-case (c) is the same
+  guarantee reached through the library's own `void*` round trip: the
+  pointer that comes back is the one that went out.
+- **Alignment, sub-case (b) only** — The Formatter is the case where
+  alignment is the load-bearing argument, because its storage is a
+  caller-declared array rather than a struct whose first member is the
+  base. Storage is declared as `intptr_t storage[N]` (or a struct of the
+  same shape), giving alignment at least as strict as any pointer or
+  scalar the impl contains.
 - **Static analysis** — These rules are advisory (11.5) or required
   (11.2, 11.3). All current findings are suppressed via
   `misra_suppressions.txt` referencing this section. The pattern is
@@ -275,7 +325,7 @@ opaque-type design).
 
 ### Approval
 
-Project owner — David Cozens. Recorded under
+Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recorded under
 [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367); scope
 narrowed under
 [S11.11](https://github.com/cososo-ltd/solid-syslog/issues/414) once
@@ -346,7 +396,7 @@ and in the definition. The repetition is the convention, not a defect.
 
 ### Approval
 
-Project owner — David Cozens. Recorded under
+Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recorded under
 [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
 ---
@@ -364,8 +414,9 @@ cppcheck-misra reports no 18.4 finding in `RecordStore.c`; the suppression was
 removed from `misra_suppressions.txt` at the same time.
 
 The entry is kept, rather than the number reused, so the register has no gaps and
-a reader of an older revision can still resolve D.004. Approved by the project
-owner — David Cozens. Recorded under
+a reader of an older revision can still resolve D.004. Raised 2026-05-14 and
+approved 2026-05-15 by the project owner, David Cozens, alongside the other
+founding entries; retired 2026-05-23 under
 [#436](https://github.com/cososo-ltd/solid-syslog/pull/436).
 
 ---
@@ -428,7 +479,7 @@ shape (§6.7.2.1 ¶16). The alternatives all regress:
 
 ### Approval
 
-Project owner — David Cozens. Recorded under
+Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recorded under
 [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
 ---
@@ -502,8 +553,9 @@ Two distinct site categories trigger this rule:
    `const void*` — the contract is read-only inside the library.
    lwIP's `struct pbuf::payload` is declared `void*` (no `const`
    variant in the lwIP headers); `udp_sendto` only reads the
-   payload (the PBUF_REF zero-copy contract — see handoff design
-   decision #1) but the field type does not encode that. Assigning
+   payload — that is the `PBUF_REF` zero-copy contract, set out under
+   [Datagram — pbuf strategy](integrating-lwip.md#datagram--pbuf-strategy)
+   — but the field type does not encode that. Assigning
    our `const void*` parameter to lwIP's `void*` field strips the
    qualifier at the platform-API boundary, same shape as the
    Winsock `select()` site above. Alternatives considered and
@@ -560,7 +612,7 @@ boundary.
 
 ### Approval
 
-Project owner — David Cozens. Recorded under
+Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recorded under
 [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
 ---
@@ -615,7 +667,7 @@ unavoidable on this platform.
 
 ### Approval
 
-Project owner — David Cozens. Recorded under
+Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recorded under
 [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
 ---
@@ -670,7 +722,7 @@ use. The deviation is narrow and visible.
 
 ### Approval
 
-Project owner — David Cozens. Recorded under
+Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recorded under
 [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
 ---
@@ -769,7 +821,7 @@ would not be substitutable for any other type.
 
 ### Approval
 
-Project owner — David Cozens. Recorded under
+Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recorded under
 [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
 ---
@@ -847,7 +899,7 @@ been since C89; it is neither opaque nor novel.
 
 ### Approval
 
-Project owner — David Cozens. Recorded under
+Raised 2026-05-15, approved 2026-05-16 by the project owner, David Cozens. Recorded under
 [S10.10](https://github.com/cososo-ltd/solid-syslog/issues/375).
 
 ---
@@ -873,11 +925,12 @@ checker.
 
 `Core/Interface/SolidSyslogCircularBuffer.h` — one macro definition.
 
-A future per-component sweep may surface similar findings on other
-public API macros (per the tier model, MISRA enforcement does not cross
-into `Tests/` or `Bdd/`). When that happens, the deviation extends to
-those files; the rule still catches genuinely-unused macros inside the
-scanned scope.
+This entry authorises that one macro and no other. Per the tier model, MISRA
+enforcement does not cross into `Tests/` or `Bdd/`, so a future sweep may
+surface the same shape on another public API macro. That does not extend this
+deviation automatically: each new instance is reviewed on its merits and either
+amends this entry with the file named, or is raised as its own. Until then the
+rule still catches genuinely unused macros inside the scanned scope.
 
 ### Rationale
 
@@ -917,7 +970,7 @@ The alternatives all regress:
 
 ### Approval
 
-Project owner — David Cozens. Recorded under
+Raised 2026-05-15, approved 2026-05-16 by the project owner, David Cozens. Recorded under
 [S10.10](https://github.com/cososo-ltd/solid-syslog/issues/375).
 
 ---
@@ -954,11 +1007,12 @@ function would break the enum's compile-time `sizeof()` evaluation.
 
 `Core/Source/SolidSyslogFileBlockDevice.c:20` — one declaration.
 
-A future per-component sweep may surface this shape on other
-file-scope `static const` objects whose identifier is used by a
-file-scope enum's `sizeof()`/value initialiser and exactly one
-function. When that happens, the deviation extends to those files;
-the rule still catches genuinely single-function-scoped objects.
+This entry authorises that one declaration and no other. A future sweep may
+surface the same shape elsewhere — a file-scope `static const` whose identifier
+is read by a file-scope enum initialiser and exactly one function. Each such
+instance is reviewed on its merits and either amends this entry with the file
+named, or is raised as its own; it is not covered by this record until that
+happens. The rule still catches genuinely single-function-scoped objects.
 
 ### Rationale
 
@@ -1000,7 +1054,7 @@ Summary:
 
 ### Approval
 
-Project owner — David Cozens. Recorded under
+Raised and approved 2026-05-22 by the project owner, David Cozens. Recorded under
 [S10.18](https://github.com/cososo-ltd/solid-syslog/issues/430).
 
 ---
@@ -1032,9 +1086,10 @@ Rule 11.5 fires on each such adapter cast.
 `Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c` — two sites
 (`MbedTlsStream_Send`, `MbedTlsStream_Read`).
 
-The deviation extends to any future Stream / Datagram / hash / MAC
-implementation that wraps a byte-typed third-party C API
-(`unsigned char*` rather than `void*`). The OpenSSL adapter
+A future Stream, Datagram, hash or MAC implementation wrapping a byte-typed
+third-party C API (`unsigned char*` rather than `void*`) will meet the same
+boundary, but is not covered by this record until reviewed and added to it —
+or given its own entry. The OpenSSL adapter
 (`Platform/OpenSsl/Source/SolidSyslogTlsStream.c`) does not fall
 under this deviation — `SSL_write` / `SSL_read` take `void*` and so no
 cast is needed.
@@ -1068,8 +1123,10 @@ The cast is well-defined: `unsigned char` may alias any object type
 
 ### Approval
 
-Project owner — David Cozens. Recorded under
+Raised and approved 2026-05-23 by the project owner, David Cozens. Recorded under
 [S10.20](https://github.com/cososo-ltd/solid-syslog/issues/437).
+
+---
 
 ## D.014 — Rule 8.7: public-API `SolidSyslogErrorSource` objects (retired)
 
@@ -1084,5 +1141,10 @@ exactly the resolution this deviation's "Risk and mitigation" anticipated.
 cppcheck-misra reports no 8.7 finding for any error source; the suppression
 lines were removed.
 
-Recorded under [S17.02](https://github.com/cososo-ltd/solid-syslog/issues/493),
-retired under [S12.26](https://github.com/cososo-ltd/solid-syslog/issues/507).
+Raised and approved 2026-05-31 by the project owner, David Cozens, under
+[S17.02](https://github.com/cososo-ltd/solid-syslog/issues/493); retired
+2026-06-03 under
+[S12.26](https://github.com/cososo-ltd/solid-syslog/issues/507). The story
+numbers run backwards because they are numbered by epic rather than
+chronologically — E12 was elaborated after E17 — so read the dates, not the
+labels, for the order of events.
