@@ -3,7 +3,16 @@
 SolidSyslog is MISRA-informed, not certified-compliant. The project
 adopts a curated subset of MISRA C:2012 rules per tier (see
 `docs/NAMING.md` for the tier model). This document records every
-deliberate deviation from a rule the project otherwise enforces.
+deliberate deviation from a rule the project otherwise enforces, and every
+suppression that is not a deviation at all.
+
+Those are two different things and each entry says which it is. A **deviation**
+is a departure: the code does something the guideline forbids, and the entry
+justifies it. A **tool limitation** is not: the code complies, cppcheck-misra
+reports a finding anyway, and the entry explains why the report is wrong. Both
+are recorded here because a suppression exists either way, and the authorisation
+for a suppression belongs in one place. Counting the entries is therefore not a
+count of departures — eight of them are.
 
 This register is published as evidence of process, not as a compliance
 submission. It exists so that an integrator building SolidSyslog into a
@@ -61,10 +70,13 @@ headline an assessor already has in front of them.
 
 ## Language edition for clause references
 
-Unless otherwise stated, all clause references are to ISO/IEC 9899:1999 (C99),
-which is the edition SolidSyslog conforms to. Where a deviation concerns a code
-path that only a later edition compiles, that entry names the applicable edition
-and cites both.
+Unless otherwise stated, all clause references are to ISO/IEC 9899:1999 (C99).
+C99 is the conformance baseline — the edition the source is written against and
+claims to be valid under. It is not the same thing as the build configuration:
+the default build selects C11 (`CMAKE_C_STANDARD` is 11 unless overridden), and
+the `c99` preset verifies the baseline. Where a deviation concerns a code path
+that only a later edition compiles, that entry names the applicable edition and
+cites both.
 
 Paragraph numbering differs between editions — §6.7.2.1 renumbered when C11
 added anonymous structure and union members — so a C11 paragraph number read
@@ -79,6 +91,7 @@ here rather than left to the reader.
 
 **MISRA C:2012 Rule 5.1** — Required.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Deviation — the code departs from the guideline.
 
 ### Deviation
 
@@ -109,8 +122,7 @@ tiers (rule 5.1 is not enforced there at all).
 ### Rationale
 
 The C99 31-character limit is a legacy linker artifact from the late
-1980s. No toolchain SolidSyslog is built with imposes anything close to
-it:
+1980s. No toolchain SolidSyslog targets imposes anything close to it:
 
 | Toolchain | External identifier behaviour |
 |-----------|-------------------------------|
@@ -176,6 +188,7 @@ the founding entry in this document under
 - **MISRA C:2012 Rule 11.5** — Advisory.
 
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Deviation — the code departs from the guideline.
 
 ### Deviation
 
@@ -213,7 +226,10 @@ public type, fully defined per platform as
 `SolidSyslog<Plat>Address_AsConstFreertosSockaddr`) plus a
 `HandleFromIndex(size_t)` helper in `*AddressStatic.c` that converts a
 pool slot index back to the public handle type. Rule 11.3 fires on
-every such cast.
+every such cast, and rule 11.2 fires alongside it here but not on the
+other vtable classes: `struct SolidSyslogAddress` is deliberately an
+incomplete type in the public header, so these conversions involve a
+pointer to an incomplete type as well as to a different object type.
 
 This is the standard OO-in-C "interface pointer back to derived
 implementation" cast.
@@ -343,6 +359,7 @@ caller-supplied-storage exception.
 
 **MISRA C:2012 Rule 5.7** — Required.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Tool limitation — the code complies; cppcheck-misra reports a finding regardless.
 
 cppcheck-misra interprets Rule 5.7 strictly — every repeated `struct X`
 declaration counts as a non-unique tag, including forward declarations
@@ -426,6 +443,7 @@ founding entries; retired 2026-05-23 under
 
 **MISRA C:2012 Rule 18.7** — Required.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Deviation — the code departs from the guideline.
 
 ### Deviation
 
@@ -494,6 +512,8 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 
 **MISRA C:2012 Rule 11.8** — Required.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** both kinds, which is why they share an entry — category 1
+below is a tool limitation, category 2 is a genuine deviation.
 
 ### Deviation
 
@@ -512,15 +532,23 @@ Two distinct site categories trigger this rule:
    }
    ```
 
-   Per §6.5.2.3 ¶4, the result of `->` is the type of the named
-   member; `config->buffer` evaluates to `struct SolidSyslogBuffer *`
-   with no `const` qualifier on the pointed-to object. cppcheck-misra
-   nonetheless flags the field access as a const-strip — it tracks the
+   §6.5.2.3 ¶4 governs this, and it has to be read whole. The result of
+   `->` is the named member's type; and where the left operand is a
+   pointer to a qualified type, the result carries the so-qualified
+   version of that type. That second clause looks at first like it works
+   against us. It does not. The member's type here is
+   `struct SolidSyslogBuffer *`, so the so-qualified version is
+   `struct SolidSyslogBuffer * const` — the qualification attaches to the
+   pointer, not to the object the pointer designates. Passing it by value
+   to `InstallBuffer` copies the pointer, and a top-level qualifier on a
+   copied value is discarded.
+
+   So no qualification is removed from the pointed-to type, and no cast
+   is performed. cppcheck-misra flags the access anyway, tracking the
    outer `const` on `*config` rather than the type of the member
-   expression. No cast is performed at these sites, so the project
-   assesses them as a tool limitation rather than a genuine departure
-   from the guideline, and records them here so that the assessment is
-   visible rather than silent.
+   expression. The project assesses this as a tool limitation rather
+   than a departure from the guideline, and records it here so the
+   assessment is visible rather than silent.
 
    The same pattern recurs in
    `SolidSyslogMessageFormatter_Format(const struct
@@ -627,6 +655,7 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 
 **MISRA C:2012 Rule 21.10** — Required.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Tool limitation — the code complies; cppcheck-misra reports a finding regardless.
 
 cppcheck-misra also raises this rule for `<wchar.h>` inclusion, which is what
 brings the construct below into scope.
@@ -682,6 +711,7 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 
 **MISRA C:2012 Rule 21.6** — Required.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Deviation — the code departs from the guideline.
 
 ### Deviation
 
@@ -739,6 +769,7 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 - **MISRA C:2012 Rule 5.7** — Required.
 
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Tool limitation — the code complies; cppcheck-misra reports a finding regardless.
 
 cppcheck-misra interprets an anonymous `enum { ... };` declaration
 (no enum tag, no `typedef`) two ways:
@@ -767,8 +798,8 @@ enum
 };
 ```
 
-There are approximately 31 such declarations across `Core/` and
-`Platform/*/Source/`. Adding inline-suppress comments at every
+There are 45 such declarations across 44 files in `Core/` and
+`Platform/`. Adding inline-suppress comments at every
 site would add visual noise next to a project-wide intentional
 idiom — listing them in `misra_suppressions.txt` under this
 deviation keeps the source clean.
@@ -834,6 +865,7 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 
 **MISRA C:2012 Rule 20.10** — Advisory.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Deviation — the code departs from the guideline.
 
 ### Deviation
 
@@ -912,6 +944,7 @@ Raised 2026-05-15, approved 2026-05-16 by the project owner, David Cozens. Recor
 
 **MISRA C:2012 Rule 2.5** — Advisory.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Deviation — the code departs from the guideline.
 
 ### Deviation
 
@@ -936,7 +969,7 @@ rule still catches genuinely unused macros inside the scanned scope.
 
 ### Rationale
 
-The macros *are* used by integrators in `Tests/` and `Bdd/Targets/`.
+The macro *is* used by integrators in `Tests/` and `Bdd/Targets/`.
 Verified by `grep` over the tree:
 
 ```text
@@ -956,9 +989,9 @@ The alternatives all regress:
 
 | Alternative | Why rejected |
 |-------------|--------------|
-| Inline `cppcheck-suppress misra-c2012-2.5` at each macro | **Project preference.** Deviations are recorded structurally in this document so the rationale is centrally auditable rather than scattered across call sites. |
+| Inline `cppcheck-suppress misra-c2012-2.5` at the macro | **Project preference.** Deviations are recorded structurally in this document so the rationale is centrally auditable rather than scattered across call sites. |
 | Widen the cppcheck-misra scan to include `Tests/` | Tests are the Consistency-only tier per E10's tier model; running MISRA there is out of scope by design. |
-| Move the macros into `Core/Source/` | Public API by definition lives under `Core/Interface/`. Moving them would break the audience-segregated header layout. |
+| Move the macro into `Core/Source/` | Public API by definition lives under `Core/Interface/`. Moving it would break the audience-segregated header layout. |
 
 ### Risk and mitigation
 
@@ -983,6 +1016,7 @@ Raised 2026-05-15, approved 2026-05-16 by the project owner, David Cozens. Recor
 
 **MISRA C:2012 Rule 8.9** — Advisory.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Tool limitation — the code complies; cppcheck-misra reports a finding regardless.
 
 ### Deviation
 
@@ -1067,6 +1101,7 @@ Raised and approved 2026-05-22 by the project owner, David Cozens. Recorded unde
 
 **MISRA C:2012 Rule 11.5** — Advisory.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Deviation — the code departs from the guideline.
 
 ### Deviation
 
@@ -1138,8 +1173,9 @@ Raised and approved 2026-05-23 by the project owner, David Cozens. Recorded unde
 a single translation unit. S12.26 decoupled error text from the library
 (deleting the `*Messages.c` message tables) and unwound the `<Class>_Report` wrapper,
 so each source is now defined in its class's vtable TU and referenced from both
-that TU's emit sites and its `*Static.c` lifecycle code, genuinely cross-TU,
-exactly the resolution this deviation's "Risk and mitigation" anticipated.
+that TU's emit sites and its `*Static.c` lifecycle code, genuinely cross-TU —
+which is the resolution the entry's risk analysis anticipated before it was
+collapsed to this note; see the revision prior to retirement for that text.
 cppcheck-misra reports no 8.7 finding for any error source; the suppression
 lines were removed.
 
