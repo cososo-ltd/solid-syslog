@@ -15,11 +15,11 @@ control-by-control detail rather than restating it.
 
 > [!NOTE]
 > SolidSyslog is a library you build into a product, not a product in its own right.
-> IEC 62443 certifies systems in deployment, and CRA obligations fall on the
-> manufacturer placing a product on the market. What follows is our account of how the
-> library helps you meet the audit-logging parts of those frameworks. It is guidance,
-> not a guarantee of compliance, and no substitute for assessment of your finished
-> product.
+> Under IEC 62443 it is assessed as part of the component you ship, and CRA obligations
+> fall on the manufacturer placing that product on the market. What follows is our
+> account of how the library helps you meet the audit-logging parts of those frameworks.
+> It is guidance, not a guarantee of compliance, and no substitute for assessment of
+> your finished product.
 
 ## Neither framework hands you a parts list
 
@@ -27,9 +27,10 @@ Both state capabilities and leave the realisation to you.
 
 The CRA gates its Annex I product requirements on the manufacturer's own risk
 assessment, and applies them "where applicable" — so two conforming products can
-implement them very differently. IEC 62443 assigns Security Levels to a system in its
-deployment and its assessment, not to a component; the same library can appear in
-deployments assessed at different levels.
+implement them very differently. IEC 62443 keeps the level a product is capable of
+apart from the level a deployment targets and the level it achieves, and rates
+capability against a component rather than against a library inside one; the same
+library can appear in deployments assessed at different levels.
 
 What your device needs from its audit trail therefore follows from your threat model,
 your documented intended purpose and your resources.

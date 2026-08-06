@@ -13,11 +13,11 @@ September 2026.
 
 > [!NOTE]
 > SolidSyslog is a library you build into a product, not a product in its own right.
-> IEC 62443 certifies systems in deployment, and CRA obligations fall on the
-> manufacturer placing a product on the market. What follows is our account of how the
-> library helps you meet the audit-logging parts of those frameworks. It is guidance,
-> not a guarantee of compliance, and no substitute for assessment of your finished
-> product.
+> Under IEC 62443 it is assessed as part of the component you ship, and CRA obligations
+> fall on the manufacturer placing that product on the market. What follows is our
+> account of how the library helps you meet the audit-logging parts of those frameworks.
+> It is guidance, not a guarantee of compliance, and no substitute for assessment of
+> your finished product.
 
 ## The requirements are gated on your own risk assessment
 
