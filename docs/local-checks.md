@@ -117,38 +117,13 @@ With Node available, `npx markdownlint-cli2@0.22.1` is equivalent. Fenced-code
 languages (MD040) and a few structural rules are not auto-fixable; tag or
 adjust those by hand.
 
-## Pre-release checks
-
-Some properties drift too rarely to be worth a per-PR CI lane but must hold
-at release. Run these once while preparing a release, not on every branch.
-
-### C99 language portability
-
-The library is meant to stay C99-capable, with C11 atomics as an optional
-add-on (the `SolidSyslogStdAtomicCounter`; a strict-C99 target falls back to
-`SolidSyslogWindowsAtomicCounter` or `SolidSyslogNullAtomicCounter`). Nothing
-per-PR enforces this, so verify it before a release with a one-shot build of
-the library at the C99 language standard:
-
-```bash
-cmake --preset c99 && cmake --build --preset c99
-```
-
-The `c99` preset builds at `-std=gnu99` (C99 *language* with the platform's
-normal library feature-test macros, so POSIX adapters still see
-`clock_gettime` etc.) and declares `HAVE_STDATOMIC_H=OFF`, so the optional
-C11 atomics counter is excluded exactly as it would be on a real C99 target.
-The build runs under the project's standing `-Wpedantic -Werror`, so any C11
-language construct that has crept into the portable code (`_Static_assert`,
-`_Atomic`, statement-expressions, …) fails the build and names the file:line.
-
-A clean build means the portable surface is still C99. If it fails, either
-fix the construct or, if it genuinely belongs to a C11-only component,
-gate that component the way `Platform/Atomics` is gated.
-
 ## What CI runs and you should not run locally
 
 - `tidy`, `sanitize`, `coverage`: minutes each, all gated by CI
+- `c99`: the `build-linux-c99` lane builds the library at the C99 language
+  standard on every PR. If it fails, either fix the construct or, if it
+  genuinely belongs to a C11-only component, gate that component the way
+  `Platform/Atomics` is gated. See [builds.md](builds.md#c99-portability--c99)
 - Windows MSVC + BDD + integration: depend on tools you may not have
 - BDD-linux-syslog-ng, BDD-windows-otel, BDD-freertos-qemu: heavy
   multi-container stacks

@@ -45,6 +45,18 @@ cmake --preset c99
 cmake --build --preset c99
 ```
 
+The preset builds at `-std=gnu99` — the C99 *language* with the platform's
+normal library feature-test macros, so POSIX adapters still see `clock_gettime`
+— and declares `HAVE_STDATOMIC_H=OFF`, so the optional C11 atomics counter
+(`SolidSyslogStdAtomicCounter`) is excluded exactly as it would be on a real
+C99 target, falling back to `SolidSyslogWindowsAtomicCounter` or
+`SolidSyslogNullAtomicCounter`. Under the project's standing
+`-Wpedantic -Werror`, any C11 language construct that has crept into the
+portable code (`_Static_assert`, `_Atomic`, statement-expressions, …) fails the
+build and names the file:line.
+
+CI runs this as the `build-linux-c99` lane on every pull request.
+
 ## Sanitizers — `sanitize`
 
 Catches memory errors, use-after-free, and undefined behaviour at runtime.
