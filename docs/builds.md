@@ -35,7 +35,7 @@ See [Container images](containers.md) for how to switch.
 
 ## C99 portability — `c99`
 
-Compiles the library with `CMAKE_C_STANDARD=99` (and `HAVE_STDATOMIC_H=OFF`,
+Compiles the library with `CMAKE_C_STANDARD=99` (and `SOLIDSYSLOG_ATOMICS=OFF`,
 `SOLIDSYSLOG_BUILD_TESTING=OFF`) to enforce the C99 baseline: catches accidental
 use of later-standard features in production source. Library only; tests are not
 built.
@@ -45,15 +45,30 @@ cmake --preset c99
 cmake --build --preset c99
 ```
 
-The preset builds at `-std=gnu99` — the C99 *language* with the platform's
-normal library feature-test macros, so POSIX adapters still see `clock_gettime`
-— and declares `HAVE_STDATOMIC_H=OFF`, so the optional C11 atomics counter
-(`SolidSyslogStdAtomicCounter`) is excluded exactly as it would be on a real
-C99 target, falling back to `SolidSyslogWindowsAtomicCounter` or
-`SolidSyslogNullAtomicCounter`. Under the project's standing
-`-Wpedantic -Werror`, any C11 language construct that has crept into the
-portable code (`_Static_assert`, `_Atomic`, statement-expressions, …) fails the
-build and names the file:line.
+The compiler sees `-std=gnu99`, not `-std=c99`: `CMAKE_C_EXTENSIONS` is left at
+CMake's default of `ON`, which is what the preset wants. Under `-std=c99` glibc
+defines `__STRICT_ANSI__` and hides every POSIX declaration, so
+`Platform/Posix` would stop compiling for want of `clock_gettime` and
+`struct timespec` — a library-header question, not a language one. It costs
+almost nothing in strictness: `-Wpedantic` diagnoses ISO-forbidden constructs
+under `gnu99` exactly as under `c99`.
+
+`SOLIDSYSLOG_ATOMICS=OFF` excludes the optional C11 atomics counter
+(`SolidSyslogStdAtomicCounter`), leaving `SolidSyslogWindowsAtomicCounter` or
+`SolidSyslogNullAtomicCounter` as a real C99 target would. The option is set
+explicitly rather than left to the `HAVE_STDATOMIC_H` probe because that probe
+does not answer this question: `check_c_source_compiles` does not inherit
+`CMAKE_C_STANDARD`, so it compiles its `_Atomic` snippet at the compiler's
+default standard and reports success even in this preset's cache.
+
+Under the project's standing `-Wpedantic -Werror`, anything outside C99 fails
+the build and names the file:line — ISO C11 constructs such as `_Static_assert`
+and `_Atomic`, and GNU extensions such as statement-expressions, case ranges and
+binary literals. What `gnu99` does not catch is the two GNU keywords that exist
+only in GNU mode, `typeof` and `asm`: they are accepted silently, where
+`-std=c99` would reject them outright. Neither appears anywhere in `Core/` or
+`Platform/`. Note that the `__typeof__` spelling is accepted under both, being a
+reserved identifier, so no choice of standard closes that door completely.
 
 CI runs this as the `build-linux-c99` lane on every pull request.
 
