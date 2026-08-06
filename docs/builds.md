@@ -45,13 +45,15 @@ cmake --preset c99
 cmake --build --preset c99
 ```
 
-The compiler sees `-std=gnu99`, not `-std=c99`: `CMAKE_C_EXTENSIONS` is left at
-CMake's default of `ON`, which is what the preset wants. Under `-std=c99` glibc
-defines `__STRICT_ANSI__` and hides every POSIX declaration, so
-`Platform/Posix` would stop compiling for want of `clock_gettime` and
-`struct timespec` — a library-header question, not a language one. It costs
-almost nothing in strictness: `-Wpedantic` diagnoses ISO-forbidden constructs
-under `gnu99` exactly as under `c99`.
+The compiler sees `-std=c99`: the preset sets `CMAKE_C_EXTENSIONS=OFF`, since
+CMake's default of `ON` would otherwise select `-std=gnu99` and let GNU
+keywords such as `typeof` and `asm` through silently. Strict ISO mode makes
+glibc define `__STRICT_ANSI__` and hide every POSIX declaration, so the preset
+also defines `_POSIX_C_SOURCE=200809L` — without it `Platform/Posix` fails to
+compile for want of `clock_gettime` and `struct timespec`. Pinning that version
+rather than reaching for `_DEFAULT_SOURCE` is deliberate: it asserts that the
+POSIX pack needs nothing beyond POSIX.1-2008, so a glibc-only or BSD-only API
+creeping in fails the lane.
 
 `SOLIDSYSLOG_ATOMICS=OFF` excludes the optional C11 atomics counter
 (`SolidSyslogStdAtomicCounter`), leaving `SolidSyslogWindowsAtomicCounter` or
@@ -63,12 +65,10 @@ default standard and reports success even in this preset's cache.
 
 Under the project's standing `-Wpedantic -Werror`, anything outside C99 fails
 the build and names the file:line — ISO C11 constructs such as `_Static_assert`
-and `_Atomic`, and GNU extensions such as statement-expressions, case ranges and
-binary literals. What `gnu99` does not catch is the two GNU keywords that exist
-only in GNU mode, `typeof` and `asm`: they are accepted silently, where
-`-std=c99` would reject them outright. Neither appears anywhere in `Core/` or
-`Platform/`. Note that the `__typeof__` spelling is accepted under both, being a
-reserved identifier, so no choice of standard closes that door completely.
+and `_Atomic`, and GNU extensions such as `typeof`, `asm`, statement-expressions
+and case ranges. The one thing no choice of standard catches is a
+double-underscore spelling like `__typeof__`, which is a reserved identifier and
+compiles anywhere.
 
 CI runs this as the `build-linux-c99` lane on every pull request.
 
