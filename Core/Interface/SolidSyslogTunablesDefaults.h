@@ -5,9 +5,10 @@
 #ifndef SOLIDSYSLOG_TUNABLES_DEFAULTS_H
 #define SOLIDSYSLOG_TUNABLES_DEFAULTS_H
 
-// IWYU pragma: private, include "SolidSyslogTunables.h"
-// Defaults are reached through the SolidSyslogTunables.h umbrella so the optional
-// SOLIDSYSLOG_USER_TUNABLES_FILE override gets a chance to win first.
+/* IWYU pragma: private, include "SolidSyslogTunables.h" */
+/* Defaults are reached through the SolidSyslogTunables.h umbrella so the
+ * optional SOLIDSYSLOG_USER_TUNABLES_FILE override gets a chance to win
+ * first. */
 
 /*
  * Pool-size tunables are named by ROLE, not by platform or vendor.
