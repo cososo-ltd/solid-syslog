@@ -16,8 +16,8 @@ integrity and confidentiality.
 
 ## Requirements
 
-The pack compiles against your own `mbedtls_config.h`, in your target, so the
-features you enable are the features it gets.
+The adapter sources compile in your target against your own
+`mbedtls_config.h`, so the features you enable are the features it gets.
 
 Credentials are passed as caller-built, caller-owned handles rather than file
 paths: a seeded `mbedtls_ctr_drbg_context` for the handshake, an
@@ -96,12 +96,3 @@ generator, or replace a debug callback. TLS policy is applied per `ssl_config`,
 so it cannot affect the ones you build elsewhere. A device that already uses
 Mbed TLS for firmware update or a vendor cloud SDK keeps that configuration
 intact, and the claim can be checked against the directory.
-
-## API reference
-
-[Every class in this pack](../../api/group__platform__mbedtls.md), generated
-from the headers.
-
-## Setup
-
-Wiring it up, handle by handle: [Mbed TLS setup](setup.md).

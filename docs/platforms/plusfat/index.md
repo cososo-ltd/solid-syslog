@@ -16,10 +16,3 @@ BlockDevice.
 
 FreeRTOS — Plus-FAT is FreeRTOS-coupled. Supply an `FF_Disk_t` media driver and
 `FreeRTOSFATConfig.h`.
-
-Full setup is [Integrating FreeRTOS-Plus-FAT](setup.md).
-
-## API reference
-
-[Every class in this pack](../../api/group__platform__plusfat.md), generated from the
-headers.

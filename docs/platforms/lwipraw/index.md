@@ -53,10 +53,3 @@ Your `lwipopts.h` must enable the features the adapter wraps:
 Also set `ARP_QUEUEING=1` (else the first datagram to an unresolved peer is
 dropped) and `LWIP_TCP_KEEPALIVE=1`, and size `PBUF_POOL_SIZE` /
 `MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to your instance counts.
-
-Full setup — config, marshal, DNS — is [Integrating lwIP](setup.md).
-
-## API reference
-
-[Every class in this pack](../../api/group__platform__lwipraw.md), generated from the
-headers.

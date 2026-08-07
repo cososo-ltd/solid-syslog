@@ -167,6 +167,11 @@ DESCRIPTIONS = {
         "The twelve vtable contracts SolidSyslog composes against, what fills "
         "each one, and the Null fallback that keeps an unfilled role safe."
     ),
+    # Scratch — deleted before this branch is finished.
+    "_mock/template-options.md": (
+        "Scratch page for choosing platform-page layout options in the real "
+        "theme. Not part of the documentation."
+    ),
     "assets/postit/README.md": (
         "The post-it diagram kit behind the SolidSyslog architecture pictures: "
         "what each colour and arrow means, and how the diagrams are generated."

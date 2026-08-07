@@ -17,8 +17,3 @@ BlockDevice.
 
 Your `ffconf.h`, a `diskio.c` media driver, and — if `FF_FS_REENTRANT=1` — an
 `ffsystem.c`.
-
-## API reference
-
-[Every class in this pack](../../api/group__platform__fatfs.md), generated from the
-headers.

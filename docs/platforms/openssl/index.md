@@ -87,12 +87,3 @@ The adapter performs no revocation checking, by Certificate Revocation List or
 by the Online Certificate Status Protocol. Where a deployment requires it, it
 must come from your own configuration of OpenSSL, and confirming that it is in
 force is part of your assessment rather than something the adapter reports.
-
-## API reference
-
-[Every class in this pack](../../api/group__platform__openssl.md), generated
-from the headers.
-
-## Setup
-
-Wiring it up, over any byte transport: [OpenSSL setup](setup.md).

@@ -74,8 +74,10 @@ class PageMeta(unittest.TestCase):
         self.assertEqual(page.meta["description"], "hand written")
 
     def test_unmapped_page_falls_back_to_site_description(self):
-        page = page_of("assets/postit/README.md")
-        h.on_page_markdown("# Post-its", page, {}, None)
+        # A page name deliberately not in the map — on_nav is what makes a real
+        # unmapped page fail the build, so this only covers the fallback itself.
+        page = page_of("no-such-page.md")
+        h.on_page_markdown("# Nothing", page, {}, None)
         self.assertNotIn("description", page.meta)
 
     def test_markdown_is_returned_unchanged(self):

@@ -13,8 +13,8 @@ and [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-examp
 Pick a lane:
 
 - [Overview](#overview): what SolidSyslog is and how it helps with CRA and IEC 62443 compliance.
-- [Adopt it](#adopt): get a syslog stack compiling and sending in your product.
-- [Platforms](#platforms): what reaches your hardware — the shipped adapter packs, and how to write one for a target we don't cover.
+- [Integrate it](#integrate): get a syslog stack compiling and sending in your product.
+- [Platforms](#platforms): what reaches your hardware — the shipped adapters, and how to write one for a target we don't cover.
 - [Compliance](#compliance): the CRA, IEC 62443, the RFCs, and the security posture.
 - [API reference](#api-reference): the public contracts, by audience.
 - [Maintaining the library](#maintaining): building, testing, and releasing SolidSyslog itself.
@@ -26,7 +26,7 @@ Pick a lane:
 - Why SolidSyslog, and capability at a glance: the [project README](../README.md).
 - [Compliance in one page](overview.md): the evaluator's one-screen orientation. What CRA and IEC 62443 ask of an audit-logging function, and how SolidSyslog helps.
 
-## Adopt
+## Integrate
 
 Everything you need to consume SolidSyslog in your product.
 
@@ -40,7 +40,7 @@ Everything you need to consume SolidSyslog in your product.
 
 A platform is a set of adapters wrapping one upstream thing — a network stack, a
 TLS library, a filesystem, an OS — behind the library's vtables. Each page says
-what that pack ships and what wiring it needs; the pages above speak of platforms
+what that platform ships and what wiring it needs; the pages above speak of them
 in the general case.
 
 - [Platform × capability matrix](platforms/index.md): start here. Read across a row for what a platform gives you, down a column for who provides a capability.
@@ -74,7 +74,7 @@ reference — [Headers](api/files.md), [Data structures](api/annotated.md),
 ## Maintaining
 
 For contributors and maintainers of SolidSyslog itself (not for consuming it,
-which is [Adopt](#adopt) above).
+which is [Integrate](#integrate) above).
 
 - [Building and testing](builds.md): the CMake preset catalogue.
 - [Pre-PR local checks](local-checks.md): the tiered pre-PR check budget.
