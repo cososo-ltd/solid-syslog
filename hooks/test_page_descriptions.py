@@ -3,8 +3,8 @@
 Run:  python3 hooks/test_page_descriptions.py
       (or: python3 -m unittest discover -s hooks -p 'test_*.py')
 
-The strict build already proves the happy path — every nav page carries a
-description, or on_nav aborts. What needs its own test is the abort itself, and
+The strict build already proves the happy path — every hand-written page carries
+a description, or on_nav aborts. What needs its own test is the abort itself, and
 the description text, which no build can check for length or duplication.
 """
 
@@ -19,37 +19,47 @@ import page_descriptions as h  # noqa: E402
 MAX_LENGTH = 200
 
 
-def nav_of(*src_uris):
-    pages = [types.SimpleNamespace(file=types.SimpleNamespace(src_uri=uri)) for uri in src_uris]
-    return types.SimpleNamespace(pages=pages)
+NAV = types.SimpleNamespace(pages=[])
+
+
+def files_of(*src_uris, assets=()):
+    pages = [types.SimpleNamespace(src_uri=uri, is_documentation_page=lambda: True) for uri in src_uris]
+    other = [types.SimpleNamespace(src_uri=uri, is_documentation_page=lambda: False) for uri in assets]
+    return pages + other
 
 
 def page_of(src_uri, meta=None):
     return types.SimpleNamespace(file=types.SimpleNamespace(src_uri=src_uri), meta=meta or {})
 
 
-class NavValidation(unittest.TestCase):
+class TreeValidation(unittest.TestCase):
     def setUp(self):
         self.described = sorted(h.DESCRIPTIONS)
 
-    def test_accepts_a_nav_of_described_pages(self):
-        nav = nav_of(*self.described)
-        self.assertIs(h.on_nav(nav, {}, None), nav)
+    def test_accepts_a_tree_of_described_pages(self):
+        self.assertIs(h.on_nav(NAV, {}, files_of(*self.described)), NAV)
 
-    def test_undescribed_nav_page_aborts_the_build_and_is_named(self):
+    def test_undescribed_page_aborts_the_build_and_is_named(self):
         with self.assertRaises(h.PluginError) as raised:
-            h.on_nav(nav_of(*self.described, "brand-new.md"), {}, None)
+            h.on_nav(NAV, {}, files_of(*self.described, "brand-new.md"))
         self.assertIn("no description for brand-new.md", str(raised.exception))
 
-    def test_description_for_a_page_no_longer_in_the_nav_aborts_the_build(self):
+    def test_description_for_a_page_that_no_longer_exists_aborts_the_build(self):
         kept = [uri for uri in self.described if uri != "porting.md"]
         with self.assertRaises(h.PluginError) as raised:
-            h.on_nav(nav_of(*kept), {}, None)
-        self.assertIn("not in the nav: porting.md", str(raised.exception))
+            h.on_nav(NAV, {}, files_of(*kept))
+        self.assertIn("no such page: porting.md", str(raised.exception))
 
     def test_generated_api_pages_need_no_description(self):
-        nav = nav_of(*self.described, "api/files.md")
-        self.assertIs(h.on_nav(nav, {}, None), nav)
+        files = files_of(*self.described, "api/files.md")
+        self.assertIs(h.on_nav(NAV, {}, files), NAV)
+
+    # An off-nav page still needs a description, so the check reads the file
+    # tree rather than the nav — which means it must ignore everything in that
+    # tree that is not a page.
+    def test_assets_are_not_pages_and_need_no_description(self):
+        files = files_of(*self.described, assets=("assets/images/logo.svg",))
+        self.assertIs(h.on_nav(NAV, {}, files), NAV)
 
 
 class PageMeta(unittest.TestCase):

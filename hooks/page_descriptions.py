@@ -9,9 +9,14 @@ same Markdown is read on GitHub, where YAML front matter renders as a table
 above the content.
 
 Keeping them out of the pages costs proximity, so the map is checked against
-the navigation on every build: a page in the nav with no description, or a
-description whose key names no nav page, aborts the build. Generated ``api/``
+the documentation tree on every build: a page with no description, or a
+description whose key names no page, aborts the build. Generated ``api/``
 pages are exempt — their briefs come from the header doc comments.
+
+The check is against every hand-written page, not only the ones in the nav.
+Each platform's ``setup.md`` is deliberately off-nav — it is reached from the
+platform's own page, because the two have different audiences — and a page a
+search engine can reach still needs its own snippet.
 """
 
 import os
@@ -162,6 +167,10 @@ DESCRIPTIONS = {
         "The twelve vtable contracts SolidSyslog composes against, what fills "
         "each one, and the Null fallback that keeps an unfilled role safe."
     ),
+    "assets/postit/README.md": (
+        "The post-it diagram kit behind the SolidSyslog architecture pictures: "
+        "what each colour and arrow means, and how the diagrams are generated."
+    ),
     # Maintaining
     "builds.md": (
         "The contributor build doc: the CMake preset catalogue for developing "
@@ -202,23 +211,23 @@ def _src_uri(file):
     return getattr(file, "src_uri", None) or file.src_path.replace(os.sep, "/")
 
 
-def _described_pages(nav):
+def _hand_written_pages(files):
     return {
-        _src_uri(page.file)
-        for page in nav.pages
-        if not _src_uri(page.file).startswith(GENERATED_PREFIX)
+        _src_uri(file)
+        for file in files
+        if file.is_documentation_page() and not _src_uri(file).startswith(GENERATED_PREFIX)
     }
 
 
 def on_nav(nav, config, files, **kwargs):
-    navigated = _described_pages(nav)
+    written = _hand_written_pages(files)
     faults = []
-    missing = sorted(navigated - set(DESCRIPTIONS))
+    missing = sorted(written - set(DESCRIPTIONS))
     if missing:
         faults.append("no description for " + ", ".join(missing))
-    stale = sorted(set(DESCRIPTIONS) - navigated)
+    stale = sorted(set(DESCRIPTIONS) - written)
     if stale:
-        faults.append("described but not in the nav: " + ", ".join(stale))
+        faults.append("described but no such page: " + ", ".join(stale))
     if faults:
         raise PluginError("hooks/page_descriptions.py: " + "; ".join(faults))
     return nav

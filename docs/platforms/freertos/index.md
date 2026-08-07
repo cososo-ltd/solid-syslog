@@ -18,8 +18,7 @@ Fills the Mutex [role](../../roles/index.md), plus a sysUpTime callback.
 
 `configSUPPORT_STATIC_ALLOCATION=1` — the mutex uses static allocation.
 
-## Source
+## API reference
 
-[Every class in this pack](../../api/group__platform__freertos.md), generated
-from the headers. The code itself is
-[`Platform/FreeRtos/`](../../../Platform/FreeRtos/).
+[Every class in this pack](../../api/group__platform__freertos.md), generated from the
+headers.

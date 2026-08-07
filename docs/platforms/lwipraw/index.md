@@ -37,8 +37,7 @@ the Datagram and TcpStream make is routed through one marshal hop.
 
 The marshal must invoke its callback synchronously — the adapter reads results the
 moment the hop returns. `tcpip_callback_with_block(…, 1)` or a `LOCK_TCPIP_CORE` /
-`UNLOCK_TCPIP_CORE` pair satisfy that; a bare `tcpip_callback` does not. Worked
-example: [`Bdd/Targets/FreeRtosLwip/main.c`](../../../Bdd/Targets/FreeRtosLwip/main.c).
+`UNLOCK_TCPIP_CORE` pair satisfy that; a bare `tcpip_callback` does not.
 
 ## Requirements
 
@@ -57,8 +56,7 @@ dropped) and `LWIP_TCP_KEEPALIVE=1`, and size `PBUF_POOL_SIZE` /
 
 Full setup — config, marshal, DNS — is [Integrating lwIP](setup.md).
 
-## Source
+## API reference
 
-[Every class in this pack](../../api/group__platform__lwipraw.md), generated
-from the headers. The code itself is
-[`Platform/LwipRaw/`](../../../Platform/LwipRaw/).
+[Every class in this pack](../../api/group__platform__lwipraw.md), generated from the
+headers.

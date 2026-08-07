@@ -31,8 +31,7 @@ callbacks.
 A POSIX-conformant OS; Linux is the tested target. The message-queue buffer needs
 POSIX message queues (link `-lrt` on glibc).
 
-## Source
+## API reference
 
-[Every class in this pack](../../api/group__platform__posix.md), generated
-from the headers. The code itself is
-[`Platform/Posix/`](../../../Platform/Posix/).
+[Every class in this pack](../../api/group__platform__posix.md), generated from the
+headers.

@@ -29,8 +29,7 @@ callbacks.
 The MSVC toolchain and Winsock — call `WSAStartup` once at process init before
 creating a sender.
 
-## Source
+## API reference
 
-[Every class in this pack](../../api/group__platform__windows.md), generated
-from the headers. The code itself is
-[`Platform/Windows/`](../../../Platform/Windows/).
+[Every class in this pack](../../api/group__platform__windows.md), generated from the
+headers.

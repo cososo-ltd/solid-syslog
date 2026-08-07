@@ -19,8 +19,7 @@ FreeRTOS — Plus-FAT is FreeRTOS-coupled. Supply an `FF_Disk_t` media driver an
 
 Full setup is [Integrating FreeRTOS-Plus-FAT](setup.md).
 
-## Source
+## API reference
 
-[Every class in this pack](../../api/group__platform__plusfat.md), generated
-from the headers. The code itself is
-[`Platform/PlusFat/`](../../../Platform/PlusFat/).
+[Every class in this pack](../../api/group__platform__plusfat.md), generated from the
+headers.

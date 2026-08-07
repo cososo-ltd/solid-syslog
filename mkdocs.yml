@@ -81,6 +81,11 @@ hooks:
   # Hides the one-entry table of contents on the generated Functions / Macros
   # indexes, whose letter buckets collapse under the common SolidSyslog prefix.
   - hooks/api_index_toc.py
+  # Puts a "Part of the <Platform> platform" banner on every generated API page
+  # for a header under Platform/<Pack>/, linking to that pack's own page. The
+  # pack list comes from SOLIDSYSLOG_PLATFORM_REGISTRY, so registering a new
+  # platform is all it takes.
+  - hooks/platform_backlinks.py
   # Gives each hand-written page its own <meta name="description">, the snippet
   # a search result shows, instead of the site_description above. The map lives
   # in the hook rather than in front matter because the same Markdown is read on
@@ -122,6 +127,13 @@ plugins:
             # Platform/<Pack>/Source/ holds the *Private.h / *Internal.h
             # headers, which are implementation detail and not public API.
             EXCLUDE_PATTERNS: "*/Source/*"
+            # No verbatim source listings in the reference. The docs describe the
+            # contract; the code is read in the repository, and the two example
+            # repositories are where working code is shown. Without this, every
+            # file page carries a "Go to the source code of this file" link to a
+            # generated copy of the header.
+            XML_PROGRAMLISTING: false
+            VERBATIM_HEADERS: false
             EXTRACT_ALL: true
             OPTIMIZE_OUTPUT_FOR_C: true
             # First sentence of each /** */ block becomes the API-index brief.
@@ -150,43 +162,32 @@ nav:
   - Home: README.md
   - Overview:
       - Compliance in one page: overview.md
-  - Adopt:
+  - Integrate:
       - Building up the protection you need: hardening-path.md
       - Adding it to your build: build-integration.md
       - Structured data: structured-data.md
       - Error handling: error-severity.md
-  # Platforms answers "will this run on my target" — an adoption question, not a
-  # reference one, so it is a tab rather than a child of API reference. Porting
-  # sits at the end as the other half of the same question: nothing shipped fits,
-  # so write one. Each platform is a section whose index.md navigation.indexes
-  # promotes into the section link, and whose setup.md is its wiring guide.
+  # Platforms answers "will this run on my target" — an integration question, not
+  # a reference one, so it is a tab rather than a child of API reference. Porting
+  # sits directly beneath the overview as the other half of it: nothing shipped
+  # fits, so write one. The packs themselves are then a flat alphabetical list,
+  # which is how a sidebar gets used — to look one up. Each pack's setup guide is
+  # deliberately absent here and reached from the pack's own page instead: the
+  # two have different audiences, and a nested pair per pack made the sidebar
+  # unreadable.
   - Platforms:
       - platforms/index.md
-      - Posix:
-          - platforms/posix/index.md
-      - Windows:
-          - platforms/windows/index.md
-      - FreeRTOS:
-          - platforms/freertos/index.md
-      - FreeRTOS-Plus-TCP:
-          - platforms/plustcp/index.md
-      - lwIP (Raw API):
-          - platforms/lwipraw/index.md
-          - Setup: platforms/lwipraw/setup.md
-      - OpenSSL:
-          - platforms/openssl/index.md
-          - Setup: platforms/openssl/setup.md
-      - Mbed TLS:
-          - platforms/mbedtls/index.md
-          - Setup: platforms/mbedtls/setup.md
-      - FatFs:
-          - platforms/fatfs/index.md
-      - FreeRTOS-Plus-FAT:
-          - platforms/plusfat/index.md
-          - Setup: platforms/plusfat/setup.md
-      - C11 atomics:
-          - platforms/atomics/index.md
       - Port a new platform: porting.md
+      - C11 atomics: platforms/atomics/index.md
+      - FatFs: platforms/fatfs/index.md
+      - FreeRTOS: platforms/freertos/index.md
+      - FreeRTOS-Plus-FAT: platforms/plusfat/index.md
+      - FreeRTOS-Plus-TCP: platforms/plustcp/index.md
+      - lwIP (Raw API): platforms/lwipraw/index.md
+      - Mbed TLS: platforms/mbedtls/index.md
+      - OpenSSL: platforms/openssl/index.md
+      - Posix: platforms/posix/index.md
+      - Windows: platforms/windows/index.md
   - Compliance:
       - CRA guide: cra.md
       - IEC 62443 guide: iec62443.md

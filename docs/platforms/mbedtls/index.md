@@ -1,10 +1,10 @@
 # Mbed TLS
 
 `Platform/MbedTls/` wraps [Mbed TLS](https://mbed-tls.readthedocs.io/) for TLS
-transport and keyed at-rest crypto on embedded targets, where OpenSSL is too
-heavy. It fills the [Stream](../../api/structSolidSyslogStream.md) role with TLS
-and the [SecurityPolicy](../../api/structSolidSyslogSecurityPolicy.md) role for
-at-rest integrity and confidentiality.
+transport and keyed at-rest cryptography on embedded targets. It fills the
+[Stream](../../api/structSolidSyslogStream.md) role with TLS and the
+[SecurityPolicy](../../api/structSolidSyslogSecurityPolicy.md) role for at-rest
+integrity and confidentiality.
 
 ## What it ships
 
@@ -16,77 +16,91 @@ at-rest integrity and confidentiality.
 
 ## Requirements
 
-Your own `mbedtls_config.h` — the adapter's sources compile in your target
-against your configuration, so the features you enable are the features it gets.
+The pack compiles against your own `mbedtls_config.h`, in your target, so the
+features you enable are the features it gets.
 
-You pass **caller-built, caller-owned handles**, not file paths: a seeded
-`mbedtls_ctr_drbg_context` for the handshake, an `mbedtls_x509_crt` trust chain,
-and for mutual TLS an `mbedtls_x509_crt` / `mbedtls_pk_context` pair. Nothing in
-the adapter touches a filesystem, which is what lets it work on targets built
-without `MBEDTLS_FS_IO`. Every handle must outlive the stream.
+Credentials are passed as caller-built, caller-owned handles rather than file
+paths: a seeded `mbedtls_ctr_drbg_context` for the handshake, an
+`mbedtls_x509_crt` trust chain, and for mutual TLS an `mbedtls_x509_crt` and
+`mbedtls_pk_context` pair. No part of the adapter opens a file, which is what
+allows it to run on targets built without `MBEDTLS_FS_IO`. Each handle must
+remain valid for the lifetime of the stream.
 
-A `SolidSyslogSleepFunction` is required and has no fallback — it bridges the
-handshake's `WANT_READ` / `WANT_WRITE` polls.
+A `SolidSyslogSleepFunction` is required and has no default.
 
 ## Security behaviour and obligations
 
-**What the adapter guarantees.** Peer verification is pinned to
-`MBEDTLS_SSL_VERIFY_REQUIRED` and the protocol floor to TLS 1.2, both set
-explicitly on the adapter's own `ssl_config`. The floor is pinned rather than
-inherited from `MBEDTLS_SSL_PRESET_DEFAULT`, which can otherwise negotiate down
-to TLS 1.0 or 1.1 on a permissive build. TLS 1.3 still negotiates when both
-peers offer it.
+The per-field detail is in
+[`SolidSyslogMbedTlsStream.h`](../../api/SolidSyslogMbedTlsStream_8h.md),
+alongside the fields themselves. What follows is the behaviour of the adapter as
+a whole, and the work it leaves to you.
 
-**Peer identity is yours to assert.** `ServerName` drives both SNI and the
-peer-certificate check. Three cases, and only you know which you want:
+### Transport security is fixed by the adapter
 
-| `ServerName` | Behaviour |
-|---|---|
-| a name | verified against the peer certificate's SAN or CN |
-| `""` | chain verified, endpoint identity **not** checked — the opt-out for a closed network or private CA, and silent by design |
-| `NULL` | as `""`, but reports a WARNING: the peer is unverified, which is MITM-class |
+Peer certificate verification is pinned to `MBEDTLS_SSL_VERIFY_REQUIRED` and the
+protocol floor to TLS 1.2, both set on the adapter's own `ssl_config`. The floor
+is set explicitly rather than inherited from `MBEDTLS_SSL_PRESET_DEFAULT`, which
+on a permissive build can negotiate down to TLS 1.0 or 1.1. TLS 1.3 is
+negotiated when both peers support it.
 
-**Mutual TLS is opt-in, and a half-supplied credential does not fail.** Both
-`ClientCertChain` and `ClientKey` set means the client certificate is presented;
-either one NULL means no client certificate is configured and `Open` proceeds
-with server-authenticated TLS. It does not fail. The
-[OpenSSL adapter](../openssl/index.md) rejects the same partial configuration at
-`Open`, so the two do not behave alike here. If a half-supplied credential must
-be an error on this adapter, check before calling `Open`.
+### Peer identity is yours to declare
 
-The adapter also performs no local check that `ClientKey` matches
-`ClientCertChain` — the OpenSSL adapter does, via `SSL_CTX_check_private_key`. A
-mismatched pair here surfaces as a handshake rejection from the peer rather than
-as a setup error on the device.
+The `ServerName` field supplies both the Server Name Indication sent in the
+handshake and the identity checked against the peer certificate. It has a
+distinct meaning when set, when empty, and when NULL — including one value that
+disables endpoint verification without reporting anything — and the three are
+documented on the field. Choosing between them is a deployment decision the
+adapter cannot make.
 
-**Rotation is a restart, not a reload.** Because the adapter consumes pre-built
-handles rather than paths, refreshing credentials means parsing a new
-`mbedtls_x509_crt` and recreating the stream — or the parent
-`SolidSyslogStreamSender`, so the next connect picks it up. There is no reload
-callback.
+### Mutual TLS is optional and is not validated locally
 
-**Key custody is entirely yours.** The library holds no keys of its own and
-reads whatever material you hand it. Where the private key lives, how it is
-protected at rest, and whether it is backed by a secure element are properties
-of your platform, not of this adapter. The same applies to the at-rest policies:
-HMAC-SHA256 and AES-256-GCM are keyed, and the key is yours to store and rotate.
+A client certificate is presented only when both `ClientCertChain` and
+`ClientKey` are supplied. If either is absent, no client certificate is
+configured and `Open` proceeds with server-authenticated TLS rather than
+failing. Where a half-supplied credential must be treated as an error, check for
+it before calling `Open`.
 
-**Revocation is not performed.** Neither CRL nor OCSP is checked. If your threat
-model needs revocation, it has to come from your own configuration of Mbed TLS.
+The adapter performs no local check that the key matches the certificate, and
+does not report a failure to install the pair. A mismatch is therefore seen as a
+handshake rejection from the collector rather than as a setup error on the
+device.
 
-**Coexistence is an auditable contract.** `Platform/MbedTls/Source/` never calls
-a process-global Mbed TLS API — no `mbedtls_platform_setup` or `_teardown`, no
-threading-alt hooks, no `psa_crypto_init`, no global RNG reset, no replacement of
-your debug callback. TLS policy is set per-`ssl_config` so it cannot leak into
-the ones you build elsewhere. A device that already wires Mbed TLS for OTA or a
-vendor cloud SDK keeps that wiring intact. The claim is grep-auditable against
-the directory.
+### Rotation requires a restart of the stream
 
-## Source
+Because the adapter consumes pre-built handles, refreshing credentials means
+parsing new ones and recreating the stream, or the parent
+`SolidSyslogStreamSender` so that the next connection uses them. There is no
+reload callback.
+
+### Key custody is outside the library
+
+The library holds no keys of its own and uses whatever material is passed to it.
+Where a private key is stored, how it is protected at rest, and whether it is
+held in a secure element are properties of your platform. The same applies to
+the at-rest policies: HMAC-SHA256 and AES-256-GCM are keyed, and storing and
+rotating that key is yours.
+
+### Revocation is not checked
+
+The adapter performs no revocation checking, by Certificate Revocation List or
+by the Online Certificate Status Protocol. Where a deployment requires it, it
+must come from your own configuration of Mbed TLS, and confirming that it is in
+force is part of your assessment rather than something the adapter reports.
+
+### Coexistence is an auditable contract
+
+`Platform/MbedTls/Source/` calls no process-global Mbed TLS API. It does not
+call `mbedtls_platform_setup` or `mbedtls_platform_teardown`, install
+threading-alt hooks, call `psa_crypto_init`, reset the global random number
+generator, or replace a debug callback. TLS policy is applied per `ssl_config`,
+so it cannot affect the ones you build elsewhere. A device that already uses
+Mbed TLS for firmware update or a vendor cloud SDK keeps that configuration
+intact, and the claim can be checked against the directory.
+
+## API reference
 
 [Every class in this pack](../../api/group__platform__mbedtls.md), generated
-from the headers. The code itself is
-[`Platform/MbedTls/`](../../../Platform/MbedTls/).
+from the headers.
 
 ## Setup
 

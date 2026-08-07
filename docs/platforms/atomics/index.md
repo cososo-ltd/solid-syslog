@@ -16,8 +16,7 @@ Fills the [AtomicCounter](../../api/structSolidSyslogAtomicCounter.md) role.
 A C11 compiler with `<stdatomic.h>`. Windows toolchains without it use
 [`SolidSyslogWindowsAtomicCounter`](../windows/index.md) instead.
 
-## Source
+## API reference
 
-[Every class in this pack](../../api/group__platform__atomics.md), generated
-from the headers. The code itself is
-[`Platform/Atomics/`](../../../Platform/Atomics/).
+[Every class in this pack](../../api/group__platform__atomics.md), generated from the
+headers.
