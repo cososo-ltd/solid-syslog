@@ -3,7 +3,7 @@
  * @brief    Winsock networking plus Win32 files, mutexes, atomics and the clock on
  *           MSVC targets.
  *
- * What the pack ships, what your build must provide, the security behaviour
- * it guarantees and the obligations it leaves to you:
+ * What this platform ships, what your build must provide, the security
+ * behaviour it guarantees and the obligations it leaves to you:
  * https://docs.cososo.co.uk/solid-syslog/platforms/windows/
  */

@@ -108,6 +108,15 @@ class GroupPages(unittest.TestCase):
         out = render("api/group__platform__atomics.md", self.RAW)
         self.assertIn("[**Platforms**](../platforms/index.md)", out)
 
+    def test_the_back_link_stays_inside_this_build(self):
+        raw = self.RAW + (
+            "Obligations: [https://docs.cososo.co.uk/solid-syslog/platforms/atomics/]"
+            "(https://docs.cososo.co.uk/solid-syslog/platforms/atomics/)\n"
+        )
+        out = render("api/group__platform__atomics.md", raw)
+        self.assertIn("[C11 atomics](../platforms/atomics/index.md)", out)
+        self.assertNotIn("docs.cososo.co.uk", out)
+
     def test_a_group_page_gets_no_platform_chip(self):
         out = render("api/group__platform__atomics.md", self.RAW)
         self.assertNotIn("ss-chip", out)

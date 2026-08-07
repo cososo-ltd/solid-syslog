@@ -3,7 +3,7 @@
  * @brief    Resolver, Datagram and Stream over the lwIP Raw API, compiled against your
  *           lwipopts.h. Wraps the Raw API specifically, not netconn or sockets.
  *
- * What the pack ships, what your build must provide, the security behaviour
- * it guarantees and the obligations it leaves to you:
+ * What this platform ships, what your build must provide, the security
+ * behaviour it guarantees and the obligations it leaves to you:
  * https://docs.cososo.co.uk/solid-syslog/platforms/lwipraw/
  */

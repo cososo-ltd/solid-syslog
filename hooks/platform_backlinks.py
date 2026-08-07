@@ -28,6 +28,7 @@ import re
 REGISTRY = re.compile(r"set\(SOLIDSYSLOG_PLATFORM_REGISTRY(.*?)^\)", re.DOTALL | re.MULTILINE)
 ROW = re.compile(r'"([^"|]+)\|[^"|]*\|[^"|]*\|[^"|]*\|([^"|]+)\|[^"]*"')
 MODULES_CRUMB = re.compile(r"\[\*\*Modules\*\*\]\([^)]*\)")
+CANONICAL = "https://docs.cososo.co.uk/solid-syslog/"
 
 GENERATED_PREFIX = "api/"
 PLATFORM_PREFIX = "platforms/"
@@ -74,6 +75,19 @@ def _index(config):
     return _CACHE[root]
 
 
+def _relativise(markdown, slug, label):
+    """Point the group's own back-link at this build, not at the live site.
+
+    The .dox block carries the canonical docs URL so that someone reading the
+    source tree can find the page. Doxygen auto-links it, which on any build
+    that is not production — a local preview, a pull-request artefact — sends
+    the reader to the published site instead of the one in front of them.
+    """
+    url = re.escape(f"{CANONICAL}{PLATFORM_PREFIX}{slug}/")
+    linked = re.compile(rf"\[{url}\]\({url}\)|{url}")
+    return linked.sub(f"[{label}](../{PLATFORM_PREFIX}{slug}/index.md)", markdown)
+
+
 def _stem(src_uri):
     """api/SolidSyslogMbedTlsStream_8h.md -> SolidSyslogMbedTlsStream."""
     leaf = src_uri[len(GENERATED_PREFIX) : -len(".md")]
@@ -101,6 +115,7 @@ def on_page_markdown(markdown, page, config, files, **kwargs):
             name = r"platform\\?_" + re.escape(group)
             markdown = re.sub(rf"#\s+Group\s+{name}", f"# {title}", markdown, count=1)
             markdown = MODULES_CRUMB.sub(f"[**Platforms**](../{PLATFORM_PREFIX}index.md)", markdown, count=1)
+            markdown = _relativise(markdown, group, labels[group])
             return re.sub(name, title, markdown)
 
         if src_uri == f"{GENERATED_PREFIX}modules.md":
