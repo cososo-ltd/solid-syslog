@@ -3,14 +3,14 @@
 `SolidSyslogPlusFatFile` is the `SolidSyslogFile` adapter backed by
 [FreeRTOS-Plus-FAT](https://www.freertos.org/Documentation/03-Libraries/05-FreeRTOS-labs/04-FreeRTOS-plus-FAT/01-FreeRTOS-plus-FAT)
 (the `ff_stdio` API). It is the FreeRTOS-Plus ecosystem counterpart to the
-OS-agnostic [ChaN FatFs adapter](../Platform/FatFs/); pair it with
+OS-agnostic [ChaN FatFs adapter](../../../Platform/FatFs/); pair it with
 FreeRTOS-Plus-TCP for a coherent all-FreeRTOS-Plus storage + transport stack. It
 gives the store-and-forward layer (`SolidSyslogBlockStore` over
 `SolidSyslogFileBlockDevice`) a real on-flash file backend.
 
 This guide covers what you must supply around the adapter. For the file seam
-itself see [`SolidSyslogFile.h`](../Core/Interface/SolidSyslogFile.h); for the
-store see [`SolidSyslogBlockStore.h`](../Core/Interface/SolidSyslogBlockStore.h).
+itself see [`SolidSyslogFile.h`](../../../Core/Interface/SolidSyslogFile.h); for the
+store see [`SolidSyslogBlockStore.h`](../../../Core/Interface/SolidSyslogBlockStore.h).
 
 ## The shape
 
@@ -43,14 +43,14 @@ yours to provide; the library never reaches the block device directly.
    to register the volume in `ff_stdio`'s virtual file system. Plus-FAT ships
    reference drivers under `portable/` (`ff_ramdisk.c` is the clearest template).
    The library's BDD target ships a semihosting example,
-   [`Bdd/Targets/Common/FFSemihostingDisk.c`](../Bdd/Targets/Common/FFSemihostingDisk.c).
+   [`Bdd/Targets/Common/FFSemihostingDisk.c`](../../../Bdd/Targets/Common/FFSemihostingDisk.c).
 
 3. A `FreeRTOSFATConfig.h` on your include path. `ff_headers.h` pulls it via
    `#include "FreeRTOSFATConfig.h"`; unlike ChaN FatFs's `ffconf.h`, it resolves
    off the `-I` path (no source-tree colocation needed). At minimum set
    `ffconfigBYTE_ORDER` and `ffconfigCWD_THREAD_LOCAL_INDEX`;
    `FreeRTOSFATConfigDefaults.h` fills the rest. See
-   [`Bdd/Targets/FreeRtos/FreeRTOSFATConfig.h`](../Bdd/Targets/FreeRtos/FreeRTOSFATConfig.h).
+   [`Bdd/Targets/FreeRtos/FreeRTOSFATConfig.h`](../../../Bdd/Targets/FreeRtos/FreeRTOSFATConfig.h).
 
 4. Kernel configuration in `FreeRTOSConfig.h`:
    - `configUSE_RECURSIVE_MUTEXES = 1` (Plus-FAT's `ff_locking.c` enforces this).
@@ -101,19 +101,19 @@ not. Size your heap for the IO-manager cache you request in `FF_CreateIOManager`
 
 ## Reference integration
 
-[`Bdd/Targets/FreeRtos/`](../Bdd/Targets/FreeRtos/) is the worked example, the
+[`Bdd/Targets/FreeRtos/`](../../../Bdd/Targets/FreeRtos/) is the worked example, the
 FreeRTOS-Plus-TCP + FreeRTOS-Plus-FAT QEMU BDD target. It wires:
 
-- [`FFSemihostingDisk.c`](../Bdd/Targets/Common/FFSemihostingDisk.c): an
+- [`FFSemihostingDisk.c`](../../../Bdd/Targets/Common/FFSemihostingDisk.c): an
   `FF_Disk_t` over an ARM-semihosting host-backed flat disk (8 MiB, FAT16),
   modelled on Plus-FAT's `ff_ramdisk.c` but persistent (mount-or-format-on-first-
   use, so a power cycle keeps its data).
-- [`BddTargetPlusFatMount.c`](../Bdd/Targets/Common/BddTargetPlusFatMount.c):
+- [`BddTargetPlusFatMount.c`](../../../Bdd/Targets/Common/BddTargetPlusFatMount.c):
   the mount/unmount + `SolidSyslogPlusFatFile` create/destroy wired into the
   shared FreeRTOS pipeline's FS-mount seam.
-- [`FreeRTOSFATConfig.h`](../Bdd/Targets/FreeRtos/FreeRTOSFATConfig.h) and the
+- [`FreeRTOSFATConfig.h`](../../../Bdd/Targets/FreeRtos/FreeRTOSFATConfig.h) and the
   `configNUM_THREAD_LOCAL_STORAGE_POINTERS` knob in
-  [`FreeRTOSConfig.h`](../Bdd/Targets/FreeRtos/FreeRTOSConfig.h).
+  [`FreeRTOSConfig.h`](../../../Bdd/Targets/FreeRtos/FreeRTOSConfig.h).
 
 The full store / capacity / power-cycle-replay BDD suite runs against this target
 on QEMU (`bdd-freertos-qemu-plustcp`).

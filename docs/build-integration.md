@@ -257,9 +257,9 @@ See the worked target wiring in
 [`Bdd/Targets/FreeRtosLwip/`](../Bdd/Targets/FreeRtosLwip/) (both consume the
 umbrellas), and the platform-specific guides:
 
-- [Integrating with lwIP (Raw API)](integrating-lwip.md)
-- [Integrating with Mbed TLS](integrating-mbedtls.md)
-- [Integrating with FreeRTOS-Plus-FAT](integrating-plusfat.md)
+- [Integrating with lwIP (Raw API)](platforms/lwipraw/setup.md)
+- [Integrating with Mbed TLS](platforms/mbedtls/setup.md)
+- [Integrating with FreeRTOS-Plus-FAT](platforms/plusfat/setup.md)
 
 ---
 
@@ -457,7 +457,7 @@ you.
   degrades to the Null counter (always 1).
 
 For the exact wiring of each adapter's `<Class>_Create` config struct, follow the
-platform guides: [lwIP](integrating-lwip.md), [Mbed TLS](integrating-mbedtls.md).
+platform guides: [lwIP](platforms/lwipraw/setup.md), [Mbed TLS](platforms/mbedtls/setup.md).
 
 ---
 
@@ -512,9 +512,9 @@ SOLIDSYSLOG_USER_TUNABLES := -DSOLIDSYSLOG_USER_TUNABLES_FILE=\"$(CURDIR)/$(APP_
 ## Where to go next
 
 - [Building up the protection you need](hardening-path.md): what to wire and why, stage by stage
-- [Integrating with lwIP (Raw API)](integrating-lwip.md)
-- [Integrating with Mbed TLS](integrating-mbedtls.md)
-- [Integrating with FreeRTOS-Plus-FAT](integrating-plusfat.md)
+- [Integrating with lwIP (Raw API)](platforms/lwipraw/setup.md)
+- [Integrating with Mbed TLS](platforms/mbedtls/setup.md)
+- [Integrating with FreeRTOS-Plus-FAT](platforms/plusfat/setup.md)
 - [Porting to a new platform](porting.md): writing an adapter for an OS, network stack, filesystem, or crypto library we don't ship
 - [Structured data](structured-data.md)
 - [Error handling and severity](error-severity.md)

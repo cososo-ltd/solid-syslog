@@ -40,8 +40,7 @@ configure time.
 
 mbedTLS layering is unchanged: `SolidSyslogMbedTlsStream` consumes
 `SolidSyslogLwipRawTcpStream` as its byte transport without
-modification. See [`docs/integrating-mbedtls.md`](integrating-mbedtls.md)
-for the TLS side.
+modification. See [Mbed TLS setup](../mbedtls/setup.md) for the TLS side.
 
 ---
 

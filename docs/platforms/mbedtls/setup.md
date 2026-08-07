@@ -39,7 +39,7 @@ the per-context mbedTLS handles passed through
 
 | Item | Owner | Notes |
 |---|---|---|
-| `Transport` | You | A `SolidSyslogStream*` carrying TCP. The library ships `SolidSyslogPosixTcpStream` (POSIX), `SolidSyslogWinsockTcpStream` (Windows), and `SolidSyslogPlusTcpTcpStream` (FreeRTOS-Plus-TCP). If your TCP/IP stack is different (LwIP, NicheStack, vendor BSP), write your own `SolidSyslogStream`; see [`Platform/Posix/Source/SolidSyslogPosixTcpStream.c`](../Platform/Posix/Source/SolidSyslogPosixTcpStream.c) as a reference. |
+| `Transport` | You | A `SolidSyslogStream*` carrying TCP. The library ships `SolidSyslogPosixTcpStream` (POSIX), `SolidSyslogWinsockTcpStream` (Windows), and `SolidSyslogPlusTcpTcpStream` (FreeRTOS-Plus-TCP). If your TCP/IP stack is different (LwIP, NicheStack, vendor BSP), write your own `SolidSyslogStream`; see [`Platform/Posix/Source/SolidSyslogPosixTcpStream.c`](../../../Platform/Posix/Source/SolidSyslogPosixTcpStream.c) as a reference. |
 | `Sleep` | You | A `SolidSyslogSleepFunction`. Drives the bounded handshake retry between `WANT_READ` / `WANT_WRITE` polls. On FreeRTOS use a `vTaskDelay`-backed wrapper; on POSIX `SolidSyslogPosixSleep` is the natural fit. Required. |
 | `GetHandshakeTimeoutMs` / `HandshakeTimeoutContext` | You (optional) | Per-instance accessor pair for the bounded handshake budget. `NULL` falls back to the `SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS` compile-time tunable (default 5000 ms). Install when you need to runtime-tune the handshake deadline: slow peers on a constrained link, or per-tenant policy from your existing configuration store. The accessor is called on every `Open`. |
 | `Rng` | You | `mbedtls_ctr_drbg_context*` you seeded yourself. The adapter calls `mbedtls_ctr_drbg_random` against it. Required. |
@@ -48,7 +48,7 @@ the per-context mbedTLS handles passed through
 | `ClientCertChain` / `ClientKey` | You | `mbedtls_x509_crt*` + `mbedtls_pk_context*` for mTLS. Both `NULL` = server-auth-only TLS. Both non-`NULL` = mTLS. Supplying only one is treated as "no client cert"; the adapter never half-configures. |
 
 The full struct shape lives in
-[`Platform/MbedTls/Interface/SolidSyslogMbedTlsStream.h`](../Platform/MbedTls/Interface/SolidSyslogMbedTlsStream.h).
+[`Platform/MbedTls/Interface/SolidSyslogMbedTlsStream.h`](../../../Platform/MbedTls/Interface/SolidSyslogMbedTlsStream.h).
 
 The adapter pins the minimum protocol version to TLS 1.2 on its own
 `ssl_config` rather than inheriting `MBEDTLS_SSL_PRESET_DEFAULT`, which, on a
@@ -143,10 +143,10 @@ specifically for this adapter:
   exactly as in [Scenario A](#scenario-a-you-already-have-mbed-tls-in-your-image).
 
 A worked end-to-end example for all of the above lives at
-[`Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c`](../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c)
+[`Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c`](../../../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c)
 (FreeRTOS-Plus-TCP on QEMU mps2-an385). The matching Mbed TLS config
 overrides live at
-[`Bdd/Targets/FreeRtos/mbedtls_user_config.h`](../Bdd/Targets/FreeRtos/mbedtls_user_config.h).
+[`Bdd/Targets/FreeRtos/mbedtls_user_config.h`](../../../Bdd/Targets/FreeRtos/mbedtls_user_config.h).
 
 ---
 
@@ -177,7 +177,7 @@ newlib, treat them as integrator-side checklist items:
 - Route mbedTLS allocations to the RTOS heap. Mbed TLS calls libc
   `calloc`, which on newlib targets typically hits a tiny `_sbrk`-backed
   syscall heap (4 KiB in the SolidSyslog BDD reference at
-  [`Bdd/Targets/FreeRtos/Common/Syscalls.c`](../Bdd/Targets/FreeRtos/Common/Syscalls.c)).
+  [`Bdd/Targets/FreeRtos/Common/Syscalls.c`](../../../Bdd/Targets/FreeRtos/Common/Syscalls.c)).
   A single `mbedtls_ssl_setup` wants ~10–16 KiB and will fail with
   `MBEDTLS_ERR_SSL_ALLOC_FAILED` (-0x7F00). Set
   `MBEDTLS_PLATFORM_MEMORY` in your config and call
@@ -199,7 +199,7 @@ newlib, treat them as integrator-side checklist items:
   `PSA_ERROR_INSUFFICIENT_ENTROPY` (-148).
 
 The BDD target's
-[mbedtls_user_config.h](../Bdd/Targets/FreeRtos/mbedtls_user_config.h)
+[mbedtls_user_config.h](../../../Bdd/Targets/FreeRtos/mbedtls_user_config.h)
 shows the minimal config that satisfies the above for QEMU mps2-an385.
 
 ---
@@ -208,9 +208,9 @@ shows the minimal config that satisfies the above for QEMU mps2-an385.
 
 | Target | Adapter source | Mbed TLS config | Notes |
 |---|---|---|---|
-| FreeRTOS QEMU mps2-an385 + FreeRTOS-Plus-TCP | [BddTargetTlsSender_MbedTls_PlusTcpTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c) | [mbedtls_user_config.h](../Bdd/Targets/FreeRtos/mbedtls_user_config.h) | Demo-quality entropy and baked-in PEMs; loudly tagged not-for-production. |
-| Linux host (host-TDD parity with the embedded path) | [Tests/MbedTlsIntegration/](../Tests/MbedTlsIntegration/) | — | In-process TLS server drives a real handshake against the wrapper. |
-| POSIX (OpenSSL reference, for comparison) | [BddTargetTlsSender_OpenSsl_PosixTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_OpenSsl_PosixTcp.c) | — | Same composition shape using `SolidSyslogTlsStream` for the TLS layer. |
+| FreeRTOS QEMU mps2-an385 + FreeRTOS-Plus-TCP | [BddTargetTlsSender_MbedTls_PlusTcpTcp.c](../../../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c) | [mbedtls_user_config.h](../../../Bdd/Targets/FreeRtos/mbedtls_user_config.h) | Demo-quality entropy and baked-in PEMs; loudly tagged not-for-production. |
+| Linux host (host-TDD parity with the embedded path) | [Tests/MbedTlsIntegration/](../../../Tests/MbedTlsIntegration/) | — | In-process TLS server drives a real handshake against the wrapper. |
+| POSIX (OpenSSL reference, for comparison) | [BddTargetTlsSender_OpenSsl_PosixTcp.c](../../../Bdd/Targets/Common/BddTargetTlsSender_OpenSsl_PosixTcp.c) | — | Same composition shape using `SolidSyslogTlsStream` for the TLS layer. |
 
 ---
 

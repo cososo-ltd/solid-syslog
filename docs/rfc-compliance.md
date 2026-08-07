@@ -61,7 +61,7 @@ Status key:
 
 ## RFC 5425 — TLS Transport Mapping for Syslog
 
-The library ships two reference TLS adapters that satisfy this RFC: `SolidSyslogTlsStream` (OpenSSL, the POSIX / Windows reference) and `SolidSyslogMbedTlsStream` (Mbed TLS, the embedded / FreeRTOS reference). Both implement the same `SolidSyslogStream` vtable, so the section-by-section requirements below apply to whichever the integrator selects. mbedTLS-specific integration guidance lives in [`docs/integrating-mbedtls.md`](integrating-mbedtls.md).
+The library ships two reference TLS adapters that satisfy this RFC: `SolidSyslogTlsStream` (OpenSSL, the POSIX / Windows reference) and `SolidSyslogMbedTlsStream` (Mbed TLS, the embedded / FreeRTOS reference). Both implement the same `SolidSyslogStream` vtable, so the section-by-section requirements below apply to whichever the integrator selects. mbedTLS-specific integration guidance lives in [Mbed TLS setup](platforms/mbedtls/setup.md).
 
 | Section | Requirement | Status | Notes |
 |---|---|---|---|

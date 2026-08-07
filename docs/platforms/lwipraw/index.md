@@ -5,26 +5,26 @@
 files compile against your `lwipopts.h`, so the adapter inherits your stack's
 configuration.
 
-Fills the Resolver, Datagram and Stream [roles](../roles/index.md), plus the
-address handle they share. Layer [Mbed TLS](mbedtls.md) over the TCP stream for
+Fills the Resolver, Datagram and Stream [roles](../../roles/index.md), plus the
+address handle they share. Layer [Mbed TLS](../mbedtls/index.md) over the TCP stream for
 TLS.
 
 ## What it ships
 
 | Class | Role |
 |---|---|
-| [`SolidSyslogLwipRawAddress`](../api/SolidSyslogLwipRawAddress_8h.md) | destination handle |
-| [`SolidSyslogLwipRawResolver`](../api/SolidSyslogLwipRawResolver_8h.md) | numeric IPv4 resolver |
-| [`SolidSyslogLwipRawDnsResolver`](../api/SolidSyslogLwipRawDnsResolver_8h.md) | DNS resolver (`LWIP_DNS=1`) |
-| [`SolidSyslogLwipRawDatagram`](../api/SolidSyslogLwipRawDatagram_8h.md) | UDP sender |
-| [`SolidSyslogLwipRawTcpStream`](../api/SolidSyslogLwipRawTcpStream_8h.md) | TCP byte transport |
+| [`SolidSyslogLwipRawAddress`](../../api/SolidSyslogLwipRawAddress_8h.md) | destination handle |
+| [`SolidSyslogLwipRawResolver`](../../api/SolidSyslogLwipRawResolver_8h.md) | numeric IPv4 resolver |
+| [`SolidSyslogLwipRawDnsResolver`](../../api/SolidSyslogLwipRawDnsResolver_8h.md) | DNS resolver (`LWIP_DNS=1`) |
+| [`SolidSyslogLwipRawDatagram`](../../api/SolidSyslogLwipRawDatagram_8h.md) | UDP sender |
+| [`SolidSyslogLwipRawTcpStream`](../../api/SolidSyslogLwipRawTcpStream_8h.md) | TCP byte transport |
 
 The source calls lwIP only — no direct OS calls. The TCP stream's synchronous
 Open needs a bounded sleep, injected as a `SolidSyslogSleepFunction`.
 
 ## The marshal
 
-Not a role: [`SolidSyslogLwipRaw_SetMarshal`](../api/SolidSyslogLwipRawMarshal_8h.md)
+Not a role: [`SolidSyslogLwipRaw_SetMarshal`](../../api/SolidSyslogLwipRawMarshal_8h.md)
 is a process-global seam, not a component you wire into the config. Every lwIP call
 the Datagram and TcpStream make is routed through one marshal hop.
 
@@ -38,7 +38,7 @@ the Datagram and TcpStream make is routed through one marshal hop.
 The marshal must invoke its callback synchronously — the adapter reads results the
 moment the hop returns. `tcpip_callback_with_block(…, 1)` or a `LOCK_TCPIP_CORE` /
 `UNLOCK_TCPIP_CORE` pair satisfy that; a bare `tcpip_callback` does not. Worked
-example: [`Bdd/Targets/FreeRtosLwip/main.c`](../../Bdd/Targets/FreeRtosLwip/main.c).
+example: [`Bdd/Targets/FreeRtosLwip/main.c`](../../../Bdd/Targets/FreeRtosLwip/main.c).
 
 ## Requirements
 
@@ -55,4 +55,4 @@ Also set `ARP_QUEUEING=1` (else the first datagram to an unresolved peer is
 dropped) and `LWIP_TCP_KEEPALIVE=1`, and size `PBUF_POOL_SIZE` /
 `MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to your instance counts.
 
-Full setup — config, marshal, DNS — is [Integrating lwIP](../integrating-lwip.md).
+Full setup — config, marshal, DNS — is [Integrating lwIP](setup.md).

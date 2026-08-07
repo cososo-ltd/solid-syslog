@@ -4,14 +4,14 @@
 ([FatFs documentation](http://elm-chan.org/fsw/ff/)). RTOS-agnostic — bare-metal,
 FreeRTOS, Zephyr, NuttX.
 
-Fills the [File](../api/structSolidSyslogFile.md) role — the primitive beneath a
+Fills the [File](../../api/structSolidSyslogFile.md) role — the primitive beneath a
 BlockDevice.
 
 ## What it ships
 
 | Class | Role |
 |---|---|
-| [`SolidSyslogFatFsFile`](../api/SolidSyslogFatFsFile_8h.md) | file — `f_sync` after every write |
+| [`SolidSyslogFatFsFile`](../../api/SolidSyslogFatFsFile_8h.md) | file — `f_sync` after every write |
 
 ## Requirements
 

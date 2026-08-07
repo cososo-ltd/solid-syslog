@@ -49,19 +49,64 @@ DESCRIPTIONS = {
         "Which severity a SolidSyslog error event carries — the urgency ladder "
         "each emit site picks from, and what each level asks of your handler."
     ),
-    "integrating-lwip.md": (
+    # Platforms — each platform's overview page followed by its setup guide,
+    # in nav order, with porting last as the other half of the same question.
+    "platforms/index.md": (
+        "The adapter packs that reach your hardware — POSIX, Windows, FreeRTOS, "
+        "lwIP, OpenSSL, Mbed TLS, FatFs and more — and the capabilities each fills."
+    ),
+    "platforms/posix/index.md": (
+        "The POSIX adapter pack — sockets, pthreads, message queues, "
+        "clock_gettime and stdio — filling six of the library's roles on Linux."
+    ),
+    "platforms/windows/index.md": (
+        "The Win32 and Winsock adapter pack for MSVC targets, filling the "
+        "Resolver, Datagram, Stream, File, Mutex and AtomicCounter roles."
+    ),
+    "platforms/freertos/index.md": (
+        "The FreeRTOS adapter pack: kernel primitives filling the Mutex role and "
+        "the sysUpTime callback, with networking from Plus-TCP or lwIP."
+    ),
+    "platforms/plustcp/index.md": (
+        "The FreeRTOS-Plus-TCP adapter pack, filling the Resolver, Datagram and "
+        "Stream roles for networking on FreeRTOS targets."
+    ),
+    "platforms/lwipraw/index.md": (
+        "The lwIP Raw API adapter pack, filling the Resolver, Datagram and Stream "
+        "roles — compiled against your lwipopts.h, NO_SYS=1 builds included."
+    ),
+    "platforms/lwipraw/setup.md": (
         "Wire SolidSyslog to the lwIP Raw API: what the adapter fills, what you "
         "supply, and how it works under NO_SYS=1 beside other lwIP subsystems."
     ),
-    "integrating-mbedtls.md": (
+    "platforms/openssl/index.md": (
+        "The OpenSSL adapter pack: TLS transport for the Stream role, and keyed "
+        "at-rest crypto for the SecurityPolicy role, on hosted targets."
+    ),
+    "platforms/mbedtls/index.md": (
+        "The Mbed TLS adapter pack for embedded targets: TLS transport for the "
+        "Stream role, and keyed at-rest crypto for the SecurityPolicy role."
+    ),
+    "platforms/mbedtls/setup.md": (
         "Deliver RFC 5425 syslog over TLS through Mbed TLS on embedded targets: "
         "the handles you pre-build and pass in, and how they are wired."
     ),
-    "integrating-plusfat.md": (
+    "platforms/fatfs/index.md": (
+        "The ChaN FatFs adapter pack, filling the File role beneath a BlockDevice "
+        "— RTOS-agnostic, for bare-metal, FreeRTOS, Zephyr and NuttX targets."
+    ),
+    "platforms/plusfat/index.md": (
+        "The FreeRTOS-Plus-FAT adapter pack, filling the File role beneath a "
+        "BlockDevice for an all-FreeRTOS-Plus storage and transport stack."
+    ),
+    "platforms/plusfat/setup.md": (
         "Back store-and-forward with FreeRTOS-Plus-FAT: what the ff_stdio File "
         "adapter needs from your build and media, and how the store sits above it."
     ),
-    # Port a new platform
+    "platforms/atomics/index.md": (
+        "The portable C11 stdatomic.h AtomicCounter — the sequenceId source on "
+        "any target with a C11 compiler, with no OS dependency."
+    ),
     "porting.md": (
         "Port SolidSyslog to a new RTOS, network stack, filesystem or crypto "
         "library by filling a vtable contract. Core never changes."
@@ -109,53 +154,9 @@ DESCRIPTIONS = {
         "What Core provides: the facade you call, the pipeline that formats and "
         "drains a record, and the role implementations that need no platform."
     ),
-    "platforms/index.md": (
-        "The adapter packs that reach your hardware — POSIX, Windows, FreeRTOS, "
-        "lwIP, OpenSSL, Mbed TLS, FatFs and more — and the capabilities each fills."
-    ),
     "roles/index.md": (
         "The twelve vtable contracts SolidSyslog composes against, what fills "
         "each one, and the Null fallback that keeps an unfilled role safe."
-    ),
-    "platforms/posix.md": (
-        "The POSIX adapter pack — sockets, pthreads, message queues, "
-        "clock_gettime and stdio — filling six of the library's roles on Linux."
-    ),
-    "platforms/windows.md": (
-        "The Win32 and Winsock adapter pack for MSVC targets, filling the "
-        "Resolver, Datagram, Stream, File, Mutex and AtomicCounter roles."
-    ),
-    "platforms/freertos.md": (
-        "The FreeRTOS adapter pack: kernel primitives filling the Mutex role and "
-        "the sysUpTime callback, with networking from Plus-TCP or lwIP."
-    ),
-    "platforms/plustcp.md": (
-        "The FreeRTOS-Plus-TCP adapter pack, filling the Resolver, Datagram and "
-        "Stream roles for networking on FreeRTOS targets."
-    ),
-    "platforms/lwip.md": (
-        "The lwIP Raw API adapter pack, filling the Resolver, Datagram and Stream "
-        "roles — compiled against your lwipopts.h, NO_SYS=1 builds included."
-    ),
-    "platforms/openssl.md": (
-        "The OpenSSL adapter pack: TLS transport for the Stream role, and keyed "
-        "at-rest crypto for the SecurityPolicy role, on hosted targets."
-    ),
-    "platforms/mbedtls.md": (
-        "The Mbed TLS adapter pack for embedded targets: TLS transport for the "
-        "Stream role, and keyed at-rest crypto for the SecurityPolicy role."
-    ),
-    "platforms/fatfs.md": (
-        "The ChaN FatFs adapter pack, filling the File role beneath a BlockDevice "
-        "— RTOS-agnostic, for bare-metal, FreeRTOS, Zephyr and NuttX targets."
-    ),
-    "platforms/plusfat.md": (
-        "The FreeRTOS-Plus-FAT adapter pack, filling the File role beneath a "
-        "BlockDevice for an all-FreeRTOS-Plus storage and transport stack."
-    ),
-    "platforms/atomics.md": (
-        "The portable C11 stdatomic.h AtomicCounter — the sequenceId source on "
-        "any target with a C11 compiler, with no OS dependency."
     ),
     # Maintaining
     "builds.md": (

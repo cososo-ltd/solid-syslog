@@ -64,7 +64,7 @@ so the resolve completes on-device without a DNS server.
 > timeout branches are unit-tested in
 > `Tests/Lwip/SolidSyslogLwipRawDnsResolverTest`, consistent with the project's
 > integration-over-BDD stance for paths the harness can't realistically drive.
-> See [`docs/integrating-lwip.md`](../../../docs/integrating-lwip.md#dns).
+> See [lwIP setup — DNS](../../../docs/platforms/lwipraw/setup.md#dns).
 
 ## Build
 

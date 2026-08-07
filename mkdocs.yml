@@ -146,11 +146,37 @@ nav:
       - Adding it to your build: build-integration.md
       - Structured data: structured-data.md
       - Error handling: error-severity.md
-      - Integrating lwIP: integrating-lwip.md
-      - Integrating Mbed TLS: integrating-mbedtls.md
-      - Integrating FreeRTOS-Plus-FAT: integrating-plusfat.md
-  - Port a new platform:
-      - Porting guide: porting.md
+  # Platforms answers "will this run on my target" — an adoption question, not a
+  # reference one, so it is a tab rather than a child of API reference. Porting
+  # sits at the end as the other half of the same question: nothing shipped fits,
+  # so write one. Each platform is a section whose index.md navigation.indexes
+  # promotes into the section link, and whose setup.md is its wiring guide.
+  - Platforms:
+      - platforms/index.md
+      - Posix:
+          - platforms/posix/index.md
+      - Windows:
+          - platforms/windows/index.md
+      - FreeRTOS:
+          - platforms/freertos/index.md
+      - FreeRTOS-Plus-TCP:
+          - platforms/plustcp/index.md
+      - lwIP (Raw API):
+          - platforms/lwipraw/index.md
+          - Setup: platforms/lwipraw/setup.md
+      - OpenSSL:
+          - platforms/openssl/index.md
+      - Mbed TLS:
+          - platforms/mbedtls/index.md
+          - Setup: platforms/mbedtls/setup.md
+      - FatFs:
+          - platforms/fatfs/index.md
+      - FreeRTOS-Plus-FAT:
+          - platforms/plusfat/index.md
+          - Setup: platforms/plusfat/setup.md
+      - C11 atomics:
+          - platforms/atomics/index.md
+      - Port a new platform: porting.md
   - Compliance:
       - CRA guide: cra.md
       - IEC 62443 guide: iec62443.md
@@ -179,18 +205,6 @@ nav:
       # child — navigation.indexes promotes it into the section link.
       - Core:
           - core/index.md
-      - Platforms:
-          - platforms/index.md
-          - Posix: platforms/posix.md
-          - Windows: platforms/windows.md
-          - FreeRTOS: platforms/freertos.md
-          - FreeRTOS-Plus-TCP: platforms/plustcp.md
-          - lwIP (Raw API): platforms/lwip.md
-          - OpenSSL: platforms/openssl.md
-          - Mbed TLS: platforms/mbedtls.md
-          - FatFs: platforms/fatfs.md
-          - FreeRTOS-Plus-FAT: platforms/plusfat.md
-          - C11 atomics: platforms/atomics.md
       # A role *is* its vtable, so each entry links straight to the generated
       # contract page; detail belongs in the SolidSyslog<Role>Definition.h
       # doc comment, not a hand-maintained copy here.
