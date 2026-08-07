@@ -73,6 +73,7 @@ Key fields worth reading:
 
 | Field | Meaning |
 |---|---|
+| `metadata.tools.components[0]` | The workflow that rendered this document, versioned by its own commit SHA and linked via a `build-system` reference. Distinct from `metadata.component.purl`, which pins the source being described: one says what produced the SBOM, the other what it describes. |
 | `metadata.component.name` | `SolidSyslog`. |
 | `metadata.component.version` | The value from `.release-please-manifest.json` at the time of generation. Pre-release: `0.0.0`. |
 | `metadata.component.purl` | Package URL keyed to the exact commit SHA — unambiguous pointer back to the source. |

@@ -5,13 +5,33 @@
   "version": 1,
   "metadata": {
     "timestamp": "${TIMESTAMP}",
-    "tools": [
-      {
-        "vendor": "Cozens Software Solutions Limited (COSOSO)",
-        "name": "solid-syslog-sbom-generator",
-        "version": "${TOOLS_VERSION}"
-      }
-    ],
+    "tools": {
+      "components": [
+        {
+          "bom-ref": "pkg:github/cososo-ltd/solid-syslog@${TOOLS_VERSION}#.github/workflows/sbom.yml",
+          "type": "application",
+          "name": "sbom.yml",
+          "version": "${TOOLS_VERSION}",
+          "description": "This document is rendered from sbom/sbom.cdx.json.template by the Generate SBOM workflow in this repository; there is no separate generator program. The version is the workflow commit SHA, which pins the logic that produced this file — distinct from metadata.component.purl, which pins the source being described.",
+          "supplier": {
+            "name": "Cozens Software Solutions Limited (COSOSO)",
+            "url": [
+              "https://cososo.co.uk"
+            ]
+          },
+          "externalReferences": [
+            {
+              "type": "build-system",
+              "url": "https://github.com/cososo-ltd/solid-syslog/blob/${TOOLS_VERSION}/.github/workflows/sbom.yml"
+            },
+            {
+              "type": "vcs",
+              "url": "https://github.com/cososo-ltd/solid-syslog"
+            }
+          ]
+        }
+      ]
+    },
     "component": {
       "bom-ref": "pkg:github/cososo-ltd/solid-syslog@${COMMIT_SHA}",
       "type": "library",
