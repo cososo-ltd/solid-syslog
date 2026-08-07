@@ -1,6 +1,6 @@
 services:
   gcc:
-    image: ghcr.io/cososo-ltd/cpputest:sha-6715942
+    image: ghcr.io/cososo-ltd/cpputest@sha256:68e7fbb6f02996717ce9211fd8089a0c52763da4990dfe69653c00ad697551b9 # sha-6715942
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
@@ -27,7 +27,7 @@ services:
   # if a future workflow runs both pairs simultaneously; see
   # ci/docker-compose.bdd.yml for the rationale.
   syslog-ng-linux:
-    image: balabit/syslog-ng:4.8.2
+    image: balabit/syslog-ng@sha256:728cc5b63b9044ad5f18062bac73fd5c30bb7ad256c2aa12799d924d4f6f1e72 # 4.8.2
     volumes:
       - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
       - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
@@ -64,7 +64,7 @@ services:
           - syslog-ng
 
   behave-linux:
-    image: ghcr.io/cososo-ltd/behave:sha-be8da62
+    image: ghcr.io/cososo-ltd/behave@sha256:4c693232c26fa6bbdb2a8451f9f4879f4271a554cbcba356fc7fc38ff5bac65d # sha-be8da62
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ../Bdd/output:/workspaces/SolidSyslog/Bdd/output
@@ -84,7 +84,7 @@ services:
     command: sleep infinity
 
   clang:
-    image: ghcr.io/cososo-ltd/cpputest-clang:sha-5905aea
+    image: ghcr.io/cososo-ltd/cpputest-clang@sha256:95e8a1b076aa2faab98af1415c89a36feaa12e0a9e42950194f9775d0ed27c35 # sha-5905aea
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
@@ -102,7 +102,7 @@ services:
     command: sleep infinity
 
   freertos-host:
-    image: ghcr.io/cososo-ltd/cpputest-freertos:sha-ad10bf2
+    image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:476cfeab90e8179ab909dba8c77c8e9ef3b594e67ba98dca39108747583f5c41 # sha-ad10bf2
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
@@ -124,7 +124,7 @@ services:
   # network namespace so QEMU's slirp gateway 10.0.2.2 NATs to the pair's
   # loopback, where syslog-ng-freertos is listening on 0.0.0.0:5514.
   syslog-ng-freertos:
-    image: balabit/syslog-ng:4.8.2
+    image: balabit/syslog-ng@sha256:728cc5b63b9044ad5f18062bac73fd5c30bb7ad256c2aa12799d924d4f6f1e72 # 4.8.2
     volumes:
       - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
       - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
@@ -153,7 +153,7 @@ services:
           - syslog-ng
 
   freertos-target:
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross:sha-ad10bf2
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:481267bea7200641fac41d7136e7e08deeba1b311e9873aa6d1c311db5b4cf58 # sha-ad10bf2
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - syslog-ng-ctl-freertos:/var/lib/syslog-ng

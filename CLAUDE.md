@@ -661,12 +661,22 @@ declarations are the price paid to keep that top-down reading order.
 See [`docs/containers.md`](docs/containers.md) for the full image reference, Docker Compose setup,
 and switching procedure.
 
+Images are referenced by digest (`image: <repo>@sha256:…`) with the tag kept as a
+trailing comment, in `.github/workflows/ci.yml`, `.devcontainer/docker-compose.yml`
+and `ci/docker-compose.bdd.yml` alike. A `sha-<short>` tag names the source commit
+that built the image; it is not a content digest and the registry may repoint it,
+which is why the digest is what resolves. Pin whatever
+`docker buildx imagetools inspect` reports as the manifest digest — never a
+per-platform digest dug out of `--raw`, which would nail a multi-architecture
+image to one architecture.
+
 When updating an image:
 
 1. Build and push the new image in the container image repo
-2. Update the SHA tag in all files that reference it (see [`docs/containers.md`](docs/containers.md) for the full list)
-3. Rebuild the devcontainer and verify the new tooling works locally
-4. Then commit — use `chore: bump container image to <sha>`
+2. Resolve the new tag to its index digest — `docker buildx imagetools inspect <repo>:<tag> --format '{{.Manifest.Digest}}'`
+3. Update the digest and the trailing tag comment in all files that reference it (see [`docs/containers.md`](docs/containers.md) for the full list)
+4. Rebuild the devcontainer and verify the new tooling works locally
+5. Then commit — use `chore: bump container image to <sha>`
 
 ---
 

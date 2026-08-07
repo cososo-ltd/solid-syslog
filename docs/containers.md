@@ -2,6 +2,13 @@
 
 ## Images in use
 
+Every reference in `.github/workflows/ci.yml`, `.devcontainer/docker-compose.yml`
+and `ci/docker-compose.bdd.yml` is pinned by digest — `image: <repo>@sha256:…`
+— with the tag retained as a trailing comment. The tag below is the readable
+handle; the digest in the files is what actually resolves. Digests are
+deliberately not repeated here, so there is one authoritative copy per
+reference and nothing to drift.
+
 | Image | Tag | Used by |
 |---|---|---|
 | `ghcr.io/cososo-ltd/cpputest` | `sha-6715942` | devcontainer (`gcc` service), most CI jobs. Now ships `include-what-you-use 0.23 (clang_19)` matching the `cpputest-clang` build, so local `iwyu` runs work in the gcc container |
@@ -78,9 +85,24 @@ docker compose -f .devcontainer/docker-compose.yml run --rm clang \
 When a new image tag is available:
 
 1. Build and push the new image in the container image repo
-2. Update the SHA tag in all files that reference it (see table below), plus `docs/containers.md`
-3. Rebuild the devcontainer (`Ctrl+Shift+P` → "Dev Containers: Rebuild Container") and verify locally
-4. Raise a PR: use `chore: bump container image to <sha>` as the title
+2. Resolve the new tag to its digest:
+
+   ```bash
+   docker buildx imagetools inspect ghcr.io/cososo-ltd/<image>:sha-<new> \
+     --format '{{.Manifest.Digest}}'
+   ```
+
+   Pin exactly what this command prints — the image index digest for a
+   multi-architecture image, or the single manifest digest for a
+   single-platform one. Do not substitute a per-platform digest dug out of
+   `--raw`: for an index that would nail the reference to one architecture.
+   Of the images here, only `balabit/syslog-ng` is genuinely multi-arch
+   (`linux/amd64` and `linux/arm64`); the rest are `linux/amd64` only.
+
+3. Update the digest **and** the trailing tag comment in every file that
+   references the image (see table below), plus the tag in `docs/containers.md`
+4. Rebuild the devcontainer (`Ctrl+Shift+P` → "Dev Containers: Rebuild Container") and verify locally
+5. Raise a PR: use `chore: bump container image to <sha>` as the title
 
 | Image | Files to update |
 |---|---|
@@ -107,10 +129,20 @@ repo root, before raising the bump PR:
 
 ```bash
 docker run --rm -v "$PWD:/docs" \
-  ghcr.io/cososo-ltd/mkdocs-mkdoxy:sha-<new> mkdocs build --strict
+  ghcr.io/cososo-ltd/mkdocs-mkdoxy@sha256:<new> mkdocs build --strict
 ```
 
-All references to a given image must use the same tag. Never update one without the others.
+All references to a given image must use the same digest. Never update one
+without the others. To check that invariant across the tree:
+
+```bash
+grep -rhno 'ghcr.io/cososo-ltd/[a-z-]*@sha256:[0-9a-f]*\|balabit/syslog-ng@sha256:[0-9a-f]*' \
+  .github/workflows/ci.yml .devcontainer/docker-compose.yml ci/docker-compose.bdd.yml \
+  | sed 's/^[0-9]*://' | sort -u
+```
+
+One line per image means every reference agrees; two lines for the same image
+name means a bump was applied unevenly.
 
 ## Switching to a different container as the devcontainer
 
