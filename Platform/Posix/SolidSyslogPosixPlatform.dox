@@ -1,5 +1,5 @@
 /**
- * @defgroup platform_posix POSIX platform
+ * @defgroup platform_posix Posix platform
  * @brief    Sockets, name resolution, files, mutexes, message queues and the clock on
  *           POSIX hosts.
  *

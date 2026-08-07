@@ -77,9 +77,32 @@ class PlatformPages(unittest.TestCase):
         self.assertEqual(render("porting.md", markdown), markdown)
 
 
+class GroupPages(unittest.TestCase):
+    # mkdoxy titles these in Doxygen's vocabulary and escapes the underscore.
+    RAW = "# Group platform\\_atomics\n\n[**Modules**](index_groups.md) **>** [**platform\\_atomics**](x.md)\n"
+
+    def test_the_doxygen_title_becomes_the_platform_name(self):
+        out = render("api/group__platform__atomics.md", self.RAW)
+        self.assertTrue(out.startswith("# C11 atomics platform"), out[:50])
+
+    def test_group_and_modules_do_not_reach_the_reader(self):
+        out = render("api/group__platform__atomics.md", self.RAW)
+        self.assertNotIn("Group", out)
+        self.assertNotIn("Modules", out)
+        self.assertNotIn("platform_atomics", out.replace("\\", ""))
+
+    def test_the_breadcrumb_points_at_the_platforms_overview(self):
+        out = render("api/group__platform__atomics.md", self.RAW)
+        self.assertIn("[**Platforms**](../platforms/index.md)", out)
+
+    def test_a_group_page_gets_no_platform_chip(self):
+        out = render("api/group__platform__atomics.md", self.RAW)
+        self.assertNotIn("ss-chip", out)
+
+
 class Registry(unittest.TestCase):
     def test_every_registered_platform_has_a_docs_folder(self):
-        _, slugs = h._index(CONFIG)
+        _, slugs, _labels = h._index(CONFIG)
         for slug in slugs:
             self.assertTrue(
                 os.path.isfile(os.path.join(ROOT, "docs", "platforms", slug, "index.md")),
@@ -87,7 +110,7 @@ class Registry(unittest.TestCase):
             )
 
     def test_the_registry_yields_all_ten_platforms(self):
-        _, slugs = h._index(CONFIG)
+        _, slugs, _labels = h._index(CONFIG)
         self.assertEqual(len(slugs), 10, sorted(slugs))
 
 

@@ -27,6 +27,7 @@ import re
 
 REGISTRY = re.compile(r"set\(SOLIDSYSLOG_PLATFORM_REGISTRY(.*?)^\)", re.DOTALL | re.MULTILINE)
 ROW = re.compile(r'"([^"|]+)\|[^"|]*\|[^"|]*\|[^"|]*\|([^"|]+)\|[^"]*"')
+MODULES_CRUMB = re.compile(r"\[\*\*Modules\*\*\]\([^)]*\)")
 
 GENERATED_PREFIX = "api/"
 PLATFORM_PREFIX = "platforms/"
@@ -44,24 +45,32 @@ def _label(root, slug):
     return slug
 
 
+def _group_slug(src_uri):
+    """api/group__platform__atomics.md -> atomics, else None."""
+    leaf = src_uri[len(GENERATED_PREFIX) : -len(".md")]
+    prefix = "group__platform__"
+    return leaf[len(prefix) :] if leaf.startswith(prefix) else None
+
+
 def _index(config):
-    """Return (headers, slugs): header stem -> (label, slug), and the slug set."""
+    """Return (headers, slugs, labels) built from the platform registry."""
     root = os.path.dirname(config["config_file_path"])
     if root not in _CACHE:
         with open(os.path.join(root, "CMakeLists.txt"), encoding="utf-8") as cmake:
             registry = REGISTRY.search(cmake.read())
-        headers, slugs = {}, {}
+        headers, slugs, labels = {}, {}, {}
         for token, directory in ROW.findall(registry.group(1)) if registry else []:
             interface = os.path.join(root, directory, "Interface")
             if not os.path.isdir(interface):
                 continue
             slug = token.lower()
-            pack = (_label(root, slug), slug)
+            labels[slug] = _label(root, slug)
+            pack = (labels[slug], slug)
             slugs[slug] = os.path.isfile(os.path.join(root, "docs", PLATFORM_PREFIX, slug, "setup.md"))
             for name in os.listdir(interface):
                 if name.endswith(".h"):
                     headers[name[: -len(".h")]] = pack
-        _CACHE[root] = (headers, slugs)
+        _CACHE[root] = (headers, slugs, labels)
     return _CACHE[root]
 
 
@@ -73,9 +82,30 @@ def _stem(src_uri):
 
 def on_page_markdown(markdown, page, config, files, **kwargs):
     src_uri = getattr(page.file, "src_uri", None) or page.file.src_path.replace(os.sep, "/")
-    headers, slugs = _index(config)
+    headers, slugs, labels = _index(config)
 
     if src_uri.startswith(GENERATED_PREFIX):
+        # A group page arrives titled in Doxygen's vocabulary — "Group
+        # platform_atomics", under a breadcrumb reading "Modules" — where the
+        # reader has been shown "C11 atomics" everywhere else. Group and Module
+        # are terms this documentation does not otherwise use, and the group's
+        # own @defgroup title is ignored by the template, so rewrite all three
+        # to the platform page's heading. The doubled underscores of the refid
+        # (group__platform__atomics) do not contain the single-underscore group
+        # name, so the bare-name replacement cannot damage a link target.
+        group = _group_slug(src_uri)
+        if group is not None and group in slugs:
+            title = f"{labels[group]} platform"
+            # mkdoxy backslash-escapes the underscore so Markdown does not read
+            # it as emphasis, so the name appears as platform\_atomics.
+            name = r"platform\\?_" + re.escape(group)
+            markdown = re.sub(rf"#\s+Group\s+{name}", f"# {title}", markdown, count=1)
+            markdown = MODULES_CRUMB.sub(f"[**Platforms**](../{PLATFORM_PREFIX}index.md)", markdown, count=1)
+            return re.sub(name, title, markdown)
+
+        if src_uri == f"{GENERATED_PREFIX}modules.md":
+            return markdown.replace("# Modules", "# Platform API reference", 1)
+
         stem = _stem(src_uri)
         pack = headers.get(stem) if stem else None
         if pack is None:

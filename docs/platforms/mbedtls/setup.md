@@ -29,7 +29,7 @@ applies RFC 6587 octet-counting framing on top either way.
 ```c
 struct SolidSyslogMbedTlsStreamConfig cfg = {
     .Transport       = myTcpStream,
-    .Sleep           = MyVTaskDelayWrapper,   /* required — no fallback */
+    .Sleep           = MySleep,               /* required — no fallback */
     .Rng             = &mySeededDrbg,
     .CaChain         = &myParsedCaChain,
     .ServerName      = "syslog.example.com",
@@ -78,29 +78,19 @@ mandatory, and omitting it makes `psa_crypto_init` return
 by whatever route suits the build: a filesystem, a baked-in array, a blob pulled
 from a security element. PEM input must be NUL-terminated.
 
-## FreeRTOS with newlib
+## Memory
 
-Four sizing traps, all found during bring-up of the FreeRTOS test target.
+The adapter allocates nothing itself. Everything a TLS session costs is Mbed
+TLS's own allocation, governed by your `mbedtls_config.h` — the record buffer
+sizes dominate it, and their defaults are sized for a general-purpose host
+rather than a constrained target. Budget for every TLS session you intend to
+run concurrently, not one, and take the sizing guidance from the
+[upstream documentation](https://mbed-tls.readthedocs.io/) rather than from
+here.
 
-**Route Mbed TLS allocations to the RTOS heap.** Mbed TLS calls libc `calloc`,
-which on newlib typically reaches a small `_sbrk`-backed syscall heap. A single
-`mbedtls_ssl_setup` wants roughly 10–16 KiB and fails with
-`MBEDTLS_ERR_SSL_ALLOC_FAILED`. Set `MBEDTLS_PLATFORM_MEMORY` and call
-`mbedtls_platform_set_calloc_free(pvPortMalloc, vPortFree)` before any
-`mbedtls_*_init`.
-
-**Shrink the record buffers from their 16 KiB default.** Set
-`MBEDTLS_SSL_IN_CONTENT_LEN` to the largest record the collector will send — a
-server certificate and chain is typically 2–4 KiB — and
-`MBEDTLS_SSL_OUT_CONTENT_LEN` to your largest message. The defaults cost around
-32 KiB of heap per TLS context.
-
-**Budget the handshake state.** `mbedtls_ssl_setup` allocates roughly
-`IN + OUT + 3 KiB`. Size `configTOTAL_HEAP_SIZE` across every concurrent TLS
-context, not just one.
-
-**Give the mutex role a real implementation** if `Log` and `Service` run on
-different tasks. The library will not detect that you have not.
+Where Mbed TLS takes its memory from is also your configuration. On a target
+whose libc heap is not the one you intend it to use, `mbedtls_ssl_setup` is
+where that shows up.
 
 ## When it does not work
 
