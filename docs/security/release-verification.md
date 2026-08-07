@@ -157,9 +157,11 @@ and want to rule out corruption-in-transit.
 - It doesn't tell you whether the code behind the SBOM is bug-free, secure,
   or fit for purpose. The SBOM is provenance evidence, not a quality
   claim.
-- It doesn't tell you anything about dependencies that SolidSyslog chose
-  not to bundle. OpenSSL appears in the SBOM's `components[]` with
-  `scope: optional`, but picking and verifying your OpenSSL is your job.
+- It doesn't tell you anything about the platform backends you link beside
+  the library. The SBOM's `components[]` is empty because SolidSyslog vendors
+  nothing and depends on nothing; picking, versioning and verifying your
+  OpenSSL, Mbed TLS, lwIP or filesystem is your job, and they belong in your
+  product SBOM rather than this one.
 - It doesn't tell you whether the SolidSyslog licence is compatible with
   your intended use. That's a licence review, not a signature check.
 
