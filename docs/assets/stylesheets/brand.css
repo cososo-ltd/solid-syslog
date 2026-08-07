@@ -272,42 +272,14 @@
   background-position: center;
 }
 
-.md-typeset .ss-chip--api::before {
+/* The doorway on a generated API page back to its platform. Same pill as
+   the platform page's own chips — one chip style across the site, not two.
+   It sits in its own paragraph, so the spacing below it is the paragraph's. */
+.md-typeset .ss-chip--api::before,
+.md-typeset .ss-chip--platform::before {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><rect x="4.5" y="2.5" width="10" height="11" rx="1" fill="%23cdd4f5" stroke="%237f8dd4"/><rect x="1.5" y="5" width="5.5" height="2.6" rx=".4" fill="white" stroke="%237f8dd4"/><rect x="1.5" y="8.9" width="5.5" height="2.6" rx=".4" fill="white" stroke="%237f8dd4"/></svg>');
 }
 
 .md-typeset .ss-chip--setup::before {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M10.6 1.6a4 4 0 0 0-3.5 5.9L1.9 12.7a1.2 1.2 0 0 0 1.7 1.7l5.2-5.2a4 4 0 0 0 4.9-5.2l-2 2-1.6-.4-.4-1.6z" fill="%23cdd4f5" stroke="%237f8dd4" stroke-linejoin="round"/></svg>');
-}
-
-/* The banner on a generated API page. A post-it chip rather than an
-   admonition: it is a signpost, not a caution, and an admonition took the full
-   column width to say one thing. */
-.md-typeset a.ss-platform-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 1.1rem;
-  padding: 0.3rem 0.7rem 0.3rem 0.55rem;
-  border: 1px solid #9aa6e0;
-  border-radius: 3px;
-  background: #cdd4f5;
-  box-shadow: 1px 2px 3px rgb(0 0 0 / 16%);
-  color: #23264a;
-  font-size: 0.78rem;
-  text-decoration: none;
-}
-
-.md-typeset a.ss-platform-chip:hover {
-  background: #bcc5f0;
-  color: #23264a;
-}
-
-.md-typeset a.ss-platform-chip::before {
-  content: "";
-  width: 16px;
-  height: 16px;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><rect x="4.5" y="2.5" width="10" height="11" rx="1" fill="white" stroke="%23404b8a"/><rect x="1.5" y="5" width="5.5" height="2.6" rx=".4" fill="%23cdd4f5" stroke="%23404b8a"/><rect x="1.5" y="8.9" width="5.5" height="2.6" rx=".4" fill="%23cdd4f5" stroke="%23404b8a"/></svg>');
 }

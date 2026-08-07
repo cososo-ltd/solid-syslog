@@ -32,7 +32,7 @@ def render(src_uri, markdown="# Title\n\nBody.\n"):
 class GeneratedApiPages(unittest.TestCase):
     def test_a_platform_header_is_labelled_with_its_platform(self):
         out = render("api/SolidSyslogMbedTlsStream_8h.md")
-        self.assertIn("[Mbed TLS platform](../platforms/mbedtls/index.md){ .ss-platform-chip }", out)
+        self.assertIn("[Mbed TLS platform](../platforms/mbedtls/index.md){ .ss-chip .ss-chip--platform }", out)
 
     def test_the_label_is_the_platform_pages_own_heading(self):
         # Not the registry token, which is "LwipRaw".

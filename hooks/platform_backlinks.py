@@ -81,7 +81,7 @@ def on_page_markdown(markdown, page, config, files, **kwargs):
         if pack is None:
             return markdown
         label, slug = pack
-        chip = f"[{label} platform](../{PLATFORM_PREFIX}{slug}/index.md){{ .ss-platform-chip }}"
+        chip = f"[{label} platform](../{PLATFORM_PREFIX}{slug}/index.md){{ .ss-chip .ss-chip--platform }}"
         return f"{chip}\n\n{markdown}"
 
     if src_uri.startswith(PLATFORM_PREFIX) and src_uri.endswith("/index.md"):

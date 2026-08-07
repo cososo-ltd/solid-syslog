@@ -6,8 +6,8 @@ files compile against your `lwipopts.h`, so the adapter inherits your stack's
 configuration.
 
 Fills the Resolver, Datagram and Stream [roles](../../roles/index.md), plus the
-address handle they share. Layer [Mbed TLS](../mbedtls/index.md) over the TCP stream for
-TLS.
+address handle they share. A TLS platform layers over the TCP stream; the
+[platform × capability matrix](../index.md) shows which provide it.
 
 ## What it ships
 
@@ -53,3 +53,32 @@ Your `lwipopts.h` must enable the features the adapter wraps:
 Also set `ARP_QUEUEING=1` (else the first datagram to an unresolved peer is
 dropped) and `LWIP_TCP_KEEPALIVE=1`, and size `PBUF_POOL_SIZE` /
 `MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to your instance counts.
+
+## Security behaviour and obligations
+
+### The transport carries syslog in clear
+
+Neither the datagram nor the TCP stream provides confidentiality, integrity or
+peer authentication. TLS is a separate role filled by a different platform — the
+[platform × capability matrix](../index.md) shows which — layered over this
+stream rather than replacing it.
+
+### The marshal is a correctness requirement, not a tuning knob
+
+On a build with an lwIP thread (`NO_SYS=0`), every call this adapter makes must
+reach the core-owning context, and it must do so synchronously because results
+are read the moment the hop returns. An asynchronous marshal, or none at all,
+corrupts lwIP's internal state rather than failing cleanly. Install it once at
+boot, before any adapter is created.
+
+### Resolution is trusted as the stack returns it
+
+The DNS resolver forwards what lwIP answers. A deployment that cannot trust its
+DNS should give the collector a numeric address, so that no resolution step
+exists to be poisoned.
+
+### Pool sizing is yours, and exhaustion is silent at the stack
+
+`PBUF_POOL_SIZE`, `MEMP_NUM_TCP_PCB` and `MEMP_NUM_UDP_PCB` must cover the
+instances you create alongside everything else using the stack. Under-sizing
+shows as dropped records rather than as an error from lwIP.

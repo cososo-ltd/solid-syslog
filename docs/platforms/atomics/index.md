@@ -13,5 +13,29 @@ Fills the [AtomicCounter](../../api/structSolidSyslogAtomicCounter.md) role.
 
 ## Requirements
 
-A C11 compiler with `<stdatomic.h>`. Windows toolchains without it use
-[`SolidSyslogWindowsAtomicCounter`](../windows/index.md) instead.
+A C11 compiler with `<stdatomic.h>`. Where a toolchain lacks it, the
+[platform × capability matrix](../index.md) shows which other platforms fill
+the AtomicCounter role.
+
+## Security behaviour and obligations
+
+### The sequence is what makes loss detectable
+
+`sequenceId` is assigned when a record is raised, so a gap seen by the collector
+reflects loss anywhere in the pipeline. That signal is only as good as the
+counter behind it: if the pool is exhausted, the role falls back to the Null
+counter, whose increment returns 1 every time. Gap detection then reports
+nothing wrong while delivering nothing useful. Size the pool for the instances
+you create, and install an error handler so exhaustion is seen.
+
+### The sequence wraps, and a collector must expect it
+
+Values run in `[1, 2^31 - 1]` and skip zero on wrap. A long-lived device will
+reuse numbers, so collector-side gap detection has to treat wrap as ordinary
+rather than as a discontinuity.
+
+### It evidences loss, not origin
+
+`sequenceId` is a plain counter, not a cryptographic construction. It shows that
+a record is missing; it does not bind a record to the device that raised it, and
+it can be reproduced by anything that can write records.

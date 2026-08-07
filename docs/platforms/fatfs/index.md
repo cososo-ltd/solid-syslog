@@ -17,3 +17,25 @@ BlockDevice.
 
 Your `ffconf.h`, a `diskio.c` media driver, and — if `FF_FS_REENTRANT=1` — an
 `ffsystem.c`.
+
+## Security behaviour and obligations
+
+### The file layer offers no confidentiality or tamper evidence
+
+Records are written as given. Detecting modification of a stored record, or
+keeping it unreadable, is the SecurityPolicy role's job, not this one — see
+[at-rest cryptography](../../security/at-rest-cryptography.md).
+
+### Durability is bounded by the write, not guaranteed by it
+
+`f_sync` runs after every write, so at most the record in flight is lost on
+power failure. Whether that reaches the medium, and what the FAT metadata looks
+like afterwards, is a property of your `diskio.c` driver and the hardware under
+it. FAT is not a journalling filesystem, and a partially written directory entry
+is possible on a device that loses power mid-update.
+
+### The media driver is yours
+
+`diskio.c`, and `ffsystem.c` where `FF_FS_REENTRANT=1`, are supplied by you. So
+is any wear levelling: the store rewrites the same blocks in rotation, which on
+raw flash without wear levelling concentrates erase cycles.
