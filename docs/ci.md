@@ -28,6 +28,7 @@ without renaming what's already there.
 | `integration-linux-openssl` | `debug` | Runs the in-process TLS integration tests against libssl (no network oracle) |
 | `integration-linux-mbedtls` | `debug` | The same integration tests against Mbed TLS, exercising `SolidSyslogMbedTlsStream` and the Mbed TLS security policies |
 | `integration-windows-openssl` | `msvc-debug` | Same TLS integration tests on `windows-latest` against libssl from vcpkg |
+| `build-linux-c99` | `c99`, `c99-platforms` | Builds Core alone at strict `-std=c99` (`CMAKE_C_EXTENSIONS=OFF`, no tests), then the POSIX and OpenSSL packs at C99 as a drift check. Proves the C99 conformance claim per PR. **Not** a required check |
 | `build-linux-tunable-override` | `tunable-override-debug` | Builds against a user tunables header to prove `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults |
 | `bdd-linux-syslog-ng` | — | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
 | `bdd-windows-otel` | — | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
@@ -44,10 +45,14 @@ without renaming what's already there.
 
 ## Branch protection
 
-Every job in `ci.yml` is a required status check except `deploy-docs-pages`, which
-only runs on `main`, and so are the two contexts code scanning contributes. A PR
-cannot be merged unless all checks pass. Direct pushes to `main` are blocked. Squash
-merge only.
+Thirty of the thirty-two jobs in `ci.yml` are required status checks, as are the two
+contexts code scanning contributes — `analyze-codeql` and `CodeQL`. A PR cannot be
+merged unless all of them pass. Direct pushes to `main` are blocked. Squash merge only.
+
+The two that are not required are `deploy-docs-pages`, which only runs on `main`, and
+`build-linux-c99`, which runs on every pull request but does not yet gate one. Until
+its context is added to the required list, a change that breaks the C99 baseline can
+merge with the lane red.
 
 Two qualifications on what "required" buys. The `analyze-iwyu*` lanes run
 `continue-on-error`, so they are required contexts that report success whatever IWYU
