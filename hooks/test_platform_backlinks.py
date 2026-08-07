@@ -57,10 +57,23 @@ class PlatformPages(unittest.TestCase):
         self.assertIn("[API reference](../../api/group__platform__mbedtls.md){ .ss-chip .ss-chip--api }", out)
         self.assertIn("[Setup](setup.md){ .ss-chip .ss-chip--setup }", out)
 
-    def test_a_platform_without_one_gets_no_setup_chip(self):
-        # Phase 3 adds the missing setup pages; until then the chip must not
-        # appear, because the page it would point at does not exist.
-        out = render("platforms/posix/index.md")
+    def test_every_platform_has_both_chips_today(self):
+        _, slugs, _labels = h._index(CONFIG)
+        for slug in slugs:
+            out = render(f"platforms/{slug}/index.md")
+            self.assertIn(".ss-chip--api", out, slug)
+            self.assertIn(".ss-chip--setup", out, slug)
+
+    def test_the_setup_chip_appears_only_when_the_page_does(self):
+        # Every platform has a setup page now, so the absent case has to be
+        # constructed. The chip must never point at a page that is not there.
+        root = os.path.dirname(CONFIG["config_file_path"])
+        headers, slugs, labels = h._index(CONFIG)
+        h._CACHE[root] = (headers, {**slugs, "posix": False}, labels)
+        try:
+            out = render("platforms/posix/index.md")
+        finally:
+            h._CACHE.pop(root, None)
         self.assertIn(".ss-chip--api", out)
         self.assertNotIn(".ss-chip--setup", out)
 

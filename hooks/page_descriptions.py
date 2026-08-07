@@ -64,17 +64,33 @@ DESCRIPTIONS = {
         "The POSIX adapter pack — sockets, pthreads, message queues, "
         "clock_gettime and stdio — filling six of the library's roles on Linux."
     ),
+    "platforms/posix/setup.md": (
+        "Wire the POSIX adapters: what to link, building a sender, "
+        "the clock and hostname callbacks, and what threading needs from you."
+    ),
     "platforms/windows/index.md": (
         "The Win32 and Winsock adapter pack for MSVC targets, filling the "
         "Resolver, Datagram, Stream, File, Mutex and AtomicCounter roles."
+    ),
+    "platforms/windows/setup.md": (
+        "Wire the Win32 and Winsock adapters: starting Winsock, building "
+        "a sender, the callbacks, and what threading needs from you."
     ),
     "platforms/freertos/index.md": (
         "The FreeRTOS adapter pack: kernel primitives filling the Mutex role and "
         "the sysUpTime callback, with networking from Plus-TCP or lwIP."
     ),
+    "platforms/freertos/setup.md": (
+        "Wire the FreeRTOS kernel primitives: what to link, static allocation, "
+        "and putting the mutex under a buffer shared across tasks."
+    ),
     "platforms/plustcp/index.md": (
         "The FreeRTOS-Plus-TCP adapter pack, filling the Resolver, Datagram and "
         "Stream roles for networking on FreeRTOS targets."
+    ),
+    "platforms/plustcp/setup.md": (
+        "Wire the FreeRTOS-Plus-TCP adapters: what to link, resolving the "
+        "collector, building a sender, and sizing the stack for it."
     ),
     "platforms/lwipraw/index.md": (
         "The lwIP Raw API adapter pack, filling the Resolver, Datagram and Stream "
@@ -104,6 +120,10 @@ DESCRIPTIONS = {
         "The ChaN FatFs adapter pack, filling the File role beneath a BlockDevice "
         "— RTOS-agnostic, for bare-metal, FreeRTOS, Zephyr and NuttX targets."
     ),
+    "platforms/fatfs/setup.md": (
+        "Give store-and-forward a FatFs file backend: what to link, the disk "
+        "I/O driver and configuration you supply, and what durability you get."
+    ),
     "platforms/plusfat/index.md": (
         "The FreeRTOS-Plus-FAT adapter pack, filling the File role beneath a "
         "BlockDevice for an all-FreeRTOS-Plus storage and transport stack."
@@ -115,6 +135,10 @@ DESCRIPTIONS = {
     "platforms/atomics/index.md": (
         "The portable C11 stdatomic.h AtomicCounter — the sequenceId source on "
         "any target with a C11 compiler, with no OS dependency."
+    ),
+    "platforms/atomics/setup.md": (
+        "Wire the C11 atomics sequence-number source: what to link, creating "
+        "the counter, and why an unfilled role silently disables gap detection."
     ),
     "porting.md": (
         "Port SolidSyslog to a new RTOS, network stack, filesystem or crypto "

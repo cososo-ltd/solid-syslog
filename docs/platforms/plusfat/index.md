@@ -10,7 +10,7 @@ BlockDevice.
 
 | Class | Role |
 |---|---|
-| [`SolidSyslogPlusFatFile`](../../api/SolidSyslogPlusFatFile_8h.md) | file — `ff_fflush` after every write |
+| [`SolidSyslogPlusFatFile`](../../api/SolidSyslogPlusFatFile_8h.md) | file — cache flush after every write |
 
 ## Requirements
 
@@ -27,9 +27,11 @@ keeping it unreadable, is the SecurityPolicy role's job, not this one — see
 
 ### Durability is bounded by the write, not guaranteed by it
 
-`ff_fflush` runs after every write, so at most the record in flight is lost on
-power failure. Whether that reaches the medium is a property of your `FF_Disk_t`
-driver and the hardware under it. FAT is not a journalling filesystem, and a
+The adapter flushes after every write, so at most the record in flight is lost
+on power failure. It flushes the IO manager's cache rather than the file:
+`ff_stdio.h` declares `ff_fflush` but the library never defines it, so
+`FF_FlushCache` is the real durability primitive. Whether that reaches the
+medium is a property of your `FF_Disk_t` driver and the hardware under it. FAT is not a journalling filesystem, and a
 partially written directory entry is possible on a device that loses power
 mid-update.
 
