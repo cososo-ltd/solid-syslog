@@ -424,6 +424,20 @@ it. The library is C99; the `Atomics` platform uses `<stdatomic.h>` and needs
 C11. Anything at or above that works — C11, C17 and C23 are all fine — so the
 manifest names the standard, not a `-std=` flag.
 
+That floor applies to compiling the library, not to your code. The public
+headers compile as ISO C89, so an application on an older toolchain can include
+them and link a library built at C99. The `build-linux-c89-headers` lane
+compiles every public header standalone at `-std=c89 -pedantic-errors` on each
+pull request, so this is checked rather than asserted; run it yourself with
+`scripts/check_headers_c89.py`. Compiling each header on its own also means
+none of them depends on another being included first.
+
+One caveat, and it is about the library rather than the language: the headers
+use `<stdint.h>` and `<stdbool.h>`, which are C99 *library* headers a strict C89
+implementation need not supply. In practice toolchains of that vintage ship
+both, but if yours does not, that — and not the language — is what will stop
+you.
+
 ### 4. Config headers you own
 
 | Header | Owns |

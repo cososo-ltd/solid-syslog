@@ -22,7 +22,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  Single global slot, not synchronised against concurrent installs. Both
      *  handlers are set together; NULL on either side restores that side's
      *  no-op default. */
-    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- deliberate pair API: lock and unlock are installed together and conceptually inseparable; matches SolidSyslog_SetErrorHandler's pair shape
+    /* NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- deliberate pair API: lock and unlock are installed together and conceptually inseparable; matches SolidSyslog_SetErrorHandler's pair shape */
     void SolidSyslog_SetConfigLock(SolidSyslogConfigLockFunction lockFn, SolidSyslogConfigLockFunction unlockFn);
     void SolidSyslog_LockConfig(void);
     void SolidSyslog_UnlockConfig(void);
