@@ -28,6 +28,7 @@ without renaming what's already there.
 | `integration-linux-openssl` | `debug` | Runs the in-process TLS integration tests against libssl (no network oracle) |
 | `integration-linux-mbedtls` | `debug` | The same integration tests against Mbed TLS, exercising `SolidSyslogMbedTlsStream` and the Mbed TLS security policies |
 | `integration-windows-openssl` | `msvc-debug` | Same TLS integration tests on `windows-latest` against libssl from vcpkg |
+| `build-linux-c89-headers` | — | Compiles every public header standalone as ISO C89 with `-pedantic-errors`, via `scripts/check_headers_c89.py`. Also proves each header is self-contained, since a header needing a companion first fails here |
 | `build-linux-c99` | `c99`, `c99-platforms` | Builds Core alone at strict `-std=c99` (`CMAKE_C_EXTENSIONS=OFF`, no tests), then the POSIX and OpenSSL packs at C99 as a drift check. Proves the C99 conformance claim per PR |
 | `build-linux-tunable-override` | `tunable-override-debug` | Builds against a user tunables header to prove `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults |
 | `bdd-linux-syslog-ng` | — | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
@@ -47,7 +48,7 @@ without renaming what's already there.
 
 Every job in `ci.yml` is a required status check except `deploy-docs-pages`, which
 only runs on `main`, and so are the two contexts code scanning contributes —
-`analyze-codeql` and `CodeQL`. That is 33 required contexts. A PR cannot be merged
+`analyze-codeql` and `CodeQL`. That is 34 required contexts. A PR cannot be merged
 unless all of them pass. Direct pushes to `main` are blocked. Squash merge only.
 
 Two qualifications on what "required" buys. The `analyze-iwyu*` lanes run
