@@ -83,6 +83,10 @@ DESCRIPTIONS = {
         "The OpenSSL adapter pack: TLS transport for the Stream role, and keyed "
         "at-rest crypto for the SecurityPolicy role, on hosted targets."
     ),
+    "platforms/openssl/setup.md": (
+        "Wire SolidSyslogTlsStream over a TCP stream for RFC 5425 syslog over "
+        "TLS: the layering, the config fields, mutual TLS and the handshake budget."
+    ),
     "platforms/mbedtls/index.md": (
         "The Mbed TLS adapter pack for embedded targets: TLS transport for the "
         "Stream role, and keyed at-rest crypto for the SecurityPolicy role."

@@ -175,6 +175,7 @@ nav:
           - Setup: platforms/lwipraw/setup.md
       - OpenSSL:
           - platforms/openssl/index.md
+          - Setup: platforms/openssl/setup.md
       - Mbed TLS:
           - platforms/mbedtls/index.md
           - Setup: platforms/mbedtls/setup.md
