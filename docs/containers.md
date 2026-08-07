@@ -3,11 +3,13 @@
 ## Images in use
 
 Every reference in `.github/workflows/ci.yml`, `.devcontainer/docker-compose.yml`
-and `ci/docker-compose.bdd.yml` is pinned by digest — `image: <repo>@sha256:…`
-— with the tag retained as a trailing comment. The tag below is the readable
-handle; the digest in the files is what actually resolves. Digests are
-deliberately not repeated here, so there is one authoritative copy per
-reference and nothing to drift.
+and `ci/docker-compose.bdd.yml` is pinned by digest — `<repo>@sha256:…`. The tag
+below is the readable handle; the digest in the files is what actually resolves.
+The tag is kept alongside each reference: as a trailing comment on a `container:`
+or Compose `image:` key, and in the comment above the step for a `docker run`
+invocation, whose line continuation cannot carry one. Digests are deliberately
+not repeated here, so there is one authoritative copy per reference and nothing
+to drift.
 
 | Image | Tag | Used by |
 |---|---|---|
@@ -99,7 +101,7 @@ When a new image tag is available:
    Of the images here, only `balabit/syslog-ng` is genuinely multi-arch
    (`linux/amd64` and `linux/arm64`); the rest are `linux/amd64` only.
 
-3. Update the digest **and** the trailing tag comment in every file that
+3. Update the digest **and** the accompanying tag comment in every file that
    references the image (see table below), plus the tag in `docs/containers.md`
 4. Rebuild the devcontainer (`Ctrl+Shift+P` → "Dev Containers: Rebuild Container") and verify locally
 5. Raise a PR: use `chore: bump container image to <sha>` as the title
@@ -112,6 +114,12 @@ When a new image tag is available:
 | `cpputest-freertos-cross` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
 | `behave` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/bdd.md`, `docs/containers.md` |
 | `mkdocs-mkdoxy` | `.github/workflows/ci.yml`, `docs/containers.md` |
+| `syslog-ng` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
+
+`syslog-ng` is the one upstream image in that table — it is published by
+[balabit](https://hub.docker.com/r/balabit/syslog-ng), not by us, so step 1 does
+not apply and the version is chosen rather than built. Read the 4.8 LTS pinning
+rationale in the first table before moving it.
 
 The `cpputest-freertos` and `cpputest-freertos-cross` images both come from
 [CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker).
