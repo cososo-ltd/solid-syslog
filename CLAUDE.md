@@ -513,6 +513,58 @@ See `docs/misra-deviations.md` for the project's stance on MISRA conformance.
 
 ---
 
+## Documentation
+
+Two rules, and they matter more than anything about wording. A wrong claim
+costs one edit to fix; a wrong claim that has been copied costs an audit of
+every page to find, and the copies rot silently because nothing checks them.
+
+### Verify before asserting
+
+Every statement about what the code does is read out of the code, not inferred
+from a name, a neighbouring document, or something written earlier in the same
+session. This is absolute for **failure modes**: before writing that something
+fails, degrades, is silent, or is not reported, open the function and confirm
+it. Claims that an error is *not* reported are the ones most often wrong, and
+the most damaging, because they push an integrator into defending against a
+problem that does not exist.
+
+A document that is already in the repository is not evidence. It may be the
+thing that is wrong.
+
+### One claim, one place
+
+Every fact has exactly one home. Everywhere else links to it, or omits it.
+
+| The fact | Its home |
+|---|---|
+| What a config field or parameter means, including its edge values | the doc comment on that field |
+| What a role's contract requires | that role's `SolidSyslog<Role>Definition.h` |
+| What a platform ships, needs, guarantees, and leaves to the integrator | that platform's page under `docs/platforms/<slug>/` |
+| How to wire a platform, and what will catch you out | that platform's `setup.md` |
+| What Core does | the Core documentation and the Core headers |
+| How to get it building | `docs/build-integration.md` |
+
+Writing the same sentence on a second page is the signal that it belongs on
+neither — find its home, put it there once, and link. Do not restate a fact to
+make a page self-contained: self-contained pages are how a set of documents
+drifts out of agreement with itself.
+
+This applies with particular force to the compliance guides, which attract
+detail they should not hold. `docs/iec62443.md` is a quick reference that
+reassures a developer or a security officer that the library can meet their
+needs. It is **not** an audit artefact, and it is not a place to gather role
+behaviour, platform behaviour, or catalogues of failure modes.
+
+### A platform page never describes another platform
+
+Naming a second platform to contrast behaviour, or to say where a capability
+comes from, couples the two: the eleventh platform then has to be added to ten
+pages. State this platform's own behaviour completely, and point at the
+capability matrix in `docs/platforms/index.md` for who fills what.
+
+---
+
 ## Design Patterns
 
 These patterns are re-affirmed each time we do a code-hygiene pass. New
