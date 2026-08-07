@@ -66,10 +66,6 @@ target you write them, and they are usually a line apiece. A sleep is required
 by the TLS adapters and by the lwIP TCP stream, which is the one that catches
 people, because it has no default.
 
-Leaving the atomic counter unfilled is the exception worth calling out: it does
-not fail, it degrades to a counter that returns the same value forever, and the
-sequence numbers a collector uses to detect loss stop meaning anything.
-
 ---
 
 ## CMake
@@ -418,8 +414,7 @@ you.
 - Sleep: required by Mbed TLS (handshake retry) and the lwIP TCP stream
   (bounded synchronous open). Wrap `vTaskDelay`.
 - Clock, Hostname, ProcessId: small callbacks you supply.
-- AtomicCounter: only if you want RFC 5424 sequence-ids; otherwise it
-  degrades to the Null counter (always 1).
+- AtomicCounter: only if you want RFC 5424 sequence-ids.
 
 For the exact wiring of each adapter's `<Class>_Create` config struct, follow
 that platform's own setup guide, reached from its page in

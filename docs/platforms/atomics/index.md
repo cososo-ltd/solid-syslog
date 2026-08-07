@@ -19,15 +19,6 @@ the AtomicCounter role.
 
 ## Security behaviour and obligations
 
-### The sequence is what makes loss detectable
-
-`sequenceId` is assigned when a record is raised, so a gap seen by the collector
-reflects loss anywhere in the pipeline. That signal is only as good as the
-counter behind it: if the pool is exhausted, the role falls back to the Null
-counter, whose increment returns 1 every time. Gap detection then reports
-nothing wrong while delivering nothing useful. Size the pool for the instances
-you create, and install an error handler so exhaustion is seen.
-
 ### The sequence wraps, and a collector must expect it
 
 Values run in `[1, 2^31 - 1]` and skip zero on wrap. A long-lived device will

@@ -32,10 +32,11 @@ It is assigned when a record is raised rather than when it is sent, so a gap
 reflects loss anywhere in the pipeline — the buffer, the store, or the
 transport — not only on the wire.
 
-Leave the role unfilled and the Null counter stands in, returning the same
-value every time. Nothing then reports a problem, and gap detection quietly
-proves nothing. Install an error handler so that pool exhaustion is visible
-rather than silent.
+Leave the role unfilled, or exhaust its pool, and the Null counter stands in
+and returns 1 for every record. That is a safe fallback: logging continues
+unaffected, and only the sequence-based loss detection stops being useful.
+Pool exhaustion is reported through the error handler when the counter is
+created, so it is visible rather than something to discover later.
 
 ## When it does not work
 

@@ -20,13 +20,11 @@ Fills the Mutex [role](../../roles/index.md), plus a sysUpTime callback.
 
 ## Security behaviour and obligations
 
-### The mutex is what makes a shared buffer safe
+### The mutex guards a buffer shared between tasks
 
-Where the application task calling `Log` and the task calling `Service` are
-different, the buffer between them needs this mutex. Leaving the role unfilled
-resolves to the Null mutex, which is a working no-op on a single-task target and
-a silent data race on a multi-task one. Nothing reports the difference, because
-nothing can detect it.
+The circular buffer uses it when the task calling `Log` is not the task calling
+`Service`. Where both run on one task, the Null mutex is the correct choice and
+costs nothing.
 
 ### Static allocation is required, and is the point
 

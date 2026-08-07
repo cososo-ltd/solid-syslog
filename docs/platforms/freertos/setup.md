@@ -39,8 +39,8 @@ struct SolidSyslogBuffer* buffer =
 
 The ring memory and the mutex must both outlive the buffer.
 
-If both calls happen on one task, you do not need a mutex and can leave the
-role unfilled. Be certain of that: nothing detects the difference at run time.
+If both calls happen on one task, leave the role unfilled — the Null mutex is
+the right answer and costs nothing.
 
 ## Uptime
 
