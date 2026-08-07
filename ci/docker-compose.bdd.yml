@@ -1,6 +1,6 @@
 services:
   syslog-ng-linux:
-    image: balabit/syslog-ng:4.8.2
+    image: balabit/syslog-ng@sha256:728cc5b63b9044ad5f18062bac73fd5c30bb7ad256c2aa12799d924d4f6f1e72 # 4.8.2
     volumes:
       - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
       - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
@@ -30,7 +30,7 @@ services:
       retries: 10
 
   behave-linux:
-    image: ghcr.io/cososo-ltd/behave:sha-be8da62
+    image: ghcr.io/cososo-ltd/behave@sha256:4c693232c26fa6bbdb2a8451f9f4879f4271a554cbcba356fc7fc38ff5bac65d # sha-be8da62
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -56,7 +56,7 @@ services:
   # 0.0.0.0:5514. Adding more targets is one more pair + one more
   # network block.
   syslog-ng-freertos:
-    image: balabit/syslog-ng:4.8.2
+    image: balabit/syslog-ng@sha256:728cc5b63b9044ad5f18062bac73fd5c30bb7ad256c2aa12799d924d4f6f1e72 # 4.8.2
     volumes:
       - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
       - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
@@ -87,7 +87,7 @@ services:
 
   behave-freertos:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross:sha-ad10bf2
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:481267bea7200641fac41d7136e7e08deeba1b311e9873aa6d1c311db5b4cf58 # sha-ad10bf2
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -133,7 +133,7 @@ services:
   # store_capacity, power_cycle_replay incl. @hmac / @aesgcm) too.
   # @freertoslwipwip is the per-scenario escape hatch while the netif is bedding in.
   syslog-ng-freertos-lwip:
-    image: balabit/syslog-ng:4.8.2
+    image: balabit/syslog-ng@sha256:728cc5b63b9044ad5f18062bac73fd5c30bb7ad256c2aa12799d924d4f6f1e72 # 4.8.2
     volumes:
       - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
       - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
@@ -164,7 +164,7 @@ services:
 
   behave-freertos-lwip:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross:sha-ad10bf2
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:481267bea7200641fac41d7136e7e08deeba1b311e9873aa6d1c311db5b4cf58 # sha-ad10bf2
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
