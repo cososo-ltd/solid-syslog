@@ -35,15 +35,33 @@ See [Container images](containers.md) for how to switch.
 
 ## C99 portability — `c99`
 
-Compiles the library with `CMAKE_C_STANDARD=99` (and `HAVE_STDATOMIC_H=OFF`,
-`SOLIDSYSLOG_BUILD_TESTING=OFF`) to enforce the C99 baseline: catches accidental
-use of later-standard features in production source. Library only; tests are not
-built.
+The public claim is that the Core compiles as C99. This preset is what proves
+it: `Core/` alone (`SOLIDSYSLOG_PLATFORMS` empty), at `-std=c99`, library only.
 
 ```bash
 cmake --preset c99
 cmake --build --preset c99
 ```
+
+With no platform pack in the build, no feature-test macro or vendor header is
+involved and the check is purely a language one. `CMAKE_C_EXTENSIONS=OFF`
+selects `-std=c99` rather than CMake's default `-std=gnu99`, and the project's
+standing `-Wpedantic -Werror` then fails the build on anything ISO C99 forbids,
+naming the file:line. Double-underscore spellings such as `__typeof__` are
+reserved identifiers and compile anywhere; no choice of standard catches those.
+
+That the Core needs no POSIX is a separate property, proven by the FreeRTOS
+cross lanes that build it with no host platform at all.
+
+Platform packs are best-effort C99 rather than guaranteed: `Platform/Atomics` is
+C11 by construction, and a future pack may deliberately require more. The
+`c99-platforms` preset builds the POSIX and OpenSSL packs at C99 as a drift
+check, and defines `_POSIX_C_SOURCE=200809L` because strict ISO mode makes glibc
+hide its POSIX declarations. Pinning that version rather than reaching for
+`_DEFAULT_SOURCE` asserts the POSIX pack needs nothing beyond POSIX.1-2008. The
+remaining packs are unchecked.
+
+CI runs both presets as the `build-linux-c99` lane on every pull request.
 
 ## Sanitizers — `sanitize`
 

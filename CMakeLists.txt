@@ -168,9 +168,9 @@ include(CheckCSourceCompiles)
 # for <stdatomic.h>, which exists on every toolchain regardless of whether the
 # _Atomic keyword is actually supported. The probe fails on a toolchain without
 # working C11 atomics, excluding Platform/Atomics in favour of the Windows or
-# Null counter. (The C99 portability preset declares HAVE_STDATOMIC_H=OFF up
-# front — see docs/local-checks.md — so a C99 target skips the C11 atomics by
-# design rather than relying on the probe to infer their absence.)
+# Null counter. (The probe does not inherit CMAKE_C_STANDARD, so it cannot
+# answer the question for the C99 portability preset — that preset sets
+# SOLIDSYSLOG_ATOMICS=OFF directly. See docs/builds.md.)
 check_c_source_compiles(
     "#include <stdatomic.h>
 #include <stdint.h>

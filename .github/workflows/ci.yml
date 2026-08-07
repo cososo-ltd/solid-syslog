@@ -315,6 +315,38 @@ jobs:
           path: build/clang-debug/cpputest_*.xml
           retention-days: 1
 
+  # Proves the public claim that Core compiles as C99, then checks the POSIX and
+  # OpenSSL packs have not drifted off it. Library only, no tests.
+  # See docs/builds.md.
+  build-linux-c99:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: ghcr.io/cososo-ltd/cpputest@sha256:68e7fbb6f02996717ce9211fd8089a0c52763da4990dfe69653c00ad697551b9 # sha-6715942
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure Core at C99
+        run: cmake --preset c99
+
+      - name: Build Core at C99
+        run: cmake --build --preset c99
+
+      - name: Configure POSIX and OpenSSL packs at C99
+        run: cmake --preset c99-platforms
+
+      - name: Build POSIX and OpenSSL packs at C99
+        run: cmake --build --preset c99-platforms
+
   sanitize-linux-gcc:
     runs-on: ubuntu-latest
     permissions:
@@ -1671,7 +1703,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-markdown, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip, verify-manifest, consumer-smoke-linux, consumer-smoke-freertos-cross]
+    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, build-linux-c99, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-markdown, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip, verify-manifest, consumer-smoke-linux, consumer-smoke-freertos-cross]
     runs-on: ubuntu-latest
     permissions:
       contents: read

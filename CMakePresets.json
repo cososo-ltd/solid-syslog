@@ -71,12 +71,22 @@
         },
         {
             "name": "c99",
-            "displayName": "C99 language portability check (library only)",
+            "displayName": "C99 language conformance (Core alone)",
             "inherits": "debug",
             "cacheVariables": {
                 "CMAKE_C_STANDARD": "99",
-                "SOLIDSYSLOG_ATOMICS": "OFF",
+                "CMAKE_C_EXTENSIONS": "OFF",
+                "SOLIDSYSLOG_PLATFORMS": "",
                 "SOLIDSYSLOG_BUILD_TESTING": "OFF"
+            }
+        },
+        {
+            "name": "c99-platforms",
+            "displayName": "C99 drift check (POSIX and OpenSSL packs)",
+            "inherits": "c99",
+            "cacheVariables": {
+                "SOLIDSYSLOG_PLATFORMS": "Posix;OpenSsl",
+                "CMAKE_C_FLAGS": "-D_POSIX_C_SOURCE=200809L"
             }
         },
         {
@@ -150,6 +160,7 @@
         { "name": "tidy",           "configurePreset": "tidy" },
         { "name": "cppcheck",       "configurePreset": "cppcheck" },
         { "name": "c99",            "configurePreset": "c99", "targets": ["SolidSyslog"] },
+        { "name": "c99-platforms",  "configurePreset": "c99-platforms", "targets": ["SolidSyslog"] },
         { "name": "clang-debug",    "configurePreset": "clang-debug" },
         { "name": "iwyu",           "configurePreset": "iwyu" },
         { "name": "msvc-debug",     "configurePreset": "msvc-debug", "configuration": "Debug" },
