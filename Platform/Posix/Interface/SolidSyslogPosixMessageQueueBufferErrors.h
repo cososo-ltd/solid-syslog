@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the PosixMessageQueueBuffer adapter. */
+ *  Error codes and Source identity for the PosixMessageQueueBuffer adapter.
+ *
+ *  @ingroup platform_posix */
 #ifndef SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFERERRORS_H
 #define SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFERERRORS_H
 

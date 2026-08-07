@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the WinsockAddress adapter. */
+ *  Error codes and Source identity for the WinsockAddress adapter.
+ *
+ *  @ingroup platform_windows */
 #ifndef SOLIDSYSLOGWINSOCKADDRESSERRORS_H
 #define SOLIDSYSLOGWINSOCKADDRESSERRORS_H
 

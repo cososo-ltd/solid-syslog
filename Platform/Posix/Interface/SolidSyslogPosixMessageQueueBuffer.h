@@ -6,7 +6,9 @@
  *  error when the queue is full, so SolidSyslog_Log never blocks; Read
  *  (mq_receive) is a non-blocking poll where an empty queue is silent and any
  *  other failure is reported. Each pool slot owns a distinct queue
- *  /solidsyslog_<pid>_<slot>, unlinked on Destroy. */
+ *  /solidsyslog_<pid>_<slot>, unlinked on Destroy.
+ *
+ *  @ingroup platform_posix */
 #ifndef SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFER_H
 #define SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFER_H
 

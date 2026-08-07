@@ -1,5 +1,7 @@
 /** @file
- *  The Windows SolidSyslogSleepFunction. */
+ *  The Windows SolidSyslogSleepFunction.
+ *
+ *  @ingroup platform_windows */
 #ifndef SOLIDSYSLOGWINDOWSSLEEP_H
 #define SOLIDSYSLOGWINDOWSSLEEP_H
 

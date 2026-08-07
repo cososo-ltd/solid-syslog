@@ -1,0 +1,8 @@
+/**
+ * @defgroup platform_fatfs FatFs platform
+ * @brief    The File role over ChaN FatFs, beneath a BlockDevice. RTOS-agnostic.
+ *
+ * What the pack ships, what your build must provide, the security behaviour
+ * it guarantees and the obligations it leaves to you:
+ * https://docs.cososo.co.uk/solid-syslog/platforms/fatfs/
+ */

@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the OpenSslAesGcmPolicy adapter. */
+ *  Error codes and Source identity for the OpenSslAesGcmPolicy adapter.
+ *
+ *  @ingroup platform_openssl */
 #ifndef SOLIDSYSLOGOPENSSLAESGCMPOLICYERRORS_H
 #define SOLIDSYSLOGOPENSSLAESGCMPOLICYERRORS_H
 

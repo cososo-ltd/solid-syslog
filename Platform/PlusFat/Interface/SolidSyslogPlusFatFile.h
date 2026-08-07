@@ -10,7 +10,9 @@
  *  so a power loss never loses a record the BlockStore was told had been
  *  stored. Open-state is carried by the FF_FILE* sentinel — no separate flag.
  *  Plus-FAT is FreeRTOS-coupled; the integrator supplies the FF_Disk_t media
- *  driver and FreeRTOSFATConfig.h. */
+ *  driver and FreeRTOSFATConfig.h.
+ *
+ *  @ingroup platform_plusfat */
 #ifndef SOLIDSYSLOGPLUSFATFILE_H
 #define SOLIDSYSLOGPLUSFATFILE_H
 

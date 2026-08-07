@@ -1,7 +1,9 @@
 /** @file
  *  A Mutex wrapping a statically-allocated FreeRTOS mutex semaphore, for
  *  thread-safe buffers and pools on a FreeRTOS target. Requires
- *  configSUPPORT_STATIC_ALLOCATION=1. */
+ *  configSUPPORT_STATIC_ALLOCATION=1.
+ *
+ *  @ingroup platform_freertos */
 #ifndef SOLIDSYSLOGFREERTOSMUTEX_H
 #define SOLIDSYSLOGFREERTOSMUTEX_H
 

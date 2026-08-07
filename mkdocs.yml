@@ -108,11 +108,20 @@ plugins:
   - mkdoxy:
       projects:
         api:
-          src-dirs: "Core/Interface Platform/Atomics/Interface Platform/FatFs/Interface Platform/FreeRtos/Interface Platform/LwipRaw/Interface Platform/MbedTls/Interface Platform/OpenSsl/Interface Platform/PlusFat/Interface Platform/PlusTcp/Interface Platform/Posix/Interface Platform/Windows/Interface"
+          # Platform is swept whole rather than listed pack by pack, so a new
+          # platform's headers and its group file are picked up by existing
+          # there. EXCLUDE_PATTERNS below keeps the private Source/ headers out.
+          src-dirs: "Core/Interface Platform"
           full-doc: true
           doxy-cfg:
-            FILE_PATTERNS: "*.h"
+            # *.dox carries the per-platform @defgroup blocks — see the
+            # SolidSyslog<Pack>Platform.dox file at each pack's root. They are
+            # documentation only: install() globs *.h, so none of them ship.
+            FILE_PATTERNS: "*.h *.dox"
             RECURSIVE: true
+            # Platform/<Pack>/Source/ holds the *Private.h / *Internal.h
+            # headers, which are implementation detail and not public API.
+            EXCLUDE_PATTERNS: "*/Source/*"
             EXTRACT_ALL: true
             OPTIMIZE_OUTPUT_FOR_C: true
             # First sentence of each /** */ block becomes the API-index brief.
@@ -200,6 +209,10 @@ nav:
           - Data structures: api/annotated.md
           - Functions: api/functions.md
           - Macros: api/macros.md
+          # One group per platform pack, defined in the pack's .dox file. Each
+          # group page lists that pack's headers and links back to its
+          # hand-written page — the API-to-docs direction of the traversal.
+          - Platform groups: api/modules.md
       # A section (not a bare page) so Material gives it md-nav__item--section and
       # it reads with the same weight as Platforms / Roles. Its index is its only
       # child — navigation.indexes promotes it into the section link.

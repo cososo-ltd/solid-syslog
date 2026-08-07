@@ -15,7 +15,9 @@
  *    or any error is taken as a dead connection, so the stream closes itself and
  *    the sender reconnects on its next pass.
  *  - Read returns the bytes read, 0 for would-block (RCVTIMEO=0, connection
- *    kept), or tears the connection down on error. */
+ *    kept), or tears the connection down on error.
+ *
+ *  @ingroup platform_plustcp */
 #ifndef SOLIDSYSLOGPLUSTCPTCPSTREAM_H
 #define SOLIDSYSLOGPLUSTCPTCPSTREAM_H
 

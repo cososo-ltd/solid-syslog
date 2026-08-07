@@ -18,3 +18,9 @@ integrity.
 ## Requirements
 
 OpenSSL 3.0 or later.
+
+## Source
+
+[Every class in this pack](../../api/group__platform__openssl.md), generated
+from the headers. The code itself is
+[`Platform/OpenSsl/`](../../../Platform/OpenSsl/).

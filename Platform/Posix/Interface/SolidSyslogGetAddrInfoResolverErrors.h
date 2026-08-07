@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the GetAddrInfoResolver adapter. */
+ *  Error codes and Source identity for the GetAddrInfoResolver adapter.
+ *
+ *  @ingroup platform_posix */
 #ifndef SOLIDSYSLOGGETADDRINFORESOLVERERRORS_H
 #define SOLIDSYSLOGGETADDRINFORESOLVERERRORS_H
 

@@ -1,0 +1,9 @@
+/**
+ * @defgroup platform_freertos FreeRTOS platform
+ * @brief    Kernel primitives: the Mutex role and the sysUpTime callback. Networking
+ *           comes from FreeRTOS-Plus-TCP or lwIP alongside.
+ *
+ * What the pack ships, what your build must provide, the security behaviour
+ * it guarantees and the obligations it leaves to you:
+ * https://docs.cososo.co.uk/solid-syslog/platforms/freertos/
+ */

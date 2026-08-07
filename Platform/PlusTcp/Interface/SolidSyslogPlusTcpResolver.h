@@ -5,7 +5,9 @@
  *  FreeRTOS_getaddrinfo and writes it, with the per-call port, into the
  *  destination SolidSyslogAddress; the requested transport selects the socktype
  *  hint (stream for TCP, datagram otherwise). A failed lookup returns false, so
- *  the caller's unresolved-host error path runs. */
+ *  the caller's unresolved-host error path runs.
+ *
+ *  @ingroup platform_plustcp */
 #ifndef SOLIDSYSLOGPLUSTCPRESOLVER_H
 #define SOLIDSYSLOGPLUSTCPRESOLVER_H
 

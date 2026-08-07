@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the PlusTcpDatagram adapter. */
+ *  Error codes and Source identity for the PlusTcpDatagram adapter.
+ *
+ *  @ingroup platform_plustcp */
 #ifndef SOLIDSYSLOGPLUSTCPDATAGRAMERRORS_H
 #define SOLIDSYSLOGPLUSTCPDATAGRAMERRORS_H
 

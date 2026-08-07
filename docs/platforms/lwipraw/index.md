@@ -56,3 +56,9 @@ dropped) and `LWIP_TCP_KEEPALIVE=1`, and size `PBUF_POOL_SIZE` /
 `MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to your instance counts.
 
 Full setup — config, marshal, DNS — is [Integrating lwIP](setup.md).
+
+## Source
+
+[Every class in this pack](../../api/group__platform__lwipraw.md), generated
+from the headers. The code itself is
+[`Platform/LwipRaw/`](../../../Platform/LwipRaw/).

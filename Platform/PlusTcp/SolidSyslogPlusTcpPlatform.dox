@@ -1,0 +1,8 @@
+/**
+ * @defgroup platform_plustcp FreeRTOS-Plus-TCP platform
+ * @brief    Resolver, Datagram and Stream over the FreeRTOS-Plus-TCP stack.
+ *
+ * What the pack ships, what your build must provide, the security behaviour
+ * it guarantees and the obligations it leaves to you:
+ * https://docs.cososo.co.uk/solid-syslog/platforms/plustcp/
+ */

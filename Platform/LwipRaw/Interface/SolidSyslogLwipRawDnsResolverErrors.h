@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the LwipRawDnsResolver adapter. */
+ *  Error codes and Source identity for the LwipRawDnsResolver adapter.
+ *
+ *  @ingroup platform_lwipraw */
 #ifndef SOLIDSYSLOGLWIPRAWDNSRESOLVERERRORS_H
 #define SOLIDSYSLOGLWIPRAWDNSRESOLVERERRORS_H
 

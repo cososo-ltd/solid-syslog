@@ -14,7 +14,9 @@
  *  - It fails closed — returns false, so nothing is sealed / verified — if the
  *    key is unavailable, shorter than 32 bytes (RFC 2104 / NIST SP 800-107: an
  *    HMAC key should be at least the hash output length), or the HMAC computation
- *    fails. */
+ *    fails.
+ *
+ *  @ingroup platform_openssl */
 #ifndef SOLIDSYSLOGOPENSSLHMACSHA256POLICY_H
 #define SOLIDSYSLOGOPENSSLHMACSHA256POLICY_H
 

@@ -27,7 +27,9 @@
  *  ssl_config / ssl_context state and never calls process-global mbedTLS APIs
  *  (platform setup/teardown, psa_crypto_init, threading-alt, debug hooks), so it
  *  drops into an integrator process that already uses Mbed TLS elsewhere. See
- *  docs/platforms/mbedtls/setup.md. */
+ *  docs/platforms/mbedtls/setup.md.
+ *
+ *  @ingroup platform_mbedtls */
 #ifndef SOLIDSYSLOGMBEDTLSSTREAM_H
 #define SOLIDSYSLOGMBEDTLSSTREAM_H
 

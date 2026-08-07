@@ -1,5 +1,7 @@
 /** @file
- *  The POSIX SolidSyslogSleepFunction. */
+ *  The POSIX SolidSyslogSleepFunction.
+ *
+ *  @ingroup platform_posix */
 #ifndef SOLIDSYSLOGPOSIXSLEEP_H
 #define SOLIDSYSLOGPOSIXSLEEP_H
 

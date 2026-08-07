@@ -23,3 +23,9 @@ file paths. `Platform/MbedTls/Source/` never calls process-global Mbed TLS APIs
 coexists with your other Mbed TLS use.
 
 Full setup is [Integrating Mbed TLS](setup.md).
+
+## Source
+
+[Every class in this pack](../../api/group__platform__mbedtls.md), generated
+from the headers. The code itself is
+[`Platform/MbedTls/`](../../../Platform/MbedTls/).
