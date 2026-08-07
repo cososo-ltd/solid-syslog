@@ -32,36 +32,52 @@ Out of scope:
   `.gitattributes`, `.gitignore`, `.release-please-manifest.json`).
   Informational / agent-facing / git configuration, not library source.
 
-Runtime dependencies we declare but do not bundle:
-
-- **OpenSSL**: optional, only when `SOLIDSYSLOG_OPENSSL=ON`. Listed as a
-  CycloneDX component with `scope: optional`. No version pinned;
-  integrators select their own OpenSSL and capture it in their own SBOM
-  alongside the specific licence terms of the version they ship.
-
-Runtime dependencies we document as environment (not components):
-
-- **POSIX libc / Winsock / POSIX message queues**: host OS APIs, not
-  shipped software. Recorded as `metadata.properties` rather than
-  components.
-
 ## What the SBOM says
 
-The SBOM is a single-component document. `Core/` is a pure-C library with no
-runtime dependencies, so the subject (`metadata.component`) is SolidSyslog
-itself, and the top-level `components` array is empty. Runtime facts that a
-deployer must supply (a POSIX or Windows host, optionally a TLS library
-implementing the Stream abstraction) are documented as `properties`, not as
-components: they are requirements on the deployment, not shipped software.
+The SBOM is a single-component document. The subject (`metadata.component`) is
+SolidSyslog, the `components` array is empty, and the dependency graph records
+that it depends on nothing.
+
+That is the whole point of it. SolidSyslog vendors no third-party source, and
+Core reaches no further than a C99 compiler and four standard headers —
+`<stddef.h>`, `<stdbool.h>`, `<stdint.h>` and `<string.h>`. It calls `memcpy`
+and `strlen`, and makes no operating-system calls at all: no OS, no network
+stack, no filesystem, no heap. The `c99` lane proves it on every pull request
+by building Core alone, and the FreeRTOS cross lanes build it with no host
+platform present.
+
+### Why the platform backends are not components
+
+Reference adapters ship for POSIX, Windows, FreeRTOS, lwIP, FreeRTOS-Plus-TCP,
+ChaN FatFs, FreeRTOS-Plus-FAT, OpenSSL and Mbed TLS, and an integrator may
+supply their own instead. None of them is a component of SolidSyslog. Each is
+software the integrator chooses, versions, links and licenses, and the choices
+are mutually exclusive per role — no build links both OpenSSL and Mbed TLS, or
+both lwIP and FreeRTOS-Plus-TCP.
+
+Listing them would therefore describe a product that does not exist, and would
+do real harm: a scanner reading an OpenSSL dependency against a FreeRTOS build
+that links Mbed TLS reports vulnerabilities in software that is not there. We
+could pin no version for any of them either, so each entry would look like
+coverage while carrying nothing a scanner can use.
+
+They are recorded instead as `metadata.component.properties`
+(`solidsyslog:runtime-environment` and `solidsyslog:platform-backends`),
+alongside an `externalReferences` link to [Adding it to your
+build](../build-integration.md) for the capability matrix. Whichever packs you
+select are your dependencies and belong in your product SBOM — which is the
+document that can state them correctly, because it knows which build you
+shipped.
 
 Key fields worth reading:
 
 | Field | Meaning |
 |---|---|
+| `metadata.tools.components[0]` | The workflow that rendered this document, versioned by its own commit SHA and linked via a `build-system` reference. Distinct from `metadata.component.purl`, which pins the source being described: one says what produced the SBOM, the other what it describes. |
 | `metadata.component.name` | `SolidSyslog`. |
 | `metadata.component.version` | The value from `.release-please-manifest.json` at the time of generation. Pre-release: `0.0.0`. |
 | `metadata.component.purl` | Package URL keyed to the exact commit SHA — unambiguous pointer back to the source. |
-| `metadata.component.supplier.name` | `COSOSO (Cozens Software Solutions Limited)`. |
+| `metadata.component.supplier.name` | `Cozens Software Solutions Limited (COSOSO)`. |
 | `metadata.component.licenses[0].license.id` | `PolyForm-Noncommercial-1.0.0` — SPDX identifier. |
 | `metadata.properties[solidsyslog:source-tree-sha256]` | Content-tree hash: SHA-256 of a sorted list of `<content-sha256>  <path>` lines for every tracked file in `Core/` + `Platform/` plus the root-level `CMakeLists.txt`, `CMakePresets.json`, and `LICENSE.md`, at the commit. Reproducible byte-for-byte from any clone, with no dependency on `git archive` output format or git version. |
 
