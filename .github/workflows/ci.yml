@@ -315,9 +315,9 @@ jobs:
           path: build/clang-debug/cpputest_*.xml
           retention-days: 1
 
-  # Library only, no tests: proves the portable surface still compiles as C99
-  # under -Wpedantic -Werror, with the optional C11 atomics counter excluded
-  # exactly as a strict-C99 target would exclude it. See docs/builds.md.
+  # Proves the public claim that Core compiles as C99, then checks the POSIX and
+  # OpenSSL packs have not drifted off it. Library only, no tests.
+  # See docs/builds.md.
   build-linux-c99:
     runs-on: ubuntu-latest
     permissions:
@@ -335,11 +335,17 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Configure
+      - name: Configure Core at C99
         run: cmake --preset c99
 
-      - name: Build library at C99
+      - name: Build Core at C99
         run: cmake --build --preset c99
+
+      - name: Configure POSIX and OpenSSL packs at C99
+        run: cmake --preset c99-platforms
+
+      - name: Build POSIX and OpenSSL packs at C99
+        run: cmake --build --preset c99-platforms
 
   sanitize-linux-gcc:
     runs-on: ubuntu-latest

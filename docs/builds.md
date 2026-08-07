@@ -35,42 +35,33 @@ See [Container images](containers.md) for how to switch.
 
 ## C99 portability — `c99`
 
-Compiles the library with `CMAKE_C_STANDARD=99` (and `SOLIDSYSLOG_ATOMICS=OFF`,
-`SOLIDSYSLOG_BUILD_TESTING=OFF`) to enforce the C99 baseline: catches accidental
-use of later-standard features in production source. Library only; tests are not
-built.
+The public claim is that the Core compiles as C99. This preset is what proves
+it: `Core/` alone (`SOLIDSYSLOG_PLATFORMS` empty), at `-std=c99`, library only.
 
 ```bash
 cmake --preset c99
 cmake --build --preset c99
 ```
 
-The compiler sees `-std=c99`: the preset sets `CMAKE_C_EXTENSIONS=OFF`, since
-CMake's default of `ON` would otherwise select `-std=gnu99` and let GNU
-keywords such as `typeof` and `asm` through silently. Strict ISO mode makes
-glibc define `__STRICT_ANSI__` and hide every POSIX declaration, so the preset
-also defines `_POSIX_C_SOURCE=200809L` — without it `Platform/Posix` fails to
-compile for want of `clock_gettime` and `struct timespec`. Pinning that version
-rather than reaching for `_DEFAULT_SOURCE` is deliberate: it asserts that the
-POSIX pack needs nothing beyond POSIX.1-2008, so a glibc-only or BSD-only API
-creeping in fails the lane.
+With no platform pack in the build, no feature-test macro or vendor header is
+involved and the check is purely a language one. `CMAKE_C_EXTENSIONS=OFF`
+selects `-std=c99` rather than CMake's default `-std=gnu99`, and the project's
+standing `-Wpedantic -Werror` then fails the build on anything ISO C99 forbids,
+naming the file:line. Double-underscore spellings such as `__typeof__` are
+reserved identifiers and compile anywhere; no choice of standard catches those.
 
-`SOLIDSYSLOG_ATOMICS=OFF` excludes the optional C11 atomics counter
-(`SolidSyslogStdAtomicCounter`), leaving `SolidSyslogWindowsAtomicCounter` or
-`SolidSyslogNullAtomicCounter` as a real C99 target would. The option is set
-explicitly rather than left to the `HAVE_STDATOMIC_H` probe because that probe
-does not answer this question: `check_c_source_compiles` does not inherit
-`CMAKE_C_STANDARD`, so it compiles its `_Atomic` snippet at the compiler's
-default standard and reports success even in this preset's cache.
+That the Core needs no POSIX is a separate property, proven by the FreeRTOS
+cross lanes that build it with no host platform at all.
 
-Under the project's standing `-Wpedantic -Werror`, anything outside C99 fails
-the build and names the file:line — ISO C11 constructs such as `_Static_assert`
-and `_Atomic`, and GNU extensions such as `typeof`, `asm`, statement-expressions
-and case ranges. The one thing no choice of standard catches is a
-double-underscore spelling like `__typeof__`, which is a reserved identifier and
-compiles anywhere.
+Platform packs are best-effort C99 rather than guaranteed: `Platform/Atomics` is
+C11 by construction, and a future pack may deliberately require more. The
+`c99-platforms` preset builds the POSIX and OpenSSL packs at C99 as a drift
+check, and defines `_POSIX_C_SOURCE=200809L` because strict ISO mode makes glibc
+hide its POSIX declarations. Pinning that version rather than reaching for
+`_DEFAULT_SOURCE` asserts the POSIX pack needs nothing beyond POSIX.1-2008. The
+remaining packs are unchecked.
 
-CI runs this as the `build-linux-c99` lane on every pull request.
+CI runs both presets as the `build-linux-c99` lane on every pull request.
 
 ## Sanitizers — `sanitize`
 
