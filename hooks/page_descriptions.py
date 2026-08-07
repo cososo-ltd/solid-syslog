@@ -90,15 +90,15 @@ DESCRIPTIONS = {
     ),
     "platforms/openssl/setup.md": (
         "Wire SolidSyslogTlsStream over a TCP stream for RFC 5425 syslog over "
-        "TLS: the layering, the config fields, mutual TLS and the handshake budget."
+        "TLS: what to link, the layering, the config, and mutual TLS."
     ),
     "platforms/mbedtls/index.md": (
         "The Mbed TLS adapter pack for embedded targets: TLS transport for the "
         "Stream role, and keyed at-rest crypto for the SecurityPolicy role."
     ),
     "platforms/mbedtls/setup.md": (
-        "Deliver RFC 5425 syslog over TLS through Mbed TLS on embedded targets: "
-        "the handles you pre-build and pass in, and how they are wired."
+        "Wire Mbed TLS for RFC 5425 syslog over TLS on an embedded target: the "
+        "layering, bringing the library up, and the FreeRTOS sizing traps."
     ),
     "platforms/fatfs/index.md": (
         "The ChaN FatFs adapter pack, filling the File role beneath a BlockDevice "

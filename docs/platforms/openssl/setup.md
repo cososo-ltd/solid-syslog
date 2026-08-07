@@ -1,9 +1,9 @@
 # OpenSSL setup
 
-Wiring `SolidSyslogTlsStream` over a plain TCP stream so a
-`SolidSyslogStreamSender` delivers RFC 5425 syslog over TLS. Read
-[OpenSSL](index.md) first for what the adapter guarantees and what it leaves to
-you — this page is the mechanics.
+Wiring `SolidSyslogTlsStream` so a `SolidSyslogStreamSender` delivers RFC 5425
+syslog over TLS. [OpenSSL](index.md) covers what the adapter guarantees and what
+it leaves to you; the config fields are documented on the struct itself. This
+page is the wiring.
 
 ## What you need
 
@@ -48,8 +48,7 @@ tlsConfig.ServerName = "collector.example.net";
 struct SolidSyslogStream* tls = SolidSyslogTlsStream_Create(&tlsConfig);
 ```
 
-Zero-initialise the config before filling it. Every field you leave NULL is a
-documented default, and a struct you have not cleared is not.
+Zero-initialise the config before filling it.
 
 For mutual TLS, add the client credential — both fields or neither, since
 supplying one without the other is rejected at `Open`:
@@ -75,22 +74,9 @@ struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&senderConfig)
 Tear down in reverse order: sender, address, TLS stream, then the transport you
 created.
 
-## Timeouts
+## When it does not work
 
-The handshake is bounded. `GetHandshakeTimeoutMs` gives a per-attempt deadline
-in milliseconds; leaving it NULL uses the `SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS`
-tunable, which defaults to 5000. The `Sleep` callback is what the bounded retry
-waits on between `WANT_READ` / `WANT_WRITE` polls, which is why it has no
-default — the library will not pick a blocking primitive on your behalf.
-
-## Checking it works
-
-The BDD suite wires exactly this, against a real syslog-ng collector, in
-[`Bdd/Targets/Common/BddTargetTlsSender_OpenSsl_PosixTcp.c`](../../../Bdd/Targets/Common/BddTargetTlsSender_OpenSsl_PosixTcp.c),
-for both the server-authenticated and mutual-TLS cases. It is the reference to
-read against your own wiring.
-
-Failures report through the error handler rather than silently — install one
+Failures report through the error handler rather than silently. Install one
 before you start, and read [error severity](../../error-severity.md) for what
-each level is telling you. A `CRITICAL` at create time means the stream fell
-back to the Null object and nothing will be delivered.
+each level is telling you — a `CRITICAL` at create time means the stream fell
+back to the Null object, and nothing will be delivered.
