@@ -44,66 +44,27 @@ Two facts decide everything below:
 
 ---
 
-## Pick your stack — capability matrix
+## Pick your stack
 
-Choose one provider per role you need. Roles you don't need: leave the adapter
-out and the Core Null object stands in.
+Choose one provider per role you need; leave the rest out and Core's Null
+object stands in. Which platform fills which role is the
+[platform × capability matrix](platforms/index.md), and each platform's own
+page states what its adapters need from your build.
 
-*Files* lists the file group (`Solid…` prefix elided). Most adapters are
-`Adapter.c` + `AdapterStatic.c` (the `Static` file is the instance pool) plus an
-`AdapterPrivate.h`; compile the `.c` files, keep the directory on the include
-path. *Pool tunable* is the `SOLIDSYSLOG_<NAME>` slot count (see
-[Tunables](#tunables)).
+Two things are build-specific rather than platform-specific, and belong here.
 
-### Networking
+**The file list is generated, not written.** Every platform publishes a
+manifest of the exact `.c` files to compile and the include directories they
+need — see [Worked manifest](#worked-manifest--the-beta-stack) below. CI
+regenerates these and fails on any difference, so they cannot drift from the
+tree the way a hand-maintained table would.
 
-| Role | Provider | Files (`Solid…`) | Upstream / config | Pool tunable |
-|---|---|---|---|---|
-| Resolver | GetAddrInfo | `GetAddrInfoResolver*` | POSIX | `RESOLVER_POOL_SIZE` |
-| | Winsock | `WinsockResolver*` | Win32 | ″ |
-| | PlusTcp (DNS) | `PlusTcpResolver*` | FreeRTOS-Plus-TCP + `ipconfigUSE_DNS=1` | ″ |
-| | LwipRaw numeric | `LwipRawResolver*` | lwIP `ipaddr_aton` | ″ |
-| | LwipRaw DNS | `LwipRawDnsResolver*` | lwIP `LWIP_DNS=1` + Sleep cb | ″ |
-| Datagram (UDP) | Posix / Winsock / PlusTcp / LwipRaw | `{Posix,Winsock,PlusTcp,LwipRaw}Datagram*` | resp. stacks | `DATAGRAM_POOL_SIZE` |
-| Stream (TCP) | Posix / Winsock / PlusTcp / LwipRaw | `{…}TcpStream*` | resp. stacks (lwIP also needs a Sleep cb) | `TCP_STREAM_POOL_SIZE` |
-| Address | Posix / Winsock / PlusTcp / LwipRaw | `{…}Address*` | resp. `sockaddr` | `ADDRESS_POOL_SIZE` |
-| Marshal (lwIP) | LwipRawMarshal | `LwipRawMarshal` | lwIP, for `NO_SYS=0` | — |
-
-### Transport security (TLS) and at-rest integrity
-
-| Role | Provider | Files (`Solid…`) | Upstream / config | Pool tunable |
-|---|---|---|---|---|
-| TLS Stream | OpenSSL | `TlsStream*` | OpenSSL ≥ 3.0 | `TLS_STREAM_POOL_SIZE` |
-| | Mbed TLS | `MbedTlsStream*` | `mbedtls_config.h` | ″ |
-| SecurityPolicy | CRC-16 | `Crc16Policy*` + `Crc16` | — | — |
-| | HMAC-SHA256 | `{OpenSsl,MbedTls}HmacSha256Policy*` | OpenSSL or Mbed TLS | `HMAC_SHA256_POLICY_POOL_SIZE` |
-| | AES-GCM | `{OpenSsl,MbedTls}AesGcmPolicy*` | OpenSSL or Mbed TLS | `AES_GCM_POLICY_POOL_SIZE` |
-
-### OS primitives, storage, structured data
-
-| Role | Provider | Files (`Solid…`) | Upstream / config | Pool tunable |
-|---|---|---|---|---|
-| Mutex | Posix / Windows / FreeRtos | `{…}Mutex*` | FreeRtos needs `configSUPPORT_STATIC_ALLOCATION=1` | `MUTEX_POOL_SIZE` |
-| AtomicCounter | C11 std / Windows | `StdAtomicCounter*` / `WindowsAtomicCounter*` | C11 `<stdatomic.h>` / Win32 | `ATOMIC_COUNTER_POOL_SIZE` |
-| Buffer | Passthrough / Circular / Posix mq | `PassthroughBuffer*` / `CircularBuffer*` / `PosixMessageQueueBuffer*` | — / — / POSIX | resp. pool sizes |
-| Store | BlockStore | `BlockStore*`, `RecordStore*`, `BlockSequence*` | — | `BLOCK_STORE_POOL_SIZE` |
-| BlockDevice | FileBlockDevice | `FileBlockDevice*` | — | `FILE_BLOCK_DEVICE_POOL_SIZE` |
-| File | Posix / Windows / FatFs / PlusFat | `{Posix,Windows}File*` / `FatFsFile*` / `PlusFatFile*` | FatFs: `ffconf.h` + `diskio.c`; PlusFat: `FreeRTOSFATConfig.h` + `FF_Disk_t` | `FILE_POOL_SIZE` |
-| Structured Data | Meta / TimeQuality / Origin | `{Meta,TimeQuality,Origin}Sd*` | — | resp. pool sizes |
-
-### Bring-your-own callbacks
-
-A small tier is just function pointers. Host platforms ship a provider; embedded
-targets supply a one-line callback. (Provider authoring for these is tracked in a
-later epic, but the seams exist today.)
-
-| Role | Host provider | Embedded |
-|---|---|---|
-| Clock | `{Posix,Windows}Clock` | BYO `SolidSyslogClockFunction` |
-| SysUpTime | `{Posix,Windows,FreeRtos}SysUpTime` | FreeRtos provided; else BYO |
-| Sleep | `{Posix,Windows}Sleep` | BYO (needed by TLS + lwIP) — e.g. a `vTaskDelay` wrapper |
-| Hostname / ProcessId | `{Posix,Windows}…` | BYO header-field callbacks |
-| AtomicCounter | C11 / Win32 (above) | BYO, else sequence-id degrades to Null (always 1) |
+**Some roles are callbacks rather than components.** The clock, the host name,
+the process id and a bounded sleep are function pointers on
+`SolidSyslogConfig`. Hosted platforms ship one of each ready to use; on a bare
+target you write them, and they are usually a line apiece. A sleep is required
+by the TLS adapters and by the lwIP TCP stream, which is the one that catches
+people, because it has no default.
 
 ---
 
@@ -257,9 +218,9 @@ See the worked target wiring in
 [`Bdd/Targets/FreeRtosLwip/`](../Bdd/Targets/FreeRtosLwip/) (both consume the
 umbrellas), and the platform-specific guides:
 
-- [Integrating with lwIP (Raw API)](integrating-lwip.md)
-- [Integrating with Mbed TLS](integrating-mbedtls.md)
-- [Integrating with FreeRTOS-Plus-FAT](integrating-plusfat.md)
+- [Integrating with lwIP (Raw API)](platforms/lwipraw/setup.md)
+- [Integrating with Mbed TLS](platforms/mbedtls/setup.md)
+- [Integrating with FreeRTOS-Plus-FAT](platforms/plusfat/setup.md)
 
 ---
 
@@ -452,12 +413,12 @@ you.
 
 - Sleep: required by Mbed TLS (handshake retry) and the lwIP TCP stream
   (bounded synchronous open). Wrap `vTaskDelay`.
-- Clock, Hostname, ProcessId: small callbacks (see the matrix).
-- AtomicCounter: only if you want RFC 5424 sequence-ids; otherwise it
-  degrades to the Null counter (always 1).
+- Clock, Hostname, ProcessId: small callbacks you supply.
+- AtomicCounter: only if you want RFC 5424 sequence-ids.
 
-For the exact wiring of each adapter's `<Class>_Create` config struct, follow the
-platform guides: [lwIP](integrating-lwip.md), [Mbed TLS](integrating-mbedtls.md).
+For the exact wiring of each adapter's `<Class>_Create` config struct, follow
+that platform's own setup guide, reached from its page in
+[Platforms](platforms/index.md).
 
 ---
 
@@ -512,9 +473,7 @@ SOLIDSYSLOG_USER_TUNABLES := -DSOLIDSYSLOG_USER_TUNABLES_FILE=\"$(CURDIR)/$(APP_
 ## Where to go next
 
 - [Building up the protection you need](hardening-path.md): what to wire and why, stage by stage
-- [Integrating with lwIP (Raw API)](integrating-lwip.md)
-- [Integrating with Mbed TLS](integrating-mbedtls.md)
-- [Integrating with FreeRTOS-Plus-FAT](integrating-plusfat.md)
+- [Platforms](platforms/index.md): which platform fills which role, what each needs from your build, and how to wire it
 - [Porting to a new platform](porting.md): writing an adapter for an OS, network stack, filesystem, or crypto library we don't ship
 - [Structured data](structured-data.md)
 - [Error handling and severity](error-severity.md)

@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the PosixTcpStream adapter. */
+ *  Error codes and Source identity for the PosixTcpStream adapter.
+ *
+ *  @ingroup platform_posix */
 #ifndef SOLIDSYSLOGPOSIXTCPSTREAMERRORS_H
 #define SOLIDSYSLOGPOSIXTCPSTREAMERRORS_H
 

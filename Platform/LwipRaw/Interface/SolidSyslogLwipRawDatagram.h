@@ -11,7 +11,9 @@
  *    caller's buffer instead of copying it, safe because the buffer outlives the
  *    synchronous hop. Reports SENT on udp_sendto success, else FAILED. Cache-miss
  *    recovery is left to lwIP's ARP_QUEUEING.
- *  - MaxPayload returns the IPv6-safe default. */
+ *  - MaxPayload returns the IPv6-safe default.
+ *
+ *  @ingroup platform_lwipraw */
 #ifndef SOLIDSYSLOGLWIPRAWDATAGRAM_H
 #define SOLIDSYSLOGLWIPRAWDATAGRAM_H
 

@@ -15,7 +15,9 @@
  *  - OpenRecord decrypts the body and verifies the tag over header + ciphertext.
  *    A tag mismatch is the expected tamper-detected outcome and returns false
  *    silently; only a genuine OpenSSL error is reported. The key is likewise
- *    fetched on demand and wiped. */
+ *    fetched on demand and wiped.
+ *
+ *  @ingroup platform_openssl */
 #ifndef SOLIDSYSLOGOPENSSLAESGCMPOLICY_H
 #define SOLIDSYSLOGOPENSSLAESGCMPOLICY_H
 

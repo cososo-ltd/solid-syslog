@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the OpenSslHmacSha256Policy adapter. */
+ *  Error codes and Source identity for the OpenSslHmacSha256Policy adapter.
+ *
+ *  @ingroup platform_openssl */
 #ifndef SOLIDSYSLOGOPENSSLHMACSHA256POLICYERRORS_H
 #define SOLIDSYSLOGOPENSSLHMACSHA256POLICYERRORS_H
 

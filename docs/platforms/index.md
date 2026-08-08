@@ -13,16 +13,16 @@ vtable.
 
 | Platform | Wraps | Network | TLS | At-rest crypto | Files | OS primitives | Time & host |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| [Posix](posix.md) | POSIX / BSD sockets | ● | | | ● | ● | ● |
-| [Windows](windows.md) | Win32 / Winsock | ● | | | ● | ● | ● |
-| [FreeRTOS](freertos.md) | FreeRTOS kernel | | | | | ● | ● |
-| [FreeRTOS-Plus-TCP](plustcp.md) | FreeRTOS-Plus-TCP | ● | | | | | |
-| [lwIP (Raw API)](lwip.md) | lwIP Raw API | ● | | | | | |
-| [OpenSSL](openssl.md) | OpenSSL ≥ 3.0 | | ● | ● | | | |
-| [Mbed TLS](mbedtls.md) | Mbed TLS | | ● | ● | | | |
-| [FatFs](fatfs.md) | ChaN FatFs | | | | ● | | |
-| [FreeRTOS-Plus-FAT](plusfat.md) | FreeRTOS-Plus-FAT | | | | ● | | |
-| [C11 atomics](atomics.md) | `<stdatomic.h>` | | | | | ● | |
+| [Posix](posix/index.md) | POSIX / BSD sockets | ● | | | ● | ● | ● |
+| [Windows](windows/index.md) | Win32 / Winsock | ● | | | ● | ● | ● |
+| [FreeRTOS](freertos/index.md) | FreeRTOS kernel | | | | | ● | ● |
+| [FreeRTOS-Plus-TCP](plustcp/index.md) | FreeRTOS-Plus-TCP | ● | | | | | |
+| [lwIP (Raw API)](lwipraw/index.md) | lwIP Raw API | ● | | | | | |
+| [OpenSSL](openssl/index.md) | OpenSSL ≥ 3.0 | | ● | ● | | | |
+| [Mbed TLS](mbedtls/index.md) | Mbed TLS | | ● | ● | | | |
+| [FatFs](fatfs/index.md) | ChaN FatFs | | | | ● | | |
+| [FreeRTOS-Plus-FAT](plusfat/index.md) | FreeRTOS-Plus-FAT | | | | ● | | |
+| [C11 atomics](atomics/index.md) | `<stdatomic.h>` | | | | | ● | |
 
 The at-rest-crypto column is the keyed policies (HMAC-SHA256, AES-256-GCM); the
 unkeyed CRC-16 policy is Core. Buffer, Store, and Structured Data are roles Core

@@ -8,7 +8,9 @@
  *  connected, then tracks the discovered path MTU (IP_MTU).
  *
  *  The caller must invoke WSAStartup before use and WSACleanup on shutdown; the
- *  library does not manage the Winsock lifecycle. */
+ *  library does not manage the Winsock lifecycle.
+ *
+ *  @ingroup platform_windows */
 #ifndef SOLIDSYSLOGWINSOCKDATAGRAM_H
 #define SOLIDSYSLOGWINSOCKDATAGRAM_H
 

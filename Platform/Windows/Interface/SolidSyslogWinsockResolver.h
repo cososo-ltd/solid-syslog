@@ -7,7 +7,9 @@
  *  failed lookup returns false, so the caller's unresolved-host error path runs.
  *
  *  The caller must invoke WSAStartup before use and WSACleanup on shutdown; the
- *  library does not manage the Winsock lifecycle. */
+ *  library does not manage the Winsock lifecycle.
+ *
+ *  @ingroup platform_windows */
 #ifndef SOLIDSYSLOGWINSOCKRESOLVERH
 #define SOLIDSYSLOGWINSOCKRESOLVERH
 

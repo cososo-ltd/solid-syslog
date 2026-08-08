@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the PlusFatFile adapter. */
+ *  Error codes and Source identity for the PlusFatFile adapter.
+ *
+ *  @ingroup platform_plusfat */
 #ifndef SOLIDSYSLOGPLUSFATFILEERRORS_H
 #define SOLIDSYSLOGPLUSFATFILEERRORS_H
 

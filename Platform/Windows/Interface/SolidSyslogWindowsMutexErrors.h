@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the WindowsMutex adapter. */
+ *  Error codes and Source identity for the WindowsMutex adapter.
+ *
+ *  @ingroup platform_windows */
 #ifndef SOLIDSYSLOGWINDOWSMUTEXERRORS_H
 #define SOLIDSYSLOGWINDOWSMUTEXERRORS_H
 

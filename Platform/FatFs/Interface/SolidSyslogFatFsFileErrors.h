@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the FatFsFile adapter. */
+ *  Error codes and Source identity for the FatFsFile adapter.
+ *
+ *  @ingroup platform_fatfs */
 #ifndef SOLIDSYSLOGFATFSFILEERRORS_H
 #define SOLIDSYSLOGFATFSFILEERRORS_H
 

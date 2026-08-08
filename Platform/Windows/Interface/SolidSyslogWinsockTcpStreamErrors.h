@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the WinsockTcpStream adapter. */
+ *  Error codes and Source identity for the WinsockTcpStream adapter.
+ *
+ *  @ingroup platform_windows */
 #ifndef SOLIDSYSLOGWINSOCKTCPSTREAMERRORS_H
 #define SOLIDSYSLOGWINSOCKTCPSTREAMERRORS_H
 

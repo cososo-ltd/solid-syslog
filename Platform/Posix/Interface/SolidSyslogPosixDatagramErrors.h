@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the PosixDatagram adapter. */
+ *  Error codes and Source identity for the PosixDatagram adapter.
+ *
+ *  @ingroup platform_posix */
 #ifndef SOLIDSYSLOGPOSIXDATAGRAMERRORS_H
 #define SOLIDSYSLOGPOSIXDATAGRAMERRORS_H
 

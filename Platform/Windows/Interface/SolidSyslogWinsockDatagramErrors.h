@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the WinsockDatagram adapter. */
+ *  Error codes and Source identity for the WinsockDatagram adapter.
+ *
+ *  @ingroup platform_windows */
 #ifndef SOLIDSYSLOGWINSOCKDATAGRAMERRORS_H
 #define SOLIDSYSLOGWINSOCKDATAGRAMERRORS_H
 

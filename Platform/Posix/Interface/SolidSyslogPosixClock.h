@@ -1,5 +1,7 @@
 /** @file
- *  The POSIX SolidSyslogClockFunction, for SolidSyslogConfig.Clock. */
+ *  The POSIX SolidSyslogClockFunction, for SolidSyslogConfig.Clock.
+ *
+ *  @ingroup platform_posix */
 #ifndef SOLIDSYSLOGPOSIXCLOCK_H
 #define SOLIDSYSLOGPOSIXCLOCK_H
 

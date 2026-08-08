@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the FreeRtosMutex adapter. */
+ *  Error codes and Source identity for the FreeRtosMutex adapter.
+ *
+ *  @ingroup platform_freertos */
 #ifndef SOLIDSYSLOGFREERTOSMUTEXERRORS_H
 #define SOLIDSYSLOGFREERTOSMUTEXERRORS_H
 

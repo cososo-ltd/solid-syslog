@@ -233,3 +233,53 @@
 .postit-note a:hover {
   color: #3e2199;
 }
+
+/* ── Platform doorways ──────────────────────────────────────────────────────
+   Two links every platform page carries, and the one every generated API page
+   for a platform header carries back. Both use the UML component symbol, and
+   the adapter blue of the post-it kit (docs/assets/postit/README.md), where
+   blue already means "a backend that realises a role" — which is what a
+   platform adapter is. The glyphs are data URIs so the Markdown stays a plain
+   link and still reads on GitHub, where none of this CSS applies. */
+
+.md-typeset .ss-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.2rem 0.6rem 0.2rem 0.45rem;
+  border: 1px solid #d5d9f0;
+  border-radius: 999px;
+  background: #eef0fa;
+  color: #2f2a55;
+  font-size: 0.76rem;
+  text-decoration: none;
+}
+
+.md-typeset .ss-chip:hover {
+  background: #e2e6f7;
+  color: #2f2a55;
+}
+
+.md-typeset .ss-chip + .ss-chip {
+  margin-left: 0.4rem;
+}
+
+.md-typeset .ss-chip::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* The doorway on a generated API page back to its platform. Same pill as
+   the platform page's own chips — one chip style across the site, not two.
+   It sits in its own paragraph, so the spacing below it is the paragraph's. */
+.md-typeset .ss-chip--api::before,
+.md-typeset .ss-chip--platform::before {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><rect x="4.5" y="2.5" width="10" height="11" rx="1" fill="%23cdd4f5" stroke="%237f8dd4"/><rect x="1.5" y="5" width="5.5" height="2.6" rx=".4" fill="white" stroke="%237f8dd4"/><rect x="1.5" y="8.9" width="5.5" height="2.6" rx=".4" fill="white" stroke="%237f8dd4"/></svg>');
+}
+
+.md-typeset .ss-chip--setup::before {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M10.6 1.6a4 4 0 0 0-3.5 5.9L1.9 12.7a1.2 1.2 0 0 0 1.7 1.7l5.2-5.2a4 4 0 0 0 4.9-5.2l-2 2-1.6-.4-.4-1.6z" fill="%23cdd4f5" stroke="%237f8dd4" stroke-linejoin="round"/></svg>');
+}

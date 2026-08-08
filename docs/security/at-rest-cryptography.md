@@ -43,7 +43,7 @@ trailer is `nonce (12) ‖ tag (16)`.
   systematic reuse a reset counter would — provided each new DRBG instance is seeded
   from fresh entropy. On the Mbed TLS path that guarantee is yours: a CTR-DRBG
   re-seeded from a repeating source reproduces its output, and so reproduces nonces
-  under the same key. [Integrating Mbed TLS](../integrating-mbedtls.md) states the
+  under the same key. [Integrating Mbed TLS](../platforms/mbedtls/setup.md) states the
   entropy the adapter assumes and the silent failure mode when it is missing.
   Uniqueness stays probabilistic, bounded by the 2³² per-key envelope below.
 - Failure: `OpenRecord` returns a single `bool`. A tag mismatch (the

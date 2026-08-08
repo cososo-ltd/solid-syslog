@@ -1,6 +1,8 @@
 /** @file
  *  The Windows SolidSyslogHeaderFieldFunction for RFC 5424 PROCID, for
- *  SolidSyslogConfig.GetProcessId. */
+ *  SolidSyslogConfig.GetProcessId.
+ *
+ *  @ingroup platform_windows */
 #ifndef SOLIDSYSLOGWINDOWSPROCESSID_H
 #define SOLIDSYSLOGWINDOWSPROCESSID_H
 

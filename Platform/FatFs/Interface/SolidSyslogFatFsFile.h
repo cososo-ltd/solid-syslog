@@ -3,7 +3,9 @@
  *  SolidSyslogFile vtable, for a file-backed BlockDevice or Store. f_sync runs
  *  after every successful write so a power loss never loses a record the
  *  BlockStore already claimed it stored. The integrator supplies diskio.c (and
- *  ffsystem.c when FF_FS_REENTRANT=1). */
+ *  ffsystem.c when FF_FS_REENTRANT=1).
+ *
+ *  @ingroup platform_fatfs */
 #ifndef SOLIDSYSLOGFATFSFILE_H
 #define SOLIDSYSLOGFATFSFILE_H
 

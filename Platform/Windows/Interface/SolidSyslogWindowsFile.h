@@ -4,7 +4,9 @@
  *  or Store.
  *
  *  Files open in binary mode (_O_BINARY) so the CRT's CR/LF translation never
- *  corrupts arbitrary bytes — BlockStore frames round-trip unchanged. */
+ *  corrupts arbitrary bytes — BlockStore frames round-trip unchanged.
+ *
+ *  @ingroup platform_windows */
 #ifndef SOLIDSYSLOGWINDOWSFILE_H
 #define SOLIDSYSLOGWINDOWSFILE_H
 

@@ -5,7 +5,9 @@
  *  UDP) and turns on path-MTU discovery (IP_PMTUDISC_DO). SendTo then reports
  *  SENT, OVERSIZE (the datagram exceeds the path MTU, EMSGSIZE), or FAILED.
  *  MaxPayload returns the IPv6-safe default until connected, then tracks the
- *  discovered path MTU. */
+ *  discovered path MTU.
+ *
+ *  @ingroup platform_posix */
 #ifndef SOLIDSYSLOGPOSIXDATAGRAM_H
 #define SOLIDSYSLOGPOSIXDATAGRAM_H
 

@@ -1,5 +1,7 @@
 /** @file
- *  The Windows SolidSyslogSysUpTimeFunction, for MetaSd. */
+ *  The Windows SolidSyslogSysUpTimeFunction, for MetaSd.
+ *
+ *  @ingroup platform_windows */
 #ifndef SOLIDSYSLOGWINDOWSSYSUPTIME_H
 #define SOLIDSYSLOGWINDOWSSYSUPTIME_H
 

@@ -6,7 +6,9 @@
  *  whatever ipaddr_aton accepts is accepted, whatever it rejects (DNS names,
  *  the empty string, and other non-address text) fails the Resolve, so the caller's
  *  unresolved-host error path runs. The transport is ignored. The parse touches
- *  no lwIP core state, so unlike the DNS sibling it takes no marshal hop. */
+ *  no lwIP core state, so unlike the DNS sibling it takes no marshal hop.
+ *
+ *  @ingroup platform_lwipraw */
 #ifndef SOLIDSYSLOGLWIPRAWRESOLVER_H
 #define SOLIDSYSLOGLWIPRAWRESOLVER_H
 

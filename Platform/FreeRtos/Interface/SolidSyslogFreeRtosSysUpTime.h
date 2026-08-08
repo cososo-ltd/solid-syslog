@@ -1,6 +1,8 @@
 /** @file
  *  The FreeRTOS SolidSyslogSysUpTimeFunction, for the MetaSd structured-data
- *  element. */
+ *  element.
+ *
+ *  @ingroup platform_freertos */
 #ifndef SOLIDSYSLOGFREERTOSSYSUPTIME_H
 #define SOLIDSYSLOGFREERTOSSYSUPTIME_H
 

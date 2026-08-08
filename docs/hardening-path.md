@@ -39,6 +39,12 @@ your compiler and its options, and what your application already links. The exam
 repositories carry the exact figures, the diff that produced each, and the reasoning
 behind it.
 
+Because each stage is rounded up on its own, the stages deliberately do not add up to
+the totals quoted elsewhere: twenty roundings-up accumulate, so the sum overshoots.
+Measured cumulatively against the same baseline, the whole path costs about 13.5 KB of
+flash rather than the ~13.9 KB the column sums to. Take a stage's figure as the cost of
+that step and the example's own measurements as the cost of the path.
+
 ## How to read this
 
 The order of the stages is a logical way to integrate syslog in small steps, each one

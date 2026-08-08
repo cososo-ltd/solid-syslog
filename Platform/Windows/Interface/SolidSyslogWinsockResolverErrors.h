@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the WinsockResolver adapter. */
+ *  Error codes and Source identity for the WinsockResolver adapter.
+ *
+ *  @ingroup platform_windows */
 #ifndef SOLIDSYSLOGWINSOCKRESOLVERERRORS_H
 #define SOLIDSYSLOGWINSOCKRESOLVERERRORS_H
 

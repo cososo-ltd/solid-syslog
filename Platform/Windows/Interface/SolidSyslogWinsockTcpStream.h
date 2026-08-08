@@ -23,7 +23,9 @@
  *  OS-default retransmit behaviour.
  *
  *  The caller must invoke WSAStartup before use and WSACleanup on shutdown; the
- *  library does not manage the Winsock lifecycle. */
+ *  library does not manage the Winsock lifecycle.
+ *
+ *  @ingroup platform_windows */
 #ifndef SOLIDSYSLOGWINSOCKTCPSTREAM_H
 #define SOLIDSYSLOGWINSOCKTCPSTREAM_H
 

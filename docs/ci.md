@@ -19,21 +19,58 @@ without renaming what's already there.
 | `analyze-cppcheck` | `cppcheck` | cppcheck static analysis |
 | `analyze-codeql` | — | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) — see *Code scanning* |
 | `analyze-format` | — | clang-format dry-run; fails if any file needs reformatting |
-| `analyze-iwyu` | `iwyu` | include-what-you-use; fails on missing or unused `#include` directives |
+| `analyze-iwyu` | `iwyu` | include-what-you-use; fails on missing or unused `#include` directives. Advisory — runs `continue-on-error` |
+| `analyze-tidy-freertos-plustcp` | `tidy` | clang-tidy over the FreeRTOS / FreeRTOS-Plus-TCP / Mbed TLS / Plus-FAT trees, which the base `analyze-tidy` lane cannot reach |
+| `analyze-tidy-freertos-lwip` | `tidy` | The same, over the lwIP and ChaN FatFs trees |
+| `analyze-iwyu-freertos-plustcp` | `iwyu` | IWYU over the same FreeRTOS-Plus-TCP set. Advisory |
+| `analyze-iwyu-freertos-lwip` | `iwyu` | IWYU over the same lwIP set. Advisory |
+| `analyze-markdown` | — | `markdownlint-cli2` over every tracked `.md` file |
 | `integration-linux-openssl` | `debug` | Runs the in-process TLS integration tests against libssl (no network oracle) |
+| `integration-linux-mbedtls` | `debug` | The same integration tests against Mbed TLS, exercising `SolidSyslogMbedTlsStream` and the Mbed TLS security policies |
 | `integration-windows-openssl` | `msvc-debug` | Same TLS integration tests on `windows-latest` against libssl from vcpkg |
+| `build-linux-c89-headers` | — | Compiles every public header standalone as ISO C89 with `-pedantic-errors`, via `scripts/check_headers_c89.py`. Also proves each header is self-contained, since a header needing a companion first fails here |
+| `build-linux-c99` | `c99`, `c99-platforms` | Builds Core alone at strict `-std=c99` (`CMAKE_C_EXTENSIONS=OFF`, no tests), then the POSIX and OpenSSL packs at C99 as a drift check. Proves the C99 conformance claim per PR |
+| `build-linux-tunable-override` | `tunable-override-debug` | Builds against a user tunables header to prove `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults |
 | `bdd-linux-syslog-ng` | — | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
 | `bdd-windows-otel` | — | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
-| `build-freertos-host-tdd` | `debug` | Host-TDD of FreeRTOS adapters against fakes; runs inside `cpputest-freertos` (FreeRTOS upstream sources at fixed paths) |
-| `build-freertos-target` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the BDD target ELF; uploads it as an artifact for `bdd-freertos-qemu` |
-| `bdd-freertos-qemu` | — | Pulls the BDD target ELF artifact, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
+| `build-freertos-host-tdd-plustcp` | `debug` | Host-TDD of the FreeRTOS, FreeRTOS-Plus-TCP, Plus-FAT, FatFs and Mbed TLS adapters against fakes; runs inside `cpputest-freertos` (upstream sources at fixed paths) |
+| `build-freertos-target-plustcp` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the BDD target ELF over FreeRTOS-Plus-TCP; uploads it as an artifact |
+| `build-freertos-target-lwip` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;Atomics`) |
+| `bdd-freertos-qemu-plustcp` | — | Pulls the Plus-TCP target ELF, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
+| `bdd-freertos-qemu-lwip` | — | The same scenarios against the lwIP target ELF |
+| `consumer-smoke-linux` | — | Builds [`ci/consumer-smoke/`](../ci/consumer-smoke/) as a FetchContent consumer, proving the documented integration path still works |
+| `consumer-smoke-freertos-cross` | — | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
+| `verify-manifest` | — | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
 | `docs-build` | — | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`; on `main`, `deploy-docs-pages` publishes it to GitHub Pages |
+| `summary` | — | Aggregates the JUnit artifacts into a run summary. Declared `if: always()` and asserts nothing about the other jobs' results |
 
 ## Branch protection
 
-Every job in `ci.yml` is a required status check, as are the two contexts code
-scanning contributes. A PR cannot be merged unless all checks pass. Direct pushes
-to `main` are blocked. Squash merge only.
+Every job in `ci.yml` is a required status check except `deploy-docs-pages`, which
+only runs on `main`, and so are the two contexts code scanning contributes —
+`analyze-codeql` and `CodeQL`. That is 34 required contexts. A PR cannot be merged
+unless all of them pass. Direct pushes to `main` are blocked. Squash merge only.
+
+Two qualifications on what "required" buys. The `analyze-iwyu*` lanes run
+`continue-on-error`, so they are required contexts that report success whatever IWYU
+finds — required in form, advisory in substance. And feeding the `summary` aggregator
+does not make a lane blocking: `summary` is declared `if: always()` and asserts nothing
+about `needs.*.result`, so a new lane gates merges only once its own context is added
+to the required list.
+
+## What each lane exercises
+
+The lane names say the platform and toolchain but not the adapter, so:
+
+| Adapter | Where it is exercised |
+|---|---|
+| OpenSSL (`SolidSyslogTlsStream`, security policies) | `integration-linux-openssl`, `integration-windows-openssl` against real libssl |
+| Mbed TLS (`SolidSyslogMbedTlsStream`, security policies) | `integration-linux-mbedtls` against real Mbed TLS; both FreeRTOS QEMU BDD lanes over a real handshake |
+| FreeRTOS-Plus-TCP | `build-freertos-host-tdd-plustcp` against fakes; `bdd-freertos-qemu-plustcp` end to end under QEMU |
+| lwIP | `bdd-freertos-qemu-lwip` end to end under QEMU; static analysis via the `*-freertos-lwip` lanes |
+| ChaN FatFs | Built and analysed in the lwIP lanes; store-and-forward scenarios run in `bdd-freertos-qemu-lwip` |
+| FreeRTOS-Plus-FAT | Host-TDD against fakes in `build-freertos-host-tdd-plustcp`, and built in the Plus-TCP cross lanes |
+| POSIX, Windows | The `build-linux-*` and `build-windows-msvc` lanes, plus both host BDD lanes |
 
 ## Code scanning
 

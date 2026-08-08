@@ -1,5 +1,7 @@
 /** @file
- *  Error codes and Source identity for the PlusTcpResolver adapter. */
+ *  Error codes and Source identity for the PlusTcpResolver adapter.
+ *
+ *  @ingroup platform_plustcp */
 #ifndef SOLIDSYSLOGPLUSTCPRESOLVERERRORS_H
 #define SOLIDSYSLOGPLUSTCPRESOLVERERRORS_H
 

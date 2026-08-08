@@ -146,7 +146,7 @@ This is the only synchronisation primitive the pools use for their own walks.
 - Never free injected handles. An adapter frees only what it created. Handles
   the integrator passed in (an `mbedtls_x509_crt*`, an RNG, a caller's socket)
   are borrowed; the owner frees them. The [Mbed TLS coexistence
-  contract](integrating-mbedtls.md#coexistence-contract) is the template:
+  contract](platforms/mbedtls/index.md#coexistence-is-an-auditable-contract) is the template:
   `Platform/MbedTls/Source/` never touches process-global Mbed TLS state.
 - A Null must be safe to call. Whatever your role's Null returns (see each
   contract below), it must let Core's algorithm proceed sanely: drop-on-the-floor
@@ -307,6 +307,6 @@ reference to read first.
 ## Where to go next
 
 - [Adding it to your build](build-integration.md): the capability matrix, tunables, and build wiring.
-- [Integrating with lwIP (Raw API)](integrating-lwip.md), [Mbed TLS](integrating-mbedtls.md), [FreeRTOS-Plus-FAT](integrating-plusfat.md): worked ports of the networking, TLS, and file roles.
+- [Integrating with lwIP (Raw API)](platforms/lwipraw/setup.md), [Mbed TLS](platforms/mbedtls/setup.md), [FreeRTOS-Plus-FAT](platforms/plusfat/setup.md): worked ports of the networking, TLS, and file roles.
 - [Naming conventions](NAMING.md) and [MISRA deviations](misra-deviations.md): the rules Tier 1/2 adapter code follows.
 - [Error-event severity policy](error-severity.md): choosing the severity for your adapter's reports.
