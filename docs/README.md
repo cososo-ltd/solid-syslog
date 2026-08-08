@@ -23,7 +23,7 @@ Pick a lane:
 
 ## Overview
 
-- Why SolidSyslog, and capability at a glance: the [project README](../README.md).
+- Why SolidSyslog, and capability at a glance: the project `README.md`.
 - [Compliance in one page](overview.md): the evaluator's one-screen orientation. What CRA and IEC 62443 ask of an audit-logging function, and how SolidSyslog helps.
 
 ## Integrate
@@ -59,7 +59,7 @@ in the general case.
   - [Software Bill of Materials (SBOM)](security/sbom.md)
   - [Vulnerability triage runbook](security/triage-runbook.md)
   - [Release verification guide](security/release-verification.md)
-  - Reporting a vulnerability: [`SECURITY.md`](../SECURITY.md)
+  - Reporting a vulnerability: [`SECURITY.md`](security/policy.md)
 
 ## API reference
 

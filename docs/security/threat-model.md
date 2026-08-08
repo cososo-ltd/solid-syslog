@@ -184,7 +184,7 @@ security-conscious component supplier. See [`cra.md`](../cra.md) for the CRA
 Annex I audit-trail map, [`iec62443.md`](../iec62443.md) for the control-by-control
 map, and [`rfc-compliance.md`](../rfc-compliance.md)
 for the standards coverage matrix. The public disclosure process for issues found
-against this model is in [`SECURITY.md`](../../SECURITY.md).
+against this model is in [`SECURITY.md`](policy.md).
 
 ## Review policy
 

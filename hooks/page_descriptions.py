@@ -178,6 +178,18 @@ DESCRIPTIONS = {
         "Verify a SolidSyslog release came from this repository: cosign signature "
         "checks, SBOM validation and the source-tree hash, in the order to run them."
     ),
+    "security/policy.md": (
+        "How to report a SolidSyslog vulnerability, what we commit to in "
+        "response, and the disclosure process, scope and supported versions."
+    ),
+    "license.md": (
+        "SolidSyslog is licensed under PolyForm Noncommercial 1.0.0: the full "
+        "terms, what noncommercial covers, and where commercial use needs a licence."
+    ),
+    "support.md": (
+        "Where to get help with SolidSyslog — the documentation, questions and "
+        "bug reports, reporting a security issue, and commercial support."
+    ),
     # API reference doorways
     "api-reference/index.md": (
         "The doorway to the SolidSyslog API: which headers your code includes to "

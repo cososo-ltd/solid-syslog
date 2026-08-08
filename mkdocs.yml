@@ -74,6 +74,10 @@ markdown_extensions:
 # before MkDocs validates links. Pin the ref per build with SOLIDSYSLOG_DOCS_REF
 # (a release tag or commit SHA); it defaults to main.
 hooks:
+  # Publishes the repository-root documents the site should hold rather than
+  # link away to — SECURITY.md and friends stay at the root because GitHub
+  # looks for them there, and are rendered here from that same source.
+  - hooks/root_pages.py
   - hooks/source_links.py
   # Injects post-it "realised by" relationship diagrams at the top of selected
   # generated API pages (experiment — see hooks/relationship_diagrams.py).
@@ -157,6 +161,8 @@ plugins:
 
 nav:
   - Home: README.md
+  # Published from SUPPORT.md at the repository root by hooks/root_pages.py.
+  - Support: support.md
   - Overview:
       - Compliance in one page: overview.md
   - Integrate:
@@ -194,6 +200,11 @@ nav:
       - SBOM: security/sbom.md
       - Vulnerability triage: security/triage-runbook.md
       - Release verification: security/release-verification.md
+      # Published from SECURITY.md at the repository root by hooks/root_pages.py.
+      - Security policy: security/policy.md
+      # Likewise LICENSE.md — the terms are a compliance question for a reader
+      # deciding whether they may use the library.
+      - Licence: license.md
   - API reference:
       # api-reference/index.md is the tab's own first child, so navigation.indexes
       # promotes it into the tab link — and the narrow-width drawer opens on this
