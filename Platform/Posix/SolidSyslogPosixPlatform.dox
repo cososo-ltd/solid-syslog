@@ -1,9 +1,0 @@
-/**
- * @defgroup platform_posix Posix platform
- * @brief    Sockets, name resolution, files, mutexes, message queues and the clock on
- *           POSIX hosts.
- *
- * What this platform ships, what your build must provide, the security
- * behaviour it guarantees and the obligations it leaves to you:
- * https://docs.cososo.co.uk/solid-syslog/platforms/posix/
- */

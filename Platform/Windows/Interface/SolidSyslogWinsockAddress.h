@@ -3,9 +3,7 @@
  *
  *  A Resolver writes the resolved IPv4 endpoint into it; a Datagram or Stream
  *  reads it back to send. It is a value slot the two sides share, not a vtable
- *  object.
- *
- *  @ingroup platform_windows */
+ *  object. */
 #ifndef SOLIDSYSLOGWINSOCKADDRESS_H
 #define SOLIDSYSLOGWINSOCKADDRESS_H
 

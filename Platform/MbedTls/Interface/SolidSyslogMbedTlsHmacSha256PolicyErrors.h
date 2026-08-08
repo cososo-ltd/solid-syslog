@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the MbedTlsHmacSha256Policy.
- *
- *  @ingroup platform_mbedtls */
+ *  Error codes and Source identity for the MbedTlsHmacSha256Policy. */
 #ifndef SOLIDSYSLOGMBEDTLSHMACSHA256POLICYERRORS_H
 #define SOLIDSYSLOGMBEDTLSHMACSHA256POLICYERRORS_H
 

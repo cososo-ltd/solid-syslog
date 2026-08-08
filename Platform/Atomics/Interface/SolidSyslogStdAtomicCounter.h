@@ -2,9 +2,7 @@
  *  An AtomicCounter over C11 <stdatomic.h>, backing the RFC 5424 sequenceId.
  *  Increment runs an atomic_compare_exchange_strong_explicit CAS loop
  *  on an _Atomic uint32_t; the sequence is wrap-aware in [1, 2^31 - 1] and
- *  skips zero on wrap, so a returned value is never 0.
- *
- *  @ingroup platform_atomics */
+ *  skips zero on wrap, so a returned value is never 0. */
 #ifndef SOLIDSYSLOGSTDATOMICCOUNTER_H
 #define SOLIDSYSLOGSTDATOMICCOUNTER_H
 

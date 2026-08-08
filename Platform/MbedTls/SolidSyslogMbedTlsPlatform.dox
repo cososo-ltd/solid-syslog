@@ -1,9 +1,0 @@
-/**
- * @defgroup platform_mbedtls Mbed TLS platform
- * @brief    TLS transport and keyed at-rest crypto via Mbed TLS, sized for
- *           constrained embedded targets.
- *
- * What this platform ships, what your build must provide, the security
- * behaviour it guarantees and the obligations it leaves to you:
- * https://docs.cososo.co.uk/solid-syslog/platforms/mbedtls/
- */

@@ -1,8 +1,6 @@
 /** @file
  *  A Mutex wrapping a Windows CRITICAL_SECTION, for thread-safe buffers and
- *  pools on a Windows host.
- *
- *  @ingroup platform_windows */
+ *  pools on a Windows host. */
 #ifndef SOLIDSYSLOGWINDOWSMUTEX_H
 #define SOLIDSYSLOGWINDOWSMUTEX_H
 

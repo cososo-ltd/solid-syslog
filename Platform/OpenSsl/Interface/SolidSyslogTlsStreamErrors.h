@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the TlsStream adapter.
- *
- *  @ingroup platform_openssl */
+ *  Error codes and Source identity for the TlsStream adapter. */
 #ifndef SOLIDSYSLOGTLSSTREAMERRORS_H
 #define SOLIDSYSLOGTLSSTREAMERRORS_H
 

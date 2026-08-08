@@ -99,9 +99,19 @@ class PlatformPages(unittest.TestCase):
         markdown = "# Platforms\n\nBody.\n"
         self.assertEqual(render("platforms/index.md", markdown), markdown)
 
-    def test_a_setup_page_gets_no_chips(self):
-        markdown = "# Mbed TLS setup\n\nBody.\n"
-        self.assertEqual(render("platforms/mbedtls/setup.md", markdown), markdown)
+    def test_a_setup_page_gets_a_chip_back_to_its_platform(self):
+        out = render("platforms/mbedtls/setup.md", "# Mbed TLS setup\n\nBody.\n")
+        self.assertIn("[Mbed TLS platform](index.md){ .ss-chip .ss-chip--platform }", out)
+
+    def test_the_back_chip_goes_under_the_title(self):
+        out = render("platforms/mbedtls/setup.md", "# Mbed TLS setup\n\nBody.\n")
+        self.assertTrue(out.startswith("# Mbed TLS setup\n\n["), out[:40])
+
+    def test_every_setup_page_can_get_back_to_its_platform(self):
+        _, slugs, _labels, _manifest = h._index(CONFIG)
+        for slug in slugs:
+            out = render(f"platforms/{slug}/setup.md", "# Setup\n\nBody.\n")
+            self.assertIn("(index.md){ .ss-chip .ss-chip--platform }", out, slug)
 
     def test_an_ordinary_page_is_untouched(self):
         markdown = "# Porting\n\nBody.\n"

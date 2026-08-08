@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the LwipRawAddress adapter.
- *
- *  @ingroup platform_lwipraw */
+ *  Error codes and Source identity for the LwipRawAddress adapter. */
 #ifndef SOLIDSYSLOGLWIPRAWADDRESSERRORS_H
 #define SOLIDSYSLOGLWIPRAWADDRESSERRORS_H
 

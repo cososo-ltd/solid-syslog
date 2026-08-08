@@ -5,9 +5,7 @@
  *  synchronous getaddrinfo call and writes it into the destination
  *  SolidSyslogAddress; the requested transport selects the socktype hint. A
  *  failed lookup returns false, so the caller's unresolved-host error path
- *  runs.
- *
- *  @ingroup platform_posix */
+ *  runs. */
 #ifndef SOLIDSYSLOGGETADDRINFORESOLVERH
 #define SOLIDSYSLOGGETADDRINFORESOLVERH
 

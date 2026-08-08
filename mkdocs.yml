@@ -119,10 +119,7 @@ plugins:
           src-dirs: "Core/Interface Platform"
           full-doc: true
           doxy-cfg:
-            # *.dox carries the per-platform @defgroup blocks — see the
-            # SolidSyslog<Pack>Platform.dox file at each pack's root. They are
-            # documentation only: install() globs *.h, so none of them ship.
-            FILE_PATTERNS: "*.h *.dox"
+            FILE_PATTERNS: "*.h"
             RECURSIVE: true
             # Platform/<Pack>/Source/ holds the *Private.h / *Internal.h
             # headers, which are implementation detail and not public API.

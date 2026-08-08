@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the WindowsFile adapter.
- *
- *  @ingroup platform_windows */
+ *  Error codes and Source identity for the WindowsFile adapter. */
 #ifndef SOLIDSYSLOGWINDOWSFILEERRORS_H
 #define SOLIDSYSLOGWINDOWSFILEERRORS_H
 

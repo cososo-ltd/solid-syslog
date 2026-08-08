@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the StdAtomicCounter adapter.
- *
- *  @ingroup platform_atomics */
+ *  Error codes and Source identity for the StdAtomicCounter adapter. */
 #ifndef SOLIDSYSLOGSTDATOMICCOUNTERERRORS_H
 #define SOLIDSYSLOGSTDATOMICCOUNTERERRORS_H
 

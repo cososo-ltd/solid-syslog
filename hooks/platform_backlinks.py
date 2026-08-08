@@ -5,8 +5,8 @@ Three jobs, none of them hand-written:
 * every generated API page for a header under ``Platform/<Token>/`` gets a chip
   naming the platform it belongs to — the question a reader arriving from a
   search result has, and one the API reference could not previously answer;
-* every platform page gets a chip to its setup guide, and its *What it ships*
-  section filled with the headers that platform publishes;
+* a platform page gets a chip to its setup guide and its setup guide one back,
+  and its *What it ships* section is filled with the headers it publishes;
 * and the Doxygen group pages are dropped from the build.
 
 The groups are dropped because a platform had two pages answering "what is this
@@ -172,6 +172,14 @@ def on_page_markdown(markdown, page, config, files, **kwargs):
         label, slug = pack
         chip = f"[{label} platform](../{PLATFORM_PREFIX}{slug}/index.md){{ .ss-chip .ss-chip--platform }}"
         return f"{chip}\n\n{markdown}"
+
+    if src_uri.startswith(PLATFORM_PREFIX) and src_uri.endswith("/setup.md"):
+        slug = src_uri[len(PLATFORM_PREFIX) : -len("/setup.md")]
+        if slug not in slugs:
+            return markdown
+        chip = f"[{labels[slug]} platform](index.md){{ .ss-chip .ss-chip--platform }}"
+        title, _, body = markdown.partition("\n")
+        return f"{title}\n\n{chip}\n\n{body.lstrip()}"
 
     if src_uri.startswith(PLATFORM_PREFIX) and src_uri.endswith("/index.md"):
         slug = src_uri[len(PLATFORM_PREFIX) : -len("/index.md")]

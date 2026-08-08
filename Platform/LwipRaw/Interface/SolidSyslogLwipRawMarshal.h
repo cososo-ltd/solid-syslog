@@ -16,9 +16,7 @@
  *  The marshal MUST invoke its callback synchronously, before it returns: the
  *  wrapper reads results the callback writes immediately after the hop, so an
  *  asynchronous marshal is caller error. tcpip_callback_with_block(.., block=1)
- *  honours this; a bare tcpip_callback(..) does not. See docs/platforms/lwipraw/setup.md.
- *
- *  @ingroup platform_lwipraw */
+ *  honours this; a bare tcpip_callback(..) does not. See docs/platforms/lwipraw/setup.md. */
 #ifndef SOLIDSYSLOGLWIPRAWMARSHAL_H
 #define SOLIDSYSLOGLWIPRAWMARSHAL_H
 

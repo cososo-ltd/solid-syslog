@@ -1,9 +1,0 @@
-/**
- * @defgroup platform_atomics C11 atomics platform
- * @brief    The AtomicCounter role over <stdatomic.h> — the sequenceId source on any
- *           target with a C11 compiler, with no OS dependency.
- *
- * What this platform ships, what your build must provide, the security
- * behaviour it guarantees and the obligations it leaves to you:
- * https://docs.cososo.co.uk/solid-syslog/platforms/atomics/
- */

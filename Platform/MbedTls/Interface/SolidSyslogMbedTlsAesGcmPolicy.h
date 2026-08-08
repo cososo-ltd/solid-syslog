@@ -14,9 +14,7 @@
  *    and returns false silently; only a genuine mbedTLS fault is reported.
  *
  *  The key is fetched on demand via GetKey and wiped after every operation — it
- *  is never stored on the instance.
- *
- *  @ingroup platform_mbedtls */
+ *  is never stored on the instance. */
 #ifndef SOLIDSYSLOGMBEDTLSAESGCMPOLICY_H
 #define SOLIDSYSLOGMBEDTLSAESGCMPOLICY_H
 

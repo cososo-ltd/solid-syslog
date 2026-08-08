@@ -7,7 +7,6 @@ CMakeLists.txt. Everything else follows from its token:
     token       LwipRaw
     directory   Platform/LwipRaw/
     docs        docs/platforms/lwipraw/{index,setup}.md
-    group       @defgroup platform_lwipraw
     nav         an entry in mkdocs.yml
     description an entry in hooks/page_descriptions.py
 
@@ -74,7 +73,7 @@ ALLOWED = [
     ),
 ]
 
-SCANNED_SUFFIXES = (".c", ".h", ".dox", ".md")
+SCANNED_SUFFIXES = (".c", ".h", ".md")
 
 # An #include names a header the compiler must find, not a platform the prose
 # is describing. The boundary is editorial; what a translation unit depends on
@@ -196,12 +195,6 @@ def check():
             if not os.path.isfile(os.path.join(ROOT, docs, page)):
                 faults.append(f"{token}: {docs}/{page} is missing")
 
-        group = os.path.join(ROOT, directory, f"SolidSyslog{token}Platform.dox")
-        if not os.path.isfile(group):
-            faults.append(f"{token}: no group file at {directory}/SolidSyslog{token}Platform.dox")
-        elif f"@defgroup platform_{slug} " not in read(group):
-            faults.append(f"{token}: its group file does not declare @defgroup platform_{slug}")
-
         if f"platforms/{slug}/index.md" not in nav:
             faults.append(f"{token}: no entry in the mkdocs.yml nav")
         for page in ("index.md", "setup.md"):
@@ -210,11 +203,6 @@ def check():
 
         if f"]({slug}/index.md)" not in matrix:
             faults.append(f"{token}: not a row in the docs/platforms/index.md matrix")
-
-        interface = os.path.join(ROOT, directory, "Interface")
-        for header in sorted(os.listdir(interface)) if os.path.isdir(interface) else []:
-            if header.endswith(".h") and "@ingroup" not in read(directory, "Interface", header):
-                faults.append(f"{token}: {header} carries no @ingroup")
 
     for slug in sorted(documented() - slugs):
         faults.append(f"docs/platforms/{slug}/ documents a platform that is not registered")

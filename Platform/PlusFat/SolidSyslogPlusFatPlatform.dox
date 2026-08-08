@@ -1,8 +1,0 @@
-/**
- * @defgroup platform_plusfat FreeRTOS-Plus-FAT platform
- * @brief    The File role over FreeRTOS-Plus-FAT's ff_stdio, beneath a BlockDevice.
- *
- * What this platform ships, what your build must provide, the security
- * behaviour it guarantees and the obligations it leaves to you:
- * https://docs.cososo.co.uk/solid-syslog/platforms/plusfat/
- */

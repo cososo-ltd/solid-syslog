@@ -3,9 +3,7 @@
  *  sequenceId on Windows targets without C11 <stdatomic.h> (legacy MSVC).
  *  Increment runs a lock-free InterlockedCompareExchange CAS loop on a
  *  volatile LONG; the sequence is wrap-aware in [1, 2^31 - 1] and skips zero on
- *  wrap, so a returned value is never 0.
- *
- *  @ingroup platform_windows */
+ *  wrap, so a returned value is never 0. */
 #ifndef SOLIDSYSLOGWINDOWSATOMICCOUNTER_H
 #define SOLIDSYSLOGWINDOWSATOMICCOUNTER_H
 

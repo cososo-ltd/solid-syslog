@@ -1,8 +1,6 @@
 /** @file
  *  POSIX file I/O (open / read / write / lseek / ftruncate) behind the
- *  SolidSyslogFile vtable, for a file-backed BlockDevice or Store.
- *
- *  @ingroup platform_posix */
+ *  SolidSyslogFile vtable, for a file-backed BlockDevice or Store. */
 #ifndef SOLIDSYSLOGPOSIXFILE_H
 #define SOLIDSYSLOGPOSIXFILE_H
 

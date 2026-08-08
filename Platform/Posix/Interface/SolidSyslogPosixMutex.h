@@ -1,8 +1,6 @@
 /** @file
  *  A Mutex wrapping pthread_mutex_t, for thread-safe buffers and pools on a
- *  POSIX host.
- *
- *  @ingroup platform_posix */
+ *  POSIX host. */
 #ifndef SOLIDSYSLOGPOSIXMUTEX_H
 #define SOLIDSYSLOGPOSIXMUTEX_H
 

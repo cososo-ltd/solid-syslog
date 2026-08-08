@@ -28,9 +28,7 @@
  *  callback nulls the pcb pointer, and Close only calls tcp_close when the
  *  pointer is still live, so a released pcb is never closed twice. Accepted
  *  pbufs are always freed on close regardless of pcb state. See
- *  docs/platforms/lwipraw/setup.md for the full integrator guide.
- *
- *  @ingroup platform_lwipraw */
+ *  docs/platforms/lwipraw/setup.md for the full integrator guide. */
 #ifndef SOLIDSYSLOGLWIPRAWTCPSTREAM_H
 #define SOLIDSYSLOGLWIPRAWTCPSTREAM_H
 

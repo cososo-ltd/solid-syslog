@@ -3,9 +3,7 @@
  *
  *  A Resolver writes the resolved endpoint into it; a Datagram or TcpStream
  *  reads it back to send. It is a value slot the two sides share, not a vtable
- *  object.
- *
- *  @ingroup platform_lwipraw */
+ *  object. */
 #ifndef SOLIDSYSLOGLWIPRAWADDRESS_H
 #define SOLIDSYSLOGLWIPRAWADDRESS_H
 

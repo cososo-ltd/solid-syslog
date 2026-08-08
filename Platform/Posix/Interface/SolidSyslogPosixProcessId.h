@@ -1,8 +1,6 @@
 /** @file
  *  The POSIX SolidSyslogHeaderFieldFunction for RFC 5424 PROCID, for
- *  SolidSyslogConfig.GetProcessId.
- *
- *  @ingroup platform_posix */
+ *  SolidSyslogConfig.GetProcessId. */
 #ifndef SOLIDSYSLOGPOSIXPROCESSID_H
 #define SOLIDSYSLOGPOSIXPROCESSID_H
 

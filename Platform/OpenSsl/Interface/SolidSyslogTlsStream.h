@@ -21,9 +21,7 @@
  *  - Read returns the bytes read, 0 for would-block (WANT_READ, connection kept),
  *    or closes on anything else — including a mid-stream WANT_WRITE (renegotiation)
  *    which fail-fast semantics treat as a transport failure; store-and-forward
- *    replays after the reopen.
- *
- *  @ingroup platform_openssl */
+ *    replays after the reopen. */
 #ifndef SOLIDSYSLOGTLSSTREAM_H
 #define SOLIDSYSLOGTLSSTREAM_H
 

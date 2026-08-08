@@ -8,9 +8,7 @@
  *  cold-start packet would otherwise be dropped at the IP layer; if the reply
  *  is late the send is left to fail, since UDP is best-effort and retry belongs
  *  in the store-and-forward layer above. MaxPayload is the fixed IPv6-safe
- *  default.
- *
- *  @ingroup platform_plustcp */
+ *  default. */
 #ifndef SOLIDSYSLOGPLUSTCPDATAGRAM_H
 #define SOLIDSYSLOGPLUSTCPDATAGRAM_H
 

@@ -1,7 +1,5 @@
 /** @file
- *  The POSIX SolidSyslogSysUpTimeFunction, for MetaSd.
- *
- *  @ingroup platform_posix */
+ *  The POSIX SolidSyslogSysUpTimeFunction, for MetaSd. */
 #ifndef SOLIDSYSLOGPOSIXSYSUPTIME_H
 #define SOLIDSYSLOGPOSIXSYSUPTIME_H
 

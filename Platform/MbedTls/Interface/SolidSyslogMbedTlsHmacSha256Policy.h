@@ -14,9 +14,7 @@
  *    expected tamper verdict — and is not reported.
  *
  *  The key is fetched on demand via GetKey and wiped after every computation — it
- *  is never stored on the instance.
- *
- *  @ingroup platform_mbedtls */
+ *  is never stored on the instance. */
 #ifndef SOLIDSYSLOGMBEDTLSHMACSHA256POLICY_H
 #define SOLIDSYSLOGMBEDTLSHMACSHA256POLICY_H
 

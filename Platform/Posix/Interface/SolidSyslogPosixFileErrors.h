@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the PosixFile adapter.
- *
- *  @ingroup platform_posix */
+ *  Error codes and Source identity for the PosixFile adapter. */
 #ifndef SOLIDSYSLOGPOSIXFILEERRORS_H
 #define SOLIDSYSLOGPOSIXFILEERRORS_H
 

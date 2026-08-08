@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the LwipRawTcpStream adapter.
- *
- *  @ingroup platform_lwipraw */
+ *  Error codes and Source identity for the LwipRawTcpStream adapter. */
 #ifndef SOLIDSYSLOGLWIPRAWTCPSTREAMERRORS_H
 #define SOLIDSYSLOGLWIPRAWTCPSTREAMERRORS_H
 

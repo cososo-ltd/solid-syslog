@@ -1,8 +1,6 @@
 /** @file
  *  The POSIX SolidSyslogHeaderFieldFunction for RFC 5424 HOSTNAME, for
- *  SolidSyslogConfig.GetHostname.
- *
- *  @ingroup platform_posix */
+ *  SolidSyslogConfig.GetHostname. */
 #ifndef SOLIDSYSLOGPOSIXHOSTNAME_H
 #define SOLIDSYSLOGPOSIXHOSTNAME_H
 

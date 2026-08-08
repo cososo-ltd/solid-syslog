@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the WindowsAtomicCounter adapter.
- *
- *  @ingroup platform_windows */
+ *  Error codes and Source identity for the WindowsAtomicCounter adapter. */
 #ifndef SOLIDSYSLOGWINDOWSATOMICCOUNTERERRORS_H
 #define SOLIDSYSLOGWINDOWSATOMICCOUNTERERRORS_H
 

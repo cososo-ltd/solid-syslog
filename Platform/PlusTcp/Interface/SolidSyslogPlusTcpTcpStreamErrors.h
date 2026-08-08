@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the PlusTcpTcpStream adapter.
- *
- *  @ingroup platform_plustcp */
+ *  Error codes and Source identity for the PlusTcpTcpStream adapter. */
 #ifndef SOLIDSYSLOGPLUSTCPTCPSTREAMERRORS_H
 #define SOLIDSYSLOGPLUSTCPTCPSTREAMERRORS_H
 

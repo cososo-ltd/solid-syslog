@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the MbedTlsStream adapter.
- *
- *  @ingroup platform_mbedtls */
+ *  Error codes and Source identity for the MbedTlsStream adapter. */
 #ifndef SOLIDSYSLOGMBEDTLSSTREAMERRORS_H
 #define SOLIDSYSLOGMBEDTLSSTREAMERRORS_H
 

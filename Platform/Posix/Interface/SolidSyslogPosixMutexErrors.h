@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the PosixMutex adapter.
- *
- *  @ingroup platform_posix */
+ *  Error codes and Source identity for the PosixMutex adapter. */
 #ifndef SOLIDSYSLOGPOSIXMUTEXERRORS_H
 #define SOLIDSYSLOGPOSIXMUTEXERRORS_H
 

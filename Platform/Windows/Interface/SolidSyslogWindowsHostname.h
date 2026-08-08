@@ -1,8 +1,6 @@
 /** @file
  *  The Windows SolidSyslogHeaderFieldFunction for RFC 5424 HOSTNAME, for
- *  SolidSyslogConfig.GetHostname.
- *
- *  @ingroup platform_windows */
+ *  SolidSyslogConfig.GetHostname. */
 #ifndef SOLIDSYSLOGWINDOWSHOSTNAME_H
 #define SOLIDSYSLOGWINDOWSHOSTNAME_H
 

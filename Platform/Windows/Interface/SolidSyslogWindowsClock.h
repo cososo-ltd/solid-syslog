@@ -1,7 +1,5 @@
 /** @file
- *  The Windows SolidSyslogClockFunction, for SolidSyslogConfig.Clock.
- *
- *  @ingroup platform_windows */
+ *  The Windows SolidSyslogClockFunction, for SolidSyslogConfig.Clock. */
 #ifndef SOLIDSYSLOGWINDOWSCLOCK_H
 #define SOLIDSYSLOGWINDOWSCLOCK_H
 

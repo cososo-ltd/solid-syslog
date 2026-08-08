@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the LwipRawDatagram adapter.
- *
- *  @ingroup platform_lwipraw */
+ *  Error codes and Source identity for the LwipRawDatagram adapter. */
 #ifndef SOLIDSYSLOGLWIPRAWDATAGRAMERRORS_H
 #define SOLIDSYSLOGLWIPRAWDATAGRAMERRORS_H
 

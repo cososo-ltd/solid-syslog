@@ -1,7 +1,5 @@
 /** @file
- *  Error codes and Source identity for the MbedTlsAesGcmPolicy.
- *
- *  @ingroup platform_mbedtls */
+ *  Error codes and Source identity for the MbedTlsAesGcmPolicy. */
 #ifndef SOLIDSYSLOGMBEDTLSAESGCMPOLICYERRORS_H
 #define SOLIDSYSLOGMBEDTLSAESGCMPOLICYERRORS_H
 
