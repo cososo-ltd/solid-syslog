@@ -1,16 +1,23 @@
-"""MkDocs build hook: the doorways between a platform and its API reference.
+"""MkDocs build hook: a platform's page, its manifest, and the way back to it.
 
-Three links, none of them hand-written:
+Three jobs, none of them hand-written:
 
 * every generated API page for a header under ``Platform/<Token>/`` gets a chip
   naming the platform it belongs to — the question a reader arriving from a
   search result has, and one the API reference could not previously answer;
-* every platform page gets a chip to its Doxygen group, the generated reference
-  for everything that platform declares;
-* and one to its setup guide, where the platform has one.
+* every platform page gets a chip to its setup guide, and its *What it ships*
+  section filled with the headers that platform publishes;
+* and the Doxygen group pages are dropped from the build.
 
-They are injected rather than written because they are navigation furniture, not
-content: generating them keeps the Markdown clean, keeps the links inside
+The groups are dropped because a platform had two pages answering "what is this
+platform", and the group page's only unique content was its Files table — which
+is now the manifest, on the platform page, where the prose is hand-editable, the
+links are validated, and the URL is the good one. ``@defgroup`` and ``@ingroup``
+stay in the source: they cost nothing, and an integrator running Doxygen over
+the headers they ship with still gets the grouping.
+
+Chips are injected rather than written because they are navigation furniture,
+not content: generating them keeps the Markdown clean, keeps the links inside
 MkDocs' own resolution and validation (raw HTML in a page is neither rewritten
 nor checked), and means adding a platform needs no markup at all.
 
@@ -27,7 +34,6 @@ import re
 
 REGISTRY = re.compile(r"set\(SOLIDSYSLOG_PLATFORM_REGISTRY(.*?)^\)", re.DOTALL | re.MULTILINE)
 ROW = re.compile(r'"([^"|]+)\|[^"|]*\|[^"|]*\|[^"|]*\|([^"|]+)\|[^"]*"')
-MODULES_CRUMB = re.compile(r"\[\*\*Modules\*\*\]\([^)]*\)")
 # The @file block down to its first blank comment line, and the first sentence
 # of it — Doxygen's own implicit brief, so the page and the generated reference
 # say the same thing because they read the same source.
@@ -39,10 +45,16 @@ SHIPS = re.compile(r"^(## What it ships[ \t]*\n)(.*?)(?=^## |\Z)", re.MULTILINE 
 # A definition, not a forward declaration — the brace is what distinguishes
 # `struct SolidSyslogMbedTlsStreamConfig {` from `struct SolidSyslogStream;`.
 STRUCT_DEF = re.compile(r"struct\s+(SolidSyslog\w+)\s*\{", re.MULTILINE)
-CANONICAL = "https://docs.cososo.co.uk/solid-syslog/"
 
 GENERATED_PREFIX = "api/"
 PLATFORM_PREFIX = "platforms/"
+# The group pages and the index that lists them. Dropped from the build: their
+# content lives on the platform pages now, and leaving them would publish two
+# answers to the same question.
+DROPPED = re.compile(r"^api/(group__platform__\w+|modules)\.md$")
+# mkdoxy's index-of-indexes lists Modules among them, so dropping the page
+# without dropping the entry leaves a dead link the strict build rejects.
+MODULES_ENTRY = re.compile(r"^[ \t]*-[ \t]*\[Modules\]\(modules\.md\)[ \t]*\n", re.MULTILINE)
 
 _CACHE = {}
 
@@ -55,13 +67,6 @@ def _label(root, slug):
             if line.startswith("# "):
                 return line[2:].strip()
     return slug
-
-
-def _group_slug(src_uri):
-    """api/group__platform__atomics.md -> atomics, else None."""
-    leaf = src_uri[len(GENERATED_PREFIX) : -len(".md")]
-    prefix = "group__platform__"
-    return leaf[len(prefix) :] if leaf.startswith(prefix) else None
 
 
 def _brief(text):
@@ -123,19 +128,6 @@ def _ships(entries):
     return "\n".join(rows)
 
 
-def _relativise(markdown, slug, label):
-    """Point the group's own back-link at this build, not at the live site.
-
-    The .dox block carries the canonical docs URL so that someone reading the
-    source tree can find the page. Doxygen auto-links it, which on any build
-    that is not production — a local preview, a pull-request artefact — sends
-    the reader to the published site instead of the one in front of them.
-    """
-    url = re.escape(f"{CANONICAL}{PLATFORM_PREFIX}{slug}/")
-    linked = re.compile(rf"\[{url}\]\({url}\)|{url}")
-    return linked.sub(f"[{label}](../{PLATFORM_PREFIX}{slug}/index.md)", markdown)
-
-
 def _stem(src_uri):
     """The header or struct a generated page documents, else None.
 
@@ -150,32 +142,28 @@ def _stem(src_uri):
     return None
 
 
+def on_files(files, config):
+    """Drop the group pages and the index listing them.
+
+    mkdoxy generates a page per @defgroup whether anything links to it or not.
+    Left in, they publish a second answer to "what is this platform" — and a
+    worse one, since the platform page owns the prose, the good URL and the
+    meta description. Removing them here rather than removing @defgroup from
+    the source keeps the grouping for anyone running Doxygen themselves.
+    """
+    kept = [f for f in files if not DROPPED.match(f.src_uri.replace(os.sep, "/"))]
+    # Rebuild the collection MkDocs handed us — it is a Files object with its
+    # own API downstream, not a plain list.
+    return type(files)(kept)
+
+
 def on_page_markdown(markdown, page, config, files, **kwargs):
     src_uri = getattr(page.file, "src_uri", None) or page.file.src_path.replace(os.sep, "/")
     headers, slugs, labels, manifest = _index(config)
 
     if src_uri.startswith(GENERATED_PREFIX):
-        # A group page arrives titled in Doxygen's vocabulary — "Group
-        # platform_atomics", under a breadcrumb reading "Modules" — where the
-        # reader has been shown "C11 atomics" everywhere else. Group and Module
-        # are terms this documentation does not otherwise use, and the group's
-        # own @defgroup title is ignored by the template, so rewrite all three
-        # to the platform page's heading. The doubled underscores of the refid
-        # (group__platform__atomics) do not contain the single-underscore group
-        # name, so the bare-name replacement cannot damage a link target.
-        group = _group_slug(src_uri)
-        if group is not None and group in slugs:
-            title = f"{labels[group]} platform"
-            # mkdoxy backslash-escapes the underscore so Markdown does not read
-            # it as emphasis, so the name appears as platform\_atomics.
-            name = r"platform\\?_" + re.escape(group)
-            markdown = re.sub(rf"#\s+Group\s+{name}", f"# {title}", markdown, count=1)
-            markdown = MODULES_CRUMB.sub(f"[**Platforms**](../{PLATFORM_PREFIX}index.md)", markdown, count=1)
-            markdown = _relativise(markdown, group, labels[group])
-            return re.sub(name, title, markdown)
-
-        if src_uri == f"{GENERATED_PREFIX}modules.md":
-            return markdown.replace("# Modules", "# Platform API reference", 1)
+        if src_uri == f"{GENERATED_PREFIX}links.md":
+            return MODULES_ENTRY.sub("", markdown, count=1)
 
         stem = _stem(src_uri)
         pack = headers.get(stem) if stem else None
@@ -189,13 +177,12 @@ def on_page_markdown(markdown, page, config, files, **kwargs):
         slug = src_uri[len(PLATFORM_PREFIX) : -len("/index.md")]
         if slug not in slugs:
             return markdown
-        chips = [f"[API reference](../../api/group__platform__{slug}.md){{ .ss-chip .ss-chip--api }}"]
         if slugs[slug]:
-            chips.append("[Setup](setup.md){ .ss-chip .ss-chip--setup }")
-        # One line, so the inline-flex chips sit side by side; placed under the
-        # title rather than above it, so the page still opens with its name.
-        title, _, body = markdown.partition("\n")
-        markdown = f"{title}\n\n{' '.join(chips)}\n\n{body.lstrip()}"
+            chip = "[Setup](setup.md){ .ss-chip .ss-chip--setup }"
+            # Placed under the title rather than above it, so the page still
+            # opens with its name.
+            title, _, body = markdown.partition("\n")
+            markdown = f"{title}\n\n{chip}\n\n{body.lstrip()}"
         return SHIPS.sub(lambda m: f"{m.group(1)}\n{_ships(manifest[slug])}\n\n", markdown, count=1)
 
     return markdown

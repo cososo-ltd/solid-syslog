@@ -69,17 +69,19 @@ class PlatformPages(unittest.TestCase):
         out = render("platforms/mbedtls/index.md")
         self.assertTrue(out.startswith("# Title\n\n["), out[:40])
 
-    def test_a_platform_with_a_setup_guide_gets_both_chips(self):
+    def test_a_platform_with_a_setup_guide_gets_the_setup_chip(self):
         out = render("platforms/mbedtls/index.md")
-        self.assertIn("[API reference](../../api/group__platform__mbedtls.md){ .ss-chip .ss-chip--api }", out)
         self.assertIn("[Setup](setup.md){ .ss-chip .ss-chip--setup }", out)
 
-    def test_every_platform_has_both_chips_today(self):
+    def test_no_chip_points_at_a_group_page(self):
+        # The groups are dropped from the build; a chip to one would 404.
+        for slug in h._index(CONFIG)[1]:
+            self.assertNotIn("group__platform__", render(f"platforms/{slug}/index.md"), slug)
+
+    def test_every_platform_has_its_setup_chip_today(self):
         _, slugs, _labels, _manifest = h._index(CONFIG)
         for slug in slugs:
-            out = render(f"platforms/{slug}/index.md")
-            self.assertIn(".ss-chip--api", out, slug)
-            self.assertIn(".ss-chip--setup", out, slug)
+            self.assertIn(".ss-chip--setup", render(f"platforms/{slug}/index.md"), slug)
 
     def test_the_setup_chip_appears_only_when_the_page_does(self):
         # Every platform has a setup page now, so the absent case has to be
@@ -91,7 +93,6 @@ class PlatformPages(unittest.TestCase):
             out = render("platforms/posix/index.md")
         finally:
             h._CACHE.pop(root, None)
-        self.assertIn(".ss-chip--api", out)
         self.assertNotIn(".ss-chip--setup", out)
 
     def test_the_platforms_overview_is_not_a_platform(self):
@@ -159,36 +160,42 @@ class ShipsManifest(unittest.TestCase):
         self.assertNotIn("| |", h._ships([("X", "a | b")]).splitlines()[-1].replace("| X", ""))
 
 
-class GroupPages(unittest.TestCase):
-    # mkdoxy titles these in Doxygen's vocabulary and escapes the underscore.
-    RAW = "# Group platform\\_atomics\n\n[**Modules**](index_groups.md) **>** [**platform\\_atomics**](x.md)\n"
+class DroppedGroupPages(unittest.TestCase):
+    """A platform answers "what is this" in one place. The group pages said it
+    a second time, worse, so they never reach the site."""
 
-    def test_the_doxygen_title_becomes_the_platform_name(self):
-        out = render("api/group__platform__atomics.md", self.RAW)
-        self.assertTrue(out.startswith("# C11 atomics platform"), out[:50])
+    def files_after(self, *src_uris):
+        kept = h.on_files([types.SimpleNamespace(src_uri=u) for u in src_uris], CONFIG)
+        return [f.src_uri for f in kept]
 
-    def test_group_and_modules_do_not_reach_the_reader(self):
-        out = render("api/group__platform__atomics.md", self.RAW)
-        self.assertNotIn("Group", out)
-        self.assertNotIn("Modules", out)
-        self.assertNotIn("platform_atomics", out.replace("\\", ""))
+    def test_every_group_page_is_dropped(self):
+        _, slugs, _labels, _manifest = h._index(CONFIG)
+        pages = [f"api/group__platform__{slug}.md" for slug in slugs]
+        self.assertEqual(self.files_after(*pages), [])
 
-    def test_the_breadcrumb_points_at_the_platforms_overview(self):
-        out = render("api/group__platform__atomics.md", self.RAW)
-        self.assertIn("[**Platforms**](../platforms/index.md)", out)
+    def test_the_modules_index_goes_with_them(self):
+        # It exists only to list the groups, so it would link ten dead pages.
+        self.assertEqual(self.files_after("api/modules.md"), [])
 
-    def test_the_back_link_stays_inside_this_build(self):
-        raw = self.RAW + (
-            "Obligations: [https://docs.cososo.co.uk/solid-syslog/platforms/atomics/]"
-            "(https://docs.cososo.co.uk/solid-syslog/platforms/atomics/)\n"
+    def test_a_header_page_is_kept(self):
+        self.assertEqual(
+            self.files_after("api/SolidSyslogMbedTlsStream_8h.md"),
+            ["api/SolidSyslogMbedTlsStream_8h.md"],
         )
-        out = render("api/group__platform__atomics.md", raw)
-        self.assertIn("[C11 atomics](../platforms/atomics/index.md)", out)
-        self.assertNotIn("docs.cososo.co.uk", out)
 
-    def test_a_group_page_gets_no_platform_chip(self):
-        out = render("api/group__platform__atomics.md", self.RAW)
-        self.assertNotIn("ss-chip", out)
+    def test_a_platform_page_is_kept(self):
+        self.assertEqual(self.files_after("platforms/mbedtls/index.md"), ["platforms/mbedtls/index.md"])
+
+    def test_a_similarly_named_page_is_not_caught(self):
+        # group__platform__* only — a Core group, were one added, would stay.
+        self.assertEqual(self.files_after("api/group__core.md"), ["api/group__core.md"])
+
+    def test_the_index_of_indexes_stops_linking_modules(self):
+        raw = "  - [Related Pages](pages.md)\n  - [Modules](modules.md)\n  - [Files](files.md)\n"
+        out = render("api/links.md", raw)
+        self.assertNotIn("modules.md", out)
+        self.assertIn("[Files](files.md)", out)
+        self.assertIn("[Related Pages](pages.md)", out)
 
 
 class Registry(unittest.TestCase):
