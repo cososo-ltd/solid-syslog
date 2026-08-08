@@ -13,8 +13,8 @@
 
 /* xSemaphoreCreateMutexStatic returns a handle that is the same pointer
  * as the StaticSemaphore_t passed in, so the per-instance struct doesn't
- * carry a separate SemaphoreHandle_t — the kernel-primitive layout matches
- * the Posix (pthread_mutex_t) and Windows (CRITICAL_SECTION) adapters. */
+ * carry a separate SemaphoreHandle_t — the primitive is embedded directly,
+ * as in every Mutex adapter. */
 struct SolidSyslogFreeRtosMutex
 {
     struct SolidSyslogMutex Base;

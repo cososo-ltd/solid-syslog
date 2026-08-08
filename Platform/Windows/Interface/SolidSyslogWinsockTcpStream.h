@@ -1,6 +1,6 @@
 /** @file
  *  A non-blocking TCP stream over a Winsock socket, for a StreamSender or as the
- *  byte transport under a TlsStream.
+ *  byte transport under a TLS stream.
  *
  *  What the stream does through its vtable is the substance:
  *

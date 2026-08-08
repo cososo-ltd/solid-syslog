@@ -29,7 +29,7 @@ const struct SolidSyslogErrorSource PlusTcpTcpStreamErrorSource = {"PlusTcpTcpSt
 struct SolidSyslogAddress;
 
 /* SolidSyslogStream_Read returns < 0 to signal EOF/error (socket closed
- * internally); -1 is the in-tree convention shared with Posix/Winsock. */
+ * internally); -1 is the in-tree convention across the Stream adapters. */
 static const SolidSyslogSsize READ_FAILED = -1;
 
 enum

@@ -3,7 +3,7 @@
 
 /* Library-internal test seam. Tests replace these function pointers via
    CppUTest's UT_PTR_SET to inject fakes (MSVC does not support GCC's
-   weak/strong symbol override trick used by the POSIX SocketFake). */
+   weak/strong symbol override trick the SocketFake relies on). */
 
 #include "SolidSyslogExternC.h"
 

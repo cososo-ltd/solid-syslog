@@ -109,8 +109,8 @@ static enum SolidSyslogDatagramSendResult PlusTcpDatagram_SendTo(
 }
 
 /* FreeRTOS-Plus-TCP does not queue datagrams while ARP resolves: a sendto to
- * an unresolved peer drops at the IP layer. Linux/Windows kernels mask this
- * with internal ARP queuing; FreeRTOS does not. So on cache miss we issue a
+ * an unresolved peer drops at the IP layer. Host-class kernels mask this
+ * with internal ARP queuing; this stack does not. So on cache miss we issue a
  * probe and yield once for the reply to land. If the reply hasn't arrived in
  * time the sendto is allowed to fail or be dropped — UDP is best-effort and
  * retry belongs in the store-and-forward layer above, not here. */

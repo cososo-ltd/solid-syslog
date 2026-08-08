@@ -339,7 +339,7 @@ static bool LwipRawTcpStream_OutputResultIsAcceptable(err_t outputErr)
 static SolidSyslogSsize LwipRawTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size)
 {
     /* SolidSyslogStream_Read returns < 0 to signal EOF/error (socket closed
-     * internally); -1 is the in-tree convention shared with Posix/Winsock/PlusTcp. */
+     * internally); -1 is the in-tree convention across the Stream adapters. */
     static const SolidSyslogSsize READ_FAILED = -1;
 
     struct SolidSyslogLwipRawTcpStream* self = LwipRawTcpStream_SelfFromBase(base);

@@ -110,10 +110,9 @@ enum
        but POSIX-portable callers must pass the highest fd + 1. Pass any
        positive value to keep the call well-formed against either ABI. */
     WINSOCK_NFDS_IGNORED = 1,
-    /* Keepalive parameters mirror the POSIX TCP stream so the dead-peer
-       detection window is the same on both platforms: idle 45 + 4 * 10 = 85 s
-       worst case. Windows has no TCP_USER_TIMEOUT analogue, so the pending-
-       write case relies on the OS-default retransmit timeout. */
+    /* Dead-peer detection window: idle 45 + 4 * 10 = 85 s worst case.
+       Windows has no TCP_USER_TIMEOUT analogue, so the pending-write case
+       relies on the OS-default retransmit timeout. */
     KEEPALIVE_IDLE_SECONDS = 45,
     KEEPALIVE_INTERVAL_SECONDS = 10,
     KEEPALIVE_PROBE_COUNT = 4
@@ -244,9 +243,9 @@ static void WinsockTcpStream_EnableTcpNoDelay(SOCKET fd)
     WinsockTcpStream_setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (const char*) &enable, (int) sizeof(enable));
 }
 
-/* Mirrors the POSIX WinsockTcpStream_EnableKeepalive — Windows 10 1709+ exposes TCP_KEEPIDLE /
- * TCP_KEEPINTVL / TCP_KEEPCNT via setsockopt (declared in <mstcpip.h>), so the
- * shape matches the POSIX path one-for-one. No TCP_USER_TIMEOUT analogue. */
+/* Windows 10 1709+ exposes TCP_KEEPIDLE / TCP_KEEPINTVL / TCP_KEEPCNT via
+ * setsockopt (declared in <mstcpip.h>), so idle, interval and count are each
+ * set directly. No TCP_USER_TIMEOUT analogue. */
 static void WinsockTcpStream_EnableKeepalive(SOCKET fd)
 {
     int enable = 1;

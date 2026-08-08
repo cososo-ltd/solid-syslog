@@ -15,6 +15,17 @@ This checks that each of those exists for each row, and the reverse — a docs
 folder or a group with no row behind it. Registering a platform is then the one
 edit that cannot be forgotten, because forgetting anything else fails the build.
 
+It also holds two boundaries that hand review kept losing:
+
+* **No platform names another.** A platform describes itself completely; where
+  a capability comes from is the capability matrix's job. Naming a sibling
+  couples the two, so the eleventh platform means editing ten pages. Applies to
+  the platform's whole tree and its docs folder alike.
+* **Every class its platform ships is on its page.** A public header that is
+  not an Errors header declares something an integrator can wire, so it must be
+  reachable from the platform's index page — in the class table, or in a
+  section of its own where it is not a role.
+
 Run:  python3 scripts/check_platform_docs.py
 """
 
@@ -26,6 +37,50 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 REGISTRY = re.compile(r"set\(SOLIDSYSLOG_PLATFORM_REGISTRY(.*?)^\)", re.DOTALL | re.MULTILINE)
 ROW = re.compile(r'"([^"|]+)\|[^"|]*\|[^"|]*\|[^"|]*\|([^"|]+)\|[^"]*"')
+
+# What each platform is called in prose, where that differs from its registry
+# token. Tokens and class names are derived, so this is the only hand-kept part
+# of the vocabulary — and every registered token must appear, so adding a
+# platform forces the decision rather than silently widening the gap.
+ALIASES = {
+    "Atomics": [],
+    "FatFs": ["FatFs", "ChaN"],
+    "FreeRtos": ["FreeRTOS"],
+    "LwipRaw": ["lwIP"],
+    "MbedTls": ["Mbed TLS", "mbedTLS", "mbedtls"],
+    "OpenSsl": ["OpenSSL"],
+    # Plus-FAT and Plus-TCP are FreeRTOS-Plus-* products, so "FreeRTOS" is part
+    # of their own identity as much as it is the kernel pack's — each may name
+    # the kernel it sits on. The pack's token stays the pack's, so a page that
+    # points at the FreeRtos platform is still caught.
+    "PlusFat": ["FreeRTOS-Plus-FAT", "FreeRTOS"],
+    "PlusTcp": ["FreeRTOS-Plus-TCP", "FreeRTOS"],
+    "Posix": ["POSIX"],
+    "Windows": ["Winsock", "Win32"],
+}
+
+# Deliberate exemptions, each with the reason it is not a boundary breach.
+# Printed on every run: an exemption nobody sees is an exemption nobody
+# revisits.
+ALLOWED = [
+    (
+        "Platform/Windows/Source/SolidSyslogWindowsFile.c",
+        "POSIX",
+        "names the OS standard the MSVC call is measured against, not the Posix platform",
+    ),
+    (
+        "Platform/Windows/Source/SolidSyslogWinsockTcpStream.c",
+        "POSIX",
+        "names the OS standard the MSVC call is measured against, not the Posix platform",
+    ),
+]
+
+SCANNED_SUFFIXES = (".c", ".h", ".dox", ".md")
+
+# An #include names a header the compiler must find, not a platform the prose
+# is describing. The boundary is editorial; what a translation unit depends on
+# is the build's business and is governed there.
+INCLUDE = re.compile(r"^\s*#\s*include")
 
 
 def read(*parts):
@@ -51,14 +106,93 @@ def documented():
     }
 
 
+def vocabulary(rows):
+    """Every term that names a platform, mapped to the tokens that may use it.
+
+    Three sources, only one of them hand-kept: the registry token itself, the
+    prose aliases above, and the class names taken from the platform's own
+    Interface headers — in both their full and bare spellings, since prose says
+    PosixTcpStream where code says SolidSyslogPosixTcpStream.
+
+    A term can have more than one owner: "FreeRTOS" belongs to the kernel pack
+    and to the two FreeRTOS-Plus-* platforms built on it alike.
+    """
+    terms = {}
+    for token, directory in rows:
+        for alias in [token] + ALIASES.get(token, []):
+            terms.setdefault(alias, set()).add(token)
+        interface = os.path.join(ROOT, directory, "Interface")
+        for header in sorted(os.listdir(interface)) if os.path.isdir(interface) else []:
+            if header.endswith(".h"):
+                stem = header[: -len(".h")]
+                terms.setdefault(stem, set()).add(token)
+                terms.setdefault(stem[len("SolidSyslog") :], set()).add(token)
+    return terms
+
+
+def scanned(directory, slug):
+    """Everything that speaks for one platform: its own tree, and its pages."""
+    for base in (os.path.join(ROOT, directory), os.path.join(ROOT, "docs", "platforms", slug)):
+        for path, _, names in os.walk(base):
+            for name in sorted(names):
+                if name.endswith(SCANNED_SUFFIXES):
+                    yield os.path.relpath(os.path.join(path, name), ROOT)
+
+
+def naming_faults(rows, terms):
+    """Flag a platform naming another, longest term first so FreeRTOS-Plus-TCP
+    is read as itself rather than as FreeRTOS."""
+    ordered = sorted(terms, key=len, reverse=True)
+    pattern = re.compile(r"(?<![\w-])(" + "|".join(re.escape(t) for t in ordered) + r")(?![\w-])")
+    exempt = {(path, term) for path, term, _ in ALLOWED}
+    faults = []
+
+    for token, directory in rows:
+        for relative in scanned(directory, token.lower()):
+            for number, line in enumerate(read(relative).splitlines(), 1):
+                if INCLUDE.match(line):
+                    continue
+                for term in {m.group(1) for m in pattern.finditer(line)}:
+                    owners = terms[term]
+                    if token not in owners and (relative, term) not in exempt:
+                        named = "/".join(sorted(owners))
+                        faults.append(
+                            f"{token}: {relative}:{number} names {named} "
+                            f'("{term}") — a platform describes only itself'
+                        )
+    return faults
+
+
+def unlisted_headers(rows):
+    """Every non-Errors public header must be reachable from the index page."""
+    faults = []
+    for token, directory in rows:
+        slug = token.lower()
+        page = os.path.join("docs", "platforms", slug, "index.md")
+        if not os.path.isfile(os.path.join(ROOT, page)):
+            continue
+        listed = read(page)
+        interface = os.path.join(ROOT, directory, "Interface")
+        for header in sorted(os.listdir(interface)) if os.path.isdir(interface) else []:
+            stem = header[: -len(".h")]
+            if header.endswith(".h") and not stem.endswith("Errors") and stem not in listed:
+                faults.append(f"{token}: {header} is not linked from {page}")
+    return faults
+
+
 def check():
     faults = []
     nav = read("mkdocs.yml")
     descriptions = read("hooks", "page_descriptions.py")
     matrix = read("docs", "platforms", "index.md")
     slugs = set()
+    rows = registered()
 
-    for token, directory in registered():
+    for token, _ in rows:
+        if token not in ALIASES:
+            faults.append(f"{token}: no ALIASES entry — add its prose spellings, or [] if the token is the only one")
+
+    for token, directory in rows:
         slug = token.lower()
         slugs.add(slug)
         docs = os.path.join("docs", "platforms", slug)
@@ -90,6 +224,8 @@ def check():
     for slug in sorted(documented() - slugs):
         faults.append(f"docs/platforms/{slug}/ documents a platform that is not registered")
 
+    faults.extend(unlisted_headers(rows))
+    faults.extend(naming_faults(rows, vocabulary(rows)))
     return faults
 
 
@@ -104,4 +240,6 @@ if __name__ == "__main__":
             file=sys.stderr,
         )
         sys.exit(1)
-    print(f"platform docs: {len(registered())} platforms, all documented")
+    for path, term, reason in ALLOWED:
+        print(f"allowed: {path} may say {term} — {reason}")
+    print(f"platform docs: {len(registered())} platforms, all documented, none naming another")

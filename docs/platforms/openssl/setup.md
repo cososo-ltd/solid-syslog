@@ -7,11 +7,12 @@ page is the wiring.
 
 ## What you need
 
-OpenSSL 3.0 or later on the include and link path. With CMake, selecting the
-platform is enough:
+OpenSSL 3.0 or later on the include and link path, and a platform supplying the
+TCP stream underneath — the [capability matrix](../index.md) shows which fill
+that role.
 
 ```cmake
-set(SOLIDSYSLOG_PLATFORMS "Posix;OpenSsl")
+set(SOLIDSYSLOG_PLATFORMS "OpenSsl")  # and the one supplying your TCP stream
 ```
 
 OpenSSL is a stable system API rather than a header-configured upstream, so the
@@ -22,11 +23,10 @@ Make and IDE routes.
 ## The layering
 
 TLS is a Stream wrapped around another Stream. The TLS adapter carries the
-records; the transport underneath carries the bytes, and it can be any Stream —
-here the POSIX TCP one.
+records; the transport underneath carries the bytes, and it can be any Stream.
 
 ```text
-StreamSender → SolidSyslogTlsStream → SolidSyslogPosixTcpStream → socket
+StreamSender → SolidSyslogTlsStream → your TCP stream → socket
 ```
 
 The TLS stream **borrows** its transport. It may close it, but it never destroys
@@ -36,12 +36,13 @@ until `SolidSyslogTlsStream_Destroy`.
 ## Wiring it
 
 ```c
-struct SolidSyslogStream* transport = SolidSyslogPosixTcpStream_Create(NULL);
+/* Your TCP stream and sleep, from the platform that supplies them. */
+struct SolidSyslogStream* transport = CreateTcpStream();
 
 static struct SolidSyslogTlsStreamConfig tlsConfig;
 tlsConfig = (struct SolidSyslogTlsStreamConfig) {0};
 tlsConfig.Transport = transport;
-tlsConfig.Sleep = SolidSyslogPosixSleep;      /* required — no fallback */
+tlsConfig.Sleep = MySleep;                    /* required — no fallback */
 tlsConfig.CaBundlePath = "/etc/ssl/collector-ca.pem";
 tlsConfig.ServerName = "collector.example.net";
 
@@ -66,7 +67,7 @@ static struct SolidSyslogStreamSenderConfig senderConfig;
 senderConfig = (struct SolidSyslogStreamSenderConfig) {0};
 senderConfig.Resolver = resolver;
 senderConfig.Stream   = tls;
-senderConfig.Address  = SolidSyslogPosixAddress_Create();
+senderConfig.Address  = CreateAddress();      /* your platform's Address */
 senderConfig.Endpoint = GetEndpoint;
 struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&senderConfig);
 ```

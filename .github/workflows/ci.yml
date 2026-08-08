@@ -776,6 +776,8 @@ jobs:
       # asserts that its pages, group, nav entry, description and matrix row
       # all exist, and that nothing documents a platform that is not
       # registered — so registering one is the only edit that can be forgotten.
+      # It also holds the two boundaries hand review kept losing: no platform
+      # names another, and every class a platform ships is on its page.
       - name: Check every platform is documented
         run: python3 scripts/check_platform_docs.py
 

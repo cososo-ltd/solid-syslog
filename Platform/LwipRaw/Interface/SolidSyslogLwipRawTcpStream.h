@@ -1,6 +1,6 @@
 /** @file
  *  A TCP stream over the lwIP Raw API, for a StreamSender or as the byte
- *  transport under a TlsStream / MbedTlsStream.
+ *  transport under a TLS stream.
  *
  *  Every lwIP call runs under the SolidSyslogLwipRaw_Marshal hop; the callbacks
  *  lwIP fires back (connected / recv / err) only flip flags, so they stay

@@ -30,8 +30,8 @@ void FreeRtosMutex_Initialise(struct SolidSyslogMutex* base)
      * configSUPPORT_STATIC_ALLOCATION is not 1 — a compile-time config
      * gate, not a runtime failure mode. Guarded anyway so a misconfigured
      * integrator falls back to the NullMutex vtable instead of corrupting
-     * Lock/Unlock with a dangling handle, mirroring PosixMutex's defence
-     * against pthread_mutex_init failure. */
+     * Lock/Unlock with a dangling handle — the same defence every Mutex
+     * adapter applies to its own primitive's init failure. */
     if (xSemaphoreCreateMutexStatic(&self->Buffer) != NULL)
     {
         self->Base.Lock = FreeRtosMutex_Lock;

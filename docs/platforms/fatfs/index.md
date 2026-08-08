@@ -1,8 +1,8 @@
 # FatFs
 
 `Platform/FatFs/` wraps ChaN FatFs as the File layer
-([FatFs documentation](http://elm-chan.org/fsw/ff/)). RTOS-agnostic — bare-metal,
-FreeRTOS, Zephyr, NuttX.
+([FatFs documentation](http://elm-chan.org/fsw/ff/)). RTOS-agnostic — bare-metal
+or under any RTOS.
 
 Fills the [File](../../api/structSolidSyslogFile.md) role — the primitive beneath a
 BlockDevice.

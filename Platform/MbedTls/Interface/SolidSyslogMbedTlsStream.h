@@ -1,8 +1,8 @@
 /** @file
  *  TLS over an injected byte-transport Stream via Mbed TLS, itself a Stream — so
  *  a StreamSender speaks TLS to a remote collector without knowing the transport
- *  underneath (PosixTcpStream, PlusTcpTcpStream, or any caller-supplied byte
- *  Stream).
+ *  underneath, whether a TCP stream from a platform pack or one the caller
+ *  supplies.
  *
  *  What the stream does through its vtable is the substance:
  *

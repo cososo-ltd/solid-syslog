@@ -79,10 +79,6 @@ static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromBase(struct Sol
 
 static bool WindowsFile_Open(struct SolidSyslogFile* base, const char* path)
 {
-    /* _sopen_s is the non-deprecated MSVC equivalent of POSIX open(): the
-     * plain _open triggers C4996 (Microsoft's safe-CRT preference) and
-     * _CRT_SECURE_NO_WARNINGS is forbidden by the project's banned-API
-     * policy. _SH_DENYNO matches POSIX open()'s default of no share mode. */
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
     errno_t err = _sopen_s(&self->Fd, path, DEFAULT_OPEN_FLAGS, _SH_DENYNO, DEFAULT_FILE_PERMISSIONS);
     if (err != 0)
