@@ -38,7 +38,7 @@ without renaming what's already there.
 | `build-freertos-target-lwip` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;Atomics`) |
 | `bdd-freertos-qemu-plustcp` | — | Pulls the Plus-TCP target ELF, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
 | `bdd-freertos-qemu-lwip` | — | The same scenarios against the lwIP target ELF |
-| `consumer-smoke-linux` | — | Builds [`ci/consumer-smoke/`](../ci/consumer-smoke/) as a FetchContent consumer, proving the documented integration path still works |
+| `consumer-smoke-linux` | — | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
 | `consumer-smoke-freertos-cross` | — | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
 | `verify-manifest` | — | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
 | `docs-build` | — | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`; on `main`, `deploy-docs-pages` publishes it to GitHub Pages |
@@ -79,7 +79,7 @@ and weekly so that queries GitHub ships later are applied to unchanged code. Fin
 appear under **Security → Code scanning**, not in the job log.
 
 CodeQL analyses what the compiler compiled and nothing else, so the build it observes
-is the analysis scope. The lane builds [`ci/consumer-smoke/`](../ci/consumer-smoke/) —
+is the analysis scope. The lane builds `ci/consumer-smoke/` —
 the same FetchContent consumer documented in
 [Adding it to your build](build-integration.md) — so the code analysed is the code an
 integrator compiles. Consuming the library as a subproject also scopes the database

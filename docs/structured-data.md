@@ -17,7 +17,7 @@ custom element therefore cannot produce malformed structured data, and a value c
 break out of its quotes; whatever bytes you hand it stay inside the `"..."`.
 
 The complete worked example below lives at
-[`Bdd/Targets/Common/BddTargetCustomSd.c`](../Bdd/Targets/Common/BddTargetCustomSd.c).
+`Bdd/Targets/Common/BddTargetCustomSd.c`.
 
 ## The two writer types
 

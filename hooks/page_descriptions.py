@@ -188,7 +188,7 @@ DESCRIPTIONS = {
         "drains a record, and the role implementations that need no platform."
     ),
     "roles/index.md": (
-        "The twelve vtable contracts SolidSyslog composes against, what fills "
+        "The vtable contracts SolidSyslog composes against, what fills "
         "each one, and the Null fallback that keeps an unfilled role safe."
     ),
     "assets/postit/README.md": (

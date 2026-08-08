@@ -427,7 +427,7 @@ Core headers live under `Core/Interface/`; each platform pack puts its own under
 **Each header's `@file` brief is the authoritative description of what it provides and
 why.** Read the header rather than a copy of it. For the wider map:
 
-- `docs/roles/index.md` — the twelve roles, each with its vtable contract and the backends
+- `docs/roles/index.md` — the roles, each with its vtable contract and the backends
   that realise it.
 - `docs/platforms/*.md` — what each platform pack supplies.
 - `docs/api-reference/` plus the generated Doxygen indexes (`docs/api/files.md`,

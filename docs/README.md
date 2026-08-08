@@ -34,7 +34,7 @@ Everything you need to consume SolidSyslog in your product.
 - [Adding it to your build](build-integration.md): the build detail. The capability matrix, the three ways to consume the library (CMake, Make, and a source manifest for an IDE project), and the compile-time tunables.
 - [Authoring custom structured data](structured-data.md): attaching RFC 5424 SD-ELEMENTs.
 - [Error-event severity policy](error-severity.md): installing an error handler and reading the event axes.
-- Tunables: the compile-time limits, all `#ifndef`-guarded. See [Adding it to your build → Tunables](build-integration.md#tunables) and [`Core/Interface/SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h).
+- Tunables: the compile-time limits, all `#ifndef`-guarded. See [Adding it to your build → Tunables](build-integration.md#tunables) and [`Core/Interface/SolidSyslogTunablesDefaults.h`](api/SolidSyslogTunablesDefaults_8h.md).
 
 ## Platforms
 
@@ -44,8 +44,8 @@ what that platform ships and what wiring it needs; the pages above speak of them
 in the general case.
 
 - [Platform × capability matrix](platforms/index.md): start here. Read across a row for what a platform gives you, down a column for who provides a capability.
-- [Porting guide](porting.md): nothing shipped fits your target. The role model, the anatomy of an adapter (instance shape, the no-`malloc` static pool, the error convention), the invariants every adapter must honour, and the twelve vtable role contracts, each with its Null fallback and shipped reference implementation.
-- The contracts themselves: the `SolidSyslog*Definition.h` vtables under [`Core/Interface/`](../Core/Interface/). [`Platform/Posix/`](../Platform/Posix/) is the reference implementation to read alongside them.
+- [Porting guide](porting.md): nothing shipped fits your target. The role model, the anatomy of an adapter (instance shape, the no-`malloc` static pool, the error convention), the invariants every adapter must honour, and the vtable role contracts, each with its shipped reference implementation.
+- The contracts themselves: the `SolidSyslog*Definition.h` vtables under `Core/Interface/`. `Platform/Posix/` is the reference implementation to read alongside them.
 
 ## Compliance
 

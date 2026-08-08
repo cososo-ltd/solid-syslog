@@ -17,15 +17,29 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The contract a byte-stream transport (TCP, TLS over TCP) fills in; the
      *  library drives it from the servicing pass, so it need not be reentrant.
-     *  Each slot's semantics are the corresponding SolidSyslogStream_* function
-     *  in SolidSyslogStream.h; an implementer must honour them, notably the
-     *  non-blocking bounded behaviour and the close-on-failure lifecycle that
-     *  lets the caller reconnect with a bare Open. */
+     *  What a caller may expect of each call is documented on the corresponding
+     *  SolidSyslogStream_* function in SolidSyslogStream.h; what follows is the
+     *  same contract as obligations on the implementer. */
     struct SolidSyslogStream
     {
+        /** Bound the connect, and any handshake above it. One servicing pass
+         *  drives every sender, so a connect that blocks stalls the whole drain,
+         *  not just this stream. Leave nothing open on a failed path: the caller
+         *  retries with a bare Open and never calls Close first. */
         bool (*Open)(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+        /** All-or-nothing. Never report a partial write as success — the record
+         *  is gone from the caller's hands once you return true. If the whole
+         *  buffer cannot go, close internally and return false; the caller
+         *  reopens and store-and-forward replays. */
         bool (*Send)(struct SolidSyslogStream* base, const void* buffer, size_t size);
+        /** Return 0 when nothing is available, never a negative — the two are
+         *  acted on differently, and a would-block reported as an error costs a
+         *  reconnect on an idle link. Reserve the negative return for a real
+         *  teardown, and close internally before making it. */
         SolidSyslogSsize (*Read)(struct SolidSyslogStream* base, void* buffer, size_t size);
+        /** Idempotent, and leaves the instance reusable — a later Open
+         *  reconnects it. Called on a stream that is already closed, on one that
+         *  never opened, and again from Destroy. */
         void (*Close)(struct SolidSyslogStream* base);
     };
 

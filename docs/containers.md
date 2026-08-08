@@ -194,4 +194,4 @@ The same VS Code keys work across every service:
   QEMU run for sanity-checking the build, output to the integrated
   terminal. Use only in the `freertos-target` service.
 
-For the FreeRTOS BDD target, see [Bdd/Targets/FreeRtos/README.md](../Bdd/Targets/FreeRtos/README.md) for build / run / GDB-attach instructions.
+For the FreeRTOS BDD target, see `Bdd/Targets/FreeRtos/README.md` for build / run / GDB-attach instructions.

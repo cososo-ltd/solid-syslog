@@ -40,7 +40,7 @@ fail here.
 BDD targets pair with their own oracle so jobs and developers
 switching containers never interfere. Each pair lives on its own
 bridge network so the `syslog-ng` DNS alias is scoped per-pair;
-see [`Bdd/README.md`](../Bdd/README.md) for the per-target compose
+see `Bdd/README.md` for the per-target compose
 layout, the `BDD_TARGET` env-var contract, and FreeRTOS local
 fault-finding tips.
 
@@ -229,7 +229,7 @@ docker compose -f .devcontainer/docker-compose.yml run --rm behave-linux \
 ```
 
 For the FreeRTOS pair (cross-build the ELF, then run Behave via QEMU
-inside `freertos-target`), see [`Bdd/README.md`](../Bdd/README.md).
+inside `freertos-target`), see `Bdd/README.md`.
 
 ## Verifying syslog-ng manually
 

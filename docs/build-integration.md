@@ -204,7 +204,7 @@ build. You can drop the `set()` entirely and let auto-detection find the same
 stack; declare it when you would rather the build state its platforms than
 infer them.
 
-[`ci/consumer-smoke/`](../ci/consumer-smoke/) is a working consumer of this
+`ci/consumer-smoke/` is a working consumer of this
 shape, kept honest by CI: it cross-builds with the environment scrubbed, so
 `SOLIDSYSLOG_PLATFORMS` is the only thing that can select a platform, and it
 links them rather than merely checking the targets exist.
@@ -214,8 +214,8 @@ SolidSyslog also has `SOLIDSYSLOG_LWIP_PATH` and siblings. Those build
 headers — a consumer never sets them.
 
 See the worked target wiring in
-[`Bdd/Targets/FreeRtos/`](../Bdd/Targets/FreeRtos/) and
-[`Bdd/Targets/FreeRtosLwip/`](../Bdd/Targets/FreeRtosLwip/) (both consume the
+`Bdd/Targets/FreeRtos/` and
+`Bdd/Targets/FreeRtosLwip/` (both consume the
 umbrellas), and the platform-specific guides:
 
 - [Integrating with lwIP (Raw API)](platforms/lwipraw/setup.md)
@@ -425,7 +425,7 @@ that platform's own setup guide, reached from its page in
 ## Tunables
 
 All compile-time limits live in
-[`Core/Interface/SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h),
+[`Core/Interface/SolidSyslogTunablesDefaults.h`](api/SolidSyslogTunablesDefaults_8h.md),
 multiple values, every one `#ifndef`-guarded so you override without editing the
 library. Two equivalent mechanisms (works the same for CMake and non-CMake):
 
