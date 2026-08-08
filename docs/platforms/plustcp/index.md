@@ -8,13 +8,6 @@ address handle they share.
 
 ## What it ships
 
-| Class | Role |
-|---|---|
-| [`SolidSyslogPlusTcpResolver`](../../api/SolidSyslogPlusTcpResolver_8h.md) | DNS resolver (`FreeRTOS_getaddrinfo`) |
-| [`SolidSyslogPlusTcpAddress`](../../api/SolidSyslogPlusTcpAddress_8h.md) | address (`freertos_sockaddr`) |
-| [`SolidSyslogPlusTcpDatagram`](../../api/SolidSyslogPlusTcpDatagram_8h.md) | UDP sender |
-| [`SolidSyslogPlusTcpTcpStream`](../../api/SolidSyslogPlusTcpTcpStream_8h.md) | TCP stream (bounded connect) |
-
 ## Requirements
 
 FreeRTOS-Plus-TCP, selected at CMake time with

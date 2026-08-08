@@ -8,12 +8,6 @@ integrity and confidentiality.
 
 ## What it ships
 
-| Class | Role |
-|---|---|
-| [`SolidSyslogMbedTlsStream`](../../api/SolidSyslogMbedTlsStream_8h.md) | TLS stream over an injected byte transport |
-| [`SolidSyslogMbedTlsHmacSha256Policy`](../../api/SolidSyslogMbedTlsHmacSha256Policy_8h.md) | at-rest HMAC-SHA256 |
-| [`SolidSyslogMbedTlsAesGcmPolicy`](../../api/SolidSyslogMbedTlsAesGcmPolicy_8h.md) | at-rest AES-256-GCM |
-
 ## Requirements
 
 The adapter sources compile in your target against your own

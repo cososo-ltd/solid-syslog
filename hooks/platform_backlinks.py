@@ -28,6 +28,14 @@ import re
 REGISTRY = re.compile(r"set\(SOLIDSYSLOG_PLATFORM_REGISTRY(.*?)^\)", re.DOTALL | re.MULTILINE)
 ROW = re.compile(r'"([^"|]+)\|[^"|]*\|[^"|]*\|[^"|]*\|([^"|]+)\|[^"]*"')
 MODULES_CRUMB = re.compile(r"\[\*\*Modules\*\*\]\([^)]*\)")
+# The @file block down to its first blank comment line, and the first sentence
+# of it — Doxygen's own implicit brief, so the page and the generated reference
+# say the same thing because they read the same source.
+FILE_BLOCK = re.compile(r"/\*\*\s*@file\s*\n(.*?)(?:\n[ \t]*\*[ \t]*\n|\*/)", re.DOTALL)
+SENTENCE_END = re.compile(r"(?<=[a-z0-9)\]])\.(?:\s|$)")
+# The section the manifest replaces. Everything to the next heading is
+# generated, so the page source carries the heading alone.
+SHIPS = re.compile(r"^(## What it ships[ \t]*\n)(.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL)
 # A definition, not a forward declaration — the brace is what distinguishes
 # `struct SolidSyslogMbedTlsStreamConfig {` from `struct SolidSyslogStream;`.
 STRUCT_DEF = re.compile(r"struct\s+(SolidSyslog\w+)\s*\{", re.MULTILINE)
@@ -56,19 +64,34 @@ def _group_slug(src_uri):
     return leaf[len(prefix) :] if leaf.startswith(prefix) else None
 
 
+def _brief(text):
+    """A header's implicit brief — the first sentence of its @file block."""
+    block = FILE_BLOCK.search(text)
+    if block is None:
+        return ""
+    body = " ".join(line.strip().lstrip("*").strip() for line in block.group(1).splitlines())
+    split = SENTENCE_END.search(body)
+    return (body[: split.end()] if split else body).strip()
+
+
 def _index(config):
-    """Return (headers, slugs, labels) built from the platform registry.
+    """Return (headers, slugs, labels, manifest) built from the platform registry.
 
     ``headers`` maps both a header stem and a struct name to its platform, so
     every generated page for a platform — file or data structure — can be
     labelled. Core's structs are absent by construction: only the platform
     Interface directories are scanned.
+
+    ``manifest`` is the ordered (stem, brief) list per platform, which becomes
+    the *What it ships* table. Generated rather than written, because a list of
+    filenames and their own briefs is mechanical: hand-keeping one per platform
+    is clerical work that drifts the moment a header is added.
     """
     root = os.path.dirname(config["config_file_path"])
     if root not in _CACHE:
         with open(os.path.join(root, "CMakeLists.txt"), encoding="utf-8") as cmake:
             registry = REGISTRY.search(cmake.read())
-        headers, slugs, labels = {}, {}, {}
+        headers, slugs, labels, manifest = {}, {}, {}, {}
         for token, directory in ROW.findall(registry.group(1)) if registry else []:
             interface = os.path.join(root, directory, "Interface")
             if not os.path.isdir(interface):
@@ -77,15 +100,27 @@ def _index(config):
             labels[slug] = _label(root, slug)
             pack = (labels[slug], slug)
             slugs[slug] = os.path.isfile(os.path.join(root, "docs", PLATFORM_PREFIX, slug, "setup.md"))
-            for name in os.listdir(interface):
+            manifest[slug] = []
+            for name in sorted(os.listdir(interface)):
                 if not name.endswith(".h"):
                     continue
-                headers[name[: -len(".h")]] = pack
+                stem = name[: -len(".h")]
+                headers[stem] = pack
                 with open(os.path.join(interface, name), encoding="utf-8") as header:
-                    for struct in STRUCT_DEF.findall(header.read()):
-                        headers[struct] = pack
-        _CACHE[root] = (headers, slugs, labels)
+                    text = header.read()
+                manifest[slug].append((stem, _brief(text)))
+                for struct in STRUCT_DEF.findall(text):
+                    headers[struct] = pack
+        _CACHE[root] = (headers, slugs, labels, manifest)
     return _CACHE[root]
+
+
+def _ships(entries):
+    """The manifest table: every header the platform publishes, by filename."""
+    rows = ["| Header | What it is |", "|---|---|"]
+    for stem, brief in entries:
+        rows.append(f"| [`{stem}.h`](../../api/{stem}_8h.md) | {brief.replace('|', r'\|')} |")
+    return "\n".join(rows)
 
 
 def _relativise(markdown, slug, label):
@@ -117,7 +152,7 @@ def _stem(src_uri):
 
 def on_page_markdown(markdown, page, config, files, **kwargs):
     src_uri = getattr(page.file, "src_uri", None) or page.file.src_path.replace(os.sep, "/")
-    headers, slugs, labels = _index(config)
+    headers, slugs, labels, manifest = _index(config)
 
     if src_uri.startswith(GENERATED_PREFIX):
         # A group page arrives titled in Doxygen's vocabulary — "Group
@@ -160,6 +195,7 @@ def on_page_markdown(markdown, page, config, files, **kwargs):
         # One line, so the inline-flex chips sit side by side; placed under the
         # title rather than above it, so the page still opens with its name.
         title, _, body = markdown.partition("\n")
-        return f"{title}\n\n{' '.join(chips)}\n\n{body.lstrip()}"
+        markdown = f"{title}\n\n{' '.join(chips)}\n\n{body.lstrip()}"
+        return SHIPS.sub(lambda m: f"{m.group(1)}\n{_ships(manifest[slug])}\n\n", markdown, count=1)
 
     return markdown

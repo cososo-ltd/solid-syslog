@@ -8,10 +8,6 @@ BlockDevice.
 
 ## What it ships
 
-| Class | Role |
-|---|---|
-| [`SolidSyslogPlusFatFile`](../../api/SolidSyslogPlusFatFile_8h.md) | file — cache flush after every write |
-
 ## Requirements
 
 FreeRTOS — Plus-FAT is FreeRTOS-coupled. Supply an `FF_Disk_t` media driver and

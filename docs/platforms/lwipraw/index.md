@@ -11,17 +11,6 @@ address handle they share. A TLS platform layers over the TCP stream; the
 
 ## What it ships
 
-| Class | Role |
-|---|---|
-| [`SolidSyslogLwipRawAddress`](../../api/SolidSyslogLwipRawAddress_8h.md) | destination handle |
-| [`SolidSyslogLwipRawResolver`](../../api/SolidSyslogLwipRawResolver_8h.md) | numeric IPv4 resolver |
-| [`SolidSyslogLwipRawDnsResolver`](../../api/SolidSyslogLwipRawDnsResolver_8h.md) | DNS resolver (`LWIP_DNS=1`) |
-| [`SolidSyslogLwipRawDatagram`](../../api/SolidSyslogLwipRawDatagram_8h.md) | UDP sender |
-| [`SolidSyslogLwipRawTcpStream`](../../api/SolidSyslogLwipRawTcpStream_8h.md) | TCP byte transport |
-
-The source calls lwIP only — no direct OS calls. The TCP stream's synchronous
-Open needs a bounded sleep, injected as a `SolidSyslogSleepFunction`.
-
 ## The marshal
 
 Not a role: [`SolidSyslogLwipRaw_SetMarshal`](../../api/SolidSyslogLwipRawMarshal_8h.md)
@@ -40,6 +29,9 @@ moment the hop returns. `tcpip_callback_with_block(…, 1)` or a `LOCK_TCPIP_COR
 `UNLOCK_TCPIP_CORE` pair satisfy that; a bare `tcpip_callback` does not.
 
 ## Requirements
+
+The source calls lwIP only — no direct OS calls. The TCP stream's synchronous
+Open needs a bounded sleep, injected as a `SolidSyslogSleepFunction`.
 
 Your `lwipopts.h` must enable the features the adapter wraps:
 

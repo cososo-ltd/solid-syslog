@@ -9,10 +9,6 @@ BlockDevice.
 
 ## What it ships
 
-| Class | Role |
-|---|---|
-| [`SolidSyslogFatFsFile`](../../api/SolidSyslogFatFsFile_8h.md) | file — `f_sync` after every write |
-
 ## Requirements
 
 Your `ffconf.h`, a `diskio.c` media driver, and — if `FF_FS_REENTRANT=1` — an

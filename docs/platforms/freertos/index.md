@@ -9,11 +9,6 @@ Fills the Mutex [role](../../roles/index.md), plus a sysUpTime callback.
 
 ## What it ships
 
-| Class | Role |
-|---|---|
-| [`SolidSyslogFreeRtosMutex`](../../api/SolidSyslogFreeRtosMutex_8h.md) | mutex (`xSemaphoreCreateMutexStatic`) |
-| [`SolidSyslogFreeRtosSysUpTime`](../../api/SolidSyslogFreeRtosSysUpTime_8h.md) | uptime (`xTaskGetTickCount`) |
-
 ## Requirements
 
 `configSUPPORT_STATIC_ALLOCATION=1` — the mutex uses static allocation.

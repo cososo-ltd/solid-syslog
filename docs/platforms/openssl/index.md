@@ -8,12 +8,6 @@ integrity and confidentiality.
 
 ## What it ships
 
-| Class | Role |
-|---|---|
-| [`SolidSyslogTlsStream`](../../api/SolidSyslogTlsStream_8h.md) | TLS stream over an injected byte transport |
-| [`SolidSyslogOpenSslHmacSha256Policy`](../../api/SolidSyslogOpenSslHmacSha256Policy_8h.md) | at-rest HMAC-SHA256 |
-| [`SolidSyslogOpenSslAesGcmPolicy`](../../api/SolidSyslogOpenSslAesGcmPolicy_8h.md) | at-rest AES-256-GCM |
-
 ## Requirements
 
 OpenSSL 3.0 or later.
