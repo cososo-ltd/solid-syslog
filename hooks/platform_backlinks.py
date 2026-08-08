@@ -28,6 +28,9 @@ import re
 REGISTRY = re.compile(r"set\(SOLIDSYSLOG_PLATFORM_REGISTRY(.*?)^\)", re.DOTALL | re.MULTILINE)
 ROW = re.compile(r'"([^"|]+)\|[^"|]*\|[^"|]*\|[^"|]*\|([^"|]+)\|[^"]*"')
 MODULES_CRUMB = re.compile(r"\[\*\*Modules\*\*\]\([^)]*\)")
+# A definition, not a forward declaration — the brace is what distinguishes
+# `struct SolidSyslogMbedTlsStreamConfig {` from `struct SolidSyslogStream;`.
+STRUCT_DEF = re.compile(r"struct\s+(SolidSyslog\w+)\s*\{", re.MULTILINE)
 CANONICAL = "https://docs.cososo.co.uk/solid-syslog/"
 
 GENERATED_PREFIX = "api/"
@@ -54,7 +57,13 @@ def _group_slug(src_uri):
 
 
 def _index(config):
-    """Return (headers, slugs, labels) built from the platform registry."""
+    """Return (headers, slugs, labels) built from the platform registry.
+
+    ``headers`` maps both a header stem and a struct name to its platform, so
+    every generated page for a platform — file or data structure — can be
+    labelled. Core's structs are absent by construction: only the platform
+    Interface directories are scanned.
+    """
     root = os.path.dirname(config["config_file_path"])
     if root not in _CACHE:
         with open(os.path.join(root, "CMakeLists.txt"), encoding="utf-8") as cmake:
@@ -69,8 +78,12 @@ def _index(config):
             pack = (labels[slug], slug)
             slugs[slug] = os.path.isfile(os.path.join(root, "docs", PLATFORM_PREFIX, slug, "setup.md"))
             for name in os.listdir(interface):
-                if name.endswith(".h"):
-                    headers[name[: -len(".h")]] = pack
+                if not name.endswith(".h"):
+                    continue
+                headers[name[: -len(".h")]] = pack
+                with open(os.path.join(interface, name), encoding="utf-8") as header:
+                    for struct in STRUCT_DEF.findall(header.read()):
+                        headers[struct] = pack
         _CACHE[root] = (headers, slugs, labels)
     return _CACHE[root]
 
@@ -89,9 +102,17 @@ def _relativise(markdown, slug, label):
 
 
 def _stem(src_uri):
-    """api/SolidSyslogMbedTlsStream_8h.md -> SolidSyslogMbedTlsStream."""
+    """The header or struct a generated page documents, else None.
+
+    api/SolidSyslogMbedTlsStream_8h.md          -> SolidSyslogMbedTlsStream
+    api/structSolidSyslogMbedTlsStreamConfig.md -> SolidSyslogMbedTlsStreamConfig
+    """
     leaf = src_uri[len(GENERATED_PREFIX) : -len(".md")]
-    return leaf[: -len("_8h")] if leaf.endswith("_8h") else None
+    if leaf.endswith("_8h"):
+        return leaf[: -len("_8h")]
+    if leaf.startswith("struct"):
+        return leaf[len("struct") :]
+    return None
 
 
 def on_page_markdown(markdown, page, config, files, **kwargs):

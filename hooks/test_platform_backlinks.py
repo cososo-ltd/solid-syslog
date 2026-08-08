@@ -38,6 +38,22 @@ class GeneratedApiPages(unittest.TestCase):
         # Not the registry token, which is "LwipRaw".
         self.assertIn("[lwIP (Raw API) platform]", render("api/SolidSyslogLwipRawTcpStream_8h.md"))
 
+    def test_a_platform_data_structure_is_labelled_too(self):
+        out = render("api/structSolidSyslogMbedTlsStreamConfig.md")
+        self.assertIn("[Mbed TLS platform](../platforms/mbedtls/index.md)", out)
+
+    def test_a_core_data_structure_is_not_labelled(self):
+        # Only the platform Interface directories are scanned, so a Core struct
+        # cannot pick up a platform label.
+        markdown = "# Config\n\nBody.\n"
+        self.assertEqual(render("api/structSolidSyslogConfig.md", markdown), markdown)
+
+    def test_a_forward_declaration_does_not_claim_the_struct(self):
+        # SolidSyslogMbedTlsStream.h forward-declares struct SolidSyslogStream;
+        # only definitions map, or Core's Stream would be labelled Mbed TLS.
+        headers, _slugs, _labels = h._index(CONFIG)
+        self.assertNotIn("SolidSyslogStream", headers)
+
     def test_a_core_header_is_not_labelled(self):
         markdown = "# Core\n\nBody.\n"
         self.assertEqual(render("api/SolidSyslogConfig_8h.md", markdown), markdown)
