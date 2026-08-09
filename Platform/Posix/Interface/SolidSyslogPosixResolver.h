@@ -6,8 +6,8 @@
  *  SolidSyslogAddress; the requested transport selects the socktype hint. A
  *  failed lookup returns false, so the caller's unresolved-host error path
  *  runs. */
-#ifndef SOLIDSYSLOGPOSIXRESOLVERH
-#define SOLIDSYSLOGPOSIXRESOLVERH
+#ifndef SOLIDSYSLOGPOSIXRESOLVER_H
+#define SOLIDSYSLOGPOSIXRESOLVER_H
 
 #include "SolidSyslogExternC.h"
 
@@ -23,4 +23,4 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
 SOLIDSYSLOG_EXTERN_C_END
 
-#endif /* SOLIDSYSLOGPOSIXRESOLVERH */
+#endif /* SOLIDSYSLOGPOSIXRESOLVER_H */
