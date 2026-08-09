@@ -120,11 +120,27 @@ def _index(config):
     return _CACHE[root]
 
 
+def _cell(brief):
+    """A header's brief, safe to drop into a Markdown table cell.
+
+    Two characters cannot travel as themselves. A pipe would end the cell. An
+    angle bracket opens an HTML tag, so a brief naming a standard header —
+    ``An AtomicCounter over C11 <stdatomic.h>`` — rendered as *over C11 ,* with
+    the include swallowed and the punctuation around it left stranded. It read
+    like a typo rather than a missing word, which is why it survived review.
+    Doxygen escapes these on its own pages; the brief only lost them on the
+    route through here.
+    """
+    for raw, escaped in (("&", "&amp;"), ("<", "&lt;"), (">", "&gt;"), ("|", r"\|")):
+        brief = brief.replace(raw, escaped)
+    return brief
+
+
 def _ships(entries):
     """The manifest table: every header the platform publishes, by filename."""
     rows = ["| Header | What it is |", "|---|---|"]
     for stem, brief in entries:
-        rows.append(f"| [`{stem}.h`](../../api/{stem}_8h.md) | {brief.replace('|', r'\|')} |")
+        rows.append(f"| [`{stem}.h`](../../api/{stem}_8h.md) | {_cell(brief)} |")
     return "\n".join(rows)
 
 

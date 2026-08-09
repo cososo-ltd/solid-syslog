@@ -144,6 +144,14 @@ class ShipsManifest(unittest.TestCase):
     def test_the_brief_is_the_headers_own_first_sentence(self):
         self.assertIn("Error codes and Source identity for the MbedTlsStream adapter.", self.ships())
 
+    def test_a_brief_naming_a_standard_header_keeps_it(self):
+        # <stdatomic.h> is an HTML tag to the Markdown renderer, so unescaped it
+        # vanished and took the sentence's sense with it.
+        self.assertIn("C11 &lt;stdatomic.h&gt;", self.ships("stdatomic"))
+
+    def test_a_cell_escapes_what_would_break_it(self):
+        self.assertEqual(h._cell("a <b> c | d & e"), r"a &lt;b&gt; c \| d &amp; e")
+
     def test_a_multi_sentence_brief_stops_at_the_first_sentence(self):
         row = [line for line in self.ships("stdatomic").splitlines()
                if "SolidSyslogStdAtomicCounter.h" in line]
