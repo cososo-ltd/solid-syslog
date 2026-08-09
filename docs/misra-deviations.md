@@ -1113,9 +1113,9 @@ Raised and approved 2026-05-22 by the project owner, David Cozens. Recorded unde
 
 ### Construct
 
-`SolidSyslogStream::Send` takes `const void*` and `SolidSyslogStream::Read`
+`SolidSyslogStream_Send` takes `const void*` and `SolidSyslogStream_Read`
 takes `void*` — the project-wide byte-buffer contract used by every
-Stream implementation, and `SolidSyslogDatagram::SendTo` takes `const void*`
+Stream implementation, and `SolidSyslogDatagram_SendTo` takes `const void*`
 likewise. Some third-party C libraries type their byte buffers as a character
 pointer rather than `void*`: mbedTLS uses `const unsigned char*` /
 `unsigned char*`, and the Winsock socket calls use `const char*` / `char*`
@@ -1151,7 +1151,7 @@ The alternatives all regress:
 
 | Alternative | Why rejected |
 |-------------|--------------|
-| Refactor `SolidSyslogStream::Send`/`Read` to use `unsigned char*` | Public-API ABI change that propagates to every Stream implementation (Posix TCP, Winsock TCP, FreeRTOS TCP, OpenSSL TLS, mbedTLS TLS, NullStream) and every Stream caller (`SolidSyslogStreamSender`). The `void*` byte-buffer contract is the conventional C idiom for transport interfaces and matches POSIX `send`/`recv`, OpenSSL `SSL_write`/`SSL_read`, etc. Changing it for the sake of one third-party API's typing choice is the wrong direction. |
+| Refactor `SolidSyslogStream_Send` / `SolidSyslogStream_Read` to use `unsigned char*` | Public-API ABI change that propagates to every Stream implementation (Posix TCP, Winsock TCP, FreeRTOS TCP, OpenSSL TLS, mbedTLS TLS, NullStream) and every Stream caller (`SolidSyslogStreamSender`). The `void*` byte-buffer contract is the conventional C idiom for transport interfaces and matches POSIX `send`/`recv`, OpenSSL `SSL_write`/`SSL_read`, etc. Changing it for the sake of one third-party API's typing choice is the wrong direction. |
 | Copy through an `unsigned char` scratch buffer per call | Runtime cost on the hot send/receive path; adds a fixed-size scratch or a stack-allocated VLA in a critical-path function. Defeats the zero-copy intent of the Stream contract. |
 | Inline `cppcheck-suppress misra-c2012-11.5` at each site | **Project preference.** Deviations are recorded structurally in this document so the rationale is centrally auditable rather than scattered across call sites. |
 
@@ -1171,8 +1171,9 @@ The cast is well-defined: a character type may alias any object type
   Treating either as `char*` or `unsigned char*` at the third-party API
   boundary is the same bytes under a different pointer type.
 - **Elimination path** — The deviation retires per API, not as a whole. A
-  future `SolidSyslogStream::Send` / `Read` typed to a character pointer
-  would retire the Stream sites; `SolidSyslogDatagram::SendTo` would need
+  future `SolidSyslogStream_Send` / `SolidSyslogStream_Read` typed to a
+  character pointer would retire the Stream sites; `SolidSyslogDatagram_SendTo`
+  would need
   the same change to retire `WinsockDatagram_SendTo`. Either would only
   retire the sites whose third-party spelling it matched.
   Tracked as a possible E10-successor refactor, not scheduled.
