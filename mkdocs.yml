@@ -163,8 +163,13 @@ nav:
   - Home: README.md
   # Published from SUPPORT.md at the repository root by hooks/root_pages.py.
   - Support: support.md
-  - Overview:
-      - Compliance in one page: overview.md
+  # Core is the product: the portable library everything else exists to serve.
+  # It sits at the top level beside Platforms, which is the convenience layer,
+  # rather than below the generated indexes inside API reference — the nav said
+  # the opposite of the product for as long as it did. One child, so
+  # navigation.indexes promotes it into the tab link.
+  - Core:
+      - core/index.md
   - Integrate:
       - Building up the protection you need: hardening-path.md
       - Adding it to your build: build-integration.md
@@ -192,6 +197,10 @@ nav:
       - Posix: platforms/posix/index.md
       - Windows: platforms/windows/index.md
   - Compliance:
+      # The one-screen orientation on both frameworks, so it leads the section
+      # the frameworks are in rather than sitting alone under a tab called
+      # Overview, where its own title contradicted the label above it.
+      - Compliance in one page: overview.md
       - CRA guide: cra.md
       - IEC 62443 guide: iec62443.md
       - RFC matrix: rfc-compliance.md
@@ -208,22 +217,17 @@ nav:
   - API reference:
       # api-reference/index.md is the tab's own first child, so navigation.indexes
       # promotes it into the tab link — and the narrow-width drawer opens on this
-      # landing at the tab level, where Core / Platforms / Roles are its siblings.
-      # Nesting it inside a same-named section (as before) made the drawer open one
-      # level deeper, hiding those doorways behind the back arrow.
+      # landing at the tab level, where Headers and Symbols / Roles are its
+      # siblings. Nesting it inside a same-named section (as before) made the
+      # drawer open one level deeper, hiding those doorways behind the back arrow.
       - api-reference/index.md
-      # The raw Doxygen indexes as one peer section beside Core / Platforms / Roles;
-      # labelled distinctly (not "API reference") so it doesn't shadow the tab name.
+      # The raw Doxygen indexes as one peer section beside Roles; labelled
+      # distinctly (not "API reference") so it doesn't shadow the tab name.
       - Headers and Symbols:
           - Headers: api/files.md
           - Data structures: api/annotated.md
           - Functions: api/functions.md
           - Macros: api/macros.md
-      # A section (not a bare page) so Material gives it md-nav__item--section and
-      # it reads with the same weight as Platforms / Roles. Its index is its only
-      # child — navigation.indexes promotes it into the section link.
-      - Core:
-          - core/index.md
       # A role *is* its vtable, so each entry links straight to the generated
       # contract page; detail belongs in the SolidSyslog<Role>Definition.h
       # doc comment, not a hand-maintained copy here.

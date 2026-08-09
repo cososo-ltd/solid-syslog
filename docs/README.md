@@ -12,7 +12,7 @@ and [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-examp
 
 Pick a lane:
 
-- [Overview](#overview): what SolidSyslog is and how it helps with CRA and IEC 62443 compliance.
+- [Core](#core): the library itself — the protocol, the pipeline, and the portable pieces that run the same everywhere.
 - [Integrate it](#integrate): get a syslog stack compiling and sending in your product.
 - [Platforms](#platforms): what reaches your hardware — the shipped adapters, and how to write one for a target we don't cover.
 - [Compliance](#compliance): the CRA, IEC 62443, the RFCs, and the security posture.
@@ -21,10 +21,10 @@ Pick a lane:
 
 ---
 
-## Overview
+## Core
 
+- [Core](core/index.md): what is always compiled and depends on nothing external — the syslog protocol, the assembly, buffering, storage and sending pipeline, and the portable role implementations. Where a platform exists to reach your hardware, Core exists to be the same everywhere.
 - Why SolidSyslog, and capability at a glance: the project `README.md`.
-- [Compliance in one page](overview.md): the evaluator's one-screen orientation. What CRA and IEC 62443 ask of an audit-logging function, and how SolidSyslog helps.
 
 ## Integrate
 
