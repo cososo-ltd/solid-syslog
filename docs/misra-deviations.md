@@ -592,7 +592,7 @@ Two distinct site categories trigger this rule:
 
    `SolidSyslogDatagram_SendTo` takes the caller's buffer as
    `const void*` — the contract is read-only inside the library.
-   lwIP's `struct pbuf::payload` is declared `void*` (no `const`
+   the `payload` field of lwIP's `struct pbuf` is declared `void*` (no `const`
    variant in the lwIP headers); `udp_sendto` only reads the
    payload — that is the `PBUF_REF` zero-copy contract — but the field
    type does not encode that. Assigning
@@ -636,7 +636,8 @@ alternative to bending the code around a tool.
 The two platform-API sites are the standard case of a const-correct interior
 forced to strip qualification at a fixed third-party API boundary. Both
 upstream declarations (Microsoft's `select()` timeout,
-lwIP's `pbuf::payload`) are fixed by their vendors; the SolidSyslog seam
+lwIP's `struct pbuf` `payload` field) are fixed by their vendors; the
+SolidSyslog seam
 keeps the const-correctness contract on the caller's side of the
 boundary.
 
