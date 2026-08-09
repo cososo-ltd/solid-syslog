@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogWinsockDatagramErrors
     {
-        WINSOCKDATAGRAM_ERROR_POOL_EXHAUSTED,
-        WINSOCKDATAGRAM_ERROR_UNKNOWN_DESTROY,
-        WINSOCKDATAGRAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_WINSOCK_DATAGRAM_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_WINSOCK_DATAGRAM_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_WINSOCK_DATAGRAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a WinsockDatagram. A handler matches by

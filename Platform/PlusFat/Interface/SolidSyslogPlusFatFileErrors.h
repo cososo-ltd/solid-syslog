@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  name their own fault. */
     enum SolidSyslogPlusFatFileErrors
     {
-        PLUSFATFILE_ERROR_POOL_EXHAUSTED,
-        PLUSFATFILE_ERROR_UNKNOWN_DESTROY,
-        PLUSFATFILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_PLUSFAT_FILE_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_PLUSFAT_FILE_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_PLUSFAT_FILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a PlusFatFile. A handler matches by address

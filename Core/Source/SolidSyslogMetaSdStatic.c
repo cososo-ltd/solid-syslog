@@ -39,7 +39,7 @@ struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSys
             MetaSd_Report(
                 SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                METASD_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_META_SD_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -51,11 +51,11 @@ static bool MetaSd_IsValidConfig(const struct SolidSyslogMetaSdConfig* config)
     bool valid = false;
     if (config == NULL)
     {
-        MetaSd_Report(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_CAT_BAD_CONFIG, METASD_ERROR_NULL_CONFIG);
+        MetaSd_Report(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_CAT_BAD_CONFIG, SOLIDSYSLOG_META_SD_ERROR_NULL_CONFIG);
     }
     else if (config->Counter == NULL)
     {
-        MetaSd_Report(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_CAT_BAD_CONFIG, METASD_ERROR_NULL_COUNTER);
+        MetaSd_Report(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_CAT_BAD_CONFIG, SOLIDSYSLOG_META_SD_ERROR_NULL_COUNTER);
     }
     else
     {
@@ -74,7 +74,7 @@ void SolidSyslogMetaSd_Destroy(struct SolidSyslogStructuredData* base)
         MetaSd_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            METASD_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_META_SD_ERROR_UNKNOWN_DESTROY
         );
     }
 }

@@ -14,10 +14,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogLwipRawDnsResolverErrors
     {
-        LWIPRAWDNSRESOLVER_ERROR_POOL_EXHAUSTED,
-        LWIPRAWDNSRESOLVER_ERROR_UNKNOWN_DESTROY,
-        LWIPRAWDNSRESOLVER_ERROR_RESOLVE_TIMEOUT, /**< The bounded async-resolve spin hit its deadline. */
-        LWIPRAWDNSRESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_RESOLVE_TIMEOUT, /**< The bounded async-resolve spin hit its deadline. */
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a LwipRawDnsResolver. A handler matches by

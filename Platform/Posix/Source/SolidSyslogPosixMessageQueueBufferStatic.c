@@ -60,7 +60,7 @@ struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMe
             PosixMessageQueueBuffer_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-                POSIXMESSAGEQUEUEBUFFER_ERROR_MQ_OPEN_FAILED
+                SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED
             );
         }
     }
@@ -69,7 +69,7 @@ struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMe
         PosixMessageQueueBuffer_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            POSIXMESSAGEQUEUEBUFFER_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -90,7 +90,7 @@ void SolidSyslogPosixMessageQueueBuffer_Destroy(struct SolidSyslogBuffer* base)
         PosixMessageQueueBuffer_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            POSIXMESSAGEQUEUEBUFFER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

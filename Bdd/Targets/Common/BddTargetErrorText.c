@@ -29,19 +29,19 @@ const char* BddTargetErrorText_Category(uint16_t category)
         case SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED:
             result = "resolve failed";
             break;
-        case SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE:
+        case SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE:
             result = "key unavailable";
             break;
-        case SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED:
+        case SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED:
             result = "seal failed";
             break;
-        case SOLIDSYSLOG_CAT_SECURITYPOLICY_OPEN_FAILED:
+        case SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED:
             result = "open failed";
             break;
-        case SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED:
+        case SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED:
             result = "TLS init failed";
             break;
-        case SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED:
+        case SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED:
             result = "TLS handshake failed";
             break;
         default:

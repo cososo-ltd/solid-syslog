@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogPlusTcpDatagramErrors
     {
-        PLUSTCPDATAGRAM_ERROR_POOL_EXHAUSTED,
-        PLUSTCPDATAGRAM_ERROR_UNKNOWN_DESTROY,
-        PLUSTCPDATAGRAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_PLUSTCP_DATAGRAM_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_PLUSTCP_DATAGRAM_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_PLUSTCP_DATAGRAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a PlusTcpDatagram. A handler matches by

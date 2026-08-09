@@ -115,7 +115,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, WriteWhenMqSendFailsReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixMessageQueueBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_SEND_FAILED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_SEND_FAILED, ErrorHandlerFake_LastDetail());
 }
 
 /* Regression guard: the production check is errno-agnostic
@@ -131,7 +131,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, WriteWithOversizedMessageReportsError)
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_SEND_FAILED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_SEND_FAILED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixMessageQueueBuffer, ReadWhenMqReceiveFailsReportsError)
@@ -145,7 +145,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ReadWhenMqReceiveFailsReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixMessageQueueBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_RECEIVE_FAILED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECEIVE_FAILED, ErrorHandlerFake_LastDetail());
 }
 
 /* Regression guard: empty queue (EAGAIN) is part of the happy poll loop
@@ -274,7 +274,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, ExhaustedCreateReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixMessageQueueBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReportsError)
@@ -288,7 +288,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixMessageQueueBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_MQ_OPEN_FAILED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReleasesSlot)
@@ -376,7 +376,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfUnknownHandleReportsWarnin
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixMessageQueueBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 /* Destroy(NULL) is reachable from any integrator who keeps a NullBuffer-fallback
@@ -393,7 +393,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfNullHandleReportsWarningWi
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixMessageQueueBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfStaleHandleReportsWarning)
@@ -409,7 +409,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfStaleHandleReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixMessageQueueBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXMESSAGEQUEUEBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 /* Slot-indexed queue names are only observable with at least two pool

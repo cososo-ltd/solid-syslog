@@ -14,11 +14,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  name their own fault. */
     enum SolidSyslogMetaSdErrors
     {
-        METASD_ERROR_NULL_CONFIG,
-        METASD_ERROR_NULL_COUNTER,
-        METASD_ERROR_POOL_EXHAUSTED,
-        METASD_ERROR_UNKNOWN_DESTROY,
-        METASD_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_META_SD_ERROR_NULL_CONFIG,
+        SOLIDSYSLOG_META_SD_ERROR_NULL_COUNTER,
+        SOLIDSYSLOG_META_SD_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_META_SD_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_META_SD_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** The identity for events raised by a MetaSd. A handler matches by address

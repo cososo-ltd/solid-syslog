@@ -390,7 +390,7 @@ TEST(SolidSyslogLwipRawDatagramPool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         LwipRawDatagramErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        LWIPRAWDATAGRAM_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_LWIPRAW_DATAGRAM_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -466,7 +466,7 @@ TEST(SolidSyslogLwipRawDatagramPool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         LwipRawDatagramErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        LWIPRAWDATAGRAM_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_LWIPRAW_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -483,6 +483,6 @@ TEST(SolidSyslogLwipRawDatagramPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         LwipRawDatagramErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        LWIPRAWDATAGRAM_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_LWIPRAW_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
 }

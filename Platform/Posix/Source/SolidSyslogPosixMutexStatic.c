@@ -36,7 +36,7 @@ struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(void)
         PosixMutex_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            POSIXMUTEX_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_POSIX_MUTEX_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -52,7 +52,7 @@ void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex* base)
         PosixMutex_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            POSIXMUTEX_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_POSIX_MUTEX_ERROR_UNKNOWN_DESTROY
         );
     }
 }

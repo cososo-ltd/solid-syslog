@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogWinsockAddressErrors
     {
-        WINSOCKADDRESS_ERROR_POOL_EXHAUSTED,
-        WINSOCKADDRESS_ERROR_UNKNOWN_DESTROY,
-        WINSOCKADDRESS_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_WINSOCK_ADDRESS_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_WINSOCK_ADDRESS_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_WINSOCK_ADDRESS_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a WinsockAddress. A handler matches by

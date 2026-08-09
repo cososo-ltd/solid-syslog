@@ -548,7 +548,7 @@ TEST(SolidSyslogBlockStoreConfig, BelowMinimumBlockSizeReportsWarning)
     CreateWithMaxBlockSize(1);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(BLOCKSTORE_ERROR_BLOCK_TOO_SMALL, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_TOO_SMALL, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogBlockStoreConfig, FilenameExactlyAtMaxPath)
@@ -2208,7 +2208,7 @@ TEST(SolidSyslogBlockStorePool, OverflowReportsPoolExhausted)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&BlockStoreErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(BLOCKSTORE_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogBlockStorePool, FillingPoolThenOverflowResolvesToNullStore)

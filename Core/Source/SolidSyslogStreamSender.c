@@ -91,8 +91,8 @@ static inline void StreamSender_UpdateDeliveryHealth(struct SolidSyslogStreamSen
 {
     static const struct SolidSyslogSenderHealthReporter reporter = {
         .Source = &StreamSenderErrorSource,
-        .FailedDetail = (int32_t) STREAMSENDER_ERROR_DELIVERY_FAILED,
-        .RestoredDetail = (int32_t) STREAMSENDER_ERROR_DELIVERY_RESTORED
+        .FailedDetail = (int32_t) SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_FAILED,
+        .RestoredDetail = (int32_t) SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_RESTORED
     };
     SolidSyslogSenderHealth_Update(&self->DeliveryHealthy, delivered, &reporter);
 }

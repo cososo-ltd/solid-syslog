@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogWinsockResolverErrors
     {
-        WINSOCKRESOLVER_ERROR_POOL_EXHAUSTED,
-        WINSOCKRESOLVER_ERROR_UNKNOWN_DESTROY,
-        WINSOCKRESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_WINSOCK_RESOLVER_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_WINSOCK_RESOLVER_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_WINSOCK_RESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a WinsockResolver. A handler matches by

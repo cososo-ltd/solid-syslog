@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogPlusTcpResolverErrors
     {
-        PLUSTCPRESOLVER_ERROR_POOL_EXHAUSTED,
-        PLUSTCPRESOLVER_ERROR_UNKNOWN_DESTROY,
-        PLUSTCPRESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_PLUSTCP_RESOLVER_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_PLUSTCP_RESOLVER_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_PLUSTCP_RESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a PlusTcpResolver. A handler matches by

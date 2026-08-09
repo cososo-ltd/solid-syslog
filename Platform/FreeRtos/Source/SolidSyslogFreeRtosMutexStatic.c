@@ -41,7 +41,7 @@ struct SolidSyslogMutex* SolidSyslogFreeRtosMutex_Create(void)
         FreeRtosMutex_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            FREERTOSMUTEX_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_FREERTOS_MUTEX_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -58,7 +58,7 @@ void SolidSyslogFreeRtosMutex_Destroy(struct SolidSyslogMutex* base)
         FreeRtosMutex_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            FREERTOSMUTEX_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_FREERTOS_MUTEX_ERROR_UNKNOWN_DESTROY
         );
     }
 }

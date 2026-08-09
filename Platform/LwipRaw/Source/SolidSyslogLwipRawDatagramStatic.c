@@ -44,7 +44,7 @@ struct SolidSyslogDatagram* SolidSyslogLwipRawDatagram_Create(void)
         LwipRawDatagram_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            LWIPRAWDATAGRAM_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_LWIPRAW_DATAGRAM_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -61,7 +61,7 @@ void SolidSyslogLwipRawDatagram_Destroy(struct SolidSyslogDatagram* base)
         LwipRawDatagram_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            LWIPRAWDATAGRAM_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_LWIPRAW_DATAGRAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }
