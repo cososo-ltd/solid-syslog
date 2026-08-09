@@ -112,8 +112,12 @@ implementation per role. Every tunable lives in
 ### Error reporting — the `*Errors.h` convention
 
 Each adapter ships a `SolidSyslog<Adapter>Errors.h` declaring an
-`enum SolidSyslog<Adapter>Errors` (`<ADAPTER>_ERROR_*` codes plus an
-`_ERROR_MAX` bookend) and an `extern const struct SolidSyslogErrorSource`. When
+`enum SolidSyslog<Adapter>Errors` (`SOLIDSYSLOG_<ADAPTER>_ERROR_*` codes plus a
+`SOLIDSYSLOG_<ADAPTER>_ERROR_MAX` bookend) and an
+`extern const struct SolidSyslogErrorSource`. How the class name is spelled
+inside those constants — one word per PascalCase word, except that your pack's
+registry token stays whole — is in
+[Naming conventions](NAMING.md#spelling-a-class-name-inside-a-screaming_snake-identifier). When
 something fails, the adapter calls `SolidSyslog_Error(severity, source, category,
 detail)`: `source` is its own `ErrorSource` (matched by pointer identity in a
 handler), `category` is a portable reaction axis from
