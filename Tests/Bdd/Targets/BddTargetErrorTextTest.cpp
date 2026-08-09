@@ -58,12 +58,12 @@ TEST(BddTargetErrorText, SecurityPolicyOpenFailedCategoryMapsToText)
     CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITYPOLICY_OPEN_FAILED, "open failed");
 }
 
-TEST(BddTargetErrorText, TlsStreamInitFailedCategoryMapsToText)
+TEST(BddTargetErrorText, OpenSslStreamInitFailedCategoryMapsToText)
 {
     CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED, "TLS init failed");
 }
 
-TEST(BddTargetErrorText, TlsStreamHandshakeFailedCategoryMapsToText)
+TEST(BddTargetErrorText, OpenSslStreamHandshakeFailedCategoryMapsToText)
 {
     CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED, "TLS handshake failed");
 }

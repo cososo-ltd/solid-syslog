@@ -123,7 +123,7 @@ adjust those by hand.
 - `c99`: the `build-linux-c99` lane builds the library at the C99 language
   standard on every PR. If it fails, either fix the construct or, if it
   genuinely belongs to a C11-only component, gate that component the way
-  `Platform/Atomics` is gated. See [builds.md](builds.md#c99-portability--c99)
+  `Platform/StdAtomic` is gated. See [builds.md](builds.md#c99-portability--c99)
 - Windows MSVC + BDD + integration: depend on tools you may not have
 - BDD-linux-syslog-ng, BDD-windows-otel, BDD-freertos-qemu: heavy
   multi-container stacks

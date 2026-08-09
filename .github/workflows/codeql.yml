@@ -32,7 +32,7 @@ jobs:
       # Declared once: the configure asks for these, the assertion proves the
       # compiler produced them. Deliberately not named SOLIDSYSLOG_PLATFORMS —
       # platform selection must come from -D alone, never the environment.
-      ANALYSIS_PLATFORMS: Posix;Atomics;OpenSsl
+      ANALYSIS_PLATFORMS: Posix;StdAtomic;OpenSsl
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -56,7 +56,7 @@ jobs:
 
       # FETCHCONTENT_SOURCE_DIR_SOLIDSYSLOG analyses the PR against its own tree
       # rather than main. The platform list is authoritative, so it must name
-      # every pack Linux can build — Atomics is a platform in its own right and
+      # every pack Linux can build — StdAtomic is a platform in its own right and
       # is silently dropped if omitted.
       - name: Configure the consumer project
         run: |

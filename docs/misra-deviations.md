@@ -971,7 +971,7 @@ Rule 11.5 fires on each such adapter cast.
 The deviation extends to any future Stream / Datagram / hash / MAC
 implementation that wraps a byte-typed third-party C API
 (`unsigned char*` rather than `void*`). The OpenSSL adapter
-(`Platform/OpenSsl/Source/SolidSyslogTlsStream.c`) does not fall
+(`Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c`) does not fall
 under this deviation — `SSL_write` / `SSL_read` take `void*` and so no
 cast is needed.
 

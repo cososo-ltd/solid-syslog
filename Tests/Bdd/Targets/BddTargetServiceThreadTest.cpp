@@ -7,7 +7,7 @@
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogEndpointHost.h"
 #include "SolidSyslogPosixMessageQueueBuffer.h"
-#include "SolidSyslogGetAddrInfoResolver.h"
+#include "SolidSyslogPosixResolver.h"
 #include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixDatagram.h"
 #include "SolidSyslogUdpSender.h"
@@ -70,7 +70,7 @@ TEST_GROUP(BddTargetServiceThread)
         lastSleepMs       = 0;
         sleepShutdownFlag = nullptr;
 
-        resolver = SolidSyslogGetAddrInfoResolver_Create();
+        resolver = SolidSyslogPosixResolver_Create();
         datagram = SolidSyslogPosixDatagram_Create();
         address  = SolidSyslogPosixAddress_Create();
         SolidSyslogUdpSenderConfig udpConfig = {
@@ -91,7 +91,7 @@ TEST_GROUP(BddTargetServiceThread)
         SolidSyslogUdpSender_Destroy(sender);
         SolidSyslogPosixAddress_Destroy(address);
         SolidSyslogPosixDatagram_Destroy(datagram);
-        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
+        SolidSyslogPosixResolver_Destroy(resolver);
     }
 
     void Log() const

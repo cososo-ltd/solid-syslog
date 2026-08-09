@@ -59,7 +59,7 @@ path. *Pool tunable* is the `SOLIDSYSLOG_<NAME>` slot count (see
 
 | Role | Provider | Files (`Solid…`) | Upstream / config | Pool tunable |
 |---|---|---|---|---|
-| Resolver | GetAddrInfo | `GetAddrInfoResolver*` | POSIX | `RESOLVER_POOL_SIZE` |
+| Resolver | Posix | `PosixResolver*` | POSIX `getaddrinfo` | `RESOLVER_POOL_SIZE` |
 | | Winsock | `WinsockResolver*` | Win32 | ″ |
 | | PlusTcp (DNS) | `PlusTcpResolver*` | FreeRTOS-Plus-TCP + `ipconfigUSE_DNS=1` | ″ |
 | | LwipRaw numeric | `LwipRawResolver*` | lwIP `ipaddr_aton` | ″ |
@@ -73,7 +73,7 @@ path. *Pool tunable* is the `SOLIDSYSLOG_<NAME>` slot count (see
 
 | Role | Provider | Files (`Solid…`) | Upstream / config | Pool tunable |
 |---|---|---|---|---|
-| TLS Stream | OpenSSL | `TlsStream*` | OpenSSL ≥ 3.0 | `TLS_STREAM_POOL_SIZE` |
+| TLS Stream | OpenSSL | `OpenSslStream*` | OpenSSL ≥ 3.0 | `TLS_STREAM_POOL_SIZE` |
 | | Mbed TLS | `MbedTlsStream*` | `mbedtls_config.h` | ″ |
 | SecurityPolicy | CRC-16 | `Crc16Policy*` + `Crc16` | — | — |
 | | HMAC-SHA256 | `{OpenSsl,MbedTls}HmacSha256Policy*` | OpenSSL or Mbed TLS | `HMAC_SHA256_POLICY_POOL_SIZE` |
@@ -84,7 +84,7 @@ path. *Pool tunable* is the `SOLIDSYSLOG_<NAME>` slot count (see
 | Role | Provider | Files (`Solid…`) | Upstream / config | Pool tunable |
 |---|---|---|---|---|
 | Mutex | Posix / Windows / FreeRtos | `{…}Mutex*` | FreeRtos needs `configSUPPORT_STATIC_ALLOCATION=1` | `MUTEX_POOL_SIZE` |
-| AtomicCounter | C11 std / Windows | `StdAtomicCounter*` / `WindowsAtomicCounter*` | C11 `<stdatomic.h>` / Win32 | `ATOMIC_COUNTER_POOL_SIZE` |
+| AtomicCounter | StdAtomic / Windows | `StdAtomicCounter*` / `WindowsAtomicCounter*` | C11 `<stdatomic.h>` / Win32 | `ATOMIC_COUNTER_POOL_SIZE` |
 | Buffer | Passthrough / Circular / Posix mq | `PassthroughBuffer*` / `CircularBuffer*` / `PosixMessageQueueBuffer*` | — / — / POSIX | resp. pool sizes |
 | Store | BlockStore | `BlockStore*`, `RecordStore*`, `BlockSequence*` | — | `BLOCK_STORE_POOL_SIZE` |
 | BlockDevice | FileBlockDevice | `FileBlockDevice*` | — | `FILE_BLOCK_DEVICE_POOL_SIZE` |
@@ -118,7 +118,7 @@ FetchContent_MakeAvailable(SolidSyslog)
 
 Named platforms are on, unnamed platforms are off — set it before
 `FetchContent_MakeAvailable`, or pass `-DSOLIDSYSLOG_PLATFORMS=...` on the
-command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIP=ON`,
+command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIPRAW=ON`,
 `-DSOLIDSYSLOG_PLUSTCP=OFF`, …) when you want to adjust one without restating
 the list.
 
@@ -126,7 +126,7 @@ the list.
 |---|---|---|
 | `Posix` | network, file, mutex, clock | POSIX sockets, `pthread`, `mqueue` |
 | `Windows` | network, file, mutex, atomics, clock | Winsock, `CRITICAL_SECTION`, Win32 |
-| `Atomics` | atomics | C11 `<stdatomic.h>` |
+| `StdAtomic` | atomics | C11 `<stdatomic.h>` |
 | `OpenSsl` | tls | OpenSSL 3.0+ |
 | `MbedTls` | tls | Mbed TLS |
 | `LwipRaw` | network | lwIP Raw API |
@@ -156,7 +156,7 @@ The variable takes three kinds of answer:
 
 | Value | Selects |
 |---|---|
-| `Auto` (the default) | the host platforms this toolchain can provide, decided by a compile probe: `Posix`, `Windows`, `Atomics`, `OpenSsl` |
+| `Auto` (the default) | the host platforms this toolchain can provide, decided by a compile probe: `Posix`, `Windows`, `StdAtomic`, `OpenSsl` |
 | `""` | nothing — Core alone, for an integrator supplying every adapter themselves |
 | a list | exactly those, host or upstream |
 
@@ -200,7 +200,7 @@ FetchContent_Declare(SolidSyslog
     GIT_REPOSITORY https://github.com/cososo-ltd/solid-syslog.git
     GIT_TAG        main)
 
-set(SOLIDSYSLOG_PLATFORMS "FreeRtos;LwipRaw;MbedTls;FatFs;Atomics")
+set(SOLIDSYSLOG_PLATFORMS "FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic")
 FetchContent_MakeAvailable(SolidSyslog)
 
 add_executable(my_logger main.c diskio.c)
@@ -223,7 +223,7 @@ target_include_directories(my_logger PRIVATE
     ${FATFS_DIR}/source)
 ```
 
-`Atomics` is named but never linked — it compiles the C11 counter into
+`StdAtomic` is named but never linked — it compiles the C11 counter into
 `libSolidSyslog.a`. Naming it says "my toolchain has working `_Atomic`"; get it
 wrong and the configure stops rather than silently degrading to the Null
 counter.
@@ -269,7 +269,7 @@ The library ships `solidsyslog.mk` at its root. Name the platforms you want and 
 it:
 
 ```make
-SOLIDSYSLOG_PLATFORMS := LwipRaw Atomics FreeRtos MbedTls FatFs
+SOLIDSYSLOG_PLATFORMS := LwipRaw StdAtomic FreeRtos MbedTls FatFs
 include third_party/solid-syslog/solidsyslog.mk
 ```
 
@@ -314,7 +314,7 @@ $(BUILD)/libSolidSyslog.a: $(SOLIDSYSLOG_CORE_OBJS)
 There is no separate link step and no distinction between platforms that are named and
 platforms that are linked. That distinction exists only for CMake consumers, who receive
 some platforms inside `libSolidSyslog.a`; a Make build has no such library, so naming
-`Atomics` compiles its sources exactly as naming `LwipRaw` compiles its own.
+`StdAtomic` compiles its sources exactly as naming `LwipRaw` compiles its own.
 
 Each adapter gates itself on the upstream option it needs, so naming a platform is safe
 whatever your configuration. A build with `LWIP_DNS=0` compiles the lwIP DNS resolver to
@@ -377,8 +377,8 @@ target:
 
 ```bash
 cmake -S . -B build/manifest \
-  -DSOLIDSYSLOG_PLATFORMS="LwipRaw;MbedTls;FreeRtos;FatFs;Atomics" \
-  -DSOLIDSYSLOG_MANIFEST_PLATFORMS="LwipRaw;MbedTls;FreeRtos;FatFs;Atomics"
+  -DSOLIDSYSLOG_PLATFORMS="LwipRaw;MbedTls;FreeRtos;FatFs;StdAtomic" \
+  -DSOLIDSYSLOG_MANIFEST_PLATFORMS="LwipRaw;MbedTls;FreeRtos;FatFs;StdAtomic"
 cmake --build build/manifest --target manifest      # prints the manifest
 ```
 
@@ -386,10 +386,10 @@ cmake --build build/manifest --target manifest      # prints the manifest
 `SOLIDSYSLOG_PLATFORMS`: `Auto` describes every platform this configuration
 selected, empty describes none. The Core `.c` set is always included.
 
-Platforms selected by a toolchain capability probe — `Atomics`, `Posix`,
+Platforms selected by a toolchain capability probe — `StdAtomic`, `Posix`,
 `Windows`, `OpenSsl` — get their own section. A CMake consumer receives them
 inside `libSolidSyslog.a`, but a manifest build has no such library, so compile
-them alongside everything else. `Atomics` is the one that matters on a
+them alongside everything else. `StdAtomic` is the one that matters on a
 cross-toolchain: without it there is no atomic counter, and every RFC 5424
 `sequenceId` is `1`.
 
@@ -420,7 +420,7 @@ For this stack that comes to:
 ### 3. Language standard
 
 The manifest's *Language* section states the floor and any platform that raises
-it. The library is C99; the `Atomics` platform uses `<stdatomic.h>` and needs
+it. The library is C99; the `StdAtomic` platform uses `<stdatomic.h>` and needs
 C11. Anything at or above that works — C11, C17 and C23 are all fine — so the
 manifest names the standard, not a `-std=` flag.
 

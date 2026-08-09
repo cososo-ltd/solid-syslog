@@ -153,7 +153,7 @@ DESCRIPTIONS = {
         "The FreeRTOS-Plus-FAT adapter pack, filling the File role beneath a "
         "BlockDevice for an all-FreeRTOS-Plus storage and transport stack."
     ),
-    "platforms/atomics.md": (
+    "platforms/stdatomic.md": (
         "The portable C11 stdatomic.h AtomicCounter — the sequenceId source on "
         "any target with a C11 compiler, with no OS dependency."
     ),

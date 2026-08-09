@@ -8,7 +8,7 @@
 # actually ship.
 #
 # Selection: SOLIDSYSLOG_MANIFEST_PLATFORMS is a ;-list of platform tokens from
-# SOLIDSYSLOG_PLATFORM_REGISTRY, e.g. "LwipRaw;MbedTls;FreeRtos;Atomics".
+# SOLIDSYSLOG_PLATFORM_REGISTRY, e.g. "LwipRaw;MbedTls;FreeRtos;StdAtomic".
 # Empty (the default) means "every platform this configure selected". Core is
 # always included.
 #
@@ -53,7 +53,7 @@ set(_SOLIDSYSLOG_MANIFEST_CFG_FatFs              "ffconf.h")
 set(_SOLIDSYSLOG_MANIFEST_CFG_PlusFat            "FreeRTOSFATConfig.h")
 
 set(_SOLIDSYSLOG_MANIFEST_LANGUAGE_FLOOR         "C99")
-set(_SOLIDSYSLOG_MANIFEST_LANG_Atomics           "C11")
+set(_SOLIDSYSLOG_MANIFEST_LANG_StdAtomic           "C11")
 
 # Make an absolute path repo-relative for display; pass others through unchanged.
 function(_solidsyslog_manifest_relpath OUT_VAR PATH)

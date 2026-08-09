@@ -100,7 +100,7 @@ static inline struct SolidSyslogMbedTlsStream* MbedTlsStream_SelfFromBase(struct
 
 void MbedTlsStream_Cleanup(struct SolidSyslogStream* base)
 {
-    /* Mirror the OpenSSL TlsStream pattern: an integrator who destroys a
+    /* Mirror the OpenSslStream pattern: an integrator who destroys a
      * still-Open stream must not leak the underlying TLS state. */
     MbedTlsStream_Close(base);
     /* Overwrite the abstract base with the shared NullStream vtable so
@@ -240,7 +240,7 @@ static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbe
  * spin) until either the handshake completes, hits a hard error, or the
  * bounded budget expires. Each non-success exit emits a distinct
  * protocol-level error code so the integrator can tell rejection from
- * timeout. Same shape as OpenSSL's TlsStream_PerformHandshake. */
+ * timeout. Same shape as OpenSslStream_PerformHandshake. */
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self)
 {
     uint32_t budgetMs = MbedTlsStream_ResolveHandshakeTimeoutMs(self);
@@ -328,7 +328,7 @@ static int MbedTlsStream_BioRecv(void* ctx, unsigned char* buf, size_t len)
 
 /* TLS-level write failure means the session state is unrecoverable — close
  * so the StreamSender reconnect path runs on the next tick. Mirrors the
- * OpenSSL TlsStream_Send fail-fast contract. */
+ * OpenSslStream_Send fail-fast contract. */
 static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
 {
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
@@ -347,7 +347,7 @@ static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void
  *   2. Any other negative return (alerts, renegotiation surfacing as
  *      WANT_WRITE, hard transport error) is fatal under fail-fast semantics
  *      — close internally; the caller reopens and store-and-forward replays.
- * Same shape as the OpenSSL TlsStream_Read. */
+ * Same shape as the OpenSslStream_Read. */
 static inline SolidSyslogSsize MbedTlsStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size)
 {
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);

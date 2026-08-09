@@ -8,8 +8,8 @@
 #include "ErrorHandlerFake.h"
 #include "SocketFake.h"
 #include "SolidSyslogErrorCategory.h"
-#include "SolidSyslogGetAddrInfoResolver.h"
-#include "SolidSyslogGetAddrInfoResolverErrors.h"
+#include "SolidSyslogPosixResolver.h"
+#include "SolidSyslogPosixResolverErrors.h"
 #include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPrival.h"
@@ -29,7 +29,7 @@ static const uint16_t    TEST_ALTERNATE_PORT = 9999;
 // clang-format on
 
 // clang-format off
-TEST_GROUP(SolidSyslogGetAddrInfoResolver)
+TEST_GROUP(SolidSyslogPosixResolver)
 {
     struct SolidSyslogResolver* resolver = nullptr;
     struct SolidSyslogAddress*  result   = nullptr;
@@ -37,14 +37,14 @@ TEST_GROUP(SolidSyslogGetAddrInfoResolver)
     void setup() override
     {
         SocketFake_Reset();
-        resolver = SolidSyslogGetAddrInfoResolver_Create();
+        resolver = SolidSyslogPosixResolver_Create();
         result   = SolidSyslogPosixAddress_Create();
     }
 
     void teardown() override
     {
         SolidSyslogPosixAddress_Destroy(result);
-        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
+        SolidSyslogPosixResolver_Destroy(resolver);
     }
 
     bool Resolve(const char* host, uint16_t port, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP) const
@@ -61,22 +61,22 @@ TEST_GROUP(SolidSyslogGetAddrInfoResolver)
 
 // clang-format on
 
-TEST(SolidSyslogGetAddrInfoResolver, CreateDestroyWorksWithoutCrashing)
+TEST(SolidSyslogPosixResolver, CreateDestroyWorksWithoutCrashing)
 {
 }
 
-TEST(SolidSyslogGetAddrInfoResolver, ReturnsTrueOnSuccess)
+TEST(SolidSyslogPosixResolver, ReturnsTrueOnSuccess)
 {
     CHECK_TRUE(Resolve(TEST_HOST, TEST_PORT));
 }
 
-TEST(SolidSyslogGetAddrInfoResolver, PopulatesAddressFamily)
+TEST(SolidSyslogPosixResolver, PopulatesAddressFamily)
 {
     Resolve(TEST_HOST, TEST_PORT);
     LONGS_EQUAL(AF_INET, Result()->sin_family);
 }
 
-TEST(SolidSyslogGetAddrInfoResolver, PopulatesResolvedAddressFromHostArgument)
+TEST(SolidSyslogPosixResolver, PopulatesResolvedAddressFromHostArgument)
 {
     Resolve(TEST_HOST, TEST_PORT);
     char addrString[INET_ADDRSTRLEN];
@@ -84,45 +84,45 @@ TEST(SolidSyslogGetAddrInfoResolver, PopulatesResolvedAddressFromHostArgument)
     STRCMP_EQUAL(TEST_HOST, addrString);
 }
 
-TEST(SolidSyslogGetAddrInfoResolver, PopulatesPortFromPortArgument)
+TEST(SolidSyslogPosixResolver, PopulatesPortFromPortArgument)
 {
     Resolve(TEST_HOST, TEST_ALTERNATE_PORT);
     LONGS_EQUAL(TEST_ALTERNATE_PORT, ntohs(Result()->sin_port));
 }
 
-TEST(SolidSyslogGetAddrInfoResolver, GetAddrInfoCalledWithHostArgument)
+TEST(SolidSyslogPosixResolver, GetAddrInfoCalledWithHostArgument)
 {
     Resolve(TEST_ALTERNATE_HOST, TEST_PORT);
     CALLED_FAKE(SocketFake_GetAddrInfo, ONCE);
     STRCMP_EQUAL(TEST_ALTERNATE_HOST, SocketFake_LastGetAddrInfoHostname());
 }
 
-TEST(SolidSyslogGetAddrInfoResolver, UdpTransportPassesDatagramSocktype)
+TEST(SolidSyslogPosixResolver, UdpTransportPassesDatagramSocktype)
 {
     Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_UDP);
     LONGS_EQUAL(SOCK_DGRAM, SocketFake_LastGetAddrInfoSocktype());
 }
 
-TEST(SolidSyslogGetAddrInfoResolver, TcpTransportPassesStreamSocktype)
+TEST(SolidSyslogPosixResolver, TcpTransportPassesStreamSocktype)
 {
     Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_TCP);
     LONGS_EQUAL(SOCK_STREAM, SocketFake_LastGetAddrInfoSocktype());
 }
 
-TEST(SolidSyslogGetAddrInfoResolver, ReturnsFalseWhenGetAddrInfoFails)
+TEST(SolidSyslogPosixResolver, ReturnsFalseWhenGetAddrInfoFails)
 {
     SocketFake_SetGetAddrInfoFails(true);
     CHECK_FALSE(Resolve(TEST_HOST, TEST_PORT));
 }
 
-TEST(SolidSyslogGetAddrInfoResolver, DoesNotFreeAddrInfoWhenGetAddrInfoFails)
+TEST(SolidSyslogPosixResolver, DoesNotFreeAddrInfoWhenGetAddrInfoFails)
 {
     SocketFake_SetGetAddrInfoFails(true);
     Resolve(TEST_HOST, TEST_PORT);
     CALLED_FAKE(SocketFake_FreeAddrInfo, NEVER);
 }
 
-TEST(SolidSyslogGetAddrInfoResolver, FreesAddrInfoOnSuccess)
+TEST(SolidSyslogPosixResolver, FreesAddrInfoOnSuccess)
 {
     Resolve(TEST_HOST, TEST_PORT);
     CALLED_FAKE(SocketFake_FreeAddrInfo, ONCE);
@@ -139,7 +139,7 @@ TEST(SolidSyslogGetAddrInfoResolver, FreesAddrInfoOnSuccess)
     }
 
 // clang-format off
-TEST_GROUP(SolidSyslogGetAddrInfoResolverPool)
+TEST_GROUP(SolidSyslogPosixResolverPool)
 {
     struct SolidSyslogResolver* pooled[SOLIDSYSLOG_RESOLVER_POOL_SIZE] = {};
     struct SolidSyslogResolver* overflow                                            = nullptr;
@@ -150,12 +150,12 @@ TEST_GROUP(SolidSyslogGetAddrInfoResolverPool)
         {
             if (handle != nullptr)
             {
-                SolidSyslogGetAddrInfoResolver_Destroy(handle);
+                SolidSyslogPosixResolver_Destroy(handle);
             }
         }
         if (overflow != nullptr)
         {
-            SolidSyslogGetAddrInfoResolver_Destroy(overflow);
+            SolidSyslogPosixResolver_Destroy(overflow);
         }
         ConfigLockFake_Uninstall();
     }
@@ -164,116 +164,116 @@ TEST_GROUP(SolidSyslogGetAddrInfoResolverPool)
     {
         for (auto*& slot : pooled)
         {
-            slot = SolidSyslogGetAddrInfoResolver_Create();
+            slot = SolidSyslogPosixResolver_Create();
         }
     }
 };
 
 // clang-format on
 
-TEST(SolidSyslogGetAddrInfoResolverPool, FillingPoolThenOverflowReturnsDistinctFallback)
+TEST(SolidSyslogPosixResolverPool, FillingPoolThenOverflowReturnsDistinctFallback)
 {
     FillPool();
 
-    overflow = SolidSyslogGetAddrInfoResolver_Create();
+    overflow = SolidSyslogPosixResolver_Create();
 
     CHECK_IS_FALLBACK(overflow, pooled);
 }
 
-TEST(SolidSyslogGetAddrInfoResolverPool, ExhaustedCreateReportsError)
+TEST(SolidSyslogPosixResolverPool, ExhaustedCreateReportsError)
 {
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = SolidSyslogGetAddrInfoResolver_Create();
+    overflow = SolidSyslogPosixResolver_Create();
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&GetAddrInfoResolverErrorSource, ErrorHandlerFake_LastSource());
+    POINTERS_EQUAL(&PosixResolverErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(GETADDRINFORESOLVER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(POSIXRESOLVER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
-TEST(SolidSyslogGetAddrInfoResolverPool, FallbackResolveReturnsFalse)
+TEST(SolidSyslogPosixResolverPool, FallbackResolveReturnsFalse)
 {
     FillPool();
-    overflow = SolidSyslogGetAddrInfoResolver_Create();
+    overflow = SolidSyslogPosixResolver_Create();
 
     struct SolidSyslogAddress* fallbackResult = SolidSyslogPosixAddress_Create();
     CHECK_FALSE(SolidSyslogResolver_Resolve(overflow, SOLIDSYSLOG_TRANSPORT_UDP, TEST_HOST, TEST_PORT, fallbackResult));
     SolidSyslogPosixAddress_Destroy(fallbackResult);
 }
 
-TEST(SolidSyslogGetAddrInfoResolverPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
+TEST(SolidSyslogPosixResolverPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
 {
     ConfigLockFake_Install();
 
-    pooled[0] = SolidSyslogGetAddrInfoResolver_Create();
+    pooled[0] = SolidSyslogPosixResolver_Create();
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
 }
 
-TEST(SolidSyslogGetAddrInfoResolverPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
+TEST(SolidSyslogPosixResolverPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 {
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = SolidSyslogGetAddrInfoResolver_Create();
+    overflow = SolidSyslogPosixResolver_Create();
 
     LONGS_EQUAL(SOLIDSYSLOG_RESOLVER_POOL_SIZE, ConfigLockFake_LockCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_RESOLVER_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
-TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfPooledHandleLocksOnce)
+TEST(SolidSyslogPosixResolverPool, DestroyOfPooledHandleLocksOnce)
 {
-    pooled[0] = SolidSyslogGetAddrInfoResolver_Create();
+    pooled[0] = SolidSyslogPosixResolver_Create();
     ConfigLockFake_Install();
 
-    SolidSyslogGetAddrInfoResolver_Destroy(pooled[0]);
+    SolidSyslogPosixResolver_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
 }
 
-TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfUnknownHandleDoesNotLock)
+TEST(SolidSyslogPosixResolverPool, DestroyOfUnknownHandleDoesNotLock)
 {
     ConfigLockFake_Install();
     struct SolidSyslogResolver stranger = {};
 
-    SolidSyslogGetAddrInfoResolver_Destroy(&stranger);
+    SolidSyslogPosixResolver_Destroy(&stranger);
 
     CALLED_FAKE(ConfigLockFake_Lock, NEVER);
     CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
 }
 
-TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfUnknownHandleReportsWarning)
+TEST(SolidSyslogPosixResolverPool, DestroyOfUnknownHandleReportsWarning)
 {
     ErrorHandlerFake_Install(nullptr);
     struct SolidSyslogResolver stranger = {};
 
-    SolidSyslogGetAddrInfoResolver_Destroy(&stranger);
+    SolidSyslogPosixResolver_Destroy(&stranger);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&GetAddrInfoResolverErrorSource, ErrorHandlerFake_LastSource());
+    POINTERS_EQUAL(&PosixResolverErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(POSIXRESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
-TEST(SolidSyslogGetAddrInfoResolverPool, DestroyOfStaleHandleReportsWarning)
+TEST(SolidSyslogPosixResolverPool, DestroyOfStaleHandleReportsWarning)
 {
-    pooled[0] = SolidSyslogGetAddrInfoResolver_Create();
-    SolidSyslogGetAddrInfoResolver_Destroy(pooled[0]);
+    pooled[0] = SolidSyslogPosixResolver_Create();
+    SolidSyslogPosixResolver_Destroy(pooled[0]);
     ErrorHandlerFake_Install(nullptr);
 
-    SolidSyslogGetAddrInfoResolver_Destroy(pooled[0]);
+    SolidSyslogPosixResolver_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&GetAddrInfoResolverErrorSource, ErrorHandlerFake_LastSource());
+    POINTERS_EQUAL(&PosixResolverErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(GETADDRINFORESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(POSIXRESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

@@ -865,7 +865,7 @@ jobs:
           -DconfigUSE_MUTEXES=1
           -DipconfigUSE_TCP=1
           -ICore/Interface
-          -IPlatform/Atomics/Interface
+          -IPlatform/StdAtomic/Interface
           -IPlatform/Posix/Interface
           -IPlatform/Windows/Interface
           -IPlatform/OpenSsl/Interface
@@ -877,7 +877,7 @@ jobs:
           -IPlatform/PlusFat/Interface
           --xml --xml-version=2
           Core/Source/
-          Platform/Atomics/Source/
+          Platform/StdAtomic/Source/
           Platform/Posix/Source/
           Platform/Windows/Source/
           Platform/OpenSsl/Source/
@@ -920,7 +920,7 @@ jobs:
           -DconfigUSE_MUTEXES=1
           -DipconfigUSE_TCP=1
           -ICore/Interface
-          -IPlatform/Atomics/Interface
+          -IPlatform/StdAtomic/Interface
           -IPlatform/Posix/Interface
           -IPlatform/Windows/Interface
           -IPlatform/OpenSsl/Interface
@@ -931,7 +931,7 @@ jobs:
           -IPlatform/FatFs/Interface
           -IPlatform/PlusFat/Interface
           Core/Source/
-          Platform/Atomics/Source/
+          Platform/StdAtomic/Source/
           Platform/Posix/Source/
           Platform/Windows/Source/
           Platform/OpenSsl/Source/
@@ -959,7 +959,7 @@ jobs:
             -DconfigUSE_MUTEXES=1 \
             -DipconfigUSE_TCP=1 \
             -ICore/Interface \
-            -IPlatform/Atomics/Interface \
+            -IPlatform/StdAtomic/Interface \
             -IPlatform/Posix/Interface \
             -IPlatform/Windows/Interface \
             -IPlatform/OpenSsl/Interface \
@@ -971,7 +971,7 @@ jobs:
             -IPlatform/PlusFat/Interface \
             --xml --xml-version=2 \
             Core/Source/ \
-            Platform/Atomics/Source/ \
+            Platform/StdAtomic/Source/ \
             Platform/Posix/Source/ \
             Platform/Windows/Source/ \
             Platform/OpenSsl/Source/ \
@@ -1555,8 +1555,8 @@ jobs:
         shell: bash
         run: |
           cmake -S . -B build/manifest -DSOLIDSYSLOG_BUILD_TESTING=OFF \
-            -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos;MbedTls;FatFs;Atomics" \
-            -DSOLIDSYSLOG_MANIFEST_PLATFORMS="LwipRaw;MbedTls;FreeRtos;FatFs;Atomics" \
+            -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos;MbedTls;FatFs;StdAtomic" \
+            -DSOLIDSYSLOG_MANIFEST_PLATFORMS="LwipRaw;MbedTls;FreeRtos;FatFs;StdAtomic" \
             -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/beta-stack-manifest.txt"
 
       - name: Fail on drift

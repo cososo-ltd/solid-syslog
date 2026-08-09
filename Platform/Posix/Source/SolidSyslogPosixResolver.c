@@ -1,4 +1,4 @@
-#include "SolidSyslogGetAddrInfoResolver.h"
+#include "SolidSyslogPosixResolver.h"
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -9,14 +9,14 @@
 #include <sys/socket.h>
 
 #include "SolidSyslogError.h"
-#include "SolidSyslogGetAddrInfoResolverErrors.h"
-#include "SolidSyslogGetAddrInfoResolverPrivate.h"
+#include "SolidSyslogPosixResolverErrors.h"
+#include "SolidSyslogPosixResolverPrivate.h"
 #include "SolidSyslogNullResolver.h"
 #include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 
-const struct SolidSyslogErrorSource GetAddrInfoResolverErrorSource = {"GetAddrInfoResolver"};
+const struct SolidSyslogErrorSource PosixResolverErrorSource = {"PosixResolver"};
 
 struct SolidSyslogAddress;
 
@@ -25,28 +25,28 @@ enum
     GETADDRINFO_SUCCESS = 0
 };
 
-static bool GetAddrInfoResolver_Resolve(
+static bool PosixResolver_Resolve(
     struct SolidSyslogResolver* base,
     enum SolidSyslogTransport transport,
     const char* host,
     uint16_t port,
     struct SolidSyslogAddress* result
 );
-static int GetAddrInfoResolver_MapTransport(enum SolidSyslogTransport transport);
+static int PosixResolver_MapTransport(enum SolidSyslogTransport transport);
 
-void GetAddrInfoResolver_Initialise(struct SolidSyslogResolver* base)
+void PosixResolver_Initialise(struct SolidSyslogResolver* base)
 {
-    base->Resolve = GetAddrInfoResolver_Resolve;
+    base->Resolve = PosixResolver_Resolve;
 }
 
-void GetAddrInfoResolver_Cleanup(struct SolidSyslogResolver* base)
+void PosixResolver_Cleanup(struct SolidSyslogResolver* base)
 {
     /* Overwrite the abstract base with the shared NullResolver vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullResolver_Get();
 }
 
-static bool GetAddrInfoResolver_Resolve(
+static bool PosixResolver_Resolve(
     struct SolidSyslogResolver* base,
     enum SolidSyslogTransport transport,
     const char* host,
@@ -58,7 +58,7 @@ static bool GetAddrInfoResolver_Resolve(
 
     struct addrinfo hints = {0};
     hints.ai_family = AF_INET;
-    hints.ai_socktype = GetAddrInfoResolver_MapTransport(transport);
+    hints.ai_socktype = PosixResolver_MapTransport(transport);
 
     struct addrinfo* info = NULL;
     bool resolved = false;
@@ -75,7 +75,7 @@ static bool GetAddrInfoResolver_Resolve(
     return resolved;
 }
 
-static int GetAddrInfoResolver_MapTransport(enum SolidSyslogTransport transport)
+static int PosixResolver_MapTransport(enum SolidSyslogTransport transport)
 {
     int socktype = SOCK_DGRAM;
 

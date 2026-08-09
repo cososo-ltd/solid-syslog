@@ -8,8 +8,8 @@ extern "C"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
-#include "SolidSyslogTlsStream.h"
-#include "SolidSyslogTlsStreamErrors.h"
+#include "SolidSyslogOpenSslStream.h"
+#include "SolidSyslogOpenSslStreamErrors.h"
 #include "SolidSyslogTunables.h"
 #include "StreamFake.h"
 }
@@ -39,10 +39,10 @@ void NoOpSleep(int milliseconds)
     }
 
 // clang-format off
-TEST_GROUP(SolidSyslogTlsStreamPool)
+TEST_GROUP(SolidSyslogOpenSslStreamPool)
 {
     struct SolidSyslogStream*         transport = nullptr;
-    struct SolidSyslogTlsStreamConfig config    = {};
+    struct SolidSyslogOpenSslStreamConfig config    = {};
     struct SolidSyslogStream* pooled[SOLIDSYSLOG_TLS_STREAM_POOL_SIZE] = {};
     struct SolidSyslogStream* overflow                                 = nullptr;
 
@@ -60,12 +60,12 @@ TEST_GROUP(SolidSyslogTlsStreamPool)
         {
             if (handle != nullptr)
             {
-                SolidSyslogTlsStream_Destroy(handle);
+                SolidSyslogOpenSslStream_Destroy(handle);
             }
         }
         if (overflow != nullptr)
         {
-            SolidSyslogTlsStream_Destroy(overflow);
+            SolidSyslogOpenSslStream_Destroy(overflow);
         }
         StreamFake_Destroy(transport);
         ConfigLockFake_Uninstall();
@@ -75,114 +75,114 @@ TEST_GROUP(SolidSyslogTlsStreamPool)
     {
         for (auto*& slot : pooled)
         {
-            slot = SolidSyslogTlsStream_Create(&config);
+            slot = SolidSyslogOpenSslStream_Create(&config);
         }
     }
 };
 
 // clang-format on
 
-TEST(SolidSyslogTlsStreamPool, FillingPoolThenOverflowReturnsDistinctFallback)
+TEST(SolidSyslogOpenSslStreamPool, FillingPoolThenOverflowReturnsDistinctFallback)
 {
     FillPool();
 
-    overflow = SolidSyslogTlsStream_Create(&config);
+    overflow = SolidSyslogOpenSslStream_Create(&config);
 
     CHECK_IS_FALLBACK(overflow, pooled);
 }
 
-TEST(SolidSyslogTlsStreamPool, ExhaustedCreateReportsError)
+TEST(SolidSyslogOpenSslStreamPool, ExhaustedCreateReportsError)
 {
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = SolidSyslogTlsStream_Create(&config);
+    overflow = SolidSyslogOpenSslStream_Create(&config);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&TlsStreamErrorSource, ErrorHandlerFake_LastSource());
+    POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(TLSSTREAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(OPENSSLSTREAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
-TEST(SolidSyslogTlsStreamPool, FallbackSendReturnsTrueToDropOnTheFloor)
+TEST(SolidSyslogOpenSslStreamPool, FallbackSendReturnsTrueToDropOnTheFloor)
 {
     FillPool();
-    overflow = SolidSyslogTlsStream_Create(&config);
+    overflow = SolidSyslogOpenSslStream_Create(&config);
 
     CHECK_TRUE(SolidSyslogStream_Send(overflow, "x", 1));
 }
 
-TEST(SolidSyslogTlsStreamPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
+TEST(SolidSyslogOpenSslStreamPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
 {
     ConfigLockFake_Install();
 
-    pooled[0] = SolidSyslogTlsStream_Create(&config);
+    pooled[0] = SolidSyslogOpenSslStream_Create(&config);
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
 }
 
-TEST(SolidSyslogTlsStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
+TEST(SolidSyslogOpenSslStreamPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 {
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = SolidSyslogTlsStream_Create(&config);
+    overflow = SolidSyslogOpenSslStream_Create(&config);
 
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_POOL_SIZE, ConfigLockFake_LockCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
 }
 
-TEST(SolidSyslogTlsStreamPool, DestroyOfPooledHandleLocksOnce)
+TEST(SolidSyslogOpenSslStreamPool, DestroyOfPooledHandleLocksOnce)
 {
-    pooled[0] = SolidSyslogTlsStream_Create(&config);
+    pooled[0] = SolidSyslogOpenSslStream_Create(&config);
     ConfigLockFake_Install();
 
-    SolidSyslogTlsStream_Destroy(pooled[0]);
+    SolidSyslogOpenSslStream_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
 }
 
-TEST(SolidSyslogTlsStreamPool, DestroyOfUnknownHandleDoesNotLock)
+TEST(SolidSyslogOpenSslStreamPool, DestroyOfUnknownHandleDoesNotLock)
 {
     ConfigLockFake_Install();
     struct SolidSyslogStream stranger = {};
 
-    SolidSyslogTlsStream_Destroy(&stranger);
+    SolidSyslogOpenSslStream_Destroy(&stranger);
 
     CALLED_FAKE(ConfigLockFake_Lock, NEVER);
     CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
 }
 
-TEST(SolidSyslogTlsStreamPool, DestroyOfUnknownHandleReportsWarning)
+TEST(SolidSyslogOpenSslStreamPool, DestroyOfUnknownHandleReportsWarning)
 {
     ErrorHandlerFake_Install(nullptr);
     struct SolidSyslogStream stranger = {};
 
-    SolidSyslogTlsStream_Destroy(&stranger);
+    SolidSyslogOpenSslStream_Destroy(&stranger);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&TlsStreamErrorSource, ErrorHandlerFake_LastSource());
+    POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(TLSSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(OPENSSLSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
-TEST(SolidSyslogTlsStreamPool, DestroyOfStaleHandleReportsWarning)
+TEST(SolidSyslogOpenSslStreamPool, DestroyOfStaleHandleReportsWarning)
 {
-    pooled[0] = SolidSyslogTlsStream_Create(&config);
-    SolidSyslogTlsStream_Destroy(pooled[0]);
+    pooled[0] = SolidSyslogOpenSslStream_Create(&config);
+    SolidSyslogOpenSslStream_Destroy(pooled[0]);
     ErrorHandlerFake_Install(nullptr);
 
-    SolidSyslogTlsStream_Destroy(pooled[0]);
+    SolidSyslogOpenSslStream_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&TlsStreamErrorSource, ErrorHandlerFake_LastSource());
+    POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(TLSSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(OPENSSLSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

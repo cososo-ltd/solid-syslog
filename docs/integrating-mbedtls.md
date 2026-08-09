@@ -4,7 +4,7 @@
 records from SolidSyslog through Mbed TLS instead of OpenSSL. It is the
 recommended adapter on embedded / FreeRTOS / bare-metal targets where
 OpenSSL is too large or impractical. Hosted Linux / Windows deployments
-should use `SolidSyslogTlsStream` (OpenSSL); both adapters expose the
+should use `SolidSyslogOpenSslStream` (OpenSSL); both adapters expose the
 same `SolidSyslogStream` vtable, so the rest of the wiring
 (`SolidSyslogStreamSender`, your buffer, your store) is identical.
 
@@ -210,7 +210,7 @@ shows the minimal config that satisfies the above for QEMU mps2-an385.
 |---|---|---|---|
 | FreeRTOS QEMU mps2-an385 + FreeRTOS-Plus-TCP | [BddTargetTlsSender_MbedTls_PlusTcpTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c) | [mbedtls_user_config.h](../Bdd/Targets/FreeRtos/mbedtls_user_config.h) | Demo-quality entropy and baked-in PEMs; loudly tagged not-for-production. |
 | Linux host (host-TDD parity with the embedded path) | [Tests/MbedTlsIntegration/](../Tests/MbedTlsIntegration/) | — | In-process TLS server drives a real handshake against the wrapper. |
-| POSIX (OpenSSL reference, for comparison) | [BddTargetTlsSender_OpenSsl_PosixTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_OpenSsl_PosixTcp.c) | — | Same composition shape using `SolidSyslogTlsStream` for the TLS layer. |
+| POSIX (OpenSSL reference, for comparison) | [BddTargetTlsSender_OpenSsl_PosixTcp.c](../Bdd/Targets/Common/BddTargetTlsSender_OpenSsl_PosixTcp.c) | — | Same composition shape using `SolidSyslogOpenSslStream` for the TLS layer. |
 
 ---
 

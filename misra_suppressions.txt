@@ -35,7 +35,7 @@ misra-c2012-11.3:Core/Source/SolidSyslogStreamSender.c:170
 misra-c2012-11.3:Core/Source/SolidSyslogSwitchingSender.c:63
 misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:54
 misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:121
-misra-c2012-11.3:Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c:29
+misra-c2012-11.3:Platform/StdAtomic/Source/SolidSyslogStdAtomicCounter.c:29
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:59
 misra-c2012-11.3:Platform/PlusFat/Source/SolidSyslogPlusFatFile.c:48
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:29
@@ -59,7 +59,7 @@ misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:79
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:81
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:85
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:80
-misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:86
+misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c:89
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddress.c:14
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:23
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:28
@@ -150,8 +150,8 @@ misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:21
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:24
 misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:22
 misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:22
-misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogTlsStream.c:25
-misra-c2012-5.7:Platform/Posix/Source/SolidSyslogGetAddrInfoResolver.c:24
+misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c:25
+misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixResolver.c:24
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixDatagram.c:25
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSleep.c:6
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:29

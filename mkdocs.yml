@@ -108,7 +108,7 @@ plugins:
   - mkdoxy:
       projects:
         api:
-          src-dirs: "Core/Interface Platform/Atomics/Interface Platform/FatFs/Interface Platform/FreeRtos/Interface Platform/LwipRaw/Interface Platform/MbedTls/Interface Platform/OpenSsl/Interface Platform/PlusFat/Interface Platform/PlusTcp/Interface Platform/Posix/Interface Platform/Windows/Interface"
+          src-dirs: "Core/Interface Platform/StdAtomic/Interface Platform/FatFs/Interface Platform/FreeRtos/Interface Platform/LwipRaw/Interface Platform/MbedTls/Interface Platform/OpenSsl/Interface Platform/PlusFat/Interface Platform/PlusTcp/Interface Platform/Posix/Interface Platform/Windows/Interface"
           full-doc: true
           doxy-cfg:
             FILE_PATTERNS: "*.h"
@@ -190,7 +190,7 @@ nav:
           - Mbed TLS: platforms/mbedtls.md
           - FatFs: platforms/fatfs.md
           - FreeRTOS-Plus-FAT: platforms/plusfat.md
-          - C11 atomics: platforms/atomics.md
+          - C11 atomics: platforms/stdatomic.md
       # A role *is* its vtable, so each entry links straight to the generated
       # contract page; detail belongs in the SolidSyslog<Role>Definition.h
       # doc comment, not a hand-maintained copy here.
