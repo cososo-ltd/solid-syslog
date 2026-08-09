@@ -26,12 +26,12 @@ static inline SemaphoreHandle_t FreeRtosMutex_AsHandle(struct SolidSyslogFreeRto
 void FreeRtosMutex_Initialise(struct SolidSyslogMutex* base)
 {
     struct SolidSyslogFreeRtosMutex* self = FreeRtosMutex_SelfFromBase(base);
-    /* xSemaphoreCreateMutexStatic returns NULL only when
-     * configSUPPORT_STATIC_ALLOCATION is not 1 — a compile-time config
-     * gate, not a runtime failure mode. Guarded anyway so a misconfigured
-     * integrator falls back to the NullMutex vtable instead of corrupting
-     * Lock/Unlock with a dangling handle — the same defence every Mutex
-     * adapter applies to its own primitive's init failure. */
+    /* The storage is ours, so this cannot fail for want of memory; the kernel
+     * returns NULL only when handed a NULL buffer, which this call never does.
+     * configSUPPORT_STATIC_ALLOCATION is a compile-time requirement rather than
+     * a runtime one — without it the function does not exist to call. The
+     * branch is therefore defensive: an unexpected NULL leaves the NullMutex
+     * vtable in place rather than a dangling handle in Lock/Unlock. */
     if (xSemaphoreCreateMutexStatic(&self->Buffer) != NULL)
     {
         self->Base.Lock = FreeRtosMutex_Lock;

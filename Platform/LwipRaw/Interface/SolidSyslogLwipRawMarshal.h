@@ -10,13 +10,15 @@
  *  - NO_SYS=1 (bare metal, no RTOS): the default direct-call marshal is correct
  *    — one execution context, no core to protect.
  *  - NO_SYS=0 (RTOS with a tcpip thread): the integrator installs a marshal that
- *    hops onto that thread — e.g. tcpip_callback_with_block, or a
- *    LOCK_TCPIP_CORE / UNLOCK_TCPIP_CORE pair.
+ *    hops onto that thread — a LOCK_TCPIP_CORE / UNLOCK_TCPIP_CORE pair, or a
+ *    mailbox post that waits for the callback to run.
  *
  *  The marshal MUST invoke its callback synchronously, before it returns: the
  *  wrapper reads results the callback writes immediately after the hop, so an
- *  asynchronous marshal is caller error. tcpip_callback_with_block(.., block=1)
- *  honours this; a bare tcpip_callback(..) does not. See docs/platforms/lwipraw/setup.md. */
+ *  asynchronous marshal is caller error. Core locking satisfies this directly.
+ *  A mailbox post does not on its own — tcpip_callback_with_block(.., block=1)
+ *  blocks until the message is accepted, not until it is executed — so such a
+ *  marshal must wait for completion itself. See docs/platforms/lwipraw/setup.md. */
 #ifndef SOLIDSYSLOGLWIPRAWMARSHAL_H
 #define SOLIDSYSLOGLWIPRAWMARSHAL_H
 

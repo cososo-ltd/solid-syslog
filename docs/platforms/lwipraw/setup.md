@@ -65,14 +65,29 @@ void MyCoreLockMarshal(SolidSyslogLwipRawCallback callback, void* context)
 }
 ```
 
-Otherwise post to lwIP's mailbox and block until it runs — `block = 1` is what
-satisfies the synchronous contract, and a bare `tcpip_callback` does not:
+Core locking is the route to prefer, and it is what the reference target uses.
+It runs the callback in your own task under the lock, so it is synchronous by
+construction, independent of task priority, and costs no mailbox message.
+
+Without core locking you must post to lwIP's mailbox — and then wait for the
+callback to *run*, which the post alone does not do. `tcpip_callback_with_block`
+blocks until the mailbox accepts the message, not until the tcpip thread
+executes it, so returning at that point would break the contract and leave the
+hop's stack frame dangling under the callback. Carry a semaphore:
 
 ```c
+struct MarshalHop
+{
+    SolidSyslogLwipRawCallback callback;
+    void* context;
+    sys_sem_t done;
+};
+
 static void RunHop(void* ctx)
 {
     struct MarshalHop* hop = ctx;
     hop->callback(hop->context);
+    sys_sem_signal(&hop->done);
 }
 
 void MyTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
@@ -82,12 +97,23 @@ void MyTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
         callback(context);
         return;
     }
-    struct MarshalHop hop = {callback, context};
-    (void) tcpip_callback_with_block(RunHop, &hop, 1);
+    struct MarshalHop hop = {callback, context, {0}};
+    if (sys_sem_new(&hop.done, 0) == ERR_OK)
+    {
+        if (tcpip_callback_with_block(RunHop, &hop, 1) == ERR_OK)
+        {
+            sys_arch_sem_wait(&hop.done, 0);
+        }
+        sys_sem_free(&hop.done);
+    }
 }
 ```
 
-Two things to check in your port: the mailbox must be sized for a blocking
+The `err_t` matters: a failed post means `RunHop` never runs, so waiting on the
+semaphore would hang and returning without waiting would let the adapter read
+result state nothing wrote.
+
+Two more things to check in your port: the mailbox must be sized for a blocking
 post, and lwIP exposes no portable "am I on the lwIP thread?" predicate, so
 most ports compare the current task handle against the one given to
 `tcpip_init`. Without that guard, an adapter call made from inside a callback

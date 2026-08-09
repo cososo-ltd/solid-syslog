@@ -172,8 +172,9 @@ configuration macro — lwIP's `LWIP_DNS`, FreeRTOS's
 **Prefer a seam.** Where the adapter is thin, take the dependency as an injected
 function pointer with a safe default and never name the upstream symbol.
 `SolidSyslogLwipRaw_SetMarshal` covers `NO_SYS=0` against `NO_SYS=1` this way:
-the library calls a callback, and the integrator installs `LOCK_TCPIP_CORE` or a
-`tcpip_callback_with_block` shim. Nothing to select at build time.
+the library calls a callback, and the integrator installs a `LOCK_TCPIP_CORE`
+pair, or a mailbox shim that waits for the callback to run. Nothing to select at
+build time.
 
 **Otherwise gate the translation unit.** Where the adapter carries logic that
 belongs in the library — the DNS resolver's async callback handling, poll

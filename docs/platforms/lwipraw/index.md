@@ -25,8 +25,10 @@ the Datagram and TcpStream make is routed through one marshal hop.
   adapter, passing a function that runs its callback on the core-owning thread.
 
 The marshal must invoke its callback synchronously — the adapter reads results the
-moment the hop returns. `tcpip_callback_with_block(…, 1)` or a `LOCK_TCPIP_CORE` /
-`UNLOCK_TCPIP_CORE` pair satisfy that; a bare `tcpip_callback` does not.
+moment the hop returns. A `LOCK_TCPIP_CORE` / `UNLOCK_TCPIP_CORE` pair satisfies
+that directly. Posting to lwIP's mailbox does not, in any of its forms:
+`tcpip_callback_with_block` blocks until the message is accepted, not until the
+callback runs, so a mailbox marshal has to wait for completion itself.
 
 ## Requirements
 
