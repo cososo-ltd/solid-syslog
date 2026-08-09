@@ -1103,7 +1103,7 @@ Raised and approved 2026-05-22 by the project owner, David Cozens. Recorded unde
 
 ---
 
-## D.013 — Rule 11.5: `void*` ↔ `unsigned char*` at third-party byte-buffer API boundaries
+## D.013 — Rule 11.5: `void*` ↔ a byte pointer at third-party byte-buffer API boundaries
 
 ### Guideline
 
@@ -1115,27 +1115,33 @@ Raised and approved 2026-05-22 by the project owner, David Cozens. Recorded unde
 
 `SolidSyslogStream::Send` takes `const void*` and `SolidSyslogStream::Read`
 takes `void*` — the project-wide byte-buffer contract used by every
-Stream implementation. Some third-party C libraries (notably mbedTLS)
-type their byte buffers as `const unsigned char*` / `unsigned char*`
-rather than `void*`. The implementation cast bridging the two is
-unavoidable at the API boundary:
+Stream implementation, and `SolidSyslogDatagram::SendTo` takes `const void*`
+likewise. Some third-party C libraries type their byte buffers as a character
+pointer rather than `void*`: mbedTLS uses `const unsigned char*` /
+`unsigned char*`, and the Winsock socket calls use `const char*` / `char*`
+where their POSIX counterparts use `void*`. The implementation cast bridging
+the two is unavoidable at the API boundary:
 
 ```c
-int rc = mbedtls_ssl_write(&self->SslContext, (const unsigned char*) buffer, size);
+int rc  = mbedtls_ssl_write(&self->SslContext, (const unsigned char*) buffer, size);
+int sent = WinsockTcpStream_send(self->Fd, (const char*) buffer, (int) size, 0);
 ```
 
 Rule 11.5 fires on each such adapter cast.
 
 ### Scope
 
-`Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c` — two sites
-(`MbedTlsStream_Send`, `MbedTlsStream_Read`).
+- `Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c` — two sites
+  (`MbedTlsStream_Send`, `MbedTlsStream_Read`), `unsigned char*`.
+- `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c` — two sites
+  (`WinsockTcpStream_Send`, `WinsockTcpStream_Read`), `char*`.
+- `Platform/Windows/Source/SolidSyslogWinsockDatagram.c` — one site
+  (`WinsockDatagram_SendTo`), `char*`.
 
 A future Stream, Datagram, hash or MAC implementation wrapping a byte-typed
-third-party C API (`unsigned char*` rather than `void*`) will meet the same
-boundary, but is not covered by this record until reviewed and added to it —
-or given its own entry. The OpenSSL adapter
-(`Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c`) does not fall
+third-party C API will meet the same boundary, but is not covered by this
+record until reviewed and added to it — or given its own entry. The OpenSSL
+adapter (`Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c`) does not fall
 under this deviation — `SSL_write` / `SSL_read` take `void*` and so no
 cast is needed.
 
@@ -1149,8 +1155,8 @@ The alternatives all regress:
 | Copy through an `unsigned char` scratch buffer per call | Runtime cost on the hot send/receive path; adds a fixed-size scratch or a stack-allocated VLA in a critical-path function. Defeats the zero-copy intent of the Stream contract. |
 | Inline `cppcheck-suppress misra-c2012-11.5` at each site | **Project preference.** Deviations are recorded structurally in this document so the rationale is centrally auditable rather than scattered across call sites. |
 
-The cast is well-defined: `unsigned char` may alias any object type
-(§6.5 ¶7), so reinterpreting a `void*` byte buffer as
+The cast is well-defined: a character type may alias any object type
+(§6.5 ¶7), so reinterpreting a `void*` byte buffer as `char*` or
 `unsigned char*` and back is a no-op at the abstract-machine level.
 
 ### Risk and mitigation
@@ -1180,10 +1186,12 @@ Raised and approved 2026-05-23 by the project owner, David Cozens. Recorded unde
 `<Class>_Report` wrapper confined every emission to the source's own `*Messages.c`,
 a single translation unit. S12.26 decoupled error text from the library
 (deleting the `*Messages.c` message tables) and unwound the `<Class>_Report` wrapper,
-so each source is now defined in its class's vtable TU and referenced from both
-that TU's emit sites and its `*Static.c` lifecycle code, genuinely cross-TU —
-which is the resolution the entry's risk analysis anticipated before it was
-collapsed to this note; see the revision prior to retirement for that text.
+so each source is now defined in its class's vtable TU and reached from the
+`<Class>_Report` inline in its `*Private.h`, which both that TU and its
+`*Static.c` lifecycle code include — so the object is used from more than one
+translation unit, which is the resolution the entry's risk analysis anticipated
+before it was collapsed to this note; see the revision prior to retirement for
+that text.
 cppcheck-misra reports no 8.7 finding for any error source; the suppression
 lines were removed.
 

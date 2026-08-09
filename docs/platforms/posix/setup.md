@@ -13,9 +13,10 @@ link:
 set(SOLIDSYSLOG_PLATFORMS "Posix")
 ```
 
-The one exception is the message-queue buffer, which needs POSIX message queues
-— on glibc that means linking `rt`. If you use the circular buffer instead, you
-do not need it.
+Selecting this platform links `rt` publicly, which older glibc needs for POSIX
+message queues; from glibc 2.34 they are in `libc` and the library is empty but
+harmless. You do not have to add it yourself, and it is linked whether or not
+you use the message-queue buffer.
 
 ## Wiring a sender
 
