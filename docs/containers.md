@@ -59,7 +59,7 @@ stacks' unit tests, without reconfiguring. The configure says so:
 ```
 
 To work in one stack only, deselect the other with its own switch
-(`-DSOLIDSYSLOG_PLUSTCP=OFF` or `-DSOLIDSYSLOG_LWIP=OFF`), which drops that
+(`-DSOLIDSYSLOG_PLUSTCP=OFF` or `-DSOLIDSYSLOG_LWIPRAW=OFF`), which drops that
 platform and its tests together. The lwIP lint lanes do exactly this.
 
 Which BDD ELF a *cross* build produces is separate, and maintainer-only —

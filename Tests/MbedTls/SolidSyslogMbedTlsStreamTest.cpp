@@ -240,7 +240,7 @@ TEST(SolidSyslogMbedTlsStream, OpenReturnsFalseWhenHandshakeFails)
  * transport will emit MBEDTLS_ERR_SSL_WANT_READ / WANT_WRITE between RTTs;
  * the loop must drive it to completion within a bounded budget so a wedged
  * peer doesn't burn the service thread indefinitely. Mirrors the OpenSSL
- * TlsStream pattern (Tests/SolidSyslogTlsStreamTest.cpp).
+ * OpenSslStream pattern (Tests/SolidSyslogOpenSslStreamTest.cpp).
  * ------------------------------------------------------------------------- */
 
 TEST(SolidSyslogMbedTlsStream, OpenRetriesHandshakeOnWantRead)
@@ -457,7 +457,7 @@ TEST(SolidSyslogMbedTlsStream, SendClosesSslAndTransportOnWriteFailure)
 
 {
     /* Fail-fast: a TLS-level write failure means the session state is
-     * unrecoverable. Mirror the OpenSSL TlsStream contract — close internally
+     * unrecoverable. Mirror the OpenSslStream contract — close internally
      * so the StreamSender reconnect path runs on the next tick. */
     const unsigned char payload[] = {0x10, 0x20, 0x30};
     MbedTlsFake_SetSslWriteReturn(-1);

@@ -22,8 +22,8 @@
  *    or closes on anything else — including a mid-stream WANT_WRITE (renegotiation)
  *    which fail-fast semantics treat as a transport failure; store-and-forward
  *    replays after the reopen. */
-#ifndef SOLIDSYSLOGTLSSTREAM_H
-#define SOLIDSYSLOGTLSSTREAM_H
+#ifndef SOLIDSYSLOGOPENSSLSTREAM_H
+#define SOLIDSYSLOGOPENSSLSTREAM_H
 
 #include "SolidSyslogExternC.h"
 #include "SolidSyslogSleep.h"
@@ -33,12 +33,12 @@ struct SolidSyslogStream;
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /** Wires SolidSyslogTlsStream to its transport, trust anchors, and identity. */
-    struct SolidSyslogTlsStreamConfig
+    /** Wires SolidSyslogOpenSslStream to its transport, trust anchors, and identity. */
+    struct SolidSyslogOpenSslStreamConfig
     {
         /** Underlying byte stream carrying the ciphertext. Borrowed — this stream
          *  may Close it but never destroys it; the caller owns it and must keep it
-         *  valid until SolidSyslogTlsStream_Destroy. */
+         *  valid until SolidSyslogOpenSslStream_Destroy. */
         struct SolidSyslogStream* Transport;
         SolidSyslogSleepFunction Sleep; /**< Drives the bounded handshake retry between WANT_READ/WANT_WRITE
                                          *  polls; required. */
@@ -64,11 +64,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Draw a TLS stream from the pool over the injected transport (see the file
      *  overview for the handshake and I/O behaviour). An exhausted pool (default
      *  size 1) falls back to the shared NullStream. */
-    struct SolidSyslogStream* SolidSyslogTlsStream_Create(const struct SolidSyslogTlsStreamConfig* config);
+    struct SolidSyslogStream* SolidSyslogOpenSslStream_Create(const struct SolidSyslogOpenSslStreamConfig* config);
     /** Release the pool slot; closes the TLS session and the underlying transport
      *  first if the stream is still Open. */
-    void SolidSyslogTlsStream_Destroy(struct SolidSyslogStream * base);
+    void SolidSyslogOpenSslStream_Destroy(struct SolidSyslogStream * base);
 
 SOLIDSYSLOG_EXTERN_C_END
 
-#endif /* SOLIDSYSLOGTLSSTREAM_H */
+#endif /* SOLIDSYSLOGOPENSSLSTREAM_H */

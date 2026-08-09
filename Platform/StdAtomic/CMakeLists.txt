@@ -1,4 +1,4 @@
-if(SOLIDSYSLOG_ATOMICS)
+if(SOLIDSYSLOG_STDATOMIC)
     target_sources(${PROJECT_NAME} PRIVATE
         Source/SolidSyslogStdAtomicCounter.c
         Source/SolidSyslogStdAtomicCounterStatic.c

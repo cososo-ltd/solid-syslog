@@ -2,7 +2,7 @@
 
 A structured syslog client library for embedded and industrial systems, implementing
 RFC 5424 (structured syslog) with RFC 5426 (UDP) and RFC 6587 (TCP) transports.
-TLS per RFC 5425 ships two ways — `SolidSyslogTlsStream` over OpenSSL and
+TLS per RFC 5425 ships two ways — `SolidSyslogOpenSslStream` over OpenSSL and
 `SolidSyslogMbedTlsStream` over Mbed TLS — and any other TLS library (wolfSSL,
 hardware offload, …) plugs in behind the same Stream vtable. TLS is not a core
 dependency: Core carries no reference to any TLS library.

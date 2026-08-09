@@ -195,7 +195,7 @@
 /**
  * Role pool: Resolver. Number of resolver instances the library's internal
  * static pool can simultaneously hold, across whichever implementation is
- * compiled in — SolidSyslogGetAddrInfoResolver, SolidSyslogWinsockResolver,
+ * compiled in — SolidSyslogPosixResolver, SolidSyslogWinsockResolver,
  * SolidSyslogPlusTcpResolver, SolidSyslogLwipRawResolver, or
  * SolidSyslogLwipRawDnsResolver.
  *
@@ -562,7 +562,7 @@
 /**
  * Role pool: TLS stream. Number of TLS stream instances the library's
  * internal static pool can simultaneously hold, across whichever crypto
- * vendor is compiled in — SolidSyslogTlsStream (OpenSSL) or
+ * vendor is compiled in — SolidSyslogOpenSslStream (OpenSSL) or
  * SolidSyslogMbedTlsStream (Mbed TLS). Each instance carries the vendor's
  * session/context handles and the integrator's TLS config.
  *

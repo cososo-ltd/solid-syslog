@@ -28,8 +28,8 @@ Platform/Posix/Source/SolidSyslogPosixSysUpTime.c
 Platform/Posix/Source/SolidSyslogPosixSleep.c
 Platform/Posix/Source/SolidSyslogPosixAddress.c
 Platform/Posix/Source/SolidSyslogPosixAddressStatic.c
-Platform/Posix/Source/SolidSyslogGetAddrInfoResolver.c
-Platform/Posix/Source/SolidSyslogGetAddrInfoResolverStatic.c
+Platform/Posix/Source/SolidSyslogPosixResolver.c
+Platform/Posix/Source/SolidSyslogPosixResolverStatic.c
 Platform/Posix/Source/SolidSyslogPosixDatagram.c
 Platform/Posix/Source/SolidSyslogPosixDatagramStatic.c
 Platform/Posix/Source/SolidSyslogPosixTcpStream.c

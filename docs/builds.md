@@ -53,7 +53,7 @@ reserved identifiers and compile anywhere; no choice of standard catches those.
 That the Core needs no POSIX is a separate property, proven by the FreeRTOS
 cross lanes that build it with no host platform at all.
 
-Platform packs are best-effort C99 rather than guaranteed: `Platform/Atomics` is
+Platform packs are best-effort C99 rather than guaranteed: `Platform/StdAtomic` is
 C11 by construction, and a future pack may deliberately require more. The
 `c99-platforms` preset builds the POSIX and OpenSSL packs at C99 as a drift
 check, and defines `_POSIX_C_SOURCE=200809L` because strict ISO mode makes glibc

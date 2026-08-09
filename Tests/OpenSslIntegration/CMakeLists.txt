@@ -1,12 +1,12 @@
 # OpenSSL-backed integration tests: links the real libssl and exercises
-# SolidSyslogTlsStream end-to-end against an in-process server. Separate binary
+# SolidSyslogOpenSslStream end-to-end against an in-process server. Separate binary
 # from SolidSyslogTests because unit tests link OpenSslFakes in place of libssl
 # — the two cannot share one executable without fake/real symbol collision.
 set(OPENSSL_INTEGRATION_TESTS_SOURCES
     BioPairStream.c
     TlsTestCert.c
     TlsTestServer.c
-    SolidSyslogTlsStreamIntegrationTest.cpp
+    SolidSyslogOpenSslStreamIntegrationTest.cpp
     SolidSyslogOpenSslAesGcmPolicyIntegrationTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Tests/AddressFake.c

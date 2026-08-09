@@ -20,7 +20,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void TlsTestServer_Destroy(struct TlsTestServer * self);
 
     /* Returns the client-facing end of the internal BIO pair. Pass to
-     * BioPairStream_Create and use as the transport for SolidSyslogTlsStream. */
+     * BioPairStream_Create and use as the transport for SolidSyslogOpenSslStream. */
     BIO* TlsTestServer_ClientSideBio(struct TlsTestServer * self);
 
     /* Advances the server's state machine one step. Used as a pump callback

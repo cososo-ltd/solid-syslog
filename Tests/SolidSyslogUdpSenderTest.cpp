@@ -13,7 +13,7 @@
 #include "SolidSyslogEndpointHost.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFormatter.h"
-#include "SolidSyslogGetAddrInfoResolver.h"
+#include "SolidSyslogPosixResolver.h"
 #include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixDatagram.h"
 #include "SolidSyslogPrival.h"
@@ -124,7 +124,7 @@ TEST_BASE(UdpSenderTestBase)
     {
         SocketFake_Reset();
         resetEndpointStubs();
-        resolver = SolidSyslogGetAddrInfoResolver_Create();
+        resolver = SolidSyslogPosixResolver_Create();
         datagram = SolidSyslogPosixDatagram_Create();
         address  = SolidSyslogPosixAddress_Create();
         config   = {resolver, datagram, address, TestEndpoint, TestEndpointVersion, nullptr};
@@ -134,7 +134,7 @@ TEST_BASE(UdpSenderTestBase)
     {
         SocketFake_Reset();
         resetEndpointStubs();
-        resolver = SolidSyslogGetAddrInfoResolver_Create();
+        resolver = SolidSyslogPosixResolver_Create();
         datagram = DatagramFake_Create();
         address  = SolidSyslogPosixAddress_Create();
         config   = {resolver, datagram, address, TestEndpoint, TestEndpointVersion, nullptr};
@@ -144,14 +144,14 @@ TEST_BASE(UdpSenderTestBase)
     {
         SolidSyslogPosixAddress_Destroy(address);
         SolidSyslogPosixDatagram_Destroy(datagram);
-        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
+        SolidSyslogPosixResolver_Destroy(resolver);
     }
 
     void teardownFakesWithDatagramFake() const
     {
         SolidSyslogPosixAddress_Destroy(address);
         DatagramFake_Destroy(datagram);
-        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
+        SolidSyslogPosixResolver_Destroy(resolver);
     }
 
     // NOLINTNEXTLINE(modernize-use-nodiscard) -- many test bodies intentionally discard the return

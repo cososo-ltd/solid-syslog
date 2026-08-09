@@ -167,10 +167,10 @@ include(CheckCSourceCompiles)
 # Detect real C11 atomics by *compiling* an _Atomic snippet rather than probing
 # for <stdatomic.h>, which exists on every toolchain regardless of whether the
 # _Atomic keyword is actually supported. The probe fails on a toolchain without
-# working C11 atomics, excluding Platform/Atomics in favour of the Windows or
+# working C11 atomics, excluding Platform/StdAtomic in favour of the Windows or
 # Null counter. (The probe does not inherit CMAKE_C_STANDARD, so it cannot
 # answer the question for the C99 portability preset — that preset sets
-# SOLIDSYSLOG_ATOMICS=OFF directly. See docs/builds.md.)
+# SOLIDSYSLOG_STDATOMIC=OFF directly. See docs/builds.md.)
 check_c_source_compiles(
     "#include <stdatomic.h>
 #include <stdint.h>
@@ -269,10 +269,10 @@ endforeach()
 set(SOLIDSYSLOG_PLATFORM_REGISTRY
     "Posix|SOLIDSYSLOG_POSIX|${HAVE_POSIX_SOCKETS}|probe|Platform/Posix|network file mutex clock"
     "Windows|SOLIDSYSLOG_WINDOWS|${HAVE_WINDOWS_ANY}|probe|Platform/Windows|network file mutex atomics clock"
-    "Atomics|SOLIDSYSLOG_ATOMICS|${HAVE_STDATOMIC_H}|probe|Platform/Atomics|atomics"
+    "StdAtomic|SOLIDSYSLOG_STDATOMIC|${HAVE_STDATOMIC_H}|probe|Platform/StdAtomic|atomics"
     "OpenSsl|SOLIDSYSLOG_OPENSSL|${OpenSSL_FOUND}|probe|Platform/OpenSsl|tls"
     "MbedTls|SOLIDSYSLOG_MBEDTLS|${HAVE_MBEDTLS_DIR}|upstream|Platform/MbedTls|tls"
-    "LwipRaw|SOLIDSYSLOG_LWIP|${HAVE_LWIP_PATH}|upstream|Platform/LwipRaw|network"
+    "LwipRaw|SOLIDSYSLOG_LWIPRAW|${HAVE_LWIP_PATH}|upstream|Platform/LwipRaw|network"
     "PlusTcp|SOLIDSYSLOG_PLUSTCP|${HAVE_FREERTOS_PLUS_TCP_PATH}|upstream|Platform/PlusTcp|network"
     "FreeRtos|SOLIDSYSLOG_FREERTOS|${HAVE_FREERTOS_KERNEL_PATH}|upstream|Platform/FreeRtos|mutex clock"
     "FatFs|SOLIDSYSLOG_FATFS|${HAVE_FATFS_PATH}|upstream|Platform/FatFs|file"
@@ -382,7 +382,7 @@ else()
     set(SOLIDSYSLOG_WINSOCK FALSE)
 endif()
 
-if(SOLIDSYSLOG_ATOMICS OR (SOLIDSYSLOG_WINDOWS AND HAVE_WINDOWS_INTERLOCKED))
+if(SOLIDSYSLOG_STDATOMIC OR (SOLIDSYSLOG_WINDOWS AND HAVE_WINDOWS_INTERLOCKED))
     set(HAVE_ATOMIC_COUNTER TRUE)
 else()
     set(HAVE_ATOMIC_COUNTER FALSE)
@@ -486,7 +486,7 @@ endfunction()
 
 solidsyslog_require_path_for_tests(SOLIDSYSLOG_FREERTOS
     SOLIDSYSLOG_FREERTOS_KERNEL_PATH FREERTOS_KERNEL_PATH)
-solidsyslog_require_path_for_tests(SOLIDSYSLOG_LWIP
+solidsyslog_require_path_for_tests(SOLIDSYSLOG_LWIPRAW
     SOLIDSYSLOG_LWIP_PATH LWIP_PATH)
 solidsyslog_require_path_for_tests(SOLIDSYSLOG_MBEDTLS
     SOLIDSYSLOG_MBEDTLS_DIR MBEDTLS_DIR)

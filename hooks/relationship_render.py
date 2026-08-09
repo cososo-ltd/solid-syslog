@@ -36,7 +36,7 @@ _BUS_GAP, _ROW_GAP = 38, 28
 _ROT = [-2, 1.5, -1, 2, -1.5, 1, -0.5, 2, -1, 1.5]
 
 # backends that also wrap an injected instance of their own role (decorator)
-_WRAPS = {"Stream": {"TlsStream", "MbedTlsStream"}}
+_WRAPS = {"Stream": {"OpenSslStream", "MbedTlsStream"}}
 
 
 def _fit(text_len, inner, cap):

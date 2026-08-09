@@ -1136,7 +1136,7 @@ A future Stream, Datagram, hash or MAC implementation wrapping a byte-typed
 third-party C API (`unsigned char*` rather than `void*`) will meet the same
 boundary, but is not covered by this record until reviewed and added to it —
 or given its own entry. The OpenSSL adapter
-(`Platform/OpenSsl/Source/SolidSyslogTlsStream.c`) does not fall
+(`Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c`) does not fall
 under this deviation — `SSL_write` / `SSL_read` take `void*` and so no
 cast is needed.
 

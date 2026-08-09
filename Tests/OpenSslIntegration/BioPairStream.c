@@ -61,7 +61,7 @@ static bool Send(struct SolidSyslogStream* self, const void* buffer, size_t size
 
 /* Reads from the BIO, driving the paired peer via the pump callback whenever the
  * read would otherwise block. Models a blocking stream on top of a non-blocking
- * BIO pair so SolidSyslogTlsStream's synchronous SSL_connect / SSL_read path
+ * BIO pair so SolidSyslogOpenSslStream's synchronous SSL_connect / SSL_read path
  * works unchanged. */
 static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_t size)
 {
