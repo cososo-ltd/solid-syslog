@@ -22,7 +22,7 @@ vtable.
 | [Mbed TLS](mbedtls/index.md) | Mbed TLS | | ● | ● | | | |
 | [FatFs](fatfs/index.md) | ChaN FatFs | | | | ● | | |
 | [FreeRTOS-Plus-FAT](plusfat/index.md) | FreeRTOS-Plus-FAT | | | | ● | | |
-| [C11 atomics](atomics/index.md) | `<stdatomic.h>` | | | | | ● | |
+| [C11 atomics](stdatomic/index.md) | `<stdatomic.h>` | | | | | ● | |
 
 The at-rest-crypto column is the keyed policies (HMAC-SHA256, AES-256-GCM); the
 unkeyed CRC-16 policy is Core. Buffer, Store, and Structured Data are roles Core

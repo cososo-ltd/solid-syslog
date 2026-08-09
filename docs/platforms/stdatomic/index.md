@@ -1,6 +1,6 @@
 # C11 atomics
 
-`Platform/Atomics/` is a portable AtomicCounter built on C11 `<stdatomic.h>` — the
+`Platform/StdAtomic/` is a portable AtomicCounter built on C11 `<stdatomic.h>` — the
 sequenceId source on any target with a C11 compiler, no OS dependency.
 
 Fills the [AtomicCounter](../../api/structSolidSyslogAtomicCounter.md) role.

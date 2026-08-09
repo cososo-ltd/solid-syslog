@@ -19,7 +19,7 @@ and for mutual TLS a PEM client certificate chain and private key. A
 ## Security behaviour and obligations
 
 The per-field detail is in
-[`SolidSyslogTlsStream.h`](../../api/SolidSyslogTlsStream_8h.md), alongside the
+[`SolidSyslogOpenSslStream.h`](../../api/SolidSyslogOpenSslStream_8h.md), alongside the
 fields themselves. What follows is the behaviour of the adapter as a whole, and
 the work it leaves to you.
 

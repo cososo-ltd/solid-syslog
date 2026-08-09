@@ -145,7 +145,7 @@ class ShipsManifest(unittest.TestCase):
         self.assertIn("Error codes and Source identity for the MbedTlsStream adapter.", self.ships())
 
     def test_a_multi_sentence_brief_stops_at_the_first_sentence(self):
-        row = [line for line in self.ships("atomics").splitlines()
+        row = [line for line in self.ships("stdatomic").splitlines()
                if "SolidSyslogStdAtomicCounter.h" in line]
         self.assertEqual(len(row), 1)
         self.assertIn("backing the RFC 5424 sequenceId.", row[0])

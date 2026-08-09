@@ -9,7 +9,7 @@ and what it leaves to you.
 the adapter compiles straight into the static library:
 
 ```cmake
-set(SOLIDSYSLOG_PLATFORMS "Atomics")
+set(SOLIDSYSLOG_PLATFORMS "StdAtomic")
 ```
 
 The compiler must support C11 atomics. Where a toolchain does not, the

@@ -20,7 +20,7 @@ do not need it.
 ## Wiring a sender
 
 ```c
-struct SolidSyslogResolver* resolver = SolidSyslogGetAddrInfoResolver_Create();
+struct SolidSyslogResolver* resolver = SolidSyslogPosixResolver_Create();
 struct SolidSyslogAddress*  address  = SolidSyslogPosixAddress_Create();
 struct SolidSyslogStream*   stream   = SolidSyslogPosixTcpStream_Create(NULL);
 

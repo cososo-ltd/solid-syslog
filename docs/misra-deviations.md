@@ -286,7 +286,7 @@ third-party API contract (the public `Send` / `SendTo` interface) is
   class, and the Formatter storage cast of sub-case (b). 14 sites.
 - **Pragmatic tier** — `Platform/*/Source/`: the same `SelfFromBase` shape in
   each adapter, the per-platform Address downcasts, and the callback `void*`
-  casts of sub-case (c). 66 sites, across the Atomics, FatFs, FreeRtos,
+  casts of sub-case (c). 66 sites, across the StdAtomic, FatFs, FreeRtos,
   LwipRaw, MbedTls, OpenSsl, PlusFat, PlusTcp, Posix and Windows packs.
 
 80 line-specific suppressions in total — 12 against rule 11.2, 57 against 11.3

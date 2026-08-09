@@ -1,6 +1,6 @@
 # OpenSSL setup
 
-Wiring `SolidSyslogTlsStream` so a `SolidSyslogStreamSender` delivers RFC 5425
+Wiring `SolidSyslogOpenSslStream` so a `SolidSyslogStreamSender` delivers RFC 5425
 syslog over TLS. [OpenSSL](index.md) covers what the adapter guarantees and what
 it leaves to you; the config fields are documented on the struct itself. This
 page is the wiring.
@@ -26,12 +26,12 @@ TLS is a Stream wrapped around another Stream. The TLS adapter carries the
 records; the transport underneath carries the bytes, and it can be any Stream.
 
 ```text
-StreamSender → SolidSyslogTlsStream → your TCP stream → socket
+StreamSender → SolidSyslogOpenSslStream → your TCP stream → socket
 ```
 
 The TLS stream **borrows** its transport. It may close it, but it never destroys
 it: the transport is yours to create and to destroy, and it must stay valid
-until `SolidSyslogTlsStream_Destroy`.
+until `SolidSyslogOpenSslStream_Destroy`.
 
 ## Wiring it
 
@@ -39,14 +39,14 @@ until `SolidSyslogTlsStream_Destroy`.
 /* Your TCP stream and sleep, from the platform that supplies them. */
 struct SolidSyslogStream* transport = CreateTcpStream();
 
-static struct SolidSyslogTlsStreamConfig tlsConfig;
-tlsConfig = (struct SolidSyslogTlsStreamConfig) {0};
+static struct SolidSyslogOpenSslStreamConfig tlsConfig;
+tlsConfig = (struct SolidSyslogOpenSslStreamConfig) {0};
 tlsConfig.Transport = transport;
 tlsConfig.Sleep = MySleep;                    /* required — no fallback */
 tlsConfig.CaBundlePath = "/etc/ssl/collector-ca.pem";
 tlsConfig.ServerName = "collector.example.net";
 
-struct SolidSyslogStream* tls = SolidSyslogTlsStream_Create(&tlsConfig);
+struct SolidSyslogStream* tls = SolidSyslogOpenSslStream_Create(&tlsConfig);
 ```
 
 Zero-initialise the config before filling it.

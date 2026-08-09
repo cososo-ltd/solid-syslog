@@ -52,7 +52,7 @@ ROW = re.compile(r'"([^"|]+)\|[^"|]*\|[^"|]*\|[^"|]*\|([^"|]+)\|[^"]*"')
 # of the vocabulary — and every registered token must appear, so adding a
 # platform forces the decision rather than silently widening the gap.
 ALIASES = {
-    "Atomics": [],
+    "StdAtomic": [],
     "FatFs": ["FatFs", "ChaN"],
     "FreeRtos": ["FreeRTOS"],
     "LwipRaw": ["lwIP"],

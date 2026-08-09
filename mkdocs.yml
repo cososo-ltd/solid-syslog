@@ -181,7 +181,7 @@ nav:
   - Platforms:
       - platforms/index.md
       - Port a new platform: porting.md
-      - C11 atomics: platforms/atomics/index.md
+      - C11 atomics: platforms/stdatomic/index.md
       - FatFs: platforms/fatfs/index.md
       - FreeRTOS: platforms/freertos/index.md
       - FreeRTOS-Plus-FAT: platforms/plusfat/index.md

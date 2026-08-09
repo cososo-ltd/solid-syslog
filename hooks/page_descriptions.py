@@ -105,7 +105,7 @@ DESCRIPTIONS = {
         "at-rest crypto for the SecurityPolicy role, on hosted targets."
     ),
     "platforms/openssl/setup.md": (
-        "Wire SolidSyslogTlsStream over a TCP stream for RFC 5425 syslog over "
+        "Wire SolidSyslogOpenSslStream over a TCP stream for RFC 5425 syslog over "
         "TLS: what to link, the layering, the config, and mutual TLS."
     ),
     "platforms/mbedtls/index.md": (
@@ -132,11 +132,11 @@ DESCRIPTIONS = {
         "Back store-and-forward with FreeRTOS-Plus-FAT: what the ff_stdio File "
         "adapter needs from your build and media, and how the store sits above it."
     ),
-    "platforms/atomics/index.md": (
+    "platforms/stdatomic/index.md": (
         "The portable C11 stdatomic.h AtomicCounter — the sequenceId source on "
         "any target with a C11 compiler, with no OS dependency."
     ),
-    "platforms/atomics/setup.md": (
+    "platforms/stdatomic/setup.md": (
         "Wire the C11 atomics sequence-number source: what to link, creating "
         "the counter, and why an unfilled role silently disables gap detection."
     ),
