@@ -58,18 +58,20 @@ filename mode is sufficient for that naming.
 
 ## Durability
 
-The adapter flushes after every complete write, so a power loss never discards
-a record the store was told had been written.
+The adapter flushes after every complete write, and that flush persists the
+record's data sectors. It does not commit the file's recorded size — the
+**directory entry is written on close, not on each flush** — and the store holds
+a block file open across appends. So a hard power cut can leave records on the
+medium that the recorded size excludes, and the store will not read those back.
+A graceful shutdown closes the file and leaves data and metadata consistent.
 
-Two things are specific to Plus-FAT and worth knowing. There is **no per-file
-flush**: `ff_stdio.h` declares `ff_fflush` but the library never defines it, so
-the adapter flushes the IO manager's cache instead, which is the real
-durability primitive. And the **directory entry is committed on close, not on
-each flush** — the cache flush persists the file's data sectors, while the
-recorded file size is written when the file is closed. A graceful shutdown
-therefore leaves data and metadata consistent. If the device must survive a
-hard power cut mid-record, size your records and choose your discard policy
-with that in mind.
+One thing here is specific to Plus-FAT. There is **no per-file flush**:
+`ff_stdio.h` declares `ff_fflush` but the library never defines it, so the
+adapter flushes the IO manager's cache instead, which is the real durability
+primitive.
+
+If the device must survive a hard power cut mid-record, size your records and
+choose your discard policy with that in mind.
 
 ## Memory
 

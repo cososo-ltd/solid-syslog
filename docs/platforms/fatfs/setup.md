@@ -47,9 +47,14 @@ volume up belongs to your start-up code.
 
 ## Durability
 
-The adapter flushes after every complete write, so a power loss never discards
-a record the store was told had been written. Whether that flush reaches the
-medium is a property of your disk I/O driver.
+The adapter calls `f_sync` after every complete write. That writes back the
+cached data, updates the directory entry so the file's recorded size includes
+the record, and asks your driver to sync. The loss window is therefore one
+incomplete write rather than everything written since the file was last closed.
+
+Whether the sync reaches the medium is your driver's `CTRL_SYNC` and the
+hardware beneath it: a driver that reports success without flushing a device
+cache narrows nothing.
 
 FAT is not a journalling file system. A device that loses power partway through
 a directory update can leave that entry inconsistent, which is a property of

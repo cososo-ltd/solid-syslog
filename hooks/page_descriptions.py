@@ -78,7 +78,7 @@ DESCRIPTIONS = {
     ),
     "platforms/freertos/index.md": (
         "The FreeRTOS adapter pack: kernel primitives filling the Mutex role and "
-        "the sysUpTime callback, with networking from Plus-TCP or lwIP."
+        "the sysUpTime callback. Networking comes from a separate platform."
     ),
     "platforms/freertos/setup.md": (
         "Wire the FreeRTOS kernel primitives: what to link, static allocation, "
@@ -114,11 +114,11 @@ DESCRIPTIONS = {
     ),
     "platforms/mbedtls/setup.md": (
         "Wire Mbed TLS for RFC 5425 syslog over TLS on an embedded target: the "
-        "layering, bringing the library up, and the FreeRTOS sizing traps."
+        "layering, bringing the library up, and the sizing traps."
     ),
     "platforms/fatfs/index.md": (
         "The ChaN FatFs adapter pack, filling the File role beneath a BlockDevice "
-        "— RTOS-agnostic, for bare-metal, FreeRTOS, Zephyr and NuttX targets."
+        "— RTOS-agnostic, for bare-metal targets or under any RTOS."
     ),
     "platforms/fatfs/setup.md": (
         "Give store-and-forward a FatFs file backend: what to link, the disk "

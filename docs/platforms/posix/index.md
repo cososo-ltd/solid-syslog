@@ -41,7 +41,8 @@ it, and the library performs no independent check.
 
 ### The blocking surface is bounded but not zero
 
-Sockets are non-blocking once open, so a send returns immediately against a
-wedged peer. The initial connection is the bounded exception, and its budget is
-a tunable. A deployment with a hard real-time deadline should drive delivery
+The TCP stream's socket is non-blocking once open, so a send returns immediately
+against a wedged peer. The initial connection is the bounded exception, and its
+budget is a tunable. The UDP socket is left blocking: a datagram send is not
+expected to wait, but nothing here bounds it if the kernel's send buffer fills. A deployment with a hard real-time deadline should drive delivery
 from a service thread rather than the calling one.

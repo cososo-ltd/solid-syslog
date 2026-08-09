@@ -24,11 +24,14 @@ keeping it unreadable, is the SecurityPolicy role's job, not this one — see
 
 ### Durability is bounded by the write, not guaranteed by it
 
-`f_sync` runs after every write, so at most the record in flight is lost on
-power failure. Whether that reaches the medium, and what the FAT metadata looks
-like afterwards, is a property of your `diskio.c` driver and the hardware under
-it. FAT is not a journalling filesystem, and a partially written directory entry
-is possible on a device that loses power mid-update.
+`f_sync` runs after every write. It writes back the cached data, updates the
+directory entry so the recorded file size includes the record, and issues
+`CTRL_SYNC` to your driver — so the loss window is one incomplete write rather
+than everything since the last close. Whether the sync reaches the medium, and
+what the FAT metadata looks like afterwards, is a property of your `diskio.c`
+driver and the hardware under it. FAT is not a journalling filesystem, and a
+partially written directory entry is possible on a device that loses power
+mid-update.
 
 ### The media driver is yours
 

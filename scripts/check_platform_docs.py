@@ -148,6 +148,40 @@ def scanned(directory, slug):
                     yield os.path.relpath(os.path.join(path, name), ROOT)
 
 
+DESCRIPTIONS = os.path.join("hooks", "page_descriptions.py")
+
+
+def described(slug):
+    """The meta descriptions a platform's pages publish, with line numbers.
+
+    They are page content — the snippet a search result shows — but they live in
+    a hook rather than in the page, so the walk above never reached them. That
+    gap is not theoretical: three platform descriptions named a sibling platform
+    while this check reported the boundary clean.
+    """
+    keys = (f'"platforms/{slug}/index.md":', f'"platforms/{slug}/setup.md":')
+    inside = False
+    for number, line in enumerate(read(DESCRIPTIONS).splitlines(), 1):
+        if line.strip().startswith(keys):
+            inside = True
+        if inside:
+            yield number, line
+            if line.rstrip().endswith("),"):
+                inside = False
+
+
+def speaks_for(directory, slug):
+    """Every line that speaks for one platform, as (source, line number, text).
+
+    Its own tree, its pages, and the descriptions published for those pages.
+    """
+    for relative in scanned(directory, slug):
+        for number, line in enumerate(read(relative).splitlines(), 1):
+            yield relative, number, line
+    for number, line in described(slug):
+        yield DESCRIPTIONS, number, line
+
+
 def naming_faults(rows, terms):
     """Flag a platform naming another, longest term first so FreeRTOS-Plus-TCP
     is read as itself rather than as FreeRTOS."""
@@ -157,18 +191,17 @@ def naming_faults(rows, terms):
     faults = []
 
     for token, directory in rows:
-        for relative in scanned(directory, token.lower()):
-            for number, line in enumerate(read(relative).splitlines(), 1):
-                if INCLUDE.match(line):
-                    continue
-                for term in {m.group(1) for m in pattern.finditer(line)}:
-                    owners = terms[term]
-                    if token not in owners and (relative, term) not in exempt:
-                        named = "/".join(sorted(owners))
-                        faults.append(
-                            f"{token}: {relative}:{number} names {named} "
-                            f'("{term}") — a platform describes only itself'
-                        )
+        for relative, number, line in speaks_for(directory, token.lower()):
+            if INCLUDE.match(line):
+                continue
+            for term in {m.group(1) for m in pattern.finditer(line)}:
+                owners = terms[term]
+                if token not in owners and (relative, term) not in exempt:
+                    named = "/".join(sorted(owners))
+                    faults.append(
+                        f"{token}: {relative}:{number} names {named} "
+                        f'("{term}") — a platform describes only itself'
+                    )
     return faults
 
 
