@@ -25,9 +25,15 @@ FatFs is configured by a header you own, so the adapter compiles inside your
 target against your configuration:
 
 ```cmake
-set(SOLIDSYSLOG_PLATFORMS "FatFs")
+set(SOLIDSYSLOG_PLATFORMS "FatFs;<Network>;<OsPrimitives>")
 target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::FatFs)
 ```
+
+The list is the whole selection rather than an addition to it — see
+[naming your platforms](../../build-integration.md#cmake) — so the placeholders
+are not optional shorthand. This platform fills the File role only; substitute
+whichever platforms the [capability matrix](../index.md) says fill the rest of
+what your build needs, and drop a placeholder for a role you are not using.
 
 ## What you must provide
 

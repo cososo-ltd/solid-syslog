@@ -36,8 +36,11 @@ sleep. Your `Sleep` must keep the stack running:
 ```c
 void MyLwipSleep(int milliseconds)
 {
-    uint32_t deadline = MyTimebase_NowMs() + (uint32_t) milliseconds;
-    while (MyTimebase_NowMs() < deadline)
+    /* Elapsed rather than a deadline, so the loop is correct across a
+     * timebase wrap; unsigned subtraction wraps with it. */
+    uint32_t start = MyTimebase_NowMs();
+    uint32_t duration = (milliseconds > 0) ? (uint32_t) milliseconds : 0U;
+    while ((MyTimebase_NowMs() - start) < duration)
     {
         sys_check_timeouts();
         MyNetif_DrivePolledRx();   /* your board's receive pump */

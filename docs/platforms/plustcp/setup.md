@@ -12,9 +12,15 @@ role only, so select it alongside whichever platform supplies your mutex and
 clock — the [capability matrix](../index.md) shows which fill those:
 
 ```cmake
-set(SOLIDSYSLOG_PLATFORMS "PlusTcp")  # and the one supplying mutex and clock
+set(SOLIDSYSLOG_PLATFORMS "PlusTcp;<OsPrimitives>")
 target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::PlusTcp)
 ```
+
+The list is the whole selection rather than an addition to it — see
+[naming your platforms](../../build-integration.md#cmake) — so `<OsPrimitives>`
+is not optional shorthand. Substitute whichever platform the
+[capability matrix](../index.md) says fills the Mutex and clock roles on your
+target.
 
 Bring the stack up and let it acquire an address before creating any sender.
 

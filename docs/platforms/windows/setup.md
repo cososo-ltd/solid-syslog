@@ -15,9 +15,12 @@ set(SOLIDSYSLOG_PLATFORMS "Windows")
 
 ## Initialise Winsock first
 
-Winsock must be started before any sender is created, and stopped when you are
-finished with it. The adapter does not do this for you, because a process that
-already uses sockets has done it once and must not have it done again:
+Winsock must be started before any sender is created, and stopped once every
+socket is closed. The adapter does not do this for you: Winsock belongs to the
+process, not to this library, and a process that already uses sockets has
+started it for its own reasons. Startup and cleanup are reference-counted, so
+match each successful `WSAStartup` with one `WSACleanup` and let the last one
+out do the teardown:
 
 ```c
 WSADATA wsaData;

@@ -515,7 +515,7 @@ See `docs/misra-deviations.md` for the project's stance on MISRA conformance.
 
 ## Documentation
 
-Two rules, and they matter more than anything about wording. A wrong claim
+Three rules, and they matter more than anything about wording. A wrong claim
 costs one edit to fix; a wrong claim that has been copied costs an audit of
 every page to find, and the copies rot silently because nothing checks them.
 
@@ -542,7 +542,7 @@ Every fact has exactly one home. Everywhere else links to it, or omits it.
 | What a role's contract requires | that role's `SolidSyslog<Role>Definition.h` |
 | What a platform ships, needs, guarantees, and leaves to the integrator | that platform's page under `docs/platforms/<slug>/` |
 | How to wire a platform, and what will catch you out | that platform's `setup.md` |
-| What Core does | the Core documentation and the Core headers |
+| What Core does | the Core headers; `docs/core/index.md` curates and links them |
 | How to get it building | `docs/build-integration.md` |
 
 Writing the same sentence on a second page is the signal that it belongs on

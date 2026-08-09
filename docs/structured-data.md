@@ -16,8 +16,9 @@ spelling, the `PARAM-NAME="..."` punctuation, and the RFC 5424 §6.3.3 value esc
 custom element therefore cannot produce malformed structured data, and a value can never
 break out of its quotes; whatever bytes you hand it stay inside the `"..."`.
 
-The complete worked example below lives at
-`Bdd/Targets/Common/BddTargetCustomSd.c`.
+The complete worked example below is drawn from the BDD target source at
+`Bdd/Targets/Common/BddTargetCustomSd.c`, which is test infrastructure rather
+than shipped example code.
 
 ## The two writer types
 

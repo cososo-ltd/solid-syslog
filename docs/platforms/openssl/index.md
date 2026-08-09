@@ -62,8 +62,9 @@ deployment is held to.
 
 ### Rotation is a file replacement and a reconnection
 
-The `SSL_CTX` is rebuilt each time the stream is opened, re-reading all three
-files, so replacing them takes effect on the next connection — either through
+The `SSL_CTX` is rebuilt each time the stream is opened, re-reading every
+credential file the config names — the trust anchors always, the client
+certificate and key only where mutual TLS is configured. So replacing them takes effect on the next connection — either through
 ordinary reconnection after an outage, or by calling
 `SolidSyslogSender_Disconnect` to force one. No reload callback is needed.
 

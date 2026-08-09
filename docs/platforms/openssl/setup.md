@@ -12,8 +12,13 @@ TCP stream underneath — the [capability matrix](../index.md) shows which fill
 that role.
 
 ```cmake
-set(SOLIDSYSLOG_PLATFORMS "OpenSsl")  # and the one supplying your TCP stream
+set(SOLIDSYSLOG_PLATFORMS "OpenSsl;<Network>")
 ```
+
+The list is the whole selection rather than an addition to it — see
+[naming your platforms](../../build-integration.md#cmake) — so `<Network>` is
+not optional shorthand. Substitute whichever platform the
+[capability matrix](../index.md) says fills the Network role on your target.
 
 OpenSSL is a stable system API rather than a header-configured upstream, so the
 adapter compiles straight into `libSolidSyslog.a` and there is no separate

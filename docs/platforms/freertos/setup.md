@@ -10,9 +10,16 @@ precompiled: its sources compile inside your target, against your
 `FreeRTOSConfig.h`. Select it and link the target it exports:
 
 ```cmake
-set(SOLIDSYSLOG_PLATFORMS "FreeRtos")
+set(SOLIDSYSLOG_PLATFORMS "FreeRtos;<Network>;<Storage>")
 target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::FreeRtos)
 ```
+
+The list is the whole selection rather than an addition to it — see
+[naming your platforms](../../build-integration.md#cmake) — so the placeholders
+are not optional shorthand. This platform fills the Mutex role and the sysUpTime
+callback; substitute whichever platforms the
+[capability matrix](../index.md) says fill the rest of what your build needs,
+and drop a placeholder for a role you are not using.
 
 Your target supplies the kernel's include path, because it is your kernel and
 your configuration.

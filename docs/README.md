@@ -59,7 +59,7 @@ in the general case.
   - [Software Bill of Materials (SBOM)](security/sbom.md)
   - [Vulnerability triage runbook](security/triage-runbook.md)
   - [Release verification guide](security/release-verification.md)
-  - Reporting a vulnerability: [`SECURITY.md`](security/policy.md)
+  - Reporting a vulnerability: [Security policy](security/policy.md)
 
 ## API reference
 
