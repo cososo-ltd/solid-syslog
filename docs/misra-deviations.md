@@ -1162,14 +1162,15 @@ The cast is well-defined: a character type may alias any object type
 ### Risk and mitigation
 
 - **Alignment** — Both representations are byte-addressed; no
-  alignment promotion occurs. The cast targets `unsigned char*`, which
+  alignment promotion occurs. The cast targets a character pointer, which
   has the weakest alignment requirement of any object pointer.
 - **Type safety** — The caller-supplied buffer originates as a
   contiguous byte sequence (typically the formatted syslog record);
-  treating it as `unsigned char*` at the third-party API boundary is
-  the same byte sequence under a different pointer type.
+  treating it as `char*` or `unsigned char*` at the third-party API
+  boundary is the same byte sequence under a different pointer type.
 - **Elimination path** — A future revision of the Stream API that
-  adopts `unsigned char*` directly would retire this deviation.
+  adopts a character pointer directly would retire this deviation for
+  whichever of the two spellings it chose.
   Tracked as a possible E10-successor refactor, not scheduled.
 
 ### Approval

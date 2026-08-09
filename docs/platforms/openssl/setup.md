@@ -15,10 +15,10 @@ that role.
 set(SOLIDSYSLOG_PLATFORMS "OpenSsl;<Network>")
 ```
 
-The list is the whole selection rather than an addition to it — see
-[naming your platforms](../../build-integration.md#cmake) — so `<Network>` is
-not optional shorthand. Substitute whichever platform the
-[capability matrix](../index.md) says fills the Network role on your target.
+`<Network>` is whichever platform the [capability matrix](../index.md) says
+fills that role on your target — see
+[naming your platforms](../../build-integration.md#cmake) for how the list is
+read.
 
 OpenSSL is a stable system API rather than a header-configured upstream, so the
 adapter compiles straight into `libSolidSyslog.a` and there is no separate

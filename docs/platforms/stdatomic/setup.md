@@ -12,12 +12,11 @@ the adapter compiles straight into the static library:
 set(SOLIDSYSLOG_PLATFORMS "StdAtomic;<Network>;<OsPrimitives>")
 ```
 
-The list is the whole selection rather than an addition to it — see
-[naming your platforms](../../build-integration.md#cmake) — so the placeholders
-are not optional shorthand. This platform fills the AtomicCounter role only;
-substitute whichever platforms the [capability matrix](../index.md) says fill
-the rest of what your build needs, and drop a placeholder for a role you are not
-using.
+This platform fills the AtomicCounter role only; the placeholders are whichever
+platforms the [capability matrix](../index.md) says fill the rest of what your
+build needs, and one you do not need comes out. See
+[naming your platforms](../../build-integration.md#cmake) for how the list is
+read.
 
 The compiler must support C11 atomics. Where a toolchain does not, the
 [platform × capability matrix](../index.md) shows which other platforms fill
@@ -39,8 +38,8 @@ It is assigned when a record is raised rather than when it is sent, so a gap
 reflects loss anywhere in the pipeline — the buffer, the store, or the
 transport — not only on the wire.
 
-Two different things happen if the counter is missing, and they are worth
-telling apart.
+An exhausted counter pool and an unconfigured counter are different failures,
+and they are worth telling apart.
 
 Exhaust the pool and `Create` hands back the Null counter, which returns 1 for
 every record. The meta element is still emitted, so you still get `sysUpTime`
