@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogWinsockTcpStreamErrors
     {
-        WINSOCKTCPSTREAM_ERROR_POOL_EXHAUSTED,
-        WINSOCKTCPSTREAM_ERROR_UNKNOWN_DESTROY,
-        WINSOCKTCPSTREAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_WINSOCK_TCP_STREAM_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_WINSOCK_TCP_STREAM_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_WINSOCK_TCP_STREAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a WinsockTcpStream. A handler matches by

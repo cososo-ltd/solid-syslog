@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogPosixTcpStreamErrors
     {
-        POSIXTCPSTREAM_ERROR_POOL_EXHAUSTED,
-        POSIXTCPSTREAM_ERROR_UNKNOWN_DESTROY,
-        POSIXTCPSTREAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_POSIX_TCP_STREAM_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_POSIX_TCP_STREAM_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_POSIX_TCP_STREAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a PosixTcpStream. A handler matches by

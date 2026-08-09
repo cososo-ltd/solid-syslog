@@ -154,8 +154,8 @@ static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTl
     {
         MbedTlsStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-            MBEDTLSSTREAM_ERROR_DEFAULTS_NOT_APPLIED
+            SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED
         );
     }
     return ok;
@@ -185,8 +185,8 @@ static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsSt
     {
         MbedTlsStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-            MBEDTLSSTREAM_ERROR_SESSION_INIT_FAILED
+            SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_SESSION_INIT_FAILED
         );
     }
     return ok;
@@ -205,7 +205,7 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
         MbedTlsStream_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET
+            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_SERVER_NAME_NOT_SET
         );
     }
     else if (serverName[0] != '\0')
@@ -216,7 +216,7 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
             MbedTlsStream_Report(
                 SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
-                MBEDTLSSTREAM_ERROR_SERVER_NAME_NOT_SET
+                SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_SERVER_NAME_NOT_SET
             );
         }
     }
@@ -260,8 +260,8 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
         {
             MbedTlsStream_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
-                MBEDTLSSTREAM_ERROR_HANDSHAKE_REJECTED
+                SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+                SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_HANDSHAKE_REJECTED
             );
             done = true;
         }
@@ -269,8 +269,8 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
         {
             MbedTlsStream_Report(
                 SOLIDSYSLOG_SEVERITY_WARNING,
-                SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
-                MBEDTLSSTREAM_ERROR_HANDSHAKE_TIMEOUT
+                SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+                SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_HANDSHAKE_TIMEOUT
             );
             done = true;
         }

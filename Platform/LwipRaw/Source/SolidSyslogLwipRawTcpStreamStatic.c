@@ -47,7 +47,7 @@ struct SolidSyslogStream* SolidSyslogLwipRawTcpStream_Create(const struct SolidS
             LwipRawTcpStream_Report(
                 SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                LWIPRAWTCPSTREAM_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -65,7 +65,7 @@ void SolidSyslogLwipRawTcpStream_Destroy(struct SolidSyslogStream* base)
         LwipRawTcpStream_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            LWIPRAWTCPSTREAM_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

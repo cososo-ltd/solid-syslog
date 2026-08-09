@@ -175,8 +175,8 @@ static inline bool OpenSslStream_InitSslContext(struct SolidSyslogOpenSslStream*
     {
         OpenSslStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-            OPENSSLSTREAM_ERROR_CONTEXT_INIT_FAILED
+            SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
         );
     }
     return ok;
@@ -258,8 +258,8 @@ static inline bool OpenSslStream_InitSslSession(struct SolidSyslogOpenSslStream*
     {
         OpenSslStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-            OPENSSLSTREAM_ERROR_SESSION_INIT_FAILED
+            SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SESSION_INIT_FAILED
         );
     }
     return ok;
@@ -278,8 +278,8 @@ static inline bool OpenSslStream_AttachTransportBio(struct SolidSyslogOpenSslStr
     {
         OpenSslStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-            OPENSSLSTREAM_ERROR_SESSION_INIT_FAILED
+            SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SESSION_INIT_FAILED
         );
     }
     return ok;
@@ -403,7 +403,7 @@ static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpe
         OpenSslStream_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            OPENSSLSTREAM_ERROR_SERVER_NAME_NOT_SET
+            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET
         );
     }
     else if (serverName[0] != '\0')
@@ -414,7 +414,7 @@ static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpe
             OpenSslStream_Report(
                 SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
-                OPENSSLSTREAM_ERROR_SERVER_NAME_NOT_SET
+                SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET
             );
         }
     }
@@ -487,8 +487,8 @@ static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStrea
             {
                 OpenSslStream_Report(
                     SOLIDSYSLOG_SEVERITY_ERROR,
-                    SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
-                    OPENSSLSTREAM_ERROR_HANDSHAKE_REJECTED
+                    SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+                    SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_REJECTED
                 );
                 done = true;
             }
@@ -496,8 +496,8 @@ static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStrea
             {
                 OpenSslStream_Report(
                     SOLIDSYSLOG_SEVERITY_WARNING,
-                    SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
-                    OPENSSLSTREAM_ERROR_HANDSHAKE_TIMEOUT
+                    SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+                    SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_TIMEOUT
                 );
                 done = true;
             }

@@ -729,7 +729,7 @@ TEST(SolidSyslogStreamSenderPool, OverflowReportsPoolExhausted)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(STREAMSENDER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_STREAM_SENDER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogStreamSenderPool, FillingPoolThenOverflowReturnsDistinctFallback)
@@ -800,28 +800,28 @@ TEST_GROUP(SolidSyslogStreamSenderBadSetup)
 TEST(SolidSyslogStreamSenderBadSetup, CreateWithNullConfigReportsError)
 {
     SolidSyslogStreamSender_Create(nullptr);
-    CHECK_STREAMSENDER_BAD_SETUP_ERROR(SOLIDSYSLOG_CAT_BAD_CONFIG, STREAMSENDER_ERROR_NULL_CONFIG);
+    CHECK_STREAMSENDER_BAD_SETUP_ERROR(SOLIDSYSLOG_CAT_BAD_CONFIG, SOLIDSYSLOG_STREAM_SENDER_ERROR_NULL_CONFIG);
 }
 
 TEST(SolidSyslogStreamSenderBadSetup, CreateWithNullResolverReportsError)
 {
     config.Resolver = nullptr;
     SolidSyslogStreamSender_Create(&config);
-    CHECK_STREAMSENDER_BAD_SETUP_ERROR(SOLIDSYSLOG_CAT_BAD_CONFIG, STREAMSENDER_ERROR_NULL_RESOLVER);
+    CHECK_STREAMSENDER_BAD_SETUP_ERROR(SOLIDSYSLOG_CAT_BAD_CONFIG, SOLIDSYSLOG_STREAM_SENDER_ERROR_NULL_RESOLVER);
 }
 
 TEST(SolidSyslogStreamSenderBadSetup, CreateWithNullStreamReportsError)
 {
     config.Stream = nullptr;
     SolidSyslogStreamSender_Create(&config);
-    CHECK_STREAMSENDER_BAD_SETUP_ERROR(SOLIDSYSLOG_CAT_BAD_CONFIG, STREAMSENDER_ERROR_NULL_STREAM);
+    CHECK_STREAMSENDER_BAD_SETUP_ERROR(SOLIDSYSLOG_CAT_BAD_CONFIG, SOLIDSYSLOG_STREAM_SENDER_ERROR_NULL_STREAM);
 }
 
 TEST(SolidSyslogStreamSenderBadSetup, CreateWithNullAddressReportsError)
 {
     config.Address = nullptr;
     SolidSyslogStreamSender_Create(&config);
-    CHECK_STREAMSENDER_BAD_SETUP_ERROR(SOLIDSYSLOG_CAT_BAD_CONFIG, STREAMSENDER_ERROR_NULL_ADDRESS);
+    CHECK_STREAMSENDER_BAD_SETUP_ERROR(SOLIDSYSLOG_CAT_BAD_CONFIG, SOLIDSYSLOG_STREAM_SENDER_ERROR_NULL_ADDRESS);
 }
 
 TEST(SolidSyslogStreamSenderBadSetup, SendOnBadSetupSenderReturnsTrue)
@@ -891,7 +891,7 @@ TEST(SolidSyslogStreamSenderDeliveryHealth, FirstFailingSendReportsDeliveryFaile
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(STREAMSENDER_ERROR_DELIVERY_FAILED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_FAILED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogStreamSenderDeliveryHealth, StayingDownReportsDeliveryFailedOnlyOnce)
@@ -913,7 +913,7 @@ TEST(SolidSyslogStreamSenderDeliveryHealth, RecoveryAfterDownReportsDeliveryRest
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_NOTICE, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(STREAMSENDER_ERROR_DELIVERY_RESTORED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_RESTORED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogStreamSenderDeliveryHealth, StayingUpReportsNothing)

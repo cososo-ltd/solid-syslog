@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogFreeRtosMutexErrors
     {
-        FREERTOSMUTEX_ERROR_POOL_EXHAUSTED,
-        FREERTOSMUTEX_ERROR_UNKNOWN_DESTROY,
-        FREERTOSMUTEX_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_FREERTOS_MUTEX_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_FREERTOS_MUTEX_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_FREERTOS_MUTEX_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a FreeRtosMutex. A handler matches by

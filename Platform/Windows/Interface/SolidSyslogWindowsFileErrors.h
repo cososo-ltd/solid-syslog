@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  name their own fault. */
     enum SolidSyslogWindowsFileErrors
     {
-        WINDOWSFILE_ERROR_POOL_EXHAUSTED,
-        WINDOWSFILE_ERROR_UNKNOWN_DESTROY,
-        WINDOWSFILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_WINDOWS_FILE_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_WINDOWS_FILE_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_WINDOWS_FILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a WindowsFile. A handler matches by address

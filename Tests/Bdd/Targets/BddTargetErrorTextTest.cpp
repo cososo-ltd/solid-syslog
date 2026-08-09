@@ -45,27 +45,27 @@ TEST(BddTargetErrorText, ResolverResolveFailedCategoryMapsToText)
 
 TEST(BddTargetErrorText, SecurityPolicyKeyUnavailableCategoryMapsToText)
 {
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE, "key unavailable");
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE, "key unavailable");
 }
 
 TEST(BddTargetErrorText, SecurityPolicySealFailedCategoryMapsToText)
 {
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED, "seal failed");
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED, "seal failed");
 }
 
 TEST(BddTargetErrorText, SecurityPolicyOpenFailedCategoryMapsToText)
 {
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITYPOLICY_OPEN_FAILED, "open failed");
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED, "open failed");
 }
 
 TEST(BddTargetErrorText, OpenSslStreamInitFailedCategoryMapsToText)
 {
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED, "TLS init failed");
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED, "TLS init failed");
 }
 
 TEST(BddTargetErrorText, OpenSslStreamHandshakeFailedCategoryMapsToText)
 {
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED, "TLS handshake failed");
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, "TLS handshake failed");
 }
 
 TEST(BddTargetErrorText, UnrecognisedCategoryMapsToUnknown)

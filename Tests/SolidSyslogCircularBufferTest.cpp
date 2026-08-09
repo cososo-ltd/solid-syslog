@@ -248,7 +248,7 @@ TEST(SolidSyslogCircularBuffer, ReadWithBufferTooSmallForHeadRecordReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&CircularBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(CIRCULARBUFFER_ERROR_RECORD_TOO_LARGE, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_TOO_LARGE, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogCircularBuffer, ReadWithBufferTooSmallLeavesRecordQueued)
@@ -467,7 +467,7 @@ TEST(SolidSyslogCircularBufferPool, ExhaustedCreateReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&CircularBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(CIRCULARBUFFER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogCircularBufferPool, FallbackWriteAndReadAreNoOps)
@@ -538,7 +538,7 @@ TEST(SolidSyslogCircularBufferPool, DestroyOfUnknownHandleReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&CircularBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(CIRCULARBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogCircularBufferPool, DestroyOfStaleHandleReportsWarning)
@@ -554,5 +554,5 @@ TEST(SolidSyslogCircularBufferPool, DestroyOfStaleHandleReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&CircularBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(CIRCULARBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

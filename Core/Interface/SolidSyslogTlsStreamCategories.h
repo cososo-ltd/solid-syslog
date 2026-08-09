@@ -1,6 +1,6 @@
 /** @file
  *  Portable category constants (uint16_t macros) for the TLS-stream role:
- *  SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED / _HANDSHAKE_FAILED. */
+ *  SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED / _HANDSHAKE_FAILED. */
 #ifndef SOLIDSYSLOGTLSSTREAMCATEGORIES_H
 #define SOLIDSYSLOGTLSSTREAMCATEGORIES_H
 
@@ -17,9 +17,9 @@
 
 /** TLS context / library setup failed before any handshake (bad CA bundle,
  *  cert or key load failure, ...). */
-#define SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_TLSSTREAM_BASE + 1U))
+#define SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_TLS_STREAM_BASE + 1U))
 /** The TLS handshake with the server did not complete (peer verification,
  *  protocol, or transport failure). */
-#define SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_TLSSTREAM_BASE + 2U))
+#define SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_TLS_STREAM_BASE + 2U))
 
 #endif /* SOLIDSYSLOGTLSSTREAMCATEGORIES_H */

@@ -36,7 +36,7 @@ struct SolidSyslogStructuredData* SolidSyslogOriginSd_Create(const struct SolidS
         OriginSd_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            ORIGINSD_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_ORIGIN_SD_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -52,7 +52,7 @@ void SolidSyslogOriginSd_Destroy(struct SolidSyslogStructuredData* base)
         OriginSd_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            ORIGINSD_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_ORIGIN_SD_ERROR_UNKNOWN_DESTROY
         );
     }
 }

@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogLwipRawAddressErrors
     {
-        LWIPRAWADDRESS_ERROR_POOL_EXHAUSTED,
-        LWIPRAWADDRESS_ERROR_UNKNOWN_DESTROY,
-        LWIPRAWADDRESS_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_LWIPRAW_ADDRESS_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_LWIPRAW_ADDRESS_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_LWIPRAW_ADDRESS_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a LwipRawAddress. A handler matches by

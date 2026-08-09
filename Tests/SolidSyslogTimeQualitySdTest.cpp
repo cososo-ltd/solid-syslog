@@ -214,7 +214,7 @@ TEST(SolidSyslogTimeQualitySdPool, OverflowReportsPoolExhausted)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&TimeQualitySdErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(TIMEQUALITYSD_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogTimeQualitySdPool, FillingPoolThenOverflowReturnsDistinctFallback)
@@ -258,5 +258,5 @@ TEST(SolidSyslogTimeQualitySdBadSetup, CreateWithNullCallbackReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&TimeQualitySdErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(TIMEQUALITYSD_ERROR_NULL_CALLBACK, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_NULL_CALLBACK, ErrorHandlerFake_LastDetail());
 }

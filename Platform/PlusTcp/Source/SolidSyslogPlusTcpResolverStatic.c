@@ -39,7 +39,7 @@ struct SolidSyslogResolver* SolidSyslogPlusTcpResolver_Create(void)
         PlusTcpResolver_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            PLUSTCPRESOLVER_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_PLUSTCP_RESOLVER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -56,7 +56,7 @@ void SolidSyslogPlusTcpResolver_Destroy(struct SolidSyslogResolver* base)
         PlusTcpResolver_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            PLUSTCPRESOLVER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_PLUSTCP_RESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

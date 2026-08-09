@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogLwipRawResolverErrors
     {
-        LWIPRAWRESOLVER_ERROR_POOL_EXHAUSTED,
-        LWIPRAWRESOLVER_ERROR_UNKNOWN_DESTROY,
-        LWIPRAWRESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_LWIPRAW_RESOLVER_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_LWIPRAW_RESOLVER_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_LWIPRAW_RESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a LwipRawResolver. A handler matches by

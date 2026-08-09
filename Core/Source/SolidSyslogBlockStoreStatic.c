@@ -57,7 +57,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
                 BlockStore_Report(
                     SOLIDSYSLOG_SEVERITY_WARNING,
                     SOLIDSYSLOG_CAT_BAD_CONFIG,
-                    BLOCKSTORE_ERROR_BLOCK_TOO_SMALL
+                    SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_TOO_SMALL
                 );
             }
 
@@ -87,7 +87,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
         BlockStore_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            BLOCKSTORE_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_POOL_EXHAUSTED
         );
     }
 
@@ -174,7 +174,7 @@ void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore* base)
         BlockStore_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            BLOCKSTORE_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_UNKNOWN_DESTROY
         );
     }
 }

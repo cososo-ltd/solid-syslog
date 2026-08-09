@@ -14,10 +14,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  name their own fault. */
     enum SolidSyslogBlockStoreErrors
     {
-        BLOCKSTORE_ERROR_POOL_EXHAUSTED,
-        BLOCKSTORE_ERROR_UNKNOWN_DESTROY,
-        BLOCKSTORE_ERROR_BLOCK_TOO_SMALL,
-        BLOCKSTORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_TOO_SMALL,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** The identity for events raised by a BlockStore. A handler matches by

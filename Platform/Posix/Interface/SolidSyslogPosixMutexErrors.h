@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  name their own fault. */
     enum SolidSyslogPosixMutexErrors
     {
-        POSIXMUTEX_ERROR_POOL_EXHAUSTED,
-        POSIXMUTEX_ERROR_UNKNOWN_DESTROY,
-        POSIXMUTEX_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_POSIX_MUTEX_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_POSIX_MUTEX_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_POSIX_MUTEX_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a PosixMutex. A handler matches by address

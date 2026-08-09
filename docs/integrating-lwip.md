@@ -446,7 +446,7 @@ bridges `tcp_connect`:
    thread (that would starve the DNS retransmit timer and RX).
 4. A delivered address → success; a delivered `NULL` (no such host) → failure;
    deadline exceeded → failure plus a `SolidSyslog_Error` report
-   (`LWIPRAWDNSRESOLVER_ERROR_RESOLVE_TIMEOUT`).
+   (`SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_RESOLVE_TIMEOUT`).
 
 `Sleep` is required (a `NULL` config falls back to `NullResolver`). The
 deadline and poll period come from `SOLIDSYSLOG_DNS_RESOLVE_TIMEOUT_MS` (5 s)

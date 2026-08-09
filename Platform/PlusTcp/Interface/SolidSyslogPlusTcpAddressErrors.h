@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogPlusTcpAddressErrors
     {
-        PLUSTCPADDRESS_ERROR_POOL_EXHAUSTED,
-        PLUSTCPADDRESS_ERROR_UNKNOWN_DESTROY,
-        PLUSTCPADDRESS_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a PlusTcpAddress. A handler matches by

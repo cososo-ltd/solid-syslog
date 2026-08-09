@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  name their own fault. */
     enum SolidSyslogPosixFileErrors
     {
-        POSIXFILE_ERROR_POOL_EXHAUSTED,
-        POSIXFILE_ERROR_UNKNOWN_DESTROY,
-        POSIXFILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_POSIX_FILE_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_POSIX_FILE_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_POSIX_FILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a PosixFile. A handler matches by address

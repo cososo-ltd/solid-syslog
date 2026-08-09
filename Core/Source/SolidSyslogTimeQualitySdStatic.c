@@ -34,7 +34,7 @@ struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTim
         TimeQualitySd_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            TIMEQUALITYSD_ERROR_NULL_CALLBACK
+            SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_NULL_CALLBACK
         );
     }
     else
@@ -50,7 +50,7 @@ struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTim
             TimeQualitySd_Report(
                 SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                TIMEQUALITYSD_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -68,7 +68,7 @@ void SolidSyslogTimeQualitySd_Destroy(struct SolidSyslogStructuredData* base)
         TimeQualitySd_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            TIMEQUALITYSD_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_UNKNOWN_DESTROY
         );
     }
 }

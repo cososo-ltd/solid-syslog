@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogLwipRawTcpStreamErrors
     {
-        LWIPRAWTCPSTREAM_ERROR_POOL_EXHAUSTED,
-        LWIPRAWTCPSTREAM_ERROR_UNKNOWN_DESTROY,
-        LWIPRAWTCPSTREAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a LwipRawTcpStream. A handler matches by
