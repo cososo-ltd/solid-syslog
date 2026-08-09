@@ -594,9 +594,8 @@ Two distinct site categories trigger this rule:
    `const void*` — the contract is read-only inside the library.
    lwIP's `struct pbuf::payload` is declared `void*` (no `const`
    variant in the lwIP headers); `udp_sendto` only reads the
-   payload — that is the `PBUF_REF` zero-copy contract, set out under
-   [Datagram — pbuf strategy](platforms/lwipraw/setup.md#datagram--pbuf-strategy)
-   — but the field type does not encode that. Assigning
+   payload — that is the `PBUF_REF` zero-copy contract — but the field
+   type does not encode that. Assigning
    our `const void*` parameter to lwIP's `void*` field strips the
    qualifier at the platform-API boundary, same shape as the
    Winsock `select()` site above. Alternatives considered and
