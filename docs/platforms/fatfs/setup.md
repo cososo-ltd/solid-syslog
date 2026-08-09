@@ -31,7 +31,7 @@ target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::FatFs)
 
 This platform fills the File role only; the placeholders are whichever platforms
 the [capability matrix](../index.md) says fill the rest of what your build
-needs, and one you do not need comes out. See
+needs. See
 [naming your platforms](../../build-integration.md#cmake) for how the list is
 read.
 

@@ -1164,13 +1164,17 @@ The cast is well-defined: a character type may alias any object type
 - **Alignment** — Both representations are byte-addressed; no
   alignment promotion occurs. The cast targets a character pointer, which
   has the weakest alignment requirement of any object pointer.
-- **Type safety** — The caller-supplied buffer originates as a
-  contiguous byte sequence (typically the formatted syslog record);
-  treating it as `char*` or `unsigned char*` at the third-party API
-  boundary is the same byte sequence under a different pointer type.
-- **Elimination path** — A future revision of the Stream API that
-  adopts a character pointer directly would retire this deviation for
-  whichever of the two spellings it chose.
+- **Type safety** — Both directions carry a contiguous byte sequence and
+  neither is interpreted as anything else: on the send path it is the
+  formatted record the caller hands over, and on the read path it is the
+  caller's destination, written into and never read as a wider type.
+  Treating either as `char*` or `unsigned char*` at the third-party API
+  boundary is the same bytes under a different pointer type.
+- **Elimination path** — The deviation retires per API, not as a whole. A
+  future `SolidSyslogStream::Send` / `Read` typed to a character pointer
+  would retire the Stream sites; `SolidSyslogDatagram::SendTo` would need
+  the same change to retire `WinsockDatagram_SendTo`. Either would only
+  retire the sites whose third-party spelling it matched.
   Tracked as a possible E10-successor refactor, not scheduled.
 
 ### Approval

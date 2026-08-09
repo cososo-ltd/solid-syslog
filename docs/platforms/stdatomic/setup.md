@@ -14,7 +14,7 @@ set(SOLIDSYSLOG_PLATFORMS "StdAtomic;<Network>;<OsPrimitives>")
 
 This platform fills the AtomicCounter role only; the placeholders are whichever
 platforms the [capability matrix](../index.md) says fill the rest of what your
-build needs, and one you do not need comes out. See
+build needs. See
 [naming your platforms](../../build-integration.md#cmake) for how the list is
 read.
 

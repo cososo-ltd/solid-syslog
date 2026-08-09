@@ -16,7 +16,7 @@ target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::FreeRtos)
 
 This platform fills the Mutex role and the sysUpTime callback; the placeholders
 are whichever platforms the [capability matrix](../index.md) says fill the rest
-of what your build needs, and one you do not need comes out. See
+of what your build needs. See
 [naming your platforms](../../build-integration.md#cmake) for how the list is
 read.
 
