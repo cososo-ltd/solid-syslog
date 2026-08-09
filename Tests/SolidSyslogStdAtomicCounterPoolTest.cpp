@@ -88,6 +88,18 @@ TEST(SolidSyslogStdAtomicCounterPool, FallbackIncrementReturnsOne)
     LONGS_EQUAL(1U, SolidSyslogAtomicCounter_Increment(overflow));
 }
 
+TEST(SolidSyslogStdAtomicCounterPool, ReacquiredSlotRestartsCountingFromOne)
+{
+    pooled[0] = SolidSyslogStdAtomicCounter_Create();
+    SolidSyslogAtomicCounter_Increment(pooled[0]);
+    SolidSyslogAtomicCounter_Increment(pooled[0]);
+    SolidSyslogStdAtomicCounter_Destroy(pooled[0]);
+
+    pooled[0] = SolidSyslogStdAtomicCounter_Create();
+
+    LONGS_EQUAL(1U, SolidSyslogAtomicCounter_Increment(pooled[0]));
+}
+
 TEST(SolidSyslogStdAtomicCounterPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
 {
     ConfigLockFake_Install();

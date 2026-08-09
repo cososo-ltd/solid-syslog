@@ -29,9 +29,11 @@ static inline struct SolidSyslogStdAtomicCounter* StdAtomicCounter_SelfFromBase(
     return (struct SolidSyslogStdAtomicCounter*) base;
 }
 
+/* atomic_store rather than atomic_init: a released pool slot is handed out again,
+ * so this runs a second time on an object C11 lets you initialise only once. */
 static void StdAtomicCounter_Init(struct SolidSyslogStdAtomicCounter* self, uint32_t value)
 {
-    atomic_init(&self->Value, value);
+    atomic_store_explicit(&self->Value, value, memory_order_relaxed);
 }
 
 void StdAtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* base)
