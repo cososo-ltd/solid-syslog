@@ -66,13 +66,21 @@ board-specific source.
 state transition returns `MBEDTLS_ERR_ERROR_GENERIC_ERROR` before any byte
 reaches the socket.
 
-**On a target with no platform entropy, define
-`MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG`** and provide
-`mbedtls_psa_external_get_random` wrapping the DRBG you just seeded. This keeps
-PSA and the classic API on one entropy chain. If you have defined
-`MBEDTLS_NO_PLATFORM_ENTROPY` — usual on embedded — this is effectively
-mandatory, and omitting it makes `psa_crypto_init` return
-`PSA_ERROR_INSUFFICIENT_ENTROPY`.
+**On a target with no platform entropy, give PSA a strong source.** With
+`MBEDTLS_NO_PLATFORM_ENTROPY` defined — usual on embedded — `mbedtls_entropy_init`
+registers no source of its own, and `psa_crypto_init` then fails with
+`PSA_ERROR_INSUFFICIENT_ENTROPY`. Two routes out, and either is enough:
+
+- Define `MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG` and provide
+  `mbedtls_psa_external_get_random` wrapping the DRBG you just seeded. PSA
+  bypasses the entropy subsystem entirely, so PSA and the classic API run off
+  one chain.
+- Or define `MBEDTLS_ENTROPY_HARDWARE_ALT` and provide `mbedtls_hardware_poll`.
+  `mbedtls_entropy_init` then registers it as a strong source, and PSA seeds its
+  own DRBG through the standard path.
+
+The first keeps one chain and is the simpler thing to reason about; the second
+suits a target whose randomness already arrives through a hardware poll.
 
 **Parse the CA chain, and the client credential if you are using mutual TLS**,
 by whatever route suits the build: a filesystem, a baked-in array, a blob pulled
