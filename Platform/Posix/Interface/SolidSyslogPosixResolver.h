@@ -6,8 +6,8 @@
  *  SolidSyslogAddress; the requested transport selects the socktype hint. A
  *  failed lookup returns false, so the caller's unresolved-host error path
  *  runs. */
-#ifndef SOLIDSYSLOGGETADDRINFORESOLVERH
-#define SOLIDSYSLOGGETADDRINFORESOLVERH
+#ifndef SOLIDSYSLOGPOSIXRESOLVERH
+#define SOLIDSYSLOGPOSIXRESOLVERH
 
 #include "SolidSyslogExternC.h"
 
@@ -17,10 +17,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Create takes no config; an exhausted pool falls back to the shared
      *  NullResolver. */
-    struct SolidSyslogResolver* SolidSyslogGetAddrInfoResolver_Create(void);
+    struct SolidSyslogResolver* SolidSyslogPosixResolver_Create(void);
     /** Release the pool slot. */
-    void SolidSyslogGetAddrInfoResolver_Destroy(struct SolidSyslogResolver * base);
+    void SolidSyslogPosixResolver_Destroy(struct SolidSyslogResolver * base);
 
 SOLIDSYSLOG_EXTERN_C_END
 
-#endif /* SOLIDSYSLOGGETADDRINFORESOLVERH */
+#endif /* SOLIDSYSLOGPOSIXRESOLVERH */

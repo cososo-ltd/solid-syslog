@@ -13,7 +13,7 @@ callbacks.
 
 | Class | Role |
 |---|---|
-| [`SolidSyslogGetAddrInfoResolver`](../api/SolidSyslogGetAddrInfoResolver_8h.md) | resolver (`getaddrinfo`) |
+| [`SolidSyslogPosixResolver`](../api/SolidSyslogPosixResolver_8h.md) | resolver (`getaddrinfo`) |
 | [`SolidSyslogPosixAddress`](../api/SolidSyslogPosixAddress_8h.md) | address |
 | [`SolidSyslogPosixDatagram`](../api/SolidSyslogPosixDatagram_8h.md) | UDP sender |
 | [`SolidSyslogPosixTcpStream`](../api/SolidSyslogPosixTcpStream_8h.md) | TCP stream (non-blocking, bounded connect) |

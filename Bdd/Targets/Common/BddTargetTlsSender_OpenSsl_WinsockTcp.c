@@ -4,7 +4,7 @@
 #include "BddTargetTlsConfig.h"
 #include "BddTargetTlsSender.h"
 #include "SolidSyslogStreamSender.h"
-#include "SolidSyslogTlsStream.h"
+#include "SolidSyslogOpenSslStream.h"
 #include "SolidSyslogWindowsSleep.h"
 #include "SolidSyslogWinsockAddress.h"
 #include "SolidSyslogWinsockTcpStream.h"
@@ -21,8 +21,8 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
 {
     underlyingStream = SolidSyslogWinsockTcpStream_Create(NULL);
 
-    static struct SolidSyslogTlsStreamConfig tlsStreamConfig;
-    tlsStreamConfig = (struct SolidSyslogTlsStreamConfig) {0};
+    static struct SolidSyslogOpenSslStreamConfig tlsStreamConfig;
+    tlsStreamConfig = (struct SolidSyslogOpenSslStreamConfig) {0};
     tlsStreamConfig.Transport = underlyingStream;
     tlsStreamConfig.Sleep = SolidSyslogWindowsSleep;
     if (mtls)
@@ -37,7 +37,7 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
         tlsStreamConfig.CaBundlePath = BddTargetTlsConfig_GetCaBundlePath();
         tlsStreamConfig.ServerName = BddTargetTlsConfig_GetServerName();
     }
-    tlsStream = SolidSyslogTlsStream_Create(&tlsStreamConfig);
+    tlsStream = SolidSyslogOpenSslStream_Create(&tlsStreamConfig);
 
     address = SolidSyslogWinsockAddress_Create();
 
@@ -58,6 +58,6 @@ void BddTargetTlsSender_Destroy(void)
 {
     SolidSyslogStreamSender_Destroy(sender);
     SolidSyslogWinsockAddress_Destroy(address);
-    SolidSyslogTlsStream_Destroy(tlsStream);
+    SolidSyslogOpenSslStream_Destroy(tlsStream);
     SolidSyslogWinsockTcpStream_Destroy(underlyingStream);
 }

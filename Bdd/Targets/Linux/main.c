@@ -41,7 +41,7 @@
 #include "SolidSyslogPosixProcessId.h"
 #include "SolidSyslogPosixSleep.h"
 #include "SolidSyslogPosixSysUpTime.h"
-#include "SolidSyslogGetAddrInfoResolver.h"
+#include "SolidSyslogPosixResolver.h"
 #include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixDatagram.h"
 #include "SolidSyslogPosixTcpStream.h"
@@ -91,7 +91,7 @@ static struct SolidSyslogSender* CreateSender(const struct BddTargetOptions* opt
 {
     bool mtlsModeActive = (strcmp(options->Transport, "mtls") == 0);
 
-    sharedResolver = SolidSyslogGetAddrInfoResolver_Create();
+    sharedResolver = SolidSyslogPosixResolver_Create();
     struct SolidSyslogResolver* resolver = sharedResolver;
 
     udpDatagram = SolidSyslogPosixDatagram_Create();
@@ -252,7 +252,7 @@ static void DestroySender(void)
     SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogPosixAddress_Destroy(udpAddress);
     SolidSyslogPosixDatagram_Destroy(udpDatagram);
-    SolidSyslogGetAddrInfoResolver_Destroy(sharedResolver);
+    SolidSyslogPosixResolver_Destroy(sharedResolver);
 }
 
 static void DestroySecurityPolicy(const struct BddTargetOptions* options)

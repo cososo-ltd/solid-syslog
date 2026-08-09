@@ -11,7 +11,7 @@
 #include "SolidSyslogEndpointHost.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFormatter.h"
-#include "SolidSyslogGetAddrInfoResolver.h"
+#include "SolidSyslogPosixResolver.h"
 #include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixTcpStream.h"
 #include "SolidSyslogPrival.h"
@@ -109,7 +109,7 @@ TEST_GROUP(SolidSyslogStreamSender)
         endpointGetHost = GetHost;
         endpointVersion = 0;
         endpointGetPort = GetPort;
-        resolver        = SolidSyslogGetAddrInfoResolver_Create();
+        resolver        = SolidSyslogPosixResolver_Create();
         stream          = SolidSyslogPosixTcpStream_Create(nullptr);
         address         = SolidSyslogPosixAddress_Create();
         config          = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
@@ -121,7 +121,7 @@ TEST_GROUP(SolidSyslogStreamSender)
         SolidSyslogStreamSender_Destroy(sender);
         SolidSyslogPosixAddress_Destroy(address);
         SolidSyslogPosixTcpStream_Destroy(stream);
-        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
+        SolidSyslogPosixResolver_Destroy(resolver);
     }
 
     void Send() const
@@ -181,7 +181,7 @@ TEST_GROUP(SolidSyslogStreamSenderDestroy)
         endpointGetHost = GetHost;
         endpointVersion = 0;
         endpointGetPort = GetPort;
-        resolver        = SolidSyslogGetAddrInfoResolver_Create();
+        resolver        = SolidSyslogPosixResolver_Create();
         stream          = SolidSyslogPosixTcpStream_Create(nullptr);
         address         = SolidSyslogPosixAddress_Create();
         config = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
@@ -191,7 +191,7 @@ TEST_GROUP(SolidSyslogStreamSenderDestroy)
     {
         SolidSyslogPosixAddress_Destroy(address);
         SolidSyslogPosixTcpStream_Destroy(stream);
-        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
+        SolidSyslogPosixResolver_Destroy(resolver);
     }
 
     void CreateAndDestroy()
@@ -377,14 +377,14 @@ TEST_GROUP(SolidSyslogStreamSenderConfig)
         SolidSyslogStreamSender_Destroy(sender);
         SolidSyslogPosixAddress_Destroy(address);
         SolidSyslogPosixTcpStream_Destroy(stream);
-        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
+        SolidSyslogPosixResolver_Destroy(resolver);
     }
 
     void CreateSender()
     {
         endpointGetHost = getHostFn;
         endpointGetPort = getPortFn;
-        resolver = SolidSyslogGetAddrInfoResolver_Create();
+        resolver = SolidSyslogPosixResolver_Create();
         stream   = SolidSyslogPosixTcpStream_Create(nullptr);
         address  = SolidSyslogPosixAddress_Create();
         struct SolidSyslogStreamSenderConfig config = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
@@ -474,7 +474,7 @@ TEST_GROUP(SolidSyslogStreamSenderFailure)
         endpointGetHost = GetHost;
         endpointVersion = 0;
         endpointGetPort = GetPort;
-        resolver        = SolidSyslogGetAddrInfoResolver_Create();
+        resolver        = SolidSyslogPosixResolver_Create();
         stream          = SolidSyslogPosixTcpStream_Create(nullptr);
         address         = SolidSyslogPosixAddress_Create();
         config          = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
@@ -486,7 +486,7 @@ TEST_GROUP(SolidSyslogStreamSenderFailure)
         SolidSyslogStreamSender_Destroy(sender);
         SolidSyslogPosixAddress_Destroy(address);
         SolidSyslogPosixTcpStream_Destroy(stream);
-        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
+        SolidSyslogPosixResolver_Destroy(resolver);
     }
 
     // NOLINTNEXTLINE(modernize-use-nodiscard) -- test helper; return value intentionally ignored in some tests
@@ -678,7 +678,7 @@ TEST_GROUP(SolidSyslogStreamSenderPool)
         endpointGetHost = GetHost;
         endpointVersion = 0;
         endpointGetPort = GetPort;
-        resolver        = SolidSyslogGetAddrInfoResolver_Create();
+        resolver        = SolidSyslogPosixResolver_Create();
         stream          = SolidSyslogPosixTcpStream_Create(nullptr);
         address         = SolidSyslogPosixAddress_Create();
         config = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
@@ -699,7 +699,7 @@ TEST_GROUP(SolidSyslogStreamSenderPool)
         }
         SolidSyslogPosixAddress_Destroy(address);
         SolidSyslogPosixTcpStream_Destroy(stream);
-        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
+        SolidSyslogPosixResolver_Destroy(resolver);
     }
 
     struct SolidSyslogSender* MakeSender()
@@ -779,7 +779,7 @@ TEST_GROUP(SolidSyslogStreamSenderBadSetup)
         endpointGetHost = GetHost;
         endpointVersion = 0;
         endpointGetPort = GetPort;
-        resolver = SolidSyslogGetAddrInfoResolver_Create();
+        resolver = SolidSyslogPosixResolver_Create();
         stream   = SolidSyslogPosixTcpStream_Create(nullptr);
         address  = SolidSyslogPosixAddress_Create();
         config   = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
@@ -791,7 +791,7 @@ TEST_GROUP(SolidSyslogStreamSenderBadSetup)
         SolidSyslogStreamSender_Destroy(sender);
         SolidSyslogPosixAddress_Destroy(address);
         SolidSyslogPosixTcpStream_Destroy(stream);
-        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
+        SolidSyslogPosixResolver_Destroy(resolver);
     }
 };
 
@@ -859,7 +859,7 @@ TEST_GROUP(SolidSyslogStreamSenderDeliveryHealth)
         endpointGetHost = GetHost;
         endpointVersion = 0;
         endpointGetPort = GetPort;
-        resolver = SolidSyslogGetAddrInfoResolver_Create();
+        resolver = SolidSyslogPosixResolver_Create();
         stream   = StreamFake_Create();
         address  = SolidSyslogPosixAddress_Create();
         config   = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
@@ -872,7 +872,7 @@ TEST_GROUP(SolidSyslogStreamSenderDeliveryHealth)
         SolidSyslogStreamSender_Destroy(sender);
         SolidSyslogPosixAddress_Destroy(address);
         StreamFake_Destroy(stream);
-        SolidSyslogGetAddrInfoResolver_Destroy(resolver);
+        SolidSyslogPosixResolver_Destroy(resolver);
     }
 
     void Send() const

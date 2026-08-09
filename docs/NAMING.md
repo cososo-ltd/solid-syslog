@@ -141,6 +141,36 @@ than tidy — an integrator compiling from a manifest gets `Core/Source` on the
 include path and every object in one directory, so an unprefixed
 `RecordStore_Append` is a symbol collision waiting to happen.
 
+### Platform classes carry their pack's registry token
+
+`SOLIDSYSLOG_PLATFORM_REGISTRY` in the top-level `CMakeLists.txt` is the single
+declaration of what a platform is. Its token already names the directory, the
+CMake option and the docs page; it names the pack's classes too.
+
+**Form:** `SolidSyslog<RegistryToken><Thing>` for every public class declared in
+`Platform/<RegistryToken>/Interface/`.
+
+```c
+SolidSyslogPosixResolver_Create();     /* Platform/Posix   — not SolidSyslogGetAddrInfoResolver */
+SolidSyslogOpenSslStream_Create(...);  /* Platform/OpenSsl — not SolidSyslogTlsStream */
+```
+
+Naming a class after the upstream function it happens to call costs the reader
+the one thing the token buys: predicting where a class lives from its name, and
+what it is from where it lives. Naming it after the **role** it fills is worse,
+because two packs can fill one role — whichever claims the role name first makes
+its sibling read as a special case of it, which is how `SolidSyslogMbedTlsStream`
+came to look like a variant of `SolidSyslogTlsStream`.
+
+A pack that wraps a genuinely distinct second upstream prefixes those classes
+with that upstream instead: `Platform/Windows/` ships `SolidSyslogWinsock*`
+beside `SolidSyslogWindows*`. That is an alias for the pack, agreed when the
+second upstream is taken on, and not a licence to coin a prefix per class.
+
+Note the deliberate opposite pull on pool-size tunables below: those are named
+for the role, because the integrator sizes "how many TLS streams" without caring
+which vendor fills them, while wiring the vendor's class by name.
+
 ---
 
 ## Tier 2 — Internal linkage (file-scope `static`)
@@ -200,7 +230,7 @@ Rationale:
 
 For source files matching `SolidSyslog<X>.c`, the Tier 2 class prefix
 is `<X>_` — the filename with the `SolidSyslog` library namespace
-stripped. So `SolidSyslogTlsStream.c` → `TlsStream_*`,
+stripped. So `SolidSyslogOpenSslStream.c` → `OpenSslStream_*`,
 `SolidSyslogPlusTcpTcpStream.c` → `PlusTcpTcpStream_*`,
 `SolidSyslogWinsockTcpStream.c` → `WinsockTcpStream_*`,
 `SolidSyslogBlockSequence.c` → `BlockSequence_*`. Every file under `Core/` and
@@ -821,6 +851,7 @@ static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer
 |---------------------------------------|--------------------------------------------|--------------------------------------------|
 | Public function                       | `SolidSyslogClass_Function`                | `SolidSyslogBuffer_Append`                 |
 | Public struct tag                     | `SolidSyslogClass`                         | `struct SolidSyslogBuffer`                 |
+| Platform pack class                   | `SolidSyslogRegistryTokenThing`            | `SolidSyslogPosixResolver`                 |
 | Public enum type                      | `SolidSyslogClass`                         | `enum SolidSyslogSeverity`                 |
 | Public enum constant                  | `SOLIDSYSLOG_CLASS_CONSTANT`               | `SOLIDSYSLOG_SEVERITY_EMERGENCY`            |
 | Public macro                          | `SOLIDSYSLOG_SCREAMING_SNAKE`              | `SOLIDSYSLOG_MAXIMUM_RECORD_LENGTH`        |

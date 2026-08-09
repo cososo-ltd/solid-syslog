@@ -10,7 +10,7 @@
 #include "BioPairStream.h"
 #include "AddressFake.h"
 #include "SolidSyslogStream.h"
-#include "SolidSyslogTlsStream.h"
+#include "SolidSyslogOpenSslStream.h"
 #include "TlsTestCert.h"
 #include "TlsTestServer.h"
 #include "CppUTest/TestHarness.h"
@@ -25,14 +25,14 @@ static void NoOpSleep(int milliseconds)
 }
 
 // clang-format off
-TEST_GROUP(TlsStreamIntegration)
+TEST_GROUP(OpenSslStreamIntegration)
 {
     struct TlsTestCert                cert           = {};
     struct TlsTestCert                clientCa       = {};
     struct TlsTestCert                clientCert     = {};
     struct TlsTestServer*             server         = nullptr;
     struct SolidSyslogStream*         transport      = nullptr;
-    struct SolidSyslogTlsStreamConfig tlsConfig      = {};
+    struct SolidSyslogOpenSslStreamConfig tlsConfig      = {};
     
     struct SolidSyslogStream*         tlsStream      = nullptr;
     struct SolidSyslogAddress*        addr           = nullptr;
@@ -47,7 +47,7 @@ TEST_GROUP(TlsStreamIntegration)
 
     void teardown() override
     {
-        if (tlsStream != nullptr)         { SolidSyslogTlsStream_Destroy(tlsStream); }
+        if (tlsStream != nullptr)         { SolidSyslogOpenSslStream_Destroy(tlsStream); }
         if (transport != nullptr)         { BioPairStream_Destroy(transport); }
         if (server != nullptr)            { TlsTestServer_Destroy(server); }
         if (cert.cert != nullptr)         { TlsTestCert_Destroy(&cert); }
@@ -91,7 +91,7 @@ TEST_GROUP(TlsStreamIntegration)
         tlsConfig.Sleep        = NoOpSleep;
         tlsConfig.CaBundlePath = caPath;
         tlsConfig.ServerName   = clientServerName;
-        tlsStream              = SolidSyslogTlsStream_Create(&tlsConfig);
+        tlsStream              = SolidSyslogOpenSslStream_Create(&tlsConfig);
     }
 
     /* Creates the client-side mTLS material and writes it to disk.
@@ -126,7 +126,7 @@ TEST_GROUP(TlsStreamIntegration)
 
 static const char* const LOCALHOST_SANS[] = {"localhost", nullptr};
 
-TEST(TlsStreamIntegration, HandshakeSucceedsAgainstTrustedServerCert)
+TEST(OpenSslStreamIntegration, HandshakeSucceedsAgainstTrustedServerCert)
 {
     struct TlsTestCertConfig certConfig = {};
     certConfig.commonName = "localhost";
@@ -136,7 +136,7 @@ TEST(TlsStreamIntegration, HandshakeSucceedsAgainstTrustedServerCert)
     CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
 }
 
-TEST(TlsStreamIntegration, HandshakeRejectedWhenServerCertIsExpired)
+TEST(OpenSslStreamIntegration, HandshakeRejectedWhenServerCertIsExpired)
 {
     struct TlsTestCertConfig certConfig = {};
     certConfig.commonName = "localhost";
@@ -148,7 +148,7 @@ TEST(TlsStreamIntegration, HandshakeRejectedWhenServerCertIsExpired)
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
 }
 
-TEST(TlsStreamIntegration, HandshakeRejectedWhenServerCertHostnameDoesNotMatch)
+TEST(OpenSslStreamIntegration, HandshakeRejectedWhenServerCertHostnameDoesNotMatch)
 {
     static const char* const otherSans[] = {"someone-else.example", nullptr};
     struct TlsTestCertConfig certConfig = {};
@@ -159,7 +159,7 @@ TEST(TlsStreamIntegration, HandshakeRejectedWhenServerCertHostnameDoesNotMatch)
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
 }
 
-TEST(TlsStreamIntegration, HandshakeRejectedWhenClientDoesNotTrustServerCert)
+TEST(OpenSslStreamIntegration, HandshakeRejectedWhenClientDoesNotTrustServerCert)
 {
     struct TlsTestCertConfig certConfig = {};
     certConfig.commonName = "localhost";
@@ -181,7 +181,7 @@ TEST(TlsStreamIntegration, HandshakeRejectedWhenClientDoesNotTrustServerCert)
     TlsTestCert_Destroy(&untrusted);
 }
 
-TEST(TlsStreamIntegration, HandshakeRejectedWhenCipherListIsUnsupported)
+TEST(OpenSslStreamIntegration, HandshakeRejectedWhenCipherListIsUnsupported)
 {
     struct TlsTestCertConfig certConfig = {};
     certConfig.commonName = "localhost";
@@ -196,7 +196,7 @@ TEST(TlsStreamIntegration, HandshakeRejectedWhenCipherListIsUnsupported)
  * Mutual TLS — client cert + private key (S03.09).
  * ------------------------------------------------------------------------- */
 
-TEST(TlsStreamIntegration, MutualTlsHandshakeSucceedsWithClientCertSignedByTrustedCa)
+TEST(OpenSslStreamIntegration, MutualTlsHandshakeSucceedsWithClientCertSignedByTrustedCa)
 {
     createClientCa();
     stageClientIdentity(&clientCa);
@@ -214,7 +214,7 @@ TEST(TlsStreamIntegration, MutualTlsHandshakeSucceedsWithClientCertSignedByTrust
     CHECK_TRUE(opened);
 }
 
-TEST(TlsStreamIntegration, MutualTlsHandshakeRejectedWhenClientSendsNoCert)
+TEST(OpenSslStreamIntegration, MutualTlsHandshakeRejectedWhenClientSendsNoCert)
 {
     createClientCa();
     /* Client config intentionally leaves clientCertChainPath / clientKeyPath NULL. */
@@ -227,7 +227,7 @@ TEST(TlsStreamIntegration, MutualTlsHandshakeRejectedWhenClientSendsNoCert)
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
 }
 
-TEST(TlsStreamIntegration, MutualTlsOpenFailsLocallyWhenClientKeyDoesNotMatchCert)
+TEST(OpenSslStreamIntegration, MutualTlsOpenFailsLocallyWhenClientKeyDoesNotMatchCert)
 {
     createClientCa();
     stageClientIdentity(&clientCa);
@@ -250,7 +250,7 @@ TEST(TlsStreamIntegration, MutualTlsOpenFailsLocallyWhenClientKeyDoesNotMatchCer
     TlsTestCert_Destroy(&strayCert);
 }
 
-TEST(TlsStreamIntegration, MutualTlsHandshakeRejectedWhenClientCertSignedByUntrustedCa)
+TEST(OpenSslStreamIntegration, MutualTlsHandshakeRejectedWhenClientCertSignedByUntrustedCa)
 {
     createClientCa();
 

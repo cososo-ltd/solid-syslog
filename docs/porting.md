@@ -251,7 +251,7 @@ one directly.
 
 | Role | Contract | Vtable | Null fallback | Reference |
 |---|---|---|---|---|
-| **Resolver** | [`ResolverDefinition.h`](../Core/Interface/SolidSyslogResolverDefinition.h) | `Resolve(transport, host, port, *out)` | `Resolve` → `false`, so the caller's unresolved-host error path runs | [`GetAddrInfoResolver.c`](../Platform/Posix/Source/SolidSyslogGetAddrInfoResolver.c) |
+| **Resolver** | [`ResolverDefinition.h`](../Core/Interface/SolidSyslogResolverDefinition.h) | `Resolve(transport, host, port, *out)` | `Resolve` → `false`, so the caller's unresolved-host error path runs | [`PosixResolver.c`](../Platform/Posix/Source/SolidSyslogPosixResolver.c) |
 | **Datagram** | [`DatagramDefinition.h`](../Core/Interface/SolidSyslogDatagramDefinition.h) | `Open` · `SendTo(...)→SendResult` · `MaxPayload` · `Close` | Open/Close no-op, `SendTo` → `SENT` (drop), `MaxPayload` → IPv6-safe default | [`PosixDatagram.c`](../Platform/Posix/Source/SolidSyslogPosixDatagram.c) |
 | **Stream** | [`StreamDefinition.h`](../Core/Interface/SolidSyslogStreamDefinition.h) | `Open(addr)` · `Send` · `Read` · `Close` | Open/Close no-op, `Send` → `true` (drop), `Read` → `0` (would-block, no teardown) | [`PosixTcpStream.c`](../Platform/Posix/Source/SolidSyslogPosixTcpStream.c) |
 | **Sender** | [`SenderDefinition.h`](../Core/Interface/SolidSyslogSenderDefinition.h) | `Send` · `Disconnect` | `Send` → `true` (drop), `Disconnect` no-op | [`StreamSender.c`](../Core/Source/SolidSyslogStreamSender.c) · [`UdpSender.c`](../Core/Source/SolidSyslogUdpSender.c) |
@@ -285,7 +285,7 @@ takes an injected `Mutex`, so a `Buffer` port is often just a `Mutex` port.
 | Role | Contract | Vtable | Null fallback | Reference |
 |---|---|---|---|---|
 | **Mutex** | [`MutexDefinition.h`](../Core/Interface/SolidSyslogMutexDefinition.h) | `Lock` · `Unlock` | No-op (single-task) | [`PosixMutex.c`](../Platform/Posix/Source/SolidSyslogPosixMutex.c) |
-| **AtomicCounter** | [`AtomicCounterDefinition.h`](../Core/Interface/SolidSyslogAtomicCounterDefinition.h) | `Increment` — wrap-aware in `[1, 2³¹−1]`, never returns `0` (RFC 5424 §7.3.1) | `Increment` → `1` unconditionally | [`StdAtomicCounter.c`](../Platform/Atomics/Source/SolidSyslogStdAtomicCounter.c) |
+| **AtomicCounter** | [`AtomicCounterDefinition.h`](../Core/Interface/SolidSyslogAtomicCounterDefinition.h) | `Increment` — wrap-aware in `[1, 2³¹−1]`, never returns `0` (RFC 5424 §7.3.1) | `Increment` → `1` unconditionally | [`StdAtomicCounter.c`](../Platform/StdAtomic/Source/SolidSyslogStdAtomicCounter.c) |
 
 ### Evidence and integrity
 

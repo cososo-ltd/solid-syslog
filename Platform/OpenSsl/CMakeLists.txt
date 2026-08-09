@@ -3,8 +3,8 @@
 # rely on the OPENSSL_INCLUDE_DIR variable being set.
 
 target_sources(${PROJECT_NAME} PRIVATE
-    Source/SolidSyslogTlsStream.c
-    Source/SolidSyslogTlsStreamStatic.c
+    Source/SolidSyslogOpenSslStream.c
+    Source/SolidSyslogOpenSslStreamStatic.c
     Source/SolidSyslogOpenSslHmacSha256Policy.c
     Source/SolidSyslogOpenSslHmacSha256PolicyStatic.c
     Source/SolidSyslogOpenSslAesGcmPolicy.c

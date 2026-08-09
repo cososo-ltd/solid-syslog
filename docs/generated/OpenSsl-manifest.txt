@@ -17,8 +17,8 @@
 # such library, so compile them explicitly with everything else.
 
 # OpenSsl:
-Platform/OpenSsl/Source/SolidSyslogTlsStream.c
-Platform/OpenSsl/Source/SolidSyslogTlsStreamStatic.c
+Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c
+Platform/OpenSsl/Source/SolidSyslogOpenSslStreamStatic.c
 Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c
 Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256PolicyStatic.c
 Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c
