@@ -105,7 +105,7 @@ TEST(SolidSyslogMbedTlsStreamPool, ExhaustedCreateReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(MBEDTLSSTREAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogMbedTlsStreamPool, FallbackSendReturnsTrueToDropOnTheFloor)
@@ -171,7 +171,7 @@ TEST(SolidSyslogMbedTlsStreamPool, DestroyOfUnknownHandleReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(MBEDTLSSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogMbedTlsStreamPool, DestroyOfStaleHandleReportsWarning)
@@ -187,5 +187,5 @@ TEST(SolidSyslogMbedTlsStreamPool, DestroyOfStaleHandleReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(MBEDTLSSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

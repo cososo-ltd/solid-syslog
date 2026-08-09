@@ -95,7 +95,7 @@ static bool OpenSslHmacSha256Policy_SealRecord(
         record->Content,
         record->ContentLength,
         tag,
-        SOLIDSYSLOG_CAT_SECURITYPOLICY_SEAL_FAILED
+        SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED
     );
 }
 
@@ -126,7 +126,7 @@ static bool OpenSslHmacSha256Policy_ComputeTag(
             OpenSslHmacSha256Policy_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 failureCategory,
-                OPENSSLHMACSHA256POLICY_ERROR_HMAC_FAILED
+                SOLIDSYSLOG_OPENSSL_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED
             );
         }
     }
@@ -159,8 +159,8 @@ static bool OpenSslHmacSha256Policy_FetchKey(
         {
             OpenSslHmacSha256Policy_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
-                OPENSSLHMACSHA256POLICY_ERROR_KEY_TOO_SHORT
+                SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
+                SOLIDSYSLOG_OPENSSL_HMAC_SHA256_POLICY_ERROR_KEY_TOO_SHORT
             );
         }
     }
@@ -168,8 +168,8 @@ static bool OpenSslHmacSha256Policy_FetchKey(
     {
         OpenSslHmacSha256Policy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
-            SOLIDSYSLOG_CAT_SECURITYPOLICY_KEY_UNAVAILABLE,
-            OPENSSLHMACSHA256POLICY_ERROR_KEY_UNAVAILABLE
+            SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
+            SOLIDSYSLOG_OPENSSL_HMAC_SHA256_POLICY_ERROR_KEY_UNAVAILABLE
         );
     }
     return fetched;
@@ -192,7 +192,7 @@ static bool OpenSslHmacSha256Policy_OpenRecord(
             record->Content,
             record->ContentLength,
             expected,
-            SOLIDSYSLOG_CAT_SECURITYPOLICY_OPEN_FAILED
+            SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED
         ))
     {
         verified = OpenSslHmacSha256Policy_ConstantTimeEquals(expected, record->Trailer, HMAC_SHA256_TAG_SIZE);

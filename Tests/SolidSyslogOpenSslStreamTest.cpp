@@ -283,8 +283,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenCipherListRejected)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-        OPENSSLSTREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
     );
 }
 
@@ -379,7 +379,7 @@ TEST(SolidSyslogOpenSslStream, OpenWarnsWhenServerNameIsNull)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(OPENSSLSTREAM_ERROR_SERVER_NAME_NOT_SET, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET, ErrorHandlerFake_LastDetail());
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
 }
 
@@ -546,7 +546,7 @@ TEST(SolidSyslogOpenSslStream, DestroyClosesTransportWhenStillOpen)
 
     CALLED_FAKE_ON(StreamFake_Close, transport, ONCE);
     /* Re-create so teardown's Destroy targets a live slot rather than a
-       stale handle (which would fire OPENSSLSTREAM_ERROR_UNKNOWN_DESTROY). */
+       stale handle (which would fire SOLIDSYSLOG_OPENSSL_STREAM_ERROR_UNKNOWN_DESTROY). */
     stream = SolidSyslogOpenSslStream_Create(&config);
 }
 
@@ -740,8 +740,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenHandshakeFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
-        OPENSSLSTREAM_ERROR_HANDSHAKE_REJECTED
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_REJECTED
     );
 }
 
@@ -755,7 +755,7 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSet1HostFails)
         transport,
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
-        OPENSSLSTREAM_ERROR_SERVER_NAME_NOT_SET
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET
     );
 }
 
@@ -769,7 +769,7 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSniHostnameSetupFails)
         transport,
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
-        OPENSSLSTREAM_ERROR_SERVER_NAME_NOT_SET
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET
     );
 }
 
@@ -779,8 +779,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenCtxNewFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-        OPENSSLSTREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
     );
 }
 
@@ -790,8 +790,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSslNewFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-        OPENSSLSTREAM_ERROR_SESSION_INIT_FAILED
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SESSION_INIT_FAILED
     );
 }
 
@@ -801,8 +801,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenLoadVerifyLocationsFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-        OPENSSLSTREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
     );
 }
 
@@ -819,8 +819,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenMinProtoVersionFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-        OPENSSLSTREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
     );
 }
 
@@ -837,8 +837,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenBioMethNewFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-        OPENSSLSTREAM_ERROR_SESSION_INIT_FAILED
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SESSION_INIT_FAILED
     );
 }
 
@@ -848,8 +848,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenBioNewFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-        OPENSSLSTREAM_ERROR_SESSION_INIT_FAILED
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SESSION_INIT_FAILED
     );
 }
 
@@ -985,8 +985,8 @@ TEST(SolidSyslogOpenSslStream, OpenFailsWhenOnlyClientCertIsSet)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-        OPENSSLSTREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
     );
 }
 
@@ -1010,8 +1010,8 @@ TEST(SolidSyslogOpenSslStream, OpenFailsWhenOnlyClientKeyIsSet)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-        OPENSSLSTREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
     );
 }
 
@@ -1046,8 +1046,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenUseCertChainFileFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-        OPENSSLSTREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
     );
 }
 
@@ -1071,8 +1071,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenUsePrivateKeyFileFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-        OPENSSLSTREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
     );
 }
 
@@ -1096,8 +1096,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenCheckPrivateKeyFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_INIT_FAILED,
-        OPENSSLSTREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
     );
 }
 
@@ -1223,8 +1223,8 @@ TEST(SolidSyslogOpenSslStream, OpenFailsWhenHandshakeNeverCompletes)
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(
         transport,
         SOLIDSYSLOG_SEVERITY_WARNING,
-        SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
-        OPENSSLSTREAM_ERROR_HANDSHAKE_TIMEOUT
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_TIMEOUT
     );
 }
 
@@ -1269,8 +1269,8 @@ TEST(SolidSyslogOpenSslStream, OpenFailsImmediatelyOnHardSslError)
     CALLED_FUNCTION(NoOpSleep, NEVER);
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLSSTREAM_HANDSHAKE_FAILED,
-        OPENSSLSTREAM_ERROR_HANDSHAKE_REJECTED
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_REJECTED
     );
 }
 

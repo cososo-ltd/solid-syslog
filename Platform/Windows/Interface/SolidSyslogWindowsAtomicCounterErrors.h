@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogWindowsAtomicCounterErrors
     {
-        WINDOWSATOMICCOUNTER_ERROR_POOL_EXHAUSTED,
-        WINDOWSATOMICCOUNTER_ERROR_UNKNOWN_DESTROY,
-        WINDOWSATOMICCOUNTER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_WINDOWS_ATOMIC_COUNTER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a WindowsAtomicCounter. A handler matches by

@@ -182,7 +182,7 @@ static bool LwipRawDnsResolver_WaitForCallback(struct SolidSyslogLwipRawDnsResol
         LwipRawDnsResolver_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
             SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
-            LWIPRAWDNSRESOLVER_ERROR_RESOLVE_TIMEOUT
+            SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_RESOLVE_TIMEOUT
         );
     }
     return self->Done;

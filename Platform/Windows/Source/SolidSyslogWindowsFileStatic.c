@@ -36,7 +36,7 @@ struct SolidSyslogFile* SolidSyslogWindowsFile_Create(void)
         WindowsFile_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            WINDOWSFILE_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_WINDOWS_FILE_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -53,7 +53,7 @@ void SolidSyslogWindowsFile_Destroy(struct SolidSyslogFile* base)
         WindowsFile_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            WINDOWSFILE_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_WINDOWS_FILE_ERROR_UNKNOWN_DESTROY
         );
     }
 }

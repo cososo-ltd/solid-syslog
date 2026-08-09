@@ -14,12 +14,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogSwitchingSenderErrors
     {
-        SWITCHINGSENDER_ERROR_NULL_CONFIG,
-        SWITCHINGSENDER_ERROR_NULL_SENDERS,
-        SWITCHINGSENDER_ERROR_NULL_SELECTOR,
-        SWITCHINGSENDER_ERROR_POOL_EXHAUSTED,
-        SWITCHINGSENDER_ERROR_UNKNOWN_DESTROY,
-        SWITCHINGSENDER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_CONFIG,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SENDERS,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SELECTOR,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** The identity for events raised by a SwitchingSender. A handler matches by

@@ -82,7 +82,7 @@ static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, s
         UdpSender_Report(
             SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_ARGUMENT,
-            UDPSENDER_ERROR_SEND_NULL_BUFFER
+            SOLIDSYSLOG_UDP_SENDER_ERROR_SEND_NULL_BUFFER
         );
     }
     else
@@ -100,8 +100,8 @@ static inline void UdpSender_UpdateDeliveryHealth(struct SolidSyslogUdpSender* s
 {
     static const struct SolidSyslogSenderHealthReporter reporter = {
         .Source = &UdpSenderErrorSource,
-        .FailedDetail = (int32_t) UDPSENDER_ERROR_DELIVERY_FAILED,
-        .RestoredDetail = (int32_t) UDPSENDER_ERROR_DELIVERY_RESTORED
+        .FailedDetail = (int32_t) SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_FAILED,
+        .RestoredDetail = (int32_t) SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_RESTORED
     };
     SolidSyslogSenderHealth_Update(&self->DeliveryHealthy, delivered, &reporter);
 }

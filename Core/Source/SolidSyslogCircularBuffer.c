@@ -106,7 +106,7 @@ static inline void CircularBuffer_ReportRecordTooLarge(void)
     CircularBuffer_Report(
         SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-        CIRCULARBUFFER_ERROR_RECORD_TOO_LARGE
+        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_TOO_LARGE
     );
 }
 

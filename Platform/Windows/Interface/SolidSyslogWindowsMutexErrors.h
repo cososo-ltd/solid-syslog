@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  name their own fault. */
     enum SolidSyslogWindowsMutexErrors
     {
-        WINDOWSMUTEX_ERROR_POOL_EXHAUSTED,
-        WINDOWSMUTEX_ERROR_UNKNOWN_DESTROY,
-        WINDOWSMUTEX_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_WINDOWS_MUTEX_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_WINDOWS_MUTEX_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_WINDOWS_MUTEX_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a WindowsMutex. A handler matches by address

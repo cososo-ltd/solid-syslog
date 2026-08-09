@@ -105,7 +105,7 @@ TEST(SolidSyslogPosixMutexPool, ExhaustedCreateReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixMutexErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXMUTEX_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_MUTEX_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixMutexPool, FallbackLockUnlockAreNoOps)
@@ -172,7 +172,7 @@ TEST(SolidSyslogPosixMutexPool, DestroyOfUnknownHandleReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixMutexErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXMUTEX_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_MUTEX_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixMutexPool, DestroyOfStaleHandleReportsWarning)
@@ -188,5 +188,5 @@ TEST(SolidSyslogPosixMutexPool, DestroyOfStaleHandleReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixMutexErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXMUTEX_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_MUTEX_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

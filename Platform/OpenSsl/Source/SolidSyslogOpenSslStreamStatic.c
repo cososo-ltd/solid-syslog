@@ -39,7 +39,7 @@ struct SolidSyslogStream* SolidSyslogOpenSslStream_Create(const struct SolidSysl
         OpenSslStream_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            OPENSSLSTREAM_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -56,7 +56,7 @@ void SolidSyslogOpenSslStream_Destroy(struct SolidSyslogStream* base)
         OpenSslStream_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            OPENSSLSTREAM_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

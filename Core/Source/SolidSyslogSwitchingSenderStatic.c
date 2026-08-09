@@ -42,7 +42,7 @@ struct SolidSyslogSender* SolidSyslogSwitchingSender_Create(const struct SolidSy
             SwitchingSender_Report(
                 SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                SWITCHINGSENDER_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_SWITCHING_SENDER_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -57,7 +57,7 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
         SwitchingSender_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SWITCHINGSENDER_ERROR_NULL_CONFIG
+            SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_CONFIG
         );
     }
     else if (config->Senders == NULL)
@@ -65,7 +65,7 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
         SwitchingSender_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SWITCHINGSENDER_ERROR_NULL_SENDERS
+            SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SENDERS
         );
     }
     else if (config->Selector == NULL)
@@ -73,7 +73,7 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
         SwitchingSender_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SWITCHINGSENDER_ERROR_NULL_SELECTOR
+            SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SELECTOR
         );
     }
     else
@@ -94,7 +94,7 @@ void SolidSyslogSwitchingSender_Destroy(struct SolidSyslogSender* base)
         SwitchingSender_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            SWITCHINGSENDER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_SWITCHING_SENDER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

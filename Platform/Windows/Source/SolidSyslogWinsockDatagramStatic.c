@@ -39,7 +39,7 @@ struct SolidSyslogDatagram* SolidSyslogWinsockDatagram_Create(void)
         WinsockDatagram_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            WINSOCKDATAGRAM_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_WINSOCK_DATAGRAM_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -56,7 +56,7 @@ void SolidSyslogWinsockDatagram_Destroy(struct SolidSyslogDatagram* base)
         WinsockDatagram_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            WINSOCKDATAGRAM_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_WINSOCK_DATAGRAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }

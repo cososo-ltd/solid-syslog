@@ -104,7 +104,7 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
             PosixMessageQueueBuffer_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-                POSIXMESSAGEQUEUEBUFFER_ERROR_RECEIVE_FAILED
+                SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECEIVE_FAILED
             );
         }
 
@@ -121,7 +121,7 @@ static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const 
         PosixMessageQueueBuffer_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-            POSIXMESSAGEQUEUEBUFFER_ERROR_SEND_FAILED
+            SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_SEND_FAILED
         );
     }
 }

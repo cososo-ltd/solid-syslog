@@ -179,7 +179,7 @@ TEST(SolidSyslogPosixFilePool, ExhaustedCreateReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixFileErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXFILE_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_FILE_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixFilePool, FallbackOpenReturnsFalse)
@@ -245,7 +245,7 @@ TEST(SolidSyslogPosixFilePool, DestroyOfUnknownHandleReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixFileErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXFILE_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_FILE_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPosixFilePool, DestroyOfStaleHandleReportsWarning)
@@ -261,5 +261,5 @@ TEST(SolidSyslogPosixFilePool, DestroyOfStaleHandleReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PosixFileErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(POSIXFILE_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_FILE_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

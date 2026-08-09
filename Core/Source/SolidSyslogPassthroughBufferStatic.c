@@ -34,7 +34,7 @@ struct SolidSyslogBuffer* SolidSyslogPassthroughBuffer_Create(struct SolidSyslog
         PassthroughBuffer_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            PASSTHROUGHBUFFER_ERROR_NULL_SENDER
+            SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_NULL_SENDER
         );
     }
     else
@@ -50,7 +50,7 @@ struct SolidSyslogBuffer* SolidSyslogPassthroughBuffer_Create(struct SolidSyslog
             PassthroughBuffer_Report(
                 SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                PASSTHROUGHBUFFER_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -72,7 +72,7 @@ void SolidSyslogPassthroughBuffer_Destroy(struct SolidSyslogBuffer* base)
         PassthroughBuffer_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            PASSTHROUGHBUFFER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

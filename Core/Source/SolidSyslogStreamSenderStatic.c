@@ -42,7 +42,7 @@ struct SolidSyslogSender* SolidSyslogStreamSender_Create(const struct SolidSyslo
             StreamSender_Report(
                 SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                STREAMSENDER_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_STREAM_SENDER_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -57,7 +57,7 @@ static bool StreamSender_IsValidConfig(const struct SolidSyslogStreamSenderConfi
         StreamSender_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            STREAMSENDER_ERROR_NULL_CONFIG
+            SOLIDSYSLOG_STREAM_SENDER_ERROR_NULL_CONFIG
         );
     }
     else if (config->Resolver == NULL)
@@ -65,7 +65,7 @@ static bool StreamSender_IsValidConfig(const struct SolidSyslogStreamSenderConfi
         StreamSender_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            STREAMSENDER_ERROR_NULL_RESOLVER
+            SOLIDSYSLOG_STREAM_SENDER_ERROR_NULL_RESOLVER
         );
     }
     else if (config->Stream == NULL)
@@ -73,7 +73,7 @@ static bool StreamSender_IsValidConfig(const struct SolidSyslogStreamSenderConfi
         StreamSender_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            STREAMSENDER_ERROR_NULL_STREAM
+            SOLIDSYSLOG_STREAM_SENDER_ERROR_NULL_STREAM
         );
     }
     else if (config->Address == NULL)
@@ -81,7 +81,7 @@ static bool StreamSender_IsValidConfig(const struct SolidSyslogStreamSenderConfi
         StreamSender_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            STREAMSENDER_ERROR_NULL_ADDRESS
+            SOLIDSYSLOG_STREAM_SENDER_ERROR_NULL_ADDRESS
         );
     }
     else
@@ -102,7 +102,7 @@ void SolidSyslogStreamSender_Destroy(struct SolidSyslogSender* base)
         StreamSender_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            STREAMSENDER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_STREAM_SENDER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

@@ -14,10 +14,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogPassthroughBufferErrors
     {
-        PASSTHROUGHBUFFER_ERROR_POOL_EXHAUSTED,
-        PASSTHROUGHBUFFER_ERROR_UNKNOWN_DESTROY,
-        PASSTHROUGHBUFFER_ERROR_NULL_SENDER,
-        PASSTHROUGHBUFFER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_NULL_SENDER,
+        SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** The identity for events raised by a PassthroughBuffer. A handler matches

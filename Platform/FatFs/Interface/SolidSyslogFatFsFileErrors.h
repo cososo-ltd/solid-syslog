@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  name their own fault. */
     enum SolidSyslogFatFsFileErrors
     {
-        FATFSFILE_ERROR_POOL_EXHAUSTED,
-        FATFSFILE_ERROR_UNKNOWN_DESTROY,
-        FATFSFILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_FATFS_FILE_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_FATFS_FILE_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_FATFS_FILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a FatFsFile. A handler matches by address

@@ -14,9 +14,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  name their own fault. */
     enum SolidSyslogPosixDatagramErrors
     {
-        POSIXDATAGRAM_ERROR_POOL_EXHAUSTED,
-        POSIXDATAGRAM_ERROR_UNKNOWN_DESTROY,
-        POSIXDATAGRAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_POSIX_DATAGRAM_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_POSIX_DATAGRAM_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_POSIX_DATAGRAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a PosixDatagram. A handler matches by address

@@ -875,7 +875,7 @@ TEST(SolidSyslogLwipRawTcpStreamPool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         LwipRawTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        LWIPRAWTCPSTREAM_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -946,7 +946,7 @@ TEST(SolidSyslogLwipRawTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         LwipRawTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        LWIPRAWTCPSTREAM_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -964,6 +964,6 @@ TEST(SolidSyslogLwipRawTcpStreamPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         LwipRawTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        LWIPRAWTCPSTREAM_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );
 }

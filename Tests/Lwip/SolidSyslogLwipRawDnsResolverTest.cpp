@@ -317,7 +317,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveReportsWarningOnTimeout)
         SOLIDSYSLOG_SEVERITY_WARNING,
         LwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
-        LWIPRAWDNSRESOLVER_ERROR_RESOLVE_TIMEOUT
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_RESOLVE_TIMEOUT
     );
 }
 
@@ -463,7 +463,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         LwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        LWIPRAWDNSRESOLVER_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -533,7 +533,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         LwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        LWIPRAWDNSRESOLVER_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -550,6 +550,6 @@ TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         LwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        LWIPRAWDNSRESOLVER_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
 }

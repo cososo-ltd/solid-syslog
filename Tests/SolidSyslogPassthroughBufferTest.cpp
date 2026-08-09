@@ -94,7 +94,7 @@ TEST(SolidSyslogPassthroughBuffer, DestroyWithNullHandleEmitsUnknownDestroyWarni
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PassthroughBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(PASSTHROUGHBUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPassthroughBuffer, UseAfterDestroyIsCrashSafeViaNullBufferVtable)
@@ -174,7 +174,7 @@ TEST(SolidSyslogPassthroughBufferPool, OverflowReportsPoolExhausted)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PassthroughBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(PASSTHROUGHBUFFER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPassthroughBufferPool, FillingPoolThenOverflowReturnsDistinctFallback)
@@ -215,7 +215,7 @@ TEST(SolidSyslogPassthroughBufferPool, CreateWithNullSenderReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&PassthroughBufferErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(PASSTHROUGHBUFFER_ERROR_NULL_SENDER, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_NULL_SENDER, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogPassthroughBufferPool, CreateWithNullSenderReturnsFallbackDistinctFromAnyPoolSlot)

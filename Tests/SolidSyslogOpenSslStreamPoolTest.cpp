@@ -102,7 +102,7 @@ TEST(SolidSyslogOpenSslStreamPool, ExhaustedCreateReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(OPENSSLSTREAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogOpenSslStreamPool, FallbackSendReturnsTrueToDropOnTheFloor)
@@ -168,7 +168,7 @@ TEST(SolidSyslogOpenSslStreamPool, DestroyOfUnknownHandleReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(OPENSSLSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogOpenSslStreamPool, DestroyOfStaleHandleReportsWarning)
@@ -184,5 +184,5 @@ TEST(SolidSyslogOpenSslStreamPool, DestroyOfStaleHandleReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(OPENSSLSTREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
 }

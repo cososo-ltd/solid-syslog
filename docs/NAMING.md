@@ -141,6 +141,37 @@ than tidy — an integrator compiling from a manifest gets `Core/Source` on the
 include path and every object in one directory, so an unprefixed
 `RecordStore_Append` is a symbol collision waiting to happen.
 
+### Spelling a class name inside a SCREAMING_SNAKE identifier
+
+A public macro or enum constant that names a class writes the class in
+`SCREAMING_SNAKE`, one word per PascalCase word — **except** that a platform
+registry token stays whole, spelled exactly as its CMake option spells it.
+
+```c
+SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED   /* Core class, every word split */
+SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_TIMEOUT /* OpenSsl token whole, Stream split */
+SOLIDSYSLOG_MBEDTLS_HMAC_SHA256_POLICY_ERROR_MAX
+```
+
+Splitting the token would misspell the upstream it names — `OPEN_SSL` and
+`FAT_FS` are not products — and would disagree with `SOLIDSYSLOG_OPENSSL` and
+`SOLIDSYSLOG_FATFS`, the options that select those packs. The tokens are the
+ones listed in `SOLIDSYSLOG_PLATFORM_REGISTRY`; see *Platform classes carry
+their pack's registry token* below.
+
+The library instance is the degenerate case: its class name is the project name,
+so prefix and class collapse and the constants read `SOLIDSYSLOG_ERROR_*` rather
+than `SOLIDSYSLOG_SOLIDSYSLOG_ERROR_*`.
+
+**On length.** The longest identifier this produces is 60 characters
+(`SOLIDSYSLOG_MBEDTLS_HMAC_SHA256_POLICY_ERROR_UNKNOWN_DESTROY`). C99 guarantees
+63 significant characters in an internal identifier, and enum constants have no
+linkage, so that is the limit that applies — these fit with room. The 31-character
+figure is C89's, and applies to a standard the library does not claim: the
+`build-linux-c89-headers` lane proves the public headers are *includable* from
+C89 code, not that the library is C89. Weigh this before coining a class name
+longer than `MbedTlsHmacSha256Policy`.
+
 ### Platform classes carry their pack's registry token
 
 `SOLIDSYSLOG_PLATFORM_REGISTRY` in the top-level `CMakeLists.txt` is the single
@@ -854,6 +885,7 @@ static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer
 | Platform pack class                   | `SolidSyslogRegistryTokenThing`            | `SolidSyslogPosixResolver`                 |
 | Public enum type                      | `SolidSyslogClass`                         | `enum SolidSyslogSeverity`                 |
 | Public enum constant                  | `SOLIDSYSLOG_CLASS_CONSTANT`               | `SOLIDSYSLOG_SEVERITY_EMERGENCY`            |
+| Class error code                      | `SOLIDSYSLOG_CLASS_ERROR_NAME`             | `SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED` |
 | Public macro                          | `SOLIDSYSLOG_SCREAMING_SNAKE`              | `SOLIDSYSLOG_MAXIMUM_RECORD_LENGTH`        |
 | Public typedef (enum/fn-pointer only) | `SolidSyslogClass` / `SolidSyslogClass_Fn` | `SolidSyslogTransport_SendFn`              |
 | Static function                       | `Class_Function`                           | `Buffer_WriteMagic`                        |

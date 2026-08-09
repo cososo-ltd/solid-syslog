@@ -14,10 +14,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogTimeQualitySdErrors
     {
-        TIMEQUALITYSD_ERROR_NULL_CALLBACK,
-        TIMEQUALITYSD_ERROR_POOL_EXHAUSTED,
-        TIMEQUALITYSD_ERROR_UNKNOWN_DESTROY,
-        TIMEQUALITYSD_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
+        SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_NULL_CALLBACK,
+        SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** The identity for events raised by a TimeQualitySd. A handler matches by

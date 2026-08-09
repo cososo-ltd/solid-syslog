@@ -295,7 +295,7 @@ TEST(SolidSyslogMetaSd, CreateWithNullConfigReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&MetaSdErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(METASD_ERROR_NULL_CONFIG, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_META_SD_ERROR_NULL_CONFIG, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsWarning)
@@ -307,7 +307,7 @@ TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsWarning)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&MetaSdErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(METASD_ERROR_NULL_COUNTER, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_META_SD_ERROR_NULL_COUNTER, ErrorHandlerFake_LastDetail());
 }
 
 // Pool tests — prove SOLIDSYSLOG_META_SD_POOL_SIZE caps live instances
@@ -370,7 +370,7 @@ TEST(SolidSyslogMetaSdPool, OverflowReportsPoolExhausted)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&MetaSdErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(METASD_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_META_SD_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogMetaSdPool, FillingPoolThenOverflowReturnsDistinctFallback)

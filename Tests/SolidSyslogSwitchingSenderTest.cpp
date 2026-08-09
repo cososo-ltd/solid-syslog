@@ -365,7 +365,7 @@ TEST(SolidSyslogSwitchingSenderPool, OverflowReportsPoolExhausted)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&SwitchingSenderErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SWITCHINGSENDER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_SWITCHING_SENDER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogSwitchingSenderPool, FillingPoolThenOverflowReturnsDistinctFallback)
@@ -416,7 +416,7 @@ TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullConfigReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&SwitchingSenderErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SWITCHINGSENDER_ERROR_NULL_CONFIG, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_CONFIG, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullSendersReportsError)
@@ -427,7 +427,7 @@ TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullSendersReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&SwitchingSenderErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SWITCHINGSENDER_ERROR_NULL_SENDERS, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SENDERS, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullSelectorReportsError)
@@ -438,7 +438,7 @@ TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullSelectorReportsError)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&SwitchingSenderErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SWITCHINGSENDER_ERROR_NULL_SELECTOR, ErrorHandlerFake_LastDetail());
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SELECTOR, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogSwitchingSenderBadSetup, SendOnBadSetupSenderReturnsTrueAndDrops)

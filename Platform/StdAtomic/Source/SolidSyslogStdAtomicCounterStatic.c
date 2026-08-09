@@ -39,7 +39,7 @@ struct SolidSyslogAtomicCounter* SolidSyslogStdAtomicCounter_Create(void)
         StdAtomicCounter_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            STDATOMICCOUNTER_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_STDATOMIC_COUNTER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -56,7 +56,7 @@ void SolidSyslogStdAtomicCounter_Destroy(struct SolidSyslogAtomicCounter* base)
         StdAtomicCounter_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            STDATOMICCOUNTER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_STDATOMIC_COUNTER_ERROR_UNKNOWN_DESTROY
         );
     }
 }
