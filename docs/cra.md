@@ -86,7 +86,7 @@ consuming.
 | **(1)** | identify and document components, including a software bill of materials in a machine-readable format | A CycloneDX [SBOM](security/sbom.md) per release, to fold into your product's own |
 | **(2)**, **(4)** | remediate without delay; disclose fixed vulnerabilities | The [vulnerability triage runbook](security/triage-runbook.md) sets out how reports are assessed and published |
 | **(5)**, **(6)** | a coordinated vulnerability disclosure policy, and a contact address | [`SECURITY.md`](security/policy.md) |
-| **(7)** | securely distribute updates | [Release verification](security/release-verification.md): signed, reproducible artefacts you can check before adopting |
+| **(7)** | securely distribute updates | [Release verification](security/release-verification.md): a signed source-tree hash and signed CycloneDX SBOM, both verifiable against the workflow and tag that produced them |
 
 Secure-by-design evidence for your technical file is in the [threat
 model](security/threat-model.md) and [at-rest
