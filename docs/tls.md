@@ -21,12 +21,17 @@ So the default is: **report the fault through the error handler, and keep
 delivering.** A fault that an operator can see and act on is worth more than a
 connection that refuses to open for a reason nobody is watching.
 
-There is one exception. Where the integrator has declared which peer they expect,
-a mismatch stops delivery. Continuing would hand the records to whoever answered
+The rule has a limit, and it is one line rather than a list of exceptions:
+**delivery stops when the library cannot establish who the peer is.** No trust
+anchors to check against, a certificate that does not chain to them, and a
+mismatch against the identity the integrator declared are all that case.
+Continuing through any of them would hand the records to whoever answered
 instead, which loses the confidentiality of the log *and* the audit trail at the
-same time, and does so without anyone noticing. Every other failure below leaves
-you talking to the peer you trusted with a credential you can no longer fully
-attest; that one leaves you talking to someone else.
+same time, and does so without anyone noticing.
+
+Everything else leaves you talking to the peer you trusted, holding a credential
+you can no longer fully attest. Those are the faults that are reported while
+delivery continues.
 
 Where a store is configured, blocked delivery is delayed delivery rather than
 lost delivery: records accumulate and replay on the next successful connection.
@@ -60,8 +65,8 @@ reports when nothing was declared at all — because that last case is a peer th
 is chain-verified but otherwise unidentified, which is the case an attacker with
 any trusted certificate walks through.
 
-The three states, and what each means, are documented on the configuration field
-itself.
+The three states, and what each means, are documented on each platform's
+configuration field.
 
 ### Report a partially configured client credential
 
@@ -88,6 +93,11 @@ Where the underlying library allows the cipher policy to be selected, a `Stream`
 passes the integrator's choice through unchanged and pins none of its own. The
 appropriate policy depends on the build present on the target and on the profile
 the deployment is held to, and neither is knowable here.
+
+Since no ceiling is set, the version negotiated may be later than the floor, and a
+policy that binds only up to the floor does not bind the connection in use.
+Passing the integrator's choice through means passing it through for whichever
+version is negotiated.
 
 Where the library does not allow it, its own defaults apply. What each platform
 can and cannot select is on its page.
@@ -143,9 +153,10 @@ collector can distinguish an orderly shutdown from a truncated session. RFC 5425
 ### Check the configuration it cannot work without
 
 A `Stream` given a configuration it has no way to use — no sleep to poll the
-handshake with, no trust anchors, no random source — reports a bad configuration
+handshake with, no trust anchors to verify against — reports a bad configuration
 and returns the Null object. It does not accept the configuration and then fail
-on the first connection, and it does not dereference what is missing.
+on the first connection, and it does not dereference what is missing. What else a
+given platform cannot work without is on its own page.
 
 This is the library-wide rule for anything that reaches the wire rather than
 anything specific to TLS: a failure an integrator caused at setup is reported at
@@ -171,7 +182,15 @@ the shipped TLS platforms diverge on several of them, and each divergence is
 recorded on that platform's page and tracked as an issue. Read the page for the
 platform you are wiring before you rely on any obligation above.
 
-The two that differ most today are the handling of a partially configured client
-credential and the certificate-validity rule, where the current behaviour is to
-refuse the connection rather than to report and continue. Configuration checking
-at create time is the other known shortfall, and it is not confined to TLS.
+Certificate validity is the one both fall short of the same way: an expired
+certificate refuses the connection rather than being reported while delivery
+continues.
+
+A partially configured client credential matters more, because the two platforms
+differ. One refuses the connection, which is safe but stricter than the contract.
+The other accepts it in silence and connects without the client certificate, so a
+device configured for mutual TLS can run without ever presenting one. If you rely
+on mutual TLS, read your platform's page before you rely on this obligation.
+
+Configuration checking at create time is the third shortfall, and it is not
+confined to TLS.
