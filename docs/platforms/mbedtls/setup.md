@@ -1,9 +1,10 @@
 # Mbed TLS setup
 
 Wiring `SolidSyslogMbedTlsStream` so a `SolidSyslogStreamSender` delivers
-RFC 5425 syslog over TLS. [Mbed TLS](index.md) covers what the adapter
-guarantees and what it leaves to you; the config fields are documented on the
-struct itself. This page is the wiring, and the things that bite.
+RFC 5425 syslog over TLS. The [TLS obligations](../../tls.md) page covers what
+any TLS stream must do. The [Mbed TLS](index.md) page covers what this adapter
+needs and where it falls short of that. The config fields are documented on the
+struct itself, and this page is the wiring — and the things that bite.
 
 ## The layering
 

@@ -174,6 +174,7 @@ nav:
       - Building up the protection you need: hardening-path.md
       - Adding it to your build: build-integration.md
       - Structured data: structured-data.md
+      - TLS obligations: tls.md
       - Error handling: error-severity.md
   # Platforms answers "will this run on my target" — an integration question, not
   # a reference one, so it is a tab rather than a child of API reference. Porting

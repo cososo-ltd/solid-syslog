@@ -63,7 +63,9 @@ Retention, access control and disposal at the collector.
 
 The log path is not the primary means of meeting these, but it is in scope for each,
 because a log record is itself stored and transmitted data, and because several of them
-call for reporting.
+call for reporting. Where the answer below is TLS, the [TLS obligations](tls.md) page states what
+any TLS stream must do, and each backend's page records where it falls short of that
+today.
 
 | Point | What it asks for | How the audit trail contributes |
 |---|---|---|
@@ -96,6 +98,7 @@ construction and what it delegates to you by contract.
 ## Where to go next
 
 - [Building up the protection you need](hardening-path.md): the integration path, stage by stage.
+- [TLS obligations](tls.md): what a TLS stream must do, for the transit half of (2)(e) and (2)(f).
 - [IEC 62443 guide](iec62443.md): the control-by-control map for industrial deployments.
 - [Compliance in one page](overview.md): the one-screen orientation across both frameworks.
 - [Threat model](security/threat-model.md): the division of responsibility this page assumes.

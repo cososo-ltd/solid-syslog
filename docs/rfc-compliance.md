@@ -1,16 +1,23 @@
 # RFC Compliance Matrix
 
 SolidSyslog implements the sender (client) side of four syslog RFCs. This
-document tracks which requirements are currently met, partially met, or
-planned.
+document tracks which requirements are met, which are met with known
+limitations, and which do not apply.
 
 Status key:
 
 - Supported: implemented and tested
 - Partial: implemented with known limitations
-- Planned: tracked in an issue or epic
 - N/A: not applicable to a sender implementation, or applicable and deliberately
   excluded — the note says which, and why
+
+A status describes the library: Core, and the role contracts it defines, with a
+conforming platform supplying the roles it needs. Almost every requirement below
+depends on which platform components are selected and how they are configured,
+including components you write yourself, which the library cannot speak for.
+Where a shipped platform does not meet an obligation, its own page records the
+exception and links the issue tracking it, and the
+[capability matrix](platforms/index.md) shows which platform fills which role.
 
 ## RFC 5424 — The Syslog Protocol
 
@@ -25,15 +32,46 @@ Status key:
 | 6.2.6 | PROCID — max 128 chars, PRINTUSASCII | Supported | Truncated to 128. Non-PRINTUSASCII bytes substituted with `?` |
 | 6.2.7 | MSGID — max 32 chars, PRINTUSASCII | Supported | Truncated to 32. Non-PRINTUSASCII bytes substituted with `?` |
 | 6.3 | STRUCTURED-DATA — SD-ELEMENTs or NILVALUE | Supported | Extensible via `SolidSyslogStructuredData` vtable |
-| 6.3.2 | SD-ID / SD-NAME syntax validation | Planned | Not performed. It only bites once callers can supply their own names: the three standard SDs (meta / timeQuality / origin) use compile-time-constant names that are valid by construction. Tracked under Custom Structured Data (`#64`), which is what introduces caller-supplied SD-IDs and PARAM names |
-| 6.3.3 | SD-PARAM value escaping (`]`, `\`, `"`) | Supported | `SolidSyslogSdValue` — every SD-PARAM value is written through this sink, which applies the escaping: RFC 3629 UTF-8 validated, ill-formed input substituted per-byte with U+FFFD (Unicode §3.9). `OriginSd` streams software, swVersion, enterpriseId, and each ip into it; `MetaSd` streams language via the integrator's `SolidSyslogSdValueFunction` callback. Both get the same escaping. |
+| 6.3.2 | SD-ID and PARAM-NAME conform to SD-NAME | Supported | `SolidSyslogSdElement` owns the brackets, the `@` and enterprise number, the separators and the quoting; it bounds each name to the 32 characters §6.3.2 allows and substitutes non-printable bytes and spaces. The three remaining SD-NAME exclusions — `=`, `]` and `"` — are the author's to observe, and are stated on `SolidSyslogSdElement_Begin`, as is §6.3.2's rule that an SD-ID appears at most once in a message. Names are written by the developer authoring the SD rather than carried from runtime data, so an invalid one fails visibly on the first run rather than on some input |
+| 6.3.3 | SD-PARAM value escaping (`]`, `\`, `"`) | Supported | `SolidSyslogSdValue` — every SD-PARAM value is written through this sink, which applies the escaping: RFC 3629 UTF-8 validated, ill-formed input substituted per-byte with U+FFFD (Unicode §3.9). `SolidSyslogOriginSd` streams software, swVersion, enterpriseId, and each ip into it; `SolidSyslogMetaSd` streams language via the integrator's `SolidSyslogSdValueFunction` callback. Both get the same escaping. |
 | 7.1 | timeQuality SD — tzKnown, isSynced, syncAccuracy | Supported | `SolidSyslogTimeQualitySd` |
 | 7.2 | origin SD — software, swVersion, enterpriseId, ip | Supported | `SolidSyslogOriginSd` covers all four §7.2 parameters. `software`, `swVersion`, and `enterpriseId` are static strings supplied via `SolidSyslogOriginSdConfig`; the config strings are borrowed for the SD's lifetime and each is escaped per §6.3.3 by the `SolidSyslogSdValue` writer it is streamed into at Format time (no pre-formatted scratch storage). `ip` is repeatable per RFC 5424 §7.2 and sourced via two callbacks (`SolidSyslogOriginIpCountFunction`, `SolidSyslogOriginIpAtFunction`) so multi-homed hosts can reflect runtime address changes; the library asks for a count then loops 0 to N-1, opening an `ip` param per token (with a leading space) while the integrator's at-callback writes one IP value per call into the `SolidSyslogSdValue` it is handed, which applies the escaping. All four parameters are independently optional — a NULL field or NULL callback omits the corresponding parameter from the SD-ELEMENT. The library frames and escapes; the IP value length is the integrator's to bound (ultimately by `SOLIDSYSLOG_MAX_MESSAGE_SIZE`), as is the IP count. Bare `[origin]` with no parameters is RFC-legal (§7.2 marks all params OPTIONAL, no SHOULD enforcement) and is what the library emits when the integrator wires nothing |
 | 7.3 | meta SD — sequenceId, sysUpTime, language | Supported | `SolidSyslogMetaSd` covers all three IANA-registered parameters. `sequenceId` (§7.3.1) sourced via an injected `SolidSyslogAtomicCounter`. `sysUpTime` (§7.3.2 / RFC 3418 `TimeTicks`) sourced via a `SolidSyslogSysUpTimeFunction` callback returning `uint32_t` hundredths, the type giving RFC 3418's natural wrap; the [capability matrix](platforms/index.md) shows which platforms supply one. `language` (§7.3.3 / BCP 47) sourced via a `SolidSyslogSdValueFunction` callback streaming into a `SolidSyslogSdValue`, which applies SD-PARAM-VALUE escaping per §6.3.3. `sysUpTime` and `language` are independently optional — a NULL field in `SolidSyslogMetaSdConfig` omits that parameter. The counter is not: `SolidSyslogMetaSd_Create` rejects a NULL `Counter` with a `WARNING` and returns the Null structured data, so the element is not emitted at all |
-| 7.3.1 | meta SD — sequenceId wraps at 2147483647 to 1 | Partial | `SolidSyslogAtomicCounter` wraps via CAS-loop in [1, 2³¹ - 1]; never returns 0; never above max. [AtomicCounter](api/structSolidSyslogAtomicCounter.md) is a vtable abstraction, so the wrap is the contract's and not any one implementation's; the integrator wires a concrete counter at setup time and the [capability matrix](platforms/index.md) shows which platforms supply one. sequenceId is assigned at the point of message raise (application-layer originator), preserving end-to-end loss-detection across the internal buffer / store-and-forward / transport pipeline. Trade-off: under concurrent raise from multiple threads, a small reorder window may occur in transmitted IDs (adjacent IDs may invert, since buffer/transport scheduling between raise and wire is not under library control). IDs from a wired counter remain unique and non-zero — SIEMs performing gap detection identify message loss correctly; SIEMs requiring strict monotonic ordering should sort by timestamp. Uniqueness is the counter's, not the contract's: exhaust a counter's pool and `Create` falls back to the Null counter, which returns 1 for every record, so gap detection stops being meaningful while logging continues |
-| 6.4 | MSG — UTF-8 preferred | Supported | RFC 3629 UTF-8 validated at the formatter primitives (`SolidSyslogFormatter_BoundedString`), with ill-formed input substituted per-byte with U+FFFD (Unicode §3.9). MSG is prefixed with the §6.4 UTF-8 BOM (`%xEF.BB.BF`) unconditionally; if the caller's body already begins with a BOM it is stripped so the wire frame contains exactly one. Truncation preserves codepoint boundaries at both layers: the formatter clips at `SOLIDSYSLOG_MAX_MESSAGE_SIZE` without splitting a codepoint, and on UDP the sender walks back over any partial codepoint when the kernel reports `EMSGSIZE` for the path MTU. TCP/TLS streams fragment transparently at the transport layer and so do not need a path-MTU trim |
+| 7.3.1 | meta SD — sequenceId wraps at 2147483647 to 1 | Supported | `SolidSyslogAtomicCounter` wraps via CAS-loop in [1, 2³¹ - 1]; never returns 0; never above max. [AtomicCounter](api/structSolidSyslogAtomicCounter.md) is a vtable abstraction, so the wrap is the contract's and not any one implementation's; the integrator wires a concrete counter at setup time and the [capability matrix](platforms/index.md) shows which platforms supply one. sequenceId is assigned at the point of message raise (application-layer originator), preserving end-to-end loss-detection across the internal buffer / store-and-forward / transport pipeline. Trade-off: under concurrent raise from multiple threads, a small reorder window may occur in transmitted IDs (adjacent IDs may invert, since buffer/transport scheduling between raise and wire is not under library control). IDs from a wired counter remain unique and non-zero — SIEMs performing gap detection identify message loss correctly; SIEMs requiring strict monotonic ordering should sort by timestamp. Uniqueness is the counter's, not the contract's: exhaust a counter's pool and `Create` falls back to the Null counter, which returns 1 for every record, so gap detection stops being meaningful while logging continues |
+| 6.4 | MSG — UTF-8 preferred | Supported | RFC 3629 UTF-8 validated at the formatter primitives (`SolidSyslogFormatter_BoundedString`), with ill-formed input substituted per-byte with U+FFFD (Unicode §3.9). MSG is prefixed with the §6.4 UTF-8 BOM (`%xEF.BB.BF`) unconditionally. A leading BOM in the caller's body is stripped, so the wire frame contains exactly one. Truncation preserves codepoint boundaries at both layers: the formatter clips at `SOLIDSYSLOG_MAX_MESSAGE_SIZE` without splitting a codepoint, and on UDP the sender walks back over any partial codepoint when the kernel reports `EMSGSIZE` for the path MTU. TCP/TLS streams fragment transparently at the transport layer and so do not need a path-MTU trim |
 | 6.1 | Message size — max 2048 recommended | Supported | Default `SOLIDSYSLOG_MAX_MESSAGE_SIZE` = 2048, matching the largest message §6.1 says a transport receiver SHOULD accept; override it for memory-constrained MCUs via the standard tunable mechanism |
 | 6 | PRINTUSASCII in header fields (codes 33-126) | Supported | Non-compliant bytes substituted with `?` at format time (HOSTNAME, APP-NAME, PROCID, MSGID) |
+
+## RFC 5425 — TLS Transport Mapping for Syslog
+
+TLS is a [Stream](api/structSolidSyslogStream.md) wrapped around another Stream,
+so these requirements are met by whichever TLS stream the integrator wires; the
+[capability matrix](platforms/index.md) shows which platforms supply one. The
+statuses below are against [the TLS contract](tls.md), which states what any TLS
+stream must do. Where a shipped platform does not yet meet an obligation, its own
+page records the exception and links the issue tracking it.
+
+**RFC 5425 is read together with RFC 9662**, *Updates to the Cipher Suites in
+Secure Syslog*, which is Standards Track and updates it. RFC 9662 replaces the
+2009 cipher-suite requirement, asks that TLS 1.3 be supported and preferred where
+it is implemented, and normatively references BCP 195 for how TLS should be used.
+Rows below cite it where it is the requirement in force. It is not tabulated
+separately: it states no requirement of its own that RFC 5425 does not already
+frame.
+
+| Section | Requirement | Status | Notes |
+|---|---|---|---|
+| 3 | TLS to secure syslog | Supported | A TLS `Stream` wraps a byte-transport `Stream` — a TCP one from any platform, or a caller-supplied one. §3's own caveat holds here too: the protection is hop-by-hop, so a relay that terminates the connection is authenticated in place of the originating device |
+| 4.1 | Default port 6514 | Supported | `SOLIDSYSLOG_TLS_DEFAULT_PORT` constant in `SolidSyslogTransport.h`, alongside the UDP and TCP defaults. Caller-supplied via the endpoint callback so multi-port deployments can override |
+| 4.2 | TLS 1.2 as the mandatory-to-implement protocol | Supported | The contract pins the protocol floor at TLS 1.2 in the stream rather than inheriting the TLS library's defaults, so a permissive build cannot negotiate below it. RFC 9662 keeps 1.2 as mandatory-to-implement |
+| RFC 9662 §4 | Cipher suites — `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256` SHOULD be offered, `TLS_RSA_WITH_AES_128_CBC_SHA` MAY be | N/A | Which cipher suites exist is a property of the TLS library linked on the target, not of this library, which neither adds nor removes any. RFC 9662 downgraded the 2009 mandatory suite because it offers no forward secrecy, which is the same reason a hardened build disables it. RFC 9662 §4 is internally awkward — it calls both suites REQUIRED and then states the offer preference above — so it is cited whole rather than paraphrased into something tidier |
+| RFC 9662 §4 | TLS 1.3 SHOULD be supported, and MUST be preferred where implemented | Supported | The contract sets a floor and deliberately no ceiling, so the later version is negotiated wherever the peer offers one. This is why no ceiling is set: pinning one to constrain cipher selection would breach the preference requirement |
+| 4.2.1 | Certificate-based authentication — server | Supported | Peer verification is required, not optional: the certificate must chain to the trust anchors the caller supplies, and the peer identity the caller declares is checked against it |
+| 4.2.1 | Certificate-based authentication — client | Supported | A client certificate and its key are optional configuration on the TLS stream, presented only when both are given, and a partially configured pair is reported rather than silently ignored |
+| 4.2.1 | Means to generate a key pair and self-signed certificate | N/A | Deliberately excluded. The library consumes trust material and does not mint it, so key generation belongs to the deployment's provisioning. Directed at a syslog application rather than at a component one is built from |
+| 4.2.3 | Administrators may select the cryptographic level | Partial | The contract requires an integrator's cipher policy to be passed through where the underlying library allows one to be selected. Neither shipped TLS platform delivers that on the connection actually negotiated — see each platform's page, and `#733` |
+| 4.3.1 | Octet-counting framing, and the message length | Supported | Reuses `SolidSyslogStreamSender`, so the frame is `MSG-LEN SP MSG`. `SOLIDSYSLOG_MAX_MESSAGE_SIZE` defaults to 2048, the length §4.3.1 requires every transport receiver to accept |
+| 4.4 | `close_notify` before closing | Supported | Close sends `close_notify` before tearing the connection down |
 
 ## RFC 5426 — Transmission of Syslog Messages over UDP
 
@@ -59,29 +97,11 @@ Status key:
 | 3.5 | Address rotation without app restart | Supported | App bumps `endpointVersion`; sender Disconnects and reconnects on next Send |
 | — | Partial write handling (send returns short) | Supported | The [Stream](api/structSolidSyslogStream.md) contract makes `Send` all-or-nothing: a short write is a failure, never a partial success, so the stream closes itself, the sender reconnects on its next pass, and store-and-forward replays the message on the fresh connection. The same contract keeps steady-state `Send` and `Read` non-blocking and bounds `Open`, so a wedged peer or a full send buffer cannot stall the servicing pass. The connect bound is `SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS` (default 200 ms), overridable at runtime through the per-Stream `GetConnectTimeoutMs(ConnectTimeoutContext)` accessor. How a transport detects a long-term wedge, and what it does about one, is on its own page |
 
-## RFC 5425 — TLS Transport Mapping for Syslog
-
-TLS is a [Stream](api/structSolidSyslogStream.md) wrapped around another Stream,
-so these requirements are met by whichever TLS stream the integrator wires; the
-[capability matrix](platforms/index.md) shows which platforms supply one. What
-an adapter validates, what it leaves to you, and how credentials reach it are
-stated on that platform's own page.
-
-| Section | Requirement | Status | Notes |
-|---|---|---|---|
-| 4.1 | TLS over TCP | Supported | A TLS `Stream` wraps a byte-transport `Stream` — a TCP one from any platform, or a caller-supplied one |
-| 4.2 | Default port 6514 | Supported | `SOLIDSYSLOG_TLS_DEFAULT_PORT` constant in `SolidSyslogTransport.h`, alongside the UDP and TCP defaults. Caller-supplied via the endpoint callback so multi-port deployments can override |
-| 5.1 | Server certificate validation | Supported | Peer verification is required, not optional: the certificate must chain to the trust anchors the caller supplies, and the server identity is checked against it. What an adapter does when no identity is given — and whether it says so — is on its page |
-| 5.2 | Mutual TLS (client certificate) | Supported | A client certificate and its key are optional config on the TLS stream, and are presented only when both are given. Whether an adapter validates the pair locally, and what a half-supplied credential does, is on its page |
-| 5.3 | TLS 1.2+ cipher suites | Supported | The floor is pinned to TLS 1.2 by the adapter rather than inherited from the TLS library's defaults, so a permissive build cannot negotiate below it. Cipher selection within that floor is the integrator's |
-| 5.4 | Octet counting framing (mandatory for TLS) | Supported | Reuses `SolidSyslogStreamSender` — RFC 6587 framing is identical |
-| 5.5 | TLS close_notify handling | Supported | Close sends `close_notify` before tearing the connection down |
-
 ## Summary
 
-| RFC | Total requirements | Supported | Partial | Planned | N/A |
-|---|---|---|---|---|---|
-| RFC 5424 | 18 | 16 | 1 | 1 | 0 |
-| RFC 5426 | 6 | 4 | 0 | 0 | 2 |
-| RFC 6587 | 8 | 7 | 0 | 0 | 1 |
-| RFC 5425 | 7 | 7 | 0 | 0 | 0 |
+| RFC | Total requirements | Supported | Partial | N/A |
+|---|---|---|---|---|
+| RFC 5424 | 18 | 18 | 0 | 0 |
+| RFC 5425 | 11 | 8 | 1 | 2 |
+| RFC 5426 | 6 | 4 | 0 | 2 |
+| RFC 6587 | 8 | 7 | 0 | 1 |

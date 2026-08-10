@@ -121,8 +121,10 @@ These are properties of the shipped code, not aspirations:
   discard policies (oldest / newest / halt) and threshold/halt callbacks, so a
   backlog or a network outage has a defined, caller-chosen outcome rather than
   unbounded growth.
-- Transport security (opt-in). TLS 1.2+ (RFC 5425): server-cert validation,
-  hostname verification, cipher pinning, optional mutual TLS.
+- Transport security (opt-in). TLS 1.2+ (RFC 5425): a pinned protocol floor,
+  mandatory trust anchors, verification of the peer identity you declare, and
+  optional mutual TLS. The full contract is [TLS obligations](../tls.md), and
+  each backend's page records where it falls short of it today.
 - At-rest protection (opt-in). CRC-16 for accidental-corruption integrity;
   HMAC-SHA256 for tamper-evidence; AES-GCM for confidentiality + integrity, each
   available for both the OpenSSL and Mbed TLS reference integrations.
@@ -132,7 +134,7 @@ These are properties of the shipped code, not aspirations:
 | You must | Because |
 |---|---|
 | Not log secrets you don't want transported/stored | The library is a transport, not a redactor — it never inspects content. |
-| Provision and validate TLS/mTLS certificates; supply the CA bundle and cipher policy | The library consumes trust material; it does not mint or manage it. |
+| Provision and validate TLS/mTLS certificates; supply the CA bundle and declare the peer identity to verify | The library consumes trust material; it does not mint or manage it, and it verifies against the name you declare rather than one it infers. |
 | Resolve and trust the destination address | The library connects to whatever address the injected resolver returns; it does not authenticate DNS responses. On targets without DNS you supply the address directly. |
 | Supply a properly-seeded RNG (Mbed TLS `ctr_drbg`) | A weak RNG silently weakens TLS. The library uses the RNG you inject. |
 | Inject a real mutex (CircularBuffer) / config-lock (multi-task pools) where concurrency exists | The library's synchronisation primitives are injected; the defaults are no-ops. |
