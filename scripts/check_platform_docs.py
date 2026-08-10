@@ -150,7 +150,7 @@ def vocabulary(rows):
     """
     terms = {}
     for token, directory in rows:
-        for alias in [token] + ALIASES.get(token, []):
+        for alias in [token, *ALIASES.get(token, [])]:
             terms.setdefault(alias, set()).add(token)
         for header in interface_headers(directory):
             stem = header[: -len(".h")]
@@ -261,7 +261,8 @@ def role_faults():
 
 
 def prefix_faults(rows):
-    """Every header a platform declares begins with SolidSyslog<Token>.
+    """Every header a platform declares begins with SolidSyslog<Token>, or with
+    an agreed second-upstream prefix from CLASS_PREFIXES.
 
     docs/NAMING.md states this for public classes. An *Errors.h takes its name
     from the class it belongs to, so it carries the token by construction and is
@@ -269,7 +270,7 @@ def prefix_faults(rows):
     """
     faults = []
     for token, directory in rows:
-        accepted = [token] + CLASS_PREFIXES.get(token, [])
+        accepted = [token, *CLASS_PREFIXES.get(token, [])]
         for header in interface_headers(directory):
             if not any(header.startswith(f"SolidSyslog{prefix}") for prefix in accepted):
                 wanted = " or ".join(f"SolidSyslog{prefix}" for prefix in accepted)
