@@ -777,8 +777,9 @@ jobs:
       # the docs enumerate exactly what the code declares — a platform's pages,
       # nav entry, description and matrix row; a role's link from the porting
       # guide, the roles index and the nav — and the reverse in both cases. It
-      # also holds the two boundaries hand review kept losing: no platform names
-      # another, and every class a platform ships is on its page.
+      # also holds the three boundaries hand review kept losing: no platform
+      # names another, every class a platform declares carries its registry
+      # token, and every class a platform ships is on its page.
       - name: Check the docs match what the code declares
         run: python3 scripts/check_platform_docs.py
 
