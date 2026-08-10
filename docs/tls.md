@@ -125,6 +125,17 @@ Closing sends the TLS close notification before the connection goes away, so the
 collector can distinguish an orderly shutdown from a truncated session. RFC 5425
 §4.4 requires it.
 
+### Check the configuration it cannot work without
+
+A `Stream` given a configuration it has no way to use — no sleep to poll the
+handshake with, no trust anchors, no random source — reports a bad configuration
+and returns the Null object. It does not accept the configuration and then fail
+on the first connection, and it does not dereference what is missing.
+
+This is the library-wide rule for anything that reaches the wire rather than
+anything specific to TLS: a failure an integrator caused at setup is reported at
+setup, where they are still looking.
+
 ### Report every one of these
 
 All of the above surface through the error handler rather than a return code an
@@ -147,4 +158,5 @@ platform you are wiring before you rely on any obligation above.
 
 The two that differ most today are the handling of a partially configured client
 credential and the certificate-validity rule, where the current behaviour is to
-refuse the connection rather than to report and continue.
+refuse the connection rather than to report and continue. Configuration checking
+at create time is the other known shortfall, and it is not confined to TLS.
