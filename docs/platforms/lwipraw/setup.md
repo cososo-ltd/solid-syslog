@@ -149,9 +149,12 @@ resolves entirely on-device:
     { DNS_LOCAL_HOSTLIST_ELEM("collector", IPADDR4_INIT_BYTES(10, 0, 2, 2)) }
 ```
 
-Wire whichever resolver your deployment needs — the file comment on each says
-which fits. The pool sizes and timeouts are in
-[Adding it to your build](../../build-integration.md#tunables).
+Wire whichever resolver your deployment needs:
+[`SolidSyslogLwipRawResolver`](../../api/SolidSyslogLwipRawResolver_8h.md) for an
+endpoint given as an address, or
+[`SolidSyslogLwipRawDnsResolver`](../../api/SolidSyslogLwipRawDnsResolver_8h.md)
+for one that may be a name. Each says which fits. The pool sizes and timeouts are
+in [Adding it to your build](../../build-integration.md#tunables).
 
 ## Limits
 

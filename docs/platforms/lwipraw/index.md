@@ -34,7 +34,9 @@ callback runs, so a mailbox marshal has to wait for completion itself.
 
 The source calls lwIP only — no direct OS calls. The TCP stream's synchronous
 Open and the DNS resolver's bounded wait both need a sleep, injected as a
-`SolidSyslogSleepFunction`; neither is created without one.
+`SolidSyslogSleepFunction`. Create it without one and you get the shared Null
+object back, with nothing reported: the wiring looks like it worked and no record
+is ever delivered.
 
 Your `lwipopts.h` must enable the features the adapter wraps:
 
@@ -78,9 +80,11 @@ sender only trims a record after being told it was too large, one over that size
 reaches lwIP whole, and what happens next is `IP_FRAG`'s decision rather than the
 adapter's:
 
-- **`IP_FRAG=1`**, lwIP's default: the datagram is fragmented and delivered.
-  It arrives, at the cost RFC 5426 §3.2 warns about — a lost fragment costs the
-  whole record, and some collectors and middleboxes drop fragments outright.
+- **`IP_FRAG=1`**, lwIP's default: lwIP attempts to fragment the datagram and
+  submits the fragments to your interface. Allocating them can fail, and
+  submission is not delivery — this is the case RFC 5426 §3.2 warns about, where
+  a lost fragment costs the whole record and some collectors and middleboxes
+  drop fragments outright.
 - **`IP_FRAG=0`**: lwIP compiles the length check out of its send path
   altogether and hands the over-length packet to your driver. A driver that drops
   it and answers `ERR_OK` loses the record while the store counts it delivered; a
