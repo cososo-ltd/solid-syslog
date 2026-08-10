@@ -79,7 +79,7 @@ misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c:33
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsFile.c:77
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsMutex.c:38
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:98
-misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:184
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:182
 misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:227
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:79
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:154
@@ -117,7 +117,7 @@ misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:46
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:118
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:144
 misra-c2012-11.8:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:164
-misra-c2012-11.8:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:97
+misra-c2012-11.8:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:95
 
 # D.007 — Rule 21.10: transitive <wchar.h> via <time.h>
 # See docs/misra-deviations.md#d007
@@ -153,7 +153,7 @@ misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixDatagram.c:25
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSleep.c:6
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:29
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWinsockResolver.c:41
-misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:106
+misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:104
 misra-c2012-5.7:Core/Source/SolidSyslogBlockSequence.c:13
 misra-c2012-5.7:Core/Source/SolidSyslogBlockSequence.c:110
 misra-c2012-5.7:Core/Source/SolidSyslogRecordStore.c:14
@@ -199,5 +199,5 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:20
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:336
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:354
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:142
-misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:356
-misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:376
+misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:354
+misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:374
