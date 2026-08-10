@@ -18,7 +18,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  can run on different tasks.
      *  Read returns false for a head record too large for the caller's buffer and
      *  reports it via SolidSyslog_Error (buffer-backend-failed) — that state
-     *  cannot arise under correct configuration, so it must not be silent. */
+     *  cannot arise under correct configuration, so it must not be silent.
+     *
+     *  Records come back in the order they went in, and one Read delivers
+     *  exactly the bytes one Write was given: nothing downstream re-orders or
+     *  re-frames them. Write cannot refuse a record, since it has no way to say
+     *  so, which leaves the overflow policy and whether a drop is reported to
+     *  the implementation. */
     struct SolidSyslogBuffer
     {
         void (*Write)(struct SolidSyslogBuffer* base, const void* data, size_t size);
