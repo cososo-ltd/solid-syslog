@@ -33,7 +33,8 @@ callback runs, so a mailbox marshal has to wait for completion itself.
 ## Requirements
 
 The source calls lwIP only — no direct OS calls. The TCP stream's synchronous
-Open needs a bounded sleep, injected as a `SolidSyslogSleepFunction`.
+Open and the DNS resolver's bounded wait both need a sleep, injected as a
+`SolidSyslogSleepFunction`; neither is created without one.
 
 Your `lwipopts.h` must enable the features the adapter wraps:
 
@@ -46,7 +47,10 @@ Your `lwipopts.h` must enable the features the adapter wraps:
 
 Also set `ARP_QUEUEING=1` (else the first datagram to an unresolved peer is
 dropped) and `LWIP_TCP_KEEPALIVE=1`, and size `PBUF_POOL_SIZE` /
-`MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to your instance counts.
+`MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to your instance counts. `IP_FRAG`
+decides what becomes of a record too large for the path — see
+[an over-large record has three possible fates](#an-over-large-record-has-three-possible-fates)
+below.
 
 ## Security behaviour and obligations
 
@@ -65,6 +69,47 @@ are read the moment the hop returns. An asynchronous marshal, or none at all,
 corrupts lwIP's internal state rather than failing cleanly. Install it once at
 boot, before any adapter is created.
 
+### An over-large record has three possible fates
+
+The datagram reports the IPv6-safe payload of 1232 bytes from `MaxPayload` and
+cannot tell an over-large datagram from any other send failure, which the
+[Datagram](../../api/structSolidSyslogDatagram.md) contract permits. Because the
+sender only trims a record after being told it was too large, one over that size
+reaches lwIP whole, and what happens next is `IP_FRAG`'s decision rather than the
+adapter's:
+
+- **`IP_FRAG=1`**, lwIP's default: the datagram is fragmented and delivered.
+  It arrives, at the cost RFC 5426 §3.2 warns about — a lost fragment costs the
+  whole record, and some collectors and middleboxes drop fragments outright.
+- **`IP_FRAG=0`**: lwIP compiles the length check out of its send path
+  altogether and hands the over-length packet to your driver. A driver that drops
+  it and answers `ERR_OK` loses the record while the store counts it delivered; a
+  driver that answers an error fails the send, and a failed send is treated as
+  transient, so the store re-offers the same record on every pass and nothing
+  behind it is delivered.
+
+`SOLIDSYSLOG_MAX_MESSAGE_SIZE` defaults to 2048, so this reaches any record over
+about 1.2 KB rather than only unusual ones. Keep records on this UDP path inside
+the payload it carries — noting that the limit is library-wide rather than
+per-transport, so lowering it truncates records on every transport the instance
+uses.
+
+### Dead-peer detection runs at lwIP's defaults
+
+The stream enables keepalive and leaves the timings to the stack, so a silent
+peer is first probed after lwIP's default two hours and the connection is
+declared dead around eleven minutes after that. Those defaults are compile-time
+and stack-wide, so changing them means `TCP_KEEPIDLE_DEFAULT` and its siblings in
+your `lwipopts.h` — which moves every TCP connection in your system, not only
+this one. `LWIP_TCP_KEEPALIVE=1` does not alter the timings; it makes the
+interval and probe count per-connection fields, which is what
+[#743](https://github.com/cososo-ltd/solid-syslog/issues/743) needs to give the
+library its own setting and apply it here.
+
+This governs the idle case only. A connection actually carrying records notices
+a dead peer sooner: lwIP's send buffer fills, the write fails, and the stream
+closes itself so the sender reconnects.
+
 ### Resolution is trusted as the stack returns it
 
 The DNS resolver forwards what lwIP answers. A deployment that cannot trust its
@@ -74,5 +119,7 @@ exists to be poisoned.
 ### Pool sizing is yours, and exhaustion is silent at the stack
 
 `PBUF_POOL_SIZE`, `MEMP_NUM_TCP_PCB` and `MEMP_NUM_UDP_PCB` must cover the
-instances you create alongside everything else using the stack. Under-sizing
-shows as dropped records rather than as an error from lwIP.
+instances you create alongside everything else using the stack. lwIP reports
+nothing when it runs out; what you see is the send failing, which reaches you as
+a delivery failure through the error handler rather than as anything naming the
+pool that was exhausted.
