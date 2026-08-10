@@ -54,6 +54,10 @@ DESCRIPTIONS = {
         "Which severity a SolidSyslog error event carries — the urgency ladder "
         "each emit site picks from, and what each level asks of your handler."
     ),
+    "tls.md": (
+        "What a SolidSyslog TLS Stream must do, whichever library provides it: "
+        "the protocol floor, peer identity, mutual TLS and revocation policy."
+    ),
     # Platforms — each platform's overview page followed by its setup guide,
     # in nav order, with porting last as the other half of the same question.
     "platforms/index.md": (
