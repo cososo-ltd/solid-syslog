@@ -35,8 +35,8 @@ template.
 
 **A `FreeRTOSFATConfig.h`** on your include path. Unlike some file systems this
 resolves off `-I` rather than needing to sit beside the sources. Set at least
-the byte order and the thread-local storage index; the defaults header fills
-the rest.
+`ffconfigBYTE_ORDER` and `ffconfigCWD_THREAD_LOCAL_INDEX`; the defaults header
+fills the rest.
 
 **Kernel configuration**, because Plus-FAT requires it:
 
