@@ -13,10 +13,10 @@ link:
 set(SOLIDSYSLOG_PLATFORMS "Posix")
 ```
 
-Selecting this platform links `rt` publicly, which older glibc needs for POSIX
-message queues; from glibc 2.34 they are in `libc` and the library is empty but
-harmless. You do not have to add it yourself, and it is linked whether or not
-you use the message-queue buffer.
+The message-queue buffer needs the POSIX message-queue functions. From glibc
+2.34 they are in `libc` and there is nothing to do; on older glibc they are in
+`librt`, and you add `rt` to your own link line — the library does not add it
+for you.
 
 ## Wiring a sender
 
