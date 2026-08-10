@@ -29,6 +29,40 @@ The resolver forwards what FreeRTOS-Plus-TCP answers. A deployment that cannot
 trust its DNS should give the collector a numeric address rather than a name, so
 that no resolution step exists to be poisoned.
 
+### A first send to an unresolved peer stalls the calling task
+
+FreeRTOS-Plus-TCP does not queue datagrams while ARP resolves — a
+`FreeRTOS_sendto` to a peer that is not in the ARP cache is dropped at the IP
+layer. The datagram adapter therefore issues an ARP probe on a cache miss and
+then waits, in a `vTaskDelay` of its own, so the reply can land before it sends.
+The wait is the adapter's rather than the stack's, and is 50 ms rounded to the
+resolution your `configTICK_RATE_HZ` gives.
+
+That delay is paid by whichever task made the call: the application's own thread
+on an inline wiring, or the servicing thread on a buffered one. It applies to the
+first datagram sent to a peer, and again once its cache entry ages out under
+`ipconfigMAX_ARP_AGE`, not to steady-state traffic. Budget for it if you are
+logging inline from a task with a deadline.
+
+### An over-large datagram blocks the queue
+
+The adapter reports the IPv6-safe payload of 1232 bytes from `MaxPayload` and
+cannot tell an over-large datagram from any other send failure, which the
+[Datagram](../../api/structSolidSyslogDatagram.md) contract permits. The
+consequence is on the caller's side, and it is not simply a dropped record.
+
+Because the sender only trims a record after being told it was too large, one
+over that size is offered to `FreeRTOS_sendto` whole. If the stack rejects it,
+the send fails, and a failed send is treated as transient: the store keeps the
+record at its cursor and offers the same one on every servicing pass. Nothing
+behind it is delivered.
+
+`SOLIDSYSLOG_MAX_MESSAGE_SIZE` defaults to 2048, so this reaches any record over
+about 1.2 KB rather than only unusual ones. Until `#736` lands, keep records on
+this UDP path inside the payload it carries — but note that limit is library-wide
+rather than per-transport, so lowering it truncates records on every transport
+the instance uses, not only this one.
+
 ### The stack's configuration is yours
 
 Buffer counts, socket limits and timer behaviour are set in your
