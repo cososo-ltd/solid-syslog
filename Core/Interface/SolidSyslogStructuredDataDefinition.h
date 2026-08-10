@@ -14,7 +14,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  their struct so Format can downcast @c base back to the instance.
      *
      *  Format runs inside SolidSyslog_Log, on the application's thread, so an
-     *  implementation that blocks blocks the caller's logging. Writing nothing
+     *  implementation that blocks stalls the caller's logging. Writing nothing
      *  is a valid answer — a message where no source writes emits NILVALUE — so
      *  a source with nothing to report need not invent a value. */
     struct SolidSyslogStructuredData
