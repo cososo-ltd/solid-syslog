@@ -13,10 +13,11 @@ link:
 set(SOLIDSYSLOG_PLATFORMS "Posix")
 ```
 
-The message-queue buffer needs the POSIX message-queue functions. From glibc
-2.34 they are in `libc` and there is nothing to do; on older glibc they are in
-`librt`, and you add `rt` to your own link line — the library does not add it
-for you.
+The message-queue buffer needs the POSIX message-queue functions, which sit in
+`librt` on glibc before 2.34 and in `libc` from 2.34 onwards. Selecting this
+platform puts `rt` on the library's public link interface, so a CMake consumer
+inherits it and has nothing to add. If you consume `libSolidSyslog.a` directly —
+a manifest build, or your own makefile — add `-lrt` yourself on the older glibc.
 
 ## Wiring a sender
 
