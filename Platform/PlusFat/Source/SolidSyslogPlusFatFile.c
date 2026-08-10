@@ -115,11 +115,13 @@ static bool PlusFatFile_Read(struct SolidSyslogFile* base, void* buf, size_t cou
 static bool PlusFatFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count)
 {
     struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
-    /* Flush the IO-manager cache after every complete write so a power loss
-     * never loses a record the BlockStore was told had been stored. Plus-FAT
-     * has no per-file flush — ff_stdio.h declares ff_fflush but the library
-     * never defines it; FF_FlushCache against the file's IO manager is the real
-     * durability primitive. The directory entry's size is committed on Close. */
+    /* Flush the IO-manager cache after every complete write so the record's
+     * data sectors reach the media. Plus-FAT has no per-file flush —
+     * ff_stdio.h declares ff_fflush but the library never defines it;
+     * FF_FlushCache against the file's IO manager is the real durability
+     * primitive. It does not commit the directory entry: FF_Close writes the
+     * recorded size, so a power loss before then leaves data the size
+     * excludes. */
     bool wroteAll = (ff_fwrite(buf, 1, count, self->Fp) == count);
     return wroteAll && PlusFatFile_Flush(self);
 }
