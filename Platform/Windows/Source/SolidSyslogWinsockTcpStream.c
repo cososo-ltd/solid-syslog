@@ -1,15 +1,13 @@
 #include "SolidSyslogWinsockTcpStream.h"
 
-/* winsock2.h must precede mstcpip.h: mstcpip.h's TCP_KEEPIDLE / TCP_KEEPINTVL /
-   TCP_KEEPCNT constants use SOCKET-derived types declared in winsock2.h. */
-#include <winsock2.h>
-/* clang-format off */
-#include <mstcpip.h>
-/* clang-format on */
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <winsock2.h>
+/* Needed for TCP_KEEPIDLE / TCP_KEEPINTVL / TCP_KEEPCNT below: the SDK defines
+   them in <ws2ipdef.h>, which only <ws2tcpip.h> pulls in. No <ws2tcpip.h>
+   symbol is named directly here, so the include reads as unused and is not. */
+#include <ws2tcpip.h>
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogNullStream.h"
@@ -244,8 +242,8 @@ static void WinsockTcpStream_EnableTcpNoDelay(SOCKET fd)
 }
 
 /* Windows 10 1709+ exposes TCP_KEEPIDLE / TCP_KEEPINTVL / TCP_KEEPCNT via
- * setsockopt (declared in <mstcpip.h>), so idle, interval and count are each
- * set directly. No TCP_USER_TIMEOUT analogue. */
+ * setsockopt (defined in <ws2ipdef.h>, reached via <ws2tcpip.h>), so idle,
+ * interval and count are each set directly. No TCP_USER_TIMEOUT analogue. */
 static void WinsockTcpStream_EnableKeepalive(SOCKET fd)
 {
     int enable = 1;
