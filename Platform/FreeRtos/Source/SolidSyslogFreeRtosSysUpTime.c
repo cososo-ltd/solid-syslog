@@ -29,7 +29,7 @@ SOLIDSYSLOG_STATIC_ASSERT(
     "SolidSyslogSysUpTimeFunction."
 );
 
-uint32_t SolidSyslogFreeRtosSysUpTime_Get(void)
+uint32_t SolidSyslogFreeRtos_GetSysUpTime(void)
 {
     /* Divide the tick count down before scaling by 100 so the intermediate
      * cannot overflow even a 64-bit TickType_t; the whole/remainder split is

@@ -51,8 +51,8 @@ instead. Tear down in reverse order, before `WSACleanup`.
 ## The callbacks
 
 `SolidSyslogConfig` takes the clock, hostname and process id as callbacks, and
-this platform supplies one of each: `SolidSyslogWindowsClock_GetTimestamp`,
-`SolidSyslogWindowsHostname` and `SolidSyslogWindowsProcessId`.
+this platform supplies one of each: `SolidSyslogWindows_GetTimestamp`,
+`SolidSyslogWindows_GetHostname` and `SolidSyslogWindows_GetProcessId`.
 
 ## Threading
 

@@ -207,6 +207,34 @@ Note the deliberate opposite pull on pool-size tunables below: those are named
 for the role, because the integrator sizes "how many TLS streams" without caring
 which vendor fills them, while wiring the vendor's class by name.
 
+### A platform's callbacks take the platform as their class
+
+A pack also ships plain functions that fill a `SolidSyslogConfig` callback rather
+than a class: the clock, the host name, the process id, the uptime and the sleep.
+These have no instance, no `Create` and no vtable, so there is no class for the
+`<Class>_` portion to name — and inventing one produces a function name with no
+content left to carry.
+
+**Form:** `SolidSyslog<RegistryToken>_<WhatItSupplies>`, matching the config field
+it is assigned to.
+
+```c
+config.Clock        = SolidSyslogPosix_GetTimestamp;   /* not SolidSyslogPosixClock_GetTimestamp */
+config.GetHostname  = SolidSyslogPosix_GetHostname;    /* not SolidSyslogPosixHostname_Get */
+config.GetProcessId = SolidSyslogPosix_GetProcessId;
+```
+
+`_Get` as a whole function name is the shape this rule exists to stop: it passes
+the `SolidSyslog<Class>_<Function>` regex while saying nothing, because the verb
+is the only word left once the noun has been spent on the class.
+
+The header **file** keeps the name of the thing it supplies —
+`SolidSyslogPosixHostname.h` — so the platform-token rule above still holds over
+every filename, and a reader looking for the host name callback still finds the
+file by guessing it. This is the one place where the file name and the class name
+in it differ, and it is deliberate: one file per thing supplied, one class per
+platform.
+
 ---
 
 ## Tier 2 — Internal linkage (file-scope `static`)

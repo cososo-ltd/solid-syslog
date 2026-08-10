@@ -33,7 +33,7 @@ TEST_GROUP(SolidSyslogPosixClock)
     static struct SolidSyslogTimestamp getTimestamp()
     {
         struct SolidSyslogTimestamp ts = {};
-        SolidSyslogPosixClock_GetTimestamp(&ts);
+        SolidSyslogPosix_GetTimestamp(&ts);
         return ts;
     }
 };

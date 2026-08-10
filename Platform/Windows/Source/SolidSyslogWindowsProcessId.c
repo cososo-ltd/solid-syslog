@@ -17,7 +17,7 @@ static DWORD WINAPI WindowsProcessId_CallGetCurrentProcessId(void)
     return GetCurrentProcessId();
 }
 
-void SolidSyslogWindowsProcessId_Get(struct SolidSyslogHeaderField* field, void* context)
+void SolidSyslogWindows_GetProcessId(struct SolidSyslogHeaderField* field, void* context)
 {
     (void) context;
     SolidSyslogHeaderField_Uint32(field, (uint32_t) WindowsProcessId_GetCurrentProcessId());

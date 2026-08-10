@@ -11,7 +11,7 @@ enum
     MAX_HOSTNAME_SIZE = 256U
 };
 
-void SolidSyslogPosixHostname_Get(struct SolidSyslogHeaderField* field, void* context)
+void SolidSyslogPosix_GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
     char hostname[MAX_HOSTNAME_SIZE];
 

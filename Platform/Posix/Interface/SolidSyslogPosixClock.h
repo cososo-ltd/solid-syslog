@@ -10,7 +10,7 @@ struct SolidSyslogTimestamp;
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Fills @p timestamp from the system real-time clock (CLOCK_REALTIME). */
-    void SolidSyslogPosixClock_GetTimestamp(struct SolidSyslogTimestamp * timestamp);
+    void SolidSyslogPosix_GetTimestamp(struct SolidSyslogTimestamp * timestamp);
 
 SOLIDSYSLOG_EXTERN_C_END
 

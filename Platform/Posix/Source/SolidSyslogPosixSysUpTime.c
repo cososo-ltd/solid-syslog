@@ -8,7 +8,7 @@ enum
     NANOSECONDS_PER_HUNDREDTH = 10000000
 };
 
-uint32_t SolidSyslogPosixSysUpTime_Get(void)
+uint32_t SolidSyslogPosix_GetSysUpTime(void)
 {
     struct timespec now;
     uint32_t result = 0;

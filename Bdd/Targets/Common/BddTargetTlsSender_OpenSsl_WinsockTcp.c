@@ -24,7 +24,7 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     static struct SolidSyslogOpenSslStreamConfig tlsStreamConfig;
     tlsStreamConfig = (struct SolidSyslogOpenSslStreamConfig) {0};
     tlsStreamConfig.Transport = underlyingStream;
-    tlsStreamConfig.Sleep = SolidSyslogWindowsSleep;
+    tlsStreamConfig.Sleep = SolidSyslogWindows_Sleep;
     if (mtls)
     {
         tlsStreamConfig.CaBundlePath = BddTargetMtlsConfig_GetCaBundlePath();

@@ -31,7 +31,7 @@ static inline void WindowsClock_PopulateTimestamp(
     uint32_t microseconds
 );
 
-void SolidSyslogWindowsClock_GetTimestamp(struct SolidSyslogTimestamp* timestamp)
+void SolidSyslogWindows_GetTimestamp(struct SolidSyslogTimestamp* timestamp)
 {
     FILETIME fileTime;
     SYSTEMTIME breakdown;

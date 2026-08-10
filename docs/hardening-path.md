@@ -339,7 +339,7 @@ an uptime source alongside its counter.
 ```c
 struct SolidSyslogMetaSdConfig metaConfig = {
     .Counter      = SolidSyslogStdAtomicCounter_Create(),
-    .GetSysUpTime = SolidSyslogFreeRtosSysUpTime_Get,   /* new */
+    .GetSysUpTime = SolidSyslogFreeRtos_GetSysUpTime,   /* new */
 };
 sd[1] = SolidSyslogTimeQualitySd_Create(SyslogTimeQuality);
 ```

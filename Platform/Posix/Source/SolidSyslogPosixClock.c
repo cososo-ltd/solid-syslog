@@ -16,7 +16,7 @@ static inline void PosixClock_PopulateTimestamp(
     const struct tm* breakdown
 );
 
-void SolidSyslogPosixClock_GetTimestamp(struct SolidSyslogTimestamp* timestamp)
+void SolidSyslogPosix_GetTimestamp(struct SolidSyslogTimestamp* timestamp)
 {
     struct timespec now;
     struct tm breakdown;

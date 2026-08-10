@@ -750,7 +750,7 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
     atomicCounter = SolidSyslogStdAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
         .Counter = atomicCounter,
-        .GetSysUpTime = SolidSyslogFreeRtosSysUpTime_Get,
+        .GetSysUpTime = SolidSyslogFreeRtos_GetSysUpTime,
         .GetLanguage = BddTargetLanguage_Get,
     };
     metaSd = SolidSyslogMetaSd_Create(&metaConfig);
