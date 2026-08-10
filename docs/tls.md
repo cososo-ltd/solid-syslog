@@ -175,15 +175,3 @@ The two that differ most today are the handling of a partially configured client
 credential and the certificate-validity rule, where the current behaviour is to
 refuse the connection rather than to report and continue. Configuration checking
 at create time is the other known shortfall, and it is not confined to TLS.
-
-### One planned change to the API
-
-Closing `#735` — pulling credentials and the expected peer identity on connect
-rather than copying them when the stream is created — will change
-`SolidSyslogOpenSslStreamConfig` and `SolidSyslogMbedTlsStreamConfig`, turning
-value fields into callbacks in the shape the destination endpoint already uses.
-
-That is a breaking change, and pre-1.0 it bumps the minor version rather than the
-major, as [the release process](release-process.md) sets out. It is stated here
-in advance so you can insulate your setup code if you need to. The `Stream` role
-itself, the sender wiring and the rest of the public API are not affected.

@@ -36,17 +36,8 @@ be restarted.
 
 ## Where it differs from the contract
 
-Five differences at 0.1.0, each tracked. Read them before relying on the
+Four differences at 0.1.0, each tracked. Read them before relying on the
 corresponding obligation.
-
-### The credential paths and the peer identity are fixed when the stream is created
-
-New material written to the same paths is picked up on the next connection, as
-above. Pointing the stream at a *different* path is not possible: the
-configuration is copied when the stream is created and nothing can replace it
-afterwards. `ServerName` is fixed the same way, so redirecting a device to
-another collector through the endpoint callback leaves it checking the peer
-certificate against the name it was created with. Tracked as `#735`.
 
 ### A half-supplied client credential stops delivery
 
