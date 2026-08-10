@@ -71,6 +71,12 @@ silently treated as a decision to use server-authenticated TLS, because the
 integrator who supplied half a credential believes they have mutual
 authentication and does not have it.
 
+A key that does not match the certificate it was supplied with is the same
+mistake reached differently, and is detectable without going near the network, so
+it is reported at the same point. Left to the handshake, it comes back as a
+rejection from the collector, which sends the integrator looking at the collector
+for a fault that is on the device.
+
 Delivery continues. The receiver is the enforcement point for our credential — a
 collector that requires a client certificate will refuse the handshake, and one
 that does not was never going to check. Blocking here would deny the audit trail

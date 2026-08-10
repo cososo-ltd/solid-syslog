@@ -6,87 +6,84 @@ transport and keyed at-rest cryptography on embedded targets. It fills the
 [SecurityPolicy](../../api/structSolidSyslogSecurityPolicy.md) role for at-rest
 integrity and confidentiality.
 
+What a TLS stream must do is the same whichever library provides it, and is
+stated once under [TLS obligations](../../tls.md). This page covers what this
+adapter needs, the coexistence guarantee it makes, and where it does not yet meet
+that contract.
+
 ## What it ships
 
 ## Requirements
 
-The adapter sources compile in your target against your own
-`mbedtls_config.h`, so the features you enable are the features it gets.
-
-Credentials are passed as caller-built, caller-owned handles rather than file
-paths: a seeded `mbedtls_ctr_drbg_context` for the handshake, an
-`mbedtls_x509_crt` trust chain, and for mutual TLS an `mbedtls_x509_crt` and
-`mbedtls_pk_context` pair. No part of the adapter opens a file, which is what
-allows it to run on targets built without `MBEDTLS_FS_IO`. Each handle must
-remain valid for the lifetime of the stream.
+The adapter sources compile in your target against your own `mbedtls_config.h`,
+so the features you enable are the features it gets.
 
 A `SolidSyslogSleepFunction` is required and has no default.
 
-## Security behaviour and obligations
+## Credentials are handles, not paths
 
-The per-field detail is in
-[`SolidSyslogMbedTlsStream.h`](../../api/SolidSyslogMbedTlsStream_8h.md),
-alongside the fields themselves. What follows is the behaviour of the adapter as
-a whole, and the work it leaves to you.
+Credentials are passed as caller-built, caller-owned handles: a seeded
+`mbedtls_ctr_drbg_context` for the handshake, an `mbedtls_x509_crt` trust chain,
+and for mutual TLS an `mbedtls_x509_crt` and `mbedtls_pk_context` pair. No part
+of the adapter opens a file, which is what allows it to run on targets built
+without `MBEDTLS_FS_IO`. Each handle must remain valid for the lifetime of the
+stream.
 
-### Transport security is fixed by the adapter
+Rotation follows from that. Because the adapter consumes handles it did not
+build, refreshing credentials means parsing the new material and recreating the
+stream, or the `SolidSyslogStreamSender` above it, so the next connection uses
+them. There is no reload callback and none is needed.
 
-Peer certificate verification is pinned to `MBEDTLS_SSL_VERIFY_REQUIRED` and the
-protocol floor to TLS 1.2, both set on the adapter's own `ssl_config`. The floor
-is set explicitly rather than inherited from `MBEDTLS_SSL_PRESET_DEFAULT`, which
-on a permissive build can negotiate down to TLS 1.0 or 1.1. TLS 1.3 is
-negotiated when both peers support it.
+## Coexistence is an auditable contract
 
-### Peer identity is yours to declare
+`Platform/MbedTls/Source/` calls no process-global Mbed TLS API. It does not call
+`mbedtls_platform_setup` or `mbedtls_platform_teardown`, install threading-alt
+hooks, call `psa_crypto_init`, reset the global random number generator, or
+replace a debug callback. TLS policy is applied per `ssl_config`, so it cannot
+affect the ones you build elsewhere. A device that already uses Mbed TLS for
+firmware update or a vendor cloud SDK keeps that configuration intact, and the
+claim can be checked against the directory.
 
-The `ServerName` field supplies both the Server Name Indication sent in the
-handshake and the identity checked against the peer certificate. It has a
-distinct meaning when set, when empty, and when NULL — including one value that
-disables endpoint verification without reporting anything — and the three are
-documented on the field. Choosing between them is a deployment decision the
-adapter cannot make.
+## Where it differs from the contract
 
-### Mutual TLS is optional and is not validated locally
+Five differences at 0.1.0, each tracked. Read them before relying on the
+corresponding obligation.
+
+### A half-supplied client credential is accepted in silence
 
 A client certificate is presented only when both `ClientCertChain` and
-`ClientKey` are supplied. If either is absent, no client certificate is
-configured and `Open` proceeds with server-authenticated TLS rather than
-failing. Where a half-supplied credential must be treated as an error, check for
-it before calling `Open`.
+`ClientKey` are supplied. Where either is absent the other is ignored, the
+connection proceeds with server-authenticated TLS, and nothing is reported — so a
+device configured for mutual TLS can run without presenting its certificate, and
+without anyone on the device knowing. The contract requires this to be reported.
+Until it is, check for a half-supplied pair before you open the stream. Tracked
+as `#718`.
 
-The adapter performs no local check that the key matches the certificate, and
-does not report a failure to install the pair. A mismatch is therefore seen as a
+### The key is not checked against its certificate
+
+No local check confirms that `ClientKey` matches `ClientCertChain`, and a failure
+to install the pair is not reported either. A mismatch therefore surfaces as a
 handshake rejection from the collector rather than as a setup error on the
-device.
+device, which sends you looking in the wrong place. Tracked as `#719`.
 
-### Rotation requires a restart of the stream
+### An expired certificate stops delivery
 
-Because the adapter consumes pre-built handles, refreshing credentials means
-parsing new ones and recreating the stream, or the parent
-`SolidSyslogStreamSender` so that the next connection uses them. There is no
-reload callback.
+A peer certificate that is expired or not yet valid fails the handshake, even
+where it still chains to a trusted anchor. The contract asks for it to be
+reported with delivery continuing, because clock skew is the dominant cause and a
+device with a wrong clock is one whose logs you still want. Tracked as `#731`.
 
-### Key custody is outside the library
+### The cipher policy cannot be expressed
 
-The library holds no keys of its own and uses whatever material is passed to it.
-Where a private key is stored, how it is protected at rest, and whether it is
-held in a secure element are properties of your platform. The same applies to
-the at-rest policies: HMAC-SHA256 and AES-256-GCM are keyed, and storing and
-rotating that key is yours.
+The configuration carries no cipher or ciphersuite field, so the ciphersuites
+your `mbedtls_config.h` enables, filtered by the preset, are what gets
+negotiated. The contract asks for an integrator's policy to be passed through
+where the library allows one to be selected. Tracked as `#733`.
 
-### Revocation is not checked
+### The configuration is not checked when the stream is created
 
-The adapter performs no revocation checking, by Certificate Revocation List or
-by the Online Certificate Status Protocol. Where a deployment requires it, it
-must come from your own configuration of Mbed TLS, and confirming that it is in
-force is part of your assessment rather than something the adapter reports.
-
-### Coexistence is an auditable contract
-
-`Platform/MbedTls/Source/` calls no process-global Mbed TLS API. It does not
-call `mbedtls_platform_setup` or `mbedtls_platform_teardown`, install
-threading-alt hooks, call `psa_crypto_init`, reset the global random number
-generator, or replace a debug callback. TLS policy is applied per `ssl_config`,
-so it cannot affect the ones you build elsewhere. A device that already uses
-Mbed TLS for firmware update or a vendor cloud SDK keeps that configuration
-intact, and the claim can be checked against the directory.
+A configuration missing something the stream cannot work without is accepted, and
+the fault appears on the first connection attempt rather than at setup. The
+random source and the trust chain are installed through calls that return no
+status, so a missing one becomes a handshake failure rather than the
+configuration error it is. Tracked as `#732`.
