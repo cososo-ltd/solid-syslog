@@ -1,8 +1,8 @@
 /** @file
  *  TLS over an injected byte-transport Stream via Mbed TLS, itself a Stream — so
  *  a StreamSender speaks TLS to a remote collector without knowing the transport
- *  underneath (PosixTcpStream, PlusTcpTcpStream, or any caller-supplied byte
- *  Stream).
+ *  underneath, whether a TCP stream from a platform pack or one the caller
+ *  supplies.
  *
  *  What the stream does through its vtable is the substance:
  *
@@ -27,7 +27,7 @@
  *  ssl_config / ssl_context state and never calls process-global mbedTLS APIs
  *  (platform setup/teardown, psa_crypto_init, threading-alt, debug hooks), so it
  *  drops into an integrator process that already uses Mbed TLS elsewhere. See
- *  docs/integrating-mbedtls.md. */
+ *  docs/platforms/mbedtls/setup.md. */
 #ifndef SOLIDSYSLOGMBEDTLSSTREAM_H
 #define SOLIDSYSLOGMBEDTLSSTREAM_H
 

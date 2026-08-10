@@ -9,9 +9,14 @@ same Markdown is read on GitHub, where YAML front matter renders as a table
 above the content.
 
 Keeping them out of the pages costs proximity, so the map is checked against
-the navigation on every build: a page in the nav with no description, or a
-description whose key names no nav page, aborts the build. Generated ``api/``
+the documentation tree on every build: a page with no description, or a
+description whose key names no page, aborts the build. Generated ``api/``
 pages are exempt — their briefs come from the header doc comments.
+
+The check is against every hand-written page, not only the ones in the nav.
+Each platform's ``setup.md`` is deliberately off-nav — it is reached from the
+platform's own page, because the two have different audiences — and a page a
+search engine can reach still needs its own snippet.
 """
 
 import os
@@ -49,19 +54,92 @@ DESCRIPTIONS = {
         "Which severity a SolidSyslog error event carries — the urgency ladder "
         "each emit site picks from, and what each level asks of your handler."
     ),
-    "integrating-lwip.md": (
+    # Platforms — each platform's overview page followed by its setup guide,
+    # in nav order, with porting last as the other half of the same question.
+    "platforms/index.md": (
+        "The adapter packs that reach your hardware — POSIX, Windows, FreeRTOS, "
+        "lwIP, OpenSSL, Mbed TLS, FatFs and more — and the capabilities each fills."
+    ),
+    "platforms/posix/index.md": (
+        "The POSIX adapter pack — sockets, pthreads, message queues, "
+        "clock_gettime and stdio — filling six of the library's roles on Linux."
+    ),
+    "platforms/posix/setup.md": (
+        "Wire the POSIX adapters: what to link, building a sender, "
+        "the clock and hostname callbacks, and what threading needs from you."
+    ),
+    "platforms/windows/index.md": (
+        "The Win32 and Winsock adapter pack for MSVC targets, filling the "
+        "Resolver, Datagram, Stream, File, Mutex and AtomicCounter roles."
+    ),
+    "platforms/windows/setup.md": (
+        "Wire the Win32 and Winsock adapters: starting Winsock, building "
+        "a sender, the callbacks, and what threading needs from you."
+    ),
+    "platforms/freertos/index.md": (
+        "The FreeRTOS adapter pack: kernel primitives filling the Mutex role and "
+        "the sysUpTime callback. Networking comes from a separate platform."
+    ),
+    "platforms/freertos/setup.md": (
+        "Wire the FreeRTOS kernel primitives: what to link, static allocation, "
+        "and putting the mutex under a buffer shared across tasks."
+    ),
+    "platforms/plustcp/index.md": (
+        "The FreeRTOS-Plus-TCP adapter pack, filling the Resolver, Datagram and "
+        "Stream roles for networking on FreeRTOS targets."
+    ),
+    "platforms/plustcp/setup.md": (
+        "Wire the FreeRTOS-Plus-TCP adapters: what to link, resolving the "
+        "collector, building a sender, and sizing the stack for it."
+    ),
+    "platforms/lwipraw/index.md": (
+        "The lwIP Raw API adapter pack, filling the Resolver, Datagram and Stream "
+        "roles — compiled against your lwipopts.h, NO_SYS=1 builds included."
+    ),
+    "platforms/lwipraw/setup.md": (
         "Wire SolidSyslog to the lwIP Raw API: what the adapter fills, what you "
         "supply, and how it works under NO_SYS=1 beside other lwIP subsystems."
     ),
-    "integrating-mbedtls.md": (
-        "Deliver RFC 5425 syslog over TLS through Mbed TLS on embedded targets: "
-        "the handles you pre-build and pass in, and how they are wired."
+    "platforms/openssl/index.md": (
+        "The OpenSSL adapter pack: TLS transport for the Stream role, and keyed "
+        "at-rest crypto for the SecurityPolicy role, on hosted targets."
     ),
-    "integrating-plusfat.md": (
+    "platforms/openssl/setup.md": (
+        "Wire SolidSyslogOpenSslStream over a TCP stream for RFC 5425 syslog over "
+        "TLS: what to link, the layering, the config, and mutual TLS."
+    ),
+    "platforms/mbedtls/index.md": (
+        "The Mbed TLS adapter pack for embedded targets: TLS transport for the "
+        "Stream role, and keyed at-rest crypto for the SecurityPolicy role."
+    ),
+    "platforms/mbedtls/setup.md": (
+        "Wire Mbed TLS for RFC 5425 syslog over TLS on an embedded target: the "
+        "layering, bringing the library up, and the sizing traps."
+    ),
+    "platforms/fatfs/index.md": (
+        "The ChaN FatFs adapter pack, filling the File role beneath a BlockDevice "
+        "— RTOS-agnostic, for bare-metal targets or under any RTOS."
+    ),
+    "platforms/fatfs/setup.md": (
+        "Give store-and-forward a FatFs file backend: what to link, the disk "
+        "I/O driver and configuration you supply, and what durability you get."
+    ),
+    "platforms/plusfat/index.md": (
+        "The FreeRTOS-Plus-FAT adapter pack, filling the File role beneath a "
+        "BlockDevice for an all-FreeRTOS-Plus storage and transport stack."
+    ),
+    "platforms/plusfat/setup.md": (
         "Back store-and-forward with FreeRTOS-Plus-FAT: what the ff_stdio File "
         "adapter needs from your build and media, and how the store sits above it."
     ),
-    # Port a new platform
+    "platforms/stdatomic/index.md": (
+        "The portable C11 stdatomic.h AtomicCounter — the sequenceId source on "
+        "any target with a C11 compiler, with no OS dependency."
+    ),
+    "platforms/stdatomic/setup.md": (
+        "Wire the C11 atomics sequence-number source: what to link, creating "
+        "the counter, and why an unfilled role silently disables gap detection."
+    ),
     "porting.md": (
         "Port SolidSyslog to a new RTOS, network stack, filesystem or crypto "
         "library by filling a vtable contract. Core never changes."
@@ -73,8 +151,8 @@ DESCRIPTIONS = {
         "stays yours."
     ),
     "iec62443.md": (
-        "IEC 62443-4-2 and 62443-3-3 audit-logging controls mapped "
-        "control-by-control to SolidSyslog components, by Security Level."
+        "IEC 62443-4-2 audit-logging controls mapped control-by-control to "
+        "what SolidSyslog provides and what stays yours."
     ),
     "rfc-compliance.md": (
         "Requirement-by-requirement status of SolidSyslog against the syslog "
@@ -100,6 +178,18 @@ DESCRIPTIONS = {
         "Verify a SolidSyslog release came from this repository: cosign signature "
         "checks, SBOM validation and the source-tree hash, in the order to run them."
     ),
+    "security/policy.md": (
+        "How to report a SolidSyslog vulnerability, what we commit to in "
+        "response, and the disclosure process, scope and supported versions."
+    ),
+    "license.md": (
+        "SolidSyslog is licensed under PolyForm Noncommercial 1.0.0: the full "
+        "terms, what noncommercial covers, and where commercial use needs a licence."
+    ),
+    "support.md": (
+        "Where to get help with SolidSyslog — the documentation, questions and "
+        "bug reports, reporting a security issue, and commercial support."
+    ),
     # API reference doorways
     "api-reference/index.md": (
         "The doorway to the SolidSyslog API: which headers your code includes to "
@@ -109,53 +199,13 @@ DESCRIPTIONS = {
         "What Core provides: the facade you call, the pipeline that formats and "
         "drains a record, and the role implementations that need no platform."
     ),
-    "platforms/index.md": (
-        "The adapter packs that reach your hardware — POSIX, Windows, FreeRTOS, "
-        "lwIP, OpenSSL, Mbed TLS, FatFs and more — and the capabilities each fills."
-    ),
     "roles/index.md": (
-        "The twelve vtable contracts SolidSyslog composes against, what fills "
+        "The vtable contracts SolidSyslog composes against, what fills "
         "each one, and the Null fallback that keeps an unfilled role safe."
     ),
-    "platforms/posix.md": (
-        "The POSIX adapter pack — sockets, pthreads, message queues, "
-        "clock_gettime and stdio — filling six of the library's roles on Linux."
-    ),
-    "platforms/windows.md": (
-        "The Win32 and Winsock adapter pack for MSVC targets, filling the "
-        "Resolver, Datagram, Stream, File, Mutex and AtomicCounter roles."
-    ),
-    "platforms/freertos.md": (
-        "The FreeRTOS adapter pack: kernel primitives filling the Mutex role and "
-        "the sysUpTime callback, with networking from Plus-TCP or lwIP."
-    ),
-    "platforms/plustcp.md": (
-        "The FreeRTOS-Plus-TCP adapter pack, filling the Resolver, Datagram and "
-        "Stream roles for networking on FreeRTOS targets."
-    ),
-    "platforms/lwip.md": (
-        "The lwIP Raw API adapter pack, filling the Resolver, Datagram and Stream "
-        "roles — compiled against your lwipopts.h, NO_SYS=1 builds included."
-    ),
-    "platforms/openssl.md": (
-        "The OpenSSL adapter pack: TLS transport for the Stream role, and keyed "
-        "at-rest crypto for the SecurityPolicy role, on hosted targets."
-    ),
-    "platforms/mbedtls.md": (
-        "The Mbed TLS adapter pack for embedded targets: TLS transport for the "
-        "Stream role, and keyed at-rest crypto for the SecurityPolicy role."
-    ),
-    "platforms/fatfs.md": (
-        "The ChaN FatFs adapter pack, filling the File role beneath a BlockDevice "
-        "— RTOS-agnostic, for bare-metal, FreeRTOS, Zephyr and NuttX targets."
-    ),
-    "platforms/plusfat.md": (
-        "The FreeRTOS-Plus-FAT adapter pack, filling the File role beneath a "
-        "BlockDevice for an all-FreeRTOS-Plus storage and transport stack."
-    ),
-    "platforms/stdatomic.md": (
-        "The portable C11 stdatomic.h AtomicCounter — the sequenceId source on "
-        "any target with a C11 compiler, with no OS dependency."
+    "assets/postit/README.md": (
+        "The post-it diagram kit behind the SolidSyslog architecture pictures: "
+        "what each colour and arrow means, and how the diagrams are generated."
     ),
     # Maintaining
     "builds.md": (
@@ -197,23 +247,23 @@ def _src_uri(file):
     return getattr(file, "src_uri", None) or file.src_path.replace(os.sep, "/")
 
 
-def _described_pages(nav):
+def _hand_written_pages(files):
     return {
-        _src_uri(page.file)
-        for page in nav.pages
-        if not _src_uri(page.file).startswith(GENERATED_PREFIX)
+        _src_uri(file)
+        for file in files
+        if file.is_documentation_page() and not _src_uri(file).startswith(GENERATED_PREFIX)
     }
 
 
 def on_nav(nav, config, files, **kwargs):
-    navigated = _described_pages(nav)
+    written = _hand_written_pages(files)
     faults = []
-    missing = sorted(navigated - set(DESCRIPTIONS))
+    missing = sorted(written - set(DESCRIPTIONS))
     if missing:
         faults.append("no description for " + ", ".join(missing))
-    stale = sorted(set(DESCRIPTIONS) - navigated)
+    stale = sorted(set(DESCRIPTIONS) - written)
     if stale:
-        faults.append("described but not in the nav: " + ", ".join(stale))
+        faults.append("described but no such page: " + ", ".join(stale))
     if faults:
         raise PluginError("hooks/page_descriptions.py: " + "; ".join(faults))
     return nav

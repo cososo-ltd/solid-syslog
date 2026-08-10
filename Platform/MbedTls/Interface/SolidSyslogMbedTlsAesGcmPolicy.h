@@ -33,7 +33,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         void* KeyContext; /**< Passed back to GetKey unchanged; NULL is fine. */
         struct mbedtls_ctr_drbg_context* Rng; /**< Seeded CTR-DRBG each record's 12-byte nonce is drawn from;
                                             required and caller-owned. Injected because mbedTLS has no
-                                            context-free RNG, unlike the OpenSSL sibling's RAND_bytes. */
+                                            context-free RNG. */
     };
 
     /** Draw an AES-GCM policy from the pool. Bad config (NULL GetKey or NULL Rng)

@@ -2,7 +2,7 @@
 
 Porting SolidSyslog to a new OS, network stack, filesystem, or crypto library is
 filling a role, not editing Core. Core never changes. You write a small
-adapter that satisfies one of the twelve vtable contracts, drop it into your
+adapter that satisfies one of the vtable contracts, drop it into your
 build, and wire it into your config. This page is the contract those adapters
 honour, written from the code that already ships.
 
@@ -21,10 +21,9 @@ contract. [Talk to us about it](https://www.cososo.co.uk/?service=solidsyslog#co
 ## The role model
 
 Core is a fixed set of algorithms (the formatter/message pipeline, the Service
-drain loop, the buffer/store machinery) plus twelve roles. A role is a
+drain loop, the buffer/store machinery) plus a set of roles. A role is a
 `struct` of function pointers (a vtable) declared in a
-`SolidSyslog<Role>Definition.h` header under
-[`Core/Interface/`](../Core/Interface/). An *adapter* is a concrete
+`SolidSyslog<Role>Definition.h` header under `Core/Interface/`. An *adapter* is a concrete
 implementation of one role for one platform (`SolidSyslogPosixMutex`,
 `SolidSyslogLwipRawDatagram`, …).
 
@@ -35,15 +34,14 @@ running against a well-behaved do-nothing. So porting is additive: you provide
 the roles your deployment needs and leave the rest to their Nulls. You never edit
 Core, and you never touch a role you don't use.
 
-The [capability matrix](build-integration.md#pick-your-stack--capability-matrix)
-lists every role and the adapters that ship for it; this page is what you write
-when none of the shipped adapters fits your platform.
+The [platform × capability matrix](platforms/index.md) lists every role and the
+adapters that ship for it; this page is what you write when none of the shipped
+adapters fits your platform.
 
 ## Anatomy of an adapter
 
-Take [`SolidSyslogPosixMutex`](../Platform/Posix/Source/SolidSyslogPosixMutex.c)
-as the worked example: the simplest role, but the shape is identical for all
-twelve. An adapter is four files:
+Take `SolidSyslogPosixMutex` as the worked example: the simplest role, but the
+shape is identical for every one. An adapter is four files:
 
 | File | Holds |
 |---|---|
@@ -76,9 +74,8 @@ There is no heap. Each adapter owns a file-scope `static` array of instances and
 a parallel `InUse[]` flag array, sized by a role tunable. `<Class>_Create` acquires the
 first free slot, initialises it, and returns `&pool[i].Base`; on exhaustion it
 returns the shared Null sibling and reports an error. `<Class>_Destroy` finds the slot
-by handle identity, cleans it up, and releases it. The
-[`SolidSyslogPoolAllocator`](../Core/Source/SolidSyslogPoolAllocator.h) owns the
-slot-walk so no adapter re-implements it:
+by handle identity, cleans it up, and releases it. `SolidSyslogPoolAllocator`
+owns the slot-walk so no adapter re-implements it:
 
 ```c
 static bool PosixMutex_InUse[SOLIDSYSLOG_MUTEX_POOL_SIZE];
@@ -105,22 +102,26 @@ struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(void)
 }
 ```
 
-See [`SolidSyslogPosixMutexStatic.c`](../Platform/Posix/Source/SolidSyslogPosixMutexStatic.c)
-for the matching `SolidSyslogPosixMutex_Destroy`. The pool size is a role-named tunable,
+See `SolidSyslogPosixMutexStatic.c` for the matching
+`SolidSyslogPosixMutex_Destroy`. The pool size is a role-named tunable,
 `SOLIDSYSLOG_MUTEX_POOL_SIZE`, not a per-platform name, because a build links one
 implementation per role. Every tunable lives in
-[`SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h),
+[`SolidSyslogTunablesDefaults.h`](api/SolidSyslogTunablesDefaults_8h.md),
 `#ifndef`-guarded so integrators override without editing the library.
 
 ### Error reporting — the `*Errors.h` convention
 
 Each adapter ships a `SolidSyslog<Adapter>Errors.h` declaring an
-`enum SolidSyslog<Adapter>Errors` (`<ADAPTER>_ERROR_*` codes plus an
-`_ERROR_MAX` bookend) and an `extern const struct SolidSyslogErrorSource`. When
+`enum SolidSyslog<Adapter>Errors` (`SOLIDSYSLOG_<ADAPTER>_ERROR_*` codes plus a
+`SOLIDSYSLOG_<ADAPTER>_ERROR_MAX` bookend) and an
+`extern const struct SolidSyslogErrorSource`. How the class name is spelled
+inside those constants — one word per PascalCase word, except that your pack's
+registry token stays whole — is in
+[Naming conventions](NAMING.md#spelling-a-class-name-inside-a-screaming_snake-identifier). When
 something fails, the adapter calls `SolidSyslog_Error(severity, source, category,
 detail)`: `source` is its own `ErrorSource` (matched by pointer identity in a
 handler), `category` is a portable reaction axis from
-[`SolidSyslogErrorCategory.h`](../Core/Interface/SolidSyslogErrorCategory.h), and
+[`SolidSyslogErrorCategory.h`](api/SolidSyslogErrorCategory_8h.md), and
 `detail` is the adapter's own enum value. A handler that doesn't care about your
 adapter simply never matches its source. The default handler is a silent no-op:
 adapters report and carry on, they never crash the caller.
@@ -144,13 +145,14 @@ This is the only synchronisation primitive the pools use for their own walks.
   double-free if `Close` and `Destroy` are both called. Release each resource
   exactly once and null the handle.
 - Never free injected handles. An adapter frees only what it created. Handles
-  the integrator passed in (an `mbedtls_x509_crt*`, an RNG, a caller's socket)
-  are borrowed; the owner frees them. The [Mbed TLS coexistence
-  contract](integrating-mbedtls.md#coexistence-contract) is the template:
-  `Platform/MbedTls/Source/` never touches process-global Mbed TLS state.
-- A Null must be safe to call. Whatever your role's Null returns (see each
-  contract below), it must let Core's algorithm proceed sanely: drop-on-the-floor
-  where a drop is harmless, `false` where the caller has an error path to run.
+  the integrator passed in (a certificate, an RNG, a caller's socket) are
+  borrowed; the owner frees them. The same applies to an upstream library's
+  process-global state: touch only what you were given, so the library drops
+  into a process already using that upstream elsewhere.
+- A Null must be safe to call. Whatever your role's Null returns — each is
+  documented on its own `SolidSyslogNull<Role>.h` — it must let Core's algorithm
+  proceed sanely: drop-on-the-floor where a drop is harmless, `false` where the
+  caller has an error path to run.
 - Bounded blocking. Anything that can wedge (a `connect`, a handshake) is
   bounded by an explicit timeout or deadline: a timeout tunable (e.g.
   `SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS`) or a caller-supplied deadline. A
@@ -170,8 +172,9 @@ configuration macro — lwIP's `LWIP_DNS`, FreeRTOS's
 **Prefer a seam.** Where the adapter is thin, take the dependency as an injected
 function pointer with a safe default and never name the upstream symbol.
 `SolidSyslogLwipRaw_SetMarshal` covers `NO_SYS=0` against `NO_SYS=1` this way:
-the library calls a callback, and the integrator installs `LOCK_TCPIP_CORE` or a
-`tcpip_callback_with_block` shim. Nothing to select at build time.
+the library calls a callback, and the integrator installs a `LOCK_TCPIP_CORE`
+pair, or a mailbox shim that waits for the callback to run. Nothing to select at
+build time.
 
 **Otherwise gate the translation unit.** Where the adapter carries logic that
 belongs in the library — the DNS resolver's async callback handling, poll
@@ -236,12 +239,12 @@ product and one further state, absent, which has no behaviour to test.
   [manifest](build-integration.md#ide-and-manifest-builds)
   generator lists the exact files for a chosen set of platforms.
 
-## The twelve role contracts
+## The role contracts
 
-Each row is a vtable to implement. The reference column is the shipped
-implementation to read alongside the contract: a `Platform/Posix/` adapter where
-one exists, otherwise the Core composition over a lower role. The Null column
-is the fallback Core substitutes when the role is unfilled.
+Each entry is a vtable to implement, linked to its contract: every method, what
+it must return, and what Core does with the answer. Each contract page also
+diagrams the adapters that already fill that role, so it is where to find an
+implementation to read alongside.
 
 ### Networking
 
@@ -249,17 +252,10 @@ Most network ports implement Stream (TCP / TLS byte transport) and
 Datagram (UDP); `Sender` is a Core composition over them, so you rarely write
 one directly.
 
-| Role | Contract | Vtable | Null fallback | Reference |
-|---|---|---|---|---|
-| **Resolver** | [`ResolverDefinition.h`](../Core/Interface/SolidSyslogResolverDefinition.h) | `Resolve(transport, host, port, *out)` | `Resolve` → `false`, so the caller's unresolved-host error path runs | [`PosixResolver.c`](../Platform/Posix/Source/SolidSyslogPosixResolver.c) |
-| **Datagram** | [`DatagramDefinition.h`](../Core/Interface/SolidSyslogDatagramDefinition.h) | `Open` · `SendTo(...)→SendResult` · `MaxPayload` · `Close` | Open/Close no-op, `SendTo` → `SENT` (drop), `MaxPayload` → IPv6-safe default | [`PosixDatagram.c`](../Platform/Posix/Source/SolidSyslogPosixDatagram.c) |
-| **Stream** | [`StreamDefinition.h`](../Core/Interface/SolidSyslogStreamDefinition.h) | `Open(addr)` · `Send` · `Read` · `Close` | Open/Close no-op, `Send` → `true` (drop), `Read` → `0` (would-block, no teardown) | [`PosixTcpStream.c`](../Platform/Posix/Source/SolidSyslogPosixTcpStream.c) |
-| **Sender** | [`SenderDefinition.h`](../Core/Interface/SolidSyslogSenderDefinition.h) | `Send` · `Disconnect` | `Send` → `true` (drop), `Disconnect` no-op | [`StreamSender.c`](../Core/Source/SolidSyslogStreamSender.c) · [`UdpSender.c`](../Core/Source/SolidSyslogUdpSender.c) |
-
-`SendTo` returns a three-way `enum SolidSyslogDatagramSendResult` (not a bool) so
-the sender can distinguish a would-block from a hard failure. A `Stream` owns its
-connect/keepalive lifecycle; `Read` returns `0` for would-block and a negative
-`SolidSyslogSsize` only for a real teardown.
+- [Resolver](api/structSolidSyslogResolver.md)
+- [Datagram](api/structSolidSyslogDatagram.md)
+- [Stream](api/structSolidSyslogStream.md)
+- [Sender](api/structSolidSyslogSender.md)
 
 ### Storage
 
@@ -267,46 +263,32 @@ The store-and-forward stack is layered: Store (Core `BlockStore`) sits over
 BlockDevice, which sits over File. On a new platform you usually implement
 only File (and BlockDevice for raw flash); the rest is Core.
 
-| Role | Contract | Vtable | Null fallback | Reference |
-|---|---|---|---|---|
-| **Store** | [`StoreDefinition.h`](../Core/Interface/SolidSyslogStoreDefinition.h) | `Write` · `ReadNextUnsent` · `MarkSent` · `HasUnsent` · `IsHalted` · `GetTotalBytes` · `GetUsedBytes` · `IsTransient` | No store-and-forward; `IsTransient` → `true` so a rejected `Write` falls through to the sender | [`BlockStore.c`](../Core/Source/SolidSyslogBlockStore.c) |
-| **BlockDevice** | [`BlockDeviceDefinition.h`](../Core/Interface/SolidSyslogBlockDeviceDefinition.h) | `Acquire` · `Dispose` · `Exists` · `Read` · `Append` · `WriteAt` · `Size(block)` · `GetBlockSize` | Every method `false` / `0` — no disk | [`FileBlockDevice.c`](../Core/Source/SolidSyslogFileBlockDevice.c) |
-| **File** | [`FileDefinition.h`](../Core/Interface/SolidSyslogFileDefinition.h) | `Open` · `Close` · `IsOpen` · `Read` · `Write` · `SeekTo` · `Size` · `Truncate` · `Exists` · `Delete` | Reads / `Exists` → `false`, `Write` / `Delete` → `true`, `Size` → `0`, seek/truncate/close no-op | [`PosixFile.c`](../Platform/Posix/Source/SolidSyslogPosixFile.c) |
-| **Buffer** | [`BufferDefinition.h`](../Core/Interface/SolidSyslogBufferDefinition.h) | `Write` · `Read` | `Read` → `false` (empty), `Write` swallows | [`CircularBuffer.c`](../Core/Source/SolidSyslogCircularBuffer.c) · [`PassthroughBuffer.c`](../Core/Source/SolidSyslogPassthroughBuffer.c) |
+- [Store](api/structSolidSyslogStore.md)
+- [BlockDevice](api/structSolidSyslogBlockDevice.md)
+- [File](api/structSolidSyslogFile.md)
+- [Buffer](api/structSolidSyslogBuffer.md)
 
-`Store.IsTransient` is the crucial hint: a *transient* store (like Null) never
-retained the record, so Service may try the sender directly; a real store's `Write`
-rejection is the discard policy speaking, and Service must not let a newer
-record jump the queue past older ones. The portable in-memory `CircularBuffer`
-takes an injected `Mutex`, so a `Buffer` port is often just a `Mutex` port.
+The portable in-memory `CircularBuffer` takes an injected `Mutex`, so a `Buffer`
+port is often just a `Mutex` port.
 
 ### OS primitives
 
-| Role | Contract | Vtable | Null fallback | Reference |
-|---|---|---|---|---|
-| **Mutex** | [`MutexDefinition.h`](../Core/Interface/SolidSyslogMutexDefinition.h) | `Lock` · `Unlock` | No-op (single-task) | [`PosixMutex.c`](../Platform/Posix/Source/SolidSyslogPosixMutex.c) |
-| **AtomicCounter** | [`AtomicCounterDefinition.h`](../Core/Interface/SolidSyslogAtomicCounterDefinition.h) | `Increment` — wrap-aware in `[1, 2³¹−1]`, never returns `0` (RFC 5424 §7.3.1) | `Increment` → `1` unconditionally | [`StdAtomicCounter.c`](../Platform/StdAtomic/Source/SolidSyslogStdAtomicCounter.c) |
+- [Mutex](api/structSolidSyslogMutex.md)
+- [AtomicCounter](api/structSolidSyslogAtomicCounter.md)
 
 ### Evidence and integrity
 
-| Role | Contract | Vtable | Null fallback | Reference |
-|---|---|---|---|---|
-| **StructuredData** | [`StructuredDataDefinition.h`](../Core/Interface/SolidSyslogStructuredDataDefinition.h) | `Format(element)` — write one `[SD-ID …]` via the `SolidSyslogSdElement` sink | No-op (element omitted) | [`MetaSd.c`](../Core/Source/SolidSyslogMetaSd.c) |
-| **SecurityPolicy** | [`SecurityPolicyDefinition.h`](../Core/Interface/SolidSyslogSecurityPolicyDefinition.h) | `TrailerSize` + `SealRecord` · `OpenRecord` over a `SolidSyslogSecurityRecord` | No integrity check; `TrailerSize` `0`, seal/open pass through | [`Crc16Policy.c`](../Core/Source/SolidSyslogCrc16Policy.c) |
+- [StructuredData](api/structSolidSyslogStructuredData.md)
+- [SecurityPolicy](api/structSolidSyslogSecurityPolicy.md)
 
-A `StructuredData.Format` writes through the opaque `SolidSyslogSdElement` sink;
-it owns the brackets, the `@`-enterprise SD-ID suffix, and the escaping, so a
-producer cannot break the RFC 5424 framing. A `SecurityPolicy` is handed a
-`SolidSyslogSecurityRecord` split into a cleartext header (associated data) and a
-body. A keyed MAC policy authenticates the whole span (tamper-evident); a
-checksum policy such as the vendor-free `Crc16Policy` covers the same span but
-only detects accidental corruption, not an attacker; an AEAD policy encrypts the
-body in place and writes its `TrailerSize`-byte trailer. `Crc16Policy` is the
-reference to read first.
+A `SecurityPolicy` is the one role where the choice is a security decision, not
+a portability one: a keyed MAC is tamper-evident, a checksum such as the
+vendor-free [Crc16Policy](api/SolidSyslogCrc16Policy_8h.md) detects accidental
+corruption but not an attacker, and an AEAD encrypts as well as authenticates.
 
 ## Where to go next
 
 - [Adding it to your build](build-integration.md): the capability matrix, tunables, and build wiring.
-- [Integrating with lwIP (Raw API)](integrating-lwip.md), [Mbed TLS](integrating-mbedtls.md), [FreeRTOS-Plus-FAT](integrating-plusfat.md): worked ports of the networking, TLS, and file roles.
+- [Integrating with lwIP (Raw API)](platforms/lwipraw/setup.md), [Mbed TLS](platforms/mbedtls/setup.md), [FreeRTOS-Plus-FAT](platforms/plusfat/setup.md): worked ports of the networking, TLS, and file roles.
 - [Naming conventions](NAMING.md) and [MISRA deviations](misra-deviations.md): the rules Tier 1/2 adapter code follows.
 - [Error-event severity policy](error-severity.md): choosing the severity for your adapter's reports.

@@ -41,7 +41,7 @@ what matters — it becomes the permanent commit message on `main` on squash mer
 **Branch protection rules (configured on GitHub):**
 
 - Direct pushes to `main` are blocked
-- PRs require all status checks to pass before merging: CodeQL, analyze-codeql, analyze-cppcheck, analyze-format, analyze-iwyu, analyze-iwyu-freertos-lwip, analyze-iwyu-freertos-plustcp, analyze-markdown, analyze-tidy, analyze-tidy-freertos-lwip, analyze-tidy-freertos-plustcp, bdd-freertos-qemu-lwip, bdd-freertos-qemu-plustcp, bdd-linux-syslog-ng, bdd-windows-otel, build-freertos-host-tdd-plustcp, build-freertos-target-lwip, build-freertos-target-plustcp, build-linux-clang, build-linux-gcc, build-linux-tunable-override, build-windows-msvc, consumer-smoke-freertos-cross, consumer-smoke-linux, coverage-linux-gcc, docs-build, integration-linux-mbedtls, integration-linux-openssl, integration-windows-openssl, sanitize-linux-gcc, summary, verify-manifest
+- PRs require all status checks to pass before merging: CodeQL, analyze-codeql, analyze-cppcheck, analyze-format, analyze-iwyu, analyze-iwyu-freertos-lwip, analyze-iwyu-freertos-plustcp, analyze-markdown, analyze-tidy, analyze-tidy-freertos-lwip, analyze-tidy-freertos-plustcp, bdd-freertos-qemu-lwip, bdd-freertos-qemu-plustcp, bdd-linux-syslog-ng, bdd-windows-otel, build-freertos-host-tdd-plustcp, build-freertos-target-lwip, build-freertos-target-plustcp, build-linux-c89-headers, build-linux-c99, build-linux-clang, build-linux-gcc, build-linux-tunable-override, build-windows-msvc, consumer-smoke-freertos-cross, consumer-smoke-linux, coverage-linux-gcc, docs-build, integration-linux-mbedtls, integration-linux-openssl, integration-windows-openssl, sanitize-linux-gcc, summary, verify-manifest
 - The `analyze-iwyu*` lanes run `continue-on-error: true` — they are required contexts but advisory in substance, so they report success whatever IWYU finds
 - Code scanning contributes two contexts and both are required. `analyze-codeql` is the Actions job in `codeql.yml`, and proves the analysis ran; `CodeQL` is the code-scanning results check, and is the one that fails when a PR introduces a new alert. Requiring only the job would let a PR add findings and still merge green
 - Feeding the `summary` aggregator does **not** make a lane blocking. `summary` is declared `if: always()` and asserts nothing about `needs.*.result`, so a new lane gates merges only once its own context is added to the required list above
@@ -427,7 +427,7 @@ Core headers live under `Core/Interface/`; each platform pack puts its own under
 **Each header's `@file` brief is the authoritative description of what it provides and
 why.** Read the header rather than a copy of it. For the wider map:
 
-- `docs/roles/index.md` — the twelve roles, each with its vtable contract and the backends
+- `docs/roles/index.md` — the roles, each with its vtable contract and the backends
   that realise it.
 - `docs/platforms/*.md` — what each platform pack supplies.
 - `docs/api-reference/` plus the generated Doxygen indexes (`docs/api/files.md`,
@@ -500,16 +500,68 @@ format-on-save:
 
 - **`InsertBraces: true`** combined with `AllowShortIfStatementsOnASingleLine: Never`,
   `AllowShortLoopsOnASingleLine: false`, `AllowShortFunctionsOnASingleLine: None`, and
-  `AllowShortBlocksOnASingleLine: Never` — formatter-side enforcement of **MISRA 15.6**
-  (the body of an iteration- or selection-statement shall be a compound-statement). clang-format
-  rewrites your code to add the braces if they are missing, and the `AllowShort*` settings
-  stop them being collapsed back onto a single line.
+  `AllowShortBlocksOnASingleLine: Never` — formatter-side enforcement of **MISRA 15.6**,
+  which is why every `if`, `else`, `for` and `while` body in this project is braced.
+  clang-format rewrites your code to add the braces if they are missing, and the
+  `AllowShort*` settings stop them being collapsed back onto a single line.
 - **`RemoveParentheses: Leave`** — keeps the project **MISRA 12.1 safe**. The advisory rule
   prefers explicit precedence parentheses; flipping this to `MultipleParentheses` would let
   clang-format strip them.
 
 Do not change either group of settings without understanding the MISRA consequence.
 See `docs/misra-deviations.md` for the project's stance on MISRA conformance.
+
+---
+
+## Documentation
+
+Three rules, and they matter more than anything about wording. A wrong claim
+costs one edit to fix; a wrong claim that has been copied costs an audit of
+every page to find, and the copies rot silently because nothing checks them.
+
+### Verify before asserting
+
+Every statement about what the code does is read out of the code, not inferred
+from a name, a neighbouring document, or something written earlier in the same
+session. This is absolute for **failure modes**: before writing that something
+fails, degrades, is silent, or is not reported, open the function and confirm
+it. Claims that an error is *not* reported are the ones most often wrong, and
+the most damaging, because they push an integrator into defending against a
+problem that does not exist.
+
+A document that is already in the repository is not evidence. It may be the
+thing that is wrong.
+
+### One claim, one place
+
+Every fact has exactly one home. Everywhere else links to it, or omits it.
+
+| The fact | Its home |
+|---|---|
+| What a config field or parameter means, including its edge values | the doc comment on that field |
+| What a role's contract requires | that role's `SolidSyslog<Role>Definition.h` |
+| What a platform ships, needs, guarantees, and leaves to the integrator | that platform's page under `docs/platforms/<slug>/` |
+| How to wire a platform, and what will catch you out | that platform's `setup.md` |
+| What Core does | the Core headers; `docs/core/index.md` curates and links them |
+| How to get it building | `docs/build-integration.md` |
+
+Writing the same sentence on a second page is the signal that it belongs on
+neither — find its home, put it there once, and link. Do not restate a fact to
+make a page self-contained: self-contained pages are how a set of documents
+drifts out of agreement with itself.
+
+This applies with particular force to the compliance guides, which attract
+detail they should not hold. `docs/iec62443.md` is a quick reference that
+reassures a developer or a security officer that the library can meet their
+needs. It is **not** an audit artefact, and it is not a place to gather role
+behaviour, platform behaviour, or catalogues of failure modes.
+
+### A platform page never describes another platform
+
+Naming a second platform to contrast behaviour, or to say where a capability
+comes from, couples the two: the eleventh platform then has to be added to ten
+pages. State this platform's own behaviour completely, and point at the
+capability matrix in `docs/platforms/index.md` for who fills what.
 
 ---
 

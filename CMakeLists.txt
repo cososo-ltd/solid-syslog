@@ -47,8 +47,8 @@ if(SOLIDSYSLOG_IS_TOP_LEVEL)
 endif()
 
 # Default to C11 (for the optional C11 atomics counter), but let an externally
-# supplied standard win so the pre-release C99 portability check can build the
-# library at -std=c99 without editing this file. See docs/local-checks.md.
+# supplied standard win so the `c99` preset can build the library at -std=c99
+# without editing this file. See docs/builds.md.
 if(NOT DEFINED CMAKE_C_STANDARD)
     set(CMAKE_C_STANDARD 11)
 endif()

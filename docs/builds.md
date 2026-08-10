@@ -87,7 +87,7 @@ The CI gate is 90% line and branch. The target is 100%.
 ## Static analysis — `tidy`
 
 Runs clang-tidy on all source files. All warnings are errors.
-Checks are configured in [.clang-tidy](../.clang-tidy).
+Checks are configured in `.clang-tidy`.
 
 ```bash
 cmake --preset tidy
@@ -162,8 +162,8 @@ cmake --build --preset freertos-cross --target SolidSyslogBddTarget
 
 The ELF lands at
 `build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf`.
-See [`Bdd/Targets/FreeRtos/README.md`](../Bdd/Targets/FreeRtos/README.md) for run /
-GDB-attach instructions and [`Bdd/README.md`](../Bdd/README.md) for driving
+See `Bdd/Targets/FreeRtos/README.md` for run /
+GDB-attach instructions and `Bdd/README.md` for driving
 it under Behave + the syslog-ng oracle.
 
 ## FreeRTOS + lwIP cross — `freertos-cross-lwip`
@@ -205,7 +205,7 @@ behave Bdd/features/
 In the behave-linux container, Ctrl+Shift+B runs `behave Bdd/features/` automatically.
 
 For the FreeRTOS pair (cross-build the BDD target ELF, then drive QEMU through
-Behave inside `freertos-target`), see [`Bdd/README.md`](../Bdd/README.md).
+Behave inside `freertos-target`), see `Bdd/README.md`.
 
 See [BDD testing](bdd.md) for architecture details and the `BDD_TARGET` /
 `@freertoswip` contract.

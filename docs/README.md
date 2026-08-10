@@ -12,21 +12,21 @@ and [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-examp
 
 Pick a lane:
 
-- [Overview](#overview): what SolidSyslog is and how it helps with CRA and IEC 62443 compliance.
-- [Adopt it](#adopt): get a syslog stack compiling and sending in your product.
-- [Port it to a new platform](#port-a-new-platform): fill a role for an OS, network stack, filesystem, or crypto library we don't ship yet.
+- [Core](#core): the library itself — the protocol, the pipeline, and the portable pieces that run the same everywhere.
+- [Integrate it](#integrate): get a syslog stack compiling and sending in your product.
+- [Platforms](#platforms): what reaches your hardware — the shipped adapters, and how to write one for a target we don't cover.
 - [Compliance](#compliance): the CRA, IEC 62443, the RFCs, and the security posture.
 - [API reference](#api-reference): the public contracts, by audience.
 - [Maintaining the library](#maintaining): building, testing, and releasing SolidSyslog itself.
 
 ---
 
-## Overview
+## Core
 
-- Why SolidSyslog, and capability at a glance: the [project README](../README.md).
-- [Compliance in one page](overview.md): the evaluator's one-screen orientation. What CRA and IEC 62443 ask of an audit-logging function, and how SolidSyslog helps.
+- [Core](core/index.md): what is always compiled and depends on nothing external — the syslog protocol, the assembly, buffering, storage and sending pipeline, and the portable role implementations. Where a platform exists to reach your hardware, Core exists to be the same everywhere.
+- Why SolidSyslog, and capability at a glance: the project `README.md`.
 
-## Adopt
+## Integrate
 
 Everything you need to consume SolidSyslog in your product.
 
@@ -34,19 +34,18 @@ Everything you need to consume SolidSyslog in your product.
 - [Adding it to your build](build-integration.md): the build detail. The capability matrix, the three ways to consume the library (CMake, Make, and a source manifest for an IDE project), and the compile-time tunables.
 - [Authoring custom structured data](structured-data.md): attaching RFC 5424 SD-ELEMENTs.
 - [Error-event severity policy](error-severity.md): installing an error handler and reading the event axes.
-- Platform integration guides:
-  - [lwIP (Raw API)](integrating-lwip.md)
-  - [Mbed TLS](integrating-mbedtls.md)
-  - [FreeRTOS-Plus-FAT](integrating-plusfat.md)
-- Tunables: the compile-time limits, all `#ifndef`-guarded. See [Adding it to your build → Tunables](build-integration.md#tunables) and [`Core/Interface/SolidSyslogTunablesDefaults.h`](../Core/Interface/SolidSyslogTunablesDefaults.h).
+- Tunables: the compile-time limits, all `#ifndef`-guarded. See [Adding it to your build → Tunables](build-integration.md#tunables) and [`Core/Interface/SolidSyslogTunablesDefaults.h`](api/SolidSyslogTunablesDefaults_8h.md).
 
-## Port a new platform
+## Platforms
 
-Porting SolidSyslog is filling roles, not editing Core: omit an adapter and
-Core's Null object stands in.
+A platform is a set of adapters wrapping one upstream thing — a network stack, a
+TLS library, a filesystem, an OS — behind the library's vtables. Each page says
+what that platform ships and what wiring it needs; the pages above speak of them
+in the general case.
 
-- [Porting guide](porting.md): the role model, the anatomy of an adapter (instance shape, the no-`malloc` static pool, the error convention), the invariants every adapter must honour, and the twelve vtable role contracts, each with its Null fallback and shipped reference implementation (POSIX where available, otherwise a Core composition).
-- The contracts themselves: the `SolidSyslog*Definition.h` vtables under [`Core/Interface/`](../Core/Interface/). [`Platform/Posix/`](../Platform/Posix/) is the reference implementation to read alongside them.
+- [Platform × capability matrix](platforms/index.md): start here. Read across a row for what a platform gives you, down a column for who provides a capability.
+- [Porting guide](porting.md): nothing shipped fits your target. The role model, the anatomy of an adapter (instance shape, the no-`malloc` static pool, the error convention), the invariants every adapter must honour, and the vtable role contracts, each with its shipped reference implementation.
+- The contracts themselves: the `SolidSyslog*Definition.h` vtables under `Core/Interface/`. `Platform/Posix/` is the reference implementation to read alongside them.
 
 ## Compliance
 
@@ -60,7 +59,7 @@ Core's Null object stands in.
   - [Software Bill of Materials (SBOM)](security/sbom.md)
   - [Vulnerability triage runbook](security/triage-runbook.md)
   - [Release verification guide](security/release-verification.md)
-  - Reporting a vulnerability: [`SECURITY.md`](../SECURITY.md)
+  - Reporting a vulnerability: [Security policy](security/policy.md)
 
 ## API reference
 
@@ -75,7 +74,7 @@ reference — [Headers](api/files.md), [Data structures](api/annotated.md),
 ## Maintaining
 
 For contributors and maintainers of SolidSyslog itself (not for consuming it,
-which is [Adopt](#adopt) above).
+which is [Integrate](#integrate) above).
 
 - [Building and testing](builds.md): the CMake preset catalogue.
 - [Pre-PR local checks](local-checks.md): the tiered pre-PR check budget.

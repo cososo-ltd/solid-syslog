@@ -155,7 +155,7 @@
   <g filter="url(#postitShadow)"><rect x="455" y="536" width="470" height="132" fill="#fff7cf" transform="rotate(-0.5 690 602)"/></g>
   <g transform="rotate(-0.5 690 602)" fill="#4a441f" font-family="'Segoe UI', sans-serif">
     <text x="476" y="570" font-size="13.5" font-weight="bold">Setup includes one header per component it wires.</text>
-    <text x="476" y="594" font-size="12.5">The Linux reference target pulls around two dozen; a lean SL1 stack, a</text>
+    <text x="476" y="594" font-size="12.5">The Linux reference target pulls around two dozen; a minimal build, a</text>
     <text x="476" y="614" font-size="12.5">handful. Every file that logs or drains includes only SolidSyslog.h.</text>
   </g>
 </svg>

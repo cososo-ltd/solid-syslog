@@ -3,7 +3,7 @@
 
 /* Library-internal test seam. Tests replace this function pointer via
    CppUTest's UT_PTR_SET to inject a fake tick source (MSVC does not
-   support GCC's weak/strong symbol override trick used by the POSIX fakes). */
+   support GCC's weak/strong symbol override trick the fakes rely on). */
 
 #include "SolidSyslogExternC.h"
 

@@ -772,6 +772,16 @@ jobs:
         with:
           persist-credentials: false
 
+      # Platforms are declared in SOLIDSYSLOG_PLATFORM_REGISTRY and roles by
+      # their Core/Interface/SolidSyslog<Role>Definition.h header. This asserts
+      # the docs enumerate exactly what the code declares — a platform's pages,
+      # nav entry, description and matrix row; a role's link from the porting
+      # guide, the roles index and the nav — and the reverse in both cases. It
+      # also holds the two boundaries hand review kept losing: no platform names
+      # another, and every class a platform ships is on its page.
+      - name: Check the docs match what the code declares
+        run: python3 scripts/check_platform_docs.py
+
       # Guard the build hooks against regression — the source-link rewrite's
       # Markdown parsing, and the meta-description map's nav validation.
       # Image digest below is mkdocs-mkdoxy sha-34173c0 (see docs/containers.md).

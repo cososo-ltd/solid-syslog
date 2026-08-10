@@ -149,7 +149,7 @@ static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* 
  * adjacent as same-typed scalar parameters; the trailer/header layout lives in
  * one place. The nonce is expected already in Trailer[0..GCM_NONCE_SIZE). One-
  * shot AEAD — mbedTLS computes the whole tag in a single call (output == input
- * is permitted for GCM encryption), unlike OpenSSL's incremental EVP chain. */
+ * is permitted for GCM encryption). */
 static bool MbedTlsAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key)
 {
     uint8_t* body = &record->Content[record->HeaderLength];

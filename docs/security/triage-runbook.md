@@ -1,6 +1,6 @@
 # Vulnerability Triage Runbook
 
-This is the maintainer's operational counterpart to [`SECURITY.md`](../../SECURITY.md):
+This is the maintainer's operational counterpart to [Security policy](policy.md):
 how a vulnerability report is handled end-to-end, from receipt to retrospective.
 `SECURITY.md` states the public promises (72-hour acknowledgement, 90+14
 disclosure); this runbook is how they are met.

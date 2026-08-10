@@ -1,6 +1,6 @@
 /** @file
  *  A TCP stream over the lwIP Raw API, for a StreamSender or as the byte
- *  transport under a TlsStream.
+ *  transport under a TLS stream.
  *
  *  Every lwIP call runs under the SolidSyslogLwipRaw_Marshal hop; the callbacks
  *  lwIP fires back (connected / recv / err) only flip flags, so they stay
@@ -28,7 +28,7 @@
  *  callback nulls the pcb pointer, and Close only calls tcp_close when the
  *  pointer is still live, so a released pcb is never closed twice. Accepted
  *  pbufs are always freed on close regardless of pcb state. See
- *  docs/integrating-lwip.md for the full integrator guide. */
+ *  docs/platforms/lwipraw/setup.md for the full integrator guide. */
 #ifndef SOLIDSYSLOGLWIPRAWTCPSTREAM_H
 #define SOLIDSYSLOGLWIPRAWTCPSTREAM_H
 

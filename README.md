@@ -96,8 +96,8 @@ header per component it wires.
 
 The [API reference](https://docs.cososo.co.uk/solid-syslog/api-reference/) explains
 that split and links the generated reference for every header, type and symbol. The
-[porting guide](https://docs.cososo.co.uk/solid-syslog/porting/) covers the twelve
-roles, the anatomy of an adapter, and the Null object that stands in for any role you
+[porting guide](https://docs.cososo.co.uk/solid-syslog/porting/) covers the roles,
+the anatomy of an adapter, and the Null object that stands in for any role you
 leave unfilled.
 
 [`Bdd/Targets/`](Bdd/Targets/) holds one BDD-driven binary per platform — Linux,

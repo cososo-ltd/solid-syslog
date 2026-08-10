@@ -100,8 +100,8 @@ static inline struct SolidSyslogMbedTlsStream* MbedTlsStream_SelfFromBase(struct
 
 void MbedTlsStream_Cleanup(struct SolidSyslogStream* base)
 {
-    /* Mirror the OpenSslStream pattern: an integrator who destroys a
-     * still-Open stream must not leak the underlying TLS state. */
+    /* An integrator who destroys a still-Open stream must not leak the
+     * underlying TLS state. */
     MbedTlsStream_Close(base);
     /* Overwrite the abstract base with the shared NullStream vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
@@ -168,7 +168,8 @@ static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream*
     mbedtls_ssl_conf_authmode(&self->SslConfig, MBEDTLS_SSL_VERIFY_REQUIRED);
     /* Pin the floor at TLS 1.2 rather than inheriting MBEDTLS_SSL_PRESET_DEFAULT,
      * which can negotiate down to TLS 1.0/1.1 on permissive integrator builds.
-     * Matches the OpenSSL adapter's explicit floor (downgrade-resistance parity). */
+     * The floor is stated here so downgrade resistance does not depend on the
+     * preset the integrator happens to have compiled in. */
     mbedtls_ssl_conf_min_tls_version(&self->SslConfig, MBEDTLS_SSL_VERSION_TLS1_2);
     mbedtls_ssl_conf_ca_chain(&self->SslConfig, self->Config.CaChain, NULL);
     mbedtls_ssl_conf_rng(&self->SslConfig, mbedtls_ctr_drbg_random, self->Config.Rng);
@@ -240,7 +241,7 @@ static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbe
  * spin) until either the handshake completes, hits a hard error, or the
  * bounded budget expires. Each non-success exit emits a distinct
  * protocol-level error code so the integrator can tell rejection from
- * timeout. Same shape as OpenSslStream_PerformHandshake. */
+ * timeout. */
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self)
 {
     uint32_t budgetMs = MbedTlsStream_ResolveHandshakeTimeoutMs(self);
@@ -327,8 +328,8 @@ static int MbedTlsStream_BioRecv(void* ctx, unsigned char* buf, size_t len)
 }
 
 /* TLS-level write failure means the session state is unrecoverable — close
- * so the StreamSender reconnect path runs on the next tick. Mirrors the
- * OpenSslStream_Send fail-fast contract. */
+ * so the StreamSender reconnect path runs on the next tick. Fail-fast is the
+ * contract every TLS stream adapter honours. */
 static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
 {
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
@@ -346,8 +347,7 @@ static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void
  *      right now → WANT_READ → return 0, mirroring the transport contract.
  *   2. Any other negative return (alerts, renegotiation surfacing as
  *      WANT_WRITE, hard transport error) is fatal under fail-fast semantics
- *      — close internally; the caller reopens and store-and-forward replays.
- * Same shape as the OpenSslStream_Read. */
+ *      — close internally; the caller reopens and store-and-forward replays. */
 static inline SolidSyslogSsize MbedTlsStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size)
 {
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
