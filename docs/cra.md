@@ -63,7 +63,7 @@ Retention, access control and disposal at the collector.
 
 The log path is not the primary means of meeting these, but it is in scope for each,
 because a log record is itself stored and transmitted data, and because several of them
-call for reporting. Where the answer below is TLS, [TLS obligations](tls.md) states what
+call for reporting. Where the answer below is TLS, the [TLS obligations](tls.md) page states what
 any TLS stream must do, and each backend's page records where it falls short of that
 today.
 

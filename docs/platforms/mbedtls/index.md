@@ -31,7 +31,7 @@ stream.
 
 Rotation follows from that, and needs sequencing. The adapter re-reads every
 handle each time it connects, so replacing the material behind a handle is enough
-— the stream does not need rebuilding. But while a connection is open the
+— the stream does not need rebuilding. But while a connection is open, the
 adapter's `ssl_config` holds pointers into that material, and freeing it there is
 a use-after-free.
 

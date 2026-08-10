@@ -1,8 +1,9 @@
 /** @file
  *  The SD authoring API for one [SD-ID PARAM="value"...] element:
  *  SolidSyslogSdElement_Begin / SolidSyslogSdElement_Param /
- *  SolidSyslogSdElement_End, which own the brackets, the separators and the
- *  value escaping so the author writes only names and values. */
+ *  SolidSyslogSdElement_End, which own the element and parameter framing so the
+ *  author writes only names and values. Escaping the value itself belongs to
+ *  SolidSyslogSdValue, the sink Param hands back. */
 #ifndef SOLIDSYSLOGSDELEMENT_H
 #define SOLIDSYSLOGSDELEMENT_H
 
@@ -12,10 +13,11 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /** The element writer handed to an SD's Format. Owns the brackets, the
-     *  separators and the value escaping, and bounds each name to 32 bytes. A
-     *  value cannot desync the framing whatever it contains; a name is the
-     *  author's to keep within SD-NAME. Stack-transient, no pool (D.002). */
+    /** The element writer handed to an SD's Format. Owns the brackets and the
+     *  separators, and bounds each name to 32 bytes; the value sink it hands back
+     *  does the escaping. A value cannot desync the framing whatever it contains;
+     *  a name is the author's to keep within SD-NAME. Stack-transient, no pool
+     *  (D.002). */
     struct SolidSyslogSdElement;
     struct SolidSyslogSdValue;
 

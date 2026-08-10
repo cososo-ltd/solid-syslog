@@ -169,7 +169,9 @@ static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream*
     /* Pin the floor at TLS 1.2 rather than inheriting MBEDTLS_SSL_PRESET_DEFAULT,
      * which can negotiate down to TLS 1.0/1.1 on permissive integrator builds.
      * The floor is stated here so downgrade resistance does not depend on the
-     * preset the integrator happens to have compiled in. */
+     * preset the integrator happens to have compiled in. No ceiling is set:
+     * RFC 9662, which updates RFC 5425, requires TLS 1.3 to be preferred
+     * wherever it is implemented. */
     mbedtls_ssl_conf_min_tls_version(&self->SslConfig, MBEDTLS_SSL_VERSION_TLS1_2);
     mbedtls_ssl_conf_ca_chain(&self->SslConfig, self->Config.CaChain, NULL);
     mbedtls_ssl_conf_rng(&self->SslConfig, mbedtls_ctr_drbg_random, self->Config.Rng);

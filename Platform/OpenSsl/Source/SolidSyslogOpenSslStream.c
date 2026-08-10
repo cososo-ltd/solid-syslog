@@ -235,6 +235,8 @@ static inline bool OpenSslStream_ConfigureTrustAnchors(SSL_CTX* ctx, const char*
     return ok;
 }
 
+/* A floor, and deliberately no ceiling: RFC 9662, which updates RFC 5425,
+ * requires TLS 1.3 to be preferred wherever it is implemented. */
 static inline bool OpenSslStream_ConfigureProtocolFloor(SSL_CTX* ctx)
 {
     return SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION) == 1;

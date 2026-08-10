@@ -22,12 +22,18 @@ delivering.** A fault that an operator can see and act on is worth more than a
 connection that refuses to open for a reason nobody is watching.
 
 The rule has a limit, and it is one line rather than a list of exceptions:
-**delivery stops when the library cannot establish who the peer is.** No trust
-anchors to check against, a certificate that does not chain to them, and a
-mismatch against the identity the integrator declared are all that case.
+**delivery stops when the peer fails the check the integrator asked for.** No
+trust anchors to load, a certificate that does not chain to them, and a
+certificate that does not match a declared identity are all that case.
 Continuing through any of them would hand the records to whoever answered
 instead, which loses the confidentiality of the log *and* the audit trail at the
 same time, and does so without anyone noticing.
+
+The check is the integrator's to set. Declaring no peer identity is a decision
+rather than a failure — it says chain verification alone is enough here, which on
+a closed network with a private CA it may be. What the contract requires is that
+the decision is explicit, and that the stream says so when it was never made at
+all.
 
 Everything else leaves you talking to the peer you trusted, holding a credential
 you can no longer fully attest. Those are the faults that are reported while
@@ -47,8 +53,10 @@ whatever the TLS library was built to permit. Downgrade resistance is then a
 property of this library rather than of the integrator's build of another one.
 The floor is TLS 1.2.
 
-No ceiling is required. A peer that offers a later version is offering a better
-one.
+No ceiling is required, and setting one would be wrong. RFC 9662, which updates
+RFC 5425, asks that TLS 1.3 be supported and **preferred** where it is
+implemented, so a stream that pinned a ceiling to constrain something else would
+breach that. BCP 195 §3.1.1 says the same for TLS generally.
 
 ### Require a trust anchor, and take it from the integrator
 
@@ -63,7 +71,9 @@ The integrator declares the peer identity they expect. A `Stream` verifies it
 when one is declared, accepts an explicit decision not to check a name, and
 reports when nothing was declared at all — because that last case is a peer that
 is chain-verified but otherwise unidentified, which is the case an attacker with
-any trusted certificate walks through.
+any trusted certificate walks through. BCP 195 §7.1 puts it plainly: without the
+name check, TLS proves the certificate is valid and that the peer holds its key,
+but not that you reached the endpoint you wanted.
 
 The three states, and what each means, are documented on each platform's
 configuration field.
@@ -93,6 +103,11 @@ Where the underlying library allows the cipher policy to be selected, a `Stream`
 passes the integrator's choice through unchanged and pins none of its own. The
 appropriate policy depends on the build present on the target and on the profile
 the deployment is held to, and neither is knowable here.
+
+For a deployment with no policy of its own, RFC 9662 §4.2 asks that
+`TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256` be offered, and BCP 195 §4.2 recommends
+the same shape — ECDHE with AES-GCM — for TLS 1.2. Both prefer it over the 2009
+mandatory suite, which offers no forward secrecy.
 
 Since no ceiling is set, the version negotiated may be later than the floor, and a
 policy that binds only up to the floor does not bind the connection in use.
@@ -136,6 +151,10 @@ attack.
 An integrator who needs it configures it in their own TLS library and verifies it
 themselves. The library neither performs the check nor reports on whether one is
 in force.
+
+This is not a departure from current TLS practice. BCP 195 §7.5's revocation
+guidance is addressed to servers, which SHOULD support OCSP and stapling; it does
+not oblige a client library to refuse a connection it cannot check.
 
 ### Bound the handshake
 
