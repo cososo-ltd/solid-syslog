@@ -38,7 +38,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  @retval SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT     Delivered to the network.
      *  @retval SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE Too large for the path;
      *                                                    the sender trims to MaxPayload and retries.
-     *  @retval SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED   Transient failure; the record is kept. */
+     *  @retval SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED   Transient failure; the record is kept.
+     *
+     *  The trim is reactive: the sender offers the record at full size and only
+     *  asks MaxPayload once OVERSIZE comes back. So on an implementation that
+     *  collapses OVERSIZE into FAILED, an over-large record is never trimmed —
+     *  it reaches the stack whole, and whether it is fragmented or dropped is the
+     *  stack's business. Which platforms that affects is on their pages. */
     enum SolidSyslogDatagramSendResult SolidSyslogDatagram_SendTo(
         struct SolidSyslogDatagram * datagram,
         const void* buffer,
