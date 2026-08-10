@@ -30,6 +30,11 @@ split between the two tools so they cannot disagree on the same name:
 - **cppcheck-misra** is the sole authority on naming *uniqueness*. The
   MISRA addon surfaces rules 5.1, 5.2, 5.4, 5.6, 5.7, 5.8 and 5.9
   violations, which pattern matching alone cannot detect.
+- **`scripts/check_platform_docs.py`** is the sole authority on the one
+  rule neither tool can see — that a platform class carries its pack's
+  registry token, described under *Platform classes carry their pack's
+  registry token* below. The token is declared in CMake rather than in
+  the code, so no check reading only the translation unit can know it.
 
 cppcheck's `naming` addon is deliberately not used: it does less than
 clang-tidy on every axis we care about, and a second tool checking the
