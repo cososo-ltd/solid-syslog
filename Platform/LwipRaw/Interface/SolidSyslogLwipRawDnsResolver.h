@@ -1,7 +1,12 @@
 /** @file
- *  A by-name DNS resolver for lwIP Raw targets — a superset of the numeric
- *  resolver (literals, DNS-cache hits, and local-hostlist entries also
- *  resolve).
+ *  The lwIP Raw resolver for a collector named by name, resolving names and
+ *  numeric addresses alike.
+ *
+ *  Choosing between the two: this one where the endpoint may be a name, since a
+ *  literal, a DNS-cache hit and a local-hostlist entry all resolve through it
+ *  too; SolidSyslogLwipRawResolver.h where the endpoint is always an address,
+ *  which needs neither LWIP_DNS nor a Sleep and takes no marshal hop. A build
+ *  wires whichever one its deployment needs.
  *
  *  Resolve wraps lwIP's asynchronous dns_gethostbyname, which touches lwIP core
  *  state and so runs under the SolidSyslogLwipRaw_Marshal hop (unlike the
