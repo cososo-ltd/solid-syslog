@@ -85,6 +85,10 @@ hooks:
   # Hides the one-entry table of contents on the generated Functions / Macros
   # indexes, whose letter buckets collapse under the common SolidSyslog prefix.
   - hooks/api_index_toc.py
+  # Drops mkdoxy's member summary tables, which list every member a second time
+  # above the Documentation section that carries it in full — and render a
+  # function-pointer member's type as the bare text "void(*".
+  - hooks/api_member_summaries.py
   # Puts a "Part of the <Platform> platform" banner on every generated API page
   # for a header under Platform/<Pack>/, linking to that pack's own page. The
   # pack list comes from SOLIDSYSLOG_PLATFORM_REGISTRY, so registering a new
