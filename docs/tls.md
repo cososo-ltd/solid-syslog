@@ -104,7 +104,7 @@ passes the integrator's choice through unchanged and pins none of its own. The
 appropriate policy depends on the build present on the target and on the profile
 the deployment is held to, and neither is knowable here.
 
-For a deployment with no policy of its own, RFC 9662 §4.2 asks that
+For a deployment with no policy of its own, RFC 9662 §4 asks that
 `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256` be offered, and BCP 195 §4.2 recommends
 the same shape — ECDHE with AES-GCM — for TLS 1.2. Both prefer it over the 2009
 mandatory suite, which offers no forward secrecy.
@@ -152,9 +152,13 @@ An integrator who needs it configures it in their own TLS library and verifies i
 themselves. The library neither performs the check nor reports on whether one is
 in force.
 
-This is not a departure from current TLS practice. BCP 195 §7.5's revocation
-guidance is addressed to servers, which SHOULD support OCSP and stapling; it does
-not oblige a client library to refuse a connection it cannot check.
+This is a deliberate deviation, and worth naming as one. BCP 195 §7.5 requires a
+TLS implementation to implement a strategy to distrust revoked certificates, and
+no stream here implements one. The reasoning is above; what makes it tolerable is
+that the obligation moves rather than disappears. An integrator's own TLS library
+can be configured for CRL or OCSP, and this library neither performs that check
+nor prevents it — so an assessment that needs the obligation met should say where
+it is met, rather than assume this library meets it.
 
 ### Bound the handshake
 

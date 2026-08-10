@@ -2,8 +2,9 @@
 
 Wiring `SolidSyslogOpenSslStream` so a `SolidSyslogStreamSender` delivers RFC 5425
 syslog over TLS. The [TLS obligations](../../tls.md) page covers what any TLS
-stream must do, [OpenSSL](index.md) what this one needs and where it falls short of that, and
-the config fields are documented on the struct itself. This page is the wiring.
+stream must do. The [OpenSSL](index.md) page covers what this adapter needs and
+where it falls short of that. The config fields are documented on the struct
+itself, and this page is the wiring.
 
 ## What you need
 
