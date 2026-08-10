@@ -7,7 +7,7 @@
 
 struct SolidSyslogHeaderField;
 
-void SolidSyslogPosixProcessId_Get(struct SolidSyslogHeaderField* field, void* context)
+void SolidSyslogPosix_GetProcessId(struct SolidSyslogHeaderField* field, void* context)
 {
     (void) context;
     SolidSyslogHeaderField_Uint32(field, (uint32_t) getpid());

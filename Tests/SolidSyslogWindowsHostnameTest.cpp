@@ -60,21 +60,21 @@ TEST_GROUP(SolidSyslogWindowsHostname)
 
 TEST(SolidSyslogWindowsHostname, WritesFakeHostnameIntoFormatter)
 {
-    SolidSyslogWindowsHostname_Get(&field, nullptr);
+    SolidSyslogWindows_GetHostname(&field, nullptr);
     STRCMP_EQUAL("winhost", formatted());
 }
 
 TEST(SolidSyslogWindowsHostname, WritesNothingWhenApiFails)
 {
     fakeReturnValue = FALSE;
-    SolidSyslogWindowsHostname_Get(&field, nullptr);
+    SolidSyslogWindows_GetHostname(&field, nullptr);
     STRCMP_EQUAL("", formatted());
 }
 
 TEST(SolidSyslogWindowsHostname, EmptyHostnameProducesEmptyString)
 {
     fakeHostname = "";
-    SolidSyslogWindowsHostname_Get(&field, nullptr);
+    SolidSyslogWindows_GetHostname(&field, nullptr);
     STRCMP_EQUAL("", formatted());
 }
 
@@ -86,6 +86,6 @@ TEST(SolidSyslogWindowsHostname, HostnameTooLongForBufferProducesEmptyString)
     memset(longName, 'x', 260);
     longName[260] = '\0';
     fakeHostname = longName;
-    SolidSyslogWindowsHostname_Get(&field, nullptr);
+    SolidSyslogWindows_GetHostname(&field, nullptr);
     STRCMP_EQUAL("", formatted());
 }

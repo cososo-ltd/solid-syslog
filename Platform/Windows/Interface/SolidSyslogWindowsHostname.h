@@ -10,7 +10,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Writes the physical DNS host name (GetComputerNameExA) into @p field.
      *  @p context is unused. */
-    void SolidSyslogWindowsHostname_Get(struct SolidSyslogHeaderField * field, void* context);
+    void SolidSyslogWindows_GetHostname(struct SolidSyslogHeaderField * field, void* context);
 
 SOLIDSYSLOG_EXTERN_C_END
 

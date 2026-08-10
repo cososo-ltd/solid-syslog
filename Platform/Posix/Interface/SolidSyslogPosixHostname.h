@@ -11,7 +11,7 @@ struct SolidSyslogHeaderField;
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Writes the host's name (gethostname) into @p field. @p context is unused. */
-    void SolidSyslogPosixHostname_Get(struct SolidSyslogHeaderField * field, void* context);
+    void SolidSyslogPosix_GetHostname(struct SolidSyslogHeaderField * field, void* context);
 
 SOLIDSYSLOG_EXTERN_C_END
 

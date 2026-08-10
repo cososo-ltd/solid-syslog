@@ -93,7 +93,7 @@ static struct SolidSyslogSecurityPolicy* securityPolicy;
 // NOLINTNEXTLINE(readability-non-const-parameter) -- _beginthreadex thread-entry signature requires void*
 static unsigned __stdcall ServiceThreadEntry(void* arg)
 {
-    BddTargetServiceThread_Run(solidSyslog, (volatile bool*) arg, SolidSyslogWindowsSleep);
+    BddTargetServiceThread_Run(solidSyslog, (volatile bool*) arg, SolidSyslogWindows_Sleep);
     return 0;
 }
 
@@ -371,7 +371,7 @@ int BddTargetWindows_Run(int argc, char* argv[])
     struct SolidSyslogAtomicCounter* counter = SolidSyslogWindowsAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
         .Counter = counter,
-        .GetSysUpTime = SolidSyslogWindowsSysUpTime_Get,
+        .GetSysUpTime = SolidSyslogWindows_GetSysUpTime,
         .GetLanguage = BddTargetLanguage_Get,
     };
     struct SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
@@ -395,10 +395,10 @@ int BddTargetWindows_Run(int argc, char* argv[])
     struct SolidSyslogConfig config = {
         .Buffer = buffer,
         .Sender = sender,
-        .Clock = SolidSyslogWindowsClock_GetTimestamp,
-        .GetHostname = SolidSyslogWindowsHostname_Get,
+        .Clock = SolidSyslogWindows_GetTimestamp,
+        .GetHostname = SolidSyslogWindows_GetHostname,
         .GetAppName = BddTargetAppName_Get,
-        .GetProcessId = SolidSyslogWindowsProcessId_Get,
+        .GetProcessId = SolidSyslogWindows_GetProcessId,
         .Store = store,
         .Sd = sdList,
         .SdCount = sdCount,

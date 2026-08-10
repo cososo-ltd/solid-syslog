@@ -20,7 +20,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  A 16-bit tick counter, or a 32-bit rate that does not divide 100
      *  (including any rate above 100 Hz), fails to build (widen the tick type,
      *  pick a dividing rate, or supply your own SolidSyslogSysUpTimeFunction). */
-    uint32_t SolidSyslogFreeRtosSysUpTime_Get(void);
+    uint32_t SolidSyslogFreeRtos_GetSysUpTime(void);
 
 SOLIDSYSLOG_EXTERN_C_END
 

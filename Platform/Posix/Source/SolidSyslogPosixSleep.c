@@ -8,7 +8,7 @@ enum
     NANOSECONDS_PER_MILLISECOND = 1000000L
 };
 
-void SolidSyslogPosixSleep(int milliseconds)
+void SolidSyslogPosix_Sleep(int milliseconds)
 {
     struct timespec ts = {
         .tv_sec = milliseconds / MILLISECONDS_PER_SECOND,

@@ -2,7 +2,7 @@
 
 #include <windows.h>
 
-void SolidSyslogWindowsSleep(int milliseconds)
+void SolidSyslogWindows_Sleep(int milliseconds)
 {
     Sleep((DWORD) milliseconds);
 }

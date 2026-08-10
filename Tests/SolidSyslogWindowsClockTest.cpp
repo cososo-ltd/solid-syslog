@@ -53,7 +53,7 @@ TEST_GROUP(SolidSyslogWindowsClock)
     static struct SolidSyslogTimestamp getTimestamp()
     {
         struct SolidSyslogTimestamp ts = {};
-        SolidSyslogWindowsClock_GetTimestamp(&ts);
+        SolidSyslogWindows_GetTimestamp(&ts);
         return ts;
     }
 

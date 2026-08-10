@@ -45,8 +45,8 @@ Tear down in reverse order, and destroy everything you created.
 
 `SolidSyslogConfig` takes the clock, hostname and process id as callbacks
 rather than components, and this platform supplies one of each ready to use:
-`SolidSyslogPosixClock_GetTimestamp`, `SolidSyslogPosixHostname` and
-`SolidSyslogPosixProcessId`. Use them directly, or wrap your own if the values
+`SolidSyslogPosix_GetTimestamp`, `SolidSyslogPosix_GetHostname` and
+`SolidSyslogPosix_GetProcessId`. Use them directly, or wrap your own if the values
 should come from somewhere other than the operating system.
 
 ## Threading

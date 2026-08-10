@@ -19,7 +19,7 @@ enum
     MILLISECONDS_PER_HUNDREDTH = 10
 };
 
-uint32_t SolidSyslogWindowsSysUpTime_Get(void)
+uint32_t SolidSyslogWindows_GetSysUpTime(void)
 {
     ULONGLONG milliseconds = WindowsSysUpTime_GetTickCount64();
     return (uint32_t) (milliseconds / MILLISECONDS_PER_HUNDREDTH);

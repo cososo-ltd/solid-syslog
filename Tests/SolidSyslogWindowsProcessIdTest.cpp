@@ -43,20 +43,20 @@ TEST_GROUP(SolidSyslogWindowsProcessId)
 
 TEST(SolidSyslogWindowsProcessId, WritesFakePidAsDecimal)
 {
-    SolidSyslogWindowsProcessId_Get(&field, nullptr);
+    SolidSyslogWindows_GetProcessId(&field, nullptr);
     STRCMP_EQUAL("4321", formatted());
 }
 
 TEST(SolidSyslogWindowsProcessId, WritesZeroWhenPidIsZero)
 {
     fakePid = 0;
-    SolidSyslogWindowsProcessId_Get(&field, nullptr);
+    SolidSyslogWindows_GetProcessId(&field, nullptr);
     STRCMP_EQUAL("0", formatted());
 }
 
 TEST(SolidSyslogWindowsProcessId, WritesMaxDwordValueAsDecimal)
 {
     fakePid = 0xFFFFFFFFU;
-    SolidSyslogWindowsProcessId_Get(&field, nullptr);
+    SolidSyslogWindows_GetProcessId(&field, nullptr);
     STRCMP_EQUAL("4294967295", formatted());
 }

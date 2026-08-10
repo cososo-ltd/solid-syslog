@@ -83,7 +83,7 @@ static struct SolidSyslog* solidSyslog;
 static void* ServiceThreadEntry(void* arg)
 {
     volatile bool* shutdown = (volatile bool*) arg;
-    BddTargetServiceThread_Run(solidSyslog, shutdown, SolidSyslogPosixSleep);
+    BddTargetServiceThread_Run(solidSyslog, shutdown, SolidSyslogPosix_Sleep);
     return NULL;
 }
 
@@ -314,7 +314,7 @@ int main(int argc, char* argv[])
     struct SolidSyslogAtomicCounter* counter = SolidSyslogStdAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
         .Counter = counter,
-        .GetSysUpTime = SolidSyslogPosixSysUpTime_Get,
+        .GetSysUpTime = SolidSyslogPosix_GetSysUpTime,
         .GetLanguage = BddTargetLanguage_Get,
     };
     struct SolidSyslogStructuredData* metaSd = SolidSyslogMetaSd_Create(&metaConfig);
@@ -335,10 +335,10 @@ int main(int argc, char* argv[])
     struct SolidSyslogConfig config = {
         .Buffer = buffer,
         .Sender = sender,
-        .Clock = SolidSyslogPosixClock_GetTimestamp,
-        .GetHostname = SolidSyslogPosixHostname_Get,
+        .Clock = SolidSyslogPosix_GetTimestamp,
+        .GetHostname = SolidSyslogPosix_GetHostname,
         .GetAppName = BddTargetAppName_Get,
-        .GetProcessId = SolidSyslogPosixProcessId_Get,
+        .GetProcessId = SolidSyslogPosix_GetProcessId,
         .Store = store,
         .Sd = sdList,
         .SdCount = sdCount,

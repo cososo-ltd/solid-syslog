@@ -11,7 +11,7 @@ struct SolidSyslogHeaderField;
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Writes the process id (getpid) into @p field. @p context is unused. */
-    void SolidSyslogPosixProcessId_Get(struct SolidSyslogHeaderField * field, void* context);
+    void SolidSyslogPosix_GetProcessId(struct SolidSyslogHeaderField * field, void* context);
 
 SOLIDSYSLOG_EXTERN_C_END
 

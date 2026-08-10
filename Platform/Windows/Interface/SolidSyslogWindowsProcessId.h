@@ -10,7 +10,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Writes the process id (GetCurrentProcessId) into @p field. @p context is
      *  unused. */
-    void SolidSyslogWindowsProcessId_Get(struct SolidSyslogHeaderField * field, void* context);
+    void SolidSyslogWindows_GetProcessId(struct SolidSyslogHeaderField * field, void* context);
 
 SOLIDSYSLOG_EXTERN_C_END
 

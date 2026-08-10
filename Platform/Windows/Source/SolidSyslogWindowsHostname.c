@@ -20,7 +20,7 @@ enum
     MAX_HOSTNAME_SIZE = 256U
 };
 
-void SolidSyslogWindowsHostname_Get(struct SolidSyslogHeaderField* field, void* context)
+void SolidSyslogWindows_GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
     char hostname[MAX_HOSTNAME_SIZE];
     DWORD size = sizeof(hostname);

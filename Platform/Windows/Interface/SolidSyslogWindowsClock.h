@@ -9,7 +9,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Fills @p timestamp from the system wall clock (GetSystemTimeAsFileTime),
      *  broken down to UTC calendar fields with microsecond precision. */
-    void SolidSyslogWindowsClock_GetTimestamp(struct SolidSyslogTimestamp * timestamp);
+    void SolidSyslogWindows_GetTimestamp(struct SolidSyslogTimestamp * timestamp);
 
 SOLIDSYSLOG_EXTERN_C_END
 
