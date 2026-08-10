@@ -52,10 +52,10 @@ cannot tell an over-large datagram from any other send failure, which the
 consequence is on the caller's side, and it is not simply a dropped record.
 
 Because the sender only trims a record after being told it was too large, one
-over that size is offered to `FreeRTOS_sendto` whole. If the stack rejects it the
-send fails, and a failed send is treated as transient: the store keeps the record
-at its cursor and offers the same one on every servicing pass. Nothing behind it
-is delivered.
+over that size is offered to `FreeRTOS_sendto` whole. If the stack rejects it,
+the send fails, and a failed send is treated as transient: the store keeps the
+record at its cursor and offers the same one on every servicing pass. Nothing
+behind it is delivered.
 
 `SOLIDSYSLOG_MAX_MESSAGE_SIZE` defaults to 2048, so this reaches any record over
 about 1.2 KB rather than only unusual ones. Until `#736` lands, keep records on

@@ -46,7 +46,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  audit trail wants. Size is the one cause the record itself carries.
      *
      *  The trim is reactive: the sender offers the record at full size and only
-     *  asks MaxPayload once OVERSIZE comes back. So on an implementation that
+     *  calls SolidSyslogDatagram_MaxPayload once OVERSIZE comes back. So on an
+     *  implementation that
      *  collapses OVERSIZE into FAILED, an over-large record is never trimmed. It
      *  reaches the stack whole, and if the stack rejects it the failure is
      *  permanent while being treated as transient: the record stays at the
