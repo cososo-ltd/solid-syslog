@@ -40,11 +40,19 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *                                                    the sender trims to MaxPayload and retries.
      *  @retval SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED   Transient failure; the record is kept.
      *
+     *  FAILED is transient by design: its usual causes — an unreachable
+     *  collector, a wrong address or port, a stack not yet up — are resolved
+     *  outside the library, and holding the record until they are is what an
+     *  audit trail wants. Size is the one cause the record itself carries.
+     *
      *  The trim is reactive: the sender offers the record at full size and only
      *  asks MaxPayload once OVERSIZE comes back. So on an implementation that
-     *  collapses OVERSIZE into FAILED, an over-large record is never trimmed —
-     *  it reaches the stack whole, and whether it is fragmented or dropped is the
-     *  stack's business. Which platforms that affects is on their pages. */
+     *  collapses OVERSIZE into FAILED, an over-large record is never trimmed. It
+     *  reaches the stack whole, and if the stack rejects it the failure is
+     *  permanent while being treated as transient: the record stays at the
+     *  store's cursor and is offered again on every servicing pass, so nothing
+     *  behind it is delivered either. Which platforms that affects is on their
+     *  pages. */
     enum SolidSyslogDatagramSendResult SolidSyslogDatagram_SendTo(
         struct SolidSyslogDatagram * datagram,
         const void* buffer,

@@ -25,7 +25,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  - **Report MaxPayload for the path in use, and never guess high.** The
      *    value bounds what the caller will retry, so an optimistic answer costs
      *    the record. Where the stack cannot report a path MTU, answer
-     *    SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD rather than something larger.
+     *    SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD rather than something larger. The
+     *    path meant is the destination currently being sent to; an
+     *    implementation serving several at once answers low enough for all of
+     *    them.
      *  - **Return OVERSIZE where the platform can distinguish it**, so the caller
      *    can trim and retry rather than treating the record as undeliverable.
      *    Collapsing it into FAILED is permitted for a stack that cannot tell the
