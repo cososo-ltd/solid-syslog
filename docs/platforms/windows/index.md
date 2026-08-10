@@ -14,6 +14,9 @@ callbacks.
 The MSVC toolchain and Winsock — call `WSAStartup` once at process init before
 creating a sender.
 
+The keepalive timings below need Windows 10 version 1709 or later; older systems
+keep the system defaults, and the adapter does not report the difference.
+
 ## Security behaviour and obligations
 
 ### The transport carries syslog in clear
@@ -29,13 +32,30 @@ stream rather than replacing it.
 and the matching `WSACleanup` is yours to place. The adapter does not initialise
 Winsock, because a process that already uses sockets has done it.
 
+### A written record is the operating system's, not the disk's
+
+The file layer writes and returns; nothing forces the data further down. A record
+the store believes is stored survives the process exiting and may not survive the
+machine losing power, so durability is a property of the volume you point the
+store at.
+
+### A peer that dies silently takes up to 85 seconds to notice
+
+Keepalive probes after 45 seconds idle, then four times at ten-second intervals.
+Windows has no user-timeout setting, so a peer that dies with a write in flight
+is bounded by the system's retransmission behaviour instead. Sends into a
+connection not yet declared dead are accepted and reported as delivered, so the
+records inside that window are released by store-and-forward and lost with it.
+
 ### Protection of the store is a property of its directory
 
 Where the store is written, and which accounts can reach it, are decided by the
-directory you choose and the access control on it. The library sets no policy of
-its own and checks none.
+directory you choose and the access control on it. The files are opened with
+sharing permitted, so another process may read or write them while the store is
+running. The library sets no policy of its own and checks none.
 
 ### Host identity is only as good as the operating system's
 
-The hostname and process id are read from Windows and forwarded unmodified. The
-library performs no independent check of either.
+The host name is what Windows reports as the physical DNS host name, and the
+process id is the one Windows assigns. The library performs no independent check
+of either.
