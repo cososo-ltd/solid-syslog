@@ -50,7 +50,7 @@ the right answer and costs nothing.
 
 ## Uptime
 
-`SolidSyslogFreeRtosSysUpTime` reports kernel ticks since boot. It is not
+`SolidSyslogFreeRtos_GetSysUpTime` reports kernel ticks since boot. It is not
 wall-clock time — the clock callback in `SolidSyslogConfig` is a separate
 injection point, and on a target with no real-time clock a timestamp the
 library cannot establish is emitted as absent rather than as a plausible wrong
