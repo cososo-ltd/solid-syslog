@@ -92,12 +92,21 @@ the deployment is held to, and neither is knowable here.
 Where the library does not allow it, its own defaults apply. What each platform
 can and cannot select is on its page.
 
-### Take rotated credentials without a restart
+### Take rotated credentials and a changed identity on the next connection
 
-Replacing credential material takes effect without restarting the process, on the
-next connection at the latest. Rotation is a deployment operation, so no reload
-call is part of the API; forcing a reconnection with
-`SolidSyslogSender_Disconnect` is enough to make it immediate.
+A device issued new credentials while it is running uses them without being
+restarted. Trust anchors, the client credential and the expected peer identity
+are read when a connection is made, not remembered from when the stream was
+created, so replacing them and reconnecting is all it takes. Forcing that
+reconnection with `SolidSyslogSender_Disconnect` makes it immediate.
+
+The expected identity travels with the destination. Where the destination can be
+changed at runtime, redirecting a device to a different collector must carry the
+identity its certificate is checked against, or the redirection quietly moves the
+device to a peer nobody is verifying.
+
+Each platform documents the sequence its own credential model requires, because
+replacing material a stream is holding is not safe at every moment.
 
 ### Report an unusable certificate, and keep delivering
 
@@ -166,3 +175,15 @@ The two that differ most today are the handling of a partially configured client
 credential and the certificate-validity rule, where the current behaviour is to
 refuse the connection rather than to report and continue. Configuration checking
 at create time is the other known shortfall, and it is not confined to TLS.
+
+### One planned change to the API
+
+Closing `#735` — pulling credentials and the expected peer identity on connect
+rather than copying them when the stream is created — will change
+`SolidSyslogOpenSslStreamConfig` and `SolidSyslogMbedTlsStreamConfig`, turning
+value fields into callbacks in the shape the destination endpoint already uses.
+
+That is a breaking change, and pre-1.0 it bumps the minor version rather than the
+major, as [the release process](release-process.md) sets out. It is stated here
+in advance so you can insulate your setup code if you need to. The `Stream` role
+itself, the sender wiring and the rest of the public API are not affected.

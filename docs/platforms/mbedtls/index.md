@@ -29,10 +29,18 @@ of the adapter opens a file, which is what allows it to run on targets built
 without `MBEDTLS_FS_IO`. Each handle must remain valid for the lifetime of the
 stream.
 
-Rotation follows from that. Because the adapter consumes handles it did not
-build, refreshing credentials means parsing the new material and recreating the
-stream, or the `SolidSyslogStreamSender` above it, so the next connection uses
-them. There is no reload callback and none is needed.
+Rotation follows from that, and needs sequencing. The adapter re-reads every
+handle each time it connects, so replacing the material behind a handle is enough
+— the stream does not need rebuilding. But while a connection is open the
+adapter's `ssl_config` holds pointers into that material, and freeing it there is
+a use-after-free.
+
+So: call `SolidSyslogSender_Disconnect` first, which releases the `ssl_config`,
+then free and re-parse into the same handle. The next send reconnects with the
+new material. There is no reload callback and none is needed.
+
+Redirecting the stream at a *different* handle is a separate matter and is not
+supported — see the divergences below.
 
 ## Coexistence is an auditable contract
 
@@ -46,8 +54,17 @@ claim can be checked against the directory.
 
 ## Where it differs from the contract
 
-Five differences at 0.1.0, each tracked. Read them before relying on the
+Six differences at 0.1.0, each tracked. Read them before relying on the
 corresponding obligation.
+
+### The credential handles and the peer identity are fixed when the stream is created
+
+New material behind an existing handle is picked up on the next connection, as
+above. Pointing the stream at a *different* handle is not possible: the
+configuration is copied when the stream is created and nothing can replace it
+afterwards. `ServerName` is fixed the same way, so redirecting a device to
+another collector through the endpoint callback leaves it checking the peer
+certificate against the name it was created with. Tracked as `#735`.
 
 ### A half-supplied client credential is accepted in silence
 
