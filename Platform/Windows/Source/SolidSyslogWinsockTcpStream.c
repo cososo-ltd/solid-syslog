@@ -241,8 +241,8 @@ static void WinsockTcpStream_EnableTcpNoDelay(SOCKET fd)
     WinsockTcpStream_setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (const char*) &enable, (int) sizeof(enable));
 }
 
-/* Windows 10 1709+ exposes TCP_KEEPIDLE / TCP_KEEPINTVL / TCP_KEEPCNT via
- * setsockopt (defined in <ws2ipdef.h>, reached via <ws2tcpip.h>), so idle,
+/* TCP_KEEPIDLE / TCP_KEEPINTVL / TCP_KEEPCNT come from <ws2ipdef.h> via
+ * <ws2tcpip.h>, and Windows 10 1709+ accepts them through setsockopt, so idle,
  * interval and count are each set directly. No TCP_USER_TIMEOUT analogue. */
 static void WinsockTcpStream_EnableKeepalive(SOCKET fd)
 {
