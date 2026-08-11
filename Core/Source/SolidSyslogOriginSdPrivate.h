@@ -13,8 +13,7 @@ enum
 {
     ORIGIN_SOFTWARE_MAX = 48,
     ORIGIN_SWVERSION_MAX = 32,
-    ORIGIN_ENTERPRISE_ID_MAX = 64,
-    ORIGIN_IP_MAX = 64
+    ORIGIN_ENTERPRISE_ID_MAX = 64
 };
 
 struct SolidSyslogOriginSd

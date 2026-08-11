@@ -26,6 +26,20 @@ a separate role filled by a different platform — the
 [platform × capability matrix](../index.md) shows which — layered over this
 stream rather than replacing it.
 
+### An over-large record is trimmed to the path, not lost
+
+Once the socket is connected the datagram asks the kernel for the path MTU and
+reports what is left after the IPv4 and UDP headers. Before that, or where the
+kernel does not answer, it reports the IPv6-safe payload of 1232 bytes, which is
+the conservative answer the
+[Datagram](../../api/structSolidSyslogDatagram.md) contract asks for.
+
+A send that exceeds the path is reported as oversize rather than as a failure, so
+the sender trims the record to the payload just reported — on a UTF-8 codepoint
+boundary — and sends it again. A record longer than the path therefore arrives
+truncated rather than being dropped, and the truncation is visible to the
+collector as a short message rather than as a gap.
+
 ### The store file is owner-only; its directory is yours
 
 Files are created readable and writable by the owning user alone. That protects

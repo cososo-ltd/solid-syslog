@@ -78,6 +78,16 @@ but not that you reached the endpoint you wanted.
 The three states, and what each means, are documented on each platform's
 configuration field.
 
+### Accept a peer authorised by certificate fingerprint
+
+RFC 5425 §5.1 requires that a peer can be authorised by its certificate
+fingerprint, not only by a chain to a trust anchor and a name. The two are
+different tools: a fingerprint pins one certificate, which suits a closed network
+with no PKI, where issuing and rotating a CA is more machinery than the deployment
+wants.
+
+**No shipped platform meets this today** — see [#753](https://github.com/cososo-ltd/solid-syslog/issues/753).
+
 ### Report a partially configured client credential
 
 Mutual TLS is all-or-nothing: a certificate without its key, or a key without its
@@ -217,3 +227,8 @@ on mutual TLS, read your platform's page before you rely on this obligation.
 
 Configuration checking at create time is the third shortfall, and it is not
 confined to TLS.
+
+Fingerprint-based peer authorisation is the fourth, and both platforms fall short
+of it the same way: neither offers it at all. Until
+[#753](https://github.com/cososo-ltd/solid-syslog/issues/753) lands, a peer is
+authorised by trust anchor and name.

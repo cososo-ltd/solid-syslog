@@ -52,7 +52,7 @@ static size_t FakeIpCount(void* context)
 static void FakeIpAt(struct SolidSyslogSdValue* value, void* context, size_t index)
 {
     fakeIpContext = context;
-    SolidSyslogSdValue_BoundedString(value, fakeIps.at(index), 64); // ORIGIN_IP_MAX
+    SolidSyslogSdValue_BoundedString(value, fakeIps.at(index), 64); // the fake integrator's own bound
 }
 
 #define CHECK_ENTERPRISE_ID(expected)                                                           \
@@ -343,10 +343,10 @@ TEST(SolidSyslogOriginSd, FormatIncludesEnterpriseIdFromConfig)
 
 TEST(SolidSyslogOriginSd, FormatIncludesDifferentEnterpriseIdFromConfig)
 {
-    useEnterpriseId("1.3.6.1.4.1.99999");
+    useEnterpriseId("32473");
     resetFormatter();
     format();
-    CHECK_ENTERPRISE_ID("1.3.6.1.4.1.99999");
+    CHECK_ENTERPRISE_ID("32473");
 }
 
 TEST(SolidSyslogOriginSd, EnterpriseIdAtMaxLength)
@@ -450,7 +450,7 @@ TEST(SolidSyslogOriginSd, FormatPassesIpContextToIpCount)
 
 TEST(SolidSyslogOriginSd, IpAtMaxLength)
 {
-    const std::string maxIp = repeated('a', 64); /* ORIGIN_IP_MAX */
+    const std::string maxIp = repeated('a', 64); /* the bound this fake applies */
     const std::string expected = R"([origin software="TestSoftware" swVersion="9.8.7" ip=")" + maxIp + R"("])";
 
     useIps({maxIp.c_str()});
