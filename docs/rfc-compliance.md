@@ -54,7 +54,7 @@ Checked against [RFC 5424](https://www.rfc-editor.org/rfc/rfc5424.html), Standar
 | [6.3.5](https://www.rfc-editor.org/rfc/rfc5424.html#section-6.3.5) | STRUCTURED-DATA examples | N/A | Illustrative. States no requirement of its own |
 | [6.4](https://www.rfc-editor.org/rfc/rfc5424.html#section-6.4) | MSG — UTF-8 preferred | Supported | RFC 3629 UTF-8 validated at the formatter primitives (`SolidSyslogFormatter_BoundedString`), with ill-formed input substituted per-byte with U+FFFD (Unicode §3.9). MSG is prefixed with the §6.4 UTF-8 BOM (`%xEF.BB.BF`) unconditionally. A leading BOM in the caller's body is stripped, so the wire frame contains exactly one. Truncation preserves codepoint boundaries at both layers: the formatter clips at `SOLIDSYSLOG_MAX_MESSAGE_SIZE` without splitting a codepoint, and on UDP the sender walks back over any partial codepoint when the kernel reports `EMSGSIZE` for the path MTU. TCP/TLS streams fragment transparently at the transport layer and so do not need a path-MTU trim |
 | [6.5](https://www.rfc-editor.org/rfc/rfc5424.html#section-6.5) | Message examples | N/A | Illustrative. States no requirement of its own |
-| [7](https://www.rfc-editor.org/rfc/rfc5424.html#section-7) | Structured Data IDs — the IANA-registered SD-IDs are OPTIONAL | N/A | Scoping text for §7's elements. Its one requirement — that a syslog application be prepared to receive the defined number of characters in any valid UTF-8 code point, up to 6 octets each — is directed at receiving applications |
+| [7](https://www.rfc-editor.org/rfc/rfc5424.html#section-7) | Structured Data IDs — the IANA-registered SD-IDs are OPTIONAL | N/A | Introduces the IANA-registered SD-IDs and marks them all OPTIONAL. Its one requirement is directed at receiving applications: be prepared to accept the defined number of characters in any valid UTF-8 code point, which may be up to 6 octets each |
 | [7.1](https://www.rfc-editor.org/rfc/rfc5424.html#section-7.1) | timeQuality SD — tzKnown, isSynced, syncAccuracy | Supported | `SolidSyslogTimeQualitySd` |
 | [7.1.1](https://www.rfc-editor.org/rfc/rfc5424.html#section-7.1.1) | tzKnown — MUST be 1 when the time zone is known, 0 when in doubt | Supported | The `TzKnown` bool in `SolidSyslogTimeQuality` is emitted as `1` or `0`, so no other value can reach the wire. Which one is true is the integrator callback's to answer |
 | [7.1.2](https://www.rfc-editor.org/rfc/rfc5424.html#section-7.1.2) | isSynced — MUST be 1 when synchronised to a reliable source, 0 when not | Supported | The `IsSynced` bool is emitted as `1` or `0` on the same basis as tzKnown |
@@ -117,6 +117,7 @@ Checked against [RFC 5426](https://www.rfc-editor.org/rfc/rfc5426.html), Standar
 | [3.2](https://www.rfc-editor.org/rfc/rfc5426.html#section-3.2) | Message fits in single datagram | Supported | Bounded by `SOLIDSYSLOG_MAX_MESSAGE_SIZE` |
 | [3.2](https://www.rfc-editor.org/rfc/rfc5426.html#section-3.2) | Avoid IP fragmentation (respect MTU) | Supported | The [Datagram](api/structSolidSyslogDatagram.md) contract carries this: an oversize payload is rejected rather than fragmented, and reported distinctly from a hard failure. `SolidSyslogUdpSender` responds by asking the Datagram for the path's largest payload and resending a UTF-8-safe trimmed datagram via `SolidSyslogUdpPayload_TrimToCodepointBoundary`, falling back to `SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD = 1232` (RFC 8200 §5) where no path MTU is available. A platform that cannot report oversize never triggers that retry, and its datagram is lost instead — [#736](https://github.com/cososo-ltd/solid-syslog/issues/736). That fallback is above the 1180 octets §3.2 calls the safest assumption for IPv6 when the MTU is not known in advance, and well above the 480 it gives for IPv4 — the advice is prose rather than an RFC 2119 requirement, and the status here is against the RECOMMENDED restriction it accompanies. How a platform discovers the MTU is on its own page |
 | [3.3](https://www.rfc-editor.org/rfc/rfc5426.html#section-3.3) | Default port 514 | Supported | `SOLIDSYSLOG_UDP_DEFAULT_PORT` = 514 |
+| [3.6](https://www.rfc-editor.org/rfc/rfc5426.html#section-3.6) | UDP checksums — a sender MUST NOT disable them | Supported | Nothing in the library disables UDP checksumming: no adapter sets `SO_NO_CHECK` or a vendor equivalent, so whatever the stack does by default stands. §3.6 also records that RFC 2460 mandates checksums for UDP over IPv6 |
 | [4.1](https://www.rfc-editor.org/rfc/rfc5426.html#section-4.1) | Unreliable delivery — no confirmation | N/A | Inherent in UDP: §4.1 states the transport mapping provides no mechanism to detect or correct datagram loss. §5.4 restates it as a security consequence. Caller should be aware |
 | [5](https://www.rfc-editor.org/rfc/rfc5426.html#section-5) | No authentication/integrity/confidentiality | N/A | Use TLS transport for security. §5.1 covers sender authentication and message forgery, §5.2 confidentiality |
 
@@ -137,11 +138,11 @@ Checked against [RFC 6587](https://www.rfc-editor.org/rfc/rfc6587.html), Histori
 
 ## Summary
 
-Rows carrying `—` rather than a section are library capabilities assessed alongside the requirements, not requirements of the RFC they sit under, which is why the count below is of rows rather than of requirements.
+A `—` in the Section column marks a requirement the RFC does not number — one that comes from IANA, from another RFC, or from this library's own contract. They are requirements and are counted as such.
 
-| RFC | Rows assessed | Supported | Partial | N/A |
+| RFC | Total requirements | Supported | Partial | N/A |
 |---|---|---|---|---|
 | RFC 5424 | 40 | 33 | 0 | 7 |
 | RFC 5425 | 12 | 9 | 1 | 2 |
-| RFC 5426 | 6 | 4 | 0 | 2 |
+| RFC 5426 | 7 | 5 | 0 | 2 |
 | RFC 6587 | 8 | 7 | 0 | 1 |
