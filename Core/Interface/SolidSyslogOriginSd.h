@@ -35,16 +35,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  config struct itself is only read during Create. */
     struct SolidSyslogOriginSdConfig
     {
-        /** NULL omits the software PARAM. The value is carried as supplied, so the
-         *  48-character bound RFC 5424 §7.2.3 sets is the caller's to observe until
-         *  #748 enforces it. §7.2.3 also asks that it name the generating software
-         *  rather than repeat APP-NAME. */
+        /** NULL omits the software PARAM. Truncated to the 48 bytes RFC 5424 §7.2.3
+         *  allows, measured as a receiver's decoder would count them. §7.2.3 asks that
+         *  it name the generating software rather than repeat APP-NAME. */
         const char* Software;
-        /** NULL omits the swVersion PARAM. RFC 5424 §7.2.4 bounds it at 32 characters,
-         *  on the same terms as Software above. */
+        /** NULL omits the swVersion PARAM. Truncated to the 32 bytes RFC 5424 §7.2.4
+         *  allows, on the same terms as Software above. */
         const char* SwVersion;
-        /** NULL omits the enterpriseId PARAM. RFC 5424 §7.2.2 requires an IANA-registered
-         *  private enterprise number; the value is carried as supplied and not validated. */
+        /** NULL omits the enterpriseId PARAM. Truncated to 64 bytes, a bound of this
+         *  library's rather than the RFC's. RFC 5424 §7.2.2 requires an IANA-registered
+         *  private enterprise number, and the value's form is not checked. */
         const char* EnterpriseId;
         SolidSyslogOriginIpCountFunction GetIpCount; /**< Paired with GetIpAt; either NULL omits the ip PARAMs. */
         SolidSyslogOriginIpAtFunction GetIpAt;
