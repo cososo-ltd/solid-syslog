@@ -51,11 +51,19 @@ static bool MetaSd_IsValidConfig(const struct SolidSyslogMetaSdConfig* config)
     bool valid = false;
     if (config == NULL)
     {
-        MetaSd_Report(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_CAT_BAD_CONFIG, SOLIDSYSLOG_META_SD_ERROR_NULL_CONFIG);
+        MetaSd_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_META_SD_ERROR_NULL_CONFIG
+        );
     }
     else if (config->Counter == NULL)
     {
-        MetaSd_Report(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_CAT_BAD_CONFIG, SOLIDSYSLOG_META_SD_ERROR_NULL_COUNTER);
+        MetaSd_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_META_SD_ERROR_NULL_COUNTER
+        );
     }
     else
     {
