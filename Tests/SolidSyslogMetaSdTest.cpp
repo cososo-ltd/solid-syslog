@@ -287,24 +287,24 @@ TEST(SolidSyslogMetaSd, FormatEmitsNothingWhenCreatedWithNullConfig)
     STRCMP_EQUAL("", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
 
-TEST(SolidSyslogMetaSd, CreateWithNullConfigReportsWarning)
+TEST(SolidSyslogMetaSd, CreateWithNullConfigReportsCritical)
 {
     recreateWith(nullptr);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&MetaSdErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_META_SD_ERROR_NULL_CONFIG, ErrorHandlerFake_LastDetail());
 }
 
-TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsWarning)
+TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsCritical)
 {
     config.Counter = nullptr;
     recreate();
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
     POINTERS_EQUAL(&MetaSdErrorSource, ErrorHandlerFake_LastSource());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_META_SD_ERROR_NULL_COUNTER, ErrorHandlerFake_LastDetail());
