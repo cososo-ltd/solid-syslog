@@ -35,10 +35,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  config struct itself is only read during Create. */
     struct SolidSyslogOriginSdConfig
     {
-        /** NULL omits the software PARAM. RFC 5424 §7.2.3 bounds it at 48 characters
-         *  and the value is carried as supplied, so observing that is the caller's
-         *  until #748 enforces it. §7.2.3 also asks that it name the generating
-         *  software rather than repeat APP-NAME. */
+        /** NULL omits the software PARAM. The value is carried as supplied, so the
+         *  48-character bound RFC 5424 §7.2.3 sets is the caller's to observe until
+         *  #748 enforces it. §7.2.3 also asks that it name the generating software
+         *  rather than repeat APP-NAME. */
         const char* Software;
         /** NULL omits the swVersion PARAM. RFC 5424 §7.2.4 bounds it at 32 characters,
          *  on the same terms as Software above. */
