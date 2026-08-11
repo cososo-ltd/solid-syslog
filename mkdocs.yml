@@ -89,6 +89,10 @@ hooks:
   # above the Documentation section that carries it in full — and render a
   # function-pointer member's type as the bare text "void(*".
   - hooks/api_member_summaries.py
+  # Drops the Doxygen kind mkdoxy puts in front of every member heading, and so
+  # from the table of contents built from them. Each heading keeps the anchor it
+  # had, because links point at those from outside the site as well as inside.
+  - hooks/api_member_headings.py
   # Puts a "Part of the <Platform> platform" banner on every generated API page
   # for a header under Platform/<Pack>/, linking to that pack's own page. The
   # pack list comes from SOLIDSYSLOG_PLATFORM_REGISTRY, so registering a new
