@@ -8,6 +8,7 @@ Status key:
 
 - Supported: implemented and tested
 - Partial: implemented with known limitations
+- Not Met: an obligation the library does not meet — the note says what is planned
 - N/A: not applicable to a sender implementation, or applicable and deliberately
   excluded — the note says which, and why
 
@@ -67,7 +68,7 @@ Checked against [RFC 5424](https://www.rfc-editor.org/rfc/rfc5424.html), Standar
 | [7.2.4](https://www.rfc-editor.org/rfc/rfc5424.html#section-7.2.4) | swVersion — MUST NOT be longer than 32 characters | Supported | Enforced at 32 on the same terms as `software` above |
 | [7.2.5](https://www.rfc-editor.org/rfc/rfc5424.html#section-7.2.5) | origin example | N/A | Illustrative. States no requirement of its own |
 | [7.3](https://www.rfc-editor.org/rfc/rfc5424.html#section-7.3) | meta SD — sequenceId, sysUpTime, language | Supported | `SolidSyslogMetaSd` emits all three IANA-registered §7.3 parameters. `sysUpTime` and `language` are independently optional — a NULL field in `SolidSyslogMetaSdConfig` omits that parameter. The counter is required: without one there is no sequenceId, so there is no meta element to emit. Each parameter's own constraints are in the rows below |
-|  [7.3.1](https://www.rfc-editor.org/rfc/rfc5424.html#section-7.3.1) | meta SD — sequenceId wraps at 2147483647 to 1 | Supported | The [AtomicCounter](api/structSolidSyslogAtomicCounter.md) contract carries the wrap: values run [1, `SOLIDSYSLOG_SEQUENCE_ID_MAX`] and never 0. The id is taken when a message is raised, so it records the order messages originated in. Delivery order may differ — messages raised from several threads, or any transport that reorders — and a SIEM recovers origination order by sorting on sequenceId, which is what it is for. |
+| [7.3.1](https://www.rfc-editor.org/rfc/rfc5424.html#section-7.3.1) | meta SD — sequenceId wraps at 2147483647 to 1 | Supported | The [AtomicCounter](api/structSolidSyslogAtomicCounter.md) contract carries the wrap: values run [1, `SOLIDSYSLOG_SEQUENCE_ID_MAX`] and never 0. The id is taken when a message is raised, so it records the order messages originated in. Delivery order may differ — messages raised from several threads, or any transport that reorders — and a SIEM recovers origination order by sorting on sequenceId, which is what it is for. |
 | [7.3.2](https://www.rfc-editor.org/rfc/rfc5424.html#section-7.3.2) | sysUpTime — MUST be a decimal integer, digits only | Supported | The callback returns `uint32_t` hundredths and the value is written through `SolidSyslogSdValue_Uint32`, which emits decimal digits only. §7.3.2 also notes the SNMP management portion may differ from the syslog one, which is the integrator's to reconcile |
 | [7.3.3](https://www.rfc-editor.org/rfc/rfc5424.html#section-7.3.3) | language — MUST be a BCP 47 language identifier | Supported | Streamed through a `SolidSyslogSdValueFunction` into a `SolidSyslogSdValue`, which applies §6.3.3 escaping. The parameter is optional and the identifier is the integrator's to supply; the library does not parse BCP 47 |
 | [8.1](https://www.rfc-editor.org/rfc/rfc5424.html#section-8.1) | UNICODE — shortest-form encoding REQUIRED | Supported | RFC 3629 validation at the formatter primitives rejects overlong encodings, substituting each ill-formed byte with U+FFFD per Unicode §3.9, so a non-shortest-form sequence cannot pass through |
@@ -96,16 +97,25 @@ requirement in force, rather than tabulating it separately.
 |---|---|---|---|
 | [3](https://www.rfc-editor.org/rfc/rfc5425.html#section-3) | TLS to secure syslog | Supported | A TLS `Stream` wraps a byte-transport `Stream` — a TCP one from any platform, or a caller-supplied one. §3's own caveat holds here too: the protection is hop-by-hop, so a relay that terminates the connection is authenticated in place of the originating device |
 | [4.1](https://www.rfc-editor.org/rfc/rfc5425.html#section-4.1) | Default port 6514 | Supported | `SOLIDSYSLOG_TLS_DEFAULT_PORT` in `SolidSyslogTransport.h`; the endpoint callback overrides it |
-| [4.2](https://www.rfc-editor.org/rfc/rfc5425.html#section-4.2) | TLS 1.2 as the mandatory-to-implement protocol | Supported | The contract pins the protocol floor at TLS 1.2 in the stream rather than inheriting the TLS library's defaults, so a permissive build cannot negotiate below it. RFC 9662 keeps 1.2 as mandatory-to-implement |
+| [4.2](https://www.rfc-editor.org/rfc/rfc5425.html#section-4.2) | TLS 1.2 as the mandatory-to-implement protocol | Supported | The contract pins the floor at TLS 1.2. RFC 9662 keeps it mandatory-to-implement |
 | [RFC 9662 §4](https://www.rfc-editor.org/rfc/rfc9662.html#section-4) | Cipher suites — `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256` SHOULD be offered, `TLS_RSA_WITH_AES_128_CBC_SHA` MAY be | N/A | Which cipher suites exist is a property of the TLS library linked on the target, not of this library, which neither adds nor removes any. RFC 9662 downgraded the 2009 mandatory suite because it offers no forward secrecy, which is the same reason a hardened build disables it. RFC 9662 §4 is internally awkward — it calls both suites REQUIRED and then states the offer preference above — so it is cited whole rather than paraphrased into something tidier |
 | [RFC 9662 §4](https://www.rfc-editor.org/rfc/rfc9662.html#section-4) | TLS 1.3 SHOULD be supported, and MUST be preferred where implemented | Supported | The contract sets a floor and deliberately no ceiling, so nothing here holds a handshake below TLS 1.3 and the later version is negotiated wherever both peers offer one. This is why no ceiling is set: pinning one to constrain cipher selection would breach the preference requirement. Whether TLS 1.3 is available at all belongs to the backend the integrator links and how it was built |
 | [RFC 9662 §6](https://www.rfc-editor.org/rfc/rfc9662.html#section-6) | Early data (0-RTT) MUST NOT be used | Supported | RFC 9662 forbids it because syslog has no replay protection and early data has none between connections. Sending early data is an explicit act — no shipped TLS stream calls an early-data API, so none is sent, whatever session state the backend keeps. A caller-supplied stream is the caller's to hold to the same rule |
 | [4.2.1](https://www.rfc-editor.org/rfc/rfc5425.html#section-4.2.1) | Certificate-based authentication — server | Supported | Peer verification is required, not optional: the certificate must chain to the trust anchors the caller supplies, and the peer identity the caller declares is checked against it |
 | [4.2.1](https://www.rfc-editor.org/rfc/rfc5425.html#section-4.2.1) | Certificate-based authentication — client | Supported | A client certificate and its key are optional configuration on the TLS stream, presented only when both are given, and a partially configured pair is reported rather than silently ignored |
 | [4.2.1](https://www.rfc-editor.org/rfc/rfc5425.html#section-4.2.1) | Means to generate a key pair and self-signed certificate | N/A | Deliberately excluded. The library consumes trust material and does not mint it, so key generation belongs to the deployment's provisioning. Directed at a syslog application rather than at a component one is built from |
+| [4.2.2](https://www.rfc-editor.org/rfc/rfc5425.html#section-4.2.2) | Certificate fingerprints published through a management interface | N/A | Directed at a syslog application, not a component one is built from: the library has no management interface, and the certificate is the integrator's to hold and to publish. The fingerprint form §4.2.2 defines matters where a peer is authorized by one, which is §5.1 |
 | [4.2.3](https://www.rfc-editor.org/rfc/rfc5425.html#section-4.2.3) | Administrators may select the cryptographic level | Partial | The contract requires an integrator's cipher policy to be passed through where the underlying library allows one to be selected. Neither shipped TLS platform delivers that on the connection actually negotiated — see each platform's page, and `#733` |
+| [4.3](https://www.rfc-editor.org/rfc/rfc5425.html#section-4.3) | All syslog messages MUST be sent as TLS application data | Supported | The TLS `Stream` carries the frames the sender writes as ordinary application data; nothing is sent outside the session, and §4.3's `APPLICATION-DATA = 1*SYSLOG-FRAME` is what the octet-counting sender produces |
 | [4.3.1](https://www.rfc-editor.org/rfc/rfc5425.html#section-4.3.1) | Octet-counting framing, and the message length | Supported | Reuses `SolidSyslogStreamSender`, so the frame is `MSG-LEN SP MSG`. `SOLIDSYSLOG_MAX_MESSAGE_SIZE` defaults to 2048, the length §4.3.1 requires every transport receiver to accept |
 | [4.4](https://www.rfc-editor.org/rfc/rfc5425.html#section-4.4) | `close_notify` before closing | Supported | Close sends `close_notify` before tearing the connection down |
+
+| [5](https://www.rfc-editor.org/rfc/rfc5425.html#section-5) | Security policies — the deployment chooses how peers are authorized | N/A | Scoping text for the policies below. Which one a deployment runs is the integrator's, and §6.1 names §5.1 and §5.2 together as the RECOMMENDED default |
+| [5.1](https://www.rfc-editor.org/rfc/rfc5425.html#section-5.1) | Authorized peers MUST be specifiable by certificate fingerprint | Not Met | The library authorizes a peer by trust anchor and name, and offers no way to pin a certificate fingerprint. [The contract](tls.md) carries the obligation and [#753](https://github.com/cososo-ltd/solid-syslog/issues/753) tracks delivering it on both shipped TLS platforms, for 0.2.0 |
+| [5.2](https://www.rfc-editor.org/rfc/rfc5425.html#section-5.2) | Path validation, and authorized peers specifiable by host name | Supported | Peer verification chains to the trust anchors the caller supplies, and the declared peer identity is matched against the certificate. dNSName matching and the left-most wildcard rule come from the backend the integrator links |
+| [5.3](https://www.rfc-editor.org/rfc/rfc5425.html#section-5.3) | Unauthenticated transport sender | N/A | A receiver-side policy: it is the receiver that chooses not to authenticate the sender. Whether this library presents a client certificate is §4.2.1 |
+| [5.4](https://www.rfc-editor.org/rfc/rfc5425.html#section-5.4) | Unauthenticated transport receiver — NOT RECOMMENDED | Supported | Not offered, which is the point: peer verification is required rather than optional, so the library will not accept any certificate presented to it. Declining to check a *name* is a separate and narrower choice, and one the contract requires be reported |
+| [5.5](https://www.rfc-editor.org/rfc/rfc5425.html#section-5.5) | Neither peer authenticated — NOT RECOMMENDED | Supported | Follows from §5.4: the receiver is always verified, so this policy cannot be reached from this side |
 
 ## RFC 5426 — Transmission of Syslog Messages over UDP
 
@@ -140,9 +150,9 @@ Checked against [RFC 6587](https://www.rfc-editor.org/rfc/rfc6587.html), Histori
 
 A `—` in the Section column marks a requirement the RFC does not number — one that comes from IANA, from another RFC, or from this library's own contract. They are requirements and are counted as such.
 
-| RFC | Total requirements | Supported | Partial | N/A |
-|---|---|---|---|---|
-| RFC 5424 | 40 | 33 | 0 | 7 |
-| RFC 5425 | 12 | 9 | 1 | 2 |
-| RFC 5426 | 7 | 5 | 0 | 2 |
-| RFC 6587 | 8 | 7 | 0 | 1 |
+| RFC | Total requirements | Supported | Partial | Not Met | N/A |
+|---|---|---|---|---|---|
+| RFC 5424 | 40 | 33 | 0 | 0 | 7 |
+| RFC 5425 | 20 | 13 | 1 | 1 | 5 |
+| RFC 5426 | 7 | 5 | 0 | 0 | 2 |
+| RFC 6587 | 8 | 7 | 0 | 0 | 1 |
