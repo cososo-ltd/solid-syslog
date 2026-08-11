@@ -107,15 +107,16 @@ hooks:
 
 # not_found — enforced (fatal under --strict): the hook above resolves every
 #             in-repo source link, so a genuinely broken link fails the build.
-# anchors   — the mkdoxy-generated API pages emit a few internal anchors
-#             (e.g. #enum-@0) that fail anchor validation; kept at info so
-#             mkdoxy output does not fail the strict build.
+# anchors   — enforced too. It was held at info for anchors like #enum-@0 that
+#             mkdoxy was said to emit and fail on; the generated pages no
+#             longer link to any, and a link into a heading that has moved is
+#             exactly the breakage a build should refuse.
 # Everything else keeps its default: nav typos (validation.nav.*) and
 # unrecognized links still fail a strict build.
 validation:
   links:
     not_found: warn
-    anchors: info
+    anchors: warn
 
 plugins:
   - search
