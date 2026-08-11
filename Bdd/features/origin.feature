@@ -15,7 +15,7 @@ Feature: Structured data — origin
   Scenario: Origin enterpriseId appears in structured data
     Given the syslog oracle is running
     When the BDD target sends a syslog message
-    Then the structured data contains enterpriseId "1.3.6.1.4.1.99999"
+    Then the structured data contains enterpriseId "32473"
 
   Scenario: Origin ip parameter appears in structured data
     Given the syslog oracle is running
@@ -30,7 +30,7 @@ Feature: Structured data — origin
     And the structured data contains tzKnown "1"
     And the structured data contains software "SolidSyslogBddTarget"
     And the structured data contains swVersion "0.7.0"
-    And the structured data contains enterpriseId "1.3.6.1.4.1.99999"
+    And the structured data contains enterpriseId "32473"
     And the structured data contains ip "192.0.2.1"
 
   @no_rtc
@@ -42,5 +42,5 @@ Feature: Structured data — origin
     And the structured data contains isSynced "0"
     And the structured data contains software "SolidSyslogBddTarget"
     And the structured data contains swVersion "0.7.0"
-    And the structured data contains enterpriseId "1.3.6.1.4.1.99999"
+    And the structured data contains enterpriseId "32473"
     And the structured data contains ip "192.0.2.1"

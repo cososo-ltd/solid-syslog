@@ -44,10 +44,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  bound, on the same terms as Software above; RFC 5424 §7.2.4 allows 32
          *  characters. */
         const char* SwVersion;
-        /** NULL omits the enterpriseId PARAM. Truncated to 64 bytes, a bound of this
-         *  library's rather than the RFC's. RFC 5424 §7.2.2 requires an IANA-registered
-         *  private enterprise number, which is the caller's to observe; the value's form
-         *  is not checked. */
+        /** NULL omits the enterpriseId PARAM. RFC 5424 §7.2.2 asks for your
+         *  IANA-registered private enterprise number on its own — "32473", or
+         *  "32473.1.2" if you use sub-identifiers below it — rather than the
+         *  1.3.6.1.4.1 arc the number already sits under. Registering one is the
+         *  caller's to do, and the value's form is not checked here. Until you have
+         *  one, RFC 5612 reserves 32473 for examples and testing. Truncated to 64
+         *  bytes, a bound of this library's rather than the RFC's. */
         const char* EnterpriseId;
         SolidSyslogOriginIpCountFunction GetIpCount; /**< Paired with GetIpAt; either NULL omits the ip PARAMs. */
         SolidSyslogOriginIpAtFunction GetIpAt;
