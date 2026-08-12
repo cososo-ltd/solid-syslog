@@ -112,7 +112,7 @@ its Null object and reported — so the only evidence is what the handler says:
 [syslog] CRITICAL SolidSyslog bad-config (detail 2)
 ```
 
-Doing it in this order is the point. Wire everything at once and see nothing, and you
+The order matters. Wire everything at once and see nothing, and you
 cannot tell a working logger from a silent one. Seeing the faults first, then watching
 them go quiet as each collaborator arrives, is the difference between believing it works
 and knowing.
@@ -287,7 +287,7 @@ static uint8_t s_ring[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(SYSLOG_BUFFER_RECOR
 .Buffer = SolidSyslogCircularBuffer_Create(SolidSyslogFreeRtosMutex_Create(), s_ring, sizeof(s_ring)),
 ```
 
-This separates logging an event from sending it, and that is the point.
+This separates logging an event from sending it.
 `SolidSyslog_Log` becomes safe to call from any number of tasks, and potentially cheap
 enough to call from the place the event actually happens rather than from somewhere
 convenient later. Nothing that logs waits on the network.
@@ -410,7 +410,7 @@ struct SolidSyslogOriginSdConfig originConfig = {
 sd[3] = SolidSyslogOriginSd_Create(&originConfig);
 ```
 
-This lands after storage, and the reason is the point. While records went straight out,
+This lands after storage for a reason. While records went straight out,
 "who sent this" was implied by the connection they arrived on. Once records can replay
 hours later that stops being true, and the record has to say so itself.
 
@@ -549,8 +549,8 @@ product knows. A collector can use it to confirm a record really did arrive over
 really was sealed at rest, and to alert on a device whose pipeline has weakened.
 
 Those are the values in force at this stage. They change as the remaining stages land —
-`transport="mtls"` at stage 19, `atRest="aes-256-gcm"` at stage 20 — which is the point:
-derive both from the handles the device actually holds, not from what you intended to
+`transport="mtls"` at stage 19, `atRest="aes-256-gcm"` at stage 20 — so derive both from
+the handles the device actually holds, not from what you intended to
 configure. A credential that failed to load leaves the device less protected than its
 configuration suggests, and an element claiming protection that is not in force is worse
 than no element at all, because that claim is exactly what a collector is watching for.
