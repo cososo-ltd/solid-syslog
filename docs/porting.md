@@ -147,15 +147,6 @@ allow it.
 - Idempotent `Close` / `Destroy`. No leak on a partial `Open` failure, no
   double-free if `Close` and `Destroy` are both called. Release each resource
   exactly once and null the handle.
-- Cleanup runs under the config lock. `FreeIfInUse` holds
-  `SolidSyslog_LockConfig()` across your cleanup callback, so whatever `Destroy`
-  does to release a resource happens inside whichever primitive the integrator
-  installed — a FreeRTOS critical section, at the recommendation above. Blocking
-  there is not safe: a mutex may not be taken inside `taskENTER_CRITICAL`, and
-  work that needs another task to run cannot complete while interrupts are off.
-  The shipped lwIP TCP stream does block this way, tracked as
-  [#754](https://github.com/cososo-ltd/solid-syslog/issues/754); until that is
-  resolved, keep teardown in your own adapter non-blocking.
 - Never free injected handles. An adapter frees only what it created. Handles
   the integrator passed in (a certificate, an RNG, a caller's socket) are
   borrowed; the owner frees them. The same applies to an upstream library's

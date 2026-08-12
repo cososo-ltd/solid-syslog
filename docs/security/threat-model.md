@@ -1,196 +1,93 @@
-# SolidSyslog Threat Model
+# What to fold into your threat model
 
-## Purpose and how to read this
+In threat-modelling terms SolidSyslog is not a component. It is not a process, a
+device or a data store, and it has no privileges, identity or trust boundary of
+its own. It is compiled into your product and runs with your trust and your
+privileges, so the threat model that matters is the one you write for that
+product.
 
-SolidSyslog is a library component, not a running system. It has no process,
-privileges, or network identity of its own; it is compiled into *your* product
-and runs with *your* trust and *your* privileges. This document therefore cannot
-be a threat model of a deployed system; only you can produce that, because only
-you know your device, your network, and your adversaries.
+This page is the input a supplier owes that exercise: where the library takes
+your records, what it does at each edge it crosses, and what it leaves to you to
+decide. It is not a compliance certificate, and it is citeable as
+supplier-diligence evidence.
 
-What this document does instead is give you the two things you need to fold
-SolidSyslog into *your* threat model:
-
-1. Where SolidSyslog sits across trust boundaries, so you know which edges of
-   your system it touches.
-2. The division of responsibility: what the library defends by construction,
-   and what it delegates to you by contract. A component's security is largely a
-   contract; this document states SolidSyslog's side of it.
-
-It is written for integrators. It is not a compliance certificate, but it is
-citeable as supplier-diligence evidence (see *Compliance* below).
-
-## Scope
-
-What SolidSyslog does: formats RFC 5424 syslog messages and transports them
-(RFC 5426 UDP, RFC 6587 TCP, RFC 5425 TLS), with optional asynchronous buffering
-and store-and-forward persistence.
-
-What SolidSyslog does not do: it is not a log server, aggregator, parser,
-analyser, or redactor. It does not inspect, sanitise, or make security judgements
-about the *content* you ask it to log. It does not manage keys, certificates, or
-identities; it consumes ones you provide.
-
-## Data flow
-
-A single log record travels:
+## Where records go
 
 ```text
-your code ──Log()──▶ buffer ──Service()──▶ store ──▶ sender ──▶ TLS/TCP/UDP ──▶ receiver
+your code ──Log()──▶ buffer ──Service()──▶ store ──▶ sender ──▶ TLS/TCP/UDP ──▶ collector
               (in-process)      (optional persistence)     (network)
 ```
 
-Two branches matter for security: the record leaves the process at the network
-edge, and, if store-and-forward is configured, it comes to rest on a storage
-medium (file/flash) that may outlive the process and may be physically
-accessible.
+Everything up to the sender happens inside your process, at your privilege. Two
+edges leave it, and both are edges of your product rather than of the library.
 
-## Trust boundaries
+## The network edge
 
-| # | Boundary | Nature | SolidSyslog's role |
-|---|---|---|---|
-| B1 | Your code ↔ library | In-process API surface | The library trusts its caller but defends its own invariants and the wire framing (see *Defended by construction*). |
-| B2 | Library ↔ network | Real boundary — the network is untrusted | TLS/mTLS (RFC 5425) provides confidentiality, authenticity, and hop integrity. Plain UDP/TCP provide none. |
-| B3 | Library ↔ storage medium | Real boundary if the medium is physically accessible (removable/embedded/stolen) | Optional keyed at-rest policies (HMAC-SHA256, AES-GCM). The unkeyed CRC-16 policy addresses accidental corruption only, not an attacker with access to the medium. |
-| B4 | Log producer ↔ consumer (the buffer) | Conditional — see below | None. Buffer contents are treated as trusted bytes. |
+Records cross an untrusted network to reach the collector.
 
-### B4 — the conditional buffer boundary
+Over TLS the library authenticates the collector against trust anchors you
+supply, checks it against a name you declare, and can present a client credential
+so the collector authenticates the device in return. Over plain UDP or TCP there
+is no confidentiality, authenticity or integrity, by design and by your choice of
+transport.
 
-The `SolidSyslogBuffer` extension point decouples `Log()` (producer) from
-`Service()` (consumer). Whether this is a trust boundary depends on the
-implementation you wire:
+[TLS obligations](../tls.md) is the contract every TLS platform meets, including
+where it departs from general TLS practice and why. Each platform's page records
+where it falls short of that contract today.
 
-- PassthroughBuffer / CircularBuffer: producer and consumer are threads in
-  one address space. Not a trust boundary: any thread that can write the ring
-  can already do anything to the process. The injected mutex is for concurrency
-  correctness, not security.
-- PosixMessageQueueBuffer: the record transits a kernel message queue. The
-  library creates that queue `0600` (owner read/write only), so in the
-  supported single-process, same-UID configuration it stays within one trust
-  domain by construction.
+## The storage edge
 
-Assumption (current): the `Log()`→`Service()` dataflow stays within a single
-trust domain. Under that assumption no boundary exists and none is enforced; the
-library applies no integrity or authenticity check across the buffer path.
-(Contrast the at-rest *store*, which does.)
+With store and forward configured, records come to rest on a medium that outlives
+the process and may be physically accessible.
 
-Your obligation: if you plug in a custom Buffer, or expose a message queue,
-such that the dataflow crosses a process or privilege boundary (a multi-process
-broker, a shared-memory ring across privilege domains, a queue read by a
-lower-privileged consumer), then you own authenticity, integrity, and
-access-control across it. The library will treat whatever it reads back as trusted.
+A SecurityPolicy seals each stored record, and
+[at-rest cryptography](at-rest-cryptography.md) states what each one gives you.
+No policy is wired unless you wire one, so physical extraction of the medium
+discloses whatever was stored until you choose.
 
-## Assets
+## What you supply and decide
 
-- Log content in transit: confidentiality/integrity between you and the receiver (B2).
-- Log content at rest: confidentiality/integrity of buffered/stored records (B3).
-- The receiver's trust in log authenticity: that records came from this device, unmodified (B2, and end-to-end: see gaps).
-- Device liveness: that a hung/hostile receiver cannot stall your logging thread (B2).
-
-## Threat actors
-
-| Actor | In scope | SolidSyslog's answer |
-|---|---|---|
-| Passive network eavesdropper | Yes | TLS (RFC 5425). |
-| Active network MITM | Yes | TLS server-cert + hostname validation; mutual TLS for peer authentication. |
-| Device-physical-access / media theft | Yes | At-rest HMAC-SHA256 / AES-GCM policies (opt-in). Residual if none chosen. |
-| Malicious or buggy caller | Partial | Library defends its own invariants and wire framing; trusts the caller for content and process integrity. |
-| Nation-state exploitation of the underlying TLS/OS | No | Delegated to the platform crypto/OS. |
-| Root / same-UID host principal | No | Same trust domain by definition. |
-
-## Defended by construction
-
-These are properties of the shipped code, not aspirations:
-
-- No dynamic allocation. Every stateful object lives in a static pool. There is
-  no heap use-after-free, double-free, or allocator exhaustion *originating in the
-  library*; memory footprint is bounded and known at link time.
-- The library owns the wire framing. Header field sinks bound field widths and
-  substitute out-of-charset bytes; the SD-value writer's escaper is the single
-  source of truth for `"`, `\`, and `]` plus per-byte ill-formed substitution.
-  Consequently a caller- or callback-supplied hostname, app-name, or structured-data
-  value cannot break header framing or forge/inject a structured-data element:
-  syslog injection via logged values is prevented by construction.
-- Null-object pattern throughout. An unwired dependency dispatches to a safe
-  no-op, not a NULL dereference.
-- Bounded, non-blocking transport. TCP connects are non-blocking with a bounded
-  `select()` deadline and fail-fast on refusal; Send/Read never block on a wedged
-  peer or a full kernel buffer. A hostile or dead receiver cannot stall your
-  service thread.
-- Graceful degradation under pressure. Store-and-forward offers explicit
-  discard policies (oldest / newest / halt) and threshold/halt callbacks, so a
-  backlog or a network outage has a defined, caller-chosen outcome rather than
-  unbounded growth.
-- Transport security (opt-in). TLS 1.2+ (RFC 5425): a pinned protocol floor,
-  mandatory trust anchors, verification of the peer identity you declare, and
-  optional mutual TLS. The full contract is [TLS obligations](../tls.md), and
-  each backend's page records where it falls short of it today.
-- At-rest protection (opt-in). CRC-16 for accidental-corruption integrity;
-  HMAC-SHA256 for tamper-evidence; AES-GCM for confidentiality + integrity, each
-  available for both the OpenSSL and Mbed TLS reference integrations.
-
-## Your obligations (the contract)
-
-| You must | Because |
+| You provide | Because |
 |---|---|
-| Not log secrets you don't want transported/stored | The library is a transport, not a redactor — it never inspects content. |
-| Provision and validate TLS/mTLS certificates; supply the CA bundle and declare the peer identity to verify | The library consumes trust material; it does not mint or manage it, and it verifies against the name you declare rather than one it infers. |
-| Resolve and trust the destination address | The library connects to whatever address the injected resolver returns; it does not authenticate DNS responses. On targets without DNS you supply the address directly. |
-| Supply a properly-seeded RNG (Mbed TLS `ctr_drbg`) | A weak RNG silently weakens TLS. The library uses the RNG you inject. |
-| Inject a real mutex (CircularBuffer) / config-lock (multi-task pools) where concurrency exists | The library's synchronisation primitives are injected; the defaults are no-ops. |
-| Keep `Log()`→`Service()` within one trust domain, or secure a boundary-crossing Buffer yourself | The library does not check the buffer dataflow (B4). |
-| Protect the storage medium and/or select an at-rest policy for sensitive logs | Physical extraction of an unprotected medium discloses stored content. |
-| Own the underlying TLS/crypto library: selection, patching, CVE response | SolidSyslog rolls no crypto; it links yours. |
-| Size buffers/records via the `*_MAX_*` tunables and manage object lifecycle | The library enforces its bounds against these values, not against your intent. |
+| The content, and the judgement not to log secrets | The library transports what you give it. It does not inspect, sanitise or redact |
+| Certificates, keys and the CA bundle, and the peer name to verify | The library consumes trust material and mints none. It verifies against the name you declare rather than one it infers |
+| The destination address, or a resolver you trust | The library connects to whatever address it is given and does not authenticate DNS responses |
+| A properly seeded RNG where the TLS backend takes one | A weak RNG silently weakens TLS |
+| A mutex and a config lock where concurrency exists | The synchronisation primitives are injected and default to no-ops |
+| The storage medium, its permissions, and an at-rest policy if the content is sensitive | The library seals records. Access, retention and deletion on the medium are the platform's |
+| The TLS and crypto libraries, including patching and CVE response | SolidSyslog rolls no crypto. It links yours |
 
-## Not defended against (and whose problem it is)
+If you wire a Buffer whose producer and consumer sit in different processes or
+privilege domains, you own authenticity and integrity across that gap. The
+library treats whatever it reads back as trusted. The shipped buffers stay within
+one address space, and the POSIX message queue is created owner-only.
 
-- A compromised calling process: out of scope. The library trusts its caller by
-  definition; if your process is owned, so is anything it logs.
-- Log content confidentiality/correctness: yours. See obligations.
-- End-to-end integrity through log relays: not provided. TLS protects each
-  hop only; once a relay terminates the connection, SolidSyslog offers no
-  cryptographic guarantee that downstream records are unaltered.
-- Replay of captured records: TLS prevents replay within a live session, but
-  SolidSyslog adds no cryptographic anti-replay of its own. Anyone able to
-  re-inject records downstream of a terminated TLS hop (a malicious or compromised
-  relay) can replay valid records undetected, the same root cause as the
-  end-to-end integrity gap above. Receiver-side de-duplication on the RFC 5424
-  `sequenceId` / timestamp is the mitigation; note `sequenceId` is informational,
-  not cryptographically bound.
-- TLS certificate revocation (CRL/OCSP): the library performs no revocation
-  checking itself. Whether revocation is enforced depends on the TLS backend and
-  platform you configure; treat it as your responsibility unless your backend
-  guarantees it.
-- Cryptographic attacks on the underlying TLS/crypto library: delegated to
-  OpenSSL / Mbed TLS.
-- Network denial of service: a sender cannot prevent it. The library degrades
-  gracefully (store-and-forward, discard policies) but cannot keep packets flowing.
-- Physical extraction of stored logs when no at-rest policy is selected: the
-  default store is plaintext + CRC-16, which detects accidental corruption and
-  provides neither confidentiality nor tamper-evidence.
+## What the library does not do
 
-## Residual risks
+An integrator might reasonably assume otherwise about these, so they are stated
+rather than left out.
 
-- Non-constant-time formatting. Formatting is not constant-time; a co-resident
-  timing attacker could in principle infer something about content. Syslog content
-  is not typically secret-bearing, but if yours is, treat this as residual.
-- Caller-driven message size. The library bounds against its `*_MAX_*`
-  tunables, but does not police whether your *intended* record fits your configured
-  limits; oversize content is truncated at the boundary, not rejected upstream.
+- **End-to-end integrity through relays.** TLS protects each hop. Once a relay
+  terminates the connection, nothing cryptographic binds the records that leave
+  it to the device that raised them.
+- **Anti-replay beyond the TLS session.** Anyone able to re-inject records
+  downstream of a terminated hop can replay valid ones. Receiver-side
+  de-duplication on the sequence number and timestamp is the mitigation; the
+  sequence number is informational, not cryptographically bound.
+- **Certificate revocation.** No shipped backend checks a revocation list or an
+  online responder. Configure it in your TLS library if your assessment needs it.
+- **Constant-time formatting.** Formatting is not constant-time. Syslog content
+  is not usually secret-bearing, but treat it as residual if yours is.
+- **Anything about a compromised caller.** The library trusts the process it runs
+  in. If that process is owned, so is anything it logs.
 
-## Compliance
+## Related
 
-This model supports SolidSyslog's IEC 62443 / EU CRA positioning as a
-security-conscious component supplier. See [`cra.md`](../cra.md) for the CRA
-Annex I audit-trail map, [`iec62443.md`](../iec62443.md) for the control-by-control
-map, and [`rfc-compliance.md`](../rfc-compliance.md)
-for the standards coverage matrix. The public disclosure process for issues found
-against this model is in [Security policy](policy.md).
+[CRA guide](../cra.md) and [IEC 62443 guide](../iec62443.md) map what the library
+provides against those frameworks. [RFC compliance](../rfc-compliance.md) states
+what it emits clause by clause. The disclosure process for issues found against
+this page is in [Security policy](policy.md).
 
-## Review policy
-
-This is a living document. It is reviewed on any architectural change that alters a
-trust boundary or the division of responsibility: a new transport, a new field
-type, a new platform backend, or a new extension point. The review lands in the
-pull request that makes the change.
+This page is reviewed on any change that alters an edge or the division of
+responsibility: a new transport, a new platform, or a new extension point. The
+review lands in the pull request that makes the change.

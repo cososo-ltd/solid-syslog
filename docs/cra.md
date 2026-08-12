@@ -92,8 +92,8 @@ consuming.
 
 Secure-by-design evidence for your technical file is in the [threat
 model](security/threat-model.md) and [at-rest
-cryptography](security/at-rest-cryptography.md), which state what the library defends by
-construction and what it delegates to you by contract.
+cryptography](security/at-rest-cryptography.md), which state which edges the library
+crosses in your product and what it delegates to you by contract.
 
 ## Where to go next
 
