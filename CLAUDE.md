@@ -727,8 +727,8 @@ role, not platform*, for the rule and the two-implementations-in-one-build cavea
   exhaustion site if a handler is installed.
 - **Slot-walk synchronisation.** Every pool's Create / Destroy wraps its slot probe in the
   `SolidSyslog_LockConfig` / `SolidSyslog_UnlockConfig` injection pair. Single-task targets get the
-  no-op default; `SolidSyslogConfigLock.h` states what a multi-task target installs. Cleanup
-  runs inside the lock, so it must tolerate blocking and must not be a SolidSyslog Mutex.
+  no-op default. Cleanup runs inside the lock, so a multi-task target must install one that
+  tolerates blocking and is not a SolidSyslog Mutex; `SolidSyslogConfigLock.h` states the contract.
 - **Shared helper.** `Core/Source/SolidSyslogPoolAllocator.{h,c}` (TU-internal) owns the
   three-operation contract (`AcquireFirstFree`, `FreeIfInUse`, `IndexIsValid`) every
   pool class reuses. No class re-implements the slot walk.
