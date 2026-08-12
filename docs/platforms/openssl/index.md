@@ -47,14 +47,16 @@ The contract asks for it to be reported with delivery continuing, on the grounds
 that the collector is the enforcement point for our own credential.
 
 This adapter is stricter than the contract rather than weaker, and the stricter
-behaviour is safe. Tracked as `#734`.
+behaviour is safe. Tracked as
+[#734](https://github.com/cososo-ltd/solid-syslog/issues/734).
 
 ### An expired certificate stops delivery
 
 A peer certificate that is expired or not yet valid fails the handshake, even
 where it still chains to a trusted anchor. The contract asks for it to be
 reported with delivery continuing, because clock skew is the dominant cause and a
-device with a wrong clock is one whose logs you still want. Tracked as `#731`.
+device with a wrong clock is one whose logs you still want. Tracked as
+[#731](https://github.com/cososo-ltd/solid-syslog/issues/731).
 
 ### The cipher policy does not bind a TLS 1.3 connection
 
@@ -63,10 +65,11 @@ own, as the contract asks. It governs TLS 1.2 and below only. OpenSSL has kept
 TLS 1.3 ciphersuites in a separate list since 1.1.1, and this adapter sets a
 protocol floor without a ceiling, so against a modern peer the negotiated
 connection uses OpenSSL's own TLS 1.3 defaults and the configured list has no
-effect on it. Tracked as `#733`.
+effect on it. Tracked as
+[#733](https://github.com/cososo-ltd/solid-syslog/issues/733).
 
 ### The configuration is not checked when the stream is created
 
 A configuration missing something the stream cannot work without is accepted, and
-the fault appears on the first connection attempt rather than at setup. Tracked
-as `#732`.
+the fault appears on the first connection attempt rather than at setup. Tracked as
+[#732](https://github.com/cososo-ltd/solid-syslog/issues/732).

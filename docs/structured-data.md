@@ -44,7 +44,7 @@ which the library calls with an `SD-ELEMENT` writer when it builds a message:
 
 static void ExampleSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element)
 {
-    (void) base; /* stateless here — see "Carrying data" below */
+    (void) base; /* stateless here — see "Carrying instance or per-call data" below */
 
     SolidSyslogSdElement_Begin(element, "example", 32473U);
     SolidSyslogSdValue_String(SolidSyslogSdElement_Param(element, "detail"), "Hello World");
@@ -135,12 +135,15 @@ first example) is never affected.
 Write values with `SolidSyslogSdValue`:
 
 - `SolidSyslogSdValue_String(value, source)`: a NUL-terminated string.
-- `SolidSyslogSdValue_BoundedString(value, source, maxLength)`: at most `maxLength` bytes.
+- `SolidSyslogSdValue_BoundedString(value, source, maxDecodedLength)`: capped for a
+  receiver that parses into a width-limited field. The bound counts what the reader's
+  un-escaping decoder extracts, not the on-wire bytes.
 - `SolidSyslogSdValue_Uint32(value, number)`: decimal digits.
 
 The library applies the RFC 5424 §6.3.3 escaping for you (`"`, `\`, and `]` are
-backslash-escaped) and validates UTF-8; you pass the raw value and the receiver gets it
-back unchanged. Output is bounded by the message buffer, so a value can never overrun it.
+backslash-escaped) and substitutes ill-formed UTF-8 with U+FFFD; you pass the raw value
+and a receiver that un-escapes gets well-formed text back. Output is bounded by the
+message buffer, so a value can never overrun it.
 
 ## What the library owns, and what you own
 

@@ -10,13 +10,9 @@ series by Cozens Software Solutions Limited.
 
 This file holds **how we work together**. [`CLAUDE.md`](CLAUDE.md) holds **how the
 repository works** — git and issue workflow, project structure, naming, code style,
-design patterns, and the board and milestone conventions. Neither restates the other.
-
-When two sources disagree, the repository wins: `.clang-format`, `.clang-tidy`,
-`.markdownlint-cli2.jsonc`, `CMakePresets.json` and `.github/workflows/ci.yml` are
-executable and cannot drift from what actually happens. A briefing in conversation
-outranks both files — it is the most recent intent — but say so when it contradicts a
-file, so the file gets fixed rather than quietly bypassed.
+design patterns, and the board and milestone conventions. Neither restates the other,
+precedence included: what wins when two sources disagree is stated once, in CLAUDE.md
+under **Precedence, when two sources disagree**.
 
 ## Collaboration modes
 

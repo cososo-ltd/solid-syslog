@@ -101,9 +101,19 @@ include them), run `addSubIssue` retroactively; it's idempotent-safe on closed i
 ## Project Board Membership
 
 The `SolidSyslog` project board (`gh project list --owner DavidCozens` → project 1) has a
-`Status` single-select field with options **Todo**, **In Progress**, **Done**. Adding an
-issue to the repo does **not** add it to the board — that is a separate step and must be
-done explicitly.
+`Status` single-select field with options **Todo**, **In Progress**, **Done**.
+
+Project workflows keep membership and status; there is no manual step. Linking a story
+under its epic with `addSubIssue` puts it on the board at `Todo`, opening a pull request
+that links the issue moves it to `In Progress`, and closing it sets `Done`. The workflows
+add nothing that has no parent, so a chore or docs issue raised without an epic stays off
+the board; a few early items predate them.
+
+Confirm any of that by reading the board rather than the workflow list — an automation
+being enabled says nothing about which field it writes, and the API exposes each
+workflow's name and enabled flag but not its action. Pass
+`archivedStates: [ARCHIVED, NOT_ARCHIVED]` when you read: `projectV2.items` omits
+archived items by default, so a board read without it is a partial one.
 
 ### Convention
 
@@ -124,7 +134,10 @@ done explicitly.
   housekeeping step, not a status transition. Archived items stay on the project and still
   count in the epic's sub-issue roll-up.
 
-### Add-to-board recipe
+### Repairing board state by hand
+
+Nothing routine needs this — the workflows above place items and set status. It is here
+for the case where one has not fired, or a status is wrong and needs correcting.
 
 ```bash
 # Project and Status field IDs (stable for this repo):
@@ -132,24 +145,28 @@ done explicitly.
 #   statusField = PVTSSF_lAHOAPhEnM4BTETqzhAat7w
 #   options     = Todo:f75ad846  In Progress:47fc9ee4  Done:98236657
 
-# 1. Get the issue's node ID.
-gh api graphql -f query='
-query {
-  repository(owner: "cososo-ltd", name: "solid-syslog") {
-    issue(number: <N>) { id }
+# Read the board. `issue.projectItems` returns 0 here -- the project is user-owned and
+# the repository org-owned -- so enumerate the project's items and paginate past 100.
+# archivedStates is required: without it the archived items are silently missing.
+gh api graphql --paginate -f query='
+query($endCursor: String) {
+  user(login: "DavidCozens") {
+    projectV2(number: 1) {
+      items(first: 100, after: $endCursor, archivedStates: [ARCHIVED, NOT_ARCHIVED]) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          content { ... on Issue { number state } }
+          fieldValueByName(name: "Status") {
+            ... on ProjectV2ItemFieldSingleSelectValue { name }
+          }
+        }
+      }
+    }
   }
 }'
 
-# 2. Add to project (returns the new project item's id).
-gh api graphql -f query='
-mutation {
-  addProjectV2ItemById(input: {
-    projectId: "PVT_kwHOAPhEnM4BTETq",
-    contentId: "<ISSUE_NODE_ID>"
-  }) { item { id } }
-}'
-
-# 3. Set Status (use the option id matching Todo / In Progress / Done).
+# Correct a status, using the item id the query above returns.
 gh api graphql -f query='
 mutation {
   updateProjectV2ItemFieldValue(input: {
@@ -203,21 +220,21 @@ For every new story:
    Pad both the epic and story numbers to two digits.
 2. `addSubIssue` it under the parent epic (see **Issue / Epic Linking** above). The
    Parent-issue link is what groups the story into the correct swimlane.
-3. Add the story to the project board with `Status = Todo` using the recipe above. Do
-   **not** add the parent epic itself — the swimlane appears automatically once a child
-   story is on the board.
+
+There is no third step. Step 2 puts the story on the board at `Todo`, and the swimlane
+appears with it. Do **not** add the parent epic — it is not an item.
 
 ### Work-in-progress limit
 
 `In Progress` holds at most two items — typically one functional story and one BDD
-story. **Check the count before moving anything into `In Progress`, and say so if the
-move would make it three.** The limit is only worth having if someone is watching it,
-and the board does not enforce it.
+story. A linked pull request is what moves a story there, so this is in practice a limit
+on open PRs: **check the count before opening one that would make it three, and say so.**
+The limit is only worth having if someone is watching it, and the board does not enforce
+it.
 
 ### When closing a story
 
-When a PR merges and closes a story, flip its project Status to `Done`. Closing the
-issue does not update the Status field automatically.
+A merged PR that closes the story sets `Done` for you.
 
 Epics don't have a Status field on the board (they aren't items). When every child
 story is Done, the swimlane naturally becomes all-Done; the epic issue itself should
@@ -429,7 +446,7 @@ why.** Read the header rather than a copy of it. For the wider map:
 
 - `docs/roles/index.md` — the roles, each with its vtable contract and the backends
   that realise it.
-- `docs/platforms/*.md` — what each platform pack supplies.
+- `docs/platforms/<slug>/index.md` — what each platform supplies.
 - `docs/api-reference/` plus the generated Doxygen indexes (`docs/api/files.md`,
   `annotated.md`, `functions.md`, `macros.md`) — every header and symbol.
 
@@ -492,6 +509,31 @@ Deliberate deviations from the MISRA rule set are recorded in
 - All compiler warnings are errors (`-Werror`). Do not suppress warnings without strong justification.
 - cppcheck runs with `--error-exitcode=1`. Inline suppressions (`// cppcheck-suppress`) must include
   a comment explaining why.
+
+### Characters in source
+
+Write what a UK keyboard types. In `.c`, `.h` and `.cpp` — comments included — that
+means `-` and not an em or en dash, `...` and not an ellipsis, `->` and not an arrow,
+and the ASCII spelling of a symbol: `<=`, `+/-`, `x`, `||`, "sum of". A continuation
+ellipsis takes no leading comma: `first, second...`, not `first, second, ...`.
+
+Three exceptions stand, each authorised rather than assumed:
+
+- `µ` in a unit, and `§` in an RFC citation. Both read better as themselves and
+  neither is ambiguous.
+- A character that *is* the subject of its comment. The UTF-8 tests name U+00E9, the
+  euro sign and an emoji to explain the byte sequences they encode; replacing them
+  would delete the point.
+- String literals were left alone in the sweep that established this. Seven carry an
+  em dash and are runtime or test output, where the character is data rather than
+  typography.
+
+**Anything else non-ASCII: ask.** Do not quietly pick a typographic character, and do
+not quietly rewrite a sentence to avoid one — either way the decision goes unrecorded.
+
+This is a rule about source. Documentation under `docs/` keeps typographic characters,
+on the reasoning that prose of that length is written with an authoring tool; `README.md`
+is hyphenated by hand and is the deliberate exception.
 
 ### MISRA-load-bearing `.clang-format` settings
 
@@ -562,6 +604,23 @@ Naming a second platform to contrast behaviour, or to say where a capability
 comes from, couples the two: the eleventh platform then has to be added to ten
 pages. State this platform's own behaviour completely, and point at the
 capability matrix in `docs/platforms/index.md` for who fills what.
+
+### Link the record, not the source
+
+A documentation page does not send the reader into the source tree. Where a
+symbol has a generated API page, link that; otherwise name the file in code font
+and leave it there. The page's job is to say what the library does, not to show
+where it is implemented.
+
+Issues and pull requests are the opposite case, and are linked. They are the
+tracking record, and a reader who has just been told that a platform diverges
+from a contract wants to see whether that is still true.
+
+The repository-root documents are outside this rule rather than an exception to
+it. `README.md`, `SECURITY.md`, `SUPPORT.md` and `LICENSE.md` are read on GitHub
+as well as published into the site by `hooks/root_pages.py`, so their links stay
+repo-relative; `hooks/source_links.py` rewrites whatever escapes `docs/` to a
+canonical URL at build time.
 
 ---
 

@@ -61,29 +61,32 @@ A client certificate is presented only when both `ClientCertChain` and
 connection proceeds with server-authenticated TLS, and nothing is reported — so a
 device configured for mutual TLS can run without presenting its certificate, and
 without anyone on the device knowing. The contract requires this to be reported.
-Until it is, check for a half-supplied pair before you open the stream. Tracked
-as `#718`.
+Until it is, check for a half-supplied pair before you open the stream. Tracked as
+[#718](https://github.com/cososo-ltd/solid-syslog/issues/718).
 
 ### The key is not checked against its certificate
 
 No local check confirms that `ClientKey` matches `ClientCertChain`, and a failure
 to install the pair is not reported either. A mismatch therefore surfaces as a
 handshake rejection from the collector rather than as a setup error on the
-device, which sends you looking in the wrong place. Tracked as `#719`.
+device, which sends you looking in the wrong place. Tracked as
+[#719](https://github.com/cososo-ltd/solid-syslog/issues/719).
 
 ### An expired certificate stops delivery
 
 A peer certificate that is expired or not yet valid fails the handshake, even
 where it still chains to a trusted anchor. The contract asks for it to be
 reported with delivery continuing, because clock skew is the dominant cause and a
-device with a wrong clock is one whose logs you still want. Tracked as `#731`.
+device with a wrong clock is one whose logs you still want. Tracked as
+[#731](https://github.com/cososo-ltd/solid-syslog/issues/731).
 
 ### The cipher policy cannot be expressed
 
 The configuration carries no cipher or ciphersuite field, so the ciphersuites
 your `mbedtls_config.h` enables, filtered by the preset, are what gets
 negotiated. The contract asks for an integrator's policy to be passed through
-where the library allows one to be selected. Tracked as `#733`.
+where the library allows one to be selected. Tracked as
+[#733](https://github.com/cososo-ltd/solid-syslog/issues/733).
 
 ### The configuration is not checked when the stream is created
 
@@ -91,4 +94,5 @@ A configuration missing something the stream cannot work without is accepted, an
 the fault appears on the first connection attempt rather than at setup. The
 random source and the trust chain are installed through calls that return no
 status, so a missing one becomes a handshake failure rather than the
-configuration error it is. Tracked as `#732`.
+configuration error it is. Tracked as
+[#732](https://github.com/cososo-ltd/solid-syslog/issues/732).

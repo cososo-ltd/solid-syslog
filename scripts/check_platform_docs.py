@@ -100,6 +100,14 @@ ALLOWED = [
 
 SCANNED_SUFFIXES = (".c", ".h", ".md")
 
+# A spelt-out count of the roles, which prose must not carry: the enumeration
+# checks below are what a thirteenth role trips, and a number beside them just
+# rots. Spelt-out only -- a bare digit would match version numbers and sizes.
+ROLE_COUNT_IN_PROSE = re.compile(
+    r"\b(?:eleven|twelve|thirteen|fourteen)\b(?=[^.]{0,40}?\b(?:roles?|contracts?)\b)",
+    re.IGNORECASE,
+)
+
 # An #include names a header the compiler must find, not a platform the prose
 # is describing. The boundary is editorial; what a translation unit depends on
 # is the build's business and is governed there.
@@ -257,6 +265,13 @@ def role_faults():
         for orphan in re.findall(rf"{re.escape(prefix)}structSolidSyslog(\w+)\.md", text):
             if orphan not in roles:
                 faults.append(f"{listing} links {orphan} as a role, but no SolidSyslog{orphan}Definition.h declares it")
+        # A count in prose is the thing this check replaced. It cannot be
+        # asserted, so a thirteenth role would leave it quietly wrong.
+        for spelt in re.findall(ROLE_COUNT_IN_PROSE, text):
+            faults.append(
+                f"{listing} states the number of roles in prose ('{spelt}') — "
+                "the listing above is what keeps the set honest, so leave the count out"
+            )
     return faults
 
 
