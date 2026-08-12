@@ -124,9 +124,8 @@ When unavailable:
   `cososo.co.uk`) and tell any active reporters that timelines are paused under
   the force-majeure clause. As a solo maintainer there is no standing cover; if a
   co-maintainer exists, hand the active advisories and repository access to them.
-- **Long-term** (unable to continue): triggers the continuity commitment: the
-  current release is relicensed under a permissive OSS licence so users aren't
-  stranded (see `SECURITY.md`).
+- **Long-term** (unable to continue): triggers the continuity commitment stated
+  in [`LICENSE.md`](../../LICENSE.md), so users aren't stranded.
 
 ## Evidence retention
 

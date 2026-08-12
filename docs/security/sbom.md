@@ -18,8 +18,10 @@ In scope:
 - `Platform/`: Tier 2 (supported; API may evolve per target).
 - Root `CMakeLists.txt` + `CMakePresets.json`: the build contract an
   integrator invokes directly. Tampering here affects the built library.
-- Root `LICENSE.md`: the licence text we are legally bound by and that
-  downstream integrators inherit. Tampering here is a compliance issue.
+- Root `LICENSE.md` and `LICENSES/`: the licence terms we are legally bound
+  by and that downstream integrators inherit — the choice of three licences
+  and the two verbatim PolyForm texts it chooses between. Tampering here is
+  a compliance issue.
 
 Out of scope:
 
@@ -78,8 +80,8 @@ Key fields worth reading:
 | `metadata.component.version` | The value from `.release-please-manifest.json` at the time of generation. Pre-release: `0.0.0`. |
 | `metadata.component.purl` | Package URL keyed to the exact commit SHA — unambiguous pointer back to the source. |
 | `metadata.component.supplier.name` | `Cozens Software Solutions Limited (COSOSO)`. |
-| `metadata.component.licenses[0].license.id` | `PolyForm-Noncommercial-1.0.0` — SPDX identifier. |
-| `metadata.properties[solidsyslog:source-tree-sha256]` | Content-tree hash: SHA-256 of a sorted list of `<content-sha256>  <path>` lines for every tracked file in `Core/` + `Platform/` plus the root-level `CMakeLists.txt`, `CMakePresets.json`, and `LICENSE.md`, at the commit. Reproducible byte-for-byte from any clone, with no dependency on `git archive` output format or git version. |
+| `metadata.component.licenses[0].expression` | `PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial` — an SPDX expression, because the library is offered under three alternative licences and the recipient chooses. Only the Noncommercial identifier is on the SPDX License List; the other two are `LicenseRef-`. |
+| `metadata.properties[solidsyslog:source-tree-sha256]` | Content-tree hash: SHA-256 of a sorted list of `<content-sha256>  <path>` lines for every tracked file in `Core/` + `Platform/` plus the root-level `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`, and `LICENSES/`, at the commit. Reproducible byte-for-byte from any clone, with no dependency on `git archive` output format or git version. |
 
 ## How to generate one (rehearsal)
 

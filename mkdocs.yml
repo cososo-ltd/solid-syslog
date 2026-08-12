@@ -222,8 +222,11 @@ nav:
       # Published from SECURITY.md at the repository root by hooks/root_pages.py.
       - Security policy: security/policy.md
       # Likewise LICENSE.md — the terms are a compliance question for a reader
-      # deciding whether they may use the library.
+      # deciding whether they may use the library — and the two verbatim
+      # PolyForm texts it chooses between, published from LICENSES/.
       - Licence: license.md
+      - PolyForm Internal Use 1.0.0: licenses/polyform-internal-use-1.0.0.md
+      - PolyForm Noncommercial 1.0.0: licenses/polyform-noncommercial-1.0.0.md
   - API reference:
       # api-reference/index.md is the tab's own first child, so navigation.indexes
       # promotes it into the tab link — and the narrow-width drawer opens on this

@@ -1,58 +1,75 @@
-Copyright 2026 Cozens Software Solutions Limited
+# SolidSyslog Licensing
+
+Copyright 2026 Cozens Software Solutions Limited (company number 09856828)
+
+Required Notice: Copyright 2026 Cozens Software Solutions Limited
 
 For commercial licensing enquiries, please use the contact form at:
-https://www.cososo.co.uk/#contact
+<https://www.cososo.co.uk/#contact>
 
 ---
 
-# PolyForm Noncommercial License 1.0.0
+SolidSyslog is available under **three alternative licences**. Choose the one
+that fits your use. You need only comply with the one you choose.
 
-## Acceptance
-In order to get any license under these terms, you must agree to them as both strict obligations and conditions to all your licenses.
+## 1. PolyForm Internal Use 1.0.0 — evaluation and development
 
-## Copyright License
-The licensor grants you a copyright license for the software to do everything you might do with the software that would otherwise infringe the licensor's copyright in it for any permitted purpose. However, you may only distribute the software according to Distribution License and make changes or new works based on the software according to Changes and New Works License.
+Free of charge, with no time limit, for use in the internal business operations
+of you and your company. This covers evaluating SolidSyslog, porting it to your
+platform, integrating it into a product under development, measuring its
+footprint, and testing it on target hardware. It applies to commercial
+organisations as well as any other kind.
 
-## Distribution License
-The licensor grants you an additional copyright license to distribute copies of the software. Your license to distribute covers distributing the software with changes and new works permitted by Changes and New Works License.
+It does **not** permit distributing SolidSyslog, including as part of a product,
+firmware image or device supplied to anyone else. For that, see licence 3.
 
-## Notices
-You must ensure that anyone who gets a copy of any part of the software from you also gets a copy of these terms or the URL for them above, as well as copies of any plain-text lines beginning with `Required Notice:` that the licensor provided with the software.
+- Full text: [`LICENSES/PolyForm-Internal-Use-1.0.0.md`](LICENSES/PolyForm-Internal-Use-1.0.0.md)
+- Canonical: <https://polyformproject.org/licenses/internal-use/1.0.0>
 
-## Changes and New Works License
-The licensor grants you an additional copyright license to make changes and new works based on the software for any permitted purpose.
+## 2. PolyForm Noncommercial 1.0.0 — noncommercial use
 
-## Patent License
-The licensor grants you a patent license for the software that covers patent claims the licensor can license, or becomes able to license, that you would infringe by using the software.
+Free of charge for any noncommercial purpose, including personal study, hobby
+projects, and use by charitable organisations, educational institutions, public
+research organisations, public safety or health organisations, environmental
+protection organisations and government institutions. Unlike licence 1, this
+licence permits redistribution.
 
-## Noncommercial Purposes
-Any noncommercial purpose is a permitted purpose.
+- Full text: [`LICENSES/PolyForm-Noncommercial-1.0.0.md`](LICENSES/PolyForm-Noncommercial-1.0.0.md)
+- Canonical: <https://polyformproject.org/licenses/noncommercial/1.0.0>
 
-## Personal Uses
-Personal use for research, experiment, and testing for the benefit of public knowledge, personal study, private entertainment, hobby projects, amateur pursuits, or religious observance, without any anticipated commercial application, is use for a permitted purpose.
+## 3. COSOSO Commercial Licence — shipping products
 
-## Noncommercial Organizations
-Use by any charitable organization, educational institution, public research organization, public safety or health organization, environmental protection organization, or government institution is use for a permitted purpose regardless of the source of funding or obligations resulting from the funding.
+Required if you supply, sell, distribute or otherwise make available any
+product, device, firmware or service containing SolidSyslog.
 
-## Fair Use
-You may have "fair use" rights for the software under the law. These terms do not limit them.
+Offered per product line, with an all-products option, and annual maintenance.
 
-## No Other Rights
-These terms do not allow you to sublicense or transfer any of your licenses to anyone else, or prevent the licensor from granting licenses to anyone else. These terms do not imply any other licenses.
+Enquiries: <https://www.cososo.co.uk/#contact>
 
-## Patent Defense
-If you make any written claim that the software infringes or contributes to infringement of any patent, your patent license for the software granted under these terms ends immediately. If your company makes such a claim, your patent license ends immediately for work on behalf of your company.
+---
 
-## Violations
-The first time you are notified in writing that you have violated any of these terms, or done anything with the software not covered by your licenses, your licenses can nonetheless continue if you come into full compliance with these terms, and take practical steps to correct past violations, within 32 days of receiving notice. Otherwise, all your licenses end immediately.
+## Which one applies to me?
 
-## No Liability
-As far as the law allows, the software comes as is, without any warranty or condition, and the licensor will not be liable to you for any damages arising from these terms or use of the software.
+**Short version: free until you ship.**
 
-## Definitions
-- **Licensor**: the individual or entity offering these terms, Cozens Software Solutions Limited
-- **Software**: the software the licensor makes available under these terms
-- **You**: the individual or entity agreeing to these terms
-- **Your company**: any legal entity, sole proprietorship, or organization you work for, plus related organizations with control relationships
-- **Your licenses**: all licenses granted to you for the software under these terms
-- **Use**: anything you do with the software requiring one of your licenses
+If your organisation intends to ship a product containing SolidSyslog, you will
+need licence 3 before you ship — but licence 1 covers everything up to that
+point at no cost and with no time limit, so you can evaluate fully, port it,
+and prove it on your hardware before any commercial conversation.
+
+## SPDX
+
+```text
+PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+```
+
+`PolyForm-Noncommercial-1.0.0` is on the SPDX License List. PolyForm Internal
+Use 1.0.0 is not currently listed by SPDX, so it is referenced as a
+`LicenseRef-` with its canonical URL given above.
+
+## Continuity
+
+If Cozens Software Solutions Limited ceases to maintain SolidSyslog and no
+successor assumes maintenance, the then-current version will be relicensed
+under a permissive open source licence (for example Apache-2.0), so that
+existing users are not stranded.
