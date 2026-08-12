@@ -115,14 +115,25 @@ the library end to end against a real syslog server; see
 
 Reporting a vulnerability: [`SECURITY.md`](SECURITY.md).
 
-## License
+## Licence
 
 Copyright 2026 Cozens Software Solutions Limited.
 
-Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE.md). Free for
-noncommercial, personal, educational, and government use.
+SolidSyslog is source-available under three alternative licences:
 
-For commercial licensing - including pricing, the early-adopter programme, and
-the platform adapter policy - see the
-[SolidSyslog product page](https://www.cososo.co.uk/products/solid-syslog/), or
-use the contact form at [cososo.co.uk](https://www.cososo.co.uk/#contact).
+- **[PolyForm Internal Use 1.0.0](LICENSES/PolyForm-Internal-Use-1.0.0.md)** -
+  free, no time limit, for evaluation and development inside any organisation,
+  commercial or otherwise. Evaluate it, port it, integrate it, test it on
+  target hardware. No licence key, no trial period, no sales call.
+- **[PolyForm Noncommercial 1.0.0](LICENSES/PolyForm-Noncommercial-1.0.0.md)** -
+  free for hobby, charitable, educational, public research and government use,
+  including redistribution.
+- **COSOSO Commercial Licence** - required when you supply, sell, distribute or
+  otherwise make available a commercial product, device, firmware or service
+  containing SolidSyslog. [Get in touch](https://www.cososo.co.uk/#contact).
+
+**Free until you ship.** See [LICENSE.md](LICENSE.md) for detail.
+
+For commercial pricing, the early-adopter programme, and the platform adapter
+policy, see the
+[SolidSyslog product page](https://www.cososo.co.uk/products/solid-syslog/).

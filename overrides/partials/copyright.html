@@ -1,6 +1,19 @@
 {#-
   Custom footer copyright: a small SolidSyslog wordmark (white variant, for the
   dark footer) above the copyright line. Otherwise mirrors Material's default.
+
+  Below it, the particulars a UK company must publish on its websites — the
+  Companies (Trading Disclosures) Regulations and the Electronic Commerce (EC
+  Directive) Regulations 2002. docs.cososo.co.uk is a separate site trading
+  under the same brand as cososo.co.uk, so it carries the same disclosure as
+  that site's footer. The registered name, company number and registered office
+  are as recorded at Companies House for 09856828; the VAT number comes from
+  HMRC, which Companies House does not hold, so it is verified separately. All
+  of them are legal particulars, not house style, so do not reflow, abbreviate
+  or re-punctuate them.
+
+  The year is taken from build_date_utc rather than written as a literal, so it
+  cannot go stale between releases.
 -#}
 <div class="md-copyright">
   <img
@@ -11,9 +24,18 @@
   />
   {% if config.copyright %}
     <div class="md-copyright__highlight">
-      {{ config.copyright }}
+      {{ build_date_utc.year }} {{ config.copyright }}
     </div>
   {% endif %}
+  <div class="ss-footer-legal">
+    <span>Registered in England and Wales: 09856828. VAT: GB 226 5336 15.</span>
+    <span>Registered office: Cawley Priory, South Pallant, Chichester, West Sussex, PO19 1SY.</span>
+    <span>
+      <a href="https://www.cososo.co.uk/privacy-policy/" target="_blank" rel="noopener">
+        Privacy Policy
+      </a>
+    </span>
+  </div>
   {% if not config.extra.generator == false %}
     Made with
     <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">

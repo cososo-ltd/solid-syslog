@@ -47,9 +47,7 @@
       },
       "licenses": [
         {
-          "license": {
-            "id": "PolyForm-Noncommercial-1.0.0"
-          }
+          "expression": "PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial"
         }
       ],
       "externalReferences": [
@@ -69,7 +67,7 @@
       "properties": [
         {
           "name": "solidsyslog:scope",
-          "value": "Core/ and Platform/ subdirectories, plus root-level CMakeLists.txt, CMakePresets.json, and LICENSE.md (shipped library source + build contract + licence text). Tests/, Bdd/, ci/, docs/, .devcontainer/, .github/, sbom/, scripts/, and the other root-level docs/meta files are out of scope (reference / harness / CI / dev-infra / meta, not shipped product)."
+          "value": "Core/ and Platform/ subdirectories, plus root-level CMakeLists.txt, CMakePresets.json, LICENSE.md and LICENSES/ (shipped library source + build contract + licence terms). Tests/, Bdd/, ci/, docs/, .devcontainer/, .github/, sbom/, scripts/, and the other root-level docs/meta files are out of scope (reference / harness / CI / dev-infra / meta, not shipped product)."
         },
         {
           "name": "solidsyslog:runtime-environment",

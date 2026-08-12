@@ -27,10 +27,10 @@ source-tree-sha256.txt.sigstore
 
 `source-tree-sha256.txt` records the content-tree SHA-256 of the product at
 the release commit. The product scope is `Core/` + `Platform/` plus the
-root-level `CMakeLists.txt`, `CMakePresets.json`, and `LICENSE.md`. The hash
-is deterministic across git versions, archive formats, locales, and tooling;
-it depends only on the bytes of each tracked file and the sorted list of
-paths.
+root-level `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`, and
+`LICENSES/`. The hash is deterministic across git versions, archive formats,
+locales, and tooling; it depends only on the bytes of each tracked file and
+the sorted list of paths.
 
 ### Reproduce with git (authoritative)
 
@@ -38,7 +38,7 @@ paths.
 git clone --depth 1 --branch v<version> https://github.com/cososo-ltd/solid-syslog.git
 cd solid-syslog
 git ls-tree -r --name-only HEAD -- \
-    Core/ Platform/ CMakeLists.txt CMakePresets.json LICENSE.md \
+    Core/ Platform/ CMakeLists.txt CMakePresets.json LICENSE.md LICENSES/ \
   | LC_ALL=C sort \
   | while IFS= read -r path; do
       printf "%s  %s\n" "$(git show "HEAD:$path" | sha256sum | cut -d' ' -f1)" "$path"
@@ -63,7 +63,7 @@ If you don't have a git clone (e.g. you received a source archive instead)
 but you do have an extracted working tree with the product files present:
 
 ```shell
-find Core Platform CMakeLists.txt CMakePresets.json LICENSE.md -type f \
+find Core Platform CMakeLists.txt CMakePresets.json LICENSE.md LICENSES -type f \
   | LC_ALL=C sort \
   | while IFS= read -r path; do
       printf "%s  %s\n" "$(sha256sum "$path" | cut -d' ' -f1)" "$path"

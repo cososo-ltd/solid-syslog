@@ -24,9 +24,9 @@ attached so integrators can verify provenance (per
    bot, no personal GPG/SSH signing).
 4. The `release: published` event triggers `sbom.yml`: it renders and validates
    the CycloneDX SBOM, writes the content-tree SHA-256 (scope: `Core/` +
-   `Platform/` + `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`), cosign
-   keyless-signs both (GitHub OIDC), and attaches the four assets to the
-   Release.
+   `Platform/` + `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`,
+   `LICENSES/`), cosign keyless-signs both (GitHub OIDC), and attaches the
+   four assets to the Release.
 5. Signing and attachment hard-fail. The Release already exists by the time the
    job runs, so a failure cannot block it — it means the Release went out
    without provenance. A red run is the signal: fix the cause and re-run the

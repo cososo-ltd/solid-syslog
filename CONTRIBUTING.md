@@ -17,17 +17,15 @@ the project.
 ## Code contributions
 
 SolidSyslog is **source-available but closed to unsolicited code
-contributions.** The library is dual-licensed — [PolyForm Noncommercial
-1.0.0](LICENSE.md) for the free tier, plus a separate commercial licence — and
-selling a commercial licence requires that every line can be relicensed. That
-means the copyright must stay clean, so external patches cannot simply be
-merged. Pull requests are by invitation only.
+contributions.** Selling a commercial licence (see [`LICENSE.md`](LICENSE.md))
+requires that every line can be relicensed. That means the copyright must stay
+clean, so external patches cannot simply be merged. Pull requests are by
+invitation only.
 
 ### Core (`Core/`) — closed
 
-Core is the licensed, dual-licensed heart of the library. It is not open to
-external code, and unsolicited pull requests against `Core/` will be
-respectfully declined.
+Core is the licensed heart of the library. It is not open to external code, and
+unsolicited pull requests against `Core/` will be respectfully declined.
 
 ### Platform adapters (`Platform/`) — get in touch
 

@@ -31,6 +31,20 @@
   margin-bottom: 0.5rem;
 }
 
+/* UK trading disclosures (see overrides/partials/copyright.html). Deliberately
+   inherits .md-copyright's size, colour and family — a second typeface in a
+   short footer reads as a mistake, not as emphasis. Set apart by being its own
+   lines and nothing else. The registered office is long and is expected to wrap
+   at narrow widths. */
+.ss-footer-legal {
+  margin: 0.3em 0;
+  line-height: 1.5;
+}
+
+.ss-footer-legal span {
+  display: block;
+}
+
 /* Headings: Montserrat 600, #2d2d2d, at cososo.co.uk's fixed px scale. Fixed
    px (not rem) on purpose: Material scales its rem root 125%->150% with viewport
    width, which oversized rem-based headings against the website's fixed scale.

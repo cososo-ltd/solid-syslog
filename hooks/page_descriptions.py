@@ -187,8 +187,16 @@ DESCRIPTIONS = {
         "response, and the disclosure process, scope and supported versions."
     ),
     "license.md": (
-        "SolidSyslog is licensed under PolyForm Noncommercial 1.0.0: the full "
-        "terms, what noncommercial covers, and where commercial use needs a licence."
+        "SolidSyslog under three alternative licences: free for internal "
+        "evaluation and development, free for noncommercial use, commercial to ship."
+    ),
+    "licenses/polyform-internal-use-1.0.0.md": (
+        "The verbatim PolyForm Internal Use License 1.0.0 — SolidSyslog's free "
+        "licence for evaluation and development inside any organisation."
+    ),
+    "licenses/polyform-noncommercial-1.0.0.md": (
+        "The verbatim PolyForm Noncommercial License 1.0.0 — SolidSyslog's free "
+        "licence for hobby, charitable, educational and government use."
     ),
     "support.md": (
         "Where to get help with SolidSyslog — the documentation, questions and "

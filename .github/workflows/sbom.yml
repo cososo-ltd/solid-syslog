@@ -42,7 +42,8 @@ jobs:
           #   - Core/ + Platform/ subdirectories (shipped library source)
           #   - Top-level CMakeLists.txt + CMakePresets.json (build contract
           #     an integrator invokes directly)
-          #   - LICENSE.md (licence text we are legally bound by)
+          #   - LICENSE.md + LICENSES/ (the licence terms we are legally
+          #     bound by and that downstream integrators inherit)
           #
           # Example/, Tests/, Bdd/, ci/, docs/, .devcontainer/, .github/,
           # sbom/, scripts/, and the other root-level docs/meta files are
@@ -53,7 +54,7 @@ jobs:
           trap 'rm -f "$HASHLIST" "$PATHS"' EXIT
           git ls-tree -r --name-only HEAD -- \
               Core/ Platform/ \
-              CMakeLists.txt CMakePresets.json LICENSE.md \
+              CMakeLists.txt CMakePresets.json LICENSE.md LICENSES/ \
             | LC_ALL=C sort > "$PATHS"
           while IFS= read -r path; do
             # pipefail propagates a failing `git show` through the pipeline;
@@ -107,7 +108,7 @@ jobs:
         run: |
           cat > sbom/source-tree-sha256.txt <<EOF
           # SolidSyslog content-tree SHA-256
-          # Scope: Core/ + Platform/ + top-level CMakeLists.txt, CMakePresets.json, LICENSE.md.
+          # Scope: Core/ + Platform/ + top-level CMakeLists.txt, CMakePresets.json, LICENSE.md, LICENSES/.
           # Commit: ${{ github.sha }}
           # Algorithm: sha256 of sorted "<content-sha256>  <path>" lines (LC_ALL=C sort).
           # Verification guide: docs/security/release-verification.md

@@ -33,7 +33,8 @@ The more of this you can provide, the faster we can triage:
 
 ## Our commitments
 
-For the free (noncommercial) tier:
+For the free tier — either of the two free licences in
+[`LICENSE.md`](LICENSE.md):
 
 - **Acknowledgement** within **72 hours** of receipt.
 - **Initial triage** and a **CVSS v3.1** assessment within **7 days**.
@@ -87,9 +88,8 @@ free tier; back-ports are available under a commercial agreement.
 ## Continuity
 
 If COSOSO ceases to maintain SolidSyslog without transferring it to a
-successor maintainer, the then-current release will be relicensed under a
-permissive open-source licence (for example Apache-2.0) so that existing
-users are not stranded.
+successor maintainer, the continuity commitment stated in
+[`LICENSE.md`](LICENSE.md) applies.
 
 ## Commercial support
 
