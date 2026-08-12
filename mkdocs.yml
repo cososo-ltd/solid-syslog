@@ -8,7 +8,10 @@ site_url: https://docs.cososo.co.uk/solid-syslog/
 repo_url: https://github.com/cososo-ltd/solid-syslog
 repo_name: cososo-ltd/solid-syslog
 edit_uri: edit/main/docs/
-copyright: © Cozens Software Solutions Limited
+# The year is prepended by overrides/partials/copyright.html from the build
+# date, so it is not written here. The trading name is part of the UK trading
+# disclosure; the rest of that disclosure is in the same partial.
+copyright: © Cozens Software Solutions Limited, trading as COSOSO
 
 extra_css:
   - assets/stylesheets/brand.css
