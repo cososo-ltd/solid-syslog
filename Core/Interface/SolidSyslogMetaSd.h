@@ -18,8 +18,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogAtomicCounter;
     struct SolidSyslogStructuredData;
 
-    /** Returns system uptime in hundredths of a second (RFC 3418 TimeTicks),
-     *  wrapping on overflow. Feeds the meta element's sysUpTime PARAM. */
+    /** Returns system uptime in hundredths of a second (RFC 3418 TimeTicks):
+     *  monotonic, and wrapping to zero only at 2^32 hundredths. A source counter
+     *  that rolls over sooner must carry the phase across, or the value steps
+     *  backwards mid-range. Feeds the meta element's sysUpTime PARAM. */
     typedef uint32_t (*SolidSyslogSysUpTimeFunction)(void);
 
     /** Wiring for the "meta" SD-ELEMENT (RFC 5424 §7.3). Whatever is provided

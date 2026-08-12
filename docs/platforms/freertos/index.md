@@ -32,3 +32,14 @@ nothing at run time and cannot fail for want of heap.
 The sysUpTime callback reports kernel ticks since boot. It is not wall-clock
 time and carries no timezone or synchronisation quality — the clock callback is
 a separate injection point.
+
+> [!WARNING]
+> `SolidSyslogFreeRtos_GetSysUpTime` meets the
+> [sysUpTime contract](../../api/SolidSyslogMetaSd_8h.md) for a 64-bit
+> `TickType_t` at any tick rate, and for a 32-bit one whose `configTICK_RATE_HZ`
+> divides 100. At every other rate — the 1000 Hz FreeRTOS default among them —
+> the tick counter rolls over first, and the reported uptime returns to zero
+> after roughly 50 days rather than 497. Supply your own
+> `SolidSyslogSysUpTimeFunction` from a time source you already have, or move to
+> a dividing rate or a 64-bit tick type. Removing the limit is tracked as
+> [#755](https://github.com/cososo-ltd/solid-syslog/issues/755).
