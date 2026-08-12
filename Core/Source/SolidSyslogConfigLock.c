@@ -11,12 +11,13 @@ static SolidSyslogConfigLockFunction ConfigLock_Lock = ConfigLock_NoOp;
 static SolidSyslogConfigLockFunction ConfigLock_Unlock = ConfigLock_NoOp;
 static void* ConfigLock_Context = NULL;
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- deliberate pair API: lock and unlock are installed together and conceptually inseparable; matches SolidSyslog_SetErrorHandler's pair shape
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- deliberate pair API: lock and unlock are installed together and conceptually inseparable; matches SolidSyslog_SetErrorHandler's pair shape
 void SolidSyslog_SetConfigLock(
     SolidSyslogConfigLockFunction lockFn,
     SolidSyslogConfigLockFunction unlockFn,
     void* context
 )
+// NOLINTEND(bugprone-easily-swappable-parameters)
 {
     ConfigLock_Context = context;
     if (lockFn == NULL)

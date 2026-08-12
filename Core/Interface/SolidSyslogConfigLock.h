@@ -9,30 +9,31 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Lock/unlock callback pair wrapping every pool Create/Destroy slot-walk,
-     *  each passed the context installed with it. Single-task setup needs none;
-     *  the default is a no-op.
+     *  each passed the context installed with it. The default is a no-op, which
+     *  suits single-task setup.
      *
-     *  Where Create and Destroy can run concurrently, install a host mutex that
-     *  may be held while blocking: Destroy releases the instance's resources
-     *  inside this lock, and closing a transport or a file can block. A
-     *  primitive that disables interrupts or spins deadlocks there.
+     *  Where Create and Destroy can run concurrently, install a mutex supplied
+     *  by the host system. Destroy releases the instance's resources inside
+     *  this lock and may block, so the primitive must permit blocking while
+     *  held; one that disables interrupts or spins will deadlock.
      *
-     *  Never a SolidSyslog Mutex — creating one walks a pool under this lock.
-     *  Using the host's own primitive is also what lets the Mutex and
-     *  AtomicCounter pools use this pair for their own walks. */
+     *  A SolidSyslog Mutex is not a valid choice: its Create walks a pool under
+     *  this lock. Requiring a host primitive is also what allows the Mutex and
+     *  AtomicCounter pools to use this pair for their own walks. */
     typedef void (*SolidSyslogConfigLockFunction)(void* context);
 
     /** Install the config-lock pair, applied setup-time before any Create.
      *  Single global slot, not synchronised against concurrent installs. All
-     *  three are set together; @p context is passed back to both callbacks
+     *  three are set together; @p context is passed to both callbacks
      *  unchanged, and NULL on either function restores that side's no-op
      *  default. */
-    /* NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- deliberate pair API: lock and unlock are installed together and conceptually inseparable; matches SolidSyslog_SetErrorHandler's pair shape */
+    /* NOLINTBEGIN(bugprone-easily-swappable-parameters) -- deliberate pair API: lock and unlock are installed together and conceptually inseparable; matches SolidSyslog_SetErrorHandler's pair shape */
     void SolidSyslog_SetConfigLock(
         SolidSyslogConfigLockFunction lockFn,
         SolidSyslogConfigLockFunction unlockFn,
         void* context
     );
+    /* NOLINTEND(bugprone-easily-swappable-parameters) */
     void SolidSyslog_LockConfig(void);
     void SolidSyslog_UnlockConfig(void);
 
