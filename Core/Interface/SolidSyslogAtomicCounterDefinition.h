@@ -1,5 +1,5 @@
 /** @file
- *  The AtomicCounter vtable (Increment) — the contract an implementor fills in
+ *  The AtomicCounter vtable (Increment) - the contract an implementor fills in
  *  (the AtomicCounter extension point). */
 #ifndef SOLIDSYSLOGATOMICCOUNTERDEFINITION_H
 #define SOLIDSYSLOGATOMICCOUNTERDEFINITION_H

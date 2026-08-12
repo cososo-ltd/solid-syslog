@@ -25,7 +25,7 @@ struct SolidSyslogAddress* SolidSyslogLwipRawAddress_Create(void)
 {
     /* TU-private fallback returned when the pool is exhausted. Sized as
      * a real SolidSyslogLwipRawAddress so subsequent writes (e.g. a Resolver
-     * overwrite at the exhausted-fallback call site) are bounded — same
+     * overwrite at the exhausted-fallback call site) are bounded - same
      * ip_addr_t + u16_t storage as any pooled slot. Not a per-Sender slot:
      * multi-overflow integrators share this storage and race on it. Bumping
      * SOLIDSYSLOG_ADDRESS_POOL_SIZE removes the race. */

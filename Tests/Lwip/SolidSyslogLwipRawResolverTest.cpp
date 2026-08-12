@@ -116,7 +116,7 @@ TEST(SolidSyslogLwipRawResolver, ResolveReturnsFalseOnNonLiteralHost)
 TEST(SolidSyslogLwipRawResolver, ResolveReturnsFalseWhenIpaddrAtonRejectsHost)
 
 {
-    // We defer to lwIP's ipaddr_aton — whatever the parser accepts, we accept;
+    // We defer to lwIP's ipaddr_aton - whatever the parser accepts, we accept;
     // whatever it rejects, we reject. We do not enforce any specific shape on
     // top of the parser (no dotted-quad-only check) so the tests assert only
     // the rejection contract for clearly non-numeric inputs (DNS names,
@@ -281,7 +281,7 @@ TEST(SolidSyslogLwipRawResolverPool, DestroyOfStaleHandleReportsWarning)
 TEST(SolidSyslogLwipRawResolver, UdpTransportResolvesIdenticallyToTcp)
 
 {
-    // Locks in that the literal-IPv4 resolver does not dispatch on transport —
+    // Locks in that the literal-IPv4 resolver does not dispatch on transport -
     // a future reader must not add transport-typed pcb selection here.
     Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_UDP);
     uint32_t udpIp = ip4_addr_get_u32(ip_2_ip4(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));

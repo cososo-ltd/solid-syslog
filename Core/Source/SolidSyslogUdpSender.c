@@ -94,7 +94,7 @@ static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, s
     return result;
 }
 
-/* Driven only from the genuine delivery path — a NULL-buffer argument error
+/* Driven only from the genuine delivery path - a NULL-buffer argument error
  * never touches the delivery-health edge. */
 static inline void UdpSender_UpdateDeliveryHealth(struct SolidSyslogUdpSender* self, bool delivered)
 {
@@ -234,7 +234,7 @@ static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
         if (result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE)
         {
             /* Retry still OVERSIZE means the kernel disagrees with its own
-             * MaxPayload — swallow for the same reason. */
+             * MaxPayload - swallow for the same reason. */
             result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
         }
     }

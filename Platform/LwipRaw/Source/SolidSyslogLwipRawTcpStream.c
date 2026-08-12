@@ -33,7 +33,7 @@ struct SolidSyslogStream;
  * fills only the fields it needs (Close/Abort set just Self); read-back
  * results (ConnectErr / SendResult / ReadResult) are returned in the same
  * struct. One struct per class so the void*-context recovery has a single
- * cast site (LwipRawTcpStreamCallFromContext) — see D.002 in
+ * cast site (LwipRawTcpStreamCallFromContext) - see D.002 in
  * docs/misra-deviations.md. Send/Read fields never overlap in one call. */
 struct LwipRawTcpStreamCall
 {
@@ -124,7 +124,7 @@ static inline bool LwipRawTcpStream_ConfigProvidesGetter(const struct SolidSyslo
     return config->GetConnectTimeoutMs != NULL;
 }
 
-/* Null Object substituted when the integrator does not install a getter —
+/* Null Object substituted when the integrator does not install a getter -
  * returns the compile-time tunable so the bounded-wait path has a single
  * code path regardless of whether the integrator wired runtime tuning. */
 static uint32_t LwipRawTcpStream_NullConnectTimeoutGetter(void* context)
@@ -140,7 +140,7 @@ static inline struct SolidSyslogLwipRawTcpStream* LwipRawTcpStream_SelfFromBase(
 
 /* Recovers our self pointer from the void* argument lwIP passes back into
  * every callback we registered via tcp_arg(pcb, self). Single named helper
- * so the void→struct cast lives in one place — and MISRA 11.5 has one
+ * so the void->struct cast lives in one place - and MISRA 11.5 has one
  * suppression site, not one per callback. */
 static inline struct SolidSyslogLwipRawTcpStream* LwipRawTcpStream_SelfFromArg(void* arg)
 {
@@ -148,7 +148,7 @@ static inline struct SolidSyslogLwipRawTcpStream* LwipRawTcpStream_SelfFromArg(v
 }
 
 /* Recovers the per-op call struct from the void* context the marshal passes
- * back into each Do* callback — the marshal-seam analogue of SelfFromArg,
+ * back into each Do* callback - the marshal-seam analogue of SelfFromArg,
  * one cast site for all marshalled ops (see D.002). */
 static inline struct LwipRawTcpStreamCall* LwipRawTcpStreamCallFromContext(void* context)
 {
@@ -188,7 +188,7 @@ static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct S
 
 /* The setup-and-connect hop: tcp_new + pcb configuration + tcp_connect all
  * run on the lwIP-owning thread in one marshalled batch. The connected_cb
- * may fire here (synchronously, on the same thread) — it only flips volatile
+ * may fire here (synchronously, on the same thread) - it only flips volatile
  * flags. The bounded spin that waits for those flags stays on the caller's
  * thread (sleeping the lwIP thread mid-connect would starve RX/timers). */
 static void LwipRawTcpStream_DoOpenAndConnect(void* context)
@@ -226,13 +226,13 @@ static struct tcp_pcb* LwipRawTcpStream_OpenAndConfigurePcb(struct SolidSyslogLw
     {
         ip_set_option(pcb, SOF_KEEPALIVE);
         /* Disable Nagle. The syslog client writes small, latency-sensitive
-         * records (octet-framed messages, and — when an upper TLS layer is
-         * stacked on this stream — multi-segment handshake flights) and never
+         * records (octet-framed messages, and - when an upper TLS layer is
+         * stacked on this stream - multi-segment handshake flights) and never
          * pipelines a second write behind an unacked one. With Nagle on, lwIP
          * holds a sub-MSS segment until the previous one is ACKed; a TLS
          * handshake flight (e.g. a client certificate) then stalls mid-exchange
          * waiting for an ACK that the peer only sends after it has the whole
-         * flight — a deadlock observed against syslog-ng over mutual TLS.
+         * flight - a deadlock observed against syslog-ng over mutual TLS.
          * TCP_NODELAY is the right default for this request/response workload. */
         tcp_nagle_disable(pcb);
         tcp_arg(pcb, self);
@@ -245,7 +245,7 @@ static struct tcp_pcb* LwipRawTcpStream_OpenAndConfigurePcb(struct SolidSyslogLw
 
 /* Bounded synchronous-Open spin: each iteration sleeps via the
  * integrator-injected Sleep so lwIP's timer / RX paths get cycles to
- * advance the SYN/SYN-ACK exchange. Runs on the caller's thread — never the
+ * advance the SYN/SYN-ACK exchange. Runs on the caller's thread - never the
  * lwIP thread. Exits on Connected (success), Errored (set by connected_cb
  * on non-ERR_OK or by tcp_err), or elapsed >= deadline (timeout). */
 static bool LwipRawTcpStream_WaitForConnectedCallback(struct SolidSyslogLwipRawTcpStream* self)
@@ -269,7 +269,7 @@ static uint32_t LwipRawTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogLwipR
     return self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
 }
 
-/* Connect failed or timed out — release the pcb cleanly on the lwIP thread.
+/* Connect failed or timed out - release the pcb cleanly on the lwIP thread.
  * tcp_abort (not tcp_close) because a half-open pcb has no graceful close. */
 static void LwipRawTcpStream_DoAbort(void* context)
 {
@@ -295,7 +295,7 @@ static bool LwipRawTcpStream_Send(struct SolidSyslogStream* base, const void* bu
  * A peer FIN (RecvCallback with NULL p) sets Errored but leaves the pcb non-NULL,
  * so IsOpen alone would keep writing into a doomed connection; failing the send
  * lets StreamSender close and reconnect. Read deliberately still runs while
- * Errored — it must drain queued bytes and then close on EOF. */
+ * Errored - it must drain queued bytes and then close on EOF. */
 static inline bool LwipRawTcpStream_IsWritable(const struct SolidSyslogLwipRawTcpStream* self)
 {
     return LwipRawTcpStream_IsOpen(self) && !self->Errored;
@@ -314,7 +314,7 @@ static bool LwipRawTcpStream_SendOrCloseOnFailure(
 )
 {
     /* TCP_WRITE_FLAG_COPY hands the caller's buffer to lwIP-owned pbufs
-     * before tcp_write returns — caller buffer lifetime ends here.
+     * before tcp_write returns - caller buffer lifetime ends here.
      * tcp_output nudges transmission; ERR_MEM there is "queued, lwIP
      * retries" so we still report success (lwIP owns the bytes). */
     err_t writeErr = tcp_write(self->Pcb, buffer, (u16_t) size, TCP_WRITE_FLAG_COPY);
@@ -385,7 +385,7 @@ static void LwipRawTcpStream_DoRead(void* context)
     }
     else
     {
-        /* Peer FIN drained → close internally per the Stream contract
+        /* Peer FIN drained -> close internally per the Stream contract
          * ("< 0 means EOF AND socket closed internally"); ReadResult stays
          * READ_FAILED. */
         LwipRawTcpStream_ClosePcb(self);
@@ -394,14 +394,14 @@ static void LwipRawTcpStream_DoRead(void* context)
 
 /* Copies up to `size` bytes out of the head pbuf chain, advancing the read
  * cursor. The cursor (RxHeadOffset) and the fully-drained test are keyed off
- * tot_len, not the first link's len — lwIP hands us a pbuf chain whenever a
+ * tot_len, not the first link's len - lwIP hands us a pbuf chain whenever a
  * segment spans more than one pool pbuf, and pbuf_copy_partial walks head->next
  * for us so the tail links are not lost. The cursor advances by the count
  * pbuf_copy_partial actually copied, not the requested amount: under lwIP's
- * tot_len == Σ link->len invariant the two are equal, but keying off the real
+ * tot_len == sum of link->len invariant the two are equal, but keying off the real
  * copy keeps a malformed/overstated tot_len from advancing past un-copied
  * bytes and reporting stale buffer content as received. When the whole chain
- * is drained, pbuf_free's it (frees every link) and advances the queue head —
+ * is drained, pbuf_free's it (frees every link) and advances the queue head -
  * tail entries shift up through the bounded ring via modular arithmetic, no
  * compaction. */
 static size_t LwipRawTcpStream_DrainHeadBytes(struct SolidSyslogLwipRawTcpStream* self, void* buffer, size_t size)
@@ -431,7 +431,7 @@ static void LwipRawTcpStream_EnqueueRxPbuf(struct SolidSyslogLwipRawTcpStream* s
 /* Drains every queued pbuf via pbuf_free. Used by ClosePcb so an explicit
  * Close, Send-failure-induced Close, or Destroy never leaks the pbufs lwIP
  * handed us via tcp_recv. After tcp_err nulls Pcb the queue may still hold
- * pbufs we accepted before the error — those need freeing too. */
+ * pbufs we accepted before the error - those need freeing too. */
 static void LwipRawTcpStream_DrainAllQueuedPbufs(struct SolidSyslogLwipRawTcpStream* self)
 {
     while (LwipRawTcpStream_HasQueuedRx(self))
@@ -467,9 +467,9 @@ static void LwipRawTcpStream_DoClose(void* context)
 }
 
 /* tcp_close must NOT be called on a pcb that has already been released by
- * tcp_err — that's a use-after-free in lwIP. The Pcb != NULL guard works
+ * tcp_err - that's a use-after-free in lwIP. The Pcb != NULL guard works
  * because LwipRawTcpStream_ErrCallback nulls Pcb when lwIP releases the
- * pcb on its side. The queue drain runs unconditionally — pbufs we
+ * pcb on its side. The queue drain runs unconditionally - pbufs we
  * accepted via tcp_recv are ours to free regardless of pcb state. Always
  * called from inside a marshalled hop (DoSend / DoRead / DoClose). */
 static void LwipRawTcpStream_ClosePcb(struct SolidSyslogLwipRawTcpStream* self)
@@ -497,7 +497,7 @@ static err_t LwipRawTcpStream_ConnectedCallback(void* arg, struct tcp_pcb* pcb, 
     return ERR_OK;
 }
 
-/* tcp_recv fires when lwIP has bytes for us — non-NULL p means a pbuf
+/* tcp_recv fires when lwIP has bytes for us - non-NULL p means a pbuf
  * arrived; NULL p means peer half-closed (FIN). Backpressure on a full
  * queue by returning non-ERR_OK; lwIP holds the pbuf and replays the
  * callback when the queue drains. Runs on the lwIP thread (lwIP invokes it
@@ -523,7 +523,7 @@ static err_t LwipRawTcpStream_RecvCallback(void* arg, struct tcp_pcb* tpcb, stru
     return result;
 }
 
-/* Real tcp_sent handling is unused under TCP_WRITE_FLAG_COPY — caller
+/* Real tcp_sent handling is unused under TCP_WRITE_FLAG_COPY - caller
  * buffers are released at Send return, not at peer-ACK time. The slot
  * exists because lwIP requires the callback set when the pcb is wired. */
 static err_t LwipRawTcpStream_SentCallback(void* arg, struct tcp_pcb* tpcb, u16_t len)
@@ -535,7 +535,7 @@ static err_t LwipRawTcpStream_SentCallback(void* arg, struct tcp_pcb* tpcb, u16_
 }
 
 /* lwIP fires tcp_err for fatal events (RST, OOM, ABRT) AFTER releasing the
- * pcb upstream — we must null our Pcb pointer and NOT call tcp_close.
+ * pcb upstream - we must null our Pcb pointer and NOT call tcp_close.
  * Subsequent Stream_Close sees Pcb == NULL and is a safe no-op. Runs on the
  * lwIP thread, touches no lwIP API. */
 static void LwipRawTcpStream_ErrCallback(void* arg, err_t err)

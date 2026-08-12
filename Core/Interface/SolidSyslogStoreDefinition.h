@@ -1,6 +1,6 @@
 /** @file
  *  The Store vtable (Write / ReadNextUnsent / MarkSent / HasUnsent / IsHalted /
- *  GetTotalBytes / GetUsedBytes / IsTransient) — the store-and-forward contract
+ *  GetTotalBytes / GetUsedBytes / IsTransient) - the store-and-forward contract
  *  an implementor fills in (the Store extension point). */
 #ifndef SOLIDSYSLOGSTOREDEFINITION_H
 #define SOLIDSYSLOGSTOREDEFINITION_H

@@ -13,14 +13,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Definition lives here (not the public header) so an SD author handed a
      * SolidSyslogSdElement* cannot reach the wrapped formatter. The embedded
-     * Value is the sink SolidSyslogSdElement_Param hands back — one per element,
+     * Value is the sink SolidSyslogSdElement_Param hands back - one per element,
      * re-initialised on each SolidSyslogSdElement_Param (only one param value is
      * open at a time).
      *
      * DropStorage backs a zero-size formatter that safely absorbs the value of
      * a skipped param (NULL param name, or a NULL-SD-ID-suppressed element):
      * every write to it is dropped, so a skipped value cannot corrupt framing.
-     * Suppressed marks an element opened with a NULL SD-ID — it emits nothing. */
+     * Suppressed marks an element opened with a NULL SD-ID - it emits nothing. */
     struct SolidSyslogSdElement
     {
         struct SolidSyslogFormatter* Formatter;
@@ -31,7 +31,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         bool Suppressed;
     };
 
-    /* Internal constructor — wraps a message-buffer formatter. MessageFormatter
+    /* Internal constructor - wraps a message-buffer formatter. MessageFormatter
      * (S14.06) builds one of these around the handed formatter and passes it to
      * each SD's Format. Stack-transient: the caller owns the storage. */
     void SolidSyslogSdElement_FromFormatter(

@@ -9,7 +9,7 @@
  *
  * S28.09 grew this from the S28.07 link-probe config: the lwIP FreeRTOS
  * sys_arch needs recursive mutexes (the LWIP_TCPIP_CORE_LOCKING mutex) and
- * counting semaphores, and SolidSyslogFreeRtosMutex needs static allocation —
+ * counting semaphores, and SolidSyslogFreeRtosMutex needs static allocation -
  * so this now mirrors Bdd/Targets/FreeRtos/FreeRTOSConfig.h (the proven
  * networking config for this machine) rather than the lean probe variant. The
  * FreeRTOS software-timer service is left ON for parity even though lwIP runs
@@ -39,7 +39,7 @@
 /* Static allocation is required by SolidSyslogFreeRtosMutex
  * (xSemaphoreCreateMutexStatic places the StaticSemaphore_t inside the
  * caller-supplied storage). The idle / timer task static-memory hooks it
- * pulls in are satisfied by configKERNEL_PROVIDED_STATIC_MEMORY = 1 — no
+ * pulls in are satisfied by configKERNEL_PROVIDED_STATIC_MEMORY = 1 - no
  * boilerplate in main.c. Dynamic allocation stays on for the lwIP tcpip /
  * RX tasks and the interactive / service tasks created via xTaskCreate. */
 #define configSUPPORT_STATIC_ALLOCATION 1

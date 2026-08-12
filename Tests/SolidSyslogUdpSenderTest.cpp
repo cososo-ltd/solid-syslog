@@ -73,7 +73,7 @@ static int SpyGetPort()
     return TEST_DEFAULT_PORT;
 }
 
-// Endpoint stubs — file-scope because TestEndpoint is a free function that
+// Endpoint stubs - file-scope because TestEndpoint is a free function that
 // the sender invokes via udp->config.Endpoint(). Tests mutate these globals
 // between Sends to drive endpoint-changed and callback-spy scenarios; the
 // TEST_BASE resets them in setup so groups don't leak state between tests.
@@ -364,7 +364,7 @@ TEST(SolidSyslogUdpSender, ZeroLengthSendPassesThrough)
     LONGS_EQUAL(0, SocketFake_LastLen());
 }
 
-// Destroy tests manage their own sender lifetime — base teardown does
+// Destroy tests manage their own sender lifetime - base teardown does
 // not call SolidSyslogUdpSender_Destroy because tests already did.
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogUdpSenderDestroy, UdpSenderTestBase)
@@ -680,7 +680,7 @@ TEST(SolidSyslogUdpSenderRetry, OversizeRetryWalksBackToCodepointBoundary)
 }
 
 /* Double-OVERSIZE means the kernel disagreed with its own reported
- * MaxPayload — impossible-shouldn't-happen but if it did, returning
+ * MaxPayload - impossible-shouldn't-happen but if it did, returning
  * false would loop the buffered algorithm forever on an undeliverable.
  * Swallow: drop the message and return true so the caller moves on. */
 TEST(SolidSyslogUdpSenderRetry, DoubleOversizeReturnsTrueToAvoidPermanentLoop)
@@ -708,7 +708,7 @@ TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadSkipsRetrySend)
     CALLED_DATAGRAM_SEND(ONCE);
 }
 
-/* Trimmed length 0 means the message physically can't fit the path —
+/* Trimmed length 0 means the message physically can't fit the path -
  * looping won't help, so we swallow and report success. The Buffered/
  * Service algorithm discards rather than retrying forever. */
 TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadReturnsTrueToAvoidPermanentLoop)
@@ -719,7 +719,7 @@ TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadReturnsTrueToAvoidPermanentLoop)
 }
 
 /* Retry sendto failing with non-OVERSIZE error (e.g. ECONNREFUSED on
- * connected UDP) is a TRANSIENT condition — return false so the
+ * connected UDP) is a TRANSIENT condition - return false so the
  * Buffered/Service algorithm keeps the message for retry. */
 TEST(SolidSyslogUdpSenderRetry, RetryFailedNonOversizeReturnsFalse)
 {
@@ -863,7 +863,7 @@ TEST(SolidSyslogUdpSenderBadSetup, SendWithNullBufferReportsErrorAndDoesNotSend)
     CALLED_FAKE(SocketFake_Sendto, NEVER);
 }
 
-// Pool tests — prove SOLIDSYSLOG_UDP_SENDER_POOL_SIZE caps live instances
+// Pool tests - prove SOLIDSYSLOG_UDP_SENDER_POOL_SIZE caps live instances
 // and overflow falls back to the shared SolidSyslogNullSender. Generic
 // pool mechanics (lock counts, per-probe locking, stale-handle warning)
 // are covered by SolidSyslogPoolAllocatorTest.cpp.
@@ -939,7 +939,7 @@ TEST(SolidSyslogUdpSenderPool, ExhaustedCreateReportsError)
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_UDP_SENDER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
 }
 
-// Delivery-health tests — same edge-triggered DeliveryHealthy bit as
+// Delivery-health tests - same edge-triggered DeliveryHealthy bit as
 // StreamSender, here observing the SolidSyslogDatagram_SendTo result. The
 // DatagramFake drives per-call SendTo outcomes; the shared Sender-role
 // categories key the events while Source distinguishes the UDP transport.

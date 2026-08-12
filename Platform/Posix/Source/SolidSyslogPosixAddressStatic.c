@@ -25,7 +25,7 @@ struct SolidSyslogAddress* SolidSyslogPosixAddress_Create(void)
 {
     /* TU-private fallback returned when the pool is exhausted. Sized as
      * a real SolidSyslogPosixAddress so a Resolver overwrite at the
-     * exhausted-fallback call site is bounded — same sockaddr_in storage
+     * exhausted-fallback call site is bounded - same sockaddr_in storage
      * as any pooled slot. Not a per-Sender slot: multi-overflow integrators
      * share this storage and race on it. Bumping SOLIDSYSLOG_ADDRESS_POOL_SIZE
      * removes the race. */

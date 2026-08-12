@@ -156,7 +156,7 @@ static inline void MessageFormatter_FormatStringField(
     struct SolidSyslogHeaderField field;
 
     /* maxSize is the field's storage size (carries a NUL slot); the usable
-     * field width is one less — matching the RFC HOSTNAME / APP-NAME / PROCID
+     * field width is one less - matching the RFC HOSTNAME / APP-NAME / PROCID
      * caps the scratch-field formatter enforced before this writer existed. */
     SolidSyslogHeaderField_FromFormatter(&field, f, maxSize - 1U);
     fn(&field, context);
@@ -218,7 +218,7 @@ static inline void MessageFormatter_FormatSdElements(
     {
         /* Skip NULL entries rather than dereference them. Per-instance slots are
            expected to use SolidSyslogNullSd, but a per-message array is supplied
-           at the call site where a conditionally-absent SD is naturally NULL —
+           at the call site where a conditionally-absent SD is naturally NULL -
            the library must not crash on caller input. */
         if (sd[i] != NULL)
         {
@@ -231,7 +231,7 @@ static inline void MessageFormatter_FormatMsg(struct SolidSyslogFormatter* f, co
 {
     /* Guard msg before SkipLeadingBom dereferences it, then guard the
      * post-strip body so a caller-supplied BOM-only string emits no
-     * dangling SP-BOM (RFC 5424 §6.4 — the BOM belongs to a non-empty MSG). */
+     * dangling SP-BOM (RFC 5424 §6.4 - the BOM belongs to a non-empty MSG). */
     if (MessageFormatter_StringIsValid(msg))
     {
         const char* body = MessageFormatter_SkipLeadingBom(msg);

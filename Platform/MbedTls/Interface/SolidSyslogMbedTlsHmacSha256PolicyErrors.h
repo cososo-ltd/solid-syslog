@@ -12,7 +12,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Detail codes for events whose Source is MbedTlsHmacSha256PolicyErrorSource.
      *  A handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. KEY_TOO_SHORT is raised when GetKey returns a
-     *  key below the SHA-256 output length (32 bytes) — the policy fails closed
+     *  key below the SHA-256 output length (32 bytes) - the policy fails closed
      *  rather than seal with a cryptographically worthless MAC. A tag mismatch on
      *  open is silent (the expected tamper verdict), so no HMAC_FAILED for that. */
     enum SolidSyslogMbedTlsHmacSha256PolicyErrors

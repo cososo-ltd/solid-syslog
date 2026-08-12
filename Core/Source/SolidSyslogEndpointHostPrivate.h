@@ -16,7 +16,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         struct SolidSyslogFormatter* Formatter;
     };
 
-    /* Internal constructor — wraps a sender's stack host formatter. The sender
+    /* Internal constructor - wraps a sender's stack host formatter. The sender
      * builds one per resolve, passes it to the configured endpoint callback,
      * then reads the formatted host back out. Stack-transient: the caller owns
      * the storage. */

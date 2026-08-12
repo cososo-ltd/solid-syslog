@@ -107,7 +107,7 @@ TEST_GROUP(SolidSyslog)
     struct SolidSyslogSender *fakeSender;
     /* Pool-backed handles owned by tests that exercise Meta/TimeQuality SD.
        Held as fixture state so teardown releases their pool slots even if a
-       test body fails mid-assertion — otherwise the leaked slot returns the
+       test body fails mid-assertion - otherwise the leaked slot returns the
        fallback to subsequent tests and cascades the failure. */
     struct SolidSyslogAtomicCounter   *metaSdCounter;
     struct SolidSyslogStructuredData  *metaSd;
@@ -297,7 +297,7 @@ TEST(SolidSyslog, LogWithSdEscapesPerMessageValues)
     SolidSyslogStructuredData* perMessage[] = {&sdInject};
     SolidSyslog_LogWithSd(solidSyslog, &message, perMessage, 1);
     /* The injected ']' is escaped to '\]' so it cannot break the SD framing
-       (asserted against the raw frame — the SDATA helper stops at any ']'). */
+       (asserted against the raw frame - the SDATA helper stops at any ']'). */
     STRCMP_CONTAINS("[inj k=\"a\\]b\"]", lastMessage());
 }
 
@@ -485,7 +485,7 @@ TEST(SolidSyslog, MessageTruncatedWhenExceedingBuffer)
 TEST(SolidSyslog, BomIsPreservedWhenMessageBodyTruncates)
 {
     /* When the body overflows the wire-frame budget, BoundedString clips
-     * the body but the BOM — written before the body — must remain
+     * the body but the BOM - written before the body - must remain
      * present. Pins the FormatMsg ordering: BOM first, body second. */
     std::string longMsg(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 'X');
     message.Msg = longMsg.c_str();
@@ -884,7 +884,7 @@ TEST(SolidSyslog, ServiceDoesNotMarkSentWhenSendingFromBuffer)
     BufferFake_Destroy();
 }
 
-/* Shared fixture for the eager-drain Service tests — both wire a real
+/* Shared fixture for the eager-drain Service tests - both wire a real
  * CircularBuffer (drives the multi-message-per-tick path) and a FIFO
  * StoreFake. Storage is static so a CHECK failure that skips the test
  * body's cleanup cannot leave a dangling stack reference behind for
@@ -1189,7 +1189,7 @@ TEST(SolidSyslogLifecycle, ServiceWithDefaultStoreDrainsThroughToRealSender)
 TEST(SolidSyslogLifecycle, DestroyWithUnknownHandleReportsWarning)
 {
     /* Any non-pool address is "unknown" to IndexFromHandle. Cast a stack
-       byte's address — its value never gets dereferenced, only compared. */
+       byte's address - its value never gets dereferenced, only compared. */
     char stackByte = 0;
     auto* notAHandle = reinterpret_cast<struct SolidSyslog*>(&stackByte);
     ErrorHandlerFake_Install(nullptr);

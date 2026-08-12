@@ -29,12 +29,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     ip_addr_t* LwipDnsFake_LastAddrOut(void);
 
     /* True between an ERR_INPROGRESS dns_gethostbyname and the matching
-     * FireCallback — i.e. a dns_found_callback is stored and not yet fired. */
+     * FireCallback - i.e. a dns_found_callback is stored and not yet fired. */
     bool LwipDnsFake_HasPendingCallback(void);
 
     /* Fires the stored dns_found_callback (the async completion). Pass a
      * non-NULL ipaddr to deliver a resolved address, or NULL to deliver a
-     * lookup failure — mirroring lwIP's contract. The host stand-in for the
+     * lookup failure - mirroring lwIP's contract. The host stand-in for the
      * tcpip thread firing the callback while the caller spins; tests drive it
      * from their injected Sleep. */
     void LwipDnsFake_FireCallback(const ip_addr_t* ipaddr);

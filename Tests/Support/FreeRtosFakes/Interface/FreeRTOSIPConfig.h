@@ -4,7 +4,7 @@
 #include "FreeRTOS.h"
 
 /* Host-suitable FreeRTOS-Plus-TCP config for unit-test fakes. The IP stack
- * itself is never run on the host — these values are only here so the
+ * itself is never run on the host - these values are only here so the
  * upstream Plus-TCP headers parse cleanly. Real behaviour comes from
  * FreeRtosFakes/Source/, which substitutes the API at link time.
  */

@@ -274,7 +274,7 @@ mqd_t mq_open(const char* name, int oflag, ...)
         {
             va_list ap;
             va_start(ap, oflag);
-            (void) va_arg(ap, mode_t); /* mode — unused by fake */
+            (void) va_arg(ap, mode_t); /* mode - unused by fake */
             const struct mq_attr* attr = va_arg(ap, struct mq_attr*);
             va_end(ap);
             if (attr != NULL)

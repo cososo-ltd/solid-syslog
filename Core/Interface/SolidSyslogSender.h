@@ -1,7 +1,7 @@
 /** @file
  *  The sender role: deliver a framed message (Send) / drop the connection
  *  (Disconnect). These calls dispatch to the injected sender's vtable, so
- *  behaviour — transport, framing, connect-on-first-use — is that sender's. */
+ *  behaviour - transport, framing, connect-on-first-use - is that sender's. */
 #ifndef SOLIDSYSLOGSENDER_H
 #define SOLIDSYSLOGSENDER_H
 

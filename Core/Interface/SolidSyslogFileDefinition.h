@@ -1,6 +1,6 @@
 /** @file
  *  The File vtable (Open / Close / IsOpen / Read / Write / SeekTo / Size /
- *  Truncate / Exists / Delete) — the contract a porter fills in (the File
+ *  Truncate / Exists / Delete) - the contract a porter fills in (the File
  *  extension point). */
 #ifndef SOLIDSYSLOGFILEDEFINITION_H
 #define SOLIDSYSLOGFILEDEFINITION_H
@@ -13,7 +13,7 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The File contract a porter implements (FatFs, FreeRTOS-Plus-FAT, a raw
-     *  flash driver, ...). One instance holds at most one open file; Open on an
+     *  flash driver...). One instance holds at most one open file; Open on an
      *  already-open instance is not expected. Read/Write share a single position
      *  moved by SeekTo, so the consumer seeks before each transfer. */
     struct SolidSyslogFile

@@ -25,7 +25,7 @@ static bool NullBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t m
     return false;
 }
 
-/* Write swallows the record — a misconfigured Buffer paired with a
+/* Write swallows the record - a misconfigured Buffer paired with a
  * caller that doesn't gate Log() must not block or crash. */
 static void NullBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size)
 {

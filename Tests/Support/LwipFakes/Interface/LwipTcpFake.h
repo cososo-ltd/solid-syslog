@@ -18,11 +18,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     unsigned LwipTcpFake_TcpNewCallCount(void);
     struct tcp_pcb* LwipTcpFake_LastTcpNewReturned(void);
 
-    /* tcp_arg spy — last (pcb, arg) pair captured */
+    /* tcp_arg spy - last (pcb, arg) pair captured */
     unsigned LwipTcpFake_TcpArgCallCount(void);
     void* LwipTcpFake_LastCallbackArg(void);
 
-    /* tcp_recv / tcp_err / tcp_sent spies — last registered callback fn captured */
+    /* tcp_recv / tcp_err / tcp_sent spies - last registered callback fn captured */
     unsigned LwipTcpFake_TcpRecvCallCount(void);
     tcp_recv_fn LwipTcpFake_LastRecvFn(void);
     unsigned LwipTcpFake_TcpErrCallCount(void);
@@ -34,7 +34,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void LwipTcpFake_SetTcpConnectError(int8_t err);
 
     /* Whether tcp_connect synchronously invokes the registered connected_cb
-     * before returning. Default true — happy-path successful connect. Set to
+     * before returning. Default true - happy-path successful connect. Set to
      * false for tests that drive the timeout path (no callback fires). */
     void LwipTcpFake_SetConnectCallbackFires(bool fires);
 
@@ -68,14 +68,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     unsigned LwipTcpFake_TcpOutputCallCount(void);
     struct tcp_pcb* LwipTcpFake_LastOutputPcb(void);
 
-    /* tcp_recved spy — window-update ACK after the wrapper drains bytes */
+    /* tcp_recved spy - window-update ACK after the wrapper drains bytes */
     unsigned LwipTcpFake_TcpRecvedCallCount(void);
     struct tcp_pcb* LwipTcpFake_LastRecvedPcb(void);
     uint16_t LwipTcpFake_LastRecvedLen(void);
 
     /* Allocated-but-not-yet-freed PCB count. Successful tcp_new bumps it;
      * tcp_close / tcp_abort decrement. The tcp_err callback releases the
-     * pcb upstream — tests that fire it via LwipTcpFake_LastErrFn must call
+     * pcb upstream - tests that fire it via LwipTcpFake_LastErrFn must call
      * LwipTcpFake_NotePcbReleasedByErr() to keep the leak invariant honest. */
     int LwipTcpFake_OutstandingPcbCount(void);
     void LwipTcpFake_NotePcbReleasedByErr(void);

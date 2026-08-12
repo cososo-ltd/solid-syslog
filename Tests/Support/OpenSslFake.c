@@ -13,12 +13,12 @@
 #include <openssl/types.h>
 
 /* -------------------------------------------------------------------------
- * Captured state — one section per OpenSSL API call. Tests read these via
+ * Captured state - one section per OpenSSL API call. Tests read these via
  * accessors below; production reaches libssl through the link-interposed
  * functions at the bottom of the file.
  * ------------------------------------------------------------------------- */
 
-/* Sentinel storage for opaque OpenSSL types — our fake returns stable
+/* Sentinel storage for opaque OpenSSL types - our fake returns stable
  * pointers to these so tests can assert pointer-chain plumbing with
  * POINTERS_EQUAL. */
 static char fakeCtxStorage;
@@ -27,7 +27,7 @@ static char fakeSslStorage;
 static char fakeBioMethStorage;
 static char fakeSha256Storage;
 
-/* HMAC / EVP_sha256 / OPENSSL_cleanse capture — backs the at-rest
+/* HMAC / EVP_sha256 / OPENSSL_cleanse capture - backs the at-rest
  * HMAC-SHA256 SecurityPolicy tests. */
 enum
 {
@@ -47,14 +47,14 @@ static int cleanseCallCount;
 static const void* lastCleanseBuf;
 static size_t lastCleanseLen;
 
-/* AES-256-GCM fake — a capture-and-canned-return test double, NOT a cipher. The
+/* AES-256-GCM fake - a capture-and-canned-return test double, NOT a cipher. The
  * production policy is a thin adapter that shuttles bytes through the EVP_*
  * sequence; the unit tests verify that wiring (which key, nonce, AAD and
  * plaintext reach OpenSSL, in what order, and how success/failure propagate).
  * The EVP calls therefore capture their arguments and return canned results:
  * Encrypt/DecryptUpdate copy input to output unchanged, GET_TAG writes a fixed
  * tag, and DecryptFinal returns a settable verdict. Genuine AES-256-GCM
- * correctness — round-trip, tamper detection, wrong-key rejection — is owned by
+ * correctness - round-trip, tamper detection, wrong-key rejection - is owned by
  * the OpenSslIntegration suite against real libcrypto. */
 enum
 {
@@ -67,7 +67,7 @@ enum
 
 /* A single direction flag is all the state the double needs: the production code
  * allocates one EVP context per seal or open, uses it, and frees it before the
- * next — never two at once. The flag lets Update capture the plaintext only on
+ * next - never two at once. The flag lets Update capture the plaintext only on
  * encrypt. The handle is a char sentinel (like the SSL/BIO fakes). */
 static bool fakeGcmEncrypting;
 static char fakeGcmCtxStorage;
@@ -247,7 +247,7 @@ static SSL_CTX* lastCheckPrivateKeyCtxArg;
 static bool checkPrivateKeyFails;
 
 /* -------------------------------------------------------------------------
- * Reset — zero every captured value.
+ * Reset - zero every captured value.
  * ------------------------------------------------------------------------- */
 
 void OpenSslFake_Reset(void)
@@ -372,7 +372,7 @@ void OpenSslFake_Reset(void)
 }
 
 /* -------------------------------------------------------------------------
- * Accessors — grouped by the OpenSSL function they describe.
+ * Accessors - grouped by the OpenSSL function they describe.
  * ------------------------------------------------------------------------- */
 
 int OpenSslFake_CtxNewCallCount(void)
@@ -626,7 +626,7 @@ SSL_CTX* OpenSslFake_LastCtxFreeCtxArg(void)
 }
 
 /* -------------------------------------------------------------------------
- * Link-time substitution for OpenSSL — replaces libssl symbols in the test
+ * Link-time substitution for OpenSSL - replaces libssl symbols in the test
  * binary. Production links real libssl; tests never link -lssl.
  * Each function records its args for test assertion. Return values are
  * plausible-success stubs; where behaviour needs switching for failure-path
@@ -1107,7 +1107,7 @@ void OpenSslFake_SetCheckPrivateKeyFails(bool fails)
 
 /* Deterministic, NON-cryptographic tag: an FNV-1a fold over the key then the
  * input then each output position. Sensitive to key, input, and position so a
- * changed key, tampered data, or tampered tag all produce a different value —
+ * changed key, tampered data, or tampered tag all produce a different value -
  * enough to exercise the policy's round-trip / tamper / wrong-key paths without
  * linking real libcrypto. */
 void OpenSslFake_ComputeExpectedTag(
@@ -1228,7 +1228,7 @@ size_t OpenSslFake_LastCleanseLen(void)
 }
 
 /* -------------------------------------------------------------------------
- * AES-256-GCM — link-interposed EVP cipher + RAND_bytes.
+ * AES-256-GCM - link-interposed EVP cipher + RAND_bytes.
  * ------------------------------------------------------------------------- */
 
 static int FakeGcm_Init(const EVP_CIPHER* cipher, const unsigned char* key, const unsigned char* iv, bool encrypting)
@@ -1255,7 +1255,7 @@ static int FakeGcm_Update(unsigned char* out, int* outl, const unsigned char* in
     enum OpenSslFakeGcmStep step = OPENSSLFAKE_GCM_STEP_UPDATE_BODY;
     if (out == NULL)
     {
-        /* Associated data — captured, never transformed. */
+        /* Associated data - captured, never transformed. */
         lastGcmAadLen = length;
         memcpy(lastGcmAad, in, (length < sizeof lastGcmAad) ? length : sizeof lastGcmAad);
         step = OPENSSLFAKE_GCM_STEP_UPDATE_AAD;
@@ -1347,7 +1347,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX* ctx, unsigned char* outm, int* outl)
     (void) outm;
     *outl = 0;
     gcmOpenCount++;
-    /* Canned authentication verdict — real tag verification is the integration
+    /* Canned authentication verdict - real tag verification is the integration
      * suite's job. A FINAL-step failure drives the tamper-rejected path
      * (DecryptFinal returns 0), which the adapter must surface silently. */
     return (gcmFailStep == OPENSSLFAKE_GCM_STEP_FINAL) ? 0 : 1;
@@ -1361,7 +1361,7 @@ int EVP_CIPHER_CTX_ctrl(EVP_CIPHER_CTX* ctx, int type, int arg, void* ptr)
     if (type == EVP_CTRL_GCM_GET_TAG)
     {
         gcmSealCount++;
-        /* Canned tag — the adapter only forwards these bytes into the trailer; it
+        /* Canned tag - the adapter only forwards these bytes into the trailer; it
          * never inspects them and no unit test asserts their value. */
         memset(ptr, 0, FAKE_GCM_TAG_SIZE);
         result = (gcmFailStep == OPENSSLFAKE_GCM_STEP_GET_TAG) ? 0 : 1;

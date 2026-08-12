@@ -78,7 +78,7 @@ static bool PlusFatFile_Open(struct SolidSyslogFile* base, const char* path)
     struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
     /* "r+" opens an existing file without truncating. Fall back to the
      * file-creating "w+" only when the "r+" failure was specifically "file does
-     * not exist" — "w+" truncates, so an "r+" failure from any other cause
+     * not exist" - "w+" truncates, so an "r+" failure from any other cause
      * (media/I/O error) on an existing file must never reach it, or it would
      * empty a record file the BlockStore believes is durably stored. The exact
      * reason lives in the task errno ff_fopen just set; ENOENT is the only code
@@ -116,7 +116,7 @@ static bool PlusFatFile_Write(struct SolidSyslogFile* base, const void* buf, siz
 {
     struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
     /* Flush the IO-manager cache after every complete write so the record's
-     * data sectors reach the media. Plus-FAT has no per-file flush —
+     * data sectors reach the media. Plus-FAT has no per-file flush -
      * ff_stdio.h declares ff_fflush but the library never defines it;
      * FF_FlushCache against the file's IO manager is the real durability
      * primitive. It does not commit the directory entry: FF_Close writes the

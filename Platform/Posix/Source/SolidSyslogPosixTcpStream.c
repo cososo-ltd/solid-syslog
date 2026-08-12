@@ -28,7 +28,7 @@ struct SolidSyslogAddress;
 enum
 {
     INVALID_FD = -1,
-    /* Keepalive parameters — bound the dead-peer detection window when the
+    /* Keepalive parameters - bound the dead-peer detection window when the
        socket is idle. Worst case: 45 + 4 * 10 = 85 s before ETIMEDOUT.
        TCP_USER_TIMEOUT covers the pending-write case (where keepalive does
        not fire) by capping how long unacked data can sit in the send queue. */
@@ -90,7 +90,7 @@ static inline bool PosixTcpStream_ConfigProvidesGetter(const struct SolidSyslogP
     return (config != NULL) && (config->GetConnectTimeoutMs != NULL);
 }
 
-/* Null Object substituted when the integrator does not install a getter —
+/* Null Object substituted when the integrator does not install a getter -
  * returns the compile-time tunable so the bounded-wait path has a single
  * code path regardless of whether the integrator wired runtime tuning. */
 static uint32_t PosixTcpStream_NullConnectTimeoutGetter(void* context)
@@ -166,7 +166,7 @@ static void PosixTcpStream_EnableTcpNoDelay(int fd)
 /* Enable kernel TCP keepalive so a dead peer is surfaced as ETIMEDOUT during
  * idle periods, not on the next PosixTcpStream_Send. TCP_USER_TIMEOUT covers the orthogonal
  * pending-write case (keepalive only fires on a fully idle socket). Linux is
- * the POSIX target — TCP_KEEP* and TCP_USER_TIMEOUT are all available there;
+ * the POSIX target - TCP_KEEP* and TCP_USER_TIMEOUT are all available there;
  * other POSIX targets are out of scope until we actually port to one. */
 static void PosixTcpStream_EnableKeepalive(int fd)
 {
@@ -214,17 +214,17 @@ static long PosixTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogPosixTc
 }
 
 /* Non-blocking connect with bounded wait. connect() returns immediately:
- *   0           — connected (loopback success path).
- *   -1 EINPROGRESS — connect started; wait via select() up to
+ *   0           - connected (loopback success path).
+ *   -1 EINPROGRESS - connect started; wait via select() up to
  *                    CONNECT_TIMEOUT_MICROSECONDS, then read SO_ERROR to
  *                    distinguish completed-success from deferred-failure.
- *   -1 other    — immediate fail-fast (refused, unreachable, etc.). */
+ *   -1 other    - immediate fail-fast (refused, unreachable, etc.). */
 static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin, long timeoutMicros)
 {
     bool connected = false;
     int rc = connect(fd, (const struct sockaddr*) sin, sizeof(*sin));
     /* Capture errno immediately after connect so the EINPROGRESS test
-     * below satisfies MISRA 22.10 — no intervening C-library calls
+     * below satisfies MISRA 22.10 - no intervening C-library calls
      * between the errno-setting function and the read. */
     int connectErrno = (rc < 0) ? errno : 0;
 
@@ -239,7 +239,7 @@ static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin, long t
     }
     else
     {
-        /* immediate fail-fast (refused, unreachable, etc.) — connected stays false */
+        /* immediate fail-fast (refused, unreachable, etc.) - connected stays false */
     }
     return connected;
 }
@@ -294,7 +294,7 @@ static SolidSyslogSsize PosixTcpStream_Read(struct SolidSyslogStream* base, void
     struct SolidSyslogPosixTcpStream* self = PosixTcpStream_SelfFromBase(base);
     ssize_t n = recv(self->Fd, buffer, size, 0);
     /* Capture errno immediately after recv so the WouldBlock test below
-     * satisfies MISRA 22.10 — passing the captured value into the helper
+     * satisfies MISRA 22.10 - passing the captured value into the helper
      * keeps the predicate pure and decouples it from errno's lifetime. */
     int recvErrno = (n < 0) ? errno : 0;
     SolidSyslogSsize result = -1;

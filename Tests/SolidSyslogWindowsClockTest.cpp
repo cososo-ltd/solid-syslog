@@ -5,7 +5,7 @@
 
 #include <windows.h>
 
-// 2025-04-02T00:00:00Z — matches the POSIX clock test default so timestamps
+// 2025-04-02T00:00:00Z - matches the POSIX clock test default so timestamps
 // behave identically across platforms when the same wall-clock value is faked.
 static SYSTEMTIME fakeSystemTime;
 static FILETIME fakeFileTime;
@@ -129,7 +129,7 @@ TEST(SolidSyslogWindowsClock, MicrosecondFromHundredNanosecondRemainder)
 
 TEST(SolidSyslogWindowsClock, MaxMicrosecondsFromRemainder)
 {
-    // 9_999_990 100-ns units → 999_999 microseconds.
+    // 9_999_990 100-ns units -> 999_999 microseconds.
     setRawFileTime(9999990, 0);
     CHECK_MICROSECOND(999999);
 }
@@ -162,7 +162,7 @@ TEST(SolidSyslogWindowsClock, Hour23Minute59Second59)
     CHECK_SECOND(59);
 }
 
-// FILETIME epoch is 1601-01-01 — all zeroes map to year 1601.
+// FILETIME epoch is 1601-01-01 - all zeroes map to year 1601.
 TEST(SolidSyslogWindowsClock, ZeroFileTimeProduces1601)
 {
     setRawFileTime(0, 0);

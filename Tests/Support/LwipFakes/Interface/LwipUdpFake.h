@@ -33,7 +33,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Allocated-but-not-yet-freed PCB count. Successful udp_new bumps it;
      * udp_remove decrements. A test that ends with a non-zero value has
-     * leaked a PCB — pin this in teardown to catch leaks across the suite. */
+     * leaked a PCB - pin this in teardown to catch leaks across the suite. */
     int LwipUdpFake_OutstandingPcbCount(void);
 
 SOLIDSYSLOG_EXTERN_C_END

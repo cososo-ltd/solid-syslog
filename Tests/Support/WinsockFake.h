@@ -72,7 +72,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void WinsockFake_SetIpMtu(int mtu);
     void WinsockFake_SetIpMtuLookupFails(bool fails);
-    /* SOL_SOCKET / SO_ERROR — read by the non-blocking-connect completion
+    /* SOL_SOCKET / SO_ERROR - read by the non-blocking-connect completion
        path. Defaults to 0 (success) until set. */
     void WinsockFake_SetSoError(int err);
     void WinsockFake_SetSoErrorLookupFails(bool fails);
@@ -97,7 +97,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int WinsockFake_IoctlSocketCallCount(void);
     SOCKET WinsockFake_LastIoctlSocketFd(void);
     long WinsockFake_LastIoctlSocketCmd(void);
-    /* Last argp value written into ioctlsocket — for FIONBIO this is the
+    /* Last argp value written into ioctlsocket - for FIONBIO this is the
        non-blocking flag (1 = non-blocking, 0 = blocking). */
     u_long WinsockFake_LastIoctlSocketArg(void);
     /* All recorded ioctlsocket FIONBIO arg values, in call order, so tests
@@ -119,10 +119,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     long WinsockFake_LastSelectTimeoutSec(void);
     long WinsockFake_LastSelectTimeoutUsec(void);
 
-    /* WSAGetLastError shim — defaults to whatever WSASetLastError set. */
+    /* WSAGetLastError shim - defaults to whatever WSASetLastError set. */
     int WSAAPI WinsockFake_WSAGetLastError(void);
 
-    /* Fake Winsock functions — injected into production via UT_PTR_SET. */
+    /* Fake Winsock functions - injected into production via UT_PTR_SET. */
     SOCKET WSAAPI WinsockFake_socket(int af, int type, int protocol);
     int WSAAPI WinsockFake_sendto(SOCKET s, const char* buf, int len, int flags, const struct sockaddr* to, int tolen);
     int WSAAPI WinsockFake_connect(SOCKET s, const struct sockaddr* name, int namelen);

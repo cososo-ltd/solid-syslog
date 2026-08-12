@@ -43,7 +43,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int FatFsFake_UnlinkCallCount(void);
     const char* FatFsFake_LastUnlinkPath(void);
 
-    /* file size — writes obj.objsize on the last-opened FIL, so f_size(fp)
+    /* file size - writes obj.objsize on the last-opened FIL, so f_size(fp)
      * (a macro that dereferences fp->obj.objsize) returns the programmed
      * value. */
     void FatFsFake_SetFileSize(unsigned long size);

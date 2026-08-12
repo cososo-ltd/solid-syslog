@@ -324,7 +324,7 @@ TEST(OpenSslFake, CtxFreeIncrementsCount)
 }
 
 /* -------------------------------------------------------------------------
- * Arg captures — prove each fake function records the args its callers pass.
+ * Arg captures - prove each fake function records the args its callers pass.
  * ------------------------------------------------------------------------- */
 
 TEST(OpenSslFake, CtxNewCapturesMethodArg)
@@ -450,7 +450,7 @@ TEST(OpenSslFake, CtxFreeCapturesCtxArg)
 }
 
 /* -------------------------------------------------------------------------
- * Failure-mode switches — tests opt into failure returns via SetXxxFails.
+ * Failure-mode switches - tests opt into failure returns via SetXxxFails.
  * ------------------------------------------------------------------------- */
 
 TEST(OpenSslFake, SetConnectFailsMakesConnectReturnNegative)

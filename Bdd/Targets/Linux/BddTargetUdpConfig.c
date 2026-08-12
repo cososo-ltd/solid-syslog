@@ -28,7 +28,7 @@ void BddTargetUdpConfig_GetEndpoint(struct SolidSyslogEndpoint* endpoint, void* 
     endpoint->Port = BddTargetUdpConfig_GetPort();
 }
 
-/* Static config — host/port never change, so version stays 0 forever and the
+/* Static config - host/port never change, so version stays 0 forever and the
    sender connects exactly once. */
 uint32_t BddTargetUdpConfig_GetEndpointVersion(void* context)
 {

@@ -18,7 +18,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         const struct MbedTlsTestCert* ServerCert; /* server's cert + matching key */
         mbedtls_ctr_drbg_context* Rng; /* shared with the test fixture */
         /* Non-NULL switches the server to require + verify a client cert
-         * against this CA — drives the mTLS scenarios. NULL = server-auth only. */
+         * against this CA - drives the mTLS scenarios. NULL = server-auth only. */
         const struct MbedTlsTestCert* TrustedClientCa;
     };
 

@@ -1,6 +1,6 @@
 /** @file
  *  A keyed HMAC-SHA256 security policy (OpenSSL reference integration) that
- *  authenticates each stored record — tamper-detection for store-and-forward
+ *  authenticates each stored record - tamper-detection for store-and-forward
  *  without encryption.
  *
  *  What the policy does through its vtable is the substance:
@@ -11,7 +11,7 @@
  *    via GetKey and wiped after the computation.
  *  - OpenRecord recomputes the tag and compares it to the stored trailer in
  *    constant time (no early exit, no timing oracle); a mismatch returns false.
- *  - It fails closed — returns false, so nothing is sealed / verified — if the
+ *  - It fails closed - returns false, so nothing is sealed / verified - if the
  *    key is unavailable, shorter than 32 bytes (RFC 2104 / NIST SP 800-107: an
  *    HMAC key should be at least the hash output length), or the HMAC computation
  *    fails. */
@@ -39,8 +39,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogSecurityPolicy* SolidSyslogOpenSslHmacSha256Policy_Create(
         const struct SolidSyslogOpenSslHmacSha256PolicyConfig* config
     );
-    /** Release the pool slot. The policy owns no resources — the key is never
-     *  stored on the instance — so this only frees the slot. */
+    /** Release the pool slot. The policy owns no resources - the key is never
+     *  stored on the instance - so this only frees the slot. */
     void SolidSyslogOpenSslHmacSha256Policy_Destroy(struct SolidSyslogSecurityPolicy * base);
 
 SOLIDSYSLOG_EXTERN_C_END

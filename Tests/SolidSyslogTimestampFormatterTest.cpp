@@ -43,7 +43,7 @@ TEST_GROUP(SolidSyslogTimestampFormatter)
 };
 
 // A full-string oracle on the canonical value proves every separator and
-// every zero-padded field at once — strictly stronger than per-field checks.
+// every zero-padded field at once - strictly stronger than per-field checks.
 TEST(SolidSyslogTimestampFormatter, FormatsValidTimestampAsRfc3339WithZuluOffset)
 {
     format();

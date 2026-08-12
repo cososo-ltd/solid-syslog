@@ -1,4 +1,4 @@
-/* Cortex-M3 startup for the QEMU mps2-an385 machine — variant for the
+/* Cortex-M3 startup for the QEMU mps2-an385 machine - variant for the
  * FreeRTOS-Plus-TCP single-task example.
  *
  * Differs from Bdd/Targets/FreeRtos/Common/startup.c by extending the vector
@@ -33,7 +33,7 @@ void SVC_Handler(void);
 void PendSV_Handler(void);
 void SysTick_Handler(void);
 
-/* Provided by the Plus-TCP MPS2_AN385 NetworkInterface.c — drained by the
+/* Provided by the Plus-TCP MPS2_AN385 NetworkInterface.c - drained by the
  * EMAC RX task on each task notification. */
 void EthernetISR(void) __attribute__((weak, alias("Default_Handler")));
 
@@ -70,12 +70,12 @@ void Default_Handler(void)
 }
 
 /* Cortex-M3 vector table. System exceptions (entries 0..15) followed by 32
- * external IRQs. Only IRQ 13 is wired to a real handler — every other slot
+ * external IRQs. Only IRQ 13 is wired to a real handler - every other slot
  * traps via Default_Handler so a stray interrupt is debuggable rather than
  * silently jumping into 0xFFFFFFFF. */
 __attribute__((section(".vectors"), used)) const uint32_t vector_table[] = {
-    (uint32_t) &_estack, /* 0x00 — initial stack pointer */
-    (uint32_t) Reset_Handler, /* 0x04 — reset                 */
+    (uint32_t) &_estack, /* 0x00 - initial stack pointer */
+    (uint32_t) Reset_Handler, /* 0x04 - reset                 */
     (uint32_t) NMI_Handler, /* 0x08                         */
     (uint32_t) HardFault_Handler, /* 0x0C                         */
     (uint32_t) MemManage_Handler, /* 0x10                         */
@@ -85,29 +85,29 @@ __attribute__((section(".vectors"), used)) const uint32_t vector_table[] = {
     0U,
     0U,
     0U, /* 0x1C-0x28 reserved           */
-    (uint32_t) SVC_Handler, /* 0x2C — FreeRTOS              */
+    (uint32_t) SVC_Handler, /* 0x2C - FreeRTOS              */
     (uint32_t) DebugMon_Handler, /* 0x30                         */
     0U, /* 0x34 reserved                */
-    (uint32_t) PendSV_Handler, /* 0x38 — FreeRTOS              */
-    (uint32_t) SysTick_Handler, /* 0x3C — FreeRTOS              */
+    (uint32_t) PendSV_Handler, /* 0x38 - FreeRTOS              */
+    (uint32_t) SysTick_Handler, /* 0x3C - FreeRTOS              */
 
-    /* External interrupts — IRQ0..IRQ31. IRQ 13 = LAN9118 Ethernet. */
-    (uint32_t) Default_Handler, /* IRQ  0 — UART0 RX  */
-    (uint32_t) Default_Handler, /* IRQ  1 — UART0 TX  */
-    (uint32_t) Default_Handler, /* IRQ  2 — UART1 RX  */
-    (uint32_t) Default_Handler, /* IRQ  3 — UART1 TX  */
-    (uint32_t) Default_Handler, /* IRQ  4 — UART2 RX  */
-    (uint32_t) Default_Handler, /* IRQ  5 — UART2 TX  */
-    (uint32_t) Default_Handler, /* IRQ  6 — GPIO0     */
-    (uint32_t) Default_Handler, /* IRQ  7 — GPIO1     */
-    (uint32_t) Default_Handler, /* IRQ  8 — Timer0    */
-    (uint32_t) Default_Handler, /* IRQ  9 — Timer1    */
-    (uint32_t) Default_Handler, /* IRQ 10 — DualTimer */
-    (uint32_t) Default_Handler, /* IRQ 11 — SPI0/1    */
-    (uint32_t) Default_Handler, /* IRQ 12 — UART overflow */
-    (uint32_t) EthernetISR, /* IRQ 13 — Ethernet (LAN9118) */
-    (uint32_t) Default_Handler, /* IRQ 14 — Touchscreen */
-    (uint32_t) Default_Handler, /* IRQ 15 — Audio I2S */
+    /* External interrupts - IRQ0..IRQ31. IRQ 13 = LAN9118 Ethernet. */
+    (uint32_t) Default_Handler, /* IRQ  0 - UART0 RX  */
+    (uint32_t) Default_Handler, /* IRQ  1 - UART0 TX  */
+    (uint32_t) Default_Handler, /* IRQ  2 - UART1 RX  */
+    (uint32_t) Default_Handler, /* IRQ  3 - UART1 TX  */
+    (uint32_t) Default_Handler, /* IRQ  4 - UART2 RX  */
+    (uint32_t) Default_Handler, /* IRQ  5 - UART2 TX  */
+    (uint32_t) Default_Handler, /* IRQ  6 - GPIO0     */
+    (uint32_t) Default_Handler, /* IRQ  7 - GPIO1     */
+    (uint32_t) Default_Handler, /* IRQ  8 - Timer0    */
+    (uint32_t) Default_Handler, /* IRQ  9 - Timer1    */
+    (uint32_t) Default_Handler, /* IRQ 10 - DualTimer */
+    (uint32_t) Default_Handler, /* IRQ 11 - SPI0/1    */
+    (uint32_t) Default_Handler, /* IRQ 12 - UART overflow */
+    (uint32_t) EthernetISR, /* IRQ 13 - Ethernet (LAN9118) */
+    (uint32_t) Default_Handler, /* IRQ 14 - Touchscreen */
+    (uint32_t) Default_Handler, /* IRQ 15 - Audio I2S */
     (uint32_t) Default_Handler, /* IRQ 16 */
     (uint32_t) Default_Handler, /* IRQ 17 */
     (uint32_t) Default_Handler, /* IRQ 18 */

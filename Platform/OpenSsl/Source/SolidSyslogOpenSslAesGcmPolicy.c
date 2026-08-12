@@ -23,7 +23,7 @@ enum
     AES_256_KEY_SIZE = 32,
     GCM_NONCE_SIZE = 12,
     GCM_TAG_SIZE = 16,
-    /* Trailer is nonce ‖ tag — fits SOLIDSYSLOG_MAX_INTEGRITY_SIZE (32). */
+    /* Trailer is nonce || tag - fits SOLIDSYSLOG_MAX_INTEGRITY_SIZE (32). */
     AES_GCM_TRAILER_SIZE = GCM_NONCE_SIZE + GCM_TAG_SIZE
 };
 
@@ -72,7 +72,7 @@ void OpenSslAesGcmPolicy_Initialise(
 
 void OpenSslAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base)
 {
-    /* No owned resources to release — the key is fetched on demand via the
+    /* No owned resources to release - the key is fetched on demand via the
      * GetKey callback and never stored on the instance. */
     (void) base;
 }
@@ -81,7 +81,7 @@ static inline struct SolidSyslogOpenSslAesGcmPolicy* OpenSslAesGcmPolicy_SelfFro
     struct SolidSyslogSecurityPolicy* base
 )
 {
-    /* Base is the first member of the instance struct — see Private.h. */
+    /* Base is the first member of the instance struct - see Private.h. */
     return (struct SolidSyslogOpenSslAesGcmPolicy*) base;
 }
 
@@ -141,7 +141,7 @@ static bool OpenSslAesGcmPolicy_SealRecord(
 }
 
 /* Fetches the AES-256 key on demand. Fails closed (and reports) if the key is
- * unavailable or not exactly 32 bytes — AES-256 admits no other key length. */
+ * unavailable or not exactly 32 bytes - AES-256 admits no other key length. */
 static bool OpenSslAesGcmPolicy_FetchKey(struct SolidSyslogOpenSslAesGcmPolicy* policy, uint8_t* keyOut)
 {
     size_t keyLength = 0;
@@ -222,12 +222,12 @@ static bool OpenSslAesGcmPolicy_GcmDecrypt(
     const uint8_t* tagIn
 )
 {
-    /* Copy the expected tag into a non-const buffer — EVP_CIPHER_CTX_ctrl's
+    /* Copy the expected tag into a non-const buffer - EVP_CIPHER_CTX_ctrl's
      * SET_TAG parameter is void*, and copying avoids casting away const. */
     uint8_t tag[GCM_TAG_SIZE];
     (void) memcpy(tag, tagIn, sizeof tag);
 
-    /* A tag mismatch is the expected tamper-detected outcome — return false
+    /* A tag mismatch is the expected tamper-detected outcome - return false
      * silently, like the HMAC verify. Only a genuine OpenSSL failure (context
      * allocation or any setup step) is reported. */
     bool opened = false;

@@ -23,7 +23,7 @@ const struct SolidSyslogErrorSource PosixMessageQueueBufferErrorSource = {"Posix
 
 enum
 {
-    /* 0600 in octal — owner read/write, equivalent to S_IRUSR | S_IWUSR. Hex form avoids MISRA 7.1. */
+    /* 0600 in octal - owner read/write, equivalent to S_IRUSR | S_IWUSR. Hex form avoids MISRA 7.1. */
     OWNER_READ_WRITE = 0x180U
 };
 
@@ -96,7 +96,7 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
         /* Capture errno immediately after mq_receive so the EAGAIN test below
          * stays a pure predicate and is decoupled from errno's lifetime
          * between the errno-setting call and the read (MISRA C:2012 Rule 22.10).
-         * EAGAIN is the empty-queue poll signal — part of the happy path and
+         * EAGAIN is the empty-queue poll signal - part of the happy path and
          * must stay silent. Any other errno is a real failure worth surfacing. */
         int receiveErrno = success ? 0 : errno;
         if (!success && (receiveErrno != EAGAIN))

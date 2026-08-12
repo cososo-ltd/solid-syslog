@@ -32,8 +32,8 @@ struct ScanFake
 {
     struct SolidSyslogBlockDevice Base;
     std::set<size_t>* existing;
-    std::vector<DeviceCall>* calls; /* optional — tests that don't care leave nullptr */
-    std::map<size_t, size_t>* sizes; /* optional — tests that need realistic Size readings populate */
+    std::vector<DeviceCall>* calls; /* optional - tests that don't care leave nullptr */
+    std::map<size_t, size_t>* sizes; /* optional - tests that need realistic Size readings populate */
     bool failNextDispose;
 };
 
@@ -255,7 +255,7 @@ TEST_GROUP(BlockSequenceRotation)
         sequence = SolidSyslogBlockSequence_Create(&config);
 
         SolidSyslogBlockSequence_Open(sequence); /* cold start: Acquire(0) */
-        /* Simulate one record's worth of data in block 0 — production rotation
+        /* Simulate one record's worth of data in block 0 - production rotation
          * never seals an empty block, and the dispose-on-empty trigger uses
          * device.Size to decide drained-ness. */
         SolidSyslogBlockSequence_NoteRecordWritten(sequence, SIMULATED_RECORD_SIZE);
@@ -319,7 +319,7 @@ TEST(BlockSequenceRotation, RotationSkipsDisposeWhenTargetBlockEmpty)
 
 TEST(BlockSequenceRotation, RotationFailsWhenStaleBlockDisposeFails)
 {
-    /* If the stale block can't be Disposed, we must NOT proceed to Acquire —
+    /* If the stale block can't be Disposed, we must NOT proceed to Acquire -
      * a flash "verify-and-use" driver would reject the stale block anyway,
      * and surfacing the failure here matches the slice-3 retry contract. */
     existing.insert(1);

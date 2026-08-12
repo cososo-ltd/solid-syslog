@@ -95,7 +95,7 @@ TEST(SolidSyslogSdElement, SecondParamClosesThePreviousValueQuote)
 TEST(SolidSyslogSdElement, BeginWithNullNameSuppressesTheWholeElement)
 {
     /* A NULL SD-ID can never form a well-formed element, so the whole element
-     * is skipped — params and close emit nothing, writes are absorbed safely. */
+     * is skipped - params and close emit nothing, writes are absorbed safely. */
     SolidSyslogSdElement_Begin(&element, nullptr, 0);
     SolidSyslogSdValue_String(SolidSyslogSdElement_Param(&element, "p"), "v");
     SolidSyslogSdElement_End(&element);
@@ -125,7 +125,7 @@ TEST(SolidSyslogSdElement, SkippedParamDoesNotDisturbSurroundingParams)
 
 TEST(SolidSyslogSdElement, ParamValueIsEscapedThroughTheValueSink)
 {
-    /* The element owns no escaping path of its own — the value's '"' is escaped
+    /* The element owns no escaping path of its own - the value's '"' is escaped
      * by the reused SolidSyslogSdValue, so framing stays intact. */
     SolidSyslogSdElement_Begin(&element, "meta", 0);
     SolidSyslogSdValue_String(SolidSyslogSdElement_Param(&element, "p"), "a\"b");

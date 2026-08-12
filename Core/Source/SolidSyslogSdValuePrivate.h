@@ -30,7 +30,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         size_t PendingCount;
     };
 
-    /* Internal constructor — wraps a message-buffer formatter so values stream
+    /* Internal constructor - wraps a message-buffer formatter so values stream
      * straight into it. Stack-transient: the caller owns the storage. */
     void SolidSyslogSdValue_FromFormatter(struct SolidSyslogSdValue * value, struct SolidSyslogFormatter * formatter);
 

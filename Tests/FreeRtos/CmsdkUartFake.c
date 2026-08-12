@@ -98,7 +98,7 @@ static void Fake_Write32(uintptr_t address, uint32_t value)
     }
     else if (offset == STATE_OFFSET)
     {
-        /* W1C — only the overrun bits are software-clearable. */
+        /* W1C - only the overrun bits are software-clearable. */
         fake.state &= ~(value & (TX_OVRE_BIT | 0x08U));
     }
     else if (offset == CTRL_OFFSET)

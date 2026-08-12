@@ -14,7 +14,7 @@
 
 const struct SolidSyslogErrorSource BlockStoreErrorSource = {"BlockStore"};
 
-/* vtable — forward-declared because BlockStore_InitialiseVtable references them before their definitions */
+/* vtable - forward-declared because BlockStore_InitialiseVtable references them before their definitions */
 static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size);
 static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead);
 static void BlockStore_MarkSent(struct SolidSyslogStore* base);
@@ -29,12 +29,12 @@ static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* sel
 static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* self);
 
 /* ------------------------------------------------------------------
- * Initialise / Cleanup — private lifecycle pair invoked by Static.c.
+ * Initialise / Cleanup - private lifecycle pair invoked by Static.c.
  *
  * Initialise stores the two inner pool pointers (Static.c acquired them
  * before this call), wires the vtable, and runs the existing-block
  * resume scan. Cleanup is a pure vtable swap to NullStore for
- * use-after-destroy crash-safety — Static.c destroys the inner pool
+ * use-after-destroy crash-safety - Static.c destroys the inner pool
  * slots outside the outer FreeIfInUse lock, which keeps the per-pool
  * ConfigLock acquisitions sequential rather than nested.
  * ----------------------------------------------------------------*/
@@ -62,7 +62,7 @@ void BlockStore_Cleanup(struct SolidSyslogStore* base)
 {
     /* Overwrite the abstract base with the shared NullStore vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash.
-     * The inner pool pointers are still in the slot at this point — Static.c
+     * The inner pool pointers are still in the slot at this point - Static.c
      * pulls them out before FreeIfInUse and destroys them after the outer
      * lock is released. */
     *base = *SolidSyslogNullStore_Get();
@@ -162,7 +162,7 @@ static size_t BlockStore_GetUsedBytes(struct SolidSyslogStore* base)
     return SolidSyslogBlockSequence_UsedBytes(BlockStore_SelfFromBase(base)->BlockSequence);
 }
 
-/* BlockStore retains records — a BlockStore_Write rejection here is the discard
+/* BlockStore retains records - a BlockStore_Write rejection here is the discard
  * policy speaking (DISCARD_NEWEST or HALT), and the message must NOT
  * bypass older stored records via a Service direct-send fallback. */
 static bool BlockStore_IsTransient(struct SolidSyslogStore* base)

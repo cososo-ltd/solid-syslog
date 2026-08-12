@@ -112,7 +112,7 @@ static enum SolidSyslogDatagramSendResult PlusTcpDatagram_SendTo(
  * an unresolved peer drops at the IP layer. Host-class kernels mask this
  * with internal ARP queuing; this stack does not. So on cache miss we issue a
  * probe and yield once for the reply to land. If the reply hasn't arrived in
- * time the sendto is allowed to fail or be dropped — UDP is best-effort and
+ * time the sendto is allowed to fail or be dropped - UDP is best-effort and
  * retry belongs in the store-and-forward layer above, not here. */
 static inline void PlusTcpDatagram_PrimeArpIfMissing(uint32_t ip)
 {
@@ -121,7 +121,7 @@ static inline void PlusTcpDatagram_PrimeArpIfMissing(uint32_t ip)
      * attempt FreeRTOS_sendto. 50 ms is generous against typical
      * sub-millisecond LAN ARP RTT but short enough that the first send
      * latency stays tolerable. If the reply hasn't arrived in time the
-     * sendto is allowed to fail or be dropped — UDP semantics. */
+     * sendto is allowed to fail or be dropped - UDP semantics. */
     static const TickType_t ARP_RESOLUTION_WAIT_TICKS = pdMS_TO_TICKS(50);
 
     if (xIsIPInARPCache(ip) == pdFALSE)

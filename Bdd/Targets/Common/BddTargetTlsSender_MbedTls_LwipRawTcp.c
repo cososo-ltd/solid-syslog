@@ -10,14 +10,14 @@
  * inner stream swapped for the OS-agnostic LwipRaw adapter. The mbedTLS adapter
  * takes pre-built handles (mbedtls_ctr_drbg, mbedtls_x509_crt, mbedtls_pk_context)
  * rather than file paths, because MBEDTLS_FS_IO is disabled in the integrator
- * config — there is no host path reachable from QEMU. The demo CA / client cert /
+ * config - there is no host path reachable from QEMU. The demo CA / client cert /
  * client key PEMs travel as `static const` arrays in rodata, baked at CMake-time
  * by xxd -i from Bdd/syslog-ng/tls/ ca.pem / client.pem / client.key. The arrays
  * are parsed once on first BddTargetTlsSender_Create call.
  *
  * Entropy + CTR_DRBG also live in this TU rather than in main.c so all
  * mbedTLS-specific state is one file's responsibility. The entropy source
- * is deliberately weak — see DemoEntropySource — and an audit-trail
+ * is deliberately weak - see DemoEntropySource - and an audit-trail
  * WARNING is emitted via printf on first init.
  */
 
@@ -82,10 +82,10 @@ static mbedtls_x509_crt clientCertChain;
 static mbedtls_pk_context clientKey;
 
 /* mbedTLS allocates its per-SSL-context IN/OUT buffers (~6 KiB combined) and
- * handshake state (~10 KiB) via libc calloc — on this FreeRTOS target that
+ * handshake state (~10 KiB) via libc calloc - on this FreeRTOS target that
  * funnels through newlib's tiny syscall heap (~4 KiB, see Common/Syscalls.c),
  * which can't satisfy a single TLS context. Redirect to pvPortMalloc so
- * mbedTLS allocates from the 96 KiB FreeRTOS heap_4 region instead — the
+ * mbedTLS allocates from the 96 KiB FreeRTOS heap_4 region instead - the
  * standard FreeRTOS+mbedTLS integration. Gated on MBEDTLS_PLATFORM_MEMORY in
  * mbedtls_user_config.h. The zero-fill mirrors libc calloc's contract. */
 static void* FreeRtosMbedTlsCalloc(size_t nmemb, size_t size)
@@ -118,10 +118,10 @@ static void FreeRtosMbedTlsFree(void* ptr)
 /* PSA crypto's randomness hook (gated on MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG in
  * the user config). mbedTLS 3.6's TLS 1.3 path drives PSA crypto, and PSA's
  * built-in entropy collector returns PSA_ERROR_INSUFFICIENT_ENTROPY on
- * MBEDTLS_NO_PLATFORM_ENTROPY targets — bypass it by feeding PSA from the
+ * MBEDTLS_NO_PLATFORM_ENTROPY targets - bypass it by feeding PSA from the
  * same CTR_DRBG the classic mbedTLS API already uses. The DRBG must be
  * seeded before psa_crypto_init() so the first PSA crypto operation can
- * draw bytes — EnsureMbedTlsInitialised below enforces that ordering. */
+ * draw bytes - EnsureMbedTlsInitialised below enforces that ordering. */
 psa_status_t mbedtls_psa_external_get_random(
     mbedtls_psa_external_random_context_t* context,
     uint8_t* output,
@@ -140,7 +140,7 @@ psa_status_t mbedtls_psa_external_get_random(
 
 /* Demo-only entropy: XOR the FreeRTOS tick count, a per-call counter, and
  * the destination address (which varies per call) into each output byte.
- * Quality is intentionally terrible — QEMU has no real source — and the
+ * Quality is intentionally terrible - QEMU has no real source - and the
  * "demo-only entropy" printf emit at the end of EnsureMbedTlsInitialised
  * makes that explicit. Real integrators on bare-metal would replace this
  * with TRNG / HSM bytes. */
@@ -160,7 +160,7 @@ static int DemoEntropySource(void* data, unsigned char* output, size_t len, size
 
 static void RtosSleep(int milliseconds)
 {
-    /* Same rounding rule as the CmsdkUart sleep in main.c — sub-tick requests
+    /* Same rounding rule as the CmsdkUart sleep in main.c - sub-tick requests
      * must still block the task, otherwise vTaskDelay(0) just yields. */
     TickType_t ticks = pdMS_TO_TICKS((TickType_t) milliseconds);
     if ((milliseconds > 0) && (ticks == 0U))
@@ -177,7 +177,7 @@ static void RtosSleep(int milliseconds)
  *
  * Each major step emits a printf diagnostic and yields one tick to the
  * FreeRTOS scheduler. Under QEMU mps2-an385 the DRBG seed + cert/key parses
- * can each take several seconds (mbedTLS does serious crypto work — RSA key
+ * can each take several seconds (mbedTLS does serious crypto work - RSA key
  * parse, ECDHE primes, ASN.1 walks); without the yields, lower-priority tasks
  * would starve until init finishes, and without the diagnostic prints the
  * boot would appear to hang. */
@@ -189,13 +189,13 @@ static void EnsureMbedTlsInitialised(void)
     }
 
     /* Boot diagnostics via printf rather than SolidSyslog_Error because main's
-     * error handler installation happens AFTER BddTargetTlsSender_Create —
+     * error handler installation happens AFTER BddTargetTlsSender_Create -
      * the default no-op handler would otherwise swallow these. */
     (void) printf("[mbedtls] init entropy + DRBG seed (slow under QEMU)\r\n");
     vTaskDelay(1U);
 
     /* Redirect mbedTLS allocations to the FreeRTOS heap before any
-     * mbedtls_*_init runs. Must come first — once an ssl_setup runs against
+     * mbedtls_*_init runs. Must come first - once an ssl_setup runs against
      * the default libc calloc and fails, the failure mode is heap exhaustion
      * inside newlib's 4 KiB syscall heap, not a recoverable error. */
     mbedtls_platform_set_calloc_free(FreeRtosMbedTlsCalloc, FreeRtosMbedTlsFree);
@@ -205,7 +205,7 @@ static void EnsureMbedTlsInitialised(void)
      * randomness is intentionally terrible. The STRONG/WEAK label is
      * checked structurally by `mbedtls_entropy_func`, which requires at
      * least MBEDTLS_ENTROPY_BLOCK_SIZE bytes of strong contribution per
-     * call — without any strong source registered, every
+     * call - without any strong source registered, every
      * `mbedtls_ctr_drbg_seed` returns ENTROPY_SOURCE_FAILED (-0x0034)
      * after looping 256 times trying to satisfy the threshold. The
      * "demo-only entropy" notice printed at the end of this function is
@@ -237,7 +237,7 @@ static void EnsureMbedTlsInitialised(void)
      * MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG in the user config disables PSA's
      * built-in entropy collector (which would otherwise return
      * PSA_ERROR_INSUFFICIENT_ENTROPY on this no-platform-entropy target), so
-     * the init only succeeds once the DRBG is seeded above — that's why this
+     * the init only succeeds once the DRBG is seeded above - that's why this
      * sits after the seed step. Idempotent across subsequent calls. */
     psa_status_t psaRc = psa_crypto_init();
     if (psaRc != PSA_SUCCESS)
@@ -304,7 +304,7 @@ static void EnsureMbedTlsInitialised(void)
      * entropy explicitly. Integrators porting this off the BDD target should
      * see this and replace DemoEntropySource with TRNG before shipping. The
      * `mbedTlsInitialised = true` latch happens only after every fail-able
-     * step above has succeeded — partial-init state would silently degrade
+     * step above has succeeded - partial-init state would silently degrade
      * later handshakes into confusing "internal" errors. */
     (void) printf("[mbedtls] init complete. WARNING: demo-only entropy "
                   "(xTaskGetTickCount + per-call counter). Not for production.\r\n");
@@ -319,7 +319,7 @@ static void EnsureMbedTlsInitialised(void)
  * 6515) differs at Connect time. The mTLS port's syslog-ng listener
  * peer-verifies the client cert that the wrapper wires unconditionally
  * below, and the plain-TLS port's listener accepts it as optional-untrusted
- * — so the same client identity works on both ports. */
+ * - so the same client identity works on both ports. */
 static void DispatchEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 {
     if (BddTargetSwitchConfig_IsMtlsMode())
@@ -341,7 +341,7 @@ static uint32_t DispatchEndpointVersion(void* context)
 struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* resolver, bool mtls)
 {
     /* `mtls` is honoured for cross-platform contract uniformity but does not
-     * gate cert wiring on FreeRTOS — both TLS and mTLS BDD scenarios share
+     * gate cert wiring on FreeRTOS - both TLS and mTLS BDD scenarios share
      * one Switching slot here, and `set transport mtls` arrives over the UART
      * AFTER this Create call has run. Wiring the client identity
      * unconditionally lets the dispatcher above flip ports at runtime without
@@ -353,7 +353,7 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     {
         /* EnsureMbedTlsInitialised already printed a [mbedtls] ... FAILED
          * diagnostic explaining which step tripped. Returning the shared
-         * NullSender here keeps the bad-setup contract intact — the
+         * NullSender here keeps the bad-setup contract intact - the
          * SwitchingSender's tls slot drops messages cleanly rather than
          * failing opaquely later inside MbedTlsStream_Open, and the
          * statics below stay NULL so BddTargetTlsSender_Destroy can
@@ -404,7 +404,7 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
 void BddTargetTlsSender_Destroy(void)
 {
     /* If EnsureMbedTlsInitialised failed, Create short-circuited to the
-     * shared NullSender and never assigned the file-scope statics — there
+     * shared NullSender and never assigned the file-scope statics - there
      * is nothing to release. The pool-backed Destroy helpers tolerate
      * a NULL handle but skipping makes the no-op explicit. */
     if (sender == NULL)
@@ -416,7 +416,7 @@ void BddTargetTlsSender_Destroy(void)
     SolidSyslogMbedTlsStream_Destroy(tlsStream);
     SolidSyslogLwipRawTcpStream_Destroy(underlyingStream);
 
-    /* Entropy / DRBG / parsed certs survive across Destroy → Create cycles to
+    /* Entropy / DRBG / parsed certs survive across Destroy -> Create cycles to
      * avoid re-seeding on every reconnect. Real teardown only happens at
      * process exit, which the FreeRTOS target never reaches. */
 }

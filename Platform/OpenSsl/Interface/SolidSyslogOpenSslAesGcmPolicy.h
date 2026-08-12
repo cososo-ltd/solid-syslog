@@ -1,15 +1,15 @@
 /** @file
  *  A keyed AES-256-GCM security policy (OpenSSL reference integration) that
- *  encrypts and authenticates each stored record — confidentiality plus
+ *  encrypts and authenticates each stored record - confidentiality plus
  *  tamper-detection for store-and-forward.
  *
  *  What the policy does through its vtable is the substance:
  *
  *  - SealRecord encrypts the body in place and authenticates the header as
  *    associated data (the header stays in clear), writing a fresh random nonce
- *    and the GCM tag into the record trailer (nonce ‖ tag, 28 bytes). The key is
- *    fetched on demand via GetKey and wiped before returning. It fails closed —
- *    returns false so nothing is stored — if the key is unavailable or not
+ *    and the GCM tag into the record trailer (nonce || tag, 28 bytes). The key is
+ *    fetched on demand via GetKey and wiped before returning. It fails closed -
+ *    returns false so nothing is stored - if the key is unavailable or not
  *    exactly 32 bytes (AES-256 admits no other length), if nonce generation
  *    fails, or on any encrypt error.
  *  - OpenRecord decrypts the body and verifies the tag over header + ciphertext.
@@ -40,8 +40,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogSecurityPolicy* SolidSyslogOpenSslAesGcmPolicy_Create(
         const struct SolidSyslogOpenSslAesGcmPolicyConfig* config
     );
-    /** Release the pool slot. The policy owns no resources — the key is never
-     *  stored on the instance — so this only frees the slot. */
+    /** Release the pool slot. The policy owns no resources - the key is never
+     *  stored on the instance - so this only frees the slot. */
     void SolidSyslogOpenSslAesGcmPolicy_Destroy(struct SolidSyslogSecurityPolicy * base);
 
 SOLIDSYSLOG_EXTERN_C_END

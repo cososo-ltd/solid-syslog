@@ -25,7 +25,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** syncAccuracy in microseconds; SOLIDSYSLOG_SYNC_ACCURACY_OMIT omits the field.
          *  RFC 5424 §7.1.3 forbids the parameter when isSynced is 0, so a callback
          *  reporting IsSynced false must leave this at SOLIDSYSLOG_SYNC_ACCURACY_OMIT.
-         *  The field is written whenever it holds any other value — the pairing is
+         *  The field is written whenever it holds any other value - the pairing is
          *  the caller's to keep until #748 enforces it. §7.1.3 also asks that it be
          *  written only where the accuracy of the time source is actually known. */
         uint32_t SyncAccuracyMicroseconds;

@@ -1,8 +1,8 @@
 /* FreeRTOS-Plus-TCP SolidSyslog BDD target for QEMU mps2-an385.
  *
- * The platform-independent pipeline — SolidSyslog lifecycle, file-backed store
+ * The platform-independent pipeline - SolidSyslog lifecycle, file-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
- * task, and the console glue — lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
+ * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
  * (shared with the lwIP target, S29.03). This file keeps only the FreeRTOS-Plus-TCP
  * network backend and the FreeRTOS-Plus-FAT store behind the pipeline seam:
  * static-IP bring-up, the LAN9118 IRQ priority fix, the per-endpoint RNG /
@@ -10,7 +10,7 @@
  * TLS/mTLS via mbedTLS over PlusTcp TCP), the RFC 5424 HOSTNAME read from the
  * Plus-TCP endpoint, and the Plus-FAT FS-mount seam (BddTargetPlusFatMount over
  * the FF_Disk_t semihosting media driver). The lwIP target pairs lwIP with
- * ChaN-FatFs instead — together the two targets prove the SolidSyslogFile seam
+ * ChaN-FatFs instead - together the two targets prove the SolidSyslogFile seam
  * is FS-vendor-portable (S29.05).
  *
  * Static IPv4 (10.0.2.15) on the QEMU slirp network with the host reachable at
@@ -47,14 +47,14 @@
 #define CMSDK_UART0_BASE_ADDRESS UINT32_C(0x40004000)
 
 /* IRQ number for the QEMU mps2-an385 LAN9118 Ethernet controller. The upstream
- * Plus-TCP NetworkInterface.c enables ISER for this IRQ but does NOT write IPR —
+ * Plus-TCP NetworkInterface.c enables ISER for this IRQ but does NOT write IPR -
  * leaving the priority at the reset default of 0, which is numerically more
  * urgent than configMAX_SYSCALL_INTERRUPT_PRIORITY and trips configASSERT the
  * first time the ISR calls a FreeRTOS API. We set IPR explicitly here before
  * FreeRTOS_IPInit_Multi triggers the interface init that flips ISER. */
 #define ETHERNET_IRQ_NUMBER 13U
 
-/* NVIC IPR (Interrupt Priority Register) base — one byte per IRQ. */
+/* NVIC IPR (Interrupt Priority Register) base - one byte per IRQ. */
 #define NVIC_IPR_BASE_ADDRESS UINT32_C(0xE000E400)
 
 /* NVIC IPR is 8-bit per IRQ but only the top configPRIO_BITS are implemented.
@@ -77,7 +77,7 @@ static const uint8_t TEST_MAC[ipMAC_ADDRESS_LENGTH_BYTES] = {0x02U, 0x00U, 0x00U
 static NetworkInterface_t networkInterface;
 static NetworkEndPoint_t networkEndPoint;
 
-/* PlusTcp sender adapters — built by BuildSender on the interactive task, torn
+/* PlusTcp sender adapters - built by BuildSender on the interactive task, torn
  * down by TeardownNetwork. */
 static struct SolidSyslogResolver* resolver = NULL;
 static struct SolidSyslogDatagram* datagram = NULL;
@@ -172,7 +172,7 @@ void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, stru
             }
             else
             {
-                /* Service create failed — undo the interactive task so the next
+                /* Service create failed - undo the interactive task so the next
                  * eNetworkUp retries both cleanly instead of latching a
                  * half-started pipeline. Safe to delete: this hook runs on the
                  * higher-priority IP task, so the idle+1 interactive task has not
@@ -248,7 +248,7 @@ static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
  * flips it at runtime. Runs on the interactive task. */
 static struct SolidSyslogSender* BuildSender(void)
 {
-    /* Route TLS / mTLS via the slirp gateway 10.0.2.2 (same path UDP/TCP take —
+    /* Route TLS / mTLS via the slirp gateway 10.0.2.2 (same path UDP/TCP take -
      * slirp DNS doesn't reach the docker alias in CI). ServerName is pinned to
      * "syslog-ng" (the cert subject) so SNI / cert verification still pass. */
     BddTargetTlsConfig_SetHost("10.0.2.2");

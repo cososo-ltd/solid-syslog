@@ -70,7 +70,7 @@ static const char* SpyGetHost()
     return TEST_HOST;
 }
 
-// Endpoint stubs — delegate to per-test function pointers so existing
+// Endpoint stubs - delegate to per-test function pointers so existing
 // callback-spy tests in TEST_GROUP(SolidSyslogStreamSenderConfig) keep counting
 // callback invocations through the new endpoint path. endpointVersion is the
 // per-test version reported by TestEndpointVersion; bump it between Sends to
@@ -646,7 +646,7 @@ TEST(SolidSyslogStreamSenderFailure, SendRecoversAfterTransientResolveFailure)
 
 TEST(SolidSyslogStreamSenderFailure, NoEndpointConfiguredConnectsToPortZero)
 {
-    /* Drop the setup-built sender so the pool slot is free for the no-endpoint variant —
+    /* Drop the setup-built sender so the pool slot is free for the no-endpoint variant -
      * with pool semantics a second live Create on a SIZE=1 pool would otherwise overflow
      * to NullSender. Reassigning to `sender` lets teardown release the no-endpoint sender. */
     SolidSyslogStreamSender_Destroy(sender);
@@ -657,7 +657,7 @@ TEST(SolidSyslogStreamSenderFailure, NoEndpointConfiguredConnectsToPortZero)
     LONGS_EQUAL(0, SocketFake_LastConnectPort());
 }
 
-// Pool tests — prove SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE caps live instances
+// Pool tests - prove SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE caps live instances
 // and overflow falls back to the shared SolidSyslogNullSender. Generic
 // pool mechanics (lock counts, per-probe locking, stale-handle warning)
 // are covered by SolidSyslogPoolAllocatorTest.cpp.
@@ -746,9 +746,9 @@ TEST(SolidSyslogStreamSenderPool, FillingPoolThenOverflowReturnsDistinctFallback
     }
 }
 
-// Bad-setup tests — SolidSyslogStreamSender_Create rejects NULL config /
+// Bad-setup tests - SolidSyslogStreamSender_Create rejects NULL config /
 // Resolver / Stream / Address by emitting a CRITICAL SolidSyslog_Error (fatal
-// bad-config — the integrator must fix it in code) and returning the shared
+// bad-config - the integrator must fix it in code) and returning the shared
 // SolidSyslogNullSender without consuming a pool slot. Matches the
 // SolidSyslogUdpSenderBadSetup contract from S12.06 (severity raised
 // ERROR->CRITICAL in S12.33).
@@ -836,7 +836,7 @@ TEST(SolidSyslogStreamSenderBadSetup, DisconnectOnBadSetupSenderDoesNotCrash)
     SolidSyslogSender_Disconnect(sender);
 }
 
-// Delivery-health tests — the sender holds one DeliveryHealthy edge bit
+// Delivery-health tests - the sender holds one DeliveryHealthy edge bit
 // (initial true). It emits one DELIVERY_FAILED (ERR) event on the
 // healthy->down transition and one DELIVERY_RESTORED (NOTICE) event on the
 // down->healthy transition; staying down stays silent (anti-flood). The

@@ -57,7 +57,7 @@ uint32_t FakeGetHandshakeTimeoutMs_ReturnValue = SOLIDSYSLOG_TLS_HANDSHAKE_TIMEO
 void FakeGetHandshakeTimeoutMs_Reset()
 {
     FakeGetHandshakeTimeoutMs_CallCount = 0;
-    FakeGetHandshakeTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
+    FakeGetHandshakeTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel - overwritten on first call */
     FakeGetHandshakeTimeoutMs_ReturnValue = SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS;
 }
 
@@ -108,10 +108,10 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         StreamFake_Destroy(transport);
     }
 
-    /* Tests needing config tweaks (CipherList, ClientCertChainPath, ServerName, …)
+    /* Tests needing config tweaks (CipherList, ClientCertChainPath, ServerName, ...)
      * call this to release setup()'s pool slot, mutate `config`, then re-Create.
      * Fully resets the fixture (transport, OpenSslFake counters, error handler)
-     * so the test body observes counts from this Open onwards only — matters
+     * so the test body observes counts from this Open onwards only - matters
      * for assertions like CHECK_OPEN_UNWOUND_WITH_ERROR that pin counts at == 1. */
     void ReCreateStreamWithUpdatedConfig()
     {
@@ -124,7 +124,7 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         stream           = SolidSyslogOpenSslStream_Create(&config);
     }
 
-    /* Drive the registered BIO read callback with the given transport return —
+    /* Drive the registered BIO read callback with the given transport return -
        collapses the open + set-return + grab-callback + invoke boilerplate. */
     [[nodiscard]] int InvokeBioReadWithTransportReturn(SolidSyslogSsize transportReturn) const
     {
@@ -147,7 +147,7 @@ TEST_GROUP(SolidSyslogOpenSslStream)
     }
 
     /* Arrange SSL_connect to first emit `wantError`, then succeed on the next
-       call — exercises the bounded handshake retry loop's progress path. */
+       call - exercises the bounded handshake retry loop's progress path. */
     static void ArrangeHandshakeRetryThenSucceed(int wantError)
     {
         int seq[] = {-1, 1};
@@ -155,7 +155,7 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         OpenSslFake_SetGetErrorReturn(wantError);
     }
 
-    /* Arrange SSL_connect to fail with `errorCode` on every call — used both
+    /* Arrange SSL_connect to fail with `errorCode` on every call - used both
        for the persistent-WANT (budget-exhausted) and hard-error paths. */
     static void ArrangePersistentHandshakeError(int errorCode)
     {
@@ -164,7 +164,7 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         OpenSslFake_SetGetErrorReturn(errorCode);
     }
 
-    /* Open then arrange the next SSL_write to fail — exercises the Send fail-fast
+    /* Open then arrange the next SSL_write to fail - exercises the Send fail-fast
        teardown path that closes the SSL session and the underlying transport. */
     void OpenThenCauseSslWriteFailure() const
     {
@@ -179,7 +179,7 @@ TEST_GROUP(SolidSyslogOpenSslStream)
     }
 
     /* Open then arrange SSL_read to return the configured value while
-       SSL_get_error reports the configured SSL-level status — together they
+       SSL_get_error reports the configured SSL-level status - together they
        exercise each branch of the Read non-blocking contract. */
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- both ints, but name + comment make role distinct
     [[nodiscard]] SolidSyslogSsize OpenThenReadWithSslReturnAndError(int sslReadReturn, int sslErrorCode) const
@@ -373,7 +373,7 @@ TEST(SolidSyslogOpenSslStream, OpenSkipsHostnameSetupWhenServerNameIsNull)
 
 TEST(SolidSyslogOpenSslStream, OpenWarnsWhenServerNameIsNull)
 {
-    /* Default config.ServerName is NULL — peer identity is unverified, which the
+    /* Default config.ServerName is NULL - peer identity is unverified, which the
      * library must surface rather than swallow (S12.28). */
     SolidSyslogStream_Open(stream, addr);
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
@@ -385,7 +385,7 @@ TEST(SolidSyslogOpenSslStream, OpenWarnsWhenServerNameIsNull)
 
 TEST(SolidSyslogOpenSslStream, OpenStillConnectsWhenServerNameIsNull)
 {
-    /* The unverified-peer WARNING is observable but non-fatal — the IP-pinned /
+    /* The unverified-peer WARNING is observable but non-fatal - the IP-pinned /
      * closed-network use case must still connect. */
     CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
     LONGS_EQUAL(0, StreamFake_CloseCallCount(transport));
@@ -393,7 +393,7 @@ TEST(SolidSyslogOpenSslStream, OpenStillConnectsWhenServerNameIsNull)
 
 TEST(SolidSyslogOpenSslStream, OpenDoesNotWarnWhenServerNameIsEmpty)
 {
-    /* Empty string is the deliberate opt-out — no diagnostic. */
+    /* Empty string is the deliberate opt-out - no diagnostic. */
     config.ServerName = "";
     ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
@@ -598,7 +598,7 @@ TEST(SolidSyslogOpenSslStream, DestroyAfterCloseDoesNotDoubleFreeSsl)
 
 TEST(SolidSyslogOpenSslStream, ReopenAfterCloseDoesNotLeakSslContext)
 {
-    /* Each Open rebuilds the SSL_CTX (the cert-rotation contract — a fresh CTX
+    /* Each Open rebuilds the SSL_CTX (the cert-rotation contract - a fresh CTX
        per connection picks up trust-store / client-identity changes). The
        fail-fast reconnect model therefore drives Open -> Close -> Open on a
        single stream instance repeatedly; Close must free the CTX so the next
@@ -731,7 +731,7 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenHandshakeFails)
     /* ServerName set so the handshake stage is the only error source (a NULL
      * ServerName would also emit the unverified-peer WARNING). Default
      * OpenSslFake_SetConnectFails(true) returns -1 from SSL_connect and
-     * SSL_get_error reports SSL_ERROR_SSL (the default for SetGetErrorReturn) —
+     * SSL_get_error reports SSL_ERROR_SSL (the default for SetGetErrorReturn) -
      * a non-retryable hard error, which is the HANDSHAKE_REJECTED branch. */
     config.ServerName = "logs.example";
     ReCreateStreamWithUpdatedConfig();
@@ -858,7 +858,7 @@ TEST(SolidSyslogOpenSslStream, BioNewFailureFreesBioMethodInline)
     OpenSslFake_SetBioNewFails(true);
     SolidSyslogStream_Open(stream, addr);
     CALLED_FAKE(OpenSslFake_BioMethFree, ONCE);
-    /* teardown re-Destroys safely — bioMethod already cleared */
+    /* teardown re-Destroys safely - bioMethod already cleared */
 }
 
 TEST(SolidSyslogOpenSslStream, SendReturnsTrueOnHappyPath)
@@ -934,7 +934,7 @@ TEST(SolidSyslogOpenSslStream, BioCreateCallbackMarksBioInitialised)
 }
 
 /* -------------------------------------------------------------------------
- * Mutual TLS — client certificate + private key (S03.09).
+ * Mutual TLS - client certificate + private key (S03.09).
  * ------------------------------------------------------------------------- */
 
 TEST(SolidSyslogOpenSslStream, OpenSkipsClientIdentityWhenBothPathsAreNull)
@@ -1214,7 +1214,7 @@ TEST(SolidSyslogOpenSslStream, OpenRetriesHandshakeOnWantWrite)
 TEST(SolidSyslogOpenSslStream, OpenFailsWhenHandshakeNeverCompletes)
 {
     /* ServerName set so the handshake timeout is the only error source.
-       SSL_connect always returns -1 with WANT_READ — handshake never makes
+       SSL_connect always returns -1 with WANT_READ - handshake never makes
        progress, so the bounded budget should expire and Open returns false. */
     config.ServerName = "logs.example";
     ReCreateStreamWithUpdatedConfig();
@@ -1238,7 +1238,7 @@ TEST(SolidSyslogOpenSslStream, OpenInvokesConfiguredHandshakeTimeoutGetter)
 
 TEST(SolidSyslogOpenSslStream, OpenUsesGetterReturnValueAsHandshakeBudget)
 {
-    /* 5 ms budget against the 1 ms poll interval → loop should sleep 5 times
+    /* 5 ms budget against the 1 ms poll interval -> loop should sleep 5 times
        before declaring HANDSHAKE_TIMEOUT and unwinding. */
     FakeGetHandshakeTimeoutMs_ReturnValue = 5U;
     RecreateStreamWithFakeHandshakeGetter();
@@ -1260,7 +1260,7 @@ TEST(SolidSyslogOpenSslStream, GetterReceivesNullContextWhenContextNotConfigured
 TEST(SolidSyslogOpenSslStream, OpenFailsImmediatelyOnHardSslError)
 {
     /* ServerName set so the handshake hard error is the only error source.
-       Non-WANT error (e.g. SSL_ERROR_SSL) is fail-fast — no retry budget burn. */
+       Non-WANT error (e.g. SSL_ERROR_SSL) is fail-fast - no retry budget burn. */
     config.ServerName = "logs.example";
     ReCreateStreamWithUpdatedConfig();
     ArrangePersistentHandshakeError(SSL_ERROR_SSL);
@@ -1337,7 +1337,7 @@ TEST(SolidSyslogOpenSslStream, ReadReturnsNegativeOneOnHardErrorAndClosesSsl)
 
 TEST(SolidSyslogOpenSslStream, ReadReturnsNegativeOneOnZeroReturnAndClosesSsl)
 {
-    /* SSL_read returns 0 → SSL_ERROR_ZERO_RETURN (clean shutdown by peer). */
+    /* SSL_read returns 0 -> SSL_ERROR_ZERO_RETURN (clean shutdown by peer). */
     LONGS_EQUAL(-1, OpenThenReadWithSslReturnAndError(0, SSL_ERROR_ZERO_RETURN));
     CHECK_SSL_SESSION_CLOSED();
     CHECK_TRANSPORT_CLOSED_ONCE();
@@ -1353,6 +1353,6 @@ TEST(SolidSyslogOpenSslStream, CloseAfterInternalCloseFromSendFailureDoesNotDoub
 {
     OpenThenCauseSslWriteFailure();
     SendShortMessage(); /* internal close */
-    SolidSyslogStream_Close(stream); /* second close — must be safe */
+    SolidSyslogStream_Close(stream); /* second close - must be safe */
     CHECK_SSL_SESSION_CLOSED();
 }

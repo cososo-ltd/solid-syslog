@@ -11,7 +11,7 @@
 #include "SolidSyslogTunables.h"
 #include "ff.h"
 
-/* The shared file-block-size default must clear one FatFs sector — a block
+/* The shared file-block-size default must clear one FatFs sector - a block
  * smaller than the underlying sector cannot back a coherent on-disk record
  * layout. FF_MAX_SS comes from the integrator's ffconf.h; guard with defined()
  * so the check is skipped (rather than evaluating an undefined identifier) on

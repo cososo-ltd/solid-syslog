@@ -6,7 +6,7 @@ enum
     BDD_TARGET_IP_MAX = 64 /* matches ORIGIN_IP_MAX in OriginSd */
 };
 
-/* Static demo IP — in real deployments this comes from getifaddrs(3) on POSIX,
+/* Static demo IP - in real deployments this comes from getifaddrs(3) on POSIX,
    GetAdaptersAddresses on Windows, or wherever the host's reachable addresses
    are observed. The library supplies the callback shape; address enumeration
    is opinionated and left to integrators.

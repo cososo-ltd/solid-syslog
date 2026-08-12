@@ -51,8 +51,8 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
             if (!BlockStore_DeviceCanHoldOneRecord(config, recordStore))
             {
                 /* The device's block is smaller than one worst-case record. The store
-                 * still works — BuildBlockSequenceConfig grows the block to the minimum so
-                 * a record always fits — but the device was configured below a usable size,
+                 * still works - BuildBlockSequenceConfig grows the block to the minimum so
+                 * a record always fits - but the device was configured below a usable size,
                  * so surface it as a WARNING (delivered, degraded) rather than failing. */
                 BlockStore_Report(
                     SOLIDSYSLOG_SEVERITY_WARNING,
@@ -134,7 +134,7 @@ static struct SolidSyslogBlockSequenceConfig BlockStore_BuildBlockSequenceConfig
 
 /* True when the device's block can hold one worst-case record (max message + the active
  * policy's trailer + record framing). When false the block is grown to that floor and a
- * WARNING is emitted — the store works, but the device's configured size was degraded. */
+ * WARNING is emitted - the store works, but the device's configured size was degraded. */
 static bool BlockStore_DeviceCanHoldOneRecord(
     const struct SolidSyslogBlockStoreConfig* config,
     const struct SolidSyslogRecordStore* recordStore
@@ -155,7 +155,7 @@ void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore* base)
          * the BlockStore_Cleanup callback, because Cleanup overwrites the
          * abstract base with the NullStore vtable but the derived RecordStore /
          * BlockSequence pointers stay in the slot. After the outer FreeIfInUse
-         * releases the ConfigLock we destroy the inner slots — keeps each pool's
+         * releases the ConfigLock we destroy the inner slots - keeps each pool's
          * lock acquisition sequential rather than nested. */
         struct SolidSyslogRecordStore* recordStore = BlockStore_Pool[index].RecordStore;
         struct SolidSyslogBlockSequence* blockSequence = BlockStore_Pool[index].BlockSequence;

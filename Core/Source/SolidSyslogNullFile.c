@@ -35,8 +35,8 @@ struct SolidSyslogFile* SolidSyslogNullFile_Get(void)
 
 /* Open returns false so callers see a consistently non-functional file.
  * NullFile is the fallback when PosixFile / WindowsFile / FatFsFile
- * Create exhausts the pool — at that point the wider chain
- * (BlockStore → NullStore) is already broken; presenting "open failed"
+ * Create exhausts the pool - at that point the wider chain
+ * (BlockStore -> NullStore) is already broken; presenting "open failed"
  * lets the consumer's existing error path handle it cleanly. */
 static bool NullFile_Open(struct SolidSyslogFile* base, const char* path)
 {

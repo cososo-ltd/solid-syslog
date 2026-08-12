@@ -1,5 +1,5 @@
 /** @file
- *  The Mutex vtable (Lock / Unlock) — the contract an implementor fills in (the
+ *  The Mutex vtable (Lock / Unlock) - the contract an implementor fills in (the
  *  Mutex extension point). */
 #ifndef SOLIDSYSLOGMUTEXDEFINITION_H
 #define SOLIDSYSLOGMUTEXDEFINITION_H

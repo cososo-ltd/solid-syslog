@@ -47,7 +47,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int MbedTlsFake_SslHandshakeCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslHandshakeArg(void);
     void MbedTlsFake_SetSslHandshakeReturn(int value);
-    /* Per-call return sequence — each handshake invocation gets the next
+    /* Per-call return sequence - each handshake invocation gets the next
      * value in `values`; once exhausted, every subsequent call returns the
      * last entry. Used to drive WANT_READ/WANT_WRITE retry loops. Capped
      * at MBEDTLSFAKE_MAX_HANDSHAKE_RETURNS (silently truncated). */
@@ -114,7 +114,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void MbedTlsFake_SetMdHmacReturn(int value);
 
     /* Computes the same deterministic, non-cryptographic 32-byte tag the fake's
-     * mbedtls_md_hmac writes — derived from (key, input) so tests can predict the
+     * mbedtls_md_hmac writes - derived from (key, input) so tests can predict the
      * tag and exercise round-trip / tamper / wrong-key behaviour. NOT a real HMAC. */
     void MbedTlsFake_ComputeExpectedTag(
         const uint8_t* key,
@@ -128,7 +128,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const void* MbedTlsFake_LastPlatformZeroizeBuf(void);
     size_t MbedTlsFake_LastPlatformZeroizeLen(void);
 
-    /* AES-256-GCM (mbedtls_gcm_*) + CTR-DRBG nonce source — drive the at-rest
+    /* AES-256-GCM (mbedtls_gcm_*) + CTR-DRBG nonce source - drive the at-rest
      * AES-GCM SecurityPolicy without linking real libmbedcrypto. A
      * capture-and-canned-return double, NOT a cipher: mbedtls_gcm_crypt_and_tag /
      * mbedtls_gcm_auth_decrypt capture their arguments, copy the body through
@@ -148,7 +148,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Step of the seal/open sequence to fail, so a test can pin the error path of
      * each fallible mbedTLS GCM call: setkey, crypt_and_tag (seal), auth_decrypt
-     * (open, genuine error — distinct from the tamper verdict below). */
+     * (open, genuine error - distinct from the tamper verdict below). */
     enum MbedTlsFakeGcmStep
     {
         MBEDTLSFAKE_GCM_STEP_NONE = 0,
@@ -158,11 +158,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     void MbedTlsFake_SetGcmStepFails(enum MbedTlsFakeGcmStep step);
-    /* Makes mbedtls_gcm_auth_decrypt return MBEDTLS_ERR_GCM_AUTH_FAILED — the
+    /* Makes mbedtls_gcm_auth_decrypt return MBEDTLS_ERR_GCM_AUTH_FAILED - the
      * tamper / wrong-key verdict the adapter must surface silently (no report). */
     void MbedTlsFake_SetGcmAuthFails(bool fails);
 
-    /* mbedtls_ctr_drbg_random — the policy's per-record nonce source. */
+    /* mbedtls_ctr_drbg_random - the policy's per-record nonce source. */
     int MbedTlsFake_CtrDrbgRandomCallCount(void);
     const void* MbedTlsFake_LastCtrDrbgRandomContext(void);
     const void* MbedTlsFake_LastCtrDrbgRandomBuf(void);

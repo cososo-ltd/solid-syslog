@@ -8,16 +8,16 @@
  *  state and is intentionally not marshalled.)
  *
  *  - NO_SYS=1 (bare metal, no RTOS): the default direct-call marshal is correct
- *    — one execution context, no core to protect.
+ *    - one execution context, no core to protect.
  *  - NO_SYS=0 (RTOS with a tcpip thread): the integrator installs a marshal that
- *    hops onto that thread — a LOCK_TCPIP_CORE / UNLOCK_TCPIP_CORE pair, or a
+ *    hops onto that thread - a LOCK_TCPIP_CORE / UNLOCK_TCPIP_CORE pair, or a
  *    mailbox post that waits for the callback to run.
  *
  *  The marshal MUST invoke its callback synchronously, before it returns: the
  *  wrapper reads results the callback writes immediately after the hop, so an
  *  asynchronous marshal is caller error. Core locking satisfies this directly.
- *  A mailbox post does not on its own — tcpip_callback_with_block(.., block=1)
- *  blocks until the message is accepted, not until it is executed — so such a
+ *  A mailbox post does not on its own - tcpip_callback_with_block(.., block=1)
+ *  blocks until the message is accepted, not until it is executed - so such a
  *  marshal must wait for completion itself. See docs/platforms/lwipraw/setup.md. */
 #ifndef SOLIDSYSLOGLWIPRAWMARSHAL_H
 #define SOLIDSYSLOGLWIPRAWMARSHAL_H
@@ -33,7 +33,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     typedef void (*SolidSyslogLwipRawMarshalFunction)(SolidSyslogLwipRawCallback callback, void* context);
 
     /** Installs the process-global marshal. One lwIP instance and one tcpip
-     *  thread per process means a single global slot suffices — same shape as
+     *  thread per process means a single global slot suffices - same shape as
      *  SolidSyslog_SetErrorHandler. NULL restores the direct-call default.
      *  Intended for setup-time configuration; not synchronised with concurrent
      *  installs. */

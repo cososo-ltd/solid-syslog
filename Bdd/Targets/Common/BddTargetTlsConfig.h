@@ -16,7 +16,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void BddTargetTlsConfig_GetEndpoint(struct SolidSyslogEndpoint * endpoint, void* context);
     uint32_t BddTargetTlsConfig_GetEndpointVersion(void* context);
 
-    /* Override the default TLS host ("syslog-ng" — Linux compose service
+    /* Override the default TLS host ("syslog-ng" - Linux compose service
        name). Caller owns the string lifetime. Used by the per-platform
        main.c to inject SOLIDSYSLOG_BDD_TLS_HOST when set, so the same
        example targets the Linux compose oracle or the Windows OTel oracle
@@ -29,7 +29,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
        (the Linux / Windows BDD setup
        uses the cert subject as the connection host), but the FreeRTOS
        BDD target's QEMU networking needs the connection IP separate
-       from the cert subject — slirp NAT goes through 10.0.2.2, while
+       from the cert subject - slirp NAT goes through 10.0.2.2, while
        the syslog-ng oracle's cert is for "syslog-ng". Caller owns the
        string lifetime. */
     void BddTargetTlsConfig_SetServerName(const char* serverName);

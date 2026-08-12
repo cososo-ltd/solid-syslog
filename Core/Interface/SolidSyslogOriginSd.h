@@ -5,7 +5,7 @@
  *  number of repeated ip PARAMs. Every field is independently optional: a NULL
  *  string omits its PARAM, and the ip PARAMs appear only when both GetIpCount
  *  and GetIpAt are supplied (GetIpAt is then called once per index). The config
- *  strings are borrowed, not copied, and read at Format time — they must outlive
+ *  strings are borrowed, not copied, and read at Format time - they must outlive
  *  the created SD. */
 #ifndef SOLIDSYSLOGORIGINSD_H
 #define SOLIDSYSLOGORIGINSD_H
@@ -45,8 +45,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  characters. */
         const char* SwVersion;
         /** NULL omits the enterpriseId PARAM. RFC 5424 §7.2.2 asks for your
-         *  IANA-registered private enterprise number on its own — "32473", or
-         *  "32473.1.2" if you use sub-identifiers below it — rather than the
+         *  IANA-registered private enterprise number on its own - "32473", or
+         *  "32473.1.2" if you use sub-identifiers below it - rather than the
          *  1.3.6.1.4.1 arc the number already sits under. Registering one is the
          *  caller's to do, and the value's form is not checked here. Until you have
          *  one, RFC 5612 reserves 32473 for examples and testing: use it in a test

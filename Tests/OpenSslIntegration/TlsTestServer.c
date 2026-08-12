@@ -34,7 +34,7 @@ struct TlsTestServer* TlsTestServer_Create(const struct TlsTestServerConfig* con
         X509_STORE* store = SSL_CTX_get_cert_store(self->Ctx);
         X509_STORE_add_cert(store, config->ClientCaCert->cert);
         SSL_CTX_set_verify(self->Ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
-        /* Pin TLS 1.2 for mTLS tests — in TLS 1.3 the client's SSL_connect
+        /* Pin TLS 1.2 for mTLS tests - in TLS 1.3 the client's SSL_connect
          * can return before the server's verify completes, so a cert rejection
          * on the server shows up on the client only on the next read.
          * TLS 1.2 keeps rejection synchronous within the handshake. */

@@ -66,7 +66,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* getsockopt configuration (models IPPROTO_IP / IP_MTU and SOL_SOCKET / SO_ERROR) */
     void SocketFake_SetIpMtu(int mtu);
     void SocketFake_SetIpMtuLookupFails(bool fails);
-    /* SOL_SOCKET / SO_ERROR — read by the non-blocking-connect completion path.
+    /* SOL_SOCKET / SO_ERROR - read by the non-blocking-connect completion path.
        Defaults to 0 (success) until set. */
     void SocketFake_SetSoError(int err);
     void SocketFake_SetSoErrorLookupFails(bool fails);
@@ -83,13 +83,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int SocketFake_LastFcntlSetFlags(void);
     bool SocketFake_FcntlSetFlSetNonBlocking(void);
 
-    /* select configuration — three independent simulations:
+    /* select configuration - three independent simulations:
        (1) successful non-blocking-connect completion: SetSelectWritable(true)
-           plus SetSoError(0) — fd is writable, SO_ERROR is clear.
+           plus SetSoError(0) - fd is writable, SO_ERROR is clear.
        (2) deferred connect failure (typical "connection refused" path on
-           POSIX): SetSelectWritable(true) plus SetSoError(ECONNREFUSED) —
+           POSIX): SetSelectWritable(true) plus SetSoError(ECONNREFUSED) -
            the fd appears writable, getsockopt(SO_ERROR) reveals the error.
-       (3) select() reporting fd in exceptfds: SetSelectError(true) — the
+       (3) select() reporting fd in exceptfds: SetSelectError(true) - the
            production path additionally rejects fds in the exception set
            via FD_ISSET on errorSet, even though typical kernels surface
            connect failures via simulation (2) rather than exceptfds.

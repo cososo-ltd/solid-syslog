@@ -28,7 +28,7 @@ struct SolidSyslogAddress;
 /* Per-operation parameters carried across one marshal hop. Only the fields
  * the in-flight op needs are set (Open/Close set just Self); SendTo fills the
  * rest. One struct per class so the void*-context recovery has a single cast
- * site (LwipRawDatagramCallFromContext) — see D.002 in docs/misra-deviations.md. */
+ * site (LwipRawDatagramCallFromContext) - see D.002 in docs/misra-deviations.md. */
 struct LwipRawDatagramCall
 {
     struct SolidSyslogLwipRawDatagram* Self;
@@ -71,8 +71,8 @@ static inline struct SolidSyslogLwipRawDatagram* LwipRawDatagram_SelfFromBase(st
 }
 
 /* Recovers the per-op call struct from the void* context the marshal passes
- * back into each Do* callback. Single named helper so the void→struct cast
- * lives in one place — one suppression site per class, not one per callback
+ * back into each Do* callback. Single named helper so the void->struct cast
+ * lives in one place - one suppression site per class, not one per callback
  * (the marshal-seam analogue of LwipRawTcpStream_SelfFromArg; see D.002). */
 static inline struct LwipRawDatagramCall* LwipRawDatagramCallFromContext(void* context)
 {
@@ -150,7 +150,7 @@ static enum SolidSyslogDatagramSendResult LwipRawDatagram_SendTo(
     return result;
 }
 
-/* Runs the whole send — pbuf alloc, sendto, free — in one marshalled hop so
+/* Runs the whole send - pbuf alloc, sendto, free - in one marshalled hop so
  * a NO_SYS=0 integrator pays a single tcpip-thread context switch per Send
  * rather than three. PBUF_REF points lwIP at the caller's buffer; the buffer
  * outlives the synchronous hop, so no copy is needed. */

@@ -114,7 +114,7 @@ TEST(SolidSyslogPassthroughBuffer, UseAfterDestroyIsCrashSafeViaNullBufferVtable
     buffer = SolidSyslogPassthroughBuffer_Create(fakeSender); // for teardown
 }
 
-// Pool tests — prove SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE caps live
+// Pool tests - prove SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE caps live
 // instances and overflow falls back to a distinct no-op buffer. Generic
 // pool mechanics (lock counts, per-probe locking, stale-handle warning)
 // are covered by SolidSyslogPoolAllocatorTest.cpp.

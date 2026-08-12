@@ -28,7 +28,7 @@
 #include <string.h>
 
 /* QEMU mps2-an385 maps the LAN9118 register block here for the Cortex-M3
- * (CORTEX_M7 would be 0xA0000000 — see the vendored SMM_MPS2.h). */
+ * (CORTEX_M7 would be 0xA0000000 - see the vendored SMM_MPS2.h). */
 #define ETHERNETIF_SMSC9220_BASE UINT32_C(0x40200000)
 
 /* IRQ 13 is the LAN9118 Ethernet controller on the mps2-an385 NVIC. */
@@ -43,7 +43,7 @@
 #define ETHERNETIF_RX_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 4U)
 #define ETHERNETIF_RX_TASK_PRIORITY (configMAX_PRIORITIES - 2U)
 
-/* Wait at most this long for an RX notification before re-polling the FIFO —
+/* Wait at most this long for an RX notification before re-polling the FIFO -
  * a safety net against a missed edge, not the normal wake path. */
 #define ETHERNETIF_RX_BLOCK_MS 1500U
 

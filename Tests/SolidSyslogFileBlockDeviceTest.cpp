@@ -23,7 +23,7 @@ class TEST_SolidSyslogFileBlockDevice_WriteAtMutatesByteInPlace_Test;
 static const char* const TEST_PATH_PREFIX = "/tmp/blockdev_";
 
 /* Reads `length` bytes from (blockIndex, offset) and asserts they equal `expected`.
- * Mirrors the CHECK_PRIVAL family in SolidSyslogTest.cpp — names the intent so
+ * Mirrors the CHECK_PRIVAL family in SolidSyslogTest.cpp - names the intent so
  * tests read as "block N at offset O contains 'foo'" rather than buf+memcmp boilerplate.
  * Macro (not function) so test failures report the caller's __FILE__/__LINE__. */
 #define CHECK_BLOCK_CONTAINS(blockIndex, offset, expected, length)                                   \
@@ -190,7 +190,7 @@ TEST(SolidSyslogFileBlockDevice, BlockFilenameWithTwoDigitIndex)
 
 /* The on-disk sequence is two decimal digits: indices > 99 cannot be
  * represented uniquely. Without a guard, casting a wide blockIndex through
- * uint8_t (256 → 0) would alias to an existing block and silently overwrite
+ * uint8_t (256 -> 0) would alias to an existing block and silently overwrite
  * its content. */
 TEST(SolidSyslogFileBlockDevice, AcquireRejectsOverlargeBlockIndex)
 {
@@ -290,7 +290,7 @@ TEST(SolidSyslogFileBlockDevice, UseAfterDestroyIsCrashSafeViaNullBlockDeviceVta
     device = nullptr; // teardown's nullptr guard skips the second Destroy
 }
 
-// Pool tests — prove SOLIDSYSLOG_FILE_BLOCK_DEVICE_POOL_SIZE caps live
+// Pool tests - prove SOLIDSYSLOG_FILE_BLOCK_DEVICE_POOL_SIZE caps live
 // instances and overflow falls back to the class-private no-op BlockDevice.
 // Generic pool mechanics (lock counts, per-probe locking, stale-handle warning)
 // are covered by SolidSyslogPoolAllocatorTest.cpp.

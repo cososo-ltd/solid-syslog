@@ -26,12 +26,12 @@ enum
     AES_256_KEY_BITS = 256,
     GCM_NONCE_SIZE = 12,
     GCM_TAG_SIZE = 16,
-    /* Trailer is nonce ‖ tag — fits SOLIDSYSLOG_MAX_INTEGRITY_SIZE (32). */
+    /* Trailer is nonce || tag - fits SOLIDSYSLOG_MAX_INTEGRITY_SIZE (32). */
     AES_GCM_TRAILER_SIZE = GCM_NONCE_SIZE + GCM_TAG_SIZE
 };
 
 /* Seal/open write the nonce and tag into record->Trailer, which the store sizes
- * at SOLIDSYSLOG_MAX_INTEGRITY_SIZE. Fail the build — not a record at runtime —
+ * at SOLIDSYSLOG_MAX_INTEGRITY_SIZE. Fail the build - not a record at runtime -
  * if that shared buffer is ever tuned below this policy's trailer. */
 SOLIDSYSLOG_STATIC_ASSERT(
     AES_GCM_TRAILER_SIZE <= SOLIDSYSLOG_MAX_INTEGRITY_SIZE,
@@ -67,7 +67,7 @@ void MbedTlsAesGcmPolicy_Initialise(
 
 void MbedTlsAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base)
 {
-    /* No owned resources to release — the key is fetched on demand via the
+    /* No owned resources to release - the key is fetched on demand via the
      * GetKey callback and never stored on the instance, and the CTR-DRBG is
      * caller-owned. */
     (void) base;
@@ -77,7 +77,7 @@ static inline struct SolidSyslogMbedTlsAesGcmPolicy* MbedTlsAesGcmPolicy_SelfFro
     struct SolidSyslogSecurityPolicy* base
 )
 {
-    /* Base is the first member of the instance struct — see Private.h. */
+    /* Base is the first member of the instance struct - see Private.h. */
     return (struct SolidSyslogMbedTlsAesGcmPolicy*) base;
 }
 
@@ -127,7 +127,7 @@ static bool MbedTlsAesGcmPolicy_SealRecord(
 }
 
 /* Fetches the AES-256 key on demand. Fails closed (and reports) if the key is
- * unavailable or not exactly 32 bytes — AES-256 admits no other key length. */
+ * unavailable or not exactly 32 bytes - AES-256 admits no other key length. */
 static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* policy, uint8_t* keyOut)
 {
     size_t keyLength = 0;
@@ -144,11 +144,11 @@ static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* 
     return fetched;
 }
 
-/* Encrypts the record's body in place and writes nonce‖tag into its trailer.
+/* Encrypts the record's body in place and writes nonce||tag into its trailer.
  * Takes the whole record (not the unpacked buffers) so key and nonce never sit
  * adjacent as same-typed scalar parameters; the trailer/header layout lives in
  * one place. The nonce is expected already in Trailer[0..GCM_NONCE_SIZE). One-
- * shot AEAD — mbedTLS computes the whole tag in a single call (output == input
+ * shot AEAD - mbedTLS computes the whole tag in a single call (output == input
  * is permitted for GCM encryption). */
 static bool MbedTlsAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key)
 {
@@ -200,11 +200,11 @@ static bool MbedTlsAesGcmPolicy_OpenRecord(
     return opened;
 }
 
-/* Decrypts the record's body in place, reading nonce‖tag from its trailer and
+/* Decrypts the record's body in place, reading nonce||tag from its trailer and
  * authenticating the header. Takes the whole record for the same reasons as
  * GcmEncrypt. mbedtls_gcm_auth_decrypt verifies the tag itself and signals the
  * verdict through its return code: 0 = authentic, GCM_AUTH_FAILED = tamper /
- * wrong key (the expected rejection — return false silently, like the HMAC
+ * wrong key (the expected rejection - return false silently, like the HMAC
  * verify), anything else = a genuine mbedTLS error worth reporting. */
 static bool MbedTlsAesGcmPolicy_GcmDecrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key)
 {
@@ -240,7 +240,7 @@ static bool MbedTlsAesGcmPolicy_GcmDecrypt(const struct SolidSyslogSecurityRecor
         }
         else
         {
-            /* Genuine mbedTLS failure — errored stays true and is reported below. */
+            /* Genuine mbedTLS failure - errored stays true and is reported below. */
         }
     }
     mbedtls_gcm_free(&ctx);

@@ -1,4 +1,4 @@
-/* Shared FreeRTOS BDD-target pipeline — see BddTargetFreeRtosPipeline.h.
+/* Shared FreeRTOS BDD-target pipeline - see BddTargetFreeRtosPipeline.h.
  *
  * Extracted from the two near-identical FreeRTOS target main.c files
  * (Bdd/Targets/FreeRtos = FreeRTOS-Plus-TCP, Bdd/Targets/FreeRtosLwip = lwIP)
@@ -55,7 +55,7 @@
 /* Unprivileged mirror of SOLIDSYSLOG_UDP_DEFAULT_PORT (514) for BDD listeners. */
 #define BDD_TARGET_UDP_PORT 5514U
 
-/* The injected platform seam — set once via BddTargetFreeRtosPipeline_SetConfig
+/* The injected platform seam - set once via BddTargetFreeRtosPipeline_SetConfig
  * before the tasks run. */
 static const struct BddTargetFreeRtosPipelineConfig* g_config = NULL;
 
@@ -99,8 +99,8 @@ static volatile bool solidSyslogTeardown = false;
 
 /* File-backed store storage. Lives in .bss so it persists across the `set store
  * file` rebuild; only populated when that command fires. STORE_PATH_PREFIX is
- * "/STORE" — sequence-numbered filenames land at the volume root as
- * /STORE00.log, /STORE01.log, … which fit 8.3 short-filename mode. The leading
+ * "/STORE" - sequence-numbered filenames land at the volume root as
+ * /STORE00.log, /STORE01.log, ... which fit 8.3 short-filename mode. The leading
  * slash makes the path absolute: ChaN-FatFs treats it as the default-drive root
  * (unchanged behaviour), and FreeRTOS-Plus-FAT's ff_stdio requires an absolute
  * path when ffconfigHAS_CWD is 0 (its prvABSPath is a pass-through). */
@@ -131,11 +131,11 @@ static size_t pendingCapacityThreshold = 0;
  * DestroyCurrentStore can release it. */
 static const char* pendingSecurityPolicy = "crc16";
 static struct SolidSyslogSecurityPolicy* currentPolicy = NULL;
-/* The policy kind captured when currentPolicy was built — DestroySecurityPolicy
+/* The policy kind captured when currentPolicy was built - DestroySecurityPolicy
  * must dispatch on this, NOT pendingSecurityPolicy, which a later `set
  * security-policy` can change out from under the installed policy. */
 static const char* installedSecurityPolicy = "crc16";
-/* When true, SolidSyslog gets only the meta SD — timeQuality and origin are
+/* When true, SolidSyslog gets only the meta SD - timeQuality and origin are
  * dropped. Mirrors Linux's --no-sd. */
 static volatile bool pendingNoSd = false;
 
@@ -224,7 +224,7 @@ static void GetAppName(struct SolidSyslogHeaderField* field, void* context)
     SolidSyslogHeaderField_PrintUsAscii(field, appName, strlen(appName));
 }
 
-/* No RTC and no time-sync on these reference targets — RFC 5424 §6.2.3.1
+/* No RTC and no time-sync on these reference targets - RFC 5424 §6.2.3.1
  * mandates NILVALUE TIMESTAMP, and the timeQuality SD reports tzKnown=0,
  * isSynced=0. SolidSyslogConfig.Clock=NULL drops through to the library's
  * NilClock. */
@@ -350,7 +350,7 @@ static bool OnSet(const char* name, const char* value)
         {
             return false;
         }
-        /* String literal storage — target_driver.py emits one of the three
+        /* String literal storage - target_driver.py emits one of the three
          * literals so the pointer stays valid (no copy needed). */
         pendingDiscardPolicy =
             (strcmp(value, "newest") == 0) ? "newest" : ((strcmp(value, "halt") == 0) ? "halt" : "oldest");
@@ -363,7 +363,7 @@ static bool OnSet(const char* name, const char* value)
         {
             return false;
         }
-        /* String literal storage — see discard-policy above. */
+        /* String literal storage - see discard-policy above. */
         if (strcmp(value, "hmac-sha256") == 0)
         {
             pendingSecurityPolicy = "hmac-sha256";
@@ -406,7 +406,7 @@ static bool OnSet(const char* name, const char* value)
     }
     if (strcmp(name, "no-sd") == 0)
     {
-        /* `set no-sd 1` drops the SD list to only metaSd — mirrors Linux's
+        /* `set no-sd 1` drops the SD list to only metaSd - mirrors Linux's
          * --no-sd. Takes effect via SolidSyslog re-Create. */
         unsigned long parsed = 0U;
         if (!TryParseUInt(value, &parsed))
@@ -418,7 +418,7 @@ static bool OnSet(const char* name, const char* value)
     }
     if (strcmp(name, "store") == 0)
     {
-        /* "null" is the default state — accept it as a no-op so the harness can
+        /* "null" is the default state - accept it as a no-op so the harness can
          * pass --store null without special-casing. "file" triggers the rebuild
          * (one-way for the lifetime of this QEMU instance). */
         if (strcmp(value, "null") == 0)
@@ -482,7 +482,7 @@ static bool TryParseUInt(const char* value, unsigned long* out)
 }
 
 /* DEMO KEY ONLY. A real integrator supplies key material from a secure element,
- * a KDF, or encrypted NVM via their own SolidSyslogKeyFunction — never a
+ * a KDF, or encrypted NVM via their own SolidSyslogKeyFunction - never a
  * hard-coded constant. This exists so the BDD scenario can exercise the mbedTLS
  * HMAC-SHA256 / AES-256-GCM at-rest policies end-to-end with real crypto. */
 static bool BddDemoGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* keyLengthOut)
@@ -514,7 +514,7 @@ static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
     else if (strcmp(pendingSecurityPolicy, "aes-256-gcm") == 0)
     {
         /* Reuse the TLS module's already-seeded CTR-DRBG as the AEAD nonce
-         * source — see BddTargetTlsSender_GetRng. Not static const: Rng is a
+         * source - see BddTargetTlsSender_GetRng. Not static const: Rng is a
          * runtime handle. */
         const struct SolidSyslogMbedTlsAesGcmPolicyConfig aesConfig =
             {BddDemoGetKey, NULL, BddTargetTlsSender_GetRng()};
@@ -534,12 +534,12 @@ static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
 /* `set store file` trigger: swap the default NullStore for a file-backed
  * BlockStore over the platform FS-mount seam. One-way for the lifetime of this
  * QEMU instance. The lifecycle mutex blocks the Service task across the
- * Destroy → re-Create transition. */
+ * Destroy -> re-Create transition. */
 static bool RebuildWithFileStore(void)
 {
     SolidSyslogMutex_Lock(lifecycleMutex);
 
-    /* The FS layer does NOT auto-mount on first open — mount (and
+    /* The FS layer does NOT auto-mount on first open - mount (and
      * format-on-first-use) via the platform FS-mount seam before tearing down
      * the existing store so a mount failure leaves the target running on the
      * original NullStore (zero-disruption); return false so OnSet reports the
@@ -575,7 +575,7 @@ static bool RebuildWithFileStore(void)
     currentStoreIsFile = true;
 
     solidSyslogConfig.Store = currentStore;
-    /* Re-honour `set no-sd 1` if it arrived before this rebuild — target_driver.py
+    /* Re-honour `set no-sd 1` if it arrived before this rebuild - target_driver.py
      * sorts `set no-sd` before `set store file`, so the value is final here. */
     solidSyslogConfig.SdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0]));
     solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
@@ -598,7 +598,7 @@ static void DestroySecurityPolicy(void)
     {
         SolidSyslogCrc16Policy_Destroy();
     }
-    /* else "null": the shared NullSecurityPolicy is immutable — nothing to free. */
+    /* else "null": the shared NullSecurityPolicy is immutable - nothing to free. */
     currentPolicy = NULL;
 }
 
@@ -614,7 +614,7 @@ static void DestroyCurrentStore(void)
         DestroySecurityPolicy();
         g_config->DestroyStoreFile(storeFile);
     }
-    /* else: NullStore is shared and immutable — nothing to destroy. */
+    /* else: NullStore is shared and immutable - nothing to destroy. */
 }
 
 static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
@@ -635,7 +635,7 @@ static void OnStoreFull(void* context)
     (void) context;
     if (pendingHaltExit)
     {
-        /* Semihosting SYS_EXIT — terminates QEMU with status 2 so the BDD
+        /* Semihosting SYS_EXIT - terminates QEMU with status 2 so the BDD
          * harness sees the run end deterministically. Mirrors the Linux
          * example's _exit(2). */
         BddTargetFreeRtosPipeline_Exit(2);
@@ -656,8 +656,8 @@ static void OnThresholdCrossed(void* context)
     (void) printf("[THRESHOLD-CROSSED]\r\n");
 }
 
-/* Full teardown of every shared resource. Two entry points — `quit` (falls
- * through after BddTargetInteractive_Run returns) and `set shutdown 1` — both
+/* Full teardown of every shared resource. Two entry points - `quit` (falls
+ * through after BddTargetInteractive_Run returns) and `set shutdown 1` - both
  * route through here. The platform UnmountStore hook fires regardless so the
  * next session's mount finds STORE*.log directory entries up-to-date
  * (power_cycle_replay relies on this). The lifecycle mutex held across the
@@ -682,7 +682,7 @@ static void TeardownAll(void)
 
     /* Wait for Service to observe the teardown flag and vTaskDelete itself
      * before the lifecycle mutex is destroyed under it. Bounded so a Service
-     * task that never started (xTaskCreate failure → NULL handle) cannot wedge
+     * task that never started (xTaskCreate failure -> NULL handle) cannot wedge
      * teardown. */
     if (serviceTaskHandle != NULL)
     {
@@ -701,7 +701,7 @@ static void TeardownAll(void)
 
 void BddTargetFreeRtosPipeline_Exit(int status)
 {
-    /* SYS_EXIT_EXTENDED (0x20) — the only ARM Semihosting exit form on AArch32
+    /* SYS_EXIT_EXTENDED (0x20) - the only ARM Semihosting exit form on AArch32
      * that propagates a non-zero status: R1 points to a { reason, subcode }
      * block. QEMU terminates the VM; the for(;;) is defensive. */
     const struct
@@ -742,7 +742,7 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
      * very first iteration without a NULL check. */
     lifecycleMutex = SolidSyslogFreeRtosMutex_Create();
 
-    /* Default store is NullStore — flipped to the file-backed BlockStore by
+    /* Default store is NullStore - flipped to the file-backed BlockStore by
      * `set store file` via RebuildWithFileStore(). */
     currentStore = SolidSyslogNullStore_Get();
     currentStoreIsFile = false;
@@ -773,7 +773,7 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
         .Clock = NULL,
         .GetHostname = g_config->GetHostname,
         .GetAppName = GetAppName,
-        /* PROCID — RFC 5424 §6.2.6 NILVALUE: no process model on these targets. */
+        /* PROCID - RFC 5424 §6.2.6 NILVALUE: no process model on these targets. */
         .GetProcessId = NULL,
         .Store = currentStore,
         .Sd = sdList,
@@ -809,7 +809,7 @@ void BddTargetFreeRtosPipeline_ServiceTask(void* argument)
 
     /* Wait until the interactive task has finished initial Setup and created the
      * lifecycle mutex / SolidSyslog. After that the mutex is the source of
-     * truth — Setup, RebuildWithFileStore, and Teardown all hold it across their
+     * truth - Setup, RebuildWithFileStore, and Teardown all hold it across their
      * Destroy/Create transitions. */
     while ((lifecycleMutex == NULL) || !solidSyslogReady)
     {

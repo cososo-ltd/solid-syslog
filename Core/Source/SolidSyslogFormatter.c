@@ -113,7 +113,7 @@ void SolidSyslogFormatter_Bom(struct SolidSyslogFormatter* formatter)
 
 void SolidSyslogFormatter_NilValue(struct SolidSyslogFormatter* formatter)
 {
-    /* RFC 5424 §6 NILVALUE — a single '-' standing in for an absent field. */
+    /* RFC 5424 §6 NILVALUE - a single '-' standing in for an absent field. */
     SolidSyslogFormatter_AsciiCharacter(formatter, '-');
 }
 
@@ -205,7 +205,7 @@ static inline size_t Formatter_Utf8CodepointLength(const char* source)
     }
     else
     {
-        /* lead does not start a valid 1-/2-/3-/4-byte UTF-8 sequence — length stays 0 */
+        /* lead does not start a valid 1-/2-/3-/4-byte UTF-8 sequence - length stays 0 */
     }
 
     return length;
@@ -318,7 +318,7 @@ static inline void Formatter_WriteEscaped(struct EscapedContext* context)
 {
     static const char ESCAPE_PREFIX = '\\';
     /* An escape pair on the wire ('\' + char) decodes back to the single
-     * character it was escaping — one byte in the reader's decoder buffer. */
+     * character it was escaping - one byte in the reader's decoder buffer. */
     static const size_t ESCAPED_CHARACTER_DECODED_LENGTH = 1;
     if (Formatter_Fits(context, ESCAPED_CHARACTER_DECODED_LENGTH))
     {
@@ -528,7 +528,7 @@ static inline void Formatter_TrimTruncatedMultiByteTail(struct SolidSyslogFormat
     }
     else
     {
-        /* tail does not look like a truncated multi-byte sequence — trim nothing */
+        /* tail does not look like a truncated multi-byte sequence - trim nothing */
     }
     for (size_t i = trimFrom; i < p; i++)
     {

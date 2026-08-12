@@ -6,14 +6,14 @@
  *
  *  - Seal authenticates the whole record content as one buffer (the header/body
  *    split matters only to AEAD policies, so HeaderLength is ignored) and writes
- *    the 32-byte tag into the record trailer. It is keyed and fails closed — if
+ *    the 32-byte tag into the record trailer. It is keyed and fails closed - if
  *    the key is unavailable or shorter than the SHA-256 output (32 bytes), Seal
  *    returns false and nothing is stored.
  *  - Open recomputes the tag and compares it to the stored one in constant time
- *    (no early exit, no timing oracle). A mismatch returns false silently — the
- *    expected tamper verdict — and is not reported.
+ *    (no early exit, no timing oracle). A mismatch returns false silently - the
+ *    expected tamper verdict - and is not reported.
  *
- *  The key is fetched on demand via GetKey and wiped after every computation — it
+ *  The key is fetched on demand via GetKey and wiped after every computation - it
  *  is never stored on the instance. */
 #ifndef SOLIDSYSLOGMBEDTLSHMACSHA256POLICY_H
 #define SOLIDSYSLOGMBEDTLSHMACSHA256POLICY_H

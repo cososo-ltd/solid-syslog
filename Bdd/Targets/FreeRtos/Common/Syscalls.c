@@ -9,7 +9,7 @@
  * that send carriage-return on Enter still terminate fgets, and each
  * received byte is echoed back over TX so the user sees what they type.
  *
- * Not host-TDD'd — this file exists only in the cross build (gated by
+ * Not host-TDD'd - this file exists only in the cross build (gated by
  * CMAKE_CROSSCOMPILING + arm in the top-level CMakeLists.txt). The QEMU
  * smoke is the integration check that proves the path end-to-end. */
 

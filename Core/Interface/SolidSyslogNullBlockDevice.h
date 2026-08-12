@@ -1,5 +1,5 @@
 /** @file
- *  The no-op BlockDevice Null object: every method reports a device that does not exist —
+ *  The no-op BlockDevice Null object: every method reports a device that does not exist -
  *  Acquire, Dispose, Exists, Read, Append and WriteAt return false, Size and GetBlockSize
  *  return 0. */
 #ifndef SOLIDSYSLOGNULLBLOCKDEVICE_H

@@ -40,7 +40,7 @@ TEST_GROUP(SolidSyslogMbedTlsStreamPool)
 
     void setup() override
     {
-        /* A real transport handle keeps Destroy → Cleanup → Close on the
+        /* A real transport handle keeps Destroy -> Cleanup -> Close on the
          * vtable-routed transport safe; mirrors the OpenSslStream
          * pool-test pattern. */
         transport        = StreamFake_Create();

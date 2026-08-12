@@ -38,7 +38,7 @@ enum
      * SOL_SOCKET vs IPPROTO_TCP split; option codes are flat); pass 0 by
      * convention. */
     SETSOCKOPT_LEVEL_DEFAULT = 0,
-    /* No MSG_PEEK / MSG_DONTWAIT / zero-copy — the timeouts cleared after
+    /* No MSG_PEEK / MSG_DONTWAIT / zero-copy - the timeouts cleared after
      * connect already give us the non-blocking single-call behaviour
      * SolidSyslogStream requires. */
     SEND_RECV_FLAGS_DEFAULT = 0
@@ -108,7 +108,7 @@ static inline bool PlusTcpTcpStream_ConfigProvidesGetter(const struct SolidSyslo
     return (config != NULL) && (config->GetConnectTimeoutMs != NULL);
 }
 
-/* Null Object substituted when the integrator does not install a getter —
+/* Null Object substituted when the integrator does not install a getter -
  * returns the compile-time tunable so the bounded-wait path has a single
  * code path regardless of whether the integrator wired runtime tuning. */
 static uint32_t PlusTcpTcpStream_NullConnectTimeoutGetter(void* context)
@@ -186,7 +186,7 @@ static void PlusTcpTcpStream_ConnectOrCloseOnFailure(
 
 static bool PlusTcpTcpStream_TryConnect(struct SolidSyslogPlusTcpTcpStream* self, const struct SolidSyslogAddress* addr)
 {
-    /* Both SO_SNDTIMEO and SO_RCVTIMEO are set before FreeRTOS_connect —
+    /* Both SO_SNDTIMEO and SO_RCVTIMEO are set before FreeRTOS_connect -
      * upstream gates connect on SO_RCVTIMEO, but we set both as belt-and-
      * braces against an upstream change. After connect both timeouts go
      * back to 0 so subsequent Send/Read follow the non-blocking single-
@@ -221,7 +221,7 @@ static inline void PlusTcpTcpStream_PrimeArpIfMissing(uint32_t ip)
     /* Yield window for the IP task to receive an ARP reply and populate
      * the cache before we attempt FreeRTOS_connect. Mirrors the
      * established SolidSyslogPlusTcpDatagram pattern (see
-     * [[freertos-arp-first-packet]]) — without this, a cold-start TCP
+     * [[freertos-arp-first-packet]]) - without this, a cold-start TCP
      * connect fires SYN before ARP resolves, the SYN is dropped at the
      * IP layer, and the bounded 200 ms RCV-timeout connect expires
      * before the retransmit ARP-and-resend cycle completes. */
@@ -290,7 +290,7 @@ static bool PlusTcpTcpStream_AllBytesSent(BaseType_t sentCount, size_t expected)
 
 /* FreeRTOS_recv with RCVTIMEO=0 returns 0 when no data is available (would
  * block); the Service thread treats that as "nothing to read right now".
- * Negative returns are real errors — close the socket and surface failure. */
+ * Negative returns are real errors - close the socket and surface failure. */
 static SolidSyslogSsize PlusTcpTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size)
 {
     struct SolidSyslogPlusTcpTcpStream* self = PlusTcpTcpStream_SelfFromBase(base);

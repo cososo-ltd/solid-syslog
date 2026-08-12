@@ -30,7 +30,7 @@ struct SolidSyslogStore* SolidSyslogNullStore_Get(void)
 }
 
 /* NullStore never retains. Returns false to signal "not held by this store"
- * so the eager-drain loop in ProcessMessages takes the direct-send path —
+ * so the eager-drain loop in ProcessMessages takes the direct-send path -
  * NullStore + real-buffer + UDP is the constrained-system "one attempt per
  * message, no buffering" configuration. */
 static bool NullStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
@@ -79,7 +79,7 @@ static size_t NullStore_GetUsedBytes(struct SolidSyslogStore* base)
     return 0;
 }
 
-/* NullStore retains nothing — a NullStore_Write rejection means "I never had it,
+/* NullStore retains nothing - a NullStore_Write rejection means "I never had it,
  * please try the sender." Service's DrainBufferIntoStore consults this
  * to know it's safe to fall through to direct-send. */
 static bool NullStore_IsTransient(struct SolidSyslogStore* base)

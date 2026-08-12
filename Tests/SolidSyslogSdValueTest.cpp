@@ -95,7 +95,7 @@ TEST(SolidSyslogSdValue, StringEscapesAllThreeSpecialsInOneValue)
 
 TEST(SolidSyslogSdValue, StringPassesValidUtf8CodepointThrough)
 {
-    /* U+00A9 COPYRIGHT SIGN, a valid two-byte sequence — passes byte-for-byte. */
+    /* U+00A9 COPYRIGHT SIGN, a valid two-byte sequence - passes byte-for-byte. */
     writeString("\xC2\xA9");
 
     CHECK_VALUE("\xC2\xA9");
@@ -103,7 +103,7 @@ TEST(SolidSyslogSdValue, StringPassesValidUtf8CodepointThrough)
 
 TEST(SolidSyslogSdValue, StringSubstitutesIllFormedByteWithReplacementCharacter)
 {
-    /* A lone continuation byte is ill-formed UTF-8 — substituted with U+FFFD. */
+    /* A lone continuation byte is ill-formed UTF-8 - substituted with U+FFFD. */
     writeString("\x80");
 
     CHECK_VALUE("\xEF\xBF\xBD");
@@ -119,7 +119,7 @@ TEST(SolidSyslogSdValue, Uint32EmitsDecimalDigits)
 TEST(SolidSyslogSdValue, ReassemblesTwoByteCodepointSplitAcrossStringCalls)
 {
     /* U+00A9 COPYRIGHT SIGN streamed as its lead byte then its continuation
-     * byte across two SolidSyslogSdValue_String calls — the value must
+     * byte across two SolidSyslogSdValue_String calls - the value must
      * reassemble the codepoint, not emit a U+FFFD per orphaned half. */
     writeString("\xC2");
     writeString("\xA9");

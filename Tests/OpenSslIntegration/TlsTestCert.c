@@ -116,7 +116,7 @@ static void AddSubjectAltNames(X509* cert, const char* const * dnsNames)
 }
 
 /* OpenSSL 3 chain validation requires issuer certs to carry
- * basicConstraints=CA:TRUE. All test certs get it — it's harmless on leaves
+ * basicConstraints=CA:TRUE. All test certs get it - it's harmless on leaves
  * for our purposes and lets any generated cert act as an issuer if needed. */
 static void AddBasicConstraintsCa(X509* cert)
 {

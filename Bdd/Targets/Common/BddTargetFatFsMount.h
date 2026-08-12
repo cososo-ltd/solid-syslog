@@ -15,7 +15,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * (BddTargetPlusFatMount). */
 
     /* Mount volume 0, formatting on first use if the disk image has no FAT
-     * yet. Idempotent — repeated calls short-circuit on the mounted flag.
+     * yet. Idempotent - repeated calls short-circuit on the mounted flag.
      * Returns false on an unrecoverable mount/format failure so the caller
      * can leave the target on its original store. */
     bool BddTargetFatFsMount_Mount(void);

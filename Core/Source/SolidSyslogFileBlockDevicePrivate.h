@@ -16,7 +16,7 @@ struct SolidSyslogFile;
 /* OpenHandle caches the single SolidSyslogFile the device holds. The handle is
  * re-pointed only when the targeted blockIndex changes; same-block runs reuse
  * it. This is the structural enforcement of the S27.01 single-handle-per-path
- * invariant — by construction the device has exactly one underlying file. */
+ * invariant - by construction the device has exactly one underlying file. */
 struct OpenHandle
 {
     struct SolidSyslogFile* File;

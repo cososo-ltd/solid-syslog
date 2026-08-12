@@ -20,7 +20,7 @@ enum
     DER_BUFFER_BYTES = 4096
 };
 
-/* Obviously-fake test validity window — well outside any realistic clock skew
+/* Obviously-fake test validity window - well outside any realistic clock skew
  * and far enough out that the integration tests don't need wall-clock-aware
  * regeneration. Named per the TEST_* convention. */
 static const char* const TEST_CERT_VALIDITY_FROM = "20240101000000";
@@ -92,7 +92,7 @@ static void WriteCertToDer(
     mbedtls_x509write_crt_set_subject_key(&crt, subjectKey);
     mbedtls_x509write_crt_set_subject_name(&crt, config->SubjectName);
 
-    /* Self-signed when Issuer == NULL — issuer name + key match the subject. */
+    /* Self-signed when Issuer == NULL - issuer name + key match the subject. */
     const char* issuerName = (config->Issuer != NULL) ? config->Issuer->SubjectName : config->SubjectName;
     mbedtls_pk_context* issuerKey = (config->Issuer != NULL) ? (mbedtls_pk_context*) &config->Issuer->Key : subjectKey;
     mbedtls_x509write_crt_set_issuer_name(&crt, issuerName);

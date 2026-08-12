@@ -8,7 +8,7 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Byte-level UTF-8 lead and continuation classifiers per RFC 3629 §4.
-     * These cover the disjoint top-bit patterns only — overlong / surrogate /
+     * These cover the disjoint top-bit patterns only - overlong / surrogate /
      * above-Unicode validity is composed on top by callers that need it. */
 
     static inline bool SolidSyslogUtf8_IsAsciiByte(char byte)

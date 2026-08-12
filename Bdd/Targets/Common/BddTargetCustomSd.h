@@ -9,7 +9,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* The worked custom SD-ELEMENT for the integrator guide
      * (docs/structured-data.md). Emits [example@32473 detail="Hello World"].
-     * Stateless singleton — handed to SolidSyslog_LogWithSd by the
+     * Stateless singleton - handed to SolidSyslog_LogWithSd by the
      * `send-custom` interactive command. */
     struct SolidSyslogStructuredData* BddTargetCustomSd_Get(void);
 

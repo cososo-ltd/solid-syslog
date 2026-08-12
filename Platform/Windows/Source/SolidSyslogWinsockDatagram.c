@@ -155,7 +155,7 @@ static enum SolidSyslogDatagramSendResult WinsockDatagram_SendTo(
         }
         else
         {
-            /* generic send failure — result stays Failed */
+            /* generic send failure - result stays Failed */
         }
     }
     return result;

@@ -72,7 +72,7 @@ static SolidSyslogSsize SocketStream_Read(struct SolidSyslogStream* self, void* 
 {
     /* Distinguish EOF (peer closed: recv == 0) from would-block (the Stream
      * contract reserves 0 for "no data available, try again"). The MbedTls
-     * BIO recv callback maps a transport 0 to MBEDTLS_ERR_SSL_WANT_READ —
+     * BIO recv callback maps a transport 0 to MBEDTLS_ERR_SSL_WANT_READ -
      * forwarding a real EOF as 0 would loop the handshake until the budget
      * exhausts. Map EOF to -1 (fatal) instead. */
     struct SocketStream* stream = (struct SocketStream*) self;

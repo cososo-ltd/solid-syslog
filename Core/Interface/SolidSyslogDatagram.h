@@ -17,7 +17,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogDatagram;
 
     /* Distinct outcomes of SendTo. Oversize is reserved for the EMSGSIZE
-     * recovery path (S12.12) — implementations that cannot detect oversize
+     * recovery path (S12.12) - implementations that cannot detect oversize
      * collapse it into Failed. */
     enum SolidSyslogDatagramSendResult
     {
@@ -40,8 +40,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *                                                    the sender trims to MaxPayload and retries.
      *  @retval SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED   Transient failure; the record is kept.
      *
-     *  FAILED is transient by design: its usual causes — an unreachable
-     *  collector, a wrong address or port, a stack not yet up — are resolved
+     *  FAILED is transient by design: its usual causes - an unreachable
+     *  collector, a wrong address or port, a stack not yet up - are resolved
      *  outside the library, and holding the record until they are is what an
      *  audit trail wants. Size is the one cause the record itself carries.
      *

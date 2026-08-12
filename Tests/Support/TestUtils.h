@@ -5,7 +5,7 @@
 
 namespace CososoTesting
 {
-/* Expected call counts — readable names for CALLED_FUNCTION assertions.
+/* Expected call counts - readable names for CALLED_FUNCTION assertions.
  * Namespaced because NEVER/ONCE are common identifiers that could collide
  * at include sites. Tests opt in via `using namespace CososoTesting;`. */
 enum
@@ -37,8 +37,8 @@ enum
 #define CALLED_FAKE_ON(getter, instance, count) LONGS_EQUAL((count), getter##CallCount(instance))
 
 /* Assert the last error event captured by ErrorHandlerFake matches an expected
- * (source, category, detail) triple. Prefer the portable Category — it survives
- * a backend swap — over the per-class Detail code when a portable reaction is
+ * (source, category, detail) triple. Prefer the portable Category - it survives
+ * a backend swap - over the per-class Detail code when a portable reaction is
  * the thing under test. Use at a site that includes "ErrorHandlerFake.h". */
 #define CHECK_ERROR_EVENT(expectedSource, expectedCategory, expectedDetail)        \
     {                                                                              \

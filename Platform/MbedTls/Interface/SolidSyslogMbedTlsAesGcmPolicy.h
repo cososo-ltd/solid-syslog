@@ -6,14 +6,14 @@
  *
  *  - Seal encrypts a record in place: draws a fresh 12-byte nonce from the
  *    caller's CTR-DRBG, encrypts the body (Content past HeaderLength),
- *    authenticates the header as associated data, and writes nonce‖tag into the
- *    record trailer. It is keyed and fails closed — if the key is unavailable or
+ *    authenticates the header as associated data, and writes nonce||tag into the
+ *    record trailer. It is keyed and fails closed - if the key is unavailable or
  *    not exactly 32 bytes, Seal returns false and nothing is stored.
  *  - Open reverses it: decrypts the body and verifies the tag over the header and
  *    ciphertext. A tag mismatch (tamper, or wrong key) is the expected rejection
  *    and returns false silently; only a genuine mbedTLS fault is reported.
  *
- *  The key is fetched on demand via GetKey and wiped after every operation — it
+ *  The key is fetched on demand via GetKey and wiped after every operation - it
  *  is never stored on the instance. */
 #ifndef SOLIDSYSLOGMBEDTLSAESGCMPOLICY_H
 #define SOLIDSYSLOGMBEDTLSAESGCMPOLICY_H

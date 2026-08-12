@@ -6,7 +6,7 @@
  *  What the stream does through its vtable is the substance:
  *
  *  - Open opens the transport, then builds a fresh SSL_CTX every call (the
- *    cert-rotation contract — a reconnect re-reads the cert/key files), pins the
+ *    cert-rotation contract - a reconnect re-reads the cert/key files), pins the
  *    TLS 1.2 floor, loads CaBundlePath as the trust anchors with SSL_VERIFY_PEER,
  *    wires the transport as a custom BIO, sets SNI + the expected peer identity
  *    from ServerName, and drives the handshake. Any step failing closes the whole
@@ -19,7 +19,7 @@
  *  - Send is all-or-nothing over SSL_write: a short write or any error is taken
  *    as a dead connection, so the stream closes itself and the sender reconnects.
  *  - Read returns the bytes read, 0 for would-block (WANT_READ, connection kept),
- *    or closes on anything else — including a mid-stream WANT_WRITE (renegotiation)
+ *    or closes on anything else - including a mid-stream WANT_WRITE (renegotiation)
  *    which fail-fast semantics treat as a transport failure; store-and-forward
  *    replays after the reopen. */
 #ifndef SOLIDSYSLOGOPENSSLSTREAM_H
@@ -36,7 +36,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Wires SolidSyslogOpenSslStream to its transport, trust anchors, and identity. */
     struct SolidSyslogOpenSslStreamConfig
     {
-        /** Underlying byte stream carrying the ciphertext. Borrowed — this stream
+        /** Underlying byte stream carrying the ciphertext. Borrowed - this stream
          *  may Close it but never destroys it; the caller owns it and must keep it
          *  valid until SolidSyslogOpenSslStream_Destroy. */
         struct SolidSyslogStream* Transport;
@@ -49,14 +49,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         void* HandshakeTimeoutContext; /**< Passed back to GetHandshakeTimeoutMs unchanged; NULL is fine. */
         const char* CaBundlePath; /**< PEM file of trust anchors the peer cert must chain to. */
         /** SNI plus the expected peer identity. A non-empty name is verified against
-         *  the cert (SAN/CN). NULL connects chain-only but emits a WARNING — the peer
+         *  the cert (SAN/CN). NULL connects chain-only but emits a WARNING - the peer
          *  is unverified (MITM-class). "" is the no-name-check opt-out (closed network
          *  / private CA): still chain-verified against CaBundlePath, endpoint identity
          *  unchecked; no diagnostic. */
         const char* ServerName;
         const char* CipherList; /**< TLS 1.2 cipher list; NULL uses the OpenSSL default. */
         const char* ClientCertChainPath; /**< PEM leaf cert (+ intermediates) for mTLS; NULL = no mTLS. Cert and
-                                          *  key are all-or-nothing — supplying one without the other is a setup
+                                          *  key are all-or-nothing - supplying one without the other is a setup
                                           *  error. */
         const char* ClientKeyPath; /**< PEM private key matching ClientCertChainPath; NULL = no mTLS. */
     };

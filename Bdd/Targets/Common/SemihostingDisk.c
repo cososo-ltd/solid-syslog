@@ -1,4 +1,4 @@
-/* Host-backed flat-disk media access over ARM semihosting — see
+/* Host-backed flat-disk media access over ARM semihosting - see
  * SemihostingDisk.h. The BKPT 0xAB trap and the open / read / write / seek /
  * length / close primitives were extracted from diskio.c in SolidSyslog S29.05
  * so the FreeRTOS-Plus-FAT FF_Disk_t driver (FFSemihostingDisk.c) shares the
@@ -64,7 +64,7 @@ bool SemihostingDisk_EnsureReady(void)
         g_diskHandle = -1;
     }
     /* Create or truncate a fresh image. Sparse-extend by seeking to the
-     * last byte and writing one zero — POSIX hosts under semihosting
+     * last byte and writing one zero - POSIX hosts under semihosting
      * back-fill the hole with zeros on read, which is what the filesystem
      * needs to see no FAT and fall through to format-on-first-use. */
     g_diskHandle = SemihostingOpen(DISK_IMAGE_PATH, SEMIHOSTING_MODE_WRITE_PLUS_BINARY);

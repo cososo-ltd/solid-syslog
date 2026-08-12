@@ -24,7 +24,7 @@ enum
     SEQUENCE_DIGITS = 2U,
     FILENAME_SUFFIX = SEQUENCE_DIGITS + sizeof(FILE_EXTENSION) - 1U,
     MAX_PREFIX_LENGTH = (size_t) SOLIDSYSLOG_MAX_PATH_SIZE - (size_t) FILENAME_SUFFIX - 1U,
-    /* Two-digit on-disk sequence — indices > 99 cannot be represented
+    /* Two-digit on-disk sequence - indices > 99 cannot be represented
      * uniquely. Without this guard, a wide blockIndex would be narrowed
      * to uint8_t and alias an existing block (256 -> 00). */
     MAX_BLOCK_INDEX = 99U
@@ -35,7 +35,7 @@ static inline bool FileBlockDevice_IsValidBlockIndex(size_t blockIndex)
     return blockIndex <= MAX_BLOCK_INDEX;
 }
 
-/* vtable — forward-declared because FileBlockDevice_Initialise wires them before their definitions */
+/* vtable - forward-declared because FileBlockDevice_Initialise wires them before their definitions */
 static bool FileBlockDevice_Acquire(struct SolidSyslogBlockDevice* base, size_t blockIndex);
 static bool FileBlockDevice_Dispose(struct SolidSyslogBlockDevice* base, size_t blockIndex);
 static bool FileBlockDevice_Exists(struct SolidSyslogBlockDevice* base, size_t blockIndex);

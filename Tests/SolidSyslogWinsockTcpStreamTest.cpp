@@ -40,7 +40,7 @@ uint32_t FakeGetConnectTimeoutMs_ReturnValue = 200U;
 void FakeGetConnectTimeoutMs_Reset()
 {
     FakeGetConnectTimeoutMs_CallCount = 0;
-    FakeGetConnectTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
+    FakeGetConnectTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel - overwritten on first call */
     FakeGetConnectTimeoutMs_ReturnValue = 200U;
 }
 
@@ -225,7 +225,7 @@ TEST(SolidSyslogWinsockTcpStream, OpenClosesSocketOnConnectFailure)
 }
 
 /* ----------------------------------------------------------------------
- * Non-blocking connect with bounded wait — the production path that
+ * Non-blocking connect with bounded wait - the production path that
  * keeps the BlockStore service thread's drain rate from being throttled
  * by Windows' default ~2 s connect()-retry on a refused loopback port.
  * -------------------------------------------------------------------- */
@@ -234,7 +234,7 @@ TEST(SolidSyslogWinsockTcpStream, OpenSetsNonBlockingMode)
 {
     SolidSyslogStream_Open(stream, addr);
     /* Single FIONBIO call: non-blocking on (1). The socket stays non-blocking
-       so Send/Read are also fail-fast — no SO_SNDTIMEO needed. */
+       so Send/Read are also fail-fast - no SO_SNDTIMEO needed. */
     CALLED_FAKE(WinsockFake_Fionbio, ONCE);
     LONGS_EQUAL(1, WinsockFake_FionbioArgAt(0));
 }
@@ -258,7 +258,7 @@ TEST(SolidSyslogWinsockTcpStream, OpenPassesBoundedConnectTimeoutToSelect)
 {
     WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
     SolidSyslogStream_Open(stream, addr);
-    /* Default tunable SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS = 200 → 0 s + 200 000 µs. */
+    /* Default tunable SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS = 200 -> 0 s + 200 000 µs. */
     LONGS_EQUAL(0, WinsockFake_LastSelectTimeoutSec());
     LONGS_EQUAL(200000, WinsockFake_LastSelectTimeoutUsec());
 }
@@ -343,7 +343,7 @@ TEST(SolidSyslogWinsockTcpStream, OpenReadsSO_ERRORAfterSelectWritable)
 TEST(SolidSyslogWinsockTcpStream, OpenFailsWhenIoctlsocketFails)
 {
     /* If the kernel refuses to put the socket into non-blocking mode the
-       caller cannot bound the connect wait — fail fast rather than fall
+       caller cannot bound the connect wait - fail fast rather than fall
        back to blocking-connect's ~2 s retry behaviour. */
     WinsockFake_SetIoctlSocketFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
@@ -351,7 +351,7 @@ TEST(SolidSyslogWinsockTcpStream, OpenFailsWhenIoctlsocketFails)
 
 TEST(SolidSyslogWinsockTcpStream, OpenFailsWhenConnectFailsImmediatelyWithRefused)
 {
-    /* Non-WSAEWOULDBLOCK errors (e.g. WSAECONNREFUSED) are immediate failures —
+    /* Non-WSAEWOULDBLOCK errors (e.g. WSAECONNREFUSED) are immediate failures -
        no select wait, no SO_ERROR check, just fail fast. */
     WinsockFake_SetConnectFailsWithLastError(WSAECONNREFUSED);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));

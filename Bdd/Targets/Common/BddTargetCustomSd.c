@@ -4,7 +4,7 @@
 #include "SolidSyslogSdValue.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 
-/* IANA-reserved "example" Private Enterprise Number — safe for documentation. */
+/* IANA-reserved "example" Private Enterprise Number - safe for documentation. */
 enum
 {
     EXAMPLE_ENTERPRISE_NUMBER = 32473U

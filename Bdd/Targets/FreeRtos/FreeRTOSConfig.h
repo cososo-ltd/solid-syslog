@@ -33,7 +33,7 @@
  * (xSemaphoreCreateMutexStatic places the StaticSemaphore_t inside the
  * caller-supplied storage). The idle / timer task memory hooks that
  * static allocation also pulls in are satisfied by the kernel's own
- * defaults (configKERNEL_PROVIDED_STATIC_MEMORY = 1) — no boilerplate
+ * defaults (configKERNEL_PROVIDED_STATIC_MEMORY = 1) - no boilerplate
  * in main.c, no MPU port. Dynamic allocation stays on for Plus-TCP's
  * network buffer descriptors and the interactive / service tasks
  * created via xTaskCreate. */

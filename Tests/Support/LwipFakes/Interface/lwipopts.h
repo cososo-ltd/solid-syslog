@@ -1,12 +1,12 @@
 /* Host-side test config for lwIP. Trimmed to the minimum that lets the
  * SolidSyslogLwipRaw* wrappers compile and exercise their unit tests:
- *  - NO_SYS=1 — no OS abstraction (LwipRaw is OS-agnostic by construction)
- *  - LWIP_RAW / UDP / TCP on — the three APIs the wrappers use
- *  - LWIP_DNS on — exposes lwip/dns.h (dns_gethostbyname, dns_found_callback)
+ *  - NO_SYS=1 - no OS abstraction (LwipRaw is OS-agnostic by construction)
+ *  - LWIP_RAW / UDP / TCP on - the three APIs the wrappers use
+ *  - LWIP_DNS on - exposes lwip/dns.h (dns_gethostbyname, dns_found_callback)
  *    so the LwipDnsFake can define them for SolidSyslogLwipRawDnsResolver tests.
  *    No real dns.c is compiled into any host test exe; the fake supplies the
  *    symbols. The numeric SolidSyslogLwipRawResolver ignores DNS entirely.
- *  - MEM_LIBC_MALLOC=1 — host tests can use libc; production wrappers
+ *  - MEM_LIBC_MALLOC=1 - host tests can use libc; production wrappers
  *    must not depend on lwIP's mem pool. */
 #ifndef SOLIDSYSLOG_TEST_LWIPOPTS_H
 #define SOLIDSYSLOG_TEST_LWIPOPTS_H

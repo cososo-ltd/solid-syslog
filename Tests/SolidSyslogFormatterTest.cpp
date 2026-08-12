@@ -159,7 +159,7 @@ TEST(SolidSyslogFormatter, AsciiCharacterSubstitutesHighBitByteWithQuestionMark)
 {
     /* A high-bit byte (like a UTF-8 lead) is not PRINTUSASCII; it must be
      * replaced with the substitute '?'. This keeps AsciiCharacter safe to
-     * hand to extension points — no way to smuggle non-ASCII in. */
+     * hand to extension points - no way to smuggle non-ASCII in. */
     formatAsciiCharacter('\xC3');
 
     CHECK_FORMATTED("?");
@@ -185,7 +185,7 @@ TEST(SolidSyslogFormatter, AsciiCharacterSubstitutesDelWithQuestionMark)
 
 TEST(SolidSyslogFormatter, AsciiCharacterAcceptsSpace)
 {
-    /* Space (0x20) is outside PRINTUSASCII but must pass through — the
+    /* Space (0x20) is outside PRINTUSASCII but must pass through - the
      * library uses it as the structural separator between syslog header
      * fields. */
     formatAsciiCharacter(' ');
@@ -216,7 +216,7 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesSmallestContinuationByte)
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongTwoByteEncodingPerByte)
 {
-    /* \xC1\x81 — overlong 2-byte form of U+0041. Per RFC 3629 §10 and Unicode
+    /* \xC1\x81 - overlong 2-byte form of U+0041. Per RFC 3629 §10 and Unicode
      * §3.9, each invalid byte becomes its own U+FFFD substitution. */
     formatBoundedString("\xC1\x81", 2);
 
@@ -225,7 +225,7 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongTwoByteEncodingPerByte)
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongLeadC0)
 {
-    /* \xC0 — the other overlong 2-byte lead forbidden by RFC 3629 §4. */
+    /* \xC0 - the other overlong 2-byte lead forbidden by RFC 3629 §4. */
     formatBoundedString("\xC0", 1);
 
     CHECK_FORMATTED("\xEF\xBF\xBD");
@@ -243,7 +243,7 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesInvalidLeadsF5ToFF)
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesInvalidLeadsInF8ToFFMid)
 {
-    /* Interior of the 5+ byte prefix range — drives a mask that covers F8-FF,
+    /* Interior of the 5+ byte prefix range - drives a mask that covers F8-FF,
      * rather than enumerating each value. */
     formatBoundedString("\xF8\xFE", 2);
 
@@ -302,7 +302,7 @@ TEST(SolidSyslogFormatter, BoundedStringPassesThreeByteCodepointWithE1LeadThroug
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongThreeByteEncodingPerByte)
 {
-    /* \xE0\x80\x80 — overlong 3-byte encoding of U+0000. The E0 lead
+    /* \xE0\x80\x80 - overlong 3-byte encoding of U+0000. The E0 lead
      * requires a continuation in A0-BF; \x80 is below that subrange, so the
      * sequence is ill-formed and each invalid byte becomes its own U+FFFD. */
     formatBoundedString("\xE0\x80\x80", 3);
@@ -312,7 +312,7 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongThreeByteEncodingPerByte
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongThreeByteEncodingAtSubrangeTop)
 {
-    /* \xE0\x9F\x80 — also overlong: \x9F is still below the E0 subrange
+    /* \xE0\x9F\x80 - also overlong: \x9F is still below the E0 subrange
      * lower bound of \xA0. Forces the exclusion to widen beyond a single
      * hardcoded continuation byte to the full 80-9F range. */
     formatBoundedString("\xE0\x9F\x80", 3);
@@ -322,7 +322,7 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongThreeByteEncodingAtSubra
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesUtf16SurrogateEncodingPerByte)
 {
-    /* \xED\xA0\x80 — UTF-8 encoding of U+D800, a UTF-16 high surrogate.
+    /* \xED\xA0\x80 - UTF-8 encoding of U+D800, a UTF-16 high surrogate.
      * RFC 3629 §3 forbids encoding surrogates; the ED lead requires a
      * continuation in 80-9F, not A0-BF. */
     formatBoundedString("\xED\xA0\x80", 3);
@@ -370,7 +370,7 @@ TEST(SolidSyslogFormatter, BoundedStringPassesFourByteCodepointWithF1LeadThrough
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongFourByteEncodingPerByte)
 {
-    /* \xF0\x80\x80\x80 — overlong 4-byte encoding of U+0000. The F0 lead
+    /* \xF0\x80\x80\x80 - overlong 4-byte encoding of U+0000. The F0 lead
      * requires a continuation in 90-BF; \x80 is below that subrange. */
     formatBoundedString("\xF0\x80\x80\x80", 4);
 
@@ -389,7 +389,7 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesFourByteEncodingBeyondUnicodeRan
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesF5AsFourByteLead)
 {
-    /* \xF5 is not a valid 4-byte lead — any codepoint with a F5 lead would
+    /* \xF5 is not a valid 4-byte lead - any codepoint with a F5 lead would
      * exceed U+10FFFF. RFC 3629 §3 restricts 4-byte leads to F0-F4. */
     formatBoundedString("\xF5\x80\x80\x80", 4);
 
@@ -398,7 +398,7 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesF5AsFourByteLead)
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesF6AsFourByteLead)
 {
-    /* \xF6 is not a valid 4-byte lead either — same reason as F5. */
+    /* \xF6 is not a valid 4-byte lead either - same reason as F5. */
     formatBoundedString("\xF6\x80\x80\x80", 4);
 
     CHECK_FORMATTED("\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD");
@@ -610,7 +610,7 @@ TEST(SolidSyslogFormatter, AsFormattedBufferZerosOrphanContinuationWhenFourByteT
 
 TEST(SolidSyslogFormatter, AsFormattedBufferZerosBothOrphanContinuationsWhenFourByteTrimmedAtAntepenultimate)
 {
-    /* 4-byte codepoint clamped after 3 bytes — both trailing continuations
+    /* 4-byte codepoint clamped after 3 bytes - both trailing continuations
      * must be zeroed alongside the masked lead. */
     CREATE_FORMATTER(4);
 
@@ -920,7 +920,7 @@ TEST(SolidSyslogFormatter, EscapedStringReplacesStragglingMultiByteLeadWhenSourc
 {
     /* \xC2 is a 2-byte lead with no continuation available in the source
      * (NUL-terminator follows). The lead cannot complete a codepoint and
-     * is demoted to U+FFFD — the decoded budget must accommodate the
+     * is demoted to U+FFFD - the decoded budget must accommodate the
      * 3 decoded bytes of the replacement. */
     SolidSyslogFormatter_EscapedString(formatter, "\xC2", 3);
 

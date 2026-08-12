@@ -66,7 +66,7 @@ void MbedTlsHmacSha256Policy_Initialise(
 
 void MbedTlsHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base)
 {
-    /* No owned resources to release — the key is fetched on demand via the
+    /* No owned resources to release - the key is fetched on demand via the
      * GetKey callback and never stored on the instance. */
     (void) base;
 }
@@ -75,11 +75,11 @@ static inline struct SolidSyslogMbedTlsHmacSha256Policy* MbedTlsHmacSha256Policy
     struct SolidSyslogSecurityPolicy* base
 )
 {
-    /* Base is the first member of the instance struct — see Private.h. */
+    /* Base is the first member of the instance struct - see Private.h. */
     return (struct SolidSyslogMbedTlsHmacSha256Policy*) base;
 }
 
-/* HMAC authenticates the whole content as one buffer — the header/body split
+/* HMAC authenticates the whole content as one buffer - the header/body split
  * only matters to AEAD policies, so HeaderLength is ignored here. */
 static bool MbedTlsHmacSha256Policy_SealRecord(
     struct SolidSyslogSecurityPolicy* self,
@@ -87,7 +87,7 @@ static bool MbedTlsHmacSha256Policy_SealRecord(
 )
 {
     /* Bind the trailer to a local before passing it as the writable tag
-     * destination — same shape the AES-GCM sibling uses for its nonce/tag. */
+     * destination - same shape the AES-GCM sibling uses for its nonce/tag. */
     uint8_t* tag = record->Trailer;
     return MbedTlsHmacSha256Policy_ComputeTag(
         MbedTlsHmacSha256Policy_SelfFromBase(self),
@@ -99,7 +99,7 @@ static bool MbedTlsHmacSha256Policy_SealRecord(
 }
 
 /* Fetches the key on demand into a transient buffer, computes HMAC-SHA256 over
- * `data` into `tagOut`, then wipes the key buffer — the key never lingers
+ * `data` into `tagOut`, then wipes the key buffer - the key never lingers
  * beyond a single computation. Returns false (fail closed) and reports the
  * reason if the key is unavailable or the HMAC computation fails. Shared by
  * seal (writes the record tag) and verify (recomputes for comparison). */
@@ -130,8 +130,8 @@ static bool MbedTlsHmacSha256Policy_ComputeTag(
             );
         }
     }
-    /* Wipe the whole key buffer — the full region GetKey was handed, not just
-     * the bytes written — so no key material lingers on the stack. */
+    /* Wipe the whole key buffer - the full region GetKey was handed, not just
+     * the bytes written - so no key material lingers on the stack. */
     mbedtls_platform_zeroize(key, sizeof key);
     return computed;
 }
@@ -202,7 +202,7 @@ static bool MbedTlsHmacSha256Policy_OpenRecord(
 static inline bool MbedTlsHmacSha256Policy_ConstantTimeEquals(const uint8_t* a, const uint8_t* b, size_t length)
 {
     /* Accumulate every byte difference so the loop runs the full length
-     * regardless of where a mismatch occurs — no early exit, no timing oracle
+     * regardless of where a mismatch occurs - no early exit, no timing oracle
      * on the tag comparison. */
     uint8_t difference = 0U;
     for (size_t index = 0; index < length; index++)

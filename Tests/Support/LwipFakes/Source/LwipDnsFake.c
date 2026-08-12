@@ -85,7 +85,7 @@ err_t dns_gethostbyname(const char* hostname, ip_addr_t* addr, dns_found_callbac
     }
     else
     {
-        /* ERR_ARG / other immediate rejection — no callback stored. */
+        /* ERR_ARG / other immediate rejection - no callback stored. */
     }
     return getHostByNameResult;
 }

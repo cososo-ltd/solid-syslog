@@ -14,8 +14,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * Per-sender reporting identity: which error source raised the edge and the
      * per-class detail codes for the two transitions. The portable Sender-role
      * categories and the severity ladder are owned by
-     * SolidSyslogSenderHealth_Update — a single authoritative mapping every
-     * sender shares — so a caller only supplies what is genuinely its own.
+     * SolidSyslogSenderHealth_Update - a single authoritative mapping every
+     * sender shares - so a caller only supplies what is genuinely its own.
      */
     struct SolidSyslogSenderHealthReporter
     {

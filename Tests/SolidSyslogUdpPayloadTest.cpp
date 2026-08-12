@@ -76,7 +76,7 @@ TEST(SolidSyslogUdpPayload, TrimToCodepointBoundaryMidFourByteAfterSecondContinu
     LONGS_EQUAL(0, SolidSyslogUdpPayload_TrimToCodepointBoundary(buffer, 3));
 }
 
-/* Cut exactly on a codepoint boundary — no walk back. */
+/* Cut exactly on a codepoint boundary - no walk back. */
 TEST(SolidSyslogUdpPayload, TrimToCodepointBoundaryExactTwoByteBoundary)
 {
     const uint8_t buffer[] = {0xC3, 0xA9};

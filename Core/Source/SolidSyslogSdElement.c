@@ -59,7 +59,7 @@ struct SolidSyslogSdValue* SolidSyslogSdElement_Param(struct SolidSyslogSdElemen
 
 /* A skipped param (NULL name, or a suppressed element) opens no framing and
  * hands back a sink over the drop formatter, so the caller's value writes are
- * absorbed without disturbing the element. ValueOpen stays false — there is no
+ * absorbed without disturbing the element. ValueOpen stays false - there is no
  * quote for the next SolidSyslogSdElement_Param / SolidSyslogSdElement_End to
  * close. */
 static inline struct SolidSyslogSdValue* SdElement_SkipParam(struct SolidSyslogSdElement* element)
