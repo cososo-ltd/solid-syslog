@@ -5,8 +5,8 @@ A role is one capability the library needs filled, defined as a vtable in
 your own code fills it. Every role has a Null fallback, so an unfilled slot
 degrades safely instead of dangling at link time.
 
-There are twelve. Each page below is that role's contract — the vtable itself,
-and a generated diagram of the backends that realise it.
+Each page below is that role's contract — the vtable itself, and a generated
+diagram of the backends that realise it.
 
 ## Networking
 
@@ -42,9 +42,9 @@ and a generated diagram of the backends that realise it.
 
 ## Bring your own
 
-Filling a role is implementing its vtable. [Porting](../porting.md) puts the
-twelve contracts side by side, each with its Null fallback and a reference
-implementation.
+Filling a role is implementing its vtable. [Porting](../porting.md) covers the
+anatomy of an adapter and the invariants every one honours, and links each
+contract to the backends that already realise it.
 
 Which platform fills a role on your target is the
 [platform × capability matrix](../platforms/index.md).
