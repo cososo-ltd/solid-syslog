@@ -37,9 +37,11 @@ a separate injection point.
 > `SolidSyslogFreeRtos_GetSysUpTime` meets the
 > [sysUpTime contract](../../api/SolidSyslogMetaSd_8h.md) for a 64-bit
 > `TickType_t` at any tick rate, and for a 32-bit one whose `configTICK_RATE_HZ`
-> divides 100. At every other rate — the 1000 Hz FreeRTOS default among them —
-> the tick counter rolls over first, and the reported uptime returns to zero
-> after roughly 50 days rather than 497. Supply your own
-> `SolidSyslogSysUpTimeFunction` from a time source you already have, or move to
-> a dividing rate or a 64-bit tick type. Removing the limit is tracked as
+> divides 100. At every other rate the tick counter rolls over before 2^32
+> hundredths do, and the reported uptime loses phase there and returns to zero:
+> after 2^32 / `configTICK_RATE_HZ` seconds rather than RFC 3418's 497 days, so
+> roughly 50 days at the 1000 Hz FreeRTOS default and sooner as the rate rises.
+> Supply your own `SolidSyslogSysUpTimeFunction` from a time source you already
+> have, or move to a dividing rate or a 64-bit tick type. Converting correctly
+> at any tick rate is tracked as
 > [#755](https://github.com/cososo-ltd/solid-syslog/issues/755).
