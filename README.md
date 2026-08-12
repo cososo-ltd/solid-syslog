@@ -128,8 +128,8 @@ SolidSyslog is source-available under three alternative licences:
 - **[PolyForm Noncommercial 1.0.0](LICENSES/PolyForm-Noncommercial-1.0.0.md)** -
   free for hobby, charitable, educational, public research and government use,
   including redistribution.
-- **COSOSO Commercial Licence** - required when you ship a product containing
-  SolidSyslog. [Get in touch](https://www.cososo.co.uk/#contact).
+- **COSOSO Commercial Licence** - required when you ship a commercial product
+  containing SolidSyslog. [Get in touch](https://www.cososo.co.uk/#contact).
 
 **Free until you ship.** See [LICENSE.md](LICENSE.md) for detail.
 

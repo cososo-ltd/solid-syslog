@@ -18,10 +18,9 @@ In scope:
 - `Platform/`: Tier 2 (supported; API may evolve per target).
 - Root `CMakeLists.txt` + `CMakePresets.json`: the build contract an
   integrator invokes directly. Tampering here affects the built library.
-- Root `LICENSE.md` and `LICENSES/`: the licence terms we are legally bound
-  by and that downstream integrators inherit — the choice of three licences
-  and the two verbatim PolyForm texts it chooses between. Tampering here is
-  a compliance issue.
+- Root `LICENSE.md` and `LICENSES/`: the licence terms we are legally bound by
+  and that downstream integrators inherit (see
+  [`LICENSE.md`](../../LICENSE.md)). Tampering here is a compliance issue.
 
 Out of scope:
 

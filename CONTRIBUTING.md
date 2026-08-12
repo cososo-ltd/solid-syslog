@@ -17,11 +17,10 @@ the project.
 ## Code contributions
 
 SolidSyslog is **source-available but closed to unsolicited code
-contributions.** The library is offered under [three alternative
-licences](LICENSE.md) — two free ones plus a commercial licence — and selling a
-commercial licence requires that every line can be relicensed. That means the
-copyright must stay clean, so external patches cannot simply be merged. Pull
-requests are by invitation only.
+contributions.** Selling a commercial licence (see [`LICENSE.md`](LICENSE.md))
+requires that every line can be relicensed. That means the copyright must stay
+clean, so external patches cannot simply be merged. Pull requests are by
+invitation only.
 
 ### Core (`Core/`) — closed
 
