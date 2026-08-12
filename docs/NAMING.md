@@ -91,17 +91,17 @@ and tag names.
 void SolidSyslogBuffer_Read(struct SolidSyslogBuffer* base, ...);
 int  SolidSyslogTransport_Send(struct SolidSyslogTransport* base, ...);
 
-/* Whole-library functions — operate on the library instance. The
-   library is the class; there's nothing more specific to insert.
-   Restricted to the small set of API entry points an integrator
-   actually calls at the top level: Create / Destroy / Log / Service /
-   SetErrorHandler / Error. */
+/* Whole-library functions — operate on the library instance, or on
+   library-global state. The library is the class; there's nothing more
+   specific to insert. Earned by having no narrower class to sit on, not
+   by being important: a function that acts on one component takes that
+   component's name however central it is. */
 struct SolidSyslog* SolidSyslog_Create(struct SolidSyslogConfig* config);
 void                SolidSyslog_Destroy(struct SolidSyslog* self);
 void                SolidSyslog_Log(struct SolidSyslog* self, ...);
 void                SolidSyslog_Service(struct SolidSyslog* self);
 void                SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context);
-void                SolidSyslog_Error(SolidSyslogSeverity severity, const char* message);
+void                SolidSyslog_Error(enum SolidSyslogSeverity severity, ...);
 
 /* Tag names — note: tag, not typedef. See "No struct typedefs" below. */
 struct SolidSyslogBuffer
