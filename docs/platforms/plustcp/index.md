@@ -58,8 +58,9 @@ record at its cursor and offers the same one on every servicing pass. Nothing
 behind it is delivered.
 
 `SOLIDSYSLOG_MAX_MESSAGE_SIZE` defaults to 2048, so this reaches any record over
-about 1.2 KB rather than only unusual ones. Until `#736` lands, keep records on
-this UDP path inside the payload it carries — but note that limit is library-wide
+about 1.2 KB rather than only unusual ones. Until
+[#736](https://github.com/cososo-ltd/solid-syslog/issues/736) lands, keep records
+on this UDP path inside the payload it carries — but note that limit is library-wide
 rather than per-transport, so lowering it truncates records on every transport
 the instance uses, not only this one.
 

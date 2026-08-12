@@ -563,6 +563,23 @@ comes from, couples the two: the eleventh platform then has to be added to ten
 pages. State this platform's own behaviour completely, and point at the
 capability matrix in `docs/platforms/index.md` for who fills what.
 
+### Link the record, not the source
+
+A documentation page does not send the reader into the source tree. Where a
+symbol has a generated API page, link that; otherwise name the file in code font
+and leave it there. The page's job is to say what the library does, not to show
+where it is implemented.
+
+Issues and pull requests are the opposite case, and are linked. They are the
+tracking record, and a reader who has just been told that a platform diverges
+from a contract wants to see whether that is still true.
+
+The repository-root documents are outside this rule rather than an exception to
+it. `README.md`, `SECURITY.md`, `SUPPORT.md` and `LICENSE.md` are read on GitHub
+as well as published into the site by `hooks/root_pages.py`, so their links stay
+repo-relative; `hooks/source_links.py` rewrites whatever escapes `docs/` to a
+canonical URL at build time.
+
 ---
 
 ## Design Patterns
