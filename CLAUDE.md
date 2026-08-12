@@ -105,14 +105,15 @@ The `SolidSyslog` project board (`gh project list --owner DavidCozens` → proje
 
 Project workflows keep membership and status; there is no manual step. Linking a story
 under its epic with `addSubIssue` puts it on the board at `Todo`, opening a pull request
-that links the issue moves it to `In Progress`, and closing it sets `Done`. An issue with
-no parent never reaches the board at all.
+that links the issue moves it to `In Progress`, and closing it sets `Done`. The workflows
+add nothing that has no parent, so a chore or docs issue raised without an epic stays off
+the board; a few early items predate them.
 
-Membership and `Done` were verified on 2026-08-12 by reading the board rather than the
-workflow list: of 278 items every one has a parent, no parentless issue appears, and all
-272 closed items are `Done` without exception. Re-check the same way after any workflow
-change — an automation being enabled says nothing about which field it writes, and the
-API exposes each workflow's name and enabled flag but not its action.
+Confirm any of that by reading the board rather than the workflow list — an automation
+being enabled says nothing about which field it writes, and the API exposes each
+workflow's name and enabled flag but not its action. Pass
+`archivedStates: [ARCHIVED, NOT_ARCHIVED]` when you read: `projectV2.items` omits
+archived items by default, so a board read without it is a partial one.
 
 ### Convention
 
@@ -146,11 +147,12 @@ for the case where one has not fired, or a status is wrong and needs correcting.
 
 # Read the board. `issue.projectItems` returns 0 here -- the project is user-owned and
 # the repository org-owned -- so enumerate the project's items and paginate past 100.
+# archivedStates is required: without it the archived items are silently missing.
 gh api graphql --paginate -f query='
 query($endCursor: String) {
   user(login: "DavidCozens") {
     projectV2(number: 1) {
-      items(first: 100, after: $endCursor) {
+      items(first: 100, after: $endCursor, archivedStates: [ARCHIVED, NOT_ARCHIVED]) {
         pageInfo { hasNextPage endCursor }
         nodes {
           id
@@ -507,6 +509,31 @@ Deliberate deviations from the MISRA rule set are recorded in
 - All compiler warnings are errors (`-Werror`). Do not suppress warnings without strong justification.
 - cppcheck runs with `--error-exitcode=1`. Inline suppressions (`// cppcheck-suppress`) must include
   a comment explaining why.
+
+### Characters in source
+
+Write what a UK keyboard types. In `.c`, `.h` and `.cpp` — comments included — that
+means `-` and not an em or en dash, `...` and not an ellipsis, `->` and not an arrow,
+and the ASCII spelling of a symbol: `<=`, `+/-`, `x`, `||`, "sum of". A continuation
+ellipsis takes no leading comma: `first, second...`, not `first, second, ...`.
+
+Three exceptions stand, each authorised rather than assumed:
+
+- `µ` in a unit, and `§` in an RFC citation. Both read better as themselves and
+  neither is ambiguous.
+- A character that *is* the subject of its comment. The UTF-8 tests name U+00E9, the
+  euro sign and an emoji to explain the byte sequences they encode; replacing them
+  would delete the point.
+- String literals were left alone in the sweep that established this. Seven carry an
+  em dash and are runtime or test output, where the character is data rather than
+  typography.
+
+**Anything else non-ASCII: ask.** Do not quietly pick a typographic character, and do
+not quietly rewrite a sentence to avoid one — either way the decision goes unrecorded.
+
+This is a rule about source. Documentation under `docs/` keeps typographic characters,
+on the reasoning that prose of that length is written with an authoring tool; `README.md`
+is hyphenated by hand and is the deliberate exception.
 
 ### MISRA-load-bearing `.clang-format` settings
 
