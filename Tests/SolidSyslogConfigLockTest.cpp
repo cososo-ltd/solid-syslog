@@ -8,14 +8,28 @@ using namespace CososoTesting;
 
 static int testLockCallCount;
 static int testUnlockCallCount;
+static void* testLockContext;
+static void* testUnlockContext;
 
-static void TestLock()
+static void TestLockRecordingContext(void* context)
 {
+    testLockContext = context;
+}
+
+static void TestUnlockRecordingContext(void* context)
+{
+    testUnlockContext = context;
+}
+
+static void TestLock(void* context)
+{
+    (void) context;
     testLockCallCount++;
 }
 
-static void TestUnlock()
+static void TestUnlock(void* context)
 {
+    (void) context;
     testUnlockCallCount++;
 }
 
@@ -64,11 +78,31 @@ TEST(SolidSyslogConfigLock, InstalledUnlockFunctionIsCalledByUnlockConfig)
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
 }
 
+TEST(SolidSyslogConfigLock, LockFunctionReceivesInstalledContext)
+{
+    int context = 0;
+
+    SolidSyslog_SetConfigLock(TestLockRecordingContext, nullptr, &context);
+    SolidSyslog_LockConfig();
+
+    POINTERS_EQUAL(&context, testLockContext);
+}
+
+TEST(SolidSyslogConfigLock, UnlockFunctionReceivesInstalledContext)
+{
+    int context = 0;
+
+    SolidSyslog_SetConfigLock(nullptr, TestUnlockRecordingContext, &context);
+    SolidSyslog_UnlockConfig();
+
+    POINTERS_EQUAL(&context, testUnlockContext);
+}
+
 TEST(SolidSyslogConfigLock, SetConfigLockWithNullLockRestoresDefault)
 {
-    SolidSyslog_SetConfigLock(TestLock, TestUnlock);
+    SolidSyslog_SetConfigLock(TestLock, TestUnlock, nullptr);
 
-    SolidSyslog_SetConfigLock(nullptr, TestUnlock);
+    SolidSyslog_SetConfigLock(nullptr, TestUnlock, nullptr);
     SolidSyslog_LockConfig();
 
     CALLED_FUNCTION(testLock, NEVER);
@@ -76,9 +110,9 @@ TEST(SolidSyslogConfigLock, SetConfigLockWithNullLockRestoresDefault)
 
 TEST(SolidSyslogConfigLock, SetConfigLockWithNullUnlockRestoresDefault)
 {
-    SolidSyslog_SetConfigLock(TestLock, TestUnlock);
+    SolidSyslog_SetConfigLock(TestLock, TestUnlock, nullptr);
 
-    SolidSyslog_SetConfigLock(TestLock, nullptr);
+    SolidSyslog_SetConfigLock(TestLock, nullptr, nullptr);
     SolidSyslog_UnlockConfig();
 
     CALLED_FUNCTION(testUnlock, NEVER);

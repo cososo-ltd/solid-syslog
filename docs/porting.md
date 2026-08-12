@@ -133,11 +133,14 @@ The pool allocator wraps each slot claim and release in the
 `AcquireFirstFree` locks per-slot around the claim, `FreeIfInUse` locks around the
 release, so an adapter's `<Class>_Create` / `<Class>_Destroy` inherit the synchronisation for
 free and never lock themselves (which is why the example above has no lock call).
-Single-task setup gets the no-op default and pays nothing. On a multi-task or multi-core target
-where setup races, install the pair once with `SolidSyslog_SetConfigLock(...)`:
-`taskENTER_CRITICAL` / `taskEXIT_CRITICAL` (FreeRTOS), a static `pthread_mutex_t`
-(POSIX), `EnterCriticalSection` / `LeaveCriticalSection` (Windows), or a spinlock.
-This is the only synchronisation primitive the pools use for their own walks.
+Single-task setup gets the no-op default and pays nothing. Where setup races, the
+integrator installs the pair once with `SolidSyslog_SetConfigLock(...)`;
+[`SolidSyslogConfigLock.h`](api/SolidSyslogConfigLock_8h.md) states what that lock
+must be. This is the only synchronisation primitive the pools use for their own
+walks.
+
+Your `Destroy` runs inside it, so cleanup may block and the installed lock must
+allow it.
 
 ## Invariants every adapter must honour
 
