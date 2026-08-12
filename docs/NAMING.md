@@ -88,20 +88,19 @@ and tag names.
 /* Class-scoped functions — operate on a specific module.
  * Parameter naming follows the this-pointer rule (Tier 3): `base` when
  * the declared type is the abstract base struct, `self` otherwise. */
-void SolidSyslogBuffer_Read(struct SolidSyslogBuffer* base, ...);
+bool SolidSyslogBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 int  SolidSyslogTransport_Send(struct SolidSyslogTransport* base, ...);
 
-/* Whole-library functions — operate on the library instance. The
-   library is the class; there's nothing more specific to insert.
-   Restricted to the small set of API entry points an integrator
-   actually calls at the top level: Create / Destroy / Log / Service /
-   SetErrorHandler / Error. */
-struct SolidSyslog* SolidSyslog_Create(struct SolidSyslogConfig* config);
+/* Whole-library functions — operate on the library instance, or on
+   library-global state. The library is the class; there's nothing more
+   specific to insert. Earned by having no narrower class to sit on, not
+   by being important: a function that acts on one component takes that
+   component's name however central it is. */
+struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config);
 void                SolidSyslog_Destroy(struct SolidSyslog* self);
-void                SolidSyslog_Log(struct SolidSyslog* self, ...);
+void                SolidSyslog_Log(struct SolidSyslog* self, const struct SolidSyslogMessage* message);
 void                SolidSyslog_Service(struct SolidSyslog* self);
 void                SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context);
-void                SolidSyslog_Error(SolidSyslogSeverity severity, const char* message);
 
 /* Tag names — note: tag, not typedef. See "No struct typedefs" below. */
 struct SolidSyslogBuffer
@@ -373,8 +372,6 @@ Constraints:
   or suffix with `Ptr`. Pointer-ness is visible from the declaration.
 - **Booleans.** Predicates and boolean variables use `isX`, `hasX`,
   or `canX` shapes (`isValid`, `hasUnsent`, `canSend`).
-- **Out-parameters.** Output parameters use the `outX` prefix
-  (`SolidSyslogBuffer_Initialise(..., struct SolidSyslogBuffer** outBuffer)`).
 
 ### This-pointer parameters
 
@@ -927,7 +924,6 @@ static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer
 | Function parameter / local            | `lowerCamelCase`                           | `recordLength`, `bytesAvailable`           |
 | This-pointer parameter                | `self` (own type) / `base` (abstract base) | `* self` in helpers; `* base` in vtable impls |
 | Downcast helper                       | `Class_SelfFromBase` / `Class_SelfFromArg`  | `CircularBuffer_SelfFromBase`              |
-| Out-parameter                         | `outX` prefix                              | `outBuffer`                                |
 | Boolean / predicate                   | `isX` / `hasX` / `canX`                    | `isValid`, `hasUnsent`                     |
 | Loop variable                         | short domain word, lowerCamelCase          | `index`, `count`, `cursor`                 |
 | Struct member                         | `PascalCase`                               | `WriteCursor`, `IntegrityCheck`, `Write` (function-pointer member) |

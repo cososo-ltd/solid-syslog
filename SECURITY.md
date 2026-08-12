@@ -74,8 +74,9 @@ to link (OpenSSL, Mbed TLS, an RTOS TCP stack, …) are the responsibility of
 those projects and your own supply-chain process; SolidSyslog bundles none of
 them.
 
-See the [threat model](docs/security/threat-model.md) for trust boundaries,
-caller obligations, and what the library does and does not defend against.
+See the [threat model](docs/security/threat-model.md) for the edges the library
+crosses in your product, your obligations as its caller, and what it deliberately
+does not do.
 
 ## Supported versions
 

@@ -3,8 +3,8 @@
 ## Overview
 
 BDD (Behaviour-Driven Development) tests verify SolidSyslog end-to-end: a C program sends an
-RFC 5424 syslog message over UDP to a real syslog-ng instance, and Behave (Python) asserts that
-the received message was parsed into the expected fields.
+RFC 5424 syslog message over UDP, TCP, TLS or mutual TLS to a real syslog server, and Behave
+(Python) asserts that the received message was parsed into the expected fields.
 
 This catches conformance issues that unit tests cannot: syslog-ng's RFC 5424 parser is the test
 oracle, so a malformed message that happens to match a byte-level expectation in a unit test will
@@ -47,7 +47,8 @@ fault-finding tips.
 | Target | Behave runner | Oracle |
 |---|---|---|
 | Linux | `behave-linux` | `syslog-ng-linux` |
-| FreeRTOS | inside `freertos-target` (cross image carries QEMU + Behave) | `syslog-ng-freertos` (shared netns; QEMU slirp `10.0.2.2` reaches it on loopback) |
+| FreeRTOS (Plus-TCP) | `behave-freertos` (cross image carries QEMU + Behave) | `syslog-ng-freertos` (shared netns; QEMU slirp `10.0.2.2` reaches it on loopback) |
+| FreeRTOS (lwIP) | `behave-freertos-lwip` | `syslog-ng-freertos-lwip`, same shape |
 | Windows | `behave` on the runner | `otelcol-contrib` (no compose; runner-direct) |
 
 The Linux BDD target binary is built in the `gcc` container but executed by Behave via
@@ -132,11 +133,14 @@ etc.) without rewriting feature tags.
 | `@tcp` | Needs TCP transport (RFC 6587 framing) |
 | `@tls` | Needs TLS transport (RFC 5425, server-auth) |
 | `@mtls` | Needs mutual TLS (client cert + key) |
-| `@buffered` | Needs a buffered wiring (CircularBuffer + service thread, PosixMessageQueueBuffer, etc.) beyond the single-task PassthroughBuffer path — e.g. file-backed block store, switching sender between transports, syslog-ng reload via the UNIX control socket. All three target binaries (Linux, Windows, FreeRTOS) carry a buffered wiring, so `@buffered` is not excluded by any runner. TLS and mTLS do not carry `@buffered`, because the OTel oracle provides TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
-| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on all three targets — Linux + Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`; FreeRTOS over `SolidSyslogFatFsFile`. |
+| `@buffered` | Needs a buffered wiring (CircularBuffer + service thread, PosixMessageQueueBuffer, etc.) beyond the single-task PassthroughBuffer path — e.g. file-backed block store, switching sender between transports, syslog-ng reload via the UNIX control socket. Every target binary carries a buffered wiring, so `@buffered` is not excluded by any runner. TLS and mTLS do not carry `@buffered`, because the OTel oracle provides TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
+| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target — Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the FreeRTOS pair over `SolidSyslogFatFsFile`. |
 | `@rtc` | Scenario assumes a real-time clock with synchronised wall-clock time — asserts a known absolute TIMESTAMP. Run on Linux and Windows; excluded on FreeRTOS, which models a no-RTC product per RFC 5424 §6.2.3.1. |
 | `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on FreeRTOS; excluded on Linux and Windows. The complementary pair of `@rtc`. |
 | `@requires_message_size_1500` | Scenario requires `SOLIDSYSLOG_MAX_MESSAGE_SIZE` to be at least 1500 bytes — used by the UDP path-MTU clipping feature, which has to drive an oversized payload through `EMSGSIZE`. The Linux and Windows targets are built with the default 2048 max; FreeRTOS keeps the default trimmed to fit the embedded memory budget, so this scenario is also gated `@freertoswip` until the FreeRTOS target opts in. |
+| `@hmac` | Needs an HMAC-SHA256 at-rest policy wired in the target, so a record sealed on write is verified on replay-read. Carried alongside `@store`. |
+| `@aesgcm` | Needs an AES-256-GCM at-rest policy wired in the target — authenticated encryption rather than integrity alone. Carried alongside `@store`, and excluded on Windows, which wires no AES-GCM policy. |
+| `@tls13` | Scenario asserts the handshake against a server that refuses everything below TLS 1.3, so delivery alone proves the version negotiated. |
 
 Three rollout markers are also used (temporary; remove once the scenario passes):
 
@@ -146,13 +150,10 @@ Three rollout markers are also used (temporary; remove once the scenario passes)
 | `@windows_wip` | Skip on Windows only — should work but not yet verified. Currently on `tcp_singletask.feature` (whole feature) and one scenario in `udp_mtu.feature`. |
 | `@freertoswip` | Skip on FreeRTOS only — scenario currently fails or errors on the FreeRTOS-on-QEMU target and is gated until the relevant capability lands. Each tagged scenario is a follow-up tied to a specific gap; the tag is removed scenario-by-scenario as the gap closes. Currently on one scenario in `udp_mtu.feature` (paired with `@requires_message_size_1500`). |
 
-Runner tag filters (canonical source: `ci/docker-compose.bdd.yml` for Linux + FreeRTOS, `.github/workflows/ci.yml` for Windows):
-
-| Runner | Filter |
-| --- | --- |
-| Linux (syslog-ng) | `not @wip and not @no_rtc` |
-| FreeRTOS (syslog-ng-freertos via QEMU) | `not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp or @tls or @mtls)` |
-| Windows (OTel Collector) | `not @wip and not @windows_wip and not @no_rtc` |
+Which runner excludes which tags is set on each Behave service's `command` in
+`ci/docker-compose.bdd.yml`, and on the Windows step in `.github/workflows/ci.yml`. Read
+the filters there rather than from a copy here: a runner is added or a tag retired by
+editing those files, and a table restating them is wrong the moment one changes.
 
 ## Two oracles, one step file
 
@@ -197,11 +198,11 @@ cmake --build --preset msvc-debug --target SolidSyslogBddTarget
 EXAMPLE_BINARY=build/msvc-debug/Bdd/Targets/Debug/SolidSyslogBddTarget.exe \
 RECEIVED_LOG=Bdd/output/received.jsonl \
 ORACLE_FORMAT=otel-jsonl \
-behave --tags='not @wip and not @windows_wip and not @buffered' Bdd/features/
+behave --tags='not @wip and not @windows_wip and not @no_rtc and not @aesgcm' Bdd/features/
 ```
 
 If port 5514 is busy, stop the dev-container's syslog-ng:
-`docker compose -f .devcontainer/docker-compose.yml stop syslog-ng`
+`docker compose -f .devcontainer/docker-compose.yml stop syslog-ng-linux`
 
 ## Test isolation
 
@@ -245,5 +246,5 @@ cat Bdd/output/received.log
 If the file is not created, check that:
 
 1. The syslog-ng container is running: `docker compose -f .devcontainer/docker-compose.yml ps`
-2. The config is mounted correctly: `docker compose -f .devcontainer/docker-compose.yml exec syslog-ng cat /etc/syslog-ng/syslog-ng.conf`
-3. After editing `syslog-ng.conf`, reload the config, either via the control socket (see above) or by recreating the container: `docker compose -f .devcontainer/docker-compose.yml rm -sf syslog-ng && docker compose -f .devcontainer/docker-compose.yml up -d syslog-ng`
+2. The config is mounted correctly: `docker compose -f .devcontainer/docker-compose.yml exec syslog-ng-linux cat /etc/syslog-ng/syslog-ng.conf`
+3. After editing `syslog-ng.conf`, reload the config, either via the control socket (see above) or by recreating the container: `docker compose -f .devcontainer/docker-compose.yml rm -sf syslog-ng-linux && docker compose -f .devcontainer/docker-compose.yml up -d syslog-ng-linux`
