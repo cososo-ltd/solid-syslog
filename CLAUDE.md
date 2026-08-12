@@ -101,9 +101,18 @@ include them), run `addSubIssue` retroactively; it's idempotent-safe on closed i
 ## Project Board Membership
 
 The `SolidSyslog` project board (`gh project list --owner DavidCozens` → project 1) has a
-`Status` single-select field with options **Todo**, **In Progress**, **Done**. Adding an
-issue to the repo does **not** add it to the board — that is a separate step and must be
-done explicitly.
+`Status` single-select field with options **Todo**, **In Progress**, **Done**.
+
+Project workflows keep membership and status; there is no manual step. Linking a story
+under its epic with `addSubIssue` puts it on the board at `Todo`, opening a pull request
+that links the issue moves it to `In Progress`, and closing it sets `Done`. An issue with
+no parent never reaches the board at all.
+
+Membership and `Done` were verified on 2026-08-12 by reading the board rather than the
+workflow list: of 278 items every one has a parent, no parentless issue appears, and all
+272 closed items are `Done` without exception. Re-check the same way after any workflow
+change — an automation being enabled says nothing about which field it writes, and the
+API exposes each workflow's name and enabled flag but not its action.
 
 ### Convention
 
@@ -124,7 +133,10 @@ done explicitly.
   housekeeping step, not a status transition. Archived items stay on the project and still
   count in the epic's sub-issue roll-up.
 
-### Add-to-board recipe
+### Repairing board state by hand
+
+Nothing routine needs this — the workflows above place items and set status. It is here
+for the case where one has not fired, or a status is wrong and needs correcting.
 
 ```bash
 # Project and Status field IDs (stable for this repo):
@@ -132,24 +144,27 @@ done explicitly.
 #   statusField = PVTSSF_lAHOAPhEnM4BTETqzhAat7w
 #   options     = Todo:f75ad846  In Progress:47fc9ee4  Done:98236657
 
-# 1. Get the issue's node ID.
-gh api graphql -f query='
-query {
-  repository(owner: "cososo-ltd", name: "solid-syslog") {
-    issue(number: <N>) { id }
+# Read the board. `issue.projectItems` returns 0 here -- the project is user-owned and
+# the repository org-owned -- so enumerate the project's items and paginate past 100.
+gh api graphql --paginate -f query='
+query($endCursor: String) {
+  user(login: "DavidCozens") {
+    projectV2(number: 1) {
+      items(first: 100, after: $endCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          content { ... on Issue { number state } }
+          fieldValueByName(name: "Status") {
+            ... on ProjectV2ItemFieldSingleSelectValue { name }
+          }
+        }
+      }
+    }
   }
 }'
 
-# 2. Add to project (returns the new project item's id).
-gh api graphql -f query='
-mutation {
-  addProjectV2ItemById(input: {
-    projectId: "PVT_kwHOAPhEnM4BTETq",
-    contentId: "<ISSUE_NODE_ID>"
-  }) { item { id } }
-}'
-
-# 3. Set Status (use the option id matching Todo / In Progress / Done).
+# Correct a status, using the item id the query above returns.
 gh api graphql -f query='
 mutation {
   updateProjectV2ItemFieldValue(input: {
@@ -203,21 +218,21 @@ For every new story:
    Pad both the epic and story numbers to two digits.
 2. `addSubIssue` it under the parent epic (see **Issue / Epic Linking** above). The
    Parent-issue link is what groups the story into the correct swimlane.
-3. Add the story to the project board with `Status = Todo` using the recipe above. Do
-   **not** add the parent epic itself — the swimlane appears automatically once a child
-   story is on the board.
+
+There is no third step. Step 2 puts the story on the board at `Todo`, and the swimlane
+appears with it. Do **not** add the parent epic — it is not an item.
 
 ### Work-in-progress limit
 
 `In Progress` holds at most two items — typically one functional story and one BDD
-story. **Check the count before moving anything into `In Progress`, and say so if the
-move would make it three.** The limit is only worth having if someone is watching it,
-and the board does not enforce it.
+story. A linked pull request is what moves a story there, so this is in practice a limit
+on open PRs: **check the count before opening one that would make it three, and say so.**
+The limit is only worth having if someone is watching it, and the board does not enforce
+it.
 
 ### When closing a story
 
-When a PR merges and closes a story, flip its project Status to `Done`. Closing the
-issue does not update the Status field automatically.
+A merged PR that closes the story sets `Done` for you.
 
 Epics don't have a Status field on the board (they aren't items). When every child
 story is Done, the swimlane naturally becomes all-Done; the epic issue itself should
@@ -429,7 +444,7 @@ why.** Read the header rather than a copy of it. For the wider map:
 
 - `docs/roles/index.md` — the roles, each with its vtable contract and the backends
   that realise it.
-- `docs/platforms/*.md` — what each platform pack supplies.
+- `docs/platforms/<slug>/index.md` — what each platform supplies.
 - `docs/api-reference/` plus the generated Doxygen indexes (`docs/api/files.md`,
   `annotated.md`, `functions.md`, `macros.md`) — every header and symbol.
 
