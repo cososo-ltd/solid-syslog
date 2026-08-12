@@ -198,7 +198,7 @@ cmake --build --preset msvc-debug --target SolidSyslogBddTarget
 EXAMPLE_BINARY=build/msvc-debug/Bdd/Targets/Debug/SolidSyslogBddTarget.exe \
 RECEIVED_LOG=Bdd/output/received.jsonl \
 ORACLE_FORMAT=otel-jsonl \
-behave --tags='not @wip and not @windows_wip and not @buffered' Bdd/features/
+behave --tags='not @wip and not @windows_wip and not @no_rtc and not @aesgcm' Bdd/features/
 ```
 
 If port 5514 is busy, stop the dev-container's syslog-ng:

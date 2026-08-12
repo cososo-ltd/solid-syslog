@@ -88,7 +88,7 @@ and tag names.
 /* Class-scoped functions — operate on a specific module.
  * Parameter naming follows the this-pointer rule (Tier 3): `base` when
  * the declared type is the abstract base struct, `self` otherwise. */
-void SolidSyslogBuffer_Read(struct SolidSyslogBuffer* base, ...);
+bool SolidSyslogBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 int  SolidSyslogTransport_Send(struct SolidSyslogTransport* base, ...);
 
 /* Whole-library functions — operate on the library instance, or on
@@ -96,12 +96,11 @@ int  SolidSyslogTransport_Send(struct SolidSyslogTransport* base, ...);
    specific to insert. Earned by having no narrower class to sit on, not
    by being important: a function that acts on one component takes that
    component's name however central it is. */
-struct SolidSyslog* SolidSyslog_Create(struct SolidSyslogConfig* config);
+struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config);
 void                SolidSyslog_Destroy(struct SolidSyslog* self);
-void                SolidSyslog_Log(struct SolidSyslog* self, ...);
+void                SolidSyslog_Log(struct SolidSyslog* self, const struct SolidSyslogMessage* message);
 void                SolidSyslog_Service(struct SolidSyslog* self);
 void                SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context);
-void                SolidSyslog_Error(enum SolidSyslogSeverity severity, ...);
 
 /* Tag names — note: tag, not typedef. See "No struct typedefs" below. */
 struct SolidSyslogBuffer
