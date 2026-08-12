@@ -7,13 +7,15 @@
 static int lockCallCount;
 static int unlockCallCount;
 
-static void Lock(void)
+static void Lock(void* context)
 {
+    (void) context;
     lockCallCount++;
 }
 
-static void Unlock(void)
+static void Unlock(void* context)
 {
+    (void) context;
     unlockCallCount++;
 }
 
@@ -21,12 +23,12 @@ void ConfigLockFake_Install(void)
 {
     lockCallCount = 0;
     unlockCallCount = 0;
-    SolidSyslog_SetConfigLock(Lock, Unlock);
+    SolidSyslog_SetConfigLock(Lock, Unlock, NULL);
 }
 
 void ConfigLockFake_Uninstall(void)
 {
-    SolidSyslog_SetConfigLock(NULL, NULL);
+    SolidSyslog_SetConfigLock(NULL, NULL, NULL);
 }
 
 int ConfigLockFake_LockCallCount(void)
