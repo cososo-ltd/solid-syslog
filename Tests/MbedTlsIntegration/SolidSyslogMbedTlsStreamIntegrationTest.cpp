@@ -54,7 +54,7 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
          * tests use an in-memory BIO pair that never blocks; our socketpair
          * harness inherently can deadlock on negative-path handshakes (one
          * side waits for a message the other won't send). The cap matches
-         * the production handshake retry budget — generous for any real
+         * the production handshake retry budget - generous for any real
          * handshake (sub-second), tight enough that a stuck test fails fast. */
         struct timeval rcvTimeout = {5, 0};
         setsockopt(fds[0], SOL_SOCKET, SO_RCVTIMEO, &rcvTimeout, sizeof(rcvTimeout));
@@ -238,7 +238,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeRejectedWhenClientSe
 
 {
     /* Server requires a client cert but the integrator hasn't opted in to
-     * mTLS — ClientCertChain / ClientKey are NULL. Server-side verify must
+     * mTLS - ClientCertChain / ClientKey are NULL. Server-side verify must
      * fail and the client's Open must return false. */
     struct MbedTlsTestCert clientCa = {};
     struct MbedTlsTestCertConfig clientCaConfig = {};
@@ -274,7 +274,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeRejectedWhenClientCe
     untrustedConfig.IsCa = 1;
     MbedTlsTestCert_Create(&untrustedConfig, &untrustedClientCa, &rng);
 
-    /* Client cert is signed by the *untrusted* CA — server only trusts
+    /* Client cert is signed by the *untrusted* CA - server only trusts
      * trustedClientCa, so verify will reject this chain. */
     struct MbedTlsTestCert clientCert = {};
     CreateClientIdentitySignedBy(&untrustedClientCa, &clientCert);
@@ -298,7 +298,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, BinaryLinksAgainstRealLibMbedTls)
 
 {
     /* mbedtls_version_get_number() is a constant, side-effect-free symbol
-     * present in every mbedTLS build — a successful link plus a return
+     * present in every mbedTLS build - a successful link plus a return
      * value matching the expected major version (3.x) confirms the
      * integration scaffold pulls in the real library, not a fake. */
     const unsigned int major = (mbedtls_version_get_number() >> 24) & 0xFFU;

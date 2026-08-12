@@ -61,7 +61,7 @@ void MbedTlsStream_Initialise(struct SolidSyslogStream* base, const struct Solid
         self->Config.GetHandshakeTimeoutMs = MbedTlsStream_NullHandshakeTimeoutGetter;
         self->Config.HandshakeTimeoutContext = NULL;
     }
-    /* Eager init so mbedtls_*_free in Close is always safe — whether Open
+    /* Eager init so mbedtls_*_free in Close is always safe - whether Open
      * was ever reached, whether it succeeded, or whether Close is being
      * called twice in a row. mbedTLS guarantees a freed struct is left in
      * the same zeroed state an init produces, so re-Open after Close also
@@ -71,7 +71,7 @@ void MbedTlsStream_Initialise(struct SolidSyslogStream* base, const struct Solid
 }
 
 /* Null Object substituted in Initialise when the integrator does not install a
- * getter — returns the compile-time tunable so the bounded-handshake path is a
+ * getter - returns the compile-time tunable so the bounded-handshake path is a
  * single code path regardless of whether the integrator wired runtime tuning. */
 static uint32_t MbedTlsStream_NullHandshakeTimeoutGetter(void* context)
 {
@@ -161,7 +161,7 @@ static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTl
     return ok;
 }
 
-/* TLS policy owned by the library — set per-ssl_config so it cannot leak
+/* TLS policy owned by the library - set per-ssl_config so it cannot leak
  * into the integrator's other ssl_configs (per coexistence contract). */
 static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream* self)
 {
@@ -201,7 +201,7 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
     const char* serverName = self->Config.ServerName;
     if (serverName == NULL)
     {
-        /* No expected identity supplied — the handshake will accept any cert that
+        /* No expected identity supplied - the handshake will accept any cert that
          * chains to a trusted CA, so the peer is unverified. Surface it as a
          * WARNING (still connect, preserving the IP-pinned / closed-network case)
          * rather than swallowing the MITM-class default silently. S12.28. */
@@ -304,8 +304,8 @@ static int MbedTlsStream_BioSend(void* ctx, const unsigned char* buf, size_t len
 
 /* Translate the non-blocking transport's Read contract into mbedTLS's BIO
  * recv contract:
- *   transport > 0 → bytes available, return the same positive count.
- *   transport = 0 → would-block. Must return MBEDTLS_ERR_SSL_WANT_READ so
+ *   transport > 0 -> bytes available, return the same positive count.
+ *   transport = 0 -> would-block. Must return MBEDTLS_ERR_SSL_WANT_READ so
  *                  the handshake retry loop polls; returning 0 or -1 would
  *                  abort the handshake on the first non-blocking read. */
 static int MbedTlsStream_BioRecv(void* ctx, unsigned char* buf, size_t len)
@@ -323,13 +323,13 @@ static int MbedTlsStream_BioRecv(void* ctx, unsigned char* buf, size_t len)
     }
     else
     {
-        /* n < 0 — transport-level error; keep result = -1 to signal a
+        /* n < 0 - transport-level error; keep result = -1 to signal a
            hard failure to mbedTLS so the handshake / read aborts. */
     }
     return result;
 }
 
-/* TLS-level write failure means the session state is unrecoverable — close
+/* TLS-level write failure means the session state is unrecoverable - close
  * so the StreamSender reconnect path runs on the next tick. Fail-fast is the
  * contract every TLS stream adapter honours. */
 static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
@@ -345,11 +345,11 @@ static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void
 }
 
 /* mbedtls_ssl_read has two distinct outcomes worth keeping straight:
- *   1. Steady-state read: bytes available → positive count; nothing to read
- *      right now → WANT_READ → return 0, mirroring the transport contract.
+ *   1. Steady-state read: bytes available -> positive count; nothing to read
+ *      right now -> WANT_READ -> return 0, mirroring the transport contract.
  *   2. Any other negative return (alerts, renegotiation surfacing as
  *      WANT_WRITE, hard transport error) is fatal under fail-fast semantics
- *      — close internally; the caller reopens and store-and-forward replays. */
+ *      - close internally; the caller reopens and store-and-forward replays. */
 static inline SolidSyslogSsize MbedTlsStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size)
 {
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);

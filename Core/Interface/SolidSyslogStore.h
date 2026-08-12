@@ -1,8 +1,8 @@
 /** @file
  *  The store role: retain unsent records (Write) and replay them in order via a
  *  read cursor (ReadNextUnsent / MarkSent), so a send failure never drops a
- *  stored record — it stays for retry. These calls dispatch to the injected
- *  store's vtable, so behaviour — capacity, discard policy, durability — is
+ *  stored record - it stays for retry. These calls dispatch to the injected
+ *  store's vtable, so behaviour - capacity, discard policy, durability - is
  *  that store's. */
 #ifndef SOLIDSYSLOGSTORE_H
 #define SOLIDSYSLOGSTORE_H

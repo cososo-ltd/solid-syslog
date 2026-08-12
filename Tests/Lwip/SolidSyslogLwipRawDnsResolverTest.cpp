@@ -52,7 +52,7 @@ unsigned FakeSleep_CallCount = 0;
 int FakeSleep_LastMs = 0;
 
 // When armed, FakeSleep fires the pending dns_found_callback the first time it
-// is called with a callback outstanding — the host stand-in for the tcpip
+// is called with a callback outstanding - the host stand-in for the tcpip
 // thread completing the lookup while the caller spins. Delivers &FakeSleep_FireIp
 // when FakeSleep_FireWithAddr, else NULL (lookup failure).
 bool FakeSleep_FireArmed = false;
@@ -82,7 +82,7 @@ extern "C" void FakeSleep(int milliseconds)
 // each callback (same contract as LwipFakeMarshalGuard_TrackingMarshal, so the
 // teardown breach check still holds). Used to pin that the async-completion
 // result is read under a SECOND marshal hop (DoPublishResult) rather than off
-// the volatile Done flag on the caller's thread — the cross-thread data-race fix.
+// the volatile Done flag on the caller's thread - the cross-thread data-race fix.
 unsigned Marshal_CallCount = 0;
 
 extern "C" void CountingTrackingMarshal(SolidSyslogLwipRawCallback callback, void* context)
@@ -246,7 +246,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveSpinsUntilAsyncCallbackFires)
 TEST(SolidSyslogLwipRawDnsResolver, SynchronousHitTakesExactlyOneMarshalHop)
 {
     // ERR_OK publishes inline (read-after-marshal is ordered by the hop return),
-    // so only the dns_gethostbyname hop runs — no separate publish hop.
+    // so only the dns_gethostbyname hop runs - no separate publish hop.
     LwipDnsFake_SetResult(ERR_OK);
 
     Resolve();
@@ -258,7 +258,7 @@ TEST(SolidSyslogLwipRawDnsResolver, AsyncSuccessReadsResultUnderASecondMarshalHo
 {
     // The cross-thread fix: after the spin observes the volatile Done flag, the
     // non-volatile ResolvedIp / ResolvedOk are read back on the lwIP thread via a
-    // SECOND marshal hop (DoPublishResult) — never off the flag on the caller's
+    // SECOND marshal hop (DoPublishResult) - never off the flag on the caller's
     // thread. Two hops total: dns_gethostbyname + publish.
     LwipDnsFake_SetResult(ERR_INPROGRESS);
     FakeSleep_FireArmed = true;
@@ -272,7 +272,7 @@ TEST(SolidSyslogLwipRawDnsResolver, AsyncSuccessReadsResultUnderASecondMarshalHo
 
 TEST(SolidSyslogLwipRawDnsResolver, TimeoutDoesNotTakeThePublishHop)
 {
-    // No completion → no publish hop; only the dns_gethostbyname hop ran.
+    // No completion -> no publish hop; only the dns_gethostbyname hop ran.
     LwipDnsFake_SetResult(ERR_INPROGRESS); // callback never fires
 
     Resolve();
@@ -284,7 +284,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveReturnsFalseWhenAsyncCallbackDelivers
 {
     LwipDnsFake_SetResult(ERR_INPROGRESS);
     FakeSleep_FireArmed = true;
-    FakeSleep_FireWithAddr = false; // deliver NULL — lookup failed
+    FakeSleep_FireWithAddr = false; // deliver NULL - lookup failed
 
     CHECK_FALSE(Resolve());
 }
@@ -353,7 +353,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveInvokesDnsGetHostByNameUnderMarshal)
 
 TEST(SolidSyslogLwipRawDnsResolver, UdpTransportResolvesIdenticallyToTcp)
 {
-    // Locks in that the DNS resolver does not dispatch on transport — a future
+    // Locks in that the DNS resolver does not dispatch on transport - a future
     // reader must not add transport-typed lookup behaviour here.
     ip_addr_t hit = Ipv4(10, 0, 2, 2);
     LwipDnsFake_SetResult(ERR_OK);
@@ -372,7 +372,7 @@ TEST(SolidSyslogLwipRawDnsResolver, UdpTransportResolvesIdenticallyToTcp)
 TEST(SolidSyslogLwipRawDnsResolver, ResolveAcceptsNumericLiteralAsSynchronousHit)
 {
     // Superset of the numeric resolver: a dotted-quad is handed to
-    // dns_gethostbyname, which resolves it synchronously (ERR_OK) — so numeric
+    // dns_gethostbyname, which resolves it synchronously (ERR_OK) - so numeric
     // hosts still resolve through this class. Here the fake stands in for that
     // ERR_OK return; the contract under test is that the literal host string
     // flows through unchanged and the resolve succeeds.

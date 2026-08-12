@@ -143,7 +143,7 @@ TEST(SolidSyslogPool, DestroyOfPooledHandleLocksOnce)
 TEST(SolidSyslogPool, DestroyOfUnknownHandleDoesNotLock)
 {
     ConfigLockFake_Install();
-    /* Any non-pool address — cast a stack byte, value never dereferenced. */
+    /* Any non-pool address - cast a stack byte, value never dereferenced. */
     char stackByte = 0;
     auto* stranger = reinterpret_cast<struct SolidSyslog*>(&stackByte);
 

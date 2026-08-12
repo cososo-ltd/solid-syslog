@@ -57,7 +57,7 @@ static TickType_t rcvTimeoAtConnect = 0;
 static unsigned closesocketCallCount = 0;
 static Socket_t lastClosesocketSocket = NULL;
 
-/* Sentinel used as a "valid" Socket_t return — non-NULL and not
+/* Sentinel used as a "valid" Socket_t return - non-NULL and not
  * FREERTOS_INVALID_SOCKET. Adapters only inspect Open's return for
  * the invalid sentinel; any other non-zero pointer is treated as success. */
 static int fakeSocketHandleAnchor = 0;

@@ -12,7 +12,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * shared by both filesystem media drivers on the QEMU mps2-an385 BDD
      * targets: the ChaN-FatFs disk_* glue (diskio.c) and the FreeRTOS-Plus-FAT
      * FF_Disk_t driver (FFSemihostingDisk.c). One image, one geometry, one
-     * semihosting trap — so a FatFs run and a Plus-FAT run exercise byte-for-
+     * semihosting trap - so a FatFs run and a Plus-FAT run exercise byte-for-
      * byte the same host file (solidsyslog-disk.img in QEMU's working dir).
      *
      * Behave's after_scenario removes the image so each scenario starts with
@@ -21,7 +21,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * a zero-filled image and the integrator falls through to format-on-first-
      * use.
      *
-     * Single logical drive; 16384 sectors x 512 B = 8 MiB — large enough for
+     * Single logical drive; 16384 sectors x 512 B = 8 MiB - large enough for
      * the store-and-forward / capacity / power-cycle scenarios that exercise
      * multi-block files, and clear of the ~4085-cluster FAT12/16 boundary so
      * both formatters land FAT16. */
@@ -40,7 +40,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /* Open the host image, creating + sparse-extending a fresh zero-filled 8 MiB
-     * file on first use. Idempotent — repeated calls short-circuit on the cached
+     * file on first use. Idempotent - repeated calls short-circuit on the cached
      * handle. Returns true once a usable handle is held. */
     bool SemihostingDisk_EnsureReady(void);
 

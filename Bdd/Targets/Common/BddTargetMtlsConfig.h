@@ -18,14 +18,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void BddTargetMtlsConfig_GetEndpoint(struct SolidSyslogEndpoint * endpoint, void* context);
     uint32_t BddTargetMtlsConfig_GetEndpointVersion(void* context);
 
-    /* Override the default mTLS host ("syslog-ng" — Linux compose service
+    /* Override the default mTLS host ("syslog-ng" - Linux compose service
        name). Caller owns the string lifetime. Used by per-platform main.c
        to inject SOLIDSYSLOG_BDD_MTLS_HOST when set. */
     void BddTargetMtlsConfig_SetHost(const char* host);
 
     /* Override the mTLS server name used for SNI and cert hostname
        verification, independently of the connection host. See the
-       matching note in BddTargetTlsConfig.h — FreeRTOS BDD-on-QEMU
+       matching note in BddTargetTlsConfig.h - FreeRTOS BDD-on-QEMU
        needs the connection IP separate from the cert subject. */
     void BddTargetMtlsConfig_SetServerName(const char* serverName);
 

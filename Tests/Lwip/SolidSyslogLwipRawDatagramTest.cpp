@@ -52,7 +52,7 @@ static const uint16_t TEST_PORT = 514;
 
 /* Shared fixture: every Datagram lifecycle test needs the fake reset, a fresh
  * datagram + address handle pair, teardown of both, and the leak invariant
- * — every udp_pcb handed out by udp_new must come back via udp_remove by the
+ * - every udp_pcb handed out by udp_new must come back via udp_remove by the
  * end of the test. TEST_GROUP_BASE keeps Created-only vs Opened groups
  * sharing this boilerplate. */
 // clang-format off
@@ -62,7 +62,7 @@ TEST_BASE(LwipRawDatagramTestBase)
     struct SolidSyslogAddress* address = nullptr;
     /* Shared scratch buffer for SendTo tests. Sized to MaxPayload so the
      * largest-length test (sendBytes(SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD))
-     * stays in-bounds. Content is irrelevant — payload-pointer-identity
+     * stays in-bounds. Content is irrelevant - payload-pointer-identity
      * and length are the observable surface. */
     char sendBuffer[SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD] = {};
 
@@ -89,7 +89,7 @@ TEST_BASE(LwipRawDatagramTestBase)
         SolidSyslogLwipRaw_SetMarshal(nullptr);
     }
 
-    /* SendTo against the shared buffer + address. Default length 1 — most
+    /* SendTo against the shared buffer + address. Default length 1 - most
      * tests don't care; tests asserting length pass it explicitly. */
     enum SolidSyslogDatagramSendResult sendBytes(size_t length = 1U)
     {

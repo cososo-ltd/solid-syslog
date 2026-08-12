@@ -95,7 +95,7 @@ void OpenSslStream_Cleanup(struct SolidSyslogStream* base)
      * leak the underlying transport. Close now releases the SSL, BIO_METHOD
      * and SSL_CTX, and is idempotent (the TLS-side teardown guards on Ssl /
      * Ctx != NULL; transport Close is itself idempotent on every Stream
-     * impl), so the normal Open → Close → Destroy lifecycle is unaffected. */
+     * impl), so the normal Open -> Close -> Destroy lifecycle is unaffected. */
     OpenSslStream_Close(base);
     /* Overwrite the abstract base with the shared NullStream vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
@@ -210,7 +210,7 @@ static inline bool OpenSslStream_ConfigureClientIdentity(
     bool ok = true;
     if (hasCert != hasKey)
     {
-        ok = false; /* mTLS is all-or-nothing — partial config is a setup error */
+        ok = false; /* mTLS is all-or-nothing - partial config is a setup error */
     }
     else if (hasCert)
     {
@@ -220,7 +220,7 @@ static inline bool OpenSslStream_ConfigureClientIdentity(
     }
     else
     {
-        /* neither cert nor key supplied — server-auth-only TLS, ok stays true */
+        /* neither cert nor key supplied - server-auth-only TLS, ok stays true */
     }
     return ok;
 }
@@ -325,11 +325,11 @@ static inline int OpenSslStream_TransportBioCreate(BIO* bio)
 
 /* Translate the non-blocking transport's Read contract into the OpenSSL BIO
  * contract:
- *   transport > 0 → bytes available, BIO returns the same positive count.
- *   transport = 0 → would-block. BIO must signal retry via BIO_set_retry_read
+ *   transport > 0 -> bytes available, BIO returns the same positive count.
+ *   transport = 0 -> would-block. BIO must signal retry via BIO_set_retry_read
  *                  and return -1; without this, OpenSSL treats the 0 as EOF
  *                  and aborts the handshake on the first poll.
- *   transport < 0 → EOF or error. BIO returns -1 with retry flags cleared so
+ *   transport < 0 -> EOF or error. BIO returns -1 with retry flags cleared so
  *                  OpenSSL surfaces the failure rather than spinning. */
 static inline int OpenSslStream_TransportBioRead(BIO* bio, char* buffer, int size)
 {
@@ -398,7 +398,7 @@ static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpe
     const char* serverName = self->Config.ServerName;
     if (serverName == NULL)
     {
-        /* No expected identity supplied — the handshake will accept any cert that
+        /* No expected identity supplied - the handshake will accept any cert that
          * chains to a trusted CA, so the peer is unverified. Surface it as a
          * WARNING (still connect, preserving the IP-pinned / closed-network case)
          * rather than swallowing the MITM-class default silently. S12.28. */
@@ -440,7 +440,7 @@ static inline bool OpenSslStream_IsHandshakeBudgetExhausted(uint32_t totalSleptM
 }
 
 /* Null Object substituted at Initialise when the integrator does not install a
- * getter — returns the compile-time tunable so the bounded-handshake path is a
+ * getter - returns the compile-time tunable so the bounded-handshake path is a
  * single code path regardless of whether the integrator wired runtime tuning. */
 static uint32_t OpenSslStream_NullHandshakeTimeoutGetter(void* context)
 {
@@ -527,12 +527,12 @@ static inline bool OpenSslStream_Send(struct SolidSyslogStream* base, const void
 }
 
 /* SSL_read has two distinct modes worth keeping straight:
- *   1. Steady-state application read: bytes available → return them; nothing
- *      to read right now → SSL_ERROR_WANT_READ → return 0 mirrors the transport
+ *   1. Steady-state application read: bytes available -> return them; nothing
+ *      to read right now -> SSL_ERROR_WANT_READ -> return 0 mirrors the transport
  *      Read contract.
  *   2. Renegotiation or alerts mid-stream: SSL_read may need to write (server
  *      requested re-key), surfacing as SSL_ERROR_WANT_WRITE. Under fail-fast
- *      semantics this is a transport failure — close internally; the caller
+ *      semantics this is a transport failure - close internally; the caller
  *      reopens, store-and-forward replays. Same rule for any other SSL error.
  * Anything below the WANT_READ branch therefore takes the Close path. */
 static inline SolidSyslogSsize OpenSslStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size)

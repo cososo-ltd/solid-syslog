@@ -7,13 +7,13 @@
  *  unmarshalled. What the stream does through its vtable is the substance:
  *
  *  - Open runs tcp_new + pcb setup + tcp_connect in one marshalled batch, then
- *    spins on the caller's thread — sleeping via the config's Sleep so lwIP's
- *    timer / RX paths advance the SYN exchange — until the connected callback
+ *    spins on the caller's thread - sleeping via the config's Sleep so lwIP's
+ *    timer / RX paths advance the SYN exchange - until the connected callback
  *    reports success, an error, or the connect deadline (config's
  *    GetConnectTimeoutMs, re-read each attempt so a runtime-tunable value applies
  *    on the next reconnect) elapses. On failure the half-open pcb is tcp_abort'd.
  *    Every pcb carries SOF_KEEPALIVE, and Nagle is off (TCP_NODELAY) so a small
- *    latency-sensitive record — or a stacked TLS handshake flight — is not held
+ *    latency-sensitive record - or a stacked TLS handshake flight - is not held
  *    for an ACK.
  *  - Send is all-or-nothing: tcp_write uses TCP_WRITE_FLAG_COPY, so the caller's
  *    buffer lifetime ends at return; any write/output failure closes the stream

@@ -18,7 +18,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_UNKNOWN_DESTROY,
         /** The record at the head of the ring is larger than the read buffer
          *  Service handed to Read, so it cannot be delivered and is left
-         *  un-dequeued — the drain stalls at this record. This cannot occur
+         *  un-dequeued - the drain stalls at this record. This cannot occur
          *  under correct configuration (the drain scratch is sized to hold any
          *  record Write accepts), so an emitted code indicates the ring's
          *  length prefix has been corrupted. */

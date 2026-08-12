@@ -26,7 +26,7 @@ void SolidSyslogSenderHealth_Update(
         else
         {
             /* WARNING: a destination outage is recoverable (store-and-forward
-             * covers it) and may clear on its own — it is not a library fault.
+             * covers it) and may clear on its own - it is not a library fault.
              * Setup faults an integrator must fix in code (bad config, pool
              * exhaustion) are CRITICAL; see docs/error-severity.md. */
             SolidSyslog_Error(

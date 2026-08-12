@@ -1,5 +1,5 @@
 /** @file
- *  The StructuredData vtable (Format) — the SD-source contract an implementor
+ *  The StructuredData vtable (Format) - the SD-source contract an implementor
  *  fills in (the StructuredData extension point). */
 #ifndef SOLIDSYSLOGSTRUCTUREDDATADEFINITION_H
 #define SOLIDSYSLOGSTRUCTUREDDATADEFINITION_H
@@ -15,7 +15,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *
      *  Format runs inside SolidSyslog_Log, on the application's thread, so an
      *  implementation that blocks stalls the caller's logging. Writing nothing
-     *  is a valid answer — a message where no source writes emits NILVALUE — so
+     *  is a valid answer - a message where no source writes emits NILVALUE - so
      *  a source with nothing to report need not invent a value. */
     struct SolidSyslogStructuredData
     {

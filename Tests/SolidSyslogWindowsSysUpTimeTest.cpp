@@ -57,7 +57,7 @@ TEST(SolidSyslogWindowsSysUpTime, MaxUint32Boundary)
 
 TEST(SolidSyslogWindowsSysUpTime, WrapsPastMaxUint32)
 {
-    // 42,949,672,970 ms / 10 = 4,294,967,297 hundredths = UINT32_MAX + 2 → wraps to 1
+    // 42,949,672,970 ms / 10 = 4,294,967,297 hundredths = UINT32_MAX + 2 -> wraps to 1
     fakeTickCount = 42949672970ULL;
     UNSIGNED_LONGS_EQUAL(1, SolidSyslogWindows_GetSysUpTime());
 }

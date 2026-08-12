@@ -14,7 +14,7 @@
 
 using namespace CososoTesting;
 
-/* Selector return values — named for the inner sender they select, so tests
+/* Selector return values - named for the inner sender they select, so tests
  * read as `selectorReturn = INNER_B`. */
 enum
 {
@@ -105,7 +105,7 @@ TEST(SolidSyslogSwitchingSender, DestroyDoesNotSendToInnerSenders)
     CALLED_FAKE_ON(SenderFake_Send, innerA, NEVER);
     CALLED_FAKE_ON(SenderFake_Send, innerB, NEVER);
 
-    // Re-create so teardown's Destroy(sender) targets a live handle —
+    // Re-create so teardown's Destroy(sender) targets a live handle -
     // the destroy under test has already freed the original slot.
     CreateSwitchingSender(2);
 }
@@ -118,7 +118,7 @@ TEST(SolidSyslogSwitchingSender, DestroyDoesNotDisconnectInnerSenders)
     CALLED_FAKE_ON(SenderFake_Disconnect, innerA, NEVER);
     CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
 
-    // Re-create so teardown's Destroy(sender) targets a live handle —
+    // Re-create so teardown's Destroy(sender) targets a live handle -
     // the destroy under test has already freed the original slot.
     CreateSwitchingSender(2);
 }
@@ -218,7 +218,7 @@ TEST(SolidSyslogSwitchingSender, DisconnectAfterSelectorChangeWithoutSendForward
     Send("x", 1); // currentSender becomes innerA
     selectorReturn = INNER_B; // selector flips, but no Send yet
     SolidSyslogSender_Disconnect(sender);
-    // Disconnect does not re-consult the selector — it forwards to the
+    // Disconnect does not re-consult the selector - it forwards to the
     // currently-held sender, so innerA receives the Disconnect.
     CALLED_FAKE_ON(SenderFake_Disconnect, innerA, ONCE);
     CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
@@ -286,10 +286,10 @@ TEST(SolidSyslogSwitchingSender, DisconnectAfterSwitchingBeyondEndIsNilSafe)
     Send("x", 1);
     selectorReturn = BEYOND_END;
     Send("y", 1);
-    // innerA was active, switched away — one Disconnect from the switch
+    // innerA was active, switched away - one Disconnect from the switch
     CALLED_FAKE_ON(SenderFake_Disconnect, innerA, ONCE);
     CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
-    // explicit Disconnect now resolves to nil — no inner sender touched
+    // explicit Disconnect now resolves to nil - no inner sender touched
     SolidSyslogSender_Disconnect(sender);
     CALLED_FAKE_ON(SenderFake_Disconnect, innerA, ONCE);
     CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
@@ -303,7 +303,7 @@ TEST(SolidSyslogSwitchingSender, SelectorBeyondEndDisconnectBeforeSendDoesNotTou
     CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
 }
 
-// Pool tests — prove SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE caps live
+// Pool tests - prove SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE caps live
 // instances and overflow falls back to the shared SolidSyslogNullSender.
 
 // clang-format off
@@ -382,7 +382,7 @@ TEST(SolidSyslogSwitchingSenderPool, FillingPoolThenOverflowReturnsDistinctFallb
     }
 }
 
-// Bad-setup tests — SolidSyslogSwitchingSender_Create rejects malformed config
+// Bad-setup tests - SolidSyslogSwitchingSender_Create rejects malformed config
 // and routes to NullSender.
 
 // clang-format off

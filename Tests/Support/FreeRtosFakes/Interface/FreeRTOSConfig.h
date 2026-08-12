@@ -7,7 +7,7 @@
 
 /* Host-suitable FreeRTOSConfig.h for compiling Platform/FreeRtos adapters
  * against fakes. The values here are chosen so the real FreeRTOS-Kernel
- * headers parse cleanly on the host compiler — actual scheduler behaviour
+ * headers parse cleanly on the host compiler - actual scheduler behaviour
  * is provided by FreeRtosFakes/Source/, which substitutes the API at link
  * time.
  *
@@ -35,7 +35,7 @@
 #define configUSE_MALLOC_FAILED_HOOK 0
 
 /* Static allocation is required for SolidSyslogFreeRtosMutex
- * (xSemaphoreCreateMutexStatic) — caller injects the StaticSemaphore_t-sized
+ * (xSemaphoreCreateMutexStatic) - caller injects the StaticSemaphore_t-sized
  * storage rather than the kernel mallocing it. Dynamic stays on so the
  * test config matches the example, which also uses dynamic allocation for
  * task / FreeRTOS-Plus-TCP buffers. */

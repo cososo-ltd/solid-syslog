@@ -40,7 +40,7 @@ struct MbedTlsTestServer* MbedTlsTestServer_Create(const struct MbedTlsTestServe
         MBEDTLS_SSL_TRANSPORT_STREAM,
         MBEDTLS_SSL_PRESET_DEFAULT
     );
-    /* Pin TLS 1.2 — mirrors the rationale in the OpenSSL TlsTestServer
+    /* Pin TLS 1.2 - mirrors the rationale in the OpenSSL TlsTestServer
      * (Tests/OpenSslIntegration/TlsTestServer.c:37). In TLS 1.3 the server
      * sends Certificate/CertVerify/Finished in one flight and then blocks
      * in recv waiting for ClientFinished. On the negative paths the client's
@@ -60,7 +60,7 @@ struct MbedTlsTestServer* MbedTlsTestServer_Create(const struct MbedTlsTestServe
     }
     else
     {
-        /* Server-auth only — no client cert requested. */
+        /* Server-auth only - no client cert requested. */
         mbedtls_ssl_conf_authmode(&self->SslConfig, MBEDTLS_SSL_VERIFY_NONE);
     }
     mbedtls_ssl_conf_own_cert(
@@ -105,7 +105,7 @@ void MbedTlsTestServer_Destroy(struct MbedTlsTestServer* self)
 bool MbedTlsTestServer_JoinAndHandshakeSucceeded(struct MbedTlsTestServer* self)
 {
     /* RunServer exits naturally once the client closes its end (recv returns
-     * 0 → handshake or read sees EOF). Tests should close the client side
+     * 0 -> handshake or read sees EOF). Tests should close the client side
      * before calling Join so this returns promptly. */
     if (!self->ThreadJoined)
     {
@@ -115,7 +115,7 @@ bool MbedTlsTestServer_JoinAndHandshakeSucceeded(struct MbedTlsTestServer* self)
     return self->HandshakeSucceeded;
 }
 
-/* The thread exits as soon as the handshake settles — the tests pin
+/* The thread exits as soon as the handshake settles - the tests pin
  * handshake outcome only. Reading application bytes after handshake (and
  * the blocking that implies) is intentionally not implemented. */
 static void* RunServer(void* arg)

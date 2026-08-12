@@ -31,7 +31,7 @@ struct SolidSyslogAddress;
  * call runs on the lwIP-owning thread; its immediate return code comes back in
  * Err. The async-completion result is published the same way: DoPublishResult
  * runs on the lwIP thread, copies the resolved address into Destination, and
- * reports the outcome in Resolved — so the multi-byte ResolvedIp / ResolvedOk
+ * reports the outcome in Resolved - so the multi-byte ResolvedIp / ResolvedOk
  * fields the dns_found_callback wrote are read on the thread that wrote them
  * (race-free, with the marshal providing the cross-thread barrier) rather than
  * on the caller's thread off the back of the volatile Done flag. One struct so
@@ -109,7 +109,7 @@ static bool LwipRawDnsResolver_Resolve(
 
     if (call.Err == ERR_OK)
     {
-        /* Synchronous hit: numeric literal, DNS cache, or local hostlist —
+        /* Synchronous hit: numeric literal, DNS cache, or local hostlist -
          * dns_gethostbyname wrote ResolvedIp under the marshal hop above and the
          * found_callback never fired, so reading it here (ordered after the
          * marshal returned) is safe and on a single thread. */
@@ -123,7 +123,7 @@ static bool LwipRawDnsResolver_Resolve(
          * dns_found_callback signals completion via the volatile Done flag (or
          * the deadline passes). The callback wrote the multi-byte ResolvedIp /
          * ResolvedOk on the lwIP thread, so the authoritative read + publish runs
-         * back on that thread via DoPublishResult — never off the volatile flag
+         * back on that thread via DoPublishResult - never off the volatile flag
          * on the caller's thread, which would be an unsynchronised data race. */
         if (LwipRawDnsResolver_WaitForCallback(self))
         {
@@ -132,7 +132,7 @@ static bool LwipRawDnsResolver_Resolve(
     }
     else
     {
-        /* ERR_ARG / any other immediate rejection — Resolved stays false.
+        /* ERR_ARG / any other immediate rejection - Resolved stays false.
          * Terminating else per MISRA 15.7. */
     }
     return call.Resolved;
@@ -162,7 +162,7 @@ static void LwipRawDnsResolver_FoundCallback(const char* name, const ip_addr_t* 
 
 /* Bounded async-resolve spin: each iteration sleeps via the integrator-injected
  * Sleep so lwIP's DNS timer / RX paths get cycles to advance the query. Runs on
- * the caller's thread — never the lwIP thread. Exits when the callback has set
+ * the caller's thread - never the lwIP thread. Exits when the callback has set
  * the volatile Done flag (success or NULL-delivery failure) or the deadline
  * elapses (timeout). Returns whether completion was observed; the authoritative
  * success/address read happens under the marshal in DoPublishResult, so this

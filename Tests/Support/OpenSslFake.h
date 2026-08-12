@@ -3,11 +3,11 @@
 
 #include "SolidSyslogExternC.h"
 
-#include <stdbool.h> // IWYU pragma: keep — dual-use header (C and C++ TUs); IWYU only sees the C++ side and would drop this.
+#include <stdbool.h> // IWYU pragma: keep - dual-use header (C and C++ TUs); IWYU only sees the C++ side and would drop this.
 #include <stddef.h>
 #include <stdint.h>
 
-/* Forward-declared OpenSSL types — full definitions live in <openssl/ssl.h>. */
+/* Forward-declared OpenSSL types - full definitions live in <openssl/ssl.h>. */
 struct ssl_ctx_st;
 struct ssl_st;
 struct ssl_method_st;
@@ -30,7 +30,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void OpenSslFake_SetBioNewFails(bool fails);
     void OpenSslFake_SetCipherListFails(bool fails);
 
-    /* SSL return-value injection — drive non-blocking I/O paths */
+    /* SSL return-value injection - drive non-blocking I/O paths */
     enum
     {
         OPENSSLFAKE_MAX_CONNECT_RETURNS = 8
@@ -97,7 +97,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct bio_st* OpenSslFake_LastSetBioReadBioArg(void);
     struct bio_st* OpenSslFake_LastSetBioWriteBioArg(void);
 
-    /* SSL_ctrl (SET_TLSEXT_HOSTNAME path — SNI) */
+    /* SSL_ctrl (SET_TLSEXT_HOSTNAME path - SNI) */
     struct ssl_st* OpenSslFake_LastSslCtrlSslArg(void);
     const char* OpenSslFake_LastSniHostname(void);
 
@@ -141,7 +141,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct ssl_ctx_st* OpenSslFake_LastCheckPrivateKeyCtxArg(void);
     void OpenSslFake_SetCheckPrivateKeyFails(bool fails);
 
-    /* HMAC / EVP_sha256 / OPENSSL_cleanse — drive the at-rest HMAC-SHA256
+    /* HMAC / EVP_sha256 / OPENSSL_cleanse - drive the at-rest HMAC-SHA256
      * SecurityPolicy without linking real libcrypto. */
     int OpenSslFake_HmacCallCount(void);
     const void* OpenSslFake_LastHmacMd(void); /* compare against EVP_sha256() to assert SHA-256 was selected */
@@ -152,7 +152,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void OpenSslFake_SetHmacFails(bool fails);
 
     /* Computes the same deterministic, non-cryptographic 32-byte tag the fake's
-     * HMAC writes — derived from (key, input) so tests can predict the tag and
+     * HMAC writes - derived from (key, input) so tests can predict the tag and
      * exercise round-trip / tamper / wrong-key behaviour. NOT a real HMAC. */
     void OpenSslFake_ComputeExpectedTag(
         const uint8_t* key,
@@ -166,7 +166,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const void* OpenSslFake_LastCleanseBuf(void);
     size_t OpenSslFake_LastCleanseLen(void);
 
-    /* AES-256-GCM EVP cipher + RAND_bytes — drive the at-rest AES-GCM
+    /* AES-256-GCM EVP cipher + RAND_bytes - drive the at-rest AES-GCM
      * SecurityPolicy without linking real libcrypto. A capture-and-canned-return
      * double, NOT a cipher: the EVP calls capture their arguments, copy the body
      * through unchanged, and return canned results. It verifies the adapter's
@@ -183,8 +183,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Step of the EVP seal/open sequence to fail, so a test can pin the error
      * path of each OpenSSL crypto call the adapter makes. The names match the
-     * production && chain: CTX_NEW → INIT_CIPHER → SET_IVLEN → INIT_KEY →
-     * UPDATE_AAD → UPDATE_BODY → (encrypt: FINAL → GET_TAG) / (decrypt: SET_TAG →
+     * production && chain: CTX_NEW -> INIT_CIPHER -> SET_IVLEN -> INIT_KEY ->
+     * UPDATE_AAD -> UPDATE_BODY -> (encrypt: FINAL -> GET_TAG) / (decrypt: SET_TAG ->
      * FINAL). A FINAL failure on open is the tamper/auth-reject verdict. */
     enum OpenSslFakeGcmStep
     {

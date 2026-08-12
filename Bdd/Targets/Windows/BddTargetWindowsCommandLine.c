@@ -19,7 +19,7 @@ static bool ParsePositiveSize(const char* text, size_t* out)
     {
         return false;
     }
-    /* Reject leading sign — strtoul silently wraps "-1" to ULONG_MAX, which
+    /* Reject leading sign - strtoul silently wraps "-1" to ULONG_MAX, which
        would let "--max-blocks -1" produce a huge size_t. */
     if ((text[0] == '-') || (text[0] == '+'))
     {

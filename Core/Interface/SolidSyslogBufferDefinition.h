@@ -1,5 +1,5 @@
 /** @file
- *  The Buffer vtable (Write / Read) — the contract an implementor fills in (the
+ *  The Buffer vtable (Write / Read) - the contract an implementor fills in (the
  *  Buffer extension point). */
 #ifndef SOLIDSYSLOGBUFFERDEFINITION_H
 #define SOLIDSYSLOGBUFFERDEFINITION_H
@@ -17,7 +17,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  the two sides mutually safe itself, since Service (Read) and Log (Write)
      *  can run on different tasks.
      *  Read returns false for a head record too large for the caller's buffer and
-     *  reports it via SolidSyslog_Error (buffer-backend-failed) — that state
+     *  reports it via SolidSyslog_Error (buffer-backend-failed) - that state
      *  cannot arise under correct configuration, so it must not be silent.
      *
      *  Records come back in the order they went in, and one Read delivers

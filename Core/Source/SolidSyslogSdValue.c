@@ -54,7 +54,7 @@ static size_t SdValue_DrainPending(struct SolidSyslogSdValue* value, const char*
         }
         else
         {
-            /* source exhausted mid-sequence — keep the tail for the next call */
+            /* source exhausted mid-sequence - keep the tail for the next call */
         }
     }
     return consumed;
@@ -111,7 +111,7 @@ static inline size_t SdValue_ExpectedLength(char lead)
     return length;
 }
 
-/* Emits one UTF-8 unit through the formatter's escaper — the single source of
+/* Emits one UTF-8 unit through the formatter's escaper - the single source of
  * truth for escaping ('"', '\\', ']') and per-byte ill-formed substitution. */
 static inline void SdValue_EmitUnit(struct SolidSyslogSdValue* value, const char* bytes, size_t count)
 {

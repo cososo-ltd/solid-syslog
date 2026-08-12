@@ -18,7 +18,7 @@ static FF_FILE fakeFile;
 /* Backing store for the FreeRTOS thread-local pointers that Plus-FAT's ff_stdio
  * layer uses to hold the task errno (stdioSET_ERRNO / stdioGET_ERRNO). The host
  * link has no kernel, so the fake supplies these two kernel entry points over a
- * plain array — this is how the adapter's stdioGET_ERRNO() reads back the errno
+ * plain array - this is how the adapter's stdioGET_ERRNO() reads back the errno
  * the fake's ff_fopen leaves behind. */
 static void* threadLocalStorage[configNUM_THREAD_LOCAL_STORAGE_POINTERS];
 
@@ -259,7 +259,7 @@ size_t ff_fwrite(const void* pvBuffer, size_t xSize, size_t xItems, FF_FILE* pxS
 
 void PlusFatFake_SetFlushCacheFails(void)
 {
-    /* Any error code with the FF_ERRFLAG bit set is non-FF_ERR_NONE — the
+    /* Any error code with the FF_ERRFLAG bit set is non-FF_ERR_NONE - the
      * adapter treats it as a flush failure. */
     flushCacheResult = (int) (FF_ERR_IOMAN_DRIVER_FATAL_ERROR | FF_ERRFLAG);
 }

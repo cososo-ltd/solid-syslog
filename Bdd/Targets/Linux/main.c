@@ -172,7 +172,7 @@ static void OnThresholdCrossed(void* context)
 }
 
 /* DEMO KEY ONLY. A real integrator supplies key material from a secure element,
- * a KDF, or encrypted NVM via their own SolidSyslogKeyFunction — never a
+ * a KDF, or encrypted NVM via their own SolidSyslogKeyFunction - never a
  * hard-coded constant. This exists so the BDD scenario can exercise the OpenSSL
  * HMAC-SHA256 at-rest policy end-to-end with real crypto. */
 static bool BddDemoGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* keyLengthOut)
@@ -269,7 +269,7 @@ static void DestroySecurityPolicy(const struct BddTargetOptions* options)
     {
         SolidSyslogCrc16Policy_Destroy();
     }
-    /* else "null": the shared NullSecurityPolicy is immutable — nothing to free. */
+    /* else "null": the shared NullSecurityPolicy is immutable - nothing to free. */
     securityPolicy = NULL;
 }
 
@@ -284,7 +284,7 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetO
         DestroySecurityPolicy(options);
         SolidSyslogPosixFile_Destroy(storeFile);
     }
-    /* else: NullStore is shared and immutable — nothing to destroy. */
+    /* else: NullStore is shared and immutable - nothing to destroy. */
 }
 
 int main(int argc, char* argv[])

@@ -315,9 +315,9 @@ TEST_GROUP_BASE(SolidSyslogCircularBufferSmallRing, CircularBufferFixture)
 // clang-format on
 
 // 32-byte ring, 2-byte header per record.
-// recA(12)→ tail=14, recB(12)→ tail=28, read recA → head=14.
+// recA(12)-> tail=14, recB(12)-> tail=28, read recA -> head=14.
 // recC(12) recordBytes=14: doesn't fit at tail (28+14=42>32);
-// canWrap: recordBytes(14) vs head(14). With `<=` bug: wraps, tail=14=head → IsEmpty.
+// canWrap: recordBytes(14) vs head(14). With `<=` bug: wraps, tail=14=head -> IsEmpty.
 // With `<` fix: drops; recB still readable.
 TEST(SolidSyslogCircularBufferSmallRing, WrapWriteFillingExactlyToHeadDoesNotCollapseToEmpty)
 {
@@ -333,8 +333,8 @@ TEST(SolidSyslogCircularBufferSmallRing, WrapWriteFillingExactlyToHeadDoesNotCol
 }
 
 // 32-byte ring. Establish wrapped state (head=24, tail=3 after a, b, c, d), then
-// write e of size 19 → recordBytes=21 = head-tail. With `<=` bug, fitsAtTail in
-// wrapped state lets tail advance to head exactly → IsEmpty collapse.
+// write e of size 19 -> recordBytes=21 = head-tail. With `<=` bug, fitsAtTail in
+// wrapped state lets tail advance to head exactly -> IsEmpty collapse.
 TEST(SolidSyslogCircularBufferSmallRing, WriteInWrappedStateFillingExactlyToHeadDoesNotCollapseToEmpty)
 {
     char a[10];
@@ -375,7 +375,7 @@ TEST(SolidSyslogCircularBufferSmallRing, ReadIntoSmallerBufferReturnsFalseAndLea
 
 // Exercises the ConsumeWrapMarker branch of Read: write A, B, drain A, write
 // C, D (D forces a wrap), then drain in order. The fourth read must cross
-// the wrap point — head reaches wrapPoint and jumps to 0 to read D.
+// the wrap point - head reaches wrapPoint and jumps to 0 to read D.
 TEST(SolidSyslogCircularBufferSmallRing, WrappedBufferReadsAllRecordsInOrder)
 {
     char a[10];

@@ -22,7 +22,7 @@ static BaseType_t lastGetAddrInfoSocktype = 0;
  * xPrivateStorage.sockaddr is the payload `ai_addr` points at, which is the
  * shape FreeRTOS-Plus-TCP actually produces (no separate malloc per address).
  * IPv4 comes from FreeRTOS_inet_addr(node), so tests that pass dotted-quad
- * hostnames get back the parsed address with no further wiring — mirrors
+ * hostnames get back the parsed address with no further wiring - mirrors
  * SocketFake's inet_pton trick. */
 static struct freertos_addrinfo fakeResult;
 

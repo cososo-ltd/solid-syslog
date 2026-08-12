@@ -1,5 +1,5 @@
 /** @file
- *  The Stream vtable (Open / Send / Read / Close) — the byte-stream (TCP, TLS
+ *  The Stream vtable (Open / Send / Read / Close) - the byte-stream (TCP, TLS
  *  over TCP) transport contract an implementor fills in (the Stream extension
  *  point). */
 #ifndef SOLIDSYSLOGSTREAMDEFINITION_H
@@ -27,17 +27,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  not just this stream. Leave nothing open on a failed path: the caller
          *  retries with a bare Open and never calls Close first. */
         bool (*Open)(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
-        /** All-or-nothing. Never report a partial write as success — the record
+        /** All-or-nothing. Never report a partial write as success - the record
          *  is gone from the caller's hands once you return true. If the whole
          *  buffer cannot go, close internally and return false; the caller
          *  reopens and store-and-forward replays. */
         bool (*Send)(struct SolidSyslogStream* base, const void* buffer, size_t size);
-        /** Return 0 when nothing is available, never a negative — the two are
+        /** Return 0 when nothing is available, never a negative - the two are
          *  acted on differently, and a would-block reported as an error costs a
          *  reconnect on an idle link. Reserve the negative return for a real
          *  teardown, and close internally before making it. */
         SolidSyslogSsize (*Read)(struct SolidSyslogStream* base, void* buffer, size_t size);
-        /** Idempotent, and leaves the instance reusable — a later Open
+        /** Idempotent, and leaves the instance reusable - a later Open
          *  reconnects it. Called on a stream that is already closed, on one that
          *  never opened, and again from Destroy. */
         void (*Close)(struct SolidSyslogStream* base);

@@ -26,7 +26,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * Models the per-character drain delay the QEMU stdio backend hides. */
     void CmsdkUartFake_SetReadsBeforeTxReady(int reads);
 
-    /* True when the driver wrote to DATA while STATE.TX_FULL was set — i.e.
+    /* True when the driver wrote to DATA while STATE.TX_FULL was set - i.e.
      * the spin loop was missing or broken. Mirrors STATE.TX_OVRE on silicon. */
     bool CmsdkUartFake_TxOverrunOccurred(void);
 
@@ -40,7 +40,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void CmsdkUartFake_SetReceivedByte(char byte);
 
     /* Number of STATE reads after SetReceivedByte before the fake asserts
-     * STATE.RXFULL. Default is 0 — RXFULL set immediately. Use a positive
+     * STATE.RXFULL. Default is 0 - RXFULL set immediately. Use a positive
      * value to force the driver to spin on STATE before reading DATA. */
     void CmsdkUartFake_SetReadsBeforeRxReady(int reads);
 

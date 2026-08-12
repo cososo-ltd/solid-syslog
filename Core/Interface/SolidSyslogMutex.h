@@ -1,7 +1,7 @@
 /** @file
  *  The mutex role: mutual exclusion (Lock / Unlock) around buffer and pool
  *  critical sections. These calls dispatch to the injected mutex's vtable, so
- *  behaviour — including whether Lock blocks — is that mutex's. */
+ *  behaviour - including whether Lock blocks - is that mutex's. */
 #ifndef SOLIDSYSLOGMUTEX_H
 #define SOLIDSYSLOGMUTEX_H
 

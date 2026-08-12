@@ -205,7 +205,7 @@ static void SolidSyslog_InstallStructuredData(
 {
     if ((configured == NULL) && (count > 0U))
     {
-        /* Inconsistent pairing — the formatter would dereference Sd[i] for
+        /* Inconsistent pairing - the formatter would dereference Sd[i] for
          * i < SdCount against a NULL array. Report and leave the reset
          * defaults (no SD) in place so Log() degrades safely. */
         SolidSyslog_Report(
@@ -239,7 +239,7 @@ enum SolidSyslogServiceStatus SolidSyslog_Service(struct SolidSyslog* handle)
     }
     else
     {
-        /* Halted store — skip drain/send. */
+        /* Halted store - skip drain/send. */
         status = SOLIDSYSLOG_SERVICE_HALTED;
     }
 
@@ -270,19 +270,19 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
     }
     else
     {
-        /* Buffer idle, nothing stored, no failed send — IDLE (initial value). */
+        /* Buffer idle, nothing stored, no failed send - IDLE (initial value). */
     }
 
     return status;
 }
 
 /* Eagerly drain the buffer so the producer-side shock absorber stays small while
- * the sender is slow or down — overflow then engages the store's discard policy
+ * the sender is slow or down - overflow then engages the store's discard policy
  * rather than silently dropping at the buffer. The fall-through to a direct
  * Sender_Send on Store_Write rejection is *only* taken when the store is
  * transient (NullStore): a NullStore Write rejection means "I never retain
  * anything, please try the sender." For a real BlockStore, rejection is the
- * discard policy speaking — letting that message escape via direct send would
+ * discard policy speaking - letting that message escape via direct send would
  * break the discard-newest contract (a newer message would bypass older stored
  * ones once the sender recovered). */
 static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
@@ -364,7 +364,7 @@ static void SolidSyslog_DoLog(
     }
     else
     {
-        /* Inconsistent pairing — the formatter would dereference sd[i] for
+        /* Inconsistent pairing - the formatter would dereference sd[i] for
            i < sdCount against a NULL array. Report and drop to no per-message
            SD so the message still logs (degrade safely), mirroring the
            Create-time guard in SolidSyslog_InstallStructuredData. */

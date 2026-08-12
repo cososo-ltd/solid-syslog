@@ -14,7 +14,7 @@ struct SolidSyslogAddress;
  * the destination IP and port as independent arguments to udp_sendto /
  * tcp_connect, so we store them as independent fields and let consumers
  * read/write them directly via -> on the downcast pointer. No per-field
- * accessors — there is no invariant to enforce. */
+ * accessors - there is no invariant to enforce. */
 struct SolidSyslogLwipRawAddress
 {
     ip_addr_t Ip;

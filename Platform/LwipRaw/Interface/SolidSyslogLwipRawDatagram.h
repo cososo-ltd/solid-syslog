@@ -5,7 +5,7 @@
  *
  *  - Open makes a udp_new pcb; Close removes it. Both run under the
  *    SolidSyslogLwipRaw_Marshal hop, since they touch lwIP core state.
- *  - SendTo runs the whole send — pbuf alloc, udp_sendto, free — in a single
+ *  - SendTo runs the whole send - pbuf alloc, udp_sendto, free - in a single
  *    marshal hop, so a NO_SYS=0 integrator pays one tcpip-thread context switch
  *    per Send rather than three. The pbuf is PBUF_REF: lwIP points at the
  *    caller's buffer instead of copying it, safe because the buffer outlives the

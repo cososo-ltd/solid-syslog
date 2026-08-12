@@ -33,7 +33,7 @@ uint32_t FakeGetConnectTimeoutMs_ReturnValue = 200U;
 void FakeGetConnectTimeoutMs_Reset()
 {
     FakeGetConnectTimeoutMs_CallCount = 0;
-    FakeGetConnectTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
+    FakeGetConnectTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel - overwritten on first call */
     FakeGetConnectTimeoutMs_ReturnValue = 200U;
 }
 
@@ -178,7 +178,7 @@ TEST(SolidSyslogPosixTcpStream, OpenSetsNonBlockingFlagBeforeConnect)
 TEST(SolidSyslogPosixTcpStream, OpenFailsWhenFcntlSetFlFails)
 {
     /* If the kernel refuses to put the socket into non-blocking mode the
-       caller cannot bound the connect wait — fail fast. */
+       caller cannot bound the connect wait - fail fast. */
     SocketFake_SetFcntlSetFlFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CALLED_FAKE(SocketFake_Close, ONCE);
@@ -407,7 +407,7 @@ TEST(SolidSyslogPosixTcpStream, DefaultPortMatchesRfc6587)
 }
 
 /* ----------------------------------------------------------------------
- * Non-blocking connect with bounded wait — keeps the service-thread drain
+ * Non-blocking connect with bounded wait - keeps the service-thread drain
  * rate insensitive to a slow or refused peer.
  * -------------------------------------------------------------------- */
 
@@ -430,7 +430,7 @@ TEST(SolidSyslogPosixTcpStream, OpenPassesBoundedConnectTimeoutToSelect)
 {
     SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
     SolidSyslogStream_Open(stream, addr);
-    /* Default tunable SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS = 200 → 0 s + 200 000 µs. */
+    /* Default tunable SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS = 200 -> 0 s + 200 000 µs. */
     LONGS_EQUAL(0, SocketFake_LastSelectTimeoutSec());
     LONGS_EQUAL(200000, SocketFake_LastSelectTimeoutUsec());
 }
@@ -513,7 +513,7 @@ TEST(SolidSyslogPosixTcpStream, OpenReadsSO_ERRORAfterSelectWritable)
 
 TEST(SolidSyslogPosixTcpStream, OpenFailsWhenConnectFailsImmediatelyWithRefused)
 {
-    /* Non-EINPROGRESS errors are immediate failures — no select wait, no
+    /* Non-EINPROGRESS errors are immediate failures - no select wait, no
        SO_ERROR check, just fail fast. */
     SocketFake_SetConnectFailsWithErrno(ECONNREFUSED);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
@@ -529,8 +529,8 @@ TEST(SolidSyslogPosixTcpStream, OpenFailsWhenSO_ERRORLookupFails)
 }
 
 /* ----------------------------------------------------------------------
- * Non-blocking Read contract: bytes → return them; nothing → 0;
- * EOF/error → close internally and return -1.
+ * Non-blocking Read contract: bytes -> return them; nothing -> 0;
+ * EOF/error -> close internally and return -1.
  * -------------------------------------------------------------------- */
 
 TEST(SolidSyslogPosixTcpStream, ReadReturnsZeroOnEagain)

@@ -15,7 +15,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_FORMATTER_OVERHEAD = 2U
     };
 
-/* NOLINTBEGIN(cppcoreguidelines-macro-usage) — worst-case output sizing
+/* NOLINTBEGIN(cppcoreguidelines-macro-usage) - worst-case output sizing
    macros: must be preprocessor-visible array-size const-expressions, so a
    static const / constexpr cannot replace them. Now that this header is
    library-private (Core/Source) the root .clang-tidy governs it and enables
@@ -59,7 +59,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void SolidSyslogFormatter_FourDigit(struct SolidSyslogFormatter * formatter, uint32_t value);
     void SolidSyslogFormatter_SixDigit(struct SolidSyslogFormatter * formatter, uint32_t value);
     /* Returns a pointer to the formatted bytes. The buffer is NUL-terminated for
-     * convenience but the content is not a C string — UTF-8 content may contain
+     * convenience but the content is not a C string - UTF-8 content may contain
      * embedded NUL (U+0000), and a truncated multi-byte tail is masked with NULs
      * so strlen stops before any invalid UTF-8. SolidSyslogFormatter_Length
      * reports the raw byte count (independent of the trim); bytes in

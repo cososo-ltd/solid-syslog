@@ -12,7 +12,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Detail codes for events whose Source is MbedTlsAesGcmPolicyErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. A tag mismatch on open is the expected
-     *  tamper-detected outcome and is NOT reported — DECRYPT_FAILED is only a
+     *  tamper-detected outcome and is NOT reported - DECRYPT_FAILED is only a
      *  genuine mbedTLS error. */
     enum SolidSyslogMbedTlsAesGcmPolicyErrors
     {

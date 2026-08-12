@@ -15,7 +15,7 @@
 #include "TlsTestServer.h"
 #include "CppUTest/TestHarness.h"
 
-/* BioPairStream pumps synchronously — SSL_connect completes in one call so
+/* BioPairStream pumps synchronously - SSL_connect completes in one call so
  * the handshake retry loop never sleeps. Provide a NoOp to satisfy the
  * required config field without taking a platform dependency on the
  * integration tests (these run on both POSIX and Windows). */
@@ -193,7 +193,7 @@ TEST(OpenSslStreamIntegration, HandshakeRejectedWhenCipherListIsUnsupported)
 }
 
 /* -------------------------------------------------------------------------
- * Mutual TLS — client cert + private key (S03.09).
+ * Mutual TLS - client cert + private key (S03.09).
  * ------------------------------------------------------------------------- */
 
 TEST(OpenSslStreamIntegration, MutualTlsHandshakeSucceedsWithClientCertSignedByTrustedCa)
@@ -255,7 +255,7 @@ TEST(OpenSslStreamIntegration, MutualTlsHandshakeRejectedWhenClientCertSignedByU
     createClientCa();
 
     /* Client cert is signed by a throwaway CA that the server never learns
-     * about — the server's trust store only has `clientCa`. */
+     * about - the server's trust store only has `clientCa`. */
     struct TlsTestCertConfig untrustedCaConfig = {};
     untrustedCaConfig.commonName = "Untrusted Client CA";
     struct TlsTestCert untrustedCa = {};

@@ -1,6 +1,6 @@
 /** @file
  *  A composite Sender that fronts several inner senders and routes each message
- *  through the one the Selector picks — the wiring for dual-SIEM fan-out or an
+ *  through the one the Selector picks - the wiring for dual-SIEM fan-out or an
  *  active/standby failover stack. The Selector is called on every Send and
  *  returns an index into the Senders array; a value at or beyond SenderCount
  *  (including any value when the array is empty) routes to the shared

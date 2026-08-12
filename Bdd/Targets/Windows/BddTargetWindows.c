@@ -71,7 +71,7 @@ static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(BDD_TARGET_BUFF
 static volatile bool shutdownFlag;
 static struct SolidSyslog* solidSyslog;
 
-/* Created in CreateSender, destroyed in DestroySender — held in file scope so
+/* Created in CreateSender, destroyed in DestroySender - held in file scope so
    teardown can reach them after the SwitchingSender wraps them all. */
 static struct SolidSyslogResolver* resolver;
 static struct SolidSyslogStream* plainTcpStream;
@@ -82,7 +82,7 @@ static struct SolidSyslogAddress* udpAddress;
 static struct SolidSyslogSender* udpSender;
 static struct SolidSyslogSender* switchingSender;
 
-/* Block-store backing — created in CreateStore, released in DestroyStore. */
+/* Block-store backing - created in CreateStore, released in DestroyStore. */
 static struct SolidSyslogFile* storeFile;
 static struct SolidSyslogBlockDevice* storeBlockDevice;
 /* Holds the created at-rest SecurityPolicy handle so DestroyStore can release
@@ -243,7 +243,7 @@ static void DestroySender(void)
 }
 
 /* DEMO KEY ONLY. A real integrator supplies key material from a secure element,
- * a KDF, or encrypted NVM via their own SolidSyslogKeyFunction — never a
+ * a KDF, or encrypted NVM via their own SolidSyslogKeyFunction - never a
  * hard-coded constant. This exists so the BDD scenario can exercise the OpenSSL
  * HMAC-SHA256 at-rest policy end-to-end with real crypto. */
 static bool BddDemoGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* keyLengthOut)
@@ -318,7 +318,7 @@ static void DestroySecurityPolicy(const struct BddTargetWindowsOptions* options)
     {
         SolidSyslogCrc16Policy_Destroy();
     }
-    /* else "null": the shared NullSecurityPolicy is immutable — nothing to free. */
+    /* else "null": the shared NullSecurityPolicy is immutable - nothing to free. */
     securityPolicy = NULL;
 }
 
@@ -333,7 +333,7 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetW
         DestroySecurityPolicy(options);
         SolidSyslogWindowsFile_Destroy(storeFile);
     }
-    /* else: NullStore is shared and immutable — nothing to destroy. */
+    /* else: NullStore is shared and immutable - nothing to destroy. */
 }
 
 int BddTargetWindows_Run(int argc, char* argv[])

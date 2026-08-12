@@ -1,6 +1,6 @@
 /** @file
  *  An in-memory ring Buffer that decouples Log (enqueue) from Service (drain),
- *  backed entirely by caller-supplied storage — no allocation of its own.
+ *  backed entirely by caller-supplied storage - no allocation of its own.
  *
  *  Records are framed with a uint16 length prefix and stored back-to-back. A
  *  record is never split across the ring's end: one that would straddle the

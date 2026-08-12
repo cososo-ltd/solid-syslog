@@ -29,7 +29,7 @@ void FreeRtosMutex_Initialise(struct SolidSyslogMutex* base)
     /* The storage is ours, so this cannot fail for want of memory; the kernel
      * returns NULL only when handed a NULL buffer, which this call never does.
      * configSUPPORT_STATIC_ALLOCATION is a compile-time requirement rather than
-     * a runtime one — without it the function does not exist to call. The
+     * a runtime one - without it the function does not exist to call. The
      * branch is therefore defensive: an unexpected NULL leaves the NullMutex
      * vtable in place rather than a dangling handle in Lock/Unlock. */
     if (xSemaphoreCreateMutexStatic(&self->Buffer) != NULL)

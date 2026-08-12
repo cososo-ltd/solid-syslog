@@ -1,9 +1,9 @@
 /* FreeRTOS + lwIP (Raw API, NO_SYS=0) SolidSyslog BDD target for QEMU
  * mps2-an385.
  *
- * The platform-independent pipeline — SolidSyslog lifecycle, FatFs-backed store
+ * The platform-independent pipeline - SolidSyslog lifecycle, FatFs-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
- * task, and the console glue — lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
+ * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
  * (shared with the FreeRTOS-Plus-TCP target, S29.03). This file keeps only the
  * lwIP network backend behind the pipeline seam: the tcpip thread + tcpip_callback
  * marshal (S28.06), the hand-written LAN9118 netif (netif/EthernetIf.c), the
@@ -50,12 +50,12 @@
 
 #define CMSDK_UART0_BASE_ADDRESS UINT32_C(0x40004000)
 
-/* lwIP netif descriptor — must outlive the tcpip thread. */
+/* lwIP netif descriptor - must outlive the tcpip thread. */
 static struct netif networkInterface;
 /* Gateway IP, kept at file scope so the ARP warm-up can reach it after bring-up. */
 static ip4_addr_t gatewayAddress;
 
-/* LwipRaw sender adapters — built by BuildSender on the interactive task, torn
+/* LwipRaw sender adapters - built by BuildSender on the interactive task, torn
  * down by TeardownNetwork. */
 static struct SolidSyslogResolver* resolver = NULL;
 static struct SolidSyslogDatagram* datagram = NULL;
@@ -178,7 +178,7 @@ static void GatewayResolvedQuery(void* context)
     *(bool*) context = (etharp_find_addr(&networkInterface, &gatewayAddress, &ethRet, &ipRet) >= 0);
 }
 
-/* Blocks the calling (interactive) task — never the tcpip thread — until the
+/* Blocks the calling (interactive) task - never the tcpip thread - until the
  * gateway resolves or a bounded deadline passes. Generous deadline: QEMU is
  * markedly slower than host. */
 static void WarmUpGatewayArp(void)
@@ -235,7 +235,7 @@ void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
-    /* RFC 5424 §6.2.4 rung 2 (static IP) — read back from the netif so a future
+    /* RFC 5424 §6.2.4 rung 2 (static IP) - read back from the netif so a future
      * DHCP slice satisfies the same rung without touching this callback. */
     const char* address = ip4addr_ntoa(netif_ip4_addr(&networkInterface));
     (void) context;
@@ -245,7 +245,7 @@ static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 /* Bring up the netif on the tcpip thread, warm the gateway ARP, then build the
  * LwipRaw SwitchingSender: UDP, octet-framed TCP, and a TLS/mTLS slot (mbedTLS
  * over a second LwipRaw TCP stream). Default transport UDP. Runs on the
- * interactive task — LwipRaw adapters touch a started lwIP core, which is now up. */
+ * interactive task - LwipRaw adapters touch a started lwIP core, which is now up. */
 static struct SolidSyslogSender* BuildSender(void)
 {
     /* Bring the netif up on the tcpip thread now the scheduler is running, then

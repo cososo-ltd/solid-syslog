@@ -92,7 +92,7 @@ static inline void SwitchingSender_SwitchTo(
 
 /* Out-of-range selector index (including empty-array case) resolves to the
  * shared NullSender. NullSender.Send returns true so the Service algorithm
- * drops the message — a misconfigured selector must not retain messages in
+ * drops the message - a misconfigured selector must not retain messages in
  * the Store. */
 static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(const struct SolidSyslogSwitchingSender* self)
 {

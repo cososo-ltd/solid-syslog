@@ -10,7 +10,7 @@
 
 /**
  * Portable SecurityPolicy-role error categories, shared by every integrity /
- * confidentiality policy (HMAC, AES-GCM, OpenSSL, Mbed TLS, ...). Seal (write
+ * confidentiality policy (HMAC, AES-GCM, OpenSSL, Mbed TLS...). Seal (write
  * side) and open (read side) are kept distinct because "a stored record can no
  * longer be read back" is a materially different operational signal from
  * "a record could not be written".

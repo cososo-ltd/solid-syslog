@@ -16,7 +16,7 @@
  */
 
 /** TLS context / library setup failed before any handshake (bad CA bundle,
- *  cert or key load failure, ...). */
+ *  cert or key load failure...). */
 #define SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_TLS_STREAM_BASE + 1U))
 /** The TLS handshake with the server did not complete (peer verification,
  *  protocol, or transport failure). */

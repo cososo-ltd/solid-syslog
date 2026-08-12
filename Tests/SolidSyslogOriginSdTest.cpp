@@ -31,7 +31,7 @@ struct SolidSyslogStructuredData;
 
 enum
 {
-    /* Worst-case fully-escaped output is 337 bytes — see
+    /* Worst-case fully-escaped output is 337 bytes - see
        WorstCaseFullyEscapedInputFormatsCorrectly. IP params widen this further
        once they are appended. 512 leaves headroom. */
     TEST_BUFFER_SIZE = 512,
@@ -308,7 +308,7 @@ TEST(SolidSyslogOriginSd, BothNullProducesBareOriginElement)
 
 TEST(SolidSyslogOriginSd, DestroyDoesNotCrash)
 {
-    // Covered by teardown — this test documents the intent
+    // Covered by teardown - this test documents the intent
 }
 
 TEST(SolidSyslogOriginSd, SoftwareContainingSpecialsIsEscaped)
@@ -541,7 +541,7 @@ TEST(SolidSyslogOriginSd, EnterpriseIdAndIpsNoSoftwareSwVersion)
     );
 }
 
-// Pool tests — prove SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE caps live instances
+// Pool tests - prove SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE caps live instances
 // and overflow falls back to the shared SolidSyslogNullSd.
 
 // clang-format off

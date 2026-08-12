@@ -168,7 +168,7 @@ static inline bool WinsockTcpStream_ConfigProvidesGetter(const struct SolidSyslo
     return (config != NULL) && (config->GetConnectTimeoutMs != NULL);
 }
 
-/* Null Object substituted when the integrator does not install a getter —
+/* Null Object substituted when the integrator does not install a getter -
  * returns the compile-time tunable so the bounded-wait path has a single
  * code path regardless of whether the integrator wired runtime tuning. */
 static uint32_t WinsockTcpStream_NullConnectTimeoutGetter(void* context)
@@ -287,7 +287,7 @@ static uint32_t WinsockTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogWinso
 
 /* Non-blocking connect with bounded wait. Windows' default blocking connect()
  * to a refused loopback port retries internally for ~2 s before returning
- * WSAECONNREFUSED — slow enough that the BlockStore service thread's drain
+ * WSAECONNREFUSED - slow enough that the BlockStore service thread's drain
  * rate during an outage is throttled to ~0.5 records/s, preventing the
  * discard policy from firing in BDD outage scenarios. The non-blocking path
  * bounds each connect attempt to CONNECT_TIMEOUT_MILLISECONDS; the socket
@@ -308,7 +308,7 @@ static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin, u
     }
     else
     {
-        /* immediate fail-fast (refused, unreachable, etc.) — connected stays false */
+        /* immediate fail-fast (refused, unreachable, etc.) - connected stays false */
     }
     return connected;
 }

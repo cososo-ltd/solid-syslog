@@ -41,7 +41,7 @@ enum
 static const uint8_t* lastGetKeyBuffer = nullptr;
 static size_t lastGetKeyCapacity = 0;
 
-/* Settable key accessor. `keyAvailable` false → GetKey fails; `keyByte` sets the
+/* Settable key accessor. `keyAvailable` false -> GetKey fails; `keyByte` sets the
  * key contents (vary it to forge a wrong key); `keyLengthToReport` lets a test
  * report a non-32-byte key. */
 static bool keyAvailable = true;
@@ -331,7 +331,7 @@ TEST(SolidSyslogMbedTlsAesGcmPolicySeal, SealRecordGeneratesAFreshNonceIntoTheTr
     LONGS_EQUAL(GCM_NONCE_SIZE, MbedTlsFake_LastCtrDrbgRandomLen());
     POINTERS_EQUAL(trailer, MbedTlsFake_LastCtrDrbgRandomBuf());
     POINTERS_EQUAL(&rng, MbedTlsFake_LastCtrDrbgRandomContext());
-    /* The fake's CTR-DRBG fills 0xA0, 0xA1, … — assert it reached the trailer. */
+    /* The fake's CTR-DRBG fills 0xA0, 0xA1, ... - assert it reached the trailer. */
     static const uint8_t expectedNonce[GCM_NONCE_SIZE] =
         {0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB};
     MEMCMP_EQUAL(expectedNonce, trailer, GCM_NONCE_SIZE);
@@ -342,7 +342,7 @@ TEST(SolidSyslogMbedTlsAesGcmPolicySeal, SealRecordPassesTheBodyAsPlaintextToEnc
     CHECK_TRUE(seal());
 
     /* Production hands mbedTLS the body region (Content past HeaderLength), not
-     * the header — that the body region is what gets encrypted is the wiring
+     * the header - that the body region is what gets encrypted is the wiring
      * under test. Whether the ciphertext genuinely differs is the integration
      * suite's concern. */
     LONGS_EQUAL(TEST_BODY_LEN, MbedTlsFake_LastGcmPlaintextLen());
@@ -391,7 +391,7 @@ TEST(SolidSyslogMbedTlsAesGcmPolicySeal, OpenReturnsTrueWhenDecryptionSucceeds)
 
 /* A tag mismatch (tamper or wrong key) surfaces as mbedtls_gcm_auth_decrypt
  * returning MBEDTLS_ERR_GCM_AUTH_FAILED. Production must fail closed but stay
- * silent — that is the expected outcome, not a library error. Real tamper /
+ * silent - that is the expected outcome, not a library error. Real tamper /
  * wrong-key rejection lives in the integration suite; here we only prove the
  * adapter's verdict-propagation and silence. */
 TEST(SolidSyslogMbedTlsAesGcmPolicySeal, OpenReturnsFalseWithoutReportingWhenAuthenticationFails)
@@ -469,7 +469,7 @@ TEST(SolidSyslogMbedTlsAesGcmPolicySeal, SealReportsErrorWhenEncryptingFails)
 }
 
 /* Open's setkey failure and a genuine (non-auth) auth_decrypt error both report
- * DECRYPT_FAILED. The auth-mismatch verdict is separate — that fail-closed-but-
+ * DECRYPT_FAILED. The auth-mismatch verdict is separate - that fail-closed-but-
  * silent path is OpenReturnsFalseWithoutReporting... above. */
 TEST(SolidSyslogMbedTlsAesGcmPolicySeal, OpenReportsErrorWhenSettingKeyFails)
 {

@@ -6,7 +6,7 @@
 
 /* Stub of FreeRTOS-Kernel's portmacro.h.
  *
- * The real kernel ships one portmacro.h per port × compiler combination
+ * The real kernel ships one portmacro.h per port x compiler combination
  * (e.g. portable/GCC/ARM_CM3/, portable/IAR/ARM_CM3/, portable/ThirdParty/
  * GCC/Posix/). Tests must stay independent of which port and which compiler
  * the integrator's production build will use, so FreeRtosFakes provides
@@ -15,14 +15,14 @@
  *
  * No scheduler runs; critical-section / yield / interrupt macros expand to
  * nothing, and tests never observe context-switch behaviour. The stack-type
- * choice doesn't matter — fakes never allocate task stacks.
+ * choice doesn't matter - fakes never allocate task stacks.
  */
 
 #include <stdint.h>
 
 /* Kernel scalar types. BaseType_t / UBaseType_t are typedef'd to long /
  * unsigned long so they match the host compiler's long width (64-bit on x86_64
- * Linux, 32-bit on a 32-bit host) — that is intentional: the adapter under
+ * Linux, 32-bit on a 32-bit host) - that is intentional: the adapter under
  * test never depends on these widths since it stores BaseType_t args verbatim
  * and forwards them to the fake, and all FreeRTOS socket constants are small
  * integers that fit any width. Real targets bring their own portmacro.h. */
@@ -39,7 +39,7 @@ typedef uint32_t StackType_t;
 #define portTICK_TYPE_IS_ATOMIC 1
 #define portPOINTER_SIZE_TYPE intptr_t
 
-/* Critical-section / interrupt / yield primitives — no-op for host tests. */
+/* Critical-section / interrupt / yield primitives - no-op for host tests. */
 #define portYIELD() ((void) 0)
 #define portYIELD_FROM_ISR(x) ((void) (x))
 #define portENTER_CRITICAL() ((void) 0)

@@ -4,7 +4,7 @@
  *  or Store.
  *
  *  Files open in binary mode (_O_BINARY) so the CRT's CR/LF translation never
- *  corrupts arbitrary bytes — BlockStore frames round-trip unchanged. A write is
+ *  corrupts arbitrary bytes - BlockStore frames round-trip unchanged. A write is
  *  not flushed to the medium, so durability past a power cut belongs to the
  *  volume rather than to this adapter. */
 #ifndef SOLIDSYSLOGWINDOWSFILE_H

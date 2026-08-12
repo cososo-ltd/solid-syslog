@@ -99,7 +99,7 @@ void SolidSyslogRecordStore_Initialise(
 void SolidSyslogRecordStore_Cleanup(struct SolidSyslogRecordStore* recordStore)
 {
     /* No owned resources to release. The next SolidSyslogRecordStore_Initialise overwrites every
-     * field, so leave the slot's bytes alone — clearing them would be
+     * field, so leave the slot's bytes alone - clearing them would be
      * write-then-overwrite churn. */
     (void) recordStore;
 }
@@ -142,7 +142,7 @@ static inline bool RecordStore_AssembleRecord(struct SolidSyslogRecordStore* rec
     RecordStore_MagicAddress(recordStore)[0] = MAGIC_BYTE_0;
     RecordStore_MagicAddress(recordStore)[1] = MAGIC_BYTE_1;
 
-    /* Length is packed little-endian into the byte buffer — the on-disk
+    /* Length is packed little-endian into the byte buffer - the on-disk
      * format is LE regardless of host (every supported target is LE; an
      * explicit pack keeps that invariant readable and side-steps MISRA
      * 21.15 which forbids memcpy between incompatible essential types). */
@@ -275,7 +275,7 @@ static inline bool RecordStore_IsMagicValid(struct SolidSyslogRecordStore* recor
 
 static inline uint16_t RecordStore_RecordLength(struct SolidSyslogRecordStore* recordStore)
 {
-    /* Little-endian unpack — see AssembleRecord for the format invariant. */
+    /* Little-endian unpack - see AssembleRecord for the format invariant. */
     const uint8_t* lengthBytes = RecordStore_LengthAddress(recordStore);
     return (uint16_t) (((uint16_t) lengthBytes[0]) | (((uint16_t) lengthBytes[1]) << 8));
 }
@@ -494,8 +494,8 @@ static bool RecordStore_AdvancePastSentRecord(
 
 /* `flag` defaults to SENT_FLAG_SENT and the Read result is intentionally
  * ignored: a sent-flag we cannot read is treated as already-sent so the
- * scan keeps walking the block. The alternative — stop scanning, refuse
- * to advance — would jam the logger on one bad byte and skip every record
+ * scan keeps walking the block. The alternative - stop scanning, refuse
+ * to advance - would jam the logger on one bad byte and skip every record
  * that follows in the same block. The single skipped record surfaces
  * downstream as a sequenceId gap (RFC 5424 §6.3.1), which the receiver
  * can detect; an integrator-supplied error reporter will surface

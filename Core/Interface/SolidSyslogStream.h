@@ -1,8 +1,8 @@
 /** @file
  *  The stream role: connection-oriented byte transport (Open / Send / Read /
  *  Close) for octet-framed delivery. These calls dispatch to the injected
- *  stream's vtable, so behaviour — connect bound, blocking discipline, any TLS
- *  layering — is that stream's. */
+ *  stream's vtable, so behaviour - connect bound, blocking discipline, any TLS
+ *  layering - is that stream's. */
 #ifndef SOLIDSYSLOGSTREAM_H
 #define SOLIDSYSLOGSTREAM_H
 

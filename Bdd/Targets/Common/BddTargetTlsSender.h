@@ -19,7 +19,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * DRBG pair on this resource-constrained demo target. Valid once Create has
      * run (InteractiveTask seeds it during Setup, before any `store file`
      * rebuild). Returns the address of the file-scope context even if seeding
-     * failed — the policy's nonce draw then fails closed, which is the correct
+     * failed - the policy's nonce draw then fails closed, which is the correct
      * degraded behaviour. */
     struct mbedtls_ctr_drbg_context* BddTargetTlsSender_GetRng(void);
 

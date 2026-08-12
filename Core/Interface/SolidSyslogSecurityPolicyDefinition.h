@@ -1,5 +1,5 @@
 /** @file
- *  The SecurityPolicy vtable (SealRecord / OpenRecord) — the at-rest
+ *  The SecurityPolicy vtable (SealRecord / OpenRecord) - the at-rest
  *  integrity/confidentiality contract an implementor fills in (the SecurityPolicy
  *  extension point). SealRecord authenticates (AEAD policies also encrypt) and
  *  writes a trailer on the way in; OpenRecord verifies (and decrypts) on replay,

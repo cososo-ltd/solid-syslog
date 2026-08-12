@@ -1,5 +1,5 @@
 /* FreeRTOS-Plus-FAT FF_Disk_t media driver over the shared semihosting flat
- * disk — see FFSemihostingDisk.h. Block read/write delegate to SemihostingDisk
+ * disk - see FFSemihostingDisk.h. Block read/write delegate to SemihostingDisk
  * (the same host image + BKPT 0xAB trap the ChaN-FatFs diskio.c uses). The IO
  * manager / partition / format / mount sequence mirrors Plus-FAT's reference
  * portable/common/ff_ramdisk.c, with format made first-use-only so a persistent

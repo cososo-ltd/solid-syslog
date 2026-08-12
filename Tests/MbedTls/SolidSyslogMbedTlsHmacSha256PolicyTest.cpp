@@ -35,7 +35,7 @@ enum
  * not. */
 static uint8_t TEST_RECORD[] = {0x10, 0x20, 0x30, 0x40};
 
-/* The buffer + capacity the policy handed to GetKey on the most recent fetch —
+/* The buffer + capacity the policy handed to GetKey on the most recent fetch -
  * lets a test assert the key buffer is wiped at exactly that pointer and size. */
 static const uint8_t* lastGetKeyBuffer = nullptr;
 static size_t lastGetKeyCapacity = 0;
@@ -426,7 +426,7 @@ TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, OpenRecordFailsClosedWhenKeyUnavail
 }
 
 // An HMAC computation failure during verify is an OPEN failure, not a SEAL
-// failure — the same ComputeTag helper serves both paths, so the category must
+// failure - the same ComputeTag helper serves both paths, so the category must
 // be chosen by the caller.
 TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, OpenRecordReportsHmacFailureAsOpenFailed)
 {

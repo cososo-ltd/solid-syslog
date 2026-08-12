@@ -172,7 +172,7 @@ TEST(SolidSyslogMetaSd, FormatAdvancesFormatterLength)
 
 TEST(SolidSyslogMetaSd, DestroyDoesNotCrash)
 {
-    // Covered by teardown — this test documents the intent
+    // Covered by teardown - this test documents the intent
 }
 
 TEST(SolidSyslogMetaSd, UseAfterDestroyIsCrashSafeViaNullSdVtable)
@@ -310,7 +310,7 @@ TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsCritical)
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_META_SD_ERROR_NULL_COUNTER, ErrorHandlerFake_LastDetail());
 }
 
-// Pool tests — prove SOLIDSYSLOG_META_SD_POOL_SIZE caps live instances
+// Pool tests - prove SOLIDSYSLOG_META_SD_POOL_SIZE caps live instances
 // and overflow falls back to the shared SolidSyslogNullSd.
 
 // clang-format off

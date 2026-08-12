@@ -20,7 +20,7 @@ enum
     MBEDTLSFAKE_MAX_INPUT = 256
 };
 
-/* AES-256-GCM capture double — see header. */
+/* AES-256-GCM capture double - see header. */
 enum
 {
     MBEDTLSFAKE_GCM_KEY_SIZE = 32,
@@ -64,7 +64,7 @@ static const void* lastPlatformZeroizeBuf;
 static size_t lastPlatformZeroizeLen;
 
 /* -------------------------------------------------------------------------
- * Captured state — one section per mbedTLS API call. Tests read these via
+ * Captured state - one section per mbedTLS API call. Tests read these via
  * accessors below; production reaches libmbedtls through the link-interposed
  * functions at the bottom of the file.
  * ------------------------------------------------------------------------- */
@@ -704,10 +704,10 @@ void mbedtls_ssl_conf_rng(mbedtls_ssl_config* conf, int (*f_rng)(void*, unsigned
     lastSslConfRngContextArg = p_rng;
 }
 
-/* Capture double — two callers. The TLS stream wires this by address into
+/* Capture double - two callers. The TLS stream wires this by address into
  * mbedtls_ssl_conf_rng and never invokes it at test time; the AES-GCM policy
  * calls it directly to fill each record's nonce. Captures its arguments and
- * fills a deterministic 0xA0, 0xA1, … pattern (mirrors the OpenSslFake
+ * fills a deterministic 0xA0, 0xA1, ... pattern (mirrors the OpenSslFake
  * RAND_bytes double) so a seal test can assert the nonce reached the trailer. */
 int mbedtls_ctr_drbg_random(void* p_rng, unsigned char* output, size_t output_len)
 {
@@ -786,7 +786,7 @@ size_t MbedTlsFake_LastPlatformZeroizeLen(void)
 
 /* Deterministic, NON-cryptographic tag: an FNV-1a fold over the key then the
  * input then each output position. Sensitive to key, input, and position so a
- * changed key, tampered data, or tampered tag all produce a different value —
+ * changed key, tampered data, or tampered tag all produce a different value -
  * enough to exercise the policy's round-trip / tamper / wrong-key paths without
  * linking real libmbedcrypto. */
 void MbedTlsFake_ComputeExpectedTag(
@@ -848,7 +848,7 @@ void mbedtls_platform_zeroize(void* buf, size_t len)
 }
 
 /* -------------------------------------------------------------------------
- * AES-256-GCM — link-interposed mbedtls_gcm_* + the CTR-DRBG nonce source.
+ * AES-256-GCM - link-interposed mbedtls_gcm_* + the CTR-DRBG nonce source.
  * Capture-and-canned-return, NOT a cipher (see header).
  * ------------------------------------------------------------------------- */
 
@@ -896,7 +896,7 @@ int mbedtls_gcm_crypt_and_tag(
     (void) mode;
     gcmSealCount++;
     memcpy(lastGcmNonce, iv, (iv_len < sizeof lastGcmNonce) ? iv_len : sizeof lastGcmNonce);
-    /* Report only what was actually captured — a reader walking LastGcmAad() /
+    /* Report only what was actually captured - a reader walking LastGcmAad() /
      * LastGcmPlaintext() up to the reported length then never runs past the
      * capture buffer if a test exceeds its capacity. */
     lastGcmAadLen = (add_len < sizeof lastGcmAad) ? add_len : sizeof lastGcmAad;
@@ -904,7 +904,7 @@ int mbedtls_gcm_crypt_and_tag(
     lastGcmPlaintextLen = (length < sizeof lastGcmPlaintext) ? length : sizeof lastGcmPlaintext;
     memcpy(lastGcmPlaintext, input, lastGcmPlaintextLen);
     /* The double does not encrypt: copy input to output unchanged so the
-     * in-place buffer stays defined (memmove — production passes output == input)
+     * in-place buffer stays defined (memmove - production passes output == input)
      * and write a canned all-zero tag the adapter only forwards into the trailer. */
     memmove(output, input, length);
     memset(tag, 0, tag_len);
@@ -932,7 +932,7 @@ int mbedtls_gcm_auth_decrypt(
     lastGcmAadLen = (add_len < sizeof lastGcmAad) ? add_len : sizeof lastGcmAad;
     memcpy(lastGcmAad, add, lastGcmAadLen);
     memmove(output, input, length);
-    /* Canned verdict — real tag verification is the integration suite's job.
+    /* Canned verdict - real tag verification is the integration suite's job.
      * SetGcmAuthFails drives the tamper / wrong-key rejection (silent false);
      * the AUTH_DECRYPT step drives a genuine error (reported DECRYPT_FAILED). */
     int result = 0;

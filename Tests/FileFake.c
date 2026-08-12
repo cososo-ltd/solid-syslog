@@ -33,7 +33,7 @@ static void FileFake_Truncate(struct SolidSyslogFile* self);
 static bool FileFake_Exists(struct SolidSyslogFile* self, const char* path);
 static bool FileFake_Delete(struct SolidSyslogFile* self, const char* path);
 
-/* poisoned vtable — installed by Destroy to catch use-after-destroy */
+/* poisoned vtable - installed by Destroy to catch use-after-destroy */
 static bool FileFake_DestroyedOpen(struct SolidSyslogFile* self, const char* path);
 static void FileFake_DestroyedClose(struct SolidSyslogFile* self);
 static bool FileFake_DestroyedIsOpen(struct SolidSyslogFile* self);
@@ -49,7 +49,7 @@ struct FileFake;
 
 /* openOwner pins the FileFake instance that currently has the entry open. NULL
  * when no instance holds it. A second Open by any other instance trips
- * TestAssert_Fail — that is the single-handle-per-path invariant the store
+ * TestAssert_Fail - that is the single-handle-per-path invariant the store
  * layer relies on (see S27.01 / E27 #345). Ownership clears on the owner's
  * Close; Delete leaves it intact because the original holder is still the
  * only one who can legitimately Close its (now-zombie) handle. */
@@ -82,7 +82,7 @@ SOLIDSYSLOG_STATIC_ASSERT(
 /* shared in-memory filesystem */
 static struct FileEntry filesystem[FILEFAKE_MAX_FILES];
 
-/* pointer to most recently created instance — used by FailNext* and inspection helpers */
+/* pointer to most recently created instance - used by FailNext* and inspection helpers */
 static struct FileFake* lastCreated;
 
 /* helpers */
@@ -155,7 +155,7 @@ void FileFake_Destroy(void)
 
     /* filesystem is zeroed wholesale on Destroy, which also clears each
      * entry's openOwner. Tests creating multiple FileFakes in one group
-     * must Close before relying on Destroy to tear down — the assertion
+     * must Close before relying on Destroy to tear down - the assertion
      * in Open detects ownership leaks across instances. */
     memset(filesystem, 0, sizeof(filesystem));
 }
@@ -500,11 +500,11 @@ static inline void ClearEntry(struct FileEntry* entry)
     memset(entry->content, 0, sizeof(entry->content));
     entry->fileSize = 0;
     entry->path[0] = '\0';
-    /* inUse stays true — prevents slot reuse while stale handles may reference this entry */
+    /* inUse stays true - prevents slot reuse while stale handles may reference this entry */
 }
 
 /* ------------------------------------------------------------------
- * Poisoned vtable — installed by Destroy
+ * Poisoned vtable - installed by Destroy
  * ----------------------------------------------------------------*/
 
 static bool FileFake_DestroyedOpen(struct SolidSyslogFile* self, const char* path)

@@ -7,13 +7,13 @@
  *  keeps unsent records queued.
  *
  *  MaxBlocks caps retention; DiscardPolicy governs the overflow once every block
- *  is full — Oldest evicts the oldest block to keep accepting writes, Newest
+ *  is full - Oldest evicts the oldest block to keep accepting writes, Newest
  *  refuses the incoming record, Halt refuses it, latches (IsHalted stops
  *  Service), and fires OnStoreFull once. An optional capacity-threshold function
  *  (queried each Write) drives an edge-triggered OnThresholdCrossed callback for
  *  early back-pressure signalling. Mind the recursion gotcha: under a
  *  PassthroughBuffer, SolidSyslog_Log sends inline, so logging from the
- *  threshold callback re-enters Write — drive the logger from a returning Buffer
+ *  threshold callback re-enters Write - drive the logger from a returning Buffer
  *  or gate the Log instead.
  *
  *  Internally each pool slot composes an inner RecordStore over a BlockSequence,

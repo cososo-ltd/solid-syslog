@@ -105,7 +105,7 @@ DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void* buff)
     {
         case CTRL_SYNC:
             /* QEMU semihosting writes are synchronous against the host
-             * file — no kernel-level dirty pages we need to flush. */
+             * file - no kernel-level dirty pages we need to flush. */
             return RES_OK;
         case GET_SECTOR_COUNT:
             *(LBA_t*) buff = (LBA_t) SEMIHOSTING_DISK_SECTOR_COUNT;

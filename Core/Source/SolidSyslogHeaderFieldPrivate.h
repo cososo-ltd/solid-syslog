@@ -20,7 +20,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         size_t Remaining;
     };
 
-    /* Internal constructor — wraps a message-buffer formatter and caps this
+    /* Internal constructor - wraps a message-buffer formatter and caps this
      * field at maxLength bytes. MessageFormatter builds one per header field
      * and passes it to the configured callback. Stack-transient: the caller
      * owns the storage. */

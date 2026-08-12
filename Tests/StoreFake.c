@@ -142,7 +142,7 @@ static bool IsHalted(struct SolidSyslogStore* self)
     return fake->halted;
 }
 
-/* StoreFake models a real store — a Write rejection is a policy decision,
+/* StoreFake models a real store - a Write rejection is a policy decision,
  * not a "please try elsewhere" signal. Service must not bypass to the
  * sender on rejection. */
 static bool IsTransient(struct SolidSyslogStore* self)

@@ -267,7 +267,7 @@ TEST(FileFake, TwoInstancesShareFilesystem)
 {
     SolidSyslogFile_Open(api, "shared.dat");
     SolidSyslogFile_Write(api, "hello", 5);
-    /* Close before the second instance opens the same path — the S27.01
+    /* Close before the second instance opens the same path - the S27.01
      * single-handle-per-path invariant forbids overlap. The point of this
      * test is the shared in-memory filesystem, not concurrent opens. */
     SolidSyslogFile_Close(api);
@@ -434,7 +434,7 @@ TEST(FileFakeStaleHandle, ReadFailsOnStaleHandleAfterDeleteAndSlotReuse)
     const char newData[] = "replaced";
     SolidSyslogFile_Write(handleB, newData, sizeof(newData));
 
-    /* handleA still points at the old slot — read must fail, not return new file's data */
+    /* handleA still points at the old slot - read must fail, not return new file's data */
     SolidSyslogFile_SeekTo(handleA, 0);
     char buf[16] = {};
     bool success = SolidSyslogFile_Read(handleA, buf, sizeof(data));

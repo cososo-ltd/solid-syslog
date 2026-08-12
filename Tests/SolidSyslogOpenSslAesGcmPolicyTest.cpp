@@ -37,7 +37,7 @@ enum
 static const uint8_t* lastGetKeyBuffer = nullptr;
 static size_t lastGetKeyCapacity = 0;
 
-/* Settable key accessor. `keyAvailable` false → GetKey fails; `keyByte` sets the
+/* Settable key accessor. `keyAvailable` false -> GetKey fails; `keyByte` sets the
  * key contents (vary it to forge a wrong key); `keyLengthToReport` lets a test
  * report a non-32-byte key. */
 static bool keyAvailable = true;
@@ -316,7 +316,7 @@ TEST(SolidSyslogOpenSslAesGcmPolicySeal, SealRecordGeneratesAFreshNonceIntoTheTr
     LONGS_EQUAL(1, OpenSslFake_RandBytesCallCount());
     LONGS_EQUAL(GCM_NONCE_SIZE, OpenSslFake_LastRandBytesLen());
     POINTERS_EQUAL(trailer, OpenSslFake_LastRandBytesBuf());
-    /* The fake's RAND_bytes fills 0xA0, 0xA1, … — assert it reached the trailer. */
+    /* The fake's RAND_bytes fills 0xA0, 0xA1, ... - assert it reached the trailer. */
     static const uint8_t expectedNonce[GCM_NONCE_SIZE] =
         {0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB};
     MEMCMP_EQUAL(expectedNonce, trailer, GCM_NONCE_SIZE);
@@ -327,7 +327,7 @@ TEST(SolidSyslogOpenSslAesGcmPolicySeal, SealRecordPassesTheBodyAsPlaintextToEnc
     CHECK_TRUE(seal());
 
     /* Production hands EVP the body region (Content past HeaderLength), not the
-     * header — that the body region is what gets encrypted is the wiring under
+     * header - that the body region is what gets encrypted is the wiring under
      * test. Whether the ciphertext genuinely differs is the integration suite's
      * concern. */
     LONGS_EQUAL(TEST_BODY_LEN, OpenSslFake_LastGcmPlaintextLen());
@@ -373,7 +373,7 @@ TEST(SolidSyslogOpenSslAesGcmPolicySeal, OpenReturnsTrueWhenDecryptionSucceeds)
 }
 
 /* A tag mismatch (tamper or wrong key) surfaces as EVP_DecryptFinal_ex returning
- * 0. Production must fail closed but stay silent — that is the expected outcome,
+ * 0. Production must fail closed but stay silent - that is the expected outcome,
  * not a library error. Real tamper/wrong-key rejection lives in the integration
  * suite; here we only prove the adapter's verdict-propagation and silence. */
 TEST(SolidSyslogOpenSslAesGcmPolicySeal, OpenReturnsFalseWithoutReportingWhenAuthenticationFails)
@@ -481,7 +481,7 @@ TEST(SolidSyslogOpenSslAesGcmPolicySeal, SealReportsErrorWhenReadingTheTagFails)
 }
 
 /* Open's setup chain (everything up to and including SET_TAG) reports
- * DECRYPT_FAILED on any non-1. The DecryptFinal verdict is separate — that
+ * DECRYPT_FAILED on any non-1. The DecryptFinal verdict is separate - that
  * fail-closed-but-silent path is OpenReturnsFalseWithoutReporting... above. */
 TEST(SolidSyslogOpenSslAesGcmPolicySeal, OpenReportsErrorWhenContextAllocationFails)
 {

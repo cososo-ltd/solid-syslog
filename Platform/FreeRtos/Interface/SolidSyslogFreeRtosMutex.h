@@ -11,9 +11,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogMutex;
 
-    /** Create takes no config; an exhausted pool — or a build without
+    /** Create takes no config; an exhausted pool - or a build without
      *  configSUPPORT_STATIC_ALLOCATION=1, where xSemaphoreCreateMutexStatic
-     *  yields no handle — falls back to the shared NullMutex, whose Lock and
+     *  yields no handle - falls back to the shared NullMutex, whose Lock and
      *  Unlock are no-ops. */
     struct SolidSyslogMutex* SolidSyslogFreeRtosMutex_Create(void);
     /** Release the pool slot; deletes the underlying FreeRTOS mutex semaphore. */

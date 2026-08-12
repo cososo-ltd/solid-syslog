@@ -16,7 +16,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  seal / verify time, copies the key into a transient buffer, uses it, and
      *  wipes the buffer, so the key is never stored on the policy instance. The
      *  integrator decides where the key actually lives (secure element, KDF,
-     *  encrypted NVM, ...).
+     *  encrypted NVM...).
      *
      *  Writes up to @p capacity bytes into @p keyOut, sets @p keyLengthOut to
      *  the number of bytes written, and returns true on success. Returns false

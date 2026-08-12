@@ -160,7 +160,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ReadFromEmptyQueueDoesNotEmitError)
 }
 
 /* A NULL bytesRead* would crash on `*bytesRead = 0`. Guard at the
- * Read entry — invalid caller usage, not a runtime failure, so no
+ * Read entry - invalid caller usage, not a runtime failure, so no
  * error code is emitted; just a defensive false return. */
 TEST(SolidSyslogPosixMessageQueueBuffer, ReadWithNullBytesReadDoesNotCrash)
 {
@@ -299,7 +299,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReleasesSlot)
 
     // Fill the pool *after* the failed Create; if the failed Create had leaked
     // its acquired slot, the pool would overflow into the fallback one slot
-    // sooner — and FillPool's last MakeBuffer would return the same NullBuffer
+    // sooner - and FillPool's last MakeBuffer would return the same NullBuffer
     // singleton as `overflow`, since both Creates would have run out of slots.
     FillPool();
     for (auto* slot : pooled)
@@ -382,7 +382,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfUnknownHandleReportsWarnin
 /* Destroy(NULL) is reachable from any integrator who keeps a NullBuffer-fallback
  * handle and later releases it. The IndexFromHandle search returns POOL_SIZE
  * (no slot matches NULL), IndexIsValid returns false, so the FreeIfInUse branch
- * is skipped — caller sees an UNKNOWN_DESTROY warning, no crash. */
+ * is skipped - caller sees an UNKNOWN_DESTROY warning, no crash. */
 TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfNullHandleReportsWarningWithoutCrashing)
 {
     ErrorHandlerFake_Install(nullptr);

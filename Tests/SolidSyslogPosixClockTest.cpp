@@ -160,7 +160,7 @@ TEST(SolidSyslogPosixClock, Max32BitEpochProduces2038)
     CHECK_SECOND(7);
 }
 
-// 2066-01-01T00:00:00Z — well beyond 32-bit time_t limit
+// 2066-01-01T00:00:00Z - well beyond 32-bit time_t limit
 TEST(SolidSyslogPosixClock, NoY2038LimitOnThisPlatform)
 {
     ClockFake_SetTime(3029529600, 0);

@@ -1,5 +1,5 @@
 /* FatFs integrator configuration shared by the FreeRTOS-Plus-TCP and lwIP
- * BDD targets on QEMU mps2-an385. FF_VOLUMES=1 — single logical drive on
+ * BDD targets on QEMU mps2-an385. FF_VOLUMES=1 - single logical drive on
  * the semihosting disk image; FF_USE_MKFS=1 so disk_initialize can fall
  * through to
  * f_mkfs when the image is fresh (after_scenario deletes
@@ -7,13 +7,13 @@
  * with no filesystem and the integrator formats on first mount).
  *
  * FF_FS_REENTRANT=1 even though only the Service task touches the
- * store today — the future reentrancy stress test exercises the
+ * store today - the future reentrancy stress test exercises the
  * production lock path with mutexes already in place rather than
  * having to wire them in later. ffsystem.c uses OS_TYPE 3 (FreeRTOS
  * dynamic xSemaphoreCreateMutex); see project_s08_05_fatfs_reentrancy_decision
  * for the trade-off vs SolidSyslogMutex. */
 
-#define FFCONF_DEF 80386 /* Revision ID — must match FF_DEFINED in ff.h */
+#define FFCONF_DEF 80386 /* Revision ID - must match FF_DEFINED in ff.h */
 
 /* Function Configurations */
 #define FF_FS_READONLY 0
@@ -31,7 +31,7 @@
 #define FF_STRF_ENCODE 0
 
 /* Locale and Namespace */
-#define FF_CODE_PAGE 437 /* Latin1 — avoids pulling in DBCS sub-tables when LFN=0. */
+#define FF_CODE_PAGE 437 /* Latin1 - avoids pulling in DBCS sub-tables when LFN=0. */
 #define FF_USE_LFN 0 /* Short 8.3 filenames; pathPrefix scheme fits (e.g. STORE00.LOG). */
 #define FF_MAX_LFN 255
 #define FF_LFN_UNICODE 0
@@ -54,12 +54,12 @@
 /* System */
 #define FF_FS_TINY 0
 #define FF_FS_EXFAT 0
-#define FF_FS_NORTC 1 /* No RTC on the QEMU target — fixed-date stamps. */
+#define FF_FS_NORTC 1 /* No RTC on the QEMU target - fixed-date stamps. */
 #define FF_NORTC_MON 1
 #define FF_NORTC_MDAY 1
 #define FF_NORTC_YEAR 2026
 #define FF_FS_CRTIME 0
 #define FF_FS_NOFSINFO 0
 #define FF_FS_LOCK 0
-#define FF_FS_REENTRANT 1 /* Forward-looking — exercise the lock path before stress tests need it. */
+#define FF_FS_REENTRANT 1 /* Forward-looking - exercise the lock path before stress tests need it. */
 #define FF_FS_TIMEOUT 1000

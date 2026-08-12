@@ -1,7 +1,7 @@
 /** @file
  *  The buffer role: producer Write / consumer Read that decouples
  *  SolidSyslog_Log from Service. These calls dispatch to the injected buffer's
- *  vtable, so behaviour — notably whether Write blocks or returns at once — is
+ *  vtable, so behaviour - notably whether Write blocks or returns at once - is
  *  that buffer's. */
 #ifndef SOLIDSYSLOGBUFFER_H
 #define SOLIDSYSLOGBUFFER_H
@@ -26,7 +26,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  in @p bytesRead; returns false when nothing was delivered, which the drain
      *  loop reads as "empty, stop". @p bytesRead is always set (0 on false). A
      *  head record too large for @p maxSize also returns false and is left
-     *  un-dequeued (the drain stalls at it) — this cannot arise under correct
+     *  un-dequeued (the drain stalls at it) - this cannot arise under correct
      *  configuration, so an implementation reports it via SolidSyslog_Error under
      *  the buffer-backend-failed category rather than failing silently. */
     bool SolidSyslogBuffer_Read(struct SolidSyslogBuffer * buffer, void* data, size_t maxSize, size_t* bytesRead);

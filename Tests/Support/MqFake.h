@@ -10,7 +10,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void MqFake_Reset(void);
 
-    /* open configuration — one-shot, consumed by the next mq_open call */
+    /* open configuration - one-shot, consumed by the next mq_open call */
     void MqFake_FailNextOpen(int errnoValue);
 
     int MqFake_OpenCallCount(void);
@@ -20,7 +20,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     size_t MqFake_LastOpenMaxMessageSize(void);
     const char* MqFake_OpenNameAt(int callIndex);
 
-    /* send configuration — one-shot, consumed by the next mq_send call */
+    /* send configuration - one-shot, consumed by the next mq_send call */
     void MqFake_FailNextSend(int errnoValue);
 
     int MqFake_SendCallCount(void);
@@ -28,7 +28,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const char* MqFake_LastSendBufAsString(void);
     size_t MqFake_LastSendLen(void);
 
-    /* receive configuration — one-shot, consumed by the next mq_receive call */
+    /* receive configuration - one-shot, consumed by the next mq_receive call */
     void MqFake_FailNextReceive(int errnoValue);
 
     int MqFake_ReceiveCallCount(void);

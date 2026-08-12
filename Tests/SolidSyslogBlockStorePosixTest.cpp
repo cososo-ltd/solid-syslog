@@ -28,7 +28,7 @@ static void CleanStoreFiles()
 }
 
 /* Integration tests using real POSIX files instead of FileFake.
- * These catch issues that only surface with real file handles —
+ * These catch issues that only surface with real file handles -
  * e.g. reading from a deleted file, handle reuse after close,
  * or cursor state surviving across rotate/discard cycles. */
 
@@ -88,13 +88,13 @@ TEST(SolidSyslogBlockStorePosix, DiscardOldestDrainYieldsOnlySurvivingRecords)
 
     char firstMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     std::memset(firstMsg, 'B', sizeof(firstMsg));
-    SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg)); /* block 00 — will be discarded */
+    SolidSyslogStore_Write(store, firstMsg, sizeof(firstMsg)); /* block 00 - will be discarded */
 
     char secondMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     std::memset(secondMsg, 'C', sizeof(secondMsg));
-    SolidSyslogStore_Write(store, secondMsg, sizeof(secondMsg)); /* block 01 — survives */
+    SolidSyslogStore_Write(store, secondMsg, sizeof(secondMsg)); /* block 01 - survives */
 
-    WriteMaxMsg(); /* block 02 — triggers discard of block 00 */
+    WriteMaxMsg(); /* block 02 - triggers discard of block 00 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
     size_t bytesRead = 0;
@@ -133,14 +133,14 @@ TEST(SolidSyslogBlockStorePosix, DiscardOldestWhenReadIsPartwayThroughOldestBloc
     SolidSyslogStore_Write(store, msgC, sizeof(msgC));
     SolidSyslogStore_Write(store, msgD, sizeof(msgD));
 
-    /* Read and send first record from block 00 — read cursor is now partway through */
+    /* Read and send first record from block 00 - read cursor is now partway through */
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
     size_t bytesRead = 0;
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     BYTES_EQUAL('A', buf[0]);
     SolidSyslogStore_MarkSent(store);
 
-    /* Write one more — triggers rotation to block 02 and discard of block 00 */
+    /* Write one more - triggers rotation to block 02 and discard of block 00 */
     WriteMaxMsg();
 
     /* Record B is lost (discarded with block 00); drain yields C, D from block 01, then maxMsg from block 02 */

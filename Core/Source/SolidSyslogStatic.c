@@ -26,7 +26,7 @@ static struct SolidSyslogPoolAllocator SolidSyslog_Allocator = {SolidSyslog_InUs
 /* Exhaustion-fallback handle. Populated lazily on first reach because
  * the SolidSyslogNull* Get() siblings return runtime addresses (no file-scope
  * designated initialiser will accept them). Sits outside SolidSyslog_Pool[] so
- * IndexFromHandle naturally returns invalid for it — SolidSyslog_Destroy(
+ * IndexFromHandle naturally returns invalid for it - SolidSyslog_Destroy(
  * &NullInstance) fires WARNING + ignore, while SolidSyslog_Log /
  * SolidSyslog_Service against it route through the public Null* siblings and
  * silently drop. */

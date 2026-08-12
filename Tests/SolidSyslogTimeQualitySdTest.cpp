@@ -160,10 +160,10 @@ TEST(SolidSyslogTimeQualitySd, FormatAdvancesLengthWithSyncAccuracy)
 
 TEST(SolidSyslogTimeQualitySd, DestroyDoesNotCrash)
 {
-    // Covered by teardown — this test documents the intent
+    // Covered by teardown - this test documents the intent
 }
 
-// Pool tests — prove SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE caps live
+// Pool tests - prove SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE caps live
 // instances and overflow falls back to the shared SolidSyslogNullSd.
 
 // clang-format off
@@ -231,7 +231,7 @@ TEST(SolidSyslogTimeQualitySdPool, FillingPoolThenOverflowReturnsDistinctFallbac
     }
 }
 
-// Bad-setup test — SolidSyslogTimeQualitySd_Create rejects NULL callback and
+// Bad-setup test - SolidSyslogTimeQualitySd_Create rejects NULL callback and
 // routes to NullSd.
 
 // clang-format off

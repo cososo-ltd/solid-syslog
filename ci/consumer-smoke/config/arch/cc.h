@@ -4,7 +4,7 @@
  * u8_t / u16_t / u32_t from <stdint.h> when they are not redefined, so newlib
  * on arm-none-eabi covers the types and only the hooks are left.
  *
- * This image is compiled, never run — LWIP_RAND is a constant rather than an
+ * This image is compiled, never run - LWIP_RAND is a constant rather than an
  * entropy source because nothing in the lane opens a connection. A deployed
  * target must supply a real one; see Bdd/Targets/FreeRtosLwip/arch/cc.h. */
 #ifndef SOLIDSYSLOG_CONSUMER_SMOKE_ARCH_CC_H

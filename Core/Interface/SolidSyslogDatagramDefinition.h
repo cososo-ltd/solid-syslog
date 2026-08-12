@@ -1,5 +1,5 @@
 /** @file
- *  The Datagram vtable (Open / SendTo / MaxPayload / Close) — the unconnected
+ *  The Datagram vtable (Open / SendTo / MaxPayload / Close) - the unconnected
  *  (UDP) transport contract an implementor fills in (the Datagram extension
  *  point). */
 #ifndef SOLIDSYSLOGDATAGRAMDEFINITION_H

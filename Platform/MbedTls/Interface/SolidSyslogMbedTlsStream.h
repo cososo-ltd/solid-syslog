@@ -1,5 +1,5 @@
 /** @file
- *  TLS over an injected byte-transport Stream via Mbed TLS, itself a Stream — so
+ *  TLS over an injected byte-transport Stream via Mbed TLS, itself a Stream - so
  *  a StreamSender speaks TLS to a remote collector without knowing the transport
  *  underneath, whether a TCP stream from a platform pack or one the caller
  *  supplies.
@@ -12,17 +12,17 @@
  *    non-blocking transport means each mbedtls_ssl_handshake may want more I/O;
  *    the injected Sleep bridges those polls until the handshake completes, hits
  *    a hard error (HANDSHAKE_REJECTED), or the bounded budget expires
- *    (HANDSHAKE_TIMEOUT — re-read from GetHandshakeTimeoutMs each attempt, so a
+ *    (HANDSHAKE_TIMEOUT - re-read from GetHandshakeTimeoutMs each attempt, so a
  *    runtime-tunable value applies on the next reconnect). A failed Open closes
  *    the stream so the sender reconnects on its next pass.
  *  - Send is all-or-nothing: a short write or any TLS error is taken as an
  *    unrecoverable session and closes the stream, so the sender reconnects.
  *  - Read returns the bytes read, 0 for would-block, or closes the stream on any
- *    other TLS return (alert, transport error) — fail-fast, and store-and-forward
+ *    other TLS return (alert, transport error) - fail-fast, and store-and-forward
  *    replays after the reconnect.
  *
  *  Peer identity is set by ServerName (see the config member). All key material
- *  is injected as caller-built, caller-owned mbedTLS handles — never file paths
+ *  is injected as caller-built, caller-owned mbedTLS handles - never file paths
  *  or PEM blobs. Coexistence contract: this adapter touches only per-instance
  *  ssl_config / ssl_context state and never calls process-global mbedTLS APIs
  *  (platform setup/teardown, psa_crypto_init, threading-alt, debug hooks), so it
@@ -48,25 +48,25 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogMbedTlsStreamConfig
     {
-        /** Underlying byte stream the TLS records ride on. Borrowed — this stream
+        /** Underlying byte stream the TLS records ride on. Borrowed - this stream
          *  may Close it but never destroys it; the caller owns it and must keep it
          *  valid until SolidSyslogMbedTlsStream_Destroy. */
         struct SolidSyslogStream* Transport;
         SolidSyslogSleepFunction Sleep; /**< Bridges the WANT_READ/WANT_WRITE polls of the bounded handshake
-                                             retry; required — there is no fallback. */
+                                             retry; required - there is no fallback. */
         SolidSyslogTlsHandshakeTimeoutFunction GetHandshakeTimeoutMs; /**< Per-attempt handshake deadline in ms;
                                              NULL uses the SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS tunable. */
         void* HandshakeTimeoutContext; /**< Passed back to GetHandshakeTimeoutMs unchanged; NULL is fine. */
         struct mbedtls_ctr_drbg_context* Rng; /**< Seeded CTR-DRBG for the handshake; caller-built and caller-owned. */
         struct mbedtls_x509_crt* CaChain; /**< Trust anchors the peer cert must chain to; caller-built and owned. */
         /** SNI + peer-identity check. A non-empty name is verified against the peer
-         *  cert (SAN/CN). NULL connects chain-only but emits a WARNING — the peer is
+         *  cert (SAN/CN). NULL connects chain-only but emits a WARNING - the peer is
          *  unverified (MITM-class). "" is the no-name-check opt-out (closed network /
          *  private CA): the cert must still chain to CaChain, but the endpoint
          *  identity is not checked; no diagnostic. */
         const char* ServerName;
         struct mbedtls_x509_crt* ClientCertChain; /**< mTLS leaf (+ intermediates); caller-owned. NULL (or a NULL
-                                     ClientKey) disables mTLS — both must be set to present a client cert. */
+                                     ClientKey) disables mTLS - both must be set to present a client cert. */
         struct mbedtls_pk_context* ClientKey; /**< Private key matching ClientCertChain; caller-owned. NULL disables
                                      mTLS. */
     };

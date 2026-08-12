@@ -15,7 +15,7 @@
  */
 
 /** The resolver could not turn the destination host into an address (DNS
- *  failure, unparseable literal, ...). */
+ *  failure, unparseable literal...). */
 #define SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_RESOLVER_BASE + 1U))
 
 #endif /* SOLIDSYSLOGRESOLVERCATEGORIES_H */

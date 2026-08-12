@@ -20,7 +20,7 @@ extern void __libc_init_array(void);
 void Reset_Handler(void);
 void Default_Handler(void);
 
-/* Cortex-M core exception handlers — weak so user code can override. */
+/* Cortex-M core exception handlers - weak so user code can override. */
 void NMI_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void HardFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void MemManage_Handler(void) __attribute__((weak, alias("Default_Handler")));
@@ -56,7 +56,7 @@ void Reset_Handler(void)
 
     (void) main();
 
-    /* main() returned — trap. */
+    /* main() returned - trap. */
     for (;;)
     {
     }
@@ -72,8 +72,8 @@ void Default_Handler(void)
 
 /* Cortex-M3 vector table at the start of FLASH. */
 __attribute__((section(".vectors"), used)) const uint32_t vector_table[] = {
-    (uint32_t) &_estack, /* 0x00 — initial stack pointer */
-    (uint32_t) Reset_Handler, /* 0x04 — reset                 */
+    (uint32_t) &_estack, /* 0x00 - initial stack pointer */
+    (uint32_t) Reset_Handler, /* 0x04 - reset                 */
     (uint32_t) NMI_Handler, /* 0x08                         */
     (uint32_t) HardFault_Handler, /* 0x0C                         */
     (uint32_t) MemManage_Handler, /* 0x10                         */
@@ -83,9 +83,9 @@ __attribute__((section(".vectors"), used)) const uint32_t vector_table[] = {
     0U,
     0U,
     0U, /* 0x1C-0x28 reserved           */
-    (uint32_t) SVC_Handler, /* 0x2C — FreeRTOS              */
+    (uint32_t) SVC_Handler, /* 0x2C - FreeRTOS              */
     (uint32_t) DebugMon_Handler, /* 0x30                         */
     0U, /* 0x34 reserved                */
-    (uint32_t) PendSV_Handler, /* 0x38 — FreeRTOS              */
-    (uint32_t) SysTick_Handler, /* 0x3C — FreeRTOS              */
+    (uint32_t) PendSV_Handler, /* 0x38 - FreeRTOS              */
+    (uint32_t) SysTick_Handler, /* 0x3C - FreeRTOS              */
 };

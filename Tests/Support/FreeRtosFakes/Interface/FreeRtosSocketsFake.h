@@ -45,7 +45,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const struct freertos_sockaddr* FreeRtosSocketsFake_LastConnectAddress(void);
     socklen_t FreeRtosSocketsFake_LastConnectAddressLength(void);
     /* Snapshot of SO_SNDTIMEO / SO_RCVTIMEO observed at the moment
-     * FreeRTOS_connect was called — proves the bounded-connect contract
+     * FreeRTOS_connect was called - proves the bounded-connect contract
      * (timeouts set before connect, cleared after). 0 if connect was never
      * called. SO_RCVTIMEO is what FreeRTOS_connect actually honours; both
      * are tracked because we set both as belt-and-braces. */

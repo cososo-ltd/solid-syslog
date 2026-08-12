@@ -22,7 +22,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         size_t MaxBlockSize;
         const char* DiscardPolicy;
         const char*
-            SecurityPolicy; /* "crc16" (default) | "hmac-sha256" | "aes-256-gcm" | "null" — at-rest protection */
+            SecurityPolicy; /* "crc16" (default) | "hmac-sha256" | "aes-256-gcm" | "null" - at-rest protection */
         size_t CapacityThreshold;
         bool NoSd;
         bool HaltExit;

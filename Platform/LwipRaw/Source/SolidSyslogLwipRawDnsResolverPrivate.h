@@ -19,7 +19,7 @@ struct SolidSyslogLwipRawDnsResolver
     /* In-flight async-resolve state. The bounded spin polls Done on the
      * caller's thread; the dns_found_callback writes Done + ResolvedOk +
      * ResolvedIp on the lwIP (tcpip) thread. Done is volatile because the two
-     * threads are different — the synchronous ERR_OK path writes them too,
+     * threads are different - the synchronous ERR_OK path writes them too,
      * on the caller's thread, before any spin. */
     volatile bool Done;
     bool ResolvedOk;

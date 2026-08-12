@@ -6,11 +6,11 @@
  * reach the core through the tcpip_callback marshal (S28.06). We still only
  * use lwIP's Raw API (the adapters call udp_ / tcp_ functions directly via the
  * marshal),
- * so the sequential netconn / socket API stays OFF — the tcpip thread exists
+ * so the sequential netconn / socket API stays OFF - the tcpip thread exists
  * for RX delivery (tcpip_input), timeouts, and marshalled callbacks only.
  *
  * Memory is lwIP-pool managed (no libc malloc) so the footprint is the static,
- * embedded-realistic shape an integrator ships — not the host-test shortcut
+ * embedded-realistic shape an integrator ships - not the host-test shortcut
  * (MEM_LIBC_MALLOC) in Tests/Support/LwipFakes/Interface/lwipopts.h. */
 #ifndef SOLIDSYSLOG_FREERTOS_LWIP_LWIPOPTS_H
 #define SOLIDSYSLOG_FREERTOS_LWIP_LWIPOPTS_H
@@ -19,13 +19,13 @@
 #define NO_SYS 0
 #define SYS_LIGHTWEIGHT_PROT 1
 #define LWIP_TCPIP_CORE_LOCKING 1
-/* Raw API only — no sequential netconn / BSD-socket API. */
+/* Raw API only - no sequential netconn / BSD-socket API. */
 #define LWIP_NETCONN 0
 #define LWIP_SOCKET 0
 
 /* tcpip thread. Priorities are numeric here: lwipopts.h is processed via
  * lwip/opt.h before any FreeRTOS header, so configMAX_PRIORITIES (7) is not
- * visible — TCPIP_THREAD_PRIO 6 == configMAX_PRIORITIES - 1, above the
+ * visible - TCPIP_THREAD_PRIO 6 == configMAX_PRIORITIES - 1, above the
  * LAN9118 RX task (configMAX_PRIORITIES - 2 == 5, set in EthernetIf.c).
  * TCPIP_THREAD_STACKSIZE is in BYTES (LWIP_FREERTOS_THREAD_STACKSIZE_IS_
  * STACKWORDS defaults to 0, so the sys_arch divides by sizeof(StackType_t)). */
@@ -58,14 +58,14 @@
 /* LWIP_DNS on so SolidSyslogLwipRawDnsResolver can resolve the oracle by name
  * ("syslog-ng") instead of the numeric 10.0.2.2 it was pinned to. We do NOT
  * configure a DNS server: the QEMU slirp forwarder (10.0.2.3) would resolve the
- * "syslog-ng" docker alias to a docker-bridge IP the guest has no route to —
+ * "syslog-ng" docker alias to a docker-bridge IP the guest has no route to -
  * only 10.0.2.2 (slirp NAT -> shared-namespace host loopback) reaches the
  * oracle. So we map the name statically via DNS_LOCAL_HOSTLIST: dns_gethostbyname
  * consults the hostlist before any server and returns ERR_OK synchronously for a
  * hit, so the resolve never leaves the guest. This exercises only the resolver's
  * synchronous local-hostlist branch end-to-end; the async / over-the-wire /
  * timeout branches are unit-tested (Tests/Lwip/SolidSyslogLwipRawDnsResolverTest)
- * — slirp cannot hand the guest a reachable address for the docker alias.
+ * - slirp cannot hand the guest a reachable address for the docker alias.
  * DNS_LOCAL_HOSTLIST_INIT is expanded inside lwIP's dns.c, where
  * DNS_LOCAL_HOSTLIST_ELEM (lwip/dns.h) and IPADDR4_INIT_BYTES (lwip/ip_addr.h)
  * are in scope. */
@@ -73,7 +73,7 @@
 #define DNS_LOCAL_HOSTLIST 1
 #define DNS_LOCAL_HOSTLIST_INIT {DNS_LOCAL_HOSTLIST_ELEM("syslog-ng", IPADDR4_INIT_BYTES(10, 0, 2, 2))}
 
-/* etharp queues the first packet to a destination while ARP resolves it —
+/* etharp queues the first packet to a destination while ARP resolves it -
  * keep queueing on so the first UDP datagram after boot is not dropped
  * (mirrors the FreeRTOS-Plus-TCP first-packet ARP behaviour). */
 #define ARP_QUEUEING 1

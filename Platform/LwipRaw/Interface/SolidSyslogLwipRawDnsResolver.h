@@ -15,8 +15,8 @@
  *
  *  - An ERR_OK synchronous hit (numeric literal, DNS cache, local hostlist)
  *    resolves immediately.
- *  - An ERR_INPROGRESS queued query spins on the caller's thread — sleeping via
- *    the config's Sleep so lwIP's DNS timer / RX paths get cycles — until the
+ *  - An ERR_INPROGRESS queued query spins on the caller's thread - sleeping via
+ *    the config's Sleep so lwIP's DNS timer / RX paths get cycles - until the
  *    dns_found_callback fires or the deadline passes. The authoritative address
  *    read then runs back under the marshal hop (the thread the callback wrote
  *    on), never off the volatile completion flag.

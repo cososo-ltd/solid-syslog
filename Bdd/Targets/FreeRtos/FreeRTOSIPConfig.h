@@ -37,7 +37,7 @@
 #define ipconfigSUPPORT_SELECT_FUNCTION 0
 #define ipconfigFILTER_OUT_NON_ETHERNET_II_FRAMES 1
 
-/* Doubled from 8 — TCP needs descriptors for its retransmit window in
+/* Doubled from 8 - TCP needs descriptors for its retransmit window in
  * addition to the in-flight UDP frames, and 8 is already tight on the BDD
  * scenarios. The extra ~3 KB of .bss is trivial against mps2-an385 SRAM. */
 #define ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS 16

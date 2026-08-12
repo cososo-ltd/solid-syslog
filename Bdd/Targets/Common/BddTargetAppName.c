@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-/* Length of ".exe" — used to recognise and strip the Windows executable
+/* Length of ".exe" - used to recognise and strip the Windows executable
    extension so the syslog app name omits it regardless of build platform. */
 enum
 {

@@ -54,7 +54,7 @@ static const uint16_t TEST_PORT = 514;
     }
 
 // Asserts the lwIP API call recorded the pcb the wrapper got back from
-// tcp_new — proves the wrapper forwarded the right handle. `getter` is
+// tcp_new - proves the wrapper forwarded the right handle. `getter` is
 // the LwipTcpFake_LastXxxPcb accessor function (zero-arg).
 // clang-format off
 #define CHECK_FORWARDED_PCB(getter) POINTERS_EQUAL(LwipTcpFake_LastTcpNewReturned(), getter())
@@ -98,7 +98,7 @@ extern "C" uint32_t FakeGetConnectTimeoutMs(void* context)
 
 /* Shared fixture: every TcpStream lifecycle test needs the fakes reset, a
  * fresh stream + address handle pair, teardown of both, and the leak
- * invariant — every tcp_pcb handed out by tcp_new must come back via
+ * invariant - every tcp_pcb handed out by tcp_new must come back via
  * tcp_close / tcp_abort / null-via-tcp_err by the end of the test. */
 // clang-format off
 TEST_BASE(LwipRawTcpStreamTestBase)
@@ -154,7 +154,7 @@ TEST_BASE(LwipRawTcpStreamTestBase)
     /* Drive the wrapper's tcp_recv callback with a fabricated incoming
      * pbuf. Caller supplies stack storage for the pbuf so multi-pbuf
      * tests can verify queue head advancement by pointer identity.
-     * Returns the err_t the wrapper's callback returned — ERR_OK means
+     * Returns the err_t the wrapper's callback returned - ERR_OK means
      * the wrapper took ownership of the pbuf (leak counter bumped here);
      * non-ERR_OK means lwIP retains the pbuf and the counter stays put,
      * so backpressure tests can pin the contract without imbalance. */
@@ -207,7 +207,7 @@ TEST_BASE(LwipRawTcpStreamTestBase)
         return result;
     }
 
-    /* Drive the wrapper's tcp_recv callback with NULL p — peer half-close
+    /* Drive the wrapper's tcp_recv callback with NULL p - peer half-close
      * (FIN). lwIP retains the pcb; only the receive half is gone. */
     static void pushPeerFin()
     {
@@ -215,7 +215,7 @@ TEST_BASE(LwipRawTcpStreamTestBase)
         (void) recvCb(LwipTcpFake_LastCallbackArg(), LwipTcpFake_LastTcpNewReturned(), nullptr, ERR_OK);
     }
 
-    /* Drive the wrapper's tcp_err callback — lwIP releases the pcb
+    /* Drive the wrapper's tcp_err callback - lwIP releases the pcb
      * upstream before this fires, so the leak invariant needs the
      * matching NotePcbReleasedByErr. */
     static void pushTcpErr(int8_t err)
@@ -340,8 +340,8 @@ TEST(SolidSyslogLwipRawTcpStream, OpenSetsKeepaliveOnPcb)
     CHECK((LwipTcpFake_LastTcpNewReturned()->so_options & SOF_KEEPALIVE) != 0);
 }
 
-// Nagle is disabled (TF_NODELAY set) so small, un-pipelined writes — octet-framed
-// records, and the multi-segment handshake flights of a stacked TLS layer — go out
+// Nagle is disabled (TF_NODELAY set) so small, un-pipelined writes - octet-framed
+// records, and the multi-segment handshake flights of a stacked TLS layer - go out
 // immediately instead of being held until the previous segment is ACKed (which
 // deadlocks a TLS handshake mid-flight against a peer that ACKs per-flight).
 TEST(SolidSyslogLwipRawTcpStream, OpenDisablesNagleOnPcb)
@@ -409,7 +409,7 @@ TEST(SolidSyslogLwipRawTcpStream, OpenSleepsBetweenPollsDuringTimeoutPath)
 
     SolidSyslogStream_Open(stream, address);
 
-    /* timeout / poll periods → exactly that many sleeps before giving up. */
+    /* timeout / poll periods -> exactly that many sleeps before giving up. */
     LONGS_EQUAL(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS / SOLIDSYSLOG_LWIP_RAW_TCP_CONNECT_POLL_MS, FakeSleep_CallCount);
     LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_TCP_CONNECT_POLL_MS, FakeSleep_LastMs);
 }
@@ -499,7 +499,7 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, DestroyAfterCloseDoesNotCloseAgain)
 TEST(SolidSyslogLwipRawTcpStreamConnected, TcpErrCallbackReleasesPcbWithoutCallingTcpClose)
 {
     /* Drive the err callback the wrapper registered. lwIP releases the
-     * pcb upstream before invoking err — the wrapper must null its Pcb
+     * pcb upstream before invoking err - the wrapper must null its Pcb
      * field and NOT call tcp_close (use-after-free). */
     pushTcpErr(ERR_RST);
 
@@ -510,7 +510,7 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, TcpErrCallbackReleasesPcbWithoutCalli
 
 TEST(SolidSyslogLwipRawTcpStreamConnected, SentCallbackReturnsErrOkAsNoOpStub)
 {
-    /* TCP_WRITE_FLAG_COPY means caller buffers are released at Send return —
+    /* TCP_WRITE_FLAG_COPY means caller buffers are released at Send return -
      * no per-ACK accounting needed. The slot exists because lwIP wants the
      * callback set when the pcb is wired. */
     tcp_sent_fn sentCb = LwipTcpFake_LastSentFn();
@@ -569,7 +569,7 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, SendReturnsFalseAndClosesOnTcpWriteFa
 
 TEST(SolidSyslogLwipRawTcpStreamConnected, SendReturnsTrueWhenTcpOutputDefersWithErrMem)
 {
-    /* tcp_write succeeded → data is in pcb->snd_buf; ERR_MEM from
+    /* tcp_write succeeded -> data is in pcb->snd_buf; ERR_MEM from
      * tcp_output just means lwIP will retry on the next tcp_tmr tick.
      * lwIP owns the bytes, so the wrapper reports success (mirrors POSIX's
      * "kernel accepted into send buffer" semantics). */
@@ -601,7 +601,7 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, SendAfterTcpErrReturnsFalse)
 
 TEST(SolidSyslogLwipRawTcpStreamConnected, ReadReturnsZeroWhenQueueEmpty)
 {
-    /* Would-block semantic — keeps the connection alive. */
+    /* Would-block semantic - keeps the connection alive. */
     LONGS_EQUAL(0, readBytes());
     CALLED_FAKE(LwipTcpFake_TcpClose, NEVER);
 }
@@ -642,7 +642,7 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, ReadReturnsPartialWhenBufferSmallerTh
 
     LONGS_EQUAL(2, first);
     MEMCMP_EQUAL("ab", readBuffer, 2);
-    /* Head not yet drained — pbuf still queued. */
+    /* Head not yet drained - pbuf still queued. */
     CALLED_FAKE(LwipPbufFake_PbufFree, NEVER);
 
     SolidSyslogSsize second = readBytes();
@@ -688,8 +688,8 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, ReadAcrossChainedPbufLinkBoundaryPres
     struct pbuf link2 = {};
     pushIncomingChain(&link1, "AB", 2, &link2, "CD", 2);
 
-    /* A 3-byte read straddles the link boundary — two bytes from link1, one
-     * from link2 — and the chain is not yet fully drained. */
+    /* A 3-byte read straddles the link boundary - two bytes from link1, one
+     * from link2 - and the chain is not yet fully drained. */
     SolidSyslogSsize first = readBytes(3);
 
     LONGS_EQUAL(3, first);
@@ -708,7 +708,7 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, ReadReportsOnlyBytesActuallyCopiedWhe
 {
     /* A malformed pbuf: tot_len claims 4 bytes but the single link holds only
      * 2 and there is no next link. The drain must report what lwIP actually
-     * copied (2), never the phantom tail the overstated tot_len implies —
+     * copied (2), never the phantom tail the overstated tot_len implies -
      * advancing past un-copied bytes would feed stale buffer content to a
      * stacked TLS record stream. */
     struct pbuf link = {};
@@ -733,7 +733,7 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, SendReturnsFalseAfterPeerFin)
     pushPeerFin();
 
     /* A peer half-close (FIN) leaves the pcb alive but the connection doomed.
-     * Send must report failure — without it the StreamSender keeps writing into
+     * Send must report failure - without it the StreamSender keeps writing into
      * the dead connection and never reconnects after the server recovers. */
     CHECK_FALSE(sendBytes());
     CALLED_FAKE(LwipTcpFake_TcpWrite, NEVER);
@@ -759,7 +759,7 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, ReadReturnsMinusOneAfterTcpErrWithout
     pushTcpErr(ERR_RST);
 
     LONGS_EQUAL(-1, readBytes());
-    /* Pcb already nulled by tcp_err — no tcp_close. */
+    /* Pcb already nulled by tcp_err - no tcp_close. */
     CALLED_FAKE(LwipTcpFake_TcpClose, NEVER);
 }
 
@@ -771,7 +771,7 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, RecvCallbackBackpressuresWhenQueueFul
         pushIncomingPbuf(&p, "1", 1);
     }
 
-    /* Next pbuf — queue is full, callback returns non-ERR_OK and
+    /* Next pbuf - queue is full, callback returns non-ERR_OK and
      * pushIncomingPbuf's auto-balancing leaves the outstanding count
      * untouched so teardown's leak invariant still passes. */
     struct pbuf overflow = {};
@@ -809,7 +809,7 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, CloseDrainsRxQueueBeforeTcpClose)
 }
 
 /* ------------------------------------------------------------------
- * Pool tests — handed-out handles never call lwIP, so they don't need
+ * Pool tests - handed-out handles never call lwIP, so they don't need
  * the fake state. Same TEST_GROUP shape as Commit 1.
  * ----------------------------------------------------------------*/
 

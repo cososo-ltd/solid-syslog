@@ -58,7 +58,7 @@ uint32_t FakeGetHandshakeTimeoutMs_ReturnValue = SOLIDSYSLOG_TLS_HANDSHAKE_TIMEO
 void FakeGetHandshakeTimeoutMs_Reset()
 {
     FakeGetHandshakeTimeoutMs_CallCount = 0;
-    FakeGetHandshakeTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel — overwritten on first call */
+    FakeGetHandshakeTimeoutMs_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel - overwritten on first call */
     FakeGetHandshakeTimeoutMs_ReturnValue = SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS;
 }
 
@@ -109,11 +109,11 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         StreamFake_Destroy(transport);
     }
 
-    /* Tests needing config tweaks (CaChain, Rng, ServerName, …) call this
+    /* Tests needing config tweaks (CaChain, Rng, ServerName, ...) call this
      * to release setup()'s pool slot, mutate `config`, then re-Create.
      * Fully resets the fixture (transport, MbedTls fake counters, error
      * handler) so the test body observes counts from this Open onwards
-     * only — matters for assertions like CHECK_OPEN_UNWOUND_WITH_ERROR
+     * only - matters for assertions like CHECK_OPEN_UNWOUND_WITH_ERROR
      * that pin counts at == 1. */
     void ReCreateHandleWithUpdatedConfig()
     {
@@ -127,7 +127,7 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
     }
 
     /* Arrange mbedtls_ssl_handshake to first emit `wantError`, then succeed on
-     * the next call — exercises the bounded handshake retry loop's progress
+     * the next call - exercises the bounded handshake retry loop's progress
      * path. mbedTLS returns the error code directly (no get_error indirection). */
     static void ArrangeHandshakeRetryThenSucceed(int wantError)
     {
@@ -135,7 +135,7 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         MbedTlsFake_SetSslHandshakeReturnSequence(seq, 2);
     }
 
-    /* Arrange mbedtls_ssl_handshake to fail with `errorCode` on every call —
+    /* Arrange mbedtls_ssl_handshake to fail with `errorCode` on every call -
      * used both for the persistent-WANT (budget-exhausted) and hard-error paths. */
     static void ArrangePersistentHandshakeError(int errorCode)
     {
@@ -159,7 +159,7 @@ TEST(SolidSyslogMbedTlsStream, CreateInitialisesSslConfigForSafeFree)
 
 {
     /* Init happens eagerly in Create (via MbedTlsStream_Initialise) so the
-     * symmetric *_free in Close is always safe — whether Open was reached,
+     * symmetric *_free in Close is always safe - whether Open was reached,
      * whether it succeeded, or whether Close is called more than once. */
     LONGS_EQUAL(1, MbedTlsFake_SslConfigInitCallCount());
 }
@@ -278,7 +278,7 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeB
 {
     /* ServerName set so the handshake timeout is the only error source (a NULL
      * ServerName would also emit the unverified-peer WARNING).
-     * mbedtls_ssl_handshake always returns WANT_READ — handshake never makes
+     * mbedtls_ssl_handshake always returns WANT_READ - handshake never makes
      * progress, so the bounded budget should expire and Open returns false. */
     config.ServerName = "syslog.example.com";
     ReCreateHandleWithUpdatedConfig();
@@ -305,7 +305,7 @@ TEST(SolidSyslogMbedTlsStream, OpenInvokesConfiguredHandshakeTimeoutGetter)
 TEST(SolidSyslogMbedTlsStream, OpenUsesGetterReturnValueAsHandshakeBudget)
 
 {
-    /* 5 ms budget against the 1 ms poll interval → loop should sleep 5 times
+    /* 5 ms budget against the 1 ms poll interval -> loop should sleep 5 times
        before declaring HANDSHAKE_TIMEOUT and unwinding. */
     FakeGetHandshakeTimeoutMs_ReturnValue = 5U;
     RecreateHandleWithFakeHandshakeGetter();
@@ -330,7 +330,7 @@ TEST(SolidSyslogMbedTlsStream, SecondOpenAfterFailedFirstOpenSucceeds)
 {
     /* The recovery contract that the per-failure-point unwinds enable: once
      * Open's failure tail Closes the transport and frees the SSL state, the
-     * next Open is a clean Open-Close-Open cycle on the transport — Connected
+     * next Open is a clean Open-Close-Open cycle on the transport - Connected
      * goes false, StreamSender's next reconnect tick re-enters, and the
      * second handshake completes. Without the unwind, the inner transport
      * would stay open and PosixTcpStream_Open would clobber its fd. */
@@ -347,7 +347,7 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeF
 
 {
     /* ServerName set so the handshake hard error is the only error source.
-     * Non-WANT error (e.g. a verify/connection failure) is fail-fast — no
+     * Non-WANT error (e.g. a verify/connection failure) is fail-fast - no
      * retry budget burn, no Sleep. */
     config.ServerName = "syslog.example.com";
     ReCreateHandleWithUpdatedConfig();
@@ -400,7 +400,7 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSetHostnam
 
 {
     /* ServerName must be set for ConfigureExpectedHostname to invoke
-     * mbedtls_ssl_set_hostname — otherwise the helper short-circuits to true. */
+     * mbedtls_ssl_set_hostname - otherwise the helper short-circuits to true. */
     config.ServerName = "syslog.example.com";
     ReCreateHandleWithUpdatedConfig();
     MbedTlsFake_SetSslSetHostnameReturn(-1);
@@ -457,7 +457,7 @@ TEST(SolidSyslogMbedTlsStream, SendClosesSslAndTransportOnWriteFailure)
 
 {
     /* Fail-fast: a TLS-level write failure means the session state is
-     * unrecoverable. Mirror the OpenSslStream contract — close internally
+     * unrecoverable. Mirror the OpenSslStream contract - close internally
      * so the StreamSender reconnect path runs on the next tick. */
     const unsigned char payload[] = {0x10, 0x20, 0x30};
     MbedTlsFake_SetSslWriteReturn(-1);
@@ -472,7 +472,7 @@ TEST(SolidSyslogMbedTlsStream, SendClosesSslAndTransportOnShortWrite)
 
 {
     /* mbedtls_ssl_write returning fewer bytes than requested is treated the
-     * same as outright failure — the application boundary requires
+     * same as outright failure - the application boundary requires
      * all-or-nothing writes (syslog framing). */
     const unsigned char payload[] = {0x10, 0x20, 0x30};
     MbedTlsFake_SetSslWriteReturn(2); /* asked for 3, got 2 */
@@ -541,7 +541,7 @@ TEST(SolidSyslogMbedTlsStream, ReadClosesSslAndTransportOnHardError)
 TEST(SolidSyslogMbedTlsStream, ReadDoesNotCloseOnWantRead)
 
 {
-    /* WANT_READ is steady-state would-block, not a connection failure —
+    /* WANT_READ is steady-state would-block, not a connection failure -
      * leave the session intact so the caller can retry. */
     unsigned char buffer[8];
     MbedTlsFake_SetSslReadReturn(MBEDTLS_ERR_SSL_WANT_READ);
@@ -562,7 +562,7 @@ TEST(SolidSyslogMbedTlsStream, CloseAfterInternalCloseFromSendFailureDoesNotDoub
     MbedTlsFake_SetSslWriteReturn(-1);
     SolidSyslogStream_Send(handle, payload, sizeof(payload)); /* internal close */
 
-    SolidSyslogStream_Close(handle); /* second close — must be safe */
+    SolidSyslogStream_Close(handle); /* second close - must be safe */
 
     /* Exactly one of each free per real session. The teardown's Destroy
      * will add a third pair when this test ends, but that's outside the
@@ -681,7 +681,7 @@ TEST(SolidSyslogMbedTlsStream, OpenSetsAuthmodeRequired)
     LONGS_EQUAL(MBEDTLS_SSL_VERIFY_REQUIRED, MbedTlsFake_LastSslConfAuthmodeArg());
 }
 
-// Parity with the OpenSSL adapter's explicit TLS 1.2 floor — the mbedTLS default
+// Parity with the OpenSSL adapter's explicit TLS 1.2 floor - the mbedTLS default
 // preset can otherwise negotiate down to TLS 1.0/1.1 on permissive builds.
 TEST(SolidSyslogMbedTlsStream, OpenPinsMinimumTlsVersionToTls12)
 
@@ -744,7 +744,7 @@ TEST(SolidSyslogMbedTlsStream, OpenSkipsHostnameWhenServerNameIsNull)
 TEST(SolidSyslogMbedTlsStream, OpenWarnsWhenServerNameIsNull)
 
 {
-    /* setup() left config.ServerName at NULL — peer identity is unverified, which
+    /* setup() left config.ServerName at NULL - peer identity is unverified, which
      * the library must surface rather than swallow (S12.28). */
     SolidSyslogStream_Open(handle, addr);
 
@@ -758,7 +758,7 @@ TEST(SolidSyslogMbedTlsStream, OpenWarnsWhenServerNameIsNull)
 TEST(SolidSyslogMbedTlsStream, OpenStillConnectsWhenServerNameIsNull)
 
 {
-    /* The unverified-peer WARNING is observable but non-fatal — the IP-pinned /
+    /* The unverified-peer WARNING is observable but non-fatal - the IP-pinned /
      * closed-network use case must still connect. */
     CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
     LONGS_EQUAL(0, StreamFake_CloseCallCount(transport));
@@ -767,7 +767,7 @@ TEST(SolidSyslogMbedTlsStream, OpenStillConnectsWhenServerNameIsNull)
 TEST(SolidSyslogMbedTlsStream, OpenDoesNotWarnWhenServerNameIsEmpty)
 
 {
-    /* Empty string is the deliberate opt-out — no diagnostic. */
+    /* Empty string is the deliberate opt-out - no diagnostic. */
     config.ServerName = "";
     ReCreateHandleWithUpdatedConfig();
     SolidSyslogStream_Open(handle, addr);
@@ -798,7 +798,7 @@ TEST(SolidSyslogMbedTlsStream, OpenConnectsWhenServerNameIsEmpty)
  * mTLS client identity wiring. When the integrator supplies both a
  * ClientCertChain and a ClientKey, Open must call mbedtls_ssl_conf_own_cert
  * so the client presents its cert during the handshake. Either pointer
- * being NULL means "server-auth only" — skip the wiring.
+ * being NULL means "server-auth only" - skip the wiring.
  * ------------------------------------------------------------------------- */
 
 TEST(SolidSyslogMbedTlsStream, OpenWiresOwnCertWhenClientCertAndKeyProvided)
@@ -820,7 +820,7 @@ TEST(SolidSyslogMbedTlsStream, OpenWiresOwnCertWhenClientCertAndKeyProvided)
 TEST(SolidSyslogMbedTlsStream, OpenSkipsOwnCertWhenClientCertChainIsNull)
 
 {
-    /* Key provided, cert NULL — caller hasn't fully opted in to mTLS, so
+    /* Key provided, cert NULL - caller hasn't fully opted in to mTLS, so
      * the adapter must not tell mbedTLS anything. setup() leaves
      * ClientCertChain at NULL; supplying just a Key is the incomplete case. */
     static mbedtls_pk_context clientKeyMarker;
@@ -834,7 +834,7 @@ TEST(SolidSyslogMbedTlsStream, OpenSkipsOwnCertWhenClientCertChainIsNull)
 TEST(SolidSyslogMbedTlsStream, OpenSkipsOwnCertWhenClientKeyIsNull)
 
 {
-    /* Cert provided, key NULL — still incomplete; same skip. */
+    /* Cert provided, key NULL - still incomplete; same skip. */
     static mbedtls_x509_crt clientCertMarker;
     config.ClientCertChain = &clientCertMarker;
     ReCreateHandleWithUpdatedConfig();

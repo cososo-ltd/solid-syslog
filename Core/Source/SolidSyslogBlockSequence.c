@@ -177,7 +177,7 @@ static void BlockSequence_ScanForBlockPresence(
         }
         else
         {
-            /* present run already closed — nothing to record */
+            /* present run already closed - nothing to record */
         }
     }
 }
@@ -199,7 +199,7 @@ static void BlockSequence_LocateRunBoundaries(const struct BlockPresence* presen
             *newest = BlockSequence_CircularPrev(*newest);
         }
     }
-    /* else: every block is present — maxBlocks is clamped to MAX_SEQUENCE - 1
+    /* else: every block is present - maxBlocks is clamped to MAX_SEQUENCE - 1
      * so this cannot arise from the library's own rotation. Caller's defaults
      * for oldest=0, newest=MAX_SEQUENCE-1 stand. */
 }
@@ -237,7 +237,7 @@ static inline void BlockSequence_NotifyThresholdCrossed(struct SolidSyslogBlockS
         }
         else
         {
-            /* still above threshold and already notified — no edge to report */
+            /* still above threshold and already notified - no edge to report */
         }
     }
 }
@@ -272,7 +272,7 @@ bool SolidSyslogBlockSequence_PrepareForWrite(
 
     if (blockFull && BlockSequence_StoreIsFull(blockSequence))
     {
-        blockSequence->AtCapacity = true; /* sticky 100% — fixes UsedBytes at total */
+        blockSequence->AtCapacity = true; /* sticky 100% - fixes UsedBytes at total */
         BlockSequence_NotifyThresholdCrossed(blockSequence); /* threshold first per S05.09 ordering */
         BlockSequence_NotifyStoreFull(blockSequence);
         spaceAvailable = false;
@@ -283,7 +283,7 @@ bool SolidSyslogBlockSequence_PrepareForWrite(
     }
     else
     {
-        /* current block has room — leave spaceAvailable=true */
+        /* current block has room - leave spaceAvailable=true */
     }
 
     return spaceAvailable;
@@ -354,7 +354,7 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
 /* Dispose-then-Acquire enforces the BlockDevice contract that an Acquired block
  * starts empty. Stale content can be left by a crash mid-Append on a previous
  * run, or by a Dispose that succeeded after our state had already advanced
- * past it. Flash drivers depend on this — Acquire = erase, and writing into
+ * past it. Flash drivers depend on this - Acquire = erase, and writing into
  * a non-erased block corrupts data on most flash families.
  *
  * If Dispose fails we surface the failure rather than letting Acquire mask it:

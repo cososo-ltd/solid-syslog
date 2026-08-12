@@ -81,7 +81,7 @@ TEST(SolidSyslogWindowsHostname, EmptyHostnameProducesEmptyString)
 TEST(SolidSyslogWindowsHostname, HostnameTooLongForBufferProducesEmptyString)
 {
     // 260-char hostname exceeds the internal 256-char buffer. GetComputerNameExA
-    // reports ERROR_MORE_DATA → the helper treats this as failure → nothing written.
+    // reports ERROR_MORE_DATA -> the helper treats this as failure -> nothing written.
     static char longName[261];
     memset(longName, 'x', 260);
     longName[260] = '\0';

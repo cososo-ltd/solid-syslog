@@ -3,7 +3,7 @@
  * this file (after FreeRTOS.h) and FreeRTOSFATConfigDefaults.h fills in every
  * value not set here. Resolved off the -I path (ff_headers.h's `#include
  * "FreeRTOSFATConfig.h"` finds no copy beside itself), so no source staging is
- * needed — unlike ChaN-FatFs's ffconf.h. Introduced in SolidSyslog S29.05.
+ * needed - unlike ChaN-FatFs's ffconf.h. Introduced in SolidSyslog S29.05.
  *
  * Mirrors the host-test config in Tests/Support/PlusFatFakes/Interface so the
  * adapter sees the same Plus-FAT layout on-target as under host TDD. The
@@ -20,7 +20,7 @@
  * sizes configNUM_THREAD_LOCAL_STORAGE_POINTERS to cover the three slots. */
 #define ffconfigCWD_THREAD_LOCAL_INDEX (0)
 
-/* The store uses absolute 8.3 paths at the volume root (/STORE00.log, …), so
+/* The store uses absolute 8.3 paths at the volume root (/STORE00.log, ...), so
  * relative-path / long-filename support is left at the defaults (both off). */
 
 #endif /* FREERTOSFATCONFIG_H */

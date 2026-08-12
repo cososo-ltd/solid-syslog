@@ -2,7 +2,7 @@
  * RecordStore + FileBlockDevice stack, with FileFake at the bottom.
  *
  * Motivated by S08.05's discard-newest BDD failure on freertos-cross
- * (#270): oracle received sequenceIds [1, 11, 2, 3, 4, 5, 6] — sequence
+ * (#270): oracle received sequenceIds [1, 11, 2, 3, 4, 5, 6] - sequence
  * id 11 (the newest, which discard-newest should drop) appearing
  * mid-drain between 1 and 2 says the drain ordering is wrong, not the
  * record-packing math. This harness reproduces drain sequences host-side
@@ -10,8 +10,8 @@
  * (maxBlocks / maxBlockSize / payload) without round-tripping QEMU.
  *
  * Tests drive the SolidSyslogStore interface (Write / HasUnsent /
- * ReadNextUnsent / MarkSent) directly — no Service task, no Sender, no
- * Buffer — because the drain order lives in BlockSequence/RecordStore. */
+ * ReadNextUnsent / MarkSent) directly - no Service task, no Sender, no
+ * Buffer - because the drain order lives in BlockSequence/RecordStore. */
 
 #include "CppUTest/TestHarness.h"
 
@@ -41,10 +41,10 @@ extern "C"
 
 static const char* const TEST_PATH_PREFIX = "/tmp/draintest_";
 
-/* SenderSpy — sticky outage mode (every Send returns false until cleared)
+/* SenderSpy - sticky outage mode (every Send returns false until cleared)
  * and a vector of every *successful* send. Bigger than SenderFake's
  * last-only capture and one-shot FailNextSend; the BDD reproducer needs
- * to see the full successful-send sequence to spot the [1, 11, 2, ...]
+ * to see the full successful-send sequence to spot the [1, 11, 2...]
  * interleave. */
 struct SenderSpy
 {
@@ -103,7 +103,7 @@ struct DrainTestConfig
 
 /* Shared block-device / null-security-policy fixture (the underlying FileFake is
  * an implementation detail of the BlockDevice). Lifted out of
- * the two TEST_GROUPs below so each can focus on its own moving parts —
+ * the two TEST_GROUPs below so each can focus on its own moving parts -
  * BlockStoreDrainOrdering adds a BlockStore directly; ServiceDrainInterleave
  * adds Buffer + Mutex + SenderSpy + the SolidSyslog facade. Matches the
  * established TEST_BASE / TEST_GROUP_BASE pattern from
@@ -125,7 +125,7 @@ TEST_BASE(DrainTestFixtureBase)
 
     /* Block size is a property of the device; re-point it (pool size 1, so
      * destroy-then-recreate on the same FileFake) at the scenario's size.
-     * Idempotent — unchanged size reuses the existing device. */
+     * Idempotent - unchanged size reuses the existing device. */
     void ensureDeviceBlockSize(size_t blockSize)
     {
         if (SolidSyslogBlockDevice_GetBlockSize(device) != blockSize)
@@ -215,10 +215,10 @@ TEST_GROUP_BASE(BlockStoreDrainOrdering, DrainTestFixtureBase)
 
 // clang-format on
 
-/* Service-level reproducer — wires the real Buffer drain logic from
+/* Service-level reproducer - wires the real Buffer drain logic from
  * SolidSyslog_Service against a real BlockStore and a SenderSpy that
  * simulates oracle outage / recovery. This is the harness where the
- * [1, 11, 2, 3, ...] BDD shape actually arises — DrainBufferIntoStore
+ * [1, 11, 2, 3...] BDD shape actually arises - DrainBufferIntoStore
  * falls back to Sender_Send when Store_Write rejects (NullStore path),
  * which on a full BlockStore in discard-newest mode lets the *latest*
  * buffered message bypass *older* stored messages once the oracle
@@ -226,7 +226,7 @@ TEST_GROUP_BASE(BlockStoreDrainOrdering, DrainTestFixtureBase)
 // clang-format off
 TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
 {
-    /* Sized to hold 16 max-sized messages — plenty for the outage
+    /* Sized to hold 16 max-sized messages - plenty for the outage
      * reproducer; CircularBuffer is FIFO so all messages are retained
      * until Service drains them (unlike BufferFake which only keeps
      * the last one). */
@@ -277,7 +277,7 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
     }
 
     /* Push one record into the buffer with sequenceId encoded in the first
-     * 4 bytes — bypasses SolidSyslog_Log so we control exact bytes and
+     * 4 bytes - bypasses SolidSyslog_Log so we control exact bytes and
      * don't pull in clock / hostname / SD plumbing. */
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- sequenceId and payloadSize are distinct concepts; both numeric is incidental
     void Enqueue(uint32_t sequenceId, size_t payloadSize) const
@@ -307,7 +307,7 @@ TEST(ServiceDrainInterleave, DiscardNewestDoesNotLetNewestBypassOldestOnRecovery
      * maxBlockSize bottoms out at ~MAX+overhead and each block holds
      * exactly one record. MAX-relative keeps the test portable across
      * SOLIDSYSLOG_MAX_MESSAGE_SIZE tunable overrides. With maxBlocks=2
-     * the store fits 2 records — small enough for the outage to overflow
+     * the store fits 2 records - small enough for the outage to overflow
      * with just a couple of messages. */
     DrainTestConfig cfg = {
         /*maxBlocks=*/2,
@@ -330,7 +330,7 @@ TEST(ServiceDrainInterleave, DiscardNewestDoesNotLetNewestBypassOldestOnRecovery
     Enqueue(3, cfg.PayloadSize);
     SolidSyslog_Service(solidSyslog);
 
-    /* Message 11 arrives still in outage — it lands in the buffer but
+    /* Message 11 arrives still in outage - it lands in the buffer but
      * hasn't been pulled by Service yet at the moment the oracle resumes. */
     Enqueue(11, cfg.PayloadSize);
 
@@ -350,7 +350,7 @@ TEST(ServiceDrainInterleave, DiscardNewestDoesNotLetNewestBypassOldestOnRecovery
 
     /* Structural assertion: successful sends must be in non-descending
      * order. ANY descent (e.g. 11 followed by 2) means a newer message
-     * jumped ahead of older ones — exactly the bug the BDD scenario
+     * jumped ahead of older ones - exactly the bug the BDD scenario
      * pins. */
     for (size_t i = 1; i < ids.size(); ++i)
     {
@@ -374,11 +374,11 @@ TEST(ServiceDrainInterleave, DiscardNewestDoesNotLetNewestBypassOldestOnRecovery
 
 /* Reproducer for the BDD discard-newest failure shape. With max-blocks=2
  * and a small max-block-size relative to the payload, an "outage" of 10
- * messages should produce *some* drain order — what matters is that the
+ * messages should produce *some* drain order - what matters is that the
  * ids drained are strictly ascending (oldest-first), regardless of which
  * ones got discarded by the policy.
  *
- * BDD on freertos-cross saw [1, 11, 2, 3, 4, 5, 6] — sequenceId 11
+ * BDD on freertos-cross saw [1, 11, 2, 3, 4, 5, 6] - sequenceId 11
  * interleaved between 1 and 2, which is structurally impossible for a
  * correct oldest-first drain. If this test reproduces that interleave,
  * we have the bug in our hands. */
@@ -388,7 +388,7 @@ TEST(BlockStoreDrainOrdering, OutageDrainProducesAscendingSequenceIds)
         {/*maxBlocks=*/2, /*maxBlockSize=*/200, /*payloadSize=*/64, SOLIDSYSLOG_DISCARD_POLICY_NEWEST};
     CreateStore(cfg);
 
-    /* Pre-outage send + drain — mirrors `When the client sends a message`
+    /* Pre-outage send + drain - mirrors `When the client sends a message`
      * + `Then the syslog oracle receives 1 message` in the BDD scenario. */
     CHECK_TRUE(WriteMessage(1, cfg.PayloadSize));
     LONGS_EQUAL(1U, DrainOne());
