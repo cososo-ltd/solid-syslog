@@ -372,8 +372,6 @@ Constraints:
   or suffix with `Ptr`. Pointer-ness is visible from the declaration.
 - **Booleans.** Predicates and boolean variables use `isX`, `hasX`,
   or `canX` shapes (`isValid`, `hasUnsent`, `canSend`).
-- **Out-parameters.** Output parameters use the `outX` prefix
-  (`SolidSyslogBuffer_Initialise(..., struct SolidSyslogBuffer** outBuffer)`).
 
 ### This-pointer parameters
 
@@ -926,7 +924,6 @@ static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer
 | Function parameter / local            | `lowerCamelCase`                           | `recordLength`, `bytesAvailable`           |
 | This-pointer parameter                | `self` (own type) / `base` (abstract base) | `* self` in helpers; `* base` in vtable impls |
 | Downcast helper                       | `Class_SelfFromBase` / `Class_SelfFromArg`  | `CircularBuffer_SelfFromBase`              |
-| Out-parameter                         | `outX` prefix                              | `outBuffer`                                |
 | Boolean / predicate                   | `isX` / `hasX` / `canX`                    | `isValid`, `hasUnsent`                     |
 | Loop variable                         | short domain word, lowerCamelCase          | `index`, `count`, `cursor`                 |
 | Struct member                         | `PascalCase`                               | `WriteCursor`, `IntegrityCheck`, `Write` (function-pointer member) |
