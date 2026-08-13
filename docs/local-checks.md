@@ -10,7 +10,7 @@ when, so the wait stays under a few minutes and CI catches the rest.
 | Tier | When | What | Wall-clock |
 |---|---|---|---|
 | **A** — fast feedback | Every commit on the branch | `cmake --build --preset debug --target junit` for whatever preset matches the diff (gcc / clang / freertos-host) | ~30–60 s |
-| **B** — pre-push | First push to the branch and any push that changes production source | A + format reflowed includes + `misra_renumber.py` + `check_spdx_headers.py` | ~2–3 min |
+| **B** — pre-push | First push to the branch and any push that changes production source | A + format reflowed includes + `misra_renumber.py`, plus `check_spdx_headers.py` when a file was added | ~2–3 min |
 | **C** — none | — | — | — |
 | **CI** — everything else | After push | `tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel; results in ~10–15 min |
 
