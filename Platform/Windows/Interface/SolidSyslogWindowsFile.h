@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  Windows file I/O (MSVC <io.h>: _sopen_s / _read / _write / _lseeki64 /
  *  _chsize_s) behind the SolidSyslogFile vtable, for a file-backed BlockDevice

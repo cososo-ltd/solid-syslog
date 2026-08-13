@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  The atomic-counter role: hand out the next sequenceId (Increment), wrap-aware
  *  over [1, 2^31 - 1] and never 0 per RFC 5424 §7.3.1. This call dispatches to

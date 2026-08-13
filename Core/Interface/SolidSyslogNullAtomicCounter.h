@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  The no-op AtomicCounter Null object: Increment returns 1U unconditionally, the safest
  *  value when a real counter is unavailable (RFC 5424 §7.3.1 forbids a sequenceId of 0). */

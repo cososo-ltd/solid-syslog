@@ -747,6 +747,22 @@ jobs:
             exit 1
           fi
 
+  # Asserts every shipped source file carries the licence header, and that none
+  # of them claims anyone else's copyright. Both halves matter: the header is
+  # the only statement of terms that travels with a file copied out of the tree
+  # by a Path B integrator, and the no-third-party-code invariant in Core/ and
+  # Platform/ is what makes it safe to stamp our copyright across all of them.
+  # Pure file scan, no toolchain — runs in about a second.
+  analyze-spdx:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check licence headers
+        run: python3 scripts/check_spdx_headers.py
+
   analyze-markdown:
     runs-on: ubuntu-latest
     steps:
@@ -1737,7 +1753,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, build-linux-c99, build-linux-c89-headers, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-markdown, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip, verify-manifest, consumer-smoke-linux, consumer-smoke-freertos-cross]
+    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, build-linux-c99, build-linux-c89-headers, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip, verify-manifest, consumer-smoke-linux, consumer-smoke-freertos-cross]
     runs-on: ubuntu-latest
     permissions:
       contents: read

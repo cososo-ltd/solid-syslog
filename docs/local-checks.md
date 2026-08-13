@@ -10,7 +10,7 @@ when, so the wait stays under a few minutes and CI catches the rest.
 | Tier | When | What | Wall-clock |
 |---|---|---|---|
 | **A** — fast feedback | Every commit on the branch | `cmake --build --preset debug --target junit` for whatever preset matches the diff (gcc / clang / freertos-host) | ~30–60 s |
-| **B** — pre-push | First push to the branch and any push that changes production source | A + format reflowed includes + `misra_renumber.py` | ~2–3 min |
+| **B** — pre-push | First push to the branch and any push that changes production source | A + format reflowed includes + `misra_renumber.py`, plus `check_spdx_headers.py` when a file was added | ~2–3 min |
 | **C** — none | — | — | — |
 | **CI** — everything else | After push | `tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel; results in ~10–15 min |
 
@@ -32,6 +32,9 @@ Tier B does MISRA-line-drift cleanup, so scope it to what changed:
 - Touched any `Core/Source/`, `Platform/*/Source/`, or public-header file:
   run `clang-format -i` over touched files and
   `scripts/misra_renumber.py --apply` to update the suppressions.
+- Added any file under `Core/` or `Platform/`: run
+  `python3 scripts/check_spdx_headers.py`. It is a sub-second file scan, so it
+  costs nothing to run on every push if you would rather not think about it.
 
 ## Running Tier B
 
@@ -70,6 +73,25 @@ docker compose -f .devcontainer/docker-compose.yml run --rm freertos-host \
 
 CI runs both lanes advisory, findings appear in the `iwyu-report` and
 `iwyu-report-freertos-plustcp` artifacts and don't block the build.
+
+### Licence headers
+
+Every file under `Core/` and `Platform/` opens with the SPDX header, and none
+of them may claim anyone else's copyright:
+
+```bash
+python3 scripts/check_spdx_headers.py
+```
+
+Both the copyright line and the licence expression are read out of `LICENSE.md`
+at run time, so there is nothing to keep in step by hand — the check fails if
+the tree and the licence disagree.
+
+The second half is a tripwire rather than a style rule. `Core/` and `Platform/`
+contain no third-party code, and that invariant is what makes it safe to stamp
+our copyright across every file in them. If it fires, the question is whether
+the file belongs in the shipped library at all — there is deliberately no
+allowlist.
 
 ## Markdown
 

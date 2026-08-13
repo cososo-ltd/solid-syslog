@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  ChaN FatFs file I/O (f_open / f_read / f_write / f_close) behind the
  *  SolidSyslogFile vtable, for a file-backed BlockDevice or Store. f_sync runs

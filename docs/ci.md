@@ -25,6 +25,7 @@ without renaming what's already there.
 | `analyze-iwyu-freertos-plustcp` | `iwyu` | IWYU over the same FreeRTOS-Plus-TCP set. Advisory |
 | `analyze-iwyu-freertos-lwip` | `iwyu` | IWYU over the same lwIP set. Advisory |
 | `analyze-markdown` | — | `markdownlint-cli2` over every tracked `.md` file |
+| `analyze-spdx` | — | `scripts/check_spdx_headers.py`: every file under `Core/` and `Platform/` carries the licence header `LICENSE.md` declares, and none claims anyone else's copyright |
 | `integration-linux-openssl` | `debug` | Runs the in-process TLS integration tests against libssl (no network oracle) |
 | `integration-linux-mbedtls` | `debug` | The same integration tests against Mbed TLS, exercising `SolidSyslogMbedTlsStream` and the Mbed TLS security policies |
 | `integration-windows-openssl` | `msvc-debug` | Same TLS integration tests on `windows-latest` against libssl from vcpkg |
