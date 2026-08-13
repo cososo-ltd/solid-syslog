@@ -415,7 +415,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfStaleHandleReportsWarning)
 /* Slot-indexed queue names are only observable with at least two pool
  * slots. The default build runs at pool size 1; the
  * `tunable-override-debug` preset bumps it to 2 (see
- * Tests/Fixtures/SmallMessageSizeTunables.h). When the runtime pool
+ * Tests/Fixtures/TunableOverrides.h). When the runtime pool
  * size can't host a second slot, print a notice and exit cleanly via
  * TEST_EXIT so the test is honestly accounted for in the run rather
  * than compiled out. Local pointers (not fixture's `pooled[]`) so the
