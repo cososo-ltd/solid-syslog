@@ -91,8 +91,8 @@ the BDD targets are never configured.
 the list is authoritative: a platform it does not name is silently absent from the build,
 and therefore from the analysis. An assertion step then fails the lane unless every named
 platform produced compiled objects — proving what the compiler emitted rather than what
-the configure was asked for, since a platform that is selected but contributes no sources
-would satisfy any check of the selection itself.
+the configure step was asked for, since a platform that is selected but contributes no
+sources would satisfy any check of the selection itself.
 
 Triage follows the support tiers rather than the reported severity:
 
@@ -112,7 +112,7 @@ Code scanning contributes two required contexts, and both are needed:
   merge green because the job itself succeeded.
 
 Both were made required on a clean baseline: `security-extended` produced no alerts over
-the whole tree, so nothing had to be grandfathered in.
+the consumer build it analyses, so nothing had to be grandfathered in.
 
 A clean baseline is not the same as an absence of vulnerabilities. Much of
 `security-extended` is taint tracking, and this database offers it no source: `Core/`

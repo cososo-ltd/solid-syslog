@@ -50,8 +50,6 @@ what matters — it becomes the permanent commit message on `main` on squash mer
 - Squash merge only — other merge strategies are disabled
 - Branches are deleted automatically after merge
 
-When cloning this template, reconfigure these branch protection rules on the new repository.
-
 ---
 
 ## Issue / Epic Linking
@@ -616,10 +614,11 @@ where it is implemented.
 
 An issue or pull request is linked while its work is outstanding, and only then.
 A reader who has just been told that a platform diverges from a contract wants
-to see whether that is still true, so an open issue earns its link. Once the
-issue closes the text describing the divergence is no longer true either — so
-the prose and the link come out together, and the page says what the library
-does now.
+to see whether that is still true, so an open issue earns its link. When the
+issue closes, read the prose against the code before deleting either: a fixed
+divergence takes the prose and the link out together, and the page says what the
+library does now — but an issue closed as not planned leaves the divergence
+standing, so only the link goes and the prose stays, no longer promising a fix.
 
 This applies to source comments with more force than to documentation. Neither
 is a place to keep history: `feedback from PR #407`, `found during S08.03
@@ -635,9 +634,11 @@ repo-relative; `hooks/source_links.py` rewrites whatever escapes `docs/` to a
 canonical URL at build time.
 
 Pointing the other way, **a page under `docs/` links a root document by its
-repo-relative path** — `../../LICENSE.md`, not `../license.md` — exactly as it
-links any other file outside `docs/`. Where that document is one `root_pages.py`
-publishes, `source_links.py` re-aims the link at its published page instead of
+repo-relative path**, counted from that page's own directory — `../LICENSE.md`
+from `docs/`, `../../LICENSE.md` from `docs/security/` — exactly as it links any
+other file outside `docs/`, and never at the site path `license.md`. Where that
+document is one `root_pages.py` publishes, `source_links.py` re-aims the link at
+its published page instead of
 sending it out to the repository host; sending a reader away for the licence or
 the security policy is the very thing publishing it exists to prevent. So the
 source form is the one that works on GitHub and in a clone, and the site resolves
