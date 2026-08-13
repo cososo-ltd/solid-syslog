@@ -52,6 +52,21 @@
       ],
       "externalReferences": [
         {
+          "type": "license",
+          "url": "https://polyformproject.org/licenses/noncommercial/1.0.0",
+          "comment": "Full text for PolyForm-Noncommercial-1.0.0. A verbatim copy also ships at LICENSES/PolyForm-Noncommercial-1.0.0.md and is covered by solidsyslog:source-tree-sha256."
+        },
+        {
+          "type": "license",
+          "url": "https://polyformproject.org/licenses/internal-use/1.0.0",
+          "comment": "Full text for LicenseRef-PolyForm-Internal-Use-1.0.0, which SPDX does not list. A verbatim copy also ships at LICENSES/PolyForm-Internal-Use-1.0.0.md and is covered by solidsyslog:source-tree-sha256."
+        },
+        {
+          "type": "license",
+          "url": "https://www.cososo.co.uk/#contact",
+          "comment": "LicenseRef-COSOSO-Commercial is a negotiated agreement with no single public text; this is the enquiry route."
+        },
+        {
           "type": "vcs",
           "url": "https://github.com/cososo-ltd/solid-syslog"
         },

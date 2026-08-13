@@ -79,6 +79,7 @@ Key fields worth reading:
 | `metadata.component.version` | The value from `.release-please-manifest.json` at the time of generation. Pre-release: `0.0.0`. |
 | `metadata.component.purl` | Package URL keyed to the exact commit SHA — unambiguous pointer back to the source. |
 | `metadata.component.supplier.name` | `Cozens Software Solutions Limited (COSOSO)`. |
+| `metadata.component.externalReferences[type=license]` | One per term in the expression, so a scanner can resolve each to a document instead of leaving it unknown. See [reading the licence expression](#reading-the-licence-expression). |
 | `metadata.component.licenses[0].expression` | `PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial` — an SPDX expression, because the library is offered under three alternative licences and the recipient chooses. Only the Noncommercial identifier is on the SPDX License List; the other two are `LicenseRef-`. |
 | `metadata.properties[solidsyslog:source-tree-sha256]` | Content-tree hash: SHA-256 of a sorted list of `<content-sha256>  <path>` lines for every tracked file in `Core/` + `Platform/` plus the root-level `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`, and `LICENSES/`, at the commit. Reproducible byte-for-byte from any clone, with no dependency on `git archive` output format or git version. |
 
@@ -115,17 +116,27 @@ different reasons:
 | `LicenseRef-PolyForm-Internal-Use-1.0.0` | A published, unmodified PolyForm licence that SPDX has not listed. The verbatim text ships in the repository and is linked from [`LICENSE.md`](../../LICENSE.md). |
 | `LicenseRef-COSOSO-Commercial` | A negotiated agreement between COSOSO and the licensee. It has no single public text, so no published identifier could describe it. |
 
-Expect a scanner to resolve both as unknown or custom and raise a review item.
-**That is the mechanism working, not a finding against the component.** A
-`LicenseRef-` is how SPDX names a licence its list does not cover, and for the
-PolyForm term the full text is in the repository for a reviewer who needs to
-read it.
+If your scanner reports these identifiers as unknown or custom, that result is
+expected. A `LicenseRef-` is how SPDX names a licence its list does not cover,
+so there is no template in any scanner's corpus for it to match — and for the
+PolyForm term the verbatim text ships in the repository, for a reviewer who
+needs to read it.
+
+An unknown identifier is not, by itself, evidence of a licence defect. Neither
+is it a resolution: the item stays open until you have confirmed which of the
+three terms your organisation relies on, and hold the evidence for it.
+
+So that the terms resolve to documents rather than to nothing, the SBOM carries
+an `externalReferences` entry of type `license` for each of the three: the
+canonical URL for each PolyForm licence, and the enquiry route for the
+commercial one. An SPDX expression has nowhere to put a URL, which is why they
+are attached to the component instead.
 
 ### Which term applies
 
 | If your organisation is | The term you rely on |
 |---|---|
-| Evaluating, porting, integrating or testing SolidSyslog internally — commercial organisations included | `LicenseRef-PolyForm-Internal-Use-1.0.0` |
+| Using SolidSyslog in the internal business operations of you and your company — which covers evaluation, porting, integration and testing, and internal deployment, commercial organisations included | `LicenseRef-PolyForm-Internal-Use-1.0.0` |
 | Distributing it for a noncommercial purpose | `PolyForm-Noncommercial-1.0.0` |
 | Supplying, selling or otherwise making available a commercial product, device, firmware or service containing it | `LicenseRef-COSOSO-Commercial` |
 
@@ -142,21 +153,61 @@ concluded licence for this component in your own product SBOM. Carrying the
 disjunction forward re-raises the same review item on every rebuild, and
 misstates your position to anyone reading your SBOM downstream.
 
-For a commercial licensee:
+For either PolyForm term an expression is enough, because the identifier
+resolves to a published text:
 
 ```json
-{
-  "type": "library",
-  "name": "SolidSyslog",
-  "version": "<the version you ship>",
-  "purl": "pkg:github/cososo-ltd/solid-syslog@<commit-sha>",
-  "licenses": [
-    { "expression": "LicenseRef-COSOSO-Commercial" }
-  ]
-}
+"licenses": [
+  { "expression": "PolyForm-Noncommercial-1.0.0" }
+]
 ```
 
-Substitute whichever single term you rely on.
+`LicenseRef-COSOSO-Commercial` needs more. It names a class of negotiated
+agreement rather than your particular contract, so on its own it tells a
+downstream reader of your SBOM nothing about what was granted. CycloneDX has
+fields for exactly this — use the named-licence form:
+
+```json
+"licenses": [
+  {
+    "license": {
+      "name": "COSOSO Commercial Licence",
+      "url": "https://www.cososo.co.uk/#contact",
+      "licensing": {
+        "licensor": {
+          "organization": { "name": "Cozens Software Solutions Limited" }
+        },
+        "licensee": {
+          "organization": { "name": "<your organisation>" }
+        },
+        "purchaseOrder": "<your agreement or PO reference>",
+        "licenseTypes": ["oem"],
+        "expiration": "<RFC 3339 timestamp, if your agreement has a term>"
+      }
+    }
+  }
+]
+```
+
+`licenseTypes` takes values from CycloneDX's own enumeration — `oem`,
+`appliance`, `perpetual`, `subscription` and others — so pick whichever
+describes your agreement. A `licenses` array is *either* a list of named
+licences *or* exactly one expression; the two forms cannot be mixed.
+
+**Do not put the agreement itself in `license.text`.** A negotiated commercial
+agreement is confidential between the parties, and an SBOM is a document you
+distribute. The reference is what belongs here; the terms are not.
+
+The same question applies to `purchaseOrder` and `licensee`. They are exactly
+right in an internal compliance record, but if you pass this SBOM on to your
+own customers, your commercial arrangements travel with it. Decide which of
+these fields belong in the copy you distribute and which stay in the copy you
+keep — `name` and `url` alone are enough to resolve the identifier.
+
+Whichever term applies, keep the evidence for it — the agreement reference for
+a commercial licence, or a record of the permitted purpose relied on for a
+PolyForm one — in your compliance record alongside the SBOM entry. That is what
+lets the next reviewer resolve this without repeating your work.
 
 ### A policy rule you can adopt
 
@@ -164,9 +215,10 @@ Stated in prose rather than a vendor syntax, because the encoding differs
 across scanning platforms:
 
 > SolidSyslog is a disjunctively multi-licensed component. Resolve it to the
-> single term this organisation holds, record that as the concluded licence,
-> and close the item. Do not assess the component against the noncommercial
-> term unless that is the term being relied on.
+> single term this organisation holds, record that as the concluded licence
+> together with the evidence supporting it, and close the item on that basis.
+> Do not assess the component against the noncommercial term unless that is the
+> term being relied on.
 
 If your review turns up a question this page does not answer, ask before
 escalating it internally: <https://www.cososo.co.uk/#contact>.
