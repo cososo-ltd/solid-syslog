@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  A Mutex wrapping a statically-allocated FreeRTOS mutex semaphore, for
  *  thread-safe buffers and pools on a FreeRTOS target. Requires

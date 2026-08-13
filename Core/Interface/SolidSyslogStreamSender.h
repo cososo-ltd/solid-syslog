@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  A Sender that delivers each message octet-framed (RFC 6587 octet-counting: a
  *  decimal length, a space, then the message bytes) over any injected Stream -

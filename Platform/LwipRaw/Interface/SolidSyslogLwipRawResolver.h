@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  The lwIP Raw resolver for a collector named by address: it resolves nothing,
  *  it parses the numeric literal you configured.

@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  An in-memory ring Buffer that decouples Log (enqueue) from Service (drain),
  *  backed entirely by caller-supplied storage - no allocation of its own.

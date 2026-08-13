@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  The value sink a callback writes an RFC 5424 header field (HOSTNAME /
  *  APP-NAME / PROCID) into; the sink owns the charset and the field width. */

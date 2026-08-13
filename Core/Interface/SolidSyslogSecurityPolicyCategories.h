@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  Portable category constants (uint16_t macros) for the SecurityPolicy role:
  *  SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE / _SEAL_FAILED / _OPEN_FAILED. */

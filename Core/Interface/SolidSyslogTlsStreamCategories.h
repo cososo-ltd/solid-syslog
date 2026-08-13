@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  Portable category constants (uint16_t macros) for the TLS-stream role:
  *  SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED / _HANDSHAKE_FAILED. */

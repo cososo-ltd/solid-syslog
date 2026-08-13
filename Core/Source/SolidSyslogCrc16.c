@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /*
  * CRC-16/CCITT-FALSE (ITU-T V.41)
  *   Polynomial: 0x1021  Init: 0xFFFF  RefIn: false  RefOut: false  XorOut: 0x0000

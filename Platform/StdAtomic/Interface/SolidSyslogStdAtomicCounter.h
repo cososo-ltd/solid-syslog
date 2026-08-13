@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  An AtomicCounter over C11 <stdatomic.h>, backing the RFC 5424 sequenceId.
  *  Increment runs an atomic_compare_exchange_strong_explicit CAS loop

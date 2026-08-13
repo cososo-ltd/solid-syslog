@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  CRC-16/CCITT-FALSE checksum (poly 0x1021, init 0xFFFF, no reflection, no
  *  final XOR; a.k.a. CRC-16/IBM-3740, check value 0x29B1). A pure function over

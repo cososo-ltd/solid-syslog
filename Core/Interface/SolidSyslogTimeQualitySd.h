@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  A StructuredData source for the RFC 5424 §7.1 "timeQuality" SD-ELEMENT (IANA
  *  SD-ID, so no enterprise-number suffix), emitted on every message the owning

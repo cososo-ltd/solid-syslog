@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
 /** @file
  *  The application logging API: SolidSyslog_Log / SolidSyslog_LogWithSd to emit an event,
  *  SolidSyslog_Service to drive delivery, and the SolidSyslogMessage struct. */
