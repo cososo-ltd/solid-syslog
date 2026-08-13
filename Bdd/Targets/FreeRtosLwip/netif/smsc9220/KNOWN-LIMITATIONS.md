@@ -120,5 +120,3 @@ category) as a single good-citizen report; the driver is Arm-origin, so a fix
 may land either in the FreeRTOS-Plus-TCP copy or at the Arm source. If upstream
 lands hardware-validated fixes, prefer re-syncing to the upstream commit over
 carrying local patches.
-
-Tracked locally as story S28.12 (#479), closed as documented known-limitations.

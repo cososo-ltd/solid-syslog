@@ -26,12 +26,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     {
         bool TzKnown; /**< Emitted as tzKnown=1/0: is the local timezone known. */
         bool IsSynced; /**< Emitted as isSynced=1/0: is the clock synced to a reliable source. */
-        /** syncAccuracy in microseconds; SOLIDSYSLOG_SYNC_ACCURACY_OMIT omits the field.
-         *  RFC 5424 §7.1.3 forbids the parameter when isSynced is 0, so a callback
-         *  reporting IsSynced false must leave this at SOLIDSYSLOG_SYNC_ACCURACY_OMIT.
-         *  The field is written whenever it holds any other value - the pairing is
-         *  the caller's to keep until #748 enforces it. §7.1.3 also asks that it be
-         *  written only where the accuracy of the time source is actually known. */
+        /** Emitted as syncAccuracy: how closely the clock is synced, in microseconds,
+         *  when IsSynced is true. Set SOLIDSYSLOG_SYNC_ACCURACY_OMIT when it is false,
+         *  or when the accuracy is unknown, to omit the field. RFC 5424 §7.1.3. */
         uint32_t SyncAccuracyMicroseconds;
     };
 

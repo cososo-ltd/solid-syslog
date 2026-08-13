@@ -82,7 +82,7 @@ elseif(SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM)
         target_link_libraries(SolidSyslogBddTarget PRIVATE OpenSSL::SSL OpenSSL::Crypto)
     endif()
     # Merge the activeCodePage="UTF-8" manifest fragment into the linker's
-    # auto-generated manifest so the MSVC CRT decodes argv as UTF-8 (S13.17 #221).
+    # auto-generated manifest so the MSVC CRT decodes argv as UTF-8.
     target_link_options(SolidSyslogBddTarget PRIVATE
         "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/Windows/BddTargetWindows.manifest"
     )

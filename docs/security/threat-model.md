@@ -86,7 +86,7 @@ rather than left out.
 [CRA guide](../cra.md) and [IEC 62443 guide](../iec62443.md) map what the library
 provides against those frameworks. [RFC compliance](../rfc-compliance.md) states
 what it emits clause by clause. The disclosure process for issues found against
-this page is in [Security policy](policy.md).
+this page is in [Security policy](../../SECURITY.md).
 
 This page is reviewed on any change that alters an edge or the division of
 responsibility: a new transport, a new platform, or a new extension point. The

@@ -169,8 +169,8 @@ UTF8_BOM_CHAR = "\ufeff"
 
 
 def _strip_msg_bom(msg):
-    """The library emits the RFC 5424 §6.4 UTF-8 BOM at the start of every MSG
-    (S12.13 #219). It's a transport-layer prefix, not part of the body the
+    """The library emits the RFC 5424 §6.4 UTF-8 BOM at the start of every MSG.
+    It's a transport-layer prefix, not part of the body the
     test author cares about, so strip it on the receive side so that
     MSG-content assertions can compare the body bytes directly."""
     if msg.startswith(UTF8_BOM_CHAR):

@@ -1,16 +1,16 @@
 # Vulnerability Triage Runbook
 
-This is the maintainer's operational counterpart to [Security policy](policy.md):
+This is the maintainer's operational counterpart to [Security policy](../../SECURITY.md):
 how a vulnerability report is handled end-to-end, from receipt to retrospective.
-`SECURITY.md` states the public promises (72-hour acknowledgement, 90+14
-disclosure); this runbook is how they are met.
+The [security policy](../../SECURITY.md) states the public promises (72-hour
+acknowledgement, 90+14 disclosure); this runbook is how they are met.
 
 The single tracking record for any vulnerability is its draft GitHub Security
 Advisory (GHSA). No separate issue, spreadsheet, or external tracker: the draft
 GHSA holds the timeline, severity, affected/fixed versions, and reporter details
 from receipt through publication.
 
-Reports arrive via the channels in `SECURITY.md`: GitHub private vulnerability
+Reports arrive via the channels in the [security policy](../../SECURITY.md): GitHub private vulnerability
 reporting (which opens a draft GHSA directly) or the `cososo.co.uk/security/report`
 web form.
 
@@ -25,7 +25,7 @@ web form.
 
 ## Stage 2 — Triage (days 0–7)
 
-- [ ] Scope the issue against the support tiers (see `SECURITY.md`):
+- [ ] Scope the issue against the support tiers (see the [security policy](../../SECURITY.md)):
   - **Tier 1 `Core/`**: full treatment (CVE, advisory, fix, signed release).
   - **Tier 2 `Platform/`** / **Tier 3 `Bdd/Targets/`**: advisory only, no CVE
     unless the root cause reaches into `Core/`.
@@ -33,7 +33,7 @@ web form.
     redirect; see *Non-standard reports* below.
   - **Not a supported product** (test code, build/CI infrastructure,
     documentation): out of scope; no CVE or release treatment, matching
-    `SECURITY.md`.
+    the [security policy](../../SECURITY.md).
 - [ ] Reproduce where feasible; record the reproduction in the advisory.
 - [ ] Only once the issue is confirmed in-scope and reproduced, assign a
       CVSS v3.1 vector and score and derive the qualitative band; this
@@ -116,7 +116,8 @@ intake), and are not retained beyond what the coordination requires.
 
 ## Maintainer unavailability
 
-The public timelines are best-effort (see `SECURITY.md`'s force-majeure clause).
+The public timelines are best-effort (see the [security policy](../../SECURITY.md)'s
+force-majeure clause).
 When unavailable:
 
 - **Short-term** (days): covered by the stated SLAs plus the force-majeure clause.

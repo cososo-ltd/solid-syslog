@@ -36,8 +36,8 @@ class RewriteTargets(unittest.TestCase):
                       render('[d](../Core/Interface/)'))
 
     def test_parent_of_docs_from_subpage(self):
-        self.assertIn(REPO + '/blob/main/SECURITY.md',
-                      render('[s](../../SECURITY.md)', src_path='security/threat-model.md'))
+        self.assertIn(REPO + '/blob/main/CONTRIBUTING.md',
+                      render('[c](../../CONTRIBUTING.md)', src_path='security/threat-model.md'))
 
     def test_in_docs_link_untouched(self):
         self.assertEqual('[rp](../release-process.md)',
@@ -60,6 +60,37 @@ class RewriteTargets(unittest.TestCase):
             self.assertIn(REPO + '/blob/v1.2.3/Core/Foo.h', render('[h](../Core/Foo.h)'))
         finally:
             del os.environ['SOLIDSYSLOG_DOCS_REF']
+
+
+class PublishedRootPages(unittest.TestCase):
+    """A root document the site publishes resolves to its page, not to GitHub.
+
+    Sending a reader out to the repository host for the licence or the security
+    policy is what hooks/root_pages.py exists to prevent, so these targets are
+    re-aimed rather than rewritten.
+    """
+
+    def test_published_root_page_from_subpage(self):
+        self.assertEqual('[s](policy.md)',
+                         render('[s](../../SECURITY.md)', src_path='security/triage-runbook.md'))
+
+    def test_published_root_page_from_top_level_page(self):
+        self.assertEqual('[l](license.md)', render('[l](../LICENSE.md)'))
+
+    def test_published_root_page_keeps_fragment(self):
+        self.assertEqual('[l](license.md#continuity)',
+                         render('[l](../LICENSE.md#continuity)'))
+
+    def test_published_licence_text_from_subpage(self):
+        self.assertEqual(
+            '[p](../licenses/polyform-noncommercial-1.0.0.md)',
+            render('[p](../../LICENSES/PolyForm-Noncommercial-1.0.0.md)',
+                   src_path='security/sbom.md'),
+        )
+
+    def test_unpublished_root_page_still_goes_to_the_host(self):
+        self.assertIn(REPO + '/blob/main/CODE_OF_CONDUCT.md',
+                      render('[c](../CODE_OF_CONDUCT.md)'))
 
 
 class LinkTitles(unittest.TestCase):

@@ -42,10 +42,11 @@ what matters — it becomes the permanent commit message on `main` on squash mer
 **Branch protection rules (configured on GitHub):**
 
 - Direct pushes to `main` are blocked
-- PRs require all status checks to pass before merging: CodeQL, analyze-codeql, analyze-cppcheck, analyze-format, analyze-iwyu, analyze-iwyu-freertos-lwip, analyze-iwyu-freertos-plustcp, analyze-markdown, analyze-spdx, analyze-tidy, analyze-tidy-freertos-lwip, analyze-tidy-freertos-plustcp, bdd-freertos-qemu-lwip, bdd-freertos-qemu-plustcp, bdd-linux-syslog-ng, bdd-windows-otel, build-freertos-host-tdd-plustcp, build-freertos-target-lwip, build-freertos-target-plustcp, build-linux-c89-headers, build-linux-c99, build-linux-clang, build-linux-gcc, build-linux-tunable-override, build-windows-msvc, consumer-smoke-freertos-cross, consumer-smoke-linux, coverage-linux-gcc, docs-build, integration-linux-mbedtls, integration-linux-openssl, integration-windows-openssl, sanitize-linux-gcc, summary, verify-manifest
-- The `analyze-iwyu*` lanes run `continue-on-error: true` — they are required contexts but advisory in substance, so they report success whatever IWYU finds
-- Code scanning contributes two contexts and both are required. `analyze-codeql` is the Actions job in `codeql.yml`, and proves the analysis ran; `CodeQL` is the code-scanning results check, and is the one that fails when a PR introduces a new alert. Requiring only the job would let a PR add findings and still merge green
-- Feeding the `summary` aggregator does **not** make a lane blocking. `summary` is declared `if: always()` and asserts nothing about `needs.*.result`, so a new lane gates merges only once its own context is added to the required list above
+- PRs require all status checks to pass before merging. Which lanes those are, what each
+  one exercises, and the two qualifications on what "required" buys — the advisory
+  `analyze-iwyu*` lanes, and why feeding `summary` does not make a lane blocking — are in
+  [docs/ci.md](docs/ci.md). Read the list from GitHub, not from a copy:
+  `gh api repos/cososo-ltd/solid-syslog/branches/main/protection --jq '.required_status_checks.contexts[]'`
 - Squash merge only — other merge strategies are disabled
 - Branches are deleted automatically after merge
 
@@ -613,15 +614,37 @@ symbol has a generated API page, link that; otherwise name the file in code font
 and leave it there. The page's job is to say what the library does, not to show
 where it is implemented.
 
-Issues and pull requests are the opposite case, and are linked. They are the
-tracking record, and a reader who has just been told that a platform diverges
-from a contract wants to see whether that is still true.
+An issue or pull request is linked while its work is outstanding, and only then.
+A reader who has just been told that a platform diverges from a contract wants
+to see whether that is still true, so an open issue earns its link. Once the
+issue closes the text describing the divergence is no longer true either — so
+the prose and the link come out together, and the page says what the library
+does now.
+
+This applies to source comments with more force than to documentation. Neither
+is a place to keep history: `feedback from PR #407`, `found during S08.03
+(#290)`, `raised under S10.06` all describe how the code came to be, which the
+git history already holds. A comment or a page that names a closed issue is a
+defect to fix on the next touch. External references — an upstream project's
+issue or pull request — are citations rather than history, and stay.
 
 The repository-root documents are outside this rule rather than an exception to
 it. `README.md`, `SECURITY.md`, `SUPPORT.md` and `LICENSE.md` are read on GitHub
 as well as published into the site by `hooks/root_pages.py`, so their links stay
 repo-relative; `hooks/source_links.py` rewrites whatever escapes `docs/` to a
 canonical URL at build time.
+
+Pointing the other way, **a page under `docs/` links a root document by its
+repo-relative path** — `../../LICENSE.md`, not `../license.md` — exactly as it
+links any other file outside `docs/`. Where that document is one `root_pages.py`
+publishes, `source_links.py` re-aims the link at its published page instead of
+sending it out to the repository host; sending a reader away for the licence or
+the security policy is the very thing publishing it exists to prevent. So the
+source form is the one that works on GitHub and in a clone, and the site resolves
+it internally. Do not hand-write the site path: it exists only at build time, so
+it is dead in every other rendering. The `PUBLISHED` map in `root_pages.py` decides
+which documents get this — one that is not published (`CONTRIBUTING.md`,
+`CODE_OF_CONDUCT.md`) is rewritten to the host like any other source file.
 
 ---
 

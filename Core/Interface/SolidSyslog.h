@@ -62,7 +62,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *                                      (a send was attempted and failed); back off, a
      *                                      Log will wake it.
      *  @retval SOLIDSYSLOG_SERVICE_HALTED  The store is halted (only under
-     *                                      SolidSyslogDiscardPolicy_Halt); alarm / slow heartbeat.
+     *                                      SOLIDSYSLOG_DISCARD_POLICY_HALT); alarm / slow heartbeat.
      *
      *  Buffer drain out-ranks a send failure: a down sender never demotes the
      *  loop out of "keep draining" while the buffer still has records to move. */

@@ -50,7 +50,7 @@ struct FileFake;
 /* openOwner pins the FileFake instance that currently has the entry open. NULL
  * when no instance holds it. A second Open by any other instance trips
  * TestAssert_Fail - that is the single-handle-per-path invariant the store
- * layer relies on (see S27.01 / E27 #345). Ownership clears on the owner's
+ * layer relies on. Ownership clears on the owner's
  * Close; Delete leaves it intact because the original holder is still the
  * only one who can legitimately Close its (now-zombie) handle. */
 struct FileEntry

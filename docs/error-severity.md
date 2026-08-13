@@ -67,11 +67,11 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 | `BAD_CONFIG` — fatal | `CRITICAL` | `<Class>_Create` fell back to Null. Single-sourced via `SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY`. |
 | `BAD_CONFIG` — degraded | `WARNING` | component still constructs and delivers (e.g. MetaSd without a counter, block-too-small, TLS chain-only). Emitted with an explicit `SOLIDSYSLOG_SEVERITY_WARNING` literal at the site, not the macro. |
 | `UNKNOWN_DESTROY` | `WARNING` | benign lifecycle misuse: library keeps working. Single-sourced via `SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY`. |
-| `TLSSTREAM_HANDSHAKE_FAILED` — rejected | `ERROR` | cert / protocol: a human must fix the peer or the cert. |
-| `TLSSTREAM_HANDSHAKE_FAILED` — timeout | `WARNING` | transient: may clear on the next reconnect. |
-| `TLSSTREAM_INIT_FAILED` | `ERROR` | setup fault needing a human; not split. |
-| `SECURITYPOLICY_KEY_UNAVAILABLE` | `ERROR` | key too short / unavailable: provisioned in the field by the operator / systems integrator, fixable without a code change. |
-| `SECURITYPOLICY_SEAL_FAILED` / `_OPEN_FAILED` | `ERROR` | runtime crypto operation failed. |
+| `TLS_STREAM_HANDSHAKE_FAILED` — rejected | `ERROR` | cert / protocol: a human must fix the peer or the cert. |
+| `TLS_STREAM_HANDSHAKE_FAILED` — timeout | `WARNING` | transient: may clear on the next reconnect. |
+| `TLS_STREAM_INIT_FAILED` | `ERROR` | setup fault needing a human; not split. |
+| `SECURITY_POLICY_KEY_UNAVAILABLE` | `ERROR` | key too short / unavailable: provisioned in the field by the operator / systems integrator, fixable without a code change. |
+| `SECURITY_POLICY_SEAL_FAILED` / `_OPEN_FAILED` | `ERROR` | runtime crypto operation failed. |
 | `BUFFER_BACKEND_FAILED` | `ERROR` | message-queue backend fault; not split. |
 | `RESOLVER_RESOLVE_FAILED` | `WARNING` | DNS may resolve on a later attempt. |
 | `SENDER_DELIVERY_FAILED` | `WARNING` | destination outage: recoverable, store-and-forward covers it. |
