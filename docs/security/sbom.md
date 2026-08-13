@@ -145,6 +145,13 @@ comment saying what it is.
 | Distributing it for a noncommercial purpose | `PolyForm-Noncommercial-1.0.0` |
 | Supplying, selling or otherwise making available a commercial product, device, firmware or service containing it | `LicenseRef-COSOSO-Commercial` |
 
+If you arrived here from a source file rather than from the SBOM, the same
+answer applies. Every file under `Core/` and `Platform/` opens with a
+`SPDX-License-Identifier` carrying this same three-term expression, for the case
+where a file is copied into another build and leaves `LICENSE.md` behind. It is
+the same disjunction and it resolves the same way — establish which term your
+organisation relies on, and record that one.
+
 This table says only which term to read. The conditions each one attaches are
 in [`LICENSE.md`](../../LICENSE.md), which is the authoritative statement.
 
