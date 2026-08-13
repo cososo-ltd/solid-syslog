@@ -82,6 +82,95 @@ Key fields worth reading:
 | `metadata.component.licenses[0].expression` | `PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial` — an SPDX expression, because the library is offered under three alternative licences and the recipient chooses. Only the Noncommercial identifier is on the SPDX License List; the other two are `LicenseRef-`. |
 | `metadata.properties[solidsyslog:source-tree-sha256]` | Content-tree hash: SHA-256 of a sorted list of `<content-sha256>  <path>` lines for every tracked file in `Core/` + `Platform/` plus the root-level `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`, and `LICENSES/`, at the commit. Reproducible byte-for-byte from any clone, with no dependency on `git archive` output format or git version. |
 
+## Reading the licence expression
+
+Written for a compliance reviewer holding SolidSyslog as an item in a review
+queue. If you are choosing a licence rather than reviewing one,
+[`LICENSE.md`](../../LICENSE.md) is the document you want instead.
+
+`metadata.component.licenses[0].expression` reads:
+
+```text
+PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+```
+
+**`OR` is a choice, not an accumulation.** SPDX defines the operator as
+alternatives: a recipient relies on one term and complies with that one. The
+component is not encumbered by all three at once, and nothing obliges a
+recipient to satisfy the noncommercial term if they hold a different one.
+
+This expression is the whole licence question for the component. SolidSyslog
+vendors no third-party source, so the `components` array is empty and there is
+no transitive licence graph underneath it — see
+[why the platform backends are not components](#why-the-platform-backends-are-not-components).
+
+### Why two of the three are `LicenseRef-`
+
+Only `PolyForm-Noncommercial-1.0.0` appears on the
+[SPDX License List](https://spdx.org/licenses/). The other two do not, for
+different reasons:
+
+| Term | Why it is a `LicenseRef-` |
+|---|---|
+| `LicenseRef-PolyForm-Internal-Use-1.0.0` | A published, unmodified PolyForm licence that SPDX has not listed. The verbatim text ships in the repository and is linked from [`LICENSE.md`](../../LICENSE.md). |
+| `LicenseRef-COSOSO-Commercial` | A negotiated agreement between COSOSO and the licensee. It has no single public text, so no published identifier could describe it. |
+
+Expect a scanner to resolve both as unknown or custom and raise a review item.
+**That is the mechanism working, not a finding against the component.** A
+`LicenseRef-` is how SPDX names a licence its list does not cover, and for the
+PolyForm term the full text is in the repository for a reviewer who needs to
+read it.
+
+### Which term applies
+
+| If your organisation is | The term you rely on |
+|---|---|
+| Evaluating, porting, integrating or testing SolidSyslog internally — commercial organisations included | `LicenseRef-PolyForm-Internal-Use-1.0.0` |
+| Distributing it for a noncommercial purpose | `PolyForm-Noncommercial-1.0.0` |
+| Supplying, selling or otherwise making available a commercial product, device, firmware or service containing it | `LicenseRef-COSOSO-Commercial` |
+
+This table says only which term to read. The conditions each one attaches are
+in [`LICENSE.md`](../../LICENSE.md), which is the authoritative statement.
+
+### What to record in your own SBOM
+
+The expression above is SolidSyslog's **declared** licence — what COSOSO offers
+to any recipient. It is not a statement about your organisation's position.
+
+Once you have taken one of the three, record **that single term** as the
+concluded licence for this component in your own product SBOM. Carrying the
+disjunction forward re-raises the same review item on every rebuild, and
+misstates your position to anyone reading your SBOM downstream.
+
+For a commercial licensee:
+
+```json
+{
+  "type": "library",
+  "name": "SolidSyslog",
+  "version": "<the version you ship>",
+  "purl": "pkg:github/cososo-ltd/solid-syslog@<commit-sha>",
+  "licenses": [
+    { "expression": "LicenseRef-COSOSO-Commercial" }
+  ]
+}
+```
+
+Substitute whichever single term you rely on.
+
+### A policy rule you can adopt
+
+Stated in prose rather than a vendor syntax, because the encoding differs
+across scanning platforms:
+
+> SolidSyslog is a disjunctively multi-licensed component. Resolve it to the
+> single term this organisation holds, record that as the concluded licence,
+> and close the item. Do not assess the component against the noncommercial
+> term unless that is the term being relied on.
+
+If your review turns up a question this page does not answer, ask before
+escalating it internally: <https://www.cososo.co.uk/#contact>.
+
 ## How to generate one (rehearsal)
 
 Each run produces a CycloneDX 1.5 JSON file, validated against the spec by
