@@ -1,9 +1,7 @@
 # CMSDK APB UART — driver contract
 
 Reference document for `CmsdkUart.{h,c}` — the polled UART0 driver used by
-the FreeRTOS SingleTask example to route `printf` over QEMU `-serial stdio`.
-Written during S08.03 slice 2 (#290) review after a code-review pass found
-the v1 driver was missing `STATE.TX_FULL` polling.
+the FreeRTOS BDD targets to route `printf` over QEMU `-serial stdio`.
 
 The aim of this document is to capture *what the hardware demands* (vs what
 QEMU happens to tolerate), so that future readers — or readers porting to

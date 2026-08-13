@@ -157,13 +157,14 @@ and want to rule out corruption-in-transit.
 - It doesn't tell you whether the code behind the SBOM is bug-free, secure,
   or fit for purpose. The SBOM is provenance evidence, not a quality
   claim.
-- It doesn't tell you anything about the platform backends you link beside
+- It doesn't tell you anything about the platform adapters you link beside
   the library. The SBOM's `components[]` is empty because SolidSyslog vendors
-  nothing and depends on nothing; picking, versioning and verifying your
-  OpenSSL, Mbed TLS, lwIP or filesystem is your job, and they belong in your
-  product SBOM rather than this one.
+  nothing and depends on nothing; picking, versioning and verifying whatever
+  fills the network, TLS, filesystem and OS-primitive roles is your job, and
+  those belong in your product SBOM rather than this one.
 - It doesn't tell you whether the SolidSyslog licence is compatible with
-  your intended use. That's a licence review, not a signature check.
+  your intended use. That's a licence review, not a signature check — start
+  from [the licence](../../LICENSE.md).
 
-See `docs/iec62443.md` for the security posture, and `docs/security/sbom.md`
-for a walk-through of what the SBOM actually says.
+See the [threat model](threat-model.md) for the security posture, and
+[the SBOM](sbom.md) for a walk-through of what it actually says.

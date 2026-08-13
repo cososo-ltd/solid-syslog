@@ -49,8 +49,8 @@ without renaming what's already there.
 
 Every job in `ci.yml` is a required status check except `deploy-docs-pages`, which
 only runs on `main`, and so are the two contexts code scanning contributes —
-`analyze-codeql` and `CodeQL`. That is 34 required contexts. A PR cannot be merged
-unless all of them pass. Direct pushes to `main` are blocked. Squash merge only.
+`analyze-codeql` and `CodeQL`. A pull request cannot be merged unless all of them
+pass. Direct pushes to `main` are blocked. Squash merge only.
 
 Two qualifications on what "required" buys. The `analyze-iwyu*` lanes run
 `continue-on-error`, so they are required contexts that report success whatever IWYU
@@ -87,10 +87,12 @@ integrator compiles. Consuming the library as a subproject also scopes the datab
 without any bespoke flags: `SOLIDSYSLOG_IS_TOP_LEVEL` is false, so the unit tests and
 the BDD targets are never configured.
 
-`SOLIDSYSLOG_PLATFORMS` is named explicitly rather than left to auto-detection, and an
-assertion step fails the lane if a named platform is not selected. The list is
-authoritative: a pack it does not name is silently absent from the build, and therefore
-from the analysis.
+`SOLIDSYSLOG_PLATFORMS` is named explicitly rather than left to auto-detection, because
+the list is authoritative: a platform it does not name is silently absent from the build,
+and therefore from the analysis. An assertion step then fails the lane unless every named
+platform produced compiled objects — proving what the compiler emitted rather than what
+the configure step was asked for, since a platform that is selected but contributes no
+sources would satisfy any check of the selection itself.
 
 Triage follows the support tiers rather than the reported severity:
 
@@ -109,8 +111,8 @@ Code scanning contributes two required contexts, and both are needed:
   pull request introduces a new alert. Without it, a PR could add findings and still
   merge green because the job itself succeeded.
 
-Both were made required on a clean baseline: `security-extended` over 58,144 lines of
-C produced no alerts, so nothing had to be grandfathered in.
+Both were made required on a clean baseline: `security-extended` produced no alerts over
+the consumer build it analyses, so nothing had to be grandfathered in.
 
 A clean baseline is not the same as an absence of vulnerabilities. Much of
 `security-extended` is taint tracking, and this database offers it no source: `Core/`

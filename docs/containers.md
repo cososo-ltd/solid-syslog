@@ -64,8 +64,8 @@ platform and its tests together. The lwIP lint lanes do exactly this.
 
 Which BDD ELF a *cross* build produces is separate, and maintainer-only —
 `SOLIDSYSLOG_BDD_FREERTOS_NET=PLUSTCP` (default) or `LWIP`. It selects a test
-artefact, not a platform; since S30.06 platforms are named in
-`SOLIDSYSLOG_PLATFORMS` like everything else.
+artefact, not a platform — platforms are named in `SOLIDSYSLOG_PLATFORMS` like
+everything else.
 
 CI runs both cross targets in isolation, and both are required checks:
 `build-freertos-target-plustcp` and `build-freertos-target-lwip`.
@@ -175,9 +175,10 @@ When done, revert `"service"` back to `"gcc"` and rebuild again.
 The same VS Code keys work across every service:
 
 - `Ctrl+Shift+B` runs the `build and test` task, which adapts to the
-  active `BUILD_PRESET`. Under `freertos-cross` it builds the hello-world
-  ELF; under `debug` / `clang-debug` it builds and runs `SolidSyslogTests`;
-  with `BUILD_PRESET` empty (the `behave` service) it runs `behave`.
+  active `BUILD_PRESET`. Under `freertos-cross` it builds the
+  `SolidSyslogBddTarget` ELF; under `debug` / `clang-debug` it builds and runs
+  `SolidSyslogTests`; with `BUILD_PRESET` empty (the `behave-linux` service) it
+  runs `behave`.
 - `F5` debugs:
   - `Debug SolidSyslogTests (host)`: works in `gcc`, `clang`, and
     `freertos-host` (path resolves via `${env:BUILD_PRESET}`). Builds first

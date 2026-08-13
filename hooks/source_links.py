@@ -13,6 +13,14 @@ absolute URLs, in-page anchors, and mail/tel links are left untouched. It runs
 in ``on_page_markdown`` (before MkDocs resolves and validates relative links),
 so the site can keep strict ``not_found`` link validation.
 
+One class of out-of-docs target is not sent to GitHub: a root document that
+``hooks/root_pages.py`` publishes into the site. Sending a reader to GitHub for
+the licence or the security policy is the very thing that hook exists to
+prevent, so a link to one is re-aimed at its published page instead. The source
+Markdown keeps the repo-relative form, which is what works on GitHub and in a
+clone, and both renderings resolve. ``PUBLISHED`` is read from that hook rather
+than copied, so registering a new root page needs no edit here.
+
 A file target maps to ``/blob/``; a directory target (trailing slash) maps to
 ``/tree/``. The ref defaults to ``main`` and is pinned per build via the
 ``SOLIDSYSLOG_DOCS_REF`` environment variable (set it to a release tag or commit
@@ -27,6 +35,10 @@ inline spans are matched by equal-length backtick runs.
 import os
 import posixpath
 import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from root_pages import PUBLISHED  # noqa: E402  (sibling hook, loaded by path)
 
 # Inline Markdown link / image: [text](dest) with an optional "...", '...', or
 # (...) title.
@@ -50,7 +62,12 @@ def _ref():
 
 
 def _rewrite(target, src_dir, repo_url):
-    """Return the canonical URL for an out-of-docs target, or None to leave it."""
+    """Return the replacement for an out-of-docs target, or None to leave it.
+
+    A root document the site publishes resolves to its published page, relative
+    to the linking page; anything else to its canonical URL on the repository
+    host.
+    """
     inner = target
     if inner.startswith('<') and inner.endswith('>'):
         inner = inner[1:-1]
@@ -64,11 +81,18 @@ def _rewrite(target, src_dir, repo_url):
     if not resolved.startswith('..'):
         return None  # resolves within docs/ -- a normal internal link
     repo_path = _LEADING_UP.sub('', resolved)
-    kind = 'tree' if path.endswith('/') else 'blob'
-    url = '{}/{}/{}/{}'.format(repo_url, kind, _ref(), repo_path)
+    published = PUBLISHED.get(repo_path)
+    if published is not None:
+        # Relative to the linking page, so MkDocs resolves and validates it the
+        # way it would any internal link -- including the fragment, which must
+        # name a heading the published page actually has.
+        target = posixpath.relpath(published, src_dir) if src_dir else published
+    else:
+        kind = 'tree' if path.endswith('/') else 'blob'
+        target = '{}/{}/{}/{}'.format(repo_url, kind, _ref(), repo_path)
     if sep:
-        url += '#' + frag
-    return url
+        target += '#' + frag
+    return target
 
 
 def _fence_opener(line):

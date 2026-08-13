@@ -19,8 +19,6 @@ is stripped and the remainder made relative to wherever the page is published.
 import os
 import re
 
-from mkdocs.structure.files import File
-
 # Root file → where it is published. Both halves matter: the source path is
 # fixed by convention (GitHub looks for these names, in this place), and the
 # destination is ours to choose so the page sits with its siblings.
@@ -80,6 +78,11 @@ def _relink(markdown, published_at, root):
 
 
 def on_files(files, config):
+    # Imported here rather than at module scope so PUBLISHED can be read without
+    # MkDocs installed -- hooks/source_links.py consumes it, and both hooks stay
+    # exercisable outside the docs image.
+    from mkdocs.structure.files import File
+
     root = os.path.dirname(config["config_file_path"])
     for source, destination in PUBLISHED.items():
         with open(os.path.join(root, source), encoding="utf-8") as handle:

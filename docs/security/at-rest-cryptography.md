@@ -21,10 +21,13 @@ following the same pattern.
 
 ## AES-256-GCM
 
-Two implementations of one policy: `SolidSyslogOpenSslAesGcmPolicy` for POSIX and
-Windows hosts, `SolidSyslogMbedTlsAesGcmPolicy` for embedded and FreeRTOS targets.
-Both fill the same `SolidSyslogSecurityPolicy` slot and produce the same record
-format, so the choice is a build-time one and nothing above it changes.
+Two implementations of one policy, `SolidSyslogOpenSslAesGcmPolicy` and
+`SolidSyslogMbedTlsAesGcmPolicy`, selected by which crypto library your build
+already links rather than by which target you are on. Both fill the same
+`SolidSyslogSecurityPolicy` slot and produce the same record format, so the
+choice is a build-time one and nothing above it changes. The
+[platform × capability matrix](../platforms/index.md) says where each is
+available.
 
 Authenticated encryption: the record body (the syslog message) is encrypted in
 place, while the cleartext header the store needs to find the record (magic +

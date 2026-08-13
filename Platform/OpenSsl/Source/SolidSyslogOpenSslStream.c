@@ -405,7 +405,7 @@ static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpe
         /* No expected identity supplied - the handshake will accept any cert that
          * chains to a trusted CA, so the peer is unverified. Surface it as a
          * WARNING (still connect, preserving the IP-pinned / closed-network case)
-         * rather than swallowing the MITM-class default silently. S12.28. */
+         * rather than swallowing the MITM-class default silently. */
         OpenSslStream_Report(
             SOLIDSYSLOG_SEVERITY_WARNING,
             SOLIDSYSLOG_CAT_BAD_CONFIG,

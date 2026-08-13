@@ -2,8 +2,8 @@
 #
 # `mkdocs build --strict` (in ci.yml's docs-build) already resolves in-repo
 # links and the source_links.py rewrites, but it never touches an `https://`
-# link to a third-party site — so a dead one merges silently and rots
-# (see #626: a FreeRTOS-Plus-FAT 404 sat on main until found by chance).
+# link to a third-party site — so a dead one merges silently and rots until
+# somebody follows it by chance.
 #
 # This lane checks the *external* URLs with lychee.
 #

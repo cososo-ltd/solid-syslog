@@ -7,8 +7,7 @@
  *   message-size knob.
  * - SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE bumped to 2 enables
  *   `EachPooledHandleHasIsolatedQueue` in SolidSyslogPosixMessageQueueBufferTest
- *   to exercise the slot-indexed queue-name discriminator (CodeRabbit
- *   feedback on PR #407).
+ *   to exercise the slot-indexed queue-name discriminator.
  * - SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE bumped to 2 enables
  *   `TwoCountersFromPoolAreIndependent` in SolidSyslogAtomicCounterContractTest
  *   to exercise two concurrent counters drawn from the same pool.

@@ -1,9 +1,9 @@
 # Pre-PR local checks
 
-The full CI suite takes ~10–15 minutes wall-clock. Running every check
-locally before pushing trades human time for one extra reviewer-confidence
-margin we mostly don't need. This document defines what to run locally and
-when, so the wait stays under a few minutes and CI catches the rest.
+CI runs every lane in parallel and returns in minutes. Running the same checks
+locally before pushing trades human time for a reviewer-confidence margin we
+mostly don't need. This document defines what to run locally and when, so the
+wait before a push stays short and CI catches the rest.
 
 ## Tiers
 
@@ -11,8 +11,7 @@ when, so the wait stays under a few minutes and CI catches the rest.
 |---|---|---|---|
 | **A** — fast feedback | Every commit on the branch | `cmake --build --preset debug --target junit` for whatever preset matches the diff (gcc / clang / freertos-host) | ~30–60 s |
 | **B** — pre-push | First push to the branch and any push that changes production source | A + format reflowed includes + `misra_renumber.py`, plus `check_spdx_headers.py` when a file was added | ~2–3 min |
-| **C** — none | — | — | — |
-| **CI** — everything else | After push | `tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel; results in ~10–15 min |
+| **CI** — everything else | After push | `tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel |
 
 IWYU is advisory. The lanes still run on every PR and
 the report is uploaded as an artifact, but findings no longer fail the
@@ -71,8 +70,9 @@ docker compose -f .devcontainer/docker-compose.yml run --rm freertos-host \
     && cmake --build --preset iwyu --target iwyu'
 ```
 
-CI runs both lanes advisory, findings appear in the `iwyu-report` and
-`iwyu-report-freertos-plustcp` artifacts and don't block the build.
+CI runs all three IWYU lanes advisory; findings appear in the `iwyu-report`,
+`iwyu-report-freertos-plustcp` and `iwyu-report-freertos-lwip` artifacts and
+don't block the build.
 
 ### Licence headers
 

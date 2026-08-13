@@ -1,13 +1,11 @@
 /* Integration-level harness over the real BlockStore + BlockSequence +
  * RecordStore + FileBlockDevice stack, with FileFake at the bottom.
  *
- * Motivated by S08.05's discard-newest BDD failure on freertos-cross
- * (#270): oracle received sequenceIds [1, 11, 2, 3, 4, 5, 6] - sequence
- * id 11 (the newest, which discard-newest should drop) appearing
- * mid-drain between 1 and 2 says the drain ordering is wrong, not the
- * record-packing math. This harness reproduces drain sequences host-side
- * so we can iterate in milliseconds and parameterise the size knobs
- * (maxBlocks / maxBlockSize / payload) without round-tripping QEMU.
+ * Drain order is the property under test: a discard policy that drops the
+ * wrong record shows up as a sequenceId out of order, not as bad
+ * record-packing math. Running the stack host-side reproduces a drain
+ * sequence in milliseconds and lets the size knobs (maxBlocks /
+ * maxBlockSize / payload) be parameterised without round-tripping QEMU.
  *
  * Tests drive the SolidSyslogStore interface (Write / HasUnsent /
  * ReadNextUnsent / MarkSent) directly - no Service task, no Sender, no

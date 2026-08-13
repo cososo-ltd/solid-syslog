@@ -7,7 +7,7 @@ questions; this document is only concerned with the first.
 | Flavour | Question it answers | Status here |
 |---|---|---|
 | **Product SBOM** | "What am I linking against in my deployment?" | Covered by this workflow (see below). |
-| **Build / dev-env SBOM** | "What tools, containers, and test harnesses were used to produce the release?" | Not yet — deferred to a separate story. Container image SHAs are tracked in `docs/containers.md` for now. |
+| **Build / dev-env SBOM** | "What tools, containers, and test harnesses were used to produce the release?" | Not yet — deferred to a separate story. Meanwhile, every container image is pinned by digest at the point it is used, and [Container images](../containers.md) names them. |
 | **Source SBOM** | "What third-party source code is embedded in the product?" | Empty — SolidSyslog vendors no third-party source. |
 
 ## Product SBOM scope
