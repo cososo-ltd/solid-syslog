@@ -79,7 +79,7 @@ Key fields worth reading:
 | `metadata.component.version` | The value from `.release-please-manifest.json` at the time of generation. Pre-release: `0.0.0`. |
 | `metadata.component.purl` | Package URL keyed to the exact commit SHA — unambiguous pointer back to the source. |
 | `metadata.component.supplier.name` | `Cozens Software Solutions Limited (COSOSO)`. |
-| `metadata.component.externalReferences[type=license]` | One per term in the expression, so a scanner can resolve each to a document instead of leaving it unknown. See [reading the licence expression](#reading-the-licence-expression). |
+| `metadata.component.externalReferences[type=license]` | One per PolyForm term, so a scanner resolves each to its canonical text instead of leaving it unknown. The commercial term has no licence document to point at and carries an `other` reference to the enquiry route instead. See [reading the licence expression](#reading-the-licence-expression). |
 | `metadata.component.licenses[0].expression` | `PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial` — an SPDX expression, because the library is offered under three alternative licences and the recipient chooses. Only the Noncommercial identifier is on the SPDX License List; the other two are `LicenseRef-`. |
 | `metadata.properties[solidsyslog:source-tree-sha256]` | Content-tree hash: SHA-256 of a sorted list of `<content-sha256>  <path>` lines for every tracked file in `Core/` + `Platform/` plus the root-level `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`, and `LICENSES/`, at the commit. Reproducible byte-for-byte from any clone, with no dependency on `git archive` output format or git version. |
 
@@ -127,10 +127,15 @@ is it a resolution: the item stays open until you have confirmed which of the
 three terms your organisation relies on, and hold the evidence for it.
 
 So that the terms resolve to documents rather than to nothing, the SBOM carries
-an `externalReferences` entry of type `license` for each of the three: the
-canonical URL for each PolyForm licence, and the enquiry route for the
-commercial one. An SPDX expression has nowhere to put a URL, which is why they
-are attached to the component instead.
+an `externalReferences` entry of type `license` for each PolyForm licence,
+pointing at its canonical URL. An SPDX expression has nowhere to put a URL,
+which is why they are attached to the component instead.
+
+`LicenseRef-COSOSO-Commercial` has no such entry. There is no public document to
+point at, and type `license` means the URL of a licence file — labelling an
+enquiry form as one would resolve the identifier to something that is not a
+licence. The enquiry route is carried as an `other` reference instead, with a
+comment saying what it is.
 
 ### Which term applies
 
@@ -153,8 +158,8 @@ concluded licence for this component in your own product SBOM. Carrying the
 disjunction forward re-raises the same review item on every rebuild, and
 misstates your position to anyone reading your SBOM downstream.
 
-For either PolyForm term an expression is enough, because the identifier
-resolves to a published text:
+`PolyForm-Noncommercial-1.0.0` is on the SPDX list, so an expression carries
+everything a tool needs to identify it:
 
 ```json
 "licenses": [
@@ -162,7 +167,23 @@ resolves to a published text:
 ]
 ```
 
-`LicenseRef-COSOSO-Commercial` needs more. It names a class of negotiated
+The other two are `LicenseRef-` terms, and an expression has nowhere to put a
+name or a URL for them — which is the whole reason they resolve as unknown. Use
+CycloneDX's named-licence form instead. PolyForm Internal Use is a published
+document, so its canonical URL is enough:
+
+```json
+"licenses": [
+  {
+    "license": {
+      "name": "PolyForm Internal Use License 1.0.0",
+      "url": "https://polyformproject.org/licenses/internal-use/1.0.0"
+    }
+  }
+]
+```
+
+`LicenseRef-COSOSO-Commercial` needs more again. It names a class of negotiated
 agreement rather than your particular contract, so on its own it tells a
 downstream reader of your SBOM nothing about what was granted. CycloneDX has
 fields for exactly this — use the named-licence form:
