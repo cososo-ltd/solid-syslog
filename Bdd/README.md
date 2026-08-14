@@ -12,8 +12,8 @@ same feature files run on every target — the active runner is selected by the
 | `windows` | `msvc-tunable-override` | native subprocess | `otelcol-contrib` |
 | `freertos` | `freertos-cross` | `qemu-system-arm` | `syslog-ng-freertos` |
 
-`environment.py` holds each target's binary path, so build the preset above and it
-is found; set `EXAMPLE_BINARY` to run one from somewhere else.
+`environment.py` resolves each target's binary from these builds. Build the preset
+for your target, or set `EXAMPLE_BINARY` to a path of your own.
 
 Each BDD target pairs with its own oracle service so jobs (and developers
 switching containers) never interfere — see [`docs/containers.md`](../docs/containers.md)
@@ -28,7 +28,7 @@ Authoritative reference: [`docs/bdd.md`](../docs/bdd.md#feature-tags). Quick rec
 | `@udp` / `@tcp` / `@tls` / `@mtls` | Transport-specific scenario; CI jobs filter by these. |
 | `@buffered` | Needs a buffered wiring (CircularBuffer / PosixMessageQueueBuffer / service thread) beyond single-task PassthroughBuffer. Carried by all three targets. |
 | `@store` | Needs file-backed `SolidSyslogBlockStore` capability (write blocks, replay, threshold callbacks). Carried by all three targets. |
-| `@requires_message_size_1500` | Needs `SOLIDSYSLOG_MAX_MESSAGE_SIZE >= 1500` — only the UDP path-MTU clipping feature. Which runners supply it is in the authoritative entry. |
+| `@requires_message_size_1500` | Needs `SOLIDSYSLOG_MAX_MESSAGE_SIZE >= 1500` — only the UDP path-MTU clipping feature. The authoritative entry names the runners that supply it. |
 | `@windows_wip` | Skipped on the Windows runner (typically OS-specific behaviour the OTel oracle doesn't model). |
 | `@freertoswip` | Skipped on the FreeRTOS-on-QEMU runner. Per-scenario follow-up tag for capability gaps; removed scenario-by-scenario as each gap closes. The early bring-up reasons (hardcoded `TEST_*` values, missing SD wiring, getopt-only args) have all been closed out by S08.03 + S08.04 slices. |
 | `@rtc` | Scenario assumes the device has an RTC and synchronised wall-clock time. Run on Linux/Windows (which have both). Skipped on FreeRTOS, which models a no-RTC product per RFC 5424 §6.2.3.1. |
