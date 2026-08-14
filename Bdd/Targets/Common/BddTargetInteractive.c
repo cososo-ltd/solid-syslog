@@ -14,7 +14,7 @@ static const char* const PROMPT = "SolidSyslog> ";
 enum
 {
     /* Sized to SOLIDSYSLOG_MAX_MESSAGE_SIZE so a single `set msg <body>`
-     * can carry a full path-MTU-class message body without fgets
+     * can carry the longest body the library will format, without fgets
      * splitting it across reads. The HandleSet name[] mirrors this size
      * because the parser splits at the first whitespace; future work
      * may decouple the name buffer (always short - RFC 5424 maxima are

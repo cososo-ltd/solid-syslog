@@ -137,7 +137,7 @@ etc.) without rewriting feature tags.
 | `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target — Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the FreeRTOS pair over `SolidSyslogFatFsFile`. |
 | `@rtc` | Scenario assumes a real-time clock with synchronised wall-clock time — asserts a known absolute TIMESTAMP. Run on Linux and Windows; excluded on FreeRTOS, which models a no-RTC product per RFC 5424 §6.2.3.1. |
 | `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on FreeRTOS; excluded on Linux and Windows. The complementary pair of `@rtc`. |
-| `@requires_message_size_1500` | Scenario requires `SOLIDSYSLOG_MAX_MESSAGE_SIZE` to be at least 1500 bytes — used by the UDP path-MTU clipping feature, which has to drive an oversized payload through `EMSGSIZE`. The Linux and Windows targets are built with the default 2048 max; FreeRTOS keeps the default trimmed to fit the embedded memory budget, so this scenario is also gated `@freertoswip` until the FreeRTOS target opts in. |
+| `@requires_message_size_1500` | Scenario requires `SOLIDSYSLOG_MAX_MESSAGE_SIZE` to be at least 1500 bytes — used by the UDP path-MTU clipping feature, which has to drive an oversized payload through `EMSGSIZE`. The library default is below that by design, so the Linux and Windows targets are built against the tunable override that supplies it (`tunable-override-debug` / `msvc-tunable-override`); the FreeRTOS pair runs at the default, so the gate skips the feature there. Its oversize scenario separately carries `@freertoswip`. |
 | `@hmac` | Needs an HMAC-SHA256 at-rest policy wired in the target, so a record sealed on write is verified on replay-read. Carried alongside `@store`. |
 | `@aesgcm` | Needs an AES-256-GCM at-rest policy wired in the target — authenticated encryption rather than integrity alone. Carried alongside `@store`, and excluded on Windows, which wires no AES-GCM policy. |
 | `@tls13` | Scenario asserts the handshake against a server that refuses everything below TLS 1.3, so delivery alone proves the version negotiated. |
@@ -173,7 +173,7 @@ run cross-platform against the same assertions.
 ## Local Windows BDD setup
 
 Prerequisites: Python 3.13+ on `PATH` (`winget install Python.Python.3.13`), MSVC + vcpkg
-for the `msvc-debug` build.
+for the `msvc-tunable-override` build.
 
 > Shell: the recipe below uses bash syntax (background `&`, inline `VAR=value command`).
 > Run it from Git Bash for Windows, which ships with the Git installer that's already
@@ -188,14 +188,14 @@ pip install -r Bdd/requirements.txt
 powershell -ExecutionPolicy Bypass -File Bdd/otel/Install-OtelCollector.ps1
 
 # 3. Build the Windows example
-cmake --preset msvc-debug
-cmake --build --preset msvc-debug --target SolidSyslogBddTarget
+cmake --preset msvc-tunable-override
+cmake --build --preset msvc-tunable-override --target SolidSyslogBddTarget
 
 # 4. Start the OTel oracle (binds 127.0.0.1:5514 udp+tcp, 6514 tls, 6515 mtls)
 ./Bdd/otel/bin/otelcol-contrib.exe --config=Bdd/otel/config.yaml &
 
 # 5. Run the Windows-eligible scenarios
-EXAMPLE_BINARY=build/msvc-debug/Bdd/Targets/Debug/SolidSyslogBddTarget.exe \
+EXAMPLE_BINARY=build/msvc-tunable-override/Bdd/Targets/Debug/SolidSyslogBddTarget.exe \
 RECEIVED_LOG=Bdd/output/received.jsonl \
 ORACLE_FORMAT=otel-jsonl \
 behave --tags='not @wip and not @windows_wip and not @no_rtc and not @aesgcm' Bdd/features/
@@ -220,9 +220,9 @@ docker compose -f .devcontainer/docker-compose.yml up -d syslog-ng-linux
 
 # Build the example binary (inside the gcc container)
 docker compose -f .devcontainer/docker-compose.yml exec gcc \
-    cmake --preset debug
+    cmake --preset tunable-override-debug
 docker compose -f .devcontainer/docker-compose.yml exec gcc \
-    cmake --build --preset debug
+    cmake --build --preset tunable-override-debug --target SolidSyslogBddTarget
 
 # Run Behave
 docker compose -f .devcontainer/docker-compose.yml run --rm behave-linux \

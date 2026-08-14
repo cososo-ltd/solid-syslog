@@ -57,12 +57,12 @@ the send fails, and a failed send is treated as transient: the store keeps the
 record at its cursor and offers the same one on every servicing pass. Nothing
 behind it is delivered.
 
-`SOLIDSYSLOG_MAX_MESSAGE_SIZE` defaults to 2048, so this reaches any record over
-about 1.2 KB rather than only unusual ones. Until
-[#736](https://github.com/cososo-ltd/solid-syslog/issues/736) lands, keep records
-on this UDP path inside the payload it carries — but note that the limit is library-wide
-rather than per-transport, so lowering it truncates records on every transport
-the instance uses, not only this one.
+No record can reach that size at the default `SOLIDSYSLOG_MAX_MESSAGE_SIZE`, so
+this is a hazard only where the tunable has been raised past the payload the
+adapter reports. Until
+[#736](https://github.com/cososo-ltd/solid-syslog/issues/736) lands, keep it
+inside that payload — noting that it is library-wide rather than per-transport,
+so a value chosen for this path applies to every transport the instance uses.
 
 ### The stack's configuration is yours
 

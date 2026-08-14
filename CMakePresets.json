@@ -38,11 +38,11 @@
         },
         {
             "name": "tunable-override-debug",
-            "displayName": "Tunable Override (mechanism end-to-end)",
+            "displayName": "Tunable Override (mechanism end-to-end, and the host BDD target)",
             "inherits": "debug",
             "cacheVariables": {
-                "SOLIDSYSLOG_USER_TUNABLES_FILE": "${sourceDir}/Tests/Fixtures/SmallMessageSizeTunables.h",
-                "SOLIDSYSLOG_TEST_EXPECTED_MAX_MESSAGE_SIZE": "512"
+                "SOLIDSYSLOG_USER_TUNABLES_FILE": "${sourceDir}/Tests/Fixtures/TunableOverrides.h",
+                "SOLIDSYSLOG_TEST_EXPECTED_MAX_MESSAGE_SIZE": "2048"
             }
         },
         {
@@ -127,6 +127,15 @@
             "inherits": "msvc-base"
         },
         {
+            "name": "msvc-tunable-override",
+            "displayName": "MSVC Tunable Override (the Windows BDD target)",
+            "inherits": "msvc-base",
+            "cacheVariables": {
+                "SOLIDSYSLOG_USER_TUNABLES_FILE": "${sourceDir}/Tests/Fixtures/TunableOverrides.h",
+                "SOLIDSYSLOG_TEST_EXPECTED_MAX_MESSAGE_SIZE": "2048"
+            }
+        },
+        {
             "name": "freertos-cross",
             "displayName": "FreeRTOS cross (ARM Cortex-M3, QEMU mps2-an385)",
             "binaryDir": "${sourceDir}/build/${presetName}",
@@ -164,6 +173,7 @@
         { "name": "clang-debug",    "configurePreset": "clang-debug" },
         { "name": "iwyu",           "configurePreset": "iwyu" },
         { "name": "msvc-debug",     "configurePreset": "msvc-debug", "configuration": "Debug" },
+        { "name": "msvc-tunable-override", "configurePreset": "msvc-tunable-override", "configuration": "Debug" },
         { "name": "freertos-cross", "configurePreset": "freertos-cross" },
         { "name": "freertos-cross-lwip", "configurePreset": "freertos-cross-lwip" }
     ],

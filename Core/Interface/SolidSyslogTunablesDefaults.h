@@ -34,10 +34,14 @@
  * Maximum bytes the library will format for a single syslog message.
  *
  * Caps the per-Log Formatter buffer (stack-allocated inside SolidSyslog_Log),
- * the FileStore record size, and the minimum BlockStore block size. Per
- * RFC 5424 section 6.1, receivers SHOULD accept up to 2048 bytes; transports
- * may impose lower limits beyond which truncation kicks in. Lower values save
- * stack and store footprint; higher values reduce truncation.
+ * the FileStore record size, and the minimum BlockStore block size. A longer
+ * message is truncated, not dropped. Lower values save stack and store
+ * footprint; higher values reduce truncation.
+ *
+ * The default is the length RFC 5424 section 6.1 requires every transport
+ * receiver to accept, and so the largest a sender can emit with certainty of
+ * acceptance. That section recommends receivers accept more and permits any
+ * length: raise this where the receivers are known.
  *
  * Floor: smallest size that can hold a meaningful RFC 5424 security event.
  * A legal all-NILVALUE message is 16 bytes; this allows enough headroom
@@ -45,7 +49,7 @@
  * Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_MAX_MESSAGE_SIZE
-#define SOLIDSYSLOG_MAX_MESSAGE_SIZE 2048U /**< RFC 5424 section 6.1 SHOULD value */
+#define SOLIDSYSLOG_MAX_MESSAGE_SIZE 480U
 #endif
 
 #if SOLIDSYSLOG_MAX_MESSAGE_SIZE < 64
@@ -91,19 +95,21 @@
 #endif
 
 /**
- * Default per-block capacity (bytes) for file-backed block devices
- * (SolidSyslogFileBlockDevice and any FatFs / FreeRTOS-Plus-FAT-backed
- * equivalent). Supplied to SolidSyslogFileBlockDevice_Create when the
- * integrator has no specific size in mind; passing 0 to
- * SolidSyslogFileBlockDevice_Create selects this default. A larger block
- * holds more records before rotating to a fresh file; a smaller block
- * rotates (and fsyncs) more often.
+ * Default per-block capacity (bytes) for file-backed block devices.
+ * Supplied to SolidSyslogFileBlockDevice_Create when the integrator has no
+ * specific size in mind; passing 0 to SolidSyslogFileBlockDevice_Create
+ * selects this default. A larger block holds more records before rotating to
+ * a fresh file; a smaller block rotates (and fsyncs) more often.
  *
- * Floor: one worst-case record - the RFC 5424 max message plus the widest
- * integrity tag plus the 5-byte record framing (2 magic + 2 length +
- * 1 sent-flag). Below that a block could not hold a single record, so the
- * default must clear it for every SecurityPolicy. Sub-floor values
- * rejected at compile time.
+ * The default clears both the record floor below and the sector size a
+ * filesystem beneath the device may impose. Set this from the media's erase
+ * granularity where that is known.
+ *
+ * Floor: one worst-case record - the max message plus the widest integrity
+ * tag plus the 5-byte record framing (2 magic + 2 length + 1 sent-flag).
+ * Below that a block could not hold a single record, so the default must
+ * clear it for every SecurityPolicy. Sub-floor values rejected at compile
+ * time.
  */
 #ifndef SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE
 #define SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE 8192U

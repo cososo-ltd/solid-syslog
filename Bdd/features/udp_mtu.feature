@@ -9,9 +9,7 @@ Feature: UDP datagram path-MTU clipping
   Windows BDD runner uses the OTel Collector on 127.0.0.1, and
   loopback's ~65535-byte MTU never triggers WSAEMSGSIZE for any
   message inside SOLIDSYSLOG_MAX_MESSAGE_SIZE, so the EMSGSIZE retry
-  path can't actually fire. Full delivery runs on both runners now
-  that S13.17 (#221) embedded a UTF-8 activeCodePage manifest in
-  SolidSyslogBddTarget.exe so multi-byte argv survives the MSVC CRT.
+  path can't actually fire. Full delivery runs on both runners.
 
   Scenario: Full delivery of a UTF-8 message within the path MTU
     Given the syslog oracle is running

@@ -41,7 +41,7 @@ TEST(AtomicCounterContract, SequentialIncrementsCount1Then2Then3)
 /* Independence of two simultaneous counters is only observable when the
  * runtime pool can host at least two slots. The default build runs at
  * pool size 1; the `tunable-override-debug` preset bumps it to 2 (see
- * Tests/Fixtures/SmallMessageSizeTunables.h). When pool size < 2, print
+ * Tests/Fixtures/TunableOverrides.h). When pool size < 2, print
  * a notice and exit cleanly via TEST_EXIT so the test is honestly
  * accounted for. */
 TEST(AtomicCounterContract, TwoCountersFromPoolAreIndependent)
