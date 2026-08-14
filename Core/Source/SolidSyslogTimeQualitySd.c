@@ -21,6 +21,8 @@ static void TimeQualitySd_Format(struct SolidSyslogStructuredData* base, struct 
 
 static inline struct SolidSyslogTimeQualitySd* TimeQualitySd_SelfFromBase(struct SolidSyslogStructuredData* base);
 
+static inline bool TimeQualitySd_EmitsSyncAccuracy(const struct SolidSyslogTimeQuality* quality);
+
 void TimeQualitySd_Initialise(struct SolidSyslogStructuredData* base, SolidSyslogTimeQualityFunction getTimeQuality)
 {
     struct SolidSyslogTimeQualitySd* self = TimeQualitySd_SelfFromBase(base);
@@ -46,11 +48,18 @@ static void TimeQualitySd_Format(struct SolidSyslogStructuredData* base, struct 
     SolidSyslogSdElement_Begin(element, "timeQuality", 0U);
     SolidSyslogSdValue_Uint32(SolidSyslogSdElement_Param(element, "tzKnown"), q.TzKnown ? 1U : 0U);
     SolidSyslogSdValue_Uint32(SolidSyslogSdElement_Param(element, "isSynced"), q.IsSynced ? 1U : 0U);
-    if (q.SyncAccuracyMicroseconds != SOLIDSYSLOG_SYNC_ACCURACY_OMIT)
+    if (TimeQualitySd_EmitsSyncAccuracy(&q))
     {
         SolidSyslogSdValue_Uint32(SolidSyslogSdElement_Param(element, "syncAccuracy"), q.SyncAccuracyMicroseconds);
     }
     SolidSyslogSdElement_End(element);
+}
+
+/* RFC 5424 section 7.1.3 forbids syncAccuracy alongside isSynced 0, so an accuracy
+ * supplied by a callback reporting an unsynced clock is dropped rather than emitted. */
+static inline bool TimeQualitySd_EmitsSyncAccuracy(const struct SolidSyslogTimeQuality* quality)
+{
+    return quality->IsSynced && (quality->SyncAccuracyMicroseconds != SOLIDSYSLOG_SYNC_ACCURACY_OMIT);
 }
 
 static inline struct SolidSyslogTimeQualitySd* TimeQualitySd_SelfFromBase(struct SolidSyslogStructuredData* base)
