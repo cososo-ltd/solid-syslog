@@ -102,9 +102,8 @@
  * a fresh file; a smaller block rotates (and fsyncs) more often.
  *
  * The default clears both the record floor below and the sector size a
- * filesystem beneath the device may impose; a platform carrying such a
- * filesystem rejects a smaller default at compile time. Set this from the
- * media's erase granularity where that is known.
+ * filesystem beneath the device may impose. Set this from the media's erase
+ * granularity where that is known.
  *
  * Floor: one worst-case record - the max message plus the widest integrity
  * tag plus the 5-byte record framing (2 magic + 2 length + 1 sent-flag).

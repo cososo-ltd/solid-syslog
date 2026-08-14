@@ -31,7 +31,7 @@ without renaming what's already there.
 | `integration-windows-openssl` | `msvc-debug` | Same TLS integration tests on `windows-latest` against libssl from vcpkg |
 | `build-linux-c89-headers` | — | Compiles every public header standalone as ISO C89 with `-pedantic-errors`, via `scripts/check_headers_c89.py`. Also proves each header is self-contained, since a header needing a companion first fails here |
 | `build-linux-c99` | `c99`, `c99-platforms` | Builds Core alone at strict `-std=c99` (`CMAKE_C_EXTENSIONS=OFF`, no tests), then the POSIX and OpenSSL packs at C99 as a drift check. Proves the C99 conformance claim per PR |
-| `build-linux-tunable-override` | `tunable-override-debug` | Builds against a user tunables header to prove `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults. Also builds the host BDD target, which the raised message size gives room for the path-MTU scenarios |
+| `build-linux-tunable-override` | `tunable-override-debug` | Builds against a user tunables header to prove `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults. Also builds the Linux BDD target, for the reason under [`@requires_message_size_1500`](bdd.md#feature-tags) |
 | `bdd-linux-syslog-ng` | — | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
 | `bdd-windows-otel` | — | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
 | `build-freertos-host-tdd-plustcp` | `debug` | Host-TDD of the FreeRTOS, FreeRTOS-Plus-TCP, Plus-FAT, FatFs and Mbed TLS adapters against fakes; runs inside `cpputest-freertos` (upstream sources at fixed paths) |

@@ -15,7 +15,7 @@
  *   to exercise two concurrent counters drawn from the same pool.
  * - SOLIDSYSLOG_POOL_SIZE bumped to 3 lets the SolidSyslogPool fixture's
  *   FillPool walk three slots and exercise multi-instance Create/Destroy. */
-#define SOLIDSYSLOG_MAX_MESSAGE_SIZE 2048
+#define SOLIDSYSLOG_MAX_MESSAGE_SIZE 2048U
 #define SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE 2U
 #define SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE 2U
 #define SOLIDSYSLOG_POOL_SIZE 3U

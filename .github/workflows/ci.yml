@@ -237,9 +237,8 @@ jobs:
       - name: Configure with tunable override
         run: cmake --preset tunable-override-debug
 
-      # The host BDD target is built here rather than against the defaults:
-      # udp_mtu.feature needs a message longer than the path can carry, which
-      # the default message size is below by construction.
+      # The host BDD target is built here rather than against the defaults --
+      # see the @requires_message_size_1500 entry in docs/bdd.md.
       - name: Build and test
         run: cmake --build --preset tunable-override-debug --target junit SolidSyslogBddTarget
 
@@ -1068,10 +1067,9 @@ jobs:
       - name: Build and test
         run: cmake --build --preset msvc-debug --target junit
 
-      # The BDD target is built against a raised message size for the reason
-      # given in build-linux-tunable-override. Its own configure regenerates
-      # the Python tunables mirror uploaded below, so it runs after the
-      # default-preset build rather than before it.
+      # The BDD target is built against a raised message size, as on Linux. Its
+      # own configure regenerates the Python tunables mirror uploaded below, so
+      # it runs after the default-preset build rather than before it.
       - name: Configure the BDD target with the tunable override
         run: cmake --preset msvc-tunable-override
 
