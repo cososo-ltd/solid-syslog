@@ -58,7 +58,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  at-or-above (re-armed when it drops back below). Gotcha under
      *  SolidSyslogPassthroughBuffer, where SolidSyslog_Log sends inline: logging from
      *  this callback recurses into the store's Write. Gate the Log, or drive the
-     *  logger from a returning Buffer (e.g. SolidSyslogPosixMessageQueueBuffer). */
+     *  logger from a Buffer that returns rather than sending inline. */
     typedef void (*SolidSyslogStoreThresholdCallback)(void* context);
 
     /** Wiring for SolidSyslogBlockStore_Create. The threshold function and callback

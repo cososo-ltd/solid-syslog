@@ -297,3 +297,45 @@
 .md-typeset .ss-chip--setup::before {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M10.6 1.6a4 4 0 0 0-3.5 5.9L1.9 12.7a1.2 1.2 0 0 0 1.7 1.7l5.2-5.2a4 4 0 0 0 4.9-5.2l-2 2-1.6-.4-.4-1.6z" fill="%23cdd4f5" stroke="%237f8dd4" stroke-linejoin="round"/></svg>');
 }
+
+/* ── Tables ─────────────────────────────────────────────────────────────────
+   Material's defaults set table text at .64rem and cell padding at
+   .9375em 1.25em, which reads as small type adrift in white space once a table
+   carries more than a couple of columns. Bigger text, roughly half the vertical
+   padding, and a narrower header minimum.
+
+   The size is em, not Material's rem, for the reason the headings above are
+   fixed px: Material scales its rem root with the viewport (125%, then 137.5%
+   past 100em, then 150% past 125em) while .md-typeset pins body text at 16px,
+   so a rem table would outgrow the prose around it on a wide monitor. At .9em
+   it stays a fixed nine tenths of body text at every width -- 14.4px, which is
+   what .72rem renders below 100em. */
+
+.md-typeset table:not([class]) {
+  font-size: 0.9em;
+}
+
+.md-typeset table:not([class]) th,
+.md-typeset table:not([class]) td {
+  padding: 0.5em 0.8em;
+}
+
+.md-typeset table:not([class]) th {
+  min-width: 4rem;
+}
+
+/* A hyphen is a wrap opportunity, so an identifier breaks mid-token — the
+   first column is full of them. Scoped to the code span rather than the cell
+   because most first cells are prose or prose mixed with code, and those must
+   still wrap at their spaces; scoped to the first column because a later one
+   can carry a long unbroken run, such as the SPDX licence expression. */
+.md-typeset table:not([class]) td:first-child code {
+  white-space: nowrap;
+}
+
+/* Code is set at the cell's own size by default, which makes an identifier
+   column wider than it needs to be. */
+.md-typeset table:not([class]) code {
+  font-size: .85em;
+  padding: 0 .2em;
+}
