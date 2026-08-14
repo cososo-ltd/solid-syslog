@@ -121,6 +121,14 @@ TEST(SolidSyslogTimeQualitySd, OmitSyncAccuracyUsesDefinedConstant)
     STRCMP_EQUAL("[timeQuality tzKnown=\"1\" isSynced=\"1\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
 }
 
+TEST(SolidSyslogTimeQualitySd, SyncAccuracyIsOmittedWhenNotSynced)
+{
+    stubTimeQuality.IsSynced = false;
+    stubTimeQuality.SyncAccuracyMicroseconds = 5000;
+    format();
+    STRCMP_EQUAL("[timeQuality tzKnown=\"1\" isSynced=\"0\"]", SolidSyslogFormatter_AsFormattedBuffer(formatter));
+}
+
 TEST(SolidSyslogTimeQualitySd, CallbackIsInvokedOnEachFormat)
 {
     format();
