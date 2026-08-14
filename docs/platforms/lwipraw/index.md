@@ -92,11 +92,11 @@ adapter's:
   transient, so the store re-offers the same record on every pass and nothing
   behind it is delivered.
 
-`SOLIDSYSLOG_MAX_MESSAGE_SIZE` defaults to 2048, so this reaches any record over
-about 1.2 KB rather than only unusual ones. Keep records on this UDP path inside
-the payload it carries — noting that the limit is library-wide rather than
-per-transport, so lowering it truncates records on every transport the instance
-uses.
+No record can reach that size at the default `SOLIDSYSLOG_MAX_MESSAGE_SIZE`, so
+all three fates are reachable only where the tunable has been raised past the
+payload the datagram reports. Keep it inside that payload — noting that it is
+library-wide rather than per-transport, so a value chosen for this path applies
+to every transport the instance uses.
 
 ### Dead-peer detection runs at lwIP's defaults
 

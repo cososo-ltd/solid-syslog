@@ -53,10 +53,11 @@ needed to build and run.
 
 [solidsyslog_user_tunables.h](solidsyslog_user_tunables.h) is the worked
 example of the E21 port-time configurability mechanism — the
-`freertos-cross` preset points `SOLIDSYSLOG_USER_TUNABLES_FILE` at it so
-the library compiles with `SOLIDSYSLOG_MAX_MESSAGE_SIZE 512` instead of
-the default 2048. That reclaims ~4.5KB of stack frame per `SolidSyslog_Log`
-call on Cortex-M3, where 4KB task stacks are normal.
+`freertos-cross` preset points `SOLIDSYSLOG_USER_TUNABLES_FILE` at it, and
+the target raises `SOLIDSYSLOG_MUTEX_POOL_SIZE` because it creates two
+mutexes where the library provides for one. Everything else it takes at
+the library default, so these lanes run the message size the library
+ships with.
 
 For your own port, copy the pattern: drop a `solidsyslog_user_tunables.h`
 into your build tree, override whichever

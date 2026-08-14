@@ -1426,7 +1426,7 @@ jobs:
 
       # BDD-side mirror of build-time tunables (configure_file). The lwIP bdd
       # lane consumes this so environment.py's runtime tag gates track the lwIP
-      # target's SOLIDSYSLOG_MAX_MESSAGE_SIZE (512, same as +TCP).
+      # target's SOLIDSYSLOG_MAX_MESSAGE_SIZE.
       - name: Upload BDD Python tunables (FreeRTOS+lwIP)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

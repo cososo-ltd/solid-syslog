@@ -125,14 +125,8 @@ def before_all(context):
     context.target = os.environ.get("BDD_TARGET", "linux").lower()
 
     default_binaries = {
-        "linux": (
-            "build/tunable-override-debug/Bdd/Targets/"
-            "SolidSyslogBddTarget"
-        ),
-        "windows": (
-            "build/msvc-tunable-override/Bdd/Targets/Debug/"
-            "SolidSyslogBddTarget.exe"
-        ),
+        "linux": "build/tunable-override-debug/Bdd/Targets/SolidSyslogBddTarget",
+        "windows": "build/msvc-tunable-override/Bdd/Targets/Debug/SolidSyslogBddTarget.exe",
         "freertos": (
             "build/freertos-cross/Bdd/Targets/FreeRtos/"
             "SolidSyslogBddTarget.elf"

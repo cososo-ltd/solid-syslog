@@ -648,10 +648,10 @@ def step_block_store_enabled_with_config(context, max_blocks, max_block_size, po
     # at start for discard-oldest, contiguous head for discard-newest) — the
     # exact records-per-block count is platform-dependent (hostname / procid
     # widths differ between the Linux compose container and the Windows OTel
-    # runner) but irrelevant to the policy under test. Production clamps
-    # block size to MAX + 7 (MIN_MAX_BLOCK_SIZE = 2055), so per-record budget
-    # is ~MAX/4. With ~95-byte RFC 5424 header + 7-byte record overhead,
-    # MAX/5 - 50 yields ~3-5 records per block on the runners we ship.
+    # runner) but irrelevant to the policy under test. Production grows a
+    # block below one worst-case record to that floor, so the per-record
+    # budget tracks the message size; sizing the body off it yields several
+    # records per block on the runners we ship.
     context.message_body = "X" * (SOLIDSYSLOG_MAX_MESSAGE_SIZE // 5 - 50)
     clean_store_files()
 
