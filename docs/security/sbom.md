@@ -313,12 +313,13 @@ whether GitHub, Sigstore, or this project still exist at the time of audit.
 For a step-by-step verification guide aimed at downstream integrators, see
 [`release-verification.md`](./release-verification.md).
 
-## Deferred
+## Out of scope
 
-- Signed SLSA provenance attestation. `cosign attest` on top of
-  `sign-blob` is a natural next step: it produces an attestation
-  statement that says "this SBOM was produced by this workflow from
-  these inputs" rather than just "this SBOM was signed by this
-  workflow."
+- Signed SLSA provenance attestation. An attestation states "this SBOM
+  was produced by this workflow from these inputs"; the signature above
+  states only "this SBOM was signed by this workflow". The difference
+  matters for a binary the consumer cannot inspect. This project is
+  source-only and the content-tree hash is reproducible from any clone,
+  so the integrator checks the source itself.
 - Binary-artefact signing. The project is source-only; nothing to
   sign beyond the SBOM and content-tree hash.
