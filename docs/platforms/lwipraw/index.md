@@ -94,9 +94,10 @@ adapter's:
 
 No record can reach that size at the default `SOLIDSYSLOG_MAX_MESSAGE_SIZE`, so
 all three fates are reachable only where the tunable has been raised past the
-payload the datagram reports. Keep it inside that payload — noting that it is
-library-wide rather than per-transport, so a value chosen for this path applies
-to every transport the instance uses.
+payload the datagram reports. Until
+[#736](https://github.com/cososo-ltd/solid-syslog/issues/736) lands, keep it
+inside that payload — noting that it is library-wide rather than per-transport,
+so a value chosen for this path applies to every transport the instance uses.
 
 ### Dead-peer detection runs at lwIP's defaults
 

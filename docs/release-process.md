@@ -53,6 +53,18 @@ third is generated.
    Restating absolute numbers rather than only deltas is what keeps the series
    answerable: deltas compose badly, and one wrong delta propagates through every
    later release with nothing to correct it.
+
+   **Carry the qualification with the numbers.** The matrix states that a status
+   describes the library with a conforming platform supplying the roles it needs,
+   that almost every requirement depends on which platform components are selected
+   and how they are configured, and that this includes components the integrator
+   writes, which the library cannot speak for. A table lifted out of that preamble
+   claims more than the matrix does — and unlike the matrix, a release note is
+   frozen and cannot be corrected later. So say in the release note that the
+   figures are the maintainer's assessment of the library against the RFCs, that
+   they depend on how the integrator configures it, and that they are neither a
+   certification nor a conformance claim. One sentence is enough; omitting it is
+   not.
 2. **Known limitations** — the defects and divergences shipping with the release,
    each linking its tracking issue. State that they were found by audit and are
    disclosed on the pages that describe the affected platform: a bare list of open
@@ -60,8 +72,24 @@ third is generated.
    disclosure read as rigour.
 3. **Full changelog** — release-please's generated list.
 
-The GitHub Release description and the `CHANGELOG.md` entry carry the same text.
-Write it once to a file and use it for both.
+### Getting the written parts into both places
+
+The `CHANGELOG.md` entry and the GitHub Release description carry the same text,
+and nothing copies one to the other. Write the two written parts once to a file
+and place them explicitly:
+
+1. Paste them above the generated list in `CHANGELOG.md`, in the release pull
+   request, before merging it.
+2. After the Release exists, set its description from the same file:
+
+   ```bash
+   gh release edit v<version> --notes-file <file>
+   ```
+
+Do not assume the Release description picks up a hand-edited `CHANGELOG.md`.
+Setting it explicitly is correct whether it would or not, and editing a Release
+fires `release: edited` rather than `release: published`, so `sbom.yml` does not
+re-run and the signed assets are undisturbed.
 
 ## What appears in the generated changelog
 
@@ -79,10 +107,12 @@ should do belongs under a type that appears.
 
 ## Cutting a release
 
-1. Conventional Commits land on `main`, each mapping to a CHANGELOG section.
+1. Conventional Commits land on `main`. `feat` and `fix` map to a generated
+   CHANGELOG section; the hidden types above produce no entry, and a breaking
+   change is listed whichever type carried it.
 2. release-please maintains a release PR that bumps the version and
    `CHANGELOG.md`. Write the first two parts of the release notes into that PR
-   before merging it.
+   before merging it, per *Getting the written parts into both places* above.
 3. Merging that PR creates the tag and GitHub Release (release-please's
    bot, no personal GPG/SSH signing).
 4. The `release: published` event triggers `sbom.yml`: it renders and validates
