@@ -220,11 +220,6 @@ A gated adapter must also honour these:
   `scripts/misra_renumber.py`. Without it cppcheck analyses the `#else` branch
   and the adapter goes unchecked.
 
-**An `#error` is for a different case.** Use one where the integrator is using
-the class and their configuration contradicts it — `SolidSyslogFatFsFile.c`
-requires `SOLIDSYSLOG_FILE_DEFAULT_BLOCK_SIZE` to be at least `FF_MAX_SS`.
-Absence is not a correct outcome there, so do not gate it.
-
 **Never ship two behaviours from one file.** `#if FEATURE` / `#else` selecting
 between implementations is out of scope: it ships two products from one source,
 and the combinations multiply across upstream configurations. A gate has one

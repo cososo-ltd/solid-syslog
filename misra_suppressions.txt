@@ -36,7 +36,7 @@ misra-c2012-11.3:Core/Source/SolidSyslogSwitchingSender.c:67
 misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:67
 misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:125
 misra-c2012-11.3:Platform/StdAtomic/Source/SolidSyslogStdAtomicCounter.c:33
-misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:63
+misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:53
 misra-c2012-11.3:Platform/PlusFat/Source/SolidSyslogPlusFatFile.c:52
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:33
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:40
