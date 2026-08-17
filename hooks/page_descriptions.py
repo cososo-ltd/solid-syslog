@@ -39,7 +39,7 @@ DESCRIPTIONS = {
     ),
     # Adopt
     "hardening-path.md": (
-        "Twenty stages from no syslog to mutual TLS and encrypted storage — each "
+        "Eighteen stages from no syslog to mutual TLS and encrypted storage — each "
         "with the question that decides it and its measured flash and RAM cost."
     ),
     "build-integration.md": (
