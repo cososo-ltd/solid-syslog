@@ -15,11 +15,50 @@ attached so integrators can verify provenance (per
 - release-please derives the version from the Conventional Commit types merged
   since the last release.
 
+## What the release notes contain
+
+Every release carries three parts, in this order. The first two are written; the
+third is generated.
+
+1. **What's in this release** — prose. What the release is for, and what changed
+   that an integrator would act on: compliance reached, platforms added, defects
+   fixed. It summarises and links rather than restating — the
+   [RFC compliance matrix](rfc-compliance.md) and the
+   [platform matrix](platforms/index.md) are the homes for those facts, and notes
+   that copy them drift from them.
+
+   This is also where a documentation change that corrected a claim an integrator
+   could have acted on gets surfaced, since `docs` commits do not appear in the
+   generated list.
+2. **Known limitations** — the defects and divergences shipping with the release,
+   each linking its tracking issue. State that they were found by audit and are
+   disclosed on the pages that describe the affected platform: a bare list of open
+   defects reads as unfinished work, and the same facts framed as deliberate
+   disclosure read as rigour.
+3. **Full changelog** — release-please's generated list.
+
+The GitHub Release description and the `CHANGELOG.md` entry carry the same text.
+Write it once to a file and use it for both.
+
+## What appears in the generated changelog
+
+`feat`, `fix` and `refactor` only. `ci`, `chore` and `docs` are configured
+`hidden` in `release-please-config.json`, because they do not change what a
+consumer of the library gets.
+
+Breaking changes surface in their own section regardless of the type that carried
+them.
+
+The Conventional Commit type is therefore a statement about consumer impact, not
+only about which files were touched. A change that alters what an integrator
+should do belongs under a type that appears.
+
 ## Cutting a release
 
 1. Conventional Commits land on `main`, each mapping to a CHANGELOG section.
 2. release-please maintains a release PR that bumps the version and
-   `CHANGELOG.md`.
+   `CHANGELOG.md`. Write the first two parts of the release notes into that PR
+   before merging it.
 3. Merging that PR creates the tag and GitHub Release (release-please's
    bot, no personal GPG/SSH signing).
 4. The `release: published` event triggers `sbom.yml`: it renders and validates
