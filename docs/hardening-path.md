@@ -183,8 +183,9 @@ stacks to the device, once every collaborator is in place and the high-water mar
 worth trusting.
 
 **When you need it.** Every device needs this much. The question is whether UDP is
-enough: it drops records silently, and anyone on the path can read them. If either
-matters, take stage 8 as well and treat UDP as a stepping stone.
+enough: it drops records silently, and anyone on the path can read them. Stage 8 answers
+the first, stage 13 the second — treat UDP as a stepping stone to whichever your threat
+model needs.
 
 **Cost.** Flash ~3.6k, RAM ~1.7k, nearly all of it stack depth on the logging task.
 
