@@ -17,7 +17,7 @@ UART command channel with `set NAME VALUE`, flip the active transport at
 runtime with `switch udp` / `switch tcp` / `switch tls` / `switch mtls`
 (routed through `BddTargetSwitchConfig`), emit N RFC 5424 messages with
 `send N`, exit cleanly with `quit`. See
-[`Bdd/README.md`](../../Bdd/README.md) for how Behave pipes these
+[`Bdd/README.md`](../../../Bdd/README.md) for how Behave pipes these
 commands through `qemu-system-arm`'s stdio UART.
 
 **Persistent store-and-forward** is wired via the ChaN FatFs adapter
@@ -46,7 +46,7 @@ syscalls, mps2-an385 linker script, startup) and `cmake/` the
 the cross-target `../Common/` pack (`Bdd/Targets/Common/`) since S29.01,
 shared with the lwIP BDD target. The `freertos-cross`
 CMake preset and the `freertos-target` devcontainer service
-([`docs/containers.md`](../../docs/containers.md)) carry everything
+([`docs/containers.md`](../../../docs/containers.md)) carry everything
 needed to build and run.
 
 ## Tuning for your MCU
@@ -71,7 +71,7 @@ all equivalent).
 The simplest path. Switch into the FreeRTOS target devcontainer and use
 the standard Ctrl+Shift+B / F5 keys:
 
-1. In [.devcontainer/devcontainer.json](../../.devcontainer/devcontainer.json),
+1. In [.devcontainer/devcontainer.json](../../../.devcontainer/devcontainer.json),
    change `"service": "gcc"` to `"service": "freertos-target"`.
 2. `Ctrl+Shift+P` → "Dev Containers: Rebuild Container".
 3. **Build** — `Ctrl+Shift+B` runs the `build and test` task, which under

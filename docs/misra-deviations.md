@@ -429,13 +429,13 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 ## D.004 — Rule 18.4: pointer arithmetic on record buffers (retired)
 
 **Retired in S10.19.** This deviation authorised `uint8_t*` pointer arithmetic in
-`Core/Source/RecordStore.c`, where four field-offset helpers walked the
+`Core/Source/SolidSyslogRecordStore.c`, where four field-offset helpers walked the
 `[magic][length][message]` record layout by adding an offset to a base address.
 S10.19 rewrote them to take the address of an indexed element (`&base[OFFSET]`)
 instead. That is the same address by definition, but rule 18.4 fires on the `+`,
 `-`, `+=` and `-=` operators specifically rather than on subscripting, so the
 finding no longer arises and the deviation had nothing left to authorise.
-cppcheck-misra reports no 18.4 finding in `RecordStore.c`; the suppression was
+cppcheck-misra reports no 18.4 finding in `SolidSyslogRecordStore.c`; the suppression was
 removed from `misra_suppressions.txt` at the same time.
 
 The entry is kept, rather than the number reused, so the register has no gaps and

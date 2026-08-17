@@ -82,12 +82,17 @@ reviews:
           Only flag a NEW deviation not covered there.
 
         Naming (docs/NAMING.md tiers):
-        - Public functions `SolidSyslogClass_Function`; public types
-          `SolidSyslogClass`; public macros/enum constants
-          `SOLIDSYSLOG_SCREAMING_SNAKE`; file-scope statics `Class_Function`
-          / `CLASS_SCREAMING_SNAKE`; struct members `PascalCase` (data AND
-          vtable function-pointer members alike); locals/params
-          `lowerCamelCase`.
+        - Tier 1 is decided by linkage, not by whether an integrator is meant
+          to call the identifier: anything declared in an Interface/ header,
+          and anything with external linkage declared in a `.c`, takes the
+          prefix — including a library-internal class that spans two
+          translation units from a `Core/Source/` `*Private.h`
+          (SolidSyslogRecordStore, SolidSyslogBlockSequence). Functions
+          `SolidSyslogClass_Function`; types `SolidSyslogClass`; macros/enum
+          constants `SOLIDSYSLOG_SCREAMING_SNAKE`.
+        - File-scope statics `Class_Function` / `CLASS_SCREAMING_SNAKE`;
+          struct members `PascalCase` (data AND vtable function-pointer
+          members alike); locals/params `lowerCamelCase`.
         - The this-pointer is the FIRST parameter, named by its declared type:
           `self` when the type is the concrete class, `base` when it is the
           abstract base struct. Flag any function that puts state after other
@@ -95,8 +100,8 @@ reviews:
         - No `typedef struct` for project structs — refer to structs by tag.
           Typedefs allowed only for enums and function-pointer types.
         - No Hungarian; no `p`/`P` prefix or `Ptr` suffix on pointers; no
-          single-letter identifiers; out-params `outX`; booleans `isX`/`hasX`/
-          `canX`; no lazy abbreviations (`buffer` not `buf`) but domain terms
+          single-letter identifiers; booleans `isX`/`hasX`/`canX`; no lazy
+          abbreviations (`buffer` not `buf`) but domain terms
           (tls/tcp/udp/crc/mq/dns/RFC field names) are real names, keep them.
 
         Clean Code:
@@ -176,6 +181,23 @@ reviews:
           `signal.SIGKILL`; `os.path.join` (not forward-slash literals) for
           paths passed to CreateProcess; `127.0.0.1` not `localhost`. Prefer
           test-side portability fixes over changing production semantics.
+
+    # ---------------------------------------------------------------------
+    # Build files — CMake, make and workflows. These matched no entry until
+    # now, so nothing was asking anything of them.
+    # ---------------------------------------------------------------------
+    - path: "**/{CMakeLists.txt,Makefile,*.mk,*.cmake,*.yml,*.yaml}"
+      instructions: |
+        Build, make and CI files. Two things to hold:
+        - Naming follows docs/NAMING.md: options, cache variables and tunables
+          are `SOLIDSYSLOG_SCREAMING_SNAKE`, and a platform registry token is
+          spelled whole, exactly as its option spells it (`SOLIDSYSLOG_OPENSSL`,
+          never `SOLIDSYSLOG_OPEN_SSL`).
+        - A repo-relative path quoted here must resolve.
+          `scripts/check_references.py` asserts this in the docs-build lane, so
+          flag the ones it cannot see: a path built up from a variable, and a
+          path inside a shell block, which it skips because the working
+          directory there is the job's rather than the repository's.
 
     # ---------------------------------------------------------------------
     # Docs — prose. Keep the tier model and conventions self-consistent.
