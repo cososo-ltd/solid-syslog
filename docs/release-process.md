@@ -20,16 +20,39 @@ attached so integrators can verify provenance (per
 Every release carries three parts, in this order. The first two are written; the
 third is generated.
 
-1. **What's in this release** — prose. What the release is for, and what changed
-   that an integrator would act on: compliance reached, platforms added, defects
-   fixed. It summarises and links rather than restating — the
-   [RFC compliance matrix](rfc-compliance.md) and the
-   [platform matrix](platforms/index.md) are the homes for those facts, and notes
-   that copy them drift from them.
+1. **What's in this release** — prose, plus a compliance and platform snapshot.
+   What the release is for, and what changed that an integrator would act on.
 
    This is also where a documentation change that corrected a claim an integrator
    could have acted on gets surfaced, since `docs` commits do not appear in the
    generated list.
+
+   **The snapshot is restated here rather than linked**, which is deliberate and
+   is not the duplication the documentation rules forbid. Those rules guard
+   against two *current-state* copies drifting apart. A release note is not a
+   copy — it is a frozen record with a different lifetime. The
+   [compliance matrix](rfc-compliance.md) and the
+   [platform matrix](platforms/index.md) answer *where are we now*; the release
+   note answers *where were we at this version*, which nothing else records. The
+   site publishes from `main` only, so a link out of an old release resolves to
+   today's state and silently loses what that release actually shipped.
+
+   Where the full detail is wanted, link the **tag** rather than the branch —
+   `blob/vX.Y.Z/docs/rfc-compliance.md` is frozen by git even though the site is
+   not.
+
+   What to include:
+
+   - **RFC compliance.** State in prose what moved — a clause newly met, a
+     standard newly covered. Restate the summary table whenever a number changed;
+     one line saying nothing changed when none did. Read the numbers off the
+     matrix at the tag, not from memory.
+   - **Platforms.** The full list at the first release; afterwards name what was
+     added and say the rest are unchanged.
+
+   Restating absolute numbers rather than only deltas is what keeps the series
+   answerable: deltas compose badly, and one wrong delta propagates through every
+   later release with nothing to correct it.
 2. **Known limitations** — the defects and divergences shipping with the release,
    each linking its tracking issue. State that they were found by audit and are
    disclosed on the pages that describe the affected platform: a bare list of open
@@ -42,9 +65,10 @@ Write it once to a file and use it for both.
 
 ## What appears in the generated changelog
 
-`feat`, `fix` and `refactor` only. `ci`, `chore` and `docs` are configured
-`hidden` in `release-please-config.json`, because they do not change what a
-consumer of the library gets.
+`feat` and `fix` only. `refactor`, `ci`, `chore` and `docs` are configured
+`hidden` in `release-please-config.json`, because none of them changes what a
+consumer of the library gets — refactoring is defined as preserving behaviour, and
+the other three never reach the consumer at all.
 
 Breaking changes surface in their own section regardless of the type that carried
 them.
