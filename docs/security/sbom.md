@@ -76,7 +76,7 @@ Key fields worth reading:
 |---|---|
 | `metadata.tools.components[0]` | The workflow that rendered this document, versioned by its own commit SHA and linked via a `build-system` reference. Distinct from `metadata.component.purl`, which pins the source being described: one says what produced the SBOM, the other what it describes. |
 | `metadata.component.name` | `SolidSyslog`. |
-| `metadata.component.version` | The value from `.release-please-manifest.json` at the time of generation. Pre-release: `0.0.0`. |
+| `metadata.component.version` | The value from `.release-please-manifest.json` at the time of generation. |
 | `metadata.component.purl` | Package URL keyed to the exact commit SHA — unambiguous pointer back to the source. |
 | `metadata.component.supplier.name` | `Cozens Software Solutions Limited (COSOSO)`. |
 | `metadata.component.externalReferences[type=license]` | One per PolyForm term, so a scanner resolves each to its canonical text instead of leaving it unknown. The commercial term has no licence document to point at and carries an `other` reference to the enquiry route instead. See [reading the licence expression](#reading-the-licence-expression). |
