@@ -58,11 +58,11 @@ record at its cursor and offers the same one on every servicing pass. Nothing
 behind it is delivered.
 
 No record can reach that size at the default `SOLIDSYSLOG_MAX_MESSAGE_SIZE`, so
-this is a hazard only where the tunable has been raised past the payload the
-adapter reports. Until
-[#736](https://github.com/cososo-ltd/solid-syslog/issues/736) lands, keep it
-inside that payload — noting that it is library-wide rather than per-transport,
-so a value chosen for this path applies to every transport the instance uses.
+this is a hazard only where the tunable has been raised past what the datagram
+reports. Until [#736](https://github.com/cososo-ltd/solid-syslog/issues/736)
+lands, keep `SOLIDSYSLOG_MAX_MESSAGE_SIZE` at or below that value — noting that
+it is library-wide rather than per-transport, so a value chosen for this path
+applies to every transport the instance uses.
 
 ### The stack's configuration is yours
 
