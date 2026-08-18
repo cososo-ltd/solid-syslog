@@ -56,8 +56,9 @@ TLS divergences from the contract in
 
 - [#731](https://github.com/cososo-ltd/solid-syslog/issues/731) - an expired
   peer certificate stops delivery, where the contract says report and continue
-- [#732](https://github.com/cososo-ltd/solid-syslog/issues/732) - four `Create`
-  functions accept a configuration they cannot work without and report nothing
+- [#732](https://github.com/cososo-ltd/solid-syslog/issues/732) - four
+  `<Class>_Create` functions accept a configuration they cannot work without and
+  report nothing
 - [#733](https://github.com/cososo-ltd/solid-syslog/issues/733) - the cipher
   policy an integrator sets does not bind the connection that is negotiated
 - [#734](https://github.com/cososo-ltd/solid-syslog/issues/734) - a
