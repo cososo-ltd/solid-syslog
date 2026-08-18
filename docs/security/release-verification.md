@@ -7,8 +7,11 @@ they'd naturally run it.
 
 Prerequisites:
 
-- [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) v2 or
-  later on your `$PATH`.
+- [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) v3 or
+  later on your `$PATH`. The signatures are produced by cosign v3, which writes
+  the current Sigstore bundle format; v2 cannot read it and fails with
+  `bundle does not contain cert for verification`, which reads as a broken
+  signature rather than a version mismatch.
 - [cyclonedx-cli](https://github.com/CycloneDX/cyclonedx-cli) v0.30.0 or
   later (optional, only needed to re-validate the SBOM).
 - A `git` checkout of the repo at the release's tag (optional, only

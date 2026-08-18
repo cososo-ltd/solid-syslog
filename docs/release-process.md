@@ -134,10 +134,6 @@ listed above; the two written parts are added by hand in the release pull reques
    without provenance. A red run is the signal: fix the cause and re-run the
    job (see [release verification](security/release-verification.md)).
 
-> Status: release-please is parked (manual `workflow_dispatch` only) until the
-> 0.1.0 baseline; trigger a release from the Actions tab meanwhile. See
-> `release-please.yml` for the reason and the unpark steps.
-
 ## Security releases
 
 Coordinated with the disclosure; see the runbook's *Release coordination* stage:
