@@ -279,14 +279,9 @@ Excluded from backfill:
 - Issues closed as `NOT_PLANNED` — they were not delivered.
 - Epics whose stories already carry the milestone — that would double count.
 
-`CHANGELOG.md` is the authoritative record of what changed between releases, its
-generated section built by release-please from Conventional Commits. The milestone
-is a progress view, not a competing record.
-
-`0.1.0` is the exception, and deliberately: it is the first release, so everything
-in it is new and a list of every commit since the repository began would describe
-the library rather than a change to it. Its entry is prose, and what the library
-does is described by the documentation.
+`CHANGELOG.md` is the authoritative record of what changed between releases --
+[docs/release-process.md](docs/release-process.md) states what goes in it. The
+milestone is a progress view, not a competing record.
 
 ### Due dates
 

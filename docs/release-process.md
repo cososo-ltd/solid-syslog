@@ -47,8 +47,7 @@ third is generated.
      standard newly covered. Restate the summary table whenever a number changed;
      one line saying nothing changed when none did. Read the numbers off the
      matrix at the tag, not from memory.
-   - **Platforms.** The full list at the first release; afterwards name what was
-     added and say the rest are unchanged.
+   - **Platforms.** Name what was added and say the rest are unchanged.
 
    Restating absolute numbers rather than only deltas is what keeps the series
    answerable: deltas compose badly, and one wrong delta propagates through every
@@ -74,22 +73,28 @@ third is generated.
 
 ### Getting the written parts into both places
 
-The `CHANGELOG.md` entry and the GitHub Release description carry the same text,
-and nothing copies one to the other. Write the two written parts once to a file
-and place them explicitly:
+The `CHANGELOG.md` entry and the GitHub Release description carry the same three
+parts, and nothing copies one to the other.
 
-1. Paste them above the generated list in `CHANGELOG.md`, in the release pull
-   request, before merging it.
-2. After the Release exists, set its description from the same file:
+1. Write the two written parts and paste them above the generated list in
+   `CHANGELOG.md`, in the release pull request, before merging it.
+2. After the Release exists, build a file holding **all three parts** — the two
+   written ones and the generated list, which the merged `CHANGELOG.md` entry now
+   contains — and set the description from it:
 
    ```bash
    gh release edit v<version> --notes-file <file>
    ```
 
+`--notes-file` **replaces** the Release description rather than adding to it, so a
+file carrying only the written parts would delete the generated changelog from the
+Release. Take the generated section from the merged `CHANGELOG.md` entry, or from
+the Release's own body with `gh release view --json body`, before editing.
+
 Do not assume the Release description picks up a hand-edited `CHANGELOG.md`.
 Setting it explicitly is correct whether it would or not, and editing a Release
 fires `release: edited` rather than `release: published`, so `sbom.yml` does not
-re-run and the signed assets are undisturbed.
+re-run, and the signed assets are undisturbed.
 
 ## What appears in the generated changelog
 
@@ -106,6 +111,10 @@ only about which files were touched. A change that alters what an integrator
 should do belongs under a type that appears.
 
 ## Cutting a release
+
+`CHANGELOG.md` is the authoritative record of what changed between releases. Its
+generated section is built by release-please from the Conventional Commit types
+listed above; the two written parts are added by hand in the release pull request.
 
 1. Conventional Commits land on `main`. `feat` and `fix` map to a generated
    CHANGELOG section; the hidden types above produce no entry, and a breaking
