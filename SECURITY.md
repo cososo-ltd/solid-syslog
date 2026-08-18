@@ -14,11 +14,20 @@ requests, or discussions.** Use one of the private channels below:
    **<https://github.com/cososo-ltd/solid-syslog/security/advisories/new>**,
    or from this repository's **Security** tab → **Report a vulnerability**.
    This opens a private advisory visible only to you and the maintainer.
-2. **Web form.** If you cannot use GitHub, submit the form at
-   **<https://cososo.co.uk/security/report>**. It routes to a private inbox.
+2. **Email.** Write to **<security@cososo.co.uk>**. Use this if you have
+   something to attach — a proof of concept, a crash dump, a packet capture, a
+   patch — which the web form cannot take.
+3. **Web form.** Submit the form at
+   **<https://cososo.co.uk/security/report>**. It routes to a private inbox, and
+   needs neither a GitHub account nor a working mail client.
 
-We do not publish a security email address. Both channels above reach the
-maintainer privately.
+**Email is not encrypted in transit beyond what our providers negotiate.** For
+anything you need protected, use GitHub private vulnerability reporting: it is
+the reason that channel is listed first. We do not currently publish a PGP key,
+and would rather say so than leave you guessing — if you need material encrypted
+in transit, that is the channel to use.
+
+All three routes reach the maintainer privately.
 
 ### What to include
 
@@ -27,7 +36,8 @@ The more of this you can provide, the faster we can triage:
 - Affected component — **Core**, **Platform**, or **Bdd** (see *Scope* below)
 - Affected version, tag, or commit SHA
 - A description of the issue and its impact
-- Reproduction steps or a proof of concept
+- Reproduction steps or a proof of concept (attach it if you are writing by
+  email)
 - Your assessment of severity, and whether it is being actively exploited
 - Whether you wish to be credited, and how
 

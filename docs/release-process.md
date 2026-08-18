@@ -153,5 +153,9 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
       hash, and both cosign signatures per
       [`security/release-verification.md`](security/release-verification.md), not
       just that the assets are present — a bundle that is present is not yet a
-      bundle that verifies.
+      bundle that verifies. Install the tool versions that page states rather
+      than using whatever is already on your `$PATH`: verifying with your own
+      toolchain proves the signature good but hides any drift between the guide
+      and what the workflow actually produces, which is the failure an
+      integrator meets first.
 - [ ] Security release: publish the coordinated GHSA.
