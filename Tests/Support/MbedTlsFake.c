@@ -166,6 +166,7 @@ static int sslConfOwnCertCallCount;
 static mbedtls_ssl_config* lastSslConfOwnCertConfigArg;
 static mbedtls_x509_crt* lastSslConfOwnCertCertArg;
 static mbedtls_pk_context* lastSslConfOwnCertKeyArg;
+static int sslConfOwnCertReturn;
 
 /* -------------------------------------------------------------------------
  * Test accessors.
@@ -233,6 +234,7 @@ void MbedTlsFake_Reset(void)
     lastSslConfOwnCertConfigArg = NULL;
     lastSslConfOwnCertCertArg = NULL;
     lastSslConfOwnCertKeyArg = NULL;
+    sslConfOwnCertReturn = 0;
     mdHmacCallCount = 0;
     lastMdInfoType = 0;
     lastMdHmacKeyLen = 0;
@@ -563,6 +565,11 @@ mbedtls_x509_crt* MbedTlsFake_LastSslConfOwnCertCertArg(void)
     return lastSslConfOwnCertCertArg;
 }
 
+void MbedTlsFake_SetSslConfOwnCertReturn(int value)
+{
+    sslConfOwnCertReturn = value;
+}
+
 mbedtls_pk_context* MbedTlsFake_LastSslConfOwnCertKeyArg(void)
 {
     return lastSslConfOwnCertKeyArg;
@@ -693,7 +700,7 @@ int mbedtls_ssl_conf_own_cert(mbedtls_ssl_config* conf, mbedtls_x509_crt* own_ce
     lastSslConfOwnCertConfigArg = conf;
     lastSslConfOwnCertCertArg = own_cert;
     lastSslConfOwnCertKeyArg = pk_key;
-    return 0;
+    return sslConfOwnCertReturn;
 }
 
 void mbedtls_ssl_conf_rng(mbedtls_ssl_config* conf, int (*f_rng)(void*, unsigned char*, size_t), void* p_rng)

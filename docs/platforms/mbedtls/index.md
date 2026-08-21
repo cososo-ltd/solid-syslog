@@ -51,25 +51,14 @@ claim can be checked against the directory.
 
 ## Where it differs from the contract
 
-Five differences at 0.1.0, each tracked. Read them before relying on the
+Four differences at 0.1.0, each tracked. Read them before relying on the
 corresponding obligation.
-
-### A half-supplied client credential is accepted in silence
-
-A client certificate is presented only when both `ClientCertChain` and
-`ClientKey` are supplied. Where either is absent the other is ignored, the
-connection proceeds with server-authenticated TLS, and nothing is reported — so a
-device configured for mutual TLS can run without presenting its certificate, and
-without anyone on the device knowing. The contract requires this to be reported.
-Until it is, check for a half-supplied pair before you open the stream. Tracked as
-[#718](https://github.com/cososo-ltd/solid-syslog/issues/718).
 
 ### The key is not checked against its certificate
 
-No local check confirms that `ClientKey` matches `ClientCertChain`, and a failure
-to install the pair is not reported either. A mismatch therefore surfaces as a
-handshake rejection from the collector rather than as a setup error on the
-device, which sends you looking in the wrong place. Tracked as
+No local check confirms that `ClientKey` matches `ClientCertChain`. A mismatch
+therefore surfaces as a handshake rejection from the collector rather than as a
+setup error on the device, which sends you looking in the wrong place. Tracked as
 [#719](https://github.com/cososo-ltd/solid-syslog/issues/719).
 
 ### An expired certificate stops delivery

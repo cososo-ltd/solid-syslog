@@ -104,6 +104,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfOwnCertConfigArg(void);
     struct mbedtls_x509_crt* MbedTlsFake_LastSslConfOwnCertCertArg(void);
     struct mbedtls_pk_context* MbedTlsFake_LastSslConfOwnCertKeyArg(void);
+    void MbedTlsFake_SetSslConfOwnCertReturn(int value);
 
     int MbedTlsFake_MdHmacCallCount(void);
     int MbedTlsFake_LastMdInfoType(void);
