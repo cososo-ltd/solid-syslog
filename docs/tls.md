@@ -112,6 +112,24 @@ lets a fleet cross a renewal without every device stopping at once.
 Where fingerprints are configured and the peer's certificate matches none of
 them, the connection stops, whatever the chain says.
 
+**A pin excuses the chain, not the clock.** A pinned certificate outside its
+validity period is refused, in fingerprint-only mode exactly as in any other. A
+pin says which certificate is expected, not that an expired one has become
+acceptable. This is worth stating because it is easy to implement wrongly: both
+backends express fingerprint-only mode as a verification callback that overrides
+the untrusted-chain result, and a callback that overrides every result rather
+than that one silently switches expiry checking off.
+
+**Pinning makes the collector's expiry a fleet-wide event.** Every device pinned
+to a certificate stops at the same `notAfter`, and a device that missed the pin
+update stays stopped. Where the deployment controls its own CA and the collector
+certificate is not otherwise constrained, RFC 5280 §4.1.2.5 provides for a
+certificate with no well-defined expiry, `99991231235959Z`, and gives an embedded
+device as its worked example. Where it does not, pin the next certificate
+alongside the current one before the renewal rather than after it. A configured
+store turns a missed renewal into delayed delivery rather than lost delivery, up
+to the point the store fills.
+
 ### Treat endpoint identity as declared, not assumed
 
 The integrator declares the peer identity they expect. A `Stream` verifies it
@@ -130,32 +148,69 @@ report an unidentified peer.
 The states, and what each means, are documented on each platform's configuration
 field.
 
-### Obtain credentials per connection, and release them after
+### Obtain credentials per connection, and announce when they are released
 
 Trust anchors, the client credential and the expected peer identity are obtained
-when a connection is made and released when it closes. Nothing is held between
-connections, so an integrator can keep material in a secure element, an encrypted
-store or a key ring and have it exist in RAM only while a connection is being
-established.
+when a connection is made, and the `Stream` says when it has finished with them.
+Where credentials come from is the integrator's choice, and each platform
+documents the mechanism it offers: a file, a caller-built handle, a secure
+element, an encrypted store.
 
-Two things follow. A device issued new credentials while it is running uses them
-on its next connection without being restarted, and forcing that reconnection
-with `SolidSyslogSender_Disconnect` makes it immediate. And the window in which
-the integrator must keep material alive is the connection, not the lifetime of
-the stream, because the `Stream` says when it is finished with it.
+Two things follow, and one thing does not.
+
+**A device issued new credentials while it is running uses them on its next
+connection** without being restarted. Forcing that reconnection with
+`SolidSyslogSender_Disconnect` makes it immediate.
+
+**The window in which the integrator must keep material intact is the
+connection**, not the lifetime of the stream. That is the point of announcing the
+release: replacing material a stream is still holding is a use-after-free, and an
+integrator should not have to infer when it is safe.
+
+**It does not follow that the material is out of RAM for most of the time.** How
+much it buys depends on two things the contract cannot settle. The first is how
+long a connection lasts, which is covered below. The second is the credential
+source: one that hands over a pointer to something the integrator already holds
+parted has nothing to release, whereas one that parses on demand and wipes on
+release does. Read the platform page for what the source you are wiring actually
+does.
 
 What the underlying TLS library holds during a connection is a property of that
-library. Every one of them keeps the parsed certificate and key for the duration
-of the session, the private key included, and no `Stream` can change that. The
-obligation is about the window, not about the handshake.
+library rather than of this contract. Each keeps the parsed certificate and key
+for the duration of the session, the private key included, and a `Stream` that
+cleared them mid-session would be defeating its own handshake.
 
 The expected identity travels with the destination. Where the destination can be
 changed at runtime, redirecting a device to a different collector must carry the
 identity its certificate is checked against, or the redirection quietly moves the
 device to a peer nobody is verifying.
 
-Where credentials come from is the integrator's choice, and each platform
-documents the mechanism it offers.
+### A connection is long-lived, and bounding it is yours
+
+A `Stream` opens on the first record that needs it and stays open. It closes when
+a send fails, when the destination changes, when the integrator calls
+`SolidSyslogSender_Disconnect`, or when the stream is destroyed. There is no idle
+timeout and no maximum lifetime, because a syslog client that reconnects on a
+timer costs a handshake each time and gains nothing for a device that logs
+steadily.
+
+That is the right default and it has a consequence worth stating rather than
+leaving to be discovered: **on a device that logs continuously, one connection
+may last for the device's uptime, and the credential material stays resident for
+all of it.** The private key is needed once, to sign during the handshake; it is
+retained for the rest because neither TLS library offers a client a way to hand it
+back.
+
+Bounding that window is the integrator's to do, and
+`SolidSyslogSender_Disconnect` is how. A deployment that wants the material
+resident for minutes rather than months disconnects on its own schedule; the next
+record reconnects and the credential source is asked again. The same lever serves
+RFC 5425 §4.4's requirement that a sender close a connection it does not expect to
+carry more messages.
+
+Where the key must not be in application memory at all, that is a property of the
+credential source rather than of the window: a source backed by a secure element
+or a hardware key store never hands the key over in the first place.
 
 ### Report a partially configured client credential
 
