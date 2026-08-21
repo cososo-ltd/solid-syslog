@@ -531,9 +531,15 @@ Three exceptions stand, each authorised rather than assumed:
 **Anything else non-ASCII: ask.** Do not quietly pick a typographic character, and do
 not quietly rewrite a sentence to avoid one — either way the decision goes unrecorded.
 
-This is a rule about source. Documentation under `docs/` keeps typographic characters,
-on the reasoning that prose of that length is written with an authoring tool; `README.md`
-is hyphenated by hand and is the deliberate exception.
+Documentation under `docs/` follows the same rule: write `-`, not an em or en dash.
+One exception is worth knowing, because the mechanical fix is wrong. A dash that a
+hard wrap has left at the **start** of a line stays an em dash - a hyphen there is a
+Markdown list marker, and converting it silently turns a sentence into a bullet.
+Rewrap the paragraph or leave the character.
+
+Pages are being converted as they are next edited rather than in a sweep, so most of
+`docs/` still carries em dashes. Convert the whole of any page you are already
+rewriting, so it is at least internally consistent.
 
 ### MISRA-load-bearing `.clang-format` settings
 
