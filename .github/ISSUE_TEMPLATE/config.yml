@@ -3,6 +3,9 @@ contact_links:
   - name: Security vulnerability (can't use GitHub?)
     url: https://cososo.co.uk/security/report
     about: Private web form if you can't use GitHub's "Report a vulnerability" button above. See SECURITY.md.
+  - name: Vote for a platform adapter
+    url: https://github.com/cososo-ltd/solid-syslog/issues?q=is%3Aissue+is%3Aopen+label%3Aplatform+sort%3Areactions-%2B1-desc
+    about: Adapter candidates are open issues, ordered by demand. Add a thumbs-up to the one you need.
   - name: Commercial licensing & paid support
     url: https://www.cososo.co.uk/?service=solidsyslog#contact
     about: Commercial licence, guaranteed response times, or Platform-adapter contributions.
