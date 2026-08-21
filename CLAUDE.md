@@ -532,7 +532,7 @@ Three exceptions stand, each authorised rather than assumed:
 not quietly rewrite a sentence to avoid one — either way the decision goes unrecorded.
 
 Documentation under `docs/` follows the same rule: write `-`, not an em or en dash.
-One exception is worth knowing, because the mechanical fix is wrong. A dash that a
+One exception is worth knowing because the mechanical fix is wrong. A dash that a
 hard wrap has left at the **start** of a line stays an em dash - a hyphen there is a
 Markdown list marker, and converting it silently turns a sentence into a bullet.
 Rewrap the paragraph or leave the character.

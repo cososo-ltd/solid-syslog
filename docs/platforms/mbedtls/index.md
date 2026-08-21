@@ -26,18 +26,23 @@ Credentials are passed as caller-built, caller-owned handles: a seeded
 `mbedtls_ctr_drbg_context` for the handshake, an `mbedtls_x509_crt` trust chain,
 and for mutual TLS an `mbedtls_x509_crt` and `mbedtls_pk_context` pair. No part
 of the adapter opens a file, which is what allows it to run on targets built
-without `MBEDTLS_FS_IO`. Each handle must remain valid for the lifetime of the
-stream.
+without `MBEDTLS_FS_IO`.
 
-Rotation follows from that, and needs sequencing. The adapter re-reads every
-handle each time it connects, so replacing the material behind a handle is
-enough and the stream does not need rebuilding. But while a connection is open,
-the adapter's `ssl_config` holds pointers into that material, and freeing it
-there is a use-after-free.
+Two lifetimes are in play and they are not the same. The **handle objects** must
+stay addressable for as long as the stream might open a connection, because the
+adapter reads the pointers it was given on every connect. The **parsed material
+inside them** only has to be intact while a connection is open, which is when the
+adapter's `ssl_config` holds pointers into it.
 
-So: call `SolidSyslogSender_Disconnect` first, which releases the `ssl_config`,
-then free and re-parse into the same handle. The next send reconnects with the
-new material.
+Rotation follows from the second lifetime. Call `SolidSyslogSender_Disconnect`,
+which releases the `ssl_config` and with it every pointer into the material, then
+free and re-parse into the same handle. The next send reconnects with the new
+material. Freeing before the disconnect completes is a use-after-free, because
+the open connection is still reading it.
+
+The adapter does not say when it has finished with the material, so an integrator
+who wants the private key out of RAM between connections has to drive that
+sequence themselves rather than being told. That is the gap recorded below.
 
 ## Coexistence is an auditable contract
 

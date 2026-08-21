@@ -62,8 +62,11 @@ breach that. BCP 195 §3.1.1 says the same for TLS generally.
 ### Require a trust anchor or a pinned fingerprint
 
 A peer is authorised in one of two ways, and a `Stream` requires at least one of
-them to be configured. Given neither, it reports a bad configuration and returns
-the Null object rather than connecting to a peer it cannot check.
+them. Configured with neither, it refuses to connect rather than talk to a peer
+it cannot check. That is reported when a connection is attempted rather than when
+the stream is created, because trust anchors are obtained per connection and a
+stream cannot know at create time what its credential source will yield; the
+timing rule is set out under *Check the configuration it cannot work without*.
 
 **Certification path validation.** The peer certificate must chain to trust
 anchors the integrator supplies. There is no fallback to a system trust store: an
@@ -78,8 +81,11 @@ certificate matched by fingerprint needs no chain: RFC 5425 §4.2.1 states that
 such a certificate "can be self-signed, and no certification path validation is
 needed".
 
-Where both are configured, the peer must satisfy both. RFC 5425 §6.1 names that
-combination as the recommended default policy.
+Where both are configured, the peer must satisfy both. That is this contract's
+choice, not a requirement of RFC 5425: §6.1 recommends that both endpoints be
+authenticated and authorised by one of §5.1 or §5.2, rather than that the two be
+combined. Requiring both where both are given is the safer reading of an
+integrator who supplied both.
 
 ### Accept a peer authorised by certificate fingerprint
 
@@ -195,7 +201,7 @@ can and cannot select is on its page.
 A resumed session carries the security parameters of the session it resumes, so a
 `Stream` that resumes must check those parameters against what the current
 configuration requires and complete a full handshake instead where they fall
-short. RFC 5425 §4.2.3 requires it.
+short. RFC 5425 §4.2.3 recommends that check; this contract requires it.
 
 A `Stream` that never resumes meets this by construction, and it must not be
 possible to start resuming without revisiting the check.
@@ -219,9 +225,11 @@ can be configured for CRL or OCSP, and this library neither performs that check
 nor prevents it - so an assessment that needs the obligation met should say where
 it is met, rather than assume this library meets it.
 
-It is also why certificate validity is enforced rather than tolerated. With no
-revocation check, the validity period is the only mechanism by which a
-certificate ever stops being accepted.
+It is also why certificate validity is enforced rather than tolerated. Chain,
+fingerprint and identity checks all still reject a certificate, but they reject
+the same certificate today as they did yesterday. Without a revocation check, the
+validity period is the only mechanism by which a certificate that was acceptable
+stops being so.
 
 ### Bound the handshake
 
@@ -283,42 +291,28 @@ where the material rests in between is yours to decide.
 
 ## Where this stands
 
-These obligations are the target and are not yet met uniformly. Each shortfall is
-recorded on the affected platform's page and tracked as an issue. Read the page
-for the platform you are wiring before you rely on any obligation above.
-[E39](https://github.com/cososo-ltd/solid-syslog/issues/782) carries the work and
-the design behind it.
+These obligations are the target and are not yet met uniformly. Which of them a
+given platform meets, and how it falls short where it does not, is on that
+platform's own page, because the answer differs between them and only the page
+that describes an adapter can state it correctly. Read the page for the platform
+you are wiring before you rely on any obligation above.
 
-**Fingerprint authorisation is not offered by any shipped platform.** A peer is
-authorised by trust anchor and name alone, so a deployment with no PKI has no way
-to pin a collector. Tracked as
-[#753](https://github.com/cososo-ltd/solid-syslog/issues/753).
+Six obligations have at least one shipped platform short of them:
 
-**A refused handshake does not say which check refused it.** Both shipped
-platforms fail the connection correctly and report it without naming the cause.
-Tracked as [#731](https://github.com/cososo-ltd/solid-syslog/issues/731).
+| Obligation | Tracked as |
+|---|---|
+| Authorising a peer by certificate fingerprint | [#753](https://github.com/cososo-ltd/solid-syslog/issues/753) |
+| Naming the check that refused a connection | [#731](https://github.com/cososo-ltd/solid-syslog/issues/731) |
+| Obtaining credentials per connection, and choosing where they come from | [E39](https://github.com/cososo-ltd/solid-syslog/issues/782) |
+| Reporting a partially configured client credential | [#718](https://github.com/cososo-ltd/solid-syslog/issues/718), [#719](https://github.com/cososo-ltd/solid-syslog/issues/719), [#734](https://github.com/cososo-ltd/solid-syslog/issues/734) |
+| A cipher policy that binds the negotiated connection | [#733](https://github.com/cososo-ltd/solid-syslog/issues/733) |
+| Checking the configuration a stream cannot work without | [#732](https://github.com/cososo-ltd/solid-syslog/issues/732) |
 
-**Credentials are held for the lifetime of the stream, not per connection.** Both
-shipped platforms read their material on every connection, so rotation works, but
-neither releases it afterwards and neither offers a choice of where it comes
-from. Tracked under
-[E39](https://github.com/cososo-ltd/solid-syslog/issues/782).
+**Mutual TLS is the one to check before you rely on it.** The shipped platforms
+do not behave the same way when a client certificate is supplied without its key,
+and one of the two behaviours leaves a device that was configured for mutual TLS
+connecting without presenting a certificate.
+[E39](https://github.com/cososo-ltd/solid-syslog/issues/782) carries the work
+that converges them, and the design behind every row above.
 
-**A partially configured client credential is handled differently on each
-platform**, and neither matches the contract. One refuses the connection, which
-is safe but stricter than this page requires; the other accepts it in silence and
-connects without the client certificate, so a device configured for mutual TLS
-can run without ever presenting one. If you rely on mutual TLS, read your
-platform's page. Tracked as
-[#718](https://github.com/cososo-ltd/solid-syslog/issues/718),
-[#719](https://github.com/cososo-ltd/solid-syslog/issues/719) and
-[#734](https://github.com/cososo-ltd/solid-syslog/issues/734).
-
-**A cipher policy does not bind the connection actually negotiated.** Tracked as
-[#733](https://github.com/cososo-ltd/solid-syslog/issues/733).
-
-**Configuration is not checked when the stream is created**, on either platform.
-Tracked as [#732](https://github.com/cososo-ltd/solid-syslog/issues/732).
-
-No shipped `Stream` resumes a session, so the resumption obligation is met and
-there is nothing to track against it.
+No shipped `Stream` resumes a session, so the resumption obligation is met.
