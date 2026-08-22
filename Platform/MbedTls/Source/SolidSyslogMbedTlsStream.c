@@ -39,6 +39,7 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
 static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_HasClientCredential(const struct SolidSyslogMbedTlsStreamConfig* config);
+static inline bool MbedTlsStream_ClientKeyMatchesCertificate(const struct SolidSyslogMbedTlsStreamConfig* config);
 static inline bool MbedTlsStream_HasHalfOfClientCredential(const struct SolidSyslogMbedTlsStreamConfig* config);
 static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbedTlsStream* self);
@@ -189,9 +190,7 @@ static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream*
     mbedtls_ssl_conf_rng(&self->SslConfig, mbedtls_ctr_drbg_random, self->Config.Rng);
     if (MbedTlsStream_HasClientCredential(&self->Config))
     {
-        if (mbedtls_pk_check_pair(
-                &self->Config.ClientCertChain->pk, self->Config.ClientKey, mbedtls_ctr_drbg_random, self->Config.Rng
-            ) != 0)
+        if (MbedTlsStream_ClientKeyMatchesCertificate(&self->Config) == false)
         {
             MbedTlsStream_Report(
                 SOLIDSYSLOG_SEVERITY_WARNING,
@@ -231,6 +230,18 @@ static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream*
 static inline bool MbedTlsStream_HasClientCredential(const struct SolidSyslogMbedTlsStreamConfig* config)
 {
     return (config->ClientCertChain != NULL) && (config->ClientKey != NULL);
+}
+
+/* mbedtls_ssl_conf_own_cert does not check the pair it is handed, and names this
+ * function in its own documentation as the way to check it. */
+static inline bool MbedTlsStream_ClientKeyMatchesCertificate(const struct SolidSyslogMbedTlsStreamConfig* config)
+{
+    return mbedtls_pk_check_pair(
+               &config->ClientCertChain->pk,
+               config->ClientKey,
+               mbedtls_ctr_drbg_random,
+               config->Rng
+           ) == 0;
 }
 
 /* One half without the other. The integrator asked for mutual TLS and will not
