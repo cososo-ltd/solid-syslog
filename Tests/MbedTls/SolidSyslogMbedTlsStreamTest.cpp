@@ -901,3 +901,27 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsClientCredentialNotInstalledAndStillCo
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
     );
 }
+
+/* -------------------------------------------------------------------------
+ * mTLS credential pairing. mbedtls_pk_check_pair compares the certificate's
+ * public key with the private key locally, so a mismatched pair is caught on
+ * the device instead of surfacing as a rejection from the collector.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogMbedTlsStream, OpenChecksClientKeyAgainstItsCertificate)
+
+{
+    static mbedtls_x509_crt clientCertMarker;
+    static mbedtls_pk_context clientKeyMarker;
+    static mbedtls_ctr_drbg_context rngMarker;
+
+    config.Rng = &rngMarker;
+    WireClientCredential(&clientCertMarker, &clientKeyMarker);
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsFake_PkCheckPairCallCount());
+    POINTERS_EQUAL(&clientCertMarker.pk, MbedTlsFake_LastPkCheckPairPublicKeyArg());
+    POINTERS_EQUAL(&clientKeyMarker, MbedTlsFake_LastPkCheckPairPrivateKeyArg());
+    POINTERS_EQUAL((void*) mbedtls_ctr_drbg_random, (void*) MbedTlsFake_LastPkCheckPairRngFuncArg());
+    POINTERS_EQUAL(&rngMarker, MbedTlsFake_LastPkCheckPairRngContextArg());
+}

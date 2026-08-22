@@ -106,6 +106,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct mbedtls_pk_context* MbedTlsFake_LastSslConfOwnCertKeyArg(void);
     void MbedTlsFake_SetSslConfOwnCertReturn(int value);
 
+    /* mbedtls_pk_check_pair (client key against its certificate) */
+    int MbedTlsFake_PkCheckPairCallCount(void);
+    const struct mbedtls_pk_context* MbedTlsFake_LastPkCheckPairPublicKeyArg(void);
+    const struct mbedtls_pk_context* MbedTlsFake_LastPkCheckPairPrivateKeyArg(void);
+    int (*MbedTlsFake_LastPkCheckPairRngFuncArg(void))(void*, unsigned char*, size_t);
+    void* MbedTlsFake_LastPkCheckPairRngContextArg(void);
+    void MbedTlsFake_SetPkCheckPairReturn(int value);
+
     int MbedTlsFake_MdHmacCallCount(void);
     int MbedTlsFake_LastMdInfoType(void);
     const uint8_t* MbedTlsFake_LastMdHmacKey(void);

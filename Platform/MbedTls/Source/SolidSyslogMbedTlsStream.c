@@ -5,6 +5,7 @@
 #include "SolidSyslogMbedTlsStream.h"
 
 #include <mbedtls/ctr_drbg.h>
+#include <mbedtls/pk.h>
 #include <mbedtls/ssl.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -188,6 +189,9 @@ static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream*
     mbedtls_ssl_conf_rng(&self->SslConfig, mbedtls_ctr_drbg_random, self->Config.Rng);
     if (MbedTlsStream_HasClientCredential(&self->Config))
     {
+        (void) mbedtls_pk_check_pair(
+            &self->Config.ClientCertChain->pk, self->Config.ClientKey, mbedtls_ctr_drbg_random, self->Config.Rng
+        );
         /* Only MBEDTLS_ERR_SSL_ALLOC_FAILED, which returns before the key_cert
          * node is appended, so nothing is left half-configured. */
         if (mbedtls_ssl_conf_own_cert(&self->SslConfig, self->Config.ClientCertChain, self->Config.ClientKey) != 0)
