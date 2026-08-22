@@ -44,14 +44,8 @@ static const uint16_t TEST_PORT = 514;
     }
 
 // Asserts the most recent ErrorHandlerFake call matched (severity, source, code).
-#define CHECK_REPORTED(severity, source, expectedCategory, code)                   \
-    {                                                                              \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                \
-        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());                  \
-        POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());                  \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory()); \
-        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastDetail());               \
-    }
+#define CHECK_REPORTED(severity, source, expectedCategory, code) \
+    CHECK_ERROR_REPORTED_ONCE((severity), &(source), (expectedCategory), (code))
 
 // Asserts the lwIP API call recorded the pcb the wrapper got back from
 // tcp_new - proves the wrapper forwarded the right handle. `getter` is

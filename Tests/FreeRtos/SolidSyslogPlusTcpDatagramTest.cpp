@@ -331,11 +331,12 @@ TEST(SolidSyslogPlusTcpDatagramPool, ExhaustedCreateReportsError)
 
     overflow = SolidSyslogPlusTcpDatagram_Create();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&PlusTcpDatagramErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_PLUSTCP_DATAGRAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &PlusTcpDatagramErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_PLUSTCP_DATAGRAM_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogPlusTcpDatagramPool, FallbackVtableMethodsAreNoOps)
@@ -415,11 +416,12 @@ TEST(SolidSyslogPlusTcpDatagramPool, DestroyOfUnknownHandleReportsWarning)
 
     SolidSyslogPlusTcpDatagram_Destroy(&stranger);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&PlusTcpDatagramErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_PLUSTCP_DATAGRAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &PlusTcpDatagramErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_PLUSTCP_DATAGRAM_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogPlusTcpDatagramPool, DestroyOfStaleHandleReportsWarning)
@@ -432,9 +434,10 @@ TEST(SolidSyslogPlusTcpDatagramPool, DestroyOfStaleHandleReportsWarning)
     SolidSyslogPlusTcpDatagram_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&PlusTcpDatagramErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_PLUSTCP_DATAGRAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &PlusTcpDatagramErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_PLUSTCP_DATAGRAM_ERROR_UNKNOWN_DESTROY
+    );
 }

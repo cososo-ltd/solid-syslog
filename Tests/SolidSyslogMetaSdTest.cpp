@@ -291,11 +291,12 @@ TEST(SolidSyslogMetaSd, CreateWithNullConfigReportsCritical)
 {
     recreateWith(nullptr);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&MetaSdErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_META_SD_ERROR_NULL_CONFIG, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &MetaSdErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_META_SD_ERROR_NULL_CONFIG
+    );
 }
 
 TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsCritical)
@@ -303,11 +304,12 @@ TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsCritical)
     config.Counter = nullptr;
     recreate();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&MetaSdErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_META_SD_ERROR_NULL_COUNTER, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &MetaSdErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_META_SD_ERROR_NULL_COUNTER
+    );
 }
 
 // Pool tests - prove SOLIDSYSLOG_META_SD_POOL_SIZE caps live instances
@@ -366,11 +368,12 @@ TEST(SolidSyslogMetaSdPool, OverflowReportsPoolExhausted)
 
     overflow = MakeSd();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&MetaSdErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_META_SD_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &MetaSdErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_META_SD_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogMetaSdPool, FillingPoolThenOverflowReturnsDistinctFallback)

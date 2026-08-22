@@ -595,11 +595,12 @@ TEST(SolidSyslogOriginSdPool, OverflowReportsPoolExhausted)
 
     overflow = MakeSd();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&OriginSdErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_ORIGIN_SD_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &OriginSdErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_ORIGIN_SD_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogOriginSdPool, FillingPoolThenOverflowReturnsDistinctFallback)

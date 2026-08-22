@@ -59,14 +59,8 @@ static bool TestGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* 
     return true;
 }
 
-#define CHECK_REPORTED_ERROR(severity, expectedCategory, code)                          \
-    {                                                                                   \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                     \
-        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());                       \
-        POINTERS_EQUAL(&OpenSslAesGcmPolicyErrorSource, ErrorHandlerFake_LastSource()); \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory());      \
-        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastDetail());                    \
-    }
+#define CHECK_REPORTED_ERROR(severity, expectedCategory, code) \
+    CHECK_ERROR_REPORTED_ONCE((severity), &OpenSslAesGcmPolicyErrorSource, (expectedCategory), (code))
 
 #define CHECK_IS_NULL_FALLBACK(handle) POINTERS_EQUAL(SolidSyslogNullSecurityPolicy_Get(), (handle))
 

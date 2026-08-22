@@ -41,14 +41,8 @@ static const uint16_t TEST_PORT = 514;
 
 // Asserts the most recent ErrorHandlerFake call matched (severity, source, code).
 // Use after the act-phase of a test that expects exactly one SolidSyslog_Error call.
-#define CHECK_REPORTED(severity, source, expectedCategory, code)                   \
-    {                                                                              \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                \
-        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());                  \
-        POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());                  \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory()); \
-        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastDetail());               \
-    }
+#define CHECK_REPORTED(severity, source, expectedCategory, code) \
+    CHECK_ERROR_REPORTED_ONCE((severity), &(source), (expectedCategory), (code))
 
 /* Shared fixture: every Datagram lifecycle test needs the fake reset, a fresh
  * datagram + address handle pair, teardown of both, and the leak invariant
