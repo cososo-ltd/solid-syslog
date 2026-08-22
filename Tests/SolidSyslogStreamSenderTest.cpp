@@ -725,11 +725,12 @@ TEST(SolidSyslogStreamSenderPool, OverflowReportsPoolExhausted)
 
     overflow = MakeSender();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_STREAM_SENDER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &StreamSenderErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_STREAM_SENDER_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogStreamSenderPool, FillingPoolThenOverflowReturnsDistinctFallback)
@@ -754,14 +755,13 @@ TEST(SolidSyslogStreamSenderPool, FillingPoolThenOverflowReturnsDistinctFallback
 // ERROR->CRITICAL in S12.33).
 
 /* Macro (not function) so test failures report the caller's __FILE__/__LINE__. */
-#define CHECK_STREAMSENDER_BAD_SETUP_ERROR(expectedCategory, expectedCode)           \
-    {                                                                                \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                  \
-        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity()); \
-        POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());     \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory());   \
-        UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail());         \
-    }
+#define CHECK_STREAMSENDER_BAD_SETUP_ERROR(expectedCategory, expectedCode) \
+    CHECK_ERROR_REPORTED_ONCE(                                             \
+        SOLIDSYSLOG_SEVERITY_CRITICAL,                                     \
+        &StreamSenderErrorSource,                                          \
+        (expectedCategory),                                                \
+        (expectedCode)                                                     \
+    )
 
 // clang-format off
 TEST_GROUP(SolidSyslogStreamSenderBadSetup)
@@ -887,11 +887,12 @@ TEST(SolidSyslogStreamSenderDeliveryHealth, FirstFailingSendReportsDeliveryFaile
 {
     StreamFake_SetSendFails(stream, true);
     Send();
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_FAILED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &StreamSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
+        SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_FAILED
+    );
 }
 
 TEST(SolidSyslogStreamSenderDeliveryHealth, StayingDownReportsDeliveryFailedOnlyOnce)
@@ -910,10 +911,13 @@ TEST(SolidSyslogStreamSenderDeliveryHealth, RecoveryAfterDownReportsDeliveryRest
     StreamFake_SetSendFails(stream, false);
     Send();
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_NOTICE, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_RESTORED, ErrorHandlerFake_LastDetail());
+    /* The second event, so the count stays explicit rather than pinned at ONCE. */
+    CHECK_ERROR_EVENT(
+        SOLIDSYSLOG_SEVERITY_NOTICE,
+        &StreamSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
+        SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_RESTORED
+    );
 }
 
 TEST(SolidSyslogStreamSenderDeliveryHealth, StayingUpReportsNothing)

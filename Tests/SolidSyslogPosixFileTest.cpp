@@ -175,11 +175,12 @@ TEST(SolidSyslogPosixFilePool, ExhaustedCreateReportsError)
 
     overflow = SolidSyslogPosixFile_Create();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&PosixFileErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_FILE_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &PosixFileErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_POSIX_FILE_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogPosixFilePool, FallbackOpenReturnsFalse)
@@ -241,11 +242,12 @@ TEST(SolidSyslogPosixFilePool, DestroyOfUnknownHandleReportsWarning)
 
     SolidSyslogPosixFile_Destroy(&stranger);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&PosixFileErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_FILE_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &PosixFileErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_POSIX_FILE_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogPosixFilePool, DestroyOfStaleHandleReportsWarning)
@@ -257,9 +259,10 @@ TEST(SolidSyslogPosixFilePool, DestroyOfStaleHandleReportsWarning)
     SolidSyslogPosixFile_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&PosixFileErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_FILE_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &PosixFileErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_POSIX_FILE_ERROR_UNKNOWN_DESTROY
+    );
 }

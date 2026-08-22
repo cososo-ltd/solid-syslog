@@ -131,11 +131,12 @@ TEST(SolidSyslogPlusTcpAddressPool, ExhaustedCreateReportsError)
 
     overflow = SolidSyslogPlusTcpAddress_Create();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&PlusTcpAddressErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &PlusTcpAddressErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogPlusTcpAddressPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
@@ -194,11 +195,12 @@ TEST(SolidSyslogPlusTcpAddressPool, DestroyOfUnknownHandleReportsWarning)
 
     SolidSyslogPlusTcpAddress_Destroy((struct SolidSyslogAddress*) &stranger);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&PlusTcpAddressErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &PlusTcpAddressErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogPlusTcpAddressPool, DestroyOfStaleHandleReportsWarning)
@@ -211,9 +213,10 @@ TEST(SolidSyslogPlusTcpAddressPool, DestroyOfStaleHandleReportsWarning)
     SolidSyslogPlusTcpAddress_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&PlusTcpAddressErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &PlusTcpAddressErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_UNKNOWN_DESTROY
+    );
 }

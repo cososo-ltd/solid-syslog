@@ -546,9 +546,12 @@ TEST(SolidSyslogBlockStoreConfig, BelowMinimumBlockSizeReportsWarning)
 {
     ErrorHandlerFake_Install(nullptr);
     CreateWithMaxBlockSize(1);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_TOO_SMALL, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_EVENT(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &BlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_TOO_SMALL
+    );
 }
 
 TEST(SolidSyslogBlockStoreConfig, FilenameExactlyAtMaxPath)
@@ -2204,11 +2207,12 @@ TEST(SolidSyslogBlockStorePool, OverflowReportsPoolExhausted)
 
     overflow = MakeStore();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&BlockStoreErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &BlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogBlockStorePool, FillingPoolThenOverflowResolvesToNullStore)

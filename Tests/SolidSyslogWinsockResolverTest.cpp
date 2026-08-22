@@ -188,11 +188,12 @@ TEST(SolidSyslogWinsockResolverPool, ExhaustedCreateReportsError)
 
     overflow = SolidSyslogWinsockResolver_Create();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&WinsockResolverErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_RESOLVER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &WinsockResolverErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_WINSOCK_RESOLVER_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogWinsockResolverPool, FallbackResolveIsNoOp)
@@ -257,11 +258,12 @@ TEST(SolidSyslogWinsockResolverPool, DestroyOfUnknownHandleReportsWarning)
 
     SolidSyslogWinsockResolver_Destroy(&stranger);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&WinsockResolverErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_RESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &WinsockResolverErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_WINSOCK_RESOLVER_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogWinsockResolverPool, DestroyOfStaleHandleReportsWarning)
@@ -273,9 +275,10 @@ TEST(SolidSyslogWinsockResolverPool, DestroyOfStaleHandleReportsWarning)
     SolidSyslogWinsockResolver_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&WinsockResolverErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_WINSOCK_RESOLVER_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &WinsockResolverErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_WINSOCK_RESOLVER_ERROR_UNKNOWN_DESTROY
+    );
 }

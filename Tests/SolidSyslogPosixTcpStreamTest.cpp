@@ -622,11 +622,12 @@ TEST(SolidSyslogPosixTcpStreamPool, ExhaustedCreateReportsError)
 
     overflow = SolidSyslogPosixTcpStream_Create(nullptr);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&PosixTcpStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_TCP_STREAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &PosixTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_POSIX_TCP_STREAM_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogPosixTcpStreamPool, FallbackSendReturnsTrue)
@@ -688,11 +689,12 @@ TEST(SolidSyslogPosixTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
 
     SolidSyslogPosixTcpStream_Destroy(&stranger);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&PosixTcpStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_TCP_STREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &PosixTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_POSIX_TCP_STREAM_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogPosixTcpStreamPool, DestroyOfStaleHandleReportsWarning)
@@ -704,9 +706,10 @@ TEST(SolidSyslogPosixTcpStreamPool, DestroyOfStaleHandleReportsWarning)
     SolidSyslogPosixTcpStream_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&PosixTcpStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_POSIX_TCP_STREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &PosixTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_POSIX_TCP_STREAM_ERROR_UNKNOWN_DESTROY
+    );
 }

@@ -25,16 +25,12 @@ extern "C"
 
 using namespace CososoTesting;
 
-#define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode) \
-    {                                                                                                 \
-        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                         \
-        LONGS_EQUAL(1, MbedTlsFake_SslFreeCallCount());                                               \
-        LONGS_EQUAL(1, MbedTlsFake_SslConfigFreeCallCount());                                         \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                                   \
-        POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource());                     \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory());                    \
-        UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail());                          \
-        LONGS_EQUAL((expectedSeverity), ErrorHandlerFake_LastSeverity());                             \
+#define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode)                 \
+    {                                                                                                                 \
+        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                                         \
+        LONGS_EQUAL(1, MbedTlsFake_SslFreeCallCount());                                                               \
+        LONGS_EQUAL(1, MbedTlsFake_SslConfigFreeCallCount());                                                         \
+        CHECK_ERROR_REPORTED_ONCE((expectedSeverity), &MbedTlsStreamErrorSource, (expectedCategory), (expectedCode)); \
     }
 
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
@@ -43,17 +39,13 @@ using namespace CososoTesting;
 /* mTLS was asked for and is not in force, but the stream still connects
  * server-authenticated - the degraded-but-delivering case docs/error-severity.md
  * rates WARNING. */
-#define CHECK_INCOMPLETE_CREDENTIAL_REPORTED()                                             \
-    {                                                                                      \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                        \
-        POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource());          \
-        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());        \
-        UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory()); \
-        UNSIGNED_LONGS_EQUAL(                                                              \
-            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_INCOMPLETE,                 \
-            ErrorHandlerFake_LastDetail()                                                  \
-        );                                                                                 \
-    }
+#define CHECK_INCOMPLETE_CREDENTIAL_REPORTED()                        \
+    CHECK_ERROR_REPORTED_ONCE(                                        \
+        SOLIDSYSLOG_SEVERITY_WARNING,                                 \
+        &MbedTlsStreamErrorSource,                                    \
+        SOLIDSYSLOG_CAT_BAD_CONFIG,                                   \
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_INCOMPLETE \
+    )
 
 static int NoOpSleepCallCount;
 static int g_lastSleepMs;
@@ -776,11 +768,12 @@ TEST(SolidSyslogMbedTlsStream, OpenWarnsWhenServerNameIsNull)
      * the library must surface rather than swallow (S12.28). */
     SolidSyslogStream_Open(handle, addr);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_SERVER_NAME_NOT_SET, ErrorHandlerFake_LastDetail());
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &MbedTlsStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+    );
 }
 
 TEST(SolidSyslogMbedTlsStream, OpenStillConnectsWhenServerNameIsNull)
