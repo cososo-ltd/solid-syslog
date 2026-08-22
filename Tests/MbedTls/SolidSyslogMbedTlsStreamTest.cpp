@@ -947,3 +947,17 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsMismatchedClientCredentialAndStillConn
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_MISMATCHED
     );
 }
+
+TEST(SolidSyslogMbedTlsStream, OpenSkipsOwnCertWhenClientKeyDoesNotMatchCertificate)
+
+{
+    static mbedtls_x509_crt clientCertMarker;
+    static mbedtls_pk_context clientKeyMarker;
+
+    WireClientCredential(&clientCertMarker, &clientKeyMarker);
+    MbedTlsFake_SetPkCheckPairReturn(MBEDTLS_ERR_PK_TYPE_MISMATCH);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslConfOwnCertCallCount());
+}

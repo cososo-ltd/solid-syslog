@@ -201,13 +201,17 @@ static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream*
         }
         /* Only MBEDTLS_ERR_SSL_ALLOC_FAILED, which returns before the key_cert
          * node is appended, so nothing is left half-configured. */
-        if (mbedtls_ssl_conf_own_cert(&self->SslConfig, self->Config.ClientCertChain, self->Config.ClientKey) != 0)
+        else if (mbedtls_ssl_conf_own_cert(&self->SslConfig, self->Config.ClientCertChain, self->Config.ClientKey) != 0)
         {
             MbedTlsStream_Report(
                 SOLIDSYSLOG_SEVERITY_WARNING,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
                 SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
             );
+        }
+        else
+        {
+            /* Paired and installed - the credential will be presented. */
         }
     }
     else if (MbedTlsStream_HasHalfOfClientCredential(&self->Config))
