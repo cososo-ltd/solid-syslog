@@ -56,7 +56,7 @@ claim can be checked against the directory.
 
 ## Where it differs from the contract
 
-Seven differences, each tracked. Read them before relying on the corresponding
+Six differences, each tracked. Read them before relying on the corresponding
 obligation.
 
 ### A peer cannot be authorised by certificate fingerprint
@@ -81,22 +81,11 @@ holds its private key in RAM continuously, and there is no point at which the
 adapter invites the integrator to release it. Tracked under
 [E39](https://github.com/cososo-ltd/solid-syslog/issues/782).
 
-### A half-supplied client credential is accepted in silence
-
-A client certificate is presented only when both `ClientCertChain` and
-`ClientKey` are supplied. Where either is absent the other is ignored, the
-connection proceeds with server-authenticated TLS, and nothing is reported, so a
-device configured for mutual TLS can run without presenting its certificate, and
-without anyone on the device knowing. The contract requires this to be reported.
-Until it is, check for a half-supplied pair before you open the stream. Tracked as
-[#718](https://github.com/cososo-ltd/solid-syslog/issues/718).
-
 ### The key is not checked against its certificate
 
-No local check confirms that `ClientKey` matches `ClientCertChain`, and a failure
-to install the pair is not reported either. A mismatch therefore surfaces as a
-handshake rejection from the collector rather than as a setup error on the
-device, which sends you looking in the wrong place. Tracked as
+No local check confirms that `ClientKey` matches `ClientCertChain`. A mismatch
+therefore surfaces as a handshake rejection from the collector rather than as a
+setup error on the device, which sends you looking in the wrong place. Tracked as
 [#719](https://github.com/cososo-ltd/solid-syslog/issues/719).
 
 ### The cipher policy cannot be expressed

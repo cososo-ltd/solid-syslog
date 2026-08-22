@@ -40,6 +40,21 @@ using namespace CososoTesting;
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode)
 
+/* mTLS was asked for and is not in force, but the stream still connects
+ * server-authenticated - the degraded-but-delivering case docs/error-severity.md
+ * rates WARNING. */
+#define CHECK_INCOMPLETE_CREDENTIAL_REPORTED()                                             \
+    {                                                                                      \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                        \
+        POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource());          \
+        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());        \
+        UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory()); \
+        UNSIGNED_LONGS_EQUAL(                                                              \
+            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_INCOMPLETE,                 \
+            ErrorHandlerFake_LastDetail()                                                  \
+        );                                                                                 \
+    }
+
 static int NoOpSleepCallCount;
 static int g_lastSleepMs;
 
@@ -90,6 +105,19 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         config.Sleep = NoOpSleep;
         handle = SolidSyslogMbedTlsStream_Create(&config);
         addr = AddressFake_Get();
+    }
+
+    /* Wires a client credential - either half may be null. ServerName is the
+     * explicit no-name-check opt-out, so the unverified-peer WARNING does not
+     * fire alongside and confuse the report count. Open is left to the caller:
+     * this recreates the handle, which resets the fakes, so anything arranged
+     * on them has to be set afterwards. */
+    void WireClientCredential(mbedtls_x509_crt* cert, mbedtls_pk_context* key)
+    {
+        config.ClientCertChain = cert;
+        config.ClientKey = key;
+        config.ServerName = "";
+        ReCreateHandleWithUpdatedConfig();
     }
 
     /* Replaces the default Null-getter handle with one that uses the fake
@@ -806,9 +834,8 @@ TEST(SolidSyslogMbedTlsStream, OpenWiresOwnCertWhenClientCertAndKeyProvided)
 {
     static mbedtls_x509_crt clientCertMarker;
     static mbedtls_pk_context clientKeyMarker;
-    config.ClientCertChain = &clientCertMarker;
-    config.ClientKey = &clientKeyMarker;
-    ReCreateHandleWithUpdatedConfig();
+
+    WireClientCredential(&clientCertMarker, &clientKeyMarker);
     SolidSyslogStream_Open(handle, addr);
 
     LONGS_EQUAL(1, MbedTlsFake_SslConfOwnCertCallCount());
@@ -820,12 +847,9 @@ TEST(SolidSyslogMbedTlsStream, OpenWiresOwnCertWhenClientCertAndKeyProvided)
 TEST(SolidSyslogMbedTlsStream, OpenSkipsOwnCertWhenClientCertChainIsNull)
 
 {
-    /* Key provided, cert NULL - caller hasn't fully opted in to mTLS, so
-     * the adapter must not tell mbedTLS anything. setup() leaves
-     * ClientCertChain at NULL; supplying just a Key is the incomplete case. */
     static mbedtls_pk_context clientKeyMarker;
-    config.ClientKey = &clientKeyMarker;
-    ReCreateHandleWithUpdatedConfig();
+
+    WireClientCredential(nullptr, &clientKeyMarker);
     SolidSyslogStream_Open(handle, addr);
 
     LONGS_EQUAL(0, MbedTlsFake_SslConfOwnCertCallCount());
@@ -834,11 +858,52 @@ TEST(SolidSyslogMbedTlsStream, OpenSkipsOwnCertWhenClientCertChainIsNull)
 TEST(SolidSyslogMbedTlsStream, OpenSkipsOwnCertWhenClientKeyIsNull)
 
 {
-    /* Cert provided, key NULL - still incomplete; same skip. */
     static mbedtls_x509_crt clientCertMarker;
-    config.ClientCertChain = &clientCertMarker;
-    ReCreateHandleWithUpdatedConfig();
+
+    WireClientCredential(&clientCertMarker, nullptr);
     SolidSyslogStream_Open(handle, addr);
 
     LONGS_EQUAL(0, MbedTlsFake_SslConfOwnCertCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsIncompleteClientCredentialWhenClientKeyIsNull)
+
+{
+    static mbedtls_x509_crt clientCertMarker;
+
+    WireClientCredential(&clientCertMarker, nullptr);
+    SolidSyslogStream_Open(handle, addr);
+
+    CHECK_INCOMPLETE_CREDENTIAL_REPORTED();
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsIncompleteClientCredentialWhenClientCertChainIsNull)
+
+{
+    static mbedtls_pk_context clientKeyMarker;
+
+    WireClientCredential(nullptr, &clientKeyMarker);
+    SolidSyslogStream_Open(handle, addr);
+
+    CHECK_INCOMPLETE_CREDENTIAL_REPORTED();
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenFailsAndReportsWhenClientCredentialCannotBeInstalled)
+
+{
+    /* Both halves supplied, but mbedTLS cannot take them - the only documented
+     * failure is MBEDTLS_ERR_SSL_ALLOC_FAILED. Discarding it is the silent
+     * downgrade to server-authenticated TLS this stops. */
+    static mbedtls_x509_crt clientCertMarker;
+    static mbedtls_pk_context clientKeyMarker;
+    WireClientCredential(&clientCertMarker, &clientKeyMarker);
+    MbedTlsFake_SetSslConfOwnCertReturn(MBEDTLS_ERR_SSL_ALLOC_FAILED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
+    );
 }
