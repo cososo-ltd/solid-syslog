@@ -28,16 +28,36 @@ needs them present and readable by the process at the moment a connection is
 made, not at startup.
 
 The `SSL_CTX` is rebuilt on every open, re-reading each file named in the
-configuration. Rotation is therefore a file replacement and a reconnection:
-replace the file, and the new material is in force on the next connection —
-either through ordinary reconnection after an outage, or immediately by calling
-`SolidSyslogSender_Disconnect`. Nothing needs to be reloaded and nothing needs to
-be restarted.
+configuration, and freed on close. Nothing parsed from those files is held
+between connections. Rotation is therefore a file replacement and a
+reconnection: replace the file, and the new material is in force on the next
+connection, either through ordinary reconnection after an outage or immediately
+by calling `SolidSyslogSender_Disconnect`.
 
 ## Where it differs from the contract
 
-Four differences at 0.1.0, each tracked. Read them before relying on the
-corresponding obligation.
+Six differences, each tracked. Read them before relying on the corresponding
+obligation.
+
+### A peer cannot be authorised by certificate fingerprint
+
+Only certification path validation is offered, so a deployment with no PKI has no
+way to pin the collector's certificate. Tracked as
+[#753](https://github.com/cososo-ltd/solid-syslog/issues/753).
+
+### A refused connection does not say which check refused it
+
+An expired certificate, an untrusted chain and a name mismatch all surface as the
+same handshake failure, so the report does not distinguish a certificate problem
+from a network one. Tracked as
+[#731](https://github.com/cososo-ltd/solid-syslog/issues/731).
+
+### Credentials come from the filesystem, and only from there
+
+The adapter opens the PEM files itself, so material held in a TPM, a keyring or
+an encrypted store has to be written to a readable file before this adapter can
+use it. Tracked under
+[E39](https://github.com/cososo-ltd/solid-syslog/issues/782).
 
 ### A half-supplied client credential stops delivery
 
@@ -49,14 +69,6 @@ that the collector is the enforcement point for our own credential.
 This adapter is stricter than the contract rather than weaker, and the stricter
 behaviour is safe. Tracked as
 [#734](https://github.com/cososo-ltd/solid-syslog/issues/734).
-
-### An expired certificate stops delivery
-
-A peer certificate that is expired or not yet valid fails the handshake, even
-where it still chains to a trusted anchor. The contract asks for it to be
-reported with delivery continuing, because clock skew is the dominant cause and a
-device with a wrong clock is one whose logs you still want. Tracked as
-[#731](https://github.com/cososo-ltd/solid-syslog/issues/731).
 
 ### The cipher policy does not bind a TLS 1.3 connection
 

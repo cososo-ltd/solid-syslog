@@ -5,7 +5,7 @@ choosing between the TLS platforms, assessing the library against a security
 standard, or writing a TLS `Stream` of your own.
 
 The obligations here are the contract. What each shipped TLS platform actually
-does, and where it differs, is on its own page — the
+does, and where it differs, is on its own page - the
 [capability matrix](platforms/index.md) shows which platforms fill the role.
 
 ## Delivery is preferred to silence
@@ -13,24 +13,25 @@ does, and where it differs, is on its own page — the
 Syslog is how a device reports what happened to it. The moment the reporting
 matters most is the moment the device is under attack, and that is also the
 moment a security control that fails closed becomes a way to blind the collector.
-An attacker who can move a clock forward, block the route to a revocation
-responder, or wait for a certificate to lapse should not thereby be able to stop
-the device reporting.
+An attacker who can block the route to a revocation responder, or who can make a
+credential look half-configured, should not thereby be able to stop the device
+reporting.
 
 So the default is: **report the fault through the error handler, and keep
 delivering.** A fault that an operator can see and act on is worth more than a
 connection that refuses to open for a reason nobody is watching.
 
-The rule has a limit, and it is one line rather than a list of exceptions:
-**delivery stops when the peer fails the check the integrator asked for.** No
-trust anchors to load, a certificate that does not chain to them, and a
-certificate that does not match a declared identity are all that case.
-Continuing through any of them would hand the records to whoever answered
-instead, which loses the confidentiality of the log *and* the audit trail at the
-same time, and does so without anyone noticing.
+The rule has a limit: **delivery stops when the peer fails the check the
+integrator asked for.** That covers a configuration naming neither trust anchors
+nor pinned fingerprints, a certificate that does not validate against the trust
+anchors, a certificate matching none of the configured fingerprints, and a
+certificate that does not match a declared identity. Continuing through any of
+them would hand the records to whoever answered instead, which loses the
+confidentiality of the log and the audit trail at the same time, and does so
+without anyone noticing.
 
 The check is the integrator's to set. Declaring no peer identity is a decision
-rather than a failure — it says chain verification alone is enough here, which on
+rather than a failure - it says chain verification alone is enough here, which on
 a closed network with a private CA it may be. What the contract requires is that
 the decision is explicit, and that the stream says so when it was never made at
 all.
@@ -58,35 +59,157 @@ RFC 5425, asks that TLS 1.3 be supported and **preferred** where it is
 implemented, so a stream that pinned a ceiling to constrain something else would
 breach that. BCP 195 §3.1.1 says the same for TLS generally.
 
-### Require a trust anchor, and take it from the integrator
+### Require a trust anchor or a pinned fingerprint
 
-The peer certificate must chain to trust anchors the integrator supplies, and a
-`Stream` that cannot load them fails to open. There is no fallback to a system
-trust store: an embedded target may not have one, and on a host that store is a
-far larger trust base than a device reporting to a single collector needs.
+A peer is authorised in one of two ways, and a `Stream` requires at least one of
+them. Configured with neither, it refuses to connect rather than talk to a peer
+it cannot check. That is reported when a connection is attempted rather than when
+the stream is created, because trust anchors are obtained per connection and a
+stream cannot know at create time what its credential source will yield; the
+timing rule is set out under *Check the configuration it cannot work without*.
 
-### Treat endpoint identity as declared, not assumed
+**Certification path validation.** The peer certificate must chain to trust
+anchors the integrator supplies. There is no fallback to a system trust store: an
+embedded target may not have one, and on a host that store is a far larger trust
+base than a device reporting to a single collector needs. Validity dates are part
+of this check, not separate from it - RFC 5280 §6.1 makes the validity period an
+input to path validation, so a certificate outside its own dates does not chain
+and the connection stops.
 
-The integrator declares the peer identity they expect. A `Stream` verifies it
-when one is declared, accepts an explicit decision not to check a name, and
-reports when nothing was declared at all — because that last case is a peer that
-is chain-verified but otherwise unidentified, which is the case an attacker with
-any trusted certificate walks through. BCP 195 §7.1 puts it plainly: without the
-name check, TLS proves the certificate is valid and that the peer holds its key,
-but not that you reached the endpoint you wanted.
+**A pinned certificate fingerprint.** Covered in its own obligation below. A
+certificate matched by fingerprint needs no chain: RFC 5425 §4.2.1 states that
+such a certificate "can be self-signed, and no certification path validation is
+needed".
 
-The three states, and what each means, are documented on each platform's
-configuration field.
+Where both are configured, the peer must satisfy both. That is this contract's
+choice, not a requirement of RFC 5425: §6.1 recommends that both endpoints be
+authenticated and authorised by one of §5.1 or §5.2, rather than that the two be
+combined. Requiring both where both are given is the safer reading of an
+integrator who supplied both.
 
 ### Accept a peer authorised by certificate fingerprint
 
 RFC 5425 §5.1 requires that a peer can be authorised by its certificate
 fingerprint, not only by a chain to a trust anchor and a name. The two are
 different tools: a fingerprint pins one certificate, which suits a closed network
-with no PKI, where issuing and rotating a CA is more machinery than the deployment
-wants.
+with no PKI, where issuing and rotating a CA is more machinery than the
+deployment wants.
 
-**No shipped platform meets this today** — see [#753](https://github.com/cososo-ltd/solid-syslog/issues/753).
+The accepted form is the one RFC 5425 §4.2.2 defines: an ASCII hash label, a
+colon, then the hash of the DER-encoded certificate as colon-separated uppercase
+hex pairs. Labels come from the IANA
+[Hash Function Textual Names](https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml)
+registry and are hyphenated, so `sha-256` and `sha-1` rather than `sha256` or
+`sha1`. A `Stream` accepts both of those algorithms. §4.2.2 makes SHA-1 mandatory
+to support; `sha-256` is the one to configure where the collector offers a
+choice.
+
+A **list** of fingerprints is accepted, and any one of them authorises the peer.
+A fingerprint covers the whole DER certificate, so it changes every time the
+collector's certificate is renewed. Pinning the old and the new together is what
+lets a fleet cross a renewal without every device stopping at once.
+
+Where fingerprints are configured and the peer's certificate matches none of
+them, the connection stops, whatever the chain says.
+
+**A pin excuses the chain, not the clock.** A pinned certificate outside its
+validity period is refused, in fingerprint-only mode exactly as in any other. A
+pin says which certificate is expected, not that an expired one has become
+acceptable. The two checks are independent: matching a pin settles which peer
+this is, and the validity period settles whether its certificate is still one
+the issuer stands behind.
+
+**Pinning makes the collector's expiry a fleet-wide event.** Every device pinned
+to a certificate stops at the same `notAfter`, and a device that missed the pin
+update stays stopped. Where the deployment controls its own CA and the collector
+certificate is not otherwise constrained, RFC 5280 §4.1.2.5 provides for a
+certificate with no well-defined expiry, `99991231235959Z`, and gives an embedded
+device as its worked example. Where it does not, pin the next certificate
+alongside the current one before the renewal rather than after it. A configured
+store turns a missed renewal into delayed delivery rather than lost delivery, up
+to the point the store fills.
+
+### Treat endpoint identity as declared, not assumed
+
+The integrator declares the peer identity they expect. A `Stream` verifies it
+when one is declared, accepts an explicit decision not to check a name, and
+reports when nothing was declared at all - because that last case is a peer that
+is chain-verified but otherwise unidentified, which is the case an attacker with
+any trusted certificate walks through. BCP 195 §7.1 puts it plainly: without the
+name check, TLS proves the certificate is valid and that the peer holds its key,
+but not that you reached the endpoint you wanted.
+
+A configured fingerprint is itself a declaration of identity, and a stronger one
+than a name: it names the exact certificate expected rather than a subject within
+a trusted CA's namespace. So a `Stream` given fingerprints and no name does not
+report an unidentified peer.
+
+The states, and what each means, are documented on each platform's configuration
+field.
+
+### Obtain credentials per connection, and announce when they are released
+
+Trust anchors, the client credential and the expected peer identity are obtained
+when a connection is made, and the `Stream` says when it has finished with them.
+Where credentials come from is the integrator's choice, and each platform
+documents the mechanism it offers: a file, a caller-built handle, a secure
+element, an encrypted store.
+
+Two things follow, and one thing does not.
+
+**A device issued new credentials while it is running uses them on its next
+connection** without being restarted. Forcing that reconnection with
+`SolidSyslogSender_Disconnect` makes it immediate.
+
+**The window in which the integrator must keep material intact is the
+connection**, not the lifetime of the stream. That is the point of announcing the
+release: replacing material a stream is still holding is a use-after-free, and an
+integrator should not have to infer when it is safe.
+
+**It does not follow that the material is out of RAM for most of the time.** How
+much it buys depends on two things the contract cannot settle. The first is how
+long a connection lasts, which is covered below. The second is the credential
+source: one that hands over a pointer to something the integrator already holds
+parsed has nothing to release, whereas one that parses on demand and wipes on
+release does. Read the platform page for what the source you are wiring actually
+does.
+
+What the underlying TLS library holds during a connection is a property of that
+library rather than of this contract. Each keeps the parsed certificate and key
+for the duration of the session, the private key included, and a `Stream` that
+cleared them mid-session would be defeating its own handshake.
+
+The expected identity travels with the destination. Where the destination can be
+changed at runtime, redirecting a device to a different collector must carry the
+identity its certificate is checked against, or the redirection quietly moves the
+device to a peer nobody is verifying.
+
+### A connection is long-lived, and bounding it is yours
+
+A `Stream` opens on the first record that needs it and stays open. It closes when
+a send fails, when the destination changes, when the integrator calls
+`SolidSyslogSender_Disconnect`, or when the stream is destroyed. There is no idle
+timeout and no maximum lifetime, because a syslog client that reconnects on a
+timer costs a handshake each time and gains nothing for a device that logs
+steadily.
+
+That is the right default and it has a consequence worth stating rather than
+leaving to be discovered: **on a device that logs continuously, one connection
+may last for the device's uptime, and the credential material stays resident for
+all of it.** The private key is needed once, to sign during the handshake; it is
+retained for the rest because neither TLS library offers a client a way to hand it
+back.
+
+Bounding that window is the integrator's to do, and
+`SolidSyslogSender_Disconnect` is how. A deployment that wants the material
+resident for minutes rather than months disconnects on its own schedule; the next
+record reconnects and the credential source is asked again. The same lever serves
+RFC 5425 §4.4's requirement that a sender close a connection it does not expect to
+carry more messages.
+
+Where the key must not be in application memory at all, that is a property of the
+credential source rather than of the window: a source backed by a secure element
+or a hardware key store never hands the key over in the first place.
 
 ### Report a partially configured client credential
 
@@ -102,7 +225,7 @@ it is reported at the same point. Left to the handshake, it comes back as a
 rejection from the collector, which sends the integrator looking at the collector
 for a fault that is on the device.
 
-Delivery continues. The receiver is the enforcement point for our credential — a
+Delivery continues. The receiver is the enforcement point for our credential - a
 collector that requires a client certificate will refuse the handshake, and one
 that does not was never going to check. Blocking here would deny the audit trail
 without changing what the collector decides.
@@ -116,40 +239,26 @@ the deployment is held to, and neither is knowable here.
 
 For a deployment with no policy of its own, RFC 9662 §4 asks that
 `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256` be offered, and BCP 195 §4.2 recommends
-the same shape — ECDHE with AES-GCM — for TLS 1.2. Both prefer it over the 2009
+the same shape - ECDHE with AES-GCM - for TLS 1.2. Both prefer it over the 2009
 mandatory suite, which offers no forward secrecy.
 
-Since no ceiling is set, the version negotiated may be later than the floor, and a
-policy that binds only up to the floor does not bind the connection in use.
+Since no ceiling is set, the version negotiated may be later than the floor, and
+a policy that binds only up to the floor does not bind the connection in use.
 Passing the integrator's choice through means passing it through for whichever
 version is negotiated.
 
 Where the library does not allow it, its own defaults apply. What each platform
 can and cannot select is on its page.
 
-### Take rotated credentials and a changed identity on the next connection
+### Do not resume a session under weaker terms
 
-A device issued new credentials while it is running uses them without being
-restarted. Trust anchors, the client credential and the expected peer identity
-are read when a connection is made, not remembered from when the stream was
-created, so replacing them and reconnecting is all it takes. Forcing that
-reconnection with `SolidSyslogSender_Disconnect` makes it immediate.
+A resumed session carries the security parameters of the session it resumes, so a
+`Stream` that resumes must check those parameters against what the current
+configuration requires and complete a full handshake instead where they fall
+short. RFC 5425 §4.2.3 recommends that check; this contract requires it.
 
-The expected identity travels with the destination. Where the destination can be
-changed at runtime, redirecting a device to a different collector must carry the
-identity its certificate is checked against, or the redirection quietly moves the
-device to a peer nobody is verifying.
-
-Each platform documents the sequence its own credential model requires, because
-replacing material a stream is holding is not safe at every moment.
-
-### Report an unusable certificate, and keep delivering
-
-A certificate that is expired, not yet valid, or otherwise unusable while still
-chaining to a trusted anchor is reported, and delivery continues. Clock skew is
-the dominant real cause: a device without a real-time clock that boots at the
-epoch, or one whose time source has been tampered with, is precisely the device
-whose logs you want to keep receiving.
+A `Stream` that never resumes meets this by construction, and it must not be
+possible to start resuming without revisiting the check.
 
 ### Do not require revocation checking
 
@@ -167,8 +276,14 @@ TLS implementation to implement a strategy to distrust revoked certificates, and
 no stream here implements one. The reasoning is above; what makes it tolerable is
 that the obligation moves rather than disappears. An integrator's own TLS library
 can be configured for CRL or OCSP, and this library neither performs that check
-nor prevents it — so an assessment that needs the obligation met should say where
+nor prevents it - so an assessment that needs the obligation met should say where
 it is met, rather than assume this library meets it.
+
+It is also why certificate validity is enforced rather than tolerated. Chain,
+fingerprint and identity checks all still reject a certificate, but they reject
+the same certificate today as they did yesterday. Without a revocation check, the
+validity period is the only mechanism by which a certificate that was acceptable
+stops being so.
 
 ### Bound the handshake
 
@@ -185,50 +300,45 @@ collector can distinguish an orderly shutdown from a truncated session. RFC 5425
 
 ### Check the configuration it cannot work without
 
-A `Stream` given a configuration it has no way to use — no sleep to poll the
-handshake with, no trust anchors to verify against — reports a bad configuration
-and returns the Null object. It does not accept the configuration and then fail
-on the first connection, and it does not dereference what is missing. What else a
-given platform cannot work without is on its own page.
+A `Stream` is given two kinds of thing, and each is checked at the point it can
+be.
+
+**Wiring is checked when the stream is created.** A transport, a sleep, a source
+of credentials, and whatever else the platform cannot operate without: given a
+configuration missing one of these, a `Stream` reports a bad configuration and
+returns the Null object. It does not accept the configuration and then fail on
+the first connection, and it does not dereference what is missing. What each
+platform cannot work without is on its own page.
+
+**Material is checked when a connection is made**, because that is when it is
+obtained. Credentials that cannot be produced, a configuration naming neither
+trust anchors nor fingerprints, and a fingerprint that is not well formed are all
+reported then, and that connection attempt fails. The sender retries on its next
+pass, so a transient source recovers on its own.
 
 This is the library-wide rule for anything that reaches the wire rather than
 anything specific to TLS: a failure an integrator caused at setup is reported at
 setup, where they are still looking.
 
-### Report every one of these
+### Report every one of these, and name the check that failed
 
 All of the above surface through the error handler rather than a return code an
 integrator may not read. [Error handling](error-severity.md) covers what each
 severity is telling you; the short form is that `CRITICAL` at create time means
 the `Stream` fell back to the Null object and nothing will be delivered.
 
+Where a connection is refused, the report names which check refused it - an
+expired certificate, one not yet valid, a chain that does not validate, a
+fingerprint that matched nothing, a name that did not match. An integrator whose
+device will not connect needs to know which of those it is, because a generic
+handshake failure sends them looking at the network for a fault that is on a
+certificate.
+
 ### Key custody is yours
 
 The library holds no key material of its own and uses whatever it is given. File
 permissions on a private key, whether it lives in a hardware security module, and
-how it is rotated are properties of your deployment, not of this contract.
-
-## Where this stands at 0.1.0
-
-These obligations are the target, and they are not yet met uniformly. At 0.1.0
-the shipped TLS platforms diverge on several of them, and each divergence is
-recorded on that platform's page and tracked as an issue. Read the page for the
-platform you are wiring before you rely on any obligation above.
-
-Certificate validity is the one both fall short of the same way: an expired
-certificate refuses the connection rather than being reported while delivery
-continues.
-
-A partially configured client credential matters more, because the two platforms
-differ. One refuses the connection, which is safe but stricter than the contract.
-The other accepts it in silence and connects without the client certificate, so a
-device configured for mutual TLS can run without ever presenting one. If you rely
-on mutual TLS, read your platform's page before you rely on this obligation.
-
-Configuration checking at create time is the third shortfall, and it is not
-confined to TLS.
-
-Fingerprint-based peer authorisation is the fourth, and both platforms fall short
-of it the same way: neither offers it at all. Until
-[#753](https://github.com/cososo-ltd/solid-syslog/issues/753) lands, a peer is
-authorised by trust anchor and name.
+how it is rotated are properties of your deployment, not of this contract. The
+per-connection obligation above is what makes those choices reachable: the
+`Stream` asks for material when it needs it and tells you when it is done, so
+where the material rests in between is yours to decide.
