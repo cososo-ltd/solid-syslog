@@ -9,8 +9,12 @@
 
 #include "BioPairStream.h"
 #include "AddressFake.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogOpenSslStream.h"
+#include "SolidSyslogOpenSslStreamErrors.h"
 #include "TlsTestCert.h"
 #include "TlsTestServer.h"
 #include "CppUTest/TestHarness.h"
@@ -22,6 +26,19 @@
 static void NoOpSleep(int milliseconds)
 {
     (void) milliseconds;
+}
+
+/* This suite links no ErrorHandlerFake - that is the unit executable's, and this
+ * one builds against the real libssl. Capturing the last event directly is
+ * enough to pin which code a real fault produces. */
+static int CapturedErrorCount;
+static struct SolidSyslogErrorEvent LastCapturedError;
+
+static void CaptureError(void* context, const struct SolidSyslogErrorEvent* event)
+{
+    (void) context;
+    CapturedErrorCount++;
+    LastCapturedError = *event;
 }
 
 // clang-format off
@@ -43,10 +60,14 @@ TEST_GROUP(OpenSslStreamIntegration)
     void setup() override
     {
         addr = AddressFake_Get();
+        CapturedErrorCount = 0;
+        LastCapturedError = {};
+        SolidSyslog_SetErrorHandler(CaptureError, nullptr);
     }
 
     void teardown() override
     {
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
         if (tlsStream != nullptr)         { SolidSyslogOpenSslStream_Destroy(tlsStream); }
         if (transport != nullptr)         { BioPairStream_Destroy(transport); }
         if (server != nullptr)            { TlsTestServer_Destroy(server); }
@@ -250,6 +271,14 @@ TEST(OpenSslStreamIntegration, MutualTlsConnectsServerAuthenticatedWhenClientKey
     buildScenario(serverCertConfig, "localhost");
 
     CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
+    LONGS_EQUAL(1, CapturedErrorCount);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, LastCapturedError.Severity);
+    POINTERS_EQUAL(&OpenSslStreamErrorSource, LastCapturedError.Source);
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, LastCapturedError.Category);
+    /* NOT_INSTALLED rather than MISMATCHED: both test certs are RSA, so OpenSSL
+     * refuses the pair inside SSL_CTX_use_PrivateKey_file and never reaches the
+     * explicit pairing check. */
+    LONGS_EQUAL(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED, LastCapturedError.Detail);
     TlsTestCert_Destroy(&strayCert);
 }
 
