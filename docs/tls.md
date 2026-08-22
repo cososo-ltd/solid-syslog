@@ -115,10 +115,9 @@ them, the connection stops, whatever the chain says.
 **A pin excuses the chain, not the clock.** A pinned certificate outside its
 validity period is refused, in fingerprint-only mode exactly as in any other. A
 pin says which certificate is expected, not that an expired one has become
-acceptable. This is worth stating because it is easy to implement wrongly: both
-backends express fingerprint-only mode as a verification callback that overrides
-the untrusted-chain result, and a callback that overrides every result rather
-than that one silently switches expiry checking off.
+acceptable. The two checks are independent: matching a pin settles which peer
+this is, and the validity period settles whether its certificate is still one
+the issuer stands behind.
 
 **Pinning makes the collector's expiry a fleet-wide event.** Every device pinned
 to a certificate stops at the same `notAfter`, and a device that missed the pin
@@ -171,7 +170,7 @@ integrator should not have to infer when it is safe.
 much it buys depends on two things the contract cannot settle. The first is how
 long a connection lasts, which is covered below. The second is the credential
 source: one that hands over a pointer to something the integrator already holds
-parted has nothing to release, whereas one that parses on demand and wipes on
+parsed has nothing to release, whereas one that parses on demand and wipes on
 release does. Read the platform page for what the source you are wiring actually
 does.
 
@@ -343,31 +342,3 @@ how it is rotated are properties of your deployment, not of this contract. The
 per-connection obligation above is what makes those choices reachable: the
 `Stream` asks for material when it needs it and tells you when it is done, so
 where the material rests in between is yours to decide.
-
-## Where this stands
-
-These obligations are the target and are not yet met uniformly. Which of them a
-given platform meets, and how it falls short where it does not, is on that
-platform's own page, because the answer differs between them and only the page
-that describes an adapter can state it correctly. Read the page for the platform
-you are wiring before you rely on any obligation above.
-
-Six obligations have at least one shipped platform short of them:
-
-| Obligation | Tracked as |
-|---|---|
-| Authorising a peer by certificate fingerprint | [#753](https://github.com/cososo-ltd/solid-syslog/issues/753) |
-| Naming the check that refused a connection | [#731](https://github.com/cososo-ltd/solid-syslog/issues/731) |
-| Obtaining credentials per connection, and choosing where they come from | [E39](https://github.com/cososo-ltd/solid-syslog/issues/782) |
-| Reporting a partially configured client credential | [#718](https://github.com/cososo-ltd/solid-syslog/issues/718), [#719](https://github.com/cososo-ltd/solid-syslog/issues/719), [#734](https://github.com/cososo-ltd/solid-syslog/issues/734) |
-| A cipher policy that binds the negotiated connection | [#733](https://github.com/cososo-ltd/solid-syslog/issues/733) |
-| Checking the configuration a stream cannot work without | [#732](https://github.com/cososo-ltd/solid-syslog/issues/732) |
-
-**Mutual TLS is the one to check before you rely on it.** The shipped platforms
-do not behave the same way when a client certificate is supplied without its key,
-and one of the two behaviours leaves a device that was configured for mutual TLS
-connecting without presenting a certificate.
-[E39](https://github.com/cososo-ltd/solid-syslog/issues/782) carries the work
-that converges them, and the design behind every row above.
-
-No shipped `Stream` resumes a session, so the resumption obligation is met.
