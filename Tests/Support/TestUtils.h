@@ -36,15 +36,27 @@ enum
 #define CALLED_FAKE(getter, count) LONGS_EQUAL((count), getter##CallCount())
 #define CALLED_FAKE_ON(getter, instance, count) LONGS_EQUAL((count), getter##CallCount(instance))
 
-/* Assert the last error event captured by ErrorHandlerFake matches an expected
- * (source, category, detail) triple. Prefer the portable Category - it survives
- * a backend swap - over the per-class Detail code when a portable reaction is
- * the thing under test. Use at a site that includes "ErrorHandlerFake.h". */
-#define CHECK_ERROR_EVENT(expectedSource, expectedCategory, expectedDetail)        \
-    {                                                                              \
-        POINTERS_EQUAL((expectedSource), ErrorHandlerFake_LastSource());           \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory()); \
-        LONGS_EQUAL((expectedDetail), ErrorHandlerFake_LastDetail());              \
+/* Assert the last error event captured by ErrorHandlerFake matches every axis of
+ * an expected event. The argument order is that of SolidSyslog_Error itself, so
+ * the assertion reads in the same order as the call it verifies. Prefer the
+ * portable Category - it survives a backend swap - over the per-class Detail
+ * code when a portable reaction is the thing under test. Use at a site that
+ * includes "ErrorHandlerFake.h". */
+#define CHECK_ERROR_EVENT(expectedSeverity, expectedSource, expectedCategory, expectedDetail) \
+    {                                                                                         \
+        LONGS_EQUAL((expectedSeverity), ErrorHandlerFake_LastSeverity());                     \
+        POINTERS_EQUAL((expectedSource), ErrorHandlerFake_LastSource());                      \
+        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory());            \
+        LONGS_EQUAL((expectedDetail), ErrorHandlerFake_LastDetail());                         \
+    }
+
+/* The same, for the common case where the event is the only one the call under
+ * test raised. Kept separate from CHECK_ERROR_EVENT so a site asserting the last
+ * of several events cannot pin the count by accident. */
+#define CHECK_ERROR_REPORTED_ONCE(expectedSeverity, expectedSource, expectedCategory, expectedDetail) \
+    {                                                                                                 \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                                   \
+        CHECK_ERROR_EVENT(expectedSeverity, expectedSource, expectedCategory, expectedDetail);        \
     }
 
 #endif /* TESTUTILS_H */

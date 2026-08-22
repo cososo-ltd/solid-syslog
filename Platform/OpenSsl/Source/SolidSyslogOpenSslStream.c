@@ -41,7 +41,7 @@ static inline struct SolidSyslogOpenSslStream* OpenSslStream_SelfFromBase(struct
 static inline bool OpenSslStream_AttachTransportBio(struct SolidSyslogOpenSslStream* self);
 static inline void OpenSslStream_Close(struct SolidSyslogStream* base);
 static inline bool OpenSslStream_ConfigureCipherList(SSL_CTX* ctx, const char* cipherList);
-static inline bool OpenSslStream_ConfigureClientIdentity(
+static inline void OpenSslStream_ConfigureClientIdentity(
     SSL_CTX* ctx,
     const struct SolidSyslogOpenSslStreamConfig* config
 );
@@ -52,8 +52,14 @@ static inline bool OpenSslStream_ConfigureTrustAnchors(SSL_CTX* ctx, const char*
 static inline SSL_CTX* OpenSslStream_CreateSslContext(const struct SolidSyslogOpenSslStreamConfig* config);
 static inline BIO* OpenSslStream_CreateTransportBio(struct SolidSyslogOpenSslStream* self);
 static inline BIO_METHOD* OpenSslStream_CreateTransportBioMethod(void);
+static inline bool OpenSslStream_HasClientCredential(const struct SolidSyslogOpenSslStreamConfig* config);
+static inline bool OpenSslStream_HasHalfOfClientCredential(const struct SolidSyslogOpenSslStreamConfig* config);
 static inline bool OpenSslStream_InitSslContext(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_InitSslSession(struct SolidSyslogOpenSslStream* self);
+static inline void OpenSslStream_LoadClientCredential(
+    SSL_CTX* ctx,
+    const struct SolidSyslogOpenSslStreamConfig* config
+);
 static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStream* self);
 static inline SolidSyslogSsize OpenSslStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
@@ -199,34 +205,84 @@ static inline SSL_CTX* OpenSslStream_CreateSslContext(const struct SolidSyslogOp
 
 static inline bool OpenSslStream_ConfigureSslContext(SSL_CTX* ctx, const struct SolidSyslogOpenSslStreamConfig* config)
 {
-    return OpenSslStream_ConfigureTrustAnchors(ctx, config->CaBundlePath) &&
-           OpenSslStream_ConfigureClientIdentity(ctx, config) && OpenSslStream_ConfigureProtocolFloor(ctx) &&
-           OpenSslStream_ConfigureCipherList(ctx, config->CipherList);
+    bool ok = OpenSslStream_ConfigureTrustAnchors(ctx, config->CaBundlePath);
+    if (ok)
+    {
+        OpenSslStream_ConfigureClientIdentity(ctx, config);
+        ok = OpenSslStream_ConfigureProtocolFloor(ctx) && OpenSslStream_ConfigureCipherList(ctx, config->CipherList);
+    }
+    return ok;
 }
 
-static inline bool OpenSslStream_ConfigureClientIdentity(
+/* No fault in our own credential stops delivery: the collector is the
+ * enforcement point for it, and one that requires a client certificate refuses
+ * the handshake anyway. OpenSSL presents a certificate only where both halves
+ * are installed and paired, so a credential it will not take degrades to
+ * server-authenticated TLS rather than being half-presented. */
+static inline void OpenSslStream_ConfigureClientIdentity(
     SSL_CTX* ctx,
     const struct SolidSyslogOpenSslStreamConfig* config
 )
 {
-    bool hasCert = config->ClientCertChainPath != NULL;
-    bool hasKey = config->ClientKeyPath != NULL;
-    bool ok = true;
-    if (hasCert != hasKey)
+    if (OpenSslStream_HasClientCredential(config))
     {
-        ok = false; /* mTLS is all-or-nothing - partial config is a setup error */
+        OpenSslStream_LoadClientCredential(ctx, config);
     }
-    else if (hasCert)
+    else if (OpenSslStream_HasHalfOfClientCredential(config))
     {
-        ok = (SSL_CTX_use_certificate_chain_file(ctx, config->ClientCertChainPath) == 1) &&
-             (SSL_CTX_use_PrivateKey_file(ctx, config->ClientKeyPath, SSL_FILETYPE_PEM) == 1) &&
-             (SSL_CTX_check_private_key(ctx) == 1);
+        OpenSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CLIENT_CREDENTIAL_INCOMPLETE
+        );
     }
     else
     {
-        /* neither cert nor key supplied - server-auth-only TLS, ok stays true */
+        /* Neither supplied - server-authenticated TLS is the deliberate case. */
     }
-    return ok;
+}
+
+static inline bool OpenSslStream_HasClientCredential(const struct SolidSyslogOpenSslStreamConfig* config)
+{
+    return (config->ClientCertChainPath != NULL) && (config->ClientKeyPath != NULL);
+}
+
+/* One half without the other. The integrator asked for mutual TLS and will not
+ * get it, so it is reported rather than read as a decision to go without. */
+static inline bool OpenSslStream_HasHalfOfClientCredential(const struct SolidSyslogOpenSslStreamConfig* config)
+{
+    return (config->ClientCertChainPath != NULL) != (config->ClientKeyPath != NULL);
+}
+
+/* A key that does not match its certificate is refused by SSL_CTX_use_PrivateKey_file
+ * itself where both are of the same type, so it reaches the explicit pairing check
+ * only as a cross-type pair. The two are reported apart where OpenSSL tells them
+ * apart, and a mismatch it hides inside the load is reported as one that would
+ * not install. */
+static inline void OpenSslStream_LoadClientCredential(SSL_CTX* ctx, const struct SolidSyslogOpenSslStreamConfig* config)
+{
+    bool installed = (SSL_CTX_use_certificate_chain_file(ctx, config->ClientCertChainPath) == 1) &&
+                     (SSL_CTX_use_PrivateKey_file(ctx, config->ClientKeyPath, SSL_FILETYPE_PEM) == 1);
+    if (installed == false)
+    {
+        OpenSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
+        );
+    }
+    else if (SSL_CTX_check_private_key(ctx) != 1)
+    {
+        OpenSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CLIENT_CREDENTIAL_MISMATCHED
+        );
+    }
+    else
+    {
+        /* Installed and paired - the credential will be presented. */
+    }
 }
 
 static inline bool OpenSslStream_ConfigureTrustAnchors(SSL_CTX* ctx, const char* caBundlePath)

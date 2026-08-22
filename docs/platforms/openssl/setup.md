@@ -9,7 +9,7 @@ itself, and this page is the wiring.
 ## What you need
 
 OpenSSL 3.0 or later on the include and link path, and a platform supplying the
-TCP stream underneath — the [capability matrix](../index.md) shows which fill
+TCP stream underneath - the [capability matrix](../index.md) shows which fill
 that role.
 
 ```cmake
@@ -17,7 +17,7 @@ set(SOLIDSYSLOG_PLATFORMS "OpenSsl;<Network>")
 ```
 
 `<Network>` is whichever platform the [capability matrix](../index.md) says
-fills that role on your target — see
+fills that role on your target - see
 [naming your platforms](../../build-integration.md#cmake) for how the list is
 read.
 
@@ -48,7 +48,7 @@ struct SolidSyslogStream* transport = CreateTcpStream();
 static struct SolidSyslogOpenSslStreamConfig tlsConfig;
 tlsConfig = (struct SolidSyslogOpenSslStreamConfig) {0};
 tlsConfig.Transport = transport;
-tlsConfig.Sleep = MySleep;                    /* required — no fallback */
+tlsConfig.Sleep = MySleep;                    /* required - no fallback */
 tlsConfig.CaBundlePath = "/etc/ssl/collector-ca.pem";
 tlsConfig.ServerName = "collector.example.net";
 
@@ -57,15 +57,15 @@ struct SolidSyslogStream* tls = SolidSyslogOpenSslStream_Create(&tlsConfig);
 
 Zero-initialise the config before filling it.
 
-For mutual TLS, add the client credential — both fields or neither, since
-supplying one without the other is rejected at `Open`:
+For mutual TLS, add the client credential - both fields, since one without the
+other is reported and leaves the connection server-authenticated:
 
 ```c
 tlsConfig.ClientCertChainPath = "/etc/ssl/device-chain.pem";
 tlsConfig.ClientKeyPath       = "/etc/ssl/device-key.pem";
 ```
 
-Then the sender, unchanged from the plain-TCP case — it sees a Stream and does
+Then the sender, unchanged from the plain-TCP case - it sees a Stream and does
 not know or care that it is a TLS one:
 
 ```c
@@ -85,5 +85,5 @@ created.
 
 Failures report through the error handler rather than silently. Install one
 before you start, and read [error severity](../../error-severity.md) for what
-each level is telling you — a `CRITICAL` at create time means the stream fell
+each level is telling you - a `CRITICAL` at create time means the stream fell
 back to the Null object, and nothing will be delivered.
