@@ -22,14 +22,10 @@
 
 using namespace CososoTesting;
 
-#define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode) \
-    {                                                                                                 \
-        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                         \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                                   \
-        POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());                     \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory());                    \
-        UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail());                          \
-        LONGS_EQUAL((expectedSeverity), ErrorHandlerFake_LastSeverity());                             \
+#define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode)                 \
+    {                                                                                                                 \
+        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                                         \
+        CHECK_ERROR_REPORTED_ONCE((expectedSeverity), &OpenSslStreamErrorSource, (expectedCategory), (expectedCode)); \
     }
 
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
@@ -376,11 +372,12 @@ TEST(SolidSyslogOpenSslStream, OpenWarnsWhenServerNameIsNull)
     /* Default config.ServerName is NULL - peer identity is unverified, which the
      * library must surface rather than swallow (S12.28). */
     SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET, ErrorHandlerFake_LastDetail());
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &OpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET
+    );
 }
 
 TEST(SolidSyslogOpenSslStream, OpenStillConnectsWhenServerNameIsNull)
@@ -977,17 +974,12 @@ TEST(SolidSyslogOpenSslStream, OpenChecksClientKeyMatchesCert)
     CALLED_FAKE(OpenSslFake_CheckPrivateKey, ONCE);
 }
 
-TEST(SolidSyslogOpenSslStream, OpenFailsWhenOnlyClientCertIsSet)
+TEST(SolidSyslogOpenSslStream, OpenSucceedsWhenOnlyClientCertIsSet)
 {
     config.ClientCertChainPath = "/some/path/client.pem";
     config.ClientKeyPath = nullptr;
     ReCreateStreamWithUpdatedConfig();
-    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(
-        transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
-    );
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
 }
 
 TEST(SolidSyslogOpenSslStream, OpenMakesNoClientIdentityCallsWhenOnlyClientCertIsSet)
@@ -1002,17 +994,44 @@ TEST(SolidSyslogOpenSslStream, OpenMakesNoClientIdentityCallsWhenOnlyClientCertI
     CALLED_FAKE(OpenSslFake_CheckPrivateKey, NEVER);
 }
 
-TEST(SolidSyslogOpenSslStream, OpenFailsWhenOnlyClientKeyIsSet)
+TEST(SolidSyslogOpenSslStream, OpenReportsIncompleteClientCredentialWhenClientKeyIsNull)
+{
+    /* ServerName is the explicit no-name-check opt-out, so the unverified-peer
+       WARNING does not fire alongside and disturb the report count. */
+    config.ClientCertChainPath = "/some/path/client.pem";
+    config.ClientKeyPath = nullptr;
+    config.ServerName = "";
+    ReCreateStreamWithUpdatedConfig();
+    SolidSyslogStream_Open(stream, addr);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &OpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CLIENT_CREDENTIAL_INCOMPLETE
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsIncompleteClientCredentialWhenClientCertChainIsNull)
+{
+    config.ClientCertChainPath = nullptr;
+    config.ClientKeyPath = "/some/path/client.key";
+    config.ServerName = "";
+    ReCreateStreamWithUpdatedConfig();
+    SolidSyslogStream_Open(stream, addr);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &OpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CLIENT_CREDENTIAL_INCOMPLETE
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenSucceedsWhenOnlyClientKeyIsSet)
 {
     config.ClientCertChainPath = nullptr;
     config.ClientKeyPath = "/some/path/client.key";
     ReCreateStreamWithUpdatedConfig();
-    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(
-        transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
-    );
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
 }
 
 TEST(SolidSyslogOpenSslStream, OpenMakesNoClientIdentityCallsWhenOnlyClientKeyIsSet)
@@ -1027,89 +1046,52 @@ TEST(SolidSyslogOpenSslStream, OpenMakesNoClientIdentityCallsWhenOnlyClientKeyIs
     CALLED_FAKE(OpenSslFake_CheckPrivateKey, NEVER);
 }
 
-TEST(SolidSyslogOpenSslStream, PartialClientIdentityConfigFreesCtx)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = nullptr;
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
-}
-
-TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenUseCertChainFileFails)
+TEST(SolidSyslogOpenSslStream, OpenReportsClientCredentialNotInstalledWhenCertChainWillNotLoad)
 {
     config.ClientCertChainPath = "/some/path/client.pem";
     config.ClientKeyPath = "/some/path/client.key";
+    config.ServerName = "";
     ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetUseCertChainFileFails(true);
-    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(
-        transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &OpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
     );
 }
 
-TEST(SolidSyslogOpenSslStream, UseCertChainFileFailureFreesCtx)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    OpenSslFake_SetUseCertChainFileFails(true);
-    SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
-}
-
-TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenUsePrivateKeyFileFails)
+TEST(SolidSyslogOpenSslStream, OpenReportsClientCredentialNotInstalledWhenKeyWillNotLoad)
 {
     config.ClientCertChainPath = "/some/path/client.pem";
     config.ClientKeyPath = "/some/path/client.key";
+    config.ServerName = "";
     ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetUsePrivateKeyFileFails(true);
-    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(
-        transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &OpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
     );
 }
 
-TEST(SolidSyslogOpenSslStream, UsePrivateKeyFileFailureFreesCtx)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    OpenSslFake_SetUsePrivateKeyFileFails(true);
-    SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
-}
-
-TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenCheckPrivateKeyFails)
+TEST(SolidSyslogOpenSslStream, OpenReportsMismatchedClientCredentialWhenCheckPrivateKeyFails)
 {
     config.ClientCertChainPath = "/some/path/client.pem";
     config.ClientKeyPath = "/some/path/client.key";
+    config.ServerName = "";
     ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetCheckPrivateKeyFails(true);
-    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(
-        transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &OpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CLIENT_CREDENTIAL_MISMATCHED
     );
-}
-
-TEST(SolidSyslogOpenSslStream, CheckPrivateKeyFailureFreesCtx)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    OpenSslFake_SetCheckPrivateKeyFails(true);
-    SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
 }
 
 TEST(SolidSyslogOpenSslStream, OpenPassesCtxFromNewToUseCertChainFile)

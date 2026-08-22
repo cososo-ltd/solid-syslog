@@ -227,14 +227,17 @@ TEST(OpenSslStreamIntegration, MutualTlsHandshakeRejectedWhenClientSendsNoCert)
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
 }
 
-TEST(OpenSslStreamIntegration, MutualTlsOpenFailsLocallyWhenClientKeyDoesNotMatchCert)
+TEST(OpenSslStreamIntegration, MutualTlsConnectsServerAuthenticatedWhenClientKeyDoesNotMatchCert)
 {
     createClientCa();
     stageClientIdentity(&clientCa);
 
-    /* Overwrite the key file with an unrelated private key so
-     * SSL_CTX_check_private_key should reject the pairing before any bytes
-     * hit the server. */
+    /* Overwrite the key file with an unrelated private key. OpenSSL refuses the
+     * pairing, so no client credential is installed and none is presented - the
+     * fault is reported and the connection continues server-authenticated. The
+     * server here does not ask for a client certificate; one that does refuses
+     * the handshake, which MutualTlsHandshakeRejectedWhenClientSendsNoCert
+     * covers. */
     struct TlsTestCertConfig strayConfig = {};
     strayConfig.commonName = "unrelated";
     struct TlsTestCert strayCert = {};
@@ -244,9 +247,9 @@ TEST(OpenSslStreamIntegration, MutualTlsOpenFailsLocallyWhenClientKeyDoesNotMatc
     struct TlsTestCertConfig serverCertConfig = {};
     serverCertConfig.commonName = "localhost";
     serverCertConfig.subjectAltDnsNames = LOCALHOST_SANS;
-    buildScenario(serverCertConfig, "localhost", &clientCa);
+    buildScenario(serverCertConfig, "localhost");
 
-    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
     TlsTestCert_Destroy(&strayCert);
 }
 
