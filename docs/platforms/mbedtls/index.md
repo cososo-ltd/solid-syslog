@@ -26,18 +26,23 @@ Credentials are passed as caller-built, caller-owned handles: a seeded
 `mbedtls_ctr_drbg_context` for the handshake, an `mbedtls_x509_crt` trust chain,
 and for mutual TLS an `mbedtls_x509_crt` and `mbedtls_pk_context` pair. No part
 of the adapter opens a file, which is what allows it to run on targets built
-without `MBEDTLS_FS_IO`. Each handle must remain valid for the lifetime of the
-stream.
+without `MBEDTLS_FS_IO`.
 
-Rotation follows from that, and needs sequencing. The adapter re-reads every
-handle each time it connects, so replacing the material behind a handle is enough
-— the stream does not need rebuilding. But while a connection is open, the
-adapter's `ssl_config` holds pointers into that material, and freeing it there is
-a use-after-free.
+Two lifetimes are in play and they are not the same. The **handle objects** must
+stay addressable for as long as the stream might open a connection, because the
+adapter reads the pointers it was given on every connect. The **parsed material
+inside them** only has to be intact while a connection is open, which is when the
+adapter's `ssl_config` holds pointers into it.
 
-So: call `SolidSyslogSender_Disconnect` first, which releases the `ssl_config`,
-then free and re-parse into the same handle. The next send reconnects with the
-new material. There is no reload callback and none is needed.
+Rotation follows from the second lifetime. Call `SolidSyslogSender_Disconnect`,
+which releases the `ssl_config` and with it every pointer into the material, then
+free and re-parse into the same handle. The next send reconnects with the new
+material. Freeing before the disconnect completes is a use-after-free, because
+the open connection is still reading it.
+
+The adapter does not say when it has finished with the material, so an integrator
+who wants the private key out of RAM between connections has to drive that
+sequence themselves rather than being told. That is the gap recorded below.
 
 ## Coexistence is an auditable contract
 
@@ -51,8 +56,30 @@ claim can be checked against the directory.
 
 ## Where it differs from the contract
 
-Four differences at 0.1.0, each tracked. Read them before relying on the
-corresponding obligation.
+Six differences, each tracked. Read them before relying on the corresponding
+obligation.
+
+### A peer cannot be authorised by certificate fingerprint
+
+Only certification path validation is offered, so a deployment with no PKI has no
+way to pin the collector's certificate. Tracked as
+[#753](https://github.com/cososo-ltd/solid-syslog/issues/753).
+
+### A refused connection does not say which check refused it
+
+An expired certificate, an untrusted chain and a name mismatch all surface as the
+same handshake failure, so the report does not distinguish a certificate problem
+from a network one. Tracked as
+[#731](https://github.com/cososo-ltd/solid-syslog/issues/731).
+
+### Credential material must stay parsed for the life of the stream
+
+The adapter binds the handles into its `ssl_config` on each connection and drops
+them on close, but it never says so, so every handle has to remain valid and
+parsed for as long as the stream exists. A device that connects rarely still
+holds its private key in RAM continuously, and there is no point at which the
+adapter invites the integrator to release it. Tracked under
+[E39](https://github.com/cososo-ltd/solid-syslog/issues/782).
 
 ### The key is not checked against its certificate
 
@@ -60,14 +87,6 @@ No local check confirms that `ClientKey` matches `ClientCertChain`. A mismatch
 therefore surfaces as a handshake rejection from the collector rather than as a
 setup error on the device, which sends you looking in the wrong place. Tracked as
 [#719](https://github.com/cososo-ltd/solid-syslog/issues/719).
-
-### An expired certificate stops delivery
-
-A peer certificate that is expired or not yet valid fails the handshake, even
-where it still chains to a trusted anchor. The contract asks for it to be
-reported with delivery continuing, because clock skew is the dominant cause and a
-device with a wrong clock is one whose logs you still want. Tracked as
-[#731](https://github.com/cososo-ltd/solid-syslog/issues/731).
 
 ### The cipher policy cannot be expressed
 
