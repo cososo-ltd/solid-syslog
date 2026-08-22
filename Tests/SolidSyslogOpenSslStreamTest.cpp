@@ -249,9 +249,8 @@ TEST(SolidSyslogOpenSslStream, OpenCreatesSslContext)
 
 TEST(SolidSyslogOpenSslStream, OpenLoadsCaBundleFromConfig)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
     config.CaBundlePath = "/some/path/ca.pem";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     STRCMP_EQUAL("/some/path/ca.pem", OpenSslFake_LastCaBundlePath());
 }
@@ -270,9 +269,8 @@ TEST(SolidSyslogOpenSslStream, OpenSetsTls12Floor)
 
 TEST(SolidSyslogOpenSslStream, OpenPassesCipherListToSslCtx)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
     config.CipherList = "ECDHE+AESGCM";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     STRCMP_EQUAL("ECDHE+AESGCM", OpenSslFake_LastCipherList());
 }
@@ -298,9 +296,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenCipherListRejected)
 
 TEST(SolidSyslogOpenSslStream, CipherListFailureFreesCtx)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
     config.CipherList = "not-a-real-cipher";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetCipherListFails(true);
     SolidSyslogStream_Open(stream, addr);
     CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
@@ -356,18 +353,16 @@ TEST(SolidSyslogOpenSslStream, OpenPassesSslToConnect)
 
 TEST(SolidSyslogOpenSslStream, OpenSetsSniHostnameFromConfig)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
     config.ServerName = "logs.example";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     STRCMP_EQUAL("logs.example", OpenSslFake_LastSniHostname());
 }
 
 TEST(SolidSyslogOpenSslStream, OpenSetsExpectedCertHostname)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
     config.ServerName = "logs.example";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     STRCMP_EQUAL("logs.example", OpenSslFake_LastSet1Host());
 }
@@ -680,18 +675,16 @@ TEST(SolidSyslogOpenSslStream, OpenPassesSameBioForReadAndWrite)
 
 TEST(SolidSyslogOpenSslStream, OpenPassesSslToSniCtrl)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
     config.ServerName = "logs.example";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     POINTERS_EQUAL(OpenSslFake_LastSslReturned(), OpenSslFake_LastSslCtrlSslArg());
 }
 
 TEST(SolidSyslogOpenSslStream, OpenPassesSslFromNewToSet1Host)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
     config.ServerName = "logs.example";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     POINTERS_EQUAL(OpenSslFake_LastSslReturned(), OpenSslFake_LastSet1HostSslArg());
 }
