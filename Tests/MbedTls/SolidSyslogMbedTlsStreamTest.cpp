@@ -888,22 +888,23 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsIncompleteClientCredentialWhenClientCe
     CHECK_INCOMPLETE_CREDENTIAL_REPORTED();
 }
 
-TEST(SolidSyslogMbedTlsStream, OpenFailsAndReportsWhenClientCredentialCannotBeInstalled)
-
+TEST(SolidSyslogMbedTlsStream, OpenReportsClientCredentialNotInstalledAndStillConnects)
 {
     /* Both halves supplied, but mbedTLS cannot take them - the only documented
-     * failure is MBEDTLS_ERR_SSL_ALLOC_FAILED. Discarding it is the silent
-     * downgrade to server-authenticated TLS this stops. */
+     * failure is MBEDTLS_ERR_SSL_ALLOC_FAILED, which returns before anything is
+     * appended to the config. Nothing is presented, so the connection continues
+     * server-authenticated and the collector decides whether to accept it. */
     static mbedtls_x509_crt clientCertMarker;
     static mbedtls_pk_context clientKeyMarker;
     WireClientCredential(&clientCertMarker, &clientKeyMarker);
     MbedTlsFake_SetSslConfOwnCertReturn(MBEDTLS_ERR_SSL_ALLOC_FAILED);
 
-    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
 
-    CHECK_OPEN_UNWOUND_WITH_ERROR(
-        transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &MbedTlsStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
     );
 }

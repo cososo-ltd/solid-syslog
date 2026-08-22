@@ -211,7 +211,7 @@ Where the key must not be in application memory at all, that is a property of th
 credential source rather than of the window: a source backed by a secure element
 or a hardware key store never hands the key over in the first place.
 
-### Report a partially configured client credential
+### Report a client credential that will not be presented
 
 Mutual TLS is all-or-nothing: a certificate without its key, or a key without its
 certificate, is a configuration error and is reported as one. It is never
@@ -225,10 +225,19 @@ it is reported at the same point. Left to the handshake, it comes back as a
 rejection from the collector, which sends the integrator looking at the collector
 for a fault that is on the device.
 
-Delivery continues. The receiver is the enforcement point for our credential - a
-collector that requires a client certificate will refuse the handshake, and one
-that does not was never going to check. Blocking here would deny the audit trail
-without changing what the collector decides.
+A credential the TLS library will not take is reported on the same terms: a file
+that does not load, memory it cannot allocate. The cause differs and the reports
+distinguish it where the library does, but the consequence is the one that
+matters - what the integrator configured is not in force.
+
+Delivery continues in every one of those cases. The receiver is the enforcement
+point for our credential - a collector that requires a client certificate will
+refuse the handshake, and one that does not was never going to check. Blocking
+here would deny the audit trail without changing what the collector decides.
+
+The rule stops at our own credential, and the line is the one drawn under
+*Delivery is preferred to silence*: a fault in the material we present never
+stops delivery, and a failed check on the peer always does.
 
 ### Permit the cryptographic level to be chosen
 

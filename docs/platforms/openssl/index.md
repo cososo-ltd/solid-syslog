@@ -59,17 +59,6 @@ an encrypted store has to be written to a readable file before this adapter can
 use it. Tracked under
 [E39](https://github.com/cososo-ltd/solid-syslog/issues/782).
 
-### A half-supplied client credential stops delivery
-
-A certificate without its key, or a key without its certificate, is rejected when
-the stream opens, so nothing is delivered until the configuration is corrected.
-The contract asks for it to be reported with delivery continuing, on the grounds
-that the collector is the enforcement point for our own credential.
-
-This adapter is stricter than the contract rather than weaker, and the stricter
-behaviour is safe. Tracked as
-[#734](https://github.com/cososo-ltd/solid-syslog/issues/734).
-
 ### The cipher policy does not bind a TLS 1.3 connection
 
 The cipher list is passed to OpenSSL unchanged and pins nothing of the library's
