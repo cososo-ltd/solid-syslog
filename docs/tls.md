@@ -311,10 +311,15 @@ the first connection, and it does not dereference what is missing. What each
 platform cannot work without is on its own page.
 
 **Material is checked when a connection is made**, because that is when it is
-obtained. Credentials that cannot be produced, a configuration naming neither
-trust anchors nor fingerprints, and a fingerprint that is not well formed are all
-reported then, and that connection attempt fails. The sender retries on its next
-pass, so a transient source recovers on its own.
+obtained. Material that authorises the peer is what the connection depends on: a
+configuration naming neither trust anchors nor fingerprints, trust anchors that
+cannot be produced, and a fingerprint that is not well formed are reported then,
+and that connection attempt fails. The sender retries on its next pass, so a
+transient source recovers on its own.
+
+A client credential is checked at the same point and does not fail the
+connection, for the reasons under *Report a client credential that will not be
+presented*.
 
 This is the library-wide rule for anything that reaches the wire rather than
 anything specific to TLS: a failure an integrator caused at setup is reported at
