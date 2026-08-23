@@ -239,6 +239,22 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerNameDoesNotMat
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
 }
 
+/* No trust anchors at all. mbedtls_ssl_conf_ca_chain takes the NULL without
+ * complaint, so the fault only surfaces when the peer certificate finds no
+ * parent to chain to - an untrusted peer, which is not the same diagnosis as
+ * the anchors never having been configured. #753 covers that gap. */
+TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsAsUntrustedWhenNoTrustAnchorsAreConfigured)
+
+{
+    struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    config.CaChain = nullptr;
+    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
+}
+
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertHasExpired)
 
 {

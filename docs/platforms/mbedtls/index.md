@@ -56,7 +56,7 @@ claim can be checked against the directory.
 
 ## Where it differs from the contract
 
-Five differences, each tracked. Read them before relying on the corresponding
+Four differences, each tracked. Read them before relying on the corresponding
 obligation.
 
 ### A peer cannot be authorised by certificate fingerprint
@@ -64,13 +64,6 @@ obligation.
 Only certification path validation is offered, so a deployment with no PKI has no
 way to pin the collector's certificate. Tracked as
 [#753](https://github.com/cososo-ltd/solid-syslog/issues/753).
-
-### A refused connection does not say which check refused it
-
-An expired certificate, an untrusted chain and a name mismatch all surface as the
-same handshake failure, so the report does not distinguish a certificate problem
-from a network one. Tracked as
-[#731](https://github.com/cososo-ltd/solid-syslog/issues/731).
 
 ### Credential material must stay parsed for the life of the stream
 
@@ -92,7 +85,8 @@ where the library allows one to be selected. Tracked as
 ### A missing trust chain is not reported as a configuration fault
 
 `mbedtls_ssl_conf_ca_chain` returns no status, so a configuration carrying no
-trust anchors is accepted and the peer certificate then fails to verify. What is
-reported is a refused handshake rather than the missing trust material. Tracked
+trust anchors is accepted, and the fault surfaces only once the peer's
+certificate finds nothing to chain to. What is reported is an untrusted peer
+rather than the missing trust material. Tracked
 as [#753](https://github.com/cososo-ltd/solid-syslog/issues/753), which is where
 a peer authorised by fingerprint instead of by trust anchor is settled.
