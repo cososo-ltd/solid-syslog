@@ -362,8 +362,9 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
 /* The verdict outlives the failed handshake - mbedTLS records every fault it
  * found on the session being negotiated - so the refusal can name the check that
  * produced it rather than the handshake that carried it. The flags accumulate,
- * so the order below is a precedence, and it is OpenSSL's: an untrusted chain is
- * reported ahead of anything the certificate says about itself. */
+ * so the order below is a precedence: an untrusted chain is reported ahead of
+ * anything the certificate says about itself, because a certificate no anchor
+ * vouches for is not made acceptable by the dates it carries. */
 static inline enum SolidSyslogMbedTlsStreamErrors MbedTlsStream_RefusalDetail(struct SolidSyslogMbedTlsStream* self)
 {
     enum SolidSyslogMbedTlsStreamErrors detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_HANDSHAKE_REJECTED;

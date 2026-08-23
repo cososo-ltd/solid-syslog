@@ -446,10 +446,10 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateIsNotTrusted)
 }
 
 /* mbedTLS accumulates every fault it found into one bitmask, so a compound
- * verdict has to resolve to a single reason. An untrusted chain wins: it is what
- * OpenSSL reports for the same certificate, because path building fails there
- * before any date is examined. The two adapters therefore agree on a compound
- * fault as well as on a single one. */
+ * verdict has to resolve to a single reason. An untrusted chain wins, which is
+ * the reason a library that stops at the first failure reaches first - path
+ * building runs before any date is examined - so both TLS adapters agree on a
+ * compound fault as well as on a single one. */
 TEST(SolidSyslogMbedTlsStream, OpenReportsAnUntrustedChainAheadOfTheDatesOnIt)
 {
     config.ServerName = "syslog.example.com";
