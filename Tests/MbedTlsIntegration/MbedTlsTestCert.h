@@ -22,6 +22,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         const char* SubjectAltDns; /* SAN dnsName; NULL = no SAN */
         int IsCa; /* 1 = mark BasicConstraints CA:TRUE */
         const struct MbedTlsTestCert* Issuer; /* NULL = self-signed */
+        /* "YYYYMMDDHHMMSS", as mbedtls_x509write_crt_set_validity takes them.
+         * NULL on either leaves the default window, which is open now and
+         * stays open past any plausible run of these tests. */
+        const char* ValidityFrom;
+        const char* ValidityTo;
     };
 
     /* Build a fresh RSA-2048 key + cert pair. The cert is parsed back into

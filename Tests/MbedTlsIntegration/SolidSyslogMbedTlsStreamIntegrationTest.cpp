@@ -11,10 +11,16 @@ extern "C"
 #include "MbedTlsTestCert.h"
 #include "MbedTlsTestServer.h"
 #include "SocketStream.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogMbedTlsStream.h"
+#include "SolidSyslogMbedTlsStreamErrors.h"
+#include "SolidSyslogPrival.h"
 #include "AddressFake.h"
 #include "SolidSyslogStream.h"
 }
+
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogTlsStreamCategories.h"
 
 namespace
 {
@@ -27,6 +33,30 @@ void NoOpSleep(int milliseconds)
     (void) milliseconds;
 }
 } // namespace
+
+/* This suite links no ErrorHandlerFake - that is the unit executable's, and this
+ * one builds against the real libmbedtls. Capturing the last event directly is
+ * enough to pin which code a real fault produces. */
+static int CapturedErrorCount;
+static struct SolidSyslogErrorEvent LastCapturedError;
+
+static void CaptureError(void* context, const struct SolidSyslogErrorEvent* event)
+{
+    (void) context;
+    CapturedErrorCount++;
+    LastCapturedError = *event;
+}
+
+/* Pins a refused handshake to the check that refused it, against the real
+ * libmbedtls rather than the fake's canned verdict. */
+#define CHECK_REFUSAL_REPORTED(expectedCode)                                                           \
+    {                                                                                                  \
+        LONGS_EQUAL(1, CapturedErrorCount);                                                            \
+        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, LastCapturedError.Severity);                           \
+        POINTERS_EQUAL(&MbedTlsStreamErrorSource, LastCapturedError.Source);                           \
+        UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, LastCapturedError.Category); \
+        LONGS_EQUAL((expectedCode), LastCapturedError.Detail);                                         \
+    }
 
 // clang-format off
 TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
@@ -44,6 +74,9 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
     void setup() override
     {
         addr = AddressFake_Get();
+        CapturedErrorCount = 0;
+        LastCapturedError = {};
+        SolidSyslog_SetErrorHandler(CaptureError, nullptr);
         mbedtls_entropy_init(&entropy);
         mbedtls_ctr_drbg_init(&rng);
         const unsigned char pers[] = "mbedtls-integration-test";
@@ -75,6 +108,7 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
 
     void teardown() override
     {
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
         if (tlsStream != nullptr)
         {
             SolidSyslogMbedTlsStream_Destroy(tlsStream);
@@ -186,6 +220,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertSignedByUn
     bool opened = SolidSyslogStream_Open(tlsStream, addr);
 
     CHECK_FALSE_TEXT(opened, "client-side handshake must fail when the server cert chains to an untrusted CA");
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
 
     MbedTlsTestCert_Destroy(&untrustedCa);
 }
@@ -201,6 +236,51 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerNameDoesNotMat
     bool opened = SolidSyslogStream_Open(tlsStream, addr);
 
     CHECK_FALSE_TEXT(opened, "client-side handshake must fail when ServerName does not match the cert's SAN");
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
+}
+
+TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertHasExpired)
+
+{
+    struct MbedTlsTestCert expiredCert = {};
+    struct MbedTlsTestCertConfig expiredConfig = {};
+    expiredConfig.SubjectName = TEST_SERVER_SUBJECT;
+    expiredConfig.SubjectAltDns = TEST_SERVER_HOSTNAME;
+    expiredConfig.Issuer = &trustedCa;
+    expiredConfig.ValidityFrom = "20240101000000";
+    expiredConfig.ValidityTo = "20240102000000";
+    MbedTlsTestCert_Create(&expiredConfig, &expiredCert, &rng);
+
+    struct SolidSyslogStream* transport = StartServerWithCert(&expiredCert);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
+
+    MbedTlsTestCert_Destroy(&expiredCert);
+}
+
+TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertIsNotYetValid)
+
+{
+    struct MbedTlsTestCert futureCert = {};
+    struct MbedTlsTestCertConfig futureConfig = {};
+    futureConfig.SubjectName = TEST_SERVER_SUBJECT;
+    futureConfig.SubjectAltDns = TEST_SERVER_HOSTNAME;
+    futureConfig.Issuer = &trustedCa;
+    futureConfig.ValidityFrom = "20980101000000";
+    futureConfig.ValidityTo = "20990101000000";
+    MbedTlsTestCert_Create(&futureConfig, &futureCert, &rng);
+
+    struct SolidSyslogStream* transport = StartServerWithCert(&futureCert);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID);
+
+    MbedTlsTestCert_Destroy(&futureCert);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeSucceedsWithClientCertSignedByTrustedCa)
