@@ -40,12 +40,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Wires SolidSyslogOpenSslStream to its transport, trust anchors, and identity. */
     struct SolidSyslogOpenSslStreamConfig
     {
-        /** Underlying byte stream carrying the ciphertext. Borrowed - this stream
-         *  may Close it but never destroys it; the caller owns it and must keep it
-         *  valid until SolidSyslogOpenSslStream_Destroy. */
+        /** Underlying byte stream carrying the ciphertext; required - a NULL is
+         *  reported at SolidSyslogOpenSslStream_Create. Borrowed - this stream
+         *  may Close it but never
+         *  destroys it; the caller owns it and must keep it valid until
+         *  SolidSyslogOpenSslStream_Destroy. */
         struct SolidSyslogStream* Transport;
         SolidSyslogSleepFunction Sleep; /**< Drives the bounded handshake retry between WANT_READ/WANT_WRITE
-                                         *  polls; required. */
+                                         *  polls; required - a NULL is reported at
+                                         *  SolidSyslogOpenSslStream_Create. */
         SolidSyslogTlsHandshakeTimeoutFunction GetHandshakeTimeoutMs; /**< Per-attempt handshake deadline in ms;
                                                                        *  NULL uses the
                                                                        *  SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS
@@ -66,8 +69,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Draw a TLS stream from the pool over the injected transport (see the file
-     *  overview for the handshake and I/O behaviour). An exhausted pool (default
-     *  size 1) falls back to the shared NullStream. */
+     *  overview for the handshake and I/O behaviour). A NULL config, a NULL
+     *  Transport or a NULL Sleep is reported and falls back to the shared
+     *  NullStream, as does an exhausted pool (default size 1). */
     struct SolidSyslogStream* SolidSyslogOpenSslStream_Create(const struct SolidSyslogOpenSslStreamConfig* config);
     /** Release the pool slot; closes the TLS session and the underlying transport
      *  first if the stream is still Open. */

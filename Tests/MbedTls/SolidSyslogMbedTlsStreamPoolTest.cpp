@@ -2,6 +2,8 @@
 
 extern "C"
 {
+#include <mbedtls/ctr_drbg.h>
+
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogMbedTlsStream.h"
@@ -19,6 +21,17 @@ extern "C"
 
 using namespace CososoTesting;
 
+namespace
+{
+void NoOpSleep(int milliseconds)
+{
+    (void) milliseconds;
+}
+} // namespace
+
+// Asserts Create refused the configuration and handed back the shared NullStream.
+#define CHECK_NULL_STREAM(handle) POINTERS_EQUAL(SolidSyslogNullStream_Get(), (handle))
+
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     {                                                                                  \
@@ -33,6 +46,7 @@ using namespace CososoTesting;
 // clang-format off
 TEST_GROUP(SolidSyslogMbedTlsStreamPool)
 {
+    mbedtls_ctr_drbg_context              rng       = {};
     struct SolidSyslogStream*             transport = nullptr;
     struct SolidSyslogMbedTlsStreamConfig config    = {};
     struct SolidSyslogStream* pooled[SOLIDSYSLOG_TLS_STREAM_POOL_SIZE] = {};
@@ -45,6 +59,8 @@ TEST_GROUP(SolidSyslogMbedTlsStreamPool)
          * pool-test pattern. */
         transport        = StreamFake_Create();
         config.Transport = transport;
+        config.Sleep     = NoOpSleep;
+        config.Rng       = &rng;
     }
 
     void teardown() override
@@ -74,6 +90,99 @@ TEST_GROUP(SolidSyslogMbedTlsStreamPool)
 };
 
 // clang-format on
+
+TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullConfigReturnsFallback)
+{
+    struct SolidSyslogStream* fallback = SolidSyslogMbedTlsStream_Create(nullptr);
+
+    CHECK_NULL_STREAM(fallback);
+}
+
+TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullConfigReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogMbedTlsStream_Create(nullptr);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &MbedTlsStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_CONFIG
+    );
+}
+
+TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullTransportReturnsFallback)
+{
+    config.Transport = nullptr;
+
+    struct SolidSyslogStream* fallback = SolidSyslogMbedTlsStream_Create(&config);
+
+    CHECK_NULL_STREAM(fallback);
+}
+
+TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullTransportReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    config.Transport = nullptr;
+
+    SolidSyslogMbedTlsStream_Create(&config);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &MbedTlsStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_TRANSPORT
+    );
+}
+
+TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullSleepReturnsFallback)
+{
+    config.Sleep = nullptr;
+
+    struct SolidSyslogStream* fallback = SolidSyslogMbedTlsStream_Create(&config);
+
+    CHECK_NULL_STREAM(fallback);
+}
+
+TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullSleepReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    config.Sleep = nullptr;
+
+    SolidSyslogMbedTlsStream_Create(&config);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &MbedTlsStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_SLEEP
+    );
+}
+
+TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullRngReturnsFallback)
+{
+    config.Rng = nullptr;
+
+    struct SolidSyslogStream* fallback = SolidSyslogMbedTlsStream_Create(&config);
+
+    CHECK_NULL_STREAM(fallback);
+}
+
+TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullRngReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    config.Rng = nullptr;
+
+    SolidSyslogMbedTlsStream_Create(&config);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &MbedTlsStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_RNG
+    );
+}
 
 TEST(SolidSyslogMbedTlsStreamPool, CreateReturnsHandleDistinctFromFallback)
 {

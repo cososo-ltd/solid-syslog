@@ -19,6 +19,7 @@
 
 struct SolidSyslogStream;
 
+static inline bool MbedTlsStream_IsValidConfig(const struct SolidSyslogMbedTlsStreamConfig* config);
 static inline size_t MbedTlsStream_IndexFromHandle(const struct SolidSyslogStream* base);
 static inline void MbedTlsStream_CleanupAtIndex(size_t index, void* context);
 
@@ -31,22 +32,67 @@ static struct SolidSyslogPoolAllocator MbedTlsStream_Allocator = {
 
 struct SolidSyslogStream* SolidSyslogMbedTlsStream_Create(const struct SolidSyslogMbedTlsStreamConfig* config)
 {
-    size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&MbedTlsStream_Allocator);
     struct SolidSyslogStream* handle = SolidSyslogNullStream_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&MbedTlsStream_Allocator, index) == true)
+    if (MbedTlsStream_IsValidConfig(config))
     {
-        MbedTlsStream_Initialise(&MbedTlsStream_Pool[index].Base, config);
-        handle = &MbedTlsStream_Pool[index].Base;
+        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&MbedTlsStream_Allocator);
+        if (SolidSyslogPoolAllocator_IndexIsValid(&MbedTlsStream_Allocator, index) == true)
+        {
+            MbedTlsStream_Initialise(&MbedTlsStream_Pool[index].Base, config);
+            handle = &MbedTlsStream_Pool[index].Base;
+        }
+        else
+        {
+            MbedTlsStream_Report(
+                SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_POOL_EXHAUSTED
+            );
+        }
+    }
+    return handle;
+}
+
+static inline bool MbedTlsStream_IsValidConfig(const struct SolidSyslogMbedTlsStreamConfig* config)
+{
+    bool valid = false;
+    if (config == NULL)
+    {
+        MbedTlsStream_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_CONFIG
+        );
+    }
+    else if (config->Transport == NULL)
+    {
+        MbedTlsStream_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_TRANSPORT
+        );
+    }
+    else if (config->Sleep == NULL)
+    {
+        MbedTlsStream_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_SLEEP
+        );
+    }
+    else if (config->Rng == NULL)
+    {
+        MbedTlsStream_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_RNG
+        );
     }
     else
     {
-        MbedTlsStream_Report(
-            SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
-            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_POOL_EXHAUSTED
-        );
+        valid = true;
     }
-    return handle;
+    return valid;
 }
 
 void SolidSyslogMbedTlsStream_Destroy(struct SolidSyslogStream* base)

@@ -82,7 +82,28 @@ void SolidSyslogLwipRawDnsResolver_Destroy(struct SolidSyslogResolver* base)
 
 static inline bool LwipRawDnsResolver_IsValidConfig(const struct SolidSyslogLwipRawDnsResolverConfig* config)
 {
-    return (config != NULL) && (config->Sleep != NULL);
+    bool valid = false;
+    if (config == NULL)
+    {
+        LwipRawDnsResolver_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_CONFIG
+        );
+    }
+    else if (config->Sleep == NULL)
+    {
+        LwipRawDnsResolver_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_SLEEP
+        );
+    }
+    else
+    {
+        valid = true;
+    }
+    return valid;
 }
 
 static inline size_t LwipRawDnsResolver_IndexFromHandle(const struct SolidSyslogResolver* base)

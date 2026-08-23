@@ -36,7 +36,7 @@ by calling `SolidSyslogSender_Disconnect`.
 
 ## Where it differs from the contract
 
-Six differences, each tracked. Read them before relying on the corresponding
+Five differences, each tracked. Read them before relying on the corresponding
 obligation.
 
 ### A peer cannot be authorised by certificate fingerprint
@@ -68,9 +68,3 @@ protocol floor without a ceiling, so against a modern peer the negotiated
 connection uses OpenSSL's own TLS 1.3 defaults and the configured list has no
 effect on it. Tracked as
 [#733](https://github.com/cososo-ltd/solid-syslog/issues/733).
-
-### The configuration is not checked when the stream is created
-
-A configuration missing something the stream cannot work without is accepted, and
-the fault appears on the first connection attempt rather than at setup. Tracked as
-[#732](https://github.com/cososo-ltd/solid-syslog/issues/732).

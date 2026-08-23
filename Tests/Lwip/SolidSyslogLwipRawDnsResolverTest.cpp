@@ -461,6 +461,36 @@ TEST(SolidSyslogLwipRawDnsResolverPool, ExhaustedCreateReportsError)
     );
 }
 
+TEST(SolidSyslogLwipRawDnsResolverPool, CreateWithNullConfigReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogLwipRawDnsResolver_Create(nullptr);
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        LwipRawDnsResolverErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_CONFIG
+    );
+}
+
+TEST(SolidSyslogLwipRawDnsResolverPool, CreateWithNullSleepReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogLwipRawDnsResolverConfig badConfig = {};
+    badConfig.Sleep = nullptr;
+
+    SolidSyslogLwipRawDnsResolver_Create(&badConfig);
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        LwipRawDnsResolverErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_SLEEP
+    );
+}
+
 TEST(SolidSyslogLwipRawDnsResolverPool, FallbackResolveReturnsFalse)
 {
     FillPool();
