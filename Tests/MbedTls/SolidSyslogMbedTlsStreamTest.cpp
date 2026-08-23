@@ -164,6 +164,17 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         int seq[] = {errorCode};
         MbedTlsFake_SetSslHandshakeReturnSequence(seq, 1);
     }
+
+    /* Arrange a peer whose certificate mbedTLS refused for `flags`. ServerName is
+     * set so the refusal is the only error source - a NULL one would also emit
+     * the unverified-peer WARNING. */
+    void ArrangeCertificateVerificationFailure(uint32_t flags)
+    {
+        config.ServerName = "syslog.example.com";
+        ReCreateHandleWithUpdatedConfig();
+        ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
+        MbedTlsFake_SetSslVerifyResult(flags);
+    }
 };
 
 // clang-format on
@@ -387,10 +398,7 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeF
 
 TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateHasExpired)
 {
-    config.ServerName = "syslog.example.com";
-    ReCreateHandleWithUpdatedConfig();
-    ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
-    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_EXPIRED);
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_EXPIRED);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
@@ -402,10 +410,7 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateHasExpired)
 
 TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateIsNotYetValid)
 {
-    config.ServerName = "syslog.example.com";
-    ReCreateHandleWithUpdatedConfig();
-    ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
-    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_FUTURE);
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_FUTURE);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
@@ -417,10 +422,7 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateIsNotYetValid)
 
 TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerNameDidNotMatch)
 {
-    config.ServerName = "syslog.example.com";
-    ReCreateHandleWithUpdatedConfig();
-    ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
-    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_CN_MISMATCH);
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_CN_MISMATCH);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
@@ -432,10 +434,7 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerNameDidNotMatch)
 
 TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateIsNotTrusted)
 {
-    config.ServerName = "syslog.example.com";
-    ReCreateHandleWithUpdatedConfig();
-    ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
-    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_NOT_TRUSTED);
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_NOT_TRUSTED);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
@@ -452,10 +451,7 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateIsNotTrusted)
  * compound fault as well as on a single one. */
 TEST(SolidSyslogMbedTlsStream, OpenReportsAnUntrustedChainAheadOfTheDatesOnIt)
 {
-    config.ServerName = "syslog.example.com";
-    ReCreateHandleWithUpdatedConfig();
-    ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
-    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_NOT_TRUSTED | MBEDTLS_X509_BADCERT_EXPIRED);
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_NOT_TRUSTED | MBEDTLS_X509_BADCERT_EXPIRED);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
@@ -470,10 +466,7 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsAnUntrustedChainAheadOfTheDatesOnIt)
  * the network, which is the whole point of naming the check. */
 TEST(SolidSyslogMbedTlsStream, OpenReportsAVerificationFailureItCannotNameAsUntrusted)
 {
-    config.ServerName = "syslog.example.com";
-    ReCreateHandleWithUpdatedConfig();
-    ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
-    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_BAD_KEY);
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_BAD_KEY);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
@@ -488,6 +481,9 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsAVerificationFailureItCannotNameAsUntr
  * certificate behind it would be reported as an untrusted one. */
 TEST(SolidSyslogMbedTlsStream, OpenReportsAPlainRejectionWhenNoVerdictIsAvailable)
 {
+    /* Arranged by hand rather than through ArrangeCertificateVerificationFailure:
+     * a verdict is unavailable when certificate verification never ran, which
+     * pairs with a handshake that failed for some other reason. */
     config.ServerName = "syslog.example.com";
     ReCreateHandleWithUpdatedConfig();
     ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
