@@ -108,6 +108,7 @@ enum
 static int sslHandshakeCallCount;
 static mbedtls_ssl_context* lastSslHandshakeArg;
 static int sslHandshakeReturn;
+static uint32_t sslVerifyResult;
 static int sslHandshakeReturnSequence[MBEDTLSFAKE_MAX_HANDSHAKE_RETURNS];
 static int sslHandshakeReturnSequenceLen;
 
@@ -205,6 +206,7 @@ void MbedTlsFake_Reset(void)
     sslHandshakeCallCount = 0;
     lastSslHandshakeArg = NULL;
     sslHandshakeReturn = 0;
+    sslVerifyResult = 0;
     sslHandshakeReturnSequenceLen = 0;
     sslWriteCallCount = 0;
     lastSslWriteContextArg = NULL;
@@ -386,6 +388,17 @@ int MbedTlsFake_SslHandshakeCallCount(void)
 mbedtls_ssl_context* MbedTlsFake_LastSslHandshakeArg(void)
 {
     return lastSslHandshakeArg;
+}
+
+uint32_t mbedtls_ssl_get_verify_result(const mbedtls_ssl_context* ssl)
+{
+    (void) ssl;
+    return sslVerifyResult;
+}
+
+void MbedTlsFake_SetSslVerifyResult(uint32_t flags)
+{
+    sslVerifyResult = flags;
 }
 
 void MbedTlsFake_SetSslHandshakeReturn(int value)

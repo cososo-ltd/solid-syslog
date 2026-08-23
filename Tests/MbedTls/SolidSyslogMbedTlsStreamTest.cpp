@@ -385,6 +385,122 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeF
     );
 }
 
+TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateHasExpired)
+{
+    config.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
+    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_EXPIRED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateIsNotYetValid)
+{
+    config.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
+    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_FUTURE);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerNameDidNotMatch)
+{
+    config.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
+    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_CN_MISMATCH);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_NAME_MISMATCHED
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateIsNotTrusted)
+{
+    config.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
+    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_NOT_TRUSTED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+    );
+}
+
+/* mbedTLS accumulates every fault it found into one bitmask, so a compound
+ * verdict has to resolve to a single reason. An untrusted chain wins: it is what
+ * OpenSSL reports for the same certificate, because path building fails there
+ * before any date is examined. The two adapters therefore agree on a compound
+ * fault as well as on a single one. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsAnUntrustedChainAheadOfTheDatesOnIt)
+{
+    config.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
+    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_NOT_TRUSTED | MBEDTLS_X509_BADCERT_EXPIRED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+    );
+}
+
+/* A verification failure with no name of its own - here a key too weak for the
+ * profile - still tells the integrator the certificate is the fault rather than
+ * the network, which is the whole point of naming the check. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsAVerificationFailureItCannotNameAsUntrusted)
+{
+    config.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
+    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_BAD_KEY);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+    );
+}
+
+/* mbedTLS answers 0xFFFFFFFF when it has no verdict to give. Every flag reads as
+ * set, so it must be recognised rather than mapped, or a refusal with no
+ * certificate behind it would be reported as an untrusted one. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsAPlainRejectionWhenNoVerdictIsAvailable)
+{
+    config.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
+    MbedTlsFake_SetSslVerifyResult(0xFFFFFFFFU);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_HANDSHAKE_REJECTED
+    );
+}
+
 /* -------------------------------------------------------------------------
  * Open failure unwind + error reporting (S26.02). Every failure path after
  * the first allocating operation must close the inner transport, free both

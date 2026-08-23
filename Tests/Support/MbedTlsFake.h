@@ -53,6 +53,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * at MBEDTLSFAKE_MAX_HANDSHAKE_RETURNS (silently truncated). */
     void MbedTlsFake_SetSslHandshakeReturnSequence(const int* values, int count);
 
+    /* mbedtls_ssl_get_verify_result - the accumulated MBEDTLS_X509_BADCERT_*
+     * flags the adapter reads after a refused handshake. Resets to 0, which is
+     * what mbedTLS reports when verification found nothing wrong. */
+    void MbedTlsFake_SetSslVerifyResult(uint32_t flags);
+
     int MbedTlsFake_SslWriteCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslWriteContextArg(void);
     const unsigned char* MbedTlsFake_LastSslWriteBufArg(void);
