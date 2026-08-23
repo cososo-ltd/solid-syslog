@@ -80,6 +80,7 @@ extern "C" uint32_t FakeGetHandshakeTimeoutMs(void* context)
 // clang-format off
 TEST_GROUP(SolidSyslogMbedTlsStream)
 {
+    mbedtls_ctr_drbg_context             rng       = {};
     struct SolidSyslogStream*            transport = nullptr;
     struct SolidSyslogStream*            handle    = nullptr;
     struct SolidSyslogMbedTlsStreamConfig config   = {};
@@ -95,6 +96,7 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         transport = StreamFake_Create();
         config.Transport = transport;
         config.Sleep = NoOpSleep;
+        config.Rng = &rng;
         handle = SolidSyslogMbedTlsStream_Create(&config);
         addr = AddressFake_Get();
     }
