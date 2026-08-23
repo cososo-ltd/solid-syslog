@@ -42,6 +42,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void OpenSslFake_SetGetErrorReturn(int err);
     int OpenSslFake_GetErrorCallCount(void);
 
+    /* SSL_get_verify_result - the certification-path verdict the adapter reads
+     * after a refused handshake. Resets to X509_V_OK, which is what OpenSSL
+     * reports when verification never ran or found nothing wrong. */
+    void OpenSslFake_SetVerifyResult(long value);
+
     int OpenSslFake_BioSetFlagsCallCount(void);
     int OpenSslFake_LastBioSetFlags(void);
     int OpenSslFake_BioClearFlagsCallCount(void);

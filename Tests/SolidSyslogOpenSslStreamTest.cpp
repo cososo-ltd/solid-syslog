@@ -747,6 +747,66 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenHandshakeFails)
     );
 }
 
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateHasExpired)
+{
+    config.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetConnectFails(true);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
+    OpenSslFake_SetVerifyResult(X509_V_ERR_CERT_HAS_EXPIRED);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateIsNotYetValid)
+{
+    config.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetConnectFails(true);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
+    OpenSslFake_SetVerifyResult(X509_V_ERR_CERT_NOT_YET_VALID);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerNameDidNotMatch)
+{
+    config.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetConnectFails(true);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
+    OpenSslFake_SetVerifyResult(X509_V_ERR_HOSTNAME_MISMATCH);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_NAME_MISMATCHED
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateIsNotTrusted)
+{
+    config.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetConnectFails(true);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
+    OpenSslFake_SetVerifyResult(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+    );
+}
+
 TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSet1HostFails)
 {
     config.ServerName = "logs.example";
