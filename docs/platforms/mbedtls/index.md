@@ -89,11 +89,10 @@ negotiated. The contract asks for an integrator's policy to be passed through
 where the library allows one to be selected. Tracked as
 [#733](https://github.com/cososo-ltd/solid-syslog/issues/733).
 
-### The configuration is not checked when the stream is created
+### A missing trust chain is not reported as a configuration fault
 
-A configuration missing something the stream cannot work without is accepted, and
-the fault appears on the first connection attempt rather than at setup. The
-random source and the trust chain are installed through calls that return no
-status, so a missing one becomes a handshake failure rather than the
-configuration error it is. Tracked as
-[#732](https://github.com/cososo-ltd/solid-syslog/issues/732).
+`mbedtls_ssl_conf_ca_chain` returns no status, so a configuration carrying no
+trust anchors is accepted and the peer certificate then fails to verify. What is
+reported is a refused handshake rather than the missing trust material. Tracked
+as [#753](https://github.com/cososo-ltd/solid-syslog/issues/753), which is where
+a peer authorised by fingerprint instead of by trust anchor is settled.

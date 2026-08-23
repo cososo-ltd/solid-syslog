@@ -52,15 +52,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SolidSyslogTcpConnectTimeoutFunction GetConnectTimeoutMs;
         void* ConnectTimeoutContext; /**< Passed back to GetConnectTimeoutMs unchanged; NULL is fine. */
         /** Required; each connect-spin iteration sleeps through it so lwIP can
-         *  advance the handshake. A NULL config or NULL Sleep falls back to NullStream. */
+         *  advance the handshake. A NULL is reported at Create. */
         SolidSyslogSleepFunction Sleep;
     };
 
     /** Draw a TCP stream from the pool; the config's Sleep drives the bounded
      *  connect and its GetConnectTimeoutMs bounds it (see the file overview for
-     *  the stream's behaviour). A NULL config, a NULL Sleep, or an exhausted pool
-     *  (default size 2, for the TLS-over-plain-TCP pair) falls back to the shared
-     *  NullStream. */
+     *  the stream's behaviour). A NULL config or a NULL Sleep is reported and
+     *  falls back to the shared NullStream, as does an exhausted pool (default
+     *  size 2, for the TLS-over-plain-TCP pair). */
     struct SolidSyslogStream* SolidSyslogLwipRawTcpStream_Create(const struct SolidSyslogLwipRawTcpStreamConfig* config
     );
     /** Release the pool slot and close the connection. */

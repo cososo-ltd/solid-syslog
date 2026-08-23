@@ -34,9 +34,8 @@ callback runs, so a mailbox marshal has to wait for completion itself.
 
 The source calls lwIP only — no direct OS calls. The TCP stream's synchronous
 Open and the DNS resolver's bounded wait both need a sleep, injected as a
-`SolidSyslogSleepFunction`. Create it without one and you get the shared Null
-object back, with nothing reported: the wiring looks like it worked and no record
-is ever delivered.
+`SolidSyslogSleepFunction`. Create either without one and it reports a bad
+configuration and hands back the shared Null object, so no record is delivered.
 
 Your `lwipopts.h` must enable the features the adapter wraps:
 
