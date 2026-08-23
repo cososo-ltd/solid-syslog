@@ -873,6 +873,35 @@ TEST(SolidSyslogLwipRawTcpStreamPool, ExhaustedCreateReportsError)
     );
 }
 
+TEST(SolidSyslogLwipRawTcpStreamPool, CreateWithNullConfigReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogLwipRawTcpStream_Create(nullptr);
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        LwipRawTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_NULL_CONFIG
+    );
+}
+
+TEST(SolidSyslogLwipRawTcpStreamPool, CreateWithNullSleepReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    validConfig.Sleep = nullptr;
+
+    SolidSyslogLwipRawTcpStream_Create(&validConfig);
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        LwipRawTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_NULL_SLEEP
+    );
+}
+
 TEST(SolidSyslogLwipRawTcpStreamPool, FallbackVtableMethodsAreNoOps)
 {
     FillPool();
