@@ -5,6 +5,7 @@
 #include "SolidSyslogMbedTlsStream.h"
 
 #include <mbedtls/ctr_drbg.h>
+#include <mbedtls/pk.h>
 #include <mbedtls/ssl.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -38,6 +39,7 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
 static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_HasClientCredential(const struct SolidSyslogMbedTlsStreamConfig* config);
+static inline bool MbedTlsStream_ClientKeyMatchesCertificate(const struct SolidSyslogMbedTlsStreamConfig* config);
 static inline bool MbedTlsStream_HasHalfOfClientCredential(const struct SolidSyslogMbedTlsStreamConfig* config);
 static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbedTlsStream* self);
@@ -188,15 +190,27 @@ static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream*
     mbedtls_ssl_conf_rng(&self->SslConfig, mbedtls_ctr_drbg_random, self->Config.Rng);
     if (MbedTlsStream_HasClientCredential(&self->Config))
     {
+        if (MbedTlsStream_ClientKeyMatchesCertificate(&self->Config) == false)
+        {
+            MbedTlsStream_Report(
+                SOLIDSYSLOG_SEVERITY_WARNING,
+                SOLIDSYSLOG_CAT_BAD_CONFIG,
+                SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_MISMATCHED
+            );
+        }
         /* Only MBEDTLS_ERR_SSL_ALLOC_FAILED, which returns before the key_cert
          * node is appended, so nothing is left half-configured. */
-        if (mbedtls_ssl_conf_own_cert(&self->SslConfig, self->Config.ClientCertChain, self->Config.ClientKey) != 0)
+        else if (mbedtls_ssl_conf_own_cert(&self->SslConfig, self->Config.ClientCertChain, self->Config.ClientKey) != 0)
         {
             MbedTlsStream_Report(
                 SOLIDSYSLOG_SEVERITY_WARNING,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
                 SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
             );
+        }
+        else
+        {
+            /* Paired and installed - the credential will be presented. */
         }
     }
     else if (MbedTlsStream_HasHalfOfClientCredential(&self->Config))
@@ -216,6 +230,18 @@ static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream*
 static inline bool MbedTlsStream_HasClientCredential(const struct SolidSyslogMbedTlsStreamConfig* config)
 {
     return (config->ClientCertChain != NULL) && (config->ClientKey != NULL);
+}
+
+/* mbedtls_ssl_conf_own_cert does not check the pair it is handed, and names this
+ * function in its own documentation as the way to check it. */
+static inline bool MbedTlsStream_ClientKeyMatchesCertificate(const struct SolidSyslogMbedTlsStreamConfig* config)
+{
+    return mbedtls_pk_check_pair(
+               &config->ClientCertChain->pk,
+               config->ClientKey,
+               mbedtls_ctr_drbg_random,
+               config->Rng
+           ) == 0;
 }
 
 /* One half without the other. The integrator asked for mutual TLS and will not

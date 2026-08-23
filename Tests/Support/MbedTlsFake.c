@@ -168,6 +168,14 @@ static mbedtls_x509_crt* lastSslConfOwnCertCertArg;
 static mbedtls_pk_context* lastSslConfOwnCertKeyArg;
 static int sslConfOwnCertReturn;
 
+/* mbedtls_pk_check_pair */
+static int pkCheckPairCallCount;
+static const mbedtls_pk_context* lastPkCheckPairPublicKeyArg;
+static const mbedtls_pk_context* lastPkCheckPairPrivateKeyArg;
+static int (*lastPkCheckPairRngFuncArg)(void*, unsigned char*, size_t);
+static void* lastPkCheckPairRngContextArg;
+static int pkCheckPairReturn;
+
 /* -------------------------------------------------------------------------
  * Test accessors.
  * ------------------------------------------------------------------------- */
@@ -234,6 +242,12 @@ void MbedTlsFake_Reset(void)
     lastSslConfOwnCertConfigArg = NULL;
     lastSslConfOwnCertCertArg = NULL;
     lastSslConfOwnCertKeyArg = NULL;
+    pkCheckPairCallCount = 0;
+    lastPkCheckPairPublicKeyArg = NULL;
+    lastPkCheckPairPrivateKeyArg = NULL;
+    lastPkCheckPairRngFuncArg = NULL;
+    lastPkCheckPairRngContextArg = NULL;
+    pkCheckPairReturn = 0;
     sslConfOwnCertReturn = 0;
     mdHmacCallCount = 0;
     lastMdInfoType = 0;
@@ -575,6 +589,36 @@ mbedtls_pk_context* MbedTlsFake_LastSslConfOwnCertKeyArg(void)
     return lastSslConfOwnCertKeyArg;
 }
 
+int MbedTlsFake_PkCheckPairCallCount(void)
+{
+    return pkCheckPairCallCount;
+}
+
+const mbedtls_pk_context* MbedTlsFake_LastPkCheckPairPublicKeyArg(void)
+{
+    return lastPkCheckPairPublicKeyArg;
+}
+
+const mbedtls_pk_context* MbedTlsFake_LastPkCheckPairPrivateKeyArg(void)
+{
+    return lastPkCheckPairPrivateKeyArg;
+}
+
+int (*MbedTlsFake_LastPkCheckPairRngFuncArg(void))(void*, unsigned char*, size_t)
+{
+    return lastPkCheckPairRngFuncArg;
+}
+
+void* MbedTlsFake_LastPkCheckPairRngContextArg(void)
+{
+    return lastPkCheckPairRngContextArg;
+}
+
+void MbedTlsFake_SetPkCheckPairReturn(int value)
+{
+    pkCheckPairReturn = value;
+}
+
 /* -------------------------------------------------------------------------
  * Link-interposed mbedTLS symbols. The test executable does not link
  * libmbedtls; the production code's calls to mbedtls_* resolve here.
@@ -701,6 +745,21 @@ int mbedtls_ssl_conf_own_cert(mbedtls_ssl_config* conf, mbedtls_x509_crt* own_ce
     lastSslConfOwnCertCertArg = own_cert;
     lastSslConfOwnCertKeyArg = pk_key;
     return sslConfOwnCertReturn;
+}
+
+int mbedtls_pk_check_pair(
+    const mbedtls_pk_context* pub,
+    const mbedtls_pk_context* prv,
+    int (*f_rng)(void*, unsigned char*, size_t),
+    void* p_rng
+)
+{
+    pkCheckPairCallCount++;
+    lastPkCheckPairPublicKeyArg = pub;
+    lastPkCheckPairPrivateKeyArg = prv;
+    lastPkCheckPairRngFuncArg = f_rng;
+    lastPkCheckPairRngContextArg = p_rng;
+    return pkCheckPairReturn;
 }
 
 void mbedtls_ssl_conf_rng(mbedtls_ssl_config* conf, int (*f_rng)(void*, unsigned char*, size_t), void* p_rng)

@@ -56,7 +56,7 @@ claim can be checked against the directory.
 
 ## Where it differs from the contract
 
-Six differences, each tracked. Read them before relying on the corresponding
+Five differences, each tracked. Read them before relying on the corresponding
 obligation.
 
 ### A peer cannot be authorised by certificate fingerprint
@@ -80,13 +80,6 @@ parsed for as long as the stream exists. A device that connects rarely still
 holds its private key in RAM continuously, and there is no point at which the
 adapter invites the integrator to release it. Tracked under
 [E39](https://github.com/cososo-ltd/solid-syslog/issues/782).
-
-### The key is not checked against its certificate
-
-No local check confirms that `ClientKey` matches `ClientCertChain`. A mismatch
-therefore surfaces as a handshake rejection from the collector rather than as a
-setup error on the device, which sends you looking in the wrong place. Tracked as
-[#719](https://github.com/cososo-ltd/solid-syslog/issues/719).
 
 ### The cipher policy cannot be expressed
 

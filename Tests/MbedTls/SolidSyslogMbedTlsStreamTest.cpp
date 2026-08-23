@@ -901,3 +901,63 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsClientCredentialNotInstalledAndStillCo
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
     );
 }
+
+/* -------------------------------------------------------------------------
+ * mTLS credential pairing. mbedtls_pk_check_pair compares the certificate's
+ * public key with the private key locally, so a mismatched pair is caught on
+ * the device instead of surfacing as a rejection from the collector.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogMbedTlsStream, OpenChecksClientKeyAgainstItsCertificate)
+
+{
+    static mbedtls_x509_crt clientCertMarker;
+    static mbedtls_pk_context clientKeyMarker;
+    static mbedtls_ctr_drbg_context rngMarker;
+
+    config.Rng = &rngMarker;
+    WireClientCredential(&clientCertMarker, &clientKeyMarker);
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsFake_PkCheckPairCallCount());
+    POINTERS_EQUAL(&clientCertMarker.pk, MbedTlsFake_LastPkCheckPairPublicKeyArg());
+    POINTERS_EQUAL(&clientKeyMarker, MbedTlsFake_LastPkCheckPairPrivateKeyArg());
+    POINTERS_EQUAL((void*) mbedtls_ctr_drbg_random, (void*) MbedTlsFake_LastPkCheckPairRngFuncArg());
+    POINTERS_EQUAL(&rngMarker, MbedTlsFake_LastPkCheckPairRngContextArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsMismatchedClientCredentialAndStillConnects)
+
+{
+    /* The pair is refused locally, so nothing is presented and the connection
+     * continues server-authenticated - the collector decides whether to accept
+     * it, as for every other fault in the credential we offer. */
+    static mbedtls_x509_crt clientCertMarker;
+    static mbedtls_pk_context clientKeyMarker;
+
+    WireClientCredential(&clientCertMarker, &clientKeyMarker);
+    MbedTlsFake_SetPkCheckPairReturn(MBEDTLS_ERR_PK_TYPE_MISMATCH);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &MbedTlsStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_MISMATCHED
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenSkipsOwnCertWhenClientKeyDoesNotMatchCertificate)
+
+{
+    static mbedtls_x509_crt clientCertMarker;
+    static mbedtls_pk_context clientKeyMarker;
+
+    WireClientCredential(&clientCertMarker, &clientKeyMarker);
+    MbedTlsFake_SetPkCheckPairReturn(MBEDTLS_ERR_PK_TYPE_MISMATCH);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslConfOwnCertCallCount());
+}
