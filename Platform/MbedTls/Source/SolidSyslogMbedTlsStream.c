@@ -47,6 +47,8 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
 static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self);
 static inline enum SolidSyslogMbedTlsStreamErrors MbedTlsStream_RefusalDetail(struct SolidSyslogMbedTlsStream* self);
+static inline bool MbedTlsStream_IsVerifyFailure(uint32_t verdict);
+static inline enum SolidSyslogMbedTlsStreamErrors MbedTlsStream_DetailForVerifyFailure(uint32_t verdict);
 static inline bool MbedTlsStream_HasUnnamedVerifyFailure(uint32_t verdict);
 static inline bool MbedTlsStream_IsRetryableHandshakeRc(int rc);
 static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
@@ -361,39 +363,49 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
 
 /* The verdict outlives the failed handshake - mbedTLS records every fault it
  * found on the session being negotiated - so the refusal can name the check that
- * produced it rather than the handshake that carried it. The flags accumulate,
- * so the order below is a precedence: an untrusted chain is reported ahead of
- * anything the certificate says about itself, because a certificate no anchor
- * vouches for is not made acceptable by the dates it carries. */
+ * produced it rather than the handshake that carried it. */
 static inline enum SolidSyslogMbedTlsStreamErrors MbedTlsStream_RefusalDetail(struct SolidSyslogMbedTlsStream* self)
 {
     enum SolidSyslogMbedTlsStreamErrors detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_HANDSHAKE_REJECTED;
-    /* What mbedtls_ssl_get_verify_result answers when it holds no result. */
-    const uint32_t verifyResultUnavailable = 0xFFFFFFFFU;
     uint32_t verdict = mbedtls_ssl_get_verify_result(&self->SslContext);
-    if (verdict == verifyResultUnavailable)
+    if (MbedTlsStream_IsVerifyFailure(verdict))
     {
-        /* No verdict to read, so the refusal is not the peer certificate's. */
+        detail = MbedTlsStream_DetailForVerifyFailure(verdict);
     }
-    else if (MbedTlsStream_HasUnnamedVerifyFailure(verdict))
+    return detail;
+}
+
+/* Zero is mbedTLS for "nothing wrong" and 0xFFFFFFFF for "no result to give".
+ * Neither is a check the peer's certificate failed, so neither may be read as a
+ * set of flags - every flag reads as set in the second of them. */
+static inline bool MbedTlsStream_IsVerifyFailure(uint32_t verdict)
+{
+    const uint32_t verifyResultUnavailable = 0xFFFFFFFFU;
+    return (verdict != 0U) && (verdict != verifyResultUnavailable);
+}
+
+/* The flags accumulate, so a compound verdict resolves by precedence: an
+ * untrusted chain is reported ahead of anything the certificate says about
+ * itself, because a certificate no anchor vouches for is not made acceptable by
+ * the dates it carries. */
+static inline enum SolidSyslogMbedTlsStreamErrors MbedTlsStream_DetailForVerifyFailure(uint32_t verdict)
+{
+    enum SolidSyslogMbedTlsStreamErrors detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
+    if (MbedTlsStream_HasUnnamedVerifyFailure(verdict) == false)
     {
-        detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
-    }
-    else if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_CN_MISMATCH) != 0U)
-    {
-        detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
-    }
-    else if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_EXPIRED) != 0U)
-    {
-        detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED;
-    }
-    else if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_FUTURE) != 0U)
-    {
-        detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
-    }
-    else
-    {
-        /* Nothing the peer's certificate explains. */
+        if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_CN_MISMATCH) != 0U)
+        {
+            detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
+        }
+        else if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_EXPIRED) != 0U)
+        {
+            detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED;
+        }
+        else
+        {
+            /* A named flag is set and the other two are not, so this is it. */
+            detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
+        }
     }
     return detail;
 }
