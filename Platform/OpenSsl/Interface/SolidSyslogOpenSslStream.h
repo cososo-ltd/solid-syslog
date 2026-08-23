@@ -41,12 +41,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogOpenSslStreamConfig
     {
         /** Underlying byte stream carrying the ciphertext; required - a NULL is
-         *  reported at Create. Borrowed - this stream may Close it but never
+         *  reported at SolidSyslogOpenSslStream_Create. Borrowed - this stream
+         *  may Close it but never
          *  destroys it; the caller owns it and must keep it valid until
          *  SolidSyslogOpenSslStream_Destroy. */
         struct SolidSyslogStream* Transport;
         SolidSyslogSleepFunction Sleep; /**< Drives the bounded handshake retry between WANT_READ/WANT_WRITE
-                                         *  polls; required - a NULL is reported at Create. */
+                                         *  polls; required - a NULL is reported at
+                                         *  SolidSyslogOpenSslStream_Create. */
         SolidSyslogTlsHandshakeTimeoutFunction GetHandshakeTimeoutMs; /**< Per-attempt handshake deadline in ms;
                                                                        *  NULL uses the
                                                                        *  SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS

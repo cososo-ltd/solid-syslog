@@ -52,7 +52,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SolidSyslogTcpConnectTimeoutFunction GetConnectTimeoutMs;
         void* ConnectTimeoutContext; /**< Passed back to GetConnectTimeoutMs unchanged; NULL is fine. */
         /** Required; each connect-spin iteration sleeps through it so lwIP can
-         *  advance the handshake. A NULL is reported at Create. */
+         *  advance the handshake. A NULL is reported at
+         *  SolidSyslogLwipRawTcpStream_Create. */
         SolidSyslogSleepFunction Sleep;
     };
 

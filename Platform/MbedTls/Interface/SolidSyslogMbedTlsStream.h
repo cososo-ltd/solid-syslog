@@ -53,17 +53,20 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogMbedTlsStreamConfig
     {
         /** Underlying byte stream the TLS records ride on; required - a NULL is
-         *  reported at Create. Borrowed - this stream may Close it but never
+         *  reported at SolidSyslogMbedTlsStream_Create. Borrowed - this stream
+         *  may Close it but never
          *  destroys it; the caller owns it and must keep it valid until
          *  SolidSyslogMbedTlsStream_Destroy. */
         struct SolidSyslogStream* Transport;
         SolidSyslogSleepFunction Sleep; /**< Bridges the WANT_READ/WANT_WRITE polls of the bounded handshake
-                                             retry; required - a NULL is reported at Create. */
+                                             retry; required - a NULL is reported at
+                                             SolidSyslogMbedTlsStream_Create. */
         SolidSyslogTlsHandshakeTimeoutFunction GetHandshakeTimeoutMs; /**< Per-attempt handshake deadline in ms;
                                              NULL uses the SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS tunable. */
         void* HandshakeTimeoutContext; /**< Passed back to GetHandshakeTimeoutMs unchanged; NULL is fine. */
         struct mbedtls_ctr_drbg_context* Rng; /**< Seeded CTR-DRBG for the handshake; caller-built and caller-owned.
-                                             Required - a NULL is reported at Create. */
+                                             Required - a NULL is reported at
+                                             SolidSyslogMbedTlsStream_Create. */
         struct mbedtls_x509_crt* CaChain; /**< Trust anchors the peer cert must chain to; caller-built and owned. */
         /** SNI + peer-identity check. A non-empty name is verified against the peer
          *  cert (SAN/CN). NULL connects chain-only but emits a WARNING - the peer is

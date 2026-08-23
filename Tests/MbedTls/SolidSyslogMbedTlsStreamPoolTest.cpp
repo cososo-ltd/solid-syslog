@@ -29,6 +29,9 @@ void NoOpSleep(int milliseconds)
 }
 } // namespace
 
+// Asserts Create refused the configuration and handed back the shared NullStream.
+#define CHECK_NULL_STREAM(handle) POINTERS_EQUAL(SolidSyslogNullStream_Get(), (handle))
+
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     {                                                                                  \
@@ -92,7 +95,7 @@ TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullConfigReturnsFallback)
 {
     struct SolidSyslogStream* fallback = SolidSyslogMbedTlsStream_Create(nullptr);
 
-    POINTERS_EQUAL(SolidSyslogNullStream_Get(), fallback);
+    CHECK_NULL_STREAM(fallback);
 }
 
 TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullConfigReportsError)
@@ -115,7 +118,7 @@ TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullTransportReturnsFallback)
 
     struct SolidSyslogStream* fallback = SolidSyslogMbedTlsStream_Create(&config);
 
-    POINTERS_EQUAL(SolidSyslogNullStream_Get(), fallback);
+    CHECK_NULL_STREAM(fallback);
 }
 
 TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullTransportReportsError)
@@ -139,7 +142,7 @@ TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullSleepReturnsFallback)
 
     struct SolidSyslogStream* fallback = SolidSyslogMbedTlsStream_Create(&config);
 
-    POINTERS_EQUAL(SolidSyslogNullStream_Get(), fallback);
+    CHECK_NULL_STREAM(fallback);
 }
 
 TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullSleepReportsError)
@@ -163,7 +166,7 @@ TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullRngReturnsFallback)
 
     struct SolidSyslogStream* fallback = SolidSyslogMbedTlsStream_Create(&config);
 
-    POINTERS_EQUAL(SolidSyslogNullStream_Get(), fallback);
+    CHECK_NULL_STREAM(fallback);
 }
 
 TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullRngReportsError)

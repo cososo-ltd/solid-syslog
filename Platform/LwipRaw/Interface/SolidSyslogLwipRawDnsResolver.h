@@ -42,7 +42,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogLwipRawDnsResolverConfig
     {
         /** Required; each spin iteration sleeps through it so lwIP can advance the
-         *  query. A NULL is reported at Create. */
+         *  query. A NULL is reported at SolidSyslogLwipRawDnsResolver_Create. */
         SolidSyslogSleepFunction Sleep;
     };
 

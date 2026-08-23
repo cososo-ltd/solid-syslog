@@ -28,6 +28,9 @@ void NoOpSleep(int milliseconds)
 }
 } // namespace
 
+// Asserts Create refused the configuration and handed back the shared NullStream.
+#define CHECK_NULL_STREAM(handle) POINTERS_EQUAL(SolidSyslogNullStream_Get(), (handle))
+
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     {                                                                                  \
@@ -87,7 +90,7 @@ TEST(SolidSyslogOpenSslStreamPool, CreateWithNullConfigReturnsFallback)
 {
     struct SolidSyslogStream* fallback = SolidSyslogOpenSslStream_Create(nullptr);
 
-    POINTERS_EQUAL(SolidSyslogNullStream_Get(), fallback);
+    CHECK_NULL_STREAM(fallback);
 }
 
 TEST(SolidSyslogOpenSslStreamPool, CreateWithNullConfigReportsError)
@@ -110,7 +113,7 @@ TEST(SolidSyslogOpenSslStreamPool, CreateWithNullTransportReturnsFallback)
 
     struct SolidSyslogStream* fallback = SolidSyslogOpenSslStream_Create(&config);
 
-    POINTERS_EQUAL(SolidSyslogNullStream_Get(), fallback);
+    CHECK_NULL_STREAM(fallback);
 }
 
 TEST(SolidSyslogOpenSslStreamPool, CreateWithNullTransportReportsError)
@@ -134,7 +137,7 @@ TEST(SolidSyslogOpenSslStreamPool, CreateWithNullSleepReturnsFallback)
 
     struct SolidSyslogStream* fallback = SolidSyslogOpenSslStream_Create(&config);
 
-    POINTERS_EQUAL(SolidSyslogNullStream_Get(), fallback);
+    CHECK_NULL_STREAM(fallback);
 }
 
 TEST(SolidSyslogOpenSslStreamPool, CreateWithNullSleepReportsError)
