@@ -30,9 +30,6 @@ enum
     HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1
 };
 
-/* What mbedtls_ssl_get_verify_result answers when it holds no result. */
-static const uint32_t MbedTlsStream_VerifyResultUnavailable = 0xFFFFFFFFU;
-
 struct SolidSyslogAddress;
 
 static uint32_t MbedTlsStream_NullHandshakeTimeoutGetter(void* context);
@@ -370,8 +367,10 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
 static inline enum SolidSyslogMbedTlsStreamErrors MbedTlsStream_RefusalDetail(struct SolidSyslogMbedTlsStream* self)
 {
     enum SolidSyslogMbedTlsStreamErrors detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_HANDSHAKE_REJECTED;
+    /* What mbedtls_ssl_get_verify_result answers when it holds no result. */
+    const uint32_t verifyResultUnavailable = 0xFFFFFFFFU;
     uint32_t verdict = mbedtls_ssl_get_verify_result(&self->SslContext);
-    if (verdict == MbedTlsStream_VerifyResultUnavailable)
+    if (verdict == verifyResultUnavailable)
     {
         /* No verdict to read, so the refusal is not the peer certificate's. */
     }
