@@ -5,6 +5,7 @@ extern "C"
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "OpenSslFake.h"
+#include "SolidSyslogNullStream.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
@@ -81,6 +82,75 @@ TEST_GROUP(SolidSyslogOpenSslStreamPool)
 };
 
 // clang-format on
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullConfigReturnsFallback)
+{
+    struct SolidSyslogStream* fallback = SolidSyslogOpenSslStream_Create(nullptr);
+
+    POINTERS_EQUAL(SolidSyslogNullStream_Get(), fallback);
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullConfigReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogOpenSslStream_Create(nullptr);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &OpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_NULL_CONFIG
+    );
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullTransportReturnsFallback)
+{
+    config.Transport = nullptr;
+
+    struct SolidSyslogStream* fallback = SolidSyslogOpenSslStream_Create(&config);
+
+    POINTERS_EQUAL(SolidSyslogNullStream_Get(), fallback);
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullTransportReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    config.Transport = nullptr;
+
+    SolidSyslogOpenSslStream_Create(&config);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &OpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_NULL_TRANSPORT
+    );
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullSleepReturnsFallback)
+{
+    config.Sleep = nullptr;
+
+    struct SolidSyslogStream* fallback = SolidSyslogOpenSslStream_Create(&config);
+
+    POINTERS_EQUAL(SolidSyslogNullStream_Get(), fallback);
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullSleepReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    config.Sleep = nullptr;
+
+    SolidSyslogOpenSslStream_Create(&config);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &OpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_NULL_SLEEP
+    );
+}
 
 TEST(SolidSyslogOpenSslStreamPool, FillingPoolThenOverflowReturnsDistinctFallback)
 {
