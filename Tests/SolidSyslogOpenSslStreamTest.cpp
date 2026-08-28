@@ -132,6 +132,18 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         ReCreateStreamWithUpdatedConfig();
     }
 
+    /* Arrange a peer whose certificate OpenSSL refused with `verifyResult`.
+     * ServerName is set so the refusal is the only error source - a NULL one
+     * would also emit the unverified-peer WARNING. */
+    void ArrangeCertificateVerificationFailure(long verifyResult)
+    {
+        config.ServerName = "logs.example";
+        ReCreateStreamWithUpdatedConfig();
+        OpenSslFake_SetConnectFails(true);
+        OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
+        OpenSslFake_SetVerifyResult(verifyResult);
+    }
+
     /* Drive the registered BIO read callback with the given transport return -
        collapses the open + set-return + grab-callback + invoke boilerplate. */
     [[nodiscard]] int InvokeBioReadWithTransportReturn(SolidSyslogSsize transportReturn) const
@@ -744,6 +756,50 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenHandshakeFails)
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
         SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_REJECTED
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateHasExpired)
+{
+    ArrangeCertificateVerificationFailure(X509_V_ERR_CERT_HAS_EXPIRED);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateIsNotYetValid)
+{
+    ArrangeCertificateVerificationFailure(X509_V_ERR_CERT_NOT_YET_VALID);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerNameDidNotMatch)
+{
+    ArrangeCertificateVerificationFailure(X509_V_ERR_HOSTNAME_MISMATCH);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_NAME_MISMATCHED
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateIsNotTrusted)
+{
+    ArrangeCertificateVerificationFailure(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
     );
 }
 

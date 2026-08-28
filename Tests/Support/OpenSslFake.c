@@ -11,6 +11,7 @@
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/types.h>
+#include <openssl/x509_vfy.h>
 
 /* -------------------------------------------------------------------------
  * Captured state - one section per OpenSSL API call. Tests read these via
@@ -211,6 +212,9 @@ static int readReturnValue;
 static int getErrorCallCount;
 static int getErrorReturnValue;
 
+/* SSL_get_verify_result */
+static long verifyResultValue;
+
 /* BIO_set_flags / BIO_clear_flags */
 static int bioSetFlagsCallCount;
 static int lastBioSetFlags;
@@ -324,6 +328,7 @@ void OpenSslFake_Reset(void)
     readReturnValue = 0;
     getErrorCallCount = 0;
     getErrorReturnValue = 0;
+    verifyResultValue = X509_V_OK;
     bioSetFlagsCallCount = 0;
     lastBioSetFlags = 0;
     bioClearFlagsCallCount = 0;
@@ -966,6 +971,17 @@ void OpenSslFake_SetGetErrorReturn(int err)
 int OpenSslFake_GetErrorCallCount(void)
 {
     return getErrorCallCount;
+}
+
+long SSL_get_verify_result(const SSL* ssl)
+{
+    (void) ssl;
+    return verifyResultValue;
+}
+
+void OpenSslFake_SetVerifyResult(long value)
+{
+    verifyResultValue = value;
 }
 
 /* BIO_set_flags / BIO_clear_flags are macros in OpenSSL that forward to these

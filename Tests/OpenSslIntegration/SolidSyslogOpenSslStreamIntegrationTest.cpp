@@ -11,6 +11,7 @@
 #include "AddressFake.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogOpenSslStream.h"
@@ -40,6 +41,17 @@ static void CaptureError(void* context, const struct SolidSyslogErrorEvent* even
     CapturedErrorCount++;
     LastCapturedError = *event;
 }
+
+/* Pins a refused handshake to the check that refused it, against the real
+ * libssl rather than the fake's canned verdict. */
+#define CHECK_REFUSAL_REPORTED(expectedCode)                                                           \
+    {                                                                                                  \
+        LONGS_EQUAL(1, CapturedErrorCount);                                                            \
+        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, LastCapturedError.Severity);                           \
+        POINTERS_EQUAL(&OpenSslStreamErrorSource, LastCapturedError.Source);                           \
+        UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, LastCapturedError.Category); \
+        LONGS_EQUAL((expectedCode), LastCapturedError.Detail);                                         \
+    }
 
 // clang-format off
 TEST_GROUP(OpenSslStreamIntegration)
@@ -167,6 +179,20 @@ TEST(OpenSslStreamIntegration, HandshakeRejectedWhenServerCertIsExpired)
     buildScenario(certConfig);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
+}
+
+TEST(OpenSslStreamIntegration, HandshakeRejectedWhenServerCertIsNotYetValid)
+{
+    struct TlsTestCertConfig certConfig = {};
+    certConfig.commonName = "localhost";
+    certConfig.subjectAltDnsNames = LOCALHOST_SANS;
+    certConfig.notBefore = std::time(nullptr) + 3600;
+    certConfig.notAfter = std::time(nullptr) + 7200;
+    buildScenario(certConfig);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID);
 }
 
 TEST(OpenSslStreamIntegration, HandshakeRejectedWhenServerCertHostnameDoesNotMatch)
@@ -178,6 +204,7 @@ TEST(OpenSslStreamIntegration, HandshakeRejectedWhenServerCertHostnameDoesNotMat
     buildScenario(certConfig); /* client.ServerName defaults to "localhost" */
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_NAME_MISMATCHED);
 }
 
 TEST(OpenSslStreamIntegration, HandshakeRejectedWhenClientDoesNotTrustServerCert)
@@ -198,6 +225,7 @@ TEST(OpenSslStreamIntegration, HandshakeRejectedWhenClientDoesNotTrustServerCert
     TlsTestCert_WritePemToFile(&untrusted, caPath);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
 
     TlsTestCert_Destroy(&untrusted);
 }

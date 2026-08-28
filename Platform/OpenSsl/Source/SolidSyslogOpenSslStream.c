@@ -8,6 +8,7 @@
 #include <openssl/prov_ssl.h>
 #include <openssl/ssl.h>
 #include <openssl/types.h>
+#include <openssl/x509_vfy.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -62,6 +63,7 @@ static inline void OpenSslStream_LoadClientCredential(
 );
 static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStream* self);
+static inline enum SolidSyslogOpenSslStreamErrors OpenSslStream_RefusalDetail(struct SolidSyslogOpenSslStream* self);
 static inline SolidSyslogSsize OpenSslStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static inline void OpenSslStream_ReleaseBioMethod(struct SolidSyslogOpenSslStream* self);
 static inline void OpenSslStream_ReleaseHandshakeState(struct SolidSyslogOpenSslStream* self);
@@ -550,7 +552,7 @@ static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStrea
                 OpenSslStream_Report(
                     SOLIDSYSLOG_SEVERITY_ERROR,
                     SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
-                    SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_REJECTED
+                    OpenSslStream_RefusalDetail(self)
                 );
                 done = true;
             }
@@ -571,6 +573,39 @@ static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStrea
         }
     }
     return result;
+}
+
+/* The verdict outlives the failed handshake - OpenSSL records it on the
+ * connection as path validation runs - so the refusal can name the check that
+ * produced it rather than the handshake that carried it. A verification failure
+ * this does not name individually reads as untrusted: the certificate did not
+ * validate, which is what the integrator has to act on. */
+static inline enum SolidSyslogOpenSslStreamErrors OpenSslStream_RefusalDetail(struct SolidSyslogOpenSslStream* self)
+{
+    enum SolidSyslogOpenSslStreamErrors detail = SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_REJECTED;
+    long verdict = SSL_get_verify_result(self->Ssl);
+    if (verdict == X509_V_ERR_HOSTNAME_MISMATCH)
+    {
+        detail = SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_NAME_MISMATCHED;
+    }
+    else if (verdict == X509_V_ERR_CERT_HAS_EXPIRED)
+    {
+        detail = SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED;
+    }
+    else if (verdict == X509_V_ERR_CERT_NOT_YET_VALID)
+    {
+        detail = SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
+    }
+    else if (verdict != X509_V_OK)
+    {
+        detail = SOLIDSYSLOG_OPENSSL_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
+    }
+    else
+    {
+        /* Verification passed or never ran, so the refusal is a protocol or
+         * transport fault rather than one the peer's certificate explains. */
+    }
+    return detail;
 }
 
 static inline bool OpenSslStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)

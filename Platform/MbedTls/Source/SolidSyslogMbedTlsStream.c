@@ -7,6 +7,7 @@
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/pk.h>
 #include <mbedtls/ssl.h>
+#include <mbedtls/x509.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -45,6 +46,10 @@ static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsSt
 static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self);
+static inline enum SolidSyslogMbedTlsStreamErrors MbedTlsStream_RefusalDetail(struct SolidSyslogMbedTlsStream* self);
+static inline bool MbedTlsStream_IsVerifyFailure(uint32_t verdict);
+static inline enum SolidSyslogMbedTlsStreamErrors MbedTlsStream_DetailForVerifyFailure(uint32_t verdict);
+static inline bool MbedTlsStream_HasUnnamedVerifyFailure(uint32_t verdict);
 static inline bool MbedTlsStream_IsRetryableHandshakeRc(int rc);
 static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
@@ -334,7 +339,7 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
             MbedTlsStream_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
-                SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_HANDSHAKE_REJECTED
+                MbedTlsStream_RefusalDetail(self)
             );
             done = true;
         }
@@ -354,6 +359,66 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
         }
     }
     return result;
+}
+
+/* The verdict outlives the failed handshake - mbedTLS records every fault it
+ * found on the session being negotiated - so the refusal can name the check that
+ * produced it rather than the handshake that carried it. */
+static inline enum SolidSyslogMbedTlsStreamErrors MbedTlsStream_RefusalDetail(struct SolidSyslogMbedTlsStream* self)
+{
+    enum SolidSyslogMbedTlsStreamErrors detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_HANDSHAKE_REJECTED;
+    uint32_t verdict = mbedtls_ssl_get_verify_result(&self->SslContext);
+    if (MbedTlsStream_IsVerifyFailure(verdict))
+    {
+        detail = MbedTlsStream_DetailForVerifyFailure(verdict);
+    }
+    return detail;
+}
+
+/* Zero is mbedTLS for "nothing wrong" and 0xFFFFFFFF for "no result to give".
+ * Neither is a check the peer's certificate failed, so neither may be read as a
+ * set of flags - every flag reads as set in the second of them. */
+static inline bool MbedTlsStream_IsVerifyFailure(uint32_t verdict)
+{
+    const uint32_t verifyResultUnavailable = 0xFFFFFFFFU;
+    return (verdict != 0U) && (verdict != verifyResultUnavailable);
+}
+
+/* The flags accumulate, so a compound verdict resolves by precedence: an
+ * untrusted chain is reported ahead of anything the certificate says about
+ * itself, because a certificate no anchor vouches for is not made acceptable by
+ * the dates it carries. */
+static inline enum SolidSyslogMbedTlsStreamErrors MbedTlsStream_DetailForVerifyFailure(uint32_t verdict)
+{
+    enum SolidSyslogMbedTlsStreamErrors detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
+    if (MbedTlsStream_HasUnnamedVerifyFailure(verdict) == false)
+    {
+        if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_CN_MISMATCH) != 0U)
+        {
+            detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
+        }
+        else if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_EXPIRED) != 0U)
+        {
+            detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED;
+        }
+        else
+        {
+            /* A named flag is set and the other two are not, so this is it. */
+            detail = SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
+        }
+    }
+    return detail;
+}
+
+/* Every flag the cascade above does not name individually. A certificate that
+ * fails path validation for one of them is untrusted whichever it is, and the
+ * integrator's next step - replace the certificate, not the network - is the
+ * same. */
+static inline bool MbedTlsStream_HasUnnamedVerifyFailure(uint32_t verdict)
+{
+    const uint32_t named = (uint32_t) MBEDTLS_X509_BADCERT_CN_MISMATCH | (uint32_t) MBEDTLS_X509_BADCERT_EXPIRED |
+                           (uint32_t) MBEDTLS_X509_BADCERT_FUTURE;
+    return (verdict & ~named) != 0U;
 }
 
 static inline bool MbedTlsStream_IsRetryableHandshakeRc(int rc)

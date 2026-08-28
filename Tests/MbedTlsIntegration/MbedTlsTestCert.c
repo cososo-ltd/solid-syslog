@@ -101,7 +101,9 @@ static void WriteCertToDer(
     const unsigned char serial[] = {0x01};
     mbedtls_x509write_crt_set_serial_raw(&crt, (unsigned char*) serial, sizeof(serial));
 
-    mbedtls_x509write_crt_set_validity(&crt, TEST_CERT_VALIDITY_FROM, TEST_CERT_VALIDITY_TO);
+    const char* validityFrom = (config->ValidityFrom != NULL) ? config->ValidityFrom : TEST_CERT_VALIDITY_FROM;
+    const char* validityTo = (config->ValidityTo != NULL) ? config->ValidityTo : TEST_CERT_VALIDITY_TO;
+    mbedtls_x509write_crt_set_validity(&crt, validityFrom, validityTo);
 
     mbedtls_x509write_crt_set_basic_constraints(&crt, config->IsCa, -1);
 

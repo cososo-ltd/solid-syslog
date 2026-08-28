@@ -36,7 +36,7 @@ by calling `SolidSyslogSender_Disconnect`.
 
 ## Where it differs from the contract
 
-Five differences, each tracked. Read them before relying on the corresponding
+Four differences, each tracked. Read them before relying on the corresponding
 obligation.
 
 ### A peer cannot be authorised by certificate fingerprint
@@ -44,13 +44,6 @@ obligation.
 Only certification path validation is offered, so a deployment with no PKI has no
 way to pin the collector's certificate. Tracked as
 [#753](https://github.com/cososo-ltd/solid-syslog/issues/753).
-
-### A refused connection does not say which check refused it
-
-An expired certificate, an untrusted chain and a name mismatch all surface as the
-same handshake failure, so the report does not distinguish a certificate problem
-from a network one. Tracked as
-[#731](https://github.com/cososo-ltd/solid-syslog/issues/731).
 
 ### Credentials come from the filesystem, and only from there
 
