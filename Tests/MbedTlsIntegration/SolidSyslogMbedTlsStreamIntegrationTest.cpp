@@ -166,6 +166,20 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
         MbedTlsTestCert_Create(&leafConfig, outClientCert, &rng);
     }
 
+    /* Build a server cert valid only between the two "YYYYMMDDHHMMSS" instants,
+     * identical to setup()'s in every other respect. The test body must
+     * MbedTlsTestCert_Destroy the result before it returns. */
+    void CreateServerCertValidBetween(const char* from, const char* to, struct MbedTlsTestCert* outCert)
+    {
+        struct MbedTlsTestCertConfig certConfig = {};
+        certConfig.SubjectName = TEST_SERVER_SUBJECT;
+        certConfig.SubjectAltDns = TEST_SERVER_HOSTNAME;
+        certConfig.Issuer = &trustedCa;
+        certConfig.ValidityFrom = from;
+        certConfig.ValidityTo = to;
+        MbedTlsTestCert_Create(&certConfig, outCert, &rng);
+    }
+
     /* Common config wiring used by every integration test: transport, sleep,
      * fixture-owned DRBG, and the trusted-CA / hostname pair built in setup().
      * Per-test tweaks (e.g. swapping the CA chain to test rejection, or
@@ -259,13 +273,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertHasExpired
 
 {
     struct MbedTlsTestCert expiredCert = {};
-    struct MbedTlsTestCertConfig expiredConfig = {};
-    expiredConfig.SubjectName = TEST_SERVER_SUBJECT;
-    expiredConfig.SubjectAltDns = TEST_SERVER_HOSTNAME;
-    expiredConfig.Issuer = &trustedCa;
-    expiredConfig.ValidityFrom = "20240101000000";
-    expiredConfig.ValidityTo = "20240102000000";
-    MbedTlsTestCert_Create(&expiredConfig, &expiredCert, &rng);
+    CreateServerCertValidBetween("20240101000000", "20240102000000", &expiredCert);
 
     struct SolidSyslogStream* transport = StartServerWithCert(&expiredCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
@@ -281,13 +289,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertIsNotYetVa
 
 {
     struct MbedTlsTestCert futureCert = {};
-    struct MbedTlsTestCertConfig futureConfig = {};
-    futureConfig.SubjectName = TEST_SERVER_SUBJECT;
-    futureConfig.SubjectAltDns = TEST_SERVER_HOSTNAME;
-    futureConfig.Issuer = &trustedCa;
-    futureConfig.ValidityFrom = "20980101000000";
-    futureConfig.ValidityTo = "20990101000000";
-    MbedTlsTestCert_Create(&futureConfig, &futureCert, &rng);
+    CreateServerCertValidBetween("20980101000000", "20990101000000", &futureCert);
 
     struct SolidSyslogStream* transport = StartServerWithCert(&futureCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
