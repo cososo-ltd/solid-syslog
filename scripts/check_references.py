@@ -200,12 +200,16 @@ TRAILING = ".,;:!?)]}>\"'`"
 NOT_A_PATH = re.compile(r"://|[^A-Za-z0-9._/+:-]")
 
 # Every identifier this library owns carries the project prefix, so the prefix is
-# what finds them and nothing else has to be recognised.
-SYMBOL = re.compile(r"\bSolidSyslog[A-Za-z0-9_]*")
+# what finds them and nothing else has to be recognised. The `::` segments are
+# part of the token rather than a boundary, because a namespaced alias must be
+# matched whole: stopping at the colon would resolve `SolidSyslog::AnythingAtAll`
+# on the strength of the bare prefix and never look at the half that was wrong.
+SYMBOL = re.compile(r"\bSolidSyslog(?:[A-Za-z0-9_]*(?:::[A-Za-z0-9_]+)*)")
 
-# A target CMake declares by a literal name. One composed from a variable is not
-# matched, and is why `SolidSyslogTests` is in the exception list.
-CMAKE_TARGET = re.compile(r"^\s*add_(?:executable|library|custom_target)\s*\(\s*([A-Za-z0-9_]+)")
+# A target CMake declares by a literal name, the `SolidSyslog::Pack` aliases
+# included. One composed from a variable is not matched, and is why
+# `SolidSyslogTests` is in the exception list.
+CMAKE_TARGET = re.compile(r"^\s*add_(?:executable|library|custom_target)\s*\(\s*([A-Za-z0-9_:]+)")
 
 # A public header: the only declarations an integrator may call. `Interface/` is
 # the API boundary in Core and in every platform pack alike.
