@@ -33,20 +33,18 @@ The mutex exists to make a buffer safe when the task calling `SolidSyslog_Log`
 is not the task calling `SolidSyslog_Service`:
 
 ```c
+static uint8_t ring[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(8)];
+
 struct SolidSyslogMutex* mutex = SolidSyslogFreeRtosMutex_Create();
 
 struct SolidSyslogBuffer* buffer =
-    SolidSyslogCircularBuffer_Create(&(struct SolidSyslogCircularBufferConfig) {
-        .Sender = sender,
-        .Mutex  = mutex,
-        /* ring storage sized with SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES */
-    });
+    SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
 ```
 
 The ring memory and the mutex must both outlive the buffer.
 
-If both calls happen on one task, leave the role unfilled — the Null mutex is
-the right answer and costs nothing.
+If both calls happen on one task, pass `SolidSyslogNullMutex_Get()` — it is the
+right answer and costs nothing.
 
 ## Uptime
 
