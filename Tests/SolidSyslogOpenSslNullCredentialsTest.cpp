@@ -23,13 +23,13 @@ TEST(SolidSyslogOpenSslNullCredentials, GetReturnsNonNull)
 
 TEST(SolidSyslogOpenSslNullCredentials, InstallReturnsTrue)
 {
-    struct SolidSyslogTlsCredentialsInstalled installed;
+    struct SolidSyslogTlsCredentialsInstalled installed = {};
     CHECK_TRUE(credentials->Install(credentials, nullptr, &installed));
 }
 
 TEST(SolidSyslogOpenSslNullCredentials, InstallReportsNoTrustAnchors)
 {
-    struct SolidSyslogTlsCredentialsInstalled installed;
+    struct SolidSyslogTlsCredentialsInstalled installed = {};
     installed.TrustAnchorsInstalled = true;
     credentials->Install(credentials, nullptr, &installed);
     CHECK_FALSE(installed.TrustAnchorsInstalled);
@@ -38,7 +38,7 @@ TEST(SolidSyslogOpenSslNullCredentials, InstallReportsNoTrustAnchors)
 TEST(SolidSyslogOpenSslNullCredentials, InstallReportsNoFingerprints)
 {
     const char* pin = "sha-256:AA";
-    struct SolidSyslogTlsCredentialsInstalled installed;
+    struct SolidSyslogTlsCredentialsInstalled installed = {};
     installed.Fingerprints = &pin;
     installed.FingerprintCount = 1;
     credentials->Install(credentials, nullptr, &installed);

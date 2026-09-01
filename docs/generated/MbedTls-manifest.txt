@@ -13,6 +13,7 @@
 ## Source files (.c) — compile all of these
 
 # MbedTls:
+Platform/MbedTls/Source/SolidSyslogMbedTlsNullCredentials.c
 Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
 Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
 Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c
