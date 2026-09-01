@@ -32,7 +32,7 @@ static bool FatFsFile_Delete(struct SolidSyslogFile* base, const char* path);
 static inline struct SolidSyslogFatFsFile* FatFsFile_SelfFromBase(struct SolidSyslogFile* base);
 static inline FIL* FatFsFile_Handle(struct SolidSyslogFile* base);
 
-void FatFsFile_Initialise(struct SolidSyslogFile* base)
+void SolidSyslogFatFsFile_Initialise(struct SolidSyslogFile* base)
 {
     struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromBase(base);
     self->Base.Open = FatFsFile_Open;
@@ -53,7 +53,7 @@ static inline struct SolidSyslogFatFsFile* FatFsFile_SelfFromBase(struct SolidSy
     return (struct SolidSyslogFatFsFile*) base;
 }
 
-void FatFsFile_Cleanup(struct SolidSyslogFile* base)
+void SolidSyslogFatFsFile_Cleanup(struct SolidSyslogFile* base)
 {
     FatFsFile_Close(base);
     /* Overwrite the abstract base with the shared NullFile vtable so

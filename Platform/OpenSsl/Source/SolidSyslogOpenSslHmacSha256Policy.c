@@ -57,7 +57,7 @@ static bool OpenSslHmacSha256Policy_FetchKey(
 static inline bool OpenSslHmacSha256Policy_KeyLengthIsValid(size_t keyLength);
 static inline bool OpenSslHmacSha256Policy_ConstantTimeEquals(const uint8_t* a, const uint8_t* b, size_t length);
 
-void OpenSslHmacSha256Policy_Initialise(
+void SolidSyslogOpenSslHmacSha256Policy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogOpenSslHmacSha256PolicyConfig* config
 )
@@ -69,7 +69,7 @@ void OpenSslHmacSha256Policy_Initialise(
     self->Config = *config;
 }
 
-void OpenSslHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base)
+void SolidSyslogOpenSslHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base)
 {
     /* No owned resources to release - the key is fetched on demand via the
      * GetKey callback and never stored on the instance. */

@@ -22,8 +22,8 @@ struct SolidSyslogWinsockDatagram
     bool Connected;
 };
 
-void WinsockDatagram_Initialise(struct SolidSyslogDatagram* base);
-void WinsockDatagram_Cleanup(struct SolidSyslogDatagram* base);
+void SolidSyslogWinsockDatagram_Initialise(struct SolidSyslogDatagram* base);
+void SolidSyslogWinsockDatagram_Cleanup(struct SolidSyslogDatagram* base);
 
 static inline void WinsockDatagram_Report(
     enum SolidSyslogSeverity severity,

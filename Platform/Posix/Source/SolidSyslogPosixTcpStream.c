@@ -69,7 +69,10 @@ static long PosixTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogPosixTc
 static bool PosixTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
 static inline bool PosixTcpStream_WouldBlock(int err);
 
-void PosixTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogPosixTcpStreamConfig* config)
+void SolidSyslogPosixTcpStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogPosixTcpStreamConfig* config
+)
 {
     static const struct SolidSyslogPosixTcpStream DefaultPosixTcpStream = {
         .Base =
@@ -108,7 +111,7 @@ static inline struct SolidSyslogPosixTcpStream* PosixTcpStream_SelfFromBase(stru
     return (struct SolidSyslogPosixTcpStream*) base;
 }
 
-void PosixTcpStream_Cleanup(struct SolidSyslogStream* base)
+void SolidSyslogPosixTcpStream_Cleanup(struct SolidSyslogStream* base)
 {
     struct SolidSyslogPosixTcpStream* self = PosixTcpStream_SelfFromBase(base);
     if (PosixTcpStream_IsFileDescriptorValid(self->Fd))

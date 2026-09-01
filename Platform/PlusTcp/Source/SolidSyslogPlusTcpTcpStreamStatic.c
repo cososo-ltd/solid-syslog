@@ -40,7 +40,7 @@ struct SolidSyslogStream* SolidSyslogPlusTcpTcpStream_Create(const struct SolidS
     struct SolidSyslogStream* handle = SolidSyslogNullStream_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&PlusTcpTcpStream_Allocator, index) == true)
     {
-        PlusTcpTcpStream_Initialise(&PlusTcpTcpStream_Pool[index].Base, config);
+        SolidSyslogPlusTcpTcpStream_Initialise(&PlusTcpTcpStream_Pool[index].Base, config);
         handle = &PlusTcpTcpStream_Pool[index].Base;
     }
     else
@@ -87,7 +87,7 @@ static inline size_t PlusTcpTcpStream_IndexFromHandle(const struct SolidSyslogSt
 static inline void PlusTcpTcpStream_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    PlusTcpTcpStream_Cleanup(&PlusTcpTcpStream_Pool[index].Base);
+    SolidSyslogPlusTcpTcpStream_Cleanup(&PlusTcpTcpStream_Pool[index].Base);
 }
 
 #else

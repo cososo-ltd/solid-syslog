@@ -17,8 +17,8 @@ struct SolidSyslogLwipRawResolver
     struct SolidSyslogResolver Base;
 };
 
-void LwipRawResolver_Initialise(struct SolidSyslogResolver* base);
-void LwipRawResolver_Cleanup(struct SolidSyslogResolver* base);
+void SolidSyslogLwipRawResolver_Initialise(struct SolidSyslogResolver* base);
+void SolidSyslogLwipRawResolver_Cleanup(struct SolidSyslogResolver* base);
 
 static inline void LwipRawResolver_Report(
     enum SolidSyslogSeverity severity,

@@ -92,7 +92,10 @@ static err_t LwipRawTcpStream_RecvCallback(void* arg, struct tcp_pcb* tpcb, stru
 static err_t LwipRawTcpStream_SentCallback(void* arg, struct tcp_pcb* tpcb, u16_t len);
 static void LwipRawTcpStream_ErrCallback(void* arg, err_t err);
 
-void LwipRawTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogLwipRawTcpStreamConfig* config)
+void SolidSyslogLwipRawTcpStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogLwipRawTcpStreamConfig* config
+)
 {
     static const struct SolidSyslogLwipRawTcpStream DefaultLwipRawTcpStream = {
         .Base =
@@ -159,7 +162,7 @@ static inline struct LwipRawTcpStreamCall* LwipRawTcpStreamCallFromContext(void*
     return (struct LwipRawTcpStreamCall*) context;
 }
 
-void LwipRawTcpStream_Cleanup(struct SolidSyslogStream* base)
+void SolidSyslogLwipRawTcpStream_Cleanup(struct SolidSyslogStream* base)
 {
     LwipRawTcpStream_Close(base);
     /* Overwrite the abstract base with the shared NullStream vtable so

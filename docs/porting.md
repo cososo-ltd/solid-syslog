@@ -89,7 +89,7 @@ struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(void)
     struct SolidSyslogMutex* handle = SolidSyslogNullMutex_Get();   /* fallback */
     if (SolidSyslogPoolAllocator_IndexIsValid(&PosixMutex_Allocator, index) == true)
     {
-        PosixMutex_Initialise(&PosixMutex_Pool[index].Base);
+        SolidSyslogPosixMutex_Initialise(&PosixMutex_Pool[index].Base);
         handle = &PosixMutex_Pool[index].Base;
     }
     else

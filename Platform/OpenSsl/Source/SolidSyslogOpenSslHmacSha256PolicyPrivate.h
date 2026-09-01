@@ -19,11 +19,11 @@ struct SolidSyslogOpenSslHmacSha256Policy
     struct SolidSyslogOpenSslHmacSha256PolicyConfig Config;
 };
 
-void OpenSslHmacSha256Policy_Initialise(
+void SolidSyslogOpenSslHmacSha256Policy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogOpenSslHmacSha256PolicyConfig* config
 );
-void OpenSslHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base);
+void SolidSyslogOpenSslHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base);
 
 static inline void OpenSslHmacSha256Policy_Report(
     enum SolidSyslogSeverity severity,

@@ -20,8 +20,8 @@ struct SolidSyslogPlusTcpAddress
     struct freertos_sockaddr Sockaddr;
 };
 
-void PlusTcpAddress_Initialise(struct SolidSyslogAddress* base);
-void PlusTcpAddress_Cleanup(struct SolidSyslogAddress* base);
+void SolidSyslogPlusTcpAddress_Initialise(struct SolidSyslogAddress* base);
+void SolidSyslogPlusTcpAddress_Cleanup(struct SolidSyslogAddress* base);
 
 static inline struct freertos_sockaddr* SolidSyslogPlusTcpAddress_AsFreertosSockaddr(struct SolidSyslogAddress* base)
 {

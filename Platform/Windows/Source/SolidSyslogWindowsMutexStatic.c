@@ -32,7 +32,7 @@ struct SolidSyslogMutex* SolidSyslogWindowsMutex_Create(void)
     struct SolidSyslogMutex* handle = SolidSyslogNullMutex_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&WindowsMutex_Allocator, index) == true)
     {
-        WindowsMutex_Initialise(&WindowsMutex_Pool[index].Base);
+        SolidSyslogWindowsMutex_Initialise(&WindowsMutex_Pool[index].Base);
         handle = &WindowsMutex_Pool[index].Base;
     }
     else
@@ -79,5 +79,5 @@ static inline size_t WindowsMutex_IndexFromHandle(const struct SolidSyslogMutex*
 static inline void WindowsMutex_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    WindowsMutex_Cleanup(&WindowsMutex_Pool[index].Base);
+    SolidSyslogWindowsMutex_Cleanup(&WindowsMutex_Pool[index].Base);
 }

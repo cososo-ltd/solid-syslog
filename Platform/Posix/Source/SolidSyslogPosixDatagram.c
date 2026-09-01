@@ -47,7 +47,7 @@ static inline bool PosixDatagram_ConnectIfNeeded(
 );
 static inline bool PosixDatagram_IsFileDescriptorValid(int fd);
 
-void PosixDatagram_Initialise(struct SolidSyslogDatagram* base)
+void SolidSyslogPosixDatagram_Initialise(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogPosixDatagram* self = PosixDatagram_SelfFromBase(base);
     self->Base.Open = PosixDatagram_Open;
@@ -63,7 +63,7 @@ static inline struct SolidSyslogPosixDatagram* PosixDatagram_SelfFromBase(struct
     return (struct SolidSyslogPosixDatagram*) base;
 }
 
-void PosixDatagram_Cleanup(struct SolidSyslogDatagram* base)
+void SolidSyslogPosixDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogPosixDatagram* self = PosixDatagram_SelfFromBase(base);
     if (PosixDatagram_IsFileDescriptorValid(self->Fd))

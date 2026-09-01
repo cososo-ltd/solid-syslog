@@ -19,8 +19,8 @@ struct SolidSyslogPosixAddress
     struct sockaddr_in Sockaddr;
 };
 
-void PosixAddress_Initialise(struct SolidSyslogAddress* base);
-void PosixAddress_Cleanup(struct SolidSyslogAddress* base);
+void SolidSyslogPosixAddress_Initialise(struct SolidSyslogAddress* base);
+void SolidSyslogPosixAddress_Cleanup(struct SolidSyslogAddress* base);
 
 static inline struct sockaddr_in* SolidSyslogPosixAddress_AsSockaddrIn(struct SolidSyslogAddress* base)
 {

@@ -191,7 +191,7 @@ TEST(SolidSyslogMbedTlsStream, OpenDelegatesToInjectedTransport)
 TEST(SolidSyslogMbedTlsStream, CreateInitialisesSslConfigForSafeFree)
 
 {
-    /* Init happens eagerly in Create (via MbedTlsStream_Initialise) so the
+    /* Init happens eagerly in Create (via SolidSyslogMbedTlsStream_Initialise) so the
      * symmetric *_free in Close is always safe - whether Open was reached,
      * whether it succeeded, or whether Close is called more than once. */
     LONGS_EQUAL(1, MbedTlsFake_SslConfigInitCallCount());

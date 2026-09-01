@@ -87,7 +87,10 @@ static SolidSyslogSsize PlusTcpTcpStream_ReceiveOrCloseOnFailure(
 );
 static void PlusTcpTcpStream_CloseSocket(struct SolidSyslogPlusTcpTcpStream* self);
 
-void PlusTcpTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogPlusTcpTcpStreamConfig* config)
+void SolidSyslogPlusTcpTcpStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogPlusTcpTcpStreamConfig* config
+)
 {
     static const struct SolidSyslogPlusTcpTcpStream DefaultPlusTcpTcpStream = {
         .Base =
@@ -126,7 +129,7 @@ static inline struct SolidSyslogPlusTcpTcpStream* PlusTcpTcpStream_SelfFromBase(
     return (struct SolidSyslogPlusTcpTcpStream*) base;
 }
 
-void PlusTcpTcpStream_Cleanup(struct SolidSyslogStream* base)
+void SolidSyslogPlusTcpTcpStream_Cleanup(struct SolidSyslogStream* base)
 {
     struct SolidSyslogPlusTcpTcpStream* self = PlusTcpTcpStream_SelfFromBase(base);
     PlusTcpTcpStream_CloseSocket(self);

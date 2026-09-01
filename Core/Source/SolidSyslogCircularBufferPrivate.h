@@ -26,13 +26,13 @@ struct SolidSyslogCircularBuffer
     size_t WrapPoint;
 };
 
-void CircularBuffer_Initialise(
+void SolidSyslogCircularBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     struct SolidSyslogMutex* mutex,
     uint8_t* ring,
     size_t ringBytes
 );
-void CircularBuffer_Cleanup(struct SolidSyslogBuffer* base);
+void SolidSyslogCircularBuffer_Cleanup(struct SolidSyslogBuffer* base);
 
 static inline void CircularBuffer_Report(
     enum SolidSyslogSeverity severity,

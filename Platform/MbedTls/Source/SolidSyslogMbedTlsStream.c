@@ -58,7 +58,10 @@ static inline void MbedTlsStream_Close(struct SolidSyslogStream* base);
 static int MbedTlsStream_BioSend(void* ctx, const unsigned char* buf, size_t len);
 static int MbedTlsStream_BioRecv(void* ctx, unsigned char* buf, size_t len);
 
-void MbedTlsStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogMbedTlsStreamConfig* config)
+void SolidSyslogMbedTlsStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogMbedTlsStreamConfig* config
+)
 {
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
     self->Base.Open = MbedTlsStream_Open;
@@ -111,7 +114,7 @@ static inline struct SolidSyslogMbedTlsStream* MbedTlsStream_SelfFromBase(struct
     return (struct SolidSyslogMbedTlsStream*) base;
 }
 
-void MbedTlsStream_Cleanup(struct SolidSyslogStream* base)
+void SolidSyslogMbedTlsStream_Cleanup(struct SolidSyslogStream* base)
 {
     /* An integrator who destroys a still-Open stream must not leak the
      * underlying TLS state. */

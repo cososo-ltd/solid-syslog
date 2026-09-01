@@ -19,11 +19,11 @@ struct SolidSyslogOpenSslAesGcmPolicy
     struct SolidSyslogOpenSslAesGcmPolicyConfig Config;
 };
 
-void OpenSslAesGcmPolicy_Initialise(
+void SolidSyslogOpenSslAesGcmPolicy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogOpenSslAesGcmPolicyConfig* config
 );
-void OpenSslAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base);
+void SolidSyslogOpenSslAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base);
 
 static inline void OpenSslAesGcmPolicy_Report(
     enum SolidSyslogSeverity severity,

@@ -86,7 +86,7 @@ static inline bool WinsockDatagram_ConnectIfNeeded(
 );
 static inline bool WinsockDatagram_IsSocketValid(SOCKET fd);
 
-void WinsockDatagram_Initialise(struct SolidSyslogDatagram* base)
+void SolidSyslogWinsockDatagram_Initialise(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
     self->Base.Open = WinsockDatagram_Open;
@@ -102,7 +102,7 @@ static inline struct SolidSyslogWinsockDatagram* WinsockDatagram_SelfFromBase(st
     return (struct SolidSyslogWinsockDatagram*) base;
 }
 
-void WinsockDatagram_Cleanup(struct SolidSyslogDatagram* base)
+void SolidSyslogWinsockDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
     if (WinsockDatagram_IsSocketValid(self->Fd))

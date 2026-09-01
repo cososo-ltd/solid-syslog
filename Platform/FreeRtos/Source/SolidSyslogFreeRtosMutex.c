@@ -27,7 +27,7 @@ static void FreeRtosMutex_Unlock(struct SolidSyslogMutex* base);
 static inline struct SolidSyslogFreeRtosMutex* FreeRtosMutex_SelfFromBase(struct SolidSyslogMutex* base);
 static inline SemaphoreHandle_t FreeRtosMutex_AsHandle(struct SolidSyslogFreeRtosMutex* self);
 
-void FreeRtosMutex_Initialise(struct SolidSyslogMutex* base)
+void SolidSyslogFreeRtosMutex_Initialise(struct SolidSyslogMutex* base)
 {
     struct SolidSyslogFreeRtosMutex* self = FreeRtosMutex_SelfFromBase(base);
     /* The storage is ours, so this cannot fail for want of memory; the kernel
@@ -52,7 +52,7 @@ static inline struct SolidSyslogFreeRtosMutex* FreeRtosMutex_SelfFromBase(struct
     return (struct SolidSyslogFreeRtosMutex*) base;
 }
 
-void FreeRtosMutex_Cleanup(struct SolidSyslogMutex* base)
+void SolidSyslogFreeRtosMutex_Cleanup(struct SolidSyslogMutex* base)
 {
     struct SolidSyslogFreeRtosMutex* self = FreeRtosMutex_SelfFromBase(base);
     if (self->Base.Lock == FreeRtosMutex_Lock)

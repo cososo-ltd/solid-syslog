@@ -57,7 +57,7 @@ static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* 
 static bool MbedTlsAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key);
 static bool MbedTlsAesGcmPolicy_GcmDecrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key);
 
-void MbedTlsAesGcmPolicy_Initialise(
+void SolidSyslogMbedTlsAesGcmPolicy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogMbedTlsAesGcmPolicyConfig* config
 )
@@ -69,7 +69,7 @@ void MbedTlsAesGcmPolicy_Initialise(
     self->Config = *config;
 }
 
-void MbedTlsAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base)
+void SolidSyslogMbedTlsAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base)
 {
     /* No owned resources to release - the key is fetched on demand via the
      * GetKey callback and never stored on the instance, and the CTR-DRBG is

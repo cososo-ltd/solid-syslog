@@ -40,7 +40,7 @@ struct SolidSyslogDatagram* SolidSyslogLwipRawDatagram_Create(void)
     struct SolidSyslogDatagram* handle = SolidSyslogNullDatagram_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&LwipRawDatagram_Allocator, index) == true)
     {
-        LwipRawDatagram_Initialise(&LwipRawDatagram_Pool[index].Base);
+        SolidSyslogLwipRawDatagram_Initialise(&LwipRawDatagram_Pool[index].Base);
         handle = &LwipRawDatagram_Pool[index].Base;
     }
     else
@@ -87,7 +87,7 @@ static inline size_t LwipRawDatagram_IndexFromHandle(const struct SolidSyslogDat
 static inline void LwipRawDatagram_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    LwipRawDatagram_Cleanup(&LwipRawDatagram_Pool[index].Base);
+    SolidSyslogLwipRawDatagram_Cleanup(&LwipRawDatagram_Pool[index].Base);
 }
 
 #else

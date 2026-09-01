@@ -47,7 +47,7 @@ static bool WindowsFile_Delete(struct SolidSyslogFile* base, const char* path);
 
 static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromBase(struct SolidSyslogFile* base);
 
-void WindowsFile_Initialise(struct SolidSyslogFile* base)
+void SolidSyslogWindowsFile_Initialise(struct SolidSyslogFile* base)
 {
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
     self->Base.Open = WindowsFile_Open;
@@ -63,7 +63,7 @@ void WindowsFile_Initialise(struct SolidSyslogFile* base)
     self->Fd = INVALID_FD;
 }
 
-void WindowsFile_Cleanup(struct SolidSyslogFile* base)
+void SolidSyslogWindowsFile_Cleanup(struct SolidSyslogFile* base)
 {
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
     if (self->Fd != INVALID_FD)

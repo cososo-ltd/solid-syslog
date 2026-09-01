@@ -19,8 +19,8 @@ struct SolidSyslogPlusFatFile
     FF_FILE* Fp;
 };
 
-void PlusFatFile_Initialise(struct SolidSyslogFile* base);
-void PlusFatFile_Cleanup(struct SolidSyslogFile* base);
+void SolidSyslogPlusFatFile_Initialise(struct SolidSyslogFile* base);
+void SolidSyslogPlusFatFile_Cleanup(struct SolidSyslogFile* base);
 
 static inline void PlusFatFile_Report(
     enum SolidSyslogSeverity severity,

@@ -24,7 +24,10 @@ static inline void OriginSd_EmitSwVersion(struct SolidSyslogSdElement* element, 
 static inline void OriginSd_EmitEnterpriseId(struct SolidSyslogSdElement* element, const char* enterpriseId);
 static inline void OriginSd_EmitIps(struct SolidSyslogSdElement* element, const struct SolidSyslogOriginSd* self);
 
-void OriginSd_Initialise(struct SolidSyslogStructuredData* base, const struct SolidSyslogOriginSdConfig* config)
+void SolidSyslogOriginSd_Initialise(
+    struct SolidSyslogStructuredData* base,
+    const struct SolidSyslogOriginSdConfig* config
+)
 {
     struct SolidSyslogOriginSd* self = OriginSd_SelfFromBase(base);
     self->Base.Format = OriginSd_Format;
@@ -36,10 +39,10 @@ void OriginSd_Initialise(struct SolidSyslogStructuredData* base, const struct So
     self->IpContext = config->IpContext;
 }
 
-void OriginSd_Cleanup(struct SolidSyslogStructuredData* base)
+void SolidSyslogOriginSd_Cleanup(struct SolidSyslogStructuredData* base)
 {
     /* Overwrite the abstract base with the shared NullSd vtable so use-after-destroy
-     * is a safe no-op. Derived fields are private to this TU; the next OriginSd_Initialise
+     * is a safe no-op. Derived fields are private to this TU; the next SolidSyslogOriginSd_Initialise
      * overwrites them. */
     *base = *SolidSyslogNullSd_Get();
 }

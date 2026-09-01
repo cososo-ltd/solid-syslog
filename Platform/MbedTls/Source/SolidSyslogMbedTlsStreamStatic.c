@@ -38,7 +38,7 @@ struct SolidSyslogStream* SolidSyslogMbedTlsStream_Create(const struct SolidSysl
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&MbedTlsStream_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&MbedTlsStream_Allocator, index) == true)
         {
-            MbedTlsStream_Initialise(&MbedTlsStream_Pool[index].Base, config);
+            SolidSyslogMbedTlsStream_Initialise(&MbedTlsStream_Pool[index].Base, config);
             handle = &MbedTlsStream_Pool[index].Base;
         }
         else
@@ -128,5 +128,5 @@ static inline size_t MbedTlsStream_IndexFromHandle(const struct SolidSyslogStrea
 static inline void MbedTlsStream_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    MbedTlsStream_Cleanup(&MbedTlsStream_Pool[index].Base);
+    SolidSyslogMbedTlsStream_Cleanup(&MbedTlsStream_Pool[index].Base);
 }

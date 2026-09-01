@@ -36,13 +36,13 @@ struct SolidSyslogFileBlockDevice
     size_t BlockSize;
 };
 
-void FileBlockDevice_Initialise(
+void SolidSyslogFileBlockDevice_Initialise(
     struct SolidSyslogBlockDevice* base,
     struct SolidSyslogFile* file,
     const char* pathPrefix,
     size_t blockSize
 );
-void FileBlockDevice_Cleanup(struct SolidSyslogBlockDevice* base);
+void SolidSyslogFileBlockDevice_Cleanup(struct SolidSyslogBlockDevice* base);
 
 static inline void FileBlockDevice_Report(
     enum SolidSyslogSeverity severity,

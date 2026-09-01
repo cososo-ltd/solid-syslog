@@ -38,7 +38,7 @@ struct SolidSyslogSender* SolidSyslogSwitchingSender_Create(const struct SolidSy
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&SwitchingSender_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&SwitchingSender_Allocator, index))
         {
-            SwitchingSender_Initialise(&SwitchingSender_Pool[index].Base, config);
+            SolidSyslogSwitchingSender_Initialise(&SwitchingSender_Pool[index].Base, config);
             handle = &SwitchingSender_Pool[index].Base;
         }
         else
@@ -120,5 +120,5 @@ static inline size_t SwitchingSender_IndexFromHandle(const struct SolidSyslogSen
 static inline void SwitchingSender_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    SwitchingSender_Cleanup(&SwitchingSender_Pool[index].Base);
+    SolidSyslogSwitchingSender_Cleanup(&SwitchingSender_Pool[index].Base);
 }

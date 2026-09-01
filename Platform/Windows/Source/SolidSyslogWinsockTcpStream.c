@@ -147,7 +147,10 @@ static uint32_t WinsockTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogWinso
 static bool WinsockTcpStream_WroteAllBytes(int sent, size_t expected);
 static inline bool WinsockTcpStream_WouldBlock(int wsaError);
 
-void WinsockTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogWinsockTcpStreamConfig* config)
+void SolidSyslogWinsockTcpStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogWinsockTcpStreamConfig* config
+)
 {
     static const struct SolidSyslogWinsockTcpStream DefaultWinsockTcpStream = {
         .Base =
@@ -186,7 +189,7 @@ static inline struct SolidSyslogWinsockTcpStream* WinsockTcpStream_SelfFromBase(
     return (struct SolidSyslogWinsockTcpStream*) base;
 }
 
-void WinsockTcpStream_Cleanup(struct SolidSyslogStream* base)
+void SolidSyslogWinsockTcpStream_Cleanup(struct SolidSyslogStream* base)
 {
     WinsockTcpStream_Close(base);
     /* Overwrite the abstract base with the shared NullStream vtable so

@@ -20,8 +20,8 @@ struct SolidSyslogWindowsMutex
     CRITICAL_SECTION Section;
 };
 
-void WindowsMutex_Initialise(struct SolidSyslogMutex* base);
-void WindowsMutex_Cleanup(struct SolidSyslogMutex* base);
+void SolidSyslogWindowsMutex_Initialise(struct SolidSyslogMutex* base);
+void SolidSyslogWindowsMutex_Cleanup(struct SolidSyslogMutex* base);
 
 static inline void WindowsMutex_Report(
     enum SolidSyslogSeverity severity,

@@ -23,17 +23,20 @@ static inline struct SolidSyslogTimeQualitySd* TimeQualitySd_SelfFromBase(struct
 
 static inline bool TimeQualitySd_EmitsSyncAccuracy(const struct SolidSyslogTimeQuality* quality);
 
-void TimeQualitySd_Initialise(struct SolidSyslogStructuredData* base, SolidSyslogTimeQualityFunction getTimeQuality)
+void SolidSyslogTimeQualitySd_Initialise(
+    struct SolidSyslogStructuredData* base,
+    SolidSyslogTimeQualityFunction getTimeQuality
+)
 {
     struct SolidSyslogTimeQualitySd* self = TimeQualitySd_SelfFromBase(base);
     self->Base.Format = TimeQualitySd_Format;
     self->GetTimeQuality = getTimeQuality;
 }
 
-void TimeQualitySd_Cleanup(struct SolidSyslogStructuredData* base)
+void SolidSyslogTimeQualitySd_Cleanup(struct SolidSyslogStructuredData* base)
 {
     /* Overwrite the abstract base with the shared NullSd vtable so use-after-destroy
-     * is a safe no-op. Derived fields are private to this TU; the next TimeQualitySd_Initialise
+     * is a safe no-op. Derived fields are private to this TU; the next SolidSyslogTimeQualitySd_Initialise
      * overwrites them. */
     *base = *SolidSyslogNullSd_Get();
 }

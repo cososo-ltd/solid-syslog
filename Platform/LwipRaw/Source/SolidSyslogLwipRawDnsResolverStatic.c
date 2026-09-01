@@ -45,7 +45,7 @@ struct SolidSyslogResolver* SolidSyslogLwipRawDnsResolver_Create(
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&LwipRawDnsResolver_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&LwipRawDnsResolver_Allocator, index) == true)
         {
-            LwipRawDnsResolver_Initialise(&LwipRawDnsResolver_Pool[index].Base, config);
+            SolidSyslogLwipRawDnsResolver_Initialise(&LwipRawDnsResolver_Pool[index].Base, config);
             handle = &LwipRawDnsResolver_Pool[index].Base;
         }
         else
@@ -123,7 +123,7 @@ static inline size_t LwipRawDnsResolver_IndexFromHandle(const struct SolidSyslog
 static inline void LwipRawDnsResolver_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    LwipRawDnsResolver_Cleanup(&LwipRawDnsResolver_Pool[index].Base);
+    SolidSyslogLwipRawDnsResolver_Cleanup(&LwipRawDnsResolver_Pool[index].Base);
 }
 
 #else

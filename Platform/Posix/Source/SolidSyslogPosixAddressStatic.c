@@ -40,7 +40,7 @@ struct SolidSyslogAddress* SolidSyslogPosixAddress_Create(void)
     if (SolidSyslogPoolAllocator_IndexIsValid(&PosixAddress_Allocator, index) == true)
     {
         handle = PosixAddress_HandleFromIndex(index);
-        PosixAddress_Initialise(handle);
+        SolidSyslogPosixAddress_Initialise(handle);
     }
     else
     {
@@ -92,5 +92,5 @@ static inline size_t PosixAddress_IndexFromHandle(const struct SolidSyslogAddres
 static inline void PosixAddress_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    PosixAddress_Cleanup(PosixAddress_HandleFromIndex(index));
+    SolidSyslogPosixAddress_Cleanup(PosixAddress_HandleFromIndex(index));
 }

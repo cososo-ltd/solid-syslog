@@ -35,7 +35,7 @@ struct SolidSyslogAtomicCounter* SolidSyslogWindowsAtomicCounter_Create(void)
     struct SolidSyslogAtomicCounter* handle = SolidSyslogNullAtomicCounter_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&WindowsAtomicCounter_Allocator, index) == true)
     {
-        WindowsAtomicCounter_Initialise(&WindowsAtomicCounter_Pool[index].Base);
+        SolidSyslogWindowsAtomicCounter_Initialise(&WindowsAtomicCounter_Pool[index].Base);
         handle = &WindowsAtomicCounter_Pool[index].Base;
     }
     else
@@ -86,5 +86,5 @@ static inline size_t WindowsAtomicCounter_IndexFromHandle(const struct SolidSysl
 static inline void WindowsAtomicCounter_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    WindowsAtomicCounter_Cleanup(&WindowsAtomicCounter_Pool[index].Base);
+    SolidSyslogWindowsAtomicCounter_Cleanup(&WindowsAtomicCounter_Pool[index].Base);
 }

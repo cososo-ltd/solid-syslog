@@ -38,12 +38,12 @@ static bool PosixResolver_Resolve(
 );
 static int PosixResolver_MapTransport(enum SolidSyslogTransport transport);
 
-void PosixResolver_Initialise(struct SolidSyslogResolver* base)
+void SolidSyslogPosixResolver_Initialise(struct SolidSyslogResolver* base)
 {
     base->Resolve = PosixResolver_Resolve;
 }
 
-void PosixResolver_Cleanup(struct SolidSyslogResolver* base)
+void SolidSyslogPosixResolver_Cleanup(struct SolidSyslogResolver* base)
 {
     /* Overwrite the abstract base with the shared NullResolver vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */

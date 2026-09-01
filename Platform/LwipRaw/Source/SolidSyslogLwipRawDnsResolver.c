@@ -65,7 +65,7 @@ static void LwipRawDnsResolver_FoundCallback(const char* name, const ip_addr_t* 
 static bool LwipRawDnsResolver_WaitForCallback(struct SolidSyslogLwipRawDnsResolver* self);
 static void LwipRawDnsResolver_DoPublishResult(void* context);
 
-void LwipRawDnsResolver_Initialise(
+void SolidSyslogLwipRawDnsResolver_Initialise(
     struct SolidSyslogResolver* base,
     const struct SolidSyslogLwipRawDnsResolverConfig* config
 )
@@ -77,7 +77,7 @@ void LwipRawDnsResolver_Initialise(
     self->ResolvedOk = false;
 }
 
-void LwipRawDnsResolver_Cleanup(struct SolidSyslogResolver* base)
+void SolidSyslogLwipRawDnsResolver_Cleanup(struct SolidSyslogResolver* base)
 {
     /* Overwrite the abstract base with the shared NullResolver vtable so
      * use-after-destroy resolves cleanly to a failed-lookup error path

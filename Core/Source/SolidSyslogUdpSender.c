@@ -53,7 +53,7 @@ static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
 );
 static uint32_t UdpSender_NilEndpointVersion(void* context);
 
-void UdpSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogUdpSenderConfig* config)
+void SolidSyslogUdpSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogUdpSenderConfig* config)
 {
     struct SolidSyslogUdpSender* self = UdpSender_SelfFromBase(base);
     self->Base.Send = UdpSender_Send;
@@ -68,12 +68,12 @@ void UdpSender_Initialise(struct SolidSyslogSender* base, const struct SolidSysl
     self->LastEndpointVersion = 0;
 }
 
-void UdpSender_Cleanup(struct SolidSyslogSender* base)
+void SolidSyslogUdpSender_Cleanup(struct SolidSyslogSender* base)
 {
     /* Disconnect first so the live Config.Datagram is still reachable; then overwrite the
      * abstract base with the shared NullSender vtable so use-after-destroy is a safe
      * no-op rather than a NULL-fn-pointer crash. Derived fields are private to this TU
-     * so the next UdpSender_Initialise overwrites them; no need to wipe here. */
+     * so the next SolidSyslogUdpSender_Initialise overwrites them; no need to wipe here. */
     UdpSender_Disconnect(base);
     *base = *SolidSyslogNullSender_Get();
 }
