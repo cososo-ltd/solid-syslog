@@ -9,7 +9,7 @@
 #include "SolidSyslogPlusTcpAddressErrors.h"
 #include "SolidSyslogPlusTcpAddressPrivate.h"
 
-const struct SolidSyslogErrorSource PlusTcpAddressErrorSource = {"PlusTcpAddress"};
+const struct SolidSyslogErrorSource SolidSyslogPlusTcpAddressErrorSource = {"PlusTcpAddress"};
 
 struct SolidSyslogAddress;
 

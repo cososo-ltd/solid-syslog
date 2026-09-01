@@ -42,7 +42,7 @@ static inline void LwipRawDnsResolver_Report(
     enum SolidSyslogLwipRawDnsResolverErrors code
 )
 {
-    SolidSyslog_Error(severity, &LwipRawDnsResolverErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogLwipRawDnsResolverErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGLWIPRAWDNSRESOLVERPRIVATE_H */

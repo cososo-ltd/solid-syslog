@@ -84,7 +84,7 @@ TEST(SolidSyslogFatFsFilePool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &FatFsFileErrorSource,
+        &SolidSyslogFatFsFileErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_FATFS_FILE_ERROR_POOL_EXHAUSTED
     );
@@ -151,7 +151,7 @@ TEST(SolidSyslogFatFsFilePool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &FatFsFileErrorSource,
+        &SolidSyslogFatFsFileErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_FATFS_FILE_ERROR_UNKNOWN_DESTROY
     );
@@ -168,7 +168,7 @@ TEST(SolidSyslogFatFsFilePool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &FatFsFileErrorSource,
+        &SolidSyslogFatFsFileErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_FATFS_FILE_ERROR_UNKNOWN_DESTROY
     );

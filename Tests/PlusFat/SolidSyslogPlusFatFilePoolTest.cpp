@@ -84,7 +84,7 @@ TEST(SolidSyslogPlusFatFilePool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &PlusFatFileErrorSource,
+        &SolidSyslogPlusFatFileErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_PLUSFAT_FILE_ERROR_POOL_EXHAUSTED
     );
@@ -151,7 +151,7 @@ TEST(SolidSyslogPlusFatFilePool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PlusFatFileErrorSource,
+        &SolidSyslogPlusFatFileErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_PLUSFAT_FILE_ERROR_UNKNOWN_DESTROY
     );
@@ -168,7 +168,7 @@ TEST(SolidSyslogPlusFatFilePool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PlusFatFileErrorSource,
+        &SolidSyslogPlusFatFileErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_PLUSFAT_FILE_ERROR_UNKNOWN_DESTROY
     );

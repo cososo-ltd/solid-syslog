@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is WindowsMutexErrorSource. A handler
+    /** Detail codes for events whose Source is SolidSyslogWindowsMutexErrorSource. A handler
      *  reads these off event->Detail after matching event->Source; the members
      *  name their own fault. */
     enum SolidSyslogWindowsMutexErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a WindowsMutex. A handler matches by address
-     *  (event->Source == &WindowsMutexErrorSource), then reads event->Detail as an
+     *  (event->Source == &SolidSyslogWindowsMutexErrorSource), then reads event->Detail as an
      *  enum SolidSyslogWindowsMutexErrors. */
-    extern const struct SolidSyslogErrorSource WindowsMutexErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogWindowsMutexErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is OpenSslPemFileCredentialsErrorSource.
+    /** Detail codes for events whose Source is SolidSyslogOpenSslPemFileCredentialsErrorSource.
      *  A handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogOpenSslPemFileCredentialsErrors
@@ -29,10 +29,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by an OpenSslPemFileCredentials. A handler
-     *  matches by address (event->Source == &OpenSslPemFileCredentialsErrorSource),
+     *  matches by address (event->Source == &SolidSyslogOpenSslPemFileCredentialsErrorSource),
      *  then reads event->Detail as an enum
      *  SolidSyslogOpenSslPemFileCredentialsErrors. */
-    extern const struct SolidSyslogErrorSource OpenSslPemFileCredentialsErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogOpenSslPemFileCredentialsErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

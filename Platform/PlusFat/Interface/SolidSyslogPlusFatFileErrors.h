@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is PlusFatFileErrorSource. A handler
+    /** Detail codes for events whose Source is SolidSyslogPlusFatFileErrorSource. A handler
      *  reads these off event->Detail after matching event->Source; the members
      *  name their own fault. */
     enum SolidSyslogPlusFatFileErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a PlusFatFile. A handler matches by address
-     *  (event->Source == &PlusFatFileErrorSource), then reads event->Detail as an
+     *  (event->Source == &SolidSyslogPlusFatFileErrorSource), then reads event->Detail as an
      *  enum SolidSyslogPlusFatFileErrors. */
-    extern const struct SolidSyslogErrorSource PlusFatFileErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogPlusFatFileErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

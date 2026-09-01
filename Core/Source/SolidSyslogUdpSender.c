@@ -25,7 +25,7 @@
 
 struct SolidSyslogFormatter;
 
-const struct SolidSyslogErrorSource UdpSenderErrorSource = {"UdpSender"};
+const struct SolidSyslogErrorSource SolidSyslogUdpSenderErrorSource = {"UdpSender"};
 
 static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, size_t size);
 static void UdpSender_Disconnect(struct SolidSyslogSender* base);
@@ -103,7 +103,7 @@ static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, s
 static inline void UdpSender_UpdateDeliveryHealth(struct SolidSyslogUdpSender* self, bool delivered)
 {
     static const struct SolidSyslogSenderHealthReporter reporter = {
-        .Source = &UdpSenderErrorSource,
+        .Source = &SolidSyslogUdpSenderErrorSource,
         .FailedDetail = (int32_t) SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_FAILED,
         .RestoredDetail = (int32_t) SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_RESTORED
     };

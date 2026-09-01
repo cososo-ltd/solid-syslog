@@ -23,10 +23,15 @@
 
 using namespace CososoTesting;
 
-#define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode)                 \
-    {                                                                                                                 \
-        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                                         \
-        CHECK_ERROR_REPORTED_ONCE((expectedSeverity), &OpenSslStreamErrorSource, (expectedCategory), (expectedCode)); \
+#define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode) \
+    {                                                                                                 \
+        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                         \
+        CHECK_ERROR_REPORTED_ONCE(                                                                    \
+            (expectedSeverity),                                                                       \
+            &SolidSyslogOpenSslStreamErrorSource,                                                     \
+            (expectedCategory),                                                                       \
+            (expectedCode)                                                                            \
+        );                                                                                            \
     }
 
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
@@ -376,7 +381,7 @@ TEST(SolidSyslogOpenSslStream, OpenWarnsWhenServerNameIsNull)
     SolidSyslogStream_Open(stream, addr);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &OpenSslStreamErrorSource,
+        &SolidSyslogOpenSslStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET
     );
@@ -1218,7 +1223,7 @@ TEST(SolidSyslogOpenSslStream, OpenReportsThatNothingAuthorisesThePeer)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_ERROR,
-        &OpenSslStreamErrorSource,
+        &SolidSyslogOpenSslStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_STREAM_ERROR_NO_PEER_AUTHORISATION
     );

@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 #include <string.h>
 
-const struct SolidSyslogErrorSource PosixAddressErrorSource = {"PosixAddress"};
+const struct SolidSyslogErrorSource SolidSyslogPosixAddressErrorSource = {"PosixAddress"};
 
 struct SolidSyslogAddress;
 

@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is SwitchingSenderErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogSwitchingSenderErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogSwitchingSenderErrors
@@ -27,9 +27,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** The identity for events raised by a SwitchingSender. A handler matches by
-     *  address (event->Source == &SwitchingSenderErrorSource), then reads
+     *  address (event->Source == &SolidSyslogSwitchingSenderErrorSource), then reads
      *  event->Detail as an enum SolidSyslogSwitchingSenderErrors. */
-    extern const struct SolidSyslogErrorSource SwitchingSenderErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogSwitchingSenderErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

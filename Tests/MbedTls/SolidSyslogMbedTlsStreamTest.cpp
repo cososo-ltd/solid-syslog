@@ -25,12 +25,17 @@ extern "C"
 
 using namespace CososoTesting;
 
-#define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode)                 \
-    {                                                                                                                 \
-        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                                         \
-        LONGS_EQUAL(1, MbedTlsFake_SslFreeCallCount());                                                               \
-        LONGS_EQUAL(1, MbedTlsFake_SslConfigFreeCallCount());                                                         \
-        CHECK_ERROR_REPORTED_ONCE((expectedSeverity), &MbedTlsStreamErrorSource, (expectedCategory), (expectedCode)); \
+#define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode) \
+    {                                                                                                 \
+        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                         \
+        LONGS_EQUAL(1, MbedTlsFake_SslFreeCallCount());                                               \
+        LONGS_EQUAL(1, MbedTlsFake_SslConfigFreeCallCount());                                         \
+        CHECK_ERROR_REPORTED_ONCE(                                                                    \
+            (expectedSeverity),                                                                       \
+            &SolidSyslogMbedTlsStreamErrorSource,                                                     \
+            (expectedCategory),                                                                       \
+            (expectedCode)                                                                            \
+        );                                                                                            \
     }
 
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
@@ -42,7 +47,7 @@ using namespace CososoTesting;
 #define CHECK_INCOMPLETE_CREDENTIAL_REPORTED()                        \
     CHECK_ERROR_REPORTED_ONCE(                                        \
         SOLIDSYSLOG_SEVERITY_WARNING,                                 \
-        &MbedTlsStreamErrorSource,                                    \
+        &SolidSyslogMbedTlsStreamErrorSource,                         \
         SOLIDSYSLOG_CAT_BAD_CONFIG,                                   \
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_INCOMPLETE \
     )
@@ -884,7 +889,7 @@ TEST(SolidSyslogMbedTlsStream, OpenWarnsWhenServerNameIsNull)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &MbedTlsStreamErrorSource,
+        &SolidSyslogMbedTlsStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_SERVER_NAME_NOT_SET
     );
@@ -1010,7 +1015,7 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsClientCredentialNotInstalledAndStillCo
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &MbedTlsStreamErrorSource,
+        &SolidSyslogMbedTlsStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
     );
@@ -1056,7 +1061,7 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsMismatchedClientCredentialAndStillConn
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &MbedTlsStreamErrorSource,
+        &SolidSyslogMbedTlsStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_MISMATCHED
     );

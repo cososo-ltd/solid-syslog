@@ -26,7 +26,7 @@
 #include "SolidSyslogOpenSslStreamPrivate.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource OpenSslStreamErrorSource = {"OpenSslStream"};
+const struct SolidSyslogErrorSource SolidSyslogOpenSslStreamErrorSource = {"OpenSslStream"};
 
 enum
 {

@@ -27,7 +27,7 @@
 #include "lwip/err.h"
 #include "lwip/ip_addr.h"
 
-const struct SolidSyslogErrorSource LwipRawDnsResolverErrorSource = {"LwipRawDnsResolver"};
+const struct SolidSyslogErrorSource SolidSyslogLwipRawDnsResolverErrorSource = {"LwipRawDnsResolver"};
 
 struct SolidSyslogAddress;
 

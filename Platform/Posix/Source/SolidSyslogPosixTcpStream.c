@@ -25,7 +25,7 @@
 #include "SolidSyslogStream.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource PosixTcpStreamErrorSource = {"PosixTcpStream"};
+const struct SolidSyslogErrorSource SolidSyslogPosixTcpStreamErrorSource = {"PosixTcpStream"};
 
 struct SolidSyslogAddress;
 

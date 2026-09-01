@@ -129,7 +129,7 @@ TEST(SolidSyslogPosixAddressPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &PosixAddressErrorSource,
+        &SolidSyslogPosixAddressErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_POSIX_ADDRESS_ERROR_POOL_EXHAUSTED
     );
@@ -188,7 +188,7 @@ TEST(SolidSyslogPosixAddressPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PosixAddressErrorSource,
+        &SolidSyslogPosixAddressErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_POSIX_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
@@ -205,7 +205,7 @@ TEST(SolidSyslogPosixAddressPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PosixAddressErrorSource,
+        &SolidSyslogPosixAddressErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_POSIX_ADDRESS_ERROR_UNKNOWN_DESTROY
     );

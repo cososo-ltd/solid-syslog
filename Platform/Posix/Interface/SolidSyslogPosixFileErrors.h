@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is PosixFileErrorSource. A handler
+    /** Detail codes for events whose Source is SolidSyslogPosixFileErrorSource. A handler
      *  reads these off event->Detail after matching event->Source; the members
      *  name their own fault. */
     enum SolidSyslogPosixFileErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a PosixFile. A handler matches by address
-     *  (event->Source == &PosixFileErrorSource), then reads event->Detail as an
+     *  (event->Source == &SolidSyslogPosixFileErrorSource), then reads event->Detail as an
      *  enum SolidSyslogPosixFileErrors. */
-    extern const struct SolidSyslogErrorSource PosixFileErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogPosixFileErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

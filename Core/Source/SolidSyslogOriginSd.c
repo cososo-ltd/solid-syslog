@@ -14,7 +14,7 @@
 #include "SolidSyslogSdValue.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 
-const struct SolidSyslogErrorSource OriginSdErrorSource = {"OriginSd"};
+const struct SolidSyslogErrorSource SolidSyslogOriginSdErrorSource = {"OriginSd"};
 
 static void OriginSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element);
 

@@ -53,7 +53,7 @@ static void CaptureError(void* context, const struct SolidSyslogErrorEvent* even
     {                                                                                                  \
         LONGS_EQUAL(1, CapturedErrorCount);                                                            \
         LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, LastCapturedError.Severity);                           \
-        POINTERS_EQUAL(&MbedTlsStreamErrorSource, LastCapturedError.Source);                           \
+        POINTERS_EQUAL(&SolidSyslogMbedTlsStreamErrorSource, LastCapturedError.Source);                \
         UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, LastCapturedError.Category); \
         LONGS_EQUAL((expectedCode), LastCapturedError.Detail);                                         \
     }

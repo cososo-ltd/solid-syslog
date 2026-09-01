@@ -104,7 +104,7 @@ TEST(SolidSyslogOpenSslStreamPool, CreateWithNullConfigReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &OpenSslStreamErrorSource,
+        &SolidSyslogOpenSslStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_STREAM_ERROR_NULL_CONFIG
     );
@@ -128,7 +128,7 @@ TEST(SolidSyslogOpenSslStreamPool, CreateWithNullCredentialsReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &OpenSslStreamErrorSource,
+        &SolidSyslogOpenSslStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_STREAM_ERROR_NULL_CREDENTIALS
     );
@@ -152,7 +152,7 @@ TEST(SolidSyslogOpenSslStreamPool, CreateWithNullTransportReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &OpenSslStreamErrorSource,
+        &SolidSyslogOpenSslStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_STREAM_ERROR_NULL_TRANSPORT
     );
@@ -176,7 +176,7 @@ TEST(SolidSyslogOpenSslStreamPool, CreateWithNullSleepReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &OpenSslStreamErrorSource,
+        &SolidSyslogOpenSslStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_STREAM_ERROR_NULL_SLEEP
     );
@@ -200,7 +200,7 @@ TEST(SolidSyslogOpenSslStreamPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &OpenSslStreamErrorSource,
+        &SolidSyslogOpenSslStreamErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_OPENSSL_STREAM_ERROR_POOL_EXHAUSTED
     );
@@ -267,7 +267,7 @@ TEST(SolidSyslogOpenSslStreamPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &OpenSslStreamErrorSource,
+        &SolidSyslogOpenSslStreamErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_OPENSSL_STREAM_ERROR_UNKNOWN_DESTROY
     );
@@ -284,7 +284,7 @@ TEST(SolidSyslogOpenSslStreamPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &OpenSslStreamErrorSource,
+        &SolidSyslogOpenSslStreamErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_OPENSSL_STREAM_ERROR_UNKNOWN_DESTROY
     );

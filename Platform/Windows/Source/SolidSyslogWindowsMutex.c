@@ -13,7 +13,7 @@
 #include "SolidSyslogWindowsMutexErrors.h"
 #include "SolidSyslogWindowsMutexPrivate.h"
 
-const struct SolidSyslogErrorSource WindowsMutexErrorSource = {"WindowsMutex"};
+const struct SolidSyslogErrorSource SolidSyslogWindowsMutexErrorSource = {"WindowsMutex"};
 
 static void WindowsMutex_Lock(struct SolidSyslogMutex* base);
 static void WindowsMutex_Unlock(struct SolidSyslogMutex* base);

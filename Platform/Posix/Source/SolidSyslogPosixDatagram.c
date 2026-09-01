@@ -21,7 +21,7 @@
 #include "SolidSyslogPosixDatagramPrivate.h"
 #include "SolidSyslogUdpPayload.h"
 
-const struct SolidSyslogErrorSource PosixDatagramErrorSource = {"PosixDatagram"};
+const struct SolidSyslogErrorSource SolidSyslogPosixDatagramErrorSource = {"PosixDatagram"};
 
 struct SolidSyslogAddress;
 

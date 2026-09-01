@@ -447,7 +447,7 @@ TEST(SolidSyslogUdpSenderDestroy, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &UdpSenderErrorSource,
+        &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_UDP_SENDER_ERROR_UNKNOWN_DESTROY
     );
@@ -783,7 +783,7 @@ TEST(SolidSyslogUdpSenderBadSetup, CreateWithNullConfigReportsError)
     SolidSyslogUdpSender_Create(nullptr);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &UdpSenderErrorSource,
+        &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_UDP_SENDER_ERROR_NULL_CONFIG
     );
@@ -807,7 +807,7 @@ TEST(SolidSyslogUdpSenderBadSetup, CreateWithNullResolverReportsError)
     SolidSyslogUdpSender_Create(&config);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &UdpSenderErrorSource,
+        &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_UDP_SENDER_ERROR_NULL_RESOLVER
     );
@@ -819,7 +819,7 @@ TEST(SolidSyslogUdpSenderBadSetup, CreateWithNullDatagramReportsError)
     SolidSyslogUdpSender_Create(&config);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &UdpSenderErrorSource,
+        &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_UDP_SENDER_ERROR_NULL_DATAGRAM
     );
@@ -831,7 +831,7 @@ TEST(SolidSyslogUdpSenderBadSetup, CreateWithNullEndpointReportsError)
     SolidSyslogUdpSender_Create(&config);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &UdpSenderErrorSource,
+        &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_UDP_SENDER_ERROR_NULL_ENDPOINT
     );
@@ -843,7 +843,7 @@ TEST(SolidSyslogUdpSenderBadSetup, CreateWithNullAddressReportsError)
     SolidSyslogUdpSender_Create(&config);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &UdpSenderErrorSource,
+        &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_UDP_SENDER_ERROR_NULL_ADDRESS
     );
@@ -863,7 +863,7 @@ TEST(SolidSyslogUdpSenderBadSetup, SendWithNullBufferReportsErrorAndDoesNotSend)
     CHECK_FALSE(Send(nullptr, 5));
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &UdpSenderErrorSource,
+        &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_BAD_ARGUMENT,
         SOLIDSYSLOG_UDP_SENDER_ERROR_SEND_NULL_BUFFER
     );
@@ -941,7 +941,7 @@ TEST(SolidSyslogUdpSenderPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &UdpSenderErrorSource,
+        &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_UDP_SENDER_ERROR_POOL_EXHAUSTED
     );
@@ -984,7 +984,7 @@ TEST(SolidSyslogUdpSenderDeliveryHealth, FirstFailingSendReportsDeliveryFailed)
     Send();
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &UdpSenderErrorSource,
+        &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
         SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_FAILED
     );
@@ -1008,7 +1008,7 @@ TEST(SolidSyslogUdpSenderDeliveryHealth, RecoveryAfterDownReportsDeliveryRestore
     /* The second event, so the count stays explicit rather than pinned at ONCE. */
     CHECK_ERROR_EVENT(
         SOLIDSYSLOG_SEVERITY_NOTICE,
-        &UdpSenderErrorSource,
+        &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
         SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_RESTORED
     );
@@ -1026,7 +1026,7 @@ TEST(SolidSyslogUdpSenderDeliveryHealth, NullBufferDoesNotReportDeliveryFailed)
     Send(nullptr, TEST_MESSAGE_LEN);
     CHECK_ERROR_EVENT(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &UdpSenderErrorSource,
+        &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_BAD_ARGUMENT,
         SOLIDSYSLOG_UDP_SENDER_ERROR_SEND_NULL_BUFFER
     );

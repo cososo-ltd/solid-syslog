@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is OpenSslStreamErrorSource. A handler
+    /** Detail codes for events whose Source is SolidSyslogOpenSslStreamErrorSource. A handler
      *  reads these off event->Detail after matching event->Source; the members
      *  name their own fault. */
     enum SolidSyslogOpenSslStreamErrors
@@ -38,9 +38,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a OpenSslStream. A handler matches by address
-     *  (event->Source == &OpenSslStreamErrorSource), then reads event->Detail as an
+     *  (event->Source == &SolidSyslogOpenSslStreamErrorSource), then reads event->Detail as an
      *  enum SolidSyslogOpenSslStreamErrors. */
-    extern const struct SolidSyslogErrorSource OpenSslStreamErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogOpenSslStreamErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

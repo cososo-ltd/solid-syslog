@@ -472,7 +472,7 @@ Everything else follows one of four naming patterns, so it can be found rather t
 | `SolidSyslog<Role>.h` | The role's public call surface, e.g. `SolidSyslogSender_Send` |
 | `SolidSyslog<Role>Definition.h` | The vtable an implementor fills — the extension point |
 | `SolidSyslogNull<Role>.h` | The role's Null object, returned on bad config and on pool exhaustion |
-| `SolidSyslog<Class>Errors.h` | `enum SolidSyslog<Class>Errors` plus `extern const struct SolidSyslogErrorSource <Class>ErrorSource`, for handlers matching on source identity |
+| `SolidSyslog<Class>Errors.h` | `enum SolidSyslog<Class>Errors` plus `extern const struct SolidSyslogErrorSource SolidSyslog<Class>ErrorSource`, for handlers matching on source identity |
 
 Two invariants hold across every role and are worth knowing without looking anything up:
 every role has a Null fallback, so an unfilled slot degrades safely rather than dangling at

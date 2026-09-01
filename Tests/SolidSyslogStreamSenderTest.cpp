@@ -727,7 +727,7 @@ TEST(SolidSyslogStreamSenderPool, OverflowReportsPoolExhausted)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &StreamSenderErrorSource,
+        &SolidSyslogStreamSenderErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_STREAM_SENDER_ERROR_POOL_EXHAUSTED
     );
@@ -758,7 +758,7 @@ TEST(SolidSyslogStreamSenderPool, FillingPoolThenOverflowReturnsDistinctFallback
 #define CHECK_STREAMSENDER_BAD_SETUP_ERROR(expectedCategory, expectedCode) \
     CHECK_ERROR_REPORTED_ONCE(                                             \
         SOLIDSYSLOG_SEVERITY_CRITICAL,                                     \
-        &StreamSenderErrorSource,                                          \
+        &SolidSyslogStreamSenderErrorSource,                               \
         (expectedCategory),                                                \
         (expectedCode)                                                     \
     )
@@ -889,7 +889,7 @@ TEST(SolidSyslogStreamSenderDeliveryHealth, FirstFailingSendReportsDeliveryFaile
     Send();
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &StreamSenderErrorSource,
+        &SolidSyslogStreamSenderErrorSource,
         SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
         SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_FAILED
     );
@@ -914,7 +914,7 @@ TEST(SolidSyslogStreamSenderDeliveryHealth, RecoveryAfterDownReportsDeliveryRest
     /* The second event, so the count stays explicit rather than pinned at ONCE. */
     CHECK_ERROR_EVENT(
         SOLIDSYSLOG_SEVERITY_NOTICE,
-        &StreamSenderErrorSource,
+        &SolidSyslogStreamSenderErrorSource,
         SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
         SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_RESTORED
     );

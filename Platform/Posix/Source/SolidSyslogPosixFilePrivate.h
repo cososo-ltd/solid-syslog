@@ -27,7 +27,7 @@ static inline void PosixFile_Report(
     enum SolidSyslogPosixFileErrors code
 )
 {
-    SolidSyslog_Error(severity, &PosixFileErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPosixFileErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPOSIXFILEPRIVATE_H */

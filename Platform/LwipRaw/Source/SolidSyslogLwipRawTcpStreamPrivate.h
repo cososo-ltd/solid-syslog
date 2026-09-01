@@ -45,7 +45,7 @@ static inline void LwipRawTcpStream_Report(
     enum SolidSyslogLwipRawTcpStreamErrors code
 )
 {
-    SolidSyslog_Error(severity, &LwipRawTcpStreamErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogLwipRawTcpStreamErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGLWIPRAWTCPSTREAMPRIVATE_H */

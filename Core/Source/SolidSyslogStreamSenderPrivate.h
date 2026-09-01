@@ -35,7 +35,7 @@ static inline void StreamSender_Report(
     enum SolidSyslogStreamSenderErrors code
 )
 {
-    SolidSyslog_Error(severity, &StreamSenderErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogStreamSenderErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGSTREAMSENDERPRIVATE_H */

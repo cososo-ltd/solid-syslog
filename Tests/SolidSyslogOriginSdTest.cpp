@@ -597,7 +597,7 @@ TEST(SolidSyslogOriginSdPool, OverflowReportsPoolExhausted)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &OriginSdErrorSource,
+        &SolidSyslogOriginSdErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_ORIGIN_SD_ERROR_POOL_EXHAUSTED
     );

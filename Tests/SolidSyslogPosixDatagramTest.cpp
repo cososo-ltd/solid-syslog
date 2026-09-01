@@ -312,7 +312,7 @@ TEST(SolidSyslogPosixDatagramPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &PosixDatagramErrorSource,
+        &SolidSyslogPosixDatagramErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_POSIX_DATAGRAM_ERROR_POOL_EXHAUSTED
     );
@@ -379,7 +379,7 @@ TEST(SolidSyslogPosixDatagramPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PosixDatagramErrorSource,
+        &SolidSyslogPosixDatagramErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_POSIX_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
@@ -396,7 +396,7 @@ TEST(SolidSyslogPosixDatagramPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PosixDatagramErrorSource,
+        &SolidSyslogPosixDatagramErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_POSIX_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );

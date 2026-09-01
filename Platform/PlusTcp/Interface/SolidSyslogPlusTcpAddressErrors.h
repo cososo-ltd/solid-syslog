@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is PlusTcpAddressErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogPlusTcpAddressErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogPlusTcpAddressErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a PlusTcpAddress. A handler matches by
-     *  address (event->Source == &PlusTcpAddressErrorSource), then reads
+     *  address (event->Source == &SolidSyslogPlusTcpAddressErrorSource), then reads
      *  event->Detail as an enum SolidSyslogPlusTcpAddressErrors. */
-    extern const struct SolidSyslogErrorSource PlusTcpAddressErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogPlusTcpAddressErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

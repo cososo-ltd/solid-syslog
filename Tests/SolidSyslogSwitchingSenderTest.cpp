@@ -363,7 +363,7 @@ TEST(SolidSyslogSwitchingSenderPool, OverflowReportsPoolExhausted)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &SwitchingSenderErrorSource,
+        &SolidSyslogSwitchingSenderErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_SWITCHING_SENDER_ERROR_POOL_EXHAUSTED
     );
@@ -415,7 +415,7 @@ TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullConfigReportsError)
     SolidSyslogSwitchingSender_Create(nullptr);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &SwitchingSenderErrorSource,
+        &SolidSyslogSwitchingSenderErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_CONFIG
     );
@@ -427,7 +427,7 @@ TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullSendersReportsError)
     SolidSyslogSwitchingSender_Create(&config);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &SwitchingSenderErrorSource,
+        &SolidSyslogSwitchingSenderErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SENDERS
     );
@@ -439,7 +439,7 @@ TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullSelectorReportsError)
     SolidSyslogSwitchingSender_Create(&config);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &SwitchingSenderErrorSource,
+        &SolidSyslogSwitchingSenderErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SELECTOR
     );

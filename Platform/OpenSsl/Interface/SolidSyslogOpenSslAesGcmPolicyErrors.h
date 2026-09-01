@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is OpenSslAesGcmPolicyErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogOpenSslAesGcmPolicyErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogOpenSslAesGcmPolicyErrors
@@ -29,9 +29,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by an OpenSslAesGcmPolicy. A handler matches by
-     *  address (event->Source == &OpenSslAesGcmPolicyErrorSource), then reads
+     *  address (event->Source == &SolidSyslogOpenSslAesGcmPolicyErrorSource), then reads
      *  event->Detail as an enum SolidSyslogOpenSslAesGcmPolicyErrors. */
-    extern const struct SolidSyslogErrorSource OpenSslAesGcmPolicyErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogOpenSslAesGcmPolicyErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

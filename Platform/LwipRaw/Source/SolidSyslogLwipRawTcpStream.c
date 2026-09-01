@@ -28,7 +28,7 @@
 #include "lwip/tcp.h"
 #include "lwip/tcpbase.h"
 
-const struct SolidSyslogErrorSource LwipRawTcpStreamErrorSource = {"LwipRawTcpStream"};
+const struct SolidSyslogErrorSource SolidSyslogLwipRawTcpStreamErrorSource = {"LwipRawTcpStream"};
 
 struct SolidSyslogAddress;
 struct SolidSyslogStream;

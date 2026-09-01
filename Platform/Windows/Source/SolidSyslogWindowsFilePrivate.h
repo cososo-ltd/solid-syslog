@@ -27,7 +27,7 @@ static inline void WindowsFile_Report(
     enum SolidSyslogWindowsFileErrors code
 )
 {
-    SolidSyslog_Error(severity, &WindowsFileErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogWindowsFileErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGWINDOWSFILEPRIVATE_H */

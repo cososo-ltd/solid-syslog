@@ -26,7 +26,7 @@ static inline void PosixResolver_Report(
     enum SolidSyslogPosixResolverErrors code
 )
 {
-    SolidSyslog_Error(severity, &PosixResolverErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPosixResolverErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPOSIXRESOLVERPRIVATE_H */

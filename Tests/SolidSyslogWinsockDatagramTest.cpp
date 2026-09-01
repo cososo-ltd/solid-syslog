@@ -318,7 +318,7 @@ TEST(SolidSyslogWinsockDatagramPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &WinsockDatagramErrorSource,
+        &SolidSyslogWinsockDatagramErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_WINSOCK_DATAGRAM_ERROR_POOL_EXHAUSTED
     );
@@ -391,7 +391,7 @@ TEST(SolidSyslogWinsockDatagramPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &WinsockDatagramErrorSource,
+        &SolidSyslogWinsockDatagramErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_WINSOCK_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
@@ -408,7 +408,7 @@ TEST(SolidSyslogWinsockDatagramPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &WinsockDatagramErrorSource,
+        &SolidSyslogWinsockDatagramErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_WINSOCK_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );

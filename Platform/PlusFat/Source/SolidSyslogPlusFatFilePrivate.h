@@ -28,7 +28,7 @@ static inline void PlusFatFile_Report(
     enum SolidSyslogPlusFatFileErrors code
 )
 {
-    SolidSyslog_Error(severity, &PlusFatFileErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPlusFatFileErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPLUSFATFILEPRIVATE_H */

@@ -20,7 +20,7 @@
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 
-const struct SolidSyslogErrorSource OpenSslAesGcmPolicyErrorSource = {"OpenSslAesGcmPolicy"};
+const struct SolidSyslogErrorSource SolidSyslogOpenSslAesGcmPolicyErrorSource = {"OpenSslAesGcmPolicy"};
 
 enum
 {

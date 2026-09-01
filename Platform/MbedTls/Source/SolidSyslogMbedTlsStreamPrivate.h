@@ -35,7 +35,7 @@ static inline void MbedTlsStream_Report(
     enum SolidSyslogMbedTlsStreamErrors code
 )
 {
-    SolidSyslog_Error(severity, &MbedTlsStreamErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogMbedTlsStreamErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGMBEDTLSSTREAMPRIVATE_H */

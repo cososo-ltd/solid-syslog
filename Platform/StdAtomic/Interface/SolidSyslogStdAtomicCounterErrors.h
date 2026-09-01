@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is StdAtomicCounterErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogStdAtomicCounterErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogStdAtomicCounterErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a StdAtomicCounter. A handler matches by
-     *  address (event->Source == &StdAtomicCounterErrorSource), then reads
+     *  address (event->Source == &SolidSyslogStdAtomicCounterErrorSource), then reads
      *  event->Detail as an enum SolidSyslogStdAtomicCounterErrors. */
-    extern const struct SolidSyslogErrorSource StdAtomicCounterErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogStdAtomicCounterErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

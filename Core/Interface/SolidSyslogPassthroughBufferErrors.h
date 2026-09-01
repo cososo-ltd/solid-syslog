@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is PassthroughBufferErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogPassthroughBufferErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogPassthroughBufferErrors
@@ -25,9 +25,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** The identity for events raised by a PassthroughBuffer. A handler matches
-     *  by address (event->Source == &PassthroughBufferErrorSource), then reads
+     *  by address (event->Source == &SolidSyslogPassthroughBufferErrorSource), then reads
      *  event->Detail as an enum SolidSyslogPassthroughBufferErrors. */
-    extern const struct SolidSyslogErrorSource PassthroughBufferErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogPassthroughBufferErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 
