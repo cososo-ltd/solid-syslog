@@ -9,10 +9,26 @@ list, a Compose mount or a workflow's path filter is text nothing reads back
 out. A rename leaves the reference behind, green, and pointing nowhere.
 
 This is one pass over those files, pulling out every reference of a known kind
-and asserting each resolves. Today there is one kind, the repo-relative path.
-The second, deferred to #740, is the SolidSyslog symbol a page names: the same
-files, the same extraction pass, and the same exception problem, which is why it
-belongs here as another KINDS row rather than in a second script.
+and asserting each resolves. There are two kinds. The first is the repo-relative
+path. The second is the SolidSyslog symbol a page under `docs/` names, in prose
+or in a fenced example: nothing compiles those, so a page can name a symbol that
+was renamed, or invent one outright, and still build green under
+`mkdocs build --strict` while handing an integrator who copies it an
+undefined-symbol error.
+
+**What a symbol token may resolve to** is three things, because a page has three
+legitimate reasons to write one: a symbol a *public* header declares, a file the
+repository holds, or a target its CMake declares. Public headers only — an
+integrator can call nothing else, so widening the corpus to `Core/Source` would
+let a page offer an internal function as though it were API. The few pages that
+name one deliberately say so in the exception list.
+
+Two limits are worth stating, since neither is a bug to be fixed here. A token
+naming the *header* where the *function* was meant resolves, because the file
+arm accepts it — this catches names that do not exist, not names used wrongly.
+And an example whose call is wrong in some way that invents no name — a
+transposed argument, a wrong type — passes; compiling the fenced examples is a
+larger and different check.
 
 **The extraction is deliberately narrow**, because a heuristic loose enough to
 need a long exception list is one that will be switched off. Three rules do the
@@ -31,20 +47,32 @@ work:
   or a path filter does not do.
 
 **The exception list is the part to watch.** Each entry says why the reference
-is meant not to resolve. All of them so far are one thing: a document quoting a
-path as some *other* file would write it, to state a rule about how paths are
-written. Past a handful of entries the extraction is wrong and should be
-tightened rather than the list grown.
+is meant not to resolve, and they fall into two groups. A document quotes a path
+as some *other* file would write it, to state a rule about how paths are written;
+or a page names an internal symbol deliberately, because what it is explaining is
+how the library is built rather than how it is called. Past a handful of entries
+the extraction is wrong and should be tightened rather than the list grown.
+
+One file is exempted whole, which is the mechanism to use sparingly and never
+reach for to silence a page that is merely noisy. `docs/NAMING.md` is a document
+*about* identifiers: it quotes spellings the project rejected, placeholders
+standing for any class, and shapes no file has yet. Twenty-six rows each saying
+so would be one fact written twenty-six times, and the extraction that produced
+them is not wrong.
 
 Run:  python3 scripts/check_references.py
 """
 
+import functools
 import os
 import re
 import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Stands where a token would, for a file every reference in which is exempt.
+WHOLE_FILE = "*"
 
 # Deliberate exceptions, each with the reason the reference is meant not to
 # resolve. Matched on (file, token). Printed on every run: an exception nobody
@@ -76,6 +104,67 @@ ALLOWED = [
         "Tests/Lwip/CMakeLists.txt",
         "Tests/X/",
         "the shape the next platform's test directory would take, not one that exists",
+    ),
+    (
+        "docs/NAMING.md",
+        WHOLE_FILE,
+        "is about identifiers rather than written with them, so it quotes rejected "
+        "spellings, placeholders standing for any class, and shapes no file has yet",
+    ),
+    (
+        "docs/misra-deviations.md",
+        "SolidSyslogX",
+        "stands for any class, in a rule about what a name may not collide with",
+    ),
+    (
+        "docs/misra-deviations.md",
+        "SolidSyslogClass_Function",
+        "the public-function shape itself, named where the rule is about the shape",
+    ),
+    (
+        "docs/misra-deviations.md",
+        "SolidSyslogStaticAssertViolated",
+        "the identifier the static-assert trick declares to fail on, which exists only "
+        "in a build that is already broken",
+    ),
+    (
+        "docs/misra-deviations.md",
+        "SolidSyslogFormatterStorage",
+        "Core-internal: the deviation is about how the Formatter is built, not how it "
+        "is called, and it is not on the public surface",
+    ),
+    (
+        "docs/misra-deviations.md",
+        "SolidSyslogMessageFormatter_Format",
+        "Core-internal, named in the deviation covering its own body",
+    ),
+    (
+        "docs/misra-deviations.md",
+        "SolidSyslog_Install",
+        "the family of config-installing functions written as a stem, not one symbol",
+    ),
+    (
+        "docs/porting.md",
+        "SolidSyslogPoolAllocator_AcquireFirstFree",
+        "Core-internal by design: an adapter calls it, and the porting guide is where "
+        "that is explained, but it is not API an integrator may reach for",
+    ),
+    (
+        "docs/porting.md",
+        "SolidSyslogPoolAllocator_IndexIsValid",
+        "its sibling, in the same worked example",
+    ),
+    (
+        "docs/rfc-compliance.md",
+        "SolidSyslogFormatter_BoundedString",
+        "Core-internal: named as the place the UTF-8 rule is enforced, which is a "
+        "statement about the implementation rather than an entry point",
+    ),
+    (
+        "docs/containers.md",
+        "SolidSyslogTests",
+        "a real target, declared as `${PROJECT_NAME}Tests`, so the name resolves only "
+        "after CMake expands it and the extraction cannot see it",
     ),
 ]
 
@@ -109,6 +198,27 @@ TRAILING = ".,;:!?)]}>\"'`"
 # a glob or a placeholder, a shell or CMake variable, or a character no path in
 # this repository uses. Each names something other than one file here.
 NOT_A_PATH = re.compile(r"://|[^A-Za-z0-9._/+:-]")
+
+# Every identifier this library owns carries the project prefix, so the prefix is
+# what finds them and nothing else has to be recognised. The `::` segments are
+# part of the token rather than a boundary, because a namespaced alias must be
+# matched whole: stopping at the colon would resolve `SolidSyslog::AnythingAtAll`
+# on the strength of the bare prefix and never look at the half that was wrong.
+SYMBOL = re.compile(r"\bSolidSyslog(?:[A-Za-z0-9_]*(?:::[A-Za-z0-9_]+)*)")
+
+# A target CMake declares by a literal name, the `SolidSyslog::Pack` aliases
+# included. One composed from a variable is not matched, and is why
+# `SolidSyslogTests` is in the exception list.
+CMAKE_TARGET = re.compile(r"^\s*add_(?:executable|library|custom_target)\s*\(\s*([A-Za-z0-9_:]+)")
+
+# A public header: the only declarations an integrator may call. `Interface/` is
+# the API boundary in Core and in every platform pack alike.
+PUBLIC_HEADER = "/Interface/"
+
+# Where symbols are asserted. `docs/` is what an integrator reads; the repository's
+# own guides and READMEs name internal classes and build targets legitimately, and
+# checking them would be checking notes to ourselves.
+DOCUMENTED = "docs/"
 
 
 def read(relative):
@@ -238,6 +348,69 @@ def path_artefacts(found):
     }
 
 
+@functools.lru_cache(maxsize=None)
+def declared_names():
+    """Every name a `SolidSyslog…` token in a page may legitimately be.
+
+    Three sources, because a page has three reasons to write one: the symbols a
+    public header declares, the files the repository holds, and the targets its
+    CMake declares. Read once per run — the files are the same files `scanned()`
+    walks, and reading them per line would be reading the tree per line, which
+    is what the cache is for.
+    """
+    names = set()
+    for relative in git("ls-files"):
+        base = os.path.basename(relative)
+        if relative.endswith(".h") and PUBLIC_HEADER in relative:
+            names |= set(SYMBOL.findall(read(relative)))
+        if base in SCANNED_NAMES:
+            names |= cmake_targets(read(relative))
+        if base.startswith("SolidSyslog"):
+            names.add(base.split(".")[0])
+    return names
+
+
+def cmake_targets(text):
+    """The targets one CMake file declares by a literal name."""
+    matched = (CMAKE_TARGET.match(line) for line in text.splitlines())
+    return {found.group(1) for found in matched if found}
+
+
+def symbols_in(relative, line, verbatim, roots):
+    """Every token on this line that claims a symbol of this library exists.
+
+    Mined from code spans and fenced blocks, and deliberately not from link
+    targets: a link to `../api/SolidSyslogConfig_8h.md` names a generated page,
+    which is a path and already the other kind's business. A word holding `/` is
+    dropped for the same reason.
+
+    A token followed by `<` is a placeholder — `SolidSyslogNull<Role>_Get`,
+    `SolidSyslog<Class>Errors` — and names the pattern rather than a class.
+    `docs/NAMING.md` requires that spelling where the statement is about the
+    pattern, so recognising it is cheaper than exempting every page that obeys.
+    """
+    if not (relative.startswith(DOCUMENTED) and relative.endswith(".md")):
+        return
+    texts = [line] if verbatim else [m.group(1) for m in CODE_SPAN.finditer(line)]
+    for text in texts:
+        for word in text.split():
+            if "/" in word:
+                continue
+            for match in SYMBOL.finditer(word):
+                if word[match.end() : match.end() + 1] != "<":
+                    yield match.group(0)
+
+
+def symbol_resolves(relative, token):
+    return token in declared_names()
+
+
+def nothing(found):
+    """No symbol reference is unassertable: unlike a path, none of them can name
+    something only a build produces."""
+    return set()
+
+
 class Kind:
     """One class of reference: how to find it, how to resolve it, what to say.
 
@@ -253,14 +426,19 @@ class Kind:
         self.unassertable = unassertable
 
 
-# The kinds of reference asserted. #740 adds the SolidSyslog symbol a page names
-# as a second row here, reusing the pass above and the exception list below.
+# The kinds of reference asserted, each one pass over the same files.
 KINDS = (
     Kind(
         extract=paths_in,
         resolves=path_resolves,
         complaint="names a path that does not exist",
         unassertable=path_artefacts,
+    ),
+    Kind(
+        extract=symbols_in,
+        resolves=symbol_resolves,
+        complaint="names a symbol, file or target that does not exist",
+        unassertable=nothing,
     ),
 )
 
@@ -304,9 +482,14 @@ def check():
         sys.exit(f"no documents or build files found under {ROOT} — is this a git checkout?")
 
     exempt = {(path, token) for path, token, _ in ALLOWED}
+    exempt_files = {path for path, token, _ in ALLOWED if token == WHOLE_FILE}
     faults = []
     for kind in KINDS:
-        found = {r: n for r, n in references(kind).items() if r not in exempt}
+        found = {
+            r: n
+            for r, n in references(kind).items()
+            if r not in exempt and r[0] not in exempt_files
+        }
         assertable = set(found) - kind.unassertable(set(found))
         faults += [
             f"{relative}:{found[(relative, token)]} {kind.complaint}: {token}"
@@ -328,5 +511,10 @@ if __name__ == "__main__":
         )
         sys.exit(1)
     for path, token, reason in ALLOWED:
-        print(f"allowed: {path} may name {token} — {reason}")
-    print(f"every path named by {len(scanned())} documents and build files exists")
+        named = "anything" if token == WHOLE_FILE else token
+        print(f"allowed: {path} may name {named} — {reason}")
+    print(
+        f"every path named by {len(scanned())} documents and build files exists, "
+        f"and every symbol named under {DOCUMENTED} resolves to one of "
+        f"{len(declared_names())} declared names"
+    )
