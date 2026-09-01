@@ -3,11 +3,10 @@
 #include <assert.h>
 #include <mbedtls/asn1.h>
 #include <mbedtls/ctr_drbg.h>
+#include <mbedtls/pem.h>
 #include <mbedtls/pk.h>
 #include <mbedtls/rsa.h>
 #include <mbedtls/x509.h>
-#include <mbedtls/pem.h>
-#include <mbedtls/pk.h>
 #include <mbedtls/x509_crt.h>
 #include <stddef.h>
 #include <string.h>

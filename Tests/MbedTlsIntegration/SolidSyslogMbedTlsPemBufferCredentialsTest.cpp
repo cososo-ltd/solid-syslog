@@ -57,8 +57,7 @@ static void CapturePemBufferError(void* context, const struct SolidSyslogErrorEv
  * looks like. */
 static bool HoldsNoMaterial(struct SolidSyslogMbedTlsCredentials* base)
 {
-    const struct SolidSyslogMbedTlsPemBufferCredentials* self =
-        reinterpret_cast<const struct SolidSyslogMbedTlsPemBufferCredentials*>(base);
+    const auto* self = reinterpret_cast<const struct SolidSyslogMbedTlsPemBufferCredentials*>(base);
     return (self->CaChain.raw.p == nullptr) && (self->ClientCertChain.raw.p == nullptr) &&
            (mbedtls_pk_get_type(&self->ClientKey) == MBEDTLS_PK_NONE);
 }
