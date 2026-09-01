@@ -36,16 +36,26 @@ static inline void OpenSslPemFileCredentials_LoadClientCredential(
     const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
 );
 static void OpenSslPemFileCredentials_Release(struct SolidSyslogOpenSslCredentials* base);
+static inline struct SolidSyslogOpenSslPemFileCredentials* OpenSslPemFileCredentials_SelfFromBase(
+    struct SolidSyslogOpenSslCredentials* base
+);
 
 void OpenSslPemFileCredentials_Initialise(
     struct SolidSyslogOpenSslCredentials* base,
     const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
 )
 {
-    struct SolidSyslogOpenSslPemFileCredentials* self = (struct SolidSyslogOpenSslPemFileCredentials*) base;
+    struct SolidSyslogOpenSslPemFileCredentials* self = OpenSslPemFileCredentials_SelfFromBase(base);
     self->Base.Install = OpenSslPemFileCredentials_Install;
     self->Base.Release = OpenSslPemFileCredentials_Release;
     self->Config = *config;
+}
+
+static inline struct SolidSyslogOpenSslPemFileCredentials* OpenSslPemFileCredentials_SelfFromBase(
+    struct SolidSyslogOpenSslCredentials* base
+)
+{
+    return (struct SolidSyslogOpenSslPemFileCredentials*) base;
 }
 
 /* Trust anchors are named by path and opened by OpenSSL - this library performs
@@ -58,7 +68,7 @@ static bool OpenSslPemFileCredentials_Install(
     struct SolidSyslogTlsCredentialsInstalled* installed
 )
 {
-    struct SolidSyslogOpenSslPemFileCredentials* self = (struct SolidSyslogOpenSslPemFileCredentials*) base;
+    struct SolidSyslogOpenSslPemFileCredentials* self = OpenSslPemFileCredentials_SelfFromBase(base);
     bool ok = true;
     installed->TrustAnchorsInstalled = false;
     installed->Fingerprints = NULL;
