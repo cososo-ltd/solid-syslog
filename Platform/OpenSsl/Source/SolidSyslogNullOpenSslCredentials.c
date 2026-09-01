@@ -19,6 +19,8 @@ static bool NullOpenSslCredentials_NullInstall(
     (void) self;
     (void) ctx;
     installed->TrustAnchorsInstalled = false;
+    installed->Fingerprints = NULL;
+    installed->FingerprintCount = 0;
     return true;
 }
 

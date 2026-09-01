@@ -13,6 +13,7 @@
 #define SOLIDSYSLOGTLSCREDENTIALSINSTALLED_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "SolidSyslogExternC.h"
 
@@ -28,6 +29,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  can be left as the enforcement point, so a backend that installs
          *  anchors and does not say so verifies nothing. */
         bool TrustAnchorsInstalled;
+        /** Certificate fingerprints authorising the peer, in the RFC 5425
+         *  §4.2.2 form. Any one of them authorises, so a collector's old and
+         *  new certificate can both be pinned across a renewal. The strings
+         *  are the backend's and must stay valid until its Release. NULL with
+         *  a count of zero where no peer is pinned. */
+        const char* const* Fingerprints;
+        size_t FingerprintCount;
     };
 
 SOLIDSYSLOG_EXTERN_C_END
