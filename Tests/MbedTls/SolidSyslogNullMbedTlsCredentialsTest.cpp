@@ -45,3 +45,8 @@ TEST(SolidSyslogNullMbedTlsCredentials, InstallReportsNoFingerprints)
     POINTERS_EQUAL(nullptr, installed.Fingerprints);
     UNSIGNED_LONGS_EQUAL(0, installed.FingerprintCount);
 }
+
+TEST(SolidSyslogNullMbedTlsCredentials, ReleaseDoesNotCrash)
+{
+    credentials->Release(credentials);
+}

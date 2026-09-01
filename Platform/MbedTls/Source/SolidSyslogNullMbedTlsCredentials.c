@@ -24,8 +24,16 @@ static bool NullMbedTlsCredentials_NullInstall(
     return true;
 }
 
+static void NullMbedTlsCredentials_NullRelease(struct SolidSyslogMbedTlsCredentials* self)
+{
+    (void) self;
+}
+
 struct SolidSyslogMbedTlsCredentials* SolidSyslogNullMbedTlsCredentials_Get(void)
 {
-    static struct SolidSyslogMbedTlsCredentials instance = {NullMbedTlsCredentials_NullInstall, NULL};
+    static struct SolidSyslogMbedTlsCredentials instance = {
+        NullMbedTlsCredentials_NullInstall,
+        NullMbedTlsCredentials_NullRelease
+    };
     return &instance;
 }
