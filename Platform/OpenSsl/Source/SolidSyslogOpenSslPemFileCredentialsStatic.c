@@ -63,14 +63,13 @@ struct SolidSyslogOpenSslCredentials* SolidSyslogOpenSslPemFileCredentials_Creat
 void SolidSyslogOpenSslPemFileCredentials_Destroy(struct SolidSyslogOpenSslCredentials* base)
 {
     size_t index = OpenSslPemFileCredentials_IndexFromHandle(base);
-    bool released =
-        SolidSyslogPoolAllocator_IndexIsValid(&OpenSslPemFileCredentials_Allocator, index) &&
-        SolidSyslogPoolAllocator_FreeIfInUse(
-            &OpenSslPemFileCredentials_Allocator,
-            index,
-            OpenSslPemFileCredentials_CleanupAtIndex,
-            NULL
-        );
+    bool released = SolidSyslogPoolAllocator_IndexIsValid(&OpenSslPemFileCredentials_Allocator, index) &&
+                    SolidSyslogPoolAllocator_FreeIfInUse(
+                        &OpenSslPemFileCredentials_Allocator,
+                        index,
+                        OpenSslPemFileCredentials_CleanupAtIndex,
+                        NULL
+                    );
     if (!released)
     {
         OpenSslPemFileCredentials_Report(

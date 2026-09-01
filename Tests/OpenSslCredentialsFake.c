@@ -13,7 +13,7 @@ struct OpenSslCredentialsFake
     int ReleaseCallCount;
     bool InstallSucceeds;
     bool TrustAnchorsInstalled;
-    const char* const* Fingerprints;
+    const char* const * Fingerprints;
     size_t FingerprintCount;
 };
 
@@ -83,7 +83,7 @@ void OpenSslCredentialsFake_SetTrustAnchorsInstalled(bool installed)
     fake.TrustAnchorsInstalled = installed;
 }
 
-void OpenSslCredentialsFake_SetFingerprints(const char* const* fingerprints, size_t count)
+void OpenSslCredentialsFake_SetFingerprints(const char* const * fingerprints, size_t count)
 {
     fake.Fingerprints = fingerprints;
     fake.FingerprintCount = count;

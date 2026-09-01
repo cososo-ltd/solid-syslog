@@ -41,6 +41,20 @@ until `SolidSyslogOpenSslStream_Destroy`.
 
 ## Wiring it
 
+First a credentials source, which is where the material comes from. The one
+that ships with the pack names it by file path:
+
+```c
+static struct SolidSyslogOpenSslPemFileCredentialsConfig credentialsConfig;
+credentialsConfig = (struct SolidSyslogOpenSslPemFileCredentialsConfig) {0};
+credentialsConfig.CaBundlePath = "/etc/ssl/collector-ca.pem";
+
+struct SolidSyslogOpenSslCredentials* credentials =
+    SolidSyslogOpenSslPemFileCredentials_Create(&credentialsConfig);
+```
+
+Then the stream, which is wired to it:
+
 ```c
 /* Your TCP stream and sleep, from the platform that supplies them. */
 struct SolidSyslogStream* transport = CreateTcpStream();
@@ -49,20 +63,24 @@ static struct SolidSyslogOpenSslStreamConfig tlsConfig;
 tlsConfig = (struct SolidSyslogOpenSslStreamConfig) {0};
 tlsConfig.Transport = transport;
 tlsConfig.Sleep = MySleep;                    /* required - no fallback */
-tlsConfig.CaBundlePath = "/etc/ssl/collector-ca.pem";
+tlsConfig.Credentials = credentials;          /* required - no fallback */
 tlsConfig.ServerName = "collector.example.net";
 
 struct SolidSyslogStream* tls = SolidSyslogOpenSslStream_Create(&tlsConfig);
 ```
 
-Zero-initialise the config before filling it.
+Zero-initialise each config before filling it.
 
-For mutual TLS, add the client credential - both fields, since one without the
-other is reported and leaves the connection server-authenticated:
+The credentials outlive the stream that borrows them: destroy the stream first,
+then the credentials.
+
+For mutual TLS, add the client credential to the **credentials** config - both
+fields, since one without the other is reported and leaves the connection
+server-authenticated:
 
 ```c
-tlsConfig.ClientCertChainPath = "/etc/ssl/device-chain.pem";
-tlsConfig.ClientKeyPath       = "/etc/ssl/device-key.pem";
+credentialsConfig.ClientCertChainPath = "/etc/ssl/device-chain.pem";
+credentialsConfig.ClientKeyPath       = "/etc/ssl/device-key.pem";
 ```
 
 Then the sender, unchanged from the plain-TCP case - it sees a Stream and does

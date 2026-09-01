@@ -25,7 +25,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void OpenSslCredentialsFake_SetInstallSucceeds(bool succeeds);
     void OpenSslCredentialsFake_SetTrustAnchorsInstalled(bool installed);
-    void OpenSslCredentialsFake_SetFingerprints(const char* const* fingerprints, size_t count);
+    void OpenSslCredentialsFake_SetFingerprints(const char* const * fingerprints, size_t count);
 
 SOLIDSYSLOG_EXTERN_C_END
 
