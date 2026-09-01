@@ -43,8 +43,7 @@ after an outage or immediately by calling `SolidSyslogSender_Disconnect`.
 
 ## Where it differs from the contract
 
-Three differences, each tracked. Read them before relying on the corresponding
-obligation.
+Each is tracked. Read them before relying on the corresponding obligation.
 
 ### A peer cannot be authorised by certificate fingerprint
 

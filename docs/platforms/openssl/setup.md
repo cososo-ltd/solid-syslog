@@ -49,9 +49,19 @@ static struct SolidSyslogOpenSslPemFileCredentialsConfig credentialsConfig;
 credentialsConfig = (struct SolidSyslogOpenSslPemFileCredentialsConfig) {0};
 credentialsConfig.CaBundlePath = "/etc/ssl/collector-ca.pem";
 
+/* For mutual TLS, add the client credential here - both fields, since one
+   without the other is reported and leaves the connection
+   server-authenticated. */
+credentialsConfig.ClientCertChainPath = "/etc/ssl/device-chain.pem";
+credentialsConfig.ClientKeyPath       = "/etc/ssl/device-key.pem";
+
 struct SolidSyslogOpenSslCredentials* credentials =
     SolidSyslogOpenSslPemFileCredentials_Create(&credentialsConfig);
 ```
+
+`SolidSyslogOpenSslPemFileCredentials_Create` copies the configuration, so every
+field has to be set before it is called. Assigning one afterwards changes
+nothing.
 
 Then the stream, which is wired to it:
 
@@ -74,15 +84,6 @@ Zero-initialise each config before filling it.
 The credentials outlive the stream that borrows them: destroy the stream first,
 then the credentials.
 
-For mutual TLS, add the client credential to the **credentials** config - both
-fields, since one without the other is reported and leaves the connection
-server-authenticated:
-
-```c
-credentialsConfig.ClientCertChainPath = "/etc/ssl/device-chain.pem";
-credentialsConfig.ClientKeyPath       = "/etc/ssl/device-key.pem";
-```
-
 Then the sender, unchanged from the plain-TCP case - it sees a Stream and does
 not know or care that it is a TLS one:
 
@@ -96,8 +97,9 @@ senderConfig.Endpoint = GetEndpoint;
 struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&senderConfig);
 ```
 
-Tear down in reverse order: sender, address, TLS stream, then the transport you
-created.
+Tear down in reverse order: sender, address, TLS stream, the credentials, then
+the transport you created. The stream borrows the credentials, so they outlive
+it.
 
 ## When it does not work
 
