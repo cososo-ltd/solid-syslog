@@ -19,6 +19,8 @@ static bool NullMbedTlsCredentials_NullInstall(
     (void) self;
     (void) conf;
     installed->TrustAnchorsInstalled = false;
+    installed->Fingerprints = NULL;
+    installed->FingerprintCount = 0;
     return true;
 }
 
