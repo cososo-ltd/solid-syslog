@@ -165,6 +165,7 @@ if(SOLIDSYSLOG_OPENSSL)
         SolidSyslogOpenSslAesGcmPolicyTest.cpp
         OpenSslFakeTest.cpp
         SolidSyslogOpenSslNullCredentialsTest.cpp
+        SolidSyslogOpenSslPemFileCredentialsTest.cpp
     )
 endif()
 
