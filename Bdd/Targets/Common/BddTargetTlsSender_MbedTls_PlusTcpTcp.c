@@ -27,6 +27,7 @@
 #include "BddTargetTlsConfig.h"
 #include "SolidSyslogPlusTcpAddress.h"
 #include "SolidSyslogPlusTcpTcpStream.h"
+#include "SolidSyslogMbedTlsHandleCredentials.h"
 #include "SolidSyslogMbedTlsStream.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogStream.h"
@@ -55,6 +56,7 @@
 struct SolidSyslogResolver;
 
 static struct SolidSyslogStream* underlyingStream;
+static struct SolidSyslogMbedTlsCredentials* credentials;
 static struct SolidSyslogStream* tlsStream;
 static struct SolidSyslogAddress* address;
 static struct SolidSyslogSender* sender;
@@ -367,13 +369,18 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     tlsStreamConfig.Transport = underlyingStream;
     tlsStreamConfig.Sleep = RtosSleep;
     tlsStreamConfig.Rng = &drbg;
-    tlsStreamConfig.CaChain = &caChain;
     /* Plain-TLS and mTLS share one SNI on this oracle (CN/SAN = "syslog-ng"),
      * so BddTargetTlsConfig_GetServerName and BddTargetMtlsConfig_GetServerName
      * return the same string. Use the TLS one to make the equivalence explicit. */
     tlsStreamConfig.ServerName = BddTargetTlsConfig_GetServerName();
-    tlsStreamConfig.ClientCertChain = &clientCertChain;
-    tlsStreamConfig.ClientKey = &clientKey;
+    static struct SolidSyslogMbedTlsHandleCredentialsConfig credentialsConfig;
+    credentialsConfig = (struct SolidSyslogMbedTlsHandleCredentialsConfig) {0};
+    credentialsConfig.Rng = &drbg;
+    credentialsConfig.CaChain = &caChain;
+    credentialsConfig.ClientCertChain = &clientCertChain;
+    credentialsConfig.ClientKey = &clientKey;
+    credentials = SolidSyslogMbedTlsHandleCredentials_Create(&credentialsConfig);
+    tlsStreamConfig.Credentials = credentials;
     tlsStream = SolidSyslogMbedTlsStream_Create(&tlsStreamConfig);
 
     address = SolidSyslogPlusTcpAddress_Create();
@@ -403,6 +410,7 @@ void BddTargetTlsSender_Destroy(void)
     SolidSyslogStreamSender_Destroy(sender);
     SolidSyslogPlusTcpAddress_Destroy(address);
     SolidSyslogMbedTlsStream_Destroy(tlsStream);
+    SolidSyslogMbedTlsHandleCredentials_Destroy(credentials);
     SolidSyslogPlusTcpTcpStream_Destroy(underlyingStream);
 
     /* Entropy / DRBG / parsed certs survive across Destroy -> Create cycles to
