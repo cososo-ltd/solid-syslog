@@ -12,6 +12,8 @@ add_library(SolidSyslogMbedTls INTERFACE)
 # Unused TUs dead-strip at link time (-Wl,--gc-sections).
 target_sources(SolidSyslogMbedTls INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsNullCredentials.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsHandleCredentials.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsHandleCredentialsStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsStream.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsStreamStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsHmacSha256Policy.c

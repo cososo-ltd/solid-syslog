@@ -12,6 +12,8 @@ extern "C"
 #include "MbedTlsTestServer.h"
 #include "SocketStream.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogMbedTlsCredentialsDefinition.h"
+#include "SolidSyslogMbedTlsHandleCredentials.h"
 #include "SolidSyslogMbedTlsStream.h"
 #include "SolidSyslogMbedTlsStreamErrors.h"
 #include "SolidSyslogPrival.h"
@@ -69,6 +71,8 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
     struct MbedTlsTestServer* server            = nullptr;
     struct SolidSyslogStream* clientTransport   = nullptr;
     struct SolidSyslogStream* tlsStream         = nullptr;
+    struct SolidSyslogMbedTlsHandleCredentialsConfig credsConfig = {};
+    struct SolidSyslogMbedTlsCredentials* credentials = nullptr;
     struct SolidSyslogAddress* addr             = nullptr;
 
     void setup() override
@@ -112,6 +116,10 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
         if (tlsStream != nullptr)
         {
             SolidSyslogMbedTlsStream_Destroy(tlsStream);
+        }
+        if (credentials != nullptr)
+        {
+            SolidSyslogMbedTlsHandleCredentials_Destroy(credentials);
         }
         if (clientTransport != nullptr)
         {
@@ -180,20 +188,31 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
         MbedTlsTestCert_Create(&certConfig, outCert, &rng);
     }
 
-    /* Common config wiring used by every integration test: transport, sleep,
-     * fixture-owned DRBG, and the trusted-CA / hostname pair built in setup().
-     * Per-test tweaks (e.g. swapping the CA chain to test rejection, or
-     * adding ClientCertChain + ClientKey for mTLS) overlay onto the returned
-     * struct before passing it to SolidSyslogMbedTlsStream_Create. */
+    /* Common wiring used by every integration test: transport, sleep,
+     * fixture-owned DRBG, and the hostname built in setup(). The material -
+     * trust anchors here, plus ClientCertChain / ClientKey where a test wants
+     * mTLS - goes on credsConfig, which CreateTlsStream turns into the
+     * credentials the stream asks at Open. Per-test tweaks overlay onto either
+     * struct before CreateTlsStream. */
     struct SolidSyslogMbedTlsStreamConfig BuildBaseConfig(struct SolidSyslogStream* transport)
     {
+        credsConfig = {};
+        credsConfig.Rng = &rng;
+        credsConfig.CaChain = &trustedCa.Cert;
+
         struct SolidSyslogMbedTlsStreamConfig cfg = {};
         cfg.Transport = transport;
         cfg.Sleep = NoOpSleep;
         cfg.Rng = &rng;
-        cfg.CaChain = &trustedCa.Cert;
         cfg.ServerName = TEST_SERVER_HOSTNAME;
         return cfg;
+    }
+
+    struct SolidSyslogStream* CreateTlsStream(struct SolidSyslogMbedTlsStreamConfig* cfg)
+    {
+        credentials = SolidSyslogMbedTlsHandleCredentials_Create(&credsConfig);
+        cfg->Credentials = credentials;
+        return SolidSyslogMbedTlsStream_Create(cfg);
     }
 };
 
@@ -204,7 +223,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsWhenServerCertSignedB
 {
     struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+    tlsStream = CreateTlsStream(&config);
 
     bool opened = SolidSyslogStream_Open(tlsStream, addr);
 
@@ -228,8 +247,8 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertSignedByUn
 
     struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    config.CaChain = &untrustedCa.Cert;
-    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+    credsConfig.CaChain = &untrustedCa.Cert;
+    tlsStream = CreateTlsStream(&config);
 
     bool opened = SolidSyslogStream_Open(tlsStream, addr);
 
@@ -245,7 +264,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerNameDoesNotMat
     struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
     config.ServerName = "wrong-host.example.com"; /* server cert has SAN syslog.example.com */
-    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+    tlsStream = CreateTlsStream(&config);
 
     bool opened = SolidSyslogStream_Open(tlsStream, addr);
 
@@ -253,20 +272,23 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerNameDoesNotMat
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
 }
 
-/* No trust anchors at all. mbedtls_ssl_conf_ca_chain takes the NULL without
- * complaint, so the fault only surfaces when the peer certificate finds no
- * parent to chain to - an untrusted peer, which is not the same diagnosis as
- * the anchors never having been configured. #753 covers that gap. */
-TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsAsUntrustedWhenNoTrustAnchorsAreConfigured)
+/* No trust anchors and no pinned fingerprint: nothing authorises the peer, so
+ * the connection stops before the handshake rather than reaching a collector
+ * this stream cannot identify. */
+TEST(SolidSyslogMbedTlsStreamIntegration, OpenFailsWhenNothingAuthorisesThePeer)
 
 {
     struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    config.CaChain = nullptr;
-    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+    credsConfig.CaChain = nullptr;
+    tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
-    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
+    LONGS_EQUAL(1, CapturedErrorCount);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, LastCapturedError.Severity);
+    POINTERS_EQUAL(&SolidSyslogMbedTlsStreamErrorSource, LastCapturedError.Source);
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, LastCapturedError.Category);
+    LONGS_EQUAL(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NO_PEER_AUTHORISATION, LastCapturedError.Detail);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertHasExpired)
@@ -277,7 +299,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertHasExpired
 
     struct SolidSyslogStream* transport = StartServerWithCert(&expiredCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+    tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
@@ -293,7 +315,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertIsNotYetVa
 
     struct SolidSyslogStream* transport = StartServerWithCert(&futureCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+    tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID);
@@ -316,9 +338,9 @@ TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeSucceedsWithClientCe
 
     struct SolidSyslogStream* transport = StartServerRequiringClientCa(&serverCert, &clientCa);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    config.ClientCertChain = &clientCert.Cert;
-    config.ClientKey = &clientCert.Key;
-    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+    credsConfig.ClientCertChain = &clientCert.Cert;
+    credsConfig.ClientKey = &clientCert.Key;
+    tlsStream = CreateTlsStream(&config);
 
     bool opened = SolidSyslogStream_Open(tlsStream, addr);
 
@@ -346,7 +368,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeRejectedWhenClientSe
 
     struct SolidSyslogStream* transport = StartServerRequiringClientCa(&serverCert, &clientCa);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+    tlsStream = CreateTlsStream(&config);
 
     bool opened = SolidSyslogStream_Open(tlsStream, addr);
 
@@ -379,9 +401,9 @@ TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeRejectedWhenClientCe
 
     struct SolidSyslogStream* transport = StartServerRequiringClientCa(&serverCert, &trustedClientCa);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    config.ClientCertChain = &clientCert.Cert;
-    config.ClientKey = &clientCert.Key;
-    tlsStream = SolidSyslogMbedTlsStream_Create(&config);
+    credsConfig.ClientCertChain = &clientCert.Cert;
+    credsConfig.ClientKey = &clientCert.Key;
+    tlsStream = CreateTlsStream(&config);
 
     bool opened = SolidSyslogStream_Open(tlsStream, addr);
 

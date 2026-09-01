@@ -13,6 +13,7 @@ add_executable(SolidSyslogMbedTlsStreamPoolTest
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Tests/MbedTlsCredentialsFake.c
     ${CMAKE_SOURCE_DIR}/Tests/StreamFake.c
 )
 
@@ -52,6 +53,7 @@ add_executable(SolidSyslogMbedTlsStreamTest
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
     ${CMAKE_SOURCE_DIR}/Tests/AddressFake.c
+    ${CMAKE_SOURCE_DIR}/Tests/MbedTlsCredentialsFake.c
     ${CMAKE_SOURCE_DIR}/Tests/StreamFake.c
 )
 
@@ -177,3 +179,40 @@ target_include_directories(SolidSyslogMbedTlsNullCredentialsTest PRIVATE
 )
 
 add_test(NAME SolidSyslogMbedTlsNullCredentialsTest COMMAND SolidSyslogMbedTlsNullCredentialsTest)
+
+# SolidSyslogMbedTlsHandleCredentials — the credentials backend that carries
+# caller-built, caller-owned mbedTLS handles. Driven against MbedTlsFake, which
+# already interposes conf_ca_chain / conf_own_cert / pk_check_pair.
+add_executable(SolidSyslogMbedTlsHandleCredentialsTest
+    SolidSyslogMbedTlsHandleCredentialsTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentials.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentialsStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsNullCredentials.c
+)
+
+target_link_libraries(SolidSyslogMbedTlsHandleCredentialsTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    MbedTlsFakes
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogMbedTlsHandleCredentialsTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+# The backend pulls in <mbedtls/ssl.h>; cppcheck cannot resolve mbedTLS's
+# MBEDTLS_USER_CONFIG_FILE macro indirection. Disable per-target, same as the
+# stream test exes.
+set_target_properties(SolidSyslogMbedTlsHandleCredentialsTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
+)
+
+add_test(NAME SolidSyslogMbedTlsHandleCredentialsTest COMMAND SolidSyslogMbedTlsHandleCredentialsTest)

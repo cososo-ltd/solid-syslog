@@ -88,6 +88,14 @@ static inline bool MbedTlsStream_IsValidConfig(const struct SolidSyslogMbedTlsSt
             SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_RNG
         );
     }
+    else if (config->Credentials == NULL)
+    {
+        MbedTlsStream_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_CREDENTIALS
+        );
+    }
     else
     {
         valid = true;

@@ -6,6 +6,8 @@ extern "C"
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "MbedTlsCredentialsFake.h"
+#include "SolidSyslogMbedTlsCredentialsDefinition.h"
 #include "SolidSyslogMbedTlsStream.h"
 #include "SolidSyslogMbedTlsStreamErrors.h"
 #include "SolidSyslogNullStream.h"
@@ -61,6 +63,8 @@ TEST_GROUP(SolidSyslogMbedTlsStreamPool)
         config.Transport = transport;
         config.Sleep     = NoOpSleep;
         config.Rng       = &rng;
+        MbedTlsCredentialsFake_Reset();
+        config.Credentials = MbedTlsCredentialsFake_Get();
     }
 
     void teardown() override
@@ -181,6 +185,30 @@ TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullRngReportsError)
         &SolidSyslogMbedTlsStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_RNG
+    );
+}
+
+TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullCredentialsReturnsFallback)
+{
+    config.Credentials = nullptr;
+
+    struct SolidSyslogStream* fallback = SolidSyslogMbedTlsStream_Create(&config);
+
+    CHECK_NULL_STREAM(fallback);
+}
+
+TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullCredentialsReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    config.Credentials = nullptr;
+
+    SolidSyslogMbedTlsStream_Create(&config);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogMbedTlsStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_CREDENTIALS
     );
 }
 
