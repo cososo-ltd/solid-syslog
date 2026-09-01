@@ -5,8 +5,13 @@
 #ifndef SOLIDSYSLOGOPENSSLPEMFILECREDENTIALSPRIVATE_H
 #define SOLIDSYSLOGOPENSSLPEMFILECREDENTIALSPRIVATE_H
 
+#include <stdint.h>
+
+#include "SolidSyslogError.h"
 #include "SolidSyslogOpenSslCredentialsDefinition.h"
 #include "SolidSyslogOpenSslPemFileCredentials.h"
+#include "SolidSyslogOpenSslPemFileCredentialsErrors.h"
+#include "SolidSyslogPrival.h"
 
 struct SolidSyslogOpenSslPemFileCredentials
 {
@@ -18,5 +23,14 @@ void OpenSslPemFileCredentials_Initialise(
     struct SolidSyslogOpenSslCredentials* base,
     const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
 );
+
+static inline void OpenSslPemFileCredentials_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogOpenSslPemFileCredentialsErrors code
+)
+{
+    SolidSyslog_Error(severity, &OpenSslPemFileCredentialsErrorSource, category, (int32_t) code);
+}
 
 #endif /* SOLIDSYSLOGOPENSSLPEMFILECREDENTIALSPRIVATE_H */

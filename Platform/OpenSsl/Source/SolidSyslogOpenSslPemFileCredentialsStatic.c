@@ -7,10 +7,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogOpenSslCredentialsDefinition.h"
 #include "SolidSyslogOpenSslNullCredentials.h"
 #include "SolidSyslogOpenSslPemFileCredentialsPrivate.h"
 #include "SolidSyslogPoolAllocator.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 
 static inline size_t OpenSslPemFileCredentials_IndexFromHandle(const struct SolidSyslogOpenSslCredentials* base);
@@ -29,11 +32,22 @@ struct SolidSyslogOpenSslCredentials* SolidSyslogOpenSslPemFileCredentials_Creat
 )
 {
     struct SolidSyslogOpenSslCredentials* handle = SolidSyslogOpenSslNullCredentials_Get();
-    size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&OpenSslPemFileCredentials_Allocator);
-    if (SolidSyslogPoolAllocator_IndexIsValid(&OpenSslPemFileCredentials_Allocator, index) == true)
+    if (config == NULL)
     {
-        OpenSslPemFileCredentials_Initialise(&OpenSslPemFileCredentials_Pool[index].Base, config);
-        handle = &OpenSslPemFileCredentials_Pool[index].Base;
+        OpenSslPemFileCredentials_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_NULL_CONFIG
+        );
+    }
+    else
+    {
+        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&OpenSslPemFileCredentials_Allocator);
+        if (SolidSyslogPoolAllocator_IndexIsValid(&OpenSslPemFileCredentials_Allocator, index) == true)
+        {
+            OpenSslPemFileCredentials_Initialise(&OpenSslPemFileCredentials_Pool[index].Base, config);
+            handle = &OpenSslPemFileCredentials_Pool[index].Base;
+        }
     }
     return handle;
 }

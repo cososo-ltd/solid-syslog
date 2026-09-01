@@ -9,6 +9,8 @@
 #include "SolidSyslogOpenSslCredentialsDefinition.h"
 #include "SolidSyslogOpenSslPemFileCredentialsPrivate.h"
 
+const struct SolidSyslogErrorSource OpenSslPemFileCredentialsErrorSource = {"OpenSslPemFileCredentials"};
+
 void OpenSslPemFileCredentials_Initialise(
     struct SolidSyslogOpenSslCredentials* base,
     const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
