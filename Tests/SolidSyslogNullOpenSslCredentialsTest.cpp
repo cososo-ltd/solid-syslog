@@ -1,6 +1,7 @@
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogNullOpenSslCredentials.h"
 #include "SolidSyslogOpenSslCredentialsDefinition.h"
+#include "SolidSyslogTlsCredentialsInstalled.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogNullOpenSslCredentials)
@@ -18,4 +19,10 @@ TEST_GROUP(SolidSyslogNullOpenSslCredentials)
 TEST(SolidSyslogNullOpenSslCredentials, GetReturnsNonNull)
 {
     CHECK_TRUE(credentials != nullptr);
+}
+
+TEST(SolidSyslogNullOpenSslCredentials, InstallReturnsTrue)
+{
+    struct SolidSyslogTlsCredentialsInstalled installed;
+    CHECK_TRUE(credentials->Install(credentials, nullptr, &installed));
 }
