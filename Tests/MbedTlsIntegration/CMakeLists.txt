@@ -47,6 +47,7 @@ endforeach()
 add_executable(MbedTlsIntegrationTests
     main.cpp
     SolidSyslogMbedTlsStreamIntegrationTest.cpp
+    SolidSyslogMbedTlsPemBufferCredentialsTest.cpp
     SolidSyslogMbedTlsAesGcmPolicyIntegrationTest.cpp
     SocketStream.c
     MbedTlsTestCert.c
@@ -55,6 +56,8 @@ add_executable(MbedTlsIntegrationTests
     ${CMAKE_SOURCE_DIR}/Tests/Support/SafeStringStandard.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentials.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentialsStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentials.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentialsStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsNullCredentials.c
@@ -74,6 +77,9 @@ target_link_libraries(MbedTlsIntegrationTests PRIVATE
 
 target_include_directories(MbedTlsIntegrationTests PRIVATE
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Interface
+    # The PEM-buffer credentials suite reads the source's own parsed state to
+    # prove Release let go of it, which needs the pack's private header.
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source
     ${CMAKE_SOURCE_DIR}/Core/Interface
     ${CMAKE_SOURCE_DIR}/Core/Source
     ${CMAKE_SOURCE_DIR}/Tests

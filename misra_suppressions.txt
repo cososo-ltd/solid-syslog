@@ -56,6 +56,7 @@ misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:48
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:129
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:116
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentials.c:59
+misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentials.c:70
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:83
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:85
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:89

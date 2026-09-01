@@ -30,8 +30,8 @@ applies RFC 6587 octet-counting framing on top either way.
 
 ## Wiring it
 
-First a credentials source, which is where the material comes from. The one that
-ships with the pack carries handles you have already built:
+First a credentials source, which is where the material comes from. Two ship
+with the pack. The first carries handles you have already built:
 
 ```c
 struct SolidSyslogMbedTlsHandleCredentialsConfig credentialsConfig = {
@@ -45,8 +45,33 @@ struct SolidSyslogMbedTlsCredentials* credentials =
 ```
 
 The `Rng` here is what checks the client key against its certificate, and the
-same seeded DRBG serves both configs. Then the stream, which is wired to the
-source:
+same seeded DRBG serves both configs.
+
+The second parses PEM you hold in memory, once per connection, and lets go of
+what it parsed when the connection ends - so a device that connects rarely does
+not keep a parsed private key in RAM in between:
+
+```c
+struct SolidSyslogMbedTlsPemBufferCredentialsConfig credentialsConfig = {
+    .CaPem         = {myCaPem, sizeof(myCaPem)},
+    .ClientCertPem = {myClientCertPem, sizeof(myClientCertPem)},
+    .ClientKeyPem  = {myClientKeyPem, sizeof(myClientKeyPem)},
+    .Rng           = &mySeededDrbg,
+};
+struct SolidSyslogMbedTlsCredentials* credentials =
+    SolidSyslogMbedTlsPemBufferCredentials_Create(&credentialsConfig);
+```
+
+**Each length must include the terminating NUL** - `strlen(pem) + 1` - because
+that is what Mbed TLS's parsers require of PEM. A length one byte short is
+reported rather than left to surface as a parse failure, which matters because
+Mbed TLS reads a certificate buffer whose last byte is not NUL as DER instead
+and fails as "not a certificate". Material baked in by `xxd -i` is the usual
+place this bites: the array it emits carries no terminator, so give the buffer
+one byte more and set it. The key must not be encrypted; no password can be
+supplied.
+
+Then the stream, which is wired to whichever source you built:
 
 ```c
 struct SolidSyslogMbedTlsStreamConfig cfg = {

@@ -30,24 +30,33 @@ when that material is no longer needed. A source backed by a security element, a
 PSA opaque key or an encrypted store is a class implementing that role, and needs
 no change here.
 
-One source ships with the pack: `SolidSyslogMbedTlsHandleCredentials`, which
-carries caller-built, caller-owned handles - an `mbedtls_x509_crt` trust chain,
-and for mutual TLS an `mbedtls_x509_crt` and `mbedtls_pk_context` pair. No part
-of the adapter opens a file, which is what allows it to run on targets built
-without `MBEDTLS_FS_IO`.
+Two sources ship with the pack, and neither opens a file - which is what allows
+the adapter to run on targets built without `MBEDTLS_FS_IO`.
+
+`SolidSyslogMbedTlsHandleCredentials` carries caller-built, caller-owned handles:
+an `mbedtls_x509_crt` trust chain, and for mutual TLS an `mbedtls_x509_crt` and
+`mbedtls_pk_context` pair. The integrator parses the material and keeps it
+parsed.
+
+`SolidSyslogMbedTlsPemBufferCredentials` carries PEM held in memory and parses it
+per connection. Between connections nothing but the integrator's own PEM is in
+memory, which may be read-only flash. What Release frees, Mbed TLS wipes:
+`mbedtls_pk_free` zeroises the key context and every limb of the private key,
+and `mbedtls_x509_crt_free` zeroises the DER it decoded. This library copies the
+PEM nowhere, so it holds no second copy to wipe.
 
 The credential window is explicit. Install is called after the transport
 connects; Release answers every Install, once, after the `ssl_config` has been
-freed and with it every pointer into the material. A source that acquires
-material per connection can therefore let go of it between connections, and one
-carrying handles the integrator owns - the shipped source - keeps them for as
-long as the integrator does.
+freed and with it every pointer into the material. That window is what a source
+reaching a secure element or an encrypted store needs, and the PEM-buffer source
+is the worked example of using it.
 
-Rotation with the shipped source is a disconnect and a re-parse: call
+Rotation with the handle source is a disconnect and a re-parse: call
 `SolidSyslogSender_Disconnect`, then free and re-parse into the same handle. The
 next send reconnects with the new material. Freeing before the disconnect
-completes is a use-after-free, because the open connection is still reading
-it.
+completes is a use-after-free, because the open connection is still reading it.
+With the PEM-buffer source, replacing the buffer is enough - the next connection
+parses whatever it then points at.
 
 ## Coexistence is an auditable contract
 
