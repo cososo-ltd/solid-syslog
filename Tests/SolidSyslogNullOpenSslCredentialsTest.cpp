@@ -45,3 +45,8 @@ TEST(SolidSyslogNullOpenSslCredentials, InstallReportsNoFingerprints)
     POINTERS_EQUAL(nullptr, installed.Fingerprints);
     UNSIGNED_LONGS_EQUAL(0, installed.FingerprintCount);
 }
+
+TEST(SolidSyslogNullOpenSslCredentials, ReleaseDoesNotCrash)
+{
+    credentials->Release(credentials);
+}

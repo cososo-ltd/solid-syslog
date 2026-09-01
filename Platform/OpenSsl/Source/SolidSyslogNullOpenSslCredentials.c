@@ -24,8 +24,16 @@ static bool NullOpenSslCredentials_NullInstall(
     return true;
 }
 
+static void NullOpenSslCredentials_NullRelease(struct SolidSyslogOpenSslCredentials* self)
+{
+    (void) self;
+}
+
 struct SolidSyslogOpenSslCredentials* SolidSyslogNullOpenSslCredentials_Get(void)
 {
-    static struct SolidSyslogOpenSslCredentials instance = {NullOpenSslCredentials_NullInstall, NULL};
+    static struct SolidSyslogOpenSslCredentials instance = {
+        NullOpenSslCredentials_NullInstall,
+        NullOpenSslCredentials_NullRelease
+    };
     return &instance;
 }
