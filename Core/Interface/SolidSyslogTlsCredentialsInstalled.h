@@ -34,7 +34,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  new certificate can both be pinned across a renewal. The strings
          *  are the backend's and must stay valid until its Release. NULL with
          *  a count of zero where no peer is pinned. */
-        const char* const* Fingerprints;
+        const char* const * Fingerprints;
         size_t FingerprintCount;
     };
 
