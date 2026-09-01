@@ -8,6 +8,7 @@
 #include <stddef.h>
 
 #include "SolidSyslogOpenSslCredentialsDefinition.h"
+#include "SolidSyslogTlsCredentialsInstalled.h"
 
 static bool NullOpenSslCredentials_NullInstall(
     struct SolidSyslogOpenSslCredentials* self,
@@ -17,7 +18,7 @@ static bool NullOpenSslCredentials_NullInstall(
 {
     (void) self;
     (void) ctx;
-    (void) installed;
+    installed->TrustAnchorsInstalled = false;
     return true;
 }
 

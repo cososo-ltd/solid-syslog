@@ -26,3 +26,11 @@ TEST(SolidSyslogNullOpenSslCredentials, InstallReturnsTrue)
     struct SolidSyslogTlsCredentialsInstalled installed;
     CHECK_TRUE(credentials->Install(credentials, nullptr, &installed));
 }
+
+TEST(SolidSyslogNullOpenSslCredentials, InstallReportsNoTrustAnchors)
+{
+    struct SolidSyslogTlsCredentialsInstalled installed;
+    installed.TrustAnchorsInstalled = true;
+    credentials->Install(credentials, nullptr, &installed);
+    CHECK_FALSE(installed.TrustAnchorsInstalled);
+}
