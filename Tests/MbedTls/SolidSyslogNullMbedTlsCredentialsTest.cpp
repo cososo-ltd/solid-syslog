@@ -1,6 +1,7 @@
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogMbedTlsCredentialsDefinition.h"
 #include "SolidSyslogNullMbedTlsCredentials.h"
+#include "SolidSyslogTlsCredentialsInstalled.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogNullMbedTlsCredentials)
@@ -18,4 +19,10 @@ TEST_GROUP(SolidSyslogNullMbedTlsCredentials)
 TEST(SolidSyslogNullMbedTlsCredentials, GetReturnsNonNull)
 {
     CHECK_TRUE(credentials != nullptr);
+}
+
+TEST(SolidSyslogNullMbedTlsCredentials, InstallReturnsTrue)
+{
+    struct SolidSyslogTlsCredentialsInstalled installed;
+    CHECK_TRUE(credentials->Install(credentials, nullptr, &installed));
 }

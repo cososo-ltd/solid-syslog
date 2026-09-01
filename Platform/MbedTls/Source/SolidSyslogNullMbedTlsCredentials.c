@@ -4,12 +4,26 @@
 
 #include "SolidSyslogNullMbedTlsCredentials.h"
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "SolidSyslogMbedTlsCredentialsDefinition.h"
+#include "SolidSyslogTlsCredentialsInstalled.h"
+
+static bool NullMbedTlsCredentials_NullInstall(
+    struct SolidSyslogMbedTlsCredentials* self,
+    struct mbedtls_ssl_config* conf,
+    struct SolidSyslogTlsCredentialsInstalled* installed
+)
+{
+    (void) self;
+    (void) conf;
+    (void) installed;
+    return true;
+}
 
 struct SolidSyslogMbedTlsCredentials* SolidSyslogNullMbedTlsCredentials_Get(void)
 {
-    static struct SolidSyslogMbedTlsCredentials instance = {NULL, NULL};
+    static struct SolidSyslogMbedTlsCredentials instance = {NullMbedTlsCredentials_NullInstall, NULL};
     return &instance;
 }
