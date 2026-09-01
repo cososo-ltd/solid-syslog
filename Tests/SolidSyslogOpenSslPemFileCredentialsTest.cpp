@@ -6,6 +6,7 @@ extern "C"
 #include "OpenSslFake.h"
 #include "SolidSyslogOpenSslCredentialsDefinition.h"
 #include "SolidSyslogOpenSslNullCredentials.h"
+#include "SolidSyslogTlsCredentialsInstalled.h"
 #include "SolidSyslogOpenSslPemFileCredentials.h"
 #include "SolidSyslogOpenSslPemFileCredentialsErrors.h"
 #include "SolidSyslogError.h"
@@ -26,10 +27,15 @@ TEST_GROUP(SolidSyslogOpenSslPemFileCredentials)
     struct SolidSyslogOpenSslCredentials* pooled[SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE] = {};
     struct SolidSyslogOpenSslCredentials* overflow = nullptr;
 
+    struct SolidSyslogTlsCredentialsInstalled installed = {};
+    int ctxStorage = 0;
+    struct ssl_ctx_st* ctx = nullptr;
+
     void setup() override
     {
         OpenSslFake_Reset();
         config.CaBundlePath = "ca.pem";
+        ctx = reinterpret_cast<struct ssl_ctx_st*>(&ctxStorage);
     }
 
     void teardown() override
@@ -129,5 +135,89 @@ TEST(SolidSyslogOpenSslPemFileCredentials, DestroyingAHandleThePoolDoesNotOwnIsR
         &OpenSslPemFileCredentialsErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_UNKNOWN_DESTROY
+    );
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallLoadsTheConfiguredTrustAnchors)
+{
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    POINTERS_EQUAL(ctx, OpenSslFake_LastLoadVerifyLocationsCtxArg());
+    STRCMP_EQUAL("ca.pem", OpenSslFake_LastCaBundlePath());
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsTheTrustAnchorsItInstalled)
+{
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    CHECK_TRUE(installed.TrustAnchorsInstalled);
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallSucceeds)
+{
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+
+    CHECK_TRUE(credentials->Install(credentials, ctx, &installed));
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallWithoutATrustAnchorPathLoadsNothing)
+{
+    config.CaBundlePath = nullptr;
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    POINTERS_EQUAL(nullptr, OpenSslFake_LastLoadVerifyLocationsCtxArg());
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallWithoutATrustAnchorPathReportsNoTrustAnchors)
+{
+    config.CaBundlePath = nullptr;
+    installed.TrustAnchorsInstalled = true;
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    CHECK_FALSE(installed.TrustAnchorsInstalled);
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsNoFingerprints)
+{
+    const char* pin = "sha-256:AA";
+    installed.Fingerprints = &pin;
+    installed.FingerprintCount = 1;
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    POINTERS_EQUAL(nullptr, installed.Fingerprints);
+    UNSIGNED_LONGS_EQUAL(0, installed.FingerprintCount);
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallFailsWhenTheTrustAnchorsWillNotLoad)
+{
+    OpenSslFake_SetLoadVerifyLocationsFails(true);
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+
+    CHECK_FALSE(credentials->Install(credentials, ctx, &installed));
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsTrustAnchorsThatWillNotLoad)
+{
+    OpenSslFake_SetLoadVerifyLocationsFails(true);
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &OpenSslPemFileCredentialsErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_TRUST_ANCHORS_NOT_LOADED
     );
 }
