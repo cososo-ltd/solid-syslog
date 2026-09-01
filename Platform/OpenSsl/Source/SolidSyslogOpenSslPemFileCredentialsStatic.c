@@ -48,6 +48,14 @@ struct SolidSyslogOpenSslCredentials* SolidSyslogOpenSslPemFileCredentials_Creat
             OpenSslPemFileCredentials_Initialise(&OpenSslPemFileCredentials_Pool[index].Base, config);
             handle = &OpenSslPemFileCredentials_Pool[index].Base;
         }
+        else
+        {
+            OpenSslPemFileCredentials_Report(
+                SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_POOL_EXHAUSTED
+            );
+        }
     }
     return handle;
 }
@@ -63,7 +71,14 @@ void SolidSyslogOpenSslPemFileCredentials_Destroy(struct SolidSyslogOpenSslCrede
             OpenSslPemFileCredentials_CleanupAtIndex,
             NULL
         );
-    (void) released;
+    if (!released)
+    {
+        OpenSslPemFileCredentials_Report(
+            SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+            SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+            SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_UNKNOWN_DESTROY
+        );
+    }
 }
 
 static inline size_t OpenSslPemFileCredentials_IndexFromHandle(const struct SolidSyslogOpenSslCredentials* base)

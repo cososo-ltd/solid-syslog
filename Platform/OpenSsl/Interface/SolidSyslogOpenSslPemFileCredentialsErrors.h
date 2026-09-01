@@ -18,6 +18,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  members name their own fault. */
     enum SolidSyslogOpenSslPemFileCredentialsErrors
     {
+        SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_POOL_EXHAUSTED,
+        SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_NULL_CONFIG,
         SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
