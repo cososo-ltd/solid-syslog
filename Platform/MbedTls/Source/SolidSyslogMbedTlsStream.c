@@ -5,7 +5,6 @@
 #include "SolidSyslogMbedTlsStream.h"
 
 #include <mbedtls/ctr_drbg.h>
-#include <mbedtls/pk.h>
 #include <mbedtls/ssl.h>
 #include <mbedtls/x509.h>
 #include <stdbool.h>
@@ -14,12 +13,14 @@
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogMbedTlsCredentialsDefinition.h"
 #include "SolidSyslogMbedTlsStreamErrors.h"
 #include "SolidSyslogMbedTlsStreamPrivate.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogTlsCredentialsInstalled.h"
 #include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogTunables.h"
 
@@ -39,9 +40,9 @@ static inline struct SolidSyslogMbedTlsStream* MbedTlsStream_SelfFromBase(struct
 static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream* self);
-static inline bool MbedTlsStream_HasClientCredential(const struct SolidSyslogMbedTlsStreamConfig* config);
-static inline bool MbedTlsStream_ClientKeyMatchesCertificate(const struct SolidSyslogMbedTlsStreamConfig* config);
-static inline bool MbedTlsStream_HasHalfOfClientCredential(const struct SolidSyslogMbedTlsStreamConfig* config);
+static inline bool MbedTlsStream_InstallCredentials(struct SolidSyslogMbedTlsStream* self);
+static inline bool MbedTlsStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed);
+static inline void MbedTlsStream_ReleaseCredentials(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbedTlsStream* self);
@@ -69,6 +70,7 @@ void SolidSyslogMbedTlsStream_Initialise(
     self->Base.Read = MbedTlsStream_Read;
     self->Base.Close = MbedTlsStream_Close;
     self->Config = *config;
+    self->CredentialsInstalled = false;
     if (MbedTlsStream_ConfigProvidesHandshakeGetter(config) == false)
     {
         /* Substitute the Null Object so the bounded-handshake loop has a
@@ -133,7 +135,11 @@ static inline void MbedTlsStream_Close(struct SolidSyslogStream* base)
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
     (void) mbedtls_ssl_close_notify(&self->SslContext);
     mbedtls_ssl_free(&self->SslContext);
+    /* The ssl_config holds the caller's certificates in its key_cert nodes until
+       it is freed, so the credentials are told the window has closed only after
+       mbedTLS has let go of them. */
     mbedtls_ssl_config_free(&self->SslConfig);
+    MbedTlsStream_ReleaseCredentials(self);
     SolidSyslogStream_Close(self->Config.Transport);
 }
 
@@ -144,7 +150,8 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
     if (ok)
     {
         MbedTlsStream_ApplyTlsPolicy(self);
-        ok = MbedTlsStream_BindContextToConfig(self) && MbedTlsStream_ConfigureExpectedHostname(self);
+        ok = MbedTlsStream_InstallCredentials(self) && MbedTlsStream_BindContextToConfig(self) &&
+             MbedTlsStream_ConfigureExpectedHostname(self);
     }
     if (ok)
     {
@@ -178,12 +185,9 @@ static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTl
 }
 
 /* TLS policy owned by the library - set per-ssl_config so it cannot leak
- * into the integrator's other ssl_configs (per coexistence contract). */
-/* No fault in our own credential stops delivery: the collector is the
- * enforcement point for it, and one that requires a client certificate refuses
- * the handshake anyway. Every failure here leaves nothing installed, so the
- * connection continues server-authenticated rather than half-presenting a
- * credential. */
+ * into the integrator's other ssl_configs (per coexistence contract). The
+ * material the policy is enforced against is not set here: the credentials
+ * source installs that, so this stream holds none of it. */
 static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream* self)
 {
     mbedtls_ssl_conf_authmode(&self->SslConfig, MBEDTLS_SSL_VERIFY_REQUIRED);
@@ -194,69 +198,49 @@ static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream*
      * RFC 9662, which updates RFC 5425, requires TLS 1.3 to be preferred
      * wherever it is implemented. */
     mbedtls_ssl_conf_min_tls_version(&self->SslConfig, MBEDTLS_SSL_VERSION_TLS1_2);
-    mbedtls_ssl_conf_ca_chain(&self->SslConfig, self->Config.CaChain, NULL);
     mbedtls_ssl_conf_rng(&self->SslConfig, mbedtls_ctr_drbg_random, self->Config.Rng);
-    if (MbedTlsStream_HasClientCredential(&self->Config))
-    {
-        if (MbedTlsStream_ClientKeyMatchesCertificate(&self->Config) == false)
-        {
-            MbedTlsStream_Report(
-                SOLIDSYSLOG_SEVERITY_WARNING,
-                SOLIDSYSLOG_CAT_BAD_CONFIG,
-                SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_MISMATCHED
-            );
-        }
-        /* Only MBEDTLS_ERR_SSL_ALLOC_FAILED, which returns before the key_cert
-         * node is appended, so nothing is left half-configured. */
-        else if (mbedtls_ssl_conf_own_cert(&self->SslConfig, self->Config.ClientCertChain, self->Config.ClientKey) != 0)
-        {
-            MbedTlsStream_Report(
-                SOLIDSYSLOG_SEVERITY_WARNING,
-                SOLIDSYSLOG_CAT_BAD_CONFIG,
-                SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
-            );
-        }
-        else
-        {
-            /* Paired and installed - the credential will be presented. */
-        }
-    }
-    else if (MbedTlsStream_HasHalfOfClientCredential(&self->Config))
+}
+
+/* Asked once per connection, after the policy is on the ssl_config and before
+ * the session binds to it, so material is fetched only for a connection
+ * actually being made. The flag is set before the call rather than after it:
+ * the contract is one Release per Install call whatever that call returned,
+ * which is what spares every backend a rollback path of its own. */
+static inline bool MbedTlsStream_InstallCredentials(struct SolidSyslogMbedTlsStream* self)
+{
+    struct SolidSyslogTlsCredentialsInstalled installed = {false, NULL, 0U};
+    self->CredentialsInstalled = true;
+    bool ok = self->Config.Credentials->Install(self->Config.Credentials, &self->SslConfig, &installed);
+    if (ok && !MbedTlsStream_PeerIsAuthorisable(&installed))
     {
         MbedTlsStream_Report(
-            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_CLIENT_CREDENTIAL_INCOMPLETE
+            SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NO_PEER_AUTHORISATION
         );
+        ok = false;
     }
-    else
+    return ok;
+}
+
+/* A peer is authorised by a chain to trust anchors or by a pinned certificate
+ * fingerprint, and RFC 5425 4.2.1 makes the second sufficient on its own. With
+ * neither, there is nothing to check the peer against, so the connection stops
+ * rather than reaching a peer this stream cannot identify. */
+static inline bool MbedTlsStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed)
+{
+    return installed->TrustAnchorsInstalled || (installed->FingerprintCount > 0U);
+}
+
+/* Answers every Install, so the integrator is always told when the credential
+ * window has closed - including on the paths where Open failed part way. */
+static inline void MbedTlsStream_ReleaseCredentials(struct SolidSyslogMbedTlsStream* self)
+{
+    if (self->CredentialsInstalled)
     {
-        /* Neither supplied - server-authenticated TLS is the deliberate case. */
+        self->CredentialsInstalled = false;
+        self->Config.Credentials->Release(self->Config.Credentials);
     }
-}
-
-static inline bool MbedTlsStream_HasClientCredential(const struct SolidSyslogMbedTlsStreamConfig* config)
-{
-    return (config->ClientCertChain != NULL) && (config->ClientKey != NULL);
-}
-
-/* mbedtls_ssl_conf_own_cert does not check the pair it is handed, and names this
- * function in its own documentation as the way to check it. */
-static inline bool MbedTlsStream_ClientKeyMatchesCertificate(const struct SolidSyslogMbedTlsStreamConfig* config)
-{
-    return mbedtls_pk_check_pair(
-               &config->ClientCertChain->pk,
-               config->ClientKey,
-               mbedtls_ctr_drbg_random,
-               config->Rng
-           ) == 0;
-}
-
-/* One half without the other. The integrator asked for mutual TLS and will not
- * get it, so it is reported rather than read as a decision to go without. */
-static inline bool MbedTlsStream_HasHalfOfClientCredential(const struct SolidSyslogMbedTlsStreamConfig* config)
-{
-    return (config->ClientCertChain != NULL) != (config->ClientKey != NULL);
 }
 
 static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsStream* self)

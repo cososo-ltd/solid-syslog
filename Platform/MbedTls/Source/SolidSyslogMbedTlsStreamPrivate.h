@@ -5,6 +5,7 @@
 #ifndef SOLIDSYSLOGMBEDTLSSTREAMPRIVATE_H
 #define SOLIDSYSLOGMBEDTLSSTREAMPRIVATE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include <mbedtls/ssl.h>
@@ -21,6 +22,11 @@ struct SolidSyslogMbedTlsStream
     struct SolidSyslogMbedTlsStreamConfig Config;
     mbedtls_ssl_config SslConfig;
     mbedtls_ssl_context SslContext;
+    /* Set immediately before Install is called, cleared by the Release that
+     * answers it. The contract is one Release per Install call whatever that
+     * call returned, and Close is idempotent, so the flag is what keeps both
+     * true at once. */
+    bool CredentialsInstalled;
 };
 
 void SolidSyslogMbedTlsStream_Initialise(
