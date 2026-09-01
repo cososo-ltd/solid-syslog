@@ -20,8 +20,8 @@ struct SolidSyslogLwipRawDatagram
     struct udp_pcb* Pcb;
 };
 
-void LwipRawDatagram_Initialise(struct SolidSyslogDatagram* base);
-void LwipRawDatagram_Cleanup(struct SolidSyslogDatagram* base);
+void SolidSyslogLwipRawDatagram_Initialise(struct SolidSyslogDatagram* base);
+void SolidSyslogLwipRawDatagram_Cleanup(struct SolidSyslogDatagram* base);
 
 static inline void LwipRawDatagram_Report(
     enum SolidSyslogSeverity severity,

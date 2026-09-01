@@ -21,7 +21,7 @@ static void MetaSd_Format(struct SolidSyslogStructuredData* base, struct SolidSy
 
 static inline struct SolidSyslogMetaSd* MetaSd_SelfFromBase(struct SolidSyslogStructuredData* base);
 
-void MetaSd_Initialise(struct SolidSyslogStructuredData* base, const struct SolidSyslogMetaSdConfig* config)
+void SolidSyslogMetaSd_Initialise(struct SolidSyslogStructuredData* base, const struct SolidSyslogMetaSdConfig* config)
 {
     struct SolidSyslogMetaSd* self = MetaSd_SelfFromBase(base);
     self->Base.Format = MetaSd_Format;
@@ -31,11 +31,11 @@ void MetaSd_Initialise(struct SolidSyslogStructuredData* base, const struct Soli
     self->LanguageContext = config->LanguageContext;
 }
 
-void MetaSd_Cleanup(struct SolidSyslogStructuredData* base)
+void SolidSyslogMetaSd_Cleanup(struct SolidSyslogStructuredData* base)
 {
     /* Overwrite the abstract base with the shared NullSd vtable so use-after-destroy
      * is a safe no-op rather than a NULL-fn-pointer crash. Derived fields are private
-     * to this TU; the next MetaSd_Initialise overwrites them. */
+     * to this TU; the next SolidSyslogMetaSd_Initialise overwrites them. */
     *base = *SolidSyslogNullSd_Get();
 }
 

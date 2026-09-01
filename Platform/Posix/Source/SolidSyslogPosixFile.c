@@ -40,7 +40,7 @@ static bool PosixFile_Delete(struct SolidSyslogFile* base, const char* path);
 
 static inline struct SolidSyslogPosixFile* PosixFile_SelfFromBase(struct SolidSyslogFile* base);
 
-void PosixFile_Initialise(struct SolidSyslogFile* base)
+void SolidSyslogPosixFile_Initialise(struct SolidSyslogFile* base)
 {
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
     self->Base.Open = PosixFile_Open;
@@ -56,7 +56,7 @@ void PosixFile_Initialise(struct SolidSyslogFile* base)
     self->Fd = INVALID_FD;
 }
 
-void PosixFile_Cleanup(struct SolidSyslogFile* base)
+void SolidSyslogPosixFile_Cleanup(struct SolidSyslogFile* base)
 {
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
     if (self->Fd != INVALID_FD)

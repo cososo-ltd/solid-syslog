@@ -35,7 +35,7 @@ struct SolidSyslogResolver* SolidSyslogLwipRawResolver_Create(void)
     struct SolidSyslogResolver* handle = SolidSyslogNullResolver_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&LwipRawResolver_Allocator, index) == true)
     {
-        LwipRawResolver_Initialise(&LwipRawResolver_Pool[index].Base);
+        SolidSyslogLwipRawResolver_Initialise(&LwipRawResolver_Pool[index].Base);
         handle = &LwipRawResolver_Pool[index].Base;
     }
     else
@@ -82,5 +82,5 @@ static inline size_t LwipRawResolver_IndexFromHandle(const struct SolidSyslogRes
 static inline void LwipRawResolver_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    LwipRawResolver_Cleanup(&LwipRawResolver_Pool[index].Base);
+    SolidSyslogLwipRawResolver_Cleanup(&LwipRawResolver_Pool[index].Base);
 }

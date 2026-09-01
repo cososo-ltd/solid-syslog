@@ -31,8 +31,11 @@ struct SolidSyslogOpenSslStream
     bool CredentialsInstalled;
 };
 
-void OpenSslStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogOpenSslStreamConfig* config);
-void OpenSslStream_Cleanup(struct SolidSyslogStream* base);
+void SolidSyslogOpenSslStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogOpenSslStreamConfig* config
+);
+void SolidSyslogOpenSslStream_Cleanup(struct SolidSyslogStream* base);
 
 static inline void OpenSslStream_Report(
     enum SolidSyslogSeverity severity,

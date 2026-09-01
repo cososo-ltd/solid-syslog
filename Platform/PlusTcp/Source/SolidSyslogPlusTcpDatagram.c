@@ -42,7 +42,7 @@ static inline struct SolidSyslogPlusTcpDatagram* PlusTcpDatagram_SelfFromBase(st
 static inline bool PlusTcpDatagram_IsOpen(const struct SolidSyslogPlusTcpDatagram* self);
 static inline void PlusTcpDatagram_PrimeArpIfMissing(uint32_t ip);
 
-void PlusTcpDatagram_Initialise(struct SolidSyslogDatagram* base)
+void SolidSyslogPlusTcpDatagram_Initialise(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogPlusTcpDatagram* self = PlusTcpDatagram_SelfFromBase(base);
     self->Base.Open = PlusTcpDatagram_Open;
@@ -57,7 +57,7 @@ static inline struct SolidSyslogPlusTcpDatagram* PlusTcpDatagram_SelfFromBase(st
     return (struct SolidSyslogPlusTcpDatagram*) base;
 }
 
-void PlusTcpDatagram_Cleanup(struct SolidSyslogDatagram* base)
+void SolidSyslogPlusTcpDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
     PlusTcpDatagram_Close(base);
     /* Overwrite the abstract base with the shared NullDatagram vtable so

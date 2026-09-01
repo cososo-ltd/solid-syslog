@@ -39,7 +39,7 @@ static inline bool FileBlockDevice_IsValidBlockIndex(size_t blockIndex)
     return blockIndex <= MAX_BLOCK_INDEX;
 }
 
-/* vtable - forward-declared because FileBlockDevice_Initialise wires them before their definitions */
+/* vtable - forward-declared because SolidSyslogFileBlockDevice_Initialise wires them before their definitions */
 static bool FileBlockDevice_Acquire(struct SolidSyslogBlockDevice* base, size_t blockIndex);
 static bool FileBlockDevice_Dispose(struct SolidSyslogBlockDevice* base, size_t blockIndex);
 static bool FileBlockDevice_Exists(struct SolidSyslogBlockDevice* base, size_t blockIndex);
@@ -73,7 +73,7 @@ static size_t FileBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* base);
 static inline struct SolidSyslogFileBlockDevice* FileBlockDevice_SelfFromBase(struct SolidSyslogBlockDevice* base);
 static inline void FileBlockDevice_CloseIfOpen(struct OpenHandle* handle);
 
-void FileBlockDevice_Initialise(
+void SolidSyslogFileBlockDevice_Initialise(
     struct SolidSyslogBlockDevice* base,
     struct SolidSyslogFile* file,
     const char* pathPrefix,
@@ -94,12 +94,12 @@ void FileBlockDevice_Initialise(
     self->BlockSize = blockSize;
 }
 
-void FileBlockDevice_Cleanup(struct SolidSyslogBlockDevice* base)
+void SolidSyslogFileBlockDevice_Cleanup(struct SolidSyslogBlockDevice* base)
 {
     /* Close the cached file handle while we can still see it; then overwrite the
      * abstract base with the shared NullBlockDevice vtable so use-after-destroy is
      * a safe no-op rather than a NULL-fn-pointer crash. Derived fields are private
-     * to this TU; the next FileBlockDevice_Initialise overwrites them. */
+     * to this TU; the next SolidSyslogFileBlockDevice_Initialise overwrites them. */
     struct SolidSyslogFileBlockDevice* self = FileBlockDevice_SelfFromBase(base);
     FileBlockDevice_CloseIfOpen(&self->Handle);
     *base = *SolidSyslogNullBlockDevice_Get();

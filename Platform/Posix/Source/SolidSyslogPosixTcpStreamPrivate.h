@@ -20,8 +20,11 @@ struct SolidSyslogPosixTcpStream
     int Fd;
 };
 
-void PosixTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogPosixTcpStreamConfig* config);
-void PosixTcpStream_Cleanup(struct SolidSyslogStream* base);
+void SolidSyslogPosixTcpStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogPosixTcpStreamConfig* config
+);
+void SolidSyslogPosixTcpStream_Cleanup(struct SolidSyslogStream* base);
 
 static inline void PosixTcpStream_Report(
     enum SolidSyslogSeverity severity,

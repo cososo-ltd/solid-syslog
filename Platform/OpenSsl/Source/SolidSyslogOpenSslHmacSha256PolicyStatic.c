@@ -39,7 +39,7 @@ struct SolidSyslogSecurityPolicy* SolidSyslogOpenSslHmacSha256Policy_Create(
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&OpenSslHmacSha256Policy_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&OpenSslHmacSha256Policy_Allocator, index) == true)
         {
-            OpenSslHmacSha256Policy_Initialise(&OpenSslHmacSha256Policy_Pool[index].Base, config);
+            SolidSyslogOpenSslHmacSha256Policy_Initialise(&OpenSslHmacSha256Policy_Pool[index].Base, config);
             handle = &OpenSslHmacSha256Policy_Pool[index].Base;
         }
         else
@@ -104,5 +104,5 @@ static inline size_t OpenSslHmacSha256Policy_IndexFromHandle(const struct SolidS
 static inline void OpenSslHmacSha256Policy_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    OpenSslHmacSha256Policy_Cleanup(&OpenSslHmacSha256Policy_Pool[index].Base);
+    SolidSyslogOpenSslHmacSha256Policy_Cleanup(&OpenSslHmacSha256Policy_Pool[index].Base);
 }

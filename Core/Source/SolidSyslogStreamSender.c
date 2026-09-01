@@ -56,7 +56,10 @@ static bool StreamSender_SendBytes(struct SolidSyslogStreamSender* self, const v
 static void StreamSender_NilEndpoint(struct SolidSyslogEndpoint* endpoint, void* context);
 static uint32_t StreamSender_NilEndpointVersion(void* context);
 
-void StreamSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogStreamSenderConfig* config)
+void SolidSyslogStreamSender_Initialise(
+    struct SolidSyslogSender* base,
+    const struct SolidSyslogStreamSenderConfig* config
+)
 {
     struct SolidSyslogStreamSender* self = StreamSender_SelfFromBase(base);
     self->Base.Send = StreamSender_Send;
@@ -73,12 +76,12 @@ void StreamSender_Initialise(struct SolidSyslogSender* base, const struct SolidS
     self->LastEndpointVersion = 0;
 }
 
-void StreamSender_Cleanup(struct SolidSyslogSender* base)
+void SolidSyslogStreamSender_Cleanup(struct SolidSyslogSender* base)
 {
     /* Disconnect first so the live Config.Stream is still reachable; then overwrite the
      * abstract base with the shared NullSender vtable so use-after-destroy is a safe
      * no-op rather than a NULL-fn-pointer crash. Derived fields are private to this TU
-     * so the next StreamSender_Initialise overwrites them; no need to wipe here. */
+     * so the next SolidSyslogStreamSender_Initialise overwrites them; no need to wipe here. */
     StreamSender_Disconnect(base);
     *base = *SolidSyslogNullSender_Get();
 }

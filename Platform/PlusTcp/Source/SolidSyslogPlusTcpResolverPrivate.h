@@ -17,8 +17,8 @@ struct SolidSyslogPlusTcpResolver
     struct SolidSyslogResolver Base;
 };
 
-void PlusTcpResolver_Initialise(struct SolidSyslogResolver* base);
-void PlusTcpResolver_Cleanup(struct SolidSyslogResolver* base);
+void SolidSyslogPlusTcpResolver_Initialise(struct SolidSyslogResolver* base);
+void SolidSyslogPlusTcpResolver_Cleanup(struct SolidSyslogResolver* base);
 
 static inline void PlusTcpResolver_Report(
     enum SolidSyslogSeverity severity,

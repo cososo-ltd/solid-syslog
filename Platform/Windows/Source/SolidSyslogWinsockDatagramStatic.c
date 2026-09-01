@@ -35,7 +35,7 @@ struct SolidSyslogDatagram* SolidSyslogWinsockDatagram_Create(void)
     struct SolidSyslogDatagram* handle = SolidSyslogNullDatagram_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&WinsockDatagram_Allocator, index) == true)
     {
-        WinsockDatagram_Initialise(&WinsockDatagram_Pool[index].Base);
+        SolidSyslogWinsockDatagram_Initialise(&WinsockDatagram_Pool[index].Base);
         handle = &WinsockDatagram_Pool[index].Base;
     }
     else
@@ -82,5 +82,5 @@ static inline size_t WinsockDatagram_IndexFromHandle(const struct SolidSyslogDat
 static inline void WinsockDatagram_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    WinsockDatagram_Cleanup(&WinsockDatagram_Pool[index].Base);
+    SolidSyslogWinsockDatagram_Cleanup(&WinsockDatagram_Pool[index].Base);
 }

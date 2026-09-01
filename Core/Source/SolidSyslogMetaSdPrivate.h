@@ -25,8 +25,8 @@ struct SolidSyslogMetaSd
     void* LanguageContext;
 };
 
-void MetaSd_Initialise(struct SolidSyslogStructuredData* base, const struct SolidSyslogMetaSdConfig* config);
-void MetaSd_Cleanup(struct SolidSyslogStructuredData* base);
+void SolidSyslogMetaSd_Initialise(struct SolidSyslogStructuredData* base, const struct SolidSyslogMetaSdConfig* config);
+void SolidSyslogMetaSd_Cleanup(struct SolidSyslogStructuredData* base);
 
 static inline void MetaSd_Report(
     enum SolidSyslogSeverity severity,

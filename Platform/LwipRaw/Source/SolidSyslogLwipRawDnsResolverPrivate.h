@@ -30,11 +30,11 @@ struct SolidSyslogLwipRawDnsResolver
     ip_addr_t ResolvedIp;
 };
 
-void LwipRawDnsResolver_Initialise(
+void SolidSyslogLwipRawDnsResolver_Initialise(
     struct SolidSyslogResolver* base,
     const struct SolidSyslogLwipRawDnsResolverConfig* config
 );
-void LwipRawDnsResolver_Cleanup(struct SolidSyslogResolver* base);
+void SolidSyslogLwipRawDnsResolver_Cleanup(struct SolidSyslogResolver* base);
 
 static inline void LwipRawDnsResolver_Report(
     enum SolidSyslogSeverity severity,

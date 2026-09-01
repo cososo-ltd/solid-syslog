@@ -40,7 +40,7 @@ static inline struct SolidSyslogPosixMessageQueueBuffer* PosixMessageQueueBuffer
 static inline const char* PosixMessageQueueBuffer_QueueName(struct SolidSyslogPosixMessageQueueBuffer* self);
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- distinct semantic meaning; mirrors the public SolidSyslogPosixMessageQueueBuffer_Create signature plus a per-slot discriminator
-bool PosixMessageQueueBuffer_Initialise(
+bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     size_t maxMessageSize,
     long maxMessages,
@@ -73,7 +73,7 @@ bool PosixMessageQueueBuffer_Initialise(
     return self->Mq != (mqd_t) -1;
 }
 
-void PosixMessageQueueBuffer_Cleanup(struct SolidSyslogBuffer* base)
+void SolidSyslogPosixMessageQueueBuffer_Cleanup(struct SolidSyslogBuffer* base)
 {
     struct SolidSyslogPosixMessageQueueBuffer* self = PosixMessageQueueBuffer_SelfFromBase(base);
     mq_close(self->Mq);

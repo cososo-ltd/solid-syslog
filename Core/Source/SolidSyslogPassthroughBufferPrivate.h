@@ -20,8 +20,8 @@ struct SolidSyslogPassthroughBuffer
     struct SolidSyslogSender* Sender;
 };
 
-void PassthroughBuffer_Initialise(struct SolidSyslogBuffer* base, struct SolidSyslogSender* sender);
-void PassthroughBuffer_Cleanup(struct SolidSyslogBuffer* base);
+void SolidSyslogPassthroughBuffer_Initialise(struct SolidSyslogBuffer* base, struct SolidSyslogSender* sender);
+void SolidSyslogPassthroughBuffer_Cleanup(struct SolidSyslogBuffer* base);
 
 static inline void PassthroughBuffer_Report(
     enum SolidSyslogSeverity severity,

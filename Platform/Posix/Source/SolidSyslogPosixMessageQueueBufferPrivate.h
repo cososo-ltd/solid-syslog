@@ -31,13 +31,13 @@ struct SolidSyslogPosixMessageQueueBuffer
     size_t MaxMessageSize;
 };
 
-bool PosixMessageQueueBuffer_Initialise(
+bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     size_t maxMessageSize,
     long maxMessages,
     size_t slotIndex
 );
-void PosixMessageQueueBuffer_Cleanup(struct SolidSyslogBuffer* base);
+void SolidSyslogPosixMessageQueueBuffer_Cleanup(struct SolidSyslogBuffer* base);
 
 static inline void PosixMessageQueueBuffer_Report(
     enum SolidSyslogSeverity severity,

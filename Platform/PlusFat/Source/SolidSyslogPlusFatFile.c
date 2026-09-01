@@ -31,7 +31,7 @@ static inline bool PlusFatFile_IsFileOpen(const struct SolidSyslogPlusFatFile* s
 static inline bool PlusFatFile_OpenFailedBecauseAbsent(void);
 static inline bool PlusFatFile_Flush(struct SolidSyslogPlusFatFile* self);
 
-void PlusFatFile_Initialise(struct SolidSyslogFile* base)
+void SolidSyslogPlusFatFile_Initialise(struct SolidSyslogFile* base)
 {
     struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
     self->Base.Open = PlusFatFile_Open;
@@ -52,7 +52,7 @@ static inline struct SolidSyslogPlusFatFile* PlusFatFile_SelfFromBase(struct Sol
     return (struct SolidSyslogPlusFatFile*) base;
 }
 
-void PlusFatFile_Cleanup(struct SolidSyslogFile* base)
+void SolidSyslogPlusFatFile_Cleanup(struct SolidSyslogFile* base)
 {
     PlusFatFile_Close(base);
     /* Overwrite the abstract base with the shared NullFile vtable so

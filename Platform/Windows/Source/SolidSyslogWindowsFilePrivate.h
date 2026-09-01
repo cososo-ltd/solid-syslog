@@ -18,8 +18,8 @@ struct SolidSyslogWindowsFile
     int Fd;
 };
 
-void WindowsFile_Initialise(struct SolidSyslogFile* base);
-void WindowsFile_Cleanup(struct SolidSyslogFile* base);
+void SolidSyslogWindowsFile_Initialise(struct SolidSyslogFile* base);
+void SolidSyslogWindowsFile_Cleanup(struct SolidSyslogFile* base);
 
 static inline void WindowsFile_Report(
     enum SolidSyslogSeverity severity,

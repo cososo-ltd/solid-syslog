@@ -32,7 +32,7 @@ struct SolidSyslogStructuredData* SolidSyslogOriginSd_Create(const struct SolidS
     struct SolidSyslogStructuredData* handle = SolidSyslogNullSd_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&OriginSd_Allocator, index))
     {
-        OriginSd_Initialise(&OriginSd_Pool[index].Base, config);
+        SolidSyslogOriginSd_Initialise(&OriginSd_Pool[index].Base, config);
         handle = &OriginSd_Pool[index].Base;
     }
     else
@@ -78,5 +78,5 @@ static inline size_t OriginSd_IndexFromHandle(const struct SolidSyslogStructured
 static inline void OriginSd_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    OriginSd_Cleanup(&OriginSd_Pool[index].Base);
+    SolidSyslogOriginSd_Cleanup(&OriginSd_Pool[index].Base);
 }

@@ -17,8 +17,8 @@ struct SolidSyslogWinsockResolver
     struct SolidSyslogResolver Base;
 };
 
-void WinsockResolver_Initialise(struct SolidSyslogResolver* base);
-void WinsockResolver_Cleanup(struct SolidSyslogResolver* base);
+void SolidSyslogWinsockResolver_Initialise(struct SolidSyslogResolver* base);
+void SolidSyslogWinsockResolver_Cleanup(struct SolidSyslogResolver* base);
 
 static inline void WinsockResolver_Report(
     enum SolidSyslogSeverity severity,

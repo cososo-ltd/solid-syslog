@@ -43,7 +43,7 @@ static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* sel
  * ConfigLock acquisitions sequential rather than nested.
  * ----------------------------------------------------------------*/
 
-void BlockStore_Initialise(
+void SolidSyslogBlockStore_Initialise(
     struct SolidSyslogStore* base,
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockSequence* blockSequence,
@@ -62,7 +62,7 @@ void BlockStore_Initialise(
     }
 }
 
-void BlockStore_Cleanup(struct SolidSyslogStore* base)
+void SolidSyslogBlockStore_Cleanup(struct SolidSyslogStore* base)
 {
     /* Overwrite the abstract base with the shared NullStore vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash.

@@ -17,8 +17,8 @@ struct SolidSyslogPosixResolver
     struct SolidSyslogResolver Base;
 };
 
-void PosixResolver_Initialise(struct SolidSyslogResolver* base);
-void PosixResolver_Cleanup(struct SolidSyslogResolver* base);
+void SolidSyslogPosixResolver_Initialise(struct SolidSyslogResolver* base);
+void SolidSyslogPosixResolver_Cleanup(struct SolidSyslogResolver* base);
 
 static inline void PosixResolver_Report(
     enum SolidSyslogSeverity severity,

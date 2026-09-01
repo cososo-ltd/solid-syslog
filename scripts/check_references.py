@@ -155,6 +155,12 @@ ALLOWED = [
         "its sibling, in the same worked example",
     ),
     (
+        "docs/porting.md",
+        "SolidSyslogPosixMutex_Initialise",
+        "declared in the pack's own private header, where the worked example shows the "
+        "Create function calling it; an integrator never sees it",
+    ),
+    (
         "docs/rfc-compliance.md",
         "SolidSyslogFormatter_BoundedString",
         "Core-internal: named as the place the UTF-8 rule is enforced, which is a "

@@ -56,7 +56,7 @@ static bool MbedTlsHmacSha256Policy_FetchKey(
 static inline bool MbedTlsHmacSha256Policy_KeyLengthIsValid(size_t keyLength);
 static inline bool MbedTlsHmacSha256Policy_ConstantTimeEquals(const uint8_t* a, const uint8_t* b, size_t length);
 
-void MbedTlsHmacSha256Policy_Initialise(
+void SolidSyslogMbedTlsHmacSha256Policy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogMbedTlsHmacSha256PolicyConfig* config
 )
@@ -68,7 +68,7 @@ void MbedTlsHmacSha256Policy_Initialise(
     self->Config = *config;
 }
 
-void MbedTlsHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base)
+void SolidSyslogMbedTlsHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base)
 {
     /* No owned resources to release - the key is fetched on demand via the
      * GetKey callback and never stored on the instance. */

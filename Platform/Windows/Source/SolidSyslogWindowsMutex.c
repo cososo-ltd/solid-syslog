@@ -20,7 +20,7 @@ static void WindowsMutex_Unlock(struct SolidSyslogMutex* base);
 
 static inline struct SolidSyslogWindowsMutex* WindowsMutex_SelfFromBase(struct SolidSyslogMutex* base);
 
-void WindowsMutex_Initialise(struct SolidSyslogMutex* base)
+void SolidSyslogWindowsMutex_Initialise(struct SolidSyslogMutex* base)
 {
     struct SolidSyslogWindowsMutex* self = WindowsMutex_SelfFromBase(base);
     self->Base.Lock = WindowsMutex_Lock;
@@ -28,7 +28,7 @@ void WindowsMutex_Initialise(struct SolidSyslogMutex* base)
     InitializeCriticalSection(&self->Section);
 }
 
-void WindowsMutex_Cleanup(struct SolidSyslogMutex* base)
+void SolidSyslogWindowsMutex_Cleanup(struct SolidSyslogMutex* base)
 {
     struct SolidSyslogWindowsMutex* self = WindowsMutex_SelfFromBase(base);
     DeleteCriticalSection(&self->Section);

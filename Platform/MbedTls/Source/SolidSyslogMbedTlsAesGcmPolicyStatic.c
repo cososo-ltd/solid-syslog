@@ -39,7 +39,7 @@ struct SolidSyslogSecurityPolicy* SolidSyslogMbedTlsAesGcmPolicy_Create(
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&MbedTlsAesGcmPolicy_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&MbedTlsAesGcmPolicy_Allocator, index) == true)
         {
-            MbedTlsAesGcmPolicy_Initialise(&MbedTlsAesGcmPolicy_Pool[index].Base, config);
+            SolidSyslogMbedTlsAesGcmPolicy_Initialise(&MbedTlsAesGcmPolicy_Pool[index].Base, config);
             handle = &MbedTlsAesGcmPolicy_Pool[index].Base;
         }
         else
@@ -104,5 +104,5 @@ static inline size_t MbedTlsAesGcmPolicy_IndexFromHandle(const struct SolidSyslo
 static inline void MbedTlsAesGcmPolicy_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    MbedTlsAesGcmPolicy_Cleanup(&MbedTlsAesGcmPolicy_Pool[index].Base);
+    SolidSyslogMbedTlsAesGcmPolicy_Cleanup(&MbedTlsAesGcmPolicy_Pool[index].Base);
 }

@@ -45,7 +45,7 @@ struct SolidSyslogOpenSslCredentials* SolidSyslogOpenSslPemFileCredentials_Creat
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&OpenSslPemFileCredentials_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&OpenSslPemFileCredentials_Allocator, index) == true)
         {
-            OpenSslPemFileCredentials_Initialise(&OpenSslPemFileCredentials_Pool[index].Base, config);
+            SolidSyslogOpenSslPemFileCredentials_Initialise(&OpenSslPemFileCredentials_Pool[index].Base, config);
             handle = &OpenSslPemFileCredentials_Pool[index].Base;
         }
         else

@@ -23,8 +23,11 @@ struct SolidSyslogMbedTlsStream
     mbedtls_ssl_context SslContext;
 };
 
-void MbedTlsStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogMbedTlsStreamConfig* config);
-void MbedTlsStream_Cleanup(struct SolidSyslogStream* base);
+void SolidSyslogMbedTlsStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogMbedTlsStreamConfig* config
+);
+void SolidSyslogMbedTlsStream_Cleanup(struct SolidSyslogStream* base);
 
 static inline void MbedTlsStream_Report(
     enum SolidSyslogSeverity severity,

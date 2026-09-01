@@ -40,7 +40,7 @@ static inline struct SolidSyslogOpenSslPemFileCredentials* OpenSslPemFileCredent
     struct SolidSyslogOpenSslCredentials* base
 );
 
-void OpenSslPemFileCredentials_Initialise(
+void SolidSyslogOpenSslPemFileCredentials_Initialise(
     struct SolidSyslogOpenSslCredentials* base,
     const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
 )

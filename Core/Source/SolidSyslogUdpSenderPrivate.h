@@ -23,8 +23,8 @@ struct SolidSyslogUdpSender
     uint32_t LastEndpointVersion;
 };
 
-void UdpSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogUdpSenderConfig* config);
-void UdpSender_Cleanup(struct SolidSyslogSender* base);
+void SolidSyslogUdpSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogUdpSenderConfig* config);
+void SolidSyslogUdpSender_Cleanup(struct SolidSyslogSender* base);
 
 static inline void UdpSender_Report(
     enum SolidSyslogSeverity severity,

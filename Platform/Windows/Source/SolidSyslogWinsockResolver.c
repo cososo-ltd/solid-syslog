@@ -55,12 +55,12 @@ static bool WinsockResolver_Resolve(
 );
 static int WinsockResolver_MapTransport(enum SolidSyslogTransport transport);
 
-void WinsockResolver_Initialise(struct SolidSyslogResolver* base)
+void SolidSyslogWinsockResolver_Initialise(struct SolidSyslogResolver* base)
 {
     base->Resolve = WinsockResolver_Resolve;
 }
 
-void WinsockResolver_Cleanup(struct SolidSyslogResolver* base)
+void SolidSyslogWinsockResolver_Cleanup(struct SolidSyslogResolver* base)
 {
     /* Overwrite the abstract base with the shared NullResolver vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */

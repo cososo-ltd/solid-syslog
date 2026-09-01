@@ -19,11 +19,11 @@ struct SolidSyslogMbedTlsAesGcmPolicy
     struct SolidSyslogMbedTlsAesGcmPolicyConfig Config;
 };
 
-void MbedTlsAesGcmPolicy_Initialise(
+void SolidSyslogMbedTlsAesGcmPolicy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogMbedTlsAesGcmPolicyConfig* config
 );
-void MbedTlsAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base);
+void SolidSyslogMbedTlsAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base);
 
 static inline void MbedTlsAesGcmPolicy_Report(
     enum SolidSyslogSeverity severity,

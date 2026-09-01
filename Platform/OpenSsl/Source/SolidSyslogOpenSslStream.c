@@ -70,7 +70,10 @@ static inline long OpenSslStream_TransportBioCtrl(BIO* bio, int cmd, long larg, 
 static inline int OpenSslStream_TransportBioRead(BIO* bio, char* buffer, int size);
 static inline int OpenSslStream_TransportBioWrite(BIO* bio, const char* buffer, int size);
 
-void OpenSslStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogOpenSslStreamConfig* config)
+void SolidSyslogOpenSslStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogOpenSslStreamConfig* config
+)
 {
     struct SolidSyslogOpenSslStream* self = OpenSslStream_SelfFromBase(base);
     self->Base.Open = OpenSslStream_Open;
@@ -97,7 +100,7 @@ static inline struct SolidSyslogOpenSslStream* OpenSslStream_SelfFromBase(struct
     return (struct SolidSyslogOpenSslStream*) base;
 }
 
-void OpenSslStream_Cleanup(struct SolidSyslogStream* base)
+void SolidSyslogOpenSslStream_Cleanup(struct SolidSyslogStream* base)
 {
     /* Close first so an integrator who destroys a still-Open stream doesn't
      * leak the underlying transport. Close now releases the SSL, BIO_METHOD

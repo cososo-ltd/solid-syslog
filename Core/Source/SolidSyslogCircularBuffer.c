@@ -45,7 +45,7 @@ static inline void CircularBuffer_StoreRecord(struct SolidSyslogCircularBuffer* 
 static inline void CircularBuffer_LoadRecord(struct SolidSyslogCircularBuffer* self, void* data, size_t* bytesRead);
 static inline size_t CircularBuffer_PeekRecordSize(const struct SolidSyslogCircularBuffer* self);
 
-void CircularBuffer_Initialise(
+void SolidSyslogCircularBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     struct SolidSyslogMutex* mutex,
     uint8_t* ring,
@@ -61,11 +61,11 @@ void CircularBuffer_Initialise(
     CircularBuffer_ResetToStart(self);
 }
 
-void CircularBuffer_Cleanup(struct SolidSyslogBuffer* base)
+void SolidSyslogCircularBuffer_Cleanup(struct SolidSyslogBuffer* base)
 {
     /* Overwrite the abstract base with the shared NullBuffer vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. Derived
-     * fields are private to this TU; the next CircularBuffer_Initialise overwrites them. */
+     * fields are private to this TU; the next SolidSyslogCircularBuffer_Initialise overwrites them. */
     *base = *SolidSyslogNullBuffer_Get();
 }
 

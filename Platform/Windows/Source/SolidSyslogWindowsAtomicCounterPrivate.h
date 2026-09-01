@@ -19,8 +19,8 @@ struct SolidSyslogWindowsAtomicCounter
     volatile LONG Value;
 };
 
-void WindowsAtomicCounter_Initialise(struct SolidSyslogAtomicCounter* base);
-void WindowsAtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* base);
+void SolidSyslogWindowsAtomicCounter_Initialise(struct SolidSyslogAtomicCounter* base);
+void SolidSyslogWindowsAtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* base);
 
 static inline void WindowsAtomicCounter_Report(
     enum SolidSyslogSeverity severity,

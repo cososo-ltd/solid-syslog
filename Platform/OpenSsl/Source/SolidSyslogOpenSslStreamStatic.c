@@ -38,7 +38,7 @@ struct SolidSyslogStream* SolidSyslogOpenSslStream_Create(const struct SolidSysl
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&OpenSslStream_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&OpenSslStream_Allocator, index) == true)
         {
-            OpenSslStream_Initialise(&OpenSslStream_Pool[index].Base, config);
+            SolidSyslogOpenSslStream_Initialise(&OpenSslStream_Pool[index].Base, config);
             handle = &OpenSslStream_Pool[index].Base;
         }
         else
@@ -128,5 +128,5 @@ static inline size_t OpenSslStream_IndexFromHandle(const struct SolidSyslogStrea
 static inline void OpenSslStream_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    OpenSslStream_Cleanup(&OpenSslStream_Pool[index].Base);
+    SolidSyslogOpenSslStream_Cleanup(&OpenSslStream_Pool[index].Base);
 }

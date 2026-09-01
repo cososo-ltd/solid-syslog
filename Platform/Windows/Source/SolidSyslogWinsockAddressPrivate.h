@@ -19,8 +19,8 @@ struct SolidSyslogWinsockAddress
     struct sockaddr_in Sockaddr;
 };
 
-void WinsockAddress_Initialise(struct SolidSyslogAddress* base);
-void WinsockAddress_Cleanup(struct SolidSyslogAddress* base);
+void SolidSyslogWinsockAddress_Initialise(struct SolidSyslogAddress* base);
+void SolidSyslogWinsockAddress_Cleanup(struct SolidSyslogAddress* base);
 
 static inline struct sockaddr_in* SolidSyslogWinsockAddress_AsSockaddrIn(struct SolidSyslogAddress* base)
 {

@@ -39,12 +39,12 @@ static bool PlusTcpResolver_Resolve(
 );
 static BaseType_t PlusTcpResolver_MapTransport(enum SolidSyslogTransport transport);
 
-void PlusTcpResolver_Initialise(struct SolidSyslogResolver* base)
+void SolidSyslogPlusTcpResolver_Initialise(struct SolidSyslogResolver* base)
 {
     base->Resolve = PlusTcpResolver_Resolve;
 }
 
-void PlusTcpResolver_Cleanup(struct SolidSyslogResolver* base)
+void SolidSyslogPlusTcpResolver_Cleanup(struct SolidSyslogResolver* base)
 {
     /* Overwrite the abstract base with the shared NullResolver vtable so
      * use-after-destroy resolves cleanly to a failed-lookup error path

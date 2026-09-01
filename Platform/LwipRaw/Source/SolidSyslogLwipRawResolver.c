@@ -26,12 +26,12 @@ static bool LwipRawResolver_Resolve(
     struct SolidSyslogAddress* result
 );
 
-void LwipRawResolver_Initialise(struct SolidSyslogResolver* base)
+void SolidSyslogLwipRawResolver_Initialise(struct SolidSyslogResolver* base)
 {
     base->Resolve = LwipRawResolver_Resolve;
 }
 
-void LwipRawResolver_Cleanup(struct SolidSyslogResolver* base)
+void SolidSyslogLwipRawResolver_Cleanup(struct SolidSyslogResolver* base)
 {
     /* Overwrite the abstract base with the shared NullResolver vtable so
      * use-after-destroy resolves cleanly to a failed-lookup error path

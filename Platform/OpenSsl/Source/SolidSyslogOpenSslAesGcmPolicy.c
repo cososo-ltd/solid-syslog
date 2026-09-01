@@ -62,7 +62,7 @@ static bool OpenSslAesGcmPolicy_GcmDecrypt(
     const uint8_t* tagIn
 );
 
-void OpenSslAesGcmPolicy_Initialise(
+void SolidSyslogOpenSslAesGcmPolicy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogOpenSslAesGcmPolicyConfig* config
 )
@@ -74,7 +74,7 @@ void OpenSslAesGcmPolicy_Initialise(
     self->Config = *config;
 }
 
-void OpenSslAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base)
+void SolidSyslogOpenSslAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base)
 {
     /* No owned resources to release - the key is fetched on demand via the
      * GetKey callback and never stored on the instance. */

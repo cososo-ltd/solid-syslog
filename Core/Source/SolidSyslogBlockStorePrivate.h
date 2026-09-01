@@ -23,17 +23,17 @@ struct SolidSyslogBlockStore
     struct SolidSyslogBlockSequence* BlockSequence;
 };
 
-/* BlockStore_Initialise wires the vtable + composes the inner pool slots that the
+/* SolidSyslogBlockStore_Initialise wires the vtable + composes the inner pool slots that the
  * caller already acquired. The caller (Static.c) acquires the inner slots
  * itself so it can route to NullStore_Get() if either Create returns NULL
- * without ever having to undo a partial BlockStore_Initialise. */
-void BlockStore_Initialise(
+ * without ever having to undo a partial SolidSyslogBlockStore_Initialise. */
+void SolidSyslogBlockStore_Initialise(
     struct SolidSyslogStore* base,
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockSequence* blockSequence,
     const struct SolidSyslogBlockStoreConfig* config
 );
-void BlockStore_Cleanup(struct SolidSyslogStore* base);
+void SolidSyslogBlockStore_Cleanup(struct SolidSyslogStore* base);
 
 static inline void BlockStore_Report(
     enum SolidSyslogSeverity severity,

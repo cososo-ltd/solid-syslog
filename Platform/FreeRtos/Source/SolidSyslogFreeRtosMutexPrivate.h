@@ -25,8 +25,8 @@ struct SolidSyslogFreeRtosMutex
     StaticSemaphore_t Buffer;
 };
 
-void FreeRtosMutex_Initialise(struct SolidSyslogMutex* base);
-void FreeRtosMutex_Cleanup(struct SolidSyslogMutex* base);
+void SolidSyslogFreeRtosMutex_Initialise(struct SolidSyslogMutex* base);
+void SolidSyslogFreeRtosMutex_Cleanup(struct SolidSyslogMutex* base);
 
 static inline void FreeRtosMutex_Report(
     enum SolidSyslogSeverity severity,

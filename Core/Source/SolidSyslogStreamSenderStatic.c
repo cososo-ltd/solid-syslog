@@ -38,7 +38,7 @@ struct SolidSyslogSender* SolidSyslogStreamSender_Create(const struct SolidSyslo
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&StreamSender_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&StreamSender_Allocator, index))
         {
-            StreamSender_Initialise(&StreamSender_Pool[index].Base, config);
+            SolidSyslogStreamSender_Initialise(&StreamSender_Pool[index].Base, config);
             result = &StreamSender_Pool[index].Base;
         }
         else
@@ -128,5 +128,5 @@ static inline size_t StreamSender_IndexFromHandle(const struct SolidSyslogSender
 static inline void StreamSender_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    StreamSender_Cleanup(&StreamSender_Pool[index].Base);
+    SolidSyslogStreamSender_Cleanup(&StreamSender_Pool[index].Base);
 }

@@ -22,8 +22,8 @@ struct SolidSyslogFatFsFile
     bool IsOpen;
 };
 
-void FatFsFile_Initialise(struct SolidSyslogFile* base);
-void FatFsFile_Cleanup(struct SolidSyslogFile* base);
+void SolidSyslogFatFsFile_Initialise(struct SolidSyslogFile* base);
+void SolidSyslogFatFsFile_Cleanup(struct SolidSyslogFile* base);
 
 static inline void FatFsFile_Report(
     enum SolidSyslogSeverity severity,

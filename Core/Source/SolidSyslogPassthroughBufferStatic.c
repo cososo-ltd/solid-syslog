@@ -46,7 +46,7 @@ struct SolidSyslogBuffer* SolidSyslogPassthroughBuffer_Create(struct SolidSyslog
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PassthroughBuffer_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&PassthroughBuffer_Allocator, index))
         {
-            PassthroughBuffer_Initialise(&PassthroughBuffer_Pool[index].Base, sender);
+            SolidSyslogPassthroughBuffer_Initialise(&PassthroughBuffer_Pool[index].Base, sender);
             handle = &PassthroughBuffer_Pool[index].Base;
         }
         else
@@ -98,5 +98,5 @@ static inline size_t PassthroughBuffer_IndexFromHandle(const struct SolidSyslogB
 static inline void PassthroughBuffer_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    PassthroughBuffer_Cleanup(&PassthroughBuffer_Pool[index].Base);
+    SolidSyslogPassthroughBuffer_Cleanup(&PassthroughBuffer_Pool[index].Base);
 }

@@ -37,7 +37,7 @@ struct SolidSyslogMutex* SolidSyslogFreeRtosMutex_Create(void)
     struct SolidSyslogMutex* handle = SolidSyslogNullMutex_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&FreeRtosMutex_Allocator, index) == true)
     {
-        FreeRtosMutex_Initialise(&FreeRtosMutex_Pool[index].Base);
+        SolidSyslogFreeRtosMutex_Initialise(&FreeRtosMutex_Pool[index].Base);
         handle = &FreeRtosMutex_Pool[index].Base;
     }
     else
@@ -84,7 +84,7 @@ static inline size_t FreeRtosMutex_IndexFromHandle(const struct SolidSyslogMutex
 static inline void FreeRtosMutex_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    FreeRtosMutex_Cleanup(&FreeRtosMutex_Pool[index].Base);
+    SolidSyslogFreeRtosMutex_Cleanup(&FreeRtosMutex_Pool[index].Base);
 }
 
 #else

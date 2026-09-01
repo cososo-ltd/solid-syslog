@@ -22,11 +22,11 @@ struct SolidSyslogWinsockTcpStream
     SOCKET Fd;
 };
 
-void WinsockTcpStream_Initialise(
+void SolidSyslogWinsockTcpStream_Initialise(
     struct SolidSyslogStream* base,
     const struct SolidSyslogWinsockTcpStreamConfig* config
 );
-void WinsockTcpStream_Cleanup(struct SolidSyslogStream* base);
+void SolidSyslogWinsockTcpStream_Cleanup(struct SolidSyslogStream* base);
 
 static inline void WinsockTcpStream_Report(
     enum SolidSyslogSeverity severity,
