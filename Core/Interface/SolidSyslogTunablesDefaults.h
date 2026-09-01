@@ -593,15 +593,11 @@
 
 /**
  * Role pool: TLS credentials. Number of credentials instances the library's
- * internal static pool can simultaneously hold, across whichever backend is
- * compiled in - a PEM-file source, caller-built vendor handles, or an
- * integrator's own class reaching a secure element or key store. Each
- * instance carries only where its material comes from, never the material.
+ * internal static pool can simultaneously hold.
  *
- * Default 1 - one source per TLS stream is the ordinary wiring, and the
- * stream pool defaults to one. Bump it alongside
- * SOLIDSYSLOG_TLS_STREAM_POOL_SIZE where several streams draw on separate
- * sources.
+ * Default 1 - one source per TLS stream is the ordinary wiring. Bump it
+ * alongside SOLIDSYSLOG_TLS_STREAM_POOL_SIZE where several streams draw on
+ * separate sources.
  *
  * Floor: 1. Sub-floor values rejected at compile time.
  */

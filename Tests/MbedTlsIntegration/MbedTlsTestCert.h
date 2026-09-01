@@ -4,6 +4,7 @@
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/pk.h>
 #include <mbedtls/x509_crt.h>
+#include <stddef.h>
 
 #include "SolidSyslogExternC.h"
 
@@ -37,6 +38,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         struct MbedTlsTestCert* out,
         mbedtls_ctr_drbg_context* rng
     );
+
+    /* Re-emit the pair as PEM text, for tests driving a credentials source
+       that parses buffers rather than taking handles. Both write a
+       NUL-terminated string and return its length INCLUDING that terminator,
+       which is the length mbedTLS's own parsers want. */
+    size_t MbedTlsTestCert_WriteCertPem(const struct MbedTlsTestCert* cert, unsigned char* buffer, size_t capacity);
+    size_t MbedTlsTestCert_WriteKeyPem(const struct MbedTlsTestCert* cert, unsigned char* buffer, size_t capacity);
 
     void MbedTlsTestCert_Destroy(struct MbedTlsTestCert * cert);
 

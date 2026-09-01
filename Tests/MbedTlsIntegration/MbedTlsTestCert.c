@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <mbedtls/asn1.h>
 #include <mbedtls/ctr_drbg.h>
+#include <mbedtls/pem.h>
 #include <mbedtls/pk.h>
 #include <mbedtls/rsa.h>
 #include <mbedtls/x509.h>
@@ -64,6 +65,32 @@ void MbedTlsTestCert_Create(
     WriteCertToDer(config, &out->Key, rng, &der);
 
     mbedtls_x509_crt_parse_der(&out->Cert, &der.Bytes[der.StartOffset], der.Length);
+}
+
+size_t MbedTlsTestCert_WriteCertPem(const struct MbedTlsTestCert* cert, unsigned char* buffer, size_t capacity)
+{
+    size_t written = 0U;
+    int rc = mbedtls_pem_write_buffer(
+        "-----BEGIN CERTIFICATE-----\n",
+        "-----END CERTIFICATE-----\n",
+        cert->Cert.raw.p,
+        cert->Cert.raw.len,
+        buffer,
+        capacity,
+        &written
+    );
+    assert(rc == 0);
+    (void) rc;
+    /* mbedtls_pem_write_buffer counts the terminator in `written`. */
+    return written;
+}
+
+size_t MbedTlsTestCert_WriteKeyPem(const struct MbedTlsTestCert* cert, unsigned char* buffer, size_t capacity)
+{
+    int rc = mbedtls_pk_write_key_pem((mbedtls_pk_context*) &cert->Key, buffer, capacity);
+    assert(rc == 0);
+    (void) rc;
+    return strlen((const char*) buffer) + 1U;
 }
 
 void MbedTlsTestCert_Destroy(struct MbedTlsTestCert* cert)

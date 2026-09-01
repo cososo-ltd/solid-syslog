@@ -13,6 +13,8 @@ add_library(SolidSyslogMbedTls INTERFACE)
 target_sources(SolidSyslogMbedTls INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsNullCredentials.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsHandleCredentials.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsPemBufferCredentials.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsPemBufferCredentialsStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsHandleCredentialsStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsStream.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsStreamStatic.c

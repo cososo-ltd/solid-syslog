@@ -15,6 +15,8 @@
 # MbedTls:
 Platform/MbedTls/Source/SolidSyslogMbedTlsNullCredentials.c
 Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentials.c
+Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentials.c
+Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentialsStatic.c
 Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentialsStatic.c
 Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
 Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
