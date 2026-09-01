@@ -380,8 +380,15 @@ Constraints:
       `struct mq_attr`, etc.).
 - **No pointer Hungarian.** Never prefix pointer variables with `p`/`P`
   or suffix with `Ptr`. Pointer-ness is visible from the declaration.
-- **Booleans.** Predicates and boolean variables use `isX`, `hasX`,
-  or `canX` shapes (`isValid`, `hasUnsent`, `canSend`).
+- **Booleans.** A boolean that names a *condition* takes an `isX`, `hasX`
+  or `canX` shape - a predicate function (`BlockSequence_IsAboveThreshold`),
+  or a variable whose name has to carry its meaning where it is read
+  (`isValid`, `hasUnsent`, `canSend`). A short-lived local holding the
+  outcome of the work the function has just done does not: `ok`, `parsed`,
+  `released` are read next to the call that produced them, and a prefix adds
+  length without adding meaning. The test is whether the name travels - a
+  condition passed around or tested far from where it was set earns the
+  prefix; a result returned three lines later does not.
 
 ### This-pointer parameters
 
@@ -934,7 +941,8 @@ static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer
 | Function parameter / local            | `lowerCamelCase`                           | `recordLength`, `bytesAvailable`           |
 | This-pointer parameter                | `self` (own type) / `base` (abstract base) | `* self` in helpers; `* base` in vtable impls |
 | Downcast helper                       | `Class_SelfFromBase` / `Class_SelfFromArg`  | `CircularBuffer_SelfFromBase`              |
-| Boolean / predicate                   | `isX` / `hasX` / `canX`                    | `isValid`, `hasUnsent`                     |
+| Boolean condition / predicate         | `isX` / `hasX` / `canX`                    | `isValid`, `hasUnsent`                     |
+| Boolean result local                  | short domain word, lowerCamelCase          | `ok`, `parsed`, `released`                 |
 | Loop variable                         | short domain word, lowerCamelCase          | `index`, `count`, `cursor`                 |
 | Struct member                         | `PascalCase`                               | `WriteCursor`, `IntegrityCheck`, `Write` (function-pointer member) |
 | Test group (class)                    | `SolidSyslogClassTest`                     | `SolidSyslogBufferTest`                    |

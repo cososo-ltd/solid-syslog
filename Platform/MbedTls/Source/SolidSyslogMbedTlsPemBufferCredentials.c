@@ -37,6 +37,9 @@ static inline bool MbedTlsPemBufferCredentials_HasClientCredential(
 static inline bool MbedTlsPemBufferCredentials_HasHalfOfClientCredential(
     const struct SolidSyslogMbedTlsPemBufferCredentialsConfig* config
 );
+static inline bool MbedTlsPemBufferCredentials_ClientPemIsTerminated(
+    const struct SolidSyslogMbedTlsPemBufferCredentialsConfig* config
+);
 static inline bool MbedTlsPemBufferCredentials_ParseClientCredential(struct SolidSyslogMbedTlsPemBufferCredentials* self
 );
 static inline bool MbedTlsPemBufferCredentials_ClientKeyMatchesCertificate(
@@ -114,7 +117,15 @@ static inline void MbedTlsPemBufferCredentials_ConfigureClientIdentity(
 {
     if (MbedTlsPemBufferCredentials_HasClientCredential(&self->Config))
     {
-        if (MbedTlsPemBufferCredentials_ParseClientCredential(self) == false)
+        if (MbedTlsPemBufferCredentials_ClientPemIsTerminated(&self->Config) == false)
+        {
+            MbedTlsPemBufferCredentials_Report(
+                SOLIDSYSLOG_SEVERITY_WARNING,
+                SOLIDSYSLOG_CAT_BAD_CONFIG,
+                SOLIDSYSLOG_MBEDTLS_PEM_BUFFER_CREDENTIALS_ERROR_PEM_NOT_TERMINATED
+            );
+        }
+        else if (MbedTlsPemBufferCredentials_ParseClientCredential(self) == false)
         {
             MbedTlsPemBufferCredentials_Report(
                 SOLIDSYSLOG_SEVERITY_WARNING,
@@ -177,31 +188,33 @@ static inline bool MbedTlsPemBufferCredentials_HasHalfOfClientCredential(
            MbedTlsPemBufferCredentials_IsSupplied(&config->ClientKeyPem);
 }
 
-/* Both halves in one place: a certificate without its key is no more use than
- * neither, so an unterminated or unparseable half fails the pair. */
+/* Both halves, because a certificate whose key is unusable is no more use than
+ * neither. */
+static inline bool MbedTlsPemBufferCredentials_ClientPemIsTerminated(
+    const struct SolidSyslogMbedTlsPemBufferCredentialsConfig* config
+)
+{
+    return MbedTlsPemBufferCredentials_IsTerminated(&config->ClientCertPem) &&
+           MbedTlsPemBufferCredentials_IsTerminated(&config->ClientKeyPem);
+}
+
 static inline bool MbedTlsPemBufferCredentials_ParseClientCredential(struct SolidSyslogMbedTlsPemBufferCredentials* self
 )
 {
-    bool parsed = false;
-    if (MbedTlsPemBufferCredentials_IsTerminated(&self->Config.ClientCertPem) &&
-        MbedTlsPemBufferCredentials_IsTerminated(&self->Config.ClientKeyPem))
-    {
-        parsed = (mbedtls_x509_crt_parse(
-                      &self->ClientCertChain,
-                      self->Config.ClientCertPem.Bytes,
-                      self->Config.ClientCertPem.Length
-                  ) == 0) &&
-                 (mbedtls_pk_parse_key(
-                      &self->ClientKey,
-                      self->Config.ClientKeyPem.Bytes,
-                      self->Config.ClientKeyPem.Length,
-                      NULL,
-                      0U,
-                      mbedtls_ctr_drbg_random,
-                      self->Config.Rng
-                  ) == 0);
-    }
-    return parsed;
+    return (mbedtls_x509_crt_parse(
+                &self->ClientCertChain,
+                self->Config.ClientCertPem.Bytes,
+                self->Config.ClientCertPem.Length
+            ) == 0) &&
+           (mbedtls_pk_parse_key(
+                &self->ClientKey,
+                self->Config.ClientKeyPem.Bytes,
+                self->Config.ClientKeyPem.Length,
+                NULL,
+                0U,
+                mbedtls_ctr_drbg_random,
+                self->Config.Rng
+            ) == 0);
 }
 
 /* mbedtls_ssl_conf_own_cert does not check the pair it is handed, and names this
@@ -252,14 +265,20 @@ static inline bool MbedTlsPemBufferCredentials_ParseTrustAnchors(
     return parsed;
 }
 
+/* A NULL buffer is the documented way to say "not supplied". A pointer with an
+ * unusable extent is a mistake instead, and is reported rather than read as a
+ * decision to go without - the integrator who made it believes the material is
+ * in force. */
 static inline bool MbedTlsPemBufferCredentials_IsSupplied(const struct SolidSyslogMbedTlsPemBuffer* pem)
 {
-    return (pem->Bytes != NULL) && (pem->Length > 0U);
+    return pem->Bytes != NULL;
 }
 
+/* Guards its own read: a zero length has no last byte to test, and would index
+ * at SIZE_MAX. */
 static inline bool MbedTlsPemBufferCredentials_IsTerminated(const struct SolidSyslogMbedTlsPemBuffer* pem)
 {
-    return pem->Bytes[pem->Length - 1U] == (unsigned char) '\0';
+    return (pem->Length > 0U) && (pem->Bytes[pem->Length - 1U] == (unsigned char) '\0');
 }
 
 /* Freeing is what wipes: mbedtls_pk_free zeroises the key context and every

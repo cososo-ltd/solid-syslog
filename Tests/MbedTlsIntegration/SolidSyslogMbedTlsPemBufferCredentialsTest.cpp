@@ -392,3 +392,67 @@ TEST(SolidSyslogMbedTlsPemBufferCredentials, ASecondInstallParsesAgainAfterARele
     CHECK_TRUE(installed.TrustAnchorsInstalled);
     CHECK_TRUE(conf.MBEDTLS_PRIVATE(key_cert) != nullptr);
 }
+
+TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsATrustAnchorBufferWithNoExtent)
+{
+    config.CaPem.Length = 0;
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+
+    CHECK_FALSE(credentials->Install(credentials, &conf, &installed));
+
+    CHECK_PEM_BUFFER_ERROR_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MBEDTLS_PEM_BUFFER_CREDENTIALS_ERROR_PEM_NOT_TERMINATED
+    );
+}
+
+/* The same off-by-one on the client half must name the same fault the trust
+ * anchor path names, or the code exists on one path only. */
+TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsAClientCertificateThatIsNotTerminated)
+{
+    GiveAClientCredential();
+    config.ClientCertPem.Length -= 1U;
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+
+    credentials->Install(credentials, &conf, &installed);
+
+    CHECK_PEM_BUFFER_ERROR_REPORTED(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MBEDTLS_PEM_BUFFER_CREDENTIALS_ERROR_PEM_NOT_TERMINATED
+    );
+}
+
+TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsAClientKeyThatIsNotTerminated)
+{
+    GiveAClientCredential();
+    config.ClientKeyPem.Length -= 1U;
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+
+    credentials->Install(credentials, &conf, &installed);
+
+    CHECK_PEM_BUFFER_ERROR_REPORTED(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MBEDTLS_PEM_BUFFER_CREDENTIALS_ERROR_PEM_NOT_TERMINATED
+    );
+}
+
+/* A pointer with no extent is a mistake, not a decision to go without: read as
+ * absent it would leave the integrator believing mutual TLS was in force. */
+TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsAClientCredentialWithNoExtent)
+{
+    GiveAClientCredential();
+    config.ClientCertPem.Length = 0;
+    config.ClientKeyPem.Length = 0;
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+
+    credentials->Install(credentials, &conf, &installed);
+
+    CHECK_PEM_BUFFER_ERROR_REPORTED(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MBEDTLS_PEM_BUFFER_CREDENTIALS_ERROR_PEM_NOT_TERMINATED
+    );
+}
