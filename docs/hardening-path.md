@@ -446,12 +446,17 @@ The collector is authenticated to the device; the device is not yet authenticate
 collector.
 
 ```c
+struct SolidSyslogMbedTlsHandleCredentialsConfig credentialsConfig = {
+    .Rng     = DeviceCertStore_Rng(),
+    .CaChain = DeviceCertStore_CaChain(),
+};
+
 struct SolidSyslogMbedTlsStreamConfig tlsConfig = {
-    .Transport  = SolidSyslogLwipRawTcpStream_Create(&tcpConfig),
-    .Sleep      = SyslogSleep,
-    .Rng        = DeviceCertStore_Rng(),
-    .CaChain    = DeviceCertStore_CaChain(),
-    .ServerName = SYSLOG_COLLECTOR_HOST,
+    .Transport   = SolidSyslogLwipRawTcpStream_Create(&tcpConfig),
+    .Sleep       = SyslogSleep,
+    .Rng         = DeviceCertStore_Rng(),
+    .Credentials = SolidSyslogMbedTlsHandleCredentials_Create(&credentialsConfig),
+    .ServerName  = SYSLOG_COLLECTOR_HOST,
 };
 
 .Stream = SolidSyslogMbedTlsStream_Create(&tlsConfig),
@@ -535,17 +540,18 @@ and its key makes the handshake mutual, so the receiver authenticates the device
 cryptographically.
 
 ```c
-struct SolidSyslogMbedTlsStreamConfig tlsConfig = {
+struct SolidSyslogMbedTlsHandleCredentialsConfig credentialsConfig = {
     /* ... as stage 13 ... */
     .ClientCertChain = DeviceCertStore_ClientChain(),
     .ClientKey       = DeviceCertStore_ClientKey(),
 };
 ```
 
-Both must be set. Supplying one and not the other silently leaves the connection
-server-authenticated rather than failing, which is exactly the weakening an auditor
-would look for — which is why the pipeline element in stage 15 reports what is actually
-in force rather than what was intended.
+Both must be set. Supplying one and not the other is reported as a bad
+configuration and leaves the connection server-authenticated rather than failing,
+which is exactly the weakening an auditor would look for — which is why the
+pipeline element in stage 15 reports what is actually in force rather than what
+was intended.
 
 **What it authenticates is the TLS peer.** If the device connects to the collector
 directly, that is the device. If anything terminates the connection in between — a

@@ -8,8 +8,8 @@ integrity and confidentiality.
 
 What a TLS stream must do is the same whichever library provides it, and is
 stated once under [TLS obligations](../../tls.md). This page covers what this
-adapter needs, the coexistence guarantee it makes, and where it does not yet meet
-that contract.
+adapter needs, how credentials reach it, the coexistence guarantee it makes, and
+where it does not yet meet that contract.
 
 ## What it ships
 
@@ -20,29 +20,34 @@ so the features you enable are the features it gets.
 
 A `SolidSyslogSleepFunction` is required and has no default.
 
-## Credentials are handles, not paths
+## Credentials come from a credentials source
 
-Credentials are passed as caller-built, caller-owned handles: a seeded
-`mbedtls_ctr_drbg_context` for the handshake, an `mbedtls_x509_crt` trust chain,
+Where trust anchors, pinned peer fingerprints and the mutual-TLS client
+credential come from is the integrator's choice rather than this adapter's. The
+stream is wired to a `SolidSyslogMbedTlsCredentials`, asked once per connection
+to install its material on the `mbedtls_ssl_config` and told once per connection
+when that material is no longer needed. A source backed by a security element, a
+PSA opaque key or an encrypted store is a class implementing that role, and needs
+no change here.
+
+One source ships with the pack: `SolidSyslogMbedTlsHandleCredentials`, which
+carries caller-built, caller-owned handles - an `mbedtls_x509_crt` trust chain,
 and for mutual TLS an `mbedtls_x509_crt` and `mbedtls_pk_context` pair. No part
 of the adapter opens a file, which is what allows it to run on targets built
 without `MBEDTLS_FS_IO`.
 
-Two lifetimes are in play and they are not the same. The **handle objects** must
-stay addressable for as long as the stream might open a connection, because the
-adapter reads the pointers it was given on every connect. The **parsed material
-inside them** only has to be intact while a connection is open, which is when the
-adapter's `ssl_config` holds pointers into it.
+The credential window is explicit. Install is called after the transport
+connects; Release answers every Install, once, after the `ssl_config` has been
+freed and with it every pointer into the material. A source that acquires
+material per connection can therefore let go of it between connections, and one
+carrying handles the integrator owns - the shipped source - keeps them for as
+long as the integrator does.
 
-Rotation follows from the second lifetime. Call `SolidSyslogSender_Disconnect`,
-which releases the `ssl_config` and with it every pointer into the material, then
-free and re-parse into the same handle. The next send reconnects with the new
-material. Freeing before the disconnect completes is a use-after-free, because
-the open connection is still reading it.
-
-The adapter does not say when it has finished with the material, so an integrator
-who wants the private key out of RAM between connections has to drive that
-sequence themselves rather than being told. That is the gap recorded below.
+Rotation with the shipped source is a disconnect and a re-parse: call
+`SolidSyslogSender_Disconnect`, then free and re-parse into the same handle. The
+next send reconnects with the new material. Freeing before the disconnect
+completes is a use-after-free, because the open connection is still reading
+it.
 
 ## Coexistence is an auditable contract
 
@@ -56,23 +61,13 @@ claim can be checked against the directory.
 
 ## Where it differs from the contract
 
-Four differences, each tracked. Read them before relying on the corresponding
-obligation.
+Each is tracked. Read them before relying on the corresponding obligation.
 
 ### A peer cannot be authorised by certificate fingerprint
 
 Only certification path validation is offered, so a deployment with no PKI has no
 way to pin the collector's certificate. Tracked as
 [#753](https://github.com/cososo-ltd/solid-syslog/issues/753).
-
-### Credential material must stay parsed for the life of the stream
-
-The adapter binds the handles into its `ssl_config` on each connection and drops
-them on close, but it never says so, so every handle has to remain valid and
-parsed for as long as the stream exists. A device that connects rarely still
-holds its private key in RAM continuously, and there is no point at which the
-adapter invites the integrator to release it. Tracked under
-[E39](https://github.com/cososo-ltd/solid-syslog/issues/782).
 
 ### The cipher policy cannot be expressed
 
@@ -81,12 +76,3 @@ your `mbedtls_config.h` enables, filtered by the preset, are what gets
 negotiated. The contract asks for an integrator's policy to be passed through
 where the library allows one to be selected. Tracked as
 [#733](https://github.com/cososo-ltd/solid-syslog/issues/733).
-
-### A missing trust chain is not reported as a configuration fault
-
-`mbedtls_ssl_conf_ca_chain` returns no status, so a configuration carrying no
-trust anchors is accepted, and the fault surfaces only once the peer's
-certificate finds nothing to chain to. What is reported is an untrusted peer
-rather than the missing trust material. Tracked
-as [#753](https://github.com/cososo-ltd/solid-syslog/issues/753), which is where
-a peer authorised by fingerprint instead of by trust anchor is settled.

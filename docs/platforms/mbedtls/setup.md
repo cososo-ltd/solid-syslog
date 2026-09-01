@@ -15,34 +15,56 @@ records; the transport underneath carries the bytes.
 SolidSyslog_Log ─▶ Buffer ─▶ SolidSyslogStreamSender
                                      │
                                      ▼
-                         SolidSyslogMbedTlsStream   ◀── your CA / cert / key / DRBG handles
+                         SolidSyslogMbedTlsStream   ◀── your DRBG handle
+                                     ▲
+                                     └── a credentials source ◀── your CA / cert / key
                                      │
                                      ▼
                             a byte-transport Stream  ◀── your TCP/IP stack
 ```
 
-You supply two things: the byte transport, and the Mbed TLS handles. Everything
+You supply three things: the byte transport, the credentials source the stream
+asks for its material, and the DRBG the handshake runs on. Everything
 above the TLS stream is unchanged from a plaintext wiring — `StreamSender`
 applies RFC 6587 octet-counting framing on top either way.
 
 ## Wiring it
 
+First a credentials source, which is where the material comes from. The one that
+ships with the pack carries handles you have already built:
+
 ```c
-struct SolidSyslogMbedTlsStreamConfig cfg = {
-    .Transport       = myTcpStream,
-    .Sleep           = MySleep,               /* required — no fallback */
+struct SolidSyslogMbedTlsHandleCredentialsConfig credentialsConfig = {
     .Rng             = &mySeededDrbg,
     .CaChain         = &myParsedCaChain,
-    .ServerName      = "syslog.example.com",
     .ClientCertChain = &myClientCert,         /* both, or neither */
     .ClientKey       = &myClientKey,
+};
+struct SolidSyslogMbedTlsCredentials* credentials =
+    SolidSyslogMbedTlsHandleCredentials_Create(&credentialsConfig);
+```
+
+The `Rng` here is what checks the client key against its certificate, and the
+same seeded DRBG serves both configs. Then the stream, which is wired to the
+source:
+
+```c
+struct SolidSyslogMbedTlsStreamConfig cfg = {
+    .Transport   = myTcpStream,
+    .Sleep       = MySleep,               /* required — no fallback */
+    .Rng         = &mySeededDrbg,
+    .Credentials = credentials,           /* required — no fallback */
+    .ServerName  = "syslog.example.com",
 };
 struct SolidSyslogStream* tls = SolidSyslogMbedTlsStream_Create(&cfg);
 ```
 
+Each Create copies its configuration, so every field has to be set before it is
+called.
+
 Wire `tls` into a `SolidSyslogStreamSender` as its `Stream`, exactly as you
-would a plain TCP stream, and call `SolidSyslogMbedTlsStream_Destroy` when the
-sender is torn down. There is nothing process-wide to install.
+would a plain TCP stream. Tear down in reverse: the sender, the TLS stream, then
+the credentials it borrows. There is nothing process-wide to install.
 
 If your firmware already uses Mbed TLS for something else — a cloud client, an
 OTA updater, a vendor framework — that is the whole integration: the adapter

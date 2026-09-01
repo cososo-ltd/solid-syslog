@@ -16,15 +16,13 @@
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 
-static inline bool MbedTlsHandleCredentials_IsValidConfig(
-    const struct SolidSyslogMbedTlsHandleCredentialsConfig* config
+static inline bool MbedTlsHandleCredentials_IsValidConfig(const struct SolidSyslogMbedTlsHandleCredentialsConfig* config
 );
 static inline size_t MbedTlsHandleCredentials_IndexFromHandle(const struct SolidSyslogMbedTlsCredentials* base);
 static inline void MbedTlsHandleCredentials_CleanupAtIndex(size_t index, void* context);
 
 static bool MbedTlsHandleCredentials_InUse[SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE];
-static struct SolidSyslogMbedTlsHandleCredentials
-    MbedTlsHandleCredentials_Pool[SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE];
+static struct SolidSyslogMbedTlsHandleCredentials MbedTlsHandleCredentials_Pool[SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE];
 static struct SolidSyslogPoolAllocator MbedTlsHandleCredentials_Allocator = {
     MbedTlsHandleCredentials_InUse,
     SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE
@@ -58,8 +56,7 @@ struct SolidSyslogMbedTlsCredentials* SolidSyslogMbedTlsHandleCredentials_Create
 /* The RNG is checked here rather than where it is used, so a wiring fault is
  * one Create-time report instead of a surprise on the connection that first
  * presents a client credential. */
-static inline bool MbedTlsHandleCredentials_IsValidConfig(
-    const struct SolidSyslogMbedTlsHandleCredentialsConfig* config
+static inline bool MbedTlsHandleCredentials_IsValidConfig(const struct SolidSyslogMbedTlsHandleCredentialsConfig* config
 )
 {
     bool valid = false;
