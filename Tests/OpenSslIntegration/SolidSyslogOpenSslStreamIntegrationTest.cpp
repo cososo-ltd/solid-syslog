@@ -14,6 +14,8 @@
 #include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
+#include "SolidSyslogOpenSslPemFileCredentials.h"
+#include "SolidSyslogOpenSslPemFileCredentialsErrors.h"
 #include "SolidSyslogOpenSslStream.h"
 #include "SolidSyslogOpenSslStreamErrors.h"
 #include "TlsTestCert.h"
@@ -62,6 +64,8 @@ TEST_GROUP(OpenSslStreamIntegration)
     struct TlsTestServer*             server         = nullptr;
     struct SolidSyslogStream*         transport      = nullptr;
     struct SolidSyslogOpenSslStreamConfig tlsConfig      = {};
+    struct SolidSyslogOpenSslPemFileCredentialsConfig credsConfig = {};
+    struct SolidSyslogOpenSslCredentials* credentials   = nullptr;
     
     struct SolidSyslogStream*         tlsStream      = nullptr;
     struct SolidSyslogAddress*        addr           = nullptr;
@@ -81,6 +85,7 @@ TEST_GROUP(OpenSslStreamIntegration)
     {
         SolidSyslog_SetErrorHandler(nullptr, nullptr);
         if (tlsStream != nullptr)         { SolidSyslogOpenSslStream_Destroy(tlsStream); }
+        if (credentials != nullptr)       { SolidSyslogOpenSslPemFileCredentials_Destroy(credentials); }
         if (transport != nullptr)         { BioPairStream_Destroy(transport); }
         if (server != nullptr)            { TlsTestServer_Destroy(server); }
         if (cert.cert != nullptr)         { TlsTestCert_Destroy(&cert); }
@@ -120,9 +125,12 @@ TEST_GROUP(OpenSslStreamIntegration)
         transport = BioPairStream_Create(TlsTestServer_ClientSideBio(server));
         BioPairStream_SetPump(transport, TlsTestServer_Pump, server);
 
+        credsConfig.CaBundlePath = caPath;
+        credentials              = SolidSyslogOpenSslPemFileCredentials_Create(&credsConfig);
+
         tlsConfig.Transport    = transport;
         tlsConfig.Sleep        = NoOpSleep;
-        tlsConfig.CaBundlePath = caPath;
+        tlsConfig.Credentials  = credentials;
         tlsConfig.ServerName   = clientServerName;
         tlsStream              = SolidSyslogOpenSslStream_Create(&tlsConfig);
     }
@@ -143,8 +151,8 @@ TEST_GROUP(OpenSslStreamIntegration)
         TlsTestCert_WritePemToFile(&clientCert, clientCertPath);
         TlsTestCert_WritePrivateKeyPemToFile(&clientCert, clientKeyPath);
 
-        tlsConfig.ClientCertChainPath = clientCertPath;
-        tlsConfig.ClientKeyPath       = clientKeyPath;
+        credsConfig.ClientCertChainPath = clientCertPath;
+        credsConfig.ClientKeyPath       = clientKeyPath;
     }
 
     void createClientCa()
@@ -301,12 +309,17 @@ TEST(OpenSslStreamIntegration, MutualTlsConnectsServerAuthenticatedWhenClientKey
     CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
     LONGS_EQUAL(1, CapturedErrorCount);
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, LastCapturedError.Severity);
-    POINTERS_EQUAL(&OpenSslStreamErrorSource, LastCapturedError.Source);
+    /* The credential source raises this now, not the stream: the fault is in
+     * where the material came from rather than in the stream that asked. */
+    POINTERS_EQUAL(&OpenSslPemFileCredentialsErrorSource, LastCapturedError.Source);
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, LastCapturedError.Category);
     /* NOT_INSTALLED rather than MISMATCHED: both test certs are RSA, so OpenSSL
      * refuses the pair inside SSL_CTX_use_PrivateKey_file and never reaches the
      * explicit pairing check. */
-    LONGS_EQUAL(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED, LastCapturedError.Detail);
+    LONGS_EQUAL(
+        SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED,
+        LastCapturedError.Detail
+    );
     TlsTestCert_Destroy(&strayCert);
 }
 

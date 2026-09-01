@@ -5,6 +5,7 @@
 #ifndef SOLIDSYSLOGOPENSSLSTREAMPRIVATE_H
 #define SOLIDSYSLOGOPENSSLSTREAMPRIVATE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include <openssl/bio.h>
@@ -23,6 +24,11 @@ struct SolidSyslogOpenSslStream
     SSL_CTX* Ctx;
     SSL* Ssl;
     BIO_METHOD* BioMethod;
+    /* Set immediately before Install is called, cleared by the Release that
+     * answers it. The contract is one Release per Install call whatever that
+     * call returned, and Close is idempotent, so the flag is what keeps both
+     * true at once. */
+    bool CredentialsInstalled;
 };
 
 void OpenSslStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogOpenSslStreamConfig* config);

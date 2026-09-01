@@ -20,37 +20,36 @@ so an older libssl is caught before anything compiles.
 
 A `SolidSyslogSleepFunction` is required and has no default.
 
-## Credentials are file paths
+## Credentials come from a credentials source
 
-Trust anchors, and for mutual TLS the client certificate chain and its private
-key, are PEM files named in the configuration. The adapter reads them, so it
-needs them present and readable by the process at the moment a connection is
-made, not at startup.
+Where trust anchors, pinned peer fingerprints and the mutual-TLS client
+credential come from is the integrator's choice rather than this adapter's. The
+stream is wired to a `SolidSyslogOpenSslCredentials`, asked once per connection
+to install its material on the `SSL_CTX` and told once per connection when that
+material is no longer needed. A source backed by a hardware key store, a
+keyring or an encrypted store is a class implementing that role, and needs no
+change here.
 
-The `SSL_CTX` is rebuilt on every open, re-reading each file named in the
-configuration, and freed on close. Nothing parsed from those files is held
-between connections. Rotation is therefore a file replacement and a
-reconnection: replace the file, and the new material is in force on the next
-connection, either through ordinary reconnection after an outage or immediately
-by calling `SolidSyslogSender_Disconnect`.
+One source ships with the pack: `SolidSyslogOpenSslPemFileCredentials`, which
+names its material by file path. It performs no file handling of its own -
+the paths go to OpenSSL, which opens and parses them, so PEM bytes never pass
+through this library.
+
+The `SSL_CTX` is rebuilt on every open and freed on close, and the credentials
+source is asked again each time. Nothing is held between connections. Rotation
+is therefore a replacement and a reconnection: put the new material in place,
+and it is in force on the next connection, either through ordinary reconnection
+after an outage or immediately by calling `SolidSyslogSender_Disconnect`.
 
 ## Where it differs from the contract
 
-Four differences, each tracked. Read them before relying on the corresponding
-obligation.
+Each is tracked. Read them before relying on the corresponding obligation.
 
 ### A peer cannot be authorised by certificate fingerprint
 
 Only certification path validation is offered, so a deployment with no PKI has no
 way to pin the collector's certificate. Tracked as
 [#753](https://github.com/cososo-ltd/solid-syslog/issues/753).
-
-### Credentials come from the filesystem, and only from there
-
-The adapter opens the PEM files itself, so material held in a TPM, a keyring or
-an encrypted store has to be written to a readable file before this adapter can
-use it. Tracked under
-[E39](https://github.com/cososo-ltd/solid-syslog/issues/782).
 
 ### The cipher policy does not bind a TLS 1.3 connection
 

@@ -34,6 +34,7 @@
 #include "SolidSyslogTlsHandshakeTimeoutFunction.h"
 
 struct SolidSyslogStream;
+struct SolidSyslogOpenSslCredentials;
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
@@ -46,6 +47,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  destroys it; the caller owns it and must keep it valid until
          *  SolidSyslogOpenSslStream_Destroy. */
         struct SolidSyslogStream* Transport;
+        /** Where the trust anchors, any pinned peer fingerprints and the mutual-TLS
+         *  client credential come from; required - a NULL is reported at
+         *  SolidSyslogOpenSslStream_Create. Asked once per connection, so material
+         *  is fetched only for a connection actually being made, and told when the
+         *  connection ends. Borrowed - the caller owns it and must keep it valid
+         *  until SolidSyslogOpenSslStream_Destroy. */
+        struct SolidSyslogOpenSslCredentials* Credentials;
         SolidSyslogSleepFunction Sleep; /**< Drives the bounded handshake retry between WANT_READ/WANT_WRITE
                                          *  polls; required - a NULL is reported at
                                          *  SolidSyslogOpenSslStream_Create. */
@@ -54,24 +62,19 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
                                                                        *  SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS
                                                                        *  tunable. */
         void* HandshakeTimeoutContext; /**< Passed back to GetHandshakeTimeoutMs unchanged; NULL is fine. */
-        const char* CaBundlePath; /**< PEM file of trust anchors the peer cert must chain to. */
         /** SNI plus the expected peer identity. A non-empty name is verified against
          *  the cert (SAN/CN). NULL connects chain-only but emits a WARNING - the peer
          *  is unverified (MITM-class). "" is the no-name-check opt-out (closed network
-         *  / private CA): still chain-verified against CaBundlePath, endpoint identity
-         *  unchecked; no diagnostic. */
+         *  / private CA): still verified against whatever the credentials installed,
+         *  endpoint identity unchecked; no diagnostic. */
         const char* ServerName;
         const char* CipherList; /**< TLS 1.2 cipher list; NULL uses the OpenSSL default. */
-        const char* ClientCertChainPath; /**< PEM leaf cert (+ intermediates) for mTLS; NULL = no mTLS. Cert and
-                                          *  key are all-or-nothing - supplying one without the other is a setup
-                                          *  error. */
-        const char* ClientKeyPath; /**< PEM private key matching ClientCertChainPath; NULL = no mTLS. */
     };
 
     /** Draw a TLS stream from the pool over the injected transport (see the file
      *  overview for the handshake and I/O behaviour). A NULL config, a NULL
-     *  Transport or a NULL Sleep is reported and falls back to the shared
-     *  NullStream, as does an exhausted pool (default size 1). */
+     *  Transport, a NULL Sleep or a NULL Credentials is reported and falls back to
+     *  the shared NullStream, as does an exhausted pool (default size 1). */
     struct SolidSyslogStream* SolidSyslogOpenSslStream_Create(const struct SolidSyslogOpenSslStreamConfig* config);
     /** Release the pool slot; closes the TLS session and the underlying transport
      *  first if the stream is still Open. */
