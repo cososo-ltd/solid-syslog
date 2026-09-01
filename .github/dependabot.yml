@@ -14,6 +14,17 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: ci
+    # An action with several sub-actions is several dependencies to Dependabot
+    # and one version to the workflow using them. CodeQL enforces that itself:
+    # init stamps its version into the config file analyze then loads, and
+    # analyze refuses a config another version wrote, so a PR bumping one of the
+    # pair fails the required check every time. Grouping makes the bump one PR
+    # holding both pins, which is also the only way the SHA pinning means what it
+    # says — two halves of one action cannot drift apart.
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
 
   # Python packages used by the BDD test harness.
   - package-ecosystem: pip

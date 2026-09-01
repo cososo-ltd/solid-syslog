@@ -806,9 +806,12 @@ jobs:
 
       # A path written in code font in a sentence, or in a CMake list, a
       # Compose mount or a path filter, is text nothing reads back out — the
-      # link check below sees Markdown links only. This asserts every such path
-      # still exists, so a rename cannot leave a green reference to nothing.
-      - name: Check the paths documents and build files name exist
+      # link check below sees Markdown links only. Nor does anything read back
+      # the library symbols a page names, in prose or in a fenced example. This
+      # asserts both still exist, so a rename cannot leave a green reference to
+      # nothing, and a page cannot offer an integrator a symbol that never
+      # compiled.
+      - name: Check the paths and symbols documents and build files name exist
         run: python3 scripts/check_references.py
 
       # Guard the build hooks against regression — the source-link rewrite's
