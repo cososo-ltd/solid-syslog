@@ -38,7 +38,7 @@ static inline void PosixAddress_Report(
     enum SolidSyslogPosixAddressErrors code
 )
 {
-    SolidSyslog_Error(severity, &PosixAddressErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPosixAddressErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPOSIXADDRESSPRIVATE_H */

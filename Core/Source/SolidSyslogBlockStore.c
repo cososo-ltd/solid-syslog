@@ -16,7 +16,7 @@
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogStoreDefinition.h"
 
-const struct SolidSyslogErrorSource BlockStoreErrorSource = {"BlockStore"};
+const struct SolidSyslogErrorSource SolidSyslogBlockStoreErrorSource = {"BlockStore"};
 
 /* vtable - forward-declared because BlockStore_InitialiseVtable references them before their definitions */
 static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size);

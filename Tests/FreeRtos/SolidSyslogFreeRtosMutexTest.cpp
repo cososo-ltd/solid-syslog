@@ -134,7 +134,7 @@ TEST(SolidSyslogFreeRtosMutexPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &FreeRtosMutexErrorSource,
+        &SolidSyslogFreeRtosMutexErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_FREERTOS_MUTEX_ERROR_POOL_EXHAUSTED
     );
@@ -212,7 +212,7 @@ TEST(SolidSyslogFreeRtosMutexPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &FreeRtosMutexErrorSource,
+        &SolidSyslogFreeRtosMutexErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_FREERTOS_MUTEX_ERROR_UNKNOWN_DESTROY
     );
@@ -230,7 +230,7 @@ TEST(SolidSyslogFreeRtosMutexPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &FreeRtosMutexErrorSource,
+        &SolidSyslogFreeRtosMutexErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_FREERTOS_MUTEX_ERROR_UNKNOWN_DESTROY
     );

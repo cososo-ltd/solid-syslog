@@ -333,7 +333,7 @@ TEST(SolidSyslogPlusTcpDatagramPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &PlusTcpDatagramErrorSource,
+        &SolidSyslogPlusTcpDatagramErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_PLUSTCP_DATAGRAM_ERROR_POOL_EXHAUSTED
     );
@@ -418,7 +418,7 @@ TEST(SolidSyslogPlusTcpDatagramPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PlusTcpDatagramErrorSource,
+        &SolidSyslogPlusTcpDatagramErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_PLUSTCP_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
@@ -436,7 +436,7 @@ TEST(SolidSyslogPlusTcpDatagramPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PlusTcpDatagramErrorSource,
+        &SolidSyslogPlusTcpDatagramErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_PLUSTCP_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );

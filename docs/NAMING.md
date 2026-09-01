@@ -121,6 +121,11 @@ enum SolidSyslogSeverity
     SOLIDSYSLOG_SEVERITY_ALERT     = 1,
     /* ... */
 };
+
+/* Exported objects — the class name runs straight into the object's own
+ * name. No underscore: that separator introduces a function name, and an
+ * object has none. */
+extern const struct SolidSyslogErrorSource SolidSyslogUdpSenderErrorSource;
 ```
 
 The `SolidSyslog` prefix is the library's namespace. The `<Class>_`
@@ -129,6 +134,11 @@ follows in PascalCase. The "whole-library" form is not an
 exception: both shapes are first-class Tier 1; the difference is
 whether the operation lives on a specific class or on the library
 itself.
+
+An exported object takes `SolidSyslog<Class><Name>`, the same shape as an
+exported type. `SolidSyslogUdpSenderErrorSource` is the form;
+`SolidSyslogUdpSender_ErrorSource` is not, because the underscore would
+announce a function.
 
 **Applies to:** any identifier declared in a header under `Core/Interface/`
 or `Platform/*/Interface/`, plus any identifier with external linkage

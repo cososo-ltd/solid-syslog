@@ -92,7 +92,7 @@ TEST(SolidSyslogPassthroughBuffer, DestroyWithNullHandleEmitsUnknownDestroyWarni
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PassthroughBufferErrorSource,
+        &SolidSyslogPassthroughBufferErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_UNKNOWN_DESTROY
     );
@@ -173,7 +173,7 @@ TEST(SolidSyslogPassthroughBufferPool, OverflowReportsPoolExhausted)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &PassthroughBufferErrorSource,
+        &SolidSyslogPassthroughBufferErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_POOL_EXHAUSTED
     );
@@ -215,7 +215,7 @@ TEST(SolidSyslogPassthroughBufferPool, CreateWithNullSenderReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &PassthroughBufferErrorSource,
+        &SolidSyslogPassthroughBufferErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_NULL_SENDER
     );

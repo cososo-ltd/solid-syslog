@@ -14,7 +14,7 @@
 #include "SolidSyslogOpenSslPemFileCredentialsPrivate.h"
 #include "SolidSyslogTlsCredentialsInstalled.h"
 
-const struct SolidSyslogErrorSource OpenSslPemFileCredentialsErrorSource = {"OpenSslPemFileCredentials"};
+const struct SolidSyslogErrorSource SolidSyslogOpenSslPemFileCredentialsErrorSource = {"OpenSslPemFileCredentials"};
 
 static bool OpenSslPemFileCredentials_Install(
     struct SolidSyslogOpenSslCredentials* base,

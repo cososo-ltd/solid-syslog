@@ -43,7 +43,7 @@ static inline void OpenSslStream_Report(
     enum SolidSyslogOpenSslStreamErrors code
 )
 {
-    SolidSyslog_Error(severity, &OpenSslStreamErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogOpenSslStreamErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGOPENSSLSTREAMPRIVATE_H */

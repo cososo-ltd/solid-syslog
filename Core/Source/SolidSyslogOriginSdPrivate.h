@@ -43,7 +43,7 @@ static inline void OriginSd_Report(
     enum SolidSyslogOriginSdErrors code
 )
 {
-    SolidSyslog_Error(severity, &OriginSdErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogOriginSdErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGORIGINSDPRIVATE_H */

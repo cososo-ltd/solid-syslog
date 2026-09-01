@@ -867,7 +867,7 @@ TEST(SolidSyslogLwipRawTcpStreamPool, ExhaustedCreateReportsError)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        LwipRawTcpStreamErrorSource,
+        SolidSyslogLwipRawTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_POOL_EXHAUSTED
     );
@@ -881,7 +881,7 @@ TEST(SolidSyslogLwipRawTcpStreamPool, CreateWithNullConfigReportsError)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        LwipRawTcpStreamErrorSource,
+        SolidSyslogLwipRawTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_NULL_CONFIG
     );
@@ -896,7 +896,7 @@ TEST(SolidSyslogLwipRawTcpStreamPool, CreateWithNullSleepReportsError)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        LwipRawTcpStreamErrorSource,
+        SolidSyslogLwipRawTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_NULL_SLEEP
     );
@@ -967,7 +967,7 @@ TEST(SolidSyslogLwipRawTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        LwipRawTcpStreamErrorSource,
+        SolidSyslogLwipRawTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );
@@ -985,7 +985,7 @@ TEST(SolidSyslogLwipRawTcpStreamPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        LwipRawTcpStreamErrorSource,
+        SolidSyslogLwipRawTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );

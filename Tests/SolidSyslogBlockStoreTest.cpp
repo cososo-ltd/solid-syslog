@@ -548,7 +548,7 @@ TEST(SolidSyslogBlockStoreConfig, BelowMinimumBlockSizeReportsWarning)
     CreateWithMaxBlockSize(1);
     CHECK_ERROR_EVENT(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &BlockStoreErrorSource,
+        &SolidSyslogBlockStoreErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_TOO_SMALL
     );
@@ -2209,7 +2209,7 @@ TEST(SolidSyslogBlockStorePool, OverflowReportsPoolExhausted)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &BlockStoreErrorSource,
+        &SolidSyslogBlockStoreErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_POOL_EXHAUSTED
     );

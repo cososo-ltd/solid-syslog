@@ -128,7 +128,7 @@ TEST(SolidSyslogWinsockAddressPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &WinsockAddressErrorSource,
+        &SolidSyslogWinsockAddressErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_WINSOCK_ADDRESS_ERROR_POOL_EXHAUSTED
     );
@@ -187,7 +187,7 @@ TEST(SolidSyslogWinsockAddressPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &WinsockAddressErrorSource,
+        &SolidSyslogWinsockAddressErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_WINSOCK_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
@@ -204,7 +204,7 @@ TEST(SolidSyslogWinsockAddressPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &WinsockAddressErrorSource,
+        &SolidSyslogWinsockAddressErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_WINSOCK_ADDRESS_ERROR_UNKNOWN_DESTROY
     );

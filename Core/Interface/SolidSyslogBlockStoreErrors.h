@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is BlockStoreErrorSource. A handler
+    /** Detail codes for events whose Source is SolidSyslogBlockStoreErrorSource. A handler
      *  reads these off event->Detail after matching event->Source; the members
      *  name their own fault. */
     enum SolidSyslogBlockStoreErrors
@@ -25,9 +25,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** The identity for events raised by a BlockStore. A handler matches by
-     *  address (event->Source == &BlockStoreErrorSource), then reads
+     *  address (event->Source == &SolidSyslogBlockStoreErrorSource), then reads
      *  event->Detail as an enum SolidSyslogBlockStoreErrors. */
-    extern const struct SolidSyslogErrorSource BlockStoreErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogBlockStoreErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

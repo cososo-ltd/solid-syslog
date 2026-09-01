@@ -17,7 +17,7 @@
 #include "SolidSyslogPosixFileErrors.h"
 #include "SolidSyslogPosixFilePrivate.h"
 
-const struct SolidSyslogErrorSource PosixFileErrorSource = {"PosixFile"};
+const struct SolidSyslogErrorSource SolidSyslogPosixFileErrorSource = {"PosixFile"};
 
 #define OWNER_READ_WRITE (S_IRUSR | S_IWUSR)
 #define DEFAULT_FILE_PERMISSIONS OWNER_READ_WRITE

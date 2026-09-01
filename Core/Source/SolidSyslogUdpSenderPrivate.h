@@ -32,7 +32,7 @@ static inline void UdpSender_Report(
     enum SolidSyslogUdpSenderErrors code
 )
 {
-    SolidSyslog_Error(severity, &UdpSenderErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogUdpSenderErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGUDPSENDERPRIVATE_H */

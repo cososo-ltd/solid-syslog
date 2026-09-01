@@ -31,7 +31,7 @@ static inline void OpenSslAesGcmPolicy_Report(
     enum SolidSyslogOpenSslAesGcmPolicyErrors code
 )
 {
-    SolidSyslog_Error(severity, &OpenSslAesGcmPolicyErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogOpenSslAesGcmPolicyErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGOPENSSLAESGCMPOLICYPRIVATE_H */

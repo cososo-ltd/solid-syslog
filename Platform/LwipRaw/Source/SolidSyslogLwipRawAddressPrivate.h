@@ -46,7 +46,7 @@ static inline void LwipRawAddress_Report(
     enum SolidSyslogLwipRawAddressErrors code
 )
 {
-    SolidSyslog_Error(severity, &LwipRawAddressErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogLwipRawAddressErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGLWIPRAWADDRESSPRIVATE_H */

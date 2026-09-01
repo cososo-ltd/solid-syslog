@@ -26,7 +26,7 @@ static inline void WinsockResolver_Report(
     enum SolidSyslogWinsockResolverErrors code
 )
 {
-    SolidSyslog_Error(severity, &WinsockResolverErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogWinsockResolverErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGWINSOCKRESOLVERPRIVATE_H */

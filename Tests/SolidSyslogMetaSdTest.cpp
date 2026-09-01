@@ -293,7 +293,7 @@ TEST(SolidSyslogMetaSd, CreateWithNullConfigReportsCritical)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &MetaSdErrorSource,
+        &SolidSyslogMetaSdErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_META_SD_ERROR_NULL_CONFIG
     );
@@ -306,7 +306,7 @@ TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsCritical)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &MetaSdErrorSource,
+        &SolidSyslogMetaSdErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_META_SD_ERROR_NULL_COUNTER
     );
@@ -370,7 +370,7 @@ TEST(SolidSyslogMetaSdPool, OverflowReportsPoolExhausted)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &MetaSdErrorSource,
+        &SolidSyslogMetaSdErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_META_SD_ERROR_POOL_EXHAUSTED
     );

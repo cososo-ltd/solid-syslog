@@ -19,7 +19,7 @@
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource MbedTlsHmacSha256PolicyErrorSource = {"MbedTlsHmacSha256Policy"};
+const struct SolidSyslogErrorSource SolidSyslogMbedTlsHmacSha256PolicyErrorSource = {"MbedTlsHmacSha256Policy"};
 
 enum
 {

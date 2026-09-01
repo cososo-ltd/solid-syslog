@@ -24,7 +24,7 @@
 #include "SolidSyslogUdpPayload.h"
 #include "task.h"
 
-const struct SolidSyslogErrorSource PlusTcpDatagramErrorSource = {"PlusTcpDatagram"};
+const struct SolidSyslogErrorSource SolidSyslogPlusTcpDatagramErrorSource = {"PlusTcpDatagram"};
 
 struct SolidSyslogAddress;
 

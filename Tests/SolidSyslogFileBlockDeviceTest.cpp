@@ -349,7 +349,7 @@ TEST(SolidSyslogFileBlockDevicePool, OverflowReportsPoolExhausted)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &FileBlockDeviceErrorSource,
+        &SolidSyslogFileBlockDeviceErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_POOL_EXHAUSTED
     );

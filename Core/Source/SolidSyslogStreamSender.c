@@ -20,7 +20,7 @@
 #include "SolidSyslogStreamSenderPrivate.h"
 #include "SolidSyslogTransport.h"
 
-const struct SolidSyslogErrorSource StreamSenderErrorSource = {"StreamSender"};
+const struct SolidSyslogErrorSource SolidSyslogStreamSenderErrorSource = {"StreamSender"};
 
 struct SolidSyslogAddress;
 struct SolidSyslogFormatter;
@@ -97,7 +97,7 @@ static bool StreamSender_Send(struct SolidSyslogSender* base, const void* buffer
 static inline void StreamSender_UpdateDeliveryHealth(struct SolidSyslogStreamSender* self, bool delivered)
 {
     static const struct SolidSyslogSenderHealthReporter reporter = {
-        .Source = &StreamSenderErrorSource,
+        .Source = &SolidSyslogStreamSenderErrorSource,
         .FailedDetail = (int32_t) SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_FAILED,
         .RestoredDetail = (int32_t) SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_RESTORED
     };

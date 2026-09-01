@@ -113,7 +113,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, WriteWhenMqSendFailsReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_ERROR,
-        &PosixMessageQueueBufferErrorSource,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
         SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_SEND_FAILED
     );
@@ -132,7 +132,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, WriteWithOversizedMessageReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_ERROR,
-        &PosixMessageQueueBufferErrorSource,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
         SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_SEND_FAILED
     );
@@ -147,7 +147,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ReadWhenMqReceiveFailsReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_ERROR,
-        &PosixMessageQueueBufferErrorSource,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
         SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECEIVE_FAILED
     );
@@ -277,7 +277,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &PosixMessageQueueBufferErrorSource,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_POOL_EXHAUSTED
     );
@@ -292,7 +292,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_ERROR,
-        &PosixMessageQueueBufferErrorSource,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
         SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED
     );
@@ -381,7 +381,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfUnknownHandleReportsWarnin
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PosixMessageQueueBufferErrorSource,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_UNKNOWN_DESTROY
     );
@@ -399,7 +399,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfNullHandleReportsWarningWi
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PosixMessageQueueBufferErrorSource,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_UNKNOWN_DESTROY
     );
@@ -416,7 +416,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PosixMessageQueueBufferErrorSource,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_UNKNOWN_DESTROY
     );

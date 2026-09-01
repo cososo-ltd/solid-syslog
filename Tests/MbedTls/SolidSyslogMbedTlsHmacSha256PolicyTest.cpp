@@ -65,7 +65,7 @@ static bool TestGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* 
 
 /* Asserts exactly one error of (severity, code) was reported from this policy's source. */
 #define CHECK_REPORTED_ERROR(severity, expectedCategory, code) \
-    CHECK_ERROR_REPORTED_ONCE((severity), &MbedTlsHmacSha256PolicyErrorSource, (expectedCategory), (code))
+    CHECK_ERROR_REPORTED_ONCE((severity), &SolidSyslogMbedTlsHmacSha256PolicyErrorSource, (expectedCategory), (code))
 
 #define CHECK_IS_NULL_FALLBACK(handle) POINTERS_EQUAL(SolidSyslogNullSecurityPolicy_Get(), (handle))
 

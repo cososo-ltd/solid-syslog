@@ -50,7 +50,7 @@ static void CaptureError(void* context, const struct SolidSyslogErrorEvent* even
     {                                                                                                  \
         LONGS_EQUAL(1, CapturedErrorCount);                                                            \
         LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, LastCapturedError.Severity);                           \
-        POINTERS_EQUAL(&OpenSslStreamErrorSource, LastCapturedError.Source);                           \
+        POINTERS_EQUAL(&SolidSyslogOpenSslStreamErrorSource, LastCapturedError.Source);                \
         UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, LastCapturedError.Category); \
         LONGS_EQUAL((expectedCode), LastCapturedError.Detail);                                         \
     }
@@ -311,7 +311,7 @@ TEST(OpenSslStreamIntegration, MutualTlsConnectsServerAuthenticatedWhenClientKey
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, LastCapturedError.Severity);
     /* The credential source raises this now, not the stream: the fault is in
      * where the material came from rather than in the stream that asked. */
-    POINTERS_EQUAL(&OpenSslPemFileCredentialsErrorSource, LastCapturedError.Source);
+    POINTERS_EQUAL(&SolidSyslogOpenSslPemFileCredentialsErrorSource, LastCapturedError.Source);
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, LastCapturedError.Category);
     /* NOT_INSTALLED rather than MISMATCHED: both test certs are RSA, so OpenSSL
      * refuses the pair inside SSL_CTX_use_PrivateKey_file and never reaches the

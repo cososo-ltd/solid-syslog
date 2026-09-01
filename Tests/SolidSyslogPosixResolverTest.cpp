@@ -189,7 +189,7 @@ TEST(SolidSyslogPosixResolverPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &PosixResolverErrorSource,
+        &SolidSyslogPosixResolverErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_POSIX_RESOLVER_ERROR_POOL_EXHAUSTED
     );
@@ -258,7 +258,7 @@ TEST(SolidSyslogPosixResolverPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PosixResolverErrorSource,
+        &SolidSyslogPosixResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_POSIX_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
@@ -275,7 +275,7 @@ TEST(SolidSyslogPosixResolverPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PosixResolverErrorSource,
+        &SolidSyslogPosixResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_POSIX_RESOLVER_ERROR_UNKNOWN_DESTROY
     );

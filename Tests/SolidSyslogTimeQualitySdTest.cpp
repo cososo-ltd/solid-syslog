@@ -220,7 +220,7 @@ TEST(SolidSyslogTimeQualitySdPool, OverflowReportsPoolExhausted)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &TimeQualitySdErrorSource,
+        &SolidSyslogTimeQualitySdErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_POOL_EXHAUSTED
     );
@@ -265,7 +265,7 @@ TEST(SolidSyslogTimeQualitySdBadSetup, CreateWithNullCallbackReportsError)
     SolidSyslogTimeQualitySd_Create(nullptr);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &TimeQualitySdErrorSource,
+        &SolidSyslogTimeQualitySdErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_NULL_CALLBACK
     );

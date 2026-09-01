@@ -60,7 +60,7 @@ static bool TestGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* 
 }
 
 #define CHECK_REPORTED_ERROR(severity, expectedCategory, code) \
-    CHECK_ERROR_REPORTED_ONCE((severity), &OpenSslAesGcmPolicyErrorSource, (expectedCategory), (code))
+    CHECK_ERROR_REPORTED_ONCE((severity), &SolidSyslogOpenSslAesGcmPolicyErrorSource, (expectedCategory), (code))
 
 #define CHECK_IS_NULL_FALLBACK(handle) POINTERS_EQUAL(SolidSyslogNullSecurityPolicy_Get(), (handle))
 

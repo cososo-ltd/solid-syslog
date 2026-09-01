@@ -29,7 +29,7 @@ static inline void PassthroughBuffer_Report(
     enum SolidSyslogPassthroughBufferErrors code
 )
 {
-    SolidSyslog_Error(severity, &PassthroughBufferErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPassthroughBufferErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPASSTHROUGHBUFFERPRIVATE_H */

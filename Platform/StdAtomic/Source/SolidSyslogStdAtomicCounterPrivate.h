@@ -28,7 +28,7 @@ static inline void StdAtomicCounter_Report(
     enum SolidSyslogStdAtomicCounterErrors code
 )
 {
-    SolidSyslog_Error(severity, &StdAtomicCounterErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogStdAtomicCounterErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGSTDATOMICCOUNTERPRIVATE_H */

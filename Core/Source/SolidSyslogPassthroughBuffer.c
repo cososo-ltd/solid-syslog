@@ -14,7 +14,7 @@
 #include "SolidSyslogPassthroughBufferPrivate.h"
 #include "SolidSyslogSender.h"
 
-const struct SolidSyslogErrorSource PassthroughBufferErrorSource = {"PassthroughBuffer"};
+const struct SolidSyslogErrorSource SolidSyslogPassthroughBufferErrorSource = {"PassthroughBuffer"};
 
 static bool PassthroughBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void PassthroughBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);

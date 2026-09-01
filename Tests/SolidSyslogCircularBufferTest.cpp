@@ -246,7 +246,7 @@ TEST(SolidSyslogCircularBuffer, ReadWithBufferTooSmallForHeadRecordReportsError)
     LONGS_EQUAL(0, got);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_ERROR,
-        &CircularBufferErrorSource,
+        &SolidSyslogCircularBufferErrorSource,
         SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_TOO_LARGE
     );
@@ -466,7 +466,7 @@ TEST(SolidSyslogCircularBufferPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &CircularBufferErrorSource,
+        &SolidSyslogCircularBufferErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED
     );
@@ -538,7 +538,7 @@ TEST(SolidSyslogCircularBufferPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &CircularBufferErrorSource,
+        &SolidSyslogCircularBufferErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_UNKNOWN_DESTROY
     );
@@ -555,7 +555,7 @@ TEST(SolidSyslogCircularBufferPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &CircularBufferErrorSource,
+        &SolidSyslogCircularBufferErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_UNKNOWN_DESTROY
     );

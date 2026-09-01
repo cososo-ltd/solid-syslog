@@ -309,7 +309,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveReportsWarningOnTimeout)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        LwipRawDnsResolverErrorSource,
+        SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_RESOLVE_TIMEOUT
     );
@@ -455,7 +455,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, ExhaustedCreateReportsError)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        LwipRawDnsResolverErrorSource,
+        SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_POOL_EXHAUSTED
     );
@@ -469,7 +469,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, CreateWithNullConfigReportsError)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        LwipRawDnsResolverErrorSource,
+        SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_CONFIG
     );
@@ -485,7 +485,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, CreateWithNullSleepReportsError)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        LwipRawDnsResolverErrorSource,
+        SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_SLEEP
     );
@@ -555,7 +555,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        LwipRawDnsResolverErrorSource,
+        SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
@@ -572,7 +572,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        LwipRawDnsResolverErrorSource,
+        SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_UNKNOWN_DESTROY
     );

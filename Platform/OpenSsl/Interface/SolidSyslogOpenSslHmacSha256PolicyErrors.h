@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is OpenSslHmacSha256PolicyErrorSource.
+    /** Detail codes for events whose Source is SolidSyslogOpenSslHmacSha256PolicyErrorSource.
      *  A handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogOpenSslHmacSha256PolicyErrors
@@ -28,9 +28,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by an OpenSslHmacSha256Policy. A handler matches
-     *  by address (event->Source == &OpenSslHmacSha256PolicyErrorSource), then
+     *  by address (event->Source == &SolidSyslogOpenSslHmacSha256PolicyErrorSource), then
      *  reads event->Detail as an enum SolidSyslogOpenSslHmacSha256PolicyErrors. */
-    extern const struct SolidSyslogErrorSource OpenSslHmacSha256PolicyErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogOpenSslHmacSha256PolicyErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

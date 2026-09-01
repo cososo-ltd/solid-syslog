@@ -35,7 +35,7 @@ static inline void PlusTcpTcpStream_Report(
     enum SolidSyslogPlusTcpTcpStreamErrors code
 )
 {
-    SolidSyslog_Error(severity, &PlusTcpTcpStreamErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPlusTcpTcpStreamErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPLUSTCPTCPSTREAMPRIVATE_H */

@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is WindowsFileErrorSource. A handler
+    /** Detail codes for events whose Source is SolidSyslogWindowsFileErrorSource. A handler
      *  reads these off event->Detail after matching event->Source; the members
      *  name their own fault. */
     enum SolidSyslogWindowsFileErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a WindowsFile. A handler matches by address
-     *  (event->Source == &WindowsFileErrorSource), then reads event->Detail as an
+     *  (event->Source == &SolidSyslogWindowsFileErrorSource), then reads event->Detail as an
      *  enum SolidSyslogWindowsFileErrors. */
-    extern const struct SolidSyslogErrorSource WindowsFileErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogWindowsFileErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

@@ -40,7 +40,7 @@ static inline void CircularBuffer_Report(
     enum SolidSyslogCircularBufferErrors code
 )
 {
-    SolidSyslog_Error(severity, &CircularBufferErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogCircularBufferErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGCIRCULARBUFFERPRIVATE_H */

@@ -97,7 +97,7 @@ TEST(SolidSyslogOpenSslPemFileCredentials, CreateWithNullConfigReportsBadConfig)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &OpenSslPemFileCredentialsErrorSource,
+        &SolidSyslogOpenSslPemFileCredentialsErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_NULL_CONFIG
     );
@@ -123,7 +123,7 @@ TEST(SolidSyslogOpenSslPemFileCredentials, CreateBeyondThePoolReportsExhaustion)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
-        &OpenSslPemFileCredentialsErrorSource,
+        &SolidSyslogOpenSslPemFileCredentialsErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_POOL_EXHAUSTED
     );
@@ -138,7 +138,7 @@ TEST(SolidSyslogOpenSslPemFileCredentials, DestroyingAHandleThePoolDoesNotOwnIsR
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
-        &OpenSslPemFileCredentialsErrorSource,
+        &SolidSyslogOpenSslPemFileCredentialsErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_UNKNOWN_DESTROY
     );
@@ -222,7 +222,7 @@ TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsTrustAnchorsThatWillNot
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_ERROR,
-        &OpenSslPemFileCredentialsErrorSource,
+        &SolidSyslogOpenSslPemFileCredentialsErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_TRUST_ANCHORS_NOT_LOADED
     );
@@ -259,7 +259,7 @@ TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsAHalfSuppliedClientCred
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &OpenSslPemFileCredentialsErrorSource,
+        &SolidSyslogOpenSslPemFileCredentialsErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_INCOMPLETE
     );
@@ -276,7 +276,7 @@ TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsAClientCredentialThatWi
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &OpenSslPemFileCredentialsErrorSource,
+        &SolidSyslogOpenSslPemFileCredentialsErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
     );
@@ -293,7 +293,7 @@ TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsAClientKeyThatDoesNotMa
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &OpenSslPemFileCredentialsErrorSource,
+        &SolidSyslogOpenSslPemFileCredentialsErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_MISMATCHED
     );

@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is MbedTlsHmacSha256PolicyErrorSource.
+    /** Detail codes for events whose Source is SolidSyslogMbedTlsHmacSha256PolicyErrorSource.
      *  A handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. KEY_TOO_SHORT is raised when GetKey returns a
      *  key below the SHA-256 output length (32 bytes) - the policy fails closed
@@ -31,9 +31,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by an MbedTlsHmacSha256Policy. A handler matches
-     *  by address (event->Source == &MbedTlsHmacSha256PolicyErrorSource), then
+     *  by address (event->Source == &SolidSyslogMbedTlsHmacSha256PolicyErrorSource), then
      *  reads event->Detail as an enum SolidSyslogMbedTlsHmacSha256PolicyErrors. */
-    extern const struct SolidSyslogErrorSource MbedTlsHmacSha256PolicyErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogMbedTlsHmacSha256PolicyErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

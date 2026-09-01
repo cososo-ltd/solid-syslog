@@ -41,7 +41,7 @@ static inline void PlusTcpAddress_Report(
     enum SolidSyslogPlusTcpAddressErrors code
 )
 {
-    SolidSyslog_Error(severity, &PlusTcpAddressErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPlusTcpAddressErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPLUSTCPADDRESSPRIVATE_H */

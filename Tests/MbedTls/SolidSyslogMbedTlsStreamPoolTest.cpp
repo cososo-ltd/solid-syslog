@@ -106,7 +106,7 @@ TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullConfigReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &MbedTlsStreamErrorSource,
+        &SolidSyslogMbedTlsStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_CONFIG
     );
@@ -130,7 +130,7 @@ TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullTransportReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &MbedTlsStreamErrorSource,
+        &SolidSyslogMbedTlsStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_TRANSPORT
     );
@@ -154,7 +154,7 @@ TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullSleepReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &MbedTlsStreamErrorSource,
+        &SolidSyslogMbedTlsStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_SLEEP
     );
@@ -178,7 +178,7 @@ TEST(SolidSyslogMbedTlsStreamPool, CreateWithNullRngReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &MbedTlsStreamErrorSource,
+        &SolidSyslogMbedTlsStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_NULL_RNG
     );
@@ -212,7 +212,7 @@ TEST(SolidSyslogMbedTlsStreamPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &MbedTlsStreamErrorSource,
+        &SolidSyslogMbedTlsStreamErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_POOL_EXHAUSTED
     );
@@ -279,7 +279,7 @@ TEST(SolidSyslogMbedTlsStreamPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &MbedTlsStreamErrorSource,
+        &SolidSyslogMbedTlsStreamErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_UNKNOWN_DESTROY
     );
@@ -296,7 +296,7 @@ TEST(SolidSyslogMbedTlsStreamPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &MbedTlsStreamErrorSource,
+        &SolidSyslogMbedTlsStreamErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_UNKNOWN_DESTROY
     );

@@ -30,7 +30,7 @@ static inline void OpenSslPemFileCredentials_Report(
     enum SolidSyslogOpenSslPemFileCredentialsErrors code
 )
 {
-    SolidSyslog_Error(severity, &OpenSslPemFileCredentialsErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogOpenSslPemFileCredentialsErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGOPENSSLPEMFILECREDENTIALSPRIVATE_H */

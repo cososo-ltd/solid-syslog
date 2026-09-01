@@ -23,7 +23,7 @@
 #include "SolidSyslogPosixMessageQueueBufferPrivate.h"
 #include "SolidSyslogPrival.h"
 
-const struct SolidSyslogErrorSource PosixMessageQueueBufferErrorSource = {"PosixMessageQueueBuffer"};
+const struct SolidSyslogErrorSource SolidSyslogPosixMessageQueueBufferErrorSource = {"PosixMessageQueueBuffer"};
 
 enum
 {

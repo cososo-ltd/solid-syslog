@@ -17,7 +17,7 @@
 #include "SolidSyslogNullBlockDevice.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource FileBlockDeviceErrorSource = {"FileBlockDevice"};
+const struct SolidSyslogErrorSource SolidSyslogFileBlockDeviceErrorSource = {"FileBlockDevice"};
 
 struct SolidSyslogFile;
 

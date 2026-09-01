@@ -75,7 +75,7 @@ TEST(SolidSyslogStdAtomicCounterPool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &StdAtomicCounterErrorSource,
+        &SolidSyslogStdAtomicCounterErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_STDATOMIC_COUNTER_ERROR_POOL_EXHAUSTED
     );
@@ -154,7 +154,7 @@ TEST(SolidSyslogStdAtomicCounterPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &StdAtomicCounterErrorSource,
+        &SolidSyslogStdAtomicCounterErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_STDATOMIC_COUNTER_ERROR_UNKNOWN_DESTROY
     );
@@ -171,7 +171,7 @@ TEST(SolidSyslogStdAtomicCounterPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &StdAtomicCounterErrorSource,
+        &SolidSyslogStdAtomicCounterErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_STDATOMIC_COUNTER_ERROR_UNKNOWN_DESTROY
     );

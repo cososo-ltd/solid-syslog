@@ -34,7 +34,7 @@ static inline void FreeRtosMutex_Report(
     enum SolidSyslogFreeRtosMutexErrors code
 )
 {
-    SolidSyslog_Error(severity, &FreeRtosMutexErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogFreeRtosMutexErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGFREERTOSMUTEXPRIVATE_H */

@@ -177,7 +177,7 @@ TEST(SolidSyslogPosixFilePool, ExhaustedCreateReportsError)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        &PosixFileErrorSource,
+        &SolidSyslogPosixFileErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_POSIX_FILE_ERROR_POOL_EXHAUSTED
     );
@@ -244,7 +244,7 @@ TEST(SolidSyslogPosixFilePool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PosixFileErrorSource,
+        &SolidSyslogPosixFileErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_POSIX_FILE_ERROR_UNKNOWN_DESTROY
     );
@@ -261,7 +261,7 @@ TEST(SolidSyslogPosixFilePool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &PosixFileErrorSource,
+        &SolidSyslogPosixFileErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_POSIX_FILE_ERROR_UNKNOWN_DESTROY
     );

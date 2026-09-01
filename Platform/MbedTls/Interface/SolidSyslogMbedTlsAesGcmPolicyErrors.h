@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is MbedTlsAesGcmPolicyErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogMbedTlsAesGcmPolicyErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. A tag mismatch on open is the expected
      *  tamper-detected outcome and is NOT reported - DECRYPT_FAILED is only a
@@ -31,9 +31,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by an MbedTlsAesGcmPolicy. A handler matches by
-     *  address (event->Source == &MbedTlsAesGcmPolicyErrorSource), then reads
+     *  address (event->Source == &SolidSyslogMbedTlsAesGcmPolicyErrorSource), then reads
      *  event->Detail as an enum SolidSyslogMbedTlsAesGcmPolicyErrors. */
-    extern const struct SolidSyslogErrorSource MbedTlsAesGcmPolicyErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogMbedTlsAesGcmPolicyErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

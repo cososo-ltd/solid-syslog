@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is MetaSdErrorSource. A handler
+    /** Detail codes for events whose Source is SolidSyslogMetaSdErrorSource. A handler
      *  reads these off event->Detail after matching event->Source; the members
      *  name their own fault. */
     enum SolidSyslogMetaSdErrors
@@ -26,9 +26,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** The identity for events raised by a MetaSd. A handler matches by address
-     *  (event->Source == &MetaSdErrorSource), then reads event->Detail as an
+     *  (event->Source == &SolidSyslogMetaSdErrorSource), then reads event->Detail as an
      *  enum SolidSyslogMetaSdErrors. */
-    extern const struct SolidSyslogErrorSource MetaSdErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogMetaSdErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

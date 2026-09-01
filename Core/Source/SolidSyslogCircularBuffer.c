@@ -19,7 +19,7 @@
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource CircularBufferErrorSource = {"CircularBuffer"};
+const struct SolidSyslogErrorSource SolidSyslogCircularBufferErrorSource = {"CircularBuffer"};
 
 enum
 {
