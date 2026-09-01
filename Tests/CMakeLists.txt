@@ -164,6 +164,7 @@ if(SOLIDSYSLOG_OPENSSL)
         SolidSyslogOpenSslHmacSha256PolicyTest.cpp
         SolidSyslogOpenSslAesGcmPolicyTest.cpp
         OpenSslFakeTest.cpp
+        OpenSslCredentialsFake.c
         SolidSyslogOpenSslNullCredentialsTest.cpp
         SolidSyslogOpenSslPemFileCredentialsTest.cpp
     )

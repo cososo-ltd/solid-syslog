@@ -307,3 +307,11 @@ TEST(SolidSyslogOpenSslPemFileCredentials, InstallStillSucceedsWhenTheClientCred
 
     CHECK_TRUE(credentials->Install(credentials, ctx, &installed));
 }
+
+TEST(SolidSyslogOpenSslPemFileCredentials, ReleaseDoesNotCrash)
+{
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+    credentials->Install(credentials, ctx, &installed);
+
+    credentials->Release(credentials);
+}

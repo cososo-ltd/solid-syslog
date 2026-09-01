@@ -80,6 +80,14 @@ static inline bool OpenSslStream_IsValidConfig(const struct SolidSyslogOpenSslSt
             SOLIDSYSLOG_OPENSSL_STREAM_ERROR_NULL_SLEEP
         );
     }
+    else if (config->Credentials == NULL)
+    {
+        OpenSslStream_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_NULL_CREDENTIALS
+        );
+    }
     else
     {
         valid = true;

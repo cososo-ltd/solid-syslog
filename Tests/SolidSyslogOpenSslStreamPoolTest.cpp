@@ -4,6 +4,7 @@ extern "C"
 {
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "OpenSslCredentialsFake.h"
 #include "OpenSslFake.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogPrival.h"
@@ -56,6 +57,8 @@ TEST_GROUP(SolidSyslogOpenSslStreamPool)
         transport = StreamFake_Create();
         config.Transport = transport;
         config.Sleep = NoOpSleep;
+        OpenSslCredentialsFake_Reset();
+        config.Credentials = OpenSslCredentialsFake_Get();
     }
 
     void teardown() override
@@ -104,6 +107,30 @@ TEST(SolidSyslogOpenSslStreamPool, CreateWithNullConfigReportsError)
         &OpenSslStreamErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_STREAM_ERROR_NULL_CONFIG
+    );
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullCredentialsReturnsFallback)
+{
+    config.Credentials = nullptr;
+
+    struct SolidSyslogStream* fallback = SolidSyslogOpenSslStream_Create(&config);
+
+    CHECK_NULL_STREAM(fallback);
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullCredentialsReportsError)
+{
+    config.Credentials = nullptr;
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogOpenSslStream_Create(&config);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &OpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_NULL_CREDENTIALS
     );
 }
 

@@ -35,6 +35,7 @@ static inline void OpenSslPemFileCredentials_LoadClientCredential(
     SSL_CTX* ctx,
     const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
 );
+static void OpenSslPemFileCredentials_Release(struct SolidSyslogOpenSslCredentials* base);
 
 void OpenSslPemFileCredentials_Initialise(
     struct SolidSyslogOpenSslCredentials* base,
@@ -43,7 +44,7 @@ void OpenSslPemFileCredentials_Initialise(
 {
     struct SolidSyslogOpenSslPemFileCredentials* self = (struct SolidSyslogOpenSslPemFileCredentials*) base;
     self->Base.Install = OpenSslPemFileCredentials_Install;
-    self->Base.Release = NULL;
+    self->Base.Release = OpenSslPemFileCredentials_Release;
     self->Config = *config;
 }
 
@@ -155,4 +156,13 @@ static inline void OpenSslPemFileCredentials_LoadClientCredential(
     {
         /* Installed and paired - the credential will be presented. */
     }
+}
+
+/* Nothing to release. This backend holds paths, and OpenSSL owns what it parsed
+ * from them: the SSL_CTX the stream frees at Close takes the certificate and the
+ * key with it. A backend that parses material itself - one reading a PEM buffer,
+ * or unwrapping a key - is where Release does real work. */
+static void OpenSslPemFileCredentials_Release(struct SolidSyslogOpenSslCredentials* base)
+{
+    (void) base;
 }
