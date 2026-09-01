@@ -26,3 +26,11 @@ TEST(SolidSyslogNullMbedTlsCredentials, InstallReturnsTrue)
     struct SolidSyslogTlsCredentialsInstalled installed;
     CHECK_TRUE(credentials->Install(credentials, nullptr, &installed));
 }
+
+TEST(SolidSyslogNullMbedTlsCredentials, InstallReportsNoTrustAnchors)
+{
+    struct SolidSyslogTlsCredentialsInstalled installed;
+    installed.TrustAnchorsInstalled = true;
+    credentials->Install(credentials, nullptr, &installed);
+    CHECK_FALSE(installed.TrustAnchorsInstalled);
+}

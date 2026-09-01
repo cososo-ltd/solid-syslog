@@ -18,7 +18,7 @@ static bool NullMbedTlsCredentials_NullInstall(
 {
     (void) self;
     (void) conf;
-    (void) installed;
+    installed->TrustAnchorsInstalled = false;
     return true;
 }
 
