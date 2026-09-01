@@ -57,6 +57,12 @@ TEST_GROUP(SolidSyslogOpenSslPemFileCredentials)
         }
     }
 
+    void GiveAClientCredential()
+    {
+        config.ClientCertChainPath = "client.pem";
+        config.ClientKeyPath = "client.key";
+    }
+
     void FillPool()
     {
         for (auto*& slot : pooled)
@@ -220,4 +226,84 @@ TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsTrustAnchorsThatWillNot
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_TRUST_ANCHORS_NOT_LOADED
     );
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallPresentsTheConfiguredClientCredential)
+{
+    GiveAClientCredential();
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    STRCMP_EQUAL("client.pem", OpenSslFake_LastClientCertChainPath());
+    STRCMP_EQUAL("client.key", OpenSslFake_LastClientKeyPath());
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallWithoutAClientCredentialPresentsNone)
+{
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    LONGS_EQUAL(0, OpenSslFake_UseCertChainFileCallCount());
+    LONGS_EQUAL(0, OpenSslFake_UsePrivateKeyFileCallCount());
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsAHalfSuppliedClientCredential)
+{
+    config.ClientCertChainPath = "client.pem";
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &OpenSslPemFileCredentialsErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_INCOMPLETE
+    );
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsAClientCredentialThatWillNotLoad)
+{
+    GiveAClientCredential();
+    OpenSslFake_SetUseCertChainFileFails(true);
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &OpenSslPemFileCredentialsErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
+    );
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsAClientKeyThatDoesNotMatchItsCertificate)
+{
+    GiveAClientCredential();
+    OpenSslFake_SetCheckPrivateKeyFails(true);
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &OpenSslPemFileCredentialsErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_MISMATCHED
+    );
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallStillSucceedsWhenTheClientCredentialIsFaulty)
+{
+    GiveAClientCredential();
+    OpenSslFake_SetUseCertChainFileFails(true);
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+
+    CHECK_TRUE(credentials->Install(credentials, ctx, &installed));
 }

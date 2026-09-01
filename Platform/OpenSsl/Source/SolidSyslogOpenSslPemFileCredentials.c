@@ -21,6 +21,20 @@ static bool OpenSslPemFileCredentials_Install(
     SSL_CTX* ctx,
     struct SolidSyslogTlsCredentialsInstalled* installed
 );
+static inline void OpenSslPemFileCredentials_ConfigureClientIdentity(
+    SSL_CTX* ctx,
+    const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
+);
+static inline bool OpenSslPemFileCredentials_HasClientCredential(
+    const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
+);
+static inline bool OpenSslPemFileCredentials_HasHalfOfClientCredential(
+    const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
+);
+static inline void OpenSslPemFileCredentials_LoadClientCredential(
+    SSL_CTX* ctx,
+    const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
+);
 
 void OpenSslPemFileCredentials_Initialise(
     struct SolidSyslogOpenSslCredentials* base,
@@ -61,5 +75,84 @@ static bool OpenSslPemFileCredentials_Install(
             );
         }
     }
+    OpenSslPemFileCredentials_ConfigureClientIdentity(ctx, &self->Config);
     return ok;
+}
+
+/* No fault in our own credential stops delivery: the collector is the
+ * enforcement point for it, and one that requires a client certificate refuses
+ * the handshake anyway. OpenSSL presents a certificate only where both halves
+ * are installed and paired, so a credential it will not take degrades to
+ * server-authenticated TLS rather than being half-presented. */
+static inline void OpenSslPemFileCredentials_ConfigureClientIdentity(
+    SSL_CTX* ctx,
+    const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
+)
+{
+    if (OpenSslPemFileCredentials_HasClientCredential(config))
+    {
+        OpenSslPemFileCredentials_LoadClientCredential(ctx, config);
+    }
+    else if (OpenSslPemFileCredentials_HasHalfOfClientCredential(config))
+    {
+        OpenSslPemFileCredentials_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_INCOMPLETE
+        );
+    }
+    else
+    {
+        /* Neither supplied - server-authenticated TLS is the deliberate case. */
+    }
+}
+
+static inline bool OpenSslPemFileCredentials_HasClientCredential(
+    const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
+)
+{
+    return (config->ClientCertChainPath != NULL) && (config->ClientKeyPath != NULL);
+}
+
+/* One half without the other. The integrator asked for mutual TLS and will not
+ * get it, so it is reported rather than read as a decision to go without. */
+static inline bool OpenSslPemFileCredentials_HasHalfOfClientCredential(
+    const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
+)
+{
+    return (config->ClientCertChainPath != NULL) != (config->ClientKeyPath != NULL);
+}
+
+/* A key that does not match its certificate is refused by SSL_CTX_use_PrivateKey_file
+ * itself where both are of the same type, so it reaches the explicit pairing check
+ * only as a cross-type pair. The two are reported apart where OpenSSL tells them
+ * apart, and a mismatch it hides inside the load is reported as one that would
+ * not install. */
+static inline void OpenSslPemFileCredentials_LoadClientCredential(
+    SSL_CTX* ctx,
+    const struct SolidSyslogOpenSslPemFileCredentialsConfig* config
+)
+{
+    bool installed = (SSL_CTX_use_certificate_chain_file(ctx, config->ClientCertChainPath) == 1) &&
+                     (SSL_CTX_use_PrivateKey_file(ctx, config->ClientKeyPath, SSL_FILETYPE_PEM) == 1);
+    if (installed == false)
+    {
+        OpenSslPemFileCredentials_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_NOT_INSTALLED
+        );
+    }
+    else if (SSL_CTX_check_private_key(ctx) != 1)
+    {
+        OpenSslPemFileCredentials_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_OPENSSL_PEM_FILE_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_MISMATCHED
+        );
+    }
+    else
+    {
+        /* Installed and paired - the credential will be presented. */
+    }
 }
