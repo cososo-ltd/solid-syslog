@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
  */
 
-#include "SolidSyslogNullMbedTlsCredentials.h"
+#include "SolidSyslogMbedTlsNullCredentials.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -10,7 +10,7 @@
 #include "SolidSyslogMbedTlsCredentialsDefinition.h"
 #include "SolidSyslogTlsCredentialsInstalled.h"
 
-static bool NullMbedTlsCredentials_NullInstall(
+static bool MbedTlsNullCredentials_Install(
     struct SolidSyslogMbedTlsCredentials* self,
     struct mbedtls_ssl_config* conf,
     struct SolidSyslogTlsCredentialsInstalled* installed
@@ -24,16 +24,16 @@ static bool NullMbedTlsCredentials_NullInstall(
     return true;
 }
 
-static void NullMbedTlsCredentials_NullRelease(struct SolidSyslogMbedTlsCredentials* self)
+static void MbedTlsNullCredentials_Release(struct SolidSyslogMbedTlsCredentials* self)
 {
     (void) self;
 }
 
-struct SolidSyslogMbedTlsCredentials* SolidSyslogNullMbedTlsCredentials_Get(void)
+struct SolidSyslogMbedTlsCredentials* SolidSyslogMbedTlsNullCredentials_Get(void)
 {
     static struct SolidSyslogMbedTlsCredentials instance = {
-        NullMbedTlsCredentials_NullInstall,
-        NullMbedTlsCredentials_NullRelease
+        MbedTlsNullCredentials_Install,
+        MbedTlsNullCredentials_Release
     };
     return &instance;
 }

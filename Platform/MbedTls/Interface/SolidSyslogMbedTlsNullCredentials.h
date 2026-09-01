@@ -5,8 +5,8 @@
 /** @file
  *  The no-op Mbed TLS credentials Null object: installs nothing and releases
  *  nothing. */
-#ifndef SOLIDSYSLOGNULLMBEDTLSCREDENTIALS_H
-#define SOLIDSYSLOGNULLMBEDTLSCREDENTIALS_H
+#ifndef SOLIDSYSLOGMBEDTLSNULLCREDENTIALS_H
+#define SOLIDSYSLOGMBEDTLSNULLCREDENTIALS_H
 
 #include "SolidSyslogExternC.h"
 
@@ -15,8 +15,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogMbedTlsCredentials;
 
     /** Installs nothing and releases nothing. */
-    struct SolidSyslogMbedTlsCredentials* SolidSyslogNullMbedTlsCredentials_Get(void);
+    struct SolidSyslogMbedTlsCredentials* SolidSyslogMbedTlsNullCredentials_Get(void);
 
 SOLIDSYSLOG_EXTERN_C_END
 
-#endif /* SOLIDSYSLOGNULLMBEDTLSCREDENTIALS_H */
+#endif /* SOLIDSYSLOGMBEDTLSNULLCREDENTIALS_H */

@@ -5,8 +5,8 @@
 /** @file
  *  The no-op OpenSSL credentials Null object: installs nothing and releases
  *  nothing. */
-#ifndef SOLIDSYSLOGNULLOPENSSLCREDENTIALS_H
-#define SOLIDSYSLOGNULLOPENSSLCREDENTIALS_H
+#ifndef SOLIDSYSLOGOPENSSLNULLCREDENTIALS_H
+#define SOLIDSYSLOGOPENSSLNULLCREDENTIALS_H
 
 #include "SolidSyslogExternC.h"
 
@@ -15,8 +15,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogOpenSslCredentials;
 
     /** Installs nothing and releases nothing. */
-    struct SolidSyslogOpenSslCredentials* SolidSyslogNullOpenSslCredentials_Get(void);
+    struct SolidSyslogOpenSslCredentials* SolidSyslogOpenSslNullCredentials_Get(void);
 
 SOLIDSYSLOG_EXTERN_C_END
 
-#endif /* SOLIDSYSLOGNULLOPENSSLCREDENTIALS_H */
+#endif /* SOLIDSYSLOGOPENSSLNULLCREDENTIALS_H */

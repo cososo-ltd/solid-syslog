@@ -11,7 +11,7 @@ add_library(SolidSyslogMbedTls INTERFACE)
 # mbedtls_config.h): the TLS Stream plus the two at-rest SecurityPolicies.
 # Unused TUs dead-strip at link time (-Wl,--gc-sections).
 target_sources(SolidSyslogMbedTls INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogNullMbedTlsCredentials.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsNullCredentials.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsStream.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsStreamStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogMbedTlsHmacSha256Policy.c

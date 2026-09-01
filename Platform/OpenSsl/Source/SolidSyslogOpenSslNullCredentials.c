@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
  */
 
-#include "SolidSyslogNullOpenSslCredentials.h"
+#include "SolidSyslogOpenSslNullCredentials.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -10,7 +10,7 @@
 #include "SolidSyslogOpenSslCredentialsDefinition.h"
 #include "SolidSyslogTlsCredentialsInstalled.h"
 
-static bool NullOpenSslCredentials_NullInstall(
+static bool OpenSslNullCredentials_Install(
     struct SolidSyslogOpenSslCredentials* self,
     SSL_CTX* ctx,
     struct SolidSyslogTlsCredentialsInstalled* installed
@@ -24,16 +24,16 @@ static bool NullOpenSslCredentials_NullInstall(
     return true;
 }
 
-static void NullOpenSslCredentials_NullRelease(struct SolidSyslogOpenSslCredentials* self)
+static void OpenSslNullCredentials_Release(struct SolidSyslogOpenSslCredentials* self)
 {
     (void) self;
 }
 
-struct SolidSyslogOpenSslCredentials* SolidSyslogNullOpenSslCredentials_Get(void)
+struct SolidSyslogOpenSslCredentials* SolidSyslogOpenSslNullCredentials_Get(void)
 {
     static struct SolidSyslogOpenSslCredentials instance = {
-        NullOpenSslCredentials_NullInstall,
-        NullOpenSslCredentials_NullRelease
+        OpenSslNullCredentials_Install,
+        OpenSslNullCredentials_Release
     };
     return &instance;
 }

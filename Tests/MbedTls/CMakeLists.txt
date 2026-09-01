@@ -154,26 +154,26 @@ set_target_properties(SolidSyslogMbedTlsAesGcmPolicyTest PROPERTIES
 
 add_test(NAME SolidSyslogMbedTlsAesGcmPolicyTest COMMAND SolidSyslogMbedTlsAesGcmPolicyTest)
 
-# SolidSyslogNullMbedTlsCredentials — the credentials role's Null object.
+# SolidSyslogMbedTlsNullCredentials — the credentials role's Null object.
 # Links no mbedTLS at all: the vtable forward-declares mbedtls_ssl_config and
 # the Null object never dereferences it, so this exe needs neither the fakes
 # nor the upstream include path.
-add_executable(SolidSyslogNullMbedTlsCredentialsTest
-    SolidSyslogNullMbedTlsCredentialsTest.cpp
+add_executable(SolidSyslogMbedTlsNullCredentialsTest
+    SolidSyslogMbedTlsNullCredentialsTest.cpp
     main.cpp
-    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogNullMbedTlsCredentials.c
+    ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsNullCredentials.c
 )
 
-target_link_libraries(SolidSyslogNullMbedTlsCredentialsTest PRIVATE
+target_link_libraries(SolidSyslogMbedTlsNullCredentialsTest PRIVATE
     ${PROJECT_NAME}
     CppUTest
     CppUTestExt
 )
 
-target_include_directories(SolidSyslogNullMbedTlsCredentialsTest PRIVATE
+target_include_directories(SolidSyslogMbedTlsNullCredentialsTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Interface
     ${CMAKE_SOURCE_DIR}/Core/Interface
     ${CMAKE_SOURCE_DIR}/Tests
 )
 
-add_test(NAME SolidSyslogNullMbedTlsCredentialsTest COMMAND SolidSyslogNullMbedTlsCredentialsTest)
+add_test(NAME SolidSyslogMbedTlsNullCredentialsTest COMMAND SolidSyslogMbedTlsNullCredentialsTest)

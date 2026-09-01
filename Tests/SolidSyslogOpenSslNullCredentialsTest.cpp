@@ -1,33 +1,33 @@
 #include "CppUTest/TestHarness.h"
-#include "SolidSyslogNullOpenSslCredentials.h"
+#include "SolidSyslogOpenSslNullCredentials.h"
 #include "SolidSyslogOpenSslCredentialsDefinition.h"
 #include "SolidSyslogTlsCredentialsInstalled.h"
 
 // clang-format off
-TEST_GROUP(SolidSyslogNullOpenSslCredentials)
+TEST_GROUP(SolidSyslogOpenSslNullCredentials)
 {
     struct SolidSyslogOpenSslCredentials* credentials = nullptr;
 
     void setup() override
     {
-        credentials = SolidSyslogNullOpenSslCredentials_Get();
+        credentials = SolidSyslogOpenSslNullCredentials_Get();
     }
 };
 
 // clang-format on
 
-TEST(SolidSyslogNullOpenSslCredentials, GetReturnsNonNull)
+TEST(SolidSyslogOpenSslNullCredentials, GetReturnsNonNull)
 {
     CHECK_TRUE(credentials != nullptr);
 }
 
-TEST(SolidSyslogNullOpenSslCredentials, InstallReturnsTrue)
+TEST(SolidSyslogOpenSslNullCredentials, InstallReturnsTrue)
 {
     struct SolidSyslogTlsCredentialsInstalled installed;
     CHECK_TRUE(credentials->Install(credentials, nullptr, &installed));
 }
 
-TEST(SolidSyslogNullOpenSslCredentials, InstallReportsNoTrustAnchors)
+TEST(SolidSyslogOpenSslNullCredentials, InstallReportsNoTrustAnchors)
 {
     struct SolidSyslogTlsCredentialsInstalled installed;
     installed.TrustAnchorsInstalled = true;
@@ -35,7 +35,7 @@ TEST(SolidSyslogNullOpenSslCredentials, InstallReportsNoTrustAnchors)
     CHECK_FALSE(installed.TrustAnchorsInstalled);
 }
 
-TEST(SolidSyslogNullOpenSslCredentials, InstallReportsNoFingerprints)
+TEST(SolidSyslogOpenSslNullCredentials, InstallReportsNoFingerprints)
 {
     const char* pin = "sha-256:AA";
     struct SolidSyslogTlsCredentialsInstalled installed;
@@ -46,7 +46,7 @@ TEST(SolidSyslogNullOpenSslCredentials, InstallReportsNoFingerprints)
     UNSIGNED_LONGS_EQUAL(0, installed.FingerprintCount);
 }
 
-TEST(SolidSyslogNullOpenSslCredentials, ReleaseDoesNotCrash)
+TEST(SolidSyslogOpenSslNullCredentials, ReleaseDoesNotCrash)
 {
     credentials->Release(credentials);
 }

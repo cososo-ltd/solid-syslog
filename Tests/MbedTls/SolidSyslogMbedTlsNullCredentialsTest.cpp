@@ -1,33 +1,33 @@
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogMbedTlsCredentialsDefinition.h"
-#include "SolidSyslogNullMbedTlsCredentials.h"
+#include "SolidSyslogMbedTlsNullCredentials.h"
 #include "SolidSyslogTlsCredentialsInstalled.h"
 
 // clang-format off
-TEST_GROUP(SolidSyslogNullMbedTlsCredentials)
+TEST_GROUP(SolidSyslogMbedTlsNullCredentials)
 {
     struct SolidSyslogMbedTlsCredentials* credentials = nullptr;
 
     void setup() override
     {
-        credentials = SolidSyslogNullMbedTlsCredentials_Get();
+        credentials = SolidSyslogMbedTlsNullCredentials_Get();
     }
 };
 
 // clang-format on
 
-TEST(SolidSyslogNullMbedTlsCredentials, GetReturnsNonNull)
+TEST(SolidSyslogMbedTlsNullCredentials, GetReturnsNonNull)
 {
     CHECK_TRUE(credentials != nullptr);
 }
 
-TEST(SolidSyslogNullMbedTlsCredentials, InstallReturnsTrue)
+TEST(SolidSyslogMbedTlsNullCredentials, InstallReturnsTrue)
 {
     struct SolidSyslogTlsCredentialsInstalled installed;
     CHECK_TRUE(credentials->Install(credentials, nullptr, &installed));
 }
 
-TEST(SolidSyslogNullMbedTlsCredentials, InstallReportsNoTrustAnchors)
+TEST(SolidSyslogMbedTlsNullCredentials, InstallReportsNoTrustAnchors)
 {
     struct SolidSyslogTlsCredentialsInstalled installed;
     installed.TrustAnchorsInstalled = true;
@@ -35,7 +35,7 @@ TEST(SolidSyslogNullMbedTlsCredentials, InstallReportsNoTrustAnchors)
     CHECK_FALSE(installed.TrustAnchorsInstalled);
 }
 
-TEST(SolidSyslogNullMbedTlsCredentials, InstallReportsNoFingerprints)
+TEST(SolidSyslogMbedTlsNullCredentials, InstallReportsNoFingerprints)
 {
     const char* pin = "sha-256:AA";
     struct SolidSyslogTlsCredentialsInstalled installed;
@@ -46,7 +46,7 @@ TEST(SolidSyslogNullMbedTlsCredentials, InstallReportsNoFingerprints)
     UNSIGNED_LONGS_EQUAL(0, installed.FingerprintCount);
 }
 
-TEST(SolidSyslogNullMbedTlsCredentials, ReleaseDoesNotCrash)
+TEST(SolidSyslogMbedTlsNullCredentials, ReleaseDoesNotCrash)
 {
     credentials->Release(credentials);
 }
