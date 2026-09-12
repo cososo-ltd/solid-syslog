@@ -149,6 +149,69 @@ Feature: TLS equivalence matrix
     And the syslog oracle receives no message over tls
     And the BDD target is still running
 
+  Scenario: A collector whose certificate has expired is refused
+    Given the syslog oracle is running
+    And the collector presents "expired"
+    And the BDD target tolerates a refused handshake
+    When the BDD target attempts to send a syslog message over tls
+    Then the target reports TLS detail "PEER_CERTIFICATE_EXPIRED"
+    And the syslog oracle receives no message over tls
+    And the BDD target is still running
+
+  Scenario: A collector whose certificate is not valid yet is refused
+    Given the syslog oracle is running
+    And the collector presents "not-yet-valid"
+    And the BDD target tolerates a refused handshake
+    When the BDD target attempts to send a syslog message over tls
+    Then the target reports TLS detail "PEER_CERTIFICATE_NOT_YET_VALID"
+    And the syslog oracle receives no message over tls
+    And the BDD target is still running
+
+  Scenario: A pin does not extend the validity period of the certificate it names
+    Given the syslog oracle is running
+    And the collector presents "expired"
+    And the fingerprint of "expired" is pinned
+    And the BDD target tolerates a refused handshake
+    When the BDD target attempts to send a syslog message over tls
+    Then the target reports TLS detail "PEER_CERTIFICATE_EXPIRED"
+    And the syslog oracle receives no message over tls
+    And the BDD target is still running
+
+  Scenario: A chain that reaches no anchor is named ahead of the dates the certificate carries
+    Given the syslog oracle is running
+    And the collector presents "untrusted-and-expired"
+    And the BDD target tolerates a refused handshake
+    When the BDD target attempts to send a syslog message over tls
+    Then the target reports TLS detail "PEER_CERTIFICATE_UNTRUSTED"
+    And the syslog oracle receives no message over tls
+    And the BDD target is still running
+
+  Scenario: A name that does not match is named ahead of the dates the certificate carries
+    Given the syslog oracle is running
+    And the collector presents "wrong-name-and-expired"
+    And the BDD target tolerates a refused handshake
+    When the BDD target attempts to send a syslog message over tls
+    Then the target reports TLS detail "PEER_NAME_MISMATCHED"
+    And the syslog oracle receives no message over tls
+    And the BDD target is still running
+
+  Scenario: A device the collector rejects after the handshake is told, rather than believing it delivered
+    # Mutual TLS is decided after the client's flight under TLS 1.3, so the
+    # write succeeds and the collector's refusal arrives behind it. The record
+    # that provoked it is gone - it had left before the collector refused it -
+    # and the device learns at its next record, whose write fails on the torn
+    # connection. This cell exists because that gap is easy to assume away in
+    # either direction: the device is not told immediately, and it is told.
+    Given the syslog oracle is running
+    And the collector presents "mtls-required"
+    And the BDD target tolerates a refused handshake
+    And the BDD target is running with default transport tls
+    When the client sends a message
+    Then the syslog oracle receives no message over mtls
+    When the client sends a message
+    Then the target reports that delivery failed
+    And the BDD target is still running
+
   Scenario: Rotating the trust anchors lets a refused device deliver without a restart
     Given the syslog oracle is running
     And the collector presents "anchor-signed"

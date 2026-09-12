@@ -280,6 +280,7 @@ add_executable(SolidSyslogBddTarget
     # target_sources(INTERFACE) compile here against this target's config.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosPipeline.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetClock.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCustomSd.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetInteractive.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
@@ -351,8 +352,15 @@ target_link_libraries(SolidSyslogBddTarget PRIVATE
 # Platform/MbedTls/Source/*.c include <mbedtls/ssl.h>; they MUST see the same
 # user config as the mbedTLS library itself, otherwise struct sizes and the
 # enabled-feature bitset diverge between the consumer and the library.
+# The wall clock this target hands mbedTLS is seeded at configure time: the
+# board has no RTC and no libc time() behind a syscall, and certificate
+# validity only asks which side of a window the device is on. It drifts forward
+# from the configure instant, which the ten-year test material absorbs.
+string(TIMESTAMP SOLIDSYSLOG_BDD_BUILD_EPOCH "%s" UTC)
+
 target_compile_definitions(SolidSyslogBddTarget PRIVATE
     MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
+    BDD_TARGET_BUILD_EPOCH=${SOLIDSYSLOG_BDD_BUILD_EPOCH}
 )
 
 target_link_options(SolidSyslogBddTarget PRIVATE

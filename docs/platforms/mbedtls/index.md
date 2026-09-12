@@ -118,3 +118,27 @@ refused handshake rather than as a configuration error.
 Key-exchange groups and signature algorithms are not selectable here. TLS 1.3
 moved both out of the ciphersuite, so a policy naming a curve has nowhere to go
 yet.
+
+## Certificate validity depends on your build carrying a clock
+
+`MBEDTLS_HAVE_TIME_DATE` is what makes Mbed TLS check the dates on a
+certificate. Without it `mbedtls_x509_time_is_past` and
+`mbedtls_x509_time_is_future` compile to `return 0`, the expired and not-yet-valid
+flags are never set, and a certificate outside its validity period is accepted -
+silently, because nothing failed. On a board with no real-time clock it is
+tempting to leave the macro off for exactly that reason, and doing so gives up
+the last time-based control the contract has.
+
+Defining it obliges the build to supply the time itself. `MBEDTLS_PLATFORM_TIME_ALT`
+lets you install a source with `mbedtls_platform_set_time` rather than depending
+on a libc `time()` your target may have no syscall behind, and
+`MBEDTLS_HAVE_TIME` separately obliges the build to provide `mbedtls_ms_time` -
+every implementation Mbed TLS ships for it is POSIX or Windows, so a bare-metal
+target defines `MBEDTLS_PLATFORM_MS_TIME_ALT` and supplies its own from a tick
+counter.
+
+A coarse clock is enough. X.509 asks only which side of a window the device is
+on, so a time fed by SNTP, or seeded at provisioning and advanced by an uptime
+counter, answers the question a battery-backed RTC would. Time for certificates
+is also independent of the timestamp a record carries: leaving
+`SolidSyslogConfig.Clock` unset still emits `NILVALUE` in the message.

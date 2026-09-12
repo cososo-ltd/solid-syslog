@@ -26,6 +26,12 @@ _COLLECTORS = {
     "chained": (6519, "server-chained.pem"),
     # The happy-path certificate, offered over TLS 1.2 only.
     "tls-1-2": (6520, "server.pem"),
+    # Outside their validity windows, on fixed dates decades away.
+    "expired": (6522, "server-expired.pem"),
+    "not-yet-valid": (6523, "server-notyetvalid.pem"),
+    # Two faults at once, for the cells that pin which one is named.
+    "untrusted-and-expired": (6524, "server-untrusted-expired.pem"),
+    "wrong-name-and-expired": (6525, "server-wrongname-expired.pem"),
     "collector-b": (6521, "server-b.pem"),
 }
 

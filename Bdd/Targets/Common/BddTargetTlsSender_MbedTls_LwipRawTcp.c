@@ -24,6 +24,7 @@
 #include "BddTargetTlsSender.h"
 #include "SolidSyslogMbedTlsStreamErrors.h"
 
+#include "BddTargetClock.h"
 #include "BddTargetMtlsConfig.h"
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
@@ -187,6 +188,29 @@ static void RtosSleep(int milliseconds)
  * parse, ECDHE primes, ASN.1 walks); without the yields, lower-priority tasks
  * would starve until init finishes, and without the diagnostic prints the
  * boot would appear to hang. */
+/* mbedTLS asks for this by name when MBEDTLS_PLATFORM_MS_TIME_ALT is set. It
+   wants a monotonic millisecond counter rather than a wall clock, which is what
+   the scheduler's tick already is. */
+mbedtls_ms_time_t mbedtls_ms_time(void)
+{
+    return (mbedtls_ms_time_t) xTaskGetTickCount() * (mbedtls_ms_time_t) portTICK_PERIOD_MS;
+}
+
+static uint32_t FreeRtosUptimeSeconds(void)
+{
+    return (uint32_t) (xTaskGetTickCount() / configTICK_RATE_HZ);
+}
+
+static mbedtls_time_t FreeRtosMbedTlsTime(mbedtls_time_t* result)
+{
+    mbedtls_time_t now = (mbedtls_time_t) BddTargetClock_Now();
+    if (result != NULL)
+    {
+        *result = now;
+    }
+    return now;
+}
+
 static void EnsureMbedTlsInitialised(void)
 {
     if (mbedTlsInitialised)
@@ -205,6 +229,13 @@ static void EnsureMbedTlsInitialised(void)
      * the default libc calloc and fails, the failure mode is heap exhaustion
      * inside newlib's 4 KiB syscall heap, not a recoverable error. */
     mbedtls_platform_set_calloc_free(FreeRtosMbedTlsCalloc, FreeRtosMbedTlsFree);
+
+    /* Give mbedTLS a wall clock, so certificate validity is checked here as it
+       is on a hosted target. Process-global like the allocator pair above, and
+       installed by the target for the same reason: the library never touches
+       mbedTLS's global hooks. */
+    BddTargetClock_Initialise(FreeRtosUptimeSeconds);
+    mbedtls_platform_set_time(FreeRtosMbedTlsTime);
 
     mbedtls_entropy_init(&entropy);
     /* Registered as MBEDTLS_ENTROPY_SOURCE_STRONG even though the demo

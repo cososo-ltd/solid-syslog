@@ -1,4 +1,8 @@
-"""Portable TLS detail codes, read from the header that defines them.
+"""Detail codes read from the headers that define them.
+
+Mostly the portable TLS ones, and also the sender's own - a cell that asserts a
+delivery failure needs the number the sender prints, and it comes from a
+different enum.
 
 Since #813 every TLS backend reports the same `enum SolidSyslogTlsStreamErrors`
 values, which is what lets one scenario assert the same number on all four BDD
@@ -21,11 +25,23 @@ import re
 
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
 _HEADER = _REPO_ROOT / "Core" / "Interface" / "SolidSyslogTlsStreamErrors.h"
+_SENDER_HEADER = _REPO_ROOT / "Core" / "Interface" / "SolidSyslogStreamSenderErrors.h"
 
 _PREFIX = "SOLIDSYSLOG_TLS_STREAM_ERROR_"
-_BLOCK = re.compile(r"enum\s+SolidSyslogTlsStreamErrors\s*\{(.*?)\}\s*;", re.DOTALL)
+_SENDER_PREFIX = "SOLIDSYSLOG_STREAM_SENDER_ERROR_"
 _COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
-_MEMBER = re.compile(rf"\b{_PREFIX}([A-Z0-9_]+)\b\s*(?:=\s*(\d+))?")
+
+
+def _blockPattern(enumName):
+    return re.compile(rf"enum\s+{enumName}\s*\{{(.*?)\}}\s*;", re.DOTALL)
+
+
+def _memberPattern(prefix):
+    return re.compile(rf"\b{prefix}([A-Z0-9_]+)\b\s*(?:=\s*(\d+))?")
+
+
+_BLOCK = _blockPattern("SolidSyslogTlsStreamErrors")
+_MEMBER = _memberPattern(_PREFIX)
 
 
 def _parse(header_text):
@@ -73,3 +89,34 @@ def tls_error_code(name):
         known = ", ".join(sorted(TLS_ERROR_CODES))
         raise KeyError(f"Unknown TLS detail code {name!r}. Known codes: {known}")
     return TLS_ERROR_CODES[shortName]
+
+
+def _parseSender(header_text):
+    """The sender's codes. Same shape as the TLS enum, without the _MAX
+    obligations E39 places on that one."""
+    block = _blockPattern("SolidSyslogStreamSenderErrors").search(header_text)
+    if block is None:
+        raise RuntimeError(f"No enum SolidSyslogStreamSenderErrors in {_SENDER_HEADER}")
+
+    codes = {}
+    nextValue = 0
+    for name, explicit in _memberPattern(_SENDER_PREFIX).findall(_COMMENT.sub(" ", block.group(1))):
+        if explicit:
+            nextValue = int(explicit)
+        codes[name] = nextValue
+        nextValue += 1
+    return codes
+
+
+SENDER_ERROR_CODES = _parseSender(_SENDER_HEADER.read_text(encoding="utf-8"))
+
+
+def sender_error_code(name):
+    """The number a target prints for one of the sender's own codes."""
+    shortName = name.strip().upper()
+    try:
+        return SENDER_ERROR_CODES[shortName]
+    except KeyError:
+        raise KeyError(
+            f"No sender code {name!r}. Known: {sorted(SENDER_ERROR_CODES)}."
+        ) from None
