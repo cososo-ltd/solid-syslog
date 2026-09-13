@@ -197,11 +197,12 @@ Feature: TLS equivalence matrix
 
   Scenario: A device the collector rejects after the handshake is told, rather than believing it delivered
     # Mutual TLS is decided after the client's flight under TLS 1.3, so the
-    # write succeeds and the collector's refusal arrives behind it. The record
-    # that provoked it is gone - it had left before the collector refused it -
-    # and the device learns at its next record, whose write fails on the torn
-    # connection. This cell exists because that gap is easy to assume away in
-    # either direction: the device is not told immediately, and it is told.
+    # write can succeed with the collector's refusal arriving behind it. Which
+    # record surfaces the fault is a race between that refusal and the next
+    # write, and it is not the same on every lane - one target sees the
+    # handshake itself fail, the others deliver a record before learning. So
+    # this cell asserts that the device is told, and deliberately not when. The
+    # record already in flight when the collector refused it is unrecoverable.
     Given the syslog oracle is running
     And the collector presents "mtls-required"
     And the BDD target tolerates a refused handshake

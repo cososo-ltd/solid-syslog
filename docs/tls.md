@@ -401,9 +401,12 @@ other reports only that a fatal alert arrived. Naming the cause on one backend
 and not the other would make the same deployment diagnose differently on two
 targets, so neither does: the refusal is reported as a rejected handshake.
 
-Under TLS 1.3 the collector reaches that decision after the device's first
-record has left, so that record is gone and the device learns at its next one,
-whose write fails on the closed connection.
+Under TLS 1.3 the collector can reach that decision after the device's first
+record has left, in which case that record is gone. The device is told either
+way, but which record surfaces the fault is a race between the collector's
+refusal and the device's next write: the handshake itself may fail, or it may
+complete and a later write find the connection closed. Do not build on the
+fault appearing against any particular record.
 
 ### Key custody stays with the integrator
 

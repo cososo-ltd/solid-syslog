@@ -136,7 +136,7 @@ bare-metal target satisfies each one differently:
 |---|---|---|
 | Wall clock, from `MBEDTLS_HAVE_TIME` | `mbedtls_time`, by default libc `time()` | `MBEDTLS_PLATFORM_TIME_ALT`, then install a source with `mbedtls_platform_set_time` - a target with no syscall behind `time()` needs this |
 | Calendar conversion, from `MBEDTLS_HAVE_TIME_DATE` | `mbedtls_platform_gmtime_r`, by default `gmtime_r` or `gmtime_s` | `MBEDTLS_PLATFORM_GMTIME_R_ALT`, then supply the function - a libc offering neither needs this |
-| Monotonic milliseconds, also from `MBEDTLS_HAVE_TIME` | `mbedtls_ms_time` | `MBEDTLS_PLATFORM_MS_TIME_ALT`, then supply it from a tick counter - every implementation Mbed TLS ships is POSIX or Windows, so this is not optional off those |
+| Monotonic milliseconds, also from `MBEDTLS_HAVE_TIME` | `mbedtls_ms_time` | `MBEDTLS_PLATFORM_MS_TIME_ALT`, then supply it from a tick counter - every implementation Mbed TLS ships needs a hosted operating system underneath it, so a bare-metal build has no default to fall back on |
 
 Only the first two bear on certificates. The millisecond hook is a separate
 obligation that comes along with `MBEDTLS_HAVE_TIME` and has nothing to do with
