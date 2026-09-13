@@ -25,7 +25,7 @@ from environment import (
 )
 from target_driver import apply_extra_args, spawn_example_process, stop_example_process
 from tls_collectors import fingerprint_of, listener
-from tls_reports import reported_details
+from tls_reports import reported_delivery_faults, reported_details
 
 PER_TRANSPORT_LOG_SYSLOG_NG = {
     "udp": RECEIVED_UDP_LOG,
@@ -782,6 +782,10 @@ def step_block_file_disposed(context, index):
 
 @when("the client sends a message")
 def step_client_sends_message(context):
+    # Where a later step asserts a delivery fault, it means the one this record
+    # provoked. Reports accumulate for the life of the target, so the boundary
+    # has to be taken here or the assertion would be satisfied by an older one.
+    context.delivery_faults_before_send = len(reported_delivery_faults(context.interactive_process))
     send_command(context.interactive_process, "send")
     # Allow time for the service thread to drain the buffer and send
     time.sleep(0.2)

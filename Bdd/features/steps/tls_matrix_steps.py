@@ -24,18 +24,21 @@ from tls_reports import reported_delivery_faults, reported_details, reported_rep
 REPORT_TIMEOUT_SECONDS = 20
 
 
-def await_report(context, expected, read):
-    """Everything reported once `expected` has been, or the budget has run out.
+def await_report(context, expected, read, since=0):
+    """Everything reported since `since` once `expected` has been, or the budget
+    has run out.
 
     A refusal is reported when a connection is attempted rather than when the
-    message is handed over, so a step asserting one has to wait for it.
+    message is handed over, so a step asserting one has to wait for it. Reports
+    accumulate for the life of the target, so a step that means "this record's
+    fault" passes the index the record was sent at rather than reading the lot.
     """
     process = context.interactive_process
     deadline = time.monotonic() + REPORT_TIMEOUT_SECONDS
-    reported = read(process)
+    reported = read(process)[since:]
     while (expected not in reported) and (time.monotonic() < deadline):
         time.sleep(0.1)
-        reported = read(process)
+        reported = read(process)[since:]
     return reported
 
 
@@ -62,9 +65,10 @@ def step_target_reports_tls_detail_at_severity(context, name, severity):
 @then('the target reports that delivery failed')
 def step_target_reports_delivery_failed(context):
     expected = (severity_value("WARNING"), sender_error_code("DELIVERY_FAILED"))
-    reported = await_report(context, expected, reported_delivery_faults)
+    since = getattr(context, "delivery_faults_before_send", 0)
+    reported = await_report(context, expected, reported_delivery_faults, since)
     assert expected in reported, (
-        f"Expected a delivery failure {expected} in the target's reports; saw {reported}.\n"
+        f"Expected a delivery failure {expected} since the last record was sent; saw {reported}.\n"
         f"--- target output ---\n{target_output(context.interactive_process)}"
     )
 
