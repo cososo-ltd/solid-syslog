@@ -43,12 +43,22 @@
  * callbacks. MBEDTLS_NET_C would otherwise pull in <sys/socket.h>. */
 #undef MBEDTLS_NET_C
 
-/* No host clock. Cortex-M3 has no wall-clock; mbedTLS's cert-validity-date
- * check is skipped when this is off, which is fine for BDD with baked certs
- * carrying validity 20240101-20990101. Production integrators with an RTC
- * should turn MBEDTLS_HAVE_TIME[_DATE] back on. */
-#undef MBEDTLS_HAVE_TIME
-#undef MBEDTLS_HAVE_TIME_DATE
+/* Certificate validity is enforced here, on a board with no RTC. Without these
+ * mbedtls_x509_time_is_past and _is_future compile to `return 0`, BADCERT_EXPIRED
+ * and BADCERT_FUTURE are never set, and an expired certificate is accepted - so
+ * a target built without them cannot answer the validity half of the TLS
+ * equivalence matrix at all. MBEDTLS_PLATFORM_TIME_ALT lets the target install
+ * its own source (BddTargetClock, seeded at build time and advanced by the
+ * scheduler's uptime) rather than reaching for a libc time() this build has no
+ * syscall behind. Time for certificates only: SolidSyslogConfig leaves Clock
+ * NULL, so a record still carries NILVALUE. */
+#define MBEDTLS_HAVE_TIME
+#define MBEDTLS_HAVE_TIME_DATE
+#define MBEDTLS_PLATFORM_TIME_ALT
+/* MBEDTLS_HAVE_TIME also obliges the build to provide mbedtls_ms_time, whose
+ * upstream implementations are all POSIX or Windows (platform_util.c ends in
+ * #error otherwise). The target supplies its own from the scheduler's tick. */
+#define MBEDTLS_PLATFORM_MS_TIME_ALT
 
 /* Disable mbedTLS's own threading primitive layer. The library runs on the
  * service task only - concurrent access to the ssl_context is not in scope

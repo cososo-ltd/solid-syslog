@@ -102,6 +102,46 @@ receivers:
         max_version: "1.2"
     protocol: rfc5424
     enable_octet_counting: true
+  # Right issuer and name, but its validity window closed in 2020.
+  syslog/tls_expired:
+    tcp:
+      listen_address: "127.0.0.1:6522"
+      tls:
+        cert_file: Bdd/syslog-ng/tls/server-expired.pem
+        key_file: Bdd/syslog-ng/tls/server-expired.key
+        min_version: "1.3"
+    protocol: rfc5424
+    enable_octet_counting: true
+  # Right issuer and name, but its window does not open until 2090.
+  syslog/tls_notyetvalid:
+    tcp:
+      listen_address: "127.0.0.1:6523"
+      tls:
+        cert_file: Bdd/syslog-ng/tls/server-notyetvalid.pem
+        key_file: Bdd/syslog-ng/tls/server-notyetvalid.key
+        min_version: "1.3"
+    protocol: rfc5424
+    enable_octet_counting: true
+  # Two faults at once: an issuer the target does not trust, and a closed window.
+  syslog/tls_untrusted_expired:
+    tcp:
+      listen_address: "127.0.0.1:6524"
+      tls:
+        cert_file: Bdd/syslog-ng/tls/server-untrusted-expired.pem
+        key_file: Bdd/syslog-ng/tls/server-untrusted-expired.key
+        min_version: "1.3"
+    protocol: rfc5424
+    enable_octet_counting: true
+  # Two faults at once: a name that does not match, and a closed window.
+  syslog/tls_wrongname_expired:
+    tcp:
+      listen_address: "127.0.0.1:6525"
+      tls:
+        cert_file: Bdd/syslog-ng/tls/server-wrongname-expired.pem
+        key_file: Bdd/syslog-ng/tls/server-wrongname-expired.key
+        min_version: "1.3"
+    protocol: rfc5424
+    enable_octet_counting: true
   # A second collector with its own issuer and name, for the redirect.
   syslog/tls_b:
     tcp:
@@ -157,7 +197,7 @@ service:
       level: warn
   pipelines:
     logs:
-      receivers: [syslog/udp, syslog/tcp, syslog/tls, syslog/tls_untrusted, syslog/tls_wrongname, syslog/tls_selfsigned, syslog/tls_chained, syslog/tls_12, syslog/mtls, syslog/tls_b]
+      receivers: [syslog/udp, syslog/tcp, syslog/tls, syslog/tls_untrusted, syslog/tls_wrongname, syslog/tls_selfsigned, syslog/tls_chained, syslog/tls_12, syslog/tls_expired, syslog/tls_notyetvalid, syslog/tls_untrusted_expired, syslog/tls_wrongname_expired, syslog/mtls, syslog/tls_b]
       exporters: [file]
     logs/udp:
       receivers: [syslog/udp]
@@ -166,7 +206,7 @@ service:
       receivers: [syslog/tcp]
       exporters: [file/tcp]
     logs/tls:
-      receivers: [syslog/tls, syslog/tls_untrusted, syslog/tls_wrongname, syslog/tls_selfsigned, syslog/tls_chained, syslog/tls_12]
+      receivers: [syslog/tls, syslog/tls_untrusted, syslog/tls_wrongname, syslog/tls_selfsigned, syslog/tls_chained, syslog/tls_12, syslog/tls_expired, syslog/tls_notyetvalid, syslog/tls_untrusted_expired, syslog/tls_wrongname_expired]
       exporters: [file/tls]
     logs/tls_b:
       receivers: [syslog/tls_b]

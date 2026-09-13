@@ -43,6 +43,22 @@ def reported_reports(process):
     ]
 
 
+_DELIVERY = re.compile(r"severity=(\d+) \[StreamSender cat=(\d+) detail=(-?\d+)\]")
+
+
+def reported_delivery_faults(process):
+    """Every delivery-health report the sender has made, as (severity, detail).
+
+    A different source from the TLS-stream reports above, and deliberately so:
+    the peer tore the connection down behind a write that had already
+    succeeded, which is the sender's fault to report rather than the stream's.
+    """
+    return [
+        (int(severity), int(detail))
+        for severity, _category, detail in _DELIVERY.findall(target_output(process))
+    ]
+
+
 def reported_details(process):
     """Every TLS-stream detail code the target has reported so far."""
     return [detail for _, detail in reported_reports(process)]

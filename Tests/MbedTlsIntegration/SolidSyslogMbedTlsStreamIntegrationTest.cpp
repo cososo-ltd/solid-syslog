@@ -150,6 +150,13 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
         }
         MbedTlsTestCert_Destroy(&serverCert);
         MbedTlsTestCert_Destroy(&trustedCa);
+        /* The server has been destroyed above, which unlinks the leaf from its
+           issuer, so both are safe to free now and only now. */
+        if (chainBuilt)
+        {
+            MbedTlsTestCert_Destroy(&chainLeaf);
+            MbedTlsTestCert_Destroy(&chainIntermediate);
+        }
         mbedtls_ctr_drbg_free(&rng);
         mbedtls_entropy_free(&entropy);
     }
@@ -257,6 +264,61 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
         server = MbedTlsTestServer_Create(&serverConfig);
         clientTransport = SocketStream_Create(fds[0]);
         return clientTransport;
+    }
+
+    /* A leaf whose chain reaches a CA the client does not hold. Both outputs
+       must be destroyed by the test body. */
+    void CreateLeafSignedByAStranger(
+        const char* subject,
+        const char* altDns,
+        struct MbedTlsTestCert* outStrangerCa,
+        struct MbedTlsTestCert* outLeaf
+    )
+    {
+        struct MbedTlsTestCertConfig caConfig = {};
+        caConfig.SubjectName = "CN=Some Other Root CA";
+        caConfig.IsCa = 1;
+        MbedTlsTestCert_Create(&caConfig, outStrangerCa, &rng);
+
+        struct MbedTlsTestCertConfig leafConfig = {};
+        leafConfig.SubjectName = subject;
+        leafConfig.SubjectAltDns = altDns;
+        leafConfig.Issuer = outStrangerCa;
+        MbedTlsTestCert_Create(&leafConfig, outLeaf, &rng);
+    }
+
+    /* Root trusted, intermediate expired, leaf issued by the intermediate and
+       presented with it. The certificates stay on the fixture: the server links
+       the leaf to its issuer, so freeing either from the test body would free
+       the other twice. */
+    struct MbedTlsTestCert chainIntermediate = {};
+    struct MbedTlsTestCert chainLeaf = {};
+    bool chainBuilt = false;
+
+    void StartServerBehindAnExpiredIssuer(const char* leafSubject, const char* leafAltDns)
+    {
+        struct MbedTlsTestCertConfig intermediateConfig = {};
+        intermediateConfig.SubjectName = "CN=Test Intermediate CA";
+        intermediateConfig.IsCa = 1;
+        intermediateConfig.Issuer = &trustedCa;
+        intermediateConfig.ValidityFrom = "20240101000000";
+        intermediateConfig.ValidityTo = "20240102000000";
+        MbedTlsTestCert_Create(&intermediateConfig, &chainIntermediate, &rng);
+
+        struct MbedTlsTestCertConfig leafConfig = {};
+        leafConfig.SubjectName = leafSubject;
+        leafConfig.SubjectAltDns = leafAltDns;
+        leafConfig.Issuer = &chainIntermediate;
+        MbedTlsTestCert_Create(&leafConfig, &chainLeaf, &rng);
+        chainBuilt = true;
+
+        struct MbedTlsTestServerConfig serverConfig = {};
+        serverConfig.ServerFd = fds[1];
+        serverConfig.ServerCert = &chainLeaf;
+        serverConfig.IssuerCert = &chainIntermediate;
+        serverConfig.Rng = &rng;
+        server = MbedTlsTestServer_Create(&serverConfig);
+        clientTransport = SocketStream_Create(fds[0]);
     }
 
     struct SolidSyslogStream* CreateTlsStream(struct SolidSyslogMbedTlsStreamConfig* cfg)
@@ -584,4 +646,135 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeRejectedWhenTheChainIsTrusted
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
+}
+
+/* Which fault is named when several are present at once. The rule is one rule
+   across both packs - a configuration fault before any peer fault, then
+   fingerprint, chain trust, name, and validity last - and it holds wherever in
+   the chain the fault sits. Each test below pins one boundary of it. */
+
+static const char* const MALFORMED_PIN = "sha-256:not-a-fingerprint";
+static const char* const STRANGER_SUBJECT = "CN=someone-else.example";
+static const char* const STRANGER_HOSTNAME = "someone-else.example";
+static const char* const EXPIRED_FROM = "20240101000000";
+static const char* const EXPIRED_TO = "20240102000000";
+
+TEST(SolidSyslogMbedTlsStreamIntegration, AMalformedPinIsNamedBeforeAnyFaultInThePeersCertificate)
+{
+    struct MbedTlsTestCert expiredCert = {};
+    CreateServerCertValidBetween(EXPIRED_FROM, EXPIRED_TO, &expiredCert);
+
+    struct SolidSyslogStream* transport = StartServerWithCert(&expiredCert);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    PinLiterally(MALFORMED_PIN);
+    tlsStream = CreateTlsStream(&config);
+
+    /* A configuration fault, so it carries CAT_BAD_CONFIG rather than the
+       handshake category the peer-fault rows use - the connection never got as
+       far as a handshake to fail. */
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    LONGS_EQUAL(1, CapturedErrorCount);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, LastCapturedError.Severity);
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, LastCapturedError.Category);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED, LastCapturedError.Detail);
+
+    MbedTlsTestCert_Destroy(&expiredCert);
+}
+
+TEST(SolidSyslogMbedTlsStreamIntegration, AFingerprintThatMatchesNothingIsNamedBeforeAnUntrustedChain)
+{
+    struct MbedTlsTestCert strangerCa = {};
+    struct MbedTlsTestCert leaf = {};
+    CreateLeafSignedByAStranger(TEST_SERVER_SUBJECT, TEST_SERVER_HOSTNAME, &strangerCa, &leaf);
+
+    struct SolidSyslogStream* transport = StartServerWithCert(&leaf);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    PinLiterally(UNMATCHABLE_PIN);
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
+
+    MbedTlsTestCert_Destroy(&leaf);
+    MbedTlsTestCert_Destroy(&strangerCa);
+}
+
+TEST(SolidSyslogMbedTlsStreamIntegration, AnUntrustedChainIsNamedBeforeANameThatDoesNotMatch)
+{
+    struct MbedTlsTestCert strangerCa = {};
+    struct MbedTlsTestCert leaf = {};
+    CreateLeafSignedByAStranger(STRANGER_SUBJECT, STRANGER_HOSTNAME, &strangerCa, &leaf);
+
+    struct SolidSyslogStream* transport = StartServerWithCert(&leaf);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
+
+    MbedTlsTestCert_Destroy(&leaf);
+    MbedTlsTestCert_Destroy(&strangerCa);
+}
+
+TEST(SolidSyslogMbedTlsStreamIntegration, ANameThatDoesNotMatchIsNamedBeforeACertificateThatHasExpired)
+{
+    struct MbedTlsTestCert leaf = {};
+    struct MbedTlsTestCertConfig leafConfig = {};
+    leafConfig.SubjectName = STRANGER_SUBJECT;
+    leafConfig.SubjectAltDns = STRANGER_HOSTNAME;
+    leafConfig.Issuer = &trustedCa;
+    leafConfig.ValidityFrom = EXPIRED_FROM;
+    leafConfig.ValidityTo = EXPIRED_TO;
+    MbedTlsTestCert_Create(&leafConfig, &leaf, &rng);
+
+    struct SolidSyslogStream* transport = StartServerWithCert(&leaf);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
+
+    MbedTlsTestCert_Destroy(&leaf);
+}
+
+TEST(SolidSyslogMbedTlsStreamIntegration, APinThatMatchesDoesNotWaiveANameThatDoesNot)
+{
+    struct MbedTlsTestCert leaf = {};
+    struct MbedTlsTestCertConfig leafConfig = {};
+    leafConfig.SubjectName = STRANGER_SUBJECT;
+    leafConfig.SubjectAltDns = STRANGER_HOSTNAME;
+    leafConfig.Issuer = &trustedCa;
+    MbedTlsTestCert_Create(&leafConfig, &leaf, &rng);
+
+    struct SolidSyslogStream* transport = StartServerWithCert(&leaf);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    PinCertificate(&leaf, "sha-256");
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
+
+    MbedTlsTestCert_Destroy(&leaf);
+}
+
+/* The order does not change with the depth the fault sits at: an issuer whose
+   own dates have lapsed still loses to a leaf whose name does not match. */
+TEST(SolidSyslogMbedTlsStreamIntegration, AnExpiredIssuerIsNamedWhenTheLeafItSignedIsOtherwiseSound)
+{
+    StartServerBehindAnExpiredIssuer(TEST_SERVER_SUBJECT, TEST_SERVER_HOSTNAME);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(clientTransport);
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
+}
+
+TEST(SolidSyslogMbedTlsStreamIntegration, ALeafNameThatDoesNotMatchIsNamedBeforeAnExpiredIssuer)
+{
+    StartServerBehindAnExpiredIssuer(STRANGER_SUBJECT, STRANGER_HOSTNAME);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(clientTransport);
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
 }

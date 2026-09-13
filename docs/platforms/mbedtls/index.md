@@ -118,3 +118,32 @@ refused handshake rather than as a configuration error.
 Key-exchange groups and signature algorithms are not selectable here. TLS 1.3
 moved both out of the ciphersuite, so a policy naming a curve has nowhere to go
 yet.
+
+## Certificate validity depends on your build carrying a clock
+
+`MBEDTLS_HAVE_TIME_DATE` is what makes Mbed TLS check the dates on a
+certificate. Without it `mbedtls_x509_time_is_past` and
+`mbedtls_x509_time_is_future` compile to `return 0`, the expired and not-yet-valid
+flags are never set, and a certificate outside its validity period is accepted -
+silently, because nothing failed. On a board with no real-time clock it is
+tempting to leave the macro off for exactly that reason, and doing so gives up
+the last time-based control the contract has.
+
+Defining it obliges the build to satisfy three separate contracts, and a
+bare-metal target satisfies each one differently:
+
+| Contract | Supplied by | Where a bare-metal target has to step in |
+|---|---|---|
+| Wall clock, from `MBEDTLS_HAVE_TIME` | `mbedtls_time`, by default libc `time()` | `MBEDTLS_PLATFORM_TIME_ALT`, then install a source with `mbedtls_platform_set_time` - a target with no syscall behind `time()` needs this |
+| Calendar conversion, from `MBEDTLS_HAVE_TIME_DATE` | `mbedtls_platform_gmtime_r`, by default `gmtime_r` or `gmtime_s` | `MBEDTLS_PLATFORM_GMTIME_R_ALT`, then supply the function - a libc offering neither needs this |
+| Monotonic milliseconds, also from `MBEDTLS_HAVE_TIME` | `mbedtls_ms_time` | `MBEDTLS_PLATFORM_MS_TIME_ALT`, then supply it from a tick counter - every implementation Mbed TLS ships needs a hosted operating system underneath it, so a bare-metal build has no default to fall back on |
+
+Only the first two bear on certificates. The millisecond hook is a separate
+obligation that comes along with `MBEDTLS_HAVE_TIME` and has nothing to do with
+validity; it is listed because the build will not link without it.
+
+A coarse clock is enough. X.509 asks only which side of a window the device is
+on, so a time fed by SNTP, or seeded at provisioning and advanced by an uptime
+counter, answers the question a battery-backed RTC would. Time for certificates
+is also independent of the timestamp a record carries: leaving
+`SolidSyslogConfig.Clock` unset still emits `NILVALUE` in the message.

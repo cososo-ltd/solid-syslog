@@ -237,6 +237,26 @@ TEST_GROUP(OpenSslStreamIntegration)
         return certConfig;
     }
 
+    /* The trust file holds an unrelated self-signed certificate, so the chain
+       the peer presents reaches no anchor the client holds. */
+    void replaceTrustFileWithAStranger()
+    {
+        struct TlsTestCertConfig strangerConfig = {};
+        strangerConfig.commonName               = "some-other-entity.example";
+        TlsTestCert_Create(&strangerConfig, &stranger);
+        TlsTestCert_WritePemToFile(&stranger, caPath);
+    }
+
+    void givenAnIssuedServerCertificateExpiringInThePast()
+    {
+        struct TlsTestCertConfig caConfig = {};
+        caConfig.commonName               = "SolidSyslog Test Collector CA";
+        caConfig.notBefore                = std::time(nullptr) - 7200;
+        caConfig.notAfter                 = std::time(nullptr) - 3600;
+        TlsTestCert_Create(&caConfig, &clientCa);
+        serverIssuer = &clientCa;
+    }
+
     void createClientCa()
     {
         struct TlsTestCertConfig caConfig = {};
@@ -576,4 +596,109 @@ TEST(OpenSslStreamIntegration, HandshakeRejectedWhenTrustAnchorsAreConfiguredAnd
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
+}
+
+/* Which fault is named when several are present at once. The rule is one rule
+   across both packs - a configuration fault before any peer fault, then
+   fingerprint, chain trust, name, and validity last - and it holds wherever in
+   the chain the fault sits. Each test below pins one boundary of it. */
+
+static const char* const MALFORMED_PIN = "sha-256:not-a-fingerprint";
+static const char* const STRANGER_SANS[] = {"someone-else.example", nullptr};
+
+TEST(OpenSslStreamIntegration, AMalformedPinIsNamedBeforeAnyFaultInThePeersCertificate)
+{
+    struct TlsTestCertConfig certConfig = {};
+    certConfig.commonName = "localhost";
+    certConfig.subjectAltDnsNames = LOCALHOST_SANS;
+    certConfig.notBefore = std::time(nullptr) - 7200;
+    certConfig.notAfter = std::time(nullptr) - 3600;
+    pinLiteral = MALFORMED_PIN;
+    buildScenario(certConfig);
+    replaceTrustFileWithAStranger();
+
+    /* A configuration fault, so it carries CAT_BAD_CONFIG rather than the
+       handshake category the peer-fault rows use - the connection never got as
+       far as a handshake to fail. */
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    LONGS_EQUAL(1, CapturedErrorCount);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, LastCapturedError.Severity);
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, LastCapturedError.Category);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED, LastCapturedError.Detail);
+}
+
+TEST(OpenSslStreamIntegration, AFingerprintThatMatchesNothingIsNamedBeforeAnUntrustedChain)
+{
+    struct TlsTestCertConfig certConfig = {};
+    certConfig.commonName = "localhost";
+    certConfig.subjectAltDnsNames = LOCALHOST_SANS;
+    pinLiteral = UNMATCHABLE_PIN;
+    buildScenario(certConfig);
+    replaceTrustFileWithAStranger();
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
+}
+
+TEST(OpenSslStreamIntegration, AnUntrustedChainIsNamedBeforeANameThatDoesNotMatch)
+{
+    struct TlsTestCertConfig certConfig = {};
+    certConfig.commonName = "someone-else.example";
+    certConfig.subjectAltDnsNames = STRANGER_SANS;
+    buildScenario(certConfig);
+    replaceTrustFileWithAStranger();
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
+}
+
+TEST(OpenSslStreamIntegration, ANameThatDoesNotMatchIsNamedBeforeACertificateThatHasExpired)
+{
+    struct TlsTestCertConfig certConfig = {};
+    certConfig.commonName = "someone-else.example";
+    certConfig.subjectAltDnsNames = STRANGER_SANS;
+    certConfig.notBefore = std::time(nullptr) - 7200;
+    certConfig.notAfter = std::time(nullptr) - 3600;
+    buildScenario(certConfig);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
+}
+
+TEST(OpenSslStreamIntegration, APinThatMatchesDoesNotWaiveANameThatDoesNot)
+{
+    struct TlsTestCertConfig certConfig = {};
+    certConfig.commonName = "someone-else.example";
+    certConfig.subjectAltDnsNames = STRANGER_SANS;
+    pinLabel = "sha-256";
+    installTrustAnchors = false;
+    buildScenario(certConfig);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
+}
+
+/* The order does not change with the depth the fault sits at: an issuer whose
+   own dates have lapsed still loses to a leaf whose name does not match. */
+TEST(OpenSslStreamIntegration, AnExpiredIssuerIsNamedWhenTheLeafItSignedIsOtherwiseSound)
+{
+    givenAnIssuedServerCertificateExpiringInThePast();
+    buildScenario(issuedCertConfig());
+    TlsTestCert_WritePemToFile(&clientCa, caPath);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
+}
+
+TEST(OpenSslStreamIntegration, ALeafNameThatDoesNotMatchIsNamedBeforeAnExpiredIssuer)
+{
+    givenAnIssuedServerCertificateExpiringInThePast();
+    struct TlsTestCertConfig certConfig = issuedCertConfig();
+    certConfig.commonName = "someone-else.example";
+    certConfig.subjectAltDnsNames = STRANGER_SANS;
+    buildScenario(certConfig);
+    TlsTestCert_WritePemToFile(&clientCa, caPath);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
 }

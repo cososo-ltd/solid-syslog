@@ -9,9 +9,9 @@
 #
 # Two certificate authorities are produced. CA A is the one a BDD target trusts
 # by default; CA B exists so a listener can present a certificate that does not
-# chain to what the target was given. Neither validity window ever needs
-# revisiting: everything here is issued for 10 years, and the matrix proves
-# expiry in the integration tier where a real clock exists rather than here.
+# chain to what the target was given. No validity window here ever needs
+# revisiting: the sound certificates are issued for 10 years, and the ones that
+# prove what a device does outside a window carry fixed dates decades away.
 #
 # If you regenerate, commit the changes. Nothing pins a digest: the BDD steps
 # compute each fingerprint from the committed certificate at test time.
@@ -25,6 +25,13 @@ SAN_COLLECTOR="subjectAltName = DNS:syslog-ng, DNS:localhost, IP:127.0.0.1"
 SAN_OTHER="subjectAltName = DNS:other-collector"
 SAN_B="subjectAltName = DNS:collector-b, DNS:localhost, IP:127.0.0.1"
 
+# Fixed windows for the certificates that are meant to be outside one. Absolute
+# rather than relative to now, so regenerating never moves them.
+EXPIRED_FROM=20200101000000Z
+EXPIRED_TO=20200102000000Z
+FUTURE_FROM=20900101000000Z
+FUTURE_TO=20900102000000Z
+
 # Issue a key and a CSR. $1 = basename, $2 = subject.
 make_csr() {
     openssl genrsa -out "$1.key" 2048
@@ -36,6 +43,29 @@ sign_leaf() {
     openssl x509 -req -in "$1.csr" -CA "$2.pem" -CAkey "$2.key" -CAcreateserial \
         -out "$1.pem" -days "$DAYS" -sha256 \
         -extfile <(printf "%s\n" "$3")
+}
+
+# Sign a CSR into an explicit validity window. `openssl x509 -req` cannot set
+# one before OpenSSL 3.5, so these go through `ca`, which can - at the cost of
+# the database directory it insists on, built and removed per certificate.
+# $1 = basename, $2 = issuer basename, $3 = extension text, $4 = notBefore, $5 = notAfter.
+sign_leaf_between() {
+    local db="cadb-$1"
+    mkdir -p "$db/newcerts"
+    : > "$db/index.txt"
+    echo 01 > "$db/serial"
+    openssl ca -batch \
+        -config <(printf '%s\n' \
+            "[ca]" "default_ca = CA_default" "[CA_default]" \
+            "database = $db/index.txt" "new_certs_dir = $db/newcerts" "serial = $db/serial" \
+            "default_md = sha256" "policy = policy_any" "email_in_dn = no" \
+            "rand_serial = no" "unique_subject = no" \
+            "[policy_any]" "commonName = supplied") \
+        -cert "$2.pem" -keyfile "$2.key" \
+        -startdate "$4" -enddate "$5" \
+        -extfile <(printf "%s\n" "$3") \
+        -in "$1.csr" -out "$1.pem" -notext
+    rm -rf "$db"
 }
 
 # --- Certificate authorities -------------------------------------------------
@@ -82,6 +112,22 @@ openssl req -x509 -new -nodes -key server-selfsigned.key -sha256 -days "$DAYS" \
 make_csr server-chained "/CN=syslog-ng"
 sign_leaf server-chained intermediate "$SAN_COLLECTOR"
 cat server-chained.pem intermediate.pem > server-chained-fullchain.pem
+
+# Right issuer and name, but the validity window closed years ago.
+make_csr server-expired "/CN=syslog-ng"
+sign_leaf_between server-expired ca "$SAN_COLLECTOR" "$EXPIRED_FROM" "$EXPIRED_TO"
+
+# Right issuer and name, but the validity window has not opened yet.
+make_csr server-notyetvalid "/CN=syslog-ng"
+sign_leaf_between server-notyetvalid ca "$SAN_COLLECTOR" "$FUTURE_FROM" "$FUTURE_TO"
+
+# Two faults at once: an issuer the target does not trust, and a closed window.
+make_csr server-untrusted-expired "/CN=syslog-ng"
+sign_leaf_between server-untrusted-expired ca-b "$SAN_COLLECTOR" "$EXPIRED_FROM" "$EXPIRED_TO"
+
+# Two faults at once: a name that does not match, and a closed window.
+make_csr server-wrongname-expired "/CN=other-collector"
+sign_leaf_between server-wrongname-expired ca "$SAN_OTHER" "$EXPIRED_FROM" "$EXPIRED_TO"
 
 # A second collector identity, for the endpoint rotation.
 make_csr server-b "/CN=collector-b"

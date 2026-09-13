@@ -368,6 +368,46 @@ device will not connect needs to know which of those it is, because a generic
 handshake failure sends them looking at the network for a fault that is on a
 certificate.
 
+**One fault is named, and this is which one.** A certificate can fail several
+checks at once, and the report carries a single code, so the order is part of
+the contract rather than an accident of whichever backend is linked:
+
+1. A fault in the configuration itself - a fingerprint that is not well formed -
+   before any fault in the peer. It is reported under the bad-configuration
+   category rather than the handshake one, because no handshake was attempted.
+2. A fingerprint that matched nothing.
+3. A chain that reaches no trust anchor.
+4. A name that does not match.
+5. A validity period that has closed or not yet opened.
+
+The principle is that a fault saying *this is not the peer you expected* is
+reported ahead of one saying *the expected peer's certificate is in a poor
+state*. The first may be an attack; the second is an operational lapse, and the
+less urgent diagnosis of the two.
+
+Two consequences are worth stating because they surprise people. A **matching
+pin waives nothing**: a peer whose fingerprint is pinned is still refused for a
+name that does not match or a certificate outside its validity period. And the
+code names **the fault, not which certificate carries it** - an issuer whose own
+dates have lapsed is reported as an expired certificate even where the leaf it
+signed is current, so an integrator seeing that code should check the chain and
+not only the leaf.
+
+**A peer that rejects us reports nothing more than that it did.** Where the
+collector refuses the device - a client certificate it will not accept, or none
+where it required one - the refusal arrives as a TLS alert, and what that alert
+says is not portably knowable: one library exposes the alert's cause and the
+other reports only that a fatal alert arrived. Naming the cause on one backend
+and not the other would make the same deployment diagnose differently on two
+targets, so neither does: the refusal is reported as a rejected handshake.
+
+Under TLS 1.3 the collector can reach that decision after the device's first
+record has left, in which case that record is gone. The device is told either
+way, but which record surfaces the fault is a race between the collector's
+refusal and the device's next write: the handshake itself may fail, or it may
+complete and a later write find the connection closed. Do not build on the
+fault appearing against any particular record.
+
 ### Key custody stays with the integrator
 
 The library holds no key material of its own and uses whatever it is given. File

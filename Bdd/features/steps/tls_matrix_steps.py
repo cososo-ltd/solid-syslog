@@ -18,8 +18,8 @@ from behave import given, then
 
 from syslog_severities import severity_value
 from tls_collectors import fingerprint_of, listener
-from tls_error_codes import tls_error_code
-from tls_reports import reported_details, reported_reports, target_output
+from tls_error_codes import sender_error_code, tls_error_code
+from tls_reports import reported_delivery_faults, reported_details, reported_reports, target_output
 
 REPORT_TIMEOUT_SECONDS = 20
 
@@ -28,7 +28,9 @@ def await_report(context, expected, read):
     """Everything reported once `expected` has been, or the budget has run out.
 
     A refusal is reported when a connection is attempted rather than when the
-    message is handed over, so a step asserting one has to wait for it.
+    message is handed over, so a step asserting one has to wait for it. The
+    target is fresh per scenario, so the whole run of it is the boundary and
+    nothing older can satisfy an assertion.
     """
     process = context.interactive_process
     deadline = time.monotonic() + REPORT_TIMEOUT_SECONDS
@@ -56,6 +58,16 @@ def step_target_reports_tls_detail_at_severity(context, name, severity):
     assert expected in reported, (
         f"Expected TLS detail {name} at {severity} {expected} in the target's reports; "
         f"saw {reported}.\n--- target output ---\n{target_output(context.interactive_process)}"
+    )
+
+
+@then('the target reports that delivery failed')
+def step_target_reports_delivery_failed(context):
+    expected = (severity_value("WARNING"), sender_error_code("DELIVERY_FAILED"))
+    reported = await_report(context, expected, reported_delivery_faults)
+    assert expected in reported, (
+        f"Expected a delivery failure {expected} in the target's reports; saw {reported}.\n"
+        f"--- target output ---\n{target_output(context.interactive_process)}"
     )
 
 
