@@ -255,6 +255,22 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         return OpenSslFake_LastVerifyCallback()(preverifyOk, OpenSslFake_StoreCtx());
     }
 
+    /* Drive the callback for a certificate above the leaf and then for the leaf
+       itself, on one connection, and return what the leaf's invocation decided.
+       Two invocations of one connection is the only way to observe an objection
+       being carried from the first to the second. */
+    [[nodiscard]] int OpenThenVerifyIssuerThenLeaf(int issuerError, int leafPreverifyOk) const
+    {
+        OpenSslFake_SetStoreCtxDepth(1);
+        OpenSslFake_SetStoreCtxError(issuerError);
+        SolidSyslogStream_Open(stream, addr);
+        auto* verify = OpenSslFake_LastVerifyCallback();
+        (void) verify(0, OpenSslFake_StoreCtx());
+        OpenSslFake_SetStoreCtxDepth(0);
+        OpenSslFake_SetStoreCtxError(X509_V_OK);
+        return verify(leafPreverifyOk, OpenSslFake_StoreCtx());
+    }
+
     void SendShortMessage() const
     {
         const char msg[] = "hi";
@@ -1590,11 +1606,28 @@ TEST(SolidSyslogOpenSslStream, VerifyCallbackWaivesAChainTrustErrorAboveTheLeafF
     POINTERS_EQUAL(nullptr, OpenSslFake_LastDigestMd());
 }
 
-TEST(SolidSyslogOpenSslStream, VerifyCallbackDoesNotWaiveAboveTheLeafWhenTrustAnchorsAreInstalled)
+/* With anchors configured as well as a pin, an objection above the leaf is
+   carried to the leaf rather than refused where it was raised - refusing there
+   would abandon verification and leave the pin uncompared - and it is the leaf
+   that refuses, because both checks were asked for and both must pass. */
+TEST(SolidSyslogOpenSslStream, AnObjectionAboveTheLeafIsCarriedToItAndStillRefusesWhenTrustAnchorsAreInstalled)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+
+    LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY, 1));
+    LONGS_EQUAL(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY, OpenSslFake_StoreCtxError());
+}
+
+/* The point of carrying it: a fingerprint that matches nothing is named ahead
+   of the chain that reaches no anchor, whatever the depth the chain objection
+   was raised at. */
+TEST(SolidSyslogOpenSslStream, AFingerprintMismatchIsNamedAheadOfAnObjectionCarriedFromAboveTheLeaf)
 {
     OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
 
-    LONGS_EQUAL(0, OpenThenVerifyIssuer(0, X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY));
+    LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY, 1));
+    LONGS_EQUAL(X509_V_ERR_APPLICATION_VERIFICATION, OpenSslFake_StoreCtxError());
 }
 
 TEST(SolidSyslogOpenSslStream, VerifyCallbackDoesNotWaiveTheCertificatesOwnValidityAboveTheLeaf)
