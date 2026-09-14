@@ -148,6 +148,41 @@ TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallParsesTheTrustAnchorsAndRepo
     CHECK_TRUE(installed.TrustAnchorsInstalled);
 }
 
+TEST(SolidSyslogMbedTlsPemBufferCredentials, ASecondInstallIsRefusedWhileTheFirstIsOutstanding)
+{
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+    CHECK_TRUE(credentials->Install(credentials, &conf, &installed));
+
+    mbedtls_ssl_config secondConf = {};
+    mbedtls_ssl_config_init(&secondConf);
+    struct SolidSyslogTlsCredentialsInstalled secondInstalled = {};
+
+    CHECK_FALSE(credentials->Install(credentials, &secondConf, &secondInstalled));
+
+    CHECK_PEM_BUFFER_ERROR_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_ALREADY_IN_USE
+    );
+    mbedtls_ssl_config_free(&secondConf);
+}
+
+TEST(SolidSyslogMbedTlsPemBufferCredentials, TheReleaseAnsweringARefusedInstallKeepsTheOutstandingMaterial)
+{
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+    CHECK_TRUE(credentials->Install(credentials, &conf, &installed));
+
+    mbedtls_ssl_config secondConf = {};
+    mbedtls_ssl_config_init(&secondConf);
+    struct SolidSyslogTlsCredentialsInstalled secondInstalled = {};
+    CHECK_FALSE(credentials->Install(credentials, &secondConf, &secondInstalled));
+
+    credentials->Release(credentials);
+
+    CHECK_FALSE(HoldsNoMaterial(credentials));
+    mbedtls_ssl_config_free(&secondConf);
+}
+
 TEST(SolidSyslogMbedTlsPemBufferCredentials, CreateWithNullConfigReturnsTheNullCredentials)
 {
     credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(nullptr);
