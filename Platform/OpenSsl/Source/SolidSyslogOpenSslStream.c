@@ -67,6 +67,7 @@ static inline bool OpenSslStream_FingerprintsAreUsable(const struct SolidSyslogT
 static inline void OpenSslStream_ReleaseCredentials(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_RequirePeerVerification(SSL_CTX* ctx);
 static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx);
+static inline bool OpenSslStream_PeerPresentedACertificate(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_CarryChainObjectionToTheLeaf(
     struct SolidSyslogOpenSslStream* self,
     const X509_STORE_CTX* storeCtx
@@ -212,6 +213,30 @@ static inline void OpenSslStream_ReleaseBioMethod(struct SolidSyslogOpenSslStrea
     }
 }
 
+/* An anonymous key exchange sends no Certificate message, so verification never
+ * runs, the verify callback is never invoked, and a handshake completes against
+ * a peer nothing has authorised. SSL_VERIFY_PEER does not prevent it and the
+ * protocol floor does not either: OpenSSL's own default cipher list excludes
+ * aNULL, but a profile naming ALL, ADH or aNULL puts it back.
+ *
+ * Checked as an outcome rather than by screening the cipher string, which has
+ * too many spellings to screen and would not close any other route to the same
+ * place. Reported as a configuration fault because that is what it is - the
+ * integrator is pointed at their own profile rather than at the collector. */
+static inline bool OpenSslStream_PeerPresentedACertificate(struct SolidSyslogOpenSslStream* self)
+{
+    bool ok = SSL_get0_peer_certificate(self->Ssl) != NULL;
+    if (!ok)
+    {
+        OpenSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
+        );
+    }
+    return ok;
+}
+
 static inline void OpenSslStream_ReleaseSslContext(struct SolidSyslogOpenSslStream* self)
 {
     if (self->Ctx != NULL)
@@ -229,7 +254,7 @@ static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const stru
     bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && OpenSslStream_InitSslContext(self) &&
               OpenSslStream_InstallCredentials(self) && OpenSslStream_InitSslSession(self) &&
               OpenSslStream_AttachTransportBio(self) && OpenSslStream_ConfigureExpectedHostname(self) &&
-              OpenSslStream_PerformHandshake(self);
+              OpenSslStream_PerformHandshake(self) && OpenSslStream_PeerPresentedACertificate(self);
     if (!ok)
     {
         OpenSslStream_Close(base);

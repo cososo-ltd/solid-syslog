@@ -140,6 +140,12 @@ silently, because nothing failed. On a board with no real-time clock it is
 tempting to leave the macro off for exactly that reason, and doing so gives up
 the last time-based control the contract has.
 
+The adapter will not build without it. A target that genuinely has no clock
+defines `SOLIDSYSLOG_MBEDTLS_NO_VALIDITY_CHECK` to say so, which builds and
+leaves the obligation knowingly unmet rather than quietly missing. Nothing
+reports this at runtime, because by then there is nothing left to detect it
+with - which is why the decision is forced at build time instead.
+
 Defining it obliges the build to satisfy three separate contracts, and a
 bare-metal target satisfies each one differently:
 

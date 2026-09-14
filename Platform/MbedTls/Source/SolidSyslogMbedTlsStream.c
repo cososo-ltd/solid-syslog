@@ -18,6 +18,20 @@
 #include "SolidSyslogMbedTlsCredentialsDefinition.h"
 #include "SolidSyslogMbedTlsStreamErrors.h"
 #include "SolidSyslogMbedTlsStreamPrivate.h"
+
+/* Mbed TLS compiles its notBefore / notAfter checks out entirely without this,
+ * on VERIFY_REQUIRED and VERIFY_OPTIONAL alike - so no certificate in the chain
+ * is date-checked and nothing says so at runtime. The TLS contract states that a
+ * pin does not extend a certificate's validity period, which is a promise that
+ * would then silently not hold, so the build stops here rather than shipping it.
+ *
+ * A target with no clock cannot check dates and is a legitimate deployment.
+ * Define SOLIDSYSLOG_MBEDTLS_NO_VALIDITY_CHECK to say so deliberately; the
+ * obligation is then knowingly unmet rather than quietly missing. */
+#if !defined(MBEDTLS_HAVE_TIME_DATE) && !defined(SOLIDSYSLOG_MBEDTLS_NO_VALIDITY_CHECK)
+#error \
+    "MBEDTLS_HAVE_TIME_DATE is off, so certificate validity is not checked. Enable it, or define SOLIDSYSLOG_MBEDTLS_NO_VALIDITY_CHECK to accept that."
+#endif
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"

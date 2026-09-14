@@ -141,6 +141,7 @@ static bool sslExDataFails;
 static int fakeStoreCtxStorage;
 static int fakeCertStorage;
 static int storeCtxDepth;
+static bool peerCertificatePresent = true;
 static int storeCtxError;
 static uint8_t certDigest[FAKE_DIGEST_MAX];
 static size_t certDigestLength;
@@ -297,6 +298,7 @@ void OpenSslFake_Reset(void)
     sslExDataFails = false;
     storeCtxDepth = 0;
     storeCtxError = X509_V_OK;
+    peerCertificatePresent = true;
     certDigestLength = 0;
     digestFails = false;
     lastDigestMd = NULL;
@@ -782,6 +784,17 @@ X509* X509_STORE_CTX_get_current_cert(const X509_STORE_CTX* ctx)
 {
     (void) ctx;
     return (X509*) &fakeCertStorage;
+}
+
+X509* SSL_get0_peer_certificate(const SSL* ssl)
+{
+    (void) ssl;
+    return peerCertificatePresent ? (X509*) &fakeCertStorage : NULL;
+}
+
+void OpenSslFake_SetPeerCertificatePresent(bool present)
+{
+    peerCertificatePresent = present;
 }
 
 int X509_digest(const X509* data, const EVP_MD* type, unsigned char* md, unsigned int* len)

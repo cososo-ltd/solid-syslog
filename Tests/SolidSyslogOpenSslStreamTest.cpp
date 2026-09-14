@@ -906,6 +906,26 @@ TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateIsNotTrusted)
     );
 }
 
+/* An anonymous ciphersuite - reachable whenever an integrator's cipher list
+   names ALL, ADH or aNULL - makes the server send no Certificate message at
+   all. Verification then has nothing to run on, the verify callback is never
+   invoked, and the handshake succeeds against a peer nothing has authorised.
+   SSL_VERIFY_PEER does not prevent it, and neither does the TLS 1.2 floor. */
+TEST(SolidSyslogOpenSslStream, OpenRefusesAPeerThatPresentedNoCertificate)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetPeerCertificatePresent(false);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(
+        transport,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
+    );
+}
+
 TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSet1HostFails)
 {
     FakeProfile_Value.ServerName = "logs.example";

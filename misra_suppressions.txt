@@ -62,7 +62,7 @@ misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:85
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:89
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:84
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslPemFileCredentials.c:58
-misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c:149
+misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c:150
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddress.c:18
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:27
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:32
@@ -145,7 +145,7 @@ misra-c2012-5.7:Core/Interface/SolidSyslogUdpPayload.h:25
 misra-c2012-5.7:Core/Interface/SolidSyslogTlsFingerprint.h:32
 misra-c2012-5.7:Core/Source/SolidSyslogStreamSender.c:29
 misra-c2012-5.7:Core/Source/SolidSyslogUdpPayload.c:9
-misra-c2012-5.7:Core/Source/SolidSyslogTlsFingerprint.c:8
+misra-c2012-5.7:Core/Source/SolidSyslogTlsFingerprint.c:10
 misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:29
 misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:40
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:33
