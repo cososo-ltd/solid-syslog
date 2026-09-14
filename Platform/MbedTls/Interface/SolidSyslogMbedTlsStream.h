@@ -26,7 +26,8 @@
  *    other TLS return (alert, transport error) - fail-fast, and store-and-forward
  *    replays after the reconnect.
  *
- *  Peer identity is set by the profile's ServerName, asked for at each Open. No key material
+ *  Peer identity comes from the profile's ServerName, asked for at each Open,
+ *  or from a usable pinned fingerprint where no name is supplied. No key material
  *  reaches this stream: it asks its credentials source to install onto the
  *  ssl_config at Open and tells it at Close, so a deployment can keep material
  *  out of memory between connections. Coexistence contract: this adapter touches

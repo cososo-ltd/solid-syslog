@@ -265,7 +265,10 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         OpenSslFake_SetStoreCtxError(issuerError);
         SolidSyslogStream_Open(stream, addr);
         auto* verify = OpenSslFake_LastVerifyCallback();
-        (void) verify(0, OpenSslFake_StoreCtx());
+        /* Carrying the objection is the behaviour under test: OpenSSL abandons
+           verification on a refusal, so a 0 here would mean the leaf callback
+           never runs in a real handshake however this helper behaves. */
+        LONGS_EQUAL(1, verify(0, OpenSslFake_StoreCtx()));
         OpenSslFake_SetStoreCtxDepth(0);
         OpenSslFake_SetStoreCtxError(X509_V_OK);
         return verify(leafPreverifyOk, OpenSslFake_StoreCtx());

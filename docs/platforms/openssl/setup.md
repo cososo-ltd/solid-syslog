@@ -92,8 +92,9 @@ static void FillProfile(struct SolidSyslogOpenSslProfile* profile, void* context
 
 The stream zeroes the profile before asking, so a field you leave alone is one
 the library's own default covers. Leaving `Profile` NULL altogether means no
-expected identity, and the peer is then only chain-authenticated - a WARNING
-says so on every connection.
+expected identity is declared. Where your credentials pin a usable fingerprint
+the pin names the peer and nothing is reported; where they do not, the peer is
+only chain-authenticated and a WARNING says so on every connection.
 
 ```c
 /* Your TCP stream and sleep, from the platform that supplies them. */

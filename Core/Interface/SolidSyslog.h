@@ -65,7 +65,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *                                      SOLIDSYSLOG_DISCARD_POLICY_HALT); alarm / slow heartbeat.
      *
      *  Buffer drain out-ranks a send failure: a down sender never demotes the
-     *  loop out of "keep draining" while the buffer still has records to move. */
+     *  loop out of "keep draining" while the buffer still has records to move.
+     *
+     *  Call this from one task. SolidSyslog_Log is the only entry point designed
+     *  to be called concurrently; everything reached from Service - the sender,
+     *  the store, the stream and its credentials - runs single-threaded, and so
+     *  does every Create and Destroy. A Destroy issued from another task while
+     *  Service runs is outside the design whatever the config lock is set to,
+     *  because that lock serialises pool slot walks and not the objects a walk
+     *  is tearing down. */
     enum SolidSyslogServiceStatus SolidSyslog_Service(struct SolidSyslog * handle);
 
 SOLIDSYSLOG_EXTERN_C_END

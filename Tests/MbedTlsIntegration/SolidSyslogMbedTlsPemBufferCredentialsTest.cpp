@@ -165,6 +165,9 @@ TEST(SolidSyslogMbedTlsPemBufferCredentials, ASecondInstallIsRefusedWhileTheFirs
         SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_ALREADY_IN_USE
     );
     mbedtls_ssl_config_free(&secondConf);
+    /* The refused stream still closes, and Close answers every Install. Without
+       it the count never reaches zero and teardown frees nothing. */
+    credentials->Release(credentials);
 }
 
 TEST(SolidSyslogMbedTlsPemBufferCredentials, TheReleaseAnsweringARefusedInstallKeepsTheOutstandingMaterial)
