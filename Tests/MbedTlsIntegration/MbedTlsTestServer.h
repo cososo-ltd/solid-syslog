@@ -36,6 +36,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * completed successfully. Callable once per server. */
     bool MbedTlsTestServer_JoinAndHandshakeSucceeded(struct MbedTlsTestServer * self);
 
+    /* Whether the client presented a certificate before the handshake settled.
+     * Joins the worker thread first, as JoinAndHandshakeSucceeded does. This is
+     * what distinguishes refusing a peer from refusing it without handing over
+     * the device's identity on the way. */
+    bool MbedTlsTestServer_SawClientCertificate(struct MbedTlsTestServer * self);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* MBEDTLSTESTSERVER_H */

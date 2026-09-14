@@ -54,6 +54,11 @@ static inline bool MbedTlsStream_PeerIsAuthorisable(const struct SolidSyslogTlsC
 static inline bool MbedTlsStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed);
 static inline void MbedTlsStream_ApplyPeerVerificationPolicy(struct SolidSyslogMbedTlsStream* self);
 static int MbedTlsStream_VerifyPeer(void* context, mbedtls_x509_crt* crt, int depth, uint32_t* flags);
+static inline int MbedTlsStream_EnforceWhereTheLibraryWillNot(
+    struct SolidSyslogMbedTlsStream* self,
+    int depth,
+    uint32_t flags
+);
 static inline uint32_t MbedTlsStream_ChainTrustFlags(void);
 static inline bool MbedTlsStream_LeafMatchesAPin(struct SolidSyslogMbedTlsStream* self, mbedtls_x509_crt* leaf);
 static inline mbedtls_md_type_t MbedTlsStream_MdTypeFor(enum SolidSyslogTlsHashAlgorithm algorithm);
@@ -214,6 +219,7 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
 {
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
     MbedTlsStream_PullProfile(self);
+    self->RefusedVerdict = 0U;
     bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && MbedTlsStream_ApplySslConfigDefaults(self);
     if (ok)
     {
@@ -390,7 +396,35 @@ static int MbedTlsStream_VerifyPeer(void* context, mbedtls_x509_crt* crt, int de
         }
     }
 
-    return 0;
+    return MbedTlsStream_EnforceWhereTheLibraryWillNot(self, depth, *flags);
+}
+
+/* Under VERIFY_REQUIRED the library refuses on its own and the verdict survives
+ * to be read, so nothing is enforced here and the flags are left to it. Under
+ * OPTIONAL - which a peer authorised by pin alone forces - the library clears
+ * the failure and runs the handshake to completion, which would hand the
+ * client credential to a peer about to be refused. So refuse here instead, at
+ * the last certificate judged and before any of ours is sent.
+ *
+ * Refusing costs the library's verdict, which is why the flags are recorded on
+ * the way past: mbedtls_ssl_get_verify_result answers 0xFFFFFFFF once a verify
+ * callback has returned an error. */
+static inline int MbedTlsStream_EnforceWhereTheLibraryWillNot(
+    struct SolidSyslogMbedTlsStream* self,
+    int depth,
+    uint32_t flags
+)
+{
+    int result = 0;
+    if (!self->Installed.TrustAnchorsInstalled)
+    {
+        self->RefusedVerdict |= flags;
+        if ((depth == 0) && (self->RefusedVerdict != 0U))
+        {
+            result = MBEDTLS_ERR_X509_FATAL_ERROR;
+        }
+    }
+    return result;
 }
 
 /* The objections a missing trust anchor alone produces. Every other flag
@@ -597,7 +631,11 @@ static inline bool MbedTlsStream_PeerPassedVerification(struct SolidSyslogMbedTl
 static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_RefusalDetail(struct SolidSyslogMbedTlsStream* self)
 {
     enum SolidSyslogTlsStreamErrors detail = SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED;
-    uint32_t verdict = mbedtls_ssl_get_verify_result(&self->SslContext);
+    uint32_t verdict = self->RefusedVerdict;
+    if (verdict == 0U)
+    {
+        verdict = mbedtls_ssl_get_verify_result(&self->SslContext);
+    }
     if (MbedTlsStream_IsVerifyFailure(verdict))
     {
         detail = MbedTlsStream_DetailForVerifyFailure(verdict);

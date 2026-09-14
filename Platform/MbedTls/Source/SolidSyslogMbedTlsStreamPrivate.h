@@ -33,6 +33,12 @@ struct SolidSyslogMbedTlsStream
     struct SolidSyslogTlsCredentialsInstalled
         Installed; /* Pulled at the start of each Open and read for the rest of it. */
     struct SolidSyslogMbedTlsProfile Profile;
+    /* What the verify callback itself refused on, and zero where it did not.
+     * Verifying optionally makes our callback the enforcement point, and a
+     * callback that refuses leaves mbedtls_ssl_get_verify_result answering
+     * 0xFFFFFFFF - so the reason has to be recorded as the decision is taken
+     * rather than deduced afterwards from a verdict that no longer carries it. */
+    uint32_t RefusedVerdict;
 };
 
 void SolidSyslogMbedTlsStream_Initialise(

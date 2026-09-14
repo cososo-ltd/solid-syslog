@@ -172,17 +172,22 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         GivenAPinnedPeer();
     }
 
+    /* What the last OpenThenVerifyAt call returned: zero where the library is
+       left to enforce, and an error where verifying optionally has made this
+       callback the enforcement point. */
+    int lastVerifyResult = 0;
+
     /* Drive the verify callback for the certificate at `depth`, starting from
-       `flags`, and return what the callback left there. The callback always
-       reports success; what it decides is in the flags. */
-    [[nodiscard]] uint32_t OpenThenVerifyAt(int depth, uint32_t flags) const
+       `flags`, and return what the callback left there. What it decided is in
+       the flags; whether it refused is in lastVerifyResult. */
+    [[nodiscard]] uint32_t OpenThenVerifyAt(int depth, uint32_t flags)
     {
         SolidSyslogStream_Open(handle, addr);
         auto* verify = MbedTlsFake_LastSslConfVerifyCallback();
         CHECK_TRUE_TEXT(verify != nullptr, "the stream registered no verify callback");
         if (verify != nullptr)
         {
-            LONGS_EQUAL(0, verify(handle, MbedTlsFake_Certificate(), depth, &flags));
+            lastVerifyResult = verify(handle, MbedTlsFake_Certificate(), depth, &flags);
         }
         return flags;
     }
@@ -1228,6 +1233,29 @@ TEST(SolidSyslogMbedTlsStream, VerifyCallbackDoesNotClearTheCertificatesOwnValid
     GivenAPinnedPeerWithoutTrustAnchors();
 
     UNSIGNED_LONGS_EQUAL(MBEDTLS_X509_BADCERT_EXPIRED, OpenThenVerifyAt(0, MBEDTLS_X509_BADCERT_EXPIRED));
+}
+
+/* Without anchors the library verifies optionally, clears the failure and runs
+   the handshake to completion - which would present the client credential to a
+   peer about to be refused. The callback has to refuse instead, at the leaf. */
+TEST(SolidSyslogMbedTlsStream, VerifyCallbackRefusesTheLeafItselfWhenNoTrustAnchorsAreInstalled)
+{
+    GivenAPinnedPeerWithoutTrustAnchors();
+
+    (void) OpenThenVerifyAt(0, MBEDTLS_X509_BADCERT_EXPIRED);
+
+    CHECK_FALSE(lastVerifyResult == 0);
+}
+
+/* With anchors the library enforces and its verdict survives to be read, so
+   refusing here would destroy the diagnosis and gain nothing. */
+TEST(SolidSyslogMbedTlsStream, VerifyCallbackLeavesEnforcementToTheLibraryWhenTrustAnchorsAreInstalled)
+{
+    GivenAPinnedPeer();
+
+    (void) OpenThenVerifyAt(0, MBEDTLS_X509_BADCERT_EXPIRED);
+
+    LONGS_EQUAL(0, lastVerifyResult);
 }
 
 TEST(SolidSyslogMbedTlsStream, VerifyCallbackLeavesAChainTrustFlagWhenTrustAnchorsAreInstalled)
