@@ -51,6 +51,12 @@ freed and with it every pointer into the material. That window is what a source
 reaching a secure element or an encrypted store needs, and the PEM-buffer source
 is the worked example of using it.
 
+Because it parses into storage of its own, one PEM-buffer source serves one
+connection at a time. Wire a second instance for a second stream: a stream
+opening while another still holds the source is reported and its attempt fails,
+rather than parsing over material the live connection is using, and its sender
+connects on a later pass once the first stream has closed.
+
 With the PEM-buffer source, replacing the buffer and moving the stream's
 configuration version is enough - nothing is freed, and the next connection
 parses whatever the buffer then points at.
@@ -62,6 +68,11 @@ after the connection has closed: either call `SolidSyslogSender_Disconnect` from
 the task that services the library and re-parse once it returns, or put the free
 and the re-parse in a credentials source's `Release`, which the stream calls when
 it has finished with the material.
+
+A `Release` reached by destroying the stream runs inside the configuration lock,
+because pool cleanup holds it. Freeing and re-parsing your own material there is
+fine; creating or destroying any SolidSyslog object from `Release` is not, since
+that takes the same lock and a non-recursive one deadlocks.
 
 ## Coexistence is an auditable contract
 
@@ -128,6 +139,12 @@ flags are never set, and a certificate outside its validity period is accepted -
 silently, because nothing failed. On a board with no real-time clock it is
 tempting to leave the macro off for exactly that reason, and doing so gives up
 the last time-based control the contract has.
+
+The adapter will not build without it. A target that genuinely has no clock
+defines `SOLIDSYSLOG_MBEDTLS_NO_VALIDITY_CHECK` to say so, which builds and
+leaves the obligation knowingly unmet rather than quietly missing. Nothing
+reports this at runtime, because by then there is nothing left to detect it
+with - which is why the decision is forced at build time instead.
 
 Defining it obliges the build to satisfy three separate contracts, and a
 bare-metal target satisfies each one differently:

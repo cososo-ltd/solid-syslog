@@ -10,11 +10,12 @@
  *  What the stream does through its vtable is the substance:
  *
  *  - Open opens the transport, then builds a fresh SSL_CTX every call (the
- *    cert-rotation contract - a reconnect re-reads the cert/key files), pins the
- *    TLS 1.2 floor, loads CaBundlePath as the trust anchors with SSL_VERIFY_PEER,
- *    wires the transport as a custom BIO, sets SNI + the expected peer identity
- *    from ServerName, and drives the handshake. Any step failing closes the whole
- *    stream so the sender reconnects on its next pass.
+ *    rotation contract - nothing survives a reconnect), pins the TLS 1.2 floor,
+ *    asks its credentials source to install the trust anchors, any pinned
+ *    fingerprints and the client credential, sets SSL_VERIFY_PEER, wires the
+ *    transport as a custom BIO, sets SNI + the expected peer identity from the
+ *    profile's ServerName, and drives the handshake. Any step failing closes the
+ *    whole stream so the sender reconnects on its next pass.
  *  - The handshake is a bounded, non-blocking retry: SSL_connect is polled, and
  *    each WANT_READ / WANT_WRITE sleeps briefly via the injected Sleep until the
  *    handshake completes, hits a hard error (rejected), or the deadline from

@@ -19,8 +19,11 @@
  * regardless of which TLS library produced it.
  */
 
-/** TLS context / library setup failed before any handshake (bad CA bundle,
- *  cert or key load failure...). */
+/** The TLS library itself would not come up, before any peer is contacted -
+ *  a context that would not build, defaults that would not apply, a session
+ *  that would not initialise. Material that will not load is a configuration
+ *  fault raised by the credentials source under SOLIDSYSLOG_CAT_BAD_CONFIG,
+ *  not this. */
 #define SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_TLS_STREAM_BASE + 1U))
 /** The TLS handshake with the server did not complete (peer verification,
  *  protocol, or transport failure). */

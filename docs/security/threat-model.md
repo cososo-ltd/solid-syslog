@@ -26,8 +26,9 @@ edges leave it, and both are edges of your product rather than of the library.
 Records cross an untrusted network to reach the collector.
 
 Over TLS the library authenticates the collector against trust anchors you
-supply, checks it against a name you declare, and can present a client credential
-so the collector authenticates the device in return. Over plain UDP or TCP there
+supply, or against certificate fingerprints you pin where there is no PKI to
+anchor to, checks it against a name you declare, and can present a client
+credential so the collector authenticates the device in return. Over plain UDP or TCP there
 is no confidentiality, authenticity or integrity, by design and by your choice of
 transport.
 
@@ -50,7 +51,7 @@ discloses whatever was stored until you choose.
 | You provide | Because |
 |---|---|
 | The content, and the judgement not to log secrets | The library transports what you give it. It does not inspect, sanitise or redact |
-| Certificates, keys and the CA bundle, and the peer name to verify | The library consumes trust material and mints none. It verifies against the name you declare rather than one it infers |
+| Certificates, keys, and either a CA bundle or the fingerprints to pin, and the peer name to verify | The library consumes trust material and mints none. It verifies against the name you declare rather than one it infers |
 | The destination address, or a resolver you trust | The library connects to whatever address it is given and does not authenticate DNS responses |
 | A properly seeded RNG where the TLS backend takes one | A weak RNG silently weakens TLS |
 | A mutex and a config lock where concurrency exists | The synchronisation primitives are injected and default to no-ops |

@@ -79,6 +79,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void OpenSslFake_SetStoreCtxDepth(int depth);
     void OpenSslFake_SetStoreCtxError(int error);
     int OpenSslFake_StoreCtxError(void);
+
+    /* Whether the peer presented a certificate at all. False is what an
+     * anonymous ciphersuite produces: the handshake completes and no
+     * certificate is ever verified. Defaults to true. */
+    void OpenSslFake_SetPeerCertificatePresent(bool present);
     void OpenSslFake_SetCertDigest(const uint8_t* digest, size_t length);
     void OpenSslFake_SetDigestFails(bool fails);
     const void* OpenSslFake_LastDigestMd(void); /* compare against EVP_sha1() / EVP_sha256() */

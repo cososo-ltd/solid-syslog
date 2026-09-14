@@ -4,11 +4,21 @@
 
 #include "SolidSyslogTlsFingerprint.h"
 
+#include "SolidSyslogMacros.h"
+
 enum
 {
     TLS_FINGERPRINT_SHA1_LENGTH = 20U,
     TLS_FINGERPRINT_SHA256_LENGTH = 32U
 };
+
+/* Adding an algorithm to SolidSyslogTlsHashAlgorithm and to each backend's
+ * digest map looks complete, and would overrun every caller's buffer without
+ * this: a backend writes its digest into DIGEST_MAX bytes on the stack. */
+SOLIDSYSLOG_STATIC_ASSERT(
+    (size_t) TLS_FINGERPRINT_SHA256_LENGTH <= (size_t) SOLIDSYSLOG_TLS_FINGERPRINT_DIGEST_MAX,
+    Longest supported digest must fit SOLIDSYSLOG_TLS_FINGERPRINT_DIGEST_MAX
+);
 
 struct SolidSyslogTlsFingerprintLabel
 {
@@ -42,7 +52,7 @@ static inline bool TlsFingerprint_DigestEquals(
 bool SolidSyslogTlsFingerprint_Parse(const char* text, struct SolidSyslogTlsFingerprint* out)
 {
     const char* digestText = NULL;
-    bool parsed = (text != NULL) && TlsFingerprint_ParseLabel(text, &digestText, out);
+    bool parsed = (text != NULL) && (out != NULL) && TlsFingerprint_ParseLabel(text, &digestText, out);
 
     if (parsed)
     {
@@ -226,9 +236,26 @@ enum SolidSyslogTlsAuthorisation SolidSyslogTlsFingerprint_Authorise(
         verdict = SOLIDSYSLOG_TLS_AUTHORISATION_MALFORMED;
     }
 
+    bool anySkipped = false;
     for (size_t i = 0; (i < count) && (verdict == SOLIDSYSLOG_TLS_AUTHORISATION_NO_MATCH); i++)
     {
         verdict = TlsFingerprint_AuthoriseOne(fingerprints[i], digest, context);
+        if (verdict == SOLIDSYSLOG_TLS_AUTHORISATION_DIGEST_UNAVAILABLE)
+        {
+            /* A hash this build cannot compute is that pin's problem and not
+             * the list's. Pinning the old certificate beside the new is how a
+             * fleet crosses a renewal, and the two may name different hashes,
+             * so stopping here would refuse a peer a later pin authorises. */
+            anySkipped = true;
+            verdict = SOLIDSYSLOG_TLS_AUTHORISATION_NO_MATCH;
+        }
+    }
+    if ((verdict == SOLIDSYSLOG_TLS_AUTHORISATION_NO_MATCH) && anySkipped)
+    {
+        /* Nothing matched and a pin went uncompared, so the digest this build
+         * lacks is the fault worth naming - not a mismatch the integrator
+         * would go looking for on the collector. */
+        verdict = SOLIDSYSLOG_TLS_AUTHORISATION_DIGEST_UNAVAILABLE;
     }
 
     return verdict;

@@ -255,6 +255,25 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         return OpenSslFake_LastVerifyCallback()(preverifyOk, OpenSslFake_StoreCtx());
     }
 
+    /* Drive the callback for a certificate above the leaf and then for the leaf
+       itself, on one connection, and return what the leaf's invocation decided.
+       Two invocations of one connection is the only way to observe an objection
+       being carried from the first to the second. */
+    [[nodiscard]] int OpenThenVerifyIssuerThenLeaf(int issuerError, int leafPreverifyOk) const
+    {
+        OpenSslFake_SetStoreCtxDepth(1);
+        OpenSslFake_SetStoreCtxError(issuerError);
+        SolidSyslogStream_Open(stream, addr);
+        auto* verify = OpenSslFake_LastVerifyCallback();
+        /* Carrying the objection is the behaviour under test: OpenSSL abandons
+           verification on a refusal, so a 0 here would mean the leaf callback
+           never runs in a real handshake however this helper behaves. */
+        LONGS_EQUAL(1, verify(0, OpenSslFake_StoreCtx()));
+        OpenSslFake_SetStoreCtxDepth(0);
+        OpenSslFake_SetStoreCtxError(X509_V_OK);
+        return verify(leafPreverifyOk, OpenSslFake_StoreCtx());
+    }
+
     void SendShortMessage() const
     {
         const char msg[] = "hi";
@@ -890,6 +909,26 @@ TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateIsNotTrusted)
     );
 }
 
+/* An anonymous ciphersuite - reachable whenever an integrator's cipher list
+   names ALL, ADH or aNULL - makes the server send no Certificate message at
+   all. Verification then has nothing to run on, the verify callback is never
+   invoked, and the handshake succeeds against a peer nothing has authorised.
+   SSL_VERIFY_PEER does not prevent it, and neither does the TLS 1.2 floor. */
+TEST(SolidSyslogOpenSslStream, OpenRefusesAPeerThatPresentedNoCertificate)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetPeerCertificatePresent(false);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(
+        transport,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
+    );
+}
+
 TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSet1HostFails)
 {
     FakeProfile_Value.ServerName = "logs.example";
@@ -898,9 +937,9 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSet1HostFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(
         transport,
-        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
-        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
     );
 }
 
@@ -912,9 +951,9 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSniHostnameSetupFails)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(
         transport,
-        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
-        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
     );
 }
 
@@ -1590,11 +1629,28 @@ TEST(SolidSyslogOpenSslStream, VerifyCallbackWaivesAChainTrustErrorAboveTheLeafF
     POINTERS_EQUAL(nullptr, OpenSslFake_LastDigestMd());
 }
 
-TEST(SolidSyslogOpenSslStream, VerifyCallbackDoesNotWaiveAboveTheLeafWhenTrustAnchorsAreInstalled)
+/* With anchors configured as well as a pin, an objection above the leaf is
+   carried to the leaf rather than refused where it was raised - refusing there
+   would abandon verification and leave the pin uncompared - and it is the leaf
+   that refuses, because both checks were asked for and both must pass. */
+TEST(SolidSyslogOpenSslStream, AnObjectionAboveTheLeafIsCarriedToItAndStillRefusesWhenTrustAnchorsAreInstalled)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+
+    LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY, 1));
+    LONGS_EQUAL(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY, OpenSslFake_StoreCtxError());
+}
+
+/* The point of carrying it: a fingerprint that matches nothing is named ahead
+   of the chain that reaches no anchor, whatever the depth the chain objection
+   was raised at. */
+TEST(SolidSyslogOpenSslStream, AFingerprintMismatchIsNamedAheadOfAnObjectionCarriedFromAboveTheLeaf)
 {
     OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
 
-    LONGS_EQUAL(0, OpenThenVerifyIssuer(0, X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY));
+    LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY, 1));
+    LONGS_EQUAL(X509_V_ERR_APPLICATION_VERIFICATION, OpenSslFake_StoreCtxError());
 }
 
 TEST(SolidSyslogOpenSslStream, VerifyCallbackDoesNotWaiveTheCertificatesOwnValidityAboveTheLeaf)

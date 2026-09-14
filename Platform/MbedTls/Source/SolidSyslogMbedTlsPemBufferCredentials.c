@@ -23,6 +23,8 @@ static bool MbedTlsPemBufferCredentials_Install(
     struct mbedtls_ssl_config* conf,
     struct SolidSyslogTlsCredentialsInstalled* installed
 );
+static inline bool MbedTlsPemBufferCredentials_IsAlreadyInUse(const struct SolidSyslogMbedTlsPemBufferCredentials* self
+);
 static inline bool MbedTlsPemBufferCredentials_ParseTrustAnchors(
     struct SolidSyslogMbedTlsPemBufferCredentials* self,
     struct mbedtls_ssl_config* conf
@@ -61,6 +63,7 @@ void SolidSyslogMbedTlsPemBufferCredentials_Initialise(
     self->Base.Install = MbedTlsPemBufferCredentials_Install;
     self->Base.Release = MbedTlsPemBufferCredentials_Release;
     self->Config = *config;
+    self->OutstandingInstalls = 0U;
     mbedtls_x509_crt_init(&self->CaChain);
     mbedtls_x509_crt_init(&self->ClientCertChain);
     mbedtls_pk_init(&self->ClientKey);
@@ -91,17 +94,39 @@ static bool MbedTlsPemBufferCredentials_Install(
     installed->TrustAnchorsInstalled = false;
     installed->Fingerprints = self->Config.PeerFingerprints;
     installed->FingerprintCount = self->Config.PeerFingerprintCount;
-    bool ok = true;
-    if (MbedTlsPemBufferCredentials_IsSupplied(&self->Config.CaPem))
+    self->OutstandingInstalls++;
+    bool ok = !MbedTlsPemBufferCredentials_IsAlreadyInUse(self);
+    if (!ok)
+    {
+        MbedTlsPemBufferCredentials_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_ALREADY_IN_USE
+        );
+    }
+    else if (MbedTlsPemBufferCredentials_IsSupplied(&self->Config.CaPem))
     {
         installed->TrustAnchorsInstalled = MbedTlsPemBufferCredentials_ParseTrustAnchors(self, conf);
         ok = installed->TrustAnchorsInstalled;
+    }
+    else
+    {
+        /* No anchors configured is legitimate - a pin alone can authorise. */
     }
     if (ok)
     {
         MbedTlsPemBufferCredentials_ConfigureClientIdentity(self, conf);
     }
     return ok;
+}
+
+/* One slot holds the parsed material for one connection. A second stream
+ * sharing this source would parse over material the first is still using, so
+ * it is refused and its Open fails; the sender retries, and succeeds once the
+ * first connection closes. */
+static inline bool MbedTlsPemBufferCredentials_IsAlreadyInUse(const struct SolidSyslogMbedTlsPemBufferCredentials* self)
+{
+    return self->OutstandingInstalls > 1U;
 }
 
 /* No fault in our own credential stops delivery: the collector is the
@@ -288,7 +313,14 @@ static inline bool MbedTlsPemBufferCredentials_IsTerminated(const struct SolidSy
 static void MbedTlsPemBufferCredentials_Release(struct SolidSyslogMbedTlsCredentials* base)
 {
     struct SolidSyslogMbedTlsPemBufferCredentials* self = MbedTlsPemBufferCredentials_SelfFromBase(base);
-    mbedtls_x509_crt_free(&self->CaChain);
-    mbedtls_x509_crt_free(&self->ClientCertChain);
-    mbedtls_pk_free(&self->ClientKey);
+    if (self->OutstandingInstalls > 0U)
+    {
+        self->OutstandingInstalls--;
+    }
+    if (self->OutstandingInstalls == 0U)
+    {
+        mbedtls_x509_crt_free(&self->CaChain);
+        mbedtls_x509_crt_free(&self->ClientCertChain);
+        mbedtls_pk_free(&self->ClientKey);
+    }
 }

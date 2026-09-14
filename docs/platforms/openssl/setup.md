@@ -77,6 +77,25 @@ nothing.
 
 Then the stream, which is wired to it:
 
+The stream config carries wiring only. Every value a connection is actually
+made with - the expected peer identity, and the cipher policy - is asked for at
+each `Open` through a profile callback, so a deployment change takes effect on
+the next connection instead of being frozen at `Create`:
+
+```c
+static void FillProfile(struct SolidSyslogOpenSslProfile* profile, void* context)
+{
+    (void) context;
+    profile->ServerName = "collector.example.net";
+}
+```
+
+The stream zeroes the profile before asking, so a field you leave alone is one
+the library's own default covers. Leaving `Profile` NULL altogether means no
+expected identity is declared. Where your credentials pin a usable fingerprint
+the pin names the peer and nothing is reported; where they do not, the peer is
+only chain-authenticated and a WARNING says so on every connection.
+
 ```c
 /* Your TCP stream and sleep, from the platform that supplies them. */
 struct SolidSyslogStream* transport = CreateTcpStream();
@@ -86,7 +105,7 @@ tlsConfig = (struct SolidSyslogOpenSslStreamConfig) {0};
 tlsConfig.Transport = transport;
 tlsConfig.Sleep = MySleep;                    /* required - no fallback */
 tlsConfig.Credentials = credentials;          /* required - no fallback */
-tlsConfig.ServerName = "collector.example.net";
+tlsConfig.Profile = FillProfile;
 
 struct SolidSyslogStream* tls = SolidSyslogOpenSslStream_Create(&tlsConfig);
 ```

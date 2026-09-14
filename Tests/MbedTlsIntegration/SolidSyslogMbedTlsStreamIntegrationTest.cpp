@@ -585,6 +585,40 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeRejectedWhenTheServerCertMatc
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
 }
 
+/* Fingerprint-only forces MBEDTLS_SSL_VERIFY_OPTIONAL, under which mbedTLS
+ * clears the verification failure and runs the handshake to completion - so
+ * the client reaches CLIENT_CERTIFICATE and hands its identity to a peer it is
+ * about to refuse. The refusal has to happen inside the verify callback, while
+ * the server certificate is being judged. */
+TEST(SolidSyslogMbedTlsStreamIntegration, AClientCredentialIsNotPresentedToAPeerThatMatchesNoPin)
+{
+    struct MbedTlsTestCert clientCa = {};
+    struct MbedTlsTestCertConfig clientCaConfig = {};
+    clientCaConfig.SubjectName = "CN=Test Client CA";
+    clientCaConfig.IsCa = 1;
+    MbedTlsTestCert_Create(&clientCaConfig, &clientCa, &rng);
+    struct MbedTlsTestCert clientCert = {};
+    CreateClientIdentitySignedBy(&clientCa, &clientCert);
+
+    struct SolidSyslogStream* transport = StartServerRequiringClientCa(&serverCert, &clientCa);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    credsConfig.CaChain = nullptr;
+    PinLiterally(UNMATCHABLE_PIN);
+    credsConfig.ClientCertChain = &clientCert.Cert;
+    credsConfig.ClientKey = &clientCert.Key;
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_FALSE_TEXT(
+        MbedTlsTestServer_SawClientCertificate(server),
+        "the device must not present its credential to a peer no pin authorises"
+    );
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
+
+    MbedTlsTestCert_Destroy(&clientCert);
+    MbedTlsTestCert_Destroy(&clientCa);
+}
+
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeRejectedWhenTheServerCertIsExpiredEvenThoughItsPinMatches)
 {
     struct MbedTlsTestCert expiredCert = {};

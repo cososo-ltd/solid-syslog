@@ -26,6 +26,11 @@ struct SolidSyslogMbedTlsPemBufferCredentials
     mbedtls_x509_crt CaChain;
     mbedtls_x509_crt ClientCertChain;
     mbedtls_pk_context ClientKey;
+    /* Install/Release calls outstanding. One slot parses for one connection,
+     * so a second overlapping Install is refused - but the contract answers
+     * every Install with a Release whatever it returned, so counting is what
+     * keeps a refused one from freeing the live connection's material. */
+    size_t OutstandingInstalls;
 };
 
 void SolidSyslogMbedTlsPemBufferCredentials_Initialise(

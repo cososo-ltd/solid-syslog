@@ -640,6 +640,44 @@ TEST(OpenSslStreamIntegration, AFingerprintThatMatchesNothingIsNamedBeforeAnUntr
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
 }
 
+/* The one-certificate case above cannot catch this. OpenSSL reports an
+   unreachable chain at the TOP of what the peer presented and abandons
+   verification on the first refusal, so with a leaf and an issuer the depth-0
+   callback - the only place the pin is compared - never runs. A collector
+   presenting leaf+intermediate against a bundle missing its issuer is the
+   ordinary shape, so the contract's order would otherwise be decided by how
+   many certificates the peer happened to send. */
+TEST(OpenSslStreamIntegration, AFingerprintThatMatchesNothingIsNamedBeforeAnUntrustedChainOfTwoCertificates)
+{
+    givenAnIssuedServerCertificate();
+    pinLiteral = UNMATCHABLE_PIN;
+    buildScenario(issuedCertConfig());
+    replaceTrustFileWithAStranger();
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
+}
+
+/* Authorising by pin alone waives the chain-trust objection, but OpenSSL's
+   verify_result is sticky and keeps the waived code for the rest of the
+   connection. A refusal that arrives afterwards - here the collector requiring
+   a client certificate we do not supply - must not be read back out of it as a
+   fault in the peer's certificate, which would send the integrator to inspect
+   the collector's trust chain for a fault at their own end. */
+TEST(OpenSslStreamIntegration, APeerThatRejectsUsIsNotReportedAsAFaultInItsCertificate)
+{
+    createClientCa();
+    struct TlsTestCertConfig certConfig = {};
+    certConfig.commonName = "localhost";
+    certConfig.subjectAltDnsNames = LOCALHOST_SANS;
+    pinLabel = "sha-256";
+    installTrustAnchors = false;
+    buildScenario(certConfig, "localhost", &clientCa);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED);
+}
+
 TEST(OpenSslStreamIntegration, AnUntrustedChainIsNamedBeforeANameThatDoesNotMatch)
 {
     struct TlsTestCertConfig certConfig = {};
