@@ -504,9 +504,9 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
         if (!ok)
         {
             MbedTlsStream_Report(
-                SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+                SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
-                SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+                SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
             );
         }
     }

@@ -616,9 +616,9 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSetHostnam
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(
         transport,
-        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
-        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
     );
 }
 
