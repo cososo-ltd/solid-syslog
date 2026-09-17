@@ -71,7 +71,7 @@ static int MbedTlsStream_VerifyPeer(void* context, mbedtls_x509_crt* crt, int de
 static inline int MbedTlsStream_EnforceWhereTheLibraryWillNot(
     struct SolidSyslogMbedTlsStream* self,
     int depth,
-    uint32_t flags
+    const uint32_t* flags
 );
 static inline uint32_t MbedTlsStream_ChainTrustFlags(void);
 static inline bool MbedTlsStream_LeafMatchesAPin(struct SolidSyslogMbedTlsStream* self, mbedtls_x509_crt* leaf);
@@ -410,7 +410,7 @@ static int MbedTlsStream_VerifyPeer(void* context, mbedtls_x509_crt* crt, int de
         }
     }
 
-    return MbedTlsStream_EnforceWhereTheLibraryWillNot(self, depth, *flags);
+    return MbedTlsStream_EnforceWhereTheLibraryWillNot(self, depth, flags);
 }
 
 /* Under VERIFY_REQUIRED the library refuses on its own and the verdict survives
@@ -426,13 +426,13 @@ static int MbedTlsStream_VerifyPeer(void* context, mbedtls_x509_crt* crt, int de
 static inline int MbedTlsStream_EnforceWhereTheLibraryWillNot(
     struct SolidSyslogMbedTlsStream* self,
     int depth,
-    uint32_t flags
+    const uint32_t* flags
 )
 {
     int result = 0;
     if (!self->Installed.TrustAnchorsInstalled)
     {
-        self->RefusedVerdict |= flags;
+        self->RefusedVerdict |= *flags;
         if ((depth == 0) && (self->RefusedVerdict != 0U))
         {
             result = MBEDTLS_ERR_X509_FATAL_ERROR;
