@@ -20,6 +20,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void OpenSslFake_Reset(void);
 
     void OpenSslFake_SetConnectFails(bool fails);
+    /* Run the registered verify callback at depth 0 inside SSL_connect, as the
+     * real one does; a refusal fails the connect and the store error becomes
+     * the verify result. Off by default. */
+    void OpenSslFake_SetConnectRunsVerifyCallback(bool runs);
     void OpenSslFake_SetWriteFails(bool fails);
     void OpenSslFake_SetSet1HostFails(bool fails);
     void OpenSslFake_SetSniHostnameFails(bool fails);
@@ -62,6 +66,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct ssl_ctx_st* OpenSslFake_LastSetVerifyCtxArg(void);
     int OpenSslFake_LastVerifyMode(void);
+    int OpenSslFake_LastSecurityLevel(void);
+    int (*OpenSslFake_LastPasswdCb(void))(char*, int, int, void*);
+    unsigned int OpenSslFake_LastHostflags(void);
+    uint64_t OpenSslFake_LastSslOptions(void);
     int (*OpenSslFake_LastVerifyCallback(void))(int, struct x509_store_ctx_st*);
 
     /* SSL_set_ex_data / SSL_get_ex_data - one slot, which is all

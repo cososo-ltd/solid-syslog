@@ -57,6 +57,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * flags the adapter reads after a refused handshake. Resets to 0, which is
      * what mbedTLS reports when verification found nothing wrong. */
     void MbedTlsFake_SetSslVerifyResult(uint32_t flags);
+    /* Run the configured verify callback at depth 0 inside mbedtls_ssl_handshake,
+     * as the real one does: an error from it is fatal with no verdict, leftover
+     * flags fail verification and become the verdict. Off by default. */
+    void MbedTlsFake_SetHandshakeRunsVerifyCallback(bool runs);
 
     int MbedTlsFake_SslWriteCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslWriteContextArg(void);
@@ -103,6 +107,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * production inline call set, so a test can assert the negotiated floor. */
     int MbedTlsFake_ConfMinTlsVersion(const struct mbedtls_ssl_config* conf);
 
+    int MbedTlsFake_LastLegacyRenegotiationArg(void);
+    unsigned int MbedTlsFake_LastDhmMinBitlenArg(void);
     int MbedTlsFake_SslConfCaChainCallCount(void);
     int MbedTlsFake_SslConfCiphersuitesCallCount(void);
     const int* MbedTlsFake_LastSslConfCiphersuitesArg(void);

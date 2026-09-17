@@ -14,6 +14,7 @@
 #include "SolidSyslogMbedTlsStream.h"
 #include "SolidSyslogMbedTlsStreamErrors.h"
 #include "SolidSyslogTlsCredentialsInstalled.h"
+#include "SolidSyslogTlsFingerprint.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStreamDefinition.h"
 
@@ -39,6 +40,10 @@ struct SolidSyslogMbedTlsStream
      * 0xFFFFFFFF - so the reason has to be recorded as the decision is taken
      * rather than deduced afterwards from a verdict that no longer carries it. */
     uint32_t RefusedVerdict;
+    /* What the pin walk decided at the leaf, recorded there. A pin naming a hash
+     * this build compiled out is the integrator's fault, not the peer's, and
+     * nothing in the library's verdict distinguishes the two. */
+    enum SolidSyslogTlsAuthorisation PinVerdict;
 };
 
 void SolidSyslogMbedTlsStream_Initialise(

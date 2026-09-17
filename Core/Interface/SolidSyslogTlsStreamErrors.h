@@ -12,7 +12,7 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Detail codes a TLS stream reports through event->Detail, shared by every
-     *  TLS backend (OpenSSL, Mbed TLS, or an integrator's own). A handler that
+     *  TLS backend whichever library provides it. A handler that
      *  matches on these reacts to a fault identically whichever library produced
      *  it, and keeps working when the backend is swapped.
      *
@@ -40,6 +40,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION,
         SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED,
         SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_SHA1,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED,
         /* How the handshake ended. */
         SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED,
         SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT,

@@ -123,6 +123,15 @@ static SSL_CTX* lastLoadVerifyLocationsCtxArg;
 static const char* lastCaBundlePath;
 static bool loadVerifyLocationsFails;
 
+/* Session and context policy setters. A cipher string may carry @SECLEVEL=n,
+ * so SSL_CTX_set_cipher_list resets the recorded level: asserting the level
+ * after Open then proves it was set after the policy, where OpenSSL would
+ * actually let it stand. */
+static int lastSecurityLevel;
+static pem_password_cb* lastPasswdCb;
+static unsigned int lastHostflags;
+static uint64_t lastSslOptions;
+
 /* SSL_CTX_set_verify */
 static SSL_CTX* lastSetVerifyCtxArg;
 static int lastVerifyMode;
@@ -142,6 +151,9 @@ static int fakeStoreCtxStorage;
 static int fakeCertStorage;
 static int storeCtxDepth;
 static bool peerCertificatePresent = true;
+/* Real SSL_connect runs the verify callback during the handshake; a refusal
+ * there fails the connect and leaves the store error as the verify result. */
+static bool connectRunsVerifyCallback;
 static int storeCtxError;
 static uint8_t certDigest[FAKE_DIGEST_MAX];
 static size_t certDigestLength;
@@ -292,6 +304,10 @@ void OpenSslFake_Reset(void)
     loadVerifyLocationsFails = false;
     lastSetVerifyCtxArg = NULL;
     lastVerifyMode = 0;
+    lastSecurityLevel = 0;
+    lastPasswdCb = NULL;
+    lastHostflags = 0U;
+    lastSslOptions = 0U;
     lastVerifyCallback = NULL;
     lastSslExDataIndex = -1;
     lastSslExData = NULL;
@@ -299,6 +315,7 @@ void OpenSslFake_Reset(void)
     storeCtxDepth = 0;
     storeCtxError = X509_V_OK;
     peerCertificatePresent = true;
+    connectRunsVerifyCallback = false;
     certDigestLength = 0;
     digestFails = false;
     lastDigestMd = NULL;
@@ -454,6 +471,26 @@ SSL_CTX* OpenSslFake_LastSetVerifyCtxArg(void)
 int OpenSslFake_LastVerifyMode(void)
 {
     return lastVerifyMode;
+}
+
+int OpenSslFake_LastSecurityLevel(void)
+{
+    return lastSecurityLevel;
+}
+
+pem_password_cb* OpenSslFake_LastPasswdCb(void)
+{
+    return lastPasswdCb;
+}
+
+unsigned int OpenSslFake_LastHostflags(void)
+{
+    return lastHostflags;
+}
+
+uint64_t OpenSslFake_LastSslOptions(void)
+{
+    return lastSslOptions;
 }
 
 SSL_CTX* OpenSslFake_LastSslCtxCtrlCtxArg(void)
@@ -717,6 +754,31 @@ void SSL_CTX_set_verify(SSL_CTX* ctx, int mode, SSL_verify_cb verify_callback)
     lastVerifyCallback = verify_callback;
 }
 
+void SSL_CTX_set_security_level(SSL_CTX* ctx, int level)
+{
+    (void) ctx;
+    lastSecurityLevel = level;
+}
+
+void SSL_CTX_set_default_passwd_cb(SSL_CTX* ctx, pem_password_cb* cb)
+{
+    (void) ctx;
+    lastPasswdCb = cb;
+}
+
+void SSL_set_hostflags(SSL* s, unsigned int flags)
+{
+    (void) s;
+    lastHostflags = flags;
+}
+
+uint64_t SSL_set_options(SSL* s, uint64_t op)
+{
+    (void) s;
+    lastSslOptions |= op;
+    return lastSslOptions;
+}
+
 SSL_verify_cb OpenSslFake_LastVerifyCallback(void)
 {
     return lastVerifyCallback;
@@ -869,6 +931,7 @@ void OpenSslFake_SetMinProtoVersionFails(bool fails)
 
 int SSL_CTX_set_cipher_list(SSL_CTX* ctx, const char* str)
 {
+    lastSecurityLevel = 0;
     setCipherListCallCount++;
     lastSetCipherListCtxArg = ctx;
     lastCipherList = str;
@@ -1080,6 +1143,16 @@ void OpenSslFake_SetSet1HostFails(bool fails)
 int SSL_connect(SSL* ssl)
 {
     int rc = connectFails ? -1 : 1;
+    if (connectRunsVerifyCallback && (lastVerifyCallback != NULL))
+    {
+        storeCtxDepth = 0;
+        storeCtxError = X509_V_OK;
+        if (lastVerifyCallback(1, OpenSslFake_StoreCtx()) == 0)
+        {
+            verifyResultValue = storeCtxError;
+            rc = -1;
+        }
+    }
     int callIndex = connectCallCount;
     connectCallCount++;
     lastConnectSslArg = ssl;
@@ -1089,6 +1162,11 @@ int SSL_connect(SSL* ssl)
         rc = connectReturnSequence[idx];
     }
     return rc;
+}
+
+void OpenSslFake_SetConnectRunsVerifyCallback(bool runs)
+{
+    connectRunsVerifyCallback = runs;
 }
 
 void OpenSslFake_SetConnectFails(bool fails)

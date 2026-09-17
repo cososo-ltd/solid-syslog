@@ -904,6 +904,27 @@ TEST(SolidSyslogMbedTlsStream, OpenPinsMinimumTlsVersionToTls12)
     LONGS_EQUAL(MBEDTLS_SSL_VERSION_TLS1_2, MbedTlsFake_ConfMinTlsVersion(MbedTlsFake_LastSslConfigInitArg()));
 }
 
+/* RFC 9325 s3.5: a TLS 1.2 client whose renegotiation_info the server does not
+   acknowledge MUST abort with handshake_failure. The library's default merely
+   refuses to renegotiate later and completes the handshake. */
+TEST(SolidSyslogMbedTlsStream, OpenBreaksTheHandshakeWithAPeerLackingRenegotiationInfo)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(MBEDTLS_SSL_LEGACY_BREAK_HANDSHAKE, MbedTlsFake_LastLegacyRenegotiationArg());
+}
+
+#if defined(MBEDTLS_DHM_C) && defined(MBEDTLS_SSL_CLI_C)
+/* RFC 9325 s4.5: DH parameters of at least 2048 bits. The library's default
+   floor is 1024. */
+TEST(SolidSyslogMbedTlsStream, OpenRaisesTheDiffieHellmanFloorTo2048Bits)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    UNSIGNED_LONGS_EQUAL(2048U, MbedTlsFake_LastDhmMinBitlenArg());
+}
+#endif
+
 TEST(SolidSyslogMbedTlsStream, OpenWiresRngFromConfigUsingCtrDrbgRandom)
 
 {
@@ -1303,6 +1324,23 @@ TEST(SolidSyslogMbedTlsStream, OpenFailsWhenTheVerdictCarriesAFaultAfterAnOption
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
         SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED
+    );
+}
+
+/* A pin naming a hash this build compiled out is the integrator's fault, not
+   the collector's; reporting it as a mismatch sends them to the wrong end. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsAPinNamingADigestTheBuildCannotCompute)
+{
+    MbedTlsCredentialsFake_SetTrustAnchorsInstalled(false);
+    MbedTlsCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    MbedTlsFake_SetDigestUnavailableFor(MBEDTLS_MD_SHA256);
+    MbedTlsFake_SetHandshakeRunsVerifyCallback(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE
     );
 }
 

@@ -45,7 +45,8 @@ const struct SolidSyslogErrorSource SolidSyslogMbedTlsStreamErrorSource = {"Mbed
 
 enum
 {
-    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1
+    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1,
+    MBEDTLS_STREAM_DHM_MIN_BITLEN = 2048U
 };
 
 struct SolidSyslogAddress;
@@ -234,6 +235,7 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
     MbedTlsStream_PullProfile(self);
     self->RefusedVerdict = 0U;
+    self->PinVerdict = SOLIDSYSLOG_TLS_AUTHORISATION_NO_MATCH;
     bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && MbedTlsStream_ApplySslConfigDefaults(self);
     if (ok)
     {
@@ -294,6 +296,14 @@ static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream*
      * RFC 9662, which updates RFC 5425, requires TLS 1.3 to be preferred
      * wherever it is implemented. */
     mbedtls_ssl_conf_min_tls_version(&self->SslConfig, MBEDTLS_SSL_VERSION_TLS1_2);
+    /* RFC 9325 s3.5: a TLS 1.2 server that does not acknowledge
+     * renegotiation_info gets handshake_failure. The library default completes
+     * that handshake and only refuses to renegotiate afterwards. */
+    mbedtls_ssl_conf_legacy_renegotiation(&self->SslConfig, MBEDTLS_SSL_LEGACY_BREAK_HANDSHAKE);
+#if defined(MBEDTLS_DHM_C) && defined(MBEDTLS_SSL_CLI_C)
+    /* RFC 9325 s4.5. The library default is 1024. */
+    mbedtls_ssl_conf_dhm_min_bitlen(&self->SslConfig, MBEDTLS_STREAM_DHM_MIN_BITLEN);
+#endif
     mbedtls_ssl_conf_rng(&self->SslConfig, mbedtls_ctr_drbg_random, self->Config.Rng);
 }
 
@@ -450,12 +460,13 @@ static inline uint32_t MbedTlsStream_ChainTrustFlags(void)
 
 static inline bool MbedTlsStream_LeafMatchesAPin(struct SolidSyslogMbedTlsStream* self, mbedtls_x509_crt* leaf)
 {
-    return SolidSyslogTlsFingerprint_Authorise(
-               self->Installed.Fingerprints,
-               self->Installed.FingerprintCount,
-               MbedTlsStream_DigestCertificate,
-               leaf
-           ) == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED;
+    self->PinVerdict = SolidSyslogTlsFingerprint_Authorise(
+        self->Installed.Fingerprints,
+        self->Installed.FingerprintCount,
+        MbedTlsStream_DigestCertificate,
+        leaf
+    );
+    return self->PinVerdict == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED;
 }
 
 /* A hash compiled out of Mbed TLS has no md_info, which is the Core callback's
@@ -650,9 +661,17 @@ static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_RefusalDetail(struct
     {
         verdict = mbedtls_ssl_get_verify_result(&self->SslContext);
     }
-    if (MbedTlsStream_IsVerifyFailure(verdict))
+    if (self->PinVerdict == SOLIDSYSLOG_TLS_AUTHORISATION_DIGEST_UNAVAILABLE)
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE;
+    }
+    else if (MbedTlsStream_IsVerifyFailure(verdict))
     {
         detail = MbedTlsStream_DetailForVerifyFailure(verdict);
+    }
+    else
+    {
+        /* Rejected by the peer or the protocol; no check of ours names it. */
     }
     return detail;
 }

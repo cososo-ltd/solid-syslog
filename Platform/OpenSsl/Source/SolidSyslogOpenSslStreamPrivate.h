@@ -17,6 +17,7 @@
 #include "SolidSyslogOpenSslStream.h"
 #include "SolidSyslogOpenSslStreamErrors.h"
 #include "SolidSyslogTlsCredentialsInstalled.h"
+#include "SolidSyslogTlsFingerprint.h"
 
 struct SolidSyslogOpenSslStream
 {
@@ -41,6 +42,10 @@ struct SolidSyslogOpenSslStream
      * leave the pin uncompared; whether the objection is forgiven is the
      * leaf's decision, and this is what carries it there. */
     int ChainObjection;
+    /* What the pin walk decided at the leaf, recorded there. A pin naming a hash
+     * this build cannot compute is the integrator's fault, not the peer's, and
+     * nothing in the library's verdict distinguishes the two. */
+    enum SolidSyslogTlsAuthorisation PinVerdict;
 };
 
 void SolidSyslogOpenSslStream_Initialise(
