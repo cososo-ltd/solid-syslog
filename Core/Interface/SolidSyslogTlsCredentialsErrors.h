@@ -13,8 +13,8 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Detail codes a credentials backend reports through event->Detail, shared by
-     *  every backend whatever it fetches material from - a PEM file, a caller-built
-     *  handle, a PEM buffer, or a secure element of an integrator's own. A handler
+     *  every backend whatever it fetches material from - a file, memory, a handle
+     *  the integrator already built, or a secure element. A handler
      *  that matches on these reacts to a fault identically whichever backend
      *  produced it, and keeps working when the backend is swapped.
      *

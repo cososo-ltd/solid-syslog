@@ -13,8 +13,8 @@
 #include "SolidSyslogErrorCategory.h"
 
 /**
- * Portable TLS-stream error categories, shared by every TLS backend (OpenSSL,
- * Mbed TLS, or an integrator's own). A portable handler switch on
+ * Portable TLS-stream error categories, shared by every TLS backend whichever
+ * library provides it. A portable handler switch on
  * event->Category reacts to a TLS init or handshake failure identically
  * regardless of which TLS library produced it.
  */

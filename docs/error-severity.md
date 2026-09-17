@@ -64,8 +64,9 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 |---|---|---|
 | `POOL_EXHAUSTED` | `CRITICAL` | always: `<Class>_Create` fell back to Null. Single-sourced via `SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY`. |
 | `BAD_ARGUMENT` | `CRITICAL` | always: caller code bug. Single-sourced via `SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY`. |
-| `BAD_CONFIG` — fatal | `CRITICAL` | `<Class>_Create` fell back to Null. Single-sourced via `SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY`. |
-| `BAD_CONFIG` — degraded | `WARNING` | component still constructs and delivers (e.g. MetaSd without a counter, block-too-small, TLS chain-only). Emitted with an explicit `SOLIDSYSLOG_SEVERITY_WARNING` literal at the site, not the macro. |
+| `BAD_CONFIG` - fatal | `CRITICAL` | `<Class>_Create` fell back to Null. Single-sourced via `SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY`. |
+| `BAD_CONFIG` - degraded | `WARNING` | component still constructs and delivers (e.g. MetaSd without a counter, block-too-small, TLS chain-only). Emitted with an explicit `SOLIDSYSLOG_SEVERITY_WARNING` literal at the site, not the macro. |
+| `BAD_CONFIG` - refused | `ERROR` | the component stands but this connection attempt fails on material or policy the deployment supplied (trust anchors that will not load, a malformed pin, nothing that authorises the peer). The sender retries on its next pass, so it clears when an operator fixes what was deployed. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
 | `UNKNOWN_DESTROY` | `WARNING` | benign lifecycle misuse: library keeps working. Single-sourced via `SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY`. |
 | `TLS_STREAM_HANDSHAKE_FAILED` — rejected | `ERROR` | cert / protocol: a human must fix the peer or the cert. |
 | `TLS_STREAM_HANDSHAKE_FAILED` — timeout | `WARNING` | transient: may clear on the next reconnect. |

@@ -1,86 +1,116 @@
 # OpenSSL setup
 
-Wiring `SolidSyslogOpenSslStream` so a `SolidSyslogStreamSender` delivers RFC 5425
-syslog over TLS. The [TLS obligations](../../tls.md) page covers what any TLS
-stream must do. The [OpenSSL](index.md) page covers what this adapter needs and
-where it falls short of that. The config fields are documented on the struct
-itself, and this page is the wiring.
+Wiring `SolidSyslogOpenSslStream` so a `SolidSyslogStreamSender` delivers
+RFC 5425 syslog over TLS. What any TLS stream must do is under
+[TLS obligations](../../tls.md); what this pack needs and reports is on the
+[OpenSSL](index.md) page. Every config field is documented on its struct. This
+page is the order to wire them in.
 
 ## What you need
 
-OpenSSL 3.0 or later on the include and link path, and a platform supplying the
-TCP stream underneath - the [capability matrix](../index.md) shows which fill
-that role.
+- OpenSSL 3.0 or later on the include and link path.
+- A platform supplying the TCP stream, the address and the resolver. The
+  [capability matrix](../index.md) says which fills each role on your target,
+  and that platform's setup page shows how to create them.
+- A `SolidSyslogSleepFunction`. The handshake polls and sleeps between polls.
+  Your platform pack supplies one, or wrap your OS sleep in one line.
 
 ```cmake
 set(SOLIDSYSLOG_PLATFORMS "OpenSsl;<Network>")
 ```
 
-`<Network>` is whichever platform the [capability matrix](../index.md) says
-fills that role on your target - see
-[naming your platforms](../../build-integration.md#cmake) for how the list is
-read.
+[Naming your platforms](../../build-integration.md#cmake) covers how the list
+is read. OpenSSL is a system library, so the adapter compiles into
+`libSolidSyslog.a` with no separate target to link;
+[adding it to your build](../../build-integration.md) covers Make and IDE
+builds.
 
-OpenSSL is a stable system API rather than a header-configured upstream, so the
-adapter compiles straight into `libSolidSyslog.a` and there is no separate
-target to link. [Adding it to your build](../../build-integration.md) covers the
-Make and IDE routes.
+```c
+#include "SolidSyslogError.h"
+#include "SolidSyslogOpenSslPemFileCredentials.h"
+#include "SolidSyslogOpenSslStream.h"
+#include "SolidSyslogStreamSender.h"
+```
 
 ## The layering
 
-TLS is a Stream wrapped around another Stream. The TLS adapter carries the
-records; the transport underneath carries the bytes, and it can be any Stream.
+TLS is a Stream wrapped around another Stream. The TLS stream carries the
+records; the transport underneath carries the bytes.
 
 ```text
-StreamSender → SolidSyslogOpenSslStream → your TCP stream → socket
+StreamSender -> SolidSyslogOpenSslStream -> your TCP stream -> socket
 ```
 
-The TLS stream **borrows** its transport. It may close it, but it never destroys
-it: the transport is yours to create and to destroy, and it must stay valid
-until `SolidSyslogOpenSslStream_Destroy`.
+The TLS stream borrows its transport. It may close it but never destroys it, so
+create the transport first and destroy it last.
 
-## Wiring it
+## 1. Install an error handler
 
-First a credentials source, which is where the material comes from. The one
-that ships with the pack names it by file path:
+Every fault below reaches this handler and nothing else. Install it before
+anything is created.
+
+```c
+static void OnError(void* context, const struct SolidSyslogErrorEvent* event)
+{
+    (void) context;
+    /* event->Source names the class that reported, event->Category the kind
+       of fault, event->Detail the code. The table at the end of this page
+       lists what a first connection can produce. */
+}
+
+SolidSyslog_SetErrorHandler(OnError, NULL);
+```
+
+## 2. A credentials source
+
+Where the trust anchors, any pinned fingerprints and the client credential come
+from. The shipped source names them by file path; OpenSSL opens and parses the
+files itself on every connection.
 
 ```c
 static struct SolidSyslogOpenSslPemFileCredentialsConfig credentialsConfig;
 credentialsConfig = (struct SolidSyslogOpenSslPemFileCredentialsConfig) {0};
 credentialsConfig.CaBundlePath = "/etc/ssl/collector-ca.pem";
 
-/* For mutual TLS, add the client credential here - both fields, since one
-   without the other is reported and leaves the connection
-   server-authenticated. */
-credentialsConfig.ClientCertChainPath = "/etc/ssl/device-chain.pem";
-credentialsConfig.ClientKeyPath       = "/etc/ssl/device-key.pem";
-
-/* To authorise the collector by its certificate rather than by a chain, pin
-   it. Any one pin in the list authorises, which is how a fleet crosses a
-   renewal; the array and the strings are yours and must outlive the
-   credentials. A pin alone is enough, so CaBundlePath may be left NULL - and
-   where both are set, both must be satisfied. */
-static const char* const pins[] = {
-    "sha-256:E1:2D:53:2B:7C:6B:8A:29:A2:76:C8:64:36:0B:08:4B:"
-    "7A:F1:9E:9D:0C:44:1B:23:5D:87:6E:A0:31:F5:C2:98"
-};
-credentialsConfig.PeerFingerprints     = pins;
-credentialsConfig.PeerFingerprintCount = 1;
-
 struct SolidSyslogOpenSslCredentials* credentials =
     SolidSyslogOpenSslPemFileCredentials_Create(&credentialsConfig);
 ```
 
-`SolidSyslogOpenSslPemFileCredentials_Create` copies the configuration, so every
-field has to be set before it is called. Assigning one afterwards changes
-nothing.
+Create copies the configuration, so set every field before the call. The path
+strings, and the pin array below, are yours and must outlive the credentials.
 
-Then the stream, which is wired to it:
+**Mutual TLS.** Add both halves of the client credential. One without the other
+is reported and the connection continues server-authenticated, so read the
+handler rather than assume.
 
-The stream config carries wiring only. Every value a connection is actually
-made with - the expected peer identity, and the cipher policy - is asked for at
-each `Open` through a profile callback, so a deployment change takes effect on
-the next connection instead of being frozen at `Create`:
+```c
+credentialsConfig.ClientCertChainPath = "/etc/ssl/device-chain.pem";
+credentialsConfig.ClientKeyPath       = "/etc/ssl/device-key.pem";
+```
+
+**Pinning the collector's certificate**, instead of or as well as a CA bundle:
+
+```c
+static const char* const pins[] = {
+    "sha-256:E1:2D:53:2B:7C:6B:8A:29:A2:76:C8:64:36:0B:08:4B:"
+    "7A:F1:9E:9D:0C:44:1B:23:5D:87:6E:A0:31:F5:C2:98",
+};
+credentialsConfig.PeerFingerprints     = pins;
+credentialsConfig.PeerFingerprintCount = 1;
+```
+
+`openssl x509 -noout -fingerprint -sha256 -in collector.pem` prints the digest;
+put `sha-256:` in front of it. Hex digits may be either case. A pin alone
+authorises, so `CaBundlePath` may then be NULL; with both set, both must pass.
+Across a renewal, list the current and the next certificate together. Why, and
+what a `sha-1` pin costs, is under
+[TLS obligations](../../tls.md#accept-a-peer-authorised-by-certificate-fingerprint).
+
+## 3. A profile
+
+What a connection is made with - the expected peer identity and the cipher
+policy - is asked for at each connection through a callback, so a change takes
+effect on the next connection.
 
 ```c
 static void FillProfile(struct SolidSyslogOpenSslProfile* profile, void* context)
@@ -90,57 +120,101 @@ static void FillProfile(struct SolidSyslogOpenSslProfile* profile, void* context
 }
 ```
 
-The stream zeroes the profile before asking, so a field you leave alone is one
-the library's own default covers. Leaving `Profile` NULL altogether means no
-expected identity is declared. Where your credentials pin a usable fingerprint
-the pin names the peer and nothing is reported; where they do not, the peer is
-only chain-authenticated and a WARNING says so on every connection.
+The profile is zeroed before the call, so a field left alone takes OpenSSL's
+default. `ServerName` is verified against the certificate and sent as SNI. Left
+NULL, the peer is identified by a pin where one is configured; with neither, the
+peer is chain-authenticated only and a WARNING says so on every connection. `""`
+opts out of the name check without the warning. `CipherList` and `CipherSuites`
+are OpenSSL's two cipher lists, for TLS 1.2 and TLS 1.3 respectively; leave both
+alone unless your deployment holds a policy.
+
+## 4. The stream
 
 ```c
-/* Your TCP stream and sleep, from the platform that supplies them. */
-struct SolidSyslogStream* transport = CreateTcpStream();
+struct SolidSyslogStream* transport = /* your platform's TCP stream */;
 
 static struct SolidSyslogOpenSslStreamConfig tlsConfig;
 tlsConfig = (struct SolidSyslogOpenSslStreamConfig) {0};
-tlsConfig.Transport = transport;
-tlsConfig.Sleep = MySleep;                    /* required - no fallback */
-tlsConfig.Credentials = credentials;          /* required - no fallback */
-tlsConfig.Profile = FillProfile;
+tlsConfig.Transport   = transport;
+tlsConfig.Sleep       = /* your platform's sleep */;
+tlsConfig.Credentials = credentials;
+tlsConfig.Profile     = FillProfile;
 
 struct SolidSyslogStream* tls = SolidSyslogOpenSslStream_Create(&tlsConfig);
 ```
 
-Zero-initialise each config before filling it.
+`Transport`, `Sleep` and `Credentials` are required. A NULL is reported at
+Create and the Null stream is returned, which delivers nothing.
 
-The credentials outlive the stream that borrows them: destroy the stream first,
-then the credentials.
+Two optional pairs:
 
-Then the sender, unchanged from the plain-TCP case - it sees a Stream and does
-not know or care that it is a TLS one:
+- `Version` and `VersionContext`: a function returning a number you increment
+  when the files, the profile or the pin list change. The sender reads it on
+  every record and reconnects when it moves, so a rotation applies without a
+  restart. Leave it NULL if nothing changes at runtime.
+- `GetHandshakeTimeoutMs` and `HandshakeTimeoutContext`: the per-attempt
+  handshake deadline. NULL uses `SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS`.
+
+## 5. The sender
+
+Unchanged from plain TCP. It sees a Stream and does not know it is a TLS one.
 
 ```c
 static struct SolidSyslogStreamSenderConfig senderConfig;
 senderConfig = (struct SolidSyslogStreamSenderConfig) {0};
-senderConfig.Resolver = resolver;
+senderConfig.Resolver = resolver;      /* your platform's */
 senderConfig.Stream   = tls;
-senderConfig.Address  = CreateAddress();      /* your platform's Address */
-senderConfig.Endpoint = GetEndpoint;
+senderConfig.Address  = address;       /* your platform's */
+senderConfig.Endpoint = GetEndpoint;   /* fills the host and port */
+
 struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&senderConfig);
 ```
 
-Tear down in reverse order: sender, address, TLS stream, the credentials, then
-the transport you created. The stream borrows the credentials, so they outlive
-it.
+The expected identity travels with the destination. If `Endpoint` can return a
+different collector at runtime, `ServerName` has to change with it: move
+`EndpointVersion` and the stream's `Version` together.
 
-## When it does not work
+## Rotation
 
-Failures report through the error handler rather than silently. Install one
-before you start, and read [error severity](../../error-severity.md) for what
-each level is telling you - a `CRITICAL` at create time means the stream fell
-back to the Null object, and nothing will be delivered.
+Put the new files in place and increment the stream's version. Nothing is held
+between connections, and the shipped source reads the paths afresh each time,
+so nothing has to be freed.
 
-A pin is read when the connection is made, so one that is not in the RFC 5425
-form is reported on the first connect and not before. `openssl x509 -noout
--fingerprint -sha256 -in collector.pem` prints the digest in the byte form the
-pin wants; the label it needs is `sha-256:`, hyphenated, in place of what
-OpenSSL prints. Hex digits may be upper or lower case.
+## Teardown
+
+Reverse order: the sender, the address, the TLS stream, the credentials, then
+the transport. The stream borrows the credentials and the transport, so both
+outlive it.
+
+## What the handler sees
+
+`event->Source` is `&SolidSyslogOpenSslStreamErrorSource` or
+`&SolidSyslogOpenSslPemFileCredentialsErrorSource`. `event->Detail` is a code
+from `SolidSyslogTlsStreamErrors.h` or `SolidSyslogTlsCredentialsErrors.h`;
+the `SOLIDSYSLOG_TLS_STREAM_ERROR_` and `SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_`
+prefixes are dropped below. `HANDSHAKE_FAILED` is
+`SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED`.
+
+| What happened | Severity | Category | Detail | Then |
+|---|---|---|---|---|
+| `Transport`, `Sleep` or `Credentials` left NULL | `CRITICAL` | `BAD_CONFIG` | `NULL_TRANSPORT`, `NULL_SLEEP`, `NULL_CREDENTIALS` | Null stream returned; nothing delivered |
+| CA bundle will not load | `ERROR` | `BAD_CONFIG` | `TRUST_ANCHORS_NOT_LOADED` | connection refused |
+| neither a CA bundle nor a pin | `ERROR` | `BAD_CONFIG` | `NO_PEER_AUTHORISATION` | refused |
+| a pin not in the RFC 5425 form | `ERROR` | `BAD_CONFIG` | `FINGERPRINT_MALFORMED` | refused |
+| a pin naming `sha-1` | `WARNING` | `BAD_CONFIG` | `FINGERPRINT_SHA1` | continues |
+| `CipherList` or `CipherSuites` selects nothing | `ERROR` | `BAD_CONFIG` | `CIPHER_POLICY_REJECTED` | refused |
+| no `ServerName` and no pin | `WARNING` | `BAD_CONFIG` | `SERVER_NAME_NOT_SET` | continues, chain-authenticated only |
+| half a client credential | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_INCOMPLETE` | continues without it |
+| client certificate or key will not load | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_NOT_INSTALLED` | continues without it |
+| client key does not match its certificate | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_MISMATCHED` | continues without it |
+| collector's chain reaches no anchor | `ERROR` | `HANDSHAKE_FAILED` | `PEER_CERTIFICATE_UNTRUSTED` | refused |
+| collector's certificate matches no pin | `ERROR` | `HANDSHAKE_FAILED` | `PEER_FINGERPRINT_MISMATCHED` | refused |
+| every pin names a hash the build cannot compute | `ERROR` | `HANDSHAKE_FAILED` | `FINGERPRINT_DIGEST_UNAVAILABLE` | refused |
+| collector's name does not match `ServerName` | `ERROR` | `HANDSHAKE_FAILED` | `PEER_NAME_MISMATCHED` | refused |
+| collector's certificate outside its dates | `ERROR` | `HANDSHAKE_FAILED` | `PEER_CERTIFICATE_EXPIRED`, `PEER_CERTIFICATE_NOT_YET_VALID` | refused |
+| collector rejected the device | `ERROR` | `HANDSHAKE_FAILED` | `HANDSHAKE_REJECTED` | refused; check the client credential |
+| handshake did not finish in time | `WARNING` | `HANDSHAKE_FAILED` | `HANDSHAKE_TIMEOUT` | retried |
+
+A refused connection is retried on the sender's next pass. With a store
+configured, records wait and replay when it succeeds. A successful connection
+reports nothing.

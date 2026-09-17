@@ -62,8 +62,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     {
         /** SNI + peer-identity check. A non-empty name is verified against the peer
          *  cert (SAN/CN); one that parses as an address literal is verified as an
-         *  address, so the cert must carry it as an iPAddress SAN and a DNS entry
-         *  spelling the same digits does not match. NULL asks for neither, and what
+         *  address where the cert carries an iPAddress SAN - but Mbed TLS also
+         *  accepts a DNS entry or Common Name spelling the same digits, and offers
+         *  no way to refuse that. NULL asks for neither, and what
          *  that means depends on the Credentials: a usable pinned fingerprint names the
          *  peer instead, so nothing is reported; without one the peer is only
          *  chain-authenticated and a WARNING says so (MITM-class). "" is the
@@ -112,7 +113,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         void* HandshakeTimeoutContext; /**< Passed back to GetHandshakeTimeoutMs unchanged; NULL is fine. */
         struct mbedtls_ctr_drbg_context* Rng; /**< Seeded CTR-DRBG for the handshake; caller-built and caller-owned.
                                              Required - a NULL is reported at
-                                             SolidSyslogMbedTlsStream_Create. */
+                                             SolidSyslogMbedTlsStream_Create. Seeded is
+                                             the caller's to guarantee: a context that was
+                                             initialised and never seeded returns bytes
+                                             without error, makes every session's keys
+                                             predictable, and cannot be told apart from
+                                             a seeded one here. */
         /** Supplies the per-connection profile. NULL leaves every profile field at
          *  the library default, which for ServerName means an unverified peer. */
         SolidSyslogMbedTlsProfileFunction Profile;

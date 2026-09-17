@@ -451,12 +451,18 @@ struct SolidSyslogMbedTlsHandleCredentialsConfig credentialsConfig = {
     .CaChain = DeviceCertStore_CaChain(),
 };
 
+static void FillTlsProfile(struct SolidSyslogMbedTlsProfile* profile, void* context)
+{
+    (void) context;
+    profile->ServerName = SYSLOG_COLLECTOR_HOST;
+}
+
 struct SolidSyslogMbedTlsStreamConfig tlsConfig = {
     .Transport   = SolidSyslogLwipRawTcpStream_Create(&tcpConfig),
     .Sleep       = SyslogSleep,
     .Rng         = DeviceCertStore_Rng(),
     .Credentials = SolidSyslogMbedTlsHandleCredentials_Create(&credentialsConfig),
-    .ServerName  = SYSLOG_COLLECTOR_HOST,
+    .Profile     = FillTlsProfile,
 };
 
 .Stream = SolidSyslogMbedTlsStream_Create(&tlsConfig),
