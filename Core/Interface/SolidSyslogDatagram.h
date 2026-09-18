@@ -49,15 +49,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  outside the library, and holding the record until they are is what an
      *  audit trail wants. Size is the one cause the record itself carries.
      *
-     *  The trim is reactive: the sender offers the record at full size and only
-     *  calls SolidSyslogDatagram_MaxPayload once OVERSIZE comes back. So on an
-     *  implementation that
-     *  collapses OVERSIZE into FAILED, an over-large record is never trimmed. It
-     *  reaches the stack whole, and if the stack rejects it the failure is
-     *  permanent while being treated as transient: the record stays at the
-     *  store's cursor and is offered again on every servicing pass, so nothing
-     *  behind it is delivered either. Which platforms that affects is on their
-     *  pages. */
+     *  The trim is reactive: the sender offers the record at full size and
+     *  calls SolidSyslogDatagram_MaxPayload only once a send has not
+     *  succeeded, so nothing is asked of an implementation while sends are
+     *  working. An implementation that collapses OVERSIZE into FAILED is still
+     *  recovered from: the sender compares the record against MaxPayload and
+     *  trims it if it would not have fitted, leaving a FAILED on a record that
+     *  does fit to be retried whole. An implementation answering zero says it
+     *  cannot report what the path carries, and nothing is inferred from it. */
     enum SolidSyslogDatagramSendResult SolidSyslogDatagram_SendTo(
         struct SolidSyslogDatagram * datagram,
         const void* buffer,

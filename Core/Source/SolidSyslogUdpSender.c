@@ -46,6 +46,11 @@ static bool UdpSender_ResolveDestination(struct SolidSyslogUdpSender* self, cons
 static inline struct SolidSyslogAddress* UdpSender_Address(struct SolidSyslogUdpSender* self);
 static inline void UdpSender_CloseSocket(struct SolidSyslogUdpSender* self);
 static inline bool UdpSender_TransmitDatagram(struct SolidSyslogUdpSender* self, const void* buffer, size_t size);
+static inline bool UdpSender_IsOversize(
+    struct SolidSyslogUdpSender* self,
+    enum SolidSyslogDatagramSendResult result,
+    size_t size
+);
 static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
     struct SolidSyslogUdpSender* self,
     const void* buffer,
@@ -213,11 +218,32 @@ static inline bool UdpSender_TransmitDatagram(struct SolidSyslogUdpSender* self,
 {
     enum SolidSyslogDatagramSendResult result =
         SolidSyslogDatagram_SendTo(self->Config.Datagram, buffer, size, UdpSender_Address(self));
-    if (result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE)
+    if (UdpSender_IsOversize(self, result, size))
     {
         result = UdpSender_RetryAfterOversize(self, buffer, size);
     }
     return result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+}
+
+/* An implementation that cannot distinguish an over-large datagram reports
+ * FAILED for one, which SolidSyslogDatagram.h permits. Asking MaxPayload only
+ * once a send has failed keeps the query off the success path, and the size
+ * test keeps a genuine failure on a record that fits from being retried
+ * trimmed. Zero says the implementation cannot report what the path carries,
+ * so nothing is inferred from it. */
+static inline bool UdpSender_IsOversize(
+    struct SolidSyslogUdpSender* self,
+    enum SolidSyslogDatagramSendResult result,
+    size_t size
+)
+{
+    bool oversize = (result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    if (result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED)
+    {
+        size_t maxPayload = SolidSyslogDatagram_MaxPayload(self->Config.Datagram);
+        oversize = (maxPayload > 0U) && (size > maxPayload);
+    }
+    return oversize;
 }
 
 static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(

@@ -106,10 +106,10 @@ TEST(SolidSyslogPlusTcpDatagram, OpenIsIdempotent)
     CALLED_FAKE(FreeRtosSocketsFake_Socket, ONCE);
 }
 
-TEST(SolidSyslogPlusTcpDatagram, MaxPayloadReturnsIpv6SafeDefault)
+TEST(SolidSyslogPlusTcpDatagram, MaxPayloadReturnsUnknownPathPayload)
 
 {
-    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD, SolidSyslogDatagram_MaxPayload(datagram));
+    LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
 }
 
 TEST(SolidSyslogPlusTcpDatagram, SendToFailsBeforeOpen)

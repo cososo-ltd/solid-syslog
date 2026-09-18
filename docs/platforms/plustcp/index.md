@@ -44,25 +44,23 @@ first datagram sent to a peer, and again once its cache entry ages out under
 `ipconfigMAX_ARP_AGE`, not to steady-state traffic. Budget for it if you are
 logging inline from a task with a deadline.
 
-### An over-large datagram blocks the queue
+### An over-large datagram is delivered truncated
 
-The adapter reports the IPv6-safe payload of 1232 bytes from `MaxPayload` and
-cannot tell an over-large datagram from any other send failure, which the
-[Datagram](../../api/structSolidSyslogDatagram.md) contract permits. The
-consequence is on the caller's side, and it is not simply a dropped record.
+The adapter cannot tell an over-large datagram from any other send failure,
+which the [Datagram](../../api/structSolidSyslogDatagram.md) contract permits,
+and it reports the unknown-path payload from `MaxPayload` because the stack
+exposes no path MTU.
 
-Because the sender only trims a record after being told it was too large, one
-over that size is offered to `FreeRTOS_sendto` whole. If the stack rejects it,
-the send fails, and a failed send is treated as transient: the store keeps the
-record at its cursor and offers the same one on every servicing pass. Nothing
-behind it is delivered.
+A record above that size is offered to `FreeRTOS_sendto` whole. If the stack
+rejects it, the sender recognises a record that could not have fitted, trims it
+on a UTF-8 codepoint boundary and sends again, so the record is delivered
+short rather than held. Truncation is visible to the collector; the alternative
+is silence.
 
-No record can reach that size at the default `SOLIDSYSLOG_MAX_MESSAGE_SIZE`, so
-this is a hazard only where the tunable has been raised past what the datagram
-reports. Until [#736](https://github.com/cososo-ltd/solid-syslog/issues/736)
-lands, keep `SOLIDSYSLOG_MAX_MESSAGE_SIZE` at or below that value — noting that
-it is library-wide rather than per-transport, so a value chosen for this path
-applies to every transport the instance uses.
+No record reaches that size at the default `SOLIDSYSLOG_MAX_MESSAGE_SIZE`. It
+applies where the tunable has been raised past what the datagram reports -
+noting that the tunable is library-wide rather than per-transport, so a value
+chosen for this path applies to every transport the instance uses.
 
 ### The stack's configuration is yours
 

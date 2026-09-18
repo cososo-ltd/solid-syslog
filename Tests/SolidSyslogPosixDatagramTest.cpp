@@ -184,9 +184,9 @@ TEST(SolidSyslogPosixDatagram, CloseCalledWithSocketFd)
     LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
 }
 
-TEST(SolidSyslogPosixDatagram, MaxPayloadFallsBackToIpv6SafePayload)
+TEST(SolidSyslogPosixDatagram, MaxPayloadFallsBackToUnknownPathPayload)
 {
-    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD, SolidSyslogDatagram_MaxPayload(datagram));
+    LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
 }
 
 TEST(SolidSyslogPosixDatagram, OpenDoesNotConnect)
@@ -248,7 +248,7 @@ TEST(SolidSyslogPosixDatagram, MaxPayloadFallsBackWhenIpMtuLookupFails)
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
     SocketFake_SetIpMtuLookupFails(true);
-    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD, SolidSyslogDatagram_MaxPayload(datagram));
+    LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
 }
 
 TEST(SolidSyslogPosixDatagram, SendToReturnsFailedWhenConnectFails)

@@ -168,9 +168,9 @@ TEST(SolidSyslogLwipRawDatagram, OpenReturnsFalseWhenUdpNewFails)
     CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
 }
 
-TEST(SolidSyslogLwipRawDatagram, MaxPayloadReturnsIpv6SafeDefault)
+TEST(SolidSyslogLwipRawDatagram, MaxPayloadReturnsUnknownPathPayload)
 {
-    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD, SolidSyslogDatagram_MaxPayload(datagram));
+    LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
 }
 
 TEST(SolidSyslogLwipRawDatagram, SendToFailsBeforeOpen)

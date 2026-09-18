@@ -178,7 +178,7 @@ static void LwipRawDatagram_DoSendTo(void* context)
 static size_t LwipRawDatagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
     (void) base;
-    return SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD;
+    return SolidSyslogUdpPayload_UnknownPath(false);
 }
 
 #else

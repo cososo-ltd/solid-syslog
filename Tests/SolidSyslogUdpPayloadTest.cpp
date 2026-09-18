@@ -25,6 +25,16 @@ TEST(SolidSyslogUdpPayload, Ipv6SafePayloadConstantMatchesIpv6MinimumMtu)
     LONGS_EQUAL(SolidSyslogUdpPayload_FromMtu(1280, true), SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD);
 }
 
+TEST(SolidSyslogUdpPayload, UnknownPathIsRfc5426Ipv4SafestAssumption)
+{
+    LONGS_EQUAL(480, SolidSyslogUdpPayload_UnknownPath(false));
+}
+
+TEST(SolidSyslogUdpPayload, UnknownPathIsRfc5426Ipv6SafestAssumption)
+{
+    LONGS_EQUAL(1180, SolidSyslogUdpPayload_UnknownPath(true));
+}
+
 TEST(SolidSyslogUdpPayload, MtuSmallerThanOverheadSaturatesToZero)
 {
     LONGS_EQUAL(0, SolidSyslogUdpPayload_FromMtu(0, false));

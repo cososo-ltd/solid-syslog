@@ -30,6 +30,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  20 for IPv4) and the 8-byte UDP header. */
     size_t SolidSyslogUdpPayload_FromMtu(size_t mtu, bool isIpv6);
 
+    /** Largest message to send where the path MTU is not known: the size
+     *  RFC 5426 §3.2 calls the safest assumption for the family, 480 octets
+     *  for IPv4 and 1180 for IPv6. A Datagram answers this from MaxPayload
+     *  where its stack cannot report a path MTU. */
+    size_t SolidSyslogUdpPayload_UnknownPath(bool isIpv6);
+
     /* Returns the largest length' <= length such that buffer[0..length' - 1]
      * ends on a UTF-8 codepoint boundary. Walks back over any partial
      * multi-byte sequence at the cut point. Assumes the bytes preceding the

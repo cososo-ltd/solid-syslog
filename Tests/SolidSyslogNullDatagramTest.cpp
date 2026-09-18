@@ -28,9 +28,9 @@ TEST(SolidSyslogNullDatagram, OpenReturnsTrue)
     CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
 }
 
-TEST(SolidSyslogNullDatagram, MaxPayloadReturnsIpv6SafeDefault)
+TEST(SolidSyslogNullDatagram, MaxPayloadReturnsUnknownPathPayload)
 {
-    UNSIGNED_LONGS_EQUAL((size_t) SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD, SolidSyslogDatagram_MaxPayload(datagram));
+    UNSIGNED_LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
 }
 
 TEST(SolidSyslogNullDatagram, CloseDoesNotCrash)

@@ -9,7 +9,13 @@ enum
 {
     IPV4_HEADER_BYTES = 20U,
     IPV6_HEADER_BYTES = 40U,
-    UDP_HEADER_BYTES = 8U
+    UDP_HEADER_BYTES = 8U,
+    /* RFC 5426 §3.2: the message sizes a receiver of each family must accept,
+     * and the sizes it names as the safest assumption for a sender that does
+     * not know the path MTU. Each leaves room for options or extension headers
+     * inside the family's minimum MTU - 576 for IPv4, 1280 for IPv6. */
+    IPV4_UNKNOWN_PATH_MESSAGE_BYTES = 480U,
+    IPV6_UNKNOWN_PATH_MESSAGE_BYTES = 1180U
 };
 
 static inline size_t UdpPayload_FindLastCodepointStart(const uint8_t* buffer, size_t length);
@@ -29,6 +35,11 @@ size_t SolidSyslogUdpPayload_FromMtu(size_t mtu, bool isIpv6)
         payload = mtu - overhead;
     }
     return payload;
+}
+
+size_t SolidSyslogUdpPayload_UnknownPath(bool isIpv6)
+{
+    return isIpv6 ? (size_t) IPV6_UNKNOWN_PATH_MESSAGE_BYTES : (size_t) IPV4_UNKNOWN_PATH_MESSAGE_BYTES;
 }
 
 size_t SolidSyslogUdpPayload_TrimToCodepointBoundary(const uint8_t* buffer, size_t length)
