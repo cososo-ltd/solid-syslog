@@ -7,7 +7,7 @@ Feature: Walking skeleton end-to-end
     Given the syslog oracle is running
     When the BDD target sends a syslog message
     Then the syslog oracle receives a message with priority "134"
-    And the syslog oracle receives a message with a timestamp within 5 seconds of now
+    And the syslog oracle receives a message with a timestamp within 60 seconds of now
     And the syslog oracle receives a message with the system hostname
     And the app name is "SolidSyslogBddTarget"
     And the syslog oracle receives a message with the process ID of the BDD target

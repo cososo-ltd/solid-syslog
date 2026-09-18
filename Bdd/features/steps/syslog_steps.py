@@ -26,6 +26,7 @@ from environment import (
 from target_driver import apply_extra_args, spawn_example_process, stop_example_process
 from tls_collectors import fingerprint_of, listener
 from tls_reports import reported_details
+from wait_budgets import CONDITION_TIMEOUT_SECONDS
 
 PER_TRANSPORT_LOG_SYSLOG_NG = {
     "udp": RECEIVED_UDP_LOG,
@@ -432,13 +433,13 @@ def wait_for_messages(context, expected_messages):
     received_log = context.received_log
     oracle_format = context.oracle_format
     expected_total = context.lines_before + expected_messages
-    deadline = time.monotonic() + 10
+    deadline = time.monotonic() + CONDITION_TIMEOUT_SECONDS
     while oracle_record_count(received_log, oracle_format) < expected_total:
         if time.monotonic() > deadline:
             actual = oracle_record_count(received_log, oracle_format) - context.lines_before
             raise AssertionError(
                 f"oracle received {actual} of {expected_messages} "
-                f"messages within 10 seconds"
+                f"messages within {CONDITION_TIMEOUT_SECONDS} seconds"
             )
         time.sleep(0.1)
 
@@ -741,7 +742,7 @@ def step_threshold_callback_invoked(context):
     # can lag the assertion by a second or two. Poll a bounded deadline rather
     # than checking once — the negative case ("was not invoked") still asserts
     # immediately, so a genuinely-absent marker cannot be masked by this wait.
-    deadline = time.time() + 10
+    deadline = time.time() + CONDITION_TIMEOUT_SECONDS
     while time.time() < deadline:
         if _threshold_marker_present(context):
             break
@@ -787,7 +788,7 @@ def step_client_sends_message(context):
     time.sleep(0.2)
 
 
-def wait_for_tcp_port_closed(host="syslog-ng", port=5514, timeout=5):
+def wait_for_tcp_port_closed(host="syslog-ng", port=5514, timeout=CONDITION_TIMEOUT_SECONDS):
     """Poll until the TCP port refuses connections."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -801,7 +802,7 @@ def wait_for_tcp_port_closed(host="syslog-ng", port=5514, timeout=5):
     raise AssertionError(f"TCP port {port} still open after {timeout}s")
 
 
-def wait_for_tcp_port_open(host="syslog-ng", port=5514, timeout=5):
+def wait_for_tcp_port_open(host="syslog-ng", port=5514, timeout=CONDITION_TIMEOUT_SECONDS):
     """Poll until the TCP port accepts connections."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -815,7 +816,7 @@ def wait_for_tcp_port_open(host="syslog-ng", port=5514, timeout=5):
     raise AssertionError(f"TCP port {port} not open after {timeout}s")
 
 
-def wait_for_connection_teardown(probe_socket, timeout=5):
+def wait_for_connection_teardown(probe_socket, timeout=CONDITION_TIMEOUT_SECONDS):
     """Wait until an established TCP connection is broken by the server.
 
     Sends data on the probe socket until a broken pipe or reset indicates
@@ -861,7 +862,7 @@ def step_oracle_stops_tcp(context):
         # fresh one. Side-effect: UDP/TLS/mTLS listeners also stop, but the
         # outage scenarios that drive this step only depend on TCP.
         otel_kill_oracle()
-        wait_for_tcp_port_closed(host="127.0.0.1", port=5514, timeout=10)
+        wait_for_tcp_port_closed(host="127.0.0.1", port=5514)
         # Allow time for the sender's existing connection to receive RST
         time.sleep(0.5)
         context.otel_oracle_paused = True
@@ -1536,12 +1537,13 @@ def wait_for_per_transport_messages(context, transport, expected):
     """Wait for `expected` new logical records in the per-transport oracle."""
     path = per_transport_log(context, transport)
     baseline = context.lines_before_per_transport.get(transport, 0)
-    deadline = time.monotonic() + 5
+    deadline = time.monotonic() + CONDITION_TIMEOUT_SECONDS
     while oracle_record_count(path, context.oracle_format) - baseline < expected:
         if time.monotonic() > deadline:
             actual = oracle_record_count(path, context.oracle_format) - baseline
             raise AssertionError(
-                f"{path} received {actual} of {expected} messages within 5 seconds"
+                f"{path} received {actual} of {expected} messages "
+                f"within {CONDITION_TIMEOUT_SECONDS} seconds"
             )
         time.sleep(0.1)
 

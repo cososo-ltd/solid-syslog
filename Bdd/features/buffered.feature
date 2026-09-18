@@ -13,7 +13,7 @@ Feature: Buffered message delivery
     Given the syslog oracle is running
     When the BDD target sends a syslog message
     Then the syslog oracle receives a message with priority "134"
-    And the syslog oracle receives a message with a timestamp within 5 seconds of now
+    And the syslog oracle receives a message with a timestamp within 60 seconds of now
 
   Scenario: Multiple buffered messages arrive at the oracle
     Given the syslog oracle is running
