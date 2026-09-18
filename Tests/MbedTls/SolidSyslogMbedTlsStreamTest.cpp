@@ -609,6 +609,55 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSslSetupFa
     );
 }
 
+/* Mbed TLS distinguishes an allocation failure from every other return, at each
+   of the three points a connection can hit one. Reported as such rather than as
+   the phase's own fault, because the phase sends an integrator to the peer or to
+   their configuration and the allocator is neither. The category still says which
+   phase, so a handler that retries a handshake and gives up on init keeps working.
+   This is the linked library's allocator, not this library's pool - POOL_EXHAUSTED
+   is that. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsTheLibraryOutOfMemoryWhenSslConfigDefaultsCannotAllocate)
+{
+    MbedTlsFake_SetSslConfigDefaultsReturn(MBEDTLS_ERR_SSL_ALLOC_FAILED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsTheLibraryOutOfMemoryWhenSslSetupCannotAllocate)
+{
+    MbedTlsFake_SetSslSetupReturn(MBEDTLS_ERR_SSL_ALLOC_FAILED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY
+    );
+}
+
+/* The one that cost an integrator a long detour: a pool too small for a second
+   concurrent session failed here and read as the collector refusing the device. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsTheLibraryOutOfMemoryWhenTheHandshakeCannotAllocate)
+{
+    /* ServerName is set so the allocation failure is the only error source - a
+       NULL one would also emit the unverified-peer WARNING. */
+    FakeProfile_Value.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    MbedTlsFake_SetSslHandshakeReturn(MBEDTLS_ERR_SSL_ALLOC_FAILED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY
+    );
+}
+
 TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSetHostnameFails)
 
 {

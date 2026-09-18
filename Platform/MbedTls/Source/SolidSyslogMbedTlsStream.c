@@ -8,6 +8,7 @@
 #include <mbedtls/md.h>
 #include <mbedtls/x509_crt.h>
 #include <mbedtls/ssl.h>
+#include <mbedtls/pk.h>
 #include <mbedtls/x509.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -95,6 +96,11 @@ static inline bool MbedTlsStream_IsVerifyFailure(uint32_t verdict);
 static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_DetailForVerifyFailure(uint32_t verdict);
 static inline bool MbedTlsStream_HasUnnamedVerifyFailure(uint32_t verdict);
 static inline bool MbedTlsStream_IsRetryableHandshakeRc(int rc);
+static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_InitDetail(
+    int rc,
+    enum SolidSyslogTlsStreamErrors otherwise
+);
+static inline bool MbedTlsStream_IsAllocationFailure(int rc);
 static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static inline SolidSyslogSsize MbedTlsStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
@@ -267,21 +273,40 @@ static inline void MbedTlsStream_PullProfile(struct SolidSyslogMbedTlsStream* se
 
 static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTlsStream* self)
 {
-    bool ok = mbedtls_ssl_config_defaults(
-                  &self->SslConfig,
-                  MBEDTLS_SSL_IS_CLIENT,
-                  MBEDTLS_SSL_TRANSPORT_STREAM,
-                  MBEDTLS_SSL_PRESET_DEFAULT
-              ) == 0;
+    int rc = mbedtls_ssl_config_defaults(
+        &self->SslConfig,
+        MBEDTLS_SSL_IS_CLIENT,
+        MBEDTLS_SSL_TRANSPORT_STREAM,
+        MBEDTLS_SSL_PRESET_DEFAULT
+    );
+    bool ok = rc == 0;
     if (!ok)
     {
         MbedTlsStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-            SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED
+            MbedTlsStream_InitDetail(rc, SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED)
         );
     }
     return ok;
+}
+
+/* Mbed TLS names an allocation failure in its return, so say so rather than
+ * report the phase's own fault - which would send an integrator to their
+ * configuration or to the peer, and the allocator is neither. */
+static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_InitDetail(
+    int rc,
+    enum SolidSyslogTlsStreamErrors otherwise
+)
+{
+    return MbedTlsStream_IsAllocationFailure(rc) ? SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY : otherwise;
+}
+
+/* Every allocation failure the calls this adapter makes can return. */
+static inline bool MbedTlsStream_IsAllocationFailure(int rc)
+{
+    return (rc == MBEDTLS_ERR_SSL_ALLOC_FAILED) || (rc == MBEDTLS_ERR_X509_ALLOC_FAILED) ||
+           (rc == MBEDTLS_ERR_PK_ALLOC_FAILED);
 }
 
 /* TLS policy owned by the library - set per-ssl_config so it cannot leak
@@ -526,13 +551,14 @@ static inline void MbedTlsStream_ReleaseCredentials(struct SolidSyslogMbedTlsStr
 
 static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsStream* self)
 {
-    bool ok = mbedtls_ssl_setup(&self->SslContext, &self->SslConfig) == 0;
+    int rc = mbedtls_ssl_setup(&self->SslContext, &self->SslConfig);
+    bool ok = rc == 0;
     if (!ok)
     {
         MbedTlsStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-            SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
+            MbedTlsStream_InitDetail(rc, SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED)
         );
     }
     return ok;
@@ -628,7 +654,7 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
             MbedTlsStream_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
-                MbedTlsStream_RefusalDetail(self)
+                MbedTlsStream_InitDetail(rc, MbedTlsStream_RefusalDetail(self))
             );
             done = true;
         }

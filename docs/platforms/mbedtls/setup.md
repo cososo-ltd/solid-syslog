@@ -253,8 +253,14 @@ lock that `Release` may run under.
 The adapter allocates nothing itself. A session costs what Mbed TLS allocates
 under your `mbedtls_config.h`, dominated by the record buffers, whose defaults
 are sized for a host. Budget for every session you run concurrently, from the
-[upstream sizing guidance](https://mbed-tls.readthedocs.io/). An allocation
-that fails in `mbedtls_ssl_setup` is reported as `SESSION_INIT_FAILED`.
+[upstream sizing guidance](https://mbed-tls.readthedocs.io/) - a pool sized for
+one session is the common way to meet this, because the record buffers are
+allocated per session and the peer's certificate lands in the same pool.
+
+An allocation that fails at any point is reported as `LIBRARY_OUT_OF_MEMORY`,
+under whichever category names the phase it failed in. A pool exhausted during
+the handshake reports it there, so the connection is refused without a fault in
+the peer: check `mbedtls_memory_buffer_alloc_status` before assuming otherwise.
 
 ## Teardown
 
@@ -278,7 +284,8 @@ prefixes are dropped below. `HANDSHAKE_FAILED` and `INIT_FAILED` are
 |---|---|---|---|---|
 | `Transport`, `Sleep`, `Rng` or `Credentials` left NULL | `CRITICAL` | `BAD_CONFIG` | `NULL_TRANSPORT`, `NULL_SLEEP`, `NULL_RNG`, `NULL_CREDENTIALS` | Null stream returned; nothing delivered |
 | `Rng` left NULL on a credentials source | `CRITICAL` | `BAD_CONFIG` | `NULL_RNG` | Null credentials returned; every connection refused |
-| `mbedtls_ssl_config_defaults` or `mbedtls_ssl_setup` failed | `ERROR` | `INIT_FAILED` | `DEFAULTS_NOT_APPLIED`, `SESSION_INIT_FAILED` | refused; usually memory |
+| `mbedtls_ssl_config_defaults` or `mbedtls_ssl_setup` failed | `ERROR` | `INIT_FAILED` | `DEFAULTS_NOT_APPLIED`, `SESSION_INIT_FAILED` | refused |
+| Mbed TLS could not allocate, in any phase | `ERROR` | `INIT_FAILED` or `HANDSHAKE_FAILED` | `LIBRARY_OUT_OF_MEMORY` | refused. Your Mbed TLS pool, not a fault in the peer - see [Memory](#memory) |
 | a PEM length that does not count the NUL | `ERROR` for the CA, `WARNING` for the client | `BAD_CONFIG` | `PEM_NOT_TERMINATED` | CA: refused. Client: continues without it |
 | CA PEM will not parse | `ERROR` | `BAD_CONFIG` | `TRUST_ANCHORS_NOT_PARSED` | refused |
 | neither a CA chain nor a pin | `ERROR` | `BAD_CONFIG` | `NO_PEER_AUTHORISATION` | refused |
@@ -295,7 +302,7 @@ prefixes are dropped below. `HANDSHAKE_FAILED` and `INIT_FAILED` are
 | every pin names a hash the build compiled out | `ERROR` | `HANDSHAKE_FAILED` | `FINGERPRINT_DIGEST_UNAVAILABLE` | refused |
 | collector's name does not match `ServerName` | `ERROR` | `HANDSHAKE_FAILED` | `PEER_NAME_MISMATCHED` | refused |
 | collector's certificate outside its dates | `ERROR` | `HANDSHAKE_FAILED` | `PEER_CERTIFICATE_EXPIRED`, `PEER_CERTIFICATE_NOT_YET_VALID` | refused |
-| collector rejected the device | `ERROR` | `HANDSHAKE_FAILED` | `HANDSHAKE_REJECTED` | refused; check the client credential |
+| the handshake failed and no check of ours explains it | `ERROR` | `HANDSHAKE_FAILED` | `HANDSHAKE_REJECTED` | refused. Usually the collector rejecting the device - check the client credential, and the collector's own log |
 | handshake did not finish in time | `WARNING` | `HANDSHAKE_FAILED` | `HANDSHAKE_TIMEOUT` | retried |
 
 A refused connection is retried on the sender's next pass. With a store

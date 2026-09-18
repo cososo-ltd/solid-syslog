@@ -13,6 +13,9 @@ where it does not yet meet that contract.
 
 ## What it ships
 
+<!-- Filled at build time from this pack's Interface directory; empty here by
+     design. See hooks/platform_backlinks.py. -->
+
 ## Requirements
 
 The adapter sources compile in your target against your own `mbedtls_config.h`,
@@ -167,13 +170,18 @@ bare-metal target satisfies each one differently:
 
 | Contract | Supplied by | Where a bare-metal target has to step in |
 |---|---|---|
-| Wall clock, from `MBEDTLS_HAVE_TIME` | `mbedtls_time`, by default libc `time()` | `MBEDTLS_PLATFORM_TIME_ALT`, then install a source with `mbedtls_platform_set_time` - a target with no syscall behind `time()` needs this |
+| Wall clock, from `MBEDTLS_HAVE_TIME` | `mbedtls_time`, by default libc `time()` | `MBEDTLS_PLATFORM_TIME_ALT`, then install a source with `mbedtls_platform_set_time`. **The build will not tell you.** A newlib toolchain links `time()` against a stub that returns -1, and Mbed TLS then reads every certificate as outside its validity period - so a peer that is plainly current is refused as not yet valid |
 | Calendar conversion, from `MBEDTLS_HAVE_TIME_DATE` | `mbedtls_platform_gmtime_r`, by default `gmtime_r` or `gmtime_s` | `MBEDTLS_PLATFORM_GMTIME_R_ALT`, then supply the function - a libc offering neither needs this |
 | Monotonic milliseconds, also from `MBEDTLS_HAVE_TIME` | `mbedtls_ms_time` | `MBEDTLS_PLATFORM_MS_TIME_ALT`, then supply it from a tick counter - every implementation Mbed TLS ships needs a hosted operating system underneath it, so a bare-metal build has no default to fall back on |
 
 Only the first two bear on certificates. The millisecond hook is a separate
 obligation that comes along with `MBEDTLS_HAVE_TIME` and has nothing to do with
-validity; it is listed because the build will not link without it.
+validity; it is listed because the build will not compile without it - the
+`#error` is in Mbed TLS's own `platform_util.c`.
+
+Only the millisecond hook announces itself. A missing calendar conversion fails
+to compile too, but a missing wall clock does not, which is why it carries the
+warning above.
 
 A coarse clock is enough. X.509 asks only which side of a window the device is
 on, so a time fed by SNTP, or seeded at provisioning and advanced by an uptime

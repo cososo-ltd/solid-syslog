@@ -24,6 +24,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     {
         SOLIDSYSLOG_TLS_STREAM_ERROR_POOL_EXHAUSTED,
         SOLIDSYSLOG_TLS_STREAM_ERROR_UNKNOWN_DESTROY,
+        /** The linked TLS library's own allocator failed. Not this library's pool -
+         *  POOL_EXHAUSTED is that one - and not a fault in the peer or the
+         *  configuration. Reachable in any phase, so the category says which, and
+         *  a later attempt may succeed once whatever else holds that memory has
+         *  released it. Raised only where the library distinguishes an allocation
+         *  failure from its other returns. */
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY,
         /* Wiring the stream cannot work without. */
         SOLIDSYSLOG_TLS_STREAM_ERROR_NULL_CONFIG,
         SOLIDSYSLOG_TLS_STREAM_ERROR_NULL_TRANSPORT,
