@@ -60,7 +60,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  supplied must stay valid until the connection closes. */
     struct SolidSyslogMbedTlsProfile
     {
-        /** SNI + peer-identity check. A non-empty name is verified against the peer
+        /** SNI + peer-identity check. A name beginning with a dot is refused rather
+         *  than left to match nothing. A non-empty name is verified against the peer
          *  cert (SAN/CN); one that parses as an address literal is verified as an
          *  address where the cert carries an iPAddress SAN - but Mbed TLS also
          *  accepts a DNS entry or Common Name spelling the same digits, and offers
