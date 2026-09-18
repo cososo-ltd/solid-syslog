@@ -12,10 +12,9 @@ name: CodeQL
 
 on:
   push:
-    # See ci.yml: feature/tls-rework is the E39 integration branch.
-    branches: [ main, feature/tls-rework ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, feature/tls-rework ]
+    branches: [ main ]
   schedule:
     # Weekly, so new queries shipped by GitHub are applied to unchanged code.
     - cron: '17 3 * * 1'
