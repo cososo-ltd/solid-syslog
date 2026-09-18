@@ -213,7 +213,7 @@ prefixes are dropped below. `HANDSHAKE_FAILED` is
 | every pin names a hash the build cannot compute | `ERROR` | `HANDSHAKE_FAILED` | `FINGERPRINT_DIGEST_UNAVAILABLE` | refused |
 | collector's name does not match `ServerName` | `ERROR` | `HANDSHAKE_FAILED` | `PEER_NAME_MISMATCHED` | refused |
 | collector's certificate outside its dates | `ERROR` | `HANDSHAKE_FAILED` | `PEER_CERTIFICATE_EXPIRED`, `PEER_CERTIFICATE_NOT_YET_VALID` | refused |
-| collector rejected the device | `ERROR` | `HANDSHAKE_FAILED` | `HANDSHAKE_REJECTED` | refused; check the client credential |
+| the handshake failed and no check of ours explains it | `ERROR` | `HANDSHAKE_FAILED` | `HANDSHAKE_REJECTED` | refused. Usually the collector rejecting the device - check the client credential, and the collector's own log |
 | handshake did not finish in time | `WARNING` | `HANDSHAKE_FAILED` | `HANDSHAKE_TIMEOUT` | retried |
 
 A refused connection is retried on the sender's next pass. With a store
