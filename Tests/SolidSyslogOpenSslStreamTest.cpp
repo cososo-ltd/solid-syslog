@@ -373,8 +373,11 @@ TEST(SolidSyslogOpenSslStream, OpenInstallsAPassphraseCallbackThatRefusesRatherT
     SolidSyslogStream_Open(stream, addr);
     pem_password_cb* cb = OpenSslFake_LastPasswdCb();
     CHECK_TRUE(cb != nullptr);
-    char buf[8];
-    LONGS_EQUAL(0, cb(buf, sizeof(buf), 0, nullptr));
+    if (cb != nullptr)
+    {
+        char buf[8];
+        LONGS_EQUAL(0, cb(buf, sizeof(buf), 0, nullptr));
+    }
 }
 
 /* RFC 9525 s6.3 and RFC 5425 s5.2: a wildcard is the whole of the left-most

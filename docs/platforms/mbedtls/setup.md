@@ -286,7 +286,7 @@ prefixes are dropped below. `HANDSHAKE_FAILED` and `INIT_FAILED` are
 | a pin not in the RFC 5425 form | `ERROR` | `BAD_CONFIG` | `FINGERPRINT_MALFORMED` | refused |
 | a pin naming `sha-1` | `WARNING` | `BAD_CONFIG` | `FINGERPRINT_SHA1` | continues |
 | no `ServerName` and no pin | `WARNING` | `BAD_CONFIG` | `SERVER_NAME_NOT_SET` | continues, chain-authenticated only |
-| `ServerName` begins with a dot, or will not install | `ERROR` | `BAD_CONFIG` | `SERVER_NAME_NOT_APPLIED` | refused |
+| a non-empty `ServerName` that begins with a dot, or will not install | `ERROR` | `BAD_CONFIG` | `SERVER_NAME_NOT_APPLIED` | refused |
 | half a client credential | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_INCOMPLETE` | continues without it |
 | client PEM will not parse | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_NOT_PARSED` | continues without it |
 | client key does not match its certificate | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_MISMATCHED` | continues without it |
