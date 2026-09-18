@@ -46,11 +46,7 @@ static bool UdpSender_ResolveDestination(struct SolidSyslogUdpSender* self, cons
 static inline struct SolidSyslogAddress* UdpSender_Address(struct SolidSyslogUdpSender* self);
 static inline void UdpSender_CloseSocket(struct SolidSyslogUdpSender* self);
 static inline bool UdpSender_TransmitDatagram(struct SolidSyslogUdpSender* self, const void* buffer, size_t size);
-static inline bool UdpSender_IsOversize(
-    struct SolidSyslogUdpSender* self,
-    enum SolidSyslogDatagramSendResult result,
-    size_t size
-);
+static inline bool UdpSender_FailureWasOversize(struct SolidSyslogUdpSender* self, size_t size);
 static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
     struct SolidSyslogUdpSender* self,
     const void* buffer,
@@ -218,7 +214,11 @@ static inline bool UdpSender_TransmitDatagram(struct SolidSyslogUdpSender* self,
 {
     enum SolidSyslogDatagramSendResult result =
         SolidSyslogDatagram_SendTo(self->Config.Datagram, buffer, size, UdpSender_Address(self));
-    if (UdpSender_IsOversize(self, result, size))
+    if ((result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED) && UdpSender_FailureWasOversize(self, size))
+    {
+        result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
+    }
+    if (result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE)
     {
         result = UdpSender_RetryAfterOversize(self, buffer, size);
     }
@@ -226,24 +226,16 @@ static inline bool UdpSender_TransmitDatagram(struct SolidSyslogUdpSender* self,
 }
 
 /* An implementation that cannot distinguish an over-large datagram reports
- * FAILED for one, which SolidSyslogDatagram.h permits. Asking MaxPayload only
- * once a send has failed keeps the query off the success path, and the size
- * test keeps a genuine failure on a record that fits from being retried
- * trimmed. Zero says the implementation cannot report what the path carries,
- * so nothing is inferred from it. */
-static inline bool UdpSender_IsOversize(
-    struct SolidSyslogUdpSender* self,
-    enum SolidSyslogDatagramSendResult result,
-    size_t size
-)
+ * FAILED for one, which SolidSyslogDatagram.h permits, so a failure is
+ * reclassified as OVERSIZE where the record could not have fitted. Asking
+ * MaxPayload only once a send has failed keeps the query off the success
+ * path, and the size test leaves a genuine failure on a record that does fit
+ * to be retried whole. Zero says the implementation cannot report what the
+ * path carries, so nothing is inferred from it. */
+static inline bool UdpSender_FailureWasOversize(struct SolidSyslogUdpSender* self, size_t size)
 {
-    bool oversize = (result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
-    if (result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED)
-    {
-        size_t maxPayload = SolidSyslogDatagram_MaxPayload(self->Config.Datagram);
-        oversize = (maxPayload > 0U) && (size > maxPayload);
-    }
-    return oversize;
+    size_t maxPayload = SolidSyslogDatagram_MaxPayload(self->Config.Datagram);
+    return (maxPayload > 0U) && (size > maxPayload);
 }
 
 static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
