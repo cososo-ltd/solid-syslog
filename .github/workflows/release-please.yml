@@ -22,6 +22,18 @@ jobs:
       contents: write # to create the tag and the GitHub Release
       pull-requests: write # to open and update the release PR
     steps:
+      # A GitHub App token, not GITHUB_TOKEN. Two reasons. GITHUB_TOKEN cannot
+      # open a pull request unless the repository allows Actions to create and
+      # approve them, which grants approve repository-wide to every workflow.
+      # And a pull request it opens has its checks held in an approval-required
+      # state, so every release pull request and every update to one would wait
+      # on someone pressing Approve workflows to run.
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_PLEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_PRIVATE_KEY }}
+
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
