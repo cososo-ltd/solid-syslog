@@ -193,6 +193,10 @@ TEST(SolidSyslogTlsFingerprint, RejectsASingleDigitPair)
 struct DigestFake
 {
     bool Available;
+    /* A build that compiled one hash out still has the other - which is the
+       case a rotation across algorithms has to survive. */
+    bool HasUnavailableAlgorithm;
+    enum SolidSyslogTlsHashAlgorithm UnavailableAlgorithm;
     enum SolidSyslogTlsHashAlgorithm AlgorithmAsked;
     uint8_t Digest[SOLIDSYSLOG_TLS_FINGERPRINT_DIGEST_MAX];
     size_t Length;
@@ -207,6 +211,10 @@ static bool DigestFake_Digest(
 {
     auto* fake = static_cast<struct DigestFake*>(context);
     fake->AlgorithmAsked = algorithm;
+    if (fake->HasUnavailableAlgorithm && (algorithm == fake->UnavailableAlgorithm))
+    {
+        return false;
+    }
     memcpy(digest, fake->Digest, fake->Length);
     *length = fake->Length;
     return fake->Available;
@@ -220,7 +228,14 @@ TEST_GROUP(SolidSyslogTlsFingerprintAuthorise)
     void setup() override
     {
         fake.Available = true;
+        fake.HasUnavailableAlgorithm = false;
         GivePeerADigestOfLength(20);
+    }
+
+    void MakeUnavailable(enum SolidSyslogTlsHashAlgorithm algorithm)
+    {
+        fake.HasUnavailableAlgorithm = true;
+        fake.UnavailableAlgorithm = algorithm;
     }
 
     /* An ascending pattern, matching the pins written out in the tests. */
@@ -241,6 +256,16 @@ TEST_GROUP(SolidSyslogTlsFingerprintAuthorise)
 };
 
 // clang-format on
+
+/* Its two siblings defend their pointer arguments and say so; this one wrote
+   the algorithm and length through before parsing anything, so a caller
+   pre-validating a pin crashed on it. */
+TEST(SolidSyslogTlsFingerprint, ParseRefusesANullOutputRatherThanWritingThroughIt)
+{
+    CHECK_FALSE(
+        SolidSyslogTlsFingerprint_Parse("sha-1:00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13", nullptr)
+    );
+}
 
 TEST(SolidSyslogTlsFingerprintAuthorise, MatchesAPinEqualToThePeerDigest)
 {
@@ -298,6 +323,36 @@ TEST(SolidSyslogTlsFingerprintAuthorise, ReportsAMalformedPinWhereItStopsTheWalk
     };
 
     LONGS_EQUAL(SOLIDSYSLOG_TLS_AUTHORISATION_MALFORMED, Authorise(pins, 3));
+}
+
+/* Pinning the old certificate and the new together is how a fleet crosses a
+   renewal, and the two can name different hashes. A build that compiled one of
+   them out must still be authorised by the pin it can compute. */
+TEST(SolidSyslogTlsFingerprintAuthorise, APinNamingAnUncomputableDigestDoesNotShadowAMatchingPinAfterIt)
+{
+    const char* pins[] = {
+        "sha-1:00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13",
+        "sha-256:00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F",
+    };
+    GivePeerADigestOfLength(32);
+    MakeUnavailable(SOLIDSYSLOG_TLS_HASH_SHA1);
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED, Authorise(pins, 2));
+}
+
+/* Skipping it must not cost the diagnosis: where nothing matched and a pin went
+   uncompared, the uncomputable digest is the fault worth naming, not a mismatch
+   the integrator would go looking for on the collector. */
+TEST(SolidSyslogTlsFingerprintAuthorise, ReportsAnUncomputableDigestWhenNoOtherPinMatched)
+{
+    const char* pins[] = {
+        "sha-1:00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13",
+        "sha-256:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F:20",
+    };
+    GivePeerADigestOfLength(32);
+    MakeUnavailable(SOLIDSYSLOG_TLS_HASH_SHA1);
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_AUTHORISATION_DIGEST_UNAVAILABLE, Authorise(pins, 2));
 }
 
 TEST(SolidSyslogTlsFingerprintAuthorise, ReportsADigestThePeerCannotSupply)

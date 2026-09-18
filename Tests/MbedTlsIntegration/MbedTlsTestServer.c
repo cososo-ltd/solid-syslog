@@ -22,6 +22,7 @@ struct MbedTlsTestServer
     pthread_t Thread;
     bool ThreadJoined;
     bool HandshakeSucceeded;
+    bool SawClientCertificate;
     mbedtls_x509_crt* ChainedLeaf;
 };
 
@@ -132,6 +133,16 @@ bool MbedTlsTestServer_JoinAndHandshakeSucceeded(struct MbedTlsTestServer* self)
     return self->HandshakeSucceeded;
 }
 
+bool MbedTlsTestServer_SawClientCertificate(struct MbedTlsTestServer* self)
+{
+    if (!self->ThreadJoined)
+    {
+        pthread_join(self->Thread, NULL);
+        self->ThreadJoined = true;
+    }
+    return self->SawClientCertificate;
+}
+
 /* The thread exits as soon as the handshake settles - the tests pin
  * handshake outcome only. Reading application bytes after handshake (and
  * the blocking that implies) is intentionally not implemented. */
@@ -146,6 +157,7 @@ static void* RunServer(void* arg)
     } while ((handshakeRc == MBEDTLS_ERR_SSL_WANT_READ) || (handshakeRc == MBEDTLS_ERR_SSL_WANT_WRITE));
 
     self->HandshakeSucceeded = (handshakeRc == 0);
+    self->SawClientCertificate = (mbedtls_ssl_get_peer_cert(&self->SslContext) != NULL);
     return NULL;
 }
 

@@ -67,6 +67,13 @@ static inline bool OpenSslStream_FingerprintsAreUsable(const struct SolidSyslogT
 static inline void OpenSslStream_ReleaseCredentials(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_RequirePeerVerification(SSL_CTX* ctx);
 static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx);
+static inline bool OpenSslStream_PeerPresentedACertificate(struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_CarryChainObjectionToTheLeaf(
+    struct SolidSyslogOpenSslStream* self,
+    const X509_STORE_CTX* storeCtx
+);
+static inline bool OpenSslStream_CarriedChainObjectionStands(const struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_ChainTrustWasWaivedByPolicy(const struct SolidSyslogOpenSslStream* self, long verdict);
 static inline struct SolidSyslogOpenSslStream* OpenSslStream_SelfFromStoreCtx(X509_STORE_CTX* storeCtx);
 static inline int OpenSslStream_VerifyPinnedLeaf(
     struct SolidSyslogOpenSslStream* self,
@@ -206,6 +213,30 @@ static inline void OpenSslStream_ReleaseBioMethod(struct SolidSyslogOpenSslStrea
     }
 }
 
+/* An anonymous key exchange sends no Certificate message, so verification never
+ * runs, the verify callback is never invoked, and a handshake completes against
+ * a peer nothing has authorised. SSL_VERIFY_PEER does not prevent it and the
+ * protocol floor does not either: OpenSSL's own default cipher list excludes
+ * aNULL, but a profile naming ALL, ADH or aNULL puts it back.
+ *
+ * Checked as an outcome rather than by screening the cipher string, which has
+ * too many spellings to screen and would not close any other route to the same
+ * place. Reported as a configuration fault because that is what it is - the
+ * integrator is pointed at their own profile rather than at the collector. */
+static inline bool OpenSslStream_PeerPresentedACertificate(struct SolidSyslogOpenSslStream* self)
+{
+    bool ok = SSL_get0_peer_certificate(self->Ssl) != NULL;
+    if (!ok)
+    {
+        OpenSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
+        );
+    }
+    return ok;
+}
+
 static inline void OpenSslStream_ReleaseSslContext(struct SolidSyslogOpenSslStream* self)
 {
     if (self->Ctx != NULL)
@@ -219,10 +250,11 @@ static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const stru
 {
     struct SolidSyslogOpenSslStream* self = OpenSslStream_SelfFromBase(base);
     OpenSslStream_PullProfile(self);
+    self->ChainObjection = X509_V_OK;
     bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && OpenSslStream_InitSslContext(self) &&
               OpenSslStream_InstallCredentials(self) && OpenSslStream_InitSslSession(self) &&
               OpenSslStream_AttachTransportBio(self) && OpenSslStream_ConfigureExpectedHostname(self) &&
-              OpenSslStream_PerformHandshake(self);
+              OpenSslStream_PerformHandshake(self) && OpenSslStream_PeerPresentedACertificate(self);
     if (!ok)
     {
         OpenSslStream_Close(base);
@@ -377,7 +409,7 @@ static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx)
             verdict = OpenSslStream_VerifyPinnedLeaf(self, preverifyOk, storeCtx);
         }
     }
-    else if (OpenSslStream_IsChainTrustWaived(self, storeCtx))
+    else if (OpenSslStream_CarryChainObjectionToTheLeaf(self, storeCtx))
     {
         verdict = 1;
     }
@@ -387,6 +419,27 @@ static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx)
     }
 
     return verdict;
+}
+
+/* Wherever pins are configured, a chain-trust objection above the leaf is
+ * recorded and carried past rather than refused here. OpenSSL reports an
+ * unreachable chain at the top of what the peer presented and abandons
+ * verification on the first refusal, so refusing at depth would leave the
+ * leaf's pin uncompared - and the contract's order, a fingerprint before a
+ * chain that reaches no anchor, would be decided by how many certificates the
+ * peer happened to send. Forgiving it is the leaf's decision, not this one. */
+static inline bool OpenSslStream_CarryChainObjectionToTheLeaf(
+    struct SolidSyslogOpenSslStream* self,
+    const X509_STORE_CTX* storeCtx
+)
+{
+    int error = X509_STORE_CTX_get_error(storeCtx);
+    bool carry = (self->Installed.FingerprintCount > 0U) && OpenSslStream_IsChainTrustError(error);
+    if (carry)
+    {
+        self->ChainObjection = error;
+    }
+    return carry;
 }
 
 /* OpenSSL files the SSL running the handshake under a well-known ex_data index
@@ -409,6 +462,13 @@ static inline int OpenSslStream_VerifyPinnedLeaf(
         X509_STORE_CTX_set_error(storeCtx, X509_V_ERR_APPLICATION_VERIFICATION);
         verdict = 0;
     }
+    else if (OpenSslStream_CarriedChainObjectionStands(self))
+    {
+        /* The pin matched, but anchors were configured too and the chain
+         * reached none of them. Both were asked for, so both must pass. */
+        X509_STORE_CTX_set_error(storeCtx, self->ChainObjection);
+        verdict = 0;
+    }
     else if (OpenSslStream_IsChainTrustWaived(self, storeCtx))
     {
         verdict = 1;
@@ -418,6 +478,14 @@ static inline int OpenSslStream_VerifyPinnedLeaf(
         /* OpenSSL's own verdict stands. */
     }
     return verdict;
+}
+
+/* An objection carried past a deeper certificate is forgiven only where the pin
+ * is the whole of the authorisation. With anchors configured as well, it is the
+ * fault that refuses the peer once the pin has been found to match. */
+static inline bool OpenSslStream_CarriedChainObjectionStands(const struct SolidSyslogOpenSslStream* self)
+{
+    return self->Installed.TrustAnchorsInstalled && (self->ChainObjection != X509_V_OK);
 }
 
 static inline bool OpenSslStream_LeafMatchesAPin(struct SolidSyslogOpenSslStream* self, X509_STORE_CTX* storeCtx)
@@ -681,9 +749,9 @@ static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpe
         if (!ok)
         {
             OpenSslStream_Report(
-                SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+                SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
-                SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+                SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
             );
         }
     }
@@ -832,7 +900,7 @@ static inline enum SolidSyslogTlsStreamErrors OpenSslStream_RefusalDetail(struct
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
     }
-    else if (verdict != X509_V_OK)
+    else if ((verdict != X509_V_OK) && !OpenSslStream_ChainTrustWasWaivedByPolicy(self, verdict))
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
     }
@@ -842,6 +910,17 @@ static inline enum SolidSyslogTlsStreamErrors OpenSslStream_RefusalDetail(struct
          * transport fault rather than one the peer's certificate explains. */
     }
     return detail;
+}
+
+/* Authorising by pin alone waives the chain-trust objection, and OpenSSL keeps
+ * the waived code in verify_result for the rest of the connection - it is
+ * deliberately sticky. So a refusal arriving later, when the collector rejects
+ * us or the connection drops, must not be read back out of it as a fault in the
+ * peer's certificate: that names the wrong end. */
+static inline bool OpenSslStream_ChainTrustWasWaivedByPolicy(const struct SolidSyslogOpenSslStream* self, long verdict)
+{
+    return (self->Installed.FingerprintCount > 0U) && !self->Installed.TrustAnchorsInstalled &&
+           OpenSslStream_IsChainTrustError((int) verdict);
 }
 
 /* An expected identity that parses as an IP literal is checked as an address

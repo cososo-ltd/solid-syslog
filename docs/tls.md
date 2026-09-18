@@ -158,10 +158,15 @@ Two things follow from that, and one does not.
 connection** without being restarted. Moving the stream's configuration version
 makes it immediate.
 
-**The window in which the integrator must keep material intact is the
-connection**, not the lifetime of the stream. That is the point of announcing the
-release: replacing material a stream is still holding is a use-after-free, and an
-integrator should not have to infer when it is safe.
+**The window in which a credentials source must keep material intact is the
+connection**, not the lifetime of the stream: the `Stream` asks its source for
+the material at `Open` and tells it at `Close` that it has finished. That is a
+call into the source rather than a callback to the application, so an integrator
+who writes their own source receives it and can key custody off it, while one
+wiring a source this library ships gets that source's own lifetime requirement
+instead. **Every shipped source asks that the material outlive the credentials
+object**, which is the conservative requirement; each platform page states what
+its own sources do.
 
 **It does not follow that the material is out of RAM for most of the time.** How
 much this saves depends on two things the contract cannot settle. The first is
@@ -327,6 +332,13 @@ Closing sends the TLS close notification before the connection goes away, so the
 collector can distinguish an orderly shutdown from a truncated session. RFC 5425
 §4.4 requires it.
 
+It is attempted once and does not delay the close. The transport is
+non-blocking, so a send buffer with no room for the alert drops it rather than
+waiting, and a connection already broken - the case that follows a failed send -
+cannot carry it at all. A collector must therefore still treat a session that
+ends without one as it treats any truncated session; what this obligation buys
+is that an orderly close says so whenever the connection can still carry it.
+
 ### Check the configuration it cannot work without
 
 A `Stream` is given two kinds of thing, and each is checked at the point it can
@@ -410,9 +422,16 @@ fault appearing against any particular record.
 
 ### Key custody stays with the integrator
 
-The library holds no key material of its own and uses whatever it is given. File
-permissions on a private key, whether it lives in a hardware security module, and
-how it is rotated are properties of the deployment, not of this contract. The
-per-connection obligation above is what makes those choices reachable: the
-`Stream` asks for material when it needs it and reports when it is done, so where
-the material rests in between is the integrator's to decide.
+The library mints no key material and copies none into storage it keeps beyond a
+connection. File permissions on a private key, whether it lives in a hardware
+security module, and how it is rotated are properties of the deployment, not of
+this contract. The per-connection obligation above is what makes those choices
+reachable: the `Stream` asks for material when it needs it and reports when it is
+done, so where the material rests in between is the integrator's to decide.
+
+A source that parses on demand necessarily holds what it parsed for the duration
+of the connection, in storage belonging to the library, and wipes it on release.
+That is the cost of parsing at all, and it is bounded by the connection rather
+than by the life of the device; a source handed material the integrator has
+already parsed holds a pointer and no more. Each platform page says which of the
+two its sources are.

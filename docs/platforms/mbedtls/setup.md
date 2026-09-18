@@ -88,16 +88,33 @@ supplied.
 
 Then the stream, which is wired to whichever source you built:
 
+The stream config carries wiring only. Every value a connection is actually
+made with - the expected peer identity, and the ciphersuite policy - is asked
+for at each `Open` through a profile callback, so a deployment change takes
+effect on the next connection instead of being frozen at `Create`:
+
 ```c
+static void FillProfile(struct SolidSyslogMbedTlsProfile* profile, void* context)
+{
+    (void) context;
+    profile->ServerName = "syslog.example.com";
+}
+
 struct SolidSyslogMbedTlsStreamConfig cfg = {
     .Transport   = myTcpStream,
     .Sleep       = MySleep,               /* required - no fallback */
     .Rng         = &mySeededDrbg,
     .Credentials = credentials,           /* required - no fallback */
-    .ServerName  = "syslog.example.com",
+    .Profile     = FillProfile,
 };
 struct SolidSyslogStream* tls = SolidSyslogMbedTlsStream_Create(&cfg);
 ```
+
+The stream zeroes the profile before asking, so a field you leave alone is one
+the library's own default covers. Leaving `Profile` NULL altogether means no
+expected identity is declared. Where your credentials pin a usable fingerprint
+the pin names the peer and nothing is reported; where they do not, the peer is
+only chain-authenticated and a WARNING says so on every connection.
 
 Each Create copies its configuration, so every field has to be set before it is
 called.

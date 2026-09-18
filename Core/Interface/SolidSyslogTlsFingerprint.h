@@ -42,10 +42,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Parses @p text in the RFC 5425 §4.2.2 form - an IANA hash label, a
-     *  colon, then the digest as colon-separated hex pairs, in either case -
-     *  into @p out. Returns false, leaving @p out unspecified, where the label
-     *  is not a supported algorithm or the digest is not that algorithm's
-     *  length in exactly that form. */
+     *  colon, then the digest as colon-separated hex pairs, the pairs in
+     *  either case - into @p out. The label itself is lower case, as the IANA
+     *  registry spells it. Returns false, leaving @p out unspecified, where
+     *  @p text or @p out is NULL, the label is not a supported algorithm, or
+     *  the digest is not that algorithm's length in exactly that form. */
     bool SolidSyslogTlsFingerprint_Parse(const char* text, struct SolidSyslogTlsFingerprint* out);
 
     /** The worst state found in a pin list: a pin that will not parse
@@ -98,9 +99,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Authorises a peer against @p count pins, any one of which suffices.
      *  Pins are parsed here, at the point of comparison, so a list has no
-     *  fixed capacity. The walk stops at the first pin that matches, is
-     *  malformed, or names a digest @p digest cannot supply, and reports
-     *  which; a walk that finishes is NO_MATCH, as is an empty list. */
+     *  fixed capacity. The walk stops at the first pin that matches or is
+     *  malformed, and reports which. A pin naming a digest @p digest cannot
+     *  supply is skipped rather than stopping the walk, because a rotation may
+     *  pin two certificates under different hashes and a build may have
+     *  compiled one of them out; where nothing matched and a pin was skipped
+     *  that way, DIGEST_UNAVAILABLE is reported instead of NO_MATCH. A walk
+     *  that finishes is NO_MATCH, as is an empty list. */
     enum SolidSyslogTlsAuthorisation SolidSyslogTlsFingerprint_Authorise(
         const char* const * fingerprints,
         size_t count,

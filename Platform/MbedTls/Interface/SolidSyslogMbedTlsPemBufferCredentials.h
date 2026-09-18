@@ -83,7 +83,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Draw a credentials instance from the pool. A NULL config or a NULL Rng is
      *  reported and falls back to the shared Null credentials, as does an
-     *  exhausted pool. */
+     *  exhausted pool.
+     *
+     *  One instance serves one connection at a time, because it parses into
+     *  storage of its own. Wire a second instance for a second stream: a
+     *  stream that opens while another still holds this source is reported and
+     *  its attempt fails, rather than parsing over material the live
+     *  connection is using. The sender retries, so it connects once the first
+     *  stream closes. */
     struct SolidSyslogMbedTlsCredentials* SolidSyslogMbedTlsPemBufferCredentials_Create(
         const struct SolidSyslogMbedTlsPemBufferCredentialsConfig* config
     );

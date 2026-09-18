@@ -35,6 +35,12 @@ struct SolidSyslogOpenSslStream
     struct SolidSyslogTlsCredentialsInstalled Installed;
     /* Pulled at the start of each Open and read for the rest of it. */
     struct SolidSyslogOpenSslProfile Profile;
+    /* A chain-trust objection carried past a deeper certificate so the leaf's
+     * pin could still be compared, and X509_V_OK where there was none. OpenSSL
+     * abandons verification on the first refusal, so refusing at depth would
+     * leave the pin uncompared; whether the objection is forgiven is the
+     * leaf's decision, and this is what carries it there. */
+    int ChainObjection;
 };
 
 void SolidSyslogOpenSslStream_Initialise(
