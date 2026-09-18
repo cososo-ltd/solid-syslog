@@ -725,11 +725,12 @@ TEST(SolidSyslogStreamSenderPool, OverflowReportsPoolExhausted)
 
     overflow = MakeSender();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_STREAM_SENDER_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogStreamSenderErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_STREAM_SENDER_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogStreamSenderPool, FillingPoolThenOverflowReturnsDistinctFallback)
@@ -754,14 +755,13 @@ TEST(SolidSyslogStreamSenderPool, FillingPoolThenOverflowReturnsDistinctFallback
 // ERROR->CRITICAL in S12.33).
 
 /* Macro (not function) so test failures report the caller's __FILE__/__LINE__. */
-#define CHECK_STREAMSENDER_BAD_SETUP_ERROR(expectedCategory, expectedCode)           \
-    {                                                                                \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                  \
-        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity()); \
-        POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());     \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory());   \
-        UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail());         \
-    }
+#define CHECK_STREAMSENDER_BAD_SETUP_ERROR(expectedCategory, expectedCode) \
+    CHECK_ERROR_REPORTED_ONCE(                                             \
+        SOLIDSYSLOG_SEVERITY_CRITICAL,                                     \
+        &SolidSyslogStreamSenderErrorSource,                               \
+        (expectedCategory),                                                \
+        (expectedCode)                                                     \
+    )
 
 // clang-format off
 TEST_GROUP(SolidSyslogStreamSenderBadSetup)
@@ -844,16 +844,15 @@ TEST(SolidSyslogStreamSenderBadSetup, DisconnectOnBadSetupSenderDoesNotCrash)
 // boolean directly, isolating the edge logic from any platform stack.
 
 // clang-format off
-TEST_GROUP(SolidSyslogStreamSenderDeliveryHealth)
+TEST_BASE(StreamSenderOverStreamFakeTestBase)
 {
     struct SolidSyslogResolver*          resolver = nullptr;
     struct SolidSyslogStream*            stream   = nullptr;
     struct SolidSyslogAddress*           address  = nullptr;
     struct SolidSyslogStreamSenderConfig config{};
     struct SolidSyslogSender*            sender   = nullptr;
-    int                                  sentinel = 0;
 
-    void setup() override
+    void setupSenderOverStreamFake()
     {
         SocketFake_Reset();
         endpointGetHost = GetHost;
@@ -864,10 +863,9 @@ TEST_GROUP(SolidSyslogStreamSenderDeliveryHealth)
         address  = SolidSyslogPosixAddress_Create();
         config   = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
         sender   = SolidSyslogStreamSender_Create(&config);
-        ErrorHandlerFake_Install(&sentinel);
     }
 
-    void teardown() override
+    void teardownSenderOverStreamFake() const
     {
         SolidSyslogStreamSender_Destroy(sender);
         SolidSyslogPosixAddress_Destroy(address);
@@ -881,17 +879,34 @@ TEST_GROUP(SolidSyslogStreamSenderDeliveryHealth)
     }
 };
 
+TEST_GROUP_BASE(SolidSyslogStreamSenderDeliveryHealth, StreamSenderOverStreamFakeTestBase)
+{
+    int sentinel = 0;
+
+    void setup() override
+    {
+        setupSenderOverStreamFake();
+        ErrorHandlerFake_Install(&sentinel);
+    }
+
+    void teardown() override
+    {
+        teardownSenderOverStreamFake();
+    }
+};
+
 // clang-format on
 
 TEST(SolidSyslogStreamSenderDeliveryHealth, FirstFailingSendReportsDeliveryFailed)
 {
     StreamFake_SetSendFails(stream, true);
     Send();
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_FAILED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogStreamSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
+        SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_FAILED
+    );
 }
 
 TEST(SolidSyslogStreamSenderDeliveryHealth, StayingDownReportsDeliveryFailedOnlyOnce)
@@ -910,10 +925,13 @@ TEST(SolidSyslogStreamSenderDeliveryHealth, RecoveryAfterDownReportsDeliveryRest
     StreamFake_SetSendFails(stream, false);
     Send();
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_NOTICE, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&StreamSenderErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_RESTORED, ErrorHandlerFake_LastDetail());
+    /* The second event, so the count stays explicit rather than pinned at ONCE. */
+    CHECK_ERROR_EVENT(
+        SOLIDSYSLOG_SEVERITY_NOTICE,
+        &SolidSyslogStreamSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
+        SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_RESTORED
+    );
 }
 
 TEST(SolidSyslogStreamSenderDeliveryHealth, StayingUpReportsNothing)
@@ -921,4 +939,40 @@ TEST(SolidSyslogStreamSenderDeliveryHealth, StayingUpReportsNothing)
     Send();
     Send();
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+// The stream reports its own configuration version through the Stream vtable,
+// so a rotated credential or a changed pinned peer reconnects on the next Send
+// without the integrator calling Disconnect from off the servicing thread.
+// StreamFake_SetVersion stands in for whatever the integrator bumps.
+
+// clang-format off
+TEST_GROUP_BASE(SolidSyslogStreamSenderStreamVersion, StreamSenderOverStreamFakeTestBase)
+{
+    void setup() override
+    {
+        setupSenderOverStreamFake();
+    }
+
+    void teardown() override
+    {
+        teardownSenderOverStreamFake();
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogStreamSenderStreamVersion, VersionChangeBetweenSendsReopensTheStream)
+{
+    Send();
+    StreamFake_SetVersion(stream, 1);
+    Send();
+    LONGS_EQUAL(2, StreamFake_OpenCallCount(stream));
+}
+
+TEST(SolidSyslogStreamSenderStreamVersion, SendStillSucceedsAcrossTheReconnect)
+{
+    Send();
+    StreamFake_SetVersion(stream, 1);
+    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
 }

@@ -32,7 +32,7 @@ struct SolidSyslogDatagram* SolidSyslogPosixDatagram_Create(void)
     struct SolidSyslogDatagram* handle = SolidSyslogNullDatagram_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&PosixDatagram_Allocator, index) == true)
     {
-        PosixDatagram_Initialise(&PosixDatagram_Pool[index].Base);
+        SolidSyslogPosixDatagram_Initialise(&PosixDatagram_Pool[index].Base);
         handle = &PosixDatagram_Pool[index].Base;
     }
     else
@@ -79,5 +79,5 @@ static inline size_t PosixDatagram_IndexFromHandle(const struct SolidSyslogDatag
 static inline void PosixDatagram_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    PosixDatagram_Cleanup(&PosixDatagram_Pool[index].Base);
+    SolidSyslogPosixDatagram_Cleanup(&PosixDatagram_Pool[index].Base);
 }

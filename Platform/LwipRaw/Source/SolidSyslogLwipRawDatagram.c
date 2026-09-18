@@ -25,7 +25,7 @@
 #include "lwip/pbuf.h"
 #include "lwip/udp.h"
 
-const struct SolidSyslogErrorSource LwipRawDatagramErrorSource = {"LwipRawDatagram"};
+const struct SolidSyslogErrorSource SolidSyslogLwipRawDatagramErrorSource = {"LwipRawDatagram"};
 
 struct SolidSyslogAddress;
 
@@ -59,7 +59,7 @@ static void LwipRawDatagram_DoOpen(void* context);
 static void LwipRawDatagram_DoClose(void* context);
 static void LwipRawDatagram_DoSendTo(void* context);
 
-void LwipRawDatagram_Initialise(struct SolidSyslogDatagram* base)
+void SolidSyslogLwipRawDatagram_Initialise(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogLwipRawDatagram* self = LwipRawDatagram_SelfFromBase(base);
     self->Base.Open = LwipRawDatagram_Open;
@@ -83,7 +83,7 @@ static inline struct LwipRawDatagramCall* LwipRawDatagramCallFromContext(void* c
     return (struct LwipRawDatagramCall*) context;
 }
 
-void LwipRawDatagram_Cleanup(struct SolidSyslogDatagram* base)
+void SolidSyslogLwipRawDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
     LwipRawDatagram_Close(base);
     /* Overwrite the abstract base with the shared NullDatagram vtable so

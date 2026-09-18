@@ -18,8 +18,8 @@ struct SolidSyslogPosixFile
     int Fd;
 };
 
-void PosixFile_Initialise(struct SolidSyslogFile* base);
-void PosixFile_Cleanup(struct SolidSyslogFile* base);
+void SolidSyslogPosixFile_Initialise(struct SolidSyslogFile* base);
+void SolidSyslogPosixFile_Cleanup(struct SolidSyslogFile* base);
 
 static inline void PosixFile_Report(
     enum SolidSyslogSeverity severity,
@@ -27,7 +27,7 @@ static inline void PosixFile_Report(
     enum SolidSyslogPosixFileErrors code
 )
 {
-    SolidSyslog_Error(severity, &PosixFileErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPosixFileErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPOSIXFILEPRIVATE_H */

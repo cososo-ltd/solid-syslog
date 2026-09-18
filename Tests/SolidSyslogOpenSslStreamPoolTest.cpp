@@ -4,7 +4,9 @@ extern "C"
 {
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "OpenSslCredentialsFake.h"
 #include "OpenSslFake.h"
+#include "SolidSyslogNullStream.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
@@ -26,6 +28,9 @@ void NoOpSleep(int milliseconds)
     (void) milliseconds;
 }
 } // namespace
+
+// Asserts Create refused the configuration and handed back the shared NullStream.
+#define CHECK_NULL_STREAM(handle) POINTERS_EQUAL(SolidSyslogNullStream_Get(), (handle))
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -52,6 +57,8 @@ TEST_GROUP(SolidSyslogOpenSslStreamPool)
         transport = StreamFake_Create();
         config.Transport = transport;
         config.Sleep = NoOpSleep;
+        OpenSslCredentialsFake_Reset();
+        config.Credentials = OpenSslCredentialsFake_Get();
     }
 
     void teardown() override
@@ -82,6 +89,99 @@ TEST_GROUP(SolidSyslogOpenSslStreamPool)
 
 // clang-format on
 
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullConfigReturnsFallback)
+{
+    struct SolidSyslogStream* fallback = SolidSyslogOpenSslStream_Create(nullptr);
+
+    CHECK_NULL_STREAM(fallback);
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullConfigReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogOpenSslStream_Create(nullptr);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogOpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_NULL_CONFIG
+    );
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullCredentialsReturnsFallback)
+{
+    config.Credentials = nullptr;
+
+    struct SolidSyslogStream* fallback = SolidSyslogOpenSslStream_Create(&config);
+
+    CHECK_NULL_STREAM(fallback);
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullCredentialsReportsError)
+{
+    config.Credentials = nullptr;
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogOpenSslStream_Create(&config);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogOpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_NULL_CREDENTIALS
+    );
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullTransportReturnsFallback)
+{
+    config.Transport = nullptr;
+
+    struct SolidSyslogStream* fallback = SolidSyslogOpenSslStream_Create(&config);
+
+    CHECK_NULL_STREAM(fallback);
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullTransportReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    config.Transport = nullptr;
+
+    SolidSyslogOpenSslStream_Create(&config);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogOpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_NULL_TRANSPORT
+    );
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullSleepReturnsFallback)
+{
+    config.Sleep = nullptr;
+
+    struct SolidSyslogStream* fallback = SolidSyslogOpenSslStream_Create(&config);
+
+    CHECK_NULL_STREAM(fallback);
+}
+
+TEST(SolidSyslogOpenSslStreamPool, CreateWithNullSleepReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    config.Sleep = nullptr;
+
+    SolidSyslogOpenSslStream_Create(&config);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogOpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_NULL_SLEEP
+    );
+}
+
 TEST(SolidSyslogOpenSslStreamPool, FillingPoolThenOverflowReturnsDistinctFallback)
 {
     FillPool();
@@ -98,11 +198,12 @@ TEST(SolidSyslogOpenSslStreamPool, ExhaustedCreateReportsError)
 
     overflow = SolidSyslogOpenSslStream_Create(&config);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_CRITICAL, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_POOL_EXHAUSTED, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogOpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_POOL_EXHAUSTED
+    );
 }
 
 TEST(SolidSyslogOpenSslStreamPool, FallbackSendReturnsTrueToDropOnTheFloor)
@@ -164,11 +265,12 @@ TEST(SolidSyslogOpenSslStreamPool, DestroyOfUnknownHandleReportsWarning)
 
     SolidSyslogOpenSslStream_Destroy(&stranger);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogOpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogOpenSslStreamPool, DestroyOfStaleHandleReportsWarning)
@@ -180,9 +282,10 @@ TEST(SolidSyslogOpenSslStreamPool, DestroyOfStaleHandleReportsWarning)
     SolidSyslogOpenSslStream_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_UNKNOWN_DESTROY, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogOpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_UNKNOWN_DESTROY
+    );
 }

@@ -21,18 +21,22 @@
  */
 
 #include "BddTargetTlsSender.h"
+#include "SolidSyslogMbedTlsStreamErrors.h"
 
+#include "BddTargetClock.h"
 #include "BddTargetMtlsConfig.h"
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
 #include "SolidSyslogPlusTcpAddress.h"
 #include "SolidSyslogPlusTcpTcpStream.h"
+#include "BddTargetMbedTlsCredentials.h"
 #include "SolidSyslogMbedTlsStream.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamSender.h"
 
 #include <mbedtls/ctr_drbg.h>
+#include <mbedtls/ssl_ciphersuites.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/pk.h>
 #include <mbedtls/platform.h>
@@ -48,6 +52,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "BddBakedCaBPem.h"
 #include "BddBakedCaPem.h"
 #include "BddBakedClientCertPem.h"
 #include "BddBakedClientKeyPem.h"
@@ -73,10 +78,12 @@ static bool mbedTlsInitialised;
  * cheaper than the shell pipeline that would be needed to bake the NUL at
  * CMake time. */
 static unsigned char caPemBuf[sizeof(bdd_baked_ca_pem) + 1U];
+static unsigned char caBPemBuf[sizeof(bdd_baked_ca_b_pem) + 1U];
 static unsigned char clientCertPemBuf[sizeof(bdd_baked_client_cert_pem) + 1U];
 static unsigned char clientKeyPemBuf[sizeof(bdd_baked_client_key_pem) + 1U];
 
 static mbedtls_x509_crt caChain;
+static mbedtls_x509_crt caChainB;
 static mbedtls_x509_crt clientCertChain;
 static mbedtls_pk_context clientKey;
 
@@ -180,6 +187,29 @@ static void RtosSleep(int milliseconds)
  * crypto work - RSA key parse, ECDHE primes, ASN.1 walks); without the
  * yields, lower-priority tasks would starve until init finishes, and
  * without the diagnostic prints the boot would appear to hang. */
+/* mbedTLS asks for this by name when MBEDTLS_PLATFORM_MS_TIME_ALT is set. It
+   wants a monotonic millisecond counter rather than a wall clock, which is what
+   the scheduler's tick already is. */
+mbedtls_ms_time_t mbedtls_ms_time(void)
+{
+    return (mbedtls_ms_time_t) xTaskGetTickCount() * (mbedtls_ms_time_t) portTICK_PERIOD_MS;
+}
+
+static uint32_t FreeRtosUptimeSeconds(void)
+{
+    return (uint32_t) (xTaskGetTickCount() / configTICK_RATE_HZ);
+}
+
+static mbedtls_time_t FreeRtosMbedTlsTime(mbedtls_time_t* result)
+{
+    mbedtls_time_t now = (mbedtls_time_t) BddTargetClock_Now();
+    if (result != NULL)
+    {
+        *result = now;
+    }
+    return now;
+}
+
 static void EnsureMbedTlsInitialised(void)
 {
     if (mbedTlsInitialised)
@@ -198,6 +228,13 @@ static void EnsureMbedTlsInitialised(void)
      * the default libc calloc and fails, the failure mode is heap exhaustion
      * inside newlib's 4 KiB syscall heap, not a recoverable error. */
     mbedtls_platform_set_calloc_free(FreeRtosMbedTlsCalloc, FreeRtosMbedTlsFree);
+
+    /* Give mbedTLS a wall clock, so certificate validity is checked here as it
+       is on a hosted target. Process-global like the allocator pair above, and
+       installed by the target for the same reason: the library never touches
+       mbedTLS's global hooks. */
+    BddTargetClock_Initialise(FreeRtosUptimeSeconds);
+    mbedtls_platform_set_time(FreeRtosMbedTlsTime);
 
     mbedtls_entropy_init(&entropy);
     /* Registered as MBEDTLS_ENTROPY_SOURCE_STRONG even though the demo
@@ -255,6 +292,20 @@ static void EnsureMbedTlsInitialised(void)
     {
         (void
         ) printf("[mbedtls] CA chain parse FAILED rc=-0x%04x; TLS slot will be unusable\r\n", (unsigned) -caParseRc);
+        return;
+    }
+    vTaskDelay(1U);
+
+    memcpy(caBPemBuf, bdd_baked_ca_b_pem, sizeof(bdd_baked_ca_b_pem));
+    caBPemBuf[sizeof(bdd_baked_ca_b_pem)] = '\0';
+    mbedtls_x509_crt_init(&caChainB);
+    int caBParseRc = mbedtls_x509_crt_parse(&caChainB, caBPemBuf, sizeof(caBPemBuf));
+    if (caBParseRc != 0)
+    {
+        (void) printf(
+            "[mbedtls] second CA parse FAILED rc=-0x%04x; cells selecting it will be unusable\r\n",
+            (unsigned) -caBParseRc
+        );
         return;
     }
     vTaskDelay(1U);
@@ -337,6 +388,44 @@ static uint32_t DispatchEndpointVersion(void* context)
                                               : BddTargetTlsConfig_GetEndpointVersion(context);
 }
 
+/* Plain-TLS and mTLS share one SNI on this oracle (CN/SAN = "syslog-ng"), so
+ * BddTargetTlsConfig_GetServerName and BddTargetMtlsConfig_GetServerName return
+ * the same string. Use the TLS one to make the equivalence explicit. */
+static void BddTargetTlsSender_ApplyCipherPolicy(struct SolidSyslogMbedTlsProfile* profile);
+
+static void BddTargetTlsSender_Profile(struct SolidSyslogMbedTlsProfile* profile, void* context)
+{
+    (void) context;
+    profile->ServerName = BddTargetTlsConfig_GetServerName();
+    BddTargetTlsSender_ApplyCipherPolicy(profile);
+}
+
+/* One intent token, one backend-typed list. Mbed TLS covers both TLS versions
+   with a single array, so each token names its suite at either version - a
+   policy that bound only the TLS 1.2 half would leave a 1.3 connection free to
+   negotiate whatever both ends prefer. The arrays are static so they outlive
+   this call; Mbed TLS does not copy them. */
+static void BddTargetTlsSender_ApplyCipherPolicy(struct SolidSyslogMbedTlsProfile* profile)
+{
+    static const int OFFERED[] = {MBEDTLS_TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, MBEDTLS_TLS1_3_AES_128_GCM_SHA256, 0};
+    static const int UNOFFERED[] = {MBEDTLS_TLS_DHE_RSA_WITH_AES_128_CCM_8, MBEDTLS_TLS1_3_AES_128_CCM_8_SHA256, 0};
+
+    const char* policy = BddTargetTlsConfig_GetCipherPolicyName();
+    if (strcmp(policy, "offered") == 0)
+    {
+        profile->CipherSuites = OFFERED;
+    }
+    else if (strcmp(policy, "unoffered") == 0)
+    {
+        profile->CipherSuites = UNOFFERED;
+    }
+    else
+    {
+        /* "default" - whatever the build enables, which is what an integrator
+           who supplies no policy gets. */
+    }
+}
+
 struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* resolver, bool mtls)
 {
     /* `mtls` is honoured for cross-platform contract uniformity but does not
@@ -359,7 +448,6 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
          * detect the short-circuit. */
         return SolidSyslogNullSender_Get();
     }
-
     underlyingStream = SolidSyslogPlusTcpTcpStream_Create(NULL);
 
     static struct SolidSyslogMbedTlsStreamConfig tlsStreamConfig;
@@ -367,13 +455,10 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     tlsStreamConfig.Transport = underlyingStream;
     tlsStreamConfig.Sleep = RtosSleep;
     tlsStreamConfig.Rng = &drbg;
-    tlsStreamConfig.CaChain = &caChain;
-    /* Plain-TLS and mTLS share one SNI on this oracle (CN/SAN = "syslog-ng"),
-     * so BddTargetTlsConfig_GetServerName and BddTargetMtlsConfig_GetServerName
-     * return the same string. Use the TLS one to make the equivalence explicit. */
-    tlsStreamConfig.ServerName = BddTargetTlsConfig_GetServerName();
-    tlsStreamConfig.ClientCertChain = &clientCertChain;
-    tlsStreamConfig.ClientKey = &clientKey;
+    tlsStreamConfig.Version = DispatchEndpointVersion;
+    tlsStreamConfig.Profile = BddTargetTlsSender_Profile;
+    BddTargetMbedTlsCredentials_Wire(&caChain, &caChainB, &clientCertChain, &clientKey);
+    tlsStreamConfig.Credentials = BddTargetMbedTlsCredentials_Get();
     tlsStream = SolidSyslogMbedTlsStream_Create(&tlsStreamConfig);
 
     address = SolidSyslogPlusTcpAddress_Create();
@@ -413,4 +498,9 @@ void BddTargetTlsSender_Destroy(void)
 struct mbedtls_ctr_drbg_context* BddTargetTlsSender_GetRng(void)
 {
     return &drbg;
+}
+
+const struct SolidSyslogErrorSource* BddTargetTlsSender_ErrorSource(void)
+{
+    return &SolidSyslogMbedTlsStreamErrorSource;
 }

@@ -21,8 +21,8 @@ struct SolidSyslogPlusTcpDatagram
     Socket_t Socket;
 };
 
-void PlusTcpDatagram_Initialise(struct SolidSyslogDatagram* base);
-void PlusTcpDatagram_Cleanup(struct SolidSyslogDatagram* base);
+void SolidSyslogPlusTcpDatagram_Initialise(struct SolidSyslogDatagram* base);
+void SolidSyslogPlusTcpDatagram_Cleanup(struct SolidSyslogDatagram* base);
 
 static inline void PlusTcpDatagram_Report(
     enum SolidSyslogSeverity severity,
@@ -30,7 +30,7 @@ static inline void PlusTcpDatagram_Report(
     enum SolidSyslogPlusTcpDatagramErrors code
 )
 {
-    SolidSyslog_Error(severity, &PlusTcpDatagramErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPlusTcpDatagramErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPLUSTCPDATAGRAMPRIVATE_H */

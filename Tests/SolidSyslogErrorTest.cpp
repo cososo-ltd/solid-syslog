@@ -28,11 +28,7 @@ TEST(SolidSyslogErrorEx, InstalledHandlerReceivesEventFieldsAndContext)
 
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, 7U, 42);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
-    POINTERS_EQUAL(&source, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(7U, ErrorHandlerFake_LastCategory());
-    LONGS_EQUAL(42, ErrorHandlerFake_LastDetail());
+    CHECK_ERROR_REPORTED_ONCE(SOLIDSYSLOG_SEVERITY_WARNING, &source, 7U, 42);
     POINTERS_EQUAL(&sentinel, ErrorHandlerFake_LastContext());
 }
 

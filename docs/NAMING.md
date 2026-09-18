@@ -121,6 +121,11 @@ enum SolidSyslogSeverity
     SOLIDSYSLOG_SEVERITY_ALERT     = 1,
     /* ... */
 };
+
+/* Exported objects — the class name runs straight into the object's own
+ * name. No underscore: that separator introduces a function name, and an
+ * object has none. */
+extern const struct SolidSyslogErrorSource SolidSyslogUdpSenderErrorSource;
 ```
 
 The `SolidSyslog` prefix is the library's namespace. The `<Class>_`
@@ -129,6 +134,11 @@ follows in PascalCase. The "whole-library" form is not an
 exception: both shapes are first-class Tier 1; the difference is
 whether the operation lives on a specific class or on the library
 itself.
+
+An exported object takes `SolidSyslog<Class><Name>`, the same shape as an
+exported type. `SolidSyslogUdpSenderErrorSource` is the form;
+`SolidSyslogUdpSender_ErrorSource` is not, because the underscore would
+announce a function.
 
 **Applies to:** any identifier declared in a header under `Core/Interface/`
 or `Platform/*/Interface/`, plus any identifier with external linkage
@@ -152,9 +162,9 @@ A public macro or enum constant that names a class writes the class in
 registry token stays whole, spelled exactly as its CMake option spells it.
 
 ```c
-SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED   /* Core class, every word split */
-SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_TIMEOUT /* OpenSsl token whole, Stream split */
-SOLIDSYSLOG_MBEDTLS_HMAC_SHA256_POLICY_ERROR_MAX
+SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED     /* Core class, every word split */
+SOLIDSYSLOG_FATFS_FILE_ERROR_POOL_EXHAUSTED          /* FatFs token whole, File split */
+SOLIDSYSLOG_WINSOCK_TCP_STREAM_ERROR_UNKNOWN_DESTROY /* Winsock whole, TcpStream split */
 ```
 
 Splitting the token would misspell the upstream it names — `OPEN_SSL` and
@@ -167,14 +177,20 @@ The library instance is the degenerate case: its class name is the project name,
 so prefix and class collapse and the constants read `SOLIDSYSLOG_ERROR_*` rather
 than `SOLIDSYSLOG_SOLIDSYSLOG_ERROR_*`.
 
-**On length.** The longest identifier this produces is 60 characters
-(`SOLIDSYSLOG_MBEDTLS_HMAC_SHA256_POLICY_ERROR_UNKNOWN_DESTROY`). C99 guarantees
-63 significant characters in an internal identifier, and enum constants have no
-linkage, so that is the limit that applies — these fit with room. The 31-character
-figure is C89's, and applies to a standard the library does not claim: the
-`build-linux-c89-headers` lane proves the public headers are *includable* from
-C89 code, not that the library is C89. Weigh this before coining a class name
-longer than `MbedTlsHmacSha256Policy`.
+**On length.** C99 guarantees 63 significant characters in an internal
+identifier, and enum constants have no linkage, so that is the limit that
+applies. What has to hold is therefore not a maximum length but a distinctness
+rule: **no two public identifiers may share their first 63 characters.** A few
+run past 63 in total - the longest are the client-credential codes on the
+TLS-credentials role - and that is safe precisely because each is already
+distinct well inside the limit. Stating the rule rather than the current longest
+name is deliberate: a maximum goes stale every time a constant is added, and
+this paragraph has carried a stale one before.
+
+The 31-character figure is C89's, and applies to a standard the library does not
+claim: the `build-linux-c89-headers` lane proves the public headers are
+*includable* from C89 code, not that the library is C89. Weigh all of this before
+coining a class name as long as `MbedTlsHmacSha256Policy`.
 
 ### Platform classes carry their pack's registry token
 
@@ -370,8 +386,15 @@ Constraints:
       `struct mq_attr`, etc.).
 - **No pointer Hungarian.** Never prefix pointer variables with `p`/`P`
   or suffix with `Ptr`. Pointer-ness is visible from the declaration.
-- **Booleans.** Predicates and boolean variables use `isX`, `hasX`,
-  or `canX` shapes (`isValid`, `hasUnsent`, `canSend`).
+- **Booleans.** A boolean that names a *condition* takes an `isX`, `hasX`
+  or `canX` shape - a predicate function (`BlockSequence_IsAboveThreshold`),
+  or a variable whose name has to carry its meaning where it is read
+  (`isValid`, `hasUnsent`, `canSend`). A short-lived local holding the
+  outcome of the work the function has just done does not: `ok`, `parsed`,
+  `released` are read next to the call that produced them, and a prefix adds
+  length without adding meaning. The test is whether the name travels - a
+  condition passed around or tested far from where it was set earns the
+  prefix; a result returned three lines later does not.
 
 ### This-pointer parameters
 
@@ -867,7 +890,7 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     struct SolidSyslogBuffer* handle = SolidSyslogNullBuffer_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&CircularBuffer_Allocator, index))
     {
-        CircularBuffer_Initialise(&CircularBuffer_Pool[index].Base, mutex, ring, ringBytes);
+        SolidSyslogCircularBuffer_Initialise(&CircularBuffer_Pool[index].Base, mutex, ring, ringBytes);
         handle = &CircularBuffer_Pool[index].Base;
     }
     return handle;
@@ -924,7 +947,8 @@ static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer
 | Function parameter / local            | `lowerCamelCase`                           | `recordLength`, `bytesAvailable`           |
 | This-pointer parameter                | `self` (own type) / `base` (abstract base) | `* self` in helpers; `* base` in vtable impls |
 | Downcast helper                       | `Class_SelfFromBase` / `Class_SelfFromArg`  | `CircularBuffer_SelfFromBase`              |
-| Boolean / predicate                   | `isX` / `hasX` / `canX`                    | `isValid`, `hasUnsent`                     |
+| Boolean condition / predicate         | `isX` / `hasX` / `canX`                    | `isValid`, `hasUnsent`                     |
+| Boolean result local                  | short domain word, lowerCamelCase          | `ok`, `parsed`, `released`                 |
 | Loop variable                         | short domain word, lowerCamelCase          | `index`, `count`, `cursor`                 |
 | Struct member                         | `PascalCase`                               | `WriteCursor`, `IntegrityCheck`, `Write` (function-pointer member) |
 | Test group (class)                    | `SolidSyslogClassTest`                     | `SolidSyslogBufferTest`                    |

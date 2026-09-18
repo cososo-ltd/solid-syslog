@@ -14,14 +14,14 @@
 #include "SolidSyslogPassthroughBufferPrivate.h"
 #include "SolidSyslogSender.h"
 
-const struct SolidSyslogErrorSource PassthroughBufferErrorSource = {"PassthroughBuffer"};
+const struct SolidSyslogErrorSource SolidSyslogPassthroughBufferErrorSource = {"PassthroughBuffer"};
 
 static bool PassthroughBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void PassthroughBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
 
 static inline struct SolidSyslogPassthroughBuffer* PassthroughBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
 
-void PassthroughBuffer_Initialise(struct SolidSyslogBuffer* base, struct SolidSyslogSender* sender)
+void SolidSyslogPassthroughBuffer_Initialise(struct SolidSyslogBuffer* base, struct SolidSyslogSender* sender)
 {
     struct SolidSyslogPassthroughBuffer* self = PassthroughBuffer_SelfFromBase(base);
     self->Base.Write = PassthroughBuffer_Write;
@@ -29,11 +29,11 @@ void PassthroughBuffer_Initialise(struct SolidSyslogBuffer* base, struct SolidSy
     self->Sender = sender;
 }
 
-void PassthroughBuffer_Cleanup(struct SolidSyslogBuffer* base)
+void SolidSyslogPassthroughBuffer_Cleanup(struct SolidSyslogBuffer* base)
 {
     /* Overwrite the abstract base with the shared NullBuffer vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. The
-     * Sender pointer is private to this TU; the next PassthroughBuffer_Initialise overwrites it. */
+     * Sender pointer is private to this TU; the next SolidSyslogPassthroughBuffer_Initialise overwrites it. */
     *base = *SolidSyslogNullBuffer_Get();
 }
 

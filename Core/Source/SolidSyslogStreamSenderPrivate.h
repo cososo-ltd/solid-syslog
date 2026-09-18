@@ -21,10 +21,14 @@ struct SolidSyslogStreamSender
     bool Connected;
     bool DeliveryHealthy;
     uint32_t LastEndpointVersion;
+    uint32_t LastStreamVersion;
 };
 
-void StreamSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogStreamSenderConfig* config);
-void StreamSender_Cleanup(struct SolidSyslogSender* base);
+void SolidSyslogStreamSender_Initialise(
+    struct SolidSyslogSender* base,
+    const struct SolidSyslogStreamSenderConfig* config
+);
+void SolidSyslogStreamSender_Cleanup(struct SolidSyslogSender* base);
 
 static inline void StreamSender_Report(
     enum SolidSyslogSeverity severity,
@@ -32,7 +36,7 @@ static inline void StreamSender_Report(
     enum SolidSyslogStreamSenderErrors code
 )
 {
-    SolidSyslog_Error(severity, &StreamSenderErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogStreamSenderErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGSTREAMSENDERPRIVATE_H */

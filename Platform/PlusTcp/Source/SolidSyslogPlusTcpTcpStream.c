@@ -28,7 +28,7 @@
 #include "SolidSyslogTunables.h"
 #include "task.h"
 
-const struct SolidSyslogErrorSource PlusTcpTcpStreamErrorSource = {"PlusTcpTcpStream"};
+const struct SolidSyslogErrorSource SolidSyslogPlusTcpTcpStreamErrorSource = {"PlusTcpTcpStream"};
 
 struct SolidSyslogAddress;
 
@@ -54,6 +54,7 @@ static bool PlusTcpTcpStream_Open(struct SolidSyslogStream* base, const struct S
 static bool PlusTcpTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static SolidSyslogSsize PlusTcpTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void PlusTcpTcpStream_Close(struct SolidSyslogStream* base);
+static uint32_t PlusTcpTcpStream_Version(struct SolidSyslogStream* base);
 
 static inline struct SolidSyslogPlusTcpTcpStream* PlusTcpTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 static inline bool PlusTcpTcpStream_ConfigProvidesGetter(const struct SolidSyslogPlusTcpTcpStreamConfig* config);
@@ -87,14 +88,18 @@ static SolidSyslogSsize PlusTcpTcpStream_ReceiveOrCloseOnFailure(
 );
 static void PlusTcpTcpStream_CloseSocket(struct SolidSyslogPlusTcpTcpStream* self);
 
-void PlusTcpTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogPlusTcpTcpStreamConfig* config)
+void SolidSyslogPlusTcpTcpStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogPlusTcpTcpStreamConfig* config
+)
 {
     static const struct SolidSyslogPlusTcpTcpStream DefaultPlusTcpTcpStream = {
         .Base =
             {.Open = PlusTcpTcpStream_Open,
              .Send = PlusTcpTcpStream_Send,
              .Read = PlusTcpTcpStream_Read,
-             .Close = PlusTcpTcpStream_Close},
+             .Close = PlusTcpTcpStream_Close,
+             .Version = PlusTcpTcpStream_Version},
         .Config = {.GetConnectTimeoutMs = PlusTcpTcpStream_NullConnectTimeoutGetter, .ConnectTimeoutContext = NULL},
         .Socket = FREERTOS_INVALID_SOCKET,
     };
@@ -126,7 +131,7 @@ static inline struct SolidSyslogPlusTcpTcpStream* PlusTcpTcpStream_SelfFromBase(
     return (struct SolidSyslogPlusTcpTcpStream*) base;
 }
 
-void PlusTcpTcpStream_Cleanup(struct SolidSyslogStream* base)
+void SolidSyslogPlusTcpTcpStream_Cleanup(struct SolidSyslogStream* base)
 {
     struct SolidSyslogPlusTcpTcpStream* self = PlusTcpTcpStream_SelfFromBase(base);
     PlusTcpTcpStream_CloseSocket(self);
@@ -328,6 +333,12 @@ static SolidSyslogSsize PlusTcpTcpStream_ReceiveOrCloseOnFailure(
 static void PlusTcpTcpStream_Close(struct SolidSyslogStream* base)
 {
     PlusTcpTcpStream_CloseSocket(PlusTcpTcpStream_SelfFromBase(base));
+}
+
+static uint32_t PlusTcpTcpStream_Version(struct SolidSyslogStream* base)
+{
+    (void) base;
+    return 0U;
 }
 
 // NOLINTEND(performance-no-int-to-ptr)

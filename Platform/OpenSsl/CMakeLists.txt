@@ -3,6 +3,9 @@
 # rely on the OPENSSL_INCLUDE_DIR variable being set.
 
 target_sources(${PROJECT_NAME} PRIVATE
+    Source/SolidSyslogOpenSslNullCredentials.c
+    Source/SolidSyslogOpenSslPemFileCredentials.c
+    Source/SolidSyslogOpenSslPemFileCredentialsStatic.c
     Source/SolidSyslogOpenSslStream.c
     Source/SolidSyslogOpenSslStreamStatic.c
     Source/SolidSyslogOpenSslHmacSha256Policy.c

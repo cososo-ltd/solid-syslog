@@ -35,7 +35,7 @@ struct SolidSyslogDatagram* SolidSyslogPlusTcpDatagram_Create(void)
     struct SolidSyslogDatagram* handle = SolidSyslogNullDatagram_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&PlusTcpDatagram_Allocator, index) == true)
     {
-        PlusTcpDatagram_Initialise(&PlusTcpDatagram_Pool[index].Base);
+        SolidSyslogPlusTcpDatagram_Initialise(&PlusTcpDatagram_Pool[index].Base);
         handle = &PlusTcpDatagram_Pool[index].Base;
     }
     else
@@ -82,5 +82,5 @@ static inline size_t PlusTcpDatagram_IndexFromHandle(const struct SolidSyslogDat
 static inline void PlusTcpDatagram_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    PlusTcpDatagram_Cleanup(&PlusTcpDatagram_Pool[index].Base);
+    SolidSyslogPlusTcpDatagram_Cleanup(&PlusTcpDatagram_Pool[index].Base);
 }

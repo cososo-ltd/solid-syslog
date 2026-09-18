@@ -22,8 +22,8 @@ struct SolidSyslogWinsockDatagram
     bool Connected;
 };
 
-void WinsockDatagram_Initialise(struct SolidSyslogDatagram* base);
-void WinsockDatagram_Cleanup(struct SolidSyslogDatagram* base);
+void SolidSyslogWinsockDatagram_Initialise(struct SolidSyslogDatagram* base);
+void SolidSyslogWinsockDatagram_Cleanup(struct SolidSyslogDatagram* base);
 
 static inline void WinsockDatagram_Report(
     enum SolidSyslogSeverity severity,
@@ -31,7 +31,7 @@ static inline void WinsockDatagram_Report(
     enum SolidSyslogWinsockDatagramErrors code
 )
 {
-    SolidSyslog_Error(severity, &WinsockDatagramErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogWinsockDatagramErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGWINSOCKDATAGRAMPRIVATE_H */

@@ -20,8 +20,11 @@ struct SolidSyslogPosixTcpStream
     int Fd;
 };
 
-void PosixTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogPosixTcpStreamConfig* config);
-void PosixTcpStream_Cleanup(struct SolidSyslogStream* base);
+void SolidSyslogPosixTcpStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogPosixTcpStreamConfig* config
+);
+void SolidSyslogPosixTcpStream_Cleanup(struct SolidSyslogStream* base);
 
 static inline void PosixTcpStream_Report(
     enum SolidSyslogSeverity severity,
@@ -29,7 +32,7 @@ static inline void PosixTcpStream_Report(
     enum SolidSyslogPosixTcpStreamErrors code
 )
 {
-    SolidSyslog_Error(severity, &PosixTcpStreamErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPosixTcpStreamErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPOSIXTCPSTREAMPRIVATE_H */

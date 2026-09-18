@@ -41,7 +41,7 @@ struct SolidSyslogBlockDevice* SolidSyslogFileBlockDevice_Create(
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&FileBlockDevice_Allocator);
     if (SolidSyslogPoolAllocator_IndexIsValid(&FileBlockDevice_Allocator, index))
     {
-        FileBlockDevice_Initialise(&FileBlockDevice_Pool[index].Base, file, pathPrefix, resolvedBlockSize);
+        SolidSyslogFileBlockDevice_Initialise(&FileBlockDevice_Pool[index].Base, file, pathPrefix, resolvedBlockSize);
         result = &FileBlockDevice_Pool[index].Base;
     }
     else
@@ -88,5 +88,5 @@ static inline size_t FileBlockDevice_IndexFromHandle(const struct SolidSyslogBlo
 static inline void FileBlockDevice_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    FileBlockDevice_Cleanup(&FileBlockDevice_Pool[index].Base);
+    SolidSyslogFileBlockDevice_Cleanup(&FileBlockDevice_Pool[index].Base);
 }

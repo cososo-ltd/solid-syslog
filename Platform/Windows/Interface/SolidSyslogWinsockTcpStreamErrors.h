@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is WinsockTcpStreamErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogWinsockTcpStreamErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogWinsockTcpStreamErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a WinsockTcpStream. A handler matches by
-     *  address (event->Source == &WinsockTcpStreamErrorSource), then reads
+     *  address (event->Source == &SolidSyslogWinsockTcpStreamErrorSource), then reads
      *  event->Detail as an enum SolidSyslogWinsockTcpStreamErrors. */
-    extern const struct SolidSyslogErrorSource WinsockTcpStreamErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogWinsockTcpStreamErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

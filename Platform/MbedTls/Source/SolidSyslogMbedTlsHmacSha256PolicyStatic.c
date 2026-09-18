@@ -39,7 +39,7 @@ struct SolidSyslogSecurityPolicy* SolidSyslogMbedTlsHmacSha256Policy_Create(
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&MbedTlsHmacSha256Policy_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&MbedTlsHmacSha256Policy_Allocator, index) == true)
         {
-            MbedTlsHmacSha256Policy_Initialise(&MbedTlsHmacSha256Policy_Pool[index].Base, config);
+            SolidSyslogMbedTlsHmacSha256Policy_Initialise(&MbedTlsHmacSha256Policy_Pool[index].Base, config);
             handle = &MbedTlsHmacSha256Policy_Pool[index].Base;
         }
         else
@@ -47,7 +47,7 @@ struct SolidSyslogSecurityPolicy* SolidSyslogMbedTlsHmacSha256Policy_Create(
             MbedTlsHmacSha256Policy_Report(
                 SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                SOLIDSYSLOG_MBEDTLS_HMAC_SHA256_POLICY_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -56,7 +56,7 @@ struct SolidSyslogSecurityPolicy* SolidSyslogMbedTlsHmacSha256Policy_Create(
         MbedTlsHmacSha256Policy_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_MBEDTLS_HMAC_SHA256_POLICY_ERROR_BAD_CONFIG
+            SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_BAD_CONFIG
         );
     }
     return handle;
@@ -77,7 +77,7 @@ void SolidSyslogMbedTlsHmacSha256Policy_Destroy(struct SolidSyslogSecurityPolicy
         MbedTlsHmacSha256Policy_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            SOLIDSYSLOG_MBEDTLS_HMAC_SHA256_POLICY_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_UNKNOWN_DESTROY
         );
     }
 }
@@ -104,5 +104,5 @@ static inline size_t MbedTlsHmacSha256Policy_IndexFromHandle(const struct SolidS
 static inline void MbedTlsHmacSha256Policy_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    MbedTlsHmacSha256Policy_Cleanup(&MbedTlsHmacSha256Policy_Pool[index].Base);
+    SolidSyslogMbedTlsHmacSha256Policy_Cleanup(&MbedTlsHmacSha256Policy_Pool[index].Base);
 }

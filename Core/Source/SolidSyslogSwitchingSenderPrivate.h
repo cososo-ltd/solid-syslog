@@ -20,8 +20,11 @@ struct SolidSyslogSwitchingSender
     struct SolidSyslogSender* CurrentSender;
 };
 
-void SwitchingSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogSwitchingSenderConfig* config);
-void SwitchingSender_Cleanup(struct SolidSyslogSender* base);
+void SolidSyslogSwitchingSender_Initialise(
+    struct SolidSyslogSender* base,
+    const struct SolidSyslogSwitchingSenderConfig* config
+);
+void SolidSyslogSwitchingSender_Cleanup(struct SolidSyslogSender* base);
 
 static inline void SwitchingSender_Report(
     enum SolidSyslogSeverity severity,
@@ -29,7 +32,7 @@ static inline void SwitchingSender_Report(
     enum SolidSyslogSwitchingSenderErrors code
 )
 {
-    SolidSyslog_Error(severity, &SwitchingSenderErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogSwitchingSenderErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGSWITCHINGSENDERPRIVATE_H */

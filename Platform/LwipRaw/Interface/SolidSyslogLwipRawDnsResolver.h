@@ -42,14 +42,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogLwipRawDnsResolverConfig
     {
         /** Required; each spin iteration sleeps through it so lwIP can advance the
-         *  query. A NULL config or NULL Sleep falls back to the shared NullResolver. */
+         *  query. A NULL is reported at SolidSyslogLwipRawDnsResolver_Create. */
         SolidSyslogSleepFunction Sleep;
     };
 
     /** Draw a resolver from the pool; the config's Sleep drives the bounded spin
      *  (deadline SOLIDSYSLOG_DNS_RESOLVE_TIMEOUT_MS, poll
-     *  SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVE_POLL_MS). A NULL config, a NULL Sleep, or
-     *  an exhausted pool falls back to the shared NullResolver. */
+     *  SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVE_POLL_MS). A NULL config or a NULL Sleep is
+     *  reported and falls back to the shared NullResolver, as does an exhausted
+     *  pool. */
     struct SolidSyslogResolver* SolidSyslogLwipRawDnsResolver_Create(
         const struct SolidSyslogLwipRawDnsResolverConfig* config
     );

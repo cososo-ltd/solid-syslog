@@ -23,11 +23,11 @@ struct SolidSyslogPlusTcpTcpStream
     Socket_t Socket;
 };
 
-void PlusTcpTcpStream_Initialise(
+void SolidSyslogPlusTcpTcpStream_Initialise(
     struct SolidSyslogStream* base,
     const struct SolidSyslogPlusTcpTcpStreamConfig* config
 );
-void PlusTcpTcpStream_Cleanup(struct SolidSyslogStream* base);
+void SolidSyslogPlusTcpTcpStream_Cleanup(struct SolidSyslogStream* base);
 
 static inline void PlusTcpTcpStream_Report(
     enum SolidSyslogSeverity severity,
@@ -35,7 +35,7 @@ static inline void PlusTcpTcpStream_Report(
     enum SolidSyslogPlusTcpTcpStreamErrors code
 )
 {
-    SolidSyslog_Error(severity, &PlusTcpTcpStreamErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPlusTcpTcpStreamErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPLUSTCPTCPSTREAMPRIVATE_H */

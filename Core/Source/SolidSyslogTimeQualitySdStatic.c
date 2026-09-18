@@ -46,7 +46,7 @@ struct SolidSyslogStructuredData* SolidSyslogTimeQualitySd_Create(SolidSyslogTim
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&TimeQualitySd_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&TimeQualitySd_Allocator, index))
         {
-            TimeQualitySd_Initialise(&TimeQualitySd_Pool[index].Base, getTimeQuality);
+            SolidSyslogTimeQualitySd_Initialise(&TimeQualitySd_Pool[index].Base, getTimeQuality);
             handle = &TimeQualitySd_Pool[index].Base;
         }
         else
@@ -94,5 +94,5 @@ static inline size_t TimeQualitySd_IndexFromHandle(const struct SolidSyslogStruc
 static inline void TimeQualitySd_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    TimeQualitySd_Cleanup(&TimeQualitySd_Pool[index].Base);
+    SolidSyslogTimeQualitySd_Cleanup(&TimeQualitySd_Pool[index].Base);
 }

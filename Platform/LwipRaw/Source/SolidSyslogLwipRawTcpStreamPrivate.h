@@ -33,11 +33,11 @@ struct SolidSyslogLwipRawTcpStream
     size_t RxHeadOffset;
 };
 
-void LwipRawTcpStream_Initialise(
+void SolidSyslogLwipRawTcpStream_Initialise(
     struct SolidSyslogStream* base,
     const struct SolidSyslogLwipRawTcpStreamConfig* config
 );
-void LwipRawTcpStream_Cleanup(struct SolidSyslogStream* base);
+void SolidSyslogLwipRawTcpStream_Cleanup(struct SolidSyslogStream* base);
 
 static inline void LwipRawTcpStream_Report(
     enum SolidSyslogSeverity severity,
@@ -45,7 +45,7 @@ static inline void LwipRawTcpStream_Report(
     enum SolidSyslogLwipRawTcpStreamErrors code
 )
 {
-    SolidSyslog_Error(severity, &LwipRawTcpStreamErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogLwipRawTcpStreamErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGLWIPRAWTCPSTREAMPRIVATE_H */

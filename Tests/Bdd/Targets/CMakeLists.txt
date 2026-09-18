@@ -1,19 +1,23 @@
 # Platform-agnostic tests always included.
 set(BDD_TARGET_TEST_SOURCES
     BddTargetAppNameTest.cpp
+    BddTargetClockTest.cpp
     BddTargetCustomSdTest.cpp
     BddTargetErrorTextTest.cpp
     BddTargetIpsTest.cpp
     BddTargetLanguageTest.cpp
+    BddTargetTlsConfigTest.cpp
     main.cpp
 )
 
 set(BDD_TARGET_PRODUCTION_SOURCES
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetAppName.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetClock.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCustomSd.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLanguage.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
 )
 
 set(BDD_TARGET_TEST_INCLUDE_DIRS
@@ -26,6 +30,7 @@ if(SOLIDSYSLOG_POSIX)
         BddTargetCommandLineTest.cpp
         BddTargetInteractiveTest.cpp
         BddTargetServiceThreadTest.cpp
+        BddTargetStderrErrorHandlerTest.cpp
         BddTargetSwitchConfigTest.cpp
     )
     list(APPEND BDD_TARGET_PRODUCTION_SOURCES

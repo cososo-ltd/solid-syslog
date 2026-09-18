@@ -53,6 +53,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * at MBEDTLSFAKE_MAX_HANDSHAKE_RETURNS (silently truncated). */
     void MbedTlsFake_SetSslHandshakeReturnSequence(const int* values, int count);
 
+    /* mbedtls_ssl_get_verify_result - the accumulated MBEDTLS_X509_BADCERT_*
+     * flags the adapter reads after a refused handshake. Resets to 0, which is
+     * what mbedTLS reports when verification found nothing wrong. */
+    void MbedTlsFake_SetSslVerifyResult(uint32_t flags);
+    /* Run the configured verify callback at depth 0 inside mbedtls_ssl_handshake,
+     * as the real one does: an error from it is fatal with no verdict, leftover
+     * flags fail verification and become the verdict. Off by default. */
+    void MbedTlsFake_SetHandshakeRunsVerifyCallback(bool runs);
+
     int MbedTlsFake_SslWriteCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslWriteContextArg(void);
     const unsigned char* MbedTlsFake_LastSslWriteBufArg(void);
@@ -78,13 +87,31 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfAuthmodeConfigArg(void);
     int MbedTlsFake_LastSslConfAuthmodeArg(void);
 
+    /* mbedtls_ssl_conf_verify - the callback the stream registers, and one
+     * certificate to pass it. The digest is whatever MbedTlsFake_SetDigest
+     * configured, so the certificate carries no bytes of its own. */
+    int (*MbedTlsFake_LastSslConfVerifyCallback(void))(void*, struct mbedtls_x509_crt*, int, uint32_t*);
+    void* MbedTlsFake_LastSslConfVerifyContext(void);
+    struct mbedtls_x509_crt* MbedTlsFake_Certificate(void);
+
+    /* mbedtls_md - the digest the stream takes over a certificate. Reports the
+     * bytes a test configures, and NULL from mbedtls_md_info_from_type stands
+     * for a hash compiled out of the library. Which algorithm was asked for
+     * reads back through MbedTlsFake_LastMdInfoType. */
+    void MbedTlsFake_SetDigest(const unsigned char* digest, size_t length);
+    void MbedTlsFake_SetDigestUnavailableFor(int mdType);
+
     /* mbedtls_ssl_conf_min_tls_version is a static-inline setter in <mbedtls/ssl.h>
      * (it writes conf->min_tls_version directly), so it cannot be intercepted at
      * link time like the other conf_* doubles. This reader exposes the field the
      * production inline call set, so a test can assert the negotiated floor. */
     int MbedTlsFake_ConfMinTlsVersion(const struct mbedtls_ssl_config* conf);
 
+    int MbedTlsFake_LastLegacyRenegotiationArg(void);
+    unsigned int MbedTlsFake_LastDhmMinBitlenArg(void);
     int MbedTlsFake_SslConfCaChainCallCount(void);
+    int MbedTlsFake_SslConfCiphersuitesCallCount(void);
+    const int* MbedTlsFake_LastSslConfCiphersuitesArg(void);
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfCaChainConfigArg(void);
     struct mbedtls_x509_crt* MbedTlsFake_LastSslConfCaChainArg(void);
     struct mbedtls_x509_crl* MbedTlsFake_LastSslConfCaChainCrlArg(void);
@@ -104,6 +131,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfOwnCertConfigArg(void);
     struct mbedtls_x509_crt* MbedTlsFake_LastSslConfOwnCertCertArg(void);
     struct mbedtls_pk_context* MbedTlsFake_LastSslConfOwnCertKeyArg(void);
+    void MbedTlsFake_SetSslConfOwnCertReturn(int value);
+
+    /* mbedtls_pk_check_pair (client key against its certificate) */
+    int MbedTlsFake_PkCheckPairCallCount(void);
+    const struct mbedtls_pk_context* MbedTlsFake_LastPkCheckPairPublicKeyArg(void);
+    const struct mbedtls_pk_context* MbedTlsFake_LastPkCheckPairPrivateKeyArg(void);
+    int (*MbedTlsFake_LastPkCheckPairRngFuncArg(void))(void*, unsigned char*, size_t);
+    void* MbedTlsFake_LastPkCheckPairRngContextArg(void);
+    void MbedTlsFake_SetPkCheckPairReturn(int value);
 
     int MbedTlsFake_MdHmacCallCount(void);
     int MbedTlsFake_LastMdInfoType(void);

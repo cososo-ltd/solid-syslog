@@ -197,6 +197,14 @@ bake_pem_into_header(
     ${BAKED_PEMS_DIR}/BddBakedCaPem.h
     bdd_baked_ca_pem
 )
+# The authority a scenario rotates to, and the one that signs the certificates a
+# peer-refusal cell expects to be refused. Baked like the rest: this target has
+# no filesystem to read one from.
+bake_pem_into_header(
+    ${CMAKE_SOURCE_DIR}/Bdd/syslog-ng/tls/ca-b.pem
+    ${BAKED_PEMS_DIR}/BddBakedCaBPem.h
+    bdd_baked_ca_b_pem
+)
 bake_pem_into_header(
     ${CMAKE_SOURCE_DIR}/Bdd/syslog-ng/tls/client.pem
     ${BAKED_PEMS_DIR}/BddBakedClientCertPem.h
@@ -210,6 +218,7 @@ bake_pem_into_header(
 
 set(BAKED_PEM_HEADERS
     ${BAKED_PEMS_DIR}/BddBakedCaPem.h
+    ${BAKED_PEMS_DIR}/BddBakedCaBPem.h
     ${BAKED_PEMS_DIR}/BddBakedClientCertPem.h
     ${BAKED_PEMS_DIR}/BddBakedClientKeyPem.h
 )
@@ -236,12 +245,14 @@ add_executable(SolidSyslogBddTargetLwip
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFatFsMount.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosPipeline.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetClock.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCustomSd.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetInteractive.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLanguage.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMtlsConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMbedTlsCredentials.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls_LwipRawTcp.c
     ${BAKED_PEM_HEADERS}
@@ -288,8 +299,15 @@ target_link_libraries(SolidSyslogBddTargetLwip PRIVATE
 # Platform/MbedTls/Source/*.c include <mbedtls/ssl.h>; they MUST see the same
 # user config as the mbedTLS library itself, otherwise struct sizes and the
 # enabled-feature bitset diverge between the consumer and the library.
+# The wall clock this target hands mbedTLS is seeded at configure time: the
+# board has no RTC and no libc time() behind a syscall, and certificate
+# validity only asks which side of a window the device is on. It drifts forward
+# from the configure instant, which the ten-year test material absorbs.
+string(TIMESTAMP SOLIDSYSLOG_BDD_BUILD_EPOCH "%s" UTC)
+
 target_compile_definitions(SolidSyslogBddTargetLwip PRIVATE
     MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
+    BDD_TARGET_BUILD_EPOCH=${SOLIDSYSLOG_BDD_BUILD_EPOCH}
 )
 
 target_link_options(SolidSyslogBddTargetLwip PRIVATE

@@ -1,5 +1,6 @@
 #include "MbedTlsFake.h"
 
+#include <assert.h>
 #include <mbedtls/cipher.h>
 #include <mbedtls/gcm.h>
 #include <mbedtls/md.h>
@@ -58,6 +59,19 @@ static uint8_t lastMdHmacInput[MBEDTLSFAKE_MAX_INPUT];
 static size_t lastMdHmacInputLen;
 static int mdHmacReturn;
 
+/* mbedtls_ssl_conf_verify / mbedtls_md over a certificate */
+enum
+{
+    MBEDTLSFAKE_MAX_DIGEST = 64
+};
+
+static int (*lastSslConfVerifyCallback)(void*, mbedtls_x509_crt*, int, uint32_t*);
+static void* lastSslConfVerifyContext;
+static mbedtls_x509_crt fakeCertificate;
+static unsigned char fakeDigest[MBEDTLSFAKE_MAX_DIGEST];
+static size_t fakeDigestLength;
+static int digestUnavailableMdType = -1;
+
 /* mbedtls_platform_zeroize */
 static int platformZeroizeCallCount;
 static const void* lastPlatformZeroizeBuf;
@@ -108,6 +122,11 @@ enum
 static int sslHandshakeCallCount;
 static mbedtls_ssl_context* lastSslHandshakeArg;
 static int sslHandshakeReturn;
+static uint32_t sslVerifyResult;
+/* The real handshake runs the configured verify callback; an error from it is
+ * fatal and leaves no verdict, leftover flags fail verification under
+ * VERIFY_REQUIRED and become the verdict. */
+static bool handshakeRunsVerifyCallback;
 static int sslHandshakeReturnSequence[MBEDTLSFAKE_MAX_HANDSHAKE_RETURNS];
 static int sslHandshakeReturnSequenceLen;
 
@@ -138,6 +157,10 @@ static mbedtls_ssl_context* lastSslFreeArg;
 static int sslConfigFreeCallCount;
 static mbedtls_ssl_config* lastSslConfigFreeArg;
 
+/* mbedtls_ssl_conf_legacy_renegotiation / mbedtls_ssl_conf_dhm_min_bitlen */
+static int lastLegacyRenegotiationArg = -1;
+static unsigned int lastDhmMinBitlenArg;
+
 /* mbedtls_ssl_conf_authmode */
 static int sslConfAuthmodeCallCount;
 static mbedtls_ssl_config* lastSslConfAuthmodeConfigArg;
@@ -148,6 +171,10 @@ static int sslConfCaChainCallCount;
 static mbedtls_ssl_config* lastSslConfCaChainConfigArg;
 static mbedtls_x509_crt* lastSslConfCaChainArg;
 static mbedtls_x509_crl* lastSslConfCaChainCrlArg;
+
+/* mbedtls_ssl_conf_ciphersuites */
+static int sslConfCiphersuitesCallCount;
+static const int* lastSslConfCiphersuitesArg;
 
 /* mbedtls_ssl_conf_rng */
 static int sslConfRngCallCount;
@@ -166,6 +193,15 @@ static int sslConfOwnCertCallCount;
 static mbedtls_ssl_config* lastSslConfOwnCertConfigArg;
 static mbedtls_x509_crt* lastSslConfOwnCertCertArg;
 static mbedtls_pk_context* lastSslConfOwnCertKeyArg;
+static int sslConfOwnCertReturn;
+
+/* mbedtls_pk_check_pair */
+static int pkCheckPairCallCount;
+static const mbedtls_pk_context* lastPkCheckPairPublicKeyArg;
+static const mbedtls_pk_context* lastPkCheckPairPrivateKeyArg;
+static int (*lastPkCheckPairRngFuncArg)(void*, unsigned char*, size_t);
+static void* lastPkCheckPairRngContextArg;
+static int pkCheckPairReturn;
 
 /* -------------------------------------------------------------------------
  * Test accessors.
@@ -173,6 +209,12 @@ static mbedtls_pk_context* lastSslConfOwnCertKeyArg;
 
 void MbedTlsFake_Reset(void)
 {
+    lastSslConfVerifyCallback = NULL;
+    lastSslConfVerifyContext = NULL;
+    fakeCertificate.raw.p = NULL;
+    fakeCertificate.raw.len = 0;
+    fakeDigestLength = 0;
+    digestUnavailableMdType = -1;
     sslConfigInitCallCount = 0;
     lastSslConfigInitArg = NULL;
     sslConfigDefaultsCallCount = 0;
@@ -196,6 +238,7 @@ void MbedTlsFake_Reset(void)
     sslHandshakeCallCount = 0;
     lastSslHandshakeArg = NULL;
     sslHandshakeReturn = 0;
+    sslVerifyResult = 0;
     sslHandshakeReturnSequenceLen = 0;
     sslWriteCallCount = 0;
     lastSslWriteContextArg = NULL;
@@ -215,9 +258,14 @@ void MbedTlsFake_Reset(void)
     sslConfigFreeCallCount = 0;
     lastSslConfigFreeArg = NULL;
     sslConfAuthmodeCallCount = 0;
+    lastLegacyRenegotiationArg = -1;
+    handshakeRunsVerifyCallback = false;
+    lastDhmMinBitlenArg = 0U;
     lastSslConfAuthmodeConfigArg = NULL;
     lastSslConfAuthmodeArg = 0;
     sslConfCaChainCallCount = 0;
+    sslConfCiphersuitesCallCount = 0;
+    lastSslConfCiphersuitesArg = NULL;
     lastSslConfCaChainConfigArg = NULL;
     lastSslConfCaChainArg = NULL;
     lastSslConfCaChainCrlArg = NULL;
@@ -233,6 +281,13 @@ void MbedTlsFake_Reset(void)
     lastSslConfOwnCertConfigArg = NULL;
     lastSslConfOwnCertCertArg = NULL;
     lastSslConfOwnCertKeyArg = NULL;
+    pkCheckPairCallCount = 0;
+    lastPkCheckPairPublicKeyArg = NULL;
+    lastPkCheckPairPrivateKeyArg = NULL;
+    lastPkCheckPairRngFuncArg = NULL;
+    lastPkCheckPairRngContextArg = NULL;
+    pkCheckPairReturn = 0;
+    sslConfOwnCertReturn = 0;
     mdHmacCallCount = 0;
     lastMdInfoType = 0;
     lastMdHmacKeyLen = 0;
@@ -370,6 +425,17 @@ int MbedTlsFake_SslHandshakeCallCount(void)
 mbedtls_ssl_context* MbedTlsFake_LastSslHandshakeArg(void)
 {
     return lastSslHandshakeArg;
+}
+
+uint32_t mbedtls_ssl_get_verify_result(const mbedtls_ssl_context* ssl)
+{
+    (void) ssl;
+    return sslVerifyResult;
+}
+
+void MbedTlsFake_SetSslVerifyResult(uint32_t flags)
+{
+    sslVerifyResult = flags;
 }
 
 void MbedTlsFake_SetSslHandshakeReturn(int value)
@@ -563,9 +629,44 @@ mbedtls_x509_crt* MbedTlsFake_LastSslConfOwnCertCertArg(void)
     return lastSslConfOwnCertCertArg;
 }
 
+void MbedTlsFake_SetSslConfOwnCertReturn(int value)
+{
+    sslConfOwnCertReturn = value;
+}
+
 mbedtls_pk_context* MbedTlsFake_LastSslConfOwnCertKeyArg(void)
 {
     return lastSslConfOwnCertKeyArg;
+}
+
+int MbedTlsFake_PkCheckPairCallCount(void)
+{
+    return pkCheckPairCallCount;
+}
+
+const mbedtls_pk_context* MbedTlsFake_LastPkCheckPairPublicKeyArg(void)
+{
+    return lastPkCheckPairPublicKeyArg;
+}
+
+const mbedtls_pk_context* MbedTlsFake_LastPkCheckPairPrivateKeyArg(void)
+{
+    return lastPkCheckPairPrivateKeyArg;
+}
+
+int (*MbedTlsFake_LastPkCheckPairRngFuncArg(void))(void*, unsigned char*, size_t)
+{
+    return lastPkCheckPairRngFuncArg;
+}
+
+void* MbedTlsFake_LastPkCheckPairRngContextArg(void)
+{
+    return lastPkCheckPairRngContextArg;
+}
+
+void MbedTlsFake_SetPkCheckPairReturn(int value)
+{
+    pkCheckPairReturn = value;
 }
 
 /* -------------------------------------------------------------------------
@@ -631,7 +732,30 @@ int mbedtls_ssl_handshake(mbedtls_ssl_context* ssl)
         int idx = (callIndex < sslHandshakeReturnSequenceLen) ? callIndex : (sslHandshakeReturnSequenceLen - 1);
         rc = sslHandshakeReturnSequence[idx];
     }
+    if (handshakeRunsVerifyCallback && (lastSslConfVerifyCallback != NULL))
+    {
+        uint32_t flags = 0U;
+        if (lastSslConfVerifyCallback(lastSslConfVerifyContext, MbedTlsFake_Certificate(), 0, &flags) != 0)
+        {
+            sslVerifyResult = 0xFFFFFFFFU;
+            rc = MBEDTLS_ERR_X509_FATAL_ERROR;
+        }
+        else if (flags != 0U)
+        {
+            sslVerifyResult = flags;
+            rc = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
+        }
+        else
+        {
+            /* Verified clean; the configured return stands. */
+        }
+    }
     return rc;
+}
+
+void MbedTlsFake_SetHandshakeRunsVerifyCallback(bool runs)
+{
+    handshakeRunsVerifyCallback = runs;
 }
 
 int mbedtls_ssl_write(mbedtls_ssl_context* ssl, const unsigned char* buf, size_t len)
@@ -679,6 +803,47 @@ void mbedtls_ssl_conf_authmode(mbedtls_ssl_config* conf, int authmode)
     lastSslConfAuthmodeArg = authmode;
 }
 
+void mbedtls_ssl_conf_legacy_renegotiation(mbedtls_ssl_config* conf, int allow_legacy)
+{
+    (void) conf;
+    lastLegacyRenegotiationArg = allow_legacy;
+}
+
+int MbedTlsFake_LastLegacyRenegotiationArg(void)
+{
+    return lastLegacyRenegotiationArg;
+}
+
+#if defined(MBEDTLS_DHM_C) && defined(MBEDTLS_SSL_CLI_C)
+void mbedtls_ssl_conf_dhm_min_bitlen(mbedtls_ssl_config* conf, unsigned int bitlen)
+{
+    (void) conf;
+    lastDhmMinBitlenArg = bitlen;
+}
+#endif
+
+unsigned int MbedTlsFake_LastDhmMinBitlenArg(void)
+{
+    return lastDhmMinBitlenArg;
+}
+
+void mbedtls_ssl_conf_ciphersuites(mbedtls_ssl_config* conf, const int* ciphersuites)
+{
+    (void) conf;
+    sslConfCiphersuitesCallCount++;
+    lastSslConfCiphersuitesArg = ciphersuites;
+}
+
+int MbedTlsFake_SslConfCiphersuitesCallCount(void)
+{
+    return sslConfCiphersuitesCallCount;
+}
+
+const int* MbedTlsFake_LastSslConfCiphersuitesArg(void)
+{
+    return lastSslConfCiphersuitesArg;
+}
+
 void mbedtls_ssl_conf_ca_chain(mbedtls_ssl_config* conf, mbedtls_x509_crt* ca_chain, mbedtls_x509_crl* ca_crl)
 {
     sslConfCaChainCallCount++;
@@ -693,7 +858,22 @@ int mbedtls_ssl_conf_own_cert(mbedtls_ssl_config* conf, mbedtls_x509_crt* own_ce
     lastSslConfOwnCertConfigArg = conf;
     lastSslConfOwnCertCertArg = own_cert;
     lastSslConfOwnCertKeyArg = pk_key;
-    return 0;
+    return sslConfOwnCertReturn;
+}
+
+int mbedtls_pk_check_pair(
+    const mbedtls_pk_context* pub,
+    const mbedtls_pk_context* prv,
+    int (*f_rng)(void*, unsigned char*, size_t),
+    void* p_rng
+)
+{
+    pkCheckPairCallCount++;
+    lastPkCheckPairPublicKeyArg = pub;
+    lastPkCheckPairPrivateKeyArg = prv;
+    lastPkCheckPairRngFuncArg = f_rng;
+    lastPkCheckPairRngContextArg = p_rng;
+    return pkCheckPairReturn;
 }
 
 void mbedtls_ssl_conf_rng(mbedtls_ssl_config* conf, int (*f_rng)(void*, unsigned char*, size_t), void* p_rng)
@@ -817,7 +997,60 @@ const mbedtls_md_info_t* mbedtls_md_info_from_type(mbedtls_md_type_t md_type)
 {
     static const int mdInfoSentinel = 0;
     lastMdInfoType = (int) md_type;
-    return (const mbedtls_md_info_t*) &mdInfoSentinel;
+    return ((int) md_type == digestUnavailableMdType) ? NULL : (const mbedtls_md_info_t*) &mdInfoSentinel;
+}
+
+int mbedtls_md(const mbedtls_md_info_t* md_info, const unsigned char* input, size_t ilen, unsigned char* output)
+{
+    (void) md_info;
+    (void) input;
+    (void) ilen;
+    memcpy(output, fakeDigest, fakeDigestLength);
+    return 0;
+}
+
+unsigned char mbedtls_md_get_size(const mbedtls_md_info_t* md_info)
+{
+    (void) md_info;
+    return (unsigned char) fakeDigestLength;
+}
+
+void mbedtls_ssl_conf_verify(
+    mbedtls_ssl_config* conf,
+    int (*f_vrfy)(void*, mbedtls_x509_crt*, int, uint32_t*),
+    void* p_vrfy
+)
+{
+    (void) conf;
+    lastSslConfVerifyCallback = f_vrfy;
+    lastSslConfVerifyContext = p_vrfy;
+}
+
+int (*MbedTlsFake_LastSslConfVerifyCallback(void))(void*, mbedtls_x509_crt*, int, uint32_t*)
+{
+    return lastSslConfVerifyCallback;
+}
+
+void* MbedTlsFake_LastSslConfVerifyContext(void)
+{
+    return lastSslConfVerifyContext;
+}
+
+mbedtls_x509_crt* MbedTlsFake_Certificate(void)
+{
+    return &fakeCertificate;
+}
+
+void MbedTlsFake_SetDigest(const unsigned char* digest, size_t length)
+{
+    assert(length <= MBEDTLSFAKE_MAX_DIGEST);
+    memcpy(fakeDigest, digest, length);
+    fakeDigestLength = length;
+}
+
+void MbedTlsFake_SetDigestUnavailableFor(int mdType)
+{
+    digestUnavailableMdType = mdType;
 }
 
 int mbedtls_md_hmac(

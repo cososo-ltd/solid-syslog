@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is OriginSdErrorSource. A handler
+    /** Detail codes for events whose Source is SolidSyslogOriginSdErrorSource. A handler
      *  reads these off event->Detail after matching event->Source; the members
      *  name their own fault. */
     enum SolidSyslogOriginSdErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** The identity for events raised by an OriginSd. A handler matches by
-     *  address (event->Source == &OriginSdErrorSource), then reads
+     *  address (event->Source == &SolidSyslogOriginSdErrorSource), then reads
      *  event->Detail as an enum SolidSyslogOriginSdErrors. */
-    extern const struct SolidSyslogErrorSource OriginSdErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogOriginSdErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

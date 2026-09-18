@@ -31,8 +31,11 @@ struct SolidSyslogOriginSd
     void* IpContext;
 };
 
-void OriginSd_Initialise(struct SolidSyslogStructuredData* base, const struct SolidSyslogOriginSdConfig* config);
-void OriginSd_Cleanup(struct SolidSyslogStructuredData* base);
+void SolidSyslogOriginSd_Initialise(
+    struct SolidSyslogStructuredData* base,
+    const struct SolidSyslogOriginSdConfig* config
+);
+void SolidSyslogOriginSd_Cleanup(struct SolidSyslogStructuredData* base);
 
 static inline void OriginSd_Report(
     enum SolidSyslogSeverity severity,
@@ -40,7 +43,7 @@ static inline void OriginSd_Report(
     enum SolidSyslogOriginSdErrors code
 )
 {
-    SolidSyslog_Error(severity, &OriginSdErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogOriginSdErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGORIGINSDPRIVATE_H */

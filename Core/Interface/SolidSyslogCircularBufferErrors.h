@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is CircularBufferErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogCircularBufferErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogCircularBufferErrors
@@ -31,9 +31,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** The identity for events raised by a CircularBuffer. A handler matches by
-     *  address (event->Source == &CircularBufferErrorSource), then reads
+     *  address (event->Source == &SolidSyslogCircularBufferErrorSource), then reads
      *  event->Detail as an enum SolidSyslogCircularBufferErrors. */
-    extern const struct SolidSyslogErrorSource CircularBufferErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogCircularBufferErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

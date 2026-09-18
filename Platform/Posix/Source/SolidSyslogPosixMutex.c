@@ -13,14 +13,14 @@
 #include "SolidSyslogPosixMutexErrors.h"
 #include "SolidSyslogPosixMutexPrivate.h"
 
-const struct SolidSyslogErrorSource PosixMutexErrorSource = {"PosixMutex"};
+const struct SolidSyslogErrorSource SolidSyslogPosixMutexErrorSource = {"PosixMutex"};
 
 static void PosixMutex_Lock(struct SolidSyslogMutex* base);
 static void PosixMutex_Unlock(struct SolidSyslogMutex* base);
 
 static inline struct SolidSyslogPosixMutex* PosixMutex_SelfFromBase(struct SolidSyslogMutex* base);
 
-void PosixMutex_Initialise(struct SolidSyslogMutex* base)
+void SolidSyslogPosixMutex_Initialise(struct SolidSyslogMutex* base)
 {
     struct SolidSyslogPosixMutex* self = PosixMutex_SelfFromBase(base);
     if (pthread_mutex_init(&self->Mutex, NULL) == 0)
@@ -38,7 +38,7 @@ void PosixMutex_Initialise(struct SolidSyslogMutex* base)
     }
 }
 
-void PosixMutex_Cleanup(struct SolidSyslogMutex* base)
+void SolidSyslogPosixMutex_Cleanup(struct SolidSyslogMutex* base)
 {
     struct SolidSyslogPosixMutex* self = PosixMutex_SelfFromBase(base);
     if (self->Base.Lock == PosixMutex_Lock)

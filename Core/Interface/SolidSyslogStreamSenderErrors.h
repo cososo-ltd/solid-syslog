@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is StreamSenderErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogStreamSenderErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogStreamSenderErrors
@@ -30,9 +30,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** The identity for events raised by a StreamSender. A handler matches by
-     *  address (event->Source == &StreamSenderErrorSource), then reads
+     *  address (event->Source == &SolidSyslogStreamSenderErrorSource), then reads
      *  event->Detail as an enum SolidSyslogStreamSenderErrors. */
-    extern const struct SolidSyslogErrorSource StreamSenderErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogStreamSenderErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

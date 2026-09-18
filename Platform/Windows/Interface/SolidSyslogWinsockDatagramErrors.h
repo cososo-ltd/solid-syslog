@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is WinsockDatagramErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogWinsockDatagramErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogWinsockDatagramErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a WinsockDatagram. A handler matches by
-     *  address (event->Source == &WinsockDatagramErrorSource), then reads
+     *  address (event->Source == &SolidSyslogWinsockDatagramErrorSource), then reads
      *  event->Detail as an enum SolidSyslogWinsockDatagramErrors. */
-    extern const struct SolidSyslogErrorSource WinsockDatagramErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogWinsockDatagramErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

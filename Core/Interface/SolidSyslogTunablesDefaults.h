@@ -592,6 +592,24 @@
 #endif
 
 /**
+ * Role pool: TLS credentials. Number of credentials instances the library's
+ * internal static pool can simultaneously hold.
+ *
+ * Default 1 - one source per TLS stream is the ordinary wiring. Bump it
+ * alongside SOLIDSYSLOG_TLS_STREAM_POOL_SIZE where several streams draw on
+ * separate sources.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE
+#define SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE < 1
+#error "SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE must be >= 1"
+#endif
+
+/**
  * Role pool: HMAC-SHA256 SecurityPolicy. Number of keyed HMAC policy
  * instances the library's internal static pool can simultaneously hold,
  * across whichever crypto vendor is compiled in -

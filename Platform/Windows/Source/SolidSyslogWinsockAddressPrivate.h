@@ -19,8 +19,8 @@ struct SolidSyslogWinsockAddress
     struct sockaddr_in Sockaddr;
 };
 
-void WinsockAddress_Initialise(struct SolidSyslogAddress* base);
-void WinsockAddress_Cleanup(struct SolidSyslogAddress* base);
+void SolidSyslogWinsockAddress_Initialise(struct SolidSyslogAddress* base);
+void SolidSyslogWinsockAddress_Cleanup(struct SolidSyslogAddress* base);
 
 static inline struct sockaddr_in* SolidSyslogWinsockAddress_AsSockaddrIn(struct SolidSyslogAddress* base)
 {
@@ -40,7 +40,7 @@ static inline void WinsockAddress_Report(
     enum SolidSyslogWinsockAddressErrors code
 )
 {
-    SolidSyslog_Error(severity, &WinsockAddressErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogWinsockAddressErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGWINSOCKADDRESSPRIVATE_H */

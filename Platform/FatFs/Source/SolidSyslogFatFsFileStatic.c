@@ -32,7 +32,7 @@ struct SolidSyslogFile* SolidSyslogFatFsFile_Create(void)
     struct SolidSyslogFile* handle = SolidSyslogNullFile_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&FatFsFile_Allocator, index) == true)
     {
-        FatFsFile_Initialise(&FatFsFile_Pool[index].Base);
+        SolidSyslogFatFsFile_Initialise(&FatFsFile_Pool[index].Base);
         handle = &FatFsFile_Pool[index].Base;
     }
     else
@@ -78,5 +78,5 @@ static inline size_t FatFsFile_IndexFromHandle(const struct SolidSyslogFile* bas
 static inline void FatFsFile_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    FatFsFile_Cleanup(&FatFsFile_Pool[index].Base);
+    SolidSyslogFatFsFile_Cleanup(&FatFsFile_Pool[index].Base);
 }

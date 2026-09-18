@@ -39,7 +39,7 @@ struct SolidSyslogSecurityPolicy* SolidSyslogOpenSslAesGcmPolicy_Create(
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&OpenSslAesGcmPolicy_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&OpenSslAesGcmPolicy_Allocator, index) == true)
         {
-            OpenSslAesGcmPolicy_Initialise(&OpenSslAesGcmPolicy_Pool[index].Base, config);
+            SolidSyslogOpenSslAesGcmPolicy_Initialise(&OpenSslAesGcmPolicy_Pool[index].Base, config);
             handle = &OpenSslAesGcmPolicy_Pool[index].Base;
         }
         else
@@ -47,7 +47,7 @@ struct SolidSyslogSecurityPolicy* SolidSyslogOpenSslAesGcmPolicy_Create(
             OpenSslAesGcmPolicy_Report(
                 SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                SOLIDSYSLOG_OPENSSL_AES_GCM_POLICY_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_AES_GCM_POLICY_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -56,7 +56,7 @@ struct SolidSyslogSecurityPolicy* SolidSyslogOpenSslAesGcmPolicy_Create(
         OpenSslAesGcmPolicy_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_OPENSSL_AES_GCM_POLICY_ERROR_BAD_CONFIG
+            SOLIDSYSLOG_AES_GCM_POLICY_ERROR_BAD_CONFIG
         );
     }
     return handle;
@@ -77,7 +77,7 @@ void SolidSyslogOpenSslAesGcmPolicy_Destroy(struct SolidSyslogSecurityPolicy* ba
         OpenSslAesGcmPolicy_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            SOLIDSYSLOG_OPENSSL_AES_GCM_POLICY_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_AES_GCM_POLICY_ERROR_UNKNOWN_DESTROY
         );
     }
 }
@@ -104,5 +104,5 @@ static inline size_t OpenSslAesGcmPolicy_IndexFromHandle(const struct SolidSyslo
 static inline void OpenSslAesGcmPolicy_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    OpenSslAesGcmPolicy_Cleanup(&OpenSslAesGcmPolicy_Pool[index].Base);
+    SolidSyslogOpenSslAesGcmPolicy_Cleanup(&OpenSslAesGcmPolicy_Pool[index].Base);
 }

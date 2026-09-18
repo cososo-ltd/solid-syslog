@@ -35,7 +35,7 @@ struct SolidSyslogStream* SolidSyslogWinsockTcpStream_Create(const struct SolidS
     struct SolidSyslogStream* handle = SolidSyslogNullStream_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&WinsockTcpStream_Allocator, index) == true)
     {
-        WinsockTcpStream_Initialise(&WinsockTcpStream_Pool[index].Base, config);
+        SolidSyslogWinsockTcpStream_Initialise(&WinsockTcpStream_Pool[index].Base, config);
         handle = &WinsockTcpStream_Pool[index].Base;
     }
     else
@@ -82,5 +82,5 @@ static inline size_t WinsockTcpStream_IndexFromHandle(const struct SolidSyslogSt
 static inline void WinsockTcpStream_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    WinsockTcpStream_Cleanup(&WinsockTcpStream_Pool[index].Base);
+    SolidSyslogWinsockTcpStream_Cleanup(&WinsockTcpStream_Pool[index].Base);
 }

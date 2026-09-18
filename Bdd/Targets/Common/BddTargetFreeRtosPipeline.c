@@ -14,6 +14,7 @@
 #include "BddTargetIps.h"
 #include "BddTargetLanguage.h"
 #include "BddTargetSwitchConfig.h"
+#include "BddTargetTlsConfig.h"
 #include "BddTargetTlsSender.h"
 #include "CmsdkUart.h"
 
@@ -258,10 +259,16 @@ static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* ev
         sourceName = source->Name;
     }
     const char* message = BddTargetErrorText_Category(event->Category);
+    /* Same marking as the hosted handler: detail codes are per-class, so a step
+       needs to know the report came from the TLS-stream role before it can read
+       one as a portable code. */
+    const struct SolidSyslogErrorSource* tlsSource = BddTargetTlsSender_ErrorSource();
+    const char* role = ((tlsSource != NULL) && (source == tlsSource)) ? "role=tls " : "";
     (void) printf(
-        "[solidsyslog] severity=%d [%s cat=%u detail=%ld] %s\n",
+        "[solidsyslog] severity=%d [%s %scat=%u detail=%ld] %s\n",
         (int) event->Severity,
         sourceName,
+        role,
         (unsigned) event->Category,
         (long) event->Detail,
         message
@@ -447,7 +454,16 @@ static bool OnSet(const char* name, const char* value)
         }
         return true;
     }
-    return false;
+    /* Anything left is either a TLS knob or nothing we own; the TLS module says
+       which, so its table lives in one place rather than being mirrored here. */
+    if (strcmp(name, "errors-fatal") == 0)
+    {
+        /* Accepted so a matrix scenario says the same thing on every target.
+           This handler only prints - no report ends the process here - so there
+           is nothing for the knob to turn off. */
+        return (strcmp(value, "0") == 0) || (strcmp(value, "1") == 0);
+    }
+    return BddTargetTlsConfig_SetByName(name, value);
 }
 
 static bool TryUpdateString(char* storage, size_t storageSize, const char* value)

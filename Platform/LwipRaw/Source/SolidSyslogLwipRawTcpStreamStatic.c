@@ -43,7 +43,7 @@ struct SolidSyslogStream* SolidSyslogLwipRawTcpStream_Create(const struct SolidS
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&LwipRawTcpStream_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&LwipRawTcpStream_Allocator, index) == true)
         {
-            LwipRawTcpStream_Initialise(&LwipRawTcpStream_Pool[index].Base, config);
+            SolidSyslogLwipRawTcpStream_Initialise(&LwipRawTcpStream_Pool[index].Base, config);
             handle = &LwipRawTcpStream_Pool[index].Base;
         }
         else
@@ -76,7 +76,28 @@ void SolidSyslogLwipRawTcpStream_Destroy(struct SolidSyslogStream* base)
 
 static inline bool LwipRawTcpStream_IsValidConfig(const struct SolidSyslogLwipRawTcpStreamConfig* config)
 {
-    return (config != NULL) && (config->Sleep != NULL);
+    bool valid = false;
+    if (config == NULL)
+    {
+        LwipRawTcpStream_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_NULL_CONFIG
+        );
+    }
+    else if (config->Sleep == NULL)
+    {
+        LwipRawTcpStream_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_NULL_SLEEP
+        );
+    }
+    else
+    {
+        valid = true;
+    }
+    return valid;
 }
 
 static inline size_t LwipRawTcpStream_IndexFromHandle(const struct SolidSyslogStream* base)
@@ -96,7 +117,7 @@ static inline size_t LwipRawTcpStream_IndexFromHandle(const struct SolidSyslogSt
 static inline void LwipRawTcpStream_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    LwipRawTcpStream_Cleanup(&LwipRawTcpStream_Pool[index].Base);
+    SolidSyslogLwipRawTcpStream_Cleanup(&LwipRawTcpStream_Pool[index].Base);
 }
 
 #else

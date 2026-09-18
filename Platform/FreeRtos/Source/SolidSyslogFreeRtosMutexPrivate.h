@@ -25,8 +25,8 @@ struct SolidSyslogFreeRtosMutex
     StaticSemaphore_t Buffer;
 };
 
-void FreeRtosMutex_Initialise(struct SolidSyslogMutex* base);
-void FreeRtosMutex_Cleanup(struct SolidSyslogMutex* base);
+void SolidSyslogFreeRtosMutex_Initialise(struct SolidSyslogMutex* base);
+void SolidSyslogFreeRtosMutex_Cleanup(struct SolidSyslogMutex* base);
 
 static inline void FreeRtosMutex_Report(
     enum SolidSyslogSeverity severity,
@@ -34,7 +34,7 @@ static inline void FreeRtosMutex_Report(
     enum SolidSyslogFreeRtosMutexErrors code
 )
 {
-    SolidSyslog_Error(severity, &FreeRtosMutexErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogFreeRtosMutexErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGFREERTOSMUTEXPRIVATE_H */

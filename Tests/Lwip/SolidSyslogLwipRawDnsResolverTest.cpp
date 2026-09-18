@@ -36,14 +36,8 @@ using namespace CososoTesting;
     }
 
 // Asserts the most recent ErrorHandlerFake call matched (severity, source, code).
-#define CHECK_REPORTED(severity, source, expectedCategory, code)                   \
-    {                                                                              \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                \
-        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());                  \
-        POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());                  \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory()); \
-        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastDetail());               \
-    }
+#define CHECK_REPORTED(severity, source, expectedCategory, code) \
+    CHECK_ERROR_REPORTED_ONCE((severity), &(source), (expectedCategory), (code))
 
 static const char* const TEST_HOST = "syslog-ng";
 static const uint16_t TEST_PORT = 514;
@@ -315,7 +309,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveReportsWarningOnTimeout)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        LwipRawDnsResolverErrorSource,
+        SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_RESOLVE_TIMEOUT
     );
@@ -461,9 +455,39 @@ TEST(SolidSyslogLwipRawDnsResolverPool, ExhaustedCreateReportsError)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        LwipRawDnsResolverErrorSource,
+        SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_POOL_EXHAUSTED
+    );
+}
+
+TEST(SolidSyslogLwipRawDnsResolverPool, CreateWithNullConfigReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogLwipRawDnsResolver_Create(nullptr);
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SolidSyslogLwipRawDnsResolverErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_CONFIG
+    );
+}
+
+TEST(SolidSyslogLwipRawDnsResolverPool, CreateWithNullSleepReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogLwipRawDnsResolverConfig badConfig = {};
+    badConfig.Sleep = nullptr;
+
+    SolidSyslogLwipRawDnsResolver_Create(&badConfig);
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SolidSyslogLwipRawDnsResolverErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_SLEEP
     );
 }
 
@@ -531,7 +555,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        LwipRawDnsResolverErrorSource,
+        SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
@@ -548,7 +572,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        LwipRawDnsResolverErrorSource,
+        SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_UNKNOWN_DESTROY
     );

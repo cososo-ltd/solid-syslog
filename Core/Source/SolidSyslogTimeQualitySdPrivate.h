@@ -19,8 +19,11 @@ struct SolidSyslogTimeQualitySd
     SolidSyslogTimeQualityFunction GetTimeQuality;
 };
 
-void TimeQualitySd_Initialise(struct SolidSyslogStructuredData* base, SolidSyslogTimeQualityFunction getTimeQuality);
-void TimeQualitySd_Cleanup(struct SolidSyslogStructuredData* base);
+void SolidSyslogTimeQualitySd_Initialise(
+    struct SolidSyslogStructuredData* base,
+    SolidSyslogTimeQualityFunction getTimeQuality
+);
+void SolidSyslogTimeQualitySd_Cleanup(struct SolidSyslogStructuredData* base);
 
 static inline void TimeQualitySd_Report(
     enum SolidSyslogSeverity severity,
@@ -28,7 +31,7 @@ static inline void TimeQualitySd_Report(
     enum SolidSyslogTimeQualitySdErrors code
 )
 {
-    SolidSyslog_Error(severity, &TimeQualitySdErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogTimeQualitySdErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGTIMEQUALITYSDPRIVATE_H */

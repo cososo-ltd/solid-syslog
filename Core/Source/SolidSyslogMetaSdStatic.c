@@ -35,7 +35,7 @@ struct SolidSyslogStructuredData* SolidSyslogMetaSd_Create(const struct SolidSys
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&MetaSd_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&MetaSd_Allocator, index))
         {
-            MetaSd_Initialise(&MetaSd_Pool[index].Base, config);
+            SolidSyslogMetaSd_Initialise(&MetaSd_Pool[index].Base, config);
             result = &MetaSd_Pool[index].Base;
         }
         else
@@ -108,5 +108,5 @@ static inline size_t MetaSd_IndexFromHandle(const struct SolidSyslogStructuredDa
 static inline void MetaSd_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    MetaSd_Cleanup(&MetaSd_Pool[index].Base);
+    SolidSyslogMetaSd_Cleanup(&MetaSd_Pool[index].Base);
 }

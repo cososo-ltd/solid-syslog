@@ -32,7 +32,7 @@ struct SolidSyslogFile* SolidSyslogPosixFile_Create(void)
     struct SolidSyslogFile* handle = SolidSyslogNullFile_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&PosixFile_Allocator, index) == true)
     {
-        PosixFile_Initialise(&PosixFile_Pool[index].Base);
+        SolidSyslogPosixFile_Initialise(&PosixFile_Pool[index].Base);
         handle = &PosixFile_Pool[index].Base;
     }
     else
@@ -78,5 +78,5 @@ static inline size_t PosixFile_IndexFromHandle(const struct SolidSyslogFile* bas
 static inline void PosixFile_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    PosixFile_Cleanup(&PosixFile_Pool[index].Base);
+    SolidSyslogPosixFile_Cleanup(&PosixFile_Pool[index].Base);
 }

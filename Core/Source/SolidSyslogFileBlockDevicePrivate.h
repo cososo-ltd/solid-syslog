@@ -36,13 +36,13 @@ struct SolidSyslogFileBlockDevice
     size_t BlockSize;
 };
 
-void FileBlockDevice_Initialise(
+void SolidSyslogFileBlockDevice_Initialise(
     struct SolidSyslogBlockDevice* base,
     struct SolidSyslogFile* file,
     const char* pathPrefix,
     size_t blockSize
 );
-void FileBlockDevice_Cleanup(struct SolidSyslogBlockDevice* base);
+void SolidSyslogFileBlockDevice_Cleanup(struct SolidSyslogBlockDevice* base);
 
 static inline void FileBlockDevice_Report(
     enum SolidSyslogSeverity severity,
@@ -50,7 +50,7 @@ static inline void FileBlockDevice_Report(
     enum SolidSyslogFileBlockDeviceErrors code
 )
 {
-    SolidSyslog_Error(severity, &FileBlockDeviceErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogFileBlockDeviceErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGFILEBLOCKDEVICEPRIVATE_H */

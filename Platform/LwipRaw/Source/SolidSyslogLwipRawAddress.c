@@ -8,17 +8,17 @@
 
 #include <string.h>
 
-const struct SolidSyslogErrorSource LwipRawAddressErrorSource = {"LwipRawAddress"};
+const struct SolidSyslogErrorSource SolidSyslogLwipRawAddressErrorSource = {"LwipRawAddress"};
 
 struct SolidSyslogAddress;
 
-void LwipRawAddress_Initialise(struct SolidSyslogAddress* base)
+void SolidSyslogLwipRawAddress_Initialise(struct SolidSyslogAddress* base)
 {
     struct SolidSyslogLwipRawAddress* self = SolidSyslogLwipRawAddress_As(base);
     (void) memset(self, 0, sizeof *self);
 }
 
-void LwipRawAddress_Cleanup(struct SolidSyslogAddress* base)
+void SolidSyslogLwipRawAddress_Cleanup(struct SolidSyslogAddress* base)
 {
     (void) base;
 }

@@ -22,6 +22,8 @@ struct MbedTlsTestServer
     pthread_t Thread;
     bool ThreadJoined;
     bool HandshakeSucceeded;
+    bool SawClientCertificate;
+    mbedtls_x509_crt* ChainedLeaf;
 };
 
 static void* RunServer(void* arg);
@@ -63,6 +65,15 @@ struct MbedTlsTestServer* MbedTlsTestServer_Create(const struct MbedTlsTestServe
         /* Server-auth only - no client cert requested. */
         mbedtls_ssl_conf_authmode(&self->SslConfig, MBEDTLS_SSL_VERIFY_NONE);
     }
+    /* mbedtls_x509_crt is a linked list and the whole list is sent, so linking
+       the issuer onto the leaf is what presents a chain. Unlinked in Destroy so
+       neither certificate is freed through the other. */
+    self->ChainedLeaf = NULL;
+    if (config->IssuerCert != NULL)
+    {
+        self->ChainedLeaf = (mbedtls_x509_crt*) &config->ServerCert->Cert;
+        self->ChainedLeaf->next = (mbedtls_x509_crt*) &config->IssuerCert->Cert;
+    }
     mbedtls_ssl_conf_own_cert(
         &self->SslConfig,
         (mbedtls_x509_crt*) &config->ServerCert->Cert,
@@ -92,6 +103,13 @@ void MbedTlsTestServer_Destroy(struct MbedTlsTestServer* self)
             pthread_join(self->Thread, NULL);
             self->ThreadJoined = true;
         }
+        /* Only once the worker has stopped: it reads the chain through this
+           link while it is presenting the certificate. */
+        if (self->ChainedLeaf != NULL)
+        {
+            self->ChainedLeaf->next = NULL;
+            self->ChainedLeaf = NULL;
+        }
         mbedtls_ssl_free(&self->SslContext);
         mbedtls_ssl_config_free(&self->SslConfig);
         if (self->Fd >= 0)
@@ -115,6 +133,16 @@ bool MbedTlsTestServer_JoinAndHandshakeSucceeded(struct MbedTlsTestServer* self)
     return self->HandshakeSucceeded;
 }
 
+bool MbedTlsTestServer_SawClientCertificate(struct MbedTlsTestServer* self)
+{
+    if (!self->ThreadJoined)
+    {
+        pthread_join(self->Thread, NULL);
+        self->ThreadJoined = true;
+    }
+    return self->SawClientCertificate;
+}
+
 /* The thread exits as soon as the handshake settles - the tests pin
  * handshake outcome only. Reading application bytes after handshake (and
  * the blocking that implies) is intentionally not implemented. */
@@ -129,6 +157,7 @@ static void* RunServer(void* arg)
     } while ((handshakeRc == MBEDTLS_ERR_SSL_WANT_READ) || (handshakeRc == MBEDTLS_ERR_SSL_WANT_WRITE));
 
     self->HandshakeSucceeded = (handshakeRc == 0);
+    self->SawClientCertificate = (mbedtls_ssl_get_peer_cert(&self->SslContext) != NULL);
     return NULL;
 }
 

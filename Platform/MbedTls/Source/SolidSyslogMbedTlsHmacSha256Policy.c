@@ -19,7 +19,7 @@
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource MbedTlsHmacSha256PolicyErrorSource = {"MbedTlsHmacSha256Policy"};
+const struct SolidSyslogErrorSource SolidSyslogMbedTlsHmacSha256PolicyErrorSource = {"MbedTlsHmacSha256Policy"};
 
 enum
 {
@@ -56,7 +56,7 @@ static bool MbedTlsHmacSha256Policy_FetchKey(
 static inline bool MbedTlsHmacSha256Policy_KeyLengthIsValid(size_t keyLength);
 static inline bool MbedTlsHmacSha256Policy_ConstantTimeEquals(const uint8_t* a, const uint8_t* b, size_t length);
 
-void MbedTlsHmacSha256Policy_Initialise(
+void SolidSyslogMbedTlsHmacSha256Policy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogMbedTlsHmacSha256PolicyConfig* config
 )
@@ -68,7 +68,7 @@ void MbedTlsHmacSha256Policy_Initialise(
     self->Config = *config;
 }
 
-void MbedTlsHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base)
+void SolidSyslogMbedTlsHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base)
 {
     /* No owned resources to release - the key is fetched on demand via the
      * GetKey callback and never stored on the instance. */
@@ -130,7 +130,7 @@ static bool MbedTlsHmacSha256Policy_ComputeTag(
             MbedTlsHmacSha256Policy_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 failureCategory,
-                SOLIDSYSLOG_MBEDTLS_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED
+                SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED
             );
         }
     }
@@ -163,7 +163,7 @@ static bool MbedTlsHmacSha256Policy_FetchKey(
             MbedTlsHmacSha256Policy_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
-                SOLIDSYSLOG_MBEDTLS_HMAC_SHA256_POLICY_ERROR_KEY_TOO_SHORT
+                SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_KEY_TOO_SHORT
             );
         }
     }
@@ -172,7 +172,7 @@ static bool MbedTlsHmacSha256Policy_FetchKey(
         MbedTlsHmacSha256Policy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
-            SOLIDSYSLOG_MBEDTLS_HMAC_SHA256_POLICY_ERROR_KEY_UNAVAILABLE
+            SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_KEY_UNAVAILABLE
         );
     }
     return fetched;

@@ -22,7 +22,7 @@
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource MbedTlsAesGcmPolicyErrorSource = {"MbedTlsAesGcmPolicy"};
+const struct SolidSyslogErrorSource SolidSyslogMbedTlsAesGcmPolicyErrorSource = {"MbedTlsAesGcmPolicy"};
 
 enum
 {
@@ -57,7 +57,7 @@ static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* 
 static bool MbedTlsAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key);
 static bool MbedTlsAesGcmPolicy_GcmDecrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key);
 
-void MbedTlsAesGcmPolicy_Initialise(
+void SolidSyslogMbedTlsAesGcmPolicy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogMbedTlsAesGcmPolicyConfig* config
 )
@@ -69,7 +69,7 @@ void MbedTlsAesGcmPolicy_Initialise(
     self->Config = *config;
 }
 
-void MbedTlsAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base)
+void SolidSyslogMbedTlsAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base)
 {
     /* No owned resources to release - the key is fetched on demand via the
      * GetKey callback and never stored on the instance, and the CTR-DRBG is
@@ -113,7 +113,7 @@ static bool MbedTlsAesGcmPolicy_SealRecord(
                 MbedTlsAesGcmPolicy_Report(
                     SOLIDSYSLOG_SEVERITY_ERROR,
                     SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
-                    SOLIDSYSLOG_MBEDTLS_AES_GCM_POLICY_ERROR_ENCRYPT_FAILED
+                    SOLIDSYSLOG_AES_GCM_POLICY_ERROR_ENCRYPT_FAILED
                 );
             }
         }
@@ -122,7 +122,7 @@ static bool MbedTlsAesGcmPolicy_SealRecord(
             MbedTlsAesGcmPolicy_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
-                SOLIDSYSLOG_MBEDTLS_AES_GCM_POLICY_ERROR_NONCE_FAILED
+                SOLIDSYSLOG_AES_GCM_POLICY_ERROR_NONCE_FAILED
             );
         }
     }
@@ -142,7 +142,7 @@ static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* 
         MbedTlsAesGcmPolicy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
-            SOLIDSYSLOG_MBEDTLS_AES_GCM_POLICY_ERROR_KEY_UNAVAILABLE
+            SOLIDSYSLOG_AES_GCM_POLICY_ERROR_KEY_UNAVAILABLE
         );
     }
     return fetched;
@@ -253,7 +253,7 @@ static bool MbedTlsAesGcmPolicy_GcmDecrypt(const struct SolidSyslogSecurityRecor
         MbedTlsAesGcmPolicy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
-            SOLIDSYSLOG_MBEDTLS_AES_GCM_POLICY_ERROR_DECRYPT_FAILED
+            SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED
         );
     }
     return opened;

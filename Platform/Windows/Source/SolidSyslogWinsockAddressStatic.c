@@ -40,7 +40,7 @@ struct SolidSyslogAddress* SolidSyslogWinsockAddress_Create(void)
     if (SolidSyslogPoolAllocator_IndexIsValid(&WinsockAddress_Allocator, index) == true)
     {
         handle = WinsockAddress_HandleFromIndex(index);
-        WinsockAddress_Initialise(handle);
+        SolidSyslogWinsockAddress_Initialise(handle);
     }
     else
     {
@@ -92,5 +92,5 @@ static inline size_t WinsockAddress_IndexFromHandle(const struct SolidSyslogAddr
 static inline void WinsockAddress_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    WinsockAddress_Cleanup(WinsockAddress_HandleFromIndex(index));
+    SolidSyslogWinsockAddress_Cleanup(WinsockAddress_HandleFromIndex(index));
 }

@@ -13,6 +13,9 @@ contract.
 
 ## What it ships
 
+<!-- Filled at build time from this pack's Interface directory; empty here by
+     design. See hooks/platform_backlinks.py. -->
+
 ## Requirements
 
 OpenSSL 3.0 or later. The CMake configure fails below that rather than the build,
@@ -20,56 +23,79 @@ so an older libssl is caught before anything compiles.
 
 A `SolidSyslogSleepFunction` is required and has no default.
 
-## Credentials are file paths
+## Credentials come from a credentials source
 
-Trust anchors, and for mutual TLS the client certificate chain and its private
-key, are PEM files named in the configuration. The adapter reads them, so it
-needs them present and readable by the process at the moment a connection is
-made, not at startup.
+Where trust anchors, pinned peer fingerprints and the mutual-TLS client
+credential come from is the integrator's choice rather than this adapter's. The
+stream is wired to a `SolidSyslogOpenSslCredentials`, asked once per connection
+to install its material on the `SSL_CTX` and told once per connection when that
+material is no longer needed. A source backed by a hardware key store, a
+keyring or an encrypted store is a class implementing that role, and needs no
+change here.
 
-The `SSL_CTX` is rebuilt on every open, re-reading each file named in the
-configuration. Rotation is therefore a file replacement and a reconnection:
-replace the file, and the new material is in force on the next connection —
-either through ordinary reconnection after an outage, or immediately by calling
-`SolidSyslogSender_Disconnect`. Nothing needs to be reloaded and nothing needs to
-be restarted.
+One source ships with the pack: `SolidSyslogOpenSslPemFileCredentials`, which
+names its material by file path. It performs no file handling of its own -
+the paths go to OpenSSL, which opens and parses them, so PEM bytes never pass
+through this library. The key must not be encrypted: a passphrase is never
+prompted for, so an encrypted key fails to load and is reported as
+`CLIENT_CREDENTIAL_NOT_INSTALLED`.
 
-## Where it differs from the contract
+The `SSL_CTX` is rebuilt on every open and freed on close, and the credentials
+source is asked again each time. Nothing is held between connections. Rotation
+is therefore a replacement and a reconnection: put the new material in place,
+and it is in force on the next connection, either through ordinary reconnection
+after an outage or immediately by moving the stream's configuration version.
+Nothing has to be freed to rotate the shipped source, which names a path that
+OpenSSL reads afresh on each connection, so the version is the whole of it.
 
-Four differences at 0.1.0, each tracked. Read them before relying on the
-corresponding obligation.
+## What it reports
 
-### A half-supplied client credential stops delivery
+Every class in this pack reports portable detail codes, so a handler written
+against them keeps working if the crypto backend underneath changes. What stays
+specific to this pack is `event->Source`, which names the class that reported.
 
-A certificate without its key, or a key without its certificate, is rejected when
-the stream opens, so nothing is delivered until the configuration is corrected.
-The contract asks for it to be reported with delivery continuing, on the grounds
-that the collector is the enforcement point for our own credential.
+Each role's codes are the whole vocabulary that role can express, so some
+describe faults this pack cannot have and it never raises them.
 
-This adapter is stricter than the contract rather than weaker, and the stricter
-behaviour is safe. Tracked as
-[#734](https://github.com/cososo-ltd/solid-syslog/issues/734).
+From the TLS-stream codes it does not raise `DEFAULTS_NOT_APPLIED`, because
+nothing here applies a library preset, or `NULL_RNG`, because OpenSSL carries its
+own entropy source and the configuration asks for none. Nor
+`LIBRARY_OUT_OF_MEMORY`: OpenSSL's handshake raises an allocation failure as the
+same generic error its other crypto failures use, so this pack cannot tell one
+from the other and does not guess.
 
-### An expired certificate stops delivery
+From the credentials codes it does not raise `NULL_RNG` for the same reason, nor
+`PEM_NOT_TERMINATED`, `TRUST_ANCHORS_NOT_PARSED` or `CLIENT_CREDENTIAL_NOT_PARSED`:
+the shipped source names a path and hands it to OpenSSL, which reads and parses
+the file itself, so a failure there arrives as `TRUST_ANCHORS_NOT_LOADED` or
+`CLIENT_CREDENTIAL_NOT_INSTALLED` rather than as a parse of its own. Nor
+`ALREADY_IN_USE`: the shipped source holds nothing between connections, so two
+streams may share one.
 
-A peer certificate that is expired or not yet valid fails the handshake, even
-where it still chains to a trusted anchor. The contract asks for it to be
-reported with delivery continuing, because clock skew is the dominant cause and a
-device with a wrong clock is one whose logs you still want. Tracked as
-[#731](https://github.com/cososo-ltd/solid-syslog/issues/731).
+The at-rest policies raise every code their roles define.
 
-### The cipher policy does not bind a TLS 1.3 connection
+## What a connection is made with
 
-The cipher list is passed to OpenSSL unchanged and pins nothing of the library's
-own, as the contract asks. It governs TLS 1.2 and below only. OpenSSL has kept
-TLS 1.3 ciphersuites in a separate list since 1.1.1, and this adapter sets a
-protocol floor without a ceiling, so against a modern peer the negotiated
-connection uses OpenSSL's own TLS 1.3 defaults and the configured list has no
-effect on it. Tracked as
-[#733](https://github.com/cososo-ltd/solid-syslog/issues/733).
+The stream asks for a profile once per connection, and takes the expected peer
+name and the cipher policy from it. Nothing is stored between connections, so a
+change is a matter of returning something different and moving the stream's
+version.
 
-### The configuration is not checked when the stream is created
+Both of OpenSSL's cipher lists are selectable, because it keeps two: one governs
+TLS 1.2 and below, the other TLS 1.3, and since no protocol ceiling is pinned the
+second is usually the one in force. Leave either unset and OpenSSL's own default
+stands - for TLS 1.3 that is the suite RFC 8446 makes mandatory plus the two it
+recommends. A list that selects nothing fails `Open` before any handshake and
+is reported as `CIPHER_POLICY_REJECTED`, rather than falling back.
 
-A configuration missing something the stream cannot work without is accepted, and
-the fault appears on the first connection attempt rather than at setup. Tracked as
-[#732](https://github.com/cososo-ltd/solid-syslog/issues/732).
+The security level is pinned at 2 after the policy is applied, so a list
+carrying `@SECLEVEL=n` cannot lower it.
+
+Key-exchange groups and signature algorithms are not selectable here. TLS 1.3
+moved both out of the ciphersuite, so a policy naming a curve has nowhere to go
+yet.
+
+## Where it falls short of the contract
+
+Nowhere. Every obligation under [TLS obligations](../../tls.md) is met by this
+pack as shipped.

@@ -32,7 +32,7 @@ struct SolidSyslogResolver* SolidSyslogPosixResolver_Create(void)
     struct SolidSyslogResolver* handle = SolidSyslogNullResolver_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&PosixResolver_Allocator, index) == true)
     {
-        PosixResolver_Initialise(&PosixResolver_Pool[index].Base);
+        SolidSyslogPosixResolver_Initialise(&PosixResolver_Pool[index].Base);
         handle = &PosixResolver_Pool[index].Base;
     }
     else
@@ -79,5 +79,5 @@ static inline size_t PosixResolver_IndexFromHandle(const struct SolidSyslogResol
 static inline void PosixResolver_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    PosixResolver_Cleanup(&PosixResolver_Pool[index].Base);
+    SolidSyslogPosixResolver_Cleanup(&PosixResolver_Pool[index].Base);
 }

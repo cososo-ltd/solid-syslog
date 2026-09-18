@@ -7,7 +7,11 @@
 #include <openssl/bio.h>
 #include <openssl/prov_ssl.h>
 #include <openssl/ssl.h>
+#include <openssl/evp.h>
 #include <openssl/types.h>
+#include <openssl/x509.h>
+#include <openssl/x509_vfy.h>
+#include <openssl/x509v3.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -18,20 +22,29 @@
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogOpenSslCredentialsDefinition.h"
+#include "SolidSyslogTlsCredentialsInstalled.h"
+#include "SolidSyslogTlsFingerprint.h"
 #include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogOpenSslStreamErrors.h"
 #include "SolidSyslogOpenSslStreamPrivate.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource OpenSslStreamErrorSource = {"OpenSslStream"};
+const struct SolidSyslogErrorSource SolidSyslogOpenSslStreamErrorSource = {"OpenSslStream"};
 
 enum
 {
-    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1
+    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1,
+    OPENSSL_STREAM_SECURITY_LEVEL = 2
 };
 
 static uint32_t OpenSslStream_NullHandshakeTimeoutGetter(void* context);
+static uint32_t OpenSslStream_NullVersion(void* context);
+static void OpenSslStream_NullProfile(struct SolidSyslogOpenSslProfile* profile, void* context);
+static inline void OpenSslStream_PullProfile(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_ConfigProvidesHandshakeGetter(const struct SolidSyslogOpenSslStreamConfig* config);
+static inline bool OpenSslStream_ConfigProvidesVersion(const struct SolidSyslogOpenSslStreamConfig* config);
+static inline bool OpenSslStream_ConfigProvidesProfile(const struct SolidSyslogOpenSslStreamConfig* config);
 static inline uint32_t OpenSslStream_ResolveHandshakeTimeoutMs(struct SolidSyslogOpenSslStream* self);
 
 struct SolidSyslogAddress;
@@ -40,22 +53,57 @@ static inline struct SolidSyslogOpenSslStream* OpenSslStream_SelfFromBase(struct
 
 static inline bool OpenSslStream_AttachTransportBio(struct SolidSyslogOpenSslStream* self);
 static inline void OpenSslStream_Close(struct SolidSyslogStream* base);
+static uint32_t OpenSslStream_Version(struct SolidSyslogStream* base);
 static inline bool OpenSslStream_ConfigureCipherList(SSL_CTX* ctx, const char* cipherList);
-static inline bool OpenSslStream_ConfigureClientIdentity(
-    SSL_CTX* ctx,
-    const struct SolidSyslogOpenSslStreamConfig* config
-);
+static inline bool OpenSslStream_ConfigureCipherSuites(SSL_CTX* ctx, const char* cipherSuites);
 static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_NameBeginsWithADot(const char* name);
 static inline bool OpenSslStream_ConfigureProtocolFloor(SSL_CTX* ctx);
-static inline bool OpenSslStream_ConfigureSslContext(SSL_CTX* ctx, const struct SolidSyslogOpenSslStreamConfig* config);
-static inline bool OpenSslStream_ConfigureTrustAnchors(SSL_CTX* ctx, const char* caBundlePath);
-static inline SSL_CTX* OpenSslStream_CreateSslContext(const struct SolidSyslogOpenSslStreamConfig* config);
+static inline bool OpenSslStream_ConfigureCipherPolicy(SSL_CTX* ctx, const struct SolidSyslogOpenSslProfile* profile);
 static inline BIO* OpenSslStream_CreateTransportBio(struct SolidSyslogOpenSslStream* self);
 static inline BIO_METHOD* OpenSslStream_CreateTransportBioMethod(void);
 static inline bool OpenSslStream_InitSslContext(struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_InstallCredentials(struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed);
+static inline bool OpenSslStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed);
+static inline void OpenSslStream_ReleaseCredentials(struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_RequirePeerVerification(SSL_CTX* ctx);
+static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx);
+static inline void OpenSslStream_PinSecurityLevel(SSL_CTX* ctx);
+static inline void OpenSslStream_RefusePassphrasePrompts(SSL_CTX* ctx);
+static int OpenSslStream_RefusePassphrase(char* buf, int size, int rwflag, void* userdata);
+static inline void OpenSslStream_ApplySessionPolicy(SSL* ssl);
+static inline bool OpenSslStream_PeerPresentedACertificate(struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_CarryChainObjectionToTheLeaf(
+    struct SolidSyslogOpenSslStream* self,
+    const X509_STORE_CTX* storeCtx
+);
+static inline bool OpenSslStream_CarriedChainObjectionStands(const struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_ChainTrustWasWaivedByPolicy(const struct SolidSyslogOpenSslStream* self, long verdict);
+static inline struct SolidSyslogOpenSslStream* OpenSslStream_SelfFromStoreCtx(X509_STORE_CTX* storeCtx);
+static inline int OpenSslStream_VerifyPinnedLeaf(
+    struct SolidSyslogOpenSslStream* self,
+    int preverifyOk,
+    X509_STORE_CTX* storeCtx
+);
+static inline bool OpenSslStream_LeafMatchesAPin(struct SolidSyslogOpenSslStream* self, X509_STORE_CTX* storeCtx);
+static inline const EVP_MD* OpenSslStream_DigestFor(enum SolidSyslogTlsHashAlgorithm algorithm);
+static bool OpenSslStream_DigestCertificate(
+    void* context,
+    enum SolidSyslogTlsHashAlgorithm algorithm,
+    uint8_t* digest,
+    size_t* length
+);
+static inline bool OpenSslStream_IsChainTrustWaived(
+    const struct SolidSyslogOpenSslStream* self,
+    const X509_STORE_CTX* storeCtx
+);
+static inline bool OpenSslStream_IsChainTrustError(int error);
 static inline bool OpenSslStream_InitSslSession(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStream* self);
+static inline enum SolidSyslogTlsStreamErrors OpenSslStream_RefusalDetail(struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_IsPeerNameMismatch(long verdict);
 static inline SolidSyslogSsize OpenSslStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static inline void OpenSslStream_ReleaseBioMethod(struct SolidSyslogOpenSslStream* self);
 static inline void OpenSslStream_ReleaseHandshakeState(struct SolidSyslogOpenSslStream* self);
@@ -67,13 +115,17 @@ static inline long OpenSslStream_TransportBioCtrl(BIO* bio, int cmd, long larg, 
 static inline int OpenSslStream_TransportBioRead(BIO* bio, char* buffer, int size);
 static inline int OpenSslStream_TransportBioWrite(BIO* bio, const char* buffer, int size);
 
-void OpenSslStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogOpenSslStreamConfig* config)
+void SolidSyslogOpenSslStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogOpenSslStreamConfig* config
+)
 {
     struct SolidSyslogOpenSslStream* self = OpenSslStream_SelfFromBase(base);
     self->Base.Open = OpenSslStream_Open;
     self->Base.Send = OpenSslStream_Send;
     self->Base.Read = OpenSslStream_Read;
     self->Base.Close = OpenSslStream_Close;
+    self->Base.Version = OpenSslStream_Version;
     self->Config = *config;
     if (OpenSslStream_ConfigProvidesHandshakeGetter(config) == false)
     {
@@ -83,9 +135,20 @@ void OpenSslStream_Initialise(struct SolidSyslogStream* base, const struct Solid
         self->Config.GetHandshakeTimeoutMs = OpenSslStream_NullHandshakeTimeoutGetter;
         self->Config.HandshakeTimeoutContext = NULL;
     }
+    if (OpenSslStream_ConfigProvidesVersion(config) == false)
+    {
+        self->Config.Version = OpenSslStream_NullVersion;
+        self->Config.VersionContext = NULL;
+    }
+    if (OpenSslStream_ConfigProvidesProfile(config) == false)
+    {
+        self->Config.Profile = OpenSslStream_NullProfile;
+        self->Config.ProfileContext = NULL;
+    }
     self->Ctx = NULL;
     self->Ssl = NULL;
     self->BioMethod = NULL;
+    self->CredentialsInstalled = false;
 }
 
 static inline struct SolidSyslogOpenSslStream* OpenSslStream_SelfFromBase(struct SolidSyslogStream* base)
@@ -93,7 +156,7 @@ static inline struct SolidSyslogOpenSslStream* OpenSslStream_SelfFromBase(struct
     return (struct SolidSyslogOpenSslStream*) base;
 }
 
-void OpenSslStream_Cleanup(struct SolidSyslogStream* base)
+void SolidSyslogOpenSslStream_Cleanup(struct SolidSyslogStream* base)
 {
     /* Close first so an integrator who destroys a still-Open stream doesn't
      * leak the underlying transport. Close now releases the SSL, BIO_METHOD
@@ -122,7 +185,14 @@ static inline void OpenSslStream_Close(struct SolidSyslogStream* base)
        leaks an SSL_CTX every round. NULL-guarded, so the Open-failure tail and
        Cleanup that also call it stay double-free safe. */
     OpenSslStream_ReleaseSslContext(self);
+    OpenSslStream_ReleaseCredentials(self);
     SolidSyslogStream_Close(self->Config.Transport);
+}
+
+static uint32_t OpenSslStream_Version(struct SolidSyslogStream* base)
+{
+    struct SolidSyslogOpenSslStream* self = OpenSslStream_SelfFromBase(base);
+    return self->Config.Version(self->Config.VersionContext);
 }
 
 static inline void OpenSslStream_ReleaseHandshakeState(struct SolidSyslogOpenSslStream* self)
@@ -149,6 +219,30 @@ static inline void OpenSslStream_ReleaseBioMethod(struct SolidSyslogOpenSslStrea
     }
 }
 
+/* An anonymous key exchange sends no Certificate message, so verification never
+ * runs, the verify callback is never invoked, and a handshake completes against
+ * a peer nothing has authorised. SSL_VERIFY_PEER does not prevent it and the
+ * protocol floor does not either: OpenSSL's own default cipher list excludes
+ * aNULL, but a profile naming ALL, ADH or aNULL puts it back.
+ *
+ * Checked as an outcome rather than by screening the cipher string, which has
+ * too many spellings to screen and would not close any other route to the same
+ * place. Reported as a configuration fault because that is what it is - the
+ * integrator is pointed at their own profile rather than at the collector. */
+static inline bool OpenSslStream_PeerPresentedACertificate(struct SolidSyslogOpenSslStream* self)
+{
+    bool ok = SSL_get0_peer_certificate(self->Ssl) != NULL;
+    if (!ok)
+    {
+        OpenSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
+        );
+    }
+    return ok;
+}
+
 static inline void OpenSslStream_ReleaseSslContext(struct SolidSyslogOpenSslStream* self)
 {
     if (self->Ctx != NULL)
@@ -161,9 +255,13 @@ static inline void OpenSslStream_ReleaseSslContext(struct SolidSyslogOpenSslStre
 static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogOpenSslStream* self = OpenSslStream_SelfFromBase(base);
+    OpenSslStream_PullProfile(self);
+    self->ChainObjection = X509_V_OK;
+    self->PinVerdict = SOLIDSYSLOG_TLS_AUTHORISATION_NO_MATCH;
     bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && OpenSslStream_InitSslContext(self) &&
-              OpenSslStream_InitSslSession(self) && OpenSslStream_AttachTransportBio(self) &&
-              OpenSslStream_ConfigureExpectedHostname(self) && OpenSslStream_PerformHandshake(self);
+              OpenSslStream_InstallCredentials(self) && OpenSslStream_InitSslSession(self) &&
+              OpenSslStream_AttachTransportBio(self) && OpenSslStream_ConfigureExpectedHostname(self) &&
+              OpenSslStream_PerformHandshake(self) && OpenSslStream_PeerPresentedACertificate(self);
     if (!ok)
     {
         OpenSslStream_Close(base);
@@ -171,72 +269,333 @@ static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const stru
     return ok;
 }
 
+/* One snapshot per connection: every later step reads the same answer, however
+ * the integrator's own state moves while the handshake is in progress. */
+static inline void OpenSslStream_PullProfile(struct SolidSyslogOpenSslStream* self)
+{
+    self->Profile = (struct SolidSyslogOpenSslProfile) {0};
+    self->Config.Profile(&self->Profile, self->Config.ProfileContext);
+}
+
 static inline bool OpenSslStream_InitSslContext(struct SolidSyslogOpenSslStream* self)
 {
-    self->Ctx = OpenSslStream_CreateSslContext(&self->Config);
-    bool ok = self->Ctx != NULL;
+    self->Ctx = SSL_CTX_new(TLS_client_method());
+    bool ok = (self->Ctx != NULL) && OpenSslStream_RequirePeerVerification(self->Ctx) &&
+              OpenSslStream_ConfigureProtocolFloor(self->Ctx);
     if (!ok)
     {
         OpenSslStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
+            SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED
         );
     }
-    return ok;
-}
-
-static inline SSL_CTX* OpenSslStream_CreateSslContext(const struct SolidSyslogOpenSslStreamConfig* config)
-{
-    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
-    if ((ctx != NULL) && !OpenSslStream_ConfigureSslContext(ctx, config))
+    else if (!OpenSslStream_ConfigureCipherPolicy(self->Ctx, &self->Profile))
     {
-        SSL_CTX_free(ctx);
-        ctx = NULL;
-    }
-    return ctx;
-}
-
-static inline bool OpenSslStream_ConfigureSslContext(SSL_CTX* ctx, const struct SolidSyslogOpenSslStreamConfig* config)
-{
-    return OpenSslStream_ConfigureTrustAnchors(ctx, config->CaBundlePath) &&
-           OpenSslStream_ConfigureClientIdentity(ctx, config) && OpenSslStream_ConfigureProtocolFloor(ctx) &&
-           OpenSslStream_ConfigureCipherList(ctx, config->CipherList);
-}
-
-static inline bool OpenSslStream_ConfigureClientIdentity(
-    SSL_CTX* ctx,
-    const struct SolidSyslogOpenSslStreamConfig* config
-)
-{
-    bool hasCert = config->ClientCertChainPath != NULL;
-    bool hasKey = config->ClientKeyPath != NULL;
-    bool ok = true;
-    if (hasCert != hasKey)
-    {
-        ok = false; /* mTLS is all-or-nothing - partial config is a setup error */
-    }
-    else if (hasCert)
-    {
-        ok = (SSL_CTX_use_certificate_chain_file(ctx, config->ClientCertChainPath) == 1) &&
-             (SSL_CTX_use_PrivateKey_file(ctx, config->ClientKeyPath, SSL_FILETYPE_PEM) == 1) &&
-             (SSL_CTX_check_private_key(ctx) == 1);
+        /* An integrator string the library rejected: their configuration, not
+         * the library failing to come up. */
+        OpenSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED
+        );
+        ok = false;
     }
     else
     {
-        /* neither cert nor key supplied - server-auth-only TLS, ok stays true */
+        OpenSslStream_PinSecurityLevel(self->Ctx);
+        OpenSslStream_RefusePassphrasePrompts(self->Ctx);
+    }
+    if (!ok)
+    {
+        OpenSslStream_ReleaseSslContext(self);
     }
     return ok;
 }
 
-static inline bool OpenSslStream_ConfigureTrustAnchors(SSL_CTX* ctx, const char* caBundlePath)
+static inline bool OpenSslStream_ConfigureCipherPolicy(SSL_CTX* ctx, const struct SolidSyslogOpenSslProfile* profile)
 {
-    bool ok = SSL_CTX_load_verify_locations(ctx, caBundlePath, NULL) == 1;
+    return OpenSslStream_ConfigureCipherList(ctx, profile->CipherList) &&
+           OpenSslStream_ConfigureCipherSuites(ctx, profile->CipherSuites);
+}
+
+/* Asked once per connection, after the context exists and before the handshake,
+ * so material is fetched only for a connection actually being made. The flag is
+ * set before the call rather than after it: the contract is one Release per
+ * Install call whatever that call returned, which is what spares every backend
+ * a rollback path of its own. */
+static inline bool OpenSslStream_InstallCredentials(struct SolidSyslogOpenSslStream* self)
+{
+    self->Installed.TrustAnchorsInstalled = false;
+    self->Installed.Fingerprints = NULL;
+    self->Installed.FingerprintCount = 0U;
+    self->CredentialsInstalled = true;
+    bool ok = self->Config.Credentials->Install(self->Config.Credentials, self->Ctx, &self->Installed);
+    if (ok && !OpenSslStream_PeerIsAuthorisable(&self->Installed))
+    {
+        OpenSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
+        );
+        ok = false;
+    }
     if (ok)
     {
-        SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+        ok = OpenSslStream_FingerprintsAreUsable(&self->Installed);
     }
     return ok;
+}
+
+/* A peer is authorised by a chain to trust anchors or by a pinned certificate
+ * fingerprint, and RFC 5425 4.2.1 makes the second sufficient on its own. With
+ * neither, there is nothing to check the peer against, so the connection stops
+ * rather than reaching a peer this stream cannot identify. */
+static inline bool OpenSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed)
+{
+    return installed->TrustAnchorsInstalled || (installed->FingerprintCount > 0U);
+}
+
+/* Inspected before the handshake, so a pin that cannot match is reported as
+ * bad configuration rather than as a refused peer. */
+static inline bool OpenSslStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed)
+{
+    bool ok = true;
+    enum SolidSyslogTlsFingerprintListState state =
+        SolidSyslogTlsFingerprint_InspectList(installed->Fingerprints, installed->FingerprintCount);
+    if (state == SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED)
+    {
+        OpenSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED
+        );
+        ok = false;
+    }
+    else if (state == SOLIDSYSLOG_TLS_FINGERPRINT_LIST_USES_SHA1)
+    {
+        OpenSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_SHA1
+        );
+    }
+    else
+    {
+        /* Well formed, or no pins at all. */
+    }
+    return ok;
+}
+
+/* Answers every Install, so the integrator is always told when the credential
+ * window has closed - including on the paths where Open failed part way. */
+static inline void OpenSslStream_ReleaseCredentials(struct SolidSyslogOpenSslStream* self)
+{
+    if (self->CredentialsInstalled)
+    {
+        self->CredentialsInstalled = false;
+        self->Config.Credentials->Release(self->Config.Credentials);
+    }
+}
+
+/* RFC 9325 s4.5: RSA and DH of 2048 bits, curves of 224, no SHA-1 signatures -
+ * OpenSSL's level 2. Pinned after the cipher policy, because a cipher string
+ * may carry @SECLEVEL=n and a distribution may build with another default;
+ * the contract pins the floor rather than inheriting the build's. */
+static inline void OpenSslStream_PinSecurityLevel(SSL_CTX* ctx)
+{
+    SSL_CTX_set_security_level(ctx, OPENSSL_STREAM_SECURITY_LEVEL);
+}
+
+/* An encrypted private key otherwise prompts on the controlling terminal, from
+ * the servicing thread. Refusing makes it fail to load instead, which the
+ * credentials source reports. */
+static inline void OpenSslStream_RefusePassphrasePrompts(SSL_CTX* ctx)
+{
+    SSL_CTX_set_default_passwd_cb(ctx, OpenSslStream_RefusePassphrase);
+}
+
+/* NOLINTBEGIN(bugprone-easily-swappable-parameters,readability-non-const-parameter) -- OpenSSL's pem_password_cb signature */
+static int OpenSslStream_RefusePassphrase(char* buf, int size, int rwflag, void* userdata)
+/* NOLINTEND(bugprone-easily-swappable-parameters,readability-non-const-parameter) */
+{
+    (void) buf;
+    (void) size;
+    (void) rwflag;
+    (void) userdata;
+    return 0;
+}
+
+/* Set outright rather than alongside loading trust anchors, because the peer is
+ * also authorisable by a pinned fingerprint with no anchors at all. Tying the
+ * two together is how a fingerprint-only configuration would come to verify
+ * nothing - the one place in this design that could fail open rather than
+ * closed. */
+static inline bool OpenSslStream_RequirePeerVerification(SSL_CTX* ctx)
+{
+    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, OpenSslStream_VerifyPeer);
+    return true;
+}
+
+/* Called for each certificate in the chain; only the leaf, at depth 0, is
+ * pinned. Returning zero above the leaf would stop verification before the
+ * leaf was reached, so a pinned peer with no anchors waives the chain-trust
+ * errors there as well. */
+static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx)
+{
+    struct SolidSyslogOpenSslStream* self = OpenSslStream_SelfFromStoreCtx(storeCtx);
+    int verdict = preverifyOk;
+
+    if (X509_STORE_CTX_get_error_depth(storeCtx) == 0)
+    {
+        if (self->Installed.FingerprintCount > 0U)
+        {
+            verdict = OpenSslStream_VerifyPinnedLeaf(self, preverifyOk, storeCtx);
+        }
+    }
+    else if (OpenSslStream_CarryChainObjectionToTheLeaf(self, storeCtx))
+    {
+        verdict = 1;
+    }
+    else
+    {
+        /* OpenSSL's own verdict stands. */
+    }
+
+    return verdict;
+}
+
+/* Wherever pins are configured, a chain-trust objection above the leaf is
+ * recorded and carried past rather than refused here. OpenSSL reports an
+ * unreachable chain at the top of what the peer presented and abandons
+ * verification on the first refusal, so refusing at depth would leave the
+ * leaf's pin uncompared - and the contract's order, a fingerprint before a
+ * chain that reaches no anchor, would be decided by how many certificates the
+ * peer happened to send. Forgiving it is the leaf's decision, not this one. */
+static inline bool OpenSslStream_CarryChainObjectionToTheLeaf(
+    struct SolidSyslogOpenSslStream* self,
+    const X509_STORE_CTX* storeCtx
+)
+{
+    int error = X509_STORE_CTX_get_error(storeCtx);
+    bool carry = (self->Installed.FingerprintCount > 0U) && OpenSslStream_IsChainTrustError(error);
+    if (carry)
+    {
+        self->ChainObjection = error;
+    }
+    return carry;
+}
+
+/* OpenSSL files the SSL running the handshake under a well-known ex_data index
+ * on the store context; the stream is that SSL's app data. */
+static inline struct SolidSyslogOpenSslStream* OpenSslStream_SelfFromStoreCtx(X509_STORE_CTX* storeCtx)
+{
+    SSL* ssl = (SSL*) X509_STORE_CTX_get_ex_data(storeCtx, SSL_get_ex_data_X509_STORE_CTX_idx());
+    return (struct SolidSyslogOpenSslStream*) SSL_get_app_data(ssl);
+}
+
+static inline int OpenSslStream_VerifyPinnedLeaf(
+    struct SolidSyslogOpenSslStream* self,
+    int preverifyOk,
+    X509_STORE_CTX* storeCtx
+)
+{
+    int verdict = preverifyOk;
+    if (!OpenSslStream_LeafMatchesAPin(self, storeCtx))
+    {
+        X509_STORE_CTX_set_error(storeCtx, X509_V_ERR_APPLICATION_VERIFICATION);
+        verdict = 0;
+    }
+    else if (OpenSslStream_CarriedChainObjectionStands(self))
+    {
+        /* The pin matched, but anchors were configured too and the chain
+         * reached none of them. Both were asked for, so both must pass. */
+        X509_STORE_CTX_set_error(storeCtx, self->ChainObjection);
+        verdict = 0;
+    }
+    else if (OpenSslStream_IsChainTrustWaived(self, storeCtx))
+    {
+        verdict = 1;
+    }
+    else
+    {
+        /* OpenSSL's own verdict stands. */
+    }
+    return verdict;
+}
+
+/* An objection carried past a deeper certificate is forgiven only where the pin
+ * is the whole of the authorisation. With anchors configured as well, it is the
+ * fault that refuses the peer once the pin has been found to match. */
+static inline bool OpenSslStream_CarriedChainObjectionStands(const struct SolidSyslogOpenSslStream* self)
+{
+    return self->Installed.TrustAnchorsInstalled && (self->ChainObjection != X509_V_OK);
+}
+
+static inline bool OpenSslStream_LeafMatchesAPin(struct SolidSyslogOpenSslStream* self, X509_STORE_CTX* storeCtx)
+{
+    X509* leaf = X509_STORE_CTX_get_current_cert(storeCtx);
+    self->PinVerdict = SolidSyslogTlsFingerprint_Authorise(
+        self->Installed.Fingerprints,
+        self->Installed.FingerprintCount,
+        OpenSslStream_DigestCertificate,
+        leaf
+    );
+    return self->PinVerdict == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED;
+}
+
+static bool OpenSslStream_DigestCertificate(
+    void* context,
+    enum SolidSyslogTlsHashAlgorithm algorithm,
+    uint8_t* digest,
+    size_t* length
+)
+{
+    const X509* leaf = (const X509*) context;
+    const EVP_MD* md = OpenSslStream_DigestFor(algorithm);
+    unsigned int written = 0U;
+    bool ok = (md != NULL) && (X509_digest(leaf, md, digest, &written) == 1);
+    *length = (size_t) written;
+    return ok;
+}
+
+/* An algorithm this pack does not name has no digest, so a hash added to Core
+ * and not handled here refuses the peer rather than being digested as
+ * something else. */
+static inline const EVP_MD* OpenSslStream_DigestFor(enum SolidSyslogTlsHashAlgorithm algorithm)
+{
+    const EVP_MD* md = NULL;
+    if (algorithm == SOLIDSYSLOG_TLS_HASH_SHA1)
+    {
+        md = EVP_sha1();
+    }
+    else if (algorithm == SOLIDSYSLOG_TLS_HASH_SHA256)
+    {
+        md = EVP_sha256();
+    }
+    else
+    {
+        /* Left as NULL. */
+    }
+    return md;
+}
+
+static inline bool OpenSslStream_IsChainTrustWaived(
+    const struct SolidSyslogOpenSslStream* self,
+    const X509_STORE_CTX* storeCtx
+)
+{
+    return (self->Installed.FingerprintCount > 0U) && !self->Installed.TrustAnchorsInstalled &&
+           OpenSslStream_IsChainTrustError(X509_STORE_CTX_get_error(storeCtx));
+}
+
+/* The errors a missing trust anchor alone produces. Every other code describes
+ * the certificate itself, which a pin does not vouch for. */
+static inline bool OpenSslStream_IsChainTrustError(int error)
+{
+    return (error == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) || (error == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN) ||
+           (error == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY) || (error == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT) ||
+           (error == X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE) || (error == X509_V_ERR_CERT_UNTRUSTED);
 }
 
 /* A floor, and deliberately no ceiling: RFC 9662, which updates RFC 5425,
@@ -256,19 +615,45 @@ static inline bool OpenSslStream_ConfigureCipherList(SSL_CTX* ctx, const char* c
     return ok;
 }
 
+/* Separate from the list above because OpenSSL has kept TLS 1.3 ciphersuites in
+ * their own list since 1.1.1, and no ceiling is pinned - so a policy expressed
+ * only through CipherList would not bind the version usually negotiated. */
+static inline bool OpenSslStream_ConfigureCipherSuites(SSL_CTX* ctx, const char* cipherSuites)
+{
+    bool ok = true;
+    if (cipherSuites != NULL)
+    {
+        ok = SSL_CTX_set_ciphersuites(ctx, cipherSuites) == 1;
+    }
+    return ok;
+}
+
 static inline bool OpenSslStream_InitSslSession(struct SolidSyslogOpenSslStream* self)
 {
     self->Ssl = SSL_new(self->Ctx);
-    bool ok = self->Ssl != NULL;
-    if (!ok)
+    bool ok = (self->Ssl != NULL) && (SSL_set_app_data(self->Ssl, self) == 1);
+    if (ok)
+    {
+        OpenSslStream_ApplySessionPolicy(self->Ssl);
+    }
+    else
     {
         OpenSslStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SESSION_INIT_FAILED
+            SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
         );
     }
     return ok;
+}
+
+/* RFC 9525 s6.3 and RFC 5425 s5.2: a wildcard is the whole of the left-most
+ * label, never part of one. And a client that never needs to renegotiate does
+ * not let the collector make it. */
+static inline void OpenSslStream_ApplySessionPolicy(SSL* ssl)
+{
+    SSL_set_hostflags(ssl, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+    (void) SSL_set_options(ssl, SSL_OP_NO_RENEGOTIATION);
 }
 
 static inline bool OpenSslStream_AttachTransportBio(struct SolidSyslogOpenSslStream* self)
@@ -285,7 +670,7 @@ static inline bool OpenSslStream_AttachTransportBio(struct SolidSyslogOpenSslStr
         OpenSslStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SESSION_INIT_FAILED
+            SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
         );
     }
     return ok;
@@ -399,18 +784,34 @@ static inline long OpenSslStream_TransportBioCtrl(BIO* bio, int cmd, long larg, 
 static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpenSslStream* self)
 {
     bool ok = true;
-    const char* serverName = self->Config.ServerName;
+    const char* serverName = self->Profile.ServerName;
     if (serverName == NULL)
     {
         /* No expected identity supplied - the handshake will accept any cert that
-         * chains to a trusted CA, so the peer is unverified. Surface it as a
-         * WARNING (still connect, preserving the IP-pinned / closed-network case)
-         * rather than swallowing the MITM-class default silently. */
+         * chains to a trusted CA, so the peer is unverified unless a pin names
+         * it. Surface it as a WARNING (still connect, preserving the IP-pinned /
+         * closed-network case) rather than swallowing the MITM-class default
+         * silently. */
+        if (self->Installed.FingerprintCount == 0U)
+        {
+            OpenSslStream_Report(
+                SOLIDSYSLOG_SEVERITY_WARNING,
+                SOLIDSYSLOG_CAT_BAD_CONFIG,
+                SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+            );
+        }
+    }
+    else if (OpenSslStream_NameBeginsWithADot(serverName))
+    {
+        /* X509_check_host reads a checked name beginning with a dot as a
+         * sub-domain pattern matching any depth below it - not the one identity
+         * the profile declares. Refused before it reaches SNI or the verifier. */
         OpenSslStream_Report(
-            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET
+            SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
         );
+        ok = false;
     }
     else if (serverName[0] != '\0')
     {
@@ -418,9 +819,9 @@ static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpe
         if (!ok)
         {
             OpenSslStream_Report(
-                SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+                SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
-                SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET
+                SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
             );
         }
     }
@@ -431,6 +832,11 @@ static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpe
          * connect chain-only without a diagnostic. */
     }
     return ok;
+}
+
+static inline bool OpenSslStream_NameBeginsWithADot(const char* name)
+{
+    return name[0] == '.';
 }
 
 static inline bool OpenSslStream_IsRetryableSslError(int err)
@@ -455,6 +861,33 @@ static uint32_t OpenSslStream_NullHandshakeTimeoutGetter(void* context)
 static inline bool OpenSslStream_ConfigProvidesHandshakeGetter(const struct SolidSyslogOpenSslStreamConfig* config)
 {
     return (config != NULL) && (config->GetHandshakeTimeoutMs != NULL);
+}
+
+/* Null Object substituted at Initialise when the integrator installs no version
+ * function - reports an unchanging configuration, so the sender never reconnects
+ * on this stream's account. */
+static uint32_t OpenSslStream_NullVersion(void* context)
+{
+    (void) context;
+    return 0U;
+}
+
+static inline bool OpenSslStream_ConfigProvidesVersion(const struct SolidSyslogOpenSslStreamConfig* config)
+{
+    return (config != NULL) && (config->Version != NULL);
+}
+
+/* Null Object substituted at Initialise when the integrator supplies no profile -
+ * leaves every field at the library default. */
+static void OpenSslStream_NullProfile(struct SolidSyslogOpenSslProfile* profile, void* context)
+{
+    (void) context;
+    (void) profile;
+}
+
+static inline bool OpenSslStream_ConfigProvidesProfile(const struct SolidSyslogOpenSslStreamConfig* config)
+{
+    return (config != NULL) && (config->Profile != NULL);
 }
 
 /* Bridges the integrator-installed getter (or the Null Object substituted at
@@ -494,7 +927,7 @@ static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStrea
                 OpenSslStream_Report(
                     SOLIDSYSLOG_SEVERITY_ERROR,
                     SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
-                    SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_REJECTED
+                    OpenSslStream_RefusalDetail(self)
                 );
                 done = true;
             }
@@ -503,7 +936,7 @@ static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStrea
                 OpenSslStream_Report(
                     SOLIDSYSLOG_SEVERITY_WARNING,
                     SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
-                    SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_TIMEOUT
+                    SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT
                 );
                 done = true;
             }
@@ -515,6 +948,67 @@ static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStrea
         }
     }
     return result;
+}
+
+/* The verdict outlives the failed handshake - OpenSSL records it on the
+ * connection as path validation runs - so the refusal can name the check that
+ * produced it rather than the handshake that carried it. A verification failure
+ * this does not name individually reads as untrusted: the certificate did not
+ * validate, which is what the integrator has to act on. */
+static inline enum SolidSyslogTlsStreamErrors OpenSslStream_RefusalDetail(struct SolidSyslogOpenSslStream* self)
+{
+    enum SolidSyslogTlsStreamErrors detail = SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED;
+    long verdict = SSL_get_verify_result(self->Ssl);
+    if (self->PinVerdict == SOLIDSYSLOG_TLS_AUTHORISATION_DIGEST_UNAVAILABLE)
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE;
+    }
+    else if (verdict == X509_V_ERR_APPLICATION_VERIFICATION)
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED;
+    }
+    else if (OpenSslStream_IsPeerNameMismatch(verdict))
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
+    }
+    else if (verdict == X509_V_ERR_CERT_HAS_EXPIRED)
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED;
+    }
+    else if (verdict == X509_V_ERR_CERT_NOT_YET_VALID)
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
+    }
+    else if ((verdict != X509_V_OK) && !OpenSslStream_ChainTrustWasWaivedByPolicy(self, verdict))
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
+    }
+    else
+    {
+        /* Verification passed or never ran, so the refusal is a protocol or
+         * transport fault rather than one the peer's certificate explains. */
+    }
+    return detail;
+}
+
+/* Authorising by pin alone waives the chain-trust objection, and OpenSSL keeps
+ * the waived code in verify_result for the rest of the connection - it is
+ * deliberately sticky. So a refusal arriving later, when the collector rejects
+ * us or the connection drops, must not be read back out of it as a fault in the
+ * peer's certificate: that names the wrong end. */
+static inline bool OpenSslStream_ChainTrustWasWaivedByPolicy(const struct SolidSyslogOpenSslStream* self, long verdict)
+{
+    return (self->Installed.FingerprintCount > 0U) && !self->Installed.TrustAnchorsInstalled &&
+           OpenSslStream_IsChainTrustError((int) verdict);
+}
+
+/* An expected identity that parses as an IP literal is checked as an address
+ * rather than a name - SSL_set1_host installs it that way - so the two verdicts
+ * are one fault in the portable vocabulary, and an integrator configuring a
+ * collector by address is told the same thing as one configuring it by name. */
+static inline bool OpenSslStream_IsPeerNameMismatch(long verdict)
+{
+    return (verdict == X509_V_ERR_HOSTNAME_MISMATCH) || (verdict == X509_V_ERR_IP_ADDRESS_MISMATCH);
 }
 
 static inline bool OpenSslStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)

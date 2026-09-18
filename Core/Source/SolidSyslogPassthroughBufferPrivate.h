@@ -20,8 +20,8 @@ struct SolidSyslogPassthroughBuffer
     struct SolidSyslogSender* Sender;
 };
 
-void PassthroughBuffer_Initialise(struct SolidSyslogBuffer* base, struct SolidSyslogSender* sender);
-void PassthroughBuffer_Cleanup(struct SolidSyslogBuffer* base);
+void SolidSyslogPassthroughBuffer_Initialise(struct SolidSyslogBuffer* base, struct SolidSyslogSender* sender);
+void SolidSyslogPassthroughBuffer_Cleanup(struct SolidSyslogBuffer* base);
 
 static inline void PassthroughBuffer_Report(
     enum SolidSyslogSeverity severity,
@@ -29,7 +29,7 @@ static inline void PassthroughBuffer_Report(
     enum SolidSyslogPassthroughBufferErrors code
 )
 {
-    SolidSyslog_Error(severity, &PassthroughBufferErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPassthroughBufferErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPASSTHROUGHBUFFERPRIVATE_H */

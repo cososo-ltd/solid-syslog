@@ -40,7 +40,7 @@ struct SolidSyslogAddress* SolidSyslogLwipRawAddress_Create(void)
     if (SolidSyslogPoolAllocator_IndexIsValid(&LwipRawAddress_Allocator, index) == true)
     {
         handle = LwipRawAddress_HandleFromIndex(index);
-        LwipRawAddress_Initialise(handle);
+        SolidSyslogLwipRawAddress_Initialise(handle);
     }
     else
     {
@@ -92,5 +92,5 @@ static inline size_t LwipRawAddress_IndexFromHandle(const struct SolidSyslogAddr
 static inline void LwipRawAddress_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    LwipRawAddress_Cleanup(LwipRawAddress_HandleFromIndex(index));
+    SolidSyslogLwipRawAddress_Cleanup(LwipRawAddress_HandleFromIndex(index));
 }

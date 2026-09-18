@@ -40,7 +40,7 @@ struct SolidSyslogAddress* SolidSyslogPlusTcpAddress_Create(void)
     if (SolidSyslogPoolAllocator_IndexIsValid(&PlusTcpAddress_Allocator, index) == true)
     {
         handle = PlusTcpAddress_HandleFromIndex(index);
-        PlusTcpAddress_Initialise(handle);
+        SolidSyslogPlusTcpAddress_Initialise(handle);
     }
     else
     {
@@ -92,5 +92,5 @@ static inline size_t PlusTcpAddress_IndexFromHandle(const struct SolidSyslogAddr
 static inline void PlusTcpAddress_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    PlusTcpAddress_Cleanup(PlusTcpAddress_HandleFromIndex(index));
+    SolidSyslogPlusTcpAddress_Cleanup(PlusTcpAddress_HandleFromIndex(index));
 }

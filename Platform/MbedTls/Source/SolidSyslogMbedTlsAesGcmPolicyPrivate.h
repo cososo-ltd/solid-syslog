@@ -19,19 +19,19 @@ struct SolidSyslogMbedTlsAesGcmPolicy
     struct SolidSyslogMbedTlsAesGcmPolicyConfig Config;
 };
 
-void MbedTlsAesGcmPolicy_Initialise(
+void SolidSyslogMbedTlsAesGcmPolicy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogMbedTlsAesGcmPolicyConfig* config
 );
-void MbedTlsAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base);
+void SolidSyslogMbedTlsAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base);
 
 static inline void MbedTlsAesGcmPolicy_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogMbedTlsAesGcmPolicyErrors code
+    enum SolidSyslogAesGcmPolicyErrors code
 )
 {
-    SolidSyslog_Error(severity, &MbedTlsAesGcmPolicyErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogMbedTlsAesGcmPolicyErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGMBEDTLSAESGCMPOLICYPRIVATE_H */

@@ -71,6 +71,7 @@ set(TEST_SOURCES
     SolidSyslogNullStoreTest.cpp
     SolidSyslogNullSecurityPolicyTest.cpp
     SolidSyslogCrc16Test.cpp
+    SolidSyslogTlsFingerprintTest.cpp
     SolidSyslogCrc16PolicyTest.cpp
     SolidSyslogPrivalTest.cpp
     SolidSyslogErrorTest.cpp
@@ -164,6 +165,9 @@ if(SOLIDSYSLOG_OPENSSL)
         SolidSyslogOpenSslHmacSha256PolicyTest.cpp
         SolidSyslogOpenSslAesGcmPolicyTest.cpp
         OpenSslFakeTest.cpp
+        OpenSslCredentialsFake.c
+        SolidSyslogOpenSslNullCredentialsTest.cpp
+        SolidSyslogOpenSslPemFileCredentialsTest.cpp
     )
 endif()
 

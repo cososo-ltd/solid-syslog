@@ -19,8 +19,8 @@ struct SolidSyslogPlusFatFile
     FF_FILE* Fp;
 };
 
-void PlusFatFile_Initialise(struct SolidSyslogFile* base);
-void PlusFatFile_Cleanup(struct SolidSyslogFile* base);
+void SolidSyslogPlusFatFile_Initialise(struct SolidSyslogFile* base);
+void SolidSyslogPlusFatFile_Cleanup(struct SolidSyslogFile* base);
 
 static inline void PlusFatFile_Report(
     enum SolidSyslogSeverity severity,
@@ -28,7 +28,7 @@ static inline void PlusFatFile_Report(
     enum SolidSyslogPlusFatFileErrors code
 )
 {
-    SolidSyslog_Error(severity, &PlusFatFileErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPlusFatFileErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPLUSFATFILEPRIVATE_H */

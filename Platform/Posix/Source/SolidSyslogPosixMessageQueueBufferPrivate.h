@@ -31,13 +31,13 @@ struct SolidSyslogPosixMessageQueueBuffer
     size_t MaxMessageSize;
 };
 
-bool PosixMessageQueueBuffer_Initialise(
+bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     size_t maxMessageSize,
     long maxMessages,
     size_t slotIndex
 );
-void PosixMessageQueueBuffer_Cleanup(struct SolidSyslogBuffer* base);
+void SolidSyslogPosixMessageQueueBuffer_Cleanup(struct SolidSyslogBuffer* base);
 
 static inline void PosixMessageQueueBuffer_Report(
     enum SolidSyslogSeverity severity,
@@ -45,7 +45,7 @@ static inline void PosixMessageQueueBuffer_Report(
     enum SolidSyslogPosixMessageQueueBufferErrors code
 )
 {
-    SolidSyslog_Error(severity, &PosixMessageQueueBufferErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPosixMessageQueueBufferErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFERPRIVATE_H */

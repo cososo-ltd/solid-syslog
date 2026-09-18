@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    # feature/tls-rework is the E39 integration branch: PRs merge into it
+    # rather than main, so CI has to follow it or nothing below is checked.
+    # Both lists drop back to main alone when that branch merges.
+    branches: [ main, feature/tls-rework ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, feature/tls-rework ]
 
 permissions:
   contents: read
@@ -903,6 +906,7 @@ jobs:
           -DconfigSUPPORT_STATIC_ALLOCATION=1
           -DconfigUSE_MUTEXES=1
           -DipconfigUSE_TCP=1
+          -DMBEDTLS_HAVE_TIME_DATE=1
           -ICore/Interface
           -IPlatform/StdAtomic/Interface
           -IPlatform/Posix/Interface
@@ -958,6 +962,7 @@ jobs:
           -DconfigSUPPORT_STATIC_ALLOCATION=1
           -DconfigUSE_MUTEXES=1
           -DipconfigUSE_TCP=1
+          -DMBEDTLS_HAVE_TIME_DATE=1
           -ICore/Interface
           -IPlatform/StdAtomic/Interface
           -IPlatform/Posix/Interface
@@ -997,6 +1002,7 @@ jobs:
             -DconfigSUPPORT_STATIC_ALLOCATION=1 \
             -DconfigUSE_MUTEXES=1 \
             -DipconfigUSE_TCP=1 \
+            -DMBEDTLS_HAVE_TIME_DATE=1 \
             -ICore/Interface \
             -IPlatform/StdAtomic/Interface \
             -IPlatform/Posix/Interface \

@@ -17,8 +17,8 @@ struct SolidSyslogLwipRawResolver
     struct SolidSyslogResolver Base;
 };
 
-void LwipRawResolver_Initialise(struct SolidSyslogResolver* base);
-void LwipRawResolver_Cleanup(struct SolidSyslogResolver* base);
+void SolidSyslogLwipRawResolver_Initialise(struct SolidSyslogResolver* base);
+void SolidSyslogLwipRawResolver_Cleanup(struct SolidSyslogResolver* base);
 
 static inline void LwipRawResolver_Report(
     enum SolidSyslogSeverity severity,
@@ -26,7 +26,7 @@ static inline void LwipRawResolver_Report(
     enum SolidSyslogLwipRawResolverErrors code
 )
 {
-    SolidSyslog_Error(severity, &LwipRawResolverErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogLwipRawResolverErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGLWIPRAWRESOLVERPRIVATE_H */

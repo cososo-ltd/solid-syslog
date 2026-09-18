@@ -11,6 +11,8 @@
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/types.h>
+#include <openssl/x509.h>
+#include <openssl/x509_vfy.h>
 
 /* -------------------------------------------------------------------------
  * Captured state - one section per OpenSSL API call. Tests read these via
@@ -121,9 +123,43 @@ static SSL_CTX* lastLoadVerifyLocationsCtxArg;
 static const char* lastCaBundlePath;
 static bool loadVerifyLocationsFails;
 
+/* Session and context policy setters. A cipher string may carry @SECLEVEL=n,
+ * so SSL_CTX_set_cipher_list resets the recorded level: asserting the level
+ * after Open then proves it was set after the policy, where OpenSSL would
+ * actually let it stand. */
+static int lastSecurityLevel;
+static pem_password_cb* lastPasswdCb;
+static unsigned int lastHostflags;
+static uint64_t lastSslOptions;
+
 /* SSL_CTX_set_verify */
 static SSL_CTX* lastSetVerifyCtxArg;
 static int lastVerifyMode;
+static SSL_verify_cb lastVerifyCallback;
+
+/* SSL ex_data / X509_STORE_CTX / X509_digest */
+enum
+{
+    FAKE_SSL_STORE_CTX_IDX = 7,
+    FAKE_DIGEST_MAX = 64
+};
+
+static int lastSslExDataIndex;
+static void* lastSslExData;
+static bool sslExDataFails;
+static int fakeStoreCtxStorage;
+static int fakeCertStorage;
+static int storeCtxDepth;
+static bool peerCertificatePresent = true;
+/* Real SSL_connect runs the verify callback during the handshake; a refusal
+ * there fails the connect and leaves the store error as the verify result. */
+static bool connectRunsVerifyCallback;
+static int storeCtxError;
+static uint8_t certDigest[FAKE_DIGEST_MAX];
+static size_t certDigestLength;
+static bool digestFails;
+static const EVP_MD* lastDigestMd;
+static int fakeSha1Storage;
 
 /* SSL_CTX_ctrl (SET_MIN_PROTO_VERSION) */
 static SSL_CTX* lastSslCtxCtrlCtxArg;
@@ -135,6 +171,11 @@ static int setCipherListCallCount;
 static SSL_CTX* lastSetCipherListCtxArg;
 static const char* lastCipherList;
 static bool setCipherListFails;
+
+/* SSL_CTX_set_ciphersuites */
+static int setCipherSuitesCallCount;
+static const char* lastCipherSuites;
+static bool setCipherSuitesFails;
 
 /* SSL_new */
 static int sslNewCallCount;
@@ -211,6 +252,9 @@ static int readReturnValue;
 static int getErrorCallCount;
 static int getErrorReturnValue;
 
+/* SSL_get_verify_result */
+static long verifyResultValue;
+
 /* BIO_set_flags / BIO_clear_flags */
 static int bioSetFlagsCallCount;
 static int lastBioSetFlags;
@@ -260,6 +304,21 @@ void OpenSslFake_Reset(void)
     loadVerifyLocationsFails = false;
     lastSetVerifyCtxArg = NULL;
     lastVerifyMode = 0;
+    lastSecurityLevel = 0;
+    lastPasswdCb = NULL;
+    lastHostflags = 0U;
+    lastSslOptions = 0U;
+    lastVerifyCallback = NULL;
+    lastSslExDataIndex = -1;
+    lastSslExData = NULL;
+    sslExDataFails = false;
+    storeCtxDepth = 0;
+    storeCtxError = X509_V_OK;
+    peerCertificatePresent = true;
+    connectRunsVerifyCallback = false;
+    certDigestLength = 0;
+    digestFails = false;
+    lastDigestMd = NULL;
     lastSslCtxCtrlCtxArg = NULL;
     lastMinProtoVersion = 0;
     minProtoVersionFails = false;
@@ -267,6 +326,9 @@ void OpenSslFake_Reset(void)
     lastSetCipherListCtxArg = NULL;
     lastCipherList = NULL;
     setCipherListFails = false;
+    setCipherSuitesCallCount = 0;
+    lastCipherSuites = NULL;
+    setCipherSuitesFails = false;
     sslNewCallCount = 0;
     lastSslNewCtxArg = NULL;
     sslNewFails = false;
@@ -324,6 +386,7 @@ void OpenSslFake_Reset(void)
     readReturnValue = 0;
     getErrorCallCount = 0;
     getErrorReturnValue = 0;
+    verifyResultValue = X509_V_OK;
     bioSetFlagsCallCount = 0;
     lastBioSetFlags = 0;
     bioClearFlagsCallCount = 0;
@@ -408,6 +471,26 @@ SSL_CTX* OpenSslFake_LastSetVerifyCtxArg(void)
 int OpenSslFake_LastVerifyMode(void)
 {
     return lastVerifyMode;
+}
+
+int OpenSslFake_LastSecurityLevel(void)
+{
+    return lastSecurityLevel;
+}
+
+pem_password_cb* OpenSslFake_LastPasswdCb(void)
+{
+    return lastPasswdCb;
+}
+
+unsigned int OpenSslFake_LastHostflags(void)
+{
+    return lastHostflags;
+}
+
+uint64_t OpenSslFake_LastSslOptions(void)
+{
+    return lastSslOptions;
 }
 
 SSL_CTX* OpenSslFake_LastSslCtxCtrlCtxArg(void)
@@ -666,9 +749,164 @@ void OpenSslFake_SetLoadVerifyLocationsFails(bool fails)
 
 void SSL_CTX_set_verify(SSL_CTX* ctx, int mode, SSL_verify_cb verify_callback)
 {
-    (void) verify_callback;
     lastSetVerifyCtxArg = ctx;
     lastVerifyMode = mode;
+    lastVerifyCallback = verify_callback;
+}
+
+void SSL_CTX_set_security_level(SSL_CTX* ctx, int level)
+{
+    (void) ctx;
+    lastSecurityLevel = level;
+}
+
+void SSL_CTX_set_default_passwd_cb(SSL_CTX* ctx, pem_password_cb* cb)
+{
+    (void) ctx;
+    lastPasswdCb = cb;
+}
+
+void SSL_set_hostflags(SSL* s, unsigned int flags)
+{
+    (void) s;
+    lastHostflags = flags;
+}
+
+uint64_t SSL_set_options(SSL* s, uint64_t op)
+{
+    (void) s;
+    lastSslOptions |= op;
+    return lastSslOptions;
+}
+
+SSL_verify_cb OpenSslFake_LastVerifyCallback(void)
+{
+    return lastVerifyCallback;
+}
+
+int SSL_set_ex_data(SSL* ssl, int idx, void* data)
+{
+    (void) ssl;
+    lastSslExDataIndex = idx;
+    lastSslExData = data;
+    return sslExDataFails ? 0 : 1;
+}
+
+void* SSL_get_ex_data(const SSL* ssl, int idx)
+{
+    (void) ssl;
+    return (idx == lastSslExDataIndex) ? lastSslExData : NULL;
+}
+
+int OpenSslFake_LastSslExDataIndex(void)
+{
+    return lastSslExDataIndex;
+}
+
+void* OpenSslFake_LastSslExData(void)
+{
+    return lastSslExData;
+}
+
+void OpenSslFake_SetSslExDataFails(bool fails)
+{
+    sslExDataFails = fails;
+}
+
+int SSL_get_ex_data_X509_STORE_CTX_idx(void)
+{
+    return FAKE_SSL_STORE_CTX_IDX;
+}
+
+void* X509_STORE_CTX_get_ex_data(const X509_STORE_CTX* ctx, int idx)
+{
+    (void) ctx;
+    return (idx == FAKE_SSL_STORE_CTX_IDX) ? (void*) &fakeSslStorage : NULL;
+}
+
+int X509_STORE_CTX_get_error_depth(const X509_STORE_CTX* ctx)
+{
+    (void) ctx;
+    return storeCtxDepth;
+}
+
+int X509_STORE_CTX_get_error(const X509_STORE_CTX* ctx)
+{
+    (void) ctx;
+    return storeCtxError;
+}
+
+void X509_STORE_CTX_set_error(X509_STORE_CTX* ctx, int s)
+{
+    (void) ctx;
+    storeCtxError = s;
+}
+
+X509* X509_STORE_CTX_get_current_cert(const X509_STORE_CTX* ctx)
+{
+    (void) ctx;
+    return (X509*) &fakeCertStorage;
+}
+
+X509* SSL_get0_peer_certificate(const SSL* ssl)
+{
+    (void) ssl;
+    return peerCertificatePresent ? (X509*) &fakeCertStorage : NULL;
+}
+
+void OpenSslFake_SetPeerCertificatePresent(bool present)
+{
+    peerCertificatePresent = present;
+}
+
+int X509_digest(const X509* data, const EVP_MD* type, unsigned char* md, unsigned int* len)
+{
+    (void) data;
+    lastDigestMd = type;
+    memcpy(md, certDigest, certDigestLength);
+    *len = (unsigned int) certDigestLength;
+    return digestFails ? 0 : 1;
+}
+
+const EVP_MD* EVP_sha1(void)
+{
+    return (const EVP_MD*) &fakeSha1Storage;
+}
+
+X509_STORE_CTX* OpenSslFake_StoreCtx(void)
+{
+    return (X509_STORE_CTX*) &fakeStoreCtxStorage;
+}
+
+void OpenSslFake_SetStoreCtxDepth(int depth)
+{
+    storeCtxDepth = depth;
+}
+
+void OpenSslFake_SetStoreCtxError(int error)
+{
+    storeCtxError = error;
+}
+
+int OpenSslFake_StoreCtxError(void)
+{
+    return storeCtxError;
+}
+
+void OpenSslFake_SetCertDigest(const uint8_t* digest, size_t length)
+{
+    memcpy(certDigest, digest, length);
+    certDigestLength = length;
+}
+
+void OpenSslFake_SetDigestFails(bool fails)
+{
+    digestFails = fails;
+}
+
+const void* OpenSslFake_LastDigestMd(void)
+{
+    return lastDigestMd;
 }
 
 /* SSL_CTX_set_min_proto_version is a macro forwarding to SSL_CTX_ctrl; fake
@@ -693,6 +931,7 @@ void OpenSslFake_SetMinProtoVersionFails(bool fails)
 
 int SSL_CTX_set_cipher_list(SSL_CTX* ctx, const char* str)
 {
+    lastSecurityLevel = 0;
     setCipherListCallCount++;
     lastSetCipherListCtxArg = ctx;
     lastCipherList = str;
@@ -717,6 +956,29 @@ SSL_CTX* OpenSslFake_LastSetCipherListCtxArg(void)
 const char* OpenSslFake_LastCipherList(void)
 {
     return lastCipherList;
+}
+
+int SSL_CTX_set_ciphersuites(SSL_CTX* ctx, const char* str)
+{
+    (void) ctx;
+    setCipherSuitesCallCount++;
+    lastCipherSuites = str;
+    return setCipherSuitesFails ? 0 : 1;
+}
+
+void OpenSslFake_SetCipherSuitesFails(bool fails)
+{
+    setCipherSuitesFails = fails;
+}
+
+int OpenSslFake_SetCipherSuitesCallCount(void)
+{
+    return setCipherSuitesCallCount;
+}
+
+const char* OpenSslFake_LastCipherSuites(void)
+{
+    return lastCipherSuites;
 }
 
 SSL* SSL_new(SSL_CTX* ctx)
@@ -889,7 +1151,24 @@ int SSL_connect(SSL* ssl)
         int idx = (callIndex < connectReturnSequenceLen) ? callIndex : (connectReturnSequenceLen - 1);
         rc = connectReturnSequence[idx];
     }
+    /* A refusal from the callback wins over any scripted result, as it does in
+     * the real handshake. */
+    if (connectRunsVerifyCallback && (lastVerifyCallback != NULL))
+    {
+        storeCtxDepth = 0;
+        storeCtxError = X509_V_OK;
+        if (lastVerifyCallback(1, OpenSslFake_StoreCtx()) == 0)
+        {
+            verifyResultValue = storeCtxError;
+            rc = -1;
+        }
+    }
     return rc;
+}
+
+void OpenSslFake_SetConnectRunsVerifyCallback(bool runs)
+{
+    connectRunsVerifyCallback = runs;
 }
 
 void OpenSslFake_SetConnectFails(bool fails)
@@ -966,6 +1245,17 @@ void OpenSslFake_SetGetErrorReturn(int err)
 int OpenSslFake_GetErrorCallCount(void)
 {
     return getErrorCallCount;
+}
+
+long SSL_get_verify_result(const SSL* ssl)
+{
+    (void) ssl;
+    return verifyResultValue;
+}
+
+void OpenSslFake_SetVerifyResult(long value)
+{
+    verifyResultValue = value;
 }
 
 /* BIO_set_flags / BIO_clear_flags are macros in OpenSSL that forward to these

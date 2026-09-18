@@ -32,7 +32,7 @@ struct SolidSyslogFile* SolidSyslogWindowsFile_Create(void)
     struct SolidSyslogFile* handle = SolidSyslogNullFile_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&WindowsFile_Allocator, index) == true)
     {
-        WindowsFile_Initialise(&WindowsFile_Pool[index].Base);
+        SolidSyslogWindowsFile_Initialise(&WindowsFile_Pool[index].Base);
         handle = &WindowsFile_Pool[index].Base;
     }
     else
@@ -79,5 +79,5 @@ static inline size_t WindowsFile_IndexFromHandle(const struct SolidSyslogFile* b
 static inline void WindowsFile_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    WindowsFile_Cleanup(&WindowsFile_Pool[index].Base);
+    SolidSyslogWindowsFile_Cleanup(&WindowsFile_Pool[index].Base);
 }

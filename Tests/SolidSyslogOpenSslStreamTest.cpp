@@ -2,12 +2,14 @@
 #include <openssl/bio.h>
 #include <openssl/prov_ssl.h>
 #include <openssl/types.h>
+#include <openssl/x509v3.h>
 #include <stddef.h>
 #include <stdint.h>
 
 #include "AddressFake.h"
 #include "CppUTest/TestHarness.h"
 #include "ErrorHandlerFake.h"
+#include "OpenSslCredentialsFake.h"
 #include "OpenSslFake.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPrival.h"
@@ -25,11 +27,12 @@ using namespace CososoTesting;
 #define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode) \
     {                                                                                                 \
         LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                         \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                                   \
-        POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());                     \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory());                    \
-        UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail());                          \
-        LONGS_EQUAL((expectedSeverity), ErrorHandlerFake_LastSeverity());                             \
+        CHECK_ERROR_REPORTED_ONCE(                                                                    \
+            (expectedSeverity),                                                                       \
+            &SolidSyslogOpenSslStreamErrorSource,                                                     \
+            (expectedCategory),                                                                       \
+            (expectedCode)                                                                            \
+        );                                                                                            \
     }
 
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
@@ -38,6 +41,14 @@ using namespace CososoTesting;
 class TEST_SolidSyslogOpenSslStream_ReadReturnsNegativeOneOnHardErrorAndClosesSsl_Test;
 class TEST_SolidSyslogOpenSslStream_ReadReturnsNegativeOneOnZeroReturnAndClosesSsl_Test;
 class TEST_SolidSyslogOpenSslStream_SendClosesTransportOnWriteFailure_Test;
+
+/* One RFC 5425 4.2.2 pin and the digest that matches it. */
+static const char* const TEST_SHA256_PINS[] = {
+    "sha-256:00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F"
+};
+static const uint8_t TEST_SHA256_DIGEST[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A,
+                                               0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
+                                               0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F};
 
 static int NoOpSleepCallCount;
 static int g_lastSleepMs;
@@ -67,6 +78,43 @@ extern "C" uint32_t FakeGetHandshakeTimeoutMs(void* context)
     FakeGetHandshakeTimeoutMs_LastContext = context;
     return FakeGetHandshakeTimeoutMs_ReturnValue;
 }
+
+/* Stands in for whatever the integrator bumps when the credentials, the expected
+ * peer name or the cipher list change. */
+uint32_t FakeVersion_ReturnValue = 0;
+void* FakeVersion_LastContext = nullptr;
+
+void FakeVersion_Reset()
+{
+    FakeVersion_ReturnValue = 0;
+    FakeVersion_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel - overwritten on first call */
+}
+
+extern "C" uint32_t FakeVersion(void* context)
+{
+    FakeVersion_LastContext = context;
+    return FakeVersion_ReturnValue;
+}
+
+/* The TLS profile the stream pulls at Open. Tests set the fields they care
+ * about; anything left alone is what an integrator would leave to the library. */
+struct SolidSyslogOpenSslProfile FakeProfile_Value;
+int FakeProfile_CallCount = 0;
+void* FakeProfile_LastContext = nullptr;
+
+void FakeProfile_Reset()
+{
+    FakeProfile_Value = {};
+    FakeProfile_CallCount = 0;
+    FakeProfile_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel - overwritten on first call */
+}
+
+extern "C" void FakeProfile(struct SolidSyslogOpenSslProfile* profile, void* context)
+{
+    FakeProfile_CallCount++;
+    FakeProfile_LastContext = context;
+    *profile = FakeProfile_Value;
+}
 } // namespace
 
 // clang-format off
@@ -82,11 +130,16 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         OpenSslFake_Reset();
         ErrorHandlerFake_Install(nullptr);
         FakeGetHandshakeTimeoutMs_Reset();
+        FakeVersion_Reset();
+        FakeProfile_Reset();
         NoOpSleepCallCount = 0;
         g_lastSleepMs    = 0;
         transport        = StreamFake_Create();
         config.Transport = transport;
         config.Sleep     = NoOpSleep;
+        OpenSslCredentialsFake_Reset();
+        config.Credentials = OpenSslCredentialsFake_Get();
+        config.Profile     = FakeProfile;
         stream = SolidSyslogOpenSslStream_Create(&config);
         addr = AddressFake_Get();
     }
@@ -108,7 +161,7 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         StreamFake_Destroy(transport);
     }
 
-    /* Tests needing config tweaks (CipherList, ClientCertChainPath, ServerName, ...)
+    /* Tests needing config tweaks (Credentials, Rng, ...)
      * call this to release setup()'s pool slot, mutate `config`, then re-Create.
      * Fully resets the fixture (transport, OpenSslFake counters, error handler)
      * so the test body observes counts from this Open onwards only - matters
@@ -122,6 +175,18 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         transport        = StreamFake_Create();
         config.Transport = transport;
         stream           = SolidSyslogOpenSslStream_Create(&config);
+    }
+
+    /* Arrange a peer whose certificate OpenSSL refused with `verifyResult`.
+     * ServerName is supplied so the refusal is the only error source - an unset one
+     * would also emit the unverified-peer WARNING. */
+    void ArrangeCertificateVerificationFailure(long verifyResult)
+    {
+        FakeProfile_Value.ServerName = "logs.example";
+        ReCreateStreamWithUpdatedConfig();
+        OpenSslFake_SetConnectFails(true);
+        OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
+        OpenSslFake_SetVerifyResult(verifyResult);
     }
 
     /* Drive the registered BIO read callback with the given transport return -
@@ -170,6 +235,44 @@ TEST_GROUP(SolidSyslogOpenSslStream)
     {
         SolidSyslogStream_Open(stream, addr);
         OpenSslFake_SetWriteFails(true);
+    }
+
+    /* Open, then drive the verify callback for the leaf certificate, with
+       `preverifyOk` as OpenSSL's own verdict on it. */
+    [[nodiscard]] int OpenThenVerifyLeaf(int preverifyOk) const
+    {
+        SolidSyslogStream_Open(stream, addr);
+        return OpenSslFake_LastVerifyCallback()(preverifyOk, OpenSslFake_StoreCtx());
+    }
+
+    /* Drive the verify callback for a certificate above the leaf, with
+       `preverifyOk` as OpenSSL's verdict on it and `error` the objection it
+       raised. */
+    [[nodiscard]] int OpenThenVerifyIssuer(int preverifyOk, int error) const
+    {
+        OpenSslFake_SetStoreCtxDepth(1);
+        OpenSslFake_SetStoreCtxError(error);
+        SolidSyslogStream_Open(stream, addr);
+        return OpenSslFake_LastVerifyCallback()(preverifyOk, OpenSslFake_StoreCtx());
+    }
+
+    /* Drive the callback for a certificate above the leaf and then for the leaf
+       itself, on one connection, and return what the leaf's invocation decided.
+       Two invocations of one connection is the only way to observe an objection
+       being carried from the first to the second. */
+    [[nodiscard]] int OpenThenVerifyIssuerThenLeaf(int issuerError, int leafPreverifyOk) const
+    {
+        OpenSslFake_SetStoreCtxDepth(1);
+        OpenSslFake_SetStoreCtxError(issuerError);
+        SolidSyslogStream_Open(stream, addr);
+        auto* verify = OpenSslFake_LastVerifyCallback();
+        /* Carrying the objection is the behaviour under test: OpenSSL abandons
+           verification on a refusal, so a 0 here would mean the leaf callback
+           never runs in a real handshake however this helper behaves. */
+        LONGS_EQUAL(1, verify(0, OpenSslFake_StoreCtx()));
+        OpenSslFake_SetStoreCtxDepth(0);
+        OpenSslFake_SetStoreCtxError(X509_V_OK);
+        return verify(leafPreverifyOk, OpenSslFake_StoreCtx());
     }
 
     void SendShortMessage() const
@@ -239,15 +342,6 @@ TEST(SolidSyslogOpenSslStream, OpenCreatesSslContext)
     CALLED_FAKE(OpenSslFake_CtxNew, ONCE);
 }
 
-TEST(SolidSyslogOpenSslStream, OpenLoadsCaBundleFromConfig)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.CaBundlePath = "/some/path/ca.pem";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    SolidSyslogStream_Open(stream, addr);
-    STRCMP_EQUAL("/some/path/ca.pem", OpenSslFake_LastCaBundlePath());
-}
-
 TEST(SolidSyslogOpenSslStream, OpenRequiresPeerVerification)
 {
     SolidSyslogStream_Open(stream, addr);
@@ -260,11 +354,51 @@ TEST(SolidSyslogOpenSslStream, OpenSetsTls12Floor)
     LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_LastMinProtoVersion());
 }
 
+/* RFC 9325 s4.5: 112-bit security - RSA and DH of 2048 bits, curves of 224,
+   no SHA-1 signatures. Level 2 is what OpenSSL builds with by default, but a
+   distribution can build with another, and a profile's CipherList may carry
+   @SECLEVEL=n. The fake resets the level when a cipher list is set, so this
+   also proves the level is pinned after the policy rather than before it. */
+TEST(SolidSyslogOpenSslStream, OpenPinsSecurityLevel2AfterTheCipherPolicy)
+{
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(2, OpenSslFake_LastSecurityLevel());
+}
+
+/* An encrypted PEM key otherwise prompts on the controlling terminal from the
+   servicing thread. The callback refuses, so the key fails to load and is
+   reported as CLIENT_CREDENTIAL_NOT_INSTALLED instead. */
+TEST(SolidSyslogOpenSslStream, OpenInstallsAPassphraseCallbackThatRefusesRatherThanPrompts)
+{
+    SolidSyslogStream_Open(stream, addr);
+    pem_password_cb* cb = OpenSslFake_LastPasswdCb();
+    CHECK_TRUE(cb != nullptr);
+    if (cb != nullptr)
+    {
+        char buf[8];
+        LONGS_EQUAL(0, cb(buf, sizeof(buf), 0, nullptr));
+    }
+}
+
+/* RFC 9525 s6.3 and RFC 5425 s5.2: a wildcard is the whole of the left-most
+   label, never part of one. */
+TEST(SolidSyslogOpenSslStream, OpenRefusesPartialWildcardsInThePeerName)
+{
+    SolidSyslogStream_Open(stream, addr);
+    CHECK_TRUE((OpenSslFake_LastHostflags() & X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS) != 0U);
+}
+
+/* A client that never needs to renegotiate does not let the collector make it. */
+TEST(SolidSyslogOpenSslStream, OpenDisablesRenegotiation)
+{
+    SolidSyslogStream_Open(stream, addr);
+    CHECK_TRUE((OpenSslFake_LastSslOptions() & SSL_OP_NO_RENEGOTIATION) != 0U);
+}
+
 TEST(SolidSyslogOpenSslStream, OpenPassesCipherListToSslCtx)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.CipherList = "ECDHE+AESGCM";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    FakeProfile_Value.CipherList = "ECDHE+AESGCM";
+    ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     STRCMP_EQUAL("ECDHE+AESGCM", OpenSslFake_LastCipherList());
 }
@@ -277,25 +411,51 @@ TEST(SolidSyslogOpenSslStream, OpenSkipsCipherListSetupWhenNotConfigured)
 
 TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenCipherListRejected)
 {
-    config.CipherList = "not-a-real-cipher";
+    FakeProfile_Value.CipherList = "not-a-real-cipher";
     ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetCipherListFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED
     );
 }
 
 TEST(SolidSyslogOpenSslStream, CipherListFailureFreesCtx)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.CipherList = "not-a-real-cipher";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    FakeProfile_Value.CipherList = "not-a-real-cipher";
+    ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetCipherListFails(true);
     SolidSyslogStream_Open(stream, addr);
     CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenPassesCipherSuitesToSslCtx)
+{
+    FakeProfile_Value.CipherSuites = "TLS_AES_256_GCM_SHA384";
+    ReCreateStreamWithUpdatedConfig();
+    SolidSyslogStream_Open(stream, addr);
+    STRCMP_EQUAL("TLS_AES_256_GCM_SHA384", OpenSslFake_LastCipherSuites());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenSkipsCipherSuitesSetupWhenNotConfigured)
+{
+    SolidSyslogStream_Open(stream, addr);
+    CALLED_FAKE(OpenSslFake_SetCipherSuites, NEVER);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenCipherSuitesRejected)
+{
+    FakeProfile_Value.CipherSuites = "NOT-A-REAL-SUITE";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetCipherSuitesFails(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED
+    );
 }
 
 TEST(SolidSyslogOpenSslStream, OpenCreatesSslSession)
@@ -346,41 +506,40 @@ TEST(SolidSyslogOpenSslStream, OpenPassesSslToConnect)
     POINTERS_EQUAL(OpenSslFake_LastSslReturned(), OpenSslFake_LastConnectSslArg());
 }
 
-TEST(SolidSyslogOpenSslStream, OpenSetsSniHostnameFromConfig)
+TEST(SolidSyslogOpenSslStream, OpenSetsSniHostnameFromTheProfile)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ServerName = "logs.example";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     STRCMP_EQUAL("logs.example", OpenSslFake_LastSniHostname());
 }
 
 TEST(SolidSyslogOpenSslStream, OpenSetsExpectedCertHostname)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ServerName = "logs.example";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     STRCMP_EQUAL("logs.example", OpenSslFake_LastSet1Host());
 }
 
 TEST(SolidSyslogOpenSslStream, OpenSkipsHostnameSetupWhenServerNameIsNull)
 {
-    /* Default config.ServerName is NULL */
+    /* The profile leaves ServerName unset. */
     SolidSyslogStream_Open(stream, addr);
     POINTERS_EQUAL(NULL, OpenSslFake_LastSet1Host());
 }
 
 TEST(SolidSyslogOpenSslStream, OpenWarnsWhenServerNameIsNull)
 {
-    /* Default config.ServerName is NULL - peer identity is unverified, which the
+    /* The profile leaves ServerName unset - peer identity is unverified, which the
      * library must surface rather than swallow (S12.28). */
     SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    POINTERS_EQUAL(&OpenSslStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET, ErrorHandlerFake_LastDetail());
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogOpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+    );
 }
 
 TEST(SolidSyslogOpenSslStream, OpenStillConnectsWhenServerNameIsNull)
@@ -394,7 +553,7 @@ TEST(SolidSyslogOpenSslStream, OpenStillConnectsWhenServerNameIsNull)
 TEST(SolidSyslogOpenSslStream, OpenDoesNotWarnWhenServerNameIsEmpty)
 {
     /* Empty string is the deliberate opt-out - no diagnostic. */
-    config.ServerName = "";
+    FakeProfile_Value.ServerName = "";
     ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
@@ -402,7 +561,7 @@ TEST(SolidSyslogOpenSslStream, OpenDoesNotWarnWhenServerNameIsEmpty)
 
 TEST(SolidSyslogOpenSslStream, OpenSkipsHostnameSetupWhenServerNameIsEmpty)
 {
-    config.ServerName = "";
+    FakeProfile_Value.ServerName = "";
     ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     POINTERS_EQUAL(NULL, OpenSslFake_LastSet1Host());
@@ -410,7 +569,7 @@ TEST(SolidSyslogOpenSslStream, OpenSkipsHostnameSetupWhenServerNameIsEmpty)
 
 TEST(SolidSyslogOpenSslStream, OpenConnectsWhenServerNameIsEmpty)
 {
-    config.ServerName = "";
+    FakeProfile_Value.ServerName = "";
     ReCreateStreamWithUpdatedConfig();
     CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
 }
@@ -546,7 +705,7 @@ TEST(SolidSyslogOpenSslStream, DestroyClosesTransportWhenStillOpen)
 
     CALLED_FAKE_ON(StreamFake_Close, transport, ONCE);
     /* Re-create so teardown's Destroy targets a live slot rather than a
-       stale handle (which would fire SOLIDSYSLOG_OPENSSL_STREAM_ERROR_UNKNOWN_DESTROY). */
+       stale handle (which would fire SOLIDSYSLOG_TLS_STREAM_ERROR_UNKNOWN_DESTROY). */
     stream = SolidSyslogOpenSslStream_Create(&config);
 }
 
@@ -621,12 +780,6 @@ TEST(SolidSyslogOpenSslStream, OpenPassesClientMethodToCtxNew)
     POINTERS_EQUAL(TLS_client_method(), OpenSslFake_LastCtxNewMethodArg());
 }
 
-TEST(SolidSyslogOpenSslStream, OpenPassesCtxFromNewToLoadVerifyLocations)
-{
-    SolidSyslogStream_Open(stream, addr);
-    POINTERS_EQUAL(OpenSslFake_LastCtxReturned(), OpenSslFake_LastLoadVerifyLocationsCtxArg());
-}
-
 TEST(SolidSyslogOpenSslStream, OpenPassesCtxFromNewToSetVerify)
 {
     SolidSyslogStream_Open(stream, addr);
@@ -671,18 +824,16 @@ TEST(SolidSyslogOpenSslStream, OpenPassesSameBioForReadAndWrite)
 
 TEST(SolidSyslogOpenSslStream, OpenPassesSslToSniCtrl)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ServerName = "logs.example";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     POINTERS_EQUAL(OpenSslFake_LastSslReturned(), OpenSslFake_LastSslCtrlSslArg());
 }
 
 TEST(SolidSyslogOpenSslStream, OpenPassesSslFromNewToSet1Host)
 {
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ServerName = "logs.example";
-    stream = SolidSyslogOpenSslStream_Create(&config);
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     POINTERS_EQUAL(OpenSslFake_LastSslReturned(), OpenSslFake_LastSet1HostSslArg());
 }
@@ -733,7 +884,7 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenHandshakeFails)
      * OpenSslFake_SetConnectFails(true) returns -1 from SSL_connect and
      * SSL_get_error reports SSL_ERROR_SSL (the default for SetGetErrorReturn) -
      * a non-retryable hard error, which is the HANDSHAKE_REJECTED branch. */
-    config.ServerName = "logs.example";
+    FakeProfile_Value.ServerName = "logs.example";
     ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetConnectFails(true);
     OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
@@ -741,35 +892,128 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenHandshakeFails)
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_REJECTED
+        SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateHasExpired)
+{
+    ArrangeCertificateVerificationFailure(X509_V_ERR_CERT_HAS_EXPIRED);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateIsNotYetValid)
+{
+    ArrangeCertificateVerificationFailure(X509_V_ERR_CERT_NOT_YET_VALID);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerNameDidNotMatch)
+{
+    ArrangeCertificateVerificationFailure(X509_V_ERR_HOSTNAME_MISMATCH);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerAddressDidNotMatch)
+{
+    ArrangeCertificateVerificationFailure(X509_V_ERR_IP_ADDRESS_MISMATCH);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateIsNotTrusted)
+{
+    ArrangeCertificateVerificationFailure(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+    );
+}
+
+/* An anonymous ciphersuite - reachable whenever an integrator's cipher list
+   names ALL, ADH or aNULL - makes the server send no Certificate message at
+   all. Verification then has nothing to run on, the verify callback is never
+   invoked, and the handshake succeeds against a peer nothing has authorised.
+   SSL_VERIFY_PEER does not prevent it, and neither does the TLS 1.2 floor. */
+TEST(SolidSyslogOpenSslStream, OpenRefusesAPeerThatPresentedNoCertificate)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetPeerCertificatePresent(false);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(
+        transport,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
     );
 }
 
 TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSet1HostFails)
 {
-    config.ServerName = "logs.example";
+    FakeProfile_Value.ServerName = "logs.example";
     ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetSet1HostFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(
         transport,
-        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
     );
+}
+
+/* OpenSSL reads a checked name that begins with a dot as a sub-domain pattern
+   matching any depth below it - not the one identity the profile declares.
+   Refused before either library call, so it reaches neither SNI nor the
+   verifier. */
+TEST(SolidSyslogOpenSslStream, OpenRefusesAServerNameBeginningWithADot)
+{
+    FakeProfile_Value.ServerName = ".logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(
+        transport,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+    );
+    POINTERS_EQUAL(nullptr, OpenSslFake_LastSniHostname());
 }
 
 TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSniHostnameSetupFails)
 {
-    config.ServerName = "logs.example";
+    FakeProfile_Value.ServerName = "logs.example";
     ReCreateStreamWithUpdatedConfig();
     OpenSslFake_SetSniHostnameFails(true);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(
         transport,
-        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SERVER_NAME_NOT_SET
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
     );
 }
 
@@ -780,7 +1024,7 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenCtxNewFails)
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED
     );
 }
 
@@ -791,24 +1035,15 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSslNewFails)
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SESSION_INIT_FAILED
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
     );
 }
 
-TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenLoadVerifyLocationsFails)
+/* The context is built before the credentials are asked for, so a credentials
+ * source that cannot produce its material must not leak it. */
+TEST(SolidSyslogOpenSslStream, CredentialsInstallFailureFreesCtx)
 {
-    OpenSslFake_SetLoadVerifyLocationsFails(true);
-    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(
-        transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
-    );
-}
-
-TEST(SolidSyslogOpenSslStream, LoadVerifyLocationsFailureFreesCtx)
-{
-    OpenSslFake_SetLoadVerifyLocationsFails(true);
+    OpenSslCredentialsFake_SetInstallSucceeds(false);
     SolidSyslogStream_Open(stream, addr);
     CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
 }
@@ -820,7 +1055,7 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenMinProtoVersionFails)
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED
     );
 }
 
@@ -838,7 +1073,7 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenBioMethNewFails)
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SESSION_INIT_FAILED
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
     );
 }
 
@@ -849,7 +1084,7 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenBioNewFails)
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_SESSION_INIT_FAILED
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
     );
 }
 
@@ -933,215 +1168,6 @@ TEST(SolidSyslogOpenSslStream, BioCreateCallbackMarksBioInitialised)
     LONGS_EQUAL(1, OpenSslFake_LastSetInitArg());
 }
 
-/* -------------------------------------------------------------------------
- * Mutual TLS - client certificate + private key (S03.09).
- * ------------------------------------------------------------------------- */
-
-TEST(SolidSyslogOpenSslStream, OpenSkipsClientIdentityWhenBothPathsAreNull)
-{
-    /* Default config: clientCertChainPath and clientKeyPath both NULL. */
-    SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(OpenSslFake_UseCertChainFile, NEVER);
-    CALLED_FAKE(OpenSslFake_UsePrivateKeyFile, NEVER);
-    CALLED_FAKE(OpenSslFake_CheckPrivateKey, NEVER);
-}
-
-TEST(SolidSyslogOpenSslStream, OpenLoadsClientCertChainFromConfig)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    SolidSyslogStream_Open(stream, addr);
-    STRCMP_EQUAL("/some/path/client.pem", OpenSslFake_LastClientCertChainPath());
-}
-
-TEST(SolidSyslogOpenSslStream, OpenLoadsClientKeyFromConfig)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    SolidSyslogStream_Open(stream, addr);
-    STRCMP_EQUAL("/some/path/client.key", OpenSslFake_LastClientKeyPath());
-    LONGS_EQUAL(SSL_FILETYPE_PEM, OpenSslFake_LastClientKeyFileType());
-}
-
-TEST(SolidSyslogOpenSslStream, OpenChecksClientKeyMatchesCert)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(OpenSslFake_CheckPrivateKey, ONCE);
-}
-
-TEST(SolidSyslogOpenSslStream, OpenFailsWhenOnlyClientCertIsSet)
-{
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = nullptr;
-    ReCreateStreamWithUpdatedConfig();
-    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(
-        transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
-    );
-}
-
-TEST(SolidSyslogOpenSslStream, OpenMakesNoClientIdentityCallsWhenOnlyClientCertIsSet)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = nullptr;
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(OpenSslFake_UseCertChainFile, NEVER);
-    CALLED_FAKE(OpenSslFake_UsePrivateKeyFile, NEVER);
-    CALLED_FAKE(OpenSslFake_CheckPrivateKey, NEVER);
-}
-
-TEST(SolidSyslogOpenSslStream, OpenFailsWhenOnlyClientKeyIsSet)
-{
-    config.ClientCertChainPath = nullptr;
-    config.ClientKeyPath = "/some/path/client.key";
-    ReCreateStreamWithUpdatedConfig();
-    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(
-        transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
-    );
-}
-
-TEST(SolidSyslogOpenSslStream, OpenMakesNoClientIdentityCallsWhenOnlyClientKeyIsSet)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = nullptr;
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(OpenSslFake_UseCertChainFile, NEVER);
-    CALLED_FAKE(OpenSslFake_UsePrivateKeyFile, NEVER);
-    CALLED_FAKE(OpenSslFake_CheckPrivateKey, NEVER);
-}
-
-TEST(SolidSyslogOpenSslStream, PartialClientIdentityConfigFreesCtx)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = nullptr;
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
-}
-
-TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenUseCertChainFileFails)
-{
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    ReCreateStreamWithUpdatedConfig();
-    OpenSslFake_SetUseCertChainFileFails(true);
-    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(
-        transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
-    );
-}
-
-TEST(SolidSyslogOpenSslStream, UseCertChainFileFailureFreesCtx)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    OpenSslFake_SetUseCertChainFileFails(true);
-    SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
-}
-
-TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenUsePrivateKeyFileFails)
-{
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    ReCreateStreamWithUpdatedConfig();
-    OpenSslFake_SetUsePrivateKeyFileFails(true);
-    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(
-        transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
-    );
-}
-
-TEST(SolidSyslogOpenSslStream, UsePrivateKeyFileFailureFreesCtx)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    OpenSslFake_SetUsePrivateKeyFileFails(true);
-    SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
-}
-
-TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenCheckPrivateKeyFails)
-{
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    ReCreateStreamWithUpdatedConfig();
-    OpenSslFake_SetCheckPrivateKeyFails(true);
-    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
-    CHECK_OPEN_UNWOUND_WITH_ERROR(
-        transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_CONTEXT_INIT_FAILED
-    );
-}
-
-TEST(SolidSyslogOpenSslStream, CheckPrivateKeyFailureFreesCtx)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    OpenSslFake_SetCheckPrivateKeyFails(true);
-    SolidSyslogStream_Open(stream, addr);
-    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
-}
-
-TEST(SolidSyslogOpenSslStream, OpenPassesCtxFromNewToUseCertChainFile)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    SolidSyslogStream_Open(stream, addr);
-    POINTERS_EQUAL(OpenSslFake_LastCtxReturned(), OpenSslFake_LastUseCertChainFileCtxArg());
-}
-
-TEST(SolidSyslogOpenSslStream, OpenPassesCtxFromNewToUsePrivateKeyFile)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    SolidSyslogStream_Open(stream, addr);
-    POINTERS_EQUAL(OpenSslFake_LastCtxReturned(), OpenSslFake_LastUsePrivateKeyFileCtxArg());
-}
-
-TEST(SolidSyslogOpenSslStream, OpenPassesCtxFromNewToCheckPrivateKey)
-{
-    SolidSyslogOpenSslStream_Destroy(stream);
-    config.ClientCertChainPath = "/some/path/client.pem";
-    config.ClientKeyPath = "/some/path/client.key";
-    stream = SolidSyslogOpenSslStream_Create(&config);
-    SolidSyslogStream_Open(stream, addr);
-    POINTERS_EQUAL(OpenSslFake_LastCtxReturned(), OpenSslFake_LastCheckPrivateKeyCtxArg());
-}
-
 TEST(SolidSyslogOpenSslStream, DefaultPortMatchesRfc5425)
 {
     LONGS_EQUAL(6514, SOLIDSYSLOG_TLS_DEFAULT_PORT);
@@ -1216,7 +1242,7 @@ TEST(SolidSyslogOpenSslStream, OpenFailsWhenHandshakeNeverCompletes)
     /* ServerName set so the handshake timeout is the only error source.
        SSL_connect always returns -1 with WANT_READ - handshake never makes
        progress, so the bounded budget should expire and Open returns false. */
-    config.ServerName = "logs.example";
+    FakeProfile_Value.ServerName = "logs.example";
     ReCreateStreamWithUpdatedConfig();
     ArrangePersistentHandshakeError(SSL_ERROR_WANT_READ);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
@@ -1224,7 +1250,7 @@ TEST(SolidSyslogOpenSslStream, OpenFailsWhenHandshakeNeverCompletes)
         transport,
         SOLIDSYSLOG_SEVERITY_WARNING,
         SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_TIMEOUT
+        SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT
     );
 }
 
@@ -1261,7 +1287,7 @@ TEST(SolidSyslogOpenSslStream, OpenFailsImmediatelyOnHardSslError)
 {
     /* ServerName set so the handshake hard error is the only error source.
        Non-WANT error (e.g. SSL_ERROR_SSL) is fail-fast - no retry budget burn. */
-    config.ServerName = "logs.example";
+    FakeProfile_Value.ServerName = "logs.example";
     ReCreateStreamWithUpdatedConfig();
     ArrangePersistentHandshakeError(SSL_ERROR_SSL);
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
@@ -1270,7 +1296,7 @@ TEST(SolidSyslogOpenSslStream, OpenFailsImmediatelyOnHardSslError)
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
-        SOLIDSYSLOG_OPENSSL_STREAM_ERROR_HANDSHAKE_REJECTED
+        SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED
     );
 }
 
@@ -1355,4 +1381,400 @@ TEST(SolidSyslogOpenSslStream, CloseAfterInternalCloseFromSendFailureDoesNotDoub
     SendShortMessage(); /* internal close */
     SolidSyslogStream_Close(stream); /* second close - must be safe */
     CHECK_SSL_SESSION_CLOSED();
+}
+
+/* -------------------------------------------------------------------------
+ * The credentials role - the stream asks for material per connection, and
+ * says when it has finished with it.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogOpenSslStream, OpenInstallsTheCredentialsOnTheContextItBuilt)
+{
+    SolidSyslogStream_Open(stream, addr);
+
+    LONGS_EQUAL(1, OpenSslCredentialsFake_InstallCallCount());
+    POINTERS_EQUAL(OpenSslFake_LastCtxReturned(), OpenSslCredentialsFake_LastInstallCtx());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenFailsWhenTheCredentialsCannotBeInstalled)
+{
+    OpenSslCredentialsFake_SetInstallSucceeds(false);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+}
+
+TEST(SolidSyslogOpenSslStream, OpenUnwindsWhenTheCredentialsCannotBeInstalled)
+{
+    OpenSslCredentialsFake_SetInstallSucceeds(false);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+}
+
+TEST(SolidSyslogOpenSslStream, OpenFailsWhenNothingAuthorisesThePeer)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatNothingAuthorisesThePeer)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogOpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenSucceedsWhenFingerprintsAuthoriseThePeerWithoutTrustAnchors)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+}
+
+/* The verify mode must be set whether or not trust anchors were installed -
+ * this is the one place in the change that could fail open rather than closed. */
+TEST(SolidSyslogOpenSslStream, OpenRequiresPeerVerificationWithoutTrustAnchors)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    LONGS_EQUAL(SSL_VERIFY_PEER, OpenSslFake_LastVerifyMode());
+}
+
+TEST(SolidSyslogOpenSslStream, CloseReleasesTheCredentials)
+{
+    SolidSyslogStream_Open(stream, addr);
+
+    SolidSyslogStream_Close(stream);
+
+    LONGS_EQUAL(1, OpenSslCredentialsFake_ReleaseCallCount());
+}
+
+TEST(SolidSyslogOpenSslStream, AFailedOpenStillReleasesTheCredentials)
+{
+    OpenSslCredentialsFake_SetInstallSucceeds(false);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    LONGS_EQUAL(1, OpenSslCredentialsFake_ReleaseCallCount());
+}
+
+TEST(SolidSyslogOpenSslStream, CloseWithoutAnOpenReleasesNothing)
+{
+    SolidSyslogStream_Close(stream);
+
+    LONGS_EQUAL(0, OpenSslCredentialsFake_ReleaseCallCount());
+}
+
+TEST(SolidSyslogOpenSslStream, ASecondCloseDoesNotReleaseTheCredentialsAgain)
+{
+    SolidSyslogStream_Open(stream, addr);
+
+    SolidSyslogStream_Close(stream);
+    SolidSyslogStream_Close(stream);
+
+    LONGS_EQUAL(1, OpenSslCredentialsFake_ReleaseCallCount());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenFailsWhenAPinIsMalformed)
+{
+    static const char* const pins[] = {"sha-256:AA"};
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslCredentialsFake_SetFingerprints(pins, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenWarnsOfASha1Pin)
+{
+    static const char* const pins[] = {"sha-1:E1:2D:53:2B:7C:6B:8A:29:A2:76:C8:64:36:0B:08:4B:7A:F1:9E:9D"};
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslCredentialsFake_SetFingerprints(pins, 1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogOpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_SHA1
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenDoesNotWarnOfAMissingServerNameWhenThePeerIsPinned)
+{
+    /* The profile leaves ServerName unset. */
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenInstallsAVerifyCallback)
+{
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_TRUE(OpenSslFake_LastVerifyCallback() != nullptr);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenAttachesTheStreamToTheSessionForTheVerifyCallback)
+{
+    SolidSyslogStream_Open(stream, addr);
+
+    LONGS_EQUAL(0, OpenSslFake_LastSslExDataIndex());
+    POINTERS_EQUAL(stream, OpenSslFake_LastSslExData());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenFailsWhenTheSessionCannotCarryTheStream)
+{
+    OpenSslFake_SetSslExDataFails(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackRefusesAPinnedPeerWhoseFingerprintMatchesNone)
+{
+    static const uint8_t presented[32] = {0xFF};
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(presented, sizeof(presented));
+
+    LONGS_EQUAL(0, OpenThenVerifyLeaf(1));
+    LONGS_EQUAL(X509_V_ERR_APPLICATION_VERIFICATION, OpenSslFake_StoreCtxError());
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackAcceptsAPinnedPeerWhoseFingerprintMatches)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+
+    LONGS_EQUAL(1, OpenThenVerifyLeaf(1));
+    LONGS_EQUAL(X509_V_OK, OpenSslFake_StoreCtxError());
+    POINTERS_EQUAL(EVP_sha256(), OpenSslFake_LastDigestMd());
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackDigestsWithSha1ForASha1Pin)
+{
+    static const char* const pins[] = {"sha-1:E1:2D:53:2B:7C:6B:8A:29:A2:76:C8:64:36:0B:08:4B:7A:F1:9E:9D"};
+    static const uint8_t presented[20] = {0xE1, 0x2D, 0x53, 0x2B, 0x7C, 0x6B, 0x8A, 0x29, 0xA2, 0x76,
+                                          0xC8, 0x64, 0x36, 0x0B, 0x08, 0x4B, 0x7A, 0xF1, 0x9E, 0x9D};
+    OpenSslCredentialsFake_SetFingerprints(pins, 1);
+    OpenSslFake_SetCertDigest(presented, sizeof(presented));
+
+    LONGS_EQUAL(1, OpenThenVerifyLeaf(1));
+    POINTERS_EQUAL(EVP_sha1(), OpenSslFake_LastDigestMd());
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackRefusesAPinnedPeerWhoseCertificateWillNotDigest)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetDigestFails(true);
+
+    LONGS_EQUAL(0, OpenThenVerifyLeaf(1));
+    LONGS_EQUAL(X509_V_ERR_APPLICATION_VERIFICATION, OpenSslFake_StoreCtxError());
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackLeavesAnIssuerCertificateToOpenSsl)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetStoreCtxDepth(1);
+
+    LONGS_EQUAL(1, OpenThenVerifyLeaf(1));
+    POINTERS_EQUAL(nullptr, OpenSslFake_LastDigestMd());
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackLeavesAnUnpinnedPeerToOpenSsl)
+{
+    LONGS_EQUAL(0, OpenThenVerifyLeaf(0));
+    POINTERS_EQUAL(nullptr, OpenSslFake_LastDigestMd());
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackWaivesChainTrustForAPinnedPeerWithoutTrustAnchors)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT);
+
+    LONGS_EQUAL(1, OpenThenVerifyLeaf(0));
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackWaivesEveryObjectionAMissingTrustAnchorRaises)
+{
+    static const int chainTrustErrors[] = {
+        X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT,
+        X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN,
+        X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+        X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT,
+        X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE,
+        X509_V_ERR_CERT_UNTRUSTED,
+    };
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    SolidSyslogStream_Open(stream, addr);
+
+    for (int error : chainTrustErrors)
+    {
+        OpenSslFake_SetStoreCtxError(error);
+        LONGS_EQUAL_TEXT(
+            1,
+            OpenSslFake_LastVerifyCallback()(0, OpenSslFake_StoreCtx()),
+            StringFrom(error).asCharString()
+        );
+    }
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackDoesNotWaiveTheCertificatesOwnValidityForAPinnedPeer)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_CERT_HAS_EXPIRED);
+
+    LONGS_EQUAL(0, OpenThenVerifyLeaf(0));
+    LONGS_EQUAL(X509_V_ERR_CERT_HAS_EXPIRED, OpenSslFake_StoreCtxError());
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackRequiresTheChainTooWhenTrustAnchorsAreInstalled)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT);
+
+    LONGS_EQUAL(0, OpenThenVerifyLeaf(0));
+    LONGS_EQUAL(X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT, OpenSslFake_StoreCtxError());
+}
+
+/* A pin naming a hash this build cannot compute is the integrator's fault, not
+   the collector's; reporting it as a mismatch sends them to the wrong end. */
+TEST(SolidSyslogOpenSslStream, OpenReportsAPinNamingADigestTheBuildCannotCompute)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetDigestFails(true);
+    OpenSslFake_SetConnectRunsVerifyCallback(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerFingerprintDidNotMatch)
+{
+    ArrangeCertificateVerificationFailure(X509_V_ERR_APPLICATION_VERIFICATION);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED
+    );
+}
+
+/* Returning zero above the leaf stops OpenSSL before the leaf is reached, so a
+   collector presenting its issuer would never have its pin consulted. */
+TEST(SolidSyslogOpenSslStream, VerifyCallbackWaivesAChainTrustErrorAboveTheLeafForAPinnedPeerWithoutTrustAnchors)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+
+    LONGS_EQUAL(1, OpenThenVerifyIssuer(0, X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY));
+    POINTERS_EQUAL(nullptr, OpenSslFake_LastDigestMd());
+}
+
+/* With anchors configured as well as a pin, an objection above the leaf is
+   carried to the leaf rather than refused where it was raised - refusing there
+   would abandon verification and leave the pin uncompared - and it is the leaf
+   that refuses, because both checks were asked for and both must pass. */
+TEST(SolidSyslogOpenSslStream, AnObjectionAboveTheLeafIsCarriedToItAndStillRefusesWhenTrustAnchorsAreInstalled)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+
+    LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY, 1));
+    LONGS_EQUAL(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY, OpenSslFake_StoreCtxError());
+}
+
+/* The point of carrying it: a fingerprint that matches nothing is named ahead
+   of the chain that reaches no anchor, whatever the depth the chain objection
+   was raised at. */
+TEST(SolidSyslogOpenSslStream, AFingerprintMismatchIsNamedAheadOfAnObjectionCarriedFromAboveTheLeaf)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+
+    LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY, 1));
+    LONGS_EQUAL(X509_V_ERR_APPLICATION_VERIFICATION, OpenSslFake_StoreCtxError());
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackDoesNotWaiveTheCertificatesOwnValidityAboveTheLeaf)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+
+    LONGS_EQUAL(0, OpenThenVerifyIssuer(0, X509_V_ERR_CERT_HAS_EXPIRED));
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackLeavesAnIssuerToOpenSslWhenNoPeerIsPinned)
+{
+    LONGS_EQUAL(0, OpenThenVerifyIssuer(0, X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY));
+}
+
+TEST(SolidSyslogOpenSslStream, VersionReportsTheConfiguredFunctionsValue)
+{
+    FakeVersion_ReturnValue = 7U;
+    config.Version = FakeVersion;
+    ReCreateStreamWithUpdatedConfig();
+
+    LONGS_EQUAL(7, SolidSyslogStream_Version(stream));
+}
+
+TEST(SolidSyslogOpenSslStream, VersionFunctionReceivesVersionContext)
+{
+    int context = 0;
+    config.Version = FakeVersion;
+    config.VersionContext = &context;
+    ReCreateStreamWithUpdatedConfig();
+
+    SolidSyslogStream_Version(stream);
+
+    POINTERS_EQUAL(&context, FakeVersion_LastContext);
+}
+
+TEST(SolidSyslogOpenSslStream, VersionIsZeroWhenNoFunctionIsConfigured)
+{
+    LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
+}
+
+TEST(SolidSyslogOpenSslStream, OpenPullsTheProfile)
+{
+    config.Profile = FakeProfile;
+    ReCreateStreamWithUpdatedConfig();
+
+    SolidSyslogStream_Open(stream, addr);
+
+    LONGS_EQUAL(1, FakeProfile_CallCount);
 }

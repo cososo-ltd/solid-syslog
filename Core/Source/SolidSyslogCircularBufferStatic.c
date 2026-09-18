@@ -40,7 +40,7 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     struct SolidSyslogBuffer* handle = SolidSyslogNullBuffer_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&CircularBuffer_Allocator, index))
     {
-        CircularBuffer_Initialise(&CircularBuffer_Pool[index].Base, mutex, ring, ringBytes);
+        SolidSyslogCircularBuffer_Initialise(&CircularBuffer_Pool[index].Base, mutex, ring, ringBytes);
         handle = &CircularBuffer_Pool[index].Base;
     }
     else
@@ -87,5 +87,5 @@ static inline size_t CircularBuffer_IndexFromHandle(const struct SolidSyslogBuff
 static inline void CircularBuffer_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    CircularBuffer_Cleanup(&CircularBuffer_Pool[index].Base);
+    SolidSyslogCircularBuffer_Cleanup(&CircularBuffer_Pool[index].Base);
 }

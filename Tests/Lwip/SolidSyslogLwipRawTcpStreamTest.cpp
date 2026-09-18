@@ -44,14 +44,8 @@ static const uint16_t TEST_PORT = 514;
     }
 
 // Asserts the most recent ErrorHandlerFake call matched (severity, source, code).
-#define CHECK_REPORTED(severity, source, expectedCategory, code)                   \
-    {                                                                              \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                \
-        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());                  \
-        POINTERS_EQUAL(&(source), ErrorHandlerFake_LastSource());                  \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory()); \
-        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastDetail());               \
-    }
+#define CHECK_REPORTED(severity, source, expectedCategory, code) \
+    CHECK_ERROR_REPORTED_ONCE((severity), &(source), (expectedCategory), (code))
 
 // Asserts the lwIP API call recorded the pcb the wrapper got back from
 // tcp_new - proves the wrapper forwarded the right handle. `getter` is
@@ -300,6 +294,25 @@ TEST(SolidSyslogLwipRawTcpStream, CloseBeforeOpenIsNoOp)
 
     CALLED_FAKE(LwipTcpFake_TcpClose, NEVER);
     CALLED_FAKE(LwipTcpFake_TcpAbort, NEVER);
+}
+
+TEST(SolidSyslogLwipRawTcpStreamConnected, CloseDetachesTheStreamFromThePcbItCloses)
+{
+    SolidSyslogStream_Close(stream);
+
+    POINTERS_EQUAL(nullptr, LwipTcpFake_LastCallbackArg());
+    CHECK_TRUE(LwipTcpFake_LastErrFn() == nullptr);
+    CHECK_TRUE(LwipTcpFake_LastRecvFn() == nullptr);
+    CHECK_TRUE(LwipTcpFake_LastSentFn() == nullptr);
+}
+
+TEST(SolidSyslogLwipRawTcpStreamConnected, CloseAbortsThePcbWhenTheCloseCannotBeQueued)
+{
+    LwipTcpFake_SetTcpCloseError(ERR_MEM);
+
+    SolidSyslogStream_Close(stream);
+
+    CALLED_FAKE(LwipTcpFake_TcpAbort, ONCE);
 }
 
 TEST(SolidSyslogLwipRawTcpStream, SendBeforeOpenReturnsFalse)
@@ -873,9 +886,38 @@ TEST(SolidSyslogLwipRawTcpStreamPool, ExhaustedCreateReportsError)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
-        LwipRawTcpStreamErrorSource,
+        SolidSyslogLwipRawTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_POOL_EXHAUSTED
+    );
+}
+
+TEST(SolidSyslogLwipRawTcpStreamPool, CreateWithNullConfigReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogLwipRawTcpStream_Create(nullptr);
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SolidSyslogLwipRawTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_NULL_CONFIG
+    );
+}
+
+TEST(SolidSyslogLwipRawTcpStreamPool, CreateWithNullSleepReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    validConfig.Sleep = nullptr;
+
+    SolidSyslogLwipRawTcpStream_Create(&validConfig);
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SolidSyslogLwipRawTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_NULL_SLEEP
     );
 }
 
@@ -944,7 +986,7 @@ TEST(SolidSyslogLwipRawTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        LwipRawTcpStreamErrorSource,
+        SolidSyslogLwipRawTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );
@@ -962,8 +1004,13 @@ TEST(SolidSyslogLwipRawTcpStreamPool, DestroyOfStaleHandleReportsWarning)
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_WARNING,
-        LwipRawTcpStreamErrorSource,
+        SolidSyslogLwipRawTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogLwipRawTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
+{
+    LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
 }

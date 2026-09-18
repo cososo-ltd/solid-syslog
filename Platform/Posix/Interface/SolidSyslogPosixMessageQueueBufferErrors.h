@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is PosixMessageQueueBufferErrorSource.
+    /** Detail codes for events whose Source is SolidSyslogPosixMessageQueueBufferErrorSource.
      *  A handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault (MQ_OPEN at Create, SEND on enqueue, RECEIVE
      *  on drain). */
@@ -28,9 +28,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a PosixMessageQueueBuffer. A handler matches
-     *  by address (event->Source == &PosixMessageQueueBufferErrorSource), then
+     *  by address (event->Source == &SolidSyslogPosixMessageQueueBufferErrorSource), then
      *  reads event->Detail as an enum SolidSyslogPosixMessageQueueBufferErrors. */
-    extern const struct SolidSyslogErrorSource PosixMessageQueueBufferErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogPosixMessageQueueBufferErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

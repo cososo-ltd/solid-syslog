@@ -64,14 +64,8 @@ static bool TestGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* 
 }
 
 /* Asserts exactly one error of (severity, code) was reported from this policy's source. */
-#define CHECK_REPORTED_ERROR(severity, expectedCategory, code)                              \
-    {                                                                                       \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                         \
-        LONGS_EQUAL((severity), ErrorHandlerFake_LastSeverity());                           \
-        POINTERS_EQUAL(&OpenSslHmacSha256PolicyErrorSource, ErrorHandlerFake_LastSource()); \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory());          \
-        UNSIGNED_LONGS_EQUAL((code), ErrorHandlerFake_LastDetail());                        \
-    }
+#define CHECK_REPORTED_ERROR(severity, expectedCategory, code) \
+    CHECK_ERROR_REPORTED_ONCE((severity), &SolidSyslogOpenSslHmacSha256PolicyErrorSource, (expectedCategory), (code))
 
 #define CHECK_IS_NULL_FALLBACK(handle) POINTERS_EQUAL(SolidSyslogNullSecurityPolicy_Get(), (handle))
 
@@ -203,7 +197,7 @@ TEST(SolidSyslogOpenSslHmacSha256Policy, ExhaustedCreateReportsError)
     CHECK_REPORTED_ERROR(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_OPENSSL_HMAC_SHA256_POLICY_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -228,7 +222,7 @@ TEST(SolidSyslogOpenSslHmacSha256Policy, BadConfigReportsError)
     CHECK_REPORTED_ERROR(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
-        SOLIDSYSLOG_OPENSSL_HMAC_SHA256_POLICY_ERROR_BAD_CONFIG
+        SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_BAD_CONFIG
     );
 }
 
@@ -264,7 +258,7 @@ TEST(SolidSyslogOpenSslHmacSha256Policy, DestroyOfUnknownHandleReportsWarning)
     CHECK_REPORTED_ERROR(
         SOLIDSYSLOG_SEVERITY_WARNING,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_OPENSSL_HMAC_SHA256_POLICY_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -280,7 +274,7 @@ TEST(SolidSyslogOpenSslHmacSha256Policy, DestroyOfStaleHandleReportsWarning)
     CHECK_REPORTED_ERROR(
         SOLIDSYSLOG_SEVERITY_WARNING,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_OPENSSL_HMAC_SHA256_POLICY_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -323,7 +317,7 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordReportsHmacFailure)
     CHECK_REPORTED_ERROR(
         SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
-        SOLIDSYSLOG_OPENSSL_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED
+        SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED
     );
 }
 
@@ -339,7 +333,7 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordReportsKeyUnavailable)
     CHECK_REPORTED_ERROR(
         SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
-        SOLIDSYSLOG_OPENSSL_HMAC_SHA256_POLICY_ERROR_KEY_UNAVAILABLE
+        SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_KEY_UNAVAILABLE
     );
 }
 
@@ -365,7 +359,7 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealRecordReportsKeyTooShort)
     CHECK_REPORTED_ERROR(
         SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
-        SOLIDSYSLOG_OPENSSL_HMAC_SHA256_POLICY_ERROR_KEY_TOO_SHORT
+        SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_KEY_TOO_SHORT
     );
 }
 
@@ -441,6 +435,6 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, OpenRecordReportsHmacFailureAsOpenF
     CHECK_REPORTED_ERROR(
         SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
-        SOLIDSYSLOG_OPENSSL_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED
+        SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED
     );
 }

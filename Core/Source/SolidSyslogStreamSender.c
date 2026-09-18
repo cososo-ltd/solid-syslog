@@ -20,7 +20,7 @@
 #include "SolidSyslogStreamSenderPrivate.h"
 #include "SolidSyslogTransport.h"
 
-const struct SolidSyslogErrorSource StreamSenderErrorSource = {"StreamSender"};
+const struct SolidSyslogErrorSource SolidSyslogStreamSenderErrorSource = {"StreamSender"};
 
 struct SolidSyslogAddress;
 struct SolidSyslogFormatter;
@@ -42,6 +42,11 @@ static inline struct SolidSyslogStreamSender* StreamSender_SelfFromBase(struct S
 
 static inline bool StreamSender_Reconcile(struct SolidSyslogStreamSender* self);
 static inline void StreamSender_DisconnectIfStale(struct SolidSyslogStreamSender* self);
+static inline bool StreamSender_ConfigurationMoved(
+    const struct SolidSyslogStreamSender* self,
+    uint32_t endpointVersion,
+    uint32_t streamVersion
+);
 static inline bool StreamSender_EnsureConnected(struct SolidSyslogStreamSender* self);
 static inline bool StreamSender_Connected(struct SolidSyslogStreamSender* self);
 static bool StreamSender_Connect(struct SolidSyslogStreamSender* self);
@@ -56,7 +61,10 @@ static bool StreamSender_SendBytes(struct SolidSyslogStreamSender* self, const v
 static void StreamSender_NilEndpoint(struct SolidSyslogEndpoint* endpoint, void* context);
 static uint32_t StreamSender_NilEndpointVersion(void* context);
 
-void StreamSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogStreamSenderConfig* config)
+void SolidSyslogStreamSender_Initialise(
+    struct SolidSyslogSender* base,
+    const struct SolidSyslogStreamSenderConfig* config
+)
 {
     struct SolidSyslogStreamSender* self = StreamSender_SelfFromBase(base);
     self->Base.Send = StreamSender_Send;
@@ -71,14 +79,15 @@ void StreamSender_Initialise(struct SolidSyslogSender* base, const struct SolidS
     self->Connected = false;
     self->DeliveryHealthy = true;
     self->LastEndpointVersion = 0;
+    self->LastStreamVersion = 0;
 }
 
-void StreamSender_Cleanup(struct SolidSyslogSender* base)
+void SolidSyslogStreamSender_Cleanup(struct SolidSyslogSender* base)
 {
     /* Disconnect first so the live Config.Stream is still reachable; then overwrite the
      * abstract base with the shared NullSender vtable so use-after-destroy is a safe
      * no-op rather than a NULL-fn-pointer crash. Derived fields are private to this TU
-     * so the next StreamSender_Initialise overwrites them; no need to wipe here. */
+     * so the next SolidSyslogStreamSender_Initialise overwrites them; no need to wipe here. */
     StreamSender_Disconnect(base);
     *base = *SolidSyslogNullSender_Get();
 }
@@ -94,7 +103,7 @@ static bool StreamSender_Send(struct SolidSyslogSender* base, const void* buffer
 static inline void StreamSender_UpdateDeliveryHealth(struct SolidSyslogStreamSender* self, bool delivered)
 {
     static const struct SolidSyslogSenderHealthReporter reporter = {
-        .Source = &StreamSenderErrorSource,
+        .Source = &SolidSyslogStreamSenderErrorSource,
         .FailedDetail = (int32_t) SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_FAILED,
         .RestoredDetail = (int32_t) SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_RESTORED
     };
@@ -109,13 +118,24 @@ static inline bool StreamSender_Reconcile(struct SolidSyslogStreamSender* self)
 
 static inline void StreamSender_DisconnectIfStale(struct SolidSyslogStreamSender* self)
 {
-    uint32_t version = self->Config.EndpointVersion(self->Config.EndpointContext);
+    uint32_t endpointVersion = self->Config.EndpointVersion(self->Config.EndpointContext);
+    uint32_t streamVersion = SolidSyslogStream_Version(self->Config.Stream);
 
-    if (version != self->LastEndpointVersion)
+    if (StreamSender_ConfigurationMoved(self, endpointVersion, streamVersion))
     {
         StreamSender_Disconnect(&self->Base);
-        self->LastEndpointVersion = version;
+        self->LastEndpointVersion = endpointVersion;
+        self->LastStreamVersion = streamVersion;
     }
+}
+
+static inline bool StreamSender_ConfigurationMoved(
+    const struct SolidSyslogStreamSender* self,
+    uint32_t endpointVersion,
+    uint32_t streamVersion
+)
+{
+    return (endpointVersion != self->LastEndpointVersion) || (streamVersion != self->LastStreamVersion);
 }
 
 static inline bool StreamSender_EnsureConnected(struct SolidSyslogStreamSender* self)
@@ -226,5 +246,5 @@ static void StreamSender_NilEndpoint(struct SolidSyslogEndpoint* endpoint, void*
 static uint32_t StreamSender_NilEndpointVersion(void* context)
 {
     (void) context;
-    return 0;
+    return 0U;
 }

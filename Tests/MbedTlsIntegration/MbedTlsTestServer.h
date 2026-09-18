@@ -20,6 +20,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /* Non-NULL switches the server to require + verify a client cert
          * against this CA - drives the mTLS scenarios. NULL = server-auth only. */
         const struct MbedTlsTestCert* TrustedClientCa;
+        /* NULL presents the leaf alone; set to send the issuer with it, as a
+           correctly configured collector does. */
+        const struct MbedTlsTestCert* IssuerCert;
     };
 
     /* Spawns a worker thread that drives the server-side handshake. The
@@ -32,6 +35,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Wait for the worker thread to exit and return whether the handshake
      * completed successfully. Callable once per server. */
     bool MbedTlsTestServer_JoinAndHandshakeSucceeded(struct MbedTlsTestServer * self);
+
+    /* Whether the client presented a certificate before the handshake settled.
+     * Joins the worker thread first, as JoinAndHandshakeSucceeded does. This is
+     * what distinguishes refusing a peer from refusing it without handing over
+     * the device's identity on the way. */
+    bool MbedTlsTestServer_SawClientCertificate(struct MbedTlsTestServer * self);
 
 SOLIDSYSLOG_EXTERN_C_END
 

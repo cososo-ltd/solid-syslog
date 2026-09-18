@@ -1,11 +1,35 @@
 #include "BddTargetStderrErrorHandler.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "BddTargetErrorText.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
+
+static bool fatalOnError = true;
+static const struct SolidSyslogErrorSource* tlsStreamSource;
+
+void BddTargetStderrErrorHandler_SetTlsSource(const struct SolidSyslogErrorSource* source)
+{
+    tlsStreamSource = source;
+}
+
+bool BddTargetStderrErrorHandler_SetByName(const char* name, const char* value)
+{
+    bool applied = false;
+    if (strcmp(name, "errors-fatal") == 0)
+    {
+        applied = (strcmp(value, "0") == 0) || (strcmp(value, "1") == 0);
+        if (applied)
+        {
+            fatalOnError = (value[0] == '1');
+        }
+    }
+    return applied;
+}
 
 static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* event)
 {
@@ -17,12 +41,17 @@ static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEve
         sourceName = source->Name;
     }
     const char* message = BddTargetErrorText_Category(event->Category);
-    if (event->Severity <= SOLIDSYSLOG_SEVERITY_ERROR)
+    /* Detail codes are per-class, so a number is only meaningful once the class
+       is known. Marking the TLS-stream role lets a step assert a portable detail
+       without matching the backend's name. */
+    const char* role = ((tlsStreamSource != NULL) && (source == tlsStreamSource)) ? "role=tls " : "";
+    if (fatalOnError && (event->Severity <= SOLIDSYSLOG_SEVERITY_ERROR))
     {
         (void) fprintf(
             stderr,
-            "BDD-TARGET: FATAL: [%s cat=%u detail=%ld] %s\n",
+            "BDD-TARGET: FATAL: [%s %scat=%u detail=%ld] %s\n",
             sourceName,
+            role,
             (unsigned) event->Category,
             (long) event->Detail,
             message
@@ -34,9 +63,10 @@ static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEve
     {
         (void) fprintf(
             stderr,
-            "[solidsyslog] severity=%d [%s cat=%u detail=%ld] %s\n",
+            "[solidsyslog] severity=%d [%s %scat=%u detail=%ld] %s\n",
             (int) event->Severity,
             sourceName,
+            role,
             (unsigned) event->Category,
             (long) event->Detail,
             message

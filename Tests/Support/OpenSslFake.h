@@ -13,12 +13,17 @@ struct ssl_st;
 struct ssl_method_st;
 struct bio_st;
 struct bio_method_st;
+struct x509_store_ctx_st;
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void OpenSslFake_Reset(void);
 
     void OpenSslFake_SetConnectFails(bool fails);
+    /* Run the registered verify callback at depth 0 inside SSL_connect, as the
+     * real one does; a refusal fails the connect and the store error becomes
+     * the verify result. Off by default. */
+    void OpenSslFake_SetConnectRunsVerifyCallback(bool runs);
     void OpenSslFake_SetWriteFails(bool fails);
     void OpenSslFake_SetSet1HostFails(bool fails);
     void OpenSslFake_SetSniHostnameFails(bool fails);
@@ -29,6 +34,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void OpenSslFake_SetBioMethNewFails(bool fails);
     void OpenSslFake_SetBioNewFails(bool fails);
     void OpenSslFake_SetCipherListFails(bool fails);
+    void OpenSslFake_SetCipherSuitesFails(bool fails);
 
     /* SSL return-value injection - drive non-blocking I/O paths */
     enum
@@ -41,6 +47,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void OpenSslFake_SetReadReturn(int value);
     void OpenSslFake_SetGetErrorReturn(int err);
     int OpenSslFake_GetErrorCallCount(void);
+
+    /* SSL_get_verify_result - the certification-path verdict the adapter reads
+     * after a refused handshake. Resets to X509_V_OK, which is what OpenSSL
+     * reports when verification never ran or found nothing wrong. */
+    void OpenSslFake_SetVerifyResult(long value);
 
     int OpenSslFake_BioSetFlagsCallCount(void);
     int OpenSslFake_LastBioSetFlags(void);
@@ -55,6 +66,35 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct ssl_ctx_st* OpenSslFake_LastSetVerifyCtxArg(void);
     int OpenSslFake_LastVerifyMode(void);
+    int OpenSslFake_LastSecurityLevel(void);
+    int (*OpenSslFake_LastPasswdCb(void))(char*, int, int, void*);
+    unsigned int OpenSslFake_LastHostflags(void);
+    uint64_t OpenSslFake_LastSslOptions(void);
+    int (*OpenSslFake_LastVerifyCallback(void))(int, struct x509_store_ctx_st*);
+
+    /* SSL_set_ex_data / SSL_get_ex_data - one slot, which is all
+     * SSL_set_app_data uses. */
+    int OpenSslFake_LastSslExDataIndex(void);
+    void* OpenSslFake_LastSslExData(void);
+    void OpenSslFake_SetSslExDataFails(bool fails);
+
+    /* One X509_STORE_CTX for driving a captured verify callback. Its ex_data
+     * at the SSL index resolves to the SSL the fake last handed out, as
+     * OpenSSL's own does mid-handshake; depth, error and the leaf's digest
+     * are what a test sets. X509_digest reports the configured bytes, or
+     * fails when told to. */
+    struct x509_store_ctx_st* OpenSslFake_StoreCtx(void);
+    void OpenSslFake_SetStoreCtxDepth(int depth);
+    void OpenSslFake_SetStoreCtxError(int error);
+    int OpenSslFake_StoreCtxError(void);
+
+    /* Whether the peer presented a certificate at all. False is what an
+     * anonymous ciphersuite produces: the handshake completes and no
+     * certificate is ever verified. Defaults to true. */
+    void OpenSslFake_SetPeerCertificatePresent(bool present);
+    void OpenSslFake_SetCertDigest(const uint8_t* digest, size_t length);
+    void OpenSslFake_SetDigestFails(bool fails);
+    const void* OpenSslFake_LastDigestMd(void); /* compare against EVP_sha1() / EVP_sha256() */
 
     /* SSL_CTX_ctrl (SET_MIN_PROTO_VERSION path) */
     struct ssl_ctx_st* OpenSslFake_LastSslCtxCtrlCtxArg(void);
@@ -63,6 +103,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int OpenSslFake_SetCipherListCallCount(void);
     struct ssl_ctx_st* OpenSslFake_LastSetCipherListCtxArg(void);
     const char* OpenSslFake_LastCipherList(void);
+    int OpenSslFake_SetCipherSuitesCallCount(void);
+    const char* OpenSslFake_LastCipherSuites(void);
 
     int OpenSslFake_SslNewCallCount(void);
     struct ssl_ctx_st* OpenSslFake_LastSslNewCtxArg(void);

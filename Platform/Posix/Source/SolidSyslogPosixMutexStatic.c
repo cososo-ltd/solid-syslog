@@ -32,7 +32,7 @@ struct SolidSyslogMutex* SolidSyslogPosixMutex_Create(void)
     struct SolidSyslogMutex* handle = SolidSyslogNullMutex_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&PosixMutex_Allocator, index) == true)
     {
-        PosixMutex_Initialise(&PosixMutex_Pool[index].Base);
+        SolidSyslogPosixMutex_Initialise(&PosixMutex_Pool[index].Base);
         handle = &PosixMutex_Pool[index].Base;
     }
     else
@@ -78,5 +78,5 @@ static inline size_t PosixMutex_IndexFromHandle(const struct SolidSyslogMutex* b
 static inline void PosixMutex_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    PosixMutex_Cleanup(&PosixMutex_Pool[index].Base);
+    SolidSyslogPosixMutex_Cleanup(&PosixMutex_Pool[index].Base);
 }

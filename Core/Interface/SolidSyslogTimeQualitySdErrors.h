@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is TimeQualitySdErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogTimeQualitySdErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogTimeQualitySdErrors
@@ -25,9 +25,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** The identity for events raised by a TimeQualitySd. A handler matches by
-     *  address (event->Source == &TimeQualitySdErrorSource), then reads
+     *  address (event->Source == &SolidSyslogTimeQualitySdErrorSource), then reads
      *  event->Detail as an enum SolidSyslogTimeQualitySdErrors. */
-    extern const struct SolidSyslogErrorSource TimeQualitySdErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogTimeQualitySdErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

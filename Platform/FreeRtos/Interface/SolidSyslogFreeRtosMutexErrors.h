@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is FreeRtosMutexErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogFreeRtosMutexErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogFreeRtosMutexErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a FreeRtosMutex. A handler matches by
-     *  address (event->Source == &FreeRtosMutexErrorSource), then reads
+     *  address (event->Source == &SolidSyslogFreeRtosMutexErrorSource), then reads
      *  event->Detail as an enum SolidSyslogFreeRtosMutexErrors. */
-    extern const struct SolidSyslogErrorSource FreeRtosMutexErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogFreeRtosMutexErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

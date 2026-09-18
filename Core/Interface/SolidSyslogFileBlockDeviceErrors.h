@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is FileBlockDeviceErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogFileBlockDeviceErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogFileBlockDeviceErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** The identity for events raised by a FileBlockDevice. A handler matches by
-     *  address (event->Source == &FileBlockDeviceErrorSource), then reads
+     *  address (event->Source == &SolidSyslogFileBlockDeviceErrorSource), then reads
      *  event->Detail as an enum SolidSyslogFileBlockDeviceErrors. */
-    extern const struct SolidSyslogErrorSource FileBlockDeviceErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogFileBlockDeviceErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

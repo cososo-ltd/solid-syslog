@@ -39,6 +39,7 @@ Core/Source/SolidSyslogNullBuffer.c
 Core/Source/SolidSyslogNullBlockDevice.c
 Core/Source/SolidSyslogNullSecurityPolicy.c
 Core/Source/SolidSyslogCrc16.c
+Core/Source/SolidSyslogTlsFingerprint.c
 Core/Source/SolidSyslogCrc16Policy.c
 Core/Source/SolidSyslogStream.c
 Core/Source/SolidSyslogNullStream.c
@@ -75,6 +76,11 @@ Core/Source/SolidSyslogAtomicCounter.c
 Core/Source/SolidSyslogNullAtomicCounter.c
 
 # MbedTls:
+Platform/MbedTls/Source/SolidSyslogMbedTlsNullCredentials.c
+Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentials.c
+Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentials.c
+Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentialsStatic.c
+Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentialsStatic.c
 Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
 Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
 Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c

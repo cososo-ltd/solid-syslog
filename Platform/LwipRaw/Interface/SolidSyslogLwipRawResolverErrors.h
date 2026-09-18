@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is LwipRawResolverErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogLwipRawResolverErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogLwipRawResolverErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a LwipRawResolver. A handler matches by
-     *  address (event->Source == &LwipRawResolverErrorSource), then reads
+     *  address (event->Source == &SolidSyslogLwipRawResolverErrorSource), then reads
      *  event->Detail as an enum SolidSyslogLwipRawResolverErrors. */
-    extern const struct SolidSyslogErrorSource LwipRawResolverErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogLwipRawResolverErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

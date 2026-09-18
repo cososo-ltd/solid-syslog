@@ -25,7 +25,7 @@
 #include "SolidSyslogStream.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource PosixTcpStreamErrorSource = {"PosixTcpStream"};
+const struct SolidSyslogErrorSource SolidSyslogPosixTcpStreamErrorSource = {"PosixTcpStream"};
 
 struct SolidSyslogAddress;
 
@@ -48,6 +48,7 @@ static bool PosixTcpStream_Open(struct SolidSyslogStream* base, const struct Sol
 static bool PosixTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static SolidSyslogSsize PosixTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void PosixTcpStream_Close(struct SolidSyslogStream* base);
+static uint32_t PosixTcpStream_Version(struct SolidSyslogStream* base);
 
 static inline struct SolidSyslogPosixTcpStream* PosixTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 static inline bool PosixTcpStream_ConfigProvidesGetter(const struct SolidSyslogPosixTcpStreamConfig* config);
@@ -69,14 +70,18 @@ static long PosixTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogPosixTc
 static bool PosixTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
 static inline bool PosixTcpStream_WouldBlock(int err);
 
-void PosixTcpStream_Initialise(struct SolidSyslogStream* base, const struct SolidSyslogPosixTcpStreamConfig* config)
+void SolidSyslogPosixTcpStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogPosixTcpStreamConfig* config
+)
 {
     static const struct SolidSyslogPosixTcpStream DefaultPosixTcpStream = {
         .Base =
             {.Open = PosixTcpStream_Open,
              .Send = PosixTcpStream_Send,
              .Read = PosixTcpStream_Read,
-             .Close = PosixTcpStream_Close},
+             .Close = PosixTcpStream_Close,
+             .Version = PosixTcpStream_Version},
         .Config = {.GetConnectTimeoutMs = PosixTcpStream_NullConnectTimeoutGetter, .ConnectTimeoutContext = NULL},
         .Fd = INVALID_FD,
     };
@@ -108,7 +113,7 @@ static inline struct SolidSyslogPosixTcpStream* PosixTcpStream_SelfFromBase(stru
     return (struct SolidSyslogPosixTcpStream*) base;
 }
 
-void PosixTcpStream_Cleanup(struct SolidSyslogStream* base)
+void SolidSyslogPosixTcpStream_Cleanup(struct SolidSyslogStream* base)
 {
     struct SolidSyslogPosixTcpStream* self = PosixTcpStream_SelfFromBase(base);
     if (PosixTcpStream_IsFileDescriptorValid(self->Fd))
@@ -331,4 +336,10 @@ static void PosixTcpStream_Close(struct SolidSyslogStream* base)
         close(self->Fd);
         self->Fd = INVALID_FD;
     }
+}
+
+static uint32_t PosixTcpStream_Version(struct SolidSyslogStream* base)
+{
+    (void) base;
+    return 0U;
 }

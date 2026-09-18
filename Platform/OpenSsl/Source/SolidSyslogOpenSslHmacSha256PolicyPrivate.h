@@ -19,19 +19,19 @@ struct SolidSyslogOpenSslHmacSha256Policy
     struct SolidSyslogOpenSslHmacSha256PolicyConfig Config;
 };
 
-void OpenSslHmacSha256Policy_Initialise(
+void SolidSyslogOpenSslHmacSha256Policy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogOpenSslHmacSha256PolicyConfig* config
 );
-void OpenSslHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base);
+void SolidSyslogOpenSslHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base);
 
 static inline void OpenSslHmacSha256Policy_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogOpenSslHmacSha256PolicyErrors code
+    enum SolidSyslogHmacSha256PolicyErrors code
 )
 {
-    SolidSyslog_Error(severity, &OpenSslHmacSha256PolicyErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogOpenSslHmacSha256PolicyErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGOPENSSLHMACSHA256POLICYPRIVATE_H */

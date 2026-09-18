@@ -19,8 +19,8 @@ struct SolidSyslogStdAtomicCounter
     _Atomic uint32_t Value;
 };
 
-void StdAtomicCounter_Initialise(struct SolidSyslogAtomicCounter* base);
-void StdAtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* base);
+void SolidSyslogStdAtomicCounter_Initialise(struct SolidSyslogAtomicCounter* base);
+void SolidSyslogStdAtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* base);
 
 static inline void StdAtomicCounter_Report(
     enum SolidSyslogSeverity severity,
@@ -28,7 +28,7 @@ static inline void StdAtomicCounter_Report(
     enum SolidSyslogStdAtomicCounterErrors code
 )
 {
-    SolidSyslog_Error(severity, &StdAtomicCounterErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogStdAtomicCounterErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGSTDATOMICCOUNTERPRIVATE_H */

@@ -35,6 +35,9 @@ reviews:
     drafts: false
     base_branches:
       - main
+      # The E39 integration branch. Matched as a regex, so the literal name
+      # is the whole pattern. Remove when the branch merges to main.
+      - feature/tls-rework
 
   # Everything not excluded here is reviewed. Skip build output and binary
   # assets; keep docs prose in scope (the repo is documentation-heavy).

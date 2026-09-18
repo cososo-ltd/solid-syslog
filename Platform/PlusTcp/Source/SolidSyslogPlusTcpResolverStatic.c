@@ -35,7 +35,7 @@ struct SolidSyslogResolver* SolidSyslogPlusTcpResolver_Create(void)
     struct SolidSyslogResolver* handle = SolidSyslogNullResolver_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&PlusTcpResolver_Allocator, index) == true)
     {
-        PlusTcpResolver_Initialise(&PlusTcpResolver_Pool[index].Base);
+        SolidSyslogPlusTcpResolver_Initialise(&PlusTcpResolver_Pool[index].Base);
         handle = &PlusTcpResolver_Pool[index].Base;
     }
     else
@@ -82,5 +82,5 @@ static inline size_t PlusTcpResolver_IndexFromHandle(const struct SolidSyslogRes
 static inline void PlusTcpResolver_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    PlusTcpResolver_Cleanup(&PlusTcpResolver_Pool[index].Base);
+    SolidSyslogPlusTcpResolver_Cleanup(&PlusTcpResolver_Pool[index].Base);
 }

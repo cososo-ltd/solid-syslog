@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is PosixMutexErrorSource. A handler
+    /** Detail codes for events whose Source is SolidSyslogPosixMutexErrorSource. A handler
      *  reads these off event->Detail after matching event->Source; the members
      *  name their own fault. */
     enum SolidSyslogPosixMutexErrors
@@ -24,9 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Identity for events raised by a PosixMutex. A handler matches by address
-     *  (event->Source == &PosixMutexErrorSource), then reads event->Detail as an
+     *  (event->Source == &SolidSyslogPosixMutexErrorSource), then reads event->Detail as an
      *  enum SolidSyslogPosixMutexErrors. */
-    extern const struct SolidSyslogErrorSource PosixMutexErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogPosixMutexErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

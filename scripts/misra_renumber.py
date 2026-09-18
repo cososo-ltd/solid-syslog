@@ -74,6 +74,7 @@ CPPCHECK_CMD = [
     "-DconfigSUPPORT_STATIC_ALLOCATION=1",
     "-DconfigUSE_MUTEXES=1",
     "-DipconfigUSE_TCP=1",
+    "-DMBEDTLS_HAVE_TIME_DATE=1",
     "-ICore/Interface",
     "-IPlatform/StdAtomic/Interface",
     "-IPlatform/Posix/Interface",

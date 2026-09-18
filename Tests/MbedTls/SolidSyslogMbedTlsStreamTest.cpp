@@ -9,7 +9,9 @@ extern "C"
 #include <stdint.h>
 
 #include "ErrorHandlerFake.h"
+#include "MbedTlsCredentialsFake.h"
 #include "MbedTlsFake.h"
+#include "SolidSyslogMbedTlsCredentialsDefinition.h"
 #include "SolidSyslogMbedTlsStream.h"
 #include "SolidSyslogMbedTlsStreamErrors.h"
 #include "SolidSyslogPrival.h"
@@ -30,15 +32,34 @@ using namespace CososoTesting;
         LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                         \
         LONGS_EQUAL(1, MbedTlsFake_SslFreeCallCount());                                               \
         LONGS_EQUAL(1, MbedTlsFake_SslConfigFreeCallCount());                                         \
-        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                                   \
-        POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource());                     \
-        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_LastCategory());                    \
-        UNSIGNED_LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail());                          \
-        LONGS_EQUAL((expectedSeverity), ErrorHandlerFake_LastSeverity());                             \
+        CHECK_ERROR_REPORTED_ONCE(                                                                    \
+            (expectedSeverity),                                                                       \
+            &SolidSyslogMbedTlsStreamErrorSource,                                                     \
+            (expectedCategory),                                                                       \
+            (expectedCode)                                                                            \
+        );                                                                                            \
     }
 
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode)
+
+/* Records what mbedTLS had already done by the time the credentials were told
+   the window had closed. */
+static int SslConfigFreesSeenAtRelease;
+
+extern "C" void CaptureSslConfigFreesAtRelease(void)
+{
+    SslConfigFreesSeenAtRelease = MbedTlsFake_SslConfigFreeCallCount();
+}
+
+static const unsigned char TEST_SHA256_DIGEST[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A,
+                                                     0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
+                                                     0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F};
+
+/* One RFC 5425 4.2.2 pin and the digest that matches it. */
+static const char* const TEST_SHA256_PINS[] = {
+    "sha-256:00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F"
+};
 
 static int NoOpSleepCallCount;
 static int g_lastSleepMs;
@@ -68,11 +89,49 @@ extern "C" uint32_t FakeGetHandshakeTimeoutMs(void* context)
     FakeGetHandshakeTimeoutMs_LastContext = context;
     return FakeGetHandshakeTimeoutMs_ReturnValue;
 }
+
+/* Stands in for whatever the integrator bumps when the credentials or the
+ * expected peer name change. */
+uint32_t FakeVersion_ReturnValue = 0;
+void* FakeVersion_LastContext = nullptr;
+
+void FakeVersion_Reset()
+{
+    FakeVersion_ReturnValue = 0;
+    FakeVersion_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel - overwritten on first call */
+}
+
+extern "C" uint32_t FakeVersion(void* context)
+{
+    FakeVersion_LastContext = context;
+    return FakeVersion_ReturnValue;
+}
+
+/* The TLS profile the stream pulls at Open. Tests set the fields they care
+ * about; anything left alone is what an integrator would leave to the library. */
+struct SolidSyslogMbedTlsProfile FakeProfile_Value;
+int FakeProfile_CallCount = 0;
+void* FakeProfile_LastContext = nullptr;
+
+void FakeProfile_Reset()
+{
+    FakeProfile_Value = {};
+    FakeProfile_CallCount = 0;
+    FakeProfile_LastContext = reinterpret_cast<void*>(0x1U); /* sentinel - overwritten on first call */
+}
+
+extern "C" void FakeProfile(struct SolidSyslogMbedTlsProfile* profile, void* context)
+{
+    FakeProfile_CallCount++;
+    FakeProfile_LastContext = context;
+    *profile = FakeProfile_Value;
+}
 } // namespace
 
 // clang-format off
 TEST_GROUP(SolidSyslogMbedTlsStream)
 {
+    mbedtls_ctr_drbg_context             rng       = {};
     struct SolidSyslogStream*            transport = nullptr;
     struct SolidSyslogStream*            handle    = nullptr;
     struct SolidSyslogMbedTlsStreamConfig config   = {};
@@ -81,15 +140,56 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
     void setup() override
     {
         MbedTlsFake_Reset();
+        MbedTlsCredentialsFake_Reset();
         ErrorHandlerFake_Install(nullptr);
         FakeGetHandshakeTimeoutMs_Reset();
+        FakeVersion_Reset();
+        FakeProfile_Reset();
         NoOpSleepCallCount = 0;
         g_lastSleepMs = 0;
         transport = StreamFake_Create();
         config.Transport = transport;
         config.Sleep = NoOpSleep;
+        config.Rng = &rng;
+        config.Credentials = MbedTlsCredentialsFake_Get();
+        config.Profile = FakeProfile;
         handle = SolidSyslogMbedTlsStream_Create(&config);
         addr = AddressFake_Get();
+    }
+
+    /* Pin the peer with a digest that matches the pin. Trust anchors are
+       installed unless a test clears them. */
+    static void GivenAPinnedPeer()
+    {
+        MbedTlsCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+        MbedTlsFake_SetDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    }
+
+    /* The same peer, authorised by its pin alone. */
+    static void GivenAPinnedPeerWithoutTrustAnchors()
+    {
+        MbedTlsCredentialsFake_SetTrustAnchorsInstalled(false);
+        GivenAPinnedPeer();
+    }
+
+    /* What the last OpenThenVerifyAt call returned: zero where the library is
+       left to enforce, and an error where verifying optionally has made this
+       callback the enforcement point. */
+    int lastVerifyResult = 0;
+
+    /* Drive the verify callback for the certificate at `depth`, starting from
+       `flags`, and return what the callback left there. What it decided is in
+       the flags; whether it refused is in lastVerifyResult. */
+    [[nodiscard]] uint32_t OpenThenVerifyAt(int depth, uint32_t flags)
+    {
+        SolidSyslogStream_Open(handle, addr);
+        auto* verify = MbedTlsFake_LastSslConfVerifyCallback();
+        CHECK_TRUE_TEXT(verify != nullptr, "the stream registered no verify callback");
+        if (verify != nullptr)
+        {
+            lastVerifyResult = verify(handle, MbedTlsFake_Certificate(), depth, &flags);
+        }
+        return flags;
     }
 
     /* Replaces the default Null-getter handle with one that uses the fake
@@ -109,7 +209,7 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         StreamFake_Destroy(transport);
     }
 
-    /* Tests needing config tweaks (CaChain, Rng, ServerName, ...) call this
+    /* Tests needing config tweaks (Rng, ServerName, Credentials, ...) call this
      * to release setup()'s pool slot, mutate `config`, then re-Create.
      * Fully resets the fixture (transport, MbedTls fake counters, error
      * handler) so the test body observes counts from this Open onwards
@@ -120,6 +220,7 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         SolidSyslogMbedTlsStream_Destroy(handle);
         StreamFake_Destroy(transport);
         MbedTlsFake_Reset();
+        MbedTlsCredentialsFake_Reset();
         ErrorHandlerFake_Install(nullptr);
         transport = StreamFake_Create();
         config.Transport = transport;
@@ -142,6 +243,17 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         int seq[] = {errorCode};
         MbedTlsFake_SetSslHandshakeReturnSequence(seq, 1);
     }
+
+    /* Arrange a peer whose certificate mbedTLS refused for `flags`. ServerName is
+     * set so the refusal is the only error source - a NULL one would also emit
+     * the unverified-peer WARNING. */
+    void ArrangeCertificateVerificationFailure(uint32_t flags)
+    {
+        FakeProfile_Value.ServerName = "syslog.example.com";
+        ReCreateHandleWithUpdatedConfig();
+        ArrangePersistentHandshakeError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
+        MbedTlsFake_SetSslVerifyResult(flags);
+    }
 };
 
 // clang-format on
@@ -158,7 +270,7 @@ TEST(SolidSyslogMbedTlsStream, OpenDelegatesToInjectedTransport)
 TEST(SolidSyslogMbedTlsStream, CreateInitialisesSslConfigForSafeFree)
 
 {
-    /* Init happens eagerly in Create (via MbedTlsStream_Initialise) so the
+    /* Init happens eagerly in Create (via SolidSyslogMbedTlsStream_Initialise) so the
      * symmetric *_free in Close is always safe - whether Open was reached,
      * whether it succeeded, or whether Close is called more than once. */
     LONGS_EQUAL(1, MbedTlsFake_SslConfigInitCallCount());
@@ -280,7 +392,7 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeB
      * ServerName would also emit the unverified-peer WARNING).
      * mbedtls_ssl_handshake always returns WANT_READ - handshake never makes
      * progress, so the bounded budget should expire and Open returns false. */
-    config.ServerName = "syslog.example.com";
+    FakeProfile_Value.ServerName = "syslog.example.com";
     ReCreateHandleWithUpdatedConfig();
     ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_WANT_READ);
 
@@ -289,7 +401,7 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeB
         transport,
         SOLIDSYSLOG_SEVERITY_WARNING,
         SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
-        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_HANDSHAKE_TIMEOUT
+        SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT
     );
 }
 
@@ -349,7 +461,7 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeF
     /* ServerName set so the handshake hard error is the only error source.
      * Non-WANT error (e.g. a verify/connection failure) is fail-fast - no
      * retry budget burn, no Sleep. */
-    config.ServerName = "syslog.example.com";
+    FakeProfile_Value.ServerName = "syslog.example.com";
     ReCreateHandleWithUpdatedConfig();
     ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
 
@@ -359,7 +471,108 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeF
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
-        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_HANDSHAKE_REJECTED
+        SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateHasExpired)
+{
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_EXPIRED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateIsNotYetValid)
+{
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_FUTURE);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerNameDidNotMatch)
+{
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_CN_MISMATCH);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateIsNotTrusted)
+{
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_NOT_TRUSTED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+    );
+}
+
+/* mbedTLS accumulates every fault it found into one bitmask, so a compound
+ * verdict has to resolve to a single reason. An untrusted chain wins, which is
+ * the reason a library that stops at the first failure reaches first - path
+ * building runs before any date is examined - so both TLS adapters agree on a
+ * compound fault as well as on a single one. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsAnUntrustedChainAheadOfTheDatesOnIt)
+{
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_NOT_TRUSTED | MBEDTLS_X509_BADCERT_EXPIRED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+    );
+}
+
+/* A verification failure with no name of its own - here a key too weak for the
+ * profile - still tells the integrator the certificate is the fault rather than
+ * the network, which is the whole point of naming the check. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsAVerificationFailureItCannotNameAsUntrusted)
+{
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_BAD_KEY);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+    );
+}
+
+/* mbedTLS answers 0xFFFFFFFF when it has no verdict to give. Every flag reads as
+ * set, so it must be recognised rather than mapped, or a refusal with no
+ * certificate behind it would be reported as an untrusted one. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsAPlainRejectionWhenNoVerdictIsAvailable)
+{
+    /* Arranged by hand rather than through ArrangeCertificateVerificationFailure:
+     * a verdict is unavailable when certificate verification never ran, which
+     * pairs with a handshake that failed for some other reason. */
+    FakeProfile_Value.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
+    MbedTlsFake_SetSslVerifyResult(0xFFFFFFFFU);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED
     );
 }
 
@@ -379,7 +592,7 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSslConfigD
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED
+        SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED
     );
 }
 
@@ -392,7 +605,56 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSslSetupFa
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_SESSION_INIT_FAILED
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
+    );
+}
+
+/* Mbed TLS distinguishes an allocation failure from every other return, at each
+   of the three points a connection can hit one. Reported as such rather than as
+   the phase's own fault, because the phase sends an integrator to the peer or to
+   their configuration and the allocator is neither. The category still says which
+   phase, so a handler that retries a handshake and gives up on init keeps working.
+   This is the linked library's allocator, not this library's pool - POOL_EXHAUSTED
+   is that. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsTheLibraryOutOfMemoryWhenSslConfigDefaultsCannotAllocate)
+{
+    MbedTlsFake_SetSslConfigDefaultsReturn(MBEDTLS_ERR_SSL_ALLOC_FAILED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsTheLibraryOutOfMemoryWhenSslSetupCannotAllocate)
+{
+    MbedTlsFake_SetSslSetupReturn(MBEDTLS_ERR_SSL_ALLOC_FAILED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY
+    );
+}
+
+/* The one that cost an integrator a long detour: a pool too small for a second
+   concurrent session failed here and read as the collector refusing the device. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsTheLibraryOutOfMemoryWhenTheHandshakeCannotAllocate)
+{
+    /* ServerName is set so the allocation failure is the only error source - a
+       NULL one would also emit the unverified-peer WARNING. */
+    FakeProfile_Value.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    MbedTlsFake_SetSslHandshakeReturn(MBEDTLS_ERR_SSL_ALLOC_FAILED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY
     );
 }
 
@@ -401,17 +663,54 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSetHostnam
 {
     /* ServerName must be set for ConfigureExpectedHostname to invoke
      * mbedtls_ssl_set_hostname - otherwise the helper short-circuits to true. */
-    config.ServerName = "syslog.example.com";
+    FakeProfile_Value.ServerName = "syslog.example.com";
     ReCreateHandleWithUpdatedConfig();
     MbedTlsFake_SetSslSetHostnameReturn(-1);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(
         transport,
-        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
-        SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
     );
+}
+
+/* A name beginning with a dot is not an identity. Mbed TLS would simply never
+   match it, which leaves the integrator with a refused peer and no reason;
+   refusing it here names the fault, and keeps the two adapters agreeing. */
+/* mbedtls_ssl_set_hostname copies the name, so it allocates and can fail that
+   way. The fourth place a connection meets the allocator, and the only one
+   under BAD_CONFIG - the category names the phase, and this one is still
+   configuration. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsTheLibraryOutOfMemoryWhenTheHostnameCannotAllocate)
+{
+    FakeProfile_Value.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    MbedTlsFake_SetSslSetHostnameReturn(MBEDTLS_ERR_SSL_ALLOC_FAILED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(
+        transport,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenRefusesAServerNameBeginningWithADot)
+{
+    FakeProfile_Value.ServerName = ".syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(
+        transport,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+    );
+    LONGS_EQUAL(0, MbedTlsFake_SslSetHostnameCallCount());
 }
 
 TEST(SolidSyslogMbedTlsStream, SendForwardsBufferToSslWrite)
@@ -691,20 +990,26 @@ TEST(SolidSyslogMbedTlsStream, OpenPinsMinimumTlsVersionToTls12)
     LONGS_EQUAL(MBEDTLS_SSL_VERSION_TLS1_2, MbedTlsFake_ConfMinTlsVersion(MbedTlsFake_LastSslConfigInitArg()));
 }
 
-TEST(SolidSyslogMbedTlsStream, OpenWiresCaChainFromConfigAndNullCrl)
-
+/* RFC 9325 s3.5: a TLS 1.2 client whose renegotiation_info the server does not
+   acknowledge MUST abort with handshake_failure. The library's default merely
+   refuses to renegotiate later and completes the handshake. */
+TEST(SolidSyslogMbedTlsStream, OpenBreaksTheHandshakeWithAPeerLackingRenegotiationInfo)
 {
-    /* Use a non-null marker pointer; the fake captures it without dereferencing. */
-    static mbedtls_x509_crt caChainMarker;
-    config.CaChain = &caChainMarker;
-    ReCreateHandleWithUpdatedConfig();
     SolidSyslogStream_Open(handle, addr);
 
-    LONGS_EQUAL(1, MbedTlsFake_SslConfCaChainCallCount());
-    POINTERS_EQUAL(MbedTlsFake_LastSslConfigInitArg(), MbedTlsFake_LastSslConfCaChainConfigArg());
-    POINTERS_EQUAL(&caChainMarker, MbedTlsFake_LastSslConfCaChainArg());
-    POINTERS_EQUAL(nullptr, MbedTlsFake_LastSslConfCaChainCrlArg());
+    LONGS_EQUAL(MBEDTLS_SSL_LEGACY_BREAK_HANDSHAKE, MbedTlsFake_LastLegacyRenegotiationArg());
 }
+
+#if defined(MBEDTLS_DHM_C) && defined(MBEDTLS_SSL_CLI_C)
+/* RFC 9325 s4.5: DH parameters of at least 2048 bits. The library's default
+   floor is 1024. */
+TEST(SolidSyslogMbedTlsStream, OpenRaisesTheDiffieHellmanFloorTo2048Bits)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    UNSIGNED_LONGS_EQUAL(2048U, MbedTlsFake_LastDhmMinBitlenArg());
+}
+#endif
 
 TEST(SolidSyslogMbedTlsStream, OpenWiresRngFromConfigUsingCtrDrbgRandom)
 
@@ -723,7 +1028,7 @@ TEST(SolidSyslogMbedTlsStream, OpenWiresRngFromConfigUsingCtrDrbgRandom)
 TEST(SolidSyslogMbedTlsStream, OpenSetsHostnameWhenServerNameProvided)
 
 {
-    config.ServerName = "syslog.example.com";
+    FakeProfile_Value.ServerName = "syslog.example.com";
     ReCreateHandleWithUpdatedConfig();
     SolidSyslogStream_Open(handle, addr);
 
@@ -735,7 +1040,7 @@ TEST(SolidSyslogMbedTlsStream, OpenSetsHostnameWhenServerNameProvided)
 TEST(SolidSyslogMbedTlsStream, OpenSkipsHostnameWhenServerNameIsNull)
 
 {
-    /* setup() left config.ServerName at NULL. */
+    /* The profile leaves ServerName unset. */
     SolidSyslogStream_Open(handle, addr);
 
     LONGS_EQUAL(0, MbedTlsFake_SslSetHostnameCallCount());
@@ -744,15 +1049,16 @@ TEST(SolidSyslogMbedTlsStream, OpenSkipsHostnameWhenServerNameIsNull)
 TEST(SolidSyslogMbedTlsStream, OpenWarnsWhenServerNameIsNull)
 
 {
-    /* setup() left config.ServerName at NULL - peer identity is unverified, which
+    /* The profile leaves ServerName unset - peer identity is unverified, which
      * the library must surface rather than swallow (S12.28). */
     SolidSyslogStream_Open(handle, addr);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
-    POINTERS_EQUAL(&MbedTlsStreamErrorSource, ErrorHandlerFake_LastSource());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, ErrorHandlerFake_LastCategory());
-    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_MBEDTLS_STREAM_ERROR_SERVER_NAME_NOT_SET, ErrorHandlerFake_LastDetail());
-    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, ErrorHandlerFake_LastSeverity());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogMbedTlsStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+    );
 }
 
 TEST(SolidSyslogMbedTlsStream, OpenStillConnectsWhenServerNameIsNull)
@@ -768,7 +1074,7 @@ TEST(SolidSyslogMbedTlsStream, OpenDoesNotWarnWhenServerNameIsEmpty)
 
 {
     /* Empty string is the deliberate opt-out - no diagnostic. */
-    config.ServerName = "";
+    FakeProfile_Value.ServerName = "";
     ReCreateHandleWithUpdatedConfig();
     SolidSyslogStream_Open(handle, addr);
 
@@ -778,7 +1084,7 @@ TEST(SolidSyslogMbedTlsStream, OpenDoesNotWarnWhenServerNameIsEmpty)
 TEST(SolidSyslogMbedTlsStream, OpenSkipsHostnameSetupWhenServerNameIsEmpty)
 
 {
-    config.ServerName = "";
+    FakeProfile_Value.ServerName = "";
     ReCreateHandleWithUpdatedConfig();
     SolidSyslogStream_Open(handle, addr);
 
@@ -788,57 +1094,406 @@ TEST(SolidSyslogMbedTlsStream, OpenSkipsHostnameSetupWhenServerNameIsEmpty)
 TEST(SolidSyslogMbedTlsStream, OpenConnectsWhenServerNameIsEmpty)
 
 {
-    config.ServerName = "";
+    FakeProfile_Value.ServerName = "";
     ReCreateHandleWithUpdatedConfig();
 
     CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
 }
 
 /* -------------------------------------------------------------------------
- * mTLS client identity wiring. When the integrator supplies both a
- * ClientCertChain and a ClientKey, Open must call mbedtls_ssl_conf_own_cert
- * so the client presents its cert during the handshake. Either pointer
- * being NULL means "server-auth only" - skip the wiring.
+ * Credentials. The stream holds no material of its own: it asks its
+ * credentials source to install onto the ssl_config once per connection, and
+ * tells it when that connection ends.
  * ------------------------------------------------------------------------- */
 
-TEST(SolidSyslogMbedTlsStream, OpenWiresOwnCertWhenClientCertAndKeyProvided)
-
+TEST(SolidSyslogMbedTlsStream, OpenAsksTheCredentialsToInstallOntoItsSslConfig)
 {
-    static mbedtls_x509_crt clientCertMarker;
-    static mbedtls_pk_context clientKeyMarker;
-    config.ClientCertChain = &clientCertMarker;
-    config.ClientKey = &clientKeyMarker;
-    ReCreateHandleWithUpdatedConfig();
     SolidSyslogStream_Open(handle, addr);
 
-    LONGS_EQUAL(1, MbedTlsFake_SslConfOwnCertCallCount());
-    POINTERS_EQUAL(MbedTlsFake_LastSslConfigInitArg(), MbedTlsFake_LastSslConfOwnCertConfigArg());
-    POINTERS_EQUAL(&clientCertMarker, MbedTlsFake_LastSslConfOwnCertCertArg());
-    POINTERS_EQUAL(&clientKeyMarker, MbedTlsFake_LastSslConfOwnCertKeyArg());
+    LONGS_EQUAL(1, MbedTlsCredentialsFake_InstallCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslConfigInitArg(), MbedTlsCredentialsFake_LastInstallConfig());
 }
 
-TEST(SolidSyslogMbedTlsStream, OpenSkipsOwnCertWhenClientCertChainIsNull)
-
+TEST(SolidSyslogMbedTlsStream, OpenInstallsCredentialsBeforeTheHandshake)
 {
-    /* Key provided, cert NULL - caller hasn't fully opted in to mTLS, so
-     * the adapter must not tell mbedTLS anything. setup() leaves
-     * ClientCertChain at NULL; supplying just a Key is the incomplete case. */
-    static mbedtls_pk_context clientKeyMarker;
-    config.ClientKey = &clientKeyMarker;
-    ReCreateHandleWithUpdatedConfig();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
+
     SolidSyslogStream_Open(handle, addr);
 
-    LONGS_EQUAL(0, MbedTlsFake_SslConfOwnCertCallCount());
+    LONGS_EQUAL(1, MbedTlsCredentialsFake_InstallCallCount());
 }
 
-TEST(SolidSyslogMbedTlsStream, OpenSkipsOwnCertWhenClientKeyIsNull)
-
+TEST(SolidSyslogMbedTlsStream, OpenFailsWhenTheCredentialsCannotInstall)
 {
-    /* Cert provided, key NULL - still incomplete; same skip. */
-    static mbedtls_x509_crt clientCertMarker;
-    config.ClientCertChain = &clientCertMarker;
-    ReCreateHandleWithUpdatedConfig();
+    MbedTlsCredentialsFake_SetInstallSucceeds(false);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenTheCredentialsCannotInstall)
+{
+    MbedTlsCredentialsFake_SetInstallSucceeds(false);
+
     SolidSyslogStream_Open(handle, addr);
 
-    LONGS_EQUAL(0, MbedTlsFake_SslConfOwnCertCallCount());
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+    LONGS_EQUAL(1, MbedTlsFake_SslFreeCallCount());
+    LONGS_EQUAL(1, MbedTlsFake_SslConfigFreeCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenDoesNotHandshakeWhenTheCredentialsCannotInstall)
+{
+    MbedTlsCredentialsFake_SetInstallSucceeds(false);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslHandshakeCallCount());
+}
+
+/* Nothing vouches for the peer and nothing pins it, so there is no check the
+ * handshake could fail - the connection stops rather than reaching a collector
+ * this stream cannot identify. */
+TEST(SolidSyslogMbedTlsStream, OpenFailsWhenNothingAuthorisesThePeer)
+{
+    MbedTlsCredentialsFake_SetTrustAnchorsInstalled(false);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsThatNothingAuthorisesThePeer)
+{
+    FakeProfile_Value.ServerName = "";
+    ReCreateHandleWithUpdatedConfig();
+    MbedTlsCredentialsFake_SetTrustAnchorsInstalled(false);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
+    );
+}
+
+/* RFC 5425 4.2.1 makes a pinned certificate fingerprint sufficient on its own,
+ * so a peer with no trust anchors behind it is still authorisable. */
+TEST(SolidSyslogMbedTlsStream, OpenConnectsWhenOnlyAFingerprintAuthorisesThePeer)
+{
+    MbedTlsCredentialsFake_SetTrustAnchorsInstalled(false);
+    MbedTlsCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+}
+
+TEST(SolidSyslogMbedTlsStream, CloseReleasesTheCredentialsItInstalled)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(1, MbedTlsCredentialsFake_ReleaseCallCount());
+}
+
+/* One Release per Install call, whatever that call returned - which is what
+ * spares every backend a rollback path of its own. */
+TEST(SolidSyslogMbedTlsStream, AFailedInstallIsStillAnsweredByARelease)
+{
+    MbedTlsCredentialsFake_SetInstallSucceeds(false);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsCredentialsFake_ReleaseCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, AnOpenThatFailedLaterIsStillAnsweredByARelease)
+{
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsCredentialsFake_ReleaseCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, CloseWithoutAnOpenReleasesNothing)
+{
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(0, MbedTlsCredentialsFake_ReleaseCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, CloseTwiceReleasesOnlyOnce)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Close(handle);
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(1, MbedTlsCredentialsFake_ReleaseCallCount());
+}
+
+/* The ssl_config holds pointers into the caller's certificates until it is
+ * freed, so the credentials are told the window has closed only once mbedTLS
+ * has let go of them. */
+TEST(SolidSyslogMbedTlsStream, CredentialsAreReleasedAfterTheSslConfigIsFreed)
+{
+    SslConfigFreesSeenAtRelease = 0;
+    MbedTlsCredentialsFake_SetReleaseObserver(CaptureSslConfigFreesAtRelease);
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(1, SslConfigFreesSeenAtRelease);
+}
+
+TEST(SolidSyslogMbedTlsStream, ASecondOpenInstallsTheCredentialsAgain)
+{
+    SolidSyslogStream_Open(handle, addr);
+    SolidSyslogStream_Close(handle);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(2, MbedTlsCredentialsFake_InstallCallCount());
+}
+
+/* Mbed TLS returns MBEDTLS_ERR_SSL_CA_CHAIN_REQUIRED for VERIFY_REQUIRED with
+   no CA chain, whatever a verify callback decides, so a peer authorised by pin
+   alone has to be verified optionally and judged by this stream instead. */
+TEST(SolidSyslogMbedTlsStream, OpenVerifiesOptionallyWhenOnlyAFingerprintAuthorisesThePeer)
+{
+    MbedTlsCredentialsFake_SetTrustAnchorsInstalled(false);
+    MbedTlsCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(MBEDTLS_SSL_VERIFY_OPTIONAL, MbedTlsFake_LastSslConfAuthmodeArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenFailsWhenAPinIsMalformed)
+{
+    static const char* const pins[] = {"sha-256:AA"};
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateHandleWithUpdatedConfig();
+    MbedTlsCredentialsFake_SetFingerprints(pins, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenWarnsOfASha1Pin)
+{
+    static const char* const pins[] = {"sha-1:E1:2D:53:2B:7C:6B:8A:29:A2:76:C8:64:36:0B:08:4B:7A:F1:9E:9D"};
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateHandleWithUpdatedConfig();
+    MbedTlsCredentialsFake_SetFingerprints(pins, 1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogMbedTlsStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_SHA1
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenDoesNotWarnOfAMissingServerNameWhenThePeerIsPinned)
+{
+    /* The profile leaves ServerName unset - a pin names the peer instead. */
+    MbedTlsCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+/* Mbed TLS merges each certificate's flags into one verdict, so a chain-trust
+   objection raised above the leaf reaches the result even when the leaf itself
+   is cleared. A pinned peer with no anchors therefore clears it at every
+   depth. */
+TEST(SolidSyslogMbedTlsStream, VerifyCallbackClearsAChainTrustFlagAboveTheLeafForAPinnedPeerWithoutTrustAnchors)
+{
+    GivenAPinnedPeerWithoutTrustAnchors();
+
+    UNSIGNED_LONGS_EQUAL(0, OpenThenVerifyAt(1, MBEDTLS_X509_BADCERT_NOT_TRUSTED));
+}
+
+TEST(SolidSyslogMbedTlsStream, VerifyCallbackAcceptsALeafWhoseDigestMatchesAPin)
+{
+    GivenAPinnedPeerWithoutTrustAnchors();
+
+    UNSIGNED_LONGS_EQUAL(0, OpenThenVerifyAt(0, MBEDTLS_X509_BADCERT_NOT_TRUSTED));
+}
+
+TEST(SolidSyslogMbedTlsStream, VerifyCallbackMarksALeafWhoseDigestMatchesNoPin)
+{
+    static const unsigned char presented[32] = {0xFF};
+    GivenAPinnedPeerWithoutTrustAnchors();
+    MbedTlsFake_SetDigest(presented, sizeof(presented));
+
+    UNSIGNED_LONGS_EQUAL(MBEDTLS_X509_BADCERT_OTHER, OpenThenVerifyAt(0, 0));
+}
+
+TEST(SolidSyslogMbedTlsStream, VerifyCallbackDoesNotClearTheCertificatesOwnValidityForAPinnedPeer)
+{
+    GivenAPinnedPeerWithoutTrustAnchors();
+
+    UNSIGNED_LONGS_EQUAL(MBEDTLS_X509_BADCERT_EXPIRED, OpenThenVerifyAt(0, MBEDTLS_X509_BADCERT_EXPIRED));
+}
+
+/* Without anchors the library verifies optionally, clears the failure and runs
+   the handshake to completion - which would present the client credential to a
+   peer about to be refused. The callback has to refuse instead, at the leaf. */
+TEST(SolidSyslogMbedTlsStream, VerifyCallbackRefusesTheLeafItselfWhenNoTrustAnchorsAreInstalled)
+{
+    GivenAPinnedPeerWithoutTrustAnchors();
+
+    (void) OpenThenVerifyAt(0, MBEDTLS_X509_BADCERT_EXPIRED);
+
+    CHECK_FALSE(lastVerifyResult == 0);
+}
+
+/* With anchors the library enforces and its verdict survives to be read, so
+   refusing here would destroy the diagnosis and gain nothing. */
+TEST(SolidSyslogMbedTlsStream, VerifyCallbackLeavesEnforcementToTheLibraryWhenTrustAnchorsAreInstalled)
+{
+    GivenAPinnedPeer();
+
+    (void) OpenThenVerifyAt(0, MBEDTLS_X509_BADCERT_EXPIRED);
+
+    LONGS_EQUAL(0, lastVerifyResult);
+}
+
+TEST(SolidSyslogMbedTlsStream, VerifyCallbackLeavesAChainTrustFlagWhenTrustAnchorsAreInstalled)
+{
+    GivenAPinnedPeer();
+
+    UNSIGNED_LONGS_EQUAL(MBEDTLS_X509_BADCERT_NOT_TRUSTED, OpenThenVerifyAt(1, MBEDTLS_X509_BADCERT_NOT_TRUSTED));
+}
+
+TEST(SolidSyslogMbedTlsStream, VerifyCallbackDigestsWithTheAlgorithmThePinNames)
+{
+    static const char* const pins[] = {"sha-1:E1:2D:53:2B:7C:6B:8A:29:A2:76:C8:64:36:0B:08:4B:7A:F1:9E:9D"};
+    static const unsigned char presented[20] = {0xE1, 0x2D, 0x53, 0x2B, 0x7C, 0x6B, 0x8A, 0x29, 0xA2, 0x76,
+                                                0xC8, 0x64, 0x36, 0x0B, 0x08, 0x4B, 0x7A, 0xF1, 0x9E, 0x9D};
+    MbedTlsCredentialsFake_SetFingerprints(pins, 1);
+    MbedTlsFake_SetDigest(presented, sizeof(presented));
+
+    UNSIGNED_LONGS_EQUAL(0, OpenThenVerifyAt(0, 0));
+    LONGS_EQUAL(MBEDTLS_MD_SHA1, MbedTlsFake_LastMdInfoType());
+}
+
+/* The Core contract refuses a peer whose pinned algorithm cannot be computed,
+   which on this platform is a hash compiled out of Mbed TLS. */
+TEST(SolidSyslogMbedTlsStream, VerifyCallbackMarksALeafWhosePinnedAlgorithmIsUnavailable)
+{
+    MbedTlsCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    MbedTlsFake_SetDigestUnavailableFor(MBEDTLS_MD_SHA256);
+
+    UNSIGNED_LONGS_EQUAL(MBEDTLS_X509_BADCERT_OTHER, OpenThenVerifyAt(0, 0));
+}
+
+/* Verifying optionally means Mbed TLS completes the handshake and leaves the
+   verdict to be read, so the stream is what refuses a peer authorised by pin
+   alone whose certificate failed a check of its own. */
+TEST(SolidSyslogMbedTlsStream, OpenFailsWhenTheVerdictCarriesAFaultAfterAnOptionalVerification)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateHandleWithUpdatedConfig();
+    MbedTlsCredentialsFake_SetTrustAnchorsInstalled(false);
+    MbedTlsCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_EXPIRED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED
+    );
+}
+
+/* A pin naming a hash this build compiled out is the integrator's fault, not
+   the collector's; reporting it as a mismatch sends them to the wrong end. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsAPinNamingADigestTheBuildCannotCompute)
+{
+    MbedTlsCredentialsFake_SetTrustAnchorsInstalled(false);
+    MbedTlsCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    MbedTlsFake_SetDigestUnavailableFor(MBEDTLS_MD_SHA256);
+    MbedTlsFake_SetHandshakeRunsVerifyCallback(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerFingerprintDidNotMatch)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateHandleWithUpdatedConfig();
+    MbedTlsCredentialsFake_SetTrustAnchorsInstalled(false);
+    MbedTlsCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    MbedTlsFake_SetSslVerifyResult(MBEDTLS_X509_BADCERT_OTHER | MBEDTLS_X509_BADCERT_NOT_TRUSTED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenConnectsWhenTheVerdictIsClean)
+{
+    MbedTlsCredentialsFake_SetTrustAnchorsInstalled(false);
+    MbedTlsCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    MbedTlsFake_SetSslVerifyResult(0);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+}
+
+TEST(SolidSyslogMbedTlsStream, VersionReportsTheConfiguredFunctionsValue)
+{
+    FakeVersion_ReturnValue = 7U;
+    config.Version = FakeVersion;
+    ReCreateHandleWithUpdatedConfig();
+
+    LONGS_EQUAL(7, SolidSyslogStream_Version(handle));
+}
+
+TEST(SolidSyslogMbedTlsStream, VersionFunctionReceivesVersionContext)
+{
+    int context = 0;
+    config.Version = FakeVersion;
+    config.VersionContext = &context;
+    ReCreateHandleWithUpdatedConfig();
+
+    SolidSyslogStream_Version(handle);
+
+    POINTERS_EQUAL(&context, FakeVersion_LastContext);
+}
+
+TEST(SolidSyslogMbedTlsStream, VersionIsZeroWhenNoFunctionIsConfigured)
+{
+    LONGS_EQUAL(0, SolidSyslogStream_Version(handle));
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenAppliesTheProfilesCiphersuites)
+{
+    static const int suites[] = {MBEDTLS_TLS1_3_AES_256_GCM_SHA384, 0};
+    FakeProfile_Value.CipherSuites = suites;
+
+    SolidSyslogStream_Open(handle, addr);
+
+    POINTERS_EQUAL(suites, MbedTlsFake_LastSslConfCiphersuitesArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenLeavesCiphersuitesAloneWhenTheProfileSetsNone)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslConfCiphersuitesCallCount());
 }

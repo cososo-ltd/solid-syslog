@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <mbedtls/asn1.h>
 #include <mbedtls/ctr_drbg.h>
+#include <mbedtls/pem.h>
 #include <mbedtls/pk.h>
 #include <mbedtls/rsa.h>
 #include <mbedtls/x509.h>
@@ -66,6 +67,56 @@ void MbedTlsTestCert_Create(
     mbedtls_x509_crt_parse_der(&out->Cert, &der.Bytes[der.StartOffset], der.Length);
 }
 
+size_t MbedTlsTestCert_WriteCertPem(const struct MbedTlsTestCert* cert, unsigned char* buffer, size_t capacity)
+{
+    size_t written = 0U;
+    int rc = mbedtls_pem_write_buffer(
+        "-----BEGIN CERTIFICATE-----\n",
+        "-----END CERTIFICATE-----\n",
+        cert->Cert.raw.p,
+        cert->Cert.raw.len,
+        buffer,
+        capacity,
+        &written
+    );
+    assert(rc == 0);
+    (void) rc;
+    /* mbedtls_pem_write_buffer counts the terminator in `written`. */
+    return written;
+}
+
+size_t MbedTlsTestCert_WriteKeyPem(const struct MbedTlsTestCert* cert, unsigned char* buffer, size_t capacity)
+{
+    int rc = mbedtls_pk_write_key_pem((mbedtls_pk_context*) &cert->Key, buffer, capacity);
+    assert(rc == 0);
+    (void) rc;
+    return strlen((const char*) buffer) + 1U;
+}
+
+void MbedTlsTestCert_WriteFingerprint(const struct MbedTlsTestCert* cert, const char* label, char* out, size_t capacity)
+{
+    static const char HEX[] = "0123456789ABCDEF";
+    mbedtls_md_type_t type = (strcmp(label, "sha-1") == 0) ? MBEDTLS_MD_SHA1 : MBEDTLS_MD_SHA256;
+    const mbedtls_md_info_t* info = mbedtls_md_info_from_type(type);
+    unsigned char digest[64];
+    size_t length = mbedtls_md_get_size(info);
+    mbedtls_md(info, cert->Cert.raw.p, cert->Cert.raw.len, digest);
+
+    size_t written = strlen(label);
+    if (capacity > (written + (length * 3U)))
+    {
+        memcpy(out, label, written);
+        for (size_t i = 0; i < length; i++)
+        {
+            out[written] = ':';
+            out[written + 1U] = HEX[digest[i] >> 4U];
+            out[written + 2U] = HEX[digest[i] & 0x0FU];
+            written += 3U;
+        }
+        out[written] = '\0';
+    }
+}
+
 void MbedTlsTestCert_Destroy(struct MbedTlsTestCert* cert)
 {
     mbedtls_x509_crt_free(&cert->Cert);
@@ -101,7 +152,9 @@ static void WriteCertToDer(
     const unsigned char serial[] = {0x01};
     mbedtls_x509write_crt_set_serial_raw(&crt, (unsigned char*) serial, sizeof(serial));
 
-    mbedtls_x509write_crt_set_validity(&crt, TEST_CERT_VALIDITY_FROM, TEST_CERT_VALIDITY_TO);
+    const char* validityFrom = (config->ValidityFrom != NULL) ? config->ValidityFrom : TEST_CERT_VALIDITY_FROM;
+    const char* validityTo = (config->ValidityTo != NULL) ? config->ValidityTo : TEST_CERT_VALIDITY_TO;
+    mbedtls_x509write_crt_set_validity(&crt, validityFrom, validityTo);
 
     mbedtls_x509write_crt_set_basic_constraints(&crt, config->IsCa, -1);
 

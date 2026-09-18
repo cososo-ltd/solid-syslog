@@ -19,19 +19,19 @@ struct SolidSyslogOpenSslAesGcmPolicy
     struct SolidSyslogOpenSslAesGcmPolicyConfig Config;
 };
 
-void OpenSslAesGcmPolicy_Initialise(
+void SolidSyslogOpenSslAesGcmPolicy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogOpenSslAesGcmPolicyConfig* config
 );
-void OpenSslAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base);
+void SolidSyslogOpenSslAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base);
 
 static inline void OpenSslAesGcmPolicy_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogOpenSslAesGcmPolicyErrors code
+    enum SolidSyslogAesGcmPolicyErrors code
 )
 {
-    SolidSyslog_Error(severity, &OpenSslAesGcmPolicyErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogOpenSslAesGcmPolicyErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGOPENSSLAESGCMPOLICYPRIVATE_H */

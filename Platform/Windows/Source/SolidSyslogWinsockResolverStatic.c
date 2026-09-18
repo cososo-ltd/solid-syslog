@@ -35,7 +35,7 @@ struct SolidSyslogResolver* SolidSyslogWinsockResolver_Create(void)
     struct SolidSyslogResolver* handle = SolidSyslogNullResolver_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&WinsockResolver_Allocator, index) == true)
     {
-        WinsockResolver_Initialise(&WinsockResolver_Pool[index].Base);
+        SolidSyslogWinsockResolver_Initialise(&WinsockResolver_Pool[index].Base);
         handle = &WinsockResolver_Pool[index].Base;
     }
     else
@@ -82,5 +82,5 @@ static inline size_t WinsockResolver_IndexFromHandle(const struct SolidSyslogRes
 static inline void WinsockResolver_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    WinsockResolver_Cleanup(&WinsockResolver_Pool[index].Base);
+    SolidSyslogWinsockResolver_Cleanup(&WinsockResolver_Pool[index].Base);
 }

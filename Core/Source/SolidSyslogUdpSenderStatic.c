@@ -35,7 +35,7 @@ struct SolidSyslogSender* SolidSyslogUdpSender_Create(const struct SolidSyslogUd
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&UdpSender_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&UdpSender_Allocator, index))
         {
-            UdpSender_Initialise(&UdpSender_Pool[index].Base, config);
+            SolidSyslogUdpSender_Initialise(&UdpSender_Pool[index].Base, config);
             result = &UdpSender_Pool[index].Base;
         }
         else
@@ -132,5 +132,5 @@ static inline size_t UdpSender_IndexFromHandle(const struct SolidSyslogSender* b
 static inline void UdpSender_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    UdpSender_Cleanup(&UdpSender_Pool[index].Base);
+    SolidSyslogUdpSender_Cleanup(&UdpSender_Pool[index].Base);
 }

@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is LwipRawDnsResolverErrorSource. A
+    /** Detail codes for events whose Source is SolidSyslogLwipRawDnsResolverErrorSource. A
      *  handler reads these off event->Detail after matching event->Source; the
      *  members name their own fault. */
     enum SolidSyslogLwipRawDnsResolverErrors
@@ -21,13 +21,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_POOL_EXHAUSTED,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_RESOLVE_TIMEOUT, /**< The bounded async-resolve spin hit its deadline. */
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_CONFIG,
+        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_SLEEP,
         SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
     /** Identity for events raised by a LwipRawDnsResolver. A handler matches by
-     *  address (event->Source == &LwipRawDnsResolverErrorSource), then reads
+     *  address (event->Source == &SolidSyslogLwipRawDnsResolverErrorSource), then reads
      *  event->Detail as an enum SolidSyslogLwipRawDnsResolverErrors. */
-    extern const struct SolidSyslogErrorSource LwipRawDnsResolverErrorSource;
+    extern const struct SolidSyslogErrorSource SolidSyslogLwipRawDnsResolverErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
 

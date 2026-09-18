@@ -32,7 +32,7 @@ struct SolidSyslogFile* SolidSyslogPlusFatFile_Create(void)
     struct SolidSyslogFile* handle = SolidSyslogNullFile_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&PlusFatFile_Allocator, index) == true)
     {
-        PlusFatFile_Initialise(&PlusFatFile_Pool[index].Base);
+        SolidSyslogPlusFatFile_Initialise(&PlusFatFile_Pool[index].Base);
         handle = &PlusFatFile_Pool[index].Base;
     }
     else
@@ -79,5 +79,5 @@ static inline size_t PlusFatFile_IndexFromHandle(const struct SolidSyslogFile* b
 static inline void PlusFatFile_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    PlusFatFile_Cleanup(&PlusFatFile_Pool[index].Base);
+    SolidSyslogPlusFatFile_Cleanup(&PlusFatFile_Pool[index].Base);
 }

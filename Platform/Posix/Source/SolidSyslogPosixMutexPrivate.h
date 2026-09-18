@@ -20,8 +20,8 @@ struct SolidSyslogPosixMutex
     pthread_mutex_t Mutex;
 };
 
-void PosixMutex_Initialise(struct SolidSyslogMutex* base);
-void PosixMutex_Cleanup(struct SolidSyslogMutex* base);
+void SolidSyslogPosixMutex_Initialise(struct SolidSyslogMutex* base);
+void SolidSyslogPosixMutex_Cleanup(struct SolidSyslogMutex* base);
 
 static inline void PosixMutex_Report(
     enum SolidSyslogSeverity severity,
@@ -29,7 +29,7 @@ static inline void PosixMutex_Report(
     enum SolidSyslogPosixMutexErrors code
 )
 {
-    SolidSyslog_Error(severity, &PosixMutexErrorSource, category, (int32_t) code);
+    SolidSyslog_Error(severity, &SolidSyslogPosixMutexErrorSource, category, (int32_t) code);
 }
 
 #endif /* SOLIDSYSLOGPOSIXMUTEXPRIVATE_H */

@@ -71,7 +71,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
 
             if (blockSequence != NULL)
             {
-                BlockStore_Initialise(&BlockStore_Pool[index].Base, recordStore, blockSequence, config);
+                SolidSyslogBlockStore_Initialise(&BlockStore_Pool[index].Base, recordStore, blockSequence, config);
                 result = &BlockStore_Pool[index].Base;
             }
             else
@@ -156,7 +156,7 @@ void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore* base)
     if (SolidSyslogPoolAllocator_IndexIsValid(&BlockStore_Allocator, index))
     {
         /* Pull the inner pool pointers out of the slot before FreeIfInUse runs
-         * the BlockStore_Cleanup callback, because Cleanup overwrites the
+         * the SolidSyslogBlockStore_Cleanup callback, because Cleanup overwrites the
          * abstract base with the NullStore vtable but the derived RecordStore /
          * BlockSequence pointers stay in the slot. After the outer FreeIfInUse
          * releases the ConfigLock we destroy the inner slots - keeps each pool's
@@ -200,5 +200,5 @@ static inline size_t BlockStore_IndexFromHandle(const struct SolidSyslogStore* b
 static inline void BlockStore_CleanupAtIndex(size_t index, void* context)
 {
     (void) context;
-    BlockStore_Cleanup(&BlockStore_Pool[index].Base);
+    SolidSyslogBlockStore_Cleanup(&BlockStore_Pool[index].Base);
 }
