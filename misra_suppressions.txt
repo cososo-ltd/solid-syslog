@@ -90,8 +90,8 @@ misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:220
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:157
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:165
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:435
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:786
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:798
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:788
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:800
 
 # D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
 # See docs/misra-deviations.md#d003
@@ -202,8 +202,8 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:24
 
 # D.013 — Rule 11.5: void* <-> a byte pointer at third-party byte-buffer API boundaries
 # See docs/misra-deviations.md#d013
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:823
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:841
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:825
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:843
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:146
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:369
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:389

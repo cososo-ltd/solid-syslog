@@ -679,6 +679,25 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSetHostnam
 /* A name beginning with a dot is not an identity. Mbed TLS would simply never
    match it, which leaves the integrator with a refused peer and no reason;
    refusing it here names the fault, and keeps the two adapters agreeing. */
+/* mbedtls_ssl_set_hostname copies the name, so it allocates and can fail that
+   way. The fourth place a connection meets the allocator, and the only one
+   under BAD_CONFIG - the category names the phase, and this one is still
+   configuration. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsTheLibraryOutOfMemoryWhenTheHostnameCannotAllocate)
+{
+    FakeProfile_Value.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    MbedTlsFake_SetSslSetHostnameReturn(MBEDTLS_ERR_SSL_ALLOC_FAILED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(
+        transport,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY
+    );
+}
+
 TEST(SolidSyslogMbedTlsStream, OpenRefusesAServerNameBeginningWithADot)
 {
     FakeProfile_Value.ServerName = ".syslog.example.com";

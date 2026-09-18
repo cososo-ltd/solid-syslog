@@ -598,13 +598,15 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
     }
     else if (serverName[0] != '\0')
     {
-        ok = mbedtls_ssl_set_hostname(&self->SslContext, serverName) == 0;
+        /* Copies the name, so it allocates and can fail that way. */
+        int rc = mbedtls_ssl_set_hostname(&self->SslContext, serverName);
+        ok = rc == 0;
         if (!ok)
         {
             MbedTlsStream_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
-                SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+                MbedTlsStream_InitDetail(rc, SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED)
             );
         }
     }
