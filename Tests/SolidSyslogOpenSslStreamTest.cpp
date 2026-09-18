@@ -2,6 +2,7 @@
 #include <openssl/bio.h>
 #include <openssl/prov_ssl.h>
 #include <openssl/types.h>
+#include <openssl/x509v3.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -353,6 +354,47 @@ TEST(SolidSyslogOpenSslStream, OpenSetsTls12Floor)
     LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_LastMinProtoVersion());
 }
 
+/* RFC 9325 s4.5: 112-bit security - RSA and DH of 2048 bits, curves of 224,
+   no SHA-1 signatures. Level 2 is what OpenSSL builds with by default, but a
+   distribution can build with another, and a profile's CipherList may carry
+   @SECLEVEL=n. The fake resets the level when a cipher list is set, so this
+   also proves the level is pinned after the policy rather than before it. */
+TEST(SolidSyslogOpenSslStream, OpenPinsSecurityLevel2AfterTheCipherPolicy)
+{
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(2, OpenSslFake_LastSecurityLevel());
+}
+
+/* An encrypted PEM key otherwise prompts on the controlling terminal from the
+   servicing thread. The callback refuses, so the key fails to load and is
+   reported as CLIENT_CREDENTIAL_NOT_INSTALLED instead. */
+TEST(SolidSyslogOpenSslStream, OpenInstallsAPassphraseCallbackThatRefusesRatherThanPrompts)
+{
+    SolidSyslogStream_Open(stream, addr);
+    pem_password_cb* cb = OpenSslFake_LastPasswdCb();
+    CHECK_TRUE(cb != nullptr);
+    if (cb != nullptr)
+    {
+        char buf[8];
+        LONGS_EQUAL(0, cb(buf, sizeof(buf), 0, nullptr));
+    }
+}
+
+/* RFC 9525 s6.3 and RFC 5425 s5.2: a wildcard is the whole of the left-most
+   label, never part of one. */
+TEST(SolidSyslogOpenSslStream, OpenRefusesPartialWildcardsInThePeerName)
+{
+    SolidSyslogStream_Open(stream, addr);
+    CHECK_TRUE((OpenSslFake_LastHostflags() & X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS) != 0U);
+}
+
+/* A client that never needs to renegotiate does not let the collector make it. */
+TEST(SolidSyslogOpenSslStream, OpenDisablesRenegotiation)
+{
+    SolidSyslogStream_Open(stream, addr);
+    CHECK_TRUE((OpenSslFake_LastSslOptions() & SSL_OP_NO_RENEGOTIATION) != 0U);
+}
+
 TEST(SolidSyslogOpenSslStream, OpenPassesCipherListToSslCtx)
 {
     FakeProfile_Value.CipherList = "ECDHE+AESGCM";
@@ -375,8 +417,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenCipherListRejected)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED
     );
 }
 
@@ -411,8 +453,8 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenCipherSuitesRejected)
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
-        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
-        SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED
     );
 }
 
@@ -941,6 +983,24 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSet1HostFails)
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
     );
+}
+
+/* OpenSSL reads a checked name that begins with a dot as a sub-domain pattern
+   matching any depth below it - not the one identity the profile declares.
+   Refused before either library call, so it reaches neither SNI nor the
+   verifier. */
+TEST(SolidSyslogOpenSslStream, OpenRefusesAServerNameBeginningWithADot)
+{
+    FakeProfile_Value.ServerName = ".logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(
+        transport,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+    );
+    POINTERS_EQUAL(nullptr, OpenSslFake_LastSniHostname());
 }
 
 TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSniHostnameSetupFails)
@@ -1605,6 +1665,23 @@ TEST(SolidSyslogOpenSslStream, VerifyCallbackRequiresTheChainTooWhenTrustAnchors
 
     LONGS_EQUAL(0, OpenThenVerifyLeaf(0));
     LONGS_EQUAL(X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT, OpenSslFake_StoreCtxError());
+}
+
+/* A pin naming a hash this build cannot compute is the integrator's fault, not
+   the collector's; reporting it as a mismatch sends them to the wrong end. */
+TEST(SolidSyslogOpenSslStream, OpenReportsAPinNamingADigestTheBuildCannotCompute)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetDigestFails(true);
+    OpenSslFake_SetConnectRunsVerifyCallback(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE
+    );
 }
 
 TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerFingerprintDidNotMatch)

@@ -126,6 +126,11 @@ handler), `category` is a portable reaction axis from
 adapter simply never matches its source. The default handler is a silent no-op:
 adapters report and carry on, they never crash the caller.
 
+A role whose faults are the same whichever library fills it carries its codes in
+Core instead, and the adapter's `*Errors.h` declares only the `ErrorSource`. The
+TLS stream and TLS credentials roles work this way; [Port a TLS
+stream](tls-porting.md) covers them.
+
 ### Synchronising the slot walk
 
 The pool allocator wraps each slot claim and release in the
@@ -290,6 +295,7 @@ corruption but not an attacker, and an AEAD encrypts as well as authenticates.
 ## Where to go next
 
 - [Adding it to your build](build-integration.md): the capability matrix, tunables, and build wiring.
-- [Integrating with lwIP (Raw API)](platforms/lwipraw/setup.md), [Mbed TLS](platforms/mbedtls/setup.md), [FreeRTOS-Plus-FAT](platforms/plusfat/setup.md): worked ports of the networking, TLS, and file roles.
+- [Integrating with lwIP (Raw API)](platforms/lwipraw/setup.md) and [FreeRTOS-Plus-FAT](platforms/plusfat/setup.md): worked ports of the networking and file roles.
+- [Port a TLS stream](tls-porting.md): the TLS roles, which add a credentials role and a fingerprint module to the Stream contract.
 - [Naming conventions](NAMING.md) and [MISRA deviations](misra-deviations.md): the rules Tier 1/2 adapter code follows.
 - [Error-event severity policy](error-severity.md): choosing the severity for your adapter's reports.

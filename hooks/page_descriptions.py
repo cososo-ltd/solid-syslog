@@ -109,16 +109,16 @@ DESCRIPTIONS = {
         "at-rest crypto for the SecurityPolicy role, on hosted targets."
     ),
     "platforms/openssl/setup.md": (
-        "Wire SolidSyslogOpenSslStream over a TCP stream for RFC 5425 syslog over "
-        "TLS: what to link, the layering, the config, and mutual TLS."
+        "Wire SolidSyslogOpenSslStream for RFC 5425 syslog over TLS, in order: "
+        "credentials, profile, stream, sender, and what the error handler sees."
     ),
     "platforms/mbedtls/index.md": (
         "The Mbed TLS adapter pack for embedded targets: TLS transport for the "
         "Stream role, and keyed at-rest crypto for the SecurityPolicy role."
     ),
     "platforms/mbedtls/setup.md": (
-        "Wire Mbed TLS for RFC 5425 syslog over TLS on an embedded target: the "
-        "layering, bringing the library up, and the sizing traps."
+        "Wire SolidSyslogMbedTlsStream for RFC 5425 syslog over TLS, in order: "
+        "bring-up, credentials, profile, stream, and what the error handler sees."
     ),
     "platforms/fatfs/index.md": (
         "The ChaN FatFs adapter pack, filling the File role beneath a BlockDevice "
@@ -147,6 +147,10 @@ DESCRIPTIONS = {
     "porting.md": (
         "Port SolidSyslog to a new RTOS, network stack, filesystem or crypto "
         "library by filling a vtable contract. Core never changes."
+    ),
+    "tls-porting.md": (
+        "Fill the Stream role with another TLS library: the credentials role, "
+        "the profile, the Core fingerprint module, and the obligations to meet."
     ),
     # Compliance
     "cra.md": (

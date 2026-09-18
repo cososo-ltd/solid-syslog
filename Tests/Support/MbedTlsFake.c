@@ -123,6 +123,10 @@ static int sslHandshakeCallCount;
 static mbedtls_ssl_context* lastSslHandshakeArg;
 static int sslHandshakeReturn;
 static uint32_t sslVerifyResult;
+/* The real handshake runs the configured verify callback; an error from it is
+ * fatal and leaves no verdict, leftover flags fail verification under
+ * VERIFY_REQUIRED and become the verdict. */
+static bool handshakeRunsVerifyCallback;
 static int sslHandshakeReturnSequence[MBEDTLSFAKE_MAX_HANDSHAKE_RETURNS];
 static int sslHandshakeReturnSequenceLen;
 
@@ -152,6 +156,10 @@ static mbedtls_ssl_context* lastSslFreeArg;
 /* mbedtls_ssl_config_free */
 static int sslConfigFreeCallCount;
 static mbedtls_ssl_config* lastSslConfigFreeArg;
+
+/* mbedtls_ssl_conf_legacy_renegotiation / mbedtls_ssl_conf_dhm_min_bitlen */
+static int lastLegacyRenegotiationArg = -1;
+static unsigned int lastDhmMinBitlenArg;
 
 /* mbedtls_ssl_conf_authmode */
 static int sslConfAuthmodeCallCount;
@@ -250,6 +258,9 @@ void MbedTlsFake_Reset(void)
     sslConfigFreeCallCount = 0;
     lastSslConfigFreeArg = NULL;
     sslConfAuthmodeCallCount = 0;
+    lastLegacyRenegotiationArg = -1;
+    handshakeRunsVerifyCallback = false;
+    lastDhmMinBitlenArg = 0U;
     lastSslConfAuthmodeConfigArg = NULL;
     lastSslConfAuthmodeArg = 0;
     sslConfCaChainCallCount = 0;
@@ -721,7 +732,30 @@ int mbedtls_ssl_handshake(mbedtls_ssl_context* ssl)
         int idx = (callIndex < sslHandshakeReturnSequenceLen) ? callIndex : (sslHandshakeReturnSequenceLen - 1);
         rc = sslHandshakeReturnSequence[idx];
     }
+    if (handshakeRunsVerifyCallback && (lastSslConfVerifyCallback != NULL))
+    {
+        uint32_t flags = 0U;
+        if (lastSslConfVerifyCallback(lastSslConfVerifyContext, MbedTlsFake_Certificate(), 0, &flags) != 0)
+        {
+            sslVerifyResult = 0xFFFFFFFFU;
+            rc = MBEDTLS_ERR_X509_FATAL_ERROR;
+        }
+        else if (flags != 0U)
+        {
+            sslVerifyResult = flags;
+            rc = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
+        }
+        else
+        {
+            /* Verified clean; the configured return stands. */
+        }
+    }
     return rc;
+}
+
+void MbedTlsFake_SetHandshakeRunsVerifyCallback(bool runs)
+{
+    handshakeRunsVerifyCallback = runs;
 }
 
 int mbedtls_ssl_write(mbedtls_ssl_context* ssl, const unsigned char* buf, size_t len)
@@ -767,6 +801,30 @@ void mbedtls_ssl_conf_authmode(mbedtls_ssl_config* conf, int authmode)
     sslConfAuthmodeCallCount++;
     lastSslConfAuthmodeConfigArg = conf;
     lastSslConfAuthmodeArg = authmode;
+}
+
+void mbedtls_ssl_conf_legacy_renegotiation(mbedtls_ssl_config* conf, int allow_legacy)
+{
+    (void) conf;
+    lastLegacyRenegotiationArg = allow_legacy;
+}
+
+int MbedTlsFake_LastLegacyRenegotiationArg(void)
+{
+    return lastLegacyRenegotiationArg;
+}
+
+#if defined(MBEDTLS_DHM_C) && defined(MBEDTLS_SSL_CLI_C)
+void mbedtls_ssl_conf_dhm_min_bitlen(mbedtls_ssl_config* conf, unsigned int bitlen)
+{
+    (void) conf;
+    lastDhmMinBitlenArg = bitlen;
+}
+#endif
+
+unsigned int MbedTlsFake_LastDhmMinBitlenArg(void)
+{
+    return lastDhmMinBitlenArg;
 }
 
 void mbedtls_ssl_conf_ciphersuites(mbedtls_ssl_config* conf, const int* ciphersuites)

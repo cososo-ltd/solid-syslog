@@ -22,7 +22,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogOpenSslCredentials;
 
     /** Where this backend's material lives. Every member is the caller's and
-     *  must stay valid for the lifetime of the credentials. */
+     *  must stay valid for the lifetime of the credentials. The key must not be
+     *  encrypted: a passphrase is never prompted for, so an encrypted key fails
+     *  to load and is reported as CLIENT_CREDENTIAL_NOT_INSTALLED. */
     struct SolidSyslogOpenSslPemFileCredentialsConfig
     {
         /** PEM file of trust anchors the peer certificate must chain to; NULL

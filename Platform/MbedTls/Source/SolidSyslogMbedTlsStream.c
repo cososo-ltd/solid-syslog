@@ -45,7 +45,8 @@ const struct SolidSyslogErrorSource SolidSyslogMbedTlsStreamErrorSource = {"Mbed
 
 enum
 {
-    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1
+    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1,
+    MBEDTLS_STREAM_DHM_MIN_BITLEN = 2048U
 };
 
 struct SolidSyslogAddress;
@@ -85,6 +86,7 @@ static bool MbedTlsStream_DigestCertificate(
 static inline void MbedTlsStream_ReleaseCredentials(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbedTlsStream* self);
+static inline bool MbedTlsStream_NameBeginsWithADot(const char* name);
 static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PeerPassedVerification(struct SolidSyslogMbedTlsStream* self);
@@ -234,6 +236,7 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
     MbedTlsStream_PullProfile(self);
     self->RefusedVerdict = 0U;
+    self->PinVerdict = SOLIDSYSLOG_TLS_AUTHORISATION_NO_MATCH;
     bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && MbedTlsStream_ApplySslConfigDefaults(self);
     if (ok)
     {
@@ -294,6 +297,14 @@ static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream*
      * RFC 9662, which updates RFC 5425, requires TLS 1.3 to be preferred
      * wherever it is implemented. */
     mbedtls_ssl_conf_min_tls_version(&self->SslConfig, MBEDTLS_SSL_VERSION_TLS1_2);
+    /* RFC 9325 s3.5: a TLS 1.2 server that does not acknowledge
+     * renegotiation_info gets handshake_failure. The library default completes
+     * that handshake and only refuses to renegotiate afterwards. */
+    mbedtls_ssl_conf_legacy_renegotiation(&self->SslConfig, MBEDTLS_SSL_LEGACY_BREAK_HANDSHAKE);
+#if defined(MBEDTLS_DHM_C) && defined(MBEDTLS_SSL_CLI_C)
+    /* RFC 9325 s4.5. The library default is 1024. */
+    mbedtls_ssl_conf_dhm_min_bitlen(&self->SslConfig, MBEDTLS_STREAM_DHM_MIN_BITLEN);
+#endif
     mbedtls_ssl_conf_rng(&self->SslConfig, mbedtls_ctr_drbg_random, self->Config.Rng);
 }
 
@@ -450,12 +461,13 @@ static inline uint32_t MbedTlsStream_ChainTrustFlags(void)
 
 static inline bool MbedTlsStream_LeafMatchesAPin(struct SolidSyslogMbedTlsStream* self, mbedtls_x509_crt* leaf)
 {
-    return SolidSyslogTlsFingerprint_Authorise(
-               self->Installed.Fingerprints,
-               self->Installed.FingerprintCount,
-               MbedTlsStream_DigestCertificate,
-               leaf
-           ) == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED;
+    self->PinVerdict = SolidSyslogTlsFingerprint_Authorise(
+        self->Installed.Fingerprints,
+        self->Installed.FingerprintCount,
+        MbedTlsStream_DigestCertificate,
+        leaf
+    );
+    return self->PinVerdict == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED;
 }
 
 /* A hash compiled out of Mbed TLS has no md_info, which is the Core callback's
@@ -546,6 +558,18 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
             );
         }
     }
+    else if (MbedTlsStream_NameBeginsWithADot(serverName))
+    {
+        /* Not an identity. Mbed TLS would never match it, leaving a refused peer
+         * with no reason named; refusing here names the fault, and keeps this
+         * adapter in step with a library that reads it as a sub-domain pattern. */
+        MbedTlsStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+        );
+        ok = false;
+    }
     else if (serverName[0] != '\0')
     {
         ok = mbedtls_ssl_set_hostname(&self->SslContext, serverName) == 0;
@@ -565,6 +589,11 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
          * connect chain-only without a diagnostic. */
     }
     return ok;
+}
+
+static inline bool MbedTlsStream_NameBeginsWithADot(const char* name)
+{
+    return name[0] == '.';
 }
 
 static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbedTlsStream* self)
@@ -650,9 +679,17 @@ static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_RefusalDetail(struct
     {
         verdict = mbedtls_ssl_get_verify_result(&self->SslContext);
     }
-    if (MbedTlsStream_IsVerifyFailure(verdict))
+    if (self->PinVerdict == SOLIDSYSLOG_TLS_AUTHORISATION_DIGEST_UNAVAILABLE)
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE;
+    }
+    else if (MbedTlsStream_IsVerifyFailure(verdict))
     {
         detail = MbedTlsStream_DetailForVerifyFailure(verdict);
+    }
+    else
+    {
+        /* Rejected by the peer or the protocol; no check of ours names it. */
     }
     return detail;
 }

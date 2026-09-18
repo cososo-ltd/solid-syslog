@@ -33,7 +33,9 @@ change here.
 One source ships with the pack: `SolidSyslogOpenSslPemFileCredentials`, which
 names its material by file path. It performs no file handling of its own -
 the paths go to OpenSSL, which opens and parses them, so PEM bytes never pass
-through this library.
+through this library. The key must not be encrypted: a passphrase is never
+prompted for, so an encrypted key fails to load and is reported as
+`CLIENT_CREDENTIAL_NOT_INSTALLED`.
 
 The `SSL_CTX` is rebuilt on every open and freed on close, and the credentials
 source is asked again each time. Nothing is held between connections. Rotation
@@ -60,7 +62,9 @@ From the credentials codes it does not raise `NULL_RNG` for the same reason, nor
 `PEM_NOT_TERMINATED`, `TRUST_ANCHORS_NOT_PARSED` or `CLIENT_CREDENTIAL_NOT_PARSED`:
 the shipped source names a path and hands it to OpenSSL, which reads and parses
 the file itself, so a failure there arrives as `TRUST_ANCHORS_NOT_LOADED` or
-`CLIENT_CREDENTIAL_NOT_INSTALLED` rather than as a parse of its own.
+`CLIENT_CREDENTIAL_NOT_INSTALLED` rather than as a parse of its own. Nor
+`ALREADY_IN_USE`: the shipped source holds nothing between connections, so two
+streams may share one.
 
 The at-rest policies raise every code their roles define.
 
@@ -75,10 +79,17 @@ Both of OpenSSL's cipher lists are selectable, because it keeps two: one governs
 TLS 1.2 and below, the other TLS 1.3, and since no protocol ceiling is pinned the
 second is usually the one in force. Leave either unset and OpenSSL's own default
 stands - for TLS 1.3 that is the suite RFC 8446 makes mandatory plus the two it
-recommends. A list that selects nothing fails `Open`, before any handshake, rather
-than falling back, so a policy that matches no suite is reported instead of
-silently ignored.
+recommends. A list that selects nothing fails `Open` before any handshake and
+is reported as `CIPHER_POLICY_REJECTED`, rather than falling back.
+
+The security level is pinned at 2 after the policy is applied, so a list
+carrying `@SECLEVEL=n` cannot lower it.
 
 Key-exchange groups and signature algorithms are not selectable here. TLS 1.3
 moved both out of the ciphersuite, so a policy naming a curve has nowhere to go
 yet.
+
+## Where it falls short of the contract
+
+Nowhere. Every obligation under [TLS obligations](../../tls.md) is met by this
+pack as shipped.

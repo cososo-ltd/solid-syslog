@@ -20,6 +20,11 @@ so the features you enable are the features it gets.
 
 A `SolidSyslogSleepFunction` is required and has no default.
 
+A seeded `mbedtls_ctr_drbg_context` is required by the stream and by both
+credentials sources. Seeded is yours to guarantee: a context that was
+initialised and never seeded returns bytes without error, makes every session's
+keys predictable, and cannot be told apart from a seeded one by this adapter.
+
 ## Credentials come from a credentials source
 
 Where trust anchors, pinned peer fingerprints and the mutual-TLS client
@@ -95,7 +100,9 @@ describe faults this pack cannot have and it never raises them.
 
 From the TLS-stream codes it does not raise `CONTEXT_INIT_FAILED`. There is no
 separate context to build here - the configuration is brought up from a library
-preset, and a failure at that point is `DEFAULTS_NOT_APPLIED`.
+preset, and a failure at that point is `DEFAULTS_NOT_APPLIED`. Nor
+`CIPHER_POLICY_REJECTED`: setting the ciphersuite list cannot fail, so a policy
+naming only ciphersuites the build lacks surfaces as a refused handshake.
 
 From the credentials codes it does not raise `TRUST_ANCHORS_NOT_LOADED`. Neither
 shipped source loads anchors from anywhere: one is handed material the integrator
@@ -122,13 +129,22 @@ build enables is offered, which on a trimmed `mbedtls_config.h` is whatever was
 compiled in rather than a curated set; naming a policy is how that becomes a
 decision rather than a side effect of the build.
 
-Setting the list cannot fail here - `mbedtls_ssl_conf_ciphersuites` returns
-nothing - so a policy naming only suites the build does not carry surfaces as a
-refused handshake rather than as a configuration error.
-
 Key-exchange groups and signature algorithms are not selectable here. TLS 1.3
 moved both out of the ciphersuite, so a policy naming a curve has nowhere to go
 yet.
+
+## Where it falls short of the contract
+
+Certificate validity is checked only where the build carries a clock, below.
+
+An expected identity given as an address literal is matched against an
+`iPAddress` entry, as the contract requires, but Mbed TLS also matches it
+against a DNS name or Common Name spelling the same digits and offers no way to
+refuse that. A certificate carrying the address only as text therefore passes
+here. RFC 9525 §6.2 requires the exact `iPAddress` match alone.
+
+Every other obligation under [TLS obligations](../../tls.md) is met by this
+pack as shipped.
 
 ## Certificate validity depends on your build carrying a clock
 
