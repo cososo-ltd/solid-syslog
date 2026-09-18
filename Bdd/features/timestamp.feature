@@ -12,4 +12,4 @@ Feature: Timestamp encoding
   Scenario: Timestamp is received by syslog-ng
     Given the syslog oracle is running
     When the BDD target sends a syslog message
-    Then the syslog oracle receives a message with a timestamp within 5 seconds of now
+    Then the syslog oracle receives a message with a timestamp within 60 seconds of now

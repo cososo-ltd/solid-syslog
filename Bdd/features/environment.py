@@ -15,6 +15,7 @@ import time
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "steps"))
 from solidsyslog_tunables import SOLIDSYSLOG_MAX_MESSAGE_SIZE  # noqa: E402
+from wait_budgets import CONDITION_TIMEOUT_SECONDS  # noqa: E402
 
 logger = logging.getLogger("behave.environment")
 
@@ -61,7 +62,7 @@ RECEIVED_TLS_B_LOG = "Bdd/output/received_tls_b.log"
 RECEIVED_MTLS_LOG = "Bdd/output/received_mtls.log"
 
 
-def wait_for_tcp_port_open(host="syslog-ng", port=5514, timeout=5):
+def wait_for_tcp_port_open(host="syslog-ng", port=5514, timeout=CONDITION_TIMEOUT_SECONDS):
     """Poll until the TCP port accepts connections."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -116,7 +117,7 @@ def otel_start_oracle():
             stderr=err,
         )
     for port in (5514, 6514, 6515):
-        wait_for_tcp_port_open(host="127.0.0.1", port=port, timeout=15)
+        wait_for_tcp_port_open(host="127.0.0.1", port=port)
 
 
 def before_all(context):

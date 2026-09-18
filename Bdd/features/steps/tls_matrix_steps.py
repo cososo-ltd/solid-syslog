@@ -20,8 +20,9 @@ from syslog_severities import severity_value
 from tls_collectors import fingerprint_of, listener
 from tls_error_codes import sender_error_code, tls_error_code
 from tls_reports import reported_delivery_faults, reported_details, reported_reports, target_output
+from wait_budgets import CONDITION_TIMEOUT_SECONDS
 
-REPORT_TIMEOUT_SECONDS = 20
+REPORT_TIMEOUT_SECONDS = CONDITION_TIMEOUT_SECONDS
 
 
 def await_report(context, expected, read):
