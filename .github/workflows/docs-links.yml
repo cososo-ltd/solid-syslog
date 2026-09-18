@@ -18,9 +18,7 @@ name: Docs Links
 
 on:
   pull_request:
-    # See ci.yml: feature/tls-rework is the E39 integration branch, and the
-    # contract rewrite that opens it is almost entirely docs.
-    branches: [ main, feature/tls-rework ]
+    branches: [ main ]
     paths:
       - 'docs/**'
       - '*.md'
