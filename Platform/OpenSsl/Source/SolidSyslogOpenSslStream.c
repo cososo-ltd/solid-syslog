@@ -57,6 +57,7 @@ static uint32_t OpenSslStream_Version(struct SolidSyslogStream* base);
 static inline bool OpenSslStream_ConfigureCipherList(SSL_CTX* ctx, const char* cipherList);
 static inline bool OpenSslStream_ConfigureCipherSuites(SSL_CTX* ctx, const char* cipherSuites);
 static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_NameBeginsWithADot(const char* name);
 static inline bool OpenSslStream_ConfigureProtocolFloor(SSL_CTX* ctx);
 static inline bool OpenSslStream_ConfigureCipherPolicy(SSL_CTX* ctx, const struct SolidSyslogOpenSslProfile* profile);
 static inline BIO* OpenSslStream_CreateTransportBio(struct SolidSyslogOpenSslStream* self);
@@ -800,6 +801,18 @@ static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpe
             );
         }
     }
+    else if (OpenSslStream_NameBeginsWithADot(serverName))
+    {
+        /* X509_check_host reads a checked name beginning with a dot as a
+         * sub-domain pattern matching any depth below it - not the one identity
+         * the profile declares. Refused before it reaches SNI or the verifier. */
+        OpenSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+        );
+        ok = false;
+    }
     else if (serverName[0] != '\0')
     {
         ok = (SSL_set_tlsext_host_name(self->Ssl, serverName) == 1) && (SSL_set1_host(self->Ssl, serverName) == 1);
@@ -819,6 +832,11 @@ static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpe
          * connect chain-only without a diagnostic. */
     }
     return ok;
+}
+
+static inline bool OpenSslStream_NameBeginsWithADot(const char* name)
+{
+    return name[0] == '.';
 }
 
 static inline bool OpenSslStream_IsRetryableSslError(int err)

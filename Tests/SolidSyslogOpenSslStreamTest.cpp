@@ -982,6 +982,24 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSet1HostFails)
     );
 }
 
+/* OpenSSL reads a checked name that begins with a dot as a sub-domain pattern
+   matching any depth below it - not the one identity the profile declares.
+   Refused before either library call, so it reaches neither SNI nor the
+   verifier. */
+TEST(SolidSyslogOpenSslStream, OpenRefusesAServerNameBeginningWithADot)
+{
+    FakeProfile_Value.ServerName = ".logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(
+        transport,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+    );
+    POINTERS_EQUAL(nullptr, OpenSslFake_LastSniHostname());
+}
+
 TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenSniHostnameSetupFails)
 {
     FakeProfile_Value.ServerName = "logs.example";

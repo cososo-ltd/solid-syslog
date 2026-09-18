@@ -75,37 +75,25 @@ A library reports its verdict in its own way - one code, or accumulated flags -
 and it may no longer carry the reason by the time the stream reads it. Record
 what the callback decided as it decides it; do not deduce it afterwards.
 
-## The obligations, as a checklist
+## What the contract leaves to the implementation
 
-Each is stated in full under [TLS obligations](tls.md). Against the code:
+The obligations are under [TLS obligations](tls.md) and are not repeated here.
+Four things a port gets wrong that the contract does not spell out:
 
-- Set the minimum version to TLS 1.2 on every context you build. Set no
-  maximum.
-- Refuse at `Open`, with `NO_PEER_AUTHORISATION`, when `Install` reports
-  neither anchors nor pins. Never fall back to a system trust store.
-- Accept a peer by fingerprint alone, with no chain. Do not let a pin waive
-  expiry, not-yet-valid or a name mismatch.
-- Verify `ServerName` where one is given, send it as SNI, treat `""` as an
-  explicit opt-out, and report `SERVER_NAME_NOT_SET` for NULL only where no pin
-  is configured.
-- Obtain material through `Install` at every `Open`, and answer every `Install`
-  with one `Release` at `Close`, whatever `Install` returned. Build the library
-  context afresh per connection; hold nothing between them.
-- Report every client-credential fault at `WARNING` and continue
-  server-authenticated. Fail the connection on a fault in what authorises the
-  peer.
-- Pass the profile's cipher policy through unchanged, for every version that
-  can be negotiated.
-- Do not resume sessions.
-- Do not perform or require revocation checking.
-- Bound the handshake with the deadline from `GetHandshakeTimeoutMs`, sleeping
-  through the injected `Sleep` between polls, and report `HANDSHAKE_TIMEOUT`.
-- Attempt `close_notify` once in `Close`, without blocking.
-- Check wiring at `Create` and return the Null stream on a NULL. Check material
-  at `Open`.
+- Refuse a peer before any of the client's credential is sent. Where the
+  library must be told to verify optionally - because it has no anchor to
+  verify against - it completes the handshake and presents the client
+  certificate before the verdict is read; refuse from inside the verify
+  callback instead.
+- Record what the verify callback decided, as it decides it. A refusal from
+  the callback can leave the library's verdict empty, and a waived objection
+  can leave it stale; a reason deduced afterwards is wrong in both cases.
 - Refuse a peer that presented no certificate, whatever the library
-  negotiated.
-- Send nothing of the client's to a peer the stream is about to refuse.
+  negotiated. An anonymous key exchange skips verification entirely and the
+  callback never runs.
+- Answer every `Install` with one `Release` at `Close`, whatever `Install`
+  returned, and build the library context afresh per connection. A source
+  that parses into its own storage relies on both.
 
 ## What to prove
 

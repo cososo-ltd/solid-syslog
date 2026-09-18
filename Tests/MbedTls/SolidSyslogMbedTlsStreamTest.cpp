@@ -627,6 +627,24 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenSetHostnam
     );
 }
 
+/* A name beginning with a dot is not an identity. Mbed TLS would simply never
+   match it, which leaves the integrator with a refused peer and no reason;
+   refusing it here names the fault, and keeps the two adapters agreeing. */
+TEST(SolidSyslogMbedTlsStream, OpenRefusesAServerNameBeginningWithADot)
+{
+    FakeProfile_Value.ServerName = ".syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(
+        transport,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+    );
+    LONGS_EQUAL(0, MbedTlsFake_SslSetHostnameCallCount());
+}
+
 TEST(SolidSyslogMbedTlsStream, SendForwardsBufferToSslWrite)
 
 {

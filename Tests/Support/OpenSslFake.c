@@ -1143,6 +1143,16 @@ void OpenSslFake_SetSet1HostFails(bool fails)
 int SSL_connect(SSL* ssl)
 {
     int rc = connectFails ? -1 : 1;
+    int callIndex = connectCallCount;
+    connectCallCount++;
+    lastConnectSslArg = ssl;
+    if (connectReturnSequenceLen > 0)
+    {
+        int idx = (callIndex < connectReturnSequenceLen) ? callIndex : (connectReturnSequenceLen - 1);
+        rc = connectReturnSequence[idx];
+    }
+    /* A refusal from the callback wins over any scripted result, as it does in
+     * the real handshake. */
     if (connectRunsVerifyCallback && (lastVerifyCallback != NULL))
     {
         storeCtxDepth = 0;
@@ -1152,14 +1162,6 @@ int SSL_connect(SSL* ssl)
             verifyResultValue = storeCtxError;
             rc = -1;
         }
-    }
-    int callIndex = connectCallCount;
-    connectCallCount++;
-    lastConnectSslArg = ssl;
-    if (connectReturnSequenceLen > 0)
-    {
-        int idx = (callIndex < connectReturnSequenceLen) ? callIndex : (connectReturnSequenceLen - 1);
-        rc = connectReturnSequence[idx];
     }
     return rc;
 }

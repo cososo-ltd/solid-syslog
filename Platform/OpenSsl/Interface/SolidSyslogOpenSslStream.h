@@ -46,7 +46,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  supplied must stay valid until the connection closes. */
     struct SolidSyslogOpenSslProfile
     {
-        /** SNI plus the expected peer identity. A non-empty name is verified against
+        /** SNI plus the expected peer identity. A name beginning with a dot is
+         *  refused - OpenSSL would read it as a sub-domain pattern. A non-empty name is verified against
          *  the cert (SAN/CN); one that parses as an address literal is verified as an
          *  address, so the cert must carry it as an iPAddress SAN and a DNS entry
          *  spelling the same digits does not match. NULL asks for neither, and what

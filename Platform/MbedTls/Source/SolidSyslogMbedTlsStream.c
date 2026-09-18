@@ -86,6 +86,7 @@ static bool MbedTlsStream_DigestCertificate(
 static inline void MbedTlsStream_ReleaseCredentials(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbedTlsStream* self);
+static inline bool MbedTlsStream_NameBeginsWithADot(const char* name);
 static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PeerPassedVerification(struct SolidSyslogMbedTlsStream* self);
@@ -557,6 +558,18 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
             );
         }
     }
+    else if (MbedTlsStream_NameBeginsWithADot(serverName))
+    {
+        /* Not an identity. Mbed TLS would never match it, leaving a refused peer
+         * with no reason named; refusing here names the fault, and keeps this
+         * adapter in step with a library that reads it as a sub-domain pattern. */
+        MbedTlsStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+        );
+        ok = false;
+    }
     else if (serverName[0] != '\0')
     {
         ok = mbedtls_ssl_set_hostname(&self->SslContext, serverName) == 0;
@@ -576,6 +589,11 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
          * connect chain-only without a diagnostic. */
     }
     return ok;
+}
+
+static inline bool MbedTlsStream_NameBeginsWithADot(const char* name)
+{
+    return name[0] == '.';
 }
 
 static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbedTlsStream* self)
