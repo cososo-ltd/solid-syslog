@@ -8,7 +8,7 @@
  *  The datagram connect()s to the destination on its first SendTo (connected
  *  UDP) and turns on path-MTU discovery (IP_MTU_DISCOVER = IP_PMTUDISC_DO).
  *  SendTo then reports SENT, OVERSIZE (the datagram exceeds the path MTU,
- *  WSAEMSGSIZE), or FAILED. MaxPayload returns the IPv6-safe default until
+ *  WSAEMSGSIZE), or FAILED. MaxPayload returns the unknown-path payload until
  *  connected, then tracks the discovered path MTU (IP_MTU).
  *
  *  The caller must invoke WSAStartup before use and WSACleanup on shutdown; the

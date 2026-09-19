@@ -186,7 +186,7 @@ static inline bool WinsockDatagram_ConnectIfNeeded(
 static size_t WinsockDatagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
-    size_t result = SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD;
+    size_t result = SolidSyslogUdpPayload_UnknownPath(false);
     if (self->Connected)
     {
         int mtu = 0;

@@ -60,7 +60,7 @@ static enum SolidSyslogDatagramSendResult NullDatagram_SendTo(
 static size_t NullDatagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
     (void) base;
-    return SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD;
+    return SolidSyslogUdpPayload_UnknownPath(false);
 }
 
 static void NullDatagram_Close(struct SolidSyslogDatagram* base)

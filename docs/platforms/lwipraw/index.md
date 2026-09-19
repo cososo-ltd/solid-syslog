@@ -51,7 +51,7 @@ Also set `ARP_QUEUEING=1` (else the first datagram to an unresolved peer is
 dropped) and `LWIP_TCP_KEEPALIVE=1`, and size `PBUF_POOL_SIZE` /
 `MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to your instance counts. `IP_FRAG`
 decides what becomes of a record too large for the path — see
-[an over-large record has three possible fates](#an-over-large-record-has-three-possible-fates)
+[what becomes of an over-large record](#what-becomes-of-an-over-large-record)
 below.
 
 ## Security behaviour and obligations
@@ -71,34 +71,38 @@ are read the moment the hop returns. An asynchronous marshal, or none at all,
 corrupts lwIP's internal state rather than failing cleanly. Install it once at
 boot, before any adapter is created.
 
-### An over-large record has three possible fates
+### What becomes of an over-large record
 
-The datagram reports the IPv6-safe payload of 1232 bytes from `MaxPayload` and
-cannot tell an over-large datagram from any other send failure, which the
-[Datagram](../../api/structSolidSyslogDatagram.md) contract permits. Because the
-sender only trims a record after being told it was too large, one over that size
-reaches lwIP whole, and what happens next is `IP_FRAG`'s decision rather than the
-adapter's:
+The datagram cannot tell an over-large datagram from any other send failure,
+which the [Datagram](../../api/structSolidSyslogDatagram.md) contract permits,
+and it reports the unknown-path payload from `MaxPayload` because the stack
+exposes no path MTU.
+
+A record above that size is offered to lwIP whole, and what happens to that
+first attempt is `IP_FRAG`'s decision rather than the adapter's. Only the
+outcome where lwIP tells us the send failed is recoverable: the sender then
+recognises a record that could not have fitted, trims it on a UTF-8 codepoint
+boundary and sends again.
 
 - **`IP_FRAG=1`**, lwIP's default: lwIP attempts to fragment the datagram and
-  submits the fragments to your interface. Allocating them can fail, and
-  submission is not delivery — this is the case RFC 5426 §3.2 warns about, where
+  submits the fragments to your interface. Submission is reported as success, so
+  the record is not trimmed — this is the case RFC 5426 §3.2 warns about, where
   a lost fragment costs the whole record and some collectors and middleboxes
   drop fragments outright.
 - **`IP_FRAG=0`**: lwIP compiles the length check out of its send path
-  altogether and hands the over-length packet to your driver. A driver that drops
-  it and answers `ERR_OK` loses the record while the store counts it delivered; a
-  driver that answers an error fails the send, and a failed send is treated as
-  transient, so the store re-offers the same record on every pass and nothing
-  behind it is delivered.
+  altogether and hands the over-length packet to your driver. A driver that
+  drops it and answers `ERR_OK` loses the record while the store counts it
+  delivered; a driver that answers an error fails the send, and the record is
+  then trimmed and delivered short.
 
-No record can reach that size at the default `SOLIDSYSLOG_MAX_MESSAGE_SIZE`, so
-all three fates are reachable only where the tunable has been raised past what
-the datagram reports. Until
-[#736](https://github.com/cososo-ltd/solid-syslog/issues/736) lands, keep
-`SOLIDSYSLOG_MAX_MESSAGE_SIZE` at or below that value — noting that it is
-library-wide rather than per-transport, so a value chosen for this path applies
-to every transport the instance uses.
+Setting `IP_FRAG=0` is therefore the configuration that lets an over-large
+record be recovered, and it depends on your driver reporting the rejection
+rather than swallowing it.
+
+No record reaches that size at the default `SOLIDSYSLOG_MAX_MESSAGE_SIZE`. These
+fates apply where the tunable has been raised past what the datagram reports -
+noting that the tunable is library-wide rather than per-transport, so a value
+chosen for this path applies to every transport the instance uses.
 
 ### Dead-peer detection runs at lwIP's defaults
 

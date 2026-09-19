@@ -190,9 +190,9 @@ TEST(SolidSyslogWinsockDatagram, CloseCalledWithSocketFd)
     CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd());
 }
 
-TEST(SolidSyslogWinsockDatagram, MaxPayloadFallsBackToIpv6SafePayload)
+TEST(SolidSyslogWinsockDatagram, MaxPayloadFallsBackToUnknownPathPayload)
 {
-    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD, SolidSyslogDatagram_MaxPayload(datagram));
+    LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
 }
 
 TEST(SolidSyslogWinsockDatagram, OpenDoesNotConnect)
@@ -264,7 +264,7 @@ TEST(SolidSyslogWinsockDatagram, MaxPayloadFallsBackWhenIpMtuLookupFails)
     SolidSyslogDatagram_Open(datagram);
     SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, TEST_MESSAGE_LEN, addr);
     WinsockFake_SetIpMtuLookupFails(true);
-    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD, SolidSyslogDatagram_MaxPayload(datagram));
+    LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
 }
 
 // clang-format off

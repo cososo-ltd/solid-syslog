@@ -29,14 +29,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  - **Report MaxPayload for the path in use, and never guess high.** The
      *    value bounds what the caller will retry, so an optimistic answer costs
      *    the record. Where the stack cannot report a path MTU, answer
-     *    SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD rather than something larger. The
-     *    path meant is the destination currently being sent to; an
+     *    SolidSyslogUdpPayload_UnknownPath for the family rather than something
+     *    larger. The path meant is the destination currently being sent to; an
      *    implementation serving several at once answers low enough for all of
-     *    them.
-     *  - **Return OVERSIZE where the platform can distinguish it**, so the caller
-     *    can trim and retry rather than treating the record as undeliverable.
-     *    Collapsing it into FAILED is permitted for a stack that cannot tell the
-     *    difference, and costs recovery: see the note on SendTo.
+     *    them. Zero says the implementation cannot report a limit: the caller
+     *    will not read a failure as oversize on its word, and an OVERSIZE
+     *    returned alongside it discards the record, so answer a real figure
+     *    wherever one exists.
+     *  - **Return OVERSIZE where the platform can distinguish it**, so the
+     *    caller learns the reason from the result rather than from the size.
+     *    Collapsing it into FAILED is permitted for a stack that cannot tell
+     *    the difference and no longer costs recovery: see the note on SendTo.
      *  - **SENT means the record has been handed to the network**, and licenses
      *    the caller to drop it. Do not return SENT for a datagram still queued
      *    behind something that may fail.

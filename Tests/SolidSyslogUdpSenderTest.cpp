@@ -28,7 +28,7 @@
 using namespace CososoTesting;
 
 class TEST_SolidSyslogUdpSenderRetry_DoubleOversizeDoesNotSendThird_Test;
-class TEST_SolidSyslogUdpSenderRetry_NonOversizeFailureDoesNotRetry_Test;
+class TEST_SolidSyslogUdpSenderRetry_FailureOnRecordThatFitsDoesNotRetry_Test;
 class TEST_SolidSyslogUdpSenderRetry_OversizeQueriesMaxPayloadAndRetries_Test;
 class TEST_SolidSyslogUdpSenderRetry_SuccessfulSendDoesNotQueryMaxPayload_Test;
 class TEST_SolidSyslogUdpSenderRetry_ZeroMaxPayloadSkipsRetrySend_Test;
@@ -744,12 +744,38 @@ TEST(SolidSyslogUdpSenderRetry, MaxPayloadLargerThanMessageCapsTrimToMessageSize
     LONGS_EQUAL(sizeof(payload), retrySendSize());
 }
 
-TEST(SolidSyslogUdpSenderRetry, NonOversizeFailureDoesNotRetry)
+/* A platform whose stack cannot distinguish an over-large datagram reports
+ * FAILED for one, which the contract permits. The record is still too big for
+ * the path, so it is trimmed and retried rather than lost - #736. */
+TEST(SolidSyslogUdpSenderRetry, FailureLargerThanMaxPayloadTrimsAndRetries)
 {
     firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT);
+    maxPayload(3);
+    Send();
+    CALLED_DATAGRAM_SEND(TWICE);
+    LONGS_EQUAL(3, retrySendSize());
+}
+
+/* A MaxPayload of zero says the implementation cannot report what the path
+ * carries, not that nothing fits. Inferring oversize from it would turn every
+ * ordinary send failure into a trimmed retry, and a trim to zero bytes is
+ * swallowed as SENT - so the failure would be reported as a delivery. */
+TEST(SolidSyslogUdpSenderRetry, FailureWithUnknownMaxPayloadIsNotOversize)
+{
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED);
+    maxPayload(0);
+    CHECK_FALSE(Send());
+    CALLED_DATAGRAM_SEND(ONCE);
+}
+
+TEST(SolidSyslogUdpSenderRetry, FailureOnRecordThatFitsDoesNotRetry)
+{
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED);
+    maxPayload(TEST_MESSAGE_LEN);
     Send();
     CALLED_DATAGRAM_SEND(ONCE);
-    CALLED_DATAGRAM_MAX_PAYLOAD(NEVER);
+    CALLED_DATAGRAM_MAX_PAYLOAD(ONCE);
 }
 
 TEST(SolidSyslogUdpSenderRetry, NonOversizeFailureReturnsFalse)

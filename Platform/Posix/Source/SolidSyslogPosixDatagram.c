@@ -144,7 +144,7 @@ static inline bool PosixDatagram_ConnectIfNeeded(
 static size_t PosixDatagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogPosixDatagram* self = PosixDatagram_SelfFromBase(base);
-    size_t result = SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD;
+    size_t result = SolidSyslogUdpPayload_UnknownPath(false);
     if (self->Connected)
     {
         int mtu = 0;

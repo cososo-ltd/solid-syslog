@@ -138,7 +138,7 @@ static inline void PlusTcpDatagram_PrimeArpIfMissing(uint32_t ip)
 static size_t PlusTcpDatagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
     (void) base;
-    return SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD;
+    return SolidSyslogUdpPayload_UnknownPath(false);
 }
 
 // NOLINTEND(performance-no-int-to-ptr)
