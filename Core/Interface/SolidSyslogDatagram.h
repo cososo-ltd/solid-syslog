@@ -69,9 +69,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     );
 
     /** Largest datagram payload the current path is known to accept, used to
-     *  trim after an OVERSIZE. Falls back to SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD
-     *  (the IPv6-minimum-MTU floor) before a path MTU is known or when the OS
-     *  cannot report one. */
+     *  trim a record a send did not carry. Before a path MTU is known, or
+     *  where the stack cannot report one, an implementation falls back to
+     *  SolidSyslogUdpPayload_UnknownPath for the destination's address
+     *  family. */
     size_t SolidSyslogDatagram_MaxPayload(struct SolidSyslogDatagram * datagram);
 
     /** Release the transport acquired by Open. Idempotent; safe on an unopened
