@@ -361,18 +361,16 @@ static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin, u
     return connected;
 }
 
-/* The errors that mean the destination or the network answered: a refusal, an
- * unreachable report, or the route giving up. Everything else connect() can
- * return is this device's own - a socket it would not accept, no descriptors,
- * no buffers - and no packet ever left. The remote set is the one listed
- * because it is small and fixed while the local set grows with the platform,
- * so an error we did not anticipate is more likely ours; calling it ours is
- * also the louder of the two, which is the safer default for a code nobody
- * has classified. */
+/* Remote means something was transmitted and the destination or the network
+ * answered, or failed to: a reset came back, or a sent SYN drew nothing. Every
+ * other immediate failure is local - routing rejected the call, or the stack
+ * would not accept the socket - and nothing left this device, which is what
+ * CONNECT_NOT_STARTED says. An unreachable report is local here because the
+ * routing lookup failed before anything was sent; one that arrives after the
+ * SYN is out reaches us through SO_ERROR instead, on the remote path. */
 static inline bool WinsockTcpStream_IsRemoteConnectError(int wsaError)
 {
-    return (wsaError == WSAECONNREFUSED) || (wsaError == WSAEHOSTUNREACH) || (wsaError == WSAENETUNREACH) ||
-           (wsaError == WSAENETDOWN) || (wsaError == WSAETIMEDOUT);
+    return (wsaError == WSAECONNREFUSED) || (wsaError == WSAETIMEDOUT);
 }
 
 static bool WinsockTcpStream_SetNonBlocking(SOCKET fd)

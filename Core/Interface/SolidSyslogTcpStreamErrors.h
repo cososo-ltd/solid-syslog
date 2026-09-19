@@ -35,8 +35,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  issued. The stack would not start the attempt - out of memory for the
          *  segment, no route, or a socket it would not accept. */
         SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
-        /** The attempt was under way and the destination or the network ended it:
-         *  a reset, or an unreachable report. */
+        /** Something was transmitted and the destination or the network ended the
+         *  attempt: a reset, or an unreachable report that arrived after the SYN
+         *  went out. A routing failure that rejects the call before anything is
+         *  sent is CONNECT_NOT_STARTED, not this. */
         SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
         /** The connect budget expired with no answer from the destination. */
         SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT,

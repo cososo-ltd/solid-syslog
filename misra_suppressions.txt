@@ -206,5 +206,5 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:24
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:825
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:843
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:146
-misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:439
-misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:459
+misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:437
+misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:457
