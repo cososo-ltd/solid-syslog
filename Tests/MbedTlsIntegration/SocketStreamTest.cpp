@@ -4,11 +4,11 @@
  * contract tests, so a double more forgiving than the contract would hide a
  * reconnect path that misbehaves against a conforming peer - #727.
  *
- * A file descriptor that is open but is not a socket makes send and recv fail
- * deterministically with ENOTSOCK, and raises no SIGPIPE. That the double
- * closed is observed on the descriptor itself: fcntl answers EBADF once it
- * has gone. */
-#include <fcntl.h>
+ * An unconnected stream socket makes send and recv fail deterministically
+ * with ENOTCONN - neither blocks, and no SIGPIPE is raised at a peer that
+ * does not exist. That the double closed is observed on the descriptor
+ * itself: dup answers EBADF once it has gone. */
+#include <sys/socket.h>
 #include <unistd.h>
 
 #include "SocketStream.h"
@@ -24,7 +24,7 @@ TEST_GROUP(SocketStreamContract)
 
     void setup() override
     {
-        fd = open("/dev/null", O_RDWR);
+        fd = socket(AF_UNIX, SOCK_STREAM, 0);
         CHECK(fd >= 0);
         stream = SocketStream_Create(fd);
     }
@@ -36,7 +36,13 @@ TEST_GROUP(SocketStreamContract)
 
     [[nodiscard]] bool descriptorIsOpen() const
     {
-        return fcntl(fd, F_GETFD) != -1;
+        int probe = dup(fd);
+        bool open = probe != -1;
+        if (open)
+        {
+            close(probe);
+        }
+        return open;
     }
 };
 
