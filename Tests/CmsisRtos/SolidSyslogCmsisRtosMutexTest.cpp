@@ -159,6 +159,15 @@ TEST(SolidSyslogCmsisRtosMutexRefused, LockAndUnlockAreNoOps)
     CALLED_FAKE(CmsisRtosMutexFake_MutexRelease, NEVER);
 }
 
+TEST(SolidSyslogCmsisRtosMutexRefused, DestroyDeletesNothing)
+
+{
+    SolidSyslogCmsisRtosMutex_Destroy(mutex);
+    mutex = nullptr;
+
+    CALLED_FAKE(CmsisRtosMutexFake_MutexDelete, NEVER);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogCmsisRtosMutexPool)
 {
