@@ -110,6 +110,20 @@ TEST(SolidSyslogCmsisRtosMutex, DestroyCallsMutexDeleteOnce)
     CALLED_FAKE(CmsisRtosMutexFake_MutexDelete, ONCE);
 }
 
+// A guard rather than a driver. osMutexNew returns an opaque id that need not
+// be the control block it was handed - CMSIS-FreeRTOS sets the low bit for a
+// recursive mutex - so deriving the id from the control block would work on
+// some implementations and corrupt others. The fake returns a deliberately
+// unrelated pointer, which is what gives this test teeth.
+TEST(SolidSyslogCmsisRtosMutex, DestroyDeletesTheIdMutexNewReturned)
+
+{
+    SolidSyslogCmsisRtosMutex_Destroy(mutex);
+    mutex = nullptr;
+
+    POINTERS_EQUAL(CmsisRtosMutexFake_LastCreatedId(), CmsisRtosMutexFake_LastDeletedId());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogCmsisRtosMutexPool)
 {

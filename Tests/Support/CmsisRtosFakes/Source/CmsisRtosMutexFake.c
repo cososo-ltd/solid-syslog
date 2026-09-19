@@ -22,6 +22,7 @@ static uint32_t CmsisRtosMutexFake_ControlBlockBytes = 0;
 static uint32_t CmsisRtosMutexFake_AttrBits = 0;
 static bool CmsisRtosMutexFake_AttrSupplied = false;
 static uint32_t CmsisRtosMutexFake_AcquireTimeout = 0;
+static osMutexId_t CmsisRtosMutexFake_CreatedId = NULL;
 static osMutexId_t CmsisRtosMutexFake_DeletedId = NULL;
 static bool CmsisRtosMutexFake_NewFails = false;
 
@@ -36,6 +37,7 @@ void CmsisRtosMutexFake_Reset(void)
     CmsisRtosMutexFake_AttrBits = 0;
     CmsisRtosMutexFake_AttrSupplied = false;
     CmsisRtosMutexFake_AcquireTimeout = 0;
+    CmsisRtosMutexFake_CreatedId = NULL;
     CmsisRtosMutexFake_DeletedId = NULL;
     CmsisRtosMutexFake_NewFails = false;
 }
@@ -85,6 +87,11 @@ uint32_t CmsisRtosMutexFake_LastAcquireTimeout(void)
     return CmsisRtosMutexFake_AcquireTimeout;
 }
 
+osMutexId_t CmsisRtosMutexFake_LastCreatedId(void)
+{
+    return CmsisRtosMutexFake_CreatedId;
+}
+
 osMutexId_t CmsisRtosMutexFake_LastDeletedId(void)
 {
     return CmsisRtosMutexFake_DeletedId;
@@ -110,6 +117,7 @@ osMutexId_t osMutexNew(const osMutexAttr_t* attr)
     {
         id = &CmsisRtosMutexFake_Id;
     }
+    CmsisRtosMutexFake_CreatedId = id;
     return id;
 }
 

@@ -32,6 +32,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     uint32_t CmsisRtosMutexFake_LastAcquireTimeout(void);
 
+    /** The id osMutexNew last handed back, which is deliberately not the
+     *  control block it was given. */
+    osMutexId_t CmsisRtosMutexFake_LastCreatedId(void);
+
     osMutexId_t CmsisRtosMutexFake_LastDeletedId(void);
 
     /** Make osMutexNew hand back NULL, as a real implementation does when the
