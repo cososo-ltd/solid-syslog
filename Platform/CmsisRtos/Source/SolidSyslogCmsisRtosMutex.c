@@ -38,7 +38,7 @@ static inline struct SolidSyslogCmsisRtosMutex* CmsisRtosMutex_SelfFromBase(stru
 
 static void CmsisRtosMutex_Lock(struct SolidSyslogMutex* base)
 {
-    (void) osMutexAcquire(CmsisRtosMutex_SelfFromBase(base)->Id, 0);
+    (void) osMutexAcquire(CmsisRtosMutex_SelfFromBase(base)->Id, osWaitForever);
 }
 
 void SolidSyslogCmsisRtosMutex_Cleanup(struct SolidSyslogMutex* base)
