@@ -85,6 +85,14 @@ TEST(SolidSyslogCmsisRtosMutex, LockCallsMutexAcquireOnce)
     CALLED_FAKE(CmsisRtosMutexFake_MutexAcquire, ONCE);
 }
 
+TEST(SolidSyslogCmsisRtosMutex, LockWaitsForever)
+
+{
+    SolidSyslogMutex_Lock(mutex);
+
+    UNSIGNED_LONGS_EQUAL(osWaitForever, CmsisRtosMutexFake_LastAcquireTimeout());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogCmsisRtosMutexPool)
 {
