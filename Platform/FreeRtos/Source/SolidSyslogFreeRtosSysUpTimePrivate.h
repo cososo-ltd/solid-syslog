@@ -25,19 +25,19 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         uint32_t Rollovers;
     };
 
-    /** Fold @p nowTicks into @p state and return the uptime in hundredths of
-     *  a second, wrapping at 2^32 as RFC 3418 TimeTicks does.
+    /** Fold @p nowTicks into @p state and return the ticks since boot,
+     *  counting past the point where the counter itself wrapped.
      *
      *  A tick count below the last one seen is taken as one rollover, so this
      *  has to be called at least once per rollover period - about 50 days at
      *  1000 Hz on a 32-bit counter - or an unobserved rollover is lost. Every
      *  formatted message calls it, so silence that long is the only way to
-     *  reach it. */
-    uint32_t SolidSyslogFreeRtosSysUpTime_Advance(
-        struct SolidSyslogFreeRtosSysUpTimeState * state,
-        uint32_t nowTicks,
-        uint32_t tickRateHz
-    );
+     *  reach it. This is the only part that touches shared state. */
+    uint64_t SolidSyslogFreeRtosSysUpTime_Extend(struct SolidSyslogFreeRtosSysUpTimeState * state, uint32_t nowTicks);
+
+    /** Hundredths of a second for @p ticks at @p tickRateHz, wrapping at 2^32
+     *  as RFC 3418 TimeTicks does. Pure, so it needs no lock. */
+    uint32_t SolidSyslogFreeRtosSysUpTime_Hundredths(uint64_t ticks, uint32_t tickRateHz);
 
 SOLIDSYSLOG_EXTERN_C_END
 

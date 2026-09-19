@@ -15,6 +15,7 @@ target_sources(SolidSyslogFreeRtos INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogFreeRtosMutex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogFreeRtosMutexStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogFreeRtosSysUpTime.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogFreeRtosSysUpTimeConvert.c
 )
 
 target_include_directories(SolidSyslogFreeRtos INTERFACE

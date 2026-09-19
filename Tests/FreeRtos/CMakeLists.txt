@@ -187,6 +187,7 @@ add_executable(SolidSyslogFreeRtosSysUpTimeTest
     SolidSyslogFreeRtosSysUpTimeAdvanceTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTimeConvert.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosTaskFake.c
 )
 

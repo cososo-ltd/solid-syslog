@@ -24,9 +24,12 @@ TEST_GROUP(SolidSyslogFreeRtosSysUpTimeAdvance)
 {
     struct SolidSyslogFreeRtosSysUpTimeState state = {};
 
+    /** What the public entry point does: extend under the state, then scale. */
     [[nodiscard]] uint32_t advance(uint32_t ticks, uint32_t rateHz)
     {
-        return SolidSyslogFreeRtosSysUpTime_Advance(&state, ticks, rateHz);
+        return SolidSyslogFreeRtosSysUpTime_Hundredths(
+            SolidSyslogFreeRtosSysUpTime_Extend(&state, ticks), rateHz
+        );
     }
 };
 
