@@ -59,6 +59,12 @@ TEST(SolidSyslogCmsisRtosMutex, CreateCallsMutexNewOnce)
     CALLED_FAKE(CmsisRtosMutexFake_MutexNew, ONCE);
 }
 
+TEST(SolidSyslogCmsisRtosMutex, CreateHandsTheCallersControlBlockToMutexNew)
+
+{
+    POINTERS_EQUAL(&controlBlock, CmsisRtosMutexFake_LastControlBlock());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogCmsisRtosMutexPool)
 {
