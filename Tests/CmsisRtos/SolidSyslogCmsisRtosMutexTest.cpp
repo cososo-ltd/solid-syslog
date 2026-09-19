@@ -34,6 +34,32 @@ struct TestControlBlock
     }
 
 // clang-format off
+TEST_GROUP(SolidSyslogCmsisRtosMutex)
+{
+    struct SolidSyslogMutex* mutex = nullptr;
+    TestControlBlock controlBlock  = {};
+
+    void setup() override
+    {
+        CmsisRtosMutexFake_Reset();
+        mutex = SolidSyslogCmsisRtosMutex_Create(&controlBlock, sizeof(controlBlock));
+    }
+
+    void teardown() override
+    {
+        SolidSyslogCmsisRtosMutex_Destroy(mutex);
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogCmsisRtosMutex, CreateCallsMutexNewOnce)
+
+{
+    CALLED_FAKE(CmsisRtosMutexFake_MutexNew, ONCE);
+}
+
+// clang-format off
 TEST_GROUP(SolidSyslogCmsisRtosMutexPool)
 {
     struct SolidSyslogMutex* pooled[SOLIDSYSLOG_MUTEX_POOL_SIZE] = {};
