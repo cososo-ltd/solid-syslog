@@ -7,6 +7,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#if (configTICK_TYPE_WIDTH_IN_BITS == TICK_TYPE_WIDTH_64_BITS)
+
 enum
 {
     HUNDREDTHS_PER_SECOND = 100
@@ -14,12 +16,11 @@ enum
 
 uint32_t SolidSyslogFreeRtos_GetSysUpTime(void)
 {
-    /* Divide the tick count down before scaling by 100 so the intermediate
-     * cannot overflow even a 64-bit TickType_t; the whole/remainder split is
-     * exact floor division, and the uint32 cast wraps per RFC 3418 TimeTicks.
-     * The header states which tick configurations wrap early. */
+    /* Divide before scaling so the intermediate cannot overflow. */
     uint64_t ticks = (uint64_t) xTaskGetTickCount();
     uint64_t wholeSecondHundredths = (ticks / configTICK_RATE_HZ) * HUNDREDTHS_PER_SECOND;
     uint64_t subSecondHundredths = ((ticks % configTICK_RATE_HZ) * HUNDREDTHS_PER_SECOND) / configTICK_RATE_HZ;
     return (uint32_t) (wholeSecondHundredths + subSecondHundredths);
 }
+
+#endif /* configTICK_TYPE_WIDTH_IN_BITS */
