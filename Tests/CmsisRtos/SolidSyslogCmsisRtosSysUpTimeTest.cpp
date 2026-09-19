@@ -12,6 +12,12 @@ TEST_GROUP(SolidSyslogCmsisRtosSysUpTime)
     {
         CmsisRtosKernelFake_Reset();
     }
+
+    [[nodiscard]] static uint32_t uptimeAt(uint32_t ticks)
+    {
+        CmsisRtosKernelFake_SetTickCount(ticks);
+        return SolidSyslogCmsisRtos_GetSysUpTime();
+    }
 };
 
 // clang-format on
@@ -45,4 +51,15 @@ TEST(SolidSyslogCmsisRtosSysUpTime, ScalesALargeTickCountWithoutOverflowing)
     CmsisRtosKernelFake_SetTickCount(100000000);
 
     UNSIGNED_LONGS_EQUAL(10000000U, SolidSyslogCmsisRtos_GetSysUpTime());
+}
+
+TEST(SolidSyslogCmsisRtosSysUpTime, KeepsCountingPastTheCounterWrap)
+{
+    CmsisRtosKernelFake_SetTickFreq(1000);
+
+    uint32_t before = uptimeAt(UINT32_MAX);
+    uint32_t after = uptimeAt(10000);
+
+    // 10001 ticks on from UINT32_MAX, which is 1000 hundredths at 1000 Hz.
+    UNSIGNED_LONGS_EQUAL(1000U, after - before);
 }
