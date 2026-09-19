@@ -15,11 +15,17 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Hundredths of a second of uptime from xTaskGetTickCount, for the meta-SD
-     *  sysUpTime field. Meets the SolidSyslogSysUpTimeFunction contract for a
-     *  64-bit TickType_t at any tick rate, and for a 32-bit one whose
-     *  configTICK_RATE_HZ divides 100. Elsewhere - the 1000 Hz default among
-     *  them - the value wraps to zero early, so supply your own
-     *  SolidSyslogSysUpTimeFunction where uptime matters. */
+     *  sysUpTime field. Meets the SolidSyslogSysUpTimeFunction contract at any
+     *  tick rate and for either width of TickType_t, wrapping at 2^32
+     *  hundredths as RFC 3418 TimeTicks does.
+     *
+     *  A 32-bit counter rolls over long before those hundredths do, so how
+     *  often it has is carried across calls. Two consequences for the
+     *  integrator. This must be reached at least once per counter rollover -
+     *  about 50 days at the 1000 Hz default - or a rollover goes unseen;
+     *  formatting any message reaches it. And because it keeps state it takes
+     *  a short critical section, so it is safe to call from any task but not
+     *  from an interrupt. */
     uint32_t SolidSyslogFreeRtos_GetSysUpTime(void);
 
 SOLIDSYSLOG_EXTERN_C_END

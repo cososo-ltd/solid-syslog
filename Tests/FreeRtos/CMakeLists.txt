@@ -184,6 +184,7 @@ add_test(NAME SolidSyslogFreeRtosMutexTest COMMAND SolidSyslogFreeRtosMutexTest)
 # UART test does: a minimal kernel-only environment must still build it.
 add_executable(SolidSyslogFreeRtosSysUpTimeTest
     SolidSyslogFreeRtosSysUpTimeTest.cpp
+    SolidSyslogFreeRtosSysUpTimeAdvanceTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosTaskFake.c
@@ -197,6 +198,7 @@ target_link_libraries(SolidSyslogFreeRtosSysUpTimeTest PRIVATE
 
 target_include_directories(SolidSyslogFreeRtosSysUpTimeTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source
     ${CMAKE_SOURCE_DIR}/Core/Interface
     ${CMAKE_SOURCE_DIR}/Core/Source
     ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface

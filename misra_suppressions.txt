@@ -141,7 +141,7 @@ misra-c2012-2.4:Core/Source/SolidSyslogBlockSequence.c:111
 misra-c2012-2.4:Core/Source/SolidSyslogRecordStore.c:18
 misra-c2012-2.4:Core/Source/SolidSyslogStreamSender.c:29
 misra-c2012-2.4:Core/Interface/SolidSyslogUdpPayload.h:21
-misra-c2012-5.7:Core/Interface/SolidSyslogUdpPayload.h:25
+misra-c2012-5.7:Core/Interface/SolidSyslogUdpPayload.h:26
 misra-c2012-5.7:Core/Interface/SolidSyslogTlsFingerprint.h:32
 misra-c2012-5.7:Core/Source/SolidSyslogStreamSender.c:29
 misra-c2012-5.7:Core/Source/SolidSyslogUdpPayload.c:9
@@ -179,7 +179,7 @@ misra-c2012-5.7:Core/Source/SolidSyslogCircularBuffer.c:25
 misra-c2012-5.7:Core/Source/SolidSyslogCrc16.c:16
 misra-c2012-5.7:Core/Source/SolidSyslogCrc16Policy.c:14
 misra-c2012-5.7:Core/Source/SolidSyslogOriginSdPrivate.h:17
-misra-c2012-5.7:Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c:11
+misra-c2012-5.7:Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c:13
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixHostname.c:14
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:29
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBufferPrivate.h:21
