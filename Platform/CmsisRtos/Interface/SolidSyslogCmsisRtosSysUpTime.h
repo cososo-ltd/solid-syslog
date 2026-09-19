@@ -15,7 +15,12 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Hundredths of a second of uptime from osKernelGetTickCount, for the
-     *  meta-SD sysUpTime field. */
+     *  meta-SD sysUpTime field.
+     *
+     *  The kernel tick counter is 32 bits on every CMSIS-RTOS2
+     *  implementation, so above 100 Hz it reaches its own wrap before the
+     *  2^32 hundredths RFC 3418 allows. The wraps are counted, which takes a
+     *  short scheduler lock - safe from any task, not from an interrupt. */
     uint32_t SolidSyslogCmsisRtos_GetSysUpTime(void);
 
 SOLIDSYSLOG_EXTERN_C_END
