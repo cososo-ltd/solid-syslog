@@ -626,7 +626,7 @@ TEST(SolidSyslogPosixTcpStreamPool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         &SolidSyslogPosixTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_POSIX_TCP_STREAM_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_TCP_STREAM_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -693,7 +693,7 @@ TEST(SolidSyslogPosixTcpStreamPool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPosixTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_POSIX_TCP_STREAM_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -710,7 +710,7 @@ TEST(SolidSyslogPosixTcpStreamPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPosixTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_POSIX_TCP_STREAM_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );
 }
 

@@ -46,7 +46,7 @@ void SolidSyslogLwipRawTcpStream_ApplyKeepalive(struct tcp_pcb* pcb);
 static inline void LwipRawTcpStream_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogLwipRawTcpStreamErrors code
+    enum SolidSyslogTcpStreamErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogLwipRawTcpStreamErrorSource, category, (int32_t) code);

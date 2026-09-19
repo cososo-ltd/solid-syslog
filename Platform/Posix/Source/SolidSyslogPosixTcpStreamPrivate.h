@@ -29,7 +29,7 @@ void SolidSyslogPosixTcpStream_Cleanup(struct SolidSyslogStream* base);
 static inline void PosixTcpStream_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogPosixTcpStreamErrors code
+    enum SolidSyslogTcpStreamErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogPosixTcpStreamErrorSource, category, (int32_t) code);

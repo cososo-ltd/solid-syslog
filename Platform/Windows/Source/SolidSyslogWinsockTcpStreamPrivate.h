@@ -31,7 +31,7 @@ void SolidSyslogWinsockTcpStream_Cleanup(struct SolidSyslogStream* base);
 static inline void WinsockTcpStream_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogWinsockTcpStreamErrors code
+    enum SolidSyslogTcpStreamErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogWinsockTcpStreamErrorSource, category, (int32_t) code);
