@@ -103,11 +103,17 @@ include them), run `addSubIssue` retroactively; it's idempotent-safe on closed i
 The `SolidSyslog` project board (`gh project list --owner DavidCozens` → project 1) has a
 `Status` single-select field with options **Todo**, **In Progress**, **Done**.
 
-Project workflows keep membership and status; there is no manual step. Linking a story
-under its epic with `addSubIssue` puts it on the board at `Todo`, opening a pull request
-that links the issue moves it to `In Progress`, and closing it sets `Done`. The workflows
-add nothing that has no parent, so a chore or docs issue raised without an epic stays off
-the board; a few early items predate them.
+Project workflows keep status, but **not membership**. Opening a pull request that
+links the issue moves it to `In Progress` and closing it sets `Done`, both unassisted.
+Adding the story to the board is a manual step: *Auto-add sub-issues to project* reports
+itself enabled and does not fire, observed on 2026-08-09 and again on 2026-09-19 when
+eleven `addSubIssue`-linked stories all stayed off. Nothing that has no parent belongs on
+the board anyway, so a chore or docs issue raised without an epic stays off it.
+
+Add a story with `addProjectV2ItemById`, then set its status — the mutations are
+under **Adding to the board, and repairing it by hand** below, which is the routine
+path rather than the exception. #862 tracks getting the automation working; until it
+closes, assume the manual add.
 
 Confirm any of that by reading the board rather than the workflow list — an automation
 being enabled says nothing about which field it writes, and the API exposes each
@@ -134,10 +140,10 @@ archived items by default, so a board read without it is a partial one.
   housekeeping step, not a status transition. Archived items stay on the project and still
   count in the epic's sub-issue roll-up.
 
-### Repairing board state by hand
+### Adding to the board, and repairing it by hand
 
-Nothing routine needs this — the workflows above place items and set status. It is here
-for the case where one has not fired, or a status is wrong and needs correcting.
+Adding a story is routine — the automation does not place items (see above). Correcting
+a status is the rarer case, since the status workflows do fire.
 
 ```bash
 # Project and Status field IDs (stable for this repo):
@@ -164,6 +170,16 @@ query($endCursor: String) {
       }
     }
   }
+}'
+
+# Add an issue to the board. contentId is the issue's node id, which the
+# Issue / Epic Linking query above already returns. Returns the item id.
+gh api graphql -f query='
+mutation {
+  addProjectV2ItemById(input: {
+    projectId: "PVT_kwHOAPhEnM4BTETq",
+    contentId: "<ISSUE_NODE_ID>"
+  }) { item { id } }
 }'
 
 # Correct a status, using the item id the query above returns.
@@ -221,8 +237,11 @@ For every new story:
 2. `addSubIssue` it under the parent epic (see **Issue / Epic Linking** above). The
    Parent-issue link is what groups the story into the correct swimlane.
 
-There is no third step. Step 2 puts the story on the board at `Todo`, and the swimlane
-appears with it. Do **not** add the parent epic — it is not an item.
+3. Add it to the board with `addProjectV2ItemById` and set `Status` to `Todo` — see
+   **Adding to the board, and repairing it by hand** below. The sub-issue link groups
+   it into the right swimlane; it does not put it on the board (#862).
+
+Do **not** add the parent epic — it is not an item.
 
 ### Work-in-progress limit
 
