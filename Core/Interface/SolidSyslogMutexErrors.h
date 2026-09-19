@@ -24,6 +24,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     {
         SOLIDSYSLOG_MUTEX_ERROR_POOL_EXHAUSTED,
         SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_MUTEX_ERROR_CREATE_FAILED,
         SOLIDSYSLOG_MUTEX_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

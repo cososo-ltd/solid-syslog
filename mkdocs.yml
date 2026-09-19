@@ -201,6 +201,7 @@ nav:
       - Port a new platform: porting.md
       - Port a TLS stream: tls-porting.md
       - C11 atomics: platforms/stdatomic/index.md
+      - CMSIS-RTOS2: platforms/cmsisrtos/index.md
       - FatFs: platforms/fatfs/index.md
       - FreeRTOS: platforms/freertos/index.md
       - FreeRTOS-Plus-FAT: platforms/plusfat/index.md
