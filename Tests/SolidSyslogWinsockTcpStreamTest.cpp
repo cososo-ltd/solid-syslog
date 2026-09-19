@@ -156,25 +156,28 @@ TEST(SolidSyslogWinsockTcpStream, OpenEnablesSoKeepalive)
     LONGS_EQUAL(1, WinsockFake_LastSetSockOptValue(SOL_SOCKET, SO_KEEPALIVE));
 }
 
-TEST(SolidSyslogWinsockTcpStream, OpenSetsTcpKeepIdleTo45Seconds)
+TEST(SolidSyslogWinsockTcpStream, OpenSetsTcpKeepIdleFromTheTunable)
 {
     SolidSyslogStream_Open(stream, addr);
     CHECK_TRUE(WinsockFake_HasSetSockOpt(IPPROTO_TCP, TCP_KEEPIDLE));
-    LONGS_EQUAL(45, WinsockFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPIDLE));
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS, WinsockFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPIDLE));
 }
 
-TEST(SolidSyslogWinsockTcpStream, OpenSetsTcpKeepIntvlTo10Seconds)
+TEST(SolidSyslogWinsockTcpStream, OpenSetsTcpKeepIntvlFromTheTunable)
 {
     SolidSyslogStream_Open(stream, addr);
     CHECK_TRUE(WinsockFake_HasSetSockOpt(IPPROTO_TCP, TCP_KEEPINTVL));
-    LONGS_EQUAL(10, WinsockFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPINTVL));
+    LONGS_EQUAL(
+        SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS,
+        WinsockFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPINTVL)
+    );
 }
 
-TEST(SolidSyslogWinsockTcpStream, OpenSetsTcpKeepCntTo4)
+TEST(SolidSyslogWinsockTcpStream, OpenSetsTcpKeepCntFromTheTunable)
 {
     SolidSyslogStream_Open(stream, addr);
     CHECK_TRUE(WinsockFake_HasSetSockOpt(IPPROTO_TCP, TCP_KEEPCNT));
-    LONGS_EQUAL(4, WinsockFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPCNT));
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT, WinsockFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPCNT));
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenCallsConnectWithSocketFd)
