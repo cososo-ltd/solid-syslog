@@ -40,9 +40,9 @@ Cortex-M3 startup, the linker script, the semihosting disk and every `BddTarget*
 source come from [`../Common/`](../Common/) and `../FreeRtos/` as they already
 did.
 
-What is genuinely this target's own is its `CMakeLists.txt`, `main.c`, and the
-three configuration headers - `lwipopts.h`, `FreeRTOSConfig.h` and
-`solidsyslog_user_tunables.h` - because those are what the swaps above change.
+What is genuinely this target's own is its `CMakeLists.txt`, its `main.c`, and the
+configuration headers the swaps above change: `lwipopts.h`, `FreeRTOSConfig.h`,
+`mbedtls_user_config.h` and `solidsyslog_user_tunables.h`.
 
 ## Running it
 
