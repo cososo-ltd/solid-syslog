@@ -87,7 +87,7 @@ services:
 
   behave-freertos:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:481267bea7200641fac41d7136e7e08deeba1b311e9873aa6d1c311db5b4cf58 # sha-ad10bf2
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:c130cc0686701e7747fd0a7fce8b4fe882b4a197e6a6f2b4fe5f46dfd2863e56 # sha-1739f5b
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -164,7 +164,7 @@ services:
 
   behave-freertos-lwip:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:481267bea7200641fac41d7136e7e08deeba1b311e9873aa6d1c311db5b4cf58 # sha-ad10bf2
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:c130cc0686701e7747fd0a7fce8b4fe882b4a197e6a6f2b4fe5f46dfd2863e56 # sha-1739f5b
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
