@@ -124,6 +124,45 @@ TEST(SolidSyslogCmsisRtosMutex, DestroyDeletesTheIdMutexNewReturned)
     POINTERS_EQUAL(CmsisRtosMutexFake_LastCreatedId(), CmsisRtosMutexFake_LastDeletedId());
 }
 
+// A guard on the documented alternative to supplying a control block. NULL with
+// a zero size is the form CMSIS-RTOS2 defines for "allocate it yourself", so the
+// adapter must pass the pair through untouched rather than substitute anything
+// of its own - and must not grow a NULL check that turns the request away.
+// clang-format off
+TEST_GROUP(SolidSyslogCmsisRtosMutexImplementationAllocated)
+{
+    struct SolidSyslogMutex* mutex = nullptr;
+
+    void setup() override
+    {
+        CmsisRtosMutexFake_Reset();
+        mutex = SolidSyslogCmsisRtosMutex_Create(nullptr, 0);
+    }
+
+    void teardown() override
+    {
+        SolidSyslogCmsisRtosMutex_Destroy(mutex);
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogCmsisRtosMutexImplementationAllocated, CreateAsksTheImplementationToAllocate)
+
+{
+    CHECK_TRUE(CmsisRtosMutexFake_LastAttrWasSupplied());
+    POINTERS_EQUAL(nullptr, CmsisRtosMutexFake_LastControlBlock());
+    UNSIGNED_LONGS_EQUAL(0, CmsisRtosMutexFake_LastControlBlockBytes());
+}
+
+TEST(SolidSyslogCmsisRtosMutexImplementationAllocated, LockReachesTheMutexItWasGiven)
+
+{
+    SolidSyslogMutex_Lock(mutex);
+
+    CALLED_FAKE(CmsisRtosMutexFake_MutexAcquire, ONCE);
+}
+
 // An implementation refuses the control block it is handed when that block is
 // smaller than the one it needs - a size only the integrator can know, since
 // CMSIS-RTOS2 does not standardise it. osMutexNew answers NULL, and Create has
