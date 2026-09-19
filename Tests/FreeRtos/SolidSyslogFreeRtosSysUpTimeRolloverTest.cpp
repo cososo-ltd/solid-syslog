@@ -37,5 +37,6 @@ TEST(SolidSyslogFreeRtosSysUpTimeRollover, KeepsCountingPastTheCounterWrap)
     uint32_t before = uptimeAt(UINT32_MAX);
     uint32_t after = uptimeAt(10000U);
 
-    CHECK(after > before);
+    /* 10001 ticks on from UINT32_MAX, which is 1000 hundredths at 1000 Hz. */
+    UNSIGNED_LONGS_EQUAL(1000U, after - before);
 }

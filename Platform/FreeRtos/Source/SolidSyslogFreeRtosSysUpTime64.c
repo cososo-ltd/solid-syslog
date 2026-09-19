@@ -23,9 +23,4 @@ uint32_t SolidSyslogFreeRtos_GetSysUpTime(void)
     return (uint32_t) (wholeSecondHundredths + subSecondHundredths);
 }
 
-#else
-
-/* ISO C forbids an empty translation unit. */
-typedef int SolidSyslogFreeRtosSysUpTime64_EmptyTranslationUnit;
-
 #endif /* configTICK_TYPE_WIDTH_IN_BITS */
