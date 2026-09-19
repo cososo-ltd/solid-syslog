@@ -10,5 +10,9 @@
 
 uint32_t SolidSyslogCmsisRtos_GetSysUpTime(void)
 {
-    return (osKernelGetTickCount() * 100U) / osKernelGetTickFreq();
+    uint32_t ticks = osKernelGetTickCount();
+    uint32_t tickFreqHz = osKernelGetTickFreq();
+
+    /* Divide before scaling so the intermediate cannot overflow. */
+    return ((ticks / tickFreqHz) * 100U) + (((ticks % tickFreqHz) * 100U) / tickFreqHz);
 }
