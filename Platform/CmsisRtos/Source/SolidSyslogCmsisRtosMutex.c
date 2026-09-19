@@ -50,5 +50,8 @@ static void CmsisRtosMutex_Unlock(struct SolidSyslogMutex* base)
 
 void SolidSyslogCmsisRtosMutex_Cleanup(struct SolidSyslogMutex* base)
 {
+    (void) osMutexDelete(CmsisRtosMutex_SelfFromBase(base)->Id);
+    /* Overwrite the abstract base with the shared NullMutex vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullMutex_Get();
 }
