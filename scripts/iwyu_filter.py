@@ -51,7 +51,7 @@ ADDITIONS that IWYU asks for but we never write by hand (cont.):
 6. '#include "FreeRTOSConfig.h"' — direct config include.
    Platform/FreeRtos/ source files must not include FreeRTOSConfig.h
    directly — that's a LayerGuard violation (Platform reaching into a
-   consumer-supplied / Tests-tier file). The config is reached
+   consumer-supplied / Tests file). The config is reached
    transitively through FreeRTOS.h, which is the contract.
 
 7. '#include "portmacro.h"' — private FreeRTOS header.

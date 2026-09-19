@@ -17,7 +17,7 @@ language: en-GB
 tone_instructions: >-
   You are reviewing a MISRA C:2012-informed, TDD-built embedded syslog
   library. Hold production C to a high bar and cite the specific rule or
-  naming tier; be pragmatic about the C++ test harnesses. Be terse and
+  naming section; be pragmatic about the C++ test harnesses. Be terse and
   technical. Use UK English.
 
 reviews:
@@ -53,7 +53,7 @@ reviews:
     - path: "{Core,Platform}/**/*.{c,h}"
       instructions: |
         This is MISRA C:2012-informed production C (C99 baseline). Hold a high
-        bar and cite the specific rule/tier. docs/NAMING.md and
+        bar and cite the specific rule or NAMING.md section. docs/NAMING.md and
         docs/misra-deviations.md are authoritative — defer to them.
 
         MISRA / structure:
@@ -81,8 +81,8 @@ reviews:
           no-typedef-struct rule (5.7), documented const-strip sites (11.8).
           Only flag a NEW deviation not covered there.
 
-        Naming (docs/NAMING.md tiers):
-        - Tier 1 is decided by linkage, not by whether an integrator is meant
+        Naming (docs/NAMING.md):
+        - The external-linkage form is decided by linkage, not by whether an integrator is meant
           to call the identifier: anything declared in an Interface/ header,
           and anything with external linkage declared in a `.c`, takes the
           prefix — including a library-internal class that spans two
@@ -93,10 +93,16 @@ reviews:
         - File-scope statics `Class_Function` / `CLASS_SCREAMING_SNAKE`;
           struct members `PascalCase` (data AND vtable function-pointer
           members alike); locals/params `lowerCamelCase`.
-        - The this-pointer is the FIRST parameter, named by its declared type:
-          `self` when the type is the concrete class, `base` when it is the
-          abstract base struct. Flag any function that puts state after other
-          args, or names the this-pointer anything else.
+        - The this-pointer is the FIRST parameter. Inside a class's
+          implementation it is named by its declared type: `self` when the
+          type is the concrete class, `base` when it is the abstract base
+          struct (vtable entry points, `<Class>_Destroy`, Definition.h
+          members). On the public surface of a single-view type — a role's
+          call surface (`SolidSyslogStore_Write(store, ...)`), a concrete
+          writer that never dispatches (`SolidSyslogSdElement_Begin(element,
+          ...)`), the library handle — it is a descriptive noun for the
+          instance, never `self` or `base`. Flag any function that puts state
+          after other args, or that breaks this split.
         - No `typedef struct` for project structs — refer to structs by tag.
           Typedefs allowed only for enums and function-pointer types.
         - No Hungarian; no `p`/`P` prefix or `Ptr` suffix on pointers; no
@@ -123,12 +129,12 @@ reviews:
         breaking, and do not suggest a `!`/"BREAKING CHANGE" commit trailer.
 
     # ---------------------------------------------------------------------
-    # Platform/*/Source/ — Pragmatic tier relaxations layered on the strict
+    # Platform/*/Source/ — Pragmatic level relaxations layered on the strict
     # baseline above. Platform/*/Interface/ stays strict.
     # ---------------------------------------------------------------------
     - path: "Platform/*/Source/**/*.{c,h}"
       instructions: |
-        Pragmatic tier (adapter code wrapping third-party APIs). Everything in
+        Pragmatic level (adapter code wrapping third-party APIs). Everything in
         the production-C baseline still applies, with these relaxations only:
         - Local names that mirror a third-party API are fine (`mqd_t mq`,
           `SOCKET sock`, `FIL file`, `buf`/`len` in send/recv wrappers,
@@ -141,7 +147,7 @@ reviews:
           docs/misra-deviations.md with rationale — flag undocumented ones.
 
     # ---------------------------------------------------------------------
-    # Tests — C++ CppUTest harnesses. Consistency-only tier: no MISRA.
+    # Tests — C++ CppUTest harnesses. Consistency-only level: no MISRA.
     # ---------------------------------------------------------------------
     - path: "Tests/**/*.{c,cpp,h,hpp}"
       instructions: |
@@ -152,7 +158,7 @@ reviews:
           belong in a `CHECK_*` macro that NAMES the intent. It must be a macro
           (not a function) so failures report the caller's __FILE__/__LINE__.
         - Do NOT wrap CHECK_* macro bodies in `do { ... } while (0)` — the
-          `Tests/` tier bans it (cppcoreguidelines-avoid-do-while) and
+          `Tests/` config bans it (cppcoreguidelines-avoid-do-while) and
           clang-format's InsertBraces already braces every conditional body,
           so the wrapper is dead weight. A single-statement macro is a bare
           expression; a multi-statement one is a plain `{ ... }` block.
@@ -200,12 +206,12 @@ reviews:
           directory there is the job's rather than the repository's.
 
     # ---------------------------------------------------------------------
-    # Docs — prose. Keep the tier model and conventions self-consistent.
+    # Docs — prose. Keep the conventions self-consistent.
     # ---------------------------------------------------------------------
     - path: "**/*.md"
       instructions: |
         Documentation prose. Use UK English. Flag statements that contradict
         the authoritative references (docs/NAMING.md, docs/misra-deviations.md,
-        CLAUDE.md) — e.g. a naming shape or tier claim that no longer matches
+        CLAUDE.md) — e.g. a naming shape or support-tier claim that no longer matches
         the code. Keep story/epic references in the padded `E00` / `S00.00`
         form. Do not nitpick Conventional-Commits-style headings.

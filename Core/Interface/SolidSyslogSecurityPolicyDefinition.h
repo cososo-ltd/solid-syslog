@@ -61,12 +61,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  write its trailer. @retval false the seal could not be produced (e.g.
          *  key unavailable); the store drops the record rather than storing it
          *  unprotected. */
-        bool (*SealRecord)(struct SolidSyslogSecurityPolicy* self, const struct SolidSyslogSecurityRecord* record);
+        bool (*SealRecord)(struct SolidSyslogSecurityPolicy* base, const struct SolidSyslogSecurityRecord* record);
         /** Verify @p record against its trailer (and, for an AEAD policy, decrypt
          *  the body in place). @retval false integrity check failed: tampering or
          *  corruption detected, or the open could not run (e.g. key unavailable);
          *  the store discards the record rather than replaying it. */
-        bool (*OpenRecord)(struct SolidSyslogSecurityPolicy* self, const struct SolidSyslogSecurityRecord* record);
+        bool (*OpenRecord)(struct SolidSyslogSecurityPolicy* base, const struct SolidSyslogSecurityRecord* record);
     };
 
 SOLIDSYSLOG_EXTERN_C_END

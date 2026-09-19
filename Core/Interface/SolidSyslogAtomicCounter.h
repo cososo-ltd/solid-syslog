@@ -29,7 +29,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  logger. The value is never 0 (RFC 5424 §7.3.1), so a returned 1 is
      *  ambiguous: it means either the first increment after power-on or the wrap
      *  past the maximum, and a reader cannot tell the two apart. */
-    uint32_t SolidSyslogAtomicCounter_Increment(struct SolidSyslogAtomicCounter * base);
+    uint32_t SolidSyslogAtomicCounter_Increment(struct SolidSyslogAtomicCounter * counter);
 
 SOLIDSYSLOG_EXTERN_C_END
 

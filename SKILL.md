@@ -56,7 +56,7 @@ The detail is in CLAUDE.md under **Project Structure**, **Design Patterns** and
 
 ## Key references
 
-- `docs/NAMING.md` — the per-tier naming scheme. Read it before adding any public identifier.
+- `docs/NAMING.md` — the naming scheme, keyed by linkage and scope. Read it before adding any public identifier.
 - `docs/misra-deviations.md` — where every MISRA deviation is justified. The cppcheck
   MISRA C:2012 addon runs in CI and is enforcing; `misra_suppressions.txt` carries the
   line-specific suppressions and no prose, because the rationale lives in the deviations doc.

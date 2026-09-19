@@ -246,7 +246,7 @@ DESCRIPTIONS = {
     ),
     "NAMING.md": (
         "The identifier naming rules for SolidSyslog, reconciling MISRA C:2012 "
-        "rules 5.1 to 5.9 with readable call sites, tier by tier."
+        "rules 5.1 to 5.9 with readable call sites, keyed by linkage and scope."
     ),
     "misra-deviations.md": (
         "Every deliberate deviation from the MISRA C:2012 rules SolidSyslog "

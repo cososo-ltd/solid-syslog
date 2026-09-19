@@ -6,7 +6,7 @@
 
 #include "SolidSyslogAtomicCounterDefinition.h"
 
-uint32_t SolidSyslogAtomicCounter_Increment(struct SolidSyslogAtomicCounter* base)
+uint32_t SolidSyslogAtomicCounter_Increment(struct SolidSyslogAtomicCounter* counter)
 {
-    return base->Increment(base);
+    return counter->Increment(counter);
 }

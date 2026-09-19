@@ -21,7 +21,7 @@ split between the two tools so they cannot disagree on the same name:
 - **clang-tidy** is the sole authority on naming *shape*. The
   `readability-identifier-naming` check understands linkage, scope, and
   the distinction between macros, typedefs, tags and ordinary identifiers.
-  Per-directory `.clang-tidy` files implement the tier model below.
+  Per-directory `.clang-tidy` files implement the rigour levels below.
   Note: `readability-identifier-naming` enforces case style + prefix +
   suffix per identifier kind, but does not support a positive
   must-match regex. The `SolidSyslogClass_Function` shape past the
@@ -46,14 +46,14 @@ same conditions creates the risk of contradictory verdicts.
 
 The rules apply with different strictness across the tree:
 
-| Tier | Naming | MISRA | Directories |
+| Level | Naming | MISRA | Directories |
 |------|--------|-------|-------------|
-| **Strict** | Full Tier 1–4 | Full chosen subset | `Core/Interface/`, `Core/Source/`, `Platform/*/Interface/` |
-| **Pragmatic** | Tier 1–4 applied; local names that mirror third-party APIs (e.g. `mqd_t mq`, `FIL file`, `SOCKET sock`) and parameters in adapter wrappers are exempt; 5.3 shadowing relaxed when the shadowed name is a third-party identifier | Full chosen subset; per-file deviations documented when third-party APIs force them | `Platform/*/Source/` |
+| **Strict** | Full scheme | Full chosen subset | `Core/Interface/`, `Core/Source/`, `Platform/*/Interface/` |
+| **Pragmatic** | Full scheme applied; local names that mirror third-party APIs (e.g. `mqd_t mq`, `FIL file`, `SOCKET sock`) and parameters in adapter wrappers are exempt; 5.3 shadowing relaxed when the shadowed name is a third-party identifier | Full chosen subset; per-file deviations documented when third-party APIs force them | `Platform/*/Source/` |
 | **Consistency-only** | New code follows conventions; CppUTest macro outputs used as-is; test fakes drop the `SolidSyslog` prefix; no rename sweep of existing test code | Excluded | `Tests/` |
 | **Out of scope** | Not enforced | Not enforced | `Bdd/`, `ci/`, `docs/`, `.github/`, `.devcontainer/` |
 
-Enforcement gates (clang-tidy + cppcheck-misra) run per tier with different
+Enforcement gates (clang-tidy + cppcheck-misra) run per level with different
 rule sets.
 
 ---
@@ -77,7 +77,7 @@ in MISRA but treated as required here.
 
 ---
 
-## Tier 1 — External linkage (public API)
+## External linkage
 
 **Form:** `SolidSyslog<Class>_<Function>` for class-scoped operations,
 or `SolidSyslog_<Function>` for whole-library operations where the
@@ -85,22 +85,21 @@ library itself is the class. `SolidSyslog<Class>` for exported types
 and tag names.
 
 ```c
-/* Class-scoped functions — operate on a specific module.
- * Parameter naming follows the this-pointer rule (Tier 3): `base` when
- * the declared type is the abstract base struct, `self` otherwise. */
-bool SolidSyslogBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
-int  SolidSyslogTransport_Send(struct SolidSyslogTransport* base, ...);
+/* Class-scoped functions — operate on a specific module. The first
+ * parameter is named for the instance; see "This-pointer parameters". */
+bool SolidSyslogBuffer_Read(struct SolidSyslogBuffer* buffer, void* data, size_t maxSize, size_t* bytesRead);
+bool SolidSyslogSender_Send(struct SolidSyslogSender* sender, const void* buffer, size_t size);
 
 /* Whole-library functions — operate on the library instance, or on
    library-global state. The library is the class; there's nothing more
    specific to insert. Earned by having no narrower class to sit on, not
    by being important: a function that acts on one component takes that
    component's name however central it is. */
-struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config);
-void                SolidSyslog_Destroy(struct SolidSyslog* self);
-void                SolidSyslog_Log(struct SolidSyslog* self, const struct SolidSyslogMessage* message);
-void                SolidSyslog_Service(struct SolidSyslog* self);
-void                SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context);
+struct SolidSyslog*           SolidSyslog_Create(const struct SolidSyslogConfig* config);
+void                          SolidSyslog_Destroy(struct SolidSyslog* handle);
+void                          SolidSyslog_Log(struct SolidSyslog* handle, const struct SolidSyslogMessage* message);
+enum SolidSyslogServiceStatus SolidSyslog_Service(struct SolidSyslog* handle);
+void                          SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context);
 
 /* Tag names — note: tag, not typedef. See "No struct typedefs" below. */
 struct SolidSyslogBuffer
@@ -131,7 +130,7 @@ extern const struct SolidSyslogErrorSource SolidSyslogUdpSenderErrorSource;
 The `SolidSyslog` prefix is the library's namespace. The `<Class>_`
 portion (when present) identifies the module. The function name
 follows in PascalCase. The "whole-library" form is not an
-exception: both shapes are first-class Tier 1; the difference is
+exception: both shapes are first-class external-linkage names; the difference is
 whether the operation lives on a specific class or on the library
 itself.
 
@@ -144,7 +143,7 @@ announce a function.
 or `Platform/*/Interface/`, plus any identifier with external linkage
 declared in a `.c` file.
 
-Tier 1 is decided by linkage, not by whether an integrator is meant to call
+This section is entered by linkage, not by whether an integrator is meant to call
 the identifier. A class that is internal to the library but spans more than one
 translation unit — declared in a `Core/Source/` `*Private.h`, defined in one
 `.c`, used from another — has external linkage and takes the prefix. Its
@@ -252,12 +251,12 @@ platform.
 
 ---
 
-## Tier 2 — Internal linkage (file-scope `static`)
+## Internal linkage (file-scope `static`)
 
 **Form:** `Class_Function` for static functions, `Class_Variable` for
 file-scope static variables and constants, **bare `PascalCase` for
 file-scope struct tags that are never exported**. PascalCase
-throughout. No `SolidSyslog` prefix at any Tier 2 site — the file
+throughout. No `SolidSyslog` prefix at any internal-linkage site — the file
 itself is the namespace.
 
 ```c
@@ -291,23 +290,23 @@ struct OpenHandle
 Rationale:
 
 - Uniqueness across the library is achieved by the `Class_` prefix on
-  Tier 2 functions and variables — `Buffer_AppendRecord` cannot
+  internal-linkage functions and variables — `Buffer_AppendRecord` cannot
   collide with `Transport_AppendRecord` — which satisfies advisory
   rule 5.9. File-scope struct tags rely on internal-linkage scoping
   to the file (`static` storage classes for any objects of the type),
   which gives them the same uniqueness guarantee without needing a
   prefix.
-- The visible difference from Tier 1 is the missing `SolidSyslog`
+- The visible difference from an external-linkage name is the missing `SolidSyslog`
   prefix, which signals "internal" at the call site without comment.
-  Both tiers use PascalCase on both sides of the underscore (or, for
-  Tier 2 tags, bare PascalCase), so static helpers and public
+  Both use PascalCase on both sides of the underscore (or, for
+  internal-linkage tags, bare PascalCase), so static helpers and public
   functions read consistently.
 - One class per translation unit is the norm; if a `.c` file contains
   helpers for two classes, use both prefixes accordingly.
 
 ### Picking the `Class_` prefix from the filename
 
-For source files matching `SolidSyslog<X>.c`, the Tier 2 class prefix
+For source files matching `SolidSyslog<X>.c`, the internal-linkage class prefix
 is `<X>_` — the filename with the `SolidSyslog` library namespace
 stripped. So `SolidSyslogOpenSslStream.c` → `OpenSslStream_*`,
 `SolidSyslogPlusTcpTcpStream.c` → `PlusTcpTcpStream_*`,
@@ -326,25 +325,25 @@ be harder to enforce going forward.
 `Core/Source/SolidSyslog.c` is the one file where the strip rule
 yields an empty prefix (the file is the library namespace).
 Statics in this file use **`SolidSyslog_<Function>`** — the same
-shape as Tier 1 whole-library API entry points (`SolidSyslog_Log`,
+shape as the external-linkage whole-library entry points (`SolidSyslog_Log`,
 `SolidSyslog_Service`, etc.). Linkage (`static`) distinguishes them
 at definition; collision risk is zero because only one file can
 ever be named `SolidSyslog.c`.
 
-### When a Tier 2 tag DOES carry the `SolidSyslog` prefix
+### When an internal-linkage tag DOES carry the `SolidSyslog` prefix
 
-The implementation struct that corresponds to a Tier 1 opaque type
+The implementation struct that corresponds to a public opaque type
 shares the public tag name verbatim. For example, `struct SolidSyslog`
-is declared opaquely in `SolidSyslog.h` (Tier 1) and defined
+is declared opaquely in `SolidSyslog.h` (external linkage) and defined
 concretely in `SolidSyslog.c`. The .c-side definition is technically
-Tier 2 by linkage (it's where the struct's layout lives), but the
-tag name is fixed by the Tier 1 public declaration. This is the
+internal by linkage (it's where the struct's layout lives), but the
+tag name is fixed by the public declaration. This is the
 opaque-impl pattern; the .c-side use of the tag is not free to
 choose its own name.
 
 ---
 
-## Tier 3 — Function parameters and block-scope locals
+## Function parameters and block-scope locals
 
 **Form:** lowerCamelCase, no prefix, descriptive but compact. Domain
 abbreviations (TLS, UDP, TCP, CRC, RFC, MQ, FAT) are permitted as words.
@@ -380,7 +379,7 @@ Constraints:
   - Protocol and technology shorthands (`mq`, `crc`, `tls`, `tcp`,
       `udp`, `ip`, `dns`).
   - POSIX / Win32 idioms that mirror third-party signatures (`fd`,
-      `errno`, `pid`, `sock`) — see also the Pragmatic-tier exemption
+      `errno`, `pid`, `sock`) — see also the Pragmatic-level exemption
       in the Scope table for parameter locals in adapter wrappers
       (`buf` / `len` in `send` / `recv` wrappers, `attr` for
       `struct mq_attr`, etc.).
@@ -398,15 +397,16 @@ Constraints:
 
 ### This-pointer parameters
 
-The first parameter of a method-shaped function — the "this-pointer" — uses
-one of two names, chosen by **the declared parameter type**, not by the
-function's purpose:
+Inside a class's implementation a function can be holding either of two
+views of one object: the concrete class, or the abstract base whose vtable
+dispatched to it. There the first parameter of a method-shaped function —
+the "this-pointer" — uses one of two names, chosen by **the declared
+parameter type**, not by the function's purpose:
 
 - **`self`** — the declared parameter type is the function's own class
   (the concrete derived type, or for non-vtable classes simply the class).
   Applies to: every helper (`static`/`static inline`); every local
-  introduced by a downcast; every public function whose first parameter is
-  declared as the concrete class.
+  introduced by a downcast.
 
 - **`base`** — the declared parameter type is the abstract base struct
   (one that exposes vtable function-pointer members — `SolidSyslogBuffer`,
@@ -418,6 +418,33 @@ function's purpose:
 The rule is mechanical: if the declared type is the abstract base, the
 name is `base`; otherwise it is `self`. The function's role does not
 enter the decision.
+
+#### The public surface of a single-view type
+
+`self` against `base` tells a reader which view they hold. A function
+declared on a type's own public surface has one view, and its reader is the
+caller, so the first parameter takes a descriptive noun for the instance:
+
+- **A role's call surface** — `SolidSyslogStore_Write(store, ...)`,
+  `SolidSyslogFile_Read(file, ...)`, `SolidSyslogStream_Send(stream, ...)`.
+  The function belongs to the abstract role and forwards through its
+  vtable; no concrete view exists to be distinguished from.
+- **A concrete writer that never dispatches** —
+  `SolidSyslogSdElement_Begin(element, ...)`,
+  `SolidSyslogSdValue_String(value, ...)`,
+  `SolidSyslogHeaderField_Uint32(field, ...)`. No vtable, no base struct.
+- **The library instance** — `SolidSyslog_Log(handle, ...)`.
+
+The boundary is the function's owner, not its linkage. A concrete class's
+public `<Class>_Destroy` takes the abstract base and downcasts it, so it
+holds two views and its parameter is `base`. The descriptive name applies
+only to a function named for the very type its first parameter declares,
+where that type has no second view in the function's body.
+
+The name is a noun for the instance — the class noun where that reads
+well (`store`, `element`), a domain term where one exists (`sd` for
+structured data). It is never `self` or `base`, which stay reserved for the
+two-view case.
 
 #### The downcast: `<Class>_SelfFromBase`
 
@@ -467,7 +494,7 @@ backs the payload rather than the instance — the ring handed to
 `SolidSyslogCircularBuffer_Create` is the one public example, and the
 buffer's own instance struct is still a pool slot pointing at it.
 
-Helpers are named per Tier 2 (`Class_Function`, `static inline`, no
+Helpers are named as internal linkage (`Class_Function`, `static inline`, no
 `SolidSyslog` prefix). Placement follows the function-ordering rule:
 forward-declared with the other helpers at the top of the file,
 defined immediately beneath the first caller.
@@ -484,24 +511,25 @@ cognitive load on a reader who flips between header and implementation.
 
 #### Shadowing
 
-`self` and `base` are reserved at Tier 3 for the this-pointer role.
+`self` and `base` are reserved among parameters and locals for the
+this-pointer role.
 Files must not use either name for any other parameter or block-scope
 local (avoids MISRA 5.3 shadowing the moment a nested helper is added).
-They are also reserved at Tier 2 — no file-scope static should be named
+They are also reserved at file scope — no file-scope static should be named
 `self` or `base`.
 
 ---
 
-## Tier 4 — Struct members
+## Struct members
 
 **Form:** PascalCase, no prefix, no class qualifier. No member-kind
 exceptions — data members and function-pointer (vtable) members both use
-the same shape. The boolean and no-Hungarian conventions from Tier 3
-do not apply at this tier — PascalCase carries the visual signal that
+the same shape. The boolean and no-Hungarian conventions for parameters and locals
+do not apply to members — PascalCase carries the visual signal that
 "this is a named, persistent piece of state" without needing an `is`/`has`
 prefix to convey "this is a boolean."
 
-The domain-term exemption from Tier 3 applies equally at Tier 4 —
+The domain-term exemption for parameters and locals applies equally to members —
 `struct SolidSyslogMessage`'s members `MessageId` (the full English
 word) and `Msg` (RFC 5424's spec label for the body field) are an
 example of how the two forms legitimately co-exist when one is an
@@ -517,9 +545,9 @@ struct SolidSyslogSecurityPolicy
 };
 
 /* Vtable function-pointer members follow the same rule — and have done
-   so already in practice. The Tier 4 PascalCase convention is the
+   so already in practice. The PascalCase member convention is the
    project-wide policy that consolidates them. Parameter naming for the
-   function-pointer members follows the Tier 3 this-pointer rule: the
+   function-pointer members follows the this-pointer rule: the
    declared type is the abstract base struct, so the parameter is `base`. */
 struct SolidSyslogStore
 {
@@ -542,11 +570,11 @@ The previous scheme used lowerCamelCase for data members and tolerated
 PascalCase only for vtable function-pointer members "to mirror the
 function name." That is the kind of implicit semantic encoding Clean Code
 argues against — case meaning shifted based on what kind of thing the
-member held. Tier 4 now states a single rule.
+member held. Members now take a single rule.
 
 ### The `struct X X;` shape
 
-Because struct tags are also PascalCase (Tier 1), this convention
+Because struct tags are also PascalCase, this convention
 produces legal declarations like:
 
 ```c
@@ -631,8 +659,8 @@ Typedefs are used only for:
 
 - **Enum types** intended to be passed by value:
   `typedef enum SolidSyslogSeverity SolidSyslogSeverity;`
-- **Function pointer types** in vtables:
-  `typedef int (*SolidSyslogTransport_SendFn)(struct SolidSyslogTransport*, ...);`
+- **Function pointer types** for injected callbacks:
+  `typedef void (*SolidSyslogClockFunction)(struct SolidSyslogTimestamp* timestamp);`
 - **Scalar aliases** where the underlying type is an implementation detail.
   Use sparingly.
 
@@ -697,7 +725,7 @@ All enum constants — tagged or anonymous, public or TU-local — are
 (`EnumConstantCase: UPPER_CASE`, no exceptions).
 
 ```c
-/* Tagged public enum — Tier 1 type with named members */
+/* Tagged public enum — external-linkage type with named members */
 enum SolidSyslogSeverity
 {
     SOLIDSYSLOG_SEVERITY_EMERGENCY = 0,
@@ -705,14 +733,14 @@ enum SolidSyslogSeverity
     /* ... */
 };
 
-/* Anonymous public enum — Tier 1 macro-equivalent */
+/* Anonymous public enum — external-linkage macro-equivalent */
 enum
 {
     SOLIDSYSLOG_CIRCULAR_BUFFER_OVERHEAD = 7,
     SOLIDSYSLOG_CIRCULAR_BUFFER_HEADER_BYTES = sizeof(uint16_t)
 };
 
-/* Anonymous TU-local enum — Tier 2 macro-equivalent */
+/* Anonymous TU-local enum — internal-linkage macro-equivalent */
 enum
 {
     HEADER_BYTES = SOLIDSYSLOG_CIRCULAR_BUFFER_HEADER_BYTES
@@ -756,7 +784,7 @@ Test code uses production conventions where natural, with these relaxations:
 - **CppUTest macros** (`TEST`, `TEST_GROUP`, `TEST_GROUP_BASE`, `TEST_BASE`,
   `CHECK_*`, `LONGS_EQUAL`, etc.) are used as-is — the identifiers they
   expand to (e.g. `TEST_GroupName_TestName_TestShell`) are exempt from
-  Tier 1 and routinely exceed any character limit.
+  the external-linkage form and routinely exceed any character limit.
 - **Test-helper macros** in test translation units (`CALLED_FAKE`,
   `CALLED_DATAGRAM_SEND`, `CHECK_REPORTED_ERROR`, etc.) use whatever
   SCREAMING_SNAKE shape reads well; no project prefix required.
@@ -823,14 +851,14 @@ forbids.
 
 ## Worked example
 
-A small slice showing every tier in one place, including the derived-class
+A small slice showing every kind of identifier in one place, including the derived-class
 vtable shape with its `SelfFromBase` helper.
 
 ```c
 /* Core/Interface/SolidSyslogBufferDefinition.h -------------------------- */
 
-/* Tier 1 — abstract base struct with vtable function-pointer members.
-   Function-pointer parameter names are `base` (Tier 3 this-pointer rule:
+/* External linkage — abstract base struct with vtable function-pointer members.
+   Function-pointer parameter names are `base` (this-pointer rule:
    declared type is the abstract base). */
 struct SolidSyslogBuffer
 {
@@ -842,7 +870,7 @@ struct SolidSyslogBuffer
 
 #define SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(maxMessages) /* ... */
 
-/* Tier 1 — public Create returns the base-class view. The caller supplies the
+/* External linkage — public Create returns the base-class view. The caller supplies the
    backing ring, not the instance: the instance itself is a pool slot.
    SolidSyslogCircularBuffer_Destroy takes the base type (matches the
    abstract Buffer contract), so its parameter is `base`. */
@@ -856,7 +884,7 @@ void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base);
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogBufferDefinition.h"
 
-/* Tier 2 — concrete struct definition (uses the public tag verbatim per
+/* Internal linkage — concrete struct definition (uses the public tag verbatim per
    the opaque-impl pattern). */
 struct SolidSyslogCircularBuffer
 {
@@ -864,16 +892,16 @@ struct SolidSyslogCircularBuffer
     /* ... per-instance state ... */
 };
 
-/* Tier 2 — vtable entry points: declared type is the abstract base, so
+/* Internal linkage — vtable entry points: declared type is the abstract base, so
    parameters are `base`. */
 static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
 
-/* Tier 2 — named downcast helper. */
+/* Internal linkage — named downcast helper. */
 static inline struct SolidSyslogCircularBuffer*
 CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
 
-/* Tier 2 — internal helpers: declared type is the concrete class, so
+/* Internal linkage — helpers: declared type is the concrete class, so
    parameters are `self`. */
 static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer* self);
 
@@ -883,7 +911,7 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     struct SolidSyslogMutex* mutex, uint8_t* ring, size_t ringBytes
 )
 {
-    /* Tier 3 — `index` and `handle` are locals; the pool slot is the instance,
+    /* Locals — `index` and `handle`; the pool slot is the instance,
        so there is no cast from caller-supplied storage. On exhaustion the
        shared NullBuffer is returned and the caller keeps running. */
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&CircularBuffer_Allocator);
@@ -912,7 +940,7 @@ CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base)
 
 static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)
 {
-    /* Tier 3 — `base` is the abstract-base this-pointer the vtable hands us;
+    /* Parameter — `base` is the abstract-base this-pointer the vtable hands us;
        downcast names the concrete view as `self`. */
     struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
 
@@ -940,12 +968,12 @@ static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer
 | Public enum constant                  | `SOLIDSYSLOG_CLASS_CONSTANT`               | `SOLIDSYSLOG_SEVERITY_EMERGENCY`            |
 | Class error code                      | `SOLIDSYSLOG_CLASS_ERROR_NAME`             | `SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED` |
 | Public macro                          | `SOLIDSYSLOG_SCREAMING_SNAKE`              | `SOLIDSYSLOG_MAXIMUM_RECORD_LENGTH`        |
-| Public typedef (enum/fn-pointer only) | `SolidSyslogClass` / `SolidSyslogClass_Fn` | `SolidSyslogTransport_SendFn`              |
+| Public typedef (enum/fn-pointer only) | `SolidSyslogClass` / `SolidSyslog<Name>Function` | `SolidSyslogClockFunction`            |
 | Static function                       | `Class_Function`                           | `Buffer_WriteMagic`                        |
 | Static variable / constant            | `Class_Variable`                           | `Buffer_DefaultPolicy`                     |
 | File-scope macro                      | `CLASS_SCREAMING_SNAKE`                    | `BUFFER_RECORD_MAGIC`                      |
 | Function parameter / local            | `lowerCamelCase`                           | `recordLength`, `bytesAvailable`           |
-| This-pointer parameter                | `self` (own type) / `base` (abstract base) | `* self` in helpers; `* base` in vtable impls |
+| This-pointer parameter                | `self` (own type) / `base` (abstract base); a descriptive noun on a single-view type's public surface | `* self` in helpers; `* base` in vtable impls; `* store` in `SolidSyslogStore_Write` |
 | Downcast helper                       | `Class_SelfFromBase` / `Class_SelfFromArg`  | `CircularBuffer_SelfFromBase`              |
 | Boolean condition / predicate         | `isX` / `hasX` / `canX`                    | `isValid`, `hasUnsent`                     |
 | Boolean result local                  | short domain word, lowerCamelCase          | `ok`, `parsed`, `released`                 |

@@ -45,7 +45,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *          credential is reported by the backend and returns true -
          *          it never stops delivery. */
         bool (*Install)(
-            struct SolidSyslogMbedTlsCredentials* self,
+            struct SolidSyslogMbedTlsCredentials* base,
             struct mbedtls_ssl_config* conf,
             struct SolidSyslogTlsCredentialsInstalled* installed
         );
@@ -54,7 +54,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  no rollback of its own and the integrator is always told when the
          *  credential window has closed. Must be a safe no-op when nothing was
          *  acquired. */
-        void (*Release)(struct SolidSyslogMbedTlsCredentials* self);
+        void (*Release)(struct SolidSyslogMbedTlsCredentials* base);
     };
 
 SOLIDSYSLOG_EXTERN_C_END

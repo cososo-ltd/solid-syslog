@@ -14,11 +14,14 @@ struct SolidSyslogFormatter;
 
 static inline bool TimestampFormatter_IsValid(const struct SolidSyslogTimestamp* ts);
 static inline void TimestampFormatter_FormatValid(
-    struct SolidSyslogFormatter* f,
+    struct SolidSyslogFormatter* formatter,
     const struct SolidSyslogTimestamp* ts
 );
-static inline void TimestampFormatter_FormatUtcOffset(struct SolidSyslogFormatter* f, int16_t offsetMinutes);
-static inline void TimestampFormatter_FormatNonZeroUtcOffset(struct SolidSyslogFormatter* f, int16_t offsetMinutes);
+static inline void TimestampFormatter_FormatUtcOffset(struct SolidSyslogFormatter* formatter, int16_t offsetMinutes);
+static inline void TimestampFormatter_FormatNonZeroUtcOffset(
+    struct SolidSyslogFormatter* formatter,
+    int16_t offsetMinutes
+);
 static inline int16_t TimestampFormatter_AbsoluteInt16(int16_t value);
 
 void SolidSyslogTimestampFormatter_Format(
@@ -51,44 +54,50 @@ static inline bool TimestampFormatter_IsValid(const struct SolidSyslogTimestamp*
     return valid;
 }
 
-static inline void TimestampFormatter_FormatValid(struct SolidSyslogFormatter* f, const struct SolidSyslogTimestamp* ts)
+static inline void TimestampFormatter_FormatValid(
+    struct SolidSyslogFormatter* formatter,
+    const struct SolidSyslogTimestamp* ts
+)
 {
-    SolidSyslogFormatter_FourDigit(f, ts->Year);
-    SolidSyslogFormatter_AsciiCharacter(f, '-');
-    SolidSyslogFormatter_TwoDigit(f, ts->Month);
-    SolidSyslogFormatter_AsciiCharacter(f, '-');
-    SolidSyslogFormatter_TwoDigit(f, ts->Day);
-    SolidSyslogFormatter_AsciiCharacter(f, 'T');
-    SolidSyslogFormatter_TwoDigit(f, ts->Hour);
-    SolidSyslogFormatter_AsciiCharacter(f, ':');
-    SolidSyslogFormatter_TwoDigit(f, ts->Minute);
-    SolidSyslogFormatter_AsciiCharacter(f, ':');
-    SolidSyslogFormatter_TwoDigit(f, ts->Second);
-    SolidSyslogFormatter_AsciiCharacter(f, '.');
-    SolidSyslogFormatter_SixDigit(f, ts->Microsecond);
-    TimestampFormatter_FormatUtcOffset(f, ts->UtcOffsetMinutes);
+    SolidSyslogFormatter_FourDigit(formatter, ts->Year);
+    SolidSyslogFormatter_AsciiCharacter(formatter, '-');
+    SolidSyslogFormatter_TwoDigit(formatter, ts->Month);
+    SolidSyslogFormatter_AsciiCharacter(formatter, '-');
+    SolidSyslogFormatter_TwoDigit(formatter, ts->Day);
+    SolidSyslogFormatter_AsciiCharacter(formatter, 'T');
+    SolidSyslogFormatter_TwoDigit(formatter, ts->Hour);
+    SolidSyslogFormatter_AsciiCharacter(formatter, ':');
+    SolidSyslogFormatter_TwoDigit(formatter, ts->Minute);
+    SolidSyslogFormatter_AsciiCharacter(formatter, ':');
+    SolidSyslogFormatter_TwoDigit(formatter, ts->Second);
+    SolidSyslogFormatter_AsciiCharacter(formatter, '.');
+    SolidSyslogFormatter_SixDigit(formatter, ts->Microsecond);
+    TimestampFormatter_FormatUtcOffset(formatter, ts->UtcOffsetMinutes);
 }
 
-static inline void TimestampFormatter_FormatUtcOffset(struct SolidSyslogFormatter* f, int16_t offsetMinutes)
+static inline void TimestampFormatter_FormatUtcOffset(struct SolidSyslogFormatter* formatter, int16_t offsetMinutes)
 {
     if (offsetMinutes == 0)
     {
-        SolidSyslogFormatter_AsciiCharacter(f, 'Z');
+        SolidSyslogFormatter_AsciiCharacter(formatter, 'Z');
     }
     else
     {
-        TimestampFormatter_FormatNonZeroUtcOffset(f, offsetMinutes);
+        TimestampFormatter_FormatNonZeroUtcOffset(formatter, offsetMinutes);
     }
 }
 
-static inline void TimestampFormatter_FormatNonZeroUtcOffset(struct SolidSyslogFormatter* f, int16_t offsetMinutes)
+static inline void TimestampFormatter_FormatNonZeroUtcOffset(
+    struct SolidSyslogFormatter* formatter,
+    int16_t offsetMinutes
+)
 {
     uint32_t absoluteMinutes = (uint32_t) TimestampFormatter_AbsoluteInt16(offsetMinutes);
 
-    SolidSyslogFormatter_AsciiCharacter(f, (offsetMinutes > 0) ? '+' : '-');
-    SolidSyslogFormatter_TwoDigit(f, absoluteMinutes / 60U);
-    SolidSyslogFormatter_AsciiCharacter(f, ':');
-    SolidSyslogFormatter_TwoDigit(f, absoluteMinutes % 60U);
+    SolidSyslogFormatter_AsciiCharacter(formatter, (offsetMinutes > 0) ? '+' : '-');
+    SolidSyslogFormatter_TwoDigit(formatter, absoluteMinutes / 60U);
+    SolidSyslogFormatter_AsciiCharacter(formatter, ':');
+    SolidSyslogFormatter_TwoDigit(formatter, absoluteMinutes % 60U);
 }
 
 static inline int16_t TimestampFormatter_AbsoluteInt16(int16_t value)

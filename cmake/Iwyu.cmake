@@ -11,7 +11,7 @@
 #                Used during cleanup, never invoked from CI.
 #
 # Bdd/ is out of scope per CLAUDE.md tier table. Tests/ is included even
-# though it's Tier 4 ("out of scope for support") because narrowing the
+# though it is out of scope for support, because narrowing the
 # public Core headers exposes test code that was relying on transitive
 # includes; the same hygiene rule needs to hold there or the gate keeps
 # tripping consumers.

@@ -944,7 +944,7 @@ jobs:
 
       # ----------------------------------------------------------------
       # cppcheck-misra addon — runs the MISRA C:2012 addon over Strict +
-      # Pragmatic tiers (Core/Source/ + Platform/*/Source/). Findings
+      # Pragmatic levels (Core/Source/ + Platform/*/Source/). Findings
       # fail CI (--error-exitcode=1); suppressions live in
       # misra_suppressions.txt with rationales in docs/misra-deviations.md.
       # ----------------------------------------------------------------
