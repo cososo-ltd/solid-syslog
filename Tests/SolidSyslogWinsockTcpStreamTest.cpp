@@ -112,6 +112,15 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
         WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
         SolidSyslogStream_Open(stream, addr);
     }
+
+    /* The immediate-failure tests differ only in the error connect() reports,
+     * so the arrange and act live here and each test is left as its assertion. */
+    void openAfterConnectFails(int wsaError) const
+    {
+        ErrorHandlerFake_Install(nullptr);
+        WinsockFake_SetConnectFailsWithLastError(wsaError);
+        SolidSyslogStream_Open(stream, addr);
+    }
 };
 
 // clang-format on
@@ -260,30 +269,35 @@ TEST(SolidSyslogWinsockTcpStream, OpenReportsEndpointUnavailableWhenTheSocketCan
 
 TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWhenConnectFailsImmediately)
 {
-    ErrorHandlerFake_Install(nullptr);
-    WinsockFake_SetConnectFailsWithLastError(WSAECONNREFUSED);
-
-    SolidSyslogStream_Open(stream, addr);
+    openAfterConnectFails(WSAECONNREFUSED);
 
     CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectNotStartedWhenConnectFailsForALocalReason)
 {
-    ErrorHandlerFake_Install(nullptr);
-    WinsockFake_SetConnectFailsWithLastError(WSAEINVAL);
-
-    SolidSyslogStream_Open(stream, addr);
+    openAfterConnectFails(WSAEINVAL);
 
     CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectNotStartedWhenTheNetworkIsUnreachable)
 {
-    ErrorHandlerFake_Install(nullptr);
-    WinsockFake_SetConnectFailsWithLastError(WSAENETUNREACH);
+    openAfterConnectFails(WSAENETUNREACH);
 
-    SolidSyslogStream_Open(stream, addr);
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectNotStartedWhenTheHostIsUnreachable)
+{
+    openAfterConnectFails(WSAEHOSTUNREACH);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectNotStartedWhenTheInterfaceIsDown)
+{
+    openAfterConnectFails(WSAENETDOWN);
 
     CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
 }
