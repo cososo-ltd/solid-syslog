@@ -68,6 +68,8 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 | `BAD_CONFIG` - degraded | `WARNING` | component still constructs and delivers (e.g. MetaSd without a counter, block-too-small, TLS chain-only). Emitted with an explicit `SOLIDSYSLOG_SEVERITY_WARNING` literal at the site, not the macro. |
 | `BAD_CONFIG` - refused | `ERROR` | the component stands but this connection attempt fails on material or policy the deployment supplied (trust anchors that will not load, a malformed pin, nothing that authorises the peer). The sender retries on its next pass, so it clears when an operator fixes what was deployed. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
 | `UNKNOWN_DESTROY` | `WARNING` | benign lifecycle misuse: library keeps working. Single-sourced via `SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY`. |
+| `STREAM_CONNECT_FAILED` - local | `ERROR` | the device could not obtain an endpoint, or its stack declined to start the attempt, so no packet was sent. It needs a human and will not clear by waiting. Single-sourced via `SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY`. |
+| `STREAM_CONNECT_FAILED` - remote | `WARNING` | the destination did not answer, or answered with something other than a connection. The next Service pass retries. Single-sourced via `SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY`. |
 | `TLS_STREAM_HANDSHAKE_FAILED` — rejected | `ERROR` | cert / protocol: a human must fix the peer or the cert. |
 | `TLS_STREAM_HANDSHAKE_FAILED` — timeout | `WARNING` | transient: may clear on the next reconnect. |
 | `TLS_STREAM_INIT_FAILED` | `ERROR` | setup fault needing a human; not split. |
@@ -82,7 +84,11 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 
 The universal-lifecycle categories pass their severity through a macro in
 `SolidSyslogError.h` rather than a literal at each of the dozens of emit sites, so the policy
-cannot drift site-by-site again. `BAD_CONFIG` is split: the fatal subset uses a macro, the
+cannot drift site-by-site again. `STREAM_CONNECT_FAILED` gets the same treatment for the
+same reason even though it is a split: every TCP backend raises the same shared detail
+codes from `SolidSyslogTcpStreamErrors.h`, so a literal per site would restate one policy
+once per backend. Two macros for two levels is not the `BAD_CONFIG` footgun below, which
+is one macro standing for levels that differ. `BAD_CONFIG` is split: the fatal subset uses a macro, the
 degraded subset keeps an explicit `WARNING` literal (the two are genuinely different
 severities, so a single macro would be a footgun). Tests assert the concrete expected level
 as a literal, never the macro, so a wrong policy value is caught.

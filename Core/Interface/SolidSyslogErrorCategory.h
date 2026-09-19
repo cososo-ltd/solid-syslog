@@ -33,13 +33,13 @@
 /**
  * Per-role base ranges. A role occupies [BASE, BASE + 0xFF]. A base is listed
  * here only once a role family carries a role-specific category; roles that
- * emit only the universal categories above need none. (0x0300 Stream is
- * intentionally unallocated: that role emits only universal categories today.)
- * The specific categories in each range live in SolidSyslog<Role>Categories.h
- * beside that role's *Definition.h.
+ * emit only the universal categories above need none. The specific categories
+ * in each range live in SolidSyslog<Role>Categories.h beside that role's
+ * *Definition.h.
  */
 #define SOLIDSYSLOG_CAT_SENDER_BASE ((uint16_t) 0x0100U)
 #define SOLIDSYSLOG_CAT_RESOLVER_BASE ((uint16_t) 0x0200U)
+#define SOLIDSYSLOG_CAT_STREAM_BASE ((uint16_t) 0x0300U)
 #define SOLIDSYSLOG_CAT_TLS_STREAM_BASE ((uint16_t) 0x0400U)
 #define SOLIDSYSLOG_CAT_SECURITY_POLICY_BASE ((uint16_t) 0x0500U)
 #define SOLIDSYSLOG_CAT_BUFFER_BASE ((uint16_t) 0x0600U)

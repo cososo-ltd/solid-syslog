@@ -19,6 +19,7 @@ using namespace CososoTesting;
 #include "SolidSyslogPlusTcpAddressPrivate.h"
 #include "SolidSyslogPlusTcpTcpStream.h"
 #include "SolidSyslogPlusTcpTcpStreamErrors.h"
+#include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
@@ -117,6 +118,16 @@ TEST_GROUP(SolidSyslogPlusTcpTcpStream)
 };
 
 // clang-format on
+
+// Asserts Open reported exactly one connect failure. Source and category are the
+// same for every path, so only the severity and the detail naming the path vary.
+#define CHECK_CONNECT_FAILURE_REPORTED(severity, detail) \
+    CHECK_ERROR_REPORTED_ONCE(                           \
+        (severity),                                      \
+        &SolidSyslogPlusTcpTcpStreamErrorSource,         \
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,           \
+        (detail)                                         \
+    )
 
 #define CHECK_SOCKET_CLOSED_ONCE()                                                                             \
     {                                                                                                          \
@@ -278,6 +289,46 @@ TEST(SolidSyslogPlusTcpTcpStream, OpenClosesSocketOnConnectFailure)
     FreeRtosSocketsFake_SetConnectFails(true);
     openStream();
     CHECK_SOCKET_CLOSED_ONCE();
+}
+
+TEST(SolidSyslogPlusTcpTcpStream, OpenReportsEndpointUnavailableWhenSocketCannotBeCreated)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FreeRtosSocketsFake_SetSocketFails(true);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE);
+}
+
+TEST(SolidSyslogPlusTcpTcpStream, OpenReportsConnectTimedOutWhenTheConnectBudgetExpires)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FreeRtosSocketsFake_SetConnectReturn(-pdFREERTOS_ERRNO_ETIMEDOUT);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT);
+}
+
+TEST(SolidSyslogPlusTcpTcpStream, OpenReportsConnectRefusedWhenTheSocketIsClosedDuringConnect)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FreeRtosSocketsFake_SetConnectReturn(-pdFREERTOS_ERRNO_ENOTCONN);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+}
+
+TEST(SolidSyslogPlusTcpTcpStream, OpenReportsConnectNotStartedWhenTheStackRejectsTheAttempt)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FreeRtosSocketsFake_SetConnectReturn(-pdFREERTOS_ERRNO_EINVAL);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
 }
 
 TEST(SolidSyslogPlusTcpTcpStream, OpenIsIdempotent)

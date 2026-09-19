@@ -18,7 +18,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void FreeRtosSocketsFake_SetSendtoFails(bool fails);
 
-    void FreeRtosSocketsFake_SetConnectFails(bool fails);
+    void FreeRtosSocketsFake_SetConnectFails(bool fails); /* returns -pdFREERTOS_ERRNO_ENOTCONN */
+    void FreeRtosSocketsFake_SetConnectReturn(BaseType_t value); /* explicit return, to model each connect outcome */
 
     void FreeRtosSocketsFake_SetSendFails(bool fails); /* returns -pdFREERTOS_ERRNO_ENOTCONN */
     void FreeRtosSocketsFake_SetSendReturn(BaseType_t value); /* explicit return for short-write scenarios */

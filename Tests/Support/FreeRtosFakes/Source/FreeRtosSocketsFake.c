@@ -25,6 +25,8 @@ static Socket_t lastConnectSocket = NULL;
 static const struct freertos_sockaddr* lastConnectAddress = NULL;
 static socklen_t lastConnectAddressLength = 0;
 static bool connectFails = false;
+static bool connectReturnSet = false;
+static BaseType_t connectReturnValue = 0;
 
 static unsigned sendCallCount = 0;
 static Socket_t lastSendSocket = NULL;
@@ -86,6 +88,8 @@ void FreeRtosSocketsFake_Reset(void)
     lastConnectAddress = NULL;
     lastConnectAddressLength = 0;
     connectFails = false;
+    connectReturnSet = false;
+    connectReturnValue = 0;
 
     sendCallCount = 0;
     lastSendSocket = NULL;
@@ -132,6 +136,12 @@ void FreeRtosSocketsFake_SetSendtoFails(bool fails)
 void FreeRtosSocketsFake_SetConnectFails(bool fails)
 {
     connectFails = fails;
+}
+
+void FreeRtosSocketsFake_SetConnectReturn(BaseType_t value)
+{
+    connectReturnSet = true;
+    connectReturnValue = value;
 }
 
 void FreeRtosSocketsFake_SetSendFails(bool fails)
@@ -322,7 +332,12 @@ BaseType_t FreeRTOS_connect(Socket_t xClientSocket, const struct freertos_sockad
     lastConnectAddressLength = xAddressLength;
     sndTimeoAtConnect = lastSndTimeoSet;
     rcvTimeoAtConnect = lastRcvTimeoSet;
-    return connectFails ? -pdFREERTOS_ERRNO_ENOTCONN : 0;
+    BaseType_t result = connectFails ? -pdFREERTOS_ERRNO_ENOTCONN : 0;
+    if (connectReturnSet)
+    {
+        result = connectReturnValue;
+    }
+    return result;
 }
 
 unsigned FreeRtosSocketsFake_ConnectCallCount(void)

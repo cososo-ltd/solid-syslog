@@ -28,6 +28,18 @@
 #define SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY SOLIDSYSLOG_SEVERITY_CRITICAL
 #define SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY SOLIDSYSLOG_SEVERITY_WARNING
 
+/*
+ * A failed stream connect splits two ways, and both levels get a macro because
+ * every TCP backend raises the same shared detail codes - a literal per emit
+ * site would restate one policy in four places. LOCAL is the device's own
+ * shortfall: no endpoint, or a stack that would not start the attempt, which
+ * needs a human and will not clear by waiting. REMOTE is the destination not
+ * answering, which the next Service pass retries and which the Sender already
+ * summarises at WARNING.
+ */
+#define SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY SOLIDSYSLOG_SEVERITY_ERROR
+#define SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY SOLIDSYSLOG_SEVERITY_WARNING
+
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The identity of an error-emitting class. There is one extern instance per

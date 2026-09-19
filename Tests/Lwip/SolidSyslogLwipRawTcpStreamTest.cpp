@@ -21,6 +21,7 @@ using namespace CososoTesting;
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
+#include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTunables.h"
 #include "lwip/err.h"
@@ -46,6 +47,11 @@ static const uint16_t TEST_PORT = 514;
 // Asserts the most recent ErrorHandlerFake call matched (severity, source, code).
 #define CHECK_REPORTED(severity, source, expectedCategory, code) \
     CHECK_ERROR_REPORTED_ONCE((severity), &(source), (expectedCategory), (code))
+
+// Asserts Open reported exactly one connect failure. Source and category are the
+// same for every path, so only the severity and the detail naming the path vary.
+#define CHECK_CONNECT_FAILURE_REPORTED(severity, detail) \
+    CHECK_REPORTED((severity), SolidSyslogLwipRawTcpStreamErrorSource, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, (detail))
 
 // Asserts the lwIP API call recorded the pcb the wrapper got back from
 // tcp_new - proves the wrapper forwarded the right handle. `getter` is
@@ -344,6 +350,46 @@ TEST(SolidSyslogLwipRawTcpStream, OpenReturnsFalseWhenTcpNewFails)
 
     CHECK_FALSE(SolidSyslogStream_Open(stream, address));
     CALLED_FAKE(LwipTcpFake_TcpConnect, NEVER);
+}
+
+TEST(SolidSyslogLwipRawTcpStream, OpenReportsEndpointUnavailableWhenTcpNewFails)
+{
+    ErrorHandlerFake_Install(nullptr);
+    LwipTcpFake_SetTcpNewFails(true);
+
+    SolidSyslogStream_Open(stream, address);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE);
+}
+
+TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectNotStartedWhenTcpConnectFailsImmediately)
+{
+    ErrorHandlerFake_Install(nullptr);
+    LwipTcpFake_SetTcpConnectError(ERR_VAL);
+
+    SolidSyslogStream_Open(stream, address);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+}
+
+TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectRefusedWhenTheConnectionIsResetBeforeTheDeadline)
+{
+    ErrorHandlerFake_Install(nullptr);
+    LwipTcpFake_SetConnectCallbackResult(ERR_RST);
+
+    SolidSyslogStream_Open(stream, address);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+}
+
+TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectTimedOutWhenNoAnswerArrivesWithinTheBudget)
+{
+    ErrorHandlerFake_Install(nullptr);
+    LwipTcpFake_SetConnectCallbackFires(false);
+
+    SolidSyslogStream_Open(stream, address);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT);
 }
 
 TEST(SolidSyslogLwipRawTcpStream, OpenSetsKeepaliveOnPcb)

@@ -23,6 +23,7 @@
 #include "SolidSyslogPosixTcpStreamErrors.h"
 #include "SolidSyslogPosixTcpStreamPrivate.h"
 #include "SolidSyslogStream.h"
+#include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogTunables.h"
 
 const struct SolidSyslogErrorSource SolidSyslogPosixTcpStreamErrorSource = {"PosixTcpStream"};
@@ -61,6 +62,11 @@ static bool PosixTcpStream_ConnectOrCloseOnFailure(
 static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin, long timeoutMicros);
 static bool PosixTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros);
 static bool PosixTcpStream_ReadDeferredConnectError(int fd);
+static void PosixTcpStream_ReportConnectFailure(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail
+);
+static inline bool PosixTcpStream_WaitTimedOut(int selectResult);
 static long PosixTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogPosixTcpStream* self);
 static bool PosixTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
 static inline bool PosixTcpStream_WouldBlock(int err);
@@ -137,7 +143,26 @@ static bool PosixTcpStream_Open(struct SolidSyslogStream* base, const struct Sol
     {
         connected = PosixTcpStream_ConnectOrCloseOnFailure(self, sin);
     }
+    else
+    {
+        PosixTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
+        );
+    }
     return connected;
+}
+
+/* Every connect failure is one category with the detail naming which step
+ * failed, so a portable handler reacts to "no connection" without knowing
+ * POSIX. Each failing step reports its own, because each is the only place
+ * that knows which one it was. */
+static void PosixTcpStream_ReportConnectFailure(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail
+)
+{
+    PosixTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
 }
 
 /* Non-blocking from the start: connect() reports EINPROGRESS, the wait is
@@ -243,7 +268,11 @@ static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin, long t
     }
     else
     {
-        /* immediate fail-fast (refused, unreachable, etc.) - connected stays false */
+        /* immediate fail-fast (refused, unreachable, etc.) - connected stays false. */
+        PosixTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        );
     }
     return connected;
 }
@@ -262,7 +291,24 @@ static bool PosixTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros)
     struct timeval timeout = {.tv_sec = timeoutMicros / 1000000L, .tv_usec = timeoutMicros % 1000000L};
 
     int rc = select(fd + 1, NULL, &writeSet, &errorSet, &timeout);
-    return (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
+    bool ready = (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
+    if (!ready)
+    {
+        PosixTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            PosixTcpStream_WaitTimedOut(rc) ? SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+                                            : SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        );
+    }
+    return ready;
+}
+
+/* select() returning zero is the budget expiring with nothing to report. Any
+ * other unready outcome means the destination answered, just not with a
+ * connection. */
+static inline bool PosixTcpStream_WaitTimedOut(int selectResult)
+{
+    return selectResult == 0;
 }
 
 static bool PosixTcpStream_ReadDeferredConnectError(int fd)
@@ -270,7 +316,15 @@ static bool PosixTcpStream_ReadDeferredConnectError(int fd)
     int err = 0;
     socklen_t errlen = (socklen_t) sizeof(err);
     int rc = getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
-    return (rc == 0) && (err == 0);
+    bool connected = (rc == 0) && (err == 0);
+    if (!connected)
+    {
+        PosixTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        );
+    }
+    return connected;
 }
 
 static bool PosixTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
