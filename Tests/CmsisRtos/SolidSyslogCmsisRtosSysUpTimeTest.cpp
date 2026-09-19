@@ -81,3 +81,12 @@ TEST(SolidSyslogCmsisRtosSysUpTime, LeavesASchedulerLockItDidNotTakeInPlace)
 
     CHECK_TRUE(CmsisRtosKernelFake_IsLocked());
 }
+
+TEST(SolidSyslogCmsisRtosSysUpTime, ReleasesTheSchedulerLockItDidTake)
+{
+    CmsisRtosKernelFake_SetLocked(false);
+
+    (void) uptimeAt(1);
+
+    CHECK_FALSE(CmsisRtosKernelFake_IsLocked());
+}
