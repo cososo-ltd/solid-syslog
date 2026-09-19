@@ -14,6 +14,7 @@ add_library(SolidSyslogCmsisRtos INTERFACE)
 target_sources(SolidSyslogCmsisRtos INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogCmsisRtosMutex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogCmsisRtosMutexStatic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogCmsisRtosSysUpTime.c
 )
 
 target_include_directories(SolidSyslogCmsisRtos INTERFACE

@@ -282,7 +282,7 @@ set(SOLIDSYSLOG_PLATFORM_REGISTRY
     "LwipRaw|SOLIDSYSLOG_LWIPRAW|${HAVE_LWIP_PATH}|upstream|Platform/LwipRaw|network"
     "PlusTcp|SOLIDSYSLOG_PLUSTCP|${HAVE_FREERTOS_PLUS_TCP_PATH}|upstream|Platform/PlusTcp|network"
     "FreeRtos|SOLIDSYSLOG_FREERTOS|${HAVE_FREERTOS_KERNEL_PATH}|upstream|Platform/FreeRtos|mutex clock"
-    "CmsisRtos|SOLIDSYSLOG_CMSISRTOS|TRUE|upstream|Platform/CmsisRtos|mutex"
+    "CmsisRtos|SOLIDSYSLOG_CMSISRTOS|TRUE|upstream|Platform/CmsisRtos|mutex clock"
     "FatFs|SOLIDSYSLOG_FATFS|${HAVE_FATFS_PATH}|upstream|Platform/FatFs|file"
     "PlusFat|SOLIDSYSLOG_PLUSFAT|${HAVE_FREERTOS_PLUS_FAT_PATH}|upstream|Platform/PlusFat|file"
 )

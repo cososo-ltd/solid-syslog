@@ -47,7 +47,6 @@ static uint32_t CmsisRtosSysUpTime_Hundredths(uint64_t ticks, uint32_t tickFreqH
     /* Divide before scaling so the intermediate cannot overflow; the uint32
      * cast wraps at 2^32 hundredths, as RFC 3418 TimeTicks does. */
     uint64_t wholeSecondHundredths = (ticks / tickFreqHz) * CMSISRTOS_SYS_UP_TIME_HUNDREDTHS_PER_SECOND;
-    uint64_t subSecondHundredths =
-        ((ticks % tickFreqHz) * CMSISRTOS_SYS_UP_TIME_HUNDREDTHS_PER_SECOND) / tickFreqHz;
+    uint64_t subSecondHundredths = ((ticks % tickFreqHz) * CMSISRTOS_SYS_UP_TIME_HUNDREDTHS_PER_SECOND) / tickFreqHz;
     return (uint32_t) (wholeSecondHundredths + subSecondHundredths);
 }

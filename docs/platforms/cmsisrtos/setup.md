@@ -15,7 +15,8 @@ set(SOLIDSYSLOG_PLATFORMS "CmsisRtos;<Network>;<Storage>")
 target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::CmsisRtos)
 ```
 
-This platform fills the Mutex role; the placeholders are whichever platforms
+This platform fills the Mutex role and supplies the uptime callback; the
+placeholders are whichever platforms
 the [capability matrix](../index.md) says fill the rest of what your build
 needs. See [naming your platforms](../../build-integration.md#cmake) for how
 the list is read.
@@ -69,6 +70,25 @@ struct SolidSyslogMutex* mutex = SolidSyslogCmsisRtosMutex_Create(NULL, 0);
 That is the CMSIS-RTOS2 form for it, and it is the right choice where a heap is
 available and unconstrained. An implementation built for static allocation only
 will refuse it, reported the same way as a control block that is too small.
+
+## Wiring the uptime callback
+
+`SolidSyslogCmsisRtos_GetSysUpTime` is a plain function - point the meta SD's
+config at it and there is nothing to create or keep alive:
+
+```c
+struct SolidSyslogMetaSdConfig metaConfig = {0};
+metaConfig.Counter = counter;
+metaConfig.GetSysUpTime = SolidSyslogCmsisRtos_GetSysUpTime;
+
+struct SolidSyslogStructuredData* meta = SolidSyslogMetaSd_Create(&metaConfig);
+```
+
+Leaving the field NULL omits the `sysUpTime` PARAM instead.
+
+It reports hundredths of a second since boot, not wall-clock time - the clock
+callback in `SolidSyslogConfig` is a separate injection point. [CMSIS-RTOS2](index.md)
+covers what the tick counter's width costs and why the callback is task-only.
 
 ## When it does not work
 

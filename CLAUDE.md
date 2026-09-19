@@ -786,10 +786,13 @@ role, not platform*, for the rule and the two-implementations-in-one-build cavea
   pool class reuses. No class re-implements the slot walk.
 
 **Caller-supplied storage** never holds an instance — every stateful class is a pool slot.
-What a caller can still supply is payload memory. Publicly that is one case:
-`SolidSyslogCircularBuffer_Create` takes the backing ring
+What a caller can still supply is memory only the caller can size or the instance does
+not own. `SolidSyslogCircularBuffer_Create` takes the backing ring
 (`SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(maxMessages)`) plus a mutex, both of which must
-outlive the buffer, while the buffer's own instance stays in the pool. Library-internally
+outlive the buffer, while the buffer's own instance stays in the pool.
+`SolidSyslogCmsisRtosMutex_Create` takes the RTOS mutex control block and its size,
+because CMSIS-RTOS2 leaves that size to the implementation and only the integrator can
+know it. In both the class's own instance is still a pool slot. Library-internally
 `SolidSyslogFormatter` is a transient stack-built builder whose payload size is per-call
 (`SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(n)`); it lives in `Core/Source/`, so integrators never
 see it. The Formatter shape is documented under deviation D.002 in `docs/misra-deviations.md`.
