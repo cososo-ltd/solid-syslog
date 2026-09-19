@@ -483,9 +483,10 @@ to that Null sibling — see **Pool Allocation (E11)** below.
 
 ## Naming Conventions
 
-`docs/NAMING.md` is the source of truth — a naming scheme keyed by linkage
-and scope, satisfying MISRA C:2012 rules 5.1–5.9 with clang-tidy enforcing shape
-and cppcheck-misra enforcing uniqueness. Read it before adding any new
+`docs/NAMING.md` is the source of truth - a naming scheme keyed by linkage
+and scope, built around MISRA C:2012 rules 5.1-5.9 and their recorded
+deviations, with clang-tidy enforcing shape and cppcheck-misra enforcing
+uniqueness. Read it before adding any new
 public identifier.
 
 One-line summary: public C functions `SolidSyslogClass_Function`, public

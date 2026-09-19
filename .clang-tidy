@@ -60,25 +60,25 @@ CheckOptions:
   - { key: readability-identifier-naming.GlobalFunctionPrefix,         value: SolidSyslog }
   - { key: readability-identifier-naming.GlobalFunctionIgnoredRegexp,  value: '^SolidSyslog_[A-Z][A-Za-z0-9]*$' }
 
-  # External linkage — public struct tags: SolidSyslog<Class>
-  # Internal linkage — file-scope struct tags: bare PascalCase (no SolidSyslog prefix).
-  # clang-tidy can't see linkage on struct tags, so we accept either shape
+  # Public struct tags: SolidSyslog<Class>
+  # File-scope struct tags: bare PascalCase (no SolidSyslog prefix).
+  # clang-tidy can't tell the two apart, so we accept either shape
   # via an IgnoredRegexp matching tags that don't follow the StructPrefix
   # rule but are otherwise valid PascalCase. Also covers the opaque-impl
   # case where the prefix equals the whole tag (`struct SolidSyslog` itself).
   # See docs/NAMING.md "Internal linkage", file-scope struct tags.
   - { key: readability-identifier-naming.StructCase,           value: CamelCase   }
   - { key: readability-identifier-naming.StructPrefix,         value: SolidSyslog }
-  # Whitelist of internal-linkage file-scope helper tags + the opaque-impl
+  # Whitelist of file-scope helper tags + the opaque-impl
   # 'SolidSyslog' tag itself. clang-tidy uses POSIX extended regex (no
   # lookahead), so we can't express "PascalCase tags not starting with
   # SolidSyslog" inline; the whitelist is the simplest POSIX-clean
-  # alternative. New internal-linkage helper structs join this list; external-linkage
+  # alternative. New file-scope helper structs join this list;
   # public tags continue to be subject to StructPrefix above.
   # See docs/NAMING.md "Internal linkage", file-scope struct tags.
   - { key: readability-identifier-naming.StructIgnoredRegexp,  value: '^(SolidSyslog|EscapedContext|BlockPresence|OpenHandle|LwipRawDatagramCall|LwipRawDnsResolverCall|LwipRawTcpStreamCall)$' }
 
-  # External linkage — public enum tags: SolidSyslogClass
+  # Public enum tags: SolidSyslogClass
   - { key: readability-identifier-naming.EnumCase,              value: CamelCase   }
   - { key: readability-identifier-naming.EnumPrefix,            value: SolidSyslog }
 
