@@ -16,8 +16,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Hundredths of a second of uptime from xTaskGetTickCount, for the meta-SD
      *  sysUpTime field. Meets the SolidSyslogSysUpTimeFunction contract at any
-     *  tick rate and for either width of TickType_t, wrapping at 2^32
-     *  hundredths as RFC 3418 TimeTicks does.
+     *  tick rate on a 32-bit TickType_t, and on a 64-bit one, which needs no
+     *  help to get there - wrapping at 2^32 hundredths as RFC 3418 TimeTicks
+     *  does. A 16-bit TickType_t, which configUSE_16_BIT_TICKS selects, is
+     *  not carried past its own wrap: uptime still returns to zero every
+     *  65536 ticks there, so supply your own SolidSyslogSysUpTimeFunction
+     *  where that matters.
      *
      *  Above 100 Hz the counter reaches its own wrap before those hundredths
      *  do, so how often it has wrapped is carried across calls. Two

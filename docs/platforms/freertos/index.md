@@ -34,11 +34,15 @@ time and carries no timezone or synchronisation quality — the clock callback i
 a separate injection point.
 
 `SolidSyslogFreeRtos_GetSysUpTime` meets the
-[sysUpTime contract](../../api/SolidSyslogMetaSd_8h.md) at any tick rate and
-whatever the width of `TickType_t`. Above 100 Hz the tick counter reaches its
-own wrap before 2^32 hundredths do - at 1000 Hz, five times sooner - so how
-often it has wrapped is carried alongside it, and the reported value wraps
-where RFC 3418 says, at about 497 days.
+[sysUpTime contract](../../api/SolidSyslogMetaSd_8h.md) at any tick rate on a
+32-bit `TickType_t`, and on a 64-bit one, which needs no help to get there.
+Above 100 Hz the counter reaches its own wrap before 2^32 hundredths do - at
+1000 Hz, five times sooner - so how often it has wrapped is carried alongside
+it, and the reported value wraps where RFC 3418 says, at about 497 days.
+
+A 16-bit `TickType_t`, which `configUSE_16_BIT_TICKS` selects, is not carried
+past its own wrap: uptime returns to zero every 65536 ticks. Supply your own
+`SolidSyslogSysUpTimeFunction` where that matters.
 
 Two things follow from carrying that phase rather than deriving it. The
 callback has to be reached at least once per counter rollover - about 50 days
