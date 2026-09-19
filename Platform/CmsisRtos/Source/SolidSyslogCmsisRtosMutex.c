@@ -16,6 +16,7 @@
 const struct SolidSyslogErrorSource SolidSyslogCmsisRtosMutexErrorSource = {"CmsisRtosMutex"};
 
 static void CmsisRtosMutex_Lock(struct SolidSyslogMutex* base);
+static void CmsisRtosMutex_Unlock(struct SolidSyslogMutex* base);
 
 static inline struct SolidSyslogCmsisRtosMutex* CmsisRtosMutex_SelfFromBase(struct SolidSyslogMutex* base);
 
@@ -29,6 +30,7 @@ void SolidSyslogCmsisRtosMutex_Initialise(struct SolidSyslogMutex* base, void* c
     struct SolidSyslogCmsisRtosMutex* self = CmsisRtosMutex_SelfFromBase(base);
     self->Id = osMutexNew(&attributes);
     self->Base.Lock = CmsisRtosMutex_Lock;
+    self->Base.Unlock = CmsisRtosMutex_Unlock;
 }
 
 static inline struct SolidSyslogCmsisRtosMutex* CmsisRtosMutex_SelfFromBase(struct SolidSyslogMutex* base)
@@ -39,6 +41,11 @@ static inline struct SolidSyslogCmsisRtosMutex* CmsisRtosMutex_SelfFromBase(stru
 static void CmsisRtosMutex_Lock(struct SolidSyslogMutex* base)
 {
     (void) osMutexAcquire(CmsisRtosMutex_SelfFromBase(base)->Id, osWaitForever);
+}
+
+static void CmsisRtosMutex_Unlock(struct SolidSyslogMutex* base)
+{
+    (void) osMutexRelease(CmsisRtosMutex_SelfFromBase(base)->Id);
 }
 
 void SolidSyslogCmsisRtosMutex_Cleanup(struct SolidSyslogMutex* base)
