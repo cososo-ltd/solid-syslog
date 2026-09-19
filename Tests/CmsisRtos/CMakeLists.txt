@@ -30,3 +30,24 @@ target_include_directories(SolidSyslogCmsisRtosMutexTest PRIVATE
 )
 
 add_test(NAME SolidSyslogCmsisRtosMutexTest COMMAND SolidSyslogCmsisRtosMutexTest)
+
+add_executable(SolidSyslogCmsisRtosSysUpTimeTest
+    SolidSyslogCmsisRtosSysUpTimeTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/CmsisRtos/Source/SolidSyslogCmsisRtosSysUpTime.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/CmsisRtosFakes/Source/CmsisRtosKernelFake.c
+)
+
+target_link_libraries(SolidSyslogCmsisRtosSysUpTimeTest PRIVATE
+    ${PROJECT_NAME}
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogCmsisRtosSysUpTimeTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/CmsisRtos/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Tests/Support/CmsisRtosFakes/Interface
+)
+
+add_test(NAME SolidSyslogCmsisRtosSysUpTimeTest COMMAND SolidSyslogCmsisRtosSysUpTimeTest)

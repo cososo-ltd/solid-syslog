@@ -57,6 +57,8 @@ extern "C"
         uint32_t cb_size;
     } osMutexAttr_t;
 
+    uint32_t osKernelGetTickCount(void);
+
     osMutexId_t osMutexNew(const osMutexAttr_t* attr);
     osStatus_t osMutexAcquire(osMutexId_t mutex_id, uint32_t timeout);
     osStatus_t osMutexRelease(osMutexId_t mutex_id);
