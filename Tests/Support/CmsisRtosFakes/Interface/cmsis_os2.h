@@ -57,6 +57,8 @@ extern "C"
         uint32_t cb_size;
     } osMutexAttr_t;
 
+    int32_t osKernelLock(void);
+    int32_t osKernelRestoreLock(int32_t lock);
     uint32_t osKernelGetTickCount(void);
     uint32_t osKernelGetTickFreq(void);
 

@@ -65,3 +65,10 @@ TEST(SolidSyslogCmsisRtosSysUpTime, KeepsCountingPastTheCounterWrap)
     // 10001 ticks on from UINT32_MAX, which is 1000 hundredths at 1000 Hz.
     UNSIGNED_LONGS_EQUAL(1000U, after - before);
 }
+
+TEST(SolidSyslogCmsisRtosSysUpTime, ReadsTheCounterWithTheSchedulerLocked)
+{
+    (void) uptimeAt(1);
+
+    CHECK_TRUE(CmsisRtosKernelFake_WasLockedDuringTickRead());
+}
