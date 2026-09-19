@@ -101,6 +101,15 @@ TEST(SolidSyslogCmsisRtosMutex, UnlockCallsMutexReleaseOnce)
     CALLED_FAKE(CmsisRtosMutexFake_MutexRelease, ONCE);
 }
 
+TEST(SolidSyslogCmsisRtosMutex, DestroyCallsMutexDeleteOnce)
+
+{
+    SolidSyslogCmsisRtosMutex_Destroy(mutex);
+    mutex = nullptr;
+
+    CALLED_FAKE(CmsisRtosMutexFake_MutexDelete, ONCE);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogCmsisRtosMutexPool)
 {
