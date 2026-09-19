@@ -4,7 +4,10 @@
 
 #include "SolidSyslogCmsisRtosMutex.h"
 
+#include <stddef.h>
 #include <stdint.h>
+
+#include "cmsis_os2.h"
 
 #include "SolidSyslogCmsisRtosMutexPrivate.h"
 #include "SolidSyslogMutexDefinition.h"
@@ -16,6 +19,8 @@ void SolidSyslogCmsisRtosMutex_Initialise(struct SolidSyslogMutex* base, void* c
 {
     (void) controlBlock;
     (void) controlBlockBytes;
+    osMutexAttr_t attributes = {NULL, 0, NULL, 0};
+    (void) osMutexNew(&attributes);
     *base = *SolidSyslogNullMutex_Get();
 }
 
