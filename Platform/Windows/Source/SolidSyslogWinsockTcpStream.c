@@ -143,6 +143,7 @@ static void WinsockTcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 );
+static inline bool WinsockTcpStream_IsRemoteConnectError(int wsaError);
 static inline bool WinsockTcpStream_WaitTimedOut(int selectResult);
 static uint32_t WinsockTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogWinsockTcpStream* self);
 static bool WinsockTcpStream_WroteAllBytes(int sent, size_t expected);
@@ -330,25 +331,48 @@ static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin, u
 {
     bool connected = false;
     int rc = WinsockTcpStream_connect(fd, (const struct sockaddr*) sin, (int) sizeof(*sin));
+    /* Read the error once, immediately after connect, so both tests below see
+     * the same value and no intervening call can replace it. */
+    int lastError = (rc == SOCKET_ERROR) ? WinsockTcpStream_WSAGetLastError() : 0;
 
     if (rc != SOCKET_ERROR)
     {
         connected = true;
     }
-    else if (WinsockTcpStream_WSAGetLastError() == WSAEWOULDBLOCK)
+    else if (lastError == WSAEWOULDBLOCK)
     {
         connected = WinsockTcpStream_WaitForConnectCompletion(fd, connectTimeoutMs) &&
                     WinsockTcpStream_ReadDeferredConnectError(fd);
     }
-    else
+    else if (WinsockTcpStream_IsRemoteConnectError(lastError))
     {
-        /* immediate fail-fast (refused, unreachable, etc.) - connected stays false. */
         WinsockTcpStream_ReportConnectFailure(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
         );
     }
+    else
+    {
+        WinsockTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+        );
+    }
     return connected;
+}
+
+/* The errors that mean the destination or the network answered: a refusal, an
+ * unreachable report, or the route giving up. Everything else connect() can
+ * return is this device's own - a socket it would not accept, no descriptors,
+ * no buffers - and no packet ever left. The remote set is the one listed
+ * because it is small and fixed while the local set grows with the platform,
+ * so an error we did not anticipate is more likely ours; calling it ours is
+ * also the louder of the two, which is the safer default for a code nobody
+ * has classified. */
+static inline bool WinsockTcpStream_IsRemoteConnectError(int wsaError)
+{
+    return (wsaError == WSAECONNREFUSED) || (wsaError == WSAEHOSTUNREACH) || (wsaError == WSAENETUNREACH) ||
+           (wsaError == WSAENETDOWN) || (wsaError == WSAETIMEDOUT);
 }
 
 static bool WinsockTcpStream_SetNonBlocking(SOCKET fd)

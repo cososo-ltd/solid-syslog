@@ -82,7 +82,7 @@ misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c:37
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsFile.c:81
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsMutex.c:42
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:102
-misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:191
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:192
 misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:249
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:83
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:158
@@ -206,5 +206,5 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:24
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:825
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:843
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:146
-misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:415
-misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:435
+misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:439
+misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:459
