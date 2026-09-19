@@ -35,7 +35,7 @@ static inline const struct sockaddr_in* SolidSyslogPosixAddress_AsConstSockaddrI
 static inline void PosixAddress_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogPosixAddressErrors code
+    enum SolidSyslogAddressErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogPosixAddressErrorSource, category, (int32_t) code);

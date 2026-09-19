@@ -43,7 +43,7 @@ static inline const struct SolidSyslogLwipRawAddress* SolidSyslogLwipRawAddress_
 static inline void LwipRawAddress_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogLwipRawAddressErrors code
+    enum SolidSyslogAddressErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogLwipRawAddressErrorSource, category, (int32_t) code);

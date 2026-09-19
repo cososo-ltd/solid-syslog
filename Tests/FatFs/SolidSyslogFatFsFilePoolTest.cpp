@@ -86,7 +86,7 @@ TEST(SolidSyslogFatFsFilePool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         &SolidSyslogFatFsFileErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_FATFS_FILE_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_FILE_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -153,7 +153,7 @@ TEST(SolidSyslogFatFsFilePool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogFatFsFileErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_FATFS_FILE_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -170,6 +170,6 @@ TEST(SolidSyslogFatFsFilePool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogFatFsFileErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_FATFS_FILE_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
 }

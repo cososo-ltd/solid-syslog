@@ -43,7 +43,7 @@ struct SolidSyslogResolver* SolidSyslogLwipRawResolver_Create(void)
         LwipRawResolver_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            SOLIDSYSLOG_LWIPRAW_RESOLVER_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_RESOLVER_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -60,7 +60,7 @@ void SolidSyslogLwipRawResolver_Destroy(struct SolidSyslogResolver* base)
         LwipRawResolver_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            SOLIDSYSLOG_LWIPRAW_RESOLVER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }

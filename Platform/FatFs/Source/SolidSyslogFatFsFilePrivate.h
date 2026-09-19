@@ -28,7 +28,7 @@ void SolidSyslogFatFsFile_Cleanup(struct SolidSyslogFile* base);
 static inline void FatFsFile_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogFatFsFileErrors code
+    enum SolidSyslogFileErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogFatFsFileErrorSource, category, (int32_t) code);

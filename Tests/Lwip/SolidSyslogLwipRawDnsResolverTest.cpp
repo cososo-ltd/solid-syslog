@@ -311,7 +311,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveReportsWarningOnTimeout)
         SOLIDSYSLOG_SEVERITY_WARNING,
         SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
-        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_RESOLVE_TIMEOUT
+        SOLIDSYSLOG_RESOLVER_ERROR_RESOLVE_TIMEOUT
     );
 }
 
@@ -457,7 +457,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_RESOLVER_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -471,7 +471,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, CreateWithNullConfigReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
-        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_CONFIG
+        SOLIDSYSLOG_RESOLVER_ERROR_NULL_CONFIG
     );
 }
 
@@ -487,7 +487,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, CreateWithNullSleepReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_BAD_CONFIG,
-        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_SLEEP
+        SOLIDSYSLOG_RESOLVER_ERROR_NULL_SLEEP
     );
 }
 
@@ -557,7 +557,7 @@ TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -574,6 +574,6 @@ TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         SolidSyslogLwipRawDnsResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
 }

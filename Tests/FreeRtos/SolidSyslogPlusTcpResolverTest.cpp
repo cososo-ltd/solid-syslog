@@ -191,7 +191,7 @@ TEST(SolidSyslogPlusTcpResolverPoolTest, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         &SolidSyslogPlusTcpResolverErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_PLUSTCP_RESOLVER_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_RESOLVER_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -261,7 +261,7 @@ TEST(SolidSyslogPlusTcpResolverPoolTest, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPlusTcpResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_PLUSTCP_RESOLVER_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -278,6 +278,6 @@ TEST(SolidSyslogPlusTcpResolverPoolTest, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPlusTcpResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_PLUSTCP_RESOLVER_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
 }

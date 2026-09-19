@@ -3,29 +3,21 @@
  */
 
 /** @file
- *  Error codes and Source identity for the PlusTcpResolver adapter. */
+ *  Source identity for the PlusTcpResolver adapter; the detail codes it reports are
+ *  the portable ones in SolidSyslogResolverErrors.h. */
 #ifndef SOLIDSYSLOGPLUSTCPRESOLVERERRORS_H
 #define SOLIDSYSLOGPLUSTCPRESOLVERERRORS_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogResolverErrors.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is SolidSyslogPlusTcpResolverErrorSource. A
-     *  handler reads these off event->Detail after matching event->Source; the
-     *  members name their own fault. */
-    enum SolidSyslogPlusTcpResolverErrors
-    {
-        SOLIDSYSLOG_PLUSTCP_RESOLVER_ERROR_POOL_EXHAUSTED,
-        SOLIDSYSLOG_PLUSTCP_RESOLVER_ERROR_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_PLUSTCP_RESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
-    };
-
-    /** Identity for events raised by a PlusTcpResolver. A handler matches by
-     *  address (event->Source == &SolidSyslogPlusTcpResolverErrorSource), then reads
-     *  event->Detail as an enum SolidSyslogPlusTcpResolverErrors. */
+    /** Identity for events raised by a PlusTcpResolver. A handler matches by address
+     *  (event->Source == &SolidSyslogPlusTcpResolverErrorSource), then reads event->Detail as an
+     *  enum SolidSyslogResolverErrors. */
     extern const struct SolidSyslogErrorSource SolidSyslogPlusTcpResolverErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END

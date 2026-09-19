@@ -47,7 +47,7 @@ struct SolidSyslogAddress* SolidSyslogPlusTcpAddress_Create(void)
         PlusTcpAddress_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_ADDRESS_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -70,7 +70,7 @@ void SolidSyslogPlusTcpAddress_Destroy(struct SolidSyslogAddress* base)
         PlusTcpAddress_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
         );
     }
 }

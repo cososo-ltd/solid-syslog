@@ -3,32 +3,21 @@
  */
 
 /** @file
- *  Error codes and Source identity for the LwipRawDnsResolver adapter. */
+ *  Source identity for the LwipRawDnsResolver adapter; the detail codes it reports are
+ *  the portable ones in SolidSyslogResolverErrors.h. */
 #ifndef SOLIDSYSLOGLWIPRAWDNSRESOLVERERRORS_H
 #define SOLIDSYSLOGLWIPRAWDNSRESOLVERERRORS_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogResolverErrors.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is SolidSyslogLwipRawDnsResolverErrorSource. A
-     *  handler reads these off event->Detail after matching event->Source; the
-     *  members name their own fault. */
-    enum SolidSyslogLwipRawDnsResolverErrors
-    {
-        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_POOL_EXHAUSTED,
-        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_RESOLVE_TIMEOUT, /**< The bounded async-resolve spin hit its deadline. */
-        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_CONFIG,
-        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_SLEEP,
-        SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
-    };
-
-    /** Identity for events raised by a LwipRawDnsResolver. A handler matches by
-     *  address (event->Source == &SolidSyslogLwipRawDnsResolverErrorSource), then reads
-     *  event->Detail as an enum SolidSyslogLwipRawDnsResolverErrors. */
+    /** Identity for events raised by a LwipRawDnsResolver. A handler matches by address
+     *  (event->Source == &SolidSyslogLwipRawDnsResolverErrorSource), then reads event->Detail as an
+     *  enum SolidSyslogResolverErrors. */
     extern const struct SolidSyslogErrorSource SolidSyslogLwipRawDnsResolverErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END

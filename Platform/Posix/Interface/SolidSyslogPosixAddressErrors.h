@@ -3,29 +3,21 @@
  */
 
 /** @file
- *  Error codes and Source identity for the PosixAddress adapter. */
+ *  Source identity for the PosixAddress adapter; the detail codes it reports are
+ *  the portable ones in SolidSyslogAddressErrors.h. */
 #ifndef SOLIDSYSLOGPOSIXADDRESSERRORS_H
 #define SOLIDSYSLOGPOSIXADDRESSERRORS_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogAddressErrors.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is SolidSyslogPosixAddressErrorSource. A handler
-     *  reads these off event->Detail after matching event->Source; the members
-     *  name their own fault. */
-    enum SolidSyslogPosixAddressErrors
-    {
-        SOLIDSYSLOG_POSIX_ADDRESS_ERROR_POOL_EXHAUSTED,
-        SOLIDSYSLOG_POSIX_ADDRESS_ERROR_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_POSIX_ADDRESS_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
-    };
-
     /** Identity for events raised by a PosixAddress. A handler matches by address
-     *  (event->Source == &SolidSyslogPosixAddressErrorSource), then reads event->Detail as
-     *  an enum SolidSyslogPosixAddressErrors. */
+     *  (event->Source == &SolidSyslogPosixAddressErrorSource), then reads event->Detail as an
+     *  enum SolidSyslogAddressErrors. */
     extern const struct SolidSyslogErrorSource SolidSyslogPosixAddressErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END

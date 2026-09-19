@@ -39,7 +39,7 @@ void SolidSyslogLwipRawDnsResolver_Cleanup(struct SolidSyslogResolver* base);
 static inline void LwipRawDnsResolver_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogLwipRawDnsResolverErrors code
+    enum SolidSyslogResolverErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogLwipRawDnsResolverErrorSource, category, (int32_t) code);

@@ -161,9 +161,9 @@ A public macro or enum constant that names a class writes the class in
 registry token stays whole, spelled exactly as its CMake option spells it.
 
 ```c
-SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED     /* Core class, every word split */
-SOLIDSYSLOG_FATFS_FILE_ERROR_POOL_EXHAUSTED          /* FatFs token whole, File split */
-SOLIDSYSLOG_WINSOCK_DATAGRAM_ERROR_UNKNOWN_DESTROY   /* Winsock whole, Datagram split */
+SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED            /* Core class, every word split */
+SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE            /* Posix token whole, MessageQueueBuffer split */
+SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED /* the same, on a detail code */
 ```
 
 Splitting the token would misspell the upstream it names - `OPEN_SSL` and
@@ -717,6 +717,29 @@ the sum of the concurrent instances rather than splitting the name again.
 
 Classes with no platform/vendor variants keep their class-specific name
 (`SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE`, `SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE`, etc.).
+
+### Role detail codes are named by role, not platform
+
+A detail code shared by every implementation of a role drops the pack token for
+the same reason the pool tunable above does - the integrator reasons about "a
+mutex failed", never "a POSIX mutex failed":
+
+```c
+SOLIDSYSLOG_MUTEX_ERROR_POOL_EXHAUSTED   /* not _POSIX_MUTEX_ / _FREERTOS_MUTEX_ */
+SOLIDSYSLOG_RESOLVER_ERROR_NULL_SLEEP    /* raised only by the lwIP DNS resolver */
+```
+
+The codes live in one `SolidSyslog<Role>Errors.h` under `Core/Interface/`,
+carrying every code any implementation raises - including, as above, one only a
+single backend can raise. Splitting the enum to express which backend raises
+what would reintroduce the several vocabularies this exists to remove. Each
+pack's `SolidSyslog<Pack><Class>Errors.h` keeps only its `ErrorSource`, which is
+what still names the backend that spoke.
+
+A pack token survives in a detail code only where the class has no role siblings
+to share a vocabulary with. `SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_*` is
+the only such case: its Buffer-role siblings are Core classes with faults of
+their own rather than platform variants of one thing.
 
 ### Enum constants
 

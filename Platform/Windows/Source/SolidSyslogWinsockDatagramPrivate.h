@@ -28,7 +28,7 @@ void SolidSyslogWinsockDatagram_Cleanup(struct SolidSyslogDatagram* base);
 static inline void WinsockDatagram_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogWinsockDatagramErrors code
+    enum SolidSyslogDatagramErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogWinsockDatagramErrorSource, category, (int32_t) code);

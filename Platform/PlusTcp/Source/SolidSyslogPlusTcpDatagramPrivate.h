@@ -27,7 +27,7 @@ void SolidSyslogPlusTcpDatagram_Cleanup(struct SolidSyslogDatagram* base);
 static inline void PlusTcpDatagram_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogPlusTcpDatagramErrors code
+    enum SolidSyslogDatagramErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogPlusTcpDatagramErrorSource, category, (int32_t) code);

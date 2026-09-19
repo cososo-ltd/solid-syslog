@@ -53,7 +53,7 @@ struct SolidSyslogResolver* SolidSyslogLwipRawDnsResolver_Create(
             LwipRawDnsResolver_Report(
                 SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_RESOLVER_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -75,7 +75,7 @@ void SolidSyslogLwipRawDnsResolver_Destroy(struct SolidSyslogResolver* base)
         LwipRawDnsResolver_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
         );
     }
 }
@@ -88,7 +88,7 @@ static inline bool LwipRawDnsResolver_IsValidConfig(const struct SolidSyslogLwip
         LwipRawDnsResolver_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_CONFIG
+            SOLIDSYSLOG_RESOLVER_ERROR_NULL_CONFIG
         );
     }
     else if (config->Sleep == NULL)
@@ -96,7 +96,7 @@ static inline bool LwipRawDnsResolver_IsValidConfig(const struct SolidSyslogLwip
         LwipRawDnsResolver_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_LWIPRAW_DNS_RESOLVER_ERROR_NULL_SLEEP
+            SOLIDSYSLOG_RESOLVER_ERROR_NULL_SLEEP
         );
     }
     else

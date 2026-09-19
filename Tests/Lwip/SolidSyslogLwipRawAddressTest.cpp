@@ -146,7 +146,7 @@ TEST(SolidSyslogLwipRawAddressPool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         SolidSyslogLwipRawAddressErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_LWIPRAW_ADDRESS_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_ADDRESS_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -210,7 +210,7 @@ TEST(SolidSyslogLwipRawAddressPool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         SolidSyslogLwipRawAddressErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_LWIPRAW_ADDRESS_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -228,6 +228,6 @@ TEST(SolidSyslogLwipRawAddressPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         SolidSyslogLwipRawAddressErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_LWIPRAW_ADDRESS_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
 }

@@ -31,7 +31,7 @@ void SolidSyslogFreeRtosMutex_Cleanup(struct SolidSyslogMutex* base);
 static inline void FreeRtosMutex_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogFreeRtosMutexErrors code
+    enum SolidSyslogMutexErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogFreeRtosMutexErrorSource, category, (int32_t) code);

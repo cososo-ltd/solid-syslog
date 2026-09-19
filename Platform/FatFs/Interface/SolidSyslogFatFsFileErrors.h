@@ -3,29 +3,21 @@
  */
 
 /** @file
- *  Error codes and Source identity for the FatFsFile adapter. */
+ *  Source identity for the FatFsFile adapter; the detail codes it reports are
+ *  the portable ones in SolidSyslogFileErrors.h. */
 #ifndef SOLIDSYSLOGFATFSFILEERRORS_H
 #define SOLIDSYSLOGFATFSFILEERRORS_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogFileErrors.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is SolidSyslogFatFsFileErrorSource. A handler
-     *  reads these off event->Detail after matching event->Source; the members
-     *  name their own fault. */
-    enum SolidSyslogFatFsFileErrors
-    {
-        SOLIDSYSLOG_FATFS_FILE_ERROR_POOL_EXHAUSTED,
-        SOLIDSYSLOG_FATFS_FILE_ERROR_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_FATFS_FILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
-    };
-
     /** Identity for events raised by a FatFsFile. A handler matches by address
      *  (event->Source == &SolidSyslogFatFsFileErrorSource), then reads event->Detail as an
-     *  enum SolidSyslogFatFsFileErrors. */
+     *  enum SolidSyslogFileErrors. */
     extern const struct SolidSyslogErrorSource SolidSyslogFatFsFileErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END

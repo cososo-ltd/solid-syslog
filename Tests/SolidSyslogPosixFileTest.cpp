@@ -179,7 +179,7 @@ TEST(SolidSyslogPosixFilePool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         &SolidSyslogPosixFileErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_POSIX_FILE_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_FILE_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -246,7 +246,7 @@ TEST(SolidSyslogPosixFilePool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPosixFileErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_POSIX_FILE_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -263,6 +263,6 @@ TEST(SolidSyslogPosixFilePool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPosixFileErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_POSIX_FILE_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
 }

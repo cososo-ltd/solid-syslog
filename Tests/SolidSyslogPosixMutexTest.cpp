@@ -105,7 +105,7 @@ TEST(SolidSyslogPosixMutexPool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         &SolidSyslogPosixMutexErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_POSIX_MUTEX_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_MUTEX_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -173,7 +173,7 @@ TEST(SolidSyslogPosixMutexPool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPosixMutexErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_POSIX_MUTEX_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -190,6 +190,6 @@ TEST(SolidSyslogPosixMutexPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPosixMutexErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_POSIX_MUTEX_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY
     );
 }
