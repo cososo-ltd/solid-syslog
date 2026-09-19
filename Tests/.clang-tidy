@@ -1,5 +1,5 @@
 ---
-# Consistency-only tier per docs/NAMING.md.
+# Consistency-only level per docs/NAMING.md.
 #
 # Inherits the root .clang-tidy and disables a documented set of rules.
 # Other safety checks (bugprone-*, clang-analyzer-*, cppcoreguidelines-*,
@@ -17,8 +17,8 @@
 #   Test helpers and hardware fakes routinely take adjacent parameters of
 #   convertible types — `uintptr_t address + uint32_t value` in MMIO writes,
 #   pairs of similarly-typed values in equality / range assertions — where
-#   the types carry semantic distinction the rule can't see. Disabled tier-
-#   wide because the rule fires too often for legitimate patterns; real
+#   the types carry semantic distinction the rule can't see. Disabled
+#   directory-wide because the rule fires too often for legitimate patterns; real
 #   argument-order bugs in tests get caught by the tests themselves.
 #
 # -google-build-using-namespace

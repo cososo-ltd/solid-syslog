@@ -1,5 +1,5 @@
 ---
-# Public-header tier per docs/NAMING.md — Tier 1.
+# Public headers — Strict level per docs/NAMING.md.
 #
 # Inherits the root .clang-tidy and disables one rule:
 #
@@ -10,7 +10,7 @@
 #   with `static const` or `constexpr` loses both properties. The same idiom
 #   appears in SolidSyslogCircularBuffer.h (ring-bytes helper) and
 #   SolidSyslogExternC.h (extern "C" linkage block). The rule fires on every
-#   entry, the rationale is uniform, so disable tier-wide here rather than
+#   entry, the rationale is uniform, so disable directory-wide here rather than
 #   carry the same NOLINT comment on dozens of macro definitions.
 InheritParentConfig: true
 Checks: '-cppcoreguidelines-macro-usage'

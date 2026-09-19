@@ -112,11 +112,11 @@ misra-c2012-11.8:Core/Source/SolidSyslog.c:79
 misra-c2012-11.8:Core/Source/SolidSyslog.c:80
 misra-c2012-11.8:Core/Source/SolidSyslog.c:81
 misra-c2012-11.8:Core/Source/SolidSyslog.c:82
-misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:73
-misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:75
-misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:82
-misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:89
-misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:98
+misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:76
+misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
+misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85
+misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:92
+misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:101
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:50
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:122
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:148

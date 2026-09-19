@@ -483,9 +483,10 @@ to that Null sibling — see **Pool Allocation (E11)** below.
 
 ## Naming Conventions
 
-`docs/NAMING.md` is the source of truth — a per-tier naming scheme
-satisfying MISRA C:2012 rules 5.1–5.9 with clang-tidy enforcing shape
-and cppcheck-misra enforcing uniqueness. Read it before adding any new
+`docs/NAMING.md` is the source of truth - a naming scheme keyed by linkage
+and scope, built around MISRA C:2012 rules 5.1-5.9 and their recorded
+deviations, with clang-tidy enforcing shape and cppcheck-misra enforcing
+uniqueness. Read it before adding any new
 public identifier.
 
 One-line summary: public C functions `SolidSyslogClass_Function`, public
@@ -701,8 +702,8 @@ code should follow them; reviewers should call out drift.
   and `.clang-format`'s `InsertBraces: true` (our MISRA 15.6 enforcement)
   already braces every conditional body before the macro expands, so the
   wrapper is dead weight — and `cppcoreguidelines-avoid-do-while` (kept on for
-  the `Tests/` tier) now rejects it. No `NOLINT` is needed: `Tests/.clang-tidy`
-  disables `cppcoreguidelines-macro-usage` tier-wide, so a `CHECK_*` macro
+  `Tests/`) now rejects it. No `NOLINT` is needed: `Tests/.clang-tidy`
+  disables `cppcoreguidelines-macro-usage` directory-wide, so a `CHECK_*` macro
   needs no per-site suppression. Examples: `CHECK_PRIVAL` (single-statement,
   bare expression) in `SolidSyslogMessageFormatterTest.cpp`,
   `CHECK_BLOCK_CONTAINS` (declares a local, so keeps its `{ ... }` block) in

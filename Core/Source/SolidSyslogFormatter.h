@@ -23,7 +23,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
    macros: must be preprocessor-visible array-size const-expressions, so a
    static const / constexpr cannot replace them. Now that this header is
    library-private (Core/Source) the root .clang-tidy governs it and enables
-   the rule; the Core/Interface tier-wide disable no longer covers it. Matches
+   the rule; the Core/Interface directory-wide disable no longer covers it. Matches
    the SolidSyslogMacros.h idiom. */
 #define SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(bufferSize) \
     (SOLIDSYSLOG_FORMATTER_OVERHEAD +                  \

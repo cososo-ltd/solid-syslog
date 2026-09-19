@@ -1,8 +1,8 @@
 # MISRA C:2012 deviations
 
 SolidSyslog is MISRA-informed, not certified-compliant. The project
-adopts a curated subset of MISRA C:2012 rules per tier (see
-`docs/NAMING.md` for the tier model). This document records every
+adopts a curated subset of MISRA C:2012 rules per rigour level (see
+`docs/NAMING.md` for the levels). This document records every
 deliberate deviation from a rule the project otherwise enforces, and every
 suppression that is not a deviation at all.
 
@@ -121,12 +121,12 @@ before relying on this deviation.
 
 ### Scope
 
-- **Strict tier** — `Core/Interface/`, `Core/Source/`,
+- **Strict level** — `Core/Interface/`, `Core/Source/`,
   `Platform/*/Interface/`
-- **Pragmatic tier** — `Platform/*/Source/`
+- **Pragmatic level** — `Platform/*/Source/`
 
 The deviation does not apply to the Consistency-only or Out-of-scope
-tiers (rule 5.1 is not enforced there at all).
+levels (rule 5.1 is not enforced there at all).
 
 ### Rationale
 
@@ -140,7 +140,7 @@ The C99 31-character limit is a legacy linker artifact from the late
 | MSVC                                           | Documented maximum identifier length **2,047 characters** ([Microsoft Learn — C Identifiers](https://learn.microsoft.com/en-us/cpp/c-language/c-identifiers)). CI builds with the `windows-latest` toolchain; older MSVC releases are not tested. |
 | IAR Embedded Workbench, Keil ARMCC 6            | Not built in CI. Identifier limits are documented per compiler SKU; confirm against your SKU's reference at port time. |
 
-The Tier 1 naming scheme in `docs/NAMING.md` (form
+The external-linkage naming scheme in `docs/NAMING.md` (form
 `SolidSyslogClass_Function`) routinely produces identifiers in the
 30–40 character range — `SolidSyslogPlusTcpResolver_Create` is
 40, `SolidSyslogPlusTcpTcpStream_Destroy` is 36 — and a few public
@@ -176,7 +176,7 @@ identifiers (§5.2.4.1) — a single number applies project-wide.
   allows, which is the safe direction. (Decision recorded under
   [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).)
 - **Review** — The naming scheme itself (see `docs/NAMING.md`,
-  Tier 1) builds in a `SolidSyslog` prefix and a `Class_Function`
+  *External linkage*) builds in a `SolidSyslog` prefix and a `Class_Function`
   shape that makes accidental 63-character collisions extremely
   unlikely. The static-analysis gate exists to catch any that slip in.
 
@@ -282,9 +282,9 @@ third-party API contract (the public `Send` / `SendTo` interface) is
 
 ### Scope
 
-- **Strict tier** — `Core/Source/`: the `SelfFromBase` helpers on every vtable
+- **Strict level** — `Core/Source/`: the `SelfFromBase` helpers on every vtable
   class, and the Formatter storage cast of sub-case (b). 14 sites.
-- **Pragmatic tier** — `Platform/*/Source/`: the same `SelfFromBase` shape in
+- **Pragmatic level** — `Platform/*/Source/`: the same `SelfFromBase` shape in
   each adapter, the per-platform Address downcasts, and the callback `void*`
   casts of sub-case (c). 66 sites, across the StdAtomic, FatFs, FreeRtos,
   LwipRaw, MbedTls, OpenSsl, PlusFat, PlusTcp, Posix and Windows packs.
@@ -377,17 +377,17 @@ in headers and the matching definition in source.
 ### Construct
 
 SolidSyslog uses `struct SolidSyslogX` directly throughout the public
-API and source rather than typedef'ing it (see `docs/NAMING.md`, Tier 1
-"No struct typedefs" rule). Each public class therefore necessarily
+API and source rather than typedef'ing it (see `docs/NAMING.md`,
+"No struct typedefs"). Each public class therefore necessarily
 repeats its tag at every forward-declaration and definition site.
 
 ### Scope
 
-- **Strict tier** — every public `struct SolidSyslogX` declared as an
+- **Strict level** — every public `struct SolidSyslogX` declared as an
   incomplete type in a header (`SolidSyslogBuffer.h`, `SolidSyslogStore.h`,
   `SolidSyslogFile.h`, etc.) and re-declared with full body in the
   matching source file.
-- **Pragmatic tier** — same pattern across all `Platform/*/Source/`
+- **Pragmatic level** — same pattern across all `Platform/*/Source/`
   classes.
 
 ### Rationale
@@ -606,7 +606,7 @@ Two distinct site categories trigger this rule:
 
 ### Scope
 
-- **Strict tier** — 15 field-access sites: 8 in `Core/Source/SolidSyslog.c`
+- **Strict level** — 15 field-access sites: 8 in `Core/Source/SolidSyslog.c`
   (the `SolidSyslog_Install*` functions reading `config->` pointer
   fields), 5 in `Core/Source/SolidSyslogMessageFormatter.c`
   (`SolidSyslogMessageFormatter_Format` reading `context->Clock`,
@@ -617,7 +617,7 @@ Two distinct site categories trigger this rule:
   1 in `Core/Source/SolidSyslogBlockStoreStatic.c`
   (`BlockStore_ResolveSecurityPolicy` accepting
   `config->SecurityPolicy`).
-- **Pragmatic tier** — 2 sites: 1 in
+- **Pragmatic level** — 2 sites: 1 in
   `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c` (the
   `select()` timeout cast); 1 in
   `Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c` (the
@@ -824,9 +824,9 @@ so the mapping is explicit per line rather than inferred.
 
 ### Scope
 
-- **Strict tier** — every anonymous-`enum` constants block in
+- **Strict level** — every anonymous-`enum` constants block in
   `Core/Interface/` and `Core/Source/`.
-- **Pragmatic tier** — every anonymous-`enum` constants block in
+- **Pragmatic level** — every anonymous-`enum` constants block in
   `Platform/*/Source/`.
 
 ### Rationale
@@ -960,8 +960,8 @@ Raised 2026-05-15, approved 2026-05-16 by the project owner, David Cozens. Recor
 `Core/Interface/SolidSyslogCircularBuffer.h` declares one function-like
 macro — `SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES` — that integrator code
 uses to size caller-supplied ring memory. cppcheck-misra runs only over
-the Strict tier (`Core/Source/`) and Pragmatic tier (`Platform/*/Source/`);
-the actual consumers live under `Tests/` (Consistency-only tier) and
+the Strict level (`Core/Source/`) and Pragmatic level (`Platform/*/Source/`);
+the actual consumers live under `Tests/` (Consistency-only level) and
 `Bdd/Targets/` (Out of scope) and are therefore invisible to the
 checker.
 
@@ -969,7 +969,7 @@ checker.
 
 `Core/Interface/SolidSyslogCircularBuffer.h` — one macro definition.
 
-This entry authorises that one macro and no other. Per the tier model, MISRA
+This entry authorises that one macro and no other. Per the rigour levels, MISRA
 enforcement does not cross into `Tests/` or `Bdd/`, so a future sweep may
 surface the same shape on another public API macro. That does not extend this
 deviation automatically: each new instance is reviewed on its merits and either
@@ -999,7 +999,7 @@ The alternatives all regress:
 | Alternative | Why rejected |
 |-------------|--------------|
 | Inline `cppcheck-suppress misra-c2012-2.5` at the macro | **Project preference.** Deviations are recorded structurally in this document so the rationale is centrally auditable rather than scattered across call sites. |
-| Widen the cppcheck-misra scan to include `Tests/` | Tests are the Consistency-only tier per E10's tier model; running MISRA there is out of scope by design. |
+| Widen the cppcheck-misra scan to include `Tests/` | Tests are the Consistency-only level; running MISRA there is out of scope by design. |
 | Move the macro into `Core/Source/` | Public API by definition lives under `Core/Interface/`. Moving it would break the audience-segregated header layout. |
 
 ### Risk and mitigation
@@ -1009,8 +1009,8 @@ The alternatives all regress:
   defect; this deviation is line-specific, so a new unused macro
   surfaces as a fresh 2.5 finding rather than being silently absorbed.
 - **Elimination path.** If the cppcheck-misra scan is ever widened to
-  include `Tests/` and `Bdd/Targets/` (unlikely under the current tier
-  model), the suppressions become unnecessary and can be removed.
+  include `Tests/` and `Bdd/Targets/` (unlikely under the current rigour
+  levels), the suppressions become unnecessary and can be removed.
 
 ### Approval
 

@@ -1,5 +1,5 @@
 ---
-# Pragmatic tier per docs/NAMING.md — Platform/MbedTls.
+# Pragmatic level per docs/NAMING.md — Platform/MbedTls.
 #
 # Inherits the root .clang-tidy. SolidSyslogMbedTlsStream.h (Interface/) and
 # SolidSyslogMbedTlsStream.c (Source/) both refer to upstream Mbed TLS struct

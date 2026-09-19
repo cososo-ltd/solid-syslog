@@ -1,5 +1,5 @@
 ---
-# Pragmatic tier per docs/NAMING.md.
+# Pragmatic level per docs/NAMING.md.
 #
 # Inherits the root .clang-tidy. Local names that mirror third-party
 # FreeRTOS identifiers (StaticSemaphore_t, TaskHandle_t xTask, Socket_t
@@ -13,5 +13,5 @@
 # whenever they are compiled in a tidy-enabled target.
 #
 # Add IgnoredRegexp entries here as real exemptions surface; the file
-# exists from S10.02 to mark the tier boundary even when empty of overrides.
+# exists from S10.02 to mark the level boundary even when empty of overrides.
 InheritParentConfig: true

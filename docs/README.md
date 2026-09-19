@@ -81,6 +81,6 @@ which is [Integrate](#integrate) above).
 - [BDD testing](bdd.md): the Gherkin / target-binary test infrastructure.
 - [CI pipeline](ci.md): the status checks behind branch protection.
 - [Container images](containers.md): the dev-container and CI image reference.
-- [Naming conventions](NAMING.md): the per-tier scheme satisfying MISRA C:2012 rules 5.1–5.9.
+- [Naming conventions](NAMING.md): the scheme, keyed by linkage and scope, built around MISRA C:2012 rules 5.1-5.9 and their recorded deviations.
 - [MISRA C:2012 deviations](misra-deviations.md): the recorded, deliberate deviations.
 - [Release process](release-process.md): release-please, Conventional Commits, and versioning.
