@@ -264,8 +264,9 @@ This mirrors the board, where the swimlane appears when the first story does.
 An issue with no milestone is uncommitted. `no:milestone` is the backlog view;
 there is deliberately no `Future` or `Backlog` milestone, because that would be a
 second way to say the same thing. Epics raised to gauge interest — the platform
-epics E34–E37 — stay unmilestoned permanently, since "no commitment" is what makes
-their 👍 vote signal meaningful.
+epics — stay unmilestoned while they are unstarted, since "no commitment" is what
+makes their 👍 vote signal meaningful. Starting one is the commitment: its
+stories are written, and they carry the milestone like any other.
 
 ### Closed work is backfilled
 
