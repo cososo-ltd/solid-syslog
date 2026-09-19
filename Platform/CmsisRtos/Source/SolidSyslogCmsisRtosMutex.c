@@ -17,9 +17,8 @@ const struct SolidSyslogErrorSource SolidSyslogCmsisRtosMutexErrorSource = {"Cms
 
 void SolidSyslogCmsisRtosMutex_Initialise(struct SolidSyslogMutex* base, void* controlBlock, uint32_t controlBlockBytes)
 {
-    (void) controlBlock;
     (void) controlBlockBytes;
-    osMutexAttr_t attributes = {NULL, 0, NULL, 0};
+    osMutexAttr_t attributes = {NULL, 0, controlBlock, 0};
     (void) osMutexNew(&attributes);
     *base = *SolidSyslogNullMutex_Get();
 }
