@@ -4,6 +4,7 @@
 
 #include "CmsisRtosKernelFake.h"
 #include "SolidSyslogCmsisRtosSysUpTime.h"
+#include "SolidSyslogCmsisRtosSysUpTimeTestHelper.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogCmsisRtosSysUpTime)
@@ -11,6 +12,7 @@ TEST_GROUP(SolidSyslogCmsisRtosSysUpTime)
     void setup() override
     {
         CmsisRtosKernelFake_Reset();
+        TestCmsisRtosSysUpTime_Reset();
     }
 
     [[nodiscard]] static uint32_t uptimeAt(uint32_t ticks)
