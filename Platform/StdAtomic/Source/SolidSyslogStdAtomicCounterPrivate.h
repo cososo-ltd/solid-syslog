@@ -25,7 +25,7 @@ void SolidSyslogStdAtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* base);
 static inline void StdAtomicCounter_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogStdAtomicCounterErrors code
+    enum SolidSyslogAtomicCounterErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogStdAtomicCounterErrorSource, category, (int32_t) code);

@@ -135,7 +135,7 @@ TEST(SolidSyslogPlusTcpAddressPool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         &SolidSyslogPlusTcpAddressErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_ADDRESS_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -199,7 +199,7 @@ TEST(SolidSyslogPlusTcpAddressPool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPlusTcpAddressErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -217,6 +217,6 @@ TEST(SolidSyslogPlusTcpAddressPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPlusTcpAddressErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_PLUSTCP_ADDRESS_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
 }

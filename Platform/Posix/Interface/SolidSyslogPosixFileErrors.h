@@ -3,29 +3,21 @@
  */
 
 /** @file
- *  Error codes and Source identity for the PosixFile adapter. */
+ *  Source identity for the PosixFile adapter; the detail codes it reports are
+ *  the portable ones in SolidSyslogFileErrors.h. */
 #ifndef SOLIDSYSLOGPOSIXFILEERRORS_H
 #define SOLIDSYSLOGPOSIXFILEERRORS_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogFileErrors.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is SolidSyslogPosixFileErrorSource. A handler
-     *  reads these off event->Detail after matching event->Source; the members
-     *  name their own fault. */
-    enum SolidSyslogPosixFileErrors
-    {
-        SOLIDSYSLOG_POSIX_FILE_ERROR_POOL_EXHAUSTED,
-        SOLIDSYSLOG_POSIX_FILE_ERROR_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_POSIX_FILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
-    };
-
     /** Identity for events raised by a PosixFile. A handler matches by address
      *  (event->Source == &SolidSyslogPosixFileErrorSource), then reads event->Detail as an
-     *  enum SolidSyslogPosixFileErrors. */
+     *  enum SolidSyslogFileErrors. */
     extern const struct SolidSyslogErrorSource SolidSyslogPosixFileErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END

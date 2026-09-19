@@ -3,29 +3,21 @@
  */
 
 /** @file
- *  Error codes and Source identity for the FreeRtosMutex adapter. */
+ *  Source identity for the FreeRtosMutex adapter; the detail codes it reports are
+ *  the portable ones in SolidSyslogMutexErrors.h. */
 #ifndef SOLIDSYSLOGFREERTOSMUTEXERRORS_H
 #define SOLIDSYSLOGFREERTOSMUTEXERRORS_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogMutexErrors.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is SolidSyslogFreeRtosMutexErrorSource. A
-     *  handler reads these off event->Detail after matching event->Source; the
-     *  members name their own fault. */
-    enum SolidSyslogFreeRtosMutexErrors
-    {
-        SOLIDSYSLOG_FREERTOS_MUTEX_ERROR_POOL_EXHAUSTED,
-        SOLIDSYSLOG_FREERTOS_MUTEX_ERROR_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_FREERTOS_MUTEX_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
-    };
-
-    /** Identity for events raised by a FreeRtosMutex. A handler matches by
-     *  address (event->Source == &SolidSyslogFreeRtosMutexErrorSource), then reads
-     *  event->Detail as an enum SolidSyslogFreeRtosMutexErrors. */
+    /** Identity for events raised by a FreeRtosMutex. A handler matches by address
+     *  (event->Source == &SolidSyslogFreeRtosMutexErrorSource), then reads event->Detail as an
+     *  enum SolidSyslogMutexErrors. */
     extern const struct SolidSyslogErrorSource SolidSyslogFreeRtosMutexErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END

@@ -25,7 +25,7 @@ void SolidSyslogWindowsAtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* ba
 static inline void WindowsAtomicCounter_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogWindowsAtomicCounterErrors code
+    enum SolidSyslogAtomicCounterErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogWindowsAtomicCounterErrorSource, category, (int32_t) code);

@@ -38,7 +38,7 @@ static inline const struct freertos_sockaddr* SolidSyslogPlusTcpAddress_AsConstF
 static inline void PlusTcpAddress_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogPlusTcpAddressErrors code
+    enum SolidSyslogAddressErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogPlusTcpAddressErrorSource, category, (int32_t) code);

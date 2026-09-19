@@ -3,29 +3,21 @@
  */
 
 /** @file
- *  Error codes and Source identity for the WindowsFile adapter. */
+ *  Source identity for the WindowsFile adapter; the detail codes it reports are
+ *  the portable ones in SolidSyslogFileErrors.h. */
 #ifndef SOLIDSYSLOGWINDOWSFILEERRORS_H
 #define SOLIDSYSLOGWINDOWSFILEERRORS_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogFileErrors.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is SolidSyslogWindowsFileErrorSource. A handler
-     *  reads these off event->Detail after matching event->Source; the members
-     *  name their own fault. */
-    enum SolidSyslogWindowsFileErrors
-    {
-        SOLIDSYSLOG_WINDOWS_FILE_ERROR_POOL_EXHAUSTED,
-        SOLIDSYSLOG_WINDOWS_FILE_ERROR_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_WINDOWS_FILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
-    };
-
     /** Identity for events raised by a WindowsFile. A handler matches by address
      *  (event->Source == &SolidSyslogWindowsFileErrorSource), then reads event->Detail as an
-     *  enum SolidSyslogWindowsFileErrors. */
+     *  enum SolidSyslogFileErrors. */
     extern const struct SolidSyslogErrorSource SolidSyslogWindowsFileErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END

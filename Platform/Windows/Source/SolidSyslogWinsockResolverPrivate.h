@@ -23,7 +23,7 @@ void SolidSyslogWinsockResolver_Cleanup(struct SolidSyslogResolver* base);
 static inline void WinsockResolver_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogWinsockResolverErrors code
+    enum SolidSyslogResolverErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogWinsockResolverErrorSource, category, (int32_t) code);

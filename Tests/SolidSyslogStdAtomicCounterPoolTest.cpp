@@ -77,7 +77,7 @@ TEST(SolidSyslogStdAtomicCounterPool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         &SolidSyslogStdAtomicCounterErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_STDATOMIC_COUNTER_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -156,7 +156,7 @@ TEST(SolidSyslogStdAtomicCounterPool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogStdAtomicCounterErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_STDATOMIC_COUNTER_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -173,6 +173,6 @@ TEST(SolidSyslogStdAtomicCounterPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogStdAtomicCounterErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_STDATOMIC_COUNTER_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_UNKNOWN_DESTROY
     );
 }

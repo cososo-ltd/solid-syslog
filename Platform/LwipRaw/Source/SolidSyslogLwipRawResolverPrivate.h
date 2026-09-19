@@ -23,7 +23,7 @@ void SolidSyslogLwipRawResolver_Cleanup(struct SolidSyslogResolver* base);
 static inline void LwipRawResolver_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogLwipRawResolverErrors code
+    enum SolidSyslogResolverErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogLwipRawResolverErrorSource, category, (int32_t) code);

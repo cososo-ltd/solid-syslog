@@ -27,7 +27,7 @@ void SolidSyslogPosixDatagram_Cleanup(struct SolidSyslogDatagram* base);
 static inline void PosixDatagram_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogPosixDatagramErrors code
+    enum SolidSyslogDatagramErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogPosixDatagramErrorSource, category, (int32_t) code);

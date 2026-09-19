@@ -174,7 +174,7 @@ TEST(SolidSyslogLwipRawResolverPool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         SolidSyslogLwipRawResolverErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_LWIPRAW_RESOLVER_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_RESOLVER_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -250,7 +250,7 @@ TEST(SolidSyslogLwipRawResolverPool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         SolidSyslogLwipRawResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_LWIPRAW_RESOLVER_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -268,7 +268,7 @@ TEST(SolidSyslogLwipRawResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         SolidSyslogLwipRawResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_LWIPRAW_RESOLVER_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
 }
 

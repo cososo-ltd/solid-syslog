@@ -37,7 +37,7 @@ static inline const struct sockaddr_in* SolidSyslogWinsockAddress_AsConstSockadd
 static inline void WinsockAddress_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogWinsockAddressErrors code
+    enum SolidSyslogAddressErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogWinsockAddressErrorSource, category, (int32_t) code);

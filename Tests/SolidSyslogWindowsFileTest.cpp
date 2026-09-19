@@ -207,7 +207,7 @@ TEST(SolidSyslogWindowsFilePool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         &SolidSyslogWindowsFileErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_WINDOWS_FILE_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_FILE_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -274,7 +274,7 @@ TEST(SolidSyslogWindowsFilePool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogWindowsFileErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_WINDOWS_FILE_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -291,6 +291,6 @@ TEST(SolidSyslogWindowsFilePool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogWindowsFileErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_WINDOWS_FILE_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
 }

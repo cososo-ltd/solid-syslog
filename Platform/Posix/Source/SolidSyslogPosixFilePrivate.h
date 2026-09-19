@@ -24,7 +24,7 @@ void SolidSyslogPosixFile_Cleanup(struct SolidSyslogFile* base);
 static inline void PosixFile_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogPosixFileErrors code
+    enum SolidSyslogFileErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogPosixFileErrorSource, category, (int32_t) code);

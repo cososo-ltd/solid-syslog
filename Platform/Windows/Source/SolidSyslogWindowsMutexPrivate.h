@@ -26,7 +26,7 @@ void SolidSyslogWindowsMutex_Cleanup(struct SolidSyslogMutex* base);
 static inline void WindowsMutex_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogWindowsMutexErrors code
+    enum SolidSyslogMutexErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogWindowsMutexErrorSource, category, (int32_t) code);

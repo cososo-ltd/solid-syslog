@@ -3,29 +3,21 @@
  */
 
 /** @file
- *  Error codes and Source identity for the PosixMutex adapter. */
+ *  Source identity for the PosixMutex adapter; the detail codes it reports are
+ *  the portable ones in SolidSyslogMutexErrors.h. */
 #ifndef SOLIDSYSLOGPOSIXMUTEXERRORS_H
 #define SOLIDSYSLOGPOSIXMUTEXERRORS_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogMutexErrors.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is SolidSyslogPosixMutexErrorSource. A handler
-     *  reads these off event->Detail after matching event->Source; the members
-     *  name their own fault. */
-    enum SolidSyslogPosixMutexErrors
-    {
-        SOLIDSYSLOG_POSIX_MUTEX_ERROR_POOL_EXHAUSTED,
-        SOLIDSYSLOG_POSIX_MUTEX_ERROR_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_POSIX_MUTEX_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
-    };
-
     /** Identity for events raised by a PosixMutex. A handler matches by address
      *  (event->Source == &SolidSyslogPosixMutexErrorSource), then reads event->Detail as an
-     *  enum SolidSyslogPosixMutexErrors. */
+     *  enum SolidSyslogMutexErrors. */
     extern const struct SolidSyslogErrorSource SolidSyslogPosixMutexErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END

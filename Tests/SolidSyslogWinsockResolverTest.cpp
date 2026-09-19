@@ -192,7 +192,7 @@ TEST(SolidSyslogWinsockResolverPool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         &SolidSyslogWinsockResolverErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_WINSOCK_RESOLVER_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_RESOLVER_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -262,7 +262,7 @@ TEST(SolidSyslogWinsockResolverPool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogWinsockResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_WINSOCK_RESOLVER_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -279,6 +279,6 @@ TEST(SolidSyslogWinsockResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogWinsockResolverErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_WINSOCK_RESOLVER_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
 }

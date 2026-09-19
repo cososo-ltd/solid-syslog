@@ -105,7 +105,7 @@ TEST(SolidSyslogWindowsMutexPool, ExhaustedCreateReportsError)
         SOLIDSYSLOG_SEVERITY_CRITICAL,
         &SolidSyslogWindowsMutexErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-        SOLIDSYSLOG_WINDOWS_MUTEX_ERROR_POOL_EXHAUSTED
+        SOLIDSYSLOG_MUTEX_ERROR_POOL_EXHAUSTED
     );
 }
 
@@ -173,7 +173,7 @@ TEST(SolidSyslogWindowsMutexPool, DestroyOfUnknownHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogWindowsMutexErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_WINDOWS_MUTEX_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY
     );
 }
 
@@ -190,6 +190,6 @@ TEST(SolidSyslogWindowsMutexPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogWindowsMutexErrorSource,
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_WINDOWS_MUTEX_ERROR_UNKNOWN_DESTROY
+        SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY
     );
 }

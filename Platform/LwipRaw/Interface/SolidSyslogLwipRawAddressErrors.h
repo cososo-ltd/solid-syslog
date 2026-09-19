@@ -3,29 +3,21 @@
  */
 
 /** @file
- *  Error codes and Source identity for the LwipRawAddress adapter. */
+ *  Source identity for the LwipRawAddress adapter; the detail codes it reports are
+ *  the portable ones in SolidSyslogAddressErrors.h. */
 #ifndef SOLIDSYSLOGLWIPRAWADDRESSERRORS_H
 #define SOLIDSYSLOGLWIPRAWADDRESSERRORS_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogAddressErrors.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is SolidSyslogLwipRawAddressErrorSource. A
-     *  handler reads these off event->Detail after matching event->Source; the
-     *  members name their own fault. */
-    enum SolidSyslogLwipRawAddressErrors
-    {
-        SOLIDSYSLOG_LWIPRAW_ADDRESS_ERROR_POOL_EXHAUSTED,
-        SOLIDSYSLOG_LWIPRAW_ADDRESS_ERROR_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_LWIPRAW_ADDRESS_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
-    };
-
-    /** Identity for events raised by a LwipRawAddress. A handler matches by
-     *  address (event->Source == &SolidSyslogLwipRawAddressErrorSource), then reads
-     *  event->Detail as an enum SolidSyslogLwipRawAddressErrors. */
+    /** Identity for events raised by a LwipRawAddress. A handler matches by address
+     *  (event->Source == &SolidSyslogLwipRawAddressErrorSource), then reads event->Detail as an
+     *  enum SolidSyslogAddressErrors. */
     extern const struct SolidSyslogErrorSource SolidSyslogLwipRawAddressErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END

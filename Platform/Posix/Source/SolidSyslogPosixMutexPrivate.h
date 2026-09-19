@@ -26,7 +26,7 @@ void SolidSyslogPosixMutex_Cleanup(struct SolidSyslogMutex* base);
 static inline void PosixMutex_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogPosixMutexErrors code
+    enum SolidSyslogMutexErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogPosixMutexErrorSource, category, (int32_t) code);

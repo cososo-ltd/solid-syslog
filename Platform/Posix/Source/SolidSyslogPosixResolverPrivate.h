@@ -23,7 +23,7 @@ void SolidSyslogPosixResolver_Cleanup(struct SolidSyslogResolver* base);
 static inline void PosixResolver_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogPosixResolverErrors code
+    enum SolidSyslogResolverErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogPosixResolverErrorSource, category, (int32_t) code);

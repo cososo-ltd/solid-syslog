@@ -47,7 +47,7 @@ struct SolidSyslogAddress* SolidSyslogWinsockAddress_Create(void)
         WinsockAddress_Report(
             SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
             SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            SOLIDSYSLOG_WINSOCK_ADDRESS_ERROR_POOL_EXHAUSTED
+            SOLIDSYSLOG_ADDRESS_ERROR_POOL_EXHAUSTED
         );
     }
     return handle;
@@ -70,7 +70,7 @@ void SolidSyslogWinsockAddress_Destroy(struct SolidSyslogAddress* base)
         WinsockAddress_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            SOLIDSYSLOG_WINSOCK_ADDRESS_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
         );
     }
 }

@@ -26,7 +26,7 @@ void SolidSyslogLwipRawDatagram_Cleanup(struct SolidSyslogDatagram* base);
 static inline void LwipRawDatagram_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogLwipRawDatagramErrors code
+    enum SolidSyslogDatagramErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogLwipRawDatagramErrorSource, category, (int32_t) code);

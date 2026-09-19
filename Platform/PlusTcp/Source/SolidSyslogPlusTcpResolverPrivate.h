@@ -23,7 +23,7 @@ void SolidSyslogPlusTcpResolver_Cleanup(struct SolidSyslogResolver* base);
 static inline void PlusTcpResolver_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogPlusTcpResolverErrors code
+    enum SolidSyslogResolverErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogPlusTcpResolverErrorSource, category, (int32_t) code);

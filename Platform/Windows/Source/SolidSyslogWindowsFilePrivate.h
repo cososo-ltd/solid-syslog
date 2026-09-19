@@ -24,7 +24,7 @@ void SolidSyslogWindowsFile_Cleanup(struct SolidSyslogFile* base);
 static inline void WindowsFile_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
-    enum SolidSyslogWindowsFileErrors code
+    enum SolidSyslogFileErrors code
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogWindowsFileErrorSource, category, (int32_t) code);
