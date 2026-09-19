@@ -19,8 +19,8 @@ your `FreeRTOSIPConfig.h` needs `ipconfigUSE_DNS=1`.
 ### The transport carries syslog in clear
 
 Neither the datagram nor the TCP stream provides confidentiality, integrity or
-peer authentication. TLS is a separate role filled by a different platform — the
-[platform × capability matrix](../index.md) shows which — layered over this
+peer authentication. TLS is a separate role filled by a different platform - the
+[platform × capability matrix](../index.md) shows which - layered over this
 stream rather than replacing it.
 
 ### Resolution is trusted as the stack returns it
@@ -31,7 +31,7 @@ that no resolution step exists to be poisoned.
 
 ### A first send to an unresolved peer stalls the calling task
 
-FreeRTOS-Plus-TCP does not queue datagrams while ARP resolves — a
+FreeRTOS-Plus-TCP does not queue datagrams while ARP resolves - a
 `FreeRTOS_sendto` to a peer that is not in the ARP cache is dropped at the IP
 layer. The datagram adapter therefore issues an ARP probe on a cache miss and
 then waits, in a `vTaskDelay` of its own, so the reply can land before it sends.
@@ -61,6 +61,17 @@ No record reaches that size at the default `SOLIDSYSLOG_MAX_MESSAGE_SIZE`. It
 applies where the tunable has been raised past what the datagram reports -
 noting that the tunable is library-wide rather than per-transport, so a value
 chosen for this path applies to every transport the instance uses.
+
+### Dead-peer detection is the stack's, not ours
+
+Keepalive is `ipconfigTCP_KEEP_ALIVE` in your `FreeRTOSIPConfig.h`, off unless
+you enable it, with `ipconfigTCP_KEEP_ALIVE_INTERVAL` setting the idle period in
+seconds for every TCP socket in your system. There is no per-socket control, and
+the spacing of repeat probes and the number tolerated before the connection is
+closed are fixed in the stack. The `SOLIDSYSLOG_TCP_KEEPALIVE_*` tunables are
+therefore not read here. Enable it, and set the interval to the default of
+`SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS` unless you have reason to choose
+otherwise.
 
 ### The stack's configuration is yours
 
