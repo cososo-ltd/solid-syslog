@@ -98,6 +98,9 @@ static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_
         }
         else if (!BIO_should_retry(stream->Bio) || stream->Pump == NULL)
         {
+            /* Giving up means returning a negative, which the contract calls
+             * a teardown and has the stream closed before. */
+            Close(self);
             done = true;
         }
         else

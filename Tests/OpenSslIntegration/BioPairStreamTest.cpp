@@ -94,6 +94,18 @@ TEST(BioPairStreamContract, AClosedStreamReadsAsTornDownRatherThanIdle)
     CHECK(SolidSyslogStream_Read(stream, buffer, sizeof(buffer)) < 0);
 }
 
+/* The clause applies to Read as much as to Send: a negative return is a
+ * teardown, so nothing may cross afterwards until the stream is reopened. */
+TEST(BioPairStreamContract, ReadThatFailsClosesTheStream)
+{
+    char buffer[1] = {};
+
+    CHECK(SolidSyslogStream_Read(stream, buffer, sizeof(buffer)) < 0);
+
+    peerSends();
+    CHECK(SolidSyslogStream_Read(stream, buffer, sizeof(buffer)) < 0);
+}
+
 TEST(BioPairStreamContract, ReopeningRestoresTheStream)
 {
     sendFails();
