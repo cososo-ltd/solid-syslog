@@ -353,6 +353,13 @@ TEST(SolidSyslogLwipRawTcpStream, OpenSetsKeepaliveOnPcb)
     CHECK((LwipTcpFake_LastTcpNewReturned()->so_options & SOF_KEEPALIVE) != 0);
 }
 
+TEST(SolidSyslogLwipRawTcpStream, OpenSetsKeepIdleFromTheTunable)
+{
+    SolidSyslogStream_Open(stream, address);
+
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS * 1000, LwipTcpFake_LastTcpNewReturned()->keep_idle);
+}
+
 // Nagle is disabled (TF_NODELAY set) so small, un-pipelined writes - octet-framed
 // records, and the multi-segment handshake flights of a stacked TLS layer - go out
 // immediately instead of being held until the previous segment is ACKed (which

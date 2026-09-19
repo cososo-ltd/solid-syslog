@@ -235,6 +235,7 @@ static struct tcp_pcb* LwipRawTcpStream_OpenAndConfigurePcb(struct SolidSyslogLw
     if (pcb != NULL)
     {
         ip_set_option(pcb, SOF_KEEPALIVE);
+        LwipRawTcpStream_ApplyKeepalive(pcb);
         /* Disable Nagle. The syslog client writes small, latency-sensitive
          * records (octet-framed messages, and - when an upper TLS layer is
          * stacked on this stream - multi-segment handshake flights) and never
