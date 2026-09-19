@@ -10,6 +10,8 @@
 #include "cmsis_os2.h"
 
 #include "SolidSyslogCmsisRtosMutexPrivate.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMutexDefinition.h"
 #include "SolidSyslogNullMutex.h"
 
@@ -37,6 +39,11 @@ void SolidSyslogCmsisRtosMutex_Initialise(struct SolidSyslogMutex* base, void* c
     else
     {
         *base = *SolidSyslogNullMutex_Get();
+        CmsisRtosMutex_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_MUTEX_ERROR_CREATE_FAILED
+        );
     }
 }
 
