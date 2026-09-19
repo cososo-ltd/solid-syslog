@@ -7,6 +7,7 @@ set(OPENSSL_INTEGRATION_TESTS_SOURCES
     TlsTestCert.c
     TlsTestServer.c
     SolidSyslogOpenSslStreamIntegrationTest.cpp
+    BioPairStreamTest.cpp
     SolidSyslogOpenSslAesGcmPolicyIntegrationTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Tests/AddressFake.c

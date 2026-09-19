@@ -63,6 +63,10 @@ static bool SocketStream_Send(struct SolidSyslogStream* self, const void* buffer
         ssize_t n = send(stream->Fd, bytes, remaining, 0);
         if (n <= 0)
         {
+            /* The whole buffer could not go, so the Stream contract has this
+             * close internally before failing - the caller reopens and
+             * store-and-forward replays. */
+            SocketStream_Close(self);
             return false;
         }
         bytes += n;
@@ -84,6 +88,12 @@ static SolidSyslogSsize SocketStream_Read(struct SolidSyslogStream* self, void* 
     if (n == 0)
     {
         result = -1;
+    }
+    if (result < 0)
+    {
+        /* A negative return is reserved for a real teardown, and the contract
+         * has the stream closed before one is made. */
+        SocketStream_Close(self);
     }
     return result;
 }

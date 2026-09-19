@@ -16,6 +16,13 @@ struct BioPairStream
     BIO* Bio;
     BioPairStreamPumpFunction Pump;
     void* PumpContext;
+    /* The Stream contract has an implementation close internally on a failed
+     * Send and before a negative Read, so the caller reopens and
+     * store-and-forward replays. Closing cannot free the BIO here - the
+     * pair's lifetime belongs to the harness, which goes on pumping the peer
+     * - so it is recorded instead, and the stream carries nothing until it is
+     * reopened. That is the part of the clause a caller can observe. */
+    bool Closed;
 };
 
 static bool Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr);
@@ -50,16 +57,26 @@ void BioPairStream_SetPump(struct SolidSyslogStream* self, BioPairStreamPumpFunc
 
 static bool Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr)
 {
-    (void) self;
+    struct BioPairStream* stream = (struct BioPairStream*) self;
     (void) addr;
+    stream->Closed = false;
     return true;
 }
 
 static bool Send(struct SolidSyslogStream* self, const void* buffer, size_t size)
 {
     struct BioPairStream* stream = (struct BioPairStream*) self;
-    int written = BIO_write(stream->Bio, buffer, (int) size);
-    return written == (int) size;
+    bool sent = false;
+    if (!stream->Closed)
+    {
+        int written = BIO_write(stream->Bio, buffer, (int) size);
+        sent = written == (int) size;
+        if (!sent)
+        {
+            Close(self);
+        }
+    }
+    return sent;
 }
 
 /* Reads from the BIO, driving the paired peer via the pump callback whenever the
@@ -70,7 +87,7 @@ static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_
 {
     struct BioPairStream* stream = (struct BioPairStream*) self;
     SolidSyslogSsize result = -1;
-    bool done = false;
+    bool done = stream->Closed;
     while (!done)
     {
         int bytesRead = BIO_read(stream->Bio, buffer, (int) size);
@@ -81,6 +98,9 @@ static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_
         }
         else if (!BIO_should_retry(stream->Bio) || stream->Pump == NULL)
         {
+            /* Giving up means returning a negative, which the contract calls
+             * a teardown and has the stream closed before. */
+            Close(self);
             done = true;
         }
         else
@@ -93,7 +113,8 @@ static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_
 
 static void Close(struct SolidSyslogStream* self)
 {
-    (void) self;
+    struct BioPairStream* stream = (struct BioPairStream*) self;
+    stream->Closed = true;
 }
 
 static uint32_t Version(struct SolidSyslogStream* self)

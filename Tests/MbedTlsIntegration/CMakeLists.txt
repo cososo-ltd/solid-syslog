@@ -47,6 +47,7 @@ endforeach()
 add_executable(MbedTlsIntegrationTests
     main.cpp
     SolidSyslogMbedTlsStreamIntegrationTest.cpp
+    SocketStreamTest.cpp
     SolidSyslogMbedTlsPemBufferCredentialsTest.cpp
     SolidSyslogMbedTlsAesGcmPolicyIntegrationTest.cpp
     SocketStream.c
