@@ -16,6 +16,7 @@
 Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c
 Platform/FreeRtos/Source/SolidSyslogFreeRtosMutexStatic.c
 Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c
+Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTimeConvert.c
 
 ## Include directories
 
