@@ -71,6 +71,7 @@ CPPCHECK_CMD = [
     "-DLWIP_DNS=1",
     "-DLWIP_UDP=1",
     "-DLWIP_TCP=1",
+    "-DLWIP_TCP_KEEPALIVE=1",
     "-DconfigSUPPORT_STATIC_ALLOCATION=1",
     "-DconfigUSE_MUTEXES=1",
     "-DipconfigUSE_TCP=1",
