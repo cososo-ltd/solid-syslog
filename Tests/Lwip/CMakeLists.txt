@@ -181,6 +181,7 @@ add_executable(SolidSyslogLwipRawTcpStreamTest
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawAddress.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawMarshal.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawTcpKeepaliveIdleOnly.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStreamStatic.c
 )
@@ -200,6 +201,33 @@ set_target_properties(SolidSyslogLwipRawTcpStreamTest PROPERTIES
 )
 
 add_test(NAME SolidSyslogLwipRawTcpStreamTest COMMAND SolidSyslogLwipRawTcpStreamTest)
+
+# ---- SolidSyslogLwipRawTcpKeepaliveTest ----
+#
+# The LWIP_TCP_KEEPALIVE=1 half of the pair. The whole-file gate means only one
+# of the two keepalive translation units compiles per build, so each gets its
+# own executable rather than a conditional inside a shared one.
+
+add_executable(SolidSyslogLwipRawTcpKeepaliveTest
+    SolidSyslogLwipRawTcpKeepaliveTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawTcpKeepaliveAll.c
+)
+
+target_compile_definitions(SolidSyslogLwipRawTcpKeepaliveTest PRIVATE LWIP_TCP_KEEPALIVE=1)
+
+target_link_libraries(SolidSyslogLwipRawTcpKeepaliveTest PRIVATE
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogLwipRawTcpKeepaliveTest PRIVATE ${LWIP_TEST_INCLUDE_DIRS})
+
+set_target_properties(SolidSyslogLwipRawTcpKeepaliveTest PROPERTIES
+    CXX_CPPCHECK ""
+)
+
+add_test(NAME SolidSyslogLwipRawTcpKeepaliveTest COMMAND SolidSyslogLwipRawTcpKeepaliveTest)
 
 # ---- SolidSyslogLwipRawMarshalTest ----
 

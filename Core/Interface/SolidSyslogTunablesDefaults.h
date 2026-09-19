@@ -719,6 +719,30 @@
 #endif
 
 /**
+ * Idle period a TCP connection may sit silent before the first keepalive probe
+ * is sent. This and the two tunables below are applied by every TCP Stream
+ * backend that can set keepalive on its own connection; a backend whose stack
+ * sets keepalive globally says so on its platform page.
+ */
+#ifndef SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS
+#define SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS 45U
+#endif
+
+/**
+ * Interval between keepalive probes once the idle period has elapsed.
+ */
+#ifndef SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS
+#define SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS 10U
+#endif
+
+/**
+ * Unanswered keepalive probes tolerated before the peer is declared dead.
+ */
+#ifndef SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT
+#define SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT 4U
+#endif
+
+/**
  * Default bounded TLS handshake deadline applied by every TLS Stream backend
  * (OpenSSL, Mbed TLS) when the integrator does not install a
  * SolidSyslogTlsHandshakeTimeoutFunction on the config struct. 5 s covers a

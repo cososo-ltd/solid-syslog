@@ -18,6 +18,8 @@ target_sources(SolidSyslogLwipRaw INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawAddressStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawDatagram.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawDatagramStatic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawTcpKeepaliveAll.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawTcpKeepaliveIdleOnly.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawTcpStream.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawTcpStreamStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipRawResolver.c

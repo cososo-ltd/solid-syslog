@@ -17,6 +17,8 @@ Platform/LwipRaw/Source/SolidSyslogLwipRawAddress.c
 Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c
 Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c
 Platform/LwipRaw/Source/SolidSyslogLwipRawDatagramStatic.c
+Platform/LwipRaw/Source/SolidSyslogLwipRawTcpKeepaliveAll.c
+Platform/LwipRaw/Source/SolidSyslogLwipRawTcpKeepaliveIdleOnly.c
 Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c
 Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStreamStatic.c
 Platform/LwipRaw/Source/SolidSyslogLwipRawResolver.c

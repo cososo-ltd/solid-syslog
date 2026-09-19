@@ -17,14 +17,14 @@ Not a role: [`SolidSyslogLwipRaw_SetMarshal`](../../api/SolidSyslogLwipRawMarsha
 is a process-global seam, not a component you wire into the config. Every lwIP call
 the Datagram and TcpStream make is routed through one marshal hop.
 
-- `NO_SYS=1` — bare metal, one execution context. Do nothing; the default
+- `NO_SYS=1` - bare metal, one execution context. Do nothing; the default
   direct-call marshal is correct.
-- `NO_SYS=0` — an RTOS tcpip thread
+- `NO_SYS=0` - an RTOS tcpip thread
   ([lwIP multithreading documentation](https://www.nongnu.org/lwip/2_1_x/multithreading.html)).
   Call `SolidSyslogLwipRaw_SetMarshal(fn)` once at boot, before creating any
   adapter, passing a function that runs its callback on the core-owning thread.
 
-The marshal must invoke its callback synchronously — the adapter reads results the
+The marshal must invoke its callback synchronously - the adapter reads results the
 moment the hop returns. A `LOCK_TCPIP_CORE` / `UNLOCK_TCPIP_CORE` pair satisfies
 that directly. Posting to lwIP's mailbox does not, in any of its forms:
 `tcpip_callback_with_block` blocks until the message is accepted, not until the
@@ -32,7 +32,7 @@ callback runs, so a mailbox marshal has to wait for completion itself.
 
 ## Requirements
 
-The source calls lwIP only — no direct OS calls. The TCP stream's synchronous
+The source calls lwIP only - no direct OS calls. The TCP stream's synchronous
 Open and the DNS resolver's bounded wait both need a sleep, injected as a
 `SolidSyslogSleepFunction`. Create either without one, and it reports a
 bad configuration and hands back the shared Null object, so no record is
@@ -48,9 +48,10 @@ Your `lwipopts.h` must enable the features the adapter wraps:
 | `LWIP_DNS=1` | the DNS resolver only |
 
 Also set `ARP_QUEUEING=1` (else the first datagram to an unresolved peer is
-dropped) and `LWIP_TCP_KEEPALIVE=1`, and size `PBUF_POOL_SIZE` /
-`MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to your instance counts. `IP_FRAG`
-decides what becomes of a record too large for the path — see
+dropped), and size `PBUF_POOL_SIZE` / `MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to
+your instance counts. `LWIP_TCP_KEEPALIVE=1` is worth setting but not required -
+see [dead-peer detection](#dead-peer-detection-is-yours-to-size) below. `IP_FRAG`
+decides what becomes of a record too large for the path - see
 [what becomes of an over-large record](#what-becomes-of-an-over-large-record)
 below.
 
@@ -59,8 +60,8 @@ below.
 ### The transport carries syslog in clear
 
 Neither the datagram nor the TCP stream provides confidentiality, integrity or
-peer authentication. TLS is a separate role filled by a different platform — the
-[platform × capability matrix](../index.md) shows which — layered over this
+peer authentication. TLS is a separate role filled by a different platform - the
+[platform × capability matrix](../index.md) shows which - layered over this
 stream rather than replacing it.
 
 ### The marshal is a correctness requirement, not a tuning knob
@@ -86,7 +87,7 @@ boundary and sends again.
 
 - **`IP_FRAG=1`**, lwIP's default: lwIP attempts to fragment the datagram and
   submits the fragments to your interface. Submission is reported as success, so
-  the record is not trimmed — this is the case RFC 5426 §3.2 warns about, where
+  the record is not trimmed - this is the case RFC 5426 §3.2 warns about, where
   a lost fragment costs the whole record and some collectors and middleboxes
   drop fragments outright.
 - **`IP_FRAG=0`**: lwIP compiles the length check out of its send path
@@ -104,17 +105,18 @@ fates apply where the tunable has been raised past what the datagram reports -
 noting that the tunable is library-wide rather than per-transport, so a value
 chosen for this path applies to every transport the instance uses.
 
-### Dead-peer detection runs at lwIP's defaults
+### Dead-peer detection is yours to size
 
-The stream enables keepalive and leaves the timings to the stack, so a silent
-peer is first probed after lwIP's default two hours and the connection is
-declared dead around eleven minutes after that. Those defaults are compile-time
-and stack-wide, so changing them means `TCP_KEEPIDLE_DEFAULT` and its siblings in
-your `lwipopts.h` — which moves every TCP connection in your system, not only
-this one. `LWIP_TCP_KEEPALIVE=1` does not alter the timings; it makes the
-interval and probe count per-connection fields, which is what
-[#743](https://github.com/cososo-ltd/solid-syslog/issues/743) needs to give the
-library its own setting and apply it here.
+The stream sets the keepalive timings on its own connection, so the
+`SOLIDSYSLOG_TCP_KEEPALIVE_*` tunables govern it and no other connection in your
+system is affected.
+
+How much of that the stack honours depends on one `lwipopts.h` setting.
+`LWIP_TCP_KEEPALIVE=1` makes the probe interval and count per-connection fields,
+and all three tunables apply. Without it those two are compile-time constants the
+stack applies to every connection, so the idle period is still yours and the
+other two come from `TCP_KEEPINTVL_DEFAULT` and `TCP_KEEPCNT_DEFAULT`. Either way
+a silent peer is first probed when the idle tunable elapses.
 
 This governs the idle case only. A connection actually carrying records notices
 a dead peer sooner: lwIP's send buffer fills, the write fails, and the stream

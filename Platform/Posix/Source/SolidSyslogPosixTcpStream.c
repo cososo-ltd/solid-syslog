@@ -32,13 +32,8 @@ struct SolidSyslogAddress;
 enum
 {
     INVALID_FD = -1,
-    /* Keepalive parameters - bound the dead-peer detection window when the
-       socket is idle. Worst case: 45 + 4 * 10 = 85 s before ETIMEDOUT.
-       TCP_USER_TIMEOUT covers the pending-write case (where keepalive does
-       not fire) by capping how long unacked data can sit in the send queue. */
-    KEEPALIVE_IDLE_SECONDS = 45,
-    KEEPALIVE_INTERVAL_SECONDS = 10,
-    KEEPALIVE_PROBE_COUNT = 4,
+    /* TCP_USER_TIMEOUT covers the pending-write case, where keepalive does not
+       fire, by capping how long unacked data can sit in the send queue. */
     USER_TIMEOUT_MILLISECONDS = 30000
 };
 
@@ -180,9 +175,9 @@ static void PosixTcpStream_EnableTcpNoDelay(int fd)
 static void PosixTcpStream_EnableKeepalive(int fd)
 {
     int enable = 1;
-    int idle = KEEPALIVE_IDLE_SECONDS;
-    int interval = KEEPALIVE_INTERVAL_SECONDS;
-    int count = KEEPALIVE_PROBE_COUNT;
+    int idle = (int) SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS;
+    int interval = (int) SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS;
+    int count = (int) SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT;
     int userTimeout = USER_TIMEOUT_MILLISECONDS;
 
     setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable));

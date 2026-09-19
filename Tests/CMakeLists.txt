@@ -302,6 +302,10 @@ endforeach()
 foreach(mbedtls_test_target IN ITEMS
     SolidSyslogMbedTlsStreamPoolTest
     SolidSyslogMbedTlsStreamTest
+    SolidSyslogMbedTlsHmacSha256PolicyTest
+    SolidSyslogMbedTlsAesGcmPolicyTest
+    SolidSyslogMbedTlsNullCredentialsTest
+    SolidSyslogMbedTlsHandleCredentialsTest
     MbedTlsIntegrationTests
 )
     if(TARGET ${mbedtls_test_target})
@@ -309,10 +313,22 @@ foreach(mbedtls_test_target IN ITEMS
     endif()
 endforeach()
 
+foreach(openssl_test_target IN ITEMS
+    OpenSslIntegrationTests
+)
+    if(TARGET ${openssl_test_target})
+        register_junit_test(${openssl_test_target})
+    endif()
+endforeach()
+
 foreach(lwip_test_target IN ITEMS
     SolidSyslogLwipRawAddressTest
     SolidSyslogLwipRawResolverTest
+    SolidSyslogLwipRawDnsResolverTest
     SolidSyslogLwipRawDatagramTest
+    SolidSyslogLwipRawTcpStreamTest
+    SolidSyslogLwipRawTcpKeepaliveTest
+    SolidSyslogLwipRawMarshalTest
 )
     if(TARGET ${lwip_test_target})
         register_junit_test(${lwip_test_target})
