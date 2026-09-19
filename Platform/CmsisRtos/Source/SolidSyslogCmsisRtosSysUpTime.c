@@ -10,5 +10,5 @@
 
 uint32_t SolidSyslogCmsisRtos_GetSysUpTime(void)
 {
-    return osKernelGetTickCount();
+    return (osKernelGetTickCount() * 100U) / osKernelGetTickFreq();
 }
