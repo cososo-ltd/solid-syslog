@@ -65,6 +65,12 @@ TEST(SolidSyslogCmsisRtosMutex, CreateHandsTheCallersControlBlockToMutexNew)
     POINTERS_EQUAL(&controlBlock, CmsisRtosMutexFake_LastControlBlock());
 }
 
+TEST(SolidSyslogCmsisRtosMutex, CreateHandsTheCallersControlBlockSizeToMutexNew)
+
+{
+    UNSIGNED_LONGS_EQUAL(sizeof(controlBlock), CmsisRtosMutexFake_LastControlBlockBytes());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogCmsisRtosMutexPool)
 {
