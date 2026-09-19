@@ -32,8 +32,24 @@ struct SolidSyslogMutex* SolidSyslogCmsisRtosMutex_Create(void* controlBlock, ui
     struct SolidSyslogMutex* handle = SolidSyslogNullMutex_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&CmsisRtosMutex_Allocator, index) == true)
     {
-        SolidSyslogCmsisRtosMutex_Initialise(&CmsisRtosMutex_Pool[index].Base, controlBlock, controlBlockBytes);
-        handle = &CmsisRtosMutex_Pool[index].Base;
+        if (SolidSyslogCmsisRtosMutex_Initialise(&CmsisRtosMutex_Pool[index].Base, controlBlock, controlBlockBytes) ==
+            true)
+        {
+            handle = &CmsisRtosMutex_Pool[index].Base;
+        }
+        else
+        {
+            /* The RTOS refused to make the mutex, so the slot goes straight
+             * back: the caller is handed the shared NullMutex and holds nothing
+             * that names this slot, and a deterministic refusal would otherwise
+             * empty the pool one retry at a time. */
+            (void) SolidSyslogPoolAllocator_FreeIfInUse(
+                &CmsisRtosMutex_Allocator,
+                index,
+                CmsisRtosMutex_CleanupAtIndex,
+                NULL
+            );
+        }
     }
     else
     {

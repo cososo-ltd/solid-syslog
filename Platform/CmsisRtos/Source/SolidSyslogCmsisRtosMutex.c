@@ -25,12 +25,13 @@ static inline osMutexAttr_t CmsisRtosMutex_AttributesFor(void* controlBlock, uin
 static inline struct SolidSyslogCmsisRtosMutex* CmsisRtosMutex_SelfFromBase(struct SolidSyslogMutex* base);
 static inline bool CmsisRtosMutex_HasRtosMutex(const struct SolidSyslogCmsisRtosMutex* self);
 
-void SolidSyslogCmsisRtosMutex_Initialise(struct SolidSyslogMutex* base, void* controlBlock, uint32_t controlBlockBytes)
+bool SolidSyslogCmsisRtosMutex_Initialise(struct SolidSyslogMutex* base, void* controlBlock, uint32_t controlBlockBytes)
 {
     osMutexAttr_t attributes = CmsisRtosMutex_AttributesFor(controlBlock, controlBlockBytes);
     struct SolidSyslogCmsisRtosMutex* self = CmsisRtosMutex_SelfFromBase(base);
     self->Id = osMutexNew(&attributes);
-    if (CmsisRtosMutex_HasRtosMutex(self) == true)
+    bool created = CmsisRtosMutex_HasRtosMutex(self);
+    if (created == true)
     {
         self->Base.Lock = CmsisRtosMutex_Lock;
         self->Base.Unlock = CmsisRtosMutex_Unlock;
@@ -47,6 +48,7 @@ void SolidSyslogCmsisRtosMutex_Initialise(struct SolidSyslogMutex* base, void* c
             SOLIDSYSLOG_MUTEX_ERROR_CREATE_FAILED
         );
     }
+    return created;
 }
 
 static inline osMutexAttr_t CmsisRtosMutex_AttributesFor(void* controlBlock, uint32_t controlBlockBytes)

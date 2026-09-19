@@ -5,6 +5,7 @@
 #ifndef SOLIDSYSLOGCMSISRTOSMUTEXPRIVATE_H
 #define SOLIDSYSLOGCMSISRTOSMUTEXPRIVATE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "cmsis_os2.h"
@@ -23,7 +24,7 @@ struct SolidSyslogCmsisRtosMutex
     osMutexId_t Id;
 };
 
-void SolidSyslogCmsisRtosMutex_Initialise(
+bool SolidSyslogCmsisRtosMutex_Initialise(
     struct SolidSyslogMutex* base,
     void* controlBlock,
     uint32_t controlBlockBytes
