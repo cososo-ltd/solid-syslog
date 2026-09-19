@@ -38,3 +38,11 @@ TEST(SolidSyslogCmsisRtosSysUpTime, ScalesByTheKernelTickFrequency)
 
     UNSIGNED_LONGS_EQUAL(100U, SolidSyslogCmsisRtos_GetSysUpTime());
 }
+
+TEST(SolidSyslogCmsisRtosSysUpTime, ScalesALargeTickCountWithoutOverflowing)
+{
+    CmsisRtosKernelFake_SetTickFreq(1000);
+    CmsisRtosKernelFake_SetTickCount(100000000);
+
+    UNSIGNED_LONGS_EQUAL(10000000U, SolidSyslogCmsisRtos_GetSysUpTime());
+}
