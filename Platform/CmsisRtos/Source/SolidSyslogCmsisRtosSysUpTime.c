@@ -6,7 +6,9 @@
 
 #include <stdint.h>
 
+#include "cmsis_os2.h"
+
 uint32_t SolidSyslogCmsisRtos_GetSysUpTime(void)
 {
-    return 0;
+    return osKernelGetTickCount();
 }
