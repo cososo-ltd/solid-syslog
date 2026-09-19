@@ -32,8 +32,9 @@ struct SolidSyslogMutex* SolidSyslogCmsisRtosMutex_Create(void* controlBlock, ui
     struct SolidSyslogMutex* handle = SolidSyslogNullMutex_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&CmsisRtosMutex_Allocator, index) == true)
     {
-        if (SolidSyslogCmsisRtosMutex_Initialise(&CmsisRtosMutex_Pool[index].Base, controlBlock, controlBlockBytes) ==
-            true)
+        bool created =
+            SolidSyslogCmsisRtosMutex_Initialise(&CmsisRtosMutex_Pool[index].Base, controlBlock, controlBlockBytes);
+        if (created == true)
         {
             handle = &CmsisRtosMutex_Pool[index].Base;
         }

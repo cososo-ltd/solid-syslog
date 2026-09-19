@@ -181,10 +181,8 @@ TEST_GROUP(SolidSyslogCmsisRtosMutexRefused)
         mutex = SolidSyslogCmsisRtosMutex_Create(&controlBlock, sizeof(controlBlock));
     }
 
-    void teardown() override
-    {
-        SolidSyslogCmsisRtosMutex_Destroy(mutex);
-    }
+    // No teardown: a refused create holds no slot, and the handle it returns is
+    // the shared NullMutex, which is nobody's to destroy.
 };
 
 // clang-format on
@@ -205,13 +203,26 @@ TEST(SolidSyslogCmsisRtosMutexRefused, LockAndUnlockAreNoOps)
     CALLED_FAKE(CmsisRtosMutexFake_MutexRelease, NEVER);
 }
 
-TEST(SolidSyslogCmsisRtosMutexRefused, DestroyDeletesNothing)
+TEST(SolidSyslogCmsisRtosMutexRefused, CreateDeletesNothingOnItsWayOut)
 
 {
-    SolidSyslogCmsisRtosMutex_Destroy(mutex);
-    mutex = nullptr;
-
     CALLED_FAKE(CmsisRtosMutexFake_MutexDelete, NEVER);
+}
+
+// The consequence of releasing the slot, and the reason it matters: a refused
+// control block is a build defect, so it refuses identically every time. Hold
+// the slot and a retrying caller empties the pool instead of failing the same
+// way twice.
+TEST(SolidSyslogCmsisRtosMutexRefused, LeavesThePoolAvailable)
+
+{
+    CmsisRtosMutexFake_SetMutexNewFails(false);
+
+    struct SolidSyslogMutex* second = SolidSyslogCmsisRtosMutex_Create(&controlBlock, sizeof(controlBlock));
+    SolidSyslogMutex_Lock(second);
+    SolidSyslogCmsisRtosMutex_Destroy(second);
+
+    CALLED_FAKE(CmsisRtosMutexFake_MutexAcquire, ONCE);
 }
 
 TEST(SolidSyslogCmsisRtosMutexRefused, CreateReportsCritical)
