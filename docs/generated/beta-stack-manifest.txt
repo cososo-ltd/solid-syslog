@@ -104,8 +104,8 @@ Platform/LwipRaw/Source/SolidSyslogLwipRawMarshal.c
 # FreeRtos:
 Platform/FreeRtos/Source/SolidSyslogFreeRtosMutex.c
 Platform/FreeRtos/Source/SolidSyslogFreeRtosMutexStatic.c
-Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c
-Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTimeConvert.c
+Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime32.c
+Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime64.c
 
 # FatFs:
 Platform/FatFs/Source/SolidSyslogFatFsFile.c

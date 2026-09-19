@@ -904,6 +904,10 @@ jobs:
           -DconfigUSE_MUTEXES=1
           -DipconfigUSE_TCP=1
           -DMBEDTLS_HAVE_TIME_DATE=1
+          -DTICK_TYPE_WIDTH_16_BITS=0
+          -DTICK_TYPE_WIDTH_32_BITS=1
+          -DTICK_TYPE_WIDTH_64_BITS=2
+          -DconfigTICK_TYPE_WIDTH_IN_BITS=1
           -ICore/Interface
           -IPlatform/StdAtomic/Interface
           -IPlatform/Posix/Interface
@@ -960,6 +964,10 @@ jobs:
           -DconfigUSE_MUTEXES=1
           -DipconfigUSE_TCP=1
           -DMBEDTLS_HAVE_TIME_DATE=1
+          -DTICK_TYPE_WIDTH_16_BITS=0
+          -DTICK_TYPE_WIDTH_32_BITS=1
+          -DTICK_TYPE_WIDTH_64_BITS=2
+          -DconfigTICK_TYPE_WIDTH_IN_BITS=1
           -ICore/Interface
           -IPlatform/StdAtomic/Interface
           -IPlatform/Posix/Interface
@@ -1000,6 +1008,10 @@ jobs:
             -DconfigUSE_MUTEXES=1 \
             -DipconfigUSE_TCP=1 \
             -DMBEDTLS_HAVE_TIME_DATE=1 \
+            -DTICK_TYPE_WIDTH_16_BITS=0 \
+            -DTICK_TYPE_WIDTH_32_BITS=1 \
+            -DTICK_TYPE_WIDTH_64_BITS=2 \
+            -DconfigTICK_TYPE_WIDTH_IN_BITS=1 \
             -ICore/Interface \
             -IPlatform/StdAtomic/Interface \
             -IPlatform/Posix/Interface \

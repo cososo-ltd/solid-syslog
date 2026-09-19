@@ -19,7 +19,11 @@
 #define configUSE_IDLE_HOOK 0
 #define configUSE_TICK_HOOK 0
 #define configCPU_CLOCK_HZ ((unsigned long) 25000000UL)
+/* Overridable so a target can compile the adapters at a rate that does not
+ * divide 100, where the uptime conversion behaves differently. */
+#ifndef configTICK_RATE_HZ
 #define configTICK_RATE_HZ ((TickType_t) 100)
+#endif
 #define configMAX_PRIORITIES 5
 #define configMINIMAL_STACK_SIZE ((unsigned short) 128)
 #define configTOTAL_HEAP_SIZE ((size_t) (16 * 1024))

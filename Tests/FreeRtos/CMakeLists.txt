@@ -184,10 +184,9 @@ add_test(NAME SolidSyslogFreeRtosMutexTest COMMAND SolidSyslogFreeRtosMutexTest)
 # UART test does: a minimal kernel-only environment must still build it.
 add_executable(SolidSyslogFreeRtosSysUpTimeTest
     SolidSyslogFreeRtosSysUpTimeTest.cpp
-    SolidSyslogFreeRtosSysUpTimeAdvanceTest.cpp
     main.cpp
-    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime.c
-    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTimeConvert.c
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime32.c
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime64.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosTaskFake.c
 )
 
@@ -199,7 +198,6 @@ target_link_libraries(SolidSyslogFreeRtosSysUpTimeTest PRIVATE
 
 target_include_directories(SolidSyslogFreeRtosSysUpTimeTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
-    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source
     ${CMAKE_SOURCE_DIR}/Core/Interface
     ${CMAKE_SOURCE_DIR}/Core/Source
     ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
@@ -207,6 +205,36 @@ target_include_directories(SolidSyslogFreeRtosSysUpTimeTest PRIVATE
 )
 
 add_test(NAME SolidSyslogFreeRtosSysUpTimeTest COMMAND SolidSyslogFreeRtosSysUpTimeTest)
+
+# The same adapter at 1000 Hz, the FreeRTOS default. At 100 Hz a tick is a
+# hundredth, so the counter wrap and the RFC 3418 wrap coincide and the
+# rollover carrying cannot be observed.
+add_executable(SolidSyslogFreeRtosSysUpTimeRolloverTest
+    SolidSyslogFreeRtosSysUpTimeRolloverTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime32.c
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime64.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Source/FreeRtosTaskFake.c
+)
+
+target_compile_definitions(SolidSyslogFreeRtosSysUpTimeRolloverTest PRIVATE
+    configTICK_RATE_HZ=1000
+)
+
+target_link_libraries(SolidSyslogFreeRtosSysUpTimeRolloverTest PRIVATE
+    ${PROJECT_NAME}
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogFreeRtosSysUpTimeRolloverTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/FreeRtos/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Tests/Support/FreeRtosFakes/Interface
+    ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
+)
+
+add_test(NAME SolidSyslogFreeRtosSysUpTimeRolloverTest COMMAND SolidSyslogFreeRtosSysUpTimeRolloverTest)
 
 # CMSDK UART driver host tests — recompiles the driver source from the
 # Bdd/Targets/FreeRtos/Common board glue against an in-memory fake register

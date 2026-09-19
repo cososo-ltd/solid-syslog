@@ -34,19 +34,13 @@ time and carries no timezone or synchronisation quality — the clock callback i
 a separate injection point.
 
 `SolidSyslogFreeRtos_GetSysUpTime` meets the
-[sysUpTime contract](../../api/SolidSyslogMetaSd_8h.md) at any tick rate on a
-32-bit `TickType_t`, and on a 64-bit one, which needs no help to get there.
-Above 100 Hz the counter reaches its own wrap before 2^32 hundredths do - at
-1000 Hz, ten times sooner - so how often it has wrapped is carried alongside
-it, and the reported value wraps where RFC 3418 says, at about 497 days.
+[sysUpTime contract](../../api/SolidSyslogMetaSd_8h.md) on a 32- or 64-bit
+`TickType_t`, wrapping at about 497 days as RFC 3418 requires. A 16-bit one
+resolves to no implementation and will not link; supply your own
+`SolidSyslogSysUpTimeFunction` there.
 
-A 16-bit `TickType_t`, which `configUSE_16_BIT_TICKS` selects, is not carried
-past its own wrap: uptime returns to zero every 65536 ticks. Supply your own
-`SolidSyslogSysUpTimeFunction` where that matters.
-
-Two things follow from carrying that phase rather than deriving it. The
-callback has to be reached at least once per counter rollover - about 50 days
-at the 1000 Hz default - or a rollover passes unseen; every formatted message
-reaches it, so only a device that logs nothing for that long is affected. And
-it keeps state, so it takes a short critical section and must not be called
-from an interrupt.
+The wraps are counted on a 32-bit counter, because above 100 Hz it reaches
+its own wrap first - ten times sooner at 1000 Hz. That costs two things. The
+callback must be reached once per wrap, roughly 50 days at 1000 Hz, which
+formatting any message does. And it takes a short critical section, so it is
+safe from any task but not from an interrupt.
