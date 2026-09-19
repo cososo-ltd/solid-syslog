@@ -182,15 +182,78 @@ services:
       - EXAMPLE_BINARY=build/freertos-cross-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf
     command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp or @tls or @mtls)' Bdd/features/
 
+  # The CmsisLwip pair (S40.01). Same shape as the freertos-lwip pair above -
+  # its own syslog-ng on its own bridge network, behave sharing the netns so
+  # QEMU's slirp gateway 10.0.2.2 NATs to the pair's loopback. The only
+  # difference is EXAMPLE_BINARY. The tag filter is the same as the other two
+  # QEMU lanes, so this one runs UDP + TCP + TLS + mTLS and the @store suite
+  # that rides the @tcp tag.
+  #
+  # As of S40.01 the ELF links the same packs as the freertos-lwip target, so a
+  # failure here is an infrastructure failure. E40, E36 and E35 each swap one
+  # pack into it afterwards.
+  syslog-ng-cmsis-lwip:
+    image: balabit/syslog-ng@sha256:728cc5b63b9044ad5f18062bac73fd5c30bb7ad256c2aa12799d924d4f6f1e72 # 4.8.2
+    volumes:
+      - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
+      - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
+      - bdd-output-cmsis-lwip:/var/log/syslog-ng
+      - syslog-ng-ctl-cmsis-lwip:/var/lib/syslog-ng
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        syslog-ng -F &
+        pid=$$!
+        deadline=$$((SECONDS + 30))
+        while [ ! -S /var/lib/syslog-ng/syslog-ng.ctl ]; do
+          kill -0 "$$pid" 2>/dev/null || { echo "syslog-ng exited unexpectedly"; exit 1; }
+          [ "$$SECONDS" -ge "$$deadline" ] && { echo "Timed out waiting for syslog-ng control socket"; kill "$$pid" 2>/dev/null; exit 1; }
+          sleep 0.1
+        done
+        chmod 0777 /var/lib/syslog-ng/syslog-ng.ctl
+        wait
+    networks:
+      cmsis-lwip:
+        aliases:
+          - syslog-ng
+    healthcheck:
+      test: ["CMD-SHELL", "test -S /var/lib/syslog-ng/syslog-ng.ctl"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  behave-cmsis-lwip:
+    # Cross image carries qemu-system-arm + python3 + behave.
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:c130cc0686701e7747fd0a7fce8b4fe882b4a197e6a6f2b4fe5f46dfd2863e56 # sha-1739f5b
+    user: "0"
+    volumes:
+      - ..:/workspaces/SolidSyslog
+      - bdd-output-cmsis-lwip:/workspaces/SolidSyslog/Bdd/output
+      - syslog-ng-ctl-cmsis-lwip:/var/lib/syslog-ng
+    working_dir: /workspaces/SolidSyslog
+    network_mode: service:syslog-ng-cmsis-lwip
+    depends_on:
+      syslog-ng-cmsis-lwip:
+        condition: service_healthy
+    environment:
+      # The QEMU launch + UART `set` protocol are target-agnostic, so this ELF
+      # rides the existing freertos driver too - only the binary path differs.
+      - BDD_TARGET=freertos
+      - EXAMPLE_BINARY=build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp or @tls or @mtls)' Bdd/features/
+
 volumes:
   bdd-output-linux:
   bdd-output-freertos:
   bdd-output-freertos-lwip:
+  bdd-output-cmsis-lwip:
   syslog-ng-ctl-linux:
   syslog-ng-ctl-freertos:
   syslog-ng-ctl-freertos-lwip:
+  syslog-ng-ctl-cmsis-lwip:
 
 networks:
   linux:
   freertos:
   freertos-lwip:
+  cmsis-lwip:

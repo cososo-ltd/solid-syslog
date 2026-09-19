@@ -1460,6 +1460,57 @@ jobs:
           path: Bdd/features/steps/solidsyslog_tunables.py
           retention-days: 1
 
+  # The fourth BDD target (S40.01). As delivered it links the same packs as the
+  # lwIP lane above, so this lane failing is an infrastructure failure, not a
+  # platform one. E40, E36 and E35 each swap one pack into it afterwards.
+  build-cmsis-target-lwip:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:c130cc0686701e7747fd0a7fce8b4fe882b4a197e6a6f2b4fe5f46dfd2863e56 # sha-1739f5b
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure (ARM cross, BDD_TARGET=CMSIS_LWIP)
+        run: cmake --preset cmsis-cross-lwip
+
+      - name: Cross-build CmsisLwip BDD target ELF
+        run: cmake --build --preset cmsis-cross-lwip --target SolidSyslogBddTargetCmsis
+
+      - name: Assert no PlusTcp / Plus-TCP symbols linked
+        run: |
+          elf=build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+          arm-none-eabi-nm "$elf" > /tmp/cmsis-symbols.txt
+          if grep -E -i 'PlusTcp|FreeRTOS_socket|FreeRTOS_sendto|FreeRTOS_recv|FreeRTOS_IPInit' /tmp/cmsis-symbols.txt; then
+            echo "::error::PlusTcp / FreeRTOS-Plus-TCP symbol linked into the CmsisLwip BDD target ELF"
+            exit 1
+          fi
+          echo "OK: no PlusTcp / FreeRTOS-Plus-TCP symbols in the CmsisLwip BDD target ELF"
+
+      - name: Upload CmsisLwip BDD target ELF
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: solid-syslog-bdd-target-cmsis-lwip
+          path: build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+          retention-days: 1
+          compression-level: 0
+
+      - name: Upload BDD Python tunables (CmsisLwip)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bdd-tunables-cmsis-lwip
+          path: Bdd/features/steps/solidsyslog_tunables.py
+          retention-days: 1
+
   bdd-freertos-qemu-plustcp:
     needs: build-freertos-target-plustcp
     runs-on: ubuntu-latest
@@ -1579,6 +1630,61 @@ jobs:
   # and the Core target's SOURCES). The stack is stated in SOLIDSYSLOG_PLATFORMS
   # rather than inherited from the image's environment, so the manifest
   # describes the platforms this gate means to describe (S30.05).
+  # Advisory while it settles; S40.05 adds it to the required set.
+  bdd-cmsis-qemu-lwip:
+    needs: build-cmsis-target-lwip
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: solid-syslog-bdd-target-cmsis-lwip
+          path: build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: bdd-tunables-cmsis-lwip
+          path: Bdd/features/steps/
+
+      - name: Make ELF readable
+        run: chmod +r build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+
+      - name: Prepare BDD output directory
+        run: mkdir -p Bdd/junit && chmod 777 Bdd/junit
+
+      - name: Run BDD tests
+        run: >
+          docker compose -f ci/docker-compose.bdd.yml
+          up --abort-on-container-exit --exit-code-from behave-cmsis-lwip
+          behave-cmsis-lwip syslog-ng-cmsis-lwip
+
+      - name: BDD Test Report (CmsisLwip)
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        if: success() || failure()
+        with:
+          name: Test Results (BDD CmsisLwip)
+          path: Bdd/junit/TESTS-*.xml
+          reporter: java-junit
+
+      - name: Upload JUnit XML
+        if: success() || failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: junit-bdd-cmsis-qemu-lwip
+          path: Bdd/junit/TESTS-*.xml
+          retention-days: 1
+
+      - name: Compose logs on failure
+        if: failure()
+        run: docker compose -f ci/docker-compose.bdd.yml logs --no-color
+
   verify-manifest:
     runs-on: ubuntu-latest
     container:
@@ -1792,7 +1898,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, build-linux-c99, build-linux-c89-headers, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip, verify-manifest, consumer-smoke-linux, consumer-smoke-freertos-cross]
+    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, build-linux-c99, build-linux-c89-headers, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip, build-cmsis-target-lwip, bdd-cmsis-qemu-lwip, verify-manifest, consumer-smoke-linux, consumer-smoke-freertos-cross]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1896,6 +2002,11 @@ jobs:
                     "id": "junit",
                     "name": "bdd-freertos-qemu-lwip",
                     "pattern": "**/junit-bdd-freertos-qemu-lwip/TESTS-*.xml"
+                  },
+                  {
+                    "id": "junit",
+                    "name": "bdd-cmsis-qemu-lwip",
+                    "pattern": "**/junit-bdd-cmsis-qemu-lwip/TESTS-*.xml"
                   },
                   {
                     "id": "junit",

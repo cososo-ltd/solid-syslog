@@ -169,8 +169,8 @@ it under Behave + the syslog-ng oracle.
 ## FreeRTOS + lwIP cross — `freertos-cross-lwip`
 
 The lwIP-networking twin of `freertos-cross`: same ARM Cortex-M3 / mps2-an385
-cross-build, but with `SOLIDSYSLOG_BDD_FREERTOS_NET=LWIP` (instead of the default
-FreeRTOS-Plus-TCP) and the `Bdd/Targets/FreeRtosLwip/` tunables. Drives the
+cross-build, but with `SOLIDSYSLOG_BDD_TARGET=FREERTOS_LWIP` (instead of the
+default FreeRTOS-Plus-TCP) and the `Bdd/Targets/FreeRtosLwip/` tunables. Drives the
 `bdd-freertos-qemu-lwip` CI lane.
 
 ```bash
