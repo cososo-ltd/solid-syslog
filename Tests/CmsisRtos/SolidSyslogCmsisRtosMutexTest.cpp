@@ -168,6 +168,22 @@ TEST(SolidSyslogCmsisRtosMutexRefused, DestroyDeletesNothing)
     CALLED_FAKE(CmsisRtosMutexFake_MutexDelete, NEVER);
 }
 
+TEST(SolidSyslogCmsisRtosMutexRefused, CreateReportsCritical)
+
+{
+    SolidSyslogCmsisRtosMutex_Destroy(mutex);
+    ErrorHandlerFake_Install(nullptr);
+
+    mutex = SolidSyslogCmsisRtosMutex_Create(&controlBlock, sizeof(controlBlock));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogCmsisRtosMutexErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MUTEX_ERROR_CREATE_FAILED
+    );
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogCmsisRtosMutexPool)
 {
