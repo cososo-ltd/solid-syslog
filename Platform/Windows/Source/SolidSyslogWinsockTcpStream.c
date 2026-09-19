@@ -15,6 +15,7 @@
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogNullStream.h"
+#include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogWinsockAddressPrivate.h"
@@ -138,6 +139,12 @@ static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin, u
 static bool WinsockTcpStream_SetNonBlocking(SOCKET fd);
 static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd, uint32_t connectTimeoutMs);
 static bool WinsockTcpStream_ReadDeferredConnectError(SOCKET fd);
+static void WinsockTcpStream_ReportConnectFailure(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail
+);
+static inline bool WinsockTcpStream_IsRemoteConnectError(int wsaError);
+static inline bool WinsockTcpStream_WaitTimedOut(int selectResult);
 static uint32_t WinsockTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogWinsockTcpStream* self);
 static bool WinsockTcpStream_WroteAllBytes(int sent, size_t expected);
 static inline bool WinsockTcpStream_WouldBlock(int wsaError);
@@ -220,7 +227,26 @@ static bool WinsockTcpStream_Open(struct SolidSyslogStream* base, const struct S
     {
         connected = WinsockTcpStream_ConnectOrCloseOnFailure(self, sin);
     }
+    else
+    {
+        WinsockTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
+        );
+    }
     return connected;
+}
+
+/* Every connect failure is one category with the detail naming which step
+ * failed, so a portable handler reacts to "no connection" without knowing
+ * Winsock. Each failing step reports its own, because each is the only place
+ * that knows which one it was. */
+static void WinsockTcpStream_ReportConnectFailure(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail
+)
+{
+    WinsockTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
 }
 
 /* Non-blocking from the start: connect() returns WSAEWOULDBLOCK and the wait
@@ -305,21 +331,48 @@ static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin, u
 {
     bool connected = false;
     int rc = WinsockTcpStream_connect(fd, (const struct sockaddr*) sin, (int) sizeof(*sin));
+    /* Read the error once, immediately after connect, so both tests below see
+     * the same value and no intervening call can replace it. */
+    int lastError = (rc == SOCKET_ERROR) ? WinsockTcpStream_WSAGetLastError() : 0;
 
     if (rc != SOCKET_ERROR)
     {
         connected = true;
     }
-    else if (WinsockTcpStream_WSAGetLastError() == WSAEWOULDBLOCK)
+    else if (lastError == WSAEWOULDBLOCK)
     {
         connected = WinsockTcpStream_WaitForConnectCompletion(fd, connectTimeoutMs) &&
                     WinsockTcpStream_ReadDeferredConnectError(fd);
     }
+    else if (WinsockTcpStream_IsRemoteConnectError(lastError))
+    {
+        WinsockTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        );
+    }
     else
     {
-        /* immediate fail-fast (refused, unreachable, etc.) - connected stays false */
+        WinsockTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+        );
     }
     return connected;
+}
+
+/* The errors that mean the destination or the network answered: a refusal, an
+ * unreachable report, or the route giving up. Everything else connect() can
+ * return is this device's own - a socket it would not accept, no descriptors,
+ * no buffers - and no packet ever left. The remote set is the one listed
+ * because it is small and fixed while the local set grows with the platform,
+ * so an error we did not anticipate is more likely ours; calling it ours is
+ * also the louder of the two, which is the safer default for a code nobody
+ * has classified. */
+static inline bool WinsockTcpStream_IsRemoteConnectError(int wsaError)
+{
+    return (wsaError == WSAECONNREFUSED) || (wsaError == WSAEHOSTUNREACH) || (wsaError == WSAENETUNREACH) ||
+           (wsaError == WSAENETDOWN) || (wsaError == WSAETIMEDOUT);
 }
 
 static bool WinsockTcpStream_SetNonBlocking(SOCKET fd)
@@ -344,8 +397,24 @@ static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd, uint32_t connec
     };
 
     int rc = WinsockTcpStream_select(WINSOCK_NFDS_IGNORED, NULL, &writeSet, &errorSet, &timeout);
+    bool ready = (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
+    if (!ready)
+    {
+        WinsockTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            WinsockTcpStream_WaitTimedOut(rc) ? SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+                                              : SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        );
+    }
+    return ready;
+}
 
-    return (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
+/* select() returning zero is the budget expiring with nothing to report. Any
+ * other unready outcome means the destination answered, just not with a
+ * connection. */
+static inline bool WinsockTcpStream_WaitTimedOut(int selectResult)
+{
+    return selectResult == 0;
 }
 
 static bool WinsockTcpStream_ReadDeferredConnectError(SOCKET fd)
@@ -353,8 +422,15 @@ static bool WinsockTcpStream_ReadDeferredConnectError(SOCKET fd)
     int err = 0;
     int errlen = (int) sizeof(err);
     int rc = WinsockTcpStream_getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*) &err, &errlen);
-
-    return (rc != SOCKET_ERROR) && (err == 0);
+    bool connected = (rc != SOCKET_ERROR) && (err == 0);
+    if (!connected)
+    {
+        WinsockTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        );
+    }
+    return connected;
 }
 
 static bool WinsockTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)

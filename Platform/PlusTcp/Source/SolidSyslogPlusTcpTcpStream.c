@@ -25,6 +25,7 @@
 #include "SolidSyslogPlusTcpTcpStreamErrors.h"
 #include "SolidSyslogPlusTcpTcpStreamPrivate.h"
 #include "SolidSyslogStream.h"
+#include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogTunables.h"
 #include "task.h"
 
@@ -65,10 +66,15 @@ static void PlusTcpTcpStream_ConnectOrCloseOnFailure(
     struct SolidSyslogPlusTcpTcpStream* self,
     const struct SolidSyslogAddress* addr
 );
-static bool PlusTcpTcpStream_TryConnect(
+static BaseType_t PlusTcpTcpStream_TryConnect(
     struct SolidSyslogPlusTcpTcpStream* self,
     const struct SolidSyslogAddress* addr
 );
+static void PlusTcpTcpStream_ReportConnectFailure(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail
+);
+static void PlusTcpTcpStream_ReportFailedAttempt(BaseType_t connectResult);
 static inline void PlusTcpTcpStream_PrimeArpIfMissing(uint32_t ip);
 static void PlusTcpTcpStream_ClearTimeouts(Socket_t socket);
 static void PlusTcpTcpStream_SetSendTimeout(Socket_t socket, TickType_t ticks);
@@ -159,6 +165,13 @@ static bool PlusTcpTcpStream_Open(struct SolidSyslogStream* base, const struct S
         {
             PlusTcpTcpStream_ConnectOrCloseOnFailure(self, addr);
         }
+        else
+        {
+            PlusTcpTcpStream_ReportConnectFailure(
+                SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+                SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
+            );
+        }
     }
     return PlusTcpTcpStream_IsOpen(self);
 }
@@ -183,17 +196,63 @@ static void PlusTcpTcpStream_ConnectOrCloseOnFailure(
     const struct SolidSyslogAddress* addr
 )
 {
-    if (PlusTcpTcpStream_TryConnect(self, addr))
+    BaseType_t connectResult = PlusTcpTcpStream_TryConnect(self, addr);
+    if (connectResult == 0)
     {
         PlusTcpTcpStream_ClearTimeouts(self->Socket);
     }
     else
     {
+        PlusTcpTcpStream_ReportFailedAttempt(connectResult);
         PlusTcpTcpStream_CloseSocket(self);
     }
 }
 
-static bool PlusTcpTcpStream_TryConnect(struct SolidSyslogPlusTcpTcpStream* self, const struct SolidSyslogAddress* addr)
+/* Every connect failure is one category with the detail naming which step
+ * failed, so a portable handler reacts to "no connection" without knowing
+ * FreeRTOS-Plus-TCP. */
+static void PlusTcpTcpStream_ReportConnectFailure(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail
+)
+{
+    PlusTcpTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
+}
+
+/* FreeRTOS_connect distinguishes three outcomes in its return: ETIMEDOUT is
+ * the bounded wait expiring, ENOTCONN is the socket being closed under it -
+ * the destination answering with something other than a connection - and any
+ * other error comes from prvTCPConnectStart, which means the stack declined
+ * to begin and no SYN was sent. */
+static void PlusTcpTcpStream_ReportFailedAttempt(BaseType_t connectResult)
+{
+    if (connectResult == -pdFREERTOS_ERRNO_ETIMEDOUT)
+    {
+        PlusTcpTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+        );
+    }
+    else if (connectResult == -pdFREERTOS_ERRNO_ENOTCONN)
+    {
+        PlusTcpTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        );
+    }
+    else
+    {
+        PlusTcpTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+        );
+    }
+}
+
+static BaseType_t PlusTcpTcpStream_TryConnect(
+    struct SolidSyslogPlusTcpTcpStream* self,
+    const struct SolidSyslogAddress* addr
+)
 {
     /* Both SO_SNDTIMEO and SO_RCVTIMEO are set before FreeRTOS_connect -
      * upstream gates connect on SO_RCVTIMEO, but we set both as belt-and-
@@ -209,7 +268,7 @@ static bool PlusTcpTcpStream_TryConnect(struct SolidSyslogPlusTcpTcpStream* self
     PlusTcpTcpStream_PrimeArpIfMissing(dest->sin_address.ulIP_IPv4);
     PlusTcpTcpStream_SetSendTimeout(self->Socket, connectTimeoutTicks);
     PlusTcpTcpStream_SetRecvTimeout(self->Socket, connectTimeoutTicks);
-    return FreeRTOS_connect(self->Socket, dest, sizeof(*dest)) == 0;
+    return FreeRTOS_connect(self->Socket, dest, sizeof(*dest));
 }
 
 /* Bridges the integrator-installed getter (or the Null Object substituted in

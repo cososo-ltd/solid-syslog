@@ -27,6 +27,19 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /* Wiring the stream cannot work without. */
         SOLIDSYSLOG_TCP_STREAM_ERROR_NULL_CONFIG,
         SOLIDSYSLOG_TCP_STREAM_ERROR_NULL_SLEEP,
+        /** The local socket or protocol control block could not be created or
+         *  configured, so no connection was attempted. The stack is out of the
+         *  resource the endpoint needs. */
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
+        /** The call that begins the connection returned a failure, so no SYN was
+         *  issued. The stack would not start the attempt - out of memory for the
+         *  segment, no route, or a socket it would not accept. */
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+        /** The attempt was under way and the destination or the network ended it:
+         *  a reset, or an unreachable report. */
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        /** The connect budget expired with no answer from the destination. */
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT,
         SOLIDSYSLOG_TCP_STREAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

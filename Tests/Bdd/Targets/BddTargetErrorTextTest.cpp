@@ -3,6 +3,7 @@
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
+#include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogTlsStreamCategories.h"
 #include "CppUTest/TestHarness.h"
 
@@ -56,6 +57,11 @@ TEST(BddTargetErrorText, SecurityPolicySealFailedCategoryMapsToText)
 TEST(BddTargetErrorText, SecurityPolicyOpenFailedCategoryMapsToText)
 {
     CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED, "open failed");
+}
+
+TEST(BddTargetErrorText, StreamConnectFailedCategoryMapsToText)
+{
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, "connect failed");
 }
 
 TEST(BddTargetErrorText, OpenSslStreamInitFailedCategoryMapsToText)

@@ -4,6 +4,7 @@
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
+#include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogTlsStreamCategories.h"
 
 const char* BddTargetErrorText_Category(uint16_t category)
@@ -37,6 +38,9 @@ const char* BddTargetErrorText_Category(uint16_t category)
             break;
         case SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED:
             result = "open failed";
+            break;
+        case SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED:
+            result = "connect failed";
             break;
         case SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED:
             result = "TLS init failed";

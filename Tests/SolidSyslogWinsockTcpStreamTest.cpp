@@ -7,6 +7,7 @@ using namespace CososoTesting;
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
+#include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
@@ -114,6 +115,16 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
 };
 
 // clang-format on
+
+// Asserts Open reported exactly one connect failure. Source and category are the
+// same for every path, so only the severity and the detail naming the path vary.
+#define CHECK_CONNECT_FAILURE_REPORTED(severity, detail) \
+    CHECK_ERROR_REPORTED_ONCE(                           \
+        (severity),                                      \
+        &SolidSyslogWinsockTcpStreamErrorSource,         \
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,           \
+        (detail)                                         \
+    )
 
 #define CHECK_SOCKET_CLOSED_ONCE()                                   \
     {                                                                \
@@ -225,6 +236,90 @@ TEST(SolidSyslogWinsockTcpStream, OpenClosesSocketOnConnectFailure)
     SolidSyslogStream_Open(stream, addr);
     CALLED_FAKE(WinsockFake_Close, ONCE);
     CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd());
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsEndpointUnavailableWhenSocketCannotBeCreated)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetSocketFails(true);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE);
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsEndpointUnavailableWhenTheSocketCannotBeMadeNonBlocking)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetIoctlSocketFails(true);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE);
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWhenConnectFailsImmediately)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetConnectFailsWithLastError(WSAECONNREFUSED);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectNotStartedWhenConnectFailsForALocalReason)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetConnectFailsWithLastError(WSAEINVAL);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWhenTheNetworkIsUnreachable)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetConnectFailsWithLastError(WSAENETUNREACH);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectTimedOutWhenSelectExpires)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    WinsockFake_SetSelectReturn(0);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT);
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWhenSelectFlagsTheErrorSet)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    WinsockFake_SetSelectError(true);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWhenTheDeferredSocketErrorIsSet)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    WinsockFake_SetSelectWritable(true);
+    WinsockFake_SetSoError(WSAECONNREFUSED);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
 }
 
 /* ----------------------------------------------------------------------

@@ -18,6 +18,7 @@ using namespace CososoTesting;
 #include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPosixTcpStream.h"
 #include "SolidSyslogPosixTcpStreamErrors.h"
+#include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
@@ -97,6 +98,16 @@ TEST_GROUP(SolidSyslogPosixTcpStream)
 };
 
 // clang-format on
+
+// Asserts Open reported exactly one connect failure. Source and category are the
+// same for every path, so only the severity and the detail naming the path vary.
+#define CHECK_CONNECT_FAILURE_REPORTED(severity, detail) \
+    CHECK_ERROR_REPORTED_ONCE(                           \
+        (severity),                                      \
+        &SolidSyslogPosixTcpStreamErrorSource,           \
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,           \
+        (detail)                                         \
+    )
 
 #define CHECK_SOCKET_CLOSED_ONCE()                                     \
     {                                                                  \
@@ -221,6 +232,90 @@ TEST(SolidSyslogPosixTcpStream, OpenSkipsConnectAndSetsockoptWhenSocketFails)
     SolidSyslogStream_Open(stream, addr);
     CALLED_FAKE(SocketFake_Connect, NEVER);
     CALLED_FAKE(SocketFake_SetSockOpt, NEVER);
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsEndpointUnavailableWhenSocketCannotBeCreated)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_SetSocketFails(true);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE);
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsEndpointUnavailableWhenTheSocketCannotBeMadeNonBlocking)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_SetFcntlSetFlFails(true);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE);
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenConnectFailsImmediately)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_SetConnectFailsWithErrno(ECONNREFUSED);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectNotStartedWhenConnectFailsForALocalReason)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_SetConnectFailsWithErrno(EINVAL);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenTheNetworkIsUnreachable)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_SetConnectFailsWithErrno(ENETUNREACH);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectTimedOutWhenSelectExpires)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SocketFake_SetSelectReturn(0);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT);
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenSelectFlagsTheErrorSet)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SocketFake_SetSelectError(true);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenTheDeferredSocketErrorIsSet)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SocketFake_SetSelectWritable(true);
+    SocketFake_SetSoError(ECONNREFUSED);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
 }
 
 TEST(SolidSyslogPosixTcpStream, SendReturnsFalseOnShortWrite)

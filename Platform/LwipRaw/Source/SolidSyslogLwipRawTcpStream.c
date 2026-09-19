@@ -20,6 +20,7 @@
 #include "SolidSyslogLwipRawTcpStreamErrors.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogStream.h"
+#include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogTunables.h"
 #include "lwip/arch.h"
 #include "lwip/err.h"
@@ -69,6 +70,12 @@ static inline bool LwipRawTcpStream_HasQueuedRx(const struct SolidSyslogLwipRawT
 static inline bool LwipRawTcpStream_RxQueueIsFull(const struct SolidSyslogLwipRawTcpStream* self);
 static inline bool LwipRawTcpStream_HasCloseWork(const struct SolidSyslogLwipRawTcpStream* self);
 static inline bool LwipRawTcpStream_HasReadWork(const struct SolidSyslogLwipRawTcpStream* self);
+static void LwipRawTcpStream_ReportConnectFailure(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail
+);
+static void LwipRawTcpStream_ReportFailedAttempt(const struct SolidSyslogLwipRawTcpStream* self, err_t connectErr);
+static inline bool LwipRawTcpStream_EndedByPeer(const struct SolidSyslogLwipRawTcpStream* self);
 static void LwipRawTcpStream_DoOpenAndConnect(void* context);
 static void LwipRawTcpStream_DoAbort(void* context);
 static void LwipRawTcpStream_DoSend(void* context);
@@ -189,11 +196,61 @@ static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct S
             }
             if (!connected)
             {
+                LwipRawTcpStream_ReportFailedAttempt(self, call.ConnectErr);
                 SolidSyslogLwipRaw_Marshal(LwipRawTcpStream_DoAbort, &call);
             }
         }
+        else
+        {
+            LwipRawTcpStream_ReportConnectFailure(
+                SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+                SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
+            );
+        }
     }
     return LwipRawTcpStream_IsOpen(self);
+}
+
+/* Every connect failure is one category with the detail naming which step
+ * failed, so a portable handler reacts to "no connection" without knowing
+ * lwIP. Runs on the caller's thread - never inside a marshalled hop, since
+ * the handler is integrator code. */
+static void LwipRawTcpStream_ReportConnectFailure(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail
+)
+{
+    LwipRawTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
+}
+
+/* Names which step of a failed attempt gave up. A non-ERR_OK from tcp_connect
+ * is the local stack declining to start - no memory for the SYN, no route -
+ * so no packet was ever sent. Otherwise the bounded wait ended, and Errored
+ * separates a reset that arrived from a budget that simply ran out. */
+static void LwipRawTcpStream_ReportFailedAttempt(const struct SolidSyslogLwipRawTcpStream* self, err_t connectErr)
+{
+    if (connectErr != ERR_OK)
+    {
+        LwipRawTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+        );
+    }
+    else
+    {
+        LwipRawTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            LwipRawTcpStream_EndedByPeer(self) ? SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+                                               : SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+        );
+    }
+}
+
+/* Errored at this point means tcp_err fired or the connected callback reported
+ * a failure - the attempt was answered, just not with a connection. */
+static inline bool LwipRawTcpStream_EndedByPeer(const struct SolidSyslogLwipRawTcpStream* self)
+{
+    return self->Errored;
 }
 
 /* The setup-and-connect hop: tcp_new + pcb configuration + tcp_connect all
