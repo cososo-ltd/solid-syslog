@@ -77,6 +77,14 @@ TEST(SolidSyslogCmsisRtosMutex, CreateAsksForPriorityInheritance)
     UNSIGNED_LONGS_EQUAL(osMutexPrioInherit, CmsisRtosMutexFake_LastAttrBits());
 }
 
+TEST(SolidSyslogCmsisRtosMutex, LockCallsMutexAcquireOnce)
+
+{
+    SolidSyslogMutex_Lock(mutex);
+
+    CALLED_FAKE(CmsisRtosMutexFake_MutexAcquire, ONCE);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogCmsisRtosMutexPool)
 {
