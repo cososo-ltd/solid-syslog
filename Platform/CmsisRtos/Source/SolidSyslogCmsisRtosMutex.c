@@ -17,7 +17,11 @@ const struct SolidSyslogErrorSource SolidSyslogCmsisRtosMutexErrorSource = {"Cms
 
 void SolidSyslogCmsisRtosMutex_Initialise(struct SolidSyslogMutex* base, void* controlBlock, uint32_t controlBlockBytes)
 {
-    osMutexAttr_t attributes = {NULL, 0, controlBlock, controlBlockBytes};
+    /* Priority inheritance is what stops a low-priority task holding the
+     * buffer lock from being preempted indefinitely while a high-priority task
+     * waits on it. An implementation whose mutexes always inherit ignores the
+     * bit; one that does not needs asking. */
+    osMutexAttr_t attributes = {NULL, osMutexPrioInherit, controlBlock, controlBlockBytes};
     (void) osMutexNew(&attributes);
     *base = *SolidSyslogNullMutex_Get();
 }
