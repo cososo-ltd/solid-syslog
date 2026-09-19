@@ -35,9 +35,10 @@ a separate injection point.
 
 `SolidSyslogFreeRtos_GetSysUpTime` meets the
 [sysUpTime contract](../../api/SolidSyslogMetaSd_8h.md) at any tick rate and
-for either width of `TickType_t`. A 32-bit counter rolls over long before
-2^32 hundredths do, so how often it has is carried alongside it and the
-reported value wraps where RFC 3418 says, at about 497 days.
+whatever the width of `TickType_t`. Above 100 Hz the tick counter reaches its
+own wrap before 2^32 hundredths do - at 1000 Hz, five times sooner - so how
+often it has wrapped is carried alongside it, and the reported value wraps
+where RFC 3418 says, at about 497 days.
 
 Two things follow from carrying that phase rather than deriving it. The
 callback has to be reached at least once per counter rollover - about 50 days

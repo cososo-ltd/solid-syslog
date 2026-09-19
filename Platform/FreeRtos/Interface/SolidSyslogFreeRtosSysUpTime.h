@@ -19,9 +19,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  tick rate and for either width of TickType_t, wrapping at 2^32
      *  hundredths as RFC 3418 TimeTicks does.
      *
-     *  A 32-bit counter rolls over long before those hundredths do, so how
-     *  often it has is carried across calls. Two consequences for the
-     *  integrator. This must be reached at least once per counter rollover -
+     *  Above 100 Hz the counter reaches its own wrap before those hundredths
+     *  do, so how often it has wrapped is carried across calls. Two
+     *  consequences for the integrator. This must be reached once per wrap -
      *  about 50 days at the 1000 Hz default - or a rollover goes unseen;
      *  formatting any message reaches it. And because it keeps state it takes
      *  a short critical section, so it is safe to call from any task but not

@@ -9,6 +9,11 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+/* One counter's worth of ticks, taken from the width the integrator
+ * configured. A 64-bit TickType_t saturates this to zero, which is the right
+ * answer for it: it cannot wrap within the life of the device. */
+#define SYSUPTIME_TICK_MODULUS (((uint64_t) (TickType_t) - 1) + 1U)
+
 uint32_t SolidSyslogFreeRtos_GetSysUpTime(void)
 {
     /* The phase the tick counter cannot carry. Block scope because no other
@@ -22,7 +27,7 @@ uint32_t SolidSyslogFreeRtos_GetSysUpTime(void)
      * section spans a compare and two stores; the scaling is pure and stays
      * outside it. */
     taskENTER_CRITICAL();
-    uint64_t ticks = SolidSyslogFreeRtosSysUpTime_Extend(&state, (uint32_t) xTaskGetTickCount());
+    uint64_t ticks = SolidSyslogFreeRtosSysUpTime_Extend(&state, (uint64_t) xTaskGetTickCount());
     taskEXIT_CRITICAL();
 
     return SolidSyslogFreeRtosSysUpTime_Hundredths(ticks, (uint32_t) configTICK_RATE_HZ);

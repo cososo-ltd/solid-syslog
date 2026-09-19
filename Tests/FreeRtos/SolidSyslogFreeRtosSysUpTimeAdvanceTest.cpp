@@ -25,7 +25,7 @@ TEST_GROUP(SolidSyslogFreeRtosSysUpTimeAdvance)
     struct SolidSyslogFreeRtosSysUpTimeState state = {};
 
     /** What the public entry point does: extend under the state, then scale. */
-    [[nodiscard]] uint32_t advance(uint32_t ticks, uint32_t rateHz)
+    [[nodiscard]] uint32_t advance(uint64_t ticks, uint32_t rateHz)
     {
         return SolidSyslogFreeRtosSysUpTime_Hundredths(
             SolidSyslogFreeRtosSysUpTime_Extend(&state, ticks), rateHz
@@ -75,4 +75,15 @@ TEST(SolidSyslogFreeRtosSysUpTimeAdvance, WrapsOnlyWhenTheHundredthsThemselvesWr
 TEST(SolidSyslogFreeRtosSysUpTimeAdvance, AtOneHundredHertzATickIsAHundredth)
 {
     UNSIGNED_LONGS_EQUAL(12345U, advance(12345U, HZ_100));
+}
+
+/* A 64-bit counter does not wrap within the life of the device, which it
+ * reports as no modulus. The tick value must reach the scaling whole rather
+ * than truncated to its low word. */
+TEST(SolidSyslogFreeRtosSysUpTimeAdvance, CarriesATickCountWiderThanThirtyTwoBits)
+{
+    UNSIGNED_LONGS_EQUAL(
+        SolidSyslogFreeRtosSysUpTime_Hundredths(TICK_ROLLOVER + 5000U, HZ_1000),
+        advance((uint32_t) 0U + TICK_ROLLOVER + 5000U, HZ_1000)
+    );
 }

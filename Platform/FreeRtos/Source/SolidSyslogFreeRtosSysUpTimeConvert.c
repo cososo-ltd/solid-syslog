@@ -13,15 +13,20 @@ enum
     HUNDREDTHS_PER_SECOND = 100
 };
 
-uint64_t SolidSyslogFreeRtosSysUpTime_Extend(struct SolidSyslogFreeRtosSysUpTimeState* state, uint32_t nowTicks)
+uint64_t SolidSyslogFreeRtosSysUpTime_Extend(struct SolidSyslogFreeRtosSysUpTimeState* self, uint64_t nowTicks)
 {
     /* A count below the last one seen can only mean the counter wrapped. */
-    if (nowTicks < state->LastTicks)
+    if (nowTicks < self->LastTicks)
     {
-        state->Rollovers++;
+        self->Rollovers++;
     }
-    state->LastTicks = nowTicks;
-    return ((uint64_t) state->Rollovers << 32U) | (uint64_t) nowTicks;
+    self->LastTicks = nowTicks;
+
+    /* Each wrap is a 32-bit counter's worth of ticks. A 64-bit TickType_t
+     * arrives whole and never decreases, so it takes this path with no
+     * rollovers and is returned unchanged. A 16-bit one is not extended -
+     * it was not before either, and #755 asks only about the 32-bit case. */
+    return (self->Rollovers << 32U) + nowTicks;
 }
 
 uint32_t SolidSyslogFreeRtosSysUpTime_Hundredths(uint64_t ticks, uint32_t tickRateHz)
