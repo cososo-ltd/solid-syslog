@@ -3,29 +3,21 @@
  */
 
 /** @file
- *  Error codes and Source identity for the PlusTcpTcpStream adapter. */
+ *  Source identity for the PlusTcpTcpStream adapter; the detail codes it reports are
+ *  the portable ones in SolidSyslogTcpStreamErrors.h. */
 #ifndef SOLIDSYSLOGPLUSTCPTCPSTREAMERRORS_H
 #define SOLIDSYSLOGPLUSTCPTCPSTREAMERRORS_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogTcpStreamErrors.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is SolidSyslogPlusTcpTcpStreamErrorSource. A
-     *  handler reads these off event->Detail after matching event->Source; the
-     *  members name their own fault. */
-    enum SolidSyslogPlusTcpTcpStreamErrors
-    {
-        SOLIDSYSLOG_PLUSTCP_TCP_STREAM_ERROR_POOL_EXHAUSTED,
-        SOLIDSYSLOG_PLUSTCP_TCP_STREAM_ERROR_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_PLUSTCP_TCP_STREAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
-    };
-
-    /** Identity for events raised by a PlusTcpTcpStream. A handler matches by
-     *  address (event->Source == &SolidSyslogPlusTcpTcpStreamErrorSource), then reads
-     *  event->Detail as an enum SolidSyslogPlusTcpTcpStreamErrors. */
+    /** Identity for events raised by a PlusTcpTcpStream. A handler matches by address
+     *  (event->Source == &SolidSyslogPlusTcpTcpStreamErrorSource), then reads event->Detail as an
+     *  enum SolidSyslogTcpStreamErrors. */
     extern const struct SolidSyslogErrorSource SolidSyslogPlusTcpTcpStreamErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END

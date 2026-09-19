@@ -163,7 +163,7 @@ registry token stays whole, spelled exactly as its CMake option spells it.
 ```c
 SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED     /* Core class, every word split */
 SOLIDSYSLOG_FATFS_FILE_ERROR_POOL_EXHAUSTED          /* FatFs token whole, File split */
-SOLIDSYSLOG_WINSOCK_TCP_STREAM_ERROR_UNKNOWN_DESTROY /* Winsock whole, TcpStream split */
+SOLIDSYSLOG_WINSOCK_DATAGRAM_ERROR_UNKNOWN_DESTROY   /* Winsock whole, Datagram split */
 ```
 
 Splitting the token would misspell the upstream it names - `OPEN_SSL` and

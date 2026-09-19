@@ -51,7 +51,7 @@ struct SolidSyslogStream* SolidSyslogLwipRawTcpStream_Create(const struct SolidS
             LwipRawTcpStream_Report(
                 SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
                 SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-                SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_POOL_EXHAUSTED
+                SOLIDSYSLOG_TCP_STREAM_ERROR_POOL_EXHAUSTED
             );
         }
     }
@@ -69,7 +69,7 @@ void SolidSyslogLwipRawTcpStream_Destroy(struct SolidSyslogStream* base)
         LwipRawTcpStream_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
             SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
-            SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_UNKNOWN_DESTROY
+            SOLIDSYSLOG_TCP_STREAM_ERROR_UNKNOWN_DESTROY
         );
     }
 }
@@ -82,7 +82,7 @@ static inline bool LwipRawTcpStream_IsValidConfig(const struct SolidSyslogLwipRa
         LwipRawTcpStream_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_NULL_CONFIG
+            SOLIDSYSLOG_TCP_STREAM_ERROR_NULL_CONFIG
         );
     }
     else if (config->Sleep == NULL)
@@ -90,7 +90,7 @@ static inline bool LwipRawTcpStream_IsValidConfig(const struct SolidSyslogLwipRa
         LwipRawTcpStream_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_LWIPRAW_TCP_STREAM_ERROR_NULL_SLEEP
+            SOLIDSYSLOG_TCP_STREAM_ERROR_NULL_SLEEP
         );
     }
     else

@@ -3,29 +3,21 @@
  */
 
 /** @file
- *  Error codes and Source identity for the WinsockTcpStream adapter. */
+ *  Source identity for the WinsockTcpStream adapter; the detail codes it reports are
+ *  the portable ones in SolidSyslogTcpStreamErrors.h. */
 #ifndef SOLIDSYSLOGWINSOCKTCPSTREAMERRORS_H
 #define SOLIDSYSLOGWINSOCKTCPSTREAMERRORS_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogTcpStreamErrors.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogErrorSource;
 
-    /** Detail codes for events whose Source is SolidSyslogWinsockTcpStreamErrorSource. A
-     *  handler reads these off event->Detail after matching event->Source; the
-     *  members name their own fault. */
-    enum SolidSyslogWinsockTcpStreamErrors
-    {
-        SOLIDSYSLOG_WINSOCK_TCP_STREAM_ERROR_POOL_EXHAUSTED,
-        SOLIDSYSLOG_WINSOCK_TCP_STREAM_ERROR_UNKNOWN_DESTROY,
-        SOLIDSYSLOG_WINSOCK_TCP_STREAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
-    };
-
-    /** Identity for events raised by a WinsockTcpStream. A handler matches by
-     *  address (event->Source == &SolidSyslogWinsockTcpStreamErrorSource), then reads
-     *  event->Detail as an enum SolidSyslogWinsockTcpStreamErrors. */
+    /** Identity for events raised by a WinsockTcpStream. A handler matches by address
+     *  (event->Source == &SolidSyslogWinsockTcpStreamErrorSource), then reads event->Detail as an
+     *  enum SolidSyslogTcpStreamErrors. */
     extern const struct SolidSyslogErrorSource SolidSyslogWinsockTcpStreamErrorSource;
 
 SOLIDSYSLOG_EXTERN_C_END
