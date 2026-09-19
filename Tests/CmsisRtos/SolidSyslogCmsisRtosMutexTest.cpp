@@ -11,6 +11,7 @@ using namespace CososoTesting;
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMutex.h"
 #include "SolidSyslogMutexDefinition.h"
+#include "SolidSyslogNullMutex.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 
@@ -187,6 +188,12 @@ TEST_GROUP(SolidSyslogCmsisRtosMutexRefused)
 };
 
 // clang-format on
+
+TEST(SolidSyslogCmsisRtosMutexRefused, CreateReturnsTheSharedNullMutex)
+
+{
+    POINTERS_EQUAL(SolidSyslogNullMutex_Get(), mutex);
+}
 
 TEST(SolidSyslogCmsisRtosMutexRefused, LockAndUnlockAreNoOps)
 
