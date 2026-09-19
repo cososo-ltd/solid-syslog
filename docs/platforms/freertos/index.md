@@ -37,7 +37,7 @@ a separate injection point.
 [sysUpTime contract](../../api/SolidSyslogMetaSd_8h.md) at any tick rate on a
 32-bit `TickType_t`, and on a 64-bit one, which needs no help to get there.
 Above 100 Hz the counter reaches its own wrap before 2^32 hundredths do - at
-1000 Hz, five times sooner - so how often it has wrapped is carried alongside
+1000 Hz, ten times sooner - so how often it has wrapped is carried alongside
 it, and the reported value wraps where RFC 3418 says, at about 497 days.
 
 A 16-bit `TickType_t`, which `configUSE_16_BIT_TICKS` selects, is not carried

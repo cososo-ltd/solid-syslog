@@ -27,11 +27,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Fold @p nowTicks into @p state and return the ticks since boot,
      *  counting past the point where the counter itself wrapped.
      *
-     *  A tick count below the last one seen is taken as one rollover, so this
-     *  has to be called at least once per wrap of the counter - about 50 days
-     *  at 1000 Hz on a 32-bit one - or an unobserved rollover is lost. Every
-     *  formatted message calls it, so silence that long is the only way to
-     *  reach it. This is the only part that touches shared state. */
+     *  A tick count below the last one seen is taken as one rollover and a
+     *  rollover as 2^32 ticks, so this extends a 32-bit counter and leaves a
+     *  16-bit one where it was - see the public header. It has to be called
+     *  at least once per wrap - about 50 days at 1000 Hz on a 32-bit counter
+     *  - or an unobserved rollover is lost. Every formatted message calls it,
+     *  so silence that long is the only way to reach it. This is the only
+     *  part that touches shared state. */
     uint64_t SolidSyslogFreeRtosSysUpTime_Extend(struct SolidSyslogFreeRtosSysUpTimeState * self, uint64_t nowTicks);
 
     /** Hundredths of a second for @p ticks at @p tickRateHz, wrapping at 2^32
