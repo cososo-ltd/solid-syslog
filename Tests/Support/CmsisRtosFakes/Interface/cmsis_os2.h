@@ -19,11 +19,20 @@ extern "C"
 {
 #endif
 
+/* These are #defines because they are #defines upstream: a stand-in that spelt
+ * them as enum constants would stop standing in, and osWaitForever is
+ * 0xFFFFFFFFU, which is not an enum constant's type. The suppression lives in
+ * the header rather than in a .clang-tidy because clang-tidy resolves its
+ * config from the translation unit, and both the pack's sources and the tests
+ * include this. */
+/* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
 #define osWaitForever 0xFFFFFFFFU
 
 #define osMutexRecursive 0x00000001U
 #define osMutexPrioInherit 0x00000002U
 #define osMutexRobust 0x00000008U
+
+    /* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
 
     typedef enum
     {

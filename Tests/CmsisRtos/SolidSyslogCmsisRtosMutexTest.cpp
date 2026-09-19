@@ -251,16 +251,29 @@ TEST_GROUP(SolidSyslogCmsisRtosMutexPool)
         ConfigLockFake_Uninstall();
     }
 
-    struct SolidSyslogMutex* CreateWithBlock(size_t which)
+    // Every live mutex needs a control block of its own, so the pool's slots
+    // walk the array alongside them and the overflow attempt gets the spare
+    // one past the end.
+    struct SolidSyslogMutex* CreateFirst()
     {
-        return SolidSyslogCmsisRtosMutex_Create(&controlBlocks[which], sizeof(TestControlBlock));
+        return SolidSyslogCmsisRtosMutex_Create(&controlBlocks[0], sizeof(TestControlBlock));
+    }
+
+    struct SolidSyslogMutex* CreateOverflow()
+    {
+        return SolidSyslogCmsisRtosMutex_Create(
+            &controlBlocks[SOLIDSYSLOG_MUTEX_POOL_SIZE],
+            sizeof(TestControlBlock)
+        );
     }
 
     void FillPool()
     {
-        for (size_t slot = 0; slot < SOLIDSYSLOG_MUTEX_POOL_SIZE; slot++)
+        TestControlBlock* block = controlBlocks;
+        for (auto*& slot : pooled)
         {
-            pooled[slot] = CreateWithBlock(slot);
+            slot = SolidSyslogCmsisRtosMutex_Create(block, sizeof(TestControlBlock));
+            block++;
         }
     }
 };
@@ -272,7 +285,7 @@ TEST(SolidSyslogCmsisRtosMutexPool, FillingPoolThenOverflowReturnsDistinctFallba
 {
     FillPool();
 
-    overflow = CreateWithBlock(SOLIDSYSLOG_MUTEX_POOL_SIZE);
+    overflow = CreateOverflow();
 
     CHECK_IS_FALLBACK(overflow, pooled);
 }
@@ -283,7 +296,7 @@ TEST(SolidSyslogCmsisRtosMutexPool, ExhaustedCreateReportsError)
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = CreateWithBlock(SOLIDSYSLOG_MUTEX_POOL_SIZE);
+    overflow = CreateOverflow();
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
@@ -298,7 +311,7 @@ TEST(SolidSyslogCmsisRtosMutexPool, FallbackLockUnlockAreNoOps)
 {
     FillPool();
     CmsisRtosMutexFake_Reset();
-    overflow = CreateWithBlock(SOLIDSYSLOG_MUTEX_POOL_SIZE);
+    overflow = CreateOverflow();
 
     SolidSyslogMutex_Lock(overflow);
     SolidSyslogMutex_Unlock(overflow);
@@ -312,7 +325,7 @@ TEST(SolidSyslogCmsisRtosMutexPool, CreateAcquiresAndReleasesConfigLockOnFirstFr
 {
     ConfigLockFake_Install();
 
-    pooled[0] = CreateWithBlock(0);
+    pooled[0] = CreateFirst();
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
@@ -324,7 +337,7 @@ TEST(SolidSyslogCmsisRtosMutexPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = CreateWithBlock(SOLIDSYSLOG_MUTEX_POOL_SIZE);
+    overflow = CreateOverflow();
 
     LONGS_EQUAL(SOLIDSYSLOG_MUTEX_POOL_SIZE, ConfigLockFake_LockCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_MUTEX_POOL_SIZE, ConfigLockFake_UnlockCallCount());
@@ -333,7 +346,7 @@ TEST(SolidSyslogCmsisRtosMutexPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 TEST(SolidSyslogCmsisRtosMutexPool, DestroyOfPooledHandleLocksOnce)
 
 {
-    pooled[0] = CreateWithBlock(0);
+    pooled[0] = CreateFirst();
     ConfigLockFake_Install();
 
     SolidSyslogCmsisRtosMutex_Destroy(pooled[0]);
@@ -374,7 +387,7 @@ TEST(SolidSyslogCmsisRtosMutexPool, DestroyOfUnknownHandleReportsWarning)
 TEST(SolidSyslogCmsisRtosMutexPool, DestroyOfStaleHandleReportsWarning)
 
 {
-    pooled[0] = CreateWithBlock(0);
+    pooled[0] = CreateFirst();
     SolidSyslogCmsisRtosMutex_Destroy(pooled[0]);
     ErrorHandlerFake_Install(nullptr);
 
