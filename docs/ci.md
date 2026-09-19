@@ -39,6 +39,8 @@ without renaming what's already there.
 | `build-freertos-target-lwip` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic`) |
 | `bdd-freertos-qemu-plustcp` | — | Pulls the Plus-TCP target ELF, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
 | `bdd-freertos-qemu-lwip` | — | The same scenarios against the lwIP target ELF |
+| `build-cmsis-target-lwip` | `cmsis-cross-lwip` | The cross-build of the fourth BDD target, which hosts the packs E40, E36 and E35 add. As of S40.01 it links the same packs as the lwIP lane above |
+| `bdd-cmsis-qemu-lwip` | — | The same scenarios again, against the fourth target's ELF. Advisory until S40.05 |
 | `consumer-smoke-linux` | — | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
 | `consumer-smoke-freertos-cross` | — | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
 | `verify-manifest` | — | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |

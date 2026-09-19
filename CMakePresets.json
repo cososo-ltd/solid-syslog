@@ -154,9 +154,22 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-                "SOLIDSYSLOG_BDD_FREERTOS_NET": "LWIP",
+                "SOLIDSYSLOG_BDD_TARGET": "FREERTOS_LWIP",
                 "SOLIDSYSLOG_PLATFORMS": "FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic",
                 "SOLIDSYSLOG_USER_TUNABLES_FILE": "${sourceDir}/Bdd/Targets/FreeRtosLwip/solidsyslog_user_tunables.h"
+            }
+        },
+        {
+            "name": "cmsis-cross-lwip",
+            "displayName": "CMSIS-RTOS2+lwIP cross BDD target (ARM Cortex-M3, mps2-an385)",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "toolchainFile": "${sourceDir}/Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "SOLIDSYSLOG_BDD_TARGET": "CMSIS_LWIP",
+                "SOLIDSYSLOG_PLATFORMS": "FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic",
+                "SOLIDSYSLOG_USER_TUNABLES_FILE": "${sourceDir}/Bdd/Targets/CmsisLwip/solidsyslog_user_tunables.h"
             }
         }
     ],
@@ -175,7 +188,8 @@
         { "name": "msvc-debug",     "configurePreset": "msvc-debug", "configuration": "Debug" },
         { "name": "msvc-tunable-override", "configurePreset": "msvc-tunable-override", "configuration": "Debug" },
         { "name": "freertos-cross", "configurePreset": "freertos-cross" },
-        { "name": "freertos-cross-lwip", "configurePreset": "freertos-cross-lwip" }
+        { "name": "freertos-cross-lwip", "configurePreset": "freertos-cross-lwip" },
+        { "name": "cmsis-cross-lwip",  "configurePreset": "cmsis-cross-lwip" }
     ],
     "testPresets": [
         {

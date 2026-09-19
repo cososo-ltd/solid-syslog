@@ -63,12 +63,13 @@ To work in one stack only, deselect the other with its own switch
 platform and its tests together. The lwIP lint lanes do exactly this.
 
 Which BDD ELF a *cross* build produces is separate, and maintainer-only —
-`SOLIDSYSLOG_BDD_FREERTOS_NET=PLUSTCP` (default) or `LWIP`. It selects a test
-artefact, not a platform — platforms are named in `SOLIDSYSLOG_PLATFORMS` like
-everything else.
+`SOLIDSYSLOG_BDD_TARGET=FREERTOS_PLUSTCP` (default), `FREERTOS_LWIP` or
+`CMSIS_LWIP`. It selects a test artefact, not a platform — platforms are named
+in `SOLIDSYSLOG_PLATFORMS` like everything else.
 
-CI runs both cross targets in isolation, and both are required checks:
-`build-freertos-target-plustcp` and `build-freertos-target-lwip`.
+CI runs each cross target in isolation. `build-freertos-target-plustcp` and
+`build-freertos-target-lwip` are required checks; `build-cmsis-target-lwip` is
+advisory until S40.05 promotes it.
 
 ## Running the clang build locally
 

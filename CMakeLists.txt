@@ -514,18 +514,23 @@ elseif(NOT SOLIDSYSLOG_ALLOCATION_STRATEGY STREQUAL "static")
         "SOLIDSYSLOG_ALLOCATION_STRATEGY must be 'static' (got: '${SOLIDSYSLOG_ALLOCATION_STRATEGY}').")
 endif()
 
-# Which ELF a freertos-cross preset builds. Maintainer tooling, not a consumer
-# knob: BDD targets are top-level-only, and it selects no platform — PlusTcp and
-# LwipRaw are named in SOLIDSYSLOG_PLATFORMS like every other platform.
+# Which ELF a cross preset builds. Maintainer tooling, not a consumer knob: BDD
+# targets are top-level-only, and it selects no platform — the packs each target
+# links are named in SOLIDSYSLOG_PLATFORMS like every other platform.
+#
+# Named for the target rather than the network stack since S40.01: the third
+# value differs from the second by its OS, not its network, which the former
+# SOLIDSYSLOG_BDD_FREERTOS_NET could not express.
+set(SOLIDSYSLOG_BDD_TARGETS FREERTOS_PLUSTCP FREERTOS_LWIP CMSIS_LWIP)
 if(SOLIDSYSLOG_IS_TOP_LEVEL)
-    set(SOLIDSYSLOG_BDD_FREERTOS_NET "PLUSTCP" CACHE STRING
-        "Which FreeRTOS BDD target the cross build produces: PLUSTCP (default) or LWIP")
-    set_property(CACHE SOLIDSYSLOG_BDD_FREERTOS_NET PROPERTY STRINGS PLUSTCP LWIP)
-    if(NOT SOLIDSYSLOG_BDD_FREERTOS_NET STREQUAL "PLUSTCP"
-       AND NOT SOLIDSYSLOG_BDD_FREERTOS_NET STREQUAL "LWIP")
+    set(SOLIDSYSLOG_BDD_TARGET "FREERTOS_PLUSTCP" CACHE STRING
+        "Which BDD target the cross build produces: FREERTOS_PLUSTCP (default), FREERTOS_LWIP or CMSIS_LWIP")
+    set_property(CACHE SOLIDSYSLOG_BDD_TARGET PROPERTY STRINGS ${SOLIDSYSLOG_BDD_TARGETS})
+    if(NOT SOLIDSYSLOG_BDD_TARGET IN_LIST SOLIDSYSLOG_BDD_TARGETS)
+        string(REPLACE ";" ", " solidsyslog_bdd_target_list "${SOLIDSYSLOG_BDD_TARGETS}")
         message(FATAL_ERROR
-            "SOLIDSYSLOG_BDD_FREERTOS_NET must be PLUSTCP or LWIP "
-            "(got: '${SOLIDSYSLOG_BDD_FREERTOS_NET}').")
+            "SOLIDSYSLOG_BDD_TARGET must be one of ${solidsyslog_bdd_target_list} "
+            "(got: '${SOLIDSYSLOG_BDD_TARGET}').")
     endif()
 endif()
 
@@ -588,10 +593,11 @@ endif()
 
 # The cross-compiled FreeRTOS target is selected by the arm-none-eabi
 # toolchain file (see Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake); it
-# only enters the build when a freertos-cross preset is active. The chosen
-# BDD backend selector picks which target: PLUSTCP builds the full
-# FreeRTOS-Plus-TCP BDD target; LWIP builds the FreeRtosLwip BDD target
-# (S28.09) — LAN9118 netif + NO_SYS=0 lwIP + LwipRaw adapters, no PlusTcp.
+# only enters the build when a cross preset is active. SOLIDSYSLOG_BDD_TARGET
+# picks which one: FREERTOS_PLUSTCP builds the full FreeRTOS-Plus-TCP BDD
+# target; FREERTOS_LWIP the FreeRtosLwip one (S28.09) — LAN9118 netif +
+# NO_SYS=0 lwIP + LwipRaw adapters, no PlusTcp; CMSIS_LWIP the CmsisLwip one
+# (S40.01), which hosts the packs E40, E36 and E35 add.
 #
 # The top-level gate matters most here: an integrator cross-compiling for
 # Cortex-M sets exactly these two variables in their own toolchain file, and
@@ -599,7 +605,9 @@ endif()
 if(SOLIDSYSLOG_IS_TOP_LEVEL
    AND CMAKE_CROSSCOMPILING
    AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm")
-    if(SOLIDSYSLOG_BDD_FREERTOS_NET STREQUAL "LWIP")
+    if(SOLIDSYSLOG_BDD_TARGET STREQUAL "CMSIS_LWIP")
+        add_subdirectory(Bdd/Targets/CmsisLwip)
+    elseif(SOLIDSYSLOG_BDD_TARGET STREQUAL "FREERTOS_LWIP")
         add_subdirectory(Bdd/Targets/FreeRtosLwip)
     else()
         add_subdirectory(Bdd/Targets/FreeRtos)
