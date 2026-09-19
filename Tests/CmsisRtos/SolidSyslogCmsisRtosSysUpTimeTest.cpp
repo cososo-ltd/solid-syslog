@@ -90,3 +90,13 @@ TEST(SolidSyslogCmsisRtosSysUpTime, ReleasesTheSchedulerLockItDidTake)
 
     CHECK_FALSE(CmsisRtosKernelFake_IsLocked());
 }
+
+TEST(SolidSyslogCmsisRtosSysUpTime, DoesNotCountAWrapWhenTheCounterHasNotMoved)
+{
+    CmsisRtosKernelFake_SetTickFreq(1000);
+
+    uint32_t first = uptimeAt(5000);
+    uint32_t second = uptimeAt(5000);
+
+    UNSIGNED_LONGS_EQUAL(first, second);
+}
