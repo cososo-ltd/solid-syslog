@@ -66,6 +66,7 @@ static void PosixTcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 );
+static inline bool PosixTcpStream_IsRemoteConnectError(int connectErrno);
 static inline bool PosixTcpStream_WaitTimedOut(int selectResult);
 static long PosixTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogPosixTcpStream* self);
 static bool PosixTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
@@ -266,15 +267,35 @@ static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin, long t
         connected =
             PosixTcpStream_WaitForConnectCompletion(fd, timeoutMicros) && PosixTcpStream_ReadDeferredConnectError(fd);
     }
-    else
+    else if (PosixTcpStream_IsRemoteConnectError(connectErrno))
     {
-        /* immediate fail-fast (refused, unreachable, etc.) - connected stays false. */
         PosixTcpStream_ReportConnectFailure(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
         );
     }
+    else
+    {
+        PosixTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+        );
+    }
     return connected;
+}
+
+/* The errors that mean the destination or the network answered: a refusal, an
+ * unreachable report, or the route giving up. Everything else connect() can
+ * return is this device's own - a socket it would not accept, no descriptors,
+ * no buffers - and no packet ever left. The remote set is the one listed
+ * because it is small and fixed while the local set grows with the platform,
+ * so an errno we did not anticipate is more likely ours; calling it ours is
+ * also the louder of the two, which is the safer default for a code nobody
+ * has classified. */
+static inline bool PosixTcpStream_IsRemoteConnectError(int connectErrno)
+{
+    return (connectErrno == ECONNREFUSED) || (connectErrno == EHOSTUNREACH) || (connectErrno == ENETUNREACH) ||
+           (connectErrno == ENETDOWN) || (connectErrno == ETIMEDOUT);
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- fd is a kernel file descriptor; timeoutMicros is a duration; distinct semantics

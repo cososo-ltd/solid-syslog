@@ -26,7 +26,7 @@ config bug." The category already says that.
 | `EMERGENCY` | — | no (reserved) |
 | `ALERT` | — | no (reserved) |
 | `CRITICAL` | The library cannot do its job here and the only fix is the engineer who built the device changing code or build (pool sizes, wiring, config structs). | yes |
-| `ERROR` | A fault impacting delivery that needs a human, but is fixable at deploy/runtime by the operator or systems integrator without a code change (rejected cert, missing/short key, server unreachable). | yes |
+| `ERROR` | A fault impacting delivery that needs a human, but is fixable at deploy/runtime by the operator or systems integrator without a code change (rejected cert, missing/short key, a device that cannot open a socket). | yes |
 | `WARNING` | Transient / self-healing, or delivered-but-degraded. | yes |
 | `NOTICE` | Normal-but-significant: recovery from a down state. | yes |
 | `INFORMATIONAL` | — | no (reserved) |

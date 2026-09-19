@@ -268,6 +268,26 @@ TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWhenConnectFailsImmed
     CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
 }
 
+TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectNotStartedWhenConnectFailsForALocalReason)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetConnectFailsWithLastError(WSAEINVAL);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWhenTheNetworkIsUnreachable)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetConnectFailsWithLastError(WSAENETUNREACH);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+}
+
 TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectTimedOutWhenSelectExpires)
 {
     ErrorHandlerFake_Install(nullptr);

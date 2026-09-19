@@ -264,6 +264,26 @@ TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenConnectFailsImmedia
     CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
 }
 
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectNotStartedWhenConnectFailsForALocalReason)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_SetConnectFailsWithErrno(EINVAL);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenTheNetworkIsUnreachable)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_SetConnectFailsWithErrno(ENETUNREACH);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+}
+
 TEST(SolidSyslogPosixTcpStream, OpenReportsConnectTimedOutWhenSelectExpires)
 {
     ErrorHandlerFake_Install(nullptr);
