@@ -23,7 +23,11 @@ struct SolidSyslogCmsisRtosMutex
     osMutexId_t Id;
 };
 
-void SolidSyslogCmsisRtosMutex_Initialise(struct SolidSyslogMutex* base, void* controlBlock, uint32_t controlBlockBytes);
+void SolidSyslogCmsisRtosMutex_Initialise(
+    struct SolidSyslogMutex* base,
+    void* controlBlock,
+    uint32_t controlBlockBytes
+);
 void SolidSyslogCmsisRtosMutex_Cleanup(struct SolidSyslogMutex* base);
 
 static inline void CmsisRtosMutex_Report(

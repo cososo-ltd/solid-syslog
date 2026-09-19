@@ -11,6 +11,7 @@ builds perfectly well.
 
 import glob
 import os
+import re
 import sys
 import types
 import unittest
@@ -229,9 +230,15 @@ class Registry(unittest.TestCase):
                 f"registry names {slug} but docs/platforms/{slug}/index.md is missing",
             )
 
-    def test_the_registry_yields_all_ten_platforms(self):
+    def test_the_registry_yields_every_platform_it_declares(self):
+        """The hook skips a registry row whose directory has no Interface/, and
+        a silent skip takes that platform's doorway with it. Checked against the
+        registry itself rather than against a number, which rots the next time a
+        platform is added - and rotted once already."""
         _, slugs, _labels, _manifest = h._index(CONFIG)
-        self.assertEqual(len(slugs), 10, sorted(slugs))
+        with open(os.path.join(ROOT, "CMakeLists.txt"), encoding="utf-8") as cmake:
+            declared = re.findall(r'^\s*"([A-Za-z]+)\|SOLIDSYSLOG_', cmake.read(), re.M)
+        self.assertEqual(sorted(slugs), sorted(token.lower() for token in declared))
 
 
 if __name__ == "__main__":

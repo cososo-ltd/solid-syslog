@@ -57,6 +57,9 @@ ROW = re.compile(r'"([^"|]+)\|[^"|]*\|[^"|]*\|[^"|]*\|([^"|]+)\|[^"]*"')
 # platform forces the decision rather than silently widening the gap.
 ALIASES = {
     "StdAtomic": [],
+    # The pack is named for the API it targets, and prose says the API's own
+    # name. No kernel is an alias: the adapter is not written against one.
+    "CmsisRtos": ["CMSIS-RTOS2", "CMSIS"],
     "FatFs": ["FatFs", "ChaN"],
     "FreeRtos": ["FreeRTOS"],
     "LwipRaw": ["lwIP"],

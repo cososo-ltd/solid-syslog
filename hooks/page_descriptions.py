@@ -80,6 +80,14 @@ DESCRIPTIONS = {
         "Wire the Win32 and Winsock adapters: starting Winsock, building "
         "a sender, the callbacks, and what threading needs from you."
     ),
+    "platforms/cmsisrtos/index.md": (
+        "The CMSIS-RTOS2 adapter pack: a mutex over the standard RTOS API, so "
+        "one adapter serves every kernel that implements it."
+    ),
+    "platforms/cmsisrtos/setup.md": (
+        "Wire the CMSIS-RTOS2 mutex: what to link, sizing the control block, "
+        "and putting the mutex under a buffer shared across tasks."
+    ),
     "platforms/freertos/index.md": (
         "The FreeRTOS adapter pack: kernel primitives filling the Mutex role and "
         "the sysUpTime callback. Networking comes from a separate platform."

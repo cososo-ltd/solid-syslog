@@ -15,7 +15,8 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #define osWaitForever 0xFFFFFFFFU
@@ -24,33 +25,33 @@ extern "C" {
 #define osMutexPrioInherit 0x00000002U
 #define osMutexRobust 0x00000008U
 
-typedef enum
-{
-    osOK = 0,
-    osError = -1,
-    osErrorTimeout = -2,
-    osErrorResource = -3,
-    osErrorParameter = -4,
-    osErrorNoMemory = -5,
-    osErrorISR = -6,
-    osErrorSafetyClass = -7,
-    osStatusReserved = 0x7FFFFFFF
-} osStatus_t;
+    typedef enum
+    {
+        osOK = 0,
+        osError = -1,
+        osErrorTimeout = -2,
+        osErrorResource = -3,
+        osErrorParameter = -4,
+        osErrorNoMemory = -5,
+        osErrorISR = -6,
+        osErrorSafetyClass = -7,
+        osStatusReserved = 0x7FFFFFFF
+    } osStatus_t;
 
-typedef void* osMutexId_t;
+    typedef void* osMutexId_t;
 
-typedef struct
-{
-    const char* name;
-    uint32_t attr_bits;
-    void* cb_mem;
-    uint32_t cb_size;
-} osMutexAttr_t;
+    typedef struct
+    {
+        const char* name;
+        uint32_t attr_bits;
+        void* cb_mem;
+        uint32_t cb_size;
+    } osMutexAttr_t;
 
-osMutexId_t osMutexNew(const osMutexAttr_t* attr);
-osStatus_t osMutexAcquire(osMutexId_t mutex_id, uint32_t timeout);
-osStatus_t osMutexRelease(osMutexId_t mutex_id);
-osStatus_t osMutexDelete(osMutexId_t mutex_id);
+    osMutexId_t osMutexNew(const osMutexAttr_t* attr);
+    osStatus_t osMutexAcquire(osMutexId_t mutex_id, uint32_t timeout);
+    osStatus_t osMutexRelease(osMutexId_t mutex_id);
+    osStatus_t osMutexDelete(osMutexId_t mutex_id);
 
 #ifdef __cplusplus
 }
