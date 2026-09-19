@@ -71,6 +71,12 @@ TEST(SolidSyslogCmsisRtosMutex, CreateHandsTheCallersControlBlockSizeToMutexNew)
     UNSIGNED_LONGS_EQUAL(sizeof(controlBlock), CmsisRtosMutexFake_LastControlBlockBytes());
 }
 
+TEST(SolidSyslogCmsisRtosMutex, CreateAsksForPriorityInheritance)
+
+{
+    UNSIGNED_LONGS_EQUAL(osMutexPrioInherit, CmsisRtosMutexFake_LastAttrBits());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogCmsisRtosMutexPool)
 {
