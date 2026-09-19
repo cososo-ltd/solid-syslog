@@ -46,7 +46,10 @@ under **TDD Discipline**.
 OO-in-C: structs of function pointers, one vtable per role, with dependency injection
 throughout and a Null object for every role. No dynamic allocation — every stateful
 Created class lives in a library-internal static pool. No unions, no anonymous structs,
-no `#ifdef` feature flags; optional features are composed at link time. C99 baseline.
+no `#ifdef` feature flags; optional features are composed at link time. Where a vendor's
+compile-time configuration genuinely forces a variant, gate a whole file on it and let
+the build choose — never an `#if` inside a function body, so the test matrix grows by one
+file rather than doubling. C99 baseline.
 Follows James Grenning's style (*TDD for Embedded C*) where consistent with clang-format.
 The detail is in CLAUDE.md under **Project Structure**, **Design Patterns** and
 **Pool Allocation (E11)**.

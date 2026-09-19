@@ -139,25 +139,25 @@ TEST(SolidSyslogPosixTcpStream, OpenEnablesSoKeepalive)
     LONGS_EQUAL(1, SocketFake_LastSetSockOptValue(SOL_SOCKET, SO_KEEPALIVE));
 }
 
-TEST(SolidSyslogPosixTcpStream, OpenSetsTcpKeepIdleTo45Seconds)
+TEST(SolidSyslogPosixTcpStream, OpenSetsTcpKeepIdleFromTheTunable)
 {
     SolidSyslogStream_Open(stream, addr);
     CHECK_TRUE(SocketFake_HasSetSockOpt(IPPROTO_TCP, TCP_KEEPIDLE));
-    LONGS_EQUAL(45, SocketFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPIDLE));
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS, SocketFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPIDLE));
 }
 
-TEST(SolidSyslogPosixTcpStream, OpenSetsTcpKeepIntvlTo10Seconds)
+TEST(SolidSyslogPosixTcpStream, OpenSetsTcpKeepIntvlFromTheTunable)
 {
     SolidSyslogStream_Open(stream, addr);
     CHECK_TRUE(SocketFake_HasSetSockOpt(IPPROTO_TCP, TCP_KEEPINTVL));
-    LONGS_EQUAL(10, SocketFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPINTVL));
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS, SocketFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPINTVL));
 }
 
-TEST(SolidSyslogPosixTcpStream, OpenSetsTcpKeepCntTo4)
+TEST(SolidSyslogPosixTcpStream, OpenSetsTcpKeepCntFromTheTunable)
 {
     SolidSyslogStream_Open(stream, addr);
     CHECK_TRUE(SocketFake_HasSetSockOpt(IPPROTO_TCP, TCP_KEEPCNT));
-    LONGS_EQUAL(4, SocketFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPCNT));
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT, SocketFake_LastSetSockOptValue(IPPROTO_TCP, TCP_KEEPCNT));
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenSetsTcpUserTimeoutTo30000Milliseconds)
