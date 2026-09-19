@@ -95,6 +95,15 @@ TEST_GROUP(SolidSyslogPosixTcpStream)
         SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
         SolidSyslogStream_Open(stream, addr);
     }
+
+    /* The immediate-failure tests differ only in the error connect() reports,
+     * so the arrange and act live here and each test is left as its assertion. */
+    void openAfterConnectFails(int connectErrno) const
+    {
+        ErrorHandlerFake_Install(nullptr);
+        SocketFake_SetConnectFailsWithErrno(connectErrno);
+        SolidSyslogStream_Open(stream, addr);
+    }
 };
 
 // clang-format on
@@ -256,32 +265,37 @@ TEST(SolidSyslogPosixTcpStream, OpenReportsEndpointUnavailableWhenTheSocketCanno
 
 TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenConnectFailsImmediately)
 {
-    ErrorHandlerFake_Install(nullptr);
-    SocketFake_SetConnectFailsWithErrno(ECONNREFUSED);
-
-    SolidSyslogStream_Open(stream, addr);
+    openAfterConnectFails(ECONNREFUSED);
 
     CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenReportsConnectNotStartedWhenConnectFailsForALocalReason)
 {
-    ErrorHandlerFake_Install(nullptr);
-    SocketFake_SetConnectFailsWithErrno(EINVAL);
-
-    SolidSyslogStream_Open(stream, addr);
+    openAfterConnectFails(EINVAL);
 
     CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
 }
 
-TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenTheNetworkIsUnreachable)
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectNotStartedWhenTheNetworkIsUnreachable)
 {
-    ErrorHandlerFake_Install(nullptr);
-    SocketFake_SetConnectFailsWithErrno(ENETUNREACH);
+    openAfterConnectFails(ENETUNREACH);
 
-    SolidSyslogStream_Open(stream, addr);
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+}
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectNotStartedWhenTheHostIsUnreachable)
+{
+    openAfterConnectFails(EHOSTUNREACH);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectNotStartedWhenTheInterfaceIsDown)
+{
+    openAfterConnectFails(ENETDOWN);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenReportsConnectTimedOutWhenSelectExpires)

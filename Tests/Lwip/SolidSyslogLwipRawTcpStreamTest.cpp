@@ -372,6 +372,19 @@ TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectNotStartedWhenTcpConnectFail
     CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
 }
 
+/* ERR_RTE is lwIP's routing lookup failing, which is the same condition Posix
+ * reports as ENETUNREACH. Both are local: the call was rejected before anything
+ * was transmitted, so the two stacks must agree on the code and the severity. */
+TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectNotStartedWhenThereIsNoRouteToTheDestination)
+{
+    ErrorHandlerFake_Install(nullptr);
+    LwipTcpFake_SetTcpConnectError(ERR_RTE);
+
+    SolidSyslogStream_Open(stream, address);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+}
+
 TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectRefusedWhenTheConnectionIsResetBeforeTheDeadline)
 {
     ErrorHandlerFake_Install(nullptr);
