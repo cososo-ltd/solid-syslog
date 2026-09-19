@@ -1,0 +1,15 @@
+# Pragmatic level per docs/NAMING.md.
+#
+# Inherits the root .clang-tidy. Local names that mirror CMSIS-RTOS2
+# identifiers (osMutexId_t, osMutexAttr_t, the mutex_id and cb_mem
+# parameter spellings) are exempt from the lowerCamelCase rule where the
+# upstream name would force a different shape.
+#
+# Note: Platform/CmsisRtos/ is shipped as an INTERFACE library - sources
+# are recompiled by each consumer (tests, BDD targets, integrator apps)
+# against the cmsis_os2.h their RTOS supplies. clang-tidy analyses these
+# files whenever they are compiled in a tidy-enabled target.
+#
+# Add IgnoredRegexp entries here as real exemptions surface; the file
+# marks the level boundary even when empty of overrides.
+InheritParentConfig: true

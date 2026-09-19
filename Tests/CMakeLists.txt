@@ -25,6 +25,14 @@ if(SOLIDSYSLOG_FREERTOS)
     add_subdirectory(FreeRtos)
 endif()
 
+# CmsisRtos is the one pack whose tests need no upstream tree — the fakes supply
+# cmsis_os2.h outright — so its switch is on by default and these build wherever
+# the rest of the suite does.
+if(SOLIDSYSLOG_CMSISRTOS)
+    add_subdirectory(Support/CmsisRtosFakes)
+    add_subdirectory(CmsisRtos)
+endif()
+
 if(SOLIDSYSLOG_FATFS)
     add_subdirectory(Support/FatFsFakes)
     add_subdirectory(FatFs)
@@ -280,6 +288,14 @@ foreach(freertos_test_target IN ITEMS
 )
     if(TARGET ${freertos_test_target})
         register_junit_test(${freertos_test_target})
+    endif()
+endforeach()
+
+foreach(cmsisrtos_test_target IN ITEMS
+    SolidSyslogCmsisRtosMutexTest
+)
+    if(TARGET ${cmsisrtos_test_target})
+        register_junit_test(${cmsisrtos_test_target})
     endif()
 endforeach()
 

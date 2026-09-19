@@ -250,6 +250,13 @@ endif()
 #              consumer who vendors lwIP and exports nothing is the case S30.05
 #              exists to serve. These are the SolidSyslog::<Token> link targets.
 #
+# An upstream row whose default is a literal TRUE rather than a path hint is
+# one whose header we can stand in for: CmsisRtos is pure declarations, so our
+# own suite fakes the API outright and needs no tree to gate on. Keying it to a
+# path would only hide its tests from every preset that leaves the environment
+# bare — which is all of the host ones. Consumers are unaffected either way: the
+# NOT SOLIDSYSLOG_IS_TOP_LEVEL line below turns every upstream row off for them.
+#
 # Rows are split on `|` and read by index, so every field must be a token that
 # cannot contain a separator. The upstream hints are collapsed to booleans here
 # rather than interpolated as paths: a tree at a path containing `;` or `|`
@@ -275,6 +282,7 @@ set(SOLIDSYSLOG_PLATFORM_REGISTRY
     "LwipRaw|SOLIDSYSLOG_LWIPRAW|${HAVE_LWIP_PATH}|upstream|Platform/LwipRaw|network"
     "PlusTcp|SOLIDSYSLOG_PLUSTCP|${HAVE_FREERTOS_PLUS_TCP_PATH}|upstream|Platform/PlusTcp|network"
     "FreeRtos|SOLIDSYSLOG_FREERTOS|${HAVE_FREERTOS_KERNEL_PATH}|upstream|Platform/FreeRtos|mutex clock"
+    "CmsisRtos|SOLIDSYSLOG_CMSISRTOS|TRUE|upstream|Platform/CmsisRtos|mutex"
     "FatFs|SOLIDSYSLOG_FATFS|${HAVE_FATFS_PATH}|upstream|Platform/FatFs|file"
     "PlusFat|SOLIDSYSLOG_PLUSFAT|${HAVE_FREERTOS_PLUS_FAT_PATH}|upstream|Platform/PlusFat|file"
 )
