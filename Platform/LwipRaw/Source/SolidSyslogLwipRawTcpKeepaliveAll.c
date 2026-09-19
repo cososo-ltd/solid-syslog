@@ -18,7 +18,7 @@ enum
     MILLISECONDS_PER_SECOND = 1000
 };
 
-void LwipRawTcpStream_ApplyKeepalive(struct tcp_pcb* pcb)
+void SolidSyslogLwipRawTcpStream_ApplyKeepalive(struct tcp_pcb* pcb)
 {
     pcb->keep_idle = (u32_t) SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS * MILLISECONDS_PER_SECOND;
     pcb->keep_intvl = (u32_t) SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS * MILLISECONDS_PER_SECOND;

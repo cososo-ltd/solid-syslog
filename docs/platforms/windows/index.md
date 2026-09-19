@@ -62,8 +62,9 @@ and repeat at `SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS` until
 setting here, so a peer that dies with a write in flight is bounded by the
 system's retransmission behaviour instead. Sends into a connection not yet
 declared dead are accepted and reported as delivered, so the records inside that
-window are released by store-and-forward and lost with it. The window is the sum
-of the three tunables, so shortening it costs probe traffic on an idle link.
+window are released by store-and-forward and lost with it. The window is the idle
+period plus the interval across every probe, so shortening it costs probe traffic
+on an idle link.
 
 ### Protection of the store is a property of its directory
 

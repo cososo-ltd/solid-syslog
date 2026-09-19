@@ -69,8 +69,9 @@ and repeat at `SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS` until
 is bounded separately by a user timeout, which probing does not cover. Until one
 of those fires, sends into the dead connection are accepted by the kernel and
 reported as delivered, so the records inside that window are released by
-store-and-forward and lost with the connection. The window is the sum of the
-three tunables, so shortening it costs probe traffic on an idle link.
+store-and-forward and lost with the connection. The window is the idle period
+plus the interval across every probe, so shortening it costs probe traffic on an
+idle link.
 
 ### The message-queue buffer is capped by the system, not by you
 

@@ -41,7 +41,7 @@ void SolidSyslogLwipRawTcpStream_Cleanup(struct SolidSyslogStream* base);
 
 /* Applies the SOLIDSYSLOG_TCP_KEEPALIVE_* tunables to a fresh pcb. Defined by
    whichever of the two keepalive translation units the lwIP build selects. */
-void LwipRawTcpStream_ApplyKeepalive(struct tcp_pcb* pcb);
+void SolidSyslogLwipRawTcpStream_ApplyKeepalive(struct tcp_pcb* pcb);
 
 static inline void LwipRawTcpStream_Report(
     enum SolidSyslogSeverity severity,

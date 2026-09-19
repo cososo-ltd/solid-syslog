@@ -31,21 +31,21 @@ TEST_GROUP(SolidSyslogLwipRawTcpKeepalive)
 
 TEST(SolidSyslogLwipRawTcpKeepalive, SetsKeepIdleFromTheTunable)
 {
-    LwipRawTcpStream_ApplyKeepalive(&pcb);
+    SolidSyslogLwipRawTcpStream_ApplyKeepalive(&pcb);
 
     LONGS_EQUAL(SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS * MILLISECONDS_PER_SECOND, pcb.keep_idle);
 }
 
 TEST(SolidSyslogLwipRawTcpKeepalive, SetsKeepIntervalFromTheTunable)
 {
-    LwipRawTcpStream_ApplyKeepalive(&pcb);
+    SolidSyslogLwipRawTcpStream_ApplyKeepalive(&pcb);
 
     LONGS_EQUAL(SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS * MILLISECONDS_PER_SECOND, pcb.keep_intvl);
 }
 
 TEST(SolidSyslogLwipRawTcpKeepalive, SetsProbeCountFromTheTunable)
 {
-    LwipRawTcpStream_ApplyKeepalive(&pcb);
+    SolidSyslogLwipRawTcpStream_ApplyKeepalive(&pcb);
 
     LONGS_EQUAL(SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT, pcb.keep_cnt);
 }
