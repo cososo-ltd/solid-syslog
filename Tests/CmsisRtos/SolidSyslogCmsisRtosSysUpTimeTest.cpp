@@ -22,3 +22,11 @@ TEST(SolidSyslogCmsisRtosSysUpTime, ReturnsZeroWhenTicksAreZero)
 
     UNSIGNED_LONGS_EQUAL(0U, SolidSyslogCmsisRtos_GetSysUpTime());
 }
+
+TEST(SolidSyslogCmsisRtosSysUpTime, ReturnsOneHundredthForOneTickAtOneHundredHertz)
+{
+    CmsisRtosKernelFake_SetTickFreq(100);
+    CmsisRtosKernelFake_SetTickCount(1);
+
+    UNSIGNED_LONGS_EQUAL(1U, SolidSyslogCmsisRtos_GetSysUpTime());
+}
