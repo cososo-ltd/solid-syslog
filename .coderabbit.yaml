@@ -30,6 +30,14 @@ reviews:
   review_status: true
   collapse_walkthrough: false
 
+  # Pre-merge checks. Docstring coverage is off rather than merely lowered:
+  # this codebase does not target a comment density, and holds that a comment
+  # earns its place only where the code cannot say the thing itself. A
+  # percentage gate argues the opposite whatever number it is set to.
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+
   auto_review:
     enabled: true
     drafts: false
