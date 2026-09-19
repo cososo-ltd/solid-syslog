@@ -29,8 +29,15 @@ void SolidSyslogCmsisRtosMutex_Initialise(struct SolidSyslogMutex* base, void* c
     osMutexAttr_t attributes = {NULL, osMutexPrioInherit, controlBlock, controlBlockBytes};
     struct SolidSyslogCmsisRtosMutex* self = CmsisRtosMutex_SelfFromBase(base);
     self->Id = osMutexNew(&attributes);
-    self->Base.Lock = CmsisRtosMutex_Lock;
-    self->Base.Unlock = CmsisRtosMutex_Unlock;
+    if (self->Id != NULL)
+    {
+        self->Base.Lock = CmsisRtosMutex_Lock;
+        self->Base.Unlock = CmsisRtosMutex_Unlock;
+    }
+    else
+    {
+        *base = *SolidSyslogNullMutex_Get();
+    }
 }
 
 static inline struct SolidSyslogCmsisRtosMutex* CmsisRtosMutex_SelfFromBase(struct SolidSyslogMutex* base)
