@@ -23,7 +23,9 @@ static uint32_t CmsisRtosSysUpTime_Hundredths(uint64_t ticks, uint32_t tickFreqH
 
 uint32_t SolidSyslogCmsisRtos_GetSysUpTime(void)
 {
+    (void) osKernelLock();
     uint64_t ticks = CmsisRtosSysUpTime_Extend(osKernelGetTickCount());
+    (void) osKernelRestoreLock(0);
 
     return CmsisRtosSysUpTime_Hundredths(ticks, osKernelGetTickFreq());
 }
