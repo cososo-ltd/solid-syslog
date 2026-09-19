@@ -19,6 +19,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
        this is the claim worth asserting rather than a bare call count. */
     bool CmsisRtosKernelFake_WasLockedDuringTickRead(void);
 
+    void CmsisRtosKernelFake_SetLocked(bool locked);
+
+    bool CmsisRtosKernelFake_IsLocked(void);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* CMSISRTOSKERNELFAKE_H */

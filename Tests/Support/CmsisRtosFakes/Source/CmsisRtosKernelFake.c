@@ -41,6 +41,16 @@ bool CmsisRtosKernelFake_WasLockedDuringTickRead(void)
     return kernelFakeLockedDuringTickRead;
 }
 
+void CmsisRtosKernelFake_SetLocked(bool locked)
+{
+    kernelFakeLocked = locked;
+}
+
+bool CmsisRtosKernelFake_IsLocked(void)
+{
+    return kernelFakeLocked;
+}
+
 int32_t osKernelLock(void)
 {
     bool previouslyLocked = kernelFakeLocked;

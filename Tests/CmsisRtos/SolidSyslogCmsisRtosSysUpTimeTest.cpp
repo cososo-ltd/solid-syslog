@@ -72,3 +72,12 @@ TEST(SolidSyslogCmsisRtosSysUpTime, ReadsTheCounterWithTheSchedulerLocked)
 
     CHECK_TRUE(CmsisRtosKernelFake_WasLockedDuringTickRead());
 }
+
+TEST(SolidSyslogCmsisRtosSysUpTime, LeavesASchedulerLockItDidNotTakeInPlace)
+{
+    CmsisRtosKernelFake_SetLocked(true);
+
+    (void) uptimeAt(1);
+
+    CHECK_TRUE(CmsisRtosKernelFake_IsLocked());
+}
