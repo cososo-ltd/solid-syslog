@@ -19,8 +19,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Largest UDP payload guaranteed to fit an unfragmented IPv6 datagram:
      *  IPv6 minimum MTU 1280 - 40-byte IPv6 header - 8-byte UDP header
-     *  (RFC 8200 §5). Used as the last-resort MaxPayload when the OS cannot
-     *  report a path MTU. */
+     *  (RFC 8200 §5). This is the derived figure for that MTU; what a Datagram
+     *  answers where no path MTU is available is
+     *  SolidSyslogUdpPayload_UnknownPath. */
     enum
     {
         SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD = 1232

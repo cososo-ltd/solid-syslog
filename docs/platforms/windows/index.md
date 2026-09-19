@@ -30,8 +30,9 @@ stream rather than replacing it.
 
 Once the socket is connected the datagram asks Winsock for the path MTU and
 reports what is left after the IPv4 and UDP headers. Before that, or where
-Winsock does not answer, it reports the IPv6-safe payload of 1232 bytes, which is
-the conservative answer the
+Winsock does not answer, it reports the unknown-path payload for the address
+family - 480 octets for IPv4, the size RFC 5426 §3.2 calls the safest
+assumption - which is the conservative answer the
 [Datagram](../../api/structSolidSyslogDatagram.md) contract asks for.
 
 A send that exceeds the path is reported as oversize rather than as a failure, so

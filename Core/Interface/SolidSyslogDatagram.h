@@ -56,7 +56,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  recovered from: the sender compares the record against MaxPayload and
      *  trims it if it would not have fitted, leaving a FAILED on a record that
      *  does fit to be retried whole. An implementation answering zero says it
-     *  cannot report what the path carries, and nothing is inferred from it. */
+     *  cannot report what the path carries, so a failure is never read as
+     *  oversize on its word. An explicit OVERSIZE alongside it is a different
+     *  statement - the record is too big and the implementation will not say
+     *  what would fit - and the record is discarded rather than offered for
+     *  ever. */
     enum SolidSyslogDatagramSendResult SolidSyslogDatagram_SendTo(
         struct SolidSyslogDatagram * datagram,
         const void* buffer,

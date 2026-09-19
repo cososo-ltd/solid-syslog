@@ -32,8 +32,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *    SolidSyslogUdpPayload_UnknownPath for the family rather than something
      *    larger. The path meant is the destination currently being sent to; an
      *    implementation serving several at once answers low enough for all of
-     *    them. Zero is reserved for an implementation that cannot say, and the
-     *    caller infers nothing from it.
+     *    them. Zero says the implementation cannot report a limit: the caller
+     *    will not read a failure as oversize on its word, and an OVERSIZE
+     *    returned alongside it discards the record, so answer a real figure
+     *    wherever one exists.
      *  - **Return OVERSIZE where the platform can distinguish it**, so the
      *    caller learns the reason from the result rather than from the size.
      *    Collapsing it into FAILED is permitted for a stack that cannot tell

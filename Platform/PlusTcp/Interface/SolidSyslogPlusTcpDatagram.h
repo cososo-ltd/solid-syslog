@@ -11,8 +11,8 @@
  *  because FreeRTOS-Plus-TCP does not queue datagrams while ARP resolves - the
  *  cold-start packet would otherwise be dropped at the IP layer; if the reply
  *  is late the send is left to fail, since UDP is best-effort and retry belongs
- *  in the store-and-forward layer above. MaxPayload is the fixed IPv6-safe
- *  default. */
+ *  in the store-and-forward layer above. MaxPayload is the fixed unknown-path
+ *  payload. */
 #ifndef SOLIDSYSLOGPLUSTCPDATAGRAM_H
 #define SOLIDSYSLOGPLUSTCPDATAGRAM_H
 
