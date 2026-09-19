@@ -15,6 +15,10 @@
 
 const struct SolidSyslogErrorSource SolidSyslogCmsisRtosMutexErrorSource = {"CmsisRtosMutex"};
 
+static void CmsisRtosMutex_Lock(struct SolidSyslogMutex* base);
+
+static inline struct SolidSyslogCmsisRtosMutex* CmsisRtosMutex_SelfFromBase(struct SolidSyslogMutex* base);
+
 void SolidSyslogCmsisRtosMutex_Initialise(struct SolidSyslogMutex* base, void* controlBlock, uint32_t controlBlockBytes)
 {
     /* Priority inheritance is what stops a low-priority task holding the
@@ -22,8 +26,19 @@ void SolidSyslogCmsisRtosMutex_Initialise(struct SolidSyslogMutex* base, void* c
      * waits on it. An implementation whose mutexes always inherit ignores the
      * bit; one that does not needs asking. */
     osMutexAttr_t attributes = {NULL, osMutexPrioInherit, controlBlock, controlBlockBytes};
-    (void) osMutexNew(&attributes);
-    *base = *SolidSyslogNullMutex_Get();
+    struct SolidSyslogCmsisRtosMutex* self = CmsisRtosMutex_SelfFromBase(base);
+    self->Id = osMutexNew(&attributes);
+    self->Base.Lock = CmsisRtosMutex_Lock;
+}
+
+static inline struct SolidSyslogCmsisRtosMutex* CmsisRtosMutex_SelfFromBase(struct SolidSyslogMutex* base)
+{
+    return (struct SolidSyslogCmsisRtosMutex*) base;
+}
+
+static void CmsisRtosMutex_Lock(struct SolidSyslogMutex* base)
+{
+    (void) osMutexAcquire(CmsisRtosMutex_SelfFromBase(base)->Id, 0);
 }
 
 void SolidSyslogCmsisRtosMutex_Cleanup(struct SolidSyslogMutex* base)
