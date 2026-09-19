@@ -8,11 +8,23 @@
 
 #include "cmsis_os2.h"
 
+enum
+{
+    CMSISRTOS_SYS_UP_TIME_HUNDREDTHS_PER_SECOND = 100
+};
+
+static uint32_t CmsisRtosSysUpTime_Hundredths(uint32_t ticks, uint32_t tickFreqHz);
+
 uint32_t SolidSyslogCmsisRtos_GetSysUpTime(void)
 {
-    uint32_t ticks = osKernelGetTickCount();
-    uint32_t tickFreqHz = osKernelGetTickFreq();
+    return CmsisRtosSysUpTime_Hundredths(osKernelGetTickCount(), osKernelGetTickFreq());
+}
 
+static uint32_t CmsisRtosSysUpTime_Hundredths(uint32_t ticks, uint32_t tickFreqHz)
+{
     /* Divide before scaling so the intermediate cannot overflow. */
-    return ((ticks / tickFreqHz) * 100U) + (((ticks % tickFreqHz) * 100U) / tickFreqHz);
+    uint32_t wholeSecondHundredths = (ticks / tickFreqHz) * CMSISRTOS_SYS_UP_TIME_HUNDREDTHS_PER_SECOND;
+    uint32_t subSecondHundredths =
+        ((ticks % tickFreqHz) * CMSISRTOS_SYS_UP_TIME_HUNDREDTHS_PER_SECOND) / tickFreqHz;
+    return wholeSecondHundredths + subSecondHundredths;
 }
