@@ -6,13 +6,13 @@ adapter that satisfies one of the vtable contracts, drop it into your
 build, and wire it into your config. This page is the contract those adapters
 honour, written from the code that already ships.
 
-<!-- markdownlint-disable MD033 — the sticky is styled HTML (.postit-note in brand.css); md_in_html keeps its body as Markdown. -->
+<!-- markdownlint-disable MD033 - the sticky is styled HTML (.postit-note in brand.css); md_in_html keeps its body as Markdown. -->
 
 <div class="postit-note" markdown>
 **Rather we did it?**
 
-We write and support SolidSyslog platform adapters — your RTOS, network stack,
-filesystem or crypto library — and the tests that prove them against the
+We write and support SolidSyslog platform adapters - your RTOS, network stack,
+filesystem or crypto library - and the tests that prove them against the
 contract. [Talk to us about it](https://www.cososo.co.uk/?service=solidsyslog#contact).
 </div>
 
@@ -25,7 +25,7 @@ drain loop, the buffer/store machinery) plus a set of roles. A role is a
 `struct` of function pointers (a vtable) declared in a
 `SolidSyslog<Role>Definition.h` header under `Core/Interface/`. An *adapter* is a concrete
 implementation of one role for one platform (`SolidSyslogPosixMutex`,
-`SolidSyslogLwipRawDatagram`, …).
+`SolidSyslogLwipRawDatagram`, ...).
 
 Every role has a Core Null implementation
 (`SolidSyslogNull<Role>_Get()`) whose methods are safe no-ops. Omit an adapter
@@ -45,7 +45,7 @@ shape is identical for every one. An adapter is four files:
 
 | File | Holds |
 |---|---|
-| `Platform/<X>/Interface/SolidSyslog<Adapter>.h` | Public `<Class>_Create` / `<Class>_Destroy` — the only symbols system-setup code touches |
+| `Platform/<X>/Interface/SolidSyslog<Adapter>.h` | Public `<Class>_Create` / `<Class>_Destroy` - the only symbols system-setup code touches |
 | `Platform/<X>/Source/SolidSyslog<Adapter>Private.h` | The instance `struct`, embedding the role vtable as its first member |
 | `Platform/<X>/Source/SolidSyslog<Adapter>.c` | The vtable function implementations |
 | `Platform/<X>/Source/SolidSyslog<Adapter>Static.c` | The static instance pool + `<Class>_Create` / `<Class>_Destroy` |
@@ -57,7 +57,7 @@ The instance `struct` embeds the role type as its first member, named `Base`:
 ```c
 struct SolidSyslogPosixMutex
 {
-    struct SolidSyslogMutex Base;   /* the vtable — first member */
+    struct SolidSyslogMutex Base;   /* the vtable - first member */
     pthread_mutex_t Mutex;          /* your per-instance state */
 };
 ```
@@ -109,27 +109,36 @@ implementation per role. Every tunable lives in
 [`SolidSyslogTunablesDefaults.h`](api/SolidSyslogTunablesDefaults_8h.md),
 `#ifndef`-guarded so integrators override without editing the library.
 
-### Error reporting — the `*Errors.h` convention
+### Error reporting - the `*Errors.h` convention
 
-Each adapter ships a `SolidSyslog<Adapter>Errors.h` declaring an
-`enum SolidSyslog<Adapter>Errors` (`SOLIDSYSLOG_<ADAPTER>_ERROR_*` codes plus a
-`SOLIDSYSLOG_<ADAPTER>_ERROR_MAX` bookend) and an
-`extern const struct SolidSyslogErrorSource`. How the class name is spelled
-inside those constants — one word per PascalCase word, except that your pack's
-registry token stays whole — is in
-[Naming conventions](NAMING.md#spelling-a-class-name-inside-a-screaming_snake-identifier). When
-something fails, the adapter calls `SolidSyslog_Error(severity, source, category,
-detail)`: `source` is its own `ErrorSource` (matched by pointer identity in a
-handler), `category` is a portable reaction axis from
-[`SolidSyslogErrorCategory.h`](api/SolidSyslogErrorCategory_8h.md), and
-`detail` is the adapter's own enum value. A handler that doesn't care about your
-adapter simply never matches its source. The default handler is a silent no-op:
-adapters report and carry on, they never crash the caller.
+Each adapter ships a `SolidSyslog<Adapter>Errors.h`. It declares one thing: an
+`extern const struct SolidSyslogErrorSource` naming your adapter. The detail
+codes are not yours - they belong to the role you are filling, and live in a
+single `SolidSyslog<Role>Errors.h` under `Core/Interface/`. Include that header
+from yours and report its constants.
 
-A role whose faults are the same whichever library fills it carries its codes in
-Core instead, and the adapter's `*Errors.h` declares only the `ErrorSource`. The
-TLS stream and TLS credentials roles work this way; [Port a TLS
-stream](tls-porting.md) covers them.
+You are filling an existing role, so its enum already exists and already carries
+every code its other backends raise. Reuse the codes that fit. Add a member only
+for a fault none of them has, and add it to the role's enum in Core rather than
+starting one of your own - the shared vocabulary is what lets a handler react to
+"the mutex could not be created" without knowing which backend created it, and
+survive a backend swap unchanged. A code only your adapter can raise is fine
+there; one a backend never raises is simply one a handler never sees.
+
+When something fails, the adapter calls `SolidSyslog_Error(severity, source,
+category, detail)`: `source` is its own `ErrorSource` (matched by pointer
+identity in a handler), `category` is a portable reaction axis from
+[`SolidSyslogErrorCategory.h`](api/SolidSyslogErrorCategory_8h.md), and `detail`
+is a value from the role's enum. A handler that doesn't care about your adapter
+simply never matches its source. The default handler is a silent no-op: adapters
+report and carry on, they never crash the caller.
+
+The rule and its single exception are in
+[Naming conventions](NAMING.md#role-detail-codes-are-named-by-role-not-platform):
+a class with no role siblings to share a vocabulary with keeps codes of its own,
+and `SolidSyslogPosixMessageQueueBuffer` is the only one left. If you are porting
+a TLS stream, [Port a TLS stream](tls-porting.md) covers the credentials role
+alongside it.
 
 ### Synchronising the slot walk
 
@@ -157,8 +166,8 @@ allow it.
   borrowed; the owner frees them. The same applies to an upstream library's
   process-global state: touch only what you were given, so the library drops
   into a process already using that upstream elsewhere.
-- A Null must be safe to call. Whatever your role's Null returns — each is
-  documented on its own `SolidSyslogNull<Role>.h` — it must let Core's algorithm
+- A Null must be safe to call. Whatever your role's Null returns - each is
+  documented on its own `SolidSyslogNull<Role>.h` - it must let Core's algorithm
   proceed sanely: drop-on-the-floor where a drop is harmless, `false` where the
   caller has an error path to run.
 - Bounded blocking. Anything that can wedge (a `connect`, a handshake) is
@@ -177,7 +186,7 @@ allow it.
 ## Depending on upstream configuration
 
 An adapter often needs something the upstream project provides only under a
-configuration macro — lwIP's `LWIP_DNS`, FreeRTOS's
+configuration macro - lwIP's `LWIP_DNS`, FreeRTOS's
 `configSUPPORT_STATIC_ALLOCATION`. Take these in order.
 
 **Prefer a seam.** Where the adapter is thin, take the dependency as an injected
@@ -188,8 +197,8 @@ pair, or a mailbox shim that waits for the callback to run. Nothing to select at
 build time.
 
 **Otherwise gate the translation unit.** Where the adapter carries logic that
-belongs in the library — the DNS resolver's async callback handling, poll
-interval and timeout — keep it and wrap the file:
+belongs in the library - the DNS resolver's async callback handling, poll
+interval and timeout - keep it and wrap the file:
 
 ```c
 #include "lwip/opt.h"
@@ -212,7 +221,7 @@ A gated adapter must also honour these:
 - The upstream config header is the first include. It defines the macro, so the
   gate cannot be evaluated before it.
 - That hoisted include is the file's only copy. Where the adapter already
-  included it further down, delete that one — clang-tidy's
+  included it further down, delete that one - clang-tidy's
   `readability-duplicate-include` fails the `analyze-tidy-freertos-*` lanes,
   which the `debug` preset does not cover.
 - Both translation units gate: the adapter and its `*Static.c` pool sibling.
