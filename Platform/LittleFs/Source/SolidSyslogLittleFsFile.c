@@ -23,6 +23,7 @@ static bool LittleFsFile_Open(struct SolidSyslogFile* base, const char* path);
 static void LittleFsFile_Close(struct SolidSyslogFile* base);
 static bool LittleFsFile_IsOpen(struct SolidSyslogFile* base);
 static bool LittleFsFile_Read(struct SolidSyslogFile* base, void* buf, size_t count);
+static bool LittleFsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
 
 static inline struct SolidSyslogLittleFsFile* LittleFsFile_SelfFromBase(struct SolidSyslogFile* base);
 
@@ -44,6 +45,7 @@ bool SolidSyslogLittleFsFile_Initialise(
     self->Base.Close = LittleFsFile_Close;
     self->Base.IsOpen = LittleFsFile_IsOpen;
     self->Base.Read = LittleFsFile_Read;
+    self->Base.Write = LittleFsFile_Write;
     self->IsOpen = false;
     return true;
 }
@@ -90,4 +92,15 @@ static bool LittleFsFile_Read(struct SolidSyslogFile* base, void* buf, size_t co
     /* The contract does not distinguish a short read from an error, so a
      * negative result and a small one fail the same way. */
     return (read >= 0) && ((size_t) read == count);
+}
+
+static bool LittleFsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count)
+{
+    struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
+    lfs_ssize_t written = lfs_file_write(self->Filesystem, &self->Handle, buf, (lfs_size_t) count);
+    bool wroteAllData = (written >= 0) && ((size_t) written == count);
+    /* The File contract makes a true return mean the bytes are on the media:
+     * the BlockStore treats it as durable across power loss, so the sync is
+     * part of the write rather than something a caller arranges. */
+    return wroteAllData && (lfs_file_sync(self->Filesystem, &self->Handle) == LFS_ERR_OK);
 }
