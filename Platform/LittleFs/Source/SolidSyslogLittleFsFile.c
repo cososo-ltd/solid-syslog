@@ -20,6 +20,7 @@ const struct SolidSyslogErrorSource SolidSyslogLittleFsFileErrorSource = {"Littl
 #define READ_WRITE_OR_CREATE (LFS_O_RDWR | LFS_O_CREAT)
 
 static bool LittleFsFile_Open(struct SolidSyslogFile* base, const char* path);
+static void LittleFsFile_Close(struct SolidSyslogFile* base);
 static bool LittleFsFile_IsOpen(struct SolidSyslogFile* base);
 
 static inline struct SolidSyslogLittleFsFile* LittleFsFile_SelfFromBase(struct SolidSyslogFile* base);
@@ -39,6 +40,7 @@ bool SolidSyslogLittleFsFile_Initialise(
     self->Filesystem = filesystem;
     self->OpenConfig.buffer = fileBuffer;
     self->Base.Open = LittleFsFile_Open;
+    self->Base.Close = LittleFsFile_Close;
     self->Base.IsOpen = LittleFsFile_IsOpen;
     self->IsOpen = false;
     return true;
@@ -62,6 +64,16 @@ static bool LittleFsFile_Open(struct SolidSyslogFile* base, const char* path)
     int result = lfs_file_opencfg(self->Filesystem, &self->Handle, path, READ_WRITE_OR_CREATE, &self->OpenConfig);
     self->IsOpen = (result == LFS_ERR_OK);
     return self->IsOpen;
+}
+
+static void LittleFsFile_Close(struct SolidSyslogFile* base)
+{
+    struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
+    if (self->IsOpen)
+    {
+        (void) lfs_file_close(self->Filesystem, &self->Handle);
+        self->IsOpen = false;
+    }
 }
 
 static bool LittleFsFile_IsOpen(struct SolidSyslogFile* base)
