@@ -96,3 +96,22 @@ TEST(SolidSyslogLittleFsFile, WriteCommitsBeforeReportingSuccess)
     MEMCMP_EQUAL(record, LittleFsFake_LastWriteBytes(), sizeof(record));
     LONGS_EQUAL(1, LittleFsFake_SyncCallCount());
 }
+
+TEST(SolidSyslogLittleFsFile, WriteFailsWhenTheSyncFails)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    LittleFsFake_SetSyncResult(LFS_ERR_IO);
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+
+    CHECK_FALSE(SolidSyslogFile_Write(file, record, sizeof(record)));
+}
+
+TEST(SolidSyslogLittleFsFile, WriteFailsWhenFewerBytesAreAccepted)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    LittleFsFake_SetWriteBytesAccepted(2);
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+
+    CHECK_FALSE(SolidSyslogFile_Write(file, record, sizeof(record)));
+    LONGS_EQUAL(0, LittleFsFake_SyncCallCount());
+}
