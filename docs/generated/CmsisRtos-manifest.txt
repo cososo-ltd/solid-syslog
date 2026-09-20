@@ -15,6 +15,7 @@
 # CmsisRtos:
 Platform/CmsisRtos/Source/SolidSyslogCmsisRtosMutex.c
 Platform/CmsisRtos/Source/SolidSyslogCmsisRtosMutexStatic.c
+Platform/CmsisRtos/Source/SolidSyslogCmsisRtosSysUpTime.c
 
 ## Include directories
 
