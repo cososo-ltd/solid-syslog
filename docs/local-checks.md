@@ -10,7 +10,7 @@ wait before a push stays short and CI catches the rest.
 | Tier | When | What | Wall-clock |
 |---|---|---|---|
 | **A** — fast feedback | Every commit on the branch | `cmake --build --preset debug --target junit` for whatever preset matches the diff (gcc / clang / freertos-host) | ~30–60 s |
-| **B** — pre-push | First push to the branch and any push that changes production source | A + format reflowed includes + `misra_renumber.py`, plus `check_spdx_headers.py` when a file was added | ~2–3 min |
+| **B** — pre-push | First push to the branch and any push that changes production source | A + format reflowed includes + `misra_renumber.py`, plus `check_spdx_headers.py` when a file was added and the manifests when a platform gained a source | ~3–4 min |
 | **CI** — everything else | After push | `tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel |
 
 IWYU is advisory. The lanes still run on every PR and
@@ -34,6 +34,9 @@ Tier B does MISRA-line-drift cleanup, so scope it to what changed:
 - Added any file under `Core/` or `Platform/`: run
   `python3 scripts/check_spdx_headers.py`. It is a sub-second file scan, so it
   costs nothing to run on every push if you would rather not think about it.
+- Added a file to a platform pack's `target_sources`: regenerate the manifests,
+  below. `docs/generated/` is checked in and `verify-manifest` diffs it, so a new
+  source file makes that lane red on its own.
 
 ## Running Tier B
 
@@ -50,6 +53,45 @@ scripts/misra_renumber.py --apply    # write back updated suppressions
 
 The script bails on genuine new findings (mismatched counts per
 rule+file); those need manual review. See the script's docstring.
+
+### Manifests — regenerate after adding a platform source
+
+`docs/generated/<Platform>-manifest.txt` lists what each pack compiles, and the
+`verify-manifest` lane regenerates all of them and fails on any difference.
+Adding a file to `target_sources` in a pack's `CMakeLists.txt` is enough to make
+one stale.
+
+Run CI's own loop rather than editing the file. It is configure-only and takes
+under a minute:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml run --rm freertos-host bash -c '
+scrubbed() { env -u LWIP_PATH -u FREERTOS_KERNEL_PATH -u MBEDTLS_DIR \
+    -u FATFS_PATH -u FREERTOS_PLUS_FAT_PATH -u FREERTOS_PLUS_TCP_PATH "$@"; }
+scrubbed cmake -S . -B build/manifest-core -DSOLIDSYSLOG_BUILD_TESTING=OFF \
+  -DSOLIDSYSLOG_MANIFEST_SCOPE=core \
+  -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/core-manifest.txt"
+for platform in $(python3 scripts/check_manifest.py --list-platforms); do
+  [ "$platform" = "Windows" ] && continue
+  scrubbed cmake -S . -B "build/manifest-$platform" -DSOLIDSYSLOG_BUILD_TESTING=OFF \
+    -DSOLIDSYSLOG_MANIFEST_SCOPE=platform -DSOLIDSYSLOG_PLATFORMS="$platform" \
+    -DSOLIDSYSLOG_MANIFEST_PLATFORMS="$platform" \
+    -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/$platform-manifest.txt"
+done'
+git diff --stat docs/generated/
+```
+
+Two things the command is doing deliberately. The environment scrub makes a pack
+appear in a manifest because it was named rather than because the image happens
+to carry its upstream tree. `Windows` is skipped because it is probe-kind and
+cannot be selected on Linux — `build-windows-msvc` writes that fragment.
+
+The lane also regenerates the beta-stack manifest. That one only moves when a
+platform in `LwipRaw;FreeRtos;MbedTls;FatFs;StdAtomic` changes, so add it from
+`ci.yml` if your diff touches one of those.
+
+Read the commands from the `verify-manifest` job in `.github/workflows/ci.yml`
+rather than from here if the two ever disagree — the workflow is what runs.
 
 ### IWYU (optional, advisory)
 
