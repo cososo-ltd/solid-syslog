@@ -19,8 +19,8 @@
 
 const struct SolidSyslogErrorSource SolidSyslogPosixFileErrorSource = {"PosixFile"};
 
-#define OWNER_READ_WRITE (S_IRUSR | S_IWUSR)
-#define DEFAULT_FILE_PERMISSIONS OWNER_READ_WRITE
+#define POSIXFILE_OWNER_READ_WRITE (S_IRUSR | S_IWUSR)
+#define POSIXFILE_DEFAULT_PERMISSIONS POSIXFILE_OWNER_READ_WRITE
 
 enum
 {
@@ -77,7 +77,7 @@ static inline struct SolidSyslogPosixFile* PosixFile_SelfFromBase(struct SolidSy
 static bool PosixFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
-    self->Fd = open(path, O_RDWR | O_CREAT, DEFAULT_FILE_PERMISSIONS);
+    self->Fd = open(path, O_RDWR | O_CREAT, POSIXFILE_DEFAULT_PERMISSIONS);
     return self->Fd != INVALID_FD;
 }
 
