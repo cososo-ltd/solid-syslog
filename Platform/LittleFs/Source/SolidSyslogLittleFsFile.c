@@ -28,6 +28,9 @@ bool SolidSyslogLittleFsFile_Initialise(
 {
     struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
     (void) fileBufferBytes;
+    /* Start from the Null vtable so any slot this adapter has not filled is a
+     * safe no-op rather than a NULL dispatch. */
+    self->Base = *SolidSyslogNullFile_Get();
     self->Filesystem = filesystem;
     self->OpenConfig.buffer = fileBuffer;
     self->Base.IsOpen = LittleFsFile_IsOpen;

@@ -39,3 +39,9 @@ TEST(SolidSyslogLittleFsFile, IsOpenIsFalseAfterCreate)
 {
     CHECK_FALSE(SolidSyslogFile_IsOpen(file));
 }
+
+TEST(SolidSyslogLittleFsFile, OpenSucceeds)
+{
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    CHECK_TRUE(SolidSyslogFile_IsOpen(file));
+}
