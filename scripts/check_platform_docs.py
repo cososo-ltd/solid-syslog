@@ -62,6 +62,7 @@ ALIASES = {
     "CmsisRtos": ["CMSIS-RTOS2", "CMSIS"],
     "FatFs": ["FatFs", "ChaN"],
     "FreeRtos": ["FreeRTOS"],
+    "LittleFs": ["LittleFS", "littlefs"],
     "LwipRaw": ["lwIP"],
     "MbedTls": ["Mbed TLS", "mbedTLS", "mbedtls"],
     "OpenSsl": ["OpenSSL"],

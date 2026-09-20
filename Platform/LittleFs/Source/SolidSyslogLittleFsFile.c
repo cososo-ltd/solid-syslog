@@ -46,24 +46,23 @@ bool SolidSyslogLittleFsFile_Initialise(
     /* Start from the Null vtable so any slot this adapter has not filled is a
      * safe no-op rather than a NULL dispatch. */
     self->Base = *SolidSyslogNullFile_Get();
-    if (valid == false)
+    if (valid == true)
     {
-        return false;
+        self->Filesystem = filesystem;
+        self->OpenConfig.buffer = fileBuffer;
+        self->Base.Open = LittleFsFile_Open;
+        self->Base.Close = LittleFsFile_Close;
+        self->Base.IsOpen = LittleFsFile_IsOpen;
+        self->Base.Read = LittleFsFile_Read;
+        self->Base.Write = LittleFsFile_Write;
+        self->Base.SeekTo = LittleFsFile_SeekTo;
+        self->Base.Size = LittleFsFile_Size;
+        self->Base.Truncate = LittleFsFile_Truncate;
+        self->Base.Exists = LittleFsFile_Exists;
+        self->Base.Delete = LittleFsFile_Delete;
+        self->IsOpen = false;
     }
-    self->Filesystem = filesystem;
-    self->OpenConfig.buffer = fileBuffer;
-    self->Base.Open = LittleFsFile_Open;
-    self->Base.Close = LittleFsFile_Close;
-    self->Base.IsOpen = LittleFsFile_IsOpen;
-    self->Base.Read = LittleFsFile_Read;
-    self->Base.Write = LittleFsFile_Write;
-    self->Base.SeekTo = LittleFsFile_SeekTo;
-    self->Base.Size = LittleFsFile_Size;
-    self->Base.Truncate = LittleFsFile_Truncate;
-    self->Base.Exists = LittleFsFile_Exists;
-    self->Base.Delete = LittleFsFile_Delete;
-    self->IsOpen = false;
-    return true;
+    return valid;
 }
 
 static inline struct SolidSyslogLittleFsFile* LittleFsFile_SelfFromBase(struct SolidSyslogFile* base)
