@@ -54,3 +54,11 @@ TEST(SolidSyslogLittleFsFile, OpenPassesPathFlagsAndTheCallersBuffer)
     LONGS_EQUAL(LFS_O_RDWR | LFS_O_CREAT, LittleFsFake_LastOpenFlags());
     POINTERS_EQUAL(fileBuffer, LittleFsFake_LastOpenBuffer());
 }
+
+TEST(SolidSyslogLittleFsFile, CloseClosesTheOpenFile)
+{
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    SolidSyslogFile_Close(file);
+    CHECK_FALSE(SolidSyslogFile_IsOpen(file));
+    LONGS_EQUAL(1, LittleFsFake_CloseCallCount());
+}

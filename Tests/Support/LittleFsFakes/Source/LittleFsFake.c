@@ -5,6 +5,7 @@
 static lfs_t Fake_Filesystem;
 static struct lfs_config Fake_Config;
 
+static int Fake_CloseCallCount;
 static int Fake_OpenResult;
 static int Fake_OpenCallCount;
 static const char* Fake_LastOpenPath;
@@ -15,11 +16,25 @@ void LittleFsFake_Reset(void)
 {
     memset(&Fake_Filesystem, 0, sizeof(Fake_Filesystem));
     memset(&Fake_Config, 0, sizeof(Fake_Config));
+    Fake_CloseCallCount = 0;
     Fake_OpenResult = LFS_ERR_OK;
     Fake_OpenCallCount = 0;
     Fake_LastOpenPath = NULL;
     Fake_LastOpenFlags = 0;
     Fake_LastOpenBuffer = NULL;
+}
+
+int LittleFsFake_CloseCallCount(void)
+{
+    return Fake_CloseCallCount;
+}
+
+int lfs_file_close(lfs_t* lfs, lfs_file_t* file)
+{
+    (void) lfs;
+    (void) file;
+    Fake_CloseCallCount++;
+    return LFS_ERR_OK;
 }
 
 void LittleFsFake_SetOpenResult(int result)

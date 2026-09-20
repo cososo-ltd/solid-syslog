@@ -12,6 +12,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * caller's file buffer against. The storage lives in the fake. */
     lfs_t* LittleFsFake_MountedWithCacheSize(lfs_size_t cacheSize);
 
+    int LittleFsFake_CloseCallCount(void);
+
     void LittleFsFake_SetOpenResult(int result);
     int LittleFsFake_OpenCallCount(void);
     const char* LittleFsFake_LastOpenPath(void);
