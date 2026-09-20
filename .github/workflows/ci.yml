@@ -920,6 +920,7 @@ jobs:
           -IPlatform/PlusTcp/Interface
           -IPlatform/LwipRaw/Interface
           -IPlatform/FatFs/Interface
+          -IPlatform/LittleFs/Interface
           -IPlatform/PlusFat/Interface
           --xml --xml-version=2
           Core/Source/
@@ -933,6 +934,7 @@ jobs:
           Platform/PlusTcp/Source/
           Platform/LwipRaw/Source/
           Platform/FatFs/Source/
+          Platform/LittleFs/Source/
           Platform/PlusFat/Source/
           2> build/cppcheck/cppcheck-report.xml
 
@@ -983,6 +985,7 @@ jobs:
           -IPlatform/PlusTcp/Interface
           -IPlatform/LwipRaw/Interface
           -IPlatform/FatFs/Interface
+          -IPlatform/LittleFs/Interface
           -IPlatform/PlusFat/Interface
           Core/Source/
           Platform/StdAtomic/Source/
@@ -995,6 +998,7 @@ jobs:
           Platform/PlusTcp/Source/
           Platform/LwipRaw/Source/
           Platform/FatFs/Source/
+          Platform/LittleFs/Source/
           Platform/PlusFat/Source/
 
       - name: Generate cppcheck-misra XML report
@@ -1030,6 +1034,7 @@ jobs:
             -IPlatform/PlusTcp/Interface \
             -IPlatform/LwipRaw/Interface \
             -IPlatform/FatFs/Interface \
+            -IPlatform/LittleFs/Interface \
             -IPlatform/PlusFat/Interface \
             --xml --xml-version=2 \
             Core/Source/ \
@@ -1043,6 +1048,7 @@ jobs:
             Platform/PlusTcp/Source/ \
             Platform/LwipRaw/Source/ \
             Platform/FatFs/Source/ \
+            Platform/LittleFs/Source/ \
             Platform/PlusFat/Source/ \
             2> build/cppcheck-misra/cppcheck-misra-report.xml
 

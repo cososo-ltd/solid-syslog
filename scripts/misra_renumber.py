@@ -91,6 +91,7 @@ CPPCHECK_CMD = [
     "-IPlatform/PlusTcp/Interface",
     "-IPlatform/LwipRaw/Interface",
     "-IPlatform/FatFs/Interface",
+    "-IPlatform/LittleFs/Interface",
     "-IPlatform/PlusFat/Interface",
     "--xml",
     "--xml-version=2",
@@ -105,6 +106,7 @@ CPPCHECK_CMD = [
     "Platform/PlusTcp/Source/",
     "Platform/LwipRaw/Source/",
     "Platform/FatFs/Source/",
+    "Platform/LittleFs/Source/",
     "Platform/PlusFat/Source/",
 ]
 

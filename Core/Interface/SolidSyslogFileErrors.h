@@ -24,6 +24,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     {
         SOLIDSYSLOG_FILE_ERROR_POOL_EXHAUSTED,
         SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY,
+        /* Wiring a backend cannot work without. A backend that mounts its own
+           filesystem, or needs no caller-supplied storage, never raises these. */
+        SOLIDSYSLOG_FILE_ERROR_NULL_FILESYSTEM,
+        SOLIDSYSLOG_FILE_ERROR_BUFFER_TOO_SMALL,
         SOLIDSYSLOG_FILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

@@ -264,7 +264,8 @@ endif()
 # probe fatal-error below into a silent no-op. The default column is only ever
 # used as a truth value, so nothing is lost.
 foreach(upstream_hint MBEDTLS_DIR LWIP_PATH FREERTOS_PLUS_TCP_PATH
-                      FREERTOS_KERNEL_PATH FATFS_PATH FREERTOS_PLUS_FAT_PATH)
+                      FREERTOS_KERNEL_PATH FATFS_PATH FREERTOS_PLUS_FAT_PATH
+                      LITTLEFS_PATH)
     if(DEFINED ENV{${upstream_hint}} AND NOT "$ENV{${upstream_hint}}" STREQUAL "")
         set(HAVE_${upstream_hint} TRUE)
     else()
@@ -285,6 +286,7 @@ set(SOLIDSYSLOG_PLATFORM_REGISTRY
     "CmsisRtos|SOLIDSYSLOG_CMSISRTOS|TRUE|upstream|Platform/CmsisRtos|mutex clock"
     "FatFs|SOLIDSYSLOG_FATFS|${HAVE_FATFS_PATH}|upstream|Platform/FatFs|file"
     "PlusFat|SOLIDSYSLOG_PLUSFAT|${HAVE_FREERTOS_PLUS_FAT_PATH}|upstream|Platform/PlusFat|file"
+    "LittleFs|SOLIDSYSLOG_LITTLEFS|${HAVE_LITTLEFS_PATH}|upstream|Platform/LittleFs|file"
 )
 
 # Split one registry row into the names the loops below use. A row is
@@ -474,6 +476,10 @@ solidsyslog_declare_path(SOLIDSYSLOG_MBEDTLS_DIR
     "Path to the Mbed TLS source tree (SolidSyslog's own tests and BDD targets only)"
     MBEDTLS_DIR)
 
+solidsyslog_declare_path(SOLIDSYSLOG_LITTLEFS_PATH
+    "Path to the LittleFS source tree (SolidSyslog's own tests only)"
+    LITTLEFS_PATH)
+
 solidsyslog_declare_path(SOLIDSYSLOG_CMSIS_PATH
     "Path to the CMSIS_6 source tree, for cmsis_os2.h (SolidSyslog's own BDD targets only)"
     CMSIS_PATH)
@@ -510,6 +516,8 @@ solidsyslog_require_path_for_tests(SOLIDSYSLOG_FATFS
     SOLIDSYSLOG_FATFS_PATH FATFS_PATH)
 solidsyslog_require_path_for_tests(SOLIDSYSLOG_PLUSFAT
     SOLIDSYSLOG_FREERTOS_PLUS_FAT_PATH FREERTOS_PLUS_FAT_PATH)
+solidsyslog_require_path_for_tests(SOLIDSYSLOG_LITTLEFS
+    SOLIDSYSLOG_LITTLEFS_PATH LITTLEFS_PATH)
 # Plus-TCP is deliberately absent: Tests/FreeRtos skips only the tests that need
 # it, so a kernel-only environment still builds the UART test.
 

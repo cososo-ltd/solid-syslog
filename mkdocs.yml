@@ -203,6 +203,7 @@ nav:
       - C11 atomics: platforms/stdatomic/index.md
       - CMSIS-RTOS2: platforms/cmsisrtos/index.md
       - FatFs: platforms/fatfs/index.md
+      - LittleFS: platforms/littlefs/index.md
       - FreeRTOS: platforms/freertos/index.md
       - FreeRTOS-Plus-FAT: platforms/plusfat/index.md
       - FreeRTOS-Plus-TCP: platforms/plustcp/index.md
