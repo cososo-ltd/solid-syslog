@@ -18,7 +18,7 @@ const struct SolidSyslogErrorSource SolidSyslogLittleFsFileErrorSource = {"Littl
 
 /* The File contract says Open creates the file when absent and never truncates
  * an existing one. */
-#define READ_WRITE_OR_CREATE (LFS_O_RDWR | LFS_O_CREAT)
+#define LITTLEFSFILE_READ_WRITE_OR_CREATE (LFS_O_RDWR | LFS_O_CREAT)
 
 static bool LittleFsFile_Open(struct SolidSyslogFile* base, const char* path);
 static void LittleFsFile_Close(struct SolidSyslogFile* base);
@@ -112,7 +112,8 @@ void SolidSyslogLittleFsFile_Cleanup(struct SolidSyslogFile* base)
 static bool LittleFsFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
-    int result = lfs_file_opencfg(self->Filesystem, &self->Handle, path, READ_WRITE_OR_CREATE, &self->OpenConfig);
+    int result =
+        lfs_file_opencfg(self->Filesystem, &self->Handle, path, LITTLEFSFILE_READ_WRITE_OR_CREATE, &self->OpenConfig);
     self->IsOpen = (result == LFS_ERR_OK);
     return self->IsOpen;
 }

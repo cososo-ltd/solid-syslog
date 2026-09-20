@@ -533,6 +533,36 @@ Deliberate deviations from the MISRA rule set are recorded in
 - cppcheck runs with `--error-exitcode=1`. Inline suppressions (`// cppcheck-suppress`) must include
   a comment explaining why.
 
+### Acting on review findings
+
+A finding from any reviewer - CodeRabbit, CI, a person - is declined on exactly
+two grounds, and neither of them is that something else in the tree does the
+same thing.
+
+- **It is factually wrong.** Check before deciding; the reviewer may not have
+  read the file that settles it.
+- **Its premise does not apply here.** `Bdd/` is the test harness running on
+  emulated media, so a finding hardening against a real-media failure mode has
+  nothing to bite on.
+
+Anything else - a genuine fault, or a violation of a standard this repository
+documents - **is fixed in our code now.** Where a sibling platform shares it,
+raise an issue naming that platform; do not leave ours wrong for company, and do
+not park our own fix inside a sweep of the whole platform. A sweep is how a
+known defect becomes nobody's job.
+
+Two distinctions worth holding on to, because they are where the judgement
+actually is:
+
+- **A documented standard is not the same as a reviewer's preference.** If
+  `docs/NAMING.md`, `.clang-tidy`, `.clang-format` or MISRA requires it, it
+  binds. If the whole tree does the opposite uniformly and nothing requires the
+  change, adopting it in one file creates the inconsistency rather than curing
+  one - say so, and make it a decision taken once for everywhere or not at all.
+- **A convention already ruled on is not rot.** Some tree-wide idioms have been
+  examined and deliberately kept; the pool-test create/destroy fixture is one
+  (#789). Check before treating a widespread pattern as a defect.
+
 ### Characters in source
 
 Write what a UK keyboard types. In `.c`, `.h` and `.cpp` — comments included — that

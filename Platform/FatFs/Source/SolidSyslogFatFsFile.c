@@ -16,7 +16,7 @@
 
 const struct SolidSyslogErrorSource SolidSyslogFatFsFileErrorSource = {"FatFsFile"};
 
-#define READ_WRITE_OR_CREATE (FA_READ | FA_WRITE | FA_OPEN_ALWAYS)
+#define FATFSFILE_READ_WRITE_OR_CREATE (FA_READ | FA_WRITE | FA_OPEN_ALWAYS)
 
 static bool FatFsFile_Open(struct SolidSyslogFile* base, const char* path);
 static void FatFsFile_Close(struct SolidSyslogFile* base);
@@ -74,7 +74,7 @@ static void FatFsFile_Close(struct SolidSyslogFile* base)
 static bool FatFsFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromBase(base);
-    FRESULT result = f_open(&self->Fp, path, READ_WRITE_OR_CREATE);
+    FRESULT result = f_open(&self->Fp, path, FATFSFILE_READ_WRITE_OR_CREATE);
     self->IsOpen = (result == FR_OK);
     return self->IsOpen;
 }

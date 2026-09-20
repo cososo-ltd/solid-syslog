@@ -25,8 +25,8 @@ const struct SolidSyslogErrorSource SolidSyslogWindowsFileErrorSource = {"Window
  * unchanged. Without it the CRT substitutes 0x0D 0x0A for 0x0A on write
  * and the inverse on read, corrupting any byte that happens to fall on
  * those values. */
-#define DEFAULT_OPEN_FLAGS (_O_RDWR | _O_CREAT | _O_BINARY)
-#define DEFAULT_FILE_PERMISSIONS (_S_IREAD | _S_IWRITE)
+#define WINDOWSFILE_DEFAULT_OPEN_FLAGS (_O_RDWR | _O_CREAT | _O_BINARY)
+#define WINDOWSFILE_DEFAULT_PERMISSIONS (_S_IREAD | _S_IWRITE)
 
 enum
 {
@@ -84,7 +84,8 @@ static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromBase(struct Sol
 static bool WindowsFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
-    errno_t err = _sopen_s(&self->Fd, path, DEFAULT_OPEN_FLAGS, _SH_DENYNO, DEFAULT_FILE_PERMISSIONS);
+    errno_t err =
+        _sopen_s(&self->Fd, path, WINDOWSFILE_DEFAULT_OPEN_FLAGS, _SH_DENYNO, WINDOWSFILE_DEFAULT_PERMISSIONS);
     if (err != 0)
     {
         self->Fd = INVALID_FD;
