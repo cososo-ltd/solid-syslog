@@ -45,3 +45,12 @@ TEST(SolidSyslogLittleFsFile, OpenSucceeds)
     CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
     CHECK_TRUE(SolidSyslogFile_IsOpen(file));
 }
+
+TEST(SolidSyslogLittleFsFile, OpenPassesPathFlagsAndTheCallersBuffer)
+{
+    CHECK_TRUE(SolidSyslogFile_Open(file, "records.log"));
+    LONGS_EQUAL(1, LittleFsFake_OpenCallCount());
+    STRCMP_EQUAL("records.log", LittleFsFake_LastOpenPath());
+    LONGS_EQUAL(LFS_O_RDWR | LFS_O_CREAT, LittleFsFake_LastOpenFlags());
+    POINTERS_EQUAL(fileBuffer, LittleFsFake_LastOpenBuffer());
+}
