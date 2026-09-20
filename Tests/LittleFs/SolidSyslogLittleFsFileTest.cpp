@@ -258,3 +258,15 @@ TEST(SolidSyslogLittleFsFileBadSetup, ABufferLargerThanTheCacheSizeIsAccepted)
     CHECK_FALSE(SolidSyslogNullFile_Get() == accepted);
     SolidSyslogLittleFsFile_Destroy(accepted);
 }
+
+TEST(SolidSyslogLittleFsFile, DestroyClosesAFileLeftOpen)
+{
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+
+    SolidSyslogLittleFsFile_Destroy(file);
+
+    LONGS_EQUAL(1, LittleFsFake_CloseCallCount());
+    /* The group's teardown destroys again; the slot is already free and the
+       handle already carries the Null vtable, so that is a safe no-op. */
+    file = SolidSyslogNullFile_Get();
+}
