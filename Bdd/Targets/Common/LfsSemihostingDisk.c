@@ -47,7 +47,6 @@ static const struct lfs_config CONFIG = {
 
 const struct lfs_config* LfsSemihostingDisk_Config(void)
 {
-    memset(erasePattern, ERASED_BYTE, sizeof(erasePattern));
     return &CONFIG;
 }
 
@@ -95,6 +94,9 @@ static int DiskErase(const struct lfs_config* c, lfs_block_t block)
     {
         return LFS_ERR_IO;
     }
+    /* Filled here rather than once at start-up, so the driver carries no
+     * ordering assumption about having been configured first. */
+    memset(erasePattern, ERASED_BYTE, sizeof(erasePattern));
     for (uint32_t sector = 0; (sector < (uint32_t) SECTORS_PER_BLOCK) && (result == LFS_ERR_OK); sector++)
     {
         result = TransferResult(SemihostingDisk_Write(erasePattern, SectorFor(block, 0) + sector, 1));
