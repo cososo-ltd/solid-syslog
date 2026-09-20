@@ -9,9 +9,9 @@ wait before a push stays short and CI catches the rest.
 
 | Tier | When | What | Wall-clock |
 |---|---|---|---|
-| **A** — fast feedback | Every commit on the branch | `cmake --build --preset debug --target junit` for whatever preset matches the diff (gcc / clang / freertos-host) | ~30–60 s |
-| **B** — pre-push | First push to the branch and any push that changes production source | A + format reflowed includes + `misra_renumber.py`, plus `check_spdx_headers.py` when a file was added | ~2–3 min |
-| **CI** — everything else | After push | `tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel |
+| **A** - fast feedback | Every commit on the branch | `cmake --build --preset debug --target junit` for whatever preset matches the diff (gcc / clang / freertos-host) | ~30-60 s |
+| **B** - pre-push | First push to the branch and any push that changes production source | A + format reflowed includes + `misra_renumber.py`, plus `check_spdx_headers.py` when a file was added and the manifests when a platform gained a source | ~3-4 min |
+| **CI** - everything else | After push | `tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel |
 
 IWYU is advisory. The lanes still run on every PR and
 the report is uploaded as an artifact, but findings no longer fail the
@@ -34,10 +34,15 @@ Tier B does MISRA-line-drift cleanup, so scope it to what changed:
 - Added any file under `Core/` or `Platform/`: run
   `python3 scripts/check_spdx_headers.py`. It is a sub-second file scan, so it
   costs nothing to run on every push if you would rather not think about it.
+- Added or removed a `.c` under `Core/Source/` or `Platform/*/Source/`, or
+  changed a pack's `target_sources`: regenerate the manifests, below.
+  `docs/generated/` is checked in and `verify-manifest` both diffs it and
+  compares it against the tree, so either kind of change makes that lane red on
+  its own.
 
 ## Running Tier B
 
-### MISRA — fix line-number drift
+### MISRA - fix line-number drift
 
 When edits shift production lines, `misra_suppressions.txt` entries go
 stale. Fix in one step:
@@ -50,6 +55,61 @@ scripts/misra_renumber.py --apply    # write back updated suppressions
 
 The script bails on genuine new findings (mismatched counts per
 rule+file); those need manual review. See the script's docstring.
+
+### Manifests - regenerate after changing the sources
+
+`docs/generated/<Platform>-manifest.txt` lists what each pack compiles, and is
+what a non-CMake integrator builds from. The `verify-manifest` lane checks it
+two ways, and both have to pass:
+
+1. It regenerates every manifest and fails on any difference. A file added to
+   `target_sources` makes one stale this way.
+2. It runs `scripts/check_manifest.py` over each one, comparing the file lists
+   against the source directories on disk rather than against the build targets.
+   A `.c` sitting in `Platform/<Pack>/Source/` that no target lists is invisible
+   to step 1 - regenerating produces no diff - and is caught here.
+
+Run CI's own loop rather than editing the files. It is configure-only and takes
+about a minute:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml run --rm freertos-host bash -c '
+scrubbed() { env -u LWIP_PATH -u FREERTOS_KERNEL_PATH -u MBEDTLS_DIR \
+    -u FATFS_PATH -u FREERTOS_PLUS_FAT_PATH -u FREERTOS_PLUS_TCP_PATH "$@"; }
+scrubbed cmake -S . -B build/manifest-core -DSOLIDSYSLOG_BUILD_TESTING=OFF \
+  -DSOLIDSYSLOG_MANIFEST_SCOPE=core \
+  -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/core-manifest.txt"
+for platform in $(python3 scripts/check_manifest.py --list-platforms); do
+  [ "$platform" = "Windows" ] && continue
+  scrubbed cmake -S . -B "build/manifest-$platform" -DSOLIDSYSLOG_BUILD_TESTING=OFF \
+    -DSOLIDSYSLOG_MANIFEST_SCOPE=platform -DSOLIDSYSLOG_PLATFORMS="$platform" \
+    -DSOLIDSYSLOG_MANIFEST_PLATFORMS="$platform" \
+    -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/$platform-manifest.txt"
+done
+cmake -S . -B build/manifest -DSOLIDSYSLOG_BUILD_TESTING=OFF \
+  -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos;MbedTls;FatFs;StdAtomic" \
+  -DSOLIDSYSLOG_MANIFEST_PLATFORMS="LwipRaw;MbedTls;FreeRtos;FatFs;StdAtomic" \
+  -DSOLIDSYSLOG_MANIFEST_OUTPUT="$(pwd)/docs/generated/beta-stack-manifest.txt"
+for manifest in docs/generated/*-manifest.txt; do
+  python3 scripts/check_manifest.py "$manifest" || exit 1
+done'
+git diff --stat docs/generated/
+```
+
+Three things the command is doing deliberately. The environment scrub makes a
+pack appear in a manifest because it was named rather than because the image
+happens to carry its upstream tree. `Windows` is skipped because it is
+probe-kind and cannot be selected on Linux - `build-windows-msvc` writes that
+fragment. And the last command is not regeneration but assertion: it is step 2
+above, which a clean `git diff` does not imply.
+
+The beta-stack manifest covers `Core/Source` plus the platforms named in it, so
+a source added to any of those drifts it as well as its own. It is regenerated
+unconditionally above rather than left to judgement, because deciding it does
+not apply is how it goes stale.
+
+Read the commands from the `verify-manifest` job in `.github/workflows/ci.yml`
+rather than from here if the two ever disagree - the workflow is what runs.
 
 ### IWYU (optional, advisory)
 
@@ -84,13 +144,13 @@ python3 scripts/check_spdx_headers.py
 ```
 
 Both the copyright line and the licence expression are read out of `LICENSE.md`
-at run time, so there is nothing to keep in step by hand — the check fails if
+at run time, so there is nothing to keep in step by hand - the check fails if
 the tree and the licence disagree.
 
 The second half is a tripwire rather than a style rule. `Core/` and `Platform/`
 contain no third-party code, and that invariant is what makes it safe to stamp
 our copyright across every file in them. If it fires, the question is whether
-the file belongs in the shipped library at all — there is deliberately no
+the file belongs in the shipped library at all - there is deliberately no
 allowlist.
 
 ## Markdown

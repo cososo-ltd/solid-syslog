@@ -32,6 +32,7 @@ full tiered pre-PR check budget. One-line summary:
 - Per-commit: `debug` build + tests for the matching preset (~30–60 s)
 - Pre-push (only when production source changed): `clang-format` reflow, then `scripts/misra_renumber.py` — in that order, because the reflow moves the lines the renumbering annotates (~2–3 min)
 - Pre-push (only when a file was added under `Core/` or `Platform/`): `scripts/check_spdx_headers.py` (~1 s)
+- Pre-push (only when a `.c` was added or removed under `Core/Source/` or `Platform/*/Source/`, or a pack's `target_sources` changed): regenerate `docs/generated/` and assert it — `verify-manifest` both diffs it and checks it against the tree (~1 min)
 - Pre-push (only when Markdown changed): markdownlint over the changed `.md` files (~5 s)
 - Everything else (`tidy`, `sanitize`, `coverage`, IWYU, Windows, BDD, integration, FreeRTOS host/cross) — CI's job; do not run locally. IWYU is advisory even in CI, and is not part of any pre-push budget; `docs/local-checks.md` keeps an optional command for the release-cleanup sweep
 - If CI surfaces a finding you missed, fix in another commit on the same branch rather than re-running every lane locally
