@@ -43,6 +43,11 @@ if(SOLIDSYSLOG_PLUSFAT)
     add_subdirectory(PlusFat)
 endif()
 
+if(SOLIDSYSLOG_LITTLEFS)
+    add_subdirectory(Support/LittleFsFakes)
+    add_subdirectory(LittleFs)
+endif()
+
 if(SOLIDSYSLOG_LWIPRAW)
     add_subdirectory(Lwip)
 endif()
