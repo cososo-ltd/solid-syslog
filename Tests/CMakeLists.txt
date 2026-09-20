@@ -46,6 +46,7 @@ endif()
 if(SOLIDSYSLOG_LITTLEFS)
     add_subdirectory(Support/LittleFsFakes)
     add_subdirectory(LittleFs)
+    add_subdirectory(LittleFsIntegration)
 endif()
 
 if(SOLIDSYSLOG_LWIPRAW)
@@ -310,6 +311,15 @@ foreach(fatfs_test_target IN ITEMS
 )
     if(TARGET ${fatfs_test_target})
         register_junit_test(${fatfs_test_target})
+    endif()
+endforeach()
+
+foreach(littlefs_test_target IN ITEMS
+    SolidSyslogLittleFsFileTest
+    LittleFsIntegrationTests
+)
+    if(TARGET ${littlefs_test_target})
+        register_junit_test(${littlefs_test_target})
     endif()
 endforeach()
 
