@@ -3,9 +3,15 @@
 
 extern "C"
 {
+#include "ErrorHandlerFake.h"
 #include "LittleFsFake.h"
 #include "SolidSyslogFile.h"
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogFileErrors.h"
 #include "SolidSyslogLittleFsFile.h"
+#include "SolidSyslogLittleFsFileErrors.h"
+#include "SolidSyslogNullFile.h"
+#include "SolidSyslogPrival.h"
 #include "lfs.h"
 }
 
@@ -181,4 +187,74 @@ TEST(SolidSyslogLittleFsFile, DeleteFailsOnAnyOtherError)
 {
     LittleFsFake_SetRemoveResult(LFS_ERR_IO);
     CHECK_FALSE(SolidSyslogFile_Delete(file, "locked.log"));
+}
+
+// clang-format off
+TEST_GROUP(SolidSyslogLittleFsFileBadSetup)
+{
+    unsigned char fileBuffer[TEST_CACHE_SIZE] = {};
+
+    void setup() override
+    {
+        LittleFsFake_Reset();
+        ErrorHandlerFake_Install(nullptr);
+    }
+
+    // No teardown: a refused create holds no slot, and the handle it returns is
+    // the shared NullFile, which is nobody's to destroy.
+};
+
+// clang-format on
+
+TEST(SolidSyslogLittleFsFileBadSetup, NoFilesystemIsRefused)
+{
+    struct SolidSyslogFile* refused = SolidSyslogLittleFsFile_Create(nullptr, fileBuffer, sizeof(fileBuffer));
+
+    POINTERS_EQUAL(SolidSyslogNullFile_Get(), refused);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogLittleFsFileErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_FILE_ERROR_NULL_FILESYSTEM
+    );
+}
+
+TEST(SolidSyslogLittleFsFileBadSetup, NoBufferIsRefused)
+{
+    lfs_t* filesystem = LittleFsFake_MountedWithCacheSize(TEST_CACHE_SIZE);
+
+    struct SolidSyslogFile* refused = SolidSyslogLittleFsFile_Create(filesystem, nullptr, 0);
+
+    POINTERS_EQUAL(SolidSyslogNullFile_Get(), refused);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogLittleFsFileErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_FILE_ERROR_BUFFER_TOO_SMALL
+    );
+}
+
+TEST(SolidSyslogLittleFsFileBadSetup, ABufferSmallerThanTheMountedCacheSizeIsRefused)
+{
+    lfs_t* filesystem = LittleFsFake_MountedWithCacheSize(TEST_CACHE_SIZE);
+
+    struct SolidSyslogFile* refused = SolidSyslogLittleFsFile_Create(filesystem, fileBuffer, TEST_CACHE_SIZE - 1);
+
+    POINTERS_EQUAL(SolidSyslogNullFile_Get(), refused);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogLittleFsFileErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_FILE_ERROR_BUFFER_TOO_SMALL
+    );
+}
+
+TEST(SolidSyslogLittleFsFileBadSetup, ABufferLargerThanTheCacheSizeIsAccepted)
+{
+    lfs_t* filesystem = LittleFsFake_MountedWithCacheSize(TEST_CACHE_SIZE);
+
+    struct SolidSyslogFile* accepted = SolidSyslogLittleFsFile_Create(filesystem, fileBuffer, sizeof(fileBuffer));
+
+    CHECK_FALSE(SolidSyslogNullFile_Get() == accepted);
+    SolidSyslogLittleFsFile_Destroy(accepted);
 }
