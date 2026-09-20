@@ -249,11 +249,21 @@ TEST(SolidSyslogLittleFsFileBadSetup, ABufferSmallerThanTheMountedCacheSizeIsRef
     );
 }
 
-TEST(SolidSyslogLittleFsFileBadSetup, ABufferLargerThanTheCacheSizeIsAccepted)
+TEST(SolidSyslogLittleFsFileBadSetup, ABufferExactlyTheCacheSizeIsAccepted)
 {
     lfs_t* filesystem = LittleFsFake_MountedWithCacheSize(TEST_CACHE_SIZE);
 
-    struct SolidSyslogFile* accepted = SolidSyslogLittleFsFile_Create(filesystem, fileBuffer, sizeof(fileBuffer));
+    struct SolidSyslogFile* accepted = SolidSyslogLittleFsFile_Create(filesystem, fileBuffer, TEST_CACHE_SIZE);
+
+    CHECK_FALSE(SolidSyslogNullFile_Get() == accepted);
+    SolidSyslogLittleFsFile_Destroy(accepted);
+}
+
+TEST(SolidSyslogLittleFsFileBadSetup, ABufferLargerThanTheCacheSizeIsAccepted)
+{
+    lfs_t* filesystem = LittleFsFake_MountedWithCacheSize(TEST_CACHE_SIZE - 1);
+
+    struct SolidSyslogFile* accepted = SolidSyslogLittleFsFile_Create(filesystem, fileBuffer, TEST_CACHE_SIZE);
 
     CHECK_FALSE(SolidSyslogNullFile_Get() == accepted);
     SolidSyslogLittleFsFile_Destroy(accepted);

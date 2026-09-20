@@ -63,16 +63,20 @@ TEST_GROUP(SolidSyslogLittleFsFilePool)
         ConfigLockFake_Uninstall();
     }
 
-    struct SolidSyslogFile* CreateWithBuffer(size_t which)
+    struct SolidSyslogFile* CreateWithBuffer(unsigned char* buffer) const
     {
-        return SolidSyslogLittleFsFile_Create(filesystem, buffers[which], POOL_TEST_CACHE_SIZE);
+        return SolidSyslogLittleFsFile_Create(filesystem, buffer, POOL_TEST_CACHE_SIZE);
     }
 
+    // Walks buffers alongside pooled rather than indexing either: a subscript
+    // whose index is not a constant expression is a clang-tidy error here.
     void FillPool()
     {
-        for (size_t slot = 0; slot < SOLIDSYSLOG_FILE_POOL_SIZE; slot++)
+        auto* buffer = buffers;
+        for (auto*& slot : pooled)
         {
-            pooled[slot] = CreateWithBuffer(slot);
+            slot = CreateWithBuffer(*buffer);
+            ++buffer;
         }
     }
 };
@@ -83,7 +87,7 @@ TEST(SolidSyslogLittleFsFilePool, FillingPoolThenOverflowReturnsDistinctFallback
 {
     FillPool();
 
-    overflow = CreateWithBuffer(SOLIDSYSLOG_FILE_POOL_SIZE);
+    overflow = CreateWithBuffer(buffers[SOLIDSYSLOG_FILE_POOL_SIZE]);
 
     CHECK_IS_FALLBACK(overflow, pooled);
 }
@@ -93,7 +97,7 @@ TEST(SolidSyslogLittleFsFilePool, ExhaustedCreateReportsError)
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = CreateWithBuffer(SOLIDSYSLOG_FILE_POOL_SIZE);
+    overflow = CreateWithBuffer(buffers[SOLIDSYSLOG_FILE_POOL_SIZE]);
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
@@ -106,7 +110,7 @@ TEST(SolidSyslogLittleFsFilePool, ExhaustedCreateReportsError)
 TEST(SolidSyslogLittleFsFilePool, FallbackOpenReturnsFalse)
 {
     FillPool();
-    overflow = CreateWithBuffer(SOLIDSYSLOG_FILE_POOL_SIZE);
+    overflow = CreateWithBuffer(buffers[SOLIDSYSLOG_FILE_POOL_SIZE]);
 
     CHECK_FALSE(SolidSyslogFile_Open(overflow, "anything.log"));
 }
@@ -128,7 +132,7 @@ TEST(SolidSyslogLittleFsFilePool, CreateAcquiresAndReleasesConfigLockOnFirstFree
 {
     ConfigLockFake_Install();
 
-    pooled[0] = CreateWithBuffer(0);
+    pooled[0] = CreateWithBuffer(buffers[0]);
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
@@ -139,7 +143,7 @@ TEST(SolidSyslogLittleFsFilePool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = CreateWithBuffer(SOLIDSYSLOG_FILE_POOL_SIZE);
+    overflow = CreateWithBuffer(buffers[SOLIDSYSLOG_FILE_POOL_SIZE]);
 
     LONGS_EQUAL(SOLIDSYSLOG_FILE_POOL_SIZE, ConfigLockFake_LockCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_FILE_POOL_SIZE, ConfigLockFake_UnlockCallCount());

@@ -1,0 +1,20 @@
+---
+# Pragmatic level per docs/NAMING.md — Platform/LittleFs.
+#
+# Inherits the root .clang-tidy. SolidSyslogLittleFsFile.h (Interface/) and the
+# sources refer to upstream LittleFS struct types — `lfs`, `lfs_config`,
+# `lfs_info`, `lfs_file_config`, … — because the integrator supplies the mounted
+# filesystem and the adapter embeds a file handle. The upstream names are
+# snake_case in the `lfs` namespace, which violates the project's StructCase +
+# StructPrefix rule, and renaming third-party types is not open to us. Extend
+# StructIgnoredRegexp locally so the rule exempts that namespace.
+#
+# clang-tidy CheckOption values do not merge across the hierarchy — the
+# latest-encountered value wins. The pattern below therefore re-states the root
+# .clang-tidy whitelist plus the lfs namespace. Keep in sync.
+InheritParentConfig: true
+CheckOptions:
+  - {
+      key: readability-identifier-naming.StructIgnoredRegexp,
+      value: "^(SolidSyslog|EscapedContext|BlockPresence|OpenHandle|LwipRawDatagramCall|LwipRawDnsResolverCall|LwipRawTcpStreamCall|lfs|lfs_[a-z0-9_]+)$",
+    }

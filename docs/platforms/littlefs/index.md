@@ -33,13 +33,14 @@ keeps control of its lifetime. The handle must outlive every file created from i
 
 ### You supply each file's cache, because only you can size it
 
-`lfs_file_opencfg` requires a buffer of exactly the mounted filesystem's
+`lfs_file_opencfg` gives each open file a cache of the mounted filesystem's
 `cache_size`, and that is a runtime property of the config you mounted with. The
 library cannot size it and does not guess: `SolidSyslogLittleFsFile_Create` takes
 the storage and its size from you, and the storage must outlive the file. It is
 the file's cache, not a copy of one.
 
-A buffer smaller than `cache_size`, or no buffer at all, is refused at Create:
+A buffer of at least `cache_size` is accepted; a smaller one, or no buffer at
+all, is refused at Create:
 the file falls back to the Null object and a `CRITICAL` is raised. Treat that as
 a build defect rather than a runtime condition - `cache_size` is fixed when you
 mount, so a size that is right once is right always.
