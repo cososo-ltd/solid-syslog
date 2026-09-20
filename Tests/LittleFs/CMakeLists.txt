@@ -7,6 +7,7 @@
 
 add_executable(SolidSyslogLittleFsFileTest
     SolidSyslogLittleFsFileTest.cpp
+    SolidSyslogLittleFsFilePoolTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/LittleFs/Source/SolidSyslogLittleFsFile.c
     ${CMAKE_SOURCE_DIR}/Platform/LittleFs/Source/SolidSyslogLittleFsFileStatic.c
