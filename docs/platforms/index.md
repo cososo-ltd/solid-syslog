@@ -22,6 +22,7 @@ vtable.
 | [OpenSSL](openssl/index.md) | OpenSSL ≥ 3.0 | | ● | ● | | | |
 | [Mbed TLS](mbedtls/index.md) | Mbed TLS | | ● | ● | | | |
 | [FatFs](fatfs/index.md) | ChaN FatFs | | | | ● | | |
+| [LittleFS](littlefs/index.md) | LittleFS | | | | ● | | |
 | [FreeRTOS-Plus-FAT](plusfat/index.md) | FreeRTOS-Plus-FAT | | | | ● | | |
 | [C11 atomics](stdatomic/index.md) | `<stdatomic.h>` | | | | | ● | |
 

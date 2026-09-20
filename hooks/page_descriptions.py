@@ -136,6 +136,15 @@ DESCRIPTIONS = {
         "Give store-and-forward a FatFs file backend: what to link, the disk "
         "I/O driver and configuration you supply, and what durability you get."
     ),
+    "platforms/littlefs/index.md": (
+        "The LittleFS adapter pack, filling the File role beneath a BlockDevice "
+        "on raw flash, with wear levelling and power-loss handling from the "
+        "filesystem itself."
+    ),
+    "platforms/littlefs/setup.md": (
+        "Back store-and-forward with LittleFS: the mount and per-file cache you "
+        "supply, the system include its headers need, and what will catch you out."
+    ),
     "platforms/plusfat/index.md": (
         "The FreeRTOS-Plus-FAT adapter pack, filling the File role beneath a "
         "BlockDevice for an all-FreeRTOS-Plus storage and transport stack."
