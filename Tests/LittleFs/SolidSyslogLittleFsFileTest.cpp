@@ -141,3 +141,44 @@ TEST(SolidSyslogLittleFsFile, SizeIsZeroWhenLittleFsReportsAnError)
 
     LONGS_EQUAL(0, SolidSyslogFile_Size(file));
 }
+
+TEST(SolidSyslogLittleFsFile, TruncateEmptiesTheFileAndLeavesItOpen)
+{
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+
+    SolidSyslogFile_Truncate(file);
+
+    LONGS_EQUAL(0, LittleFsFake_LastTruncateSize());
+    LONGS_EQUAL(0, LittleFsFake_LastSeekOffset());
+    CHECK_TRUE(SolidSyslogFile_IsOpen(file));
+}
+
+TEST(SolidSyslogLittleFsFile, ExistsAsksTheFilesystemAboutThePath)
+{
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "present.log"));
+    STRCMP_EQUAL("present.log", LittleFsFake_LastStatPath());
+}
+
+TEST(SolidSyslogLittleFsFile, ExistsIsFalseWhenThePathIsAbsent)
+{
+    LittleFsFake_SetStatResult(LFS_ERR_NOENT);
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "absent.log"));
+}
+
+TEST(SolidSyslogLittleFsFile, DeleteRemovesThePath)
+{
+    CHECK_TRUE(SolidSyslogFile_Delete(file, "stale.log"));
+    STRCMP_EQUAL("stale.log", LittleFsFake_LastRemovePath());
+}
+
+TEST(SolidSyslogLittleFsFile, DeleteSucceedsWhenThePathWasAlreadyAbsent)
+{
+    LittleFsFake_SetRemoveResult(LFS_ERR_NOENT);
+    CHECK_TRUE(SolidSyslogFile_Delete(file, "gone.log"));
+}
+
+TEST(SolidSyslogLittleFsFile, DeleteFailsOnAnyOtherError)
+{
+    LittleFsFake_SetRemoveResult(LFS_ERR_IO);
+    CHECK_FALSE(SolidSyslogFile_Delete(file, "locked.log"));
+}

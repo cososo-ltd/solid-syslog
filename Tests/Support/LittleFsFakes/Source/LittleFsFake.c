@@ -7,6 +7,11 @@ static lfs_t Fake_Filesystem;
 static struct lfs_config Fake_Config;
 
 static int Fake_CloseCallCount;
+static lfs_off_t Fake_LastTruncateSize;
+static int Fake_StatResult;
+static const char* Fake_LastStatPath;
+static int Fake_RemoveResult;
+static const char* Fake_LastRemovePath;
 static lfs_soff_t Fake_LastSeekOffset;
 static int Fake_LastSeekWhence;
 static lfs_soff_t Fake_FileSize;
@@ -31,6 +36,11 @@ void LittleFsFake_Reset(void)
     memset(&Fake_Filesystem, 0, sizeof(Fake_Filesystem));
     memset(&Fake_Config, 0, sizeof(Fake_Config));
     Fake_CloseCallCount = 0;
+    Fake_LastTruncateSize = 0xFFFFFFFFU;
+    Fake_StatResult = LFS_ERR_OK;
+    Fake_LastStatPath = NULL;
+    Fake_RemoveResult = LFS_ERR_OK;
+    Fake_LastRemovePath = NULL;
     Fake_LastSeekOffset = 0;
     Fake_LastSeekWhence = -1;
     Fake_FileSize = 0;
@@ -160,6 +170,54 @@ lfs_soff_t lfs_file_size(lfs_t* lfs, lfs_file_t* file)
     (void) lfs;
     (void) file;
     return Fake_FileSize;
+}
+
+lfs_off_t LittleFsFake_LastTruncateSize(void)
+{
+    return Fake_LastTruncateSize;
+}
+
+void LittleFsFake_SetStatResult(int result)
+{
+    Fake_StatResult = result;
+}
+
+const char* LittleFsFake_LastStatPath(void)
+{
+    return Fake_LastStatPath;
+}
+
+void LittleFsFake_SetRemoveResult(int result)
+{
+    Fake_RemoveResult = result;
+}
+
+const char* LittleFsFake_LastRemovePath(void)
+{
+    return Fake_LastRemovePath;
+}
+
+int lfs_file_truncate(lfs_t* lfs, lfs_file_t* file, lfs_off_t size)
+{
+    (void) lfs;
+    (void) file;
+    Fake_LastTruncateSize = size;
+    return LFS_ERR_OK;
+}
+
+int lfs_stat(lfs_t* lfs, const char* path, struct lfs_info* info)
+{
+    (void) lfs;
+    (void) info;
+    Fake_LastStatPath = path;
+    return Fake_StatResult;
+}
+
+int lfs_remove(lfs_t* lfs, const char* path)
+{
+    (void) lfs;
+    Fake_LastRemovePath = path;
+    return Fake_RemoveResult;
 }
 
 int LittleFsFake_CloseCallCount(void)
