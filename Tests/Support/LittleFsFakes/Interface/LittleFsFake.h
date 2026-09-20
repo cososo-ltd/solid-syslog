@@ -28,6 +28,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void LittleFsFake_SetSyncResult(int result);
     int LittleFsFake_SyncCallCount(void);
 
+    lfs_soff_t LittleFsFake_LastSeekOffset(void);
+    int LittleFsFake_LastSeekWhence(void);
+
+    void LittleFsFake_SetFileSize(lfs_soff_t size);
+    void LittleFsFake_SetFileSizeError(int error);
+
     void LittleFsFake_SetOpenResult(int result);
     int LittleFsFake_OpenCallCount(void);
     const char* LittleFsFake_LastOpenPath(void);

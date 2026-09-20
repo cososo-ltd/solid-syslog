@@ -115,3 +115,29 @@ TEST(SolidSyslogLittleFsFile, WriteFailsWhenFewerBytesAreAccepted)
     CHECK_FALSE(SolidSyslogFile_Write(file, record, sizeof(record)));
     LONGS_EQUAL(0, LittleFsFake_SyncCallCount());
 }
+
+TEST(SolidSyslogLittleFsFile, SeekToPositionsFromTheStart)
+{
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+
+    SolidSyslogFile_SeekTo(file, 42);
+
+    LONGS_EQUAL(42, LittleFsFake_LastSeekOffset());
+    LONGS_EQUAL(LFS_SEEK_SET, LittleFsFake_LastSeekWhence());
+}
+
+TEST(SolidSyslogLittleFsFile, SizeReportsTheFileLength)
+{
+    LittleFsFake_SetFileSize(1234);
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+
+    LONGS_EQUAL(1234, SolidSyslogFile_Size(file));
+}
+
+TEST(SolidSyslogLittleFsFile, SizeIsZeroWhenLittleFsReportsAnError)
+{
+    LittleFsFake_SetFileSizeError(LFS_ERR_IO);
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+
+    LONGS_EQUAL(0, SolidSyslogFile_Size(file));
+}

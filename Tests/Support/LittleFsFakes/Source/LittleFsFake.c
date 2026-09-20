@@ -7,6 +7,9 @@ static lfs_t Fake_Filesystem;
 static struct lfs_config Fake_Config;
 
 static int Fake_CloseCallCount;
+static lfs_soff_t Fake_LastSeekOffset;
+static int Fake_LastSeekWhence;
+static lfs_soff_t Fake_FileSize;
 static lfs_ssize_t Fake_WriteAccepted;
 static bool Fake_WriteAcceptedSet;
 static unsigned char Fake_WriteCapture[64];
@@ -28,6 +31,9 @@ void LittleFsFake_Reset(void)
     memset(&Fake_Filesystem, 0, sizeof(Fake_Filesystem));
     memset(&Fake_Config, 0, sizeof(Fake_Config));
     Fake_CloseCallCount = 0;
+    Fake_LastSeekOffset = 0;
+    Fake_LastSeekWhence = -1;
+    Fake_FileSize = 0;
     Fake_WriteAccepted = 0;
     Fake_WriteAcceptedSet = false;
     memset(Fake_WriteCapture, 0, sizeof(Fake_WriteCapture));
@@ -118,6 +124,42 @@ int lfs_file_sync(lfs_t* lfs, lfs_file_t* file)
     (void) file;
     Fake_SyncCallCount++;
     return Fake_SyncResult;
+}
+
+lfs_soff_t LittleFsFake_LastSeekOffset(void)
+{
+    return Fake_LastSeekOffset;
+}
+
+int LittleFsFake_LastSeekWhence(void)
+{
+    return Fake_LastSeekWhence;
+}
+
+void LittleFsFake_SetFileSize(lfs_soff_t size)
+{
+    Fake_FileSize = size;
+}
+
+void LittleFsFake_SetFileSizeError(int error)
+{
+    Fake_FileSize = error;
+}
+
+lfs_soff_t lfs_file_seek(lfs_t* lfs, lfs_file_t* file, lfs_soff_t off, int whence)
+{
+    (void) lfs;
+    (void) file;
+    Fake_LastSeekOffset = off;
+    Fake_LastSeekWhence = whence;
+    return off;
+}
+
+lfs_soff_t lfs_file_size(lfs_t* lfs, lfs_file_t* file)
+{
+    (void) lfs;
+    (void) file;
+    return Fake_FileSize;
 }
 
 int LittleFsFake_CloseCallCount(void)
