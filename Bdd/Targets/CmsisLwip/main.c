@@ -48,9 +48,6 @@
 #include "lwip/netif.h"
 #include "lwip/tcpip.h"
 
-#include <FreeRTOS.h>
-#include <task.h>
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -118,6 +115,8 @@ int main(void)
      * NetworkBringUp on that thread (smsc9220_init calls vTaskDelay, which would
      * deref a NULL pxCurrentTCB before the scheduler). */
     tcpip_init(NULL, NULL);
+
+    BddTargetOsPrimitives_InitialiseOs();
 
     if (!BddTargetOsPrimitives_Spawn(
             BddTargetFreeRtosPipeline_InteractiveTask,
@@ -212,22 +211,6 @@ static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
     LOCK_TCPIP_CORE();
     callback(context);
     UNLOCK_TCPIP_CORE();
-}
-
-void vApplicationMallocFailedHook(void)
-{
-    for (;;)
-    {
-    }
-}
-
-void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
-{
-    (void) task;
-    (void) taskName;
-    for (;;)
-    {
-    }
 }
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)

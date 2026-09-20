@@ -4,11 +4,14 @@
 # E36 and E35 add: each is swapped in against a lane that is already green, so a
 # failure is attributable to the one thing that changed.
 #
-# It is named for where it lands, not for what it links today. As of #850 it is
-# a clone of the Plus-TCP-free lwIP target running the proven stack - the
-# FreeRtos OS pack, LwipRaw, MbedTls and FatFs - so its lane passes before any
-# new platform code exists. #853 swaps the OS pack to CmsisRtos, #857 the file
-# pack to LittleFs, and #860 the network pack to LwipSocket.
+# Its own code speaks CMSIS-RTOS2, not the kernel underneath: the OS pack is
+# CmsisRtos, and everything kernel-specific - the kernel sources, its config
+# header, its application hooks and the RTOS2 wrapper - sits in
+# Kernel/FreeRtos/. A second kernel is a sibling directory there and a one-line
+# change to the include below. What still calls the kernel directly is the lwIP
+# port layer and the Ethernet driver, which sit beneath the wrapper.
+#
+# #857 swaps the file pack to LittleFs and #860 the network pack to LwipSocket.
 #
 # Source layout mirrors Bdd/Targets/FreeRtosLwip/CMakeLists.txt: upstream
 # FreeRTOS-Kernel + lwIP-core + lwIP-api + the contrib FreeRTOS sys_arch + the
@@ -18,12 +21,9 @@
 # platform adapters and the shared BddTarget sources) stays in the executable
 # under the strict project warning bar.
 
-set(FREERTOS_KERNEL_PATH "${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}")
-if(NOT FREERTOS_KERNEL_PATH)
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_FREERTOS_KERNEL_PATH is empty (falls back to $FREERTOS_KERNEL_PATH). Use the cpputest-freertos-cross "
-        "container, which sets this to /opt/freertos/kernel.")
-endif()
+# The kernel half: sources, include dirs and application hooks. Swapping
+# kernels is changing this one path.
+include(${CMAKE_CURRENT_SOURCE_DIR}/Kernel/FreeRtos/Kernel.cmake)
 
 # Shared with the sibling lwIP target - see Bdd/Targets/Common/lwip/.
 set(LWIP_SHARED_DIR "${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/lwip")
@@ -69,7 +69,6 @@ include(${LWIP_DIR}/src/Filelists.cmake)
 
 set(LWIP_CONTRIB_FREERTOS_DIR "${LWIP_DIR}/contrib/ports/freertos")
 
-set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3")
 set(FREERTOS_TCP_TARGET_DIR "${CMAKE_SOURCE_DIR}/Bdd/Targets/FreeRtos")
 set(FREERTOS_COMMON_DIR "${FREERTOS_TCP_TARGET_DIR}/Common")
 
@@ -82,13 +81,7 @@ set(FREERTOS_COMMON_DIR "${FREERTOS_TCP_TARGET_DIR}/Common")
 # don't leak into project code.
 
 add_library(solid_syslog_cmsis_lwip_upstream OBJECT
-    ${FREERTOS_KERNEL_PATH}/tasks.c
-    ${FREERTOS_KERNEL_PATH}/queue.c
-    ${FREERTOS_KERNEL_PATH}/list.c
-    ${FREERTOS_KERNEL_PATH}/timers.c
-    ${FREERTOS_KERNEL_PATH}/event_groups.c
-    ${FREERTOS_PORT_DIR}/port.c
-    ${FREERTOS_KERNEL_PATH}/portable/MemMang/heap_4.c
+    ${BDD_KERNEL_UPSTREAM_SOURCES}
     ${lwipcore_SRCS}
     ${lwipcore4_SRCS}
     ${lwipapi_SRCS}
@@ -132,11 +125,10 @@ target_compile_options(solid_syslog_cmsis_lwip_upstream PRIVATE
 )
 
 target_include_directories(solid_syslog_cmsis_lwip_upstream PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, lwipopts.h
+    ${CMAKE_CURRENT_SOURCE_DIR}                       # lwipopts.h
+    ${BDD_KERNEL_UPSTREAM_INCLUDES}                   # FreeRTOSConfig.h, kernel, CMSIS-RTOS2
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
     ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
-    ${FREERTOS_KERNEL_PATH}/include
-    ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${LWIP_DIR}/src/include
     ${LWIP_CONTRIB_FREERTOS_DIR}/include              # arch/sys_arch.h
     ${FATFS_STAGE_DIR}                                # ff.h, diskio.h + integrator ffconf.h colocated
@@ -252,7 +244,8 @@ add_executable(SolidSyslogBddTargetCmsis
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFatFsMount.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosPipeline.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetOsPrimitives_FreeRtos.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetOsPrimitives_CmsisRtos.c
+    ${BDD_KERNEL_PROJECT_SOURCES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetClock.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCustomSd.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetInteractive.c
@@ -278,7 +271,8 @@ target_compile_options(SolidSyslogBddTargetCmsis PRIVATE
 )
 
 target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, lwipopts.h
+    ${CMAKE_CURRENT_SOURCE_DIR}                       # lwipopts.h
+    ${BDD_KERNEL_UPSTREAM_INCLUDES}                   # FreeRTOSConfig.h, kernel, CMSIS-RTOS2
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
     ${LWIP_SHARED_DIR}/netif                           # EthernetIf.h
     ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
@@ -290,8 +284,6 @@ target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
     ${FATFS_STAGE_DIR}                                # ff.h, diskio.h + integrator ffconf.h colocated
     ${BAKED_PEMS_DIR}                                 # BddBaked*.h (xxd -i output)
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h, BddTargetSwitchConfig.h, …
-    ${FREERTOS_KERNEL_PATH}/include
-    ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${LWIP_DIR}/src/include
     ${LWIP_CONTRIB_FREERTOS_DIR}/include              # arch/sys_arch.h (via lwip/sys.h)
 )
@@ -299,7 +291,7 @@ target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
 target_link_libraries(SolidSyslogBddTargetCmsis PRIVATE
     ${PROJECT_NAME}                                   # libSolidSyslog.a (cross-compiled)
     SolidSyslog::LwipRaw                              # lwIP Raw adapters (DNS resolver needs LWIP_DNS=1)
-    SolidSyslog::FreeRtos                             # Mutex + SysUpTime adapters (sources)
+    SolidSyslog::CmsisRtos                            # Mutex + SysUpTime adapters (sources)
     SolidSyslog::MbedTls                              # TLS Stream + HMAC/AES-GCM policy adapters (sources)
     SolidSyslog::FatFs                                # FatFs file adapter (sources)
     mbedtls mbedx509 mbedcrypto                       # mbedTLS upstream (subproject, cross-compiled)
