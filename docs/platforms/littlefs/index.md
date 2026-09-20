@@ -68,6 +68,23 @@ guarantee still rests on your block-device callbacks reporting a program or eras
 as complete only once it is, and on the flash part behaving as its datasheet says
 through a power cut.
 
+### What the durability claim above has been tested against
+
+The claim is tested, not asserted. An integration suite runs the whole store
+stack over an emulated flash device that can lose power mid-write: the device
+counts program and erase operations and, on a chosen one, either does nothing or
+writes half its buffer and then fails, after which every operation fails because
+the power is gone. The test then discards the filesystem handle and mounts again
+from the same bytes. Every record the store reported as written is still there
+and complete, for a clean cut and a torn one, and a record interrupted mid-write
+is refused rather than half-kept.
+
+That covers torn programs and lost RAM. It does not cover a real flash part:
+erase granularity, partial programming at the cell level, read disturb and wear
+are properties of silicon that an emulated device does not reproduce. Treat the
+suite as evidence that the adapter and LittleFS honour the contract between
+them, not as qualification against your flash.
+
 ### Wear levelling is the filesystem's, not yours
 
 The store rewrites the same records in rotation, which on raw flash concentrates

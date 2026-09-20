@@ -96,6 +96,51 @@ jobs:
           path: build/debug/cpputest_*.xml
           retention-days: 1
 
+  integration-linux-littlefs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    # cpputest-freertos image carries /opt/littlefs (and exports LITTLEFS_PATH);
+    # Tests/LittleFsIntegration/CMakeLists.txt requires that env var.
+    container:
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:e81d1c4d5941d0f36b480434738d57abaa854351bb00746c8a8b108717cdcecf # sha-1739f5b
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure
+        run: cmake --preset debug
+
+      - name: Build integration tests
+        run: cmake --build --preset debug --target LittleFsIntegrationTests
+
+      - name: Run integration tests
+        run: cd build/debug && ./Tests/LittleFsIntegration/LittleFsIntegrationTests -v -ojunit -k LittleFsIntegrationTests
+
+      - name: Test Report
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        if: success() || failure()
+        with:
+          name: Test Results (LittleFS Integration)
+          path: build/debug/cpputest_*.xml
+          reporter: java-junit
+
+      - name: Upload JUnit XML
+        if: success() || failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: junit-integration-linux-littlefs
+          path: build/debug/cpputest_*.xml
+          retention-days: 1
+
   integration-linux-mbedtls:
     runs-on: ubuntu-latest
     permissions:
@@ -1910,7 +1955,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, build-linux-c99, build-linux-c89-headers, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip, build-cmsis-target-lwip, bdd-cmsis-qemu-lwip, verify-manifest, consumer-smoke-linux, consumer-smoke-freertos-cross]
+    needs: [build-linux-gcc, build-linux-tunable-override, build-linux-clang, build-linux-c99, build-linux-c89-headers, sanitize-linux-gcc, coverage-linux-gcc, analyze-tidy, analyze-tidy-freertos-plustcp, analyze-tidy-freertos-lwip, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, analyze-iwyu-freertos-plustcp, analyze-iwyu-freertos-lwip, bdd-linux-syslog-ng, build-windows-msvc, bdd-windows-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-littlefs, integration-windows-openssl, build-freertos-host-tdd-plustcp, build-freertos-target-plustcp, bdd-freertos-qemu-plustcp, build-freertos-target-lwip, bdd-freertos-qemu-lwip, build-cmsis-target-lwip, bdd-cmsis-qemu-lwip, verify-manifest, consumer-smoke-linux, consumer-smoke-freertos-cross]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1989,6 +2034,11 @@ jobs:
                     "id": "junit",
                     "name": "integration-linux-mbedtls",
                     "pattern": "**/junit-integration-linux-mbedtls/cpputest_*.xml"
+                  },
+                  {
+                    "id": "junit",
+                    "name": "integration-linux-littlefs",
+                    "pattern": "**/junit-integration-linux-littlefs/cpputest_*.xml"
                   },
                   {
                     "id": "junit",
