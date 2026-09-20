@@ -7,7 +7,7 @@
  * stack, and that is deliberate: the lane is green before any new platform
  * code exists.
  *
- * The platform-independent pipeline - SolidSyslog lifecycle, FatFs-backed store
+ * The platform-independent pipeline - SolidSyslog lifecycle, LittleFS-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
  * (shared with the FreeRTOS-Plus-TCP target, S29.03). This file keeps only the
@@ -23,7 +23,7 @@
  * that name statically to 10.0.2.2 (slirp can't return a reachable address for
  * the docker alias over real DNS). */
 
-#include "BddTargetFatFsMount.h"
+#include "BddTargetLittleFsMount.h"
 #include "BddTargetFreeRtosPipeline.h"
 #include "BddTargetOsPrimitives.h"
 #include "EthernetIf.h"
@@ -83,10 +83,10 @@ static const struct BddTargetFreeRtosPipelineConfig PIPELINE_CONFIG = {
     .BuildSender = BuildSender,
     .GetHostname = GetHostname,
     .TeardownNetwork = TeardownNetwork,
-    .MountStore = BddTargetFatFsMount_Mount,
-    .UnmountStore = BddTargetFatFsMount_Unmount,
-    .CreateStoreFile = BddTargetFatFsMount_CreateFile,
-    .DestroyStoreFile = BddTargetFatFsMount_DestroyFile,
+    .MountStore = BddTargetLittleFsMount_Mount,
+    .UnmountStore = BddTargetLittleFsMount_Unmount,
+    .CreateStoreFile = BddTargetLittleFsMount_CreateFile,
+    .DestroyStoreFile = BddTargetLittleFsMount_DestroyFile,
 };
 
 /* lwIP randomness source (declared by arch/cc.h's LWIP_RAND). sys_now() comes

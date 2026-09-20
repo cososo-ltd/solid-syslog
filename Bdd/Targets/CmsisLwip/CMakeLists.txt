@@ -11,7 +11,7 @@
 # change to the include below. What still calls the kernel directly is the lwIP
 # port layer and the Ethernet driver, which sit beneath the wrapper.
 #
-# #857 swaps the file pack to LittleFs and #860 the network pack to LwipSocket.
+# #860 swaps the network pack to LwipSocket.
 #
 # Source layout mirrors Bdd/Targets/FreeRtosLwip/CMakeLists.txt: upstream
 # FreeRTOS-Kernel + lwIP-core + lwIP-api + the contrib FreeRTOS sys_arch + the
@@ -42,24 +42,12 @@ if(NOT EXISTS "${MBEDTLS_SOURCE_DIR}/CMakeLists.txt")
         "container, which sets this to /opt/mbedtls.")
 endif()
 
-set(FATFS_PATH "${SOLIDSYSLOG_FATFS_PATH}")
-if(NOT FATFS_PATH)
+set(LITTLEFS_PATH "${SOLIDSYSLOG_LITTLEFS_PATH}")
+if(NOT LITTLEFS_PATH)
     message(FATAL_ERROR
-        "SOLIDSYSLOG_FATFS_PATH is empty (falls back to $FATFS_PATH). Use the cpputest-freertos-cross container, "
-        "which sets this to /opt/fatfs.")
+        "SOLIDSYSLOG_LITTLEFS_PATH is empty (falls back to $LITTLEFS_PATH). Use the cpputest-freertos-cross "
+        "container, which sets this to /opt/littlefs.")
 endif()
-
-# Stage the upstream FatFs source pack alongside our integrator ffconf.h
-# (shared with the Plus-TCP target — Bdd/Targets/Common/ffconf.h) in the
-# build dir. FatFs's ff.h does `#include "ffconf.h"` and GCC's `""` lookup
-# checks the source file's own directory first, so colocating them is the
-# only way our integrator config wins over upstream's sample. Same pattern
-# as Bdd/Targets/FreeRtos/CMakeLists.txt.
-set(FATFS_STAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/fatfs")
-configure_file(${FATFS_PATH}/source/ff.c     ${FATFS_STAGE_DIR}/ff.c     COPYONLY)
-configure_file(${FATFS_PATH}/source/ff.h     ${FATFS_STAGE_DIR}/ff.h     COPYONLY)
-configure_file(${FATFS_PATH}/source/diskio.h ${FATFS_STAGE_DIR}/diskio.h COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/ffconf.h ${FATFS_STAGE_DIR}/ffconf.h COPYONLY)
 
 # lwIP ships its source lists as *_SRCS variables via Filelists.cmake. For
 # NO_SYS=0 we consume the IPv4 core set plus the api/ set (tcpip.c, api_lib,
@@ -96,12 +84,11 @@ add_library(solid_syslog_cmsis_lwip_upstream OBJECT
     # netif wrapper over it (netif/EthernetIf.c) stays in the executable under
     # the strict bar; this third-party source sits under the relaxations.
     ${LWIP_SHARED_DIR}/netif/smsc9220/smsc9220_eth_drv.c
-    # FatFs upstream (R0.16) + our shared integrator ffsystem.c — same
-    # relaxed-warnings treatment as the Plus-TCP target (ff.c inherits FatFs's
-    # sign-conversion / typedef-via-BYTE patterns). ff.c is staged so its
-    # `#include "ff.h"` / "ffconf.h" resolve to our integrator config.
-    ${FATFS_STAGE_DIR}/ff.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/ffsystem.c
+    # LittleFS upstream, under the same relaxations: lfs.c raises well over a
+    # hundred diagnostics against this project's -Werror set, which is not
+    # upstream's problem and not ours to pin a version over.
+    ${LITTLEFS_PATH}/lfs.c
+    ${LITTLEFS_PATH}/lfs_util.c
 )
 
 target_compile_options(solid_syslog_cmsis_lwip_upstream PRIVATE
@@ -131,7 +118,7 @@ target_include_directories(solid_syslog_cmsis_lwip_upstream PRIVATE
     ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
     ${LWIP_DIR}/src/include
     ${LWIP_CONTRIB_FREERTOS_DIR}/include              # arch/sys_arch.h
-    ${FATFS_STAGE_DIR}                                # ff.h, diskio.h + integrator ffconf.h colocated
+    ${LITTLEFS_PATH}                                  # lfs.h, lfs_util.h
 )
 
 # --- mbedTLS upstream as a subproject ----------------------------------------
@@ -236,13 +223,13 @@ add_executable(SolidSyslogBddTargetCmsis
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
     # linked below (S30.02 dogfood): LwipRaw (Address/Datagram/TcpStream/
     # Resolver/DnsResolver/Marshal; the unused numeric resolver dead-strips),
-    # FreeRtos (Mutex +
-    # SysUpTime), MbedTls (TLS Stream + HMAC/AES-GCM policies), FatFs (file
-    # adapter). diskio.c is the shared semihosting media driver (8 MiB FAT16).
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/diskio.c
+    # CmsisRtos (Mutex + SysUpTime), MbedTls (TLS Stream + HMAC/AES-GCM
+    # policies), LittleFs (file adapter). LfsSemihostingDisk.c is this target's
+    # block device over the shared 8 MiB semihosting image.
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/LfsSemihostingDisk.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/SemihostingDisk.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFatFsMount.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsMount.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosPipeline.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetOsPrimitives_CmsisRtos.c
     ${BDD_KERNEL_PROJECT_SOURCES}
@@ -279,13 +266,20 @@ target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
     ${FREERTOS_COMMON_DIR}                            # CmsdkUart.h
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
-    # Platform/{LwipRaw,FreeRtos,MbedTls,FatFs}/{Interface,Source} include dirs
+    # Platform/{LwipRaw,CmsisRtos,MbedTls,LittleFs}/{Interface,Source} include dirs
     # now arrive transitively from the SolidSyslog::* pack umbrellas linked below.
-    ${FATFS_STAGE_DIR}                                # ff.h, diskio.h + integrator ffconf.h colocated
     ${BAKED_PEMS_DIR}                                 # BddBaked*.h (xxd -i output)
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h, BddTargetSwitchConfig.h, …
     ${LWIP_DIR}/src/include
     ${LWIP_CONTRIB_FREERTOS_DIR}/include              # arch/sys_arch.h (via lwip/sys.h)
+)
+
+# LittleFS's own lfs_util.h does not compile under -Wsign-conversion, which this
+# project sets and upstream does not build with. SYSTEM silences its warnings
+# without relaxing anything we compile - the same treatment
+# docs/platforms/littlefs/setup.md tells an integrator on this bar to apply.
+target_include_directories(SolidSyslogBddTargetCmsis SYSTEM PRIVATE
+    ${LITTLEFS_PATH}
 )
 
 target_link_libraries(SolidSyslogBddTargetCmsis PRIVATE
@@ -293,7 +287,7 @@ target_link_libraries(SolidSyslogBddTargetCmsis PRIVATE
     SolidSyslog::LwipRaw                              # lwIP Raw adapters (DNS resolver needs LWIP_DNS=1)
     SolidSyslog::CmsisRtos                            # Mutex + SysUpTime adapters (sources)
     SolidSyslog::MbedTls                              # TLS Stream + HMAC/AES-GCM policy adapters (sources)
-    SolidSyslog::FatFs                                # FatFs file adapter (sources)
+    SolidSyslog::LittleFs                             # LittleFS file adapter (sources)
     mbedtls mbedx509 mbedcrypto                       # mbedTLS upstream (subproject, cross-compiled)
 )
 
