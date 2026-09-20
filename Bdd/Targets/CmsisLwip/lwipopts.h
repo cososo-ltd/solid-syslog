@@ -24,9 +24,13 @@
 #define LWIP_SOCKET 0
 
 /* tcpip thread. Priorities are numeric here: lwipopts.h is processed via
- * lwip/opt.h before any FreeRTOS header, so configMAX_PRIORITIES (7) is not
- * visible - TCPIP_THREAD_PRIO 6 == configMAX_PRIORITIES - 1, above the
- * LAN9118 RX task (configMAX_PRIORITIES - 2 == 5, set in EthernetIf.c).
+ * lwip/opt.h before any FreeRTOS header, so configMAX_PRIORITIES (56, which
+ * the CMSIS-RTOS2 wrapper fixes) is not visible - TCPIP_THREAD_PRIO 55 ==
+ * configMAX_PRIORITIES - 1, above the LAN9118 RX task
+ * (configMAX_PRIORITIES - 2 == 54, set in EthernetIf.c). Both numbers are
+ * written out here and must be re-based by hand if that macro changes: the
+ * tcpip thread sitting below the RX task that feeds it would let a burst
+ * starve it.
  * TCPIP_THREAD_STACKSIZE is in BYTES (LWIP_FREERTOS_THREAD_STACKSIZE_IS_
  * STACKWORDS defaults to 0, so the sys_arch divides by sizeof(StackType_t)). */
 /* lwIP's api/err.c maps err_t to errno; pull the E* codes from newlib's
@@ -36,7 +40,7 @@
 
 #define TCPIP_THREAD_NAME "tcpip"
 #define TCPIP_THREAD_STACKSIZE 4096
-#define TCPIP_THREAD_PRIO 6
+#define TCPIP_THREAD_PRIO 55
 #define TCPIP_MBOX_SIZE 8
 #define DEFAULT_RAW_RECVMBOX_SIZE 8
 #define DEFAULT_UDP_RECVMBOX_SIZE 8

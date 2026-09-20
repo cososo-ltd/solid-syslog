@@ -474,6 +474,14 @@ solidsyslog_declare_path(SOLIDSYSLOG_MBEDTLS_DIR
     "Path to the Mbed TLS source tree (SolidSyslog's own tests and BDD targets only)"
     MBEDTLS_DIR)
 
+solidsyslog_declare_path(SOLIDSYSLOG_CMSIS_PATH
+    "Path to the CMSIS_6 source tree, for cmsis_os2.h (SolidSyslog's own BDD targets only)"
+    CMSIS_PATH)
+
+solidsyslog_declare_path(SOLIDSYSLOG_CMSIS_FREERTOS_PATH
+    "Path to the CMSIS-FreeRTOS source tree, for the RTOS2 wrapper (SolidSyslog's own BDD targets only)"
+    CMSIS_FREERTOS_PATH)
+
 solidsyslog_declare_path(SOLIDSYSLOG_FATFS_PATH
     "Path to the ChaN FatFs source tree (SolidSyslog's own tests and BDD targets only)"
     FATFS_PATH)

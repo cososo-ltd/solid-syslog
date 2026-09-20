@@ -36,6 +36,12 @@ uint32_t BddTargetOsPrimitives_GetSysUpTime(void)
     return SolidSyslogFreeRtos_GetSysUpTime();
 }
 
+void BddTargetOsPrimitives_InitialiseOs(void)
+{
+    /* The kernel needs no call before xTaskCreate; vTaskStartScheduler does
+     * the initialising. */
+}
+
 bool BddTargetOsPrimitives_Spawn(void (*entry)(void* argument), const char* name, uint32_t stackBytes)
 {
     configSTACK_DEPTH_TYPE depth = (configSTACK_DEPTH_TYPE) (stackBytes / sizeof(StackType_t));

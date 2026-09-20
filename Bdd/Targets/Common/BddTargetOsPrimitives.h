@@ -35,6 +35,11 @@ void BddTargetOsPrimitives_DestroyMutex(struct SolidSyslogMutex* mutex);
 /* The SolidSyslogSysUpTimeFunction from this target's OS pack, for the MetaSd. */
 uint32_t BddTargetOsPrimitives_GetSysUpTime(void);
 
+/* Ready the OS for the calls below. Call once, before spawning anything.
+ * CMSIS-RTOS2 requires it ahead of every other RTOS call; FreeRTOS needs
+ * nothing and its implementation does nothing. */
+void BddTargetOsPrimitives_InitialiseOs(void);
+
 /* An opaque thread identity. Only ever tested against NULL and handed back, so
  * no kernel's own handle type reaches a caller. */
 typedef void* BddTargetThread;

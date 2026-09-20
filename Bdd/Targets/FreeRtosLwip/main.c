@@ -113,6 +113,8 @@ int main(void)
      * deref a NULL pxCurrentTCB before the scheduler). */
     tcpip_init(NULL, NULL);
 
+    BddTargetOsPrimitives_InitialiseOs();
+
     if (!BddTargetOsPrimitives_Spawn(
             BddTargetFreeRtosPipeline_InteractiveTask,
             "interactive",

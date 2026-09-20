@@ -19,6 +19,24 @@ path. The mutex calls `osMutexNew`, `osMutexAcquire`, `osMutexRelease` and
 in the API needs to be present or configured, and a build that takes only one
 of the two needs only that one's calls.
 
+## What it has run on
+
+The pack targets the CMSIS-RTOS2 API, so what it is checked against is an
+implementation of that API rather than any one kernel.
+
+Its unit tests run against a fake that supplies the API outright, which is what
+lets them build in an ordinary host preset with no vendor tree present. Beyond
+that, a BDD target exercises it for real in CI: Arm's CMSIS-FreeRTOS wrapper on
+a Cortex-M3 under QEMU, carrying UDP, TCP, TLS and mutual TLS traffic plus the
+store suite, with the mutex guarding a buffer shared between two threads and the
+uptime callback reached on every message formatted.
+
+That is one implementation. Nothing here has run on a second one, and an
+implementation is free to differ wherever the API leaves a choice open - the
+control-block size and the priority-inheritance attribute below are both such
+places. Treat the API as the contract and this as evidence that the contract is
+met somewhere real, not as a compatibility list.
+
 ## Security behaviour and obligations
 
 ### The mutex guards a buffer shared between tasks
