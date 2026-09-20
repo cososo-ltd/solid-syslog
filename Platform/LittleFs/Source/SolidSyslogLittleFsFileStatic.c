@@ -33,8 +33,22 @@ struct SolidSyslogFile* SolidSyslogLittleFsFile_Create(lfs_t* filesystem, void* 
     struct SolidSyslogFile* handle = SolidSyslogNullFile_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&LittleFsFile_Allocator, index) == true)
     {
-        SolidSyslogLittleFsFile_Initialise(&LittleFsFile_Pool[index].Base, filesystem, fileBuffer, fileBufferBytes);
-        handle = &LittleFsFile_Pool[index].Base;
+        if (SolidSyslogLittleFsFile_Initialise(
+                &LittleFsFile_Pool[index].Base, filesystem, fileBuffer, fileBufferBytes
+            ) == true)
+        {
+            handle = &LittleFsFile_Pool[index].Base;
+        }
+        else
+        {
+            /* Give the slot straight back. Refused wiring is a build fault the
+             * integrator will fix, and holding the slot would turn one of those
+             * into pool exhaustion for every later Create. Initialise has
+             * already reported why. */
+            (void) SolidSyslogPoolAllocator_FreeIfInUse(
+                &LittleFsFile_Allocator, index, LittleFsFile_CleanupAtIndex, NULL
+            );
+        }
     }
     else
     {

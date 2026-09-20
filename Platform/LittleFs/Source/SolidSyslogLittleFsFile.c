@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogLittleFsFilePrivate.h"
 #include "SolidSyslogNullFile.h"
@@ -31,6 +32,7 @@ static bool LittleFsFile_Exists(struct SolidSyslogFile* base, const char* path);
 static bool LittleFsFile_Delete(struct SolidSyslogFile* base, const char* path);
 
 static inline struct SolidSyslogLittleFsFile* LittleFsFile_SelfFromBase(struct SolidSyslogFile* base);
+static inline bool LittleFsFile_IsValidSetup(const lfs_t* filesystem, const void* fileBuffer, uint32_t fileBufferBytes);
 
 bool SolidSyslogLittleFsFile_Initialise(
     struct SolidSyslogFile* base,
@@ -40,10 +42,14 @@ bool SolidSyslogLittleFsFile_Initialise(
 )
 {
     struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
-    (void) fileBufferBytes;
+    bool valid = LittleFsFile_IsValidSetup(filesystem, fileBuffer, fileBufferBytes);
     /* Start from the Null vtable so any slot this adapter has not filled is a
      * safe no-op rather than a NULL dispatch. */
     self->Base = *SolidSyslogNullFile_Get();
+    if (valid == false)
+    {
+        return false;
+    }
     self->Filesystem = filesystem;
     self->OpenConfig.buffer = fileBuffer;
     self->Base.Open = LittleFsFile_Open;
@@ -63,6 +69,35 @@ bool SolidSyslogLittleFsFile_Initialise(
 static inline struct SolidSyslogLittleFsFile* LittleFsFile_SelfFromBase(struct SolidSyslogFile* base)
 {
     return (struct SolidSyslogLittleFsFile*) base;
+}
+
+/* Checked here rather than at Open so a wiring fault is one report at Create
+ * instead of a surprise on the first record the store writes. The size cannot
+ * change later: cache_size is fixed when the integrator mounts. */
+static inline bool LittleFsFile_IsValidSetup(const lfs_t* filesystem, const void* fileBuffer, uint32_t fileBufferBytes)
+{
+    bool valid = false;
+    if (filesystem == NULL)
+    {
+        LittleFsFile_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_FILE_ERROR_NULL_FILESYSTEM
+        );
+    }
+    else if ((fileBuffer == NULL) || (fileBufferBytes < filesystem->cfg->cache_size))
+    {
+        LittleFsFile_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_FILE_ERROR_BUFFER_TOO_SMALL
+        );
+    }
+    else
+    {
+        valid = true;
+    }
+    return valid;
 }
 
 void SolidSyslogLittleFsFile_Cleanup(struct SolidSyslogFile* base)
