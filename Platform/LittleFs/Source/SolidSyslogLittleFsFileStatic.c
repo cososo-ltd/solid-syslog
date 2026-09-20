@@ -34,7 +34,10 @@ struct SolidSyslogFile* SolidSyslogLittleFsFile_Create(lfs_t* filesystem, void* 
     if (SolidSyslogPoolAllocator_IndexIsValid(&LittleFsFile_Allocator, index) == true)
     {
         if (SolidSyslogLittleFsFile_Initialise(
-                &LittleFsFile_Pool[index].Base, filesystem, fileBuffer, fileBufferBytes
+                &LittleFsFile_Pool[index].Base,
+                filesystem,
+                fileBuffer,
+                fileBufferBytes
             ) == true)
         {
             handle = &LittleFsFile_Pool[index].Base;
@@ -45,9 +48,8 @@ struct SolidSyslogFile* SolidSyslogLittleFsFile_Create(lfs_t* filesystem, void* 
              * integrator will fix, and holding the slot would turn one of those
              * into pool exhaustion for every later Create. Initialise has
              * already reported why. */
-            (void) SolidSyslogPoolAllocator_FreeIfInUse(
-                &LittleFsFile_Allocator, index, LittleFsFile_CleanupAtIndex, NULL
-            );
+            (void
+            ) SolidSyslogPoolAllocator_FreeIfInUse(&LittleFsFile_Allocator, index, LittleFsFile_CleanupAtIndex, NULL);
         }
     }
     else
@@ -64,8 +66,9 @@ struct SolidSyslogFile* SolidSyslogLittleFsFile_Create(lfs_t* filesystem, void* 
 void SolidSyslogLittleFsFile_Destroy(struct SolidSyslogFile* base)
 {
     size_t index = LittleFsFile_IndexFromHandle(base);
-    bool released = SolidSyslogPoolAllocator_IndexIsValid(&LittleFsFile_Allocator, index) &&
-                    SolidSyslogPoolAllocator_FreeIfInUse(&LittleFsFile_Allocator, index, LittleFsFile_CleanupAtIndex, NULL);
+    bool released =
+        SolidSyslogPoolAllocator_IndexIsValid(&LittleFsFile_Allocator, index) &&
+        SolidSyslogPoolAllocator_FreeIfInUse(&LittleFsFile_Allocator, index, LittleFsFile_CleanupAtIndex, NULL);
     if (!released)
     {
         LittleFsFile_Report(
