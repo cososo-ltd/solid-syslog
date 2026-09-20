@@ -8,6 +8,8 @@
 
 #include "BddTargetFreeRtosPipeline.h"
 
+#include "BddTargetOsPrimitives.h"
+
 #include "BddTargetEnterpriseId.h"
 #include "BddTargetErrorText.h"
 #include "BddTargetInteractive.h"
@@ -29,8 +31,6 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogHeaderField.h"
-#include "SolidSyslogFreeRtosMutex.h"
-#include "SolidSyslogFreeRtosSysUpTime.h"
 #include "SolidSyslogMbedTlsAesGcmPolicy.h"
 #include "SolidSyslogMbedTlsHmacSha256Policy.h"
 #include "SolidSyslogMetaSd.h"
@@ -43,9 +43,6 @@
 #include "SolidSyslogTimeQuality.h"
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogTunables.h"
-
-#include <FreeRTOS.h>
-#include <task.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -79,8 +76,9 @@ static struct SolidSyslogMessage testMessage = {
     .Msg = msg,
 };
 
-/* CircularBuffer + FreeRtosMutex for cross-task emission. 8 max-sized messages
- * is comfortably above the 3-message BDD scenarios. */
+/* CircularBuffer + a mutex from the OS seam for cross-task emission. 8
+ * max-sized messages
+ * are comfortably above the 3-message BDD scenarios. */
 enum
 {
     BDD_TARGET_BUFFER_MESSAGES = 8
@@ -155,10 +153,10 @@ static struct SolidSyslogMutex* bufferMutex = NULL;
 /* Service task handle is self-registered by ServiceTask so the interactive task
  * can report its peak stack alongside its own on `quit` and bound the teardown
  * wait on a real "service stopped" signal. */
-static TaskHandle_t serviceTaskHandle = NULL;
+static BddTargetThread serviceTaskHandle = NULL;
 /* The task awaiting ServiceTask's exit during teardown; ServiceTask notifies it
  * the instant before it self-deletes. */
-static TaskHandle_t serviceStopWaiter = NULL;
+static BddTargetThread serviceStopWaiter = NULL;
 
 /* Upper bound on the teardown wait for ServiceTask to self-delete. */
 enum
@@ -196,15 +194,9 @@ static void MmioWrite32(uintptr_t address, uint32_t value)
 
 void BddTargetFreeRtosPipeline_Sleep(int milliseconds)
 {
-    /* Round any non-zero millisecond request up to at least one tick so a
-     * sub-tick sleep (e.g. CmsdkUart's 1 ms yield against a 100 Hz tick) still
-     * blocks the task instead of busy-spinning. */
-    TickType_t ticks = pdMS_TO_TICKS((TickType_t) milliseconds);
-    if ((milliseconds > 0) && (ticks == 0U))
-    {
-        ticks = 1U;
-    }
-    vTaskDelay(ticks);
+    /* Kept as a named function because main.c and the TLS sender pass it as a
+     * SolidSyslogSleepFunction callback. */
+    BddTargetOsPrimitives_Sleep(milliseconds);
 }
 
 static const CmsdkUartMemoryAccess MMIO_ACCESS = {MmioRead32, MmioWrite32, BddTargetFreeRtosPipeline_Sleep};
@@ -683,7 +675,7 @@ static void OnThresholdCrossed(void* context)
 static void TeardownAll(void)
 {
     SolidSyslogMutex_Lock(lifecycleMutex);
-    serviceStopWaiter = xTaskGetCurrentTaskHandle();
+    serviceStopWaiter = BddTargetOsPrimitives_CurrentThread();
     solidSyslogTeardown = true;
     solidSyslogReady = false;
     SolidSyslog_Destroy(solidSyslog);
@@ -696,19 +688,19 @@ static void TeardownAll(void)
     g_config->UnmountStore();
     SolidSyslogMutex_Unlock(lifecycleMutex);
 
-    /* Wait for Service to observe the teardown flag and vTaskDelete itself
+    /* Wait for Service to observe the teardown flag and exit itself
      * before the lifecycle mutex is destroyed under it. Bounded so a Service
-     * task that never started (xTaskCreate failure -> NULL handle) cannot wedge
+     * task that never started (spawn failure -> NULL handle) cannot wedge
      * teardown. */
     if (serviceTaskHandle != NULL)
     {
-        (void) ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(SERVICE_STOP_TIMEOUT_MS));
+        (void) BddTargetOsPrimitives_WaitForNotify(SERVICE_STOP_TIMEOUT_MS);
     }
     serviceTaskHandle = NULL;
 
     SolidSyslogCircularBuffer_Destroy(buffer);
-    SolidSyslogFreeRtosMutex_Destroy(bufferMutex);
-    SolidSyslogFreeRtosMutex_Destroy(lifecycleMutex);
+    BddTargetOsPrimitives_DestroyMutex(bufferMutex);
+    BddTargetOsPrimitives_DestroyMutex(lifecycleMutex);
     lifecycleMutex = NULL;
 
     /* Platform sender + network adapters last. */
@@ -749,14 +741,14 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
      * the default transport already selected. */
     struct SolidSyslogSender* sender = g_config->BuildSender();
 
-    /* CircularBuffer drained by ServiceTask, with a FreeRtosMutex gating
-     * concurrent producers. */
-    bufferMutex = SolidSyslogFreeRtosMutex_Create();
+    /* CircularBuffer drained by ServiceTask, with a mutex gating concurrent
+     * producers. */
+    bufferMutex = BddTargetOsPrimitives_CreateMutex(BDD_TARGET_MUTEX_BUFFER);
     buffer = SolidSyslogCircularBuffer_Create(bufferMutex, bufferRing, sizeof(bufferRing));
 
     /* Lifecycle mutex created up front so the Service task can take it from its
      * very first iteration without a NULL check. */
-    lifecycleMutex = SolidSyslogFreeRtosMutex_Create();
+    lifecycleMutex = BddTargetOsPrimitives_CreateMutex(BDD_TARGET_MUTEX_LIFECYCLE);
 
     /* Default store is NullStore - flipped to the file-backed BlockStore by
      * `set store file` via RebuildWithFileStore(). */
@@ -766,7 +758,7 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
     atomicCounter = SolidSyslogStdAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
         .Counter = atomicCounter,
-        .GetSysUpTime = SolidSyslogFreeRtos_GetSysUpTime,
+        .GetSysUpTime = BddTargetOsPrimitives_GetSysUpTime,
         .GetLanguage = BddTargetLanguage_Get,
     };
     metaSd = SolidSyslogMetaSd_Create(&metaConfig);
@@ -801,19 +793,19 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
 
     BddTargetInteractive_Run(solidSyslog, &testMessage, stdin, BddTargetSwitchConfig_SetByName, OnSet);
 
-    /* Peak stack usage report on `quit`. Words, not bytes (StackType_t units).
-     * serviceTaskHandle is guarded because uxTaskGetStackHighWaterMark(NULL)
-     * means "the calling task". */
-    const UBaseType_t interactiveHwm = uxTaskGetStackHighWaterMark(NULL);
-    const UBaseType_t serviceHwm = (serviceTaskHandle != NULL) ? uxTaskGetStackHighWaterMark(serviceTaskHandle) : 0U;
+    /* Peak stack headroom report on `quit`. A Service task that never started
+     * reports zero rather than being asked about. */
+    const uint32_t interactiveHeadroom =
+        BddTargetOsPrimitives_StackHeadroomBytes(BddTargetOsPrimitives_CurrentThread());
+    const uint32_t serviceHeadroom = BddTargetOsPrimitives_StackHeadroomBytes(serviceTaskHandle);
     (void) printf(
-        "[stack-hwm] interactive=%lu words service=%lu words\n",
-        (unsigned long) interactiveHwm,
-        (unsigned long) serviceHwm
+        "[stack-hwm] interactive=%lu bytes service=%lu bytes\n",
+        (unsigned long) interactiveHeadroom,
+        (unsigned long) serviceHeadroom
     );
 
     TeardownAll();
-    vTaskDelete(NULL);
+    BddTargetOsPrimitives_ExitThread();
 }
 
 void BddTargetFreeRtosPipeline_ServiceTask(void* argument)
@@ -821,7 +813,7 @@ void BddTargetFreeRtosPipeline_ServiceTask(void* argument)
     (void) argument;
     /* Self-register so the interactive task can report our stack HWM and bound
      * its teardown wait on a real "service stopped" signal. */
-    serviceTaskHandle = xTaskGetCurrentTaskHandle();
+    serviceTaskHandle = BddTargetOsPrimitives_CurrentThread();
 
     /* Wait until the interactive task has finished initial Setup and created the
      * lifecycle mutex / SolidSyslog. After that the mutex is the source of
@@ -829,7 +821,7 @@ void BddTargetFreeRtosPipeline_ServiceTask(void* argument)
      * Destroy/Create transitions. */
     while ((lifecycleMutex == NULL) || !solidSyslogReady)
     {
-        vTaskDelay(pdMS_TO_TICKS(1));
+        BddTargetOsPrimitives_Sleep(1);
     }
     for (;;)
     {
@@ -840,19 +832,16 @@ void BddTargetFreeRtosPipeline_ServiceTask(void* argument)
              * now blocked waiting for us. Capture the waiter under the lock,
              * release, notify it, then self-delete before Teardown destroys the
              * mutex. */
-            TaskHandle_t waiter = serviceStopWaiter;
+            BddTargetThread waiter = serviceStopWaiter;
             SolidSyslogMutex_Unlock(lifecycleMutex);
-            if (waiter != NULL)
-            {
-                (void) xTaskNotifyGive(waiter);
-            }
-            vTaskDelete(NULL);
+            BddTargetOsPrimitives_Notify(waiter);
+            BddTargetOsPrimitives_ExitThread();
         }
         if (solidSyslogReady)
         {
             SolidSyslog_Service(solidSyslog);
         }
         SolidSyslogMutex_Unlock(lifecycleMutex);
-        vTaskDelay(pdMS_TO_TICKS(1));
+        BddTargetOsPrimitives_Sleep(1);
     }
 }

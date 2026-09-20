@@ -13,13 +13,13 @@
  * Everything platform-independent lives in this component: the SolidSyslog
  * lifecycle, the file-backed store + security-policy machinery (crc16 /
  * hmac-sha256 / aes-256-gcm / null), the SD set, the interactive `set` handler,
- * the CircularBuffer + Service drain task, and the console glue. Both FreeRTOS
- * BDD targets (Bdd/Targets/FreeRtos = FreeRTOS-Plus-TCP, Bdd/Targets/FreeRtosLwip
- * = lwIP) drive this; their main.c files keep only the network backend and the
+ * the CircularBuffer + Service drain task, and the console glue. Every QEMU BDD
+ * target drives this; their main.c files keep only the network backend and the
  * FS-mount seam behind the config below - the network adapter wiring (PlusTcp vs
  * LwipRaw), the IP-stack bring-up, and the filesystem vendor (FreeRTOS-Plus-FAT
  * vs ChaN-FatFs) that genuinely differ. See SolidSyslog S29.03 (network seam)
- * and S29.05 (FS-mount seam). */
+ * and S29.05 (FS-mount seam). The OS calls themselves go through
+ * BddTargetOsPrimitives.h, so nothing here names a kernel. */
 
 /* Forward declaration - the FS-mount seam traffics in SolidSyslogFile handles
  * without the pipeline header pulling SolidSyslogFile.h. */
@@ -79,14 +79,14 @@ void BddTargetFreeRtosPipeline_Sleep(int milliseconds);
  * bail out on an unrecoverable bring-up failure (e.g. xTaskCreate). */
 void BddTargetFreeRtosPipeline_Exit(int status);
 
-/* Stack depths as configMINIMAL_STACK_SIZE multipliers (the header cannot see
- * the FreeRTOS config macro). Each main.c does the xTaskCreate so it controls
- * the timing - the PlusTcp target on the network-up hook, lwIP from main(). */
-#define BDD_TARGET_INTERACTIVE_STACK_MULTIPLIER 48U
-#define BDD_TARGET_SERVICE_STACK_MULTIPLIER 16U
+/* Stack sizes in bytes, the unit BddTargetOsPrimitives_Spawn takes. Each
+ * main.c spawns the threads itself so that it controls the timing - the
+ * PlusTcp target from its network-up hook, the lwIP targets from main(). */
+#define BDD_TARGET_INTERACTIVE_STACK_BYTES 24576U
+#define BDD_TARGET_SERVICE_STACK_BYTES 8192U
 
-/* xTaskCreate entry points for the two shared tasks. The Service task
- * self-registers its handle, so neither needs the caller to plumb anything. */
+/* Entry points for the two shared threads. The Service thread self-registers
+ * its handle, so neither needs the caller to plumb anything. */
 void BddTargetFreeRtosPipeline_InteractiveTask(void* argument);
 void BddTargetFreeRtosPipeline_ServiceTask(void* argument);
 

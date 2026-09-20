@@ -280,6 +280,7 @@ add_executable(SolidSyslogBddTarget
     # target_sources(INTERFACE) compile here against this target's config.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosPipeline.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetOsPrimitives_FreeRtos.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetClock.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCustomSd.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetInteractive.c

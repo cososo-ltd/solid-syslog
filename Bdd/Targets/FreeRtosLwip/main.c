@@ -19,6 +19,7 @@
 
 #include "BddTargetFatFsMount.h"
 #include "BddTargetFreeRtosPipeline.h"
+#include "BddTargetOsPrimitives.h"
 #include "EthernetIf.h"
 
 #include "BddTargetSwitchConfig.h"
@@ -112,30 +113,20 @@ int main(void)
      * deref a NULL pxCurrentTCB before the scheduler). */
     tcpip_init(NULL, NULL);
 
-    if (xTaskCreate(
+    if (!BddTargetOsPrimitives_Spawn(
             BddTargetFreeRtosPipeline_InteractiveTask,
             "interactive",
-            configMINIMAL_STACK_SIZE * BDD_TARGET_INTERACTIVE_STACK_MULTIPLIER,
-            NULL,
-            tskIDLE_PRIORITY + 1,
-            NULL
-        ) != pdPASS)
+            BDD_TARGET_INTERACTIVE_STACK_BYTES
+        ))
     {
         BddTargetFreeRtosPipeline_Exit(1);
     }
-    if (xTaskCreate(
-            BddTargetFreeRtosPipeline_ServiceTask,
-            "service",
-            configMINIMAL_STACK_SIZE * BDD_TARGET_SERVICE_STACK_MULTIPLIER,
-            NULL,
-            tskIDLE_PRIORITY + 1,
-            NULL
-        ) != pdPASS)
+    if (!BddTargetOsPrimitives_Spawn(BddTargetFreeRtosPipeline_ServiceTask, "service", BDD_TARGET_SERVICE_STACK_BYTES))
     {
         BddTargetFreeRtosPipeline_Exit(1);
     }
 
-    vTaskStartScheduler();
+    BddTargetOsPrimitives_StartScheduler();
 
     for (;;)
     {
@@ -199,7 +190,7 @@ static void WarmUpGatewayArp(void)
         {
             break;
         }
-        vTaskDelay(pdMS_TO_TICKS(WARM_UP_INTERVAL_MS));
+        BddTargetOsPrimitives_Sleep(WARM_UP_INTERVAL_MS);
     }
 }
 
