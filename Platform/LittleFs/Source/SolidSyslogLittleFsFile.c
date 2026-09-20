@@ -24,6 +24,8 @@ static void LittleFsFile_Close(struct SolidSyslogFile* base);
 static bool LittleFsFile_IsOpen(struct SolidSyslogFile* base);
 static bool LittleFsFile_Read(struct SolidSyslogFile* base, void* buf, size_t count);
 static bool LittleFsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
+static void LittleFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset);
+static size_t LittleFsFile_Size(struct SolidSyslogFile* base);
 
 static inline struct SolidSyslogLittleFsFile* LittleFsFile_SelfFromBase(struct SolidSyslogFile* base);
 
@@ -46,6 +48,8 @@ bool SolidSyslogLittleFsFile_Initialise(
     self->Base.IsOpen = LittleFsFile_IsOpen;
     self->Base.Read = LittleFsFile_Read;
     self->Base.Write = LittleFsFile_Write;
+    self->Base.SeekTo = LittleFsFile_SeekTo;
+    self->Base.Size = LittleFsFile_Size;
     self->IsOpen = false;
     return true;
 }
@@ -103,4 +107,20 @@ static bool LittleFsFile_Write(struct SolidSyslogFile* base, const void* buf, si
      * the BlockStore treats it as durable across power loss, so the sync is
      * part of the write rather than something a caller arranges. */
     return wroteAllData && (lfs_file_sync(self->Filesystem, &self->Handle) == LFS_ERR_OK);
+}
+
+static void LittleFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
+{
+    struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
+    /* The contract says seek errors are silent. */
+    (void) lfs_file_seek(self->Filesystem, &self->Handle, (lfs_soff_t) offset, LFS_SEEK_SET);
+}
+
+static size_t LittleFsFile_Size(struct SolidSyslogFile* base)
+{
+    struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
+    lfs_soff_t size = lfs_file_size(self->Filesystem, &self->Handle);
+    /* lfs reports an error as a negative value, which the contract renders
+     * as zero. */
+    return (size > 0) ? (size_t) size : 0U;
 }
