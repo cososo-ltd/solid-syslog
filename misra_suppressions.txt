@@ -210,3 +210,8 @@ misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:843
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:146
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:437
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:457
+
+# D.015 — Rule 8.9: rollover state at file scope so a test can clear it
+# See docs/misra-deviations.md#d015
+misra-c2012-8.9:Platform/CmsisRtos/Source/SolidSyslogCmsisRtosSysUpTime.c:18
+misra-c2012-8.9:Platform/CmsisRtos/Source/SolidSyslogCmsisRtosSysUpTime.c:19

@@ -1209,3 +1209,78 @@ Raised and approved 2026-05-31 by the project owner, David Cozens, under
 numbers run backwards because they are numbered by epic rather than
 chronologically — E12 was elaborated after E17 — so read the dates, not the
 labels, for the order of events.
+
+---
+
+## D.015 — Rule 8.9: rollover state at file scope so a test can clear it
+
+### Guideline
+
+**MISRA C:2012 Rule 8.9** — Advisory.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Deviation — the code departs from the guideline.
+
+### Construct
+
+`Platform/CmsisRtos/Source/SolidSyslogCmsisRtosSysUpTime.c:18` and `:19`
+declare `static uint32_t CmsisRtosSysUpTime_LastTicks` and
+`static uint32_t CmsisRtosSysUpTime_Rollovers`. Both are read and written by
+`CmsisRtosSysUpTime_Extend` and by nothing else in the translation unit, which
+is what the rule asks be moved to block scope.
+
+The pair carries the phase of `osKernelGetTickCount`, which is 32 bits on every
+CMSIS-RTOS2 implementation and cannot say how often it has wrapped. The adapter
+is a bare `SolidSyslogSysUpTimeFunction`, so there is no handle and no Create to
+hang the state off; it has to live in the translation unit.
+
+Unlike D.012, the finding is accurate. The objects really are
+referenced from one function, and cppcheck-misra is reporting what is there.
+
+### Scope
+
+`Platform/CmsisRtos/Source/SolidSyslogCmsisRtosSysUpTime.c:18` and `:19` — two
+declarations.
+
+This entry authorises those two and no other. A future file-scope `static`
+whose identifier appears in a single function is reviewed on its merits and
+either amends this entry with the file named, or is raised as its own; it is not
+covered until that happens.
+
+### Rationale
+
+Testability. Block scope would put the wrap count beyond the reach of anything
+outside `CmsisRtosSysUpTime_Extend`, and the counting has to be tested: a wrap
+that is missed, double-counted, or counted when the counter has not moved each
+produces a `sysUpTime` wrong by about 497 days.
+
+`Tests/CmsisRtos/SolidSyslogCmsisRtosSysUpTimeTestHelper.c` includes the adapter
+into the test translation unit and adds `TestCmsisRtosSysUpTime_Reset`, so every
+test starts from a known phase and asserts absolutes rather than differences
+between calls. A `static` inside the function is unreachable even from a
+translation unit that has included the file, so the helper cannot work without
+the wider scope. Nothing about storage duration changes: both spellings give the
+objects static storage for the life of the program, so only scope is deviated.
+
+| Alternative | Why rejected |
+|-------------|--------------|
+| Inline `cppcheck-suppress misra-c2012-8.9` at the declarations | **Project preference.** Deviations are recorded structurally in this document so the rationale is centrally auditable rather than scattered across call sites. |
+| Declare the state inside `CmsisRtosSysUpTime_Extend` | The wrap count becomes unreachable, so the tests fall back to asserting differences between consecutive calls in a fixed order, and each case inherits the phase the one before it left. |
+| Expose a reset from the adapter itself | Puts a function in the shipped library that exists only for the tests, and offers integrators a way to corrupt the phase. |
+| Give the state a second production reference to satisfy the tracker | Contrives a caller to quiet a tool. The finding is accurate; dressing it up is worse than recording it. |
+
+### Risk and mitigation
+
+- **Wider scope than the code needs.** Any function later added to this
+  translation unit could reach the phase directly rather than through
+  `CmsisRtosSysUpTime_Extend`. The file holds one public function and two
+  helpers, and the scaling helper is pure by design and documented as such.
+- **Genuinely single-function-scoped objects elsewhere.** This deviation is
+  line-specific, so a fresh 8.9 finding in another file still fails CI.
+- **Elimination path.** None expected: the constraint is the callback shape,
+  which is public API. Were `sysUpTime` ever to gain a handle, the state would
+  move into it and both the suppression and this entry would go.
+
+### Approval
+
+Raised and approved 2026-09-20 by the project owner, David Cozens. Recorded under
+[S40.03](https://github.com/cososo-ltd/solid-syslog/issues/852).
