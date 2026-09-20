@@ -26,6 +26,9 @@ static bool LittleFsFile_Read(struct SolidSyslogFile* base, void* buf, size_t co
 static bool LittleFsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
 static void LittleFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset);
 static size_t LittleFsFile_Size(struct SolidSyslogFile* base);
+static void LittleFsFile_Truncate(struct SolidSyslogFile* base);
+static bool LittleFsFile_Exists(struct SolidSyslogFile* base, const char* path);
+static bool LittleFsFile_Delete(struct SolidSyslogFile* base, const char* path);
 
 static inline struct SolidSyslogLittleFsFile* LittleFsFile_SelfFromBase(struct SolidSyslogFile* base);
 
@@ -50,6 +53,9 @@ bool SolidSyslogLittleFsFile_Initialise(
     self->Base.Write = LittleFsFile_Write;
     self->Base.SeekTo = LittleFsFile_SeekTo;
     self->Base.Size = LittleFsFile_Size;
+    self->Base.Truncate = LittleFsFile_Truncate;
+    self->Base.Exists = LittleFsFile_Exists;
+    self->Base.Delete = LittleFsFile_Delete;
     self->IsOpen = false;
     return true;
 }
@@ -123,4 +129,28 @@ static size_t LittleFsFile_Size(struct SolidSyslogFile* base)
     /* lfs reports an error as a negative value, which the contract renders
      * as zero. */
     return (size > 0) ? (size_t) size : 0U;
+}
+
+static void LittleFsFile_Truncate(struct SolidSyslogFile* base)
+{
+    struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
+    /* Seek as well as truncate: the contract leaves the file open at length
+     * zero, and the shared position would otherwise sit past the new end. */
+    (void) lfs_file_truncate(self->Filesystem, &self->Handle, 0);
+    (void) lfs_file_seek(self->Filesystem, &self->Handle, 0, LFS_SEEK_SET);
+}
+
+static bool LittleFsFile_Exists(struct SolidSyslogFile* base, const char* path)
+{
+    struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
+    struct lfs_info info;
+    return lfs_stat(self->Filesystem, path, &info) == LFS_ERR_OK;
+}
+
+static bool LittleFsFile_Delete(struct SolidSyslogFile* base, const char* path)
+{
+    struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
+    int result = lfs_remove(self->Filesystem, path);
+    /* The contract counts an absent path as removed. */
+    return (result == LFS_ERR_OK) || (result == LFS_ERR_NOENT);
 }
