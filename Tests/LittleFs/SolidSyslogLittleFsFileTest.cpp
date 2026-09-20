@@ -84,3 +84,15 @@ TEST(SolidSyslogLittleFsFile, ReadFailsWhenFewerBytesAreAvailable)
 
     CHECK_FALSE(SolidSyslogFile_Read(file, into, sizeof(into)));
 }
+
+TEST(SolidSyslogLittleFsFile, WriteCommitsBeforeReportingSuccess)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+
+    CHECK_TRUE(SolidSyslogFile_Write(file, record, sizeof(record)));
+
+    LONGS_EQUAL(sizeof(record), LittleFsFake_LastWriteCount());
+    MEMCMP_EQUAL(record, LittleFsFake_LastWriteBytes(), sizeof(record));
+    LONGS_EQUAL(1, LittleFsFake_SyncCallCount());
+}
