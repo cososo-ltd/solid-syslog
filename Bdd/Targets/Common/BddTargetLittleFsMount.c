@@ -30,11 +30,16 @@ bool BddTargetLittleFsMount_Mount(void)
     }
     const struct lfs_config* config = LfsSemihostingDisk_Config();
     int result = lfs_mount(&filesystem, config);
-    if (result != LFS_ERR_OK)
+    if (result == LFS_ERR_CORRUPT)
     {
-        /* Fresh image - lay down a filesystem and mount again. Behave removes
-         * the image between scenarios, so this is the usual path rather than
-         * the exception. */
+        /* No filesystem on the image - lay one down and mount again. Behave
+         * removes the image between scenarios, so this is the usual path
+         * rather than the exception.
+         *
+         * Only LFS_ERR_CORRUPT triggers it, which is LittleFS's verdict that
+         * there is nothing valid here. Formatting on any failure would let a
+         * media error wipe an image that still holds records - the FatFs
+         * sibling narrows to FR_NO_FILESYSTEM for the same reason. */
         result = lfs_format(&filesystem, config);
         if (result == LFS_ERR_OK)
         {
