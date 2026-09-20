@@ -293,6 +293,7 @@ endforeach()
 
 foreach(cmsisrtos_test_target IN ITEMS
     SolidSyslogCmsisRtosMutexTest
+    SolidSyslogCmsisRtosSysUpTimeTest
 )
     if(TARGET ${cmsisrtos_test_target})
         register_junit_test(${cmsisrtos_test_target})

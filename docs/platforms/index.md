@@ -16,7 +16,7 @@ vtable.
 | [Posix](posix/index.md) | POSIX / BSD sockets | ● | | | ● | ● | ● |
 | [Windows](windows/index.md) | Win32 / Winsock | ● | | | ● | ● | ● |
 | [FreeRTOS](freertos/index.md) | FreeRTOS kernel | | | | | ● | ● |
-| [CMSIS-RTOS2](cmsisrtos/index.md) | CMSIS-RTOS2 API | | | | | ● | |
+| [CMSIS-RTOS2](cmsisrtos/index.md) | CMSIS-RTOS2 API | | | | | ● | ● |
 | [FreeRTOS-Plus-TCP](plustcp/index.md) | FreeRTOS-Plus-TCP | ● | | | | | |
 | [lwIP (Raw API)](lwipraw/index.md) | lwIP Raw API | ● | | | | | |
 | [OpenSSL](openssl/index.md) | OpenSSL ≥ 3.0 | | ● | ● | | | |

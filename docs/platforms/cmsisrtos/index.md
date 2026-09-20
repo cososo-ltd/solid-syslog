@@ -6,16 +6,18 @@ It targets the API rather than any one kernel, so the same adapter serves every
 kernel that implements it. Networking, storage and time come from separate
 platforms; the [capability matrix](../index.md) shows which fill them.
 
-Fills the Mutex [role](../../roles/index.md).
+Fills the Mutex [role](../../roles/index.md), plus a sysUpTime callback.
 
 ## What it ships
 
 ## Requirements
 
-An implementation of the CMSIS-RTOS2 mutex API, and its `cmsis_os2.h` on your
-include path. The adapter calls `osMutexNew`, `osMutexAcquire`,
-`osMutexRelease` and `osMutexDelete` and nothing else, so no other part of the
-API needs to be present or configured.
+An implementation of the CMSIS-RTOS2 API, and its `cmsis_os2.h` on your include
+path. The mutex calls `osMutexNew`, `osMutexAcquire`, `osMutexRelease` and
+`osMutexDelete`; the uptime callback calls `osKernelGetTickCount`,
+`osKernelGetTickFreq`, `osKernelLock` and `osKernelRestoreLock`. Nothing else
+in the API needs to be present or configured, and a build that takes only one
+of the two needs only that one's calls.
 
 ## Security behaviour and obligations
 
@@ -56,3 +58,34 @@ waits. CMSIS-RTOS2 leaves the attribute optional: an implementation whose
 mutexes always inherit ignores the bit, and one that supports neither will
 create the mutex without it. Where priority inversion is a hazard you must
 bound, confirm your implementation honours it.
+
+### Uptime is a tick count, not a clock
+
+The sysUpTime callback reports kernel ticks since boot. It is not wall-clock
+time and carries no timezone or synchronisation quality - the clock callback is
+a separate injection point.
+
+`SolidSyslogCmsisRtos_GetSysUpTime` meets the
+[sysUpTime contract](../../api/SolidSyslogMetaSd_8h.md), wrapping at about 497
+days as RFC 3418 requires. The tick rate is read from `osKernelGetTickFreq` at
+each call rather than taken from a build-time constant, so whatever rate your
+kernel is configured for scales correctly with nothing for you to declare.
+
+`osKernelGetTickCount` is 32 bits on every CMSIS-RTOS2 implementation, so above
+100 Hz the counter reaches its own wrap before the RFC's - ten times sooner at
+1000 Hz. The wraps are therefore counted, which costs one thing to know about:
+the callback has to be reached once per wrap, roughly 50 days at 1000 Hz, and
+formatting any message does that.
+
+### The uptime callback belongs to a task, not an interrupt
+
+The wrap count is shared state, and `osKernelLock` is what makes reading the
+counter and counting a wrap one step. CMSIS-RTOS2 has no primitive that does
+that in both task and interrupt context; the alternative, a mutex, would need a
+control block you size and keep alive for something you otherwise only point
+at, and could block inside message formatting.
+
+From an interrupt `osKernelLock` locks nothing and returns an error code, so
+the wrap count is left unguarded and can miss or double-count a wrap that races
+it. Log from a task. Before the scheduler starts the lock is inert in the same
+way, and there it is correct - nothing else is running to race.

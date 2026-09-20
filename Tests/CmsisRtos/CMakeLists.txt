@@ -30,3 +30,28 @@ target_include_directories(SolidSyslogCmsisRtosMutexTest PRIVATE
 )
 
 add_test(NAME SolidSyslogCmsisRtosMutexTest COMMAND SolidSyslogCmsisRtosMutexTest)
+
+# The helper whitebox-includes SolidSyslogCmsisRtosSysUpTime.c rather than the
+# adapter being compiled alongside it, so the rollover state it keeps at file
+# scope can be cleared between tests. Listing both would define each twice.
+add_executable(SolidSyslogCmsisRtosSysUpTimeTest
+    SolidSyslogCmsisRtosSysUpTimeTest.cpp
+    SolidSyslogCmsisRtosSysUpTimeTestHelper.c
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/Support/CmsisRtosFakes/Source/CmsisRtosKernelFake.c
+)
+
+target_link_libraries(SolidSyslogCmsisRtosSysUpTimeTest PRIVATE
+    ${PROJECT_NAME}
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogCmsisRtosSysUpTimeTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/CmsisRtos/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/CmsisRtos/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Tests/Support/CmsisRtosFakes/Interface
+)
+
+add_test(NAME SolidSyslogCmsisRtosSysUpTimeTest COMMAND SolidSyslogCmsisRtosSysUpTimeTest)
