@@ -64,7 +64,7 @@ void SolidSyslogPosixMutex_Destroy(struct SolidSyslogMutex* base)
 static inline size_t PosixMutex_IndexFromHandle(const struct SolidSyslogMutex* base)
 {
     size_t result = SOLIDSYSLOG_MUTEX_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_MUTEX_POOL_SIZE; poolIndex++)
+    for (size_t poolIndex = 0U; poolIndex < SOLIDSYSLOG_MUTEX_POOL_SIZE; poolIndex++)
     {
         if (base == &PosixMutex_Pool[poolIndex].Base)
         {

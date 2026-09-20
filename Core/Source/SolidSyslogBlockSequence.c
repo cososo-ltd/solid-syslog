@@ -535,7 +535,7 @@ size_t SolidSyslogBlockSequence_TotalBytes(const struct SolidSyslogBlockSequence
 
 size_t SolidSyslogBlockSequence_UsedBytes(const struct SolidSyslogBlockSequence* blockSequence)
 {
-    size_t used = 0;
+    size_t used = 0U;
 
     if (blockSequence->AtCapacity)
     {

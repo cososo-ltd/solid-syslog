@@ -175,7 +175,7 @@ static bool LwipRawDnsResolver_WaitForCallback(struct SolidSyslogLwipRawDnsResol
 {
     const uint32_t pollMs = (uint32_t) SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVE_POLL_MS;
     const uint32_t deadlineMs = (uint32_t) SOLIDSYSLOG_DNS_RESOLVE_TIMEOUT_MS;
-    uint32_t elapsedMs = 0;
+    uint32_t elapsedMs = 0U;
     while (!self->Done && (elapsedMs < deadlineMs))
     {
         self->Config.Sleep((int) pollMs);

@@ -202,7 +202,7 @@ bool SolidSyslogRecordStore_Read(
     size_t* bytesRead
 )
 {
-    uint16_t length = 0;
+    uint16_t length = 0U;
     bool read = false;
 
     *bytesRead = 0;
@@ -455,7 +455,7 @@ size_t SolidSyslogRecordStore_FindFirstUnsent(
     bool* corrupt
 )
 {
-    size_t cursor = 0;
+    size_t cursor = 0U;
     bool scanning = true;
     *corrupt = false;
 
@@ -476,7 +476,7 @@ static bool RecordStore_AdvancePastSentRecord(
     bool* corrupt
 )
 {
-    uint16_t length = 0;
+    uint16_t length = 0U;
     bool advanced = false;
 
     if (RecordStore_ReadAndValidateRecord(recordStore, blockDevice, blockIndex, *cursor, &length))

@@ -23,7 +23,7 @@ uint16_t SolidSyslogCrc16_Compute(const uint8_t* data, uint16_t length)
 {
     uint16_t crc = CRC16_CCITT_INIT;
 
-    for (uint16_t i = 0; i < length; i++)
+    for (uint16_t i = 0U; i < length; i++)
     {
         crc ^= (uint16_t) ((uint16_t) data[i] << 8U);
 

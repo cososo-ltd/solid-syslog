@@ -292,7 +292,7 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
 static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
 {
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t len = 0;
+    size_t len = 0U;
     bool drained = false;
 
     while (SolidSyslogBuffer_Read(self->Buffer, buf, sizeof(buf), &len))
@@ -310,7 +310,7 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
 static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
 {
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t len = 0;
+    size_t len = 0U;
     bool sendFailed = false;
 
     if (SolidSyslogStore_ReadNextUnsent(self->Store, buf, sizeof(buf), &len))

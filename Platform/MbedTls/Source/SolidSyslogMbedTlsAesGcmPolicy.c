@@ -134,7 +134,7 @@ static bool MbedTlsAesGcmPolicy_SealRecord(
  * unavailable or not exactly 32 bytes - AES-256 admits no other key length. */
 static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* policy, uint8_t* keyOut)
 {
-    size_t keyLength = 0;
+    size_t keyLength = 0U;
     bool fetched = policy->Config.GetKey(policy->Config.KeyContext, keyOut, AES_256_KEY_SIZE, &keyLength) &&
                    (keyLength == (size_t) AES_256_KEY_SIZE);
     if (!fetched)

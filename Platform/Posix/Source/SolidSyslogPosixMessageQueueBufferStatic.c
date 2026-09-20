@@ -102,7 +102,7 @@ void SolidSyslogPosixMessageQueueBuffer_Destroy(struct SolidSyslogBuffer* base)
 static inline size_t PosixMessageQueueBuffer_IndexFromHandle(const struct SolidSyslogBuffer* base)
 {
     size_t result = SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE; poolIndex++)
+    for (size_t poolIndex = 0U; poolIndex < SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE; poolIndex++)
     {
         if (base == &PosixMessageQueueBuffer_Pool[poolIndex].Base)
         {

@@ -214,7 +214,7 @@ static bool BlockStore_ReadCurrent(struct SolidSyslogBlockStore* self, void* dat
 static void BlockStore_MarkSent(struct SolidSyslogStore* base)
 {
     struct SolidSyslogBlockStore* self = BlockStore_SelfFromBase(base);
-    size_t nextCursor = 0;
+    size_t nextCursor = 0U;
 
     if (SolidSyslogRecordStore_MarkLastReadAsSent(
             self->RecordStore,

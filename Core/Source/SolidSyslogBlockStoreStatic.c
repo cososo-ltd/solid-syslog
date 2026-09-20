@@ -186,7 +186,7 @@ void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore* base)
 static inline size_t BlockStore_IndexFromHandle(const struct SolidSyslogStore* base)
 {
     size_t result = SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE; poolIndex++)
+    for (size_t poolIndex = 0U; poolIndex < SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE; poolIndex++)
     {
         if (base == &BlockStore_Pool[poolIndex].Base)
         {

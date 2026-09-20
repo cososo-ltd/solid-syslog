@@ -907,7 +907,7 @@ static inline uint32_t OpenSslStream_ResolveHandshakeTimeoutMs(struct SolidSyslo
 static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStream* self)
 {
     uint32_t budgetMs = OpenSslStream_ResolveHandshakeTimeoutMs(self);
-    uint32_t totalSleptMs = 0;
+    uint32_t totalSleptMs = 0U;
     bool result = false;
     bool done = false;
 

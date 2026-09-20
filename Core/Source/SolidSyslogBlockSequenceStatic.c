@@ -47,7 +47,7 @@ void SolidSyslogBlockSequence_Destroy(struct SolidSyslogBlockSequence* blockSequ
 static inline size_t BlockSequence_IndexFromHandle(const struct SolidSyslogBlockSequence* blockSequence)
 {
     size_t result = SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE; poolIndex++)
+    for (size_t poolIndex = 0U; poolIndex < SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE; poolIndex++)
     {
         if (blockSequence == &BlockSequence_Pool[poolIndex])
         {

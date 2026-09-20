@@ -320,7 +320,7 @@ static bool LwipRawTcpStream_WaitForConnectedCallback(struct SolidSyslogLwipRawT
 {
     const uint32_t pollMs = (uint32_t) SOLIDSYSLOG_LWIP_RAW_TCP_CONNECT_POLL_MS;
     const uint32_t deadlineMs = LwipRawTcpStream_ResolveConnectTimeoutMs(self);
-    uint32_t elapsedMs = 0;
+    uint32_t elapsedMs = 0U;
     while (!self->Connected && !self->Errored && (elapsedMs < deadlineMs))
     {
         self->Config.Sleep((int) pollMs);
