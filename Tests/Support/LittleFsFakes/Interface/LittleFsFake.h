@@ -14,6 +14,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     int LittleFsFake_CloseCallCount(void);
 
+    /* Bytes lfs_file_read hands back, and how many of them. A read asking for
+       more than this returns the short count, which is how the adapter's
+       short-read path is driven. */
+    void LittleFsFake_SetReadSource(const void* bytes, lfs_size_t count);
+    int LittleFsFake_ReadCallCount(void);
+    lfs_size_t LittleFsFake_LastReadCount(void);
+
     void LittleFsFake_SetOpenResult(int result);
     int LittleFsFake_OpenCallCount(void);
     const char* LittleFsFake_LastOpenPath(void);

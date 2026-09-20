@@ -62,3 +62,15 @@ TEST(SolidSyslogLittleFsFile, CloseClosesTheOpenFile)
     CHECK_FALSE(SolidSyslogFile_IsOpen(file));
     LONGS_EQUAL(1, LittleFsFake_CloseCallCount());
 }
+
+TEST(SolidSyslogLittleFsFile, ReadReturnsTheBytesRequested)
+{
+    const unsigned char stored[] = {'a', 'b', 'c'};
+    unsigned char into[3] = {};
+    LittleFsFake_SetReadSource(stored, sizeof(stored));
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+
+    CHECK_TRUE(SolidSyslogFile_Read(file, into, sizeof(into)));
+
+    MEMCMP_EQUAL(stored, into, sizeof(stored));
+}
