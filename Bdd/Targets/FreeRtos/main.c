@@ -93,6 +93,13 @@ static struct SolidSyslogSender* switchingSender = NULL;
  * network goes down and back up. */
 static BaseType_t interactiveTaskCreated = pdFALSE;
 
+/* This target spawns its threads through the kernel API rather than the OS seam
+ * in BddTargetOsPrimitives.h, because the rollback below needs the handle that
+ * seam deliberately does not hand back. FreeRTOS-Plus-TCP pins it to this kernel
+ * anyway - its own network event hook is what calls this. So convert the shared
+ * byte sizes back into the stack words xTaskCreate wants. */
+#define BDD_TARGET_STACK_WORDS(bytes) ((configSTACK_DEPTH_TYPE) ((bytes) / sizeof(StackType_t)))
+
 extern NetworkInterface_t* pxMPS2_FillInterfaceDescriptor(BaseType_t xEMACIndex, NetworkInterface_t* pxInterface);
 
 static void SetEthernetIrqPriority(void);
@@ -153,7 +160,7 @@ void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, stru
         if (xTaskCreate(
                 BddTargetFreeRtosPipeline_InteractiveTask,
                 "interactive",
-                configMINIMAL_STACK_SIZE * BDD_TARGET_INTERACTIVE_STACK_MULTIPLIER,
+                BDD_TARGET_STACK_WORDS(BDD_TARGET_INTERACTIVE_STACK_BYTES),
                 NULL,
                 tskIDLE_PRIORITY + 1,
                 &interactiveTask
@@ -162,7 +169,7 @@ void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, stru
             if (xTaskCreate(
                     BddTargetFreeRtosPipeline_ServiceTask,
                     "service",
-                    configMINIMAL_STACK_SIZE * BDD_TARGET_SERVICE_STACK_MULTIPLIER,
+                    BDD_TARGET_STACK_WORDS(BDD_TARGET_SERVICE_STACK_BYTES),
                     NULL,
                     tskIDLE_PRIORITY + 1,
                     NULL

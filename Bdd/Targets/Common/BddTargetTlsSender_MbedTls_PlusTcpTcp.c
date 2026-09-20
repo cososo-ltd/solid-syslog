@@ -25,6 +25,7 @@
 
 #include "BddTargetClock.h"
 #include "BddTargetMtlsConfig.h"
+#include "BddTargetOsPrimitives.h"
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
 #include "SolidSyslogPlusTcpAddress.h"
@@ -43,8 +44,10 @@
 #include <mbedtls/x509_crt.h>
 #include <psa/crypto.h>
 
+/* FreeRTOS.h is here for pvPortMalloc / vPortFree alone - CMSIS-RTOS2
+ * defines no heap, so the mbedTLS allocator below has no portable form.
+ * Everything else that touches the OS goes through BddTargetOsPrimitives. */
 #include <FreeRTOS.h>
-#include <task.h>
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -144,7 +147,7 @@ psa_status_t mbedtls_psa_external_get_random(
     return PSA_SUCCESS;
 }
 
-/* Demo-only entropy: XOR the FreeRTOS tick count, a per-call counter, and
+/* Demo-only entropy: XOR the uptime in milliseconds, a per-call counter, and
  * the destination address (which varies per call) into each output byte.
  * Quality is intentionally terrible - QEMU has no real source - and the
  * "demo-only entropy" printf emit at the end of EnsureMbedTlsInitialised
@@ -157,23 +160,12 @@ static int DemoEntropySource(void* data, unsigned char* output, size_t len, size
     for (size_t i = 0; i < len; i++)
     {
         counter++;
-        uint32_t mix = (uint32_t) xTaskGetTickCount() ^ counter ^ (uint32_t) (uintptr_t) &output[i];
+        uint32_t mix =
+            (uint32_t) BddTargetOsPrimitives_UptimeMilliseconds() ^ counter ^ (uint32_t) (uintptr_t) &output[i];
         output[i] = (unsigned char) ((mix >> ((i % 4U) * 8U)) & 0xFFU);
     }
     *olen = len;
     return 0;
-}
-
-static void RtosSleep(int milliseconds)
-{
-    /* Same rounding rule as the CmsdkUart sleep in main.c - sub-tick requests
-     * must still block the task, otherwise vTaskDelay(0) just yields. */
-    TickType_t ticks = pdMS_TO_TICKS((TickType_t) milliseconds);
-    if ((milliseconds > 0) && (ticks == 0U))
-    {
-        ticks = 1U;
-    }
-    vTaskDelay(ticks);
 }
 
 /* Idempotent: safe to call from BddTargetTlsSender_Create on every invocation
@@ -192,15 +184,15 @@ static void RtosSleep(int milliseconds)
    the scheduler's tick already is. */
 mbedtls_ms_time_t mbedtls_ms_time(void)
 {
-    return (mbedtls_ms_time_t) xTaskGetTickCount() * (mbedtls_ms_time_t) portTICK_PERIOD_MS;
+    return (mbedtls_ms_time_t) BddTargetOsPrimitives_UptimeMilliseconds();
 }
 
-static uint32_t FreeRtosUptimeSeconds(void)
+static uint32_t UptimeSeconds(void)
 {
-    return (uint32_t) (xTaskGetTickCount() / configTICK_RATE_HZ);
+    return (uint32_t) (BddTargetOsPrimitives_UptimeMilliseconds() / 1000U);
 }
 
-static mbedtls_time_t FreeRtosMbedTlsTime(mbedtls_time_t* result)
+static mbedtls_time_t MbedTlsTime(mbedtls_time_t* result)
 {
     mbedtls_time_t now = (mbedtls_time_t) BddTargetClock_Now();
     if (result != NULL)
@@ -221,7 +213,7 @@ static void EnsureMbedTlsInitialised(void)
      * error handler installation happens AFTER BddTargetTlsSender_Create -
      * the default no-op handler would otherwise swallow these. */
     (void) printf("[mbedtls] init entropy + DRBG seed (slow under QEMU)\r\n");
-    vTaskDelay(1U);
+    BddTargetOsPrimitives_Sleep(1);
 
     /* Redirect mbedTLS allocations to the FreeRTOS heap before any
      * mbedtls_*_init runs. Must come first - once an ssl_setup runs against
@@ -233,8 +225,8 @@ static void EnsureMbedTlsInitialised(void)
        is on a hosted target. Process-global like the allocator pair above, and
        installed by the target for the same reason: the library never touches
        mbedTLS's global hooks. */
-    BddTargetClock_Initialise(FreeRtosUptimeSeconds);
-    mbedtls_platform_set_time(FreeRtosMbedTlsTime);
+    BddTargetClock_Initialise(UptimeSeconds);
+    mbedtls_platform_set_time(MbedTlsTime);
 
     mbedtls_entropy_init(&entropy);
     /* Registered as MBEDTLS_ENTROPY_SOURCE_STRONG even though the demo
@@ -265,7 +257,7 @@ static void EnsureMbedTlsInitialised(void)
         ) printf("[mbedtls] ctr_drbg_seed FAILED rc=-0x%04x; TLS slot will be unusable\r\n", (unsigned) -drbgSeedRc);
         return;
     }
-    vTaskDelay(1U);
+    BddTargetOsPrimitives_Sleep(1);
 
     /* mbedTLS 3.6 routes TLS 1.3 cryptography through PSA, so psa_crypto_init()
      * must succeed before the first handshake or mbedtls_ssl_handshake returns
@@ -294,7 +286,7 @@ static void EnsureMbedTlsInitialised(void)
         ) printf("[mbedtls] CA chain parse FAILED rc=-0x%04x; TLS slot will be unusable\r\n", (unsigned) -caParseRc);
         return;
     }
-    vTaskDelay(1U);
+    BddTargetOsPrimitives_Sleep(1);
 
     memcpy(caBPemBuf, bdd_baked_ca_b_pem, sizeof(bdd_baked_ca_b_pem));
     caBPemBuf[sizeof(bdd_baked_ca_b_pem)] = '\0';
@@ -308,7 +300,7 @@ static void EnsureMbedTlsInitialised(void)
         );
         return;
     }
-    vTaskDelay(1U);
+    BddTargetOsPrimitives_Sleep(1);
 
     (void) printf("[mbedtls] parsing client cert chain\r\n");
 
@@ -324,7 +316,7 @@ static void EnsureMbedTlsInitialised(void)
         );
         return;
     }
-    vTaskDelay(1U);
+    BddTargetOsPrimitives_Sleep(1);
 
     (void) printf("[mbedtls] parsing client key (RSA — slowest step)\r\n");
 
@@ -348,7 +340,7 @@ static void EnsureMbedTlsInitialised(void)
         );
         return;
     }
-    vTaskDelay(1U);
+    BddTargetOsPrimitives_Sleep(1);
 
     /* Audit trail: every cold boot of this target announces the demo-only
      * entropy explicitly. Integrators porting this off the BDD target should
@@ -357,7 +349,7 @@ static void EnsureMbedTlsInitialised(void)
      * step above has succeeded - partial-init state would silently degrade
      * later handshakes into confusing "internal" errors. */
     (void) printf("[mbedtls] init complete. WARNING: demo-only entropy "
-                  "(xTaskGetTickCount + per-call counter). Not for production.\r\n");
+                  "(uptime + per-call counter). Not for production.\r\n");
 
     mbedTlsInitialised = true;
 }
@@ -453,7 +445,7 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     static struct SolidSyslogMbedTlsStreamConfig tlsStreamConfig;
     tlsStreamConfig = (struct SolidSyslogMbedTlsStreamConfig) {0};
     tlsStreamConfig.Transport = underlyingStream;
-    tlsStreamConfig.Sleep = RtosSleep;
+    tlsStreamConfig.Sleep = BddTargetOsPrimitives_Sleep;
     tlsStreamConfig.Rng = &drbg;
     tlsStreamConfig.Version = DispatchEndpointVersion;
     tlsStreamConfig.Profile = BddTargetTlsSender_Profile;
