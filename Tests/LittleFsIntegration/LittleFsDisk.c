@@ -1,8 +1,10 @@
 #include "LittleFsDisk.h"
 
+#include <stddef.h>
 #include <string.h>
 
 static struct LittleFsDisk* DiskFromConfig(const struct lfs_config* config);
+static size_t ByteOffset(lfs_block_t block, lfs_off_t off);
 static bool WriteIsCut(struct LittleFsDisk* disk);
 
 static int DiskRead(const struct lfs_config* c, lfs_block_t block, lfs_off_t off, void* buffer, lfs_size_t size);
@@ -70,6 +72,13 @@ static struct LittleFsDisk* DiskFromConfig(const struct lfs_config* c)
     return (struct LittleFsDisk*) c->context;
 }
 
+/* Widen before multiplying: the product is a byte offset, and computing it in
+ * the block type first would overflow on a device large enough to need it. */
+static size_t ByteOffset(lfs_block_t block, lfs_off_t off)
+{
+    return ((size_t) block * (size_t) LITTLEFS_DISK_BLOCK_SIZE) + (size_t) off;
+}
+
 /* Counts the attempt, then says whether the power is now gone. Once it is, it
  * stays gone until LittleFsDisk_PowerOn. */
 static bool WriteIsCut(struct LittleFsDisk* disk)
@@ -93,14 +102,14 @@ static int DiskRead(const struct lfs_config* c, lfs_block_t block, lfs_off_t off
     {
         return LFS_ERR_IO;
     }
-    memcpy(buffer, &disk->Storage[(block * LITTLEFS_DISK_BLOCK_SIZE) + off], size);
+    memcpy(buffer, &disk->Storage[ByteOffset(block, off)], size);
     return LFS_ERR_OK;
 }
 
 static int DiskProg(const struct lfs_config* c, lfs_block_t block, lfs_off_t off, const void* buffer, lfs_size_t size)
 {
     struct LittleFsDisk* disk = DiskFromConfig(c);
-    uint8_t* target = &disk->Storage[(block * LITTLEFS_DISK_BLOCK_SIZE) + off];
+    uint8_t* target = &disk->Storage[ByteOffset(block, off)];
     int result = LFS_ERR_OK;
     if (WriteIsCut(disk))
     {
@@ -129,7 +138,7 @@ static int DiskErase(const struct lfs_config* c, lfs_block_t block)
     }
     else
     {
-        memset(&disk->Storage[block * LITTLEFS_DISK_BLOCK_SIZE], 0xFF, LITTLEFS_DISK_BLOCK_SIZE);
+        memset(&disk->Storage[ByteOffset(block, 0)], 0xFF, LITTLEFS_DISK_BLOCK_SIZE);
     }
     return result;
 }

@@ -84,13 +84,15 @@ TEST(LittleFsDisk, ATornCutLeavesHalfTheBytesBehind)
     CHECK_TRUE(LittleFsDisk_PowerLost(&disk));
     LittleFsDisk_PowerOn(&disk);
     LONGS_EQUAL(LFS_ERR_OK, config.read(&config, 0, 0, readBack, sizeof(readBack)));
-    for (unsigned index = 0; index < (LITTLEFS_DISK_PROG_SIZE / 2U); index++)
+    const uint8_t* programmed = readBack;
+    const uint8_t* untouched = readBack + (LITTLEFS_DISK_PROG_SIZE / 2U);
+    for (const uint8_t* byte = programmed; byte != untouched; ++byte)
     {
-        BYTES_EQUAL(0xA5, readBack[index]);
+        BYTES_EQUAL(0xA5, *byte);
     }
-    for (unsigned index = LITTLEFS_DISK_PROG_SIZE / 2U; index < LITTLEFS_DISK_PROG_SIZE; index++)
+    for (const uint8_t* byte = untouched; byte != (readBack + LITTLEFS_DISK_PROG_SIZE); ++byte)
     {
-        BYTES_EQUAL(0xFF, readBack[index]);
+        BYTES_EQUAL(0xFF, *byte);
     }
 }
 

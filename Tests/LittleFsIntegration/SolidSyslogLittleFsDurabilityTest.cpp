@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -75,7 +76,10 @@ struct Stack
         (void) lfs_unmount(&filesystem);
     }
 
-    /* A reboot: the library state and the lfs_t go, the bytes stay. */
+    /* A reboot: the library state and the lfs_t go, the bytes stay. The
+     * unmount and fresh mount are what actually discard LittleFS's in-RAM
+     * state; zeroing the struct as well is belt-and-braces that no test
+     * distinguishes, kept because it says what a reboot is. */
     void Reboot()
     {
         Unmount();
@@ -84,12 +88,12 @@ struct Stack
         Mount();
     }
 
-    bool Write(const std::string& record)
+    [[nodiscard]] bool Write(const std::string& record) const
     {
         return SolidSyslogStore_Write(store, record.data(), record.size());
     }
 
-    std::vector<std::string> DrainUnsent()
+    [[nodiscard]] std::vector<std::string> DrainUnsent() const
     {
         std::vector<std::string> records;
         char buffer[256] = {};
@@ -106,14 +110,11 @@ struct Stack
 
 bool Contains(const std::vector<std::string>& records, const std::string& wanted)
 {
-    for (const std::string& record : records)
-    {
-        if (record == wanted)
-        {
-            return true;
-        }
-    }
-    return false;
+    return std::any_of(
+        records.begin(),
+        records.end(),
+        [&wanted](const std::string& record) { return record == wanted; }
+    );
 }
 
 } // namespace
