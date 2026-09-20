@@ -102,6 +102,9 @@ static inline bool LittleFsFile_IsValidSetup(const lfs_t* filesystem, const void
 
 void SolidSyslogLittleFsFile_Cleanup(struct SolidSyslogFile* base)
 {
+    /* Close first: the slot is about to be reusable, and LittleFS would
+     * otherwise keep a file open against a buffer the caller may reclaim. */
+    LittleFsFile_Close(base);
     /* Overwrite the abstract base with the shared NullFile vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullFile_Get();
