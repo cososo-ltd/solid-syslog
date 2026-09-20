@@ -74,3 +74,13 @@ TEST(SolidSyslogLittleFsFile, ReadReturnsTheBytesRequested)
 
     MEMCMP_EQUAL(stored, into, sizeof(stored));
 }
+
+TEST(SolidSyslogLittleFsFile, ReadFailsWhenFewerBytesAreAvailable)
+{
+    const unsigned char stored[] = {'a', 'b'};
+    unsigned char into[3] = {};
+    LittleFsFake_SetReadSource(stored, sizeof(stored));
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+
+    CHECK_FALSE(SolidSyslogFile_Read(file, into, sizeof(into)));
+}
