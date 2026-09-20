@@ -68,9 +68,9 @@ guarantee still rests on your block-device callbacks reporting a program or eras
 as complete only once it is, and on the flash part behaving as its datasheet says
 through a power cut.
 
-### What the durability claim above has been tested against
+### What the pack has been tested against
 
-The claim is tested, not asserted. An integration suite runs the whole store
+The durability claim is tested, not asserted. An integration suite runs the whole store
 stack over an emulated flash device that can lose power mid-write: the device
 counts program and erase operations and, on a chosen one, either does nothing or
 writes half its buffer and then fails, after which every operation fails because
@@ -79,11 +79,19 @@ from the same bytes. Every record the store reported as written is still there
 and complete, for a clean cut and a torn one, and a record interrupted mid-write
 is refused rather than half-kept.
 
-That covers torn programs and lost RAM. It does not cover a real flash part:
+Beyond that, a BDD target exercises the pack end to end under QEMU: the store
+writes records to a real LittleFS over a block device backed by a host image,
+and the syslog scenarios that cover store-and-forward, capacity and power-cycle
+replay run against it like any other filesystem. That is the pack carrying real
+traffic rather than a unit fixture.
+
+Both stop short of a real flash part:
 erase granularity, partial programming at the cell level, read disturb and wear
-are properties of silicon that an emulated device does not reproduce. Treat the
-suite as evidence that the adapter and LittleFS honour the contract between
-them, not as qualification against your flash.
+are properties of silicon that neither an emulated device nor a host-backed disk
+image reproduces - and the BDD image, having no erase of its own, emulates one by
+writing the erased value, so a program there can raise bits as a real part could
+not. Treat both as evidence that the adapter and LittleFS honour the contract
+between them, not as qualification against your flash.
 
 ### Wear levelling is the filesystem's, not yours
 
