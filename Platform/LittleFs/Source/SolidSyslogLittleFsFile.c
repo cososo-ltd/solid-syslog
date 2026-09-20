@@ -15,6 +15,11 @@
 
 const struct SolidSyslogErrorSource SolidSyslogLittleFsFileErrorSource = {"LittleFsFile"};
 
+/* The File contract says Open creates the file when absent and never truncates
+ * an existing one. */
+#define READ_WRITE_OR_CREATE (LFS_O_RDWR | LFS_O_CREAT)
+
+static bool LittleFsFile_Open(struct SolidSyslogFile* base, const char* path);
 static bool LittleFsFile_IsOpen(struct SolidSyslogFile* base);
 
 static inline struct SolidSyslogLittleFsFile* LittleFsFile_SelfFromBase(struct SolidSyslogFile* base);
@@ -33,6 +38,7 @@ bool SolidSyslogLittleFsFile_Initialise(
     self->Base = *SolidSyslogNullFile_Get();
     self->Filesystem = filesystem;
     self->OpenConfig.buffer = fileBuffer;
+    self->Base.Open = LittleFsFile_Open;
     self->Base.IsOpen = LittleFsFile_IsOpen;
     self->IsOpen = false;
     return true;
@@ -48,6 +54,14 @@ void SolidSyslogLittleFsFile_Cleanup(struct SolidSyslogFile* base)
     /* Overwrite the abstract base with the shared NullFile vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullFile_Get();
+}
+
+static bool LittleFsFile_Open(struct SolidSyslogFile* base, const char* path)
+{
+    struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
+    int result = lfs_file_opencfg(self->Filesystem, &self->Handle, path, READ_WRITE_OR_CREATE, &self->OpenConfig);
+    self->IsOpen = (result == LFS_ERR_OK);
+    return self->IsOpen;
 }
 
 static bool LittleFsFile_IsOpen(struct SolidSyslogFile* base)
