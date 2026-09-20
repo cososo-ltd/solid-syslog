@@ -42,19 +42,21 @@ add_executable(LittleFsIntegrationTests
     LittleFsDisk.c
     LittleFsDiskTest.cpp
     SolidSyslogLittleFsDurabilityTest.cpp
-    ${CMAKE_SOURCE_DIR}/Platform/LittleFs/Source/SolidSyslogLittleFsFile.c
-    ${CMAKE_SOURCE_DIR}/Platform/LittleFs/Source/SolidSyslogLittleFsFileStatic.c
 )
 
+# The adapter arrives through its own umbrella rather than as a list of source
+# paths, so the suite compiles exactly what a consumer links. A source added to
+# the pack reaches this test without anyone remembering to add it here - which
+# is the whole point of testing the real thing.
 target_link_libraries(LittleFsIntegrationTests PRIVATE
     ${PROJECT_NAME}
+    SolidSyslog::LittleFs
     littlefs_upstream
     CppUTest
     CppUTestExt
 )
 
 target_include_directories(LittleFsIntegrationTests PRIVATE
-    ${CMAKE_SOURCE_DIR}/Platform/LittleFs/Interface
     ${CMAKE_SOURCE_DIR}/Core/Interface
     ${CMAKE_SOURCE_DIR}/Core/Source
     ${CMAKE_SOURCE_DIR}/Tests

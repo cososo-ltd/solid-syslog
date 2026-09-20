@@ -131,14 +131,21 @@ static int DiskProg(const struct lfs_config* c, lfs_block_t block, lfs_off_t off
 static int DiskErase(const struct lfs_config* c, lfs_block_t block)
 {
     struct LittleFsDisk* disk = DiskFromConfig(c);
+    uint8_t* target = &disk->Storage[ByteOffset(block, 0)];
     int result = LFS_ERR_OK;
     if (WriteIsCut(disk))
     {
+        /* A torn erase leaves the block half erased, which is as real a
+         * power-cut state as a torn program and a different one to survive. */
+        if (disk->CutKind == LITTLEFS_DISK_CUT_TORN)
+        {
+            memset(target, 0xFF, LITTLEFS_DISK_BLOCK_SIZE / 2U);
+        }
         result = LFS_ERR_IO;
     }
     else
     {
-        memset(&disk->Storage[ByteOffset(block, 0)], 0xFF, LITTLEFS_DISK_BLOCK_SIZE);
+        memset(target, 0xFF, LITTLEFS_DISK_BLOCK_SIZE);
     }
     return result;
 }
