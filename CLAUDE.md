@@ -34,7 +34,8 @@ full tiered pre-PR check budget. One-line summary:
 - Pre-push (only when a file was added under `Core/` or `Platform/`): `scripts/check_spdx_headers.py` (~1 s)
 - Pre-push (only when a `.c` was added or removed under `Core/Source/` or `Platform/*/Source/`, or a pack's `target_sources` changed): regenerate `docs/generated/` and assert it — `verify-manifest` both diffs it and checks it against the tree (~1 min)
 - Pre-push (only when Markdown changed): markdownlint over the changed `.md` files (~5 s)
-- Everything else (`tidy`, `sanitize`, `coverage`, IWYU, Windows, BDD, integration, FreeRTOS host/cross) — CI's job; do not run locally. IWYU is advisory even in CI, and is not part of any pre-push budget; `docs/local-checks.md` keeps an optional command for the release-cleanup sweep
+- Pre-push (only when a whole new pack was added under `Platform/`): clang-tidy over it — the one case where pre-empting the tidy lanes pays (~2 min)
+- Everything else (`tidy` otherwise, `sanitize`, `coverage`, IWYU, Windows, BDD, integration, FreeRTOS host/cross) — CI's job; do not run locally. IWYU is advisory even in CI, and is not part of any pre-push budget; `docs/local-checks.md` keeps an optional command for the release-cleanup sweep
 - If CI surfaces a finding you missed, fix in another commit on the same branch rather than re-running every lane locally
 
 Commits on the branch can be informal (WIP messages are fine). The PR title is

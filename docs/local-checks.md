@@ -11,7 +11,7 @@ wait before a push stays short and CI catches the rest.
 |---|---|---|---|
 | **A** - fast feedback | Every commit on the branch | `cmake --build --preset debug --target junit` for whatever preset matches the diff (gcc / clang / freertos-host) | ~30-60 s |
 | **B** - pre-push | First push to the branch and any push that changes production source | A + format reflowed includes + `misra_renumber.py`, plus `check_spdx_headers.py` when a file was added and the manifests when a platform gained a source | ~3-4 min |
-| **CI** - everything else | After push | `tidy`, `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel |
+| **CI** - everything else | After push | `tidy` (except when adding a new pack), `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel |
 
 IWYU is advisory. The lanes still run on every PR and
 the report is uploaded as an artifact, but findings no longer fail the
@@ -34,6 +34,9 @@ Tier B does MISRA-line-drift cleanup, so scope it to what changed:
 - Added any file under `Core/` or `Platform/`: run
   `python3 scripts/check_spdx_headers.py`. It is a sub-second file scan, so it
   costs nothing to run on every push if you would rather not think about it.
+- Added a whole new pack under `Platform/`: run clang-tidy over it, below. This
+  is the one case where the tidy lanes are worth pre-empting rather than leaving
+  to CI.
 - Added or removed a `.c` under `Core/Source/` or `Platform/*/Source/`, or
   changed a pack's `target_sources`: regenerate the manifests, below.
   `docs/generated/` is checked in and `verify-manifest` both diffs it and
@@ -110,6 +113,37 @@ not apply is how it goes stale.
 
 Read the commands from the `verify-manifest` job in `.github/workflows/ci.yml`
 rather than from here if the two ever disagree - the workflow is what runs.
+
+### clang-tidy - only when adding a new pack
+
+`tidy` is otherwise CI's job, and the row below still says so. A new pack is the
+exception: it is a new directory of new files, and clang-tidy has more to say
+about those than about an edit to code it has already accepted. S36.01 pushed a
+new pack, went red on both `analyze-tidy-freertos-*` lanes, and cost a round
+trip for three findings that a local run would have shown in two minutes.
+
+```bash
+# In an image that has the upstream trees the pack needs - freertos-host carries
+# all of them. A dedicated build dir keeps the tidy cache out of build/debug.
+docker compose -f .devcontainer/docker-compose.yml run --rm -T freertos-host bash -c '
+  cmake -S . -B build/tidy-newpack -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DENABLE_CLANG_TIDY=ON
+  cmake --build build/tidy-newpack --target junit'
+```
+
+Two findings recur for a new pack, and both have an established answer rather
+than a suppression:
+
+- **A public header naming an upstream struct type** trips
+  `readability-identifier-naming`, because third-party tags follow nobody's
+  house style. Add a pack-level `.clang-tidy` extending `StructIgnoredRegexp`
+  to that upstream's namespace, as `Platform/MbedTls/.clang-tidy` and
+  `Platform/LittleFs/.clang-tidy` do. Their comments explain the catch: option
+  values do not merge across the hierarchy, so the root whitelist has to be
+  restated alongside the addition.
+- **A test fixture subscripting an array with a non-constant index** trips
+  `cppcoreguidelines-pro-bounds-constant-array-index`. Walk the array with a
+  pointer, or a range-for, rather than indexing it.
 
 ### IWYU (optional, advisory)
 
@@ -202,7 +236,9 @@ adjust those by hand.
 
 ## What CI runs and you should not run locally
 
-- `tidy`, `sanitize`, `coverage`: minutes each, all gated by CI
+- `sanitize`, `coverage`: minutes each, both gated by CI
+- `tidy`: gated by CI too, with one exception - a PR adding a new
+  `Platform/` pack, where it is worth running first (above)
 - `c99`: the `build-linux-c99` lane builds the library at the C99 language
   standard on every PR. If it fails, either fix the construct or, if it
   genuinely belongs to a C11-only component, gate that component the way
