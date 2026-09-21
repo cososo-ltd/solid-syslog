@@ -144,6 +144,17 @@ TEST(SolidSyslogLwipSocketTcpStream, TheWaitIsBoundedByTheTunableWhenTheIntegrat
     LONGS_EQUAL(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS, LwipSocketsFake_LastSelectTimeoutMs());
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, AStreamCreatedWithNoConfigAtAllStillConnects)
+{
+    SolidSyslogLwipSocketTcpStream_Destroy(stream);
+    stream = SolidSyslogLwipSocketTcpStream_Create(nullptr);
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+
+    CHECK_TRUE(Open());
+
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS, LwipSocketsFake_LastSelectTimeoutMs());
+}
+
 TEST(SolidSyslogLwipSocketTcpStream, TheWaitIsBoundedByTheInstalledGetterReadOnEveryAttempt)
 {
     SolidSyslogLwipSocketTcpStream_Destroy(stream);

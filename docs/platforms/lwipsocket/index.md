@@ -5,21 +5,65 @@
 files compile against your `lwipopts.h`, so the adapter inherits your stack's
 configuration.
 
-Fills the Resolver [role](../../roles/index.md), plus the address handle a
-transport reads back to send. The
+Fills the Datagram, Stream and Resolver [roles](../../roles/index.md), plus the
+address handle a transport reads back to send. The
 [platform x capability matrix](../index.md) shows which platform fills what.
 
 ## What it ships
 
+| Class | Fills |
+|---|---|
+| `SolidSyslogLwipSocketAddress` | the resolved destination a transport sends to |
+| `SolidSyslogLwipSocketResolver` | Resolver, over `lwip_getaddrinfo` |
+| `SolidSyslogLwipSocketDatagram` | Datagram, for syslog over UDP |
+| `SolidSyslogLwipSocketTcpStream` | Stream, for syslog over TCP and as the byte transport under TLS |
+
+Each header's own brief states what its class does; the API reference indexes
+them all.
+
 ## What your build must enable
 
 `LWIP_SOCKET=1`, and `LWIP_NETCONN=1` with it, because lwIP builds its sockets
-layer on netconn. Both require `NO_SYS=0` and a `sys_arch` port. The resolver
-additionally needs `LWIP_DNS=1`; asking for the class without it is a link
-error rather than a silent no-op.
+layer on netconn. Both require `NO_SYS=0` and a `sys_arch` port. Then the
+feature each class wraps:
+
+| Setting | For |
+|---|---|
+| `LWIP_DNS=1` | the resolver |
+| `LWIP_UDP=1` | the UDP datagram |
+| `LWIP_TCP=1` | the TCP stream |
+
+Asking for a class whose feature is off is a link error rather than a silent
+no-op.
+
+Your port must also make `errno` and its codes available, which lwIP leaves to
+`arch/cc.h` unless you set `LWIP_PROVIDE_ERRNO`: the transports read it to tell
+one refusal from another.
 
 The adapters call the `lwip_`-prefixed entry points rather than the unprefixed
 macros, so your `LWIP_COMPAT_SOCKETS` setting does not matter to them.
+
+## The transports never block
+
+Both take non-blocking sockets. The stream's connect is bounded by the deadline
+its config supplies rather than by the stack's own retransmission budget, and
+its send and read answer immediately, so a wedged peer costs a failed call
+rather than a stalled task. This is the opposite of the resolve below, which is
+the one call in the pack that waits.
+
+## Dead-peer detection is yours to size
+
+The stream turns keepalive on for its own connection and sets the idle period
+from `SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS`, so the tunables govern this
+connection and no other in your system.
+
+How much of that the stack honours depends on one `lwipopts.h` setting.
+`LWIP_TCP_KEEPALIVE=1` makes the probe interval and count settable too, and all
+three tunables apply. Without it those two are the stack's compile-time
+constants and only the idle period is yours. Either way a silent peer is first
+probed when the idle tunable elapses, and a connection actually carrying records
+notices sooner: the write fails and the stream closes itself so the sender
+reconnects.
 
 ## No marshal, and no hop
 
@@ -40,9 +84,15 @@ thread to answer, so asking it from inside a callback lwIP invoked deadlocks.
 
 ## Limits
 
-The address and the resolver are IPv4. The resolver asks lwIP for an IPv4
-address and refuses anything else rather than storing a destination a transport
-cannot send to, reporting through the error handler when it does.
+The pack is IPv4. The resolver asks lwIP for an IPv4 address and refuses
+anything else rather than storing a destination a transport cannot send to,
+reporting through the error handler when it does.
+
+lwIP's sockets layer exposes no path MTU, so the datagram answers the
+unknown-path payload for IPv4 rather than a figure it cannot stand behind. A
+record the stack says is too long is reported as oversize rather than as a
+failure, which is what lets the sender retry it trimmed to that payload instead
+of attempting it whole again.
 
 On a stack built without IPv4 that request is rejected outright, so every
 resolve fails and reports. A deployment on such a stack needs a different
@@ -50,7 +100,7 @@ resolver, not a different configuration of this one.
 
 ## When it does not work
 
-Install a handler before you start, and expect these three answers rather than
+Install a handler before you start, and expect several answers rather than
 one. [Error severity](../../error-severity.md) covers what each level means.
 
 - **A lookup that does not answer raises nothing.** An unknown name, or no reply
@@ -58,5 +108,12 @@ one. [Error severity](../../error-severity.md) covers what each level means.
   the delivery failure the sender raises once records stop getting through.
 - **A lookup refused for its address family raises `ERROR`.** The destination
   cannot be served as asked, and retrying will not change that.
+- **A connect that fails raises one event per attempt**, `ERROR` where this
+  device could not obtain or start the connection and `WARNING` where the
+  destination answered with something other than a connection, or did not
+  answer inside the budget. The detail code names which step gave up.
+- **A socket option the stack declines raises `WARNING`**, once per connection
+  attempt however many were declined. The connection carries records; what the
+  option bought, usually prompt detection of a dead peer, does not.
 - **A `CRITICAL` at create time** means the component fell back to its Null
   object, so nothing will be delivered at all.
