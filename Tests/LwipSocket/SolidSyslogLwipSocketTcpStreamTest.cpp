@@ -463,6 +463,22 @@ TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 
 // clang-format on
 
+TEST(SolidSyslogLwipSocketTcpStreamPool, DestroyClosesASocketTheStreamStillHoldsOpen)
+{
+    pooled[0] = SolidSyslogLwipSocketTcpStream_Create(&config);
+    struct SolidSyslogAddress* address = SolidSyslogLwipSocketAddress_Create();
+    LwipSocketsFake_Reset();
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(SolidSyslogStream_Open(pooled[0], address));
+
+    SolidSyslogLwipSocketTcpStream_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    SolidSyslogLwipSocketAddress_Destroy(address);
+}
+
 TEST(SolidSyslogLwipSocketTcpStreamPool, FillingPoolThenOverflowReturnsTheNullStream)
 {
     FillPool();
@@ -563,3 +579,14 @@ TEST(SolidSyslogLwipSocketTcpStreamPool, DestroyOfStaleHandleReportsWarning)
     );
 }
 
+
+TEST(SolidSyslogLwipSocketTcpStreamPool, SendingAfterDestroyIsASafeNoOp)
+{
+    struct SolidSyslogStream* stale = SolidSyslogLwipSocketTcpStream_Create(&config);
+    SolidSyslogLwipSocketTcpStream_Destroy(stale);
+    LwipSocketsFake_Reset();
+
+    CHECK_TRUE(SolidSyslogStream_Send(stale, TEST_PAYLOAD, TEST_PAYLOAD_SIZE));
+
+    LONGS_EQUAL(0U, LwipSocketsFake_SendCallCount());
+}

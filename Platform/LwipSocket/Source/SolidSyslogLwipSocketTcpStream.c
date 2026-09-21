@@ -96,6 +96,7 @@ static uint32_t LwipSocketTcpStream_NullConnectTimeoutGetter(void* context)
 
 void SolidSyslogLwipSocketTcpStream_Cleanup(struct SolidSyslogStream* base)
 {
+    LwipSocketTcpStream_CloseSocket(LwipSocketTcpStream_SelfFromBase(base));
     /* Overwrite the abstract base with the shared NullStream vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullStream_Get();
