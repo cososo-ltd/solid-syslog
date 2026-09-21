@@ -184,6 +184,21 @@ TEST(SolidSyslogLwipSocketTcpStream, AConnectThatFailedAfterTheSynIsRefusedAndRe
     );
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, AConnectBudgetThatExpiresIsReportedAsATimeout)
+{
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+    LwipSocketsFake_SetSelectResult(0);
+
+    CHECK_FALSE(Open());
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+    );
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {

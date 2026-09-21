@@ -122,8 +122,17 @@ static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMic
 
     struct timeval timeout = {.tv_sec = timeoutMicros / 1000000L, .tv_usec = timeoutMicros % 1000000L};
 
-    (void) lwip_select(fd + 1, NULL, &writeSet, &errorSet, &timeout);
-    return true;
+    int rc = lwip_select(fd + 1, NULL, &writeSet, &errorSet, &timeout);
+    bool ready = (rc > 0);
+
+    if (!ready)
+    {
+        LwipSocketTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+        );
+    }
+    return ready;
 }
 
 /* Writability alone does not mean connected: a non-blocking connect reports
