@@ -616,10 +616,21 @@ ssize_t lwip_recv(int s, void* mem, size_t len, int flags)
     lastRecvSize = len;
     lastRecvFlags = flags;
 
-    ssize_t result = (ssize_t) recvPayloadSize;
+    /* Unprogrammed and with no payload staged, the socket is simply idle -
+       nothing has arrived. Answering a peer close there would make every test
+       that does not care about reading look like a torn-down connection. */
+    ssize_t result = (recvPayloadSize > 0U) ? (ssize_t) recvPayloadSize : -1;
     if (recvResultProgrammed)
     {
         result = recvResult;
+    }
+    else if (result < 0)
+    {
+        recvErrno = EWOULDBLOCK;
+    }
+    else
+    {
+        /* a staged payload answers itself */
     }
     if (result > 0)
     {
