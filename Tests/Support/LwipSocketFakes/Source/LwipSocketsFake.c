@@ -27,6 +27,13 @@ static socklen_t lastSendToAddressLength = 0;
 
 static int sendToErrno = 0;
 
+static unsigned connectCallCount = 0U;
+static int connectResult = 0;
+static int connectErrno = 0;
+static int lastConnectSocket = 0;
+static struct sockaddr_in lastConnectAddress;
+static socklen_t lastConnectAddressLength = 0;
+
 static unsigned closeCallCount = 0U;
 static int lastClosedSocket = 0;
 
@@ -46,6 +53,13 @@ void LwipSocketsFake_Reset(void)
     (void) memset(&lastSendToAddress, 0, sizeof(lastSendToAddress));
     lastSendToAddressLength = 0;
     sendToErrno = 0;
+
+    connectCallCount = 0U;
+    connectResult = 0;
+    connectErrno = 0;
+    lastConnectSocket = 0;
+    (void) memset(&lastConnectAddress, 0, sizeof(lastConnectAddress));
+    lastConnectAddressLength = 0;
 
     closeCallCount = 0U;
     lastClosedSocket = 0;
@@ -116,6 +130,32 @@ socklen_t LwipSocketsFake_LastSendToAddressLength(void)
     return lastSendToAddressLength;
 }
 
+void LwipSocketsFake_SetConnectResult(int result, int err)
+{
+    connectResult = result;
+    connectErrno = err;
+}
+
+unsigned LwipSocketsFake_ConnectCallCount(void)
+{
+    return connectCallCount;
+}
+
+int LwipSocketsFake_LastConnectSocket(void)
+{
+    return lastConnectSocket;
+}
+
+const struct sockaddr_in* LwipSocketsFake_LastConnectAddress(void)
+{
+    return &lastConnectAddress;
+}
+
+socklen_t LwipSocketsFake_LastConnectAddressLength(void)
+{
+    return lastConnectAddressLength;
+}
+
 unsigned LwipSocketsFake_CloseCallCount(void)
 {
     return closeCallCount;
@@ -165,4 +205,20 @@ int lwip_close(int s)
     closeCallCount++;
     lastClosedSocket = s;
     return 0;
+}
+
+int lwip_connect(int s, const struct sockaddr* name, socklen_t namelen)
+{
+    connectCallCount++;
+    lastConnectSocket = s;
+    lastConnectAddressLength = namelen;
+    if (name != NULL)
+    {
+        (void) memcpy(&lastConnectAddress, name, sizeof(lastConnectAddress));
+    }
+    if (connectResult < 0)
+    {
+        errno = connectErrno;
+    }
+    return connectResult;
 }

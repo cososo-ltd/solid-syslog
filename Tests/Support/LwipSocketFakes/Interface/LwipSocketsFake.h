@@ -35,6 +35,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const struct sockaddr_in* LwipSocketsFake_LastSendToAddress(void);
     socklen_t LwipSocketsFake_LastSendToAddressLength(void);
 
+    /* Makes lwip_connect answer this, with this errno where it is a refusal.
+     * Defaults to an immediate success. */
+    void LwipSocketsFake_SetConnectResult(int result, int err);
+
+    /* lwip_connect spy. */
+    unsigned LwipSocketsFake_ConnectCallCount(void);
+    int LwipSocketsFake_LastConnectSocket(void);
+    const struct sockaddr_in* LwipSocketsFake_LastConnectAddress(void);
+    socklen_t LwipSocketsFake_LastConnectAddressLength(void);
+
     /* lwip_close spy. */
     unsigned LwipSocketsFake_CloseCallCount(void);
     int LwipSocketsFake_LastClosedSocket(void);

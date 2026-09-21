@@ -74,6 +74,19 @@ TEST(SolidSyslogLwipSocketTcpStream, OpenTakesAnIpv4TcpSocket)
 }
 
 
+TEST(SolidSyslogLwipSocketTcpStream, OpenConnectsToTheAddressOnThatSocket)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+
+    CHECK_TRUE(Open());
+
+    LONGS_EQUAL(1U, LwipSocketsFake_ConnectCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastConnectSocket());
+    LONGS_EQUAL(lwip_htons(TEST_PORT), LwipSocketsFake_LastConnectAddress()->sin_port);
+    LONGS_EQUAL(lwip_htonl(TEST_IPV4), LwipSocketsFake_LastConnectAddress()->sin_addr.s_addr);
+    LONGS_EQUAL(sizeof(struct sockaddr_in), LwipSocketsFake_LastConnectAddressLength());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {

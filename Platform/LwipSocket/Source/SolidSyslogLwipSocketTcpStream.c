@@ -11,6 +11,7 @@
 #include <stdbool.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogLwipSocketAddressPrivate.h"
 #include "SolidSyslogLwipSocketTcpStreamErrors.h"
 #include "SolidSyslogLwipSocketTcpStreamPrivate.h"
 #include "SolidSyslogNullStream.h"
@@ -43,8 +44,9 @@ void SolidSyslogLwipSocketTcpStream_Cleanup(struct SolidSyslogStream* base)
 static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
-    (void) addr;
+    const struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsConstSockaddrIn(addr);
     self->Fd = lwip_socket(AF_INET, SOCK_STREAM, 0);
+    (void) lwip_connect(self->Fd, (const struct sockaddr*) sin, sizeof(*sin));
     return true;
 }
 
