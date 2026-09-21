@@ -36,6 +36,8 @@ static inline bool LwipSocketTcpStream_ConfigProvidesGetter(const struct SolidSy
 static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static bool LwipSocketTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static SolidSyslogSsize LwipSocketTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
+static void LwipSocketTcpStream_Close(struct SolidSyslogStream* base);
+static uint32_t LwipSocketTcpStream_Version(struct SolidSyslogStream* base);
 static void LwipSocketTcpStream_CloseSocket(struct SolidSyslogLwipSocketTcpStream* self);
 static bool LwipSocketTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
 static inline bool LwipSocketTcpStream_WouldBlock(int err);
@@ -67,6 +69,8 @@ void SolidSyslogLwipSocketTcpStream_Initialise(
     self->Base.Open = LwipSocketTcpStream_Open;
     self->Base.Send = LwipSocketTcpStream_Send;
     self->Base.Read = LwipSocketTcpStream_Read;
+    self->Base.Close = LwipSocketTcpStream_Close;
+    self->Base.Version = LwipSocketTcpStream_Version;
     self->Config.GetConnectTimeoutMs = LwipSocketTcpStream_NullConnectTimeoutGetter;
     self->Config.ConnectTimeoutContext = NULL;
     if (LwipSocketTcpStream_ConfigProvidesGetter(config) == true)
@@ -246,6 +250,20 @@ static SolidSyslogSsize LwipSocketTcpStream_Read(struct SolidSyslogStream* base,
 static inline bool LwipSocketTcpStream_WouldBlock(int err)
 {
     return (err == EWOULDBLOCK) || (err == EAGAIN);
+}
+
+static void LwipSocketTcpStream_Close(struct SolidSyslogStream* base)
+{
+    LwipSocketTcpStream_CloseSocket(LwipSocketTcpStream_SelfFromBase(base));
+}
+
+/* Nothing about a plain TCP socket's own configuration moves at runtime. The
+ * destination axis travels on the sender's endpoint version, which it polls
+ * independently of this. */
+static uint32_t LwipSocketTcpStream_Version(struct SolidSyslogStream* base)
+{
+    (void) base;
+    return 0U;
 }
 
 static void LwipSocketTcpStream_CloseSocket(struct SolidSyslogLwipSocketTcpStream* self)
