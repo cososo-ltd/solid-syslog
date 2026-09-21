@@ -35,6 +35,7 @@ static inline bool LwipSocketTcpStream_ConfigProvidesGetter(const struct SolidSy
 
 static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static bool LwipSocketTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
+static SolidSyslogSsize LwipSocketTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void LwipSocketTcpStream_CloseSocket(struct SolidSyslogLwipSocketTcpStream* self);
 static bool LwipSocketTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
 
@@ -64,6 +65,7 @@ void SolidSyslogLwipSocketTcpStream_Initialise(
     struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
     self->Base.Open = LwipSocketTcpStream_Open;
     self->Base.Send = LwipSocketTcpStream_Send;
+    self->Base.Read = LwipSocketTcpStream_Read;
     self->Config.GetConnectTimeoutMs = LwipSocketTcpStream_NullConnectTimeoutGetter;
     self->Config.ConnectTimeoutContext = NULL;
     if (LwipSocketTcpStream_ConfigProvidesGetter(config) == true)
@@ -210,6 +212,13 @@ static bool LwipSocketTcpStream_Send(struct SolidSyslogStream* base, const void*
 static bool LwipSocketTcpStream_WroteAllBytes(ssize_t sent, size_t expected)
 {
     return (sent >= 0) && ((size_t) sent == expected);
+}
+
+static SolidSyslogSsize LwipSocketTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size)
+{
+    struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
+    ssize_t received = lwip_recv(self->Fd, buffer, size, 0);
+    return (SolidSyslogSsize) received;
 }
 
 static void LwipSocketTcpStream_CloseSocket(struct SolidSyslogLwipSocketTcpStream* self)

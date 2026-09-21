@@ -322,6 +322,22 @@ TEST(SolidSyslogLwipSocketTcpStream, AShortWriteIsTakenAsADeadConnectionAndClose
     LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, ReadAnswersTheBytesThePeerSent)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(Open());
+    LwipSocketsFake_SetRecvPayload(TEST_PAYLOAD);
+    char buffer[64] = {};
+
+    LONGS_EQUAL(TEST_PAYLOAD_SIZE, SolidSyslogStream_Read(stream, buffer, sizeof(buffer)));
+
+    LONGS_EQUAL(1U, LwipSocketsFake_RecvCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastRecvSocket());
+    LONGS_EQUAL(sizeof(buffer), LwipSocketsFake_LastRecvSize());
+    LONGS_EQUAL(0, LwipSocketsFake_LastRecvFlags());
+    MEMCMP_EQUAL(TEST_PAYLOAD, buffer, TEST_PAYLOAD_SIZE);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {
