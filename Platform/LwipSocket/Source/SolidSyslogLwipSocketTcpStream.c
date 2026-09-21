@@ -46,6 +46,7 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
     struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
     const struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsConstSockaddrIn(addr);
     self->Fd = lwip_socket(AF_INET, SOCK_STREAM, 0);
+    (void) lwip_fcntl(self->Fd, F_SETFL, O_NONBLOCK);
     (void) lwip_connect(self->Fd, (const struct sockaddr*) sin, sizeof(*sin));
     return true;
 }

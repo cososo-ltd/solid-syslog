@@ -27,6 +27,12 @@ static socklen_t lastSendToAddressLength = 0;
 
 static int sendToErrno = 0;
 
+static unsigned fcntlCallCount = 0U;
+static int lastFcntlSocket = 0;
+static int lastFcntlCommand = 0;
+static int lastFcntlValue = 0;
+static unsigned fcntlCallsBeforeConnect = 0U;
+
 static unsigned connectCallCount = 0U;
 static int connectResult = 0;
 static int connectErrno = 0;
@@ -53,6 +59,12 @@ void LwipSocketsFake_Reset(void)
     (void) memset(&lastSendToAddress, 0, sizeof(lastSendToAddress));
     lastSendToAddressLength = 0;
     sendToErrno = 0;
+
+    fcntlCallCount = 0U;
+    lastFcntlSocket = 0;
+    lastFcntlCommand = 0;
+    lastFcntlValue = 0;
+    fcntlCallsBeforeConnect = 0U;
 
     connectCallCount = 0U;
     connectResult = 0;
@@ -128,6 +140,31 @@ const struct sockaddr_in* LwipSocketsFake_LastSendToAddress(void)
 socklen_t LwipSocketsFake_LastSendToAddressLength(void)
 {
     return lastSendToAddressLength;
+}
+
+unsigned LwipSocketsFake_FcntlCallCount(void)
+{
+    return fcntlCallCount;
+}
+
+int LwipSocketsFake_LastFcntlSocket(void)
+{
+    return lastFcntlSocket;
+}
+
+int LwipSocketsFake_LastFcntlCommand(void)
+{
+    return lastFcntlCommand;
+}
+
+int LwipSocketsFake_LastFcntlValue(void)
+{
+    return lastFcntlValue;
+}
+
+unsigned LwipSocketsFake_FcntlCallsBeforeConnect(void)
+{
+    return fcntlCallsBeforeConnect;
 }
 
 void LwipSocketsFake_SetConnectResult(int result, int err)
@@ -207,9 +244,19 @@ int lwip_close(int s)
     return 0;
 }
 
+int lwip_fcntl(int s, int cmd, int val)
+{
+    fcntlCallCount++;
+    lastFcntlSocket = s;
+    lastFcntlCommand = cmd;
+    lastFcntlValue = val;
+    return 0;
+}
+
 int lwip_connect(int s, const struct sockaddr* name, socklen_t namelen)
 {
     connectCallCount++;
+    fcntlCallsBeforeConnect = fcntlCallCount;
     lastConnectSocket = s;
     lastConnectAddressLength = namelen;
     if (name != NULL)

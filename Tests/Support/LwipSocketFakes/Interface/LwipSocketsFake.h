@@ -35,6 +35,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const struct sockaddr_in* LwipSocketsFake_LastSendToAddress(void);
     socklen_t LwipSocketsFake_LastSendToAddressLength(void);
 
+    /* lwip_fcntl spy. FcntlCallsBeforeConnect is the count as it stood when
+     * lwip_connect was called, which is how a test pins the ordering. */
+    unsigned LwipSocketsFake_FcntlCallCount(void);
+    int LwipSocketsFake_LastFcntlSocket(void);
+    int LwipSocketsFake_LastFcntlCommand(void);
+    int LwipSocketsFake_LastFcntlValue(void);
+    unsigned LwipSocketsFake_FcntlCallsBeforeConnect(void);
+
     /* Makes lwip_connect answer this, with this errno where it is a refusal.
      * Defaults to an immediate success. */
     void LwipSocketsFake_SetConnectResult(int result, int err);

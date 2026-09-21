@@ -87,6 +87,19 @@ TEST(SolidSyslogLwipSocketTcpStream, OpenConnectsToTheAddressOnThatSocket)
     LONGS_EQUAL(sizeof(struct sockaddr_in), LwipSocketsFake_LastConnectAddressLength());
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, OpenMakesTheSocketNonBlockingBeforeItConnects)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+
+    CHECK_TRUE(Open());
+
+    LONGS_EQUAL(1U, LwipSocketsFake_FcntlCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastFcntlSocket());
+    LONGS_EQUAL(F_SETFL, LwipSocketsFake_LastFcntlCommand());
+    LONGS_EQUAL(O_NONBLOCK, LwipSocketsFake_LastFcntlValue());
+    LONGS_EQUAL(1U, LwipSocketsFake_FcntlCallsBeforeConnect());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {
