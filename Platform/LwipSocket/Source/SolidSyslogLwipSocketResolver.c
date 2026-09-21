@@ -73,6 +73,7 @@ static bool LwipSocketResolver_Resolve(
         struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsSockaddrIn(result);
         *sin = *(const struct sockaddr_in*) (const void*) info->ai_addr;
         sin->sin_port = lwip_htons(port);
+        lwip_freeaddrinfo(info);
         resolved = true;
     }
 

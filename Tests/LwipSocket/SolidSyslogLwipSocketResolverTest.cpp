@@ -72,3 +72,10 @@ TEST(SolidSyslogLwipSocketResolver, ResolveAsksForIpv4ByNameWithNoServiceName)
     POINTERS_EQUAL(nullptr, LwipNetdbFake_LastServname());
     LONGS_EQUAL(AF_INET, LwipNetdbFake_LastHintsFamily());
 }
+
+TEST(SolidSyslogLwipSocketResolver, ResolveFreesTheAnswerItWasGiven)
+{
+    CHECK_TRUE(Resolve("collector.example.test", 514U));
+
+    LONGS_EQUAL(1U, LwipNetdbFake_FreeAddrInfoCallCount());
+}
