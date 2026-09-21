@@ -60,7 +60,7 @@ TEST_BASE(CircularBufferFixture)
 {
     struct SolidSyslogBuffer* buffer = nullptr;
     char                      readData[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t                    readSize = 0;
+    size_t                    readSize = 0U;
 
     // Write a null-terminated C string. Size is strlen() -- intended for
     // literal-string tests. For binary payloads use the two-arg overload below.

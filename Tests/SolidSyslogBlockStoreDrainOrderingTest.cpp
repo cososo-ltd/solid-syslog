@@ -194,7 +194,7 @@ TEST_GROUP_BASE(BlockStoreDrainOrdering, DrainTestFixtureBase)
     {
         CHECK_TRUE(SolidSyslogStore_HasUnsent(store));
         uint8_t buf[4096] = {};
-        size_t  bytesRead = 0;
+        size_t  bytesRead = 0U;
         CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
         SolidSyslogStore_MarkSent(store);
         return static_cast<uint32_t>(buf[0]) | (static_cast<uint32_t>(buf[1]) << 8) | (static_cast<uint32_t>(buf[2]) << 16) | (static_cast<uint32_t>(buf[3]) << 24);
