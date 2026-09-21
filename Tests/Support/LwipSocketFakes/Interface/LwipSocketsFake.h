@@ -31,6 +31,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const struct sockaddr_in* LwipSocketsFake_LastSendToAddress(void);
     socklen_t LwipSocketsFake_LastSendToAddressLength(void);
 
+    /* lwip_close spy. */
+    unsigned LwipSocketsFake_CloseCallCount(void);
+    int LwipSocketsFake_LastClosedSocket(void);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* LWIPSOCKETSFAKE_H */

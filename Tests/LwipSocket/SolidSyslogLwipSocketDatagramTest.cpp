@@ -19,6 +19,7 @@ using namespace CososoTesting;
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogUdpPayload.h"
 
 // clang-format off
 // 6514 rather than 514: 514 is 0x0202, so host and network order are the same
@@ -88,6 +89,17 @@ TEST(SolidSyslogLwipSocketDatagram, SendToWritesThePayloadToTheAddressOnTheOpenS
     LONGS_EQUAL(lwip_htons(TEST_PORT), LwipSocketsFake_LastSendToAddress()->sin_port);
     LONGS_EQUAL(lwip_htonl(TEST_IPV4), LwipSocketsFake_LastSendToAddress()->sin_addr.s_addr);
     LONGS_EQUAL(sizeof(struct sockaddr_in), LwipSocketsFake_LastSendToAddressLength());
+}
+
+TEST(SolidSyslogLwipSocketDatagram, CloseClosesTheOpenSocket)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
+
+    SolidSyslogDatagram_Close(datagram);
+
+    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
 }
 
 // clang-format off

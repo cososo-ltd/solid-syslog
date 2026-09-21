@@ -29,14 +29,16 @@ static enum SolidSyslogDatagramSendResult LwipSocketDatagram_SendTo(
     size_t size,
     const struct SolidSyslogAddress* addr
 );
+static void LwipSocketDatagram_Close(struct SolidSyslogDatagram* base);
 
 static inline struct SolidSyslogLwipSocketDatagram* LwipSocketDatagram_SelfFromBase(struct SolidSyslogDatagram* base);
 
 void SolidSyslogLwipSocketDatagram_Initialise(struct SolidSyslogDatagram* base)
 {
-    *base = *SolidSyslogNullDatagram_Get();
-    base->Open = LwipSocketDatagram_Open;
-    base->SendTo = LwipSocketDatagram_SendTo;
+    struct SolidSyslogLwipSocketDatagram* self = LwipSocketDatagram_SelfFromBase(base);
+    self->Base.Open = LwipSocketDatagram_Open;
+    self->Base.SendTo = LwipSocketDatagram_SendTo;
+    self->Base.Close = LwipSocketDatagram_Close;
 }
 
 void SolidSyslogLwipSocketDatagram_Cleanup(struct SolidSyslogDatagram* base)
@@ -69,6 +71,12 @@ static enum SolidSyslogDatagramSendResult LwipSocketDatagram_SendTo(
     const struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsConstSockaddrIn(addr);
     (void) lwip_sendto(self->Fd, buffer, size, 0, (const struct sockaddr*) sin, sizeof(*sin));
     return SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+}
+
+static void LwipSocketDatagram_Close(struct SolidSyslogDatagram* base)
+{
+    struct SolidSyslogLwipSocketDatagram* self = LwipSocketDatagram_SelfFromBase(base);
+    (void) lwip_close(self->Fd);
 }
 
 #else

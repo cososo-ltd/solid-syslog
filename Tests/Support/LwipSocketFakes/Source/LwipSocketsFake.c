@@ -24,6 +24,9 @@ static int lastSendToFlags = 0;
 static struct sockaddr_in lastSendToAddress;
 static socklen_t lastSendToAddressLength = 0;
 
+static unsigned closeCallCount = 0U;
+static int lastClosedSocket = 0;
+
 void LwipSocketsFake_Reset(void)
 {
     socketCallCount = 0U;
@@ -39,6 +42,9 @@ void LwipSocketsFake_Reset(void)
     lastSendToFlags = 0;
     (void) memset(&lastSendToAddress, 0, sizeof(lastSendToAddress));
     lastSendToAddressLength = 0;
+
+    closeCallCount = 0U;
+    lastClosedSocket = 0;
 }
 
 void LwipSocketsFake_SetSocketResult(int result)
@@ -101,6 +107,16 @@ socklen_t LwipSocketsFake_LastSendToAddressLength(void)
     return lastSendToAddressLength;
 }
 
+unsigned LwipSocketsFake_CloseCallCount(void)
+{
+    return closeCallCount;
+}
+
+int LwipSocketsFake_LastClosedSocket(void)
+{
+    return lastClosedSocket;
+}
+
 int lwip_socket(int domain, int type, int protocol)
 {
     socketCallCount++;
@@ -126,4 +142,11 @@ ssize_t lwip_sendto(int s, const void* dataptr, size_t size, int flags, const st
         (void) memcpy(&lastSendToAddress, to, sizeof(lastSendToAddress));
     }
     return (ssize_t) size;
+}
+
+int lwip_close(int s)
+{
+    closeCallCount++;
+    lastClosedSocket = s;
+    return 0;
 }
