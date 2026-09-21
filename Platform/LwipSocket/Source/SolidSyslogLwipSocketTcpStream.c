@@ -24,6 +24,11 @@ const struct SolidSyslogErrorSource SolidSyslogLwipSocketTcpStreamErrorSource = 
 
 struct SolidSyslogAddress;
 
+enum
+{
+    INVALID_SOCKET = -1
+};
+
 static uint32_t LwipSocketTcpStream_NullConnectTimeoutGetter(void* context);
 static inline bool LwipSocketTcpStream_ConfigProvidesGetter(const struct SolidSyslogLwipSocketTcpStreamConfig* config);
 
@@ -32,6 +37,10 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
 static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 static int LwipSocketTcpStream_TakeSocket(void);
 static inline bool LwipSocketTcpStream_IsSocketValid(int fd);
+static bool LwipSocketTcpStream_ConnectOrCloseOnFailure(
+    struct SolidSyslogLwipSocketTcpStream* self,
+    const struct sockaddr_in* sin
+);
 static bool LwipSocketTcpStream_Connect(struct SolidSyslogLwipSocketTcpStream* self, const struct sockaddr_in* sin);
 static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros);
 static long LwipSocketTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogLwipSocketTcpStream* self);
@@ -87,7 +96,7 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
     self->Fd = LwipSocketTcpStream_TakeSocket();
     if (LwipSocketTcpStream_IsSocketValid(self->Fd))
     {
-        connected = LwipSocketTcpStream_Connect(self, sin);
+        connected = LwipSocketTcpStream_ConnectOrCloseOnFailure(self, sin);
     }
     else
     {
@@ -120,6 +129,22 @@ static int LwipSocketTcpStream_TakeSocket(void)
 static inline bool LwipSocketTcpStream_IsSocketValid(int fd)
 {
     return fd >= 0;
+}
+
+/* A socket the connect did not finish with is of no use to anyone, and a pool
+ * class that keeps one leaks it until Destroy. */
+static bool LwipSocketTcpStream_ConnectOrCloseOnFailure(
+    struct SolidSyslogLwipSocketTcpStream* self,
+    const struct sockaddr_in* sin
+)
+{
+    bool connected = LwipSocketTcpStream_Connect(self, sin);
+    if (!connected)
+    {
+        (void) lwip_close(self->Fd);
+        self->Fd = INVALID_SOCKET;
+    }
+    return connected;
 }
 
 static bool LwipSocketTcpStream_Connect(

@@ -259,6 +259,17 @@ TEST(SolidSyslogLwipSocketTcpStream, AStackWithNoSocketToGiveIsReportedAndNothin
     );
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, AConnectThatFailsLeavesNoSocketOpen)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    LwipSocketsFake_SetConnectResult(-1, ECONNREFUSED);
+
+    CHECK_FALSE(Open());
+
+    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {
