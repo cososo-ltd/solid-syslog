@@ -24,6 +24,11 @@ const struct SolidSyslogErrorSource SolidSyslogLwipSocketDatagramErrorSource = {
 
 struct SolidSyslogAddress;
 
+enum
+{
+    INVALID_SOCKET = -1
+};
+
 static bool LwipSocketDatagram_Open(struct SolidSyslogDatagram* base);
 static enum SolidSyslogDatagramSendResult LwipSocketDatagram_SendTo(
     struct SolidSyslogDatagram* base,
@@ -44,6 +49,7 @@ void SolidSyslogLwipSocketDatagram_Initialise(struct SolidSyslogDatagram* base)
     self->Base.SendTo = LwipSocketDatagram_SendTo;
     self->Base.MaxPayload = LwipSocketDatagram_MaxPayload;
     self->Base.Close = LwipSocketDatagram_Close;
+    self->Fd = INVALID_SOCKET;
 }
 
 void SolidSyslogLwipSocketDatagram_Cleanup(struct SolidSyslogDatagram* base)
@@ -105,7 +111,11 @@ static size_t LwipSocketDatagram_MaxPayload(struct SolidSyslogDatagram* base)
 static void LwipSocketDatagram_Close(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogLwipSocketDatagram* self = LwipSocketDatagram_SelfFromBase(base);
-    (void) lwip_close(self->Fd);
+    if (LwipSocketDatagram_IsSocketValid(self->Fd))
+    {
+        (void) lwip_close(self->Fd);
+        self->Fd = INVALID_SOCKET;
+    }
 }
 
 #else

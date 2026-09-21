@@ -133,6 +133,23 @@ TEST(SolidSyslogLwipSocketDatagram, SendToReportsFailureWhenTheStackHasNoBufferF
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED, SendTo());
 }
 
+TEST(SolidSyslogLwipSocketDatagram, CloseWithNothingOpenClosesNoDescriptor)
+{
+    SolidSyslogDatagram_Close(datagram);
+
+    LONGS_EQUAL(0U, LwipSocketsFake_CloseCallCount());
+}
+
+TEST(SolidSyslogLwipSocketDatagram, ASecondCloseDoesNotCloseTheDescriptorAgain)
+{
+    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
+    SolidSyslogDatagram_Close(datagram);
+
+    SolidSyslogDatagram_Close(datagram);
+
+    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketDatagramPool)
 {
