@@ -1,23 +1,24 @@
-/* MbedTLS-over-PlusTcpTcpStream BDD TLS sender (slice 6b).
+/* The mbedTLS BDD TLS sender, shared by every QEMU target that has one.
  *
  * Composes:
- *   - SolidSyslogPlusTcpTcpStream  inner TCP transport
+ *   - BddTargetTlsInnerStream       inner TCP transport, one file per network pack
  *   - SolidSyslogMbedTlsStream      TLS over the injected Stream
  *   - SolidSyslogStreamSender       RFC 6587 octet-counting framing
  *
- * Mirrors BddTargetTlsSender_OpenSsl_PosixTcp.c on the POSIX target. The
- * mbedTLS adapter takes pre-built handles (mbedtls_ctr_drbg, mbedtls_x509_crt,
- * mbedtls_pk_context) rather than file paths, because MBEDTLS_FS_IO is
- * disabled in the integrator config - there is no host path reachable from
- * QEMU. The demo CA / client cert / client key PEMs travel as `static const`
- * arrays in rodata, baked at CMake-time by xxd -i from
- * Bdd/syslog-ng/tls/ ca.pem / client.pem / client.key. The arrays are
- * parsed once on first BddTargetTlsSender_Create call.
+ * Which network pack provides the inner stream and the address handle is the
+ * only thing that differs between one such target and another, so that is all
+ * BddTargetTlsInnerStream.h carries and everything below is common. The mbedTLS
+ * adapter takes pre-built handles (mbedtls_ctr_drbg, mbedtls_x509_crt, mbedtls_pk_context)
+ * rather than file paths, because MBEDTLS_FS_IO is disabled in the integrator
+ * config - there is no host path reachable from QEMU. The demo CA / client cert /
+ * client key PEMs travel as `static const` arrays in rodata, baked at CMake-time
+ * by xxd -i from Bdd/syslog-ng/tls/ ca.pem / client.pem / client.key. The arrays
+ * are parsed once on first BddTargetTlsSender_Create call.
  *
  * Entropy + CTR_DRBG also live in this TU rather than in main.c so all
  * mbedTLS-specific state is one file's responsibility. The entropy source
  * is deliberately weak - see DemoEntropySource - and an audit-trail
- * WARNING is emitted via SolidSyslog_Error on first init.
+ * WARNING is emitted via printf on first init.
  */
 
 #include "BddTargetTlsSender.h"
@@ -28,8 +29,7 @@
 #include "BddTargetOsPrimitives.h"
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
-#include "SolidSyslogPlusTcpAddress.h"
-#include "SolidSyslogPlusTcpTcpStream.h"
+#include "BddTargetTlsInnerStream.h"
 #include "BddTargetMbedTlsCredentials.h"
 #include "SolidSyslogMbedTlsStream.h"
 #include "SolidSyslogNullSender.h"
@@ -173,12 +173,12 @@ static int DemoEntropySource(void* data, unsigned char* output, size_t len, size
  * state for entropy/DRBG/cert/key lives at file scope and survives across
  * connect/disconnect cycles.
  *
- * Each major step emits a SolidSyslog_Error INFO message and yields one
- * tick to the FreeRTOS scheduler. Under QEMU mps2-an385 the DRBG seed +
- * cert/key parses can each take several seconds (mbedTLS does serious
- * crypto work - RSA key parse, ECDHE primes, ASN.1 walks); without the
- * yields, lower-priority tasks would starve until init finishes, and
- * without the diagnostic prints the boot would appear to hang. */
+ * Each major step emits a printf diagnostic and yields one tick to the
+ * scheduler. Under QEMU mps2-an385 the DRBG seed + cert/key parses can each
+ * take several seconds (mbedTLS does serious crypto work - RSA key
+ * parse, ECDHE primes, ASN.1 walks); without the yields, lower-priority tasks
+ * would starve until init finishes, and without the diagnostic prints the
+ * boot would appear to hang. */
 /* mbedTLS asks for this by name when MBEDTLS_PLATFORM_MS_TIME_ALT is set. It
    wants a monotonic millisecond counter rather than a wall clock, which is what
    the scheduler's tick already is. */
@@ -440,7 +440,8 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
          * detect the short-circuit. */
         return SolidSyslogNullSender_Get();
     }
-    underlyingStream = SolidSyslogPlusTcpTcpStream_Create(NULL);
+    /* Inner byte transport: whichever network pack this target links. */
+    underlyingStream = BddTargetTlsInnerStream_CreateStream();
 
     static struct SolidSyslogMbedTlsStreamConfig tlsStreamConfig;
     tlsStreamConfig = (struct SolidSyslogMbedTlsStreamConfig) {0};
@@ -453,7 +454,7 @@ struct SolidSyslogSender* BddTargetTlsSender_Create(struct SolidSyslogResolver* 
     tlsStreamConfig.Credentials = BddTargetMbedTlsCredentials_Get();
     tlsStream = SolidSyslogMbedTlsStream_Create(&tlsStreamConfig);
 
-    address = SolidSyslogPlusTcpAddress_Create();
+    address = BddTargetTlsInnerStream_CreateAddress();
 
     static struct SolidSyslogStreamSenderConfig senderConfig;
     senderConfig = (struct SolidSyslogStreamSenderConfig) {0};
@@ -478,9 +479,9 @@ void BddTargetTlsSender_Destroy(void)
         return;
     }
     SolidSyslogStreamSender_Destroy(sender);
-    SolidSyslogPlusTcpAddress_Destroy(address);
+    BddTargetTlsInnerStream_DestroyAddress(address);
     SolidSyslogMbedTlsStream_Destroy(tlsStream);
-    SolidSyslogPlusTcpTcpStream_Destroy(underlyingStream);
+    BddTargetTlsInnerStream_DestroyStream(underlyingStream);
 
     /* Entropy / DRBG / parsed certs survive across Destroy -> Create cycles to
      * avoid re-seeding on every reconnect. Real teardown only happens at

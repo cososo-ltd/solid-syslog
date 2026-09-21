@@ -242,7 +242,8 @@ add_executable(SolidSyslogBddTargetCmsis
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMbedTlsCredentials.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls_LwipRawTcp.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsInnerStream_LwipRawTcp.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls.c
     ${BAKED_PEM_HEADERS}
     $<TARGET_OBJECTS:solid_syslog_cmsis_lwip_upstream>
 )

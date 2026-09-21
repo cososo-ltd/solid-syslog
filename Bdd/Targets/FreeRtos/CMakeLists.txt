@@ -291,7 +291,8 @@ add_executable(SolidSyslogBddTarget
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMbedTlsCredentials.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls_PlusTcpTcp.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsInnerStream_PlusTcpTcp.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/FFSemihostingDisk.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/SemihostingDisk.c
     ${BAKED_PEM_HEADERS}
