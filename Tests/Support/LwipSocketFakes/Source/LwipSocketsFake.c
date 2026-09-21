@@ -638,6 +638,12 @@ ssize_t lwip_recv(int s, void* mem, size_t len, int flags)
         size_t copied = (wanted < len) ? wanted : len;
         (void) memcpy(mem, recvPayload, copied);
         result = (ssize_t) copied;
+        /* MSG_PEEK leaves what it read where it was; anything else takes it,
+           so a caller that consumed the payload cannot claim to have peeked. */
+        if ((flags & MSG_PEEK) == 0)
+        {
+            recvPayloadSize = 0U;
+        }
     }
     else if (result < 0)
     {
