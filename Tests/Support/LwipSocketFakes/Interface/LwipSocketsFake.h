@@ -53,6 +53,30 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const struct sockaddr_in* LwipSocketsFake_LastConnectAddress(void);
     socklen_t LwipSocketsFake_LastConnectAddressLength(void);
 
+    /* What lwip_select answers: the number of ready descriptors, or 0 for the
+     * budget expiring, or -1. Defaults to one ready descriptor, and on a
+     * positive answer the descriptor the caller watched for writing stays set.
+     * markException puts it in the exception set instead. */
+    void LwipSocketsFake_SetSelectResult(int result);
+    void LwipSocketsFake_SetSelectSignalsException(void);
+
+    /* lwip_select spy. */
+    unsigned LwipSocketsFake_SelectCallCount(void);
+    int LwipSocketsFake_LastSelectMaxFdPlusOne(void);
+    int LwipSocketsFake_LastSelectWriteDescriptor(void);
+    int LwipSocketsFake_LastSelectExceptionDescriptor(void);
+    unsigned LwipSocketsFake_LastSelectTimeoutMs(void);
+
+    /* The value lwip_getsockopt hands back for SO_ERROR. Defaults to 0, the
+     * connect having completed. */
+    void LwipSocketsFake_SetSocketError(int err);
+
+    /* lwip_getsockopt spy. */
+    unsigned LwipSocketsFake_GetSockOptCallCount(void);
+    int LwipSocketsFake_LastGetSockOptSocket(void);
+    int LwipSocketsFake_LastGetSockOptLevel(void);
+    int LwipSocketsFake_LastGetSockOptName(void);
+
     /* lwip_close spy. */
     unsigned LwipSocketsFake_CloseCallCount(void);
     int LwipSocketsFake_LastClosedSocket(void);

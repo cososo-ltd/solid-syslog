@@ -1,6 +1,7 @@
 #include "LwipSocketsFake.h"
 
 #include <errno.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include "lwip/sockets.h"
@@ -40,6 +41,20 @@ static int lastConnectSocket = 0;
 static struct sockaddr_in lastConnectAddress;
 static socklen_t lastConnectAddressLength = 0;
 
+static unsigned selectCallCount = 0U;
+static int selectResult = 1;
+static bool selectSignalsException = false;
+static int lastSelectMaxFdPlusOne = 0;
+static int lastSelectWriteDescriptor = -1;
+static int lastSelectExceptionDescriptor = -1;
+static unsigned lastSelectTimeoutMs = 0U;
+
+static unsigned getSockOptCallCount = 0U;
+static int socketError = 0;
+static int lastGetSockOptSocket = 0;
+static int lastGetSockOptLevel = 0;
+static int lastGetSockOptName = 0;
+
 static unsigned closeCallCount = 0U;
 static int lastClosedSocket = 0;
 
@@ -72,6 +87,20 @@ void LwipSocketsFake_Reset(void)
     lastConnectSocket = 0;
     (void) memset(&lastConnectAddress, 0, sizeof(lastConnectAddress));
     lastConnectAddressLength = 0;
+
+    selectCallCount = 0U;
+    selectResult = 1;
+    selectSignalsException = false;
+    lastSelectMaxFdPlusOne = 0;
+    lastSelectWriteDescriptor = -1;
+    lastSelectExceptionDescriptor = -1;
+    lastSelectTimeoutMs = 0U;
+
+    getSockOptCallCount = 0U;
+    socketError = 0;
+    lastGetSockOptSocket = 0;
+    lastGetSockOptLevel = 0;
+    lastGetSockOptName = 0;
 
     closeCallCount = 0U;
     lastClosedSocket = 0;
@@ -193,6 +222,66 @@ socklen_t LwipSocketsFake_LastConnectAddressLength(void)
     return lastConnectAddressLength;
 }
 
+void LwipSocketsFake_SetSelectResult(int result)
+{
+    selectResult = result;
+}
+
+void LwipSocketsFake_SetSelectSignalsException(void)
+{
+    selectSignalsException = true;
+}
+
+unsigned LwipSocketsFake_SelectCallCount(void)
+{
+    return selectCallCount;
+}
+
+int LwipSocketsFake_LastSelectMaxFdPlusOne(void)
+{
+    return lastSelectMaxFdPlusOne;
+}
+
+int LwipSocketsFake_LastSelectWriteDescriptor(void)
+{
+    return lastSelectWriteDescriptor;
+}
+
+int LwipSocketsFake_LastSelectExceptionDescriptor(void)
+{
+    return lastSelectExceptionDescriptor;
+}
+
+unsigned LwipSocketsFake_LastSelectTimeoutMs(void)
+{
+    return lastSelectTimeoutMs;
+}
+
+void LwipSocketsFake_SetSocketError(int err)
+{
+    socketError = err;
+}
+
+unsigned LwipSocketsFake_GetSockOptCallCount(void)
+{
+    return getSockOptCallCount;
+}
+
+int LwipSocketsFake_LastGetSockOptSocket(void)
+{
+    return lastGetSockOptSocket;
+}
+
+int LwipSocketsFake_LastGetSockOptLevel(void)
+{
+    return lastGetSockOptLevel;
+}
+
+int LwipSocketsFake_LastGetSockOptName(void)
+{
+    return lastGetSockOptName;
+}
+
 unsigned LwipSocketsFake_CloseCallCount(void)
 {
     return closeCallCount;
@@ -268,4 +357,72 @@ int lwip_connect(int s, const struct sockaddr* name, socklen_t namelen)
         errno = connectErrno;
     }
     return connectResult;
+}
+
+/* Records which descriptor the caller watched, then answers the programmed
+   result the way the sockets layer does: the sets come back holding only what
+   is ready. */
+static int LwipSocketsFake_FirstSetDescriptor(const fd_set* set, int maxFdPlusOne)
+{
+    int found = -1;
+    for (int fd = 0; (fd < maxFdPlusOne) && (found < 0); fd++)
+    {
+        if ((set != NULL) && FD_ISSET(fd, set))
+        {
+            found = fd;
+        }
+    }
+    return found;
+}
+
+int lwip_select(int maxfdp1, fd_set* readset, fd_set* writeset, fd_set* exceptset, struct timeval* timeout)
+{
+    selectCallCount++;
+    lastSelectMaxFdPlusOne = maxfdp1;
+    lastSelectWriteDescriptor = LwipSocketsFake_FirstSetDescriptor(writeset, maxfdp1);
+    lastSelectExceptionDescriptor = LwipSocketsFake_FirstSetDescriptor(exceptset, maxfdp1);
+    lastSelectTimeoutMs = (timeout != NULL)
+                              ? (unsigned) ((timeout->tv_sec * 1000L) + (timeout->tv_usec / 1000L))
+                              : 0U;
+    (void) readset;
+
+    int watched = lastSelectWriteDescriptor;
+    if (writeset != NULL)
+    {
+        FD_ZERO(writeset);
+    }
+    if (exceptset != NULL)
+    {
+        FD_ZERO(exceptset);
+    }
+    if ((selectResult > 0) && (watched >= 0))
+    {
+        if (selectSignalsException && (exceptset != NULL))
+        {
+            FD_SET(watched, exceptset);
+        }
+        else if (writeset != NULL)
+        {
+            FD_SET(watched, writeset);
+        }
+        else
+        {
+            /* nothing to report back */
+        }
+    }
+    return selectResult;
+}
+
+int lwip_getsockopt(int s, int level, int optname, void* optval, socklen_t* optlen)
+{
+    getSockOptCallCount++;
+    lastGetSockOptSocket = s;
+    lastGetSockOptLevel = level;
+    lastGetSockOptName = optname;
+    if ((optval != NULL) && (optlen != NULL) && (*optlen >= sizeof(int)))
+    {
+        *(int*) optval = socketError;
+        *optlen = sizeof(int);
+    }
+    return 0;
 }

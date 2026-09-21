@@ -5,6 +5,7 @@ using namespace CososoTesting;
 
 #include "lwip/sockets.h"
 
+#include <cerrno>
 #include <cstdint>
 
 #include "ConfigLockFake.h"
@@ -98,6 +99,19 @@ TEST(SolidSyslogLwipSocketTcpStream, OpenMakesTheSocketNonBlockingBeforeItConnec
     LONGS_EQUAL(F_SETFL, LwipSocketsFake_LastFcntlCommand());
     LONGS_EQUAL(O_NONBLOCK, LwipSocketsFake_LastFcntlValue());
     LONGS_EQUAL(1U, LwipSocketsFake_FcntlCallsBeforeConnect());
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, AConnectStillInProgressWaitsForTheSocketToBecomeWritable)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+
+    CHECK_TRUE(Open());
+
+    LONGS_EQUAL(1U, LwipSocketsFake_SelectCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR + 1, LwipSocketsFake_LastSelectMaxFdPlusOne());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastSelectWriteDescriptor());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastSelectExceptionDescriptor());
 }
 
 // clang-format off
