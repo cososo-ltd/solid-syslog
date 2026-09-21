@@ -20,13 +20,13 @@ using namespace CososoTesting;
 #include "SolidSyslogTunables.h"
 
 /* The LWIP_TCP_KEEPALIVE=1 half of the pair. The whole-file gate means only one
- * of the two keepalive translation units compiles per build, so the variant
- * that the stream test executable does not carry needs its own executable. */
+ * of the two keepalive translation units compiles per build, so each variant
+ * gets an executable of its own; the sibling file covers the other half. */
 
 static const struct SolidSyslogLwipSocketTcpStreamConfig config = {nullptr, nullptr};
 
 // clang-format off
-TEST_GROUP(SolidSyslogLwipSocketTcpKeepalive)
+TEST_GROUP(SolidSyslogLwipSocketTcpKeepaliveAll)
 {
     struct SolidSyslogStream*  stream  = nullptr;
     struct SolidSyslogAddress* address = nullptr;
@@ -53,7 +53,7 @@ TEST_GROUP(SolidSyslogLwipSocketTcpKeepalive)
 
 // clang-format on
 
-TEST(SolidSyslogLwipSocketTcpKeepalive, AStackWithProbeTimingsTakesAllThreeInSeconds)
+TEST(SolidSyslogLwipSocketTcpKeepaliveAll, AStackWithProbeTimingsTakesAllThreeInSeconds)
 {
     CHECK_TRUE(Open());
 
@@ -62,7 +62,7 @@ TEST(SolidSyslogLwipSocketTcpKeepalive, AStackWithProbeTimingsTakesAllThreeInSec
     CHECK_TRUE(LwipSocketsFake_SockOptWasSetTo(IPPROTO_TCP, TCP_KEEPCNT, SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT));
 }
 
-TEST(SolidSyslogLwipSocketTcpKeepalive, AKeepaliveTimingTheStackRefusesIsReportedLikeAnyOtherOption)
+TEST(SolidSyslogLwipSocketTcpKeepaliveAll, AKeepaliveTimingTheStackRefusesIsReportedLikeAnyOtherOption)
 {
     LwipSocketsFake_SetSockOptRefuses(IPPROTO_TCP, TCP_KEEPINTVL);
 

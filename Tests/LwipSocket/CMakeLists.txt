@@ -158,14 +158,14 @@ set_target_properties(SolidSyslogLwipSocketTcpStreamTest PROPERTIES
 
 add_test(NAME SolidSyslogLwipSocketTcpStreamTest COMMAND SolidSyslogLwipSocketTcpStreamTest)
 
-# ---- SolidSyslogLwipSocketTcpKeepaliveTest ----
+# ---- SolidSyslogLwipSocketTcpKeepaliveAllTest ----
 
-# The LWIP_TCP_KEEPALIVE=1 half of the pair. The whole-file gate means only one
-# of the two keepalive translation units compiles per build, so the variant the
-# stream test does not carry gets its own executable.
+# The whole-file gate means only one of the two keepalive translation units
+# compiles per build, so each variant gets an executable of its own: this one
+# for LWIP_TCP_KEEPALIVE=1, the next for the build without it.
 
-add_executable(SolidSyslogLwipSocketTcpKeepaliveTest
-    SolidSyslogLwipSocketTcpKeepaliveTest.cpp
+add_executable(SolidSyslogLwipSocketTcpKeepaliveAllTest
+    SolidSyslogLwipSocketTcpKeepaliveAllTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Tests/Support/LwipSocketFakes/Source/LwipSocketsFake.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c
@@ -175,9 +175,9 @@ add_executable(SolidSyslogLwipSocketTcpKeepaliveTest
     ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpKeepaliveAll.c
 )
 
-target_compile_definitions(SolidSyslogLwipSocketTcpKeepaliveTest PRIVATE LWIP_TCP_KEEPALIVE=1)
+target_compile_definitions(SolidSyslogLwipSocketTcpKeepaliveAllTest PRIVATE LWIP_TCP_KEEPALIVE=1)
 
-target_link_libraries(SolidSyslogLwipSocketTcpKeepaliveTest PRIVATE
+target_link_libraries(SolidSyslogLwipSocketTcpKeepaliveAllTest PRIVATE
     ${PROJECT_NAME}
     ConfigLockFake
     ErrorHandlerFake
@@ -186,10 +186,44 @@ target_link_libraries(SolidSyslogLwipSocketTcpKeepaliveTest PRIVATE
     CppUTestExt
 )
 
-target_include_directories(SolidSyslogLwipSocketTcpKeepaliveTest PRIVATE ${LWIPSOCKET_TEST_INCLUDE_DIRS})
+target_include_directories(SolidSyslogLwipSocketTcpKeepaliveAllTest PRIVATE ${LWIPSOCKET_TEST_INCLUDE_DIRS})
 
-set_target_properties(SolidSyslogLwipSocketTcpKeepaliveTest PROPERTIES
+set_target_properties(SolidSyslogLwipSocketTcpKeepaliveAllTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipSocketTcpKeepaliveTest COMMAND SolidSyslogLwipSocketTcpKeepaliveTest)
+add_test(NAME SolidSyslogLwipSocketTcpKeepaliveAllTest COMMAND SolidSyslogLwipSocketTcpKeepaliveAllTest)
+
+# ---- SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest ----
+
+# The other half: a stack built without LWIP_TCP_KEEPALIVE, where only the idle
+# period is ours and it is set in milliseconds. No compile definition, because
+# lwIP's opt.h defaults the option off.
+
+add_executable(SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest
+    SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/Support/LwipSocketFakes/Source/LwipSocketsFake.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpKeepaliveIdleOnly.c
+)
+
+target_link_libraries(SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    LwipSocketUpstreamHelpers
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest PRIVATE ${LWIPSOCKET_TEST_INCLUDE_DIRS})
+
+set_target_properties(SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest PROPERTIES
+    CXX_CPPCHECK ""
+)
+
+add_test(NAME SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest COMMAND SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest)
