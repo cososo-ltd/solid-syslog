@@ -8,16 +8,73 @@
    provides only when built with both the sockets layer and DNS. */
 #if LWIP_SOCKET && LWIP_DNS
 
+#include "lwip/netdb.h"
+#include "lwip/sockets.h"
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #include "SolidSyslogError.h"
+#include "SolidSyslogLwipSocketAddressPrivate.h"
 #include "SolidSyslogLwipSocketResolverErrors.h"
 #include "SolidSyslogLwipSocketResolverPrivate.h"
 #include "SolidSyslogNullResolver.h"
+#include "SolidSyslogResolverDefinition.h"
+#include "SolidSyslogTransport.h"
 
 const struct SolidSyslogErrorSource SolidSyslogLwipSocketResolverErrorSource = {"LwipSocketResolver"};
 
+struct SolidSyslogAddress;
+
+enum
+{
+    GETADDRINFO_SUCCESS = 0
+};
+
+static bool LwipSocketResolver_Resolve(
+    struct SolidSyslogResolver* base,
+    enum SolidSyslogTransport transport,
+    const char* host,
+    uint16_t port,
+    struct SolidSyslogAddress* result
+);
+
 void SolidSyslogLwipSocketResolver_Initialise(struct SolidSyslogResolver* base)
 {
+    base->Resolve = LwipSocketResolver_Resolve;
+}
+
+static bool LwipSocketResolver_Resolve(
+    struct SolidSyslogResolver* base,
+    enum SolidSyslogTransport transport,
+    const char* host,
+    uint16_t port,
+    struct SolidSyslogAddress* result
+)
+{
     (void) base;
+    /* lwIP's getaddrinfo does not act on ai_socktype, so the transport tells the
+     * lookup nothing. The port is applied to the answer instead of being asked
+     * for as a service name. */
+    (void) transport;
+
+    struct addrinfo hints = {0};
+    hints.ai_family = AF_INET;
+
+    struct addrinfo* info = NULL;
+    bool resolved = false;
+
+    if (lwip_getaddrinfo(host, NULL, &hints, &info) == GETADDRINFO_SUCCESS)
+    {
+        struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsSockaddrIn(result);
+        *sin = *(const struct sockaddr_in*) (const void*) info->ai_addr;
+        sin->sin_port = lwip_htons(port);
+        lwip_freeaddrinfo(info);
+        resolved = true;
+    }
+
+    return resolved;
 }
 
 void SolidSyslogLwipSocketResolver_Cleanup(struct SolidSyslogResolver* base)

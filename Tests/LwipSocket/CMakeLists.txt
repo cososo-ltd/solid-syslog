@@ -75,6 +75,7 @@ add_test(NAME SolidSyslogLwipSocketAddressTest COMMAND SolidSyslogLwipSocketAddr
 add_executable(SolidSyslogLwipSocketResolverTest
     SolidSyslogLwipSocketResolverTest.cpp
     main.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/Support/LwipSocketFakes/Source/LwipNetdbFake.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketResolver.c
