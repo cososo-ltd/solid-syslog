@@ -384,6 +384,18 @@ TEST(SolidSyslogLwipSocketTcpStream, SendRefusesTheRecordWhenThePeerHasClosedIts
     CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, SendRefusesTheRecordWhenTheStackReportsAFault)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(Open());
+    LwipSocketsFake_SetRecvResult(-1, ECONNRESET);
+
+    CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_PAYLOAD, TEST_PAYLOAD_SIZE));
+
+    LONGS_EQUAL(0U, LwipSocketsFake_SendCallCount());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
+}
+
 TEST(SolidSyslogLwipSocketTcpStream, ReadAnswersTheBytesThePeerSent)
 {
     LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
