@@ -114,6 +114,15 @@ TEST(SolidSyslogLwipSocketTcpStream, AConnectStillInProgressWaitsForTheSocketToB
     LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastSelectExceptionDescriptor());
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, TheWaitIsBoundedByTheTunableWhenTheIntegratorInstallsNoGetter)
+{
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+
+    CHECK_TRUE(Open());
+
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS, LwipSocketsFake_LastSelectTimeoutMs());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {

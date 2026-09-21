@@ -10,21 +10,26 @@
 #include "lwip/sockets.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogLwipSocketAddressPrivate.h"
 #include "SolidSyslogLwipSocketTcpStreamErrors.h"
 #include "SolidSyslogLwipSocketTcpStreamPrivate.h"
 #include "SolidSyslogNullStream.h"
+#include "SolidSyslogTunables.h"
 
 const struct SolidSyslogErrorSource SolidSyslogLwipSocketTcpStreamErrorSource = {"LwipSocketTcpStream"};
 
 struct SolidSyslogAddress;
 
+static uint32_t LwipSocketTcpStream_NullConnectTimeoutGetter(void* context);
+
 static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 
 static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base);
-static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd);
+static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros);
+static long LwipSocketTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogLwipSocketTcpStream* self);
 
 void SolidSyslogLwipSocketTcpStream_Initialise(
     struct SolidSyslogStream* base,
@@ -32,8 +37,18 @@ void SolidSyslogLwipSocketTcpStream_Initialise(
 )
 {
     struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
-    (void) config;
     self->Base.Open = LwipSocketTcpStream_Open;
+    self->Config.GetConnectTimeoutMs = LwipSocketTcpStream_NullConnectTimeoutGetter;
+    self->Config.ConnectTimeoutContext = NULL;
+    (void) config;
+}
+
+/* Null Object substituted when the integrator installs no getter - the bounded
+ * wait then has one code path whether or not runtime tuning was wired. */
+static uint32_t LwipSocketTcpStream_NullConnectTimeoutGetter(void* context)
+{
+    (void) context;
+    return (uint32_t) SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS;
 }
 
 void SolidSyslogLwipSocketTcpStream_Cleanup(struct SolidSyslogStream* base)
@@ -59,7 +74,10 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
 
     if (connectErrno == EINPROGRESS)
     {
-        connected = LwipSocketTcpStream_WaitForConnectCompletion(self->Fd);
+        connected = LwipSocketTcpStream_WaitForConnectCompletion(
+            self->Fd,
+            LwipSocketTcpStream_ResolveConnectTimeoutMicros(self)
+        );
     }
     return connected;
 }
@@ -67,7 +85,16 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
 /* The connect is under way and the socket is non-blocking, so the answer comes
  * as writability. The exception set is watched alongside, because a stack that
  * ends the attempt reports it there rather than as a write. */
-static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd)
+/* Read on every attempt, so a runtime-tunable value takes effect on the next
+ * reconnect. */
+static long LwipSocketTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogLwipSocketTcpStream* self)
+{
+    uint32_t ms = self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
+    return (long) ms * 1000L;
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- fd is a socket descriptor; timeoutMicros is a duration; distinct semantics
+static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros)
 {
     fd_set writeSet;
     FD_ZERO(&writeSet);
@@ -77,7 +104,7 @@ static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd)
     FD_ZERO(&errorSet);
     FD_SET(fd, &errorSet);
 
-    struct timeval timeout = {.tv_sec = 0, .tv_usec = 0};
+    struct timeval timeout = {.tv_sec = timeoutMicros / 1000000L, .tv_usec = timeoutMicros % 1000000L};
 
     (void) lwip_select(fd + 1, NULL, &writeSet, &errorSet, &timeout);
     return true;
