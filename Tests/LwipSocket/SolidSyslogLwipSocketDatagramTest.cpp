@@ -179,6 +179,20 @@ TEST_GROUP(SolidSyslogLwipSocketDatagramPool)
 
 // clang-format on
 
+TEST(SolidSyslogLwipSocketDatagramPool, DestroyClosesASocketTheDatagramStillHoldsOpen)
+{
+    pooled[0] = SolidSyslogLwipSocketDatagram_Create();
+    LwipSocketsFake_Reset();
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(SolidSyslogDatagram_Open(pooled[0]));
+
+    SolidSyslogLwipSocketDatagram_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+}
+
 TEST(SolidSyslogLwipSocketDatagramPool, FillingPoolThenOverflowReturnsTheNullDatagram)
 {
     FillPool();
@@ -277,4 +291,19 @@ TEST(SolidSyslogLwipSocketDatagramPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogLwipSocketDatagramPool, SendingAfterDestroyIsASafeNoOp)
+{
+    struct SolidSyslogDatagram* stale = SolidSyslogLwipSocketDatagram_Create();
+    struct SolidSyslogAddress* address = SolidSyslogLwipSocketAddress_Create();
+    SolidSyslogLwipSocketDatagram_Destroy(stale);
+    LwipSocketsFake_Reset();
+
+    enum SolidSyslogDatagramSendResult sent =
+        SolidSyslogDatagram_SendTo(stale, TEST_PAYLOAD, TEST_PAYLOAD_SIZE, address);
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, sent);
+    LONGS_EQUAL(0U, LwipSocketsFake_SendToCallCount());
+    SolidSyslogLwipSocketAddress_Destroy(address);
 }

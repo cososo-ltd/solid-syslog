@@ -54,6 +54,7 @@ void SolidSyslogLwipSocketDatagram_Initialise(struct SolidSyslogDatagram* base)
 
 void SolidSyslogLwipSocketDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
+    LwipSocketDatagram_Close(base);
     /* Overwrite the abstract base with the shared NullDatagram vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullDatagram_Get();
