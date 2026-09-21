@@ -108,7 +108,7 @@ void SolidSyslog_Destroy(struct SolidSyslog* handle)
 static inline size_t SolidSyslog_IndexFromHandle(const struct SolidSyslog* handle)
 {
     size_t result = SOLIDSYSLOG_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_POOL_SIZE; poolIndex++)
+    for (size_t poolIndex = 0U; poolIndex < SOLIDSYSLOG_POOL_SIZE; poolIndex++)
     {
         if (handle == &SolidSyslog_Pool[poolIndex])
         {

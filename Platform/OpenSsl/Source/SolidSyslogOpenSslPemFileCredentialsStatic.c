@@ -92,7 +92,7 @@ void SolidSyslogOpenSslPemFileCredentials_Destroy(struct SolidSyslogOpenSslCrede
 static inline size_t OpenSslPemFileCredentials_IndexFromHandle(const struct SolidSyslogOpenSslCredentials* base)
 {
     size_t result = SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE; poolIndex++)
+    for (size_t poolIndex = 0U; poolIndex < SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE; poolIndex++)
     {
         if (base == &OpenSslPemFileCredentials_Pool[poolIndex].Base)
         {

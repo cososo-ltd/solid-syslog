@@ -16,7 +16,7 @@ static inline void PoolAllocator_MarkFree(struct SolidSyslogPoolAllocator* self,
 
 size_t SolidSyslogPoolAllocator_AcquireFirstFree(struct SolidSyslogPoolAllocator* self)
 {
-    size_t acquired = 0;
+    size_t acquired = 0U;
     while ((acquired < self->Count) && !PoolAllocator_TryClaim(self, acquired))
     {
         acquired++;

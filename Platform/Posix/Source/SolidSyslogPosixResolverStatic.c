@@ -65,7 +65,7 @@ void SolidSyslogPosixResolver_Destroy(struct SolidSyslogResolver* base)
 static inline size_t PosixResolver_IndexFromHandle(const struct SolidSyslogResolver* base)
 {
     size_t result = SOLIDSYSLOG_RESOLVER_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_RESOLVER_POOL_SIZE; poolIndex++)
+    for (size_t poolIndex = 0U; poolIndex < SOLIDSYSLOG_RESOLVER_POOL_SIZE; poolIndex++)
     {
         if (base == &PosixResolver_Pool[poolIndex].Base)
         {

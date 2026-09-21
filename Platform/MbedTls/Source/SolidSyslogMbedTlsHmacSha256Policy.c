@@ -116,7 +116,7 @@ static bool MbedTlsHmacSha256Policy_ComputeTag(
 )
 {
     uint8_t key[SOLIDSYSLOG_MAX_HMAC_KEY_SIZE];
-    size_t keyLength = 0;
+    size_t keyLength = 0U;
     bool computed = false;
     if (MbedTlsHmacSha256Policy_FetchKey(policy, key, &keyLength))
     {
@@ -149,7 +149,7 @@ static bool MbedTlsHmacSha256Policy_FetchKey(
     size_t* keyLengthOut
 )
 {
-    size_t keyLength = 0;
+    size_t keyLength = 0U;
     bool fetched = false;
     if (policy->Config.GetKey(policy->Config.KeyContext, keyOut, SOLIDSYSLOG_MAX_HMAC_KEY_SIZE, &keyLength))
     {
@@ -209,7 +209,7 @@ static inline bool MbedTlsHmacSha256Policy_ConstantTimeEquals(const uint8_t* a, 
      * regardless of where a mismatch occurs - no early exit, no timing oracle
      * on the tag comparison. */
     uint8_t difference = 0U;
-    for (size_t index = 0; index < length; index++)
+    for (size_t index = 0U; index < length; index++)
     {
         difference |= (uint8_t) (a[index] ^ b[index]);
     }

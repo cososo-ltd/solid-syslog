@@ -15,7 +15,7 @@ enum
 uint32_t SolidSyslogPosix_GetSysUpTime(void)
 {
     struct timespec now;
-    uint32_t result = 0;
+    uint32_t result = 0U;
 
     if (clock_gettime(CLOCK_BOOTTIME, &now) == 0)
     {

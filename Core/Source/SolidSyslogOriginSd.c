@@ -105,7 +105,7 @@ static inline void OriginSd_EmitIps(struct SolidSyslogSdElement* element, const 
     if ((self->GetIpCount != NULL) && (self->GetIpAt != NULL))
     {
         size_t count = self->GetIpCount(self->IpContext);
-        for (size_t i = 0; i < count; i++)
+        for (size_t i = 0U; i < count; i++)
         {
             self->GetIpAt(SolidSyslogSdElement_Param(element, "ip"), self->IpContext, i);
         }

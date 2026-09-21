@@ -639,7 +639,7 @@ static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbe
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self)
 {
     uint32_t budgetMs = MbedTlsStream_ResolveHandshakeTimeoutMs(self);
-    uint32_t totalSleptMs = 0;
+    uint32_t totalSleptMs = 0U;
     bool result = false;
     bool done = false;
 

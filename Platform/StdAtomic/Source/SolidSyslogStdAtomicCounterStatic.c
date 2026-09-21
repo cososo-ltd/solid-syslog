@@ -68,7 +68,7 @@ void SolidSyslogStdAtomicCounter_Destroy(struct SolidSyslogAtomicCounter* base)
 static inline size_t StdAtomicCounter_IndexFromHandle(const struct SolidSyslogAtomicCounter* base)
 {
     size_t result = SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE; poolIndex++)
+    for (size_t poolIndex = 0U; poolIndex < SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE; poolIndex++)
     {
         if (base == &StdAtomicCounter_Pool[poolIndex].Base)
         {

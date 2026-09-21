@@ -75,7 +75,7 @@ static inline bool TlsFingerprint_ParseLabel(
     bool parsed = false;
     size_t count = sizeof(TLS_FINGERPRINT_LABELS) / sizeof(TLS_FINGERPRINT_LABELS[0]);
 
-    for (size_t i = 0; (i < count) && !parsed; i++)
+    for (size_t i = 0U; (i < count) && !parsed; i++)
     {
         if (TlsFingerprint_LabelMatches(text, TLS_FINGERPRINT_LABELS[i].Label, digestText))
         {
@@ -90,7 +90,7 @@ static inline bool TlsFingerprint_ParseLabel(
 
 static inline bool TlsFingerprint_LabelMatches(const char* text, const char* label, const char** digestText)
 {
-    size_t i = 0;
+    size_t i = 0U;
 
     while ((label[i] != '\0') && (text[i] == label[i]))
     {
@@ -110,9 +110,9 @@ static inline bool TlsFingerprint_LabelMatches(const char* text, const char* lab
 static inline bool TlsFingerprint_ParseHexPairs(const char* text, uint8_t* digest, size_t length)
 {
     bool parsed = true;
-    size_t position = 0;
+    size_t position = 0U;
 
-    for (size_t i = 0; (i < length) && parsed; i++)
+    for (size_t i = 0U; (i < length) && parsed; i++)
     {
         parsed = TlsFingerprint_ParseHexPair(&text[position], &digest[i]);
         position += 2U;
@@ -129,8 +129,8 @@ static inline bool TlsFingerprint_ParseHexPairs(const char* text, uint8_t* diges
 
 static inline bool TlsFingerprint_ParseHexPair(const char* text, uint8_t* value)
 {
-    uint8_t high = 0;
-    uint8_t low = 0;
+    uint8_t high = 0U;
+    uint8_t low = 0U;
     bool parsed = TlsFingerprint_ParseHexDigit(text[0], &high) && TlsFingerprint_ParseHexDigit(text[1], &low);
 
     if (parsed)
@@ -169,7 +169,7 @@ bool SolidSyslogTlsFingerprint_ListIsPresent(const char* const * fingerprints, s
 {
     bool present = TlsFingerprint_ListIsReadable(fingerprints, count);
 
-    for (size_t i = 0; present && (i < count); i++)
+    for (size_t i = 0U; present && (i < count); i++)
     {
         present = fingerprints[i] != NULL;
     }
@@ -191,7 +191,7 @@ enum SolidSyslogTlsFingerprintListState SolidSyslogTlsFingerprint_InspectList(
 
     if (TlsFingerprint_ListIsReadable(fingerprints, count))
     {
-        for (size_t i = 0; i < count; i++)
+        for (size_t i = 0U; i < count; i++)
         {
             enum SolidSyslogTlsFingerprintListState one = TlsFingerprint_InspectOne(fingerprints[i]);
             if (one > state)
@@ -237,7 +237,7 @@ enum SolidSyslogTlsAuthorisation SolidSyslogTlsFingerprint_Authorise(
     }
 
     bool anySkipped = false;
-    for (size_t i = 0; (i < count) && (verdict == SOLIDSYSLOG_TLS_AUTHORISATION_NO_MATCH); i++)
+    for (size_t i = 0U; (i < count) && (verdict == SOLIDSYSLOG_TLS_AUTHORISATION_NO_MATCH); i++)
     {
         verdict = TlsFingerprint_AuthoriseOne(fingerprints[i], digest, context);
         if (verdict == SOLIDSYSLOG_TLS_AUTHORISATION_DIGEST_UNAVAILABLE)
@@ -298,9 +298,9 @@ static inline bool TlsFingerprint_DigestEquals(
 
     if (equal)
     {
-        uint8_t difference = 0;
+        uint8_t difference = 0U;
 
-        for (size_t i = 0; i < length; i++)
+        for (size_t i = 0U; i < length; i++)
         {
             difference |= (uint8_t) (pin->Digest[i] ^ digest[i]);
         }

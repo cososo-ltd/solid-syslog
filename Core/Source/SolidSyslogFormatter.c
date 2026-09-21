@@ -160,7 +160,7 @@ static inline bool Formatter_HasCapacity(const struct SolidSyslogFormatter* form
 
 void SolidSyslogFormatter_BoundedString(struct SolidSyslogFormatter* formatter, const char* source, size_t maxLength)
 {
-    size_t len = 0;
+    size_t len = 0U;
 
     while ((len < maxLength) && (source[len] != '\0'))
     {
@@ -187,7 +187,7 @@ static inline bool Formatter_CodepointFits(size_t codepointLength, size_t remain
 
 static inline size_t Formatter_Utf8CodepointLength(const char* source)
 {
-    size_t length = 0;
+    size_t length = 0U;
 
     if (SolidSyslogUtf8_IsAsciiByte(source[0]))
     {
@@ -270,7 +270,7 @@ static inline bool Formatter_IsAboveUnicodeMaxEncoding(char lead, char continuat
 
 static inline void Formatter_WriteBytes(struct SolidSyslogFormatter* formatter, const char* bytes, size_t count)
 {
-    for (size_t i = 0; i < count; i++)
+    for (size_t i = 0U; i < count; i++)
     {
         Formatter_WriteChar(formatter, bytes[i]);
     }
@@ -408,7 +408,7 @@ void SolidSyslogFormatter_PrintUsAsciiString(
     size_t maxLength
 )
 {
-    size_t len = 0;
+    size_t len = 0U;
 
     while ((len < maxLength) && (source[len] != '\0'))
     {
@@ -448,7 +448,7 @@ void SolidSyslogFormatter_Uint32(struct SolidSyslogFormatter* formatter, uint32_
         divisor *= 10U;
     }
 
-    for (size_t i = 0; i < digits; i++)
+    for (size_t i = 0U; i < digits; i++)
     {
         Formatter_WriteChar(formatter, Formatter_DigitToChar(remaining / divisor));
         remaining %= divisor;

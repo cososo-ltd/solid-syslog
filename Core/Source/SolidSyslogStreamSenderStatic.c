@@ -114,7 +114,7 @@ void SolidSyslogStreamSender_Destroy(struct SolidSyslogSender* base)
 static inline size_t StreamSender_IndexFromHandle(const struct SolidSyslogSender* base)
 {
     size_t result = SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE; poolIndex++)
+    for (size_t poolIndex = 0U; poolIndex < SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE; poolIndex++)
     {
         if (base == &StreamSender_Pool[poolIndex].Base)
         {

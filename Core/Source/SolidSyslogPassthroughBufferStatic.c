@@ -84,7 +84,7 @@ void SolidSyslogPassthroughBuffer_Destroy(struct SolidSyslogBuffer* base)
 static inline size_t PassthroughBuffer_IndexFromHandle(const struct SolidSyslogBuffer* base)
 {
     size_t result = SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE;
-    for (size_t poolIndex = 0; poolIndex < SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE; poolIndex++)
+    for (size_t poolIndex = 0U; poolIndex < SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE; poolIndex++)
     {
         if (base == &PassthroughBuffer_Pool[poolIndex].Base)
         {

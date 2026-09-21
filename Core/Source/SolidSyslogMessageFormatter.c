@@ -224,7 +224,7 @@ static inline void MessageFormatter_FormatSdElements(
     size_t sdCount
 )
 {
-    for (size_t i = 0; i < sdCount; i++)
+    for (size_t i = 0U; i < sdCount; i++)
     {
         /* Skip NULL entries rather than dereference them. Per-instance slots are
            expected to use SolidSyslogNullSd, but a per-message array is supplied

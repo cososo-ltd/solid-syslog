@@ -37,7 +37,7 @@ void SolidSyslogSdValue_String(struct SolidSyslogSdValue* value, const char* sou
  * held for the next call. */
 static size_t SdValue_DrainPending(struct SolidSyslogSdValue* value, const char* source)
 {
-    size_t consumed = 0;
+    size_t consumed = 0U;
     if (value->PendingCount > 0U)
     {
         size_t expected = SdValue_ExpectedLength(value->Pending[0]);
@@ -69,7 +69,7 @@ static size_t SdValue_DrainPending(struct SolidSyslogSdValue* value, const char*
  * end-of-source is held for the next call rather than emitted. */
 static void SdValue_WriteBody(struct SolidSyslogSdValue* value, const char* source)
 {
-    size_t i = 0;
+    size_t i = 0U;
     while (source[i] != '\0')
     {
         size_t expected = SdValue_ExpectedLength(source[i]);
@@ -120,7 +120,7 @@ static inline size_t SdValue_ExpectedLength(char lead)
 static inline void SdValue_EmitUnit(struct SolidSyslogSdValue* value, const char* bytes, size_t count)
 {
     char unit[SDVALUE_MAX_CODEPOINT_BYTES + 1U];
-    for (size_t i = 0; i < count; i++)
+    for (size_t i = 0U; i < count; i++)
     {
         unit[i] = bytes[i];
     }
@@ -130,7 +130,7 @@ static inline void SdValue_EmitUnit(struct SolidSyslogSdValue* value, const char
 
 static inline void SdValue_Hold(struct SolidSyslogSdValue* value, const char* bytes, size_t count)
 {
-    for (size_t i = 0; i < count; i++)
+    for (size_t i = 0U; i < count; i++)
     {
         value->Pending[i] = bytes[i];
     }

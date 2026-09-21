@@ -340,7 +340,7 @@ static bool FileBlockDevice_WriteAt(
 
 static size_t FileBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blockIndex)
 {
-    size_t size = 0;
+    size_t size = 0U;
 
     if (FileBlockDevice_IsValidBlockIndex(blockIndex))
     {
