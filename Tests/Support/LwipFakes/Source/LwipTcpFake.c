@@ -8,51 +8,51 @@
 #include "lwip/ip_addr.h"
 #include "lwip/tcp.h"
 
-static unsigned tcpNewCallCount = 0;
+static unsigned tcpNewCallCount = 0U;
 static struct tcp_pcb fakePcb;
 static struct tcp_pcb* lastTcpNewReturned = NULL;
 static bool tcpNewFails = false;
 
-static unsigned tcpArgCallCount = 0;
+static unsigned tcpArgCallCount = 0U;
 static void* lastCallbackArg = NULL;
 
-static unsigned tcpRecvCallCount = 0;
+static unsigned tcpRecvCallCount = 0U;
 static tcp_recv_fn lastRecvFn = NULL;
-static unsigned tcpErrCallCount = 0;
+static unsigned tcpErrCallCount = 0U;
 static tcp_err_fn lastErrFn = NULL;
-static unsigned tcpSentCallCount = 0;
+static unsigned tcpSentCallCount = 0U;
 static tcp_sent_fn lastSentFn = NULL;
 
-static unsigned tcpConnectCallCount = 0;
+static unsigned tcpConnectCallCount = 0U;
 static struct tcp_pcb* lastConnectPcb = NULL;
 static const ip_addr_t* lastConnectIpaddr = NULL;
-static u16_t lastConnectPort = 0;
+static u16_t lastConnectPort = 0U;
 static tcp_connected_fn lastConnectedFn = NULL;
 static err_t tcpConnectError = ERR_OK;
 static bool connectCallbackFires = true;
 static err_t connectCallbackResult = ERR_OK;
 
-static unsigned tcpCloseCallCount = 0;
+static unsigned tcpCloseCallCount = 0U;
 static struct tcp_pcb* lastClosePcb = NULL;
 static err_t tcpCloseError = ERR_OK;
 
-static unsigned tcpAbortCallCount = 0;
+static unsigned tcpAbortCallCount = 0U;
 static struct tcp_pcb* lastAbortPcb = NULL;
 
-static unsigned tcpWriteCallCount = 0;
+static unsigned tcpWriteCallCount = 0U;
 static struct tcp_pcb* lastWritePcb = NULL;
 static const void* lastWriteDataptr = NULL;
-static u16_t lastWriteLength = 0;
-static u8_t lastWriteApiFlags = 0;
+static u16_t lastWriteLength = 0U;
+static u8_t lastWriteApiFlags = 0U;
 static err_t tcpWriteError = ERR_OK;
 
-static unsigned tcpOutputCallCount = 0;
+static unsigned tcpOutputCallCount = 0U;
 static struct tcp_pcb* lastOutputPcb = NULL;
 static err_t tcpOutputError = ERR_OK;
 
-static unsigned tcpRecvedCallCount = 0;
+static unsigned tcpRecvedCallCount = 0U;
 static struct tcp_pcb* lastRecvedPcb = NULL;
-static u16_t lastRecvedLen = 0;
+static u16_t lastRecvedLen = 0U;
 
 static int outstandingPcbCount = 0;
 

@@ -60,7 +60,7 @@ TEST_BASE(CircularBufferFixture)
 {
     struct SolidSyslogBuffer* buffer = nullptr;
     char                      readData[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t                    readSize = 0;
+    size_t                    readSize = 0U;
 
     // Write a null-terminated C string. Size is strlen() -- intended for
     // literal-string tests. For binary payloads use the two-arg overload below.
@@ -239,7 +239,7 @@ TEST(SolidSyslogCircularBuffer, ReadWithBufferTooSmallForHeadRecordReportsError)
     Write("hello");
 
     char small[4] = {};
-    size_t got = 0;
+    size_t got = 0U;
     bool delivered = SolidSyslogBuffer_Read(buffer, small, sizeof(small), &got);
 
     CHECK_FALSE(delivered);
@@ -257,7 +257,7 @@ TEST(SolidSyslogCircularBuffer, ReadWithBufferTooSmallLeavesRecordQueued)
     Write("hello");
 
     char small[4] = {};
-    size_t got = 0;
+    size_t got = 0U;
     (void) SolidSyslogBuffer_Read(buffer, small, sizeof(small), &got);
 
     CHECK_TRUE(Read()); // fixture Read() uses a MAX-sized buffer
@@ -366,7 +366,7 @@ TEST(SolidSyslogCircularBufferSmallRing, ReadIntoSmallerBufferReturnsFalseAndLea
     Write("hello");
 
     char dest[5];
-    size_t got = 0;
+    size_t got = 0U;
     CHECK_FALSE(SolidSyslogBuffer_Read(buffer, dest, 4, &got));
     LONGS_EQUAL(0, got);
 

@@ -19,7 +19,7 @@ static void CleanStoreFiles()
     std::string pattern = std::string(TEST_PATH_PREFIX) + "*.log";
     if (glob(pattern.c_str(), 0, nullptr, &results) == 0)
     {
-        for (size_t i = 0; i < results.gl_pathc; i++)
+        for (size_t i = 0U; i < results.gl_pathc; i++)
         {
             std::remove(results.gl_pathv[i]);
         }
@@ -97,7 +97,7 @@ TEST(SolidSyslogBlockStorePosix, DiscardOldestDrainYieldsOnlySurvivingRecords)
     WriteMaxMsg(); /* block 02 - triggers discard of block 00 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
 
     /* First record should be from surviving block 01, not discarded block 00 */
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
@@ -135,7 +135,7 @@ TEST(SolidSyslogBlockStorePosix, DiscardOldestWhenReadIsPartwayThroughOldestBloc
 
     /* Read and send first record from block 00 - read cursor is now partway through */
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     BYTES_EQUAL('A', buf[0]);
     SolidSyslogStore_MarkSent(store);

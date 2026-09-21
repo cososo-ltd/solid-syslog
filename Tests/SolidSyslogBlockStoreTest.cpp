@@ -160,7 +160,7 @@ TEST(SolidSyslogBlockStore, ReadNextUnsentReturnsTrueAfterWrite)
 {
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     char buf[TEST_BUF_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
 }
 
@@ -168,7 +168,7 @@ TEST(SolidSyslogBlockStore, ReadNextUnsentReturnsWrittenData)
 {
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     char buf[TEST_BUF_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     MEMCMP_EQUAL(TEST_DATA, buf, TEST_DATA_LEN);
 }
@@ -177,7 +177,7 @@ TEST(SolidSyslogBlockStore, ReadNextUnsentReturnsByteCount)
 {
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     char buf[TEST_BUF_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     LONGS_EQUAL(TEST_DATA_LEN, bytesRead);
 }
@@ -185,7 +185,7 @@ TEST(SolidSyslogBlockStore, ReadNextUnsentReturnsByteCount)
 TEST(SolidSyslogBlockStore, ReadNextUnsentReturnsFalseOnEmpty)
 {
     char buf[TEST_BUF_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
 }
 
@@ -203,7 +203,7 @@ TEST(SolidSyslogBlockStore, ReadDoesNotWriteBeyondDataLength)
     memset(buf, SENTINEL, sizeof(buf));
 
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
     MEMCMP_EQUAL(TEST_DATA, buf, TEST_DATA_LEN);
@@ -222,7 +222,7 @@ TEST(SolidSyslogBlockStore, ReadTruncatesWhenBufferTooSmall)
     SolidSyslogStore_Write(store, longMessage, strlen(longMessage));
 
     char buf[SMALL_BUF_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
     LONGS_EQUAL(SMALL_BUF_SIZE, bytesRead);
@@ -233,7 +233,7 @@ TEST(SolidSyslogBlockStore, MarkSentThenHasUnsentReturnsFalse)
 {
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     char buf[TEST_BUF_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store);
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
@@ -248,7 +248,7 @@ TEST(SolidSyslogBlockStore, HasUnsentFalseAfterAllSent)
 {
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     char buf[TEST_BUF_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store);
 
@@ -259,7 +259,7 @@ TEST(SolidSyslogBlockStore, WriteAfterDrainWorks)
 {
     SolidSyslogStore_Write(store, "first", strlen("first"));
     char buf[TEST_BUF_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store);
 
@@ -275,7 +275,7 @@ TEST(SolidSyslogBlockStore, TwoWritesFirstReadReturnsFirst)
     SolidSyslogStore_Write(store, "first", strlen("first"));
     SolidSyslogStore_Write(store, "second", strlen("second"));
     char buf[TEST_BUF_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     MEMCMP_EQUAL("first", buf, strlen("first"));
 }
@@ -285,7 +285,7 @@ TEST(SolidSyslogBlockStore, AfterMarkFirstReadReturnsSecond)
     SolidSyslogStore_Write(store, "first", strlen("first"));
     SolidSyslogStore_Write(store, "second", strlen("second"));
     char buf[TEST_BUF_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
 
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store);
@@ -313,7 +313,7 @@ TEST(SolidSyslogBlockStore, FiveWritesDrainAllInOrder)
     for (const auto* expected : messages)
     {
         char buf[TEST_BUF_SIZE] = {};
-        size_t bytesRead = 0;
+        size_t bytesRead = 0U;
         CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
         MEMCMP_EQUAL(expected, buf, MESSAGE_LEN);
         SolidSyslogStore_MarkSent(store);
@@ -364,7 +364,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreResume, BlockDeviceTestBase)
     void DrainMessages(int count) const
     {
         char   buf[TEST_BUF_SIZE];
-        size_t bytesRead = 0;
+        size_t bytesRead = 0U;
         for (int i = 0; i < count; i++)
         {
             SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
@@ -385,7 +385,7 @@ TEST(SolidSyslogBlockStoreResume, ReadReturnsFirstUnsent)
 {
     WritePreviousSession(3, 1);
     char buf[TEST_BUF_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     MEMCMP_EQUAL("msg1", buf, strlen("msg1"));
 }
@@ -394,7 +394,7 @@ TEST(SolidSyslogBlockStoreResume, DrainsRemainingUnsent)
 {
     WritePreviousSession(3, 1);
     char buf[TEST_BUF_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
 
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     MEMCMP_EQUAL("msg1", buf, strlen("msg1"));
@@ -424,7 +424,7 @@ TEST(SolidSyslogBlockStoreResume, CanWriteNewMessagesAfterResume)
 {
     WritePreviousSession(2, 1);
     char buf[TEST_BUF_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
 
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store);
@@ -503,7 +503,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
     {
         CHECK_TRUE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
         char   buf[TEST_BUF_SIZE] = {};
-        size_t bytesRead = 0;
+        size_t bytesRead = 0U;
         SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
         MEMCMP_EQUAL(TEST_DATA, buf, TEST_DATA_LEN);
     }
@@ -666,7 +666,7 @@ TEST(SolidSyslogBlockStoreErrors, ReadReturnsFalseOnReadFailure)
     FileFake_FailNextRead(file);
 
     char buf[TEST_BUF_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     LONGS_EQUAL(0, bytesRead);
 }
@@ -678,7 +678,7 @@ TEST(SolidSyslogBlockStoreErrors, MarkSentDoesNotAdvanceWhenWriteFails)
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
 
     char buf[TEST_BUF_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
     FileFake_FailNextWrite(file);
@@ -765,7 +765,7 @@ TEST(SolidSyslogBlockStoreRotation, ReadReturnsFirstBlockAfterRotation)
     WriteMaxMsg(); /* rotates to block 01 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
     LONGS_EQUAL(sizeof(firstMsg), bytesRead);
@@ -783,7 +783,7 @@ TEST(SolidSyslogBlockStoreRotation, MarkSentAdvancesReadToSecondBlock)
     WriteMaxMsg(); /* rotates to block 01 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store);
 
@@ -801,7 +801,7 @@ TEST(SolidSyslogBlockStoreRotation, FullDrainAcrossTwoBlocksHasUnsentFalse)
     WriteMaxMsg();
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
 
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store);
@@ -838,7 +838,7 @@ TEST(SolidSyslogBlockStoreRotation, DiscardOldestSurvivingDataIsReadable)
     WriteMaxMsg(); /* block 02 - discards 00 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
     LONGS_EQUAL(SOLIDSYSLOG_MAX_MESSAGE_SIZE, bytesRead);
@@ -860,7 +860,7 @@ TEST(SolidSyslogBlockStoreRotation, DiscardOldestDrainYieldsOnlySurvivingRecords
     WriteMaxMsg(); /* block 02 - triggers discard of block 00 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
 
     /* First record should be from surviving block 01, not discarded block 00 */
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
@@ -1019,7 +1019,7 @@ TEST(SolidSyslogBlockStoreRotation, ResumeDrainsAcrossBlocksInOrder)
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
 
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     BYTES_EQUAL('B', buf[0]);
@@ -1102,7 +1102,7 @@ TEST(SolidSyslogBlockStoreRotation, ResumeFindsUnsentInClosedReadBlockWhenWriteB
     /* records 0..2 fill block 0; record 3 lands in block 1 (partially full) */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     for (int i = 0; i < 2; i++)
     {
         SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
@@ -1137,7 +1137,7 @@ TEST(SolidSyslogBlockStoreRotation, WriteAfterDrainRotatesToNextBlock)
     WriteMaxMsg();
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store);
 
@@ -1162,7 +1162,7 @@ TEST(SolidSyslogBlockStoreRotation, MixedMessageSizesDrainCorrectlyAcrossBlocks)
     WriteMaxMsg(); /* block 01 - max record */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
 
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     LONGS_EQUAL(SHORT_LEN, bytesRead);
@@ -1201,7 +1201,7 @@ TEST(SolidSyslogBlockStoreRotation, ContinuousDiscardWithoutReadingSurvivorsCorr
 
     /* Drain - should get msg3 ('D') then msg4 ('E') */
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
 
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     BYTES_EQUAL('D', buf[0]);
@@ -1259,7 +1259,7 @@ TEST(SolidSyslogBlockStoreRotation, MultipleRecordsPerBlockDrainAcrossRotation)
     WriteMaxMsg(); /* block 01, record 1 - 'A' */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
 
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     BYTES_EQUAL('X', buf[0]);
@@ -1285,7 +1285,7 @@ TEST(SolidSyslogBlockStoreRotation, MarkSentDisposesOlderBlockWhenDrained)
     WriteMaxMsg(); /* rotates to block 01 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store);
 
@@ -1298,7 +1298,7 @@ TEST(SolidSyslogBlockStoreRotation, MarkSentDoesNotDisposeActiveWriteBlock)
     WriteMaxMsg(); /* block 00 - also the active write block */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store);
 
@@ -1317,7 +1317,7 @@ TEST(SolidSyslogBlockStoreRotation, RotationDisposesPriorBlockWhenAlreadyDrained
 
     WriteMaxMsg();
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store);
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
@@ -1474,7 +1474,7 @@ TEST(SolidSyslogBlockStoreIntegrity, ReadCallsOpenRecord)
 {
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     char buf[TEST_BUF_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     CALLED_FUNCTION(SpyOpenRecord, ONCE);
 }
@@ -1491,7 +1491,7 @@ TEST(SolidSyslogBlockStoreIntegrity, OpenRecordReceivesContentRegionAndHeaderSpl
 
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     char buf[TEST_BUF_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     LONGS_EQUAL(REGION_SIZE, openContentLength);
 
@@ -1598,7 +1598,7 @@ TEST(SolidSyslogBlockStoreCorruption, ValidRecordBeforeCorruptionIsReadable)
     /* Re-open: first record is valid, second is corrupt */
     store = SolidSyslogBlockStore_Create(&config);
     char buf[TEST_BUF_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
 
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     LONGS_EQUAL(5, bytesRead);
@@ -1622,7 +1622,7 @@ TEST(SolidSyslogBlockStoreCorruption, IntegrityFailureReadReturnsFalse)
 
     store = SolidSyslogBlockStore_Create(&config);
     char buf[TEST_BUF_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
 }
 
@@ -1648,7 +1648,7 @@ TEST(SolidSyslogBlockStoreCorruption, InvalidLengthReadReturnsFalse)
 
     store = SolidSyslogBlockStore_Create(&config);
     char buf[TEST_BUF_SIZE];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
 }
 
@@ -1719,7 +1719,7 @@ TEST(SolidSyslogBlockStoreCorruptionRecovery, ReadSkipsCorruptOlderBlockToNextBl
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     LONGS_EQUAL(SOLIDSYSLOG_MAX_MESSAGE_SIZE, bytesRead);
     BYTES_EQUAL('A', buf[0]);

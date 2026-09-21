@@ -291,7 +291,7 @@ static struct FileEntry* FindEntry(const char* path)
 {
     struct FileEntry* result = NULL;
 
-    for (size_t i = 0; i < FILEFAKE_MAX_FILES; i++)
+    for (size_t i = 0U; i < FILEFAKE_MAX_FILES; i++)
     {
         if (EntryMatchesPath(&filesystem[i], path))
         {
@@ -312,7 +312,7 @@ static struct FileEntry* FindFreeSlot(void)
 {
     struct FileEntry* result = NULL;
 
-    for (size_t i = 0; i < FILEFAKE_MAX_FILES; i++)
+    for (size_t i = 0U; i < FILEFAKE_MAX_FILES; i++)
     {
         if (IsSlotFree(&filesystem[i]))
         {

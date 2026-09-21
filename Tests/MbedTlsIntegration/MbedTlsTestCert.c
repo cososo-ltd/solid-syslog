@@ -106,7 +106,7 @@ void MbedTlsTestCert_WriteFingerprint(const struct MbedTlsTestCert* cert, const 
     if (capacity > (written + (length * 3U)))
     {
         memcpy(out, label, written);
-        for (size_t i = 0; i < length; i++)
+        for (size_t i = 0U; i < length; i++)
         {
             out[written] = ':';
             out[written + 1U] = HEX[digest[i] >> 4U];

@@ -7,19 +7,19 @@
 #include "lwip/err.h"
 #include "lwip/udp.h"
 
-static unsigned udpNewCallCount = 0;
+static unsigned udpNewCallCount = 0U;
 static struct udp_pcb fakePcb;
 static struct udp_pcb* lastUdpNewReturned = NULL;
 static bool udpNewFails = false;
 
-static unsigned udpRemoveCallCount = 0;
+static unsigned udpRemoveCallCount = 0U;
 static struct udp_pcb* lastUdpRemovePcb = NULL;
 
-static unsigned udpSendtoCallCount = 0;
+static unsigned udpSendtoCallCount = 0U;
 static struct udp_pcb* lastSendtoPcb = NULL;
 static struct pbuf* lastSendtoPbuf = NULL;
 static const ip_addr_t* lastSendtoIpaddr = NULL;
-static u16_t lastSendtoPort = 0;
+static u16_t lastSendtoPort = 0U;
 static err_t udpSendtoError = ERR_OK;
 
 static int outstandingPcbCount = 0;

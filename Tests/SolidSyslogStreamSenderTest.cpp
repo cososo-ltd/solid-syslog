@@ -77,7 +77,7 @@ static const char* SpyGetHost()
 // drive fingerprint-reconnection tests.
 static const char* (*endpointGetHost)() = GetHost;
 static int (*endpointGetPort)() = GetPort;
-static uint32_t endpointVersion = 0;
+static uint32_t endpointVersion = 0U;
 static void* endpointContext;
 static void* endpointVersionContext;
 

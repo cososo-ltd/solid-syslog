@@ -194,7 +194,7 @@ TEST_GROUP_BASE(BlockStoreDrainOrdering, DrainTestFixtureBase)
     {
         CHECK_TRUE(SolidSyslogStore_HasUnsent(store));
         uint8_t buf[4096] = {};
-        size_t  bytesRead = 0;
+        size_t  bytesRead = 0U;
         CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
         SolidSyslogStore_MarkSent(store);
         return static_cast<uint32_t>(buf[0]) | (static_cast<uint32_t>(buf[1]) << 8) | (static_cast<uint32_t>(buf[2]) << 16) | (static_cast<uint32_t>(buf[3]) << 24);
@@ -290,7 +290,7 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
 
     void ServiceTickUntilQuiet(size_t cap) const
     {
-        for (size_t i = 0; i < cap; ++i)
+        for (size_t i = 0U; i < cap; ++i)
         {
             SolidSyslog_Service(solidSyslog);
         }

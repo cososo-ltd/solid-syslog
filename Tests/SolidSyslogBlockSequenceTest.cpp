@@ -122,7 +122,7 @@ bool FakeWriteAt(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t 
 size_t FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex)
 {
     const ScanFake& fake = ToFake(self);
-    size_t size = 0;
+    size_t size = 0U;
 
     if (fake.sizes != nullptr)
     {
@@ -272,7 +272,7 @@ TEST_GROUP(BlockSequenceRotation)
     {
         std::ptrdiff_t disposeAt = -1;
         std::ptrdiff_t acquireAt = -1;
-        for (size_t i = 0; i < calls.size(); i++)
+        for (size_t i = 0U; i < calls.size(); i++)
         {
             if ((calls[i].BlockIndex == blockIndex) && (calls[i].type == CallType::Dispose))
             {

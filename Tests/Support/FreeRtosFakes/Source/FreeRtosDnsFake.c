@@ -12,8 +12,8 @@
 #include "FreeRTOS_IPv4.h"
 #include "FreeRTOS_Sockets.h"
 
-static unsigned getAddrInfoCallCount = 0;
-static unsigned freeAddrInfoCallCount = 0;
+static unsigned getAddrInfoCallCount = 0U;
+static unsigned freeAddrInfoCallCount = 0U;
 static bool getAddrInfoFails = false;
 static char lastGetAddrInfoHostname[256];
 static BaseType_t lastGetAddrInfoSocktype = 0;

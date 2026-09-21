@@ -53,7 +53,7 @@ std::string EndStdoutCapture()
     if (f != nullptr)
     {
         char buf[2048];
-        size_t n = 0;
+        size_t n = 0U;
         // NOLINTNEXTLINE(clang-analyzer-unix.Stream) -- test helper; fread on EOF/error returns 0 and exits the loop cleanly
         while ((n = fread(buf, 1, sizeof(buf), f)) > 0)
         {

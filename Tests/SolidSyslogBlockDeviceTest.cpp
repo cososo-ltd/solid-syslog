@@ -9,9 +9,9 @@ namespace
 struct FakeBlockDevice
 {
     struct SolidSyslogBlockDevice Base;
-    size_t lastBlockIndex = 0;
-    size_t lastOffset = 0;
-    size_t lastCount = 0;
+    size_t lastBlockIndex = 0U;
+    size_t lastOffset = 0U;
+    size_t lastCount = 0U;
     const void* lastReadDestination = nullptr;
     const void* lastWriteSource = nullptr;
     bool acquireReturn = true;
@@ -20,7 +20,7 @@ struct FakeBlockDevice
     bool readReturn = true;
     bool appendReturn = true;
     bool writeAtReturn = true;
-    size_t sizeReturn = 0;
+    size_t sizeReturn = 0U;
 };
 
 inline FakeBlockDevice& ToFake(struct SolidSyslogBlockDevice* self)

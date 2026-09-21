@@ -87,14 +87,14 @@ void TlsTestCert_WriteFingerprint(const struct TlsTestCert* cert, const char* la
     static const char HEX[] = "0123456789ABCDEF";
     const EVP_MD* md = (strcmp(label, "sha-1") == 0) ? EVP_sha1() : EVP_sha256();
     unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int length = 0;
+    unsigned int length = 0U;
     X509_digest(cert->cert, md, digest, &length);
 
     size_t written = strlen(label);
     if (capacity > (written + ((size_t) length * 3U)))
     {
         memcpy(out, label, written);
-        for (unsigned int i = 0; i < length; i++)
+        for (unsigned int i = 0U; i < length; i++)
         {
             out[written] = ':';
             out[written + 1U] = HEX[digest[i] >> 4U];

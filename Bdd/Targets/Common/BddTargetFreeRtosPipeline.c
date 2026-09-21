@@ -123,7 +123,7 @@ static size_t pendingMaxBlocks = DEFAULT_PENDING_MAX_BLOCKS;
 static size_t pendingMaxBlockSize = DEFAULT_PENDING_MAX_BLOCK_SIZE;
 static const char* pendingDiscardPolicy = "oldest";
 static volatile bool pendingHaltExit = false;
-static size_t pendingCapacityThreshold = 0;
+static size_t pendingCapacityThreshold = 0U;
 /* At-rest integrity policy for the file store: "crc16" (default), "hmac-sha256"
  * (mbedTLS), "aes-256-gcm" (mbedTLS AEAD), or "null". Set before `store file`;
  * consumed by RebuildWithFileStore. currentPolicy holds the created handle so

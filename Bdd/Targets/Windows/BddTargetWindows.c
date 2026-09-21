@@ -134,7 +134,7 @@ static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
    otherwise. */
 static const char* GetEnvVar(char* buffer, size_t bufferSize, const char* name)
 {
-    size_t requiredSize = 0;
+    size_t requiredSize = 0U;
     errno_t err = getenv_s(&requiredSize, buffer, bufferSize, name);
     if ((err != 0) || (requiredSize == 0))
     {

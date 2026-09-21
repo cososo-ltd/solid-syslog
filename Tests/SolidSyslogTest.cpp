@@ -674,7 +674,7 @@ TEST(SolidSyslog, ServiceWritesBufferMessageToStore)
     SolidSyslog_Service(solidSyslog);
 
     char readData[512];
-    size_t readSize = 0;
+    size_t readSize = 0U;
     SolidSyslogStore_ReadNextUnsent(fakeStore, readData, sizeof(readData), &readSize);
     LONGS_EQUAL(8, readSize);
     MEMCMP_EQUAL("buffered", readData, 8);

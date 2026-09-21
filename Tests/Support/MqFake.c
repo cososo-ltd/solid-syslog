@@ -73,7 +73,7 @@ void MqFake_Reset(void)
     /* Reset errno so a stale value from a prior test cannot leak. */
     errno = 0;
 
-    for (size_t i = 0; i < (size_t) MQFAKE_MAX_QUEUES; i++)
+    for (size_t i = 0U; i < (size_t) MQFAKE_MAX_QUEUES; i++)
     {
         queues[i].inUse = false;
         queues[i].maxMessages = 0;
@@ -81,7 +81,7 @@ void MqFake_Reset(void)
         queues[i].head = 0;
         queues[i].tail = 0;
         queues[i].count = 0;
-        for (size_t m = 0; m < (size_t) MQFAKE_MAX_MESSAGES_PER_QUEUE; m++)
+        for (size_t m = 0U; m < (size_t) MQFAKE_MAX_MESSAGES_PER_QUEUE; m++)
         {
             queues[i].messageLens[m] = 0;
         }
@@ -90,7 +90,7 @@ void MqFake_Reset(void)
     nextOpenShouldFail = false;
     nextOpenErrno = 0;
     openCallCount = 0;
-    for (size_t i = 0; i < (size_t) MQFAKE_MAX_OPEN_HISTORY; i++)
+    for (size_t i = 0U; i < (size_t) MQFAKE_MAX_OPEN_HISTORY; i++)
     {
         openNameHistory[i][0] = '\0';
     }
@@ -269,7 +269,7 @@ mqd_t mq_open(const char* name, int oflag, ...)
     else
     {
         long requestedMaxMessages = 0;
-        size_t requestedMaxMessageSize = 0;
+        size_t requestedMaxMessageSize = 0U;
         if ((oflag & O_CREAT) != 0)
         {
             va_list ap;

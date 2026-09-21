@@ -157,7 +157,7 @@ static int DemoEntropySource(void* data, unsigned char* output, size_t len, size
 {
     (void) data;
     static uint32_t counter = 0U;
-    for (size_t i = 0; i < len; i++)
+    for (size_t i = 0U; i < len; i++)
     {
         counter++;
         uint32_t mix =

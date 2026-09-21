@@ -79,7 +79,7 @@ static int SpyGetPort()
 // TEST_BASE resets them in setup so groups don't leak state between tests.
 static const char* (*endpointGetHost)() = GetDefaultHost;
 static int (*endpointGetPort)() = GetDefaultPort;
-static uint32_t endpointVersion = 0;
+static uint32_t endpointVersion = 0U;
 static void* endpointContext;
 static void* endpointVersionContext;
 

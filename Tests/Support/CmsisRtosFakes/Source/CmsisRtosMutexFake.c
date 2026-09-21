@@ -10,18 +10,18 @@
  * opaque id that need not be the control block - CMSIS-FreeRTOS sets the low
  * bit for a recursive mutex - so the fake returns something else entirely, and
  * an adapter that assumed the two were the same would fail its Destroy test. */
-static uint8_t CmsisRtosMutexFake_Id = 0;
+static uint8_t CmsisRtosMutexFake_Id = 0U;
 
-static unsigned CmsisRtosMutexFake_NewCount = 0;
-static unsigned CmsisRtosMutexFake_AcquireCount = 0;
-static unsigned CmsisRtosMutexFake_ReleaseCount = 0;
-static unsigned CmsisRtosMutexFake_DeleteCount = 0;
+static unsigned CmsisRtosMutexFake_NewCount = 0U;
+static unsigned CmsisRtosMutexFake_AcquireCount = 0U;
+static unsigned CmsisRtosMutexFake_ReleaseCount = 0U;
+static unsigned CmsisRtosMutexFake_DeleteCount = 0U;
 
 static void* CmsisRtosMutexFake_ControlBlock = NULL;
-static uint32_t CmsisRtosMutexFake_ControlBlockBytes = 0;
-static uint32_t CmsisRtosMutexFake_AttrBits = 0;
+static uint32_t CmsisRtosMutexFake_ControlBlockBytes = 0U;
+static uint32_t CmsisRtosMutexFake_AttrBits = 0U;
 static bool CmsisRtosMutexFake_AttrSupplied = false;
-static uint32_t CmsisRtosMutexFake_AcquireTimeout = 0;
+static uint32_t CmsisRtosMutexFake_AcquireTimeout = 0U;
 static osMutexId_t CmsisRtosMutexFake_CreatedId = NULL;
 static osMutexId_t CmsisRtosMutexFake_DeletedId = NULL;
 static bool CmsisRtosMutexFake_NewFails = false;

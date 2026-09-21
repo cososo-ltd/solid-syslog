@@ -92,7 +92,7 @@ extern "C" uint32_t FakeGetHandshakeTimeoutMs(void* context)
 
 /* Stands in for whatever the integrator bumps when the credentials or the
  * expected peer name change. */
-uint32_t FakeVersion_ReturnValue = 0;
+uint32_t FakeVersion_ReturnValue = 0U;
 void* FakeVersion_LastContext = nullptr;
 
 void FakeVersion_Reset()

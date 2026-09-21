@@ -38,7 +38,7 @@ static uint8_t TEST_RECORD[] = {0x10, 0x20, 0x30, 0x40};
 /* The buffer + capacity the policy handed to GetKey on the most recent fetch -
  * lets a test assert the key buffer is wiped at exactly that pointer and size. */
 static const uint8_t* lastGetKeyBuffer = nullptr;
-static size_t lastGetKeyCapacity = 0;
+static size_t lastGetKeyCapacity = 0U;
 
 /* The key length GetKey reports on the next fetch. Defaults to a full-strength
  * TEST_KEY_SIZE key; a test lowers it to drive the sub-minimum-key path. */

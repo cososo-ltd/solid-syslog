@@ -26,7 +26,7 @@ static std::string::size_type SkipSdata(const std::string& s, std::string::size_
 
 static std::string::size_type FindFieldStart(const std::string& s, int n)
 {
-    std::string::size_type pos = 0;
+    std::string::size_type pos = 0U;
     for (int i = 0; i < n; i++)
     {
         if (i == SYSLOG_FIELD_SDATA)
