@@ -57,7 +57,7 @@ TEST_GROUP(SolidSyslogLwipSocketDatagram)
         SolidSyslogLwipSocketDatagram_Destroy(datagram);
     }
 
-    enum SolidSyslogDatagramSendResult SendTo() const
+    [[nodiscard]] enum SolidSyslogDatagramSendResult SendTo() const
     {
         return SolidSyslogDatagram_SendTo(datagram, TEST_PAYLOAD, TEST_PAYLOAD_SIZE, address);
     }

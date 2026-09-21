@@ -45,7 +45,7 @@ TEST_GROUP(SolidSyslogLwipSocketTcpKeepalive)
         SolidSyslogLwipSocketTcpStream_Destroy(stream);
     }
 
-    bool Open() const
+    [[nodiscard]] bool Open() const
     {
         return SolidSyslogStream_Open(stream, address);
     }
