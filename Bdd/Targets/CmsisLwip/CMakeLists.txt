@@ -11,8 +11,6 @@
 # change to the include below. What still calls the kernel directly is the lwIP
 # port layer and the Ethernet driver, which sit beneath the wrapper.
 #
-# #860 swaps the network pack to LwipSocket.
-#
 # Source layout mirrors Bdd/Targets/FreeRtosLwip/CMakeLists.txt: upstream
 # FreeRTOS-Kernel + lwIP-core + lwIP-api + the contrib FreeRTOS sys_arch + the
 # vendored LAN9118 driver compile into a separate OBJECT library
@@ -50,9 +48,11 @@ if(NOT LITTLEFS_PATH)
 endif()
 
 # lwIP ships its source lists as *_SRCS variables via Filelists.cmake. For
-# NO_SYS=0 we consume the IPv4 core set plus the api/ set (tcpip.c, api_lib,
-# api_msg, …) — the tcpip thread, timeouts, and tcpip_callback marshal hop
-# live there. No ipv6.
+# NO_SYS=0 we consume the IPv4 core set plus the api/ set, which already names
+# every translation unit the sockets layer needs — sockets.c, api_lib.c,
+# api_msg.c, netbuf.c and netdb.c alongside tcpip.c. They are compiled either
+# way; LWIP_SOCKET in lwipopts.h is what makes them more than empty, at a cost
+# of about 12 KB of text. No ipv6.
 include(${LWIP_DIR}/src/Filelists.cmake)
 
 set(LWIP_CONTRIB_FREERTOS_DIR "${LWIP_DIR}/contrib/ports/freertos")
@@ -221,9 +221,8 @@ add_executable(SolidSyslogBddTargetCmsis
     ${FREERTOS_COMMON_DIR}/Syscalls.c
     ${LWIP_SHARED_DIR}/netif/EthernetIf.c
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
-    # linked below (S30.02 dogfood): LwipRaw (Address/Datagram/TcpStream/
-    # Resolver/DnsResolver/Marshal; the unused numeric resolver dead-strips),
-    # CmsisRtos (Mutex + SysUpTime), MbedTls (TLS Stream + HMAC/AES-GCM
+    # linked below (S30.02 dogfood): LwipSocket (Address/Datagram/TcpStream/
+    # Resolver), CmsisRtos (Mutex + SysUpTime), MbedTls (TLS Stream + HMAC/AES-GCM
     # policies), LittleFs (file adapter). LfsSemihostingDisk.c is this target's
     # block device over the shared 8 MiB semihosting image.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/LfsSemihostingDisk.c
@@ -242,7 +241,7 @@ add_executable(SolidSyslogBddTargetCmsis
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMbedTlsCredentials.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsInnerStream_LwipRawTcp.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsInnerStream_LwipSocketTcp.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls.c
     ${BAKED_PEM_HEADERS}
     $<TARGET_OBJECTS:solid_syslog_cmsis_lwip_upstream>
@@ -267,7 +266,7 @@ target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
     ${FREERTOS_COMMON_DIR}                            # CmsdkUart.h
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
-    # Platform/{LwipRaw,CmsisRtos,MbedTls,LittleFs}/{Interface,Source} include dirs
+    # Platform/{LwipSocket,CmsisRtos,MbedTls,LittleFs}/{Interface,Source} include dirs
     # now arrive transitively from the SolidSyslog::* pack umbrellas linked below.
     ${BAKED_PEMS_DIR}                                 # BddBaked*.h (xxd -i output)
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h, BddTargetSwitchConfig.h, …
@@ -285,7 +284,7 @@ target_include_directories(SolidSyslogBddTargetCmsis SYSTEM PRIVATE
 
 target_link_libraries(SolidSyslogBddTargetCmsis PRIVATE
     ${PROJECT_NAME}                                   # libSolidSyslog.a (cross-compiled)
-    SolidSyslog::LwipRaw                              # lwIP Raw adapters (DNS resolver needs LWIP_DNS=1)
+    SolidSyslog::LwipSocket                           # lwIP Sockets adapters (need LWIP_SOCKET/LWIP_NETCONN/LWIP_DNS=1)
     SolidSyslog::CmsisRtos                            # Mutex + SysUpTime adapters (sources)
     SolidSyslog::MbedTls                              # TLS Stream + HMAC/AES-GCM policy adapters (sources)
     SolidSyslog::LittleFs                             # LittleFS file adapter (sources)

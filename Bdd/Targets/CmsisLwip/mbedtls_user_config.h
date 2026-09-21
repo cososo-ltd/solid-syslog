@@ -38,9 +38,10 @@
  * hazard against newlib stubs. */
 #undef MBEDTLS_FS_IO
 
-/* No BSD sockets - the transport is injected as a SolidSyslogStream
- * (LwipRawTcpStream) and bridged into mbedTLS via mbedtls_ssl_set_bio
- * callbacks. MBEDTLS_NET_C would otherwise pull in <sys/socket.h>. */
+/* mbedTLS opens no socket of its own - the transport is injected as a
+ * SolidSyslogStream (LwipSocketTcpStream) and bridged in via
+ * mbedtls_ssl_set_bio callbacks. MBEDTLS_NET_C would otherwise pull in
+ * newlib's <sys/socket.h>, which is not lwIP's. */
 #undef MBEDTLS_NET_C
 
 /* Certificate validity is enforced here, on a board with no RTC. Without these
