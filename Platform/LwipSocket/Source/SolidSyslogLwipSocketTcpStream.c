@@ -223,11 +223,19 @@ static SolidSyslogSsize LwipSocketTcpStream_Read(struct SolidSyslogStream* base,
      * MISRA 22.10 - no intervening library call between the errno-setting
      * function and the read. */
     int recvErrno = (received < 0) ? errno : 0;
-    SolidSyslogSsize result = (SolidSyslogSsize) received;
+    SolidSyslogSsize result = -1;
 
-    if ((received < 0) && LwipSocketTcpStream_WouldBlock(recvErrno))
+    if (received > 0)
+    {
+        result = (SolidSyslogSsize) received;
+    }
+    else if ((received < 0) && LwipSocketTcpStream_WouldBlock(recvErrno))
     {
         result = 0;
+    }
+    else
+    {
+        LwipSocketTcpStream_CloseSocket(self);
     }
     return result;
 }

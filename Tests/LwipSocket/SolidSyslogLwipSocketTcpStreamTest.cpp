@@ -350,6 +350,19 @@ TEST(SolidSyslogLwipSocketTcpStream, ReadAnswersZeroWhenThereIsNothingToReadAndK
     LONGS_EQUAL(0U, LwipSocketsFake_CloseCallCount());
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, ReadTearsTheConnectionDownWhenThePeerClosedIt)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(Open());
+    LwipSocketsFake_SetRecvResult(0, 0);
+    char buffer[64] = {};
+
+    LONGS_EQUAL(-1, SolidSyslogStream_Read(stream, buffer, sizeof(buffer)));
+
+    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {
