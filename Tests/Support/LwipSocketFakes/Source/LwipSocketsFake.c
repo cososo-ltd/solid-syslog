@@ -84,6 +84,7 @@ static unsigned setSockOptCallCount = 0U;
 static struct FakeSockOpt setSockOpts[FAKE_SOCKOPT_CAPACITY];
 static int refusedSockOptLevel = -1;
 static int refusedSockOptName = -1;
+static bool refusesEverySockOpt = false;
 
 static unsigned getSockOptCallCount = 0U;
 static int socketError = 0;
@@ -155,6 +156,7 @@ void LwipSocketsFake_Reset(void)
     (void) memset(setSockOpts, 0, sizeof(setSockOpts));
     refusedSockOptLevel = -1;
     refusedSockOptName = -1;
+    refusesEverySockOpt = false;
 
     getSockOptCallCount = 0U;
     socketError = 0;
@@ -386,6 +388,11 @@ void LwipSocketsFake_SetSockOptRefuses(int level, int optname)
 {
     refusedSockOptLevel = level;
     refusedSockOptName = optname;
+}
+
+void LwipSocketsFake_SetSockOptRefusesEverything(void)
+{
+    refusesEverySockOpt = true;
 }
 
 unsigned LwipSocketsFake_SetSockOptCallCount(void)
@@ -638,7 +645,7 @@ int lwip_setsockopt(int s, int level, int optname, const void* optval, socklen_t
     setSockOptCallCount++;
 
     int result = 0;
-    if ((level == refusedSockOptLevel) && (optname == refusedSockOptName))
+    if (refusesEverySockOpt || ((level == refusedSockOptLevel) && (optname == refusedSockOptName)))
     {
         errno = ENOPROTOOPT;
         result = -1;

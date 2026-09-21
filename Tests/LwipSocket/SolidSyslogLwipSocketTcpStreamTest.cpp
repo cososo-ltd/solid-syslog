@@ -413,6 +413,15 @@ TEST(SolidSyslogLwipSocketTcpStream, ARefusedSocketOptionIsReportedAndTheConnect
     );
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, AStackThatRefusesEveryOptionStillReportsOnlyOnce)
+{
+    LwipSocketsFake_SetSockOptRefusesEverything();
+
+    CHECK_TRUE(Open());
+
+    LONGS_EQUAL(ONCE, ErrorHandlerFake_HandleCallCount());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {

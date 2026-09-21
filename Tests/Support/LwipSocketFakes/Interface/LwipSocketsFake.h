@@ -94,6 +94,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Makes lwip_setsockopt refuse this one option, the way a stack built
      * without support for it does. */
     void LwipSocketsFake_SetSockOptRefuses(int level, int optname);
+    /* Makes lwip_setsockopt refuse every option it is given. */
+    void LwipSocketsFake_SetSockOptRefusesEverything(void);
 
     /* lwip_setsockopt spy: whether the option was set, and to what. */
     unsigned LwipSocketsFake_SetSockOptCallCount(void);
