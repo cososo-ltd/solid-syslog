@@ -276,7 +276,7 @@ static bool LwipSocketTcpStream_Send(struct SolidSyslogStream* base, const void*
 static bool LwipSocketTcpStream_PeerIsStillThere(struct SolidSyslogLwipSocketTcpStream* self)
 {
     char discard = 0;
-    ssize_t peeked = lwip_recv(self->Fd, &discard, sizeof(discard), 0);
+    ssize_t peeked = lwip_recv(self->Fd, &discard, sizeof(discard), MSG_PEEK);
     /* Captured immediately after lwip_recv so the test below satisfies
      * MISRA 22.10 - no intervening library call between the errno-setting
      * function and the read. */
