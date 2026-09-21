@@ -191,10 +191,7 @@ static bool LwipSocketTcpStream_ConnectOrCloseOnFailure(
     return connected;
 }
 
-static bool LwipSocketTcpStream_Connect(
-    struct SolidSyslogLwipSocketTcpStream* self,
-    const struct sockaddr_in* sin
-)
+static bool LwipSocketTcpStream_Connect(struct SolidSyslogLwipSocketTcpStream* self, const struct sockaddr_in* sin)
 {
     int rc = lwip_connect(self->Fd, (const struct sockaddr*) sin, sizeof(*sin));
     /* Captured immediately after lwip_connect so the test below satisfies

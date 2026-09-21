@@ -405,8 +405,7 @@ bool LwipSocketsFake_SockOptWasSetTo(int level, int optname, int value)
     bool found = false;
     for (unsigned i = 0U; (i < setSockOptCallCount) && (i < FAKE_SOCKOPT_CAPACITY) && !found; i++)
     {
-        found = (setSockOpts[i].Level == level) && (setSockOpts[i].Name == optname) &&
-                (setSockOpts[i].Value == value);
+        found = (setSockOpts[i].Level == level) && (setSockOpts[i].Name == optname) && (setSockOpts[i].Value == value);
     }
     return found;
 }
@@ -535,9 +534,7 @@ int lwip_select(int maxfdp1, fd_set* readset, fd_set* writeset, fd_set* exceptse
     lastSelectMaxFdPlusOne = maxfdp1;
     lastSelectWriteDescriptor = LwipSocketsFake_FirstSetDescriptor(writeset, maxfdp1);
     lastSelectExceptionDescriptor = LwipSocketsFake_FirstSetDescriptor(exceptset, maxfdp1);
-    lastSelectTimeoutMs = (timeout != NULL)
-                              ? (unsigned) ((timeout->tv_sec * 1000L) + (timeout->tv_usec / 1000L))
-                              : 0U;
+    lastSelectTimeoutMs = (timeout != NULL) ? (unsigned) ((timeout->tv_sec * 1000L) + (timeout->tv_usec / 1000L)) : 0U;
     (void) readset;
 
     int watched = lastSelectWriteDescriptor;

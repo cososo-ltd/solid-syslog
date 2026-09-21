@@ -95,7 +95,6 @@ TEST(SolidSyslogLwipSocketTcpStream, OpenTakesAnIpv4TcpSocket)
     LONGS_EQUAL(0, LwipSocketsFake_LastSocketProtocol());
 }
 
-
 TEST(SolidSyslogLwipSocketTcpStream, OpenConnectsToTheAddressOnThatSocket)
 {
     LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
@@ -589,7 +588,6 @@ TEST(SolidSyslogLwipSocketTcpStreamPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );
 }
-
 
 TEST(SolidSyslogLwipSocketTcpStreamPool, SendingAfterDestroyIsASafeNoOp)
 {
