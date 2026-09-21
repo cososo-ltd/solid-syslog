@@ -3,7 +3,7 @@
 ## Images in use
 
 Every reference in `.github/workflows/ci.yml`, `.devcontainer/docker-compose.yml`
-and `ci/docker-compose.bdd.yml` is pinned by digest — `<repo>@sha256:…`. The tag
+and `ci/docker-compose.bdd.yml` is pinned by digest - `<repo>@sha256:…`. The tag
 below is the readable handle; the digest in the files is what actually resolves.
 The tag is kept alongside each reference: as a trailing comment on a `container:`
 or Compose `image:` key, and in the comment above the step for a `docker run`
@@ -11,15 +11,21 @@ invocation, whose line continuation cannot carry one. Digests are deliberately
 not repeated here, so there is one authoritative copy per reference and nothing
 to drift.
 
-| Image | Tag | Used by |
+For the same reason the table says what each image is for rather than listing
+what uses it. Those three files already state that executably, and a prose copy
+of the answer can only fall behind them - which it twice did, once when the lwIP
+lanes arrived and once when the consumer-smoke ones did. Grep the image name to
+find its consumers.
+
+| Image | Tag | What it is for |
 |---|---|---|
-| `ghcr.io/cososo-ltd/cpputest` | `sha-6715942` | devcontainer (`gcc` service), most CI jobs. Now ships `include-what-you-use 0.23 (clang_19)` matching the `cpputest-clang` build, so local `iwyu` runs work in the gcc container |
-| `ghcr.io/cososo-ltd/cpputest-clang` | `sha-5905aea` | `clang` compose service, `build-linux-clang` CI job, `analyze-iwyu` CI job |
-| `ghcr.io/cososo-ltd/cpputest-freertos` | `sha-1739f5b` | `freertos-host` compose service, `build-freertos-host-tdd-plustcp` CI job — adds FreeRTOS-Kernel / Plus-TCP / Plus-FAT / lwIP / FatFs / LittleFS / Mbed TLS / CMSIS_6 / CMSIS-FreeRTOS sources for host-TDD of FreeRTOS and CMSIS-RTOS2 adapters against fakes; inherits IWYU from the rebased `cpputest` base, enabling the freertos-aware `analyze-iwyu` lane |
-| `ghcr.io/cososo-ltd/cpputest-freertos-cross` | `sha-1739f5b` | `freertos-target` compose service, `build-freertos-target-plustcp` CI job, `behave-freertos` BDD service, `bdd-freertos-qemu-plustcp` CI job — adds `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm`, `python3` + `behave`, FreeRTOS-Kernel / Plus-TCP / Plus-FAT / lwIP / FatFs / LittleFS / Mbed TLS / CMSIS_6 / CMSIS-FreeRTOS sources at `/opt/freertos/kernel` / `/opt/freertos/plus-tcp` / `/opt/freertos/plus-fat` / `/opt/lwip` / `/opt/fatfs` / `/opt/littlefs` / `/opt/mbedtls` / `/opt/cmsis` / `/opt/cmsis-freertos` for cross builds, on-QEMU runs, and BDD scenarios driving a QEMU target |
-| `balabit/syslog-ng` | `4.8.2` | `syslog-ng-linux` and `syslog-ng-freertos` services — BDD test oracles, one per target pair. Pinned to the 4.8 LTS line; 4.11.0 (`latest` as of 2026-02-24) regressed by aborting on `STATS` over the control socket, which crashed the oracle and cascaded to the dev-container network when `freertos-target` shares the namespace. |
-| `ghcr.io/cososo-ltd/behave` | `sha-be8da62` | `behave-linux` service — Debian trixie + Python 3.12 + Behave for Linux BDD scenarios. The FreeRTOS BDD runner uses the `cpputest-freertos-cross` image instead (which carries QEMU + Behave). |
-| `ghcr.io/cososo-ltd/mkdocs-mkdoxy` | `sha-34173c0` | `docs-build` CI job — builds the MkDocs documentation site. Doxygen 1.9.4 + mkdocs 1.6.1 + mkdocs-material 9.7.6 + mkdoxy 1.2.8 + mkdocs-github-admonitions-plugin 0.1.1. mkdoxy renders `Core/Interface/*.h` as native Material API pages. |
+| `ghcr.io/cososo-ltd/cpputest` | `sha-6715942` | The GCC base: CppUTest, CMake and the analysis tooling for host builds, tests and the static-analysis lanes. Ships `include-what-you-use 0.23 (clang_19)` matching the `cpputest-clang` build, so an `iwyu` run behaves the same in either |
+| `ghcr.io/cososo-ltd/cpputest-clang` | `sha-5905aea` | The Clang counterpart to the base, for the portability build and the IWYU lane |
+| `ghcr.io/cososo-ltd/cpputest-freertos` | `sha-1739f5b` | Host-TDD of the embedded adapters against fakes, and the integration suites that need a real upstream. Adds the FreeRTOS-Kernel, Plus-TCP, Plus-FAT, lwIP, FatFs, LittleFS, Mbed TLS, CMSIS_6 and CMSIS-FreeRTOS sources, and inherits IWYU from the `cpputest` base |
+| `ghcr.io/cososo-ltd/cpputest-freertos-cross` | `sha-1739f5b` | Cross-building the QEMU BDD targets and running them: everything the host image carries, plus `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm`, and `python3` + `behave` so one image both builds a target and drives it. Upstream sources sit at `/opt/freertos/kernel`, `/opt/freertos/plus-tcp`, `/opt/freertos/plus-fat`, `/opt/lwip`, `/opt/fatfs`, `/opt/littlefs`, `/opt/mbedtls`, `/opt/cmsis` and `/opt/cmsis-freertos` |
+| `balabit/syslog-ng` | `4.8.2` | The BDD test oracle, one instance per target so lanes cannot contend. Pinned to the 4.8 LTS line; 4.11.0 (`latest` as of 2026-02-24) regressed by aborting on `STATS` over the control socket, which crashed the oracle and cascaded to the dev-container network when a target shares the namespace |
+| `ghcr.io/cososo-ltd/behave` | `sha-be8da62` | Driving BDD scenarios against a host-built example: Debian trixie, Python 3.12 and Behave. A QEMU target is driven from `cpputest-freertos-cross` instead, which carries Behave alongside the emulator |
+| `ghcr.io/cososo-ltd/mkdocs-mkdoxy` | `sha-34173c0` | Building the documentation site: Doxygen 1.9.4, mkdocs 1.6.1, mkdocs-material 9.7.6, mkdoxy 1.2.8 and mkdocs-github-admonitions-plugin 0.1.1. mkdoxy renders `Core/Interface/*.h` as native Material API pages |
 
 ## Docker Compose setup
 
@@ -51,7 +57,7 @@ same shape (`syslog-ng-<target>` + a runner service or in-container Behave).
 
 `cpputest-freertos` and `cpputest-freertos-cross` both ship the
 FreeRTOS-Plus-TCP and lwIP source trees side-by-side, and a default build
-selects **both** — you can work on either networking stack, and run both
+selects **both** - you can work on either networking stack, and run both
 stacks' unit tests, without reconfiguring. The configure says so:
 
 ```text
@@ -62,9 +68,9 @@ To work in one stack only, deselect the other with its own switch
 (`-DSOLIDSYSLOG_PLUSTCP=OFF` or `-DSOLIDSYSLOG_LWIPRAW=OFF`), which drops that
 platform and its tests together. The lwIP lint lanes do exactly this.
 
-Which BDD ELF a *cross* build produces is separate, and maintainer-only —
+Which BDD ELF a *cross* build produces is separate, and maintainer-only -
 `SOLIDSYSLOG_BDD_TARGET=FREERTOS_PLUSTCP` (default), `FREERTOS_LWIP` or
-`CMSIS_LWIP`. It selects a test artefact, not a platform — platforms are named
+`CMSIS_LWIP`. It selects a test artefact, not a platform - platforms are named
 in `SOLIDSYSLOG_PLATFORMS` like everything else.
 
 CI runs each cross target in isolation. `build-freertos-target-plustcp` and
@@ -95,7 +101,7 @@ When a new image tag is available:
      --format '{{.Manifest.Digest}}'
    ```
 
-   Pin exactly what this command prints — the image index digest for a
+   Pin exactly what this command prints - the image index digest for a
    multi-architecture image, or the single manifest digest for a
    single-platform one. Do not substitute a per-platform digest dug out of
    `--raw`: for an index that would nail the reference to one architecture.
@@ -117,7 +123,7 @@ When a new image tag is available:
 | `mkdocs-mkdoxy` | `.github/workflows/ci.yml`, `docs/containers.md` |
 | `syslog-ng` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
 
-`syslog-ng` is the one upstream image in that table — it is published by
+`syslog-ng` is the one upstream image in that table - it is published by
 [balabit](https://hub.docker.com/r/balabit/syslog-ng), not by us, so step 1 does
 not apply and the version is chosen rather than built. Read the 4.8 LTS pinning
 rationale in the first table before moving it.
@@ -163,7 +169,7 @@ The available services and the build preset each one drives:
 | `clang` | Clang-specific debugging / portability | `clang-debug` |
 | `freertos-host` | TDD of FreeRTOS adapters against host-side fakes | `debug` |
 | `freertos-target` | Cross builds, on-QEMU runs, GDB attach (Cortex-M3, mps2-an385), BDD against the QEMU target | `freertos-cross` |
-| `behave-linux` | Linux BDD scenario development (Python + Behave) | (none — cmake skipped) |
+| `behave-linux` | Linux BDD scenario development (Python + Behave) | (none - cmake skipped) |
 
 To switch:
 

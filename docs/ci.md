@@ -29,6 +29,7 @@ without renaming what's already there.
 | `integration-linux-openssl` | `debug` | Runs the in-process TLS integration tests against libssl (no network oracle) |
 | `integration-linux-mbedtls` | `debug` | The same integration tests against Mbed TLS, exercising `SolidSyslogMbedTlsStream` and the Mbed TLS security policies |
 | `integration-windows-openssl` | `msvc-debug` | Same TLS integration tests on `windows-latest` against libssl from vcpkg |
+| `integration-linux-littlefs` | `debug` | Drives `SolidSyslogLittleFsFile` against a real LittleFS volume rather than a fake, because durability is the pack's whole claim and nothing short of the filesystem proves `lfs_file_sync` committed. Runs in `cpputest-freertos`, which carries `/opt/littlefs` |
 | `build-linux-c89-headers` | — | Compiles every public header standalone as ISO C89 with `-pedantic-errors`, via `scripts/check_headers_c89.py`. Also proves each header is self-contained, since a header needing a companion first fails here |
 | `build-linux-c99` | `c99`, `c99-platforms` | Builds Core alone at strict `-std=c99` (`CMAKE_C_EXTENSIONS=OFF`, no tests), then the POSIX and OpenSSL packs at C99 as a drift check. Proves the C99 conformance claim per PR |
 | `build-linux-tunable-override` | `tunable-override-debug` | Builds against a user tunables header to prove `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults. Also builds the Linux BDD target, for the reason under [`@requires_message_size_1500`](bdd.md#feature-tags) |
@@ -39,8 +40,8 @@ without renaming what's already there.
 | `build-freertos-target-lwip` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic`) |
 | `bdd-freertos-qemu-plustcp` | — | Pulls the Plus-TCP target ELF, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
 | `bdd-freertos-qemu-lwip` | — | The same scenarios against the lwIP target ELF |
-| `build-cmsis-target-lwip` | `cmsis-cross-lwip` | The cross-build of the fourth BDD target, which hosts the packs E40, E36 and E35 add. As of S40.01 it links the same packs as the lwIP lane above |
-| `bdd-cmsis-qemu-lwip` | — | The same scenarios again, against the fourth target's ELF. Advisory until S40.05 |
+| `build-cmsis-target-lwip` | `cmsis-cross-lwip` | The cross-build of the fourth BDD target, over CMSIS-RTOS2, LittleFS and the lwIP Sockets API (`CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic`) - the three packs it exists to prove, plus Mbed TLS |
+| `bdd-cmsis-qemu-lwip` | — | The same scenarios again, against the fourth target's ELF |
 | `consumer-smoke-linux` | — | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
 | `consumer-smoke-freertos-cross` | — | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
 | `verify-manifest` | — | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
