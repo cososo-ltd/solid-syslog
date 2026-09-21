@@ -68,6 +68,23 @@ static int lastSelectWriteDescriptor = -1;
 static int lastSelectExceptionDescriptor = -1;
 static unsigned lastSelectTimeoutMs = 0U;
 
+enum
+{
+    FAKE_SOCKOPT_CAPACITY = 16
+};
+
+struct FakeSockOpt
+{
+    int Level;
+    int Name;
+    int Value;
+};
+
+static unsigned setSockOptCallCount = 0U;
+static struct FakeSockOpt setSockOpts[FAKE_SOCKOPT_CAPACITY];
+static int refusedSockOptLevel = -1;
+static int refusedSockOptName = -1;
+
 static unsigned getSockOptCallCount = 0U;
 static int socketError = 0;
 static int lastGetSockOptSocket = 0;
@@ -133,6 +150,11 @@ void LwipSocketsFake_Reset(void)
     lastSelectWriteDescriptor = -1;
     lastSelectExceptionDescriptor = -1;
     lastSelectTimeoutMs = 0U;
+
+    setSockOptCallCount = 0U;
+    (void) memset(setSockOpts, 0, sizeof(setSockOpts));
+    refusedSockOptLevel = -1;
+    refusedSockOptName = -1;
 
     getSockOptCallCount = 0U;
     socketError = 0;
@@ -360,6 +382,28 @@ unsigned LwipSocketsFake_LastSelectTimeoutMs(void)
     return lastSelectTimeoutMs;
 }
 
+void LwipSocketsFake_SetSockOptRefuses(int level, int optname)
+{
+    refusedSockOptLevel = level;
+    refusedSockOptName = optname;
+}
+
+unsigned LwipSocketsFake_SetSockOptCallCount(void)
+{
+    return setSockOptCallCount;
+}
+
+bool LwipSocketsFake_SockOptWasSetTo(int level, int optname, int value)
+{
+    bool found = false;
+    for (unsigned i = 0U; (i < setSockOptCallCount) && (i < FAKE_SOCKOPT_CAPACITY) && !found; i++)
+    {
+        found = (setSockOpts[i].Level == level) && (setSockOpts[i].Name == optname) &&
+                (setSockOpts[i].Value == value);
+    }
+    return found;
+}
+
 void LwipSocketsFake_SetSocketError(int err)
 {
     socketError = err;
@@ -577,6 +621,27 @@ ssize_t lwip_recv(int s, void* mem, size_t len, int flags)
     else
     {
         /* a peer close hands back nothing */
+    }
+    return result;
+}
+
+int lwip_setsockopt(int s, int level, int optname, const void* optval, socklen_t optlen)
+{
+    (void) s;
+    if (setSockOptCallCount < FAKE_SOCKOPT_CAPACITY)
+    {
+        setSockOpts[setSockOptCallCount].Level = level;
+        setSockOpts[setSockOptCallCount].Name = optname;
+        setSockOpts[setSockOptCallCount].Value =
+            ((optval != NULL) && (optlen >= sizeof(int))) ? *(const int*) optval : 0;
+    }
+    setSockOptCallCount++;
+
+    int result = 0;
+    if ((level == refusedSockOptLevel) && (optname == refusedSockOptName))
+    {
+        errno = ENOPROTOOPT;
+        result = -1;
     }
     return result;
 }

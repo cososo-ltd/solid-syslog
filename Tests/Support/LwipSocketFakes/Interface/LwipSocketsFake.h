@@ -3,6 +3,7 @@
 
 #include "SolidSyslogExternC.h"
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "lwip/sockets.h"
@@ -89,6 +90,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int LwipSocketsFake_LastSelectWriteDescriptor(void);
     int LwipSocketsFake_LastSelectExceptionDescriptor(void);
     unsigned LwipSocketsFake_LastSelectTimeoutMs(void);
+
+    /* Makes lwip_setsockopt refuse this one option, the way a stack built
+     * without support for it does. */
+    void LwipSocketsFake_SetSockOptRefuses(int level, int optname);
+
+    /* lwip_setsockopt spy: whether the option was set, and to what. */
+    unsigned LwipSocketsFake_SetSockOptCallCount(void);
+    bool LwipSocketsFake_SockOptWasSetTo(int level, int optname, int value);
 
     /* The value lwip_getsockopt hands back for SO_ERROR. Defaults to 0, the
      * connect having completed. */

@@ -391,6 +391,14 @@ TEST(SolidSyslogLwipSocketTcpStream, VersionIsZeroBecauseAPlainSocketHasNothingT
     LONGS_EQUAL(0U, SolidSyslogStream_Version(stream));
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, OpenTurnsOffCoalescingAndTurnsOnKeepalive)
+{
+    CHECK_TRUE(Open());
+
+    CHECK_TRUE(LwipSocketsFake_SockOptWasSetTo(IPPROTO_TCP, TCP_NODELAY, 1));
+    CHECK_TRUE(LwipSocketsFake_SockOptWasSetTo(SOL_SOCKET, SO_KEEPALIVE, 1));
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {

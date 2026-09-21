@@ -44,6 +44,7 @@ static inline bool LwipSocketTcpStream_WouldBlock(int err);
 
 static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 static int LwipSocketTcpStream_TakeSocket(void);
+static void LwipSocketTcpStream_ApplySocketOptions(int fd);
 static inline bool LwipSocketTcpStream_IsSocketValid(int fd);
 static bool LwipSocketTcpStream_ConnectOrCloseOnFailure(
     struct SolidSyslogLwipSocketTcpStream* self,
@@ -134,8 +135,20 @@ static int LwipSocketTcpStream_TakeSocket(void)
     if (LwipSocketTcpStream_IsSocketValid(fd))
     {
         (void) lwip_fcntl(fd, F_SETFL, O_NONBLOCK);
+        LwipSocketTcpStream_ApplySocketOptions(fd);
     }
     return fd;
+}
+
+/* Latency first: a syslog record is small and waiting to coalesce it with the
+ * next one only delays delivery. Keepalive then surfaces a peer that went away
+ * during an idle period, rather than on the next record. */
+static void LwipSocketTcpStream_ApplySocketOptions(int fd)
+{
+    int enable = 1;
+
+    (void) lwip_setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
+    (void) lwip_setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable));
 }
 
 static inline bool LwipSocketTcpStream_IsSocketValid(int fd)
