@@ -7,6 +7,7 @@ using namespace CososoTesting;
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
+#include "LwipSocketsFake.h"
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipSocketDatagram.h"
@@ -14,6 +15,37 @@ using namespace CososoTesting;
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
+
+// clang-format off
+TEST_GROUP(SolidSyslogLwipSocketDatagram)
+{
+    struct SolidSyslogDatagram* datagram = nullptr;
+
+    void setup() override
+    {
+        LwipSocketsFake_Reset();
+        datagram = SolidSyslogLwipSocketDatagram_Create();
+        // Installed after the pool draw above, so an event count starts clean.
+        ErrorHandlerFake_Install(nullptr);
+    }
+
+    void teardown() override
+    {
+        SolidSyslogLwipSocketDatagram_Destroy(datagram);
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogLwipSocketDatagram, OpenCreatesAnIpv4UdpSocket)
+{
+    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
+
+    LONGS_EQUAL(1U, LwipSocketsFake_SocketCallCount());
+    LONGS_EQUAL(AF_INET, LwipSocketsFake_LastSocketDomain());
+    LONGS_EQUAL(SOCK_DGRAM, LwipSocketsFake_LastSocketType());
+    LONGS_EQUAL(0, LwipSocketsFake_LastSocketProtocol());
+}
 
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketDatagramPool)

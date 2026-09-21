@@ -15,6 +15,7 @@
 struct SolidSyslogLwipSocketDatagram
 {
     struct SolidSyslogDatagram Base;
+    int Fd;
 };
 
 void SolidSyslogLwipSocketDatagram_Initialise(struct SolidSyslogDatagram* base);

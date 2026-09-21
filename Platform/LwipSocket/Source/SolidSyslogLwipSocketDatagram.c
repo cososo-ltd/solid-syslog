@@ -6,6 +6,10 @@
 
 #if LWIP_SOCKET && LWIP_UDP
 
+#include "lwip/sockets.h"
+
+#include <stdbool.h>
+
 #include "SolidSyslogError.h"
 #include "SolidSyslogLwipSocketDatagramErrors.h"
 #include "SolidSyslogLwipSocketDatagramPrivate.h"
@@ -15,9 +19,26 @@ const struct SolidSyslogErrorSource SolidSyslogLwipSocketDatagramErrorSource = {
 
 struct SolidSyslogAddress;
 
+static bool LwipSocketDatagram_Open(struct SolidSyslogDatagram* base);
+
+static inline struct SolidSyslogLwipSocketDatagram* LwipSocketDatagram_SelfFromBase(struct SolidSyslogDatagram* base);
+
 void SolidSyslogLwipSocketDatagram_Initialise(struct SolidSyslogDatagram* base)
 {
     *base = *SolidSyslogNullDatagram_Get();
+    base->Open = LwipSocketDatagram_Open;
+}
+
+static bool LwipSocketDatagram_Open(struct SolidSyslogDatagram* base)
+{
+    struct SolidSyslogLwipSocketDatagram* self = LwipSocketDatagram_SelfFromBase(base);
+    self->Fd = lwip_socket(AF_INET, SOCK_DGRAM, 0);
+    return true;
+}
+
+static inline struct SolidSyslogLwipSocketDatagram* LwipSocketDatagram_SelfFromBase(struct SolidSyslogDatagram* base)
+{
+    return (struct SolidSyslogLwipSocketDatagram*) base;
 }
 
 void SolidSyslogLwipSocketDatagram_Cleanup(struct SolidSyslogDatagram* base)
