@@ -6,6 +6,8 @@
 
 #if LWIP_SOCKET
 
+#include <string.h>
+
 #include "SolidSyslogError.h"
 #include "SolidSyslogLwipSocketAddressErrors.h"
 #include "SolidSyslogLwipSocketAddressPrivate.h"
@@ -16,7 +18,8 @@ struct SolidSyslogAddress;
 
 void SolidSyslogLwipSocketAddress_Initialise(struct SolidSyslogAddress* base)
 {
-    (void) base;
+    struct SolidSyslogLwipSocketAddress* self = (struct SolidSyslogLwipSocketAddress*) base;
+    (void) memset(&self->Sockaddr, 0, sizeof(self->Sockaddr));
 }
 
 void SolidSyslogLwipSocketAddress_Cleanup(struct SolidSyslogAddress* base)

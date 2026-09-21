@@ -43,3 +43,18 @@ TEST(SolidSyslogLwipSocketAddress, AsSockaddrInRoundTripsBytes)
     const struct sockaddr_in* actual = SolidSyslogLwipSocketAddress_AsConstSockaddrIn(address);
     MEMCMP_EQUAL(&expected, actual, sizeof(expected));
 }
+
+TEST(SolidSyslogLwipSocketAddress, CreateZeroesTheSockaddrFromAnyPriorSlotContents)
+{
+    struct sockaddr_in dirty                        = {};
+    dirty.sin_family                                = AF_INET;
+    dirty.sin_port                                  = lwip_htons(9999U);
+    dirty.sin_addr.s_addr                           = lwip_htonl(0xDEADBEEFU);
+    *SolidSyslogLwipSocketAddress_AsSockaddrIn(address) = dirty;
+    SolidSyslogLwipSocketAddress_Destroy(address);
+
+    address = SolidSyslogLwipSocketAddress_Create();
+
+    struct sockaddr_in zeroes = {};
+    MEMCMP_EQUAL(&zeroes, SolidSyslogLwipSocketAddress_AsConstSockaddrIn(address), sizeof(zeroes));
+}
