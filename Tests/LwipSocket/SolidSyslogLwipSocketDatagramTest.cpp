@@ -33,6 +33,14 @@ static const int      TEST_DESCRIPTOR   = 7;
 // clang-format on
 
 // clang-format off
+#define CHECK_SOCKET_CLOSED_ONCE(descriptor)                           \
+    {                                                                  \
+        LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());             \
+        LONGS_EQUAL((descriptor), LwipSocketsFake_LastClosedSocket()); \
+    }
+// clang-format on
+
+// clang-format off
 TEST_GROUP(SolidSyslogLwipSocketDatagram)
 {
     struct SolidSyslogDatagram* datagram = nullptr;
@@ -99,8 +107,7 @@ TEST(SolidSyslogLwipSocketDatagram, CloseClosesTheOpenSocket)
 
     SolidSyslogDatagram_Close(datagram);
 
-    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
 TEST(SolidSyslogLwipSocketDatagram, MaxPayloadIsTheUnknownPathAnswerBecauseTheStackCannotReportAPathMtu)
@@ -140,8 +147,7 @@ TEST(SolidSyslogLwipSocketDatagram, OpeningADatagramThatIsAlreadyOpenClosesTheSo
 
     CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
 
-    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
 TEST(SolidSyslogLwipSocketDatagram, CloseWithNothingOpenClosesNoDescriptor)
@@ -200,8 +206,7 @@ TEST(SolidSyslogLwipSocketDatagramPool, DestroyClosesASocketTheDatagramStillHold
     SolidSyslogLwipSocketDatagram_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
 TEST(SolidSyslogLwipSocketDatagramPool, FillingPoolThenOverflowReturnsTheNullDatagram)

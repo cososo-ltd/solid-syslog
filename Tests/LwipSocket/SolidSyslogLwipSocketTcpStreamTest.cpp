@@ -51,6 +51,14 @@ extern "C" uint32_t FakeGetConnectTimeoutMs(void* context)
 } // namespace
 
 // clang-format off
+#define CHECK_SOCKET_CLOSED_ONCE(descriptor)                           \
+    {                                                                  \
+        LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());             \
+        LONGS_EQUAL((descriptor), LwipSocketsFake_LastClosedSocket()); \
+    }
+// clang-format on
+
+// clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStream)
 {
     struct SolidSyslogStream*  stream  = nullptr;
@@ -103,8 +111,7 @@ TEST(SolidSyslogLwipSocketTcpStream, AStackThatWillNotMakeTheSocketNonBlockingIs
     CHECK_FALSE(Open());
 
     LONGS_EQUAL(0U, LwipSocketsFake_ConnectCallCount());
-    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
         &SolidSyslogLwipSocketTcpStreamErrorSource,
@@ -297,8 +304,7 @@ TEST(SolidSyslogLwipSocketTcpStream, AConnectThatFailsLeavesNoSocketOpen)
 
     CHECK_FALSE(Open());
 
-    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
 TEST(SolidSyslogLwipSocketTcpStream, AConnectBudgetThatExpiresLeavesNoSocketOpen)
@@ -309,8 +315,7 @@ TEST(SolidSyslogLwipSocketTcpStream, AConnectBudgetThatExpiresLeavesNoSocketOpen
 
     CHECK_FALSE(Open());
 
-    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
 TEST(SolidSyslogLwipSocketTcpStream, ADeferredErrorLeavesNoSocketOpen)
@@ -321,8 +326,7 @@ TEST(SolidSyslogLwipSocketTcpStream, ADeferredErrorLeavesNoSocketOpen)
 
     CHECK_FALSE(Open());
 
-    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
 TEST(SolidSyslogLwipSocketTcpStream, SendWritesTheWholePayloadToTheOpenSocket)
@@ -347,8 +351,7 @@ TEST(SolidSyslogLwipSocketTcpStream, AShortWriteIsTakenAsADeadConnectionAndClose
 
     CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_PAYLOAD, TEST_PAYLOAD_SIZE));
 
-    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
 TEST(SolidSyslogLwipSocketTcpStream, ReadAnswersTheBytesThePeerSent)
@@ -388,8 +391,7 @@ TEST(SolidSyslogLwipSocketTcpStream, ReadTearsTheConnectionDownWhenThePeerClosed
 
     LONGS_EQUAL(-1, SolidSyslogStream_Read(stream, buffer, sizeof(buffer)));
 
-    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
 TEST(SolidSyslogLwipSocketTcpStream, ReadTearsTheConnectionDownWhenTheStackReportsAFault)
@@ -411,8 +413,7 @@ TEST(SolidSyslogLwipSocketTcpStream, OpeningAStreamThatIsAlreadyOpenClosesTheSoc
 
     CHECK_TRUE(Open());
 
-    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
 TEST(SolidSyslogLwipSocketTcpStream, CloseWithNothingOpenClosesNoDescriptor)
@@ -429,8 +430,7 @@ TEST(SolidSyslogLwipSocketTcpStream, CloseReleasesTheSocket)
 
     SolidSyslogStream_Close(stream);
 
-    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
 TEST(SolidSyslogLwipSocketTcpStream, VersionIsZeroBecauseAPlainSocketHasNothingThatMoves)
@@ -535,8 +535,7 @@ TEST(SolidSyslogLwipSocketTcpStreamPool, DestroyClosesASocketTheStreamStillHolds
     SolidSyslogLwipSocketTcpStream_Destroy(pooled[0]);
     pooled[0] = nullptr;
 
-    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
     SolidSyslogLwipSocketAddress_Destroy(address);
 }
 
