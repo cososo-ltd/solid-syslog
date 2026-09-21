@@ -98,3 +98,29 @@ set_target_properties(SolidSyslogLwipSocketResolverTest PROPERTIES
 )
 
 add_test(NAME SolidSyslogLwipSocketResolverTest COMMAND SolidSyslogLwipSocketResolverTest)
+
+# ---- SolidSyslogLwipSocketDatagramTest ----
+
+add_executable(SolidSyslogLwipSocketDatagramTest
+    SolidSyslogLwipSocketDatagramTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketDatagram.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketDatagramStatic.c
+)
+
+target_link_libraries(SolidSyslogLwipSocketDatagramTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    LwipSocketUpstreamHelpers
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogLwipSocketDatagramTest PRIVATE ${LWIPSOCKET_TEST_INCLUDE_DIRS})
+
+set_target_properties(SolidSyslogLwipSocketDatagramTest PROPERTIES
+    CXX_CPPCHECK ""
+)
+
+add_test(NAME SolidSyslogLwipSocketDatagramTest COMMAND SolidSyslogLwipSocketDatagramTest)
