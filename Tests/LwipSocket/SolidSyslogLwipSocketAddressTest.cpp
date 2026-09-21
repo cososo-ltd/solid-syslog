@@ -91,10 +91,9 @@ TEST_GROUP(SolidSyslogLwipSocketAddressPool)
                 SolidSyslogLwipSocketAddress_Destroy(handle);
             }
         }
-        if (overflow != nullptr)
-        {
-            SolidSyslogLwipSocketAddress_Destroy(overflow);
-        }
+        // overflow is the shared fallback, not a pool slot, so releasing it would
+        // only report an unknown destroy. The resolver's pool group leaves its own
+        // overflow alone for the same reason.
         ConfigLockFake_Uninstall();
     }
 

@@ -19,7 +19,7 @@ vtable.
 | [CMSIS-RTOS2](cmsisrtos/index.md) | CMSIS-RTOS2 API | | | | | ● | ● |
 | [FreeRTOS-Plus-TCP](plustcp/index.md) | FreeRTOS-Plus-TCP | ● | | | | | |
 | [lwIP (Raw API)](lwipraw/index.md) | lwIP Raw API | ● | | | | | |
-| [lwIP (Sockets API)](lwipsocket/index.md) | lwIP Sockets API | | | | | | |
+| [lwIP (Sockets API)](lwipsocket/index.md) | lwIP Sockets API | ● | | | | | |
 | [OpenSSL](openssl/index.md) | OpenSSL ≥ 3.0 | | ● | ● | | | |
 | [Mbed TLS](mbedtls/index.md) | Mbed TLS | | ● | ● | | | |
 | [FatFs](fatfs/index.md) | ChaN FatFs | | | | ● | | |

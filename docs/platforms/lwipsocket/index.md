@@ -50,9 +50,13 @@ resolver, not a different configuration of this one.
 
 ## When it does not work
 
-Failures report through the error handler rather than silently. Install one
-before you start, and read [error severity](../../error-severity.md) for what
-each level is telling you. A `CRITICAL` at create time means the component fell
-back to its Null object, so nothing will be delivered; an `ERROR` from a resolve
-means the destination cannot be served as asked and will not start being served
-by retrying.
+Install a handler before you start, and expect these three answers rather than
+one. [Error severity](../../error-severity.md) covers what each level means.
+
+- **A lookup that does not answer raises nothing.** An unknown name, or no reply
+  from the DNS server, fails the resolve and reports no event. What you see is
+  the delivery failure the sender raises once records stop getting through.
+- **A lookup refused for its address family raises `ERROR`.** The destination
+  cannot be served as asked, and retrying will not change that.
+- **A `CRITICAL` at create time** means the component fell back to its Null
+  object, so nothing will be delivered at all.
