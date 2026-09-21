@@ -37,6 +37,7 @@ static void LwipSocketTcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 );
+static inline bool LwipSocketTcpStream_WaitTimedOut(int selectResult);
 
 void SolidSyslogLwipSocketTcpStream_Initialise(
     struct SolidSyslogStream* base,
@@ -123,16 +124,25 @@ static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMic
     struct timeval timeout = {.tv_sec = timeoutMicros / 1000000L, .tv_usec = timeoutMicros % 1000000L};
 
     int rc = lwip_select(fd + 1, NULL, &writeSet, &errorSet, &timeout);
-    bool ready = (rc > 0);
+    bool ready = (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
 
     if (!ready)
     {
         LwipSocketTcpStream_ReportConnectFailure(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+            LwipSocketTcpStream_WaitTimedOut(rc) ? SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+                                                 : SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
         );
     }
     return ready;
+}
+
+/* lwip_select answering zero is the budget expiring with nothing to report.
+ * Any other unready outcome means the destination answered, just not with a
+ * connection. */
+static inline bool LwipSocketTcpStream_WaitTimedOut(int selectResult)
+{
+    return selectResult == 0;
 }
 
 /* Writability alone does not mean connected: a non-blocking connect reports
