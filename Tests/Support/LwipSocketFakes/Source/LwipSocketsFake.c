@@ -41,6 +41,25 @@ static int lastConnectSocket = 0;
 static struct sockaddr_in lastConnectAddress;
 static socklen_t lastConnectAddressLength = 0;
 
+static unsigned sendCallCount = 0U;
+static ssize_t sendResult = 0;
+static bool sendResultProgrammed = false;
+static int sendErrno = 0;
+static int lastSendSocket = 0;
+static char lastSendPayload[FAKE_PAYLOAD_CAPACITY];
+static size_t lastSendSize = 0U;
+static int lastSendFlags = 0;
+
+static unsigned recvCallCount = 0U;
+static ssize_t recvResult = 0;
+static bool recvResultProgrammed = false;
+static int recvErrno = 0;
+static char recvPayload[FAKE_PAYLOAD_CAPACITY];
+static size_t recvPayloadSize = 0U;
+static int lastRecvSocket = 0;
+static size_t lastRecvSize = 0U;
+static int lastRecvFlags = 0;
+
 static unsigned selectCallCount = 0U;
 static int selectResult = 1;
 static bool selectSignalsException = false;
@@ -87,6 +106,25 @@ void LwipSocketsFake_Reset(void)
     lastConnectSocket = 0;
     (void) memset(&lastConnectAddress, 0, sizeof(lastConnectAddress));
     lastConnectAddressLength = 0;
+
+    sendCallCount = 0U;
+    sendResult = 0;
+    sendResultProgrammed = false;
+    sendErrno = 0;
+    lastSendSocket = 0;
+    (void) memset(lastSendPayload, 0, sizeof(lastSendPayload));
+    lastSendSize = 0U;
+    lastSendFlags = 0;
+
+    recvCallCount = 0U;
+    recvResult = 0;
+    recvResultProgrammed = false;
+    recvErrno = 0;
+    (void) memset(recvPayload, 0, sizeof(recvPayload));
+    recvPayloadSize = 0U;
+    lastRecvSocket = 0;
+    lastRecvSize = 0U;
+    lastRecvFlags = 0;
 
     selectCallCount = 0U;
     selectResult = 1;
@@ -220,6 +258,71 @@ const struct sockaddr_in* LwipSocketsFake_LastConnectAddress(void)
 socklen_t LwipSocketsFake_LastConnectAddressLength(void)
 {
     return lastConnectAddressLength;
+}
+
+void LwipSocketsFake_SetSendResult(ssize_t result, int err)
+{
+    sendResult = result;
+    sendResultProgrammed = true;
+    sendErrno = err;
+}
+
+unsigned LwipSocketsFake_SendCallCount(void)
+{
+    return sendCallCount;
+}
+
+int LwipSocketsFake_LastSendSocket(void)
+{
+    return lastSendSocket;
+}
+
+const void* LwipSocketsFake_LastSendPayload(void)
+{
+    return lastSendPayload;
+}
+
+size_t LwipSocketsFake_LastSendSize(void)
+{
+    return lastSendSize;
+}
+
+int LwipSocketsFake_LastSendFlags(void)
+{
+    return lastSendFlags;
+}
+
+void LwipSocketsFake_SetRecvPayload(const char* payload)
+{
+    recvPayloadSize = strlen(payload);
+    (void) memcpy(recvPayload, payload, recvPayloadSize);
+}
+
+void LwipSocketsFake_SetRecvResult(ssize_t result, int err)
+{
+    recvResult = result;
+    recvResultProgrammed = true;
+    recvErrno = err;
+}
+
+unsigned LwipSocketsFake_RecvCallCount(void)
+{
+    return recvCallCount;
+}
+
+int LwipSocketsFake_LastRecvSocket(void)
+{
+    return lastRecvSocket;
+}
+
+size_t LwipSocketsFake_LastRecvSize(void)
+{
+    return lastRecvSize;
+}
+
+int LwipSocketsFake_LastRecvFlags(void)
+{
+    return lastRecvFlags;
 }
 
 void LwipSocketsFake_SetSelectResult(int result)
@@ -425,4 +528,55 @@ int lwip_getsockopt(int s, int level, int optname, void* optval, socklen_t* optl
         *optlen = sizeof(int);
     }
     return 0;
+}
+
+ssize_t lwip_send(int s, const void* dataptr, size_t size, int flags)
+{
+    sendCallCount++;
+    lastSendSocket = s;
+    lastSendSize = size;
+    lastSendFlags = flags;
+    if (size <= sizeof(lastSendPayload))
+    {
+        (void) memcpy(lastSendPayload, dataptr, size);
+    }
+
+    ssize_t result = (ssize_t) size;
+    if (sendResultProgrammed)
+    {
+        result = sendResult;
+        if (result < 0)
+        {
+            errno = sendErrno;
+        }
+    }
+    return result;
+}
+
+ssize_t lwip_recv(int s, void* mem, size_t len, int flags)
+{
+    recvCallCount++;
+    lastRecvSocket = s;
+    lastRecvSize = len;
+    lastRecvFlags = flags;
+
+    ssize_t result = (ssize_t) recvPayloadSize;
+    if (recvResultProgrammed)
+    {
+        result = recvResult;
+    }
+    if (result > 0)
+    {
+        size_t copied = (recvPayloadSize < len) ? recvPayloadSize : len;
+        (void) memcpy(mem, recvPayload, copied);
+    }
+    else if (result < 0)
+    {
+        errno = recvErrno;
+    }
+    else
+    {
+        /* a peer close hands back nothing */
+    }
+    return result;
 }

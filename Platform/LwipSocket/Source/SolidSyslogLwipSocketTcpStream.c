@@ -10,6 +10,7 @@
 #include "lwip/sockets.h"
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
@@ -33,6 +34,7 @@ static uint32_t LwipSocketTcpStream_NullConnectTimeoutGetter(void* context);
 static inline bool LwipSocketTcpStream_ConfigProvidesGetter(const struct SolidSyslogLwipSocketTcpStreamConfig* config);
 
 static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static bool LwipSocketTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 
 static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 static int LwipSocketTcpStream_TakeSocket(void);
@@ -59,6 +61,7 @@ void SolidSyslogLwipSocketTcpStream_Initialise(
 {
     struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
     self->Base.Open = LwipSocketTcpStream_Open;
+    self->Base.Send = LwipSocketTcpStream_Send;
     self->Config.GetConnectTimeoutMs = LwipSocketTcpStream_NullConnectTimeoutGetter;
     self->Config.ConnectTimeoutContext = NULL;
     if (LwipSocketTcpStream_ConfigProvidesGetter(config) == true)
@@ -186,6 +189,13 @@ static bool LwipSocketTcpStream_Connect(
         /* connected outright - nothing to report */
     }
     return connected;
+}
+
+static bool LwipSocketTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
+{
+    struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
+    (void) lwip_send(self->Fd, buffer, size, 0);
+    return true;
 }
 
 /* Read on every attempt, so a runtime-tunable value takes effect on the next

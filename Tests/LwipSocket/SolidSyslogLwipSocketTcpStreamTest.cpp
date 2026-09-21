@@ -31,6 +31,8 @@ static const uint16_t TEST_PORT       = 6514U;
 static const uint32_t TEST_IPV4       = 0xC000020AU;
 static const int      TEST_DESCRIPTOR = 7;
 static const uint32_t TEST_CONNECT_TIMEOUT_MS = 20U;
+static const char     TEST_PAYLOAD[]  = "<14>1 message";
+static const size_t   TEST_PAYLOAD_SIZE = sizeof(TEST_PAYLOAD) - 1U;
 static void* const    TEST_CONTEXT    = reinterpret_cast<void*>(0xABCDU);
 // clang-format on
 
@@ -292,6 +294,20 @@ TEST(SolidSyslogLwipSocketTcpStream, ADeferredErrorLeavesNoSocketOpen)
 
     LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
     LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, SendWritesTheWholePayloadToTheOpenSocket)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(Open());
+
+    CHECK_TRUE(SolidSyslogStream_Send(stream, TEST_PAYLOAD, TEST_PAYLOAD_SIZE));
+
+    LONGS_EQUAL(1U, LwipSocketsFake_SendCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastSendSocket());
+    MEMCMP_EQUAL(TEST_PAYLOAD, LwipSocketsFake_LastSendPayload(), TEST_PAYLOAD_SIZE);
+    LONGS_EQUAL(TEST_PAYLOAD_SIZE, LwipSocketsFake_LastSendSize());
+    LONGS_EQUAL(0, LwipSocketsFake_LastSendFlags());
 }
 
 // clang-format off

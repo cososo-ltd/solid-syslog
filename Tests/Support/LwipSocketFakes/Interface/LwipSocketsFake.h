@@ -53,6 +53,29 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const struct sockaddr_in* LwipSocketsFake_LastConnectAddress(void);
     socklen_t LwipSocketsFake_LastConnectAddressLength(void);
 
+    /* What lwip_send answers. Defaults to the whole size written; set a short
+     * count or -1 with an errno for a refusal. */
+    void LwipSocketsFake_SetSendResult(ssize_t result, int err);
+
+    /* lwip_send spy. The payload is copied, so a test reads what was sent. */
+    unsigned LwipSocketsFake_SendCallCount(void);
+    int LwipSocketsFake_LastSendSocket(void);
+    const void* LwipSocketsFake_LastSendPayload(void);
+    size_t LwipSocketsFake_LastSendSize(void);
+    int LwipSocketsFake_LastSendFlags(void);
+
+    /* What lwip_recv answers: the bytes it hands back, 0 for a peer close, or
+     * -1 with an errno. Defaults to the text below, whose length is what a
+     * successful read answers. */
+    void LwipSocketsFake_SetRecvPayload(const char* payload);
+    void LwipSocketsFake_SetRecvResult(ssize_t result, int err);
+
+    /* lwip_recv spy. */
+    unsigned LwipSocketsFake_RecvCallCount(void);
+    int LwipSocketsFake_LastRecvSocket(void);
+    size_t LwipSocketsFake_LastRecvSize(void);
+    int LwipSocketsFake_LastRecvFlags(void);
+
     /* What lwip_select answers: the number of ready descriptors, or 0 for the
      * budget expiring, or -1. Defaults to one ready descriptor, and on a
      * positive answer the descriptor the caller watched for writing stays set.
