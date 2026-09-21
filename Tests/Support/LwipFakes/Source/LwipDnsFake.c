@@ -6,7 +6,7 @@
 #include "lwip/dns.h"
 #include "lwip/err.h"
 
-static unsigned getHostByNameCallCount = 0;
+static unsigned getHostByNameCallCount = 0U;
 static const char* lastHostname = NULL;
 static ip_addr_t* lastAddrOut = NULL;
 static err_t getHostByNameResult = ERR_OK;

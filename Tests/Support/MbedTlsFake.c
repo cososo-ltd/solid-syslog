@@ -899,7 +899,7 @@ int mbedtls_ctr_drbg_random(void* p_rng, unsigned char* output, size_t output_le
     {
         return -1;
     }
-    for (size_t index = 0; index < output_len; index++)
+    for (size_t index = 0U; index < output_len; index++)
     {
         output[index] = (unsigned char) (0xA0U + index);
     }
@@ -978,15 +978,15 @@ void MbedTlsFake_ComputeExpectedTag(
 )
 {
     uint32_t hash = 2166136261U;
-    for (size_t index = 0; index < keyLength; index++)
+    for (size_t index = 0U; index < keyLength; index++)
     {
         hash = (hash ^ key[index]) * 16777619U;
     }
-    for (size_t index = 0; index < inputLength; index++)
+    for (size_t index = 0U; index < inputLength; index++)
     {
         hash = (hash ^ input[index]) * 16777619U;
     }
-    for (size_t index = 0; index < 32U; index++)
+    for (size_t index = 0U; index < 32U; index++)
     {
         hash = (hash ^ (uint32_t) index) * 16777619U;
         tagOut[index] = (uint8_t) (hash >> 24U);

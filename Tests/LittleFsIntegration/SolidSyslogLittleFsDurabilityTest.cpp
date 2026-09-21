@@ -97,7 +97,7 @@ struct Stack
     {
         std::vector<std::string> records;
         char buffer[256] = {};
-        size_t bytesRead = 0;
+        size_t bytesRead = 0U;
         while (SolidSyslogStore_ReadNextUnsent(store, buffer, sizeof(buffer), &bytesRead) && (bytesRead > 0))
         {
             records.emplace_back(buffer, bytesRead);

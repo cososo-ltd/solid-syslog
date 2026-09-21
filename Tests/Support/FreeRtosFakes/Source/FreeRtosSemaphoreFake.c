@@ -6,10 +6,10 @@
 #include "queue.h"
 #include "semphr.h"
 
-static unsigned createMutexStaticCallCount = 0;
-static unsigned semaphoreTakeCallCount = 0;
-static unsigned semaphoreGiveCallCount = 0;
-static unsigned semaphoreDeleteCallCount = 0;
+static unsigned createMutexStaticCallCount = 0U;
+static unsigned semaphoreTakeCallCount = 0U;
+static unsigned semaphoreGiveCallCount = 0U;
+static unsigned semaphoreDeleteCallCount = 0U;
 
 void FreeRtosSemaphoreFake_Reset(void)
 {

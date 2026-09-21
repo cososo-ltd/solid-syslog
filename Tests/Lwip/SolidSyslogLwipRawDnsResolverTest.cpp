@@ -42,7 +42,7 @@ using namespace CososoTesting;
 static const char* const TEST_HOST = "syslog-ng";
 static const uint16_t TEST_PORT = 514;
 
-unsigned FakeSleep_CallCount = 0;
+unsigned FakeSleep_CallCount = 0U;
 int FakeSleep_LastMs = 0;
 
 // When armed, FakeSleep fires the pending dns_found_callback the first time it
@@ -77,7 +77,7 @@ extern "C" void FakeSleep(int milliseconds)
 // teardown breach check still holds). Used to pin that the async-completion
 // result is read under a SECOND marshal hop (DoPublishResult) rather than off
 // the volatile Done flag on the caller's thread - the cross-thread data-race fix.
-unsigned Marshal_CallCount = 0;
+unsigned Marshal_CallCount = 0U;
 
 extern "C" void CountingTrackingMarshal(SolidSyslogLwipRawCallback callback, void* context)
 {

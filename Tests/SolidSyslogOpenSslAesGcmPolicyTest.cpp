@@ -35,7 +35,7 @@ enum
 
 /* The buffer + capacity the policy handed to GetKey on the most recent fetch. */
 static const uint8_t* lastGetKeyBuffer = nullptr;
-static size_t lastGetKeyCapacity = 0;
+static size_t lastGetKeyCapacity = 0U;
 
 /* Settable key accessor. `keyAvailable` false -> GetKey fails; `keyByte` sets the
  * key contents (vary it to forge a wrong key); `keyLengthToReport` lets a test

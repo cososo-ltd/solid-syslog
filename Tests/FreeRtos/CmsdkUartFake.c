@@ -37,7 +37,7 @@ static struct
 
 static uint32_t Fake_Read32(uintptr_t address)
 {
-    uint32_t result = 0;
+    uint32_t result = 0U;
     uintptr_t offset = address - fake.base;
     if (offset == STATE_OFFSET)
     {

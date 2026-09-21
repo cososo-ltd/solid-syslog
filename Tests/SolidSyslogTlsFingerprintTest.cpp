@@ -243,7 +243,7 @@ TEST_GROUP(SolidSyslogTlsFingerprintAuthorise)
     {
         uint8_t* digest = fake.Digest;
         fake.Length = length;
-        for (size_t i = 0; i < length; i++)
+        for (size_t i = 0U; i < length; i++)
         {
             digest[i] = static_cast<uint8_t>(i);
         }

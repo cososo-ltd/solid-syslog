@@ -90,11 +90,11 @@ void PlusFatFake_Reset(void)
     openFailMode = NULL;
     openAlwaysFails = false;
     openFailErrno = pdFREERTOS_ERRNO_ENOENT;
-    for (size_t modeIndex = 0; modeIndex < OPEN_MODE_CAPACITY; modeIndex++)
+    for (size_t modeIndex = 0U; modeIndex < OPEN_MODE_CAPACITY; modeIndex++)
     {
         openModes[modeIndex] = NULL;
     }
-    for (size_t slotIndex = 0; slotIndex < configNUM_THREAD_LOCAL_STORAGE_POINTERS; slotIndex++)
+    for (size_t slotIndex = 0U; slotIndex < configNUM_THREAD_LOCAL_STORAGE_POINTERS; slotIndex++)
     {
         threadLocalStorage[slotIndex] = NULL;
     }

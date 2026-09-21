@@ -80,7 +80,7 @@ static inline void WriteDataRegister(char c)
 
 void CmsdkUart_Write(const char* buffer, size_t length)
 {
-    for (size_t i = 0; i < length; ++i)
+    for (size_t i = 0U; i < length; ++i)
     {
         CmsdkUart_PutChar(buffer[i]);
     }

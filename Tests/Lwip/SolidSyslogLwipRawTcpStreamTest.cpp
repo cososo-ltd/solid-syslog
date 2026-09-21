@@ -62,7 +62,7 @@ static const uint16_t TEST_PORT = 514;
 
 namespace
 {
-unsigned FakeSleep_CallCount = 0;
+unsigned FakeSleep_CallCount = 0U;
 int FakeSleep_LastMs = 0;
 
 void FakeSleep_Reset()
@@ -77,7 +77,7 @@ extern "C" void FakeSleep(int milliseconds)
     FakeSleep_LastMs = milliseconds;
 }
 
-unsigned FakeGetConnectTimeoutMs_CallCount = 0;
+unsigned FakeGetConnectTimeoutMs_CallCount = 0U;
 void* FakeGetConnectTimeoutMs_LastContext = nullptr;
 uint32_t FakeGetConnectTimeoutMs_ReturnValue = SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS;
 

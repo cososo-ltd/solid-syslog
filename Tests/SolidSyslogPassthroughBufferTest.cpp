@@ -79,7 +79,7 @@ TEST(SolidSyslogPassthroughBuffer, NoWritesResultInNoSends)
 TEST(SolidSyslogPassthroughBuffer, ReadReturnsNothingToSend)
 {
     char data[512];
-    size_t bytesRead = 0;
+    size_t bytesRead = 0U;
     bool sent = SolidSyslogBuffer_Read(buffer, data, sizeof(data), &bytesRead);
     CHECK_FALSE(sent);
 }

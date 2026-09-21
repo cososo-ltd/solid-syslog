@@ -3,12 +3,12 @@
 #include "FreeRTOS_ARP.h"
 #include "FreeRTOS.h"
 
-static unsigned isIpInArpCacheCallCount = 0;
-static uint32_t lastIsIpInArpCacheArg = 0;
+static unsigned isIpInArpCacheCallCount = 0U;
+static uint32_t lastIsIpInArpCacheArg = 0U;
 static bool cacheHit = false;
 
-static unsigned outputArpRequestCallCount = 0;
-static uint32_t lastOutputArpRequestArg = 0;
+static unsigned outputArpRequestCallCount = 0U;
+static uint32_t lastOutputArpRequestArg = 0U;
 
 void FreeRtosArpFake_Reset(void)
 {

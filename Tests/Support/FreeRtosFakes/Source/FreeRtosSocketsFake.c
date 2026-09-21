@@ -4,59 +4,59 @@
 
 #include "FreeRTOS.h"
 
-static unsigned socketCallCount = 0;
+static unsigned socketCallCount = 0U;
 static BaseType_t lastSocketDomain = 0;
 static BaseType_t lastSocketType = 0;
 static BaseType_t lastSocketProto = 0;
 static Socket_t lastSocketReturned = NULL;
 static bool socketFails = false;
 
-static unsigned sendtoCallCount = 0;
+static unsigned sendtoCallCount = 0U;
 static Socket_t lastSendtoSocket = NULL;
 static const void* lastSendtoBuffer = NULL;
-static size_t lastSendtoLength = 0;
+static size_t lastSendtoLength = 0U;
 static BaseType_t lastSendtoFlags = 0;
 static const struct freertos_sockaddr* lastSendtoDestination = NULL;
-static socklen_t lastSendtoDestinationLength = 0;
+static socklen_t lastSendtoDestinationLength = 0U;
 static bool sendtoFails = false;
 
-static unsigned connectCallCount = 0;
+static unsigned connectCallCount = 0U;
 static Socket_t lastConnectSocket = NULL;
 static const struct freertos_sockaddr* lastConnectAddress = NULL;
-static socklen_t lastConnectAddressLength = 0;
+static socklen_t lastConnectAddressLength = 0U;
 static bool connectFails = false;
 static bool connectReturnSet = false;
 static BaseType_t connectReturnValue = 0;
 
-static unsigned sendCallCount = 0;
+static unsigned sendCallCount = 0U;
 static Socket_t lastSendSocket = NULL;
 static const void* lastSendBuffer = NULL;
-static size_t lastSendLength = 0;
+static size_t lastSendLength = 0U;
 static BaseType_t lastSendFlags = 0;
 static bool sendFails = false;
 static bool sendReturnSet = false;
 static BaseType_t sendReturnValue = 0;
 
-static unsigned recvCallCount = 0;
+static unsigned recvCallCount = 0U;
 static Socket_t lastRecvSocket = NULL;
 static void* lastRecvBuffer = NULL;
-static size_t lastRecvLength = 0;
+static size_t lastRecvLength = 0U;
 static BaseType_t lastRecvFlags = 0;
 static bool recvFails = false;
 static bool recvReturnSet = false;
 static BaseType_t recvReturnValue = 0;
 
-static TickType_t lastSndTimeoSet = 0;
-static TickType_t lastRcvTimeoSet = 0;
-static unsigned rcvTimeoSetCallCount = 0;
+static TickType_t lastSndTimeoSet = 0U;
+static TickType_t lastRcvTimeoSet = 0U;
+static unsigned rcvTimeoSetCallCount = 0U;
 static Socket_t lastSetsockoptSocket = NULL;
 static int32_t lastSetsockoptLevel = 0;
 static int32_t lastSetsockoptOptionName = 0;
-static size_t lastSetsockoptOptionLength = 0;
-static TickType_t sndTimeoAtConnect = 0;
-static TickType_t rcvTimeoAtConnect = 0;
+static size_t lastSetsockoptOptionLength = 0U;
+static TickType_t sndTimeoAtConnect = 0U;
+static TickType_t rcvTimeoAtConnect = 0U;
 
-static unsigned closesocketCallCount = 0;
+static unsigned closesocketCallCount = 0U;
 static Socket_t lastClosesocketSocket = NULL;
 
 /* Sentinel used as a "valid" Socket_t return - non-NULL and not

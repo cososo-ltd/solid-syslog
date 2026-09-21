@@ -131,7 +131,7 @@ TEST_GROUP(SolidSyslogOriginSd)
     {
         SolidSyslogOriginSd_Destroy(sd);
         fakeIpCount = ips.size();
-        size_t i = 0;
+        size_t i = 0U;
         for (const char* ip : ips)
         {
             fakeIps.at(i++) = ip;

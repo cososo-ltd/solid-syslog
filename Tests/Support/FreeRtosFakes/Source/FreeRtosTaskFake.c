@@ -2,9 +2,9 @@
 
 #include "task.h"
 
-static unsigned vTaskDelayCallCount = 0;
-static TickType_t lastVTaskDelayTicks = 0;
-static TickType_t tickCount = 0;
+static unsigned vTaskDelayCallCount = 0U;
+static TickType_t lastVTaskDelayTicks = 0U;
+static TickType_t tickCount = 0U;
 
 void FreeRtosTaskFake_Reset(void)
 {

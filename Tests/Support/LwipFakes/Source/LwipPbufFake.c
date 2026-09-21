@@ -7,15 +7,15 @@
 #include "lwip/arch.h"
 #include "lwip/pbuf.h"
 
-static unsigned pbufAllocCallCount = 0;
+static unsigned pbufAllocCallCount = 0U;
 static struct pbuf fakePbuf;
 static struct pbuf* lastAllocReturned = NULL;
 static pbuf_layer lastAllocLayer = PBUF_TRANSPORT;
-static u16_t lastAllocLength = 0;
+static u16_t lastAllocLength = 0U;
 static pbuf_type lastAllocType = PBUF_REF;
 static bool pbufAllocFails = false;
 
-static unsigned pbufFreeCallCount = 0;
+static unsigned pbufFreeCallCount = 0U;
 
 static int outstandingPbufCount = 0;
 
@@ -116,7 +116,7 @@ u16_t pbuf_copy_partial(const struct pbuf* p, void* dataptr, u16_t len, u16_t of
     LWIP_REQUIRE_MARSHAL_ACTIVE();
     uint8_t* out = (uint8_t*) dataptr;
     u16_t skip = offset;
-    u16_t copied = 0;
+    u16_t copied = 0U;
     const struct pbuf* link = p;
     while ((link != NULL) && (copied < len))
     {

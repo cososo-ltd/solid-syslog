@@ -290,7 +290,7 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
 
     void ServiceTickUntilQuiet(size_t cap) const
     {
-        for (size_t i = 0; i < cap; ++i)
+        for (size_t i = 0U; i < cap; ++i)
         {
             SolidSyslog_Service(solidSyslog);
         }
