@@ -6,6 +6,10 @@
 
 #if LWIP_SOCKET && LWIP_TCP
 
+#include "lwip/sockets.h"
+
+#include <stdbool.h>
+
 #include "SolidSyslogError.h"
 #include "SolidSyslogLwipSocketTcpStreamErrors.h"
 #include "SolidSyslogLwipSocketTcpStreamPrivate.h"
@@ -15,13 +19,18 @@ const struct SolidSyslogErrorSource SolidSyslogLwipSocketTcpStreamErrorSource = 
 
 struct SolidSyslogAddress;
 
+static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+
+static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base);
+
 void SolidSyslogLwipSocketTcpStream_Initialise(
     struct SolidSyslogStream* base,
     const struct SolidSyslogLwipSocketTcpStreamConfig* config
 )
 {
-    (void) base;
+    struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
     (void) config;
+    self->Base.Open = LwipSocketTcpStream_Open;
 }
 
 void SolidSyslogLwipSocketTcpStream_Cleanup(struct SolidSyslogStream* base)
@@ -29,6 +38,19 @@ void SolidSyslogLwipSocketTcpStream_Cleanup(struct SolidSyslogStream* base)
     /* Overwrite the abstract base with the shared NullStream vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullStream_Get();
+}
+
+static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
+{
+    struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
+    (void) addr;
+    self->Fd = lwip_socket(AF_INET, SOCK_STREAM, 0);
+    return true;
+}
+
+static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base)
+{
+    return (struct SolidSyslogLwipSocketTcpStream*) base;
 }
 
 #else
