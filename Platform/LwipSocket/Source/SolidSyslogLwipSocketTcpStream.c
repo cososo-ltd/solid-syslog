@@ -17,6 +17,7 @@
 #include "SolidSyslogLwipSocketTcpStreamErrors.h"
 #include "SolidSyslogLwipSocketTcpStreamPrivate.h"
 #include "SolidSyslogNullStream.h"
+#include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogTunables.h"
 
 const struct SolidSyslogErrorSource SolidSyslogLwipSocketTcpStreamErrorSource = {"LwipSocketTcpStream"};
@@ -32,6 +33,10 @@ static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFro
 static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros);
 static long LwipSocketTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogLwipSocketTcpStream* self);
 static bool LwipSocketTcpStream_ReadDeferredConnectError(int fd);
+static void LwipSocketTcpStream_ReportConnectFailure(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail
+);
 
 void SolidSyslogLwipSocketTcpStream_Initialise(
     struct SolidSyslogStream* base,
@@ -127,8 +132,29 @@ static bool LwipSocketTcpStream_ReadDeferredConnectError(int fd)
 {
     int err = 0;
     socklen_t errlen = (socklen_t) sizeof(err);
-    (void) lwip_getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
-    return true;
+    int rc = lwip_getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
+    bool connected = (rc == 0) && (err == 0);
+
+    if (!connected)
+    {
+        LwipSocketTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        );
+    }
+    return connected;
+}
+
+/* Every connect failure is one category with the detail naming which step
+ * failed, so a portable handler reacts to "no connection" without knowing
+ * lwIP. Each failing step reports its own, because each is the only place that
+ * knows which one it was. */
+static void LwipSocketTcpStream_ReportConnectFailure(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail
+)
+{
+    LwipSocketTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
 }
 
 static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base)

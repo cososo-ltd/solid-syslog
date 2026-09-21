@@ -19,6 +19,7 @@ using namespace CososoTesting;
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
+#include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogTunables.h"
 
 static const struct SolidSyslogLwipSocketTcpStreamConfig config = {nullptr, nullptr};
@@ -166,6 +167,21 @@ TEST(SolidSyslogLwipSocketTcpStream, AWritableSocketIsConfirmedByReadingTheDefer
     LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastGetSockOptSocket());
     LONGS_EQUAL(SOL_SOCKET, LwipSocketsFake_LastGetSockOptLevel());
     LONGS_EQUAL(SO_ERROR, LwipSocketsFake_LastGetSockOptName());
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, AConnectThatFailedAfterTheSynIsRefusedAndReported)
+{
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+    LwipSocketsFake_SetSocketError(ECONNREFUSED);
+
+    CHECK_FALSE(Open());
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+    );
 }
 
 // clang-format off
