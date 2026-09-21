@@ -45,6 +45,7 @@ static inline bool LwipSocketTcpStream_WouldBlock(int err);
 static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 static int LwipSocketTcpStream_TakeSocket(void);
 static void LwipSocketTcpStream_ApplySocketOptions(int fd);
+static void LwipSocketTcpStream_ReportOptionRefused(void);
 static inline bool LwipSocketTcpStream_IsSocketValid(int fd);
 static bool LwipSocketTcpStream_ConnectOrCloseOnFailure(
     struct SolidSyslogLwipSocketTcpStream* self,
@@ -146,9 +147,26 @@ static int LwipSocketTcpStream_TakeSocket(void)
 static void LwipSocketTcpStream_ApplySocketOptions(int fd)
 {
     int enable = 1;
+    bool allAccepted = (lwip_setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable)) == 0);
 
-    (void) lwip_setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
-    (void) lwip_setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable));
+    allAccepted = (lwip_setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable)) == 0) && allAccepted;
+
+    if (!allAccepted)
+    {
+        LwipSocketTcpStream_ReportOptionRefused();
+    }
+}
+
+/* One event per attempt however many options the stack declined: the
+ * connection stands either way, and the engineer's next step is the same
+ * whichever one it was. */
+static void LwipSocketTcpStream_ReportOptionRefused(void)
+{
+    LwipSocketTcpStream_Report(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_CAT_STREAM_OPTION_REFUSED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_SOCKET_OPTION_REFUSED
+    );
 }
 
 static inline bool LwipSocketTcpStream_IsSocketValid(int fd)

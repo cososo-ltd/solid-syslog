@@ -399,6 +399,20 @@ TEST(SolidSyslogLwipSocketTcpStream, OpenTurnsOffCoalescingAndTurnsOnKeepalive)
     CHECK_TRUE(LwipSocketsFake_SockOptWasSetTo(SOL_SOCKET, SO_KEEPALIVE, 1));
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, ARefusedSocketOptionIsReportedAndTheConnectionStillOpens)
+{
+    LwipSocketsFake_SetSockOptRefuses(IPPROTO_TCP, TCP_NODELAY);
+
+    CHECK_TRUE(Open());
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_OPTION_REFUSED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_SOCKET_OPTION_REFUSED
+    );
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {
