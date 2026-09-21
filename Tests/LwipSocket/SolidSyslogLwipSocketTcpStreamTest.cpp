@@ -29,7 +29,22 @@ static const struct SolidSyslogLwipSocketTcpStreamConfig config = {nullptr, null
 static const uint16_t TEST_PORT       = 6514U;
 static const uint32_t TEST_IPV4       = 0xC000020AU;
 static const int      TEST_DESCRIPTOR = 7;
+static const uint32_t TEST_CONNECT_TIMEOUT_MS = 20U;
+static void* const    TEST_CONTEXT    = reinterpret_cast<void*>(0xABCDU);
 // clang-format on
+
+namespace
+{
+unsigned FakeGetConnectTimeoutMs_CallCount = 0U;
+void* FakeGetConnectTimeoutMs_LastContext = nullptr;
+
+extern "C" uint32_t FakeGetConnectTimeoutMs(void* context)
+{
+    FakeGetConnectTimeoutMs_CallCount++;
+    FakeGetConnectTimeoutMs_LastContext = context;
+    return TEST_CONNECT_TIMEOUT_MS;
+}
+} // namespace
 
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStream)
@@ -40,6 +55,8 @@ TEST_GROUP(SolidSyslogLwipSocketTcpStream)
     void setup() override
     {
         LwipSocketsFake_Reset();
+        FakeGetConnectTimeoutMs_CallCount = 0U;
+        FakeGetConnectTimeoutMs_LastContext = nullptr;
         stream  = SolidSyslogLwipSocketTcpStream_Create(&config);
         address = SolidSyslogLwipSocketAddress_Create();
         struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsSockaddrIn(address);
@@ -121,6 +138,21 @@ TEST(SolidSyslogLwipSocketTcpStream, TheWaitIsBoundedByTheTunableWhenTheIntegrat
     CHECK_TRUE(Open());
 
     LONGS_EQUAL(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS, LwipSocketsFake_LastSelectTimeoutMs());
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, TheWaitIsBoundedByTheInstalledGetterReadOnEveryAttempt)
+{
+    SolidSyslogLwipSocketTcpStream_Destroy(stream);
+    const struct SolidSyslogLwipSocketTcpStreamConfig tuned = {FakeGetConnectTimeoutMs, TEST_CONTEXT};
+    stream = SolidSyslogLwipSocketTcpStream_Create(&tuned);
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+
+    CHECK_TRUE(Open());
+    CHECK_TRUE(Open());
+
+    LONGS_EQUAL(TEST_CONNECT_TIMEOUT_MS, LwipSocketsFake_LastSelectTimeoutMs());
+    LONGS_EQUAL(2U, FakeGetConnectTimeoutMs_CallCount);
+    POINTERS_EQUAL(TEST_CONTEXT, FakeGetConnectTimeoutMs_LastContext);
 }
 
 // clang-format off

@@ -24,6 +24,7 @@ const struct SolidSyslogErrorSource SolidSyslogLwipSocketTcpStreamErrorSource = 
 struct SolidSyslogAddress;
 
 static uint32_t LwipSocketTcpStream_NullConnectTimeoutGetter(void* context);
+static inline bool LwipSocketTcpStream_ConfigProvidesGetter(const struct SolidSyslogLwipSocketTcpStreamConfig* config);
 
 static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 
@@ -40,7 +41,15 @@ void SolidSyslogLwipSocketTcpStream_Initialise(
     self->Base.Open = LwipSocketTcpStream_Open;
     self->Config.GetConnectTimeoutMs = LwipSocketTcpStream_NullConnectTimeoutGetter;
     self->Config.ConnectTimeoutContext = NULL;
-    (void) config;
+    if (LwipSocketTcpStream_ConfigProvidesGetter(config) == true)
+    {
+        self->Config = *config;
+    }
+}
+
+static inline bool LwipSocketTcpStream_ConfigProvidesGetter(const struct SolidSyslogLwipSocketTcpStreamConfig* config)
+{
+    return (config != NULL) && (config->GetConnectTimeoutMs != NULL);
 }
 
 /* Null Object substituted when the integrator installs no getter - the bounded
