@@ -214,6 +214,21 @@ TEST(SolidSyslogLwipSocketTcpStream, AWaitTheStackEndsInTheExceptionSetIsRefused
     );
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, ADestinationThatRefusesImmediatelyIsReportedAsRefused)
+{
+    LwipSocketsFake_SetConnectResult(-1, ECONNREFUSED);
+
+    CHECK_FALSE(Open());
+
+    LONGS_EQUAL(0U, LwipSocketsFake_SelectCallCount());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+    );
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {

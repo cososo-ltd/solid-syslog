@@ -86,7 +86,7 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
      * MISRA 22.10 - no intervening library call between the errno-setting
      * function and the read. */
     int connectErrno = (rc < 0) ? errno : 0;
-    bool connected = true;
+    bool connected = (rc == 0);
 
     if (connectErrno == EINPROGRESS)
     {
@@ -95,6 +95,17 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
                         LwipSocketTcpStream_ResolveConnectTimeoutMicros(self)
                     ) &&
                     LwipSocketTcpStream_ReadDeferredConnectError(self->Fd);
+    }
+    else if (rc < 0)
+    {
+        LwipSocketTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        );
+    }
+    else
+    {
+        /* connected outright - nothing to report */
     }
     return connected;
 }
