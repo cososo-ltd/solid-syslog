@@ -138,10 +138,13 @@ static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFro
 static int LwipSocketTcpStream_TakeSocket(void)
 {
     int fd = lwip_socket(AF_INET, SOCK_STREAM, 0);
-    if (LwipSocketTcpStream_IsSocketValid(fd))
+    /* A socket the stack will not make non-blocking is no use to us: the
+     * bounded connect, and Send and Read never blocking the service thread,
+     * all rest on it. Give it back rather than proceed with a blocking one. */
+    if (LwipSocketTcpStream_IsSocketValid(fd) && (lwip_fcntl(fd, F_SETFL, O_NONBLOCK) != 0))
     {
-        (void) lwip_fcntl(fd, F_SETFL, O_NONBLOCK);
-        LwipSocketTcpStream_ApplySocketOptions(fd);
+        (void) lwip_close(fd);
+        fd = INVALID_SOCKET;
     }
     return fd;
 }
@@ -188,7 +191,14 @@ static bool LwipSocketTcpStream_ConnectOrCloseOnFailure(
 )
 {
     bool connected = LwipSocketTcpStream_Connect(self, sin);
-    if (!connected)
+    if (connected)
+    {
+        /* After the connection stands, not before: a refused option says the
+         * connection is less robust than intended, which is only true once
+         * there is a connection. A failed connect reports that instead. */
+        LwipSocketTcpStream_ApplySocketOptions(self->Fd);
+    }
+    else
     {
         LwipSocketTcpStream_CloseSocket(self);
     }
