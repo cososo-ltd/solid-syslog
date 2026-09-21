@@ -62,3 +62,13 @@ TEST(SolidSyslogLwipSocketResolver, ResolveWritesTheResolvedIpv4Endpoint)
     LONGS_EQUAL(lwip_htons(514U), Result()->sin_port);
     LONGS_EQUAL(lwip_htonl(0xC000020AU), Result()->sin_addr.s_addr);
 }
+
+TEST(SolidSyslogLwipSocketResolver, ResolveAsksForIpv4ByNameWithNoServiceName)
+{
+    CHECK_TRUE(Resolve("collector.example.test", 514U));
+
+    LONGS_EQUAL(1U, LwipNetdbFake_GetAddrInfoCallCount());
+    STRCMP_EQUAL("collector.example.test", LwipNetdbFake_LastNodename());
+    POINTERS_EQUAL(nullptr, LwipNetdbFake_LastServname());
+    LONGS_EQUAL(AF_INET, LwipNetdbFake_LastHintsFamily());
+}

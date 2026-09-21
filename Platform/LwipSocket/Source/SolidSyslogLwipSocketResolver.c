@@ -59,6 +59,9 @@ static bool LwipSocketResolver_Resolve(
      * for as a service name. */
     (void) transport;
 
+    /* IPv4 only, which is what the sockaddr_in the transports send to can
+     * carry. The stack narrows its own lookup on this where it is built for
+     * both families; the refusal below does not depend on it doing so. */
     struct addrinfo hints = {0};
     hints.ai_family = AF_INET;
 
@@ -70,7 +73,6 @@ static bool LwipSocketResolver_Resolve(
         struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsSockaddrIn(result);
         *sin = *(const struct sockaddr_in*) (const void*) info->ai_addr;
         sin->sin_port = lwip_htons(port);
-        lwip_freeaddrinfo(info);
         resolved = true;
     }
 
