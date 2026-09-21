@@ -12,6 +12,9 @@ using namespace CososoTesting;
 #include "SolidSyslogLwipSocketAddress.h"
 #include "SolidSyslogLwipSocketAddressPrivate.h"
 #include "SolidSyslogLwipSocketResolver.h"
+#include "SolidSyslogLwipSocketResolverErrors.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogResolver.h"
 #include "SolidSyslogTransport.h"
 
@@ -103,4 +106,37 @@ TEST(SolidSyslogLwipSocketResolver, AFailedLookupLeavesTheCallersAddressAlone)
 
     LONGS_EQUAL(lwip_htons(514U), Result()->sin_port);
     LONGS_EQUAL(lwip_htonl(0xC000020AU), Result()->sin_addr.s_addr);
+}
+
+TEST(SolidSyslogLwipSocketResolver, AnAnswerInAnotherFamilyIsRefusedAndReported)
+{
+    LwipNetdbFake_SetResultFamily(AF_INET6);
+
+    CHECK_FALSE(Resolve("collector.example.test", 514U));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogLwipSocketResolverErrorSource,
+        SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+        SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
+    );
+}
+
+TEST(SolidSyslogLwipSocketResolver, AnAnswerInAnotherFamilyIsStillFreed)
+{
+    LwipNetdbFake_SetResultFamily(AF_INET6);
+
+    CHECK_FALSE(Resolve("collector.example.test", 514U));
+
+    LONGS_EQUAL(1U, LwipNetdbFake_FreeAddrInfoCallCount());
+}
+
+TEST(SolidSyslogLwipSocketResolver, AnAnswerInAnotherFamilyLeavesTheCallersAddressAlone)
+{
+    LwipNetdbFake_SetResultFamily(AF_INET6);
+
+    CHECK_FALSE(Resolve("collector.example.test", 514U));
+
+    LONGS_EQUAL(0U, Result()->sin_port);
+    LONGS_EQUAL(0U, Result()->sin_addr.s_addr);
 }

@@ -20,6 +20,7 @@
 #include "SolidSyslogLwipSocketResolverErrors.h"
 #include "SolidSyslogLwipSocketResolverPrivate.h"
 #include "SolidSyslogNullResolver.h"
+#include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 
@@ -39,6 +40,7 @@ static bool LwipSocketResolver_Resolve(
     uint16_t port,
     struct SolidSyslogAddress* result
 );
+static inline bool LwipSocketResolver_IsIpv4(const struct addrinfo* info);
 
 void SolidSyslogLwipSocketResolver_Initialise(struct SolidSyslogResolver* base)
 {
@@ -70,14 +72,32 @@ static bool LwipSocketResolver_Resolve(
 
     if (lwip_getaddrinfo(host, NULL, &hints, &info) == GETADDRINFO_SUCCESS)
     {
-        struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsSockaddrIn(result);
-        *sin = *(const struct sockaddr_in*) (const void*) info->ai_addr;
-        sin->sin_port = lwip_htons(port);
+        if (LwipSocketResolver_IsIpv4(info) == true)
+        {
+            struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsSockaddrIn(result);
+            *sin = *(const struct sockaddr_in*) (const void*) info->ai_addr;
+            sin->sin_port = lwip_htons(port);
+            resolved = true;
+        }
+        else
+        {
+            LwipSocketResolver_Report(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+                SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
+            );
+        }
+        /* Freed on both paths: the answer comes out of a fixed pool, so a
+         * refusal that keeps it spends the pool on destinations we reject. */
         lwip_freeaddrinfo(info);
-        resolved = true;
     }
 
     return resolved;
+}
+
+static inline bool LwipSocketResolver_IsIpv4(const struct addrinfo* info)
+{
+    return (info->ai_family == AF_INET);
 }
 
 void SolidSyslogLwipSocketResolver_Cleanup(struct SolidSyslogResolver* base)

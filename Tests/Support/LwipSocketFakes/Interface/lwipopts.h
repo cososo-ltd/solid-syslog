@@ -11,9 +11,10 @@
  *    the symbols.
  *  - LWIP_COMPAT_SOCKETS off - the adapters call the lwip_-prefixed entry
  *    points, so the unprefixed macros would only mask a wrong call.
- *  - LWIP_IPV6 off - the pack is IPv4, and a host test that wants to prove
- *    the family refusal hands the fake an AF_INET6 result directly rather
- *    than asking lwIP to produce one.
+ *  - LWIP_IPV6 on, even though the pack is IPv4. A stack built for both
+ *    families is the environment the family refusal exists for, and with IPv6
+ *    off lwIP defines AF_INET6 as AF_UNSPEC, so a test naming it would not be
+ *    testing what it says.
  *  - MEM_LIBC_MALLOC=1 - host tests can use libc; production adapters must
  *    not depend on lwIP's mem pool.
  *  - LWIP_TIMEVAL_PRIVATE=0 - lwIP defines its own struct timeval for select
@@ -35,7 +36,7 @@
 #define LWIP_DHCP 0
 #define LWIP_ARP 0
 #define LWIP_IPV4 1
-#define LWIP_IPV6 0
+#define LWIP_IPV6 1
 #define MEM_LIBC_MALLOC 1
 #define MEMP_MEM_MALLOC 1
 #define LWIP_TIMEVAL_PRIVATE 0
