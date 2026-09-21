@@ -21,6 +21,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int LwipSocketsFake_LastSocketType(void);
     int LwipSocketsFake_LastSocketProtocol(void);
 
+    /* Makes the next lwip_sendto fail, returning -1 with this errno, the way
+     * the sockets layer reports a refusal. */
+    void LwipSocketsFake_SetSendToFailure(int err);
+
     /* lwip_sendto spy. The payload is copied, so a test reads what was sent
      * rather than the caller's buffer. */
     unsigned LwipSocketsFake_SendToCallCount(void);

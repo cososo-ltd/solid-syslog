@@ -5,6 +5,7 @@ using namespace CososoTesting;
 
 #include "lwip/sockets.h"
 
+#include <cerrno>
 #include <cstdint>
 
 #include "ConfigLockFake.h"
@@ -107,6 +108,29 @@ TEST(SolidSyslogLwipSocketDatagram, MaxPayloadIsTheUnknownPathAnswerBecauseTheSt
     CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
 
     LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogLwipSocketDatagram, OpenIsRefusedWhenTheStackWillNotGiveASocket)
+{
+    LwipSocketsFake_SetSocketResult(-1);
+
+    CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
+}
+
+TEST(SolidSyslogLwipSocketDatagram, SendToReportsOversizeWhenTheDatagramIsTooLongForTheStack)
+{
+    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
+    LwipSocketsFake_SetSendToFailure(EMSGSIZE);
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE, SendTo());
+}
+
+TEST(SolidSyslogLwipSocketDatagram, SendToReportsFailureWhenTheStackHasNoBufferForIt)
+{
+    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
+    LwipSocketsFake_SetSendToFailure(ENOBUFS);
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED, SendTo());
 }
 
 // clang-format off

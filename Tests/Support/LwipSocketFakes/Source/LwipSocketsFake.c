@@ -1,5 +1,6 @@
 #include "LwipSocketsFake.h"
 
+#include <errno.h>
 #include <string.h>
 
 #include "lwip/sockets.h"
@@ -24,6 +25,8 @@ static int lastSendToFlags = 0;
 static struct sockaddr_in lastSendToAddress;
 static socklen_t lastSendToAddressLength = 0;
 
+static int sendToErrno = 0;
+
 static unsigned closeCallCount = 0U;
 static int lastClosedSocket = 0;
 
@@ -42,6 +45,7 @@ void LwipSocketsFake_Reset(void)
     lastSendToFlags = 0;
     (void) memset(&lastSendToAddress, 0, sizeof(lastSendToAddress));
     lastSendToAddressLength = 0;
+    sendToErrno = 0;
 
     closeCallCount = 0U;
     lastClosedSocket = 0;
@@ -70,6 +74,11 @@ int LwipSocketsFake_LastSocketType(void)
 int LwipSocketsFake_LastSocketProtocol(void)
 {
     return lastSocketProtocol;
+}
+
+void LwipSocketsFake_SetSendToFailure(int err)
+{
+    sendToErrno = err;
 }
 
 unsigned LwipSocketsFake_SendToCallCount(void)
@@ -141,7 +150,14 @@ ssize_t lwip_sendto(int s, const void* dataptr, size_t size, int flags, const st
     {
         (void) memcpy(&lastSendToAddress, to, sizeof(lastSendToAddress));
     }
-    return (ssize_t) size;
+
+    ssize_t result = (ssize_t) size;
+    if (sendToErrno != 0)
+    {
+        errno = sendToErrno;
+        result = -1;
+    }
+    return result;
 }
 
 int lwip_close(int s)

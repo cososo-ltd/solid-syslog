@@ -6,6 +6,7 @@
 
 #if LWIP_SOCKET && LWIP_UDP
 
+#include "lwip/errno.h"
 #include "lwip/sockets.h"
 
 #include <stdbool.h>
@@ -34,6 +35,7 @@ static size_t LwipSocketDatagram_MaxPayload(struct SolidSyslogDatagram* base);
 static void LwipSocketDatagram_Close(struct SolidSyslogDatagram* base);
 
 static inline struct SolidSyslogLwipSocketDatagram* LwipSocketDatagram_SelfFromBase(struct SolidSyslogDatagram* base);
+static inline bool LwipSocketDatagram_IsSocketValid(int fd);
 
 void SolidSyslogLwipSocketDatagram_Initialise(struct SolidSyslogDatagram* base)
 {
@@ -55,7 +57,12 @@ static bool LwipSocketDatagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogLwipSocketDatagram* self = LwipSocketDatagram_SelfFromBase(base);
     self->Fd = lwip_socket(AF_INET, SOCK_DGRAM, 0);
-    return true;
+    return LwipSocketDatagram_IsSocketValid(self->Fd);
+}
+
+static inline bool LwipSocketDatagram_IsSocketValid(int fd)
+{
+    return fd >= 0;
 }
 
 static inline struct SolidSyslogLwipSocketDatagram* LwipSocketDatagram_SelfFromBase(struct SolidSyslogDatagram* base)
@@ -72,8 +79,19 @@ static enum SolidSyslogDatagramSendResult LwipSocketDatagram_SendTo(
 {
     struct SolidSyslogLwipSocketDatagram* self = LwipSocketDatagram_SelfFromBase(base);
     const struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsConstSockaddrIn(addr);
-    (void) lwip_sendto(self->Fd, buffer, size, 0, (const struct sockaddr*) sin, sizeof(*sin));
-    return SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+    ssize_t sent = lwip_sendto(self->Fd, buffer, size, 0, (const struct sockaddr*) sin, sizeof(*sin));
+    /* Captured immediately after lwip_sendto so the test below satisfies
+     * MISRA 22.10 - no intervening library call between the errno-setting
+     * function and the read. */
+    int sendErrno = (sent < 0) ? errno : 0;
+    enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+
+    if (sent < 0)
+    {
+        result = (sendErrno == EMSGSIZE) ? SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE
+                                         : SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
+    }
+    return result;
 }
 
 /* lwIP's sockets layer exposes no IP_MTU, so the path MTU cannot be read back
