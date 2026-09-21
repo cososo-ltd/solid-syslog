@@ -31,6 +31,10 @@ static const uint16_t TEST_PORT       = 6514U;
 static const uint32_t TEST_IPV4       = 0xC000020AU;
 static const int      TEST_DESCRIPTOR = 7;
 static const uint32_t TEST_CONNECT_TIMEOUT_MS = 20U;
+// The largest deadline the microsecond conversion carries on every target: C99
+// guarantees LONG_MAX is at least 2147483647, and the conversion multiplies by
+// a thousand.
+static const uint32_t TEST_CONNECT_TIMEOUT_MS_MAX = 2147483U;
 static const char     TEST_PAYLOAD[]  = "<14>1 message";
 static const size_t   TEST_PAYLOAD_SIZE = sizeof(TEST_PAYLOAD) - 1U;
 static void* const    TEST_CONTEXT    = reinterpret_cast<void*>(0xABCDU);
@@ -40,12 +44,13 @@ namespace
 {
 unsigned FakeGetConnectTimeoutMs_CallCount = 0U;
 void* FakeGetConnectTimeoutMs_LastContext = nullptr;
+uint32_t FakeGetConnectTimeoutMs_ReturnValue = TEST_CONNECT_TIMEOUT_MS;
 
 extern "C" uint32_t FakeGetConnectTimeoutMs(void* context)
 {
     FakeGetConnectTimeoutMs_CallCount++;
     FakeGetConnectTimeoutMs_LastContext = context;
-    return TEST_CONNECT_TIMEOUT_MS;
+    return FakeGetConnectTimeoutMs_ReturnValue;
 }
 } // namespace
 
@@ -68,6 +73,7 @@ TEST_GROUP(SolidSyslogLwipSocketTcpStream)
         LwipSocketsFake_Reset();
         FakeGetConnectTimeoutMs_CallCount = 0U;
         FakeGetConnectTimeoutMs_LastContext = nullptr;
+        FakeGetConnectTimeoutMs_ReturnValue = TEST_CONNECT_TIMEOUT_MS;
         stream  = SolidSyslogLwipSocketTcpStream_Create(&config);
         address = SolidSyslogLwipSocketAddress_Create();
         struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsSockaddrIn(address);
@@ -176,6 +182,19 @@ TEST(SolidSyslogLwipSocketTcpStream, AStreamCreatedWithNoConfigAtAllStillConnect
     CHECK_TRUE(Open());
 
     LONGS_EQUAL(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS, LwipSocketsFake_LastSelectTimeoutMs());
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, ADeadlineTooLargeForTheConversionIsBoundedRatherThanOverflowed)
+{
+    SolidSyslogLwipSocketTcpStream_Destroy(stream);
+    const struct SolidSyslogLwipSocketTcpStreamConfig tuned = {FakeGetConnectTimeoutMs, TEST_CONTEXT};
+    stream = SolidSyslogLwipSocketTcpStream_Create(&tuned);
+    FakeGetConnectTimeoutMs_ReturnValue = UINT32_MAX;
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+
+    CHECK_TRUE(Open());
+
+    LONGS_EQUAL(TEST_CONNECT_TIMEOUT_MS_MAX, LwipSocketsFake_LastSelectTimeoutMs());
 }
 
 TEST(SolidSyslogLwipSocketTcpStream, TheWaitIsBoundedByTheInstalledGetterReadOnEveryAttempt)

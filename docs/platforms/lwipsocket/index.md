@@ -31,10 +31,12 @@ feature each class wraps:
 |---|---|
 | `LWIP_DNS=1` | the resolver |
 | `LWIP_UDP=1` | the UDP datagram |
-| `LWIP_TCP=1` | the TCP stream |
+| `LWIP_TCP=1` and `LWIP_SOCKET_SELECT=1` | the TCP stream |
 
 Asking for a class whose feature is off is a link error rather than a silent
-no-op.
+no-op. `LWIP_SOCKET_SELECT` defaults to on, and the stream's bounded connect is
+what needs it, so a build that turns it off links everything here except the
+stream.
 
 Your port must also make `errno` and its codes available, which lwIP leaves to
 `arch/cc.h` unless you set `LWIP_PROVIDE_ERRNO`: the transports read it to tell

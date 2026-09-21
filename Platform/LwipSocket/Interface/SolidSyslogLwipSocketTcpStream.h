@@ -40,7 +40,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogLwipSocketTcpStreamConfig
     {
         /** Per-attempt connect deadline in ms; NULL uses the
-         *  SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS tunable. */
+         *  SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS tunable. A value beyond what the
+         *  conversion to microseconds carries on a 32-bit target is bounded to
+         *  2147483 ms rather than overflowed. */
         SolidSyslogTcpConnectTimeoutFunction GetConnectTimeoutMs;
         void* ConnectTimeoutContext; /**< Passed back to GetConnectTimeoutMs unchanged; NULL is fine. */
     };

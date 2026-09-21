@@ -14,6 +14,7 @@ page is the wiring.
 #define LWIP_DNS        1
 #define LWIP_UDP        1   /* the datagram */
 #define LWIP_TCP        1   /* the stream */
+#define LWIP_SOCKET_SELECT 1 /* the stream's bounded connect; on by default */
 ```
 
 Your `arch/cc.h` must also provide `errno` and its codes, the way lwIP asks of

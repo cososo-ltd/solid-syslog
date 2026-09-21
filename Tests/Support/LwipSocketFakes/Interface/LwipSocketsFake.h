@@ -22,8 +22,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int LwipSocketsFake_LastSocketType(void);
     int LwipSocketsFake_LastSocketProtocol(void);
 
-    /* Makes the next lwip_sendto fail, returning -1 with this errno, the way
-     * the sockets layer reports a refusal. */
+    /* Makes lwip_sendto fail, returning -1 with this errno, the way the sockets
+     * layer reports a refusal. It stays failing until the next Reset, as every
+     * other control here does. */
     void LwipSocketsFake_SetSendToFailure(int err);
 
     /* lwip_sendto spy. The payload is copied, so a test reads what was sent
@@ -69,8 +70,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int LwipSocketsFake_LastSendFlags(void);
 
     /* What lwip_recv answers: the bytes it hands back, 0 for a peer close, or
-     * -1 with an errno. Defaults to the text below, whose length is what a
-     * successful read answers. */
+     * -1 with an errno. There is no default payload - an unprepared fake reads
+     * as a peer close - so a test wanting a successful read sets one, and its
+     * length is what that read answers. */
     void LwipSocketsFake_SetRecvPayload(const char* payload);
     void LwipSocketsFake_SetRecvResult(ssize_t result, int err);
 

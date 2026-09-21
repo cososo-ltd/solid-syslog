@@ -27,7 +27,14 @@ struct SolidSyslogAddress;
 
 enum
 {
-    INVALID_SOCKET = -1
+    INVALID_SOCKET = -1,
+    MICROSECONDS_PER_MILLISECOND = 1000,
+    /* The largest deadline the conversion to microseconds can carry: C99
+     * guarantees LONG_MAX is at least 2147483647, so the bound is the same
+     * figure on every target rather than one that moves with the width of
+     * long. A deadline beyond it is nonsense for one connect attempt anyway;
+     * the point is that the arithmetic stays defined. */
+    CONNECT_TIMEOUT_MS_MAX = 2147483
 };
 
 static uint32_t LwipSocketTcpStream_NullConnectTimeoutGetter(void* context);
@@ -324,7 +331,8 @@ static void LwipSocketTcpStream_CloseSocket(struct SolidSyslogLwipSocketTcpStrea
 static long LwipSocketTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogLwipSocketTcpStream* self)
 {
     uint32_t ms = self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
-    return (long) ms * 1000L;
+    uint32_t boundedMs = (ms > (uint32_t) CONNECT_TIMEOUT_MS_MAX) ? (uint32_t) CONNECT_TIMEOUT_MS_MAX : ms;
+    return (long) boundedMs * (long) MICROSECONDS_PER_MILLISECOND;
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- fd is a socket descriptor; timeoutMicros is a duration; distinct semantics

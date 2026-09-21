@@ -52,7 +52,7 @@ misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressPrivate.
 misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c:45
 misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c:65
 misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketDatagram.c:80
-misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c:132
+misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c:139
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:74
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:215
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:155
