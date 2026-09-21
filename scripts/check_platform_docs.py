@@ -63,7 +63,12 @@ ALIASES = {
     "FatFs": ["FatFs", "ChaN"],
     "FreeRtos": ["FreeRTOS"],
     "LittleFs": ["LittleFS", "littlefs"],
-    "LwipRaw": ["lwIP"],
+    # Two packs target the same stack at different API tiers, so "lwIP" is part
+    # of each one's own identity rather than the other's name, the way FreeRTOS
+    # is for the Plus-* packs below. The tier-qualified spellings stay exclusive,
+    # so a page reaching across to the other tier is still caught.
+    "LwipRaw": ["lwIP", "lwIP (Raw API)", "Raw API"],
+    "LwipSocket": ["lwIP", "lwIP (Sockets API)", "Sockets API"],
     "MbedTls": ["Mbed TLS", "mbedTLS", "mbedtls"],
     "OpenSsl": ["OpenSSL"],
     # Plus-FAT and Plus-TCP are FreeRTOS-Plus-* products, so "FreeRTOS" is part

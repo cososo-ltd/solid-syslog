@@ -53,6 +53,10 @@ if(SOLIDSYSLOG_LWIPRAW)
     add_subdirectory(Lwip)
 endif()
 
+if(SOLIDSYSLOG_LWIPSOCKET)
+    add_subdirectory(LwipSocket)
+endif()
+
 if(SOLIDSYSLOG_MBEDTLS)
     add_subdirectory(MbedTls)
     add_subdirectory(MbedTlsIntegration)
@@ -354,6 +358,8 @@ foreach(openssl_test_target IN ITEMS
 endforeach()
 
 foreach(lwip_test_target IN ITEMS
+    SolidSyslogLwipSocketAddressTest
+    SolidSyslogLwipSocketResolverTest
     SolidSyslogLwipRawAddressTest
     SolidSyslogLwipRawResolverTest
     SolidSyslogLwipRawDnsResolverTest

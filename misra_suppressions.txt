@@ -14,6 +14,9 @@
 misra-c2012-11.2:Core/Source/SolidSyslogFormatter.h:39
 misra-c2012-11.2:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:33
 misra-c2012-11.2:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:40
+misra-c2012-11.2:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c:21
+misra-c2012-11.2:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressPrivate.h:28
+misra-c2012-11.2:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressPrivate.h:35
 misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:18
 misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:28
 misra-c2012-11.2:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:35
@@ -43,6 +46,11 @@ misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:33
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:40
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:39
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:59
+misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c:21
+misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressPrivate.h:28
+misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressPrivate.h:35
+misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c:45
+misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c:65
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:74
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:215
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:155
@@ -148,6 +156,7 @@ misra-c2012-5.7:Core/Interface/SolidSyslogTlsFingerprint.h:32
 misra-c2012-5.7:Core/Source/SolidSyslogStreamSender.c:29
 misra-c2012-5.7:Core/Source/SolidSyslogUdpPayload.c:9
 misra-c2012-5.7:Core/Source/SolidSyslogTlsFingerprint.c:10
+misra-c2012-5.7:Platform/LwipSocket/Source/SolidSyslogLwipSocketResolver.c:32
 misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:29
 misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:41
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:48

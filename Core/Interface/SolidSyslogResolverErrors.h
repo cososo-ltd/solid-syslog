@@ -28,6 +28,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_RESOLVER_ERROR_RESOLVE_TIMEOUT,
         SOLIDSYSLOG_RESOLVER_ERROR_NULL_CONFIG,
         SOLIDSYSLOG_RESOLVER_ERROR_NULL_SLEEP,
+        /** The lookup could not answer in an address family the transports
+         *  beside it can send to. Permanent for this destination: a stack or a
+         *  destination offering only the other family will not start offering
+         *  this one by being asked again. */
+        SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED,
         SOLIDSYSLOG_RESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

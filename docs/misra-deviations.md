@@ -28,7 +28,7 @@ used here for identification only. This project is neither endorsed by nor
 affiliated with MISRA.
 
 Each deviation is paired with a matching entry in `misra_suppressions.txt`
-(the cppcheck-misra input). The two files are complementary:
+(the cppcheck-misra input). The files are complementary:
 
 | File | Audience | Purpose |
 |------|----------|---------|
@@ -170,7 +170,7 @@ identifiers (§5.2.4.1) — a single number applies project-wide.
   collision would resolve at 63 characters but not at 31 — at
   which point the project would suppress that specific finding
   with a rationale tying back to this section. Currently no rule
-  5.1 collisions occur (0 findings on the current tree), so no
+  5.1 collisions occur, so no
   cppcheck-misra configuration change is required; the
   enforcement window is strictly stricter than the deviation
   allows, which is the safe direction. (Decision recorded under
@@ -283,15 +283,15 @@ third-party API contract (the public `Send` / `SendTo` interface) is
 ### Scope
 
 - **Strict level** — `Core/Source/`: the `SelfFromBase` helpers on every vtable
-  class, and the Formatter storage cast of sub-case (b). 14 sites.
+  class, and the Formatter storage cast of sub-case (b).
 - **Pragmatic level** — `Platform/*/Source/`: the same `SelfFromBase` shape in
   each adapter, the per-platform Address downcasts, and the callback `void*`
-  casts of sub-case (c). 66 sites, across the StdAtomic, FatFs, FreeRtos,
-  LwipRaw, MbedTls, OpenSsl, PlusFat, PlusTcp, Posix and Windows packs.
+  casts of sub-case (c). Every pack that declares a vtable class is in scope.
 
-80 line-specific suppressions in total — 12 against rule 11.2, 57 against 11.3
-and 11 against 11.5. The deviation does not extend to `Tests/` or `Bdd/`, where
-these rules are not enforced.
+The deviation does not extend to `Tests/` or `Bdd/`, where these rules are not
+enforced. `misra_suppressions.txt` is the count: every authorised site is a line
+in this deviation's block, so read it there rather than from a figure here that
+a new vtable class would silently falsify.
 
 A new class added to any vtable role inherits this shape, and its suppressions
 belong in this block; adding them is a review step, not an automatic
@@ -435,8 +435,8 @@ S10.19 rewrote them to take the address of an indexed element (`&base[OFFSET]`)
 instead. That is the same address by definition, but rule 18.4 fires on the `+`,
 `-`, `+=` and `-=` operators specifically rather than on subscripting, so the
 finding no longer arises and the deviation had nothing left to authorise.
-cppcheck-misra reports no 18.4 finding in `SolidSyslogRecordStore.c`; the suppression was
-removed from `misra_suppressions.txt` at the same time.
+cppcheck-misra reported no 18.4 finding in `SolidSyslogRecordStore.c`, and the
+suppression was removed from `misra_suppressions.txt` at the same time.
 
 The entry is kept, rather than the number reused, so the register has no gaps and
 a reader of an older revision can still resolve D.004. Raised 2026-05-14 and
@@ -526,9 +526,9 @@ below is a tool limitation, category 2 is a genuine deviation.
 
 ### Construct
 
-Two distinct site categories trigger this rule:
+Site categories that trigger this rule:
 
-1. **Field-access "false positive" (15 sites)** — reading a non-const
+1. **Field-access "false positive"** — reading a non-const
    pointer field through a `const struct*` parameter:
 
    ```c
@@ -561,14 +561,14 @@ Two distinct site categories trigger this rule:
 
    The same pattern recurs in
    `SolidSyslogMessageFormatter_Format(const struct
-   SolidSyslogMessageFormatterContext* context)` (5 sites — `context->Clock`,
+   SolidSyslogMessageFormatterContext* context)` (`context->Clock`,
    `GetHostname`, `GetAppName`, `GetProcessId`, `Sd`), which reads its
    read-only context exactly as `<Class>_Create` reads its config. The `const`
    is deliberate (the formatter must not mutate the context); keeping it
    and accepting the false positive is preferred over weakening the
    signature to silence the tool.
 
-2. **Platform-API const-strip (2 sites)** —
+2. **Platform-API const-strip** —
 
    **(a)** `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`:
 
@@ -606,22 +606,18 @@ Two distinct site categories trigger this rule:
 
 ### Scope
 
-- **Strict level** — 15 field-access sites: 8 in `Core/Source/SolidSyslog.c`
-  (the `SolidSyslog_Install*` functions reading `config->` pointer
-  fields), 5 in `Core/Source/SolidSyslogMessageFormatter.c`
-  (`SolidSyslogMessageFormatter_Format` reading `context->Clock`,
-  `GetHostname`, `GetAppName`, `GetProcessId`, `Sd`), 1 in
-  `Core/Source/SolidSyslogBlockSequence.c`
-  (`BlockSequence_IsReadBlockFullyDrained` passing
-  `blockSequence->BlockDevice` to `SolidSyslogBlockDevice_Size`), and
-  1 in `Core/Source/SolidSyslogBlockStoreStatic.c`
-  (`BlockStore_ResolveSecurityPolicy` accepting
-  `config->SecurityPolicy`).
-- **Pragmatic level** — 2 sites: 1 in
-  `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c` (the
-  `select()` timeout cast); 1 in
-  `Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c` (the
-  lwIP `pbuf->payload` field cast).
+- **Strict level** — the field-access reads in `Core/Source/`: the
+  `SolidSyslog_Install*` functions reading `config->` pointer fields in
+  `SolidSyslog.c`, `SolidSyslogMessageFormatter_Format` reading
+  `context->Clock`, `GetHostname`, `GetAppName`, `GetProcessId` and `Sd` in
+  `SolidSyslogMessageFormatter.c`, `BlockSequence_IsReadBlockFullyDrained`
+  passing `blockSequence->BlockDevice` to `SolidSyslogBlockDevice_Size`, and
+  `BlockStore_ResolveSecurityPolicy` accepting `config->SecurityPolicy` in
+  `SolidSyslogBlockStoreStatic.c`.
+- **Pragmatic level** — the `select()` timeout cast in
+  `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`, and the lwIP
+  `pbuf->payload` field cast in
+  `Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c`.
 
 ### Rationale
 
@@ -682,12 +678,12 @@ and `clock_gettime`/`nanosleep`:
 On glibc, `<time.h>` transitively includes `<wchar.h>` (via
 `bits/types/struct_tm.h` and the `__wchar_t` family in `bits/types.h`).
 cppcheck-misra reports the transitive inclusion as a direct 21.10
-violation in each of the three TUs.
+violation in each of them.
 
 ### Scope
 
-`Platform/Posix/Source/` — three files. The deviation does not apply
-to Windows or FreeRTOS sources, which use their own platform clocks
+`Platform/Posix/Source/` — the files listed above. The deviation does not
+apply to Windows or FreeRTOS sources, which use their own platform clocks
 and do not include `<time.h>`.
 
 ### Rationale
@@ -695,7 +691,7 @@ and do not include `<time.h>`.
 The POSIX time and sleep wrappers exist precisely to provide
 SolidSyslog's clock and sleep abstractions on POSIX targets. They
 must include `<time.h>` to use `clock_gettime` / `nanosleep` /
-`struct timespec`. None of the three files use any function or type
+`struct timespec`. None of them uses any function or type
 from `<wchar.h>`; the transitive inclusion is glibc-specific and
 unavoidable on this platform.
 
@@ -808,15 +804,15 @@ enum
 };
 ```
 
-There are 45 such declarations across 44 files in `Core/` and
+The idiom recurs throughout `Core/` and
 `Platform/`. Adding inline-suppress comments at every
 site would add visual noise next to a project-wide intentional
 idiom — listing them in `misra_suppressions.txt` under this
 deviation keeps the source clean.
 
-**Suppression-file layout.** Two deviations authorise rule 5.7 findings, and
-which one applies is decided by the identifier the finding lands on: a repeated
-struct tag is D.003, an anonymous enum is D.009. That is a standing convention,
+**Suppression-file layout.** Which deviation authorises a rule 5.7 finding is
+decided by the identifier it lands on: a repeated struct tag is D.003, an
+anonymous enum is D.009. That is a standing convention,
 not a transitional state — both kinds of finding exist permanently in this
 codebase, so both blocks permanently carry rule 5.7 lines. Each block in
 `misra_suppressions.txt` is headed by the deviation that authorises its entries,
@@ -1132,12 +1128,12 @@ Rule 11.5 fires on each such adapter cast.
 
 ### Scope
 
-- `Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c` — two sites
-  (`MbedTlsStream_Send`, `MbedTlsStream_Read`), `unsigned char*`.
-- `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c` — two sites
-  (`WinsockTcpStream_Send`, `WinsockTcpStream_Read`), `char*`.
-- `Platform/Windows/Source/SolidSyslogWinsockDatagram.c` — one site
-  (`WinsockDatagram_SendTo`), `char*`.
+- `Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c` —
+  `MbedTlsStream_Send` and `MbedTlsStream_Read`, `unsigned char*`.
+- `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c` —
+  `WinsockTcpStream_Send` and `WinsockTcpStream_Read`, `char*`.
+- `Platform/Windows/Source/SolidSyslogWinsockDatagram.c` —
+  `WinsockDatagram_SendTo`, `char*`.
 
 A future Stream, Datagram, hash or MAC implementation wrapping a byte-typed
 third-party C API will meet the same boundary, but is not covered by this
@@ -1199,7 +1195,7 @@ so each source is now defined in its class's vtable TU and reached from the
 translation unit, which is the resolution the entry's risk analysis anticipated
 before it was collapsed to this note; see the revision prior to retirement for
 that text.
-cppcheck-misra reports no 8.7 finding for any error source; the suppression
+cppcheck-misra reported no 8.7 finding for any error source, and the suppression
 lines were removed.
 
 Raised and approved 2026-05-31 by the project owner, David Cozens, under

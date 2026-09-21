@@ -208,6 +208,7 @@ nav:
       - FreeRTOS-Plus-FAT: platforms/plusfat/index.md
       - FreeRTOS-Plus-TCP: platforms/plustcp/index.md
       - lwIP (Raw API): platforms/lwipraw/index.md
+      - lwIP (Sockets API): platforms/lwipsocket/index.md
       - Mbed TLS: platforms/mbedtls/index.md
       - OpenSSL: platforms/openssl/index.md
       - Posix: platforms/posix/index.md
