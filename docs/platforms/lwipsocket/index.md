@@ -38,9 +38,12 @@ no-op. `LWIP_SOCKET_SELECT` defaults to on, and the stream's bounded connect is
 what needs it, so a build that turns it off links everything here except the
 stream.
 
-Your port must also make `errno` and its codes available, which lwIP leaves to
-`arch/cc.h` unless you set `LWIP_PROVIDE_ERRNO`: the transports read it to tell
-one refusal from another.
+Your port must also make `errno` and its codes available, because the transports
+read it to tell one refusal from another. lwIP offers three ways to say where it
+comes from - `LWIP_PROVIDE_ERRNO` for lwIP's own definitions,
+`LWIP_ERRNO_STDINCLUDE` for your C library's `<errno.h>`, or `LWIP_ERRNO_INCLUDE`
+naming a header of your own - and leaves it to your `arch/cc.h` if you set none
+of them.
 
 The adapters call the `lwip_`-prefixed entry points rather than the unprefixed
 macros, so your `LWIP_COMPAT_SOCKETS` setting does not matter to them.
@@ -52,6 +55,12 @@ non-blocking rather than proceed with it. Its connect is bounded by the deadline
 its config supplies rather than by the stack's own retransmission budget, and
 its send and read answer immediately, so a wedged peer costs a failed call
 rather than a stalled task.
+
+A send establishes that the peer has not closed its end before it writes. A
+socket stays writable after a peer closes, so without that check the stack
+would take a record nothing can deliver and the record would be gone; instead
+the send fails, the stream closes itself, and your store replays the record on
+the next connection.
 
 The datagram leaves its socket as the stack makes it, which costs nothing: a UDP
 send has no peer to wait for, and returns once the stack has taken the datagram

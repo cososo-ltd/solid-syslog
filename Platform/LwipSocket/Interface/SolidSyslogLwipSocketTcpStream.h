@@ -14,9 +14,11 @@
  *    applies on the next reconnect), with the deferred result read back
  *    afterwards. Every failure closes the socket and reports which step gave
  *    up.
- *  - Send is all-or-nothing and never blocks the service thread: a short write
- *    or any error is taken as a dead connection, so the stream closes itself
- *    and the sender reconnects on its next pass.
+ *  - Send is all-or-nothing and never blocks the service thread. It first
+ *    asks whether the peer is still there, because a socket stays writable
+ *    after the peer closes its end and would otherwise swallow the record;
+ *    then a short write or any error is taken as a dead connection, so the
+ *    stream closes itself and the sender reconnects on its next pass.
  *  - Read answers the bytes read, 0 when nothing has arrived (connection
  *    kept), or tears the connection down on a peer close or a fault.
  *  - Version answers 0 for the stream's lifetime: nothing about a plain socket's

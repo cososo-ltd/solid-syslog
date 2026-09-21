@@ -34,7 +34,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** All-or-nothing. Never report a partial write as success - the record
          *  is gone from the caller's hands once you return true. If the whole
          *  buffer cannot go, close internally and return false; the caller
-         *  reopens and store-and-forward replays. */
+         *  reopens and store-and-forward replays.
+         *
+         *  A peer that has closed its end is the case to watch: a transport
+         *  that stays writable after one will take a record nothing can
+         *  deliver, and returning true there loses it. Establish that the
+         *  connection is still whole, however your stack says so, before you
+         *  accept the record. */
         bool (*Send)(struct SolidSyslogStream* base, const void* buffer, size_t size);
         /** Return 0 when nothing is available, never a negative - the two are
          *  acted on differently, and a would-block reported as an error costs a
