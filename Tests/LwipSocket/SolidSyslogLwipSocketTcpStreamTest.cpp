@@ -338,6 +338,18 @@ TEST(SolidSyslogLwipSocketTcpStream, ReadAnswersTheBytesThePeerSent)
     MEMCMP_EQUAL(TEST_PAYLOAD, buffer, TEST_PAYLOAD_SIZE);
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, ReadAnswersZeroWhenThereIsNothingToReadAndKeepsTheConnection)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(Open());
+    LwipSocketsFake_SetRecvResult(-1, EWOULDBLOCK);
+    char buffer[64] = {};
+
+    LONGS_EQUAL(0, SolidSyslogStream_Read(stream, buffer, sizeof(buffer)));
+
+    LONGS_EQUAL(0U, LwipSocketsFake_CloseCallCount());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {

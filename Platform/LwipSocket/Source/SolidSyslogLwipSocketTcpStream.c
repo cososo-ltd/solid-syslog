@@ -38,6 +38,7 @@ static bool LwipSocketTcpStream_Send(struct SolidSyslogStream* base, const void*
 static SolidSyslogSsize LwipSocketTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void LwipSocketTcpStream_CloseSocket(struct SolidSyslogLwipSocketTcpStream* self);
 static bool LwipSocketTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
+static inline bool LwipSocketTcpStream_WouldBlock(int err);
 
 static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 static int LwipSocketTcpStream_TakeSocket(void);
@@ -218,7 +219,25 @@ static SolidSyslogSsize LwipSocketTcpStream_Read(struct SolidSyslogStream* base,
 {
     struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
     ssize_t received = lwip_recv(self->Fd, buffer, size, 0);
-    return (SolidSyslogSsize) received;
+    /* Captured immediately after lwip_recv so the test below satisfies
+     * MISRA 22.10 - no intervening library call between the errno-setting
+     * function and the read. */
+    int recvErrno = (received < 0) ? errno : 0;
+    SolidSyslogSsize result = (SolidSyslogSsize) received;
+
+    if ((received < 0) && LwipSocketTcpStream_WouldBlock(recvErrno))
+    {
+        result = 0;
+    }
+    return result;
+}
+
+/* lwIP maps both "nothing arrived yet" and the receive timeout onto
+ * EWOULDBLOCK, and EAGAIN is the same value; neither says the connection is
+ * gone, so the stream keeps it and the caller tries again. */
+static inline bool LwipSocketTcpStream_WouldBlock(int err)
+{
+    return (err == EWOULDBLOCK) || (err == EAGAIN);
 }
 
 static void LwipSocketTcpStream_CloseSocket(struct SolidSyslogLwipSocketTcpStream* self)
