@@ -83,7 +83,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* What lwip_select answers: the number of ready descriptors, or 0 for the
      * budget expiring, or -1. Defaults to one ready descriptor, and on a
      * positive answer the descriptor the caller watched for writing stays set.
-     * markException puts it in the exception set instead. */
+     * LwipSocketsFake_SetSelectSignalsException puts it in the exception set
+     * instead. */
     void LwipSocketsFake_SetSelectResult(int result);
     void LwipSocketsFake_SetSelectSignalsException(void);
 

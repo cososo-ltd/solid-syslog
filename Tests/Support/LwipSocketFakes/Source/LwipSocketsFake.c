@@ -325,7 +325,8 @@ int LwipSocketsFake_LastSendFlags(void)
 
 void LwipSocketsFake_SetRecvPayload(const char* payload)
 {
-    recvPayloadSize = strlen(payload);
+    size_t length = strlen(payload);
+    recvPayloadSize = (length < sizeof(recvPayload)) ? length : sizeof(recvPayload);
     (void) memcpy(recvPayload, payload, recvPayloadSize);
 }
 
@@ -622,8 +623,10 @@ ssize_t lwip_recv(int s, void* mem, size_t len, int flags)
     }
     if (result > 0)
     {
-        size_t copied = (recvPayloadSize < len) ? recvPayloadSize : len;
+        size_t wanted = ((size_t) result < recvPayloadSize) ? (size_t) result : recvPayloadSize;
+        size_t copied = (wanted < len) ? wanted : len;
         (void) memcpy(mem, recvPayload, copied);
+        result = (ssize_t) copied;
     }
     else if (result < 0)
     {
