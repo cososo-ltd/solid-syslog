@@ -22,6 +22,25 @@ set(LWIPSOCKET_TEST_INCLUDE_DIRS
     ${SOLIDSYSLOG_LWIP_PATH}/src/include
 )
 
+# lwIP upstream byte-order and address helpers. lwip_htons / lwip_htonl and
+# ip4addr_aton are functions, not macros, unless the arch supplies its own, so a
+# test exe that links the adapters needs them. Wrapped as a STATIC library with
+# cppcheck disabled so the `toomanyconfigs` warning from opt.h's #ifdef forest
+# does not fail our build; we do not audit upstream lwIP, that is lwIP's concern.
+# Our own Platform/LwipSocket/Source/ files stay cppchecked because their
+# target's default C_CPPCHECK is honoured.
+#
+# Built here against this tier's lwipopts.h rather than shared with another
+# tier's, so the two configurations cannot leak into each other.
+add_library(LwipSocketUpstreamHelpers STATIC
+    ${SOLIDSYSLOG_LWIP_PATH}/src/core/def.c
+    ${SOLIDSYSLOG_LWIP_PATH}/src/core/ipv4/ip4_addr.c
+)
+target_include_directories(LwipSocketUpstreamHelpers PRIVATE ${LWIPSOCKET_TEST_INCLUDE_DIRS})
+set_target_properties(LwipSocketUpstreamHelpers PROPERTIES
+    C_CPPCHECK ""
+)
+
 # ---- SolidSyslogLwipSocketAddressTest ----
 
 add_executable(SolidSyslogLwipSocketAddressTest
@@ -35,6 +54,7 @@ target_link_libraries(SolidSyslogLwipSocketAddressTest PRIVATE
     ${PROJECT_NAME}
     ConfigLockFake
     ErrorHandlerFake
+    LwipSocketUpstreamHelpers
     CppUTest
     CppUTestExt
 )

@@ -23,6 +23,18 @@ struct SolidSyslogLwipSocketAddress
 void SolidSyslogLwipSocketAddress_Initialise(struct SolidSyslogAddress* base);
 void SolidSyslogLwipSocketAddress_Cleanup(struct SolidSyslogAddress* base);
 
+static inline struct sockaddr_in* SolidSyslogLwipSocketAddress_AsSockaddrIn(struct SolidSyslogAddress* base)
+{
+    return &((struct SolidSyslogLwipSocketAddress*) base)->Sockaddr;
+}
+
+static inline const struct sockaddr_in* SolidSyslogLwipSocketAddress_AsConstSockaddrIn(
+    const struct SolidSyslogAddress* base
+)
+{
+    return &((const struct SolidSyslogLwipSocketAddress*) base)->Sockaddr;
+}
+
 static inline void LwipSocketAddress_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
