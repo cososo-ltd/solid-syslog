@@ -30,6 +30,9 @@ static inline bool LwipSocketTcpStream_ConfigProvidesGetter(const struct SolidSy
 static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 
 static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base);
+static int LwipSocketTcpStream_TakeSocket(void);
+static inline bool LwipSocketTcpStream_IsSocketValid(int fd);
+static bool LwipSocketTcpStream_Connect(struct SolidSyslogLwipSocketTcpStream* self, const struct sockaddr_in* sin);
 static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros);
 static long LwipSocketTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogLwipSocketTcpStream* self);
 static bool LwipSocketTcpStream_ReadDeferredConnectError(int fd);
@@ -79,9 +82,51 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
 {
     struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
     const struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsConstSockaddrIn(addr);
-    self->Fd = lwip_socket(AF_INET, SOCK_STREAM, 0);
-    (void) lwip_fcntl(self->Fd, F_SETFL, O_NONBLOCK);
+    bool connected = false;
 
+    self->Fd = LwipSocketTcpStream_TakeSocket();
+    if (LwipSocketTcpStream_IsSocketValid(self->Fd))
+    {
+        connected = LwipSocketTcpStream_Connect(self, sin);
+    }
+    else
+    {
+        LwipSocketTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
+        );
+    }
+    return connected;
+}
+
+static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base)
+{
+    return (struct SolidSyslogLwipSocketTcpStream*) base;
+}
+
+/* Non-blocking from the start: the connect reports EINPROGRESS, the wait is
+ * bounded, and Send and Read never block the service thread on a wedged peer
+ * or a full send buffer. */
+static int LwipSocketTcpStream_TakeSocket(void)
+{
+    int fd = lwip_socket(AF_INET, SOCK_STREAM, 0);
+    if (LwipSocketTcpStream_IsSocketValid(fd))
+    {
+        (void) lwip_fcntl(fd, F_SETFL, O_NONBLOCK);
+    }
+    return fd;
+}
+
+static inline bool LwipSocketTcpStream_IsSocketValid(int fd)
+{
+    return fd >= 0;
+}
+
+static bool LwipSocketTcpStream_Connect(
+    struct SolidSyslogLwipSocketTcpStream* self,
+    const struct sockaddr_in* sin
+)
+{
     int rc = lwip_connect(self->Fd, (const struct sockaddr*) sin, sizeof(*sin));
     /* Captured immediately after lwip_connect so the test below satisfies
      * MISRA 22.10 - no intervening library call between the errno-setting
@@ -118,9 +163,6 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
     return connected;
 }
 
-/* The connect is under way and the socket is non-blocking, so the answer comes
- * as writability. The exception set is watched alongside, because a stack that
- * ends the attempt reports it there rather than as a write. */
 /* Read on every attempt, so a runtime-tunable value takes effect on the next
  * reconnect. */
 static long LwipSocketTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogLwipSocketTcpStream* self)
@@ -202,11 +244,6 @@ static void LwipSocketTcpStream_ReportConnectFailure(
 )
 {
     LwipSocketTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
-}
-
-static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base)
-{
-    return (struct SolidSyslogLwipSocketTcpStream*) base;
 }
 
 #else

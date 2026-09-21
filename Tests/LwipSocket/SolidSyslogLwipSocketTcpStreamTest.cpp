@@ -243,6 +243,22 @@ TEST(SolidSyslogLwipSocketTcpStream, AStackThatWillNotStartTheAttemptIsALocalFai
     );
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, AStackWithNoSocketToGiveIsReportedAndNothingIsAttempted)
+{
+    LwipSocketsFake_SetSocketResult(-1);
+
+    CHECK_FALSE(Open());
+
+    LONGS_EQUAL(0U, LwipSocketsFake_ConnectCallCount());
+    LONGS_EQUAL(0U, LwipSocketsFake_CloseCallCount());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
+    );
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {
