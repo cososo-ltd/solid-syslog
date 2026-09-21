@@ -73,6 +73,7 @@ void SolidSyslogLwipSocketTcpStream_Initialise(
     self->Base.Read = LwipSocketTcpStream_Read;
     self->Base.Close = LwipSocketTcpStream_Close;
     self->Base.Version = LwipSocketTcpStream_Version;
+    self->Fd = INVALID_SOCKET;
     self->Config.GetConnectTimeoutMs = LwipSocketTcpStream_NullConnectTimeoutGetter;
     self->Config.ConnectTimeoutContext = NULL;
     if (LwipSocketTcpStream_ConfigProvidesGetter(config) == true)
