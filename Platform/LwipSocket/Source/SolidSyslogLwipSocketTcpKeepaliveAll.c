@@ -29,9 +29,4 @@ bool SolidSyslogLwipSocketTcpStream_ApplyKeepalive(int fd)
     return accepted;
 }
 
-#else
-
-/* ISO C forbids an empty translation unit. */
-typedef int LwipSocketTcpKeepaliveAll_EmptyTranslationUnit;
-
 #endif /* LWIP_SOCKET && LWIP_TCP && LWIP_TCP_KEEPALIVE */

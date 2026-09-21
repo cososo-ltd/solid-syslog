@@ -28,9 +28,4 @@ bool SolidSyslogLwipSocketTcpStream_ApplyKeepalive(int fd)
     return lwip_setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idleMs, sizeof(idleMs)) == 0;
 }
 
-#else
-
-/* ISO C forbids an empty translation unit. */
-typedef int LwipSocketTcpKeepaliveIdleOnly_EmptyTranslationUnit;
-
 #endif /* LWIP_SOCKET && LWIP_TCP && !LWIP_TCP_KEEPALIVE */
