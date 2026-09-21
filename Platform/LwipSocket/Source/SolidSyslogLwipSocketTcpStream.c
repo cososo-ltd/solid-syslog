@@ -150,6 +150,7 @@ static void LwipSocketTcpStream_ApplySocketOptions(int fd)
     bool allAccepted = (lwip_setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable)) == 0);
 
     allAccepted = (lwip_setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable)) == 0) && allAccepted;
+    allAccepted = SolidSyslogLwipSocketTcpStream_ApplyKeepalive(fd) && allAccepted;
 
     if (!allAccepted)
     {

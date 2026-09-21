@@ -30,6 +30,7 @@ static const struct SolidSyslogLwipSocketTcpStreamConfig config = {nullptr, null
 static const uint16_t TEST_PORT       = 6514U;
 static const uint32_t TEST_IPV4       = 0xC000020AU;
 static const int      TEST_DESCRIPTOR = 7;
+static const int      MILLISECONDS_PER_SECOND = 1000;
 static const uint32_t TEST_CONNECT_TIMEOUT_MS = 20U;
 static const char     TEST_PAYLOAD[]  = "<14>1 message";
 static const size_t   TEST_PAYLOAD_SIZE = sizeof(TEST_PAYLOAD) - 1U;
@@ -420,6 +421,17 @@ TEST(SolidSyslogLwipSocketTcpStream, AStackThatRefusesEveryOptionStillReportsOnl
     CHECK_TRUE(Open());
 
     LONGS_EQUAL(ONCE, ErrorHandlerFake_HandleCallCount());
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, AStackWithNoProbeTimingsTakesTheIdlePeriodInMilliseconds)
+{
+    CHECK_TRUE(Open());
+
+    CHECK_TRUE(LwipSocketsFake_SockOptWasSetTo(
+        IPPROTO_TCP,
+        TCP_KEEPALIVE,
+        SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS * MILLISECONDS_PER_SECOND
+    ));
 }
 
 // clang-format off

@@ -138,6 +138,7 @@ add_executable(SolidSyslogLwipSocketTcpStreamTest
     ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpKeepaliveIdleOnly.c
 )
 
 target_link_libraries(SolidSyslogLwipSocketTcpStreamTest PRIVATE
@@ -156,3 +157,39 @@ set_target_properties(SolidSyslogLwipSocketTcpStreamTest PROPERTIES
 )
 
 add_test(NAME SolidSyslogLwipSocketTcpStreamTest COMMAND SolidSyslogLwipSocketTcpStreamTest)
+
+# ---- SolidSyslogLwipSocketTcpKeepaliveTest ----
+
+# The LWIP_TCP_KEEPALIVE=1 half of the pair. The whole-file gate means only one
+# of the two keepalive translation units compiles per build, so the variant the
+# stream test does not carry gets its own executable.
+
+add_executable(SolidSyslogLwipSocketTcpKeepaliveTest
+    SolidSyslogLwipSocketTcpKeepaliveTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/Support/LwipSocketFakes/Source/LwipSocketsFake.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpKeepaliveAll.c
+)
+
+target_compile_definitions(SolidSyslogLwipSocketTcpKeepaliveTest PRIVATE LWIP_TCP_KEEPALIVE=1)
+
+target_link_libraries(SolidSyslogLwipSocketTcpKeepaliveTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    LwipSocketUpstreamHelpers
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogLwipSocketTcpKeepaliveTest PRIVATE ${LWIPSOCKET_TEST_INCLUDE_DIRS})
+
+set_target_properties(SolidSyslogLwipSocketTcpKeepaliveTest PROPERTIES
+    CXX_CPPCHECK ""
+)
+
+add_test(NAME SolidSyslogLwipSocketTcpKeepaliveTest COMMAND SolidSyslogLwipSocketTcpKeepaliveTest)
