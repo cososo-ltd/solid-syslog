@@ -70,6 +70,7 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 | `UNKNOWN_DESTROY` | `WARNING` | benign lifecycle misuse: library keeps working. Single-sourced via `SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY`. |
 | `STREAM_CONNECT_FAILED` - local | `ERROR` | the device could not obtain an endpoint, or its stack declined to start the attempt, so no packet was sent. It needs a human and will not clear by waiting. Single-sourced via `SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY`. |
 | `STREAM_CONNECT_FAILED` - remote | `WARNING` | the destination did not answer, or answered with something other than a connection. The next Service pass retries. Single-sourced via `SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY`. |
+| `STREAM_OPTION_REFUSED` | `WARNING` | the connection opened, but the stack declined a socket option set on it, so it is less robust than intended. Delivery continues, which is why this is not `ERROR`. Explicit `SOLIDSYSLOG_SEVERITY_WARNING` at the site. |
 | `TLS_STREAM_HANDSHAKE_FAILED` — rejected | `ERROR` | cert / protocol: a human must fix the peer or the cert. |
 | `TLS_STREAM_HANDSHAKE_FAILED` — timeout | `WARNING` | transient: may clear on the next reconnect. |
 | `TLS_STREAM_INIT_FAILED` | `ERROR` | setup fault needing a human; not split. |

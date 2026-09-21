@@ -15,6 +15,12 @@
 # LwipSocket:
 Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c
 Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c
+Platform/LwipSocket/Source/SolidSyslogLwipSocketDatagram.c
+Platform/LwipSocket/Source/SolidSyslogLwipSocketDatagramStatic.c
+Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c
+Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStreamStatic.c
+Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpKeepaliveAll.c
+Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpKeepaliveIdleOnly.c
 Platform/LwipSocket/Source/SolidSyslogLwipSocketResolver.c
 Platform/LwipSocket/Source/SolidSyslogLwipSocketResolverStatic.c
 

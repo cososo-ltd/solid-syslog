@@ -42,6 +42,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
         /** The connect budget expired with no answer from the destination. */
         SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT,
+        /** The stack declined a socket option the stream set on the connection
+         *  it had just opened. The connection stands and carries messages; what
+         *  the option bought - prompt detection of a dead peer, or a latency
+         *  setting - does not. */
+        SOLIDSYSLOG_TCP_STREAM_ERROR_SOCKET_OPTION_REFUSED,
         SOLIDSYSLOG_TCP_STREAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

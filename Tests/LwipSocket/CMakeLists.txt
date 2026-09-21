@@ -98,3 +98,132 @@ set_target_properties(SolidSyslogLwipSocketResolverTest PROPERTIES
 )
 
 add_test(NAME SolidSyslogLwipSocketResolverTest COMMAND SolidSyslogLwipSocketResolverTest)
+
+# ---- SolidSyslogLwipSocketDatagramTest ----
+
+add_executable(SolidSyslogLwipSocketDatagramTest
+    SolidSyslogLwipSocketDatagramTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/Support/LwipSocketFakes/Source/LwipSocketsFake.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketDatagram.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketDatagramStatic.c
+)
+
+target_link_libraries(SolidSyslogLwipSocketDatagramTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    LwipSocketUpstreamHelpers
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogLwipSocketDatagramTest PRIVATE ${LWIPSOCKET_TEST_INCLUDE_DIRS})
+
+set_target_properties(SolidSyslogLwipSocketDatagramTest PROPERTIES
+    CXX_CPPCHECK ""
+)
+
+add_test(NAME SolidSyslogLwipSocketDatagramTest COMMAND SolidSyslogLwipSocketDatagramTest)
+
+# ---- SolidSyslogLwipSocketTcpStreamTest ----
+
+add_executable(SolidSyslogLwipSocketTcpStreamTest
+    SolidSyslogLwipSocketTcpStreamTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/Support/LwipSocketFakes/Source/LwipSocketsFake.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpKeepaliveIdleOnly.c
+)
+
+target_link_libraries(SolidSyslogLwipSocketTcpStreamTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    LwipSocketUpstreamHelpers
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogLwipSocketTcpStreamTest PRIVATE ${LWIPSOCKET_TEST_INCLUDE_DIRS})
+
+set_target_properties(SolidSyslogLwipSocketTcpStreamTest PROPERTIES
+    CXX_CPPCHECK ""
+)
+
+add_test(NAME SolidSyslogLwipSocketTcpStreamTest COMMAND SolidSyslogLwipSocketTcpStreamTest)
+
+# ---- SolidSyslogLwipSocketTcpKeepaliveAllTest ----
+
+# The whole-file gate means only one of the two keepalive translation units
+# compiles per build, so each variant gets an executable of its own: this one
+# for LWIP_TCP_KEEPALIVE=1, the next for the build without it.
+
+add_executable(SolidSyslogLwipSocketTcpKeepaliveAllTest
+    SolidSyslogLwipSocketTcpKeepaliveAllTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/Support/LwipSocketFakes/Source/LwipSocketsFake.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpKeepaliveAll.c
+)
+
+target_compile_definitions(SolidSyslogLwipSocketTcpKeepaliveAllTest PRIVATE LWIP_TCP_KEEPALIVE=1)
+
+target_link_libraries(SolidSyslogLwipSocketTcpKeepaliveAllTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    LwipSocketUpstreamHelpers
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogLwipSocketTcpKeepaliveAllTest PRIVATE ${LWIPSOCKET_TEST_INCLUDE_DIRS})
+
+set_target_properties(SolidSyslogLwipSocketTcpKeepaliveAllTest PROPERTIES
+    CXX_CPPCHECK ""
+)
+
+add_test(NAME SolidSyslogLwipSocketTcpKeepaliveAllTest COMMAND SolidSyslogLwipSocketTcpKeepaliveAllTest)
+
+# ---- SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest ----
+
+# The other half: a stack built without LWIP_TCP_KEEPALIVE, where only the idle
+# period is ours and it is set in milliseconds. No compile definition, because
+# lwIP's opt.h defaults the option off.
+
+add_executable(SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest
+    SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/Support/LwipSocketFakes/Source/LwipSocketsFake.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpKeepaliveIdleOnly.c
+)
+
+target_link_libraries(SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    LwipSocketUpstreamHelpers
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest PRIVATE ${LWIPSOCKET_TEST_INCLUDE_DIRS})
+
+set_target_properties(SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest PROPERTIES
+    CXX_CPPCHECK ""
+)
+
+add_test(NAME SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest COMMAND SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest)

@@ -360,6 +360,10 @@ endforeach()
 foreach(lwip_test_target IN ITEMS
     SolidSyslogLwipSocketAddressTest
     SolidSyslogLwipSocketResolverTest
+    SolidSyslogLwipSocketDatagramTest
+    SolidSyslogLwipSocketTcpStreamTest
+    SolidSyslogLwipSocketTcpKeepaliveAllTest
+    SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest
     SolidSyslogLwipRawAddressTest
     SolidSyslogLwipRawResolverTest
     SolidSyslogLwipRawDnsResolverTest

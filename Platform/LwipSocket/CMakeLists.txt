@@ -16,6 +16,12 @@ add_library(SolidSyslogLwipSocket INTERFACE)
 target_sources(SolidSyslogLwipSocket INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipSocketAddress.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipSocketAddressStatic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipSocketDatagram.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipSocketDatagramStatic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipSocketTcpStream.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipSocketTcpStreamStatic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipSocketTcpKeepaliveAll.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipSocketTcpKeepaliveIdleOnly.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipSocketResolver.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogLwipSocketResolverStatic.c
 )
