@@ -270,6 +270,30 @@ TEST(SolidSyslogLwipSocketTcpStream, AConnectThatFailsLeavesNoSocketOpen)
     LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, AConnectBudgetThatExpiresLeavesNoSocketOpen)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+    LwipSocketsFake_SetSelectResult(0);
+
+    CHECK_FALSE(Open());
+
+    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, ADeferredErrorLeavesNoSocketOpen)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+    LwipSocketsFake_SetSocketError(ECONNREFUSED);
+
+    CHECK_FALSE(Open());
+
+    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {
