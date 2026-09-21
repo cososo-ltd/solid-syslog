@@ -283,16 +283,15 @@ third-party API contract (the public `Send` / `SendTo` interface) is
 ### Scope
 
 - **Strict level** — `Core/Source/`: the `SelfFromBase` helpers on every vtable
-  class, and the Formatter storage cast of sub-case (b). 14 sites.
+  class, and the Formatter storage cast of sub-case (b).
 - **Pragmatic level** — `Platform/*/Source/`: the same `SelfFromBase` shape in
   each adapter, the per-platform Address downcasts, and the callback `void*`
-  casts of sub-case (c). 66 sites, across the StdAtomic, FatFs, FreeRtos,
-  LwipRaw, LwipSocket, MbedTls, OpenSsl, PlusFat, PlusTcp, Posix and Windows
-  packs.
+  casts of sub-case (c). Every pack that declares a vtable class is in scope.
 
-91 line-specific suppressions in total — 15 against rule 11.2, 67 against 11.3
-and 9 against 11.5. The deviation does not extend to `Tests/` or `Bdd/`, where
-these rules are not enforced.
+The deviation does not extend to `Tests/` or `Bdd/`, where these rules are not
+enforced. `misra_suppressions.txt` is the count: every authorised site is a line
+in this deviation's block, so read it there rather than from a figure here that
+a new vtable class would silently falsify.
 
 A new class added to any vtable role inherits this shape, and its suppressions
 belong in this block; adding them is a review step, not an automatic
