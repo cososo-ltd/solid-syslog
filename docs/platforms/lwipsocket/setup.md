@@ -71,8 +71,8 @@ resolves entirely on-device:
 
 ## The one thing that will catch you out
 
-The transports never block, so this is about the resolve alone: it blocks the
-calling task, and that task must not be the tcpip thread. The call
+Neither transport waits on a peer, so this is about the resolve alone: it blocks
+the calling task, and that task must not be the tcpip thread. The call
 hands the lookup to that thread and waits for it, so asking from inside a
 callback lwIP invoked waits for a thread that is waiting for you.
 

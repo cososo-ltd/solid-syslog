@@ -43,13 +43,19 @@ one refusal from another.
 The adapters call the `lwip_`-prefixed entry points rather than the unprefixed
 macros, so your `LWIP_COMPAT_SOCKETS` setting does not matter to them.
 
-## The transports never block
+## Nothing here waits on a peer
 
-Both take non-blocking sockets. The stream's connect is bounded by the deadline
+The stream takes a non-blocking socket, and refuses one the stack will not make
+non-blocking rather than proceed with it. Its connect is bounded by the deadline
 its config supplies rather than by the stack's own retransmission budget, and
 its send and read answer immediately, so a wedged peer costs a failed call
-rather than a stalled task. This is the opposite of the resolve below, which is
-the one call in the pack that waits.
+rather than a stalled task.
+
+The datagram leaves its socket as the stack makes it, which costs nothing: a UDP
+send has no peer to wait for, and returns once the stack has taken the datagram
+or refused it.
+
+The resolve below is the one call in the pack that waits on the network.
 
 ## Dead-peer detection is yours to size
 
