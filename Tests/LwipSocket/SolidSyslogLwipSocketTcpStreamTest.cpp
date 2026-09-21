@@ -229,6 +229,20 @@ TEST(SolidSyslogLwipSocketTcpStream, ADestinationThatRefusesImmediatelyIsReporte
     );
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, AStackThatWillNotStartTheAttemptIsALocalFailure)
+{
+    LwipSocketsFake_SetConnectResult(-1, ENOBUFS);
+
+    CHECK_FALSE(Open());
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+    );
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {

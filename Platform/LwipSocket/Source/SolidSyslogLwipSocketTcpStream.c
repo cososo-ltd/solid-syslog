@@ -38,6 +38,7 @@ static void LwipSocketTcpStream_ReportConnectFailure(
     enum SolidSyslogTcpStreamErrors detail
 );
 static inline bool LwipSocketTcpStream_WaitTimedOut(int selectResult);
+static inline bool LwipSocketTcpStream_IsRemoteConnectError(int connectErrno);
 
 void SolidSyslogLwipSocketTcpStream_Initialise(
     struct SolidSyslogStream* base,
@@ -96,11 +97,18 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
                     ) &&
                     LwipSocketTcpStream_ReadDeferredConnectError(self->Fd);
     }
-    else if (rc < 0)
+    else if (LwipSocketTcpStream_IsRemoteConnectError(connectErrno))
     {
         LwipSocketTcpStream_ReportConnectFailure(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        );
+    }
+    else if (rc < 0)
+    {
+        LwipSocketTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
         );
     }
     else
@@ -146,6 +154,15 @@ static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMic
         );
     }
     return ready;
+}
+
+/* Remote means the destination or the network answered, or failed to. Every
+ * other immediate failure is local - the stack would not accept the socket, or
+ * had no route or memory to start the attempt - and nothing left this device,
+ * which is what CONNECT_NOT_STARTED says. */
+static inline bool LwipSocketTcpStream_IsRemoteConnectError(int connectErrno)
+{
+    return (connectErrno == ECONNREFUSED) || (connectErrno == ETIMEDOUT);
 }
 
 /* lwip_select answering zero is the budget expiring with nothing to report.
