@@ -127,3 +127,32 @@ set_target_properties(SolidSyslogLwipSocketDatagramTest PROPERTIES
 )
 
 add_test(NAME SolidSyslogLwipSocketDatagramTest COMMAND SolidSyslogLwipSocketDatagramTest)
+
+# ---- SolidSyslogLwipSocketTcpStreamTest ----
+
+add_executable(SolidSyslogLwipSocketTcpStreamTest
+    SolidSyslogLwipSocketTcpStreamTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/Support/LwipSocketFakes/Source/LwipSocketsFake.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStreamStatic.c
+)
+
+target_link_libraries(SolidSyslogLwipSocketTcpStreamTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    LwipSocketUpstreamHelpers
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogLwipSocketTcpStreamTest PRIVATE ${LWIPSOCKET_TEST_INCLUDE_DIRS})
+
+set_target_properties(SolidSyslogLwipSocketTcpStreamTest PROPERTIES
+    CXX_CPPCHECK ""
+)
+
+add_test(NAME SolidSyslogLwipSocketTcpStreamTest COMMAND SolidSyslogLwipSocketTcpStreamTest)

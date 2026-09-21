@@ -361,6 +361,7 @@ foreach(lwip_test_target IN ITEMS
     SolidSyslogLwipSocketAddressTest
     SolidSyslogLwipSocketResolverTest
     SolidSyslogLwipSocketDatagramTest
+    SolidSyslogLwipSocketTcpStreamTest
     SolidSyslogLwipRawAddressTest
     SolidSyslogLwipRawResolverTest
     SolidSyslogLwipRawDnsResolverTest
