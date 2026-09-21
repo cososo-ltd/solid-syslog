@@ -3,7 +3,18 @@
  */
 
 /** @file
- *  UDP transport over an lwIP Sockets API socket, for a UdpSender. */
+ *  UDP transport over an lwIP Sockets API socket, for a UdpSender.
+ *
+ *  What the datagram does through its vtable is the substance:
+ *
+ *  - Open takes an IPv4 UDP socket from the stack, and answers false if the
+ *    stack will not give one.
+ *  - SendTo writes the whole payload to the address it is handed, and reports
+ *    SENT, OVERSIZE where the stack says the datagram is too long for one
+ *    message, or FAILED for every other refusal.
+ *  - MaxPayload answers the unknown-path payload for IPv4: lwIP's sockets
+ *    layer exposes no path MTU to read back.
+ *  - Close releases the socket, and Destroy closes one still open. */
 #ifndef SOLIDSYSLOGLWIPSOCKETDATAGRAM_H
 #define SOLIDSYSLOGLWIPSOCKETDATAGRAM_H
 
