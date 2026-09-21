@@ -86,7 +86,7 @@ static bool FatFsFile_IsOpen(struct SolidSyslogFile* base)
 
 static bool FatFsFile_Read(struct SolidSyslogFile* base, void* buf, size_t count)
 {
-    UINT bytesRead = 0;
+    UINT bytesRead = 0U;
     FRESULT result = f_read(FatFsFile_Handle(base), buf, (UINT) count, &bytesRead);
     return (result == FR_OK) && (bytesRead == count);
 }
@@ -98,7 +98,7 @@ static inline FIL* FatFsFile_Handle(struct SolidSyslogFile* base)
 
 static bool FatFsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count)
 {
-    UINT bytesWritten = 0;
+    UINT bytesWritten = 0U;
     FRESULT result = f_write(FatFsFile_Handle(base), buf, (UINT) count, &bytesWritten);
     bool wroteAllData = (result == FR_OK) && (bytesWritten == count);
     return wroteAllData && (f_sync(FatFsFile_Handle(base)) == FR_OK);

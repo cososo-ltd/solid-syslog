@@ -304,7 +304,7 @@ static inline void PlusTcpTcpStream_PrimeArpIfMissing(uint32_t ip)
 
 static void PlusTcpTcpStream_ClearTimeouts(Socket_t socket)
 {
-    static const TickType_t NO_TIMEOUT_TICKS = 0;
+    static const TickType_t NO_TIMEOUT_TICKS = 0U;
 
     PlusTcpTcpStream_SetSendTimeout(socket, NO_TIMEOUT_TICKS);
     PlusTcpTcpStream_SetRecvTimeout(socket, NO_TIMEOUT_TICKS);
