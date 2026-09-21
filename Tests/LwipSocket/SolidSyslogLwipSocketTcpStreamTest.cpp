@@ -155,6 +155,19 @@ TEST(SolidSyslogLwipSocketTcpStream, TheWaitIsBoundedByTheInstalledGetterReadOnE
     POINTERS_EQUAL(TEST_CONTEXT, FakeGetConnectTimeoutMs_LastContext);
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, AWritableSocketIsConfirmedByReadingTheDeferredError)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+
+    CHECK_TRUE(Open());
+
+    LONGS_EQUAL(1U, LwipSocketsFake_GetSockOptCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastGetSockOptSocket());
+    LONGS_EQUAL(SOL_SOCKET, LwipSocketsFake_LastGetSockOptLevel());
+    LONGS_EQUAL(SO_ERROR, LwipSocketsFake_LastGetSockOptName());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {

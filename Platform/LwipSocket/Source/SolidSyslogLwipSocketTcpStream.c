@@ -31,6 +31,7 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
 static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros);
 static long LwipSocketTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogLwipSocketTcpStream* self);
+static bool LwipSocketTcpStream_ReadDeferredConnectError(int fd);
 
 void SolidSyslogLwipSocketTcpStream_Initialise(
     struct SolidSyslogStream* base,
@@ -84,9 +85,10 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
     if (connectErrno == EINPROGRESS)
     {
         connected = LwipSocketTcpStream_WaitForConnectCompletion(
-            self->Fd,
-            LwipSocketTcpStream_ResolveConnectTimeoutMicros(self)
-        );
+                        self->Fd,
+                        LwipSocketTcpStream_ResolveConnectTimeoutMicros(self)
+                    ) &&
+                    LwipSocketTcpStream_ReadDeferredConnectError(self->Fd);
     }
     return connected;
 }
@@ -116,6 +118,16 @@ static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMic
     struct timeval timeout = {.tv_sec = timeoutMicros / 1000000L, .tv_usec = timeoutMicros % 1000000L};
 
     (void) lwip_select(fd + 1, NULL, &writeSet, &errorSet, &timeout);
+    return true;
+}
+
+/* Writability alone does not mean connected: a non-blocking connect reports
+ * its outcome through SO_ERROR, and a failed one becomes writable too. */
+static bool LwipSocketTcpStream_ReadDeferredConnectError(int fd)
+{
+    int err = 0;
+    socklen_t errlen = (socklen_t) sizeof(err);
+    (void) lwip_getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
     return true;
 }
 
