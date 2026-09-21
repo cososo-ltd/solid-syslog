@@ -63,6 +63,9 @@ void SolidSyslogLwipSocketDatagram_Cleanup(struct SolidSyslogDatagram* base)
 static bool LwipSocketDatagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogLwipSocketDatagram* self = LwipSocketDatagram_SelfFromBase(base);
+    /* Opening what is already open would otherwise lose the descriptor it
+     * holds, and the stack's socket table is finite. */
+    LwipSocketDatagram_Close(base);
     self->Fd = lwip_socket(AF_INET, SOCK_DGRAM, 0);
     return LwipSocketDatagram_IsSocketValid(self->Fd);
 }

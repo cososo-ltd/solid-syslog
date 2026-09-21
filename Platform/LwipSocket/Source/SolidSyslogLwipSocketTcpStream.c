@@ -109,6 +109,9 @@ static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struc
     const struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsConstSockaddrIn(addr);
     bool connected = false;
 
+    /* Opening what is already open would otherwise lose the descriptor it
+     * holds, and the stack's socket table is finite. */
+    LwipSocketTcpStream_CloseSocket(self);
     self->Fd = LwipSocketTcpStream_TakeSocket();
     if (LwipSocketTcpStream_IsSocketValid(self->Fd))
     {

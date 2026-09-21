@@ -386,6 +386,17 @@ TEST(SolidSyslogLwipSocketTcpStream, ReadTearsTheConnectionDownWhenTheStackRepor
     LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, OpeningAStreamThatIsAlreadyOpenClosesTheSocketItHeld)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(Open());
+
+    CHECK_TRUE(Open());
+
+    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+}
+
 TEST(SolidSyslogLwipSocketTcpStream, CloseWithNothingOpenClosesNoDescriptor)
 {
     SolidSyslogStream_Close(stream);
