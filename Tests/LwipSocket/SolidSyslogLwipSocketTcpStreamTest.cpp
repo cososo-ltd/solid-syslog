@@ -310,6 +310,18 @@ TEST(SolidSyslogLwipSocketTcpStream, SendWritesTheWholePayloadToTheOpenSocket)
     LONGS_EQUAL(0, LwipSocketsFake_LastSendFlags());
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, AShortWriteIsTakenAsADeadConnectionAndClosesIt)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(Open());
+    LwipSocketsFake_SetSendResult((ssize_t) TEST_PAYLOAD_SIZE - 1, 0);
+
+    CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_PAYLOAD, TEST_PAYLOAD_SIZE));
+
+    LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {

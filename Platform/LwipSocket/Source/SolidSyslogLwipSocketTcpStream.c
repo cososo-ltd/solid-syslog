@@ -35,6 +35,8 @@ static inline bool LwipSocketTcpStream_ConfigProvidesGetter(const struct SolidSy
 
 static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static bool LwipSocketTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
+static void LwipSocketTcpStream_CloseSocket(struct SolidSyslogLwipSocketTcpStream* self);
+static bool LwipSocketTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
 
 static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 static int LwipSocketTcpStream_TakeSocket(void);
@@ -144,8 +146,7 @@ static bool LwipSocketTcpStream_ConnectOrCloseOnFailure(
     bool connected = LwipSocketTcpStream_Connect(self, sin);
     if (!connected)
     {
-        (void) lwip_close(self->Fd);
-        self->Fd = INVALID_SOCKET;
+        LwipSocketTcpStream_CloseSocket(self);
     }
     return connected;
 }
@@ -194,8 +195,30 @@ static bool LwipSocketTcpStream_Connect(
 static bool LwipSocketTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
 {
     struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
-    (void) lwip_send(self->Fd, buffer, size, 0);
-    return true;
+    ssize_t sent = lwip_send(self->Fd, buffer, size, 0);
+    bool ok = LwipSocketTcpStream_WroteAllBytes(sent, size);
+
+    if (!ok)
+    {
+        LwipSocketTcpStream_CloseSocket(self);
+    }
+    return ok;
+}
+
+/* Non-blocking single-call contract: a short write or any error means the
+ * connection is gone; the sender reconnects on its next pass. */
+static bool LwipSocketTcpStream_WroteAllBytes(ssize_t sent, size_t expected)
+{
+    return (sent >= 0) && ((size_t) sent == expected);
+}
+
+static void LwipSocketTcpStream_CloseSocket(struct SolidSyslogLwipSocketTcpStream* self)
+{
+    if (LwipSocketTcpStream_IsSocketValid(self->Fd))
+    {
+        (void) lwip_close(self->Fd);
+        self->Fd = INVALID_SOCKET;
+    }
 }
 
 /* Read on every attempt, so a runtime-tunable value takes effect on the next
