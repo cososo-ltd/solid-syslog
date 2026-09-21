@@ -105,6 +105,8 @@ add_executable(SolidSyslogLwipSocketDatagramTest
     SolidSyslogLwipSocketDatagramTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Tests/Support/LwipSocketFakes/Source/LwipSocketsFake.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c
+    ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketDatagram.c
     ${CMAKE_SOURCE_DIR}/Platform/LwipSocket/Source/SolidSyslogLwipSocketDatagramStatic.c
 )

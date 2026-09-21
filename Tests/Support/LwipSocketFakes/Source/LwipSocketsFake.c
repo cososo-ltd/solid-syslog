@@ -1,10 +1,13 @@
 #include "LwipSocketsFake.h"
 
+#include <string.h>
+
 #include "lwip/sockets.h"
 
 enum
 {
-    FAKE_SOCKET_DESCRIPTOR = 3
+    FAKE_SOCKET_DESCRIPTOR = 3,
+    FAKE_PAYLOAD_CAPACITY = 2048
 };
 
 static unsigned socketCallCount = 0U;
@@ -13,6 +16,14 @@ static int lastSocketDomain = 0;
 static int lastSocketType = 0;
 static int lastSocketProtocol = 0;
 
+static unsigned sendToCallCount = 0U;
+static int lastSendToSocket = 0;
+static char lastSendToPayload[FAKE_PAYLOAD_CAPACITY];
+static size_t lastSendToSize = 0U;
+static int lastSendToFlags = 0;
+static struct sockaddr_in lastSendToAddress;
+static socklen_t lastSendToAddressLength = 0;
+
 void LwipSocketsFake_Reset(void)
 {
     socketCallCount = 0U;
@@ -20,6 +31,14 @@ void LwipSocketsFake_Reset(void)
     lastSocketDomain = 0;
     lastSocketType = 0;
     lastSocketProtocol = 0;
+
+    sendToCallCount = 0U;
+    lastSendToSocket = 0;
+    (void) memset(lastSendToPayload, 0, sizeof(lastSendToPayload));
+    lastSendToSize = 0U;
+    lastSendToFlags = 0;
+    (void) memset(&lastSendToAddress, 0, sizeof(lastSendToAddress));
+    lastSendToAddressLength = 0;
 }
 
 void LwipSocketsFake_SetSocketResult(int result)
@@ -47,6 +66,41 @@ int LwipSocketsFake_LastSocketProtocol(void)
     return lastSocketProtocol;
 }
 
+unsigned LwipSocketsFake_SendToCallCount(void)
+{
+    return sendToCallCount;
+}
+
+int LwipSocketsFake_LastSendToSocket(void)
+{
+    return lastSendToSocket;
+}
+
+const void* LwipSocketsFake_LastSendToPayload(void)
+{
+    return lastSendToPayload;
+}
+
+size_t LwipSocketsFake_LastSendToSize(void)
+{
+    return lastSendToSize;
+}
+
+int LwipSocketsFake_LastSendToFlags(void)
+{
+    return lastSendToFlags;
+}
+
+const struct sockaddr_in* LwipSocketsFake_LastSendToAddress(void)
+{
+    return &lastSendToAddress;
+}
+
+socklen_t LwipSocketsFake_LastSendToAddressLength(void)
+{
+    return lastSendToAddressLength;
+}
+
 int lwip_socket(int domain, int type, int protocol)
 {
     socketCallCount++;
@@ -54,4 +108,22 @@ int lwip_socket(int domain, int type, int protocol)
     lastSocketType = type;
     lastSocketProtocol = protocol;
     return socketResult;
+}
+
+ssize_t lwip_sendto(int s, const void* dataptr, size_t size, int flags, const struct sockaddr* to, socklen_t tolen)
+{
+    sendToCallCount++;
+    lastSendToSocket = s;
+    lastSendToSize = size;
+    lastSendToFlags = flags;
+    lastSendToAddressLength = tolen;
+    if (size <= sizeof(lastSendToPayload))
+    {
+        (void) memcpy(lastSendToPayload, dataptr, size);
+    }
+    if (to != NULL)
+    {
+        (void) memcpy(&lastSendToAddress, to, sizeof(lastSendToAddress));
+    }
+    return (ssize_t) size;
 }

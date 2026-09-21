@@ -3,6 +3,8 @@
 
 #include "SolidSyslogExternC.h"
 
+#include <stddef.h>
+
 #include "lwip/sockets.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -18,6 +20,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int LwipSocketsFake_LastSocketDomain(void);
     int LwipSocketsFake_LastSocketType(void);
     int LwipSocketsFake_LastSocketProtocol(void);
+
+    /* lwip_sendto spy. The payload is copied, so a test reads what was sent
+     * rather than the caller's buffer. */
+    unsigned LwipSocketsFake_SendToCallCount(void);
+    int LwipSocketsFake_LastSendToSocket(void);
+    const void* LwipSocketsFake_LastSendToPayload(void);
+    size_t LwipSocketsFake_LastSendToSize(void);
+    int LwipSocketsFake_LastSendToFlags(void);
+    const struct sockaddr_in* LwipSocketsFake_LastSendToAddress(void);
+    socklen_t LwipSocketsFake_LastSendToAddressLength(void);
 
 SOLIDSYSLOG_EXTERN_C_END
 

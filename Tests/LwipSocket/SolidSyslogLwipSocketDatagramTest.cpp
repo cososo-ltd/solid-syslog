@@ -5,10 +5,14 @@ using namespace CososoTesting;
 
 #include "lwip/sockets.h"
 
+#include <cstdint>
+
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "LwipSocketsFake.h"
 #include "SolidSyslogDatagram.h"
+#include "SolidSyslogLwipSocketAddress.h"
+#include "SolidSyslogLwipSocketAddressPrivate.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipSocketDatagram.h"
 #include "SolidSyslogLwipSocketDatagramErrors.h"
@@ -17,21 +21,43 @@ using namespace CososoTesting;
 #include "SolidSyslogTunables.h"
 
 // clang-format off
+// 6514 rather than 514: 514 is 0x0202, so host and network order are the same
+// bytes and an assertion on the port would hold whichever the adapter wrote.
+static const char     TEST_PAYLOAD[]    = "<14>1 message";
+static const size_t   TEST_PAYLOAD_SIZE = sizeof(TEST_PAYLOAD) - 1U;
+static const uint16_t TEST_PORT         = 6514U;
+static const uint32_t TEST_IPV4         = 0xC000020AU;
+static const int      TEST_DESCRIPTOR   = 7;
+// clang-format on
+
+// clang-format off
 TEST_GROUP(SolidSyslogLwipSocketDatagram)
 {
     struct SolidSyslogDatagram* datagram = nullptr;
+    struct SolidSyslogAddress*  address  = nullptr;
 
     void setup() override
     {
         LwipSocketsFake_Reset();
         datagram = SolidSyslogLwipSocketDatagram_Create();
-        // Installed after the pool draw above, so an event count starts clean.
+        address  = SolidSyslogLwipSocketAddress_Create();
+        struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsSockaddrIn(address);
+        sin->sin_family         = AF_INET;
+        sin->sin_port           = lwip_htons(TEST_PORT);
+        sin->sin_addr.s_addr    = lwip_htonl(TEST_IPV4);
+        // Installed after the pool draws above, so an event count starts clean.
         ErrorHandlerFake_Install(nullptr);
     }
 
     void teardown() override
     {
+        SolidSyslogLwipSocketAddress_Destroy(address);
         SolidSyslogLwipSocketDatagram_Destroy(datagram);
+    }
+
+    enum SolidSyslogDatagramSendResult SendTo() const
+    {
+        return SolidSyslogDatagram_SendTo(datagram, TEST_PAYLOAD, TEST_PAYLOAD_SIZE, address);
     }
 };
 
@@ -45,6 +71,23 @@ TEST(SolidSyslogLwipSocketDatagram, OpenCreatesAnIpv4UdpSocket)
     LONGS_EQUAL(AF_INET, LwipSocketsFake_LastSocketDomain());
     LONGS_EQUAL(SOCK_DGRAM, LwipSocketsFake_LastSocketType());
     LONGS_EQUAL(0, LwipSocketsFake_LastSocketProtocol());
+}
+
+TEST(SolidSyslogLwipSocketDatagram, SendToWritesThePayloadToTheAddressOnTheOpenSocket)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, SendTo());
+
+    LONGS_EQUAL(1U, LwipSocketsFake_SendToCallCount());
+    LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastSendToSocket());
+    MEMCMP_EQUAL(TEST_PAYLOAD, LwipSocketsFake_LastSendToPayload(), TEST_PAYLOAD_SIZE);
+    LONGS_EQUAL(TEST_PAYLOAD_SIZE, LwipSocketsFake_LastSendToSize());
+    LONGS_EQUAL(0, LwipSocketsFake_LastSendToFlags());
+    LONGS_EQUAL(lwip_htons(TEST_PORT), LwipSocketsFake_LastSendToAddress()->sin_port);
+    LONGS_EQUAL(lwip_htonl(TEST_IPV4), LwipSocketsFake_LastSendToAddress()->sin_addr.s_addr);
+    LONGS_EQUAL(sizeof(struct sockaddr_in), LwipSocketsFake_LastSendToAddressLength());
 }
 
 // clang-format off
