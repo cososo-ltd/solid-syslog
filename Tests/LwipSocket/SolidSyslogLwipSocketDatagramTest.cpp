@@ -102,6 +102,13 @@ TEST(SolidSyslogLwipSocketDatagram, CloseClosesTheOpenSocket)
     LONGS_EQUAL(TEST_DESCRIPTOR, LwipSocketsFake_LastClosedSocket());
 }
 
+TEST(SolidSyslogLwipSocketDatagram, MaxPayloadIsTheUnknownPathAnswerBecauseTheStackCannotReportAPathMtu)
+{
+    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
+
+    LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketDatagramPool)
 {

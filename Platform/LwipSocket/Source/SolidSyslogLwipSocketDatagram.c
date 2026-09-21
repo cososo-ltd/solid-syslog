@@ -17,6 +17,7 @@
 #include "SolidSyslogLwipSocketDatagramErrors.h"
 #include "SolidSyslogLwipSocketDatagramPrivate.h"
 #include "SolidSyslogNullDatagram.h"
+#include "SolidSyslogUdpPayload.h"
 
 const struct SolidSyslogErrorSource SolidSyslogLwipSocketDatagramErrorSource = {"LwipSocketDatagram"};
 
@@ -29,6 +30,7 @@ static enum SolidSyslogDatagramSendResult LwipSocketDatagram_SendTo(
     size_t size,
     const struct SolidSyslogAddress* addr
 );
+static size_t LwipSocketDatagram_MaxPayload(struct SolidSyslogDatagram* base);
 static void LwipSocketDatagram_Close(struct SolidSyslogDatagram* base);
 
 static inline struct SolidSyslogLwipSocketDatagram* LwipSocketDatagram_SelfFromBase(struct SolidSyslogDatagram* base);
@@ -38,6 +40,7 @@ void SolidSyslogLwipSocketDatagram_Initialise(struct SolidSyslogDatagram* base)
     struct SolidSyslogLwipSocketDatagram* self = LwipSocketDatagram_SelfFromBase(base);
     self->Base.Open = LwipSocketDatagram_Open;
     self->Base.SendTo = LwipSocketDatagram_SendTo;
+    self->Base.MaxPayload = LwipSocketDatagram_MaxPayload;
     self->Base.Close = LwipSocketDatagram_Close;
 }
 
@@ -71,6 +74,14 @@ static enum SolidSyslogDatagramSendResult LwipSocketDatagram_SendTo(
     const struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsConstSockaddrIn(addr);
     (void) lwip_sendto(self->Fd, buffer, size, 0, (const struct sockaddr*) sin, sizeof(*sin));
     return SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+}
+
+/* lwIP's sockets layer exposes no IP_MTU, so the path MTU cannot be read back
+ * and the contract's unknown-path answer is the honest one. */
+static size_t LwipSocketDatagram_MaxPayload(struct SolidSyslogDatagram* base)
+{
+    (void) base;
+    return SolidSyslogUdpPayload_UnknownPath(false);
 }
 
 static void LwipSocketDatagram_Close(struct SolidSyslogDatagram* base)
