@@ -85,12 +85,7 @@ const struct addrinfo* LwipNetdbFake_LastFreed(void)
     return lastFreed;
 }
 
-int lwip_getaddrinfo(
-    const char* nodename,
-    const char* servname,
-    const struct addrinfo* hints,
-    struct addrinfo** res
-)
+int lwip_getaddrinfo(const char* nodename, const char* servname, const struct addrinfo* hints, struct addrinfo** res)
 {
     getAddrInfoCallCount++;
     lastNodename = nodename;

@@ -68,14 +68,13 @@ static inline struct SolidSyslogAddress* LwipSocketAddress_HandleFromIndex(size_
 void SolidSyslogLwipSocketAddress_Destroy(struct SolidSyslogAddress* base)
 {
     size_t index = LwipSocketAddress_IndexFromHandle(base);
-    bool released =
-        SolidSyslogPoolAllocator_IndexIsValid(&LwipSocketAddress_Allocator, index) &&
-        SolidSyslogPoolAllocator_FreeIfInUse(
-            &LwipSocketAddress_Allocator,
-            index,
-            LwipSocketAddress_CleanupAtIndex,
-            NULL
-        );
+    bool released = SolidSyslogPoolAllocator_IndexIsValid(&LwipSocketAddress_Allocator, index) &&
+                    SolidSyslogPoolAllocator_FreeIfInUse(
+                        &LwipSocketAddress_Allocator,
+                        index,
+                        LwipSocketAddress_CleanupAtIndex,
+                        NULL
+                    );
     if (!released)
     {
         LwipSocketAddress_Report(

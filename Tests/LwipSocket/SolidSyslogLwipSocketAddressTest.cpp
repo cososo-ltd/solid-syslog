@@ -6,14 +6,14 @@ using namespace CososoTesting;
 #include "lwip/sockets.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
-#define CHECK_IS_FALLBACK(handle, pool)                                            \
-    {                                                                              \
-        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");             \
-        for (auto* slot : (pool))                                                  \
-        {                                                                          \
-            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)"); \
+#define CHECK_IS_FALLBACK(handle, pool)                                                \
+    {                                                                                  \
+        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
+        for (auto* slot : (pool))                                                      \
+        {                                                                              \
+            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
             CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
-        }                                                                          \
+        }                                                                              \
     }
 
 #include "ConfigLockFake.h"
@@ -51,9 +51,9 @@ TEST(SolidSyslogLwipSocketAddress, CreateReturnsNonNull)
 TEST(SolidSyslogLwipSocketAddress, AsSockaddrInRoundTripsBytes)
 {
     struct sockaddr_in expected = {};
-    expected.sin_family         = AF_INET;
-    expected.sin_port           = lwip_htons(514U);
-    expected.sin_addr.s_addr    = lwip_htonl(0x7F000001U);
+    expected.sin_family = AF_INET;
+    expected.sin_port = lwip_htons(514U);
+    expected.sin_addr.s_addr = lwip_htonl(0x7F000001U);
 
     *SolidSyslogLwipSocketAddress_AsSockaddrIn(address) = expected;
 
@@ -63,10 +63,10 @@ TEST(SolidSyslogLwipSocketAddress, AsSockaddrInRoundTripsBytes)
 
 TEST(SolidSyslogLwipSocketAddress, CreateZeroesTheSockaddrFromAnyPriorSlotContents)
 {
-    struct sockaddr_in dirty                        = {};
-    dirty.sin_family                                = AF_INET;
-    dirty.sin_port                                  = lwip_htons(9999U);
-    dirty.sin_addr.s_addr                           = lwip_htonl(0xDEADBEEFU);
+    struct sockaddr_in dirty = {};
+    dirty.sin_family = AF_INET;
+    dirty.sin_port = lwip_htons(9999U);
+    dirty.sin_addr.s_addr = lwip_htonl(0xDEADBEEFU);
     *SolidSyslogLwipSocketAddress_AsSockaddrIn(address) = dirty;
     SolidSyslogLwipSocketAddress_Destroy(address);
 

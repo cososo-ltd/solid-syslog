@@ -310,8 +310,8 @@ TEST(SolidSyslogLwipSocketResolverPool, DestroyOfStaleHandleReportsWarning)
 
 TEST(SolidSyslogLwipSocketResolverPool, ResolvingAfterDestroyIsASafeNoOp)
 {
-    struct SolidSyslogResolver* stale   = SolidSyslogLwipSocketResolver_Create();
-    struct SolidSyslogAddress*  address = SolidSyslogLwipSocketAddress_Create();
+    struct SolidSyslogResolver* stale = SolidSyslogLwipSocketResolver_Create();
+    struct SolidSyslogAddress* address = SolidSyslogLwipSocketAddress_Create();
     SolidSyslogLwipSocketResolver_Destroy(stale);
     LwipNetdbFake_Reset();
 

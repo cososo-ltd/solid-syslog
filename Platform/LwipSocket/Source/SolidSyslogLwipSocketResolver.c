@@ -82,7 +82,7 @@ static bool LwipSocketResolver_Resolve(
         if (LwipSocketResolver_IsIpv4(info) == true)
         {
             struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsSockaddrIn(result);
-            *sin = *(const struct sockaddr_in*) (const void*) info->ai_addr;
+            *sin = *(struct sockaddr_in*) info->ai_addr;
             sin->sin_port = lwip_htons(port);
             resolved = true;
         }

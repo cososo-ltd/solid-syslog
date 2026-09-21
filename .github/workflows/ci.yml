@@ -946,6 +946,7 @@ jobs:
           -DLWIP_UDP=1
           -DLWIP_TCP=1
           -DLWIP_TCP_KEEPALIVE=1
+          -DLWIP_SOCKET=1
           -DconfigSUPPORT_STATIC_ALLOCATION=1
           -DconfigUSE_MUTEXES=1
           -DipconfigUSE_TCP=1
@@ -964,6 +965,7 @@ jobs:
           -IPlatform/CmsisRtos/Interface
           -IPlatform/PlusTcp/Interface
           -IPlatform/LwipRaw/Interface
+          -IPlatform/LwipSocket/Interface
           -IPlatform/FatFs/Interface
           -IPlatform/LittleFs/Interface
           -IPlatform/PlusFat/Interface
@@ -978,6 +980,7 @@ jobs:
           Platform/CmsisRtos/Source/
           Platform/PlusTcp/Source/
           Platform/LwipRaw/Source/
+          Platform/LwipSocket/Source/
           Platform/FatFs/Source/
           Platform/LittleFs/Source/
           Platform/PlusFat/Source/
@@ -1011,6 +1014,7 @@ jobs:
           -DLWIP_UDP=1
           -DLWIP_TCP=1
           -DLWIP_TCP_KEEPALIVE=1
+          -DLWIP_SOCKET=1
           -DconfigSUPPORT_STATIC_ALLOCATION=1
           -DconfigUSE_MUTEXES=1
           -DipconfigUSE_TCP=1
@@ -1029,6 +1033,7 @@ jobs:
           -IPlatform/CmsisRtos/Interface
           -IPlatform/PlusTcp/Interface
           -IPlatform/LwipRaw/Interface
+          -IPlatform/LwipSocket/Interface
           -IPlatform/FatFs/Interface
           -IPlatform/LittleFs/Interface
           -IPlatform/PlusFat/Interface
@@ -1042,6 +1047,7 @@ jobs:
           Platform/CmsisRtos/Source/
           Platform/PlusTcp/Source/
           Platform/LwipRaw/Source/
+          Platform/LwipSocket/Source/
           Platform/FatFs/Source/
           Platform/LittleFs/Source/
           Platform/PlusFat/Source/
@@ -1060,6 +1066,7 @@ jobs:
             -DLWIP_UDP=1 \
             -DLWIP_TCP=1 \
             -DLWIP_TCP_KEEPALIVE=1 \
+            -DLWIP_SOCKET=1 \
             -DconfigSUPPORT_STATIC_ALLOCATION=1 \
             -DconfigUSE_MUTEXES=1 \
             -DipconfigUSE_TCP=1 \
@@ -1078,6 +1085,7 @@ jobs:
             -IPlatform/CmsisRtos/Interface \
             -IPlatform/PlusTcp/Interface \
             -IPlatform/LwipRaw/Interface \
+            -IPlatform/LwipSocket/Interface \
             -IPlatform/FatFs/Interface \
             -IPlatform/LittleFs/Interface \
             -IPlatform/PlusFat/Interface \
@@ -1092,6 +1100,7 @@ jobs:
             Platform/CmsisRtos/Source/ \
             Platform/PlusTcp/Source/ \
             Platform/LwipRaw/Source/ \
+            Platform/LwipSocket/Source/ \
             Platform/FatFs/Source/ \
             Platform/LittleFs/Source/ \
             Platform/PlusFat/Source/ \

@@ -287,10 +287,11 @@ third-party API contract (the public `Send` / `SendTo` interface) is
 - **Pragmatic level** — `Platform/*/Source/`: the same `SelfFromBase` shape in
   each adapter, the per-platform Address downcasts, and the callback `void*`
   casts of sub-case (c). 66 sites, across the StdAtomic, FatFs, FreeRtos,
-  LwipRaw, MbedTls, OpenSsl, PlusFat, PlusTcp, Posix and Windows packs.
+  LwipRaw, LwipSocket, MbedTls, OpenSsl, PlusFat, PlusTcp, Posix and Windows
+  packs.
 
-80 line-specific suppressions in total — 12 against rule 11.2, 57 against 11.3
-and 11 against 11.5. The deviation does not extend to `Tests/` or `Bdd/`, where
+91 line-specific suppressions in total — 15 against rule 11.2, 67 against 11.3
+and 9 against 11.5. The deviation does not extend to `Tests/` or `Bdd/`, where
 these rules are not enforced.
 
 A new class added to any vtable role inherits this shape, and its suppressions

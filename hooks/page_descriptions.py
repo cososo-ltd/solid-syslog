@@ -112,6 +112,14 @@ DESCRIPTIONS = {
         "Wire SolidSyslog to the lwIP Raw API: what the adapter fills, what you "
         "supply, and how it works under NO_SYS=1 beside other lwIP subsystems."
     ),
+    "platforms/lwipsocket/index.md": (
+        "The lwIP Sockets API adapter pack, for NO_SYS=0 builds where a task may "
+        "block and no marshal seam is needed."
+    ),
+    "platforms/lwipsocket/setup.md": (
+        "Wire SolidSyslog to the lwIP Sockets API: the lwipopts.h it needs, what it "
+        "costs in flash, and the thread that must not call it."
+    ),
     "platforms/openssl/index.md": (
         "The OpenSSL adapter pack: TLS transport for the Stream role, and keyed "
         "at-rest crypto for the SecurityPolicy role, on hosted targets."

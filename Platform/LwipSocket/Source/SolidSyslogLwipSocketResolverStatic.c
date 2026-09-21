@@ -56,14 +56,13 @@ struct SolidSyslogResolver* SolidSyslogLwipSocketResolver_Create(void)
 void SolidSyslogLwipSocketResolver_Destroy(struct SolidSyslogResolver* base)
 {
     size_t index = LwipSocketResolver_IndexFromHandle(base);
-    bool released =
-        SolidSyslogPoolAllocator_IndexIsValid(&LwipSocketResolver_Allocator, index) &&
-        SolidSyslogPoolAllocator_FreeIfInUse(
-            &LwipSocketResolver_Allocator,
-            index,
-            LwipSocketResolver_CleanupAtIndex,
-            NULL
-        );
+    bool released = SolidSyslogPoolAllocator_IndexIsValid(&LwipSocketResolver_Allocator, index) &&
+                    SolidSyslogPoolAllocator_FreeIfInUse(
+                        &LwipSocketResolver_Allocator,
+                        index,
+                        LwipSocketResolver_CleanupAtIndex,
+                        NULL
+                    );
     if (!released)
     {
         LwipSocketResolver_Report(
