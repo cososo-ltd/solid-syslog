@@ -70,7 +70,14 @@ static bool LwipSocketResolver_Resolve(
     struct addrinfo* info = NULL;
     bool resolved = false;
 
-    if (lwip_getaddrinfo(host, NULL, &hints, &info) == GETADDRINFO_SUCCESS)
+    /* EAI_FAMILY is the same fault seen from the other side: the stack will not
+     * serve the family asked for, rather than answering in another one. Every
+     * other failure is a lookup that may answer later, and is left to the
+     * sender's delivery reporting. */
+    int lookup = lwip_getaddrinfo(host, NULL, &hints, &info);
+    bool isFamilyUnsupported = (lookup == EAI_FAMILY);
+
+    if (lookup == GETADDRINFO_SUCCESS)
     {
         if (LwipSocketResolver_IsIpv4(info) == true)
         {
@@ -81,15 +88,20 @@ static bool LwipSocketResolver_Resolve(
         }
         else
         {
-            LwipSocketResolver_Report(
-                SOLIDSYSLOG_SEVERITY_ERROR,
-                SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
-                SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
-            );
+            isFamilyUnsupported = true;
         }
         /* Freed on both paths: the answer comes out of a fixed pool, so a
          * refusal that keeps it spends the pool on destinations we reject. */
         lwip_freeaddrinfo(info);
+    }
+
+    if (isFamilyUnsupported == true)
+    {
+        LwipSocketResolver_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+            SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
+        );
     }
 
     return resolved;

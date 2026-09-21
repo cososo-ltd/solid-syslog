@@ -140,3 +140,26 @@ TEST(SolidSyslogLwipSocketResolver, AnAnswerInAnotherFamilyLeavesTheCallersAddre
     LONGS_EQUAL(0U, Result()->sin_port);
     LONGS_EQUAL(0U, Result()->sin_addr.s_addr);
 }
+
+TEST(SolidSyslogLwipSocketResolver, AStackThatWillNotServeTheIpv4HintIsReported)
+{
+    LwipNetdbFake_SetReturn(EAI_FAMILY);
+
+    CHECK_FALSE(Resolve("collector.example.test", 514U));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogLwipSocketResolverErrorSource,
+        SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+        SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
+    );
+}
+
+TEST(SolidSyslogLwipSocketResolver, AStackThatWillNotServeTheIpv4HintFreesNothing)
+{
+    LwipNetdbFake_SetReturn(EAI_FAMILY);
+
+    CHECK_FALSE(Resolve("collector.example.test", 514U));
+
+    LONGS_EQUAL(0U, LwipNetdbFake_FreeAddrInfoCallCount());
+}
