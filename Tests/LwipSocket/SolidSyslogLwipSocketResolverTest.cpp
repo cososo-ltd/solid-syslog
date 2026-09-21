@@ -7,6 +7,7 @@ using namespace CososoTesting;
 
 #include <cstdint>
 
+#include "ErrorHandlerFake.h"
 #include "LwipNetdbFake.h"
 #include "SolidSyslogLwipSocketAddress.h"
 #include "SolidSyslogLwipSocketAddressPrivate.h"
@@ -25,6 +26,8 @@ TEST_GROUP(SolidSyslogLwipSocketResolver)
         LwipNetdbFake_Reset();
         resolver = SolidSyslogLwipSocketResolver_Create();
         result   = SolidSyslogLwipSocketAddress_Create();
+        // Installed after the pool draws above, so an event count starts clean.
+        ErrorHandlerFake_Install(nullptr);
     }
 
     void teardown() override
@@ -78,4 +81,26 @@ TEST(SolidSyslogLwipSocketResolver, ResolveFreesTheAnswerItWasGiven)
     CHECK_TRUE(Resolve("collector.example.test", 514U));
 
     LONGS_EQUAL(1U, LwipNetdbFake_FreeAddrInfoCallCount());
+}
+
+TEST(SolidSyslogLwipSocketResolver, AFailedLookupIsRefusedWithoutAnEvent)
+{
+    LwipNetdbFake_SetReturn(EAI_FAIL);
+
+    CHECK_FALSE(Resolve("collector.example.test", 514U));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+    LONGS_EQUAL(0U, LwipNetdbFake_FreeAddrInfoCallCount());
+}
+
+TEST(SolidSyslogLwipSocketResolver, AFailedLookupLeavesTheCallersAddressAlone)
+{
+    LwipNetdbFake_SetIpv4Result("192.0.2.10");
+    CHECK_TRUE(Resolve("collector.example.test", 514U));
+    LwipNetdbFake_SetReturn(EAI_FAIL);
+
+    CHECK_FALSE(Resolve("elsewhere.example.test", 9999U));
+
+    LONGS_EQUAL(lwip_htons(514U), Result()->sin_port);
+    LONGS_EQUAL(lwip_htonl(0xC000020AU), Result()->sin_addr.s_addr);
 }
