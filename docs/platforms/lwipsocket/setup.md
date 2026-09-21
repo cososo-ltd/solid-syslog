@@ -17,9 +17,9 @@ page is the wiring.
 #define LWIP_SOCKET_SELECT 1 /* the stream's bounded connect; on by default */
 ```
 
-Your `arch/cc.h` must also provide `errno` and its codes, the way lwIP asks of
-a port that does not set `LWIP_PROVIDE_ERRNO`, because the transports read it
-after a refused call.
+`errno` has to reach the adapters as well, because they read it after a refused
+call. [What your build must enable](index.md#what-your-build-must-enable) has
+the ways lwIP lets you say where it comes from.
 
 Turning the sockets layer on grows the upstream build as well as the
 configuration: lwIP compiles `api/sockets.c`, `api/api_lib.c`, `api/api_msg.c`,

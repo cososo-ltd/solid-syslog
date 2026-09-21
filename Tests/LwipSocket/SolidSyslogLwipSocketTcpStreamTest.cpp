@@ -372,6 +372,43 @@ TEST(SolidSyslogLwipSocketTcpStream, AShortWriteIsTakenAsADeadConnectionAndClose
     CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, SendRefusesTheRecordWhenThePeerHasClosedItsEnd)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(Open());
+    LwipSocketsFake_SetRecvResult(0, 0);
+
+    CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_PAYLOAD, TEST_PAYLOAD_SIZE));
+
+    LONGS_EQUAL(0U, LwipSocketsFake_SendCallCount());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, SendRefusesTheRecordWhenTheStackReportsAFault)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(Open());
+    LwipSocketsFake_SetRecvResult(-1, ECONNRESET);
+
+    CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_PAYLOAD, TEST_PAYLOAD_SIZE));
+
+    LONGS_EQUAL(0U, LwipSocketsFake_SendCallCount());
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, SendLeavesWhatThePeerSentForAReadToCollect)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(Open());
+    LwipSocketsFake_SetRecvPayload(TEST_PAYLOAD);
+    char buffer[64] = {};
+
+    CHECK_TRUE(SolidSyslogStream_Send(stream, TEST_PAYLOAD, TEST_PAYLOAD_SIZE));
+
+    LONGS_EQUAL(TEST_PAYLOAD_SIZE, SolidSyslogStream_Read(stream, buffer, sizeof(buffer)));
+    MEMCMP_EQUAL(TEST_PAYLOAD, buffer, TEST_PAYLOAD_SIZE);
+}
+
 TEST(SolidSyslogLwipSocketTcpStream, ReadAnswersTheBytesThePeerSent)
 {
     LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);

@@ -1,31 +1,32 @@
 # CMSIS-RTOS2 + lwIP BDD target
 
 `SolidSyslogBddTargetCmsis` is a runnable BDD target for QEMU `mps2-an385`
-(Cortex-M3), and the home for the three platform packs E40, E36 and E35 add.
+(Cortex-M3), and the home of the three platform packs E40, E36 and E35 added.
 
-It exists so each of those packs can be swapped in one at a time against a lane
-that is already green, which is what makes a failure attributable to the one
-thing that changed. The two existing QEMU targets keep their own lanes and their
-own coverage; nothing is displaced.
+It exists so each of those packs could be swapped in one at a time against a
+lane that was already green, which is what made a failure attributable to the
+one thing that changed. The two existing QEMU targets keep their own lanes and
+their own coverage; nothing is displaced.
 
 It is selected by `SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP` (see the top-level
 `CMakeLists.txt`), built by the `cmsis-cross-lwip` preset, and run on QEMU by the
 `bdd-cmsis-qemu-lwip` CI lane against its own syslog-ng oracle.
 
-## What it links, and what is still to swap
+## What it links
 
-The OS pack is `CmsisRtos` (S40.04): this target's own code calls CMSIS-RTOS2,
-not the kernel beneath it. The rest of the stack is still `LwipRaw`, `MbedTls`
-and `FatFs`.
+All three swaps are done, so the target now runs the stack it is named for:
+`CmsisRtos`, `LittleFs` and `LwipSocket`, with `MbedTls` for TLS. Its own code
+calls CMSIS-RTOS2 rather than the kernel beneath it, and the lwIP Sockets API
+rather than the Raw one, so there is no marshal seam in `main.c`.
 
-| Story | Swap | State |
-|---|---|---|
-| S40.04 | OS pack `FreeRtos` -> `CmsisRtos`, over a CMSIS-RTOS2 layer on the same kernel | done |
-| S36.03 | File pack `FatFs` -> `LittleFs`, over the shared semihosting disk | to do |
-| S35.03 | Network pack `LwipRaw` -> `LwipSocket`, with `LWIP_SOCKET=1` | to do |
+| Story | Swap |
+|---|---|
+| S40.04 | OS pack `FreeRtos` -> `CmsisRtos`, over a CMSIS-RTOS2 layer on the same kernel |
+| S36.03 | File pack `FatFs` -> `LittleFs`, over the shared semihosting disk |
+| S35.03 | Network pack `LwipRaw` -> `LwipSocket`, with `LWIP_SOCKET=1` |
 
-Each swap changes one variable against a lane that was already green, so a
-failure belongs to the pack that just changed.
+Each swap changed one variable against a lane that was already green, so a
+failure belonged to the pack that had just changed.
 
 ## Where the kernel lives
 

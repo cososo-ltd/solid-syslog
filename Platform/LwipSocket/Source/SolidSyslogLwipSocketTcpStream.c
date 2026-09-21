@@ -46,6 +46,7 @@ static SolidSyslogSsize LwipSocketTcpStream_Read(struct SolidSyslogStream* base,
 static void LwipSocketTcpStream_Close(struct SolidSyslogStream* base);
 static uint32_t LwipSocketTcpStream_Version(struct SolidSyslogStream* base);
 static void LwipSocketTcpStream_CloseSocket(struct SolidSyslogLwipSocketTcpStream* self);
+static bool LwipSocketTcpStream_PeerIsStillThere(struct SolidSyslogLwipSocketTcpStream* self);
 static bool LwipSocketTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
 static inline bool LwipSocketTcpStream_WouldBlock(int err);
 
@@ -253,14 +254,34 @@ static bool LwipSocketTcpStream_Connect(struct SolidSyslogLwipSocketTcpStream* s
 static bool LwipSocketTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
 {
     struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
-    ssize_t sent = lwip_send(self->Fd, buffer, size, 0);
-    bool ok = LwipSocketTcpStream_WroteAllBytes(sent, size);
+    bool ok = LwipSocketTcpStream_PeerIsStillThere(self);
 
+    if (ok)
+    {
+        ssize_t sent = lwip_send(self->Fd, buffer, size, 0);
+        ok = LwipSocketTcpStream_WroteAllBytes(sent, size);
+    }
     if (!ok)
     {
         LwipSocketTcpStream_CloseSocket(self);
     }
     return ok;
+}
+
+/* A peer that has closed its end leaves the socket writable, so lwip_send
+ * would take the record and the connection would die with it still in flight -
+ * and the Stream contract has the record gone from the caller's hands the
+ * moment Send returns true. Ask first, so a half-closed connection fails the
+ * send and store-and-forward replays the record instead of losing it. */
+static bool LwipSocketTcpStream_PeerIsStillThere(struct SolidSyslogLwipSocketTcpStream* self)
+{
+    char discard = 0;
+    ssize_t peeked = lwip_recv(self->Fd, &discard, sizeof(discard), MSG_PEEK);
+    /* Captured immediately after lwip_recv so the test below satisfies
+     * MISRA 22.10 - no intervening library call between the errno-setting
+     * function and the read. */
+    int peekErrno = (peeked < 0) ? errno : 0;
+    return (peeked > 0) || ((peeked < 0) && LwipSocketTcpStream_WouldBlock(peekErrno));
 }
 
 /* Non-blocking single-call contract: a short write or any error means the

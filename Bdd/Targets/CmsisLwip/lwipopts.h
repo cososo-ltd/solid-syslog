@@ -1,13 +1,12 @@
-/* lwIP options for the QEMU mps2-an385 FreeRTOS + lwIP BDD target.
+/* lwIP options for the QEMU mps2-an385 CMSIS-RTOS2 + lwIP BDD target.
  *
- * S28.09 flipped this from the S28.07 link-probe (NO_SYS=1, no netif) to a
- * worked NO_SYS=0 runtime: lwIP runs its own "tcpip" thread, a LAN9118 netif
- * (netif/EthernetIf.c) drives the wire, and the SolidSyslog LwipRaw adapters
- * reach the core through the tcpip_callback marshal (S28.06). We still only
- * use lwIP's Raw API (the adapters call udp_ / tcp_ functions directly via the
- * marshal),
- * so the sequential netconn / socket API stays OFF - the tcpip thread exists
- * for RX delivery (tcpip_input), timeouts, and marshalled callbacks only.
+ * NO_SYS=0: lwIP runs its own "tcpip" thread and a LAN9118 netif
+ * (netif/EthernetIf.c) drives the wire. The sequential netconn and socket
+ * layers are ON, because the SolidSyslog LwipSocket adapters call the
+ * lwip_-prefixed socket entry points from whichever task they run on; the
+ * tcpip thread serves them, RX delivery (tcpip_input) and the timers. No
+ * marshal seam - that is what this tier buys over the Raw API one, which the
+ * sibling lwIP target still proves.
  *
  * Memory is lwIP-pool managed (no libc malloc) so the footprint is the static,
  * embedded-realistic shape an integrator ships - not the host-test shortcut
@@ -19,9 +18,11 @@
 #define NO_SYS 0
 #define SYS_LIGHTWEIGHT_PROT 1
 #define LWIP_TCPIP_CORE_LOCKING 1
-/* Raw API only - no sequential netconn / BSD-socket API. */
-#define LWIP_NETCONN 0
-#define LWIP_SOCKET 0
+/* Sockets, and netconn with it - lwIP builds the socket layer on netconn.
+ * LWIP_SOCKET_SELECT is left at its default of 1; the stream's bounded connect
+ * is what needs it. */
+#define LWIP_NETCONN 1
+#define LWIP_SOCKET 1
 
 /* tcpip thread. Priorities are numeric here: lwipopts.h is processed via
  * lwip/opt.h before any FreeRTOS header, so configMAX_PRIORITIES (56, which
@@ -59,17 +60,16 @@
 #define LWIP_IGMP 0
 
 /* --- DNS (local hostlist only) ---------------------------------------- */
-/* LWIP_DNS on so SolidSyslogLwipRawDnsResolver can resolve the oracle by name
+/* LWIP_DNS on so SolidSyslogLwipSocketResolver can resolve the oracle by name
  * ("syslog-ng") instead of the numeric 10.0.2.2 it was pinned to. We do NOT
  * configure a DNS server: the QEMU slirp forwarder (10.0.2.3) would resolve the
  * "syslog-ng" docker alias to a docker-bridge IP the guest has no route to -
  * only 10.0.2.2 (slirp NAT -> shared-namespace host loopback) reaches the
  * oracle. So we map the name statically via DNS_LOCAL_HOSTLIST: dns_gethostbyname
  * consults the hostlist before any server and returns ERR_OK synchronously for a
- * hit, so the resolve never leaves the guest. This exercises only the resolver's
- * synchronous local-hostlist branch end-to-end; the async / over-the-wire /
- * timeout branches are unit-tested (Tests/Lwip/SolidSyslogLwipRawDnsResolverTest)
- * - slirp cannot hand the guest a reachable address for the docker alias.
+ * hit, so lwip_getaddrinfo answers without the resolve leaving the guest. The
+ * over-the-wire and timeout paths are unit-tested instead - slirp cannot hand
+ * the guest a reachable address for the docker alias.
  * DNS_LOCAL_HOSTLIST_INIT is expanded inside lwIP's dns.c, where
  * DNS_LOCAL_HOSTLIST_ELEM (lwip/dns.h) and IPADDR4_INIT_BYTES (lwip/ip_addr.h)
  * are in scope. */
@@ -95,10 +95,19 @@
 #define MEMP_NUM_PBUF 16
 #define MEMP_NUM_RAW_PCB 2
 #define MEMP_NUM_ARP_QUEUE 4
-/* tcpip thread message pools: API callbacks (the marshal) + inbound packets
- * posted by the netif RX task via tcpip_input. */
+/* tcpip thread message pools: API calls made by the netconn layer on behalf of
+ * a socket + inbound packets posted by the netif RX task via tcpip_input. */
 #define MEMP_NUM_TCPIP_MSG_API 8
 #define MEMP_NUM_TCPIP_MSG_INPKT 8
+
+/* Sockets / netconn pools. Three sockets are live at once at most - the UDP
+ * datagram, the plain-TCP stream, and the TCP stream under TLS - but a
+ * reconnect can overlap a close, so there is headroom above that. MEMP_NUM_NETDB
+ * defaults to 1 and every resolve takes one, which is enough only because
+ * lwip_freeaddrinfo runs on every path the adapter can leave by. */
+#define MEMP_NUM_NETCONN 6
+#define MEMP_NUM_NETBUF 8
+#define MEMP_NUM_SELECT_CB 4
 
 #define PBUF_POOL_SIZE 16
 

@@ -1,25 +1,27 @@
-/* FreeRTOS + lwIP (Raw API, NO_SYS=0) SolidSyslog BDD target for QEMU
+/* CMSIS-RTOS2 + lwIP (Sockets API, NO_SYS=0) SolidSyslog BDD target for QEMU
  * mps2-an385.
  *
- * This is the CmsisLwip target, which is named for the stack it ends up with
- * rather than the one it links today - see README.md for what swaps in and in
- * which order. Until the OS pack is swapped, everything below is the proven
- * stack, and that is deliberate: the lane is green before any new platform
- * code exists.
+ * This is the CmsisLwip target, and with S35.03 it links the stack it is named
+ * for - see README.md.
  *
  * The platform-independent pipeline - SolidSyslog lifecycle, LittleFS-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
  * (shared with the FreeRTOS-Plus-TCP target, S29.03). This file keeps only the
- * lwIP network backend behind the pipeline seam: the tcpip thread + tcpip_callback
- * marshal (S28.06), the hand-written LAN9118 netif (netif/EthernetIf.c), the
- * static-IP bring-up + gateway ARP warm-up, the LwipRaw sender wiring (UDP +
- * octet-framed TCP + TLS/mTLS via mbedTLS over a second LwipRaw TCP), and the
- * RFC 5424 HOSTNAME read from the netif.
+ * lwIP network backend behind the pipeline seam: the tcpip thread, the
+ * hand-written LAN9118 netif (netif/EthernetIf.c), the static-IP bring-up +
+ * gateway ARP warm-up, the LwipSocket sender wiring (UDP + octet-framed TCP +
+ * TLS/mTLS via mbedTLS over a second LwipSocket TCP), and the RFC 5424 HOSTNAME
+ * read from the netif.
+ *
+ * There is no marshal seam here. The Sockets API is thread-safe, so every
+ * adapter call runs on the task that made it; the only lwIP core touch this
+ * file makes outside the tcpip thread is the ARP cache read below, which takes
+ * the core lock itself.
  *
  * Static IPv4 (10.0.2.15) on the QEMU slirp network, host reachable at the slirp
  * gateway 10.0.2.2. The oracle is addressed by name ("syslog-ng") via
- * SolidSyslogLwipRawDnsResolver; lwIP's DNS_LOCAL_HOSTLIST (see lwipopts.h) maps
+ * SolidSyslogLwipSocketResolver; lwIP's DNS_LOCAL_HOSTLIST (see lwipopts.h) maps
  * that name statically to 10.0.2.2 (slirp can't return a reachable address for
  * the docker alias over real DNS). */
 
@@ -32,11 +34,10 @@
 #include "BddTargetTlsSender.h"
 
 #include "SolidSyslogHeaderField.h"
-#include "SolidSyslogLwipRawAddress.h"
-#include "SolidSyslogLwipRawDatagram.h"
-#include "SolidSyslogLwipRawDnsResolver.h"
-#include "SolidSyslogLwipRawMarshal.h"
-#include "SolidSyslogLwipRawTcpStream.h"
+#include "SolidSyslogLwipSocketAddress.h"
+#include "SolidSyslogLwipSocketDatagram.h"
+#include "SolidSyslogLwipSocketResolver.h"
+#include "SolidSyslogLwipSocketTcpStream.h"
 #include "SolidSyslogSender.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogSwitchingSender.h"
@@ -59,8 +60,8 @@ static struct netif networkInterface;
 /* Gateway IP, kept at file scope so the ARP warm-up can reach it after bring-up. */
 static ip4_addr_t gatewayAddress;
 
-/* LwipRaw sender adapters - built by BuildSender on the interactive task, torn
- * down by TeardownNetwork. */
+/* LwipSocket sender adapters - built by BuildSender on the interactive task,
+ * torn down by TeardownNetwork. */
 static struct SolidSyslogResolver* resolver = NULL;
 static struct SolidSyslogDatagram* datagram = NULL;
 static struct SolidSyslogAddress* udpAddress = NULL;
@@ -70,10 +71,9 @@ static struct SolidSyslogAddress* tcpAddress = NULL;
 static struct SolidSyslogSender* tcpSender = NULL;
 static struct SolidSyslogSender* switchingSender = NULL;
 
-static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context);
 static void NetworkBringUp(void* context);
 static void WarmUpGatewayArp(void);
-static void GatewayResolvedQuery(void* context);
+static bool GatewayIsResolved(void);
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context);
 static struct SolidSyslogSender* BuildSender(void);
 static void TeardownNetwork(void);
@@ -106,9 +106,6 @@ int main(void)
 {
     BddTargetFreeRtosPipeline_InitConsole(CMSDK_UART0_BASE_ADDRESS);
     BddTargetFreeRtosPipeline_SetConfig(&PIPELINE_CONFIG);
-
-    /* Pin every LwipRaw adapter call onto the tcpip thread. */
-    SolidSyslogLwipRaw_SetMarshal(LwipTcpipMarshal);
 
     /* Create the tcpip thread + mbox + core-lock mutex. Pre-scheduler safe; the
      * thread runs once the scheduler starts. The netif bring-up is deferred to
@@ -159,19 +156,10 @@ static void NetworkBringUp(void* context)
     netif_set_link_up(&networkInterface);
 
     /* Kick off ARP resolution for the gateway now, so the cache is warm before
-     * the first datagram (SolidSyslogLwipRawDatagram sends PBUF_REF packets; an
-     * ARP miss on the first send would drop it). The reply is processed by this
-     * tcpip thread; the interactive task waits via WarmUpGatewayArp. */
+     * the first datagram; an ARP miss on the first send would drop it. The reply
+     * is processed by this tcpip thread; the interactive task waits via
+     * WarmUpGatewayArp. */
     (void) etharp_request(&networkInterface, &gatewayAddress);
-}
-
-/* Marshalled onto the tcpip thread: report whether the gateway's MAC is in the
- * ARP cache yet. The bool* context is set to the result. */
-static void GatewayResolvedQuery(void* context)
-{
-    struct eth_addr* ethRet = NULL;
-    const ip4_addr_t* ipRet = NULL;
-    *(bool*) context = (etharp_find_addr(&networkInterface, &gatewayAddress, &ethRet, &ipRet) >= 0);
 }
 
 /* Blocks the calling (interactive) task - never the tcpip thread - until the
@@ -187,10 +175,9 @@ static void WarmUpGatewayArp(void)
 
     for (int attempt = 0; attempt < WARM_UP_ATTEMPTS; attempt++)
     {
-        bool resolved = false;
-        /* Same synchronous marshal the LwipRaw adapters use: the query runs under
-         * the core lock and writes `resolved` before this returns. */
-        LwipTcpipMarshal(GatewayResolvedQuery, &resolved);
+        LOCK_TCPIP_CORE();
+        bool resolved = GatewayIsResolved();
+        UNLOCK_TCPIP_CORE();
         if (resolved)
         {
             break;
@@ -199,18 +186,13 @@ static void WarmUpGatewayArp(void)
     }
 }
 
-static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
+/* Whether the gateway's MAC is in the ARP cache yet. Reads lwIP core state, so
+ * the caller holds the core lock. */
+static bool GatewayIsResolved(void)
 {
-    /* The synchronous-marshal contract (SolidSyslogLwipRawMarshal.h) requires the
-     * callback's results to be ready when this returns. lwIP's tcpip_callback only
-     * blocks until the work is queued, so it cannot satisfy that alone.
-     * LWIP_TCPIP_CORE_LOCKING is enabled, so we run the callback in the caller's
-     * own task context under the core lock instead: unconditionally synchronous,
-     * independent of task priority, no per-send mailbox message. The lock is
-     * recursive and our callbacks never re-marshal, so this cannot self-deadlock. */
-    LOCK_TCPIP_CORE();
-    callback(context);
-    UNLOCK_TCPIP_CORE();
+    struct eth_addr* ethRet = NULL;
+    const ip4_addr_t* ipRet = NULL;
+    return (etharp_find_addr(&networkInterface, &gatewayAddress, &ethRet, &ipRet) >= 0);
 }
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
@@ -223,9 +205,10 @@ static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 }
 
 /* Bring up the netif on the tcpip thread, warm the gateway ARP, then build the
- * LwipRaw SwitchingSender: UDP, octet-framed TCP, and a TLS/mTLS slot (mbedTLS
- * over a second LwipRaw TCP stream). Default transport UDP. Runs on the
- * interactive task - LwipRaw adapters touch a started lwIP core, which is now up. */
+ * LwipSocket SwitchingSender: UDP, octet-framed TCP, and a TLS/mTLS slot (mbedTLS
+ * over a second LwipSocket TCP stream). Default transport UDP. Runs on the
+ * interactive task - the adapters open sockets against a started lwIP core,
+ * which is now up. */
 static struct SolidSyslogSender* BuildSender(void)
 {
     /* Bring the netif up on the tcpip thread now the scheduler is running, then
@@ -233,17 +216,15 @@ static struct SolidSyslogSender* BuildSender(void)
     (void) tcpip_callback(NetworkBringUp, NULL);
     WarmUpGatewayArp();
 
-    /* SolidSyslogLwipRawDnsResolver resolves the oracle by name; the
+    /* SolidSyslogLwipSocketResolver resolves the oracle by name; the
      * DNS_LOCAL_HOSTLIST entry maps "syslog-ng" -> 10.0.2.2 on the guest, so the
      * destination host equals the TLS serverName / cert subject without any
-     * numeric pin. The shared Sleep drives the bounded async-resolve spin (a
-     * local-hostlist hit returns synchronously, so it never actually spins). */
-    struct SolidSyslogLwipRawDnsResolverConfig dnsConfig = {
-        .Sleep = BddTargetFreeRtosPipeline_Sleep,
-    };
-    resolver = SolidSyslogLwipRawDnsResolver_Create(&dnsConfig);
-    datagram = SolidSyslogLwipRawDatagram_Create();
-    udpAddress = SolidSyslogLwipRawAddress_Create();
+     * numeric pin. lwip_getaddrinfo blocks the calling task until lwIP answers,
+     * which a hostlist hit does without leaving the guest - and this is the
+     * interactive task, never the tcpip thread the resolve waits on. */
+    resolver = SolidSyslogLwipSocketResolver_Create();
+    datagram = SolidSyslogLwipSocketDatagram_Create();
+    udpAddress = SolidSyslogLwipSocketAddress_Create();
     struct SolidSyslogUdpSenderConfig udpConfig = {
         .Resolver = resolver,
         .Datagram = datagram,
@@ -253,17 +234,12 @@ static struct SolidSyslogSender* BuildSender(void)
     };
     udpSender = SolidSyslogUdpSender_Create(&udpConfig);
 
-    /* Plain TCP: RFC 6587 octet-framed StreamSender over the LwipRaw TCP stream.
-     * The connect timeout comes from the SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS
-     * tunable (GetConnectTimeoutMs NULL); the shared Sleep drives the bounded
-     * synchronous-connect spin. */
-    struct SolidSyslogLwipRawTcpStreamConfig tcpStreamConfig = {
-        .GetConnectTimeoutMs = NULL,
-        .ConnectTimeoutContext = NULL,
-        .Sleep = BddTargetFreeRtosPipeline_Sleep,
-    };
-    tcpStream = SolidSyslogLwipRawTcpStream_Create(&tcpStreamConfig);
-    tcpAddress = SolidSyslogLwipRawAddress_Create();
+    /* Plain TCP: RFC 6587 octet-framed StreamSender over the LwipSocket TCP
+     * stream. NULL config leaves the connect deadline at the
+     * SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS tunable, which the stream bounds with
+     * lwip_select rather than a sleep this target would have to supply. */
+    tcpStream = SolidSyslogLwipSocketTcpStream_Create(NULL);
+    tcpAddress = SolidSyslogLwipSocketAddress_Create();
     struct SolidSyslogStreamSenderConfig tcpConfig = {
         .Resolver = resolver,
         .Stream = tcpStream,
@@ -289,18 +265,18 @@ static struct SolidSyslogSender* BuildSender(void)
     return switchingSender;
 }
 
-/* Reverse-order teardown of the LwipRaw sender stack. BddTargetTlsSender owns
- * the inner MbedTlsStream + LwipRawTcpStream + StreamSender pool slots, so it is
- * released before the plain-TCP tcpSender / tcpStream. */
+/* Reverse-order teardown of the LwipSocket sender stack. BddTargetTlsSender owns
+ * the inner MbedTlsStream + LwipSocketTcpStream + StreamSender pool slots, so it
+ * is released before the plain-TCP tcpSender / tcpStream. */
 static void TeardownNetwork(void)
 {
     SolidSyslogSwitchingSender_Destroy(switchingSender);
     BddTargetTlsSender_Destroy();
     SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogStreamSender_Destroy(tcpSender);
-    SolidSyslogLwipRawTcpStream_Destroy(tcpStream);
-    SolidSyslogLwipRawAddress_Destroy(udpAddress);
-    SolidSyslogLwipRawAddress_Destroy(tcpAddress);
-    SolidSyslogLwipRawDatagram_Destroy(datagram);
-    SolidSyslogLwipRawDnsResolver_Destroy(resolver);
+    SolidSyslogLwipSocketTcpStream_Destroy(tcpStream);
+    SolidSyslogLwipSocketAddress_Destroy(udpAddress);
+    SolidSyslogLwipSocketAddress_Destroy(tcpAddress);
+    SolidSyslogLwipSocketDatagram_Destroy(datagram);
+    SolidSyslogLwipSocketResolver_Destroy(resolver);
 }

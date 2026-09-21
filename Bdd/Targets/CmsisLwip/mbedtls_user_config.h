@@ -14,7 +14,7 @@
  * Windows host - they pull /dev/urandom for entropy, use fopen for cert
  * loading, and call BSD sockets directly. The Cortex-M3 / FreeRTOS QEMU
  * BDD target has none of those, so we strip them and rely on the integrator
- * (BddTargetTlsSender_MbedTls_LwipRawTcp.c) to wire entropy, transport, and
+ * (BddTargetTlsSender_MbedTls.c) to wire entropy, transport, and
  * cert handles via DI.
  *
  * Anything not touched here keeps mbedTLS's default - including the cipher
@@ -27,7 +27,7 @@
 
 /* Don't compile entropy_poll.c's Unix/Windows code path - mbedTLS would
  * otherwise #error on "Platform entropy sources only work on Unix and
- * Windows". BddTargetTlsSender_MbedTls_LwipRawTcp.c provides a weak entropy
+ * Windows". BddTargetTlsSender_MbedTls.c provides a weak entropy
  * callback via mbedtls_entropy_add_source. The "demo-only entropy" caveat is
  * documented in the integrator guide. */
 #define MBEDTLS_NO_PLATFORM_ENTROPY
@@ -38,9 +38,10 @@
  * hazard against newlib stubs. */
 #undef MBEDTLS_FS_IO
 
-/* No BSD sockets - the transport is injected as a SolidSyslogStream
- * (LwipRawTcpStream) and bridged into mbedTLS via mbedtls_ssl_set_bio
- * callbacks. MBEDTLS_NET_C would otherwise pull in <sys/socket.h>. */
+/* mbedTLS opens no socket of its own - the transport is injected as a
+ * SolidSyslogStream (LwipSocketTcpStream) and bridged in via
+ * mbedtls_ssl_set_bio callbacks. MBEDTLS_NET_C would otherwise pull in
+ * newlib's <sys/socket.h>, which is not lwIP's. */
 #undef MBEDTLS_NET_C
 
 /* Certificate validity is enforced here, on a board with no RTC. Without these
@@ -84,7 +85,7 @@
  * newlib into the small 4 KiB syscall heap in Bdd/Targets/FreeRtos/Common/
  * Syscalls.c (shared with this target) - far too small for mbedTLS's
  * per-context allocations (IN/OUT buffers plus handshake state run ~10-20 KiB).
- * Enabling MBEDTLS_PLATFORM_MEMORY lets BddTargetTlsSender_MbedTls_LwipRawTcp.c
+ * Enabling MBEDTLS_PLATFORM_MEMORY lets BddTargetTlsSender_MbedTls.c
  * call mbedtls_platform_set_calloc_free(...) to redirect those allocations to
  * pvPortMalloc, which uses the 96 KiB heap_4 region - the textbook
  * FreeRTOS+mbedTLS integration. */
@@ -97,7 +98,7 @@
  * (-148) on platforms with no real entropy source (which is us, with
  * MBEDTLS_NO_PLATFORM_ENTROPY defined above). With this define, PSA never
  * tries to seed itself; the integrator provides mbedtls_psa_external_get_random
- * (see BddTargetTlsSender_MbedTls_LwipRawTcp.c) which feeds the same CTR_DRBG
+ * (see BddTargetTlsSender_MbedTls.c) which feeds the same CTR_DRBG
  * the classic API uses, so PSA and the classic API share one entropy chain. */
 #define MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG
 
