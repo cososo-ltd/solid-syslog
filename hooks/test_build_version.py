@@ -31,6 +31,16 @@ class VersionLine(unittest.TestCase):
                 'SOLIDSYSLOG_DOCS_VERSION': '0.2.0',
             }))
 
+    def test_release_build_names_the_release_alone(self):
+        self.assertEqual(
+            'Documentation for release 0.2.0.',
+            h.version_line({
+                'SOLIDSYSLOG_DOCS_RELEASE': '0.2.0',
+                'SOLIDSYSLOG_DOCS_BRANCH': 'main',
+                'SOLIDSYSLOG_DOCS_COMMIT': 'abc1234def5678',
+                'SOLIDSYSLOG_DOCS_VERSION': '0.2.0',
+            }))
+
 
 if __name__ == '__main__':
     unittest.main()
