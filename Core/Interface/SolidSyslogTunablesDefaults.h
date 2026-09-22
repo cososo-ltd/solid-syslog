@@ -698,11 +698,32 @@
 #endif
 
 /**
- * Default bounded-connect deadline applied by every TCP Stream backend
- * (POSIX, Winsock, FreeRTOS) when the integrator does not install a
- * SolidSyslogTcpConnectTimeoutFunction on the config struct. 200 ms is
- * comfortable for loopback / LAN and short enough that ten failing attempts
- * cost 2 s; raise it for WAN deployments behind a high-RTT link.
+ * Default bounded-connect deadline applied by every TCP Stream backend when
+ * the integrator does not install a SolidSyslogTcpConnectTimeoutFunction on
+ * the config struct.
+ *
+ * The default sits below one SYN retransmission, which is deliberate rather
+ * than an oversight: a TCP stack waits on the order of a second to three
+ * before retrying a SYN it believes was lost, and a connect held open that
+ * long stalls the servicing pass behind it. So a connect whose SYN is lost
+ * fails here instead of waiting for the retry, the record stays unsent, and
+ * the next pass tries again on a fresh connection.
+ *
+ * That is safe where a store is configured: a failed send leaves the record
+ * unsent and the store replays it. Where no store is configured the record
+ * is not retained anywhere, so one lost SYN loses one record. If you send
+ * over TCP or TLS without a store, and losing a record matters, raise this
+ * above your stack's initial SYN retransmission timeout so a lost SYN is
+ * retried inside the budget.
+ *
+ * Weigh that against what a longer deadline costs, which differs by
+ * configuration. With a store, one record is sent per servicing pass, so an
+ * unreachable destination stalls a pass by one deadline. Without one, every
+ * buffered record is sent in the same pass and each attempts its own
+ * connect, so the stall is the deadline multiplied by how many records are
+ * waiting. Raising it therefore costs most in exactly the configuration that
+ * needs it: service often enough that few records accumulate, or accept the
+ * loss and keep the deadline short.
  *
  * Runtime override: install GetConnectTimeoutMs on the per-Stream config -
  * the getter is invoked on every connect attempt so live tuning takes effect
