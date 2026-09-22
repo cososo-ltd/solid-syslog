@@ -41,6 +41,19 @@ class VersionLine(unittest.TestCase):
                 'SOLIDSYSLOG_DOCS_VERSION': '0.2.0',
             }))
 
+    def test_unset_environment_is_a_local_build(self):
+        self.assertEqual('Local documentation build.', h.version_line({}))
+
+    def test_blank_variables_are_a_local_build(self):
+        self.assertEqual(
+            'Local documentation build.',
+            h.version_line({
+                'SOLIDSYSLOG_DOCS_RELEASE': '  ',
+                'SOLIDSYSLOG_DOCS_BRANCH': '  ',
+                'SOLIDSYSLOG_DOCS_COMMIT': '  ',
+                'SOLIDSYSLOG_DOCS_VERSION': '  ',
+            }))
+
 
 if __name__ == '__main__':
     unittest.main()
