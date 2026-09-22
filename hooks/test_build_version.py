@@ -22,6 +22,15 @@ class VersionLine(unittest.TestCase):
                 'SOLIDSYSLOG_DOCS_VERSION': '0.1.0',
             }))
 
+    def test_branch_build_reports_the_branch_commit_and_release_it_was_given(self):
+        self.assertEqual(
+            'Documentation built from docs/s23-05 at abc1234, after release 0.2.0.',
+            h.version_line({
+                'SOLIDSYSLOG_DOCS_BRANCH': 'docs/s23-05',
+                'SOLIDSYSLOG_DOCS_COMMIT': 'abc1234def5678',
+                'SOLIDSYSLOG_DOCS_VERSION': '0.2.0',
+            }))
+
 
 if __name__ == '__main__':
     unittest.main()
