@@ -55,5 +55,12 @@ class VersionLine(unittest.TestCase):
             }))
 
 
+class ConfigInjection(unittest.TestCase):
+    def test_on_config_publishes_the_line_for_the_footer(self):
+        config = {'extra': {}}
+        h.on_config(config)
+        self.assertEqual('Local documentation build.', config['extra']['build_version'])
+
+
 if __name__ == '__main__':
     unittest.main()

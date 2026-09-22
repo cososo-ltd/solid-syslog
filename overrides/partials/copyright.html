@@ -17,6 +17,10 @@
 
   The year is taken from build_date_utc rather than written as a literal, so it
   cannot go stale between releases.
+
+  Above the legal particulars, hooks/build_version.py supplies a line saying
+  which build the reader is looking at. It sits in the footer rather than the
+  header because it is provenance, consulted rather than read.
 -#}
 <div class="md-copyright">
   <img
@@ -29,6 +33,9 @@
     <div class="md-copyright__highlight">
       {{ build_date_utc.year }} {{ config.copyright }}
     </div>
+  {% endif %}
+  {% if config.extra.build_version %}
+    <div class="ss-footer-build">{{ config.extra.build_version }}</div>
   {% endif %}
   <div class="ss-footer-legal">
     <span>Registered in England and Wales: 09856828. VAT: GB 226 5336 15.</span>
