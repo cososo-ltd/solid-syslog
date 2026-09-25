@@ -7,6 +7,7 @@ Run:  python3 hooks/test_build_version.py
 import os
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import build_version as h  # noqa: E402
@@ -58,7 +59,14 @@ class VersionLine(unittest.TestCase):
 class ConfigInjection(unittest.TestCase):
     def test_on_config_publishes_the_line_for_the_footer(self):
         config = {'extra': {}}
-        h.on_config(config)
+        with mock.patch.dict(os.environ, {'SOLIDSYSLOG_DOCS_RELEASE': '0.2.0'}, clear=True):
+            h.on_config(config)
+        self.assertEqual('Documentation for release 0.2.0.', config['extra']['build_version'])
+
+    def test_on_config_is_not_swayed_by_the_developer_s_own_environment(self):
+        config = {'extra': {}}
+        with mock.patch.dict(os.environ, {}, clear=True):
+            h.on_config(config)
         self.assertEqual('Local documentation build.', config['extra']['build_version'])
 
 
