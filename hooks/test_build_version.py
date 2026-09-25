@@ -18,7 +18,7 @@ class VersionLine(unittest.TestCase):
         self.assertEqual(
             'Documentation built from main at 73f3646, after release 0.1.0.',
             h.version_line({
-                'SOLIDSYSLOG_DOCS_BRANCH': 'main',
+                'SOLIDSYSLOG_DOCS_ORIGIN': 'main',
                 'SOLIDSYSLOG_DOCS_COMMIT': '73f3646a1b2c3d4e5f60718293a4b5c6d7e8f901',
                 'SOLIDSYSLOG_DOCS_VERSION': '0.1.0',
             }))
@@ -27,9 +27,18 @@ class VersionLine(unittest.TestCase):
         self.assertEqual(
             'Documentation built from docs/s23-05 at abc1234, after release 0.2.0.',
             h.version_line({
-                'SOLIDSYSLOG_DOCS_BRANCH': 'docs/s23-05',
+                'SOLIDSYSLOG_DOCS_ORIGIN': 'docs/s23-05',
                 'SOLIDSYSLOG_DOCS_COMMIT': 'abc1234def5678',
                 'SOLIDSYSLOG_DOCS_VERSION': '0.2.0',
+            }))
+
+    def test_a_pull_request_build_names_the_pull_request_it_previews(self):
+        self.assertEqual(
+            'Documentation built from pull request #896 at 0ac54a7, after release 0.1.0.',
+            h.version_line({
+                'SOLIDSYSLOG_DOCS_ORIGIN': 'pull request #896',
+                'SOLIDSYSLOG_DOCS_COMMIT': '0ac54a7e1122334455',
+                'SOLIDSYSLOG_DOCS_VERSION': '0.1.0',
             }))
 
     def test_release_build_names_the_release_alone(self):
@@ -37,7 +46,7 @@ class VersionLine(unittest.TestCase):
             'Documentation for release 0.2.0.',
             h.version_line({
                 'SOLIDSYSLOG_DOCS_RELEASE': '0.2.0',
-                'SOLIDSYSLOG_DOCS_BRANCH': 'main',
+                'SOLIDSYSLOG_DOCS_ORIGIN': 'main',
                 'SOLIDSYSLOG_DOCS_COMMIT': 'abc1234def5678',
                 'SOLIDSYSLOG_DOCS_VERSION': '0.2.0',
             }))
@@ -50,7 +59,7 @@ class VersionLine(unittest.TestCase):
             'Local documentation build.',
             h.version_line({
                 'SOLIDSYSLOG_DOCS_RELEASE': '  ',
-                'SOLIDSYSLOG_DOCS_BRANCH': '  ',
+                'SOLIDSYSLOG_DOCS_ORIGIN': '  ',
                 'SOLIDSYSLOG_DOCS_COMMIT': '  ',
                 'SOLIDSYSLOG_DOCS_VERSION': '  ',
             }))

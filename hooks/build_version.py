@@ -21,8 +21,16 @@ A build with none of it set says so rather than inventing a provenance::
 
     Local documentation build.
 
+A pull request is built from neither its branch's head nor its base: what the
+lane checks out is the merge of the two. So the origin of such a build is the
+pull request itself, and naming the branch there would pair it with a commit
+that is not on it::
+
+    Documentation built from pull request #896 at 0ac54a7, after release 0.1.0.
+
 The workflow supplies the parts, because only it knows them:
-``SOLIDSYSLOG_DOCS_BRANCH``, ``SOLIDSYSLOG_DOCS_COMMIT``,
+``SOLIDSYSLOG_DOCS_ORIGIN`` (a branch, or the pull request a build previews),
+``SOLIDSYSLOG_DOCS_COMMIT``,
 ``SOLIDSYSLOG_DOCS_VERSION`` (the last release, read from
 ``.release-please-manifest.json``) and ``SOLIDSYSLOG_DOCS_RELEASE`` on a release
 build only. Deliberately not ``git describe``: it needs full history, which
@@ -41,11 +49,11 @@ def version_line(environ):
     release = environ.get('SOLIDSYSLOG_DOCS_RELEASE', '').strip()
     if release:
         return f'Documentation for release {release}.'
-    branch = environ.get('SOLIDSYSLOG_DOCS_BRANCH', '').strip()
+    origin = environ.get('SOLIDSYSLOG_DOCS_ORIGIN', '').strip()
     commit = environ.get('SOLIDSYSLOG_DOCS_COMMIT', '').strip()[:SHORT_COMMIT_LENGTH]
     version = environ.get('SOLIDSYSLOG_DOCS_VERSION', '').strip()
-    if branch and commit and version:
-        return f'Documentation built from {branch} at {commit}, after release {version}.'
+    if origin and commit and version:
+        return f'Documentation built from {origin} at {commit}, after release {version}.'
     return 'Local documentation build.'
 
 
