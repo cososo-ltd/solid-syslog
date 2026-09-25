@@ -77,6 +77,11 @@ markdown_extensions:
 # before MkDocs validates links. Pin the ref per build with SOLIDSYSLOG_DOCS_REF
 # (a release tag or commit SHA); it defaults to main.
 hooks:
+  # Puts the build's own provenance in the footer — which branch and commit
+  # the site was built from, or which release it documents. The site
+  # publishes from main on every push, so without it a reader has no way to
+  # tell whether what they are reading matches the build they have.
+  - hooks/build_version.py
   # Publishes the repository-root documents the site should hold rather than
   # link away to — SECURITY.md and friends stay at the root because GitHub
   # looks for them there, and are rendered here from that same source.

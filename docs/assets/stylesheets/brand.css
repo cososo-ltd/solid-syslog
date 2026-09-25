@@ -36,6 +36,13 @@
    short footer reads as a mistake, not as emphasis. Set apart by being its own
    lines and nothing else. The registered office is long and is expected to wrap
    at narrow widths. */
+/* Build provenance, above the legal particulars: same quiet weight as them,
+   with a little more space above to separate it from the copyright line. */
+.ss-footer-build {
+  margin: 0.8em 0 0.3em;
+  line-height: 1.5;
+}
+
 .ss-footer-legal {
   margin: 0.3em 0;
   line-height: 1.5;
