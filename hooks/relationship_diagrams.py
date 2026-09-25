@@ -24,6 +24,16 @@ import relationship_render  # noqa: E402
 _CACHE = {}
 
 
+def on_config(config, **kwargs):
+    """Tell the renderer how this build addresses a page.
+
+    The diagrams' links are raw SVG that MkDocs never rewrites, so they have to
+    be written in the shape the build being configured uses.
+    """
+    relationship_render.use_directory_urls(config["use_directory_urls"])
+    return config
+
+
 def _diagrams(config):
     """Return {api_page_stem: rendered_svg} for this repo, built once."""
     root = os.path.dirname(config["config_file_path"])
