@@ -890,7 +890,9 @@ jobs:
       # Image digest below is mkdocs-mkdoxy sha-34173c0 (see docs/containers.md).
       - name: Build docs site
         env:
-          SOLIDSYSLOG_DOCS_ORIGIN: ${{ github.event.pull_request.number && format('pull request #{0}', github.event.pull_request.number) || github.ref_name }}
+          # Double-quoted: the "#" in the format string would otherwise open a
+          # YAML comment and truncate the expression mid-call.
+          SOLIDSYSLOG_DOCS_ORIGIN: "${{ github.event.pull_request.number && format('pull request #{0}', github.event.pull_request.number) || github.ref_name }}"
           SOLIDSYSLOG_DOCS_COMMIT: ${{ github.sha }}
           SOLIDSYSLOG_DOCS_VERSION: ${{ steps.version.outputs.version }}
         run: |
