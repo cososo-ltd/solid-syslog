@@ -23,9 +23,15 @@
 {% extends "base.html" %}
 
 {% block extrahead %}
-  <script defer src="https://plausible.io/js/pa-rbQGvMhd4GxKexbnXvDJE.js"></script>
-  <script>
-    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
-    plausible.init();
-  </script>
+  {#- The offline bundle is a file people extract and read with no network, and
+      it is handed to customers as evidence. Analytics has nothing to measure
+      there and must not call home from an artefact like that, so it is left out
+      of a build that mkdocs-offline.yml configures. -#}
+  {% if not config.extra.offline %}
+    <script defer src="https://plausible.io/js/pa-rbQGvMhd4GxKexbnXvDJE.js"></script>
+    <script>
+      window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+      plausible.init();
+    </script>
+  {% endif %}
 {% endblock %}
