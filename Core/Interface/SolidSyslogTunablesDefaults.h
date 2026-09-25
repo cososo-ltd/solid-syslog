@@ -706,8 +706,8 @@
  * than an oversight: a TCP stack waits on the order of a second to three
  * before retrying a SYN it believes was lost, and a connect held open that
  * long stalls the servicing pass behind it. So a connect whose SYN is lost
- * fails here instead of waiting for the retry, the record stays unsent, and
- * the next pass tries again on a fresh connection.
+ * fails here instead of waiting for the retry, and the next servicing pass
+ * attempts a fresh connect.
  *
  * That is safe where a store is configured: a failed send leaves the record
  * unsent and the store replays it. Where no store is configured the record
