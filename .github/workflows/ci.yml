@@ -879,15 +879,18 @@ jobs:
       # The three SOLIDSYSLOG_DOCS_* variables are the footer's provenance line
       # (hooks/build_version.py). They are set as step environment and passed
       # through by name rather than interpolated into the command, because a
-      # branch name is attacker-controlled on a fork's pull request. Head branch
-      # and head commit, so a pull-request build names its own branch rather
-      # than the merge ref; all three come from the event, so the default
-      # checkout depth is enough.
+      # branch name is attacker-controlled on a fork's pull request.
+      #
+      # github.sha is the commit this lane actually checked out and built. On a
+      # pull request that is the merge commit, not the head of the branch named
+      # beside it — the line says what was built, which is the only thing it can
+      # honestly claim. Both come from the event, so the default checkout depth
+      # is enough.
       # Image digest below is mkdocs-mkdoxy sha-34173c0 (see docs/containers.md).
       - name: Build docs site
         env:
           SOLIDSYSLOG_DOCS_BRANCH: ${{ github.head_ref || github.ref_name }}
-          SOLIDSYSLOG_DOCS_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          SOLIDSYSLOG_DOCS_COMMIT: ${{ github.sha }}
           SOLIDSYSLOG_DOCS_VERSION: ${{ steps.version.outputs.version }}
         run: |
           docker run --rm -v "$PWD:/docs" \
