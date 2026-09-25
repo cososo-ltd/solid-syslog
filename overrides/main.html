@@ -22,6 +22,39 @@
 -#}
 {% extends "base.html" %}
 
+{#- The bundle is read by extracting it and opening index.html, which is a
+    file:// URI. Material's search runs in a web worker that fetches its index,
+    and a browser refuses both from that origin, so the box would sit there
+    returning nothing. Say so, say how to fix it, and take the box away.
+
+    Rendered only into an offline build, and revealed only when the reader is
+    actually on file://: serving the same bundle is a supported way to read it,
+    and then none of this applies. -#}
+{% block announce %}
+  {% if config.extra.offline %}
+    <div class="ss-offline-notice" id="ss-offline-notice" hidden>
+      You are reading an offline copy, so search is unavailable. To enable it, run
+      <code>python3 -m http.server</code> in this folder and open
+      <code>http://localhost:8000</code>.
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  {% if config.extra.offline %}
+    <script>
+      if (window.location.protocol === "file:") {
+        var notice = document.getElementById("ss-offline-notice");
+        if (notice) { notice.hidden = false; }
+        document.querySelectorAll(".md-search").forEach(function (box) {
+          box.style.display = "none";
+        });
+      }
+    </script>
+  {% endif %}
+{% endblock %}
+
 {% block extrahead %}
   {#- The offline bundle is a file people extract and read with no network, and
       it is handed to customers as evidence. Analytics has nothing to measure

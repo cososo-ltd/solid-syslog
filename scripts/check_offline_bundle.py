@@ -22,7 +22,7 @@ Usage:  python3 scripts/check_offline_bundle.py <bundle-dir>
 
 import html.parser
 import os
-import posixpath
+import re
 import sys
 import urllib.parse
 
@@ -122,8 +122,14 @@ def check_manifest(root, expected_version):
         return ['MANIFEST.txt is missing from the bundle root']
     with open(manifest, encoding='utf-8') as handle:
         text = handle.read()
-    if f'Version: {expected_version}' not in text:
-        return [f'MANIFEST.txt does not record version {expected_version}']
+    # Matched on the field rather than an exact line, because the manifest
+    # column-aligns its values and the alignment is not the contract.
+    recorded = re.search(r'^Version:\s+(\S+)$', text, re.MULTILINE)
+    if recorded is None:
+        return ['MANIFEST.txt records no Version field']
+    if recorded.group(1) != expected_version:
+        return [f'MANIFEST.txt records version {recorded.group(1)}, '
+                f'but this tree is at {expected_version}']
     return []
 
 
