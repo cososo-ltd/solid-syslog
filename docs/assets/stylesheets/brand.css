@@ -3,9 +3,11 @@
  * white site with Montserrat headings, Open Sans body, and the accent violet
  * #3e2199 used sparingly. Values (weights, sizes, colours, header padding) are
  * taken from the live theme CSS. Open Sans is loaded by theme.font.text.
+ *
+ * Montserrat is loaded by overrides/main.html rather than imported here, so
+ * that the offline bundle - which must make no network request - can leave it
+ * out. An @import cannot be made conditional, and it blocks rendering besides.
  */
-
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap");
 
 :root {
   --md-typeset-a-color: #3e2199;
@@ -36,6 +38,19 @@
    short footer reads as a mistake, not as emphasis. Set apart by being its own
    lines and nothing else. The registered office is long and is expected to wrap
    at narrow widths. */
+/* Offline bundle only: the notice that explains why search is missing. Sits in
+   Material's announce bar, above the header, and stays hidden until a script
+   confirms the reader really is on a file:// URI. */
+.ss-offline-notice {
+  background: #f3f0fa;
+  border-bottom: 1px solid #d9d2ef;
+  color: #2d2d2d;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  padding: 0.6rem 1rem;
+  text-align: center;
+}
+
 /* Build provenance, above the legal particulars: same quiet weight as them,
    with a little more space above to separate it from the copyright line. */
 .ss-footer-build {

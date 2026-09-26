@@ -1,0 +1,22 @@
+# The offline documentation bundle attached to each release: the same site,
+# built so that extracting the zip and opening index.html works with no server
+# and no network. Only the differences live here; INHERIT keeps everything else
+# in step with mkdocs.yml automatically.
+#
+# Build:  mkdocs build -f mkdocs-offline.yml -d <dir>
+# Check:  python3 scripts/check_offline_bundle.py <dir>
+INHERIT: mkdocs.yml
+
+# A directory link ("tls/") resolves against a filesystem as a folder, so a
+# browser opening the extracted bundle shows a listing instead of the page.
+use_directory_urls: false
+
+# Material fetches the configured face from fonts.googleapis.com at runtime.
+# Nothing in the bundle may depend on a network, so take the system stack.
+theme:
+  font: false
+
+# Read by overrides/main.html to leave the analytics tag out, and by the footer
+# to explain how to restore search. Absent from every other build.
+extra:
+  offline: true

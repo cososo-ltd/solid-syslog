@@ -16,6 +16,28 @@ the svg's id so nothing leaks into the page. Each sticky links to its API page.
 # deployment prefix and under `mkdocs serve`, not just the /solid-syslog/ base.
 BASE_URL = ".."
 
+# How a sibling page is addressed, which follows the build rather than being
+# fixed. These links are raw SVG, so MkDocs never rewrites them, and the two
+# builds put the page in different places: with directory URLs the diagram sits
+# on api/<name>/index.html and a sibling is "../<name>/", while a flat build
+# puts it at api/<name>.html and the sibling is simply "<name>.html" beside it.
+# Writing either shape by hand makes the diagrams dead in the other build.
+# relationship_diagrams.on_config sets this from the configuration being built.
+_DIRECTORY_URLS = True
+
+
+def use_directory_urls(enabled):
+    """Address sibling pages as directories, or as the .html files beside this one."""
+    global _DIRECTORY_URLS
+    _DIRECTORY_URLS = bool(enabled)
+
+
+def page_href(page):
+    """The href a diagram node uses to reach a sibling API page."""
+    if _DIRECTORY_URLS:
+        return f"{BASE_URL}/{page}/"
+    return f"{page}.html"
+
 # fill, stroke, text
 _GREEN = ("#bfe3c0", "#6fae74", "#21401f")
 _PERI = ("#cdd4f5", "#8f9bd6", "#15324f")
@@ -50,7 +72,7 @@ def _sticky(cx, y, impl, index, name_font, pkg_font, role, wraps):
     left = cx - _STICKY_W / 2
     cy = y + _STICKY_H / 2
     rot = _ROT[index % len(_ROT)]
-    out = ['<a href="{}/{}/" target="_top" class="node">'.format(BASE_URL, impl["page"]),
+    out = [f'<a href="{page_href(impl["page"])}" target="_top" class="node">',
            f'<g transform="rotate({rot} {cx} {cy})">']
     if impl["name"] in wraps:
         ty = y + _STICKY_H - 6
@@ -103,7 +125,7 @@ def _interface_box(cx, top, role, page, rot, font, is_list):
     """Green «interface» sticky (the base role, or a collaborator role), linked to
     its API page. A list collaborator gets a second card offset behind it."""
     left = cx - _IF_W / 2
-    out = [f'<a href="{BASE_URL}/{page}/" target="_top" class="node">',
+    out = [f'<a href="{page_href(page)}" target="_top" class="node">',
            f'<g transform="rotate({rot} {cx} {top + _IF_H / 2})">']
     if is_list:
         out.append(f'<g filter="url(#sh)"><rect class="card" x="{left + 8}" y="{top + 8}" width="{_IF_W}" height="{_IF_H}" '
@@ -136,7 +158,7 @@ def _subject_box(cx, top, name, package, is_null, font, page=None):
            "</g>"]
     body = "".join(out)
     if page:
-        return f'<a href="{BASE_URL}/{page}/" target="_top" class="node">{body}</a>'
+        return f'<a href="{page_href(page)}" target="_top" class="node">{body}</a>'
     return body
 
 
@@ -269,7 +291,7 @@ def _pod_box(cx, top, name, font, rot, page=None):
         f'fill="{_POD[2]}">{name}</text>',
         "</g>"])
     if page:
-        return f'<a href="{BASE_URL}/{page}/" target="_top" class="node">{body}</a>'
+        return f'<a href="{page_href(page)}" target="_top" class="node">{body}</a>'
     return body
 
 
@@ -402,8 +424,8 @@ def render_role_combined(role, info, consumers):
     parts.append("</g>")
 
     # interface (base)
-    parts.append('<a href="{}/{}/" target="_top" class="node"><g transform="rotate(-1 {} {})">'.format(
-        BASE_URL, info["link_page"], base_cx, base_y + _BASE_H / 2))
+    parts.append('<a href="{}" target="_top" class="node"><g transform="rotate(-1 {} {})">'.format(
+        page_href(info["link_page"]), base_cx, base_y + _BASE_H / 2))
     parts.append(f'<g filter="url(#sh)"><rect class="card" x="{base_cx - _BASE_W / 2}" y="{base_y}" width="{_BASE_W}" height="{_BASE_H}" '
                  f'fill="{_GREEN[0]}" stroke="{_GREEN[1]}" stroke-width="1.4"/></g>')
     parts.append(f'<text x="{base_cx}" y="{base_y + 26}" text-anchor="middle" font-size="12" font-style="italic" '

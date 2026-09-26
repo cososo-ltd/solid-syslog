@@ -24,10 +24,32 @@ import relationship_render  # noqa: E402
 _CACHE = {}
 
 
+def on_config(config, **kwargs):
+    """Tell the renderer how this build addresses a page.
+
+    The diagrams' links are raw SVG that MkDocs never rewrites, so they have to
+    be written in the shape the build being configured uses.
+    """
+    relationship_render.use_directory_urls(config["use_directory_urls"])
+    return config
+
+
+def _cache_key(config):
+    """What makes two builds' diagrams the same.
+
+    The rendered SVG has the page links baked into it, so a build that
+    addresses pages differently needs its own entry. One process can see both:
+    `mkdocs serve` reloads the configuration, and the offline bundle is built
+    from a second configuration.
+    """
+    return (os.path.dirname(config["config_file_path"]), bool(config["use_directory_urls"]))
+
+
 def _diagrams(config):
-    """Return {api_page_stem: rendered_svg} for this repo, built once."""
+    """Return {api_page_stem: rendered_svg} for this repo, built once per shape."""
     root = os.path.dirname(config["config_file_path"])
-    if root not in _CACHE:
+    key = _cache_key(config)
+    if key not in _CACHE:
         out = {}
         consumers = relationship_data.build_consumers(root)
         for role, info in relationship_data.build_graph(root).items():
@@ -42,8 +64,8 @@ def _diagrams(config):
         if facade is not None:
             out[facade["pages"][0]] = relationship_render.render_facade_class(facade)
             out[facade["pages"][1]] = relationship_render.render_facade_stacked(facade)
-        _CACHE[root] = out
-    return _CACHE[root]
+        _CACHE[key] = out
+    return _CACHE[key]
 
 
 def on_page_markdown(markdown, page, config, files, **kwargs):

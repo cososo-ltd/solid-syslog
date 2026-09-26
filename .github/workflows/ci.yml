@@ -909,6 +909,45 @@ jobs:
           name: docs-site
           path: site/
           retention-days: 7
+      # The offline bundle attached to each release. Built and checked on every
+      # run, not only on a release, so the packaging cannot rot unnoticed between
+      # them - the release workflow does the same from the tag and then signs the
+      # result, which leaves attaching it as the only release-only step.
+      # Packaging runs inside the container because the container owns the files
+      # it just built; writing the manifest from the runner would be denied.
+      # Image digest below is mkdocs-mkdoxy sha-34173c0 (see docs/containers.md).
+      - name: Build the offline documentation bundle
+        env:
+          SOLIDSYSLOG_DOCS_IMAGE: ghcr.io/cososo-ltd/mkdocs-mkdoxy@sha256:9ab3d41807a941f3d5a7077fb7288d0ffe2a926729ce13a4fc889cc8b6630d43
+          SOLIDSYSLOG_DOCS_VERSION: ${{ steps.version.outputs.version }}
+          SOLIDSYSLOG_DOCS_COMMIT: ${{ github.sha }}
+        run: |
+          docker run --rm -v "$PWD:/docs" \
+            -e SOLIDSYSLOG_DOCS_IMAGE \
+            -e SOLIDSYSLOG_DOCS_VERSION \
+            -e SOLIDSYSLOG_DOCS_COMMIT \
+            "$SOLIDSYSLOG_DOCS_IMAGE" \
+            sh -c 'mkdocs build -f /docs/mkdocs-offline.yml -d /docs/build/bundle --strict \
+                   && python3 /docs/scripts/make_offline_bundle.py /docs/build/bundle \
+                        "/docs/build/solid-syslog-docs-$SOLIDSYSLOG_DOCS_VERSION.zip" \
+                        --version "$SOLIDSYSLOG_DOCS_VERSION" \
+                        --commit "$SOLIDSYSLOG_DOCS_COMMIT"'
+
+      # Every relative link resolves inside the bundle, and nothing is fetched
+      # from another host. Both are silent failures in a file the reader opens
+      # from disk: a directory link shows a folder listing, and a missing
+      # stylesheet renders a page that is wrong rather than broken.
+      - name: Check the bundle works with no server and no network
+        run: python3 scripts/check_offline_bundle.py build/bundle
+
+      - name: Upload offline bundle artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docs-offline-bundle
+          path: build/solid-syslog-docs-*.zip
+          retention-days: 7
+          compression-level: 0
+
 
       # On main only, restage the built site as the GitHub Pages artifact so
       # deploy-docs-pages can publish it. PRs stop at the build+artifact above.

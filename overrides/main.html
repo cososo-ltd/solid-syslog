@@ -22,10 +22,57 @@
 -#}
 {% extends "base.html" %}
 
+{#- The bundle is read by extracting it and opening index.html, which is a
+    file:// URI. Material's search runs in a web worker that fetches its index,
+    and a browser refuses both from that origin, so the box would sit there
+    returning nothing. Say so, say how to fix it, and take the box away.
+
+    Rendered only into an offline build, and revealed only when the reader is
+    actually on file://: serving the same bundle is a supported way to read it,
+    and then none of this applies. -#}
+{% block announce %}
+  {% if config.extra.offline %}
+    <div class="ss-offline-notice" id="ss-offline-notice" hidden>
+      You are reading an offline copy, so search is unavailable. To enable it, run
+      <code>python3 -m http.server</code> in this folder and open
+      <code>http://localhost:8000</code>.
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  {% if config.extra.offline %}
+    <script>
+      if (window.location.protocol === "file:") {
+        var notice = document.getElementById("ss-offline-notice");
+        if (notice) { notice.hidden = false; }
+        document.querySelectorAll(".md-search").forEach(function (box) {
+          box.style.display = "none";
+        });
+      }
+    </script>
+  {% endif %}
+{% endblock %}
+
 {% block extrahead %}
-  <script defer src="https://plausible.io/js/pa-rbQGvMhd4GxKexbnXvDJE.js"></script>
-  <script>
-    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
-    plausible.init();
-  </script>
+  {#- Both of these reach across the network, so both are left out of a build
+      that mkdocs-offline.yml configures: the bundle is read with no network at
+      all, and it is handed to customers as evidence, which analytics has no
+      business calling home from.
+
+      Montserrat is the headings face (see assets/stylesheets/brand.css). It is
+      loaded here rather than imported by that stylesheet because an @import
+      cannot be made conditional on the build, and because a stylesheet link in
+      the head does not block rendering the way an @import does. Offline, the
+      headings fall back to the system stack, consistently with theme.font:
+      false taking the body face the same way. -#}
+  {% if not config.extra.offline %}
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
+    <script defer src="https://plausible.io/js/pa-rbQGvMhd4GxKexbnXvDJE.js"></script>
+    <script>
+      window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+      plausible.init();
+    </script>
+  {% endif %}
 {% endblock %}

@@ -1,8 +1,9 @@
 # Release Process
 
 How a SolidSyslog release is cut, for the maintainer. Releases are source-only
-(no binary artefacts) with a signed SBOM and a reproducible source-tree hash
-attached so integrators can verify provenance (per
+(no binary artefacts) with a signed SBOM, a reproducible source-tree hash and a
+signed offline copy of the documentation attached so integrators can verify
+provenance and keep the documentation for the version they pinned (per
 [`security/release-verification.md`](security/release-verification.md) and
 [`security/sbom.md`](security/sbom.md)). *Security* releases run in lockstep with
 [`security/triage-runbook.md`](security/triage-runbook.md).
@@ -129,10 +130,28 @@ listed above; the two written parts are added by hand in the release pull reques
    `Platform/` + `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`,
    `LICENSES/`), cosign keyless-signs both (GitHub OIDC), and attaches the
    four assets to the Release.
-5. Signing and attachment hard-fail. The Release already exists by the time the
-   job runs, so a failure cannot block it — it means the Release went out
+5. The same event triggers `docs-bundle.yml`: it builds the documentation from
+   the tag with `mkdocs-offline.yml`, checks that the result works with no
+   server and no network, cosign-signs the zip and attaches it with its
+   signature. The bundle is built and checked on every CI run as well, so the
+   only step that waits for a release is the attachment.
+6. Signing and attachment hard-fail. The Release already exists by the time the
+   jobs run, so a failure cannot block it — it means the Release went out
    without provenance. A red run is the signal: fix the cause and re-run the
    job (see [release verification](security/release-verification.md)).
+
+### Why the documentation ships as a file
+
+A published copy of the site for every version would answer the same question,
+and was the original plan. It was dropped: indexed version directories make
+superseded API pages findable by search, the site grows with every release, and
+published URLs cannot be withdrawn once linked. A fixed, hashed, signed file is
+also closer to what an archival reader wants - it can be kept and verified later,
+which a URL cannot.
+
+The reader-facing consequence is that the bundle's footer names the release and
+nothing else. The commit, the tag, the build date and the toolchain digest are in
+`MANIFEST.txt` at the root of the bundle, where an auditor looks for them.
 
 ## Security releases
 
@@ -158,4 +177,11 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
       toolchain proves the signature good but hides any drift between the guide
       and what the workflow actually produces, which is the failure an
       integrator meets first.
+- [ ] Open the documentation bundle before trusting it. Download
+      `solid-syslog-docs-<version>.zip`, extract it and open `index.html` with
+      the network off. The automated check proves every link resolves inside the
+      bundle and that nothing is fetched from another host; it cannot tell you
+      the pages render acceptably, and nothing else in the pipeline looks at
+      them. Confirm the footer names the release, and that the notice explaining
+      how to restore search appears.
 - [ ] Security release: publish the coordinated GHSA.
