@@ -42,6 +42,14 @@ jobs:
       # SOLIDSYSLOG_DOCS_RELEASE makes the footer read "Documentation for release
       # X" rather than naming a branch and commit: this build is the release, so
       # the commit belongs in MANIFEST.txt beside the pages, not in every footer.
+      #
+      # SOLIDSYSLOG_DOCS_REF pins the links hooks/source_links.py writes for any
+      # file outside docs/. It defaults to main, which is right for the published
+      # site because that site is rebuilt from main on every push - but wrong
+      # here. This bundle is frozen at a release and kept, so a link to main
+      # drifts away from the pages around it and eventually names a file that has
+      # moved or gone. The tag holds. No page emits such a link today; pinning it
+      # now means the first one that does is already correct.
       # Image digest below is mkdocs-mkdoxy sha-34173c0 (see docs/containers.md).
       - name: Build the offline documentation bundle
         env:
@@ -49,6 +57,7 @@ jobs:
           SOLIDSYSLOG_DOCS_VERSION: ${{ steps.version.outputs.version }}
           SOLIDSYSLOG_DOCS_RELEASE: ${{ steps.version.outputs.version }}
           SOLIDSYSLOG_DOCS_COMMIT: ${{ github.sha }}
+          SOLIDSYSLOG_DOCS_REF: ${{ github.event.release.tag_name || github.sha }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           docker run --rm -v "$PWD:/docs" \
@@ -56,6 +65,7 @@ jobs:
             -e SOLIDSYSLOG_DOCS_VERSION \
             -e SOLIDSYSLOG_DOCS_RELEASE \
             -e SOLIDSYSLOG_DOCS_COMMIT \
+            -e SOLIDSYSLOG_DOCS_REF \
             -e RELEASE_TAG \
             "$SOLIDSYSLOG_DOCS_IMAGE" \
             sh -c 'mkdocs build -f /docs/mkdocs-offline.yml -d /docs/build/bundle --strict \

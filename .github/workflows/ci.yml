@@ -923,11 +923,15 @@ jobs:
           SOLIDSYSLOG_DOCS_IMAGE: ghcr.io/cososo-ltd/mkdocs-mkdoxy@sha256:9ab3d41807a941f3d5a7077fb7288d0ffe2a926729ce13a4fc889cc8b6630d43
           SOLIDSYSLOG_DOCS_VERSION: ${{ steps.version.outputs.version }}
           SOLIDSYSLOG_DOCS_COMMIT: ${{ github.sha }}
+          # Pinned here too, so this rehearsal builds the bundle the way the
+          # release does. The published site above keeps the default of main.
+          SOLIDSYSLOG_DOCS_REF: ${{ github.sha }}
         run: |
           docker run --rm -v "$PWD:/docs" \
             -e SOLIDSYSLOG_DOCS_IMAGE \
             -e SOLIDSYSLOG_DOCS_VERSION \
             -e SOLIDSYSLOG_DOCS_COMMIT \
+            -e SOLIDSYSLOG_DOCS_REF \
             "$SOLIDSYSLOG_DOCS_IMAGE" \
             sh -c 'mkdocs build -f /docs/mkdocs-offline.yml -d /docs/build/bundle --strict \
                    && python3 /docs/scripts/make_offline_bundle.py /docs/build/bundle \
