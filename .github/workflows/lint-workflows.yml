@@ -1,0 +1,53 @@
+# Validates the GitHub workflow files themselves.
+#
+# An invalid workflow fails quietly. GitHub cannot read the file's `name:`, so
+# the run is titled by path rather than by name, and - the part that actually
+# bites - no run is created for the workflow at all. The other workflows pass,
+# and the pull request looks like it is waiting on a check that will never
+# arrive. That is how a truncated expression in ci.yml read as GitHub stalling
+# rather than as a failure (#899).
+#
+# This deliberately lives in its own file rather than as a job in ci.yml: a lane
+# inside the file being validated cannot run when that file is the broken one.
+# Only a break in this file escapes it, and this file is short and rarely edited.
+name: Lint workflows
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Two shellcheck rules are excluded, and only these two. Everything else
+      # actionlint reports - its own checks and the rest of shellcheck - is an
+      # error, and the tree is clean against that today.
+      #
+      # SC2016: single quotes that deliberately do not expand. `envsubst` takes
+      #   its variable list as a literal string, and `grep '\${'` searches for a
+      #   literal. Both are correct as written, so the rule is a false positive
+      #   here rather than a finding to fix.
+      # SC2038: `find ... | xargs` where a filename could contain whitespace.
+      #   The correct rewrite needs parentheses around the -o group, because
+      #   `-name a -o -name b -exec cmd` binds the -exec to the last predicate
+      #   only - a silent narrowing of the format check to one extension. Not a
+      #   change to make for a hazard no filename in this tree presents.
+      - name: Lint the workflow files
+        env:
+          ACTIONLINT_IMAGE: rhysd/actionlint@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9 # 1.7.7
+          SHELLCHECK_OPTS: -e SC2016 -e SC2038
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo" -w /repo \
+            -e SHELLCHECK_OPTS \
+            "$ACTIONLINT_IMAGE" -color

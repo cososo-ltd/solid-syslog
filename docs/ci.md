@@ -46,6 +46,7 @@ without renaming what's already there.
 | `consumer-smoke-freertos-cross` | — | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
 | `verify-manifest` | — | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
 | `docs-build` | — | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`; on `main`, `deploy-docs-pages` publishes it to GitHub Pages |
+| `actionlint` | — | Validates the workflow files themselves. In its own workflow, not a job here: a lane inside the file being validated cannot run when that file is the broken one |
 | `summary` | — | Aggregates the JUnit artifacts into a run summary. Declared `if: always()` and asserts nothing about the other jobs' results |
 
 ## Branch protection

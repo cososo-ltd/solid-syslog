@@ -84,7 +84,8 @@ jobs:
           SERIAL_NUMBER: ${{ steps.serial.outputs.uuid }}
           TOOLS_VERSION: ${{ github.workflow_sha }}
         run: |
-          export TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          export TIMESTAMP
           envsubst '${VERSION} ${COMMIT_SHA} ${SOURCE_HASH} ${SERIAL_NUMBER} ${TIMESTAMP} ${TOOLS_VERSION}' \
             < sbom/sbom.cdx.json.template > sbom/sbom.cdx.json
           if grep -q '\${' sbom/sbom.cdx.json; then
