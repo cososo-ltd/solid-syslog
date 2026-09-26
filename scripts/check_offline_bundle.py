@@ -146,6 +146,13 @@ def check_stylesheets(root):
                 faults.append(f'{where}: fetches {target} from outside the bundle')
             elif is_inert(target):
                 continue
+            elif target.startswith('/'):
+                # Rejected rather than resolved, exactly as in the markup: a
+                # browser reading from a file:// URI resolves a leading slash
+                # at the filesystem root, not at the bundle's. The file being
+                # present under the bundle is what makes this look correct.
+                faults.append(f'{where}: refers to {target} from the root, '
+                              'which resolves only when the bundle is served')
             elif not os.path.exists(resolve(sheet, root, target)):
                 faults.append(f'{where}: refers to {target}, which is not in the bundle')
     return faults, checked
