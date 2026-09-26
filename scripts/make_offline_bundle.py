@@ -84,7 +84,9 @@ def main(argv):
     parser.add_argument('--version', required=True)
     parser.add_argument('--commit', required=True)
     parser.add_argument('--tag', default='')
-    parser.add_argument('--image', default='unrecorded')
+    # Passed through the container's environment rather than the command line,
+    # so the digest is written once in the workflow and read here.
+    parser.add_argument('--image', default=os.environ.get('SOLIDSYSLOG_DOCS_IMAGE', 'unrecorded'))
     parser.add_argument('--date', default='')
     args = parser.parse_args(argv[1:])
 
