@@ -56,11 +56,19 @@
 {% endblock %}
 
 {% block extrahead %}
-  {#- The offline bundle is a file people extract and read with no network, and
-      it is handed to customers as evidence. Analytics has nothing to measure
-      there and must not call home from an artefact like that, so it is left out
-      of a build that mkdocs-offline.yml configures. -#}
+  {#- Both of these reach across the network, so both are left out of a build
+      that mkdocs-offline.yml configures: the bundle is read with no network at
+      all, and it is handed to customers as evidence, which analytics has no
+      business calling home from.
+
+      Montserrat is the headings face (see assets/stylesheets/brand.css). It is
+      loaded here rather than imported by that stylesheet because an @import
+      cannot be made conditional on the build, and because a stylesheet link in
+      the head does not block rendering the way an @import does. Offline, the
+      headings fall back to the system stack, consistently with theme.font:
+      false taking the body face the same way. -#}
   {% if not config.extra.offline %}
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
     <script defer src="https://plausible.io/js/pa-rbQGvMhd4GxKexbnXvDJE.js"></script>
     <script>
       window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};

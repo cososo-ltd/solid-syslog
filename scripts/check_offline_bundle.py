@@ -12,7 +12,9 @@ MkDocs build relies on, and neither breaks loudly:
 - **External resources.** A stylesheet, script or image fetched from another
   host simply does not load, so the page renders subtly wrong. Worse, an
   analytics beacon in an artefact handed to a customer as evidence calls home.
-  This asserts that nothing outside the bundle is fetched.
+  This asserts that nothing outside the bundle is fetched, from the markup and
+  from inside the stylesheets alike: a CSS ``@import`` or ``url()`` is a network
+  request that no amount of reading the HTML will reveal.
 
 A link this cannot check is one built by JavaScript at runtime. Material's search
 is exactly that, and is disabled in the bundle for its own reasons.
@@ -38,8 +40,30 @@ RESOURCE = {
 }
 NAVIGATION = {'a': 'href'}
 
-# Schemes that are never a file in the bundle.
-EXTERNAL_SCHEMES = ('http:', 'https:', '//', 'mailto:', 'tel:', 'data:', 'javascript:')
+# A fetch from another host. For a resource this is the fault the bundle exists
+# to avoid; for an <a> it is a link the reader chooses to follow, which is fine.
+NETWORK_SCHEMES = ('http://', 'https://', '//')
+
+# Addresses that resolve without either the network or a file beside the page.
+# A data: URI in particular is self-contained, so it is not a fault.
+INERT_SCHEMES = ('data:', 'mailto:', 'tel:', 'javascript:', '#')
+
+# A <link> only fetches for the relations that load on their own.
+FETCHING_RELATIONS = frozenset({
+    'stylesheet', 'icon', 'shortcut', 'apple-touch-icon',
+    'preload', 'modulepreload', 'prefetch', 'manifest',
+})
+
+# A CSS comment. Stripped before the scan below, because prose mentioning
+# @import or url() is not a fetch, and a checker that says otherwise trains
+# people to write around it.
+CSS_COMMENT = re.compile(r'/\*.*?\*/', re.DOTALL)
+
+# @import "x" / @import url(x) / url(x) inside a stylesheet.
+CSS_TARGET = re.compile(
+    r'''@import\s+(?:url\(\s*)?["']?([^"')\s;]+)|url\(\s*["']?([^"')\s]+)''',
+    re.IGNORECASE,
+)
 
 
 class Links(html.parser.HTMLParser):
@@ -54,8 +78,13 @@ class Links(html.parser.HTMLParser):
         if tag in RESOURCE:
             target = values.get(RESOURCE[tag])
             # A <link> is only a fetch for the kinds that load automatically.
-            if tag == 'link' and values.get('rel') not in ('stylesheet', 'icon', 'shortcut icon', 'preload'):
-                target = None
+            # rel is a space-separated token list, so it is matched by token
+            # rather than as a whole string: rel="preload stylesheet" fetches
+            # exactly as rel="stylesheet" does.
+            if tag == 'link':
+                relations = set((values.get('rel') or '').lower().split())
+                if not relations & FETCHING_RELATIONS:
+                    target = None
             if target:
                 self.found.append(('resource', tag, target))
         elif tag in NAVIGATION:
@@ -71,8 +100,12 @@ def pages(root):
                 yield os.path.join(directory, name)
 
 
-def is_external(target):
-    return target.startswith(EXTERNAL_SCHEMES)
+def is_network(target):
+    return target.lower().startswith(NETWORK_SCHEMES)
+
+
+def is_inert(target):
+    return target.lower().startswith(INERT_SCHEMES)
 
 
 def resolve(page, root, target):
@@ -89,6 +122,35 @@ def resolve(page, root, target):
     return os.path.normpath(os.path.join(page_dir, path))
 
 
+def stylesheets(root):
+    for directory, _, names in os.walk(root):
+        for name in names:
+            if name.endswith('.css'):
+                yield os.path.join(directory, name)
+
+
+def check_stylesheets(root):
+    """Every address a stylesheet resolves for itself, which the markup never shows."""
+    faults = []
+    checked = 0
+    for sheet in sorted(stylesheets(root)):
+        where = os.path.relpath(sheet, root)
+        with open(sheet, encoding='utf-8') as handle:
+            text = CSS_COMMENT.sub(' ', handle.read())
+        for match in CSS_TARGET.finditer(text):
+            target = match.group(1) or match.group(2)
+            if not target:
+                continue
+            checked += 1
+            if is_network(target):
+                faults.append(f'{where}: fetches {target} from outside the bundle')
+            elif is_inert(target):
+                continue
+            elif not os.path.exists(resolve(sheet, root, target)):
+                faults.append(f'{where}: refers to {target}, which is not in the bundle')
+    return faults, checked
+
+
 def check(root):
     faults = []
     checked = 0
@@ -98,11 +160,11 @@ def check(root):
             parser.feed(handle.read())
         where = os.path.relpath(page, root)
         for kind, tag, target in parser.found:
-            if is_external(target):
+            if is_network(target):
                 if kind == 'resource':
                     faults.append(f'{where}: <{tag}> fetches {target} from outside the bundle')
                 continue
-            if target.startswith('#'):
+            if is_inert(target):
                 continue
             resolved = resolve(page, root, target)
             checked += 1
@@ -148,6 +210,9 @@ def main(argv):
         version = json.load(handle)['.']
 
     faults, checked = check(root)
+    css_faults, css_checked = check_stylesheets(root)
+    faults += css_faults
+    checked += css_checked
     faults += check_manifest(root, version)
 
     for fault in faults:

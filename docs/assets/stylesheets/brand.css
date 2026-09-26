@@ -3,9 +3,11 @@
  * white site with Montserrat headings, Open Sans body, and the accent violet
  * #3e2199 used sparingly. Values (weights, sizes, colours, header padding) are
  * taken from the live theme CSS. Open Sans is loaded by theme.font.text.
+ *
+ * Montserrat is loaded by overrides/main.html rather than imported here, so
+ * that the offline bundle - which must make no network request - can leave it
+ * out. An @import cannot be made conditional, and it blocks rendering besides.
  */
-
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap");
 
 :root {
   --md-typeset-a-color: #3e2199;

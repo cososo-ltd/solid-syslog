@@ -37,5 +37,20 @@ class PageLinks(unittest.TestCase):
         self.assertEqual('../SolidSyslogAddress_8h/', render.page_href('SolidSyslogAddress_8h'))
 
 
+class DiagramCache(unittest.TestCase):
+    """The rendered SVG carries the link shape, so the cache must key on it too."""
+
+    def tearDown(self):
+        diagrams._CACHE.clear()
+        render.use_directory_urls(True)
+
+    def test_a_second_build_in_the_same_process_does_not_reuse_the_first_s_links(self):
+        config = {'config_file_path': '/repo/mkdocs.yml', 'use_directory_urls': True}
+        diagrams._CACHE[diagrams._cache_key(config)] = {'marker': 'directory'}
+
+        flat = {'config_file_path': '/repo/mkdocs.yml', 'use_directory_urls': False}
+        self.assertNotIn(diagrams._cache_key(flat), diagrams._CACHE)
+
+
 if __name__ == '__main__':
     unittest.main()
