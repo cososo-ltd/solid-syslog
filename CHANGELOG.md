@@ -1,5 +1,68 @@
 # Changelog
 
+## [0.2.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.1.0...v0.2.0) (2026-09-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* the per-pack enums SolidSyslog<Pack><Class>Errors for the Address, Datagram, Resolver, File, Mutex and AtomicCounter roles are replaced by enum SolidSyslog<Role>Errors, and their SOLIDSYSLOG_<PACK>_<CLASS>_ERROR_* constants by SOLIDSYSLOG_<ROLE>_ERROR_*. The values are unchanged, so a handler matching on numbers is unaffected.
+* give the TCP streams one set of detail codes ([#863](https://github.com/cososo-ltd/solid-syslog/issues/863))
+* S39 give the crypto roles their detail codes from Core ([#818](https://github.com/cososo-ltd/solid-syslog/issues/818))
+* S39 give the TLS-stream role one portable error enum ([#814](https://github.com/cososo-ltd/solid-syslog/issues/814))
+* S39 supply the TLS profile per connection, and bind cipher policy ([#812](https://github.com/cososo-ltd/solid-syslog/issues/812))
+* the Mbed TLS stream asks a credentials source for its material ([#802](https://github.com/cososo-ltd/solid-syslog/issues/802))
+* every *ErrorSource object declared in a public *Errors.h header gains the SolidSyslog prefix, so UdpSenderErrorSource becomes SolidSyslogUdpSenderErrorSource and the rest follow. An error handler that matches on source identity, event->Source == &UdpSenderErrorSource, must be updated to the new name. The matching rule itself is unchanged.
+* the OpenSSL stream asks a credentials source for its material ([#799](https://github.com/cososo-ltd/solid-syslog/issues/799))
+
+### Features
+
+* a credentials role for each TLS pack ([#797](https://github.com/cososo-ltd/solid-syslog/issues/797)) ([7e446d0](https://github.com/cososo-ltd/solid-syslog/commit/7e446d05ef070a822928c1494c84f6b63f1c5f68))
+* an Mbed TLS credentials backend that parses PEM per connection ([#803](https://github.com/cososo-ltd/solid-syslog/issues/803)) ([9ca9184](https://github.com/cososo-ltd/solid-syslog/commit/9ca918454e1acabd7b1dcbca311d4c27e2d46e34))
+* give the TCP keepalive timings one set of tunables ([#847](https://github.com/cososo-ltd/solid-syslog/issues/847)) ([28dcdb2](https://github.com/cososo-ltd/solid-syslog/commit/28dcdb2918f22cfba827a133d963b5dd942c4ef6))
+* report which step of a failed TCP connect gave up ([#865](https://github.com/cososo-ltd/solid-syslog/issues/865)) ([85af38d](https://github.com/cososo-ltd/solid-syslog/commit/85af38d830a666f4b1766c0090d94bd337b939d4))
+* S35.01 lwIP Sockets Address and Resolver ([#886](https://github.com/cososo-ltd/solid-syslog/issues/886)) ([3f526b3](https://github.com/cososo-ltd/solid-syslog/commit/3f526b3b407cc9b1c0502a4986281356bf73f92d))
+* S35.02 lwIP Sockets Datagram and TcpStream ([#887](https://github.com/cososo-ltd/solid-syslog/issues/887)) ([863aa3f](https://github.com/cososo-ltd/solid-syslog/commit/863aa3fe081587a240dd5203eb44acfdacf6533f))
+* S35.03 run the BDD target's network through the lwIP Sockets API ([#893](https://github.com/cososo-ltd/solid-syslog/issues/893)) ([33a733f](https://github.com/cososo-ltd/solid-syslog/commit/33a733f6d4fd419275637e23cd0a7ec2712b699b))
+* S36.01 a LittleFS File adapter ([#877](https://github.com/cososo-ltd/solid-syslog/issues/877)) ([032d322](https://github.com/cososo-ltd/solid-syslog/commit/032d322eb3c76b10e69ed366159f7825d53cd24d))
+* S36.03 run the BDD target's store on LittleFS ([#881](https://github.com/cososo-ltd/solid-syslog/issues/881)) ([6174804](https://github.com/cososo-ltd/solid-syslog/commit/6174804924f0e5f37c9572a24ba582a11e94ae94))
+* S39 authorise a TLS peer by certificate fingerprint (Core + OpenSSL) ([#806](https://github.com/cososo-ltd/solid-syslog/issues/806)) ([f3e7445](https://github.com/cososo-ltd/solid-syslog/commit/f3e74456c006802cedde28f9acf1bc583b2f5446))
+* S39 authorise a TLS peer by certificate fingerprint (Mbed TLS) ([#808](https://github.com/cososo-ltd/solid-syslog/issues/808)) ([7bb982a](https://github.com/cososo-ltd/solid-syslog/commit/7bb982a2d18be97abb95c5b1dd7c4b1960865729))
+* S39 detect a TLS configuration change from the stream ([#809](https://github.com/cososo-ltd/solid-syslog/issues/809)) ([ebc17c9](https://github.com/cososo-ltd/solid-syslog/commit/ebc17c9685f6f444d1f99fca31be3c8553b9a99d))
+* S39 supply the TLS profile per connection, and bind cipher policy ([#812](https://github.com/cososo-ltd/solid-syslog/issues/812)) ([804764e](https://github.com/cososo-ltd/solid-syslog/commit/804764e8d4e4c385750cd7e432c6290edc064457))
+* S40.01 add the fourth BDD target and its lanes ([#868](https://github.com/cososo-ltd/solid-syslog/issues/868)) ([bf0f792](https://github.com/cososo-ltd/solid-syslog/commit/bf0f792eeabb5e15593228aa5d8cf79192793e28))
+* S40.02 a CMSIS-RTOS2 Mutex ([#871](https://github.com/cososo-ltd/solid-syslog/issues/871)) ([eed100c](https://github.com/cososo-ltd/solid-syslog/commit/eed100ccde9b50deaced750eb0b469c7c60fd6a1))
+* S40.03 a CMSIS-RTOS2 uptime that survives its own tick rollover ([#872](https://github.com/cososo-ltd/solid-syslog/issues/872)) ([7be7d51](https://github.com/cososo-ltd/solid-syslog/commit/7be7d512d27c4ab4a56a1e0e8382675ab623f111))
+* S40.04 run the BDD target's OS primitives through CMSIS-RTOS2 ([#876](https://github.com/cososo-ltd/solid-syslog/issues/876)) ([4da6840](https://github.com/cososo-ltd/solid-syslog/commit/4da6840d7f3bfac9c8c4389956909a35b4092518))
+* the Mbed TLS stream asks a credentials source for its material ([#802](https://github.com/cososo-ltd/solid-syslog/issues/802)) ([f9db5f5](https://github.com/cososo-ltd/solid-syslog/commit/f9db5f5c8245a7f7cb38251bf1223b2e5e3beb1f))
+* the OpenSSL stream asks a credentials source for its material ([#799](https://github.com/cososo-ltd/solid-syslog/issues/799)) ([c6720e3](https://github.com/cososo-ltd/solid-syslog/commit/c6720e39b09a445ceb997ea9e00ddfb5fcf495db))
+
+
+### Bug Fixes
+
+* carry FreeRTOS uptime past the tick counter's own rollover ([#844](https://github.com/cososo-ltd/solid-syslog/issues/844)) ([bbff2b0](https://github.com/cososo-ltd/solid-syslog/commit/bbff2b0fd904d223d0249b22508a28fa89e4fbc4))
+* check the Mbed TLS client key against its certificate ([#790](https://github.com/cososo-ltd/solid-syslog/issues/790)) ([05e8e68](https://github.com/cososo-ltd/solid-syslog/commit/05e8e68a4def8c8323fe0bb0516d5155bb7f89f3))
+* check the wiring four Create functions cannot work without ([#791](https://github.com/cososo-ltd/solid-syslog/issues/791)) ([35446ab](https://github.com/cososo-ltd/solid-syslog/commit/35446ab13e8c4178dff8bfa0ab9aa1e824e88a8d))
+* class-qualify the file-scope macros in the File adapters ([#882](https://github.com/cososo-ltd/solid-syslog/issues/882)) ([cff8310](https://github.com/cososo-ltd/solid-syslog/commit/cff83108551cf122768b3590ce92b4f37b46e475))
+* name the check that refused a TLS handshake ([#792](https://github.com/cososo-ltd/solid-syslog/issues/792)) ([1201eb4](https://github.com/cososo-ltd/solid-syslog/commit/1201eb40d2a8ae126538de37cb06f6bd740d3ee9))
+* report a client credential a TLS stream cannot present, and keep delivering ([#788](https://github.com/cososo-ltd/solid-syslog/issues/788)) ([c5c7e3f](https://github.com/cososo-ltd/solid-syslog/commit/c5c7e3f5620d423bf87e3c4153435abd0798cc20))
+* report a mutual-TLS credential the Mbed TLS stream cannot present ([#785](https://github.com/cososo-ltd/solid-syslog/issues/785)) ([0522448](https://github.com/cososo-ltd/solid-syslog/commit/0522448a8e081d6b5886ea56e71ebf4de92db605))
+* report an unroutable destination as a connect that never started ([#869](https://github.com/cososo-ltd/solid-syslog/issues/869)) ([c9f0e35](https://github.com/cososo-ltd/solid-syslog/commit/c9f0e35b3eba9c1db2b4bfa6fdde57c0f62c2805))
+* S39 stop a closed lwIP pcb reaching the stream that replaced it ([#822](https://github.com/cososo-ltd/solid-syslog/issues/822)) ([20a1cce](https://github.com/cososo-ltd/solid-syslog/commit/20a1cce5d295fa7550f0a83a36bf9fb44f64f676))
+* S39.01 close the findings from the E39 closing security audit ([#828](https://github.com/cososo-ltd/solid-syslog/issues/828)) ([4d07865](https://github.com/cososo-ltd/solid-syslog/commit/4d07865d68cb165dd0dcc86dbb2407d41962caec))
+* S39.01 name an allocation failure in the linked TLS library, and act on the integration field report ([#831](https://github.com/cososo-ltd/solid-syslog/issues/831)) ([2878e46](https://github.com/cososo-ltd/solid-syslog/commit/2878e46a6b37055d4dc3ac61ea062424db95dfcf))
+* S39.01 pin what the TLS adapters inherited, and rewrite the TLS docs ([#829](https://github.com/cososo-ltd/solid-syslog/issues/829)) ([8cb0281](https://github.com/cososo-ltd/solid-syslog/commit/8cb0281456cf054124b678776388ad01c629c983))
+* S39.04 report an address that does not match as a name mismatch, found by the TLS matrix ([#821](https://github.com/cososo-ltd/solid-syslog/issues/821)) ([ff9f7c4](https://github.com/cososo-ltd/solid-syslog/commit/ff9f7c440ec267cefdfc3a9e283cd0d9e711ab32))
+* trim an over-large datagram on a platform that cannot name one ([#841](https://github.com/cososo-ltd/solid-syslog/issues/841)) ([ee2365c](https://github.com/cososo-ltd/solid-syslog/commit/ee2365c9f8630182bf7dc83523fad2b3d5ef1c0a))
+
+
+### Refactoring
+
+* give every platform role one set of detail codes ([#866](https://github.com/cososo-ltd/solid-syslog/issues/866)) ([8e8d3e4](https://github.com/cososo-ltd/solid-syslog/commit/8e8d3e420c85ca5c66a47230daa4a148484b0f7a))
+* give the TCP streams one set of detail codes ([#863](https://github.com/cososo-ltd/solid-syslog/issues/863)) ([b612a1d](https://github.com/cososo-ltd/solid-syslog/commit/b612a1da5469ef39b36698b1efda1689d89a98c4))
+* prefix the public error sources ([#801](https://github.com/cososo-ltd/solid-syslog/issues/801)) ([047d94a](https://github.com/cososo-ltd/solid-syslog/commit/047d94ababb4bc801a1808e28bd00f08a905be28))
+* S39 give the crypto roles their detail codes from Core ([#818](https://github.com/cososo-ltd/solid-syslog/issues/818)) ([5344bf7](https://github.com/cososo-ltd/solid-syslog/commit/5344bf75d57c3aff5455a73ef6dfe1bfa8ea0999))
+* S39 give the TLS-stream role one portable error enum ([#814](https://github.com/cososo-ltd/solid-syslog/issues/814)) ([b6ef7a3](https://github.com/cososo-ltd/solid-syslog/commit/b6ef7a36be75e7fe81423fc8efc02fa9c7255227))
+
 ## 0.1.0 (2026-08-18)
 
 First public release. SolidSyslog is a structured syslog client library for
