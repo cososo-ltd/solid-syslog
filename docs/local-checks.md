@@ -243,6 +243,9 @@ adjust those by hand.
   standard on every PR. If it fails, either fix the construct or, if it
   genuinely belongs to a C11-only component, gate that component the way
   `Platform/StdAtomic` is gated. See [builds.md](builds.md#c99-portability--c99)
+- `actionlint`: the workflow files are linted by their own lane on every PR.
+  Deliberately not in the pre-push budget - an invalid workflow is caught before
+  merge, and the budget is short on purpose
 - Windows MSVC + BDD + integration: depend on tools you may not have
 - BDD-linux-syslog-ng, BDD-windows-otel, BDD-freertos-qemu: heavy
   multi-container stacks
