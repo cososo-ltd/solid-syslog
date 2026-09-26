@@ -37,6 +37,16 @@ build only. Deliberately not ``git describe``: it needs full history, which
 ``docs-build`` does not check out, and its ``v0.1.0-77-g73f3646a`` reads as a
 version string when it is not one.
 
+One known misstatement, accepted rather than fixed. The manifest answers a
+slightly different question on the release pull request that release-please
+raises: there it already holds the *next* version, before any tag for it
+exists, so a build of that branch says "after release 0.2.0" while the newest
+release is still 0.1.0. It is wrong only in the artifact built for that one
+pull request, which nothing publishes, and it becomes true the moment the pull
+request merges, because release-please tags the release in the same act.
+Reading the newest tag would be correct and costs the lane a tag fetch it
+otherwise has no use for.
+
 ``overrides/partials/copyright.html`` renders the result.
 """
 
