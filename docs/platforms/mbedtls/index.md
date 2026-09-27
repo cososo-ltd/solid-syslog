@@ -120,9 +120,9 @@ The at-rest policies raise every code their roles define.
 ## What a connection is made with
 
 The stream asks for a profile once per connection, and takes the expected peer
-name and the ciphersuite policy from it. Nothing is stored between connections,
-so a change is a matter of returning something different and moving the stream's
-version.
+name, the ciphersuite policy and the certificate profile from it. Nothing is
+stored between connections, so a change is a matter of returning something
+different and moving the stream's version.
 
 The ciphersuite policy is one list covering both TLS versions, given as a
 0-terminated array of IANA identifiers - the `MBEDTLS_TLS_*` and
@@ -132,9 +132,17 @@ build enables is offered, which on a trimmed `mbedtls_config.h` is whatever was
 compiled in rather than a curated set; naming a policy is how that becomes a
 decision rather than a side effect of the build.
 
-Key-exchange groups and signature algorithms are not selectable here. TLS 1.3
-moved both out of the ciphersuite, so a policy naming a curve has nowhere to go
-yet.
+The certificate profile is what every certificate in the peer's chain is held
+to: which signature hashes it may carry, which public-key algorithms and curves,
+and the minimum RSA key size. Leave it unset and whatever the Mbed TLS you link
+names as its default profile stands, which is what the section below is about.
+Mbed TLS does not copy the profile, so it must stay valid for as long as the
+connection.
+
+Key-exchange groups and the signature algorithms offered in the handshake are
+not selectable here. TLS 1.3 moved both out of the ciphersuite, so a ciphersuite
+policy naming a curve has nowhere to go, and a certificate profile covers
+certificates rather than the handshake.
 
 ## Where it falls short of the contract
 
@@ -145,6 +153,15 @@ An expected identity given as an address literal is matched against an
 against a DNS name or Common Name spelling the same digits and offers no way to
 refuse that. A certificate carrying the address only as text therefore passes
 here. RFC 9525 §6.2 requires the exact `iPAddress` match alone.
+
+Of the cryptographic floor, this pack pins the protocol version at TLS 1.2, the
+finite-field Diffie-Hellman group at 2048 bits, and refuses a peer that will not
+acknowledge `renegotiation_info`. What a certificate in the chain may be signed
+with, and how large its key must be, it does not pin: the X.509 profile in force
+is whichever one the Mbed TLS you link names as its default, so that part of the
+floor is a property of that library rather than of this one. Set `CertProfile`
+on [SolidSyslogMbedTlsProfile](../../api/structSolidSyslogMbedTlsProfile.md) and
+it becomes a guarantee instead.
 
 Every other obligation under [TLS obligations](../../tls.md) is met by this
 pack as shipped.
