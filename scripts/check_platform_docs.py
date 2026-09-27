@@ -431,9 +431,14 @@ def marked_lists():
     """
     for page in markdown_pages():
         text = read(page)
-        for opening in PLATFORM_LIST_OPEN.finditer(text):
+        openings = list(PLATFORM_LIST_OPEN.finditer(text))
+        for index, opening in enumerate(openings):
             number = text.count("\n", 0, opening.start()) + 1
-            end = text.find(PLATFORM_LIST_CLOSE, opening.end())
+            # A later list's closer does not close this one. Without the bound an
+            # unclosed list borrows the next one's, so its body swallows that
+            # list and it passes on names it never said - green, and wrong twice.
+            limit = openings[index + 1].start() if index + 1 < len(openings) else len(text)
+            end = text.find(PLATFORM_LIST_CLOSE, opening.end(), limit)
             body = None if end == -1 else text[opening.end() : end]
             yield page, number, opening.group(1), body
 

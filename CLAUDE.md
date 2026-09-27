@@ -447,7 +447,7 @@ Tests/              — CppUTest unit tests. Never link production code directly
 Tests/Support/      — Shared test-support library: fakes for the platform and vendor seams (socket, clock, mq, config lock, error handler, OpenSSL, Mbed TLS, Winsock, and the FreeRtosFakes / LwipFakes / FatFsFakes / PlusFatFakes subtrees), plus SafeString and the syslog field parser. Linked by test executables only, never by the production library.
 Tests/Bdd/Targets/  — BDD target code unit tests (BddTargetTests executable).
 Bdd/                — BDD test infrastructure: Gherkin features, step definitions, syslog-ng config.
-Bdd/Targets/        — One BDD-driven binary per platform, over a shared Common — all named SolidSyslogBddTarget. Not pedagogical examples. docs/bdd.md holds the set.
+Bdd/Targets/        — One BDD-driven binary per target configuration, over a shared Common. Not pedagogical examples. docs/bdd.md holds the set.
 ci/                 — CI-specific files (e.g. docker-compose.bdd.yml).
 docs/               — Project documentation.
 ```

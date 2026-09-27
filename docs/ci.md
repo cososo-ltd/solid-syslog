@@ -83,7 +83,7 @@ The lane names say the platform and toolchain but not the adapter, so:
 | FreeRTOS-Plus-FAT | Host-TDD against fakes in `build-freertos-host-tdd-plustcp`, and built in the Plus-TCP cross lanes |
 | LittleFS | `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsis-qemu-lwip` |
 | POSIX, Windows | The `build-linux-*` and `build-windows-msvc` lanes, plus both host BDD lanes |
-| C11 atomics | Probe-selected into `libSolidSyslog.a` in the `build-linux-*` lanes, and named explicitly by both cross presets |
+| C11 atomics | Probe-selected into `libSolidSyslog.a` in the `build-linux-*` lanes, and named explicitly by both lwIP cross presets |
 
 <!-- /platforms -->
 

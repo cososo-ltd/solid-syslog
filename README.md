@@ -100,9 +100,9 @@ that split and links the generated reference for every header, type and symbol. 
 the anatomy of an adapter, and the Null object that stands in for any role you
 leave unfilled.
 
-[`Bdd/Targets/`](Bdd/Targets/) holds one BDD-driven binary per platform, on the
-host and under QEMU alike, each exercising the library end to end against a real
-syslog server; see
+[`Bdd/Targets/`](Bdd/Targets/) holds one BDD-driven binary per target
+configuration, on the host and under QEMU alike, each exercising the library end
+to end against a real syslog server; see
 [BDD testing](https://docs.cososo.co.uk/solid-syslog/bdd/).
 
 ## Compliance
