@@ -10,6 +10,7 @@
 struct mbedtls_ssl_config;
 struct mbedtls_ssl_context;
 struct mbedtls_x509_crt;
+struct mbedtls_x509_crt_profile;
 struct mbedtls_x509_crl;
 struct mbedtls_ctr_drbg_context;
 
@@ -112,6 +113,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int MbedTlsFake_SslConfCaChainCallCount(void);
     int MbedTlsFake_SslConfCiphersuitesCallCount(void);
     const int* MbedTlsFake_LastSslConfCiphersuitesArg(void);
+    int MbedTlsFake_SslConfCertProfileCallCount(void);
+    const struct mbedtls_x509_crt_profile* MbedTlsFake_LastSslConfCertProfileArg(void);
     struct mbedtls_ssl_config* MbedTlsFake_LastSslConfCaChainConfigArg(void);
     struct mbedtls_x509_crt* MbedTlsFake_LastSslConfCaChainArg(void);
     struct mbedtls_x509_crl* MbedTlsFake_LastSslConfCaChainCrlArg(void);

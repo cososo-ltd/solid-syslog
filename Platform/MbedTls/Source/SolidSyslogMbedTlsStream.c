@@ -57,6 +57,7 @@ static uint32_t MbedTlsStream_NullVersion(void* context);
 static void MbedTlsStream_NullProfile(struct SolidSyslogMbedTlsProfile* profile, void* context);
 static inline void MbedTlsStream_PullProfile(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_ApplyCipherPolicy(struct SolidSyslogMbedTlsStream* self);
+static inline void MbedTlsStream_ApplyCertProfilePolicy(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_ConfigProvidesHandshakeGetter(const struct SolidSyslogMbedTlsStreamConfig* config);
 static inline bool MbedTlsStream_ConfigProvidesVersion(const struct SolidSyslogMbedTlsStreamConfig* config);
 static inline bool MbedTlsStream_ConfigProvidesProfile(const struct SolidSyslogMbedTlsStreamConfig* config);
@@ -248,6 +249,7 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
     {
         MbedTlsStream_ApplyTlsPolicy(self);
         MbedTlsStream_ApplyCipherPolicy(self);
+        MbedTlsStream_ApplyCertProfilePolicy(self);
         ok = MbedTlsStream_InstallCredentials(self) && MbedTlsStream_BindContextToConfig(self) &&
              MbedTlsStream_ConfigureExpectedHostname(self);
     }
@@ -343,6 +345,11 @@ static inline void MbedTlsStream_ApplyCipherPolicy(struct SolidSyslogMbedTlsStre
     {
         mbedtls_ssl_conf_ciphersuites(&self->SslConfig, self->Profile.CipherSuites);
     }
+}
+
+static inline void MbedTlsStream_ApplyCertProfilePolicy(struct SolidSyslogMbedTlsStream* self)
+{
+    mbedtls_ssl_conf_cert_profile(&self->SslConfig, self->Profile.CertProfile);
 }
 
 /* Asked once per connection, after the policy is on the ssl_config and before
