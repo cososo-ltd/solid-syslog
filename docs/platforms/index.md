@@ -15,8 +15,8 @@ vtable.
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|
 | [Posix](posix/index.md) | POSIX / BSD sockets | ● | | | ● | ● | ● |
 | [Windows](windows/index.md) | Win32 / Winsock | ● | | | ● | ● | ● |
-| [FreeRTOS](freertos/index.md) | FreeRTOS kernel | | | | | ● | ● |
-| [CMSIS-RTOS2](cmsisrtos/index.md) | CMSIS-RTOS2 API | | | | | ● | ● |
+| [FreeRTOS](freertos/index.md) | FreeRTOS kernel | | | | | ● | |
+| [CMSIS-RTOS2](cmsisrtos/index.md) | CMSIS-RTOS2 API | | | | | ● | |
 | [FreeRTOS-Plus-TCP](plustcp/index.md) | FreeRTOS-Plus-TCP | ● | | | | | |
 | [lwIP (Raw API)](lwipraw/index.md) | lwIP Raw API | ● | | | | | |
 | [lwIP (Sockets API)](lwipsocket/index.md) | lwIP Sockets API | ● | | | | | |
@@ -28,9 +28,17 @@ vtable.
 | [C11 atomics](stdatomic/index.md) | `<stdatomic.h>` | | | | | ● | |
 
 The at-rest-crypto column is the keyed policies (HMAC-SHA256, AES-256-GCM); the
-unkeyed CRC-16 policy is Core. Buffer, Store, and Structured Data are roles Core
-fills directly (with a Posix message-queue buffer option) — they're under
-[Roles](../roles/index.md), not here.
+unkeyed CRC-16 policy is Core.
+
+OS primitives is what a kernel supplies: a mutex, an atomic counter, and the tick
+count an uptime callback reports. Time & host is wall-clock time and host
+identity, which is the clock, hostname, process-id and sleep callbacks. An RTOS
+gives the first without the second, so a FreeRTOS or CMSIS-RTOS2 target still
+needs a clock from its integrator.
+
+Buffer, Store, and Structured Data are roles Core fills directly (with a Posix
+message-queue buffer option) — they're under [Roles](../roles/index.md), not
+here.
 
 ## Bring your own
 

@@ -3,7 +3,8 @@
 A role is one capability the library needs filled, defined as a vtable in
 `SolidSyslog<Role>Definition.h`. A platform adapter, a Core implementation, or
 your own code fills it. Every role has a Null fallback, so an unfilled slot
-degrades safely instead of dangling at link time.
+degrades safely instead of dangling at link time. Core declares the roles below;
+one is declared by each TLS platform for itself, at the end.
 
 Each page below is that role's contract — the vtable itself, and a generated
 diagram of the backends that realise it.
@@ -39,6 +40,27 @@ diagram of the backends that realise it.
 |---|---|
 | [StructuredData](../api/structSolidSyslogStructuredData.md) | emit one RFC 5424 SD element |
 | [SecurityPolicy](../api/structSolidSyslogSecurityPolicy.md) | seal and open stored records |
+
+## Declared per platform
+
+The credentials vtable supplies a TLS Stream with its trust anchors, its client
+credential, and any pinned peer fingerprints. Each TLS platform declares its own
+rather than sharing one, because the material is typed by the backend: what
+`Install` configures is an `SSL_CTX` under OpenSSL and an `mbedtls_ssl_config`
+under Mbed TLS, and no neutral vtable can carry either.
+
+A backend fetches the material when a connection is being made and lets go of it
+when the connection ends, so a deployment can keep credentials out of memory in
+between. A file, a caller-built handle, a secure element and a keyring are all
+backends of this one role.
+
+| Contract | Platform |
+|---|---|
+| [OpenSSL credentials](../api/structSolidSyslogOpenSslCredentials.md) | [OpenSSL](../platforms/openssl/index.md) |
+| [Mbed TLS credentials](../api/structSolidSyslogMbedTlsCredentials.md) | [Mbed TLS](../platforms/mbedtls/index.md) |
+
+What a TLS Stream must do with them, whichever platform provides it, is the
+[TLS obligations](../tls.md) contract.
 
 ## Bring your own
 
