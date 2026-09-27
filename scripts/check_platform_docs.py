@@ -32,6 +32,12 @@ It also holds three boundaries that hand review kept losing:
 * **Every header its platform ships is on its page.** The *What it ships*
   manifest is generated from the Interface directory, so this asserts the
   heading the generator writes into is still there.
+* **A list claiming to name every platform names every platform.** A region
+  marked `<!-- platforms: <scope> -->` must name each platform the scope covers,
+  where the scope is a registry field: `all`, `kind=probe` or `roles=tls`. The
+  enumeration stays a sentence or a table a person wrote - what changes is that
+  a fourteenth pack fails the build everywhere that claims to list them all.
+  Four separate lists had drifted the same way by the time this was written.
 
 A role is declared by a Core/Interface/SolidSyslog<Role>Definition.h header, and
 listed in three hand-written places: the porting guide, the roles index, and the
@@ -55,19 +61,23 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 REGISTRY = re.compile(r"set\(SOLIDSYSLOG_PLATFORM_REGISTRY(.*?)^\)", re.DOTALL | re.MULTILINE)
-ROW = re.compile(r'"([^"|]+)\|[^"|]*\|[^"|]*\|[^"|]*\|([^"|]+)\|[^"]*"')
+ROW = re.compile(r'"([^"|]+)\|[^"|]*\|[^"|]*\|([^"|]*)\|([^"|]+)\|([^"]*)"')
 
 # What each platform is called in prose, where that differs from its registry
 # token. Tokens and class names are derived, so this is the only hand-kept part
 # of the vocabulary — and every registered token must appear, so adding a
 # platform forces the decision rather than silently widening the gap.
 ALIASES = {
-    "StdAtomic": [],
+    # The pack is the language feature, and prose says the feature.
+    "StdAtomic": ["C11 atomics"],
     # The pack is named for the API it targets, and prose says the API's own
     # name. No kernel is an alias: the adapter is not written against one.
     "CmsisRtos": ["CMSIS-RTOS2", "CMSIS"],
     "FatFs": ["FatFs", "ChaN"],
-    "FreeRtos": ["FreeRTOS"],
+    # "FreeRTOS" alone belongs to the kernel pack and to both FreeRTOS-Plus-*
+    # packs, so in a list naming all three it identifies none of them. The
+    # kernel pack needs a spelling of its own for that case.
+    "FreeRtos": ["FreeRTOS", "FreeRTOS kernel"],
     "LittleFs": ["LittleFS", "littlefs"],
     # Two packs target the same stack at different API tiers, so "lwIP" is part
     # of each one's own identity rather than the other's name, the way FreeRTOS
@@ -81,8 +91,8 @@ ALIASES = {
     # of their own identity as much as it is the kernel pack's — each may name
     # the kernel it sits on. The pack's token stays the pack's, so a page that
     # points at the FreeRtos platform is still caught.
-    "PlusFat": ["FreeRTOS-Plus-FAT", "FreeRTOS"],
-    "PlusTcp": ["FreeRTOS-Plus-TCP", "FreeRTOS"],
+    "PlusFat": ["FreeRTOS-Plus-FAT", "Plus-FAT", "FreeRTOS"],
+    "PlusTcp": ["FreeRTOS-Plus-TCP", "Plus-TCP", "FreeRTOS"],
     "Posix": ["POSIX"],
     "Windows": ["Winsock", "Win32"],
 }
@@ -123,6 +133,12 @@ ROLE_COUNT_IN_PROSE = re.compile(
     re.IGNORECASE,
 )
 
+# A region of a page that claims to name every platform in some scope, and the
+# end of one. A comment rather than a fence so it renders as nothing: the reader
+# sees the sentence or the table, and only the check sees the claim.
+PLATFORM_LIST_OPEN = re.compile(r"<!--\s*platforms:\s*([^>]*?)\s*-->")
+PLATFORM_LIST_CLOSE = "<!-- /platforms -->"
+
 # An #include names a header the compiler must find, not a platform the prose
 # is describing. The boundary is editorial; what a translation unit depends on
 # is the build's business and is governed there.
@@ -134,12 +150,27 @@ def read(*parts):
         return handle.read()
 
 
-def registered():
-    """[(token, directory)] from the registry, which is the single declaration."""
+def registry_rows():
+    """[(token, kind, directory, [roles])] - every field the checks below read.
+
+    A row is `token|option|default|kind|directory|roles`, as the macro that
+    reads it in CMakeLists.txt states. The kind and the roles are what let a
+    scoped platform list be checked against the declaration rather than by
+    hand: "the platforms decided by a probe" and "the platforms filling the TLS
+    role" are both already written down here.
+    """
     found = REGISTRY.search(read("CMakeLists.txt"))
     if found is None:
         sys.exit("SOLIDSYSLOG_PLATFORM_REGISTRY not found in CMakeLists.txt")
-    return ROW.findall(found.group(1))
+    return [
+        (token, kind, directory, roles.split())
+        for token, kind, directory, roles in ROW.findall(found.group(1))
+    ]
+
+
+def registered():
+    """[(token, directory)] from the registry, which is the single declaration."""
+    return [(token, directory) for token, _, directory, _ in registry_rows()]
 
 
 def documented():
@@ -376,6 +407,104 @@ def unlisted_headers(rows):
     return faults
 
 
+def markdown_pages():
+    """Every page a platform list can appear on: docs/ and the root documents.
+
+    The root documents are in scope because README.md carried one of the stale
+    lists. hooks/page_descriptions.py is not: a search snippet has no room for
+    thirteen of anything, so a list there would be wrong rather than incomplete.
+    """
+    for name in sorted(os.listdir(ROOT)):
+        if name.endswith(".md"):
+            yield name
+    for path, _, names in os.walk(os.path.join(ROOT, "docs")):
+        for name in sorted(names):
+            if name.endswith(".md"):
+                yield os.path.relpath(os.path.join(path, name), ROOT)
+
+
+def marked_lists():
+    """(page, line number, scope, body) for every marked platform list.
+
+    A body of None is an opening marker with no closer, which the caller
+    reports rather than silently reading to the end of the page.
+    """
+    for page in markdown_pages():
+        text = read(page)
+        for opening in PLATFORM_LIST_OPEN.finditer(text):
+            number = text.count("\n", 0, opening.start()) + 1
+            end = text.find(PLATFORM_LIST_CLOSE, opening.end())
+            body = None if end == -1 else text[opening.end() : end]
+            yield page, number, opening.group(1), body
+
+
+def list_scope(scope, rows):
+    """The tokens a marked region must name, or None if the scope is unreadable.
+
+    Three forms, each of them a registry field: `all`, `kind=<probe|upstream>`
+    and `roles=<role>`. Nothing is hand-kept - the registry already states a
+    row's selection kind and the roles it fills, so a scoped list is held to the
+    same declaration as an exhaustive one.
+    """
+    if scope == "all":
+        return [token for token, _, _, _ in rows]
+    if scope.startswith("kind="):
+        wanted = scope[len("kind=") :]
+        return [token for token, kind, _, _ in rows if kind == wanted]
+    if scope.startswith("roles="):
+        wanted = scope[len("roles=") :]
+        return [token for token, _, _, roles in rows if wanted in roles]
+    return None
+
+
+def names_term(text, term):
+    """Whether a region says a term, on the word boundaries the vocabulary uses."""
+    return re.search(r"(?<![\w-])" + re.escape(term) + r"(?![\w-])", text) is not None
+
+
+def list_faults(rows, terms):
+    """Every marked region names every platform in the scope it claims.
+
+    A term two platforms in the same scope share names neither of them: "lwIP"
+    stopped identifying a pack the day the second lwIP pack shipped, and this
+    was written because a table had it standing for both. So a platform counts
+    as named only by a term that is unambiguous within the scope - which is why
+    the suggestion in the message is worth reading rather than guessing at.
+    """
+    faults = []
+    for page, number, scope, body in marked_lists():
+        if body is None:
+            faults.append(
+                f"{page}:{number} opens a platform list that is never closed - "
+                f"put {PLATFORM_LIST_CLOSE} after the last entry"
+            )
+            continue
+        wanted = list_scope(scope, rows)
+        if wanted is None:
+            faults.append(
+                f'{page}:{number} claims the scope "{scope}", which is not one of '
+                "all, kind=<probe|upstream> or roles=<role>"
+            )
+            continue
+        if not wanted:
+            faults.append(
+                f'{page}:{number} claims the scope "{scope}", which no registry row '
+                "matches - check it against SOLIDSYSLOG_PLATFORM_REGISTRY"
+            )
+            continue
+        scoped = set(wanted)
+        for token in wanted:
+            unambiguous = {term for term, owners in terms.items() if owners & scoped == {token}}
+            if any(names_term(body, term) for term in unambiguous):
+                continue
+            prose = [t for t in [token, *ALIASES.get(token, [])] if t in unambiguous]
+            faults.append(
+                f'{page}:{number} lists platforms ("{scope}") but does not name '
+                f"{token} - say {' or '.join(prose)}"
+            )
+    return faults
+
+
 def check():
     faults = []
     nav = read("mkdocs.yml")
@@ -414,6 +543,7 @@ def check():
     faults.extend(naming_faults(rows, vocabulary(rows)))
     faults.extend(role_faults())
     faults.extend(pack_role_faults())
+    faults.extend(list_faults(registry_rows(), vocabulary(rows)))
     return faults
 
 
@@ -437,5 +567,6 @@ if __name__ == "__main__":
         f"docs match the code: {len(registered())} platforms, all documented, none naming "
         f"another and each declaring only classes that carry its token; "
         f"{len(declared_roles())} roles, each listed everywhere roles are enumerated, "
-        f"and {len(pack_roles())} declared per platform, each linked from the roles index"
+        f"and {len(pack_roles())} declared per platform, each linked from the roles index; "
+        f"{sum(1 for _ in marked_lists())} marked platform lists, each complete for its scope"
     )
