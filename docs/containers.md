@@ -128,10 +128,13 @@ When a new image tag is available:
 | `actionlint` | `.github/workflows/lint-workflows.yml`, `docs/containers.md` |
 | `syslog-ng` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
 
-`syslog-ng` is the one upstream image in that table - it is published by
-[balabit](https://hub.docker.com/r/balabit/syslog-ng), not by us, so step 1 does
-not apply and the version is chosen rather than built. Read the 4.8 LTS pinning
-rationale in the first table before moving it.
+`syslog-ng`, `markdownlint-cli2` and `actionlint` are upstream images rather than
+ours, published by [balabit](https://hub.docker.com/r/balabit/syslog-ng),
+[DavidAnson](https://hub.docker.com/r/davidanson/markdownlint-cli2) and
+[rhysd](https://hub.docker.com/r/rhysd/actionlint). Step 1 does not apply to any
+of them: the version is chosen from what upstream published and pinned, not
+built. Read the 4.8 LTS pinning rationale in the first table before moving
+`syslog-ng`.
 
 The `cpputest-freertos` and `cpputest-freertos-cross` images both come from
 [CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker).
