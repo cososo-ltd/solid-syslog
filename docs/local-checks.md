@@ -10,7 +10,7 @@ wait before a push stays short and CI catches the rest.
 | Tier | When | What | Wall-clock |
 |---|---|---|---|
 | **A** - fast feedback | Every commit on the branch | `cmake --build --preset debug --target junit` for whatever preset matches the diff (gcc / clang / freertos-host) | ~30-60 s |
-| **B** - pre-push | First push to the branch and any push that changes production source | A + format reflowed includes + `misra_renumber.py`, plus `check_spdx_headers.py` when a file was added and the manifests when a platform gained a source | ~3-4 min |
+| **B** - pre-push | First push to the branch and any push that changes production source or Markdown | A + format reflowed includes + `misra_renumber.py`, plus `check_spdx_headers.py` when a file was added, the manifests when a platform gained a source, and `markdownlint-cli2` over the changed `.md` files | ~3-4 min |
 | **CI** - everything else | After push | `tidy` (except when adding a new pack), `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel |
 
 IWYU is advisory. The lanes still run on every PR and
@@ -24,10 +24,10 @@ add a `clang-format -i` sweep over touched files to Tier A.
 
 ## Path-gating Tier B
 
-Tier B does MISRA-line-drift cleanup, so scope it to what changed:
+Tier B is mostly MISRA-line-drift cleanup, so scope it to what changed:
 
-- Touched only `Tests/`, `Bdd/Targets/`, `docs/`, `cmake/`, or `*.md`:
-  skip Tier B entirely. Push and let CI run.
+- Touched only `Tests/`, `Bdd/Targets/`, `docs/`, `cmake/`, or `*.md`: nothing
+  below applies. Lint any changed `.md` and push; let CI run the rest.
 - Touched any `Core/Source/`, `Platform/*/Source/`, or public-header file:
   run `clang-format -i` over touched files and
   `scripts/misra_renumber.py --apply` to update the suppressions.
