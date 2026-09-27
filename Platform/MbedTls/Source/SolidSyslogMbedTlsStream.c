@@ -347,9 +347,17 @@ static inline void MbedTlsStream_ApplyCipherPolicy(struct SolidSyslogMbedTlsStre
     }
 }
 
+/* The integrator's X.509 floor. Left alone where none is supplied, so the
+ * build's own default profile stands: a legacy build cannot be asked which
+ * algorithms it compiled in, and pinning any of them here would turn a
+ * configuration problem into a failed handshake. Applied before the credentials
+ * install, so a backend that types its own profile still has the last word. */
 static inline void MbedTlsStream_ApplyCertProfilePolicy(struct SolidSyslogMbedTlsStream* self)
 {
-    mbedtls_ssl_conf_cert_profile(&self->SslConfig, self->Profile.CertProfile);
+    if (self->Profile.CertProfile != NULL)
+    {
+        mbedtls_ssl_conf_cert_profile(&self->SslConfig, self->Profile.CertProfile);
+    }
 }
 
 /* Asked once per connection, after the policy is on the ssl_config and before

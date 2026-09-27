@@ -81,16 +81,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  rather than a curated set. Mbed TLS does not copy the array. */
         const int* CipherSuites;
         /** @optional X.509 profile every certificate in the peer's chain is held
-         *  to: which signature hashes, which public-key algorithms and curves, and
-         *  the minimum RSA key size. The stream pins the protocol floor at TLS 1.2,
-         *  the finite-field Diffie-Hellman group at 2048 bits, and refuses a
-         *  handshake with a peer that will not acknowledge renegotiation_info;
-         *  everything else in BCP 195 s4.5 is whatever profile the build compiled
-         *  in as its default. Supplying one is how that floor becomes a guarantee
-         *  rather than an inheritance - start from mbedtls_x509_crt_profile_default
-         *  and tighten. NULL leaves the build's default in place. Mbed TLS does not
-         *  copy the profile. Certificates only: the signature algorithms offered in
-         *  the handshake itself are not covered by it. */
+         *  to: which signature hashes it may carry, which public-key algorithms and
+         *  curves, and the minimum RSA key size. That is the part of the BCP 195
+         *  §4.5 cryptographic floor this stream does not pin for itself. NULL
+         *  leaves whatever profile the Mbed TLS being linked names as its default,
+         *  so the floor is inherited rather than stated; supplying one is what makes
+         *  it a guarantee. Start from mbedtls_x509_crt_profile_default and tighten.
+         *  Applied before the credentials source installs, which is free to replace
+         *  it. Certificates only - the signature algorithms offered in the handshake
+         *  itself are not covered. Mbed TLS does not copy the profile. */
         const struct mbedtls_x509_crt_profile* CertProfile;
     };
 
