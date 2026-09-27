@@ -83,6 +83,8 @@ command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIPRAW=ON`,
 `-DSOLIDSYSLOG_PLUSTCP=OFF`, …) when you want to adjust one without restating
 the list.
 
+<!-- platforms: all -->
+
 | Platform | Roles filled | Backed by |
 |---|---|---|
 | `Posix` | network, file, mutex, clock | POSIX sockets, `pthread`, `mqueue` |
@@ -91,10 +93,15 @@ the list.
 | `OpenSsl` | tls | OpenSSL 3.0+ |
 | `MbedTls` | tls | Mbed TLS |
 | `LwipRaw` | network | lwIP Raw API |
+| `LwipSocket` | network | lwIP Sockets API |
 | `PlusTcp` | network | FreeRTOS-Plus-TCP |
 | `FreeRtos` | mutex, clock | FreeRTOS kernel |
+| `CmsisRtos` | mutex, clock | CMSIS-RTOS2 API |
 | `FatFs` | file | ChaN FatFs |
 | `PlusFat` | file | FreeRTOS-Plus-FAT |
+| `LittleFs` | file | LittleFS |
+
+<!-- /platforms -->
 
 `Posix` and `Windows` each carry more than the roles above — hostname and
 process-id callbacks, a sleep wrapper, and on POSIX a message-queue buffer.
@@ -115,31 +122,49 @@ Platforms are listed in registry order, not the order you named them.
 
 The variable takes three kinds of answer:
 
+<!-- platforms: kind=probe -->
+
 | Value | Selects |
 |---|---|
 | `Auto` (the default) | the host platforms this toolchain can provide, decided by a compile probe: `Posix`, `Windows`, `StdAtomic`, `OpenSsl` |
 | `""` | nothing — Core alone, for an integrator supplying every adapter themselves |
 | a list | exactly those, host or upstream |
 
-`LwipRaw`, `PlusTcp`, `FreeRtos`, `MbedTls`, `FatFs` and `PlusFat` are never
-selected for you: you name them or you do not get them. Setting
-`LWIP_PATH` or `FREERTOS_KERNEL_PATH` in your environment does not change what
-your build contains.
+<!-- /platforms -->
+
+<!-- platforms: kind=upstream -->
+
+`MbedTls`, `LwipRaw`, `LwipSocket`, `PlusTcp`, `FreeRtos`, `CmsisRtos`, `FatFs`,
+`PlusFat` and `LittleFs` are never selected for you: you name them or you do
+not get them. Setting `LWIP_PATH` or `FREERTOS_KERNEL_PATH` in your environment
+does not change what your build contains.
+
+<!-- /platforms -->
 
 ### What you link
 
 Platforms attach in one of two ways, and the rule is short: **if the upstream
 needs your config header, you link it; otherwise it is already inside.**
 
-Header-configured upstreams — lwIP, FreeRTOS, Plus-TCP, Plus-FAT, Mbed TLS,
-FatFs — cannot be precompiled, because `lwipopts.h`, `FreeRTOSConfig.h`,
-`mbedtls_config.h` and `ffconf.h` change layout and behaviour and we cannot see
-your copy. Each is a `SolidSyslog::<Platform>` target carrying its adapter
-sources, which compile into *your* target against *your* config.
+<!-- platforms: kind=upstream -->
+
+Header-configured upstreams cannot be precompiled, because `lwipopts.h`,
+`FreeRTOSConfig.h`, `mbedtls_config.h`, `ffconf.h` and their siblings change
+layout and behaviour and we cannot see your copy. These are lwIP's Raw API and
+its Sockets API, FreeRTOS-Plus-TCP, the FreeRTOS kernel, CMSIS-RTOS2, Mbed TLS,
+ChaN FatFs, FreeRTOS-Plus-FAT and littlefs. Each is a
+`SolidSyslog::<Platform>` target carrying its adapter sources, which compile
+into *your* target against *your* config.
+
+<!-- /platforms -->
+
+<!-- platforms: kind=probe -->
 
 Stable system APIs — POSIX, Win32/Winsock, OpenSSL, C11 atomics — have no such
 hazard and compile straight into `libSolidSyslog.a`. Linking `SolidSyslog` is
 all they need, which is why a Windows or Linux consumer writes one link line.
+
+<!-- /platforms -->
 
 You never tell SolidSyslog where your upstream trees live — your own target
 already puts `lwip/*.h`, `FreeRTOS.h`, `mbedtls/*.h` and `ff.h` on the include
@@ -347,12 +372,16 @@ cmake --build build/manifest --target manifest      # prints the manifest
 `SOLIDSYSLOG_PLATFORMS`: `Auto` describes every platform this configuration
 selected, empty describes none. The Core `.c` set is always included.
 
+<!-- platforms: kind=probe -->
+
 Platforms selected by a toolchain capability probe — `StdAtomic`, `Posix`,
 `Windows`, `OpenSsl` — get their own section. A CMake consumer receives them
 inside `libSolidSyslog.a`, but a manifest build has no such library, so compile
 them alongside everything else. `StdAtomic` is the one that matters on a
 cross-toolchain: without it there is no atomic counter, and every RFC 5424
 `sequenceId` is `1`.
+
+<!-- /platforms -->
 
 > The manifest lists the SolidSyslog-side include dirs only. You still add your
 > own upstream include dirs (lwIP, Mbed TLS, FreeRTOS, FatFs) and the directory

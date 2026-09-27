@@ -216,15 +216,15 @@ endif()
 # Platforms attach to the build in one of two ways, and the rule is causal
 # rather than arbitrary:
 #
-#   * Header-configured upstreams (lwIP, FreeRTOS, Plus-TCP, Plus-FAT, mbedTLS,
-#     FatFs) cannot be precompiled — lwipopts.h, FreeRTOSConfig.h,
+#   * Header-configured upstreams — every `upstream` row in the registry above —
+#     cannot be precompiled: lwipopts.h, FreeRTOSConfig.h,
 #     mbedtls_config.h and ffconf.h change layout and behaviour, and we cannot
 #     see the consumer's copy. Each ships as an INTERFACE library carrying its
 #     adapter sources, which compile into the CONSUMER's target against the
 #     CONSUMER's config. These are the SolidSyslog::<Token> targets to link, and
 #     it is the consumer's own target that supplies the upstream include paths.
 #
-#   * Stable system APIs (POSIX, Win32/Winsock, OpenSSL, C11 atomics) have no
+#   * Stable system APIs — every `probe` row — have no
 #     such hazard, so they compile straight into libSolidSyslog.a. There is
 #     nothing extra to link — SolidSyslog alone carries them.
 #
