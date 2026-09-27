@@ -51,8 +51,18 @@ BCP 195 §3.1.1 says the same for TLS generally.
 
 The cryptographic floor is BCP 195 §4.5: RSA and finite-field Diffie-Hellman of
 2048 bits, elliptic curves of 224 bits, and no SHA-1 or MD5 signatures. A
-`Stream` pins it where the library lets a caller set it, after any cipher
-policy the integrator supplied, so a policy cannot lower it.
+`Stream` pins what the library it wraps lets it pin, and does so after any
+cipher policy the integrator supplied, so naming a cipher policy cannot lower
+it.
+
+That is a default rather than a guarantee. The credentials source is handed the
+library's own configuration object and runs last, which is what lets a
+deployment configure material only its backend can type - and equally lets it
+move the floor in either direction on purpose. Raising it is the common case, a
+deployment that will accept nothing below TLS 1.3 being the obvious one.
+Lowering it is a decision the integrator owns, and one nothing here prevents.
+How much of the floor a platform pins for itself, and what it leaves to the
+build, is on that platform's own page.
 
 ### Require a trust anchor or a pinned fingerprint
 
