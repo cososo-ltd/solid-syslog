@@ -435,6 +435,10 @@ Every non-hidden configure preset `CMakePresets.json` declares.
 Build and test: `cmake --preset <name> && cmake --build --preset <name> --target junit`
 Coverage report: `cmake --preset coverage && cmake --build --preset coverage --target coverage`
 
+`junit` exists only where `Tests/` is configured, which the C99 presets switch off
+and the cross presets exclude by cross-compiling. Those take a plain build, or
+their own BDD target — [docs/builds.md](docs/builds.md) gives each one's command.
+
 ---
 
 ## Project Structure

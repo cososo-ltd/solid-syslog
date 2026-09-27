@@ -139,6 +139,13 @@ ROLE_COUNT_IN_PROSE = re.compile(
 PLATFORM_LIST_OPEN = re.compile(r"<!--\s*platforms:\s*([^>]*?)\s*-->")
 PLATFORM_LIST_CLOSE = "<!-- /platforms -->"
 
+# Deliberately loose, and the only pattern here that is. Every comment it finds
+# must be an opening the strict pattern above parses, or a closing marker. One
+# the strict pattern cannot read - a misspelt keyword, an opener missing its
+# `-->` - would otherwise be skipped in silence, and a skipped marker is the one
+# way a list escapes the check rather than failing it.
+PLATFORM_LIST_LOOKALIKE = re.compile(r"<!--[^>]{0,60}?platform", re.IGNORECASE)
+
 # An #include names a header the compiler must find, not a platform the prose
 # is describing. The boundary is editorial; what a translation unit depends on
 # is the build's business and is governed there.
@@ -443,6 +450,31 @@ def marked_lists():
             yield page, number, opening.group(1), body
 
 
+def marker_faults():
+    """Every platform-list marker parses as one.
+
+    A list that fails the completeness check says so. A marker that does not
+    parse says nothing, so this is what keeps the rest of the mechanism honest.
+    """
+    faults = []
+    for page in markdown_pages():
+        text = read(page)
+        parsed = {found.start() for found in PLATFORM_LIST_OPEN.finditer(text)}
+        closing = {
+            found.start() for found in re.finditer(re.escape(PLATFORM_LIST_CLOSE), text)
+        }
+        for hit in PLATFORM_LIST_LOOKALIKE.finditer(text):
+            if hit.start() in parsed or hit.start() in closing:
+                continue
+            number = text.count("\n", 0, hit.start()) + 1
+            faults.append(
+                f"{page}:{number} reads as a platform-list marker but does not parse as "
+                f"one - an opening is `<!-- platforms: <scope> -->`, a closing is "
+                f"`{PLATFORM_LIST_CLOSE}`"
+            )
+    return faults
+
+
 def list_scope(scope, rows):
     """The tokens a marked region must name, or None if the scope is unreadable.
 
@@ -548,6 +580,7 @@ def check():
     faults.extend(naming_faults(rows, vocabulary(rows)))
     faults.extend(role_faults())
     faults.extend(pack_role_faults())
+    faults.extend(marker_faults())
     faults.extend(list_faults(registry_rows(), vocabulary(rows)))
     return faults
 
