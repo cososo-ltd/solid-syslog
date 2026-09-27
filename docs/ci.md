@@ -52,9 +52,10 @@ without renaming what's already there.
 ## Branch protection
 
 Every job in `ci.yml` is a required status check except `deploy-docs-pages`, which
-only runs on `main`, and so are the two contexts code scanning contributes —
-`analyze-codeql` and `CodeQL`. A pull request cannot be merged unless all of them
-pass. Direct pushes to `main` are blocked. Squash merge only.
+only runs on `main`. Three more come from outside that file: `analyze-codeql` and
+`CodeQL`, which code scanning contributes, and `actionlint`, which validates the
+workflow files from a workflow of its own. A pull request cannot be merged unless
+all of them pass. Direct pushes to `main` are blocked. Squash merge only.
 
 Two qualifications on what "required" buys. The `analyze-iwyu*` lanes run
 `continue-on-error`, so they are required contexts that report success whatever IWYU

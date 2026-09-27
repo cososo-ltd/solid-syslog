@@ -17,13 +17,15 @@ Prerequisites:
 - A `git` checkout of the repo at the release's tag (optional, only
   needed to reproduce the source hash yourself).
 
-All four Release assets should be present:
+All six Release assets should be present:
 
 ```text
 sbom.cdx.json
 sbom.cdx.json.sigstore
 source-tree-sha256.txt
 source-tree-sha256.txt.sigstore
+solid-syslog-docs-<version>.zip
+solid-syslog-docs-<version>.zip.sigstore
 ```
 
 ## 1. Verify the source is what we claim
@@ -140,7 +142,27 @@ Same guarantees as step 2, but for the content-tree-hash file. Combined
 with the hash match from step 1, you now know the source you have is the
 source the SBOM describes, and the SBOM is the one the workflow produced.
 
-## 4. (Optional) Re-validate the SBOM against CycloneDX
+## 4. Verify the documentation bundle signature
+
+`solid-syslog-docs-<version>.zip` is the documentation for this release, built to
+be read with no server and no network. It is signed by a different workflow from
+the two above, so the identity to check against is that workflow's:
+
+```shell
+cosign verify-blob \
+  --bundle solid-syslog-docs-<version>.zip.sigstore \
+  --certificate-identity "https://github.com/cososo-ltd/solid-syslog/.github/workflows/docs-bundle.yml@refs/tags/v<version>" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  solid-syslog-docs-<version>.zip
+```
+
+Same guarantees as step 2. What the signature does *not* tell you is whether the
+pages are accurate - only that these are the pages the workflow built from the
+released commit. `MANIFEST.txt` at the root of the extracted bundle records that
+commit, the tag, the build date and the digest of the toolchain image that
+produced it, so a reader can tie the pages back to a point in the history.
+
+## 5. (Optional) Re-validate the SBOM against CycloneDX
 
 ```shell
 cyclonedx validate \
