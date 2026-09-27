@@ -176,6 +176,10 @@ static mbedtls_x509_crl* lastSslConfCaChainCrlArg;
 static int sslConfCiphersuitesCallCount;
 static const int* lastSslConfCiphersuitesArg;
 
+/* mbedtls_ssl_conf_cert_profile */
+static int sslConfCertProfileCallCount;
+static const mbedtls_x509_crt_profile* lastSslConfCertProfileArg;
+
 /* mbedtls_ssl_conf_rng */
 static int sslConfRngCallCount;
 static mbedtls_ssl_config* lastSslConfRngConfigArg;
@@ -266,6 +270,8 @@ void MbedTlsFake_Reset(void)
     sslConfCaChainCallCount = 0;
     sslConfCiphersuitesCallCount = 0;
     lastSslConfCiphersuitesArg = NULL;
+    sslConfCertProfileCallCount = 0;
+    lastSslConfCertProfileArg = NULL;
     lastSslConfCaChainConfigArg = NULL;
     lastSslConfCaChainArg = NULL;
     lastSslConfCaChainCrlArg = NULL;
@@ -842,6 +848,23 @@ int MbedTlsFake_SslConfCiphersuitesCallCount(void)
 const int* MbedTlsFake_LastSslConfCiphersuitesArg(void)
 {
     return lastSslConfCiphersuitesArg;
+}
+
+void mbedtls_ssl_conf_cert_profile(mbedtls_ssl_config* conf, const mbedtls_x509_crt_profile* profile)
+{
+    (void) conf;
+    sslConfCertProfileCallCount++;
+    lastSslConfCertProfileArg = profile;
+}
+
+int MbedTlsFake_SslConfCertProfileCallCount(void)
+{
+    return sslConfCertProfileCallCount;
+}
+
+const mbedtls_x509_crt_profile* MbedTlsFake_LastSslConfCertProfileArg(void)
+{
+    return lastSslConfCertProfileArg;
 }
 
 void mbedtls_ssl_conf_ca_chain(mbedtls_ssl_config* conf, mbedtls_x509_crt* ca_chain, mbedtls_x509_crl* ca_crl)

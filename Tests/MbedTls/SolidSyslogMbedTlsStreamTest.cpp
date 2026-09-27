@@ -1497,3 +1497,20 @@ TEST(SolidSyslogMbedTlsStream, OpenLeavesCiphersuitesAloneWhenTheProfileSetsNone
 
     LONGS_EQUAL(0, MbedTlsFake_SslConfCiphersuitesCallCount());
 }
+
+TEST(SolidSyslogMbedTlsStream, OpenAppliesTheProfilesCertificateProfile)
+{
+    static const mbedtls_x509_crt_profile certProfile = {0, 0, 0, 0};
+    FakeProfile_Value.CertProfile = &certProfile;
+
+    SolidSyslogStream_Open(handle, addr);
+
+    POINTERS_EQUAL(&certProfile, MbedTlsFake_LastSslConfCertProfileArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenLeavesTheCertificateProfileAloneWhenTheProfileSetsNone)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslConfCertProfileCallCount());
+}

@@ -51,6 +51,7 @@ struct SolidSyslogMbedTlsCredentials;
  * Integrators include the relevant mbedTLS headers themselves before this
  * one to bring the types into scope. */
 struct mbedtls_ctr_drbg_context;
+struct mbedtls_x509_crt_profile;
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
@@ -79,6 +80,18 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  enables, which on a trimmed mbedtls_config.h is whatever was compiled in
          *  rather than a curated set. Mbed TLS does not copy the array. */
         const int* CipherSuites;
+        /** @optional X.509 profile every certificate in the peer's chain is held
+         *  to: which signature hashes it may carry, which public-key algorithms and
+         *  curves, and the minimum RSA key size. That is the part of the BCP 195
+         *  §4.5 cryptographic floor this stream does not pin for itself. NULL
+         *  leaves whatever profile the Mbed TLS being linked names as its default,
+         *  so the floor is inherited; supplying one states it instead. Applied
+         *  before the credentials source installs, so a backend that sets a profile
+         *  of its own has the last word - as it does over every other pin on the
+         *  ssl_config. Start from mbedtls_x509_crt_profile_default and tighten.
+         *  Certificates only - the signature algorithms offered in the handshake
+         *  itself are not covered. Mbed TLS does not copy the profile. */
+        const struct mbedtls_x509_crt_profile* CertProfile;
     };
 
     /** Called at each Open to fill @p profile. Runs on the servicing thread, so a
