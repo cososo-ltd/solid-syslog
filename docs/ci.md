@@ -40,8 +40,8 @@ without renaming what's already there.
 | `build-freertos-target-lwip` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic`) |
 | `bdd-freertos-qemu-plustcp` | — | Pulls the Plus-TCP target ELF, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
 | `bdd-freertos-qemu-lwip` | — | The same scenarios against the lwIP target ELF |
-| `build-cmsis-target-lwip` | `cmsis-cross-lwip` | The cross-build of the fourth BDD target, over CMSIS-RTOS2, LittleFS and the lwIP Sockets API (`CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic`) - the three packs it exists to prove, plus Mbed TLS |
-| `bdd-cmsis-qemu-lwip` | — | The same scenarios again, against the fourth target's ELF |
+| `build-cmsis-target-lwip` | `cmsis-cross-lwip` | The cross-build of the CMSIS-RTOS2 BDD target, over CMSIS-RTOS2, LittleFS and the lwIP Sockets API (`CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic`) - the three packs it exists to prove, plus Mbed TLS |
+| `bdd-cmsis-qemu-lwip` | — | The same scenarios again, against that target's ELF |
 | `consumer-smoke-linux` | — | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
 | `consumer-smoke-freertos-cross` | — | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
 | `verify-manifest` | — | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
@@ -68,15 +68,24 @@ to the required list.
 
 The lane names say the platform and toolchain but not the adapter, so:
 
+<!-- platforms: all -->
+
 | Adapter | Where it is exercised |
 |---|---|
 | OpenSSL (`SolidSyslogOpenSslStream`, security policies) | `integration-linux-openssl`, `integration-windows-openssl` against real libssl |
-| Mbed TLS (`SolidSyslogMbedTlsStream`, security policies) | `integration-linux-mbedtls` against real Mbed TLS; both FreeRTOS QEMU BDD lanes over a real handshake |
+| Mbed TLS (`SolidSyslogMbedTlsStream`, security policies) | `integration-linux-mbedtls` against real Mbed TLS; all three QEMU BDD lanes over a real handshake |
 | FreeRTOS-Plus-TCP | `build-freertos-host-tdd-plustcp` against fakes; `bdd-freertos-qemu-plustcp` end to end under QEMU |
-| lwIP | `bdd-freertos-qemu-lwip` end to end under QEMU; static analysis via the `*-freertos-lwip` lanes |
+| lwIP (Raw API) | `bdd-freertos-qemu-lwip` end to end under QEMU; static analysis via the `*-freertos-lwip` lanes |
+| lwIP (Sockets API) | `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
+| FreeRTOS kernel | `build-freertos-host-tdd-plustcp` against fakes; both FreeRTOS cross builds and both FreeRTOS QEMU BDD lanes |
+| CMSIS-RTOS2 | `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
 | ChaN FatFs | Built and analysed in the lwIP lanes; store-and-forward scenarios run in `bdd-freertos-qemu-lwip` |
 | FreeRTOS-Plus-FAT | Host-TDD against fakes in `build-freertos-host-tdd-plustcp`, and built in the Plus-TCP cross lanes |
+| LittleFS | `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsis-qemu-lwip` |
 | POSIX, Windows | The `build-linux-*` and `build-windows-msvc` lanes, plus both host BDD lanes |
+| C11 atomics | Probe-selected into `libSolidSyslog.a` in the `build-linux-*` lanes, and named explicitly by both cross presets |
+
+<!-- /platforms -->
 
 ## Code scanning
 

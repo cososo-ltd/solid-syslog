@@ -45,9 +45,9 @@ capabilities an IEC 62443 deployment draws on are mapped control by control in t
 SolidSyslog is built for embedded and RTOS targets. Every platform dependency -
 TCP/IP stack, TLS library, filesystem, OS primitives, clock - is injected through
 a vtable, so the library ports to an embedded OS by filling roles rather
-than editing Core. Platforms ship for FreeRTOS on Cortex-M, and for POSIX and
-Windows, fully supported as development, test, and edge / gateway hosts. Which
-upstream fills which capability is in the
+than editing Core. Platform packs ship for hosted and embedded targets alike,
+the hosted ones fully supported as development, test, and edge / gateway hosts.
+Which upstream fills which capability is in the
 [platform matrix](https://docs.cososo.co.uk/solid-syslog/platforms/). Bring your
 own stack and the same Core runs unchanged.
 
@@ -100,9 +100,9 @@ that split and links the generated reference for every header, type and symbol. 
 the anatomy of an adapter, and the Null object that stands in for any role you
 leave unfilled.
 
-[`Bdd/Targets/`](Bdd/Targets/) holds one BDD-driven binary per platform - Linux,
-Windows, and two FreeRTOS-on-QEMU builds, one per network stack - each exercising
-the library end to end against a real syslog server; see
+[`Bdd/Targets/`](Bdd/Targets/) holds one BDD-driven binary per platform, on the
+host and under QEMU alike, each exercising the library end to end against a real
+syslog server; see
 [BDD testing](https://docs.cososo.co.uk/solid-syslog/bdd/).
 
 ## Compliance
