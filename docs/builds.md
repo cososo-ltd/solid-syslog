@@ -181,6 +181,29 @@ cmake --build --preset freertos-cross-lwip --target SolidSyslogBddTargetLwip
 The ELF lands at
 `build/freertos-cross-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf`.
 
+## CMSIS-RTOS2 + lwIP Sockets cross — `cmsis-cross-lwip`
+
+The same ARM Cortex-M3 / mps2-an385 cross-build over a different pack set:
+`SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP`, `CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic`,
+and the `Bdd/Targets/CmsisLwip/` tunables. Drives the `bdd-cmsis-qemu-lwip` CI
+lane.
+
+```bash
+cmake --preset cmsis-cross-lwip
+cmake --build --preset cmsis-cross-lwip --target SolidSyslogBddTargetCmsis
+```
+
+The ELF lands at
+`build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf`.
+See `Bdd/Targets/CmsisLwip/README.md` for run / GDB-attach instructions.
+
+## Tunable overrides — `tunable-override-debug` / `msvc-tunable-override`
+
+Both build against `Tests/Fixtures/TunableOverrides.h`, proving
+`SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults and giving the host BDD
+targets the message size the path-MTU feature needs. The commands live in
+[BDD testing](bdd.md), where they are used.
+
 ## Installing the library
 
 ```bash

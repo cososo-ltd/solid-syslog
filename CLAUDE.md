@@ -410,6 +410,9 @@ Merging is the maintainer's decision, not a state a check can declare.
 
 ## CMake Presets
 
+Every non-hidden configure preset `CMakePresets.json` declares.
+[docs/builds.md](docs/builds.md) is the catalogue with the commands.
+
 | Preset | Purpose |
 |---|---|
 | `debug` | Standard debug build — primary development preset |
@@ -418,7 +421,15 @@ Merging is the maintainer's decision, not a state a check can declare.
 | `coverage` | lcov/genhtml — 100% line and branch required |
 | `tidy` | clang-tidy — all warnings treated as errors |
 | `cppcheck` | cppcheck static analysis |
+| `iwyu` | include-what-you-use — advisory, not a pre-push gate |
+| `c99` | Core alone at strict `-std=c99`, proving the conformance claim |
+| `c99-platforms` | The POSIX and OpenSSL packs at C99, as a drift check |
+| `tunable-override-debug` | Builds against a user tunables header, and the Linux BDD target |
 | `msvc-debug` | MSVC build — Windows portability check (requires vcpkg) |
+| `msvc-tunable-override` | The same override mechanism, and the Windows BDD target |
+| `freertos-cross` | ARM Cortex-M3 cross-build of the FreeRTOS-Plus-TCP BDD target |
+| `freertos-cross-lwip` | The same, over the lwIP Raw API with ChaN FatFs |
+| `cmsis-cross-lwip` | The same, over CMSIS-RTOS2, the lwIP Sockets API and LittleFS |
 | `release` | Release build — optimisations enabled, no instrumentation |
 
 Build and test: `cmake --preset <name> && cmake --build --preset <name> --target junit`
