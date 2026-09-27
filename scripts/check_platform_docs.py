@@ -139,12 +139,15 @@ ROLE_COUNT_IN_PROSE = re.compile(
 PLATFORM_LIST_OPEN = re.compile(r"<!--\s*platforms:\s*([^>]*?)\s*-->")
 PLATFORM_LIST_CLOSE = "<!-- /platforms -->"
 
-# Deliberately loose, and the only pattern here that is. Every comment it finds
-# must be an opening the strict pattern above parses, or a closing marker. One
-# the strict pattern cannot read - a misspelt keyword, an opener missing its
+# A comment shaped like a marker, which means the keyword is the first thing in
+# it. Every one of these must be an opening the strict pattern above parses or a
+# closing marker; one it cannot read - a misspelt keyword, an opener missing its
 # `-->` - would otherwise be skipped in silence, and a skipped marker is the one
 # way a list escapes the check rather than failing it.
-PLATFORM_LIST_LOOKALIKE = re.compile(r"<!--[^>]{0,60}?platform", re.IGNORECASE)
+#
+# Matching any comment that merely mentions a platform would be the wrong trade.
+# That is prose, and failing the build on it would block an edit that is correct.
+PLATFORM_LIST_LOOKALIKE = re.compile(r"<!--\s*/?\s*platforms?\b", re.IGNORECASE)
 
 # An #include names a header the compiler must find, not a platform the prose
 # is describing. The boundary is editorial; what a translation unit depends on
