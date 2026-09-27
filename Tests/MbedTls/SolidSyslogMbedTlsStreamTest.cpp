@@ -1507,3 +1507,10 @@ TEST(SolidSyslogMbedTlsStream, OpenAppliesTheProfilesCertificateProfile)
 
     POINTERS_EQUAL(&certProfile, MbedTlsFake_LastSslConfCertProfileArg());
 }
+
+TEST(SolidSyslogMbedTlsStream, OpenLeavesTheCertificateProfileAloneWhenTheProfileSetsNone)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslConfCertProfileCallCount());
+}
