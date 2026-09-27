@@ -433,6 +433,23 @@ def markdown_pages():
                 yield os.path.relpath(os.path.join(path, name), ROOT)
 
 
+def marker_pairs(text):
+    """[(opening, closing position or None)] for one page, in order.
+
+    A later list's closer does not close this one, so the search is bounded at
+    the next opening. Without the bound an unclosed list borrows the next one's
+    closer, its body swallows that list, and it passes on names it never said -
+    green, and wrong twice over.
+    """
+    openings = list(PLATFORM_LIST_OPEN.finditer(text))
+    pairs = []
+    for index, opening in enumerate(openings):
+        limit = openings[index + 1].start() if index + 1 < len(openings) else len(text)
+        end = text.find(PLATFORM_LIST_CLOSE, opening.end(), limit)
+        pairs.append((opening, None if end == -1 else end))
+    return pairs
+
+
 def marked_lists():
     """(page, line number, scope, body) for every marked platform list.
 
@@ -441,40 +458,41 @@ def marked_lists():
     """
     for page in markdown_pages():
         text = read(page)
-        openings = list(PLATFORM_LIST_OPEN.finditer(text))
-        for index, opening in enumerate(openings):
+        for opening, end in marker_pairs(text):
             number = text.count("\n", 0, opening.start()) + 1
-            # A later list's closer does not close this one. Without the bound an
-            # unclosed list borrows the next one's, so its body swallows that
-            # list and it passes on names it never said - green, and wrong twice.
-            limit = openings[index + 1].start() if index + 1 < len(openings) else len(text)
-            end = text.find(PLATFORM_LIST_CLOSE, opening.end(), limit)
-            body = None if end == -1 else text[opening.end() : end]
+            body = None if end is None else text[opening.end() : end]
             yield page, number, opening.group(1), body
 
 
 def marker_faults():
-    """Every platform-list marker parses as one.
+    """Every platform-list marker parses as one, and closes what it claims to.
 
-    A list that fails the completeness check says so. A marker that does not
-    parse says nothing, so this is what keeps the rest of the mechanism honest.
+    A list that fails the completeness check says so. A marker the strict pattern
+    cannot read says nothing at all, and a closing marker with nothing above it
+    parses perfectly and still means nothing - so this is what keeps the rest of
+    the mechanism honest.
     """
     faults = []
     for page in markdown_pages():
         text = read(page)
-        parsed = {found.start() for found in PLATFORM_LIST_OPEN.finditer(text)}
-        closing = {
-            found.start() for found in re.finditer(re.escape(PLATFORM_LIST_CLOSE), text)
-        }
+        pairs = marker_pairs(text)
+        parsed = {opening.start() for opening, _ in pairs}
+        closing = {end for _, end in pairs if end is not None}
         for hit in PLATFORM_LIST_LOOKALIKE.finditer(text):
             if hit.start() in parsed or hit.start() in closing:
                 continue
             number = text.count("\n", 0, hit.start()) + 1
-            faults.append(
-                f"{page}:{number} reads as a platform-list marker but does not parse as "
-                f"one - an opening is `<!-- platforms: <scope> -->`, a closing is "
-                f"`{PLATFORM_LIST_CLOSE}`"
-            )
+            if text.startswith(PLATFORM_LIST_CLOSE, hit.start()):
+                faults.append(
+                    f"{page}:{number} closes a platform list that was never opened - "
+                    f"open one above it with `<!-- platforms: <scope> -->`, or take it out"
+                )
+            else:
+                faults.append(
+                    f"{page}:{number} reads as a platform-list marker but does not parse as "
+                    f"one - an opening is `<!-- platforms: <scope> -->`, a closing is "
+                    f"`{PLATFORM_LIST_CLOSE}`"
+                )
     return faults
 
 
