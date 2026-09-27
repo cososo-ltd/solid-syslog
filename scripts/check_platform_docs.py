@@ -39,6 +39,12 @@ mkdocs nav. Each must link the role's generated contract page. The count used to
 be stated in prose in six places, so a thirteenth role meant six edits and no
 failure; the count is gone and this is what replaces it.
 
+One role is declared per platform instead: the TLS credentials vtable, which
+each TLS pack declares for itself because what Install configures is
+backend-typed. Those are held to the roles index alone. They are not Core's, so
+they do not belong in a nav section listing Core's, and the porting guide covers
+them in its TLS material rather than in the role table.
+
 Run:  python3 scripts/check_platform_docs.py
 """
 
@@ -253,6 +259,40 @@ def declared_roles():
     )
 
 
+def pack_roles():
+    """[(Role, Pack)] from Platform/<Pack>/Interface/SolidSyslog<Role>Definition.h.
+
+    A role a platform declares for itself rather than Core. There is one today,
+    TLS credentials, declared twice because the material it installs is typed by
+    the backend. Core's own check cannot see these, which is how the thirteenth
+    role stayed off the roles index unnoticed.
+    """
+    found = []
+    platform = os.path.join(ROOT, "Platform")
+    suffix = "Definition.h"
+    for pack in sorted(os.listdir(platform)):
+        interface = os.path.join(platform, pack, "Interface")
+        if not os.path.isdir(interface):
+            continue
+        for name in sorted(os.listdir(interface)):
+            if name.startswith("SolidSyslog") and name.endswith(suffix):
+                found.append((name[len("SolidSyslog") : -len(suffix)], pack))
+    return found
+
+
+def pack_role_faults():
+    """Every per-platform role is linked from the roles index."""
+    faults = []
+    listing = os.path.join("docs", "roles", "index.md")
+    text = read(listing)
+    for role, pack in pack_roles():
+        if f"../api/structSolidSyslog{role}.md" not in text:
+            faults.append(
+                f"{role}: declared by {pack}'s Definition.h but not linked from {listing}"
+            )
+    return faults
+
+
 def role_faults():
     """Every declared role is listed wherever roles are enumerated, and nothing
     is listed that is not declared."""
@@ -271,8 +311,9 @@ def role_faults():
             if f"{prefix}structSolidSyslog{role}.md" not in text:
                 faults.append(f"{role}: declared by its Definition.h but not linked from {listing}")
         # A role page that outlived its contract — the rename nobody finished.
+        known = set(roles) | {role for role, _ in pack_roles()}
         for orphan in re.findall(rf"{re.escape(prefix)}structSolidSyslog(\w+)\.md", text):
-            if orphan not in roles:
+            if orphan not in known:
                 faults.append(f"{listing} links {orphan} as a role, but no SolidSyslog{orphan}Definition.h declares it")
         # A count in prose is the thing this check replaced. It cannot be
         # asserted, so a thirteenth role would leave it quietly wrong.
@@ -355,6 +396,7 @@ def check():
     faults.extend(unlisted_headers(rows))
     faults.extend(naming_faults(rows, vocabulary(rows)))
     faults.extend(role_faults())
+    faults.extend(pack_role_faults())
     return faults
 
 
@@ -377,5 +419,6 @@ if __name__ == "__main__":
     print(
         f"docs match the code: {len(registered())} platforms, all documented, none naming "
         f"another and each declaring only classes that carry its token; "
-        f"{len(declared_roles())} roles, each listed everywhere roles are enumerated"
+        f"{len(declared_roles())} roles, each listed everywhere roles are enumerated, "
+        f"and {len(pack_roles())} declared per platform, each linked from the roles index"
     )
