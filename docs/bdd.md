@@ -48,7 +48,8 @@ fault-finding tips.
 |---|---|---|
 | Linux | `behave-linux` | `syslog-ng-linux` |
 | FreeRTOS (Plus-TCP) | `behave-freertos` (cross image carries QEMU + Behave) | `syslog-ng-freertos` (shared netns; QEMU slirp `10.0.2.2` reaches it on loopback) |
-| FreeRTOS (lwIP) | `behave-freertos-lwip` | `syslog-ng-freertos-lwip`, same shape |
+| FreeRTOS (lwIP Raw API) | `behave-freertos-lwip` | `syslog-ng-freertos-lwip`, same shape |
+| CMSIS-RTOS2 (lwIP Sockets API) | `behave-cmsis-lwip` | `syslog-ng-cmsis-lwip`, same shape |
 | Windows | `behave` on the runner | `otelcol-contrib` (no compose; runner-direct) |
 
 The Linux BDD target binary is built in the `gcc` container but executed by Behave via

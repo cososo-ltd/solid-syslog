@@ -7,7 +7,8 @@ the roles your deployment needs; the library handles the RFC 5424 formatting,
 reliable delivery, store-and-forward survival, at-rest record protection, and
 evidence metadata that those frameworks expect an audit-logging function to
 provide, on an embedded RTOS or bare-metal target (bring your own network
-stack, TLS library, and filesystem, or use the shipped reference adapters), and
+stack, TLS library, filesystem and OS primitives, or use the shipped reference
+adapters), and
 on POSIX and Windows hosts too.
 
 This page is the evaluator's one-screen orientation. It links out to the

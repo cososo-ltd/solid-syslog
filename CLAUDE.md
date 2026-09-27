@@ -410,6 +410,9 @@ Merging is the maintainer's decision, not a state a check can declare.
 
 ## CMake Presets
 
+Every non-hidden configure preset `CMakePresets.json` declares.
+[docs/builds.md](docs/builds.md) is the catalogue with the commands.
+
 | Preset | Purpose |
 |---|---|
 | `debug` | Standard debug build — primary development preset |
@@ -418,11 +421,23 @@ Merging is the maintainer's decision, not a state a check can declare.
 | `coverage` | lcov/genhtml — 100% line and branch required |
 | `tidy` | clang-tidy — all warnings treated as errors |
 | `cppcheck` | cppcheck static analysis |
+| `iwyu` | include-what-you-use — advisory, not a pre-push gate |
+| `c99` | Core alone at strict `-std=c99`, proving the conformance claim |
+| `c99-platforms` | The POSIX and OpenSSL packs at C99, as a drift check |
+| `tunable-override-debug` | Builds against a user tunables header, and the Linux BDD target |
 | `msvc-debug` | MSVC build — Windows portability check (requires vcpkg) |
+| `msvc-tunable-override` | The same override mechanism, and the Windows BDD target |
+| `freertos-cross` | ARM Cortex-M3 cross-build of the FreeRTOS-Plus-TCP BDD target |
+| `freertos-cross-lwip` | The same, over the lwIP Raw API with ChaN FatFs |
+| `cmsis-cross-lwip` | The same, over CMSIS-RTOS2, the lwIP Sockets API and LittleFS |
 | `release` | Release build — optimisations enabled, no instrumentation |
 
 Build and test: `cmake --preset <name> && cmake --build --preset <name> --target junit`
 Coverage report: `cmake --preset coverage && cmake --build --preset coverage --target coverage`
+
+`junit` exists only where `Tests/` is configured, which the C99 presets switch off
+and the cross presets exclude by cross-compiling. Those take a plain build, or
+their own BDD target — [docs/builds.md](docs/builds.md) gives each one's command.
 
 ---
 
@@ -436,7 +451,7 @@ Tests/              — CppUTest unit tests. Never link production code directly
 Tests/Support/      — Shared test-support library: fakes for the platform and vendor seams (socket, clock, mq, config lock, error handler, OpenSSL, Mbed TLS, Winsock, and the FreeRtosFakes / LwipFakes / FatFsFakes / PlusFatFakes subtrees), plus SafeString and the syslog field parser. Linked by test executables only, never by the production library.
 Tests/Bdd/Targets/  — BDD target code unit tests (BddTargetTests executable).
 Bdd/                — BDD test infrastructure: Gherkin features, step definitions, syslog-ng config.
-Bdd/Targets/        — One BDD-driven binary per platform (Common, Linux, Windows, FreeRtos) — all named SolidSyslogBddTarget. Not pedagogical examples.
+Bdd/Targets/        — One BDD-driven binary per target configuration, over a shared Common. Not pedagogical examples. docs/bdd.md holds the set.
 ci/                 — CI-specific files (e.g. docker-compose.bdd.yml).
 docs/               — Project documentation.
 ```

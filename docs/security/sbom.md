@@ -49,12 +49,17 @@ platform present.
 
 ### Why the platform backends are not components
 
-Reference adapters ship for POSIX, Windows, FreeRTOS, lwIP, FreeRTOS-Plus-TCP,
-ChaN FatFs, FreeRTOS-Plus-FAT, OpenSSL and Mbed TLS, and an integrator may
+<!-- platforms: all -->
+
+Reference adapters ship for POSIX, Windows, C11 atomics, OpenSSL, Mbed TLS,
+lwIP's Raw API and its Sockets API, FreeRTOS-Plus-TCP, the FreeRTOS kernel,
+CMSIS-RTOS2, ChaN FatFs, FreeRTOS-Plus-FAT and LittleFS, and an integrator may
 supply their own instead. None of them is a component of SolidSyslog. Each is
-software the integrator chooses, versions, links and licenses, and the choices
-are mutually exclusive per role — no build links both OpenSSL and Mbed TLS, or
-both lwIP and FreeRTOS-Plus-TCP.
+software the integrator chooses, versions, links and licenses, and which of them
+a build contains is that same selection - not something this library can state
+on its behalf.
+
+<!-- /platforms -->
 
 Listing them would therefore describe a product that does not exist, and would
 do real harm: a scanner reading an OpenSSL dependency against a FreeRTOS build

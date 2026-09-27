@@ -11,21 +11,21 @@ vtable.
 
 ## Platform × capability matrix
 
-| Platform | Wraps | Network | TLS | At-rest crypto | Files | OS primitives | Time & host |
-|---|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| [Posix](posix/index.md) | POSIX / BSD sockets | ● | | | ● | ● | ● |
-| [Windows](windows/index.md) | Win32 / Winsock | ● | | | ● | ● | ● |
-| [FreeRTOS](freertos/index.md) | FreeRTOS kernel | | | | | ● | |
-| [CMSIS-RTOS2](cmsisrtos/index.md) | CMSIS-RTOS2 API | | | | | ● | |
-| [FreeRTOS-Plus-TCP](plustcp/index.md) | FreeRTOS-Plus-TCP | ● | | | | | |
-| [lwIP (Raw API)](lwipraw/index.md) | lwIP Raw API | ● | | | | | |
-| [lwIP (Sockets API)](lwipsocket/index.md) | lwIP Sockets API | ● | | | | | |
-| [OpenSSL](openssl/index.md) | OpenSSL ≥ 3.0 | | ● | ● | | | |
-| [Mbed TLS](mbedtls/index.md) | Mbed TLS | | ● | ● | | | |
-| [FatFs](fatfs/index.md) | ChaN FatFs | | | | ● | | |
-| [LittleFS](littlefs/index.md) | LittleFS | | | | ● | | |
-| [FreeRTOS-Plus-FAT](plusfat/index.md) | FreeRTOS-Plus-FAT | | | | ● | | |
-| [C11 atomics](stdatomic/index.md) | `<stdatomic.h>` | | | | | ● | |
+| Platform | Wraps | Network | TLS | At-rest crypto | Files | Buffer | OS primitives | Time & host |
+|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| [Posix](posix/index.md) | POSIX / BSD sockets | ● | | | ● | ● | ● | ● |
+| [Windows](windows/index.md) | Win32 / Winsock | ● | | | ● | | ● | ● |
+| [FreeRTOS](freertos/index.md) | FreeRTOS kernel | | | | | | ● | |
+| [CMSIS-RTOS2](cmsisrtos/index.md) | CMSIS-RTOS2 API | | | | | | ● | |
+| [FreeRTOS-Plus-TCP](plustcp/index.md) | FreeRTOS-Plus-TCP | ● | | | | | | |
+| [lwIP (Raw API)](lwipraw/index.md) | lwIP Raw API | ● | | | | | | |
+| [lwIP (Sockets API)](lwipsocket/index.md) | lwIP Sockets API | ● | | | | | | |
+| [OpenSSL](openssl/index.md) | OpenSSL ≥ 3.0 | | ● | ● | | | | |
+| [Mbed TLS](mbedtls/index.md) | Mbed TLS | | ● | ● | | | | |
+| [FatFs](fatfs/index.md) | ChaN FatFs | | | | ● | | | |
+| [LittleFS](littlefs/index.md) | LittleFS | | | | ● | | | |
+| [FreeRTOS-Plus-FAT](plusfat/index.md) | FreeRTOS-Plus-FAT | | | | ● | | | |
+| [C11 atomics](stdatomic/index.md) | `<stdatomic.h>` | | | | | | ● | |
 
 The at-rest-crypto column is the keyed policies (HMAC-SHA256, AES-256-GCM); the
 unkeyed CRC-16 policy is Core.
@@ -36,9 +36,12 @@ identity, which is the clock, hostname, process-id and sleep callbacks. An RTOS
 gives the first without the second, so a FreeRTOS or CMSIS-RTOS2 target still
 needs a clock from its integrator.
 
-Buffer, Store, and Structured Data are roles Core fills directly (with a Posix
-message-queue buffer option) — they're under [Roles](../roles/index.md), not
-here.
+The Buffer column is a platform-backed Buffer, which today means the POSIX
+message queue. Core ships the Passthrough and Circular buffers, so an unmarked
+row is not a gap.
+
+Store and Structured Data are roles Core fills directly — they're under
+[Roles](../roles/index.md), not here.
 
 ## Bring your own
 
