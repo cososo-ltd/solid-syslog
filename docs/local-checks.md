@@ -118,8 +118,8 @@ rather than from here if the two ever disagree - the workflow is what runs.
 
 `tidy` is otherwise CI's job, and the row below still says so. A new pack is the
 exception: it is a new directory of new files, and clang-tidy has more to say
-about those than about an edit to code it has already accepted. S36.01 pushed a
-new pack, went red on both `analyze-tidy-freertos-*` lanes, and cost a round
+about those than about an edit to code it has already accepted. A pack pushed
+without it went red on both `analyze-tidy-freertos-*` lanes, and cost a round
 trip for three findings that a local run would have shown in two minutes.
 
 ```bash
