@@ -859,6 +859,16 @@ jobs:
       - name: Check the paths and symbols documents and build files name exist
         run: python3 scripts/check_references.py
 
+      # An issue is linked while its work is outstanding, and only then, so a link
+      # to a closed one is evidence of nothing and the prose around it has usually
+      # gone stale with it. Nothing about that looks wrong on the page - the 0.1.0
+      # audit found ten, all pointing at work finished months earlier. Needs a
+      # token because it reads each issue's state from the API.
+      - name: Check every issue a document links is still open
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/check_issue_links.py
+
       # Guard the build hooks against regression — the source-link rewrite's
       # Markdown parsing, and the meta-description map's nav validation.
       # Image digest below is mkdocs-mkdoxy sha-34173c0 (see docs/containers.md).
