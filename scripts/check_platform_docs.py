@@ -259,6 +259,9 @@ def declared_roles():
     )
 
 
+ROLES_INDEX = os.path.join("docs", "roles", "index.md")
+
+
 def pack_roles():
     """[(Role, Pack)] from Platform/<Pack>/Interface/SolidSyslog<Role>Definition.h.
 
@@ -283,7 +286,7 @@ def pack_roles():
 def pack_role_faults():
     """Every per-platform role is linked from the roles index."""
     faults = []
-    listing = os.path.join("docs", "roles", "index.md")
+    listing = ROLES_INDEX
     text = read(listing)
     for role, pack in pack_roles():
         if f"../api/structSolidSyslog{role}.md" not in text:
@@ -300,7 +303,7 @@ def role_faults():
     # Where roles are enumerated, and how far each sits from the api/ tree.
     listings = {
         os.path.join("docs", "porting.md"): "api/",
-        os.path.join("docs", "roles", "index.md"): "../api/",
+        ROLES_INDEX: "../api/",
         "mkdocs.yml": "api/",
     }
     roles = declared_roles()
@@ -311,9 +314,23 @@ def role_faults():
             if f"{prefix}structSolidSyslog{role}.md" not in text:
                 faults.append(f"{role}: declared by its Definition.h but not linked from {listing}")
         # A role page that outlived its contract — the rename nobody finished.
-        known = set(roles) | {role for role, _ in pack_roles()}
+        # A per-platform role is legitimate on the roles index and nowhere else,
+        # so the other two listings still reject it as an unknown role. Widening
+        # the set for all three would have let one into the Core nav unnoticed.
+        known = set(roles)
+        if listing == ROLES_INDEX:
+            known |= {role for role, _ in pack_roles()}
+        per_platform = {role: pack for role, pack in pack_roles()}
         for orphan in re.findall(rf"{re.escape(prefix)}structSolidSyslog(\w+)\.md", text):
-            if orphan not in known:
+            if orphan in known:
+                continue
+            if orphan in per_platform:
+                faults.append(
+                    f"{listing} links {orphan} as a role, but {per_platform[orphan]} "
+                    f"declares it rather than Core - a per-platform role belongs on "
+                    f"{ROLES_INDEX} alone"
+                )
+            else:
                 faults.append(f"{listing} links {orphan} as a role, but no SolidSyslog{orphan}Definition.h declares it")
         # A count in prose is the thing this check replaced. It cannot be
         # asserted, so a thirteenth role would leave it quietly wrong.
