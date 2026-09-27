@@ -85,10 +85,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  curves, and the minimum RSA key size. That is the part of the BCP 195
          *  §4.5 cryptographic floor this stream does not pin for itself. NULL
          *  leaves whatever profile the Mbed TLS being linked names as its default,
-         *  so the floor is inherited rather than stated; supplying one is what makes
-         *  it a guarantee. Start from mbedtls_x509_crt_profile_default and tighten.
-         *  Applied before the credentials source installs, which is free to replace
-         *  it. Certificates only - the signature algorithms offered in the handshake
+         *  so the floor is inherited; supplying one states it instead. Applied
+         *  before the credentials source installs, so a backend that sets a profile
+         *  of its own has the last word - as it does over every other pin on the
+         *  ssl_config. Start from mbedtls_x509_crt_profile_default and tighten.
+         *  Certificates only - the signature algorithms offered in the handshake
          *  itself are not covered. Mbed TLS does not copy the profile. */
         const struct mbedtls_x509_crt_profile* CertProfile;
     };

@@ -161,7 +161,7 @@ with, and how large its key must be, it does not pin: the X.509 profile in force
 is whichever one the Mbed TLS you link names as its default, so that part of the
 floor is a property of that library rather than of this one. Set `CertProfile`
 on [SolidSyslogMbedTlsProfile](../../api/structSolidSyslogMbedTlsProfile.md) and
-it becomes a guarantee instead.
+it is stated here instead of inherited.
 
 Every other obligation under [TLS obligations](../../tls.md) is met by this
 pack as shipped.
