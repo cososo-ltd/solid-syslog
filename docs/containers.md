@@ -156,16 +156,22 @@ docker run --rm -v "$PWD:/docs" \
 ```
 
 All references to a given image must use the same digest. Never update one
-without the others. To check that invariant across the tree:
+without the others. To check that invariant across the digest-pinned files:
 
 ```bash
-grep -rhno 'ghcr.io/cososo-ltd/[a-z-]*@sha256:[0-9a-f]*\|balabit/syslog-ng@sha256:[0-9a-f]*' \
-  .github/workflows/ci.yml .devcontainer/docker-compose.yml ci/docker-compose.bdd.yml \
+grep -rhno 'ghcr.io/cososo-ltd/[a-z-]*@sha256:[0-9a-f]*\|balabit/syslog-ng@sha256:[0-9a-f]*\|davidanson/markdownlint-cli2@sha256:[0-9a-f]*\|rhysd/actionlint@sha256:[0-9a-f]*' \
+  .github/workflows/ci.yml .github/workflows/lint-workflows.yml \
+  .devcontainer/docker-compose.yml ci/docker-compose.bdd.yml \
   | sed 's/^[0-9]*://' | sort -u
 ```
 
 One line per image means every reference agrees; two lines for the same image
 name means a bump was applied unevenly.
+
+The audit covers digest-pinned references only. `docs/local-checks.md` invokes
+`markdownlint-cli2` by tag, deliberately: it is a command a developer types, where
+a digest is unreadable and the engine version is the thing worth stating. That
+line is out of this check by design, so leave it out when extending the pattern.
 
 ## Switching to a different container as the devcontainer
 
