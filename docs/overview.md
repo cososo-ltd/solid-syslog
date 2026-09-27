@@ -43,7 +43,7 @@ indication of what it costs, so you can see where your own answer lands.
 | Framework | What the map covers |
 |---|---|
 | [CRA](cra.md) | Annex I Part I (2)(l), the requirement that names recording and monitoring internal activity; the Part I points an audit trail contributes to; and what the project publishes for your Part II vulnerability handling |
-| [IEC 62443](iec62443.md) | The audit-logging-relevant Component and System Requirements from 62443-4-2 and 62443-3-3, the levels each helps with, and the components that address them |
+| [IEC 62443](iec62443.md) | The audit-logging-relevant Component Requirements from 62443-4-2, what SolidSyslog provides against each, and what you complete yourself. The level a deployment reaches is left to the assessment that can carry it |
 
 ## Go deeper
 
