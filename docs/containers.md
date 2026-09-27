@@ -2,8 +2,9 @@
 
 ## Images in use
 
-Every reference in `.github/workflows/ci.yml`, `.devcontainer/docker-compose.yml`
-and `ci/docker-compose.bdd.yml` is pinned by digest - `<repo>@sha256:…`. The tag
+Every reference in `.github/workflows/ci.yml`,
+`.github/workflows/lint-workflows.yml`, `.devcontainer/docker-compose.yml` and
+`ci/docker-compose.bdd.yml` is pinned by digest - `<repo>@sha256:…`. The tag
 below is the readable handle; the digest in the files is what actually resolves.
 The tag is kept alongside each reference: as a trailing comment on a `container:`
 or Compose `image:` key, and in the comment above the step for a `docker run`
@@ -25,6 +26,8 @@ find its consumers.
 | `ghcr.io/cososo-ltd/cpputest-freertos-cross` | `sha-1739f5b` | Cross-building the QEMU BDD targets and running them: everything the host image carries, plus `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm`, and `python3` + `behave` so one image both builds a target and drives it. Upstream sources sit at `/opt/freertos/kernel`, `/opt/freertos/plus-tcp`, `/opt/freertos/plus-fat`, `/opt/lwip`, `/opt/fatfs`, `/opt/littlefs`, `/opt/mbedtls`, `/opt/cmsis` and `/opt/cmsis-freertos` |
 | `balabit/syslog-ng` | `4.8.2` | The BDD test oracle, one instance per target so lanes cannot contend. Pinned to the 4.8 LTS line; 4.11.0 (`latest` as of 2026-02-24) regressed by aborting on `STATS` over the control socket, which crashed the oracle and cascaded to the dev-container network when a target shares the namespace |
 | `ghcr.io/cososo-ltd/behave` | `sha-be8da62` | Driving BDD scenarios against a host-built example: Debian trixie, Python 3.12 and Behave. A QEMU target is driven from `cpputest-freertos-cross` instead, which carries Behave alongside the emulator |
+| `davidanson/markdownlint-cli2` | `v0.22.1` | Linting Markdown, in the `analyze-markdown` lane and in the pre-push command `docs/local-checks.md` gives. Upstream, so the tag is the release rather than a source commit |
+| `rhysd/actionlint` | `1.7.7` | Validating the workflow files, in the lane that has to live outside `ci.yml` to survive a break in it. Upstream, same tag form |
 | `ghcr.io/cososo-ltd/mkdocs-mkdoxy` | `sha-34173c0` | Building the documentation site: Doxygen 1.9.4, mkdocs 1.6.1, mkdocs-material 9.7.6, mkdoxy 1.2.8 and mkdocs-github-admonitions-plugin 0.1.1. mkdoxy renders `Core/Interface/*.h` as native Material API pages |
 
 ## Docker Compose setup
@@ -73,9 +76,9 @@ Which BDD ELF a *cross* build produces is separate, and maintainer-only -
 `CMSIS_LWIP`. It selects a test artefact, not a platform - platforms are named
 in `SOLIDSYSLOG_PLATFORMS` like everything else.
 
-CI runs each cross target in isolation. `build-freertos-target-plustcp` and
-`build-freertos-target-lwip` are required checks; `build-cmsis-target-lwip` is
-advisory until S40.05 promotes it.
+CI runs each cross target in isolation, and all three of
+`build-freertos-target-plustcp`, `build-freertos-target-lwip` and
+`build-cmsis-target-lwip` are required checks.
 
 ## Running the clang build locally
 
@@ -121,12 +124,17 @@ When a new image tag is available:
 | `cpputest-freertos-cross` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
 | `behave` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/bdd.md`, `docs/containers.md` |
 | `mkdocs-mkdoxy` | `.github/workflows/ci.yml`, `docs/containers.md` |
+| `markdownlint-cli2` | `.github/workflows/ci.yml`, `docs/local-checks.md`, `docs/containers.md` |
+| `actionlint` | `.github/workflows/lint-workflows.yml`, `docs/containers.md` |
 | `syslog-ng` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
 
-`syslog-ng` is the one upstream image in that table - it is published by
-[balabit](https://hub.docker.com/r/balabit/syslog-ng), not by us, so step 1 does
-not apply and the version is chosen rather than built. Read the 4.8 LTS pinning
-rationale in the first table before moving it.
+`syslog-ng`, `markdownlint-cli2` and `actionlint` are upstream images rather than
+ours, published by [balabit](https://hub.docker.com/r/balabit/syslog-ng),
+[DavidAnson](https://hub.docker.com/r/davidanson/markdownlint-cli2) and
+[rhysd](https://hub.docker.com/r/rhysd/actionlint). Step 1 does not apply to any
+of them: the version is chosen from what upstream published and pinned, not
+built. Read the 4.8 LTS pinning rationale in the first table before moving
+`syslog-ng`.
 
 The `cpputest-freertos` and `cpputest-freertos-cross` images both come from
 [CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker).
@@ -148,16 +156,22 @@ docker run --rm -v "$PWD:/docs" \
 ```
 
 All references to a given image must use the same digest. Never update one
-without the others. To check that invariant across the tree:
+without the others. To check that invariant across the digest-pinned files:
 
 ```bash
-grep -rhno 'ghcr.io/cososo-ltd/[a-z-]*@sha256:[0-9a-f]*\|balabit/syslog-ng@sha256:[0-9a-f]*' \
-  .github/workflows/ci.yml .devcontainer/docker-compose.yml ci/docker-compose.bdd.yml \
+grep -rhno 'ghcr.io/cososo-ltd/[a-z-]*@sha256:[0-9a-f]*\|balabit/syslog-ng@sha256:[0-9a-f]*\|davidanson/markdownlint-cli2@sha256:[0-9a-f]*\|rhysd/actionlint@sha256:[0-9a-f]*' \
+  .github/workflows/ci.yml .github/workflows/lint-workflows.yml \
+  .devcontainer/docker-compose.yml ci/docker-compose.bdd.yml \
   | sed 's/^[0-9]*://' | sort -u
 ```
 
 One line per image means every reference agrees; two lines for the same image
 name means a bump was applied unevenly.
+
+The audit covers digest-pinned references only. `docs/local-checks.md` invokes
+`markdownlint-cli2` by tag, deliberately: it is a command a developer types, where
+a digest is unreadable and the engine version is the thing worth stating. That
+line is out of this check by design, so leave it out when extending the pattern.
 
 ## Switching to a different container as the devcontainer
 

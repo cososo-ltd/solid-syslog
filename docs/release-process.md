@@ -128,8 +128,8 @@ listed above; the two written parts are added by hand in the release pull reques
 4. The `release: published` event triggers `sbom.yml`: it renders and validates
    the CycloneDX SBOM, writes the content-tree SHA-256 (scope: `Core/` +
    `Platform/` + `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`,
-   `LICENSES/`), cosign keyless-signs both (GitHub OIDC), and attaches the
-   four assets to the Release.
+   `LICENSES/`), cosign keyless-signs both (GitHub OIDC), and attaches each
+   file with its signature to the Release.
 5. The same event triggers `docs-bundle.yml`: it builds the documentation from
    the tag with `mkdocs-offline.yml`, checks that the result works with no
    server and no network, cosign-signs the zip and attaches it with its

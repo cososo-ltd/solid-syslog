@@ -278,7 +278,9 @@ the artifact locally and want to re-verify independently.
 
 ## Verifying a signed SBOM
 
-Every GitHub Release created by Release Please gets four assets attached:
+Of the assets a GitHub Release carries, these are the ones `sbom.yml` attaches.
+What a release holds in full, and how to verify each part, is in
+[release verification](release-verification.md).
 
 | Asset | Contents |
 |---|---|
