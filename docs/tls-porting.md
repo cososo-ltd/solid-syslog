@@ -78,7 +78,7 @@ what the callback decided as it decides it; do not deduce it afterwards.
 ## What the contract leaves to the implementation
 
 The obligations are under [TLS obligations](tls.md) and are not repeated here.
-Four things a port gets wrong that the contract does not spell out:
+What a port gets wrong that the contract does not spell out:
 
 - Refuse a peer before any of the client's credential is sent. Where the
   library must be told to verify optionally - because it has no anchor to

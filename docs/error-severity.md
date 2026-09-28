@@ -23,14 +23,14 @@ config bug." The category already says that.
 
 | Level | Meaning | Emitted today |
 |---|---|---|
-| `EMERGENCY` | — | no (reserved) |
-| `ALERT` | — | no (reserved) |
+| `EMERGENCY` | - | no (reserved) |
+| `ALERT` | - | no (reserved) |
 | `CRITICAL` | The library cannot do its job here and the only fix is the engineer who built the device changing code or build (pool sizes, wiring, config structs). | yes |
 | `ERROR` | A fault impacting delivery that needs a human, but is fixable at deploy/runtime by the operator or systems integrator without a code change (rejected cert, missing/short key, a device that cannot open a socket). | yes |
 | `WARNING` | Transient / self-healing, or delivered-but-degraded. | yes |
 | `NOTICE` | Normal-but-significant: recovery from a down state. | yes |
-| `INFORMATIONAL` | — | no (reserved) |
-| `DEBUG` | — | no (reserved) |
+| `INFORMATIONAL` | - | no (reserved) |
+| `DEBUG` | - | no (reserved) |
 
 `EMERGENCY`, `ALERT`, `INFORMATIONAL`, and `DEBUG` are deliberately unused, reserved for
 integrator-defined use and possible future events.
@@ -71,8 +71,8 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 | `STREAM_CONNECT_FAILED` - local | `ERROR` | the device could not obtain an endpoint, or its stack declined to start the attempt, so no packet was sent. It needs a human and will not clear by waiting. Single-sourced via `SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY`. |
 | `STREAM_CONNECT_FAILED` - remote | `WARNING` | the destination did not answer, or answered with something other than a connection. The next Service pass retries. Single-sourced via `SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY`. |
 | `STREAM_OPTION_REFUSED` | `WARNING` | the connection opened, but the stack declined a socket option set on it, so it is less robust than intended. Delivery continues, which is why this is not `ERROR`. Explicit `SOLIDSYSLOG_SEVERITY_WARNING` at the site. |
-| `TLS_STREAM_HANDSHAKE_FAILED` — rejected | `ERROR` | cert / protocol: a human must fix the peer or the cert. |
-| `TLS_STREAM_HANDSHAKE_FAILED` — timeout | `WARNING` | transient: may clear on the next reconnect. |
+| `TLS_STREAM_HANDSHAKE_FAILED` - rejected | `ERROR` | cert / protocol: a human must fix the peer or the cert. |
+| `TLS_STREAM_HANDSHAKE_FAILED` - timeout | `WARNING` | transient: may clear on the next reconnect. |
 | `TLS_STREAM_INIT_FAILED` | `ERROR` | setup fault needing a human; not split. |
 | `SECURITY_POLICY_KEY_UNAVAILABLE` | `ERROR` | key too short / unavailable: provisioned in the field by the operator / systems integrator, fixable without a code change. |
 | `SECURITY_POLICY_SEAL_FAILED` / `_OPEN_FAILED` | `ERROR` | runtime crypto operation failed. |

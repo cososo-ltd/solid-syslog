@@ -13,41 +13,41 @@ without renaming what's already there.
 | `build-linux-gcc` | `debug` | Test results annotated on PR |
 | `build-linux-clang` | `clang-debug` | Second compiler check using Clang 19 |
 | `build-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`; CppUTest via vcpkg; test results annotated on PR |
-| `sanitize-linux-gcc` | `sanitize` | ASan + UBSan — test results annotated on PR |
+| `sanitize-linux-gcc` | `sanitize` | ASan + UBSan - test results annotated on PR |
 | `coverage-linux-gcc` | `coverage` | Summary in Actions UI; HTML report uploaded as a downloadable run artifact |
-| `analyze-tidy` | `tidy` | clang-tidy — pass/fail with errors in job log |
+| `analyze-tidy` | `tidy` | clang-tidy - pass/fail with errors in job log |
 | `analyze-cppcheck` | `cppcheck` | cppcheck static analysis |
-| `analyze-codeql` | — | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) — see *Code scanning* |
-| `analyze-format` | — | clang-format dry-run; fails if any file needs reformatting |
-| `analyze-iwyu` | `iwyu` | include-what-you-use; fails on missing or unused `#include` directives. Advisory — runs `continue-on-error` |
+| `analyze-codeql` | - | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) - see *Code scanning* |
+| `analyze-format` | - | clang-format dry-run; fails if any file needs reformatting |
+| `analyze-iwyu` | `iwyu` | include-what-you-use; fails on missing or unused `#include` directives. Advisory - runs `continue-on-error` |
 | `analyze-tidy-freertos-plustcp` | `tidy` | clang-tidy over the FreeRTOS / FreeRTOS-Plus-TCP / Mbed TLS / Plus-FAT trees, which the base `analyze-tidy` lane cannot reach |
 | `analyze-tidy-freertos-lwip` | `tidy` | The same, over the lwIP and ChaN FatFs trees |
 | `analyze-iwyu-freertos-plustcp` | `iwyu` | IWYU over the same FreeRTOS-Plus-TCP set. Advisory |
 | `analyze-iwyu-freertos-lwip` | `iwyu` | IWYU over the same lwIP set. Advisory |
-| `analyze-markdown` | — | `markdownlint-cli2` over every tracked `.md` file |
-| `analyze-spdx` | — | `scripts/check_spdx_headers.py`: every file under `Core/` and `Platform/` carries the licence header `LICENSE.md` declares, and none claims anyone else's copyright |
+| `analyze-markdown` | - | `markdownlint-cli2` over every tracked `.md` file |
+| `analyze-spdx` | - | `scripts/check_spdx_headers.py`: every file under `Core/` and `Platform/` carries the licence header `LICENSE.md` declares, and none claims anyone else's copyright |
 | `integration-linux-openssl` | `debug` | Runs the in-process TLS integration tests against libssl (no network oracle) |
 | `integration-linux-mbedtls` | `debug` | The same integration tests against Mbed TLS, exercising `SolidSyslogMbedTlsStream` and the Mbed TLS security policies |
 | `integration-windows-openssl` | `msvc-debug` | Same TLS integration tests on `windows-latest` against libssl from vcpkg |
 | `integration-linux-littlefs` | `debug` | Drives `SolidSyslogLittleFsFile` against a real LittleFS volume rather than a fake, because durability is the pack's whole claim and nothing short of the filesystem proves `lfs_file_sync` committed. Runs in `cpputest-freertos`, which carries `/opt/littlefs` |
-| `build-linux-c89-headers` | — | Compiles every public header standalone as ISO C89 with `-pedantic-errors`, via `scripts/check_headers_c89.py`. Also proves each header is self-contained, since a header needing a companion first fails here |
+| `build-linux-c89-headers` | - | Compiles every public header standalone as ISO C89 with `-pedantic-errors`, via `scripts/check_headers_c89.py`. Also proves each header is self-contained, since a header needing a companion first fails here |
 | `build-linux-c99` | `c99`, `c99-platforms` | Builds Core alone at strict `-std=c99` (`CMAKE_C_EXTENSIONS=OFF`, no tests), then the POSIX and OpenSSL packs at C99 as a drift check. Proves the C99 conformance claim per PR |
 | `build-linux-tunable-override` | `tunable-override-debug` | Builds against a user tunables header to prove `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults. Also builds the Linux BDD target, for the reason under [`@requires_message_size_1500`](bdd.md#feature-tags) |
-| `bdd-linux-syslog-ng` | — | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
-| `bdd-windows-otel` | — | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
+| `bdd-linux-syslog-ng` | - | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
+| `bdd-windows-otel` | - | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
 | `build-freertos-host-tdd-plustcp` | `debug` | Host-TDD of the FreeRTOS, FreeRTOS-Plus-TCP, Plus-FAT, FatFs and Mbed TLS adapters against fakes; runs inside `cpputest-freertos` (upstream sources at fixed paths) |
 | `build-freertos-target-plustcp` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the BDD target ELF over FreeRTOS-Plus-TCP; uploads it as an artifact |
 | `build-freertos-target-lwip` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic`) |
-| `bdd-freertos-qemu-plustcp` | — | Pulls the Plus-TCP target ELF, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
-| `bdd-freertos-qemu-lwip` | — | The same scenarios against the lwIP target ELF |
+| `bdd-freertos-qemu-plustcp` | - | Pulls the Plus-TCP target ELF, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
+| `bdd-freertos-qemu-lwip` | - | The same scenarios against the lwIP target ELF |
 | `build-cmsis-target-lwip` | `cmsis-cross-lwip` | The cross-build of the CMSIS-RTOS2 BDD target, over CMSIS-RTOS2, LittleFS and the lwIP Sockets API (`CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic`) - the three packs it exists to prove, plus Mbed TLS |
-| `bdd-cmsis-qemu-lwip` | — | The same scenarios again, against that target's ELF |
-| `consumer-smoke-linux` | — | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
-| `consumer-smoke-freertos-cross` | — | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
-| `verify-manifest` | — | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
-| `docs-build` | — | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`; on `main`, `deploy-docs-pages` publishes it to GitHub Pages |
-| `actionlint` | — | Validates the workflow files themselves. In its own workflow, not a job here: a lane inside the file being validated cannot run when that file is the broken one |
-| `summary` | — | Aggregates the JUnit artifacts into a run summary. Declared `if: always()` and asserts nothing about the other jobs' results |
+| `bdd-cmsis-qemu-lwip` | - | The same scenarios again, against that target's ELF |
+| `consumer-smoke-linux` | - | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
+| `consumer-smoke-freertos-cross` | - | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
+| `verify-manifest` | - | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
+| `docs-build` | - | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`; on `main`, `deploy-docs-pages` publishes it to GitHub Pages |
+| `actionlint` | - | Validates the workflow files themselves. In its own workflow, not a job here: a lane inside the file being validated cannot run when that file is the broken one |
+| `summary` | - | Aggregates the JUnit artifacts into a run summary. Declared `if: always()` and asserts nothing about the other jobs' results |
 
 ## Branch protection
 
@@ -59,7 +59,7 @@ all of them pass. Direct pushes to `main` are blocked. Squash merge only.
 
 Two qualifications on what "required" buys. The `analyze-iwyu*` lanes run
 `continue-on-error`, so they are required contexts that report success whatever IWYU
-finds — required in form, advisory in substance. And feeding the `summary` aggregator
+finds - required in form, advisory in substance. And feeding the `summary` aggregator
 does not make a lane blocking: `summary` is declared `if: always()` and asserts nothing
 about `needs.*.result`, so a new lane gates merges only once its own context is added
 to the required list.
@@ -94,9 +94,9 @@ and weekly so that queries GitHub ships later are applied to unchanged code. Fin
 appear under **Security → Code scanning**, not in the job log.
 
 CodeQL analyses what the compiler compiled and nothing else, so the build it observes
-is the analysis scope. The lane builds `ci/consumer-smoke/` —
+is the analysis scope. The lane builds `ci/consumer-smoke/` -
 the same FetchContent consumer documented in
-[Adding it to your build](build-integration.md) — so the code analysed is the code an
+[Adding it to your build](build-integration.md) - so the code analysed is the code an
 integrator compiles. Consuming the library as a subproject also scopes the database
 without any bespoke flags: `SOLIDSYSLOG_IS_TOP_LEVEL` is false, so the unit tests and
 the BDD targets are never configured.
@@ -104,14 +104,14 @@ the BDD targets are never configured.
 `SOLIDSYSLOG_PLATFORMS` is named explicitly rather than left to auto-detection, because
 the list is authoritative: a platform it does not name is silently absent from the build,
 and therefore from the analysis. An assertion step then fails the lane unless every named
-platform produced compiled objects — proving what the compiler emitted rather than what
+platform produced compiled objects - proving what the compiler emitted rather than what
 the configure step was asked for, since a platform that is selected but contributes no
 sources would satisfy any check of the selection itself.
 
 Triage follows the support tiers rather than the reported severity:
 
-- **Tier 1 `Core/`** — treat as blocking; this is the shipped product.
-- **Tier 2 `Platform/`** — fix on merit; a finding here does not hold up a release.
+- **Tier 1 `Core/`** - treat as blocking; this is the shipped product.
+- **Tier 2 `Platform/`** - fix on merit; a finding here does not hold up a release.
 
 Accepted findings are dismissed in the Security tab with a reason, not suppressed with
 in-source comments. The C sources already carry clang-tidy, cppcheck-MISRA and IWYU
@@ -119,9 +119,9 @@ suppression dialects, and a fourth would cost more in readability than it return
 
 Code scanning contributes two required contexts, and both are needed:
 
-- **`analyze-codeql`** — the Actions job. Proves the analysis ran and uploaded, so a
+- **`analyze-codeql`** - the Actions job. Proves the analysis ran and uploaded, so a
   lane that breaks or stops running blocks the merge rather than passing silently.
-- **`CodeQL`** — the code-scanning results check. This is the one that fails when a
+- **`CodeQL`** - the code-scanning results check. This is the one that fails when a
   pull request introduces a new alert. Without it, a PR could add findings and still
   merge green because the job itself succeeded.
 
@@ -132,8 +132,8 @@ A clean baseline is not the same as an absence of vulnerabilities. Much of
 `security-extended` is taint tracking, and this database offers it no source: `Core/`
 makes no library read calls of its own, and everything arrives through a vtable that
 CodeQL's dataflow does not follow. Those queries cannot fire whatever the code does.
-Read the result as *no local defects found* — buffer arithmetic, conversions,
-comparisons, unchecked returns — rather than as proof that no injection or overflow
+Read the result as *no local defects found* - buffer arithmetic, conversions,
+comparisons, unchecked returns - rather than as proof that no injection or overflow
 path exists.
 
 ## Release automation

@@ -5,13 +5,13 @@ the docs, the site, and articles. It keeps architecture pictures friendly and
 quick to read: colour tells you the kind of thing, the arrow tells you the
 relationship.
 
-![The kit — palette and arrows](postit-defs.svg)
+![The kit - palette and arrows](postit-defs.svg)
 
 ## The vocabulary
 
 | Colour | Means | Example |
 |---|---|---|
-| Yellow | Core / facade — the thing you call | `SolidSyslog` |
+| Yellow | Core / facade - the thing you call | `SolidSyslog` |
 | Green | A role (a vtable / extension point) | `Sender`, `Store`, `Buffer` |
 | Blue | A backend that realises a role | `StreamSender`, `BlockStore` |
 | Pink | Something you inject | `Config`, a clock callback, the platform socket |
@@ -31,11 +31,11 @@ relationship.
    [`postit-defs.svg`](postit-defs.svg): that consistency is the whole point.
    If you want to retune the look (roughness, shadow, arrowheads), change it in
    `postit-defs.svg` first, then carry it into the diagrams.
-3. Aim for ~10–12 stickies. If it needs more, it probably wants to be two
+3. Aim for ~10-12 stickies. If it needs more, it probably wants to be two
    diagrams.
 
 One exception: [`architecture-overview.svg`](architecture-overview.svg) is
-**generated**, not hand-drawn — its layout (boundary crossings, fan-out lines)
+**generated**, not hand-drawn - its layout (boundary crossings, fan-out lines)
 is computed. Edit `scripts/gen_architecture_overview.py`
 and re-run it; do not hand-edit the SVG. It keeps the same palette but drops the
 sticky rotation/shadow for a precise architectural read, and colours by

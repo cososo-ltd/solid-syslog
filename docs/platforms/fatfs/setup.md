@@ -38,7 +38,7 @@ read.
 ## What you must provide
 
 **The FatFs sources**, compiled into your image, and a `ffconf.h` where the
-library expects to find it — beside the sources rather than on the include
+library expects to find it - beside the sources rather than on the include
 path, which differs from most configuration headers.
 
 **A disk I/O driver** for your storage hardware, implementing the read, write

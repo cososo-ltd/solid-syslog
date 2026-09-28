@@ -1,4 +1,4 @@
-# CRA — where SolidSyslog helps
+# CRA - where SolidSyslog helps
 
 The EU Cyber Resilience Act, Regulation (EU) 2024/2847, sets essential cybersecurity
 requirements for products with digital elements placed on the EU market. Its Annex I has
@@ -38,7 +38,7 @@ reasoning behind [building up the protection you need](hardening-path.md), which
 the capabilities in the order an integration usually adds them so you can stop where
 your own assessment says to.
 
-## Part I (2)(l) — the requirement that names logging
+## Part I (2)(l) - the requirement that names logging
 
 > provide security related information by recording and monitoring relevant internal
 > activity, including the access to or modification of data, services or functions, with
@@ -51,7 +51,7 @@ SIEM can consume, correlate across devices, and retain.
 | What the point asks for | What SolidSyslog provides |
 |---|---|
 | Recording relevant internal activity | `SolidSyslog_Log` and RFC 5424 formatting. Your application decides which events are security-relevant; the library carries them |
-| Security-related *information*, not raw lines | Structured data elements — `MetaSd`, `TimeQualitySd`, `OriginSd` — attaching sequence, clock quality, uptime and device identity, plus your own private elements |
+| Security-related *information*, not raw lines | Structured data elements - `MetaSd`, `TimeQualitySd`, `OriginSd` - attaching sequence, clock quality, uptime and device identity, plus your own private elements |
 | Monitoring | Delivery to any RFC 5424 collector over UDP, TCP or TLS, with `sequenceId` letting the collector detect records that never arrived |
 | Activity that must survive the device | Store-and-forward across outages and reboots, with at-rest protection |
 
@@ -59,7 +59,7 @@ SIEM can consume, correlate across devices, and retain.
 opt-out mechanism, which is a product-level control the library has no view of.
 Retention, access control and disposal at the collector.
 
-## Part I — requirements an audit trail contributes to
+## Part I - requirements an audit trail contributes to
 
 The log path is not the primary means of meeting these, but it is in scope for each,
 because a log record is itself stored and transmitted data, and because several of them
@@ -74,7 +74,7 @@ today.
 | **(2)(f)** | integrity of stored and transmitted data against unauthorised modification, and *report on corruptions* | A keyed at-rest policy makes stored records tamper-evident rather than merely checksummed; TLS protects them in transit; the error handler surfaces corruption the store detects |
 | **(2)(h)** | availability of essential and basic functions, also after an incident | Buffering keeps logging off the critical path, and store-and-forward keeps records through an outage so the trail survives the incident it recorded |
 
-## Part II — supporting your vulnerability handling
+## Part II - supporting your vulnerability handling
 
 Part II binds you as the manufacturer of your product, not us. What the SolidSyslog
 project publishes is intended to drop into your own process for the component you are

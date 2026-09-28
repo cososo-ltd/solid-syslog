@@ -113,7 +113,7 @@ system is affected.
 
 How much of that the stack honours depends on one `lwipopts.h` setting.
 `LWIP_TCP_KEEPALIVE=1` makes the probe interval and count per-connection fields,
-and all three tunables apply. Without it those two are compile-time constants the
+and every keepalive tunable applies. Without it those two are compile-time constants the
 stack applies to every connection, so the idle period is still yours and the
 other two come from `TCP_KEEPINTVL_DEFAULT` and `TCP_KEEPCNT_DEFAULT`. Either way
 a silent peer is first probed when the idle tunable elapses.

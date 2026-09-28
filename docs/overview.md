@@ -27,7 +27,7 @@ control-by-control detail rather than restating it.
 Both state capabilities and leave the realisation to you.
 
 The CRA gates its Annex I product requirements on the manufacturer's own risk
-assessment, and applies them "where applicable" — so two conforming products can
+assessment, and applies them "where applicable" - so two conforming products can
 implement them very differently. IEC 62443 keeps the level a product is capable of
 apart from the level a deployment targets and the level it achieves, and rates
 capability against a component rather than against a library inside one; the same

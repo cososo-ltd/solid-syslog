@@ -12,9 +12,9 @@ and [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-examp
 
 Pick a lane:
 
-- [Core](#core): the library itself — the protocol, the pipeline, and the portable pieces that run the same everywhere.
+- [Core](#core): the library itself - the protocol, the pipeline, and the portable pieces that run the same everywhere.
 - [Integrate it](#integrate): get a syslog stack compiling and sending in your product.
-- [Platforms](#platforms): what reaches your hardware — the shipped adapters, and how to write one for a target we don't cover.
+- [Platforms](#platforms): what reaches your hardware - the shipped adapters, and how to write one for a target we don't cover.
 - [Compliance](#compliance): the CRA, IEC 62443, the RFCs, and the security posture.
 - [API reference](#api-reference): the public contracts, by audience.
 - [Maintaining the library](#maintaining): building, testing, and releasing SolidSyslog itself.
@@ -23,7 +23,7 @@ Pick a lane:
 
 ## Core
 
-- [Core](core/index.md): what is always compiled and depends on nothing external — the syslog protocol, the assembly, buffering, storage and sending pipeline, and the portable role implementations. Where a platform exists to reach your hardware, Core exists to be the same everywhere.
+- [Core](core/index.md): what is always compiled and depends on nothing external - the syslog protocol, the assembly, buffering, storage and sending pipeline, and the portable role implementations. Where a platform exists to reach your hardware, Core exists to be the same everywhere.
 
 ## Integrate
 
@@ -38,8 +38,8 @@ Everything you need to consume SolidSyslog in your product.
 
 ## Platforms
 
-A platform is a set of adapters wrapping one upstream thing — a network stack, a
-TLS library, a filesystem, an OS — behind the library's vtables. Each page says
+A platform is a set of adapters wrapping one upstream thing - a network stack, a
+TLS library, a filesystem, an OS - behind the library's vtables. Each page says
 what that platform ships and what wiring it needs; the pages above speak of them
 in the general case.
 
@@ -49,7 +49,7 @@ in the general case.
 
 ## Compliance
 
-- [CRA guide](cra.md): start here. The Annex I map — the requirement that names logging, the requirements an audit trail contributes to, and what the project publishes for your vulnerability handling. Vulnerability and incident reporting obligations apply from 11 September 2026; the Regulation applies in full from 11 December 2027.
+- [CRA guide](cra.md): start here. The Annex I map - the requirement that names logging, the requirements an audit trail contributes to, and what the project publishes for your vulnerability handling. Vulnerability and incident reporting obligations apply from 11 September 2026; the Regulation applies in full from 11 December 2027.
 - [Compliance in one page](overview.md): the one-screen orientation on CRA and IEC 62443 together.
 - [IEC 62443 compliance guide](iec62443.md): the audit-logging-relevant Component Requirements from 62443-4-2, what the library provides against each, and what you complete yourself. The level a deployment reaches is left to the assessment that can carry it.
 - [RFC compliance matrix](rfc-compliance.md): sender-side coverage of RFC 5424, 5426, 6587, and 5425.
@@ -68,7 +68,7 @@ draining the queue each include only `SolidSyslog.h`, while the setup that build
 the logger includes `SolidSyslogConfig.h` plus one header per component it wires.
 The [API reference](api-reference/index.md) explains that split, introduces the
 platforms and roles behind the config struct, and links the full generated
-reference — [Headers](api/files.md), [Data structures](api/annotated.md),
+reference - [Headers](api/files.md), [Data structures](api/annotated.md),
 [Functions](api/functions.md), and [Macros](api/macros.md).
 
 ## Maintaining

@@ -188,7 +188,7 @@ and want to rule out corruption-in-transit.
   fills the network, TLS, filesystem and OS-primitive roles is your job, and
   those belong in your product SBOM rather than this one.
 - It doesn't tell you whether the SolidSyslog licence is compatible with
-  your intended use. That's a licence review, not a signature check — start
+  your intended use. That's a licence review, not a signature check - start
   from [the licence](../../LICENSE.md).
 
 See the [threat model](threat-model.md) for the security posture, and

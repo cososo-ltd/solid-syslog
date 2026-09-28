@@ -7,8 +7,8 @@ questions; this document is only concerned with the first.
 | Flavour | Question it answers | Status here |
 |---|---|---|
 | **Product SBOM** | "What am I linking against in my deployment?" | Covered by this workflow (see below). |
-| **Build / dev-env SBOM** | "What tools, containers, and test harnesses were used to produce the release?" | Not yet — deferred to a separate story. Meanwhile, every container image is pinned by digest at the point it is used, and [Container images](../containers.md) names them. |
-| **Source SBOM** | "What third-party source code is embedded in the product?" | Empty — SolidSyslog vendors no third-party source. |
+| **Build / dev-env SBOM** | "What tools, containers, and test harnesses were used to produce the release?" | Not yet - deferred to a separate story. Meanwhile, every container image is pinned by digest at the point it is used, and [Container images](../containers.md) names them. |
+| **Source SBOM** | "What third-party source code is embedded in the product?" | Empty - SolidSyslog vendors no third-party source. |
 
 ## Product SBOM scope
 
@@ -40,7 +40,7 @@ SolidSyslog, the `components` array is empty, and the dependency graph records
 that it depends on nothing.
 
 That is the whole point of it. SolidSyslog vendors no third-party source, and
-Core reaches no further than a C99 compiler and four standard headers —
+Core reaches no further than a C99 compiler and four standard headers -
 `<stddef.h>`, `<stdbool.h>`, `<stdint.h>` and `<string.h>`. It calls `memcpy`
 and `strlen`, and makes no operating-system calls at all: no OS, no network
 stack, no filesystem, no heap. The `c99` lane proves it on every pull request
@@ -71,7 +71,7 @@ They are recorded instead as `metadata.component.properties`
 (`solidsyslog:runtime-environment` and `solidsyslog:platform-backends`),
 alongside an `externalReferences` link to [Adding it to your
 build](../build-integration.md) for the capability matrix. Whichever packs you
-select are your dependencies and belong in your product SBOM — which is the
+select are your dependencies and belong in your product SBOM - which is the
 document that can state them correctly, because it knows which build you
 shipped.
 
@@ -82,10 +82,10 @@ Key fields worth reading:
 | `metadata.tools.components[0]` | The workflow that rendered this document, versioned by its own commit SHA and linked via a `build-system` reference. Distinct from `metadata.component.purl`, which pins the source being described: one says what produced the SBOM, the other what it describes. |
 | `metadata.component.name` | `SolidSyslog`. |
 | `metadata.component.version` | The value from `.release-please-manifest.json` at the time of generation. |
-| `metadata.component.purl` | Package URL keyed to the exact commit SHA — unambiguous pointer back to the source. |
+| `metadata.component.purl` | Package URL keyed to the exact commit SHA - unambiguous pointer back to the source. |
 | `metadata.component.supplier.name` | `Cozens Software Solutions Limited (COSOSO)`. |
 | `metadata.component.externalReferences[type=license]` | One per PolyForm term, so a scanner resolves each to its canonical text instead of leaving it unknown. The commercial term has no licence document to point at and carries an `other` reference to the enquiry route instead. See [reading the licence expression](#reading-the-licence-expression). |
-| `metadata.component.licenses[0].expression` | `PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial` — an SPDX expression, because the library is offered under three alternative licences and the recipient chooses. Only the Noncommercial identifier is on the SPDX License List; the other two are `LicenseRef-`. |
+| `metadata.component.licenses[0].expression` | `PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial` - an SPDX expression, because the library is offered under three alternative licences and the recipient chooses. Only the Noncommercial identifier is on the SPDX License List; the other two are `LicenseRef-`. |
 | `metadata.properties[solidsyslog:source-tree-sha256]` | Content-tree hash: SHA-256 of a sorted list of `<content-sha256>  <path>` lines for every tracked file in `Core/` + `Platform/` plus the root-level `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`, and `LICENSES/`, at the commit. Reproducible byte-for-byte from any clone, with no dependency on `git archive` output format or git version. |
 
 ## Reading the licence expression
@@ -107,7 +107,7 @@ recipient to satisfy the noncommercial term if they hold a different one.
 
 This expression is the whole licence question for the component. SolidSyslog
 vendors no third-party source, so the `components` array is empty and there is
-no transitive licence graph underneath it — see
+no transitive licence graph underneath it - see
 [why the platform backends are not components](#why-the-platform-backends-are-not-components).
 
 ### Why two of the three are `LicenseRef-`
@@ -123,7 +123,7 @@ different reasons:
 
 If your scanner reports these identifiers as unknown or custom, that result is
 expected. A `LicenseRef-` is how SPDX names a licence its list does not cover,
-so there is no template in any scanner's corpus for it to match — and for the
+so there is no template in any scanner's corpus for it to match - and for the
 PolyForm term the verbatim text ships in the repository, for a reviewer who
 needs to read it.
 
@@ -137,7 +137,7 @@ pointing at its canonical URL. An SPDX expression has nowhere to put a URL,
 which is why they are attached to the component instead.
 
 `LicenseRef-COSOSO-Commercial` has no such entry. There is no public document to
-point at, and type `license` means the URL of a licence file — labelling an
+point at, and type `license` means the URL of a licence file - labelling an
 enquiry form as one would resolve the identifier to something that is not a
 licence. The enquiry route is carried as an `other` reference instead, with a
 comment saying what it is.
@@ -146,7 +146,7 @@ comment saying what it is.
 
 | If your organisation is | The term you rely on |
 |---|---|
-| Using SolidSyslog in the internal business operations of you and your company — which covers evaluation, porting, integration and testing, and internal deployment, commercial organisations included | `LicenseRef-PolyForm-Internal-Use-1.0.0` |
+| Using SolidSyslog in the internal business operations of you and your company - which covers evaluation, porting, integration and testing, and internal deployment, commercial organisations included | `LicenseRef-PolyForm-Internal-Use-1.0.0` |
 | Distributing it for a noncommercial purpose | `PolyForm-Noncommercial-1.0.0` |
 | Supplying, selling or otherwise making available a commercial product, device, firmware or service containing it | `LicenseRef-COSOSO-Commercial` |
 
@@ -154,7 +154,7 @@ If you arrived here from a source file rather than from the SBOM, the same
 answer applies. Every file under `Core/` and `Platform/` opens with a
 `SPDX-License-Identifier` carrying this same three-term expression, for the case
 where a file is copied into another build and leaves `LICENSE.md` behind. It is
-the same disjunction and it resolves the same way — establish which term your
+the same disjunction and it resolves the same way - establish which term your
 organisation relies on, and record that one.
 
 This table says only which term to read. The conditions each one attaches are
@@ -162,7 +162,7 @@ in [`LICENSE.md`](../../LICENSE.md), which is the authoritative statement.
 
 ### What to record in your own SBOM
 
-The expression above is SolidSyslog's **declared** licence — what COSOSO offers
+The expression above is SolidSyslog's **declared** licence - what COSOSO offers
 to any recipient. It is not a statement about your organisation's position.
 
 Once you have taken one of the three, record **that single term** as the
@@ -180,7 +180,7 @@ everything a tool needs to identify it:
 ```
 
 The other two are `LicenseRef-` terms, and an expression has nowhere to put a
-name or a URL for them — which is the whole reason they resolve as unknown. Use
+name or a URL for them - which is the whole reason they resolve as unknown. Use
 CycloneDX's named-licence form instead. PolyForm Internal Use is a published
 document, so its canonical URL is enough:
 
@@ -198,7 +198,7 @@ document, so its canonical URL is enough:
 `LicenseRef-COSOSO-Commercial` needs more again. It names a class of negotiated
 agreement rather than your particular contract, so on its own it tells a
 downstream reader of your SBOM nothing about what was granted. CycloneDX has
-fields for exactly this — use the named-licence form:
+fields for exactly this - use the named-licence form:
 
 ```json
 "licenses": [
@@ -222,8 +222,8 @@ fields for exactly this — use the named-licence form:
 ]
 ```
 
-`licenseTypes` takes values from CycloneDX's own enumeration — `oem`,
-`appliance`, `perpetual`, `subscription` and others — so pick whichever
+`licenseTypes` takes values from CycloneDX's own enumeration - `oem`,
+`appliance`, `perpetual`, `subscription` and others - so pick whichever
 describes your agreement. A `licenses` array is *either* a list of named
 licences *or* exactly one expression; the two forms cannot be mixed.
 
@@ -235,11 +235,11 @@ The same question applies to `purchaseOrder` and `licensee`. They are exactly
 right in an internal compliance record, but if you pass this SBOM on to your
 own customers, your commercial arrangements travel with it. Decide which of
 these fields belong in the copy you distribute and which stay in the copy you
-keep — `name` and `url` alone are enough to resolve the identifier.
+keep - `name` and `url` alone are enough to resolve the identifier.
 
-Whichever term applies, keep the evidence for it — the agreement reference for
+Whichever term applies, keep the evidence for it - the agreement reference for
 a commercial licence, or a record of the permitted purpose relied on for a
-PolyForm one — in your compliance record alongside the SBOM entry. That is what
+PolyForm one - in your compliance record alongside the SBOM entry. That is what
 lets the next reviewer resolve this without repeating your work.
 
 ### A policy rule you can adopt
@@ -290,7 +290,7 @@ What a release holds in full, and how to verify each part, is in
 | Asset | Contents |
 |---|---|
 | `sbom.cdx.json` | The SBOM itself. |
-| `sbom.cdx.json.sigstore` | [sigstore/cosign](https://docs.sigstore.dev/) signature bundle — signature + ephemeral signing certificate + Rekor inclusion proof, in a single JSON blob. |
+| `sbom.cdx.json.sigstore` | [sigstore/cosign](https://docs.sigstore.dev/) signature bundle - signature + ephemeral signing certificate + Rekor inclusion proof, in a single JSON blob. |
 | `source-tree-sha256.txt` | The content-tree SHA-256 with a human-readable header. Reproducible from any clone at the SBOM's commit with `git ls-tree` + `git show` + `sha256sum` + `sort`. |
 | `source-tree-sha256.txt.sigstore` | cosign bundle for the above. |
 

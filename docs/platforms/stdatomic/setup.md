@@ -35,8 +35,8 @@ number. Create takes no configuration; destroy it when the logger is torn down.
 
 The sequence number is what lets a collector notice that records are missing.
 It is assigned when a record is raised rather than when it is sent, so a gap
-reflects loss anywhere in the pipeline — the buffer, the store, or the
-transport — not only on the wire.
+reflects loss anywhere in the pipeline - the buffer, the store, or the
+transport - not only on the wire.
 
 An exhausted counter pool and an unconfigured counter are different failures,
 and they are worth telling apart.
@@ -49,7 +49,7 @@ something to discover later.
 
 Leave the counter out of the meta element's config altogether and the element
 itself does not build: `SolidSyslogMetaSd_Create` reports a `WARNING` and falls
-back to the Null structured data, so no meta element is attached at all — no
+back to the Null structured data, so no meta element is attached at all - no
 `sequenceId`, and no `sysUpTime` either.
 
 Both are safe in the sense that logging continues, but only the first still

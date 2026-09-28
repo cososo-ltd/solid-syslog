@@ -44,7 +44,7 @@ which the library calls with an `SD-ELEMENT` writer when it builds a message:
 
 static void ExampleSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element)
 {
-    (void) base; /* stateless here — see "Carrying instance or per-call data" below */
+    (void) base; /* stateless here - see "Carrying instance or per-call data" below */
 
     SolidSyslogSdElement_Begin(element, "example", 32473U);
     SolidSyslogSdValue_String(SolidSyslogSdElement_Param(element, "detail"), "Hello World");

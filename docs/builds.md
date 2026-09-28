@@ -7,7 +7,7 @@
 
 All builds use CMake presets. Output goes to `build/<preset>/`.
 
-## TDD loop — `debug` / `clang-debug`
+## TDD loop - `debug` / `clang-debug`
 
 The everyday build for writing and running tests. The active preset depends on the devcontainer
 service in use (`debug` for `gcc`, `clang-debug` for `clang`).
@@ -19,7 +19,7 @@ cmake --build --preset $BUILD_PRESET --target junit
 
 In VS Code, Ctrl+Shift+B runs the build and test and reports pass/fail in the terminal.
 
-## Clang build — `clang-debug`
+## Clang build - `clang-debug`
 
 Builds with Clang 19 as a second compiler, catching portability issues not caught by GCC.
 
@@ -33,7 +33,7 @@ docker compose -f .devcontainer/docker-compose.yml run --rm clang cmake --build 
 When using the `clang` devcontainer, Ctrl+Shift+B builds with `clang-debug` directly.
 See [Container images](containers.md) for how to switch.
 
-## C99 portability — `c99`
+## C99 portability - `c99`
 
 The public claim is that the Core compiles as C99. This preset is what proves
 it: `Core/` alone (`SOLIDSYSLOG_PLATFORMS` empty), at `-std=c99`, library only.
@@ -63,7 +63,7 @@ remaining packs are unchecked.
 
 CI runs both presets as the `build-linux-c99` lane on every pull request.
 
-## Sanitizers — `sanitize`
+## Sanitizers - `sanitize`
 
 Catches memory errors, use-after-free, and undefined behaviour at runtime.
 
@@ -72,7 +72,7 @@ cmake --preset sanitize
 cmake --build --preset sanitize --target junit
 ```
 
-## Coverage — `coverage`
+## Coverage - `coverage`
 
 Generates an HTML coverage report for the library source.
 
@@ -84,7 +84,7 @@ cmake --build --preset coverage --target coverage
 Open `build/coverage/coverage_report/index.html` to view results.
 The CI gate is 90% line and branch. The target is 100%.
 
-## Static analysis — `tidy`
+## Static analysis - `tidy`
 
 Runs clang-tidy on all source files. All warnings are errors.
 Checks are configured in `.clang-tidy`.
@@ -94,7 +94,7 @@ cmake --preset tidy
 cmake --build --preset tidy
 ```
 
-## cppcheck — `cppcheck`
+## cppcheck - `cppcheck`
 
 Runs cppcheck static analysis on all source files.
 
@@ -103,7 +103,7 @@ cmake --preset cppcheck
 cmake --build --preset cppcheck
 ```
 
-## Include-what-you-use — `iwyu` (advisory)
+## Include-what-you-use - `iwyu` (advisory)
 
 Runs include-what-you-use over the source set to flag missing or unused
 `#include` directives. It inherits `clang-debug`, so use the `clang` (or
@@ -122,7 +122,7 @@ do not block the build; their findings land in the `iwyu-report*` artifacts. Swe
 those at release cleanup. See [local-checks.md](local-checks.md) for the FreeRTOS
 variants and the full pre-PR check budget.
 
-## Windows build — `msvc-debug`
+## Windows build - `msvc-debug`
 
 Builds with MSVC as a portability check against GCC and Clang. Requires a Windows
 environment with MSVC, CMake 3.25+, and vcpkg with CppUTest installed. The `VCPKG_ROOT`
@@ -140,7 +140,7 @@ POSIX-specific code (senders, message queue buffer, clock, hostname, PID) is exc
 by the existing `SOLIDSYSLOG_POSIX` CMake guards. The core library and portable tests
 build and pass with MSVC.
 
-## Release — `release`
+## Release - `release`
 
 Optimised build with no instrumentation. Used for the install target.
 
@@ -149,7 +149,7 @@ cmake --preset release
 cmake --build --preset release --target junit
 ```
 
-## FreeRTOS cross — `freertos-cross`
+## FreeRTOS cross - `freertos-cross`
 
 ARM cross-build for FreeRTOS targets running under `qemu-system-arm`
 (Cortex-M3, mps2-an385). Uses the `freertos-target` devcontainer service
@@ -166,7 +166,7 @@ See `Bdd/Targets/FreeRtos/README.md` for run /
 GDB-attach instructions and `Bdd/README.md` for driving
 it under Behave + the syslog-ng oracle.
 
-## FreeRTOS + lwIP cross — `freertos-cross-lwip`
+## FreeRTOS + lwIP cross - `freertos-cross-lwip`
 
 The lwIP-networking twin of `freertos-cross`: same ARM Cortex-M3 / mps2-an385
 cross-build, but with `SOLIDSYSLOG_BDD_TARGET=FREERTOS_LWIP` (instead of the
@@ -181,7 +181,7 @@ cmake --build --preset freertos-cross-lwip --target SolidSyslogBddTargetLwip
 The ELF lands at
 `build/freertos-cross-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf`.
 
-## CMSIS-RTOS2 + lwIP Sockets cross — `cmsis-cross-lwip`
+## CMSIS-RTOS2 + lwIP Sockets cross - `cmsis-cross-lwip`
 
 The same ARM Cortex-M3 / mps2-an385 cross-build over a different pack set:
 `SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP`, `CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic`,
@@ -197,7 +197,7 @@ The ELF lands at
 `build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf`.
 See `Bdd/Targets/CmsisLwip/README.md` for run / GDB-attach instructions.
 
-## Tunable overrides — `tunable-override-debug` / `msvc-tunable-override`
+## Tunable overrides - `tunable-override-debug` / `msvc-tunable-override`
 
 Both build against `Tests/Fixtures/TunableOverrides.h`, proving
 `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults and giving the host BDD
@@ -214,7 +214,7 @@ cmake --install build/release --prefix /your/install/path
 
 This installs the static library to `lib/` and the public headers to `include/`.
 
-## BDD tests — Behave
+## BDD tests - Behave
 
 End-to-end tests run against per-target oracle pairs. The Linux pair uses the
 `behave-linux` devcontainer service; switch to it by changing

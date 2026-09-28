@@ -61,7 +61,7 @@ than inheriting this approval.
 ## Guideline text is not reproduced here
 
 Each entry identifies its guideline by number and category and then describes
-**the construct in SolidSyslog that the finding lands on** — not what the
+**the construct in SolidSyslog that the finding lands on** - not what the
 guideline says.
 MISRA C:2012 is copyrighted and not redistributable, so its rule text,
 amplification and examples are omitted deliberately rather than by oversight.
@@ -77,30 +77,30 @@ headline an assessor already has in front of them.
 ## Language edition for clause references
 
 Unless otherwise stated, all clause references are to ISO/IEC 9899:1999 (C99).
-C99 is the conformance baseline — the edition the source is written against and
+C99 is the conformance baseline - the edition the source is written against and
 claims to be valid under. It is not the same thing as the build configuration:
 the default build selects C11 (`CMAKE_C_STANDARD` is 11 unless overridden), and
 the `build-linux-c99` lane verifies the baseline on every pull request. The claim
 is about `Core/`: the lane builds Core alone at strict `-std=c99`, and the
-platform packs are a best-effort drift check rather than a guarantee — see
-[builds.md](builds.md#c99-portability--c99). Where a deviation concerns a code path
+platform packs are a best-effort drift check rather than a guarantee - see
+[builds.md](builds.md#c99-portability---c99). Where a deviation concerns a code path
 that only a later edition compiles, that entry names the applicable edition and
 cites both.
 
-Paragraph numbering differs between editions — §6.7.2.1 renumbered when C11
-added anonymous structure and union members — so a C11 paragraph number read
+Paragraph numbering differs between editions - §6.7.2.1 renumbered when C11
+added anonymous structure and union members - so a C11 paragraph number read
 against a C99 copy lands on the wrong sentence. That is why the edition is fixed
 here rather than left to the reader.
 
 ---
 
-## D.001 — Rule 5.1 external identifier uniqueness relaxed to 63 characters
+## D.001 - Rule 5.1 external identifier uniqueness relaxed to 63 characters
 
 ### Guideline
 
-**MISRA C:2012 Rule 5.1** — Required.
+**MISRA C:2012 Rule 5.1** - Required.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Deviation — the code departs from the guideline.
+**Classification:** Deviation - the code departs from the guideline.
 
 ### Construct
 
@@ -121,9 +121,9 @@ before relying on this deviation.
 
 ### Scope
 
-- **Strict level** — `Core/Interface/`, `Core/Source/`,
+- **Strict level** - `Core/Interface/`, `Core/Source/`,
   `Platform/*/Interface/`
-- **Pragmatic level** — `Platform/*/Source/`
+- **Pragmatic level** - `Platform/*/Source/`
 
 The deviation does not apply to the Consistency-only or Out-of-scope
 levels (rule 5.1 is not enforced there at all).
@@ -136,14 +136,14 @@ The C99 31-character limit is a legacy linker artifact from the late
 | Toolchain | External identifier behaviour |
 |-----------|-------------------------------|
 | GCC (incl. `arm-none-eabi-gcc`)                | No compiler-imposed limit; identifier length is delegated to the target's linker, and all characters are significant on every linker SolidSyslog targets (ld, gold, lld, link.exe). See GCC manual, "Implementation-defined behavior". |
-| Clang / LLVM (incl. Arm Compiler 6 / armclang) | Same rule as GCC for external identifiers — no compiler-imposed limit. |
-| MSVC                                           | Documented maximum identifier length **2,047 characters** ([Microsoft Learn — C Identifiers](https://learn.microsoft.com/en-us/cpp/c-language/c-identifiers)). CI builds with the `windows-latest` toolchain; older MSVC releases are not tested. |
+| Clang / LLVM (incl. Arm Compiler 6 / armclang) | Same rule as GCC for external identifiers - no compiler-imposed limit. |
+| MSVC                                           | Documented maximum identifier length **2,047 characters** ([Microsoft Learn - C Identifiers](https://learn.microsoft.com/en-us/cpp/c-language/c-identifiers)). CI builds with the `windows-latest` toolchain; older MSVC releases are not tested. |
 | IAR Embedded Workbench, Keil ARMCC 6            | Not built in CI. Identifier limits are documented per compiler SKU; confirm against your SKU's reference at port time. |
 
 The external-linkage naming scheme in `docs/NAMING.md` (form
 `SolidSyslogClass_Function`) routinely produces identifiers in the
-30–40 character range — `SolidSyslogPlusTcpResolver_Create` is
-40, `SolidSyslogPlusTcpTcpStream_Destroy` is 36 — and a few public
+30-40 character range - `SolidSyslogPlusTcpResolver_Create` is
+40, `SolidSyslogPlusTcpTcpStream_Destroy` is 36 - and a few public
 storage-size enums sit just below 40 (e.g.
 `SOLIDSYSLOG_HMAC_SHA256_POLICY_POOL_SIZE`, 40). Strict 31-character
 distinctness would either collapse identifier pairs that read
@@ -157,17 +157,17 @@ preserves both.
 63 was chosen rather than "unlimited" so the project still names a
 concrete number that every targeted toolchain comfortably exceeds. It
 also matches C99's separate 63-character minimum for internal
-identifiers (§5.2.4.1) — a single number applies project-wide.
+identifiers (§5.2.4.1) - a single number applies project-wide.
 
 ### Risk and mitigation
 
-- **Portability** — Constrained to toolchains that support ≥ 63
+- **Portability** - Constrained to toolchains that support ≥ 63
   significant characters in external identifiers. The table above states
   which of those are proven by CI and which rest on documentation;
   adding a target requires verifying the constraint on it.
-- **Tooling** — cppcheck-misra applies its default 31-character
+- **Tooling** - cppcheck-misra applies its default 31-character
   window for rule 5.1. The deviation only matters when a real
-  collision would resolve at 63 characters but not at 31 — at
+  collision would resolve at 63 characters but not at 31 - at
   which point the project would suppress that specific finding
   with a rationale tying back to this section. Currently no rule
   5.1 collisions occur, so no
@@ -175,7 +175,7 @@ identifiers (§5.2.4.1) — a single number applies project-wide.
   enforcement window is strictly stricter than the deviation
   allows, which is the safe direction. (Decision recorded under
   [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).)
-- **Review** — The naming scheme itself (see `docs/NAMING.md`,
+- **Review** - The naming scheme itself (see `docs/NAMING.md`,
   *External linkage*) builds in a `SolidSyslog` prefix and a `Class_Function`
   shape that makes accidental 63-character collisions extremely
   unlikely. The static-analysis gate exists to catch any that slip in.
@@ -188,16 +188,16 @@ the founding entry in this document under
 
 ---
 
-## D.002 — Rules 11.2 / 11.3 / 11.5: vtable downcasts + Formatter
+## D.002 - Rules 11.2 / 11.3 / 11.5: vtable downcasts + Formatter
 
 ### Guidelines
 
-- **MISRA C:2012 Rule 11.2** — Required.
-- **MISRA C:2012 Rule 11.3** — Required.
-- **MISRA C:2012 Rule 11.5** — Advisory.
+- **MISRA C:2012 Rule 11.2** - Required.
+- **MISRA C:2012 Rule 11.3** - Required.
+- **MISRA C:2012 Rule 11.5** - Advisory.
 
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Deviation — the code departs from the guideline.
+**Classification:** Deviation - the code departs from the guideline.
 
 ### Construct
 
@@ -205,7 +205,7 @@ SolidSyslog accepts two structural pointer conversions that are
 identified in code as `SelfFromBase` (vtable) or `(struct X*) storage`
 (Formatter). Both are reviewed once here, not per call site.
 
-#### (a) Vtable / opaque-handle downcasts — every pool-allocated class
+#### (a) Vtable / opaque-handle downcasts - every pool-allocated class
 
 Every implementation class that participates in a vtable interface
 (`SolidSyslogBuffer`, `SolidSyslogSender`, `SolidSyslogStream`,
@@ -224,7 +224,7 @@ CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base)
 }
 ```
 
-The same structural cast applies to `SolidSyslogAddress` — a pool-
+The same structural cast applies to `SolidSyslogAddress` - a pool-
 allocated handle whose `struct SolidSyslogAddress` is an incomplete
 public type, fully defined per platform as
 `struct SolidSyslog{Posix,Winsock,FreeRtos}Address`. Each platform's
@@ -243,17 +243,17 @@ pointer to an incomplete type as well as to a different object type.
 This is the standard OO-in-C "interface pointer back to derived
 implementation" cast.
 
-#### (b) `SolidSyslogFormatter` — variable-size stack builder
+#### (b) `SolidSyslogFormatter` - variable-size stack builder
 
 `SolidSyslogFormatter` is a transient stack-built builder whose backing
 storage is sized at the call site via the
 `SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(n)` macro. Variable-size means it
-cannot fit the fixed-pool pattern used elsewhere in the library — its
+cannot fit the fixed-pool pattern used elsewhere in the library - its
 lifecycle is fundamentally per-call, not per-class. Rules 11.2 / 11.3
 fire on the cast between `SolidSyslogFormatterStorage*` and `struct
 SolidSyslogFormatter*`.
 
-#### (c) Third-party callback `void*` arg — `SelfFromArg` and byte-buffer reinterprets
+#### (c) Third-party callback `void*` arg - `SelfFromArg` and byte-buffer reinterprets
 
 Several wrapped libraries expose callback-style APIs where we register a
 function pointer plus an opaque `void*` context that the library passes
@@ -262,11 +262,11 @@ hands us back `void* ctx` in `BioSend` / `BioRecv`; lwIP Raw's
 `tcp_arg(pcb, self)` hands us back `void* arg` in every `tcp_recv` /
 `tcp_err` / `tcp_connected` / `tcp_sent` callback we registered. The
 implementation has to cast that `void*` back to the concrete
-implementation struct to do any work — Rule 11.5 (advisory) fires on
+implementation struct to do any work - Rule 11.5 (advisory) fires on
 every such cast.
 
-This is structurally the same OO-in-C downcast as (a) — the library API
-is the "base" type (`void*`), our struct is the "derived" type — just
+This is structurally the same OO-in-C downcast as (a) - the library API
+is the "base" type (`void*`), our struct is the "derived" type - just
 happening at the callback boundary rather than the vtable-method
 boundary. Each affected wrapper concentrates the cast in a single
 `SelfFromArg`-style helper so the suppression has one site per class,
@@ -282,9 +282,9 @@ third-party API contract (the public `Send` / `SendTo` interface) is
 
 ### Scope
 
-- **Strict level** — `Core/Source/`: the `SelfFromBase` helpers on every vtable
+- **Strict level** - `Core/Source/`: the `SelfFromBase` helpers on every vtable
   class, and the Formatter storage cast of sub-case (b).
-- **Pragmatic level** — `Platform/*/Source/`: the same `SelfFromBase` shape in
+- **Pragmatic level** - `Platform/*/Source/`: the same `SelfFromBase` shape in
   each adapter, the per-platform Address downcasts, and the callback `void*`
   casts of sub-case (c). Every pack that declares a vtable class is in scope.
 
@@ -306,14 +306,14 @@ pointer conversions are the vtable / opaque-handle downcast (required by
 the OO-in-C interface decoupling) and the one non-pool exception above
 (Formatter as a per-call builder). Both would otherwise require either
 dynamic allocation (not available on bare-metal / FreeRTOS-static-
-allocation / DO-178C-style targets — the library is callable from
+allocation / DO-178C-style targets - the library is callable from
 boot before any heap exists) or leaking the implementation struct
 through the public API (breaks ABI stability and the embedded-friendly
 opaque-type design).
 
 ### Risk and mitigation
 
-- **Type safety** — For (b) Formatter, a `_Static_assert` immediately
+- **Type safety** - For (b) Formatter, a `_Static_assert` immediately
   below the impl definition pins the relationship between the public
   storage type and the private impl struct at build time. An
   integrator who allocates undersized storage is caught at compile
@@ -326,9 +326,9 @@ opaque-type design).
   lie. For (c) callback `void*` args, the pointer that goes out via
   the registration call (e.g. `tcp_arg(pcb, self)`,
   `mbedtls_ssl_set_bio(..., self, ...)`) is the same pointer that
-  comes back — the library is a pass-through; the cast can only
+  comes back - the library is a pass-through; the cast can only
   succeed against the type the wrapper passed in.
-- **Validity of the conversion, sub-cases (a) and (c)** — These do not
+- **Validity of the conversion, sub-cases (a) and (c)** - These do not
   rest on an alignment argument at all. The public base struct is the
   first member of the concrete struct, and §6.7.2.1 ¶13 guarantees that
   a pointer to a structure object, suitably converted, points to its
@@ -336,13 +336,13 @@ opaque-type design).
   definition, so no alignment question arises. Sub-case (c) is the same
   guarantee reached through the library's own `void*` round trip: the
   pointer that comes back is the one that went out.
-- **Alignment, sub-case (b) only** — The Formatter is the case where
+- **Alignment, sub-case (b) only** - The Formatter is the case where
   alignment is the load-bearing argument, because its storage is a
   caller-declared array rather than a struct whose first member is the
   base. Storage is declared as `intptr_t storage[N]` (or a struct of the
   same shape), giving alignment at least as strict as any pointer or
   scalar the impl contains.
-- **Static analysis** — These rules are advisory (11.5) or required
+- **Static analysis** - These rules are advisory (11.5) or required
   (11.2, 11.3). All current findings are suppressed via
   `misra_suppressions.txt` referencing this section. The pattern is
   reviewed once here, not per call site.
@@ -356,21 +356,21 @@ narrowed under
 every Create-lifecycle class moved off caller-supplied storage onto the
 pool allocator; further narrowed under
 [S24.07](https://github.com/cososo-ltd/solid-syslog/issues/418) once
-Address itself moved onto per-platform pool classes — the casts are
+Address itself moved onto per-platform pool classes - the casts are
 now the same OO-in-C downcast that authorised (a), not a separate
 caller-supplied-storage exception.
 
 ---
 
-## D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
+## D.003 - Rule 5.7: repeating struct tags (no-typedef-struct convention)
 
 ### Guideline
 
-**MISRA C:2012 Rule 5.7** — Required.
+**MISRA C:2012 Rule 5.7** - Required.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Tool limitation — the code complies; cppcheck-misra reports a finding regardless.
+**Classification:** Tool limitation - the code complies; cppcheck-misra reports a finding regardless.
 
-cppcheck-misra interprets Rule 5.7 strictly — every repeated `struct X`
+cppcheck-misra interprets Rule 5.7 strictly - every repeated `struct X`
 declaration counts as a non-unique tag, including forward declarations
 in headers and the matching definition in source.
 
@@ -383,11 +383,11 @@ repeats its tag at every forward-declaration and definition site.
 
 ### Scope
 
-- **Strict level** — every public `struct SolidSyslogX` declared as an
+- **Strict level** - every public `struct SolidSyslogX` declared as an
   incomplete type in a header (`SolidSyslogBuffer.h`, `SolidSyslogStore.h`,
   `SolidSyslogFile.h`, etc.) and re-declared with full body in the
   matching source file.
-- **Pragmatic level** — same pattern across all `Platform/*/Source/`
+- **Pragmatic level** - same pattern across all `Platform/*/Source/`
   classes.
 
 ### Rationale
@@ -402,7 +402,7 @@ unchanged from C89 onwards:
    marker.
 2. **Forward-declaration freedom.** A header that needs to mention
    `struct SolidSyslogX*` does not have to include the header that
-   defines the typedef — it just forward-declares the struct. The
+   defines the typedef - it just forward-declares the struct. The
    alternative (typedef pulls in the body) creates header dependency
    cycles in the vtable-rich Core.
 
@@ -426,7 +426,7 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 
 ---
 
-## D.004 — Rule 18.4: pointer arithmetic on record buffers (retired)
+## D.004 - Rule 18.4: pointer arithmetic on record buffers (retired)
 
 **Retired in S10.19.** This deviation authorised `uint8_t*` pointer arithmetic in
 `Core/Source/SolidSyslogRecordStore.c`, where four field-offset helpers walked the
@@ -446,13 +446,13 @@ founding entries; retired 2026-05-23 under
 
 ---
 
-## D.005 — Rule 18.7: flexible array members
+## D.005 - Rule 18.7: flexible array members
 
 ### Guideline
 
-**MISRA C:2012 Rule 18.7** — Required.
+**MISRA C:2012 Rule 18.7** - Required.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Deviation — the code departs from the guideline.
+**Classification:** Deviation - the code departs from the guideline.
 
 ### Construct
 
@@ -473,7 +473,7 @@ One class only:
 
 - `Core/Source/SolidSyslogFormatter.c`
 
-`SolidSyslogCircularBuffer` does not use this shape — its instance
+`SolidSyslogCircularBuffer` does not use this shape - its instance
 struct holds an external ring pointer rather than a trailing FAM.
 
 ### Rationale
@@ -481,7 +481,7 @@ struct holds an external ring pointer rather than a trailing FAM.
 The Formatter implements the variable-size variant of the
 caller-supplied-storage pattern (D.002). The calling translation unit
 declares a storage buffer of arbitrary size (with a minimum enforced by
-`_Static_assert`), and the class lives inside that storage —
+`_Static_assert`), and the class lives inside that storage -
 bookkeeping fields at the start, payload bytes filling the rest.
 
 The flexible array member is C99's standard mechanism for exactly this
@@ -497,8 +497,8 @@ shape (§6.7.2.1 ¶16). The alternatives all regress:
 
 - **Compiler support.** GCC, Clang and the ARM cross-compilers accept
   the construct as the C99 feature it is, and CI compiles it on every
-  push. MSVC compiles it too, but reports C4200 — it treats a trailing
-  unsized array as a nonstandard extension — so the build carries
+  push. MSVC compiles it too, but reports C4200 - it treats a trailing
+  unsized array as a nonstandard extension - so the build carries
   `/wd4200` for this construct specifically (see `CMakeLists.txt`);
   without it, `/WX` would fail the Windows lane. IAR and Keil ARMCC 6
   are not built in CI, so support there rests on their documentation
@@ -515,20 +515,20 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 
 ---
 
-## D.006 — Rule 11.8: `const` qualification under field access of `const struct*`
+## D.006 - Rule 11.8: `const` qualification under field access of `const struct*`
 
 ### Guideline
 
-**MISRA C:2012 Rule 11.8** — Required.
+**MISRA C:2012 Rule 11.8** - Required.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** both kinds, which is why they share an entry — category 1
+**Classification:** both kinds, which is why they share an entry - category 1
 below is a tool limitation, category 2 is a genuine deviation.
 
 ### Construct
 
 Site categories that trigger this rule:
 
-1. **Field-access "false positive"** — reading a non-const
+1. **Field-access "false positive"** - reading a non-const
    pointer field through a `const struct*` parameter:
 
    ```c
@@ -547,7 +547,7 @@ Site categories that trigger this rule:
    version of that type. That second clause looks at first like it works
    against us. It does not. The member's type here is
    `struct SolidSyslogBuffer *`, so the so-qualified version is
-   `struct SolidSyslogBuffer * const` — the qualification attaches to the
+   `struct SolidSyslogBuffer * const` - the qualification attaches to the
    pointer, not to the object the pointer designates. Passing it by value
    to `InstallBuffer` copies the pointer, and a top-level qualifier on a
    copied value is discarded.
@@ -568,7 +568,7 @@ Site categories that trigger this rule:
    and accepting the false positive is preferred over weakening the
    signature to silence the tool.
 
-2. **Platform-API const-strip** —
+2. **Platform-API const-strip** -
 
    **(a)** `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`:
 
@@ -591,10 +591,10 @@ Site categories that trigger this rule:
    ```
 
    `SolidSyslogDatagram_SendTo` takes the caller's buffer as
-   `const void*` — the contract is read-only inside the library.
+   `const void*` - the contract is read-only inside the library.
    the `payload` field of lwIP's `struct pbuf` is declared `void*` (no `const`
    variant in the lwIP headers); `udp_sendto` only reads the
-   payload — that is the `PBUF_REF` zero-copy contract — but the field
+   payload - that is the `PBUF_REF` zero-copy contract - but the field
    type does not encode that. Assigning
    our `const void*` parameter to lwIP's `void*` field strips the
    qualifier at the platform-API boundary, same shape as the
@@ -606,7 +606,7 @@ Site categories that trigger this rule:
 
 ### Scope
 
-- **Strict level** — the field-access reads in `Core/Source/`: the
+- **Strict level** - the field-access reads in `Core/Source/`: the
   `SolidSyslog_Install*` functions reading `config->` pointer fields in
   `SolidSyslog.c`, `SolidSyslogMessageFormatter_Format` reading
   `context->Clock`, `GetHostname`, `GetAppName`, `GetProcessId` and `Sd` in
@@ -614,7 +614,7 @@ Site categories that trigger this rule:
   passing `blockSequence->BlockDevice` to `SolidSyslogBlockDevice_Size`, and
   `BlockStore_ResolveSecurityPolicy` accepting `config->SecurityPolicy` in
   `SolidSyslogBlockStoreStatic.c`.
-- **Pragmatic level** — the `select()` timeout cast in
+- **Pragmatic level** - the `select()` timeout cast in
   `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`, and the lwIP
   `pbuf->payload` field cast in
   `Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c`.
@@ -641,7 +641,7 @@ boundary.
 
 - **Genuine const-strip drift.** A new const-strip elsewhere in the
   codebase would surface as a fresh 11.8 finding, not be silently
-  absorbed by the existing suppressions — the suppressions are
+  absorbed by the existing suppressions - the suppressions are
   line-specific.
 - **Platform-API sites.** Both the Winsock and lwIP casts are
   documented at the call site and listed individually here; any new
@@ -655,13 +655,13 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 
 ---
 
-## D.007 — Rule 21.10: transitive `<wchar.h>` via `<time.h>`
+## D.007 - Rule 21.10: transitive `<wchar.h>` via `<time.h>`
 
 ### Guideline
 
-**MISRA C:2012 Rule 21.10** — Required.
+**MISRA C:2012 Rule 21.10** - Required.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Tool limitation — the code complies; cppcheck-misra reports a finding regardless.
+**Classification:** Tool limitation - the code complies; cppcheck-misra reports a finding regardless.
 
 cppcheck-misra also raises this rule for `<wchar.h>` inclusion, which is what
 brings the construct below into scope.
@@ -682,7 +682,7 @@ violation in each of them.
 
 ### Scope
 
-`Platform/Posix/Source/` — the files listed above. The deviation does not
+`Platform/Posix/Source/` - the files listed above. The deviation does not
 apply to Windows or FreeRTOS sources, which use their own platform clocks
 and do not include `<time.h>`.
 
@@ -699,7 +699,7 @@ unavoidable on this platform.
 
 - **Direct `<wchar.h>` use.** A future direct `#include <wchar.h>`
   in any of these files would not be absorbed by the per-file
-  suppression — only line-1 `<time.h>` is suppressed.
+  suppression - only line-1 `<time.h>` is suppressed.
 - **Non-glibc POSIX targets.** musl, Bionic and BSDs do not pull
   `<wchar.h>` from `<time.h>`; the suppression is harmless on those
   targets (it suppresses a finding that does not occur).
@@ -711,13 +711,13 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 
 ---
 
-## D.008 — Rule 21.6: `<stdio.h>` for `SEEK_SET` / `SEEK_END` only
+## D.008 - Rule 21.6: `<stdio.h>` for `SEEK_SET` / `SEEK_END` only
 
 ### Guideline
 
-**MISRA C:2012 Rule 21.6** — Required.
+**MISRA C:2012 Rule 21.6** - Required.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Deviation — the code departs from the guideline.
+**Classification:** Deviation - the code departs from the guideline.
 
 ### Construct
 
@@ -728,7 +728,7 @@ solely to obtain the `SEEK_SET` and `SEEK_END` constants used by
 
 ### Scope
 
-`Platform/Windows/Source/SolidSyslogWindowsFile.c` only. One line —
+`Platform/Windows/Source/SolidSyslogWindowsFile.c` only. One line -
 the `#include <stdio.h>` directive.
 
 ### Rationale
@@ -767,27 +767,27 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 
 ---
 
-## D.009 — Rules 2.4 / 5.7: anonymous `enum` used as named-constant container
+## D.009 - Rules 2.4 / 5.7: anonymous `enum` used as named-constant container
 
 ### Guidelines
 
-- **MISRA C:2012 Rule 2.4** — Advisory.
-- **MISRA C:2012 Rule 5.7** — Required.
+- **MISRA C:2012 Rule 2.4** - Advisory.
+- **MISRA C:2012 Rule 5.7** - Required.
 
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Tool limitation — the code complies; cppcheck-misra reports a finding regardless.
+**Classification:** Tool limitation - the code complies; cppcheck-misra reports a finding regardless.
 
 cppcheck-misra interprets an anonymous `enum { ... };` declaration
 (no enum tag, no `typedef`) two ways:
 
-- under 2.4 it reports the enum tag as unused — the enumerators are
+- under 2.4 it reports the enum tag as unused - the enumerators are
   used as named constants but the enum type itself is never referenced;
-- under 5.7 it reports the tag as non-unique — every anonymous `enum`
+- under 5.7 it reports the tag as non-unique - every anonymous `enum`
   shares the same empty tag identifier, so the second and subsequent
   ones collide.
 
-Both findings originate from the same syntactic shape — the
-anonymous-`enum` named-constant idiom — and are covered by a single
+Both findings originate from the same syntactic shape - the
+anonymous-`enum` named-constant idiom - and are covered by a single
 deviation here.
 
 ### Construct
@@ -807,22 +807,22 @@ enum
 The idiom recurs throughout `Core/` and
 `Platform/`. Adding inline-suppress comments at every
 site would add visual noise next to a project-wide intentional
-idiom — listing them in `misra_suppressions.txt` under this
+idiom - listing them in `misra_suppressions.txt` under this
 deviation keeps the source clean.
 
 **Suppression-file layout.** Which deviation authorises a rule 5.7 finding is
 decided by the identifier it lands on: a repeated struct tag is D.003, an
 anonymous enum is D.009. That is a standing convention,
-not a transitional state — both kinds of finding exist permanently in this
+not a transitional state - both kinds of finding exist permanently in this
 codebase, so both blocks permanently carry rule 5.7 lines. Each block in
 `misra_suppressions.txt` is headed by the deviation that authorises its entries,
 so the mapping is explicit per line rather than inferred.
 
 ### Scope
 
-- **Strict level** — every anonymous-`enum` constants block in
+- **Strict level** - every anonymous-`enum` constants block in
   `Core/Interface/` and `Core/Source/`.
-- **Pragmatic level** — every anonymous-`enum` constants block in
+- **Pragmatic level** - every anonymous-`enum` constants block in
   `Platform/*/Source/`.
 
 ### Rationale
@@ -865,13 +865,13 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 
 ---
 
-## D.010 — Rule 20.10: `#` stringification in the `SOLIDSYSLOG_STATIC_ASSERT` polyfill
+## D.010 - Rule 20.10: `#` stringification in the `SOLIDSYSLOG_STATIC_ASSERT` polyfill
 
 ### Guideline
 
-**MISRA C:2012 Rule 20.10** — Advisory.
+**MISRA C:2012 Rule 20.10** - Advisory.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Deviation — the code departs from the guideline.
+**Classification:** Deviation - the code departs from the guideline.
 
 ### Construct
 
@@ -892,13 +892,13 @@ stringifies its `msg` argument via the standard two-step `#`-operator idiom:
 ```
 
 The `#s` operator is the deviation. The C99 fallback (`extern char` array) uses
-no preprocessor operators — a fixed name suffices because identical extern
+no preprocessor operators - a fixed name suffices because identical extern
 declarations in one translation unit are compatible, so no `__LINE__` pasting
 (and no `##`) is required.
 
 ### Scope
 
-`Core/Source/SolidSyslogMacros.h` only. One line — the
+`Core/Source/SolidSyslogMacros.h` only. One line - the
 `SOLIDSYSLOG_STATIC_ASSERT_STRING_INNER` definition.
 
 ### Rationale
@@ -919,7 +919,7 @@ into one without `#`. The alternatives all regress:
 
 | Alternative | Why rejected |
 |-------------|--------------|
-| Hard-coded literal message in the macro | Loses per-site context — every assertion would report the same generic string. |
+| Hard-coded literal message in the macro | Loses per-site context - every assertion would report the same generic string. |
 | Force every caller to pass a string literal | Spreads strings across the call sites and gives up the per-site identifier form some files already use. |
 | Drop the message argument entirely | Loses readability at the assertion site. |
 
@@ -943,18 +943,18 @@ Raised 2026-05-15, approved 2026-05-16 by the project owner, David Cozens. Recor
 
 ---
 
-## D.011 — Rule 2.5: public API macros consumed outside the cppcheck-misra scope
+## D.011 - Rule 2.5: public API macros consumed outside the cppcheck-misra scope
 
 ### Guideline
 
-**MISRA C:2012 Rule 2.5** — Advisory.
+**MISRA C:2012 Rule 2.5** - Advisory.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Tool limitation — the code complies; cppcheck-misra reports a finding regardless.
+**Classification:** Tool limitation - the code complies; cppcheck-misra reports a finding regardless.
 
 ### Construct
 
 `Core/Interface/SolidSyslogCircularBuffer.h` declares one function-like
-macro — `SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES` — that integrator code
+macro - `SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES` - that integrator code
 uses to size caller-supplied ring memory. cppcheck-misra runs only over
 the Strict level (`Core/Source/`) and Pragmatic level (`Platform/*/Source/`);
 the actual consumers live under `Tests/` (Consistency-only level) and
@@ -963,7 +963,7 @@ checker.
 
 ### Scope
 
-`Core/Interface/SolidSyslogCircularBuffer.h` — one macro definition.
+`Core/Interface/SolidSyslogCircularBuffer.h` - one macro definition.
 
 This entry authorises that one macro and no other. Per the rigour levels, MISRA
 enforcement does not cross into `Tests/` or `Bdd/`, so a future sweep may
@@ -978,10 +978,10 @@ The macro *is* used by integrators in `Tests/` and `Bdd/Targets/`.
 Verified by `grep` over the tree:
 
 ```text
-Tests/SolidSyslogCircularBufferTest.cpp         — RING_BYTES
-Tests/SolidSyslogBlockStoreDrainOrderingTest.cpp — RING_BYTES
-Bdd/Targets/Windows/BddTargetWindows.c           — RING_BYTES
-Bdd/Targets/FreeRtos/main.c                      — RING_BYTES
+Tests/SolidSyslogCircularBufferTest.cpp         - RING_BYTES
+Tests/SolidSyslogBlockStoreDrainOrderingTest.cpp - RING_BYTES
+Bdd/Targets/Windows/BddTargetWindows.c           - RING_BYTES
+Bdd/Targets/FreeRtos/main.c                      - RING_BYTES
 ```
 
 The macro is part of the public API; integrators use it to size
@@ -1015,13 +1015,13 @@ Raised 2026-05-15, approved 2026-05-16 by the project owner, David Cozens. Recor
 
 ---
 
-## D.012 — Rule 8.9: file-scope `static const` referenced from a file-scope enum + one function
+## D.012 - Rule 8.9: file-scope `static const` referenced from a file-scope enum + one function
 
 ### Guideline
 
-**MISRA C:2012 Rule 8.9** — Advisory.
+**MISRA C:2012 Rule 8.9** - Advisory.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Tool limitation — the code complies; cppcheck-misra reports a finding regardless.
+**Classification:** Tool limitation - the code complies; cppcheck-misra reports a finding regardless.
 
 ### Construct
 
@@ -1030,26 +1030,26 @@ Raised 2026-05-15, approved 2026-05-16 by the project owner, David Cozens. Recor
 single source of truth for the on-disk filename extension and is
 referenced from two places in the translation unit:
 
-1. The file-scope enum at line 25 — `sizeof(FILE_EXTENSION) - 1U`
+1. The file-scope enum at line 25 - `sizeof(FILE_EXTENSION) - 1U`
    contributes to `FILENAME_SUFFIX`, which in turn computes
    `MAX_PREFIX_LENGTH` (an integer constant expression consumed by
    the formatter at the call site).
-2. `FileBlockDevice_FormatBlockFilename` at line 214 — both the
+2. `FileBlockDevice_FormatBlockFilename` at line 214 - both the
    bytes pointer and the runtime length are derived from the same
    constant.
 
 cppcheck-misra's 8.9 tracker counts only function-scope references.
 The file-scope enum reference at line 25 is invisible to it, so it
 sees a single function reference (line 214) and reports the constant
-as having "block-scope-only" usage — even though moving it into the
+as having "block-scope-only" usage - even though moving it into the
 function would break the enum's compile-time `sizeof()` evaluation.
 
 ### Scope
 
-`Core/Source/SolidSyslogFileBlockDevice.c:20` — one declaration.
+`Core/Source/SolidSyslogFileBlockDevice.c:20` - one declaration.
 
 This entry authorises that one declaration and no other. A future sweep may
-surface the same shape elsewhere — a file-scope `static const` whose identifier
+surface the same shape elsewhere - a file-scope `static const` whose identifier
 is read by a file-scope enum initialiser and exactly one function. Each such
 instance is reviewed on its merits and either amends this entry with the file
 named, or is raised as its own; it is not covered by this record until that
@@ -1065,7 +1065,7 @@ Three alternatives were considered and rejected:
   effectively a single on-disk format invariant.
 - Promoting the constant's dependents from enum entries to file-scope
   `static const size_t` (verified experimentally during S10.18) does
-  not satisfy the rule — the tracker treats file-scope references
+  not satisfy the rule - the tracker treats file-scope references
   uniformly, so a new `static const size_t FILENAME_SUFFIX` trips a
   *second* 8.9 finding for the same reason. The fix path amplifies
   the problem rather than resolving it.
@@ -1100,18 +1100,18 @@ Raised and approved 2026-05-22 by the project owner, David Cozens. Recorded unde
 
 ---
 
-## D.013 — Rule 11.5: `void*` ↔ a byte pointer at third-party byte-buffer API boundaries
+## D.013 - Rule 11.5: `void*` ↔ a byte pointer at third-party byte-buffer API boundaries
 
 ### Guideline
 
-**MISRA C:2012 Rule 11.5** — Advisory.
+**MISRA C:2012 Rule 11.5** - Advisory.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Deviation — the code departs from the guideline.
+**Classification:** Deviation - the code departs from the guideline.
 
 ### Construct
 
 `SolidSyslogStream_Send` takes `const void*` and `SolidSyslogStream_Read`
-takes `void*` — the project-wide byte-buffer contract used by every
+takes `void*` - the project-wide byte-buffer contract used by every
 Stream implementation, and `SolidSyslogDatagram_SendTo` takes `const void*`
 likewise. Some third-party C libraries type their byte buffers as a character
 pointer rather than `void*`: mbedTLS uses `const unsigned char*` /
@@ -1128,18 +1128,18 @@ Rule 11.5 fires on each such adapter cast.
 
 ### Scope
 
-- `Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c` —
+- `Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c` -
   `MbedTlsStream_Send` and `MbedTlsStream_Read`, `unsigned char*`.
-- `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c` —
+- `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c` -
   `WinsockTcpStream_Send` and `WinsockTcpStream_Read`, `char*`.
-- `Platform/Windows/Source/SolidSyslogWinsockDatagram.c` —
+- `Platform/Windows/Source/SolidSyslogWinsockDatagram.c` -
   `WinsockDatagram_SendTo`, `char*`.
 
 A future Stream, Datagram, hash or MAC implementation wrapping a byte-typed
 third-party C API will meet the same boundary, but is not covered by this
-record until reviewed and added to it — or given its own entry. The OpenSSL
+record until reviewed and added to it - or given its own entry. The OpenSSL
 adapter (`Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c`) does not fall
-under this deviation — `SSL_write` / `SSL_read` take `void*` and so no
+under this deviation - `SSL_write` / `SSL_read` take `void*` and so no
 cast is needed.
 
 ### Rationale
@@ -1158,16 +1158,16 @@ The cast is well-defined: a character type may alias any object type
 
 ### Risk and mitigation
 
-- **Alignment** — Both representations are byte-addressed; no
+- **Alignment** - Both representations are byte-addressed; no
   alignment promotion occurs. The cast targets a character pointer, which
   has the weakest alignment requirement of any object pointer.
-- **Type safety** — Both directions carry a contiguous byte sequence and
+- **Type safety** - Both directions carry a contiguous byte sequence and
   neither is interpreted as anything else: on the send path it is the
   formatted record the caller hands over, and on the read path it is the
   caller's destination, written into and never read as a wider type.
   Treating either as `char*` or `unsigned char*` at the third-party API
   boundary is the same bytes under a different pointer type.
-- **Elimination path** — The deviation retires per API, not as a whole, and
+- **Elimination path** - The deviation retires per API, not as a whole, and
   each direction keeps its qualification. `SolidSyslogStream_Send` typed to
   `const unsigned char*` and `SolidSyslogStream_Read` to `unsigned char*`
   would retire the Stream sites; `SolidSyslogDatagram_SendTo` typed to
@@ -1182,7 +1182,7 @@ Raised and approved 2026-05-23 by the project owner, David Cozens. Recorded unde
 
 ---
 
-## D.014 — Rule 8.7: public-API `SolidSyslogErrorSource` objects (retired)
+## D.014 - Rule 8.7: public-API `SolidSyslogErrorSource` objects (retired)
 
 **Retired in S12.26.** This deviation covered the crypto-policy
 `SolidSyslogErrorSource` objects, which rule 8.7 flagged because the
@@ -1191,7 +1191,7 @@ a single translation unit. S12.26 decoupled error text from the library
 (deleting the `*Messages.c` message tables) and unwound the `<Class>_Report` wrapper,
 so each source is now defined in its class's vtable TU and reached from the
 `<Class>_Report` inline in its `*Private.h`, which both that TU and its
-`*Static.c` lifecycle code include — so the object is used from more than one
+`*Static.c` lifecycle code include - so the object is used from more than one
 translation unit, which is the resolution the entry's risk analysis anticipated
 before it was collapsed to this note; see the revision prior to retirement for
 that text.
@@ -1203,18 +1203,18 @@ Raised and approved 2026-05-31 by the project owner, David Cozens, under
 2026-06-03 under
 [S12.26](https://github.com/cososo-ltd/solid-syslog/issues/507). The story
 numbers run backwards because they are numbered by epic rather than
-chronologically — E12 was elaborated after E17 — so read the dates, not the
+chronologically - E12 was elaborated after E17 - so read the dates, not the
 labels, for the order of events.
 
 ---
 
-## D.015 — Rule 8.9: rollover state at file scope so a test can clear it
+## D.015 - Rule 8.9: rollover state at file scope so a test can clear it
 
 ### Guideline
 
-**MISRA C:2012 Rule 8.9** — Advisory.
+**MISRA C:2012 Rule 8.9** - Advisory.
 **Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
-**Classification:** Deviation — the code departs from the guideline.
+**Classification:** Deviation - the code departs from the guideline.
 
 ### Construct
 
@@ -1234,7 +1234,7 @@ referenced from one function, and cppcheck-misra is reporting what is there.
 
 ### Scope
 
-`Platform/CmsisRtos/Source/SolidSyslogCmsisRtosSysUpTime.c:18` and `:19` — two
+`Platform/CmsisRtos/Source/SolidSyslogCmsisRtosSysUpTime.c:18` and `:19` - two
 declarations.
 
 This entry authorises those two and no other. A future file-scope `static`

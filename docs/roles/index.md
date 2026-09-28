@@ -6,7 +6,7 @@ your own code fills it. Every role has a Null fallback, so an unfilled slot
 degrades safely instead of dangling at link time. Core declares the roles below;
 one is declared by each TLS platform for itself, at the end.
 
-Each page below is that role's contract — the vtable itself, and a generated
+Each page below is that role's contract - the vtable itself, and a generated
 diagram of the backends that realise it.
 
 ## Networking
@@ -15,7 +15,7 @@ diagram of the backends that realise it.
 |---|---|
 | [Resolver](../api/structSolidSyslogResolver.md) | turn a host and port into an address |
 | [Datagram](../api/structSolidSyslogDatagram.md) | send one UDP payload |
-| [Stream](../api/structSolidSyslogStream.md) | carry bytes over a connection — plain TCP, or TLS layered over it |
+| [Stream](../api/structSolidSyslogStream.md) | carry bytes over a connection - plain TCP, or TLS layered over it |
 | [Sender](../api/structSolidSyslogSender.md) | frame a record and deliver it |
 
 ## Storage
@@ -71,12 +71,12 @@ contract to the backends that already realise it.
 Which platform fills a role on your target is the
 [platform × capability matrix](../platforms/index.md).
 
-<!-- markdownlint-disable MD033 — the sticky is styled HTML (.postit-note in brand.css); md_in_html keeps its body as Markdown. -->
+<!-- markdownlint-disable MD033 - the sticky is styled HTML (.postit-note in brand.css); md_in_html keeps its body as Markdown. -->
 
 <div class="postit-note" markdown>
 **Or let us fill it.**
 
-Nothing shipped backs the role you need? We write the platform adapter for you —
+Nothing shipped backs the role you need? We write the platform adapter for you -
 and the tests that prove it against the contract.
 [Talk to us about it](https://www.cososo.co.uk/?service=solidsyslog#contact).
 </div>

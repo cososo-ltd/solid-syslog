@@ -27,7 +27,7 @@ the block device.
 under the conversion warnings this project builds with, so compile them under a
 relaxed warning set as you would the kernel itself.
 
-**An `FF_Disk_t` media driver** for your storage hardware — the IO manager with
+**An `FF_Disk_t` media driver** for your storage hardware - the IO manager with
 its read and write block callbacks, the mount, format-on-first-use where no
 file system is present, and registration of the volume in the virtual file
 system. Plus-FAT ships reference drivers; its RAM disk is the clearest
@@ -42,7 +42,7 @@ fills the rest.
 
 - recursive mutexes, which its locking enforces
 - event groups, used by the IO manager
-- enough thread-local storage slots — `ff_stdio` keeps its error state, working
+- enough thread-local storage slots - `ff_stdio` keeps its error state, working
   directory and error code in three consecutive slots from the index you
   configure, and its header enforces this at compile time
 - static allocation, if your media driver creates its IO manager mutex
@@ -51,7 +51,7 @@ fills the rest.
 ## Paths must be absolute
 
 Without the working-directory option compiled in, `ff_stdio` accepts absolute
-paths only — its relative-path resolver is a pass-through. Give
+paths only - its relative-path resolver is a pass-through. Give
 `SolidSyslogFileBlockDevice` an absolute prefix such as `/STORE`, so files land
 at the volume root as `/STORE00.log`, `/STORE01.log`. The default short
 filename mode is sufficient for that naming.
@@ -71,8 +71,8 @@ mind.
 ## Memory
 
 The adapter allocates nothing; its instance comes from a static pool. Plus-FAT
-does allocate — the IO manager's sector cache and its internal buffers come
-from the RTOS heap — so size that heap for the cache you ask the IO manager
+does allocate - the IO manager's sector cache and its internal buffers come
+from the RTOS heap - so size that heap for the cache you ask the IO manager
 for.
 
 ## When it does not work

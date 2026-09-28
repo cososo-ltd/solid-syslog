@@ -14,7 +14,7 @@ Reports arrive via the channels in the [security policy](../../SECURITY.md): Git
 reporting (which opens a draft GHSA directly) or the `cososo.co.uk/security/report`
 web form.
 
-## Stage 1 — Receipt (hours 0–72)
+## Stage 1 - Receipt (hours 0-72)
 
 - [ ] Log the report by opening (or confirming) a draft GHSA on the repo.
 - [ ] If it came via the web form, an auto-acknowledgement has already gone out;
@@ -23,7 +23,7 @@ web form.
       or anonymous) in the advisory.
 - [ ] Do not confirm or deny severity yet; that's triage.
 
-## Stage 2 — Triage (days 0–7)
+## Stage 2 - Triage (days 0-7)
 
 - [ ] Scope the issue against the support tiers (see the [security policy](../../SECURITY.md)):
   - **Tier 1 `Core/`**: full treatment (CVE, advisory, fix, signed release).
@@ -47,7 +47,7 @@ web form.
     release ships.
 - [ ] Update the reporter with the triage outcome and expected next step.
 
-## Stage 3 — Fix development
+## Stage 3 - Fix development
 
 - [ ] Regression test first: a failing test that captures the vulnerability,
       per the project's TDD discipline. This becomes the permanent guard.
@@ -56,7 +56,7 @@ web form.
       the CHANGELOG entry is generated.
 - [ ] High/Critical: keep this on the private fork until release is coordinated.
 
-## Stage 4 — Release coordination
+## Stage 4 - Release coordination
 
 See [`release-process.md`](../release-process.md) for the mechanics; the
 security-specific steps are:
@@ -68,14 +68,14 @@ security-specific steps are:
 - [ ] Verify the release carries all four provenance assets: the SBOM, the
       source-tree hash, and their two signatures. `sbom.yml` (triggered by the
       `release.published` event) attaches them and hard-fails if it cannot, so a
-      red run means the release went out without provenance — re-run the job
+      red run means the release went out without provenance - re-run the job
       before relying on it.
 - [ ] Record and verify the affected and fixed version ranges in the advisory;
       never publish without a safe version for users to move to.
 - [ ] Publish the GHSA coordinated with the release going live.
 - [ ] Edit the release notes to reference the GHSA / CVE.
 
-## Stage 5 — Post-release
+## Stage 5 - Post-release
 
 - [ ] Notify the reporter that the fix has shipped.
 - [ ] Credit the reporter per the consent captured at intake.
@@ -83,7 +83,7 @@ security-specific steps are:
       published advisory stays in the repo; "close" applies only to draft or
       not-a-vulnerability reports.)
 
-## Stage 6 — Retrospective
+## Stage 6 - Retrospective
 
 A brief post-mortem, captured as a comment on the advisory:
 

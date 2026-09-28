@@ -23,14 +23,14 @@ process, because there is one lwIP instance to protect.
 
 Which marshal you install depends only on how lwIP is built.
 
-### `NO_SYS=1` — bare metal
+### `NO_SYS=1` - bare metal
 
 Install nothing. There is one execution context and no core to protect, so the
 default direct call is correct.
 
 The trap is the `Sleep` callback. The TCP stream's `Open` is synchronous over an
 asynchronous `tcp_connect`, so it spins and sleeps while waiting for the
-connection callback — and on bare metal nothing else is driving lwIP during that
+connection callback - and on bare metal nothing else is driving lwIP during that
 sleep. Your `Sleep` must keep the stack running:
 
 ```c
@@ -54,7 +54,7 @@ nothing visibly wrong.
 
 Call `SolidSyslog_Service` from the same loop that calls `sys_check_timeouts`.
 
-### `NO_SYS=0` — an lwIP thread
+### `NO_SYS=0` - an lwIP thread
 
 A dedicated thread owns lwIP's state, so every call has to reach it. With core
 locking compiled in, take the lock around the hop:
@@ -72,7 +72,7 @@ Core locking is the route to prefer, and it is what the reference target uses.
 It runs the callback in your own task under the lock, so it is synchronous by
 construction, independent of task priority, and costs no mailbox message.
 
-Without core locking you must post to lwIP's mailbox — and then wait for the
+Without core locking you must post to lwIP's mailbox - and then wait for the
 callback to *run*, which the post alone does not do. `tcpip_callback_with_block`
 blocks until the mailbox accepts the message, not until the tcpip thread
 executes it, so returning at that point would break the contract and leave the
@@ -122,7 +122,7 @@ most ports compare the current task handle against the one given to
 `tcpip_init`. Without that guard, an adapter call made from inside a callback
 lwIP itself invoked will deadlock.
 
-Here `Sleep` is only a yield — the lwIP thread is running concurrently — so
+Here `Sleep` is only a yield - the lwIP thread is running concurrently - so
 whatever your RTOS offers is right.
 
 Marshal at the individual lwIP call, which is what this seam gives you. Wrapping
@@ -135,7 +135,7 @@ and receive path under load.
 The DNS resolver bridges lwIP's asynchronous `dns_gethostbyname` to the
 synchronous resolve contract the same way the TCP stream bridges connect: a
 cache or hostlist hit returns immediately, and anything else spins on your
-thread — never lwIP's — sleeping via your `Sleep` until the answer arrives or
+thread - never lwIP's - sleeping via your `Sleep` until the answer arrives or
 the deadline passes. It needs `LWIP_DNS=1` and a `Sleep`; without one it falls
 back to the Null resolver.
 
@@ -159,7 +159,7 @@ in [Adding it to your build](../../build-integration.md#tunables).
 ## Limits
 
 The address and resolver are IPv4 only. Neither the datagram nor the TCP stream
-selects an output interface — lwIP's routing table decides — and the datagram
+selects an output interface - lwIP's routing table decides - and the datagram
 reports a fixed conservative maximum payload rather than discovering the path
 maximum transmission unit.
 

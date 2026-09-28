@@ -11,7 +11,7 @@ Fills the Mutex [role](../../roles/index.md), plus a sysUpTime callback.
 
 ## Requirements
 
-`configSUPPORT_STATIC_ALLOCATION=1` — the mutex uses static allocation.
+`configSUPPORT_STATIC_ALLOCATION=1` - the mutex uses static allocation.
 
 ## Security behaviour and obligations
 
@@ -30,7 +30,7 @@ nothing at run time and cannot fail for want of heap.
 ### Uptime is a tick count, not a clock
 
 The sysUpTime callback reports kernel ticks since boot. It is not wall-clock
-time and carries no timezone or synchronisation quality — the clock callback is
+time and carries no timezone or synchronisation quality - the clock callback is
 a separate injection point.
 
 `SolidSyslogFreeRtos_GetSysUpTime` meets the

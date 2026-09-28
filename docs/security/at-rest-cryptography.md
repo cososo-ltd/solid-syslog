@@ -35,7 +35,7 @@ length) is authenticated as associated data but left readable. The 28-byte
 trailer is `nonce (12) ‖ tag (16)`.
 
 - Key: a caller-supplied 32-byte key fetched on demand through the
-  integrator's `SolidSyslogKeyFunction` and wiped after every operation —
+  integrator's `SolidSyslogKeyFunction` and wiped after every operation -
   `OPENSSL_cleanse` on the OpenSSL policy, `mbedtls_platform_zeroize` on the Mbed TLS
   one. The key is never stored on the policy instance.
 - Nonce: a fresh 12-byte random nonce per record, written into the trailer.
@@ -43,7 +43,7 @@ trailer is `nonce (12) ‖ tag (16)`.
   seeded CTR-DRBG you inject as `Rng` and continue to own, because Mbed TLS has no
   context-free RNG. Random (not counter-based) nonces carry no
   cross-power-cycle counter state to lose, so a reboot cannot force the
-  systematic reuse a reset counter would — provided each new DRBG instance is seeded
+  systematic reuse a reset counter would - provided each new DRBG instance is seeded
   from fresh entropy. On the Mbed TLS path that guarantee is yours: a CTR-DRBG
   re-seeded from a repeating source reproduces its output, and so reproduces nonces
   under the same key. [Integrating Mbed TLS](../platforms/mbedtls/setup.md) states the
