@@ -825,9 +825,10 @@ handle and releases the slot. Pool semantics:
 Platform- and vendor-selected classes (TCP stream, datagram, resolver, mutex, file,
 atomic counter, TLS stream, HMAC policy) share a **role-named** tunable rather than one
 name per implementation — `SOLIDSYSLOG_TCP_STREAM_POOL_SIZE`, not a per-platform
-`SOLIDSYSLOG_POSIX_TCP_STREAM_*` name. A build links one implementation per role, so
-the integrator tunes the role. See `docs/NAMING.md`, *Pool-size tunables are named by
-role, not platform*, for the rule and the two-implementations-in-one-build caveat.
+`SOLIDSYSLOG_POSIX_TCP_STREAM_*` name. Each implementation keeps its own pool of that
+size, so the integrator tunes the role rather than the implementation. See
+`docs/NAMING.md`, *Pool-size tunables are named by role, not platform*, for the rule
+and what it means when a build links two implementations of one role.
 
 - **No `malloc`.** Pools are file-scope `static` arrays. Integrators on bare-metal /
   FreeRTOS-static-allocation / DO-178C-style targets get the same code path as hosted targets.

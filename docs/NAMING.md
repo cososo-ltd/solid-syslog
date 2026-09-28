@@ -709,11 +709,12 @@ pools (`TCP_STREAM`, `DATAGRAM`, `RESOLVER`, `MUTEX`, `FILE`, `ATOMIC_COUNTER`,
 per-platform pool name when adding a new OS, network stack, or crypto vendor -
 the new implementation references the existing role tunable.
 
-The pool counts **instances, not implementations**. The naming holds only
-because a build links one implementation per role. If a future build ever
-wires two implementations of the same role into one executable (e.g. the lwIP
-numeric and DNS resolver, or two crypto vendors), size that role's pool to
-the sum of the concurrent instances rather than splitting the name again.
+The pool counts **instances, not implementations**, and each implementation
+keeps a pool of its own sized by the role tunable. A build that links two
+implementations of a role - the lwIP Raw pack links both its numeric and its
+DNS resolver - holds that many of each: the tunable sizes every
+implementation's pool, not their sum. The shared name holds because what an
+integrator decides is how many of a role any one implementation must supply.
 
 Classes with no platform/vendor variants keep their class-specific name
 (`SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE`, `SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE`, etc.).

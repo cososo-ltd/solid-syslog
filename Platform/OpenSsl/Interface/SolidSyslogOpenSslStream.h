@@ -115,7 +115,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Draw a TLS stream from the pool over the injected transport (see the file
      *  overview for the handshake and I/O behaviour). A NULL config, a NULL
      *  Transport, a NULL Sleep or a NULL Credentials is reported and falls back to
-     *  the shared NullStream, as does an exhausted pool (default size 1). */
+     *  the shared NullStream, as does an exhausted pool. */
     struct SolidSyslogStream* SolidSyslogOpenSslStream_Create(const struct SolidSyslogOpenSslStreamConfig* config);
     /** Release the pool slot; closes the TLS session and the underlying transport
      *  first if the stream is still Open. */

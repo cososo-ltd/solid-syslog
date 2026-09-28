@@ -39,8 +39,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Draw a policy from the pool. A NULL config or NULL GetKey (bad config), or
-     *  an exhausted pool (default size 1), falls back to the shared
-     *  NullSecurityPolicy. */
+     *  an exhausted pool, falls back to the shared NullSecurityPolicy. */
     struct SolidSyslogSecurityPolicy* SolidSyslogOpenSslAesGcmPolicy_Create(
         const struct SolidSyslogOpenSslAesGcmPolicyConfig* config
     );
