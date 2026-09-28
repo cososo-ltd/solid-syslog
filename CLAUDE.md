@@ -117,11 +117,11 @@ epic stays off it.
 
 Add a story with `addProjectV2ItemById`, then set its status — the mutations are
 under **Adding to the board, and repairing it by hand** below, which is the routine
-path rather than the exception. *Auto-add to project* is the built-in that would
-replace the manual step, since it matches a filter rather than a parent and
-`is:issue is:open label:story` expresses the convention exactly — but project
-workflows cannot be written through the API, so adopting it is a change in the
-project UI that nobody has made. Assume the manual add.
+path rather than the exception. No automation can replace it. *Auto-add to project*
+matches a filter rather than a parent, but it cannot reach this repository: the
+project is owned by the `DavidCozens` user and the repository by the `cososo-ltd`
+org, and the workflow offers only the project owner's own repositories. The board is
+maintained by hand, deliberately.
 
 Confirm any of that by reading the board rather than the workflow list — an automation
 being enabled says nothing about which field it writes, and the API exposes each
