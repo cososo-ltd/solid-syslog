@@ -549,7 +549,8 @@ s_collectorPins[1] = s_collectorPins[0];
 /* callable from any task: each only queues the change, false if the queue is full */
 bool Syslog_ProvisionNextCollectorPin(const char* pin)
 {
-    return xQueueSend(s_pinChanges, &pin, 0U) == pdTRUE;
+    /* never queue NULL, which reads as a retirement */
+    return (pin != NULL) && (xQueueSend(s_pinChanges, &pin, 0U) == pdTRUE);
 }
 
 bool Syslog_RetireCollectorPin(void)
