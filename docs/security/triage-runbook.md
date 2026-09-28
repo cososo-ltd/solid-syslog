@@ -62,7 +62,9 @@ See [`release-process.md`](../release-process.md) for the mechanics; the
 security-specific steps are:
 
 - [ ] Merge the fix to `main` (from the private fork for High/Critical).
-- [ ] Merge release-please's release PR to cut the tagged release.
+- [ ] Merge release-please's release PR, which creates the tag and a draft release.
+- [ ] Publish the draft. Its provenance assets are attached only on publication,
+      so the release has not gone out until then.
 - [ ] Verify the release carries all four provenance assets: the SBOM, the
       source-tree hash, and their two signatures. `sbom.yml` (triggered by the
       `release.published` event) attaches them and hard-fails if it cannot, so a
