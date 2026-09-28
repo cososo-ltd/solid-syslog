@@ -139,7 +139,7 @@ Platform/StdAtomic/Interface
 
 ## Required defines
 
--DSOLIDSYSLOG_USER_TUNABLES_FILE="my_tunables.h"   # your tunable overrides (optional)
+-DSOLIDSYSLOG_USER_TUNABLES_FILE="/abs/path/to/my_tunables.h"   # your tunable overrides (optional)
 # lwIP: each adapter gates itself on the lwIP option it needs, so a source you
 #       do not enable compiles to nothing. LWIP_DNS=1 enables the DNS resolver;
 #       LWIP_UDP / LWIP_TCP the datagram / stream adapters.

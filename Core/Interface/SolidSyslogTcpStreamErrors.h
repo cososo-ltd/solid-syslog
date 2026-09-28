@@ -17,9 +17,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  working when the backend is swapped.
      *
      *  event->Source still names the backend that spoke, for diagnosis. Which of
-     *  these codes a given backend can raise is a property of that backend and is
-     *  stated on its own page; a code it never raises is simply one a handler
-     *  never sees. */
+     *  these codes a given backend can raise is a property of that backend; a
+     *  code it never raises is simply one a handler never sees. */
     enum SolidSyslogTcpStreamErrors
     {
         SOLIDSYSLOG_TCP_STREAM_ERROR_POOL_EXHAUSTED,
