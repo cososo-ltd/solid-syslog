@@ -37,7 +37,8 @@ layer. The datagram and TCP stream adapters therefore issue an ARP probe on a
 cache miss and then wait, in a `vTaskDelay` of their own, so the reply can land
 before the datagram is sent or the connection opened.
 The wait is the adapter's rather than the stack's, and is 50 ms rounded to the
-resolution your `configTICK_RATE_HZ` gives.
+resolution your `configTICK_RATE_HZ` gives. Below 20 Hz that rounds to zero
+ticks, and there is no wait.
 
 That delay is paid by whichever task made the call: the application's own thread
 on an inline wiring, or the servicing thread on a buffered one. It applies to the

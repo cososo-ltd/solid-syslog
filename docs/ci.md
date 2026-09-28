@@ -1,7 +1,7 @@
 # CI Pipeline
 
-GitHub Actions runs these jobs on every push and pull request to `main`, in parallel
-except where a job `needs:` another's output.
+GitHub Actions runs these jobs on every push and pull request to `main`, in parallel,
+except where a job `needs:` another and waits for it to finish.
 
 ## Jobs
 

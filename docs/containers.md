@@ -70,7 +70,9 @@ stacks' unit tests, without reconfiguring. The configure says so:
 
 To work in one stack only, deselect the other with its own switch
 (`-DSOLIDSYSLOG_PLUSTCP=OFF`, or `-DSOLIDSYSLOG_LWIPRAW=OFF` with
-`-DSOLIDSYSLOG_LWIPSOCKET=OFF`), which drops that platform and its tests together. The lwIP lint lanes do exactly this.
+`-DSOLIDSYSLOG_LWIPSOCKET=OFF`), which drops that platform and its tests
+together. The lwIP lint lanes do exactly this. The switch holds under the default
+`Auto` selection; with a named list, leave the platform out of the list instead.
 
 Which BDD ELF a *cross* build produces is separate, and maintainer-only -
 `SOLIDSYSLOG_BDD_TARGET=FREERTOS_PLUSTCP` (default), `FREERTOS_LWIP` or
