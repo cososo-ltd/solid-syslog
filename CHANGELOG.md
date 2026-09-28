@@ -2,6 +2,148 @@
 
 ## [0.2.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.1.0...v0.2.0) (2026-09-28)
 
+The TLS release. 0.2.0 lets a device authorise its collector by certificate
+fingerprint, gives each TLS pack a credentials role of its own, and closes every
+limitation 0.1.0 shipped with. It also adds three platform packs aimed at
+microcontroller targets.
+
+Still 0.x, for the reason 0.1.0 gave: the label describes platform breadth and
+the absence of field integrations, not the maturity of the code. This release
+does break the public API. Every break is listed below, under *Before you
+upgrade*.
+
+### What's in this release
+
+- **Fingerprint pinning (RFC 5425 §5.1).** A collector can be authorised by the
+  fingerprint of its certificate, with no CA involved, so a closed site with no
+  PKI can run TLS. More than one pin can be held at once, so a collector's
+  certificate renewal can be crossed without stopping delivery. A CA chain can be required
+  as well as the pin.
+- **A credentials role per TLS pack.** The OpenSSL and Mbed TLS streams fetch
+  their trust anchors, client credential and pins from a credentials source when
+  they connect, and let go of them when the connection ends. A file, a
+  caller-built handle, a secure element or a keyring can each back it.
+- **TLS policy per connection.** The expected peer name, the cipher policy and,
+  on Mbed TLS, the certificate profile are asked for at each connection. The
+  cipher policy an integrator sets now binds the connection that is negotiated.
+  A configuration change is picked up without a restart when the stream's
+  version moves.
+- **Certificate validity is enforced by contract.** A peer certificate outside
+  its validity period stops delivery. 0.1.0 already behaved this way, but its
+  contract said report and continue; the contract now says what the code does,
+  and `docs/tls.md` gives the reasoning.
+- **One portable set of detail codes per role.** A handler that matches on
+  detail codes reacts the same way whichever backend raised the code.
+- **TCP.** Keepalive timings are tunables shared by every TCP backend, and a
+  failed connect reports which step gave up.
+- **An oversize datagram is trimmed** on a platform that can only report a
+  failure, not name the size.
+
+Platforms added: lwIP Sockets API, CMSIS-RTOS2 (mutex and uptime), and
+LittleFS. The full list is POSIX, Windows, C11 atomics, OpenSSL, Mbed TLS, lwIP
+Raw API, lwIP Sockets API, FreeRTOS-Plus-TCP, FreeRTOS, CMSIS-RTOS2, ChaN FatFs,
+FreeRTOS-Plus-FAT and LittleFS.
+
+### Before you upgrade
+
+These break source compatibility with 0.1.0:
+
+- **Error enums by role.** The per-pack `SolidSyslog<Pack><Class>Errors` enums
+  for the Address, Datagram, Resolver, File, Mutex and AtomicCounter roles are
+  replaced by `SolidSyslog<Role>Errors`, and their constants by
+  `SOLIDSYSLOG_<ROLE>_ERROR_*`. The values are unchanged, so a handler matching
+  on numbers is unaffected. The TCP streams, the TLS streams and the crypto
+  roles each have one set of codes too.
+- **`ErrorSource` names.** Every `*ErrorSource` object gains the `SolidSyslog`
+  prefix: `UdpSenderErrorSource` becomes `SolidSyslogUdpSenderErrorSource`. A
+  handler that matches on source identity must use the new names.
+- **TLS stream configuration.** The OpenSSL and Mbed TLS streams take a
+  credentials source instead of certificate and key fields, and take their peer
+  name and cipher policy from a per-connection profile. The TLS setup pages show
+  the new wiring.
+
+Documentation corrected in this release, where acting on the old text would have
+cost you:
+
+- A consumer of the OpenSSL pack links `OpenSSL::SSL OpenSSL::Crypto` alongside
+  `SolidSyslog`. The library does not link OpenSSL for you, and the docs said it
+  did.
+- A structured data element registered in `SolidSyslogConfig.Sd[]`, and the
+  array itself, must outlive the logger, not only the call that creates it.
+- FreeRTOS-Plus-TCP needs `ipconfigUSE_DNS=1` even when the collector is given as
+  a numeric address.
+- The POSIX pack needs Linux, not just a POSIX system.
+- LittleFS has no usable default for `block_cycles`. Set it.
+- A per-platform CMake switch such as `-DSOLIDSYSLOG_LWIPRAW=ON` takes effect
+  only when `SOLIDSYSLOG_PLATFORMS` is `Auto`.
+- A stored record that fails verification on read is discarded without a report,
+  and shows at the collector as a gap in the sequence number. 0.1.0's IEC 62443
+  and CRA pages said it was reported.
+
+### RFC compliance at this release
+
+| RFC | Total | Supported | Partial | Not Met | N/A |
+|---|---|---|---|---|---|
+| RFC 5424 | 40 | 33 | 0 | 0 | 7 |
+| RFC 5425 | 21 | 16 | 0 | 0 | 5 |
+| RFC 5426 | 16 | 7 | 0 | 0 | 9 |
+| RFC 6587 | 8 | 7 | 0 | 0 | 1 |
+
+RFC 5425 is now met throughout.
+- **§5.1**, authorising a peer by certificate fingerprint, moves from Not Met to
+  Supported.
+- **§4.2.3** moves from Partial to Supported now that the cipher policy binds the
+  connection, and gains a row for session resumption.
+
+RFC 5426 has one row fewer because its two §3.2 rows are now one. No clause
+changed status. RFC 5424 and RFC 6587 are unchanged.
+
+The maintainer's assessment, not a certification. Each status describes the
+library with a conforming platform supplying the roles it needs, and depends on
+the components selected, including any you write yourself, which the library
+cannot speak for. The full matrix at this release, one row and one note per
+clause:
+[`docs/rfc-compliance.md` at `v0.2.0`](https://github.com/cososo-ltd/solid-syslog/blob/v0.2.0/docs/rfc-compliance.md).
+
+### Known limitations
+
+Every limitation 0.1.0 shipped with is resolved in this release.
+
+The pre-release audit of 0.2.0 read every documentation page against the code
+again. Each finding is disclosed on the page for the affected platform, or in the
+compliance guides:
+
+- [#919](https://github.com/cososo-ltd/solid-syslog/issues/919) - the OpenSSL
+  stream reports an expired issuer ahead of a pin that matches nothing, where the
+  contract puts the pin first. The peer is refused either way; only the reported
+  code differs. Tracked for 0.3.0.
+- [#921](https://github.com/cososo-ltd/solid-syslog/issues/921) - a stored record
+  that fails verification on read, and a failed store write on most file
+  backends, reach no error handler. Tracked for 0.3.0.
+- [#842](https://github.com/cososo-ltd/solid-syslog/issues/842) - on an lwIP
+  build with IPv6 enabled, the lwIP Raw API resolver accepts an IPv6 literal the
+  datagram can never send to, so every send fails without saying why. Give the
+  collector as an IPv4 address.
+
+The Mbed TLS page also states three properties of Mbed TLS rather than of this
+library:
+- validity dates are checked only where the build carries a clock;
+- an address literal can also match a DNS name spelling the same digits;
+- the X.509 profile is the linked library's default unless `CertProfile` is set.
+
+### Verifying this release
+
+Six assets are attached: the CycloneDX SBOM, the content-tree SHA-256, and the
+offline documentation bundle, each with a cosign signature bundle. Signing is
+keyless via GitHub OIDC, so each signature commits to the workflow run that
+produced it. There is no personal key. The content-tree hash is reproducible from
+any clone. Commands:
+[`docs/security/release-verification.md` at `v0.2.0`](https://github.com/cososo-ltd/solid-syslog/blob/v0.2.0/docs/security/release-verification.md).
+The check that matters is that a bundle verifies, not that the assets are
+present.
+
+The offline documentation bundle is new in this release: the documentation as
+of this tag, readable with no server and no network.
 
 ### ⚠ BREAKING CHANGES
 
