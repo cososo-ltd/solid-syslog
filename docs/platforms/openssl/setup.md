@@ -21,7 +21,8 @@ set(SOLIDSYSLOG_PLATFORMS "OpenSsl;<Network>")
 
 [Naming your platforms](../../build-integration.md#cmake) covers how the list
 is read. OpenSSL is a system library, so the adapter compiles into
-`libSolidSyslog.a` with no separate target to link;
+`libSolidSyslog.a`; link OpenSSL alongside it (`OpenSSL::SSL OpenSSL::Crypto`), which
+the library does not do for you;
 [adding it to your build](../../build-integration.md) covers Make and IDE
 builds.
 

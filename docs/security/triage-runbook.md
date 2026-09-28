@@ -65,11 +65,12 @@ security-specific steps are:
 - [ ] Merge release-please's release PR, which creates the tag and a draft release.
 - [ ] Publish the draft. Its provenance assets are attached only on publication,
       so the release has not gone out until then.
-- [ ] Verify the release carries all four provenance assets: the SBOM, the
-      source-tree hash, and their two signatures. `sbom.yml` (triggered by the
-      `release.published` event) attaches them and hard-fails if it cannot, so a
-      red run means the release went out without provenance - re-run the job
-      before relying on it.
+- [ ] Verify the release carries all six assets listed in
+      [release verification](release-verification.md): the SBOM, the source-tree
+      hash, the documentation bundle, and their three signatures. `sbom.yml` and
+      `docs-bundle.yml` (both triggered by the `release.published` event) attach
+      them and hard-fail if they cannot, so a red run means the release went out
+      incomplete - re-run the job before relying on it.
 - [ ] Record and verify the affected and fixed version ranges in the advisory;
       never publish without a safe version for users to move to.
 - [ ] Publish the GHSA coordinated with the release going live.

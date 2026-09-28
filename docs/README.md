@@ -6,8 +6,8 @@ Act and IEC 62443 expect. This documentation is organised around what you came
 to do.
 
 See a complete integration, one commit at a time, with every byte measured:
-[solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example) (CMake)
-and [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make)
+[solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.2.0) (CMake)
+and [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.2.0)
 (Make).
 
 Pick a lane:

@@ -71,7 +71,7 @@ today.
 |---|---|---|
 | **(2)(d)** | protection from unauthorised access, and *report on possible unauthorised access* | The reporting half only, and only the carriage of it: your application detects the access and decides it is reportable, the library delivers the record. Mutual TLS authenticates the TLS peer to the receiver, which is the device itself only where it connects directly |
 | **(2)(e)** | confidentiality of stored, transmitted or otherwise processed data, including by encryption at rest or in transit | TLS in transit; authenticated encryption at rest for the spooled store. Records routinely carry data you would not publish |
-| **(2)(f)** | integrity of stored and transmitted data against unauthorised modification, and *report on corruptions* | A keyed at-rest policy makes stored records tamper-evident rather than merely checksummed; TLS protects them in transit; the error handler surfaces corruption the store detects |
+| **(2)(f)** | integrity of stored and transmitted data against unauthorised modification, and *report on corruptions* | A keyed at-rest policy makes stored records tamper-evident rather than merely checksummed; TLS protects them in transit; a record that fails verification on read is discarded, and the gap in the sequence number shows it at the collector |
 | **(2)(h)** | availability of essential and basic functions, also after an incident | Buffering keeps logging off the critical path, and store-and-forward keeps records through an outage so the trail survives the incident it recorded |
 
 ## Part II - supporting your vulnerability handling

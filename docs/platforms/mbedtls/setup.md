@@ -150,8 +150,8 @@ handler rather than assume.
 handleConfig.ClientCertChain = &clientCert;
 handleConfig.ClientKey       = &clientKey;
 /* or */
-pemConfig.ClientCertPem = {clientCertPem, sizeof(clientCertPem)};
-pemConfig.ClientKeyPem  = {clientKeyPem, sizeof(clientKeyPem)};
+pemConfig.ClientCertPem = (struct SolidSyslogMbedTlsPemBuffer) {clientCertPem, sizeof(clientCertPem)};
+pemConfig.ClientKeyPem  = (struct SolidSyslogMbedTlsPemBuffer) {clientKeyPem, sizeof(clientKeyPem)};
 ```
 
 **Pinning the collector's certificate**, instead of or as well as a CA chain.
