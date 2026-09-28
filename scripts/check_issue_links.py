@@ -54,13 +54,23 @@ SKIP = {
 }
 SKIP_DIRS = (os.path.join("docs", "generated"),)
 
-FENCED = re.compile(r"^(?P<f>```|~~~).*?^(?P=f)", re.DOTALL | re.MULTILINE)
+# The closing fence must repeat the opening one exactly and carry nothing but
+# whitespace, or a longer fence is closed early by a shorter line inside it and
+# the rest of the block is read as prose.
+FENCED = re.compile(
+    r"^(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^(?P=fence)[ \t]*$",
+    re.DOTALL | re.MULTILINE,
+)
 # A code span runs to the next backtick and may wrap a line, which is how
 # CLAUDE.md's own `found during S08.03\n(#290)` example is written.
 CODE_SPAN = re.compile(r"`[^`]*?`")
 
 LINKED = re.compile(rf"github\.com/{OWNER}/{REPO}/(?:issues|pull)/(\d+)")
-BARE = re.compile(r"(?<![\w/])#(\d{2,5})\b")
+# No ceiling - an issue number only grows. The floor of two digits is deliberate:
+# a single-digit `#N` in this repository's prose is a project number, not an issue
+# ("project board \"SolidSyslog\" (project #1)"), and #1 is a release pull request,
+# so accepting one digit would fail this check on a correct sentence.
+BARE = re.compile(r"(?<![\w/])#(\d{2,})\b")
 
 
 def documents():
@@ -106,9 +116,61 @@ def referenced():
     return found
 
 
+def graphql(query):
+    """(data, errors) from one `gh api graphql` call.
+
+    `gh` exits non-zero whenever GraphQL reports any error, and still prints the
+    whole body: `data` carries every field that resolved and `errors` says what did
+    not. So read the body before trusting the exit code - otherwise a reference to
+    a number that does not exist is reported as an authentication failure and the
+    next reader goes hunting for a token.
+    """
+    done = subprocess.run(
+        ["gh", "api", "graphql", "-f", f"query={query}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    try:
+        body = json.loads(done.stdout)
+    except ValueError:
+        body = None
+    if not isinstance(body, dict) or body.get("data") is None:
+        sys.exit(
+            "could not reach GitHub - this check needs `gh` authenticated, or "
+            f"GH_TOKEN set in CI:\n{done.stderr.strip()}"
+        )
+    return body["data"], body.get("errors") or []
+
+
+def confirm_readable():
+    """Prove the token can read issue state even when no document links an issue.
+
+    Without this the query below never runs on a clean tree, so a workflow token
+    that cannot read issues passes every time until the day somebody links one -
+    a gate whose first real execution is the one that matters. One query buys that
+    away. It reads the issue connection rather than a fixed number, which no
+    renumbering or deletion can invalidate.
+    """
+    query = (
+        f'query {{ repository(owner: "{OWNER}", name: "{REPO}") '
+        "{ issues(first: 1) { nodes { number state } } } }"
+    )
+    data, errors = graphql(query)
+    readable = (data.get("repository") or {}).get("issues")
+    if errors or readable is None:
+        detail = "; ".join(error.get("message", "?") for error in errors) or "no issues returned"
+        sys.exit(
+            "the token cannot read issue state, so this check could not run: "
+            f"{detail}\nIn CI the docs-build job needs `issues: read` and "
+            "`pull-requests: read` alongside `contents: read`."
+        )
+
+
 def states(numbers):
     """{number: (state, reason)} in one GraphQL call rather than one per link."""
     if not numbers:
+        confirm_readable()
         return {}
     fields = "\n".join(
         f'n{number}: issueOrPullRequest(number: {number}) {{'
@@ -117,26 +179,20 @@ def states(numbers):
         for number in sorted(numbers)
     )
     query = f'query {{ repository(owner: "{OWNER}", name: "{REPO}") {{\n{fields}\n}} }}'
-    done = subprocess.run(
-        ["gh", "api", "graphql", "-f", f"query={query}"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    # A reference to a number that does not exist makes `gh` exit non-zero, and it
-    # still prints the whole body: `data` carries every number that did resolve and
-    # `errors` a NOT_FOUND for the one that did not. So read the body before
-    # trusting the exit code - otherwise a dangling reference is reported as an
-    # authentication failure and the next reader goes hunting for a token.
-    try:
-        repository = json.loads(done.stdout)["data"]["repository"]
-    except (ValueError, KeyError, TypeError):
-        repository = None
+    data, errors = graphql(query)
+    repository = data.get("repository")
     if repository is None:
-        sys.exit(
-            "could not read issue states from GitHub - this check needs `gh` "
-            f"authenticated, or GH_TOKEN set in CI:\n{done.stderr.strip()}"
-        )
+        sys.exit("GitHub returned no repository for the issue-state query")
+
+    # A field may be null only because GraphQL confirmed NOT_FOUND. Any other error
+    # left it null for a reason that is not "no such issue", and reporting it as one
+    # would describe a token that cannot read issues as every reference having been
+    # deleted - the wrong diagnosis, and the expensive kind.
+    refused = [error for error in errors if error.get("type") != "NOT_FOUND"]
+    if refused:
+        detail = "\n".join(f"  {error.get('type', '?')}: {error.get('message', '?')}" for error in refused)
+        sys.exit(f"GitHub rejected the issue-state query:\n{detail}")
+
     resolved = {}
     for key, value in repository.items():
         if value is not None:
