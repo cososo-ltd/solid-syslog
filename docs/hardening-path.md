@@ -406,6 +406,9 @@ struct SolidSyslogOriginSdConfig originConfig = {
 sd[2] = SolidSyslogOriginSd_Create(&originConfig);
 ```
 
+`SwVersion` is your product's version, not SolidSyslog's. Take it from wherever your
+build already keeps it; the example passes in its CMake `project()` version.
+
 This lands after storage for a reason. While records went straight out,
 "who sent this" was implied by the connection they arrived on. Once records can replay
 hours later that stops being true, and the record has to say so itself.
@@ -543,16 +546,16 @@ s_collectorPins[1] = s_collectorPins[0];
 .PeerFingerprintCount = 2U,
 .Version              = SyslogStreamVersion,
 
-/* callable from any task: each only queues the change */
-void Syslog_ProvisionNextCollectorPin(const char* pin)
+/* callable from any task: each only queues the change, false if the queue is full */
+bool Syslog_ProvisionNextCollectorPin(const char* pin)
 {
-    (void) xQueueSend(s_pinChanges, &pin, 0U);
+    return xQueueSend(s_pinChanges, &pin, 0U) == pdTRUE;
 }
 
-void Syslog_RetireCollectorPin(void)
+bool Syslog_RetireCollectorPin(void)
 {
     const char* retire = NULL;
-    (void) xQueueSend(s_pinChanges, &retire, 0U);
+    return xQueueSend(s_pinChanges, &retire, 0U) == pdTRUE;
 }
 
 /* service task only, before each SolidSyslog_Service */
@@ -584,7 +587,9 @@ credentials, as the field requires; the example's come from its credential store
 the service task reads the version before every record and the pins at each
 connection, so a change has to reach them on that task. The example queues each request
 and applies it before each call to `SolidSyslog_Service`; making the change on the
-service task directly works as well.
+service task directly works as well. A queued request can be refused, so check it: a
+dropped provisioning leaves the device unable to reconnect after the renewal, and a
+dropped retirement leaves the old pin accepted.
 
 Crossing a renewal, the handler sees delivery fail and recover: the collector restarts
 with its renewed certificate and drops the session, the record logged at that moment is
@@ -597,7 +602,7 @@ device.
 certificate with an expiry date will be. The alternative is provisioning every device at
 the moment the collector switches.
 
-**Cost.** Flash ~600 B, RAM ~90 B, most of the RAM being the queue. Part of the flash
+**Cost.** Flash ~650 B, RAM ~90 B, most of the RAM being the queue. Part of the flash
 is the example's renewal sequence rather than the library.
 
 ## Stage 15: Protect what is at rest
