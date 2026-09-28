@@ -50,3 +50,8 @@ exactly the workload that needs it. Set it to a few hundred.
 **A mount is not the adapter's to make.** If the filesystem is unmounted while a
 file is open, every later call fails through LittleFS rather than through the
 library, and the library has nothing to report.
+
+## When it does not work
+
+Install an error handler before you start; [error severity](../../error-severity.md)
+says what each level is telling you.

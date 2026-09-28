@@ -63,7 +63,5 @@ behind gap detection needs no separate component.
 
 ## When it does not work
 
-Failures report through the error handler rather than silently. Install one
-before you start, and read [error severity](../../error-severity.md) for what
-each level is telling you — a `CRITICAL` at create time means the component
-fell back to its Null object, and nothing will be delivered.
+Install an error handler before you start; [error severity](../../error-severity.md)
+says what each level is telling you.
