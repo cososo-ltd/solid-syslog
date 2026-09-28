@@ -329,4 +329,4 @@ For a step-by-step verification guide aimed at downstream integrators, see
   source-only and the content-tree hash is reproducible from any clone,
   so the integrator checks the source itself.
 - Binary-artefact signing. The project is source-only; nothing to
-  sign beyond the SBOM and content-tree hash.
+  sign beyond the SBOM, the content-tree hash and the documentation bundle.

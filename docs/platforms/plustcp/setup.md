@@ -23,10 +23,11 @@ read.
 
 Bring the stack up and let it acquire an address before creating any sender.
 
-Resolving the collector by name needs DNS compiled into the stack. If you give
-the collector a numeric address instead, you need neither DNS nor the resolver
-it backs - which is also the more predictable choice where the network cannot
-be trusted.
+Resolving the collector needs DNS compiled into the stack (`ipconfigUSE_DNS=1`)
+even when you give it a numeric address: the pack's only resolver goes through
+`FreeRTOS_getaddrinfo`, which answers a numeric address without a lookup. A
+numeric address is still the more predictable choice where the network cannot be
+trusted.
 
 ## Wiring a sender
 

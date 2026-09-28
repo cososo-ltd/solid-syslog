@@ -178,8 +178,8 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
       draft before anything goes out.
 - [ ] Cut the example stacks' `release/<version>` branches pinned to the tag's
       SHA, then publish the draft.
-- [ ] Confirm the attachments, and verify the attached SBOM, source
-      hash, and both cosign signatures per
+- [ ] Confirm the attachments, and verify all six assets - the SBOM, source
+      hash and documentation bundle, and their three cosign signatures - per
       [`security/release-verification.md`](security/release-verification.md), not
       just that the assets are present - a bundle that is present is not yet a
       bundle that verifies. Install the tool versions that page states rather

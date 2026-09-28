@@ -79,7 +79,9 @@ static void ExampleSd_Format(struct SolidSyslogStructuredData* base, struct Soli
 ```
 
 The library never allocates your SD; it lives in your storage (static, stack, or your own
-pool). It only needs to stay valid for the duration of the log call.
+pool). An SD passed to `SolidSyslog_LogWithSd` only needs to stay valid for that call. An SD in
+`Config.Sd[]`, and the array itself, are read on every record, so both must outlive the
+logger.
 
 ## SD-IDs and enterprise numbers
 

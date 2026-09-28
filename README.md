@@ -12,17 +12,17 @@ Cyber Resilience Act and IEC 62443 expect: a component you add, not a redesign.
 ## What it costs
 
 **+5 KB flash** for a valid, timestamped RFC 5424 record on the wire, and **1.9 KB
-of RAM**. **+13.5 KB flash** for the whole path - store-and-forward, device identity,
-mutual TLS and AES-GCM encryption at rest - and **35.3 KB of RAM**, mainly TLS buffers.
+of RAM**. **+16.4 KB flash** for the whole path - store-and-forward, device identity,
+mutual TLS and AES-GCM encryption at rest - and **36.3 KB of RAM**, mainly TLS buffers.
 Each figure is what SolidSyslog adds to a device already running FreeRTOS, lwIP,
 FatFs and Mbed TLS: a baseline built to carry the third-party code a real-world
 device would already have. Measured on a Cortex-M3 under QEMU, a representative
 device rather than a specification.
 
 Both are measured by a worked integration, published in full as
-[solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example) (consumed
+[solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.2.0) (consumed
 with CMake) and
-[solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make)
+[solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.2.0)
 (the same integration, consumed with Make). Each stage is one commit; `git show`
 gives the diff and the measured cost.
 

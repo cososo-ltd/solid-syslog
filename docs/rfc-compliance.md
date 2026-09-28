@@ -163,5 +163,5 @@ A `-` in the Section column marks a requirement the RFC does not number - one th
 |---|---|---|---|---|---|
 | RFC 5424 | 40 | 33 | 0 | 0 | 7 |
 | RFC 5425 | 21 | 16 | 0 | 0 | 5 |
-| RFC 5426 | 17 | 8 | 0 | 0 | 9 |
+| RFC 5426 | 16 | 7 | 0 | 0 | 9 |
 | RFC 6587 | 8 | 7 | 0 | 0 | 1 |

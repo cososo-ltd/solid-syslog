@@ -90,7 +90,7 @@
         },
         {
           "name": "solidsyslog:platform-backends",
-          "value": "Optional, integrator-selected, never vendored. Reference adapters ship for POSIX, Windows, FreeRTOS, lwIP, FreeRTOS-Plus-TCP, ChaN FatFs, FreeRTOS-Plus-FAT, OpenSSL and Mbed TLS; an integrator may instead supply their own for an RTOS or bare-metal target with no shipped pack. Whichever are selected are the integrator's dependencies, with their own versions and licence terms, and belong in the product SBOM rather than this one."
+          "value": "Optional, integrator-selected, never vendored. Reference adapters ship for POSIX, Windows, C11 atomics, OpenSSL, Mbed TLS, lwIP's Raw API and its Sockets API, FreeRTOS-Plus-TCP, the FreeRTOS kernel, CMSIS-RTOS2, ChaN FatFs, FreeRTOS-Plus-FAT and LittleFS; an integrator may instead supply their own for an RTOS or bare-metal target with no shipped pack. Whichever are selected are the integrator's dependencies, with their own versions and licence terms, and belong in the product SBOM rather than this one."
         }
       ]
     },

@@ -48,7 +48,7 @@ reported through the error handler at `Create`, so it is visible rather than
 something to discover later.
 
 Leave the counter out of the meta element's config altogether and the element
-itself does not build: `SolidSyslogMetaSd_Create` reports a `WARNING` and falls
+itself does not build: `SolidSyslogMetaSd_Create` reports a `CRITICAL` and falls
 back to the Null structured data, so no meta element is attached at all - no
 `sequenceId`, and no `sysUpTime` either.
 

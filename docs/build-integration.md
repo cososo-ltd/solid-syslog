@@ -162,7 +162,8 @@ into *your* target against *your* config.
 
 Stable system APIs - POSIX, Win32/Winsock, OpenSSL, C11 atomics - have no such
 hazard and compile straight into `libSolidSyslog.a`. Linking `SolidSyslog` is
-all they need, which is why a Windows or Linux consumer writes one link line.
+all they need, except that OpenSSL itself is linked alongside it
+(`OpenSSL::SSL OpenSSL::Crypto`).
 
 <!-- /platforms -->
 
@@ -221,7 +222,7 @@ set(SOLIDSYSLOG_PLATFORMS "Windows;OpenSsl")   # or "Posix;OpenSsl"
 FetchContent_MakeAvailable(SolidSyslog)
 
 add_executable(my_logger main.c)
-target_link_libraries(my_logger PRIVATE SolidSyslog)
+target_link_libraries(my_logger PRIVATE SolidSyslog OpenSSL::SSL OpenSSL::Crypto)
 ```
 
 That is the whole thing - no config headers, no include paths, no upstream to
@@ -309,7 +310,7 @@ nothing rather than failing, and nothing has to be excluded by hand.
 Set `SOLIDSYSLOG_DIR` before the `include` if the library does not sit where the fragment
 does - by default it locates itself.
 
-[`solid-syslog-example-make`](https://github.com/cososo-ltd/solid-syslog-example-make) is
+[`solid-syslog-example-make`](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.2.0) is
 a worked consumer of this shape, cross-building FreeRTOS, lwIP, Mbed TLS and FatFs.
 
 ---
