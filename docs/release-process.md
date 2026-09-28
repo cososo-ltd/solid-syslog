@@ -123,19 +123,25 @@ listed above; the two written parts are added by hand in the release pull reques
 2. release-please maintains a release PR that bumps the version and
    `CHANGELOG.md`. Write the first two parts of the release notes into that PR
    before merging it, per *Getting the written parts into both places* above.
-3. Merging that PR creates the tag and GitHub Release (release-please's
-   bot, no personal GPG/SSH signing).
-4. The `release: published` event triggers `sbom.yml`: it renders and validates
+3. Merging that PR creates the tag and a **draft** GitHub Release
+   (release-please's bot, no personal GPG/SSH signing). The tag is created at
+   once; a draft would otherwise get its tag only on publication, and
+   release-please could not then find the previous release.
+4. Publishing the draft is a separate step. Nothing the release attaches exists
+   until then, so publish once everything the documentation links by name is in
+   place - the example stacks' `release/<version>` branches, which pin the
+   tag's SHA and so can only be cut once the tag exists.
+5. The `release: published` event triggers `sbom.yml`: it renders and validates
    the CycloneDX SBOM, writes the content-tree SHA-256 (scope: `Core/` +
    `Platform/` + `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`,
    `LICENSES/`), cosign keyless-signs both (GitHub OIDC), and attaches each
    file with its signature to the Release.
-5. The same event triggers `docs-bundle.yml`: it builds the documentation from
+6. The same event triggers `docs-bundle.yml`: it builds the documentation from
    the tag with `mkdocs-offline.yml`, checks that the result works with no
    server and no network, cosign-signs the zip and attaches it with its
    signature. The bundle is built and checked on every CI run as well, so the
    only step that waits for a release is the attachment.
-6. Signing and attachment hard-fail. The Release already exists by the time the
+7. Signing and attachment hard-fail. The Release already exists by the time the
    jobs run, so a failure cannot block it — it means the Release went out
    without provenance. A red run is the signal: fix the cause and re-run the
    job (see [release verification](security/release-verification.md)).
@@ -168,7 +174,11 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
 
 - [ ] `main` is green.
 - [ ] Cut the release by merging the release PR.
-- [ ] Confirm the tag + GitHub Release, and verify the attached SBOM, source
+- [ ] Confirm the tag and the draft GitHub Release, and read the notes in the
+      draft before anything goes out.
+- [ ] Cut the example stacks' `release/<version>` branches pinned to the tag's
+      SHA, then publish the draft.
+- [ ] Confirm the attachments, and verify the attached SBOM, source
       hash, and both cosign signatures per
       [`security/release-verification.md`](security/release-verification.md), not
       just that the assets are present — a bundle that is present is not yet a
