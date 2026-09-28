@@ -141,7 +141,8 @@ path exists.
 [release-please](https://github.com/googleapis/release-please) runs on every push to `main`.
 It reads commit messages (which must follow [Conventional Commits](https://www.conventionalcommits.org/))
 and maintains a release PR that bumps the version and updates `CHANGELOG.md`.
-Merging that PR creates a GitHub Release and tag.
+Merging that PR creates the tag and a draft GitHub Release; publishing it is a
+separate step, covered in the [release process](release-process.md).
 
 ## Permissions
 
