@@ -284,7 +284,7 @@ function(solidsyslog_generate_manifest)
     # the section rather than emitting an empty one.
     set(_defines "")
     if(NOT _scope STREQUAL "platform")
-        string(APPEND _defines "-DSOLIDSYSLOG_USER_TUNABLES_FILE=\"my_tunables.h\"   # your tunable overrides (optional)\n")
+        string(APPEND _defines "-DSOLIDSYSLOG_USER_TUNABLES_FILE=\"/abs/path/to/my_tunables.h\"   # your tunable overrides (optional)\n")
     endif()
     list(FIND _selected "LwipRaw" _has_lwip)
     if(NOT _has_lwip EQUAL -1)

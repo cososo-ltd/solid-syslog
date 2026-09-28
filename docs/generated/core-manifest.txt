@@ -85,7 +85,7 @@ Core/Source
 
 ## Required defines
 
--DSOLIDSYSLOG_USER_TUNABLES_FILE="my_tunables.h"   # your tunable overrides (optional)
+-DSOLIDSYSLOG_USER_TUNABLES_FILE="/abs/path/to/my_tunables.h"   # your tunable overrides (optional)
 
 ## Language
 

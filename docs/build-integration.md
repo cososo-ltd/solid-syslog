@@ -88,16 +88,16 @@ command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIPRAW=ON`,
 
 | Platform | Roles filled | Backed by |
 |---|---|---|
-| `Posix` | network, file, mutex, clock | POSIX sockets, `pthread`, `mqueue` |
-| `Windows` | network, file, mutex, atomics, clock | Winsock, `CRITICAL_SECTION`, Win32 |
+| `Posix` | network, file, mutex, clock, uptime | POSIX sockets, `pthread`, `mqueue` |
+| `Windows` | network, file, mutex, clock, uptime, atomics | Winsock, `CRITICAL_SECTION`, Win32 |
 | `StdAtomic` | atomics | C11 `<stdatomic.h>` |
 | `OpenSsl` | tls | OpenSSL 3.0+ |
 | `MbedTls` | tls | Mbed TLS |
 | `LwipRaw` | network | lwIP Raw API |
 | `LwipSocket` | network | lwIP Sockets API |
 | `PlusTcp` | network | FreeRTOS-Plus-TCP |
-| `FreeRtos` | mutex, clock | FreeRTOS kernel |
-| `CmsisRtos` | mutex, clock | CMSIS-RTOS2 API |
+| `FreeRtos` | mutex, uptime | FreeRTOS kernel |
+| `CmsisRtos` | mutex, uptime | CMSIS-RTOS2 API |
 | `FatFs` | file | ChaN FatFs |
 | `PlusFat` | file | FreeRTOS-Plus-FAT |
 | `LittleFs` | file | LittleFS |
@@ -116,7 +116,7 @@ CircularBuffer with no mutex:
 
 ```text
 -- SolidSyslog platforms: MbedTls;LwipRaw;FreeRtos;FatFs
--- SolidSyslog roles:      network=LwipRaw  file=FatFs  mutex=FreeRtos  clock=FreeRtos  atomics=(none)  tls=MbedTls
+-- SolidSyslog roles:      network=LwipRaw  file=FatFs  mutex=FreeRtos  clock=(none)  uptime=FreeRtos  atomics=(none)  tls=MbedTls
 ```
 
 Platforms are listed in registry order, not the order you named them.

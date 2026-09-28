@@ -275,16 +275,16 @@ endforeach()
 
 #                                 token     option                default                        kind      directory            roles
 set(SOLIDSYSLOG_PLATFORM_REGISTRY
-    "Posix|SOLIDSYSLOG_POSIX|${HAVE_POSIX_SOCKETS}|probe|Platform/Posix|network file mutex clock"
-    "Windows|SOLIDSYSLOG_WINDOWS|${HAVE_WINDOWS_ANY}|probe|Platform/Windows|network file mutex atomics clock"
+    "Posix|SOLIDSYSLOG_POSIX|${HAVE_POSIX_SOCKETS}|probe|Platform/Posix|network file mutex clock uptime"
+    "Windows|SOLIDSYSLOG_WINDOWS|${HAVE_WINDOWS_ANY}|probe|Platform/Windows|network file mutex clock uptime atomics"
     "StdAtomic|SOLIDSYSLOG_STDATOMIC|${HAVE_STDATOMIC_H}|probe|Platform/StdAtomic|atomics"
     "OpenSsl|SOLIDSYSLOG_OPENSSL|${OpenSSL_FOUND}|probe|Platform/OpenSsl|tls"
     "MbedTls|SOLIDSYSLOG_MBEDTLS|${HAVE_MBEDTLS_DIR}|upstream|Platform/MbedTls|tls"
     "LwipRaw|SOLIDSYSLOG_LWIPRAW|${HAVE_LWIP_PATH}|upstream|Platform/LwipRaw|network"
     "LwipSocket|SOLIDSYSLOG_LWIPSOCKET|${HAVE_LWIP_PATH}|upstream|Platform/LwipSocket|network"
     "PlusTcp|SOLIDSYSLOG_PLUSTCP|${HAVE_FREERTOS_PLUS_TCP_PATH}|upstream|Platform/PlusTcp|network"
-    "FreeRtos|SOLIDSYSLOG_FREERTOS|${HAVE_FREERTOS_KERNEL_PATH}|upstream|Platform/FreeRtos|mutex clock"
-    "CmsisRtos|SOLIDSYSLOG_CMSISRTOS|TRUE|upstream|Platform/CmsisRtos|mutex clock"
+    "FreeRtos|SOLIDSYSLOG_FREERTOS|${HAVE_FREERTOS_KERNEL_PATH}|upstream|Platform/FreeRtos|mutex uptime"
+    "CmsisRtos|SOLIDSYSLOG_CMSISRTOS|TRUE|upstream|Platform/CmsisRtos|mutex uptime"
     "FatFs|SOLIDSYSLOG_FATFS|${HAVE_FATFS_PATH}|upstream|Platform/FatFs|file"
     "PlusFat|SOLIDSYSLOG_PLUSFAT|${HAVE_FREERTOS_PLUS_FAT_PATH}|upstream|Platform/PlusFat|file"
     "LittleFs|SOLIDSYSLOG_LITTLEFS|${HAVE_LITTLEFS_PATH}|upstream|Platform/LittleFs|file"
