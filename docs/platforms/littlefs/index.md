@@ -98,4 +98,4 @@ between them, not as qualification against your flash.
 The store rewrites the same records in rotation, which on raw flash concentrates
 erase cycles. LittleFS spreads them itself, which is the main reason to choose it
 here over a FAT filesystem on the same part. `block_cycles` in your
-`struct lfs_config` decides how eagerly; the default disables it, so set it.
+`struct lfs_config` decides how eagerly, and has no usable default, so set it.

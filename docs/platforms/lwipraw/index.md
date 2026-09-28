@@ -42,13 +42,12 @@ Your `lwipopts.h` must enable the features the adapter wraps:
 
 | Setting | For |
 |---|---|
-| `LWIP_RAW=1` | the Raw API |
 | `LWIP_UDP=1` | the UDP datagram |
 | `LWIP_TCP=1` | the TCP stream |
 | `LWIP_DNS=1` | the DNS resolver only |
 
-Also set `ARP_QUEUEING=1` (else the first datagram to an unresolved peer is
-dropped), and size `PBUF_POOL_SIZE` / `MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to
+Also set `ARP_QUEUEING=1` (else lwIP holds only the latest packet for an
+unresolved address, so earlier records in a burst are dropped), and size `PBUF_POOL_SIZE` / `MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to
 your instance counts. `LWIP_TCP_KEEPALIVE=1` is worth setting but not required -
 see [dead-peer detection](#dead-peer-detection-is-yours-to-size) below. `IP_FRAG`
 decides what becomes of a record too large for the path - see

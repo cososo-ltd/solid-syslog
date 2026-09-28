@@ -45,6 +45,7 @@ in the general case.
 
 - [Platform × capability matrix](platforms/index.md): start here. Read across a row for what a platform gives you, down a column for who provides a capability.
 - [Porting guide](porting.md): nothing shipped fits your target. The role model, the anatomy of an adapter (instance shape, the no-`malloc` static pool, the error convention), the invariants every adapter must honour, and the vtable role contracts, each with its shipped reference implementation.
+- [Port a TLS stream](tls-porting.md): wrapping a TLS library the shipped platforms do not cover, and what a port gets wrong that the contract does not spell out.
 - [The roles](roles/index.md): each role's vtable contract, and the backends that realise it.
 
 ## Compliance

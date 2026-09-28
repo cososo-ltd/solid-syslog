@@ -57,7 +57,8 @@ setting in some and separate settings in others, so the order the calls are made
 in is on the platform's own page where it matters at all.
 
 That is a default rather than a guarantee. The credentials source is handed the
-library's own configuration object and runs last, which is what lets a
+library's own configuration object and runs after the stream has set its own
+floor, which is what lets a
 deployment configure material only its backend can type - and equally lets it
 move the floor in either direction on purpose. Raising it is the common case, a
 deployment that will accept nothing below TLS 1.3 being the obvious one.
@@ -148,10 +149,10 @@ an unidentified peer.
 How a name is matched:
 
 - A DNS name is matched against the certificate's `dNSName` entries. Where the
-  certificate carries no subject alternative name at all, the Common Name is
-  used, as RFC 5425 §5.2 recommends. RFC 9525 §4.1 forbids the Common Name;
-  a deployment that wants that stricter rule issues collector certificates with
-  a subject alternative name, which is then the only thing matched.
+  certificate carries no `dNSName`, the Common Name may be used, as RFC 5425
+  §5.2 recommends. RFC 9525 §4.1 forbids the Common Name; a deployment that
+  wants that stricter rule issues collector certificates with a `dNSName`, which
+  is then the only thing matched.
 - A wildcard matches only as the whole of the left-most label, as RFC 5425 §5.2
   and RFC 9525 §6.3 require.
 - An address literal is matched against the certificate's `iPAddress` entries.

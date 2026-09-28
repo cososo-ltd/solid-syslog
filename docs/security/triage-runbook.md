@@ -109,8 +109,8 @@ intake), and are not retained beyond what the coordination requires.
 ## Non-standard reports
 
 - **Out of scope / not a vulnerability / intended behaviour**: explain the
-  reasoning, point to the relevant docs (e.g. the threat model's *caller
-  obligations*), and thank the reporter. Close the advisory as not-applicable.
+  reasoning, point to the relevant docs (e.g. the threat model's *What you
+  supply and decide*), and thank the reporter. Close the advisory as not-applicable.
 - **Root cause in an upstream dependency** (a linked TLS/crypto library):
   redirect the reporter to that project's disclosure process; SolidSyslog bundles
   none of them. Track only if `Core/` needs a compensating change.

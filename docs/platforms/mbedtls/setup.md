@@ -6,6 +6,18 @@ RFC 5425 syslog over TLS. What any TLS stream must do is under
 [Mbed TLS](index.md) page. Every config field is documented on its struct. This
 page is the order to wire them in, and what bites on the way.
 
+## What to link
+
+```cmake
+set(SOLIDSYSLOG_PLATFORMS "MbedTls;<Network>;<OsPrimitives>")
+target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::MbedTls)
+```
+
+The placeholders are whichever platforms the [capability matrix](../index.md)
+says fill the rest of what your build needs. See
+[naming your platforms](../../build-integration.md#cmake) for how the list is
+read.
+
 ## What you need
 
 - Mbed TLS built against your own `mbedtls_config.h`, with
@@ -256,8 +268,10 @@ under your `mbedtls_config.h`, dominated by the record buffers, whose defaults
 are sized for a host. Budget for every session you run concurrently, from the
 [upstream sizing guidance](https://mbed-tls.readthedocs.io/).
 
-Where Mbed TLS names an allocation failure in its return, it is reported as
-`LIBRARY_OUT_OF_MEMORY` under the category for the phase it failed in.
+Where Mbed TLS names an allocation failure in the stream's own calls, it is
+reported as `LIBRARY_OUT_OF_MEMORY` under the category for the phase it failed
+in. A credentials source reports one under the step it was on, such as
+`CLIENT_CREDENTIAL_NOT_INSTALLED`.
 
 ## Teardown
 
@@ -279,8 +293,8 @@ prefixes are dropped below. `HANDSHAKE_FAILED` and `INIT_FAILED` are
 
 | What happened | Severity | Category | Detail | Then |
 |---|---|---|---|---|
-| `Transport`, `Sleep`, `Rng` or `Credentials` left NULL | `CRITICAL` | `BAD_CONFIG` | `NULL_TRANSPORT`, `NULL_SLEEP`, `NULL_RNG`, `NULL_CREDENTIALS` | Null stream returned; nothing delivered |
-| `Rng` left NULL on a credentials source | `CRITICAL` | `BAD_CONFIG` | `NULL_RNG` | Null credentials returned; every connection refused |
+| stream config NULL, or `Transport`, `Sleep`, `Rng` or `Credentials` left NULL | `CRITICAL` | `BAD_CONFIG` | `NULL_CONFIG`, `NULL_TRANSPORT`, `NULL_SLEEP`, `NULL_RNG`, `NULL_CREDENTIALS` | Null stream returned; nothing delivered |
+| credentials config NULL, `Rng` left NULL, or a pin list with a NULL entry | `CRITICAL` | `BAD_CONFIG` | `NULL_CONFIG`, `NULL_RNG`, `NULL_PEER_FINGERPRINT` | Null credentials returned; every connection refused as `NO_PEER_AUTHORISATION` |
 | `mbedtls_ssl_config_defaults` or `mbedtls_ssl_setup` failed | `ERROR` | `INIT_FAILED` | `DEFAULTS_NOT_APPLIED`, `SESSION_INIT_FAILED` | refused |
 | Mbed TLS reported an allocation failure | `ERROR` | the phase's own: `INIT_FAILED`, `BAD_CONFIG` or `HANDSHAKE_FAILED` | `LIBRARY_OUT_OF_MEMORY` | refused. Your Mbed TLS pool, not a fault in the peer - see [Memory](#memory) |
 | a PEM length that does not count the NUL | `ERROR` for the CA, `WARNING` for the client | `BAD_CONFIG` | `PEM_NOT_TERMINATED` | CA: refused. Client: continues without it |
@@ -294,6 +308,7 @@ prefixes are dropped below. `HANDSHAKE_FAILED` and `INIT_FAILED` are
 | half a client credential | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_INCOMPLETE` | continues without it |
 | client PEM will not parse | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_NOT_PARSED` | continues without it |
 | client key does not match its certificate | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_MISMATCHED` | continues without it |
+| Mbed TLS would not take the client credential | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_NOT_INSTALLED` | continues without it |
 | collector's chain reaches no anchor | `ERROR` | `HANDSHAKE_FAILED` | `PEER_CERTIFICATE_UNTRUSTED` | refused |
 | collector's certificate matches no pin | `ERROR` | `HANDSHAKE_FAILED` | `PEER_FINGERPRINT_MISMATCHED` | refused |
 | every pin names a hash the build compiled out | `ERROR` | `HANDSHAKE_FAILED` | `FINGERPRINT_DIGEST_UNAVAILABLE` | refused |
@@ -303,5 +318,5 @@ prefixes are dropped below. `HANDSHAKE_FAILED` and `INIT_FAILED` are
 | handshake did not finish in time | `WARNING` | `HANDSHAKE_FAILED` | `HANDSHAKE_TIMEOUT` | retried |
 
 A refused connection is retried on the sender's next pass. With a store
-configured, records wait and replay when it succeeds. A successful connection
-reports nothing.
+configured, records wait and replay when it succeeds. A connection that succeeds
+reports nothing beyond the rows above marked "continues".

@@ -304,7 +304,7 @@ corruption but not an attacker, and an AEAD encrypts as well as authenticates.
 
 ## Where to go next
 
-- [Adding it to your build](build-integration.md): the capability matrix, tunables, and build wiring.
+- [Adding it to your build](build-integration.md): tunables and build wiring. The capability matrix is on [Platforms](platforms/index.md).
 - [Integrating with lwIP (Raw API)](platforms/lwipraw/setup.md) and [FreeRTOS-Plus-FAT](platforms/plusfat/setup.md): worked ports of the networking and file roles.
 - [Port a TLS stream](tls-porting.md): the TLS roles, which add a credentials role and a fingerprint module to the Stream contract.
 - [Naming conventions](NAMING.md) and [MISRA deviations](misra-deviations.md): the rules Tier 1/2 adapter code follows.

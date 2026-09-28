@@ -423,8 +423,8 @@ Every non-hidden configure preset `CMakePresets.json` declares.
 |---|---|
 | `debug` | Standard debug build — primary development preset |
 | `clang-debug` | Clang build — portability check against GCC |
-| `sanitize` | ASan + UBSan — run regularly during development |
-| `coverage` | lcov/genhtml — 100% line and branch required |
+| `sanitize` | ASan + UBSan — CI's job, not part of the pre-push budget |
+| `coverage` | lcov/genhtml — 100% line and branch is the target; CI gates at 90% |
 | `tidy` | clang-tidy — all warnings treated as errors |
 | `cppcheck` | cppcheck static analysis |
 | `iwyu` | include-what-you-use — advisory, not a pre-push gate |
@@ -452,7 +452,7 @@ their own BDD target — [docs/builds.md](docs/builds.md) gives each one's comma
 ```text
 Core/Interface/     — Public headers of the core library. No implementation. This is the API boundary.
 Core/Source/        — Core library implementation. Compiled into a static library.
-Platform/           — Platform-specific code (Posix, Windows, OpenSsl) — each a subfolder with its own Interface/ and Source/.
+Platform/           — Platform-specific code — one subfolder per platform pack, each with its own Interface/ and Source/. docs/platforms/index.md lists them.
 Tests/              — CppUTest unit tests. Never link production code directly; always via the library.
 Tests/Support/      — Shared test-support library: fakes for the platform and vendor seams (socket, clock, mq, config lock, error handler, OpenSSL, Mbed TLS, Winsock, and the FreeRtosFakes / LwipFakes / FatFsFakes / PlusFatFakes subtrees), plus SafeString and the syslog field parser. Linked by test executables only, never by the production library.
 Tests/Bdd/Targets/  — BDD target code unit tests (BddTargetTests executable).
@@ -716,7 +716,9 @@ The repository-root documents are outside this rule rather than an exception to
 it. `README.md`, `SECURITY.md`, `SUPPORT.md` and `LICENSE.md` are read on GitHub
 as well as published into the site by `hooks/root_pages.py`, so their links stay
 repo-relative; `hooks/source_links.py` rewrites whatever escapes `docs/` to a
-canonical URL at build time.
+canonical URL at build time. A link from one of them to a root document the site
+does not publish (`CONTRIBUTING.md`, say) is rendered as plain text by
+`root_pages.py`, deliberately, rather than sent to the host.
 
 Pointing the other way, **a page under `docs/` links a root document by its
 repo-relative path**, counted from that page's own directory — `../LICENSE.md`
@@ -887,6 +889,7 @@ See [`docs/containers.md`](docs/containers.md) for the full image reference, Doc
 and switching procedure.
 
 Images are referenced by digest (`@sha256:…`) in `.github/workflows/ci.yml`,
+`.github/workflows/docs-bundle.yml`, `.github/workflows/lint-workflows.yml`,
 `.devcontainer/docker-compose.yml` and `ci/docker-compose.bdd.yml` alike. A
 `sha-<short>` tag names the source commit that built the image; it is not a
 content digest and the registry may repoint it, which is why the digest is what

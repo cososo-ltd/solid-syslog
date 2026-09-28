@@ -3,8 +3,9 @@
 ## Images in use
 
 Every reference in `.github/workflows/ci.yml`,
-`.github/workflows/lint-workflows.yml`, `.devcontainer/docker-compose.yml` and
-`ci/docker-compose.bdd.yml` is pinned by digest - `<repo>@sha256:…`. The tag
+`.github/workflows/docs-bundle.yml`, `.github/workflows/lint-workflows.yml`,
+`.devcontainer/docker-compose.yml` and `ci/docker-compose.bdd.yml` is pinned by
+digest - `<repo>@sha256:...`. The tag
 below is the readable handle; the digest in the files is what actually resolves.
 The tag is kept alongside each reference: as a trailing comment on a `container:`
 or Compose `image:` key, and in the comment above the step for a `docker run`
@@ -13,7 +14,7 @@ not repeated here, so there is one authoritative copy per reference and nothing
 to drift.
 
 For the same reason the table says what each image is for rather than listing
-what uses it. Those three files already state that executably, and a prose copy
+what uses it. Those files already state that executably, and a prose copy
 of the answer can only fall behind them - which it twice did, once when the lwIP
 lanes arrived and once when the consumer-smoke ones did. Grep the image name to
 find its consumers.
@@ -68,8 +69,8 @@ stacks' unit tests, without reconfiguring. The configure says so:
 ```
 
 To work in one stack only, deselect the other with its own switch
-(`-DSOLIDSYSLOG_PLUSTCP=OFF` or `-DSOLIDSYSLOG_LWIPRAW=OFF`), which drops that
-platform and its tests together. The lwIP lint lanes do exactly this.
+(`-DSOLIDSYSLOG_PLUSTCP=OFF`, or `-DSOLIDSYSLOG_LWIPRAW=OFF` with
+`-DSOLIDSYSLOG_LWIPSOCKET=OFF`), which drops that platform and its tests together. The lwIP lint lanes do exactly this.
 
 Which BDD ELF a *cross* build produces is separate, and maintainer-only -
 `SOLIDSYSLOG_BDD_TARGET=FREERTOS_PLUSTCP` (default), `FREERTOS_LWIP` or
@@ -123,7 +124,7 @@ When a new image tag is available:
 | `cpputest-freertos` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `docs/containers.md` |
 | `cpputest-freertos-cross` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
 | `behave` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/bdd.md`, `docs/containers.md` |
-| `mkdocs-mkdoxy` | `.github/workflows/ci.yml`, `docs/containers.md` |
+| `mkdocs-mkdoxy` | `.github/workflows/ci.yml`, `.github/workflows/docs-bundle.yml`, `docs/containers.md` |
 | `markdownlint-cli2` | `.github/workflows/ci.yml`, `docs/local-checks.md`, `docs/containers.md` |
 | `actionlint` | `.github/workflows/lint-workflows.yml`, `docs/containers.md` |
 | `syslog-ng` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
@@ -160,7 +161,8 @@ without the others. To check that invariant across the digest-pinned files:
 
 ```bash
 grep -rhno 'ghcr.io/cososo-ltd/[a-z-]*@sha256:[0-9a-f]*\|balabit/syslog-ng@sha256:[0-9a-f]*\|davidanson/markdownlint-cli2@sha256:[0-9a-f]*\|rhysd/actionlint@sha256:[0-9a-f]*' \
-  .github/workflows/ci.yml .github/workflows/lint-workflows.yml \
+  .github/workflows/ci.yml .github/workflows/docs-bundle.yml \
+  .github/workflows/lint-workflows.yml \
   .devcontainer/docker-compose.yml ci/docker-compose.bdd.yml \
   | sed 's/^[0-9]*://' | sort -u
 ```

@@ -8,8 +8,18 @@ as long as the library holds one.
 
 ## Build
 
-Compile LittleFS's `lfs.c` and `lfs_util.c` into your target and link
-`SolidSyslog::LittleFs`, which carries the adapter's own sources.
+```cmake
+set(SOLIDSYSLOG_PLATFORMS "LittleFs;<Network>;<OsPrimitives>")
+target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::LittleFs)
+```
+
+The placeholders are whichever platforms the [capability matrix](../index.md)
+says fill the rest of what your build needs. See
+[naming your platforms](../../build-integration.md#cmake) for how the list is
+read.
+
+Compile LittleFS's `lfs.c` and `lfs_util.c` into your target;
+`SolidSyslog::LittleFs` carries the adapter's own sources.
 
 LittleFS's headers are built upstream with a narrower warning set than this
 library's: `lfs_util.h` does not compile under `-Wsign-conversion`. Add the tree
@@ -43,9 +53,9 @@ the adapter cannot tell two callers apart.
 `cache_size` makes Create return the Null file and raise a `CRITICAL`. Size it
 from the same constant you mount with rather than a number typed twice.
 
-**`block_cycles` defaults to no wear levelling.** LittleFS disables dynamic wear
-levelling unless you set it, and a store that rewrites records in rotation is
-exactly the workload that needs it. Set it to a few hundred.
+**`block_cycles` has no usable default.** LittleFS asserts that it is not zero,
+and `-1` disables dynamic wear levelling - which a store that rewrites records in
+rotation needs. Set it to a few hundred.
 
 **A mount is not the adapter's to make.** If the filesystem is unmounted while a
 file is open, every later call fails through LittleFS rather than through the

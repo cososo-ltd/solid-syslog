@@ -193,17 +193,20 @@ outlive it.
 `&SolidSyslogOpenSslPemFileCredentialsErrorSource`. `event->Detail` is a code
 from `SolidSyslogTlsStreamErrors.h` or `SolidSyslogTlsCredentialsErrors.h`;
 the `SOLIDSYSLOG_TLS_STREAM_ERROR_` and `SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_`
-prefixes are dropped below. `HANDSHAKE_FAILED` is
-`SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED`.
+prefixes are dropped below. `HANDSHAKE_FAILED` and `INIT_FAILED` are
+`SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED` and
+`SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED`.
 
 | What happened | Severity | Category | Detail | Then |
 |---|---|---|---|---|
-| `Transport`, `Sleep` or `Credentials` left NULL | `CRITICAL` | `BAD_CONFIG` | `NULL_TRANSPORT`, `NULL_SLEEP`, `NULL_CREDENTIALS` | Null stream returned; nothing delivered |
+| stream config NULL, or `Transport`, `Sleep` or `Credentials` left NULL | `CRITICAL` | `BAD_CONFIG` | `NULL_CONFIG`, `NULL_TRANSPORT`, `NULL_SLEEP`, `NULL_CREDENTIALS` | Null stream returned; nothing delivered |
+| credentials config NULL, or a pin list with a NULL entry | `CRITICAL` | `BAD_CONFIG` | `NULL_CONFIG`, `NULL_PEER_FINGERPRINT` | Null credentials returned; every connection refused as `NO_PEER_AUTHORISATION` |
+| OpenSSL could not create the context or the session | `ERROR` | `INIT_FAILED` | `CONTEXT_INIT_FAILED`, `SESSION_INIT_FAILED` | refused |
 | CA bundle will not load | `ERROR` | `BAD_CONFIG` | `TRUST_ANCHORS_NOT_LOADED` | connection refused |
-| neither a CA bundle nor a pin | `ERROR` | `BAD_CONFIG` | `NO_PEER_AUTHORISATION` | refused |
+| neither a CA bundle nor a pin, or a cipher policy that let the collector present no certificate | `ERROR` | `BAD_CONFIG` | `NO_PEER_AUTHORISATION` | refused |
 | a pin not in the RFC 5425 form | `ERROR` | `BAD_CONFIG` | `FINGERPRINT_MALFORMED` | refused |
 | a pin naming `sha-1` | `WARNING` | `BAD_CONFIG` | `FINGERPRINT_SHA1` | continues |
-| `CipherList` or `CipherSuites` selects nothing | `ERROR` | `BAD_CONFIG` | `CIPHER_POLICY_REJECTED` | refused |
+| `CipherList` or `CipherSuites` rejected by OpenSSL | `ERROR` | `BAD_CONFIG` | `CIPHER_POLICY_REJECTED` | refused |
 | no `ServerName` and no pin | `WARNING` | `BAD_CONFIG` | `SERVER_NAME_NOT_SET` | continues, chain-authenticated only |
 | a non-empty `ServerName` that begins with a dot, or will not install | `ERROR` | `BAD_CONFIG` | `SERVER_NAME_NOT_APPLIED` | refused |
 | half a client credential | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_INCOMPLETE` | continues without it |
@@ -218,5 +221,5 @@ prefixes are dropped below. `HANDSHAKE_FAILED` is
 | handshake did not finish in time | `WARNING` | `HANDSHAKE_FAILED` | `HANDSHAKE_TIMEOUT` | retried |
 
 A refused connection is retried on the sender's next pass. With a store
-configured, records wait and replay when it succeeds. A successful connection
-reports nothing.
+configured, records wait and replay when it succeeds. A connection that succeeds
+reports nothing beyond the rows above marked "continues".

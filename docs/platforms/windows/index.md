@@ -4,7 +4,7 @@
 ([Winsock documentation](https://learn.microsoft.com/en-us/windows/win32/winsock/windows-sockets-start-page-2)).
 
 Fills the Resolver, Datagram, Stream, File, Mutex and AtomicCounter
-[roles](../../roles/index.md), plus the clock / hostname / process-id / sleep
+[roles](../../roles/index.md), plus the clock / hostname / process-id / sleep / sysUpTime
 callbacks.
 
 ## What it ships

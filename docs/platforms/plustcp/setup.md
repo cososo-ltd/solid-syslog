@@ -9,7 +9,7 @@ structs themselves.
 The stack is configured by a header you own, so the adapters compile inside
 your target against your `FreeRTOSIPConfig.h`. This platform fills the network
 role only, so select it alongside whichever platform supplies your mutex and
-clock - the [capability matrix](../index.md) shows which platforms fill those:
+uptime - the [capability matrix](../index.md) shows which platforms fill those:
 
 ```cmake
 set(SOLIDSYSLOG_PLATFORMS "PlusTcp;<OsPrimitives>")
@@ -17,7 +17,7 @@ target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::PlusTcp)
 ```
 
 `<OsPrimitives>` is whichever platform the [capability matrix](../index.md)
-says fills the Mutex and clock roles on your target - see
+says fills the OS primitives on your target - see
 [naming your platforms](../../build-integration.md#cmake) for how the list is
 read.
 

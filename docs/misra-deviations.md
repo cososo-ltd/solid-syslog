@@ -12,7 +12,7 @@ justifies it. A **tool limitation** is not: the code complies, cppcheck-misra
 reports a finding anyway, and the entry explains why the report is wrong. Both
 are recorded here because a suppression exists either way, and the authorisation
 for a suppression belongs in one place. Counting the entries is therefore not a
-count of departures: seven of the entries record a departure. Where the
+count of departures; each entry states which kind it is. Where the
 distinction does not matter, the words *deviation* and *entry* are used
 interchangeably below.
 
@@ -1025,28 +1025,28 @@ Raised 2026-05-15, approved 2026-05-16 by the project owner, David Cozens. Recor
 
 ### Construct
 
-`Core/Source/SolidSyslogFileBlockDevice.c:20` declares
+`Core/Source/SolidSyslogFileBlockDevice.c:24` declares
 `static const char FILE_EXTENSION[] = ".log"`. The constant is the
 single source of truth for the on-disk filename extension and is
 referenced from two places in the translation unit:
 
-1. The file-scope enum at line 25 - `sizeof(FILE_EXTENSION) - 1U`
+1. The file-scope enum at line 29 - `sizeof(FILE_EXTENSION) - 1U`
    contributes to `FILENAME_SUFFIX`, which in turn computes
    `MAX_PREFIX_LENGTH` (an integer constant expression consumed by
    the formatter at the call site).
-2. `FileBlockDevice_FormatBlockFilename` at line 214 - both the
+2. `FileBlockDevice_FormatBlockFilename` at line 218 - both the
    bytes pointer and the runtime length are derived from the same
    constant.
 
 cppcheck-misra's 8.9 tracker counts only function-scope references.
-The file-scope enum reference at line 25 is invisible to it, so it
-sees a single function reference (line 214) and reports the constant
+The file-scope enum reference at line 29 is invisible to it, so it
+sees a single function reference (line 218) and reports the constant
 as having "block-scope-only" usage - even though moving it into the
 function would break the enum's compile-time `sizeof()` evaluation.
 
 ### Scope
 
-`Core/Source/SolidSyslogFileBlockDevice.c:20` - one declaration.
+`Core/Source/SolidSyslogFileBlockDevice.c:24` - one declaration.
 
 This entry authorises that one declaration and no other. A future sweep may
 surface the same shape elsewhere - a file-scope `static const` whose identifier

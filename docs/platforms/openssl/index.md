@@ -85,8 +85,9 @@ Both of OpenSSL's cipher lists are selectable, because it keeps two: one governs
 TLS 1.2 and below, the other TLS 1.3, and since no protocol ceiling is pinned the
 second is usually the one in force. Leave either unset and OpenSSL's own default
 stands - for TLS 1.3 that is the suite RFC 8446 makes mandatory plus the two it
-recommends. A list that selects nothing fails `Open` before any handshake and
-is reported as `CIPHER_POLICY_REJECTED`, rather than falling back.
+recommends. A list OpenSSL rejects fails `Open` before any handshake and is
+reported as `CIPHER_POLICY_REJECTED`, rather than falling back. An empty
+`CipherSuites` is not rejected: it is OpenSSL's way of turning TLS 1.3 off.
 
 The security level is pinned at 2 after the policy is applied, so a list
 carrying `@SECLEVEL=n` cannot lower it.
@@ -98,7 +99,11 @@ yet.
 Each connection is a fresh session with none supplied to resume, and the stream
 never writes early data, so it meets the contract's resumption and early-data
 obligations by construction. It refuses a request from the collector to
-renegotiate. Refusing a TLS 1.2 peer that does not acknowledge secure
+renegotiate.
+
+An expected identity given as an address literal is matched against the
+certificate's `iPAddress` entries only, never against a DNS name or Common Name
+spelling the same digits. Refusing a TLS 1.2 peer that does not acknowledge secure
 renegotiation is OpenSSL's own default from 3.0, which the stream relies on
 rather than sets.
 
