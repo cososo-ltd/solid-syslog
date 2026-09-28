@@ -74,9 +74,6 @@ today.
 | **(2)(f)** | integrity of stored and transmitted data against unauthorised modification, and *report on corruptions* | A keyed at-rest policy makes stored records tamper-evident rather than merely checksummed; TLS protects them in transit; the error handler surfaces corruption the store detects |
 | **(2)(h)** | availability of essential and basic functions, also after an incident | Buffering keeps logging off the critical path, and store-and-forward keeps records through an outage so the trail survives the incident it recorded |
 
-Where each of these sits on the integration path, and what it costs, is on [building up
-the protection you need](hardening-path.md).
-
 ## Part II — supporting your vulnerability handling
 
 Part II binds you as the manufacturer of your product, not us. What the SolidSyslog
