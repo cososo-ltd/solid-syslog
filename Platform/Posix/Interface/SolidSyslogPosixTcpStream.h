@@ -42,8 +42,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Draw a TCP stream from the pool; the config's GetConnectTimeoutMs bounds
      *  the connect (see the file overview for the stream's behaviour). An
-     *  exhausted pool (default size 2, for the plain-TCP + TLS-under-TCP pair)
-     *  falls back to the shared NullStream. */
+     *  exhausted pool falls back to the shared NullStream. */
     struct SolidSyslogStream* SolidSyslogPosixTcpStream_Create(const struct SolidSyslogPosixTcpStreamConfig* config);
     /** Release the pool slot and close the socket. */
     void SolidSyslogPosixTcpStream_Destroy(struct SolidSyslogStream * base);

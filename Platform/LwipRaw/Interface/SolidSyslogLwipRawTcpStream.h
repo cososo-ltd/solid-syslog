@@ -60,8 +60,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Draw a TCP stream from the pool; the config's Sleep drives the bounded
      *  connect and its GetConnectTimeoutMs bounds it (see the file overview for
      *  the stream's behaviour). A NULL config or a NULL Sleep is reported and
-     *  falls back to the shared NullStream, as does an exhausted pool (default
-     *  size 2, for the TLS-over-plain-TCP pair). */
+     *  falls back to the shared NullStream, as does an exhausted pool. */
     struct SolidSyslogStream* SolidSyslogLwipRawTcpStream_Create(const struct SolidSyslogLwipRawTcpStreamConfig* config
     );
     /** Release the pool slot and close the connection. */
