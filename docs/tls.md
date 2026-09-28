@@ -98,8 +98,9 @@ certificate, which suits a closed network with no PKI.
 
 The form is RFC 5425 §4.2.2: an IANA hash label, a colon, then the hash of the
 DER-encoded certificate as colon-separated hex pairs. §4.2.2 publishes the pairs
-in upper case; a `Stream` accepts either case, because a pin reaches a device
-through an engineer transcribing it. Labels are from the IANA
+in upper case; a `Stream` accepts the pairs in either case, because a pin reaches
+a device through an engineer transcribing it. The label is matched exactly, in
+lower case: `SHA-256:` does not parse. Labels are from the IANA
 [Hash Function Textual Names](https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml)
 registry, hyphenated: `sha-256` and `sha-1`. Both are accepted. §4.2.2 makes
 SHA-1 mandatory to support; `sha-256` is the one to configure where the

@@ -144,6 +144,11 @@ not selectable here. TLS 1.3 moved both out of the ciphersuite, so a ciphersuite
 policy naming a curve has nowhere to go, and a certificate profile covers
 certificates rather than the handshake.
 
+Each connection is a fresh session with none supplied to resume, and the stream
+never enables early data or renegotiation, so it meets the contract's
+resumption and early-data obligations by construction and declines a request
+from the collector to renegotiate.
+
 ## Where it falls short of the contract
 
 Certificate validity is checked only where the build carries a clock, below.

@@ -44,8 +44,8 @@ repositories carry the exact figures, every stage's run report, the diff that pr
 each, and the reasoning behind it.
 
 Rounded stage by stage, the figures do not sum exactly to the cost of the whole path.
-Measured cumulatively against the same baseline, the path costs about 16.3 KB of flash and
-36.2 KB of RAM, most of the RAM being the second TLS session stage 13 opens. Take a
+Measured cumulatively against the same baseline, the path costs about 16.4 KB of flash and
+36.3 KB of RAM, most of the RAM being the second TLS session stage 13 opens. Take a
 stage's figure as the cost of that step and the example's own measurements as the cost of
 the path.
 
@@ -543,16 +543,34 @@ s_collectorPins[1] = s_collectorPins[0];
 .PeerFingerprintCount = 2U,
 .Version              = SyslogStreamVersion,
 
+/* callable from any task: each only queues the change */
 void Syslog_ProvisionNextCollectorPin(const char* pin)
 {
-    s_collectorPins[1] = pin;
-    s_streamVersion++;
+    (void) xQueueSend(s_pinChanges, &pin, 0U);
 }
 
 void Syslog_RetireCollectorPin(void)
 {
-    s_collectorPins[0] = s_collectorPins[1];
-    s_streamVersion++;
+    const char* retire = NULL;
+    (void) xQueueSend(s_pinChanges, &retire, 0U);
+}
+
+/* service task only, before each SolidSyslog_Service */
+void Syslog_ApplyPinChanges(void)
+{
+    const char* pin = NULL;
+    while (xQueueReceive(s_pinChanges, &pin, 0U) == pdTRUE)
+    {
+        if (pin != NULL)
+        {
+            s_collectorPins[1] = pin;
+        }
+        else
+        {
+            s_collectorPins[0] = s_collectorPins[1];
+        }
+        s_streamVersion++;
+    }
 }
 ```
 
@@ -561,10 +579,12 @@ reported when the credentials are created, which then hand back their Null objec
 stream's version moves whenever the pins do; the sender checks it before every record and
 reconnects when it has moved, so new pins apply without a restart.
 
-Both calls store a pointer rather than copying the pin, so the pin must outlive the
+The pins are stored as pointers rather than copies, so a pin must outlive the
 credentials, as the field requires; the example's come from its credential store. And
 the service task reads the version before every record and the pins at each
-connection, so make these calls from the service task, or synchronise them with it.
+connection, so a change has to reach them on that task. The example queues each request
+and applies it before each call to `SolidSyslog_Service`; making the change on the
+service task directly works as well.
 
 Crossing a renewal, the handler sees delivery fail and recover: the collector restarts
 with its renewed certificate and drops the session, the record logged at that moment is
@@ -577,8 +597,8 @@ device.
 certificate with an expiry date will be. The alternative is provisioning every device at
 the moment the collector switches.
 
-**Cost.** Flash ~500 B, RAM ~10 B. Part of the flash is the example's renewal sequence
-rather than the library.
+**Cost.** Flash ~600 B, RAM ~90 B, most of the RAM being the queue. Part of the flash
+is the example's renewal sequence rather than the library.
 
 ## Stage 15: Protect what is at rest
 
@@ -743,7 +763,7 @@ collector certificate renewed by the same CA still crosses as it did at stage 14
 **When you need it.** When the site runs a PKI and its policy requires every peer to
 chain to it. Where there is no site PKI, the pin from stage 13 is complete on its own.
 
-**Cost.** Flash ~120 B, RAM negligible. The chain itself costs nothing measurable on the
+**Cost.** Flash ~100 B, RAM negligible. The chain itself costs nothing measurable on the
 example: the collector's certificate is already parsed to compute its fingerprint, and the
 CA is one the device already holds for its broker session. The flash is the pipeline
 element's new parameter.

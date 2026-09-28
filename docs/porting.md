@@ -28,7 +28,8 @@ implementation of one role for one platform (`SolidSyslogPosixMutex`,
 `SolidSyslogLwipRawDatagram`, ...).
 
 Every role has a Core Null implementation
-(`SolidSyslogNull<Role>_Get()`) whose methods are safe no-ops. Omit an adapter
+(`SolidSyslogNull<Role>_Get()`, or `SolidSyslogNullSd_Get()` for
+StructuredData) whose methods are safe no-ops. Omit an adapter
 and the Null object stands in: nothing dangles, and Core's algorithms keep
 running against a well-behaved do-nothing. So porting is additive: you provide
 the roles your deployment needs and leave the rest to their Nulls. You never edit
@@ -167,7 +168,7 @@ allow it.
   process-global state: touch only what you were given, so the library drops
   into a process already using that upstream elsewhere.
 - A Null must be safe to call. Whatever your role's Null returns - each is
-  documented on its own `SolidSyslogNull<Role>.h` - it must let Core's algorithm
+  documented in its own header - it must let Core's algorithm
   proceed sanely: drop-on-the-floor where a drop is harmless, `false` where the
   caller has an error path to run.
 - Bounded blocking. Anything that can wedge (a `connect`, a handshake) is
