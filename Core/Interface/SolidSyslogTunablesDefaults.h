@@ -162,9 +162,7 @@
 
 /**
  * Role pool: Mutex. Number of mutex instances the library's internal static
- * pool can simultaneously hold, across whichever implementation is compiled
- * in - SolidSyslogPosixMutex (pthread_mutex_t), SolidSyslogWindowsMutex
- * (CRITICAL_SECTION), or SolidSyslogFreeRtosMutex (StaticSemaphore_t).
+ * pool can simultaneously hold, across whichever implementation is compiled in.
  *
  * Default 1 - most integrators wire a single mutex into a CircularBuffer or
  * other thread-safe primitive. Targets that need more (e.g. a separate
@@ -184,9 +182,7 @@
 /**
  * Role pool: Datagram (UDP transport). Number of datagram instances the
  * library's internal static pool can simultaneously hold, across whichever
- * implementation is compiled in - SolidSyslogPosixDatagram,
- * SolidSyslogWinsockDatagram, SolidSyslogPlusTcpDatagram, or
- * SolidSyslogLwipRawDatagram.
+ * implementation is compiled in.
  *
  * Default 1 - almost all integrators wire a single datagram into a UdpSender.
  * Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is genuinely
@@ -205,9 +201,7 @@
 /**
  * Role pool: Resolver. Number of resolver instances the library's internal
  * static pool can simultaneously hold, across whichever implementation is
- * compiled in - SolidSyslogPosixResolver, SolidSyslogWinsockResolver,
- * SolidSyslogPlusTcpResolver, SolidSyslogLwipRawResolver, or
- * SolidSyslogLwipRawDnsResolver.
+ * compiled in.
  *
  * Default 1 - almost all integrators wire a single resolver shared across
  * their Senders. If a build wires two resolver implementations into one
@@ -226,8 +220,7 @@
 
 /**
  * Role pool: File. Number of file instances the library's internal static
- * pool can simultaneously hold, across whichever implementation is compiled
- * in - SolidSyslogPosixFile, SolidSyslogWindowsFile, or SolidSyslogFatFsFile.
+ * pool can simultaneously hold, across whichever implementation is compiled in.
  *
  * Default 1 - almost all integrators wire a single file into a
  * FileBlockDevice. Integrators using FileBlockDevice with BlockStore may
@@ -247,15 +240,13 @@
 /**
  * Role pool: TCP stream. Number of TCP stream instances the library's
  * internal static pool can simultaneously hold, across whichever
- * implementation is compiled in - SolidSyslogPosixTcpStream,
- * SolidSyslogWinsockTcpStream, SolidSyslogPlusTcpTcpStream, or
- * SolidSyslogLwipRawTcpStream.
+ * implementation is compiled in.
  *
  * Default 2 - common multi-transport wirings combine a plain TCP stream with
  * a second TCP stream that underlies a TLS stream (TLS wraps an injected
- * Stream as its byte transport), so a pool of 1 would silently fall the
- * second Create back to NullStream. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE
- * for wirings that need more.
+ * Stream as its byte transport), so with a pool of 1 the second Create falls
+ * back to NullStream and reports POOL_EXHAUSTED. Bump via
+ * SOLIDSYSLOG_USER_TUNABLES_FILE for wirings that need more.
  *
  * Floor: 1. Sub-floor values rejected at compile time.
  */
@@ -355,9 +346,9 @@
  * Default 2 - common multi-transport wirings combine a plain TCP
  * stream sender with a TLS stream sender behind a SwitchingSender so
  * a TLS failure can fall back to plain TCP (or vice-versa). A pool of
- * 1 would starve the second branch and silently resolve it to the
- * shared SolidSyslogNullSender. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE
- * for wirings that need more.
+ * 1 would starve the second branch, resolving it to the shared
+ * SolidSyslogNullSender and reporting POOL_EXHAUSTED. Bump via
+ * SOLIDSYSLOG_USER_TUNABLES_FILE for wirings that need more.
  *
  * Floor: 1. Sub-floor values rejected at compile time.
  */
