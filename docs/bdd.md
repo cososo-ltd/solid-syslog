@@ -63,7 +63,7 @@ through the QEMU UART (`-serial stdio`).
 
 | File | Purpose |
 |---|---|
-| `Bdd/syslog-ng/syslog-ng.conf` | syslog-ng configuration - UDP source, key=value template output |
+| `Bdd/syslog-ng/syslog-ng.conf` | syslog-ng configuration - UDP, TCP, TLS and mutual-TLS sources, a TLS source the target cannot chain to, key=value template output |
 | `ghcr.io/cososo-ltd/behave` | GHCR image - Debian trixie + Python + Behave ([source](https://github.com/cososo-ltd/BehaveDocker)) |
 | `Bdd/output/` | Shared directory - syslog-ng writes here, Behave reads |
 | `Bdd/features/` | Gherkin feature files and step definitions |

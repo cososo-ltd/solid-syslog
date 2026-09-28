@@ -10,8 +10,8 @@ BlockDevice.
 
 ## Requirements
 
-FreeRTOS - Plus-FAT is FreeRTOS-coupled. Supply an `FF_Disk_t` media driver and
-`FreeRTOSFATConfig.h`.
+Needs FreeRTOS: Plus-FAT is coupled to the kernel. Supply an `FF_Disk_t` media
+driver and `FreeRTOSFATConfig.h`.
 
 ## Security behaviour and obligations
 
