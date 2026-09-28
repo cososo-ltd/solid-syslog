@@ -832,6 +832,14 @@ jobs:
   # artifact for the deploy-docs-pages job to publish. PRs build but never deploy.
   docs-build:
     runs-on: ubuntu-latest
+    # `issues: read` and `pull-requests: read` are for the issue-link check below,
+    # which reads the state of every issue a document links. The repository is
+    # public, so a `contents: read` token may well be able to read them anyway -
+    # these are declared so the check does not depend on that staying true.
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -858,6 +866,16 @@ jobs:
       # compiled.
       - name: Check the paths and symbols documents and build files name exist
         run: python3 scripts/check_references.py
+
+      # An issue is linked while its work is outstanding, and only then, so a link
+      # to a closed one is evidence of nothing and the prose around it has usually
+      # gone stale with it. Nothing about that looks wrong on the page - the 0.1.0
+      # audit found ten, all pointing at work finished months earlier. Needs a
+      # token because it reads each issue's state from the API.
+      - name: Check every issue a document links is still open
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/check_issue_links.py
 
       # Guard the build hooks against regression — the source-link rewrite's
       # Markdown parsing, and the meta-description map's nav validation.

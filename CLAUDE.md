@@ -107,15 +107,21 @@ The `SolidSyslog` project board (`gh project list --owner DavidCozens` → proje
 
 Project workflows keep status, but **not membership**. Opening a pull request that
 links the issue moves it to `In Progress` and closing it sets `Done`, both unassisted.
-Adding the story to the board is a manual step: *Auto-add sub-issues to project* reports
-itself enabled and does not fire, observed on 2026-08-09 and again on 2026-09-19 when
-eleven `addSubIssue`-linked stories all stayed off. Nothing that has no parent belongs on
-the board anyway, so a chore or docs issue raised without an epic stays off it.
+Adding the story to the board is a manual step, and stays one. *Auto-add sub-issues to
+project* fires when an issue **already on the board** gains a sub-issue, and no epic is
+ever a board item here, so it has no parent to watch and cannot fire at all. That
+automation and the convention below are mutually exclusive, which is why it reports
+itself enabled and correctly configured while nothing reaches the board. Nothing that
+has no parent belongs on the board anyway, so a chore or docs issue raised without an
+epic stays off it.
 
 Add a story with `addProjectV2ItemById`, then set its status — the mutations are
 under **Adding to the board, and repairing it by hand** below, which is the routine
-path rather than the exception. #862 tracks getting the automation working; until it
-closes, assume the manual add.
+path rather than the exception. *Auto-add to project* is the built-in that would
+replace the manual step, since it matches a filter rather than a parent and
+`is:issue is:open label:story` expresses the convention exactly — but project
+workflows cannot be written through the API, so adopting it is a change in the
+project UI that nobody has made. Assume the manual add.
 
 Confirm any of that by reading the board rather than the workflow list — an automation
 being enabled says nothing about which field it writes, and the API exposes each
@@ -241,7 +247,7 @@ For every new story:
 
 3. Add it to the board with `addProjectV2ItemById` and set `Status` to `Todo` — see
    **Adding to the board, and repairing it by hand** below. The sub-issue link groups
-   it into the right swimlane; it does not put it on the board (#862).
+   it into the right swimlane; it does not put it on the board.
 
 Do **not** add the parent epic — it is not an item.
 
@@ -575,8 +581,8 @@ actually is:
   change, adopting it in one file creates the inconsistency rather than curing
   one - say so, and make it a decision taken once for everywhere or not at all.
 - **A convention already ruled on is not rot.** Some tree-wide idioms have been
-  examined and deliberately kept; the pool-test create/destroy fixture is one
-  (#789). Check before treating a widespread pattern as a defect.
+  examined and deliberately kept; the pool-test create/destroy fixture is one.
+  Check before treating a widespread pattern as a defect.
 
 ### Characters in source
 
@@ -701,6 +707,11 @@ git history already holds. A comment or a page that names a closed issue is a
 defect to fix on the next touch. External references — an upstream project's
 issue or pull request — are citations rather than history, and stay.
 
+One document is exempt. `docs/misra-deviations.md` records, per deviation, when
+and under what review it was accepted; that provenance is part of the record
+rather than history about how the code came to be. Its story and issue
+references stay, and `scripts/check_issue_links.py` skips the file.
+
 The repository-root documents are outside this rule rather than an exception to
 it. `README.md`, `SECURITY.md`, `SUPPORT.md` and `LICENSE.md` are read on GitHub
 as well as published into the site by `hooks/root_pages.py`, so their links stay
@@ -785,9 +796,9 @@ code should follow them; reviewers should call out drift.
 ## Callback Conventions
 
 The library is migrating callbacks toward a `void* context` parameter. The migration is
-**opportunistic per-class** — not a sweep — so older context-less callbacks
-(`SolidSyslogClockFunction`, `SolidSyslogStringFunction`, `SolidSyslogStoreFullCallback`, etc.)
-keep their current shape until the class that owns them is next touched.
+**opportunistic per-class** — not a sweep — so a callback that has not got one keeps its
+current shape until the class that owns it is next touched. The public headers say which
+those are; a list here would only go stale.
 
 **For new callbacks:**
 
@@ -799,9 +810,9 @@ keep their current shape until the class that owns them is next touched.
 
 **For existing callbacks:**
 
-- Migrate at the same time as a refactor or significant modification of the owning class. For
-  example, `SolidSyslogStoreFullCallback` migrates inside the FileStore split (S18.01), not in a
-  separate sweep PR.
+- Migrate at the same time as a refactor or significant modification of the owning class,
+  never in a sweep PR of its own — the way `SolidSyslogStoreFullCallback` gained its
+  context inside the FileStore split.
 
 ## Pool Allocation (E11)
 

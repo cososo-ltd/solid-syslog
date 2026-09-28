@@ -171,7 +171,7 @@ already puts `lwip/*.h`, `FreeRTOS.h`, `mbedtls/*.h` and `ff.h` on the include
 path, and the SolidSyslog-side include dirs arrive with each platform target.
 
 The lwIP DNS resolver needs `LWIP_DNS=1`, and gates its own translation units on
-it (S33.01). It ships inside `SolidSyslog::LwipRaw` like every other lwIP
+it. It ships inside `SolidSyslog::LwipRaw` like every other lwIP
 adapter: a numeric-only build links the same target and compiles the resolver to
 nothing. See [porting.md](porting.md#depending-on-upstream-configuration).
 
