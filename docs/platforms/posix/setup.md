@@ -16,8 +16,8 @@ set(SOLIDSYSLOG_PLATFORMS "Posix")
 The message-queue buffer needs the POSIX message-queue functions, which sit in
 `librt` on glibc before 2.34 and in `libc` from 2.34 onwards. Selecting this
 platform puts `rt` on the library's public link interface, so a CMake consumer
-inherits it and has nothing to add. If you consume `libSolidSyslog.a` directly —
-a manifest build, or your own makefile — add `-lrt` yourself on the older glibc.
+inherits it and has nothing to add. If you consume `libSolidSyslog.a` directly -
+a manifest build, or your own makefile - add `-lrt` yourself on the older glibc.
 
 ## Wiring a sender
 
@@ -37,7 +37,7 @@ struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&senderConfig)
 
 For UDP, build a `SolidSyslogPosixDatagram` and a `SolidSyslogUdpSender`
 instead; the resolver and address are the same. Passing `NULL` to the TCP
-stream takes the default connect budget — supply a config to override it per
+stream takes the default connect budget - supply a config to override it per
 instance.
 
 Tear down in reverse order, and destroy everything you created.

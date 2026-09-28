@@ -611,9 +611,9 @@ hard wrap has left at the **start** of a line stays an em dash - a hyphen there 
 Markdown list marker, and converting it silently turns a sentence into a bullet.
 Rewrap the paragraph or leave the character.
 
-Pages are being converted as they are next edited rather than in a sweep, so most of
-`docs/` still carries em dashes. Convert the whole of any page you are already
-rewriting, so it is at least internally consistent.
+`docs/` is converted throughout. What remains is inside fenced blocks quoting
+tool output verbatim, which is data rather than typography. A heading's
+dash is part of its anchor: changing one changes the slug, so update every link to it.
 
 ### MISRA-load-bearing `.clang-format` settings
 

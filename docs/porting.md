@@ -42,7 +42,7 @@ adapters fits your platform.
 ## Anatomy of an adapter
 
 Take `SolidSyslogPosixMutex` as the worked example: the simplest role, but the
-shape is identical for every one. An adapter is four files:
+shape is identical for every one. An adapter is these files:
 
 | File | Holds |
 |---|---|

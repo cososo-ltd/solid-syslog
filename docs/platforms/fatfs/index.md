@@ -1,17 +1,17 @@
 # FatFs
 
 `Platform/FatFs/` wraps ChaN FatFs as the File layer
-([FatFs documentation](http://elm-chan.org/fsw/ff/)). RTOS-agnostic — bare-metal
+([FatFs documentation](http://elm-chan.org/fsw/ff/)). RTOS-agnostic - bare-metal
 or under any RTOS.
 
-Fills the [File](../../api/structSolidSyslogFile.md) role — the primitive beneath a
+Fills the [File](../../api/structSolidSyslogFile.md) role - the primitive beneath a
 BlockDevice.
 
 ## What it ships
 
 ## Requirements
 
-Your `ffconf.h`, a `diskio.c` media driver, and — if `FF_FS_REENTRANT=1` — an
+Your `ffconf.h`, a `diskio.c` media driver, and - if `FF_FS_REENTRANT=1` - an
 `ffsystem.c`.
 
 ## Security behaviour and obligations
@@ -19,7 +19,7 @@ Your `ffconf.h`, a `diskio.c` media driver, and — if `FF_FS_REENTRANT=1` — a
 ### The file layer offers no confidentiality or tamper evidence
 
 Records are written as given. Detecting modification of a stored record, or
-keeping it unreadable, is the SecurityPolicy role's job, not this one — see
+keeping it unreadable, is the SecurityPolicy role's job, not this one - see
 [at-rest cryptography](../../security/at-rest-cryptography.md).
 
 ### Durability is bounded by the write, not guaranteed by it

@@ -21,7 +21,7 @@ provenance and keep the documentation for the version they pinned (per
 Every release carries three parts, in this order. The first two are written; the
 third is generated.
 
-1. **What's in this release** — prose, plus a compliance and platform snapshot.
+1. **What's in this release** - prose, plus a compliance and platform snapshot.
    What the release is for, and what changed that an integrator would act on.
 
    This is also where a documentation change that corrected a claim an integrator
@@ -31,20 +31,20 @@ third is generated.
    **The snapshot is restated here rather than linked**, which is deliberate and
    is not the duplication the documentation rules forbid. Those rules guard
    against two *current-state* copies drifting apart. A release note is not a
-   copy — it is a frozen record with a different lifetime. The
+   copy - it is a frozen record with a different lifetime. The
    [compliance matrix](rfc-compliance.md) and the
    [platform matrix](platforms/index.md) answer *where are we now*; the release
    note answers *where were we at this version*, which nothing else records. The
    site publishes from `main` only, so a link out of an old release resolves to
    today's state and silently loses what that release actually shipped.
 
-   Where the full detail is wanted, link the **tag** rather than the branch —
+   Where the full detail is wanted, link the **tag** rather than the branch -
    `blob/vX.Y.Z/docs/rfc-compliance.md` is frozen by git even though the site is
    not.
 
    What to include:
 
-   - **RFC compliance.** State in prose what moved — a clause newly met, a
+   - **RFC compliance.** State in prose what moved - a clause newly met, a
      standard newly covered. Restate the summary table whenever a number changed;
      one line saying nothing changed when none did. Read the numbers off the
      matrix at the tag, not from memory.
@@ -59,18 +59,18 @@ third is generated.
    that almost every requirement depends on which platform components are selected
    and how they are configured, and that this includes components the integrator
    writes, which the library cannot speak for. A table lifted out of that preamble
-   claims more than the matrix does — and unlike the matrix, a release note is
+   claims more than the matrix does - and unlike the matrix, a release note is
    frozen and cannot be corrected later. So say in the release note that the
    figures are the maintainer's assessment of the library against the RFCs, that
    they depend on how the integrator configures it, and that they are neither a
    certification nor a conformance claim. One sentence is enough; omitting it is
    not.
-2. **Known limitations** — the defects and divergences shipping with the release,
+2. **Known limitations** - the defects and divergences shipping with the release,
    each linking its tracking issue. State that they were found by audit and are
    disclosed on the pages that describe the affected platform: a bare list of open
    defects reads as unfinished work, and the same facts framed as deliberate
    disclosure read as rigour.
-3. **Full changelog** — release-please's generated list.
+3. **Full changelog** - release-please's generated list.
 
 ### Getting the written parts into both places
 
@@ -79,9 +79,9 @@ parts, and nothing copies one to the other.
 
 1. Write the two written parts and paste them above the generated list in
    `CHANGELOG.md`, in the release pull request, before merging it.
-2. After the Release exists, build a file holding **all three parts** — the two
+2. After the Release exists, build a file holding **all three parts** - the two
    written ones and the generated list, which the merged `CHANGELOG.md` entry now
-   contains — and set the description from it:
+   contains - and set the description from it:
 
    ```bash
    gh release edit v<version> --notes-file <file>
@@ -101,7 +101,7 @@ re-run, and the signed assets are undisturbed.
 
 `feat` and `fix` only. `refactor`, `ci`, `chore` and `docs` are configured
 `hidden` in `release-please-config.json`, because none of them changes what a
-consumer of the library gets — refactoring is defined as preserving behaviour, and
+consumer of the library gets - refactoring is defined as preserving behaviour, and
 the other three never reach the consumer at all.
 
 Breaking changes surface in their own section regardless of the type that carried
@@ -142,7 +142,7 @@ listed above; the two written parts are added by hand in the release pull reques
    signature. The bundle is built and checked on every CI run as well, so the
    only step that waits for a release is the attachment.
 7. Signing and attachment hard-fail. The Release already exists by the time the
-   jobs run, so a failure cannot block it — it means the Release went out
+   jobs run, so a failure cannot block it - it means the Release went out
    without provenance. A red run is the signal: fix the cause and re-run the
    job (see [release verification](security/release-verification.md)).
 
@@ -181,7 +181,7 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
 - [ ] Confirm the attachments, and verify the attached SBOM, source
       hash, and both cosign signatures per
       [`security/release-verification.md`](security/release-verification.md), not
-      just that the assets are present — a bundle that is present is not yet a
+      just that the assets are present - a bundle that is present is not yet a
       bundle that verifies. Install the tool versions that page states rather
       than using whatever is already on your `$PATH`: verifying with your own
       toolchain proves the signature good but hides any drift between the guide

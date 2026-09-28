@@ -1,7 +1,7 @@
 # Platforms
 
-A platform is a set of adapters wrapping one upstream thing — a network stack, a
-TLS library, a filesystem, an OS — behind the library's vtables. Compile the ones
+A platform is a set of adapters wrapping one upstream thing - a network stack, a
+TLS library, a filesystem, an OS - behind the library's vtables. Compile the ones
 your target needs; every unfilled role falls back to a Core Null object.
 
 Read across a row for what a platform gives you, down a column for who provides a
@@ -40,7 +40,7 @@ The Buffer column is a platform-backed Buffer, which today means the POSIX
 message queue. Core ships the Passthrough and Circular buffers, so an unmarked
 row is not a gap.
 
-Store and Structured Data are roles Core fills directly — they're under
+Store and Structured Data are roles Core fills directly - they're under
 [Roles](../roles/index.md), not here.
 
 ## Bring your own
@@ -49,13 +49,13 @@ No shipped platform for your target? Filling a role is implementing one vtable.
 The [role pages](../roles/index.md) state each contract; [Porting](../porting.md)
 is the full guide.
 
-<!-- markdownlint-disable MD033 — the sticky is styled HTML (.postit-note in brand.css); md_in_html keeps its body as Markdown. -->
+<!-- markdownlint-disable MD033 - the sticky is styled HTML (.postit-note in brand.css); md_in_html keeps its body as Markdown. -->
 
 <div class="postit-note" markdown>
 **Or let us do it.**
 
-We build and support SolidSyslog platform adapters — your RTOS, network stack,
-filesystem or crypto library — and the tests that prove them.
+We build and support SolidSyslog platform adapters - your RTOS, network stack,
+filesystem or crypto library - and the tests that prove them.
 [Talk to us about it](https://www.cososo.co.uk/?service=solidsyslog#contact).
 </div>
 

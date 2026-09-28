@@ -200,13 +200,13 @@ engine as CI and CodeRabbit, via Docker (no Node needed):
 
 ```bash
 # Collect the .md files changed on this branch. git's exit status is captured
-# rather than consumed by a process substitution: if it fails — an unfetched
-# origin/main, say — the array would silently be empty, both commands below
+# rather than consumed by a process substitution: if it fails - an unfetched
+# origin/main, say - the array would silently be empty, both commands below
 # would skip, and the check would report success having linted nothing.
 # --diff-filter=ACMRT drops deletions, which would otherwise reach the linter as
 # missing files, and the array keeps paths containing spaces intact:
 diff_output=$(git diff --name-only --diff-filter=ACMRT origin/main...HEAD -- '*.md') \
-  || echo 'Cannot list changed Markdown — is origin/main fetched?' >&2
+  || echo 'Cannot list changed Markdown - is origin/main fetched?' >&2
 
 changed=()
 [[ -n "$diff_output" ]] && mapfile -t changed <<<"$diff_output"
@@ -242,7 +242,7 @@ adjust those by hand.
 - `c99`: the `build-linux-c99` lane builds the library at the C99 language
   standard on every PR. If it fails, either fix the construct or, if it
   genuinely belongs to a C11-only component, gate that component the way
-  `Platform/StdAtomic` is gated. See [builds.md](builds.md#c99-portability--c99)
+  `Platform/StdAtomic` is gated. See [builds.md](builds.md#c99-portability---c99)
 - `actionlint`: the workflow files are linted by their own lane on every PR.
   Deliberately not in the pre-push budget - an invalid workflow is caught before
   merge, and the budget is short on purpose

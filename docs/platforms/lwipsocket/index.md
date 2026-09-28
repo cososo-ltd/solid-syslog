@@ -75,8 +75,8 @@ from `SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS`, so the tunables govern this
 connection and no other in your system.
 
 How much of that the stack honours depends on one `lwipopts.h` setting.
-`LWIP_TCP_KEEPALIVE=1` makes the probe interval and count settable too, and all
-three tunables apply. Without it those two are the stack's compile-time
+`LWIP_TCP_KEEPALIVE=1` makes the probe interval and count settable too, and every
+keepalive tunable applies. Without it those two are the stack's compile-time
 constants and only the idle period is yours. Either way a silent peer is first
 probed when the idle tunable elapses, and a connection actually carrying records
 notices sooner: the write fails and the stream closes itself so the sender

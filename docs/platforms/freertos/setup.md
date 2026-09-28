@@ -43,13 +43,13 @@ struct SolidSyslogBuffer* buffer =
 
 The ring memory and the mutex must both outlive the buffer.
 
-If both calls happen on one task, pass `SolidSyslogNullMutex_Get()` — it is the
+If both calls happen on one task, pass `SolidSyslogNullMutex_Get()` - it is the
 right answer and costs nothing.
 
 ## Uptime
 
 `SolidSyslogFreeRtos_GetSysUpTime` reports hundredths of a second since boot,
-scaled from the FreeRTOS tick count. It is not wall-clock time — the clock
+scaled from the FreeRTOS tick count. It is not wall-clock time - the clock
 callback in `SolidSyslogConfig` is a separate injection point, and on a target
 with no real-time clock a timestamp the library cannot establish is emitted as
 absent rather than as a plausible wrong value.

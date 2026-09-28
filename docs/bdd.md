@@ -63,18 +63,18 @@ through the QEMU UART (`-serial stdio`).
 
 | File | Purpose |
 |---|---|
-| `Bdd/syslog-ng/syslog-ng.conf` | syslog-ng configuration — UDP source, key=value template output |
-| `ghcr.io/cososo-ltd/behave` | GHCR image — Debian trixie + Python + Behave ([source](https://github.com/cososo-ltd/BehaveDocker)) |
-| `Bdd/output/` | Shared directory — syslog-ng writes here, Behave reads |
+| `Bdd/syslog-ng/syslog-ng.conf` | syslog-ng configuration - UDP source, key=value template output |
+| `ghcr.io/cososo-ltd/behave` | GHCR image - Debian trixie + Python + Behave ([source](https://github.com/cososo-ltd/BehaveDocker)) |
+| `Bdd/output/` | Shared directory - syslog-ng writes here, Behave reads |
 | `Bdd/features/` | Gherkin feature files and step definitions |
 | `Bdd/Targets/Linux/main.c` | Linux BDD target: PosixMessageQueueBuffer + service pthread + SwitchingSender. Accepts `--facility`, `--severity`, `--transport`, `--app-name`, store-config flags |
 | `Bdd/Targets/CMakeLists.txt` | Builds the BDD target binary, linked against the SolidSyslog library |
 
 ## syslog-ng configuration
 
-The syslog-ng config (`Bdd/syslog-ng/syslog-ng.conf`) declares four `syslog()` sources —
+The syslog-ng config (`Bdd/syslog-ng/syslog-ng.conf`) declares four `syslog()` sources -
 UDP and TCP on 5514, server-auth TLS on 6514, and mutual TLS (`peer-verify(required-trusted)`)
-on 6515 — all parsing RFC 5424 natively. Every message is tee'd to both `received.log`
+on 6515 - all parsing RFC 5424 natively. Every message is tee'd to both `received.log`
 (catch-all) and a per-transport log file (`received_udp.log`, `received_tcp.log`,
 `received_tls.log`, `received_mtls.log`) using a key=value template:
 
@@ -134,22 +134,22 @@ etc.) without rewriting feature tags.
 | `@tcp` | Needs TCP transport (RFC 6587 framing) |
 | `@tls` | Needs TLS transport (RFC 5425, server-auth) |
 | `@mtls` | Needs mutual TLS (client cert + key) |
-| `@buffered` | Needs a buffered wiring (CircularBuffer + service thread, PosixMessageQueueBuffer, etc.) beyond the single-task PassthroughBuffer path — e.g. file-backed block store, switching sender between transports, syslog-ng reload via the UNIX control socket. Every target binary carries a buffered wiring, so `@buffered` is not excluded by any runner. TLS and mTLS do not carry `@buffered`, because the OTel oracle provides TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
-| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target — Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the FreeRTOS pair over `SolidSyslogFatFsFile`. |
-| `@rtc` | Scenario assumes a real-time clock with synchronised wall-clock time — asserts a known absolute TIMESTAMP. Run on Linux and Windows; excluded on FreeRTOS, which models a no-RTC product per RFC 5424 §6.2.3.1. |
+| `@buffered` | Needs a buffered wiring (CircularBuffer + service thread, PosixMessageQueueBuffer, etc.) beyond the single-task PassthroughBuffer path - e.g. file-backed block store, switching sender between transports, syslog-ng reload via the UNIX control socket. Every target binary carries a buffered wiring, so `@buffered` is not excluded by any runner. TLS and mTLS do not carry `@buffered`, because the OTel oracle provides TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
+| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target - Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the FreeRTOS pair over `SolidSyslogFatFsFile`. |
+| `@rtc` | Scenario assumes a real-time clock with synchronised wall-clock time - asserts a known absolute TIMESTAMP. Run on Linux and Windows; excluded on FreeRTOS, which models a no-RTC product per RFC 5424 §6.2.3.1. |
 | `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on FreeRTOS; excluded on Linux and Windows. The complementary pair of `@rtc`. |
-| `@requires_message_size_1500` | Scenario requires `SOLIDSYSLOG_MAX_MESSAGE_SIZE` to be at least 1500 bytes — used by the UDP path-MTU clipping feature, which has to drive an oversized payload through `EMSGSIZE`. The library default is below that by design, so the Linux and Windows targets are built against the tunable override that supplies it (`tunable-override-debug` / `msvc-tunable-override`); the FreeRTOS pair runs at the default, so the gate skips the feature there. Its oversize scenario separately carries `@freertoswip`. |
+| `@requires_message_size_1500` | Scenario requires `SOLIDSYSLOG_MAX_MESSAGE_SIZE` to be at least 1500 bytes - used by the UDP path-MTU clipping feature, which has to drive an oversized payload through `EMSGSIZE`. The library default is below that by design, so the Linux and Windows targets are built against the tunable override that supplies it (`tunable-override-debug` / `msvc-tunable-override`); the FreeRTOS pair runs at the default, so the gate skips the feature there. Its oversize scenario separately carries `@freertoswip`. |
 | `@hmac` | Needs an HMAC-SHA256 at-rest policy wired in the target, so a record sealed on write is verified on replay-read. Carried alongside `@store`. |
-| `@aesgcm` | Needs an AES-256-GCM at-rest policy wired in the target — authenticated encryption rather than integrity alone. Carried alongside `@store`, and excluded on Windows, which wires no AES-GCM policy. |
+| `@aesgcm` | Needs an AES-256-GCM at-rest policy wired in the target - authenticated encryption rather than integrity alone. Carried alongside `@store`, and excluded on Windows, which wires no AES-GCM policy. |
 | `@tls13` | Scenario asserts the handshake against a server that refuses everything below TLS 1.3, so delivery alone proves the version negotiated. |
 
 Three rollout markers are also used (temporary; remove once the scenario passes):
 
 | Tag | Meaning |
 | --- | --- |
-| `@wip` | Skip everywhere — work in progress. Not currently in use on any scenario. |
-| `@windows_wip` | Skip on Windows only — should work but not yet verified. Currently on `tcp_singletask.feature` (whole feature) and one scenario in `udp_mtu.feature`. |
-| `@freertoswip` | Skip on FreeRTOS only — scenario currently fails or errors on the FreeRTOS-on-QEMU target and is gated until the relevant capability lands. Each tagged scenario is a follow-up tied to a specific gap; the tag is removed scenario-by-scenario as the gap closes. Currently on one scenario in `udp_mtu.feature` (paired with `@requires_message_size_1500`). |
+| `@wip` | Skip everywhere - work in progress. Not currently in use on any scenario. |
+| `@windows_wip` | Skip on Windows only - should work but not yet verified. Currently on `tcp_singletask.feature` (whole feature) and one scenario in `udp_mtu.feature`. |
+| `@freertoswip` | Skip on FreeRTOS only - scenario currently fails or errors on the FreeRTOS-on-QEMU target and is gated until the relevant capability lands. Each tagged scenario is a follow-up tied to a specific gap; the tag is removed scenario-by-scenario as the gap closes. Currently on one scenario in `udp_mtu.feature` (paired with `@requires_message_size_1500`). |
 
 Which runner excludes which tags is set on each Behave service's `command` in
 `ci/docker-compose.bdd.yml`, and on the Windows step in `.github/workflows/ci.yml`. Read
