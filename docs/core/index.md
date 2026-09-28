@@ -45,7 +45,8 @@ Portable [role](../roles/index.md) implementations — no platform required:
 | [`SolidSyslogTimeQualitySd`](../api/SolidSyslogTimeQualitySd_8h.md) | StructuredData — tzKnown, isSynced, syncAccuracy |
 | [`SolidSyslogOriginSd`](../api/SolidSyslogOriginSd_8h.md) | StructuredData — software, swVersion, enterpriseId, ip |
 
-Every role also has a Null — `SolidSyslogNull<Role>_Get()` —
+Every role also has a Null — `SolidSyslogNull<Role>_Get()`, or
+`SolidSyslogNullSd_Get()` for StructuredData —
 whose methods are safe no-ops. That is what an unfilled slot resolves to, and
 what a `<Class>_Create` returns when its pool is exhausted, so nothing dangles and
 nothing needs a NULL guard. See [Roles](../roles/index.md).
@@ -55,7 +56,7 @@ nothing needs a NULL guard. See [Roles](../roles/index.md).
 | Header | Provides |
 |---|---|
 | [`SolidSyslogError.h`](../api/SolidSyslogError_8h.md) | install a handler for library-internal errors; the default is a silent no-op |
-| [`SolidSyslogConfigLock.h`](../api/SolidSyslogConfigLock_8h.md) | inject a lock pair around the pool slot walks; no-ops by default, single-task safe |
+| [`SolidSyslogConfigLock.h`](../api/SolidSyslogConfigLock_8h.md) | inject a lock pair around the pool slot walks; no-ops by default, single-task safe. It does not make `SolidSyslog_Service` safe to share across tasks - see [its threading contract](../api/SolidSyslog_8h.md#function-solidsyslog_service) |
 | [`SolidSyslogTunablesDefaults.h`](../api/SolidSyslogTunablesDefaults_8h.md) | every compile-time limit, each `#ifndef`-guarded so you override without editing the library |
 
 ## Requirements

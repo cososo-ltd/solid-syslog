@@ -44,9 +44,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  earlier, never later. §7.2.3 asks that it name the generating software
          *  rather than repeat APP-NAME. */
         const char* Software;
-        /** NULL omits the swVersion PARAM. Truncated to this library's 32 decoded-byte
-         *  bound, on the same terms as Software above; RFC 5424 §7.2.4 allows 32
-         *  characters. */
+        /** The version of the software Software names - your product's, not this
+         *  library's. NULL omits the swVersion PARAM. Truncated to this library's 32
+         *  decoded-byte bound, on the same terms as Software above; RFC 5424 §7.2.4
+         *  allows 32 characters. */
         const char* SwVersion;
         /** NULL omits the enterpriseId PARAM. RFC 5424 §7.2.2 asks for your
          *  IANA-registered private enterprise number on its own - "32473", or

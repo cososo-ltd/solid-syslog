@@ -9,9 +9,10 @@ page is the order to wire them in, and what bites on the way.
 ## What you need
 
 - Mbed TLS built against your own `mbedtls_config.h`, with
-  `MBEDTLS_HAVE_TIME_DATE` on. The adapter will not build without it; the
+  `MBEDTLS_HAVE_TIME_DATE` on. The adapter will not build without it unless
+  `SOLIDSYSLOG_MBEDTLS_NO_VALIDITY_CHECK` is defined; the
   [Mbed TLS](index.md#certificate-validity-depends-on-your-build-carrying-a-clock)
-  page says why, and what a target with no clock defines instead.
+  page says why, and what defining it gives up.
 - A seeded `mbedtls_ctr_drbg_context`. The stream and both credentials sources
   take one, and one serves all of them. It must outlive everything built on it.
 - A platform supplying the TCP stream, the address and the resolver. The

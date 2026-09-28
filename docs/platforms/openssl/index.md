@@ -95,6 +95,13 @@ Key-exchange groups and signature algorithms are not selectable here. TLS 1.3
 moved both out of the ciphersuite, so a policy naming a curve has nowhere to go
 yet.
 
+Each connection is a fresh session with none supplied to resume, and the stream
+never writes early data, so it meets the contract's resumption and early-data
+obligations by construction. It refuses a request from the collector to
+renegotiate. Refusing a TLS 1.2 peer that does not acknowledge secure
+renegotiation is OpenSSL's own default from 3.0, which the stream relies on
+rather than sets.
+
 ## Where it falls short of the contract
 
 Nowhere. Every obligation under [TLS obligations](../../tls.md) is met by this
