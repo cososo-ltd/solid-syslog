@@ -31,8 +31,8 @@ Authoritative reference: [`docs/bdd.md`](../docs/bdd.md#feature-tags). Quick rec
 | `@requires_message_size_1500` | Needs `SOLIDSYSLOG_MAX_MESSAGE_SIZE >= 1500` — only the UDP path-MTU clipping feature. The authoritative entry names the runners that supply it. |
 | `@windows_wip` | Skipped on the Windows runner (typically OS-specific behaviour the OTel oracle doesn't model). |
 | `@freertoswip` | Skipped on the FreeRTOS-on-QEMU runner. Per-scenario follow-up tag for capability gaps; removed scenario-by-scenario as each gap closes. The early bring-up reasons (hardcoded `TEST_*` values, missing SD wiring, getopt-only args) have all been closed out by S08.03 + S08.04 slices. |
-| `@rtc` | Scenario assumes the device has an RTC and synchronised wall-clock time. Run on Linux/Windows (which have both). Skipped on FreeRTOS, which models a no-RTC product per RFC 5424 §6.2.3.1. |
-| `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on FreeRTOS. Skipped on Linux/Windows. The NILVALUE TIMESTAMP itself is not asserted via the oracle — syslog-ng silently substitutes receipt time for `${ISODATE}` / `${S_ISODATE}` when the wire timestamp is NILVALUE — so that case is covered by formatter unit tests. |
+| `@rtc` | Scenario assumes the device has an RTC and synchronised wall-clock time. Run on Linux/Windows (which have both). Skipped on the QEMU targets, which model a no-RTC product per RFC 5424 §6.2.3.1. |
+| `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on the QEMU targets. Skipped on Linux/Windows. The NILVALUE TIMESTAMP itself is not asserted via the oracle — syslog-ng silently substitutes receipt time for `${ISODATE}` / `${S_ISODATE}` when the wire timestamp is NILVALUE — so that case is covered by formatter unit tests. |
 | `@wip` | Globally skipped on every runner. Not currently in use on any scenario. |
 
 ## Running locally
@@ -43,7 +43,7 @@ From inside the `gcc` devcontainer:
 
 ```bash
 behave Bdd/features/syslog.feature              # one feature
-behave --tags='not @wip' Bdd/features/          # full Linux suite
+behave --tags='not @wip and not @no_rtc' Bdd/features/   # full Linux suite
 ```
 
 The target binary and oracle path default to the values
@@ -105,9 +105,11 @@ oracle on the shared loopback.
 | Job | Compose pair |
 |---|---|
 | `bdd-linux-syslog-ng` | `syslog-ng-linux` + `behave-linux` |
-| `bdd-freertos-qemu` | `syslog-ng-freertos` + `behave-freertos` (cross image w/ QEMU + Behave) |
+| `bdd-freertos-qemu-plustcp` | `syslog-ng-freertos` + `behave-freertos` (cross image w/ QEMU + Behave) |
+| `bdd-freertos-qemu-lwip` | `syslog-ng-freertos-lwip` + `behave-freertos-lwip` |
+| `bdd-cmsis-qemu-lwip` | `syslog-ng-cmsis-lwip` + `behave-cmsis-lwip` |
 | `bdd-windows-otel` | runner-direct (no compose); spawns `otelcol-contrib.exe` directly |
 
-`bdd-freertos-qemu` depends on `build-freertos-target` to upload the
-BDD target ELF as an artifact; the new job downloads it before
-`docker compose up`.
+Each QEMU job depends on its cross-build job (`build-freertos-target-plustcp`,
+`build-freertos-target-lwip`, `build-cmsis-target-lwip`) to upload the BDD target
+ELF as an artifact, and downloads it before `docker compose up`.

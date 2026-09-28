@@ -11,16 +11,6 @@ address handle a transport reads back to send. The
 
 ## What it ships
 
-| Class | Fills |
-|---|---|
-| `SolidSyslogLwipSocketAddress` | the resolved destination a transport sends to |
-| `SolidSyslogLwipSocketResolver` | Resolver, over `lwip_getaddrinfo` |
-| `SolidSyslogLwipSocketDatagram` | Datagram, for syslog over UDP |
-| `SolidSyslogLwipSocketTcpStream` | Stream, for syslog over TCP and as the byte transport under TLS |
-
-Each header's own brief states what its class does; the API reference indexes
-them all.
-
 ## What your build must enable
 
 `LWIP_SOCKET=1`, and `LWIP_NETCONN=1` with it, because lwIP builds its sockets

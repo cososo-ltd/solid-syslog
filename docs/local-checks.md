@@ -102,8 +102,8 @@ git diff --stat docs/generated/
 Three things the command is doing deliberately. The environment scrub makes a
 pack appear in a manifest because it was named rather than because the image
 happens to carry its upstream tree. `Windows` is skipped because it is
-probe-kind and cannot be selected on Linux - `build-windows-msvc` writes that
-fragment. And the last command is not regeneration but assertion: it is step 2
+probe-kind and cannot be selected on Linux - `build-windows-msvc` generates that
+fragment and checks it against the tree, and nothing of it is committed. And the last command is not regeneration but assertion: it is step 2
 above, which a clean `git diff` does not imply.
 
 The beta-stack manifest covers `Core/Source` plus the platforms named in it, so
@@ -247,8 +247,8 @@ adjust those by hand.
   Deliberately not in the pre-push budget - an invalid workflow is caught before
   merge, and the budget is short on purpose
 - Windows MSVC + BDD + integration: depend on tools you may not have
-- BDD-linux-syslog-ng, BDD-windows-otel, BDD-freertos-qemu: heavy
-  multi-container stacks
+- `bdd-linux-syslog-ng`, `bdd-windows-otel`, `bdd-freertos-qemu-plustcp`,
+  `bdd-freertos-qemu-lwip`, `bdd-cmsis-qemu-lwip`: heavy multi-container stacks
 
 If CI surfaces a finding you missed locally, fix in another commit on the
 same branch, cheaper than running every CI lane on every push.

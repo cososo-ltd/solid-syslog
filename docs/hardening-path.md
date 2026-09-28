@@ -266,6 +266,8 @@ must supply your own counter, observing the initialisation and roll-over constra
 5424 §7.3.1 places on the field: it starts at one and never reports zero. If you log
 from more than one task, that counter must increment atomically.
 
+The counter comes from C11 atomics, so add its platform to the list from stage 1.
+
 **When you need it.** If anyone needs to know that records have gone missing.
 
 **Cost.** Flash ~950 B, RAM ~65 B.
@@ -379,6 +381,8 @@ Three decisions come with it: how much you can store, which is capacity on the m
 rather than RAM; what happens when it fills - discard oldest, discard newest, or halt;
 and whether you want warning before that point, via the capacity-threshold callback.
 
+The file layer comes from your filesystem, so add its platform to the list from stage 1.
+
 The checksum here is a checksum, not tamper-evidence. It catches a truncated write or
 bit-rot; anyone who can edit a stored record can recompute it. What it buys is knowing a
 record came back the way it went in, which is the prerequisite for spooling at all.
@@ -452,7 +456,8 @@ Wrap the byte stream in TLS - here
 stream from stage 8 - and authorise the collector by the fingerprint of its certificate.
 Records can then be read only by that collector, and cannot be altered in transit. The
 collector is authenticated to the device; the device is not yet authenticated to the
-collector.
+collector. The stream comes from your TLS library, so add its platform to the list from
+stage 1.
 
 The fingerprint was provisioned at commissioning, alongside the device's other
 credentials. No CA is involved, so a site with no PKI can run it, and RFC 5425 requires

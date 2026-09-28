@@ -59,12 +59,13 @@ need - see [Worked manifest](#worked-manifest---the-beta-stack) below. CI
 regenerates these and fails on any difference, so they cannot drift from the
 tree the way a hand-maintained table would.
 
-**Some roles are callbacks rather than components.** The clock, the host name,
-the process id and a bounded sleep are function pointers on
-`SolidSyslogConfig`. Hosted platforms ship one of each ready to use; on a bare
-target you write them, and they are usually a line apiece. A sleep is required
-by the TLS adapters and by the lwIP TCP stream, which is the one that catches
-people, because it has no default.
+**Some roles are callbacks rather than components.** The clock, the host name
+and the process id are function pointers on `SolidSyslogConfig`; a bounded sleep
+is a field on the config of each stream or resolver that needs one. Hosted
+platforms ship one of each ready to use; on a bare target you write them, and
+they are usually a line apiece. A sleep is required by the TLS adapters and by
+the lwIP TCP stream and DNS resolver, which are the ones that catch people,
+because they have no default.
 
 ---
 
@@ -80,8 +81,8 @@ FetchContent_MakeAvailable(SolidSyslog)
 Named platforms are on, unnamed platforms are off - set it before
 `FetchContent_MakeAvailable`, or pass `-DSOLIDSYSLOG_PLATFORMS=...` on the
 command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIPRAW=ON`,
-`-DSOLIDSYSLOG_PLUSTCP=OFF`, …) when you want to adjust one without restating
-the list.
+`-DSOLIDSYSLOG_PLUSTCP=OFF`...), but it takes effect only when
+`SOLIDSYSLOG_PLATFORMS` is `Auto`; under a named list, edit the list.
 
 <!-- platforms: all -->
 
@@ -240,8 +241,8 @@ SolidSyslog also has `SOLIDSYSLOG_LWIP_PATH` and siblings. Those build
 headers - a consumer never sets them.
 
 See the worked target wiring in
-`Bdd/Targets/FreeRtos/` and
-`Bdd/Targets/FreeRtosLwip/` (both consume the
+`Bdd/Targets/FreeRtos/`,
+`Bdd/Targets/FreeRtosLwip/` and `Bdd/Targets/CmsisLwip/` (all consume the
 umbrellas), and the platform-specific guides:
 
 - [Integrating with lwIP (Raw API)](platforms/lwipraw/setup.md)
@@ -260,7 +261,7 @@ SOLIDSYSLOG_PLATFORMS := LwipRaw StdAtomic FreeRtos MbedTls FatFs
 include third_party/solid-syslog/solidsyslog.mk
 ```
 
-It sets five variables and defines no rules, so your build keeps its own object layout,
+It hands back five variables and defines no rules, so your build keeps its own object layout,
 flag sets and archive step:
 
 | Variable | Holds |
@@ -339,7 +340,7 @@ things:
 > Tip: adapter file groups. For an adapter named `Foo`, compile every
 > `Platform/<X>/Source/SolidSyslogFoo*.c` (the `Foo` + `FooStatic` pair) and put
 > `Platform/<X>/Source` on the include path for the `FooPrivate.h` header.
-> The matrix above lists which groups you need per role.
+> The [capability matrix](platforms/index.md) lists which groups you need per role.
 
 ---
 
@@ -404,7 +405,7 @@ For this stack that comes to:
 > `LWIP_DNS=1` is required because this stack resolves the collector by name; a
 > numeric-only build compiles the DNS resolver to nothing and does not need it.
 > The header-configured upstreams take their other settings from your config
-> headers, not from `-D`s: `lwipopts.h` (incl. `NO_SYS`, `LWIP_RAW`/`UDP`/`TCP`),
+> headers, not from `-D`s: `lwipopts.h` (incl. `NO_SYS`, `LWIP_UDP`/`TCP`),
 > `mbedtls_config.h`, `FreeRTOSConfig.h` (with
 > `configSUPPORT_STATIC_ALLOCATION=1` for the mutex), `ffconf.h`.
 
@@ -441,8 +442,9 @@ you.
 
 ### 5. Bring-your-own callbacks for this stack
 
-- Sleep: required by Mbed TLS (handshake retry) and the lwIP TCP stream
-  (bounded synchronous open). Wrap `vTaskDelay`.
+- Sleep: required by Mbed TLS (handshake retry), the lwIP TCP stream (bounded
+  synchronous open) and the lwIP DNS resolver (bounded lookup). Wrap
+  `vTaskDelay`.
 - Clock, Hostname, ProcessId: small callbacks you supply.
 - AtomicCounter: only if you want RFC 5424 sequence-ids.
 

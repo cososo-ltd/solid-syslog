@@ -223,8 +223,9 @@ which vendor fills them, while wiring the vendor's class by name.
 
 ### A platform's callbacks take the platform as their class
 
-A pack also ships plain functions that fill a `SolidSyslogConfig` callback rather
-than a class: the clock, the host name, the process id, the uptime and the sleep.
+A pack also ships plain functions that fill a callback rather than a class: the
+clock, the host name and the process id on `SolidSyslogConfig`, the uptime on the
+meta structured data, and the sleep on the configs that take one.
 These have no instance, no `Create` and no vtable, so there is no class for the
 `<Class>_` portion to name - and inventing one produces a function name with no
 content left to carry.

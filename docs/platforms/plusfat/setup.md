@@ -4,6 +4,18 @@ Giving store-and-forward a real file backend.
 [FreeRTOS-Plus-FAT](index.md) covers what the adapter fills and what it leaves
 to you. This page is what you must supply around it.
 
+## What to link
+
+```cmake
+set(SOLIDSYSLOG_PLATFORMS "PlusFat;<Network>;<OsPrimitives>")
+target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::PlusFat)
+```
+
+The placeholders are whichever platforms the [capability matrix](../index.md)
+says fill the rest of what your build needs. See
+[naming your platforms](../../build-integration.md#cmake) for how the list is
+read.
+
 ## The shape
 
 ```text

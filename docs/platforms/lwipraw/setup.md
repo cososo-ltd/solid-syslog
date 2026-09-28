@@ -6,6 +6,18 @@ Wiring the lwIP adapters so a sender delivers over UDP or TCP.
 themselves. This page is the wiring, and the one thing that is easy to get
 wrong.
 
+## What to link
+
+```cmake
+set(SOLIDSYSLOG_PLATFORMS "LwipRaw;<OsPrimitives>")
+target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::LwipRaw)
+```
+
+The placeholders are whichever platforms the [capability matrix](../index.md)
+says fill the rest of what your build needs. See
+[naming your platforms](../../build-integration.md#cmake) for how the list is
+read.
+
 ## The marshal
 
 Every Raw API call the adapters make is routed through a single hop, installed

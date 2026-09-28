@@ -3,17 +3,18 @@
 `Platform/Posix/` wraps the standard POSIX APIs - BSD sockets, pthreads, POSIX
 message queues, `clock_gettime`, stdio
 ([POSIX.1-2017 specification](https://pubs.opengroup.org/onlinepubs/9699919799/)).
-Linux is the reference target.
+It needs Linux; see the requirements below.
 
 Fills the Resolver, Datagram, Stream, Buffer, File and Mutex
-[roles](../../roles/index.md), plus the clock / hostname / process-id / sleep
+[roles](../../roles/index.md), plus the clock / hostname / process-id / sleep / sysUpTime
 callbacks.
 
 ## What it ships
 
 ## Requirements
 
-A POSIX-conformant OS; Linux is the tested target. The message-queue buffer needs
+Linux. The pack uses `CLOCK_BOOTTIME`, `IP_MTU`, `IP_MTU_DISCOVER` and
+`TCP_USER_TIMEOUT`, which POSIX does not define. The message-queue buffer needs
 POSIX message queues.
 
 ## Security behaviour and obligations

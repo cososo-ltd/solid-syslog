@@ -5,6 +5,18 @@ Wiring the adapters so a sender can resolve its destination and send to it.
 must enable; the config fields are documented on the structs themselves. This
 page is the wiring.
 
+## What to link
+
+```cmake
+set(SOLIDSYSLOG_PLATFORMS "LwipSocket;<OsPrimitives>")
+target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::LwipSocket)
+```
+
+The placeholders are whichever platforms the [capability matrix](../index.md)
+says fill the rest of what your build needs. See
+[naming your platforms](../../build-integration.md#cmake) for how the list is
+read.
+
 ## What your lwipopts.h must say
 
 ```c

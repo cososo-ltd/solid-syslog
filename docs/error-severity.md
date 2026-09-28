@@ -76,7 +76,7 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 | `TLS_STREAM_INIT_FAILED` | `ERROR` | setup fault needing a human; not split. |
 | `SECURITY_POLICY_KEY_UNAVAILABLE` | `ERROR` | key too short / unavailable: provisioned in the field by the operator / systems integrator, fixable without a code change. |
 | `SECURITY_POLICY_SEAL_FAILED` / `_OPEN_FAILED` | `ERROR` | runtime crypto operation failed. |
-| `BUFFER_BACKEND_FAILED` | `ERROR` | message-queue backend fault; not split. |
+| `BUFFER_BACKEND_FAILED` | `ERROR` | message-queue backend fault, or a record too large for a circular buffer; not split. |
 | `RESOLVER_RESOLVE_FAILED` - transient | `WARNING` | DNS may resolve on a later attempt. |
 | `RESOLVER_RESOLVE_FAILED` - unsupported family | `ERROR` | the lookup answered in a family the transports cannot send to. Permanent for that destination, so waiting does not clear it; a human changes the destination or the stack's build. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
 | `SENDER_DELIVERY_FAILED` | `WARNING` | destination outage: recoverable, store-and-forward covers it. |

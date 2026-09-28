@@ -10,7 +10,7 @@ address handle they share.
 
 ## Requirements
 
-FreeRTOS-Plus-TCP, selected at CMake time with
+FreeRTOS-Plus-TCP, selected at CMake time by
 naming `PlusTcp` in `SOLIDSYSLOG_PLATFORMS`. The resolver wraps `FreeRTOS_getaddrinfo`, so
 your `FreeRTOSIPConfig.h` needs `ipconfigUSE_DNS=1`.
 
@@ -33,14 +33,16 @@ that no resolution step exists to be poisoned.
 
 FreeRTOS-Plus-TCP does not queue datagrams while ARP resolves - a
 `FreeRTOS_sendto` to a peer that is not in the ARP cache is dropped at the IP
-layer. The datagram adapter therefore issues an ARP probe on a cache miss and
-then waits, in a `vTaskDelay` of its own, so the reply can land before it sends.
+layer. The datagram and TCP stream adapters therefore issue an ARP probe on a
+cache miss and then wait, in a `vTaskDelay` of their own, so the reply can land
+before the datagram is sent or the connection opened.
 The wait is the adapter's rather than the stack's, and is 50 ms rounded to the
-resolution your `configTICK_RATE_HZ` gives.
+resolution your `configTICK_RATE_HZ` gives. Below 20 Hz that rounds to zero
+ticks, and there is no wait.
 
 That delay is paid by whichever task made the call: the application's own thread
 on an inline wiring, or the servicing thread on a buffered one. It applies to the
-first datagram sent to a peer, and again once its cache entry ages out under
+first datagram or connection to a peer, and again once its cache entry ages out under
 `ipconfigMAX_ARP_AGE`, not to steady-state traffic. Budget for it if you are
 logging inline from a task with a deadline.
 

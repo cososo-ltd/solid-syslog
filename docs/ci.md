@@ -1,6 +1,7 @@
 # CI Pipeline
 
-GitHub Actions runs all jobs in parallel on every push and pull request to `main`.
+GitHub Actions runs these jobs on every push and pull request to `main`, in parallel,
+except where a job `needs:` another and waits for it to finish.
 
 ## Jobs
 
@@ -16,7 +17,7 @@ without renaming what's already there.
 | `sanitize-linux-gcc` | `sanitize` | ASan + UBSan - test results annotated on PR |
 | `coverage-linux-gcc` | `coverage` | Summary in Actions UI; HTML report uploaded as a downloadable run artifact |
 | `analyze-tidy` | `tidy` | clang-tidy - pass/fail with errors in job log |
-| `analyze-cppcheck` | `cppcheck` | cppcheck static analysis |
+| `analyze-cppcheck` | `cppcheck` | cppcheck static analysis, and the enforcing MISRA C:2012 addon |
 | `analyze-codeql` | - | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) - see *Code scanning* |
 | `analyze-format` | - | clang-format dry-run; fails if any file needs reformatting |
 | `analyze-iwyu` | `iwyu` | include-what-you-use; fails on missing or unused `#include` directives. Advisory - runs `continue-on-error` |
@@ -35,7 +36,7 @@ without renaming what's already there.
 | `build-linux-tunable-override` | `tunable-override-debug` | Builds against a user tunables header to prove `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults. Also builds the Linux BDD target, for the reason under [`@requires_message_size_1500`](bdd.md#feature-tags) |
 | `bdd-linux-syslog-ng` | - | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
 | `bdd-windows-otel` | - | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
-| `build-freertos-host-tdd-plustcp` | `debug` | Host-TDD of the FreeRTOS, FreeRTOS-Plus-TCP, Plus-FAT, FatFs and Mbed TLS adapters against fakes; runs inside `cpputest-freertos` (upstream sources at fixed paths) |
+| `build-freertos-host-tdd-plustcp` | `debug` | Host-TDD of the FreeRTOS, FreeRTOS-Plus-TCP, Plus-FAT, FatFs, lwIP (Raw API and Sockets API), LittleFS and Mbed TLS adapters against fakes; runs inside `cpputest-freertos` (upstream sources at fixed paths) |
 | `build-freertos-target-plustcp` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the BDD target ELF over FreeRTOS-Plus-TCP; uploads it as an artifact |
 | `build-freertos-target-lwip` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic`) |
 | `bdd-freertos-qemu-plustcp` | - | Pulls the Plus-TCP target ELF, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
@@ -45,8 +46,9 @@ without renaming what's already there.
 | `consumer-smoke-linux` | - | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
 | `consumer-smoke-freertos-cross` | - | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
 | `verify-manifest` | - | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
-| `docs-build` | - | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`; on `main`, `deploy-docs-pages` publishes it to GitHub Pages |
+| `docs-build` | - | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`, runs the documentation consistency, reference and issue-link checks and the hook tests, and rehearses the offline bundle; on `main`, `deploy-docs-pages` publishes it to GitHub Pages |
 | `actionlint` | - | Validates the workflow files themselves. In its own workflow, not a job here: a lane inside the file being validated cannot run when that file is the broken one |
+| `docs-links` | - | Checks the documentation's external links with lychee. Its own workflow (`docs-links.yml`); advisory on pull requests, failing on its weekly schedule |
 | `summary` | - | Aggregates the JUnit artifacts into a run summary. Declared `if: always()` and asserts nothing about the other jobs' results |
 
 ## Branch protection
@@ -75,13 +77,13 @@ The lane names say the platform and toolchain but not the adapter, so:
 | OpenSSL (`SolidSyslogOpenSslStream`, security policies) | `integration-linux-openssl`, `integration-windows-openssl` against real libssl |
 | Mbed TLS (`SolidSyslogMbedTlsStream`, security policies) | `integration-linux-mbedtls` against real Mbed TLS; all three QEMU BDD lanes over a real handshake |
 | FreeRTOS-Plus-TCP | `build-freertos-host-tdd-plustcp` against fakes; `bdd-freertos-qemu-plustcp` end to end under QEMU |
-| lwIP (Raw API) | `bdd-freertos-qemu-lwip` end to end under QEMU; static analysis via the `*-freertos-lwip` lanes |
-| lwIP (Sockets API) | `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
+| lwIP (Raw API) | `build-freertos-host-tdd-plustcp` against fakes; `bdd-freertos-qemu-lwip` end to end under QEMU; static analysis via the `*-freertos-lwip` lanes |
+| lwIP (Sockets API) | `build-freertos-host-tdd-plustcp` against fakes; `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
 | FreeRTOS kernel | `build-freertos-host-tdd-plustcp` against fakes; both FreeRTOS cross builds and both FreeRTOS QEMU BDD lanes |
-| CMSIS-RTOS2 | `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
+| CMSIS-RTOS2 | Unit tests in every host lane that builds `Tests/`; `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
 | ChaN FatFs | Built and analysed in the lwIP lanes; store-and-forward scenarios run in `bdd-freertos-qemu-lwip` |
-| FreeRTOS-Plus-FAT | Host-TDD against fakes in `build-freertos-host-tdd-plustcp`, and built in the Plus-TCP cross lanes |
-| LittleFS | `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsis-qemu-lwip` |
+| FreeRTOS-Plus-FAT | Host-TDD against fakes in `build-freertos-host-tdd-plustcp`, and built in the Plus-TCP cross lanes; store-and-forward scenarios run in `bdd-freertos-qemu-plustcp` |
+| LittleFS | `build-freertos-host-tdd-plustcp` against fakes; `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsis-qemu-lwip` |
 | POSIX, Windows | The `build-linux-*` and `build-windows-msvc` lanes, plus both host BDD lanes |
 | C11 atomics | Probe-selected into `libSolidSyslog.a` in the `build-linux-*` lanes, and named explicitly by both lwIP cross presets |
 
@@ -150,10 +152,12 @@ Each job is granted only the permissions it needs. Every workflow declares
 `permissions: contents: read` at the top level and no workflow grants a write scope
 there, so a job added later starts read-only rather than inheriting a write token by
 default. Write scopes are held by the jobs that need them: jobs publishing test
-results add `checks: write` and `pull-requests: write`; `deploy-docs-pages` adds
+results add `checks: write`, and only `summary` adds `pull-requests: write` to comment
+on the pull request; `deploy-docs-pages` adds
 `pages: write` and `id-token: write` to publish the documentation site to GitHub
 Pages; `analyze-codeql` adds `security-events: write` to upload its results to the
 Security tab; `sbom.yml`'s publish job adds `contents: write` and `id-token: write` to
-attach keyless-signed assets to a release; and `release-please.yml`'s job adds
-`contents: write` and `pull-requests: write` to maintain the release PR and create the
-tag.
+attach keyless-signed assets to a release, as does `docs-bundle.yml`'s publish job for
+the documentation bundle; and `release-please.yml`'s job declares `contents: write` and
+`pull-requests: write`, though the release PR and the tag are made with a GitHub App
+token rather than the job's own.
