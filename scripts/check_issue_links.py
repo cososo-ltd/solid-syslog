@@ -56,9 +56,11 @@ SKIP_DIRS = (os.path.join("docs", "generated"),)
 
 # The closing fence must repeat the opening one exactly and carry nothing but
 # whitespace, or a longer fence is closed early by a shorter line inside it and
-# the rest of the block is read as prose.
+# the rest of the block is read as prose. Either fence may be indented: a fence
+# nested in a list item sits deeper than CommonMark's three spaces in absolute
+# columns, and several pages here nest them that way.
 FENCED = re.compile(
-    r"^(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^(?P=fence)[ \t]*$",
+    r"^[ \t]*(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^[ \t]*(?P=fence)[ \t]*$",
     re.DOTALL | re.MULTILINE,
 )
 # A code span runs to the next backtick and may wrap a line, which is how
