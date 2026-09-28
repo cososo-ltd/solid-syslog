@@ -48,7 +48,8 @@ third is generated.
      standard newly covered. Restate the summary table whenever a number changed;
      one line saying nothing changed when none did. Read the numbers off the
      matrix at the tag, not from memory.
-   - **Platforms.** Name what was added and say the rest are unchanged.
+   - **Platforms.** Name what was added, then give the full list. "Unchanged"
+     is rarely true of the rest, since most releases touch them.
 
    Restating absolute numbers rather than only deltas is what keeps the series
    answerable: deltas compose badly, and one wrong delta propagates through every
