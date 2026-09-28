@@ -1,8 +1,8 @@
 # Building up the protection you need
 
 Neither the EU Cyber Resilience Act (CRA) nor IEC 62443 mandates syslog; instead they
-state capabilities — auditable events, integrity, confidentiality, availability,
-non-repudiation — and leave the realisation to you. IEC 62443 certifies systems rather
+state capabilities - auditable events, integrity, confidentiality, availability,
+non-repudiation - and leave the realisation to you. IEC 62443 certifies systems rather
 than components, and CRA obligations attach to the manufacturer and are scoped by the
 product's documented intended use. Two devices running this library can need very
 different things from it.
@@ -14,36 +14,40 @@ resources say to stop.
 ## The worked integration
 
 Every code snippet and every figure below comes from a worked integration, published in
-full:
+full for this release:
 
-- [solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example) — consumed with CMake.
-- [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make) — the same integration, consumed with Make.
+- [solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.2.0) - consumed with CMake.
+- [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.2.0) - the same integration, consumed with Make.
 
 The baseline is constructed to carry the third-party platform code a real-world device
-would already have — an RTOS, a network stack, and cryptography. A device that needs
+would already have - an RTOS, a network stack, and cryptography. A device that needs
 SolidSyslog will already have a network stack, and if its threat analysis calls for
 syslog over TLS it is likely to need TLS for other protocols too. The costs stated are
 the costs of integrating SolidSyslog with that baseline.
 
 The baseline runs FreeRTOS on a QEMU Cortex-M3 with lwIP, FatFs and Mbed TLS, built as
-C17. The integration is coded twice — once with CMake, once with Make — so the build
-process is shown in detail either way.
+C17, and holds a mutual-TLS session to a broker for as long as it runs. Its credential
+store already holds what commissioning gave it: its own client certificate, the keys for
+its storage, and the fingerprint of the site's log collector. The integration is coded
+twice - once with CMake, once with Make - so the build process is shown in detail either
+way.
 
 The same integration path applies to any combination of platforms. Every platform
-dependency — network stack, TLS library, filesystem, OS primitives, clock — is injected,
+dependency - network stack, TLS library, filesystem, OS primitives, clock - is injected,
 so you bring what you already run.
 
-**Read the figures as indications.** They are derived from the example code and rounded up.
-What a stage costs on yours depends on your components, your configuration and tuning,
-your compiler and its options, and what your application already links. The example
-repositories carry the exact figures, the diff that produced each, and the reasoning
-behind it.
+**Read the figures as indications.** They are measured on the example device, every stage
+built and run in one sweep against the same baseline and toolchain, and rounded here. What
+a stage costs on yours depends on your components, your configuration and tuning, your
+compiler and its options, and what your application already links. The example
+repositories carry the exact figures, every stage's run report, the diff that produced
+each, and the reasoning behind it.
 
-Because each stage is rounded up on its own, the stages deliberately do not add up to
-the totals quoted elsewhere: eighteen roundings-up accumulate, so the sum overshoots.
-Measured cumulatively against the same baseline, the whole path costs about 13.5 KB of
-flash rather than the ~13.6 KB the column sums to. Take a stage's figure as the cost of
-that step and the example's own measurements as the cost of the path.
+Rounded stage by stage, the figures do not sum exactly to the cost of the whole path.
+Measured cumulatively against the same baseline, the path costs about 16.3 KB of flash and
+36.2 KB of RAM, most of the RAM being the second TLS session stage 13 opens. Take a
+stage's figure as the cost of that step and the example's own measurements as the cost of
+the path.
 
 ## How to read this
 
@@ -51,14 +55,16 @@ The order of the stages is a logical way to integrate syslog in small steps, eac
 adding further capability and security. It is not prescriptive, however: you may choose
 to skip UDP and go straight to TCP, or integrate structured data earlier or later.
 
-Each stage indicates what it costs to integrate SolidSyslog. That cost includes the
-application code, the SolidSyslog components, and the incremental cost within platforms
-already integrated. When TLS is added, for instance, we include the cost of an
-additional TLS connection rather than the cost of the whole TLS library.
+The first three stages are needed by every integration. From stage 4 on, each closes
+with the question that decides whether you need it, and every stage says what it
+costs. That cost includes the application code, the SolidSyslog components, and the
+incremental cost within platforms already integrated. When TLS is added, for instance, we
+include the cost of an additional TLS connection rather than the cost of the whole TLS
+library.
 
 ---
 
-## Stage 1 — Link it in
+## Stage 1: Link it in
 
 This stage looks only at how to link SolidSyslog into your application, without calling
 any of it. There are no resource costs; it is broken out for clarity.
@@ -69,7 +75,7 @@ any of it. There are no resource costs; it is broken out for clarity.
 
 For now you need only the core and a network [platform](platforms/index.md).
 
-## Stage 2 — Make failures visible
+## Stage 2: Make failures visible
 
 Install the error handler with
 [`SolidSyslog_SetErrorHandler`](api/SolidSyslogError_8h.md#function-solidsyslog_seterrorhandler)
@@ -90,7 +96,7 @@ For more detail see [error handling and severity](error-severity.md).
 
 **Cost.** Flash ~400 B, RAM ~10 B.
 
-## Stage 3 — Create the logger, wired to nothing
+## Stage 3: Create the logger, wired to nothing
 
 Create the logger with both collaborators absent, deliberately, and read what the
 handler prints.
@@ -104,8 +110,8 @@ struct SolidSyslogConfig config = {
 struct SolidSyslog* logger = SolidSyslog_Create(&config);
 ```
 
-No `<Class>_Create` fails or returns `NULL` — a missing collaborator is substituted with
-its Null object and reported — so the only evidence is what the handler says:
+No `<Class>_Create` fails or returns `NULL` - a missing collaborator is substituted with
+its Null object and reported - so the only evidence is what the handler says:
 
 ```text
 [syslog] CRITICAL SolidSyslog bad-config (detail 1)
@@ -125,7 +131,7 @@ later.
 
 **Cost.** Flash ~650 B, RAM ~175 B.
 
-## Stage 4 — A first record on the wire
+## Stage 4: A first record on the wire
 
 This is the simplest configuration that sends a syslog message. Constructing the logger
 with [`SolidSyslog_Create`](api/SolidSyslogConfig_8h.md#function-solidsyslog_create)
@@ -178,18 +184,18 @@ valid without them; filling them in is the next stage, with a cost of its own.
 Most of the RAM is stack, and not where it looks. The record is built on the stack of
 whichever task calls `SolidSyslog_Log`, sized by `SOLIDSYSLOG_MAX_MESSAGE_SIZE`, so that
 task has to be deep enough to hold one. In the example the logging task was still at the
-RTOS minimum inherited from the baseline and had to grow. Stage 18 fits the cap and the
+RTOS minimum inherited from the baseline and had to grow. Stage 20 fits the cap and the
 stacks to the device, once every collaborator is in place and the high-water marks are
 worth trusting.
 
 **When you need it.** Every device needs this much. The question is whether UDP is
 enough: it drops records silently, and anyone on the path can read them. Stage 8 answers
-the first, stage 13 the second — treat UDP as a stepping stone to whichever your threat
+the first, stage 13 the second - treat UDP as a stepping stone to whichever your threat
 model needs.
 
-**Cost.** Flash ~3.6k, RAM ~1.7k, nearly all of it stack depth on the logging task.
+**Cost.** Flash ~3.7k, RAM ~1.7k, nearly all of it stack depth on the logging task.
 
-## Stage 5 — Name it and time it
+## Stage 5: Name it and time it
 
 The record so far carries no timestamp and no device name. Fill the RFC 5424 header
 fields from what the device already has: the clock it can read, the address on its
@@ -205,7 +211,7 @@ struct SolidSyslogConfig config = {
 ```
 
 ```text
-<134>1 2026-07-31T18:49:13.360000Z 10.0.2.15 my-device - BOOT - device started
+<134>1 2026-09-27T21:59:08.430000Z 10.0.2.15 solid-syslog-example - BOOT - device started
 ```
 
 Two details are worth getting right. Zero the timestamp struct before filling it, so a
@@ -213,17 +219,17 @@ clock that cannot answer fails the library's validation and is emitted as the ni
 rather than as a wrong time. And where a device has no resolvable name, RFC 5424 §6.2.4
 allows its address in the HOSTNAME field instead.
 
-PROCID stays nil here — a bare-metal image has no process to identify — and so does
+PROCID stays nil here - a bare-metal image has no process to identify - and so does
 STRUCTURED-DATA, until the next stage.
 
 **When you need it.** As soon as more than one device reports to the collector, or a
-record's time will be relied on. Everything the later stages add — a sequence number,
-the clock's quality, the device's own identity — builds on these fields rather than
+record's time will be relied on. Everything the later stages add - a sequence number,
+the clock's quality, the device's own identity - builds on these fields rather than
 replacing them.
 
 **Cost.** Flash ~400 B, no RAM.
 
-## Stage 6 — Number the records
+## Stage 6: Number the records
 
 Add the first structured-data element,
 [`SolidSyslogMetaSd`](api/SolidSyslogMetaSd_8h.md), carrying a sequence number. Elements
@@ -264,7 +270,7 @@ from more than one task, that counter must increment atomically.
 
 **Cost.** Flash ~950 B, RAM ~65 B.
 
-## Stage 7 — Decouple logging from sending
+## Stage 7: Decouple logging from sending
 
 A [`SolidSyslogCircularBuffer`](api/SolidSyslogCircularBuffer_8h.md) between
 `SolidSyslog_Log` and the sender, drained by a service task calling
@@ -286,12 +292,12 @@ convenient later. Nothing that logs waits on the network.
 however many events can be logged before it is next serviced. It also makes logging from
 multiple tasks safe.
 
-**Cost.** Flash ~750 B, RAM ~5.4k — the ring plus the service task's stack. You choose
-the ring size, and stage 18 revisits it once the store is there to hold a backlog.
+**Cost.** Flash ~750 B, RAM ~5.5k - the ring plus the service task's stack. You choose
+the ring size, and stage 20 revisits it once the store is there to hold a backlog.
 
 The mutex comes from your RTOS, so add its platform to the list from stage 1.
 
-## Stage 8 — Detect loss where it happens
+## Stage 8: Detect loss where it happens
 
 UDP to TCP, by putting a [`SolidSyslogStreamSender`](api/SolidSyslogStreamSender_8h.md)
 over a TCP stream. The network retransmits rather than dropping, and a send fails when
@@ -312,16 +318,16 @@ With stage 6 this completes the loss story: the transport detects loss where it 
 and the sequence number reveals afterwards anything the transport could not. It is also
 what makes the delivery-failed and delivery-restored events from stage 2 meaningful.
 
-**When you need it.** If the device must know that delivery is failing — to raise an
+**When you need it.** If the device must know that delivery is failing - to raise an
 alarm, to fall back, to start storing. Over UDP it never finds out.
 
-**Cost.** Flash ~550 B, RAM ~200 B.
+**Cost.** Flash ~700 B, RAM ~200 B.
 
 > RFC 6587 is Historic, and the IESG recommends TLS (stage 13) over plain TCP for new
 > deployments. Plain TCP is here for collectors you do not control, and as the step
 > that gives storage somewhere to spool before cryptography arrives.
 
-## Stage 9 — Say how far to trust the clock
+## Stage 9: Say how far to trust the clock
 
 Add [`SolidSyslogTimeQualitySd`](api/SolidSyslogTimeQualitySd_8h.md), and give `MetaSd`
 an uptime source alongside its counter.
@@ -335,7 +341,7 @@ sd[1] = SolidSyslogTimeQualitySd_Create(SyslogTimeQuality);
 ```
 
 ```text
-... BOOT [meta sequenceId="1" sysUpTime="243"][timeQuality tzKnown="1" isSynced="0"] device started
+... BOOT [meta sequenceId="1" sysUpTime="236"][timeQuality tzKnown="1" isSynced="0"] device started
 ```
 
 Time quality states how far the clock can be trusted, which matters when comparing
@@ -352,9 +358,9 @@ device should say what its clock is actually worth before that assumption goes.
 **When you need it.** If events from this device will be ordered against events from
 others, or if a record's timestamp will be relied on after a delay.
 
-**Cost.** Flash ~300 B, RAM ~25 B.
+**Cost.** Flash ~350 B, RAM ~30 B.
 
-## Stage 10 — Survive an outage
+## Stage 10: Survive an outage
 
 Spool to a [`SolidSyslogBlockStore`](api/SolidSyslogBlockStore_8h.md). The service task
 drains the ring into storage and sends from there, so a failed send costs a retry rather
@@ -370,25 +376,25 @@ struct SolidSyslogBlockStoreConfig storeConfig = {
 ```
 
 Three decisions come with it: how much you can store, which is capacity on the medium
-rather than RAM; what happens when it fills — discard oldest, discard newest, or halt;
+rather than RAM; what happens when it fills - discard oldest, discard newest, or halt;
 and whether you want warning before that point, via the capacity-threshold callback.
 
 The checksum here is a checksum, not tamper-evidence. It catches a truncated write or
 bit-rot; anyone who can edit a stored record can recompute it. What it buys is knowing a
 record came back the way it went in, which is the prerequisite for spooling at all.
-Making stored records tamper-*evident* is stage 14.
+Making stored records tamper-*evident* is stage 15.
 
 **When you need it.** What is your audit-loss budget? If the collector is unreachable
 for an hour, is losing that hour acceptable? Must records survive a reboot?
 
-**Cost.** Flash ~3.9k, RAM ~1.5k — handles and one record buffer, not capacity.
+**Cost.** Flash ~4.0k, RAM ~1.4k - handles and one record buffer, not capacity.
 **Upstream:** files on your filesystem. Both the number of files and the size of each are
 tunable.
 
-## Stage 11 — Say who sent it
+## Stage 11: Say who sent it
 
 Name the device in the record with
-[`SolidSyslogOriginSd`](api/SolidSyslogOriginSd_8h.md) — the software, its version, and
+[`SolidSyslogOriginSd`](api/SolidSyslogOriginSd_8h.md) - the software, its version, and
 your enterprise number.
 
 ```c
@@ -397,7 +403,7 @@ struct SolidSyslogOriginSdConfig originConfig = {
     .SwVersion    = SYSLOG_SW_VERSION,
     .EnterpriseId = SYSLOG_ENTERPRISE_ID,
 };
-sd[3] = SolidSyslogOriginSd_Create(&originConfig);
+sd[2] = SolidSyslogOriginSd_Create(&originConfig);
 ```
 
 This lands after storage for a reason. While records went straight out,
@@ -407,12 +413,12 @@ hours later that stops being true, and the record has to say so itself.
 **When you need it.** If records will be correlated across devices, replayed after a
 delay, or relayed through anything.
 
-**Cost.** Flash ~400 B, RAM ~50 B.
+**Cost.** Flash ~400 B, RAM ~45 B.
 
 > Enterprise number 32473 is reserved by RFC 5612 for documentation. A shipping
 > product must use its own enterprise number, registered with IANA.
 
-## Stage 12 — State the device's own address
+## Stage 12: State the device's own address
 
 Add the `ip` PARAM to the origin element, sourced from the same interface address the
 HOSTNAME field reports.
@@ -430,64 +436,143 @@ observes. `ip` is what the device says about itself, and that survives the hop. 
 PARAM is repeatable per RFC 5424 §7.2, so the library asks for a count and then one
 value per index rather than taking a single string.
 
-**When you need it.** If anything sits between the device and the collector — a relay,
-a gateway, or NAT — and the source address the collector sees can no longer be trusted
+**When you need it.** If anything sits between the device and the collector - a relay,
+a gateway, or NAT - and the source address the collector sees can no longer be trusted
 to identify the device.
 
 **Cost.** Flash ~400 B, no RAM.
 
-## Stage 13 — Trust the channel
+## Stage 13: Trust the channel
 
-Wrap the byte stream in TLS — here
+Wrap the byte stream in TLS - here
 [`SolidSyslogMbedTlsStream`](api/SolidSyslogMbedTlsStream_8h.md), layered over the TCP
-stream from stage 8. The device verifies the collector against a trust anchor it already
-holds, so records can be read only by that collector and cannot be altered in transit.
-The collector is authenticated to the device; the device is not yet authenticated to the
+stream from stage 8 - and authorise the collector by the fingerprint of its certificate.
+Records can then be read only by that collector, and cannot be altered in transit. The
+collector is authenticated to the device; the device is not yet authenticated to the
 collector.
 
-```c
-struct SolidSyslogMbedTlsHandleCredentialsConfig credentialsConfig = {
-    .Rng     = DeviceCertStore_Rng(),
-    .CaChain = DeviceCertStore_CaChain(),
-};
+The fingerprint was provisioned at commissioning, alongside the device's other
+credentials. No CA is involved, so a site with no PKI can run it, and RFC 5425 requires
+that a peer can be authorised this way - see
+[accepting a peer by its fingerprint](tls.md#accept-a-peer-authorised-by-certificate-fingerprint)
+for the form and what is checked.
 
-static void FillTlsProfile(struct SolidSyslogMbedTlsProfile* profile, void* context)
+```c
+static const char* s_collectorPins[1];
+
+static void CollectorProfile(struct SolidSyslogMbedTlsProfile* profile, void* context)
 {
     (void) context;
     profile->ServerName = SYSLOG_COLLECTOR_HOST;
 }
+
+s_collectorPins[0] = DeviceCertStore_CollectorPin();
+
+struct SolidSyslogMbedTlsHandleCredentialsConfig credentialsConfig = {
+    .Rng                  = DeviceCertStore_Rng(),
+    .PeerFingerprints     = s_collectorPins,
+    .PeerFingerprintCount = 1U,
+};
 
 struct SolidSyslogMbedTlsStreamConfig tlsConfig = {
     .Transport   = SolidSyslogLwipRawTcpStream_Create(&tcpConfig),
     .Sleep       = SyslogSleep,
     .Rng         = DeviceCertStore_Rng(),
     .Credentials = SolidSyslogMbedTlsHandleCredentials_Create(&credentialsConfig),
-    .Profile     = FillTlsProfile,
+    .Profile     = CollectorProfile,
 };
 
 .Stream = SolidSyslogMbedTlsStream_Create(&tlsConfig),
 ```
 
+Two things decide trust. The pin is read from the device's credential store, never
+computed from the certificate the collector presents: a pin is something the device was
+told, and one derived from what it is shown authorises nothing. The profile is asked at
+every connection and names the peer, so the name is checked as well - the pin says which
+certificate, the name says which peer it was issued to.
+
+A pinned certificate is still checked against its validity dates. The pin does not extend
+them, and a renewed certificate has a new fingerprint, which is what stage 14 deals with.
+
 **When you need it.** If the log path crosses a network you do not control, or if
 someone reading records in transit would learn something they should not. Also if the
 device needs to know it is talking to the real collector rather than to whatever
-answered on that address.
+answered on that address. On a control network the collector is often a single fixed
+host with no site PKI behind it, and a fingerprint provisioned at commissioning needs
+none - which is why this path pins first, and adds a CA chain only at stage 19, for sites
+that run one.
 
-**Cost.** Flash ~700 B. RAM ~28k on the example device — but only ~650 B of that is
-the library; the rest is a second concurrent TLS session and the deeper stack the
-handshake needs.
+**Cost.** Flash ~2.3k. RAM ~28k on the example device - but only ~730 B of that is the
+library; the rest is a second concurrent TLS session: the Mbed TLS memory pool grows from
+32 to 53 KiB, and the service task's stack grows for the handshake.
 
 **Upstream is where the real cost lives.** If your device does not already run TLS,
-the library and its trust material will dominate everything on this page — expect an
+the library and its trust material will dominate everything on this page - expect an
 order of magnitude or more above the adapter that drives it, and read the footprint
 guidance for the specific TLS library you are considering, because it varies enormously
 with the features and ciphersuites you enable. If your device *already* holds a TLS
-session for something else — a cloud connection, OTA, a vendor framework — you paid that
+session for something else - a cloud connection, OTA, a vendor framework - you paid that
 long ago, and this stage adds the adapter and a second session. That is the case the
 worked integration measures, and the common one on a device with a reason to care about
 audit logging.
 
-## Stage 14 — Protect what is at rest
+## Stage 14: Cross a certificate renewal
+
+A pin names one certificate, and renewing the collector's certificate changes its
+fingerprint. Unplanned for, the renewal stops every device that pins the collector: its
+records are held in the store rather than lost, but nothing is delivered until each
+device is provisioned again. Give the credentials two pin slots instead. Provision the
+renewed certificate's pin beside the current one before the collector switches, so
+either is accepted while it does, and retire the old one afterwards.
+
+```c
+static const char* s_collectorPins[2];
+static uint32_t s_streamVersion = 1U;
+
+static uint32_t SyslogStreamVersion(void* context)
+{
+    (void) context;
+    return s_streamVersion;
+}
+
+/* in the credentials and the stream config */
+.PeerFingerprints     = s_collectorPins,
+.PeerFingerprintCount = 2U,
+.Version              = SyslogStreamVersion,
+
+void Syslog_ProvisionNextCollectorPin(const char* pin)
+{
+    s_collectorPins[1] = pin;
+    s_streamVersion++;
+}
+
+void Syslog_RetireCollectorPin(void)
+{
+    s_collectorPins[0] = s_collectorPins[1];
+    s_streamVersion++;
+}
+```
+
+Both slots hold the current pin until a renewal is under way. The stream's version moves
+whenever the pins do; the sender checks it before every record and reconnects when it
+has moved, so new pins apply without a restart. Both calls store a pointer and free
+nothing, so they are safe from any task.
+
+Crossing a renewal, the handler sees delivery fail and recover: the collector restarts
+with its renewed certificate and drops the session, the record logged at that moment is
+held, and the reconnect meets the renewed certificate. Without the new pin provisioned
+first, every reconnect is refused with
+`SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED` until someone provisions the
+device.
+
+**When you need it.** If the collector's certificate will ever be renewed - which a
+certificate with an expiry date will be. The alternative is provisioning every device at
+the moment the collector switches.
+
+**Cost.** Flash ~500 B, RAM ~10 B. Part of the flash is the example's renewal sequence
+rather than the library.
+
+## Stage 15: Protect what is at rest
 
 Replace the CRC-16 from stage 10 with a keyed HMAC. The checksum told you a record came
 back the way it went in; the HMAC tells you nobody has changed it since. An edit made
@@ -503,15 +588,15 @@ struct SolidSyslogMbedTlsHmacSha256PolicyConfig hmacConfig = {.GetKey = SyslogSt
 Key custody, rotation and provisioning are yours; the library consumes a key you supply
 and never stores one. See [at-rest cryptography](security/at-rest-cryptography.md).
 
-**When you need it.** If an attacker could reach the medium — removable, unattended, or
-stealable — and stored records must be provably unaltered.
+**When you need it.** If an attacker could reach the medium - removable, unattended, or
+stealable - and stored records must be provably unaltered.
 
 **Cost.** Flash ~350 B, RAM ~20 B. **Upstream:** a crypto primitive, which your TLS
 library already provides and has already linked if you took stage 13. Reaching for
 at-rest protection *without* TLS is where this stage carries an upstream cost of its
 own.
 
-## Stage 15 — State the protection in force
+## Stage 16: State the protection in force
 
 A private structured-data element reports the transport in use and the at-rest policy
 protecting stored records:
@@ -524,12 +609,13 @@ The standard elements say what any device can say; a private one says what only 
 product knows. A collector can use it to confirm a record really did arrive over TLS and
 really was sealed at rest, and to alert on a device whose pipeline has weakened.
 
-Those are the values in force at this stage. They change as the remaining stages land —
-`transport="mtls"` at stage 16, `atRest="aes-256-gcm"` at stage 17 — so derive both from
-the handles the device actually holds, not from what you intended to
-configure. A credential that failed to load leaves the device less protected than its
-configuration suggests, and an element claiming protection that is not in force is worse
-than no element at all, because that claim is exactly what a collector is watching for.
+Those are the values in force at this stage. They change as the remaining stages land -
+`transport="mtls"` at stage 17, `atRest="aes-256-gcm"` at stage 18, and a
+`collectorAuth` parameter at stage 19 - so derive each from the handles the device
+actually holds, not from what you intended to configure. A credential that failed to load
+leaves the device less protected than its configuration suggests, and an element
+claiming protection that is not in force is worse than no element at all, because that
+claim is exactly what a collector is watching for.
 
 **When you need it.** If a collector has to verify the protection a record travelled and
 rested under, rather than assume it. It is also the cheapest way to detect a fleet
@@ -537,7 +623,7 @@ member whose pipeline has silently degraded.
 
 **Cost.** Flash ~150 B, RAM negligible.
 
-## Stage 16 — Prove which device sent it
+## Stage 17: Prove which device sent it
 
 Server-authenticated TLS proves the collector is genuine. It does not tell the collector
 which device it is talking to: any client the collector will admit can connect, and the
@@ -547,21 +633,23 @@ cryptographically.
 
 ```c
 struct SolidSyslogMbedTlsHandleCredentialsConfig credentialsConfig = {
-    /* ... as stage 13 ... */
+    /* ... the pins, as stage 14 ... */
     .ClientCertChain = DeviceCertStore_ClientChain(),
     .ClientKey       = DeviceCertStore_ClientKey(),
 };
 ```
 
-Both must be set. Supplying one and not the other is reported as a bad
-configuration and leaves the connection server-authenticated rather than failing,
-which is exactly the weakening an auditor would look for — which is why the
-pipeline element in stage 15 reports what is actually in force rather than what
-was intended.
+The collector is still authorised by its pin alone: the two directions are independent.
+
+Both must be set. Supplying one without the other is reported on every connection, and
+the device then presents no certificate at all. A collector that requires one refuses the
+handshake; one that does not accepts a connection that is server-authenticated only,
+which is exactly the weakening an auditor would look for - and why the pipeline element
+in stage 16 reports what is actually in force rather than what was intended.
 
 **What it authenticates is the TLS peer.** If the device connects to the collector
-directly, that is the device. If anything terminates the connection in between — a
-relay, a gateway, a broker — then the collector authenticates that hop, not the device
+directly, that is the device. If anything terminates the connection in between - a
+relay, a gateway, a broker - then the collector authenticates that hop, not the device
 behind it, and the device's identity in the record is once again a claim. TLS protects
 each hop; it does not carry provenance across one. On a control network with a relay
 between the device and the SIEM, which is a common industrial shape, this stage buys you
@@ -573,7 +661,7 @@ itself and survives the hop, and the collector's trust in it rests on the relay.
 exposure in full.
 
 **When you need it.** When the receiver has to authenticate the device rather than take
-its word — a collector that requires client certificates, or a deployment where the
+its word - a collector that requires client certificates, or a deployment where the
 device reaches the collector directly and origin has to be provable. It is not a free
 upgrade. Mutual TLS needs a certificate per device, somewhere safe to keep the private
 key, and an issuing and revocation process behind both. A device that keeps its key in
@@ -581,17 +669,18 @@ readable flash gains the appearance of attribution without the substance. Where 
 are already identified at another layer, or where there is no device PKI to build on,
 server-authenticated TLS is an honest place to stop.
 
-**Cost.** Flash ~80 B, RAM ~2.1k. Presenting a certificate costs almost no code; the RAM
-is the TLS library's working buffer growing to carry the client certificate through the
-handshake. Note that the example device already holds a client certificate for its own
-broker session, so this is the cost of *using* credentials, not of provisioning them — a
-device reaching for mutual TLS from a standing start also has to store and parse them.
+**Cost.** Flash ~70 B, RAM ~2.1k. Presenting a certificate costs almost no code; the RAM
+is the TLS library's memory pool, grown to keep the example's margin for fragmentation
+once the client certificate is carried through the handshake. Note that the example
+device already holds a client certificate for its own broker session, so this is the cost
+of *using* credentials, not of provisioning them - a device reaching for mutual TLS from
+a standing start also has to store and parse them.
 
-## Stage 17 — Encrypt what is at rest
+## Stage 18: Encrypt what is at rest
 
-Replace the HMAC from stage 14 with authenticated encryption. Tamper-evidence proves a
+Replace the HMAC from stage 15 with authenticated encryption. Tamper-evidence proves a
 stored record was not altered; it does nothing to stop anyone reading it. Authenticated
-encryption does both — the body is encrypted, the record header is authenticated as
+encryption does both - the body is encrypted, the record header is authenticated as
 associated data, and the nonce and tag travel in the trailer.
 
 ```c
@@ -601,20 +690,57 @@ struct SolidSyslogMbedTlsAesGcmPolicyConfig gcmConfig = {.GetKey = SyslogStoreKe
 ```
 
 These are separate decisions, and the second is not implied by the first. A device that
-only needs to prove records were not altered can stop at stage 14. The store key does
+only needs to prove records were not altered can stop at stage 15. The store key does
 not change: its name says what it protects, not which algorithm protects it, so
 escalating the policy needs no new key provisioned.
 
 GCM needs a fresh nonce per record, so the policy takes the device's RNG as well as the
 key. That is the only wiring difference from the HMAC policy.
 
-**When you need it.** If a disk that leaves the device would give something away —
+**When you need it.** If a disk that leaves the device would give something away -
 records naming users, addresses, process values, or anything else you would not publish.
 
-**Cost.** Flash ~160 B, RAM negligible. Almost free if you took stage 13, because a
+**Cost.** Flash ~150 B, RAM negligible. Almost free if you took stage 13, because a
 device negotiating a GCM ciphersuite for TLS has already linked the same primitive.
 
-## Stage 18 — Fit the sizes to the device
+## Stage 19: Require the site's CA as well
+
+For a site that runs its own PKI, also require the collector's certificate to chain to
+the site CA. The pin still has to match, so either failing stops delivery, and the device
+is under the site's certificate policy as well as its own commissioning.
+
+```c
+struct SolidSyslogMbedTlsHandleCredentialsConfig credentialsConfig = {
+    /* ... as stage 17 ... */
+    .CaChain = DeviceCertStore_CaChain(),
+};
+```
+
+A matching pin waives nothing. Given an anchor the collector's certificate does not chain
+to, nothing is delivered and the handler reports
+`SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED` - distinct from a fingerprint
+mismatch, so the two failures can be told apart in the field. The pipeline element gains a
+parameter saying which is in force, so a collector can tell a device on the pin alone from
+one on both:
+
+```text
+[logPipeline@32473 transport="mtls" collectorAuth="fingerprint+chain" atRest="aes-256-gcm"]
+```
+
+This is the last protection stage because it depends on the site rather than the
+product, and it adds a way for delivery to stop that the pin alone avoids: when the site
+CA or an intermediate expires or is replaced, every device holding it stops at once. A
+collector certificate renewed by the same CA still crosses as it did at stage 14.
+
+**When you need it.** When the site runs a PKI and its policy requires every peer to
+chain to it. Where there is no site PKI, the pin from stage 13 is complete on its own.
+
+**Cost.** Flash ~120 B, RAM negligible. The chain itself costs nothing measurable on the
+example: the collector's certificate is already parsed to compute its fingerprint, and the
+CA is one the device already holds for its broker session. The flash is the pipeline
+element's new parameter.
+
+## Stage 20: Fit the sizes to the device
 
 Every collaborator is in place, so the compile-time sizes can come down to what the
 device actually uses.
@@ -629,11 +755,11 @@ device actually uses.
 ```
 
 The message cap comes first, because the ring, the store's record buffer and the
-formatter frame on both task stacks all follow it. Four SD-ELEMENTs put the example's
-record at 260 octets, and 345 at full width — both counters as 32-bit values, both
-addresses at fifteen characters — so 400 leaves room for longer messages on that device.
-Anything longer is truncated rather than dropped. RFC 5424 §6.1 says a receiver should
-accept 2048 octets; over UDP, RFC 5426 §3.2 guarantees only 480.
+formatter frame on both task stacks all follow it. The worst case measured on the example
+is 379 octets - four SD-ELEMENTs with both counters at full 32-bit width and both
+addresses at fifteen characters, plus a short message - so 400 leaves room for longer
+messages on that device. Anything longer is truncated rather than dropped. RFC 5424 §6.1
+says a receiver should accept 2048 octets; over UDP, RFC 5426 §3.2 guarantees only 480.
 
 The pools follow. Their defaults suit a device running several transports at once; this
 one runs a single sender, over a single stream, to a single destination. Then the ring,
@@ -642,7 +768,7 @@ only has to absorb what can be logged while the service task is sending. The tas
 go last, at twice their measured high-water marks.
 
 These are compile-time overrides, and each has to reach Core, the platform sources and
-your own code alike — see [tunables](build-integration.md#tunables), which covers the
+your own code alike - see [tunables](build-integration.md#tunables), which covers the
 mechanism and the way it is most often got wrong.
 
 **When you need it.** Once the pipeline is complete. Sizing earlier means sizing against
@@ -658,6 +784,7 @@ stack are only trustworthy when everything that runs on it is there.
 - [Adding it to your build](build-integration.md): the build detail behind the nods on this page, plus the tunables.
 - [Structured data](structured-data.md): authoring the evidence elements, and your own.
 - [Error handling and severity](error-severity.md): reading the events from stage 2.
+- [TLS](tls.md): what each TLS pack checks, including a peer authorised by its fingerprint.
 - [Compliance in one page](overview.md): what CRA and IEC 62443 ask of an audit-logging function.
 - [IEC 62443 guide](iec62443.md) and the [RFC compliance matrix](rfc-compliance.md).
 - [Threat model](security/threat-model.md): the division of responsibility this page assumes.

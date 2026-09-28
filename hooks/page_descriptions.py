@@ -39,8 +39,9 @@ DESCRIPTIONS = {
     ),
     # Adopt
     "hardening-path.md": (
-        "Eighteen stages from no syslog to mutual TLS and encrypted storage — each "
-        "with the question that decides it and its measured flash and RAM cost."
+        "From no syslog to a pinned mutual-TLS link and encrypted storage, one stage "
+        "at a time: each with the question that decides it and its measured flash "
+        "and RAM cost."
     ),
     "build-integration.md": (
         "Add SolidSyslog to your build: CMake, Make, or an IDE source manifest, "
