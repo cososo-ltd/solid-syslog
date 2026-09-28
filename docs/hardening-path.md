@@ -535,6 +535,9 @@ static uint32_t SyslogStreamVersion(void* context)
     return s_streamVersion;
 }
 
+s_collectorPins[0] = DeviceCertStore_CollectorPin();
+s_collectorPins[1] = s_collectorPins[0];
+
 /* in the credentials and the stream config */
 .PeerFingerprints     = s_collectorPins,
 .PeerFingerprintCount = 2U,
@@ -553,10 +556,15 @@ void Syslog_RetireCollectorPin(void)
 }
 ```
 
-Both slots hold the current pin until a renewal is under way. The stream's version moves
-whenever the pins do; the sender checks it before every record and reconnects when it
-has moved, so new pins apply without a restart. Both calls store a pointer and free
-nothing, so they are safe from any task.
+Both slots hold the current pin until a renewal is under way: a slot left `NULL` is
+reported when the credentials are created, which then hand back their Null object. The
+stream's version moves whenever the pins do; the sender checks it before every record and
+reconnects when it has moved, so new pins apply without a restart.
+
+Both calls store a pointer rather than copying the pin, so the pin must outlive the
+credentials, as the field requires; the example's come from its credential store. And
+the service task reads the version before every record and the pins at each
+connection, so make these calls from the service task, or synchronise them with it.
 
 Crossing a renewal, the handler sees delivery fail and recover: the collector restarts
 with its renewed certificate and drops the session, the record logged at that moment is
