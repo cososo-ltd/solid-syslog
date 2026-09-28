@@ -47,8 +47,9 @@ Your `lwipopts.h` must enable the features the adapter wraps:
 | `LWIP_DNS=1` | the DNS resolver only |
 
 Also set `ARP_QUEUEING=1` (else lwIP holds only the latest packet for an
-unresolved address, so earlier records in a burst are dropped), and size `PBUF_POOL_SIZE` / `MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to
-your instance counts. `LWIP_TCP_KEEPALIVE=1` is worth setting but not required -
+unresolved address, so earlier records in a burst are dropped), and size
+`PBUF_POOL_SIZE` / `MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to your instance counts.
+`LWIP_TCP_KEEPALIVE=1` is worth setting but not required -
 see [dead-peer detection](#dead-peer-detection-is-yours-to-size) below. `IP_FRAG`
 decides what becomes of a record too large for the path - see
 [what becomes of an over-large record](#what-becomes-of-an-over-large-record)
@@ -126,6 +127,11 @@ closes itself so the sender reconnects.
 The DNS resolver forwards what lwIP answers. A deployment that cannot trust its
 DNS should give the collector a numeric address, so that no resolution step
 exists to be poisoned.
+
+Give that address in IPv4. On a build with `LWIP_IPV6`, the numeric resolver
+accepts an IPv6 literal, but the datagram sends only to IPv4, so every send
+fails without saying why
+([#842](https://github.com/cososo-ltd/solid-syslog/issues/842)).
 
 ### Pool sizing is yours, and exhaustion is silent at the stack
 
