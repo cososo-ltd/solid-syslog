@@ -14,12 +14,15 @@
 
 const struct SolidSyslogErrorSource SolidSyslogVxWorks64MutexErrorSource = {"VxWorks64Mutex"};
 
+static void VxWorks64Mutex_Lock(struct SolidSyslogMutex* base);
+
 static inline struct SolidSyslogVxWorks64Mutex* VxWorks64Mutex_SelfFromBase(struct SolidSyslogMutex* base);
 
 bool SolidSyslogVxWorks64Mutex_Initialise(struct SolidSyslogMutex* base)
 {
     struct SolidSyslogVxWorks64Mutex* self = VxWorks64Mutex_SelfFromBase(base);
     self->Id = semMCreate(SEM_Q_PRIORITY | SEM_INVERSION_SAFE | SEM_DELETE_SAFE);
+    self->Base.Lock = VxWorks64Mutex_Lock;
     return true;
 }
 
@@ -31,4 +34,9 @@ static inline struct SolidSyslogVxWorks64Mutex* VxWorks64Mutex_SelfFromBase(stru
 void SolidSyslogVxWorks64Mutex_Cleanup(struct SolidSyslogMutex* base)
 {
     (void) base;
+}
+
+static void VxWorks64Mutex_Lock(struct SolidSyslogMutex* base)
+{
+    (void) semTake(VxWorks64Mutex_SelfFromBase(base)->Id, 0);
 }
