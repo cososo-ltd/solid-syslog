@@ -11,6 +11,7 @@ using namespace CososoTesting;
 
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogDatagram.h"
+#include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogVxWorks64Address.h"
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64Datagram.h"
@@ -106,4 +107,25 @@ TEST(SolidSyslogVxWorks64Datagram, SendToReportsOversizeWhenTheStackRefusesTheSi
     VxWorks64NetFake_FailSendtoWithErrno(EMSGSIZE);
 
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE, OpenAndSend());
+}
+
+TEST(SolidSyslogVxWorks64Datagram, SendToReportsFailedForAnyOtherRefusal)
+{
+    VxWorks64NetFake_FailSendtoWithErrno(ENETUNREACH);
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED, OpenAndSend());
+}
+
+TEST(SolidSyslogVxWorks64Datagram, SendToPassesNoFlags)
+{
+    OpenAndSend();
+
+    LONGS_EQUAL(0, VxWorks64NetFake_LastSendtoFlags());
+}
+
+TEST(SolidSyslogVxWorks64Datagram, MaxPayloadIsTheUnknownPathPayload)
+{
+    SolidSyslogDatagram_Open(datagram);
+
+    LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
 }
