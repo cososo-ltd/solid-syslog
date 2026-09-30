@@ -87,12 +87,14 @@ const char* VxWorks64NetFake_LastHostGetByNameName(void)
     return VxWorks64NetFake_HostGetByNameName;
 }
 
+// NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
 unsigned long inet_addr(char* inetString)
 {
     VxWorks64NetFake_InetAddrString = inetString;
     return VxWorks64NetFake_InetAddrReturn;
 }
 
+// NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
 int hostGetByName(char* name)
 {
     VxWorks64NetFake_HostGetByNameCount++;
@@ -189,6 +191,7 @@ int socket(int domain, int type, int protocol)
     return VxWorks64NetFake_SocketFails ? ERROR : VxWorks64NetFake_Fd;
 }
 
+// NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
 int sendto(int s, char* buf, int bufLen, int flags, struct sockaddr* to, int tolen)
 {
     VxWorks64NetFake_SendtoCount++;

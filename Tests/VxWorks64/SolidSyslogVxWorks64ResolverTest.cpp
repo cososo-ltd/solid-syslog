@@ -47,12 +47,12 @@ TEST_GROUP(SolidSyslogVxWorks64Resolver)
         address  = SolidSyslogVxWorks64Address_Create();
     }
 
-    bool Resolve(const char* host)
+    bool Resolve(const char* host) const
     {
         return SolidSyslogResolver_Resolve(resolver, SOLIDSYSLOG_TRANSPORT_UDP, host, 514U, address);
     }
 
-    const struct sockaddr_in* Resolved() const
+    [[nodiscard]] const struct sockaddr_in* Resolved() const
     {
         return SolidSyslogVxWorks64Address_AsConstSockaddrIn(address);
     }

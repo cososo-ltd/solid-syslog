@@ -35,12 +35,13 @@ using namespace CososoTesting;
         }                                                                              \
     }
 
+static const char TEST_MESSAGE[] = "hello";
+
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64Datagram)
 {
     struct SolidSyslogDatagram* datagram = nullptr;
     struct SolidSyslogAddress* address   = nullptr;
-    const char message[6]                = "hello";
 
     void setup() override
     {
@@ -59,10 +60,10 @@ TEST_GROUP(SolidSyslogVxWorks64Datagram)
         SolidSyslogVxWorks64Datagram_Destroy(datagram);
     }
 
-    enum SolidSyslogDatagramSendResult OpenAndSend()
+    [[nodiscard]] enum SolidSyslogDatagramSendResult OpenAndSend() const
     {
         SolidSyslogDatagram_Open(datagram);
-        return SolidSyslogDatagram_SendTo(datagram, message, sizeof(message) - 1U, address);
+        return SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
     }
 };
 
@@ -93,23 +94,23 @@ TEST(SolidSyslogVxWorks64Datagram, OpenFailsWhenTheStackCannotMakeASocket)
 
 TEST(SolidSyslogVxWorks64Datagram, SendToSendsTheRecord)
 {
-    OpenAndSend();
+    (void) OpenAndSend();
 
     CALLED_FAKE(VxWorks64NetFake_Sendto, ONCE);
-    POINTERS_EQUAL(message, VxWorks64NetFake_LastSendtoBuf());
+    POINTERS_EQUAL(TEST_MESSAGE, VxWorks64NetFake_LastSendtoBuf());
     LONGS_EQUAL(5, VxWorks64NetFake_LastSendtoLen());
 }
 
 TEST(SolidSyslogVxWorks64Datagram, SendToUsesTheSocketOpenMade)
 {
-    OpenAndSend();
+    (void) OpenAndSend();
 
     LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastSendtoFd());
 }
 
 TEST(SolidSyslogVxWorks64Datagram, SendToAddressesTheResolvedDestination)
 {
-    OpenAndSend();
+    (void) OpenAndSend();
 
     POINTERS_EQUAL(SolidSyslogVxWorks64Address_AsConstSockaddrIn(address), VxWorks64NetFake_LastSendtoTo());
     LONGS_EQUAL(sizeof(struct sockaddr_in), VxWorks64NetFake_LastSendtoToLen());
@@ -136,7 +137,7 @@ TEST(SolidSyslogVxWorks64Datagram, SendToReportsFailedForAnyOtherRefusal)
 
 TEST(SolidSyslogVxWorks64Datagram, SendToPassesNoFlags)
 {
-    OpenAndSend();
+    (void) OpenAndSend();
 
     LONGS_EQUAL(0, VxWorks64NetFake_LastSendtoFlags());
 }
@@ -194,7 +195,7 @@ TEST(SolidSyslogVxWorks64Datagram, SendToAfterDestroySendsNothing)
     SolidSyslogVxWorks64Datagram_Destroy(datagram);
     datagram = nullptr;
 
-    (void) SolidSyslogDatagram_SendTo(stale, message, sizeof(message) - 1U, address);
+    (void) SolidSyslogDatagram_SendTo(stale, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
 
     CALLED_FAKE(VxWorks64NetFake_Sendto, NEVER);
 }
