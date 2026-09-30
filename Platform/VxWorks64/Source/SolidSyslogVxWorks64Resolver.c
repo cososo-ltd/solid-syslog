@@ -16,6 +16,7 @@
 #include "inetLib.h"
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogNullResolver.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogVxWorks64AddressPrivate.h"
@@ -43,7 +44,10 @@ void SolidSyslogVxWorks64Resolver_Initialise(struct SolidSyslogResolver* base)
 
 void SolidSyslogVxWorks64Resolver_Cleanup(struct SolidSyslogResolver* base)
 {
-    (void) base;
+    /* Overwrite the abstract base with the shared NullResolver vtable so
+     * use-after-destroy is a safe no-op rather than a lookup through a
+     * released slot. */
+    *base = *SolidSyslogNullResolver_Get();
 }
 
 static bool VxWorks64Resolver_Resolve(
