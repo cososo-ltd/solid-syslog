@@ -53,11 +53,11 @@ static bool VxWorks64Resolver_Resolve(
 {
     (void) base;
     (void) transport;
-    (void) port;
     /* inetLib takes a non-const string it does not modify (D.006). */
     unsigned long parsed = inet_addr((char*) host);
     struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsSockaddrIn(result);
     sin->sin_family = AF_INET;
+    sin->sin_port = htons(port);
     sin->sin_addr.s_addr = (uint32_t) parsed;
     return true;
 }
