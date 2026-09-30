@@ -9,12 +9,14 @@
 
 #include "vxWorks.h"
 
+#include <netinet/in.h>
 #include <sys/socket.h>
 
 #include "sockLib.h"
 
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64DatagramErrors.h"
 #include "SolidSyslogVxWorks64DatagramPrivate.h"
 
@@ -68,7 +70,8 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
 )
 {
     struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
-    (void) addr;
-    (void) sendto(self->Fd, (char*) buffer, (int) size, 0, NULL, 0);
+    const struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr);
+    /* sockLib takes a non-const buffer and address it does not modify (D.006). */
+    (void) sendto(self->Fd, (char*) buffer, (int) size, 0, (struct sockaddr*) sin, (int) sizeof(*sin));
     return SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
 }
