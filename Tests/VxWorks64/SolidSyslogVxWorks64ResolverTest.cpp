@@ -93,3 +93,13 @@ TEST(SolidSyslogVxWorks64Resolver, ANameIsLookedUpInTheHostLibrary)
 
     CALLED_FAKE(VxWorks64NetFake_HostGetByName, ONCE);
 }
+
+TEST(SolidSyslogVxWorks64Resolver, ANameResolvesToTheAddressTheHostLibraryFound)
+{
+    VxWorks64NetFake_SetInetAddrReturn((unsigned long) ERROR);
+    VxWorks64NetFake_SetHostGetByNameReturn(0x0A00000A);
+
+    Resolve("collector");
+
+    LONGS_EQUAL(0x0A00000AUL, Resolved()->sin_addr.s_addr);
+}
