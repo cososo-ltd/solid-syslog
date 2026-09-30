@@ -86,3 +86,11 @@ TEST(SolidSyslogVxWorks64Datagram, SendToUsesTheSocketOpenMade)
 
     LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastSendtoFd());
 }
+
+TEST(SolidSyslogVxWorks64Datagram, SendToAddressesTheResolvedDestination)
+{
+    OpenAndSend();
+
+    POINTERS_EQUAL(SolidSyslogVxWorks64Address_AsConstSockaddrIn(address), VxWorks64NetFake_LastSendtoTo());
+    LONGS_EQUAL(sizeof(struct sockaddr_in), VxWorks64NetFake_LastSendtoToLen());
+}
