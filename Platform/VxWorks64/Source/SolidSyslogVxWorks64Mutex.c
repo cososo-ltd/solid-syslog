@@ -6,8 +6,9 @@
 
 #include <stdbool.h>
 
-#include "semLib.h"
 #include "vxWorks.h"
+
+#include "semLib.h"
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogMutexDefinition.h"

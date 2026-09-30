@@ -8,6 +8,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "vxWorks.h"
+
 #include "semLib.h"
 
 #include "SolidSyslogError.h"

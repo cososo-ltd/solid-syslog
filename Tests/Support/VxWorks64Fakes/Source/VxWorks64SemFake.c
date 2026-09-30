@@ -1,11 +1,13 @@
+#include "vxWorks.h"
+
 #include "VxWorks64SemFake.h"
+
+#include "semLib.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#include "semLib.h"
-#include "vxWorks.h"
 
 /* What semMCreate hands back when it succeeds: an address the adapter can only
  * store and pass back, standing in for the kernel's opaque semaphore. One per

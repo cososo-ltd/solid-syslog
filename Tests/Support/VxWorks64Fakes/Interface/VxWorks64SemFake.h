@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
+#include "vxWorks.h"
+
 #include "SolidSyslogExternC.h"
 #include "semLib.h"
 

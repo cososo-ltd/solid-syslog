@@ -3,10 +3,13 @@
 
 using namespace CososoTesting;
 
+#include "vxWorks.h"
+
+#include "semLib.h"
+
 #include "SolidSyslogMutex.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogVxWorks64Mutex.h"
-#include "semLib.h"
 #include "VxWorks64SemFake.h"
 
 // clang-format off

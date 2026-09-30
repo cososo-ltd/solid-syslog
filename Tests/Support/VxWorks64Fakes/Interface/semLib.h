@@ -3,11 +3,13 @@
  * Supplies the subset of semLib.h that Platform/VxWorks64 calls, with the
  * prototypes of the public API reference. The semaphore itself is opaque to
  * callers, so the struct is declared and never defined.
+ *
+ * It does not include vxWorks.h. VxWorks expects that header first in every
+ * translation unit, and leaving it out here makes a source that forgets it
+ * fail on the host rather than only against the real headers.
  */
 #ifndef SEMLIB_H
 #define SEMLIB_H
-
-#include "vxWorks.h"
 
 #ifdef __cplusplus
 extern "C"
