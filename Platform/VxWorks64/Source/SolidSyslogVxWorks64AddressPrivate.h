@@ -25,6 +25,18 @@ struct SolidSyslogVxWorks64Address
 void SolidSyslogVxWorks64Address_Initialise(struct SolidSyslogAddress* base);
 void SolidSyslogVxWorks64Address_Cleanup(struct SolidSyslogAddress* base);
 
+static inline struct sockaddr_in* SolidSyslogVxWorks64Address_AsSockaddrIn(struct SolidSyslogAddress* base)
+{
+    return &((struct SolidSyslogVxWorks64Address*) base)->Sockaddr;
+}
+
+static inline const struct sockaddr_in* SolidSyslogVxWorks64Address_AsConstSockaddrIn(
+    const struct SolidSyslogAddress* base
+)
+{
+    return &((const struct SolidSyslogVxWorks64Address*) base)->Sockaddr;
+}
+
 static inline void VxWorks64Address_Report(
     enum SolidSyslogSeverity severity,
     uint16_t category,
