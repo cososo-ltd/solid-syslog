@@ -14,6 +14,16 @@ extern "C"
 {
 #endif
 
+/* #defines because they are #defines in the real header. The suppression
+ * lives here rather than in a .clang-tidy because clang-tidy resolves its
+ * config from the translation unit, and both the pack's sources and the tests
+ * include this. */
+/* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+#define SEM_Q_PRIORITY 0x1
+#define SEM_DELETE_SAFE 0x4
+#define SEM_INVERSION_SAFE 0x8
+    /* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+
     typedef struct semaphore* SEM_ID;
 
     SEM_ID semMCreate(int options);

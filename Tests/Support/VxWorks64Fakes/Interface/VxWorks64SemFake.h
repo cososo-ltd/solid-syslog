@@ -9,6 +9,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     unsigned VxWorks64SemFake_SemMCreateCallCount(void);
 
+    int VxWorks64SemFake_LastSemMCreateOptions(void);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* VXWORKS64SEMFAKE_H */

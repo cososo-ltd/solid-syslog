@@ -4,6 +4,7 @@
 using namespace CososoTesting;
 
 #include "SolidSyslogVxWorks64Mutex.h"
+#include "semLib.h"
 #include "VxWorks64SemFake.h"
 
 // clang-format off
@@ -28,4 +29,9 @@ TEST_GROUP(SolidSyslogVxWorks64Mutex)
 TEST(SolidSyslogVxWorks64Mutex, CreateCallsSemMCreateOnce)
 {
     CALLED_FAKE(VxWorks64SemFake_SemMCreate, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64Mutex, CreateAsksForPriorityInheritanceAndDeletionSafety)
+{
+    LONGS_EQUAL(SEM_Q_PRIORITY | SEM_INVERSION_SAFE | SEM_DELETE_SAFE, VxWorks64SemFake_LastSemMCreateOptions());
 }
