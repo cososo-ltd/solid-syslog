@@ -79,3 +79,10 @@ TEST(SolidSyslogVxWorks64Datagram, SendToSendsTheRecord)
     POINTERS_EQUAL(message, VxWorks64NetFake_LastSendtoBuf());
     LONGS_EQUAL(5, VxWorks64NetFake_LastSendtoLen());
 }
+
+TEST(SolidSyslogVxWorks64Datagram, SendToUsesTheSocketOpenMade)
+{
+    OpenAndSend();
+
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastSendtoFd());
+}
