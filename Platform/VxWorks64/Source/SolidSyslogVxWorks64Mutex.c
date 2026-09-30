@@ -49,7 +49,11 @@ static inline bool VxWorks64Mutex_HasSemaphore(const struct SolidSyslogVxWorks64
 
 void SolidSyslogVxWorks64Mutex_Cleanup(struct SolidSyslogMutex* base)
 {
-    (void) semDelete(VxWorks64Mutex_SelfFromBase(base)->Id);
+    struct SolidSyslogVxWorks64Mutex* self = VxWorks64Mutex_SelfFromBase(base);
+    if (VxWorks64Mutex_HasSemaphore(self) == true)
+    {
+        (void) semDelete(self->Id);
+    }
     /* Overwrite the abstract base with the shared NullMutex vtable so
      * use-after-destroy is a safe no-op rather than a call on a deleted
      * semaphore. */
