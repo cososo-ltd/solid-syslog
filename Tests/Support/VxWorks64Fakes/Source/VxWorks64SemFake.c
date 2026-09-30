@@ -8,7 +8,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-
 /* What semMCreate hands back when it succeeds: an address the adapter can only
  * store and pass back, standing in for the kernel's opaque semaphore. One per
  * pool slot would be truer, but each test reads only the most recent id. */

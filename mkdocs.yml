@@ -218,6 +218,7 @@ nav:
       - OpenSSL: platforms/openssl/index.md
       - Posix: platforms/posix/index.md
       - Windows: platforms/windows/index.md
+      - VxWorks 6.4: platforms/vxworks64/index.md
   - Compliance:
       # The one-screen orientation on both frameworks, so it leads the section
       # the frameworks are in rather than sitting alone under a tab called
