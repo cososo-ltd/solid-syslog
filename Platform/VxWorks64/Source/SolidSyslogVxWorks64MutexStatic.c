@@ -10,7 +10,7 @@
 
 struct SolidSyslogMutex* SolidSyslogVxWorks64Mutex_Create(void)
 {
-    (void) semMCreate(0);
+    (void) semMCreate(SEM_Q_PRIORITY | SEM_INVERSION_SAFE | SEM_DELETE_SAFE);
     return SolidSyslogNullMutex_Get();
 }
 
