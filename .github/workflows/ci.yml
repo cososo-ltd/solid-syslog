@@ -1057,6 +1057,7 @@ jobs:
           -IPlatform/MbedTls/Interface
           -IPlatform/FreeRtos/Interface
           -IPlatform/CmsisRtos/Interface
+          -IPlatform/VxWorks64/Interface
           -IPlatform/PlusTcp/Interface
           -IPlatform/LwipRaw/Interface
           -IPlatform/LwipSocket/Interface
@@ -1072,6 +1073,7 @@ jobs:
           Platform/MbedTls/Source/
           Platform/FreeRtos/Source/
           Platform/CmsisRtos/Source/
+          Platform/VxWorks64/Source/
           Platform/PlusTcp/Source/
           Platform/LwipRaw/Source/
           Platform/LwipSocket/Source/
@@ -1125,6 +1127,7 @@ jobs:
           -IPlatform/MbedTls/Interface
           -IPlatform/FreeRtos/Interface
           -IPlatform/CmsisRtos/Interface
+          -IPlatform/VxWorks64/Interface
           -IPlatform/PlusTcp/Interface
           -IPlatform/LwipRaw/Interface
           -IPlatform/LwipSocket/Interface
@@ -1139,6 +1142,7 @@ jobs:
           Platform/MbedTls/Source/
           Platform/FreeRtos/Source/
           Platform/CmsisRtos/Source/
+          Platform/VxWorks64/Source/
           Platform/PlusTcp/Source/
           Platform/LwipRaw/Source/
           Platform/LwipSocket/Source/
@@ -1177,6 +1181,7 @@ jobs:
             -IPlatform/MbedTls/Interface \
             -IPlatform/FreeRtos/Interface \
             -IPlatform/CmsisRtos/Interface \
+            -IPlatform/VxWorks64/Interface \
             -IPlatform/PlusTcp/Interface \
             -IPlatform/LwipRaw/Interface \
             -IPlatform/LwipSocket/Interface \
@@ -1192,6 +1197,7 @@ jobs:
             Platform/MbedTls/Source/ \
             Platform/FreeRtos/Source/ \
             Platform/CmsisRtos/Source/ \
+            Platform/VxWorks64/Source/ \
             Platform/PlusTcp/Source/ \
             Platform/LwipRaw/Source/ \
             Platform/LwipSocket/Source/ \

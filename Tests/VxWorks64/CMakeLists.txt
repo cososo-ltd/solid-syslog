@@ -30,3 +30,12 @@ target_include_directories(SolidSyslogVxWorks64MutexTest PRIVATE
 )
 
 add_test(NAME SolidSyslogVxWorks64MutexTest COMMAND SolidSyslogVxWorks64MutexTest)
+
+# The pack's sources, and the fakes standing in for the VxWorks headers, compile
+# here at strict C99: the toolchains VxWorks 6.4 ships predate C11, so this is
+# the host check that nothing newer creeps in.
+set_target_properties(SolidSyslogVxWorks64MutexTest PROPERTIES
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+    C_EXTENSIONS OFF
+)
