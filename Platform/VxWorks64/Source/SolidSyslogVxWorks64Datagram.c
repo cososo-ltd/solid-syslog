@@ -22,6 +22,7 @@ const struct SolidSyslogErrorSource SolidSyslogVxWorks64DatagramErrorSource = {"
 static bool VxWorks64Datagram_Open(struct SolidSyslogDatagram* base);
 
 static inline struct SolidSyslogVxWorks64Datagram* VxWorks64Datagram_SelfFromBase(struct SolidSyslogDatagram* base);
+static inline bool VxWorks64Datagram_HasSocket(const struct SolidSyslogVxWorks64Datagram* self);
 
 void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
 {
@@ -34,6 +35,11 @@ static inline struct SolidSyslogVxWorks64Datagram* VxWorks64Datagram_SelfFromBas
     return (struct SolidSyslogVxWorks64Datagram*) base;
 }
 
+static inline bool VxWorks64Datagram_HasSocket(const struct SolidSyslogVxWorks64Datagram* self)
+{
+    return self->Fd >= 0;
+}
+
 void SolidSyslogVxWorks64Datagram_Cleanup(struct SolidSyslogDatagram* base)
 {
     (void) base;
@@ -43,5 +49,5 @@ static bool VxWorks64Datagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
     self->Fd = socket(AF_INET, SOCK_DGRAM, 0);
-    return true;
+    return VxWorks64Datagram_HasSocket(self);
 }
