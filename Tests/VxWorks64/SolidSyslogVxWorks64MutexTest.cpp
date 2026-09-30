@@ -113,3 +113,8 @@ TEST(SolidSyslogVxWorks64MutexRefused, CreateReturnsTheSharedNullMutex)
 {
     POINTERS_EQUAL(SolidSyslogNullMutex_Get(), mutex);
 }
+
+TEST(SolidSyslogVxWorks64MutexRefused, CreateDeletesNothingOnItsWayOut)
+{
+    CALLED_FAKE(VxWorks64SemFake_SemDelete, NEVER);
+}
