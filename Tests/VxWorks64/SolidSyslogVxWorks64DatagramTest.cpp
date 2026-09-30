@@ -139,3 +139,12 @@ TEST(SolidSyslogVxWorks64Datagram, CloseClosesTheSocketOpenMade)
     CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
     LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastClosedFd());
 }
+
+// The Datagram contract: Close is idempotent and safe on an unopened datagram,
+// because the caller's failure paths call it.
+TEST(SolidSyslogVxWorks64Datagram, CloseOnAnUnopenedDatagramClosesNothing)
+{
+    SolidSyslogDatagram_Close(datagram);
+
+    CALLED_FAKE(VxWorks64NetFake_Close, NEVER);
+}
