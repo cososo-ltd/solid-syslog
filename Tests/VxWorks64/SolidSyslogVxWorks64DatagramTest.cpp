@@ -94,3 +94,8 @@ TEST(SolidSyslogVxWorks64Datagram, SendToAddressesTheResolvedDestination)
     POINTERS_EQUAL(SolidSyslogVxWorks64Address_AsConstSockaddrIn(address), VxWorks64NetFake_LastSendtoTo());
     LONGS_EQUAL(sizeof(struct sockaddr_in), VxWorks64NetFake_LastSendtoToLen());
 }
+
+TEST(SolidSyslogVxWorks64Datagram, SendToReportsSentWhenTheStackTakesTheRecord)
+{
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, OpenAndSend());
+}
