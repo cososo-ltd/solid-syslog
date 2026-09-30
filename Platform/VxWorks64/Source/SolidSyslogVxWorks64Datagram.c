@@ -13,6 +13,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include "ioLib.h"
 #include "sockLib.h"
 
 #include "SolidSyslogDatagramDefinition.h"
@@ -33,6 +34,7 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
 );
 
 static size_t VxWorks64Datagram_MaxPayload(struct SolidSyslogDatagram* base);
+static void VxWorks64Datagram_Close(struct SolidSyslogDatagram* base);
 
 static inline struct SolidSyslogVxWorks64Datagram* VxWorks64Datagram_SelfFromBase(struct SolidSyslogDatagram* base);
 static inline bool VxWorks64Datagram_HasSocket(const struct SolidSyslogVxWorks64Datagram* self);
@@ -43,6 +45,7 @@ void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
     self->Base.Open = VxWorks64Datagram_Open;
     self->Base.SendTo = VxWorks64Datagram_SendTo;
     self->Base.MaxPayload = VxWorks64Datagram_MaxPayload;
+    self->Base.Close = VxWorks64Datagram_Close;
 }
 
 static inline struct SolidSyslogVxWorks64Datagram* VxWorks64Datagram_SelfFromBase(struct SolidSyslogDatagram* base)
@@ -103,4 +106,10 @@ static size_t VxWorks64Datagram_MaxPayload(struct SolidSyslogDatagram* base)
      * the Datagram contract asks for is the only honest one. */
     (void) base;
     return SolidSyslogUdpPayload_UnknownPath(false);
+}
+
+static void VxWorks64Datagram_Close(struct SolidSyslogDatagram* base)
+{
+    struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
+    (void) close(self->Fd);
 }
