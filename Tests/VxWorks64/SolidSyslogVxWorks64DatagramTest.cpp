@@ -9,13 +9,31 @@ using namespace CososoTesting;
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include "ConfigLockFake.h"
+#include "ErrorHandlerFake.h"
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogDatagram.h"
+#include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogVxWorks64Address.h"
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64Datagram.h"
+#include "SolidSyslogVxWorks64DatagramErrors.h"
 #include "VxWorks64NetFake.h"
+
+// Asserts handle is non-null and not one of the slots in pool.
+#define CHECK_IS_FALLBACK(handle, pool)                                                \
+    {                                                                                  \
+        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
+        for (auto* slot : (pool))                                                      \
+        {                                                                              \
+            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
+            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
+        }                                                                              \
+    }
 
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64Datagram)
@@ -179,4 +197,145 @@ TEST(SolidSyslogVxWorks64Datagram, SendToAfterDestroySendsNothing)
     (void) SolidSyslogDatagram_SendTo(stale, message, sizeof(message) - 1U, address);
 
     CALLED_FAKE(VxWorks64NetFake_Sendto, NEVER);
+}
+
+// clang-format off
+TEST_GROUP(SolidSyslogVxWorks64DatagramPool)
+{
+    struct SolidSyslogDatagram* pooled[SOLIDSYSLOG_DATAGRAM_POOL_SIZE] = {};
+    struct SolidSyslogDatagram* overflow                                     = nullptr;
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogVxWorks64Datagram_Destroy(handle);
+            }
+        }
+        if (overflow != nullptr)
+        {
+            SolidSyslogVxWorks64Datagram_Destroy(overflow);
+        }
+        ConfigLockFake_Uninstall();
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = SolidSyslogVxWorks64Datagram_Create();
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogVxWorks64DatagramPool, FillingPoolThenOverflowReturnsDistinctFallback)
+{
+    FillPool();
+
+    overflow = SolidSyslogVxWorks64Datagram_Create();
+
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
+TEST(SolidSyslogVxWorks64DatagramPool, ExhaustedCreateReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FillPool();
+
+    overflow = SolidSyslogVxWorks64Datagram_Create();
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogVxWorks64DatagramErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_DATAGRAM_ERROR_POOL_EXHAUSTED
+    );
+}
+
+TEST(SolidSyslogVxWorks64DatagramPool, FallbackSendToReturnsSent)
+{
+    FillPool();
+    overflow = SolidSyslogVxWorks64Datagram_Create();
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, SolidSyslogDatagram_SendTo(overflow, "x", 1, nullptr));
+}
+
+TEST(SolidSyslogVxWorks64DatagramPool, CreateAcquiresAndReleasesConfigLockOnFirstFreeSlot)
+{
+    ConfigLockFake_Install();
+
+    pooled[0] = SolidSyslogVxWorks64Datagram_Create();
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64DatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
+{
+    FillPool();
+    ConfigLockFake_Install();
+
+    overflow = SolidSyslogVxWorks64Datagram_Create();
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_LockCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
+}
+
+TEST(SolidSyslogVxWorks64DatagramPool, DestroyOfPooledHandleLocksOnce)
+{
+    pooled[0] = SolidSyslogVxWorks64Datagram_Create();
+    ConfigLockFake_Install();
+
+    SolidSyslogVxWorks64Datagram_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64DatagramPool, DestroyOfUnknownHandleDoesNotLock)
+{
+    ConfigLockFake_Install();
+    struct SolidSyslogDatagram stranger = {};
+
+    SolidSyslogVxWorks64Datagram_Destroy(&stranger);
+
+    CALLED_FAKE(ConfigLockFake_Lock, NEVER);
+    CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
+}
+
+TEST(SolidSyslogVxWorks64DatagramPool, DestroyOfUnknownHandleReportsWarning)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogDatagram stranger = {};
+
+    SolidSyslogVxWorks64Datagram_Destroy(&stranger);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogVxWorks64DatagramErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
+    );
+}
+
+TEST(SolidSyslogVxWorks64DatagramPool, DestroyOfStaleHandleReportsWarning)
+{
+    pooled[0] = SolidSyslogVxWorks64Datagram_Create();
+    SolidSyslogVxWorks64Datagram_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogVxWorks64Datagram_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogVxWorks64DatagramErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
+    );
 }
