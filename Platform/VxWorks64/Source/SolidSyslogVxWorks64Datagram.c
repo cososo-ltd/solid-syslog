@@ -4,6 +4,7 @@
 
 #include "SolidSyslogVxWorks64Datagram.h"
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -73,10 +74,21 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
     const struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr);
     /* sockLib takes a non-const buffer and address it does not modify (D.006). */
     int sent = sendto(self->Fd, (char*) buffer, (int) size, 0, (struct sockaddr*) sin, (int) sizeof(*sin));
+    /* Read errno straight after the call that set it, with nothing between
+     * (MISRA 22.10). */
+    int sendErrno = (sent == ERROR) ? errno : 0;
     enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
     if (sent != ERROR)
     {
         result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+    }
+    else if (sendErrno == EMSGSIZE)
+    {
+        result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
+    }
+    else
+    {
+        /* Any other failure - result stays FAILED. */
     }
     return result;
 }
