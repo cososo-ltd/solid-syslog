@@ -148,3 +148,23 @@ TEST(SolidSyslogVxWorks64Datagram, CloseOnAnUnopenedDatagramClosesNothing)
 
     CALLED_FAKE(VxWorks64NetFake_Close, NEVER);
 }
+
+TEST(SolidSyslogVxWorks64Datagram, CloseTwiceClosesOnce)
+{
+    SolidSyslogDatagram_Open(datagram);
+
+    SolidSyslogDatagram_Close(datagram);
+    SolidSyslogDatagram_Close(datagram);
+
+    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64Datagram, DestroyClosesAnOpenSocket)
+{
+    SolidSyslogDatagram_Open(datagram);
+
+    SolidSyslogVxWorks64Datagram_Destroy(datagram);
+    datagram = nullptr;
+
+    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+}
