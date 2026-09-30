@@ -7,6 +7,7 @@
 #include <stdbool.h>
 
 #include "semLib.h"
+#include "vxWorks.h"
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogMutexDefinition.h"
@@ -38,5 +39,5 @@ void SolidSyslogVxWorks64Mutex_Cleanup(struct SolidSyslogMutex* base)
 
 static void VxWorks64Mutex_Lock(struct SolidSyslogMutex* base)
 {
-    (void) semTake(VxWorks64Mutex_SelfFromBase(base)->Id, 0);
+    (void) semTake(VxWorks64Mutex_SelfFromBase(base)->Id, WAIT_FOREVER);
 }
