@@ -18,6 +18,7 @@
 
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64DatagramErrors.h"
@@ -67,6 +68,10 @@ static inline bool VxWorks64Datagram_HasSocket(const struct SolidSyslogVxWorks64
 void SolidSyslogVxWorks64Datagram_Cleanup(struct SolidSyslogDatagram* base)
 {
     VxWorks64Datagram_Close(base);
+    /* Overwrite the abstract base with the shared NullDatagram vtable so
+     * use-after-destroy is a safe no-op rather than a send on a closed
+     * socket. */
+    *base = *SolidSyslogNullDatagram_Get();
 }
 
 static bool VxWorks64Datagram_Open(struct SolidSyslogDatagram* base)
