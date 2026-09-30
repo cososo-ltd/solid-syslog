@@ -72,6 +72,11 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
     struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
     const struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr);
     /* sockLib takes a non-const buffer and address it does not modify (D.006). */
-    (void) sendto(self->Fd, (char*) buffer, (int) size, 0, (struct sockaddr*) sin, (int) sizeof(*sin));
-    return SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
+    int sent = sendto(self->Fd, (char*) buffer, (int) size, 0, (struct sockaddr*) sin, (int) sizeof(*sin));
+    enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
+    if (sent != ERROR)
+    {
+        result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+    }
+    return result;
 }
