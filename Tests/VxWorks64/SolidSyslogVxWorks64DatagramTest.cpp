@@ -168,3 +168,15 @@ TEST(SolidSyslogVxWorks64Datagram, DestroyClosesAnOpenSocket)
 
     CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
 }
+
+TEST(SolidSyslogVxWorks64Datagram, SendToAfterDestroySendsNothing)
+{
+    SolidSyslogDatagram_Open(datagram);
+    struct SolidSyslogDatagram* stale = datagram;
+    SolidSyslogVxWorks64Datagram_Destroy(datagram);
+    datagram = nullptr;
+
+    (void) SolidSyslogDatagram_SendTo(stale, message, sizeof(message) - 1U, address);
+
+    CALLED_FAKE(VxWorks64NetFake_Sendto, NEVER);
+}
