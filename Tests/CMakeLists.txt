@@ -321,6 +321,7 @@ foreach(vxworks64_test_target IN ITEMS
     SolidSyslogVxWorks64MutexTest
     SolidSyslogVxWorks64AddressTest
     SolidSyslogVxWorks64ResolverTest
+    SolidSyslogVxWorks64DatagramTest
 )
     if(TARGET ${vxworks64_test_target})
         register_junit_test(${vxworks64_test_target})

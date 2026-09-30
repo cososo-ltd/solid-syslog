@@ -106,3 +106,36 @@ set_target_properties(SolidSyslogVxWorks64ResolverTest PROPERTIES
 )
 
 add_test(NAME SolidSyslogVxWorks64ResolverTest COMMAND SolidSyslogVxWorks64ResolverTest)
+
+add_executable(SolidSyslogVxWorks64DatagramTest
+    SolidSyslogVxWorks64DatagramTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Address.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64AddressStatic.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64NetFake.c
+)
+
+target_link_libraries(SolidSyslogVxWorks64DatagramTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogVxWorks64DatagramTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests/Support
+)
+
+set_target_properties(SolidSyslogVxWorks64DatagramTest PROPERTIES
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+    C_EXTENSIONS OFF
+)
+
+add_test(NAME SolidSyslogVxWorks64DatagramTest COMMAND SolidSyslogVxWorks64DatagramTest)

@@ -1,6 +1,10 @@
 #ifndef VXWORKS64NETFAKE_H
 #define VXWORKS64NETFAKE_H
 
+#include <stdbool.h>
+#include <stddef.h>
+#include <sys/socket.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -20,6 +24,41 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     unsigned VxWorks64NetFake_HostGetByNameCallCount(void);
 
     const char* VxWorks64NetFake_LastHostGetByNameName(void);
+
+    /** Make socket answer ERROR, as the stack does when it cannot make one. */
+    void VxWorks64NetFake_SetSocketFails(bool fails);
+
+    unsigned VxWorks64NetFake_SocketCallCount(void);
+
+    int VxWorks64NetFake_LastSocketDomain(void);
+
+    int VxWorks64NetFake_LastSocketType(void);
+
+    int VxWorks64NetFake_LastSocketProtocol(void);
+
+    /** The descriptor socket hands back when it succeeds. */
+    int VxWorks64NetFake_SocketFd(void);
+
+    /** Make sendto answer ERROR with errno set to the value given. */
+    void VxWorks64NetFake_FailSendtoWithErrno(int errnoValue);
+
+    unsigned VxWorks64NetFake_SendtoCallCount(void);
+
+    int VxWorks64NetFake_LastSendtoFd(void);
+
+    const char* VxWorks64NetFake_LastSendtoBuf(void);
+
+    int VxWorks64NetFake_LastSendtoLen(void);
+
+    int VxWorks64NetFake_LastSendtoFlags(void);
+
+    const struct sockaddr* VxWorks64NetFake_LastSendtoTo(void);
+
+    int VxWorks64NetFake_LastSendtoToLen(void);
+
+    unsigned VxWorks64NetFake_CloseCallCount(void);
+
+    int VxWorks64NetFake_LastClosedFd(void);
 
 SOLIDSYSLOG_EXTERN_C_END
 
