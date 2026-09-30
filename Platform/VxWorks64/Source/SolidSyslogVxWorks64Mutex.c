@@ -37,7 +37,7 @@ static inline struct SolidSyslogVxWorks64Mutex* VxWorks64Mutex_SelfFromBase(stru
 
 void SolidSyslogVxWorks64Mutex_Cleanup(struct SolidSyslogMutex* base)
 {
-    (void) base;
+    (void) semDelete(VxWorks64Mutex_SelfFromBase(base)->Id);
 }
 
 static void VxWorks64Mutex_Lock(struct SolidSyslogMutex* base)
