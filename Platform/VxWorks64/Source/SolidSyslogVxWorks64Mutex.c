@@ -12,6 +12,7 @@
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogMutexDefinition.h"
+#include "SolidSyslogNullMutex.h"
 #include "SolidSyslogVxWorks64MutexPrivate.h"
 
 const struct SolidSyslogErrorSource SolidSyslogVxWorks64MutexErrorSource = {"VxWorks64Mutex"};
@@ -38,6 +39,10 @@ static inline struct SolidSyslogVxWorks64Mutex* VxWorks64Mutex_SelfFromBase(stru
 void SolidSyslogVxWorks64Mutex_Cleanup(struct SolidSyslogMutex* base)
 {
     (void) semDelete(VxWorks64Mutex_SelfFromBase(base)->Id);
+    /* Overwrite the abstract base with the shared NullMutex vtable so
+     * use-after-destroy is a safe no-op rather than a call on a deleted
+     * semaphore. */
+    *base = *SolidSyslogNullMutex_Get();
 }
 
 static void VxWorks64Mutex_Lock(struct SolidSyslogMutex* base)
