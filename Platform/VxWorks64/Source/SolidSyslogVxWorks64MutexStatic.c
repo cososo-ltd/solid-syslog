@@ -31,8 +31,23 @@ struct SolidSyslogMutex* SolidSyslogVxWorks64Mutex_Create(void)
     struct SolidSyslogMutex* handle = SolidSyslogNullMutex_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&VxWorks64Mutex_Allocator, index) == true)
     {
-        (void) SolidSyslogVxWorks64Mutex_Initialise(&VxWorks64Mutex_Pool[index].Base);
-        handle = &VxWorks64Mutex_Pool[index].Base;
+        bool created = SolidSyslogVxWorks64Mutex_Initialise(&VxWorks64Mutex_Pool[index].Base);
+        if (created == true)
+        {
+            handle = &VxWorks64Mutex_Pool[index].Base;
+        }
+        else
+        {
+            /* The kernel refused to make the semaphore, so the slot goes
+             * straight back: the caller is handed the shared NullMutex and
+             * holds nothing that names this slot. */
+            (void) SolidSyslogPoolAllocator_FreeIfInUse(
+                &VxWorks64Mutex_Allocator,
+                index,
+                VxWorks64Mutex_CleanupAtIndex,
+                NULL
+            );
+        }
     }
     else
     {
