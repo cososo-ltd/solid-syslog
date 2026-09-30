@@ -17,6 +17,7 @@
 
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64DatagramErrors.h"
 #include "SolidSyslogVxWorks64DatagramPrivate.h"
@@ -31,6 +32,8 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
     const struct SolidSyslogAddress* addr
 );
 
+static size_t VxWorks64Datagram_MaxPayload(struct SolidSyslogDatagram* base);
+
 static inline struct SolidSyslogVxWorks64Datagram* VxWorks64Datagram_SelfFromBase(struct SolidSyslogDatagram* base);
 static inline bool VxWorks64Datagram_HasSocket(const struct SolidSyslogVxWorks64Datagram* self);
 
@@ -39,6 +42,7 @@ void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
     struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
     self->Base.Open = VxWorks64Datagram_Open;
     self->Base.SendTo = VxWorks64Datagram_SendTo;
+    self->Base.MaxPayload = VxWorks64Datagram_MaxPayload;
 }
 
 static inline struct SolidSyslogVxWorks64Datagram* VxWorks64Datagram_SelfFromBase(struct SolidSyslogDatagram* base)
@@ -91,4 +95,12 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
         /* Any other failure - result stays FAILED. */
     }
     return result;
+}
+
+static size_t VxWorks64Datagram_MaxPayload(struct SolidSyslogDatagram* base)
+{
+    /* The stack offers no path-MTU query for UDP, so the conservative figure
+     * the Datagram contract asks for is the only honest one. */
+    (void) base;
+    return SolidSyslogUdpPayload_UnknownPath(false);
 }
