@@ -46,3 +46,18 @@ TEST(SolidSyslogVxWorks64Address, AsSockaddrInRoundTripsBytes)
     const struct sockaddr_in* actual = SolidSyslogVxWorks64Address_AsConstSockaddrIn(address);
     MEMCMP_EQUAL(&expected, actual, sizeof(expected));
 }
+
+TEST(SolidSyslogVxWorks64Address, CreateZeroesTheSockaddrFromAnyPriorSlotContents)
+{
+    struct sockaddr_in dirty = {};
+    dirty.sin_family = AF_INET;
+    dirty.sin_port = htons(9999U);
+    dirty.sin_addr.s_addr = htonl(0xDEADBEEFU);
+    *SolidSyslogVxWorks64Address_AsSockaddrIn(address) = dirty;
+    SolidSyslogVxWorks64Address_Destroy(address);
+
+    address = SolidSyslogVxWorks64Address_Create();
+
+    struct sockaddr_in zeroes = {};
+    MEMCMP_EQUAL(&zeroes, SolidSyslogVxWorks64Address_AsConstSockaddrIn(address), sizeof(zeroes));
+}
