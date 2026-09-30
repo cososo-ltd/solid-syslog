@@ -1,0 +1,16 @@
+#ifndef VXWORKS64NETFAKE_H
+#define VXWORKS64NETFAKE_H
+
+#include "SolidSyslogExternC.h"
+
+SOLIDSYSLOG_EXTERN_C_BEGIN
+
+    void VxWorks64NetFake_Reset(void);
+
+    /** The value inet_addr answers; the address in network byte order, or
+     *  (unsigned long) ERROR for a string that is not a dotted literal. */
+    void VxWorks64NetFake_SetInetAddrReturn(unsigned long value);
+
+SOLIDSYSLOG_EXTERN_C_END
+
+#endif /* VXWORKS64NETFAKE_H */
