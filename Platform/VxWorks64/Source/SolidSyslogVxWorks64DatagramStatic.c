@@ -24,7 +24,10 @@ static inline void VxWorks64Datagram_CleanupAtIndex(size_t index, void* context)
 
 static bool VxWorks64Datagram_InUse[SOLIDSYSLOG_DATAGRAM_POOL_SIZE];
 static struct SolidSyslogVxWorks64Datagram VxWorks64Datagram_Pool[SOLIDSYSLOG_DATAGRAM_POOL_SIZE];
-static struct SolidSyslogPoolAllocator VxWorks64Datagram_Allocator = {VxWorks64Datagram_InUse, SOLIDSYSLOG_DATAGRAM_POOL_SIZE};
+static struct SolidSyslogPoolAllocator VxWorks64Datagram_Allocator = {
+    VxWorks64Datagram_InUse,
+    SOLIDSYSLOG_DATAGRAM_POOL_SIZE
+};
 
 struct SolidSyslogDatagram* SolidSyslogVxWorks64Datagram_Create(void)
 {
@@ -49,9 +52,13 @@ struct SolidSyslogDatagram* SolidSyslogVxWorks64Datagram_Create(void)
 void SolidSyslogVxWorks64Datagram_Destroy(struct SolidSyslogDatagram* base)
 {
     size_t index = VxWorks64Datagram_IndexFromHandle(base);
-    bool released =
-        SolidSyslogPoolAllocator_IndexIsValid(&VxWorks64Datagram_Allocator, index) &&
-        SolidSyslogPoolAllocator_FreeIfInUse(&VxWorks64Datagram_Allocator, index, VxWorks64Datagram_CleanupAtIndex, NULL);
+    bool released = SolidSyslogPoolAllocator_IndexIsValid(&VxWorks64Datagram_Allocator, index) &&
+                    SolidSyslogPoolAllocator_FreeIfInUse(
+                        &VxWorks64Datagram_Allocator,
+                        index,
+                        VxWorks64Datagram_CleanupAtIndex,
+                        NULL
+                    );
     if (!released)
     {
         VxWorks64Datagram_Report(

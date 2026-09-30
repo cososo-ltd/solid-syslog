@@ -17,6 +17,7 @@ extern "C"
 /* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
 #define AF_INET 2
 #define SOCK_DGRAM 2
+
     /* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
 
     struct sockaddr

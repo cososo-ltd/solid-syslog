@@ -1,7 +1,7 @@
 # VxWorks 6.4 setup
 
-Wiring the mutex. [VxWorks 6.4](index.md) covers what it fills and what it
-leaves to you.
+Wiring the UDP transport and the mutex. [VxWorks 6.4](index.md) covers what
+they fill and what they leave to you.
 
 ## What to link
 
@@ -23,10 +23,28 @@ SOLIDSYSLOG_PLATFORMS := VxWorks64
 include third_party/solid-syslog/solidsyslog.mk
 ```
 
-This platform fills the Mutex role; the placeholders are whichever platforms the
+This platform fills the Datagram, Resolver and Mutex roles; the placeholders are whichever platforms the
 [capability matrix](../index.md) says fill the rest of what your build needs.
 See [naming your platforms](../../build-integration.md#cmake) for how the list
 is read.
+
+## Drawing the UDP pieces
+
+```c
+#include "SolidSyslogVxWorks64Address.h"
+#include "SolidSyslogVxWorks64Datagram.h"
+#include "SolidSyslogVxWorks64Resolver.h"
+
+struct SolidSyslogAddress*  address  = SolidSyslogVxWorks64Address_Create();
+struct SolidSyslogResolver* resolver = SolidSyslogVxWorks64Resolver_Create();
+struct SolidSyslogDatagram* datagram = SolidSyslogVxWorks64Datagram_Create();
+```
+
+None of them takes a configuration. Hand all three to
+`SolidSyslogUdpSender_Create`; one address, one resolver and one datagram serve
+one sender. Drawing past the pool sizes in
+[Adding it to your build](../../build-integration.md#tunables) hands back a Null
+object and reports `CRITICAL`.
 
 ## Wiring the mutex
 

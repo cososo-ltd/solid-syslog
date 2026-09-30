@@ -23,7 +23,10 @@ static inline size_t VxWorks64Address_IndexFromHandle(const struct SolidSyslogAd
 static inline void VxWorks64Address_CleanupAtIndex(size_t index, void* context);
 
 static bool VxWorks64Address_InUse[SOLIDSYSLOG_ADDRESS_POOL_SIZE];
-static struct SolidSyslogPoolAllocator VxWorks64Address_Allocator = {VxWorks64Address_InUse, SOLIDSYSLOG_ADDRESS_POOL_SIZE};
+static struct SolidSyslogPoolAllocator VxWorks64Address_Allocator = {
+    VxWorks64Address_InUse,
+    SOLIDSYSLOG_ADDRESS_POOL_SIZE
+};
 
 struct SolidSyslogAddress* SolidSyslogVxWorks64Address_Create(void)
 {

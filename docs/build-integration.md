@@ -98,7 +98,7 @@ command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIPRAW=ON`,
 | `PlusTcp` | network | FreeRTOS-Plus-TCP |
 | `FreeRtos` | mutex, uptime | FreeRTOS kernel |
 | `CmsisRtos` | mutex, uptime | CMSIS-RTOS2 API |
-| `VxWorks64` | mutex | VxWorks 6.4 kernel API |
+| `VxWorks64` | network, mutex | VxWorks 6.4 kernel API |
 | `FatFs` | file | ChaN FatFs |
 | `PlusFat` | file | FreeRTOS-Plus-FAT |
 | `LittleFs` | file | LittleFS |

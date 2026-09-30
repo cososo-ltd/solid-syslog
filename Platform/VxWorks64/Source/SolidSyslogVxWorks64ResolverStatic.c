@@ -24,7 +24,10 @@ static inline void VxWorks64Resolver_CleanupAtIndex(size_t index, void* context)
 
 static bool VxWorks64Resolver_InUse[SOLIDSYSLOG_RESOLVER_POOL_SIZE];
 static struct SolidSyslogVxWorks64Resolver VxWorks64Resolver_Pool[SOLIDSYSLOG_RESOLVER_POOL_SIZE];
-static struct SolidSyslogPoolAllocator VxWorks64Resolver_Allocator = {VxWorks64Resolver_InUse, SOLIDSYSLOG_RESOLVER_POOL_SIZE};
+static struct SolidSyslogPoolAllocator VxWorks64Resolver_Allocator = {
+    VxWorks64Resolver_InUse,
+    SOLIDSYSLOG_RESOLVER_POOL_SIZE
+};
 
 struct SolidSyslogResolver* SolidSyslogVxWorks64Resolver_Create(void)
 {
@@ -49,9 +52,13 @@ struct SolidSyslogResolver* SolidSyslogVxWorks64Resolver_Create(void)
 void SolidSyslogVxWorks64Resolver_Destroy(struct SolidSyslogResolver* base)
 {
     size_t index = VxWorks64Resolver_IndexFromHandle(base);
-    bool released =
-        SolidSyslogPoolAllocator_IndexIsValid(&VxWorks64Resolver_Allocator, index) &&
-        SolidSyslogPoolAllocator_FreeIfInUse(&VxWorks64Resolver_Allocator, index, VxWorks64Resolver_CleanupAtIndex, NULL);
+    bool released = SolidSyslogPoolAllocator_IndexIsValid(&VxWorks64Resolver_Allocator, index) &&
+                    SolidSyslogPoolAllocator_FreeIfInUse(
+                        &VxWorks64Resolver_Allocator,
+                        index,
+                        VxWorks64Resolver_CleanupAtIndex,
+                        NULL
+                    );
     if (!released)
     {
         VxWorks64Resolver_Report(
