@@ -74,3 +74,16 @@ TEST(SolidSyslogVxWorks64Mutex, DestroyDeletesTheCreatedSemaphore)
     CALLED_FAKE(VxWorks64SemFake_SemDelete, ONCE);
     POINTERS_EQUAL(VxWorks64SemFake_LastCreatedId(), VxWorks64SemFake_LastDeletedId());
 }
+
+TEST(SolidSyslogVxWorks64Mutex, LockAfterDestroyLeavesTheSemaphoreAlone)
+{
+    struct SolidSyslogMutex* stale = mutex;
+    SolidSyslogVxWorks64Mutex_Destroy(mutex);
+    mutex = nullptr;
+
+    SolidSyslogMutex_Lock(stale);
+    SolidSyslogMutex_Unlock(stale);
+
+    CALLED_FAKE(VxWorks64SemFake_SemTake, NEVER);
+    CALLED_FAKE(VxWorks64SemFake_SemGive, NEVER);
+}
