@@ -12,6 +12,7 @@
 #include "semLib.h"
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMutexDefinition.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogVxWorks64MutexPrivate.h"
@@ -33,6 +34,17 @@ bool SolidSyslogVxWorks64Mutex_Initialise(struct SolidSyslogMutex* base)
     {
         self->Base.Lock = VxWorks64Mutex_Lock;
         self->Base.Unlock = VxWorks64Mutex_Unlock;
+    }
+    else
+    {
+        /* The kernel could not allocate the semaphore, which on a sized image
+         * is a configuration fault. Say so; the caller is handed the
+         * NullMutex. */
+        VxWorks64Mutex_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_MUTEX_ERROR_CREATE_FAILED
+        );
     }
     return created;
 }
