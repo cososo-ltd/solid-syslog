@@ -5,6 +5,7 @@
 #include "SolidSyslogVxWorks64Datagram.h"
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "vxWorks.h"
 
@@ -20,6 +21,12 @@
 const struct SolidSyslogErrorSource SolidSyslogVxWorks64DatagramErrorSource = {"VxWorks64Datagram"};
 
 static bool VxWorks64Datagram_Open(struct SolidSyslogDatagram* base);
+static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
+    struct SolidSyslogDatagram* base,
+    const void* buffer,
+    size_t size,
+    const struct SolidSyslogAddress* addr
+);
 
 static inline struct SolidSyslogVxWorks64Datagram* VxWorks64Datagram_SelfFromBase(struct SolidSyslogDatagram* base);
 static inline bool VxWorks64Datagram_HasSocket(const struct SolidSyslogVxWorks64Datagram* self);
@@ -28,6 +35,7 @@ void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
     self->Base.Open = VxWorks64Datagram_Open;
+    self->Base.SendTo = VxWorks64Datagram_SendTo;
 }
 
 static inline struct SolidSyslogVxWorks64Datagram* VxWorks64Datagram_SelfFromBase(struct SolidSyslogDatagram* base)
@@ -50,4 +58,17 @@ static bool VxWorks64Datagram_Open(struct SolidSyslogDatagram* base)
     struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
     self->Fd = socket(AF_INET, SOCK_DGRAM, 0);
     return VxWorks64Datagram_HasSocket(self);
+}
+
+static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
+    struct SolidSyslogDatagram* base,
+    const void* buffer,
+    size_t size,
+    const struct SolidSyslogAddress* addr
+)
+{
+    (void) base;
+    (void) addr;
+    (void) sendto(0, (char*) buffer, (int) size, 0, NULL, 0);
+    return SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
 }
