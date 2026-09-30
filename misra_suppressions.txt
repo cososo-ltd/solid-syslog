@@ -121,7 +121,7 @@ misra-c2012-5.7:Core/Interface/SolidSyslogAddress.h:19
 # See docs/misra-deviations.md#d005
 misra-c2012-18.7:Core/Source/SolidSyslogFormatter.c:16
 
-# D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP)
+# D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP, VxWorks)
 # See docs/misra-deviations.md#d006
 misra-c2012-11.8:Core/Source/SolidSyslogBlockSequence.c:498
 misra-c2012-11.8:Core/Source/SolidSyslog.c:75
@@ -142,6 +142,9 @@ misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:122
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:148
 misra-c2012-11.8:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:168
 misra-c2012-11.8:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:100
+misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:95
+misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c:66
+misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c:69
 
 # D.007 — Rule 21.10: transitive <wchar.h> via <time.h>
 # See docs/misra-deviations.md#d007
@@ -233,6 +236,7 @@ misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:858
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:146
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:437
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:457
+misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:95
 
 # D.015 — Rule 8.9: rollover state at file scope so a test can clear it
 # See docs/misra-deviations.md#d015

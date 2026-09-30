@@ -90,7 +90,8 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
 {
     struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
     const struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr);
-    /* sockLib takes a non-const buffer and address it does not modify (D.006). */
+    /* sockLib takes a non-const char buffer and address that it only reads
+     * (D.006, D.013). */
     int sent = sendto(self->Fd, (char*) buffer, (int) size, 0, (struct sockaddr*) sin, (int) sizeof(*sin));
     /* Read errno straight after the call that set it, with nothing between
      * (MISRA 22.10). */

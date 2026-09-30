@@ -60,8 +60,8 @@ static bool VxWorks64Resolver_Resolve(
 {
     (void) base;
     (void) transport;
-    /* Both libraries take a non-const string they do not modify (D.006), and
-     * both answer ERROR - all ones as an address - for a host they cannot
+    /* inetLib and hostLib take a non-const string they only read (D.006), and
+     * each answers ERROR - all ones as an address - for a host it cannot
      * resolve. */
     uint32_t found = (uint32_t) inet_addr((char*) host);
     if (VxWorks64Resolver_IsUnresolved(found) == true)
