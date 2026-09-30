@@ -125,3 +125,13 @@ TEST(SolidSyslogVxWorks64Resolver, AFailedLookupLeavesTheAddressUntouched)
 
     LONGS_EQUAL(0x0100007FUL, Resolved()->sin_addr.s_addr);
 }
+
+TEST(SolidSyslogVxWorks64Resolver, ResolveAfterDestroyFails)
+{
+    VxWorks64NetFake_SetInetAddrReturn(0x0100007FUL);
+    struct SolidSyslogResolver* stale = resolver;
+    SolidSyslogVxWorks64Resolver_Destroy(resolver);
+    resolver = nullptr;
+
+    CHECK_FALSE(SolidSyslogResolver_Resolve(stale, SOLIDSYSLOG_TRANSPORT_UDP, "127.0.0.1", 514U, address));
+}
