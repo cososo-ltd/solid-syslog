@@ -43,6 +43,8 @@ set_target_properties(SolidSyslogVxWorks64MutexTest PROPERTIES
 add_executable(SolidSyslogVxWorks64AddressTest
     SolidSyslogVxWorks64AddressTest.cpp
     main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Address.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64AddressStatic.c
 )
 
 target_link_libraries(SolidSyslogVxWorks64AddressTest PRIVATE
