@@ -129,3 +129,13 @@ TEST(SolidSyslogVxWorks64Datagram, MaxPayloadIsTheUnknownPathPayload)
 
     LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
 }
+
+TEST(SolidSyslogVxWorks64Datagram, CloseClosesTheSocketOpenMade)
+{
+    SolidSyslogDatagram_Open(datagram);
+
+    SolidSyslogDatagram_Close(datagram);
+
+    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastClosedFd());
+}
