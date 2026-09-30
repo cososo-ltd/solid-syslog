@@ -66,7 +66,7 @@ static inline bool VxWorks64Datagram_HasSocket(const struct SolidSyslogVxWorks64
 
 void SolidSyslogVxWorks64Datagram_Cleanup(struct SolidSyslogDatagram* base)
 {
-    (void) base;
+    VxWorks64Datagram_Close(base);
 }
 
 static bool VxWorks64Datagram_Open(struct SolidSyslogDatagram* base)
