@@ -67,8 +67,8 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
     const struct SolidSyslogAddress* addr
 )
 {
-    (void) base;
+    struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
     (void) addr;
-    (void) sendto(0, (char*) buffer, (int) size, 0, NULL, 0);
+    (void) sendto(self->Fd, (char*) buffer, (int) size, 0, NULL, 0);
     return SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
 }
