@@ -34,6 +34,8 @@ static bool VxWorks64Resolver_Resolve(
     struct SolidSyslogAddress* result
 );
 
+static inline bool VxWorks64Resolver_IsUnresolved(uint32_t address);
+
 void SolidSyslogVxWorks64Resolver_Initialise(struct SolidSyslogResolver* base)
 {
     base->Resolve = VxWorks64Resolver_Resolve;
@@ -54,15 +56,22 @@ static bool VxWorks64Resolver_Resolve(
 {
     (void) base;
     (void) transport;
-    /* inetLib takes a non-const string it does not modify (D.006). */
-    unsigned long parsed = inet_addr((char*) host);
-    if (parsed == (unsigned long) ERROR)
+    /* Both libraries take a non-const string they do not modify (D.006), and
+     * both answer ERROR - all ones as an address - for a host they cannot
+     * resolve. */
+    uint32_t found = (uint32_t) inet_addr((char*) host);
+    if (VxWorks64Resolver_IsUnresolved(found) == true)
     {
-        parsed = (unsigned long) (unsigned int) hostGetByName((char*) host);
+        found = (uint32_t) hostGetByName((char*) host);
     }
     struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsSockaddrIn(result);
     sin->sin_family = AF_INET;
     sin->sin_port = htons(port);
-    sin->sin_addr.s_addr = (uint32_t) parsed;
-    return true;
+    sin->sin_addr.s_addr = found;
+    return VxWorks64Resolver_IsUnresolved(found) == false;
+}
+
+static inline bool VxWorks64Resolver_IsUnresolved(uint32_t address)
+{
+    return address == (uint32_t) ERROR;
 }
