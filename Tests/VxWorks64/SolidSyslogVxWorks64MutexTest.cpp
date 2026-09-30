@@ -49,3 +49,9 @@ TEST(SolidSyslogVxWorks64Mutex, LockTakesTheCreatedSemaphore)
     CALLED_FAKE(VxWorks64SemFake_SemTake, ONCE);
     POINTERS_EQUAL(VxWorks64SemFake_LastCreatedId(), VxWorks64SemFake_LastTakenId());
 }
+
+TEST(SolidSyslogVxWorks64Mutex, LockWaitsForever)
+{
+    SolidSyslogMutex_Lock(mutex);
+    LONGS_EQUAL(WAIT_FOREVER, VxWorks64SemFake_LastTakeTimeout());
+}
