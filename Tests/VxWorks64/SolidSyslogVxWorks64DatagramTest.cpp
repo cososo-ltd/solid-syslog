@@ -5,6 +5,7 @@ using namespace CososoTesting;
 
 #include "vxWorks.h"
 
+#include <errno.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 
@@ -98,4 +99,11 @@ TEST(SolidSyslogVxWorks64Datagram, SendToAddressesTheResolvedDestination)
 TEST(SolidSyslogVxWorks64Datagram, SendToReportsSentWhenTheStackTakesTheRecord)
 {
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, OpenAndSend());
+}
+
+TEST(SolidSyslogVxWorks64Datagram, SendToReportsOversizeWhenTheStackRefusesTheSize)
+{
+    VxWorks64NetFake_FailSendtoWithErrno(EMSGSIZE);
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE, OpenAndSend());
 }
