@@ -7,9 +7,14 @@ using namespace CososoTesting;
 
 #include "semLib.h"
 
+#include "ErrorHandlerFake.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMutex.h"
+#include "SolidSyslogMutexErrors.h"
 #include "SolidSyslogNullMutex.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogVxWorks64Mutex.h"
+#include "SolidSyslogVxWorks64MutexErrors.h"
 #include "VxWorks64SemFake.h"
 
 // clang-format off
@@ -117,4 +122,18 @@ TEST(SolidSyslogVxWorks64MutexRefused, CreateReturnsTheSharedNullMutex)
 TEST(SolidSyslogVxWorks64MutexRefused, CreateDeletesNothingOnItsWayOut)
 {
     CALLED_FAKE(VxWorks64SemFake_SemDelete, NEVER);
+}
+
+TEST(SolidSyslogVxWorks64MutexRefused, CreateReportsCritical)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    mutex = SolidSyslogVxWorks64Mutex_Create();
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogVxWorks64MutexErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_MUTEX_ERROR_CREATE_FAILED
+    );
 }
