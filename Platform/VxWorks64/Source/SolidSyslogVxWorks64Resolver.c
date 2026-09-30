@@ -64,11 +64,15 @@ static bool VxWorks64Resolver_Resolve(
     {
         found = (uint32_t) hostGetByName((char*) host);
     }
-    struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsSockaddrIn(result);
-    sin->sin_family = AF_INET;
-    sin->sin_port = htons(port);
-    sin->sin_addr.s_addr = found;
-    return VxWorks64Resolver_IsUnresolved(found) == false;
+    bool resolved = VxWorks64Resolver_IsUnresolved(found) == false;
+    if (resolved == true)
+    {
+        struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsSockaddrIn(result);
+        sin->sin_family = AF_INET;
+        sin->sin_port = htons(port);
+        sin->sin_addr.s_addr = found;
+    }
+    return resolved;
 }
 
 static inline bool VxWorks64Resolver_IsUnresolved(uint32_t address)
