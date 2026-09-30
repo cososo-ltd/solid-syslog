@@ -83,3 +83,13 @@ TEST(SolidSyslogVxWorks64Resolver, PopulatesThePortInNetworkOrder)
 
     LONGS_EQUAL(htons(6514U), Resolved()->sin_port);
 }
+
+TEST(SolidSyslogVxWorks64Resolver, ANameIsLookedUpInTheHostLibrary)
+{
+    VxWorks64NetFake_SetInetAddrReturn((unsigned long) ERROR);
+    VxWorks64NetFake_SetHostGetByNameReturn(0x0A00000A);
+
+    Resolve("collector");
+
+    CALLED_FAKE(VxWorks64NetFake_HostGetByName, ONCE);
+}
