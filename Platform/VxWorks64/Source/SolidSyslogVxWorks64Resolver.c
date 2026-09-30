@@ -7,9 +7,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "vxWorks.h"
+
+#include <netinet/in.h>
+#include <sys/socket.h>
+
 #include "SolidSyslogError.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
+#include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64ResolverErrors.h"
 #include "SolidSyslogVxWorks64ResolverPrivate.h"
 
@@ -47,6 +53,7 @@ static bool VxWorks64Resolver_Resolve(
     (void) transport;
     (void) host;
     (void) port;
-    (void) result;
+    struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsSockaddrIn(result);
+    sin->sin_family = AF_INET;
     return true;
 }
