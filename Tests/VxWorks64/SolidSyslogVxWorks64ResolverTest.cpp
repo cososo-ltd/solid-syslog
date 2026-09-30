@@ -72,3 +72,14 @@ TEST(SolidSyslogVxWorks64Resolver, PopulatesTheAddressInetAddrParsed)
 
     LONGS_EQUAL(0x0100007FUL, Resolved()->sin_addr.s_addr);
 }
+
+TEST(SolidSyslogVxWorks64Resolver, PopulatesThePortInNetworkOrder)
+{
+    VxWorks64NetFake_SetInetAddrReturn(0x0100007FUL);
+
+    // 6514 rather than 514, whose bytes are equal and so read the same in
+    // either order.
+    SolidSyslogResolver_Resolve(resolver, SOLIDSYSLOG_TRANSPORT_UDP, "127.0.0.1", 6514U, address);
+
+    LONGS_EQUAL(htons(6514U), Resolved()->sin_port);
+}
