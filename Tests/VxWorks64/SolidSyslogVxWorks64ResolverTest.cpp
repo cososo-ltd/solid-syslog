@@ -111,3 +111,17 @@ TEST(SolidSyslogVxWorks64Resolver, ReturnsFalseWhenTheHostLibraryCannotResolveTh
 
     CHECK_FALSE(Resolve("nowhere"));
 }
+
+// The Resolver contract: the result is written only on a true return, so a
+// failed lookup leaves whatever the caller last resolved in place.
+TEST(SolidSyslogVxWorks64Resolver, AFailedLookupLeavesTheAddressUntouched)
+{
+    VxWorks64NetFake_SetInetAddrReturn(0x0100007FUL);
+    Resolve("127.0.0.1");
+    VxWorks64NetFake_SetInetAddrReturn((unsigned long) ERROR);
+    VxWorks64NetFake_SetHostGetByNameReturn(ERROR);
+
+    Resolve("nowhere");
+
+    LONGS_EQUAL(0x0100007FUL, Resolved()->sin_addr.s_addr);
+}
