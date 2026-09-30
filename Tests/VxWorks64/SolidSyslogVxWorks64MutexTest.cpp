@@ -3,6 +3,7 @@
 
 using namespace CososoTesting;
 
+#include "SolidSyslogNullMutex.h"
 #include "SolidSyslogVxWorks64Mutex.h"
 #include "semLib.h"
 #include "VxWorks64SemFake.h"
@@ -34,4 +35,9 @@ TEST(SolidSyslogVxWorks64Mutex, CreateCallsSemMCreateOnce)
 TEST(SolidSyslogVxWorks64Mutex, CreateAsksForPriorityInheritanceAndDeletionSafety)
 {
     LONGS_EQUAL(SEM_Q_PRIORITY | SEM_INVERSION_SAFE | SEM_DELETE_SAFE, VxWorks64SemFake_LastSemMCreateOptions());
+}
+
+TEST(SolidSyslogVxWorks64Mutex, CreateReturnsAMutexThatIsNotTheNullMutex)
+{
+    CHECK(mutex != SolidSyslogNullMutex_Get());
 }
