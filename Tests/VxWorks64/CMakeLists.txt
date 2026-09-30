@@ -110,6 +110,8 @@ add_test(NAME SolidSyslogVxWorks64ResolverTest COMMAND SolidSyslogVxWorks64Resol
 add_executable(SolidSyslogVxWorks64DatagramTest
     SolidSyslogVxWorks64DatagramTest.cpp
     main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64DatagramStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Address.c
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64AddressStatic.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64NetFake.c
