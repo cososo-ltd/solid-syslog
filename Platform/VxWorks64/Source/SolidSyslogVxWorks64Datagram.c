@@ -25,6 +25,11 @@
 
 const struct SolidSyslogErrorSource SolidSyslogVxWorks64DatagramErrorSource = {"VxWorks64Datagram"};
 
+enum
+{
+    VXWORKS64_DATAGRAM_NO_SOCKET = -1
+};
+
 static bool VxWorks64Datagram_Open(struct SolidSyslogDatagram* base);
 static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
     struct SolidSyslogDatagram* base,
@@ -46,6 +51,7 @@ void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
     self->Base.SendTo = VxWorks64Datagram_SendTo;
     self->Base.MaxPayload = VxWorks64Datagram_MaxPayload;
     self->Base.Close = VxWorks64Datagram_Close;
+    self->Fd = VXWORKS64_DATAGRAM_NO_SOCKET;
 }
 
 static inline struct SolidSyslogVxWorks64Datagram* VxWorks64Datagram_SelfFromBase(struct SolidSyslogDatagram* base)
@@ -111,5 +117,9 @@ static size_t VxWorks64Datagram_MaxPayload(struct SolidSyslogDatagram* base)
 static void VxWorks64Datagram_Close(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
-    (void) close(self->Fd);
+    if (VxWorks64Datagram_HasSocket(self) == true)
+    {
+        (void) close(self->Fd);
+        self->Fd = VXWORKS64_DATAGRAM_NO_SOCKET;
+    }
 }
