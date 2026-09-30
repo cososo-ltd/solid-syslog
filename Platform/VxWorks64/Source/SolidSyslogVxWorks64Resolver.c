@@ -58,7 +58,7 @@ static bool VxWorks64Resolver_Resolve(
     unsigned long parsed = inet_addr((char*) host);
     if (parsed == (unsigned long) ERROR)
     {
-        (void) hostGetByName((char*) host);
+        parsed = (unsigned long) (unsigned int) hostGetByName((char*) host);
     }
     struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsSockaddrIn(result);
     sin->sin_family = AF_INET;
