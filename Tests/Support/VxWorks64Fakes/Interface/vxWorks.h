@@ -10,4 +10,10 @@
 
 typedef int STATUS;
 
+/* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+#define OK 0
+#define ERROR (-1)
+#define WAIT_FOREVER (-1)
+/* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+
 #endif /* VXWORKS_H */

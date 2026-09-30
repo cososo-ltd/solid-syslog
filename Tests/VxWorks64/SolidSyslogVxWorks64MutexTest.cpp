@@ -3,6 +3,7 @@
 
 using namespace CososoTesting;
 
+#include "SolidSyslogMutex.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogVxWorks64Mutex.h"
 #include "semLib.h"
@@ -40,4 +41,11 @@ TEST(SolidSyslogVxWorks64Mutex, CreateAsksForPriorityInheritanceAndDeletionSafet
 TEST(SolidSyslogVxWorks64Mutex, CreateReturnsAMutexThatIsNotTheNullMutex)
 {
     CHECK(mutex != SolidSyslogNullMutex_Get());
+}
+
+TEST(SolidSyslogVxWorks64Mutex, LockTakesTheCreatedSemaphore)
+{
+    SolidSyslogMutex_Lock(mutex);
+    CALLED_FAKE(VxWorks64SemFake_SemTake, ONCE);
+    POINTERS_EQUAL(VxWorks64SemFake_LastCreatedId(), VxWorks64SemFake_LastTakenId());
 }

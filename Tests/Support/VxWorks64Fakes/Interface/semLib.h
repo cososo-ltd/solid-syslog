@@ -27,6 +27,9 @@ extern "C"
     typedef struct semaphore* SEM_ID;
 
     SEM_ID semMCreate(int options);
+    STATUS semTake(SEM_ID semId, int timeout);
+    STATUS semGive(SEM_ID semId);
+    STATUS semDelete(SEM_ID semId);
 
 #ifdef __cplusplus
 }
