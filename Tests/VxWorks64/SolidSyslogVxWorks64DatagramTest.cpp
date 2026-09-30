@@ -45,3 +45,10 @@ TEST(SolidSyslogVxWorks64Datagram, OpenAsksForAnIpv4DatagramSocket)
     LONGS_EQUAL(SOCK_DGRAM, VxWorks64NetFake_LastSocketType());
     LONGS_EQUAL(0, VxWorks64NetFake_LastSocketProtocol());
 }
+
+TEST(SolidSyslogVxWorks64Datagram, OpenFailsWhenTheStackCannotMakeASocket)
+{
+    VxWorks64NetFake_SetSocketFails(true);
+
+    CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
+}
