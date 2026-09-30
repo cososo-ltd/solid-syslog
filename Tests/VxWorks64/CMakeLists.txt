@@ -8,6 +8,7 @@
 add_executable(SolidSyslogVxWorks64MutexTest
     SolidSyslogVxWorks64MutexTest.cpp
     main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Mutex.c
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64MutexStatic.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64SemFake.c
 )

@@ -12,12 +12,13 @@
 add_library(SolidSyslogVxWorks64 INTERFACE)
 
 target_sources(SolidSyslogVxWorks64 INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64Mutex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64MutexStatic.c
 )
 
 target_include_directories(SolidSyslogVxWorks64 INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Interface
-    ${CMAKE_CURRENT_SOURCE_DIR}/Source
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source          # SolidSyslogVxWorks64MutexPrivate.h
     ${SolidSyslog_SOURCE_DIR}/Core/Source             # SolidSyslogPoolAllocator.h
 )
 
