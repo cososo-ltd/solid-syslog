@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include "hostLib.h"
 #include "inetLib.h"
 
 #include "SolidSyslogError.h"
@@ -55,6 +56,10 @@ static bool VxWorks64Resolver_Resolve(
     (void) transport;
     /* inetLib takes a non-const string it does not modify (D.006). */
     unsigned long parsed = inet_addr((char*) host);
+    if (parsed == (unsigned long) ERROR)
+    {
+        (void) hostGetByName((char*) host);
+    }
     struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsSockaddrIn(result);
     sin->sin_family = AF_INET;
     sin->sin_port = htons(port);
