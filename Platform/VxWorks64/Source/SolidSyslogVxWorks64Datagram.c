@@ -42,6 +42,6 @@ void SolidSyslogVxWorks64Datagram_Cleanup(struct SolidSyslogDatagram* base)
 static bool VxWorks64Datagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
-    self->Fd = socket(0, 0, 0);
+    self->Fd = socket(AF_INET, SOCK_DGRAM, 0);
     return true;
 }
