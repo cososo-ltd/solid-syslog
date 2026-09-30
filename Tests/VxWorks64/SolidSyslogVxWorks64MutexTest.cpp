@@ -87,3 +87,29 @@ TEST(SolidSyslogVxWorks64Mutex, LockAfterDestroyLeavesTheSemaphoreAlone)
     CALLED_FAKE(VxWorks64SemFake_SemTake, NEVER);
     CALLED_FAKE(VxWorks64SemFake_SemGive, NEVER);
 }
+
+// semMCreate answers NULL when the kernel cannot allocate the semaphore, and
+// Create has to make that safe rather than hand back a mutex with no semaphore
+// behind it.
+// clang-format off
+TEST_GROUP(SolidSyslogVxWorks64MutexRefused)
+{
+    struct SolidSyslogMutex* mutex = nullptr;
+
+    void setup() override
+    {
+        VxWorks64SemFake_Reset();
+        VxWorks64SemFake_SetSemMCreateFails(true);
+        mutex = SolidSyslogVxWorks64Mutex_Create();
+    }
+
+    // No teardown: a refused create holds no slot, and the handle it returns is
+    // the shared NullMutex, which is nobody's to destroy.
+};
+
+// clang-format on
+
+TEST(SolidSyslogVxWorks64MutexRefused, CreateReturnsTheSharedNullMutex)
+{
+    POINTERS_EQUAL(SolidSyslogNullMutex_Get(), mutex);
+}
