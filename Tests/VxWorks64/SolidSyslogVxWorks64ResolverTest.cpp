@@ -103,3 +103,11 @@ TEST(SolidSyslogVxWorks64Resolver, ANameResolvesToTheAddressTheHostLibraryFound)
 
     LONGS_EQUAL(0x0A00000AUL, Resolved()->sin_addr.s_addr);
 }
+
+TEST(SolidSyslogVxWorks64Resolver, ReturnsFalseWhenTheHostLibraryCannotResolveTheName)
+{
+    VxWorks64NetFake_SetInetAddrReturn((unsigned long) ERROR);
+    VxWorks64NetFake_SetHostGetByNameReturn(ERROR);
+
+    CHECK_FALSE(Resolve("nowhere"));
+}
