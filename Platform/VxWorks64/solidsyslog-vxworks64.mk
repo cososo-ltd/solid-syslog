@@ -38,20 +38,17 @@ ifndef SOLIDSYSLOG_BUILD_DIR
 $(error SOLIDSYSLOG_BUILD_DIR is not set - name a directory for the build output)
 endif
 
-# _C99 is the Wind River headers' own switch for their C99 declarations; the
-# dialect flag alone leaves it unset.
-#
 # -ei4188 turns off "enumerated type mixed with another type". In C an
 # enumeration constant has type int (C99 6.4.4.3), so Diab raises it wherever an
 # enum is given one of its own constants - the ordinary use of every enum in the
 # library. MISRA's essential type model already treats such a constant as its
 # enum's type.
 ifeq ($(TOOL_FAMILY),diab)
-SOLIDSYSLOG_DIALECT_CFLAGS := -Xdialect-c99 -D_C99 -ei4188
+SOLIDSYSLOG_DIALECT_CFLAGS := -Xdialect-c99 -ei4188
 SOLIDSYSLOG_DEPEND_CFLAGS  := -Xmake-dependency=0xd
 endif
 ifeq ($(TOOL_FAMILY),gnu)
-SOLIDSYSLOG_DIALECT_CFLAGS := -std=c99 -D_C99
+SOLIDSYSLOG_DIALECT_CFLAGS := -std=c99
 SOLIDSYSLOG_DEPEND_CFLAGS  := -MMD
 endif
 ifndef SOLIDSYSLOG_DIALECT_CFLAGS
