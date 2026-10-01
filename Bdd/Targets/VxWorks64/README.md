@@ -38,7 +38,8 @@ component (`99SolidSyslogVxWorks64Bdd.cdf`) and source
 `Build-VxWorks64Vip.ps1` builds the SolidSyslog library, then the `default_rom`
 image and the raw `vxWorks_rom.bin` that QEMU loads, and prints the image's
 SHA-256. The full build output is kept beside the project as
-`build-default_rom.log`.
+`build-default_rom.log`, and the last lines on the console count every compiler
+diagnostic in it, or report none.
 
 `Start-VxWorks64Qemu.ps1 -WaitFor` boots the image, waits for the text on the
 console, then stops QEMU. It fails if the text does not appear within
@@ -53,5 +54,10 @@ The build script runs `Platform/VxWorks64/solidsyslog.makefile` against the
 project's own Makefile, so the library is compiled with the build
 specification's compiler and flags into `solidsyslog\` in the project. The
 creation script sets two of the project's build macros with
-`vxprj buildmacro set`: `CFLAGS` gains the SolidSyslog include directory, and
-`LIBS` names the library ahead of `$(VX_OS_LIBS)`.
+`vxprj buildmacro set`: `CFLAGS` gains the SolidSyslog include directory and
+`Platform/VxWorks64/Compat`, and `LIBS` names the library ahead of
+`$(VX_OS_LIBS)`.
+
+The kernel header tree has no `<stdint.h>` or `<stdbool.h>`, which the
+SolidSyslog headers include. `Platform/VxWorks64/Compat` supplies both, for the
+library and for the project's own sources alike.

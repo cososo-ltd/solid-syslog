@@ -47,8 +47,31 @@ Assert-NoWhitespace -Path $script:RepositoryRoot -Description 'The SolidSyslog c
 $logPath = Join-Path $ProjectDirectory "build-$BuildSpec.log"
 $vxprj = @{ WindRiverRoot = $WindRiverRoot; WindRiverProfile = $WindRiverProfile }
 
+# Every compiler diagnostic in the log, once each with its count. Diab writes
+# "warning (dcc:1606)", GNU "warning:"; the line number is dropped so a
+# diagnostic repeated across a file counts as one.
+function Write-DiagnosticSummary
+    {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    $diagnostics = @(Select-String -LiteralPath $Path -Pattern '(warning|info|error) \(|: (warning|error):' |
+        ForEach-Object { $_.Line -replace ', line \d+', '' -replace ':\d+:\d+:', ':' } |
+        Group-Object)
+    if ($diagnostics.Count -eq 0)
+        {
+        Write-Host 'Diagnostics: none'
+        }
+    else
+        {
+        Write-Host "Diagnostics: $($diagnostics.Count)"
+        $diagnostics | ForEach-Object { Write-Host ("  {0,3}  {1}" -f $_.Count, $_.Name) }
+        }
+    }
+
 $previousDir = $env:SOLIDSYSLOG_DIR
 $previousPlatforms = $env:SOLIDSYSLOG_PLATFORMS
+# UTF-8, which Tee-Object cannot write under Windows PowerShell 5.1.
+$log = New-Object System.IO.StreamWriter($logPath, $false, (New-Object System.Text.UTF8Encoding($false)))
 try
     {
     # Read by solidsyslog.makefile inside the project's build.
@@ -96,12 +119,14 @@ try
             {
             Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'build', $projectFile, 'vxWorks_rom.bin')
             }
-        } *>&1 | Tee-Object -FilePath $logPath
+        } *>&1 | ForEach-Object { $line = "$_"; $log.WriteLine($line); $line }
     }
 finally
     {
+    $log.Dispose()
     $env:SOLIDSYSLOG_DIR = $previousDir
     $env:SOLIDSYSLOG_PLATFORMS = $previousPlatforms
+    Write-DiagnosticSummary -Path $logPath
     }
 
 $image = if ($BuildSpec -eq 'default_rom') { 'vxWorks_rom.bin' } else { 'vxWorks' }
