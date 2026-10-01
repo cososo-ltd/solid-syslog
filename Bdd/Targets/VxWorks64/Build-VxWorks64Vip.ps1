@@ -3,8 +3,10 @@
 Builds the SolidSyslog VxWorks 6.4 BDD target's VxWorks Image Project.
 
 .DESCRIPTION
-Builds a VIP made by New-VxWorks64Vip.ps1. solidsyslog.makefile in the project
-builds the SolidSyslog library first, from this checkout. For the default_rom
+Builds a VIP made by New-VxWorks64Vip.ps1. The SolidSyslog library is built
+first, from this checkout, by running solidsyslog.makefile against the project's
+own Makefile - so it compiles with the build specification's compiler and flags.
+For the default_rom
 build specification it also produces vxWorks_rom.bin, the raw image QEMU's
 -bios option loads. The full build output is kept beside the project as
 build-<spec>.log.
@@ -53,21 +55,46 @@ try
     $env:SOLIDSYSLOG_DIR = $script:RepositoryRoot.Replace('\', '/')
     $env:SOLIDSYSLOG_PLATFORMS = $Platforms
 
-    $steps = @(, @('vxprj.bat', 'build', 'set', $projectFile, $BuildSpec))
-    if ($Clean)
+    $libraryDirectory = Get-LibraryDirectory -ProjectDirectory $ProjectDirectory
+    $library = Join-Path $libraryDirectory 'libsolidsyslog.a'
+    $specDirectory = Join-Path $ProjectDirectory $BuildSpec
+    if ($Clean -and (Test-Path -LiteralPath $libraryDirectory))
         {
-        $steps += , @('vxprj.bat', 'build', $projectFile, 'clean')
-        }
-    $steps += , @('vxprj.bat', 'build', $projectFile)
-    if ($BuildSpec -eq 'default_rom')
-        {
-        $steps += , @('vxprj.bat', 'build', $projectFile, 'vxWorks_rom.bin')
+        Remove-Item -LiteralPath $libraryDirectory -Recurse -Force
         }
 
     & {
-        foreach ($step in $steps)
+        Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'build', 'set', $projectFile, $BuildSpec)
+        if ($Clean)
             {
-            Invoke-WindRiver @vxprj -Command $step
+            Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'build', $projectFile, 'clean')
+            }
+
+        # The project's Makefile supplies CC, AR, TOOL_FAMILY and CFLAGS for the
+        # build specification; solidsyslog.makefile builds the library with them.
+        Invoke-WindRiver @vxprj -Command @('make',
+            '-C', (ConvertTo-MakePath $ProjectDirectory),
+            '-f', 'Makefile',
+            '-f', (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Platform\VxWorks64\solidsyslog.makefile')),
+            "BUILD_SPEC=$BuildSpec",
+            "SOLIDSYSLOG_BUILD_DIR=$(ConvertTo-MakePath $libraryDirectory)",
+            'solidsyslog_library')
+
+        # The image does not depend on the library in the project's rules, so a
+        # rebuilt library would not relink it. Remove the stale images instead.
+        $images = @(Get-ChildItem -LiteralPath $specDirectory -Filter 'vxWorks*' -File -ErrorAction SilentlyContinue)
+        $oldestImage = $images | Sort-Object LastWriteTimeUtc | Select-Object -First 1
+        if ($oldestImage -and
+            (Get-Item -LiteralPath $library).LastWriteTimeUtc -gt $oldestImage.LastWriteTimeUtc)
+            {
+            Write-Host 'The SolidSyslog library changed - removing the old images to force a relink.'
+            $images | Remove-Item -Force
+            }
+
+        Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'build', $projectFile)
+        if ($BuildSpec -eq 'default_rom')
+            {
+            Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'build', $projectFile, 'vxWorks_rom.bin')
             }
         } *>&1 | Tee-Object -FilePath $logPath
     }

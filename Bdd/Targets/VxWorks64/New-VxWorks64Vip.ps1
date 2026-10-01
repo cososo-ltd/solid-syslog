@@ -3,9 +3,10 @@
 Creates the SolidSyslog VxWorks 6.4 BDD target's VxWorks Image Project.
 
 .DESCRIPTION
-Creates a fresh VIP for the BSP and toolchain with vxprj, then adds the BDD
-target: its component description, its source, and solidsyslog.makefile, which
-builds SolidSyslog and links it in. Nothing it generates is kept in the
+Creates a fresh VIP for the BSP and toolchain with vxprj, adds the BDD target's
+component description and source, and sets each build specification's CFLAGS
+and LIBS so the project compiles against the SolidSyslog headers and links the
+library Build-VxWorks64Vip.ps1 builds. Nothing it generates is kept in the
 repository; the default location is under build\, which git ignores.
 
 .EXAMPLE
@@ -54,12 +55,10 @@ $vxprj = @{ WindRiverRoot = $WindRiverRoot; WindRiverProfile = $WindRiverProfile
 
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'create', $Bsp, $Tool, $projectFile)
 
-# The generated Makefile includes every *.makefile in the project directory, and
-# vxprj reads component descriptions from it.
+# vxprj reads component descriptions from the project directory.
 foreach ($file in @(
         (Join-Path $PSScriptRoot '99SolidSyslogVxWorks64Bdd.cdf'),
-        (Join-Path $PSScriptRoot 'BddTargetVxWorks64.c'),
-        (Join-Path $script:RepositoryRoot 'Platform\VxWorks64\solidsyslog.makefile')
+        (Join-Path $PSScriptRoot 'BddTargetVxWorks64.c')
     ))
     {
     Copy-Item -LiteralPath $file -Destination $ProjectDirectory
@@ -69,5 +68,27 @@ Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'file', 'add', $projectFile,
     (Join-Path $ProjectDirectory 'BddTargetVxWorks64.c'))
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'component', 'add', $projectFile,
     'INCLUDE_SOLIDSYSLOG_VXWORKS64_BDD')
+
+# Give every build specification the SolidSyslog headers and library. The
+# library goes ahead of the OS libraries, which it calls into. buildmacro acts on
+# the current build specification, so each is selected in turn.
+$coreInclude = '-I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Core\Interface'))
+$library = ConvertTo-MakePath (Join-Path (Get-LibraryDirectory -ProjectDirectory $ProjectDirectory) 'libsolidsyslog.a')
+foreach ($buildSpec in @('default', 'default_rom'))
+    {
+    Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'build', 'set', $projectFile, $buildSpec)
+
+    $cflags = ((Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'get',
+        $projectFile, 'CFLAGS')) -join ' ').Trim()
+    if (-not $cflags)
+        {
+        throw "vxprj returned no CFLAGS for build specification $buildSpec."
+        }
+
+    Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
+        'CFLAGS', "$cflags $coreInclude")
+    Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
+        'LIBS', "$library `$(VX_OS_LIBS)")
+    }
 
 Write-Host "Created $projectFile"

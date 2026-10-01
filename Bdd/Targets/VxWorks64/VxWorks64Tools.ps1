@@ -19,6 +19,21 @@ function Get-ProjectFile
     Join-Path $ProjectDirectory 'SolidSyslogVxWorks64.wpj'
     }
 
+# Where the project's copy of libsolidsyslog.a is built.
+function Get-LibraryDirectory
+    {
+    param([Parameter(Mandatory)] [string] $ProjectDirectory)
+
+    Join-Path $ProjectDirectory 'solidsyslog'
+    }
+
+function ConvertTo-MakePath
+    {
+    param([Parameter(Mandatory)] [string] $Path)
+
+    $Path.Replace('\', '/')
+    }
+
 # The Wind River make rules pass paths through unquoted command lines.
 function Assert-NoWhitespace
     {
@@ -46,8 +61,9 @@ function Get-WrenvPath
     }
 
 # Runs one command inside the Wind River environment for the given profile,
-# writing its stdout and stderr as plain lines, and fails on a non-zero exit
-# code. Under Windows PowerShell 5.1 a redirected stderr line is an error
+# returning its stdout and stderr as plain lines, and fails on a non-zero exit
+# code. The command itself is echoed to the host, so a caller capturing the
+# output gets only the tool's. Under Windows PowerShell 5.1 a redirected stderr line is an error
 # record, which 'Stop' would turn into a failure on the first compiler warning,
 # so only the exit code decides.
 function Invoke-WindRiver
@@ -60,7 +76,7 @@ function Invoke-WindRiver
 
     $wrenv = Get-WrenvPath -WindRiverRoot $WindRiverRoot
     $commandPrompt = Join-Path $env:SystemRoot 'System32\cmd.exe'
-    Write-Output "> $($Command -join ' ')"
+    Write-Host "> $($Command -join ' ')"
     $ErrorActionPreference = 'Continue'
     & $wrenv -p $WindRiverProfile $commandPrompt /d /c @Command 2>&1 |
         ForEach-Object { "$_" }

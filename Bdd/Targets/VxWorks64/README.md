@@ -31,13 +31,14 @@ From PowerShell in this directory:
 ```
 
 `New-VxWorks64Vip.ps1` creates the VIP with `vxprj` and adds the BDD target's
-component (`99SolidSyslogVxWorks64Bdd.cdf`), its source
-(`BddTargetVxWorks64.c`) and `solidsyslog.makefile`. Pass `-Force` to replace
-an existing project, and `-Tool sfgnu` for the GNU toolchain.
+component (`99SolidSyslogVxWorks64Bdd.cdf`) and source
+(`BddTargetVxWorks64.c`). Pass `-Force` to replace an existing project, and
+`-Tool sfgnu` for the GNU toolchain.
 
-`Build-VxWorks64Vip.ps1` builds the `default_rom` image and the raw
-`vxWorks_rom.bin` that QEMU loads, and prints the image's SHA-256. The full
-build output is kept beside the project as `build-default_rom.log`.
+`Build-VxWorks64Vip.ps1` builds the SolidSyslog library, then the `default_rom`
+image and the raw `vxWorks_rom.bin` that QEMU loads, and prints the image's
+SHA-256. The full build output is kept beside the project as
+`build-default_rom.log`.
 
 `Start-VxWorks64Qemu.ps1 -WaitFor` boots the image, waits for the text on the
 console, then stops QEMU. It fails if the text does not appear within
@@ -48,8 +49,9 @@ Each script describes its parameters: `Get-Help .\<script>.ps1 -Detailed`.
 
 ## How SolidSyslog gets into the image
 
-The same way it gets into any Workbench project. The project's generated
-Makefile includes every `*.makefile` in the project directory, so
-`Platform/VxWorks64/solidsyslog.makefile`, copied there, builds the library with
-the project's own toolchain and flags and links it in. Its header lists the
-variables it reads. The build script points `SOLIDSYSLOG_DIR` at this checkout.
+The build script runs `Platform/VxWorks64/solidsyslog.makefile` against the
+project's own Makefile, so the library is compiled with the build
+specification's compiler and flags into `solidsyslog\` in the project. The
+creation script sets two of the project's build macros with
+`vxprj buildmacro set`: `CFLAGS` gains the SolidSyslog include directory, and
+`LIBS` names the library ahead of `$(VX_OS_LIBS)`.
