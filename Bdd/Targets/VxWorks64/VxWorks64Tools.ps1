@@ -60,12 +60,37 @@ function Get-WrenvPath
     $wrenv
     }
 
+# Quotes one argument for the 'call' line of a cmd.exe batch file: wrapped in
+# double quotes when it holds anything cmd would act on, and % quadrupled, because
+# a batch line expands % even inside quotes and 'call' expands it a second time.
+function ConvertTo-BatchArgument
+    {
+    param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Argument)
+
+    if ($Argument.Contains('"'))
+        {
+        throw "An argument contains a double quote, which cannot be passed safely: $Argument"
+        }
+    $escaped = $Argument.Replace('%', '%%%%')
+    if ($escaped -eq '' -or $escaped -match '[\s&|<>^(),;=]')
+        {
+        $escaped = '"' + $escaped + '"'
+        }
+    $escaped
+    }
+
 # Runs one command inside the Wind River environment for the given profile,
 # returning its stdout and stderr as plain lines, and fails on a non-zero exit
 # code. The command itself is echoed to the host, so a caller capturing the
-# output gets only the tool's. Under Windows PowerShell 5.1 a redirected stderr line is an error
-# record, which 'Stop' would turn into a failure on the first compiler warning,
-# so only the exit code decides.
+# output gets only the tool's.
+#
+# The command goes into a temporary batch file rather than onto wrenv's command
+# line: wrenv expands $(NAME) in its own arguments, which would consume a build
+# macro reference such as $(VX_OS_LIBS) before vxprj saw it.
+#
+# Under Windows PowerShell 5.1 a redirected stderr line is an error record, which
+# 'Stop' would turn into a failure on the first compiler warning, so only the
+# exit code decides.
 function Invoke-WindRiver
     {
     param(
@@ -77,12 +102,26 @@ function Invoke-WindRiver
     $wrenv = Get-WrenvPath -WindRiverRoot $WindRiverRoot
     $commandPrompt = Join-Path $env:SystemRoot 'System32\cmd.exe'
     Write-Host "> $($Command -join ' ')"
-    $ErrorActionPreference = 'Continue'
-    & $wrenv -p $WindRiverProfile $commandPrompt /d /c @Command 2>&1 |
-        ForEach-Object { "$_" }
-    $ErrorActionPreference = 'Stop'
-    if ($LASTEXITCODE -ne 0)
+
+    $batchFile = Join-Path ([System.IO.Path]::GetTempPath()) ("solidsyslog-wr-{0}.bat" -f [guid]::NewGuid())
+    $line = ($Command | ForEach-Object { ConvertTo-BatchArgument $_ }) -join ' '
+    # call: vxprj is itself a batch file, and without call control would not return.
+    [System.IO.File]::WriteAllText($batchFile,
+        "@echo off`r`ncall $line`r`nexit /b %ERRORLEVEL%`r`n", [System.Text.Encoding]::ASCII)
+    try
         {
-        throw "Failed with exit code ${LASTEXITCODE}: $($Command -join ' ')"
+        $ErrorActionPreference = 'Continue'
+        & $wrenv -p $WindRiverProfile $commandPrompt /d /c $batchFile 2>&1 |
+            ForEach-Object { "$_" }
+        $exitCode = $LASTEXITCODE
+        $ErrorActionPreference = 'Stop'
+        }
+    finally
+        {
+        Remove-Item -LiteralPath $batchFile -Force -ErrorAction SilentlyContinue
+        }
+    if ($exitCode -ne 0)
+        {
+        throw "Failed with exit code ${exitCode}: $($Command -join ' ')"
         }
     }
