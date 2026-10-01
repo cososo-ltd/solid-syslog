@@ -51,6 +51,12 @@ ifndef SOLIDSYSLOG_DIALECT_CFLAGS
 $(error TOOL_FAMILY is '$(TOOL_FAMILY)' - expected diab or gnu)
 endif
 
+# The kernel header tree has no stdbool.h; the user-mode tree beside it does.
+# It goes last, so every header the kernel tree has is still taken from there.
+ifdef WIND_BASE
+SOLIDSYSLOG_C99_INCLUDES ?= -I$(subst \,/,$(WIND_BASE))/target/usr/h
+endif
+
 include $(SOLIDSYSLOG_DIR)/solidsyslog.mk
 
 SOLIDSYSLOG_LIB := $(SOLIDSYSLOG_BUILD_DIR)/libsolidsyslog.a
@@ -79,7 +85,8 @@ $(SOLIDSYSLOG_LIB): $(SOLIDSYSLOG_OBJS)
 $(SOLIDSYSLOG_BUILD_DIR)/%.o: %.c
 	mkdir -p $(@D)
 	$(CC) $(SOLIDSYSLOG_TARGET_CFLAGS) $(SOLIDSYSLOG_DIALECT_CFLAGS) \
-		$(SOLIDSYSLOG_DEPEND_CFLAGS) $(SOLIDSYSLOG_OBJ_INCLUDES) -c $< -o $@
+		$(SOLIDSYSLOG_DEPEND_CFLAGS) $(SOLIDSYSLOG_OBJ_INCLUDES) \
+		$(SOLIDSYSLOG_C99_INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(SOLIDSYSLOG_BUILD_DIR)
@@ -90,6 +97,7 @@ print-config:
 	@echo TOOL_FAMILY=$(TOOL_FAMILY)
 	@echo SOLIDSYSLOG_TARGET_CFLAGS=$(SOLIDSYSLOG_TARGET_CFLAGS)
 	@echo SOLIDSYSLOG_DIALECT_CFLAGS=$(SOLIDSYSLOG_DIALECT_CFLAGS)
+	@echo SOLIDSYSLOG_C99_INCLUDES=$(SOLIDSYSLOG_C99_INCLUDES)
 	@echo SOLIDSYSLOG_PLATFORMS=$(SOLIDSYSLOG_PLATFORMS)
 	@echo SOLIDSYSLOG_LIB=$(SOLIDSYSLOG_LIB)
 
