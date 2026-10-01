@@ -41,9 +41,8 @@ void SolidSyslogTimestampFormatter_Format(
 
 static inline bool TimestampFormatter_IsValid(const struct SolidSyslogTimestamp* ts)
 {
-    bool valid = true;
+    bool valid = (ts->Month >= 1U) && (ts->Month <= 12U);
 
-    valid = valid && (ts->Month >= 1U) && (ts->Month <= 12U);
     valid = valid && (ts->Day >= 1U) && (ts->Day <= 31U);
     valid = valid && (ts->Hour <= 23U);
     valid = valid && (ts->Minute <= 59U);
