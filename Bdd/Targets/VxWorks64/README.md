@@ -48,6 +48,19 @@ connects out to that address and QEMU is left running.
 
 Each script describes its parameters: `Get-Help .\<script>.ps1 -Detailed`.
 
+## Target checklist
+
+No CI lane can build or run this target, so every pull request that touches the
+VxWorks 6.4 platform records a run of these steps against its commit: each one as
+pass, fail or not run.
+
+1. `New-VxWorks64Vip.ps1 -Force` completes.
+2. `Build-VxWorks64Vip.ps1 -Clean` ends with no diagnostics from outside the
+   Wind River tree. One Wind River diagnostic is expected:
+   `pciIntLib.c`, `dcc:1606`.
+3. `Start-VxWorks64Qemu.ps1 -WaitFor 'SolidSyslog VxWorks 6.4 BDD target: Core ran'`
+   reports `PASS`.
+
 ## How SolidSyslog gets into the image
 
 The build script runs `Platform/VxWorks64/solidsyslog.makefile` against the
