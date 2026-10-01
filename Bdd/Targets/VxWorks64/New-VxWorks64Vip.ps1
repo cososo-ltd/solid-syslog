@@ -70,9 +70,12 @@ Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'component', 'add', $projectFile
     'INCLUDE_SOLIDSYSLOG_VXWORKS64_BDD')
 
 # Give every build specification the SolidSyslog headers and library. The
-# library goes ahead of the OS libraries, which it calls into. buildmacro acts on
-# the current build specification, so each is selected in turn.
-$coreInclude = '-I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Core\Interface'))
+# headers need the C99 <stdint.h> and <stdbool.h> the kernel tree lacks, from the
+# pack's Compat directory, placed last so it only fills gaps. The library goes
+# ahead of the OS libraries, which it calls into. buildmacro acts on the current
+# build specification, so each is selected in turn.
+$coreInclude = '-I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Core\Interface')) +
+    ' -I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Platform\VxWorks64\Compat'))
 $library = ConvertTo-MakePath (Join-Path (Get-LibraryDirectory -ProjectDirectory $ProjectDirectory) 'libsolidsyslog.a')
 foreach ($buildSpec in @('default', 'default_rom'))
     {

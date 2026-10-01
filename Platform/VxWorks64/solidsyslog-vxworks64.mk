@@ -3,9 +3,10 @@
 # Builds Core, plus any platforms named in SOLIDSYSLOG_PLATFORMS, into one static
 # library with the Wind River toolchain a project already uses. It names no CPU:
 # everything about the target arrives from the project that runs it - normally
-# solidsyslog.makefile, which a VIP or DKM picks up from its own directory. The
-# one thing added here is the C99 dialect, because the flags a project generates
-# select an older one.
+# solidsyslog.makefile, which a VIP or DKM picks up from its own directory. What
+# it adds is C99: the dialect, because the flags a project generates select an
+# older one, and the C99 library headers the kernel header tree lacks, from
+# Compat/ beside this file.
 #
 #   make -f solidsyslog-vxworks64.mk CC=dcc AR=dar TOOL_FAMILY=diab \
 #        SOLIDSYSLOG_TARGET_CFLAGS="<the project's target flags>" \
@@ -39,8 +40,14 @@ endif
 
 # _C99 is the Wind River headers' own switch for their C99 declarations; the
 # dialect flag alone leaves it unset.
+#
+# -ei4188 turns off "enumerated type mixed with another type". In C an
+# enumeration constant has type int (C99 6.4.4.3), so Diab raises it wherever an
+# enum is given one of its own constants - the ordinary use of every enum in the
+# library. MISRA's essential type model already treats such a constant as its
+# enum's type.
 ifeq ($(TOOL_FAMILY),diab)
-SOLIDSYSLOG_DIALECT_CFLAGS := -Xdialect-c99 -D_C99
+SOLIDSYSLOG_DIALECT_CFLAGS := -Xdialect-c99 -D_C99 -ei4188
 SOLIDSYSLOG_DEPEND_CFLAGS  := -Xmake-dependency=0xd
 endif
 ifeq ($(TOOL_FAMILY),gnu)
@@ -51,13 +58,11 @@ ifndef SOLIDSYSLOG_DIALECT_CFLAGS
 $(error TOOL_FAMILY is '$(TOOL_FAMILY)' - expected diab or gnu)
 endif
 
-# The kernel header tree has no stdbool.h; the user-mode tree beside it does.
-# It goes last, so every header the kernel tree has is still taken from there.
-ifdef WIND_BASE
-SOLIDSYSLOG_C99_INCLUDES ?= -I$(subst \,/,$(WIND_BASE))/target/usr/h
-endif
-
 include $(SOLIDSYSLOG_DIR)/solidsyslog.mk
+
+# The C99 library headers the kernel header tree lacks. Last, so they only fill
+# gaps: any header the project's own include path provides is taken from there.
+SOLIDSYSLOG_C99_INCLUDES := -I$(SOLIDSYSLOG_DIR)/Platform/VxWorks64/Compat
 
 SOLIDSYSLOG_LIB := $(SOLIDSYSLOG_BUILD_DIR)/libsolidsyslog.a
 
