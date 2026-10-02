@@ -20,6 +20,16 @@ Describe 'Test-RunnerCertificate' {
     }
 }
 
+Describe 'ConvertFrom-RunnerJobJson' {
+    It 'gives the job, and its arguments, as hashtables' {
+        $job = ConvertFrom-RunnerJobJson '{"id": 3, "type": "checkout", "args": {"ref": "main"}}'
+        $job.id | Should Be 3
+        $job.type | Should Be 'checkout'
+        $job.args.GetType().Name | Should Be 'Hashtable'
+        $job.args.ref | Should Be 'main'
+    }
+}
+
 Describe 'Invoke-RunnerJob' {
     $script:called = $false
     $actions = @{ 'build' = @{ Arguments = @(); Run = { param($Arguments) $script:called = $true; @{ Outcome = 'succeeded'; Summary = '' } } } }
