@@ -62,7 +62,7 @@ def make_server(queue, token, host, port):
                 url = urllib.parse.urlsplit(self.path)
                 status_match = re.fullmatch(r"/jobs/(\d+)", url.path)
                 log_match = re.fullmatch(r"/jobs/(\d+)/log", url.path)
-                if log_match:
+                if log_match and queue.knows(int(log_match.group(1))):
                     offset = int(urllib.parse.parse_qs(url.query).get("from", ["0"])[0])
                     self._reply_text(queue.log(int(log_match.group(1)), offset))
                 elif status_match and queue.knows(int(status_match.group(1))):
