@@ -82,10 +82,24 @@ if (-not ('SolidSyslogRunnerPinning' -as [type]))
     {
     Add-Type -TypeDefinition @'
 using System;
+using System.Net;
 using System.Security.Cryptography.X509Certificates;
 
 public static class SolidSyslogRunnerPinning
 {
+    private static string pinned;
+
+    // Every HTTPS request this process makes then trusts only that certificate,
+    // whoever signed it, and speaks TLS 1.2, which Windows PowerShell 5.1 may
+    // not offer by default.
+    public static void Install(string thumbprint)
+    {
+        pinned = thumbprint;
+        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        ServicePointManager.ServerCertificateValidationCallback =
+            (sender, certificate, chain, errors) => Matches(certificate, pinned);
+    }
+
     public static bool Matches(X509Certificate certificate, string thumbprint)
     {
         return (certificate != null) &&
