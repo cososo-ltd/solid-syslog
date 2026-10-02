@@ -73,8 +73,9 @@ creation script sets three of the project's build macros with
   `Platform/VxWorks64/Compat`.
 - `LIBS` names the library ahead of `$(VX_OS_LIBS)`.
 - `PROJECT_BSP_FLAGS_EXTRA` gains `-ei1606`. Wind River's own `pciIntLib.c`,
-  which the BSP's `sysLib.c` includes, raises `dcc:1606`; the macro reaches the
-  BSP's sources only, so the project's other sources keep the warning.
+  which the BSP's `sysLib.c` includes, raises `dcc:1606`. The macro reaches Wind
+  River's sources and the ones `vxprj` generates - the BSP, `romStart.c`,
+  `prjConfig.c` and `linkSyms.c` - so the project's own sources keep the warning.
 
 The kernel header tree has no `<stdint.h>` or `<stdbool.h>`, which the
 SolidSyslog headers include. `Platform/VxWorks64/Compat` supplies both, for the

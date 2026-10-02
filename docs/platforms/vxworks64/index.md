@@ -39,9 +39,15 @@ pack calls, declared from the public API reference. That lets them build in an
 ordinary host preset with no Wind River installation present, and the same
 host build compiles the pack at strict C99.
 
-It has not yet been run on a VxWorks target. Target runs are outside CI - the
-toolchain and the kernel are licensed - so this section will record them as
-they are made.
+Target runs are outside CI - the toolchain and the kernel are licensed - so
+this section records them as they are made.
+
+It has been built for VxWorks 6.4 on MIPS32 with Diab, and booted under QEMU's
+Malta machine. The library compiles with the image's own flags, which include
+`-Xlint`, plus the C99 dialect it adds; so built, the pack, Core and an
+application file including every public header compile with no diagnostics. The
+mutex is not yet exercised on the target: the BDD target will be the first to
+run it.
 
 ## Security behaviour and obligations
 
