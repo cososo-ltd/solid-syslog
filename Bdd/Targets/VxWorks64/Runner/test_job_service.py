@@ -155,6 +155,13 @@ class JobServiceTest(unittest.TestCase):
         self.assertEqual(200, status)
         self.assertEqual({"state": "queued", "summary": None}, json.loads(body))
 
+    def test_log_is_read_back_from_an_offset(self):
+        job_id = self.queue.submit("build", {})
+        self.queue.append_log(job_id, "first\nsecond\n")
+        status, body = self.request("GET", f"/jobs/{job_id}/log?from=6", self.TOKEN)
+        self.assertEqual(200, status)
+        self.assertEqual("second\n", body.decode())
+
 
 if __name__ == "__main__":
     unittest.main()
