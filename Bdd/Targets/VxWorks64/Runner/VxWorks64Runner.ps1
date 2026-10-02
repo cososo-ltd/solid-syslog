@@ -76,6 +76,25 @@ function Test-RunnerArgumentValue
     $Value -cmatch '^[A-Za-z0-9][A-Za-z0-9._/:@ -]*$'
     }
 
+# In C#, because the TLS validation callback that uses it runs on threads
+# where a PowerShell script block cannot.
+if (-not ('SolidSyslogRunnerPinning' -as [type]))
+    {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Security.Cryptography.X509Certificates;
+
+public static class SolidSyslogRunnerPinning
+{
+    public static bool Matches(X509Certificate certificate, string thumbprint)
+    {
+        return (certificate != null) &&
+            string.Equals(new X509Certificate2(certificate).Thumbprint, thumbprint, StringComparison.OrdinalIgnoreCase);
+    }
+}
+'@
+    }
+
 function Test-RunnerCertificate
     {
     param(
@@ -83,5 +102,5 @@ function Test-RunnerCertificate
         [Parameter(Mandatory)] [string] $Thumbprint
     )
 
-    $true
+    [SolidSyslogRunnerPinning]::Matches($Certificate, $Thumbprint)
     }
