@@ -41,6 +41,15 @@ Describe 'Invoke-RunnerJob' {
             }
     }
 
+    It 'passes ordinary branch names, commits and markers to the action' {
+        $checkout = @{ 'checkout' = @{ Arguments = @('ref'); Run = { param($Arguments) @{ Outcome = 'succeeded'; Summary = $Arguments.ref } } } }
+        foreach ($value in @('feat/s41.03-vxworks-udp', '0cfb2e56', 'SolidSyslog VxWorks 6.4 BDD target: Core ran'))
+            {
+            $result = Invoke-RunnerJob -Job @{ type = 'checkout'; args = @{ ref = $value } } -Actions $checkout
+            $result.Summary | Should Be $value
+            }
+    }
+
     It 'runs a known job and returns its result' {
         $result = Invoke-RunnerJob -Job @{ type = 'build'; args = @{} } -Actions @{
             'build' = @{ Arguments = @(); Run = { param($Arguments) @{ Outcome = 'succeeded'; Summary = 'Diagnostics: none' } } } }
