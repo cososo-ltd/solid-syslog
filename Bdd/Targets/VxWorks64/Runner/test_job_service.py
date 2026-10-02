@@ -199,6 +199,11 @@ class JobServiceTest(unittest.TestCase):
         self.assertIsNone(self.queue.next())
 
 
+class CommandLineTest(unittest.TestCase):
+    def test_name_value_words_become_job_arguments(self):
+        self.assertEqual({"ref": "main", "tool": "sfdiab"}, job_service.job_arguments(["ref=main", "tool=sfdiab"]))
+
+
 # Stands in for the runner: takes the next job, logs, and finishes it.
 def finish_next_job(queue, log, outcome, summary):
     deadline = time.monotonic() + 5
