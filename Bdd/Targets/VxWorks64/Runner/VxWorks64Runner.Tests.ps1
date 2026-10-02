@@ -14,4 +14,11 @@ Describe 'Invoke-RunnerJob' {
         $result.Outcome | Should Be 'refused'
         $script:called | Should Be $false
     }
+
+    It 'runs a known job and returns its result' {
+        $result = Invoke-RunnerJob -Job @{ type = 'build'; args = @{} } -Actions @{
+            'build' = { param($Arguments) @{ Outcome = 'succeeded'; Summary = 'Diagnostics: none' } } }
+        $result.Outcome | Should Be 'succeeded'
+        $result.Summary | Should Be 'Diagnostics: none'
+    }
 }
