@@ -55,6 +55,14 @@ class JobQueueTest(unittest.TestCase):
         queue.finish(job_id, "failed", "Diagnostics: 1")
         self.assertEqual("Diagnostics: 1", queue.summary(job_id))
 
+    def test_log_reads_back_the_chunks_in_order(self):
+        queue = job_service.JobQueue()
+        job_id = queue.submit("build", {})
+        queue.next()
+        queue.append_log(job_id, "first\n")
+        queue.append_log(job_id, "second\n")
+        self.assertEqual("first\nsecond\n", queue.log(job_id, 0))
+
 
 if __name__ == "__main__":
     unittest.main()
