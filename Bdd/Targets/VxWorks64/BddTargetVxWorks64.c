@@ -2,13 +2,20 @@
  * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
  */
 
-/* The VIP compiles this file with its own flags, which select C89. */
+/* The VIP compiles this file with its own flags, which select C89, so it stands
+ * in for an application: vxWorks.h first, as Wind River code includes it, then
+ * the public headers. The VxWorks64 headers are included before they are used,
+ * to prove they compile there too. */
+
+#include "vxWorks.h"
 
 #include <stdio.h>
 
 #include "SolidSyslog.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogVxWorks64Mutex.h"
+#include "SolidSyslogVxWorks64MutexErrors.h"
 
 void BddTargetVxWorks64_Init(void);
 
