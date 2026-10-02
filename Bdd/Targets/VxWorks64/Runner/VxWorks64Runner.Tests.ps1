@@ -6,7 +6,7 @@
 
 Describe 'Invoke-RunnerJob' {
     $script:called = $false
-    $actions = @{ 'build' = { param($Arguments) $script:called = $true; @{ Outcome = 'succeeded'; Summary = '' } } }
+    $actions = @{ 'build' = @{ Arguments = @(); Run = { param($Arguments) $script:called = $true; @{ Outcome = 'succeeded'; Summary = '' } } } }
 
     It 'refuses a job of an unknown type, and runs nothing' {
         $script:called = $false
@@ -17,7 +17,7 @@ Describe 'Invoke-RunnerJob' {
 
     It 'runs a known job and returns its result' {
         $result = Invoke-RunnerJob -Job @{ type = 'build'; args = @{} } -Actions @{
-            'build' = { param($Arguments) @{ Outcome = 'succeeded'; Summary = 'Diagnostics: none' } } }
+            'build' = @{ Arguments = @(); Run = { param($Arguments) @{ Outcome = 'succeeded'; Summary = 'Diagnostics: none' } } } }
         $result.Outcome | Should Be 'succeeded'
         $result.Summary | Should Be 'Diagnostics: none'
     }
