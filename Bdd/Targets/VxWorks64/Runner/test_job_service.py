@@ -140,6 +140,15 @@ class JobServiceTest(unittest.TestCase):
         self.assertEqual(204, status)
         self.assertEqual("building\n", self.queue.log(job_id, 0))
 
+    def test_posted_result_finishes_the_job(self):
+        job_id = self.queue.submit("build", {})
+        self.queue.next()
+        result = {"outcome": "succeeded", "summary": "Diagnostics: none"}
+        status, _ = self.request("POST", f"/jobs/{job_id}/result", self.TOKEN, result)
+        self.assertEqual(204, status)
+        self.assertEqual("succeeded", self.queue.state(job_id))
+        self.assertEqual("Diagnostics: none", self.queue.summary(job_id))
+
 
 if __name__ == "__main__":
     unittest.main()
