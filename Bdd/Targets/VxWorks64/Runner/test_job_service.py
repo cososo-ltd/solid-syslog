@@ -279,6 +279,14 @@ class CertificateTest(unittest.TestCase):
         expected = fingerprint.strip().split("=", 1)[1].replace(":", "")
         self.assertEqual(expected, job_service.thumbprint(self.certificate))
 
+    def test_initialise_creates_the_token_certificate_and_key(self):
+        home = os.path.join(self.directory, "home")
+        job_service.initialise(home)
+        with open(os.path.join(home, "token"), encoding="ascii") as token:
+            self.assertGreaterEqual(len(token.read().strip()), 32)
+        self.assertEqual(40, len(job_service.thumbprint(os.path.join(home, "certificate.pem"))))
+        self.assertTrue(os.path.isfile(os.path.join(home, "key.pem")))
+
     def test_served_with_a_certificate_the_service_answers_over_tls(self):
         server = job_service.make_server(job_service.JobQueue(), "test-token", "127.0.0.1", 0,
                                          (self.certificate, self.key))
