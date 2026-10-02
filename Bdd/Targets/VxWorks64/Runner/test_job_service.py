@@ -5,7 +5,10 @@ Run:  python -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
 
 import os
 import sys
+import threading
 import unittest
+import urllib.error
+import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import job_service  # noqa: E402
@@ -68,6 +71,36 @@ class JobQueueTest(unittest.TestCase):
     def test_log_of_a_job_with_no_output_is_empty(self):
         job_id = self.queue.submit("build", {})
         self.assertEqual("", self.queue.log(job_id, 0))
+
+
+class JobServiceTest(unittest.TestCase):
+    TOKEN = "test-token"
+
+    def setUp(self):
+        self.queue = job_service.JobQueue()
+        self.server = job_service.make_server(self.queue, self.TOKEN, "127.0.0.1", 0)
+        self.thread = threading.Thread(target=self.server.serve_forever)
+        self.thread.start()
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.thread.join()
+        self.server.server_close()
+
+    def request(self, method, path, token=None):
+        port = self.server.server_address[1]
+        request = urllib.request.Request(f"http://127.0.0.1:{port}{path}", method=method)
+        if token is not None:
+            request.add_header("X-Runner-Token", token)
+        try:
+            with urllib.request.urlopen(request) as response:
+                return response.status, response.read()
+        except urllib.error.HTTPError as error:
+            return error.code, error.read()
+
+    def test_request_without_the_token_is_refused(self):
+        status, _ = self.request("GET", "/jobs/next")
+        self.assertEqual(401, status)
 
 
 if __name__ == "__main__":
