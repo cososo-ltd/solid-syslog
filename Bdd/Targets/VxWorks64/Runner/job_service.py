@@ -7,5 +7,15 @@ build machine collects them, one at a time, connecting outwards only.
 
 
 class JobQueue:
+    def __init__(self):
+        self._pending = []
+
+    def submit(self, job_type, args):
+        job_id = 1
+        self._pending.append({"id": job_id, "type": job_type, "args": args})
+        return job_id
+
     def next(self):
+        if self._pending:
+            return self._pending[0]
         return None
