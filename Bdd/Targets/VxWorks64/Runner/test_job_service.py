@@ -102,6 +102,10 @@ class JobServiceTest(unittest.TestCase):
         status, _ = self.request("GET", "/jobs/next")
         self.assertEqual(401, status)
 
+    def test_request_with_the_wrong_token_is_refused(self):
+        status, _ = self.request("GET", "/jobs/next", "not-the-token")
+        self.assertEqual(401, status)
+
     def test_next_with_no_job_waiting_is_no_content(self):
         status, _ = self.request("GET", "/jobs/next", self.TOKEN)
         self.assertEqual(204, status)
