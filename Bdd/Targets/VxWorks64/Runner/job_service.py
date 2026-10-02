@@ -5,6 +5,8 @@ Runs on the development machine. Jobs are queued here and the runner on the
 build machine collects them, one at a time, connecting outwards only.
 """
 
+import http.server
+
 
 class JobQueue:
     def __init__(self):
@@ -42,3 +44,12 @@ class JobQueue:
 
     def summary(self, job_id):
         return self._summaries[job_id]
+
+
+def make_server(queue, token, host, port):
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(401)
+            self.end_headers()
+
+    return http.server.HTTPServer((host, port), Handler)
