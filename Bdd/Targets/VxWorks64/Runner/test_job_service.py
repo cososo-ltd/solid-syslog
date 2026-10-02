@@ -122,6 +122,12 @@ class JobServiceTest(unittest.TestCase):
         self.assertEqual(201, status)
         self.assertEqual({"id": 1}, json.loads(body))
 
+    def test_next_hands_out_a_queued_job(self):
+        job_id = self.queue.submit("checkout", {"ref": "main"})
+        status, body = self.request("GET", "/jobs/next", self.TOKEN)
+        self.assertEqual(200, status)
+        self.assertEqual({"id": job_id, "type": "checkout", "args": {"ref": "main"}}, json.loads(body))
+
 
 if __name__ == "__main__":
     unittest.main()
