@@ -54,7 +54,11 @@ def make_server(queue, token, host, port):
             if not self._authorised():
                 self._reply(401)
             else:
-                self._reply(204)
+                job = queue.next()
+                if job is None:
+                    self._reply(204)
+                else:
+                    self._reply(200, job)
 
         def do_POST(self):
             if not self._authorised():
