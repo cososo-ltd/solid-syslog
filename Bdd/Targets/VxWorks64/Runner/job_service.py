@@ -43,6 +43,9 @@ class JobQueue:
         self._states[job_id] = outcome
         self._summaries[job_id] = summary
 
+    def knows(self, job_id):
+        return job_id in self._states
+
     def state(self, job_id):
         return self._states[job_id]
 
@@ -62,7 +65,7 @@ def make_server(queue, token, host, port):
                 if log_match:
                     offset = int(urllib.parse.parse_qs(url.query).get("from", ["0"])[0])
                     self._reply_text(queue.log(int(log_match.group(1)), offset))
-                elif status_match:
+                elif status_match and queue.knows(int(status_match.group(1))):
                     job_id = int(status_match.group(1))
                     self._reply(200, {"state": queue.state(job_id), "summary": queue.summary(job_id)})
                 elif url.path == "/jobs/next":
