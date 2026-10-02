@@ -46,7 +46,7 @@ class JobQueue:
         return self._states[job_id]
 
     def summary(self, job_id):
-        return self._summaries[job_id]
+        return self._summaries.get(job_id)
 
 
 def make_server(queue, token, host, port):
@@ -55,11 +55,16 @@ def make_server(queue, token, host, port):
             if not self._authorised():
                 self._reply(401)
             else:
-                job = queue.next()
-                if job is None:
-                    self._reply(204)
+                status_match = re.fullmatch(r"/jobs/(\d+)", self.path)
+                if status_match:
+                    job_id = int(status_match.group(1))
+                    self._reply(200, {"state": queue.state(job_id), "summary": queue.summary(job_id)})
                 else:
-                    self._reply(200, job)
+                    job = queue.next()
+                    if job is None:
+                        self._reply(204)
+                    else:
+                        self._reply(200, job)
 
         def do_POST(self):
             if not self._authorised():
