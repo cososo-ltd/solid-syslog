@@ -78,7 +78,7 @@ set_target_properties(SolidSyslogLwipRawAddressTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipRawAddressTest COMMAND SolidSyslogLwipRawAddressTest)
+solidsyslog_add_test(SolidSyslogLwipRawAddressTest)
 
 # ---- SolidSyslogLwipRawResolverTest ----
 
@@ -106,7 +106,7 @@ set_target_properties(SolidSyslogLwipRawResolverTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipRawResolverTest COMMAND SolidSyslogLwipRawResolverTest)
+solidsyslog_add_test(SolidSyslogLwipRawResolverTest)
 
 # ---- SolidSyslogLwipRawDnsResolverTest ----
 
@@ -139,7 +139,7 @@ set_target_properties(SolidSyslogLwipRawDnsResolverTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipRawDnsResolverTest COMMAND SolidSyslogLwipRawDnsResolverTest)
+solidsyslog_add_test(SolidSyslogLwipRawDnsResolverTest)
 
 # ---- SolidSyslogLwipRawDatagramTest ----
 
@@ -168,7 +168,7 @@ set_target_properties(SolidSyslogLwipRawDatagramTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipRawDatagramTest COMMAND SolidSyslogLwipRawDatagramTest)
+solidsyslog_add_test(SolidSyslogLwipRawDatagramTest)
 
 # ---- SolidSyslogLwipRawTcpStreamTest ----
 
@@ -200,7 +200,7 @@ set_target_properties(SolidSyslogLwipRawTcpStreamTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipRawTcpStreamTest COMMAND SolidSyslogLwipRawTcpStreamTest)
+solidsyslog_add_test(SolidSyslogLwipRawTcpStreamTest)
 
 # ---- SolidSyslogLwipRawTcpKeepaliveTest ----
 #
@@ -227,7 +227,7 @@ set_target_properties(SolidSyslogLwipRawTcpKeepaliveTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipRawTcpKeepaliveTest COMMAND SolidSyslogLwipRawTcpKeepaliveTest)
+solidsyslog_add_test(SolidSyslogLwipRawTcpKeepaliveTest)
 
 # ---- SolidSyslogLwipRawMarshalTest ----
 
@@ -249,4 +249,4 @@ set_target_properties(SolidSyslogLwipRawMarshalTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipRawMarshalTest COMMAND SolidSyslogLwipRawMarshalTest)
+solidsyslog_add_test(SolidSyslogLwipRawMarshalTest)

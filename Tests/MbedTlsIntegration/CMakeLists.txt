@@ -98,4 +98,4 @@ set_target_properties(MbedTlsIntegrationTests PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME MbedTlsIntegrationTests COMMAND MbedTlsIntegrationTests)
+solidsyslog_add_test(MbedTlsIntegrationTests)
