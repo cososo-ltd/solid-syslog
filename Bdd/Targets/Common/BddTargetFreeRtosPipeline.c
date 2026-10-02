@@ -700,8 +700,12 @@ static void TeardownAll(void)
 
     SolidSyslogCircularBuffer_Destroy(buffer);
     BddTargetOsPrimitives_DestroyMutex(bufferMutex);
+    /* lifecycleMutex is left pointing at the destroyed handle, not NULLed. If the
+     * wait above timed out, Service is still running and takes the mutex on its
+     * next iteration. Destroy leaves the NullMutex vtable in place, so that Lock
+     * is a no-op and Service then sees solidSyslogTeardown and exits; a NULL
+     * handle would be dereferenced instead. */
     BddTargetOsPrimitives_DestroyMutex(lifecycleMutex);
-    lifecycleMutex = NULL;
 
     /* Platform sender + network adapters last. */
     g_config->TeardownNetwork();
