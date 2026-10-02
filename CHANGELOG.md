@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/cososo-ltd/solid-syslog/compare/v0.2.0...v0.2.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* match the platform-docs exemptions on Windows paths ([#941](https://github.com/cososo-ltd/solid-syslog/issues/941)) ([3f863c6](https://github.com/cososo-ltd/solid-syslog/commit/3f863c68430bc99891e8dc75a279c922cfbc09aa))
+
 ## [0.2.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.1.0...v0.2.0) (2026-09-28)
 
 The TLS release. 0.2.0 lets a device authorise its collector by certificate
