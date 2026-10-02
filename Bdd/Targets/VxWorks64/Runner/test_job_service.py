@@ -35,6 +35,12 @@ class JobQueueTest(unittest.TestCase):
         job_id = queue.submit("build", {})
         self.assertEqual("queued", queue.state(job_id))
 
+    def test_taken_job_is_running(self):
+        queue = job_service.JobQueue()
+        job_id = queue.submit("build", {})
+        queue.next()
+        self.assertEqual("running", queue.state(job_id))
+
 
 if __name__ == "__main__":
     unittest.main()
