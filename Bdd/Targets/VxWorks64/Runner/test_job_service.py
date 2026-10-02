@@ -149,6 +149,12 @@ class JobServiceTest(unittest.TestCase):
         self.assertEqual("succeeded", self.queue.state(job_id))
         self.assertEqual("Diagnostics: none", self.queue.summary(job_id))
 
+    def test_status_of_a_queued_job_has_no_summary(self):
+        job_id = self.queue.submit("build", {})
+        status, body = self.request("GET", f"/jobs/{job_id}", self.TOKEN)
+        self.assertEqual(200, status)
+        self.assertEqual({"state": "queued", "summary": None}, json.loads(body))
+
 
 if __name__ == "__main__":
     unittest.main()
