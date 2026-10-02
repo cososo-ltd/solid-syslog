@@ -9,6 +9,9 @@ build machine collects them, one at a time, connecting outwards only.
     python job_service.py submit <job> [NAME=VALUE...]
                                                 queue a job, follow its log, and
                                                 exit 0 only if it succeeded
+    python job_service.py console               show the console of the QEMU a
+                                                qemu-start job began, which
+                                                connects out to port 8766
 
 The token, certificate and key live in ~/.solidsyslog-runner, never in the
 repository. serve prints the certificate's thumbprint, which the runner is
@@ -24,6 +27,7 @@ import os
 import re
 import secrets
 import shutil
+import socket
 import ssl
 import subprocess
 import sys
@@ -33,6 +37,7 @@ import urllib.request
 
 DEFAULT_HOME = os.path.join(os.path.expanduser("~"), ".solidsyslog-runner")
 DEFAULT_PORT = 8765
+DEFAULT_CONSOLE_PORT = 8766
 
 
 class JobQueue:
@@ -85,7 +90,11 @@ def make_server(queue, token, host, port, certificate=None):
             self._dispatch("POST")
 
         # Every route but /jobs and /jobs/next names a job, which must exist.
+        # The body is read before any reply: closing a connection with a body
+        # still unread makes Windows abort it, and the client sees that instead
+        # of the reply.
         def _dispatch(self, method):
+            self._request_body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
             url = urllib.parse.urlsplit(self.path)
             action = None
             args = ()
@@ -139,7 +148,7 @@ def make_server(queue, token, host, port, certificate=None):
             return hmac.compare_digest(self.headers.get("X-Runner-Token", ""), token)
 
         def _body(self):
-            return self.rfile.read(int(self.headers["Content-Length"]))
+            return self._request_body
 
         def _reply(self, status, payload=None):
             self.send_response(status)
@@ -251,6 +260,8 @@ def main(argv):
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("init", help="create the token, certificate and key")
     commands.add_parser("serve", help="serve until stopped")
+    console = commands.add_parser("console", help="show the target's console when it connects")
+    console.add_argument("--console-port", type=int, default=DEFAULT_CONSOLE_PORT)
     submit = commands.add_parser("submit", help="queue a job and follow it")
     submit.add_argument("job")
     submit.add_argument("arguments", nargs="*", metavar="NAME=VALUE")
@@ -259,7 +270,11 @@ def main(argv):
     certificate = os.path.join(options.home, "certificate.pem")
     key = os.path.join(options.home, "key.pem")
     result = 0
-    if options.command == "init":
+    if options.command == "console":
+        with socket.create_server(("0.0.0.0", options.console_port)) as listener:
+            print(f"Waiting for the target's console on port {options.console_port}", flush=True)
+            relay_console(listener, sys.stdout.buffer)
+    elif options.command == "init":
         initialise(options.home)
         print(f"Created the token, certificate and key in {options.home}")
         print(f"Thumbprint {thumbprint(certificate)}")
