@@ -168,6 +168,10 @@ class JobServiceTest(unittest.TestCase):
         self.assertEqual(404, status)
         self.assertEqual("queued", self.queue.state(job_id))
 
+    def test_status_of_an_unknown_job_is_not_found(self):
+        status, _ = self.request("GET", "/jobs/99", self.TOKEN)
+        self.assertEqual(404, status)
+
     def test_post_to_an_unknown_path_is_not_found_and_queues_nothing(self):
         status, _ = self.request("POST", "/elsewhere", self.TOKEN, {"type": "build", "args": {}})
         self.assertEqual(404, status)
