@@ -3,6 +3,7 @@
 Run:  python -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
 """
 
+import json
 import os
 import sys
 import threading
@@ -87,9 +88,10 @@ class JobServiceTest(unittest.TestCase):
         self.thread.join()
         self.server.server_close()
 
-    def request(self, method, path, token=None):
+    def request(self, method, path, token=None, body=None):
         port = self.server.server_address[1]
-        request = urllib.request.Request(f"http://127.0.0.1:{port}{path}", method=method)
+        data = None if body is None else json.dumps(body).encode()
+        request = urllib.request.Request(f"http://127.0.0.1:{port}{path}", data=data, method=method)
         if token is not None:
             request.add_header("X-Runner-Token", token)
         try:
@@ -109,6 +111,11 @@ class JobServiceTest(unittest.TestCase):
     def test_next_with_no_job_waiting_is_no_content(self):
         status, _ = self.request("GET", "/jobs/next", self.TOKEN)
         self.assertEqual(204, status)
+
+    def test_posted_job_answers_its_id(self):
+        status, body = self.request("POST", "/jobs", self.TOKEN, {"type": "build", "args": {}})
+        self.assertEqual(201, status)
+        self.assertEqual({"id": 1}, json.loads(body))
 
 
 if __name__ == "__main__":
