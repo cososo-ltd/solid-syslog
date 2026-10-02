@@ -3,6 +3,7 @@
 Run:  python -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
 """
 
+import io
 import json
 import os
 import shutil
@@ -11,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
@@ -195,6 +197,42 @@ class JobServiceTest(unittest.TestCase):
         status, _ = self.request("POST", "/elsewhere", self.TOKEN, {"type": "build", "args": {}})
         self.assertEqual(404, status)
         self.assertIsNone(self.queue.next())
+
+
+class RunJobTest(unittest.TestCase):
+    TOKEN = "test-token"
+
+    def setUp(self):
+        self.queue = job_service.JobQueue()
+        self.server = job_service.make_server(self.queue, self.TOKEN, "127.0.0.1", 0)
+        self.thread = threading.Thread(target=self.server.serve_forever)
+        self.thread.start()
+        self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.thread.join()
+        self.server.server_close()
+
+    def runner_finishes_next_job(self, log, outcome, summary):
+        def runner():
+            deadline = time.monotonic() + 5
+            job = None
+            while (job is None) and (time.monotonic() < deadline):
+                job = self.queue.next()
+                time.sleep(0.01)
+            if job is not None:
+                self.queue.append_log(job["id"], log)
+                self.queue.finish(job["id"], outcome, summary)
+        thread = threading.Thread(target=runner, daemon=True)
+        thread.start()
+        return thread
+
+    def test_run_job_returns_the_outcome_and_summary(self):
+        runner = self.runner_finishes_next_job("building\n", "succeeded", "Diagnostics: none")
+        result = job_service.run_job(self.url, self.TOKEN, "build", {}, io.StringIO(), poll_seconds=0.01)
+        runner.join()
+        self.assertEqual(("succeeded", "Diagnostics: none"), result)
 
 
 OPENSSL = shutil.which("openssl")
