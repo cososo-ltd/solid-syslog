@@ -200,6 +200,34 @@ class JobServiceTest(unittest.TestCase):
         self.assertIsNone(self.queue.next())
 
 
+class BodyLimitTest(unittest.TestCase):
+    def test_a_body_over_the_limit_is_refused_and_nothing_queued(self):
+        queue = job_service.JobQueue()
+        server = job_service.make_server(queue, "test-token", "127.0.0.1", 0, max_body_bytes=16)
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+        try:
+            body = json.dumps({"type": "build", "args": {"padding": "x" * 64}}).encode()
+            request = urllib.request.Request(f"http://127.0.0.1:{server.server_address[1]}/jobs",
+                                             data=body, method="POST")
+            request.add_header("X-Runner-Token", "test-token")
+            # Refusing without reading leaves the body unread, so the client may
+            # see the connection close rather than the 413.
+            try:
+                urllib.request.urlopen(request).close()
+                refused = False
+            except urllib.error.HTTPError as error:
+                refused = error.code == 413
+            except (ConnectionError, urllib.error.URLError):
+                refused = True
+            self.assertTrue(refused)
+            self.assertIsNone(queue.next())
+        finally:
+            server.shutdown()
+            thread.join()
+            server.server_close()
+
+
 class ConsoleTest(unittest.TestCase):
     def test_what_the_target_sends_is_written_out_until_it_disconnects(self):
         listener = socket.create_server(("127.0.0.1", 0))
