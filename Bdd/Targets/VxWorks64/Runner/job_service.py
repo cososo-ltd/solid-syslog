@@ -65,12 +65,14 @@ def make_server(queue, token, host, port):
                 elif status_match:
                     job_id = int(status_match.group(1))
                     self._reply(200, {"state": queue.state(job_id), "summary": queue.summary(job_id)})
-                else:
+                elif url.path == "/jobs/next":
                     job = queue.next()
                     if job is None:
                         self._reply(204)
                     else:
                         self._reply(200, job)
+                else:
+                    self._reply(404)
 
         def do_POST(self):
             if not self._authorised():
