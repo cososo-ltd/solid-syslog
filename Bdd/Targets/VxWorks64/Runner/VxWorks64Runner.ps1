@@ -40,9 +40,14 @@ function Get-RunnerJobRefusal
     else
         {
         $unexpected = @($Job.args.Keys | Where-Object { $Actions[$Job.type].Arguments -notcontains $_ })
+        $missing = @($Actions[$Job.type].Arguments | Where-Object { -not $Job.args.ContainsKey($_) })
         if ($unexpected.Count -gt 0)
             {
             "job '$($Job.type)' does not take $($unexpected -join ', ')"
+            }
+        elseif ($missing.Count -gt 0)
+            {
+            "job '$($Job.type)' needs $($missing -join ', ')"
             }
         }
     }
