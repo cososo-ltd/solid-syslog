@@ -14,6 +14,10 @@ Describe 'Test-RunnerCertificate' {
         Test-RunnerCertificate -Certificate $certificate -Thumbprint $pinned | Should Be $true
         Test-RunnerCertificate -Certificate $certificate -Thumbprint $pinned.ToLowerInvariant() | Should Be $true
     }
+
+    It 'rejects a certificate whose thumbprint is not pinned' {
+        Test-RunnerCertificate -Certificate $certificate -Thumbprint '0000000000000000000000000000000000000000' | Should Be $false
+    }
 }
 
 Describe 'Invoke-RunnerJob' {
