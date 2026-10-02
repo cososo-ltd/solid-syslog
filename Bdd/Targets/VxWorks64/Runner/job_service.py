@@ -55,7 +55,7 @@ class JobQueue:
         return self._summaries.get(job_id)
 
 
-def make_server(queue, token, host, port):
+def make_server(queue, token, host, port, certificate=None):
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
             self._dispatch("GET")
@@ -143,7 +143,12 @@ def make_server(queue, token, host, port):
         ("POST", r"/jobs/(\d+)/result", Handler._post_result),
     )
 
-    return http.server.HTTPServer((host, port), Handler)
+    server = http.server.HTTPServer((host, port), Handler)
+    if certificate is not None:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(*certificate)
+        server.socket = context.wrap_socket(server.socket, server_side=True)
+    return server
 
 
 # The SHA-1 of the certificate in upper-case hex: what Windows calls its
