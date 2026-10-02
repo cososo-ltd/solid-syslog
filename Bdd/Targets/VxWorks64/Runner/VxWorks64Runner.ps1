@@ -49,5 +49,22 @@ function Get-RunnerJobRefusal
             {
             "job '$($Job.type)' needs $($missing -join ', ')"
             }
+        else
+            {
+            $unsafe = @($Job.args.Keys | Where-Object { -not (Test-RunnerArgumentValue $Job.args[$_]) })
+            if ($unsafe.Count -gt 0)
+                {
+                "job '$($Job.type)' has an unsafe value for $($unsafe -join ', ')"
+                }
+            }
         }
+    }
+
+# Values reach command lines, so none may start like an option or carry a quote
+# or a separator.
+function Test-RunnerArgumentValue
+    {
+    param([AllowEmptyString()] [string] $Value)
+
+    $Value -cmatch '^[A-Za-z0-9][A-Za-z0-9._/:@ -]*$'
     }
