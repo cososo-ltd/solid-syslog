@@ -200,6 +200,16 @@ SHELL = re.compile(r"^\s*(?:-\s+)?(?:run|command|entrypoint):\s*\S")
 LEADING = "([{<\"'`,;:"
 TRAILING = ".,;:!?)]}>\"'`"
 
+# A build file names most of its paths through a variable, which NOT_A_PATH
+# below would discard whole. Where the value follows from where the file sits,
+# the variable is replaced before the word is judged. The source-tree variables
+# are the repository root. CMAKE_CURRENT_SOURCE_DIR is the directory of the
+# CMakeLists.txt naming it; in an included .cmake file it is the includer's,
+# which this cannot know, so it is not replaced there. Only build files: a
+# page quoting a CMake example means an integrator's tree, not this one.
+ROOT_VARIABLES = ("CMAKE_SOURCE_DIR", "SolidSyslog_SOURCE_DIR")
+CMAKE_VARIABLE_PREFIX = re.compile(r"\$\{([A-Za-z0-9_]+)\}/")
+
 # What disqualifies a word before its shape is considered: a URL or an address,
 # a glob or a placeholder, a shell or CMake variable, or a character no path in
 # this repository uses. Each names something other than one file here.
@@ -268,6 +278,52 @@ def scanned():
     )
 
 
+def is_build_file(relative):
+    return os.path.basename(relative) in SCANNED_NAMES or relative.endswith(".cmake")
+
+
+def known_variables(relative):
+    """The variables whose value a path in this file can be resolved through,
+    each mapped to the repo-relative directory it stands for."""
+    known = {name: "" for name in ROOT_VARIABLES}
+    if os.path.basename(relative) in SCANNED_NAMES:
+        known["CMAKE_CURRENT_SOURCE_DIR"] = os.path.dirname(relative)
+    return known
+
+
+def without_variables(relative, text):
+    """The text with every known variable prefix replaced by the directory it
+    stands for. A prefix this cannot resolve is left, and NOT_A_PATH then drops
+    the word - which unresolved_variables() reports rather than leaving silent."""
+    if not is_build_file(relative):
+        return text
+    known = known_variables(relative)
+
+    def replace(match):
+        if match.group(1) not in known:
+            return match.group(0)
+        directory = known[match.group(1)]
+        return f"{directory}/" if directory else ""
+
+    return CMAKE_VARIABLE_PREFIX.sub(replace, text)
+
+
+def unresolved_variables():
+    """How often each variable this cannot resolve prefixes a path in a build
+    file. Those paths are not asserted; counting them keeps that visible. Most
+    name an upstream tree or a build output, neither of which is in this
+    repository."""
+    counts = {}
+    for relative in scanned():
+        if not is_build_file(relative):
+            continue
+        known = known_variables(relative)
+        for match in CMAKE_VARIABLE_PREFIX.finditer(read(relative)):
+            if match.group(1) not in known:
+                counts[match.group(1)] = counts.get(match.group(1), 0) + 1
+    return counts
+
+
 def candidates(relative, line, verbatim):
     """The text on one line that may hold a reference.
 
@@ -318,7 +374,7 @@ def paths_in(relative, line, verbatim, roots):
     target, so both are cut before the path is resolved.
     """
     for text in candidates(relative, line, verbatim):
-        for word in words(text):
+        for word in words(without_variables(relative, text)):
             token = word.split("#")[0].split("?")[0]
             if "/" not in token or not names_a_file(token):
                 continue
@@ -519,6 +575,12 @@ if __name__ == "__main__":
     for path, token, reason in ALLOWED:
         named = "anything" if token == WHOLE_FILE else token
         print(f"allowed: {path} may name {named} — {reason}")
+    unresolved = unresolved_variables()
+    print(
+        f"not asserted: {sum(unresolved.values())} build-file paths written through a variable "
+        "this cannot resolve - "
+        + ", ".join(f"{name} ({count})" for name, count in sorted(unresolved.items()))
+    )
     print(
         f"every path named by {len(scanned())} documents and build files exists, "
         f"and every symbol named under {DOCUMENTED} resolves to one of "
