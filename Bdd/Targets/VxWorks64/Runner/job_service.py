@@ -25,5 +25,8 @@ class JobQueue:
             return job
         return None
 
+    def finish(self, job_id, outcome, summary):
+        self._states[job_id] = outcome
+
     def state(self, job_id):
         return self._states[job_id]
