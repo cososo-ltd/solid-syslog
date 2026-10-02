@@ -12,69 +12,62 @@ import job_service  # noqa: E402
 
 
 class JobQueueTest(unittest.TestCase):
+    def setUp(self):
+        self.queue = job_service.JobQueue()
+
+    def running_job(self):
+        job_id = self.queue.submit("build", {})
+        self.queue.next()
+        return job_id
+
     def test_new_queue_has_no_next_job(self):
-        queue = job_service.JobQueue()
-        self.assertIsNone(queue.next())
+        self.assertIsNone(self.queue.next())
 
     def test_submitted_job_is_next(self):
-        queue = job_service.JobQueue()
-        job_id = queue.submit("build", {"clean": True})
-        self.assertEqual({"id": job_id, "type": "build", "args": {"clean": True}}, queue.next())
+        job_id = self.queue.submit("build", {"clean": True})
+        self.assertEqual({"id": job_id, "type": "build", "args": {"clean": True}}, self.queue.next())
 
     def test_jobs_are_taken_once_each_in_order(self):
-        queue = job_service.JobQueue()
-        first = queue.submit("checkout", {"ref": "main"})
-        second = queue.submit("build", {})
+        first = self.queue.submit("checkout", {"ref": "main"})
+        second = self.queue.submit("build", {})
         self.assertNotEqual(first, second)
-        self.assertEqual(first, queue.next()["id"])
-        self.assertEqual(second, queue.next()["id"])
-        self.assertIsNone(queue.next())
+        self.assertEqual(first, self.queue.next()["id"])
+        self.assertEqual(second, self.queue.next()["id"])
+        self.assertIsNone(self.queue.next())
 
     def test_submitted_job_is_queued(self):
-        queue = job_service.JobQueue()
-        job_id = queue.submit("build", {})
-        self.assertEqual("queued", queue.state(job_id))
+        job_id = self.queue.submit("build", {})
+        self.assertEqual("queued", self.queue.state(job_id))
 
     def test_taken_job_is_running(self):
-        queue = job_service.JobQueue()
-        job_id = queue.submit("build", {})
-        queue.next()
-        self.assertEqual("running", queue.state(job_id))
+        job_id = self.running_job()
+        self.assertEqual("running", self.queue.state(job_id))
 
     def test_finished_job_reports_its_outcome(self):
-        queue = job_service.JobQueue()
-        job_id = queue.submit("build", {})
-        queue.next()
-        queue.finish(job_id, "failed", "Diagnostics: 1")
-        self.assertEqual("failed", queue.state(job_id))
+        job_id = self.running_job()
+        self.queue.finish(job_id, "failed", "Diagnostics: 1")
+        self.assertEqual("failed", self.queue.state(job_id))
 
     def test_finished_job_keeps_its_summary(self):
-        queue = job_service.JobQueue()
-        job_id = queue.submit("build", {})
-        queue.next()
-        queue.finish(job_id, "failed", "Diagnostics: 1")
-        self.assertEqual("Diagnostics: 1", queue.summary(job_id))
+        job_id = self.running_job()
+        self.queue.finish(job_id, "failed", "Diagnostics: 1")
+        self.assertEqual("Diagnostics: 1", self.queue.summary(job_id))
 
     def test_log_reads_back_the_chunks_in_order(self):
-        queue = job_service.JobQueue()
-        job_id = queue.submit("build", {})
-        queue.next()
-        queue.append_log(job_id, "first\n")
-        queue.append_log(job_id, "second\n")
-        self.assertEqual("first\nsecond\n", queue.log(job_id, 0))
+        job_id = self.running_job()
+        self.queue.append_log(job_id, "first\n")
+        self.queue.append_log(job_id, "second\n")
+        self.assertEqual("first\nsecond\n", self.queue.log(job_id, 0))
 
     def test_log_from_an_offset_returns_what_follows(self):
-        queue = job_service.JobQueue()
-        job_id = queue.submit("build", {})
-        queue.next()
-        queue.append_log(job_id, "first\n")
-        queue.append_log(job_id, "second\n")
-        self.assertEqual("second\n", queue.log(job_id, len("first\n")))
+        job_id = self.running_job()
+        self.queue.append_log(job_id, "first\n")
+        self.queue.append_log(job_id, "second\n")
+        self.assertEqual("second\n", self.queue.log(job_id, len("first\n")))
 
     def test_log_of_a_job_with_no_output_is_empty(self):
-        queue = job_service.JobQueue()
-        job_id = queue.submit("build", {})
-        self.assertEqual("", queue.log(job_id, 0))
+        job_id = self.queue.submit("build", {})
+        self.assertEqual("", self.queue.log(job_id, 0))
 
 
 if __name__ == "__main__":
