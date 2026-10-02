@@ -56,50 +56,62 @@ class JobQueue:
 def make_server(queue, token, host, port):
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            if not self._authorised():
-                self._reply(401)
-            else:
-                url = urllib.parse.urlsplit(self.path)
-                status_match = re.fullmatch(r"/jobs/(\d+)", url.path)
-                log_match = re.fullmatch(r"/jobs/(\d+)/log", url.path)
-                if log_match and queue.knows(int(log_match.group(1))):
-                    offset = int(urllib.parse.parse_qs(url.query).get("from", ["0"])[0])
-                    self._reply_text(queue.log(int(log_match.group(1)), offset))
-                elif status_match and queue.knows(int(status_match.group(1))):
-                    job_id = int(status_match.group(1))
-                    self._reply(200, {"state": queue.state(job_id), "summary": queue.summary(job_id)})
-                elif url.path == "/jobs/next":
-                    job = queue.next()
-                    if job is None:
-                        self._reply(204)
-                    else:
-                        self._reply(200, job)
-                else:
-                    self._reply(404)
+            self._dispatch("GET")
 
         def do_POST(self):
+            self._dispatch("POST")
+
+        # Every route but /jobs and /jobs/next names a job, which must exist.
+        def _dispatch(self, method):
+            url = urllib.parse.urlsplit(self.path)
+            action = None
+            args = ()
+            for route_method, pattern, route_action in ROUTES:
+                match = re.fullmatch(pattern, url.path)
+                if (route_method == method) and match:
+                    args = tuple(int(group) for group in match.groups())
+                    if all(queue.knows(job_id) for job_id in args):
+                        action = route_action
+                    break
             if not self._authorised():
                 self._reply(401)
+            elif action is None:
+                self._reply(404)
             else:
-                body = self.rfile.read(int(self.headers["Content-Length"]))
-                log_match = re.fullmatch(r"/jobs/(\d+)/log", self.path)
-                result_match = re.fullmatch(r"/jobs/(\d+)/result", self.path)
-                if log_match and queue.knows(int(log_match.group(1))):
-                    queue.append_log(int(log_match.group(1)), body.decode())
-                    self._reply(204)
-                elif result_match and queue.knows(int(result_match.group(1))):
-                    result = json.loads(body)
-                    queue.finish(int(result_match.group(1)), result["outcome"], result["summary"])
-                    self._reply(204)
-                elif self.path == "/jobs":
-                    request = json.loads(body)
-                    job_id = queue.submit(request["type"], request["args"])
-                    self._reply(201, {"id": job_id})
-                else:
-                    self._reply(404)
+                action(self, url, *args)
+
+        def _post_job(self, url):
+            request = json.loads(self._body())
+            self._reply(201, {"id": queue.submit(request["type"], request["args"])})
+
+        def _get_next(self, url):
+            job = queue.next()
+            if job is None:
+                self._reply(204)
+            else:
+                self._reply(200, job)
+
+        def _get_status(self, url, job_id):
+            self._reply(200, {"state": queue.state(job_id), "summary": queue.summary(job_id)})
+
+        def _get_log(self, url, job_id):
+            offset = int(urllib.parse.parse_qs(url.query).get("from", ["0"])[0])
+            self._reply_text(queue.log(job_id, offset))
+
+        def _post_log(self, url, job_id):
+            queue.append_log(job_id, self._body().decode())
+            self._reply(204)
+
+        def _post_result(self, url, job_id):
+            result = json.loads(self._body())
+            queue.finish(job_id, result["outcome"], result["summary"])
+            self._reply(204)
 
         def _authorised(self):
             return hmac.compare_digest(self.headers.get("X-Runner-Token", ""), token)
+
+        def _body(self):
+            return self.rfile.read(int(self.headers["Content-Length"]))
 
         def _reply(self, status, payload=None):
             self.send_response(status)
@@ -119,5 +131,14 @@ def make_server(queue, token, host, port):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+
+    ROUTES = (
+        ("POST", r"/jobs", Handler._post_job),
+        ("GET", r"/jobs/next", Handler._get_next),
+        ("GET", r"/jobs/(\d+)", Handler._get_status),
+        ("GET", r"/jobs/(\d+)/log", Handler._get_log),
+        ("POST", r"/jobs/(\d+)/log", Handler._post_log),
+        ("POST", r"/jobs/(\d+)/result", Handler._post_result),
+    )
 
     return http.server.HTTPServer((host, port), Handler)
