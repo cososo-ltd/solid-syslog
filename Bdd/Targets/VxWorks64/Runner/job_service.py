@@ -49,7 +49,10 @@ class JobQueue:
 def make_server(queue, token, host, port):
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            self.send_response(401)
+            if self.headers.get("X-Runner-Token") is None:
+                self.send_response(401)
+            else:
+                self.send_response(204)
             self.end_headers()
 
     return http.server.HTTPServer((host, port), Handler)
