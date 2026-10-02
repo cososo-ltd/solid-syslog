@@ -15,6 +15,13 @@ Describe 'Invoke-RunnerJob' {
         $script:called | Should Be $false
     }
 
+    It 'refuses a job with an argument its action does not take, and runs nothing' {
+        $script:called = $false
+        $result = Invoke-RunnerJob -Job @{ type = 'build'; args = @{ script = 'del *' } } -Actions $actions
+        $result.Outcome | Should Be 'refused'
+        $script:called | Should Be $false
+    }
+
     It 'runs a known job and returns its result' {
         $result = Invoke-RunnerJob -Job @{ type = 'build'; args = @{} } -Actions @{
             'build' = @{ Arguments = @(); Run = { param($Arguments) @{ Outcome = 'succeeded'; Summary = 'Diagnostics: none' } } } }
