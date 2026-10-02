@@ -94,6 +94,14 @@ foreach ($buildSpec in @('default', 'default_rom'))
         'CFLAGS', "$cflags $includes")
     Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
         'LIBS', "$library `$(VX_OS_LIBS)")
+
+    # Wind River's pciIntLib.c, compiled into the BSP's sysLib.c, raises dcc:1606
+    # (a condition always true or false). PROJECT_BSP_FLAGS_EXTRA reaches the
+    # BSP's sources only, so the project's other sources keep the warning.
+    $bspFlags = ((Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'get',
+        $projectFile, 'PROJECT_BSP_FLAGS_EXTRA')) -join ' ').Trim()
+    Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
+        'PROJECT_BSP_FLAGS_EXTRA', "$bspFlags -ei1606".Trim())
     }
 
 Write-Host "Created $projectFile"
