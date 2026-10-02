@@ -164,14 +164,14 @@ def thumbprint(certificate_path):
 # Submits a job, writes its log to out as it arrives, and returns its outcome
 # and summary once the runner has finished it. The status is read before the
 # log, so the last read of the log follows the runner's last write to it.
-def run_job(base_url, token, job_type, args, out, poll_seconds=1.0):
-    job_id = json.loads(_call(base_url, token, "POST", "/jobs", {"type": job_type, "args": args}))["id"]
+def run_job(base_url, token, job_type, args, out, poll_seconds=1.0, context=None):
+    job_id = json.loads(_call(base_url, token, context, "POST", "/jobs", {"type": job_type, "args": args}))["id"]
     offset = 0
     finished = False
     while not finished:
-        status = json.loads(_call(base_url, token, "GET", f"/jobs/{job_id}"))
+        status = json.loads(_call(base_url, token, context, "GET", f"/jobs/{job_id}"))
         finished = status["state"] not in ("queued", "running")
-        text = _call(base_url, token, "GET", f"/jobs/{job_id}/log?from={offset}").decode()
+        text = _call(base_url, token, context, "GET", f"/jobs/{job_id}/log?from={offset}").decode()
         out.write(text)
         offset += len(text)
         if not finished:
@@ -179,9 +179,9 @@ def run_job(base_url, token, job_type, args, out, poll_seconds=1.0):
     return status["state"], status["summary"]
 
 
-def _call(base_url, token, method, path, payload=None):
+def _call(base_url, token, context, method, path, payload=None):
     data = None if payload is None else json.dumps(payload).encode()
     request = urllib.request.Request(base_url + path, data=data, method=method)
     request.add_header("X-Runner-Token", token)
-    with urllib.request.urlopen(request) as response:
+    with urllib.request.urlopen(request, context=context) as response:
         return response.read()
