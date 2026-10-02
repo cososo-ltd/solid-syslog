@@ -75,3 +75,13 @@ function Test-RunnerArgumentValue
 
     $Value -cmatch '^[A-Za-z0-9][A-Za-z0-9._/:@ -]*$'
     }
+
+function Test-RunnerCertificate
+    {
+    param(
+        [Parameter(Mandatory)] [System.Security.Cryptography.X509Certificates.X509Certificate] $Certificate,
+        [Parameter(Mandatory)] [string] $Thumbprint
+    )
+
+    $true
+    }
