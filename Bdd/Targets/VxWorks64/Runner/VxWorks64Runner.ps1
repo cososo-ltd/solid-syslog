@@ -14,12 +14,35 @@ function Invoke-RunnerJob
         [Parameter(Mandatory)] [hashtable] $Actions
     )
 
-    if ($Actions.ContainsKey($Job.type))
+    $refusal = Get-RunnerJobRefusal -Job $Job -Actions $Actions
+    if ($refusal)
         {
-        & $Actions[$Job.type].Run $Job.args
+        @{ Outcome = 'refused'; Summary = $refusal }
         }
     else
         {
-        @{ Outcome = 'refused'; Summary = "unknown job '$($Job.type)'" }
+        & $Actions[$Job.type].Run $Job.args
+        }
+    }
+
+# Why the job may not run, or nothing if it may.
+function Get-RunnerJobRefusal
+    {
+    param(
+        [Parameter(Mandatory)] [hashtable] $Job,
+        [Parameter(Mandatory)] [hashtable] $Actions
+    )
+
+    if (-not $Actions.ContainsKey($Job.type))
+        {
+        "unknown job '$($Job.type)'"
+        }
+    else
+        {
+        $unexpected = @($Job.args.Keys | Where-Object { $Actions[$Job.type].Arguments -notcontains $_ })
+        if ($unexpected.Count -gt 0)
+            {
+            "job '$($Job.type)' does not take $($unexpected -join ', ')"
+            }
         }
     }
