@@ -84,7 +84,7 @@ def make_server(queue, token, host, port):
                 body = self.rfile.read(int(self.headers["Content-Length"]))
                 log_match = re.fullmatch(r"/jobs/(\d+)/log", self.path)
                 result_match = re.fullmatch(r"/jobs/(\d+)/result", self.path)
-                if log_match:
+                if log_match and queue.knows(int(log_match.group(1))):
                     queue.append_log(int(log_match.group(1)), body.decode())
                     self._reply(204)
                 elif result_match and queue.knows(int(result_match.group(1))):
