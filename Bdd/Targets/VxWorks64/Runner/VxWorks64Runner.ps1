@@ -104,3 +104,17 @@ function Test-RunnerCertificate
 
     [SolidSyslogRunnerPinning]::Matches($Certificate, $Thumbprint)
     }
+
+# ConvertFrom-Json in Windows PowerShell 5.1 gives objects, not hashtables.
+function ConvertFrom-RunnerJobJson
+    {
+    param([Parameter(Mandatory)] [string] $Json)
+
+    $parsed = ConvertFrom-Json $Json
+    $arguments = @{}
+    foreach ($property in $parsed.args.PSObject.Properties)
+        {
+        $arguments[$property.Name] = [string] $property.Value
+        }
+    @{ id = $parsed.id; type = $parsed.type; args = $arguments }
+    }
