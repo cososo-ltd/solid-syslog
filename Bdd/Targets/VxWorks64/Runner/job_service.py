@@ -5,6 +5,7 @@ Runs on the development machine. Jobs are queued here and the runner on the
 build machine collects them, one at a time, connecting outwards only.
 """
 
+import hmac
 import http.server
 
 
@@ -49,7 +50,7 @@ class JobQueue:
 def make_server(queue, token, host, port):
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            if self.headers.get("X-Runner-Token") is None:
+            if not hmac.compare_digest(self.headers.get("X-Runner-Token", ""), token):
                 self.send_response(401)
             else:
                 self.send_response(204)
