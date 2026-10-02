@@ -889,6 +889,13 @@ jobs:
             ghcr.io/cososo-ltd/mkdocs-mkdoxy@sha256:9ab3d41807a941f3d5a7077fb7288d0ffe2a926729ce13a4fc889cc8b6630d43 \
             python3 -m unittest discover -s /docs/hooks -p 'test_*.py'
 
+      # The VxWorks 6.4 runner's job service: its queue, token, routes and TLS.
+      # Here because this job already runs the repository's Python unittest
+      # suites on a host with openssl, which the certificate tests need. The
+      # runner's Pester tests need Windows PowerShell 5.1 and run locally.
+      - name: Test the VxWorks 6.4 runner's job service
+        run: python3 -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
+
       - name: Read version from release-please manifest
         id: version
         run: |
