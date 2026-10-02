@@ -203,7 +203,7 @@ def initialise(home):
     if openssl is None:
         raise RuntimeError("openssl was not found on the PATH - Git for Windows provides one")
     os.makedirs(home, exist_ok=True)
-    with open(os.path.join(home, "token"), "w", encoding="ascii") as token:
+    with open(os.path.join(home, "token"), "x", encoding="ascii") as token:
         token.write(secrets.token_urlsafe(32))
     subprocess.run(
         [openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes",
