@@ -30,6 +30,17 @@ Describe 'Invoke-RunnerJob' {
         $script:called | Should Be $false
     }
 
+    It 'refuses an argument value that could be read as an option or quoting, and runs nothing' {
+        $checkout = @{ 'checkout' = @{ Arguments = @('ref'); Run = { param($Arguments) $script:called = $true } } }
+        foreach ($value in @('--upload-pack=evil', 'main"; del *', "main'", 'main;x', ''))
+            {
+            $script:called = $false
+            $result = Invoke-RunnerJob -Job @{ type = 'checkout'; args = @{ ref = $value } } -Actions $checkout
+            $result.Outcome | Should Be 'refused'
+            $script:called | Should Be $false
+            }
+    }
+
     It 'runs a known job and returns its result' {
         $result = Invoke-RunnerJob -Job @{ type = 'build'; args = @{} } -Actions @{
             'build' = @{ Arguments = @(); Run = { param($Arguments) @{ Outcome = 'succeeded'; Summary = 'Diagnostics: none' } } } }
