@@ -90,7 +90,6 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
         def do_POST(self):
             self._dispatch("POST")
 
-        # Every route but /jobs and /jobs/next names a job, which must exist.
         # The body is read before any reply: closing a connection with a body
         # still unread makes Windows abort it, and the client sees that instead
         # of the reply. One over the limit is refused unread, token or not.
@@ -103,6 +102,7 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
                 self._request_body = self.rfile.read(length)
                 self._route(method)
 
+        # Every route but /jobs and /jobs/next names a job, which must exist.
         def _route(self, method):
             url = urllib.parse.urlsplit(self.path)
             action = None
