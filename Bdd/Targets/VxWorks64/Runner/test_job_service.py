@@ -234,6 +234,13 @@ class RunJobTest(unittest.TestCase):
         runner.join()
         self.assertEqual(("succeeded", "Diagnostics: none"), result)
 
+    def test_run_job_writes_the_jobs_log(self):
+        out = io.StringIO()
+        runner = self.runner_finishes_next_job("building\nbuilt\n", "succeeded", "")
+        job_service.run_job(self.url, self.TOKEN, "build", {}, out, poll_seconds=0.01)
+        runner.join()
+        self.assertEqual("building\nbuilt\n", out.getvalue())
+
 
 OPENSSL = shutil.which("openssl")
 
