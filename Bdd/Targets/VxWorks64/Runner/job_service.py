@@ -31,7 +31,7 @@ class JobQueue:
         self._logs[job_id] = self._logs.get(job_id, "") + text
 
     def log(self, job_id, offset):
-        return self._logs[job_id]
+        return self._logs[job_id][offset:]
 
     def finish(self, job_id, outcome, summary):
         self._states[job_id] = outcome
