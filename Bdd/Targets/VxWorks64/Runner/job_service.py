@@ -9,6 +9,7 @@ import hmac
 import http.server
 import json
 import re
+import urllib.parse
 
 
 class JobQueue:
@@ -55,8 +56,13 @@ def make_server(queue, token, host, port):
             if not self._authorised():
                 self._reply(401)
             else:
-                status_match = re.fullmatch(r"/jobs/(\d+)", self.path)
-                if status_match:
+                url = urllib.parse.urlsplit(self.path)
+                status_match = re.fullmatch(r"/jobs/(\d+)", url.path)
+                log_match = re.fullmatch(r"/jobs/(\d+)/log", url.path)
+                if log_match:
+                    offset = int(urllib.parse.parse_qs(url.query).get("from", ["0"])[0])
+                    self._reply_text(queue.log(int(log_match.group(1)), offset))
+                elif status_match:
                     job_id = int(status_match.group(1))
                     self._reply(200, {"state": queue.state(job_id), "summary": queue.summary(job_id)})
                 else:
@@ -98,5 +104,13 @@ def make_server(queue, token, host, port):
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
+
+        def _reply_text(self, text):
+            body = text.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
 
     return http.server.HTTPServer((host, port), Handler)
