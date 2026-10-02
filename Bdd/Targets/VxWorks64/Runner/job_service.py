@@ -3,8 +3,19 @@
 
 Runs on the development machine. Jobs are queued here and the runner on the
 build machine collects them, one at a time, connecting outwards only.
+
+    python job_service.py init                  once: token, certificate and key
+    python job_service.py serve                 serve on port 8765 until stopped
+    python job_service.py submit <job> [NAME=VALUE...]
+                                                queue a job, follow its log, and
+                                                exit 0 only if it succeeded
+
+The token, certificate and key live in ~/.solidsyslog-runner, never in the
+repository. serve prints the certificate's thumbprint, which the runner is
+given when it is launched.
 """
 
+import argparse
 import hashlib
 import hmac
 import http.server
@@ -15,9 +26,13 @@ import secrets
 import shutil
 import ssl
 import subprocess
+import sys
 import time
 import urllib.parse
 import urllib.request
+
+DEFAULT_HOME = os.path.join(os.path.expanduser("~"), ".solidsyslog-runner")
+DEFAULT_PORT = 8765
 
 
 class JobQueue:
@@ -115,6 +130,11 @@ def make_server(queue, token, host, port, certificate=None):
             queue.finish(job_id, result["outcome"], result["summary"])
             self._reply(204)
 
+        # The runner polls for work every few seconds; an empty poll is not news.
+        def log_request(self, code="-", size="-"):
+            if not ((code == 204) and (self.path == "/jobs/next")):
+                super().log_request(code, size)
+
         def _authorised(self):
             return hmac.compare_digest(self.headers.get("X-Runner-Token", ""), token)
 
@@ -210,3 +230,46 @@ def initialise(home):
          "-keyout", os.path.join(home, "key.pem"), "-out", os.path.join(home, "certificate.pem"),
          "-days", "3650", "-subj", "/CN=solidsyslog-runner"],
         check=True, capture_output=True)
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(description="Job service for the VxWorks 6.4 runner.")
+    parser.add_argument("--home", default=DEFAULT_HOME, help="where the token, certificate and key live")
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("init", help="create the token, certificate and key")
+    commands.add_parser("serve", help="serve until stopped")
+    submit = commands.add_parser("submit", help="queue a job and follow it")
+    submit.add_argument("job")
+    submit.add_argument("arguments", nargs="*", metavar="NAME=VALUE")
+    options = parser.parse_args(argv)
+
+    certificate = os.path.join(options.home, "certificate.pem")
+    key = os.path.join(options.home, "key.pem")
+    result = 0
+    if options.command == "init":
+        initialise(options.home)
+        print(f"Created the token, certificate and key in {options.home}")
+        print(f"Thumbprint {thumbprint(certificate)}")
+    else:
+        with open(os.path.join(options.home, "token"), encoding="ascii") as token_file:
+            token = token_file.read().strip()
+        if options.command == "serve":
+            server = make_server(JobQueue(), token, "0.0.0.0", options.port, (certificate, key))
+            print(f"Serving on port {options.port}, thumbprint {thumbprint(certificate)}", flush=True)
+            try:
+                server.serve_forever()
+            except KeyboardInterrupt:
+                pass
+        else:
+            context = ssl.create_default_context(cafile=certificate)
+            context.check_hostname = False
+            outcome, summary = run_job(f"https://127.0.0.1:{options.port}", token, options.job,
+                                       job_arguments(options.arguments), sys.stdout, context=context)
+            print(f"{outcome}: {summary}")
+            result = 0 if outcome == "succeeded" else 1
+    return result
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
