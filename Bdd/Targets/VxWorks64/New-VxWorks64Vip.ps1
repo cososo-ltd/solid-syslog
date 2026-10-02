@@ -95,14 +95,18 @@ foreach ($buildSpec in @('default', 'default_rom'))
     Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
         'LIBS', "$library `$(VX_OS_LIBS)")
 
-    # Wind River's pciIntLib.c, compiled into the BSP's sysLib.c, raises dcc:1606
-    # (a condition always true or false). PROJECT_BSP_FLAGS_EXTRA reaches Wind
-    # River's sources and the ones vxprj generates - the BSP, romStart.c,
-    # prjConfig.c and linkSyms.c - so the project's own sources keep the warning.
-    $bspFlags = ((Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'get',
-        $projectFile, 'PROJECT_BSP_FLAGS_EXTRA')) -join ' ').Trim()
-    Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
-        'PROJECT_BSP_FLAGS_EXTRA', "$bspFlags -ei1606".Trim())
+    # With Diab, Wind River's pciIntLib.c, compiled into the BSP's sysLib.c,
+    # raises dcc:1606 (a condition always true or false). PROJECT_BSP_FLAGS_EXTRA
+    # reaches Wind River's sources and the ones vxprj generates - the BSP,
+    # romStart.c, prjConfig.c and linkSyms.c - so the project's own sources keep
+    # the warning. -ei is a Diab option, so a GNU project is left as it is.
+    if ($Tool -eq 'sfdiab')
+        {
+        $bspFlags = ((Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'get',
+            $projectFile, 'PROJECT_BSP_FLAGS_EXTRA')) -join ' ').Trim()
+        Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
+            'PROJECT_BSP_FLAGS_EXTRA', "$bspFlags -ei1606".Trim())
+        }
     }
 
 Write-Host "Created $projectFile"

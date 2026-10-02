@@ -66,16 +66,17 @@ pass, fail or not run.
 The build script runs `Platform/VxWorks64/solidsyslog.makefile` against the
 project's own Makefile, so the library is compiled with the build
 specification's compiler and flags into `solidsyslog\` in the project. The
-creation script sets three of the project's build macros with
+creation script sets the project's build macros with
 `vxprj buildmacro set`:
 
 - `CFLAGS` gains `Core/Interface`, `Platform/VxWorks64/Interface` and
   `Platform/VxWorks64/Compat`.
 - `LIBS` names the library ahead of `$(VX_OS_LIBS)`.
-- `PROJECT_BSP_FLAGS_EXTRA` gains `-ei1606`. Wind River's own `pciIntLib.c`,
-  which the BSP's `sysLib.c` includes, raises `dcc:1606`. The macro reaches Wind
-  River's sources and the ones `vxprj` generates - the BSP, `romStart.c`,
-  `prjConfig.c` and `linkSyms.c` - so the project's own sources keep the warning.
+- With Diab, `PROJECT_BSP_FLAGS_EXTRA` gains `-ei1606`. Wind River's own
+  `pciIntLib.c`, which the BSP's `sysLib.c` includes, raises `dcc:1606`. The
+  macro reaches Wind River's sources and the ones `vxprj` generates - the BSP,
+  `romStart.c`, `prjConfig.c` and `linkSyms.c` - so the project's own sources
+  keep the warning.
 
 The kernel header tree has no `<stdint.h>` or `<stdbool.h>`, which the
 SolidSyslog headers include. `Platform/VxWorks64/Compat` supplies both, for the
