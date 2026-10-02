@@ -4,6 +4,18 @@
 
 . (Join-Path $PSScriptRoot 'VxWorks64Runner.ps1')
 
+Describe 'Test-RunnerCertificate' {
+    # A public certificate only; its key was discarded when it was made.
+    $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(
+        (Join-Path $PSScriptRoot 'TestData\pinning-test-certificate.pem'))
+    $pinned = '789D71BF084F7F1BE52573811974F3BA93F3B9B9'
+
+    It 'accepts the certificate whose thumbprint is pinned, in either case' {
+        Test-RunnerCertificate -Certificate $certificate -Thumbprint $pinned | Should Be $true
+        Test-RunnerCertificate -Certificate $certificate -Thumbprint $pinned.ToLowerInvariant() | Should Be $true
+    }
+}
+
 Describe 'Invoke-RunnerJob' {
     $script:called = $false
     $actions = @{ 'build' = @{ Arguments = @(); Run = { param($Arguments) $script:called = $true; @{ Outcome = 'succeeded'; Summary = '' } } } }
