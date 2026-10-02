@@ -39,7 +39,7 @@ TEST(SolidSyslogLwipRawTcpKeepaliveIdleOnly, SetsKeepIdleFromTheTunableInMillise
 
 TEST(SolidSyslogLwipRawTcpKeepaliveIdleOnly, LeavesTheRestOfThePcbToTheStack)
 {
-    struct tcp_pcb expected;
+    struct tcp_pcb expected = {};
     memset(&expected, UNTOUCHED, sizeof(expected));
     expected.keep_idle = SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS * MILLISECONDS_PER_SECOND;
 
