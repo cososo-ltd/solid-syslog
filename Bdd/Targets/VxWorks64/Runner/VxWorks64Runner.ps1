@@ -21,7 +21,14 @@ function Invoke-RunnerJob
         }
     else
         {
-        & $Actions[$Job.type].Run $Job.args
+        try
+            {
+            & $Actions[$Job.type].Run $Job.args
+            }
+        catch
+            {
+            @{ Outcome = 'failed'; Summary = $_.Exception.Message }
+            }
         }
     }
 
