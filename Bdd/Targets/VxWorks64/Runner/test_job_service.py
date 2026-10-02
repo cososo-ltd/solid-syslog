@@ -199,6 +199,18 @@ class JobServiceTest(unittest.TestCase):
         self.assertIsNone(self.queue.next())
 
 
+# Stands in for the runner: takes the next job, logs, and finishes it.
+def finish_next_job(queue, log, outcome, summary):
+    deadline = time.monotonic() + 5
+    job = None
+    while (job is None) and (time.monotonic() < deadline):
+        job = queue.next()
+        time.sleep(0.01)
+    if job is not None:
+        queue.append_log(job["id"], log)
+        queue.finish(job["id"], outcome, summary)
+
+
 class RunJobTest(unittest.TestCase):
     TOKEN = "test-token"
 
@@ -215,16 +227,7 @@ class RunJobTest(unittest.TestCase):
         self.server.server_close()
 
     def runner_finishes_next_job(self, log, outcome, summary):
-        def runner():
-            deadline = time.monotonic() + 5
-            job = None
-            while (job is None) and (time.monotonic() < deadline):
-                job = self.queue.next()
-                time.sleep(0.01)
-            if job is not None:
-                self.queue.append_log(job["id"], log)
-                self.queue.finish(job["id"], outcome, summary)
-        thread = threading.Thread(target=runner, daemon=True)
+        thread = threading.Thread(target=finish_next_job, args=(self.queue, log, outcome, summary), daemon=True)
         thread.start()
         return thread
 
@@ -285,6 +288,25 @@ class CertificateTest(unittest.TestCase):
             with urllib.request.urlopen(request, context=client) as response:
                 self.assertEqual(204, response.status)
         finally:
+            server.shutdown()
+            thread.join()
+            server.server_close()
+
+    def test_run_job_verifies_the_service_against_its_certificate(self):
+        queue = job_service.JobQueue()
+        server = job_service.make_server(queue, "test-token", "127.0.0.1", 0, (self.certificate, self.key))
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+        queue_runner = threading.Thread(target=finish_next_job, args=(queue, "", "succeeded", "done"), daemon=True)
+        queue_runner.start()
+        try:
+            client = ssl.create_default_context(cafile=self.certificate)
+            client.check_hostname = False
+            result = job_service.run_job(f"https://127.0.0.1:{server.server_address[1]}", "test-token",
+                                         "build", {}, io.StringIO(), poll_seconds=0.01, context=client)
+            self.assertEqual(("succeeded", "done"), result)
+        finally:
+            queue_runner.join()
             server.shutdown()
             thread.join()
             server.server_close()
