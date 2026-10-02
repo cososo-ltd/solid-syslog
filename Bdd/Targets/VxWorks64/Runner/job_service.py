@@ -185,3 +185,7 @@ def _call(base_url, token, context, method, path, payload=None):
     request.add_header("X-Runner-Token", token)
     with urllib.request.urlopen(request, context=context) as response:
         return response.read()
+
+
+def job_arguments(words):
+    return dict(word.split("=", 1) for word in words)
