@@ -43,9 +43,15 @@ endif
 # enum is given one of its own constants - the ordinary use of every enum in the
 # library. MISRA's essential type model already treats such a constant as its
 # enum's type.
+#
+# The platform sources include the Wind River headers, which the C99 front end
+# finds two faults in that the project's own dialect does not report: -ei4301
+# for a typedef repeated with the same type (size_t), -ei4381 for an extra ";"
+# after a declaration. Core includes no Wind River header and keeps both.
 ifeq ($(TOOL_FAMILY),diab)
-SOLIDSYSLOG_DIALECT_CFLAGS := -Xdialect-c99 -ei4188
-SOLIDSYSLOG_DEPEND_CFLAGS  := -Xmake-dependency=0xd
+SOLIDSYSLOG_DIALECT_CFLAGS        := -Xdialect-c99 -ei4188
+SOLIDSYSLOG_PLATFORM_EXTRA_CFLAGS := -ei4301,4381
+SOLIDSYSLOG_DEPEND_CFLAGS         := -Xmake-dependency=0xd
 endif
 ifeq ($(TOOL_FAMILY),gnu)
 SOLIDSYSLOG_DIALECT_CFLAGS := -std=c99
@@ -76,6 +82,7 @@ vpath %.c $(sort $(dir $(SOLIDSYSLOG_SRCS)))
 # Core sees the library's own headers alone, as solidsyslog.mk intends.
 $(SOLIDSYSLOG_CORE_OBJS):     SOLIDSYSLOG_OBJ_INCLUDES := $(SOLIDSYSLOG_CORE_INCLUDES)
 $(SOLIDSYSLOG_PLATFORM_OBJS): SOLIDSYSLOG_OBJ_INCLUDES := $(SOLIDSYSLOG_INCLUDES)
+$(SOLIDSYSLOG_PLATFORM_OBJS): SOLIDSYSLOG_OBJ_CFLAGS   := $(SOLIDSYSLOG_PLATFORM_EXTRA_CFLAGS)
 
 .PHONY: all clean print-config
 
@@ -87,7 +94,7 @@ $(SOLIDSYSLOG_LIB): $(SOLIDSYSLOG_OBJS)
 $(SOLIDSYSLOG_BUILD_DIR)/%.o: %.c
 	mkdir -p $(@D)
 	$(CC) $(SOLIDSYSLOG_TARGET_CFLAGS) $(SOLIDSYSLOG_DIALECT_CFLAGS) \
-		$(SOLIDSYSLOG_DEPEND_CFLAGS) $(SOLIDSYSLOG_OBJ_INCLUDES) \
+		$(SOLIDSYSLOG_OBJ_CFLAGS) $(SOLIDSYSLOG_DEPEND_CFLAGS) $(SOLIDSYSLOG_OBJ_INCLUDES) \
 		$(SOLIDSYSLOG_C99_INCLUDES) -c $< -o $@
 
 clean:
@@ -99,6 +106,7 @@ print-config:
 	@echo TOOL_FAMILY=$(TOOL_FAMILY)
 	@echo SOLIDSYSLOG_TARGET_CFLAGS=$(SOLIDSYSLOG_TARGET_CFLAGS)
 	@echo SOLIDSYSLOG_DIALECT_CFLAGS=$(SOLIDSYSLOG_DIALECT_CFLAGS)
+	@echo SOLIDSYSLOG_PLATFORM_EXTRA_CFLAGS=$(SOLIDSYSLOG_PLATFORM_EXTRA_CFLAGS)
 	@echo SOLIDSYSLOG_C99_INCLUDES=$(SOLIDSYSLOG_C99_INCLUDES)
 	@echo SOLIDSYSLOG_PLATFORMS=$(SOLIDSYSLOG_PLATFORMS)
 	@echo SOLIDSYSLOG_LIB=$(SOLIDSYSLOG_LIB)
