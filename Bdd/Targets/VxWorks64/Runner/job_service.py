@@ -9,13 +9,14 @@ build machine collects them, one at a time, connecting outwards only.
 class JobQueue:
     def __init__(self):
         self._pending = []
+        self._last_id = 0
 
     def submit(self, job_type, args):
-        job_id = 1
-        self._pending.append({"id": job_id, "type": job_type, "args": args})
-        return job_id
+        self._last_id += 1
+        self._pending.append({"id": self._last_id, "type": job_type, "args": args})
+        return self._last_id
 
     def next(self):
         if self._pending:
-            return self._pending[0]
+            return self._pending.pop(0)
         return None
