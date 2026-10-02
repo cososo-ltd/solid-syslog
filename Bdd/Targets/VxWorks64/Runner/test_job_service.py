@@ -162,6 +162,12 @@ class JobServiceTest(unittest.TestCase):
         self.assertEqual(200, status)
         self.assertEqual("second\n", body.decode())
 
+    def test_get_of_an_unknown_path_is_not_found_and_takes_no_job(self):
+        job_id = self.queue.submit("build", {})
+        status, _ = self.request("GET", "/elsewhere", self.TOKEN)
+        self.assertEqual(404, status)
+        self.assertEqual("queued", self.queue.state(job_id))
+
 
 if __name__ == "__main__":
     unittest.main()
