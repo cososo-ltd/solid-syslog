@@ -87,7 +87,7 @@ def make_server(queue, token, host, port):
                 if log_match:
                     queue.append_log(int(log_match.group(1)), body.decode())
                     self._reply(204)
-                elif result_match:
+                elif result_match and queue.knows(int(result_match.group(1))):
                     result = json.loads(body)
                     queue.finish(int(result_match.group(1)), result["outcome"], result["summary"])
                     self._reply(204)
