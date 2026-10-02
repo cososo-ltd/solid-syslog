@@ -81,7 +81,8 @@ class JobQueue:
         return self._summaries.get(job_id)
 
 
-def make_server(queue, token, host, port, certificate=None):
+# A log chunk is a few seconds of build output, far below the default limit.
+def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1024 * 1024):
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
             self._dispatch("GET")
@@ -92,9 +93,17 @@ def make_server(queue, token, host, port, certificate=None):
         # Every route but /jobs and /jobs/next names a job, which must exist.
         # The body is read before any reply: closing a connection with a body
         # still unread makes Windows abort it, and the client sees that instead
-        # of the reply.
+        # of the reply. One over the limit is refused unread, token or not.
         def _dispatch(self, method):
-            self._request_body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            length = int(self.headers.get("Content-Length", 0))
+            if length > max_body_bytes:
+                self.close_connection = True
+                self._reply(413)
+            else:
+                self._request_body = self.rfile.read(length)
+                self._route(method)
+
+        def _route(self, method):
             url = urllib.parse.urlsplit(self.path)
             action = None
             args = ()
