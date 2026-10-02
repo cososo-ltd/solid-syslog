@@ -21,6 +21,15 @@ class JobQueueTest(unittest.TestCase):
         job_id = queue.submit("build", {"clean": True})
         self.assertEqual({"id": job_id, "type": "build", "args": {"clean": True}}, queue.next())
 
+    def test_jobs_are_taken_once_each_in_order(self):
+        queue = job_service.JobQueue()
+        first = queue.submit("checkout", {"ref": "main"})
+        second = queue.submit("build", {})
+        self.assertNotEqual(first, second)
+        self.assertEqual(first, queue.next()["id"])
+        self.assertEqual(second, queue.next()["id"])
+        self.assertIsNone(queue.next())
+
 
 if __name__ == "__main__":
     unittest.main()
