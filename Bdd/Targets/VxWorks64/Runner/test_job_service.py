@@ -63,6 +63,14 @@ class JobQueueTest(unittest.TestCase):
         queue.append_log(job_id, "second\n")
         self.assertEqual("first\nsecond\n", queue.log(job_id, 0))
 
+    def test_log_from_an_offset_returns_what_follows(self):
+        queue = job_service.JobQueue()
+        job_id = queue.submit("build", {})
+        queue.next()
+        queue.append_log(job_id, "first\n")
+        queue.append_log(job_id, "second\n")
+        self.assertEqual("second\n", queue.log(job_id, len("first\n")))
+
 
 if __name__ == "__main__":
     unittest.main()
