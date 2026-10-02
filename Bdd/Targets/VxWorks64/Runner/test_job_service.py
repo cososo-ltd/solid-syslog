@@ -112,6 +112,11 @@ class JobServiceTest(unittest.TestCase):
         status, _ = self.request("GET", "/jobs/next", self.TOKEN)
         self.assertEqual(204, status)
 
+    def test_job_posted_without_the_token_is_refused_and_not_queued(self):
+        status, _ = self.request("POST", "/jobs", None, {"type": "build", "args": {}})
+        self.assertEqual(401, status)
+        self.assertIsNone(self.queue.next())
+
     def test_posted_job_answers_its_id(self):
         status, body = self.request("POST", "/jobs", self.TOKEN, {"type": "build", "args": {}})
         self.assertEqual(201, status)
