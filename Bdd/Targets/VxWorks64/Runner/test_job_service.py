@@ -30,6 +30,11 @@ class JobQueueTest(unittest.TestCase):
         self.assertEqual(second, queue.next()["id"])
         self.assertIsNone(queue.next())
 
+    def test_submitted_job_is_queued(self):
+        queue = job_service.JobQueue()
+        job_id = queue.submit("build", {})
+        self.assertEqual("queued", queue.state(job_id))
+
 
 if __name__ == "__main__":
     unittest.main()
