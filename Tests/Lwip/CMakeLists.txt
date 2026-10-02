@@ -229,6 +229,30 @@ set_target_properties(SolidSyslogLwipRawTcpKeepaliveTest PROPERTIES
 
 solidsyslog_add_test(SolidSyslogLwipRawTcpKeepaliveTest)
 
+# ---- SolidSyslogLwipRawTcpKeepaliveIdleOnlyTest ----
+#
+# The other half: a stack built without LWIP_TCP_KEEPALIVE. No compile
+# definition, because lwIP's opt.h defaults the option off.
+
+add_executable(SolidSyslogLwipRawTcpKeepaliveIdleOnlyTest
+    SolidSyslogLwipRawTcpKeepaliveIdleOnlyTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/LwipRaw/Source/SolidSyslogLwipRawTcpKeepaliveIdleOnly.c
+)
+
+target_link_libraries(SolidSyslogLwipRawTcpKeepaliveIdleOnlyTest PRIVATE
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogLwipRawTcpKeepaliveIdleOnlyTest PRIVATE ${LWIP_TEST_INCLUDE_DIRS})
+
+set_target_properties(SolidSyslogLwipRawTcpKeepaliveIdleOnlyTest PROPERTIES
+    CXX_CPPCHECK ""
+)
+
+solidsyslog_add_test(SolidSyslogLwipRawTcpKeepaliveIdleOnlyTest)
+
 # ---- SolidSyslogLwipRawMarshalTest ----
 
 add_executable(SolidSyslogLwipRawMarshalTest

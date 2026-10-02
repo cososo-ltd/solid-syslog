@@ -18,7 +18,8 @@ const u32_t MILLISECONDS_PER_SECOND = 1000;
 
 // Built with LWIP_TCP_KEEPALIVE=1, so keep_intvl and keep_cnt are pcb fields
 // and all three timings are the library's to set. The variant for a build
-// without it is exercised through SolidSyslogLwipRawTcpStreamTest.
+// without it has an executable of its own,
+// SolidSyslogLwipRawTcpKeepaliveIdleOnlyTest.
 TEST_GROUP(SolidSyslogLwipRawTcpKeepalive)
 {
     struct tcp_pcb pcb;
