@@ -232,6 +232,18 @@ def initialise(home):
         check=True, capture_output=True)
 
 
+
+# Accepts the target's console, which QEMU connects out to, and writes what it
+# sends to out until it disconnects.
+def relay_console(listener, out):
+    connection, _ = listener.accept()
+    with connection:
+        data = connection.recv(4096)
+        while data:
+            out.write(data)
+            out.flush()
+            data = connection.recv(4096)
+
 def main(argv):
     parser = argparse.ArgumentParser(description="Job service for the VxWorks 6.4 runner.")
     parser.add_argument("--home", default=DEFAULT_HOME, help="where the token, certificate and key live")
