@@ -94,8 +94,8 @@ DESCRIPTIONS = {
         "an IPv4 resolver, and a mutex over the kernel's semaphore."
     ),
     "platforms/vxworks64/setup.md": (
-        "Wire the VxWorks 6.4 adapters: what to link with CMake or Make, a "
-        "UDP sender, and the mutex under a buffer shared across tasks."
+        "Wire the VxWorks 6.4 adapters: building the library inside the "
+        "project, a UDP sender, and the mutex under a shared buffer."
     ),
     "platforms/freertos/index.md": (
         "The FreeRTOS adapter pack: kernel primitives filling the Mutex role and "

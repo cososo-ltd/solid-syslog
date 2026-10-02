@@ -21,7 +21,20 @@ first two, and mutual-exclusion semaphores for the third. Real-time processes
 (RTPs) are not supported.
 
 The sources are C99. They need nothing from the compiler beyond that, and use no
-toolchain-specific extensions.
+toolchain-specific extensions. The flags a VIP generates select C89, so with
+Diab the library is built through `Platform/VxWorks64/solidsyslog-vxworks64.mk`,
+which adds the C99 dialect and states each diagnostic it turns off, and why.
+
+The kernel header tree has no `<stdint.h>` or `<stdbool.h>`, which the
+SolidSyslog headers include. The pack supplies both, for 32-bit targets, in
+`Platform/VxWorks64/Compat/`. Put that directory last on the include path, so it
+only fills the gap - for the library, and for every application file that
+includes a SolidSyslog header.
+
+The pack's public headers include no VxWorks header; the semaphore and every
+other kernel type stay inside its sources. An application file that includes
+them therefore compiles in the project's own dialect, and nothing the library is
+compiled with reaches it.
 
 ## What it has run on
 
@@ -30,9 +43,16 @@ pack calls, declared from the public API reference. That lets them build in an
 ordinary host preset with no Wind River installation present, and the same
 host build compiles the pack at strict C99.
 
-It has not yet been run on a VxWorks target. Target runs are outside CI - the
-toolchain and the kernel are licensed - so this section will record them as
-they are made.
+Target runs are outside CI - the toolchain and the kernel are licensed - so
+this section records them as they are made.
+
+The mutex has been built for VxWorks 6.4 on MIPS32 with Diab, and booted under
+QEMU's Malta machine. The library compiles with the image's own flags, which
+include `-Xlint`, plus the C99 dialect it adds; so built, the mutex, Core and an
+application file including their public headers compile with no diagnostics. The
+mutex is not yet exercised on the target: the BDD target will be the first to
+run it. The UDP transport and the resolver have not yet been built for the
+target.
 
 ## Security behaviour and obligations
 
