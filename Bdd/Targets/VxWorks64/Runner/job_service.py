@@ -7,6 +7,7 @@ build machine collects them, one at a time, connecting outwards only.
 
 import hmac
 import http.server
+import json
 
 
 class JobQueue:
@@ -55,5 +56,15 @@ def make_server(queue, token, host, port):
             else:
                 self.send_response(204)
             self.end_headers()
+
+        def do_POST(self):
+            request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            job_id = queue.submit(request["type"], request["args"])
+            body = json.dumps({"id": job_id}).encode()
+            self.send_response(201)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
 
     return http.server.HTTPServer((host, port), Handler)
