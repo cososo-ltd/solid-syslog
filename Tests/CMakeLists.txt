@@ -33,6 +33,13 @@ if(SOLIDSYSLOG_CMSISRTOS)
     add_subdirectory(CmsisRtos)
 endif()
 
+# VxWorks64 is fake-backed the same way: the fakes supply the VxWorks headers
+# outright, so these build wherever the rest of the suite does.
+if(SOLIDSYSLOG_VXWORKS64)
+    add_subdirectory(Support/VxWorks64Fakes)
+    add_subdirectory(VxWorks64)
+endif()
+
 if(SOLIDSYSLOG_FATFS)
     add_subdirectory(Support/FatFsFakes)
     add_subdirectory(FatFs)
@@ -307,6 +314,14 @@ foreach(cmsisrtos_test_target IN ITEMS
 )
     if(TARGET ${cmsisrtos_test_target})
         register_junit_test(${cmsisrtos_test_target})
+    endif()
+endforeach()
+
+foreach(vxworks64_test_target IN ITEMS
+    SolidSyslogVxWorks64MutexTest
+)
+    if(TARGET ${vxworks64_test_target})
+        register_junit_test(${vxworks64_test_target})
     endif()
 endforeach()
 

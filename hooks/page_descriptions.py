@@ -89,6 +89,14 @@ DESCRIPTIONS = {
         "Wire the CMSIS-RTOS2 mutex: what to link, sizing the control block, "
         "and putting the mutex under a buffer shared across tasks."
     ),
+    "platforms/vxworks64/index.md": (
+        "The VxWorks 6.4 adapter pack: a mutex over the kernel's "
+        "mutual-exclusion semaphore, for kernel (VIP) builds."
+    ),
+    "platforms/vxworks64/setup.md": (
+        "Wire the VxWorks 6.4 mutex: what to link with CMake or Make, and "
+        "putting the mutex under a buffer shared across tasks."
+    ),
     "platforms/freertos/index.md": (
         "The FreeRTOS adapter pack: kernel primitives filling the Mutex role and "
         "the sysUpTime callback. Networking comes from a separate platform."

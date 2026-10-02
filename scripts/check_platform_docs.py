@@ -93,6 +93,9 @@ ALIASES = {
     # points at the FreeRtos platform is still caught.
     "PlusFat": ["FreeRTOS-Plus-FAT", "Plus-FAT", "FreeRTOS"],
     "PlusTcp": ["FreeRTOS-Plus-TCP", "Plus-TCP", "FreeRTOS"],
+    # The pack is named for the release it is verified on; prose says VxWorks,
+    # with or without the version.
+    "VxWorks64": ["VxWorks", "VxWorks 6.4"],
     "Posix": ["POSIX"],
     "Windows": ["Winsock", "Win32"],
 }

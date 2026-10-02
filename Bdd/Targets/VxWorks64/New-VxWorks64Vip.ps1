@@ -69,12 +69,14 @@ Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'file', 'add', $projectFile,
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'component', 'add', $projectFile,
     'INCLUDE_SOLIDSYSLOG_VXWORKS64_BDD')
 
-# Give every build specification the SolidSyslog headers and library. The
-# headers need the C99 <stdint.h> and <stdbool.h> the kernel tree lacks, from the
-# pack's Compat directory, placed last so it only fills gaps. The library goes
-# ahead of the OS libraries, which it calls into. buildmacro acts on the current
-# build specification, so each is selected in turn.
-$coreInclude = '-I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Core\Interface')) +
+# Give every build specification the SolidSyslog headers - Core's and the
+# VxWorks64 pack's - and the library. The headers need the C99 <stdint.h> and
+# <stdbool.h> the kernel tree lacks, from the pack's Compat directory, placed
+# last so it only fills gaps. The library goes ahead of the OS libraries, which
+# it calls into. buildmacro acts on the current build specification, so each is
+# selected in turn.
+$includes = '-I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Core\Interface')) +
+    ' -I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Platform\VxWorks64\Interface')) +
     ' -I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Platform\VxWorks64\Compat'))
 $library = ConvertTo-MakePath (Join-Path (Get-LibraryDirectory -ProjectDirectory $ProjectDirectory) 'libsolidsyslog.a')
 foreach ($buildSpec in @('default', 'default_rom'))
@@ -89,9 +91,22 @@ foreach ($buildSpec in @('default', 'default_rom'))
         }
 
     Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
-        'CFLAGS', "$cflags $coreInclude")
+        'CFLAGS', "$cflags $includes")
     Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
         'LIBS', "$library `$(VX_OS_LIBS)")
+
+    # With Diab, Wind River's pciIntLib.c, compiled into the BSP's sysLib.c,
+    # raises dcc:1606 (a condition always true or false). PROJECT_BSP_FLAGS_EXTRA
+    # reaches Wind River's sources and the ones vxprj generates - the BSP,
+    # romStart.c, prjConfig.c and linkSyms.c - so the project's own sources keep
+    # the warning. -ei is a Diab option, so a GNU project is left as it is.
+    if ($Tool -eq 'sfdiab')
+        {
+        $bspFlags = ((Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'get',
+            $projectFile, 'PROJECT_BSP_FLAGS_EXTRA')) -join ' ').Trim()
+        Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
+            'PROJECT_BSP_FLAGS_EXTRA', "$bspFlags -ei1606".Trim())
+        }
     }
 
 Write-Host "Created $projectFile"
