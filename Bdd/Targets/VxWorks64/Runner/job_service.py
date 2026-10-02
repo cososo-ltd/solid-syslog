@@ -9,17 +9,21 @@ build machine collects them, one at a time, connecting outwards only.
 class JobQueue:
     def __init__(self):
         self._pending = []
+        self._states = {}
         self._last_id = 0
 
     def submit(self, job_type, args):
         self._last_id += 1
         self._pending.append({"id": self._last_id, "type": job_type, "args": args})
+        self._states[self._last_id] = "queued"
         return self._last_id
 
     def next(self):
         if self._pending:
-            return self._pending.pop(0)
+            job = self._pending.pop(0)
+            self._states[job["id"]] = "running"
+            return job
         return None
 
     def state(self, job_id):
-        return "queued"
+        return self._states[job_id]
