@@ -11,6 +11,11 @@ build specification it also produces vxWorks_rom.bin, the raw image QEMU's
 -bios option loads. The full build output is kept beside the project as
 build-<spec>.log.
 
+-Clean rebuilds the library from scratch and relinks the image. It leaves the
+project's own objects alone: the project's clean removes the configuration
+files vxprj generated, which the library needs. For a fully clean build,
+recreate the project with New-VxWorks64Vip.ps1 -Force.
+
 .EXAMPLE
 .\Build-VxWorks64Vip.ps1
 .\Build-VxWorks64Vip.ps1 -Tool sfgnu -Clean
@@ -25,7 +30,7 @@ param(
     [ValidateSet('default', 'default_rom')]
     [string] $BuildSpec = 'default_rom',
     # Platforms to build beside Core, as SOLIDSYSLOG_PLATFORMS.
-    [string] $Platforms = '',
+    [string] $Platforms = 'VxWorks64',
     [switch] $Clean
 )
 
@@ -47,15 +52,24 @@ Assert-NoWhitespace -Path $script:RepositoryRoot -Description 'The SolidSyslog c
 $logPath = Join-Path $ProjectDirectory "build-$BuildSpec.log"
 $vxprj = @{ WindRiverRoot = $WindRiverRoot; WindRiverProfile = $WindRiverProfile }
 
-# Every compiler diagnostic in the log, once each with its count. Diab writes
-# "warning (dcc:1606)", GNU "warning:"; the line number is dropped so a
-# diagnostic repeated across a file counts as one.
+# Every compiler diagnostic in the log, once each with its count, so a header
+# diagnostic repeated in every file that includes the header counts as one.
+# Diab writes "warning (dcc:1606): message" on one line, except under
+# -Xdialect-c99, whose front end puts the message on the line after
+# "warning (etoa:4301):". GNU writes "warning:".
 function Write-DiagnosticSummary
     {
     param([Parameter(Mandatory)] [string] $Path)
 
-    $diagnostics = @(Select-String -LiteralPath $Path -Pattern '(warning|info|error) \(|: (warning|error):' |
-        ForEach-Object { $_.Line -replace ', line \d+', '' -replace ':\d+:\d+:', ':' } |
+    $diagnostics = @(Select-String -LiteralPath $Path -Pattern '(warning|info|error) \(|: (warning|error):' -Context 0, 1 |
+        ForEach-Object {
+            $line = $_.Line
+            if (($line -match '\):\s*$') -and ($_.Context.PostContext.Count -gt 0))
+                {
+                $line = "$line $($_.Context.PostContext[0].Trim())"
+                }
+            $line
+            } |
         Group-Object)
     if ($diagnostics.Count -eq 0)
         {
@@ -81,17 +95,18 @@ try
     $libraryDirectory = Get-LibraryDirectory -ProjectDirectory $ProjectDirectory
     $library = Join-Path $libraryDirectory 'libsolidsyslog.a'
     $specDirectory = Join-Path $ProjectDirectory $BuildSpec
-    if ($Clean -and (Test-Path -LiteralPath $libraryDirectory))
+    if ($Clean)
         {
-        Remove-Item -LiteralPath $libraryDirectory -Recurse -Force
+        if (Test-Path -LiteralPath $libraryDirectory)
+            {
+            Remove-Item -LiteralPath $libraryDirectory -Recurse -Force
+            }
+        Get-ChildItem -LiteralPath $specDirectory -Filter 'vxWorks*' -File -ErrorAction SilentlyContinue |
+            Remove-Item -Force
         }
 
     & {
         Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'build', 'set', $projectFile, $BuildSpec)
-        if ($Clean)
-            {
-            Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'build', $projectFile, 'clean')
-            }
 
         # The project's Makefile supplies CC, AR, TOOL_FAMILY and CFLAGS for the
         # build specification; solidsyslog.makefile builds the library with them.
