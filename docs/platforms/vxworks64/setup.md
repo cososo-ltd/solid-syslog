@@ -7,26 +7,38 @@ leaves to you.
 
 The VxWorks headers come from your Wind River installation rather than from the
 library or the system, so the adapter cannot be precompiled: its sources compile
-inside your build, against the headers your kernel ships.
+inside your build, against the headers your kernel ships. The library is built
+as `libsolidsyslog.a` with your project's own compiler and flags, by running
+`Platform/VxWorks64/solidsyslog.makefile` against the project's Makefile. This
+is the route verified with a VxWorks Image Project (VIP) created by `vxprj`.
 
-With CMake, select it and link the target it exports:
+Build the library from the project directory, for each build specification you
+use. `SOLIDSYSLOG_DIR` points at the SolidSyslog checkout, and
+`SOLIDSYSLOG_PLATFORMS` names this platform and whichever others the
+[capability matrix](../index.md) says fill the rest of what your build needs:
 
-```cmake
-set(SOLIDSYSLOG_PLATFORMS "VxWorks64;<Network>;<Storage>")
-target_link_libraries(my_app PRIVATE SolidSyslog SolidSyslog::VxWorks64)
+```sh
+make -C <project> -f Makefile -f <checkout>/Platform/VxWorks64/solidsyslog.makefile \
+     BUILD_SPEC=<spec> SOLIDSYSLOG_DIR=<checkout> SOLIDSYSLOG_PLATFORMS=VxWorks64 \
+     solidsyslog_library
 ```
 
-With Make, name it in the platform list before including the fragment:
+The library is written to `solidsyslog/` in the project directory unless you
+set `SOLIDSYSLOG_BUILD_DIR`. Run it after `vxprj` has generated the project's
+configuration: the VxWorks headers include the generated `prjComps.h`, so the
+library cannot build in a project that has just been cleaned.
 
-```make
-SOLIDSYSLOG_PLATFORMS := VxWorks64
-include third_party/solid-syslog/solidsyslog.mk
-```
+Then give the project the headers and the library, with
+`vxprj buildmacro set` on each build specification:
 
-This platform fills the Mutex role; the placeholders are whichever platforms the
-[capability matrix](../index.md) says fill the rest of what your build needs.
-See [naming your platforms](../../build-integration.md#cmake) for how the list
-is read.
+- `CFLAGS` gains `-I<checkout>/Core/Interface`,
+  `-I<checkout>/Platform/VxWorks64/Interface` and, last,
+  `-I<checkout>/Platform/VxWorks64/Compat`.
+- `LIBS` names the library ahead of `$(VX_OS_LIBS)`, which it calls into.
+
+[VxWorks 6.4](index.md#requirements) says why the library needs its own dialect
+and what `Compat` supplies. `Bdd/Targets/VxWorks64/New-VxWorks64Vip.ps1` and
+`Build-VxWorks64Vip.ps1` carry out every step above for the BDD target.
 
 ## Wiring the mutex
 
