@@ -7,6 +7,7 @@ import io
 import json
 import os
 import shutil
+import socket
 import ssl
 import subprocess
 import sys
@@ -197,6 +198,19 @@ class JobServiceTest(unittest.TestCase):
         status, _ = self.request("POST", "/elsewhere", self.TOKEN, {"type": "build", "args": {}})
         self.assertEqual(404, status)
         self.assertIsNone(self.queue.next())
+
+
+class ConsoleTest(unittest.TestCase):
+    def test_what_the_target_sends_is_written_out_until_it_disconnects(self):
+        listener = socket.create_server(("127.0.0.1", 0))
+        out = io.BytesIO()
+        relay = threading.Thread(target=job_service.relay_console, args=(listener, out))
+        relay.start()
+        with socket.create_connection(listener.getsockname()) as target:
+            target.sendall(b"SolidSyslog VxWorks 6.4 BDD target: Core ran\r\n")
+        relay.join(5)
+        listener.close()
+        self.assertEqual(b"SolidSyslog VxWorks 6.4 BDD target: Core ran\r\n", out.getvalue())
 
 
 class CommandLineTest(unittest.TestCase):
