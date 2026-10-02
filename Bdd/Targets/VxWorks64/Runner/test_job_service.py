@@ -287,6 +287,16 @@ class CertificateTest(unittest.TestCase):
         self.assertEqual(40, len(job_service.thumbprint(os.path.join(home, "certificate.pem"))))
         self.assertTrue(os.path.isfile(os.path.join(home, "key.pem")))
 
+    def test_initialise_refuses_to_replace_an_existing_setup(self):
+        home = os.path.join(self.directory, "home")
+        job_service.initialise(home)
+        with open(os.path.join(home, "token"), encoding="ascii") as token:
+            original = token.read()
+        with self.assertRaises(FileExistsError):
+            job_service.initialise(home)
+        with open(os.path.join(home, "token"), encoding="ascii") as token:
+            self.assertEqual(original, token.read())
+
     def test_served_with_a_certificate_the_service_answers_over_tls(self):
         server = job_service.make_server(job_service.JobQueue(), "test-token", "127.0.0.1", 0,
                                          (self.certificate, self.key))
