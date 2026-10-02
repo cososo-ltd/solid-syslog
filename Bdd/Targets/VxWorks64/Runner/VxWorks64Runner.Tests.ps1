@@ -50,6 +50,13 @@ Describe 'Invoke-RunnerJob' {
             }
     }
 
+    It 'reports an action that throws as failed, with the error' {
+        $result = Invoke-RunnerJob -Job @{ type = 'build'; args = @{} } -Actions @{
+            'build' = @{ Arguments = @(); Run = { param($Arguments) throw 'No project at C:\x' } } }
+        $result.Outcome | Should Be 'failed'
+        $result.Summary | Should Be 'No project at C:\x'
+    }
+
     It 'runs a known job and returns its result' {
         $result = Invoke-RunnerJob -Job @{ type = 'build'; args = @{} } -Actions @{
             'build' = @{ Arguments = @(); Run = { param($Arguments) @{ Outcome = 'succeeded'; Summary = 'Diagnostics: none' } } } }
