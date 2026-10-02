@@ -17,7 +17,20 @@ VxWorks headers on your include path. The mutex calls `semMCreate`, `semTake`,
 `semGive` and `semDelete`. Real-time processes (RTPs) are not supported.
 
 The sources are C99. They need nothing from the compiler beyond that, and use no
-toolchain-specific extensions.
+toolchain-specific extensions. The flags a VIP generates select C89, so with
+Diab the library is built through `Platform/VxWorks64/solidsyslog-vxworks64.mk`,
+which adds the C99 dialect and states each diagnostic it turns off, and why.
+
+The kernel header tree has no `<stdint.h>` or `<stdbool.h>`, which the
+SolidSyslog headers include. The pack supplies both, for 32-bit targets, in
+`Platform/VxWorks64/Compat/`. Put that directory last on the include path, so it
+only fills the gap - for the library, and for every application file that
+includes a SolidSyslog header.
+
+The pack's public headers include no VxWorks header; the semaphore and every
+other kernel type stay inside its sources. An application file that includes
+them therefore compiles in the project's own dialect, and nothing the library is
+compiled with reaches it.
 
 ## What it has run on
 
