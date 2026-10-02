@@ -317,7 +317,7 @@ def without_variables(text, known):
         if match.group(1) not in known:
             return match.group(0)
         directory = known[match.group(1)]
-        return f"{directory}/" if directory else ""
+        return f"{directory}/" if directory else "./"
 
     return CMAKE_VARIABLE_PREFIX.sub(replace, text)
 
@@ -354,14 +354,18 @@ def candidates(relative, line, verbatim):
     return [line]
 
 
-def words(text):
+def words(text, options=False):
     """The path-shaped words of some candidate text, unpunctuated.
 
     A word is split on `:` after it has been judged, so a Compose mount
     (`../Bdd/output:/var/log`) yields both sides and a URL yields neither.
+    With `options`, a word that assigns an option (`--mapping_file=cmake/x.imp`)
+    is judged by its value, which is the only part that can be a path.
     """
     for word in text.split():
         word = word.lstrip(LEADING).rstrip(TRAILING)
+        if options:
+            word = word.split("=", 1)[-1]
         if word and not NOT_A_PATH.search(word):
             for part in word.split(":"):
                 yield part
@@ -389,7 +393,7 @@ def paths_in(relative, line, verbatim, roots, known):
     target, so both are cut before the path is resolved.
     """
     for text in candidates(relative, line, verbatim):
-        for word in words(without_variables(text, known)):
+        for word in words(without_variables(text, known), options=is_build_file(relative)):
             token = word.split("#")[0].split("?")[0]
             if "/" not in token or not names_a_file(token):
                 continue
