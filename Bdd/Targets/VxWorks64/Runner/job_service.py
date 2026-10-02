@@ -11,7 +11,9 @@ import http.server
 import json
 import re
 import ssl
+import time
 import urllib.parse
+import urllib.request
 
 
 class JobQueue:
@@ -157,3 +159,22 @@ def thumbprint(certificate_path):
     with open(certificate_path, encoding="ascii") as certificate:
         der = ssl.PEM_cert_to_DER_cert(certificate.read())
     return hashlib.sha1(der).hexdigest().upper()
+
+
+# Submits a job, waits for the runner to finish it, and returns its outcome and
+# summary.
+def run_job(base_url, token, job_type, args, out, poll_seconds=1.0):
+    job_id = _call(base_url, token, "POST", "/jobs", {"type": job_type, "args": args})["id"]
+    status = _call(base_url, token, "GET", f"/jobs/{job_id}")
+    while status["state"] in ("queued", "running"):
+        time.sleep(poll_seconds)
+        status = _call(base_url, token, "GET", f"/jobs/{job_id}")
+    return status["state"], status["summary"]
+
+
+def _call(base_url, token, method, path, payload=None):
+    data = None if payload is None else json.dumps(payload).encode()
+    request = urllib.request.Request(base_url + path, data=data, method=method)
+    request.add_header("X-Runner-Token", token)
+    with urllib.request.urlopen(request) as response:
+        return json.loads(response.read())
