@@ -102,6 +102,10 @@ class JobServiceTest(unittest.TestCase):
         status, _ = self.request("GET", "/jobs/next")
         self.assertEqual(401, status)
 
+    def test_next_with_no_job_waiting_is_no_content(self):
+        status, _ = self.request("GET", "/jobs/next", self.TOKEN)
+        self.assertEqual(204, status)
+
 
 if __name__ == "__main__":
     unittest.main()
