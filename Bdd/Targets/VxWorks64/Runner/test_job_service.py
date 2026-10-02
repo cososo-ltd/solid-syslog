@@ -5,7 +5,10 @@ Run:  python -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
 
 import json
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import threading
 import unittest
 import urllib.error
@@ -191,6 +194,36 @@ class JobServiceTest(unittest.TestCase):
         status, _ = self.request("POST", "/elsewhere", self.TOKEN, {"type": "build", "args": {}})
         self.assertEqual(404, status)
         self.assertIsNone(self.queue.next())
+
+
+OPENSSL = shutil.which("openssl")
+
+
+def make_certificate(directory):
+    certificate = os.path.join(directory, "certificate.pem")
+    key = os.path.join(directory, "key.pem")
+    subprocess.run(
+        [OPENSSL, "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", key,
+         "-out", certificate, "-days", "1", "-subj", "/CN=solidsyslog-runner-test"],
+        check=True, capture_output=True)
+    return certificate, key
+
+
+@unittest.skipUnless(OPENSSL, "openssl is needed to make a test certificate")
+class CertificateTest(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.mkdtemp()
+        self.certificate, self.key = make_certificate(self.directory)
+
+    def tearDown(self):
+        shutil.rmtree(self.directory)
+
+    def test_thumbprint_is_the_certificates_sha1_in_upper_case_hex(self):
+        fingerprint = subprocess.run(
+            [OPENSSL, "x509", "-in", self.certificate, "-noout", "-fingerprint", "-sha1"],
+            check=True, capture_output=True, text=True).stdout
+        expected = fingerprint.strip().split("=", 1)[1].replace(":", "")
+        self.assertEqual(expected, job_service.thumbprint(self.certificate))
 
 
 if __name__ == "__main__":
