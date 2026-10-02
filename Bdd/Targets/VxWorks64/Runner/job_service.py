@@ -8,6 +8,7 @@ build machine collects them, one at a time, connecting outwards only.
 import hmac
 import http.server
 import json
+import re
 
 
 class JobQueue:
@@ -64,9 +65,15 @@ def make_server(queue, token, host, port):
             if not self._authorised():
                 self._reply(401)
             else:
-                request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-                job_id = queue.submit(request["type"], request["args"])
-                self._reply(201, {"id": job_id})
+                body = self.rfile.read(int(self.headers["Content-Length"]))
+                log_match = re.fullmatch(r"/jobs/(\d+)/log", self.path)
+                if log_match:
+                    queue.append_log(int(log_match.group(1)), body.decode())
+                    self._reply(204)
+                else:
+                    request = json.loads(body)
+                    job_id = queue.submit(request["type"], request["args"])
+                    self._reply(201, {"id": job_id})
 
         def _authorised(self):
             return hmac.compare_digest(self.headers.get("X-Runner-Token", ""), token)
