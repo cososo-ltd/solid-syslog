@@ -172,6 +172,10 @@ class JobServiceTest(unittest.TestCase):
         status, _ = self.request("GET", "/jobs/99", self.TOKEN)
         self.assertEqual(404, status)
 
+    def test_log_of_an_unknown_job_is_not_found(self):
+        status, _ = self.request("GET", "/jobs/99/log", self.TOKEN)
+        self.assertEqual(404, status)
+
     def test_result_for_an_unknown_job_is_not_found(self):
         result = {"outcome": "succeeded", "summary": ""}
         status, _ = self.request("POST", "/jobs/99/result", self.TOKEN, result)
