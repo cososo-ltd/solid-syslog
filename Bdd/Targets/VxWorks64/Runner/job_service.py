@@ -20,3 +20,6 @@ class JobQueue:
         if self._pending:
             return self._pending.pop(0)
         return None
+
+    def state(self, job_id):
+        return "queued"
