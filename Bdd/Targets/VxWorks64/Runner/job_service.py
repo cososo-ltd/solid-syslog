@@ -10,6 +10,7 @@ class JobQueue:
     def __init__(self):
         self._pending = []
         self._states = {}
+        self._summaries = {}
         self._last_id = 0
 
     def submit(self, job_type, args):
@@ -27,6 +28,10 @@ class JobQueue:
 
     def finish(self, job_id, outcome, summary):
         self._states[job_id] = outcome
+        self._summaries[job_id] = summary
 
     def state(self, job_id):
         return self._states[job_id]
+
+    def summary(self, job_id):
+        return self._summaries[job_id]
