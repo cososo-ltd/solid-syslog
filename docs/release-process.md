@@ -131,7 +131,10 @@ listed above; the two written parts are added by hand in the release pull reques
 4. Publishing the draft is a separate step. Nothing the release attaches exists
    until then, so publish once everything the documentation links by name is in
    place - the example stacks' `release/<version>` branches, which pin the
-   tag's SHA and so can only be cut once the tag exists.
+   tag's SHA and so can only be cut once the tag exists. Publish with
+   `gh release edit v<version> --draft=false --latest`, so the release is the
+   one GitHub serves as latest; a fix to an older line takes `--latest=false`
+   instead.
 5. The `release: published` event triggers `sbom.yml`: it renders and validates
    the CycloneDX SBOM, writes the content-tree SHA-256 (scope: `Core/` +
    `Platform/` + `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`,
@@ -181,6 +184,8 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
       [Getting the written parts into both places](#getting-the-written-parts-into-both-places).
 - [ ] Cut the example stacks' `release/<version>` branches pinned to the tag's
       SHA, then publish the draft.
+- [ ] Confirm GitHub marks the new release as Latest:
+      `gh api repos/cososo-ltd/solid-syslog/releases/latest --jq .tag_name`.
 - [ ] Confirm the attachments, and verify all six assets - the SBOM, source
       hash and documentation bundle, and their three cosign signatures - per
       [`security/release-verification.md`](security/release-verification.md), not
