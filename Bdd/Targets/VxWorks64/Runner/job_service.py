@@ -9,8 +9,12 @@ import hashlib
 import hmac
 import http.server
 import json
+import os
 import re
+import secrets
+import shutil
 import ssl
+import subprocess
 import time
 import urllib.parse
 import urllib.request
@@ -189,3 +193,20 @@ def _call(base_url, token, context, method, path, payload=None):
 
 def job_arguments(words):
     return dict(word.split("=", 1) for word in words)
+
+
+# Creates the service's token, and the self-signed certificate and key it
+# serves, once. The runner pins the certificate by thumbprint, so the name in it
+# matters to nobody and the address it is reached at may change.
+def initialise(home):
+    openssl = shutil.which("openssl")
+    if openssl is None:
+        raise RuntimeError("openssl was not found on the PATH - Git for Windows provides one")
+    os.makedirs(home, exist_ok=True)
+    with open(os.path.join(home, "token"), "w", encoding="ascii") as token:
+        token.write(secrets.token_urlsafe(32))
+    subprocess.run(
+        [openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+         "-keyout", os.path.join(home, "key.pem"), "-out", os.path.join(home, "certificate.pem"),
+         "-days", "3650", "-subj", "/CN=solidsyslog-runner"],
+        check=True, capture_output=True)
