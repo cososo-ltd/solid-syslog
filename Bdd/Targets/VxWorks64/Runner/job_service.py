@@ -5,10 +5,12 @@ Runs on the development machine. Jobs are queued here and the runner on the
 build machine collects them, one at a time, connecting outwards only.
 """
 
+import hashlib
 import hmac
 import http.server
 import json
 import re
+import ssl
 import urllib.parse
 
 
@@ -142,3 +144,11 @@ def make_server(queue, token, host, port):
     )
 
     return http.server.HTTPServer((host, port), Handler)
+
+
+# The SHA-1 of the certificate in upper-case hex: what Windows calls its
+# thumbprint, and what the runner pins.
+def thumbprint(certificate_path):
+    with open(certificate_path, encoding="ascii") as certificate:
+        der = ssl.PEM_cert_to_DER_cert(certificate.read())
+    return hashlib.sha1(der).hexdigest().upper()
