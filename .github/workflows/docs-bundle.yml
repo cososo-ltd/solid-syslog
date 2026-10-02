@@ -42,6 +42,8 @@ jobs:
       # SOLIDSYSLOG_DOCS_RELEASE makes the footer read "Documentation for release
       # X" rather than naming a branch and commit: this build is the release, so
       # the commit belongs in MANIFEST.txt beside the pages, not in every footer.
+      # It is set on the release event only. A dispatched build is not a release,
+      # so its footer names the branch and commit it was built from instead.
       #
       # SOLIDSYSLOG_DOCS_REF pins the links hooks/source_links.py writes for any
       # file outside docs/. It defaults to main, which is right for the published
@@ -55,7 +57,8 @@ jobs:
         env:
           SOLIDSYSLOG_DOCS_IMAGE: ghcr.io/cososo-ltd/mkdocs-mkdoxy@sha256:9ab3d41807a941f3d5a7077fb7288d0ffe2a926729ce13a4fc889cc8b6630d43
           SOLIDSYSLOG_DOCS_VERSION: ${{ steps.version.outputs.version }}
-          SOLIDSYSLOG_DOCS_RELEASE: ${{ steps.version.outputs.version }}
+          SOLIDSYSLOG_DOCS_RELEASE: ${{ github.event_name == 'release' && steps.version.outputs.version || '' }}
+          SOLIDSYSLOG_DOCS_ORIGIN: ${{ github.ref_name }}
           SOLIDSYSLOG_DOCS_COMMIT: ${{ github.sha }}
           SOLIDSYSLOG_DOCS_REF: ${{ github.event.release.tag_name || github.sha }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
@@ -64,6 +67,7 @@ jobs:
             -e SOLIDSYSLOG_DOCS_IMAGE \
             -e SOLIDSYSLOG_DOCS_VERSION \
             -e SOLIDSYSLOG_DOCS_RELEASE \
+            -e SOLIDSYSLOG_DOCS_ORIGIN \
             -e SOLIDSYSLOG_DOCS_COMMIT \
             -e SOLIDSYSLOG_DOCS_REF \
             -e RELEASE_TAG \
