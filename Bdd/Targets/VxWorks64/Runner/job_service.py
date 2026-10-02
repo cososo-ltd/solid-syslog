@@ -51,20 +51,31 @@ class JobQueue:
 def make_server(queue, token, host, port):
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            if not hmac.compare_digest(self.headers.get("X-Runner-Token", ""), token):
-                self.send_response(401)
+            if not self._authorised():
+                self._reply(401)
             else:
-                self.send_response(204)
-            self.end_headers()
+                self._reply(204)
 
         def do_POST(self):
-            request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-            job_id = queue.submit(request["type"], request["args"])
-            body = json.dumps({"id": job_id}).encode()
-            self.send_response(201)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            if not self._authorised():
+                self._reply(401)
+            else:
+                request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                job_id = queue.submit(request["type"], request["args"])
+                self._reply(201, {"id": job_id})
+
+        def _authorised(self):
+            return hmac.compare_digest(self.headers.get("X-Runner-Token", ""), token)
+
+        def _reply(self, status, payload=None):
+            self.send_response(status)
+            if payload is None:
+                self.end_headers()
+            else:
+                body = json.dumps(payload).encode()
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
 
     return http.server.HTTPServer((host, port), Handler)
