@@ -6,6 +6,7 @@ Run:  python -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
 import json
 import os
 import shutil
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -224,6 +225,24 @@ class CertificateTest(unittest.TestCase):
             check=True, capture_output=True, text=True).stdout
         expected = fingerprint.strip().split("=", 1)[1].replace(":", "")
         self.assertEqual(expected, job_service.thumbprint(self.certificate))
+
+    def test_served_with_a_certificate_the_service_answers_over_tls(self):
+        server = job_service.make_server(job_service.JobQueue(), "test-token", "127.0.0.1", 0,
+                                         (self.certificate, self.key))
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+        try:
+            client = ssl.create_default_context()
+            client.check_hostname = False
+            client.verify_mode = ssl.CERT_NONE
+            request = urllib.request.Request(f"https://127.0.0.1:{server.server_address[1]}/jobs/next")
+            request.add_header("X-Runner-Token", "test-token")
+            with urllib.request.urlopen(request, context=client) as response:
+                self.assertEqual(204, response.status)
+        finally:
+            server.shutdown()
+            thread.join()
+            server.server_close()
 
 
 if __name__ == "__main__":
