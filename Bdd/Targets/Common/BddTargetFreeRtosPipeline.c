@@ -692,20 +692,25 @@ static void TeardownAll(void)
      * before the lifecycle mutex is destroyed under it. Bounded so a Service
      * task that never started (spawn failure -> NULL handle) cannot wedge
      * teardown. */
+    bool serviceStopped = true;
     if (serviceTaskHandle != NULL)
     {
-        (void) BddTargetOsPrimitives_WaitForNotify(SERVICE_STOP_TIMEOUT_MS);
+        serviceStopped = BddTargetOsPrimitives_WaitForNotify(SERVICE_STOP_TIMEOUT_MS);
     }
     serviceTaskHandle = NULL;
 
     SolidSyslogCircularBuffer_Destroy(buffer);
     BddTargetOsPrimitives_DestroyMutex(bufferMutex);
-    /* lifecycleMutex is left pointing at the destroyed handle, not NULLed. If the
-     * wait above timed out, Service is still running and takes the mutex on its
-     * next iteration. Destroy leaves the NullMutex vtable in place, so that Lock
-     * is a no-op and Service then sees solidSyslogTeardown and exits; a NULL
-     * handle would be dereferenced instead. */
-    BddTargetOsPrimitives_DestroyMutex(lifecycleMutex);
+    /* A Service task that has not confirmed its exit may still take the
+     * lifecycle mutex on its next iteration, before it sees solidSyslogTeardown
+     * and exits, so the mutex is left alive for it. Destroying it would race
+     * that Lock against the delete. The run ends straight after teardown, so
+     * the slot is never needed again. */
+    if (serviceStopped)
+    {
+        BddTargetOsPrimitives_DestroyMutex(lifecycleMutex);
+        lifecycleMutex = NULL;
+    }
 
     /* Platform sender + network adapters last. */
     g_config->TeardownNetwork();
