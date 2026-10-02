@@ -90,7 +90,12 @@ class JobServiceTest(unittest.TestCase):
 
     def request(self, method, path, token=None, body=None):
         port = self.server.server_address[1]
-        data = None if body is None else json.dumps(body).encode()
+        if isinstance(body, str):
+            data = body.encode()
+        elif body is None:
+            data = None
+        else:
+            data = json.dumps(body).encode()
         request = urllib.request.Request(f"http://127.0.0.1:{port}{path}", data=data, method=method)
         if token is not None:
             request.add_header("X-Runner-Token", token)
@@ -127,6 +132,13 @@ class JobServiceTest(unittest.TestCase):
         status, body = self.request("GET", "/jobs/next", self.TOKEN)
         self.assertEqual(200, status)
         self.assertEqual({"id": job_id, "type": "checkout", "args": {"ref": "main"}}, json.loads(body))
+
+    def test_posted_log_text_is_appended_to_the_job(self):
+        job_id = self.queue.submit("build", {})
+        self.queue.next()
+        status, _ = self.request("POST", f"/jobs/{job_id}/log", self.TOKEN, "building\n")
+        self.assertEqual(204, status)
+        self.assertEqual("building\n", self.queue.log(job_id, 0))
 
 
 if __name__ == "__main__":
