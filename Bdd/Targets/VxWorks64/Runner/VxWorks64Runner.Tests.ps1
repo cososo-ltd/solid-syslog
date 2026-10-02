@@ -22,6 +22,14 @@ Describe 'Invoke-RunnerJob' {
         $script:called | Should Be $false
     }
 
+    It 'refuses a job missing an argument its action needs, and runs nothing' {
+        $script:called = $false
+        $checkout = @{ 'checkout' = @{ Arguments = @('ref'); Run = { param($Arguments) $script:called = $true } } }
+        $result = Invoke-RunnerJob -Job @{ type = 'checkout'; args = @{} } -Actions $checkout
+        $result.Outcome | Should Be 'refused'
+        $script:called | Should Be $false
+    }
+
     It 'runs a known job and returns its result' {
         $result = Invoke-RunnerJob -Job @{ type = 'build'; args = @{} } -Actions @{
             'build' = @{ Arguments = @(); Run = { param($Arguments) @{ Outcome = 'succeeded'; Summary = 'Diagnostics: none' } } } }
