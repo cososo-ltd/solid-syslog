@@ -11,6 +11,7 @@ class JobQueue:
         self._pending = []
         self._states = {}
         self._summaries = {}
+        self._logs = {}
         self._last_id = 0
 
     def submit(self, job_type, args):
@@ -25,6 +26,12 @@ class JobQueue:
             self._states[job["id"]] = "running"
             return job
         return None
+
+    def append_log(self, job_id, text):
+        self._logs[job_id] = self._logs.get(job_id, "") + text
+
+    def log(self, job_id, offset):
+        return self._logs[job_id]
 
     def finish(self, job_id, outcome, summary):
         self._states[job_id] = outcome
