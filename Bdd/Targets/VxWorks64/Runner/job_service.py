@@ -88,10 +88,12 @@ def make_server(queue, token, host, port):
                     result = json.loads(body)
                     queue.finish(int(result_match.group(1)), result["outcome"], result["summary"])
                     self._reply(204)
-                else:
+                elif self.path == "/jobs":
                     request = json.loads(body)
                     job_id = queue.submit(request["type"], request["args"])
                     self._reply(201, {"id": job_id})
+                else:
+                    self._reply(404)
 
         def _authorised(self):
             return hmac.compare_digest(self.headers.get("X-Runner-Token", ""), token)
