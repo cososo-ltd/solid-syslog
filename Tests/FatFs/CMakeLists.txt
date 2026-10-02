@@ -34,4 +34,4 @@ target_include_directories(SolidSyslogFatFsFileTest PRIVATE
     ${SOLIDSYSLOG_FATFS_PATH}/source
 )
 
-add_test(NAME SolidSyslogFatFsFileTest COMMAND SolidSyslogFatFsFileTest)
+solidsyslog_add_test(SolidSyslogFatFsFileTest)

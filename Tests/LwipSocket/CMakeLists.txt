@@ -68,7 +68,7 @@ set_target_properties(SolidSyslogLwipSocketAddressTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipSocketAddressTest COMMAND SolidSyslogLwipSocketAddressTest)
+solidsyslog_add_test(SolidSyslogLwipSocketAddressTest)
 
 # ---- SolidSyslogLwipSocketResolverTest ----
 
@@ -97,7 +97,7 @@ set_target_properties(SolidSyslogLwipSocketResolverTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipSocketResolverTest COMMAND SolidSyslogLwipSocketResolverTest)
+solidsyslog_add_test(SolidSyslogLwipSocketResolverTest)
 
 # ---- SolidSyslogLwipSocketDatagramTest ----
 
@@ -126,7 +126,7 @@ set_target_properties(SolidSyslogLwipSocketDatagramTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipSocketDatagramTest COMMAND SolidSyslogLwipSocketDatagramTest)
+solidsyslog_add_test(SolidSyslogLwipSocketDatagramTest)
 
 # ---- SolidSyslogLwipSocketTcpStreamTest ----
 
@@ -156,7 +156,7 @@ set_target_properties(SolidSyslogLwipSocketTcpStreamTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipSocketTcpStreamTest COMMAND SolidSyslogLwipSocketTcpStreamTest)
+solidsyslog_add_test(SolidSyslogLwipSocketTcpStreamTest)
 
 # ---- SolidSyslogLwipSocketTcpKeepaliveAllTest ----
 
@@ -192,7 +192,7 @@ set_target_properties(SolidSyslogLwipSocketTcpKeepaliveAllTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipSocketTcpKeepaliveAllTest COMMAND SolidSyslogLwipSocketTcpKeepaliveAllTest)
+solidsyslog_add_test(SolidSyslogLwipSocketTcpKeepaliveAllTest)
 
 # ---- SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest ----
 
@@ -226,4 +226,4 @@ set_target_properties(SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest COMMAND SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest)
+solidsyslog_add_test(SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest)

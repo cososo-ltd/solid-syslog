@@ -45,5 +45,5 @@ else()
         ${SOLIDSYSLOG_FREERTOS_PLUS_FAT_PATH}/include
     )
 
-    add_test(NAME SolidSyslogPlusFatFileTest COMMAND SolidSyslogPlusFatFileTest)
+    solidsyslog_add_test(SolidSyslogPlusFatFileTest)
 endif()
