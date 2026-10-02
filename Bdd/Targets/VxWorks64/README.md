@@ -74,10 +74,12 @@ for Windows provides:
 1. `python Runner\job_service.py init`, once. It writes a token, a certificate
    and its key to `%USERPROFILE%\.solidsyslog-runner`, and prints the
    certificate's thumbprint. None of them goes into the repository.
-2. Allow inbound connections from the build machine's address only: TCP 8765
-   for the job service, TCP 8766 for the target's console, and UDP 5514 for
-   syslog sent by the target. For example, in an administrator PowerShell:
-   `New-NetFirewallRule -DisplayName 'SolidSyslog runner' -Direction Inbound -Protocol TCP -LocalPort 8765,8766 -RemoteAddress <build machine> -Action Allow`
+2. Allow inbound connections from the local network: TCP 8765 for the job
+   service, TCP 8766 for the target's console, and UDP 5514 for syslog sent by
+   the target. `LocalSubnet` follows the network, so an address changing on
+   either machine needs no new rule. For example, in an administrator
+   PowerShell:
+   `New-NetFirewallRule -DisplayName 'SolidSyslog runner' -Direction Inbound -Protocol TCP -LocalPort 8765,8766 -RemoteAddress LocalSubnet -Action Allow`
 3. `python Runner\job_service.py serve`, and leave it running.
 
 On the build machine, in its clone:
