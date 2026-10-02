@@ -67,8 +67,13 @@ def make_server(queue, token, host, port):
             else:
                 body = self.rfile.read(int(self.headers["Content-Length"]))
                 log_match = re.fullmatch(r"/jobs/(\d+)/log", self.path)
+                result_match = re.fullmatch(r"/jobs/(\d+)/result", self.path)
                 if log_match:
                     queue.append_log(int(log_match.group(1)), body.decode())
+                    self._reply(204)
+                elif result_match:
+                    result = json.loads(body)
+                    queue.finish(int(result_match.group(1)), result["outcome"], result["summary"])
                     self._reply(204)
                 else:
                     request = json.loads(body)
