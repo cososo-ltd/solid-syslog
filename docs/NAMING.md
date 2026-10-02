@@ -816,25 +816,21 @@ Test code uses production conventions where natural, with these relaxations:
 - **Test fakes and spies** drop the `SolidSyslog` prefix
   (e.g. `SocketFake_Reset`, `DatagramFake_SendCallCount`) so they read
   obviously as test infrastructure at the call site.
-- **Test group names** carry a `Test` suffix and the `SolidSyslog` prefix
-  because `TEST_GROUP(...)` macros expand to external-linkage identifiers
-  (rule 5.8). Three forms are permitted:
-
-  ```c
-  /* Class-level group, when the tests cover the class as a whole */
-  TEST_GROUP(SolidSyslogBufferTest) { /* ... */ };
-
-  /* Function-level group, when a single function deserves its own group */
-  TEST_GROUP(SolidSyslogBuffer_AppendRecordTest) { /* ... */ };
-
-  /* Integration group, exercising more than one class */
-  TEST_GROUP(SolidSyslogIntegrationTlsStoreAndForward) { /* ... */ };
-  ```
+- **Test group names** name what the group tests, with no `Test`
+  suffix. A group covering a library class takes the class's name
+  (`SolidSyslogCircularBuffer`); one covering a single function takes
+  the function's (`SolidSyslogPosix_Sleep`); one covering an aspect of a
+  class appends it (`SolidSyslogCircularBufferPool`). A group testing a
+  fake, or a scenario rather than a class, is named for that
+  (`SocketFake`, `BlockStoreDrainOrdering`). CppUTest prefixes every
+  identifier its macros generate (`externTestGroup<Name>`,
+  `TEST_GROUP_CppUTestGroup<Name>`), so a group name cannot collide with
+  the identifier it is named after.
 
 - **Test case names** use UpperCamelCase describing the behaviour:
 
   ```c
-  TEST(SolidSyslogBufferTest, AppendsRecordWhenSpaceAvailable)
+  TEST(SolidSyslogCircularBuffer, AppendsRecordWhenSpaceAvailable)
   {
       /* ... */
   }
@@ -1004,8 +1000,8 @@ static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer
 | Boolean result local                  | short domain word, lowerCamelCase          | `ok`, `parsed`, `released`                 |
 | Loop variable                         | short domain word, lowerCamelCase          | `index`, `count`, `cursor`                 |
 | Struct member                         | `PascalCase`                               | `WriteCursor`, `IntegrityCheck`, `Write` (function-pointer member) |
-| Test group (class)                    | `SolidSyslogClassTest`                     | `SolidSyslogBufferTest`                    |
-| Test group (function)                 | `SolidSyslogClass_FunctionTest`            | `SolidSyslogBuffer_AppendTest`             |
-| Test group (integration)              | `SolidSyslogIntegrationDescription`        | `SolidSyslogIntegrationTlsStoreAndForward` |
+| Test group (class)                    | `SolidSyslogClass`                         | `SolidSyslogCircularBuffer`                |
+| Test group (function)                 | `SolidSyslogClass_Function`                | `SolidSyslogPosix_Sleep`                   |
+| Test group (aspect or scenario)       | class name + aspect, or the scenario       | `SolidSyslogCircularBufferPool`, `BlockStoreDrainOrdering` |
 | Test case                             | `UpperCamelCaseSentence`                   | `AppendsRecordWhenSpaceAvailable`          |
 | Identifier in prose                   | full name, or `<Class>_Function`           | `SolidSyslogCircularBuffer_Create`         |
