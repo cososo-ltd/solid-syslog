@@ -71,6 +71,11 @@ class JobQueueTest(unittest.TestCase):
         queue.append_log(job_id, "second\n")
         self.assertEqual("second\n", queue.log(job_id, len("first\n")))
 
+    def test_log_of_a_job_with_no_output_is_empty(self):
+        queue = job_service.JobQueue()
+        job_id = queue.submit("build", {})
+        self.assertEqual("", queue.log(job_id, 0))
+
 
 if __name__ == "__main__":
     unittest.main()
