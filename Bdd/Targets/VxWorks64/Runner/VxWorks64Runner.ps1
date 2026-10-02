@@ -10,5 +10,12 @@ function Invoke-RunnerJob
         [Parameter(Mandatory)] [hashtable] $Actions
     )
 
-    @{ Outcome = 'refused'; Summary = "unknown job '$($Job.type)'" }
+    if ($Actions.ContainsKey($Job.type))
+        {
+        & $Actions[$Job.type] $Job.args
+        }
+    else
+        {
+        @{ Outcome = 'refused'; Summary = "unknown job '$($Job.type)'" }
+        }
     }
