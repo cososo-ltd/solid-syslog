@@ -43,6 +43,10 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
     else if (strcmp(name, "host") == 0)
     {
         taken = MessageSettings_TryUpdateString(host, sizeof(host), value);
+        if (taken)
+        {
+            endpointVersion++;
+        }
     }
     else if (strcmp(name, "port") == 0)
     {
