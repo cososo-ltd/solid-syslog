@@ -205,6 +205,22 @@ TEST(BddTargetMessageSettings, ResetRestoresTheAppNameDefault)
     STRCMP_EQUAL("SolidSyslogBddTarget", formatted());
 }
 
+TEST(BddTargetMessageSettings, ResetPointsTheEndpointAtTheDefaultHostAndPort)
+{
+    BddTargetMessageSettings_SetByName("host", "10.1.2.3");
+    BddTargetMessageSettings_SetByName("port", "6000");
+
+    BddTargetMessageSettings_Reset("10.0.2.2");
+
+    struct SolidSyslogEndpointHost hostSink{};
+    SolidSyslogEndpointHost_FromFormatter(&hostSink, formatter);
+    struct SolidSyslogEndpoint endpoint{};
+    endpoint.Host = &hostSink;
+    BddTargetMessageSettings_GetEndpoint(&endpoint, nullptr);
+    STRCMP_EQUAL("10.0.2.2", formatted());
+    UNSIGNED_LONGS_EQUAL(5514, endpoint.Port);
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
