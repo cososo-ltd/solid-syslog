@@ -46,6 +46,13 @@ TEST(BddTargetMessageSettings, SetMsgChangesTheMessageBody)
     STRCMP_EQUAL("hello there", BddTargetMessageSettings_Message()->Msg);
 }
 
+TEST(BddTargetMessageSettings, SetFacilityChangesTheFacility)
+{
+    CHECK_TRUE(BddTargetMessageSettings_SetByName("facility", "3"));
+
+    LONGS_EQUAL(3, BddTargetMessageSettings_Message()->Facility);
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
