@@ -17,6 +17,7 @@
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogVxWorks64Mutex.h"
 
 #define BDD_TARGET_TAG "SolidSyslog VxWorks 6.4 BDD target: "
 
@@ -39,10 +40,13 @@ static int BddTargetVxWorks64_ServiceTask(void);
 /* Every field NULL: Core falls back to its Null buffer and sender. */
 static const struct SolidSyslogConfig CORE_ONLY_CONFIG;
 
+static struct SolidSyslogMutex* bufferMutex;
+
 void BddTargetVxWorks64_Init(void)
 {
     BddTargetVxWorks64_RunCore();
     BddTargetVxWorks64_BringUpNetwork();
+    bufferMutex = SolidSyslogVxWorks64Mutex_Create();
     BddTargetVxWorks64_SpawnTasks();
 }
 
