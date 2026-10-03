@@ -226,20 +226,28 @@ def thumbprint(certificate_path):
 # Submits a job, writes its log to out as it arrives, and returns its outcome
 # and summary once the runner has finished it. The status is read before the
 # log, so the last read of the log follows the runner's last write to it.
-def run_job(base_url, token, job_type, args, out, poll_seconds=1.0, context=None):
+def run_job(base_url, token, job_type, args, out, poll_seconds=1.0, context=None, timeout_seconds=None):
     job_id = json.loads(_call(base_url, token, context, "POST", "/jobs", {"type": job_type, "args": args}))["id"]
+    deadline = None if timeout_seconds is None else time.monotonic() + timeout_seconds
     offset = 0
     finished = False
-    while not finished:
+    timed_out = False
+    while not (finished or timed_out):
         status = json.loads(_call(base_url, token, context, "GET", f"/jobs/{job_id}"))
         finished = status["state"] not in ("queued", "running")
         text = _call(base_url, token, context, "GET", f"/jobs/{job_id}/log?from={offset}").decode()
         out.write(text)
         out.flush()
         offset += len(text)
-        if not finished:
+        timed_out = (not finished) and (deadline is not None) and (time.monotonic() >= deadline)
+        if not (finished or timed_out):
             time.sleep(poll_seconds)
-    return status["state"], status["summary"]
+    if timed_out:
+        result = ("timed-out", f"job {job_id} was still {status['state']} after {timeout_seconds} s; "
+                               "the runner carries on with it")
+    else:
+        result = (status["state"], status["summary"])
+    return result
 
 
 def _call(base_url, token, context, method, path, payload=None):
