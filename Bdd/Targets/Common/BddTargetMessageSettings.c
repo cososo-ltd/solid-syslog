@@ -1,6 +1,7 @@
 #include "BddTargetMessageSettings.h"
 
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "SolidSyslog.h"
@@ -25,6 +26,11 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
     else if (strcmp(name, "msg") == 0)
     {
         taken = MessageSettings_TryUpdateString(msg, sizeof(msg), value);
+    }
+    else if (strcmp(name, "facility") == 0)
+    {
+        message.Facility = (enum SolidSyslogFacility) strtoul(value, NULL, 10);
+        taken = true;
     }
     else
     {
