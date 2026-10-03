@@ -13,9 +13,10 @@ static struct SolidSyslogMessage message = {
 bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
 {
     bool taken = false;
-    if (strcmp(name, "msgid") == 0)
+    size_t length = strlen(value);
+    if ((strcmp(name, "msgid") == 0) && (length < sizeof(messageId)))
     {
-        (void) memcpy(messageId, value, strlen(value) + 1U);
+        (void) memcpy(messageId, value, length + 1U);
         taken = true;
     }
     return taken;
