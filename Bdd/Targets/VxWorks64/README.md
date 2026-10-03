@@ -61,6 +61,62 @@ pass, fail or not run.
 3. `Start-VxWorks64Qemu.ps1 -WaitFor 'SolidSyslog VxWorks 6.4 BDD target: Core ran'`
    reports `PASS`.
 
+## Driving it from another machine
+
+The runner lets a development machine build and boot this target on the
+machine that holds the Wind River installation, without anyone typing on it.
+The runner connects outwards only, to a job service on the development
+machine, and runs one job at a time from a fixed set. Both live in `Runner/`.
+
+On the development machine, which needs Python 3 and the `openssl` that Git
+for Windows provides:
+
+1. `python Runner\job_service.py init`, once. It writes a token, a certificate
+   and its key to `%USERPROFILE%\.solidsyslog-runner`, and prints the
+   certificate's thumbprint. None of them goes into the repository.
+2. Allow inbound connections from the local network: TCP 8765 for the job
+   service, TCP 8766 for the target's console, and UDP 5514 for syslog sent by
+   the target. `LocalSubnet` follows the network, so an address changing on
+   either machine needs no new rule. In an administrator PowerShell:
+
+   ```powershell
+   New-NetFirewallRule -DisplayName 'SolidSyslog runner' -Direction Inbound -Protocol TCP -LocalPort 8765,8766 -RemoteAddress LocalSubnet -Action Allow
+   New-NetFirewallRule -DisplayName 'SolidSyslog runner syslog' -Direction Inbound -Protocol UDP -LocalPort 5514 -RemoteAddress LocalSubnet -Action Allow
+   ```
+
+3. `python Runner\job_service.py serve`, and leave it running.
+
+On the build machine, in its clone:
+
+1. Copy the token into `%USERPROFILE%\.solidsyslog-runner\token`.
+2. `.\Runner\Start-VxWorks64Runner.ps1 -Service https://<development machine>:8765 -Thumbprint <thumbprint>`,
+   and leave it running. Ctrl+C stops it.
+
+Then, on the development machine, `python Runner\job_service.py submit <job>`
+queues a job, prints its log as it runs, and exits 0 only if it succeeded. It
+stops waiting after 120 seconds, which suits every job but `build`; give that
+longer with `--timeout`, for example `submit --timeout 1200 build`. Stopping
+waiting does not stop the job: the runner carries on with it.
+
+| Job | What the runner does |
+|---|---|
+| `checkout ref=<branch or commit>` | Fetches, then forces the clone to that commit |
+| `build` | Checklist steps 1 and 2 |
+| `boot-check "marker=<text>"` | Checklist step 3, waiting for that text |
+| `qemu-start` | Boots the image, its console connecting to port 8766 here |
+| `qemu-stop` | Stops the QEMU that `qemu-start` began |
+| `status` | Reports the clone's commit, and whether QEMU is running |
+
+`python Runner\job_service.py console`, started before `qemu-start`, shows
+the target's console.
+
+What protects the build machine: it accepts no connections. It trusts the job
+service only by the pinned certificate, and a job only with the token. It runs
+nothing outside the fixed set, refuses an argument it does not expect or one
+that could be read as an option or quoting, and works only in its own clone.
+The console and syslog are plaintext, and reach the development machine only
+through the firewall rules above.
+
 ## How SolidSyslog gets into the image
 
 The build script runs `Platform/VxWorks64/solidsyslog.makefile` against the

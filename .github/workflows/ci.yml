@@ -815,6 +815,20 @@ jobs:
       - name: Check licence headers
         run: python3 scripts/check_spdx_headers.py
 
+  # The job service that lets the development machine drive the VxWorks 6.4
+  # target on the build machine: its queue, token, routes and TLS. The host's
+  # openssl makes the certificates its TLS tests need. The runner's own Pester
+  # tests need Windows PowerShell 5.1 and run locally.
+  test-vxworks64-runner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test the job service
+        run: python3 -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
+
   analyze-markdown:
     runs-on: ubuntu-latest
     steps:
