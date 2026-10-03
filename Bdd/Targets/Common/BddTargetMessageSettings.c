@@ -10,16 +10,29 @@ static struct SolidSyslogMessage message = {
     .MessageId = messageId,
 };
 
+static inline bool MessageSettings_TryUpdateString(char* storage, size_t storageSize, const char* value);
+
 bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
 {
     bool taken = false;
-    size_t length = strlen(value);
-    if ((strcmp(name, "msgid") == 0) && (length > 0U) && (length < sizeof(messageId)))
+    if (strcmp(name, "msgid") == 0)
     {
-        (void) memcpy(messageId, value, length + 1U);
-        taken = true;
+        taken = MessageSettings_TryUpdateString(messageId, sizeof(messageId), value);
     }
     return taken;
+}
+
+/* Takes a value that is neither empty nor too long for its storage, and leaves
+   the storage alone otherwise. */
+static inline bool MessageSettings_TryUpdateString(char* storage, size_t storageSize, const char* value)
+{
+    size_t length = strlen(value);
+    bool fits = (length > 0U) && (length < storageSize);
+    if (fits)
+    {
+        (void) memcpy(storage, value, length + 1U);
+    }
+    return fits;
 }
 
 const struct SolidSyslogMessage* BddTargetMessageSettings_Message(void)
