@@ -10,9 +10,11 @@
 
 typedef int STATUS;
 
-/* An entry point, as taskSpawn takes one. The real header leaves the parameter
- * list unspecified, so a caller casts its entry function to it. */
-typedef int (*FUNCPTR)();
+/* An entry point, as taskSpawn takes one, which a caller casts its entry
+ * function to. The real header leaves the parameter list unspecified; the
+ * stand-in names it void, because the host builds reject a declaration without
+ * a prototype. The cast compiles against either. */
+typedef int (*FUNCPTR)(void);
 
 /* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
 #define OK 0
