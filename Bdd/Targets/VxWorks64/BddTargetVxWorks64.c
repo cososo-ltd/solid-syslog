@@ -14,11 +14,13 @@
 #include "sysLib.h"
 #include "taskLib.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #include "BddTargetInteractive.h"
 #include "BddTargetMessageSettings.h"
+#include "BddTargetServiceThread.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
@@ -62,12 +64,15 @@ static struct SolidSyslogSender* sender;
 static struct SolidSyslogMutex* bufferMutex;
 static struct SolidSyslogBuffer* buffer;
 static struct SolidSyslog* logger;
+/* Set when the console ends, which stops the service task. */
+static volatile bool consoleEnded;
 
 void BddTargetVxWorks64_Init(void)
 {
     BddTargetVxWorks64_RunCore();
     BddTargetVxWorks64_BringUpNetwork();
     BddTargetVxWorks64_BuildPipeline();
+    consoleEnded = false;
     BddTargetVxWorks64_SpawnTasks();
 }
 
@@ -91,6 +96,12 @@ void BddTargetVxWorks64_RunConsole(FILE* input)
         NULL,
         BddTargetMessageSettings_SetByName
     );
+    consoleEnded = true;
+}
+
+void BddTargetVxWorks64_RunService(void)
+{
+    BddTargetServiceThread_Run(logger, &consoleEnded, BddTargetVxWorks64_Sleep);
 }
 
 static void BddTargetVxWorks64_RunCore(void)
@@ -212,6 +223,7 @@ static int BddTargetVxWorks64_InteractiveTask(void)
 
 static int BddTargetVxWorks64_ServiceTask(void)
 {
+    BddTargetVxWorks64_RunService();
     return 0;
 }
 

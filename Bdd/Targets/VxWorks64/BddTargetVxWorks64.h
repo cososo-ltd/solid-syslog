@@ -15,6 +15,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void BddTargetVxWorks64_Init(void);
     /* The interactive task's work, on the given console input. */
     void BddTargetVxWorks64_RunConsole(FILE * input);
+    /* The service task's work: services the logger until the console ends. */
+    void BddTargetVxWorks64_RunService(void);
     /* Releases everything Init built. */
     void BddTargetVxWorks64_Teardown(void);
     /* The service loop's yield. */
