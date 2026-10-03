@@ -195,6 +195,16 @@ TEST(BddTargetMessageSettings, ResetRestoresTheMessageDefaults)
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_INFORMATIONAL, message->Severity);
 }
 
+TEST(BddTargetMessageSettings, ResetRestoresTheAppNameDefault)
+{
+    BddTargetMessageSettings_SetByName("appname", "MyApp");
+
+    BddTargetMessageSettings_Reset("10.0.2.2");
+
+    BddTargetMessageSettings_GetAppName(&field, nullptr);
+    STRCMP_EQUAL("SolidSyslogBddTarget", formatted());
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
