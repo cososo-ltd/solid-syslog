@@ -16,3 +16,11 @@ TEST(BddTargetMessageSettings, SetMsgidChangesTheMessageId)
 
     STRCMP_EQUAL("abc", BddTargetMessageSettings_Message()->MessageId);
 }
+
+TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
+{
+    BddTargetMessageSettings_SetByName("msgid", "abc");
+
+    CHECK_FALSE(BddTargetMessageSettings_SetByName("bogus", "xyz"));
+    STRCMP_EQUAL("abc", BddTargetMessageSettings_Message()->MessageId);
+}
