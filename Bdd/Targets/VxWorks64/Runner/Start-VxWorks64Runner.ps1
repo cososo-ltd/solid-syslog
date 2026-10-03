@@ -270,26 +270,61 @@ $actions = @{
         @{ Outcome = 'succeeded'; Summary = "Clone at $commit; $qemuState" } } }
 }
 
+# A 404 means the service was restarted and no longer knows the job, so the
+# result has nowhere to go; anything else is worth another try.
+$sendResult = {
+    param($Id, $Body)
+    try
+        {
+        $null = Invoke-Service -Method POST -Path "/jobs/$Id/result" -Body ([System.Text.Encoding]::UTF8.GetBytes($Body))
+        }
+    catch [System.Net.WebException]
+        {
+        $response = $_.Exception.Response
+        if ($response -and ([int] $response.StatusCode -eq 404))
+            {
+            Write-Warning "The service no longer knows job $Id; its result is dropped."
+            }
+        else
+            {
+            throw
+            }
+        }
+}
+
+# A result the service has not yet accepted is sent again on every pass, before
+# any new job is taken: until it arrives, the job stays running there.
+$pendingResult = $null
 Write-Host "Runner for $clone, polling $Service every $PollSeconds s. Ctrl+C stops it."
 while ($true)
     {
     try
         {
-        $response = Invoke-Service -Method GET -Path '/jobs/next'
-        if ($response.StatusCode -eq 200)
+        if ($pendingResult)
             {
-            $script:currentJob = ConvertFrom-RunnerJobJson $response.Content
-            Write-Host "Job $($script:currentJob.id): $($script:currentJob.type)"
-            $result = Invoke-RunnerJob -Job $script:currentJob -Actions $actions
-            Write-Host "Job $($script:currentJob.id): $($result.Outcome) - $($result.Summary)"
-            $body = @{ outcome = $result.Outcome; summary = [string] $result.Summary } | ConvertTo-Json
-            $null = Invoke-Service -Method POST -Path "/jobs/$($script:currentJob.id)/result" `
-                -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
-            $script:currentJob = $null
+            $pendingResult = Send-RunnerResult -Pending $pendingResult -Send $sendResult
+            if ($pendingResult)
+                {
+                Start-Sleep -Seconds $PollSeconds
+                }
             }
         else
             {
-            Start-Sleep -Seconds $PollSeconds
+            $response = Invoke-Service -Method GET -Path '/jobs/next'
+            if ($response.StatusCode -eq 200)
+                {
+                $script:currentJob = ConvertFrom-RunnerJobJson $response.Content
+                Write-Host "Job $($script:currentJob.id): $($script:currentJob.type)"
+                $result = Invoke-RunnerJob -Job $script:currentJob -Actions $actions
+                Write-Host "Job $($script:currentJob.id): $($result.Outcome) - $($result.Summary)"
+                $body = @{ outcome = $result.Outcome; summary = [string] $result.Summary } | ConvertTo-Json
+                $pendingResult = Send-RunnerResult -Pending @{ Id = $script:currentJob.id; Body = $body } -Send $sendResult
+                $script:currentJob = $null
+                }
+            else
+                {
+                Start-Sleep -Seconds $PollSeconds
+                }
             }
         }
     catch
