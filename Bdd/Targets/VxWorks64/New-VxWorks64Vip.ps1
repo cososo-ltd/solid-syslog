@@ -79,11 +79,19 @@ foreach ($component in @(
         'INCLUDE_END', 'INCLUDE_MUX', 'INCLUDE_IPATTACH', 'INCLUDE_PCI', 'INCLUDE_LN_97X_END',
         'INCLUDE_IFLIB', 'INCLUDE_INETLIB', 'INCLUDE_HOST_TBL', 'INCLUDE_ROUTE', 'INCLUDE_OLDROUTE',
         'INCLUDE_BOOT_LINE_INIT', 'INCLUDE_NET_INIT', 'INCLUDE_NET_BOOT', 'INCLUDE_NET_BOOT_CONFIG',
-        'INCLUDE_NET_HOST_SETUP'
+        'INCLUDE_NET_HOST_SETUP', 'INCLUDE_ADDIF'
     ))
     {
     Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'component', 'add', $projectFile, $component)
     }
+
+# QEMU loads the ROM image directly, so nothing boots over the network and the
+# boot line's addresses are never used. INCLUDE_ADDIF puts the PCnet interface
+# on QEMU's user network instead, where the guest is always 10.0.2.15/24.
+Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'setstring', $projectFile, 'ADDIF_NAME', 'lnPci')
+Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'set', $projectFile, 'ADDIF_NUM', '0')
+Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'setstring', $projectFile, 'ADDIF_ADDR', '10.0.2.15')
+Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'set', $projectFile, 'ADDIF_MASK', '0xffffff00')
 
 # Give every build specification the SolidSyslog headers - Core's and the
 # VxWorks64 pack's - and the library. The headers need the C99 <stdint.h> and

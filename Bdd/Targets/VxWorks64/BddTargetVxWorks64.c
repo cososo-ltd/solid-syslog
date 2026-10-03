@@ -10,7 +10,6 @@
 #include "vxWorks.h"
 
 #include "errnoLib.h"
-#include "ifLib.h"
 #include "routeLib.h"
 
 #include <stdio.h>
@@ -82,20 +81,14 @@ static void BddTargetVxWorks64_RunCore(void)
     printf(BDD_TARGET_TAG "Core ran\n");
 }
 
-/* Puts the PCnet interface on QEMU's user network, whose addresses are fixed:
- * the guest is 10.0.2.15/24 and QEMU's gateway 10.0.2.2. The boot line names
- * the interface but not this network, and the collector lies beyond the
- * gateway, so the default route goes through it. */
+/* INCLUDE_ADDIF has already put the PCnet interface on QEMU's user network, as
+ * 10.0.2.15/24. The collector lies beyond that network, so the default route
+ * goes through QEMU's gateway, which is always 10.0.2.2. */
 static void BddTargetVxWorks64_BringUpNetwork(void)
 {
-    char interfaceName[] = "lnPci0";
-    char guestAddress[] = "10.0.2.15";
     char anyDestination[] = "0.0.0.0";
     char gateway[] = "10.0.2.2";
 
-    /* 255.255.255.0 */
-    BddTargetVxWorks64_ReportStep("netmask", ifMaskSet(interfaceName, -256));
-    BddTargetVxWorks64_ReportStep("address", ifAddrSet(interfaceName, guestAddress));
     BddTargetVxWorks64_ReportStep("default route", routeAdd(anyDestination, gateway));
 }
 
