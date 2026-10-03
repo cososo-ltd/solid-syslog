@@ -170,6 +170,15 @@ TEST(BddTargetMessageSettings, SettingTheHostMovesTheEndpointVersion)
     CHECK(BddTargetMessageSettings_GetEndpointVersion(nullptr) != before);
 }
 
+TEST(BddTargetMessageSettings, ARefusedPortLeavesTheEndpointVersionAlone)
+{
+    uint32_t before = BddTargetMessageSettings_GetEndpointVersion(nullptr);
+
+    BddTargetMessageSettings_SetByName("port", "0");
+
+    UNSIGNED_LONGS_EQUAL(before, BddTargetMessageSettings_GetEndpointVersion(nullptr));
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
