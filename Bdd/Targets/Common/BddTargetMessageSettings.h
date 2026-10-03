@@ -2,6 +2,7 @@
 #define BDDTARGETMESSAGESETTINGS_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "SolidSyslogExternC.h"
 
@@ -17,6 +18,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const struct SolidSyslogMessage* BddTargetMessageSettings_Message(void);
     void BddTargetMessageSettings_GetAppName(struct SolidSyslogHeaderField * field, void* context);
     void BddTargetMessageSettings_GetEndpoint(struct SolidSyslogEndpoint * endpoint, void* context);
+    uint32_t BddTargetMessageSettings_GetEndpointVersion(void* context);
 
 SOLIDSYSLOG_EXTERN_C_END
 

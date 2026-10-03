@@ -16,6 +16,7 @@ static char messageId[33];
 static char msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
 static char host[16];
 static uint16_t port;
+static uint32_t endpointVersion;
 static struct SolidSyslogMessage message = {
     .MessageId = messageId,
     .Msg = msg,
@@ -50,6 +51,7 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
         if (taken)
         {
             port = (uint16_t) parsed;
+            endpointVersion++;
         }
     }
     else if (strcmp(name, "facility") == 0)
@@ -121,4 +123,10 @@ void BddTargetMessageSettings_GetEndpoint(struct SolidSyslogEndpoint* endpoint, 
     (void) context;
     SolidSyslogEndpointHost_String(endpoint->Host, host, strlen(host));
     endpoint->Port = port;
+}
+
+uint32_t BddTargetMessageSettings_GetEndpointVersion(void* context)
+{
+    (void) context;
+    return endpointVersion;
 }
