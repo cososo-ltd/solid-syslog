@@ -61,6 +61,11 @@ TEST(BddTargetMessageSettings, AFacilityThatIsNotANumberIsRefusedAndKeepsThePrev
     LONGS_EQUAL(3, BddTargetMessageSettings_Message()->Facility);
 }
 
+TEST(BddTargetMessageSettings, AnEmptyFacilityIsRefused)
+{
+    CHECK_FALSE(BddTargetMessageSettings_SetByName("facility", ""));
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
