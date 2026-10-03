@@ -39,6 +39,13 @@ TEST(BddTargetMessageSettings, AnEmptyMessageIdIsRefusedAndKeepsThePrevious)
     STRCMP_EQUAL("abc", BddTargetMessageSettings_Message()->MessageId);
 }
 
+TEST(BddTargetMessageSettings, SetMsgChangesTheMessageBody)
+{
+    CHECK_TRUE(BddTargetMessageSettings_SetByName("msg", "hello there"));
+
+    STRCMP_EQUAL("hello there", BddTargetMessageSettings_Message()->Msg);
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
