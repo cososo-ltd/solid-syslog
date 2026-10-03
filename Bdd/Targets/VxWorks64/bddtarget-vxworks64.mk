@@ -21,7 +21,12 @@ endif
 
 include $(SOLIDSYSLOG_DIR)/Platform/VxWorks64/solidsyslog-vxworks64.mk
 
-BDD_TARGET_SRCS := $(SOLIDSYSLOG_DIR)/Bdd/Targets/VxWorks64/BddTargetVxWorks64.c
+BDD_TARGET_SRCS := $(SOLIDSYSLOG_DIR)/Bdd/Targets/VxWorks64/BddTargetVxWorks64.c \
+	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetCustomSd.c \
+	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetInteractive.c \
+	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetMessageSettings.c \
+	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetServiceThread.c
+BDD_TARGET_INCLUDES := -I$(SOLIDSYSLOG_DIR)/Bdd/Targets/VxWorks64 -I$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common
 BDD_TARGET_LIB  := $(BDD_TARGET_BUILD_DIR)/libsolidsyslogbdd.a
 BDD_TARGET_OBJS := $(addprefix $(BDD_TARGET_BUILD_DIR)/, $(notdir $(BDD_TARGET_SRCS:.c=.o)))
 
@@ -38,6 +43,6 @@ $(BDD_TARGET_BUILD_DIR)/%.o: %.c
 	mkdir -p $(@D)
 	$(CC) $(SOLIDSYSLOG_TARGET_CFLAGS) $(SOLIDSYSLOG_DIALECT_CFLAGS) \
 		$(SOLIDSYSLOG_PLATFORM_EXTRA_CFLAGS) $(SOLIDSYSLOG_DEPEND_CFLAGS) $(SOLIDSYSLOG_INCLUDES) \
-		$(SOLIDSYSLOG_C99_INCLUDES) -c $< -o $@
+		$(BDD_TARGET_INCLUDES) $(SOLIDSYSLOG_C99_INCLUDES) -c $< -o $@
 
 -include $(BDD_TARGET_OBJS:.o=.d)
