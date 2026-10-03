@@ -1,6 +1,7 @@
 #include "BddTargetMessageSettings.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,6 +15,7 @@ static char appName[49];
 static char messageId[33];
 static char msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
 static char host[16];
+static uint16_t port;
 static struct SolidSyslogMessage message = {
     .MessageId = messageId,
     .Msg = msg,
@@ -40,6 +42,15 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
     else if (strcmp(name, "host") == 0)
     {
         taken = MessageSettings_TryUpdateString(host, sizeof(host), value);
+    }
+    else if (strcmp(name, "port") == 0)
+    {
+        unsigned long parsed = 0U;
+        taken = MessageSettings_TryParseNumber(value, &parsed);
+        if (taken)
+        {
+            port = (uint16_t) parsed;
+        }
     }
     else if (strcmp(name, "facility") == 0)
     {
@@ -109,4 +120,5 @@ void BddTargetMessageSettings_GetEndpoint(struct SolidSyslogEndpoint* endpoint, 
 {
     (void) context;
     SolidSyslogEndpointHost_String(endpoint->Host, host, strlen(host));
+    endpoint->Port = port;
 }
