@@ -140,6 +140,15 @@ TEST(SolidSyslogVxWorks64Datagram, SendToReportsFailedForAnyOtherRefusal)
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED, OpenAndSend());
 }
 
+TEST(SolidSyslogVxWorks64Datagram, SendToRefusesARecordLargerThanMaxPayloadWithoutSendingIt)
+{
+    static const char record[481] = {0};
+    SolidSyslogDatagram_Open(datagram);
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE, SolidSyslogDatagram_SendTo(datagram, record, 481U, address));
+    CALLED_FAKE(VxWorks64NetFake_Sendto, NEVER);
+}
+
 TEST(SolidSyslogVxWorks64Datagram, SendToPassesNoFlags)
 {
     (void) OpenAndSend();
