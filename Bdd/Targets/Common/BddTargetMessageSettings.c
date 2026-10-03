@@ -29,6 +29,7 @@ void BddTargetMessageSettings_Reset(const char* defaultHost)
 {
     (void) MessageSettings_TryUpdateString(host, sizeof(host), defaultHost);
     port = 5514U;
+    endpointVersion++;
     (void) MessageSettings_TryUpdateString(appName, sizeof(appName), "SolidSyslogBddTarget");
     (void) MessageSettings_TryUpdateString(messageId, sizeof(messageId), "example");
     (void) MessageSettings_TryUpdateString(msg, sizeof(msg), "Hello from SolidSyslog");
