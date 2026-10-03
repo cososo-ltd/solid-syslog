@@ -10,6 +10,10 @@
 
 typedef int STATUS;
 
+/* An entry point, as taskSpawn takes one. The real header leaves the parameter
+ * list unspecified, so a caller casts its entry function to it. */
+typedef int (*FUNCPTR)();
+
 /* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
 #define OK 0
 #define ERROR (-1)
