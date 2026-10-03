@@ -316,6 +316,20 @@ class RunJobTest(unittest.TestCase):
         runner.join()
         self.assertEqual("building\nbuilt\n", out.getvalue())
 
+    # Redirected to a file, output is buffered until flushed.
+    def test_run_job_flushes_the_log_as_it_writes_it(self):
+        class FlushRecorder(io.StringIO):
+            flushed = ""
+
+            def flush(self):
+                self.flushed = self.getvalue()
+
+        out = FlushRecorder()
+        runner = self.runner_finishes_next_job("building\n", "succeeded", "")
+        job_service.run_job(self.url, self.TOKEN, "build", {}, out, poll_seconds=0.01)
+        runner.join()
+        self.assertEqual("building\n", out.flushed)
+
 
 OPENSSL = shutil.which("openssl")
 
