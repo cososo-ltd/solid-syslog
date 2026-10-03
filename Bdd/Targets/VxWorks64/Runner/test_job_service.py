@@ -9,6 +9,7 @@ import os
 import shutil
 import socket
 import ssl
+import struct
 import subprocess
 import sys
 import tempfile
@@ -239,6 +240,30 @@ class ConsoleTest(unittest.TestCase):
         relay.join(5)
         listener.close()
         self.assertEqual(b"SolidSyslog VxWorks 6.4 BDD target: Core ran\r\n", out.getvalue())
+
+    # Stopping QEMU kills it, so its end of the console is reset, not closed.
+    def test_a_reset_connection_ends_the_relay_and_keeps_what_arrived(self):
+        listener = socket.create_server(("127.0.0.1", 0))
+        out = io.BytesIO()
+        failures = []
+
+        def relay():
+            try:
+                job_service.relay_console(listener, out)
+            except OSError as error:
+                failures.append(error)
+
+        thread = threading.Thread(target=relay)
+        thread.start()
+        target = socket.create_connection(listener.getsockname())
+        target.sendall(b"booting\r\n")
+        time.sleep(0.2)
+        target.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+        target.close()
+        thread.join(5)
+        listener.close()
+        self.assertEqual([], failures)
+        self.assertEqual(b"booting\r\n", out.getvalue())
 
 
 class CommandLineTest(unittest.TestCase):
