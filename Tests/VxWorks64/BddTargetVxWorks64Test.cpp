@@ -75,3 +75,18 @@ TEST(BddTargetVxWorks64, SleepingNoTimeOnlyYields)
     UNSIGNED_LONGS_EQUAL(1, VxWorks64TaskFake_DelayCount());
     LONGS_EQUAL(0, VxWorks64TaskFake_LastDelayTicks());
 }
+
+TEST(BddTargetVxWorks64, TheServiceTaskReturnsOnceTheConsoleHasQuit)
+{
+    BddTargetVxWorks64_Init();
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- tmpfile/fclose is C stdio; no owning memory concern
+    FILE* input = tmpfile();
+    CHECK(input != nullptr);
+    (void) fputs("quit\n", input);
+    rewind(input);
+    BddTargetVxWorks64_RunConsole(input);
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- tmpfile/fclose is C stdio; no owning memory concern
+    (void) fclose(input);
+
+    BddTargetVxWorks64_RunService();
+}
