@@ -30,6 +30,14 @@ Describe 'ConvertFrom-RunnerJobJson' {
     }
 }
 
+Describe 'Send-RunnerResult' {
+    $pending = @{ Id = 4; Body = '{"outcome": "succeeded", "summary": ""}' }
+
+    It 'keeps a result whose send failed, to send again' {
+        Send-RunnerResult -Pending $pending -Send { param($Id, $Body) throw 'Unable to connect' } | Should Be $pending
+    }
+}
+
 Describe 'Invoke-RunnerJob' {
     $script:called = $false
     $actions = @{ 'build' = @{ Arguments = @(); Run = { param($Arguments) $script:called = $true; @{ Outcome = 'succeeded'; Summary = '' } } } }
