@@ -2,10 +2,8 @@
  * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
  */
 
-/* The VIP compiles this file with its own flags, which select C89, so it stands
- * in for an application: vxWorks.h first, as Wind River code includes it, then
- * the public headers. The VxWorks64 headers are included whether or not they
- * are used, to prove they compile there too. */
+/* Built at C99 into the BDD target's own archive (bddtarget-vxworks64.mk).
+ * BddTargetVxWorks64Headers.c is the C89 proof of the public headers. */
 
 #include "vxWorks.h"
 

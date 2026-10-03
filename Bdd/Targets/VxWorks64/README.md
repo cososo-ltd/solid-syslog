@@ -31,17 +31,21 @@ From PowerShell in this directory:
 ```
 
 `New-VxWorks64Vip.ps1` creates the VIP with `vxprj` and adds the BDD target's
-component (`99SolidSyslogVxWorks64Bdd.cdf`) and source
-(`BddTargetVxWorks64.c`). Pass `-Force` to replace an existing project, and
-`-Tool sfgnu` for the GNU toolchain.
+component (`99SolidSyslogVxWorks64Bdd.cdf`). The project's one source is
+`BddTargetVxWorks64Headers.c`, which the project compiles at C89 with its own
+flags to prove the public headers compile in a C89 application. Pass `-Force`
+to replace an existing project, and `-Tool sfgnu` for the GNU toolchain.
 
 `Build-VxWorks64Vip.ps1` builds the SolidSyslog library, Core and the
-`VxWorks64` platform pack, then the `default_rom` image and the raw `vxWorks_rom.bin` that QEMU loads, and prints the image's
-SHA-256. The full build output is kept beside the project as
+`VxWorks64` platform pack, then the BDD target's archive, then the
+`default_rom` image and the raw `vxWorks_rom.bin` that QEMU loads, and prints
+the image's SHA-256. The BDD target (`BddTargetVxWorks64.c`) is C99, so
+`bddtarget.makefile` builds it as `libsolidsyslogbdd.a` with the library's own
+dialect and flags. The full build output is kept beside the project as
 `build-default_rom.log`, and the last lines on the console count every compiler
-diagnostic in it with its message, or report none. `-Clean` rebuilds the
-library from scratch and relinks the image; for a fully clean build, recreate the
-project with `New-VxWorks64Vip.ps1 -Force`.
+diagnostic in it with its message, or report none. `-Clean` rebuilds both
+archives from scratch and relinks the image; for a fully clean build, recreate
+the project with `New-VxWorks64Vip.ps1 -Force`.
 
 `Start-VxWorks64Qemu.ps1 -WaitFor` boots the image, waits for the text on the
 console, then stops QEMU. It fails if the text does not appear within
