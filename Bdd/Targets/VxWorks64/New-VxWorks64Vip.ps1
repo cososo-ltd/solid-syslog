@@ -69,6 +69,19 @@ Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'file', 'add', $projectFile,
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'component', 'add', $projectFile,
     'INCLUDE_SOLIDSYSLOG_VXWORKS64_BDD')
 
+# The network the BDD target sends over: the IPv4 stack with UDP and sockets,
+# the host table the resolver consults, routing for the default route the
+# target adds, and the END driver for QEMU's PCnet adapter (lnPci). One at a
+# time, so a component the default project already has is simply kept.
+foreach ($component in @(
+        'INCLUDE_NETWORK', 'INCLUDE_IPV4', 'INCLUDE_UDPV4', 'INCLUDE_BSD_SOCKET', 'INCLUDE_SOCKLIB',
+        'INCLUDE_END', 'INCLUDE_MUX', 'INCLUDE_IPATTACH', 'INCLUDE_PCI', 'INCLUDE_LN_97X_END',
+        'INCLUDE_IFLIB', 'INCLUDE_INETLIB', 'INCLUDE_HOST_TBL', 'INCLUDE_ROUTE', 'INCLUDE_OLDROUTE'
+    ))
+    {
+    Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'component', 'add', $projectFile, $component)
+    }
+
 # Give every build specification the SolidSyslog headers - Core's and the
 # VxWorks64 pack's - and the library. The headers need the C99 <stdint.h> and
 # <stdbool.h> the kernel tree lacks, from the pack's Compat directory, placed

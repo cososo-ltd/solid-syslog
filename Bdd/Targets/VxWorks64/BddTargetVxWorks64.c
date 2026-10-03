@@ -9,6 +9,10 @@
 
 #include "vxWorks.h"
 
+#include "errnoLib.h"
+#include "ifLib.h"
+#include "routeLib.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +44,8 @@
 void BddTargetVxWorks64_Init(void);
 
 static void BddTargetVxWorks64_RunCore(void);
+static void BddTargetVxWorks64_BringUpNetwork(void);
+static void BddTargetVxWorks64_ReportStep(const char* step, STATUS status);
 static void BddTargetVxWorks64_SendOverUdp(void);
 static int BddTargetVxWorks64_ParseCollector(const char* line);
 static void BddTargetVxWorks64_Endpoint(struct SolidSyslogEndpoint* endpoint, void* context);
@@ -55,6 +61,7 @@ static unsigned short collectorPort;
 void BddTargetVxWorks64_Init(void)
 {
     BddTargetVxWorks64_RunCore();
+    BddTargetVxWorks64_BringUpNetwork();
     BddTargetVxWorks64_SendOverUdp();
 }
 
@@ -73,6 +80,35 @@ static void BddTargetVxWorks64_RunCore(void)
     SolidSyslog_Destroy(logger);
 
     printf(BDD_TARGET_TAG "Core ran\n");
+}
+
+/* Puts the PCnet interface on QEMU's user network, whose addresses are fixed:
+ * the guest is 10.0.2.15/24 and QEMU's gateway 10.0.2.2. The boot line names
+ * the interface but not this network, and the collector lies beyond the
+ * gateway, so the default route goes through it. */
+static void BddTargetVxWorks64_BringUpNetwork(void)
+{
+    char interfaceName[] = "lnPci0";
+    char guestAddress[] = "10.0.2.15";
+    char anyDestination[] = "0.0.0.0";
+    char gateway[] = "10.0.2.2";
+
+    /* 255.255.255.0 */
+    BddTargetVxWorks64_ReportStep("netmask", ifMaskSet(interfaceName, -256));
+    BddTargetVxWorks64_ReportStep("address", ifAddrSet(interfaceName, guestAddress));
+    BddTargetVxWorks64_ReportStep("default route", routeAdd(anyDestination, gateway));
+}
+
+static void BddTargetVxWorks64_ReportStep(const char* step, STATUS status)
+{
+    if (status == OK)
+    {
+        printf(BDD_TARGET_TAG "network %s set\n", step);
+    }
+    else
+    {
+        printf(BDD_TARGET_TAG "network %s failed, errno 0x%x\n", step, (unsigned) errnoGet());
+    }
 }
 
 /* Asks the console where the collector is - the development machine answers
