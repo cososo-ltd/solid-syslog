@@ -254,14 +254,25 @@ def initialise(home):
 
 # Accepts the target's console, which QEMU connects out to, and writes what it
 # sends to out until it disconnects. Stopping QEMU kills it, so a reset is how
-# the console usually ends.
-def relay_console(listener, out):
+# the console usually ends. Given a prompt, the first time the target writes it
+# the relay answers with reply(address), where address is the one this machine
+# was reached at - so the target learns where to send without any address
+# being written down.
+def relay_console(listener, out, prompt=None, reply=None):
     connection, _ = listener.accept()
     with connection:
+        address = connection.getsockname()[0]
+        seen = b""
+        replied = prompt is None
         data = _receive(connection)
         while data:
             out.write(data)
             out.flush()
+            if not replied:
+                seen = (seen + data)[-(len(prompt) + len(data)):]
+                if prompt in seen:
+                    connection.sendall(reply(address).encode() + b"\r\n")
+                    replied = True
             data = _receive(connection)
 
 
