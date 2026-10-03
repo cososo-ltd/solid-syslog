@@ -44,6 +44,12 @@ static void VxWorks64Datagram_Close(struct SolidSyslogDatagram* base);
 
 static inline struct SolidSyslogVxWorks64Datagram* VxWorks64Datagram_SelfFromBase(struct SolidSyslogDatagram* base);
 static inline bool VxWorks64Datagram_HasSocket(const struct SolidSyslogVxWorks64Datagram* self);
+static inline enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendToStack(
+    const struct SolidSyslogVxWorks64Datagram* self,
+    const void* buffer,
+    size_t size,
+    const struct SolidSyslogAddress* addr
+);
 
 void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
 {
@@ -88,30 +94,42 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
     const struct SolidSyslogAddress* addr
 )
 {
+    /* The stack has no don't-fragment option, so a record it would fragment
+     * is refused here instead, and the sender trims it to fit. */
     enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
     if (size <= VxWorks64Datagram_MaxPayload(base))
     {
-        struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
-        const struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr);
-        /* sockLib takes a non-const char buffer and address that it only reads
-         * (D.006, D.013). */
-        int sent = sendto(self->Fd, (char*) buffer, (int) size, 0, (struct sockaddr*) sin, (int) sizeof(*sin));
-        /* Read errno straight after the call that set it, with nothing between
-         * (MISRA 22.10). */
-        int sendErrno = (sent == ERROR) ? errno : 0;
-        result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
-        if (sent != ERROR)
-        {
-            result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
-        }
-        else if (sendErrno == EMSGSIZE)
-        {
-            result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
-        }
-        else
-        {
-            /* Any other failure - result stays FAILED. */
-        }
+        result = VxWorks64Datagram_SendToStack(VxWorks64Datagram_SelfFromBase(base), buffer, size, addr);
+    }
+    return result;
+}
+
+static inline enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendToStack(
+    const struct SolidSyslogVxWorks64Datagram* self,
+    const void* buffer,
+    size_t size,
+    const struct SolidSyslogAddress* addr
+)
+{
+    const struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr);
+    /* sockLib takes a non-const char buffer and address that it only reads
+     * (D.006, D.013). */
+    int sent = sendto(self->Fd, (char*) buffer, (int) size, 0, (struct sockaddr*) sin, (int) sizeof(*sin));
+    /* Read errno straight after the call that set it, with nothing between
+     * (MISRA 22.10). */
+    int sendErrno = (sent == ERROR) ? errno : 0;
+    enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
+    if (sent != ERROR)
+    {
+        result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+    }
+    else if (sendErrno == EMSGSIZE)
+    {
+        result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
+    }
+    else
+    {
+        /* Any other failure - result stays FAILED. */
     }
     return result;
 }

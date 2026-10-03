@@ -36,6 +36,8 @@ using namespace CososoTesting;
     }
 
 static const char TEST_MESSAGE[] = "hello";
+// Longer than any payload limit the datagram reports, so a test can send one byte past it.
+static const char TEST_LONG_RECORD[2048] = {0};
 
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64Datagram)
@@ -64,6 +66,13 @@ TEST_GROUP(SolidSyslogVxWorks64Datagram)
     {
         SolidSyslogDatagram_Open(datagram);
         return SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
+    }
+
+    [[nodiscard]] enum SolidSyslogDatagramSendResult OpenAndSendRecordOf(size_t size) const
+    {
+        CHECK(size <= sizeof(TEST_LONG_RECORD));
+        SolidSyslogDatagram_Open(datagram);
+        return SolidSyslogDatagram_SendTo(datagram, TEST_LONG_RECORD, size, address);
     }
 };
 
@@ -142,19 +151,16 @@ TEST(SolidSyslogVxWorks64Datagram, SendToReportsFailedForAnyOtherRefusal)
 
 TEST(SolidSyslogVxWorks64Datagram, SendToRefusesARecordLargerThanMaxPayloadWithoutSendingIt)
 {
-    static const char record[481] = {0};
-    SolidSyslogDatagram_Open(datagram);
-
-    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE, SolidSyslogDatagram_SendTo(datagram, record, 481U, address));
+    LONGS_EQUAL(
+        SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE,
+        OpenAndSendRecordOf(SolidSyslogDatagram_MaxPayload(datagram) + 1U)
+    );
     CALLED_FAKE(VxWorks64NetFake_Sendto, NEVER);
 }
 
 TEST(SolidSyslogVxWorks64Datagram, SendToSendsARecordOfExactlyMaxPayload)
 {
-    static const char record[480] = {0};
-    SolidSyslogDatagram_Open(datagram);
-
-    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, SolidSyslogDatagram_SendTo(datagram, record, 480U, address));
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, OpenAndSendRecordOf(SolidSyslogDatagram_MaxPayload(datagram)));
     CALLED_FAKE(VxWorks64NetFake_Sendto, ONCE);
 }
 
