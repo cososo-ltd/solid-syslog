@@ -215,6 +215,7 @@ def run_job(base_url, token, job_type, args, out, poll_seconds=1.0, context=None
         finished = status["state"] not in ("queued", "running")
         text = _call(base_url, token, context, "GET", f"/jobs/{job_id}/log?from={offset}").decode()
         out.write(text)
+        out.flush()
         offset += len(text)
         if not finished:
             time.sleep(poll_seconds)
