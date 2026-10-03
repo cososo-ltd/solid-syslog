@@ -55,8 +55,11 @@ struct SolidSyslogDatagram* datagram = SolidSyslogVxWorks64Datagram_Create();
 None of them takes a configuration. Hand all three to
 `SolidSyslogUdpSender_Create`; one address, one resolver and one datagram serve
 one sender. Drawing past the pool sizes in
-[Adding it to your build](../../build-integration.md#tunables) hands back a Null
-object and reports `CRITICAL`.
+[Adding it to your build](../../build-integration.md#tunables) reports
+`CRITICAL`. The resolver and the datagram then hand back their Null objects. The
+address hands back one shared, writable fallback instead, so every sender drawn
+beyond the pool shares that storage and races on it; raising
+`SOLIDSYSLOG_ADDRESS_POOL_SIZE` removes the race.
 
 ## Wiring the mutex
 

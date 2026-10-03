@@ -74,12 +74,14 @@ its next one.
 Both calls answer all ones for a host they cannot resolve, so
 `255.255.255.255` cannot be used as a collector address.
 
-### An over-large record is refused, not fragmented
+### A record the stack refuses as too large is reported as oversize
 
-The stack offers no path-MTU query for UDP, so the datagram reports the
-conservative payload limit the library uses for an unknown IPv4 path. A record
-the stack still refuses with `EMSGSIZE` is reported as oversize, and the sender
-treats it as such.
+The datagram sends with a plain `sendto` and sets no don't-fragment option, so
+the stack may fragment a large record rather than refuse it. A send the stack
+refuses with `EMSGSIZE` is reported as oversize, and the sender treats it as
+such. The stack offers no path-MTU query for UDP, so the payload limit the
+datagram reports is the conservative one the library uses for an unknown IPv4
+path; the sender consults it only after a send has failed.
 
 ### The mutex guards a buffer shared between tasks
 
