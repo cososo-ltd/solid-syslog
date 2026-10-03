@@ -221,6 +221,15 @@ TEST(BddTargetMessageSettings, ResetPointsTheEndpointAtTheDefaultHostAndPort)
     UNSIGNED_LONGS_EQUAL(5514, endpoint.Port);
 }
 
+TEST(BddTargetMessageSettings, ResetMovesTheEndpointVersion)
+{
+    uint32_t before = BddTargetMessageSettings_GetEndpointVersion(nullptr);
+
+    BddTargetMessageSettings_Reset("10.0.2.2");
+
+    CHECK(BddTargetMessageSettings_GetEndpointVersion(nullptr) != before);
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
