@@ -3,18 +3,22 @@
 `Platform/VxWorks64/` wraps the VxWorks 6.4 kernel API for kernel (VIP) builds.
 It is written against the publicly documented API and verified on 6.4; it may
 serve as a model for other VxWorks releases, but nothing here has run on one.
-Networking, storage and time come from separate platforms; the
+Storage and time come from separate platforms; the
 [capability matrix](../index.md) shows which fill them.
 
-Fills the Mutex [role](../../roles/index.md).
+Fills the Datagram, Resolver and Mutex [roles](../../roles/index.md), plus the
+address handle the datagram reads back to send. TCP is not yet supported.
 
 ## What it ships
 
 ## Requirements
 
-A VxWorks 6.4 kernel image with mutual-exclusion semaphore support, and the
-VxWorks headers on your include path. The mutex calls `semMCreate`, `semTake`,
-`semGive` and `semDelete`. Real-time processes (RTPs) are not supported.
+A VxWorks 6.4 kernel image and the VxWorks headers on your include path. The
+datagram calls `socket`, `sendto` and `close`; the resolver calls `inet_addr`
+and `hostGetByName`; the mutex calls `semMCreate`, `semTake`, `semGive` and
+`semDelete`. The image needs the network stack and the host library for the
+first two, and mutual-exclusion semaphores for the third. Real-time processes
+(RTPs) are not supported.
 
 The sources are C99. They need nothing from the compiler beyond that, and use no
 toolchain-specific extensions. The flags a VIP generates select C89, so with
@@ -42,14 +46,42 @@ host build compiles the pack at strict C99.
 Target runs are outside CI - the toolchain and the kernel are licensed - so
 this section records them as they are made.
 
-It has been built for VxWorks 6.4 on MIPS32 with Diab, and booted under QEMU's
-Malta machine. The library compiles with the image's own flags, which include
-`-Xlint`, plus the C99 dialect it adds; so built, the pack, Core and an
-application file including every public header compile with no diagnostics. The
-mutex is not yet exercised on the target: the BDD target will be the first to
-run it.
+The whole pack has been built for VxWorks 6.4 on MIPS32 with Diab, and booted
+under QEMU's Malta machine. The library compiles with the image's own flags,
+which include `-Xlint`, plus the C99 dialect it adds; so built, the pack, Core
+and an application file including every public header compile with no
+diagnostics.
+
+On that image, the UDP transport and the resolver have delivered a message,
+resolved from a dotted address, through QEMU's user network to a syslog-ng
+collector on another machine. The mutex is not yet exercised on the target: the
+BDD target will be the first to run it.
 
 ## Security behaviour and obligations
+
+### The transport carries syslog in clear
+
+The datagram provides no confidentiality, integrity or peer authentication.
+
+### Resolution is by literal, then by host library
+
+A dotted IPv4 literal is taken as it stands. Anything else goes to
+`hostGetByName`, which consults the image's host table and, where the image
+includes it, the DNS client - so a lookup by name may block while the query is
+outstanding. A failed lookup fails that send, and the sender resolves again on
+its next one.
+
+Both calls answer all ones for a host they cannot resolve, so
+`255.255.255.255` cannot be used as a collector address.
+
+### A record the stack refuses as too large is reported as oversize
+
+The datagram sends with a plain `sendto` and sets no don't-fragment option, so
+the stack may fragment a large record rather than refuse it. A send the stack
+refuses with `EMSGSIZE` is reported as oversize, and the sender treats it as
+such. The stack offers no path-MTU query for UDP, so the payload limit the
+datagram reports is the conservative one the library uses for an unknown IPv4
+path; the sender consults it only after a send has failed.
 
 ### The mutex guards a buffer shared between tasks
 
