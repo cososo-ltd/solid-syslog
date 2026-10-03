@@ -74,14 +74,19 @@ its next one.
 Both calls answer all ones for a host they cannot resolve, so
 `255.255.255.255` cannot be used as a collector address.
 
-### A record the stack refuses as too large is reported as oversize
+### A record is trimmed to fit, never fragmented
 
-The datagram sends with a plain `sendto` and sets no don't-fragment option, so
-the stack may fragment a large record rather than refuse it. A send the stack
-refuses with `EMSGSIZE` is reported as oversize, and the sender treats it as
-such. The stack offers no path-MTU query for UDP, so the payload limit the
-datagram reports is the conservative one the library uses for an unknown IPv4
-path; the sender consults it only after a send has failed.
+The stack offers neither a path-MTU query nor a don't-fragment option for UDP,
+so it would fragment a record too large for the path rather than refuse it. The
+datagram therefore refuses one itself: a record larger than its payload limit,
+the conservative figure for an unknown IPv4 path
+(`SolidSyslogUdpPayload_UnknownPath`), is reported as oversize without reaching
+the stack, and the sender trims it to fit and sends it again. A send the stack
+refuses with `EMSGSIZE` is reported as oversize in the same way.
+
+Raising `SOLIDSYSLOG_MAX_MESSAGE_SIZE` above that limit therefore does not
+produce larger datagrams on this platform; it only lengthens the records the
+sender has to trim.
 
 ### The mutex guards a buffer shared between tasks
 
