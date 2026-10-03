@@ -11,6 +11,7 @@
 
 #include "errnoLib.h"
 #include "routeLib.h"
+#include "sysLib.h"
 #include "taskLib.h"
 
 #include <stdint.h>
@@ -214,8 +215,8 @@ static int BddTargetVxWorks64_ServiceTask(void)
     return 0;
 }
 
+/* Rounded up, so a short sleep still yields for a tick rather than none. */
 void BddTargetVxWorks64_Sleep(int milliseconds)
 {
-    (void) milliseconds;
-    (void) taskDelay(1);
+    (void) taskDelay(((milliseconds * sysClkRateGet()) + 999) / 1000);
 }
