@@ -252,15 +252,23 @@ def initialise(home):
 
 
 # Accepts the target's console, which QEMU connects out to, and writes what it
-# sends to out until it disconnects.
+# sends to out until it disconnects. Stopping QEMU kills it, so a reset is how
+# the console usually ends.
 def relay_console(listener, out):
     connection, _ = listener.accept()
     with connection:
-        data = connection.recv(4096)
+        data = _receive(connection)
         while data:
             out.write(data)
             out.flush()
-            data = connection.recv(4096)
+            data = _receive(connection)
+
+
+def _receive(connection):
+    try:
+        return connection.recv(4096)
+    except ConnectionResetError:
+        return b""
 
 def main(argv):
     parser = argparse.ArgumentParser(description="Job service for the VxWorks 6.4 runner.")
