@@ -67,3 +67,11 @@ TEST(BddTargetVxWorks64, SleepingRoundsUpToAWholeTick)
 
     LONGS_EQUAL(2, VxWorks64TaskFake_LastDelayTicks());
 }
+
+TEST(BddTargetVxWorks64, SleepingNoTimeOnlyYields)
+{
+    BddTargetVxWorks64_Sleep(0);
+
+    UNSIGNED_LONGS_EQUAL(1, VxWorks64TaskFake_DelayCount());
+    LONGS_EQUAL(0, VxWorks64TaskFake_LastDelayTicks());
+}
