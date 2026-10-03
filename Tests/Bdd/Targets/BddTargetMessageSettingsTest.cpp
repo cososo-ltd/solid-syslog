@@ -1,11 +1,31 @@
 #include "BddTargetMessageSettings.h"
+#include "SolidSyslog.h"
+#include "SolidSyslogFormatter.h"
+#include "SolidSyslogHeaderFieldPrivate.h"
 #include "CppUTest/TestHarness.h"
 
-#include "SolidSyslog.h"
+enum
+{
+    FORMATTER_BUFFER_SIZE = 64
+};
 
 // clang-format off
 TEST_GROUP(BddTargetMessageSettings)
 {
+    SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(FORMATTER_BUFFER_SIZE)];
+    struct SolidSyslogFormatter* formatter = nullptr;
+    struct SolidSyslogHeaderField field{};
+
+    void setup() override
+    {
+        formatter = SolidSyslogFormatter_Create(storage, FORMATTER_BUFFER_SIZE);
+        SolidSyslogHeaderField_FromFormatter(&field, formatter, FORMATTER_BUFFER_SIZE);
+    }
+
+    [[nodiscard]] const char* formatted() const
+    {
+        return SolidSyslogFormatter_AsFormattedBuffer(formatter);
+    }
 };
 
 // clang-format on
@@ -79,6 +99,14 @@ TEST(BddTargetMessageSettings, ASeverityThatIsNotANumberIsRefusedAndKeepsThePrev
 
     CHECK_FALSE(BddTargetMessageSettings_SetByName("severity", "x"));
     LONGS_EQUAL(2, BddTargetMessageSettings_Message()->Severity);
+}
+
+TEST(BddTargetMessageSettings, SetAppnameChangesTheAppName)
+{
+    CHECK_TRUE(BddTargetMessageSettings_SetByName("appname", "MyApp"));
+
+    BddTargetMessageSettings_GetAppName(&field, nullptr);
+    STRCMP_EQUAL("MyApp", formatted());
 }
 
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
