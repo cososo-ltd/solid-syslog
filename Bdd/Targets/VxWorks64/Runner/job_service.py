@@ -125,8 +125,12 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
                 action(self, url, *args)
 
         def _post_job(self, url):
-            request = json.loads(self._body())
-            self._reply(201, {"id": queue.submit(request["type"], request["args"])})
+            request = _json_object(self._body())
+            if ((request is None) or not isinstance(request.get("type"), str)
+                    or not isinstance(request.get("args"), dict)):
+                self._reply(400)
+            else:
+                self._reply(201, {"id": queue.submit(request["type"], request["args"])})
 
         def _get_next(self, url):
             job = queue.next()
@@ -196,6 +200,15 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
         context.load_cert_chain(*certificate)
         server.socket = context.wrap_socket(server.socket, server_side=True)
     return server
+
+
+# The body as a JSON object, or None if it is not one.
+def _json_object(body):
+    try:
+        value = json.loads(body)
+    except ValueError:
+        value = None
+    return value if isinstance(value, dict) else None
 
 
 # The SHA-1 of the certificate in upper-case hex: what Windows calls its
