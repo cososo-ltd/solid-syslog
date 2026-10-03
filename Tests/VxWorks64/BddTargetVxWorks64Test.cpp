@@ -53,3 +53,10 @@ TEST(BddTargetVxWorks64, AMessageSentFromTheConsoleTakesTheBufferMutex)
     CHECK(VxWorks64SemFake_SemTakeCallCount() > 0U);
     POINTERS_EQUAL(VxWorks64SemFake_LastCreatedId(), VxWorks64SemFake_LastTakenId());
 }
+
+TEST(BddTargetVxWorks64, SleepingOneMillisecondDelaysOneTick)
+{
+    BddTargetVxWorks64_Sleep(1);
+
+    LONGS_EQUAL(1, VxWorks64TaskFake_LastDelayTicks());
+}

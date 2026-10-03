@@ -10,6 +10,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     unsigned VxWorks64TaskFake_SpawnCount(void);
 
+    unsigned VxWorks64TaskFake_DelayCount(void);
+
+    int VxWorks64TaskFake_LastDelayTicks(void);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* VXWORKS64TASKFAKE_H */

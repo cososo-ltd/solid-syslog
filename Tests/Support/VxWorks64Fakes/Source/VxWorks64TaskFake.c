@@ -8,15 +8,29 @@
 #include "taskLib.h"
 
 static unsigned VxWorks64TaskFake_Spawns = 0U;
+static unsigned VxWorks64TaskFake_Delays = 0U;
+static int VxWorks64TaskFake_DelayTicks = 0;
 
 void VxWorks64TaskFake_Reset(void)
 {
     VxWorks64TaskFake_Spawns = 0U;
+    VxWorks64TaskFake_Delays = 0U;
+    VxWorks64TaskFake_DelayTicks = 0;
 }
 
 unsigned VxWorks64TaskFake_SpawnCount(void)
 {
     return VxWorks64TaskFake_Spawns;
+}
+
+unsigned VxWorks64TaskFake_DelayCount(void)
+{
+    return VxWorks64TaskFake_Delays;
+}
+
+int VxWorks64TaskFake_LastDelayTicks(void)
+{
+    return VxWorks64TaskFake_DelayTicks;
 }
 
 /* Records the spawn and runs nothing: a test calls a task's entry itself when
@@ -60,10 +74,12 @@ int taskSpawn(
 
 STATUS taskDelay(int ticks)
 {
-    (void) ticks;
+    VxWorks64TaskFake_Delays++;
+    VxWorks64TaskFake_DelayTicks = ticks;
     return OK;
 }
 
+/* The VxWorks default system clock rate. */
 int sysClkRateGet(void)
 {
     return 60;
