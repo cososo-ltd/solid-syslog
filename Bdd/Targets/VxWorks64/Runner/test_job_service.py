@@ -347,6 +347,13 @@ class RunJobTest(unittest.TestCase):
         runner.join()
         self.assertEqual("building\nbuilt\n", out.getvalue())
 
+    def test_run_job_gives_up_when_no_result_arrives_in_time(self):
+        started = time.monotonic()
+        outcome, _ = job_service.run_job(self.url, self.TOKEN, "build", {}, io.StringIO(),
+                                         poll_seconds=0.01, timeout_seconds=0.2)
+        self.assertEqual("timed-out", outcome)
+        self.assertLess(time.monotonic() - started, 5)
+
     # Redirected to a file, output is buffered until flushed.
     def test_run_job_flushes_the_log_as_it_writes_it(self):
         class FlushRecorder(io.StringIO):
