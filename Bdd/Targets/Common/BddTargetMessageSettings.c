@@ -11,10 +11,25 @@
 #include "SolidSyslogHeaderField.h"
 #include "SolidSyslogTunables.h"
 
-static char appName[49];
-static char messageId[33];
+/* Storage holds RFC 5424's maxima where it sets one (APP-NAME 48, MSGID 32)
+   plus the terminator; MSG matches SOLIDSYSLOG_MAX_MESSAGE_SIZE; the host fits
+   an IPv4 dotted quad or a short name. */
+enum
+{
+    APP_NAME_SIZE = 49,
+    MESSAGE_ID_SIZE = 33,
+    HOST_SIZE = 16,
+    DEFAULT_PORT = 5514
+};
+
+static const char DEFAULT_APP_NAME[] = "SolidSyslogBddTarget";
+static const char DEFAULT_MESSAGE_ID[] = "example";
+static const char DEFAULT_MSG[] = "Hello from SolidSyslog";
+
+static char appName[APP_NAME_SIZE];
+static char messageId[MESSAGE_ID_SIZE];
 static char msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-static char host[16];
+static char host[HOST_SIZE];
 static uint16_t port;
 static uint32_t endpointVersion;
 static struct SolidSyslogMessage message = {
@@ -22,19 +37,37 @@ static struct SolidSyslogMessage message = {
     .Msg = msg,
 };
 
+static inline bool MessageSettings_SetHost(const char* value);
+static inline bool MessageSettings_SetPort(const char* value);
+static inline bool MessageSettings_IsPort(unsigned long number);
+static inline bool MessageSettings_SetFacility(const char* value);
+static inline bool MessageSettings_SetSeverity(const char* value);
 static inline bool MessageSettings_TryUpdateString(char* storage, size_t storageSize, const char* value);
 static inline bool MessageSettings_TryParseNumber(const char* value, unsigned long* parsed);
 
 void BddTargetMessageSettings_Reset(const char* defaultHost)
 {
     (void) MessageSettings_TryUpdateString(host, sizeof(host), defaultHost);
-    port = 5514U;
+    port = (uint16_t) DEFAULT_PORT;
     endpointVersion++;
-    (void) MessageSettings_TryUpdateString(appName, sizeof(appName), "SolidSyslogBddTarget");
-    (void) MessageSettings_TryUpdateString(messageId, sizeof(messageId), "example");
-    (void) MessageSettings_TryUpdateString(msg, sizeof(msg), "Hello from SolidSyslog");
+    (void) MessageSettings_TryUpdateString(appName, sizeof(appName), DEFAULT_APP_NAME);
+    (void) MessageSettings_TryUpdateString(messageId, sizeof(messageId), DEFAULT_MESSAGE_ID);
+    (void) MessageSettings_TryUpdateString(msg, sizeof(msg), DEFAULT_MSG);
     message.Facility = SOLIDSYSLOG_FACILITY_LOCAL0;
     message.Severity = SOLIDSYSLOG_SEVERITY_INFORMATIONAL;
+}
+
+/* Takes a value that is neither empty nor too long for its storage, and leaves
+   the storage alone otherwise. */
+static inline bool MessageSettings_TryUpdateString(char* storage, size_t storageSize, const char* value)
+{
+    size_t length = strlen(value);
+    bool fits = (length > 0U) && (length < storageSize);
+    if (fits)
+    {
+        (void) memcpy(storage, value, length + 1U);
+    }
+    return fits;
 }
 
 bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
@@ -54,39 +87,19 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
     }
     else if (strcmp(name, "host") == 0)
     {
-        taken = MessageSettings_TryUpdateString(host, sizeof(host), value);
-        if (taken)
-        {
-            endpointVersion++;
-        }
+        taken = MessageSettings_SetHost(value);
     }
     else if (strcmp(name, "port") == 0)
     {
-        unsigned long parsed = 0U;
-        taken = MessageSettings_TryParseNumber(value, &parsed) && (parsed > 0U) && (parsed <= UINT16_MAX);
-        if (taken)
-        {
-            port = (uint16_t) parsed;
-            endpointVersion++;
-        }
+        taken = MessageSettings_SetPort(value);
     }
     else if (strcmp(name, "facility") == 0)
     {
-        unsigned long parsed = 0U;
-        taken = MessageSettings_TryParseNumber(value, &parsed);
-        if (taken)
-        {
-            message.Facility = (enum SolidSyslogFacility) parsed;
-        }
+        taken = MessageSettings_SetFacility(value);
     }
     else if (strcmp(name, "severity") == 0)
     {
-        unsigned long parsed = 0U;
-        taken = MessageSettings_TryParseNumber(value, &parsed);
-        if (taken)
-        {
-            message.Severity = (enum SolidSyslogSeverity) parsed;
-        }
+        taken = MessageSettings_SetSeverity(value);
     }
     else
     {
@@ -95,22 +108,30 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
     return taken;
 }
 
-/* Takes a value that is neither empty nor too long for its storage, and leaves
-   the storage alone otherwise. */
-static inline bool MessageSettings_TryUpdateString(char* storage, size_t storageSize, const char* value)
+/* A new destination moves the endpoint version, so the sender resolves again. */
+static inline bool MessageSettings_SetHost(const char* value)
 {
-    size_t length = strlen(value);
-    bool fits = (length > 0U) && (length < storageSize);
-    if (fits)
+    bool taken = MessageSettings_TryUpdateString(host, sizeof(host), value);
+    if (taken)
     {
-        (void) memcpy(storage, value, length + 1U);
+        endpointVersion++;
     }
-    return fits;
+    return taken;
 }
 
-/* Takes decimal digits only, with nothing after them. A value outside the
-   enumeration is passed on unchanged, so the library stays the one authority
-   on what is valid. */
+static inline bool MessageSettings_SetPort(const char* value)
+{
+    unsigned long parsed = 0U;
+    bool taken = MessageSettings_TryParseNumber(value, &parsed) && MessageSettings_IsPort(parsed);
+    if (taken)
+    {
+        port = (uint16_t) parsed;
+        endpointVersion++;
+    }
+    return taken;
+}
+
+/* Takes decimal digits only, with nothing after them. */
 static inline bool MessageSettings_TryParseNumber(const char* value, unsigned long* parsed)
 {
     char* end = NULL;
@@ -121,6 +142,35 @@ static inline bool MessageSettings_TryParseNumber(const char* value, unsigned lo
         *parsed = number;
     }
     return isNumber;
+}
+
+static inline bool MessageSettings_IsPort(unsigned long number)
+{
+    return (number > 0U) && (number <= UINT16_MAX);
+}
+
+/* A value outside the enumeration is passed on unchanged, so the library stays
+   the one authority on what is valid. */
+static inline bool MessageSettings_SetFacility(const char* value)
+{
+    unsigned long parsed = 0U;
+    bool taken = MessageSettings_TryParseNumber(value, &parsed);
+    if (taken)
+    {
+        message.Facility = (enum SolidSyslogFacility) parsed;
+    }
+    return taken;
+}
+
+static inline bool MessageSettings_SetSeverity(const char* value)
+{
+    unsigned long parsed = 0U;
+    bool taken = MessageSettings_TryParseNumber(value, &parsed);
+    if (taken)
+    {
+        message.Severity = (enum SolidSyslogSeverity) parsed;
+    }
+    return taken;
 }
 
 const struct SolidSyslogMessage* BddTargetMessageSettings_Message(void)

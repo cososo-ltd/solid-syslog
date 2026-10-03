@@ -11,6 +11,8 @@ enum
     FORMATTER_BUFFER_SIZE = 64
 };
 
+static const char TEST_DEFAULT_HOST[] = "10.0.2.2";
+
 // clang-format off
 TEST_GROUP(BddTargetMessageSettings)
 {
@@ -18,10 +20,22 @@ TEST_GROUP(BddTargetMessageSettings)
     struct SolidSyslogFormatter* formatter = nullptr;
     struct SolidSyslogHeaderField field{};
 
+    struct SolidSyslogEndpointHost hostSink{};
+    struct SolidSyslogEndpoint endpoint{};
+
     void setup() override
     {
+        BddTargetMessageSettings_Reset(TEST_DEFAULT_HOST);
         formatter = SolidSyslogFormatter_Create(storage, FORMATTER_BUFFER_SIZE);
         SolidSyslogHeaderField_FromFormatter(&field, formatter, FORMATTER_BUFFER_SIZE);
+        SolidSyslogEndpointHost_FromFormatter(&hostSink, formatter);
+        endpoint.Host = &hostSink;
+    }
+
+    // The host lands in formatted(); the port in endpoint.Port.
+    void ReadEndpoint()
+    {
+        BddTargetMessageSettings_GetEndpoint(&endpoint, nullptr);
     }
 
     [[nodiscard]] const char* formatted() const
@@ -115,11 +129,7 @@ TEST(BddTargetMessageSettings, SetHostChangesTheEndpointHost)
 {
     CHECK_TRUE(BddTargetMessageSettings_SetByName("host", "10.1.2.3"));
 
-    struct SolidSyslogEndpointHost hostSink{};
-    SolidSyslogEndpointHost_FromFormatter(&hostSink, formatter);
-    struct SolidSyslogEndpoint endpoint{};
-    endpoint.Host = &hostSink;
-    BddTargetMessageSettings_GetEndpoint(&endpoint, nullptr);
+    ReadEndpoint();
 
     STRCMP_EQUAL("10.1.2.3", formatted());
 }
@@ -128,11 +138,7 @@ TEST(BddTargetMessageSettings, SetPortChangesTheEndpointPort)
 {
     CHECK_TRUE(BddTargetMessageSettings_SetByName("port", "6000"));
 
-    struct SolidSyslogEndpointHost hostSink{};
-    SolidSyslogEndpointHost_FromFormatter(&hostSink, formatter);
-    struct SolidSyslogEndpoint endpoint{};
-    endpoint.Host = &hostSink;
-    BddTargetMessageSettings_GetEndpoint(&endpoint, nullptr);
+    ReadEndpoint();
 
     UNSIGNED_LONGS_EQUAL(6000, endpoint.Port);
 }
@@ -186,7 +192,7 @@ TEST(BddTargetMessageSettings, ResetRestoresTheMessageDefaults)
     BddTargetMessageSettings_SetByName("facility", "3");
     BddTargetMessageSettings_SetByName("severity", "2");
 
-    BddTargetMessageSettings_Reset("10.0.2.2");
+    BddTargetMessageSettings_Reset(TEST_DEFAULT_HOST);
 
     const struct SolidSyslogMessage* message = BddTargetMessageSettings_Message();
     STRCMP_EQUAL("example", message->MessageId);
@@ -199,7 +205,7 @@ TEST(BddTargetMessageSettings, ResetRestoresTheAppNameDefault)
 {
     BddTargetMessageSettings_SetByName("appname", "MyApp");
 
-    BddTargetMessageSettings_Reset("10.0.2.2");
+    BddTargetMessageSettings_Reset(TEST_DEFAULT_HOST);
 
     BddTargetMessageSettings_GetAppName(&field, nullptr);
     STRCMP_EQUAL("SolidSyslogBddTarget", formatted());
@@ -210,14 +216,10 @@ TEST(BddTargetMessageSettings, ResetPointsTheEndpointAtTheDefaultHostAndPort)
     BddTargetMessageSettings_SetByName("host", "10.1.2.3");
     BddTargetMessageSettings_SetByName("port", "6000");
 
-    BddTargetMessageSettings_Reset("10.0.2.2");
+    BddTargetMessageSettings_Reset(TEST_DEFAULT_HOST);
 
-    struct SolidSyslogEndpointHost hostSink{};
-    SolidSyslogEndpointHost_FromFormatter(&hostSink, formatter);
-    struct SolidSyslogEndpoint endpoint{};
-    endpoint.Host = &hostSink;
-    BddTargetMessageSettings_GetEndpoint(&endpoint, nullptr);
-    STRCMP_EQUAL("10.0.2.2", formatted());
+    ReadEndpoint();
+    STRCMP_EQUAL(TEST_DEFAULT_HOST, formatted());
     UNSIGNED_LONGS_EQUAL(5514, endpoint.Port);
 }
 
@@ -225,7 +227,7 @@ TEST(BddTargetMessageSettings, ResetMovesTheEndpointVersion)
 {
     uint32_t before = BddTargetMessageSettings_GetEndpointVersion(nullptr);
 
-    BddTargetMessageSettings_Reset("10.0.2.2");
+    BddTargetMessageSettings_Reset(TEST_DEFAULT_HOST);
 
     CHECK(BddTargetMessageSettings_GetEndpointVersion(nullptr) != before);
 }
