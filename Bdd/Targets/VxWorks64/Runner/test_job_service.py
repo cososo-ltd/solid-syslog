@@ -163,6 +163,14 @@ class JobServiceTest(unittest.TestCase):
         self.assertEqual("succeeded", self.queue.state(job_id))
         self.assertEqual("Diagnostics: none", self.queue.summary(job_id))
 
+    def test_an_invalid_result_is_a_bad_request_and_leaves_the_job_running(self):
+        job_id = self.queue.submit("build", {})
+        self.queue.next()
+        for body in ("not json", ["succeeded"], {"summary": ""}, {"outcome": 1, "summary": ""}, {"outcome": "succeeded"}):
+            status, _ = self.request("POST", f"/jobs/{job_id}/result", self.TOKEN, body)
+            self.assertEqual(400, status, body)
+        self.assertEqual("running", self.queue.state(job_id))
+
     def test_status_of_a_queued_job_has_no_summary(self):
         job_id = self.queue.submit("build", {})
         status, body = self.request("GET", f"/jobs/{job_id}", self.TOKEN)
