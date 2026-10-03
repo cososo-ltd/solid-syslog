@@ -130,6 +130,12 @@ class JobServiceTest(unittest.TestCase):
         self.assertEqual(401, status)
         self.assertIsNone(self.queue.next())
 
+    def test_an_invalid_job_is_a_bad_request_and_queues_nothing(self):
+        for body in ("not json", [1, 2], {"args": {}}, {"type": 7, "args": {}}, {"type": "build", "args": "x"}):
+            status, _ = self.request("POST", "/jobs", self.TOKEN, body)
+            self.assertEqual(400, status, body)
+        self.assertIsNone(self.queue.next())
+
     def test_posted_job_answers_its_id(self):
         status, body = self.request("POST", "/jobs", self.TOKEN, {"type": "build", "args": {}})
         self.assertEqual(201, status)
