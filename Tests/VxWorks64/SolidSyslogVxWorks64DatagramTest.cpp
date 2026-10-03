@@ -92,6 +92,11 @@ TEST(SolidSyslogVxWorks64Datagram, OpenFailsWhenTheStackCannotMakeASocket)
     CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
 }
 
+TEST(SolidSyslogVxWorks64Datagram, OpenSucceedsWhenTheStackMakesASocket)
+{
+    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
+}
+
 TEST(SolidSyslogVxWorks64Datagram, SendToSendsTheRecord)
 {
     (void) OpenAndSend();
