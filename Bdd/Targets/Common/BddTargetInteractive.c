@@ -122,11 +122,7 @@ void BddTargetInteractive_Run(
 
     while (fgets(line, sizeof(line), input) != NULL)
     {
-        size_t len = strlen(line);
-        if (len > 0 && line[len - 1] == '\n')
-        {
-            line[len - 1] = '\0';
-        }
+        line[strcspn(line, "\r\n")] = '\0';
 
         if (strcmp(line, "quit") == 0)
         {
