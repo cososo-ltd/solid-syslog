@@ -6,9 +6,11 @@ build machine collects them, one at a time, connecting outwards only.
 
     python job_service.py init                  once: token, certificate and key
     python job_service.py serve                 serve on port 8765 until stopped
-    python job_service.py submit <job> [NAME=VALUE...]
+    python job_service.py submit [--timeout S] <job> [NAME=VALUE...]
                                                 queue a job, follow its log, and
-                                                exit 0 only if it succeeded
+                                                exit 0 only if it succeeded;
+                                                stop waiting after S seconds
+                                                (120 unless a longer job needs more)
     python job_service.py console               show the console of the QEMU a
                                                 qemu-start job began, which
                                                 connects out to port 8766, and
@@ -40,6 +42,7 @@ DEFAULT_HOME = os.path.join(os.path.expanduser("~"), ".solidsyslog-runner")
 DEFAULT_PORT = 8765
 DEFAULT_CONSOLE_PORT = 8766
 DEFAULT_SYSLOG_PORT = 5514
+DEFAULT_TIMEOUT_SECONDS = 120
 COLLECTOR_PROMPT = b"collector?"
 
 
@@ -322,6 +325,8 @@ def main(argv):
     console.add_argument("--syslog-port", type=int, default=DEFAULT_SYSLOG_PORT,
                          help="the collector's port, given to the target when it asks")
     submit = commands.add_parser("submit", help="queue a job and follow it")
+    submit.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS,
+                        help="seconds to wait for the result; a build or a BDD run needs more")
     submit.add_argument("job")
     submit.add_argument("arguments", nargs="*", metavar="NAME=VALUE")
     options = parser.parse_args(argv)
@@ -352,7 +357,8 @@ def main(argv):
             context = ssl.create_default_context(cafile=certificate)
             context.check_hostname = False
             outcome, summary = run_job(f"https://127.0.0.1:{options.port}", token, options.job,
-                                       job_arguments(options.arguments), sys.stdout, context=context)
+                                       job_arguments(options.arguments), sys.stdout, context=context,
+                                       timeout_seconds=options.timeout)
             print(f"{outcome}: {summary}")
             result = 0 if outcome == "succeeded" else 1
     return result
