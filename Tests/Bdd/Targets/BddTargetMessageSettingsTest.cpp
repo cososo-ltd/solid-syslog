@@ -17,6 +17,14 @@ TEST(BddTargetMessageSettings, SetMsgidChangesTheMessageId)
     STRCMP_EQUAL("abc", BddTargetMessageSettings_Message()->MessageId);
 }
 
+TEST(BddTargetMessageSettings, AMessageIdLongerThan32CharactersIsRefusedAndKeepsThePrevious)
+{
+    BddTargetMessageSettings_SetByName("msgid", "abc");
+
+    CHECK_FALSE(BddTargetMessageSettings_SetByName("msgid", "123456789012345678901234567890123"));
+    STRCMP_EQUAL("abc", BddTargetMessageSettings_Message()->MessageId);
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
