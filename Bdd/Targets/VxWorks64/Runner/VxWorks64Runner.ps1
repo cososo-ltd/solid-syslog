@@ -143,5 +143,15 @@ function Send-RunnerResult
         [Parameter(Mandatory)] [scriptblock] $Send
     )
 
-    $Pending
+    try
+        {
+        $null = & $Send $Pending.Id $Pending.Body
+        $kept = $null
+        }
+    catch
+        {
+        Write-Warning "Result of job $($Pending.Id) not sent, will retry: $($_.Exception.Message)"
+        $kept = $Pending
+        }
+    $kept
     }
