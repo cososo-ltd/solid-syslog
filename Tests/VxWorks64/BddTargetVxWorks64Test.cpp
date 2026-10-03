@@ -1,12 +1,10 @@
 #include "CppUTest/TestHarness.h"
 
+#include <cstdio>
+
+#include "BddTargetVxWorks64.h"
 #include "VxWorks64SemFake.h"
 #include "VxWorks64TaskFake.h"
-
-extern "C"
-{
-    void BddTargetVxWorks64_Init(void);
-}
 
 // clang-format off
 TEST_GROUP(BddTargetVxWorks64)
@@ -15,6 +13,11 @@ TEST_GROUP(BddTargetVxWorks64)
     {
         VxWorks64TaskFake_Reset();
         VxWorks64SemFake_Reset();
+    }
+
+    void teardown() override
+    {
+        BddTargetVxWorks64_Teardown();
     }
 };
 
@@ -32,4 +35,21 @@ TEST(BddTargetVxWorks64, InitCreatesAVxWorksMutexForTheBuffer)
     BddTargetVxWorks64_Init();
 
     UNSIGNED_LONGS_EQUAL(1, VxWorks64SemFake_SemMCreateCallCount());
+}
+
+TEST(BddTargetVxWorks64, AMessageSentFromTheConsoleTakesTheBufferMutex)
+{
+    BddTargetVxWorks64_Init();
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- tmpfile/fclose is C stdio; no owning memory concern
+    FILE* input = tmpfile();
+    CHECK(input != nullptr);
+    (void) fputs("send\nquit\n", input);
+    rewind(input);
+
+    BddTargetVxWorks64_RunConsole(input);
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- tmpfile/fclose is C stdio; no owning memory concern
+    (void) fclose(input);
+
+    CHECK(VxWorks64SemFake_SemTakeCallCount() > 0U);
+    POINTERS_EQUAL(VxWorks64SemFake_LastCreatedId(), VxWorks64SemFake_LastTakenId());
 }

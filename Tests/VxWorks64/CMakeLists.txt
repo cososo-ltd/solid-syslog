@@ -176,6 +176,7 @@ target_include_directories(BddTargetVxWorks64Test PRIVATE
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Interface
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64
     ${CMAKE_SOURCE_DIR}/Core/Interface
     ${CMAKE_SOURCE_DIR}/Core/Source
     ${CMAKE_SOURCE_DIR}/Tests/Support
