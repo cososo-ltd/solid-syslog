@@ -36,6 +36,13 @@ Describe 'Send-RunnerResult' {
     It 'keeps a result whose send failed, to send again' {
         Send-RunnerResult -Pending $pending -Send { param($Id, $Body) throw 'Unable to connect' } | Should Be $pending
     }
+
+    It 'sends the job id and body, and keeps nothing once sent' {
+        $script:sent = $null
+        $kept = Send-RunnerResult -Pending $pending -Send { param($Id, $Body) $script:sent = "$Id $Body" }
+        $kept | Should Be $null
+        $script:sent | Should Be '4 {"outcome": "succeeded", "summary": ""}'
+    }
 }
 
 Describe 'Invoke-RunnerJob' {
