@@ -151,9 +151,13 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
             self._reply(204)
 
         def _post_result(self, url, job_id):
-            result = json.loads(self._body())
-            queue.finish(job_id, result["outcome"], result["summary"])
-            self._reply(204)
+            result = _json_object(self._body())
+            if ((result is None) or not isinstance(result.get("outcome"), str)
+                    or not isinstance(result.get("summary"), str)):
+                self._reply(400)
+            else:
+                queue.finish(job_id, result["outcome"], result["summary"])
+                self._reply(204)
 
         # The runner polls for work every few seconds; an empty poll is not news.
         def log_request(self, code="-", size="-"):
