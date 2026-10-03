@@ -14,7 +14,7 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
 {
     bool taken = false;
     size_t length = strlen(value);
-    if ((strcmp(name, "msgid") == 0) && (length < sizeof(messageId)))
+    if ((strcmp(name, "msgid") == 0) && (length > 0U) && (length < sizeof(messageId)))
     {
         (void) memcpy(messageId, value, length + 1U);
         taken = true;
