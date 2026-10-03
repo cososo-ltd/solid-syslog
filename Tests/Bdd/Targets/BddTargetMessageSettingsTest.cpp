@@ -179,6 +179,22 @@ TEST(BddTargetMessageSettings, ARefusedPortLeavesTheEndpointVersionAlone)
     UNSIGNED_LONGS_EQUAL(before, BddTargetMessageSettings_GetEndpointVersion(nullptr));
 }
 
+TEST(BddTargetMessageSettings, ResetRestoresTheMessageDefaults)
+{
+    BddTargetMessageSettings_SetByName("msgid", "abc");
+    BddTargetMessageSettings_SetByName("msg", "changed");
+    BddTargetMessageSettings_SetByName("facility", "3");
+    BddTargetMessageSettings_SetByName("severity", "2");
+
+    BddTargetMessageSettings_Reset("10.0.2.2");
+
+    const struct SolidSyslogMessage* message = BddTargetMessageSettings_Message();
+    STRCMP_EQUAL("example", message->MessageId);
+    STRCMP_EQUAL("Hello from SolidSyslog", message->Msg);
+    LONGS_EQUAL(SOLIDSYSLOG_FACILITY_LOCAL0, message->Facility);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_INFORMATIONAL, message->Severity);
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
