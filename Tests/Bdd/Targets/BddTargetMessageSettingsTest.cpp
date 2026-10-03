@@ -137,6 +137,11 @@ TEST(BddTargetMessageSettings, SetPortChangesTheEndpointPort)
     UNSIGNED_LONGS_EQUAL(6000, endpoint.Port);
 }
 
+TEST(BddTargetMessageSettings, PortZeroIsRefused)
+{
+    CHECK_FALSE(BddTargetMessageSettings_SetByName("port", "0"));
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
