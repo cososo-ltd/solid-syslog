@@ -88,26 +88,30 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
     const struct SolidSyslogAddress* addr
 )
 {
-    struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
-    const struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr);
-    /* sockLib takes a non-const char buffer and address that it only reads
-     * (D.006, D.013). */
-    int sent = sendto(self->Fd, (char*) buffer, (int) size, 0, (struct sockaddr*) sin, (int) sizeof(*sin));
-    /* Read errno straight after the call that set it, with nothing between
-     * (MISRA 22.10). */
-    int sendErrno = (sent == ERROR) ? errno : 0;
-    enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
-    if (sent != ERROR)
+    enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
+    if (size <= VxWorks64Datagram_MaxPayload(base))
     {
-        result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
-    }
-    else if (sendErrno == EMSGSIZE)
-    {
-        result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
-    }
-    else
-    {
-        /* Any other failure - result stays FAILED. */
+        struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
+        const struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr);
+        /* sockLib takes a non-const char buffer and address that it only reads
+         * (D.006, D.013). */
+        int sent = sendto(self->Fd, (char*) buffer, (int) size, 0, (struct sockaddr*) sin, (int) sizeof(*sin));
+        /* Read errno straight after the call that set it, with nothing between
+         * (MISRA 22.10). */
+        int sendErrno = (sent == ERROR) ? errno : 0;
+        result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
+        if (sent != ERROR)
+        {
+            result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+        }
+        else if (sendErrno == EMSGSIZE)
+        {
+            result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
+        }
+        else
+        {
+            /* Any other failure - result stays FAILED. */
+        }
     }
     return result;
 }
