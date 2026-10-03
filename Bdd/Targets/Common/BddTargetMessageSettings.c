@@ -5,8 +5,10 @@
 #include <string.h>
 
 #include "SolidSyslog.h"
+#include "SolidSyslogHeaderField.h"
 #include "SolidSyslogTunables.h"
 
+static char appName[49];
 static char messageId[33];
 static char msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
 static struct SolidSyslogMessage message = {
@@ -20,7 +22,11 @@ static inline bool MessageSettings_TryParseNumber(const char* value, unsigned lo
 bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
 {
     bool taken = false;
-    if (strcmp(name, "msgid") == 0)
+    if (strcmp(name, "appname") == 0)
+    {
+        taken = MessageSettings_TryUpdateString(appName, sizeof(appName), value);
+    }
+    else if (strcmp(name, "msgid") == 0)
     {
         taken = MessageSettings_TryUpdateString(messageId, sizeof(messageId), value);
     }
@@ -84,4 +90,10 @@ static inline bool MessageSettings_TryParseNumber(const char* value, unsigned lo
 const struct SolidSyslogMessage* BddTargetMessageSettings_Message(void)
 {
     return &message;
+}
+
+void BddTargetMessageSettings_GetAppName(struct SolidSyslogHeaderField* field, void* context)
+{
+    (void) context;
+    SolidSyslogHeaderField_PrintUsAscii(field, appName, strlen(appName));
 }
