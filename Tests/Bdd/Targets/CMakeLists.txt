@@ -6,6 +6,7 @@ set(BDD_TARGET_TEST_SOURCES
     BddTargetErrorTextTest.cpp
     BddTargetIpsTest.cpp
     BddTargetLanguageTest.cpp
+    BddTargetMessageSettingsTest.cpp
     BddTargetTlsConfigTest.cpp
     main.cpp
 )

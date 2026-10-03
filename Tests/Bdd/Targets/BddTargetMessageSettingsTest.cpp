@@ -1,0 +1,18 @@
+#include "BddTargetMessageSettings.h"
+#include "CppUTest/TestHarness.h"
+
+#include "SolidSyslog.h"
+
+// clang-format off
+TEST_GROUP(BddTargetMessageSettings)
+{
+};
+
+// clang-format on
+
+TEST(BddTargetMessageSettings, SetMsgidChangesTheMessageId)
+{
+    CHECK_TRUE(BddTargetMessageSettings_SetByName("msgid", "abc"));
+
+    STRCMP_EQUAL("abc", BddTargetMessageSettings_Message()->MessageId);
+}
