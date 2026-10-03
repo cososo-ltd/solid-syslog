@@ -1,5 +1,7 @@
 #include "BddTargetMessageSettings.h"
 #include "SolidSyslog.h"
+#include "SolidSyslogEndpoint.h"
+#include "SolidSyslogEndpointHostPrivate.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogHeaderFieldPrivate.h"
 #include "CppUTest/TestHarness.h"
@@ -107,6 +109,19 @@ TEST(BddTargetMessageSettings, SetAppnameChangesTheAppName)
 
     BddTargetMessageSettings_GetAppName(&field, nullptr);
     STRCMP_EQUAL("MyApp", formatted());
+}
+
+TEST(BddTargetMessageSettings, SetHostChangesTheEndpointHost)
+{
+    CHECK_TRUE(BddTargetMessageSettings_SetByName("host", "10.1.2.3"));
+
+    struct SolidSyslogEndpointHost hostSink{};
+    SolidSyslogEndpointHost_FromFormatter(&hostSink, formatter);
+    struct SolidSyslogEndpoint endpoint{};
+    endpoint.Host = &hostSink;
+    BddTargetMessageSettings_GetEndpoint(&endpoint, nullptr);
+
+    STRCMP_EQUAL("10.1.2.3", formatted());
 }
 
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
