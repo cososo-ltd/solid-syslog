@@ -161,6 +161,15 @@ TEST(BddTargetMessageSettings, SettingThePortMovesTheEndpointVersion)
     CHECK(BddTargetMessageSettings_GetEndpointVersion(nullptr) != before);
 }
 
+TEST(BddTargetMessageSettings, SettingTheHostMovesTheEndpointVersion)
+{
+    uint32_t before = BddTargetMessageSettings_GetEndpointVersion(nullptr);
+
+    BddTargetMessageSettings_SetByName("host", "10.9.8.7");
+
+    CHECK(BddTargetMessageSettings_GetEndpointVersion(nullptr) != before);
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
