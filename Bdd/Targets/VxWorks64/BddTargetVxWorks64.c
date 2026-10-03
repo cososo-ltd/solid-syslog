@@ -151,7 +151,7 @@ static void BddTargetVxWorks64_SendOverUdp(void)
         message.MessageId = "UDP";
         message.Msg = "VxWorks 6.4 BDD target over UDP";
         SolidSyslog_Log(logger, &message);
-        printf(BDD_TARGET_TAG "logged over UDP to %s:%u\n", collectorHost, (unsigned) collectorPort);
+        printf(BDD_TARGET_TAG "UDP log attempted to %s:%u\n", collectorHost, (unsigned) collectorPort);
 
         SolidSyslog_Destroy(logger);
         SolidSyslogPassthroughBuffer_Destroy(buffer);

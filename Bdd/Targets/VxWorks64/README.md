@@ -63,7 +63,7 @@ pass, fail or not run.
 4. With a syslog collector listening on UDP 5514 on the development machine,
    and `Runner\job_service.py console` running there, QEMU started with its
    console connecting to it (the runner's `qemu-start`). The console shows
-   `network default route set` and `logged over UDP to <host>:5514` with no
+   `network default route set` and `UDP log attempted to <host>:5514` with no
    `error from` line, and the collector records a message with MSGID `UDP`
    and the text `VxWorks 6.4 BDD target over UDP`.
 
