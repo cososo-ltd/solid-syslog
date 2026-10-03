@@ -124,6 +124,19 @@ TEST(BddTargetMessageSettings, SetHostChangesTheEndpointHost)
     STRCMP_EQUAL("10.1.2.3", formatted());
 }
 
+TEST(BddTargetMessageSettings, SetPortChangesTheEndpointPort)
+{
+    CHECK_TRUE(BddTargetMessageSettings_SetByName("port", "6000"));
+
+    struct SolidSyslogEndpointHost hostSink{};
+    SolidSyslogEndpointHost_FromFormatter(&hostSink, formatter);
+    struct SolidSyslogEndpoint endpoint{};
+    endpoint.Host = &hostSink;
+    BddTargetMessageSettings_GetEndpoint(&endpoint, nullptr);
+
+    UNSIGNED_LONGS_EQUAL(6000, endpoint.Port);
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
