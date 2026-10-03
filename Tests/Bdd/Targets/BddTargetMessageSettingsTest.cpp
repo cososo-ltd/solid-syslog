@@ -142,6 +142,11 @@ TEST(BddTargetMessageSettings, PortZeroIsRefused)
     CHECK_FALSE(BddTargetMessageSettings_SetByName("port", "0"));
 }
 
+TEST(BddTargetMessageSettings, APortAbove65535IsRefused)
+{
+    CHECK_FALSE(BddTargetMessageSettings_SetByName("port", "65536"));
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
