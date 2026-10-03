@@ -180,7 +180,8 @@ static int BddTargetVxWorks64_ParseCollector(const char* line)
         if ((hostLength > 0) && (hostLength < sizeof(collectorHost)) && (host[hostLength] == ' '))
         {
             port = strtol(host + hostLength + 1, &end, 10);
-            if ((port > 0) && (port <= MAX_PORT) && (end != host + hostLength + 1))
+            if ((port > 0) && (port <= MAX_PORT) && (end != host + hostLength + 1) &&
+                (end[strspn(end, "\r\n")] == '\0'))
             {
                 memcpy(collectorHost, host, hostLength);
                 collectorHost[hostLength] = '\0';
