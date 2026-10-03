@@ -37,6 +37,15 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
             message.Facility = (enum SolidSyslogFacility) parsed;
         }
     }
+    else if (strcmp(name, "severity") == 0)
+    {
+        unsigned long parsed = 0U;
+        taken = MessageSettings_TryParseNumber(value, &parsed);
+        if (taken)
+        {
+            message.Severity = (enum SolidSyslogSeverity) parsed;
+        }
+    }
     else
     {
         /* Not ours - taken stays false so the caller can offer it elsewhere. */
