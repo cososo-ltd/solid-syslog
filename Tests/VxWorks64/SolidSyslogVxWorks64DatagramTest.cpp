@@ -149,6 +149,15 @@ TEST(SolidSyslogVxWorks64Datagram, SendToRefusesARecordLargerThanMaxPayloadWitho
     CALLED_FAKE(VxWorks64NetFake_Sendto, NEVER);
 }
 
+TEST(SolidSyslogVxWorks64Datagram, SendToSendsARecordOfExactlyMaxPayload)
+{
+    static const char record[480] = {0};
+    SolidSyslogDatagram_Open(datagram);
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, SolidSyslogDatagram_SendTo(datagram, record, 480U, address));
+    CALLED_FAKE(VxWorks64NetFake_Sendto, ONCE);
+}
+
 TEST(SolidSyslogVxWorks64Datagram, SendToPassesNoFlags)
 {
     (void) OpenAndSend();
