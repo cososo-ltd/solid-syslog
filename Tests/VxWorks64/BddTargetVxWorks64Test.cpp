@@ -19,6 +19,19 @@ TEST_GROUP(BddTargetVxWorks64)
     {
         BddTargetVxWorks64_Teardown();
     }
+
+    // Runs the console on these lines, as though typed at the target.
+    static void RunConsoleWith(const char* lines)
+    {
+        // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- tmpfile/fclose is C stdio; no owning memory concern
+        FILE* input = tmpfile();
+        CHECK(input != nullptr);
+        (void) fputs(lines, input);
+        rewind(input);
+        BddTargetVxWorks64_RunConsole(input);
+        // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- tmpfile/fclose is C stdio; no owning memory concern
+        (void) fclose(input);
+    }
 };
 
 // clang-format on
@@ -40,15 +53,8 @@ TEST(BddTargetVxWorks64, InitCreatesAVxWorksMutexForTheBuffer)
 TEST(BddTargetVxWorks64, AMessageSentFromTheConsoleTakesTheBufferMutex)
 {
     BddTargetVxWorks64_Init();
-    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- tmpfile/fclose is C stdio; no owning memory concern
-    FILE* input = tmpfile();
-    CHECK(input != nullptr);
-    (void) fputs("send\nquit\n", input);
-    rewind(input);
 
-    BddTargetVxWorks64_RunConsole(input);
-    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- tmpfile/fclose is C stdio; no owning memory concern
-    (void) fclose(input);
+    RunConsoleWith("send\nquit\n");
 
     CHECK(VxWorks64SemFake_SemTakeCallCount() > 0U);
     POINTERS_EQUAL(VxWorks64SemFake_LastCreatedId(), VxWorks64SemFake_LastTakenId());
@@ -79,14 +85,7 @@ TEST(BddTargetVxWorks64, SleepingNoTimeOnlyYields)
 TEST(BddTargetVxWorks64, TheServiceTaskReturnsOnceTheConsoleHasQuit)
 {
     BddTargetVxWorks64_Init();
-    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- tmpfile/fclose is C stdio; no owning memory concern
-    FILE* input = tmpfile();
-    CHECK(input != nullptr);
-    (void) fputs("quit\n", input);
-    rewind(input);
-    BddTargetVxWorks64_RunConsole(input);
-    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- tmpfile/fclose is C stdio; no owning memory concern
-    (void) fclose(input);
+    RunConsoleWith("quit\n");
 
     BddTargetVxWorks64_RunService();
 }

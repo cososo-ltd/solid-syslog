@@ -24,7 +24,6 @@
 #include "SolidSyslog.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
-#include "SolidSyslogError.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogUdpSender.h"
@@ -39,7 +38,8 @@ enum
 {
     TASK_PRIORITY = 100,
     INTERACTIVE_STACK_BYTES = 16384,
-    SERVICE_STACK_BYTES = 8192
+    SERVICE_STACK_BYTES = 8192,
+    MILLISECONDS_PER_SECOND = 1000
 };
 
 static void BddTargetVxWorks64_RunCore(void);
@@ -47,6 +47,7 @@ static void BddTargetVxWorks64_BringUpNetwork(void);
 static void BddTargetVxWorks64_ReportStep(const char* step, STATUS status);
 static void BddTargetVxWorks64_BuildPipeline(void);
 static void BddTargetVxWorks64_SpawnTasks(void);
+static void BddTargetVxWorks64_Spawn(char* name, int stackBytes, FUNCPTR entry);
 static int BddTargetVxWorks64_InteractiveTask(void);
 static int BddTargetVxWorks64_ServiceTask(void);
 
@@ -74,34 +75,6 @@ void BddTargetVxWorks64_Init(void)
     BddTargetVxWorks64_BuildPipeline();
     consoleEnded = false;
     BddTargetVxWorks64_SpawnTasks();
-}
-
-void BddTargetVxWorks64_Teardown(void)
-{
-    SolidSyslog_Destroy(logger);
-    SolidSyslogCircularBuffer_Destroy(buffer);
-    SolidSyslogVxWorks64Mutex_Destroy(bufferMutex);
-    SolidSyslogUdpSender_Destroy(sender);
-    SolidSyslogVxWorks64Datagram_Destroy(datagram);
-    SolidSyslogVxWorks64Resolver_Destroy(resolver);
-    SolidSyslogVxWorks64Address_Destroy(address);
-}
-
-void BddTargetVxWorks64_RunConsole(FILE* input)
-{
-    BddTargetInteractive_Run(
-        logger,
-        BddTargetMessageSettings_Message(),
-        input,
-        NULL,
-        BddTargetMessageSettings_SetByName
-    );
-    consoleEnded = true;
-}
-
-void BddTargetVxWorks64_RunService(void)
-{
-    BddTargetServiceThread_Run(logger, &consoleEnded, BddTargetVxWorks64_Sleep);
 }
 
 static void BddTargetVxWorks64_RunCore(void)
@@ -174,45 +147,19 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     logger = SolidSyslog_Create(&config);
 }
 
+/* taskSpawn takes a non-const name it only reads, so each lives in an array. */
 static void BddTargetVxWorks64_SpawnTasks(void)
 {
     char interactiveName[] = "tSsInteractive";
     char serviceName[] = "tSsService";
 
-    (void) taskSpawn(
-        interactiveName,
-        TASK_PRIORITY,
-        0,
-        INTERACTIVE_STACK_BYTES,
-        (FUNCPTR) BddTargetVxWorks64_InteractiveTask,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-    );
-    (void) taskSpawn(
-        serviceName,
-        TASK_PRIORITY,
-        0,
-        SERVICE_STACK_BYTES,
-        (FUNCPTR) BddTargetVxWorks64_ServiceTask,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-    );
+    BddTargetVxWorks64_Spawn(interactiveName, INTERACTIVE_STACK_BYTES, (FUNCPTR) BddTargetVxWorks64_InteractiveTask);
+    BddTargetVxWorks64_Spawn(serviceName, SERVICE_STACK_BYTES, (FUNCPTR) BddTargetVxWorks64_ServiceTask);
+}
+
+static void BddTargetVxWorks64_Spawn(char* name, int stackBytes, FUNCPTR entry)
+{
+    (void) taskSpawn(name, TASK_PRIORITY, 0, stackBytes, entry, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
 static int BddTargetVxWorks64_InteractiveTask(void)
@@ -227,8 +174,37 @@ static int BddTargetVxWorks64_ServiceTask(void)
     return 0;
 }
 
+void BddTargetVxWorks64_RunConsole(FILE* input)
+{
+    BddTargetInteractive_Run(
+        logger,
+        BddTargetMessageSettings_Message(),
+        input,
+        NULL,
+        BddTargetMessageSettings_SetByName
+    );
+    consoleEnded = true;
+}
+
+void BddTargetVxWorks64_RunService(void)
+{
+    BddTargetServiceThread_Run(logger, &consoleEnded, BddTargetVxWorks64_Sleep);
+}
+
 /* Rounded up, so a short sleep still yields for a tick rather than none. */
 void BddTargetVxWorks64_Sleep(int milliseconds)
 {
-    (void) taskDelay(((milliseconds * sysClkRateGet()) + 999) / 1000);
+    int ticks = ((milliseconds * sysClkRateGet()) + (MILLISECONDS_PER_SECOND - 1)) / MILLISECONDS_PER_SECOND;
+    (void) taskDelay(ticks);
+}
+
+void BddTargetVxWorks64_Teardown(void)
+{
+    SolidSyslog_Destroy(logger);
+    SolidSyslogCircularBuffer_Destroy(buffer);
+    SolidSyslogVxWorks64Mutex_Destroy(bufferMutex);
+    SolidSyslogUdpSender_Destroy(sender);
+    SolidSyslogVxWorks64Datagram_Destroy(datagram);
+    SolidSyslogVxWorks64Resolver_Destroy(resolver);
+    SolidSyslogVxWorks64Address_Destroy(address);
 }
