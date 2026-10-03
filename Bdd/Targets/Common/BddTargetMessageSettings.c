@@ -46,7 +46,7 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
     else if (strcmp(name, "port") == 0)
     {
         unsigned long parsed = 0U;
-        taken = MessageSettings_TryParseNumber(value, &parsed);
+        taken = MessageSettings_TryParseNumber(value, &parsed) && (parsed > 0U);
         if (taken)
         {
             port = (uint16_t) parsed;
