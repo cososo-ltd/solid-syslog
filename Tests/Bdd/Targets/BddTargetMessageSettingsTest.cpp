@@ -152,6 +152,15 @@ TEST(BddTargetMessageSettings, Port65535IsTaken)
     CHECK_TRUE(BddTargetMessageSettings_SetByName("port", "65535"));
 }
 
+TEST(BddTargetMessageSettings, SettingThePortMovesTheEndpointVersion)
+{
+    uint32_t before = BddTargetMessageSettings_GetEndpointVersion(nullptr);
+
+    BddTargetMessageSettings_SetByName("port", "6001");
+
+    CHECK(BddTargetMessageSettings_GetEndpointVersion(nullptr) != before);
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
