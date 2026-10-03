@@ -12,8 +12,14 @@
 add_library(SolidSyslogVxWorks64 INTERFACE)
 
 target_sources(SolidSyslogVxWorks64 INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64Address.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64AddressStatic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64Datagram.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64DatagramStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64Mutex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64MutexStatic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64Resolver.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64ResolverStatic.c
 )
 
 target_include_directories(SolidSyslogVxWorks64 INTERFACE

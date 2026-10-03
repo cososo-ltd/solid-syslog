@@ -424,6 +424,9 @@ and in the definition. The repetition is the convention, not a defect.
 Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recorded under
 [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
 
+VxWorks 6.4 sites (sub-case (c)) added 2026-09-30, approved by the project owner,
+David Cozens. Recorded under [S41.03](https://github.com/cososo-ltd/solid-syslog/issues/933).
+
 ---
 
 ## D.004 - Rule 18.4: pointer arithmetic on record buffers (retired)
@@ -604,6 +607,26 @@ Site categories that trigger this rule:
    the buffer to PBUF_RAM (defeats the zero-copy point of PBUF_REF
    and doubles per-send pool pressure).
 
+   **(c)** `Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c` and
+   `SolidSyslogVxWorks64Resolver.c`:
+
+   ```c
+   int sent = sendto(self->Fd, (char*) buffer, (int) size, 0, (struct sockaddr*) sin, (int) sizeof(*sin));
+   uint32_t found = (uint32_t) inet_addr((char*) host);
+   found = (uint32_t) hostGetByName((char*) host);
+   ```
+
+   The public VxWorks 6.x API reference declares the buffer and address of
+   `sendto`, and the string of `inet_addr` and `hostGetByName`, without
+   `const`, though each only reads them. The Datagram and Resolver contracts
+   pass these as `const`, so the qualifier is stripped at the call.
+   Alternatives considered and rejected: copying the payload to a non-const
+   buffer (a copy per send, defeating zero-copy), and copying the host into a
+   local non-const buffer (removes the two resolver sites at the cost of 256
+   bytes of stack per resolve, but leaves `sendto`, so the deviation is needed
+   regardless). The 6.4 headers were checked on 2026-10-03, under S41.03:
+   none of the three takes `const`, so the sub-case stands as written.
+
 ### Scope
 
 - **Strict level** - the field-access reads in `Core/Source/`: the
@@ -615,9 +638,10 @@ Site categories that trigger this rule:
   `BlockStore_ResolveSecurityPolicy` accepting `config->SecurityPolicy` in
   `SolidSyslogBlockStoreStatic.c`.
 - **Pragmatic level** - the `select()` timeout cast in
-  `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`, and the lwIP
+  `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`, the lwIP
   `pbuf->payload` field cast in
-  `Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c`.
+  `Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c`, and the `sendto`,
+  `inet_addr` and `hostGetByName` casts in `Platform/VxWorks64/Source/`.
 
 ### Rationale
 
@@ -629,10 +653,11 @@ introduce a no-op `const_cast`-style explicit cast that the tool would
 still flag. Recording the finding here, with the reasoning, is the honest
 alternative to bending the code around a tool.
 
-The two platform-API sites are the standard case of a const-correct interior
+The platform-API sites are the standard case of a const-correct interior
 forced to strip qualification at a fixed third-party API boundary. Both
 upstream declarations (Microsoft's `select()` timeout,
-lwIP's `struct pbuf` `payload` field) are fixed by their vendors; the
+lwIP's `struct pbuf` `payload` field, and the VxWorks socket and host-library
+prototypes) are fixed by their vendors; the
 SolidSyslog seam
 keeps the const-correctness contract on the caller's side of the
 boundary.
@@ -643,7 +668,7 @@ boundary.
   codebase would surface as a fresh 11.8 finding, not be silently
   absorbed by the existing suppressions - the suppressions are
   line-specific.
-- **Platform-API sites.** Both the Winsock and lwIP casts are
+- **Platform-API sites.** The Winsock, lwIP and VxWorks casts are
   documented at the call site and listed individually here; any new
   const-strip at a platform boundary surfaces as a fresh 11.8 finding
   rather than being absorbed by glob.
@@ -1116,8 +1141,9 @@ Stream implementation, and `SolidSyslogDatagram_SendTo` takes `const void*`
 likewise. Some third-party C libraries type their byte buffers as a character
 pointer rather than `void*`: mbedTLS uses `const unsigned char*` /
 `unsigned char*`, and the Winsock socket calls use `const char*` / `char*`
-where their POSIX counterparts use `void*`. The implementation cast bridging
-the two is unavoidable at the API boundary:
+where their POSIX counterparts use `void*`, as does the VxWorks 6.x `sendto`,
+which the public API reference declares taking `char*`. The implementation
+cast bridging the two is unavoidable at the API boundary:
 
 ```c
 int rc  = mbedtls_ssl_write(&self->SslContext, (const unsigned char*) buffer, size);
@@ -1134,6 +1160,8 @@ Rule 11.5 fires on each such adapter cast.
   `WinsockTcpStream_Send` and `WinsockTcpStream_Read`, `char*`.
 - `Platform/Windows/Source/SolidSyslogWinsockDatagram.c` -
   `WinsockDatagram_SendTo`, `char*`.
+- `Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c` -
+  `VxWorks64Datagram_SendTo`, `char*`.
 
 A future Stream, Datagram, hash or MAC implementation wrapping a byte-typed
 third-party C API will meet the same boundary, but is not covered by this
@@ -1171,7 +1199,8 @@ The cast is well-defined: a character type may alias any object type
   each direction keeps its qualification. `SolidSyslogStream_Send` typed to
   `const unsigned char*` and `SolidSyslogStream_Read` to `unsigned char*`
   would retire the Stream sites; `SolidSyslogDatagram_SendTo` typed to
-  `const unsigned char*` would retire `WinsockDatagram_SendTo`. Either would
+  `const unsigned char*` would retire `WinsockDatagram_SendTo` and
+  `VxWorks64Datagram_SendTo`. Either would
   only retire the sites whose third-party spelling it matched.
   Tracked as a possible E10-successor refactor, not scheduled.
 
@@ -1179,6 +1208,9 @@ The cast is well-defined: a character type may alias any object type
 
 Raised and approved 2026-05-23 by the project owner, David Cozens. Recorded under
 [S10.20](https://github.com/cososo-ltd/solid-syslog/issues/437).
+
+VxWorks64 datagram site added 2026-09-30, approved by the project owner, David
+Cozens. Recorded under [S41.03](https://github.com/cososo-ltd/solid-syslog/issues/933).
 
 ---
 

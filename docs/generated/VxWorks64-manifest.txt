@@ -13,8 +13,14 @@
 ## Source files (.c) — compile all of these
 
 # VxWorks64:
+Platform/VxWorks64/Source/SolidSyslogVxWorks64Address.c
+Platform/VxWorks64/Source/SolidSyslogVxWorks64AddressStatic.c
+Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c
+Platform/VxWorks64/Source/SolidSyslogVxWorks64DatagramStatic.c
 Platform/VxWorks64/Source/SolidSyslogVxWorks64Mutex.c
 Platform/VxWorks64/Source/SolidSyslogVxWorks64MutexStatic.c
+Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c
+Platform/VxWorks64/Source/SolidSyslogVxWorks64ResolverStatic.c
 
 ## Include directories
 
