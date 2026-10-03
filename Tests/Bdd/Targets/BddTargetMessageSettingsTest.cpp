@@ -66,6 +66,13 @@ TEST(BddTargetMessageSettings, AnEmptyFacilityIsRefused)
     CHECK_FALSE(BddTargetMessageSettings_SetByName("facility", ""));
 }
 
+TEST(BddTargetMessageSettings, SetSeverityChangesTheSeverity)
+{
+    CHECK_TRUE(BddTargetMessageSettings_SetByName("severity", "2"));
+
+    LONGS_EQUAL(2, BddTargetMessageSettings_Message()->Severity);
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
