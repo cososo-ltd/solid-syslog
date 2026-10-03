@@ -5,12 +5,15 @@
 #include <string.h>
 
 #include "SolidSyslog.h"
+#include "SolidSyslogEndpoint.h"
+#include "SolidSyslogEndpointHost.h"
 #include "SolidSyslogHeaderField.h"
 #include "SolidSyslogTunables.h"
 
 static char appName[49];
 static char messageId[33];
 static char msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+static char host[16];
 static struct SolidSyslogMessage message = {
     .MessageId = messageId,
     .Msg = msg,
@@ -33,6 +36,10 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
     else if (strcmp(name, "msg") == 0)
     {
         taken = MessageSettings_TryUpdateString(msg, sizeof(msg), value);
+    }
+    else if (strcmp(name, "host") == 0)
+    {
+        taken = MessageSettings_TryUpdateString(host, sizeof(host), value);
     }
     else if (strcmp(name, "facility") == 0)
     {
@@ -96,4 +103,10 @@ void BddTargetMessageSettings_GetAppName(struct SolidSyslogHeaderField* field, v
 {
     (void) context;
     SolidSyslogHeaderField_PrintUsAscii(field, appName, strlen(appName));
+}
+
+void BddTargetMessageSettings_GetEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
+{
+    (void) context;
+    SolidSyslogEndpointHost_String(endpoint->Host, host, strlen(host));
 }

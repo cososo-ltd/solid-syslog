@@ -5,6 +5,7 @@
 
 #include "SolidSyslogExternC.h"
 
+struct SolidSyslogEndpoint;
 struct SolidSyslogHeaderField;
 struct SolidSyslogMessage;
 
@@ -15,6 +16,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     bool BddTargetMessageSettings_SetByName(const char* name, const char* value);
     const struct SolidSyslogMessage* BddTargetMessageSettings_Message(void);
     void BddTargetMessageSettings_GetAppName(struct SolidSyslogHeaderField * field, void* context);
+    void BddTargetMessageSettings_GetEndpoint(struct SolidSyslogEndpoint * endpoint, void* context);
 
 SOLIDSYSLOG_EXTERN_C_END
 
