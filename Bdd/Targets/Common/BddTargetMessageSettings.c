@@ -25,6 +25,15 @@ static struct SolidSyslogMessage message = {
 static inline bool MessageSettings_TryUpdateString(char* storage, size_t storageSize, const char* value);
 static inline bool MessageSettings_TryParseNumber(const char* value, unsigned long* parsed);
 
+void BddTargetMessageSettings_Reset(const char* defaultHost)
+{
+    (void) defaultHost;
+    (void) MessageSettings_TryUpdateString(messageId, sizeof(messageId), "example");
+    (void) MessageSettings_TryUpdateString(msg, sizeof(msg), "Hello from SolidSyslog");
+    message.Facility = SOLIDSYSLOG_FACILITY_LOCAL0;
+    message.Severity = SOLIDSYSLOG_SEVERITY_INFORMATIONAL;
+}
+
 bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
 {
     bool taken = false;
