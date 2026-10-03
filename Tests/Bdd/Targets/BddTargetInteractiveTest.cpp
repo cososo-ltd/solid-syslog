@@ -149,6 +149,13 @@ TEST(BddTargetInteractive, SetCommandValueExcludesACarriageReturnLineEnding)
     STRCMP_EQUAL("Foo", spy.lastValue.c_str());
 }
 
+TEST(BddTargetInteractive, QuitWithACarriageReturnLineEndingEndsTheSession)
+{
+    RunWithInput("quit\r\nset hostname Foo\r\n", RecordSet);
+
+    LONGS_EQUAL(0, spy.callCount);
+}
+
 TEST(BddTargetInteractive, NullSetHandlerSilentlyIgnoresSetLine)
 {
     RunWithInput("set hostname Foo\nquit\n", nullptr);
