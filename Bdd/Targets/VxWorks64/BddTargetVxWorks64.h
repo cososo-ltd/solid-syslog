@@ -17,6 +17,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void BddTargetVxWorks64_RunConsole(FILE * input);
     /* Releases everything Init built. */
     void BddTargetVxWorks64_Teardown(void);
+    /* The service loop's yield. */
+    void BddTargetVxWorks64_Sleep(int milliseconds);
 
 SOLIDSYSLOG_EXTERN_C_END
 

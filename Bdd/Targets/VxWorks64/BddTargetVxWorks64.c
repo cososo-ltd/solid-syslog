@@ -213,3 +213,9 @@ static int BddTargetVxWorks64_ServiceTask(void)
 {
     return 0;
 }
+
+void BddTargetVxWorks64_Sleep(int milliseconds)
+{
+    (void) milliseconds;
+    (void) taskDelay(1);
+}
