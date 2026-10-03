@@ -73,6 +73,14 @@ TEST(BddTargetMessageSettings, SetSeverityChangesTheSeverity)
     LONGS_EQUAL(2, BddTargetMessageSettings_Message()->Severity);
 }
 
+TEST(BddTargetMessageSettings, ASeverityThatIsNotANumberIsRefusedAndKeepsThePrevious)
+{
+    BddTargetMessageSettings_SetByName("severity", "2");
+
+    CHECK_FALSE(BddTargetMessageSettings_SetByName("severity", "x"));
+    LONGS_EQUAL(2, BddTargetMessageSettings_Message()->Severity);
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
