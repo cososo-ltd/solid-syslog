@@ -241,6 +241,23 @@ class ConsoleTest(unittest.TestCase):
         listener.close()
         self.assertEqual(b"SolidSyslog VxWorks 6.4 BDD target: Core ran\r\n", out.getvalue())
 
+    def test_the_reply_is_sent_once_when_the_target_prompts(self):
+        listener = socket.create_server(("127.0.0.1", 0))
+        relay = threading.Thread(target=job_service.relay_console,
+                                 args=(listener, io.BytesIO(), b"collector?", lambda address: f"collector {address} 5514"))
+        relay.start()
+        with socket.create_connection(listener.getsockname()) as target:
+            target.sendall(b"booting\r\nSolidSyslog VxWorks 6.4 BDD target: collector?\r\n")
+            target.settimeout(5)
+            reply = target.recv(4096)
+            target.sendall(b"collector? again\r\n")
+            target.settimeout(0.5)
+            with self.assertRaises(socket.timeout):
+                target.recv(4096)
+        relay.join(5)
+        listener.close()
+        self.assertEqual(b"collector 127.0.0.1 5514\r\n", reply)
+
     # Stopping QEMU kills it, so its end of the console is reset, not closed.
     def test_a_reset_connection_ends_the_relay_and_keeps_what_arrived(self):
         listener = socket.create_server(("127.0.0.1", 0))
