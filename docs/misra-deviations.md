@@ -624,8 +624,8 @@ Site categories that trigger this rule:
    buffer (a copy per send, defeating zero-copy), and copying the host into a
    local non-const buffer (removes the two resolver sites at the cost of 256
    bytes of stack per resolve, but leaves `sendto`, so the deviation is needed
-   regardless). Keeping all three VxWorks prototype mismatches in one sub-case
-   means they retire together if the 6.4 headers prove const-correct.
+   regardless). The 6.4 headers were checked on 2026-10-03, under S41.03:
+   none of the three takes `const`, so the sub-case stands as written.
 
 ### Scope
 
