@@ -18,6 +18,7 @@ set(BDD_TARGET_PRODUCTION_SOURCES
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLanguage.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMessageSettings.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
 )
 
