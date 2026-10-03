@@ -27,7 +27,8 @@ static inline bool MessageSettings_TryParseNumber(const char* value, unsigned lo
 
 void BddTargetMessageSettings_Reset(const char* defaultHost)
 {
-    (void) defaultHost;
+    (void) MessageSettings_TryUpdateString(host, sizeof(host), defaultHost);
+    port = 5514U;
     (void) MessageSettings_TryUpdateString(appName, sizeof(appName), "SolidSyslogBddTarget");
     (void) MessageSettings_TryUpdateString(messageId, sizeof(messageId), "example");
     (void) MessageSettings_TryUpdateString(msg, sizeof(msg), "Hello from SolidSyslog");
