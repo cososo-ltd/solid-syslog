@@ -53,6 +53,14 @@ TEST(BddTargetMessageSettings, SetFacilityChangesTheFacility)
     LONGS_EQUAL(3, BddTargetMessageSettings_Message()->Facility);
 }
 
+TEST(BddTargetMessageSettings, AFacilityThatIsNotANumberIsRefusedAndKeepsThePrevious)
+{
+    BddTargetMessageSettings_SetByName("facility", "3");
+
+    CHECK_FALSE(BddTargetMessageSettings_SetByName("facility", "3x"));
+    LONGS_EQUAL(3, BddTargetMessageSettings_Message()->Facility);
+}
+
 TEST(BddTargetMessageSettings, AnUnknownNameIsNotTakenAndChangesNothing)
 {
     BddTargetMessageSettings_SetByName("msgid", "abc");
