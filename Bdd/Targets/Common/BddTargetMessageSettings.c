@@ -15,6 +15,7 @@ static struct SolidSyslogMessage message = {
 };
 
 static inline bool MessageSettings_TryUpdateString(char* storage, size_t storageSize, const char* value);
+static inline bool MessageSettings_TryParseNumber(const char* value, unsigned long* parsed);
 
 bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
 {
@@ -29,8 +30,12 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
     }
     else if (strcmp(name, "facility") == 0)
     {
-        message.Facility = (enum SolidSyslogFacility) strtoul(value, NULL, 10);
-        taken = true;
+        unsigned long parsed = 0U;
+        taken = MessageSettings_TryParseNumber(value, &parsed);
+        if (taken)
+        {
+            message.Facility = (enum SolidSyslogFacility) parsed;
+        }
     }
     else
     {
@@ -50,6 +55,21 @@ static inline bool MessageSettings_TryUpdateString(char* storage, size_t storage
         (void) memcpy(storage, value, length + 1U);
     }
     return fits;
+}
+
+/* Takes decimal digits only, with nothing after them. A value outside the
+   enumeration is passed on unchanged, so the library stays the one authority
+   on what is valid. */
+static inline bool MessageSettings_TryParseNumber(const char* value, unsigned long* parsed)
+{
+    char* end = NULL;
+    unsigned long number = strtoul(value, &end, 10);
+    bool isNumber = (end != value) && (*end == '\0');
+    if (isNumber)
+    {
+        *parsed = number;
+    }
+    return isNumber;
 }
 
 const struct SolidSyslogMessage* BddTargetMessageSettings_Message(void)
