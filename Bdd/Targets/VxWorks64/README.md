@@ -77,9 +77,13 @@ for Windows provides:
 2. Allow inbound connections from the local network: TCP 8765 for the job
    service, TCP 8766 for the target's console, and UDP 5514 for syslog sent by
    the target. `LocalSubnet` follows the network, so an address changing on
-   either machine needs no new rule. For example, in an administrator
-   PowerShell:
-   `New-NetFirewallRule -DisplayName 'SolidSyslog runner' -Direction Inbound -Protocol TCP -LocalPort 8765,8766 -RemoteAddress LocalSubnet -Action Allow`
+   either machine needs no new rule. In an administrator PowerShell:
+
+   ```powershell
+   New-NetFirewallRule -DisplayName 'SolidSyslog runner' -Direction Inbound -Protocol TCP -LocalPort 8765,8766 -RemoteAddress LocalSubnet -Action Allow
+   New-NetFirewallRule -DisplayName 'SolidSyslog runner syslog' -Direction Inbound -Protocol UDP -LocalPort 5514 -RemoteAddress LocalSubnet -Action Allow
+   ```
+
 3. `python Runner\job_service.py serve`, and leave it running.
 
 On the build machine, in its clone:
@@ -89,7 +93,10 @@ On the build machine, in its clone:
    and leave it running. Ctrl+C stops it.
 
 Then, on the development machine, `python Runner\job_service.py submit <job>`
-queues a job, prints its log as it runs, and exits 0 only if it succeeded:
+queues a job, prints its log as it runs, and exits 0 only if it succeeded. It
+stops waiting after 120 seconds, which suits every job but `build`; give that
+longer with `--timeout`, for example `submit --timeout 1200 build`. Stopping
+waiting does not stop the job: the runner carries on with it.
 
 | Job | What the runner does |
 |---|---|
