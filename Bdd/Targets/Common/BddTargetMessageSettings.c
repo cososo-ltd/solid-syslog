@@ -4,10 +4,13 @@
 #include <string.h>
 
 #include "SolidSyslog.h"
+#include "SolidSyslogTunables.h"
 
 static char messageId[33];
+static char msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
 static struct SolidSyslogMessage message = {
     .MessageId = messageId,
+    .Msg = msg,
 };
 
 static inline bool MessageSettings_TryUpdateString(char* storage, size_t storageSize, const char* value);
@@ -18,6 +21,14 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
     if (strcmp(name, "msgid") == 0)
     {
         taken = MessageSettings_TryUpdateString(messageId, sizeof(messageId), value);
+    }
+    else if (strcmp(name, "msg") == 0)
+    {
+        taken = MessageSettings_TryUpdateString(msg, sizeof(msg), value);
+    }
+    else
+    {
+        /* Not ours - taken stays false so the caller can offer it elsewhere. */
     }
     return taken;
 }
