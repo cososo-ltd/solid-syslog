@@ -46,13 +46,16 @@ host build compiles the pack at strict C99.
 Target runs are outside CI - the toolchain and the kernel are licensed - so
 this section records them as they are made.
 
-The mutex has been built for VxWorks 6.4 on MIPS32 with Diab, and booted under
-QEMU's Malta machine. The library compiles with the image's own flags, which
-include `-Xlint`, plus the C99 dialect it adds; so built, the mutex, Core and an
-application file including their public headers compile with no diagnostics. The
-mutex is not yet exercised on the target: the BDD target will be the first to
-run it. The UDP transport and the resolver have not yet been built for the
-target.
+The whole pack has been built for VxWorks 6.4 on MIPS32 with Diab, and booted
+under QEMU's Malta machine. The library compiles with the image's own flags,
+which include `-Xlint`, plus the C99 dialect it adds; so built, the pack, Core
+and an application file including every public header compile with no
+diagnostics.
+
+On that image, the UDP transport and the resolver have delivered a message,
+resolved from a dotted address, through QEMU's user network to a syslog-ng
+collector on another machine. The mutex is not yet exercised on the target: the
+BDD target will be the first to run it.
 
 ## Security behaviour and obligations
 

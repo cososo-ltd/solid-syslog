@@ -60,6 +60,12 @@ pass, fail or not run.
 2. `Build-VxWorks64Vip.ps1 -Clean` ends with `Diagnostics: none`.
 3. `Start-VxWorks64Qemu.ps1 -WaitFor 'SolidSyslog VxWorks 6.4 BDD target: Core ran'`
    reports `PASS`.
+4. With a syslog collector listening on UDP 5514 on the development machine,
+   and `Runner\job_service.py console` running there, QEMU started with its
+   console connecting to it (the runner's `qemu-start`). The console shows
+   `network default route set` and `logged over UDP to <host>:5514` with no
+   `error from` line, and the collector records a message with MSGID `UDP`
+   and the text `VxWorks 6.4 BDD target over UDP`.
 
 ## Driving it from another machine
 
@@ -133,6 +139,13 @@ creation script sets the project's build macros with
   macro reaches Wind River's sources and the ones `vxprj` generates - the BSP,
   `romStart.c`, `prjConfig.c` and `linkSyms.c` - so the project's own sources
   keep the warning.
+
+The creation script also adds the network the target sends over: the IPv4 stack
+with UDP and sockets, the host table, routing, and the END driver for QEMU's
+PCnet adapter. QEMU loads the ROM image directly, so the boot line's addresses
+are never used; `INCLUDE_ADDIF` puts the adapter on QEMU's user network instead,
+as `10.0.2.15/24`. The target adds a default route through QEMU's gateway,
+`10.0.2.2`, at start-up, and asks for the collector's address over its console.
 
 The kernel header tree has no `<stdint.h>` or `<stdbool.h>`, which the
 SolidSyslog headers include. `Platform/VxWorks64/Compat` supplies both, for the
