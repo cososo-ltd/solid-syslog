@@ -172,3 +172,10 @@ TEST(BddTargetVxWorks64, ATaskThatFailsToStartIsReportedOnTheConsole)
 
     STRCMP_CONTAINS("task tSsInteractive failed to start", Reported().c_str());
 }
+
+TEST(BddTargetVxWorks64, TheBootsCoreOnlyCheckIsNotReportedAsAnError)
+{
+    BddTargetVxWorks64_Init();
+
+    CHECK(Reported().find("bad config") == std::string::npos);
+}
