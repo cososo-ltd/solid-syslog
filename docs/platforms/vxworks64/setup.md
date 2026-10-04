@@ -80,6 +80,28 @@ The ring memory and the mutex must outlive the buffer.
 If both calls happen on one task, pass `SolidSyslogNullMutex_Get()` - it is the
 right answer and costs nothing.
 
+## The callbacks
+
+`SolidSyslogConfig` takes the clock and hostname as callbacks rather than
+components, and this platform supplies one of each ready to use:
+`SolidSyslogVxWorks64_GetTimestamp` and `SolidSyslogVxWorks64_GetHostname`.
+Leave `GetProcessId` unset; a kernel task has no process id to report.
+`SolidSyslogVxWorks64_GetSysUpTime` fills the meta structured data's sysUpTime,
+and `SolidSyslogVxWorks64_Sleep` is ready for any component that takes a sleep
+callback.
+
+```c
+#include "SolidSyslogVxWorks64Clock.h"
+#include "SolidSyslogVxWorks64Hostname.h"
+
+config.Clock       = SolidSyslogVxWorks64_GetTimestamp;
+config.GetHostname = SolidSyslogVxWorks64_GetHostname;
+```
+
+Set the clock, and the hostname if the image does not, before the first record
+is logged. [VxWorks 6.4](index.md#the-clock-is-only-as-right-as-whatever-set-it)
+says what a record carries before then.
+
 ## When it does not work
 
 Install an error handler before you start; [error severity](../../error-severity.md)
