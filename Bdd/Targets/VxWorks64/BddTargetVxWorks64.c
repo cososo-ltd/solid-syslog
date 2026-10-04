@@ -10,6 +10,7 @@
 #include "BddTargetVxWorks64.h"
 
 #include "errnoLib.h"
+#include "hostLib.h"
 #include "routeLib.h"
 #include "sysLib.h"
 #include "taskLib.h"
@@ -37,6 +38,7 @@
 #include "SolidSyslogVxWorks64Address.h"
 #include "SolidSyslogVxWorks64Clock.h"
 #include "SolidSyslogVxWorks64Datagram.h"
+#include "SolidSyslogVxWorks64Hostname.h"
 #include "SolidSyslogVxWorks64Mutex.h"
 #include "SolidSyslogVxWorks64Resolver.h"
 
@@ -141,8 +143,10 @@ static void BddTargetVxWorks64_BringUpNetwork(void)
 {
     char anyDestination[] = "0.0.0.0";
     char gateway[] = "10.0.2.2";
+    char hostname[] = "SolidSyslogVxWorks64";
 
     BddTargetVxWorks64_ReportStep("default route", routeAdd(anyDestination, gateway));
+    BddTargetVxWorks64_ReportStep("hostname", sethostname(hostname, (int) sizeof(hostname)));
 }
 
 static void BddTargetVxWorks64_ReportStep(const char* step, STATUS status)
@@ -203,6 +207,7 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     config.Store = SolidSyslogNullStore_Get();
     config.GetAppName = BddTargetMessageSettings_GetAppName;
     config.Clock = SolidSyslogVxWorks64_GetTimestamp;
+    config.GetHostname = SolidSyslogVxWorks64_GetHostname;
     logger = SolidSyslog_Create(&config);
 }
 
