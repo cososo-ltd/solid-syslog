@@ -97,6 +97,11 @@ TEST(BddTargetMessageSettings, AFacilityThatIsNotANumberIsRefusedAndKeepsThePrev
     LONGS_EQUAL(3, BddTargetMessageSettings_Message()->Facility);
 }
 
+TEST(BddTargetMessageSettings, AFacilityWithASignIsRefused)
+{
+    CHECK_FALSE(BddTargetMessageSettings_SetByName("facility", "+3"));
+}
+
 TEST(BddTargetMessageSettings, AnEmptyFacilityIsRefused)
 {
     CHECK_FALSE(BddTargetMessageSettings_SetByName("facility", ""));
