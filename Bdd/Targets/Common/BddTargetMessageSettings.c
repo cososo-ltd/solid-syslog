@@ -1,6 +1,7 @@
 #include "BddTargetMessageSettings.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -139,8 +140,11 @@ static inline bool MessageSettings_SetPort(const char* value)
 static inline bool MessageSettings_TryParseNumber(const char* value, unsigned long* parsed)
 {
     char* end = NULL;
+    errno = 0;
     unsigned long number = strtoul(value, &end, 10);
-    bool isNumber = (isdigit((unsigned char) value[0]) != 0) && (*end == '\0');
+    /* strtoul saturates a number it cannot hold, and says so only in errno. */
+    bool fits = (errno != ERANGE);
+    bool isNumber = (isdigit((unsigned char) value[0]) != 0) && (*end == '\0') && fits;
     if (isNumber)
     {
         *parsed = number;
