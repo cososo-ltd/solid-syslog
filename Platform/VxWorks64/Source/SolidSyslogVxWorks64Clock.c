@@ -28,5 +28,6 @@ void SolidSyslogVxWorks64_GetTimestamp(struct SolidSyslogTimestamp* timestamp)
         timestamp->Hour = (uint8_t) breakdown.tm_hour;
         timestamp->Minute = (uint8_t) breakdown.tm_min;
         timestamp->Second = (uint8_t) breakdown.tm_sec;
+        timestamp->Microsecond = (uint32_t) (now.tv_nsec / 1000);
     }
 }
