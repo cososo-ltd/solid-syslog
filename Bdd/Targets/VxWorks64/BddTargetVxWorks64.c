@@ -42,11 +42,8 @@
 enum
 {
     TASK_PRIORITY = 100,
-    /* Large while an occasional silent reboot is investigated: if a stack is
-     * overflowing, these remove it, and they are tuned down once the cause is
-     * known. */
-    INTERACTIVE_STACK_BYTES = 65536,
-    SERVICE_STACK_BYTES = 65536,
+    INTERACTIVE_STACK_BYTES = 16384,
+    SERVICE_STACK_BYTES = 8192,
     MILLISECONDS_PER_SECOND = 1000
 };
 
