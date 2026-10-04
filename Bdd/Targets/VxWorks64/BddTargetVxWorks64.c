@@ -12,7 +12,6 @@
 #include "errnoLib.h"
 #include "hostLib.h"
 #include "routeLib.h"
-#include "sysLib.h"
 #include "taskLib.h"
 
 #include <stdbool.h>
@@ -43,6 +42,7 @@
 #include "SolidSyslogVxWorks64Hostname.h"
 #include "SolidSyslogVxWorks64Mutex.h"
 #include "SolidSyslogVxWorks64Resolver.h"
+#include "SolidSyslogVxWorks64Sleep.h"
 
 #define BDD_TARGET_TAG "SolidSyslog VxWorks 6.4 BDD target: "
 
@@ -50,8 +50,7 @@ enum
 {
     TASK_PRIORITY = 100,
     INTERACTIVE_STACK_BYTES = 16384,
-    SERVICE_STACK_BYTES = 8192,
-    MILLISECONDS_PER_SECOND = 1000
+    SERVICE_STACK_BYTES = 8192
 };
 
 static FILE* BddTargetVxWorks64_Reports(void);
@@ -262,13 +261,7 @@ static int BddTargetVxWorks64_ServiceTask(void)
 
 void BddTargetVxWorks64_RunConsole(FILE* input)
 {
-    BddTargetInteractive_Run(
-        logger,
-        BddTargetMessageSettings_Message(),
-        input,
-        NULL,
-        BddTargetVxWorks64_SetByName
-    );
+    BddTargetInteractive_Run(logger, BddTargetMessageSettings_Message(), input, NULL, BddTargetVxWorks64_SetByName);
     consoleEnded = true;
 }
 
@@ -307,17 +300,10 @@ static bool BddTargetVxWorks64_SetTime(const char* value)
 /* Once the console ends, what it logged is still sent before the task stops. */
 void BddTargetVxWorks64_RunService(void)
 {
-    BddTargetServiceThread_Run(logger, &consoleEnded, BddTargetVxWorks64_Sleep);
+    BddTargetServiceThread_Run(logger, &consoleEnded, SolidSyslogVxWorks64_Sleep);
     while (SolidSyslog_Service(logger) == SOLIDSYSLOG_SERVICE_READY)
     {
     }
-}
-
-/* Rounded up, so a short sleep still yields for a tick rather than none. */
-void BddTargetVxWorks64_Sleep(int milliseconds)
-{
-    int ticks = ((milliseconds * sysClkRateGet()) + (MILLISECONDS_PER_SECOND - 1)) / MILLISECONDS_PER_SECOND;
-    (void) taskDelay(ticks);
 }
 
 void BddTargetVxWorks64_Teardown(void)

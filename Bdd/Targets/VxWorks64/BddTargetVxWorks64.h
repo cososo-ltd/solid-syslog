@@ -22,8 +22,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Where the target's own reports go - its steps and library errors. NULL,
        the default, is the console. */
     void BddTargetVxWorks64_ReportTo(FILE * stream);
-    /* The service loop's yield. */
-    void BddTargetVxWorks64_Sleep(int milliseconds);
 
 SOLIDSYSLOG_EXTERN_C_END
 

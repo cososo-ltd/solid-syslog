@@ -288,6 +288,7 @@ add_executable(BddTargetVxWorks64Test
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64MutexStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64ResolverStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Sleep.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64NetFake.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64SemFake.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64TaskFake.c
