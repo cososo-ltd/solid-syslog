@@ -108,3 +108,13 @@ TEST(BddTargetVxWorks64, TheServiceTaskSendsWhatTheConsoleLoggedBeforeItStops)
 
     CALLED_FAKE(VxWorks64NetFake_Sendto, ONCE);
 }
+
+TEST(BddTargetVxWorks64, ASentMessageCarriesTheOriginStructuredData)
+{
+    BddTargetVxWorks64_Init();
+    RunConsoleWith("send\nquit\n");
+
+    BddTargetVxWorks64_RunService();
+
+    STRCMP_CONTAINS("[origin software=\"SolidSyslogBddTarget\"", VxWorks64NetFake_LastSendtoPayload());
+}
