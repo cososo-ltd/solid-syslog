@@ -26,6 +26,13 @@ class RemoteConsoleTest(unittest.TestCase):
 
         self.assertEqual(b"SolidSyslog> ", os.read(self.console.stdout.fileno(), 13))
 
+    def test_what_the_steps_write_to_stdin_reaches_the_target(self):
+        self.console.stdin.write("send 1\n")
+        self.console.stdin.flush()
+
+        self.target.settimeout(5)
+        self.assertEqual(b"send 1\n", self.target.recv(4096))
+
 
 if __name__ == "__main__":
     unittest.main()
