@@ -184,6 +184,7 @@ add_test(NAME SolidSyslogVxWorks64ClockTest COMMAND SolidSyslogVxWorks64ClockTes
 add_executable(SolidSyslogVxWorks64SysUpTimeTest
     SolidSyslogVxWorks64SysUpTimeTest.cpp
     main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64SysUpTime.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64TaskFake.c
 )
 
