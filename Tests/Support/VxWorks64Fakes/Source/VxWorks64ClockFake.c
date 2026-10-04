@@ -6,12 +6,14 @@
 #include <time.h>
 
 static bool VxWorks64ClockFake_ClockGettimeFails = false;
+static bool VxWorks64ClockFake_GmtimeRFails = false;
 static struct tm VxWorks64ClockFake_BrokenDown;
 static long VxWorks64ClockFake_Nanoseconds = 0L;
 
 void VxWorks64ClockFake_Reset(void)
 {
     VxWorks64ClockFake_ClockGettimeFails = false;
+    VxWorks64ClockFake_GmtimeRFails = false;
     VxWorks64ClockFake_BrokenDown = (struct tm) {0};
     VxWorks64ClockFake_Nanoseconds = 0L;
 }
@@ -19,6 +21,11 @@ void VxWorks64ClockFake_Reset(void)
 void VxWorks64ClockFake_FailClockGettime(void)
 {
     VxWorks64ClockFake_ClockGettimeFails = true;
+}
+
+void VxWorks64ClockFake_FailGmtimeR(void)
+{
+    VxWorks64ClockFake_GmtimeRFails = true;
 }
 
 void VxWorks64ClockFake_SetBrokenDownTime(int year, int month, int day, int hour, int minute, int second)
@@ -48,5 +55,5 @@ int gmtime_r(const time_t* tod, struct tm* result)
 {
     (void) tod;
     *result = VxWorks64ClockFake_BrokenDown;
-    return OK;
+    return VxWorks64ClockFake_GmtimeRFails ? ERROR : OK;
 }

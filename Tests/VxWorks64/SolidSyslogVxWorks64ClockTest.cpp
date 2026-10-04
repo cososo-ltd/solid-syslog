@@ -96,3 +96,14 @@ TEST(SolidSyslogVxWorks64Clock, MicrosecondTruncatesTheNanoseconds)
 
     UNSIGNED_LONGS_EQUAL(123456, timestamp.Microsecond);
 }
+
+TEST(SolidSyslogVxWorks64Clock, TimestampIsZeroedWhenTheBreakdownFails)
+{
+    VxWorks64ClockFake_SetBrokenDownTime(126, 9, 4, 13, 45, 30);
+    VxWorks64ClockFake_FailGmtimeR();
+
+    SolidSyslogVxWorks64_GetTimestamp(&timestamp);
+
+    const struct SolidSyslogTimestamp zeroed = {};
+    MEMCMP_EQUAL(&zeroed, &timestamp, sizeof(timestamp));
+}
