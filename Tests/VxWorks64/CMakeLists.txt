@@ -188,4 +188,12 @@ set_target_properties(BddTargetVxWorks64Test PROPERTIES
     C_EXTENSIONS OFF
 )
 
+# The test feeds the console through a temporary file, whose portable spelling
+# CMake picks as it does SafeString's.
+if(MSVC)
+    target_sources(BddTargetVxWorks64Test PRIVATE ${CMAKE_SOURCE_DIR}/Tests/Support/TempFileWindows.c)
+else()
+    target_sources(BddTargetVxWorks64Test PRIVATE ${CMAKE_SOURCE_DIR}/Tests/Support/TempFileStandard.c)
+endif()
+
 add_test(NAME BddTargetVxWorks64Test COMMAND BddTargetVxWorks64Test)

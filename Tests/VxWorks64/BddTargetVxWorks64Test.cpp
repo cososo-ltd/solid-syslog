@@ -3,6 +3,7 @@
 #include <cstdio>
 
 #include "BddTargetVxWorks64.h"
+#include "TempFile.h"
 #include "VxWorks64SemFake.h"
 #include "VxWorks64TaskFake.h"
 
@@ -23,13 +24,12 @@ TEST_GROUP(BddTargetVxWorks64)
     // Runs the console on these lines, as though typed at the target.
     static void RunConsoleWith(const char* lines)
     {
-        // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- tmpfile/fclose is C stdio; no owning memory concern
-        FILE* input = tmpfile();
+        FILE* input = TempFile_Open();
         CHECK(input != nullptr);
         (void) fputs(lines, input);
         rewind(input);
         BddTargetVxWorks64_RunConsole(input);
-        // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- tmpfile/fclose is C stdio; no owning memory concern
+        // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- fclose is C stdio; no owning memory concern
         (void) fclose(input);
     }
 };
