@@ -41,3 +41,12 @@ TEST(SolidSyslogVxWorks64Clock, YearCountsFromNineteenHundred)
 
     UNSIGNED_LONGS_EQUAL(2026, timestamp.Year);
 }
+
+TEST(SolidSyslogVxWorks64Clock, MonthCountsFromOne)
+{
+    VxWorks64ClockFake_SetBrokenDownTime(126, 0, 1, 0, 0, 0);
+
+    SolidSyslogVxWorks64_GetTimestamp(&timestamp);
+
+    UNSIGNED_LONGS_EQUAL(1, timestamp.Month);
+}
