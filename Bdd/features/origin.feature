@@ -22,7 +22,7 @@ Feature: Structured data — origin
     When the BDD target sends a syslog message
     Then the structured data contains ip "192.0.2.1"
 
-  @rtc @vxworks64wip
+  @rtc
   Scenario: All standard structured data present
     Given the syslog oracle is running
     When the BDD target sends a syslog message

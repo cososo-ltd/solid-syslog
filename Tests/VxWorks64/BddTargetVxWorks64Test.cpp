@@ -127,6 +127,30 @@ TEST(BddTargetVxWorks64, ASentMessageCarriesTheOriginStructuredData)
     STRCMP_CONTAINS("[origin software=\"SolidSyslogBddTarget\"", VxWorks64NetFake_LastSendtoPayload());
 }
 
+TEST(BddTargetVxWorks64, ASentMessageCarriesTheFirstSequenceId)
+{
+    SendOneMessage();
+
+    STRCMP_CONTAINS("[meta sequenceId=\"1\"", VxWorks64NetFake_LastSendtoPayload());
+}
+
+TEST(BddTargetVxWorks64, ASentMessageCarriesTheKernelsUpTime)
+{
+    // 600 ticks at the fake's 60 Hz is ten seconds, in hundredths.
+    VxWorks64TaskFake_SetTicks(600U);
+
+    SendOneMessage();
+
+    STRCMP_CONTAINS("sysUpTime=\"1000\"", VxWorks64NetFake_LastSendtoPayload());
+}
+
+TEST(BddTargetVxWorks64, ASentMessageCarriesItsLanguage)
+{
+    SendOneMessage();
+
+    STRCMP_CONTAINS("language=\"en-GB\"", VxWorks64NetFake_LastSendtoPayload());
+}
+
 TEST(BddTargetVxWorks64, ASentMessageSaysItsTimeIsKnownAndSynchronised)
 {
     SendOneMessage();
@@ -192,4 +216,14 @@ TEST(BddTargetVxWorks64, TheBootsCoreOnlyCheckIsNotReportedAsAnError)
     BddTargetVxWorks64_Init();
 
     CHECK(Reported().find("bad config") == std::string::npos);
+}
+
+TEST(BddTargetVxWorks64, TeardownReleasesTheCounterForTheNextBoot)
+{
+    BddTargetVxWorks64_Init();
+    BddTargetVxWorks64_Teardown();
+
+    BddTargetVxWorks64_Init();
+
+    CHECK(Reported().find("[VxWorks64AtomicCounter") == std::string::npos);
 }

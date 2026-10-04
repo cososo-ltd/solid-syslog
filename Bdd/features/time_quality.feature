@@ -12,7 +12,7 @@ Feature: Structured data — time quality
     Then the structured data contains tzKnown "1"
     And the structured data contains isSynced "1"
 
-  @rtc @vxworks64wip
+  @rtc
   Scenario: Time quality and sequence ID coexist
     Given the syslog oracle is running
     When the BDD target sends a syslog message

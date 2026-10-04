@@ -1,8 +1,8 @@
 # VxWorks 6.4 setup
 
-Wiring the UDP transport, the mutex, and the clock, hostname, uptime and sleep
-callbacks. [VxWorks 6.4](index.md) covers what they fill and what they leave to
-you.
+Wiring the UDP transport, the mutex, the atomic counter, and the clock,
+hostname, uptime and sleep callbacks. [VxWorks 6.4](index.md) covers what they
+fill and what they leave to you.
 
 ## What to link
 
@@ -80,6 +80,26 @@ The ring memory and the mutex must outlive the buffer.
 
 If both calls happen on one task, pass `SolidSyslogNullMutex_Get()` - it is the
 right answer and costs nothing.
+
+## Wiring the atomic counter
+
+The counter supplies the meta structured data's sequenceId, and pairs naturally
+with the uptime callback below:
+
+```c
+struct SolidSyslogAtomicCounter* counter = SolidSyslogVxWorks64AtomicCounter_Create();
+
+struct SolidSyslogMetaSdConfig metaConfig = {
+    .Counter      = counter,
+    .GetSysUpTime = SolidSyslogVxWorks64_GetSysUpTime,
+};
+struct SolidSyslogStructuredData* meta = SolidSyslogMetaSd_Create(&metaConfig);
+```
+
+Create takes no configuration. The counter must outlive the meta structured
+data, which does not destroy it. One counter serves one logger; drawing past
+the pool size in [Adding it to your build](../../build-integration.md#tunables)
+hands back the Null counter, as the header describes.
 
 ## The callbacks
 

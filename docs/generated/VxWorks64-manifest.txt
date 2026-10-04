@@ -15,6 +15,8 @@
 # VxWorks64:
 Platform/VxWorks64/Source/SolidSyslogVxWorks64Address.c
 Platform/VxWorks64/Source/SolidSyslogVxWorks64AddressStatic.c
+Platform/VxWorks64/Source/SolidSyslogVxWorks64AtomicCounter.c
+Platform/VxWorks64/Source/SolidSyslogVxWorks64AtomicCounterStatic.c
 Platform/VxWorks64/Source/SolidSyslogVxWorks64Clock.c
 Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c
 Platform/VxWorks64/Source/SolidSyslogVxWorks64DatagramStatic.c
