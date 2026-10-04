@@ -14,6 +14,7 @@ class RemoteConsole:
         self._connection = connection
         read_end, self._write_end = os.pipe()
         self.stdout = os.fdopen(read_end, "rb", buffering=0)
+        self.stdin = _ConsoleInput(connection)
         threading.Thread(target=self._copy_output, daemon=True).start()
 
     # The steps read stdout with os.read, which needs a real file descriptor;
@@ -23,3 +24,15 @@ class RemoteConsole:
         while data:
             os.write(self._write_end, data)
             data = self._connection.recv(4096)
+
+
+# Text written as the steps write a local target's stdin, sent as it is written.
+class _ConsoleInput:
+    def __init__(self, connection):
+        self._connection = connection
+
+    def write(self, text):
+        self._connection.sendall(text.encode())
+
+    def flush(self):
+        pass
