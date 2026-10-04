@@ -316,6 +316,7 @@ add_executable(BddTargetVxWorks64Test
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetInteractive.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLanguage.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMessageSettings.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetServiceThread.c
     ${VXWORKS64_CLOCK_SOURCES}

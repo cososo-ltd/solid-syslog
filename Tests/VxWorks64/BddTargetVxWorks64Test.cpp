@@ -144,6 +144,13 @@ TEST(BddTargetVxWorks64, ASentMessageCarriesTheKernelsUpTime)
     STRCMP_CONTAINS("sysUpTime=\"1000\"", VxWorks64NetFake_LastSendtoPayload());
 }
 
+TEST(BddTargetVxWorks64, ASentMessageCarriesItsLanguage)
+{
+    SendOneMessage();
+
+    STRCMP_CONTAINS("language=\"en-GB\"", VxWorks64NetFake_LastSendtoPayload());
+}
+
 TEST(BddTargetVxWorks64, ASentMessageSaysItsTimeIsKnownAndSynchronised)
 {
     SendOneMessage();

@@ -24,6 +24,7 @@
 #include "BddTargetErrorText.h"
 #include "BddTargetInteractive.h"
 #include "BddTargetIps.h"
+#include "BddTargetLanguage.h"
 #include "BddTargetMessageSettings.h"
 #include "BddTargetServiceThread.h"
 #include "SolidSyslog.h"
@@ -201,6 +202,7 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     struct SolidSyslogMetaSdConfig metaConfig = {0};
     metaConfig.Counter = counter;
     metaConfig.GetSysUpTime = SolidSyslogVxWorks64_GetSysUpTime;
+    metaConfig.GetLanguage = BddTargetLanguage_Get;
     metaSd = SolidSyslogMetaSd_Create(&metaConfig);
 
     struct SolidSyslogOriginSdConfig originConfig = {0};
