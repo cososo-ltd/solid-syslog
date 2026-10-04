@@ -18,7 +18,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -293,10 +292,16 @@ static bool BddTargetVxWorks64_SetByName(const char* name, const char* value)
  * since the epoch, and the system clock tick runs it from there. */
 static bool BddTargetVxWorks64_SetTime(const char* value)
 {
-    struct timespec now = {0};
+    unsigned long seconds = 0U;
+    bool taken = BddTargetMessageSettings_TryParseNumber(value, &seconds);
 
-    now.tv_sec = (time_t) strtoul(value, NULL, 10);
-    return clock_settime(CLOCK_REALTIME, &now) == OK;
+    if (taken)
+    {
+        struct timespec now = {0};
+        now.tv_sec = (time_t) seconds;
+        taken = (clock_settime(CLOCK_REALTIME, &now) == OK);
+    }
+    return taken;
 }
 
 /* Once the console ends, what it logged is still sent before the task stops. */
