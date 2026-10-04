@@ -9,6 +9,10 @@
 
 #include <stdint.h>
 
+/* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+#define IPPROTO_TCP 6
+/* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+
 #ifdef __cplusplus
 extern "C"
 {
