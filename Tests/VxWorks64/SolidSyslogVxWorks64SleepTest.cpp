@@ -47,3 +47,11 @@ TEST(SolidSyslogVxWorks64Sleep, ANegativeSleepOnlyYields)
 
     LONGS_EQUAL(0, VxWorks64TaskFake_LastDelayTicks());
 }
+
+TEST(SolidSyslogVxWorks64Sleep, AZeroSleepYieldsForNoTicks)
+{
+    SolidSyslogVxWorks64_Sleep(0);
+
+    UNSIGNED_LONGS_EQUAL(1, VxWorks64TaskFake_DelayCount());
+    LONGS_EQUAL(0, VxWorks64TaskFake_LastDelayTicks());
+}
