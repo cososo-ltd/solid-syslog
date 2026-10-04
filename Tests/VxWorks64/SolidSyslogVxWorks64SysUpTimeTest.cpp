@@ -28,3 +28,20 @@ TEST(SolidSyslogVxWorks64SysUpTime, OneSecondOfTicksIsOneHundredHundredths)
 
     UNSIGNED_LONGS_EQUAL(100, SolidSyslogVxWorks64_GetSysUpTime());
 }
+
+TEST(SolidSyslogVxWorks64SysUpTime, TicksBeyondThirtyTwoBitsScaleBeforeTruncating)
+{
+    // 2^32 ticks at 60 Hz is 7158278826 hundredths, which leaves 0xAAAAAAAA
+    // once taken modulo 2^32.
+    VxWorks64TaskFake_SetTicks(0x100000000ULL);
+
+    UNSIGNED_LONGS_EQUAL(0xAAAAAAAAUL, SolidSyslogVxWorks64_GetSysUpTime());
+}
+
+TEST(SolidSyslogVxWorks64SysUpTime, WrapsAtTwoToTheThirtyTwoHundredths)
+{
+    // 2576980381 ticks at 60 Hz is 2^32 + 5 hundredths: about 497 days.
+    VxWorks64TaskFake_SetTicks(2576980381ULL);
+
+    UNSIGNED_LONGS_EQUAL(5, SolidSyslogVxWorks64_GetSysUpTime());
+}
