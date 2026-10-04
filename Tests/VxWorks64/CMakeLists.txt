@@ -241,6 +241,7 @@ add_test(NAME SolidSyslogVxWorks64HostnameTest COMMAND SolidSyslogVxWorks64Hostn
 add_executable(SolidSyslogVxWorks64SleepTest
     SolidSyslogVxWorks64SleepTest.cpp
     main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Sleep.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64TaskFake.c
 )
 
