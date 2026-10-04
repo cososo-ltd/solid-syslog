@@ -37,6 +37,19 @@ class RemoteConsoleTest(unittest.TestCase):
         self.target.settimeout(5)
         self.assertEqual(b"send 1\n", self.target.recv(4096))
 
+    def test_each_line_written_is_followed_by_the_line_gap(self):
+        sleeps = []
+        listener = socket.create_server(("127.0.0.1", 0))
+        self.addCleanup(listener.close)
+        target = socket.create_connection(listener.getsockname())
+        self.addCleanup(target.close)
+        connection, _ = listener.accept()
+        console = remote_console.RemoteConsole(connection, lambda: None, 0.05, sleeps.append)
+
+        console.stdin.write("set host x\nset port 5514\n")
+
+        self.assertEqual([0.05, 0.05], sleeps)
+
     def test_it_is_running_while_the_target_is_connected(self):
         self.assertIsNone(self.console.poll())
 
