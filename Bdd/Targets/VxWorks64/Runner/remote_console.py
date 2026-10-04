@@ -18,13 +18,18 @@ class RemoteConsole:
         self.stdout = os.fdopen(read_end, "rb", buffering=0)
         self.stdin = _ConsoleInput(connection)
         self.returncode = None
-        threading.Thread(target=self._copy_output, daemon=True).start()
+        self._copier = threading.Thread(target=self._copy_output, daemon=True)
+        self._copier.start()
 
     def poll(self):
         return self.returncode
 
     def kill(self):
         self._stop()
+
+    def wait(self, timeout=None):
+        self._copier.join(timeout)
+        return self.returncode
 
     # The steps read stdout with os.read, which needs a real file descriptor;
     # a socket has none on Windows, so the output is copied into a pipe. The
