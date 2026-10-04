@@ -24,6 +24,7 @@ void SolidSyslogVxWorks64TcpStream_Initialise(
     struct SolidSyslogStream* base,
     const struct SolidSyslogVxWorks64TcpStreamConfig* config
 );
+void SolidSyslogVxWorks64TcpStream_Cleanup(struct SolidSyslogStream* base);
 
 static inline void VxWorks64TcpStream_Report(
     enum SolidSyslogSeverity severity,

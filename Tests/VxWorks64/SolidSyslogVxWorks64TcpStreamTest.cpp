@@ -15,7 +15,9 @@ using namespace CososoTesting;
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogStreamCategories.h"
+#include "SolidSyslogNullStream.h"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTunables.h"
@@ -445,4 +447,148 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenOnAnOpenStreamClosesTheSocketItHeld)
 TEST(SolidSyslogVxWorks64TcpStream, VersionStaysZeroBecauseNothingAboutTheStreamChangesAtRuntime)
 {
     LONGS_EQUAL(0U, SolidSyslogStream_Version(stream));
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, DestroyClosesAnOpenSocket)
+{
+    SolidSyslogStream_Open(stream, address);
+    SolidSyslogVxWorks64TcpStream_Destroy(stream);
+    stream = nullptr;
+    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendAfterDestroyTouchesNoSocket)
+{
+    SolidSyslogStream_Open(stream, address);
+    struct SolidSyslogStream* stale = stream;
+    SolidSyslogVxWorks64TcpStream_Destroy(stream);
+    stream = nullptr;
+    (void) SolidSyslogStream_Send(stale, TEST_RECORD, sizeof(TEST_RECORD) - 1U);
+    CALLED_FAKE(VxWorks64NetFake_Recv, NEVER);
+    CALLED_FAKE(VxWorks64NetFake_Send, NEVER);
+}
+
+// Asserts handle is non-null and not one of the slots in pool.
+#define CHECK_IS_FALLBACK(handle, pool)                                                \
+    {                                                                                  \
+        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
+        for (auto* slot : (pool))                                                      \
+        {                                                                              \
+            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
+            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
+        }                                                                              \
+    }
+
+// clang-format off
+TEST_GROUP(SolidSyslogVxWorks64TcpStreamPool)
+{
+    struct SolidSyslogStream* pooled[SOLIDSYSLOG_TCP_STREAM_POOL_SIZE] = {};
+    struct SolidSyslogStream* overflow                                 = nullptr;
+
+    void teardown() override
+    {
+        for (auto* handle : pooled)
+        {
+            if (handle != nullptr)
+            {
+                SolidSyslogVxWorks64TcpStream_Destroy(handle);
+            }
+        }
+        if (overflow != nullptr)
+        {
+            SolidSyslogVxWorks64TcpStream_Destroy(overflow);
+        }
+        ConfigLockFake_Uninstall();
+    }
+
+    void FillPool()
+    {
+        for (auto*& slot : pooled)
+        {
+            slot = SolidSyslogVxWorks64TcpStream_Create(nullptr);
+        }
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogVxWorks64TcpStreamPool, FillingThePoolThenOverflowingItReturnsADistinctFallback)
+{
+    FillPool();
+    overflow = SolidSyslogVxWorks64TcpStream_Create(nullptr);
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
+TEST(SolidSyslogVxWorks64TcpStreamPool, AnExhaustedPoolReportsItself)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FillPool();
+    overflow = SolidSyslogVxWorks64TcpStream_Create(nullptr);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
+        &SolidSyslogVxWorks64TcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_POOL_EXHAUSTED
+    );
+}
+
+TEST(SolidSyslogVxWorks64TcpStreamPool, DestroyingAHandleThePoolDoesNotOwnReportsIt)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogStream stranger = {};
+    SolidSyslogVxWorks64TcpStream_Destroy(&stranger);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogVxWorks64TcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_UNKNOWN_DESTROY
+    );
+}
+
+TEST(SolidSyslogVxWorks64TcpStreamPool, DestroyingAHandleTwiceReportsTheSecond)
+{
+    pooled[0] = SolidSyslogVxWorks64TcpStream_Create(nullptr);
+    SolidSyslogVxWorks64TcpStream_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogVxWorks64TcpStream_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogVxWorks64TcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_UNKNOWN_DESTROY
+    );
+}
+
+TEST(SolidSyslogVxWorks64TcpStreamPool, TheFallbackIsTheSharedNullStream)
+{
+    FillPool();
+    overflow = SolidSyslogVxWorks64TcpStream_Create(nullptr);
+    POINTERS_EQUAL(SolidSyslogNullStream_Get(), overflow);
+}
+
+TEST(SolidSyslogVxWorks64TcpStreamPool, CreateTakesTheConfigLockOnceForTheFirstFreeSlot)
+{
+    ConfigLockFake_Install();
+    pooled[0] = SolidSyslogVxWorks64TcpStream_Create(nullptr);
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64TcpStreamPool, DestroyOfAPooledHandleTakesTheConfigLockOnce)
+{
+    pooled[0] = SolidSyslogVxWorks64TcpStream_Create(nullptr);
+    ConfigLockFake_Install();
+    SolidSyslogVxWorks64TcpStream_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+    CALLED_FAKE(ConfigLockFake_Lock, ONCE);
+    CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64TcpStreamPool, DestroyOfAHandleThePoolDoesNotOwnTakesNoLock)
+{
+    ConfigLockFake_Install();
+    struct SolidSyslogStream stranger = {};
+    SolidSyslogVxWorks64TcpStream_Destroy(&stranger);
+    CALLED_FAKE(ConfigLockFake_Lock, NEVER);
 }

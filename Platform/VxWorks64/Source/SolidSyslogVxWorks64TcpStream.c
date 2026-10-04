@@ -21,6 +21,7 @@
 #include "sockLib.h"
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogNullStream.h"
 #include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTunables.h"
@@ -106,6 +107,15 @@ static uint32_t VxWorks64TcpStream_NullConnectTimeoutGetter(void* context)
 static inline struct SolidSyslogVxWorks64TcpStream* VxWorks64TcpStream_SelfFromBase(struct SolidSyslogStream* base)
 {
     return (struct SolidSyslogVxWorks64TcpStream*) base;
+}
+
+void SolidSyslogVxWorks64TcpStream_Cleanup(struct SolidSyslogStream* base)
+{
+    VxWorks64TcpStream_CloseSocket(VxWorks64TcpStream_SelfFromBase(base));
+    /* Overwrite the abstract base with the shared NullStream vtable so
+     * use-after-destroy is a safe no-op rather than a call on a closed
+     * socket. */
+    *base = *SolidSyslogNullStream_Get();
 }
 
 static bool VxWorks64TcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
