@@ -85,8 +85,10 @@ static FILE* reportStream;
 
 void BddTargetVxWorks64_Init(void)
 {
-    SolidSyslog_SetErrorHandler(BddTargetVxWorks64_ReportError, NULL);
     BddTargetVxWorks64_RunCore();
+    /* After the Core-only check, whose deliberately empty config is reported
+     * as bad by design. */
+    SolidSyslog_SetErrorHandler(BddTargetVxWorks64_ReportError, NULL);
     BddTargetVxWorks64_BringUpNetwork();
     BddTargetVxWorks64_BuildPipeline();
     consoleEnded = false;
@@ -223,7 +225,15 @@ static void BddTargetVxWorks64_SpawnTasks(void)
 
 static void BddTargetVxWorks64_Spawn(char* name, int stackBytes, FUNCPTR entry)
 {
-    (void) taskSpawn(name, TASK_PRIORITY, 0, stackBytes, entry, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    if (taskSpawn(name, TASK_PRIORITY, 0, stackBytes, entry, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == ERROR)
+    {
+        (void) fprintf(
+            BddTargetVxWorks64_Reports(),
+            BDD_TARGET_TAG "task %s failed to start, errno 0x%x\n",
+            name,
+            (unsigned) errnoGet()
+        );
+    }
 }
 
 static int BddTargetVxWorks64_InteractiveTask(void)
