@@ -66,3 +66,10 @@ TEST(SolidSyslogVxWorks64Hostname, ANameThatFillsTheBufferIsCutToTheLongestName)
 
     STRCMP_EQUAL(std::string(MAXHOSTNAMELEN, 'a').c_str(), Formatted());
 }
+
+TEST(SolidSyslogVxWorks64Hostname, OffersRoomForTheLongestNameAndItsTerminator)
+{
+    SolidSyslogVxWorks64_GetHostname(&field, nullptr);
+
+    LONGS_EQUAL(MAXHOSTNAMELEN + 1, VxWorks64NetFake_LastGethostnameLength());
+}

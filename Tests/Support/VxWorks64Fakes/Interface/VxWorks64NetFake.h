@@ -35,6 +35,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  prints the buffer anyway sends. */
     void VxWorks64NetFake_FailGethostname(void);
 
+    /** The buffer length the last gethostname was given. */
+    int VxWorks64NetFake_LastGethostnameLength(void);
+
     /** Make socket answer ERROR, as the stack does when it cannot make one. */
     void VxWorks64NetFake_SetSocketFails(bool fails);
 

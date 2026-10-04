@@ -15,6 +15,7 @@
 
 static const char* VxWorks64NetFake_Hostname = "";
 static bool VxWorks64NetFake_GethostnameFails = false;
+static int VxWorks64NetFake_GethostnameLength = 0;
 static unsigned long VxWorks64NetFake_InetAddrReturn = 0UL;
 static const char* VxWorks64NetFake_InetAddrString = NULL;
 static int VxWorks64NetFake_HostGetByNameReturn = 0;
@@ -46,6 +47,7 @@ void VxWorks64NetFake_Reset(void)
 {
     VxWorks64NetFake_Hostname = "";
     VxWorks64NetFake_GethostnameFails = false;
+    VxWorks64NetFake_GethostnameLength = 0;
     VxWorks64NetFake_SendtoPayload[0] = '\0';
     VxWorks64NetFake_InetAddrReturn = 0UL;
     VxWorks64NetFake_InetAddrString = NULL;
@@ -119,8 +121,14 @@ void VxWorks64NetFake_FailGethostname(void)
     VxWorks64NetFake_GethostnameFails = true;
 }
 
+int VxWorks64NetFake_LastGethostnameLength(void)
+{
+    return VxWorks64NetFake_GethostnameLength;
+}
+
 int gethostname(char* name, int nameLen)
 {
+    VxWorks64NetFake_GethostnameLength = nameLen;
     const char* answer = VxWorks64NetFake_GethostnameFails ? "unspecified" : VxWorks64NetFake_Hostname;
     size_t length = strlen(answer) + 1U;
     size_t copied = (length < (size_t) nameLen) ? length : (size_t) nameLen;
