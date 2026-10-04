@@ -56,6 +56,11 @@ class RemoteConsoleTest(unittest.TestCase):
 
         self.assertEqual(["stopped"], self.stops)
 
+    def test_waiting_returns_the_exit_code_once_the_target_disconnects(self):
+        self.target.close()
+
+        self.assertEqual(0, self.console.wait(timeout=5))
+
     def poll_until_exited(self):
         deadline = time.monotonic() + 5
         while self.console.poll() is None and time.monotonic() < deadline:
