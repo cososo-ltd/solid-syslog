@@ -106,8 +106,13 @@ try
             }
         }
 
+    # Behave reports progress on stderr too. Windows PowerShell turns a native
+    # command's stderr into error records when its output is redirected, which
+    # 'Stop' would make fatal, so the run is judged by its exit code alone.
+    $ErrorActionPreference = 'Continue'
     & python -m behave --tags=$tags Bdd/features
     $exitCode = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
     }
 finally
     {
