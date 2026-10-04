@@ -149,11 +149,11 @@ TEST(BddTargetVxWorks64, ASentMessageCarriesTheOriginStructuredData)
     STRCMP_CONTAINS("[origin software=\"SolidSyslogBddTarget\"", VxWorks64NetFake_LastSendtoPayload());
 }
 
-TEST(BddTargetVxWorks64, ASentMessageSaysItsTimeIsNeitherKnownNorSynchronised)
+TEST(BddTargetVxWorks64, ASentMessageSaysItsTimeIsKnownAndSynchronised)
 {
     SendOneMessage();
 
-    STRCMP_CONTAINS("[timeQuality tzKnown=\"0\" isSynced=\"0\"]", VxWorks64NetFake_LastSendtoPayload());
+    STRCMP_CONTAINS("[timeQuality tzKnown=\"1\" isSynced=\"1\"]", VxWorks64NetFake_LastSendtoPayload());
 }
 
 TEST(BddTargetVxWorks64, ASentMessageIsStampedWithTheClocksTime)
