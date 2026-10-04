@@ -14,6 +14,8 @@ struct SolidSyslogHeaderField;
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
+    /** Writes the name gethostname reports, up to MAXHOSTNAMELEN characters.
+     *  Writes nothing if gethostname fails. @p context is unused. */
     void SolidSyslogVxWorks64_GetHostname(struct SolidSyslogHeaderField * field, void* context);
 
 SOLIDSYSLOG_EXTERN_C_END

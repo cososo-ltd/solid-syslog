@@ -14,7 +14,7 @@ extern "C"
 
 /* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
 #define MAXHOSTNAMELEN 256
-/* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+    /* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
 
     int hostGetByName(char* name);
     int gethostname(char* name, int nameLen);
