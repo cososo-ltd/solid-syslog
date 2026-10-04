@@ -95,6 +95,13 @@ class OpenTest(unittest.TestCase):
 
         self.assertEqual(b"booting", os.read(console.stdout.fileno(), 7))
 
+    def test_a_target_that_never_connects_times_out_and_is_stopped(self):
+        stops = []
+
+        with self.assertRaises(TimeoutError):
+            remote_console.open_remote_target(self.listener, lambda: None, lambda: stops.append("stopped"), 0.1)
+        self.assertEqual(["stopped"], stops)
+
 
 if __name__ == "__main__":
     unittest.main()
