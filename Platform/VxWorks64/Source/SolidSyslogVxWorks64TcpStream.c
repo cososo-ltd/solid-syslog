@@ -231,9 +231,11 @@ static bool VxWorks64TcpStream_Connect(struct SolidSyslogVxWorks64TcpStream* sel
 static struct timeval VxWorks64TcpStream_ResolveConnectTimeout(struct SolidSyslogVxWorks64TcpStream* self)
 {
     uint32_t ms = self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
+    uint32_t seconds = ms / (uint32_t) MILLISECONDS_PER_SECOND;
+    uint32_t microseconds = (ms % (uint32_t) MILLISECONDS_PER_SECOND) * (uint32_t) MICROSECONDS_PER_MILLISECOND;
     struct timeval timeout;
-    timeout.tv_sec = (long) (ms / (uint32_t) MILLISECONDS_PER_SECOND);
-    timeout.tv_usec = (long) ((ms % (uint32_t) MILLISECONDS_PER_SECOND) * (uint32_t) MICROSECONDS_PER_MILLISECOND);
+    timeout.tv_sec = (long) seconds;
+    timeout.tv_usec = (long) microseconds;
     return timeout;
 }
 

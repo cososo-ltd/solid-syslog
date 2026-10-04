@@ -1,6 +1,6 @@
 # VxWorks 6.4 setup
 
-Wiring the UDP transport, the mutex, the atomic counter, and the clock,
+Wiring the UDP and TCP transports, the mutex, the atomic counter, and the clock,
 hostname, uptime and sleep callbacks. [VxWorks 6.4](index.md) covers what they
 fill and what they leave to you.
 
@@ -55,11 +55,34 @@ struct SolidSyslogDatagram* datagram = SolidSyslogVxWorks64Datagram_Create();
 
 None of them takes a configuration. Hand all three to
 `SolidSyslogUdpSender_Create`; one address, one resolver and one datagram serve
-one sender. Drawing past the pool sizes in
+one sender.
+
+## Drawing the TCP pieces
+
+```c
+#include "SolidSyslogVxWorks64Address.h"
+#include "SolidSyslogVxWorks64Resolver.h"
+#include "SolidSyslogVxWorks64TcpStream.h"
+
+struct SolidSyslogAddress*  address  = SolidSyslogVxWorks64Address_Create();
+struct SolidSyslogResolver* resolver = SolidSyslogVxWorks64Resolver_Create();
+
+/* NULL leaves the connect deadline at the SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS
+   tunable; supply a getter where the deadline has to move at runtime. */
+struct SolidSyslogStream* stream = SolidSyslogVxWorks64TcpStream_Create(NULL);
+```
+
+Hand all three to `SolidSyslogStreamSender_Create`; one address, one resolver
+and one stream serve one sender. Only the stream takes a configuration, and
+then only to tune its connect deadline.
+
+## When a pool runs out
+
+Drawing past the pool sizes in
 [Adding it to your build](../../build-integration.md#tunables) reports
-`CRITICAL`. The resolver and the datagram then hand back their Null objects. The
-address hands back one shared, writable fallback instead, so every sender drawn
-beyond the pool shares that storage and races on it; raising
+`CRITICAL`. The resolver, the datagram and the stream then hand back their Null
+objects. The address hands back one shared, writable fallback instead, so every
+sender drawn beyond the pool shares that storage and races on it; raising
 `SOLIDSYSLOG_ADDRESS_POOL_SIZE` removes the race.
 
 ## Wiring the mutex

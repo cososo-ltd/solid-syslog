@@ -6,10 +6,9 @@ serve as a model for other VxWorks releases, but nothing here has run on one.
 Storage comes from a separate platform; the
 [capability matrix](../index.md) shows which fill it.
 
-Fills the Datagram, Resolver, Mutex and AtomicCounter
-[roles](../../roles/index.md), plus the address handle the datagram reads back
-to send. TCP is not yet supported. It
-also supplies the clock, hostname, sleep and sysUpTime callbacks. There is no
+Fills the Datagram, Stream (TCP), Resolver, Mutex and AtomicCounter
+[roles](../../roles/index.md), plus the address handle the transports read back
+to send. It also supplies the clock, hostname, sleep and sysUpTime callbacks. There is no
 process-id callback: a kernel task belongs to no process, so PROCID is left
 unset and sent as the nil value.
 
@@ -18,11 +17,13 @@ unset and sent as the nil value.
 ## Requirements
 
 A VxWorks 6.4 kernel image and the VxWorks headers on your include path. The
-datagram calls `socket`, `sendto` and `close`; the resolver calls `inet_addr`
-and `hostGetByName`; the mutex calls `semMCreate`, `semTake`, `semGive` and
-`semDelete`; and the atomic counter calls `intLock` and `intUnlock`. The image
-needs the network stack and the host library for the first two, and
-mutual-exclusion semaphores for the third. The clock calls
+datagram calls `socket`, `sendto` and `close`; the TCP stream calls `socket`,
+`connectWithTimeout`, `setsockopt`, `send`, `recv` and `close`; the resolver
+calls `inet_addr` and `hostGetByName`; the mutex calls `semMCreate`, `semTake`,
+`semGive` and `semDelete`; and the atomic counter calls `intLock` and
+`intUnlock`. The image needs the network stack, with TCP for the stream, and the
+host library for the transports and the resolver, and mutual-exclusion
+semaphores for the mutex. The clock calls
 `clock_gettime` and `gmtime_r`, which the image must include; uptime
 calls `tick64Get` and `sysClkRateGet`; the hostname calls `gethostname`; and
 sleep calls `taskDelay`. Real-time processes (RTPs) are not supported.
@@ -66,9 +67,38 @@ BDD target will be the first to run it.
 
 ## Security behaviour and obligations
 
-### The transport carries syslog in clear
+### The transports carry syslog in clear
 
-The datagram provides no confidentiality, integrity or peer authentication.
+Neither the datagram nor the TCP stream provides confidentiality, integrity or
+peer authentication. The pack has no TLS.
+
+### Nothing in the stream waits on a peer
+
+The stream's connect is bounded by the deadline its config supplies, through
+`connectWithTimeout`, rather than by the stack's own retransmission budget. An
+attempt still under way when the deadline passes is abandoned with its socket,
+and the sender tries again on its next pass. Its send and read pass
+`MSG_DONTWAIT`, so they answer at once: a wedged peer or a full send buffer
+costs a failed call rather than a stalled task.
+
+A send establishes that the peer has not closed its end before it writes. A
+connection stays writable after a peer closes, so without that check the stack
+would take a record nothing can deliver and the record would be gone; instead
+the send fails, the stream closes itself, and your store replays the record on
+the next connection. A record the stack takes only part of fails the same way.
+
+A connect that fails is reported under the stream's own error source, with the
+detail naming which step failed. The stack refusing a socket option is
+reported as a warning, and the connection stands without it.
+
+### Dead-peer detection is yours to size
+
+The stream turns keepalive on for its own connection with `SO_KEEPALIVE`. VxWorks
+6.4 sets keepalive timing for the whole stack rather than per socket, so the
+`SOLIDSYSLOG_TCP_KEEPALIVE_*` tunables do not apply on this platform: a silent
+peer is probed on the stack's schedule, which is yours to set for the image. A
+connection actually carrying records notices sooner, because the send fails and
+the stream closes itself so the sender reconnects.
 
 ### Resolution is by literal, then by host library
 

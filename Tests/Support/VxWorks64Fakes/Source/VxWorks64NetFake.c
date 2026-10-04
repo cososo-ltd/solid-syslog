@@ -50,6 +50,7 @@ static int VxWorks64NetFake_ConnectAddressLength = 0;
 static bool VxWorks64NetFake_ConnectBounded = false;
 static long VxWorks64NetFake_ConnectTimeoutSeconds = -1L;
 static long VxWorks64NetFake_ConnectTimeoutMicroseconds = -1L;
+
 enum
 {
     VXWORKS64NETFAKE_MAX_SOCKET_OPTIONS = 8
@@ -430,7 +431,8 @@ STATUS setsockopt(int s, int level, int optname, char* optval, int optlen)
 {
     if (VxWorks64NetFake_SetsockoptCount < (unsigned) VXWORKS64NETFAKE_MAX_SOCKET_OPTIONS)
     {
-        struct VxWorks64NetFake_SocketOption* option = &VxWorks64NetFake_SocketOptions[VxWorks64NetFake_SetsockoptCount];
+        struct VxWorks64NetFake_SocketOption* option =
+            &VxWorks64NetFake_SocketOptions[VxWorks64NetFake_SetsockoptCount];
         option->Fd = s;
         option->Level = level;
         option->Optname = optname;

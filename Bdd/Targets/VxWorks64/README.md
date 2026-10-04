@@ -76,11 +76,12 @@ boots the target once for each scenario, with its console connecting back. The
 oracle is the OpenTelemetry Collector the Windows runner uses
 (`Bdd/otel/Install-OtelCollector.ps1`), which the script starts for the run
 with `Bdd/otel/config.vxworks64.yaml`, listening for the target's syslog on UDP
-5514.
+and TCP 5514. A scenario that stops the collector to make an outage starts it
+again from the same config.
 
 It needs the job service and the runner set up as in
 [Driving it from another machine](#driving-it-from-another-machine), and
-nothing else on the development machine holding UDP 5514. A container that
+nothing else on the development machine holding UDP or TCP 5514. A container that
 publishes the port - the devcontainer's syslog-ng does - has to be stopped for
 the run, and the script names it and refuses if one is up. `-SkipBuild` reuses
 the image already built; `-Paths` runs the features given, under the same tag
@@ -102,13 +103,14 @@ for Windows provides:
    and its key to `%USERPROFILE%\.solidsyslog-runner`, and prints the
    certificate's thumbprint. None of them goes into the repository.
 2. Allow inbound connections from the local network: TCP 8765 for the job
-   service, TCP 8766 for the target's console, and UDP 5514 for syslog sent by
-   the target. `LocalSubnet` follows the network, so an address changing on
+   service, TCP 8766 for the target's console, and UDP and TCP 5514 for syslog
+   sent by the target. `LocalSubnet` follows the network, so an address changing on
    either machine needs no new rule. In an administrator PowerShell:
 
    ```powershell
    New-NetFirewallRule -DisplayName 'SolidSyslog runner' -Direction Inbound -Protocol TCP -LocalPort 8765,8766 -RemoteAddress LocalSubnet -Action Allow
    New-NetFirewallRule -DisplayName 'SolidSyslog runner syslog' -Direction Inbound -Protocol UDP -LocalPort 5514 -RemoteAddress LocalSubnet -Action Allow
+   New-NetFirewallRule -DisplayName 'SolidSyslog runner syslog TCP' -Direction Inbound -Protocol TCP -LocalPort 5514 -RemoteAddress LocalSubnet -Action Allow
    ```
 
 3. `python Runner\job_service.py serve`, and leave it running.
@@ -163,8 +165,8 @@ creation script sets the project's build macros with
   keep the warning.
 
 The creation script also adds the network the target sends over: the IPv4 stack
-with UDP and sockets, the host table, routing, and the END driver for QEMU's
-PCnet adapter. QEMU loads the ROM image directly, so the boot line's addresses
+with UDP, TCP, sockets and select, the host table, routing, and the END driver
+for QEMU's PCnet adapter. QEMU loads the ROM image directly, so the boot line's addresses
 are never used; `INCLUDE_ADDIF` puts the adapter on QEMU's user network instead,
 as `10.0.2.15/24`. The target adds a default route through QEMU's gateway,
 `10.0.2.2`, at start-up, and the harness names the collector with `set host`

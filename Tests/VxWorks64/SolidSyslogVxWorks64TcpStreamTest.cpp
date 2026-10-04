@@ -111,12 +111,12 @@ TEST_GROUP(SolidSyslogVxWorks64TcpStream)
 
 // Asserts Open reported exactly one refused option, which is a warning: the
 // connection stands either way.
-#define CHECK_OPTION_REFUSED_REPORTED()                        \
-    CHECK_ERROR_REPORTED_ONCE(                                 \
-        SOLIDSYSLOG_SEVERITY_WARNING,                          \
-        &SolidSyslogVxWorks64TcpStreamErrorSource,             \
-        SOLIDSYSLOG_CAT_STREAM_OPTION_REFUSED,                 \
-        SOLIDSYSLOG_TCP_STREAM_ERROR_SOCKET_OPTION_REFUSED     \
+#define CHECK_OPTION_REFUSED_REPORTED()                    \
+    CHECK_ERROR_REPORTED_ONCE(                             \
+        SOLIDSYSLOG_SEVERITY_WARNING,                      \
+        &SolidSyslogVxWorks64TcpStreamErrorSource,         \
+        SOLIDSYSLOG_CAT_STREAM_OPTION_REFUSED,             \
+        SOLIDSYSLOG_TCP_STREAM_ERROR_SOCKET_OPTION_REFUSED \
     )
 
 TEST(SolidSyslogVxWorks64TcpStream, CreateDestroyWorksWithoutCrashing)
@@ -151,7 +151,10 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenBoundsTheConnectByTheTunableWhenNoGetter
     SolidSyslogStream_Open(stream, address);
     CHECK_TRUE(VxWorks64NetFake_LastConnectWasBounded());
     LONGS_EQUAL(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS / 1000U, VxWorks64NetFake_LastConnectTimeoutSeconds());
-    LONGS_EQUAL((SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS % 1000U) * 1000U, VxWorks64NetFake_LastConnectTimeoutMicroseconds());
+    LONGS_EQUAL(
+        (SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS % 1000U) * 1000U,
+        VxWorks64NetFake_LastConnectTimeoutMicroseconds()
+    );
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, OpenBoundsTheConnectByTheConfiguredGetter)
@@ -182,7 +185,10 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheEndpointUnavailableWhenNoSocke
     ErrorHandlerFake_Install(nullptr);
     VxWorks64NetFake_SetSocketFails(true);
     SolidSyslogStream_Open(stream, address);
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY, SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE);
+    CHECK_CONNECT_FAILURE_REPORTED(
+        SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
+    );
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, OpenClosesTheSocketWhenTheConnectFails)
@@ -196,25 +202,37 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenClosesTheSocketWhenTheConnectFails)
 TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectTimedOutWhenTheBoundExpires)
 {
     OpenAfterConnectFails(EINPROGRESS);
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT);
+    CHECK_CONNECT_FAILURE_REPORTED(
+        SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+    );
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectRefusedWhenThePeerRefuses)
 {
     OpenAfterConnectFails(ECONNREFUSED);
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+    CHECK_CONNECT_FAILURE_REPORTED(
+        SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+    );
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectRefusedWhenTheStackGivesUpOnThePeer)
 {
     OpenAfterConnectFails(ETIMEDOUT);
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+    CHECK_CONNECT_FAILURE_REPORTED(
+        SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+    );
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectNotStartedWhenItFailsForALocalReason)
 {
     OpenAfterConnectFails(ENETUNREACH);
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+    CHECK_CONNECT_FAILURE_REPORTED(
+        SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+    );
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, OpenSendsEachRecordWithoutWaitingToCoalesceIt)
@@ -599,5 +617,8 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenBoundsTheConnectByTheTunableWhenTheConfi
     struct SolidSyslogVxWorks64TcpStreamConfig config = {};
     stream = SolidSyslogVxWorks64TcpStream_Create(&config);
     SolidSyslogStream_Open(stream, address);
-    LONGS_EQUAL((SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS % 1000U) * 1000U, VxWorks64NetFake_LastConnectTimeoutMicroseconds());
+    LONGS_EQUAL(
+        (SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS % 1000U) * 1000U,
+        VxWorks64NetFake_LastConnectTimeoutMicroseconds()
+    );
 }
