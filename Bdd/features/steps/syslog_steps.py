@@ -84,6 +84,10 @@ from solidsyslog_tunables import SOLIDSYSLOG_MAX_MESSAGE_SIZE
 # TEST_IP_ADDRESS in Example/FreeRtos/SingleTask/main.c — keep them in sync.
 EXAMPLE_FREERTOS_STATIC_IP = "10.0.2.15"
 
+# The name the VxWorks 6.4 target gives itself with sethostname at boot (rung 3,
+# "hostname"). Mirrors BddTargetVxWorks64_BringUpNetwork - keep them in sync.
+VXWORKS64_HOSTNAME = "SolidSyslogVxWorks64"
+
 # Targets with no process model, which send PROCID as NILVALUE (RFC 5424
 # §6.2.6): FreeRTOS tasks, and the VxWorks 6.4 target's kernel tasks.
 NO_PROCESS_MODEL_TARGETS = ("freertos", "vxworks64")
@@ -1010,9 +1014,12 @@ def step_check_system_hostname(context):
     hostname → dynamic IP → NILVALUE; each runner emits the highest-
     preference value it can supply. Linux/Windows: gethostname() (rung 3,
     "hostname"). FreeRTOS reference: the configured static IPv4 (rung 2)
-    because no FQDN, no integrator hostname, no DHCP."""
+    because no FQDN, no integrator hostname, no DHCP. VxWorks 6.4: the name
+    the target sets for itself (rung 3)."""
     if context.target == "freertos":
         expected = EXAMPLE_FREERTOS_STATIC_IP
+    elif context.target == "vxworks64":
+        expected = VXWORKS64_HOSTNAME
     else:
         expected = socket.gethostname()
     assert context.fields["HOSTNAME"] == expected, (

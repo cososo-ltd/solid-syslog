@@ -9,7 +9,6 @@ Feature: Buffered message delivery
   CircularBuffer + FreeRtosMutex + a FreeRTOS Service task (S08.04).
   The same scenario pins all three wirings.
 
-  @vxworks64wip
   Scenario: Single buffered message arrives at the oracle
     Given the syslog oracle is running
     When the BDD target sends a syslog message
