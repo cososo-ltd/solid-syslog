@@ -79,5 +79,22 @@ class RemoteConsoleTest(unittest.TestCase):
         return self.console.poll()
 
 
+class OpenTest(unittest.TestCase):
+    def setUp(self):
+        self.listener = socket.create_server(("127.0.0.1", 0))
+        self.addCleanup(self.listener.close)
+
+    # QEMU connects its console out once started, as the start job begins it.
+    def start_a_target_that_connects(self):
+        target = socket.create_connection(self.listener.getsockname())
+        self.addCleanup(target.close)
+        target.sendall(b"booting")
+
+    def test_opening_starts_the_target_and_returns_its_console(self):
+        console = remote_console.open_remote_target(self.listener, self.start_a_target_that_connects, lambda: None)
+
+        self.assertEqual(b"booting", os.read(console.stdout.fileno(), 7))
+
+
 if __name__ == "__main__":
     unittest.main()
