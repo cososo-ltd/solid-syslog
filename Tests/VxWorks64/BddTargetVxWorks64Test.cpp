@@ -10,6 +10,7 @@ using namespace CososoTesting;
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
 #include "TempFile.h"
+#include "VxWorks64ClockFake.h"
 #include "VxWorks64NetFake.h"
 #include "VxWorks64SemFake.h"
 #include "VxWorks64TaskFake.h"
@@ -27,6 +28,7 @@ TEST_GROUP(BddTargetVxWorks64)
         VxWorks64TaskFake_Reset();
         VxWorks64SemFake_Reset();
         VxWorks64NetFake_Reset();
+        VxWorks64ClockFake_Reset();
         // The default collector, 10.0.2.2, as inet_addr answers it.
         VxWorks64NetFake_SetInetAddrReturn(0x0202000AUL);
     }
@@ -152,6 +154,15 @@ TEST(BddTargetVxWorks64, ASentMessageSaysItsTimeIsNeitherKnownNorSynchronised)
     SendOneMessage();
 
     STRCMP_CONTAINS("[timeQuality tzKnown=\"0\" isSynced=\"0\"]", VxWorks64NetFake_LastSendtoPayload());
+}
+
+TEST(BddTargetVxWorks64, ASentMessageIsStampedWithTheClocksTime)
+{
+    VxWorks64ClockFake_SetBrokenDownTime(126, 9, 4, 13, 45, 30);
+
+    SendOneMessage();
+
+    STRCMP_CONTAINS(" 2026-10-04T13:45:30.000000Z ", VxWorks64NetFake_LastSendtoPayload());
 }
 
 TEST(BddTargetVxWorks64, ALibraryErrorIsReportedOnTheConsole)
