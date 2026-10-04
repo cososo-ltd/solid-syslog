@@ -14,8 +14,9 @@ import time
 # Starts the target, which connects its console to listener, and returns that
 # console. start and stop begin and end the target - in practice the runner's
 # qemu-start and qemu-stop jobs. A target that has not connected within
-# accept_timeout seconds is stopped rather than left running.
-def open_remote_target(listener, start, stop, accept_timeout=None):
+# accept_timeout seconds is stopped rather than left running. line_gap_seconds
+# and sleep pace the console's input, as for RemoteConsole.
+def open_remote_target(listener, start, stop, accept_timeout=None, line_gap_seconds=0.0, sleep=time.sleep):
     start()
     listener.settimeout(accept_timeout)
     try:
@@ -24,7 +25,7 @@ def open_remote_target(listener, start, stop, accept_timeout=None):
         stop()
         raise
     connection.settimeout(None)
-    return RemoteConsole(connection, stop)
+    return RemoteConsole(connection, stop, line_gap_seconds, sleep)
 
 
 class RemoteConsole:
