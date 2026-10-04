@@ -102,6 +102,11 @@ TEST(BddTargetMessageSettings, AFacilityWithASignIsRefused)
     CHECK_FALSE(BddTargetMessageSettings_SetByName("facility", "+3"));
 }
 
+TEST(BddTargetMessageSettings, AFacilityTooLargeToParseIsRefused)
+{
+    CHECK_FALSE(BddTargetMessageSettings_SetByName("facility", "99999999999999999999999"));
+}
+
 TEST(BddTargetMessageSettings, AnEmptyFacilityIsRefused)
 {
     CHECK_FALSE(BddTargetMessageSettings_SetByName("facility", ""));
