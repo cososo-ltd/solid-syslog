@@ -18,6 +18,7 @@ void SolidSyslogVxWorks64_GetHostname(struct SolidSyslogHeaderField* field, void
 
     if (gethostname(hostname, (int) sizeof(hostname)) == OK)
     {
+        hostname[MAXHOSTNAMELEN] = '\0';
         SolidSyslogHeaderField_PrintUsAscii(field, hostname, sizeof(hostname));
     }
 }
