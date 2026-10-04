@@ -24,5 +24,6 @@ void SolidSyslogVxWorks64_GetTimestamp(struct SolidSyslogTimestamp* timestamp)
         (void) gmtime_r(&now.tv_sec, &breakdown);
         timestamp->Year = (uint16_t) (breakdown.tm_year + 1900);
         timestamp->Month = (uint8_t) (breakdown.tm_mon + 1);
+        timestamp->Day = (uint8_t) breakdown.tm_mday;
     }
 }
