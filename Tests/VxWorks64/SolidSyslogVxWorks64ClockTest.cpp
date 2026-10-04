@@ -77,3 +77,12 @@ TEST(SolidSyslogVxWorks64Clock, MinuteIsTheMinuteOfTheHour)
 
     UNSIGNED_LONGS_EQUAL(45, timestamp.Minute);
 }
+
+TEST(SolidSyslogVxWorks64Clock, SecondIsTheSecondOfTheMinute)
+{
+    VxWorks64ClockFake_SetBrokenDownTime(126, 9, 4, 13, 45, 30);
+
+    SolidSyslogVxWorks64_GetTimestamp(&timestamp);
+
+    UNSIGNED_LONGS_EQUAL(30, timestamp.Second);
+}
