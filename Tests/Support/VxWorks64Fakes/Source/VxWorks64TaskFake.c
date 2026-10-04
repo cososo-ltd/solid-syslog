@@ -36,6 +36,7 @@ int VxWorks64TaskFake_LastDelayTicks(void)
 /* Records the spawn and runs nothing: a test calls a task's entry itself when
  * it wants the task's behaviour. */
 int taskSpawn(
+    // NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
     char* name,
     int priority,
     int options,
@@ -85,6 +86,7 @@ int sysClkRateGet(void)
     return 60;
 }
 
+// NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
 STATUS routeAdd(char* destination, char* gateway)
 {
     (void) destination;
