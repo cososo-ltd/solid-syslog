@@ -6,6 +6,7 @@ Run:  python -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
 import os
 import socket
 import sys
+import time
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -35,6 +36,14 @@ class RemoteConsoleTest(unittest.TestCase):
 
     def test_it_is_running_while_the_target_is_connected(self):
         self.assertIsNone(self.console.poll())
+
+    def test_it_has_exited_once_the_target_disconnects(self):
+        self.target.close()
+
+        deadline = time.monotonic() + 5
+        while self.console.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertEqual(0, self.console.poll())
 
 
 if __name__ == "__main__":
