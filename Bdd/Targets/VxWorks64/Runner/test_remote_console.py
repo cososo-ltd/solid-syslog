@@ -6,6 +6,7 @@ Run:  python -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
 import os
 import socket
 import struct
+import subprocess
 import sys
 import time
 import unittest
@@ -60,6 +61,10 @@ class RemoteConsoleTest(unittest.TestCase):
         self.target.close()
 
         self.assertEqual(0, self.console.wait(timeout=5))
+
+    def test_waiting_while_the_target_is_connected_times_out_as_a_process_would(self):
+        with self.assertRaises(subprocess.TimeoutExpired):
+            self.console.wait(timeout=0.1)
 
     def poll_until_exited(self):
         deadline = time.monotonic() + 5
