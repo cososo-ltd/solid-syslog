@@ -4,6 +4,8 @@
 
 #include "SolidSyslogVxWorks64Sleep.h"
 
+#include <stdint.h>
+
 #include "vxWorks.h"
 
 #include "sysLib.h"
@@ -11,5 +13,6 @@
 
 void SolidSyslogVxWorks64_Sleep(int milliseconds)
 {
-    (void) taskDelay(((milliseconds * sysClkRateGet()) + 999) / 1000);
+    int64_t ticks = (((int64_t) milliseconds * (int64_t) sysClkRateGet()) + 999) / 1000;
+    (void) taskDelay((int) ticks);
 }
