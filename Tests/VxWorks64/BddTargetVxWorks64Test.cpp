@@ -181,6 +181,15 @@ TEST(BddTargetVxWorks64, SetTimeSetsTheRealTimeClock)
     UNSIGNED_LONGS_EQUAL(1791119130UL, VxWorks64ClockFake_LastSetSeconds());
 }
 
+TEST(BddTargetVxWorks64, SetTimeRefusesATimeThatIsNotANumber)
+{
+    BddTargetVxWorks64_Init();
+
+    RunConsoleWith("set time soon\nquit\n");
+
+    UNSIGNED_LONGS_EQUAL(0, VxWorks64ClockFake_SetCallCount());
+}
+
 TEST(BddTargetVxWorks64, ALibraryErrorIsReportedOnTheConsole)
 {
     static const struct SolidSyslogErrorSource TEST_SOURCE = {"TestSource"};
