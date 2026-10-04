@@ -18,13 +18,16 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "BddTargetEnterpriseId.h"
 #include "BddTargetInteractive.h"
+#include "BddTargetIps.h"
 #include "BddTargetMessageSettings.h"
 #include "BddTargetServiceThread.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogNullStore.h"
+#include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogVxWorks64Address.h"
@@ -64,6 +67,8 @@ static struct SolidSyslogDatagram* datagram;
 static struct SolidSyslogSender* sender;
 static struct SolidSyslogMutex* bufferMutex;
 static struct SolidSyslogBuffer* buffer;
+static struct SolidSyslogStructuredData* originSd;
+static struct SolidSyslogStructuredData* sdList[1];
 static struct SolidSyslog* logger;
 /* Set when the console ends, which stops the service task. */
 static volatile bool consoleEnded;
@@ -139,8 +144,19 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     bufferMutex = SolidSyslogVxWorks64Mutex_Create();
     buffer = SolidSyslogCircularBuffer_Create(bufferMutex, bufferRing, sizeof(bufferRing));
 
+    struct SolidSyslogOriginSdConfig originConfig = {0};
+    originConfig.Software = "SolidSyslogBddTarget";
+    originConfig.SwVersion = "0.7.0";
+    originConfig.EnterpriseId = BDD_TARGET_ENTERPRISE_ID;
+    originConfig.GetIpCount = BddTargetIps_Count;
+    originConfig.GetIpAt = BddTargetIps_At;
+    originSd = SolidSyslogOriginSd_Create(&originConfig);
+    sdList[0] = originSd;
+
     config.Buffer = buffer;
     config.Sender = sender;
+    config.Sd = sdList;
+    config.SdCount = sizeof(sdList) / sizeof(sdList[0]);
     config.Store = SolidSyslogNullStore_Get();
     config.GetAppName = BddTargetMessageSettings_GetAppName;
     logger = SolidSyslog_Create(&config);
@@ -204,6 +220,7 @@ void BddTargetVxWorks64_Sleep(int milliseconds)
 void BddTargetVxWorks64_Teardown(void)
 {
     SolidSyslog_Destroy(logger);
+    SolidSyslogOriginSd_Destroy(originSd);
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogVxWorks64Mutex_Destroy(bufferMutex);
     SolidSyslogUdpSender_Destroy(sender);
