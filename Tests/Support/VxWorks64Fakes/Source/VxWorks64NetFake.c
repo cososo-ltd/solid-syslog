@@ -13,6 +13,7 @@
 #include "inetLib.h"
 #include "sockLib.h"
 
+static const char* VxWorks64NetFake_Hostname = "";
 static unsigned long VxWorks64NetFake_InetAddrReturn = 0UL;
 static const char* VxWorks64NetFake_InetAddrString = NULL;
 static int VxWorks64NetFake_HostGetByNameReturn = 0;
@@ -42,6 +43,7 @@ static int VxWorks64NetFake_ClosedFd = -1;
 
 void VxWorks64NetFake_Reset(void)
 {
+    VxWorks64NetFake_Hostname = "";
     VxWorks64NetFake_SendtoPayload[0] = '\0';
     VxWorks64NetFake_InetAddrReturn = 0UL;
     VxWorks64NetFake_InetAddrString = NULL;
@@ -103,6 +105,27 @@ int hostGetByName(char* name)
     VxWorks64NetFake_HostGetByNameCount++;
     VxWorks64NetFake_HostGetByNameName = name;
     return VxWorks64NetFake_HostGetByNameReturn;
+}
+
+void VxWorks64NetFake_SetHostname(const char* name)
+{
+    VxWorks64NetFake_Hostname = name;
+}
+
+int gethostname(char* name, int nameLen)
+{
+    size_t length = strlen(VxWorks64NetFake_Hostname) + 1U;
+    size_t copied = (length < (size_t) nameLen) ? length : (size_t) nameLen;
+    (void) memcpy(name, VxWorks64NetFake_Hostname, copied);
+    return OK;
+}
+
+// NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
+int sethostname(char* name, int nameLen)
+{
+    (void) name;
+    (void) nameLen;
+    return OK;
 }
 
 void VxWorks64NetFake_SetSocketFails(bool fails)

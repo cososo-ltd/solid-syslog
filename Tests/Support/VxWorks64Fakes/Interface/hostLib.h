@@ -1,7 +1,8 @@
 /* A test stand-in for the VxWorks 6.4 host table library header.
  *
  * Supplies the subset of hostLib.h that Platform/VxWorks64 calls, with the
- * prototype of the public API reference: the name is not const-qualified.
+ * prototypes of the public API reference: no name is const-qualified, and
+ * lengths are int.
  */
 #ifndef HOSTLIB_H
 #define HOSTLIB_H
@@ -11,7 +12,13 @@ extern "C"
 {
 #endif
 
+/* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+#define MAXHOSTNAMELEN 256
+/* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+
     int hostGetByName(char* name);
+    int gethostname(char* name, int nameLen);
+    int sethostname(char* name, int nameLen);
 
 #ifdef __cplusplus
 }

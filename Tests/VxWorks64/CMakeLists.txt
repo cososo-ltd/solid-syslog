@@ -209,6 +209,34 @@ set_target_properties(SolidSyslogVxWorks64SysUpTimeTest PROPERTIES
 
 add_test(NAME SolidSyslogVxWorks64SysUpTimeTest COMMAND SolidSyslogVxWorks64SysUpTimeTest)
 
+add_executable(SolidSyslogVxWorks64HostnameTest
+    SolidSyslogVxWorks64HostnameTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64NetFake.c
+)
+
+target_link_libraries(SolidSyslogVxWorks64HostnameTest PRIVATE
+    ${PROJECT_NAME}
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogVxWorks64HostnameTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests/Support
+)
+
+set_target_properties(SolidSyslogVxWorks64HostnameTest PROPERTIES
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+    C_EXTENSIONS OFF
+)
+
+add_test(NAME SolidSyslogVxWorks64HostnameTest COMMAND SolidSyslogVxWorks64HostnameTest)
+
 # The BDD target compiles here against the same fakes, so a change that breaks
 # it fails on the host as well as in the target build.
 add_executable(BddTargetVxWorks64Test
