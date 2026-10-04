@@ -592,3 +592,12 @@ TEST(SolidSyslogVxWorks64TcpStreamPool, DestroyOfAHandleThePoolDoesNotOwnTakesNo
     SolidSyslogVxWorks64TcpStream_Destroy(&stranger);
     CALLED_FAKE(ConfigLockFake_Lock, NEVER);
 }
+
+TEST(SolidSyslogVxWorks64TcpStream, OpenBoundsTheConnectByTheTunableWhenTheConfigHasNoGetter)
+{
+    SolidSyslogVxWorks64TcpStream_Destroy(stream);
+    struct SolidSyslogVxWorks64TcpStreamConfig config = {};
+    stream = SolidSyslogVxWorks64TcpStream_Create(&config);
+    SolidSyslogStream_Open(stream, address);
+    LONGS_EQUAL((SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS % 1000U) * 1000U, VxWorks64NetFake_LastConnectTimeoutMicroseconds());
+}
