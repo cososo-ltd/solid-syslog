@@ -5,6 +5,7 @@ Run:  python -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
 
 import os
 import socket
+import struct
 import sys
 import time
 import unittest
@@ -40,10 +41,20 @@ class RemoteConsoleTest(unittest.TestCase):
     def test_it_has_exited_once_the_target_disconnects(self):
         self.target.close()
 
+        self.assertEqual(0, self.poll_until_exited())
+
+    # Stopping QEMU kills it, so its end of the console is reset, not closed.
+    def test_it_has_exited_once_the_target_resets_the_connection(self):
+        self.target.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+        self.target.close()
+
+        self.assertEqual(0, self.poll_until_exited())
+
+    def poll_until_exited(self):
         deadline = time.monotonic() + 5
         while self.console.poll() is None and time.monotonic() < deadline:
             time.sleep(0.01)
-        self.assertEqual(0, self.console.poll())
+        return self.console.poll()
 
 
 if __name__ == "__main__":
