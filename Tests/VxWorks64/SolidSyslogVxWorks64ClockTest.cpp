@@ -107,3 +107,19 @@ TEST(SolidSyslogVxWorks64Clock, TimestampIsZeroedWhenTheBreakdownFails)
     const struct SolidSyslogTimestamp zeroed = {};
     MEMCMP_EQUAL(&zeroed, &timestamp, sizeof(timestamp));
 }
+
+TEST(SolidSyslogVxWorks64Clock, ReadsTheRealTimeClock)
+{
+    SolidSyslogVxWorks64_GetTimestamp(&timestamp);
+
+    CHECK_TRUE(VxWorks64ClockFake_LastReadWasRealTime());
+}
+
+TEST(SolidSyslogVxWorks64Clock, BreaksDownTheSecondsTheClockRead)
+{
+    VxWorks64ClockFake_SetSeconds(1791119130UL);
+
+    SolidSyslogVxWorks64_GetTimestamp(&timestamp);
+
+    UNSIGNED_LONGS_EQUAL(1791119130UL, VxWorks64ClockFake_LastBrokenDownSeconds());
+}
