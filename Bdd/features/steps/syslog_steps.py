@@ -1034,7 +1034,9 @@ def step_check_example_pid(context):
         # PROCID=(\S*) captures wire NILVALUE as "" while leaving the key
         # absent if syslog-ng never emitted PROCID at all (template gap /
         # malformed message). Collapsing "absent" into "empty" via .get()
-        # would let template breakage register as a NILVALUE pass.
+        # would let template breakage register as a NILVALUE pass. That holds
+        # for syslog-ng only: the OpenTelemetry receiver omits a NILVALUE field
+        # and a dropped one alike, and parse_otel_jsonl_line records both as "".
         assert "PROCID" in context.fields, (
             "Expected PROCID field present in oracle output (NILVALUE captured as empty)"
         )
