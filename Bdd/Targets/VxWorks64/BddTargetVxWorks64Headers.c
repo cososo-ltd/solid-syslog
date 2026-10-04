@@ -114,12 +114,16 @@
 #include "SolidSyslogUdpSenderErrors.h"
 #include "SolidSyslogVxWorks64Address.h"
 #include "SolidSyslogVxWorks64AddressErrors.h"
+#include "SolidSyslogVxWorks64Clock.h"
 #include "SolidSyslogVxWorks64Datagram.h"
 #include "SolidSyslogVxWorks64DatagramErrors.h"
+#include "SolidSyslogVxWorks64Hostname.h"
 #include "SolidSyslogVxWorks64Mutex.h"
 #include "SolidSyslogVxWorks64MutexErrors.h"
 #include "SolidSyslogVxWorks64Resolver.h"
 #include "SolidSyslogVxWorks64ResolverErrors.h"
+#include "SolidSyslogVxWorks64Sleep.h"
+#include "SolidSyslogVxWorks64SysUpTime.h"
 
 /* ISO C requires a translation unit to declare something of its own. */
 extern int BddTargetVxWorks64Headers_Compiled;

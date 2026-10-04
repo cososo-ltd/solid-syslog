@@ -21,7 +21,7 @@ datagram calls `socket`, `sendto` and `close`; the resolver calls `inet_addr`
 and `hostGetByName`; the mutex calls `semMCreate`, `semTake`, `semGive` and
 `semDelete`. The image needs the network stack and the host library for the
 first two, and mutual-exclusion semaphores for the third. The clock calls
-`clock_gettime` and `gmtime_r`, so the image needs the POSIX clocks; uptime
+`clock_gettime` and `gmtime_r`, which the image must include; uptime
 calls `tick64Get` and `sysClkRateGet`; the hostname calls `gethostname`; and
 sleep calls `taskDelay`. Real-time processes (RTPs) are not supported.
 
