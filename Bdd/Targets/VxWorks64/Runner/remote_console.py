@@ -12,10 +12,17 @@ import threading
 
 # Starts the target, which connects its console to listener, and returns that
 # console. start and stop begin and end the target - in practice the runner's
-# qemu-start and qemu-stop jobs.
-def open_remote_target(listener, start, stop):
+# qemu-start and qemu-stop jobs. A target that has not connected within
+# accept_timeout seconds is stopped rather than left running.
+def open_remote_target(listener, start, stop, accept_timeout=None):
     start()
-    connection, _ = listener.accept()
+    listener.settimeout(accept_timeout)
+    try:
+        connection, _ = listener.accept()
+    except TimeoutError:
+        stop()
+        raise
+    connection.settimeout(None)
     return RemoteConsole(connection, stop)
 
 
