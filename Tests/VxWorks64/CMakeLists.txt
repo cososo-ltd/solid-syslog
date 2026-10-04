@@ -142,6 +142,45 @@ set_target_properties(SolidSyslogVxWorks64DatagramTest PROPERTIES
 
 add_test(NAME SolidSyslogVxWorks64DatagramTest COMMAND SolidSyslogVxWorks64DatagramTest)
 
+# The clock's stand-in time.h shadows the host's, so it is applied only to the C
+# sources that call the VxWorks time API; the C++ test drives the fake through
+# VxWorks64ClockFake.h and never sees it.
+set(VXWORKS64_CLOCK_SOURCES
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Clock.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64ClockFake.c
+)
+
+set_source_files_properties(${VXWORKS64_CLOCK_SOURCES} PROPERTIES
+    INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/TimeInterface
+)
+
+add_executable(SolidSyslogVxWorks64ClockTest
+    SolidSyslogVxWorks64ClockTest.cpp
+    main.cpp
+    ${VXWORKS64_CLOCK_SOURCES}
+)
+
+target_link_libraries(SolidSyslogVxWorks64ClockTest PRIVATE
+    ${PROJECT_NAME}
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogVxWorks64ClockTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Tests/Support
+)
+
+set_target_properties(SolidSyslogVxWorks64ClockTest PROPERTIES
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+    C_EXTENSIONS OFF
+)
+
+add_test(NAME SolidSyslogVxWorks64ClockTest COMMAND SolidSyslogVxWorks64ClockTest)
+
 # The BDD target compiles here against the same fakes, so a change that breaks
 # it fails on the host as well as in the target build.
 add_executable(BddTargetVxWorks64Test
