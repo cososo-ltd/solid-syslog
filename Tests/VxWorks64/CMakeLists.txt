@@ -212,6 +212,7 @@ add_test(NAME SolidSyslogVxWorks64SysUpTimeTest COMMAND SolidSyslogVxWorks64SysU
 add_executable(SolidSyslogVxWorks64HostnameTest
     SolidSyslogVxWorks64HostnameTest.cpp
     main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Hostname.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64NetFake.c
 )
 

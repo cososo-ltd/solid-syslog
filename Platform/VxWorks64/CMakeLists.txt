@@ -17,6 +17,7 @@ target_sources(SolidSyslogVxWorks64 INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64Clock.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64Datagram.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64DatagramStatic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64Hostname.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64Mutex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64MutexStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64Resolver.c
