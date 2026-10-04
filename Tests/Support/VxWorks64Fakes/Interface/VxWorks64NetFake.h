@@ -25,6 +25,19 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     const char* VxWorks64NetFake_LastHostGetByNameName(void);
 
+    /** The name gethostname answers. As the kernel's does, gethostname copies
+     *  at most the length it is given, so a name that fills it arrives without
+     *  its terminator. sethostname sets the same name. */
+    void VxWorks64NetFake_SetHostname(const char* name);
+
+    /** Make gethostname answer ERROR. What it leaves in the buffer is then
+     *  unspecified, so the fake leaves a marker there, which a caller that
+     *  prints the buffer anyway sends. */
+    void VxWorks64NetFake_FailGethostname(void);
+
+    /** The buffer length the last gethostname was given. */
+    int VxWorks64NetFake_LastGethostnameLength(void);
+
     /** Make socket answer ERROR, as the stack does when it cannot make one. */
     void VxWorks64NetFake_SetSocketFails(bool fails);
 

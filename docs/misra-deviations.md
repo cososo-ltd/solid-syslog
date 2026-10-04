@@ -705,11 +705,16 @@ On glibc, `<time.h>` transitively includes `<wchar.h>` (via
 cppcheck-misra reports the transitive inclusion as a direct 21.10
 violation in each of them.
 
+`Platform/VxWorks64/Source/SolidSyslogVxWorks64Clock.c` includes `<time.h>`
+for `struct timespec`, `clock_gettime` and `gmtime_r`. The cppcheck-misra run
+has no VxWorks headers on its path, so it resolves `<time.h>` to the host's
+glibc header and reports the same transitive inclusion.
+
 ### Scope
 
-`Platform/Posix/Source/` - the files listed above. The deviation does not
-apply to Windows or FreeRTOS sources, which use their own platform clocks
-and do not include `<time.h>`.
+`Platform/Posix/Source/` and `Platform/VxWorks64/Source/` - the files listed
+above. The deviation does not apply to Windows or FreeRTOS sources, which use
+their own platform clocks and do not include `<time.h>`.
 
 ### Rationale
 
@@ -720,6 +725,11 @@ must include `<time.h>` to use `clock_gettime` / `nanosleep` /
 from `<wchar.h>`; the transitive inclusion is glibc-specific and
 unavoidable on this platform.
 
+The VxWorks 6.4 clock is in the same position: it must include `<time.h>` for
+the POSIX clock calls, and uses nothing from `<wchar.h>`. The finding is made
+against the host's header, not VxWorks', so whether the VxWorks header pulls in
+`<wchar.h>` is not something the analysis can show either way.
+
 ### Risk and mitigation
 
 - **Direct `<wchar.h>` use.** A future direct `#include <wchar.h>`
@@ -728,11 +738,20 @@ unavoidable on this platform.
 - **Non-glibc POSIX targets.** musl, Bionic and BSDs do not pull
   `<wchar.h>` from `<time.h>`; the suppression is harmless on those
   targets (it suppresses a finding that does not occur).
+- **The VxWorks 6.4 clock.** The finding is made against the host's
+  `<time.h>`, not the one the target compiles against. If the VxWorks header
+  does not pull in `<wchar.h>`, the suppression covers a finding that never
+  occurs on the target, which is harmless. As for the POSIX files, only the
+  `<time.h>` include line is suppressed, so a direct `#include <wchar.h>`
+  would still be reported.
 
 ### Approval
 
 Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recorded under
 [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
+
+The VxWorks 6.4 clock added 2026-10-04, approved by the project owner, David Cozens.
+Recorded under [S41.10](https://github.com/cososo-ltd/solid-syslog/issues/954).
 
 ---
 

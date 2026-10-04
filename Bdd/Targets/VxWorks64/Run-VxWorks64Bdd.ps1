@@ -41,7 +41,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'VxWorks64Tools.ps1')
 
-$tags = '@udp and not @tcp and not @wip and not @rtc and not @vxworks64wip'
+$tags = '@udp and not @tcp and not @wip and not @no_rtc and not @vxworks64wip'
 $collectorPort = 5514
 $healthUri = 'http://127.0.0.1:13133/'
 

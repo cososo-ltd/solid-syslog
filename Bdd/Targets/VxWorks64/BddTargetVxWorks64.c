@@ -10,15 +10,17 @@
 #include "BddTargetVxWorks64.h"
 
 #include "errnoLib.h"
+#include "hostLib.h"
 #include "routeLib.h"
-#include "sysLib.h"
 #include "taskLib.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "BddTargetEnterpriseId.h"
+#include "BddTargetVxWorks64Clock.h"
 #include "BddTargetErrorText.h"
 #include "BddTargetInteractive.h"
 #include "BddTargetIps.h"
@@ -35,9 +37,12 @@
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogVxWorks64Address.h"
+#include "SolidSyslogVxWorks64Clock.h"
 #include "SolidSyslogVxWorks64Datagram.h"
+#include "SolidSyslogVxWorks64Hostname.h"
 #include "SolidSyslogVxWorks64Mutex.h"
 #include "SolidSyslogVxWorks64Resolver.h"
+#include "SolidSyslogVxWorks64Sleep.h"
 
 #define BDD_TARGET_TAG "SolidSyslog VxWorks 6.4 BDD target: "
 
@@ -45,8 +50,7 @@ enum
 {
     TASK_PRIORITY = 100,
     INTERACTIVE_STACK_BYTES = 16384,
-    SERVICE_STACK_BYTES = 8192,
-    MILLISECONDS_PER_SECOND = 1000
+    SERVICE_STACK_BYTES = 8192
 };
 
 static FILE* BddTargetVxWorks64_Reports(void);
@@ -60,6 +64,8 @@ static void BddTargetVxWorks64_Spawn(char* name, int stackBytes, FUNCPTR entry);
 static int BddTargetVxWorks64_InteractiveTask(void);
 static int BddTargetVxWorks64_ServiceTask(void);
 static void BddTargetVxWorks64_GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality);
+static bool BddTargetVxWorks64_SetByName(const char* name, const char* value);
+static bool BddTargetVxWorks64_SetTime(const char* value);
 
 /* Every field NULL: Core falls back to its Null buffer and sender. */
 static const struct SolidSyslogConfig CORE_ONLY_CONFIG = {0};
@@ -140,8 +146,10 @@ static void BddTargetVxWorks64_BringUpNetwork(void)
 {
     char anyDestination[] = "0.0.0.0";
     char gateway[] = "10.0.2.2";
+    char hostname[] = "SolidSyslogVxWorks64";
 
     BddTargetVxWorks64_ReportStep("default route", routeAdd(anyDestination, gateway));
+    BddTargetVxWorks64_ReportStep("hostname", sethostname(hostname, (int) sizeof(hostname)));
 }
 
 static void BddTargetVxWorks64_ReportStep(const char* step, STATUS status)
@@ -201,15 +209,18 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     config.SdCount = sizeof(sdList) / sizeof(sdList[0]);
     config.Store = SolidSyslogNullStore_Get();
     config.GetAppName = BddTargetMessageSettings_GetAppName;
+    config.Clock = SolidSyslogVxWorks64_GetTimestamp;
+    config.GetHostname = SolidSyslogVxWorks64_GetHostname;
     logger = SolidSyslog_Create(&config);
 }
 
-/* No clock is set on this target, so its time is neither in a known zone nor
- * synchronised (RFC 5424 §7.1). */
+/* The harness sets the clock, in UTC, with `set time` before it sends anything,
+ * so the time is in a known zone and synchronised to the host's (RFC 5424
+ * §7.1). How closely is not measured, so syncAccuracy is left out. */
 static void BddTargetVxWorks64_GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
-    timeQuality->TzKnown = false;
-    timeQuality->IsSynced = false;
+    timeQuality->TzKnown = true;
+    timeQuality->IsSynced = true;
     timeQuality->SyncAccuracyMicroseconds = SOLIDSYSLOG_SYNC_ACCURACY_OMIT;
 }
 
@@ -250,30 +261,47 @@ static int BddTargetVxWorks64_ServiceTask(void)
 
 void BddTargetVxWorks64_RunConsole(FILE* input)
 {
-    BddTargetInteractive_Run(
-        logger,
-        BddTargetMessageSettings_Message(),
-        input,
-        NULL,
-        BddTargetMessageSettings_SetByName
-    );
+    BddTargetInteractive_Run(logger, BddTargetMessageSettings_Message(), input, NULL, BddTargetVxWorks64_SetByName);
     consoleEnded = true;
+}
+
+/* `set time` is this target's; every other setting is the shared one. */
+static bool BddTargetVxWorks64_SetByName(const char* name, const char* value)
+{
+    bool taken = false;
+
+    if (strcmp(name, "time") == 0)
+    {
+        taken = BddTargetVxWorks64_SetTime(value);
+    }
+    else
+    {
+        taken = BddTargetMessageSettings_SetByName(name, value);
+    }
+    return taken;
+}
+
+/* The board has no battery-backed clock, so the harness sets it, in seconds
+ * since the epoch, and the system clock tick runs it from there. */
+static bool BddTargetVxWorks64_SetTime(const char* value)
+{
+    unsigned long seconds = 0U;
+    bool taken = BddTargetMessageSettings_TryParseNumber(value, &seconds);
+
+    if (taken)
+    {
+        taken = BddTargetVxWorks64Clock_Set(seconds);
+    }
+    return taken;
 }
 
 /* Once the console ends, what it logged is still sent before the task stops. */
 void BddTargetVxWorks64_RunService(void)
 {
-    BddTargetServiceThread_Run(logger, &consoleEnded, BddTargetVxWorks64_Sleep);
+    BddTargetServiceThread_Run(logger, &consoleEnded, SolidSyslogVxWorks64_Sleep);
     while (SolidSyslog_Service(logger) == SOLIDSYSLOG_SERVICE_READY)
     {
     }
-}
-
-/* Rounded up, so a short sleep still yields for a tick rather than none. */
-void BddTargetVxWorks64_Sleep(int milliseconds)
-{
-    int ticks = ((milliseconds * sysClkRateGet()) + (MILLISECONDS_PER_SECOND - 1)) / MILLISECONDS_PER_SECOND;
-    (void) taskDelay(ticks);
 }
 
 void BddTargetVxWorks64_Teardown(void)

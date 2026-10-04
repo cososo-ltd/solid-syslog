@@ -9,6 +9,7 @@
 #define VXWORKS_H
 
 typedef int STATUS;
+typedef unsigned long long UINT64;
 
 /* An entry point, as taskSpawn takes one, which a caller casts its entry
  * function to. The real header leaves the parameter list unspecified; the

@@ -8,11 +8,13 @@
 #include "routeLib.h"
 #include "sysLib.h"
 #include "taskLib.h"
+#include "tickLib.h"
 
 static unsigned VxWorks64TaskFake_Spawns = 0U;
 static bool VxWorks64TaskFake_SpawnsFail = false;
 static unsigned VxWorks64TaskFake_Delays = 0U;
 static int VxWorks64TaskFake_DelayTicks = 0;
+static UINT64 VxWorks64TaskFake_Ticks = 0U;
 
 void VxWorks64TaskFake_Reset(void)
 {
@@ -20,6 +22,7 @@ void VxWorks64TaskFake_Reset(void)
     VxWorks64TaskFake_SpawnsFail = false;
     VxWorks64TaskFake_Delays = 0U;
     VxWorks64TaskFake_DelayTicks = 0;
+    VxWorks64TaskFake_Ticks = 0U;
 }
 
 void VxWorks64TaskFake_FailSpawns(void)
@@ -87,6 +90,16 @@ STATUS taskDelay(int ticks)
     VxWorks64TaskFake_Delays++;
     VxWorks64TaskFake_DelayTicks = ticks;
     return OK;
+}
+
+void VxWorks64TaskFake_SetTicks(unsigned long long ticks)
+{
+    VxWorks64TaskFake_Ticks = ticks;
+}
+
+UINT64 tick64Get(void)
+{
+    return VxWorks64TaskFake_Ticks;
 }
 
 /* The VxWorks default system clock rate. */

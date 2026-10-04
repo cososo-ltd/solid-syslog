@@ -26,6 +26,7 @@ import socket
 import ssl
 import subprocess
 import sys
+import time
 
 # Targets that run where Behave runs, from a binary built here. A remote target
 # is built and run on another machine, through the VxWorks 6.4 runner.
@@ -275,10 +276,12 @@ def apply_extra_args(context, process, extra_args):
     written = 0
     # The remote target's collector is this machine, at the address the target
     # reached it - which only the console knows - and on the port the run gave
-    # the collector.
+    # the collector. The target has no battery-backed clock, so it takes this
+    # machine's time, in UTC seconds, before it logs anything.
     if target == "vxworks64":
+        process.stdin.write(f"set time {int(time.time())}\n")
         process.stdin.write(f"set host {process.collector_address}\n")
-        written = 1
+        written = 2
         collector_port = os.environ.get("VXWORKS64_COLLECTOR_PORT")
         if collector_port:
             process.stdin.write(f"set port {collector_port}\n")

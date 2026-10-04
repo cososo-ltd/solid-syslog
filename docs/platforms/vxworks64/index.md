@@ -3,11 +3,14 @@
 `Platform/VxWorks64/` wraps the VxWorks 6.4 kernel API for kernel (VIP) builds.
 It is written against the publicly documented API and verified on 6.4; it may
 serve as a model for other VxWorks releases, but nothing here has run on one.
-Storage and time come from separate platforms; the
-[capability matrix](../index.md) shows which fill them.
+Storage comes from a separate platform; the
+[capability matrix](../index.md) shows which fill it.
 
 Fills the Datagram, Resolver and Mutex [roles](../../roles/index.md), plus the
-address handle the datagram reads back to send. TCP is not yet supported.
+address handle the datagram reads back to send. TCP is not yet supported. It
+also supplies the clock, hostname, sleep and sysUpTime callbacks. There is no
+process-id callback: a kernel task belongs to no process, so PROCID is left
+unset and sent as the nil value.
 
 ## What it ships
 
@@ -17,8 +20,10 @@ A VxWorks 6.4 kernel image and the VxWorks headers on your include path. The
 datagram calls `socket`, `sendto` and `close`; the resolver calls `inet_addr`
 and `hostGetByName`; the mutex calls `semMCreate`, `semTake`, `semGive` and
 `semDelete`. The image needs the network stack and the host library for the
-first two, and mutual-exclusion semaphores for the third. Real-time processes
-(RTPs) are not supported.
+first two, and mutual-exclusion semaphores for the third. The clock calls
+`clock_gettime` and `gmtime_r`, which the image must include; uptime
+calls `tick64Get` and `sysClkRateGet`; the hostname calls `gethostname`; and
+sleep calls `taskDelay`. Real-time processes (RTPs) are not supported.
 
 The sources are C99. They need nothing from the compiler beyond that, and use no
 toolchain-specific extensions. The flags a VIP generates select C89, so with
@@ -87,6 +92,27 @@ refuses with `EMSGSIZE` is reported as oversize in the same way.
 Raising `SOLIDSYSLOG_MAX_MESSAGE_SIZE` above that limit therefore does not
 produce larger datagrams on this platform; it only lengthens the records the
 sender has to trim.
+
+### The clock is only as right as whatever set it
+
+The clock reads `CLOCK_REALTIME` and reports it in UTC; the library never sets
+it. On a board without a battery-backed clock it runs from wherever the kernel
+started it until something sets it, and every record sent before then carries
+that time. If the clock cannot be read the record is sent with no timestamp at
+all.
+
+### Time quality is yours to report
+
+VxWorks 6.4 has no standard call that says whether the clock is synchronised,
+or how closely, so the pack supplies no time-quality callback. Whatever sets
+the clock knows; report it in the callback you give the time-quality
+structured data.
+
+### Host identity is only as good as the kernel's
+
+The hostname is what `gethostname` reports, up to `MAXHOSTNAMELEN` characters.
+It identifies the record's origin exactly as far as whatever set it can be
+trusted, and the library performs no independent check.
 
 ### The mutex guards a buffer shared between tasks
 

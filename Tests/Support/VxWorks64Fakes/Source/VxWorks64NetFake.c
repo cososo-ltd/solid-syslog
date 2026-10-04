@@ -13,6 +13,10 @@
 #include "inetLib.h"
 #include "sockLib.h"
 
+static const char* VxWorks64NetFake_Hostname = "";
+static char VxWorks64NetFake_SetHostnameBuffer[MAXHOSTNAMELEN + 1];
+static bool VxWorks64NetFake_GethostnameFails = false;
+static int VxWorks64NetFake_GethostnameLength = 0;
 static unsigned long VxWorks64NetFake_InetAddrReturn = 0UL;
 static const char* VxWorks64NetFake_InetAddrString = NULL;
 static int VxWorks64NetFake_HostGetByNameReturn = 0;
@@ -42,6 +46,9 @@ static int VxWorks64NetFake_ClosedFd = -1;
 
 void VxWorks64NetFake_Reset(void)
 {
+    VxWorks64NetFake_Hostname = "";
+    VxWorks64NetFake_GethostnameFails = false;
+    VxWorks64NetFake_GethostnameLength = 0;
     VxWorks64NetFake_SendtoPayload[0] = '\0';
     VxWorks64NetFake_InetAddrReturn = 0UL;
     VxWorks64NetFake_InetAddrString = NULL;
@@ -103,6 +110,42 @@ int hostGetByName(char* name)
     VxWorks64NetFake_HostGetByNameCount++;
     VxWorks64NetFake_HostGetByNameName = name;
     return VxWorks64NetFake_HostGetByNameReturn;
+}
+
+void VxWorks64NetFake_SetHostname(const char* name)
+{
+    VxWorks64NetFake_Hostname = name;
+}
+
+void VxWorks64NetFake_FailGethostname(void)
+{
+    VxWorks64NetFake_GethostnameFails = true;
+}
+
+int VxWorks64NetFake_LastGethostnameLength(void)
+{
+    return VxWorks64NetFake_GethostnameLength;
+}
+
+int gethostname(char* name, int nameLen)
+{
+    VxWorks64NetFake_GethostnameLength = nameLen;
+    const char* answer = VxWorks64NetFake_GethostnameFails ? "unspecified" : VxWorks64NetFake_Hostname;
+    size_t length = strlen(answer) + 1U;
+    size_t copied = (length < (size_t) nameLen) ? length : (size_t) nameLen;
+    (void) memcpy(name, answer, copied);
+    return VxWorks64NetFake_GethostnameFails ? ERROR : OK;
+}
+
+// NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
+/* Keeps the name, as the kernel does, for gethostname to answer. */
+int sethostname(char* name, int nameLen)
+{
+    size_t length = ((size_t) nameLen < MAXHOSTNAMELEN) ? (size_t) nameLen : MAXHOSTNAMELEN;
+    (void) memcpy(VxWorks64NetFake_SetHostnameBuffer, name, length);
+    VxWorks64NetFake_SetHostnameBuffer[length] = '\0';
+    VxWorks64NetFake_Hostname = VxWorks64NetFake_SetHostnameBuffer;
+    return OK;
 }
 
 void VxWorks64NetFake_SetSocketFails(bool fails)

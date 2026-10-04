@@ -45,7 +45,6 @@ static inline bool MessageSettings_IsPort(unsigned long number);
 static inline bool MessageSettings_SetFacility(const char* value);
 static inline bool MessageSettings_SetSeverity(const char* value);
 static inline bool MessageSettings_TryUpdateString(char* storage, size_t storageSize, const char* value);
-static inline bool MessageSettings_TryParseNumber(const char* value, unsigned long* parsed);
 
 void BddTargetMessageSettings_Reset(const char* defaultHost)
 {
@@ -127,7 +126,7 @@ static inline bool MessageSettings_SetHost(const char* value)
 static inline bool MessageSettings_SetPort(const char* value)
 {
     unsigned long parsed = 0U;
-    bool taken = MessageSettings_TryParseNumber(value, &parsed) && MessageSettings_IsPort(parsed);
+    bool taken = BddTargetMessageSettings_TryParseNumber(value, &parsed) && MessageSettings_IsPort(parsed);
     if (taken)
     {
         port = (uint16_t) parsed;
@@ -136,8 +135,7 @@ static inline bool MessageSettings_SetPort(const char* value)
     return taken;
 }
 
-/* Takes decimal digits only, with nothing after them. */
-static inline bool MessageSettings_TryParseNumber(const char* value, unsigned long* parsed)
+bool BddTargetMessageSettings_TryParseNumber(const char* value, unsigned long* parsed)
 {
     char* end = NULL;
     errno = 0;
@@ -162,7 +160,7 @@ static inline bool MessageSettings_IsPort(unsigned long number)
 static inline bool MessageSettings_SetFacility(const char* value)
 {
     unsigned long parsed = 0U;
-    bool taken = MessageSettings_TryParseNumber(value, &parsed);
+    bool taken = BddTargetMessageSettings_TryParseNumber(value, &parsed);
     if (taken)
     {
         message.Facility = (enum SolidSyslogFacility) parsed;
@@ -173,7 +171,7 @@ static inline bool MessageSettings_SetFacility(const char* value)
 static inline bool MessageSettings_SetSeverity(const char* value)
 {
     unsigned long parsed = 0U;
-    bool taken = MessageSettings_TryParseNumber(value, &parsed);
+    bool taken = BddTargetMessageSettings_TryParseNumber(value, &parsed);
     if (taken)
     {
         message.Severity = (enum SolidSyslogSeverity) parsed;
