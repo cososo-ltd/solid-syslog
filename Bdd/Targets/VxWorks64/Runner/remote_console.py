@@ -10,8 +10,10 @@ import threading
 
 
 class RemoteConsole:
-    def __init__(self, connection):
+    # stop ends the target - in practice the runner's qemu-stop job.
+    def __init__(self, connection, stop):
         self._connection = connection
+        self._stop = stop
         read_end, self._write_end = os.pipe()
         self.stdout = os.fdopen(read_end, "rb", buffering=0)
         self.stdin = _ConsoleInput(connection)
@@ -20,6 +22,9 @@ class RemoteConsole:
 
     def poll(self):
         return self.returncode
+
+    def kill(self):
+        self._stop()
 
     # The steps read stdout with os.read, which needs a real file descriptor;
     # a socket has none on Windows, so the output is copied into a pipe. The
