@@ -269,10 +269,15 @@ def apply_extra_args(context, process, extra_args):
     target = getattr(context, "target", "linux")
     written = 0
     # The remote target's collector is this machine, at the address the target
-    # reached it - which only the console knows.
+    # reached it - which only the console knows - and on the port the run gave
+    # the collector.
     if target == "vxworks64":
         process.stdin.write(f"set host {process.collector_address}\n")
         written = 1
+        collector_port = os.environ.get("VXWORKS64_COLLECTOR_PORT")
+        if collector_port:
+            process.stdin.write(f"set port {collector_port}\n")
+            written += 1
     if (not extra_args) or (target not in _SET_LINE_TARGETS):
         process.stdin.flush()
         return written

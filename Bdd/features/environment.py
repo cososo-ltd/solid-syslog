@@ -151,10 +151,6 @@ def before_all(context):
         "RECEIVED_LOG", "Bdd/output/received.log"
     )
     context.oracle_format = os.environ.get("ORACLE_FORMAT", "syslog-ng")
-    # The remote target's syslog-ng runs in a container beside a native Behave,
-    # so its control socket is not reachable from here; locally it is.
-    context.syslog_ng_ctl_reachable = context.target != "vxworks64"
-
     if context.target == "vxworks64":
         prepare_vxworks64_target()
 

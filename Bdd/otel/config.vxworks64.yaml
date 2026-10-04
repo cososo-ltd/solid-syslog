@@ -1,0 +1,46 @@
+# OpenTelemetry Collector Contrib config — the VxWorks 6.4 BDD oracle.
+#
+# The target runs under QEMU on the build machine, so its syslog crosses the
+# network to this collector: UDP on every interface, on the port in
+# VXWORKS64_COLLECTOR_PORT, which Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1 sets
+# and also gives the target. Records are written to the same files, in the same
+# form, as Bdd/otel/config.yaml writes them, so the same steps read them.
+#
+# UDP only, because that is the only transport the target has yet. The health
+# check is how the run script knows the collector is ready: a UDP listener
+# cannot be probed by connecting to it.
+
+receivers:
+  syslog/udp:
+    udp:
+      listen_address: "0.0.0.0:${env:VXWORKS64_COLLECTOR_PORT}"
+    protocol: rfc5424
+
+extensions:
+  health_check:
+    endpoint: "127.0.0.1:13133"
+
+exporters:
+  file:
+    path: "Bdd/output/received.jsonl"
+    rotation:
+      max_megabytes: 10
+      max_backups: 1
+  file/udp:
+    path: "Bdd/output/received_udp.jsonl"
+    rotation:
+      max_megabytes: 10
+      max_backups: 1
+
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: warn
+  pipelines:
+    logs:
+      receivers: [syslog/udp]
+      exporters: [file]
+    logs/udp:
+      receivers: [syslog/udp]
+      exporters: [file/udp]

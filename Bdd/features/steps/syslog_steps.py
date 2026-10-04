@@ -555,7 +555,7 @@ def step_syslog_ng_is_running(context):
     # Only assert the syslog-ng control socket when syslog-ng is actually the
     # active oracle. Other runners (e.g. the OTel Collector on Windows) reuse
     # this step text but expose no such socket.
-    if context.oracle_format == "syslog-ng" and context.syslog_ng_ctl_reachable:
+    if context.oracle_format == "syslog-ng":
         assert os.path.exists(SYSLOG_NG_CTL), (
             f"syslog-ng control socket not found at {SYSLOG_NG_CTL}"
         )
