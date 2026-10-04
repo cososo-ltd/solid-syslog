@@ -17,6 +17,7 @@ struct SolidSyslogVxWorks64TcpStream
 {
     struct SolidSyslogStream Base;
     struct SolidSyslogVxWorks64TcpStreamConfig Config;
+    int Fd;
 };
 
 void SolidSyslogVxWorks64TcpStream_Initialise(

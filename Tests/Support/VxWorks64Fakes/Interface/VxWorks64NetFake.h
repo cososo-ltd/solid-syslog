@@ -105,6 +105,42 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  this level and option to this int value. */
     bool VxWorks64NetFake_SocketOptionWasSetTo(int level, int optname, int value);
 
+    /** Make send answer ERROR with errno set to the value given. */
+    void VxWorks64NetFake_FailSendWithErrno(int errnoValue);
+
+    /** Make send take at most this many bytes, as a stack with too little room
+     *  for the whole buffer does. */
+    void VxWorks64NetFake_LimitSendTo(int bytes);
+
+    unsigned VxWorks64NetFake_SendCallCount(void);
+
+    int VxWorks64NetFake_LastSendFd(void);
+
+    const char* VxWorks64NetFake_LastSendBuf(void);
+
+    int VxWorks64NetFake_LastSendLen(void);
+
+    int VxWorks64NetFake_LastSendFlags(void);
+
+    /** Make recv answer ERROR with errno set to the value given. Until told
+     *  otherwise recv answers ERROR with EWOULDBLOCK, as an idle connection with
+     *  nothing waiting does. */
+    void VxWorks64NetFake_FailRecvWithErrno(int errnoValue);
+
+    /** Make recv deliver these bytes, as many as fit the buffer it is given.
+     *  Zero bytes is the peer's orderly close. */
+    void VxWorks64NetFake_RecvDelivers(const char* data, int length);
+
+    unsigned VxWorks64NetFake_RecvCallCount(void);
+
+    int VxWorks64NetFake_LastRecvFd(void);
+
+    const char* VxWorks64NetFake_LastRecvBuf(void);
+
+    int VxWorks64NetFake_LastRecvLen(void);
+
+    int VxWorks64NetFake_LastRecvFlags(void);
+
     unsigned VxWorks64NetFake_CloseCallCount(void);
 
     int VxWorks64NetFake_LastClosedFd(void);

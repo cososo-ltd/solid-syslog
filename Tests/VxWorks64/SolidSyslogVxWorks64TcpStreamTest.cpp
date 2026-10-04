@@ -6,6 +6,7 @@ using namespace CososoTesting;
 #include "vxWorks.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
@@ -35,6 +36,8 @@ extern "C" uint32_t FakeGetConnectTimeoutMs(void* context)
     return FakeGetConnectTimeoutMs_ReturnValue;
 }
 } // namespace
+
+static const char TEST_RECORD[] = "hello";
 
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64TcpStream)
@@ -68,6 +71,18 @@ TEST_GROUP(SolidSyslogVxWorks64TcpStream)
         config.GetConnectTimeoutMs   = FakeGetConnectTimeoutMs;
         config.ConnectTimeoutContext = context;
         stream = SolidSyslogVxWorks64TcpStream_Create(&config);
+    }
+
+    [[nodiscard]] bool OpenAndSend() const
+    {
+        SolidSyslogStream_Open(stream, address);
+        return SolidSyslogStream_Send(stream, TEST_RECORD, sizeof(TEST_RECORD) - 1U);
+    }
+
+    SolidSyslogSsize OpenAndRead(char* buffer, size_t size) const
+    {
+        SolidSyslogStream_Open(stream, address);
+        return SolidSyslogStream_Read(stream, buffer, size);
     }
 
     /* The connect-failure tests differ only in the error the connect reports,
@@ -239,4 +254,195 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenStillSucceedsWhenTheStackRefusesAnOption
 {
     VxWorks64NetFake_RefuseSocketOption(IPPROTO_TCP, TCP_NODELAY);
     CHECK_TRUE(SolidSyslogStream_Open(stream, address));
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendHandsTheWholeRecordToTheConnectedSocket)
+{
+    (void) OpenAndSend();
+    CALLED_FAKE(VxWorks64NetFake_Send, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastSendFd());
+    POINTERS_EQUAL(TEST_RECORD, VxWorks64NetFake_LastSendBuf());
+    LONGS_EQUAL(sizeof(TEST_RECORD) - 1U, VxWorks64NetFake_LastSendLen());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendNeverWaitsForRoomInTheStack)
+{
+    (void) OpenAndSend();
+    LONGS_EQUAL(MSG_DONTWAIT, VxWorks64NetFake_LastSendFlags());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendSucceedsWhenTheStackTakesTheWholeRecord)
+{
+    CHECK_TRUE(OpenAndSend());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendFailsWhenTheStackTakesOnlyPartOfTheRecord)
+{
+    VxWorks64NetFake_LimitSendTo(2);
+    CHECK_FALSE(OpenAndSend());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendFailsWhenTheStackRefusesTheRecord)
+{
+    VxWorks64NetFake_FailSendWithErrno(EPIPE);
+    CHECK_FALSE(OpenAndSend());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendClosesTheConnectionWhenTheRecordDoesNotGoWhole)
+{
+    VxWorks64NetFake_LimitSendTo(2);
+    (void) OpenAndSend();
+    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastClosedFd());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendFirstPeeksWithoutWaitingToSeeWhetherThePeerHasClosed)
+{
+    (void) OpenAndSend();
+    CALLED_FAKE(VxWorks64NetFake_Recv, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastRecvFd());
+    LONGS_EQUAL(1, VxWorks64NetFake_LastRecvLen());
+    LONGS_EQUAL(MSG_PEEK | MSG_DONTWAIT, VxWorks64NetFake_LastRecvFlags());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendRefusesTheRecordOnceThePeerHasClosed)
+{
+    VxWorks64NetFake_RecvDelivers(nullptr, 0);
+    CHECK_FALSE(OpenAndSend());
+    CALLED_FAKE(VxWorks64NetFake_Send, NEVER);
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendRefusesTheRecordWhenThePeerHasResetTheConnection)
+{
+    VxWorks64NetFake_FailRecvWithErrno(ECONNRESET);
+    CHECK_FALSE(OpenAndSend());
+    CALLED_FAKE(VxWorks64NetFake_Send, NEVER);
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendGoesAheadWhenThePeerHasSentSomethingUnread)
+{
+    VxWorks64NetFake_RecvDelivers("x", 1);
+    CHECK_TRUE(OpenAndSend());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendGoesAheadWhenTheStackSaysTryAgainForNothingWaiting)
+{
+    VxWorks64NetFake_FailRecvWithErrno(EAGAIN);
+    CHECK_TRUE(OpenAndSend());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendClosesTheConnectionOnceThePeerHasClosed)
+{
+    VxWorks64NetFake_RecvDelivers(nullptr, 0);
+    (void) OpenAndSend();
+    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, SendRefusesARecordLongerThanTheStackCanBeToldOf)
+{
+    SolidSyslogStream_Open(stream, address);
+    CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_RECORD, (size_t) INT_MAX + 1U));
+    CALLED_FAKE(VxWorks64NetFake_Send, NEVER);
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, ReadAsksTheConnectedSocketForWhatIsWaiting)
+{
+    char buffer[16];
+    (void) OpenAndRead(buffer, sizeof(buffer));
+    CALLED_FAKE(VxWorks64NetFake_Recv, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastRecvFd());
+    POINTERS_EQUAL(buffer, VxWorks64NetFake_LastRecvBuf());
+    LONGS_EQUAL(sizeof(buffer), VxWorks64NetFake_LastRecvLen());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, ReadNeverWaitsForData)
+{
+    char buffer[16];
+    (void) OpenAndRead(buffer, sizeof(buffer));
+    LONGS_EQUAL(MSG_DONTWAIT, VxWorks64NetFake_LastRecvFlags());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, ReadReturnsHowManyBytesArrived)
+{
+    char buffer[16];
+    VxWorks64NetFake_RecvDelivers("abc", 3);
+    LONGS_EQUAL(3, OpenAndRead(buffer, sizeof(buffer)));
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, ReadReportsATeardownOnceThePeerHasClosed)
+{
+    char buffer[16];
+    VxWorks64NetFake_RecvDelivers(nullptr, 0);
+    LONGS_EQUAL(-1, OpenAndRead(buffer, sizeof(buffer)));
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, ReadReportsATeardownWhenTheConnectionFails)
+{
+    char buffer[16];
+    VxWorks64NetFake_FailRecvWithErrno(ECONNRESET);
+    LONGS_EQUAL(-1, OpenAndRead(buffer, sizeof(buffer)));
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, ReadReturnsZeroWhenNothingIsWaiting)
+{
+    char buffer[16];
+    VxWorks64NetFake_FailRecvWithErrno(EWOULDBLOCK);
+    LONGS_EQUAL(0, OpenAndRead(buffer, sizeof(buffer)));
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, ReadReturnsZeroWhenTheStackSaysTryAgain)
+{
+    char buffer[16];
+    VxWorks64NetFake_FailRecvWithErrno(EAGAIN);
+    LONGS_EQUAL(0, OpenAndRead(buffer, sizeof(buffer)));
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, ReadClosesTheConnectionWhenItReportsATeardown)
+{
+    char buffer[16];
+    VxWorks64NetFake_RecvDelivers(nullptr, 0);
+    (void) OpenAndRead(buffer, sizeof(buffer));
+    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastClosedFd());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, ReadOffersTheStackNoMoreThanItCanBeToldOf)
+{
+    char buffer[16];
+    (void) OpenAndRead(buffer, (size_t) INT_MAX + 1U);
+    LONGS_EQUAL(INT_MAX, VxWorks64NetFake_LastRecvLen());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, CloseClosesTheConnectedSocket)
+{
+    SolidSyslogStream_Open(stream, address);
+    SolidSyslogStream_Close(stream);
+    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastClosedFd());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, CloseTwiceClosesTheSocketOnce)
+{
+    SolidSyslogStream_Open(stream, address);
+    SolidSyslogStream_Close(stream);
+    SolidSyslogStream_Close(stream);
+    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, CloseOnAStreamThatNeverOpenedClosesNothing)
+{
+    SolidSyslogStream_Close(stream);
+    CALLED_FAKE(VxWorks64NetFake_Close, NEVER);
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, OpenOnAnOpenStreamClosesTheSocketItHeld)
+{
+    SolidSyslogStream_Open(stream, address);
+    SolidSyslogStream_Open(stream, address);
+    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, VersionStaysZeroBecauseNothingAboutTheStreamChangesAtRuntime)
+{
+    LONGS_EQUAL(0U, SolidSyslogStream_Version(stream));
 }

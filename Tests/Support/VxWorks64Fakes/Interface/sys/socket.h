@@ -20,6 +20,8 @@ extern "C"
 #define SOCK_DGRAM 2
 #define SOL_SOCKET 0xffff
 #define SO_KEEPALIVE 0x0008
+#define MSG_PEEK 0x2
+#define MSG_DONTWAIT 0x80
 
     /* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
 

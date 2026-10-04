@@ -68,6 +68,21 @@ static int VxWorks64NetFake_RefusedLevel = -1;
 static int VxWorks64NetFake_RefusedOptname = -1;
 static unsigned VxWorks64NetFake_SetsockoptCount = 0U;
 static struct VxWorks64NetFake_SocketOption VxWorks64NetFake_SocketOptions[VXWORKS64NETFAKE_MAX_SOCKET_OPTIONS];
+static int VxWorks64NetFake_SendErrno = 0;
+static int VxWorks64NetFake_SendLimit = -1;
+static unsigned VxWorks64NetFake_SendCount = 0U;
+static int VxWorks64NetFake_SendFd = -1;
+static const char* VxWorks64NetFake_SendBuf = NULL;
+static int VxWorks64NetFake_SendLen = 0;
+static int VxWorks64NetFake_SendFlags = -1;
+static int VxWorks64NetFake_RecvErrno = 0;
+static const char* VxWorks64NetFake_RecvData = NULL;
+static int VxWorks64NetFake_RecvDataLength = 0;
+static unsigned VxWorks64NetFake_RecvCount = 0U;
+static int VxWorks64NetFake_RecvFd = -1;
+static const char* VxWorks64NetFake_RecvBuf = NULL;
+static int VxWorks64NetFake_RecvLen = 0;
+static int VxWorks64NetFake_RecvFlags = -1;
 static unsigned VxWorks64NetFake_CloseCount = 0U;
 static int VxWorks64NetFake_ClosedFd = -1;
 
@@ -106,6 +121,21 @@ void VxWorks64NetFake_Reset(void)
     VxWorks64NetFake_RefusedLevel = -1;
     VxWorks64NetFake_RefusedOptname = -1;
     VxWorks64NetFake_SetsockoptCount = 0U;
+    VxWorks64NetFake_SendErrno = 0;
+    VxWorks64NetFake_SendLimit = -1;
+    VxWorks64NetFake_SendCount = 0U;
+    VxWorks64NetFake_SendFd = -1;
+    VxWorks64NetFake_SendBuf = NULL;
+    VxWorks64NetFake_SendLen = 0;
+    VxWorks64NetFake_SendFlags = -1;
+    VxWorks64NetFake_RecvErrno = EWOULDBLOCK;
+    VxWorks64NetFake_RecvData = NULL;
+    VxWorks64NetFake_RecvDataLength = 0;
+    VxWorks64NetFake_RecvCount = 0U;
+    VxWorks64NetFake_RecvFd = -1;
+    VxWorks64NetFake_RecvBuf = NULL;
+    VxWorks64NetFake_RecvLen = 0;
+    VxWorks64NetFake_RecvFlags = -1;
     VxWorks64NetFake_CloseCount = 0U;
     VxWorks64NetFake_ClosedFd = -1;
 }
@@ -414,6 +444,125 @@ STATUS setsockopt(int s, int level, int optname, char* optval, int optlen)
     VxWorks64NetFake_SetsockoptCount++;
     bool refused = (level == VxWorks64NetFake_RefusedLevel) && (optname == VxWorks64NetFake_RefusedOptname);
     return refused ? ERROR : OK;
+}
+
+void VxWorks64NetFake_FailSendWithErrno(int errnoValue)
+{
+    VxWorks64NetFake_SendErrno = errnoValue;
+}
+
+void VxWorks64NetFake_LimitSendTo(int bytes)
+{
+    VxWorks64NetFake_SendLimit = bytes;
+}
+
+unsigned VxWorks64NetFake_SendCallCount(void)
+{
+    return VxWorks64NetFake_SendCount;
+}
+
+int VxWorks64NetFake_LastSendFd(void)
+{
+    return VxWorks64NetFake_SendFd;
+}
+
+const char* VxWorks64NetFake_LastSendBuf(void)
+{
+    return VxWorks64NetFake_SendBuf;
+}
+
+int VxWorks64NetFake_LastSendLen(void)
+{
+    return VxWorks64NetFake_SendLen;
+}
+
+int VxWorks64NetFake_LastSendFlags(void)
+{
+    return VxWorks64NetFake_SendFlags;
+}
+
+int send(int s, const char* buf, int bufLen, int flags)
+{
+    VxWorks64NetFake_SendCount++;
+    VxWorks64NetFake_SendFd = s;
+    VxWorks64NetFake_SendBuf = buf;
+    VxWorks64NetFake_SendLen = bufLen;
+    VxWorks64NetFake_SendFlags = flags;
+    int result = bufLen;
+    if (VxWorks64NetFake_SendErrno != 0)
+    {
+        errno = VxWorks64NetFake_SendErrno;
+        result = ERROR;
+    }
+    else if ((VxWorks64NetFake_SendLimit >= 0) && (VxWorks64NetFake_SendLimit < bufLen))
+    {
+        result = VxWorks64NetFake_SendLimit;
+    }
+    else
+    {
+        /* the whole buffer is taken */
+    }
+    return result;
+}
+
+void VxWorks64NetFake_FailRecvWithErrno(int errnoValue)
+{
+    VxWorks64NetFake_RecvErrno = errnoValue;
+}
+
+void VxWorks64NetFake_RecvDelivers(const char* data, int length)
+{
+    VxWorks64NetFake_RecvErrno = 0;
+    VxWorks64NetFake_RecvData = data;
+    VxWorks64NetFake_RecvDataLength = length;
+}
+
+unsigned VxWorks64NetFake_RecvCallCount(void)
+{
+    return VxWorks64NetFake_RecvCount;
+}
+
+int VxWorks64NetFake_LastRecvFd(void)
+{
+    return VxWorks64NetFake_RecvFd;
+}
+
+const char* VxWorks64NetFake_LastRecvBuf(void)
+{
+    return VxWorks64NetFake_RecvBuf;
+}
+
+int VxWorks64NetFake_LastRecvLen(void)
+{
+    return VxWorks64NetFake_RecvLen;
+}
+
+int VxWorks64NetFake_LastRecvFlags(void)
+{
+    return VxWorks64NetFake_RecvFlags;
+}
+
+int recv(int s, char* buf, int bufLen, int flags)
+{
+    VxWorks64NetFake_RecvCount++;
+    VxWorks64NetFake_RecvFd = s;
+    VxWorks64NetFake_RecvBuf = buf;
+    VxWorks64NetFake_RecvLen = bufLen;
+    VxWorks64NetFake_RecvFlags = flags;
+    int result = ERROR;
+    if (VxWorks64NetFake_RecvErrno != 0)
+    {
+        errno = VxWorks64NetFake_RecvErrno;
+    }
+    else
+    {
+        result = (VxWorks64NetFake_RecvDataLength < bufLen) ? VxWorks64NetFake_RecvDataLength : bufLen;
+        if (result > 0)
+        {
+            (void) memcpy(buf, VxWorks64NetFake_RecvData, (size_t) result);
+        }
+    }
+    return result;
 }
 
 STATUS close(int fd)

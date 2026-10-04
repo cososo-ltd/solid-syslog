@@ -21,6 +21,8 @@ extern "C"
     int sendto(int s, char* buf, int bufLen, int flags, struct sockaddr* to, int tolen);
     STATUS connectWithTimeout(int sock, struct sockaddr* adrs, int adrsLen, struct timeval* timeVal);
     STATUS setsockopt(int s, int level, int optname, char* optval, int optlen);
+    int send(int s, const char* buf, int bufLen, int flags);
+    int recv(int s, char* buf, int bufLen, int flags);
 
 #ifdef __cplusplus
 }
