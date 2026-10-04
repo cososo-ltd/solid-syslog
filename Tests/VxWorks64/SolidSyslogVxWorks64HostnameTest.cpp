@@ -43,3 +43,13 @@ TEST(SolidSyslogVxWorks64Hostname, WritesTheHostname)
 
     STRCMP_EQUAL("vxtarget", Formatted());
 }
+
+TEST(SolidSyslogVxWorks64Hostname, WritesNothingWhenGethostnameFails)
+{
+    VxWorks64NetFake_SetHostname("vxtarget");
+    VxWorks64NetFake_FailGethostname();
+
+    SolidSyslogVxWorks64_GetHostname(&field, nullptr);
+
+    STRCMP_EQUAL("", Formatted());
+}

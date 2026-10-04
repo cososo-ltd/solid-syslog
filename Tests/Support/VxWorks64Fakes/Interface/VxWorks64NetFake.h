@@ -30,6 +30,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  its terminator. */
     void VxWorks64NetFake_SetHostname(const char* name);
 
+    /** Make gethostname answer ERROR. What it leaves in the buffer is then
+     *  unspecified, so the fake leaves a marker there, which a caller that
+     *  prints the buffer anyway sends. */
+    void VxWorks64NetFake_FailGethostname(void);
+
     /** Make socket answer ERROR, as the stack does when it cannot make one. */
     void VxWorks64NetFake_SetSocketFails(bool fails);
 

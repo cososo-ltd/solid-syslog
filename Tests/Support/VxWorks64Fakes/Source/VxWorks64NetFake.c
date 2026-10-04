@@ -14,6 +14,7 @@
 #include "sockLib.h"
 
 static const char* VxWorks64NetFake_Hostname = "";
+static bool VxWorks64NetFake_GethostnameFails = false;
 static unsigned long VxWorks64NetFake_InetAddrReturn = 0UL;
 static const char* VxWorks64NetFake_InetAddrString = NULL;
 static int VxWorks64NetFake_HostGetByNameReturn = 0;
@@ -44,6 +45,7 @@ static int VxWorks64NetFake_ClosedFd = -1;
 void VxWorks64NetFake_Reset(void)
 {
     VxWorks64NetFake_Hostname = "";
+    VxWorks64NetFake_GethostnameFails = false;
     VxWorks64NetFake_SendtoPayload[0] = '\0';
     VxWorks64NetFake_InetAddrReturn = 0UL;
     VxWorks64NetFake_InetAddrString = NULL;
@@ -112,12 +114,18 @@ void VxWorks64NetFake_SetHostname(const char* name)
     VxWorks64NetFake_Hostname = name;
 }
 
+void VxWorks64NetFake_FailGethostname(void)
+{
+    VxWorks64NetFake_GethostnameFails = true;
+}
+
 int gethostname(char* name, int nameLen)
 {
-    size_t length = strlen(VxWorks64NetFake_Hostname) + 1U;
+    const char* answer = VxWorks64NetFake_GethostnameFails ? "unspecified" : VxWorks64NetFake_Hostname;
+    size_t length = strlen(answer) + 1U;
     size_t copied = (length < (size_t) nameLen) ? length : (size_t) nameLen;
-    (void) memcpy(name, VxWorks64NetFake_Hostname, copied);
-    return OK;
+    (void) memcpy(name, answer, copied);
+    return VxWorks64NetFake_GethostnameFails ? ERROR : OK;
 }
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
