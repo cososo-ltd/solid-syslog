@@ -13,6 +13,9 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
+    /** Hundredths of a second since boot, from tick64Get and sysClkRateGet, as
+     *  RFC 3418 sysUpTime; wraps modulo 2^32 per the TimeTicks contract, about
+     *  every 497 days. */
     uint32_t SolidSyslogVxWorks64_GetSysUpTime(void);
 
 SOLIDSYSLOG_EXTERN_C_END
