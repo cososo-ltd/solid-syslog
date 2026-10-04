@@ -20,6 +20,8 @@ class RemoteConsole:
         read_end, self._write_end = os.pipe()
         self.stdout = os.fdopen(read_end, "rb", buffering=0)
         self.stdin = _ConsoleInput(connection)
+        # The target runs on another machine, so there is no local process.
+        self.pid = None
         self.returncode = None
         self._copier = threading.Thread(target=self._copy_output, daemon=True)
         self._copier.start()
