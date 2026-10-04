@@ -72,6 +72,9 @@ class RemoteConsoleTest(unittest.TestCase):
     def test_it_has_no_process_id_on_this_machine(self):
         self.assertIsNone(self.console.pid)
 
+    def test_it_has_no_separate_error_stream(self):
+        self.assertIsNone(self.console.stderr)
+
     def poll_until_exited(self):
         deadline = time.monotonic() + 5
         while self.console.poll() is None and time.monotonic() < deadline:
