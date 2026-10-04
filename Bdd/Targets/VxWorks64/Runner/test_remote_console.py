@@ -111,6 +111,16 @@ class OpenTest(unittest.TestCase):
 
         self.assertEqual(b"booting", os.read(console.stdout.fileno(), 7))
 
+    def test_opening_gives_the_console_the_line_gap(self):
+        sleeps = []
+        console = remote_console.open_remote_target(
+            self.listener, self.start_a_target_that_connects, lambda: None, None, 0.05, sleeps.append
+        )
+
+        console.stdin.write("set host x\n")
+
+        self.assertEqual([0.05], sleeps)
+
     def test_a_target_that_never_connects_times_out_and_is_stopped(self):
         stops = []
 
