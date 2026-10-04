@@ -13,6 +13,11 @@
 
 void SolidSyslogVxWorks64_Sleep(int milliseconds)
 {
-    int64_t ticks = (((int64_t) milliseconds * (int64_t) sysClkRateGet()) + 999) / 1000;
+    int64_t ticks = 0;
+
+    if (milliseconds > 0)
+    {
+        ticks = (((int64_t) milliseconds * (int64_t) sysClkRateGet()) + 999) / 1000;
+    }
     (void) taskDelay((int) ticks);
 }
