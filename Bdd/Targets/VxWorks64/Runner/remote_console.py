@@ -6,6 +6,7 @@ as they do a local target's pipes.
 """
 
 import os
+import subprocess
 import threading
 
 
@@ -29,6 +30,8 @@ class RemoteConsole:
 
     def wait(self, timeout=None):
         self._copier.join(timeout)
+        if self._copier.is_alive():
+            raise subprocess.TimeoutExpired("remote console", timeout)
         return self.returncode
 
     # The steps read stdout with os.read, which needs a real file descriptor;
