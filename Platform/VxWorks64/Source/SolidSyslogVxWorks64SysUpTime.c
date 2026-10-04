@@ -6,7 +6,12 @@
 
 #include <stdint.h>
 
+#include "vxWorks.h"
+
+#include "sysLib.h"
+#include "tickLib.h"
+
 uint32_t SolidSyslogVxWorks64_GetSysUpTime(void)
 {
-    return 0U;
+    return (uint32_t) ((tick64Get() * 100U) / (UINT64) sysClkRateGet());
 }
