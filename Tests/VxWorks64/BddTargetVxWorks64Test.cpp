@@ -163,3 +163,12 @@ TEST(BddTargetVxWorks64, ALibraryErrorIsReportedOnTheConsole)
 
     STRCMP_CONTAINS("[solidsyslog] severity=3 [TestSource cat=3 detail=7]", Reported().c_str());
 }
+
+TEST(BddTargetVxWorks64, ATaskThatFailsToStartIsReportedOnTheConsole)
+{
+    VxWorks64TaskFake_FailSpawns();
+
+    BddTargetVxWorks64_Init();
+
+    STRCMP_CONTAINS("task tSsInteractive failed to start", Reported().c_str());
+}

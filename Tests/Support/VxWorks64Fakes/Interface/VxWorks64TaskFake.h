@@ -10,6 +10,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     unsigned VxWorks64TaskFake_SpawnCount(void);
 
+    /** Make taskSpawn answer ERROR, as when the kernel cannot create the task. */
+    void VxWorks64TaskFake_FailSpawns(void);
+
     unsigned VxWorks64TaskFake_DelayCount(void);
 
     int VxWorks64TaskFake_LastDelayTicks(void);

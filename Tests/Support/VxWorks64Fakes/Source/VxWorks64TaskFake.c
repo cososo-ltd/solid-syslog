@@ -2,20 +2,29 @@
 
 #include "VxWorks64TaskFake.h"
 
+#include <stdbool.h>
+
 #include "errnoLib.h"
 #include "routeLib.h"
 #include "sysLib.h"
 #include "taskLib.h"
 
 static unsigned VxWorks64TaskFake_Spawns = 0U;
+static bool VxWorks64TaskFake_SpawnsFail = false;
 static unsigned VxWorks64TaskFake_Delays = 0U;
 static int VxWorks64TaskFake_DelayTicks = 0;
 
 void VxWorks64TaskFake_Reset(void)
 {
     VxWorks64TaskFake_Spawns = 0U;
+    VxWorks64TaskFake_SpawnsFail = false;
     VxWorks64TaskFake_Delays = 0U;
     VxWorks64TaskFake_DelayTicks = 0;
+}
+
+void VxWorks64TaskFake_FailSpawns(void)
+{
+    VxWorks64TaskFake_SpawnsFail = true;
 }
 
 unsigned VxWorks64TaskFake_SpawnCount(void)
@@ -70,7 +79,7 @@ int taskSpawn(
     (void) arg9;
     (void) arg10;
     VxWorks64TaskFake_Spawns++;
-    return (int) VxWorks64TaskFake_Spawns;
+    return VxWorks64TaskFake_SpawnsFail ? ERROR : (int) VxWorks64TaskFake_Spawns;
 }
 
 STATUS taskDelay(int ticks)
