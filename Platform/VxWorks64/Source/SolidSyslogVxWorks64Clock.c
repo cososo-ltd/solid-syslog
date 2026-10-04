@@ -8,5 +8,5 @@
 
 void SolidSyslogVxWorks64_GetTimestamp(struct SolidSyslogTimestamp* timestamp)
 {
-    (void) timestamp;
+    *timestamp = (struct SolidSyslogTimestamp) {0};
 }
