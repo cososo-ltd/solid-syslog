@@ -1,5 +1,6 @@
 #include "BddTargetMessageSettings.h"
 
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -139,7 +140,7 @@ static inline bool MessageSettings_TryParseNumber(const char* value, unsigned lo
 {
     char* end = NULL;
     unsigned long number = strtoul(value, &end, 10);
-    bool isNumber = (end != value) && (*end == '\0');
+    bool isNumber = (isdigit((unsigned char) value[0]) != 0) && (*end == '\0');
     if (isNumber)
     {
         *parsed = number;
