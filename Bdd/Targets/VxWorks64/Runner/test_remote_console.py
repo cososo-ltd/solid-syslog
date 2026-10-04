@@ -21,9 +21,9 @@ class RemoteConsoleTest(unittest.TestCase):
         self.addCleanup(listener.close)
         self.target = socket.create_connection(listener.getsockname())
         self.addCleanup(self.target.close)
-        connection, _ = listener.accept()
+        self.connection, _ = listener.accept()
         self.stops = []
-        self.console = remote_console.RemoteConsole(connection, lambda: self.stops.append("stopped"))
+        self.console = remote_console.RemoteConsole(self.connection, lambda: self.stops.append("stopped"))
 
     def test_what_the_target_sends_can_be_read_from_stdout(self):
         self.target.sendall(b"SolidSyslog> ")
@@ -87,6 +87,12 @@ class RemoteConsoleTest(unittest.TestCase):
 
     def test_it_has_no_separate_error_stream(self):
         self.assertIsNone(self.console.stderr)
+
+    def test_its_connection_is_closed_once_the_target_disconnects(self):
+        self.target.close()
+        self.poll_until_exited()
+
+        self.assertEqual(-1, self.connection.fileno())
 
     def poll_until_exited(self):
         deadline = time.monotonic() + 5
