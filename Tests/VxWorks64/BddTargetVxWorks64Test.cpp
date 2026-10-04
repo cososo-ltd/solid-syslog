@@ -66,6 +66,15 @@ TEST_GROUP(BddTargetVxWorks64)
             TempFile_Close(input);
         }
     }
+
+    // The target boots, logs one message from its console, then quits, and the
+    // service task sends what was logged.
+    static void SendOneMessage()
+    {
+        BddTargetVxWorks64_Init();
+        RunConsoleWith("send\nquit\n");
+        BddTargetVxWorks64_RunService();
+    }
 };
 
 // clang-format on
@@ -126,30 +135,21 @@ TEST(BddTargetVxWorks64, TheServiceTaskReturnsOnceTheConsoleHasQuit)
 
 TEST(BddTargetVxWorks64, TheServiceTaskSendsWhatTheConsoleLoggedBeforeItStops)
 {
-    BddTargetVxWorks64_Init();
-    RunConsoleWith("send\nquit\n");
-
-    BddTargetVxWorks64_RunService();
+    SendOneMessage();
 
     CALLED_FAKE(VxWorks64NetFake_Sendto, ONCE);
 }
 
 TEST(BddTargetVxWorks64, ASentMessageCarriesTheOriginStructuredData)
 {
-    BddTargetVxWorks64_Init();
-    RunConsoleWith("send\nquit\n");
-
-    BddTargetVxWorks64_RunService();
+    SendOneMessage();
 
     STRCMP_CONTAINS("[origin software=\"SolidSyslogBddTarget\"", VxWorks64NetFake_LastSendtoPayload());
 }
 
 TEST(BddTargetVxWorks64, ASentMessageSaysItsTimeIsNeitherKnownNorSynchronised)
 {
-    BddTargetVxWorks64_Init();
-    RunConsoleWith("send\nquit\n");
-
-    BddTargetVxWorks64_RunService();
+    SendOneMessage();
 
     STRCMP_CONTAINS("[timeQuality tzKnown=\"0\" isSynced=\"0\"]", VxWorks64NetFake_LastSendtoPayload());
 }
