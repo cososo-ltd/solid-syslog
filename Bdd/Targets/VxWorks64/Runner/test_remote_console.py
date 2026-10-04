@@ -21,7 +21,8 @@ class RemoteConsoleTest(unittest.TestCase):
         self.target = socket.create_connection(listener.getsockname())
         self.addCleanup(self.target.close)
         connection, _ = listener.accept()
-        self.console = remote_console.RemoteConsole(connection)
+        self.stops = []
+        self.console = remote_console.RemoteConsole(connection, lambda: self.stops.append("stopped"))
 
     def test_what_the_target_sends_can_be_read_from_stdout(self):
         self.target.sendall(b"SolidSyslog> ")
@@ -49,6 +50,11 @@ class RemoteConsoleTest(unittest.TestCase):
         self.target.close()
 
         self.assertEqual(0, self.poll_until_exited())
+
+    def test_killing_it_stops_the_target(self):
+        self.console.kill()
+
+        self.assertEqual(["stopped"], self.stops)
 
     def poll_until_exited(self):
         deadline = time.monotonic() + 5
