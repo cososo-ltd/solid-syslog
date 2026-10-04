@@ -81,6 +81,7 @@ CPPCHECK_CMD = [
     "-DTICK_TYPE_WIDTH_32_BITS=1",
     "-DTICK_TYPE_WIDTH_64_BITS=2",
     "-DconfigTICK_TYPE_WIDTH_IN_BITS=1",
+    "-DMAXHOSTNAMELEN=256",
     "-ICore/Interface",
     "-IPlatform/StdAtomic/Interface",
     "-IPlatform/Posix/Interface",

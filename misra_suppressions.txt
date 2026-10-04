@@ -151,6 +151,7 @@ misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c:69
 misra-c2012-21.10:Platform/Posix/Source/SolidSyslogPosixClock.c:8
 misra-c2012-21.10:Platform/Posix/Source/SolidSyslogPosixSleep.c:7
 misra-c2012-21.10:Platform/Posix/Source/SolidSyslogPosixSysUpTime.c:7
+misra-c2012-21.10:Platform/VxWorks64/Source/SolidSyslogVxWorks64Clock.c:12
 
 # D.008 — Rule 21.6: <stdio.h> for SEEK_* constants only
 # See docs/misra-deviations.md#d008
@@ -183,6 +184,9 @@ misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c:36
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixResolver.c:28
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixDatagram.c:29
 misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:30
+misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64Clock.c:17
+misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64Sleep.c:15
+misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64SysUpTime.c:15
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSleep.c:10
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:34
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWinsockResolver.c:45

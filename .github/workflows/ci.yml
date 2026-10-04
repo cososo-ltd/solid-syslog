@@ -1109,6 +1109,9 @@ jobs:
       # Pragmatic levels (Core/Source/ + Platform/*/Source/). Findings
       # fail CI (--error-exitcode=1); suppressions live in
       # misra_suppressions.txt with rationales in docs/misra-deviations.md.
+      # No vendor headers are on the path, so a vendor constant that sizes an
+      # array is defined here at the value the vendor documents
+      # (MAXHOSTNAMELEN, VxWorks 6.4); unexpanded, it reads as a VLA (18.8).
       # ----------------------------------------------------------------
 
       - name: Run cppcheck-misra
@@ -1133,6 +1136,7 @@ jobs:
           -DTICK_TYPE_WIDTH_32_BITS=1
           -DTICK_TYPE_WIDTH_64_BITS=2
           -DconfigTICK_TYPE_WIDTH_IN_BITS=1
+          -DMAXHOSTNAMELEN=256
           -ICore/Interface
           -IPlatform/StdAtomic/Interface
           -IPlatform/Posix/Interface
@@ -1187,6 +1191,7 @@ jobs:
             -DTICK_TYPE_WIDTH_32_BITS=1 \
             -DTICK_TYPE_WIDTH_64_BITS=2 \
             -DconfigTICK_TYPE_WIDTH_IN_BITS=1 \
+            -DMAXHOSTNAMELEN=256 \
             -ICore/Interface \
             -IPlatform/StdAtomic/Interface \
             -IPlatform/Posix/Interface \
