@@ -21,3 +21,10 @@ TEST(SolidSyslogVxWorks64SysUpTime, ZeroTicksIsZeroUptime)
 {
     UNSIGNED_LONGS_EQUAL(0, SolidSyslogVxWorks64_GetSysUpTime());
 }
+
+TEST(SolidSyslogVxWorks64SysUpTime, OneSecondOfTicksIsOneHundredHundredths)
+{
+    VxWorks64TaskFake_SetTicks(60U);
+
+    UNSIGNED_LONGS_EQUAL(100, SolidSyslogVxWorks64_GetSysUpTime());
+}
