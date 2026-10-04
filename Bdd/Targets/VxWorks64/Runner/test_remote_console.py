@@ -66,6 +66,9 @@ class RemoteConsoleTest(unittest.TestCase):
         with self.assertRaises(subprocess.TimeoutExpired):
             self.console.wait(timeout=0.1)
 
+    def test_the_collector_address_is_the_one_the_target_reached_this_machine_at(self):
+        self.assertEqual("127.0.0.1", self.console.collector_address)
+
     def poll_until_exited(self):
         deadline = time.monotonic() + 5
         while self.console.poll() is None and time.monotonic() < deadline:
