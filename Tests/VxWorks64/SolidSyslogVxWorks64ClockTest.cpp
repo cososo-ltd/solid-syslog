@@ -86,3 +86,13 @@ TEST(SolidSyslogVxWorks64Clock, SecondIsTheSecondOfTheMinute)
 
     UNSIGNED_LONGS_EQUAL(30, timestamp.Second);
 }
+
+TEST(SolidSyslogVxWorks64Clock, MicrosecondTruncatesTheNanoseconds)
+{
+    VxWorks64ClockFake_SetBrokenDownTime(126, 9, 4, 13, 45, 30);
+    VxWorks64ClockFake_SetNanoseconds(123456789L);
+
+    SolidSyslogVxWorks64_GetTimestamp(&timestamp);
+
+    UNSIGNED_LONGS_EQUAL(123456, timestamp.Microsecond);
+}

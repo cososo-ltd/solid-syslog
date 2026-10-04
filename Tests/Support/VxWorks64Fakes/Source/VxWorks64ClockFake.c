@@ -7,11 +7,13 @@
 
 static bool VxWorks64ClockFake_ClockGettimeFails = false;
 static struct tm VxWorks64ClockFake_BrokenDown;
+static long VxWorks64ClockFake_Nanoseconds = 0L;
 
 void VxWorks64ClockFake_Reset(void)
 {
     VxWorks64ClockFake_ClockGettimeFails = false;
     VxWorks64ClockFake_BrokenDown = (struct tm) {0};
+    VxWorks64ClockFake_Nanoseconds = 0L;
 }
 
 void VxWorks64ClockFake_FailClockGettime(void)
@@ -29,10 +31,16 @@ void VxWorks64ClockFake_SetBrokenDownTime(int year, int month, int day, int hour
     VxWorks64ClockFake_BrokenDown.tm_sec = second;
 }
 
+void VxWorks64ClockFake_SetNanoseconds(long nanoseconds)
+{
+    VxWorks64ClockFake_Nanoseconds = nanoseconds;
+}
+
 int clock_gettime(clockid_t clockId, struct timespec* tp)
 {
     (void) clockId;
-    (void) tp;
+    tp->tv_sec = 0UL;
+    tp->tv_nsec = VxWorks64ClockFake_Nanoseconds;
     return VxWorks64ClockFake_ClockGettimeFails ? ERROR : OK;
 }
 

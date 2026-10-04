@@ -16,6 +16,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  zero-based month. */
     void VxWorks64ClockFake_SetBrokenDownTime(int year, int month, int day, int hour, int minute, int second);
 
+    /** What clock_gettime answers in tv_nsec. */
+    void VxWorks64ClockFake_SetNanoseconds(long nanoseconds);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* VXWORKS64CLOCKFAKE_H */
