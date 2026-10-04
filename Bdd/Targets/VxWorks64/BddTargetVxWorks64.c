@@ -19,6 +19,7 @@
 #include <stdio.h>
 
 #include "BddTargetEnterpriseId.h"
+#include "BddTargetErrorText.h"
 #include "BddTargetInteractive.h"
 #include "BddTargetIps.h"
 #include "BddTargetMessageSettings.h"
@@ -26,6 +27,7 @@
 #include "SolidSyslog.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
@@ -47,6 +49,8 @@ enum
     MILLISECONDS_PER_SECOND = 1000
 };
 
+static FILE* BddTargetVxWorks64_Reports(void);
+static void BddTargetVxWorks64_ReportError(void* context, const struct SolidSyslogErrorEvent* event);
 static void BddTargetVxWorks64_RunCore(void);
 static void BddTargetVxWorks64_BringUpNetwork(void);
 static void BddTargetVxWorks64_ReportStep(const char* step, STATUS status);
@@ -76,14 +80,39 @@ static struct SolidSyslogStructuredData* sdList[2];
 static struct SolidSyslog* logger;
 /* Set when the console ends, which stops the service task. */
 static volatile bool consoleEnded;
+/* Where the target's own reports go; NULL means stdout, the console. */
+static FILE* reportStream;
 
 void BddTargetVxWorks64_Init(void)
 {
+    SolidSyslog_SetErrorHandler(BddTargetVxWorks64_ReportError, NULL);
     BddTargetVxWorks64_RunCore();
     BddTargetVxWorks64_BringUpNetwork();
     BddTargetVxWorks64_BuildPipeline();
     consoleEnded = false;
     BddTargetVxWorks64_SpawnTasks();
+}
+
+/* Reports what the library reports, in the form the steps read from every QEMU
+ * target, so a failed send shows on the console rather than as a silent timeout. */
+static void BddTargetVxWorks64_ReportError(void* context, const struct SolidSyslogErrorEvent* event)
+{
+    (void) context;
+    const char* sourceName = (event->Source != NULL) ? event->Source->Name : "<unknown>";
+    (void) fprintf(
+        BddTargetVxWorks64_Reports(),
+        "[solidsyslog] severity=%d [%s cat=%u detail=%ld] %s\n",
+        (int) event->Severity,
+        sourceName,
+        (unsigned) event->Category,
+        (long) event->Detail,
+        BddTargetErrorText_Category(event->Category)
+    );
+}
+
+static FILE* BddTargetVxWorks64_Reports(void)
+{
+    return (reportStream != NULL) ? reportStream : stdout;
 }
 
 static void BddTargetVxWorks64_RunCore(void)
@@ -99,7 +128,7 @@ static void BddTargetVxWorks64_RunCore(void)
     SolidSyslog_Log(coreOnly, &message);
     SolidSyslog_Destroy(coreOnly);
 
-    printf(BDD_TARGET_TAG "Core ran\n");
+    (void) fprintf(BddTargetVxWorks64_Reports(), BDD_TARGET_TAG "Core ran\n");
 }
 
 /* INCLUDE_ADDIF has already put the PCnet interface on QEMU's user network, as
@@ -117,11 +146,16 @@ static void BddTargetVxWorks64_ReportStep(const char* step, STATUS status)
 {
     if (status == OK)
     {
-        printf(BDD_TARGET_TAG "network %s set\n", step);
+        (void) fprintf(BddTargetVxWorks64_Reports(), BDD_TARGET_TAG "network %s set\n", step);
     }
     else
     {
-        printf(BDD_TARGET_TAG "network %s failed, errno 0x%x\n", step, (unsigned) errnoGet());
+        (void) fprintf(
+            BddTargetVxWorks64_Reports(),
+            BDD_TARGET_TAG "network %s failed, errno 0x%x\n",
+            step,
+            (unsigned) errnoGet()
+        );
     }
 }
 
@@ -243,4 +277,10 @@ void BddTargetVxWorks64_Teardown(void)
     SolidSyslogVxWorks64Datagram_Destroy(datagram);
     SolidSyslogVxWorks64Resolver_Destroy(resolver);
     SolidSyslogVxWorks64Address_Destroy(address);
+    SolidSyslog_SetErrorHandler(NULL, NULL);
+}
+
+void BddTargetVxWorks64_ReportTo(FILE* stream)
+{
+    reportStream = stream;
 }

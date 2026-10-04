@@ -19,6 +19,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void BddTargetVxWorks64_RunService(void);
     /* Releases everything Init built. */
     void BddTargetVxWorks64_Teardown(void);
+    /* Where the target's own reports go - its steps and library errors. NULL,
+       the default, is the console. */
+    void BddTargetVxWorks64_ReportTo(FILE * stream);
     /* The service loop's yield. */
     void BddTargetVxWorks64_Sleep(int milliseconds);
 
