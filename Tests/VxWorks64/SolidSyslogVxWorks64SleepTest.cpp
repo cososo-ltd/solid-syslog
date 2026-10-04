@@ -40,3 +40,10 @@ TEST(SolidSyslogVxWorks64Sleep, TheLongestSleepConvertsWithoutOverflow)
 
     LONGS_EQUAL(128849019, VxWorks64TaskFake_LastDelayTicks());
 }
+
+TEST(SolidSyslogVxWorks64Sleep, ANegativeSleepOnlyYields)
+{
+    SolidSyslogVxWorks64_Sleep(-100);
+
+    LONGS_EQUAL(0, VxWorks64TaskFake_LastDelayTicks());
+}
