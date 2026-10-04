@@ -27,6 +27,7 @@
 #include "BddTargetLanguage.h"
 #include "BddTargetMessageSettings.h"
 #include "BddTargetServiceThread.h"
+#include "BddTargetSwitchConfig.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
@@ -35,6 +36,8 @@
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogStreamSender.h"
+#include "SolidSyslogSwitchingSender.h"
 #include "SolidSyslogTimeQuality.h"
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
@@ -47,6 +50,7 @@
 #include "SolidSyslogVxWorks64Resolver.h"
 #include "SolidSyslogVxWorks64Sleep.h"
 #include "SolidSyslogVxWorks64SysUpTime.h"
+#include "SolidSyslogVxWorks64TcpStream.h"
 
 #define BDD_TARGET_TAG "SolidSyslog VxWorks 6.4 BDD target: "
 
@@ -63,6 +67,7 @@ static void BddTargetVxWorks64_RunCore(void);
 static void BddTargetVxWorks64_BringUpNetwork(void);
 static void BddTargetVxWorks64_ReportStep(const char* step, STATUS status);
 static void BddTargetVxWorks64_BuildPipeline(void);
+static struct SolidSyslogSender* BddTargetVxWorks64_CreateSenders(void);
 static void BddTargetVxWorks64_SpawnTasks(void);
 static void BddTargetVxWorks64_Spawn(char* name, int stackBytes, FUNCPTR entry);
 static int BddTargetVxWorks64_InteractiveTask(void);
@@ -78,9 +83,14 @@ static const struct SolidSyslogConfig CORE_ONLY_CONFIG = {0};
 static const char DEFAULT_HOST[] = "10.0.2.2";
 
 static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(8)];
-static struct SolidSyslogAddress* address;
 static struct SolidSyslogResolver* resolver;
+static struct SolidSyslogAddress* udpAddress;
 static struct SolidSyslogDatagram* datagram;
+static struct SolidSyslogSender* udpSender;
+static struct SolidSyslogAddress* tcpAddress;
+static struct SolidSyslogStream* tcpStream;
+static struct SolidSyslogSender* tcpSender;
+static struct SolidSyslogSender* senders[BDD_TARGET_SWITCH_TCP + 1];
 static struct SolidSyslogSender* sender;
 static struct SolidSyslogMutex* bufferMutex;
 static struct SolidSyslogBuffer* buffer;
@@ -175,25 +185,15 @@ static void BddTargetVxWorks64_ReportStep(const char* step, STATUS status)
     }
 }
 
-/* UDP to the collector the harness names, behind a circular buffer that the
- * VxWorks mutex guards, because the console task logs and the service task
+/* UDP or TCP to the collector the harness names, behind a circular buffer that
+ * the VxWorks mutex guards, because the console task logs and the service task
  * sends. */
 static void BddTargetVxWorks64_BuildPipeline(void)
 {
-    struct SolidSyslogUdpSenderConfig senderConfig = {0};
     struct SolidSyslogConfig config = {0};
 
     BddTargetMessageSettings_Reset(DEFAULT_HOST);
-
-    address = SolidSyslogVxWorks64Address_Create();
-    resolver = SolidSyslogVxWorks64Resolver_Create();
-    datagram = SolidSyslogVxWorks64Datagram_Create();
-    senderConfig.Resolver = resolver;
-    senderConfig.Datagram = datagram;
-    senderConfig.Address = address;
-    senderConfig.Endpoint = BddTargetMessageSettings_GetEndpoint;
-    senderConfig.EndpointVersion = BddTargetMessageSettings_GetEndpointVersion;
-    sender = SolidSyslogUdpSender_Create(&senderConfig);
+    sender = BddTargetVxWorks64_CreateSenders();
 
     bufferMutex = SolidSyslogVxWorks64Mutex_Create();
     buffer = SolidSyslogCircularBuffer_Create(bufferMutex, bufferRing, sizeof(bufferRing));
@@ -226,6 +226,44 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     config.Clock = SolidSyslogVxWorks64_GetTimestamp;
     config.GetHostname = SolidSyslogVxWorks64_GetHostname;
     logger = SolidSyslog_Create(&config);
+}
+
+/* Both transports go to the same collector, and `set transport` or `switch`
+ * picks between them, UDP to begin with. Selecting a transport this target does
+ * not have, such as tls, routes to the Null sender, which drops the record. */
+static struct SolidSyslogSender* BddTargetVxWorks64_CreateSenders(void)
+{
+    struct SolidSyslogUdpSenderConfig udpConfig = {0};
+    struct SolidSyslogStreamSenderConfig tcpConfig = {0};
+    struct SolidSyslogSwitchingSenderConfig switchConfig = {0};
+
+    resolver = SolidSyslogVxWorks64Resolver_Create();
+
+    udpAddress = SolidSyslogVxWorks64Address_Create();
+    datagram = SolidSyslogVxWorks64Datagram_Create();
+    udpConfig.Resolver = resolver;
+    udpConfig.Datagram = datagram;
+    udpConfig.Address = udpAddress;
+    udpConfig.Endpoint = BddTargetMessageSettings_GetEndpoint;
+    udpConfig.EndpointVersion = BddTargetMessageSettings_GetEndpointVersion;
+    udpSender = SolidSyslogUdpSender_Create(&udpConfig);
+
+    tcpAddress = SolidSyslogVxWorks64Address_Create();
+    tcpStream = SolidSyslogVxWorks64TcpStream_Create(NULL);
+    tcpConfig.Resolver = resolver;
+    tcpConfig.Stream = tcpStream;
+    tcpConfig.Address = tcpAddress;
+    tcpConfig.Endpoint = BddTargetMessageSettings_GetEndpoint;
+    tcpConfig.EndpointVersion = BddTargetMessageSettings_GetEndpointVersion;
+    tcpSender = SolidSyslogStreamSender_Create(&tcpConfig);
+
+    senders[BDD_TARGET_SWITCH_UDP] = udpSender;
+    senders[BDD_TARGET_SWITCH_TCP] = tcpSender;
+    switchConfig.Senders = senders;
+    switchConfig.SenderCount = sizeof(senders) / sizeof(senders[0]);
+    switchConfig.Selector = BddTargetSwitchConfig_Selector;
+    BddTargetSwitchConfig_SetByName("udp");
+    return SolidSyslogSwitchingSender_Create(&switchConfig);
 }
 
 /* The harness sets the clock, in UTC, with `set time` before it sends anything,
@@ -275,11 +313,18 @@ static int BddTargetVxWorks64_ServiceTask(void)
 
 void BddTargetVxWorks64_RunConsole(FILE* input)
 {
-    BddTargetInteractive_Run(logger, BddTargetMessageSettings_Message(), input, NULL, BddTargetVxWorks64_SetByName);
+    BddTargetInteractive_Run(
+        logger,
+        BddTargetMessageSettings_Message(),
+        input,
+        BddTargetSwitchConfig_SetByName,
+        BddTargetVxWorks64_SetByName
+    );
     consoleEnded = true;
 }
 
-/* `set time` is this target's; every other setting is the shared one. */
+/* `set time` and `set transport` are this target's; every other setting is the
+ * shared one. */
 static bool BddTargetVxWorks64_SetByName(const char* name, const char* value)
 {
     bool taken = false;
@@ -287,6 +332,11 @@ static bool BddTargetVxWorks64_SetByName(const char* name, const char* value)
     if (strcmp(name, "time") == 0)
     {
         taken = BddTargetVxWorks64_SetTime(value);
+    }
+    else if (strcmp(name, "transport") == 0)
+    {
+        BddTargetSwitchConfig_SetByName(value);
+        taken = true;
     }
     else
     {
@@ -327,10 +377,14 @@ void BddTargetVxWorks64_Teardown(void)
     SolidSyslogVxWorks64AtomicCounter_Destroy(counter);
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogVxWorks64Mutex_Destroy(bufferMutex);
-    SolidSyslogUdpSender_Destroy(sender);
+    SolidSyslogSwitchingSender_Destroy(sender);
+    SolidSyslogStreamSender_Destroy(tcpSender);
+    SolidSyslogVxWorks64TcpStream_Destroy(tcpStream);
+    SolidSyslogVxWorks64Address_Destroy(tcpAddress);
+    SolidSyslogUdpSender_Destroy(udpSender);
     SolidSyslogVxWorks64Datagram_Destroy(datagram);
+    SolidSyslogVxWorks64Address_Destroy(udpAddress);
     SolidSyslogVxWorks64Resolver_Destroy(resolver);
-    SolidSyslogVxWorks64Address_Destroy(address);
     SolidSyslog_SetErrorHandler(NULL, NULL);
 }
 

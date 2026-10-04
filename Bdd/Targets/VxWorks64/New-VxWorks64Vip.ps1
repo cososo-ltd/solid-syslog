@@ -71,13 +71,15 @@ Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'file', 'add', $projectFile,
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'component', 'add', $projectFile,
     'INCLUDE_SOLIDSYSLOG_VXWORKS64_BDD')
 
-# The network the BDD target sends over: the IPv4 stack with UDP and sockets,
-# the host table the resolver consults, routing for the default route the
-# target adds, the END driver for QEMU's PCnet adapter (lnPci), and the
-# boot-line components that attach the device the boot line names. One at a
-# time, so a component the default project already has is simply kept.
+# The network the BDD target sends over: the IPv4 stack with UDP, TCP and
+# sockets, select for the bounded TCP connect, the host table the resolver
+# consults, routing for the default route the target adds, the END driver for
+# QEMU's PCnet adapter (lnPci), and the boot-line components that attach the
+# device the boot line names. One at a time, so a component the default project
+# already has is simply kept.
 foreach ($component in @(
-        'INCLUDE_NETWORK', 'INCLUDE_IPV4', 'INCLUDE_UDPV4', 'INCLUDE_BSD_SOCKET', 'INCLUDE_SOCKLIB',
+        'INCLUDE_NETWORK', 'INCLUDE_IPV4', 'INCLUDE_UDPV4', 'INCLUDE_TCPV4', 'INCLUDE_BSD_SOCKET',
+        'INCLUDE_SOCKLIB', 'INCLUDE_SELECT',
         'INCLUDE_END', 'INCLUDE_MUX', 'INCLUDE_IPATTACH', 'INCLUDE_PCI', 'INCLUDE_LN_97X_END',
         'INCLUDE_IFLIB', 'INCLUDE_INETLIB', 'INCLUDE_HOST_TBL', 'INCLUDE_ROUTE', 'INCLUDE_OLDROUTE',
         'INCLUDE_BOOT_LINE_INIT', 'INCLUDE_NET_INIT', 'INCLUDE_NET_BOOT', 'INCLUDE_NET_BOOT_CONFIG',
