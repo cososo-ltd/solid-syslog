@@ -18,9 +18,9 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 
 #include "BddTargetEnterpriseId.h"
+#include "BddTargetVxWorks64Clock.h"
 #include "BddTargetErrorText.h"
 #include "BddTargetInteractive.h"
 #include "BddTargetIps.h"
@@ -290,9 +290,7 @@ static bool BddTargetVxWorks64_SetTime(const char* value)
 
     if (taken)
     {
-        struct timespec now = {0};
-        now.tv_sec = (time_t) seconds;
-        taken = (clock_settime(CLOCK_REALTIME, &now) == OK);
+        taken = BddTargetVxWorks64Clock_Set(seconds);
     }
     return taken;
 }

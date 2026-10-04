@@ -150,7 +150,7 @@ set(VXWORKS64_CLOCK_SOURCES
     ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64ClockFake.c
 )
 
-set_source_files_properties(${VXWORKS64_CLOCK_SOURCES} ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64.c PROPERTIES
+set_source_files_properties(${VXWORKS64_CLOCK_SOURCES} ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64Clock.c PROPERTIES
     INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/TimeInterface
 )
 
@@ -272,6 +272,7 @@ add_executable(BddTargetVxWorks64Test
     BddTargetVxWorks64Test.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64Clock.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCustomSd.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetInteractive.c
