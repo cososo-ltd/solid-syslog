@@ -1,9 +1,13 @@
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting;
 
 #include <cstdio>
 
 #include "BddTargetVxWorks64.h"
 #include "TempFile.h"
+#include "VxWorks64NetFake.h"
 #include "VxWorks64SemFake.h"
 #include "VxWorks64TaskFake.h"
 
@@ -14,6 +18,9 @@ TEST_GROUP(BddTargetVxWorks64)
     {
         VxWorks64TaskFake_Reset();
         VxWorks64SemFake_Reset();
+        VxWorks64NetFake_Reset();
+        // The default collector, 10.0.2.2, as inet_addr answers it.
+        VxWorks64NetFake_SetInetAddrReturn(0x0202000AUL);
     }
 
     void teardown() override
@@ -90,4 +97,14 @@ TEST(BddTargetVxWorks64, TheServiceTaskReturnsOnceTheConsoleHasQuit)
     RunConsoleWith("quit\n");
 
     BddTargetVxWorks64_RunService();
+}
+
+TEST(BddTargetVxWorks64, TheServiceTaskSendsWhatTheConsoleLoggedBeforeItStops)
+{
+    BddTargetVxWorks64_Init();
+    RunConsoleWith("send\nquit\n");
+
+    BddTargetVxWorks64_RunService();
+
+    CALLED_FAKE(VxWorks64NetFake_Sendto, ONCE);
 }
