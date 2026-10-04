@@ -7,14 +7,14 @@
 #ifndef HOSTLIB_H
 #define HOSTLIB_H
 
+/* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+#define MAXHOSTNAMELEN 256
+/* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-/* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
-#define MAXHOSTNAMELEN 256
-    /* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
 
     int hostGetByName(char* name);
     int gethostname(char* name, int nameLen);
