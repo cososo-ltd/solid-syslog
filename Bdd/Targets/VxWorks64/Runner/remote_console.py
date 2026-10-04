@@ -8,6 +8,7 @@ as they do a local target's pipes.
 import os
 import subprocess
 import threading
+import time
 
 
 # Starts the target, which connects its console to listener, and returns that
@@ -27,15 +28,16 @@ def open_remote_target(listener, start, stop, accept_timeout=None):
 
 
 class RemoteConsole:
-    # stop ends the target - in practice the runner's qemu-stop job.
-    def __init__(self, connection, stop):
+    # stop ends the target - in practice the runner's qemu-stop job. Each line
+    # written to stdin is followed by line_gap_seconds, slept with sleep.
+    def __init__(self, connection, stop, line_gap_seconds=0.0, sleep=time.sleep):
         self._connection = connection
         self._stop = stop
         # Where the target reached this machine, so where its syslog should go.
         self.collector_address = connection.getsockname()[0]
         read_end, self._write_end = os.pipe()
         self.stdout = os.fdopen(read_end, "rb", buffering=0)
-        self.stdin = _ConsoleInput(connection)
+        self.stdin = _ConsoleInput(connection, line_gap_seconds, sleep)
         # A serial console carries one stream; errors arrive on stdout with the rest.
         self.stderr = None
         # The target runs on another machine, so there is no local process.
@@ -76,13 +78,18 @@ def _receive(connection):
         return b""
 
 
-# Text written as the steps write a local target's stdin, sent as it is written.
+# Text written as the steps write a local target's stdin, sent a line at a time
+# with a gap after each - the pace of a serial line rather than of a socket.
 class _ConsoleInput:
-    def __init__(self, connection):
+    def __init__(self, connection, line_gap_seconds, sleep):
         self._connection = connection
+        self._line_gap_seconds = line_gap_seconds
+        self._sleep = sleep
 
     def write(self, text):
-        self._connection.sendall(text.encode())
+        for line in text.splitlines(keepends=True):
+            self._connection.sendall(line.encode())
+            self._sleep(self._line_gap_seconds)
 
     def flush(self):
         pass
