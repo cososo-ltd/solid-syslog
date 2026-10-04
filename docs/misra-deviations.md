@@ -738,6 +738,12 @@ against the host's header, not VxWorks', so whether the VxWorks header pulls in
 - **Non-glibc POSIX targets.** musl, Bionic and BSDs do not pull
   `<wchar.h>` from `<time.h>`; the suppression is harmless on those
   targets (it suppresses a finding that does not occur).
+- **The VxWorks 6.4 clock.** The finding is made against the host's
+  `<time.h>`, not the one the target compiles against. If the VxWorks header
+  does not pull in `<wchar.h>`, the suppression covers a finding that never
+  occurs on the target, which is harmless. As for the POSIX files, only the
+  `<time.h>` include line is suppressed, so a direct `#include <wchar.h>`
+  would still be reported.
 
 ### Approval
 

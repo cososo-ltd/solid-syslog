@@ -1,7 +1,8 @@
 # VxWorks 6.4 setup
 
-Wiring the UDP transport and the mutex. [VxWorks 6.4](index.md) covers what
-they fill and what they leave to you.
+Wiring the UDP transport, the mutex, and the clock, hostname, uptime and sleep
+callbacks. [VxWorks 6.4](index.md) covers what they fill and what they leave to
+you.
 
 ## What to link
 
