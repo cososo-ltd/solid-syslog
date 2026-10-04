@@ -3,6 +3,7 @@ Feature: Message header fields
   The library includes hostname, app-name, and process ID in the
   RFC 5424 message header.
 
+  @vxworks64wip
   Scenario: Hostname matches the system hostname
     Given the syslog oracle is running
     When the BDD target sends a syslog message

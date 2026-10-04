@@ -3,6 +3,7 @@ Feature: Walking skeleton end-to-end
   The BDD target sends an RFC 5424 message via UDP.
   syslog-ng receives it and writes the parsed fields to a log file.
 
+  @vxworks64wip
   Scenario: SolidSyslog sends a valid RFC 5424 message to syslog-ng
     Given the syslog oracle is running
     When the BDD target sends a syslog message

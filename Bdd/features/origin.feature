@@ -33,7 +33,7 @@ Feature: Structured data — origin
     And the structured data contains enterpriseId "32473"
     And the structured data contains ip "192.0.2.1"
 
-  @no_rtc
+  @no_rtc @vxworks64wip
   Scenario: All standard structured data present (no RTC)
     Given the syslog oracle is running
     When the BDD target sends a syslog message
