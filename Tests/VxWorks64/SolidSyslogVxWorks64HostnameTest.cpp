@@ -3,10 +3,13 @@
 
 using namespace CososoTesting;
 
+#include <string>
+
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogHeaderFieldPrivate.h"
 #include "SolidSyslogVxWorks64Hostname.h"
 #include "VxWorks64NetFake.h"
+#include "hostLib.h"
 
 enum
 {
@@ -52,4 +55,14 @@ TEST(SolidSyslogVxWorks64Hostname, WritesNothingWhenGethostnameFails)
     SolidSyslogVxWorks64_GetHostname(&field, nullptr);
 
     STRCMP_EQUAL("", Formatted());
+}
+
+TEST(SolidSyslogVxWorks64Hostname, ANameThatFillsTheBufferIsCutToTheLongestName)
+{
+    const std::string filling(MAXHOSTNAMELEN + 1, 'a');
+    VxWorks64NetFake_SetHostname(filling.c_str());
+
+    SolidSyslogVxWorks64_GetHostname(&field, nullptr);
+
+    STRCMP_EQUAL(std::string(MAXHOSTNAMELEN, 'a').c_str(), Formatted());
 }
