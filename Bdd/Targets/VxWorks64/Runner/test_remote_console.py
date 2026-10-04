@@ -33,6 +33,9 @@ class RemoteConsoleTest(unittest.TestCase):
         self.target.settimeout(5)
         self.assertEqual(b"send 1\n", self.target.recv(4096))
 
+    def test_it_is_running_while_the_target_is_connected(self):
+        self.assertIsNone(self.console.poll())
+
 
 if __name__ == "__main__":
     unittest.main()
