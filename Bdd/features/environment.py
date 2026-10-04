@@ -135,6 +135,8 @@ def before_all(context):
             "build/freertos-cross/Bdd/Targets/FreeRtos/"
             "SolidSyslogBddTarget.elf"
         ),
+        # Built and run on the build machine, through the VxWorks 6.4 runner.
+        "vxworks64": None,
     }
     if context.target not in default_binaries:
         raise ValueError(

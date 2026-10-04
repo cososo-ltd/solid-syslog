@@ -20,8 +20,30 @@ spawn already did it), or translated into `set NAME VALUE` lines over
 the UART on FreeRTOS.
 """
 
+import io
 import os
+import socket
+import ssl
 import subprocess
+import sys
+
+# Targets that run where Behave runs, from a binary built here. A remote target
+# is built and run on another machine, through the VxWorks 6.4 runner.
+_LOCAL_TARGETS = ("linux", "windows", "freertos")
+
+# Targets configured by `set NAME VALUE` lines after the prompt, rather than by
+# argv.
+_SET_LINE_TARGETS = ("freertos", "vxworks64")
+
+_VXWORKS64_RUNNER_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "..", "Targets", "VxWorks64", "Runner"
+)
+_VXWORKS64_RUNNER_HOME = os.path.join(os.path.expanduser("~"), ".solidsyslog-runner")
+_VXWORKS64_SERVICE_URL = "https://127.0.0.1:8765"
+_VXWORKS64_CONSOLE_PORT = 8766
+# Boot takes seconds; the runner collects the start job on its next poll.
+_VXWORKS64_CONNECT_TIMEOUT_SECONDS = 120
+_VXWORKS64_JOB_TIMEOUT_SECONDS = 300
 
 
 # Mapping from cmdline flag to FreeRTOS interactive `set` name. Only the
@@ -111,6 +133,52 @@ _QEMU_BASE_ARGS = [
 ]
 
 
+def assert_binary_present(context):
+    """A local target's binary has to be built before the run; a remote one is
+    built on its own machine."""
+    if getattr(context, "target", "linux") in _LOCAL_TARGETS:
+        binary = context.example_binary
+        assert os.path.exists(binary), (
+            f"BDD target binary not found at {binary} — build with cmake first"
+        )
+
+
+def _import_from_vxworks64_runner(module_name):
+    if _VXWORKS64_RUNNER_DIR not in sys.path:
+        sys.path.insert(0, _VXWORKS64_RUNNER_DIR)
+    return __import__(module_name)
+
+
+def run_vxworks64_job(job_type, args=None, timeout_seconds=_VXWORKS64_JOB_TIMEOUT_SECONDS):
+    """Runs a job on the VxWorks 6.4 runner through the job service on this
+    machine, and returns its summary. Raises if the job did not succeed."""
+    job_service = _import_from_vxworks64_runner("job_service")
+    with open(os.path.join(_VXWORKS64_RUNNER_HOME, "token"), encoding="ascii") as token_file:
+        token = token_file.read().strip()
+    tls = ssl.create_default_context(cafile=os.path.join(_VXWORKS64_RUNNER_HOME, "certificate.pem"))
+    # The certificate is pinned by its own file, not by a name.
+    tls.check_hostname = False
+    log = io.StringIO()
+    outcome, summary = job_service.run_job(
+        _VXWORKS64_SERVICE_URL, token, job_type, args or {}, log,
+        context=tls, timeout_seconds=timeout_seconds,
+    )
+    if outcome != "succeeded":
+        raise RuntimeError(f"VxWorks 6.4 runner job {job_type} {outcome}: {summary}\n{log.getvalue()}")
+    return summary
+
+
+def _spawn_vxworks64():
+    remote_console = _import_from_vxworks64_runner("remote_console")
+    with socket.create_server(("0.0.0.0", _VXWORKS64_CONSOLE_PORT)) as listener:
+        return remote_console.open_remote_target(
+            listener,
+            lambda: run_vxworks64_job("qemu-start"),
+            lambda: run_vxworks64_job("qemu-stop"),
+            _VXWORKS64_CONNECT_TIMEOUT_SECONDS,
+        )
+
+
 def spawn_example_process(context, extra_args=None, binary=None):
     """Spawn the example-under-test for the active target.
 
@@ -131,6 +199,8 @@ def spawn_example_process(context, extra_args=None, binary=None):
     (S08.04) — so callers don't override the default in normal use.
     """
     target = getattr(context, "target", "linux")
+    if target == "vxworks64":
+        return _spawn_vxworks64()
     if binary is None:
         binary = context.example_binary
 
@@ -180,11 +250,16 @@ def apply_extra_args(context, process, extra_args):
     has to consume that many before any later step can read a reply of its own
     - without it every reply after this is one command behind.
     """
-    if not extra_args:
-        return 0
     target = getattr(context, "target", "linux")
-    if target != "freertos":
-        return 0
+    written = 0
+    # The remote target's collector is this machine, at the address the target
+    # reached it - which only the console knows.
+    if target == "vxworks64":
+        process.stdin.write(f"set host {process.collector_address}\n")
+        written = 1
+    if (not extra_args) or (target not in _SET_LINE_TARGETS):
+        process.stdin.flush()
+        return written
 
     # Walk extra_args sequentially; bare flags from _FREERTOS_BARE_FLAG_VALUE
     # don't consume the next arg, key/value flags do. Collect into a list
@@ -227,7 +302,7 @@ def apply_extra_args(context, process, extra_args):
         name = _FREERTOS_SET_TRANSLATION[flag]
         process.stdin.write(f"set {name} {value}\n")
     process.stdin.flush()
-    return len(pairs)
+    return written + len(pairs)
 
 
 def stop_example_process(process, target, timeout=10):
@@ -241,7 +316,7 @@ def stop_example_process(process, target, timeout=10):
     received the frame, so the QEMU exit code carries no useful
     signal — return None for that path so callers don't assert on it.
     """
-    if target == "freertos":
+    if target in _SET_LINE_TARGETS:
         process.kill()
         process.wait(timeout=timeout)
         return None

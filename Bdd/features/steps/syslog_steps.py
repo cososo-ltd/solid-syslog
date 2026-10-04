@@ -23,7 +23,7 @@ from environment import (
     otel_kill_oracle,
     otel_start_oracle,
 )
-from target_driver import apply_extra_args, spawn_example_process, stop_example_process
+from target_driver import apply_extra_args, assert_binary_present, spawn_example_process, stop_example_process
 from tls_collectors import fingerprint_of, listener
 from tls_reports import reported_details
 from wait_budgets import CONDITION_TIMEOUT_SECONDS
@@ -494,9 +494,7 @@ def run_example(context, extra_args=None, expected_messages=1, command="send"):
     sending `quit`.
     """
     binary = context.example_binary
-    assert os.path.exists(binary), (
-        f"BDD target binary not found at {binary} — build with cmake first"
-    )
+    assert_binary_present(context)
 
     process = spawn_example_process(context, extra_args=extra_args, binary=binary)
     # On the context as well as in hand, so a step that runs after this one can
@@ -631,10 +629,7 @@ def start_bdd_target_process(context, extra_args):
     the UART (FreeRTOS) after the prompt is up. Adding a new embedded
     platform reuses both helpers without touching this function.
     """
-    binary = context.example_binary
-    assert os.path.exists(binary), (
-        f"BDD target binary not found at {binary} — build with cmake first"
-    )
+    assert_binary_present(context)
 
     context.interactive_process = spawn_example_process(
         context, extra_args=extra_args
