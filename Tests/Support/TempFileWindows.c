@@ -11,3 +11,8 @@ FILE* TempFile_Open(void)
     }
     return file;
 }
+
+void TempFile_Close(FILE* file)
+{
+    (void) fclose(file);
+}

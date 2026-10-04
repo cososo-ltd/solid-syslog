@@ -26,11 +26,13 @@ TEST_GROUP(BddTargetVxWorks64)
     {
         FILE* input = TempFile_Open();
         CHECK(input != nullptr);
-        (void) fputs(lines, input);
-        rewind(input);
-        BddTargetVxWorks64_RunConsole(input);
-        // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- fclose is C stdio; no owning memory concern
-        (void) fclose(input);
+        if (input != nullptr)
+        {
+            (void) fputs(lines, input);
+            (void) fseek(input, 0L, SEEK_SET);
+            BddTargetVxWorks64_RunConsole(input);
+            TempFile_Close(input);
+        }
     }
 };
 

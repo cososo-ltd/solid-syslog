@@ -13,6 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* A file open for update that is removed when closed, or NULL. */
     FILE* TempFile_Open(void);
+    void TempFile_Close(FILE * file);
 
 SOLIDSYSLOG_EXTERN_C_END
 

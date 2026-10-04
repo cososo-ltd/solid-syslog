@@ -52,7 +52,7 @@ static int BddTargetVxWorks64_InteractiveTask(void);
 static int BddTargetVxWorks64_ServiceTask(void);
 
 /* Every field NULL: Core falls back to its Null buffer and sender. */
-static const struct SolidSyslogConfig CORE_ONLY_CONFIG;
+static const struct SolidSyslogConfig CORE_ONLY_CONFIG = {0};
 
 /* The QEMU gateway, until the harness names the collector with `set host`. */
 static const char DEFAULT_HOST[] = "10.0.2.2";
@@ -79,15 +79,14 @@ void BddTargetVxWorks64_Init(void)
 
 static void BddTargetVxWorks64_RunCore(void)
 {
-    struct SolidSyslog* coreOnly;
-    struct SolidSyslogMessage message;
+    struct SolidSyslogMessage message = {0};
 
     message.Facility = SOLIDSYSLOG_FACILITY_USER;
     message.Severity = SOLIDSYSLOG_SEVERITY_INFORMATIONAL;
     message.MessageId = "BOOT";
     message.Msg = "VxWorks 6.4 BDD target";
 
-    coreOnly = SolidSyslog_Create(&CORE_ONLY_CONFIG);
+    struct SolidSyslog* coreOnly = SolidSyslog_Create(&CORE_ONLY_CONFIG);
     SolidSyslog_Log(coreOnly, &message);
     SolidSyslog_Destroy(coreOnly);
 
