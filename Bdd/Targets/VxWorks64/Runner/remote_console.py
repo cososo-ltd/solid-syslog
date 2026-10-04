@@ -10,6 +10,15 @@ import subprocess
 import threading
 
 
+# Starts the target, which connects its console to listener, and returns that
+# console. start and stop begin and end the target - in practice the runner's
+# qemu-start and qemu-stop jobs.
+def open_remote_target(listener, start, stop):
+    start()
+    connection, _ = listener.accept()
+    return RemoteConsole(connection, stop)
+
+
 class RemoteConsole:
     # stop ends the target - in practice the runner's qemu-stop job.
     def __init__(self, connection, stop):
