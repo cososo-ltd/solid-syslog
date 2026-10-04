@@ -172,6 +172,15 @@ TEST(BddTargetVxWorks64, ASentMessageCarriesTheHostnameTheTargetSet)
     STRCMP_CONTAINS(" SolidSyslogVxWorks64 ", VxWorks64NetFake_LastSendtoPayload());
 }
 
+TEST(BddTargetVxWorks64, SetTimeSetsTheRealTimeClock)
+{
+    BddTargetVxWorks64_Init();
+
+    RunConsoleWith("set time 1791119130\nquit\n");
+
+    UNSIGNED_LONGS_EQUAL(1791119130UL, VxWorks64ClockFake_LastSetSeconds());
+}
+
 TEST(BddTargetVxWorks64, ALibraryErrorIsReportedOnTheConsole)
 {
     static const struct SolidSyslogErrorSource TEST_SOURCE = {"TestSource"};

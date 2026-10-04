@@ -12,6 +12,8 @@ static long VxWorks64ClockFake_Nanoseconds = 0L;
 static time_t VxWorks64ClockFake_Seconds = 0UL;
 static clockid_t VxWorks64ClockFake_LastClockId = -1;
 static time_t VxWorks64ClockFake_BrokenDownSeconds = 0UL;
+static unsigned VxWorks64ClockFake_SetCount = 0U;
+static time_t VxWorks64ClockFake_SettimeSeconds = 0UL;
 
 void VxWorks64ClockFake_Reset(void)
 {
@@ -22,6 +24,8 @@ void VxWorks64ClockFake_Reset(void)
     VxWorks64ClockFake_Seconds = 0UL;
     VxWorks64ClockFake_LastClockId = -1;
     VxWorks64ClockFake_BrokenDownSeconds = 0UL;
+    VxWorks64ClockFake_SetCount = 0U;
+    VxWorks64ClockFake_SettimeSeconds = 0UL;
 }
 
 void VxWorks64ClockFake_FailClockGettime(void)
@@ -62,6 +66,23 @@ bool VxWorks64ClockFake_LastReadWasRealTime(void)
 unsigned long VxWorks64ClockFake_LastBrokenDownSeconds(void)
 {
     return VxWorks64ClockFake_BrokenDownSeconds;
+}
+
+unsigned VxWorks64ClockFake_SetCallCount(void)
+{
+    return VxWorks64ClockFake_SetCount;
+}
+
+unsigned long VxWorks64ClockFake_LastSetSeconds(void)
+{
+    return VxWorks64ClockFake_SettimeSeconds;
+}
+
+int clock_settime(clockid_t clockId, const struct timespec* tp)
+{
+    VxWorks64ClockFake_SetCount++;
+    VxWorks64ClockFake_SettimeSeconds = (clockId == CLOCK_REALTIME) ? tp->tv_sec : 0UL;
+    return OK;
 }
 
 int clock_gettime(clockid_t clockId, struct timespec* tp)

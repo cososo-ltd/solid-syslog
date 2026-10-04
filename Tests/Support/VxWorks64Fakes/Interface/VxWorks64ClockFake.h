@@ -33,6 +33,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** The seconds the last gmtime_r was asked to break down. */
     unsigned long VxWorks64ClockFake_LastBrokenDownSeconds(void);
 
+    unsigned VxWorks64ClockFake_SetCallCount(void);
+
+    /** The seconds the last clock_settime set CLOCK_REALTIME to; zero if it
+     *  set another clock. */
+    unsigned long VxWorks64ClockFake_LastSetSeconds(void);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* VXWORKS64CLOCKFAKE_H */

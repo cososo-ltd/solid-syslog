@@ -21,6 +21,7 @@
 /* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
 
 #define clock_gettime VxWorks64ClockFake_ClockGettime
+#define clock_settime VxWorks64ClockFake_ClockSettime
 #define gmtime_r VxWorks64ClockFake_GmtimeR
 
 typedef int clockid_t;
@@ -46,6 +47,7 @@ struct tm
 };
 
 int clock_gettime(clockid_t clockId, struct timespec* tp);
+int clock_settime(clockid_t clockId, const struct timespec* tp);
 /* Returns OK or ERROR, not a pointer as a hosted C library's does. */
 int gmtime_r(const time_t* tod, struct tm* result);
 
