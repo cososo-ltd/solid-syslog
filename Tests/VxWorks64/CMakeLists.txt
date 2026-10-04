@@ -40,6 +40,42 @@ set_target_properties(SolidSyslogVxWorks64MutexTest PROPERTIES
     C_EXTENSIONS OFF
 )
 
+# The shared AtomicCounter contract suite, run against this pack's counter. The
+# helper whitebox-includes the counter's source, so only its Static half is
+# listed here.
+add_executable(SolidSyslogVxWorks64AtomicCounterTest
+    ${CMAKE_SOURCE_DIR}/Tests/SolidSyslogAtomicCounterContractTest.cpp
+    SolidSyslogVxWorks64AtomicCounterTestHelper.c
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64AtomicCounterStatic.c
+)
+
+target_link_libraries(SolidSyslogVxWorks64AtomicCounterTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogVxWorks64AtomicCounterTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+    ${CMAKE_SOURCE_DIR}/Tests/Support
+)
+
+set_target_properties(SolidSyslogVxWorks64AtomicCounterTest PROPERTIES
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+    C_EXTENSIONS OFF
+)
+
+add_test(NAME SolidSyslogVxWorks64AtomicCounterTest COMMAND SolidSyslogVxWorks64AtomicCounterTest)
+
 add_executable(SolidSyslogVxWorks64AddressTest
     SolidSyslogVxWorks64AddressTest.cpp
     main.cpp
