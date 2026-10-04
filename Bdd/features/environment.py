@@ -90,9 +90,17 @@ def otel_kill_oracle():
 
 
 OTELCOL_BIN    = os.path.join("Bdd", "otel", "bin", "otelcol-contrib.exe")
-OTELCOL_CONFIG = os.path.join("Bdd", "otel", "config.yaml")
 OTELCOL_OUT    = os.path.join("Bdd", "output", "otelcol.out")
 OTELCOL_ERR    = os.path.join("Bdd", "output", "otelcol.err")
+
+# The Windows runner's collector, unless the run names another. A target with
+# its own collector config - VxWorks 6.4's listens on every interface, with no
+# TLS - sets both, so a restart brings back the collector the run started and
+# waits only for the listeners that config has.
+OTELCOL_CONFIG = os.environ.get("OTELCOL_CONFIG") or os.path.join("Bdd", "otel", "config.yaml")
+OTELCOL_TCP_PORTS = tuple(
+    int(port) for port in (os.environ.get("OTELCOL_TCP_PORTS") or "5514,6514,6515").split(",")
+)
 
 
 def otel_start_oracle():
@@ -105,10 +113,11 @@ def otel_start_oracle():
     path has Windows-native backslashes — _winapi.CreateProcess does not
     resolve forward slashes the way bash does.
 
-    Wait on all three TCP-bound ports (5514 syslog/TCP, 6514 TLS, 6515 mTLS)
-    rather than just 5514. Otelcol binds them in series during startup, so
-    a kill+restart in a previous scenario followed immediately by an mTLS
-    scenario could race the TLS handshake against an unbound listener.
+    Wait on every TCP-bound port the config has - by default all three (5514
+    syslog/TCP, 6514 TLS, 6515 mTLS) rather than just 5514. Otelcol binds
+    them in series during startup, so a kill+restart in a previous scenario
+    followed immediately by an mTLS scenario could race the TLS handshake
+    against an unbound listener.
     """
     os.makedirs(os.path.dirname(OTELCOL_OUT), exist_ok=True)
     with open(OTELCOL_OUT, "ab") as out, open(OTELCOL_ERR, "ab") as err:
@@ -117,7 +126,7 @@ def otel_start_oracle():
             stdout=out,
             stderr=err,
         )
-    for port in (5514, 6514, 6515):
+    for port in OTELCOL_TCP_PORTS:
         wait_for_tcp_port_open(host="127.0.0.1", port=port)
 
 
