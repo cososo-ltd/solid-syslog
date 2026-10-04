@@ -12,7 +12,11 @@
 
 #include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogAtomicCounterDefinition.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogNullAtomicCounter.h"
 #include "SolidSyslogVxWorks64AtomicCounterPrivate.h"
+
+const struct SolidSyslogErrorSource SolidSyslogVxWorks64AtomicCounterErrorSource = {"VxWorks64AtomicCounter"};
 
 static uint32_t VxWorks64AtomicCounter_Increment(struct SolidSyslogAtomicCounter* base);
 static void VxWorks64AtomicCounter_Init(struct SolidSyslogVxWorks64AtomicCounter* self, uint32_t value);
@@ -38,6 +42,13 @@ static inline struct SolidSyslogVxWorks64AtomicCounter* VxWorks64AtomicCounter_S
 static void VxWorks64AtomicCounter_Init(struct SolidSyslogVxWorks64AtomicCounter* self, uint32_t value)
 {
     self->Value = value;
+}
+
+void SolidSyslogVxWorks64AtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* base)
+{
+    /* Overwrite the abstract base with the shared NullAtomicCounter vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullAtomicCounter_Get();
 }
 
 static uint32_t VxWorks64AtomicCounter_Increment(struct SolidSyslogAtomicCounter* base)

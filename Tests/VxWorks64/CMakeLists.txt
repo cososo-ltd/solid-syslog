@@ -46,6 +46,7 @@ set_target_properties(SolidSyslogVxWorks64MutexTest PROPERTIES
 add_executable(SolidSyslogVxWorks64AtomicCounterTest
     ${CMAKE_SOURCE_DIR}/Tests/SolidSyslogAtomicCounterContractTest.cpp
     SolidSyslogVxWorks64AtomicCounterTest.cpp
+    SolidSyslogVxWorks64AtomicCounterPoolTest.cpp
     SolidSyslogVxWorks64AtomicCounterTestHelper.c
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64AtomicCounterStatic.c

@@ -8,6 +8,9 @@
 #include <stdint.h>
 
 #include "SolidSyslogAtomicCounterDefinition.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogVxWorks64AtomicCounterErrors.h"
 
 struct SolidSyslogVxWorks64AtomicCounter
 {
@@ -16,5 +19,15 @@ struct SolidSyslogVxWorks64AtomicCounter
 };
 
 void SolidSyslogVxWorks64AtomicCounter_Initialise(struct SolidSyslogAtomicCounter* base);
+void SolidSyslogVxWorks64AtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* base);
+
+static inline void VxWorks64AtomicCounter_Report(
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogAtomicCounterErrors code
+)
+{
+    SolidSyslog_Error(severity, &SolidSyslogVxWorks64AtomicCounterErrorSource, category, (int32_t) code);
+}
 
 #endif /* SOLIDSYSLOGVXWORKS64ATOMICCOUNTERPRIVATE_H */
