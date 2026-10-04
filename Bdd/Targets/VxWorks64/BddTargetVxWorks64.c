@@ -18,6 +18,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 #include "BddTargetEnterpriseId.h"
 #include "BddTargetErrorText.h"
@@ -63,6 +66,8 @@ static void BddTargetVxWorks64_Spawn(char* name, int stackBytes, FUNCPTR entry);
 static int BddTargetVxWorks64_InteractiveTask(void);
 static int BddTargetVxWorks64_ServiceTask(void);
 static void BddTargetVxWorks64_GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality);
+static bool BddTargetVxWorks64_SetByName(const char* name, const char* value);
+static bool BddTargetVxWorks64_SetTime(const char* value);
 
 /* Every field NULL: Core falls back to its Null buffer and sender. */
 static const struct SolidSyslogConfig CORE_ONLY_CONFIG = {0};
@@ -263,9 +268,35 @@ void BddTargetVxWorks64_RunConsole(FILE* input)
         BddTargetMessageSettings_Message(),
         input,
         NULL,
-        BddTargetMessageSettings_SetByName
+        BddTargetVxWorks64_SetByName
     );
     consoleEnded = true;
+}
+
+/* `set time` is this target's; every other setting is the shared one. */
+static bool BddTargetVxWorks64_SetByName(const char* name, const char* value)
+{
+    bool taken = false;
+
+    if (strcmp(name, "time") == 0)
+    {
+        taken = BddTargetVxWorks64_SetTime(value);
+    }
+    else
+    {
+        taken = BddTargetMessageSettings_SetByName(name, value);
+    }
+    return taken;
+}
+
+/* The board has no battery-backed clock, so the harness sets it, in seconds
+ * since the epoch, and the system clock tick runs it from there. */
+static bool BddTargetVxWorks64_SetTime(const char* value)
+{
+    struct timespec now = {0};
+
+    now.tv_sec = (time_t) strtoul(value, NULL, 10);
+    return clock_settime(CLOCK_REALTIME, &now) == OK;
 }
 
 /* Once the console ends, what it logged is still sent before the task stops. */
