@@ -11,5 +11,5 @@
 
 void SolidSyslogVxWorks64_Sleep(int milliseconds)
 {
-    (void) taskDelay((milliseconds * sysClkRateGet()) / 1000);
+    (void) taskDelay(((milliseconds * sysClkRateGet()) + 999) / 1000);
 }
