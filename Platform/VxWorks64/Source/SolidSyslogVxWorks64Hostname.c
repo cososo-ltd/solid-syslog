@@ -16,6 +16,8 @@ void SolidSyslogVxWorks64_GetHostname(struct SolidSyslogHeaderField* field, void
 
     (void) context;
 
-    (void) gethostname(hostname, (int) sizeof(hostname));
-    SolidSyslogHeaderField_PrintUsAscii(field, hostname, sizeof(hostname));
+    if (gethostname(hostname, (int) sizeof(hostname)) == OK)
+    {
+        SolidSyslogHeaderField_PrintUsAscii(field, hostname, sizeof(hostname));
+    }
 }
