@@ -59,3 +59,12 @@ TEST(SolidSyslogVxWorks64Clock, DayIsTheDayOfTheMonth)
 
     UNSIGNED_LONGS_EQUAL(4, timestamp.Day);
 }
+
+TEST(SolidSyslogVxWorks64Clock, HourIsTheHourOfTheDay)
+{
+    VxWorks64ClockFake_SetBrokenDownTime(126, 9, 4, 13, 45, 30);
+
+    SolidSyslogVxWorks64_GetTimestamp(&timestamp);
+
+    UNSIGNED_LONGS_EQUAL(13, timestamp.Hour);
+}
