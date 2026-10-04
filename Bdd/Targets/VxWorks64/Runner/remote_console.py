@@ -36,6 +36,8 @@ class RemoteConsole:
         read_end, self._write_end = os.pipe()
         self.stdout = os.fdopen(read_end, "rb", buffering=0)
         self.stdin = _ConsoleInput(connection)
+        # A serial console carries one stream; errors arrive on stdout with the rest.
+        self.stderr = None
         # The target runs on another machine, so there is no local process.
         self.pid = None
         self.returncode = None
