@@ -35,6 +35,7 @@
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogVxWorks64Address.h"
+#include "SolidSyslogVxWorks64Clock.h"
 #include "SolidSyslogVxWorks64Datagram.h"
 #include "SolidSyslogVxWorks64Mutex.h"
 #include "SolidSyslogVxWorks64Resolver.h"
@@ -201,6 +202,7 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     config.SdCount = sizeof(sdList) / sizeof(sdList[0]);
     config.Store = SolidSyslogNullStore_Get();
     config.GetAppName = BddTargetMessageSettings_GetAppName;
+    config.Clock = SolidSyslogVxWorks64_GetTimestamp;
     logger = SolidSyslog_Create(&config);
 }
 
