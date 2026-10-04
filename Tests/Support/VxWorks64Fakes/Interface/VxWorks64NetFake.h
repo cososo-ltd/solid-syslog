@@ -48,6 +48,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     const char* VxWorks64NetFake_LastSendtoBuf(void);
 
+    /** The bytes sendto was last given, copied when it was called and ended as a
+     *  string, so they can be read after the caller's buffer has gone. */
+    const char* VxWorks64NetFake_LastSendtoPayload(void);
+
     int VxWorks64NetFake_LastSendtoLen(void);
 
     int VxWorks64NetFake_LastSendtoFlags(void);

@@ -141,3 +141,61 @@ set_target_properties(SolidSyslogVxWorks64DatagramTest PROPERTIES
 )
 
 add_test(NAME SolidSyslogVxWorks64DatagramTest COMMAND SolidSyslogVxWorks64DatagramTest)
+
+# The BDD target compiles here against the same fakes, so a change that breaks
+# it fails on the host as well as in the target build.
+add_executable(BddTargetVxWorks64Test
+    BddTargetVxWorks64Test.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCustomSd.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetInteractive.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMessageSettings.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetServiceThread.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Address.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64AddressStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64DatagramStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Mutex.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64MutexStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64ResolverStatic.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64NetFake.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64SemFake.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64TaskFake.c
+)
+
+target_link_libraries(BddTargetVxWorks64Test PRIVATE
+    ${PROJECT_NAME}
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(BddTargetVxWorks64Test PRIVATE
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests/Support
+)
+
+set_target_properties(BddTargetVxWorks64Test PROPERTIES
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+    C_EXTENSIONS OFF
+)
+
+# The test feeds the console through a temporary file, whose portable spelling
+# CMake picks as it does SafeString's.
+if(MSVC)
+    target_sources(BddTargetVxWorks64Test PRIVATE ${CMAKE_SOURCE_DIR}/Tests/Support/TempFileWindows.c)
+else()
+    target_sources(BddTargetVxWorks64Test PRIVATE ${CMAKE_SOURCE_DIR}/Tests/Support/TempFileStandard.c)
+endif()
+
+add_test(NAME BddTargetVxWorks64Test COMMAND BddTargetVxWorks64Test)

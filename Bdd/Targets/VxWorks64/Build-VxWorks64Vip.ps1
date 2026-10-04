@@ -93,13 +93,18 @@ try
     $env:SOLIDSYSLOG_PLATFORMS = $Platforms
 
     $libraryDirectory = Get-LibraryDirectory -ProjectDirectory $ProjectDirectory
-    $library = Join-Path $libraryDirectory 'libsolidsyslog.a'
+    $bddTargetDirectory = Get-BddTargetDirectory -ProjectDirectory $ProjectDirectory
+    $archives = @((Join-Path $libraryDirectory 'libsolidsyslog.a'),
+        (Join-Path $bddTargetDirectory 'libsolidsyslogbdd.a'))
     $specDirectory = Join-Path $ProjectDirectory $BuildSpec
     if ($Clean)
         {
-        if (Test-Path -LiteralPath $libraryDirectory)
+        foreach ($directory in @($libraryDirectory, $bddTargetDirectory))
             {
-            Remove-Item -LiteralPath $libraryDirectory -Recurse -Force
+            if (Test-Path -LiteralPath $directory)
+                {
+                Remove-Item -LiteralPath $directory -Recurse -Force
+                }
             }
         Get-ChildItem -LiteralPath $specDirectory -Filter 'vxWorks*' -File -ErrorAction SilentlyContinue |
             Remove-Item -Force
@@ -109,23 +114,27 @@ try
         Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'build', 'set', $projectFile, $BuildSpec)
 
         # The project's Makefile supplies CC, AR, TOOL_FAMILY and CFLAGS for the
-        # build specification; solidsyslog.makefile builds the library with them.
+        # build specification; solidsyslog.makefile builds the library with them,
+        # and bddtarget.makefile the BDD target's archive.
         Invoke-WindRiver @vxprj -Command @('make',
             '-C', (ConvertTo-MakePath $ProjectDirectory),
             '-f', 'Makefile',
             '-f', (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Platform\VxWorks64\solidsyslog.makefile')),
+            '-f', (ConvertTo-MakePath (Join-Path $PSScriptRoot 'bddtarget.makefile')),
             "BUILD_SPEC=$BuildSpec",
             "SOLIDSYSLOG_BUILD_DIR=$(ConvertTo-MakePath $libraryDirectory)",
-            'solidsyslog_library')
+            "BDD_TARGET_BUILD_DIR=$(ConvertTo-MakePath $bddTargetDirectory)",
+            'solidsyslog_library', 'solidsyslog_bdd_target')
 
-        # The image does not depend on the library in the project's rules, so a
-        # rebuilt library would not relink it. Remove the stale images instead.
+        # The image does not depend on either archive in the project's rules, so
+        # a rebuilt archive would not relink it. Remove the stale images instead.
         $images = @(Get-ChildItem -LiteralPath $specDirectory -Filter 'vxWorks*' -File -ErrorAction SilentlyContinue)
         $oldestImage = $images | Sort-Object LastWriteTimeUtc | Select-Object -First 1
-        if ($oldestImage -and
-            (Get-Item -LiteralPath $library).LastWriteTimeUtc -gt $oldestImage.LastWriteTimeUtc)
+        $newestArchive = $archives | ForEach-Object { Get-Item -LiteralPath $_ } |
+            Sort-Object LastWriteTimeUtc | Select-Object -Last 1
+        if ($oldestImage -and ($newestArchive.LastWriteTimeUtc -gt $oldestImage.LastWriteTimeUtc))
             {
-            Write-Host 'The SolidSyslog library changed - removing the old images to force a relink.'
+            Write-Host 'A SolidSyslog archive changed - removing the old images to force a relink.'
             $images | Remove-Item -Force
             }
 

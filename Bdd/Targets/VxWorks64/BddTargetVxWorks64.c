@@ -2,83 +2,135 @@
  * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
  */
 
-/* The VIP compiles this file with its own flags, which select C89, so it stands
- * in for an application: vxWorks.h first, as Wind River code includes it, then
- * the public headers. The VxWorks64 headers are included whether or not they
- * are used, to prove they compile there too. */
+/* Built at C99 into the BDD target's own archive (bddtarget-vxworks64.mk).
+ * BddTargetVxWorks64Headers.c is the C89 proof of the public headers. */
 
 #include "vxWorks.h"
 
+#include "BddTargetVxWorks64.h"
+
 #include "errnoLib.h"
 #include "routeLib.h"
+#include "sysLib.h"
+#include "taskLib.h"
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
+#include "BddTargetEnterpriseId.h"
+#include "BddTargetErrorText.h"
+#include "BddTargetInteractive.h"
+#include "BddTargetIps.h"
+#include "BddTargetMessageSettings.h"
+#include "BddTargetServiceThread.h"
 #include "SolidSyslog.h"
+#include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
-#include "SolidSyslogEndpoint.h"
-#include "SolidSyslogEndpointHost.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogNullStore.h"
-#include "SolidSyslogPassthroughBuffer.h"
+#include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogTimeQuality.h"
+#include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogVxWorks64Address.h"
-#include "SolidSyslogVxWorks64AddressErrors.h"
 #include "SolidSyslogVxWorks64Datagram.h"
-#include "SolidSyslogVxWorks64DatagramErrors.h"
 #include "SolidSyslogVxWorks64Mutex.h"
-#include "SolidSyslogVxWorks64MutexErrors.h"
 #include "SolidSyslogVxWorks64Resolver.h"
-#include "SolidSyslogVxWorks64ResolverErrors.h"
 
 #define BDD_TARGET_TAG "SolidSyslog VxWorks 6.4 BDD target: "
-#define COLLECTOR_COMMAND "collector "
-#define COLLECTOR_HOST_SIZE 64
-#define COLLECTOR_LINE_SIZE 128
-#define MAX_PORT 65535L
 
-void BddTargetVxWorks64_Init(void);
+enum
+{
+    TASK_PRIORITY = 100,
+    INTERACTIVE_STACK_BYTES = 16384,
+    SERVICE_STACK_BYTES = 8192,
+    MILLISECONDS_PER_SECOND = 1000
+};
 
+static FILE* BddTargetVxWorks64_Reports(void);
+static void BddTargetVxWorks64_ReportError(void* context, const struct SolidSyslogErrorEvent* event);
 static void BddTargetVxWorks64_RunCore(void);
 static void BddTargetVxWorks64_BringUpNetwork(void);
 static void BddTargetVxWorks64_ReportStep(const char* step, STATUS status);
-static void BddTargetVxWorks64_SendOverUdp(void);
-static int BddTargetVxWorks64_ParseCollector(const char* line);
-static void BddTargetVxWorks64_Endpoint(struct SolidSyslogEndpoint* endpoint, void* context);
-static void BddTargetVxWorks64_PrintError(void* context, const struct SolidSyslogErrorEvent* event);
+static void BddTargetVxWorks64_BuildPipeline(void);
+static void BddTargetVxWorks64_SpawnTasks(void);
+static void BddTargetVxWorks64_Spawn(char* name, int stackBytes, FUNCPTR entry);
+static int BddTargetVxWorks64_InteractiveTask(void);
+static int BddTargetVxWorks64_ServiceTask(void);
+static void BddTargetVxWorks64_GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality);
 
 /* Every field NULL: Core falls back to its Null buffer and sender. */
-static const struct SolidSyslogConfig CORE_ONLY_CONFIG;
+static const struct SolidSyslogConfig CORE_ONLY_CONFIG = {0};
 
-/* Where the collector is, as the console told us. */
-static char collectorHost[COLLECTOR_HOST_SIZE];
-static unsigned short collectorPort;
+/* The QEMU gateway, until the harness names the collector with `set host`. */
+static const char DEFAULT_HOST[] = "10.0.2.2";
+
+static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(8)];
+static struct SolidSyslogAddress* address;
+static struct SolidSyslogResolver* resolver;
+static struct SolidSyslogDatagram* datagram;
+static struct SolidSyslogSender* sender;
+static struct SolidSyslogMutex* bufferMutex;
+static struct SolidSyslogBuffer* buffer;
+static struct SolidSyslogStructuredData* timeQualitySd;
+static struct SolidSyslogStructuredData* originSd;
+static struct SolidSyslogStructuredData* sdList[2];
+static struct SolidSyslog* logger;
+/* Set when the console ends, which stops the service task. */
+static volatile bool consoleEnded;
+/* Where the target's own reports go; NULL means stdout, the console. */
+static FILE* reportStream;
 
 void BddTargetVxWorks64_Init(void)
 {
     BddTargetVxWorks64_RunCore();
+    /* After the Core-only check, whose deliberately empty config is reported
+     * as bad by design. */
+    SolidSyslog_SetErrorHandler(BddTargetVxWorks64_ReportError, NULL);
     BddTargetVxWorks64_BringUpNetwork();
-    BddTargetVxWorks64_SendOverUdp();
+    BddTargetVxWorks64_BuildPipeline();
+    consoleEnded = false;
+    BddTargetVxWorks64_SpawnTasks();
+}
+
+/* Reports what the library reports, in the form the steps read from every QEMU
+ * target, so a failed send shows on the console rather than as a silent timeout. */
+static void BddTargetVxWorks64_ReportError(void* context, const struct SolidSyslogErrorEvent* event)
+{
+    (void) context;
+    const char* sourceName = (event->Source != NULL) ? event->Source->Name : "<unknown>";
+    (void) fprintf(
+        BddTargetVxWorks64_Reports(),
+        "[solidsyslog] severity=%d [%s cat=%u detail=%ld] %s\n",
+        (int) event->Severity,
+        sourceName,
+        (unsigned) event->Category,
+        (long) event->Detail,
+        BddTargetErrorText_Category(event->Category)
+    );
+}
+
+static FILE* BddTargetVxWorks64_Reports(void)
+{
+    return (reportStream != NULL) ? reportStream : stdout;
 }
 
 static void BddTargetVxWorks64_RunCore(void)
 {
-    struct SolidSyslog* logger;
-    struct SolidSyslogMessage message;
+    struct SolidSyslogMessage message = {0};
 
     message.Facility = SOLIDSYSLOG_FACILITY_USER;
     message.Severity = SOLIDSYSLOG_SEVERITY_INFORMATIONAL;
     message.MessageId = "BOOT";
     message.Msg = "VxWorks 6.4 BDD target";
 
-    logger = SolidSyslog_Create(&CORE_ONLY_CONFIG);
-    SolidSyslog_Log(logger, &message);
-    SolidSyslog_Destroy(logger);
+    struct SolidSyslog* coreOnly = SolidSyslog_Create(&CORE_ONLY_CONFIG);
+    SolidSyslog_Log(coreOnly, &message);
+    SolidSyslog_Destroy(coreOnly);
 
-    printf(BDD_TARGET_TAG "Core ran\n");
+    (void) fprintf(BddTargetVxWorks64_Reports(), BDD_TARGET_TAG "Core ran\n");
 }
 
 /* INCLUDE_ADDIF has already put the PCnet interface on QEMU's user network, as
@@ -96,118 +148,149 @@ static void BddTargetVxWorks64_ReportStep(const char* step, STATUS status)
 {
     if (status == OK)
     {
-        printf(BDD_TARGET_TAG "network %s set\n", step);
+        (void) fprintf(BddTargetVxWorks64_Reports(), BDD_TARGET_TAG "network %s set\n", step);
     }
     else
     {
-        printf(BDD_TARGET_TAG "network %s failed, errno 0x%x\n", step, (unsigned) errnoGet());
+        (void) fprintf(
+            BddTargetVxWorks64_Reports(),
+            BDD_TARGET_TAG "network %s failed, errno 0x%x\n",
+            step,
+            (unsigned) errnoGet()
+        );
     }
 }
 
-/* Asks the console where the collector is - the development machine answers
- * "collector <host> <port>" - then sends one message there over UDP. */
-static void BddTargetVxWorks64_SendOverUdp(void)
+/* UDP to the collector the harness names, behind a circular buffer that the
+ * VxWorks mutex guards, because the console task logs and the service task
+ * sends. */
+static void BddTargetVxWorks64_BuildPipeline(void)
 {
-    char line[COLLECTOR_LINE_SIZE];
-    struct SolidSyslogAddress* address;
-    struct SolidSyslogResolver* resolver;
-    struct SolidSyslogDatagram* datagram;
-    struct SolidSyslogUdpSenderConfig senderConfig;
-    struct SolidSyslogSender* sender;
-    struct SolidSyslogBuffer* buffer;
-    struct SolidSyslogConfig config;
-    struct SolidSyslog* logger;
-    struct SolidSyslogMessage message;
+    struct SolidSyslogUdpSenderConfig senderConfig = {0};
+    struct SolidSyslogConfig config = {0};
 
-    SolidSyslog_SetErrorHandler(BddTargetVxWorks64_PrintError, NULL);
-    printf(BDD_TARGET_TAG "collector?\n");
-    fflush(stdout);
-    if ((fgets(line, (int) sizeof(line), stdin) == NULL) || !BddTargetVxWorks64_ParseCollector(line))
+    BddTargetMessageSettings_Reset(DEFAULT_HOST);
+
+    address = SolidSyslogVxWorks64Address_Create();
+    resolver = SolidSyslogVxWorks64Resolver_Create();
+    datagram = SolidSyslogVxWorks64Datagram_Create();
+    senderConfig.Resolver = resolver;
+    senderConfig.Datagram = datagram;
+    senderConfig.Address = address;
+    senderConfig.Endpoint = BddTargetMessageSettings_GetEndpoint;
+    senderConfig.EndpointVersion = BddTargetMessageSettings_GetEndpointVersion;
+    sender = SolidSyslogUdpSender_Create(&senderConfig);
+
+    bufferMutex = SolidSyslogVxWorks64Mutex_Create();
+    buffer = SolidSyslogCircularBuffer_Create(bufferMutex, bufferRing, sizeof(bufferRing));
+
+    struct SolidSyslogOriginSdConfig originConfig = {0};
+    originConfig.Software = "SolidSyslogBddTarget";
+    originConfig.SwVersion = "0.7.0";
+    originConfig.EnterpriseId = BDD_TARGET_ENTERPRISE_ID;
+    originConfig.GetIpCount = BddTargetIps_Count;
+    originConfig.GetIpAt = BddTargetIps_At;
+    originSd = SolidSyslogOriginSd_Create(&originConfig);
+    timeQualitySd = SolidSyslogTimeQualitySd_Create(BddTargetVxWorks64_GetTimeQuality);
+    sdList[0] = timeQualitySd;
+    sdList[1] = originSd;
+
+    config.Buffer = buffer;
+    config.Sender = sender;
+    config.Sd = sdList;
+    config.SdCount = sizeof(sdList) / sizeof(sdList[0]);
+    config.Store = SolidSyslogNullStore_Get();
+    config.GetAppName = BddTargetMessageSettings_GetAppName;
+    logger = SolidSyslog_Create(&config);
+}
+
+/* No clock is set on this target, so its time is neither in a known zone nor
+ * synchronised (RFC 5424 §7.1). */
+static void BddTargetVxWorks64_GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
+{
+    timeQuality->TzKnown = false;
+    timeQuality->IsSynced = false;
+    timeQuality->SyncAccuracyMicroseconds = SOLIDSYSLOG_SYNC_ACCURACY_OMIT;
+}
+
+/* taskSpawn takes a non-const name it only reads, so each lives in an array. */
+static void BddTargetVxWorks64_SpawnTasks(void)
+{
+    char interactiveName[] = "tSsInteractive";
+    char serviceName[] = "tSsService";
+
+    BddTargetVxWorks64_Spawn(interactiveName, INTERACTIVE_STACK_BYTES, (FUNCPTR) BddTargetVxWorks64_InteractiveTask);
+    BddTargetVxWorks64_Spawn(serviceName, SERVICE_STACK_BYTES, (FUNCPTR) BddTargetVxWorks64_ServiceTask);
+}
+
+static void BddTargetVxWorks64_Spawn(char* name, int stackBytes, FUNCPTR entry)
+{
+    if (taskSpawn(name, TASK_PRIORITY, 0, stackBytes, entry, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == ERROR)
     {
-        printf(BDD_TARGET_TAG "no collector given\n");
-    }
-    else
-    {
-        address = SolidSyslogVxWorks64Address_Create();
-        resolver = SolidSyslogVxWorks64Resolver_Create();
-        datagram = SolidSyslogVxWorks64Datagram_Create();
-
-        memset(&senderConfig, 0, sizeof(senderConfig));
-        senderConfig.Resolver = resolver;
-        senderConfig.Datagram = datagram;
-        senderConfig.Address = address;
-        senderConfig.Endpoint = BddTargetVxWorks64_Endpoint;
-        sender = SolidSyslogUdpSender_Create(&senderConfig);
-        buffer = SolidSyslogPassthroughBuffer_Create(sender);
-
-        memset(&config, 0, sizeof(config));
-        config.Buffer = buffer;
-        config.Sender = sender;
-        config.Store = SolidSyslogNullStore_Get();
-        logger = SolidSyslog_Create(&config);
-
-        message.Facility = SOLIDSYSLOG_FACILITY_USER;
-        message.Severity = SOLIDSYSLOG_SEVERITY_INFORMATIONAL;
-        message.MessageId = "UDP";
-        message.Msg = "VxWorks 6.4 BDD target over UDP";
-        SolidSyslog_Log(logger, &message);
-        printf(BDD_TARGET_TAG "UDP log attempted to %s:%u\n", collectorHost, (unsigned) collectorPort);
-
-        SolidSyslog_Destroy(logger);
-        SolidSyslogPassthroughBuffer_Destroy(buffer);
-        SolidSyslogUdpSender_Destroy(sender);
-        SolidSyslogVxWorks64Datagram_Destroy(datagram);
-        SolidSyslogVxWorks64Resolver_Destroy(resolver);
-        SolidSyslogVxWorks64Address_Destroy(address);
+        (void) fprintf(
+            BddTargetVxWorks64_Reports(),
+            BDD_TARGET_TAG "task %s failed to start, errno 0x%x\n",
+            name,
+            (unsigned) errnoGet()
+        );
     }
 }
 
-/* Takes "collector <host> <port>" into collectorHost and collectorPort; returns
- * zero, and leaves them unset, for anything else. */
-static int BddTargetVxWorks64_ParseCollector(const char* line)
+static int BddTargetVxWorks64_InteractiveTask(void)
 {
-    const char* host;
-    size_t hostLength;
-    char* end;
-    long port;
-    int parsed;
-
-    parsed = 0;
-    if (strncmp(line, COLLECTOR_COMMAND, strlen(COLLECTOR_COMMAND)) == 0)
-    {
-        host = line + strlen(COLLECTOR_COMMAND);
-        hostLength = strcspn(host, " ");
-        if ((hostLength > 0) && (hostLength < sizeof(collectorHost)) && (host[hostLength] == ' '))
-        {
-            port = strtol(host + hostLength + 1, &end, 10);
-            if ((port > 0) && (port <= MAX_PORT) && (end != host + hostLength + 1) &&
-                (end[strspn(end, "\r\n")] == '\0'))
-            {
-                memcpy(collectorHost, host, hostLength);
-                collectorHost[hostLength] = '\0';
-                collectorPort = (unsigned short) port;
-                parsed = 1;
-            }
-        }
-    }
-    return parsed;
+    BddTargetVxWorks64_RunConsole(stdin);
+    return 0;
 }
 
-static void BddTargetVxWorks64_Endpoint(struct SolidSyslogEndpoint* endpoint, void* context)
+static int BddTargetVxWorks64_ServiceTask(void)
 {
-    (void) context;
-    SolidSyslogEndpointHost_String(endpoint->Host, collectorHost, sizeof(collectorHost));
-    endpoint->Port = collectorPort;
+    BddTargetVxWorks64_RunService();
+    return 0;
 }
 
-/* Prints what the library reports, so a failed send shows on the console. */
-static void BddTargetVxWorks64_PrintError(void* context, const struct SolidSyslogErrorEvent* event)
+void BddTargetVxWorks64_RunConsole(FILE* input)
 {
-    (void) context;
-    printf(
-        BDD_TARGET_TAG "error from %s: category %u, detail %ld\n",
-        event->Source->Name,
-        (unsigned) event->Category,
-        (long) event->Detail
+    BddTargetInteractive_Run(
+        logger,
+        BddTargetMessageSettings_Message(),
+        input,
+        NULL,
+        BddTargetMessageSettings_SetByName
     );
+    consoleEnded = true;
+}
+
+/* Once the console ends, what it logged is still sent before the task stops. */
+void BddTargetVxWorks64_RunService(void)
+{
+    BddTargetServiceThread_Run(logger, &consoleEnded, BddTargetVxWorks64_Sleep);
+    while (SolidSyslog_Service(logger) == SOLIDSYSLOG_SERVICE_READY)
+    {
+    }
+}
+
+/* Rounded up, so a short sleep still yields for a tick rather than none. */
+void BddTargetVxWorks64_Sleep(int milliseconds)
+{
+    int ticks = ((milliseconds * sysClkRateGet()) + (MILLISECONDS_PER_SECOND - 1)) / MILLISECONDS_PER_SECOND;
+    (void) taskDelay(ticks);
+}
+
+void BddTargetVxWorks64_Teardown(void)
+{
+    SolidSyslog_Destroy(logger);
+    SolidSyslogOriginSd_Destroy(originSd);
+    SolidSyslogTimeQualitySd_Destroy(timeQualitySd);
+    SolidSyslogCircularBuffer_Destroy(buffer);
+    SolidSyslogVxWorks64Mutex_Destroy(bufferMutex);
+    SolidSyslogUdpSender_Destroy(sender);
+    SolidSyslogVxWorks64Datagram_Destroy(datagram);
+    SolidSyslogVxWorks64Resolver_Destroy(resolver);
+    SolidSyslogVxWorks64Address_Destroy(address);
+    SolidSyslog_SetErrorHandler(NULL, NULL);
+}
+
+void BddTargetVxWorks64_ReportTo(FILE* stream)
+{
+    reportStream = stream;
 }

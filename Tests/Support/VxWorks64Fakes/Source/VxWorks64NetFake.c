@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 #include <sys/socket.h>
 
 #include "hostLib.h"
@@ -31,6 +32,7 @@ static int VxWorks64NetFake_SendtoErrno = 0;
 static unsigned VxWorks64NetFake_SendtoCount = 0U;
 static int VxWorks64NetFake_SendtoFd = -1;
 static const char* VxWorks64NetFake_SendtoBuf = NULL;
+static char VxWorks64NetFake_SendtoPayload[2048];
 static int VxWorks64NetFake_SendtoLen = 0;
 static int VxWorks64NetFake_SendtoFlags = -1;
 static const struct sockaddr* VxWorks64NetFake_SendtoTo = NULL;
@@ -40,6 +42,7 @@ static int VxWorks64NetFake_ClosedFd = -1;
 
 void VxWorks64NetFake_Reset(void)
 {
+    VxWorks64NetFake_SendtoPayload[0] = '\0';
     VxWorks64NetFake_InetAddrReturn = 0UL;
     VxWorks64NetFake_InetAddrString = NULL;
     VxWorks64NetFake_HostGetByNameReturn = 0;
@@ -152,6 +155,11 @@ const char* VxWorks64NetFake_LastSendtoBuf(void)
     return VxWorks64NetFake_SendtoBuf;
 }
 
+const char* VxWorks64NetFake_LastSendtoPayload(void)
+{
+    return VxWorks64NetFake_SendtoPayload;
+}
+
 int VxWorks64NetFake_LastSendtoLen(void)
 {
     return VxWorks64NetFake_SendtoLen;
@@ -198,6 +206,11 @@ int sendto(int s, char* buf, int bufLen, int flags, struct sockaddr* to, int tol
     VxWorks64NetFake_SendtoFd = s;
     VxWorks64NetFake_SendtoBuf = buf;
     VxWorks64NetFake_SendtoLen = bufLen;
+    size_t copied = ((size_t) bufLen < sizeof(VxWorks64NetFake_SendtoPayload))
+                        ? (size_t) bufLen
+                        : sizeof(VxWorks64NetFake_SendtoPayload) - 1U;
+    (void) memcpy(VxWorks64NetFake_SendtoPayload, buf, copied);
+    VxWorks64NetFake_SendtoPayload[copied] = '\0';
     VxWorks64NetFake_SendtoFlags = flags;
     VxWorks64NetFake_SendtoTo = to;
     VxWorks64NetFake_SendtoToLen = tolen;

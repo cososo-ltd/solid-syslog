@@ -27,6 +27,13 @@ function Get-LibraryDirectory
     Join-Path $ProjectDirectory 'solidsyslog'
     }
 
+function Get-BddTargetDirectory
+    {
+    param([Parameter(Mandatory)] [string] $ProjectDirectory)
+
+    Join-Path $ProjectDirectory 'solidsyslogbdd'
+    }
+
 function ConvertTo-MakePath
     {
     param([Parameter(Mandatory)] [string] $Path)

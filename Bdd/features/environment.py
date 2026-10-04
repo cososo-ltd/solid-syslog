@@ -16,6 +16,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "steps"))
 from solidsyslog_tunables import SOLIDSYSLOG_MAX_MESSAGE_SIZE  # noqa: E402
 from wait_budgets import CONDITION_TIMEOUT_SECONDS  # noqa: E402
+from target_driver import prepare_vxworks64_target  # noqa: E402
 
 logger = logging.getLogger("behave.environment")
 
@@ -135,6 +136,8 @@ def before_all(context):
             "build/freertos-cross/Bdd/Targets/FreeRtos/"
             "SolidSyslogBddTarget.elf"
         ),
+        # Built and run on the build machine, through the VxWorks 6.4 runner.
+        "vxworks64": None,
     }
     if context.target not in default_binaries:
         raise ValueError(
@@ -148,6 +151,8 @@ def before_all(context):
         "RECEIVED_LOG", "Bdd/output/received.log"
     )
     context.oracle_format = os.environ.get("ORACLE_FORMAT", "syslog-ng")
+    if context.target == "vxworks64":
+        prepare_vxworks64_target()
 
     # On the Windows runner the OTel oracle binds 127.0.0.1; on Linux the
     # example reaches syslog-ng via the docker compose service name. The
@@ -207,8 +212,10 @@ def after_step(context, step):
 
     stderr is the channel that carries the client-side TLS/mTLS failure reason
     (handshake timeout vs cert rejected vs connection refused vs fatal exit),
-    so it is what distinguishes a real bug from an environmental flake."""
-    if step.status != "failed":
+    so it is what distinguishes a real bug from an environmental flake. An
+    exception in a step - a prompt timeout, say - is an error rather than a
+    failure, and needs the same diagnostics."""
+    if step.status not in ("failed", "error"):
         return
     if not hasattr(context, "interactive_process"):
         return

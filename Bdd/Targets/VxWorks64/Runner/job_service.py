@@ -13,8 +13,7 @@ build machine collects them, one at a time, connecting outwards only.
                                                 (120 unless a longer job needs more)
     python job_service.py console               show the console of the QEMU a
                                                 qemu-start job began, which
-                                                connects out to port 8766, and
-                                                answer its collector prompt
+                                                connects out to port 8766
 
 The token, certificate and key live in ~/.solidsyslog-runner, never in the
 repository. serve prints the certificate's thumbprint, which the runner is
@@ -41,9 +40,7 @@ import urllib.request
 DEFAULT_HOME = os.path.join(os.path.expanduser("~"), ".solidsyslog-runner")
 DEFAULT_PORT = 8765
 DEFAULT_CONSOLE_PORT = 8766
-DEFAULT_SYSLOG_PORT = 5514
 DEFAULT_TIMEOUT_SECONDS = 120
-COLLECTOR_PROMPT = b"collector?"
 
 
 class JobQueue:
@@ -285,25 +282,14 @@ def initialise(home):
 
 # Accepts the target's console, which QEMU connects out to, and writes what it
 # sends to out until it disconnects. Stopping QEMU kills it, so a reset is how
-# the console usually ends. Given a prompt, the first time the target writes it
-# the relay answers with reply(address), where address is the one this machine
-# was reached at - so the target learns where to send without any address
-# being written down.
-def relay_console(listener, out, prompt=None, reply=None):
+# the console usually ends.
+def relay_console(listener, out):
     connection, _ = listener.accept()
     with connection:
-        address = connection.getsockname()[0]
-        seen = b""
-        replied = prompt is None
         data = _receive(connection)
         while data:
             out.write(data)
             out.flush()
-            if not replied:
-                seen = (seen + data)[-(len(prompt) + len(data)):]
-                if prompt in seen:
-                    connection.sendall(reply(address).encode() + b"\r\n")
-                    replied = True
             data = _receive(connection)
 
 
@@ -322,8 +308,6 @@ def main(argv):
     commands.add_parser("serve", help="serve until stopped")
     console = commands.add_parser("console", help="show the target's console when it connects")
     console.add_argument("--console-port", type=int, default=DEFAULT_CONSOLE_PORT)
-    console.add_argument("--syslog-port", type=int, default=DEFAULT_SYSLOG_PORT,
-                         help="the collector's port, given to the target when it asks")
     submit = commands.add_parser("submit", help="queue a job and follow it")
     submit.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS,
                         help="seconds to wait for the result; a build or a BDD run needs more")
@@ -337,8 +321,7 @@ def main(argv):
     if options.command == "console":
         with socket.create_server(("0.0.0.0", options.console_port)) as listener:
             print(f"Waiting for the target's console on port {options.console_port}", flush=True)
-            relay_console(listener, sys.stdout.buffer, COLLECTOR_PROMPT,
-                          lambda address: f"collector {address} {options.syslog_port}")
+            relay_console(listener, sys.stdout.buffer)
     elif options.command == "init":
         initialise(options.home)
         print(f"Created the token, certificate and key in {options.home}")

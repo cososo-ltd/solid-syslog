@@ -1,0 +1,139 @@
+"""Tests for the remote QEMU target's console (remote_console.py).
+
+Run:  python -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
+"""
+
+import os
+import socket
+import struct
+import subprocess
+import sys
+import time
+import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import remote_console  # noqa: E402
+
+
+class RemoteConsoleTest(unittest.TestCase):
+    def setUp(self):
+        listener = socket.create_server(("127.0.0.1", 0))
+        self.addCleanup(listener.close)
+        self.target = socket.create_connection(listener.getsockname())
+        self.addCleanup(self.target.close)
+        self.connection, _ = listener.accept()
+        self.stops = []
+        self.console = remote_console.RemoteConsole(self.connection, lambda: self.stops.append("stopped"))
+
+    def test_what_the_target_sends_can_be_read_from_stdout(self):
+        self.target.sendall(b"SolidSyslog> ")
+
+        self.assertEqual(b"SolidSyslog> ", os.read(self.console.stdout.fileno(), 13))
+
+    def test_what_the_steps_write_to_stdin_reaches_the_target(self):
+        self.console.stdin.write("send 1\n")
+        self.console.stdin.flush()
+
+        self.target.settimeout(5)
+        self.assertEqual(b"send 1\n", self.target.recv(4096))
+
+    def test_each_line_written_is_followed_by_the_line_gap(self):
+        sleeps = []
+        listener = socket.create_server(("127.0.0.1", 0))
+        self.addCleanup(listener.close)
+        target = socket.create_connection(listener.getsockname())
+        self.addCleanup(target.close)
+        connection, _ = listener.accept()
+        console = remote_console.RemoteConsole(connection, lambda: None, 0.05, sleeps.append)
+
+        console.stdin.write("set host x\nset port 5514\n")
+
+        self.assertEqual([0.05, 0.05], sleeps)
+
+    def test_it_is_running_while_the_target_is_connected(self):
+        self.assertIsNone(self.console.poll())
+
+    def test_it_has_exited_once_the_target_disconnects(self):
+        self.target.close()
+
+        self.assertEqual(0, self.poll_until_exited())
+
+    # Stopping QEMU kills it, so its end of the console is reset, not closed.
+    def test_it_has_exited_once_the_target_resets_the_connection(self):
+        self.target.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+        self.target.close()
+
+        self.assertEqual(0, self.poll_until_exited())
+
+    def test_killing_it_stops_the_target(self):
+        self.console.kill()
+
+        self.assertEqual(["stopped"], self.stops)
+
+    def test_waiting_returns_the_exit_code_once_the_target_disconnects(self):
+        self.target.close()
+
+        self.assertEqual(0, self.console.wait(timeout=5))
+
+    def test_waiting_while_the_target_is_connected_times_out_as_a_process_would(self):
+        with self.assertRaises(subprocess.TimeoutExpired):
+            self.console.wait(timeout=0.1)
+
+    def test_the_collector_address_is_the_one_the_target_reached_this_machine_at(self):
+        self.assertEqual("127.0.0.1", self.console.collector_address)
+
+    def test_it_has_no_process_id_on_this_machine(self):
+        self.assertIsNone(self.console.pid)
+
+    def test_it_has_no_separate_error_stream(self):
+        self.assertIsNone(self.console.stderr)
+
+    def test_its_connection_is_closed_once_the_target_disconnects(self):
+        self.target.close()
+        self.poll_until_exited()
+
+        self.assertEqual(-1, self.connection.fileno())
+
+    def poll_until_exited(self):
+        deadline = time.monotonic() + 5
+        while self.console.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.01)
+        return self.console.poll()
+
+
+class OpenTest(unittest.TestCase):
+    def setUp(self):
+        self.listener = socket.create_server(("127.0.0.1", 0))
+        self.addCleanup(self.listener.close)
+
+    # QEMU connects its console out once started, as the start job begins it.
+    def start_a_target_that_connects(self):
+        target = socket.create_connection(self.listener.getsockname())
+        self.addCleanup(target.close)
+        target.sendall(b"booting")
+
+    def test_opening_starts_the_target_and_returns_its_console(self):
+        console = remote_console.open_remote_target(self.listener, self.start_a_target_that_connects, lambda: None)
+
+        self.assertEqual(b"booting", os.read(console.stdout.fileno(), 7))
+
+    def test_opening_gives_the_console_the_line_gap(self):
+        sleeps = []
+        console = remote_console.open_remote_target(
+            self.listener, self.start_a_target_that_connects, lambda: None, None, 0.05, sleeps.append
+        )
+
+        console.stdin.write("set host x\n")
+
+        self.assertEqual([0.05], sleeps)
+
+    def test_a_target_that_never_connects_times_out_and_is_stopped(self):
+        stops = []
+
+        with self.assertRaises(TimeoutError):
+            remote_console.open_remote_target(self.listener, lambda: None, lambda: stops.append("stopped"), 0.1)
+        self.assertEqual(["stopped"], stops)
+
+
+if __name__ == "__main__":
+    unittest.main()

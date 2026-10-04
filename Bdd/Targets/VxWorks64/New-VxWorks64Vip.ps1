@@ -58,14 +58,16 @@ Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'create', $Bsp, $Tool, $projectF
 # vxprj reads component descriptions from the project directory.
 foreach ($file in @(
         (Join-Path $PSScriptRoot '99SolidSyslogVxWorks64Bdd.cdf'),
-        (Join-Path $PSScriptRoot 'BddTargetVxWorks64.c')
+        (Join-Path $PSScriptRoot 'BddTargetVxWorks64Headers.c')
     ))
     {
     Copy-Item -LiteralPath $file -Destination $ProjectDirectory
     }
 
+# The project's only source is the C89 header check. The BDD target is C99 and
+# is linked from its own archive, which Build-VxWorks64Vip.ps1 builds.
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'file', 'add', $projectFile,
-    (Join-Path $ProjectDirectory 'BddTargetVxWorks64.c'))
+    (Join-Path $ProjectDirectory 'BddTargetVxWorks64Headers.c'))
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'component', 'add', $projectFile,
     'INCLUDE_SOLIDSYSLOG_VXWORKS64_BDD')
 
@@ -96,13 +98,14 @@ Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'set', $projectFile
 # Give every build specification the SolidSyslog headers - Core's and the
 # VxWorks64 pack's - and the library. The headers need the C99 <stdint.h> and
 # <stdbool.h> the kernel tree lacks, from the pack's Compat directory, placed
-# last so it only fills gaps. The library goes ahead of the OS libraries, which
-# it calls into. buildmacro acts on the current build specification, so each is
-# selected in turn.
+# last so it only fills gaps. The BDD target's archive goes first, then the
+# library it calls, then the OS libraries both call into. buildmacro acts on the
+# current build specification, so each is selected in turn.
 $includes = '-I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Core\Interface')) +
     ' -I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Platform\VxWorks64\Interface')) +
     ' -I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Platform\VxWorks64\Compat'))
 $library = ConvertTo-MakePath (Join-Path (Get-LibraryDirectory -ProjectDirectory $ProjectDirectory) 'libsolidsyslog.a')
+$bddTarget = ConvertTo-MakePath (Join-Path (Get-BddTargetDirectory -ProjectDirectory $ProjectDirectory) 'libsolidsyslogbdd.a')
 foreach ($buildSpec in @('default', 'default_rom'))
     {
     Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'build', 'set', $projectFile, $buildSpec)
@@ -117,7 +120,7 @@ foreach ($buildSpec in @('default', 'default_rom'))
     Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
         'CFLAGS', "$cflags $includes")
     Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
-        'LIBS', "$library `$(VX_OS_LIBS)")
+        'LIBS', "$bddTarget $library `$(VX_OS_LIBS)")
 
     # With Diab, Wind River's pciIntLib.c, compiled into the BSP's sysLib.c,
     # raises dcc:1606 (a condition always true or false). PROJECT_BSP_FLAGS_EXTRA
