@@ -185,9 +185,13 @@ void BddTargetVxWorks64_RunConsole(FILE* input)
     consoleEnded = true;
 }
 
+/* Once the console ends, what it logged is still sent before the task stops. */
 void BddTargetVxWorks64_RunService(void)
 {
     BddTargetServiceThread_Run(logger, &consoleEnded, BddTargetVxWorks64_Sleep);
+    while (SolidSyslog_Service(logger) == SOLIDSYSLOG_SERVICE_READY)
+    {
+    }
 }
 
 /* Rounded up, so a short sleep still yields for a tick rather than none. */
