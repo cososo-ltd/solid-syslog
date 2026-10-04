@@ -89,7 +89,7 @@ components, and this platform supplies one of each ready to use:
 Leave `GetProcessId` unset; a kernel task has no process id to report.
 `SolidSyslogVxWorks64_GetSysUpTime` fills the meta structured data's sysUpTime,
 and `SolidSyslogVxWorks64_Sleep` is ready for any component that takes a sleep
-callback.
+callback for its short waits; its header states the range it covers.
 
 ```c
 #include "SolidSyslogVxWorks64Clock.h"

@@ -40,9 +40,10 @@ TEST(SolidSyslogVxWorks64Sleep, APartTickRoundsUpToAWholeOne)
     CHECK_DELAYED_FOR(1);
 }
 
-TEST(SolidSyslogVxWorks64Sleep, TheLongestSleepConvertsWithoutOverflow)
+TEST(SolidSyslogVxWorks64Sleep, TicksAreReckonedInSixtyFourBits)
 {
-    // INT_MAX ms at 60 Hz is 128849018.82 ticks, rounded up.
+    // INT_MAX ms at 60 Hz is 128849018.82 ticks, rounded up; reckoned in int
+    // the product would overflow.
     SolidSyslogVxWorks64_Sleep(INT_MAX);
 
     CHECK_DELAYED_FOR(128849019);
