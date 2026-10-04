@@ -29,6 +29,8 @@
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogTimeQuality.h"
+#include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogVxWorks64Address.h"
 #include "SolidSyslogVxWorks64Datagram.h"
@@ -53,6 +55,7 @@ static void BddTargetVxWorks64_SpawnTasks(void);
 static void BddTargetVxWorks64_Spawn(char* name, int stackBytes, FUNCPTR entry);
 static int BddTargetVxWorks64_InteractiveTask(void);
 static int BddTargetVxWorks64_ServiceTask(void);
+static void BddTargetVxWorks64_GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality);
 
 /* Every field NULL: Core falls back to its Null buffer and sender. */
 static const struct SolidSyslogConfig CORE_ONLY_CONFIG = {0};
@@ -67,8 +70,9 @@ static struct SolidSyslogDatagram* datagram;
 static struct SolidSyslogSender* sender;
 static struct SolidSyslogMutex* bufferMutex;
 static struct SolidSyslogBuffer* buffer;
+static struct SolidSyslogStructuredData* timeQualitySd;
 static struct SolidSyslogStructuredData* originSd;
-static struct SolidSyslogStructuredData* sdList[1];
+static struct SolidSyslogStructuredData* sdList[2];
 static struct SolidSyslog* logger;
 /* Set when the console ends, which stops the service task. */
 static volatile bool consoleEnded;
@@ -151,7 +155,9 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     originConfig.GetIpCount = BddTargetIps_Count;
     originConfig.GetIpAt = BddTargetIps_At;
     originSd = SolidSyslogOriginSd_Create(&originConfig);
-    sdList[0] = originSd;
+    timeQualitySd = SolidSyslogTimeQualitySd_Create(BddTargetVxWorks64_GetTimeQuality);
+    sdList[0] = timeQualitySd;
+    sdList[1] = originSd;
 
     config.Buffer = buffer;
     config.Sender = sender;
@@ -160,6 +166,15 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     config.Store = SolidSyslogNullStore_Get();
     config.GetAppName = BddTargetMessageSettings_GetAppName;
     logger = SolidSyslog_Create(&config);
+}
+
+/* No clock is set on this target, so its time is neither in a known zone nor
+ * synchronised (RFC 5424 §7.1). */
+static void BddTargetVxWorks64_GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
+{
+    timeQuality->TzKnown = false;
+    timeQuality->IsSynced = false;
+    timeQuality->SyncAccuracyMicroseconds = SOLIDSYSLOG_SYNC_ACCURACY_OMIT;
 }
 
 /* taskSpawn takes a non-const name it only reads, so each lives in an array. */
@@ -221,6 +236,7 @@ void BddTargetVxWorks64_Teardown(void)
 {
     SolidSyslog_Destroy(logger);
     SolidSyslogOriginSd_Destroy(originSd);
+    SolidSyslogTimeQualitySd_Destroy(timeQualitySd);
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogVxWorks64Mutex_Destroy(bufferMutex);
     SolidSyslogUdpSender_Destroy(sender);

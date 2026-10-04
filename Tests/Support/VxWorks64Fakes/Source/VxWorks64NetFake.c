@@ -206,8 +206,9 @@ int sendto(int s, char* buf, int bufLen, int flags, struct sockaddr* to, int tol
     VxWorks64NetFake_SendtoFd = s;
     VxWorks64NetFake_SendtoBuf = buf;
     VxWorks64NetFake_SendtoLen = bufLen;
-    size_t copied = ((size_t) bufLen < sizeof(VxWorks64NetFake_SendtoPayload)) ? (size_t) bufLen
-                                                                              : sizeof(VxWorks64NetFake_SendtoPayload) - 1U;
+    size_t copied = ((size_t) bufLen < sizeof(VxWorks64NetFake_SendtoPayload))
+                        ? (size_t) bufLen
+                        : sizeof(VxWorks64NetFake_SendtoPayload) - 1U;
     (void) memcpy(VxWorks64NetFake_SendtoPayload, buf, copied);
     VxWorks64NetFake_SendtoPayload[copied] = '\0';
     VxWorks64NetFake_SendtoFlags = flags;
