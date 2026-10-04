@@ -211,12 +211,13 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     logger = SolidSyslog_Create(&config);
 }
 
-/* No clock is set on this target, so its time is neither in a known zone nor
- * synchronised (RFC 5424 §7.1). */
+/* The harness sets the clock, in UTC, with `set time` before it sends anything,
+ * so the time is in a known zone and synchronised to the host's (RFC 5424
+ * §7.1). How closely is not measured, so syncAccuracy is left out. */
 static void BddTargetVxWorks64_GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
-    timeQuality->TzKnown = false;
-    timeQuality->IsSynced = false;
+    timeQuality->TzKnown = true;
+    timeQuality->IsSynced = true;
     timeQuality->SyncAccuracyMicroseconds = SOLIDSYSLOG_SYNC_ACCURACY_OMIT;
 }
 
