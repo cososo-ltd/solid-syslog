@@ -15,6 +15,8 @@ class RemoteConsole:
     def __init__(self, connection, stop):
         self._connection = connection
         self._stop = stop
+        # Where the target reached this machine, so where its syslog should go.
+        self.collector_address = connection.getsockname()[0]
         read_end, self._write_end = os.pipe()
         self.stdout = os.fdopen(read_end, "rb", buffering=0)
         self.stdin = _ConsoleInput(connection)
