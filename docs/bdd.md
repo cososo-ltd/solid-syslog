@@ -151,7 +151,7 @@ Four rollout markers are also used (temporary; remove once the scenario passes):
 | `@wip` | Skip everywhere - work in progress. Not currently in use on any scenario. |
 | `@windows_wip` | Skip on Windows only - should work but not yet verified. Currently on `tcp_singletask.feature` (whole feature) and one scenario in `udp_mtu.feature`. |
 | `@freertoswip` | Skip on the QEMU targets only - scenario currently fails or errors on them and is gated until the relevant capability lands. Each tagged scenario is a follow-up tied to a specific gap; the tag is removed scenario-by-scenario as the gap closes. Currently on one scenario in `udp_mtu.feature` (paired with `@requires_message_size_1500`). |
-| `@vxworks64wip` | Skip on the VxWorks 6.4 target only - the scenario needs a capability that target does not have yet, and loses the tag when the story that adds it lands. Today that is an atomic counter, which the meta structured data needs for `sequenceId` ([#953](https://github.com/cososo-ltd/solid-syslog/issues/953)): the sequence and sysUpTime scenarios in `structured_data.feature`, and the sequence scenarios in `origin.feature` and `time_quality.feature`. |
+| `@vxworks64wip` | Skip on the VxWorks 6.4 target only - the scenario needs a capability that target does not have yet, and loses the tag when the story that adds it lands. |
 
 Which runner excludes which tags is set on each Behave service's `command` in
 `ci/docker-compose.bdd.yml`, and on the Windows step in `.github/workflows/ci.yml`. Read

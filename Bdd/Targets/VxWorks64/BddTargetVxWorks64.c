@@ -30,6 +30,7 @@
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogMetaSd.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
@@ -37,12 +38,14 @@
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogVxWorks64Address.h"
+#include "SolidSyslogVxWorks64AtomicCounter.h"
 #include "SolidSyslogVxWorks64Clock.h"
 #include "SolidSyslogVxWorks64Datagram.h"
 #include "SolidSyslogVxWorks64Hostname.h"
 #include "SolidSyslogVxWorks64Mutex.h"
 #include "SolidSyslogVxWorks64Resolver.h"
 #include "SolidSyslogVxWorks64Sleep.h"
+#include "SolidSyslogVxWorks64SysUpTime.h"
 
 #define BDD_TARGET_TAG "SolidSyslog VxWorks 6.4 BDD target: "
 
@@ -80,9 +83,11 @@ static struct SolidSyslogDatagram* datagram;
 static struct SolidSyslogSender* sender;
 static struct SolidSyslogMutex* bufferMutex;
 static struct SolidSyslogBuffer* buffer;
+static struct SolidSyslogAtomicCounter* counter;
+static struct SolidSyslogStructuredData* metaSd;
 static struct SolidSyslogStructuredData* timeQualitySd;
 static struct SolidSyslogStructuredData* originSd;
-static struct SolidSyslogStructuredData* sdList[2];
+static struct SolidSyslogStructuredData* sdList[3];
 static struct SolidSyslog* logger;
 /* Set when the console ends, which stops the service task. */
 static volatile bool consoleEnded;
@@ -192,6 +197,12 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     bufferMutex = SolidSyslogVxWorks64Mutex_Create();
     buffer = SolidSyslogCircularBuffer_Create(bufferMutex, bufferRing, sizeof(bufferRing));
 
+    counter = SolidSyslogVxWorks64AtomicCounter_Create();
+    struct SolidSyslogMetaSdConfig metaConfig = {0};
+    metaConfig.Counter = counter;
+    metaConfig.GetSysUpTime = SolidSyslogVxWorks64_GetSysUpTime;
+    metaSd = SolidSyslogMetaSd_Create(&metaConfig);
+
     struct SolidSyslogOriginSdConfig originConfig = {0};
     originConfig.Software = "SolidSyslogBddTarget";
     originConfig.SwVersion = "0.7.0";
@@ -200,8 +211,9 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     originConfig.GetIpAt = BddTargetIps_At;
     originSd = SolidSyslogOriginSd_Create(&originConfig);
     timeQualitySd = SolidSyslogTimeQualitySd_Create(BddTargetVxWorks64_GetTimeQuality);
-    sdList[0] = timeQualitySd;
-    sdList[1] = originSd;
+    sdList[0] = metaSd;
+    sdList[1] = timeQualitySd;
+    sdList[2] = originSd;
 
     config.Buffer = buffer;
     config.Sender = sender;
@@ -309,6 +321,8 @@ void BddTargetVxWorks64_Teardown(void)
     SolidSyslog_Destroy(logger);
     SolidSyslogOriginSd_Destroy(originSd);
     SolidSyslogTimeQualitySd_Destroy(timeQualitySd);
+    SolidSyslogMetaSd_Destroy(metaSd);
+    SolidSyslogVxWorks64AtomicCounter_Destroy(counter);
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogVxWorks64Mutex_Destroy(bufferMutex);
     SolidSyslogUdpSender_Destroy(sender);

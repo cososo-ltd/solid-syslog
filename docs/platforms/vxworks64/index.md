@@ -6,8 +6,9 @@ serve as a model for other VxWorks releases, but nothing here has run on one.
 Storage comes from a separate platform; the
 [capability matrix](../index.md) shows which fill it.
 
-Fills the Datagram, Resolver and Mutex [roles](../../roles/index.md), plus the
-address handle the datagram reads back to send. TCP is not yet supported. It
+Fills the Datagram, Resolver, Mutex and AtomicCounter
+[roles](../../roles/index.md), plus the address handle the datagram reads back
+to send. TCP is not yet supported. It
 also supplies the clock, hostname, sleep and sysUpTime callbacks. There is no
 process-id callback: a kernel task belongs to no process, so PROCID is left
 unset and sent as the nil value.
@@ -19,8 +20,9 @@ unset and sent as the nil value.
 A VxWorks 6.4 kernel image and the VxWorks headers on your include path. The
 datagram calls `socket`, `sendto` and `close`; the resolver calls `inet_addr`
 and `hostGetByName`; the mutex calls `semMCreate`, `semTake`, `semGive` and
-`semDelete`. The image needs the network stack and the host library for the
-first two, and mutual-exclusion semaphores for the third. The clock calls
+`semDelete`; and the atomic counter calls `intLock` and `intUnlock`. The image
+needs the network stack and the host library for the first two, and
+mutual-exclusion semaphores for the third. The clock calls
 `clock_gettime` and `gmtime_r`, which the image must include; uptime
 calls `tick64Get` and `sysClkRateGet`; the hostname calls `gethostname`; and
 sleep calls `taskDelay`. Real-time processes (RTPs) are not supported.
@@ -137,6 +139,13 @@ inherits the priority of a higher-priority task waiting on it, rather than
 being preempted indefinitely. Deletion safety means a task holding the lock
 cannot be deleted until it releases it; without it, deleting that task would
 leave the lock held and every task that logs would block.
+
+### The atomic counter assumes a single CPU
+
+The counter increments with interrupts locked, which excludes every other
+writer, tasks and interrupt service routines alike, only because VxWorks 6.4
+runs on one CPU. Interrupts stay locked only for the read, the compare and the
+store.
 
 ### Log from a task, not an interrupt
 
