@@ -44,6 +44,7 @@ _VXWORKS64_CONSOLE_PORT = 8766
 # Boot takes seconds; the runner collects the start job on its next poll.
 _VXWORKS64_CONNECT_TIMEOUT_SECONDS = 120
 _VXWORKS64_JOB_TIMEOUT_SECONDS = 300
+_VXWORKS64_BUILD_TIMEOUT_SECONDS = 1800
 
 
 # Mapping from cmdline flag to FreeRTOS interactive `set` name. Only the
@@ -166,6 +167,21 @@ def run_vxworks64_job(job_type, args=None, timeout_seconds=_VXWORKS64_JOB_TIMEOU
     if outcome != "succeeded":
         raise RuntimeError(f"VxWorks 6.4 runner job {job_type} {outcome}: {summary}\n{log.getvalue()}")
     return summary
+
+
+def prepare_vxworks64_target():
+    """Builds the commit under test on the build machine, once per run. The
+    runner checks out from origin, so the commit has to have been pushed.
+    VXWORKS64_SKIP_BUILD=1 reuses the image already built there."""
+    if os.environ.get("VXWORKS64_SKIP_BUILD") == "1":
+        print(f"VxWorks 6.4: {run_vxworks64_job('status')}", file=sys.stderr, flush=True)
+        return
+    commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True
+    ).stdout.strip()
+    print(f"VxWorks 6.4: {run_vxworks64_job('checkout', {'ref': commit})}", file=sys.stderr, flush=True)
+    summary = run_vxworks64_job("build", timeout_seconds=_VXWORKS64_BUILD_TIMEOUT_SECONDS)
+    print(f"VxWorks 6.4: {summary.splitlines()[0]}", file=sys.stderr, flush=True)
 
 
 def _spawn_vxworks64():
