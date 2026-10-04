@@ -69,6 +69,7 @@ class RemoteConsole:
             os.write(self._write_end, data)
             data = _receive(self._connection)
         os.close(self._write_end)
+        self._connection.close()
         self.returncode = 0
 
 
