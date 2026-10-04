@@ -11,6 +11,10 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
+    /** Sleeps for @p milliseconds via taskDelay, rounded up to whole system
+     *  clock ticks. Zero or a negative value yields without sleeping. It
+     *  neither performs nor bounds retries; callers such as the TLS handshake
+     *  use it to yield between their own bounded attempts. */
     void SolidSyslogVxWorks64_Sleep(int milliseconds);
 
 SOLIDSYSLOG_EXTERN_C_END

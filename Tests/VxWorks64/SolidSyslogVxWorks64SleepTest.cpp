@@ -8,6 +8,13 @@ using namespace CososoTesting;
 #include "SolidSyslogVxWorks64Sleep.h"
 #include "VxWorks64TaskFake.h"
 
+// Asserts the sleep made exactly one taskDelay, for this many ticks.
+#define CHECK_DELAYED_FOR(ticks)                                  \
+    {                                                             \
+        UNSIGNED_LONGS_EQUAL(1, VxWorks64TaskFake_DelayCount());  \
+        LONGS_EQUAL((ticks), VxWorks64TaskFake_LastDelayTicks()); \
+    }
+
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64Sleep)
 {
@@ -23,14 +30,14 @@ TEST(SolidSyslogVxWorks64Sleep, OneSecondIsOneSecondOfTicks)
 {
     SolidSyslogVxWorks64_Sleep(1000);
 
-    LONGS_EQUAL(60, VxWorks64TaskFake_LastDelayTicks());
+    CHECK_DELAYED_FOR(60);
 }
 
 TEST(SolidSyslogVxWorks64Sleep, APartTickRoundsUpToAWholeOne)
 {
     SolidSyslogVxWorks64_Sleep(1);
 
-    LONGS_EQUAL(1, VxWorks64TaskFake_LastDelayTicks());
+    CHECK_DELAYED_FOR(1);
 }
 
 TEST(SolidSyslogVxWorks64Sleep, TheLongestSleepConvertsWithoutOverflow)
@@ -38,20 +45,19 @@ TEST(SolidSyslogVxWorks64Sleep, TheLongestSleepConvertsWithoutOverflow)
     // INT_MAX ms at 60 Hz is 128849018.82 ticks, rounded up.
     SolidSyslogVxWorks64_Sleep(INT_MAX);
 
-    LONGS_EQUAL(128849019, VxWorks64TaskFake_LastDelayTicks());
+    CHECK_DELAYED_FOR(128849019);
 }
 
 TEST(SolidSyslogVxWorks64Sleep, ANegativeSleepOnlyYields)
 {
     SolidSyslogVxWorks64_Sleep(-100);
 
-    LONGS_EQUAL(0, VxWorks64TaskFake_LastDelayTicks());
+    CHECK_DELAYED_FOR(0);
 }
 
 TEST(SolidSyslogVxWorks64Sleep, AZeroSleepYieldsForNoTicks)
 {
     SolidSyslogVxWorks64_Sleep(0);
 
-    UNSIGNED_LONGS_EQUAL(1, VxWorks64TaskFake_DelayCount());
-    LONGS_EQUAL(0, VxWorks64TaskFake_LastDelayTicks());
+    CHECK_DELAYED_FOR(0);
 }
