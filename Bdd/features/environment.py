@@ -212,8 +212,10 @@ def after_step(context, step):
 
     stderr is the channel that carries the client-side TLS/mTLS failure reason
     (handshake timeout vs cert rejected vs connection refused vs fatal exit),
-    so it is what distinguishes a real bug from an environmental flake."""
-    if step.status != "failed":
+    so it is what distinguishes a real bug from an environmental flake. An
+    exception in a step - a prompt timeout, say - is an error rather than a
+    failure, and needs the same diagnostics."""
+    if step.status not in ("failed", "error"):
         return
     if not hasattr(context, "interactive_process"):
         return

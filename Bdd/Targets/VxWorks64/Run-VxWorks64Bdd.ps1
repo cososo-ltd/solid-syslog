@@ -25,15 +25,17 @@ be running either, because both would write Bdd/output/received.jsonl.
 The tag filter is this target's list of what it cannot do yet; a scenario
 leaves @vxworks64wip as the story that gives the target the capability lands.
 
--SkipBuild reuses the image already built on the build machine.
+-SkipBuild reuses the image already built on the build machine. -Paths runs
+only the features given, as behave takes them, under the same tag filter.
 
 .EXAMPLE
 .\Run-VxWorks64Bdd.ps1
-.\Run-VxWorks64Bdd.ps1 -SkipBuild
+.\Run-VxWorks64Bdd.ps1 -SkipBuild -Paths Bdd/features/prival.feature
 #>
 [CmdletBinding()]
 param(
-    [switch] $SkipBuild
+    [switch] $SkipBuild,
+    [string[]] $Paths = @('Bdd/features')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -110,7 +112,7 @@ try
     # command's stderr into error records when its output is redirected, which
     # 'Stop' would make fatal, so the run is judged by its exit code alone.
     $ErrorActionPreference = 'Continue'
-    & python -m behave --tags=$tags Bdd/features
+    & python -m behave --tags=$tags @Paths
     $exitCode = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
     }
