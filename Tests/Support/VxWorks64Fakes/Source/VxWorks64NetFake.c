@@ -14,6 +14,7 @@
 #include "sockLib.h"
 
 static const char* VxWorks64NetFake_Hostname = "";
+static char VxWorks64NetFake_SetHostnameBuffer[MAXHOSTNAMELEN + 1];
 static bool VxWorks64NetFake_GethostnameFails = false;
 static int VxWorks64NetFake_GethostnameLength = 0;
 static unsigned long VxWorks64NetFake_InetAddrReturn = 0UL;
@@ -137,10 +138,13 @@ int gethostname(char* name, int nameLen)
 }
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
+/* Keeps the name, as the kernel does, for gethostname to answer. */
 int sethostname(char* name, int nameLen)
 {
-    (void) name;
-    (void) nameLen;
+    size_t length = ((size_t) nameLen < MAXHOSTNAMELEN) ? (size_t) nameLen : MAXHOSTNAMELEN;
+    (void) memcpy(VxWorks64NetFake_SetHostnameBuffer, name, length);
+    VxWorks64NetFake_SetHostnameBuffer[length] = '\0';
+    VxWorks64NetFake_Hostname = VxWorks64NetFake_SetHostnameBuffer;
     return OK;
 }
 

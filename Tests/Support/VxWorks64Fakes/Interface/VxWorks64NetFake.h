@@ -27,7 +27,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The name gethostname answers. As the kernel's does, gethostname copies
      *  at most the length it is given, so a name that fills it arrives without
-     *  its terminator. */
+     *  its terminator. sethostname sets the same name. */
     void VxWorks64NetFake_SetHostname(const char* name);
 
     /** Make gethostname answer ERROR. What it leaves in the buffer is then

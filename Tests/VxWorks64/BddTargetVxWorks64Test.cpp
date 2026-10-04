@@ -165,6 +165,13 @@ TEST(BddTargetVxWorks64, ASentMessageIsStampedWithTheClocksTime)
     STRCMP_CONTAINS(" 2026-10-04T13:45:30.000000Z ", VxWorks64NetFake_LastSendtoPayload());
 }
 
+TEST(BddTargetVxWorks64, ASentMessageCarriesTheHostnameTheTargetSet)
+{
+    SendOneMessage();
+
+    STRCMP_CONTAINS(" SolidSyslogVxWorks64 ", VxWorks64NetFake_LastSendtoPayload());
+}
+
 TEST(BddTargetVxWorks64, ALibraryErrorIsReportedOnTheConsole)
 {
     static const struct SolidSyslogErrorSource TEST_SOURCE = {"TestSource"};
