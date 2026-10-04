@@ -32,3 +32,12 @@ TEST(SolidSyslogVxWorks64Clock, TimestampIsZeroedWhenTheClockFails)
     const struct SolidSyslogTimestamp zeroed = {};
     MEMCMP_EQUAL(&zeroed, &timestamp, sizeof(timestamp));
 }
+
+TEST(SolidSyslogVxWorks64Clock, YearCountsFromNineteenHundred)
+{
+    VxWorks64ClockFake_SetBrokenDownTime(126, 0, 1, 0, 0, 0);
+
+    SolidSyslogVxWorks64_GetTimestamp(&timestamp);
+
+    UNSIGNED_LONGS_EQUAL(2026, timestamp.Year);
+}

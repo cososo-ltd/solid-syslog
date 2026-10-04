@@ -12,6 +12,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Make clock_gettime answer ERROR. */
     void VxWorks64ClockFake_FailClockGettime(void);
 
+    /** What gmtime_r answers, as raw struct tm fields: years since 1900 and a
+     *  zero-based month. */
+    void VxWorks64ClockFake_SetBrokenDownTime(int year, int month, int day, int hour, int minute, int second);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* VXWORKS64CLOCKFAKE_H */
