@@ -23,3 +23,10 @@ TEST(SolidSyslogVxWorks64Sleep, OneSecondIsOneSecondOfTicks)
 
     LONGS_EQUAL(60, VxWorks64TaskFake_LastDelayTicks());
 }
+
+TEST(SolidSyslogVxWorks64Sleep, APartTickRoundsUpToAWholeOne)
+{
+    SolidSyslogVxWorks64_Sleep(1);
+
+    LONGS_EQUAL(1, VxWorks64TaskFake_LastDelayTicks());
+}
