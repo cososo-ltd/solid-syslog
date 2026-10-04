@@ -97,7 +97,9 @@ struct SolidSyslogStructuredData* meta = SolidSyslogMetaSd_Create(&metaConfig);
 ```
 
 Create takes no configuration. The counter must outlive the meta structured
-data, which does not destroy it.
+data, which does not destroy it. One counter serves one logger; drawing past
+the pool size in [Adding it to your build](../../build-integration.md#tunables)
+hands back the Null counter, as the header describes.
 
 ## The callbacks
 
