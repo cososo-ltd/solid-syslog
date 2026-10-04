@@ -51,6 +51,7 @@ fault-finding tips.
 | FreeRTOS (lwIP Raw API) | `behave-freertos-lwip` | `syslog-ng-freertos-lwip`, same shape |
 | CMSIS-RTOS2 (lwIP Sockets API) | `behave-cmsis-lwip` | `syslog-ng-cmsis-lwip`, same shape |
 | Windows | `behave` on the runner | `otelcol-contrib` (no compose; runner-direct) |
+| VxWorks 6.4 | `behave` natively on the development machine, driving QEMU on a build machine through the VxWorks 6.4 runner (`Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1`; not in CI) | `otelcol-contrib` on the development machine, on UDP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
 
 The Linux BDD target binary is built in the `gcc` container but executed by Behave via
 `subprocess.run`. Both services share the workspace mount, so `Bdd/output/received.log`
@@ -164,7 +165,7 @@ Step definitions read the active oracle from `ORACLE_FORMAT`:
 | Oracle | `ORACLE_FORMAT` | `RECEIVED_LOG` default | Runs on |
 | --- | --- | --- | --- |
 | syslog-ng (key=value text) | `syslog-ng` | `Bdd/output/received.log` | Linux container |
-| OTel Collector Contrib (JSON Lines) | `otel-jsonl` | `Bdd/output/received.jsonl` | Windows native |
+| OTel Collector Contrib (JSON Lines) | `otel-jsonl` | `Bdd/output/received.jsonl` | Windows native, and the VxWorks 6.4 run from the development machine |
 
 `parse_oracle_line` dispatches to the right parser; both produce the same flat field dict
 (`PRIORITY`, `TIMESTAMP`, `HOSTNAME`, `APP_NAME`, `PROCID`, `STRUCTURED_DATA`, ...) so the

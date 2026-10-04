@@ -64,12 +64,29 @@ pass, fail or not run.
 2. `Build-VxWorks64Vip.ps1 -Clean` ends with `Diagnostics: none`.
 3. `Start-VxWorks64Qemu.ps1 -WaitFor 'SolidSyslog VxWorks 6.4 BDD target: Core ran'`
    reports `PASS`.
-4. With a syslog collector listening on UDP 5514 on the development machine,
-   and `Runner\job_service.py console` running there, QEMU started with its
-   console connecting to it (the runner's `qemu-start`). The console shows
-   `network default route set` and `UDP log attempted to <host>:5514` with no
-   `error from` line, and the collector records a message with MSGID `UDP`
-   and the text `VxWorks 6.4 BDD target over UDP`.
+4. `Run-VxWorks64Bdd.ps1` passes: every scenario its tag filter selects passes
+   against the commit (see [Running the BDD scenarios](#running-the-bdd-scenarios)).
+
+## Running the BDD scenarios
+
+`Run-VxWorks64Bdd.ps1` runs the Behave scenarios against this target from the
+development machine. Behave runs there, natively; the runner checks out and
+builds the commit under test, which must therefore have been pushed, and then
+boots the target once for each scenario, with its console connecting back. The
+oracle is the OpenTelemetry Collector the Windows runner uses
+(`Bdd/otel/Install-OtelCollector.ps1`), which the script starts for the run
+with `Bdd/otel/config.vxworks64.yaml`, listening for the target's syslog on UDP
+5514.
+
+It needs the job service and the runner set up as in
+[Driving it from another machine](#driving-it-from-another-machine), and
+nothing else on the development machine holding UDP 5514. A container that
+publishes the port - the devcontainer's syslog-ng does - has to be stopped for
+the run, and the script names it and refuses if one is up. `-SkipBuild` reuses
+the image already built; `-Paths` runs the features given, under the same tag
+filter. The filter, in the script, is this target's list of what it cannot do
+yet: [`docs/bdd.md`](../../../docs/bdd.md#feature-tags) says what each
+`@vxworks64wip` scenario waits for.
 
 ## Driving it from another machine
 
@@ -137,7 +154,8 @@ creation script sets the project's build macros with
 
 - `CFLAGS` gains `Core/Interface`, `Platform/VxWorks64/Interface` and
   `Platform/VxWorks64/Compat`.
-- `LIBS` names the library ahead of `$(VX_OS_LIBS)`.
+- `LIBS` names the BDD target's archive, then the library, ahead of
+  `$(VX_OS_LIBS)`.
 - With Diab, `PROJECT_BSP_FLAGS_EXTRA` gains `-ei1606`. Wind River's own
   `pciIntLib.c`, which the BSP's `sysLib.c` includes, raises `dcc:1606`. The
   macro reaches Wind River's sources and the ones `vxprj` generates - the BSP,
@@ -149,7 +167,8 @@ with UDP and sockets, the host table, routing, and the END driver for QEMU's
 PCnet adapter. QEMU loads the ROM image directly, so the boot line's addresses
 are never used; `INCLUDE_ADDIF` puts the adapter on QEMU's user network instead,
 as `10.0.2.15/24`. The target adds a default route through QEMU's gateway,
-`10.0.2.2`, at start-up, and asks for the collector's address over its console.
+`10.0.2.2`, at start-up, and the harness names the collector with `set host`
+and `set port` over the console.
 
 The kernel header tree has no `<stdint.h>` or `<stdbool.h>`, which the
 SolidSyslog headers include. `Platform/VxWorks64/Compat` supplies both, for the
