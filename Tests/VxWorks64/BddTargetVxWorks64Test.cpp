@@ -418,3 +418,13 @@ TEST(BddTargetVxWorks64, AFullStoreUnderHaltWithoutHaltExitKeepsTheRunGoing)
 
     CHECK(Reported().find("[EXIT") == std::string::npos);
 }
+
+TEST(BddTargetVxWorks64, AStoreDiskThatCannotBeReadiedIsReportedWithItsErrno)
+{
+    VxWorks64FsFake_FailFormats();
+    BddTargetVxWorks64_Init();
+
+    RunConsoleWith("set store file\nquit\n");
+
+    STRCMP_CONTAINS("store disk not ready, errno 0x0", Reported().c_str());
+}

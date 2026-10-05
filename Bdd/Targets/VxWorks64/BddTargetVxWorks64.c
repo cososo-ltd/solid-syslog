@@ -85,6 +85,7 @@ static void BddTargetVxWorks64_GetTimeQuality(struct SolidSyslogTimeQuality* tim
 static bool BddTargetVxWorks64_SetByName(const char* name, const char* value);
 static bool BddTargetVxWorks64_SetTime(const char* value);
 static bool BddTargetVxWorks64_SetStore(const char* value);
+static bool BddTargetVxWorks64_ReadyTheDisk(void);
 static bool BddTargetVxWorks64_CarriesThePolicy(void);
 static void BddTargetVxWorks64_UseFileStore(void);
 static void BddTargetVxWorks64_DestroyStore(void);
@@ -406,13 +407,29 @@ static bool BddTargetVxWorks64_SetStore(const char* value)
     bool taken = strcmp(value, "null") == 0;
     if (strcmp(value, "file") == 0)
     {
-        taken = BddTargetVxWorks64_CarriesThePolicy() && BddTargetVxWorks64Store_Mount();
+        taken = BddTargetVxWorks64_CarriesThePolicy() && BddTargetVxWorks64_ReadyTheDisk();
         if (taken)
         {
             BddTargetVxWorks64_UseFileStore();
         }
     }
     return taken;
+}
+
+/* The kernel's own reason, so a disk that will not mount or format can be told
+ * apart from a store the harness refused. */
+static bool BddTargetVxWorks64_ReadyTheDisk(void)
+{
+    bool ready = BddTargetVxWorks64Store_Mount();
+    if (!ready)
+    {
+        (void) fprintf(
+            BddTargetVxWorks64_Reports(),
+            BDD_TARGET_TAG "store disk not ready, errno 0x%x\n",
+            (unsigned) errnoGet()
+        );
+    }
+    return ready;
 }
 
 /* No TLS library comes with this platform, so the policies that need one are
