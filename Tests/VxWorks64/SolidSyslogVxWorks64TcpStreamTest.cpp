@@ -617,6 +617,7 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenBoundsTheConnectByTheTunableWhenTheConfi
     struct SolidSyslogVxWorks64TcpStreamConfig config = {};
     stream = SolidSyslogVxWorks64TcpStream_Create(&config);
     SolidSyslogStream_Open(stream, address);
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS / 1000U, VxWorks64NetFake_LastConnectTimeoutSeconds());
     LONGS_EQUAL(
         (SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS % 1000U) * 1000U,
         VxWorks64NetFake_LastConnectTimeoutMicroseconds()

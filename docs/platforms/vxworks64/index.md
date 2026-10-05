@@ -78,14 +78,18 @@ The stream's connect is bounded by the deadline its config supplies, through
 `connectWithTimeout`, rather than by the stack's own retransmission budget. An
 attempt still under way when the deadline passes is abandoned with its socket,
 and the sender tries again on its next pass. Its send and read pass
-`MSG_DONTWAIT`, so they answer at once: a wedged peer or a full send buffer
-costs a failed call rather than a stalled task.
+`MSG_DONTWAIT`, so neither stalls the task: a send the stack cannot take whole
+fails and closes the stream, and a read with nothing waiting returns 0 and keeps
+the connection.
 
-A send establishes that the peer has not closed its end before it writes. A
-connection stays writable after a peer closes, so without that check the stack
-would take a record nothing can deliver and the record would be gone; instead
-the send fails, the stream closes itself, and your store replays the record on
-the next connection. A record the stack takes only part of fails the same way.
+A send first checks whether the peer has closed its end. A connection stays
+writable after a peer closes, so without that check the stack would take a
+record nothing can deliver and the record would be gone; instead the send
+fails, the stream closes itself, and your store replays the record on the next
+connection. The check sees only a close the stack has already learned of: a
+peer that closes while the record is being sent can still lose that record,
+because syslog over TCP has no acknowledgement to say it arrived. A record the
+stack takes only part of fails and is replayed in the same way.
 
 A connect that fails is reported under the stream's own error source, with the
 detail naming which step failed. The stack refusing a socket option is
