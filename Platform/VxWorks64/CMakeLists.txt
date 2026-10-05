@@ -26,6 +26,8 @@ target_sources(SolidSyslogVxWorks64 INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64ResolverStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64Sleep.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64SysUpTime.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64TcpStream.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogVxWorks64TcpStreamStatic.c
 )
 
 target_include_directories(SolidSyslogVxWorks64 INTERFACE

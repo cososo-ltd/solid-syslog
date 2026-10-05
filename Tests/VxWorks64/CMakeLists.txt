@@ -181,6 +181,41 @@ set_target_properties(SolidSyslogVxWorks64DatagramTest PROPERTIES
 
 add_test(NAME SolidSyslogVxWorks64DatagramTest COMMAND SolidSyslogVxWorks64DatagramTest)
 
+add_executable(SolidSyslogVxWorks64TcpStreamTest
+    SolidSyslogVxWorks64TcpStreamTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Address.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64AddressStatic.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64NetFake.c
+)
+
+target_link_libraries(SolidSyslogVxWorks64TcpStreamTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogVxWorks64TcpStreamTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests/Support
+)
+
+set_target_properties(SolidSyslogVxWorks64TcpStreamTest PROPERTIES
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+    C_EXTENSIONS OFF
+)
+
+add_test(NAME SolidSyslogVxWorks64TcpStreamTest COMMAND SolidSyslogVxWorks64TcpStreamTest)
+
 # The clock's stand-in time.h shadows the host's, so it is applied only to the C
 # sources that call the VxWorks time API; the C++ test drives the fake through
 # VxWorks64ClockFake.h and never sees it.
@@ -319,6 +354,7 @@ add_executable(BddTargetVxWorks64Test
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLanguage.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMessageSettings.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetServiceThread.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
     ${VXWORKS64_CLOCK_SOURCES}
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Hostname.c
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Address.c
@@ -333,6 +369,8 @@ add_executable(BddTargetVxWorks64Test
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64ResolverStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64Sleep.c
     ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64SysUpTime.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStreamStatic.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64IntFake.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64NetFake.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source/VxWorks64SemFake.c

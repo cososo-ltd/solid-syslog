@@ -6,6 +6,8 @@ using namespace CososoTesting;
 #include <cstdio>
 #include <string>
 
+#include <sys/socket.h>
+
 #include "BddTargetVxWorks64.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
@@ -226,4 +228,35 @@ TEST(BddTargetVxWorks64, TeardownReleasesTheCounterForTheNextBoot)
     BddTargetVxWorks64_Init();
 
     CHECK(Reported().find("[VxWorks64AtomicCounter") == std::string::npos);
+}
+
+TEST(BddTargetVxWorks64, SetTransportTcpSendsTheMessageOverTcp)
+{
+    BddTargetVxWorks64_Init();
+    RunConsoleWith("set transport tcp\nsend\nquit\n");
+    BddTargetVxWorks64_RunService();
+    LONGS_EQUAL(SOCK_STREAM, VxWorks64NetFake_LastSocketType());
+    CHECK(VxWorks64NetFake_SendCallCount() > 0U);
+    CALLED_FAKE(VxWorks64NetFake_Sendto, NEVER);
+}
+
+TEST(BddTargetVxWorks64, SwitchTcpMovesSendingOntoTcp)
+{
+    BddTargetVxWorks64_Init();
+    RunConsoleWith("switch tcp\nsend\nquit\n");
+    BddTargetVxWorks64_RunService();
+    CHECK(VxWorks64NetFake_SendCallCount() > 0U);
+    CALLED_FAKE(VxWorks64NetFake_Sendto, NEVER);
+}
+
+TEST(BddTargetVxWorks64, TeardownReleasesTheSendersForTheNextBoot)
+{
+    BddTargetVxWorks64_Init();
+    BddTargetVxWorks64_Teardown();
+
+    BddTargetVxWorks64_Init();
+
+    CHECK(Reported().find("[SwitchingSender") == std::string::npos);
+    CHECK(Reported().find("[StreamSender") == std::string::npos);
+    CHECK(Reported().find("[VxWorks64TcpStream") == std::string::npos);
 }

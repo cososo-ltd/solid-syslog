@@ -27,6 +27,8 @@ Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c
 Platform/VxWorks64/Source/SolidSyslogVxWorks64ResolverStatic.c
 Platform/VxWorks64/Source/SolidSyslogVxWorks64Sleep.c
 Platform/VxWorks64/Source/SolidSyslogVxWorks64SysUpTime.c
+Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c
+Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStreamStatic.c
 
 ## Include directories
 
