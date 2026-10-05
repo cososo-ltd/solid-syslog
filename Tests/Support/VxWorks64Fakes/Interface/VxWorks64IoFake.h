@@ -1,17 +1,28 @@
 #ifndef VXWORKS64IOFAKE_H
 #define VXWORKS64IOFAKE_H
 
+#include <stddef.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Drives the stand-in for the I/O calls ioLib.h declares. ioLib.h renames
      * each to VxWorks64IoFake_<Name>, so the C library's own descriptors are
-     * never handed to the fake; a test sees only this header. */
+     * never handed to the fake; a test sees only this header.
+     *
+     * Behind the calls is a small in-memory disk: open with O_CREAT makes a
+     * file, read and write move through it from the descriptor's position, and
+     * remove deletes it, so a store written through the fake reads back. A
+     * scripted answer, when a test gives one, stands in for the disk's. */
 
+    /** Empties the disk and forgets every scripted answer. */
     void VxWorks64IoFake_Reset(void);
 
-    /** The descriptor open hands back when it succeeds. */
+    /** Puts an empty file on the disk, as though written by an earlier boot. */
+    void VxWorks64IoFake_PutFile(const char* name);
+
+    /** The descriptor open last handed back. */
     int VxWorks64IoFake_Fd(void);
 
     /** Make open answer ERROR, as it does for a path it cannot open. */
@@ -50,6 +61,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const char* VxWorks64IoFake_LastWriteBuffer(void);
 
     int VxWorks64IoFake_LastWriteNBytes(void);
+
+    /** Every byte written since the last reset, to any descriptor, in order. */
+    const char* VxWorks64IoFake_Written(void);
+
+    size_t VxWorks64IoFake_WrittenLength(void);
 
     /** Where the end of the file is: lseek to SEEK_END answers it. */
     void VxWorks64IoFake_SetFileSize(long size);

@@ -223,8 +223,10 @@ vxworks64_add_test(BddTargetVxWorks64Test
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLanguage.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMessageSettings.c
-        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetServiceThread.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetStoreSettings.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
+        ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64File.c
+        ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64FileStatic.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64Hostname.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64Address.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64AddressStatic.c
@@ -248,7 +250,9 @@ vxworks64_add_test(BddTargetVxWorks64Test
         ${BDD_TARGET_VXWORKS64_TEMP_FILE}
     SHADOWED
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64Clock.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64Store.c
         ${VXWORKS64_CLOCK_SOURCES}
+        ${VXWORKS64_FAKES}/VxWorks64FsFake.c
     INCLUDES
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64
