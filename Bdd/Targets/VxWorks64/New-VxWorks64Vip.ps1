@@ -140,18 +140,16 @@ foreach ($buildSpec in @('default', 'default_rom'))
         'LIBS', "$bddTarget $library `$(VX_OS_LIBS)")
 
     # With Diab, Wind River's pciIntLib.c, compiled into the BSP's sysLib.c,
-    # raises dcc:1606 (a condition always true or false), and the BSP's
-    # sysBusPci.c raises dcc:1741 by defining USB again after the ATA driver's
-    # header has defined it. PROJECT_BSP_FLAGS_EXTRA reaches Wind River's sources
-    # and the ones vxprj generates - the BSP, romStart.c, prjConfig.c and
-    # linkSyms.c - so the project's own sources keep both warnings. -ei is a Diab
-    # option, so a GNU project is left as it is.
+    # raises dcc:1606 (a condition always true or false). PROJECT_BSP_FLAGS_EXTRA
+    # reaches Wind River's sources and the ones vxprj generates - the BSP,
+    # romStart.c, prjConfig.c and linkSyms.c - so the project's own sources keep
+    # the warning. -ei is a Diab option, so a GNU project is left as it is.
     if ($Tool -eq 'sfdiab')
         {
         $bspFlags = ((Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'get',
             $projectFile, 'PROJECT_BSP_FLAGS_EXTRA')) -join ' ').Trim()
         Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
-            'PROJECT_BSP_FLAGS_EXTRA', "$bspFlags -ei1606,1741".Trim())
+            'PROJECT_BSP_FLAGS_EXTRA', "$bspFlags -ei1606".Trim())
         }
     }
 

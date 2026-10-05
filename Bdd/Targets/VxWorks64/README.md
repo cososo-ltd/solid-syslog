@@ -159,12 +159,11 @@ creation script sets the project's build macros with
   `Platform/VxWorks64/Compat`.
 - `LIBS` names the BDD target's archive, then the library, ahead of
   `$(VX_OS_LIBS)`.
-- With Diab, `PROJECT_BSP_FLAGS_EXTRA` gains `-ei1606,1741`. Wind River's own
-  `pciIntLib.c`, which the BSP's `sysLib.c` includes, raises `dcc:1606`, and the
-  BSP's `sysBusPci.c` raises `dcc:1741` by defining `USB` again after the ATA
-  driver's header has. The macro reaches Wind River's sources and the ones
-  `vxprj` generates - the BSP, `romStart.c`, `prjConfig.c` and `linkSyms.c` -
-  so the project's own sources keep both warnings.
+- With Diab, `PROJECT_BSP_FLAGS_EXTRA` gains `-ei1606`. Wind River's own
+  `pciIntLib.c`, which the BSP's `sysLib.c` includes, raises `dcc:1606`. The
+  macro reaches Wind River's sources and the ones `vxprj` generates - the BSP,
+  `romStart.c`, `prjConfig.c` and `linkSyms.c` - so the project's own sources
+  keep the warning.
 
 The creation script also adds the disk the file store lives on: the ATA driver
 for the Malta board's PIIX4 IDE controller, the extended block device layer, the
