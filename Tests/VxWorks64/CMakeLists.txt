@@ -199,6 +199,18 @@ vxworks64_add_test(SolidSyslogVxWorks64FileTest
         ErrorHandlerFake
 )
 
+# The store's sys/stat.h stand-in shadows the host's, so only the store and its
+# fake see it.
+vxworks64_add_test(BddTargetVxWorks64StoreTest
+    SOURCES
+        BddTargetVxWorks64StoreTest.cpp
+    SHADOWED
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64Store.c
+        ${VXWORKS64_FAKES}/VxWorks64FsFake.c
+    INCLUDES
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64
+)
+
 # The BDD target compiles here against the same fakes, so a change that breaks
 # it fails on the host as well as in the target build.
 vxworks64_add_test(BddTargetVxWorks64Test
