@@ -16,7 +16,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "steps"))
 from solidsyslog_tunables import SOLIDSYSLOG_MAX_MESSAGE_SIZE  # noqa: E402
 from wait_budgets import CONDITION_TIMEOUT_SECONDS  # noqa: E402
-from target_driver import prepare_vxworks64_target  # noqa: E402
+from target_driver import prepare_vxworks64_target, reset_vxworks64_store  # noqa: E402
 
 logger = logging.getLogger("behave.environment")
 
@@ -209,6 +209,8 @@ def before_scenario(context, scenario):
         os.remove(FREERTOS_DISK_IMAGE_PATH)
     except FileNotFoundError:
         pass
+    if context.target == "vxworks64" and "store" in scenario.effective_tags:
+        reset_vxworks64_store()
 
 
 def after_step(context, step):

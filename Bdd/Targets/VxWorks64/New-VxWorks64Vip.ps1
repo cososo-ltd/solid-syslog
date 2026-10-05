@@ -89,6 +89,21 @@ foreach ($component in @(
     Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'component', 'add', $projectFile, $component)
     }
 
+# The disk the file store lives on: the ATA driver for the board's PIIX4 IDE
+# controller, the extended block device layer it creates its disk through, the
+# file system monitor that names the volume /ata0a and puts rawFs on a disk it
+# cannot recognise, and dosFs with the formatter the target runs on a blank disk.
+# The dosFs cache stays in, so the file's own sync is what reaches the disk.
+foreach ($component in @(
+        'INCLUDE_IPIIX4PCI', 'INCLUDE_ATA',
+        'INCLUDE_XBD', 'INCLUDE_XBD_BLK_DEV', 'INCLUDE_FS_MONITOR', 'INCLUDE_RAWFS',
+        'INCLUDE_DOSFS_MAIN', 'INCLUDE_DOSFS_FAT', 'INCLUDE_DOSFS_DIR_VFAT', 'INCLUDE_DOSFS_FMT',
+        'INCLUDE_DOSFS_CACHE'
+    ))
+    {
+    Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'component', 'add', $projectFile, $component)
+    }
+
 # QEMU loads the ROM image directly, so nothing boots over the network and the
 # boot line's addresses are never used. INCLUDE_ADDIF puts the PCnet interface
 # on QEMU's user network instead, where the guest is always 10.0.2.15/24.

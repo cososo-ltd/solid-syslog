@@ -174,6 +174,13 @@ def run_vxworks64_job(job_type, args=None, timeout_seconds=_VXWORKS64_JOB_TIMEOU
     return summary
 
 
+def reset_vxworks64_store():
+    """Gives the next VxWorks 6.4 boot a blank store disk. QEMU keeps the disk
+    across a restart, which power_cycle_replay needs, so a scenario that leaves
+    records there would hand them to the next."""
+    run_vxworks64_job("store-reset")
+
+
 def prepare_vxworks64_target():
     """Builds the commit under test on the build machine, once per run. The
     runner checks out from origin, so the commit has to have been pushed.

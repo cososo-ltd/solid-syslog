@@ -16,6 +16,8 @@ fixed set:
   qemu-start                        QEMU, its console connecting out to the
                                     service's host on -SerialPort
   qemu-stop                         stops the QEMU qemu-start began
+  store-reset                       Reset-VxWorks64StoreDisk.ps1, while QEMU
+                                    is stopped
   status                            the clone's commit, and whether QEMU runs
 
 Anything else is refused. The scripts a job runs are the clone's own, in a
@@ -261,6 +263,16 @@ $actions = @{
             }
         $script:qemuProcessId = $null
         @{ Outcome = 'succeeded'; Summary = if ($qemu) { "Stopped QEMU (PID $($qemu.Id))" } else { 'QEMU was not running' } } } }
+
+    'store-reset' = @{ Arguments = @(); Run = {
+        param($Arguments)
+        if (Get-QemuProcess)
+            {
+            throw "QEMU is running (PID $script:qemuProcessId) and holds the store disk - stop it first"
+            }
+        $reset = Invoke-RecipeScript 'Reset-VxWorks64StoreDisk.ps1'
+        $outcome = if ($reset.ExitCode -eq 0) { 'succeeded' } else { 'failed' }
+        @{ Outcome = $outcome; Summary = Get-LastLines $reset.Output 1 } } }
 
     'status' = @{ Arguments = @(); Run = {
         param($Arguments)
