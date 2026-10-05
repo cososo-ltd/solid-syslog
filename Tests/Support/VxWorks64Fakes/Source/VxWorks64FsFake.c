@@ -96,6 +96,7 @@ STATUS stat(const char* _name, struct stat* _pStat)
     return answers ? OK : ERROR;
 }
 
+// NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
 STATUS dosFsVolFormat(char* path, int opt, FUNCPTR pPromptFunc)
 {
     VxWorks64FsFake_Formats++;

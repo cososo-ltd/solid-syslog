@@ -13,6 +13,7 @@ using namespace CososoTesting;
 #include "BddTargetVxWorks64.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogTunables.h"
 #include "TempFile.h"
 #include "VxWorks64ClockFake.h"
 #include "VxWorks64FsFake.h"
@@ -80,6 +81,21 @@ TEST_GROUP(BddTargetVxWorks64)
         BddTargetVxWorks64_Init();
         std::string lines = settings;
         lines += "set store file\nsend\nquit\n";
+        RunConsoleWith(lines.c_str());
+        BddTargetVxWorks64_RunService();
+    }
+
+    // A halting store of two blocks, filled while the collector refuses TCP. The
+    // store grows a block to fit the largest record the tunables allow, so the
+    // messages are a third of that, which two blocks cannot all hold.
+    static void FillAHaltingStore(const char* settings)
+    {
+        VxWorks64NetFake_FailConnectWithErrno(ECONNREFUSED);
+        BddTargetVxWorks64_Init();
+        std::string lines = "set max-blocks 2\nset max-block-size 520\nset discard-policy halt\n";
+        lines += settings;
+        lines += "set msg " + std::string(SOLIDSYSLOG_MAX_MESSAGE_SIZE / 3U, 'X') + "\n";
+        lines += "set transport tcp\nset store file\nsend 10\nquit\n";
         RunConsoleWith(lines.c_str());
         BddTargetVxWorks64_RunService();
     }
@@ -397,24 +413,14 @@ TEST(BddTargetVxWorks64, CrossingTheCapacityThresholdIsReportedOnTheConsole)
 
 TEST(BddTargetVxWorks64, AFullStoreUnderHaltWithHaltExitEndsTheRunWithStatusTwo)
 {
-    VxWorks64NetFake_FailConnectWithErrno(ECONNREFUSED);
-    BddTargetVxWorks64_Init();
-
-    RunConsoleWith("set max-blocks 2\nset max-block-size 520\nset discard-policy halt\nset halt-exit 1\n"
-                   "set transport tcp\nset store file\nsend 10\nquit\n");
-    BddTargetVxWorks64_RunService();
+    FillAHaltingStore("set halt-exit 1\n");
 
     STRCMP_CONTAINS("[EXIT 2]", Reported().c_str());
 }
 
 TEST(BddTargetVxWorks64, AFullStoreUnderHaltWithoutHaltExitKeepsTheRunGoing)
 {
-    VxWorks64NetFake_FailConnectWithErrno(ECONNREFUSED);
-    BddTargetVxWorks64_Init();
-
-    RunConsoleWith("set max-blocks 2\nset max-block-size 520\nset discard-policy halt\n"
-                   "set transport tcp\nset store file\nsend 10\nquit\n");
-    BddTargetVxWorks64_RunService();
+    FillAHaltingStore("");
 
     CHECK(Reported().find("[EXIT") == std::string::npos);
 }

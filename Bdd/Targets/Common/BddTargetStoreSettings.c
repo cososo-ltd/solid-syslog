@@ -29,16 +29,16 @@ struct StoreSettings_Name
 };
 
 static const struct StoreSettings_Name DISCARD_POLICIES[] = {
-    {"oldest", (int) SOLIDSYSLOG_DISCARD_POLICY_OLDEST},
-    {"newest", (int) SOLIDSYSLOG_DISCARD_POLICY_NEWEST},
-    {"halt", (int) SOLIDSYSLOG_DISCARD_POLICY_HALT},
+    {"oldest", SOLIDSYSLOG_DISCARD_POLICY_OLDEST},
+    {"newest", SOLIDSYSLOG_DISCARD_POLICY_NEWEST},
+    {"halt", SOLIDSYSLOG_DISCARD_POLICY_HALT},
 };
 
 static const struct StoreSettings_Name SECURITY_POLICIES[] = {
-    {"crc16", (int) BDD_TARGET_SECURITY_POLICY_CRC16},
-    {"null", (int) BDD_TARGET_SECURITY_POLICY_NULL},
-    {"hmac-sha256", (int) BDD_TARGET_SECURITY_POLICY_HMAC_SHA256},
-    {"aes-256-gcm", (int) BDD_TARGET_SECURITY_POLICY_AES_256_GCM},
+    {"crc16", BDD_TARGET_SECURITY_POLICY_CRC16},
+    {"null", BDD_TARGET_SECURITY_POLICY_NULL},
+    {"hmac-sha256", BDD_TARGET_SECURITY_POLICY_HMAC_SHA256},
+    {"aes-256-gcm", BDD_TARGET_SECURITY_POLICY_AES_256_GCM},
 };
 
 static inline bool StoreSettings_SetSize(const char* value, size_t* setting);
@@ -61,6 +61,7 @@ void BddTargetStoreSettings_Reset(void)
     noSd = false;
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 bool BddTargetStoreSettings_SetByName(const char* name, const char* value)
 {
     bool taken = false;

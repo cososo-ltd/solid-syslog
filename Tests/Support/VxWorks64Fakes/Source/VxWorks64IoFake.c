@@ -420,7 +420,7 @@ int read(int fd, char* buffer, size_t maxbytes)
     else if ((VxWorks64IoFake_ReadData != NULL) || (descriptor == NULL))
     {
         result = (VxWorks64IoFake_ReadDataLength < (int) maxbytes) ? VxWorks64IoFake_ReadDataLength : (int) maxbytes;
-        if (result > 0)
+        if ((result > 0) && (VxWorks64IoFake_ReadData != NULL))
         {
             (void) memcpy(buffer, VxWorks64IoFake_ReadData, (size_t) result);
         }
