@@ -298,6 +298,7 @@ function(register_junit_test test_target)
         VERBATIM
     )
     add_dependencies(junit ${test_target})
+    set_property(GLOBAL APPEND PROPERTY SOLIDSYSLOG_JUNIT_TESTS ${test_target})
 endfunction()
 
 foreach(freertos_test_target IN ITEMS
@@ -421,12 +422,14 @@ function(collect_test_executables directory result)
 endfunction()
 
 collect_test_executables(${CMAKE_CURRENT_SOURCE_DIR} unregistered_tests)
-get_target_property(junit_tests junit MANUALLY_ADDED_DEPENDENCIES)
+# Compared against what register_junit_test ran, not junit's dependencies: a
+# dependency alone builds a test without running it.
+get_property(junit_tests GLOBAL PROPERTY SOLIDSYSLOG_JUNIT_TESTS)
 list(REMOVE_ITEM unregistered_tests ${PROJECT_NAME}Tests BddTargetTests ${junit_tests})
 if(unregistered_tests)
     list(JOIN unregistered_tests ", " unregistered_list)
     message(FATAL_ERROR
-        "Test executables not registered for junit, so CI would never build or run them: "
+        "Test executables not registered for junit, so CI would never run them: "
         "${unregistered_list}. Define a VxWorks 6.4 test with vxworks64_add_test; add "
         "any other to its pack's register_junit_test list in Tests/CMakeLists.txt.")
 endif()
