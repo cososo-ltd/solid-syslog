@@ -7,7 +7,7 @@
 
 set(VXWORKS64_SOURCE ${CMAKE_SOURCE_DIR}/Platform/VxWorks64/Source)
 set(VXWORKS64_FAKES ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Source)
-set(VXWORKS64_TIME_INTERFACE ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/TimeInterface)
+set(VXWORKS64_SHADOW_INTERFACE ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/ShadowInterface)
 
 # Defines a VxWorks 6.4 test executable whole, so none can be defined without
 # running: main.cpp, the standard links and includes, add_test, and junit
@@ -15,7 +15,8 @@ set(VXWORKS64_TIME_INTERFACE ${CMAKE_SOURCE_DIR}/Tests/Support/VxWorks64Fakes/Ti
 #
 #   SOURCES    the test's own sources, the adapters under test and their fakes
 #   SHADOWED   C sources that call a VxWorks API whose header shares a host
-#              header's name; only these see the stand-ins, never a C++ test
+#              header's name; only these see the stand-ins in
+#              Tests/Support/VxWorks64Fakes/ShadowInterface, never a C++ test
 #   LIBRARIES  links beyond the project library and CppUTest
 #   INCLUDES   include directories beyond the standard set
 #
@@ -33,7 +34,7 @@ function(vxworks64_add_test name)
 
     if(TEST_SHADOWED)
         set_source_files_properties(${TEST_SHADOWED} PROPERTIES
-            INCLUDE_DIRECTORIES ${VXWORKS64_TIME_INTERFACE}
+            INCLUDE_DIRECTORIES ${VXWORKS64_SHADOW_INTERFACE}
         )
     endif()
 
